@@ -1,3 +1,3 @@
 Online Games
 
-v0.0a: Initial Spring Boot
+v0.0b: Switch to go
