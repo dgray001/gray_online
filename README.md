@@ -1,3 +1,3 @@
 Online Games
 
-v0.0c: Add ts frontend
+v0.0d: Starting DwgElement class
