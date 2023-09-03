@@ -1,0 +1,43 @@
+{
+  "name": "gray_online",
+  "version": "1.0.0",
+  "description": "Online Games",
+  "main": "index.js",
+  "scripts": {
+    "build": "webpack --config webpack.prod.js",
+    "dev": "webpack serve --config webpack.dev.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dgray001/gray_online.git"
+  },
+  "author": "Daniel Gray",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dgray001/gray_online/issues"
+  },
+  "homepage": "https://github.com/dgray001/gray_online#readme",
+  "devDependencies": {
+    "@types/node": "^18.15.11",
+    "@types/webpack": "^5.28.1",
+    "@webpack-cli/generators": "^3.0.1",
+    "clean-webpack-plugin": "^4.0.0",
+    "copy-webpack-plugin": "^11.0.0",
+    "declaration-bundler-webpack-plugin": "^1.0.3",
+    "ts-loader": "^9.4.2",
+    "typescript": "^5.0.4",
+    "webpack": "^5.78.0",
+    "webpack-dev-server": "^4.13.2",
+    "wepack-cli": "^0.0.1-security"
+  },
+  "dependencies": {
+    "@mux/upchunk": "^3.1.0",
+    "@types/grecaptcha": "^3.0.4",
+    "css-loader": "^6.7.3",
+    "html-loader": "^4.2.0",
+    "normalize.css": "^8.0.1",
+    "sass-loader": "^13.2.2",
+    "style-loader": "^3.3.2"
+  }
+}
