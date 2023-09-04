@@ -1,37 +1,39 @@
 import {until} from "../scripts/util";
 
 /** Describes an html element used by DwgElements */
-interface DwgHtmlElement {
-  selector: string;
-  element: HTMLElement;
-}
-
-/** Not sure this actually does anything */
-interface DwgTypedElement<T extends HTMLElement> {
-  selector: string;
-  element: T;
+interface ElementMetadata {
+  element_id: string;
+  name: string;
+  found_element: boolean;
 }
 
 export abstract class DwgElement extends HTMLElement {
+  protected htmlString: string;
   fully_parsed = false;
-  els: DwgHtmlElement[] = [];
+  private elsMetadata: ElementMetadata[] = [];
 
   async connectedCallback() {
+    this.innerHTML = this.htmlString;
     await until(this.elementsParsed.bind(this));
+    this.parsedCallback();
   }
 
-  elementsParsed(): boolean {
+  private elementsParsed(): boolean {
     let parsed = true;
-    for (const el of this.els) {
-      if (!el.element) {
-        el.element = this.querySelector(el.selector);
+    for (const elMetadata of this.elsMetadata) {
+      let el: HTMLElement|null = null;
+      if (!elMetadata.found_element) {
+        el = this.querySelector(`#${elMetadata.element_id}`);
+        // @ts-ignore -> set value in subclass
+        this['test'] = el;
+        elMetadata.found_element = true;
       }
-      if (!el.element) {
+      if (!elMetadata.found_element) {
         parsed = false;
         continue;
       }
-      if (el.element instanceof DwgElement) {
-        if (!el.element.fully_parsed) {
+      if (el instanceof DwgElement) {
+        if (!el.fully_parsed) {
           parsed = false;
         }
       }
@@ -40,16 +42,9 @@ export abstract class DwgElement extends HTMLElement {
     return this.fully_parsed;
   }
 
-  setElement<T extends HTMLElement>(element: T, selector: string) {
-    this.els.push({selector, element} as DwgTypedElement<T>);
-  }
-}
+  protected parsedCallback() {}
 
-class testy extends DwgElement {
-  test: HTMLButtonElement;
-
-  constructor() {
-    super();
-    this.setElement(this.test, 'test');
+  protected configureElement(name: string, element_id: string) {
+    this.elsMetadata.push({element_id, name} as ElementMetadata);
   }
 }
