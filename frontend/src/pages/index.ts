@@ -2,4 +2,4 @@
 import './index.scss';
 
 // dependencies
-import '../components/test/test';
+import '../components/socket_test/socket_test';
