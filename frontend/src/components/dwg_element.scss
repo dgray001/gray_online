@@ -1,0 +1,5 @@
+.dwg-element {
+  &:not(.parsed) {
+    display: none;
+  }
+}

@@ -19,7 +19,7 @@ export const asyncLoop = async (times: number, callback: Function) => {
 };
 
 /** Returns promise that resolves when condition function becomes true */
-export function until(condition: () => boolean, poll_timer = 300) {
+export function until(condition: () => boolean, poll_timer = 300): Promise<void> {
   const poll = (resolve: () => void) => {
     if (condition()) {
       resolve();
@@ -29,6 +29,11 @@ export function until(condition: () => boolean, poll_timer = 300) {
     }
   }
   return new Promise<void>(poll);
+}
+
+/** Awaits a specific amount of time */
+export function untilTimer(timer: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, timer));
 }
 
 /** Capitalizes each word in string */

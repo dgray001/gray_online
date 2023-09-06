@@ -1,5 +1,7 @@
 import {until} from "../scripts/util";
 
+import './dwg_element.scss';
+
 /** Describes an html element used by DwgElements */
 interface ElementMetadata {
   element_id: string;
@@ -13,19 +15,23 @@ export abstract class DwgElement extends HTMLElement {
   private elsMetadata: ElementMetadata[] = [];
 
   async connectedCallback() {
+    this.classList.add('dwg-element');
     this.innerHTML = this.htmlString;
     await until(this.elementsParsed.bind(this));
     this.parsedCallback();
+    this.classList.add('parsed');
+    this.fully_parsed = true;
   }
 
   private elementsParsed(): boolean {
     let parsed = true;
     for (const elMetadata of this.elsMetadata) {
-      let el: HTMLElement|null = null;
+      // @ts-ignore -> set value in subclass
+      let el: HTMLElement|null = elMetadata.found_element ? this[elMetadata.name] : null;
       if (!elMetadata.found_element) {
         el = this.querySelector(`#${elMetadata.element_id}`);
         // @ts-ignore -> set value in subclass
-        this['test'] = el;
+        this[elMetadata.name] = el;
         elMetadata.found_element = true;
       }
       if (!elMetadata.found_element) {
@@ -38,8 +44,7 @@ export abstract class DwgElement extends HTMLElement {
         }
       }
     }
-    this.fully_parsed = parsed;
-    return this.fully_parsed;
+    return parsed;
   }
 
   protected parsedCallback() {}

@@ -2,21 +2,17 @@ import {DwgElement} from '../dwg_element';
 
 import html from './test.html';
 
-import '../test2/test';
-
 class DwgTest extends DwgElement {
-  test: HTMLElement;
-  testy: HTMLElement;
+  test: HTMLDivElement;
 
   constructor() {
     super();
     this.htmlString = html;
-    this.configureElement('test', 'test');
-    this.configureElement('testy', 'test-span');
+    this.configureElement('test', 'test-span');
   }
 
   protected override parsedCallback(): void {
-    this.testy.innerHTML = "Hello World 1!";
+    this.test.innerHTML = "Hello World!"
   }
 }
 
