@@ -37,7 +37,7 @@ def addDwgComponent():
   f.write('  }\n')
   f.write('\n')
   f.write('  protected override parsedCallback(): void {\n')
-  f.write(f"    console.log('Dwg{ts_class_name} parsed!')\n")
+  f.write(f"    console.log('Dwg{ts_class_name} parsed!');\n")
   f.write('  }\n')
   f.write('}\n')
   f.write('\n')

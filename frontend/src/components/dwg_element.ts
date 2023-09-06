@@ -1,4 +1,4 @@
-import {until} from "../scripts/util";
+import {until} from '../scripts/util';
 
 import './dwg_element.scss';
 
