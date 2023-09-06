@@ -4,6 +4,7 @@ import {LobbyRoom, createLobbyRoom} from '../lobby_room/lobby_room';
 
 import html from './lobby.html';
 import './lobby.scss';
+import { clickButton, untilTimer } from '../../scripts/util';
 
 interface Lobby {
   rooms: LobbyRoom[];
@@ -23,14 +24,28 @@ export class DwgLobby extends DwgElement {
   }
 
   protected override parsedCallback(): void {
-    this.refresh_lobby_button.addEventListener('click', () => {
-      this.refreshLobby();
+    clickButton(this.refresh_lobby_button, async () => {
+      await this.refreshLobby();
     });
+    clickButton(this.create_room_button, async () => {
+      const socket = new WebSocket('ws://127.0.0.1:6807/api/lobby/rooms/create');
+      socket.addEventListener('error', (e) => {
+        console.log(e);
+      });
+      socket.addEventListener('open', (e) => {
+        console.log('socket opened', e);
+        socket.addEventListener('message', (e) => {
+          console.log(e);
+        });
+      });
+      return 'Room Created';
+    }, {loading_text: 'Creating Room ...', re_enable_button: false});
     this.refreshLobby();
   }
 
   private async refreshLobby() {
     this.room_container.innerHTML = ' ... loading';
+    await untilTimer(500);
     const response = await apiPost<LobbyRoom[]>('lobby/rooms/get', '');
     if (response.success) {
       let html = '';

@@ -22,6 +22,10 @@ func main() {
 		os.Setenv(envvar.name, envvar.value)
 	}
 
+	// Run game lobby
+	lobby_object := lobby.CreateLobby()
+	go lobby_object.Run()
+
 	r := gin.Default()
 	r.SetTrustedProxies(nil)
 
@@ -39,6 +43,18 @@ func main() {
 			{
 				api_rooms.POST("/get", func(c *gin.Context) {
 					c.JSON(200, successResponse([]lobby.LobbyRoom{}))
+				})
+				api_rooms.GET("/create", func(c *gin.Context) {
+					upgrader.CheckOrigin = func(r *http.Request) bool {
+						return true
+					}
+					conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+					if err != nil {
+						fmt.Println(err)
+						return
+					}
+					defer conn.Close()
+					lobby_object.AddRoom <- conn
 				})
 			}
 		}
@@ -62,22 +78,4 @@ func main() {
 	})
 
 	r.Run()
-}
-
-func one(c *gin.Context) {
-	c.JSON(201, gin.H{
-		"message": "1",
-	})
-}
-
-func two(c *gin.Context) {
-	c.JSON(202, gin.H{
-		"message": "2",
-	})
-}
-
-func three(c *gin.Context) {
-	c.JSON(203, gin.H{
-		"message": "3",
-	})
 }

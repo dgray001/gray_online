@@ -44,3 +44,50 @@ export function capitalize(str: string): string {
     return str.charAt(0).toUpperCase() + lower.slice(1);
   }).join(' ');
 }
+
+/** Options for clickButton function */
+interface ClickButtonOptions {
+  loading_text?: string;
+  disable_button?: boolean;
+  re_enable_button?: boolean;
+}
+
+type clickButtonReturn = string|void;
+
+/** Handles boilerplate from clicking button */
+export function clickButton(
+  button: HTMLButtonElement,
+  fn: () => clickButtonReturn|Promise<clickButtonReturn>,
+  input_options: ClickButtonOptions = {},
+) {
+  const options: ClickButtonOptions = {...{
+    loading_text: undefined,
+    disable_button: true,
+    re_enable_button: true,
+  }, ...input_options};
+  button.addEventListener('click', () => {
+    if (options.disable_button) {
+      button.disabled = true;
+    }
+    const original_text = button.innerText;
+    function changeButtonText(text?: clickButtonReturn, enable_button?: boolean) {
+      if (typeof text === 'string') {
+        button.innerText = text;
+      } else {
+        button.innerText = original_text;
+      }
+      if (enable_button) {
+        button.disabled = false;
+      }
+    }
+    changeButtonText(options.loading_text);
+    const result = fn();
+    if (result instanceof Promise) {
+      result.then((completed_text) => {
+        changeButtonText(completed_text, options.re_enable_button);
+      });
+    } else {
+      changeButtonText(result, options.re_enable_button);
+    }
+  });
+}
