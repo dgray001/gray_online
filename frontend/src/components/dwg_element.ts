@@ -26,7 +26,7 @@ export abstract class DwgElement extends HTMLElement {
   private elementsParsed(): boolean {
     let parsed = true;
     for (const elMetadata of this.elsMetadata) {
-      // @ts-ignore -> set value in subclass
+      // @ts-ignore -> check value in subclass
       let el: HTMLElement|null = elMetadata.found_element ? this[elMetadata.name] : null;
       if (!elMetadata.found_element) {
         el = this.querySelector(`#${elMetadata.element_id}`);
@@ -49,7 +49,10 @@ export abstract class DwgElement extends HTMLElement {
 
   protected parsedCallback() {}
 
-  protected configureElement(name: string, element_id: string) {
+  protected configureElement(name: string, element_id?: string) {
+    if (!element_id) {
+      element_id = name.replace('_', '-');
+    }
     this.elsMetadata.push({element_id, name} as ElementMetadata);
   }
 }

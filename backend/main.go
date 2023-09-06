@@ -24,19 +24,25 @@ func main() {
 	r := gin.Default()
 	r.SetTrustedProxies(nil)
 
-	// demo get request
-	r.GET("/api/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "pong",
-		})
-	})
-
-	// demo group
-	v2 := r.Group("/api/group")
+	api := r.Group("/api")
 	{
-		v2.GET("/one", one)
-		v2.GET("/two", two)
-		v2.GET("/three", three)
+		api.GET("/ping", func(c *gin.Context) {
+			c.JSON(200, gin.H{
+				"message": "pong",
+			})
+		})
+
+		api_lobby := api.Group("/lobby")
+		{
+			api_rooms := api_lobby.Group("/rooms")
+			{
+				api_rooms.POST("/get", func(c *gin.Context) {
+					c.JSON(200, gin.H{
+						"rooms": make([]struct{}, 0),
+					})
+				})
+			}
+		}
 	}
 
 	// demo websocket
