@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/dgray001/gray_online/lobby"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
@@ -37,9 +38,7 @@ func main() {
 			api_rooms := api_lobby.Group("/rooms")
 			{
 				api_rooms.POST("/get", func(c *gin.Context) {
-					c.JSON(200, gin.H{
-						"rooms": make([]struct{}, 0),
-					})
+					c.JSON(200, successResponse([]lobby.LobbyRoom{}))
 				})
 			}
 		}

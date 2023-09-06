@@ -30,9 +30,11 @@ export abstract class DwgElement extends HTMLElement {
       let el: HTMLElement|null = elMetadata.found_element ? this[elMetadata.name] : null;
       if (!elMetadata.found_element) {
         el = this.querySelector(`#${elMetadata.element_id}`);
-        // @ts-ignore -> set value in subclass
-        this[elMetadata.name] = el;
-        elMetadata.found_element = true;
+        if (!!el) {
+          // @ts-ignore -> set value in subclass
+          this[elMetadata.name] = el;
+          elMetadata.found_element = true;
+        }
       }
       if (!elMetadata.found_element) {
         parsed = false;
@@ -51,7 +53,7 @@ export abstract class DwgElement extends HTMLElement {
 
   protected configureElement(name: string, element_id?: string) {
     if (!element_id) {
-      element_id = name.replace('_', '-');
+      element_id = name.replace(/_/g, '-');
     }
     this.elsMetadata.push({element_id, name} as ElementMetadata);
   }
