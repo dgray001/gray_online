@@ -27,6 +27,7 @@ export class DwgLobby extends DwgElement {
 
   socket: WebSocket;
   connection_metadata: ConnectionMetadata = {nickname: "Anonymous"};
+  connection_lost = new Event('connection_lost');
 
   constructor() {
     super();
@@ -50,12 +51,9 @@ export class DwgLobby extends DwgElement {
 
   setSocket(new_socket: WebSocket) {
     if (!!this.socket) {
-      this.socket.close(1000, "opening new connection");
+      this.socket.close(3000, "opening new connection");
     }
     this.socket = new_socket;
-    this.socket.addEventListener('error', (e) => {
-      console.log(e);
-    });
     this.socket.addEventListener('message', (m) => {
       try {
         const message = JSON.parse(m.data) as LobbyMessage;
@@ -82,18 +80,26 @@ export class DwgLobby extends DwgElement {
   }
 
   private handleMessage(message: LobbyMessage) {
+    if (!this.socketActive()) {
+      return;
+    }
     switch(message.kind) {
       case 'join-lobby':
         const id = parseInt(message.data);
         if (id) {
           this.connection_metadata.client_id = id;
         } else {
-          // TODO: Throw away connection
+          this.socket.close(3001, 'join lobby message did not return properly formed client id');
+          this.dispatchEvent(this.connection_lost);
         }
         break;
       default:
         break;
     }
+  }
+
+  private socketActive() {
+    return !!this.socket && this.socket.readyState == WebSocket.OPEN;
   }
 }
 

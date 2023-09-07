@@ -22,6 +22,10 @@ export class DwgPageHome extends DwgElement {
     this.lobby_connector.addEventListener('submitted', () => {
       const nickname = this.lobby_connector.nickname.value;
       const socket = new WebSocket(`ws://127.0.0.1:6807/api/lobby/connect/:${nickname}`);
+      socket.addEventListener('error', (e) => {
+        console.log(e);
+        this.tryConnectionAgain("Could not connect. Check your connection and try again.");
+      });
       socket.addEventListener('open', () => {
         this.lobby.setSocket(socket);
         this.lobby.connection_metadata.nickname = nickname;
@@ -29,6 +33,16 @@ export class DwgPageHome extends DwgElement {
         this.lobby_connector.classList.add('hide');
       });
     });
+    this.lobby.addEventListener('connection_lost', () => {
+      this.tryConnectionAgain("Connection was lost. Check your connection and try again.");
+    });
+  }
+
+  private tryConnectionAgain(message: string): void {
+    this.lobby_connector.classList.remove('hide');
+    this.lobby_connector.status_message.innerText = message;
+    this.lobby_connector.connect_button.disabled = false;
+    this.lobby_connector.connect_button.innerText = "Connect to Lobby";
   }
 }
 

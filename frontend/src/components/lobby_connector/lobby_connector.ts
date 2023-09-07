@@ -8,6 +8,7 @@ export class DwgLobbyConnector extends DwgElement {
   card: HTMLDivElement;
   nickname: HTMLInputElement;
   connect_button: HTMLButtonElement;
+  status_message: HTMLDivElement;
 
   submitted = new Event('submitted');
 
@@ -17,6 +18,7 @@ export class DwgLobbyConnector extends DwgElement {
     this.configureElement('card');
     this.configureElement('nickname');
     this.configureElement('connect_button');
+    this.configureElement('status_message');
   }
 
   protected override parsedCallback(): void {
