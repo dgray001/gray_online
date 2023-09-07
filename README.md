@@ -1,3 +1,3 @@
 Online Games
 
-v0.0l: Can create lobby rooms
+v0.0m: Initial lobby connector

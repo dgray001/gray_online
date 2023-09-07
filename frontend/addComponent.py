@@ -13,7 +13,7 @@ def addDwgComponent():
   if os.path.exists(newdir):
       print(f'A component with name {name} already exists')
       quit()
-  print(f'\nCreating new compoennt with name {name}')
+  print(f'\nCreating new component with name {name}')
 
   os.mkdir(newdir)
 

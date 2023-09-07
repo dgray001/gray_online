@@ -14,6 +14,7 @@ import (
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
+	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
 func main() {
@@ -45,9 +46,6 @@ func main() {
 					c.JSON(200, successResponse(lobby_object.GetRooms()))
 				})
 				api_rooms.GET("/create", func(c *gin.Context) {
-					upgrader.CheckOrigin = func(r *http.Request) bool {
-						return true
-					}
 					conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 					if err != nil {
 						fmt.Println(err)
@@ -61,9 +59,6 @@ func main() {
 
 	// demo websocket
 	r.GET("/api/ws", func(c *gin.Context) {
-		upgrader.CheckOrigin = func(r *http.Request) bool {
-			return true
-		}
 		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
 			fmt.Println(err)

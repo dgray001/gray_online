@@ -1,0 +1,19 @@
+dwg-page-home {
+  --margin-size: 16px;
+  --height: calc(100vh - 2 * var(--margin-size));
+  --width: calc(100% - 2 * var(--margin-size));
+  background-color: rgb(5, 40, 90);
+  display: block;
+  height: var(--height);
+  max-height: var(--height);
+  max-width: var(--width);
+  min-height: var(--height);
+  min-width: var(--width);
+  padding: var(--margin-size);
+  width: var(--width);
+
+  #lobby {
+    height: 100%;
+    width: 100%;
+  }
+}

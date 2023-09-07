@@ -1,0 +1,58 @@
+dwg-lobby {
+  --buttons-height: 50px;
+  background-color: rgb(20, 60, 120);
+  display: block;
+
+  #buttons {
+    background-color: rgb(10, 50, 100);
+    border-bottom: 2px solid black;
+    box-sizing: border-box;
+    display: flex;
+    flex-flow: row nowrap;
+    gap: 8px;
+    height: var(--buttons-height);
+    max-height: var(--buttons-height);
+    min-height: var(--buttons-height);
+    width: 100%;
+
+    > button {
+      background-color: transparent;
+      border: none;
+      border-radius: 16px;
+      color: white;
+      font-size: 20px;
+      padding: 8px;
+      transition:
+        background-color 200ms,
+        border-radius 200ms;
+
+      &:hover:not(:disabled) {
+        background-color: rgba(50, 100, 200, 0.2);
+      }
+
+      &:active:not(:disabled) {
+        background-color: rgba(70, 140, 250, 0.4);
+        border-radius: 0px;
+      }
+
+      &:disabled {
+        background-color: rgba(150, 150, 150, 0.6);
+        border-radius: 8px;
+        transition: none;
+      }
+    }
+  }
+
+  #room-container {
+    --padding: 12px;
+    --height: calc(100% - var(--buttons-height) - 2 * var(--padding));
+    --width: calc(100% - 2 * var(--padding));
+    height: var(--height);
+    max-height: var(--height);
+    max-width: var(--width);
+    min-height: var(--height);
+    min-width: var(--width);
+    padding: var(--padding);
+    width: var(--width);
+  }
+}
