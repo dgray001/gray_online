@@ -1,6 +1,7 @@
 import {DwgElement} from '../dwg_element';
 import {apiPost} from '../../scripts/api';
-import {LobbyRoom, createLobbyRoom} from '../lobby_room/lobby_room';
+import {LobbyRoom} from '../lobby_room/lobby_room';
+import {createLobbyRoomSelector} from '../lobby_room_selector/lobby_room_selector';
 
 import html from './lobby.html';
 import './lobby.scss';
@@ -15,6 +16,8 @@ export class DwgLobby extends DwgElement {
   room_container: HTMLDivElement;
   create_room_button: HTMLButtonElement;
 
+  socket: WebSocket;
+
   constructor() {
     super();
     this.htmlString = html;
@@ -28,15 +31,18 @@ export class DwgLobby extends DwgElement {
       await this.refreshLobby();
     });
     clickButton(this.create_room_button, async () => {
-      const socket = new WebSocket('ws://127.0.0.1:6807/api/lobby/rooms/create');
-      socket.addEventListener('error', (e) => {
+      if (!!this.socket) {
+        this.socket.close(1000, "opening new connection");
+      }
+      this.socket = new WebSocket('ws://127.0.0.1:6807/api/lobby/rooms/create');
+      this.socket.addEventListener('error', (e) => {
         console.log(e);
       });
-      socket.addEventListener('open', (e) => {
+      this.socket.addEventListener('message', (e) => {
+        console.log(e);
+      });
+      this.socket.addEventListener('open', (e) => {
         console.log('socket opened', e);
-        socket.addEventListener('message', (e) => {
-          console.log(e);
-        });
       });
       return 'Room Created';
     }, {loading_text: 'Creating Room ...', re_enable_button: false});
@@ -50,7 +56,7 @@ export class DwgLobby extends DwgElement {
     if (response.success) {
       let html = '';
       for (const room of response.result) {
-        html += createLobbyRoom(room);
+        html += createLobbyRoomSelector(room);
       }
       this.room_container.innerHTML = html;
     } else {

@@ -42,7 +42,7 @@ func main() {
 			api_rooms := api_lobby.Group("/rooms")
 			{
 				api_rooms.POST("/get", func(c *gin.Context) {
-					c.JSON(200, successResponse([]lobby.LobbyRoom{}))
+					c.JSON(200, successResponse(lobby_object.GetRooms()))
 				})
 				api_rooms.GET("/create", func(c *gin.Context) {
 					upgrader.CheckOrigin = func(r *http.Request) bool {
@@ -53,7 +53,6 @@ func main() {
 						fmt.Println(err)
 						return
 					}
-					defer conn.Close()
 					lobby_object.AddRoom <- conn
 				})
 			}

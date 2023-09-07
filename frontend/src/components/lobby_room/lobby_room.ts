@@ -8,11 +8,6 @@ export declare interface LobbyRoom {
   room_name: string;
 }
 
-/** Returns lobby room html given a lobby room object */
-export function createLobbyRoom(data: LobbyRoom): string {
-  return `<dwg-lobby-room>${data.room_name}</dwg-lobby-room>`;
-}
-
 export class DwgLobbyRoom extends DwgElement {
   example: HTMLDivElement;
 

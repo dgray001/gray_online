@@ -18,7 +18,7 @@ def addDwgComponent():
   os.mkdir(newdir)
 
   f = open(os.path.join(newdir, f'{filename}.html'), 'w')
-  f.write(f'<div class="example">Hello from {html_class_name}!</div>\n')
+  f.write(f'<div id="example">Hello from {html_class_name}!</div>\n')
   f.close()
 
   f = open(os.path.join(newdir, f'{filename}.ts'), 'w')
@@ -33,7 +33,7 @@ def addDwgComponent():
   f.write('  constructor() {\n')
   f.write('    super();\n')
   f.write('    this.htmlString = html;\n')
-  f.write("    this.configureElement('example', 'example');\n")
+  f.write("    this.configureElement('example');\n")
   f.write('  }\n')
   f.write('\n')
   f.write('  protected override parsedCallback(): void {\n')
