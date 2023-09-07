@@ -7,6 +7,10 @@ dwg-lobby-connector {
   width: 100%;
   z-index: 2;
 
+  &.hide {
+    display: none;
+  }
+
   #card {
     background-color: rgb(220, 220, 220);
     color: black;

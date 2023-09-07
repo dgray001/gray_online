@@ -19,7 +19,7 @@ func createRoom(host *Client, room_id uint64) *LobbyRoom {
 		clients: make(map[uint64]*Client),
 	}
 	room.clients[host.client_id] = host
-	host.send_message <- "host of new room: " + strconv.Itoa(int(room_id))
+	// TODO: host.send_message <- "host of new room: " + strconv.Itoa(int(room_id))
 	return &room
 }
 

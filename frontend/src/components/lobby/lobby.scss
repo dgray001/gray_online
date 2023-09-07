@@ -1,7 +1,21 @@
 dwg-lobby {
+  --name-header-height: 30px;
   --buttons-height: 50px;
   background-color: rgb(20, 60, 120);
   display: block;
+
+  #name-header {
+    background-color: rgb(0, 30, 60);
+    box-sizing: border-box;
+    display: block;
+    font-size: 18px;
+    height: var(--name-header-height);
+    line-height: var(--name-header-height);
+    max-height: var(--name-header-height);
+    min-height: var(--name-header-height);
+    padding-left: 1.5em;
+    width: 100%;
+  }
 
   #buttons {
     background-color: rgb(10, 50, 100);
@@ -45,7 +59,7 @@ dwg-lobby {
 
   #room-container {
     --padding: 12px;
-    --height: calc(100% - var(--buttons-height) - 2 * var(--padding));
+    --height: calc(100% - var(--buttons-height) - var(--name-header-height) - 2 * var(--padding));
     --width: calc(100% - 2 * var(--padding));
     height: var(--height);
     max-height: var(--height);

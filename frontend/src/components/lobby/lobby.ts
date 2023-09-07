@@ -7,23 +7,34 @@ import html from './lobby.html';
 import './lobby.scss';
 import { clickButton, untilTimer } from '../../scripts/util';
 
-interface Lobby {
-  rooms: LobbyRoom[];
+interface LobbyMessage {
+  sender: string;
+  kind: string;
+  content: string;
+  data: string;
+}
+
+interface ConnectionMetadata {
+  client_id?: number;
+  nickname: string;
 }
 
 export class DwgLobby extends DwgElement {
+  name_header: HTMLSpanElement;
   refresh_lobby_button: HTMLButtonElement;
-  room_container: HTMLDivElement;
   create_room_button: HTMLButtonElement;
+  room_container: HTMLDivElement;
 
   socket: WebSocket;
+  connection_metadata: ConnectionMetadata = {nickname: "Anonymous"};
 
   constructor() {
     super();
     this.htmlString = html;
+    this.configureElement('name_header');
     this.configureElement('refresh_lobby_button');
-    this.configureElement('room_container');
     this.configureElement('create_room_button');
+    this.configureElement('room_container');
   }
 
   protected override parsedCallback(): void {
@@ -31,22 +42,28 @@ export class DwgLobby extends DwgElement {
       await this.refreshLobby();
     });
     clickButton(this.create_room_button, async () => {
-      if (!!this.socket) {
-        this.socket.close(1000, "opening new connection");
-      }
-      this.socket = new WebSocket('ws://127.0.0.1:6807/api/lobby/rooms/create');
-      this.socket.addEventListener('error', (e) => {
-        console.log(e);
-      });
-      this.socket.addEventListener('message', (e) => {
-        console.log(e);
-      });
-      this.socket.addEventListener('open', (e) => {
-        console.log('socket opened', e);
-      });
+      // create room
       return 'Room Created';
     }, {loading_text: 'Creating Room ...', re_enable_button: false});
     this.refreshLobby();
+  }
+
+  setSocket(new_socket: WebSocket) {
+    if (!!this.socket) {
+      this.socket.close(1000, "opening new connection");
+    }
+    this.socket = new_socket;
+    this.socket.addEventListener('error', (e) => {
+      console.log(e);
+    });
+    this.socket.addEventListener('message', (m) => {
+      try {
+        const message = JSON.parse(m.data) as LobbyMessage;
+        this.handleMessage(message);
+      } catch(e) {
+        console.log("Error parsing message: ", m, e)
+      }
+    });
   }
 
   private async refreshLobby() {
@@ -61,6 +78,21 @@ export class DwgLobby extends DwgElement {
       this.room_container.innerHTML = html;
     } else {
       this.room_container.innerHTML = `Error loading rooms: ${response.error_message}`;
+    }
+  }
+
+  private handleMessage(message: LobbyMessage) {
+    switch(message.kind) {
+      case 'join-lobby':
+        const id = parseInt(message.data);
+        if (id) {
+          this.connection_metadata.client_id = id;
+        } else {
+          // TODO: Throw away connection
+        }
+        break;
+      default:
+        break;
     }
   }
 }

@@ -1,3 +1,3 @@
 Online Games
 
-v0.0m: Initial lobby connector
+v0.0n: Connection to lobby

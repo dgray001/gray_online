@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/dgray001/gray_online/lobby"
 	"github.com/gin-gonic/gin"
@@ -40,36 +39,28 @@ func main() {
 
 		api_lobby := api.Group("/lobby")
 		{
+			api_lobby.GET("/connect/:nickname", func(c *gin.Context) {
+				nickname := c.Param("nickname")
+				if nickname == "" {
+					fmt.Println("Must specify nickname when connecting")
+					return
+				}
+				conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+				client := lobby.CreateClient(conn, nickname)
+				lobby_object.AddClient <- client
+			})
 			api_rooms := api_lobby.Group("/rooms")
 			{
 				api_rooms.POST("/get", func(c *gin.Context) {
 					c.JSON(200, successResponse(lobby_object.GetRooms()))
 				})
-				api_rooms.GET("/create", func(c *gin.Context) {
-					conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
-					if err != nil {
-						fmt.Println(err)
-						return
-					}
-					lobby_object.AddRoom <- conn
-				})
 			}
 		}
 	}
-
-	// demo websocket
-	r.GET("/api/ws", func(c *gin.Context) {
-		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		defer conn.Close()
-		for {
-			conn.WriteMessage(websocket.TextMessage, []byte("Hello, WebSocket!"))
-			time.Sleep(time.Second)
-		}
-	})
 
 	r.Run()
 }

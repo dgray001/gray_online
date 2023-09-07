@@ -11,7 +11,9 @@ import (
 type Lobby struct {
 	next_room_id   uint64
 	next_client_id uint64
+	clients        map[uint64]*Client
 	rooms          map[uint64]*LobbyRoom
+	AddClient      chan *Client
 	AddRoom        chan *websocket.Conn
 	RemoveRoom     chan *uint64
 }
@@ -20,7 +22,9 @@ func CreateLobby() *Lobby {
 	return &Lobby{
 		next_room_id:   1,
 		next_client_id: 1,
+		clients:        make(map[uint64]*Client),
 		rooms:          make(map[uint64]*LobbyRoom),
+		AddClient:      make(chan *Client),
 		AddRoom:        make(chan *websocket.Conn),
 		RemoveRoom:     make(chan *uint64),
 	}
@@ -29,6 +33,8 @@ func CreateLobby() *Lobby {
 func (l *Lobby) Run() {
 	for {
 		select {
+		case client := <-l.AddClient:
+			l.addClient(client)
 		case client_connection := <-l.AddRoom:
 			l.addRoom(client_connection)
 		case room_id := <-l.RemoveRoom:
@@ -47,14 +53,14 @@ func (l *Lobby) GetRooms() []gin.H {
 	return rooms
 }
 
-func (l *Lobby) addRoom(client_connection *websocket.Conn) {
-	client := createClient(client_connection)
-	client.send_message <- "client created"
+func (l *Lobby) addClient(client *Client) {
 	l.setClientId(client)
-	room_id := l.next_room_id
-	l.next_room_id++
-	room := createRoom(client, room_id)
-	l.rooms[room_id] = room
+	l.clients[client.client_id] = client
+	client.send_message <- lobbyMessage{Sender: "server", Kind: "join-lobby", Data: strconv.Itoa(int(client.client_id))}
+}
+
+func (l *Lobby) addRoom(client_connection *websocket.Conn) {
+	//
 }
 
 func (l *Lobby) removeRoom(room_id *uint64) {
@@ -67,6 +73,5 @@ func (l *Lobby) setClientId(client *Client) {
 		return
 	}
 	client.client_id = l.next_client_id
-	client.send_message <- "set id: " + strconv.Itoa(int(l.next_client_id))
 	l.next_client_id++
 }

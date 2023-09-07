@@ -6,14 +6,24 @@ import (
 
 type Client struct {
 	client_id    uint64
+	nickname     string
 	connection   *websocket.Conn
-	send_message chan string
+	send_message chan lobbyMessage
 }
 
-func createClient(connection *websocket.Conn) *Client {
+type lobbyMessage struct {
+	Sender  string `json:"sender"`
+	Kind    string `json:"kind"`
+	Content string `json:"content"`
+	Data    string `json:"data"`
+}
+
+func CreateClient(connection *websocket.Conn, nickname string) *Client {
 	client := Client{
+		client_id:    0,
+		nickname:     nickname,
 		connection:   connection,
-		send_message: make(chan string),
+		send_message: make(chan lobbyMessage),
 	}
 	go client.run()
 	return &client
@@ -28,8 +38,8 @@ func (c *Client) run() {
 	}
 }
 
-func (c *Client) sendMessage(message *string) {
-	c.connection.WriteMessage(websocket.TextMessage, []byte(*message))
+func (c *Client) sendMessage(message *lobbyMessage) {
+	c.connection.WriteJSON(message)
 }
 
 func (c *Client) valid() bool {
