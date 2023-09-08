@@ -3,7 +3,7 @@ import {apiPost} from '../../scripts/api';
 import {LobbyRoom} from '../lobby_room/lobby_room';
 import {createLobbyRoomSelector} from '../lobby_room_selector/lobby_room_selector';
 import {clickButton, untilTimer} from '../../scripts/util';
-import {DwgChatbox} from '../chatbox/chatbox';
+import {ChatMessage, DwgChatbox} from '../chatbox/chatbox';
 
 import html from './lobby.html';
 
@@ -51,6 +51,34 @@ export class DwgLobby extends DwgElement {
       const response = await apiPost(`lobby/rooms/create/${this.connection_metadata.client_id}`, '');
       return 'Room Created';
     }, {loading_text: 'Creating Room ...', re_enable_button: false});
+    this.chatbox.addEventListener('chat_sent', (e: CustomEvent) => {
+      let message_sent = false;
+      try {
+        const message: ChatMessage = e.detail;
+        if (this.socketActive()) {
+          this.socket.send(this.createMessage(
+            message.sender ?? `client-${this.connection_metadata.client_id}`,
+            'lobby-chat',
+            message.message,
+            message.color,
+          ));
+          message_sent = true;
+        }
+        if (message_sent) {
+          this.chatbox.addChat({...message, sender: this.connection_metadata.client_id.toString()});
+        } else {
+          this.chatbox.addChat({
+            message: `Message unable to be sent: "${message.message}"`,
+            color: 'gray',
+          });
+        }
+      } catch(e) {
+        this.chatbox.addChat({
+          message: 'Error trying to send message',
+          color: 'gray',
+        });
+      }
+    });
     this.refreshLobby();
   }
 
@@ -90,30 +118,47 @@ export class DwgLobby extends DwgElement {
     }
     console.log(message);
     switch(message.kind) {
-      case 'you-joined-lobby':
+      case 'lobby-you-joined':
         const id = parseInt(message.data);
         if (id) {
           this.connection_metadata.client_id = id;
           this.setNickname(message.content);
-          this.chatbox.addChat({message: `<div class="grayed">You (${this.connection_metadata.nickname}) joined lobby with client id ${id}</div>`});
-          this.socket.send(this.createMessage(`client-${id}`, 'joined-lobby', this.connection_metadata.nickname, `${id}`));
+          this.chatbox.addChat({
+            message: `You (${this.connection_metadata.nickname}) joined lobby with client id ${id}`,
+            sender: 'server',
+          });
+          this.socket.send(this.createMessage(`client-${id}`, 'lobby-join', this.connection_metadata.nickname, `${id}`));
         } else {
           this.socket.close(3001, 'you-joined-lobby message did not return properly formed client id');
           this.dispatchEvent(this.connection_lost);
         }
         break;
-      case 'joined-lobby':
-        const join_user_id = parseInt(message.data);
-        if (join_user_id) {
-          this.chatbox.addChat({message: `<div class="grayed">${message.content} joined lobby with client id ${join_user_id}</div>`});
+      case 'lobby-join':
+        const join_client_id = parseInt(message.data);
+        if (join_client_id) {
+          this.chatbox.addChat({
+            message: `${message.content} joined lobby with client id ${join_client_id}`,
+            sender: 'server',
+          });
         }
         break;
-      case 'left-lobby':
-        const left_user_id = parseInt(message.data);
-        if (left_user_id) {
-          this.chatbox.addChat({message: `<div class="grayed">${message.content} (client id ${left_user_id}) left lobby</div>`});
+      case 'lobby-left':
+        const left_client_id = parseInt(message.data);
+        if (left_client_id) {
+          this.chatbox.addChat({
+            message: `${message.content} (client id ${left_client_id}) left lobby`,
+            sender: 'server',
+          });
         }
         break;
+      case 'lobby-chat':
+        const chat_client_id = parseInt(message.sender.replace('client-', ''));
+        if (chat_client_id) {
+          this.chatbox.addChat({
+            message: message.content,
+            sender: chat_client_id.toString(),
+          });
+        }
       default:
         console.log("Unknown message type", message.kind, "from", message.sender);
         break;

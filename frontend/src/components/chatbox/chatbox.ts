@@ -6,8 +6,9 @@ import './chatbox.scss';
 
 /** Data describing a chat message */
 export declare interface ChatMessage {
-  sender?: string;
   message: string;
+  sender?: string;
+  color?: string;
 }
 
 export class DwgChatbox extends DwgElement {
@@ -27,19 +28,27 @@ export class DwgChatbox extends DwgElement {
     clickButton(this.send_chat, () => {
       this.sendChat();
     });
+    this.chat_input.addEventListener('keyup', (e) => {
+      if (e.key === 'Enter') {
+        this.sendChat();
+      }
+    });
   }
 
   addChat(message: ChatMessage) {
-    this.chat_container.innerHTML += message.message;
+    const open_tag = message.sender === 'server' || message.color === 'gray' ?
+      '<div class="color-gray">' : '<div>'
+    const sender = !!message.sender && message.sender !== 'server' ?
+      `${message.sender}: ` : '';
+    this.chat_container.innerHTML += `${open_tag}${sender}${message.message}</div>`;
   }
 
   sendChat() {
     if (this.inputEmpty()) {
       return;
     }
-    const chat_event = new CustomEvent('chat-sent', {'detail': this.getInput()});
+    const chat_event = new CustomEvent('chat_sent', {'detail': this.getInput()});
     this.dispatchEvent(chat_event);
-    
   }
 
   private inputEmpty(): boolean {

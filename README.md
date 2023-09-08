@@ -1,3 +1,3 @@
 Online Games
 
-v0.0r: Chatbox emits message
+v0.0s: Lobby chatbox functional

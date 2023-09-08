@@ -3,7 +3,9 @@ package lobby
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
+	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
@@ -65,14 +67,14 @@ func (l *Lobby) addClient(client *Client) {
 	l.setClientId(client)
 	l.clients[client.client_id] = client
 	id_string := strconv.Itoa(int(client.client_id))
-	client.send_message <- lobbyMessage{Sender: "server", Kind: "you-joined-lobby", Content: client.nickname, Data: id_string}
+	client.send_message <- lobbyMessage{Sender: "server", Kind: "lobby-you-joined", Content: client.nickname, Data: id_string}
 }
 
 func (l *Lobby) removeClient(client *Client) {
 	delete(l.clients, client.client_id)
 	client.close()
 	id_string := strconv.Itoa(int(client.client_id))
-	l.broadcastMessage(lobbyMessage{Sender: "client-" + id_string, Kind: "left-lobby", Content: client.nickname, Data: id_string})
+	l.broadcastMessage(lobbyMessage{Sender: "client-" + id_string, Kind: "lobby-left", Content: client.nickname, Data: id_string})
 }
 
 func (l *Lobby) addRoom(client_connection *websocket.Conn) {
@@ -83,23 +85,20 @@ func (l *Lobby) removeRoom(room_id *uint64) {
 	//
 }
 
+var (
+	standard_messages = []string{"lobby-join", "lobby-left", "lobby-chat"}
+)
+
 func (l *Lobby) broadcastMessage(message lobbyMessage) {
-	fmt.Printf("Broadcasting message {%s, %s, %s, %s}", message.Sender, message.Content, message.Data, message.Kind)
-	switch message.Kind {
-	case "joined-lobby":
-		for _, client := range l.clients {
-			if !client.valid() {
-				continue
-			}
-			select {
-			case client.send_message <- message:
-			default:
-				l.removeClient(client)
-			}
+	fmt.Printf("Broadcasting message {%s, %s, %s, %s}\n", message.Sender, message.Content, message.Data, message.Kind)
+	if util.Contains(standard_messages, message.Kind) {
+		send_id_string := strings.TrimPrefix(message.Sender, "client-")
+		sender_id, err := strconv.ParseInt(send_id_string, 10, 0)
+		if err != nil {
+			sender_id = 0
 		}
-	case "left-lobby":
 		for _, client := range l.clients {
-			if !client.valid() {
+			if !client.valid() || client.client_id == uint64(sender_id) {
 				continue
 			}
 			select {
