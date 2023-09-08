@@ -1,0 +1,6 @@
+ - chatbox css
+ - can send/receive chats via socket
+ - list of users in lobby
+ - can create room
+ - can remove room
+ - can join room

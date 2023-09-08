@@ -71,6 +71,8 @@ func (l *Lobby) addClient(client *Client) {
 func (l *Lobby) removeClient(client *Client) {
 	delete(l.clients, client.client_id)
 	client.close()
+	id_string := strconv.Itoa(int(client.client_id))
+	l.broadcastMessage(lobbyMessage{Sender: "client-" + id_string, Kind: "left-lobby", Content: client.nickname, Data: id_string})
 }
 
 func (l *Lobby) addRoom(client_connection *websocket.Conn) {
@@ -82,6 +84,7 @@ func (l *Lobby) removeRoom(room_id *uint64) {
 }
 
 func (l *Lobby) broadcastMessage(message lobbyMessage) {
+	fmt.Printf("Broadcasting message {%s, %s, %s, %s}", message.Sender, message.Content, message.Data, message.Kind)
 	switch message.Kind {
 	case "joined-lobby":
 		for _, client := range l.clients {
@@ -94,8 +97,18 @@ func (l *Lobby) broadcastMessage(message lobbyMessage) {
 				l.removeClient(client)
 			}
 		}
+	case "left-lobby":
+		for _, client := range l.clients {
+			if !client.valid() {
+				continue
+			}
+			select {
+			case client.send_message <- message:
+			default:
+				l.removeClient(client)
+			}
+		}
 	}
-	fmt.Println(message.Sender, message.Content, message.Data, message.Kind)
 }
 
 func (l *Lobby) setClientId(client *Client) {

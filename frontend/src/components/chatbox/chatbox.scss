@@ -1,0 +1,46 @@
+dwg-chatbox {
+  --input-box-height: 35px;
+  background-color: rgb(200, 200, 200);
+  color: black;
+  display: block;
+  height: 100%;
+  width: 100%;
+
+  #chat-container {
+    display: flex;
+    flex-flow: column nowrap;
+    height: calc(100% - var(--input-box-height));
+    width: 100%;
+  
+    :first-child {
+      margin-top: auto;
+    }
+  
+    > .grayed {
+      color: rgb(100, 100, 100);
+    }
+  }
+
+  #input-container {
+    --margin: 8px;
+    --send-button-width: 70px;
+    display: flex;
+    flex-flow: row nowrap;
+    height: var(--input-box-height);
+    width: 100%;
+
+    > * {
+      box-sizing: border-box;
+      height: calc(100% - var(--margin));
+      margin-top: var(--margin);
+    }
+
+    #chat-input {
+      width: calc(100% - var(--send-button-width));
+    }
+
+    #send-chat {
+      width: var(--send-button-width);
+    }
+  }
+}

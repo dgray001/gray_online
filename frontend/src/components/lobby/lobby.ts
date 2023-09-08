@@ -2,10 +2,13 @@ import {DwgElement} from '../dwg_element';
 import {apiPost} from '../../scripts/api';
 import {LobbyRoom} from '../lobby_room/lobby_room';
 import {createLobbyRoomSelector} from '../lobby_room_selector/lobby_room_selector';
+import {clickButton, untilTimer} from '../../scripts/util';
+import {DwgChatbox} from '../chatbox/chatbox';
 
 import html from './lobby.html';
+
 import './lobby.scss';
-import { clickButton, untilTimer } from '../../scripts/util';
+import '../chatbox/chatbox';
 
 interface LobbyMessage {
   sender: string;
@@ -24,7 +27,7 @@ export class DwgLobby extends DwgElement {
   refresh_lobby_button: HTMLButtonElement;
   create_room_button: HTMLButtonElement;
   room_container: HTMLDivElement;
-  chat_container: HTMLDivElement;
+  chatbox: DwgChatbox;
 
   socket: WebSocket;
   connection_metadata: ConnectionMetadata = {nickname: "Anonymous"};
@@ -37,7 +40,7 @@ export class DwgLobby extends DwgElement {
     this.configureElement('refresh_lobby_button');
     this.configureElement('create_room_button');
     this.configureElement('room_container');
-    this.configureElement('chat_container');
+    this.configureElement('chatbox');
   }
 
   protected override parsedCallback(): void {
@@ -92,7 +95,7 @@ export class DwgLobby extends DwgElement {
         if (id) {
           this.connection_metadata.client_id = id;
           this.setNickname(message.content);
-          this.chat_container.innerHTML += `<div>You (${this.connection_metadata.nickname}) joined lobby with client id ${id}</div>`;
+          this.chatbox.addChat({message: `<div class="grayed">You (${this.connection_metadata.nickname}) joined lobby with client id ${id}</div>`});
           this.socket.send(this.createMessage(`client-${id}`, 'joined-lobby', this.connection_metadata.nickname, `${id}`));
         } else {
           this.socket.close(3001, 'you-joined-lobby message did not return properly formed client id');
@@ -100,9 +103,15 @@ export class DwgLobby extends DwgElement {
         }
         break;
       case 'joined-lobby':
-        const user_id = parseInt(message.data);
-        if (user_id) {
-          this.chat_container.innerHTML += `<div>${message.content} joined lobby with client id ${user_id}</div>`;
+        const join_user_id = parseInt(message.data);
+        if (join_user_id) {
+          this.chatbox.addChat({message: `<div class="grayed">${message.content} joined lobby with client id ${join_user_id}</div>`});
+        }
+        break;
+      case 'left-lobby':
+        const left_user_id = parseInt(message.data);
+        if (left_user_id) {
+          this.chatbox.addChat({message: `<div class="grayed">${message.content} (client id ${left_user_id}) left lobby</div>`});
         }
         break;
       default:
