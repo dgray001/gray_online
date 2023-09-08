@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/dgray001/gray_online/lobby"
 	"github.com/gin-gonic/gin"
@@ -50,13 +51,22 @@ func main() {
 					fmt.Println(err)
 					return
 				}
-				client := lobby.CreateClient(conn, nickname)
+				client := lobby.CreateClient(conn, nickname, lobby_object)
 				lobby_object.AddClient <- client
 			})
 			api_rooms := api_lobby.Group("/rooms")
 			{
 				api_rooms.POST("/get", func(c *gin.Context) {
 					c.JSON(200, successResponse(lobby_object.GetRooms()))
+				})
+				api_rooms.POST("/create/:client_id", func(c *gin.Context) {
+					client_id_param := c.Param("client_id")
+					client_id, err := strconv.Atoi(client_id_param)
+					if err != nil || client_id < 1 {
+						c.JSON(200, failureResponse("client id not specified"))
+						return
+					}
+					c.JSON(200, failureResponse("not implemented"))
 				})
 			}
 		}

@@ -24,6 +24,7 @@ export class DwgLobby extends DwgElement {
   refresh_lobby_button: HTMLButtonElement;
   create_room_button: HTMLButtonElement;
   room_container: HTMLDivElement;
+  chat_container: HTMLDivElement;
 
   socket: WebSocket;
   connection_metadata: ConnectionMetadata = {nickname: "Anonymous"};
@@ -36,6 +37,7 @@ export class DwgLobby extends DwgElement {
     this.configureElement('refresh_lobby_button');
     this.configureElement('create_room_button');
     this.configureElement('room_container');
+    this.configureElement('chat_container');
   }
 
   protected override parsedCallback(): void {
@@ -43,7 +45,7 @@ export class DwgLobby extends DwgElement {
       await this.refreshLobby();
     });
     clickButton(this.create_room_button, async () => {
-      // create room
+      const response = await apiPost(`lobby/rooms/create/${this.connection_metadata.client_id}`, '');
       return 'Room Created';
     }, {loading_text: 'Creating Room ...', re_enable_button: false});
     this.refreshLobby();
@@ -83,23 +85,33 @@ export class DwgLobby extends DwgElement {
     if (!this.socketActive()) {
       return;
     }
+    console.log(message);
     switch(message.kind) {
-      case 'join-lobby':
+      case 'you-joined-lobby':
         const id = parseInt(message.data);
         if (id) {
           this.connection_metadata.client_id = id;
+          this.chat_container.innerHTML = `<div>You joined lobby with client id ${id}</div>` + this.chat_container.innerHTML;
+          this.socket.send(this.createMessage(`client-${id}`, 'joined-lobby', '', `${id}`));
         } else {
           this.socket.close(3001, 'join lobby message did not return properly formed client id');
           this.dispatchEvent(this.connection_lost);
         }
         break;
+      case 'joined-lobby':
+        break;
       default:
+        console.log("Unknown message type", message.kind, "from", message.sender);
         break;
     }
   }
 
   private socketActive() {
     return !!this.socket && this.socket.readyState == WebSocket.OPEN;
+  }
+
+  private createMessage(sender: string, kind: string, content?: string, data?: string): string {
+    return JSON.stringify({sender, kind, content, data} as LobbyMessage);
   }
 }
 

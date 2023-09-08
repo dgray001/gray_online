@@ -1,3 +1,3 @@
 Online Games
 
-v0.0o: Lost connections handled by frontend
+v0.0p: Receive joined lobby message
