@@ -68,7 +68,13 @@ func main() {
 						c.JSON(200, failureResponse("client id not specified"))
 						return
 					}
-					c.JSON(200, failureResponse("not implemented"))
+					client := lobby_object.GetClient(uint64(client_id))
+					if client == nil {
+						c.JSON(200, failureResponse("client doesn't exist"))
+						return
+					}
+					lobby_object.CreateRoom <- client
+					c.JSON(200, successResponse(nil))
 				})
 			}
 

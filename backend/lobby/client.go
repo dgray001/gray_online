@@ -22,6 +22,7 @@ type Client struct {
 	connection   *websocket.Conn
 	send_message chan lobbyMessage
 	lobby        *Lobby
+	lobby_room   *LobbyRoom
 }
 
 type lobbyMessage struct {
@@ -38,6 +39,7 @@ func CreateClient(connection *websocket.Conn, nickname string, lobby *Lobby) *Cl
 		connection:   connection,
 		send_message: make(chan lobbyMessage),
 		lobby:        lobby,
+		lobby_room:   nil,
 	}
 	go client.readMessages()
 	go client.writeMessages()
@@ -116,8 +118,12 @@ func (c *Client) valid() bool {
 }
 
 func (c *Client) toFrontend() gin.H {
-	return gin.H{
+	client := gin.H{
 		"client_id": strconv.Itoa(int(c.client_id)),
 		"nickname":  c.nickname,
 	}
+	if c.lobby_room != nil {
+		client["room_id"] = c.lobby_room.room_id
+	}
+	return client
 }

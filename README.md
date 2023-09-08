@@ -1,3 +1,3 @@
 Online Games
 
-v0.0u: List of users in lobby
+v0.0v: Can create room

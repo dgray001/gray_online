@@ -4,15 +4,14 @@ import {clickButton} from '../../scripts/util';
 import {ChatMessage, DwgChatbox} from '../chatbox/chatbox';
 
 import {DwgLobbyUsers} from './lobby_users/lobby_users';
-import {LobbyRoom} from './lobby_room/lobby_room';
-import {createLobbyRoomSelector} from './lobby_room_selector/lobby_room_selector';
+import {DwgLobbyRooms, LobbyRoom} from './lobby_rooms/lobby_rooms';
 import html from './lobby.html';
 
 import './lobby.scss';
 import '../chatbox/chatbox';
 import './lobby_users/lobby_users';
+import './lobby_rooms/lobby_rooms';
 import './lobby_room/lobby_room';
-import './lobby_room_selector/lobby_room_selector';
 
 interface LobbyMessage {
   sender: string;
@@ -22,15 +21,16 @@ interface LobbyMessage {
 }
 
 interface ConnectionMetadata {
-  client_id?: number;
   nickname: string;
+  client_id?: number;
+  room_id?: number;
 }
 
 export class DwgLobby extends DwgElement {
   name_header: HTMLSpanElement;
   refresh_lobby_button: HTMLButtonElement;
   create_room_button: HTMLButtonElement;
-  room_container: HTMLDivElement;
+  lobby_rooms: DwgLobbyRooms;
   chatbox: DwgChatbox;
   lobby_users: DwgLobbyUsers;
 
@@ -44,18 +44,26 @@ export class DwgLobby extends DwgElement {
     this.configureElement('name_header');
     this.configureElement('refresh_lobby_button');
     this.configureElement('create_room_button');
-    this.configureElement('room_container');
+    this.configureElement('lobby_rooms');
     this.configureElement('chatbox');
     this.configureElement('lobby_users');
   }
 
   protected override parsedCallback(): void {
     clickButton(this.refresh_lobby_button, async () => {
-      await this.refreshLobby();
+      await this.lobby_rooms.refreshRooms();
     });
     clickButton(this.create_room_button, async () => {
       const response = await apiPost(`lobby/rooms/create/${this.connection_metadata.client_id}`, '');
-      return 'Room Created';
+      if (response.success) {
+        return 'Joining Room ...';
+      } else {
+        setTimeout(() => {
+          this.create_room_button.disabled = false;
+          this.create_room_button.innerText = 'Create Room';
+        }, 1000);
+      }
+      return 'Error Creating Room';
     }, {loading_text: 'Creating Room ...', re_enable_button: false});
     this.chatbox.addEventListener('chat_sent', (e: CustomEvent) => {
       let message_sent = false;
@@ -71,7 +79,7 @@ export class DwgLobby extends DwgElement {
           message_sent = true;
         }
         if (message_sent) {
-          this.chatbox.addChat({...message, sender: this.connection_metadata.client_id.toString()});
+          this.chatbox.addChat({...message, sender: this.connection_metadata.nickname});
         } else {
           this.chatbox.addChat({
             message: `Message unable to be sent: "${message.message}"`,
@@ -85,7 +93,7 @@ export class DwgLobby extends DwgElement {
         });
       }
     });
-    this.refreshLobby();
+    this.lobby_rooms.refreshRooms();
   }
 
   setSocket(new_socket: WebSocket) {
@@ -101,20 +109,6 @@ export class DwgLobby extends DwgElement {
         console.log("Error parsing message: ", m, e)
       }
     });
-  }
-
-  private async refreshLobby() {
-    this.room_container.innerHTML = ' ... loading';
-    const response = await apiPost<LobbyRoom[]>('lobby/rooms/get', '');
-    if (response.success) {
-      let html = '';
-      for (const room of response.result) {
-        html += createLobbyRoomSelector(room);
-      }
-      this.room_container.innerHTML = html;
-    } else {
-      this.room_container.innerHTML = `Error loading rooms: ${response.error_message}`;
-    }
   }
 
   private handleMessage(message: LobbyMessage) {
@@ -156,7 +150,7 @@ export class DwgLobby extends DwgElement {
             message: `${message.content} (client id ${left_client_id}) left lobby`,
             sender: 'server',
           });
-          this.lobby_users.removeUser(left_client_id);
+          this.lobby_users.removeUser({client_id: left_client_id, nickname: message.content});
         }
         break;
       case 'lobby-chat':
@@ -164,9 +158,27 @@ export class DwgLobby extends DwgElement {
         if (chat_client_id) {
           this.chatbox.addChat({
             message: message.content,
-            sender: chat_client_id.toString(),
+            sender: this.lobby_users.getUser(chat_client_id)?.nickname ?? chat_client_id.toString(),
           });
         }
+        break;
+      case 'room-created':
+        const new_room_id = parseInt(message.data);
+        const host_id = parseInt(message.content);
+        const host = this.lobby_users.getUser(host_id)
+        if (new_room_id && host_id && host) {
+          const room: LobbyRoom = {
+            room_id: new_room_id,
+            host,
+            users: [],
+          };
+          this.lobby_rooms.addRoom(room);
+          if (this.connection_metadata.client_id === host_id) {
+            this.connection_metadata.room_id = new_room_id;
+            // TODO: if leaving room should broadcast
+          }
+        }
+        break;
       default:
         console.log("Unknown message type", message.kind, "from", message.sender);
         break;

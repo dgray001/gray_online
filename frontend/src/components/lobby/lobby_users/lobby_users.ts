@@ -9,11 +9,30 @@ import './lobby_users.scss';
 export declare interface LobbyUser {
   client_id: number;
   nickname: string;
+  room_id?: number;
+}
+
+/** Data describing a user returned from the server */
+export declare interface LobbyUserFromServer {
+  client_id: string;
+  nickname: string;
+  room_id?: string;
+}
+
+/** Convert a server response to a TS lobby user object */
+export function serverResponseToUser(server_response: LobbyUserFromServer): LobbyUser {
+  return {
+    client_id: parseInt(server_response.client_id),
+    nickname: server_response.nickname,
+    room_id: parseInt(server_response.room_id) ?? undefined,
+  }
 }
 
 export class DwgLobbyUsers extends DwgElement {
   refresh_button: HTMLButtonElement;
   user_container: HTMLDivElement;
+
+  users = new Map<number, LobbyUser>();
 
   constructor() {
     super();
@@ -36,11 +55,12 @@ export class DwgLobbyUsers extends DwgElement {
     }
     this.add_users_running = true;
     this.user_container.innerHTML = ' ... loading';
-    const response = await apiPost<LobbyUser[]>('lobby/users/get', '');
+    const response = await apiPost<LobbyUserFromServer[]>('lobby/users/get', '');
     if (response.success) {
+      console.log(response);
       let html = '';
       for (const user of response.result) {
-        html += this.addUserString(user);
+        html += this.addUserString(serverResponseToUser(user));
       }
       this.user_container.innerHTML = html;
     } else {
@@ -54,16 +74,28 @@ export class DwgLobbyUsers extends DwgElement {
   }
 
   addUser(user: LobbyUser) {
-    this.user_container.innerHTML += this.addUserString(user);
+    if (this.users.has(user.client_id)) {
+      const user_el = this.querySelector<HTMLDivElement>(`#user-${user.client_id}`);
+      if (user_el) {
+        user_el.replaceWith(this.addUserString(user));
+      }
+    } else {
+      this.user_container.innerHTML += this.addUserString(user);
+    }
+    this.users.set(user.client_id, user);
   }
 
-  removeUser(user_id: number) {
-    const user_el = this.querySelector<HTMLDivElement>(`#user-${user_id}`);
-    console.log(user_el, user_id);
+  removeUser(user: LobbyUser) {
+    this.users.delete(user.client_id);
+    const user_el = this.querySelector<HTMLDivElement>(`#user-${user.client_id}`);
     if (!user_el) {
       return;
     }
     user_el.classList.add('left');
+  }
+
+  getUser(user_id: number) {
+    return this.users.get(user_id);
   }
 }
 
