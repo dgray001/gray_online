@@ -21,7 +21,7 @@ export class DwgPageHome extends DwgElement {
   protected override parsedCallback(): void {
     this.lobby_connector.addEventListener('submitted', () => {
       const nickname = this.lobby_connector.nickname.value;
-      const socket = new WebSocket(`ws://127.0.0.1:6807/api/lobby/connect/:${nickname}`);
+      const socket = new WebSocket(`ws://127.0.0.1:6807/api/lobby/connect/${nickname}`);
       socket.addEventListener('error', (e) => {
         console.log(e);
         this.tryConnectionAgain("Could not connect. Check your connection and try again.");

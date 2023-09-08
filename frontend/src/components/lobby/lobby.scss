@@ -72,9 +72,15 @@ dwg-lobby {
   #chat-container {
     background-color: rgb(200, 200, 200);
     color: black;
+    display: flex;
+    flex-flow: column nowrap;
     height: var(--chat-height);
     max-height: var(--chat-height);
     min-height: var(--chat-height);
     padding: 12px;
+
+    :first-child {
+      margin-top: auto;
+    }
   }
 }

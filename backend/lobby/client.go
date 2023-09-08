@@ -50,7 +50,8 @@ func (c *Client) close() {
 
 func (c *Client) readMessages() {
 	defer func() {
-		c.close()
+		c.lobby.RemoveClient <- c
+		c.connection.Close()
 	}()
 	c.connection.SetReadLimit(read_limit)
 	c.connection.SetReadDeadline(time.Now().Add(read_wait))
@@ -100,6 +101,9 @@ func (c *Client) writeMessages() {
 }
 
 func (c *Client) valid() bool {
+	if c == nil {
+		return false
+	}
 	if c.client_id < 1 {
 		return false
 	}

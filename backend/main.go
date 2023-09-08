@@ -42,6 +42,7 @@ func main() {
 		{
 			api_lobby.GET("/connect/:nickname", func(c *gin.Context) {
 				nickname := c.Param("nickname")
+				fmt.Println(nickname)
 				if nickname == "" {
 					fmt.Println("Must specify nickname when connecting")
 					return

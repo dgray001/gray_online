@@ -65,7 +65,7 @@ func (l *Lobby) addClient(client *Client) {
 	l.setClientId(client)
 	l.clients[client.client_id] = client
 	id_string := strconv.Itoa(int(client.client_id))
-	client.send_message <- lobbyMessage{Sender: "server", Kind: "you-joined-lobby", Data: id_string}
+	client.send_message <- lobbyMessage{Sender: "server", Kind: "you-joined-lobby", Content: client.nickname, Data: id_string}
 }
 
 func (l *Lobby) removeClient(client *Client) {
@@ -82,6 +82,19 @@ func (l *Lobby) removeRoom(room_id *uint64) {
 }
 
 func (l *Lobby) broadcastMessage(message lobbyMessage) {
+	switch message.Kind {
+	case "joined-lobby":
+		for _, client := range l.clients {
+			if !client.valid() {
+				continue
+			}
+			select {
+			case client.send_message <- message:
+			default:
+				l.removeClient(client)
+			}
+		}
+	}
 	fmt.Println(message.Sender, message.Content, message.Data, message.Kind)
 }
 

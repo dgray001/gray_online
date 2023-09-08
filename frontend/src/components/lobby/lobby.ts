@@ -91,14 +91,19 @@ export class DwgLobby extends DwgElement {
         const id = parseInt(message.data);
         if (id) {
           this.connection_metadata.client_id = id;
-          this.chat_container.innerHTML = `<div>You joined lobby with client id ${id}</div>` + this.chat_container.innerHTML;
-          this.socket.send(this.createMessage(`client-${id}`, 'joined-lobby', '', `${id}`));
+          this.setNickname(message.content);
+          this.chat_container.innerHTML += `<div>You (${this.connection_metadata.nickname}) joined lobby with client id ${id}</div>`;
+          this.socket.send(this.createMessage(`client-${id}`, 'joined-lobby', this.connection_metadata.nickname, `${id}`));
         } else {
-          this.socket.close(3001, 'join lobby message did not return properly formed client id');
+          this.socket.close(3001, 'you-joined-lobby message did not return properly formed client id');
           this.dispatchEvent(this.connection_lost);
         }
         break;
       case 'joined-lobby':
+        const user_id = parseInt(message.data);
+        if (user_id) {
+          this.chat_container.innerHTML += `<div>${message.content} joined lobby with client id ${user_id}</div>`;
+        }
         break;
       default:
         console.log("Unknown message type", message.kind, "from", message.sender);
@@ -112,6 +117,11 @@ export class DwgLobby extends DwgElement {
 
   private createMessage(sender: string, kind: string, content?: string, data?: string): string {
     return JSON.stringify({sender, kind, content, data} as LobbyMessage);
+  }
+
+  private setNickname(nickname: string) {
+    this.connection_metadata.nickname = nickname;
+    this.name_header.innerText = nickname;
   }
 }
 
