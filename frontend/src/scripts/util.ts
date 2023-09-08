@@ -69,11 +69,12 @@ export function clickButton(
     if (options.disable_button) {
       button.disabled = true;
     }
+    let has_changed_text = false;
     const original_text = button.innerText;
     function changeButtonText(text?: clickButtonReturn, enable_button?: boolean) {
       if (typeof text === 'string') {
         button.innerText = text;
-      } else {
+      } else if (has_changed_text) {
         button.innerText = original_text;
       }
       if (enable_button) {

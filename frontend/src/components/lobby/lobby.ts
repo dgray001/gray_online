@@ -1,8 +1,9 @@
 import {DwgElement} from '../dwg_element';
 import {apiPost} from '../../scripts/api';
-import {clickButton, untilTimer} from '../../scripts/util';
+import {clickButton} from '../../scripts/util';
 import {ChatMessage, DwgChatbox} from '../chatbox/chatbox';
 
+import {DwgLobbyUsers} from './lobby_users/lobby_users';
 import {LobbyRoom} from './lobby_room/lobby_room';
 import {createLobbyRoomSelector} from './lobby_room_selector/lobby_room_selector';
 import html from './lobby.html';
@@ -10,6 +11,8 @@ import html from './lobby.html';
 import './lobby.scss';
 import '../chatbox/chatbox';
 import './lobby_users/lobby_users';
+import './lobby_room/lobby_room';
+import './lobby_room_selector/lobby_room_selector';
 
 interface LobbyMessage {
   sender: string;
@@ -29,6 +32,7 @@ export class DwgLobby extends DwgElement {
   create_room_button: HTMLButtonElement;
   room_container: HTMLDivElement;
   chatbox: DwgChatbox;
+  lobby_users: DwgLobbyUsers;
 
   socket: WebSocket;
   connection_metadata: ConnectionMetadata = {nickname: "Anonymous"};
@@ -42,6 +46,7 @@ export class DwgLobby extends DwgElement {
     this.configureElement('create_room_button');
     this.configureElement('room_container');
     this.configureElement('chatbox');
+    this.configureElement('lobby_users');
   }
 
   protected override parsedCallback(): void {
@@ -100,7 +105,6 @@ export class DwgLobby extends DwgElement {
 
   private async refreshLobby() {
     this.room_container.innerHTML = ' ... loading';
-    await untilTimer(500);
     const response = await apiPost<LobbyRoom[]>('lobby/rooms/get', '');
     if (response.success) {
       let html = '';
@@ -129,6 +133,7 @@ export class DwgLobby extends DwgElement {
             sender: 'server',
           });
           this.socket.send(this.createMessage(`client-${id}`, 'lobby-join', this.connection_metadata.nickname, `${id}`));
+          this.lobby_users.addUser({client_id: id, nickname: this.connection_metadata.nickname});
         } else {
           this.socket.close(3001, 'you-joined-lobby message did not return properly formed client id');
           this.dispatchEvent(this.connection_lost);
@@ -141,6 +146,7 @@ export class DwgLobby extends DwgElement {
             message: `${message.content} joined lobby with client id ${join_client_id}`,
             sender: 'server',
           });
+          this.lobby_users.addUser({client_id: join_client_id, nickname: message.content});
         }
         break;
       case 'lobby-left':
@@ -150,6 +156,7 @@ export class DwgLobby extends DwgElement {
             message: `${message.content} (client id ${left_client_id}) left lobby`,
             sender: 'server',
           });
+          this.lobby_users.removeUser(left_client_id);
         }
         break;
       case 'lobby-chat':

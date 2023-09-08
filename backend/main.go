@@ -30,6 +30,7 @@ func main() {
 	r := gin.Default()
 	r.SetTrustedProxies(nil)
 
+	// All api groupings
 	api := r.Group("/api")
 	{
 		api.GET("/ping", func(c *gin.Context) {
@@ -54,6 +55,7 @@ func main() {
 				client := lobby.CreateClient(conn, nickname, lobby_object)
 				lobby_object.AddClient <- client
 			})
+
 			api_rooms := api_lobby.Group("/rooms")
 			{
 				api_rooms.POST("/get", func(c *gin.Context) {
@@ -67,6 +69,13 @@ func main() {
 						return
 					}
 					c.JSON(200, failureResponse("not implemented"))
+				})
+			}
+
+			api_users := api_lobby.Group("/users")
+			{
+				api_users.POST("/get", func(c *gin.Context) {
+					c.JSON(200, successResponse(lobby_object.GetUsers()))
 				})
 			}
 		}

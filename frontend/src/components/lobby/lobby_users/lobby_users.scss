@@ -1,0 +1,53 @@
+dwg-lobby-users {
+  display: flex;
+  flex-flow: column nowrap;
+
+  #header {
+    height: 36px;
+
+    #refresh-button {
+      background-color: transparent;
+      border: none;
+      border-radius: 6px;
+      height: 30px;
+      margin: 0px;
+      padding: 0px;
+      position: relative;
+      top: 3px;
+      user-select: none;
+      width: 30px;
+
+      &:hover {
+        background-color: rgba(180, 180, 180, 0.15);
+      }
+
+      &:active {
+        background-color: rgba(180, 180, 180, 0.3);
+      }
+
+      #refresh-img {
+        filter: invert(1);
+        left: 3px;
+        position: absolute;
+        top: 3px;
+        user-select: none;
+      }
+    }
+  }
+
+  #user-container {
+    display: flex;
+    flex-flow: column nowrap;
+    flex: 1 0 0;
+
+    .lobby-user {
+      font-size: 16px;
+      height: 18px;
+      width: 100%;
+
+      &.left {
+        text-decoration: line-through;
+      }
+    }
+  }
+}

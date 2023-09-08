@@ -1,5 +1,4 @@
 v0.1: basic lobby
- - list of users in lobby
  - can create room
  - can remove room
  - can join room

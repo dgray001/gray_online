@@ -1,3 +1,3 @@
 Online Games
 
-v0.0t: Skeleton lobby users component
+v0.0u: List of users in lobby

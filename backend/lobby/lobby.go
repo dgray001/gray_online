@@ -63,6 +63,16 @@ func (l *Lobby) GetRooms() []gin.H {
 	return rooms
 }
 
+func (l *Lobby) GetUsers() []gin.H {
+	users := []gin.H{}
+	for _, user := range l.clients {
+		if user.valid() {
+			users = append(users, user.toFrontend())
+		}
+	}
+	return users
+}
+
 func (l *Lobby) addClient(client *Client) {
 	l.setClientId(client)
 	l.clients[client.client_id] = client

@@ -2,8 +2,10 @@ package lobby
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
 
@@ -111,4 +113,11 @@ func (c *Client) valid() bool {
 		return false
 	}
 	return true
+}
+
+func (c *Client) toFrontend() gin.H {
+	return gin.H{
+		"client_id": strconv.Itoa(int(c.client_id)),
+		"nickname":  c.nickname,
+	}
 }
