@@ -1,5 +1,4 @@
 v0.1: basic lobby
- - can remove room
  - can join room
  - can chat in room
 

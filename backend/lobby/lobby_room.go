@@ -10,16 +10,37 @@ type LobbyRoom struct {
 	room_id uint64
 	host    *Client
 	clients map[uint64]*Client
+	lobby   *Lobby
 }
 
-func CreateLobbyRoom(host *Client, room_id uint64) *LobbyRoom {
+func CreateLobbyRoom(host *Client, room_id uint64, lobby *Lobby) *LobbyRoom {
 	room := LobbyRoom{
 		room_id: room_id,
 		host:    host,
 		clients: make(map[uint64]*Client),
+		lobby:   lobby,
 	}
 	room.clients[host.client_id] = host
+	host.lobby_room = &room
 	return &room
+}
+
+func (r *LobbyRoom) addClient(c *Client) {
+	// TODO:
+}
+
+func (r *LobbyRoom) removeClient(c *Client) {
+	if r.host.client_id == c.client_id {
+		r.lobby.removeRoom(r)
+	} else {
+		if c.lobby_room != nil && c.lobby_room.room_id == r.room_id {
+			c.lobby_room = nil
+		}
+		delete(r.clients, c.client_id)
+		client_id_string := strconv.Itoa(int(c.client_id))
+		room_id_string := strconv.Itoa(int(r.room_id))
+		r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-leavee", Data: client_id_string})
+	}
 }
 
 func (r *LobbyRoom) valid() bool {

@@ -17,7 +17,7 @@ type Lobby struct {
 	AddClient      chan *Client
 	RemoveClient   chan *Client
 	CreateRoom     chan *Client
-	RemoveRoom     chan *uint64
+	RemoveRoom     chan *LobbyRoom
 	broadcast      chan lobbyMessage
 }
 
@@ -30,7 +30,7 @@ func CreateLobby() *Lobby {
 		AddClient:      make(chan *Client),
 		RemoveClient:   make(chan *Client),
 		CreateRoom:     make(chan *Client),
-		RemoveRoom:     make(chan *uint64),
+		RemoveRoom:     make(chan *LobbyRoom),
 		broadcast:      make(chan lobbyMessage),
 	}
 }
@@ -44,8 +44,8 @@ func (l *Lobby) Run() {
 			l.removeClient(client)
 		case client := <-l.CreateRoom:
 			l.createRoom(client)
-		case room_id := <-l.RemoveRoom:
-			l.removeRoom(room_id)
+		case room := <-l.RemoveRoom:
+			l.removeRoom(room)
 		case message := <-l.broadcast:
 			l.broadcastMessage(message)
 		}
@@ -87,26 +87,42 @@ func (l *Lobby) removeClient(client *Client) {
 	delete(l.clients, client.client_id)
 	client.close()
 	id_string := strconv.Itoa(int(client.client_id))
+	if client.lobby_room != nil && client.lobby_room.host != nil && client.lobby_room.host.client_id == client.client_id {
+		l.removeRoom(client.lobby_room)
+	}
 	l.broadcastMessage(lobbyMessage{Sender: "client-" + id_string, Kind: "lobby-left", Content: client.nickname, Data: id_string})
 }
 
 func (l *Lobby) createRoom(client *Client) {
+	if client.lobby_room != nil {
+		client.lobby_room.removeClient(client)
+	}
 	room_id := l.next_room_id
 	l.next_room_id++
-	room := CreateLobbyRoom(client, room_id)
+	room := CreateLobbyRoom(client, room_id, l)
 	l.rooms[room.room_id] = room
 	id_string := strconv.Itoa(int(room.room_id))
 	client_id_string := strconv.Itoa(int(client.client_id))
 	l.broadcastMessage(lobbyMessage{Sender: "server", Kind: "room-created", Content: client_id_string, Data: id_string})
 }
 
-func (l *Lobby) removeRoom(room_id *uint64) {
-	//
+func (l *Lobby) removeRoom(room *LobbyRoom) {
+	delete(l.rooms, room.room_id)
+	id_string := strconv.Itoa(int(room.room_id))
+	if room.host != nil {
+		room.host.lobby_room = nil
+	}
+	for _, joinee := range room.clients {
+		if joinee != nil {
+			joinee.lobby_room = nil
+		}
+	}
+	l.broadcastMessage(lobbyMessage{Sender: "room-" + id_string, Kind: "room-closed", Data: id_string})
 }
 
 var (
 	client_to_lobby_messages = []string{"lobby-join", "lobby-left", "lobby-chat"}
-	to_all_messages          = []string{"room-created"}
+	to_all_messages          = []string{"room-created", "room-closed", "room-leavee"}
 )
 
 func (l *Lobby) broadcastMessage(message lobbyMessage) {

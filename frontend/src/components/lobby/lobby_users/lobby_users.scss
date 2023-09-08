@@ -41,9 +41,20 @@ dwg-lobby-users {
     flex: 1 0 0;
 
     .lobby-user {
+      box-sizing: border-box;
       font-size: 16px;
-      height: 18px;
+      height: 22px;
+      padding: 2px;
+      user-select: none;
       width: 100%;
+
+      &:hover {
+        background-color: rgba(180, 180, 180, 0.15);
+      }
+
+      &:active {
+        background-color: rgba(180, 180, 180, 0.3);
+      }
 
       &.left {
         text-decoration: line-through;

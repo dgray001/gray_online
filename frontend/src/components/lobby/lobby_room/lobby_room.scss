@@ -1,0 +1,61 @@
+dwg-lobby-room {
+  background-color: rgb(90, 180, 250);
+  box-shadow:
+    0px 0px 3px 4px rgba(70, 140, 210, 0.8),
+    0px 0px 6px 08px rgba(50, 100, 170, 0.8),
+    0px 0px 9px 12px rgba(30, 60, 130, 0.8);
+  display: flex;
+  flex-flow: column nowrap;
+  gap: 8px;
+
+  &:not(.show) {
+    display: none;
+  }
+
+  #room-header {
+    background-color: rgb(60, 120, 210);
+    display: flex;
+    flex-flow: row nowrap;
+    height: 36px;
+    width: 100%;
+
+    #room-name {
+      flex: 1 0 0;
+      font-size: 24px;
+      height: 100%;
+      line-height: 36px;
+      padding-left: 8px;
+    }
+
+    #leave-room {
+      background-color: transparent;
+      border: none;
+      border-radius: 6px;
+      height: 100%;
+      margin: 0px;
+      padding: 0px;
+      width: 36px;
+
+      &:hover {
+        background-color: rgba(220, 220, 220, 0.5);
+      }
+
+      &:active {
+        background-color: rgba(220, 220, 220, 0.8);
+      }
+    }
+  }
+
+  #room-body {
+    display: flex;
+    flex-flow: row nowrap;
+    flex: 1 0 0;
+    width: 100%;
+
+    #user-list {
+      background-color: rgb(30, 90, 180);
+      height: 100%;
+      width: 250px;
+    }
+  }
+}

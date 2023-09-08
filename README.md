@@ -1,3 +1,3 @@
 Online Games
 
-v0.0v: Can create room
+v0.0w: Lobby room skeleton

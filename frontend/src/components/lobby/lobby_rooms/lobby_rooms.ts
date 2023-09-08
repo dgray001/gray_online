@@ -67,6 +67,18 @@ export class DwgLobbyRooms extends DwgElement {
     }
     this.rooms.set(room.room_id, room);
   }
+
+  removeRoom(room_id: number) {
+    this.rooms.delete(room_id);
+    const room_el = this.querySelector<HTMLDivElement>(`#room-${room_id}`);
+    if (!room_el) {
+      room_el.remove();
+    }
+  }
+
+  getRoom(room_id: number) {
+    return this.rooms.get(room_id);
+  }
 }
 
 customElements.define('dwg-lobby-rooms', DwgLobbyRooms);

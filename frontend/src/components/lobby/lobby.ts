@@ -5,6 +5,7 @@ import {ChatMessage, DwgChatbox} from '../chatbox/chatbox';
 
 import {DwgLobbyUsers} from './lobby_users/lobby_users';
 import {DwgLobbyRooms, LobbyRoom} from './lobby_rooms/lobby_rooms';
+import {DwgLobbyRoom} from './lobby_room/lobby_room';
 import html from './lobby.html';
 
 import './lobby.scss';
@@ -33,6 +34,8 @@ export class DwgLobby extends DwgElement {
   lobby_rooms: DwgLobbyRooms;
   chatbox: DwgChatbox;
   lobby_users: DwgLobbyUsers;
+  lobby_room_wrapper: HTMLDivElement;
+  lobby_room: DwgLobbyRoom;
 
   socket: WebSocket;
   connection_metadata: ConnectionMetadata = {nickname: "Anonymous"};
@@ -47,9 +50,12 @@ export class DwgLobby extends DwgElement {
     this.configureElement('lobby_rooms');
     this.configureElement('chatbox');
     this.configureElement('lobby_users');
+    this.configureElement('lobby_room_wrapper');
+    this.configureElement('lobby_room');
   }
 
   protected override parsedCallback(): void {
+    this.chatbox.setPlaceholder('Chat with the entire lobby');
     clickButton(this.refresh_lobby_button, async () => {
       await this.lobby_rooms.refreshRooms();
     });
@@ -174,10 +180,28 @@ export class DwgLobby extends DwgElement {
           };
           this.lobby_rooms.addRoom(room);
           if (this.connection_metadata.client_id === host_id) {
-            this.connection_metadata.room_id = new_room_id;
-            // TODO: if leaving room should broadcast
+            this.enterRoom(room);
+            setTimeout(() => {
+              // quick fix in case server responds instantly
+              this.create_room_button.innerText = "Room Created";
+            }, 1);
           }
         }
+        break;
+      case 'room-closed':
+        const closed_room_id = parseInt(message.data);
+        if (closed_room_id) {
+          if (this.connection_metadata.room_id === closed_room_id) {
+            this.leaveRoom();
+          }
+          const room = this.lobby_rooms.getRoom(closed_room_id);
+          this.lobby_rooms.removeRoom(closed_room_id);
+          for (const client_id of [room.host.client_id,...room.users.map(user => user.client_id)]) {
+            this.lobby_users.leaveRoom(client_id);
+          }
+        }
+        break;
+      case 'room-leavee':
         break;
       default:
         console.log("Unknown message type", message.kind, "from", message.sender);
@@ -196,6 +220,21 @@ export class DwgLobby extends DwgElement {
   private setNickname(nickname: string) {
     this.connection_metadata.nickname = nickname;
     this.name_header.innerText = nickname;
+  }
+
+  private enterRoom(room: LobbyRoom) {
+    if (this.connection_metadata.room_id) {
+      // TODO: broadcast leaving room
+    }
+    this.connection_metadata.room_id = room.room_id;
+    this.lobby_room.setRoom(room);
+    this.lobby_room_wrapper.classList.add('show');
+  }
+
+  private leaveRoom() {
+    this.connection_metadata.room_id = undefined;
+    this.lobby_room_wrapper.classList.remove('show');
+    // TODO: leave room
   }
 }
 

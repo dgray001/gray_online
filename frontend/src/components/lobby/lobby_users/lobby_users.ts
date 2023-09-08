@@ -94,8 +94,15 @@ export class DwgLobbyUsers extends DwgElement {
     user_el.classList.add('left');
   }
 
-  getUser(user_id: number) {
+  getUser(user_id: number): LobbyUser {
     return this.users.get(user_id);
+  }
+
+  leaveRoom(user_id: number) {
+    const user = this.getUser(user_id);
+    if (user) {
+      user.room_id = undefined;
+    }
   }
 }
 

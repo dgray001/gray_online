@@ -94,4 +94,25 @@ dwg-lobby {
       width: 250px;
     }
   }
+
+  #lobby-room-wrapper {
+    background-color: rgba(150, 150, 150, 0.5);
+    bottom: 0;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+
+    &:not(.show) {
+      display: none;
+    }
+
+    #lobby-room {
+      box-sizing: border-box;
+      height: 60vh;
+      margin: 20vh auto;
+      padding: 8px;
+      width: 60vw;
+    }
+  }
 }
