@@ -1,4 +1,4 @@
-import {DwgElement} from '../dwg_element';
+import {DwgElement} from '../../dwg_element';
 
 import html from './lobby_room.html';
 import './lobby_room.scss';

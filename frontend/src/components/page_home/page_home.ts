@@ -1,8 +1,8 @@
 import {DwgElement} from '../dwg_element';
 import {DwgLobby} from '../lobby/lobby';
-import {DwgLobbyConnector} from '../lobby_connector/lobby_connector';
+import {DwgLobbyConnector} from '../lobby/lobby_connector/lobby_connector';
 import '../lobby/lobby';
-import '../lobby_connector/lobby_connector';
+import '../lobby/lobby_connector/lobby_connector';
 
 import html from './page_home.html';
 import './page_home.scss';

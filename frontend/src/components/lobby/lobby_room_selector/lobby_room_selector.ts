@@ -1,4 +1,4 @@
-import {DwgElement} from '../dwg_element';
+import {DwgElement} from '../../dwg_element';
 import {LobbyRoom} from '../lobby_room/lobby_room';
 
 import html from './lobby_room_selector.html';

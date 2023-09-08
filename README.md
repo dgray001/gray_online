@@ -1,3 +1,3 @@
 Online Games
 
-v0.0s: Lobby chatbox functional
+v0.0t: Skeleton lobby users component

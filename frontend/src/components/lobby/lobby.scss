@@ -59,21 +59,39 @@ dwg-lobby {
     }
   }
 
-  #room-container {
-    --padding: 12px;
-    --width: calc(100% - 2 * var(--padding));
+  #horizontal-container {
+    display: flex;
+    flex-flow: row nowrap;
     flex: 1 0 0;
-    max-width: var(--width);
-    min-width: var(--width);
-    padding: var(--padding);
-    width: var(--width);
-  }
+    width: 100%;
 
-  #chatbox {
-    box-sizing: border-box;
-    height: var(--chat-height);
-    max-height: var(--chat-height);
-    min-height: var(--chat-height);
-    padding: 12px;
+    #vertical-container {
+      display: flex;
+      flex-flow: column nowrap;
+      flex: 1 0 0;
+      height: 100%;
+
+      #room-container {
+        box-sizing: border-box;
+        flex: 1 0 0;
+        padding: 12px;
+      }
+
+      #chatbox {
+        box-sizing: border-box;
+        height: var(--chat-height);
+        max-height: var(--chat-height);
+        min-height: var(--chat-height);
+        padding: 12px;
+      }
+    }
+
+    #lobby-users {
+      background-color: rgb(10, 30, 50);
+      box-sizing: border-box;
+      height: 100%;
+      padding: 8px;
+      width: 250px;
+    }
   }
 }

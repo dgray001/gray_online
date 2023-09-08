@@ -1,14 +1,15 @@
 import {DwgElement} from '../dwg_element';
 import {apiPost} from '../../scripts/api';
-import {LobbyRoom} from '../lobby_room/lobby_room';
-import {createLobbyRoomSelector} from '../lobby_room_selector/lobby_room_selector';
 import {clickButton, untilTimer} from '../../scripts/util';
 import {ChatMessage, DwgChatbox} from '../chatbox/chatbox';
 
+import {LobbyRoom} from './lobby_room/lobby_room';
+import {createLobbyRoomSelector} from './lobby_room_selector/lobby_room_selector';
 import html from './lobby.html';
 
 import './lobby.scss';
 import '../chatbox/chatbox';
+import './lobby_users/lobby_users';
 
 interface LobbyMessage {
   sender: string;
