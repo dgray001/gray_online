@@ -1,32 +1,9 @@
 import {DwgElement} from '../../dwg_element';
 import {apiPost} from '../../../scripts/api';
-import {LobbyUser, LobbyUserFromServer, serverResponseToUser} from '../lobby_users/lobby_users';
+import {LobbyRoom, LobbyRoomFromServer, LobbyUser, serverResponseToRoom} from '../data_models';
 
 import html from './lobby_rooms.html';
 import './lobby_rooms.scss';
-
-/** Object describing lobby room data */
-export declare interface LobbyRoom {
-  room_id: number;
-  host: LobbyUser;
-  users: LobbyUser[];
-}
-
-/** Data describing a lobby room returned from the server */
-export declare interface LobbyRoomFromServer {
-  room_id: string;
-  host: LobbyUserFromServer;
-  users: LobbyUserFromServer[];
-}
-
-/** Convert a server response to a TS lobby room object */
-export function serverResponseToRoom(server_response: LobbyRoomFromServer): LobbyRoom {
-  return {
-    room_id: parseInt(server_response.room_id),
-    host: serverResponseToUser(server_response.host),
-    users: server_response.users.map(user => serverResponseToUser(user)),
-  }
-}
 
 export class DwgLobbyRooms extends DwgElement {
   rooms = new Map<number, LobbyRoom>();
@@ -38,32 +15,51 @@ export class DwgLobbyRooms extends DwgElement {
 
   protected override parsedCallback(): void {}
 
+  refresh_rooms_running = false;
   async refreshRooms() {
+    if (this.refresh_rooms_running) {
+      return;
+    }
+    this.refresh_rooms_running = true;
     this.innerHTML = ' ... loading';
+    this.rooms.clear();
     const response = await apiPost<LobbyRoomFromServer[]>('lobby/rooms/get', '');
     if (response.success) {
-      let html = '';
-      for (const room of response.result) {
-        html += this.addRoomString(serverResponseToRoom(room));
+      const els: HTMLDivElement[] = [];
+      for (const server_room of response.result) {
+        const room = serverResponseToRoom(server_room);
+        els.push(this.getRoomElement(room));
+        this.rooms.set(room.room_id, room);
       }
-      this.innerHTML = html;
+      this.innerHTML = '';
+      for (const el of els) {
+        this.appendChild(el);
+      }
     } else {
       this.innerHTML = `Error loading rooms: ${response.error_message}`;
     }
+    this.refresh_rooms_running = false;
   }
 
-  private addRoomString(room: LobbyRoom): string {
-    return `<div class="lobby-room" id="room-${room.room_id}">${room.host.nickname}'s room</div>`;
+  private getRoomElement(room: LobbyRoom): HTMLDivElement {
+    const el = document.createElement('div');
+    el.classList.add('lobby-room');
+    el.id = `room-${room.room_id}`;
+    el.innerText = `${room.host.nickname}'s room`;
+    el.addEventListener('click', () => {
+      this.dispatchEvent(new CustomEvent('join_room', {'detail': room.room_id}))
+    });
+    return el;
   }
 
   addRoom(room: LobbyRoom) {
     if (this.rooms.has(room.room_id)) {
       const room_el = this.querySelector<HTMLDivElement>(`#room-${room.room_id}`);
       if (room_el) {
-        room_el.replaceWith(this.addRoomString(room));
+        room_el.replaceWith(this.getRoomElement(room));
       }
     } else {
-      this.innerHTML += this.addRoomString(room);
+      this.appendChild(this.getRoomElement(room));
     }
     this.rooms.set(room.room_id, room);
   }
@@ -71,13 +67,40 @@ export class DwgLobbyRooms extends DwgElement {
   removeRoom(room_id: number) {
     this.rooms.delete(room_id);
     const room_el = this.querySelector<HTMLDivElement>(`#room-${room_id}`);
-    if (!room_el) {
+    if (room_el) {
       room_el.remove();
     }
   }
 
   getRoom(room_id: number) {
     return this.rooms.get(room_id);
+  }
+
+  clientJoinsRoom(room_id: number, joinee: LobbyUser) {
+    const curr_room = this.getRoom(joinee.room_id);
+    if (curr_room) {
+      if (curr_room.host.client_id === joinee.client_id) {
+        this.removeRoom(joinee.room_id);
+      } else {
+        curr_room.users.delete(joinee.client_id);
+      }
+    }
+    const room = this.getRoom(room_id);
+    if (room) {
+      room.users.set(joinee.client_id, joinee);
+    }
+  }
+
+  clientLeavesRoom(room_id: number, client_id: number) {
+    const room = this.getRoom(room_id);
+    if (!room) {
+      return;
+    }
+    if (room.host.client_id === client_id) {
+      this.removeRoom(room_id);
+    } else {
+      room.users.delete(client_id);
+    }
   }
 }
 

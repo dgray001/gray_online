@@ -1,32 +1,10 @@
 import {DwgElement} from '../../dwg_element';
 import {apiPost} from '../../../scripts/api';
 import {clickButton} from '../../../scripts/util';
+import {LobbyUser, LobbyUserFromServer, serverResponseToUser} from '../data_models';
 
 import html from './lobby_users.html';
 import './lobby_users.scss';
-
-/** Data describing a user in the lobby */
-export declare interface LobbyUser {
-  client_id: number;
-  nickname: string;
-  room_id?: number;
-}
-
-/** Data describing a user returned from the server */
-export declare interface LobbyUserFromServer {
-  client_id: string;
-  nickname: string;
-  room_id?: string;
-}
-
-/** Convert a server response to a TS lobby user object */
-export function serverResponseToUser(server_response: LobbyUserFromServer): LobbyUser {
-  return {
-    client_id: parseInt(server_response.client_id),
-    nickname: server_response.nickname,
-    room_id: parseInt(server_response.room_id) ?? undefined,
-  }
-}
 
 export class DwgLobbyUsers extends DwgElement {
   refresh_button: HTMLButtonElement;
@@ -48,25 +26,28 @@ export class DwgLobbyUsers extends DwgElement {
     this.refreshUsers();
   }
 
-  add_users_running = false;
+  refresh_users_running = false;
   private async refreshUsers() {
-    if (this.add_users_running) {
+    if (this.refresh_users_running) {
       return;
     }
-    this.add_users_running = true;
+    this.refresh_users_running = true;
     this.user_container.innerHTML = ' ... loading';
+    this.users.clear();
     const response = await apiPost<LobbyUserFromServer[]>('lobby/users/get', '');
     if (response.success) {
       console.log(response);
       let html = '';
-      for (const user of response.result) {
-        html += this.addUserString(serverResponseToUser(user));
+      for (const server_user of response.result) {
+        const user = serverResponseToUser(server_user);
+        html += this.addUserString(user);
+        this.users.set(user.client_id, user);
       }
       this.user_container.innerHTML = html;
     } else {
       this.user_container.innerHTML = `Error loading users: ${response.error_message}`;
     }
-    this.add_users_running = false;
+    this.refresh_users_running = false;
   }
 
   private addUserString(user: LobbyUser): string {
@@ -96,6 +77,13 @@ export class DwgLobbyUsers extends DwgElement {
 
   getUser(user_id: number): LobbyUser {
     return this.users.get(user_id);
+  }
+
+  joinRoom(user_id: number, room_id: number) {
+    const user = this.getUser(user_id);
+    if (user) {
+      user.room_id = room_id;
+    }
   }
 
   leaveRoom(user_id: number) {

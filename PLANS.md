@@ -1,7 +1,3 @@
-v0.1: basic lobby
- - can join room
- - can chat in room
-
 v0.2: launch game
  - backend connects to mysql
  - can launch games (new connections => get routed into game hub)

@@ -1,3 +1,3 @@
 Online Games
 
-v0.0w: Lobby room skeleton
+v0.0x: Lobby room functional

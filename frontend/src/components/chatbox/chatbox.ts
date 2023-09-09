@@ -55,6 +55,11 @@ export class DwgChatbox extends DwgElement {
     this.chat_input.placeholder = placeholder;
   }
 
+  clear() {
+    this.chat_input.value = '';
+    this.chat_container.innerHTML = '';
+  }
+
   private inputEmpty(): boolean {
     return !this.chat_input.value;
   }

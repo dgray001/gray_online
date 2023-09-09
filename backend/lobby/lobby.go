@@ -18,7 +18,21 @@ type Lobby struct {
 	RemoveClient   chan *Client
 	CreateRoom     chan *Client
 	RemoveRoom     chan *LobbyRoom
+	JoinRoom       chan *ClientRoom
+	LeaveRoom      chan *ClientRoom
 	broadcast      chan lobbyMessage
+}
+
+type ClientRoom struct {
+	client *Client
+	room   *LobbyRoom
+}
+
+func MakeClientRoom(client *Client, room *LobbyRoom) *ClientRoom {
+	return &ClientRoom{
+		client: client,
+		room:   room,
+	}
 }
 
 func CreateLobby() *Lobby {
@@ -31,6 +45,8 @@ func CreateLobby() *Lobby {
 		RemoveClient:   make(chan *Client),
 		CreateRoom:     make(chan *Client),
 		RemoveRoom:     make(chan *LobbyRoom),
+		JoinRoom:       make(chan *ClientRoom),
+		LeaveRoom:      make(chan *ClientRoom),
 		broadcast:      make(chan lobbyMessage),
 	}
 }
@@ -46,6 +62,10 @@ func (l *Lobby) Run() {
 			l.createRoom(client)
 		case room := <-l.RemoveRoom:
 			l.removeRoom(room)
+		case data := <-l.JoinRoom:
+			l.joinRoom(data)
+		case data := <-l.LeaveRoom:
+			l.leaveRoom(data)
 		case message := <-l.broadcast:
 			l.broadcastMessage(message)
 		}
@@ -74,6 +94,10 @@ func (l *Lobby) GetUsers() []gin.H {
 
 func (l *Lobby) GetClient(client_id uint64) *Client {
 	return l.clients[client_id]
+}
+
+func (l *Lobby) GetRoom(room_id uint64) *LobbyRoom {
+	return l.rooms[room_id]
 }
 
 func (l *Lobby) addClient(client *Client) {
@@ -120,9 +144,21 @@ func (l *Lobby) removeRoom(room *LobbyRoom) {
 	l.broadcastMessage(lobbyMessage{Sender: "room-" + id_string, Kind: "room-closed", Data: id_string})
 }
 
+func (l *Lobby) joinRoom(data *ClientRoom) {
+	if data.client.lobby_room != nil {
+		data.client.lobby_room.removeClient(data.client)
+	}
+	data.room.addClient(data.client)
+}
+
+func (l *Lobby) leaveRoom(data *ClientRoom) {
+	data.room.removeClient(data.client)
+}
+
 var (
 	client_to_lobby_messages = []string{"lobby-join", "lobby-left", "lobby-chat"}
-	to_all_messages          = []string{"room-created", "room-closed", "room-leavee"}
+	to_all_messages          = []string{"room-created", "room-closed", "room-join", "room-leave"}
+	client_to_room_messages  = []string{"room-chat"}
 )
 
 func (l *Lobby) broadcastMessage(message lobbyMessage) {
@@ -131,7 +167,7 @@ func (l *Lobby) broadcastMessage(message lobbyMessage) {
 		send_id_string := strings.TrimPrefix(message.Sender, "client-")
 		sender_id, err := strconv.ParseInt(send_id_string, 10, 0)
 		if err != nil {
-			sender_id = 0
+			sender_id = -1
 		}
 		for _, client := range l.clients {
 			if client == nil || !client.valid() || client.client_id == uint64(sender_id) {
@@ -154,6 +190,33 @@ func (l *Lobby) broadcastMessage(message lobbyMessage) {
 				l.removeClient(client)
 			}
 		}
+	} else if util.Contains(client_to_room_messages, message.Kind) {
+		send_split := strings.Split(message.Sender, "-")
+		if len(send_split) < 3 {
+			fmt.Println("Sender not properly formed for a client to room message")
+			return
+		}
+		room_id, err := strconv.ParseInt(send_split[1], 10, 0)
+		if err != nil {
+			room_id = -1
+		}
+		client_id, err := strconv.ParseInt(send_split[2], 10, 0)
+		if err != nil {
+			client_id = -1
+		}
+		for _, client := range l.clients {
+			if client == nil || !client.valid() || client.lobby_room == nil ||
+				client.lobby_room.room_id != uint64(room_id) || client.client_id == uint64(client_id) {
+				continue
+			}
+			select {
+			case client.send_message <- message:
+			default:
+				l.removeClient(client)
+			}
+		}
+	} else {
+		fmt.Println("No logic for message kind")
 	}
 }
 
