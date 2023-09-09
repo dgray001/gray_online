@@ -1,3 +1,3 @@
 Online Games
 
-v0.1a: Can rename room
+v0.1b: Can see players in room

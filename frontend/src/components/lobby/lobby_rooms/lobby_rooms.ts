@@ -47,7 +47,7 @@ export class DwgLobbyRooms extends DwgElement {
     el.id = `room-${room.room_id}`;
     el.innerText = room.room_name;
     el.addEventListener('click', () => {
-      this.dispatchEvent(new CustomEvent('join_room', {'detail': room.room_id}))
+      this.dispatchEvent(new CustomEvent('join_room', {'detail': room.room_id}));
     });
     return el;
   }
@@ -70,6 +70,16 @@ export class DwgLobbyRooms extends DwgElement {
     if (room_el) {
       room_el.remove();
     }
+  }
+
+  userDisconnected(client_id: number) {
+    const removeIds = [];
+    for (const room of this.rooms.values()) {
+      if (client_id === room.host.client_id) {
+        removeIds.push(room.room_id);
+      }
+    }
+    removeIds.forEach(id => this.removeRoom(id));
   }
 
   getRoom(room_id: number) {

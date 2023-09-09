@@ -1,6 +1,5 @@
 
 v0.2: launch game
- d: see players in room
  e: host can kick players in room
  f: host can reassign host
  g: reformat broadcast message to make lobby messages only loop through lobby clients

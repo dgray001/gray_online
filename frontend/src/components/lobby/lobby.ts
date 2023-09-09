@@ -135,7 +135,15 @@ export class DwgLobby extends DwgElement {
             message: `${message.content} (client id ${left_client_id}) left lobby`,
             sender: 'server',
           });
+          const client = this.lobby_users.getUser(left_client_id);
           this.lobby_users.removeUser({client_id: left_client_id, nickname: message.content});
+          this.lobby_rooms.userDisconnected(left_client_id);
+          if (client && client.room_id === this.connection_metadata.room_id &&
+            client.client_id === this.lobby_room.getHost()?.client_id) {
+              this.leaveRoom();
+            } else {
+              this.lobby_room.leaveRoom(left_client_id);
+            }
         }
         break;
       case 'lobby-chat':
@@ -204,13 +212,13 @@ export class DwgLobby extends DwgElement {
         const joinee = this.lobby_users.getUser(client_join_id);
         const room = this.lobby_rooms.getRoom(room_join_id);
         if (room_join_id && client_join_id && joinee) {
+          this.lobby_users.joinRoom(client_join_id, room_join_id);
+          this.lobby_rooms.clientJoinsRoom(room_join_id, joinee);
           if (room_join_id === this.connection_metadata.room_id) {
             this.lobby_room.joinRoom(joinee);
           } else if (client_join_id === this.connection_metadata.client_id && room) {
-            this.enterRoom(room, false);
+            this.enterRoom(this.lobby_rooms.getRoom(room_join_id), false);
           }
-          this.lobby_users.joinRoom(client_join_id, room_join_id);
-          this.lobby_rooms.clientJoinsRoom(room_join_id, joinee);
         }
         break;
       case 'room-chat':

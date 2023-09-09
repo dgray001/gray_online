@@ -7,12 +7,13 @@ import './lobby_room.scss';
 
 export class DwgLobbyRoom extends DwgElement {
   room_name: HTMLDivElement;
-  user_list: HTMLDivElement;
   chatbox: DwgChatbox;
   leave_room: HTMLButtonElement;
   rename_input: HTMLInputElement;
   rename_room: HTMLButtonElement;
   cancel_rename: HTMLButtonElement;
+  host_container: HTMLDivElement;
+  players_container: HTMLDivElement;
 
   is_host = false;
   room: LobbyRoom;
@@ -21,12 +22,13 @@ export class DwgLobbyRoom extends DwgElement {
     super();
     this.htmlString = html;
     this.configureElement('room_name');
-    this.configureElement('user_list');
     this.configureElement('chatbox');
     this.configureElement('leave_room');
     this.configureElement('rename_input');
     this.configureElement('rename_room');
     this.configureElement('cancel_rename');
+    this.configureElement('host_container');
+    this.configureElement('players_container');
   }
 
   protected override parsedCallback(): void {
@@ -59,6 +61,26 @@ export class DwgLobbyRoom extends DwgElement {
     if (is_host) {
       this.rename_room.classList.add('show');
     }
+    this.host_container.replaceChildren(this.getUserElement(room.host, false));
+    const user_els = [];
+    for (const user of room.users.values()) {
+      if (user.client_id === room.host.client_id) {
+        continue;
+      }
+      user_els.push(this.getUserElement(user, is_host));
+    }
+    this.players_container.replaceChildren(...user_els);
+  }
+
+  private getUserElement(user: LobbyUser, is_host: boolean): HTMLDivElement {
+    const el = document.createElement('div');
+    el.classList.add('room-user');
+    el.id = `user-${user.client_id}`;
+    el.innerText = `${user.nickname} (${user.client_id})`;
+    if (is_host) {
+      // TODO: Add ability to kick and promote user
+    }
+    return el;
   }
 
   clearRoom() {
@@ -104,18 +126,47 @@ export class DwgLobbyRoom extends DwgElement {
     return this.room.users.get(client_id);
   }
 
+  getHost(): LobbyUser {
+    if (!this.classList.contains('show') || !this.room) {
+      return undefined;
+    }
+    return this.room.host;
+  }
+
   joinRoom(joinee: LobbyUser) {
     if (!this.room) {
       return;
     }
+    const user_el = this.querySelector<HTMLDivElement>(`#user-${joinee.client_id}`);
+    if (user_el) {
+      user_el.replaceWith(this.getUserElement(joinee, this.is_host));
+    } else {
+      this.players_container.appendChild(this.getUserElement(joinee, this.is_host));
+    }
     this.room.users.set(joinee.client_id, joinee);
+    this.chatbox.addChat({
+      message: `${joinee.nickname} (${joinee.client_id}) joined the room`,
+      color: 'gray',
+    });
   }
 
   leaveRoom(client_id: number) {
+    if (!this.room) {
+      return;
+    }
     if (this.room.host.client_id === client_id) {
       this.clearRoom();
     } else {
+      const user = this.room.users.get(client_id);
       this.room.users.delete(client_id);
+      const user_el = this.querySelector<HTMLDivElement>(`#user-${client_id}`);
+      if (user_el) {
+        user_el.remove();
+      }
+      this.chatbox.addChat({
+        message: `${user.nickname} (${user.client_id}) left the room`,
+        color: 'gray',
+      });
     }
   }
 

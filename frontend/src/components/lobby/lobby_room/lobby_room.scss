@@ -84,10 +84,20 @@ dwg-lobby-room {
     flex: 1 0 0;
     width: 100%;
 
-    #user-list {
+    #left-panel {
       background-color: rgb(30, 90, 180);
+      display: flex;
+      flex-flow: column nowrap;
       height: 100%;
       width: 250px;
+
+      #game-settings {
+        flex: 2 0 0;
+      }
+
+      #user-list {
+        flex: 1 0 0;
+      }
     }
   }
 }
