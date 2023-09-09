@@ -1,3 +1,3 @@
 Online Games
 
-v0.1c: Kick and promote buttons html
+v0.1d: Kick and promote functionality

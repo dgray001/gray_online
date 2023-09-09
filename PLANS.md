@@ -1,8 +1,5 @@
 
 v0.2: launch game
- e: host can kick players in room
- f: host can reassign host
- g: reformat broadcast message to make lobby messages only loop through lobby clients
  h: game has no host => players and viewers
  i: backend abstract game logic => chatting/exiting/reconnecting
  j: frontend abstract game logic => chatting/exiting/reconnecting

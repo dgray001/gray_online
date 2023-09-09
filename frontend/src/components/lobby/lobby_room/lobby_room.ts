@@ -92,7 +92,7 @@ export class DwgLobbyRoom extends DwgElement {
       kick_button.appendChild(kick_icon);
       el.appendChild(kick_button);
       kick_button.addEventListener('click', () => {
-        // TODO: kick player
+        this.dispatchEvent(new CustomEvent('kick_player', {'detail': user.client_id}));
       });
       const promote_button = document.createElement('button');
       promote_button.id = `promote-button-${user.client_id}`;
@@ -104,7 +104,7 @@ export class DwgLobbyRoom extends DwgElement {
       promote_button.appendChild(promote_icon);
       el.appendChild(promote_button);
       promote_button.addEventListener('click', () => {
-        // TODO: promote player
+        this.dispatchEvent(new CustomEvent('promote_player', {'detail': user.client_id}));
       });
     }
     return el;
@@ -177,7 +177,7 @@ export class DwgLobbyRoom extends DwgElement {
     });
   }
 
-  leaveRoom(client_id: number) {
+  leaveRoom(client_id: number, left_text: string) {
     if (!this.room) {
       return;
     }
@@ -191,10 +191,20 @@ export class DwgLobbyRoom extends DwgElement {
         user_el.remove();
       }
       this.chatbox.addChat({
-        message: `${user.nickname} (${user.client_id}) left the room`,
+        message: `${user.nickname} (${user.client_id}) ${left_text} the room`,
         color: 'gray',
       });
     }
+  }
+
+  promoteUser(client_id: number, is_host: boolean) {
+    if (!this.room) {
+      return;
+    }
+    if (this.room.users.has(client_id)) {
+      this.room.host = this.room.users.get(client_id);
+    }
+    this.setRoom(this.room, is_host);
   }
 
   private openRename() {

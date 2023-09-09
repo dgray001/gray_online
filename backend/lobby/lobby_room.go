@@ -42,15 +42,41 @@ func (r *LobbyRoom) addClient(c *Client) {
 func (r *LobbyRoom) removeClient(c *Client) {
 	if r.host.client_id == c.client_id {
 		r.lobby.removeRoom(r)
-	} else {
-		if c.lobby_room != nil && c.lobby_room.room_id == r.room_id {
-			c.lobby_room = nil
-		}
-		delete(r.clients, c.client_id)
-		client_id_string := strconv.Itoa(int(c.client_id))
-		room_id_string := strconv.Itoa(int(r.room_id))
-		r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-left", Data: client_id_string})
+		return
 	}
+	if c.lobby_room != nil && c.lobby_room.room_id == r.room_id {
+		c.lobby_room = nil
+	}
+	delete(r.clients, c.client_id)
+	client_id_string := strconv.Itoa(int(c.client_id))
+	room_id_string := strconv.Itoa(int(r.room_id))
+	r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-left", Data: client_id_string})
+}
+
+func (r *LobbyRoom) kickClient(c *Client) {
+	if r.host.client_id == c.client_id {
+		return
+	}
+	if c.lobby_room != nil && c.lobby_room.room_id == r.room_id {
+		c.lobby_room = nil
+	}
+	delete(r.clients, c.client_id)
+	client_id_string := strconv.Itoa(int(c.client_id))
+	room_id_string := strconv.Itoa(int(r.room_id))
+	r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-kicked", Data: client_id_string})
+}
+
+func (r *LobbyRoom) promoteClient(c *Client) {
+	if r.host.client_id == c.client_id {
+		return
+	}
+	if c.lobby_room == nil || c.lobby_room.room_id != r.room_id {
+		return
+	}
+	r.host = c
+	client_id_string := strconv.Itoa(int(c.client_id))
+	room_id_string := strconv.Itoa(int(r.room_id))
+	r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-promoted", Data: client_id_string})
 }
 
 func (r *LobbyRoom) valid() bool {

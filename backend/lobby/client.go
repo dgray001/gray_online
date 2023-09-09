@@ -55,7 +55,7 @@ func (c *Client) close() {
 func (c *Client) readMessages() {
 	defer func() {
 		c.lobby.RemoveClient <- c
-		c.connection.Close()
+		c.close()
 	}()
 	c.connection.SetReadLimit(read_limit)
 	c.connection.SetReadDeadline(time.Now().Add(read_wait))
@@ -121,6 +121,58 @@ func (c *Client) readMessages() {
 			}
 			room.room_name = message.Content
 			c.lobby.RenameRoom <- room
+		case "room-kick":
+			room_id, err := strconv.Atoi(message.Data)
+			if err != nil || room_id < 1 {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-kick-failed", Content: "Invalid room id"}
+				break
+			}
+			room := c.lobby.GetRoom(uint64(room_id))
+			if room == nil {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-kick-failed", Content: "Room doesn't exist"}
+				break
+			}
+			if room.host.client_id != c.client_id {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-kick-failed", Content: "Not room host"}
+				break
+			}
+			client_id, err := strconv.Atoi(message.Content)
+			if err != nil || client_id < 1 {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-kick-failed", Content: "Invalid client id"}
+				break
+			}
+			client := c.lobby.GetClient(uint64(client_id))
+			if client == nil {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-kick-failed", Content: "Client doesn't exist"}
+				break
+			}
+			c.lobby.KickClientFromRoom <- MakeClientRoom(client, room)
+		case "room-promote":
+			room_id, err := strconv.Atoi(message.Data)
+			if err != nil || room_id < 1 {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-promote-failed", Content: "Invalid room id"}
+				break
+			}
+			room := c.lobby.GetRoom(uint64(room_id))
+			if room == nil {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-promote-failed", Content: "Room doesn't exist"}
+				break
+			}
+			if room.host.client_id != c.client_id {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-promote-failed", Content: "Not room host"}
+				break
+			}
+			client_id, err := strconv.Atoi(message.Content)
+			if err != nil || client_id < 1 {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-promote-failed", Content: "Invalid client id"}
+				break
+			}
+			client := c.lobby.GetClient(uint64(client_id))
+			if client == nil {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-promote-failed", Content: "Client doesn't exist"}
+				break
+			}
+			c.lobby.PromoteClientInRoom <- MakeClientRoom(client, room)
 		case "lobby-chat":
 			fallthrough
 		case "room-chat":

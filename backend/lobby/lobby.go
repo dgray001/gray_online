@@ -10,18 +10,20 @@ import (
 )
 
 type Lobby struct {
-	next_room_id   uint64
-	next_client_id uint64
-	clients        map[uint64]*Client
-	rooms          map[uint64]*LobbyRoom
-	AddClient      chan *Client
-	RemoveClient   chan *Client
-	CreateRoom     chan *Client
-	RenameRoom     chan *LobbyRoom
-	RemoveRoom     chan *LobbyRoom
-	JoinRoom       chan *ClientRoom
-	LeaveRoom      chan *ClientRoom
-	broadcast      chan lobbyMessage
+	next_room_id        uint64
+	next_client_id      uint64
+	clients             map[uint64]*Client
+	rooms               map[uint64]*LobbyRoom
+	AddClient           chan *Client
+	RemoveClient        chan *Client
+	CreateRoom          chan *Client
+	RenameRoom          chan *LobbyRoom
+	KickClientFromRoom  chan *ClientRoom
+	PromoteClientInRoom chan *ClientRoom
+	RemoveRoom          chan *LobbyRoom
+	JoinRoom            chan *ClientRoom
+	LeaveRoom           chan *ClientRoom
+	broadcast           chan lobbyMessage
 }
 
 type ClientRoom struct {
@@ -38,18 +40,20 @@ func MakeClientRoom(client *Client, room *LobbyRoom) *ClientRoom {
 
 func CreateLobby() *Lobby {
 	return &Lobby{
-		next_room_id:   1,
-		next_client_id: 1,
-		clients:        make(map[uint64]*Client),
-		rooms:          make(map[uint64]*LobbyRoom),
-		AddClient:      make(chan *Client),
-		RemoveClient:   make(chan *Client),
-		CreateRoom:     make(chan *Client),
-		RenameRoom:     make(chan *LobbyRoom),
-		RemoveRoom:     make(chan *LobbyRoom),
-		JoinRoom:       make(chan *ClientRoom),
-		LeaveRoom:      make(chan *ClientRoom),
-		broadcast:      make(chan lobbyMessage),
+		next_room_id:        1,
+		next_client_id:      1,
+		clients:             make(map[uint64]*Client),
+		rooms:               make(map[uint64]*LobbyRoom),
+		AddClient:           make(chan *Client),
+		RemoveClient:        make(chan *Client),
+		CreateRoom:          make(chan *Client),
+		RenameRoom:          make(chan *LobbyRoom),
+		KickClientFromRoom:  make(chan *ClientRoom),
+		PromoteClientInRoom: make(chan *ClientRoom),
+		RemoveRoom:          make(chan *LobbyRoom),
+		JoinRoom:            make(chan *ClientRoom),
+		LeaveRoom:           make(chan *ClientRoom),
+		broadcast:           make(chan lobbyMessage),
 	}
 }
 
@@ -64,6 +68,10 @@ func (l *Lobby) Run() {
 			l.createRoom(client)
 		case room := <-l.RenameRoom:
 			l.renameRoom(room)
+		case data := <-l.KickClientFromRoom:
+			data.room.kickClient(data.client)
+		case data := <-l.PromoteClientInRoom:
+			data.room.promoteClient(data.client)
 		case room := <-l.RemoveRoom:
 			l.removeRoom(room)
 		case data := <-l.JoinRoom:
@@ -114,7 +122,6 @@ func (l *Lobby) addClient(client *Client) {
 
 func (l *Lobby) removeClient(client *Client) {
 	delete(l.clients, client.client_id)
-	client.close()
 	id_string := strconv.Itoa(int(client.client_id))
 	if client.lobby_room != nil && client.lobby_room.host != nil && client.lobby_room.host.client_id == client.client_id {
 		l.removeRoom(client.lobby_room)
@@ -176,9 +183,9 @@ func (l *Lobby) leaveRoom(data *ClientRoom) {
 
 var (
 	client_to_lobby_messages = []string{"lobby-joined", "lobby-left", "lobby-chat"}
-	lobby_messages           = []string{"room-created", "room-closed", "room-joined", "room-left"}
+	lobby_messages           = []string{"room-created", "room-closed", "room-joined", "room-left", "room-renamed", "room-kicked", "room-promoted"}
 	client_to_room_messages  = []string{"room-chat"}
-	room_messages            = []string{"room-renamed"}
+	room_messages            = []string{}
 )
 
 func (l *Lobby) broadcastMessage(message lobbyMessage) {
