@@ -1,3 +1,3 @@
 Online Games
 
-v0.1b: Can see players in room
+v0.1c: Kick and promote buttons html

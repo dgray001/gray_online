@@ -88,16 +88,83 @@ dwg-lobby-room {
       background-color: rgb(30, 90, 180);
       display: flex;
       flex-flow: column nowrap;
+      flex: 0 0 320px;
       height: 100%;
-      width: 250px;
 
       #game-settings {
-        flex: 2 0 0;
+        flex: 3 0 0;
       }
 
       #user-list {
-        flex: 1 0 0;
+        background-color: rgba(220, 220, 220, 0.3);
+        display: flex;
+        flex-flow: column nowrap;
+        flex: 2 0 0;
+
+        .container-label {
+          background-color: rgba(220, 220, 220, 0.4);
+          font-size: 20px;
+          height: 24px;
+          line-height: 24px;
+          margin-bottom: 2px;
+          margin-top: 6px;
+          padding: 6px 12px 0px;
+        }
+
+        .room-user {
+          --user-height: 22px;
+          display: flex;
+          flex-flow: row nowrap;
+          font-size: 18px;
+          gap: 6px;
+          height: var(--user-height);
+          line-height: var(--user-height);
+          padding: 3px 6px;
+          user-select: none;
+
+          &:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+
+            > button {
+              visibility: visible;
+            }
+          }
+
+          :first-child {
+            margin-left: auto;
+          }
+
+          > button {
+            background-color: rgba(220, 220, 220, 0.5);
+            border: none;
+            border-radius: 4px;
+            display: inline-block;
+            height: var(--user-height);
+            margin: 0px;
+            padding: 0px;
+            visibility: hidden;
+            width: var(--user-height);
+
+            &:hover {
+              background-color: rgba(250, 250, 250, 0.6);
+            }
+
+            &:active {
+              background-color: rgba(255, 255, 255, 0.7);
+            }
+          }
+        }
       }
     }
+
+    #chatbox {
+      box-sizing: border-box;
+      flex: 1 0 0;
+      padding: 8px;
+    }
+  }
+
+  #kick-img, #promote-img {
+    display: none;
   }
 }

@@ -14,6 +14,8 @@ export class DwgLobbyRoom extends DwgElement {
   cancel_rename: HTMLButtonElement;
   host_container: HTMLDivElement;
   players_container: HTMLDivElement;
+  kick_img: HTMLImageElement;
+  promote_img: HTMLImageElement;
 
   is_host = false;
   room: LobbyRoom;
@@ -29,6 +31,8 @@ export class DwgLobbyRoom extends DwgElement {
     this.configureElement('cancel_rename');
     this.configureElement('host_container');
     this.configureElement('players_container');
+    this.configureElement('kick_img');
+    this.configureElement('promote_img');
   }
 
   protected override parsedCallback(): void {
@@ -78,7 +82,30 @@ export class DwgLobbyRoom extends DwgElement {
     el.id = `user-${user.client_id}`;
     el.innerText = `${user.nickname} (${user.client_id})`;
     if (is_host) {
-      // TODO: Add ability to kick and promote user
+      const kick_button = document.createElement('button');
+      kick_button.id = `kick-button-${user.client_id}`;
+      kick_button.classList.add('kick-button');
+      const kick_icon = document.createElement('img');
+      kick_icon.src = this.kick_img.src;
+      kick_icon.alt = 'kick';
+      kick_icon.draggable = false;
+      kick_button.appendChild(kick_icon);
+      el.appendChild(kick_button);
+      kick_button.addEventListener('click', () => {
+        // TODO: kick player
+      });
+      const promote_button = document.createElement('button');
+      promote_button.id = `promote-button-${user.client_id}`;
+      promote_button.classList.add('promote-button');
+      const promote_icon = document.createElement('img');
+      promote_icon.src = this.promote_img.src;
+      promote_icon.alt = 'promote';
+      promote_icon.draggable = false;
+      promote_button.appendChild(promote_icon);
+      el.appendChild(promote_button);
+      promote_button.addEventListener('click', () => {
+        // TODO: promote player
+      });
     }
     return el;
   }
