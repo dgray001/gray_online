@@ -45,7 +45,7 @@ export class DwgLobbyRooms extends DwgElement {
     const el = document.createElement('div');
     el.classList.add('lobby-room');
     el.id = `room-${room.room_id}`;
-    el.innerText = `${room.host.nickname}'s room`;
+    el.innerText = room.room_name;
     el.addEventListener('click', () => {
       this.dispatchEvent(new CustomEvent('join_room', {'detail': room.room_id}))
     });

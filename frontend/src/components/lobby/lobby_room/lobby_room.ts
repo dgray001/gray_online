@@ -10,7 +10,11 @@ export class DwgLobbyRoom extends DwgElement {
   user_list: HTMLDivElement;
   chatbox: DwgChatbox;
   leave_room: HTMLButtonElement;
+  rename_input: HTMLInputElement;
+  rename_room: HTMLButtonElement;
+  cancel_rename: HTMLButtonElement;
 
+  is_host = false;
   room: LobbyRoom;
 
   constructor() {
@@ -20,6 +24,9 @@ export class DwgLobbyRoom extends DwgElement {
     this.configureElement('user_list');
     this.configureElement('chatbox');
     this.configureElement('leave_room');
+    this.configureElement('rename_input');
+    this.configureElement('rename_room');
+    this.configureElement('cancel_rename');
   }
 
   protected override parsedCallback(): void {
@@ -30,12 +37,28 @@ export class DwgLobbyRoom extends DwgElement {
     this.leave_room.addEventListener('click', () => {
       this.dispatchEvent(new Event('leave_room'));
     });
+    this.rename_room.addEventListener('click', () => {
+      this.openRename();
+    });
+    this.cancel_rename.addEventListener('click', () => {
+      this.cancelRename();
+    });
+    this.rename_input.addEventListener('keyup', (e) => {
+      if (e.key === 'Enter') {
+        this.submitRename();
+      }
+    });
+    this.room_name.classList.add('show');
   }
 
-  setRoom(room: LobbyRoom) {
+  setRoom(room: LobbyRoom, is_host: boolean) {
+    this.is_host = is_host;
     this.room = room;
-    this.room_name.innerText = `${room.host.nickname}'s room`;
+    this.room_name.innerText = room.room_name;
     this.classList.add('show');
+    if (is_host) {
+      this.rename_room.classList.add('show');
+    }
   }
 
   clearRoom() {
@@ -71,6 +94,26 @@ export class DwgLobbyRoom extends DwgElement {
     } else {
       this.room.users.delete(client_id);
     }
+  }
+
+  private openRename() {
+    this.rename_room.classList.remove('show');
+    this.room_name.classList.remove('show');
+    this.rename_input.value = this.room.room_name;
+    this.rename_input.classList.add('show');
+    this.cancel_rename.classList.add('show');
+  }
+
+  private cancelRename() {
+    this.rename_room.classList.add('show');
+    this.room_name.classList.add('show');
+    this.rename_input.classList.remove('show');
+    this.cancel_rename.classList.remove('show');
+  }
+
+  private submitRename() {
+    this.dispatchEvent(new CustomEvent('rename_room', {'detail': this.rename_input.value}));
+    this.cancelRename();
   }
 }
 

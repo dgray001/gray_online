@@ -17,6 +17,7 @@ type Lobby struct {
 	AddClient      chan *Client
 	RemoveClient   chan *Client
 	CreateRoom     chan *Client
+	RenameRoom     chan *LobbyRoom
 	RemoveRoom     chan *LobbyRoom
 	JoinRoom       chan *ClientRoom
 	LeaveRoom      chan *ClientRoom
@@ -44,6 +45,7 @@ func CreateLobby() *Lobby {
 		AddClient:      make(chan *Client),
 		RemoveClient:   make(chan *Client),
 		CreateRoom:     make(chan *Client),
+		RenameRoom:     make(chan *LobbyRoom),
 		RemoveRoom:     make(chan *LobbyRoom),
 		JoinRoom:       make(chan *ClientRoom),
 		LeaveRoom:      make(chan *ClientRoom),
@@ -60,6 +62,8 @@ func (l *Lobby) Run() {
 			l.removeClient(client)
 		case client := <-l.CreateRoom:
 			l.createRoom(client)
+		case room := <-l.RenameRoom:
+			l.renameRoom(room)
 		case room := <-l.RemoveRoom:
 			l.removeRoom(room)
 		case data := <-l.JoinRoom:
@@ -130,6 +134,20 @@ func (l *Lobby) createRoom(client *Client) {
 	l.broadcastMessage(lobbyMessage{Sender: "server", Kind: "room-created", Content: client_id_string, Data: id_string})
 }
 
+func (l *Lobby) renameRoom(room *LobbyRoom) {
+	if room == nil || room.host == nil {
+		return
+	}
+	room_id_string := strconv.Itoa(int(room.room_id))
+	host_id_string := strconv.Itoa(int(room.host.client_id))
+	l.broadcastMessage(lobbyMessage{
+		Sender:  "room-" + room_id_string,
+		Kind:    "room-rename",
+		Content: room.room_name,
+		Data:    host_id_string,
+	})
+}
+
 func (l *Lobby) removeRoom(room *LobbyRoom) {
 	delete(l.rooms, room.room_id)
 	id_string := strconv.Itoa(int(room.room_id))
@@ -159,6 +177,7 @@ var (
 	client_to_lobby_messages = []string{"lobby-join", "lobby-left", "lobby-chat"}
 	to_all_messages          = []string{"room-created", "room-closed", "room-join", "room-leave"}
 	client_to_room_messages  = []string{"room-chat"}
+	host_to_room_messages    = []string{"room-rename"}
 )
 
 func (l *Lobby) broadcastMessage(message lobbyMessage) {
@@ -207,6 +226,27 @@ func (l *Lobby) broadcastMessage(message lobbyMessage) {
 		for _, client := range l.clients {
 			if client == nil || !client.valid() || client.lobby_room == nil ||
 				client.lobby_room.room_id != uint64(room_id) || client.client_id == uint64(client_id) {
+				continue
+			}
+			select {
+			case client.send_message <- message:
+			default:
+				l.removeClient(client)
+			}
+		}
+	} else if util.Contains(host_to_room_messages, message.Kind) {
+		room_id_string := strings.TrimPrefix(message.Sender, "room-")
+		room_id, err := strconv.ParseInt(room_id_string, 10, 0)
+		if err != nil {
+			room_id = -1
+		}
+		host_id, err := strconv.ParseInt(message.Data, 10, 0)
+		if err != nil {
+			host_id = -1
+		}
+		for _, client := range l.clients {
+			if client == nil || !client.valid() || client.client_id == uint64(host_id) ||
+				client.lobby_room == nil || client.lobby_room.room_id == uint64(room_id) {
 				continue
 			}
 			select {

@@ -1,24 +1,27 @@
 package lobby
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
 
 type LobbyRoom struct {
-	room_id uint64
-	host    *Client
-	clients map[uint64]*Client
-	lobby   *Lobby
+	room_id   uint64
+	room_name string
+	host      *Client
+	clients   map[uint64]*Client
+	lobby     *Lobby
 }
 
 func CreateLobbyRoom(host *Client, room_id uint64, lobby *Lobby) *LobbyRoom {
 	room := LobbyRoom{
-		room_id: room_id,
-		host:    host,
-		clients: make(map[uint64]*Client),
-		lobby:   lobby,
+		room_id:   room_id,
+		room_name: fmt.Sprintf("%s's room", host.nickname),
+		host:      host,
+		clients:   make(map[uint64]*Client),
+		lobby:     lobby,
 	}
 	room.clients[host.client_id] = host
 	host.lobby_room = &room
@@ -67,7 +70,8 @@ func (r *LobbyRoom) valid() bool {
 
 func (r *LobbyRoom) toFrontend() gin.H {
 	room := gin.H{
-		"room_id": strconv.Itoa(int(r.room_id)),
+		"room_id":   strconv.Itoa(int(r.room_id)),
+		"room_name": r.room_name,
 	}
 	if r.host != nil {
 		room["host"] = r.host.toFrontend()

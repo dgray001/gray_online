@@ -59,18 +59,18 @@ export class DwgLobby extends DwgElement {
       }
       return 'Error Creating Room';
     }, {loading_text: 'Creating Room ...', re_enable_button: false});
-    this.lobby_rooms.addEventListener('join_room', async (e: CustomEvent) => {
-      const room_id: number = e.detail;
+    this.lobby_rooms.addEventListener('join_room', async (e: CustomEvent<number>) => {
+      const room_id = e.detail;
       const response = await apiPost(`lobby/rooms/join/${room_id}/${this.connection_metadata.client_id}`, '');
       if (!response.success) {
         console.log('Error joining room:', response.error_message);
       }
     });
-    this.chatbox.addEventListener('chat_sent', (e: CustomEvent) => {
+    this.chatbox.addEventListener('chat_sent', (e: CustomEvent<ChatMessage>) => {
       this.sendChatMessage(this.chatbox, 'client', 'lobby-chat', e.detail);
     });
-    this.lobby_room.addEventListener('chat_sent', (e: CustomEvent) => {
-      const message: ChatMessage = e.detail;
+    this.lobby_room.addEventListener('chat_sent', (e: CustomEvent<ChatMessage>) => {
+      const message = e.detail;
       message.sender = `room-${this.connection_metadata.room_id}-${this.connection_metadata.client_id}`;
       this.sendChatMessage(this.lobby_room.chatbox, 'room', 'room-chat', message);
     });
@@ -80,6 +80,9 @@ export class DwgLobby extends DwgElement {
         console.log('Error leaving room:', response.error_message);
         this.leaveRoom();
       }
+    });
+    this.lobby_room.addEventListener('rename_room', (e: CustomEvent<string>) => {
+      // TODO: send socket message to rename room
     });
     this.lobby_rooms.refreshRooms();
   }
@@ -157,13 +160,14 @@ export class DwgLobby extends DwgElement {
         if (new_room_id && host_id && host) {
           const room: LobbyRoom = {
             room_id: new_room_id,
+            room_name: `${host.nickname}'s room`,
             host,
             users: new Map(),
           };
           room.users.set(host.client_id, host);
           this.lobby_rooms.addRoom(room);
           if (this.connection_metadata.client_id === host_id) {
-            this.enterRoom(room);
+            this.enterRoom(room, true);
             setTimeout(() => {
               // quick fix in case server responds instantly
               this.create_room_button.innerText = "Room Created";
@@ -209,7 +213,7 @@ export class DwgLobby extends DwgElement {
           if (room_join_id === this.connection_metadata.room_id) {
             this.lobby_room.joinRoom(joinee);
           } else if (client_join_id === this.connection_metadata.client_id && room) {
-            this.enterRoom(room);
+            this.enterRoom(room, false);
           }
           this.lobby_users.joinRoom(client_join_id, room_join_id);
           this.lobby_rooms.clientJoinsRoom(room_join_id, joinee);
@@ -247,9 +251,9 @@ export class DwgLobby extends DwgElement {
     this.name_header.innerText = nickname;
   }
 
-  private enterRoom(room: LobbyRoom) {
+  private enterRoom(room: LobbyRoom, is_host: boolean) {
     this.connection_metadata.room_id = room.room_id;
-    this.lobby_room.setRoom(room);
+    this.lobby_room.setRoom(room, is_host);
     this.lobby_room_wrapper.classList.add('show');
   }
 

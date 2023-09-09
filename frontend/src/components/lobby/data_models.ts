@@ -45,6 +45,7 @@ export function serverResponseToUser(server_response: LobbyUserFromServer): Lobb
 /** Object describing lobby room data */
 export declare interface LobbyRoom {
   room_id: number;
+  room_name: string;
   host: LobbyUser;
   users: Map<number, LobbyUser>;
 }
@@ -52,6 +53,7 @@ export declare interface LobbyRoom {
 /** Data describing a lobby room returned from the server */
 export declare interface LobbyRoomFromServer {
   room_id: string;
+  room_name: string;
   host: LobbyUserFromServer;
   users: LobbyUserFromServer[];
 }
@@ -60,6 +62,7 @@ export declare interface LobbyRoomFromServer {
 export function serverResponseToRoom(server_response: LobbyRoomFromServer): LobbyRoom {
   return {
     room_id: parseInt(server_response.room_id),
+    room_name: server_response.room_name,
     host: serverResponseToUser(server_response.host),
     users: new Map(server_response.users.map((server_user) => {
       const user = serverResponseToUser(server_user);

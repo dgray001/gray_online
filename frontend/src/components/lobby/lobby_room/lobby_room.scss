@@ -25,9 +25,41 @@ dwg-lobby-room {
       height: 100%;
       line-height: 36px;
       padding-left: 8px;
+
+      &:not(.show) {
+        display: none;
+      }
     }
 
-    #leave-room {
+    #rename-input {
+      box-sizing: border-box;
+      flex: 1 0 0;
+      font-size: 24px;
+      height: 100%;
+      line-height: 36px;
+      padding-left: 8px;
+
+      &:not(.show) {
+        display: none;
+      }
+    }
+
+    #rename-room {
+      &:not(.show) {
+        display: none;
+      }
+    }
+
+    #cancel-rename {
+      font-size: 18px;
+      width: 80px;
+
+      &:not(.show) {
+        display: none;
+      }
+    }
+
+    > button {
       background-color: transparent;
       border: none;
       border-radius: 6px;

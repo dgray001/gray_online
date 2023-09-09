@@ -1,3 +1,3 @@
 Online Games
 
-v0.0x: Lobby room functional
+v0.0y: Begin rename room feature
