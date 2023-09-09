@@ -27,7 +27,7 @@ export class DwgLobbyUsers extends DwgElement {
   }
 
   refresh_users_running = false;
-  private async refreshUsers() {
+  async refreshUsers() {
     if (this.refresh_users_running) {
       return;
     }

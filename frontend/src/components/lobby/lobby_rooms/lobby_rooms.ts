@@ -76,6 +76,17 @@ export class DwgLobbyRooms extends DwgElement {
     return this.rooms.get(room_id);
   }
 
+  renameRoom(room_id: number, new_name: string) {
+    const room = this.getRoom(room_id);
+    if (room) {
+      room.room_name = new_name;
+      const room_el = this.querySelector<HTMLDivElement>(`#room-${room.room_id}`);
+      if (room_el) {
+        room_el.replaceWith(this.getRoomElement(room));
+      }
+    }
+  }
+
   clientJoinsRoom(room_id: number, joinee: LobbyUser) {
     const curr_room = this.getRoom(joinee.room_id);
     if (curr_room) {

@@ -1,3 +1,3 @@
 Online Games
 
-v0.1: Basic lobby functionality
+v0.1a: Can rename room

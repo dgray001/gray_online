@@ -36,7 +36,7 @@ func (r *LobbyRoom) addClient(c *Client) {
 	c.lobby_room = r
 	client_id_string := strconv.Itoa(int(c.client_id))
 	room_id_string := strconv.Itoa(int(r.room_id))
-	r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-join", Data: client_id_string})
+	r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-joined", Data: client_id_string})
 }
 
 func (r *LobbyRoom) removeClient(c *Client) {
@@ -49,7 +49,7 @@ func (r *LobbyRoom) removeClient(c *Client) {
 		delete(r.clients, c.client_id)
 		client_id_string := strconv.Itoa(int(c.client_id))
 		room_id_string := strconv.Itoa(int(r.room_id))
-		r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-leave", Data: client_id_string})
+		r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-left", Data: client_id_string})
 	}
 }
 

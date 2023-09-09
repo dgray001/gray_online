@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strconv"
 
 	"github.com/dgray001/gray_online/lobby"
 	"github.com/gin-gonic/gin"
@@ -60,73 +59,6 @@ func main() {
 			{
 				api_rooms.POST("/get", func(c *gin.Context) {
 					c.JSON(200, successResponse(lobby_object.GetRooms()))
-				})
-				api_rooms.POST("/create/:client_id", func(c *gin.Context) {
-					client_id_param := c.Param("client_id")
-					client_id, err := strconv.Atoi(client_id_param)
-					if err != nil || client_id < 1 {
-						c.JSON(200, failureResponse("client id not specified"))
-						return
-					}
-					client := lobby_object.GetClient(uint64(client_id))
-					if client == nil {
-						c.JSON(200, failureResponse("client doesn't exist"))
-						return
-					}
-					lobby_object.CreateRoom <- client
-					c.JSON(200, successResponse(nil))
-				})
-				api_rooms.POST("/join/:room_id/:client_id", func(c *gin.Context) {
-					room_id_param := c.Param("room_id")
-					client_id_param := c.Param("client_id")
-					room_id, err := strconv.Atoi(room_id_param)
-					if err != nil || room_id < 1 {
-						c.JSON(200, failureResponse("room id not specified"))
-						return
-					}
-					client_id, err := strconv.Atoi(client_id_param)
-					if err != nil || client_id < 1 {
-						c.JSON(200, failureResponse("client id not specified"))
-						return
-					}
-					client := lobby_object.GetClient(uint64(client_id))
-					if client == nil {
-						c.JSON(200, failureResponse("client doesn't exist"))
-						return
-					}
-					room := lobby_object.GetRoom(uint64(room_id))
-					if room == nil {
-						c.JSON(200, failureResponse("room doesn't exist"))
-						return
-					}
-					lobby_object.JoinRoom <- lobby.MakeClientRoom(client, room)
-					c.JSON(200, successResponse(nil))
-				})
-				api_rooms.POST("/leave/:room_id/:client_id", func(c *gin.Context) {
-					room_id_param := c.Param("room_id")
-					client_id_param := c.Param("client_id")
-					room_id, err := strconv.Atoi(room_id_param)
-					if err != nil || room_id < 1 {
-						c.JSON(200, failureResponse("room id not specified"))
-						return
-					}
-					client_id, err := strconv.Atoi(client_id_param)
-					if err != nil || client_id < 1 {
-						c.JSON(200, failureResponse("client id not specified"))
-						return
-					}
-					client := lobby_object.GetClient(uint64(client_id))
-					if client == nil {
-						c.JSON(200, failureResponse("client doesn't exist"))
-						return
-					}
-					room := lobby_object.GetRoom(uint64(room_id))
-					if room == nil {
-						c.JSON(200, failureResponse("room doesn't exist"))
-						return
-					}
-					lobby_object.LeaveRoom <- lobby.MakeClientRoom(client, room)
-					c.JSON(200, successResponse(nil))
 				})
 			}
 

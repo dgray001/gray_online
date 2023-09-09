@@ -70,7 +70,67 @@ func (c *Client) readMessages() {
 			fmt.Println("Error at message reader:", err)
 			break
 		}
-		c.lobby.broadcast <- message
+		fmt.Printf("Receiving client message from %d: {%s, %s, %s, %s}\n",
+			c.client_id, message.Sender, message.Content, message.Data, message.Kind)
+		var broadcast = false
+		switch message.Kind {
+		case "room-create":
+			c.lobby.CreateRoom <- c
+		case "room-join":
+			room_id, err := strconv.Atoi(message.Data)
+			if err != nil || room_id < 1 {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-join-failed", Content: "Invalid room id"}
+				break
+			}
+			room := c.lobby.GetRoom(uint64(room_id))
+			if room == nil {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-join-failed", Content: "Room doesn't exist"}
+				break
+			}
+			c.lobby.JoinRoom <- MakeClientRoom(c, room)
+		case "room-leave":
+			room_id, err := strconv.Atoi(message.Data)
+			if err != nil || room_id < 1 {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-leave-failed", Content: "Invalid room id"}
+				break
+			}
+			room := c.lobby.GetRoom(uint64(room_id))
+			if room == nil {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-leave-failed", Content: "Room doesn't exist"}
+				break
+			}
+			if c.lobby_room == nil || c.lobby_room.room_id != room.room_id {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-leave-failed", Content: "Not in that room"}
+				break
+			}
+			c.lobby.LeaveRoom <- MakeClientRoom(c, room)
+		case "room-rename":
+			room_id, err := strconv.Atoi(message.Data)
+			if err != nil || room_id < 1 {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-rename-failed", Content: "Invalid room id"}
+				break
+			}
+			room := c.lobby.GetRoom(uint64(room_id))
+			if room == nil {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-rename-failed", Content: "Room doesn't exist"}
+				break
+			}
+			if room.host.client_id != c.client_id {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-rename-failed", Content: "Not room host"}
+				break
+			}
+			room.room_name = message.Content
+			c.lobby.RenameRoom <- room
+		case "lobby-chat":
+			fallthrough
+		case "room-chat":
+			broadcast = true
+		default:
+			fmt.Println("Message kind unknown: " + message.Kind)
+		}
+		if broadcast {
+			c.lobby.broadcast <- message
+		}
 	}
 }
 

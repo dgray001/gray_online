@@ -67,6 +67,29 @@ export class DwgLobbyRoom extends DwgElement {
     this.classList.remove('show');
   }
 
+  renameRoom(new_name: string, renamer_id: number) {
+    if (this.room) {
+      this.room.room_name = new_name;
+      this.room_name.innerText = new_name;
+      if (renamer_id === this.room.host.client_id) {
+        this.chatbox.addChat({
+          message: `The host has renamed the room to: ${new_name}`,
+          color: 'gray',
+        });
+      } else if (this.room.users.has(renamer_id)) {
+        this.chatbox.addChat({
+          message: `${this.room.users.get(renamer_id).nickname} renamed the room to: ${new_name}`,
+          color: 'gray',
+        });
+      } else {
+        this.chatbox.addChat({
+          message: `The room has been renamed to: ${new_name}`,
+          color: 'gray',
+        });
+      }
+    }
+  }
+
   hasClient(client_id: number): boolean {
     if (!this.classList.contains('show') || !this.room) {
       return false;

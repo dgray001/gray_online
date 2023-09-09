@@ -48,23 +48,10 @@ export class DwgLobby extends DwgElement {
       await this.lobby_rooms.refreshRooms();
     });
     clickButton(this.create_room_button, async () => {
-      const response = await apiPost(`lobby/rooms/create/${this.connection_metadata.client_id}`, '');
-      if (response.success) {
-        return 'Joining Room ...';
-      } else {
-        setTimeout(() => {
-          this.create_room_button.disabled = false;
-          this.create_room_button.innerText = 'Create Room';
-        }, 1000);
-      }
-      return 'Error Creating Room';
+      this.socket.send(createMessage(`client-${this.connection_metadata.client_id}`, 'room-create'))
     }, {loading_text: 'Creating Room ...', re_enable_button: false});
     this.lobby_rooms.addEventListener('join_room', async (e: CustomEvent<number>) => {
-      const room_id = e.detail;
-      const response = await apiPost(`lobby/rooms/join/${room_id}/${this.connection_metadata.client_id}`, '');
-      if (!response.success) {
-        console.log('Error joining room:', response.error_message);
-      }
+      this.socket.send(createMessage(`client-${this.connection_metadata.client_id}`, 'room-join', '', e.detail.toString()))
     });
     this.chatbox.addEventListener('chat_sent', (e: CustomEvent<ChatMessage>) => {
       this.sendChatMessage(this.chatbox, 'client', 'lobby-chat', e.detail);
@@ -75,14 +62,20 @@ export class DwgLobby extends DwgElement {
       this.sendChatMessage(this.lobby_room.chatbox, 'room', 'room-chat', message);
     });
     this.lobby_room.addEventListener('leave_room', async () => {
-      const response = await apiPost(`lobby/rooms/leave/${this.connection_metadata.room_id}/${this.connection_metadata.client_id}`, '');
-      if (!response.success) {
-        console.log('Error leaving room:', response.error_message);
-        this.leaveRoom();
-      }
+      this.socket.send(createMessage(
+        `client-${this.connection_metadata.client_id}`,
+        'room-leave',
+        '',
+        this.connection_metadata.room_id.toString(),
+      ));
     });
     this.lobby_room.addEventListener('rename_room', (e: CustomEvent<string>) => {
-      // TODO: send socket message to rename room
+      this.socket.send(createMessage(
+        `client-${this.connection_metadata.client_id}`,
+        'room-rename',
+        e.detail,
+        this.connection_metadata.room_id.toString(),
+      ));
     });
     this.lobby_rooms.refreshRooms();
   }
@@ -92,6 +85,8 @@ export class DwgLobby extends DwgElement {
       this.socket.close(3000, "opening new connection");
     }
     this.socket = new_socket;
+    this.lobby_rooms.refreshRooms();
+    this.lobby_users.refreshUsers();
     this.socket.addEventListener('message', (m) => {
       try {
         const message = JSON.parse(m.data) as LobbyMessage;
@@ -117,14 +112,13 @@ export class DwgLobby extends DwgElement {
             message: `You (${this.connection_metadata.nickname}) joined lobby with client id ${id}`,
             sender: 'server',
           });
-          this.socket.send(createMessage(`client-${id}`, 'lobby-join', this.connection_metadata.nickname, `${id}`));
           this.lobby_users.addUser({client_id: id, nickname: this.connection_metadata.nickname});
         } else {
           this.socket.close(3001, 'you-joined-lobby message did not return properly formed client id');
           this.dispatchEvent(this.connection_lost);
         }
         break;
-      case 'lobby-join':
+      case 'lobby-joined':
         const join_client_id = parseInt(message.data);
         if (join_client_id) {
           this.chatbox.addChat({
@@ -155,7 +149,7 @@ export class DwgLobby extends DwgElement {
         break;
       case 'room-created':
         const new_room_id = parseInt(message.data);
-        const host_id = parseInt(message.content);
+        const host_id = parseInt(message.sender.replace('client-', ''));
         const host = this.lobby_users.getUser(host_id);
         if (new_room_id && host_id && host) {
           const room: LobbyRoom = {
@@ -190,7 +184,7 @@ export class DwgLobby extends DwgElement {
           }
         }
         break;
-      case 'room-leave':
+      case 'room-left':
         const room_leave_id = parseInt(message.sender.replace('room-', ''));
         const client_leave_id = parseInt(message.data.replace('client-', ''));
         if (room_leave_id && client_leave_id) {
@@ -204,7 +198,7 @@ export class DwgLobby extends DwgElement {
           this.lobby_rooms.clientLeavesRoom(room_leave_id, client_leave_id);
         }
         break;
-      case 'room-join':
+      case 'room-joined':
         const room_join_id = parseInt(message.sender.replace('room-', ''));
         const client_join_id = parseInt(message.data.replace('client-', ''));
         const joinee = this.lobby_users.getUser(client_join_id);
@@ -236,6 +230,23 @@ export class DwgLobby extends DwgElement {
           });
         }
         break;
+      case 'room-renamed':
+        const room_renamed_id = parseInt(message.sender.replace('room-', ''));
+        const renamer_client_id = parseInt(message.data);
+        if (room_renamed_id && renamer_client_id) {
+          if (renamer_client_id === this.connection_metadata.client_id) {
+            // TODO: loader for renaming room
+          }
+          if (this.lobby_room.room && this.lobby_room.room.room_id === room_renamed_id) {
+            this.lobby_room.renameRoom(message.content, renamer_client_id);
+          }
+          this.lobby_rooms.renameRoom(room_renamed_id, message.content);
+        }
+        break;
+      case 'room-join-failed':
+      case 'room-leave-failed':
+      case 'room-rename-failed':
+        throw new Error(message.content);
       default:
         console.log("Unknown message type", message.kind, "from", message.sender);
         break;

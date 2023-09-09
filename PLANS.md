@@ -1,8 +1,5 @@
 
 v0.2: launch game
- a: socket message to rename room
- b: socket messages for join/leave/?? instead of api
- c: socket message for creating a room instead of api
  d: see players in room
  e: host can kick players in room
  f: host can reassign host
@@ -23,3 +20,9 @@ v0.2: launch game
 
 v0.3: risk outline
  - can launch a simple game of risq
+
+
+P3/P4:
+ - loader for client requests in lobby: room-create, room-join, room-leave, room-rename
+ - client still leaves room if it fails => sync state
+ - handle other failures by syncing state => show message
