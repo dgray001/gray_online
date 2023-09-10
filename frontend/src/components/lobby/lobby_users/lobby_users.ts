@@ -51,7 +51,11 @@ export class DwgLobbyUsers extends DwgElement {
   }
 
   private addUserString(user: LobbyUser): string {
-    return `<div class="lobby-user" id="user-${user.client_id}">${user.nickname} (${user.client_id})</div>`;
+    return `<div class="lobby-user" id="user-${user.client_id}">${this.getUserInnerText(user)}</div>`;
+  }
+
+  private getUserInnerText(user: LobbyUser): string {
+    return `${user.nickname} (${user.ping})`;
   }
 
   addUser(user: LobbyUser) {
@@ -66,9 +70,19 @@ export class DwgLobbyUsers extends DwgElement {
     this.users.set(user.client_id, user);
   }
 
-  removeUser(user: LobbyUser) {
-    this.users.delete(user.client_id);
-    const user_el = this.querySelector<HTMLDivElement>(`#user-${user.client_id}`);
+  updatePing(client_id: number, ping: number) {
+    if (this.users.has(client_id)) {
+      this.users.get(client_id).ping = ping;
+      const user_el = this.querySelector<HTMLDivElement>(`#user-${client_id}`);
+      if (user_el) {
+        user_el.innerText = this.getUserInnerText(this.users.get(client_id));
+      }
+    }
+  }
+
+  removeUser(client_id: number) {
+    this.users.delete(client_id);
+    const user_el = this.querySelector<HTMLDivElement>(`#user-${client_id}`);
     if (!user_el) {
       return;
     }

@@ -6,7 +6,7 @@ dwg-lobby {
   display: flex;
   flex-flow: column nowrap;
 
-  #name-header {
+  #page-header {
     background-color: rgb(0, 30, 60);
     box-sizing: border-box;
     display: block;
@@ -17,6 +17,10 @@ dwg-lobby {
     min-height: var(--name-header-height);
     padding-left: 1.5em;
     width: 100%;
+
+    #ping-container {
+      margin-left: 2em;
+    }
   }
 
   #buttons {

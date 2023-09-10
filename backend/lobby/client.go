@@ -11,20 +11,24 @@ import (
 )
 
 const (
-	read_wait  = 30 * time.Second
-	read_limit = 5120 // bytes
-	ping_time  = 250 * time.Millisecond
-	write_wait = 10 * time.Second
+	read_wait            = 30 * time.Second
+	read_limit           = 5120 // bytes
+	ping_time            = 350 * time.Millisecond
+	ping_broadcast_count = 4
+	write_wait           = 10 * time.Second
 )
 
 type Client struct {
-	client_id    uint64
-	nickname     string
-	connection   *websocket.Conn
-	send_message chan lobbyMessage
-	lobby        *Lobby
-	lobby_room   *LobbyRoom
-	game         *game.Game
+	client_id              uint64
+	nickname               string
+	connection             *websocket.Conn
+	ping                   time.Duration
+	ping_start             time.Time
+	ping_broadcast_counter uint8
+	send_message           chan lobbyMessage
+	lobby                  *Lobby
+	lobby_room             *LobbyRoom
+	game                   *game.Game
 }
 
 type lobbyMessage struct {
@@ -36,12 +40,15 @@ type lobbyMessage struct {
 
 func CreateClient(connection *websocket.Conn, nickname string, lobby *Lobby) *Client {
 	client := Client{
-		client_id:    0,
-		nickname:     nickname,
-		connection:   connection,
-		send_message: make(chan lobbyMessage),
-		lobby:        lobby,
-		lobby_room:   nil,
+		client_id:              0,
+		nickname:               nickname,
+		connection:             connection,
+		ping:                   0,
+		ping_start:             time.Now(),
+		ping_broadcast_counter: 1,
+		send_message:           make(chan lobbyMessage),
+		lobby:                  lobby,
+		lobby_room:             nil,
 	}
 	go client.readMessages()
 	go client.writeMessages()
@@ -54,6 +61,10 @@ func (c *Client) close() {
 	c.connection.Close()
 }
 
+func (c *Client) pingString() string {
+	return strconv.FormatInt(int64(c.ping/time.Millisecond), 10)
+}
+
 func (c *Client) readMessages() {
 	defer func() {
 		c.lobby.RemoveClient <- c
@@ -62,7 +73,21 @@ func (c *Client) readMessages() {
 	c.connection.SetReadLimit(read_limit)
 	c.connection.SetReadDeadline(time.Now().Add(read_wait))
 	c.connection.SetPongHandler(func(string) error {
+		c.ping = time.Now().Sub(c.ping_start)
 		c.connection.SetReadDeadline(time.Now().Add(read_wait))
+		c.ping_broadcast_counter--
+		ping_message := lobbyMessage{
+			Sender:  "server",
+			Kind:    "ping-update",
+			Data:    strconv.FormatUint(c.client_id, 10),
+			Content: c.pingString(),
+		}
+		if c.ping_broadcast_counter < 1 {
+			c.ping_broadcast_counter = ping_broadcast_count
+			c.lobby.broadcastMessage(ping_message)
+		} else {
+			c.send_message <- ping_message
+		}
 		return nil
 	})
 	for {
@@ -214,6 +239,7 @@ func (c *Client) writeMessages() {
 				fmt.Println("Error at ping writer:", err)
 				break
 			}
+			c.ping_start = time.Now()
 		}
 	}
 }
@@ -235,6 +261,7 @@ func (c *Client) toFrontend() gin.H {
 	client := gin.H{
 		"client_id": strconv.Itoa(int(c.client_id)),
 		"nickname":  c.nickname,
+		"ping":      c.pingString(),
 	}
 	if c.lobby_room != nil {
 		client["room_id"] = c.lobby_room.room_id

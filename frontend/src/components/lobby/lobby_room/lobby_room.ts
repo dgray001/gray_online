@@ -80,7 +80,7 @@ export class DwgLobbyRoom extends DwgElement {
     const el = document.createElement('div');
     el.classList.add('room-user');
     el.id = `user-${user.client_id}`;
-    el.innerText = `${user.nickname} (${user.client_id})`;
+    el.innerText = this.getUserElementText(user);
     if (is_host) {
       const kick_button = document.createElement('button');
       kick_button.id = `kick-button-${user.client_id}`;
@@ -108,6 +108,10 @@ export class DwgLobbyRoom extends DwgElement {
       });
     }
     return el;
+  }
+
+  private getUserElementText(user: LobbyUser): string {
+    return `${user.nickname} (${user.ping})`;
   }
 
   clearRoom() {
@@ -158,6 +162,19 @@ export class DwgLobbyRoom extends DwgElement {
       return undefined;
     }
     return this.room.host;
+  }
+
+  updatePing(client_id: number, ping: number) {
+    if (!this.room) {
+      return;
+    }
+    if (this.room.users.has(client_id)) {
+      this.room.users.get(client_id).ping = ping;
+      const user_el = this.querySelector<HTMLDivElement>(`#user-${client_id}`);
+      if (user_el) {
+        user_el.innerText = this.getUserElementText(this.room.users.get(client_id));
+      }
+    }
   }
 
   joinRoom(joinee: LobbyUser) {

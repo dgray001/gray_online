@@ -183,13 +183,16 @@ func (l *Lobby) leaveRoom(data *ClientRoom) {
 
 var (
 	client_to_lobby_messages = []string{"lobby-joined", "lobby-left", "lobby-chat"}
-	lobby_messages           = []string{"room-created", "room-closed", "room-joined", "room-left", "room-renamed", "room-kicked", "room-promoted"}
-	client_to_room_messages  = []string{"room-chat"}
-	room_messages            = []string{}
+	lobby_messages           = []string{"room-created", "room-closed", "room-joined",
+		"room-left", "room-renamed", "room-kicked", "room-promoted", "ping-update"}
+	client_to_room_messages = []string{"room-chat"}
+	room_messages           = []string{}
 )
 
 func (l *Lobby) broadcastMessage(message lobbyMessage) {
-	fmt.Printf("Broadcasting message {%s, %s, %s, %s}\n", message.Sender, message.Content, message.Data, message.Kind)
+	if message.Kind != "ping-update" {
+		fmt.Printf("Broadcasting message {%s, %s, %s, %s}\n", message.Sender, message.Content, message.Data, message.Kind)
+	}
 	if util.Contains(client_to_lobby_messages, message.Kind) {
 		send_id_string := strings.TrimPrefix(message.Sender, "client-")
 		sender_id, err := strconv.ParseInt(send_id_string, 10, 0)

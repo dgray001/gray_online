@@ -16,7 +16,8 @@ import './lobby_rooms/lobby_rooms';
 import './lobby_room/lobby_room';
 
 export class DwgLobby extends DwgElement {
-  name_header: HTMLSpanElement;
+  name_container: HTMLSpanElement;
+  ping_container: HTMLSpanElement;
   refresh_lobby_button: HTMLButtonElement;
   create_room_button: HTMLButtonElement;
   lobby_rooms: DwgLobbyRooms;
@@ -26,13 +27,14 @@ export class DwgLobby extends DwgElement {
   lobby_room: DwgLobbyRoom;
 
   socket: WebSocket;
-  connection_metadata: ConnectionMetadata = {nickname: "Anonymous"};
+  connection_metadata: ConnectionMetadata = {nickname: "Anonymous", ping: 0};
   connection_lost = new Event('connection_lost');
 
   constructor() {
     super();
     this.htmlString = html;
-    this.configureElement('name_header');
+    this.configureElement('name_container');
+    this.configureElement('ping_container');
     this.configureElement('refresh_lobby_button');
     this.configureElement('create_room_button');
     this.configureElement('lobby_rooms');
@@ -117,7 +119,9 @@ export class DwgLobby extends DwgElement {
     if (!this.socketActive()) {
       return;
     }
-    console.log(message);
+    if (message.kind !== 'ping-update') {
+      console.log(message);
+    }
     switch(message.kind) {
       case 'lobby-you-joined':
         const id = parseInt(message.data);
@@ -128,7 +132,7 @@ export class DwgLobby extends DwgElement {
             message: `You (${this.connection_metadata.nickname}) joined lobby with client id ${id}`,
             sender: 'server',
           });
-          this.lobby_users.addUser({client_id: id, nickname: this.connection_metadata.nickname});
+          this.lobby_users.addUser({client_id: id, nickname: this.connection_metadata.nickname, ping: 0});
         } else {
           this.socket.close(3001, 'you-joined-lobby message did not return properly formed client id');
           this.dispatchEvent(this.connection_lost);
@@ -141,7 +145,7 @@ export class DwgLobby extends DwgElement {
             message: `${message.content} joined lobby with client id ${join_client_id}`,
             sender: 'server',
           });
-          this.lobby_users.addUser({client_id: join_client_id, nickname: message.content});
+          this.lobby_users.addUser({client_id: join_client_id, nickname: message.content, ping: 0});
         }
         break;
       case 'lobby-left':
@@ -152,7 +156,7 @@ export class DwgLobby extends DwgElement {
             sender: 'server',
           });
           const client = this.lobby_users.getUser(left_client_id);
-          this.lobby_users.removeUser({client_id: left_client_id, nickname: message.content});
+          this.lobby_users.removeUser(left_client_id);
           this.lobby_rooms.userDisconnected(left_client_id);
           if (client && client.room_id === this.connection_metadata.room_id &&
             client.client_id === this.lobby_room.getHost()?.client_id) {
@@ -169,6 +173,17 @@ export class DwgLobby extends DwgElement {
             message: message.content,
             sender: this.lobby_users.getUser(chat_client_id)?.nickname ?? chat_client_id.toString(),
           });
+        }
+        break;
+      case 'ping-update':
+        const update_ping_id = parseInt(message.data);
+        const ping = parseInt(message.content);
+        if (update_ping_id && !isNaN(ping)) {
+          if (this.connection_metadata.client_id === update_ping_id) {
+            this.setPing(ping);
+          }
+          this.lobby_room.updatePing(update_ping_id, ping);
+          this.lobby_users.updatePing(update_ping_id, ping);
         }
         break;
       case 'room-created':
@@ -304,9 +319,14 @@ export class DwgLobby extends DwgElement {
     return !!this.socket && this.socket.readyState == WebSocket.OPEN;
   }
 
-  private setNickname(nickname: string) {
+  setNickname(nickname: string) {
     this.connection_metadata.nickname = nickname;
-    this.name_header.innerText = nickname;
+    this.name_container.innerText = nickname;
+  }
+
+  setPing(ping: number) {
+    this.connection_metadata.ping = ping;
+    this.ping_container.innerText = `ping: ${Math.round(ping)}`;
   }
 
   private enterRoom(room: LobbyRoom, is_host: boolean) {

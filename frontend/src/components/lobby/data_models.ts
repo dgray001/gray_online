@@ -15,6 +15,7 @@ export function createMessage(sender: string, kind: string, content?: string, da
 /** Interface describing the connection between the frontend and the server */
 export declare interface ConnectionMetadata {
   nickname: string;
+  ping: number;
   client_id?: number;
   room_id?: number;
 }
@@ -23,6 +24,7 @@ export declare interface ConnectionMetadata {
 export declare interface LobbyUser {
   client_id: number;
   nickname: string;
+  ping: number,
   room_id?: number;
 }
 
@@ -30,6 +32,7 @@ export declare interface LobbyUser {
 export declare interface LobbyUserFromServer {
   client_id: string;
   nickname: string;
+  ping: string;
   room_id?: string;
 }
 
@@ -38,6 +41,7 @@ export function serverResponseToUser(server_response: LobbyUserFromServer): Lobb
   return {
     client_id: parseInt(server_response.client_id),
     nickname: server_response.nickname,
+    ping: parseInt(server_response.ping),
     room_id: parseInt(server_response.room_id) ?? undefined,
   }
 }

@@ -1,17 +1,14 @@
 
 v0.2: launch game
- i: backend abstract game logic => chatting/exiting/reconnecting
+ f: lobby room can launch game => specify game type
+ g: lobby can handle game chats/exiting/reconnecting
+ h: somehow abstract game update messages
  j: frontend abstract game logic => chatting/exiting/reconnecting
  k: host can control max number viewers
  l: game enum selectable in game lobby
- m: lobby rooms shows room name, host name, and game
- n: show pings in lobby
- o: show pings in game room
+ m: lobby room selector component
  p: form created from custom config => each game has its own
- q: tic tac toe config
- r: tic tac toe backend
- s: tic tac toe frontend
- t-q: finish being able to launch and play tic tac toe
+ q-z: finish being able to launch and play fiddlesticks
 
 v0.3: risk outline
  - can launch a simple game of risq

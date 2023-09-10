@@ -28,8 +28,8 @@ export class DwgPageHome extends DwgElement {
       });
       socket.addEventListener('open', () => {
         this.lobby.setSocket(socket);
-        this.lobby.connection_metadata.nickname = nickname;
-        this.lobby.name_header.innerText = nickname;
+        this.lobby.setNickname(nickname);
+        this.lobby.setPing(0);
         this.lobby_connector.classList.add('hide');
       });
     });
