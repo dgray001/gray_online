@@ -46,12 +46,22 @@ export function serverResponseToUser(server_response: LobbyUserFromServer): Lobb
   }
 }
 
+/** Enum for possible games the lobby can launch */
+export enum GameType {
+  UNSPECIFIED = 0,
+  FIDDLESTICKS = 1,
+}
+
 /** Object describing lobby room data */
 export declare interface LobbyRoom {
   room_id: number;
   room_name: string;
   host: LobbyUser;
-  users: Map<number, LobbyUser>;
+  players: Map<number, LobbyUser>;
+  viewers: Map<number, LobbyUser>;
+  max_players: number;
+  max_viewers: number;
+  game_type: GameType;
 }
 
 /** Data describing a lobby room returned from the server */
@@ -59,7 +69,11 @@ export declare interface LobbyRoomFromServer {
   room_id: string;
   room_name: string;
   host: LobbyUserFromServer;
-  users: LobbyUserFromServer[];
+  players: LobbyUserFromServer[];
+  viewers: LobbyUserFromServer[];
+  max_players: string;
+  max_viewers: string;
+  game_type: string;
 }
 
 /** Convert a server response to a TS lobby room object */
@@ -68,9 +82,16 @@ export function serverResponseToRoom(server_response: LobbyRoomFromServer): Lobb
     room_id: parseInt(server_response.room_id),
     room_name: server_response.room_name,
     host: serverResponseToUser(server_response.host),
-    users: new Map(server_response.users.map((server_user) => {
+    players: new Map(server_response.players.map((server_user) => {
       const user = serverResponseToUser(server_user);
       return [user.client_id, user];
     })),
+    viewers: new Map(server_response.viewers.map((server_user) => {
+      const user = serverResponseToUser(server_user);
+      return [user.client_id, user];
+    })),
+    max_players: parseInt(server_response.max_players),
+    max_viewers: parseInt(server_response.max_viewers),
+    game_type: parseInt(server_response.game_type),
   }
 }

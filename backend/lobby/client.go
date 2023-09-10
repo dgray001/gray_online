@@ -199,7 +199,7 @@ func (c *Client) readMessages() {
 				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-promote-failed", Content: "Client doesn't exist"}
 				break
 			}
-			c.lobby.PromoteClientInRoom <- MakeClientRoom(client, room)
+			c.lobby.PromotePlayerInRoom <- MakeClientRoom(client, room)
 		case "lobby-chat":
 			fallthrough
 		case "room-chat":

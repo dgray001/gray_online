@@ -1,3 +1,3 @@
 Online Games
 
-v0.1f: Ping updates
+v0.1g: Update lobby room data

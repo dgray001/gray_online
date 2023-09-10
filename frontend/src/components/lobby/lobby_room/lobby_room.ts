@@ -14,6 +14,7 @@ export class DwgLobbyRoom extends DwgElement {
   cancel_rename: HTMLButtonElement;
   host_container: HTMLDivElement;
   players_container: HTMLDivElement;
+  viewers_container: HTMLDivElement;
   kick_img: HTMLImageElement;
   promote_img: HTMLImageElement;
 
@@ -31,6 +32,7 @@ export class DwgLobbyRoom extends DwgElement {
     this.configureElement('cancel_rename');
     this.configureElement('host_container');
     this.configureElement('players_container');
+    this.configureElement('viewers_container');
     this.configureElement('kick_img');
     this.configureElement('promote_img');
   }
@@ -67,7 +69,7 @@ export class DwgLobbyRoom extends DwgElement {
     }
     this.host_container.replaceChildren(this.getUserElement(room.host, false));
     const user_els = [];
-    for (const user of room.users.values()) {
+    for (const user of room.players.values()) {
       if (user.client_id === room.host.client_id) {
         continue;
       }
@@ -129,9 +131,9 @@ export class DwgLobbyRoom extends DwgElement {
           message: `The host has renamed the room to: ${new_name}`,
           color: 'gray',
         });
-      } else if (this.room.users.has(renamer_id)) {
+      } else if (this.room.players.has(renamer_id)) {
         this.chatbox.addChat({
-          message: `${this.room.users.get(renamer_id).nickname} renamed the room to: ${new_name}`,
+          message: `${this.room.players.get(renamer_id).nickname} renamed the room to: ${new_name}`,
           color: 'gray',
         });
       } else {
@@ -143,18 +145,28 @@ export class DwgLobbyRoom extends DwgElement {
     }
   }
 
-  hasClient(client_id: number): boolean {
+  hasPlayer(client_id: number): boolean {
     if (!this.classList.contains('show') || !this.room) {
       return false;
     }
-    return this.room.users.has(client_id);
+    return this.room.players.has(client_id);
   }
 
   getClient(client_id: number): LobbyUser {
     if (!this.classList.contains('show') || !this.room) {
       return undefined;
     }
-    return this.room.users.get(client_id);
+    if (this.room.players.has(client_id)) {
+      return this.room.players.get(client_id);
+    }
+    return this.room.viewers.get(client_id);
+  }
+
+  getPlayer(client_id: number): LobbyUser {
+    if (!this.classList.contains('show') || !this.room) {
+      return undefined;
+    }
+    return this.room.players.get(client_id);
   }
 
   getHost(): LobbyUser {
@@ -168,26 +180,32 @@ export class DwgLobbyRoom extends DwgElement {
     if (!this.room) {
       return;
     }
-    if (this.room.users.has(client_id)) {
-      this.room.users.get(client_id).ping = ping;
+    if (this.room.players.has(client_id)) {
+      this.room.players.get(client_id).ping = ping;
       const user_el = this.querySelector<HTMLDivElement>(`#user-${client_id}`);
       if (user_el) {
-        user_el.innerText = this.getUserElementText(this.room.users.get(client_id));
+        user_el.innerText = this.getUserElementText(this.room.players.get(client_id));
       }
     }
   }
 
-  joinRoom(joinee: LobbyUser) {
+  joinRoom(joinee: LobbyUser, join_as_player: boolean) {
     if (!this.room) {
       return;
     }
     const user_el = this.querySelector<HTMLDivElement>(`#user-${joinee.client_id}`);
     if (user_el) {
       user_el.replaceWith(this.getUserElement(joinee, this.is_host));
-    } else {
+    } else if (join_as_player) {
       this.players_container.appendChild(this.getUserElement(joinee, this.is_host));
+    } else {
+      this.viewers_container.appendChild(this.getUserElement(joinee, this.is_host));
     }
-    this.room.users.set(joinee.client_id, joinee);
+    if (join_as_player) {
+      this.room.players.set(joinee.client_id, joinee);
+    } else {
+      this.room.viewers.set(joinee.client_id, joinee);
+    }
     this.chatbox.addChat({
       message: `${joinee.nickname} (${joinee.client_id}) joined the room`,
       color: 'gray',
@@ -201,8 +219,8 @@ export class DwgLobbyRoom extends DwgElement {
     if (this.room.host.client_id === client_id) {
       this.clearRoom();
     } else {
-      const user = this.room.users.get(client_id);
-      this.room.users.delete(client_id);
+      const user = this.room.players.get(client_id);
+      this.room.players.delete(client_id);
       const user_el = this.querySelector<HTMLDivElement>(`#user-${client_id}`);
       if (user_el) {
         user_el.remove();
@@ -218,8 +236,8 @@ export class DwgLobbyRoom extends DwgElement {
     if (!this.room) {
       return;
     }
-    if (this.room.users.has(client_id)) {
-      this.room.host = this.room.users.get(client_id);
+    if (this.room.players.has(client_id)) {
+      this.room.host = this.room.players.get(client_id);
     }
     this.setRoom(this.room, is_host);
   }

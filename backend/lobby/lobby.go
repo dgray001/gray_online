@@ -19,7 +19,7 @@ type Lobby struct {
 	CreateRoom          chan *Client
 	RenameRoom          chan *LobbyRoom
 	KickClientFromRoom  chan *ClientRoom
-	PromoteClientInRoom chan *ClientRoom
+	PromotePlayerInRoom chan *ClientRoom
 	RemoveRoom          chan *LobbyRoom
 	JoinRoom            chan *ClientRoom
 	LeaveRoom           chan *ClientRoom
@@ -49,7 +49,7 @@ func CreateLobby() *Lobby {
 		CreateRoom:          make(chan *Client),
 		RenameRoom:          make(chan *LobbyRoom),
 		KickClientFromRoom:  make(chan *ClientRoom),
-		PromoteClientInRoom: make(chan *ClientRoom),
+		PromotePlayerInRoom: make(chan *ClientRoom),
 		RemoveRoom:          make(chan *LobbyRoom),
 		JoinRoom:            make(chan *ClientRoom),
 		LeaveRoom:           make(chan *ClientRoom),
@@ -70,8 +70,8 @@ func (l *Lobby) Run() {
 			l.renameRoom(room)
 		case data := <-l.KickClientFromRoom:
 			data.room.kickClient(data.client)
-		case data := <-l.PromoteClientInRoom:
-			data.room.promoteClient(data.client)
+		case data := <-l.PromotePlayerInRoom:
+			data.room.promotePlayer(data.client)
 		case room := <-l.RemoveRoom:
 			l.removeRoom(room)
 		case data := <-l.JoinRoom:
@@ -162,9 +162,14 @@ func (l *Lobby) removeRoom(room *LobbyRoom) {
 	if room.host != nil {
 		room.host.lobby_room = nil
 	}
-	for _, joinee := range room.clients {
-		if joinee != nil {
-			joinee.lobby_room = nil
+	for _, player := range room.players {
+		if player != nil {
+			player.lobby_room = nil
+		}
+	}
+	for _, viewer := range room.viewers {
+		if viewer != nil {
+			viewer.lobby_room = nil
 		}
 	}
 	l.broadcastMessage(lobbyMessage{Sender: "server", Kind: "room-closed", Data: id_string})

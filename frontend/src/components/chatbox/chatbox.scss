@@ -10,10 +10,17 @@ dwg-chatbox {
     display: flex;
     flex-flow: column nowrap;
     height: calc(100% - var(--input-box-height));
+    overflow-wrap: anywhere;
+    overflow-y: scroll;
     width: 100%;
+    word-break: break-all;
   
     :first-child {
       margin-top: auto;
+    }
+
+    > *{
+      margin-top: 0.3em;
     }
   
     > .color-gray {

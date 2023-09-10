@@ -9,36 +9,44 @@ import (
 )
 
 type LobbyRoom struct {
-	room_id   uint64
-	room_name string
-	host      *Client
-	clients   map[uint64]*Client
-	lobby     *Lobby
-	game      *game.Game
+	room_id     uint64
+	room_name   string
+	host        *Client
+	players     map[uint64]*Client
+	viewers     map[uint64]*Client
+	max_players uint8
+	max_viewers uint8
+	game_type   uint8
+	lobby       *Lobby
+	game        *game.Game
 }
 
 func CreateLobbyRoom(host *Client, room_id uint64, lobby *Lobby) *LobbyRoom {
 	room := LobbyRoom{
-		room_id:   room_id,
-		room_name: fmt.Sprintf("%s's room", host.nickname),
-		host:      host,
-		clients:   make(map[uint64]*Client),
-		lobby:     lobby,
+		room_id:     room_id,
+		room_name:   fmt.Sprintf("%s's room", host.nickname),
+		host:        host,
+		players:     make(map[uint64]*Client),
+		viewers:     make(map[uint64]*Client),
+		max_players: 8,
+		max_viewers: 16,
+		game_type:   0,
+		lobby:       lobby,
 	}
-	room.clients[host.client_id] = host
+	room.players[host.client_id] = host
 	host.lobby_room = &room
 	return &room
 }
 
 func (r *LobbyRoom) addClient(c *Client) {
-	r.clients[c.client_id] = c
+	r.players[c.client_id] = c
 	if r.host.client_id == c.client_id {
 		r.host = c
 	}
 	c.lobby_room = r
 	client_id_string := strconv.Itoa(int(c.client_id))
 	room_id_string := strconv.Itoa(int(r.room_id))
-	r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-joined", Data: client_id_string})
+	r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-joined-player", Data: client_id_string})
 }
 
 func (r *LobbyRoom) removeClient(c *Client) {
@@ -49,7 +57,8 @@ func (r *LobbyRoom) removeClient(c *Client) {
 	if c.lobby_room != nil && c.lobby_room.room_id == r.room_id {
 		c.lobby_room = nil
 	}
-	delete(r.clients, c.client_id)
+	delete(r.players, c.client_id)
+	delete(r.viewers, c.client_id)
 	client_id_string := strconv.Itoa(int(c.client_id))
 	room_id_string := strconv.Itoa(int(r.room_id))
 	r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-left", Data: client_id_string})
@@ -62,13 +71,14 @@ func (r *LobbyRoom) kickClient(c *Client) {
 	if c.lobby_room != nil && c.lobby_room.room_id == r.room_id {
 		c.lobby_room = nil
 	}
-	delete(r.clients, c.client_id)
+	delete(r.players, c.client_id)
+	delete(r.viewers, c.client_id)
 	client_id_string := strconv.Itoa(int(c.client_id))
 	room_id_string := strconv.Itoa(int(r.room_id))
 	r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-kicked", Data: client_id_string})
 }
 
-func (r *LobbyRoom) promoteClient(c *Client) {
+func (r *LobbyRoom) promotePlayer(c *Client) {
 	if r.host.client_id == c.client_id {
 		return
 	}
@@ -88,7 +98,12 @@ func (r *LobbyRoom) valid() bool {
 	if r.host == nil || !r.host.valid() {
 		return false
 	}
-	for _, client := range r.clients {
+	for _, client := range r.players {
+		if client == nil || !client.valid() {
+			return false
+		}
+	}
+	for _, client := range r.viewers {
 		if client == nil || !client.valid() {
 			return false
 		}
@@ -98,18 +113,28 @@ func (r *LobbyRoom) valid() bool {
 
 func (r *LobbyRoom) toFrontend() gin.H {
 	room := gin.H{
-		"room_id":   strconv.Itoa(int(r.room_id)),
-		"room_name": r.room_name,
+		"room_id":     strconv.Itoa(int(r.room_id)),
+		"room_name":   r.room_name,
+		"game_type":   strconv.Itoa(int(r.game_type)),
+		"max_players": strconv.Itoa(int(r.max_players)),
+		"max_viewers": strconv.Itoa(int(r.max_viewers)),
 	}
 	if r.host != nil {
 		room["host"] = r.host.toFrontend()
 	}
-	users := []gin.H{}
-	for _, user := range r.clients {
-		if user != nil {
-			users = append(users, user.toFrontend())
+	players := []gin.H{}
+	for _, player := range r.players {
+		if player != nil {
+			players = append(players, player.toFrontend())
 		}
 	}
-	room["users"] = users
+	room["players"] = players
+	viewers := []gin.H{}
+	for _, viewer := range r.viewers {
+		if viewer != nil {
+			viewers = append(viewers, viewer.toFrontend())
+		}
+	}
+	room["viewers"] = viewers
 	return room
 }

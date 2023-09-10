@@ -1,12 +1,11 @@
 import {DwgElement} from '../dwg_element';
-import {apiPost} from '../../scripts/api';
 import {clickButton} from '../../scripts/util';
 import {ChatMessage, DwgChatbox} from '../chatbox/chatbox';
 
 import {DwgLobbyUsers} from './lobby_users/lobby_users';
 import {DwgLobbyRooms} from './lobby_rooms/lobby_rooms';
 import {DwgLobbyRoom} from './lobby_room/lobby_room';
-import {ConnectionMetadata, LobbyMessage, LobbyRoom, createMessage} from './data_models';
+import {ConnectionMetadata, GameType, LobbyMessage, LobbyRoom, createMessage} from './data_models';
 import html from './lobby.html';
 
 import './lobby.scss';
@@ -195,9 +194,13 @@ export class DwgLobby extends DwgElement {
             room_id: new_room_id,
             room_name: `${host.nickname}'s room`,
             host,
-            users: new Map(),
+            players: new Map(),
+            viewers: new Map(),
+            max_players: 8,
+            max_viewers: 16,
+            game_type: GameType.UNSPECIFIED,
           };
-          room.users.set(host.client_id, host);
+          room.players.set(host.client_id, host);
           this.lobby_rooms.addRoom(room);
           if (this.connection_metadata.client_id === host_id) {
             this.enterRoom(room, true);
@@ -217,7 +220,7 @@ export class DwgLobby extends DwgElement {
           const room = this.lobby_rooms.getRoom(closed_room_id);
           this.lobby_rooms.removeRoom(closed_room_id);
           if (room) {
-            for (const client_id of room.users.keys()) {
+            for (const client_id of room.players.keys()) {
               this.lobby_users.leaveRoom(client_id);
             }
           }
@@ -230,18 +233,33 @@ export class DwgLobby extends DwgElement {
           this.userLeftRoom(room_leave_id, client_leave_id, 'left');
         }
         break;
-      case 'room-joined':
+      case 'room-joined-player':
         const room_join_id = parseInt(message.sender.replace('room-', ''));
         const client_join_id = parseInt(message.data.replace('client-', ''));
         const joinee = this.lobby_users.getUser(client_join_id);
         const room = this.lobby_rooms.getRoom(room_join_id);
         if (room_join_id && client_join_id && joinee) {
           this.lobby_users.joinRoom(client_join_id, room_join_id);
-          this.lobby_rooms.clientJoinsRoom(room_join_id, joinee);
+          this.lobby_rooms.playerJoinsRoom(room_join_id, joinee);
           if (room_join_id === this.connection_metadata.room_id) {
-            this.lobby_room.joinRoom(joinee);
+            this.lobby_room.joinRoom(joinee, true);
           } else if (client_join_id === this.connection_metadata.client_id && room) {
             this.enterRoom(this.lobby_rooms.getRoom(room_join_id), false);
+          }
+        }
+        break;
+      case 'room-joined-viewer':
+        const viewer_room_join_id = parseInt(message.sender.replace('room-', ''));
+        const viewer_client_join_id = parseInt(message.data.replace('client-', ''));
+        const viewer_joinee = this.lobby_users.getUser(client_join_id);
+        const viewer_room = this.lobby_rooms.getRoom(room_join_id);
+        if (viewer_room_join_id && viewer_client_join_id && viewer_joinee) {
+          this.lobby_users.joinRoom(viewer_client_join_id, viewer_room_join_id);
+          this.lobby_rooms.viewerJoinsRoom(viewer_room_join_id, viewer_joinee);
+          if (viewer_room_join_id === this.connection_metadata.room_id) {
+            this.lobby_room.joinRoom(viewer_joinee, false);
+          } else if (viewer_client_join_id === this.connection_metadata.client_id && viewer_room) {
+            this.enterRoom(this.lobby_rooms.getRoom(viewer_room_join_id), false);
           }
         }
         break;
@@ -254,7 +272,7 @@ export class DwgLobby extends DwgElement {
         const room_chat_client_id = parseInt(room_chat_sender_split[2]);
         if (room_chat_room_id && room_chat_client_id &&
           this.connection_metadata.room_id === room_chat_room_id &&
-          this.lobby_room.hasClient(room_chat_client_id))
+          this.lobby_room.hasPlayer(room_chat_client_id))
         {
           this.lobby_room.chatbox.addChat({
             message: message.content,

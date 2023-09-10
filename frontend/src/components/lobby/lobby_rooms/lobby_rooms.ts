@@ -103,23 +103,38 @@ export class DwgLobbyRooms extends DwgElement {
     if (!room) {
       return;
     }
-    if (room.users.has(user_id)) {
-      room.host = room.users.get(user_id);
+    if (room.players.has(user_id)) {
+      room.host = room.players.get(user_id);
     }
   }
 
-  clientJoinsRoom(room_id: number, joinee: LobbyUser) {
+  playerJoinsRoom(room_id: number, joinee: LobbyUser) {
     const curr_room = this.getRoom(joinee.room_id);
     if (curr_room) {
       if (curr_room.host.client_id === joinee.client_id) {
         this.removeRoom(joinee.room_id);
       } else {
-        curr_room.users.delete(joinee.client_id);
+        curr_room.players.delete(joinee.client_id);
       }
     }
     const room = this.getRoom(room_id);
     if (room) {
-      room.users.set(joinee.client_id, joinee);
+      room.players.set(joinee.client_id, joinee);
+    }
+  }
+
+  viewerJoinsRoom(room_id: number, joinee: LobbyUser) {
+    const curr_room = this.getRoom(joinee.room_id);
+    if (curr_room) {
+      if (curr_room.host.client_id === joinee.client_id) {
+        this.removeRoom(joinee.room_id);
+      } else {
+        curr_room.players.delete(joinee.client_id);
+      }
+    }
+    const room = this.getRoom(room_id);
+    if (room) {
+      room.viewers.set(joinee.client_id, joinee);
     }
   }
 
@@ -131,7 +146,8 @@ export class DwgLobbyRooms extends DwgElement {
     if (room.host.client_id === client_id) {
       this.removeRoom(room_id);
     } else {
-      room.users.delete(client_id);
+      room.players.delete(client_id);
+      room.viewers.delete(client_id);
     }
   }
 }

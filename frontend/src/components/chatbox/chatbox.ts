@@ -35,12 +35,20 @@ export class DwgChatbox extends DwgElement {
     });
   }
 
+  static adjust_scroll_limit = 5;
   addChat(message: ChatMessage) {
+    const scroll_height = this.chat_container.scrollHeight - this.chat_container.offsetHeight;
+    const adjust_scroll = (scroll_height - this.chat_container.scrollTop) < DwgChatbox.adjust_scroll_limit;
     const open_tag = message.sender === 'server' || message.color === 'gray' ?
       '<div class="color-gray">' : '<div>'
     const sender = !!message.sender && message.sender !== 'server' ?
       `${message.sender}: ` : '';
-    this.chat_container.innerHTML += `${open_tag}${sender}${message.message}</div>`;
+    this.chat_container.innerHTML += `${open_tag}<b>${sender}</b>${message.message}</div>`;
+    if (adjust_scroll) {
+      this.chat_container.scrollTop = this.chat_container.scrollHeight - this.chat_container.offsetHeight;
+    } else {
+      // TODO: let you know new messages below
+    }
   }
 
   sendChat() {
