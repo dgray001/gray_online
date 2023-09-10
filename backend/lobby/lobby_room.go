@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/dgray001/gray_online/game"
 	"github.com/gin-gonic/gin"
 )
 
@@ -13,6 +14,7 @@ type LobbyRoom struct {
 	host      *Client
 	clients   map[uint64]*Client
 	lobby     *Lobby
+	game      *game.Game
 }
 
 func CreateLobbyRoom(host *Client, room_id uint64, lobby *Lobby) *LobbyRoom {

@@ -1,6 +1,5 @@
 
 v0.2: launch game
- h: game has no host => players and viewers
  i: backend abstract game logic => chatting/exiting/reconnecting
  j: frontend abstract game logic => chatting/exiting/reconnecting
  k: host can control max number viewers

@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/dgray001/gray_online/game"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
@@ -23,6 +24,7 @@ type Client struct {
 	send_message chan lobbyMessage
 	lobby        *Lobby
 	lobby_room   *LobbyRoom
+	game         *game.Game
 }
 
 type lobbyMessage struct {
