@@ -1,3 +1,3 @@
 Online Games
 
-v0.1g: Update lobby room data
+v0.1h: Can open settings menu

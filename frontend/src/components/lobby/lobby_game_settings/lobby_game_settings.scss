@@ -1,0 +1,40 @@
+dwg-lobby-game-settings {
+  background-color: rgba(150, 150, 150, 0.4);
+  bottom: 0;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+
+  &:not(.show) {
+    display: none;
+  }
+
+  #game-settings-wrapper {
+    background-color: lightgray;
+    box-sizing: border-box;
+    color: black;
+    display: flex;
+    flex-flow: column nowrap;
+    gap: 12px;
+    height: 50vh;
+    margin: 25vh auto;
+    padding: 8px;
+    width: 50vw;
+
+    * {
+      font-size: 18px;
+      line-height: 18px;
+    }
+
+    .row-wrapper {
+      display: flex;
+      flex-flow: row nowrap;
+      gap: 8px;
+
+      > * {
+        flex: 1 0 0;
+      }
+    }
+  }
+}

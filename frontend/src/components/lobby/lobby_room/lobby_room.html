@@ -11,13 +11,28 @@
 </div>
 <div id="room-body">
   <div id="left-panel">
-    <div id="game-settings"></div>
+    <div id="game-settings">
+      <div id="settings-button-container" class="hide settings-medium">
+        <button id="settings-settings-button" class="settings-button">Settings</button>
+        <button id="settings-launch-button" class="settings-button">Launch</button>
+      </div>
+      <dwg-lobby-game-settings id="lobby-game-settings"></dwg-lobby-game-settings>
+      <div id="settings-title" class="settings-medium"></div>
+      <div id="settings-players" class="settings-medium">
+        Players: <span id="num-players-current"></span>/<span id="num-players-max"></span>
+      </div>
+      <div id="settings-game-status" class="settings-small"></div>
+      <div id="settings-settings-label" class="settings-large">Settings:</div>
+      <div id="settings-settings"></div>
+      <div id="settings-description-label" class="settings-large">Description:</div>
+      <div id="settings-description" class="settings-small"></div>
+    </div>
     <div id="user-list">
       <div id="host-label" class="container-label">Host</div>
       <div id="host-container"></div>
-      <div id="players-label" class="container-label">Players</div>
+      <div id="players-label" class="container-label">Players (<span id="players-label-amount">0</span>)</div>
       <div id="players-container"></div>
-      <div id="viewers-label" class="container-label">Viewers</div>
+      <div id="viewers-label" class="container-label">Viewers (<span id="viewers-label-amount">0</span>)</div>
       <div id="viewers-container"></div>
     </div>
   </div>

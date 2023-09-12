@@ -188,8 +188,9 @@ func (l *Lobby) leaveRoom(data *ClientRoom) {
 
 var (
 	client_to_lobby_messages = []string{"lobby-joined", "lobby-left", "lobby-chat"}
-	lobby_messages           = []string{"room-created", "room-closed", "room-joined",
-		"room-left", "room-renamed", "room-kicked", "room-promoted", "ping-update"}
+	lobby_messages           = []string{"room-created", "room-closed", "room-joined-player",
+		"room-joined-viewer", "room-left", "room-renamed", "room-kicked", "room-promoted",
+		"ping-update"}
 	client_to_room_messages = []string{"room-chat"}
 	room_messages           = []string{}
 )
