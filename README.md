@@ -1,3 +1,3 @@
 Online Games
 
-v0.1i: Can set players and viewers in lobby
+v0.1j: Can send launch-game request

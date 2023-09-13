@@ -1,7 +1,8 @@
 import {DwgElement} from '../../dwg_element';
-import {DwgChatbox} from '../../chatbox/chatbox';
+import {ChatMessage, DwgChatbox} from '../../chatbox/chatbox';
 import {GameSettings, GameType, LobbyRoom, LobbyUser, createMessage} from '../data_models';
 import {DwgLobbyGameSettings} from '../lobby_game_settings/lobby_game_settings';
+import {setIntervalX} from '../../../scripts/util';
 
 import html from './lobby_room.html';
 import './lobby_room.scss';
@@ -26,6 +27,8 @@ export class DwgLobbyRoom extends DwgElement {
   num_players_max: HTMLSpanElement;
   settings_button_container: HTMLDivElement;
   settings_settings_button: HTMLButtonElement;
+  settings_launching = false;
+  settings_launch_interval_id: NodeJS.Timer;
   settings_launch_button: HTMLButtonElement;
   settings_game_status: HTMLDivElement;
   lobby_game_settings: DwgLobbyGameSettings;
@@ -61,7 +64,7 @@ export class DwgLobbyRoom extends DwgElement {
 
   protected override parsedCallback(): void {
     this.chatbox.setPlaceholder('Chat with room');
-    this.chatbox.addEventListener('chat_sent', (e: CustomEvent) => {
+    this.chatbox.addEventListener('chat_sent', (e: CustomEvent<ChatMessage>) => {
       this.dispatchEvent(new CustomEvent('chat_sent', {'detail': e.detail}));
     });
     this.leave_room.addEventListener('click', () => {
@@ -93,7 +96,35 @@ export class DwgLobbyRoom extends DwgElement {
       this.lobby_game_settings.classList.remove('show');
     });
     this.settings_launch_button.addEventListener('click', () => {
-      // TODO: launch game (or cancel if launching)
+      if (this.settings_launching) {
+        this.settings_launching = false;
+        this.settings_launch_button.innerText = 'Launch';
+        this.settings_launch_button.classList.remove('launching');
+        if (this.settings_launch_interval_id) {
+          clearInterval(this.settings_launch_interval_id);
+        }
+      } else {
+        this.settings_launching = true;
+        this.settings_launch_button.innerText = 'Cancel';
+        this.settings_launch_button.classList.add('launching');
+        const countdown = 5;
+        this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {'detail': {
+          message: `Game is launching in ${countdown} ...`,
+          color: 'gray',
+        }}));
+        this.settings_launch_interval_id = setIntervalX((counter) => {
+          this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {'detail': {
+            message: `${countdown - counter} ...`,
+            color: 'gray',
+          }}));
+        }, 1000, countdown - 1, () => {
+          this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {'detail': {
+            message: 'Game is launching ...',
+            color: 'gray',
+          }}));
+          this.dispatchEvent(new Event('launch_game'));
+        });
+      }
     });
     this.room_name.classList.add('show');
   }

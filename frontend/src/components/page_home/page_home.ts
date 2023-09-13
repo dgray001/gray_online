@@ -1,20 +1,25 @@
 import {DwgElement} from '../dwg_element';
 import {DwgLobby} from '../lobby/lobby';
 import {DwgLobbyConnector} from '../lobby/lobby_connector/lobby_connector';
+import {DwgGame} from '../game/game';
 import '../lobby/lobby';
+import '../game/game';
 import '../lobby/lobby_connector/lobby_connector';
 
 import html from './page_home.html';
 import './page_home.scss';
+import { LobbyRoom } from '../lobby/data_models';
 
 export class DwgPageHome extends DwgElement {
   lobby: DwgLobby;
+  game: DwgGame;
   lobby_connector: DwgLobbyConnector;
 
   constructor() {
     super();
     this.htmlString = html;
     this.configureElement('lobby');
+    this.configureElement('game');
     this.configureElement('lobby_connector');
   }
 
@@ -35,6 +40,9 @@ export class DwgPageHome extends DwgElement {
     });
     this.lobby.addEventListener('connection_lost', () => {
       this.tryConnectionAgain("Connection was lost. Check your connection and try again.");
+    });
+    this.lobby.addEventListener('game_launched', (e: CustomEvent<LobbyRoom>) => {
+      console.log(e.detail);
     });
   }
 

@@ -146,6 +146,10 @@ dwg-lobby-room {
             &#settings-launch-button {
               background: linear-gradient(0deg, rgb(40, 150, 40), rgb(80, 250, 80));
               margin-right: auto;
+
+              &.launching {
+                background: linear-gradient(0deg, rgb(50, 120, 50), rgb(100, 200, 100));
+              }
             }
           }
         }

@@ -114,6 +114,14 @@ export class DwgLobby extends DwgElement {
     this.lobby_room.addEventListener('save_settings', (e: CustomEvent<string>) => {
       this.socket.send(e.detail);
     });
+    this.lobby_room.addEventListener('launch_game', () => {
+      this.socket.send(createMessage(
+        `client-${this.connection_metadata.client_id}`,
+        'room-launch',
+        '',
+        this.connection_metadata.room_id.toString(),
+      ));
+    });
     this.lobby_rooms.refreshRooms();
   }
 

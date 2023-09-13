@@ -97,3 +97,20 @@ export function clickButton(
 export function enumKeys<O extends object, K extends keyof O = keyof O>(obj: O): K[] {
   return Object.keys(obj).filter(k => Number.isNaN(parseInt(k))) as K[];
 }
+
+/** Sets interval x times */
+export function setIntervalX(
+  fn: (counter?: number) => void, delay: number, repetitions: number, fn_end = () => {}
+): NodeJS.Timer {
+  let counter = 0;
+  const intervalId = setInterval(() => {
+    counter++;
+    if (counter > repetitions) {
+      clearInterval(intervalId);
+      fn_end();
+    } else {
+      fn(counter);
+    }
+  }, delay);
+  return intervalId;
+}

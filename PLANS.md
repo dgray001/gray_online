@@ -1,7 +1,5 @@
 
 v0.2: launch game
- h: room host can make someone a viewer in room
- i: room selector component (can join as viewer)
  j: room host can launch game => fullscreen game component
  k: backend abstract game launch / finish / exit
  l: abstract messaging and header (to exit) in-game
@@ -23,9 +21,9 @@ v0.4: launch risq
 v0.5: save risq game
  - need fully functioning db and user profiles
 
-
 P3/P4:
  - loader for client requests in lobby: room-create, room-join, room-leave, room-rename
  - client still leaves room if it fails => sync state
  - handle other failures by syncing state => show message
  - chatbox lets you know there's new messages
+ - room selector component (can join as viewer)
