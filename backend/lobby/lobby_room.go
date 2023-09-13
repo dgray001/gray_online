@@ -157,7 +157,8 @@ func (r *LobbyRoom) launchGame(game_id uint64) {
 		return
 	}
 	room_id_string := strconv.Itoa(int(r.room_id))
-	r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-launched"})
+	game_id_string := strconv.Itoa(int(game_id))
+	r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-launched", Data: game_id_string})
 }
 
 func (s *GameSettings) Launchable() bool {
@@ -243,5 +244,8 @@ func (r *LobbyRoom) ToFrontend() gin.H {
 		}
 	}
 	room["viewers"] = viewers
+	if r.game != nil {
+		room["game_id"] = strconv.Itoa(int(r.game.GetId()))
+	}
 	return room
 }

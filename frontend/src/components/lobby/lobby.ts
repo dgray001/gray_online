@@ -68,7 +68,7 @@ export class DwgLobby extends DwgElement {
         `client-${this.connection_metadata.client_id}`,
         'room-leave',
         '',
-        this.connection_metadata.room_id.toString(),
+        this.connection_metadata.room_id?.toString(),
       ));
     });
     this.lobby_room.addEventListener('rename_room', (e: CustomEvent<string>) => {
@@ -76,7 +76,7 @@ export class DwgLobby extends DwgElement {
         `client-${this.connection_metadata.client_id}`,
         'room-rename',
         e.detail,
-        this.connection_metadata.room_id.toString(),
+        this.connection_metadata.room_id?.toString(),
       ));
     });
     this.lobby_room.addEventListener('kick_player', (e: CustomEvent<number>) => {
@@ -84,7 +84,7 @@ export class DwgLobby extends DwgElement {
         `client-${this.connection_metadata.client_id}`,
         'room-kick',
         e.detail.toString(),
-        this.connection_metadata.room_id.toString(),
+        this.connection_metadata.room_id?.toString(),
       ));
     });
     this.lobby_room.addEventListener('viewer_player', (e: CustomEvent<number>) => {
@@ -92,7 +92,7 @@ export class DwgLobby extends DwgElement {
         `client-${this.connection_metadata.client_id}`,
         'room-set-viewer',
         e.detail.toString(),
-        this.connection_metadata.room_id.toString(),
+        this.connection_metadata.room_id?.toString(),
       ));
     });
     this.lobby_room.addEventListener('player_player', (e: CustomEvent<number>) => {
@@ -100,7 +100,7 @@ export class DwgLobby extends DwgElement {
         `client-${this.connection_metadata.client_id}`,
         'room-set-player',
         e.detail.toString(),
-        this.connection_metadata.room_id.toString(),
+        this.connection_metadata.room_id?.toString(),
       ));
     });
     this.lobby_room.addEventListener('promote_player', (e: CustomEvent<number>) => {
@@ -108,7 +108,7 @@ export class DwgLobby extends DwgElement {
         `client-${this.connection_metadata.client_id}`,
         'room-promote',
         e.detail.toString(),
-        this.connection_metadata.room_id.toString(),
+        this.connection_metadata.room_id?.toString(),
       ));
     });
     this.lobby_room.addEventListener('save_settings', (e: CustomEvent<string>) => {
@@ -119,7 +119,7 @@ export class DwgLobby extends DwgElement {
         `client-${this.connection_metadata.client_id}`,
         'room-launch',
         '',
-        this.connection_metadata.room_id.toString(),
+        this.connection_metadata.room_id?.toString(),
       ));
     });
     this.lobby_rooms.refreshRooms();

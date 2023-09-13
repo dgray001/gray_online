@@ -75,6 +75,10 @@ func CreateGame(g *game.GameBase) *GameFiddlesticks {
 	return &fiddlesticks
 }
 
+func (f *GameFiddlesticks) GetId() uint64 {
+	return f.game.Game_id
+}
+
 func (f *GameFiddlesticks) StartGame() {
 	f.game.StartGame()
 	f.dealNextRound()

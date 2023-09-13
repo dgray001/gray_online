@@ -41,8 +41,8 @@ export class DwgPageHome extends DwgElement {
     this.lobby.addEventListener('connection_lost', () => {
       this.tryConnectionAgain("Connection was lost. Check your connection and try again.");
     });
-    this.lobby.addEventListener('game_launched', (e: CustomEvent<LobbyRoom>) => {
-      console.log(e.detail);
+    this.lobby.addEventListener('game_launched', (e: CustomEvent<number>) => {
+      this.game.launchGame(e.detail, this.lobby.socket);
     });
   }
 

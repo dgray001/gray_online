@@ -1,6 +1,5 @@
 
 v0.2: launch game
- j: fullscreen game component
  k: backend abstract game finish / exit
  l: abstract messaging and header (to exit) in-game
  m: abstract game update messages somehow
@@ -29,3 +28,4 @@ P3/P4:
  - room selector component (can join as viewer)
  - backend (and frontend) prevents joining room when max players
  - remove all panics from backend
+ - game launching message shouldn't come from anyone and should be gray for participants

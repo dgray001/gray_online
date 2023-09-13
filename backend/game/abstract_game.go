@@ -12,12 +12,15 @@ type GameBase struct {
 func CreateBaseGame(game_id uint64) *GameBase {
 	return &GameBase{
 		Game_id:      game_id,
+		Players:      make(map[uint64]*Player),
+		Viewers:      make(map[uint64]*Viewer),
 		game_started: false,
 		game_ended:   false,
 	}
 }
 
 type Game interface {
+	GetId() uint64
 	StartGame()
 }
 

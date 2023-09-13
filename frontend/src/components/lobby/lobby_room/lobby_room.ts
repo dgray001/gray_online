@@ -107,6 +107,7 @@ export class DwgLobbyRoom extends DwgElement {
         this.settings_launching = true;
         this.settings_launch_button.innerText = 'Cancel';
         this.settings_launch_button.classList.add('launching');
+        this.settings_game_status.innerText = 'Game launching';
         const countdown = 5;
         this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {'detail': {
           message: `Game is launching in ${countdown} ...`,
@@ -363,6 +364,14 @@ export class DwgLobbyRoom extends DwgElement {
       this.room.viewers.delete(client_id);
       this.setRoom(this.room, this.is_host);
     }
+  }
+
+  launchRoom(game_id: number) {
+    if (!this.room) {
+      return;
+    }
+    this.room.game_id = game_id;
+    this.settings_game_status.innerText = 'In progress';
   }
 
   private openRename() {

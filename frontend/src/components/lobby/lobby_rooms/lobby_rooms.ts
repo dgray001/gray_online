@@ -180,6 +180,14 @@ export class DwgLobbyRooms extends DwgElement {
     }
     room.game_settings = new_settings;
   }
+
+  launchRoom(room_id: number, game_id: number) {
+    const room = this.getRoom(room_id);
+    if (!room) {
+      return;
+    }
+    room.game_id = game_id;
+  }
 }
 
 customElements.define('dwg-lobby-rooms', DwgLobbyRooms);

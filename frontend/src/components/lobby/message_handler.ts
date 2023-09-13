@@ -229,7 +229,15 @@ export function handleMessage(lobby: DwgLobby, message: LobbyMessage) {
       } catch(e) {}
       break;
     case 'room-launched':
-      // TODO: Add room launched frontend logic
+      const room_launched_id = parseInt(message.sender.replace('room-', ''));
+      const game_id = parseInt(message.data);
+      if (room_launched_id && game_id) {
+        lobby.lobby_rooms.launchRoom(room_launched_id, game_id);
+        if (room_launched_id === lobby.connection_metadata.room_id) {
+          lobby.lobby_room.launchRoom(game_id);
+          lobby.dispatchEvent(new CustomEvent('game_launched', {'detail': game_id}));
+        }
+      }
       break;
     case 'room-join-failed':
     case 'room-leave-failed':
@@ -239,6 +247,7 @@ export function handleMessage(lobby: DwgLobby, message: LobbyMessage) {
     case 'room-set-player-failed':
     case 'room-set-viewer-failed':
     case 'room-settings-updated-failed':
+    case 'room-launch-failed':
       throw new Error(message.content);
     default:
       console.log("Unknown message type", message.kind, "from", message.sender);

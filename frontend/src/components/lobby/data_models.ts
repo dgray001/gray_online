@@ -92,6 +92,7 @@ export declare interface LobbyRoom {
   players: Map<number, LobbyUser>;
   viewers: Map<number, LobbyUser>;
   game_settings: GameSettings;
+  game_id?: number;
 }
 
 /** Data describing a lobby room returned from the server */
@@ -102,6 +103,7 @@ export declare interface LobbyRoomFromServer {
   players: LobbyUserFromServer[];
   viewers: LobbyUserFromServer[];
   game_settings: GameSettingsFromServer;
+  game_id?: string;
 }
 
 /** Convert a server response to a TS lobby room object */
@@ -119,5 +121,6 @@ export function serverResponseToRoom(server_response: LobbyRoomFromServer): Lobb
       return [user.client_id, user];
     })),
     game_settings: serverResponseToGameSettings(server_response.game_settings),
+    game_id: server_response.game_id ? parseInt(server_response.game_id) : undefined,
   }
 }
