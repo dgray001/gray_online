@@ -1,6 +1,5 @@
 
 v0.2: launch game
- g: room host can choose game and max players and max viewers
  h: room host can make someone a viewer in room
  i: room selector component (can join as viewer)
  j: room host can launch game => fullscreen game component

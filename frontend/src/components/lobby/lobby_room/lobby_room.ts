@@ -1,6 +1,6 @@
 import {DwgElement} from '../../dwg_element';
 import {DwgChatbox} from '../../chatbox/chatbox';
-import {GameSettings, LobbyRoom, LobbyUser} from '../data_models';
+import {GameSettings, GameType, LobbyRoom, LobbyUser, createMessage} from '../data_models';
 import {DwgLobbyGameSettings} from '../lobby_game_settings/lobby_game_settings';
 
 import html from './lobby_room.html';
@@ -19,6 +19,9 @@ export class DwgLobbyRoom extends DwgElement {
   viewers_container: HTMLDivElement;
   kick_img: HTMLImageElement;
   promote_img: HTMLImageElement;
+  viewer_img: HTMLImageElement;
+  player_img: HTMLImageElement;
+  settings_title: HTMLDivElement;
   num_players_current: HTMLSpanElement;
   num_players_max: HTMLSpanElement;
   settings_button_container: HTMLDivElement;
@@ -44,6 +47,9 @@ export class DwgLobbyRoom extends DwgElement {
     this.configureElement('viewers_container');
     this.configureElement('kick_img');
     this.configureElement('promote_img');
+    this.configureElement('viewer_img');
+    this.configureElement('player_img');
+    this.configureElement('settings_title');
     this.configureElement('num_players_current');
     this.configureElement('num_players_max');
     this.configureElement('settings_button_container');
@@ -76,8 +82,15 @@ export class DwgLobbyRoom extends DwgElement {
       this.lobby_game_settings.setSettings(this.room.game_settings);
       this.lobby_game_settings.classList.add('show');
     });
-    this.lobby_game_settings.addEventListener('saved', (e: CustomEvent<GameSettings>) => {
-      this.dispatchEvent(new CustomEvent('save_settings', {'detail': e.detail}))
+    this.lobby_game_settings.addEventListener('saved', () => {
+      const message = createMessage(
+        `client-${this.room.host.client_id}`,
+        'room-settings-update',
+        JSON.stringify(this.lobby_game_settings.getSettings()),
+        this.room.room_id.toString(),
+      );
+      this.dispatchEvent(new CustomEvent('save_settings', {'detail': message}));
+      this.lobby_game_settings.classList.remove('show');
     });
     this.settings_launch_button.addEventListener('click', () => {
       // TODO: launch game (or cancel if launching)
@@ -89,8 +102,8 @@ export class DwgLobbyRoom extends DwgElement {
     this.is_host = is_host;
     this.room = room;
     this.room_name.innerText = room.room_name;
+    this.updateSettingsDependencies();
     this.num_players_current.innerText = room.players.size.toString();
-    this.num_players_max.innerText = room.game_settings.max_players.toString();
     this.settings_game_status.innerText = 'Game not started';
     this.classList.add('show');
     if (is_host) {
@@ -100,18 +113,36 @@ export class DwgLobbyRoom extends DwgElement {
       this.rename_room.classList.remove('show');
       this.settings_button_container.classList.add('hide');
     }
-    this.host_container.replaceChildren(this.getUserElement(room.host, false));
-    const user_els = [];
-    for (const user of room.players.values()) {
-      if (user.client_id === room.host.client_id) {
+    this.host_container.replaceChildren(this.getUserElement(room.host, false, true));
+    const player_els = [];
+    for (const player of room.players.values()) {
+      if (player.client_id === room.host.client_id) {
         continue;
       }
-      user_els.push(this.getUserElement(user, is_host));
+      player_els.push(this.getUserElement(player, is_host, true));
     }
-    this.players_container.replaceChildren(...user_els);
+    this.players_container.replaceChildren(...player_els);
+    const viewer_els = [];
+    for (const viewer of room.viewers.values()) {
+      viewer_els.push(this.getUserElement(viewer, is_host, false));
+    }
+    this.viewers_container.replaceChildren(...viewer_els);
   }
 
-  private getUserElement(user: LobbyUser, is_host: boolean): HTMLDivElement {
+  updateSettings(new_settings: GameSettings) {
+    if (!this.room) {
+      return;
+    }
+    this.room.game_settings = new_settings;
+    this.updateSettingsDependencies();
+  }
+
+  updateSettingsDependencies() {
+    this.settings_title.innerText = GameType[this.room.game_settings.game_type || -1] ?? '';
+    this.num_players_max.innerText = this.room.game_settings.max_players.toString();
+  }
+
+  private getUserElement(user: LobbyUser, is_host: boolean, is_player: boolean): HTMLDivElement {
     const el = document.createElement('div');
     el.classList.add('room-user');
     el.id = `user-${user.client_id}`;
@@ -119,32 +150,31 @@ export class DwgLobbyRoom extends DwgElement {
     el_text.innerText = this.getUserElementText(user);
     el.appendChild(el_text);
     if (is_host) {
-      const kick_button = document.createElement('button');
-      kick_button.id = `kick-button-${user.client_id}`;
-      kick_button.classList.add('kick-button');
-      const kick_icon = document.createElement('img');
-      kick_icon.src = this.kick_img.src;
-      kick_icon.alt = 'kick';
-      kick_icon.draggable = false;
-      kick_button.appendChild(kick_icon);
-      el.appendChild(kick_button);
-      kick_button.addEventListener('click', () => {
-        this.dispatchEvent(new CustomEvent('kick_player', {'detail': user.client_id}));
-      });
-      const promote_button = document.createElement('button');
-      promote_button.id = `promote-button-${user.client_id}`;
-      promote_button.classList.add('promote-button');
-      const promote_icon = document.createElement('img');
-      promote_icon.src = this.promote_img.src;
-      promote_icon.alt = 'promote';
-      promote_icon.draggable = false;
-      promote_button.appendChild(promote_icon);
-      el.appendChild(promote_button);
-      promote_button.addEventListener('click', () => {
-        this.dispatchEvent(new CustomEvent('promote_player', {'detail': user.client_id}));
-      });
+      if (is_player) {
+        el.appendChild(this.getUserButton(user.client_id, 'kick', this.kick_img.src));
+        el.appendChild(this.getUserButton(user.client_id, 'viewer', this.viewer_img.src));
+        el.appendChild(this.getUserButton(user.client_id, 'promote', this.promote_img.src));
+      } else {
+        el.appendChild(this.getUserButton(user.client_id, 'kick', this.kick_img.src));
+        el.appendChild(this.getUserButton(user.client_id, 'player', this.player_img.src));
+      }
     }
     return el;
+  }
+
+  private getUserButton(client_id: number, name: string, src: string): HTMLButtonElement {
+    const button = document.createElement('button');
+    button.id = `${name}-button-${client_id}`;
+    button.classList.add(`${name}-button`);
+    const icon = document.createElement('img');
+    icon.src = src;
+    icon.alt = name;
+    icon.draggable = false;
+    button.appendChild(icon);
+    button.addEventListener('click', () => {
+      this.dispatchEvent(new CustomEvent(`${name}_player`, {'detail': client_id}));
+    });
+    return button;
   }
 
   private getUserElementText(user: LobbyUser): string {
@@ -230,11 +260,11 @@ export class DwgLobbyRoom extends DwgElement {
     }
     const user_el = this.querySelector<HTMLDivElement>(`#user-${joinee.client_id}`);
     if (user_el) {
-      user_el.replaceWith(this.getUserElement(joinee, this.is_host));
+      user_el.replaceWith(this.getUserElement(joinee, this.is_host, true));
     } else if (join_as_player) {
-      this.players_container.appendChild(this.getUserElement(joinee, this.is_host));
+      this.players_container.appendChild(this.getUserElement(joinee, this.is_host, true));
     } else {
-      this.viewers_container.appendChild(this.getUserElement(joinee, this.is_host));
+      this.viewers_container.appendChild(this.getUserElement(joinee, this.is_host, true));
     }
     if (join_as_player) {
       this.room.players.set(joinee.client_id, joinee);
@@ -255,17 +285,20 @@ export class DwgLobbyRoom extends DwgElement {
     if (this.room.host.client_id === client_id) {
       this.clearRoom();
     } else {
-      const user = this.room.players.get(client_id);
+      const user = this.room.players.get(client_id) ?? this.room.viewers.get(client_id);
       this.room.players.delete(client_id);
+      this.room.viewers.delete(client_id);
       this.num_players_current.innerText = this.room.players.size.toString();
       const user_el = this.querySelector<HTMLDivElement>(`#user-${client_id}`);
       if (user_el) {
         user_el.remove();
       }
-      this.chatbox.addChat({
-        message: `${user.nickname} (${user.client_id}) ${left_text} the room`,
-        color: 'gray',
-      });
+      if (user) {
+        this.chatbox.addChat({
+          message: `${user.nickname} (${user.client_id}) ${left_text} the room`,
+          color: 'gray',
+        });
+      }
     }
   }
 
@@ -275,8 +308,30 @@ export class DwgLobbyRoom extends DwgElement {
     }
     if (this.room.players.has(client_id)) {
       this.room.host = this.room.players.get(client_id);
+      this.setRoom(this.room, is_host);
     }
-    this.setRoom(this.room, is_host);
+  }
+
+  playerToViewer(client_id: number) {
+    if (!this.room) {
+      return;
+    }
+    if (this.room.players.has(client_id)) {
+      this.room.viewers.set(client_id, this.room.players.get(client_id));
+      this.room.players.delete(client_id);
+      this.setRoom(this.room, this.is_host);
+    }
+  }
+
+  viewerToPlayer(client_id: number) {
+    if (!this.room) {
+      return;
+    }
+    if (this.room.viewers.has(client_id)) {
+      this.room.players.set(client_id, this.room.viewers.get(client_id));
+      this.room.viewers.delete(client_id);
+      this.setRoom(this.room, this.is_host);
+    }
   }
 
   private openRename() {

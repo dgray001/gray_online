@@ -33,17 +33,17 @@ export class DwgLobbyGameSettings extends DwgElement {
       this.game_chooser.appendChild(option);
     }
     clickButton(this.save_button, () => {
-      this.dispatchEvent(new CustomEvent('saved', {'detail': this.getSettings()}));
+      this.dispatchEvent(new Event('saved'));
     });
   }
 
   setSettings(settings: GameSettings) {
-    this.game_chooser.value = settings.game_type ? GameType[settings.game_type] : "0";
+    this.game_chooser.value = settings.game_type.toString();
     this.max_players_input.valueAsNumber = settings.max_players;
     this.max_viewers_input.valueAsNumber = settings.max_viewers;
   }
 
-  private getSettings(): GameSettings {
+  getSettings(): GameSettings {
     return {
       game_type: parseInt(this.game_chooser.value) ?? 0,
       max_players: parseInt(this.max_players_input.value) ?? 0,

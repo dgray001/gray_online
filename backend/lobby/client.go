@@ -1,6 +1,7 @@
 package lobby
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
@@ -200,6 +201,76 @@ func (c *Client) readMessages() {
 				break
 			}
 			c.lobby.PromotePlayerInRoom <- MakeClientRoom(client, room)
+		case "room-set-viewer":
+			room_id, err := strconv.Atoi(message.Data)
+			if err != nil || room_id < 1 {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-set-viewer-failed", Content: "Invalid room id"}
+				break
+			}
+			room := c.lobby.GetRoom(uint64(room_id))
+			if room == nil {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-set-viewer-failed", Content: "Room doesn't exist"}
+				break
+			}
+			client_id, err := strconv.Atoi(message.Content)
+			if err != nil || client_id < 1 {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-set-viewer-failed", Content: "Invalid client id"}
+				break
+			}
+			if room.host.client_id != c.client_id && client_id != int(c.client_id) {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-set-viewer-failed", Content: "Not room host"}
+				break
+			}
+			client := c.lobby.GetClient(uint64(client_id))
+			if client == nil {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-set-viewer-failed", Content: "Client doesn't exist"}
+				break
+			}
+			c.lobby.RoomSetViewer <- MakeClientRoom(client, room)
+		case "room-set-player":
+			room_id, err := strconv.Atoi(message.Data)
+			if err != nil || room_id < 1 {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-set-player-failed", Content: "Invalid room id"}
+				break
+			}
+			room := c.lobby.GetRoom(uint64(room_id))
+			if room == nil {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-set-player-failed", Content: "Room doesn't exist"}
+				break
+			}
+			client_id, err := strconv.Atoi(message.Content)
+			if err != nil || client_id < 1 {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-set-player-failed", Content: "Invalid client id"}
+				break
+			}
+			if room.host.client_id != c.client_id && client_id != int(c.client_id) {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-set-player-failed", Content: "Not room host"}
+				break
+			}
+			client := c.lobby.GetClient(uint64(client_id))
+			if client == nil {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-set-player-failed", Content: "Client doesn't exist"}
+				break
+			}
+			c.lobby.RoomSetPlayer <- MakeClientRoom(client, room)
+		case "room-settings-update":
+			room_id, err := strconv.Atoi(message.Data)
+			if err != nil || room_id < 1 {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-settings-update-failed", Content: "Invalid room id"}
+				break
+			}
+			room := c.lobby.GetRoom(uint64(room_id))
+			if room == nil {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-settings-update-failed", Content: "Room doesn't exist"}
+				break
+			}
+			if room.host.client_id != c.client_id {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-settings-update-failed", Content: "Not room host"}
+				break
+			}
+			settings := GameSettings{}
+			json.Unmarshal([]byte(message.Content), &settings)
+			c.lobby.UpdateSettings <- MakeSettingsRoom(&settings, room)
 		case "lobby-chat":
 			fallthrough
 		case "room-chat":

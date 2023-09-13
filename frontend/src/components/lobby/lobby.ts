@@ -5,7 +5,8 @@ import {ChatMessage, DwgChatbox} from '../chatbox/chatbox';
 import {DwgLobbyUsers} from './lobby_users/lobby_users';
 import {DwgLobbyRooms} from './lobby_rooms/lobby_rooms';
 import {DwgLobbyRoom} from './lobby_room/lobby_room';
-import {ConnectionMetadata, GameSettings, GameType, LobbyMessage, LobbyRoom, LobbyRoomFromServer, createMessage, defaultGameSettings, serverResponseToRoom} from './data_models';
+import {ConnectionMetadata, LobbyMessage, LobbyRoom, createMessage} from './data_models';
+import {handleMessage} from './message_handler';
 import html from './lobby.html';
 
 import './lobby.scss';
@@ -86,6 +87,22 @@ export class DwgLobby extends DwgElement {
         this.connection_metadata.room_id.toString(),
       ));
     });
+    this.lobby_room.addEventListener('viewer_player', (e: CustomEvent<number>) => {
+      this.socket.send(createMessage(
+        `client-${this.connection_metadata.client_id}`,
+        'room-set-viewer',
+        e.detail.toString(),
+        this.connection_metadata.room_id.toString(),
+      ));
+    });
+    this.lobby_room.addEventListener('player_player', (e: CustomEvent<number>) => {
+      this.socket.send(createMessage(
+        `client-${this.connection_metadata.client_id}`,
+        'room-set-player',
+        e.detail.toString(),
+        this.connection_metadata.room_id.toString(),
+      ));
+    });
     this.lobby_room.addEventListener('promote_player', (e: CustomEvent<number>) => {
       this.socket.send(createMessage(
         `client-${this.connection_metadata.client_id}`,
@@ -94,13 +111,8 @@ export class DwgLobby extends DwgElement {
         this.connection_metadata.room_id.toString(),
       ));
     });
-    this.lobby_room.addEventListener('save_settings', (e: CustomEvent<GameSettings>) => {
-      this.socket.send(createMessage(
-        `client-${this.connection_metadata.client_id}`,
-        'room-settings-update',
-        e.detail.toString(),
-        this.connection_metadata.room_id.toString(),
-      ));
+    this.lobby_room.addEventListener('save_settings', (e: CustomEvent<string>) => {
+      this.socket.send(e.detail);
     });
     this.lobby_rooms.refreshRooms();
   }
@@ -115,221 +127,14 @@ export class DwgLobby extends DwgElement {
     this.socket.addEventListener('message', (m) => {
       try {
         const message = JSON.parse(m.data) as LobbyMessage;
-        this.handleMessage(message);
+        handleMessage(this, message);
       } catch(e) {
         console.log("Error parsing message: ", m, e)
       }
     });
   }
 
-  private handleMessage(message: LobbyMessage) {
-    if (!this.socketActive()) {
-      return;
-    }
-    if (message.kind !== 'ping-update') {
-      console.log(message);
-    }
-    switch(message.kind) {
-      case 'lobby-you-joined':
-        const id = parseInt(message.data);
-        if (id) {
-          this.connection_metadata.client_id = id;
-          this.setNickname(message.content);
-          this.chatbox.addChat({
-            message: `You (${this.connection_metadata.nickname}) joined lobby with client id ${id}`,
-            sender: 'server',
-          });
-          this.lobby_users.addUser({client_id: id, nickname: this.connection_metadata.nickname, ping: 0});
-        } else {
-          this.socket.close(3001, 'you-joined-lobby message did not return properly formed client id');
-          this.dispatchEvent(this.connection_lost);
-        }
-        break;
-      case 'lobby-joined':
-        const join_client_id = parseInt(message.data);
-        if (join_client_id) {
-          this.chatbox.addChat({
-            message: `${message.content} joined lobby with client id ${join_client_id}`,
-            sender: 'server',
-          });
-          this.lobby_users.addUser({client_id: join_client_id, nickname: message.content, ping: 0});
-        }
-        break;
-      case 'lobby-left':
-        const left_client_id = parseInt(message.data);
-        if (left_client_id) {
-          this.chatbox.addChat({
-            message: `${message.content} (client id ${left_client_id}) left lobby`,
-            sender: 'server',
-          });
-          const client = this.lobby_users.getUser(left_client_id);
-          this.lobby_users.removeUser(left_client_id);
-          this.lobby_rooms.userDisconnected(left_client_id);
-          if (client && client.room_id === this.connection_metadata.room_id &&
-            client.client_id === this.lobby_room.getHost()?.client_id) {
-              this.leaveRoom();
-            } else {
-              this.lobby_room.leaveRoom(left_client_id, 'disconnected from');
-            }
-        }
-        break;
-      case 'lobby-chat':
-        const chat_client_id = parseInt(message.sender.replace('client-', ''));
-        if (chat_client_id) {
-          this.chatbox.addChat({
-            message: message.content,
-            sender: this.lobby_users.getUser(chat_client_id)?.nickname ?? chat_client_id.toString(),
-          });
-        }
-        break;
-      case 'ping-update':
-        const update_ping_id = parseInt(message.data);
-        const ping = parseInt(message.content);
-        if (update_ping_id && !isNaN(ping)) {
-          if (this.connection_metadata.client_id === update_ping_id) {
-            this.setPing(ping);
-          }
-          this.lobby_room.updatePing(update_ping_id, ping);
-          this.lobby_users.updatePing(update_ping_id, ping);
-        }
-        break;
-      case 'room-created':
-        const setRoom = (room: LobbyRoom, host_id: number) => {
-          this.lobby_rooms.addRoom(room);
-          if (this.connection_metadata.client_id === host_id) {
-            this.enterRoom(room, true);
-            setTimeout(() => {
-              // quick fix in case server responds instantly
-              this.create_room_button.innerText = "Room Created";
-            }, 1);
-          }
-        }
-        try {
-          const host_id = parseInt(message.sender.replace('client-', ''));
-          const host = this.lobby_users.getUser(host_id);
-          const server_room = JSON.parse(message.content) as LobbyRoomFromServer;
-          const room = serverResponseToRoom(server_room);
-          host.room_id = room.room_id;
-          setRoom.bind(this, room, host_id)();
-        } catch(e) {
-          const new_room_id = parseInt(message.data);
-          if (new_room_id) {
-            // TODO: send get room request
-          }
-        }
-        break;
-      case 'room-closed':
-        const closed_room_id = parseInt(message.data);
-        if (closed_room_id) {
-          if (this.connection_metadata.room_id === closed_room_id) {
-            this.leaveRoom();
-          }
-          const room = this.lobby_rooms.getRoom(closed_room_id);
-          this.lobby_rooms.removeRoom(closed_room_id);
-          if (room) {
-            for (const client_id of room.players.keys()) {
-              this.lobby_users.leaveRoom(client_id);
-            }
-          }
-        }
-        break;
-      case 'room-left':
-        const room_leave_id = parseInt(message.sender.replace('room-', ''));
-        const client_leave_id = parseInt(message.data.replace('client-', ''));
-        if (room_leave_id && client_leave_id) {
-          this.userLeftRoom(room_leave_id, client_leave_id, 'left');
-        }
-        break;
-      case 'room-joined-player':
-        const room_join_id = parseInt(message.sender.replace('room-', ''));
-        const client_join_id = parseInt(message.data.replace('client-', ''));
-        const joinee = this.lobby_users.getUser(client_join_id);
-        const room = this.lobby_rooms.getRoom(room_join_id);
-        if (room_join_id && client_join_id && joinee) {
-          this.lobby_users.joinRoom(client_join_id, room_join_id);
-          this.lobby_rooms.playerJoinsRoom(room_join_id, joinee);
-          if (room_join_id === this.connection_metadata.room_id) {
-            this.lobby_room.joinRoom(joinee, true);
-          } else if (client_join_id === this.connection_metadata.client_id && room) {
-            this.enterRoom(this.lobby_rooms.getRoom(room_join_id), false);
-          }
-        }
-        break;
-      case 'room-joined-viewer':
-        const viewer_room_join_id = parseInt(message.sender.replace('room-', ''));
-        const viewer_client_join_id = parseInt(message.data.replace('client-', ''));
-        const viewer_joinee = this.lobby_users.getUser(client_join_id);
-        const viewer_room = this.lobby_rooms.getRoom(room_join_id);
-        if (viewer_room_join_id && viewer_client_join_id && viewer_joinee) {
-          this.lobby_users.joinRoom(viewer_client_join_id, viewer_room_join_id);
-          this.lobby_rooms.viewerJoinsRoom(viewer_room_join_id, viewer_joinee);
-          if (viewer_room_join_id === this.connection_metadata.room_id) {
-            this.lobby_room.joinRoom(viewer_joinee, false);
-          } else if (viewer_client_join_id === this.connection_metadata.client_id && viewer_room) {
-            this.enterRoom(this.lobby_rooms.getRoom(viewer_room_join_id), false);
-          }
-        }
-        break;
-      case 'room-chat':
-        const room_chat_sender_split = message.sender.split('-');
-        if (room_chat_sender_split.length < 3) {
-          break;
-        }
-        const room_chat_room_id = parseInt(room_chat_sender_split[1]);
-        const room_chat_client_id = parseInt(room_chat_sender_split[2]);
-        if (room_chat_room_id && room_chat_client_id &&
-          this.connection_metadata.room_id === room_chat_room_id &&
-          this.lobby_room.hasPlayer(room_chat_client_id))
-        {
-          this.lobby_room.chatbox.addChat({
-            message: message.content,
-            sender: this.lobby_room.getClient(room_chat_client_id)?.nickname ?? room_chat_client_id.toString(),
-          });
-        }
-        break;
-      case 'room-renamed':
-        const room_renamed_id = parseInt(message.sender.replace('room-', ''));
-        const renamer_client_id = parseInt(message.data);
-        if (room_renamed_id && renamer_client_id) {
-          if (renamer_client_id === this.connection_metadata.client_id) {
-            // TODO: loader for renaming room
-          }
-          if (this.lobby_room.room && this.lobby_room.room.room_id === room_renamed_id) {
-            this.lobby_room.renameRoom(message.content, renamer_client_id);
-          }
-          this.lobby_rooms.renameRoom(room_renamed_id, message.content);
-        }
-        break;
-      case 'room-kicked':
-        const room_kick_id = parseInt(message.sender.replace('room-', ''));
-        const client_kick_id = parseInt(message.data);
-        if (room_kick_id && client_kick_id) {
-          this.userLeftRoom(room_kick_id, client_kick_id, 'was kicked from');
-        }
-        break;
-      case 'room-promoted':
-        const room_promote_id = parseInt(message.sender.replace('room-', ''));
-        const client_promote_id = parseInt(message.data);
-        if (room_promote_id && client_promote_id) {
-          if (room_promote_id === this.connection_metadata.room_id) {
-            this.lobby_room.promoteUser(client_promote_id, client_promote_id === this.connection_metadata.client_id);
-          }
-          this.lobby_rooms.promoteUser(room_promote_id, client_promote_id);
-        }
-        break;
-      case 'room-join-failed':
-      case 'room-leave-failed':
-      case 'room-rename-failed':
-      case 'room-kick-failed':
-      case 'room-promote-failed':
-        throw new Error(message.content);
-      default:
-        console.log("Unknown message type", message.kind, "from", message.sender);
-        break;
-    }
-  }
-
-  private userLeftRoom(room_id: number, client_id: number, left_text: string) {
+  userLeftRoom(room_id: number, client_id: number, left_text: string) {
     if (room_id === this.connection_metadata.room_id) {
       this.lobby_room.leaveRoom(client_id, left_text);
       if (client_id === this.connection_metadata.client_id) {
@@ -340,7 +145,7 @@ export class DwgLobby extends DwgElement {
     this.lobby_rooms.clientLeavesRoom(room_id, client_id);
   }
 
-  private socketActive() {
+  socketActive() {
     return !!this.socket && this.socket.readyState == WebSocket.OPEN;
   }
 
@@ -354,13 +159,13 @@ export class DwgLobby extends DwgElement {
     this.ping_container.innerText = `ping: ${Math.round(ping)}`;
   }
 
-  private enterRoom(room: LobbyRoom, is_host: boolean) {
+  enterRoom(room: LobbyRoom, is_host: boolean) {
     this.connection_metadata.room_id = room.room_id;
     this.lobby_room.setRoom(room, is_host);
     this.lobby_room_wrapper.classList.add('show');
   }
 
-  private leaveRoom() {
+  leaveRoom() {
     this.connection_metadata.room_id = undefined;
     this.lobby_room_wrapper.classList.remove('show');
     this.lobby_room.clearRoom();
@@ -368,7 +173,7 @@ export class DwgLobby extends DwgElement {
     this.create_room_button.innerText = 'Create Room';
   }
 
-  private sendChatMessage(chatbox: DwgChatbox, sender_type: string, message_kind: string, message: ChatMessage) {
+  sendChatMessage(chatbox: DwgChatbox, sender_type: string, message_kind: string, message: ChatMessage) {
     let message_sent = false;
     try {
       if (this.socketActive()) {

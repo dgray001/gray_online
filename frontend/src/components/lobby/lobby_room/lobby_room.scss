@@ -126,6 +126,7 @@ dwg-lobby-room {
           display: flex;
           flex-flow: row nowrap;
           gap: 12px;
+          margin-bottom: 12px;
 
           &.hide {
             display: none;
@@ -219,7 +220,7 @@ dwg-lobby-room {
     }
   }
 
-  #kick-img, #promote-img {
+  #kick-img, #promote-img, #viewer-img, #player-img {
     display: none;
   }
 }

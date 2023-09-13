@@ -1,3 +1,3 @@
 Online Games
 
-v0.1h: Can open settings menu
+v0.1i: Can set players and viewers in lobby

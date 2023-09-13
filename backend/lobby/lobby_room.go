@@ -1,6 +1,7 @@
 package lobby
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -16,13 +17,13 @@ type LobbyRoom struct {
 	viewers       map[uint64]*Client
 	lobby         *Lobby
 	game          *game.Game
-	game_settings GameSettings
+	game_settings *GameSettings
 }
 
 type GameSettings struct {
-	max_players uint8
-	max_viewers uint8
-	game_type   uint8
+	MaxPlayers uint8 `json:"max_players"`
+	MaxViewers uint8 `json:"max_viewers"`
+	GameType   uint8 `json:"game_type"`
 }
 
 func CreateLobbyRoom(host *Client, room_id uint64, lobby *Lobby) *LobbyRoom {
@@ -33,10 +34,10 @@ func CreateLobbyRoom(host *Client, room_id uint64, lobby *Lobby) *LobbyRoom {
 		players:   make(map[uint64]*Client),
 		viewers:   make(map[uint64]*Client),
 		lobby:     lobby,
-		game_settings: GameSettings{
-			max_players: 8,
-			max_viewers: 16,
-			game_type:   0,
+		game_settings: &GameSettings{
+			MaxPlayers: 8,
+			MaxViewers: 16,
+			GameType:   0,
 		},
 	}
 	room.players[host.client_id] = host
@@ -97,6 +98,43 @@ func (r *LobbyRoom) promotePlayer(c *Client) {
 	r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-promoted", Data: client_id_string})
 }
 
+func (r *LobbyRoom) setViewer(c *Client) {
+	if r.host.client_id == c.client_id || r.players[c.client_id] == nil {
+		return
+	}
+	delete(r.players, c.client_id)
+	r.viewers[c.client_id] = c
+	client_id_string := strconv.Itoa(int(c.client_id))
+	room_id_string := strconv.Itoa(int(r.room_id))
+	r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-viewer-set", Data: client_id_string})
+}
+
+func (r *LobbyRoom) setPlayer(c *Client) {
+	if r.host.client_id == c.client_id || r.viewers[c.client_id] == nil {
+		return
+	}
+	delete(r.viewers, c.client_id)
+	r.players[c.client_id] = c
+	client_id_string := strconv.Itoa(int(c.client_id))
+	room_id_string := strconv.Itoa(int(r.room_id))
+	r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-player-set", Data: client_id_string})
+}
+
+func (r *LobbyRoom) updateSettings(s *GameSettings) {
+	settings_stringified, err := json.Marshal(s.ToFrontend())
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	r.game_settings = s
+	room_id_string := strconv.Itoa(int(r.room_id))
+	r.lobby.broadcastMessage(lobbyMessage{
+		Sender: "room-" + room_id_string,
+		Kind:   "room-settings-updated",
+		Data:   string(settings_stringified),
+	})
+}
+
 func (r *LobbyRoom) valid() bool {
 	if r.room_id < 1 {
 		return false
@@ -117,16 +155,19 @@ func (r *LobbyRoom) valid() bool {
 	return true
 }
 
-func (r *LobbyRoom) ToFrontend() gin.H {
-	settings := gin.H{
-		"game_type":   strconv.Itoa(int(r.game_settings.game_type)),
-		"max_players": strconv.Itoa(int(r.game_settings.max_players)),
-		"max_viewers": strconv.Itoa(int(r.game_settings.max_viewers)),
+func (s *GameSettings) ToFrontend() gin.H {
+	return gin.H{
+		"game_type":   strconv.Itoa(int(s.GameType)),
+		"max_players": strconv.Itoa(int(s.MaxPlayers)),
+		"max_viewers": strconv.Itoa(int(s.MaxViewers)),
 	}
+}
+
+func (r *LobbyRoom) ToFrontend() gin.H {
 	room := gin.H{
 		"room_id":       strconv.Itoa(int(r.room_id)),
 		"room_name":     r.room_name,
-		"game_settings": settings,
+		"game_settings": r.game_settings.ToFrontend(),
 	}
 	if r.host != nil {
 		room["host"] = r.host.toFrontend()

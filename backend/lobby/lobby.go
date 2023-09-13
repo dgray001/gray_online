@@ -19,8 +19,11 @@ type Lobby struct {
 	RemoveClient        chan *Client
 	CreateRoom          chan *Client
 	RenameRoom          chan *LobbyRoom
+	UpdateSettings      chan *SettingsRoom
 	KickClientFromRoom  chan *ClientRoom
 	PromotePlayerInRoom chan *ClientRoom
+	RoomSetViewer       chan *ClientRoom
+	RoomSetPlayer       chan *ClientRoom
 	RemoveRoom          chan *LobbyRoom
 	JoinRoom            chan *ClientRoom
 	LeaveRoom           chan *ClientRoom
@@ -39,6 +42,18 @@ func MakeClientRoom(client *Client, room *LobbyRoom) *ClientRoom {
 	}
 }
 
+type SettingsRoom struct {
+	room     *LobbyRoom
+	settings *GameSettings
+}
+
+func MakeSettingsRoom(settings *GameSettings, room *LobbyRoom) *SettingsRoom {
+	return &SettingsRoom{
+		settings: settings,
+		room:     room,
+	}
+}
+
 func CreateLobby() *Lobby {
 	return &Lobby{
 		next_room_id:        1,
@@ -49,8 +64,11 @@ func CreateLobby() *Lobby {
 		RemoveClient:        make(chan *Client),
 		CreateRoom:          make(chan *Client),
 		RenameRoom:          make(chan *LobbyRoom),
+		UpdateSettings:      make(chan *SettingsRoom),
 		KickClientFromRoom:  make(chan *ClientRoom),
 		PromotePlayerInRoom: make(chan *ClientRoom),
+		RoomSetViewer:       make(chan *ClientRoom),
+		RoomSetPlayer:       make(chan *ClientRoom),
 		RemoveRoom:          make(chan *LobbyRoom),
 		JoinRoom:            make(chan *ClientRoom),
 		LeaveRoom:           make(chan *ClientRoom),
@@ -69,10 +87,16 @@ func (l *Lobby) Run() {
 			l.createRoom(client)
 		case room := <-l.RenameRoom:
 			l.renameRoom(room)
+		case data := <-l.UpdateSettings:
+			data.room.updateSettings(data.settings)
 		case data := <-l.KickClientFromRoom:
 			data.room.kickClient(data.client)
 		case data := <-l.PromotePlayerInRoom:
 			data.room.promotePlayer(data.client)
+		case data := <-l.RoomSetViewer:
+			data.room.setViewer(data.client)
+		case data := <-l.RoomSetPlayer:
+			data.room.setPlayer(data.client)
 		case room := <-l.RemoveRoom:
 			l.removeRoom(room)
 		case data := <-l.JoinRoom:
@@ -201,7 +225,7 @@ var (
 	client_to_lobby_messages = []string{"lobby-joined", "lobby-left", "lobby-chat"}
 	lobby_messages           = []string{"room-created", "room-closed", "room-joined-player",
 		"room-joined-viewer", "room-left", "room-renamed", "room-kicked", "room-promoted",
-		"ping-update"}
+		"ping-update", "room-settings-updated", "room-viewer-set", "room-player-set"}
 	client_to_room_messages = []string{"room-chat"}
 	room_messages           = []string{}
 )

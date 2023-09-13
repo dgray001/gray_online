@@ -1,6 +1,6 @@
 import {DwgElement} from '../../dwg_element';
 import {apiPost} from '../../../scripts/api';
-import {LobbyRoom, LobbyRoomFromServer, LobbyUser, serverResponseToRoom} from '../data_models';
+import {GameSettings, LobbyRoom, LobbyRoomFromServer, LobbyUser, serverResponseToRoom} from '../data_models';
 
 import html from './lobby_rooms.html';
 import './lobby_rooms.scss';
@@ -108,6 +108,28 @@ export class DwgLobbyRooms extends DwgElement {
     }
   }
 
+  playerToViewer(room_id: number, user_id: number) {
+    const room = this.getRoom(room_id);
+    if (!room) {
+      return;
+    }
+    if (room.players.has(user_id)) {
+      room.viewers.set(user_id, room.players.get(user_id));
+      room.players.delete(user_id);
+    }
+  }
+
+  viewerToPlayer(room_id: number, user_id: number) {
+    const room = this.getRoom(room_id);
+    if (!room) {
+      return;
+    }
+    if (room.viewers.has(user_id)) {
+      room.players.set(user_id, room.viewers.get(user_id));
+      room.viewers.delete(user_id);
+    }
+  }
+
   playerJoinsRoom(room_id: number, joinee: LobbyUser) {
     const curr_room = this.getRoom(joinee.room_id);
     if (curr_room) {
@@ -149,6 +171,14 @@ export class DwgLobbyRooms extends DwgElement {
       room.players.delete(client_id);
       room.viewers.delete(client_id);
     }
+  }
+
+  updateRoomSettings(room_id: number, new_settings: GameSettings) {
+    const room = this.getRoom(room_id);
+    if (!room) {
+      return;
+    }
+    room.game_settings = new_settings;
   }
 }
 
