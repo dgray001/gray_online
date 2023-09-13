@@ -11,8 +11,18 @@ v0.2: launch game
  o: finish needed api for fiddlesticks
  p-q: finish initial frontend for fiddlesticks
 
-v0.3: risk outline
+v0.3: flesh out fiddlesticks game
+ - can reconnect as anonymous user
+ - chat emojis and taunts
+ - mobile version of site
+ - animations
+ - alternative rules
+
+v0.4: launch risq
  - can launch a simple game of risq
+
+v0.5: save risq game
+ - need fully functioning db and user profiles
 
 
 P3/P4:

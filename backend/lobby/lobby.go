@@ -1,6 +1,7 @@
 package lobby
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -88,7 +89,7 @@ func (l *Lobby) GetRooms() []gin.H {
 	rooms := []gin.H{}
 	for _, room := range l.rooms {
 		if room.valid() {
-			rooms = append(rooms, room.toFrontend())
+			rooms = append(rooms, room.ToFrontend())
 		}
 	}
 	return rooms
@@ -139,7 +140,17 @@ func (l *Lobby) createRoom(client *Client) {
 	l.rooms[room.room_id] = room
 	id_string := strconv.Itoa(int(room.room_id))
 	client_id_string := strconv.Itoa(int(client.client_id))
-	l.broadcastMessage(lobbyMessage{Sender: "client-" + client_id_string, Kind: "room-created", Content: "", Data: id_string})
+	room_stringified, err := json.Marshal(room.ToFrontend())
+	if err != nil {
+		fmt.Println(err)
+		room_stringified = []byte{}
+	}
+	l.broadcastMessage(lobbyMessage{
+		Sender:  "client-" + client_id_string,
+		Kind:    "room-created",
+		Content: string(room_stringified),
+		Data:    id_string,
+	})
 }
 
 func (l *Lobby) renameRoom(room *LobbyRoom) {

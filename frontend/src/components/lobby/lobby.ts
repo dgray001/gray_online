@@ -5,7 +5,7 @@ import {ChatMessage, DwgChatbox} from '../chatbox/chatbox';
 import {DwgLobbyUsers} from './lobby_users/lobby_users';
 import {DwgLobbyRooms} from './lobby_rooms/lobby_rooms';
 import {DwgLobbyRoom} from './lobby_room/lobby_room';
-import {ConnectionMetadata, GameType, LobbyMessage, LobbyRoom, createMessage} from './data_models';
+import {ConnectionMetadata, GameSettings, GameType, LobbyMessage, LobbyRoom, LobbyRoomFromServer, createMessage, defaultGameSettings, serverResponseToRoom} from './data_models';
 import html from './lobby.html';
 
 import './lobby.scss';
@@ -90,6 +90,14 @@ export class DwgLobby extends DwgElement {
       this.socket.send(createMessage(
         `client-${this.connection_metadata.client_id}`,
         'room-promote',
+        e.detail.toString(),
+        this.connection_metadata.room_id.toString(),
+      ));
+    });
+    this.lobby_room.addEventListener('save_settings', (e: CustomEvent<GameSettings>) => {
+      this.socket.send(createMessage(
+        `client-${this.connection_metadata.client_id}`,
+        'room-settings-update',
         e.detail.toString(),
         this.connection_metadata.room_id.toString(),
       ));
@@ -186,21 +194,7 @@ export class DwgLobby extends DwgElement {
         }
         break;
       case 'room-created':
-        const new_room_id = parseInt(message.data);
-        const host_id = parseInt(message.sender.replace('client-', ''));
-        const host = this.lobby_users.getUser(host_id);
-        if (new_room_id && host_id && host) {
-          const room: LobbyRoom = {
-            room_id: new_room_id,
-            room_name: `${host.nickname}'s room`,
-            host,
-            players: new Map(),
-            viewers: new Map(),
-            max_players: 8,
-            max_viewers: 16,
-            game_type: GameType.UNSPECIFIED,
-          };
-          room.players.set(host.client_id, host);
+        const setRoom = (room: LobbyRoom, host_id: number) => {
           this.lobby_rooms.addRoom(room);
           if (this.connection_metadata.client_id === host_id) {
             this.enterRoom(room, true);
@@ -208,6 +202,19 @@ export class DwgLobby extends DwgElement {
               // quick fix in case server responds instantly
               this.create_room_button.innerText = "Room Created";
             }, 1);
+          }
+        }
+        try {
+          const host_id = parseInt(message.sender.replace('client-', ''));
+          const host = this.lobby_users.getUser(host_id);
+          const server_room = JSON.parse(message.content) as LobbyRoomFromServer;
+          const room = serverResponseToRoom(server_room);
+          host.room_id = room.room_id;
+          setRoom.bind(this, room, host_id)();
+        } catch(e) {
+          const new_room_id = parseInt(message.data);
+          if (new_room_id) {
+            // TODO: send get room request
           }
         }
         break;

@@ -52,6 +52,38 @@ export enum GameType {
   FIDDLESTICKS = 1,
 }
 
+/** Settings object for lobby room */
+export declare interface GameSettings {
+  game_type: GameType;
+  max_players: number;
+  max_viewers: number;
+}
+
+/** Returns default settings */
+export function defaultGameSettings(): GameSettings {
+  return {
+    game_type: GameType.UNSPECIFIED,
+    max_players: 8,
+    max_viewers: 16,
+  }
+}
+
+/** Settings object for lobby room */
+export declare interface GameSettingsFromServer {
+  game_type: string;
+  max_players: string;
+  max_viewers: string;
+}
+
+/** Convert a server response to a TS game settings object */
+export function serverResponseToGameSettings(server_response: GameSettingsFromServer): GameSettings {
+  return {
+    game_type: parseInt(server_response.game_type),
+    max_players: parseInt(server_response.max_players),
+    max_viewers: parseInt(server_response.max_viewers),
+  }
+}
+
 /** Object describing lobby room data */
 export declare interface LobbyRoom {
   room_id: number;
@@ -59,9 +91,7 @@ export declare interface LobbyRoom {
   host: LobbyUser;
   players: Map<number, LobbyUser>;
   viewers: Map<number, LobbyUser>;
-  max_players: number;
-  max_viewers: number;
-  game_type: GameType;
+  game_settings: GameSettings;
 }
 
 /** Data describing a lobby room returned from the server */
@@ -71,9 +101,7 @@ export declare interface LobbyRoomFromServer {
   host: LobbyUserFromServer;
   players: LobbyUserFromServer[];
   viewers: LobbyUserFromServer[];
-  max_players: string;
-  max_viewers: string;
-  game_type: string;
+  game_settings: GameSettingsFromServer;
 }
 
 /** Convert a server response to a TS lobby room object */
@@ -90,8 +118,6 @@ export function serverResponseToRoom(server_response: LobbyRoomFromServer): Lobb
       const user = serverResponseToUser(server_user);
       return [user.client_id, user];
     })),
-    max_players: parseInt(server_response.max_players),
-    max_viewers: parseInt(server_response.max_viewers),
-    game_type: parseInt(server_response.game_type),
+    game_settings: serverResponseToGameSettings(server_response.game_settings),
   }
 }

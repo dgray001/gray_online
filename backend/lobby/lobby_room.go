@@ -9,29 +9,35 @@ import (
 )
 
 type LobbyRoom struct {
-	room_id     uint64
-	room_name   string
-	host        *Client
-	players     map[uint64]*Client
-	viewers     map[uint64]*Client
+	room_id       uint64
+	room_name     string
+	host          *Client
+	players       map[uint64]*Client
+	viewers       map[uint64]*Client
+	lobby         *Lobby
+	game          *game.Game
+	game_settings GameSettings
+}
+
+type GameSettings struct {
 	max_players uint8
 	max_viewers uint8
 	game_type   uint8
-	lobby       *Lobby
-	game        *game.Game
 }
 
 func CreateLobbyRoom(host *Client, room_id uint64, lobby *Lobby) *LobbyRoom {
 	room := LobbyRoom{
-		room_id:     room_id,
-		room_name:   fmt.Sprintf("%s's room", host.nickname),
-		host:        host,
-		players:     make(map[uint64]*Client),
-		viewers:     make(map[uint64]*Client),
-		max_players: 8,
-		max_viewers: 16,
-		game_type:   0,
-		lobby:       lobby,
+		room_id:   room_id,
+		room_name: fmt.Sprintf("%s's room", host.nickname),
+		host:      host,
+		players:   make(map[uint64]*Client),
+		viewers:   make(map[uint64]*Client),
+		lobby:     lobby,
+		game_settings: GameSettings{
+			max_players: 8,
+			max_viewers: 16,
+			game_type:   0,
+		},
 	}
 	room.players[host.client_id] = host
 	host.lobby_room = &room
@@ -111,13 +117,16 @@ func (r *LobbyRoom) valid() bool {
 	return true
 }
 
-func (r *LobbyRoom) toFrontend() gin.H {
+func (r *LobbyRoom) ToFrontend() gin.H {
+	settings := gin.H{
+		"game_type":   strconv.Itoa(int(r.game_settings.game_type)),
+		"max_players": strconv.Itoa(int(r.game_settings.max_players)),
+		"max_viewers": strconv.Itoa(int(r.game_settings.max_viewers)),
+	}
 	room := gin.H{
-		"room_id":     strconv.Itoa(int(r.room_id)),
-		"room_name":   r.room_name,
-		"game_type":   strconv.Itoa(int(r.game_type)),
-		"max_players": strconv.Itoa(int(r.max_players)),
-		"max_viewers": strconv.Itoa(int(r.max_viewers)),
+		"room_id":       strconv.Itoa(int(r.room_id)),
+		"room_name":     r.room_name,
+		"game_settings": settings,
 	}
 	if r.host != nil {
 		room["host"] = r.host.toFrontend()

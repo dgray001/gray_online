@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/dgray001/gray_online/lobby"
 	"github.com/gin-gonic/gin"
@@ -59,6 +60,21 @@ func main() {
 			{
 				api_rooms.POST("/get", func(c *gin.Context) {
 					c.JSON(200, successResponse(lobby_object.GetRooms()))
+				})
+				api_rooms.POST("/get/:id", func(c *gin.Context) {
+					id_param := c.Param("id")
+					room_id, err := strconv.Atoi(id_param)
+					if err != nil {
+						fmt.Println(err)
+						c.JSON(200, failureResponse("Invalid room id"))
+						return
+					}
+					room := lobby_object.GetRoom(uint64(room_id))
+					if room == nil {
+						c.JSON(200, failureResponse("Room doesn't exist"))
+						return
+					}
+					c.JSON(200, successResponse(room.ToFrontend()))
 				})
 			}
 

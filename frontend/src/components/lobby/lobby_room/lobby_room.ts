@@ -1,6 +1,6 @@
 import {DwgElement} from '../../dwg_element';
 import {DwgChatbox} from '../../chatbox/chatbox';
-import {LobbyRoom, LobbyUser} from '../data_models';
+import {GameSettings, LobbyRoom, LobbyUser} from '../data_models';
 import {DwgLobbyGameSettings} from '../lobby_game_settings/lobby_game_settings';
 
 import html from './lobby_room.html';
@@ -73,7 +73,11 @@ export class DwgLobbyRoom extends DwgElement {
       }
     });
     this.settings_settings_button.addEventListener('click', () => {
+      this.lobby_game_settings.setSettings(this.room.game_settings);
       this.lobby_game_settings.classList.add('show');
+    });
+    this.lobby_game_settings.addEventListener('saved', (e: CustomEvent<GameSettings>) => {
+      this.dispatchEvent(new CustomEvent('save_settings', {'detail': e.detail}))
     });
     this.settings_launch_button.addEventListener('click', () => {
       // TODO: launch game (or cancel if launching)
@@ -86,12 +90,15 @@ export class DwgLobbyRoom extends DwgElement {
     this.room = room;
     this.room_name.innerText = room.room_name;
     this.num_players_current.innerText = room.players.size.toString();
-    this.num_players_max.innerText = room.max_players.toString();
+    this.num_players_max.innerText = room.game_settings.max_players.toString();
     this.settings_game_status.innerText = 'Game not started';
     this.classList.add('show');
     if (is_host) {
       this.rename_room.classList.add('show');
       this.settings_button_container.classList.remove('hide');
+    } else {
+      this.rename_room.classList.remove('show');
+      this.settings_button_container.classList.add('hide');
     }
     this.host_container.replaceChildren(this.getUserElement(room.host, false));
     const user_els = [];
@@ -231,6 +238,7 @@ export class DwgLobbyRoom extends DwgElement {
     }
     if (join_as_player) {
       this.room.players.set(joinee.client_id, joinee);
+      this.num_players_current.innerText = this.room.players.size.toString();
     } else {
       this.room.viewers.set(joinee.client_id, joinee);
     }
@@ -249,6 +257,7 @@ export class DwgLobbyRoom extends DwgElement {
     } else {
       const user = this.room.players.get(client_id);
       this.room.players.delete(client_id);
+      this.num_players_current.innerText = this.room.players.size.toString();
       const user_el = this.querySelector<HTMLDivElement>(`#user-${client_id}`);
       if (user_el) {
         user_el.remove();
