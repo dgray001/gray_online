@@ -1,15 +1,23 @@
 package game
 
 type GameBase struct {
-	Game_id      uint64
+	Game_id uint64
+	// here the map keys are the lobby client ids
 	Players      map[uint64]*Player
 	Viewers      map[uint64]*Viewer
 	game_started bool
 	game_ended   bool
 }
 
+func CreateBaseGame(game_id uint64) *GameBase {
+	return &GameBase{
+		Game_id:      game_id,
+		game_started: false,
+		game_ended:   false,
+	}
+}
+
 type Game interface {
-	CreateGame(g *GameBase) Game
 	StartGame()
 }
 

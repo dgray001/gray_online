@@ -50,7 +50,7 @@ type FiddlesticksAction struct {
 	action_data uint8
 }
 
-func (f *GameFiddlesticks) CreateGame(g *game.GameBase) *GameFiddlesticks {
+func CreateGame(g *game.GameBase) *GameFiddlesticks {
 	fiddlesticks := GameFiddlesticks{
 		game:              g,
 		players:           []*FiddlesticksPlayer{},
@@ -69,7 +69,7 @@ func (f *GameFiddlesticks) CreateGame(g *game.GameBase) *GameFiddlesticks {
 		})
 	}
 	if len(fiddlesticks.players) < 2 {
-		panic("Need at least two players to play fiddlesticks")
+		panic("Need at least two players to play fiddlesticks") // TODO: remove panics
 	}
 	fiddlesticks.max_round = uint8((fiddlesticks.deck.Size() - 1) / len(fiddlesticks.players))
 	return &fiddlesticks

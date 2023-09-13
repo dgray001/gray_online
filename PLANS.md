@@ -1,7 +1,7 @@
 
 v0.2: launch game
- j: room host can launch game => fullscreen game component
- k: backend abstract game launch / finish / exit
+ j: fullscreen game component
+ k: backend abstract game finish / exit
  l: abstract messaging and header (to exit) in-game
  m: abstract game update messages somehow
  n: game update messages for fiddlesticks
@@ -27,3 +27,5 @@ P3/P4:
  - handle other failures by syncing state => show message
  - chatbox lets you know there's new messages
  - room selector component (can join as viewer)
+ - backend (and frontend) prevents joining room when max players
+ - remove all panics from backend

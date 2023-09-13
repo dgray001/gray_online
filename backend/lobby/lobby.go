@@ -13,6 +13,7 @@ import (
 type Lobby struct {
 	next_room_id        uint64
 	next_client_id      uint64
+	next_game_id        uint64
 	clients             map[uint64]*Client
 	rooms               map[uint64]*LobbyRoom
 	AddClient           chan *Client
@@ -27,6 +28,7 @@ type Lobby struct {
 	RemoveRoom          chan *LobbyRoom
 	JoinRoom            chan *ClientRoom
 	LeaveRoom           chan *ClientRoom
+	LaunchGame          chan *LobbyRoom
 	broadcast           chan lobbyMessage
 }
 
@@ -58,6 +60,7 @@ func CreateLobby() *Lobby {
 	return &Lobby{
 		next_room_id:        1,
 		next_client_id:      1,
+		next_game_id:        1,
 		clients:             make(map[uint64]*Client),
 		rooms:               make(map[uint64]*LobbyRoom),
 		AddClient:           make(chan *Client),
@@ -72,6 +75,7 @@ func CreateLobby() *Lobby {
 		RemoveRoom:          make(chan *LobbyRoom),
 		JoinRoom:            make(chan *ClientRoom),
 		LeaveRoom:           make(chan *ClientRoom),
+		LaunchGame:          make(chan *LobbyRoom),
 		broadcast:           make(chan lobbyMessage),
 	}
 }
@@ -103,6 +107,9 @@ func (l *Lobby) Run() {
 			l.joinRoom(data)
 		case data := <-l.LeaveRoom:
 			l.leaveRoom(data)
+		case room := <-l.LaunchGame:
+			room.launchGame(l.next_game_id)
+			l.next_game_id++
 		case message := <-l.broadcast:
 			l.broadcastMessage(message)
 		}
@@ -225,7 +232,7 @@ var (
 	client_to_lobby_messages = []string{"lobby-joined", "lobby-left", "lobby-chat"}
 	lobby_messages           = []string{"room-created", "room-closed", "room-joined-player",
 		"room-joined-viewer", "room-left", "room-renamed", "room-kicked", "room-promoted",
-		"ping-update", "room-settings-updated", "room-viewer-set", "room-player-set"}
+		"ping-update", "room-settings-updated", "room-viewer-set", "room-player-set", "room-launched"}
 	client_to_room_messages = []string{"room-chat"}
 	room_messages           = []string{}
 )

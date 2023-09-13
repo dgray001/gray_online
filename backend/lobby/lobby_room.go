@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/dgray001/gray_online/game"
+	"github.com/dgray001/gray_online/game/fiddlesticks"
 	"github.com/gin-gonic/gin"
 )
 
@@ -16,7 +17,7 @@ type LobbyRoom struct {
 	players       map[uint64]*Client
 	viewers       map[uint64]*Client
 	lobby         *Lobby
-	game          *game.Game
+	game          game.Game
 	game_settings *GameSettings
 }
 
@@ -135,11 +136,67 @@ func (r *LobbyRoom) updateSettings(s *GameSettings) {
 	})
 }
 
+func (r *LobbyRoom) launchGame(game_id uint64) {
+	if !r.launchable() {
+		return
+	}
+	base_game := game.CreateBaseGame(game_id)
+	for _, player := range r.players {
+		base_game.Players[player.client_id] = &game.Player{}
+	}
+	for _, viewer := range r.viewers {
+		base_game.Viewers[viewer.client_id] = &game.Viewer{}
+	}
+	switch r.game_settings.GameType {
+	case 1:
+		r.game = fiddlesticks.CreateGame(base_game)
+	default:
+		break
+	}
+	if r.game == nil {
+		return
+	}
+	room_id_string := strconv.Itoa(int(r.room_id))
+	r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-launched"})
+}
+
+func (s *GameSettings) Launchable() bool {
+	if s.MaxPlayers < 1 || s.MaxPlayers > 8 {
+		return false
+	}
+	if s.MaxViewers < 0 || s.MaxViewers > 16 {
+		return false
+	}
+	if s.GameType != 1 {
+		return false
+	}
+	return true
+}
+
+func (r *LobbyRoom) launchable() bool {
+	if !r.valid() {
+		return false
+	}
+	if !r.game_settings.Launchable() {
+		return false
+	}
+	if r.game != nil {
+		return false
+	}
+	return true
+}
+
 func (r *LobbyRoom) valid() bool {
 	if r.room_id < 1 {
 		return false
 	}
 	if r.host == nil || !r.host.valid() {
+		return false
+	}
+	if len(r.players) > int(r.game_settings.MaxPlayers) {
+		return false
+	}
+	if len(r.viewers) > int(r.game_settings.MaxViewers) {
 		return false
 	}
 	for _, client := range r.players {

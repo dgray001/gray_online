@@ -271,6 +271,26 @@ func (c *Client) readMessages() {
 			settings := GameSettings{}
 			json.Unmarshal([]byte(message.Content), &settings)
 			c.lobby.UpdateSettings <- MakeSettingsRoom(&settings, room)
+		case "room-launch":
+			room_id, err := strconv.Atoi(message.Data)
+			if err != nil || room_id < 1 {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-launch-failed", Content: "Invalid room id"}
+				break
+			}
+			room := c.lobby.GetRoom(uint64(room_id))
+			if room == nil {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-launch-failed", Content: "Room doesn't exist"}
+				break
+			}
+			if room.host.client_id != c.client_id {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-launch-failed", Content: "Not room host"}
+				break
+			}
+			if !room.launchable() {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-launch-failed", Content: "Room not launchable"}
+				break
+			}
+			c.lobby.LaunchGame <- room
 		case "lobby-chat":
 			fallthrough
 		case "room-chat":

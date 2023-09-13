@@ -228,6 +228,9 @@ export function handleMessage(lobby: DwgLobby, message: LobbyMessage) {
         }
       } catch(e) {}
       break;
+    case 'room-launched':
+      // TODO: Add room launched frontend logic
+      break;
     case 'room-join-failed':
     case 'room-leave-failed':
     case 'room-rename-failed':
