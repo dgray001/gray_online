@@ -1,3 +1,38 @@
 dwg-game {
-  background-color: white;
+  --header-height: 1.5em;
+  background-color: black;
+
+  #header {
+    background-color: rgb(50, 50, 50);
+    display: flex;
+    flex-flow: row nowrap;
+    height: var(--header-height);
+    max-height: var(--header-height);
+    min-height: var(--header-height);
+    width: 100%;
+  }
+
+  #waiting-room {
+    background-color: rgb(220, 160, 120);
+    height: calc(100% - var(--header-height));
+
+    &.hide {
+      display: none;
+    }
+  }
+
+  #game-container {
+    align-items: center;
+    display: flex;
+    height: calc(100% - var(--header-height));
+    justify-content: center;
+
+    &:not(.show) {
+      display: none;
+    }
+
+    .player-loading {
+      //
+    }
+  }
 }

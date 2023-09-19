@@ -348,7 +348,7 @@ func (c *Client) valid() bool {
 	return true
 }
 
-func (c *Client) toFrontend() gin.H {
+func (c *Client) ToFrontend() gin.H {
 	client := gin.H{
 		"client_id": strconv.Itoa(int(c.client_id)),
 		"nickname":  c.nickname,

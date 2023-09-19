@@ -1,5 +1,5 @@
 import {DwgElement} from '../../dwg_element';
-import {apiPost} from '../../../scripts/api';
+import {apiGet} from '../../../scripts/api';
 import {clickButton} from '../../../scripts/util';
 import {LobbyUser, LobbyUserFromServer, serverResponseToUser} from '../data_models';
 
@@ -34,7 +34,7 @@ export class DwgLobbyUsers extends DwgElement {
     this.refresh_users_running = true;
     this.user_container.innerHTML = ' ... loading';
     this.users.clear();
-    const response = await apiPost<LobbyUserFromServer[]>('lobby/users/get', '');
+    const response = await apiGet<LobbyUserFromServer[]>('lobby/users/get');
     if (response.success) {
       console.log(response);
       let html = '';

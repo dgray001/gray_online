@@ -58,10 +58,10 @@ func main() {
 
 			api_rooms := api_lobby.Group("/rooms")
 			{
-				api_rooms.POST("/get", func(c *gin.Context) {
+				api_rooms.GET("/get", func(c *gin.Context) {
 					c.JSON(200, successResponse(lobby_object.GetRooms()))
 				})
-				api_rooms.POST("/get/:id", func(c *gin.Context) {
+				api_rooms.GET("/get/:id", func(c *gin.Context) {
 					id_param := c.Param("id")
 					room_id, err := strconv.Atoi(id_param)
 					if err != nil {
@@ -80,8 +80,45 @@ func main() {
 
 			api_users := api_lobby.Group("/users")
 			{
-				api_users.POST("/get", func(c *gin.Context) {
+				api_users.GET("/get", func(c *gin.Context) {
 					c.JSON(200, successResponse(lobby_object.GetUsers()))
+				})
+				api_users.GET("/get/:id", func(c *gin.Context) {
+					id_param := c.Param("id")
+					client_id, err := strconv.Atoi(id_param)
+					if err != nil {
+						fmt.Println(err)
+						c.JSON(200, failureResponse("Invalid client id"))
+						return
+					}
+					client := lobby_object.GetClient(uint64(client_id))
+					if client == nil {
+						c.JSON(200, failureResponse("Client doesn't exist"))
+						return
+					}
+					c.JSON(200, successResponse(client.ToFrontend()))
+				})
+			}
+
+			api_games := api_lobby.Group("/games")
+			{
+				api_games.GET("/get", func(c *gin.Context) {
+					c.JSON(200, successResponse(lobby_object.GetGames()))
+				})
+				api_games.GET("/get/:id", func(c *gin.Context) {
+					id_param := c.Param("id")
+					game_id, err := strconv.Atoi(id_param)
+					if err != nil {
+						fmt.Println(err)
+						c.JSON(200, failureResponse("Invalid game id"))
+						return
+					}
+					game := lobby_object.GetGame(uint64(game_id))
+					if game == nil {
+						c.JSON(200, failureResponse("Game doesn't exist"))
+						return
+					}
+					c.JSON(200, successResponse(game.ToFrontend()))
 				})
 			}
 		}

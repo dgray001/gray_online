@@ -1,6 +1,11 @@
 package fiddlesticks
 
-import "github.com/dgray001/gray_online/game"
+import (
+	"strconv"
+
+	"github.com/dgray001/gray_online/game"
+	"github.com/gin-gonic/gin"
+)
 
 /*
    ========================
@@ -37,10 +42,30 @@ type FiddlesticksPlayer struct {
 	tricks uint8
 }
 
+func (p *FiddlesticksPlayer) toFrontend() gin.H {
+	player := gin.H{
+		"score":  strconv.Itoa(int(p.score)),
+		"bet":    strconv.Itoa(int(p.bet)),
+		"tricks": strconv.Itoa(int(p.tricks)),
+	}
+	if p.player != nil {
+		player["player"] = p.player.ToFrontend()
+	}
+	cards := []gin.H{}
+	for _, card := range p.cards {
+		if card != nil {
+			cards = append(cards, card.ToFrontend())
+		}
+	}
+	player["cards"] = cards
+	return player
+}
+
 type ActionType uint8
 
 const (
-	BET ActionType = iota
+	UNDEFINED_ACTIONTYPE ActionType = iota
+	BET
 	PLAY_CARD
 )
 
@@ -82,6 +107,38 @@ func (f *GameFiddlesticks) GetId() uint64 {
 func (f *GameFiddlesticks) StartGame() {
 	f.game.StartGame()
 	f.dealNextRound()
+}
+
+func (f *GameFiddlesticks) Valid() bool {
+	if f.game == nil || f.deck == nil {
+		return false
+	}
+	return true
+}
+
+func (f *GameFiddlesticks) ToFrontend() gin.H {
+	game := gin.H{
+		"round":             strconv.Itoa(int(f.round)),
+		"max_round":         strconv.Itoa(int(f.max_round)),
+		"rounds_increasing": strconv.FormatBool(f.rounds_increasing),
+		"dealer":            strconv.Itoa(f.dealer),
+		"turn":              strconv.Itoa(f.turn),
+		"betting":           strconv.FormatBool(f.betting),
+	}
+	if f.game != nil {
+		game["game_base"] = f.game.ToFrontend()
+	}
+	if f.deck != nil {
+		game["deck"] = f.deck.ToFrontend()
+	}
+	players := []gin.H{}
+	for _, player := range f.players {
+		if player != nil {
+			players = append(players, player.toFrontend())
+		}
+	}
+	game["players"] = players
+	return game
 }
 
 func (f *GameFiddlesticks) dealNextRound() {

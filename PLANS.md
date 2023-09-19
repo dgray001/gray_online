@@ -1,11 +1,17 @@
 
 v0.2: launch game
- k: backend abstract game finish / exit
- l: abstract messaging and header (to exit) in-game
- m: abstract game update messages somehow
- n: game update messages for fiddlesticks
- o: finish needed api for fiddlesticks
- p-q: finish initial frontend for fiddlesticks
+ n: frontend abstract in-game chat
+ o: abstract header (to exit, see players/viewers) in-game
+ p: fiddlesticks frontend layout
+ q: backend abstract game finish/exit
+ r: game update messages for 
+ s: can see scores / list of other players
+ t: card images
+ u: can bet
+ v: players can see their dealt cards
+ w: can play cards
+ x: can score
+ y: can see winner when game ends
 
 v0.3: flesh out fiddlesticks game
  - can reconnect as anonymous user

@@ -5,7 +5,7 @@ import {ChatMessage, DwgChatbox} from '../chatbox/chatbox';
 import {DwgLobbyUsers} from './lobby_users/lobby_users';
 import {DwgLobbyRooms} from './lobby_rooms/lobby_rooms';
 import {DwgLobbyRoom} from './lobby_room/lobby_room';
-import {ConnectionMetadata, LobbyMessage, LobbyRoom, createMessage} from './data_models';
+import {ConnectionMetadata, ServerMessage, LobbyRoom, createMessage} from './data_models';
 import {handleMessage} from './message_handler';
 import html from './lobby.html';
 
@@ -134,7 +134,7 @@ export class DwgLobby extends DwgElement {
     this.lobby_users.refreshUsers();
     this.socket.addEventListener('message', (m) => {
       try {
-        const message = JSON.parse(m.data) as LobbyMessage;
+        const message = JSON.parse(m.data) as ServerMessage;
         handleMessage(this, message);
       } catch(e) {
         console.log("Error parsing message: ", m, e)

@@ -1,6 +1,6 @@
 
 /** Interface describing messages sent from the server to the lobby */
-export declare interface LobbyMessage {
+export declare interface ServerMessage {
   sender: string;
   kind: string;
   content: string;
@@ -9,7 +9,7 @@ export declare interface LobbyMessage {
 
 /** Function to convert string data into a lobby message object */
 export function createMessage(sender: string, kind: string, content?: string, data?: string): string {
-  return JSON.stringify({sender, kind, content, data} as LobbyMessage);
+  return JSON.stringify({sender, kind, content, data} as ServerMessage);
 }
 
 /** Interface describing the connection between the frontend and the server */
@@ -123,4 +123,8 @@ export function serverResponseToRoom(server_response: LobbyRoomFromServer): Lobb
     game_settings: serverResponseToGameSettings(server_response.game_settings),
     game_id: server_response.game_id ? parseInt(server_response.game_id) : undefined,
   }
+}
+
+/** Data describing a game returned from the server */
+export declare interface LobbyGameFromServer {
 }

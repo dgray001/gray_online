@@ -1,5 +1,11 @@
 package game
 
+import (
+	"strconv"
+
+	"github.com/gin-gonic/gin"
+)
+
 type GameBase struct {
 	Game_id uint64
 	// here the map keys are the lobby client ids
@@ -22,6 +28,8 @@ func CreateBaseGame(game_id uint64) *GameBase {
 type Game interface {
 	GetId() uint64
 	StartGame()
+	Valid() bool
+	ToFrontend() gin.H
 }
 
 func (g *GameBase) GameStarted() bool {
@@ -46,10 +54,45 @@ func (g *GameBase) EndGame() {
 	g.game_ended = true
 }
 
+func (g *GameBase) ToFrontend() gin.H {
+	game_base := gin.H{
+		"game_id":      strconv.Itoa(int(g.Game_id)),
+		"game_started": strconv.FormatBool(g.game_started),
+		"game_ended":   strconv.FormatBool(g.game_ended),
+	}
+	players := []gin.H{}
+	for _, player := range g.Players {
+		if player != nil {
+			players = append(players, player.ToFrontend())
+		}
+	}
+	game_base["players"] = players
+	viewers := []gin.H{}
+	for _, viewer := range g.Viewers {
+		if viewer != nil {
+			viewers = append(viewers, viewer.ToFrontend())
+		}
+	}
+	game_base["viewers"] = viewers
+	return game_base
+}
+
 type Player struct {
-	player_id uint64
+	client_id uint64
+}
+
+func (p *Player) ToFrontend() gin.H {
+	return gin.H{
+		"client_id": p.client_id,
+	}
 }
 
 type Viewer struct {
-	viewer_id uint64
+	client_id uint64
+}
+
+func (v *Viewer) ToFrontend() gin.H {
+	return gin.H{
+		"client_id": v.client_id,
+	}
 }

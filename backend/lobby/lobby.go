@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dgray001/gray_online/game"
 	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
 )
@@ -16,6 +17,7 @@ type Lobby struct {
 	next_game_id        uint64
 	clients             map[uint64]*Client
 	rooms               map[uint64]*LobbyRoom
+	games               map[uint64]game.Game
 	AddClient           chan *Client
 	RemoveClient        chan *Client
 	CreateRoom          chan *Client
@@ -63,6 +65,7 @@ func CreateLobby() *Lobby {
 		next_game_id:        1,
 		clients:             make(map[uint64]*Client),
 		rooms:               make(map[uint64]*LobbyRoom),
+		games:               make(map[uint64]game.Game),
 		AddClient:           make(chan *Client),
 		RemoveClient:        make(chan *Client),
 		CreateRoom:          make(chan *Client),
@@ -108,8 +111,11 @@ func (l *Lobby) Run() {
 		case data := <-l.LeaveRoom:
 			l.leaveRoom(data)
 		case room := <-l.LaunchGame:
-			room.launchGame(l.next_game_id)
-			l.next_game_id++
+			game := room.launchGame(l.next_game_id)
+			if game != nil {
+				l.games[l.next_game_id] = game
+				l.next_game_id++
+			}
 		case message := <-l.broadcast:
 			l.broadcastMessage(message)
 		}
@@ -130,10 +136,23 @@ func (l *Lobby) GetUsers() []gin.H {
 	users := []gin.H{}
 	for _, user := range l.clients {
 		if user.valid() {
-			users = append(users, user.toFrontend())
+			users = append(users, user.ToFrontend())
 		}
 	}
 	return users
+}
+
+func (l *Lobby) GetGames() []gin.H {
+	games := []gin.H{}
+	for _, room := range l.rooms {
+		if room.valid() {
+			game := room.game
+			if game != nil && game.Valid() {
+				games = append(games, game.ToFrontend())
+			}
+		}
+	}
+	return games
 }
 
 func (l *Lobby) GetClient(client_id uint64) *Client {
@@ -142,6 +161,10 @@ func (l *Lobby) GetClient(client_id uint64) *Client {
 
 func (l *Lobby) GetRoom(room_id uint64) *LobbyRoom {
 	return l.rooms[room_id]
+}
+
+func (l *Lobby) GetGame(game_id uint64) game.Game {
+	return l.games[game_id]
 }
 
 func (l *Lobby) addClient(client *Client) {

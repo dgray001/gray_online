@@ -1,9 +1,17 @@
-import {GameSettings, LobbyMessage, LobbyRoom, LobbyRoomFromServer, serverResponseToRoom} from "./data_models";
+import {GameSettings, ServerMessage, LobbyRoom, LobbyRoomFromServer, serverResponseToRoom} from "./data_models";
 import {DwgLobby} from "./lobby";
 
+function isLobbyMessage(kind: string): boolean {
+  const lobby_prefixes = ['room', 'lobby', 'ping'];
+  return !lobby_prefixes.every(prefix => !kind.startsWith(`${prefix}-`));
+}
+
 /** Handles messages for the frontend lobby */
-export function handleMessage(lobby: DwgLobby, message: LobbyMessage) {
+export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
   if (!lobby.socketActive()) {
+    return;
+  }
+  if (!isLobbyMessage(message.kind)) {
     return;
   }
   if (message.kind !== 'ping-update') {
@@ -235,7 +243,7 @@ export function handleMessage(lobby: DwgLobby, message: LobbyMessage) {
         lobby.lobby_rooms.launchRoom(room_launched_id, game_id);
         if (room_launched_id === lobby.connection_metadata.room_id) {
           lobby.lobby_room.launchRoom(game_id);
-          lobby.dispatchEvent(new CustomEvent('game_launched', {'detail': game_id}));
+          lobby.dispatchEvent(new CustomEvent('game_launched', {'detail': lobby.lobby_room.room}));
         }
       }
       break;

@@ -1,6 +1,10 @@
 package game
 
-import "math/rand"
+import (
+	"math/rand"
+
+	"github.com/gin-gonic/gin"
+)
 
 type Card struct {
 }
@@ -63,6 +67,23 @@ func (c *StandardCard) getSuitName() string {
 	}
 }
 
+func (c *StandardCard) Valid() bool {
+	if c.suit < 1 || c.suit > 4 {
+		return false
+	}
+	if c.number < 2 || c.number > 14 {
+		return false
+	}
+	return true
+}
+
+func (c *StandardCard) ToFrontend() gin.H {
+	return gin.H{
+		"suit":   c.suit,
+		"number": c.number,
+	}
+}
+
 type Deck interface {
 	Size() int
 	SizeDrawPile() int
@@ -72,6 +93,8 @@ type Deck interface {
 	ShuffleDiscardPile()
 	DrawCard() *StandardCard
 	DealCards(players uint8, cards uint8) [][]*StandardCard
+	Valid() bool
+	ToFrontend() gin.H
 }
 
 type StandardDeck struct {
@@ -158,4 +181,49 @@ func (d *StandardDeck) DealCards(players uint8, cards uint8) [][]*StandardCard {
 		}
 	}
 	return card_return
+}
+
+func (d *StandardDeck) Valid() bool {
+	for _, card := range d.cards {
+		if card == nil || !card.Valid() {
+			return false
+		}
+	}
+	for _, card := range d.draw_pile {
+		if card == nil || !card.Valid() {
+			return false
+		}
+	}
+	for _, card := range d.discard_pile {
+		if card == nil || !card.Valid() {
+			return false
+		}
+	}
+	return true
+}
+
+func (d *StandardDeck) ToFrontend() gin.H {
+	deck := gin.H{}
+	cards := []gin.H{}
+	for _, card := range d.cards {
+		if card != nil {
+			cards = append(cards, card.ToFrontend())
+		}
+	}
+	deck["cards"] = cards
+	draw_pile := []gin.H{}
+	for _, card := range d.draw_pile {
+		if card != nil {
+			draw_pile = append(draw_pile, card.ToFrontend())
+		}
+	}
+	deck["draw_pile"] = draw_pile
+	discard_pile := []gin.H{}
+	for _, card := range d.discard_pile {
+		if card != nil {
+			discard_pile = append(discard_pile, card.ToFrontend())
+		}
+	}
+	deck["discard_pile"] = discard_pile
+	return deck
 }

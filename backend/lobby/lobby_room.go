@@ -136,13 +136,13 @@ func (r *LobbyRoom) updateSettings(s *GameSettings) {
 	})
 }
 
-func (r *LobbyRoom) launchGame(game_id uint64) {
+func (r *LobbyRoom) launchGame(game_id uint64) game.Game {
 	if !r.launchable() {
-		return
+		return nil
 	}
 	base_game := game.CreateBaseGame(game_id)
 	for _, player := range r.players {
-		base_game.Players[player.client_id] = &game.Player{}
+		base_game.Players[player.client_id] = &game.Player{} // TODO: add client id
 	}
 	for _, viewer := range r.viewers {
 		base_game.Viewers[viewer.client_id] = &game.Viewer{}
@@ -154,11 +154,16 @@ func (r *LobbyRoom) launchGame(game_id uint64) {
 		break
 	}
 	if r.game == nil {
-		return
+		return nil
 	}
 	room_id_string := strconv.Itoa(int(r.room_id))
 	game_id_string := strconv.Itoa(int(game_id))
 	r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-launched", Data: game_id_string})
+	return r.game
+}
+
+func (r *LobbyRoom) GetGame() game.Game {
+	return r.game
 }
 
 func (s *GameSettings) Launchable() bool {
@@ -228,19 +233,19 @@ func (r *LobbyRoom) ToFrontend() gin.H {
 		"game_settings": r.game_settings.ToFrontend(),
 	}
 	if r.host != nil {
-		room["host"] = r.host.toFrontend()
+		room["host"] = r.host.ToFrontend()
 	}
 	players := []gin.H{}
 	for _, player := range r.players {
 		if player != nil {
-			players = append(players, player.toFrontend())
+			players = append(players, player.ToFrontend())
 		}
 	}
 	room["players"] = players
 	viewers := []gin.H{}
 	for _, viewer := range r.viewers {
 		if viewer != nil {
-			viewers = append(viewers, viewer.toFrontend())
+			viewers = append(viewers, viewer.ToFrontend())
 		}
 	}
 	room["viewers"] = viewers

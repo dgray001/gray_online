@@ -1,5 +1,5 @@
 import {DwgElement} from '../../dwg_element';
-import {apiPost} from '../../../scripts/api';
+import {apiGet} from '../../../scripts/api';
 import {GameSettings, LobbyRoom, LobbyRoomFromServer, LobbyUser, serverResponseToRoom} from '../data_models';
 
 import html from './lobby_rooms.html';
@@ -23,7 +23,7 @@ export class DwgLobbyRooms extends DwgElement {
     this.refresh_rooms_running = true;
     this.innerHTML = ' ... loading';
     this.rooms.clear();
-    const response = await apiPost<LobbyRoomFromServer[]>('lobby/rooms/get', '');
+    const response = await apiGet<LobbyRoomFromServer[]>('lobby/rooms/get');
     if (response.success) {
       const els: HTMLDivElement[] = [];
       for (const server_room of response.result) {
