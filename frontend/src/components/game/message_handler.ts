@@ -21,6 +21,30 @@ export function handleMessage(game: DwgGame, message: ServerMessage) {
     case "ping-update":
       // TODO: implement
       break;
+    case "game-chat":
+      const chat_client_id = parseInt(message.sender.replace('game-', ''));
+      if (chat_client_id) {
+        const sender = game.game?.game_base?.players.get(chat_client_id) ?? game.game?.game_base?.viewers.get(chat_client_id);
+        game.chatbox.addChat({
+          message: message.content,
+          sender: sender.nickname ?? chat_client_id.toString(),
+        });
+      }
+      break;
+    case "game-player-connected":
+      const connectee_id = parseInt(message.data);
+      if (connectee_id) {
+        const el = game.players_waiting_els.get(connectee_id);
+        if (!!el) {
+          el.innerText = 'Connected';
+          el.classList.add('connected');
+        }
+        const player = game.game?.game_base?.players.get(connectee_id);
+        if (player) {
+          player.connected = true;
+        }
+      }
+      break;
     default:
       console.log("Unknown message type", message.kind, "from", message.sender);
       break;

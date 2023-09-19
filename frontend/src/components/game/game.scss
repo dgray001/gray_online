@@ -10,29 +10,88 @@ dwg-game {
     max-height: var(--header-height);
     min-height: var(--header-height);
     width: 100%;
-  }
 
-  #waiting-room {
-    background-color: rgb(220, 160, 120);
-    height: calc(100% - var(--header-height));
+    * {
+      line-height: var(--header-height);
+    }
 
-    &.hide {
-      display: none;
+    #client-name {
+      margin-left: 1em;
+    }
+
+    #room-name, #game-name {
+      margin-left: 3em;
+    }
+
+    #button-container {
+      align-items: center;
+      display: flex;
+      flex-flow: row nowrap;
+      gap: 1px;
+      justify-content: center;
+      margin-left: auto;
+      margin-right: 4px;
+
+      button {
+        border-radius: 0;
+        height: var(--header-height);
+        width: var(--header-height);
+      }
     }
   }
 
-  #game-container {
+  #waiting-room {
     align-items: center;
+    background-color: rgb(150, 64, 7);
     display: flex;
     height: calc(100% - var(--header-height));
     justify-content: center;
 
-    &:not(.show) {
+    &.hide {
       display: none;
     }
 
-    .player-loading {
-      //
+    .player-waiting {
+      display: flex;
+      flex-flow: row nowrap;
+      font-size: 18px;
+      gap: 1em;
+      margin: 0.3em 0;
+
+      :last-child {
+        margin-left: auto;
+      }
+
+      .connected {
+        color: rgb(100, 255, 100);
+      }
+    }
+  }
+
+  #game-container {
+    height: calc(100% - var(--header-height));
+
+    &:not(.show) {
+      display: none;
+    }
+  }
+
+  #chatbox-container {
+    background-color: transparent;
+    height: 80vh;
+    left: 1em;
+    position: absolute;
+    top: 10vh;
+    width: 50vw;
+
+    &:not(.showing) {
+      pointer-events: none;
+    }
+
+    #chatbox {
+      &:not(.show) {
+        display: none;
+      }
     }
   }
 }

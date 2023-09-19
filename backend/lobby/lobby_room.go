@@ -19,6 +19,10 @@ type LobbyRoom struct {
 	lobby         *Lobby
 	game          game.Game
 	game_settings *GameSettings
+	// lobby room and game channels
+	// TODO: move lobby room channels from lobby to lobby room
+	broadcast       chan lobbyMessage
+	PlayerConnected chan *Client
 }
 
 type GameSettings struct {
@@ -40,10 +44,53 @@ func CreateLobbyRoom(host *Client, room_id uint64, lobby *Lobby) *LobbyRoom {
 			MaxViewers: 16,
 			GameType:   0,
 		},
+		broadcast:       make(chan lobbyMessage),
+		PlayerConnected: make(chan *Client),
 	}
 	room.players[host.client_id] = host
 	host.lobby_room = &room
+	go room.run()
 	return &room
+}
+
+func (r *LobbyRoom) run() {
+	for {
+		select {
+		case message := <-r.broadcast:
+			r.broadcastMessage(message)
+		case client := <-r.PlayerConnected:
+			client.game = r.game
+			client_id_string := strconv.Itoa(int(client.client_id))
+			room_id_string := strconv.Itoa(int(r.room_id))
+			r.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "game-player-connected", Data: client_id_string})
+		}
+	}
+}
+
+func (r *LobbyRoom) broadcastMessage(message lobbyMessage) {
+	if message.Kind != "ping-update" {
+		fmt.Printf("Broadcasting lobby (%d) message {%s, %s, %s, %s}\n", r.room_id, message.Sender, message.Content, message.Data, message.Kind)
+	}
+	for _, client := range r.players {
+		if client == nil || !client.valid() {
+			continue
+		}
+		select {
+		case client.send_message <- message:
+		default:
+			// TODO: remove client
+		}
+	}
+	for _, client := range r.viewers {
+		if client == nil || !client.valid() {
+			continue
+		}
+		select {
+		case client.send_message <- message:
+		default:
+			// TODO: remove client
+		}
+	}
 }
 
 func (r *LobbyRoom) addClient(c *Client) {
@@ -140,12 +187,12 @@ func (r *LobbyRoom) launchGame(game_id uint64) game.Game {
 	if !r.launchable() {
 		return nil
 	}
-	base_game := game.CreateBaseGame(game_id)
+	base_game := game.CreateBaseGame(game_id, r.game_settings.GameType)
 	for _, player := range r.players {
-		base_game.Players[player.client_id] = &game.Player{} // TODO: add client id
+		base_game.Players[player.client_id] = game.CreatePlayer(player.client_id, player.nickname)
 	}
 	for _, viewer := range r.viewers {
-		base_game.Viewers[viewer.client_id] = &game.Viewer{}
+		base_game.Viewers[viewer.client_id] = game.CreateViewer(viewer.client_id, viewer.nickname)
 	}
 	switch r.game_settings.GameType {
 	case 1:
@@ -183,7 +230,7 @@ func (r *LobbyRoom) launchable() bool {
 	if !r.valid() {
 		return false
 	}
-	if !r.game_settings.Launchable() {
+	if r.game_settings == nil || !r.game_settings.Launchable() {
 		return false
 	}
 	if r.game != nil {

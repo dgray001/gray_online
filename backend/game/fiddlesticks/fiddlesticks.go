@@ -118,12 +118,12 @@ func (f *GameFiddlesticks) Valid() bool {
 
 func (f *GameFiddlesticks) ToFrontend() gin.H {
 	game := gin.H{
-		"round":             strconv.Itoa(int(f.round)),
-		"max_round":         strconv.Itoa(int(f.max_round)),
-		"rounds_increasing": strconv.FormatBool(f.rounds_increasing),
-		"dealer":            strconv.Itoa(f.dealer),
-		"turn":              strconv.Itoa(f.turn),
-		"betting":           strconv.FormatBool(f.betting),
+		"round":             f.round,
+		"max_round":         f.max_round,
+		"rounds_increasing": f.rounds_increasing,
+		"dealer":            f.dealer,
+		"turn":              f.turn,
+		"betting":           f.betting,
 	}
 	if f.game != nil {
 		game["game_base"] = f.game.ToFrontend()

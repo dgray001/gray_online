@@ -124,7 +124,3 @@ export function serverResponseToRoom(server_response: LobbyRoomFromServer): Lobb
     game_id: server_response.game_id ? parseInt(server_response.game_id) : undefined,
   }
 }
-
-/** Data describing a game returned from the server */
-export declare interface LobbyGameFromServer {
-}

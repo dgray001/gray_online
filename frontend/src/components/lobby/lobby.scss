@@ -6,6 +6,10 @@ dwg-lobby {
   display: flex;
   flex-flow: column nowrap;
 
+  &.hide {
+    display: none;
+  }
+
   #page-header {
     background-color: rgb(0, 30, 60);
     box-sizing: border-box;

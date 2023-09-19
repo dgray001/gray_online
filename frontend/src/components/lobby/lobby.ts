@@ -28,7 +28,6 @@ export class DwgLobby extends DwgElement {
 
   socket: WebSocket;
   connection_metadata: ConnectionMetadata = {nickname: "Anonymous", ping: 0};
-  connection_lost = new Event('connection_lost');
 
   constructor() {
     super();

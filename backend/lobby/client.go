@@ -29,7 +29,7 @@ type Client struct {
 	send_message           chan lobbyMessage
 	lobby                  *Lobby
 	lobby_room             *LobbyRoom
-	game                   *game.Game
+	game                   game.Game
 }
 
 type lobbyMessage struct {
@@ -50,6 +50,7 @@ func CreateClient(connection *websocket.Conn, nickname string, lobby *Lobby) *Cl
 		send_message:           make(chan lobbyMessage),
 		lobby:                  lobby,
 		lobby_room:             nil,
+		game:                   nil,
 	}
 	go client.readMessages()
 	go client.writeMessages()
@@ -100,7 +101,6 @@ func (c *Client) readMessages() {
 		}
 		fmt.Printf("Receiving client message from %d: {%s, %s, %s, %s}\n",
 			c.client_id, message.Sender, message.Content, message.Data, message.Kind)
-		var broadcast = false
 		switch message.Kind {
 		case "room-create":
 			c.lobby.CreateRoom <- c
@@ -291,15 +291,39 @@ func (c *Client) readMessages() {
 				break
 			}
 			c.lobby.LaunchGame <- room
+		case "game-connected":
+			game_id, err := strconv.Atoi(message.Data)
+			if err != nil || game_id < 1 {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "game-connected-failed", Content: "Invalid game id"}
+				break
+			}
+			if c.lobby_room == nil {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "game-connected-failed", Content: "Client not in lobby"}
+				break
+			}
+			if c.lobby_room.game == nil {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "game-connected-failed", Content: "Lobby not launched"}
+				break
+			}
+			if game_id != int(c.lobby_room.game.GetId()) {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "game-connected-failed", Content: "Incorrect game id"}
+				break
+			}
+			c.lobby_room.PlayerConnected <- c
+		case "game-chat":
+			if c.lobby_room == nil {
+				break
+			}
+			c.lobby_room.broadcast <- message
 		case "lobby-chat":
 			fallthrough
 		case "room-chat":
-			broadcast = true
+			if c.lobby == nil {
+				break
+			}
+			c.lobby.broadcast <- message
 		default:
 			fmt.Println("Message kind unknown: " + message.Kind)
-		}
-		if broadcast {
-			c.lobby.broadcast <- message
 		}
 	}
 }

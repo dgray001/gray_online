@@ -1,6 +1,5 @@
 
 v0.2: launch game
- n: frontend abstract in-game chat
  o: abstract header (to exit, see players/viewers) in-game
  p: fiddlesticks frontend layout
  q: backend abstract game finish/exit

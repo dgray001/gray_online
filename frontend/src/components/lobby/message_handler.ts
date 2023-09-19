@@ -30,7 +30,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
         lobby.lobby_users.addUser({client_id: id, nickname: lobby.connection_metadata.nickname, ping: 0});
       } else {
         lobby.socket.close(3001, 'you-joined-lobby message did not return properly formed client id');
-        lobby.dispatchEvent(lobby.connection_lost);
+        lobby.dispatchEvent(new Event('connection_lost'));
       }
       break;
     case 'lobby-joined':
