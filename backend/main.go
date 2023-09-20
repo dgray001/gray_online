@@ -28,7 +28,7 @@ func main() {
 	go lobby_object.Run()
 
 	r := gin.Default()
-	r.SetTrustedProxies(nil)
+	//r.SetTrustedProxies(nil)
 
 	// All api groupings
 	api := r.Group("/api")

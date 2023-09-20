@@ -1,8 +1,9 @@
-import {GameType} from "../lobby/data_models";
+import {GameType, ServerMessage} from "../lobby/data_models";
 
 /** Interface for components that represent a frontend game */
 export declare interface GameComponent {
-  initialize(game: Game): void;
+  initialize(game: Game, client_id: number): void;
+  gameUpdate(update: ServerMessage): void;
 }
 
 /** Data describing a game */

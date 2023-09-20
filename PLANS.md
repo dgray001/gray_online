@@ -1,13 +1,11 @@
 
 v0.2: launch game
- q: backend abstract game finish/exit
- s: can see scores / list of other players
- t: card images
- u: can bet
- v: players can see their dealt cards
- w: can play cards
- x: can score
- y: can see winner when game ends
+ s: can see your cards
+ t: betting logic
+ u: playing logic
+ v: scoring logic
+ w: backend abstract game finish/exit
+ x: can see winner when game ends
 
 v0.3: flesh out fiddlesticks game
  - can reconnect as anonymous user
@@ -33,3 +31,5 @@ P3/P4:
  - remove all panics from backend
  - game launching message shouldn't come from anyone and should be gray for participants
  - frontend animations
+ - game updates have an id that ensures the correct order (can request missing)
+ - chat updates have an id that ensures the correct order (can request missing)

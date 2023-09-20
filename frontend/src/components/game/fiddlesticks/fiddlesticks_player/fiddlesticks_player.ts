@@ -1,4 +1,5 @@
 import {DwgElement} from '../../../dwg_element';
+import { StandardCard } from '../../util/card_util';
 import {FiddlesticksPlayer} from '../fiddlesticks';
 
 import html from './fiddlesticks_player.html';
@@ -22,6 +23,22 @@ export class DwgFiddlesticksPlayer extends DwgElement {
 
   initialize(player: FiddlesticksPlayer) {
     this.player = player;
+  }
+
+  setPlayer() {
+    // TODO: implement
+  }
+
+  setDealer(dealer: boolean) {
+    // TODO: implement
+  }
+
+  setHiddenCards(num: number) {
+    // TODO: implement
+  }
+
+  setCards(cards: StandardCard[]) {
+    // TODO: implement
   }
 }
 

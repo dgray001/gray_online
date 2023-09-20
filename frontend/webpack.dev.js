@@ -12,9 +12,10 @@ module.exports = {
   devServer: {
     compress: true,
     liveReload: true,
+    host: '0.0.0.0',
     port: 8080,
     proxy: {
-      '/api': 'http://127.0.0.1:6807', // gin server
+      '/api': 'http://0.0.0.0:6807', // gin server
     },
     server: 'http',
   },

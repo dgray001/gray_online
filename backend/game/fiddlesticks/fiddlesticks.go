@@ -29,6 +29,7 @@ type GameFiddlesticks struct {
 	dealer            int
 	turn              int
 	betting           bool
+	trump             *game.StandardCard
 }
 
 type FiddlesticksPlayer struct {
@@ -142,6 +143,9 @@ func (f *GameFiddlesticks) ToFrontend() gin.H {
 		}
 	}
 	game["players"] = players
+	if f.trump != nil {
+		game["trump"] = f.trump.ToFrontend()
+	}
 	return game
 }
 
@@ -165,14 +169,7 @@ func (f *GameFiddlesticks) dealNextRound() {
 		f.round--
 	}
 	f.deck.Reset()
-	for _, player := range f.players {
-		player.player.Updates <- &game.UpdateMessage{Kind: "deal-round", Content: gin.H{
-			"dealer": f.dealer,
-			"round":  f.round,
-		}}
-	}
 	dealt_cards := f.deck.DealCards(uint8(len(f.players)), f.round)
-	// TODO: everyone gettings same cards ??
 	for i := 0; i < len(f.players); i++ {
 		cards := dealt_cards[i]
 		j := i + f.dealer
@@ -181,12 +178,18 @@ func (f *GameFiddlesticks) dealNextRound() {
 		}
 		f.players[j].cards = cards
 		f.players[j].tricks = 0
+	}
+	f.trump = f.deck.DrawCard()
+	for _, player := range f.players {
 		frontend_cards := []gin.H{}
-		for _, card := range cards {
+		for _, card := range player.cards {
 			frontend_cards = append(frontend_cards, card.ToFrontend())
 		}
-		f.players[j].player.Updates <- &game.UpdateMessage{Kind: "dealt-cards", Content: gin.H{
-			"cards": frontend_cards,
+		player.player.Updates <- &game.UpdateMessage{Kind: "deal-round", Content: gin.H{
+			"dealer": f.dealer,
+			"round":  f.round,
+			"trump":  f.trump.ToFrontend(),
+			"cards":  frontend_cards,
 		}}
 	}
 	f.betting = true

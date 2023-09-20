@@ -50,6 +50,9 @@ export function handleMessage(game: DwgGame, message: ServerMessage) {
       game.waiting_room.classList.add('hide');
       game.game_container.classList.add('show');
       break;
+    case "game-update":
+      game.game_el.gameUpdate(message);
+      break;
     default:
       console.log("Unknown message type", message.kind, "from", message.sender);
       break;

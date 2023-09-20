@@ -163,7 +163,7 @@ func (d *StandardDeck) DrawCard() *StandardCard {
 		return nil
 	}
 	card := d.draw_pile[0]
-	d.draw_pile = d.draw_pile[:len(d.draw_pile)-1]
+	d.draw_pile = d.draw_pile[1:]
 	return card
 }
 

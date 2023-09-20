@@ -100,7 +100,7 @@ func (r *LobbyRoom) broadcastMessage(message lobbyMessage) {
 		select {
 		case client.send_message <- message:
 		default:
-			// TODO: remove client
+			r.lobby.removeClient(client)
 		}
 	}
 	for _, client := range r.viewers {
@@ -110,7 +110,7 @@ func (r *LobbyRoom) broadcastMessage(message lobbyMessage) {
 		select {
 		case client.send_message <- message:
 		default:
-			// TODO: remove client
+			r.lobby.removeClient(client)
 		}
 	}
 }

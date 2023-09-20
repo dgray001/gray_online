@@ -25,12 +25,15 @@ dwg-fiddlesticks {
       top: calc(50% - 0.5 * var(--height));
 
       #trump-card {
-        border: 1px solid black;
-        border-radius: calc(0.05 * var(--width));
         height: calc(var(--card-image-scale) * var(--width));
         position: absolute;
         right: calc(50% - 0.5 * var(--width));
         width: var(--width);
+
+        #trump-card-img {
+          height: 100%;
+          width: 100%;
+        }
       }
     }
   }

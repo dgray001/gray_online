@@ -74,18 +74,10 @@ export class DwgGame extends DwgElement {
     this.client_ping.innerText = ` (${this.connection_metadata.ping})`;
     this.room_name.innerText = lobby.room_name;
     try {
-      const message_queue: ServerMessage[] = [];
       this.socket.addEventListener('message', (m) => {
         try {
           const message = JSON.parse(m.data) as ServerMessage;
-          if (!this.launched) {
-            message_queue.push(message);
-          } else {
-            for (const message of message_queue) {
-              handleMessage(this, message);
-            }
-            handleMessage(this, message);
-          }
+          handleMessage(this, message);
         } catch(e) {
           console.log("Error parsing message: ", m, e)
         }
@@ -97,7 +89,7 @@ export class DwgGame extends DwgElement {
           const game_el = document.createElement(component);
           this.game_container.appendChild(game_el);
           this.game_el = game_el as unknown as GameComponent;
-          this.game_el.initialize(this.game);
+          this.game_el.initialize(this.game, this.connection_metadata.client_id);
         };
         switch(this.game.game_base.game_type) {
           case GameType.FIDDLESTICKS:
