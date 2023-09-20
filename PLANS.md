@@ -1,6 +1,5 @@
 
 v0.2: launch game
- o: abstract header (to exit, see players/viewers) in-game
  p: fiddlesticks frontend layout
  q: backend abstract game finish/exit
  r: game update messages for 
@@ -26,6 +25,7 @@ v0.5: save risq game
  - need fully functioning db and user profiles
 
 P3/P4:
+ - abstract header (to exit, see players/viewers) in-game
  - loader for client requests in lobby: room-create, room-join, room-leave, room-rename
  - client still leaves room if it fails => sync state
  - handle other failures by syncing state => show message
@@ -34,3 +34,5 @@ P3/P4:
  - backend (and frontend) prevents joining room when max players
  - remove all panics from backend
  - game launching message shouldn't come from anyone and should be gray for participants
+ - add privacy by only sending to frontend the necessary info for the game
+ - frontend animations

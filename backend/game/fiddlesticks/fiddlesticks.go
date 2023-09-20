@@ -1,8 +1,6 @@
 package fiddlesticks
 
 import (
-	"strconv"
-
 	"github.com/dgray001/gray_online/game"
 	"github.com/gin-gonic/gin"
 )
@@ -31,7 +29,6 @@ type GameFiddlesticks struct {
 	dealer            int
 	turn              int
 	betting           bool
-	// channel for actions
 }
 
 type FiddlesticksPlayer struct {
@@ -44,9 +41,9 @@ type FiddlesticksPlayer struct {
 
 func (p *FiddlesticksPlayer) toFrontend() gin.H {
 	player := gin.H{
-		"score":  strconv.Itoa(int(p.score)),
-		"bet":    strconv.Itoa(int(p.bet)),
-		"tricks": strconv.Itoa(int(p.tricks)),
+		"score":  p.score,
+		"bet":    p.bet,
+		"tricks": p.tricks,
 	}
 	if p.player != nil {
 		player["player"] = p.player.ToFrontend()
@@ -104,6 +101,10 @@ func (f *GameFiddlesticks) GetId() uint64 {
 	return f.game.Game_id
 }
 
+func (f *GameFiddlesticks) GetBase() *game.GameBase {
+	return f.game
+}
+
 func (f *GameFiddlesticks) StartGame() {
 	f.game.StartGame()
 	f.dealNextRound()
@@ -146,6 +147,11 @@ func (f *GameFiddlesticks) dealNextRound() {
 		// TODO: Game ends
 		return
 	}
+	// TODO: broadcast to all players that we're dealing next round
+	f.dealer++
+	if f.dealer >= len(f.players) {
+		f.dealer = 0
+	}
 	if f.rounds_increasing {
 		if f.round == f.max_round {
 			f.rounds_increasing = false
@@ -160,12 +166,13 @@ func (f *GameFiddlesticks) dealNextRound() {
 	dealt_cards := f.deck.DealCards(uint8(len(f.players)), f.round)
 	for i := 0; i < len(f.players); i++ {
 		cards := dealt_cards[i]
-		i += f.dealer
-		if i > len(f.players) {
-			i -= len(f.players)
+		j := i + f.dealer
+		if j > len(f.players) {
+			j -= len(f.players)
 		}
-		f.players[i].cards = cards
-		f.players[i].tricks = 0
+		f.players[j].cards = cards
+		// broadcast to player their cards
+		f.players[j].tricks = 0
 	}
 	f.betting = true
 	f.turn = f.dealer + 1

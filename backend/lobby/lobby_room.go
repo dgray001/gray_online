@@ -60,9 +60,14 @@ func (r *LobbyRoom) run() {
 			r.broadcastMessage(message)
 		case client := <-r.PlayerConnected:
 			client.game = r.game
+			start_game := r.game.GetBase().PlayerConnected(client.client_id)
 			client_id_string := strconv.Itoa(int(client.client_id))
 			room_id_string := strconv.Itoa(int(r.room_id))
 			r.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "game-player-connected", Data: client_id_string})
+			if start_game {
+				r.game.StartGame()
+				r.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "game-start"})
+			}
 		}
 	}
 }

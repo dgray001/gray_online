@@ -27,9 +27,24 @@ func CreateBaseGame(game_id uint64, game_type uint8) *GameBase {
 
 type Game interface {
 	GetId() uint64
+	GetBase() *GameBase
 	StartGame()
 	Valid() bool
 	ToFrontend() gin.H
+}
+
+func (g *GameBase) PlayerConnected(client_id uint64) bool {
+	player := g.Players[client_id]
+	if player == nil || player.connected {
+		return false
+	}
+	player.connected = true
+	for _, player := range g.Players {
+		if !player.connected {
+			return false
+		}
+	}
+	return true
 }
 
 func (g *GameBase) GameStarted() bool {

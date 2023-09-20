@@ -1,13 +1,15 @@
 import {DwgElement} from '../dwg_element';
 import {ServerMessage, LobbyRoom, ConnectionMetadata, GameType, createMessage} from '../lobby/data_models';
-import {Game, GameFromServer, serverResponseToGame} from './data_models';
+import {Game, GameComponent, GameFromServer, serverResponseToGame} from './data_models';
 import {apiGet} from '../../scripts/api';
 import {ChatMessage, DwgChatbox} from '../chatbox/chatbox';
 import {capitalize} from '../../scripts/util';
 
 import {handleMessage} from './message_handler';
 import html from './game.html';
+
 import './game.scss';
+import './fiddlesticks/fiddlesticks';
 
 export class DwgGame extends DwgElement {
   client_name_string: HTMLSpanElement;
@@ -18,6 +20,7 @@ export class DwgGame extends DwgElement {
   players_waiting: HTMLDivElement;
   players_waiting_els = new Map<number, HTMLDivElement>();
   game_container: HTMLDivElement;
+  game_el: GameComponent;
   chatbox_container: HTMLDivElement;
   chatbox: DwgChatbox;
 
@@ -89,8 +92,21 @@ export class DwgGame extends DwgElement {
       });
       const response = await apiGet<GameFromServer>(`lobby/games/get/${lobby.game_id}`);
       if (response.success && !!response.result) {
-        console.log(response.result);
         this.game = serverResponseToGame(response.result);
+        const setGame = (component: string) => {
+          const game_el = document.createElement(component);
+          this.game_container.appendChild(game_el);
+          this.game_el = game_el as unknown as GameComponent;
+          this.game_el.initialize(this.game);
+        };
+        switch(this.game.game_base.game_type) {
+          case GameType.FIDDLESTICKS:
+            setGame('dwg-fiddlesticks');
+            break;
+          case GameType.UNSPECIFIED:
+          default:
+            throw new Error(`Unknown game type: ${this.game.game_base.game_type}`);
+        }
         this.game_name.innerText = capitalize(GameType[this.game.game_base.game_type].toLowerCase());
         for (const [id,player] of this.game.game_base.players) {
           const el = document.createElement('div');

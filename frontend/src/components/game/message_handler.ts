@@ -45,6 +45,11 @@ export function handleMessage(game: DwgGame, message: ServerMessage) {
         }
       }
       break;
+    case "game-start":
+      game.game.game_base.game_started = true;
+      game.waiting_room.classList.add('hide');
+      game.game_container.classList.add('show');
+      break;
     default:
       console.log("Unknown message type", message.kind, "from", message.sender);
       break;

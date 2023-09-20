@@ -1,3 +1,3 @@
 Online Games
 
-v0.1n: In-game chat
+v0.1o: Fiddlesticks frontend component

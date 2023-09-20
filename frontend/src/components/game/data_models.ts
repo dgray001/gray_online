@@ -1,15 +1,19 @@
 import {GameType} from "../lobby/data_models";
 
+/** Interface for components that represent a frontend game */
+export declare interface GameComponent {
+  initialize(game: Game): void;
+}
+
 /** Data describing a game */
 export declare interface Game {
   game_base: GameBase;
-  // game specific object
+  // ... game specific fields
 }
 
 /** Data describing a game returned from the server */
 export declare interface GameFromServer {
   game_base: GameBaseGameBaseFromServer;
-  // game specific object
 }
 
 /** Converts a GameFromServer to a proper frontend game object */
