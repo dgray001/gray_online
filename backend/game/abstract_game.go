@@ -93,23 +93,42 @@ func (g *GameBase) ToFrontend() gin.H {
 	return game_base
 }
 
+type UpdateMessage struct {
+	Kind    string
+	Content gin.H
+}
+
 type Player struct {
 	client_id uint64
+	player_id int
 	nickname  string
 	connected bool
+	Updates   chan *UpdateMessage
 }
 
 func CreatePlayer(client_id uint64, nickname string) *Player {
 	return &Player{
 		client_id: client_id,
+		player_id: -1,
 		nickname:  nickname,
 		connected: false,
+		Updates:   make(chan *UpdateMessage),
 	}
+}
+
+func (p *Player) SetPlayerId(player_id int) {
+	p.player_id = player_id
+}
+
+func (p *Player) AddUpdate(update *UpdateMessage) {
+	// TODO: track with integer to ensure no duplicates, etc... also store so client can request an update they missed
+	p.Updates <- update
 }
 
 func (p *Player) ToFrontend() gin.H {
 	return gin.H{
 		"client_id": p.client_id,
+		"player_id": p.player_id,
 		"nickname":  p.nickname,
 		"connected": p.connected,
 	}

@@ -83,12 +83,15 @@ func CreateGame(g *game.GameBase) *GameFiddlesticks {
 		turn:              -1,
 		betting:           false,
 	}
+	var player_id = 0
 	for _, player := range g.Players {
+		player.SetPlayerId(player_id)
 		fiddlesticks.players = append(fiddlesticks.players, &FiddlesticksPlayer{
 			player: player,
 			cards:  []*game.StandardCard{},
 			score:  0,
 		})
+		player_id++
 	}
 	if len(fiddlesticks.players) < 2 {
 		panic("Need at least two players to play fiddlesticks") // TODO: remove panics
@@ -147,7 +150,6 @@ func (f *GameFiddlesticks) dealNextRound() {
 		// TODO: Game ends
 		return
 	}
-	// TODO: broadcast to all players that we're dealing next round
 	f.dealer++
 	if f.dealer >= len(f.players) {
 		f.dealer = 0
@@ -163,7 +165,14 @@ func (f *GameFiddlesticks) dealNextRound() {
 		f.round--
 	}
 	f.deck.Reset()
+	for _, player := range f.players {
+		player.player.Updates <- &game.UpdateMessage{Kind: "deal-round", Content: gin.H{
+			"dealer": f.dealer,
+			"round":  f.round,
+		}}
+	}
 	dealt_cards := f.deck.DealCards(uint8(len(f.players)), f.round)
+	// TODO: everyone gettings same cards ??
 	for i := 0; i < len(f.players); i++ {
 		cards := dealt_cards[i]
 		j := i + f.dealer
@@ -171,8 +180,14 @@ func (f *GameFiddlesticks) dealNextRound() {
 			j -= len(f.players)
 		}
 		f.players[j].cards = cards
-		// broadcast to player their cards
 		f.players[j].tricks = 0
+		frontend_cards := []gin.H{}
+		for _, card := range cards {
+			frontend_cards = append(frontend_cards, card.ToFrontend())
+		}
+		f.players[j].player.Updates <- &game.UpdateMessage{Kind: "dealt-cards", Content: gin.H{
+			"cards": frontend_cards,
+		}}
 	}
 	f.betting = true
 	f.turn = f.dealer + 1

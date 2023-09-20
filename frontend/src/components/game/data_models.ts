@@ -14,11 +14,13 @@ export declare interface Game {
 /** Data describing a game returned from the server */
 export declare interface GameFromServer {
   game_base: GameBaseGameBaseFromServer;
+  // ... game specific fields
 }
 
 /** Converts a GameFromServer to a proper frontend game object */
 export function serverResponseToGame(game: GameFromServer): Game {
   return {
+    ...game, // ... game specific fields
     game_base: {
       game_id: game.game_base.game_id,
       game_type: game.game_base.game_type,
@@ -53,6 +55,7 @@ export declare interface GameBase {
 /** Data describing a game player */
 export declare interface GamePlayer {
   client_id: number;
+  player_id: number;
   nickname: string;
   connected: boolean;
 }

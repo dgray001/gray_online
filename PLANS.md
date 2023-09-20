@@ -1,8 +1,6 @@
 
 v0.2: launch game
- p: fiddlesticks frontend layout
  q: backend abstract game finish/exit
- r: game update messages for 
  s: can see scores / list of other players
  t: card images
  u: can bet
@@ -34,5 +32,4 @@ P3/P4:
  - backend (and frontend) prevents joining room when max players
  - remove all panics from backend
  - game launching message shouldn't come from anyone and should be gray for participants
- - add privacy by only sending to frontend the necessary info for the game
  - frontend animations

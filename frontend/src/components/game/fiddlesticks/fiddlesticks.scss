@@ -1,0 +1,52 @@
+dwg-fiddlesticks {
+  #table-container {
+    background-color: rgb(140, 70, 20);
+    height: 50%;
+    position: relative;
+    width: 100%;
+
+    #header-message {
+      display: flex;
+      flex-flow: row wrap;
+      gap: 3em;
+      left: 1em;
+      position: absolute;
+      top: 1em;
+    }
+
+    #trump-card-container {
+      --width: calc(max(50px, min(200px, 15vw)));
+      --height: calc(1.5em + var(--card-image-scale) * var(--width));
+      height: var(--height);
+      line-height: 1.5em;
+      position: absolute;
+      right: calc(50% - 0.5 * var(--width));
+      text-align: center;
+      top: calc(50% - 0.5 * var(--height));
+
+      #trump-card {
+        border: 1px solid black;
+        border-radius: calc(0.05 * var(--width));
+        height: calc(var(--card-image-scale) * var(--width));
+        position: absolute;
+        right: calc(50% - 0.5 * var(--width));
+        width: var(--width);
+      }
+    }
+  }
+
+  #player-container {
+    background-color: rgb(90, 90, 90);
+    display: flex;
+    flex-flow: row nowrap;
+    gap: 3px;
+    height: 50%;
+    width: 100%;
+
+    > * {
+      border: 1px solid black;
+      height: 100%;
+      max-width: 16vw;
+    }
+  }
+}

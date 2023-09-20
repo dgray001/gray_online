@@ -1,3 +1,3 @@
 Online Games
 
-v0.1o: Fiddlesticks frontend component
+v0.1p: Frontend layout
