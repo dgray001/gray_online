@@ -23,6 +23,7 @@ type LobbyRoom struct {
 	// TODO: move lobby room channels from lobby to lobby room
 	broadcast       chan lobbyMessage
 	PlayerConnected chan *Client
+	PlayerAction    chan game.PlayerAction
 }
 
 type GameSettings struct {
@@ -46,6 +47,7 @@ func CreateLobbyRoom(host *Client, room_id uint64, lobby *Lobby) *LobbyRoom {
 		},
 		broadcast:       make(chan lobbyMessage),
 		PlayerConnected: make(chan *Client),
+		PlayerAction:    make(chan game.PlayerAction),
 	}
 	room.players[host.client_id] = host
 	host.lobby_room = &room
@@ -70,6 +72,10 @@ func (r *LobbyRoom) run() {
 				}
 				r.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "game-start"})
 				r.game.StartGame()
+			}
+		case action := <-r.PlayerAction:
+			if r.game != nil {
+				r.game.PlayerAction(action)
 			}
 		}
 	}

@@ -1,6 +1,5 @@
 
 v0.2: launch game
- s: can see your cards
  t: betting logic
  u: playing logic
  v: scoring logic

@@ -1,3 +1,3 @@
 Online Games
 
-v0.1q: Abstract game updates
+v0.1r: Deal first hand

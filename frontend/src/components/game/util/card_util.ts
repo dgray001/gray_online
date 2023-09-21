@@ -41,7 +41,7 @@ function cardNumberToName(card_number: number): string {
 
 /** Returns string name of card */
 export function cardToName(card: StandardCard): string {
-  return `${cardNumberToName(card.number)} of ${cardSuitToName(card.suit)}s}`;
+  return `${cardNumberToName(card.number)} of ${cardSuitToName(card.suit)}s`;
 }
 
 /** Returns path ready to insert into src for a standard card */

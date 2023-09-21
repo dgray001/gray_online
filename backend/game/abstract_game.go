@@ -25,12 +25,19 @@ func CreateBaseGame(game_id uint64, game_type uint8) *GameBase {
 	}
 }
 
+type PlayerAction struct {
+	ClientId int
+	Kind     string
+	Action   gin.H
+}
+
 type Game interface {
 	GetId() uint64
 	GetBase() *GameBase
 	StartGame()
 	Valid() bool
 	ToFrontend() gin.H
+	PlayerAction(action PlayerAction)
 }
 
 func (g *GameBase) PlayerConnected(client_id uint64) bool {
@@ -100,7 +107,7 @@ type UpdateMessage struct {
 
 type Player struct {
 	client_id uint64
-	player_id int
+	Player_id int
 	nickname  string
 	connected bool
 	Updates   chan *UpdateMessage
@@ -109,15 +116,11 @@ type Player struct {
 func CreatePlayer(client_id uint64, nickname string) *Player {
 	return &Player{
 		client_id: client_id,
-		player_id: -1,
+		Player_id: -1,
 		nickname:  nickname,
 		connected: false,
 		Updates:   make(chan *UpdateMessage),
 	}
-}
-
-func (p *Player) SetPlayerId(player_id int) {
-	p.player_id = player_id
 }
 
 func (p *Player) AddUpdate(update *UpdateMessage) {
@@ -128,7 +131,7 @@ func (p *Player) AddUpdate(update *UpdateMessage) {
 func (p *Player) ToFrontend() gin.H {
 	return gin.H{
 		"client_id": p.client_id,
-		"player_id": p.player_id,
+		"player_id": p.Player_id,
 		"nickname":  p.nickname,
 		"connected": p.connected,
 	}

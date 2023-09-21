@@ -1,0 +1,27 @@
+dwg-fiddlesticks-player {
+  display: flex;
+  flex-flow: column nowrap;
+  gap: 0.4em;
+
+  #name-container-wrapper {
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: center;
+    margin-top: 0.4em;
+    margin-bottom: 0.8em;
+
+    #dealer-container:not(.show) {
+      display: none;
+    }
+  }
+
+  .fixed-width {
+    display: inline-block;
+    width: 30%;
+  }
+
+  #cards-container {
+    margin-left: 2em;
+    margin-top: 0.6em;
+  }
+}

@@ -44,12 +44,14 @@ dwg-fiddlesticks {
     flex-flow: row nowrap;
     gap: 3px;
     height: 50%;
+    justify-content: center;
     width: 100%;
 
     > * {
       border: 1px solid black;
+      flex: 1 1 0;
       height: 100%;
-      max-width: 16vw;
+      max-width: 25vw;
     }
   }
 }

@@ -62,6 +62,8 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
   }
 
   protected override parsedCallback(): void {
+    this.round_number.innerText = '-';
+    this.trick_number.innerText = '-';
     this.status_container.innerText = 'Starting game ...';
   }
 
@@ -75,7 +77,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
       this.player_els.push(player_el);
       if (player.player.client_id === client_id) {
         this.player_id = player_id;
-        player_el.setPlayer();
+        player_el.setClientPlayer();
       }
     }
   }
@@ -99,6 +101,26 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
               player_el.setHiddenCards(dealRoundData.round);
             }
           }
+          this.game.betting = true;
+          this.game.dealer = dealRoundData.dealer;
+          this.game.round = dealRoundData.round;
+          if (this.game.round === this.game.max_round) {
+            this.game.rounds_increasing = false;
+          }
+          this.game.turn = this.game.dealer + 1;
+          if (this.game.turn >= this.game.players.length) {
+            this.game.turn = 0;
+          }
+          for (const [player_id, player] of this.game.players.entries()) {
+            player.bet = -1;
+            if (player_id === this.player_id) {
+              player.cards = dealRoundData.cards;
+            } else {
+              player.cards = [];
+            }
+            player.tricks = 0;
+          }
+          this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Betting`;
           break;
         default:
           console.log(`Unknown game update type ${update.data} from ${update.sender}`);

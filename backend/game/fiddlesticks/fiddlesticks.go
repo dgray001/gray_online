@@ -1,6 +1,8 @@
 package fiddlesticks
 
 import (
+	"fmt"
+
 	"github.com/dgray001/gray_online/game"
 	"github.com/gin-gonic/gin"
 )
@@ -86,7 +88,7 @@ func CreateGame(g *game.GameBase) *GameFiddlesticks {
 	}
 	var player_id = 0
 	for _, player := range g.Players {
-		player.SetPlayerId(player_id)
+		player.Player_id = player_id
 		fiddlesticks.players = append(fiddlesticks.players, &FiddlesticksPlayer{
 			player: player,
 			cards:  []*game.StandardCard{},
@@ -112,6 +114,43 @@ func (f *GameFiddlesticks) GetBase() *game.GameBase {
 func (f *GameFiddlesticks) StartGame() {
 	f.game.StartGame()
 	f.dealNextRound()
+}
+
+func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
+	fmt.Println("player action", action.Kind, action.ClientId, action.Action)
+	player := f.game.Players[uint64(action.ClientId)]
+	if player == nil {
+		fmt.Println("Invalid client id", action.ClientId)
+		return
+	}
+	player_id := player.Player_id
+	switch action.Kind {
+	case "bet":
+		if player_id != f.turn {
+			fmt.Println("Not", player_id, "player's turn but", f.turn, "player's turn")
+			return
+		}
+		if !f.betting {
+			fmt.Println("Not currently betting")
+			return
+		}
+		bet_value, ok := action.Action["amount"].(uint8)
+		if !ok {
+			fmt.Println("Bet value invalid")
+			return
+		}
+		f.players[f.turn].bet = bet_value
+		f.turn++
+		if f.turn >= len(f.players) {
+			f.turn -= len(f.players)
+		}
+		f.broadcastUpdate(&game.UpdateMessage{Kind: "bet", Content: gin.H{
+			"amount":    bet_value,
+			"player_id": player_id,
+		}})
+	default:
+		fmt.Println("Unknown game update type", action.Kind)
+	}
 }
 
 func (f *GameFiddlesticks) Valid() bool {
@@ -149,6 +188,12 @@ func (f *GameFiddlesticks) ToFrontend() gin.H {
 	return game
 }
 
+func (f *GameFiddlesticks) broadcastUpdate(update *game.UpdateMessage) {
+	for _, player := range f.players {
+		player.player.AddUpdate(update)
+	}
+}
+
 func (f *GameFiddlesticks) dealNextRound() {
 	if f.round == 1 && !f.rounds_increasing {
 		// TODO: Game ends
@@ -173,7 +218,7 @@ func (f *GameFiddlesticks) dealNextRound() {
 	for i := 0; i < len(f.players); i++ {
 		cards := dealt_cards[i]
 		j := i + f.dealer
-		if j > len(f.players) {
+		if j >= len(f.players) {
 			j -= len(f.players)
 		}
 		f.players[j].cards = cards
@@ -185,16 +230,16 @@ func (f *GameFiddlesticks) dealNextRound() {
 		for _, card := range player.cards {
 			frontend_cards = append(frontend_cards, card.ToFrontend())
 		}
-		player.player.Updates <- &game.UpdateMessage{Kind: "deal-round", Content: gin.H{
+		player.player.AddUpdate(&game.UpdateMessage{Kind: "deal-round", Content: gin.H{
 			"dealer": f.dealer,
 			"round":  f.round,
 			"trump":  f.trump.ToFrontend(),
 			"cards":  frontend_cards,
-		}}
+		}})
 	}
 	f.betting = true
 	f.turn = f.dealer + 1
-	if f.turn > len(f.players) {
+	if f.turn >= len(f.players) {
 		f.turn -= len(f.players)
 	}
 }

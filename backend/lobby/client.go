@@ -315,6 +315,19 @@ func (c *Client) readMessages() {
 				break
 			}
 			c.lobby_room.broadcast <- message
+		case "game-update":
+			if c.lobby_room == nil || c.lobby_room.game == nil {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "game-update-failed", Content: "Not in game"}
+				break
+			}
+			action := gin.H{}
+			err := json.Unmarshal([]byte(message.Content), &action)
+			if err != nil {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "game-update-failed", Content: "Couldn't parse action"}
+				break
+			}
+			player_action := game.PlayerAction{Kind: message.Data, ClientId: int(c.client_id), Action: action}
+			c.lobby_room.PlayerAction <- player_action
 		case "lobby-chat":
 			fallthrough
 		case "room-chat":
