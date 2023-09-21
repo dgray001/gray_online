@@ -1,6 +1,5 @@
 
 v0.2: launch game
- t: betting logic
  u: playing logic
  v: scoring logic
  w: backend abstract game finish/exit

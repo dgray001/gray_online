@@ -3,6 +3,10 @@ dwg-fiddlesticks-player {
   flex-flow: column nowrap;
   gap: 0.4em;
 
+  > * {
+    margin-left: 2px;
+  }
+
   #name-container-wrapper {
     display: flex;
     flex-flow: row nowrap;
@@ -21,7 +25,47 @@ dwg-fiddlesticks-player {
   }
 
   #cards-container {
-    margin-left: 2em;
     margin-top: 0.6em;
+
+    .card {
+      box-sizing: border-box;
+      margin: 0.2em;
+      padding-left: 1.5em;
+      position: relative;
+      user-select: none;
+
+      .card-img {
+        --width: calc(max(35px, min(150px, 12vw)));
+        --height: calc(var(--card-image-scale) * var(--width));
+        display: none;
+        left: 5%;
+        height: var(--height);
+        position: absolute;
+        top: 100%;
+        width: var(--width);
+      }
+    }
+
+    .card:hover {
+      background-color: rgba(255, 255, 255, 0.15);
+
+      .card-img {
+        display: block;
+      }
+    }
+
+    .card:active {
+      background-color: rgba(255, 255, 255, 0.3);
+
+      .card-img {
+        display: block;
+      }
+    }
+  }
+
+  #betting-container {
+    &:not(.show) {
+      display: none;
+    }
   }
 }

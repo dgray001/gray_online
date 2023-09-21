@@ -1,5 +1,6 @@
 import {DwgElement} from '../../../dwg_element';
-import {StandardCard, cardToName} from '../../util/card_util';
+import {createMessage} from '../../../lobby/data_models';
+import {StandardCard, cardToImagePath, cardToName} from '../../util/card_util';
 import {FiddlesticksPlayer} from '../fiddlesticks';
 
 import html from './fiddlesticks_player.html';
@@ -13,8 +14,12 @@ export class DwgFiddlesticksPlayer extends DwgElement {
   bet_container: HTMLSpanElement;
   tricks_container: HTMLSpanElement;
   cards_container: HTMLDivElement;
+  betting_container: HTMLDivElement;
+  bet_input: HTMLInputElement;
+  bet_button: HTMLButtonElement;
 
   player: FiddlesticksPlayer;
+  client_player = false;
 
   constructor() {
     super();
@@ -25,6 +30,9 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.configureElement('bet_container');
     this.configureElement('tricks_container');
     this.configureElement('cards_container');
+    this.configureElement('betting_container');
+    this.configureElement('bet_input');
+    this.configureElement('bet_button');
   }
 
   initialized = false;
@@ -45,7 +53,12 @@ export class DwgFiddlesticksPlayer extends DwgElement {
 
   setClientPlayer() {
     this.classList.add('client-player');
-    // TODO: implement event listeners
+    this.client_player = true;
+    this.bet_button.addEventListener('click', () => {
+      this.bet_button.disabled = true;
+      const game_update = createMessage(`player-${this.player.player.player_id}`, 'game-update', `{"amount":${this.bet_input.value}}`, 'bet');
+      this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, bubbles: true}));
+    });
   }
 
   setDealer(dealer: boolean) {
@@ -70,10 +83,38 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.player.cards = cards;
     for (const card of cards) {
       const card_el = document.createElement('div');
-      // TODO: add event listener ?
+      card_el.classList.add('card');
       card_el.innerText = cardToName(card);
       this.cards_container.appendChild(card_el);
+      const card_img = document.createElement('img');
+      card_img.classList.add('card-img');
+      card_img.src = cardToImagePath(card);
+      card_el.appendChild(card_img);
     }
+  }
+
+  betting() {
+    if (!this.client_player) {
+      return;
+    }
+    this.bet_input.valueAsNumber = 0;
+    this.bet_input.max = this.player.cards.length.toString();
+    this.betting_container.classList.add('show');
+  }
+
+  setBet(amount: number) {
+    if (this.client_player) {
+      this.betting_container.classList.remove('show');
+    }
+    this.player.bet = amount;
+    this.bet_container.innerText = amount.toString();
+  }
+
+  playing() {
+    if (!this.client_player) {
+      return;
+    }
+    // TODO: implement
   }
 }
 

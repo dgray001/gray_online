@@ -38,6 +38,12 @@ declare interface DealRound {
   cards: StandardCard[];
 }
 
+/** Data describing a bet game-update */
+declare interface PlayerBet {
+  amount: number;
+  player_id: number;
+}
+
 export class DwgFiddlesticks extends DwgElement implements GameComponent {
   round_number: HTMLSpanElement;
   trick_number: HTMLSpanElement;
@@ -120,7 +126,34 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
             }
             player.tricks = 0;
           }
+          if (this.game.turn === this.player_id) {
+            this.player_els[this.player_id].betting();
+          }
           this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Betting`;
+          break;
+        case "bet":
+          const betData = JSON.parse(update.content) as PlayerBet;
+          if (this.game.turn !== betData.player_id) {
+            // TODO: try to sync data
+            throw new Error('Player bet out of order');
+          }
+          this.game.players[betData.player_id].bet = betData.amount;
+          this.player_els[betData.player_id].setBet(betData.amount);
+          let still_betting = true;
+          if (this.game.turn === this.game.dealer) {
+            still_betting = false;
+          }
+          this.game.turn++;
+          if (this.game.turn >= this.game.players.length) {
+            this.game.turn = 0;
+          }
+          if (still_betting) {
+            this.player_els[this.game.turn].betting();
+            this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Betting`;
+          } else {
+            this.player_els[this.game.turn].playing();
+            this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
+          }
           break;
         default:
           console.log(`Unknown game update type ${update.data} from ${update.sender}`);

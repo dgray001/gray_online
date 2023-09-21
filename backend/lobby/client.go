@@ -269,7 +269,11 @@ func (c *Client) readMessages() {
 				break
 			}
 			settings := GameSettings{}
-			json.Unmarshal([]byte(message.Content), &settings)
+			unmarshal_err := json.Unmarshal([]byte(message.Content), &settings)
+			if unmarshal_err != nil {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-settings-update-failed", Content: "Data in an improper context"}
+				break
+			}
 			c.lobby.UpdateSettings <- MakeSettingsRoom(&settings, room)
 		case "room-launch":
 			room_id, err := strconv.Atoi(message.Data)

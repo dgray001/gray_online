@@ -117,7 +117,7 @@ func (f *GameFiddlesticks) StartGame() {
 }
 
 func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
-	fmt.Println("player action", action.Kind, action.ClientId, action.Action)
+	fmt.Println("player action:", action.Kind, action.ClientId, action.Action)
 	player := f.game.Players[uint64(action.ClientId)]
 	if player == nil {
 		fmt.Println("Invalid client id", action.ClientId)
@@ -134,11 +134,12 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 			fmt.Println("Not currently betting")
 			return
 		}
-		bet_value, ok := action.Action["amount"].(uint8)
+		bet_value_float, ok := action.Action["amount"].(float64)
 		if !ok {
-			fmt.Println("Bet value invalid")
+			fmt.Println("Bet value invalid:", bet_value_float)
 			return
 		}
+		bet_value := uint8(bet_value_float)
 		f.players[f.turn].bet = bet_value
 		f.turn++
 		if f.turn >= len(f.players) {

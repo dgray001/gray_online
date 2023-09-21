@@ -68,7 +68,7 @@ func (r *LobbyRoom) run() {
 			r.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "game-player-connected", Data: client_id_string})
 			if start_game {
 				for client_id, player := range r.players {
-					go player.clientGameUpdates(r.game.GetBase().Players[client_id])
+					go player.clientGameUpdates(r.game.GetBase().Players[client_id], room_id_string)
 				}
 				r.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "game-start"})
 				r.game.StartGame()
@@ -81,8 +81,7 @@ func (r *LobbyRoom) run() {
 	}
 }
 
-func (c *Client) clientGameUpdates(player *game.Player) {
-	room_id_string := strconv.Itoa(int(c.lobby_room.room_id))
+func (c *Client) clientGameUpdates(player *game.Player, room_id_string string) {
 	for {
 		select {
 		case message := <-player.Updates:
