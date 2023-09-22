@@ -54,6 +54,10 @@ export function handleMessage(game: DwgGame, message: ServerMessage) {
     case "game-update":
       game.game_el.gameUpdate(message);
       break;
+    case "game-connected-failed":
+    case "game-update-failed":
+      // TODO: sync state
+      break;
     default:
       console.log("Unknown message type", message.kind, "from", message.sender);
       break;

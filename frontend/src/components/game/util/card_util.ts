@@ -46,7 +46,7 @@ export function cardToName(card: StandardCard): string {
 
 /** Returns path ready to insert into src for a standard card */
 export function cardToImagePath(card: StandardCard): string {
-  let return_string = `${cardNumberToName(card.number)}_of_${cardSuitToName(card.suit)}s`;
+  let return_string = `${cardNumberToName(card.number).toLowerCase()}_of_${cardSuitToName(card.suit).toLowerCase()}s`;
   if (card.number > 10 && card.number < 14) {
     return_string += '2';
   }

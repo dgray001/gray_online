@@ -15,7 +15,7 @@ type StandardCard struct {
 	number uint8
 }
 
-func (c *StandardCard) getName() string {
+func (c *StandardCard) GetName() string {
 	return c.getNumberName() + " of " + c.getSuitName() + "s"
 }
 
@@ -65,6 +65,14 @@ func (c *StandardCard) getSuitName() string {
 	default:
 		return "Error"
 	}
+}
+
+func (c *StandardCard) GetSuit() uint8 {
+	return c.suit
+}
+
+func (c *StandardCard) GetNumber() uint8 {
+	return c.number
 }
 
 func (c *StandardCard) Valid() bool {

@@ -17,9 +17,13 @@ export class DwgFiddlesticksPlayer extends DwgElement {
   betting_container: HTMLDivElement;
   bet_input: HTMLInputElement;
   bet_button: HTMLButtonElement;
+  card_played_container: HTMLDivElement;
+  card_played: HTMLImageElement;
 
   player: FiddlesticksPlayer;
   client_player = false;
+  card_els: HTMLDivElement[] = [];
+  currently_playing = false; // if this player is playing a card
 
   constructor() {
     super();
@@ -33,6 +37,8 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.configureElement('betting_container');
     this.configureElement('bet_input');
     this.configureElement('bet_button');
+    this.configureElement('card_played_container');
+    this.configureElement('card_played');
   }
 
   initialized = false;
@@ -72,16 +78,17 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.tricks_container.innerText = '-';
   }
 
-  setHiddenCards(num: number) {
+  setHiddenCards(_: number) {
     this.newRound();
     this.player.cards = [];
-    // TODO: some kind of animation with number of cards
+    this.card_els = [];
   }
 
   setCards(cards: StandardCard[]) {
     this.newRound();
     this.player.cards = cards;
-    for (const card of cards) {
+    this.card_els = [];
+    for (const [i, card] of cards.entries()) {
       const card_el = document.createElement('div');
       card_el.classList.add('card');
       card_el.innerText = cardToName(card);
@@ -90,6 +97,15 @@ export class DwgFiddlesticksPlayer extends DwgElement {
       card_img.classList.add('card-img');
       card_img.src = cardToImagePath(card);
       card_el.appendChild(card_img);
+      this.card_els.push(card_el);
+      card_el.addEventListener('click', () => {
+        if (!this.currently_playing) {
+          return;
+        }
+        this.currently_playing = false;
+        const game_update = createMessage(`player-${this.player.player.player_id}`, 'game-update', `{"index":${i}}`, 'play-card');
+        this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, 'bubbles': true}));
+      });
     }
   }
 
@@ -114,7 +130,18 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     if (!this.client_player) {
       return;
     }
-    // TODO: implement
+    this.currently_playing = true;
+  }
+
+  playCard(index: number, card: StandardCard) {
+    if (this.client_player) {
+      this.currently_playing = false;
+    }
+    if (this.card_els.length) {
+      this.card_els.splice(index, 1)[0].remove();
+    }
+    this.card_played.src = cardToImagePath(card);
+    this.card_played_container.classList.add('show');
   }
 }
 

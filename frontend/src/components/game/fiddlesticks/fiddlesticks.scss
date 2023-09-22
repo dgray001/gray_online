@@ -20,9 +20,10 @@ dwg-fiddlesticks {
       height: var(--height);
       line-height: 1.5em;
       position: absolute;
-      right: calc(50% - 0.5 * var(--width));
+      right: 4em;
       text-align: center;
-      top: calc(50% - 0.5 * var(--height));
+      top: 2em;
+      width: var(--width);
 
       #trump-card {
         height: calc(var(--card-image-scale) * var(--width));

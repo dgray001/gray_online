@@ -1,3 +1,3 @@
 Online Games
 
-v0.1s: Betting logic
+v0.1t: Play cards

@@ -19,6 +19,9 @@ export declare interface GameFiddlesticks {
   dealer: number;
   turn: number;
   betting: boolean;
+  trump: StandardCard;
+  trick_leader: number;
+  trick: StandardCard[];
 }
 
 /** Data describing a fiddlesticks player */
@@ -41,6 +44,13 @@ declare interface DealRound {
 /** Data describing a bet game-update */
 declare interface PlayerBet {
   amount: number;
+  player_id: number;
+}
+
+/** Data describing a bet game-update */
+declare interface PlayCard {
+  index: number;
+  card: StandardCard;
   player_id: number;
 }
 
@@ -139,10 +149,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           }
           this.game.players[betData.player_id].bet = betData.amount;
           this.player_els[betData.player_id].setBet(betData.amount);
-          let still_betting = true;
-          if (this.game.turn === this.game.dealer) {
-            still_betting = false;
-          }
+          let still_betting = this.game.turn !== this.game.dealer;
           this.game.turn++;
           if (this.game.turn >= this.game.players.length) {
             this.game.turn = 0;
@@ -150,6 +157,30 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           if (still_betting) {
             this.player_els[this.game.turn].betting();
             this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Betting`;
+          } else {
+            this.game.trick_leader = this.game.turn;
+            this.trick_number.innerText = '0';
+            this.player_els[this.game.turn].playing();
+            this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
+          }
+          break;
+        case "play-card":
+          const playCardData = JSON.parse(update.content) as PlayCard;
+          if (this.game.turn !== playCardData.player_id) {
+            // TODO: try to sync data
+            throw new Error('Player played out of order');
+          }
+          if (this.player_id === playCardData.player_id) {
+            this.game.players[playCardData.player_id].cards.splice(playCardData.index, 1);
+          }
+          this.game.trick.push(playCardData.card);
+          this.player_els[playCardData.player_id].playCard(playCardData.index, playCardData.card);
+          this.game.turn++;
+          if (this.game.turn >= this.game.players.length) {
+            this.game.turn = 0;
+          }
+          if (this.game.turn === this.game.trick_leader) {
+            // TODO: implement
           } else {
             this.player_els[this.game.turn].playing();
             this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
