@@ -71,6 +71,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.dealer_container.classList.toggle('show', dealer);
   }
 
+  /** Should be called at end and beginning of rounds */
   newRound() {
     this.player.bet = -1;
     this.player.tricks = 0;
@@ -102,6 +103,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
         if (!this.currently_playing) {
           return;
         }
+        // TODO: check if card is playable
         this.currently_playing = false;
         const game_update = createMessage(`player-${this.player.player.player_id}`, 'game-update', `{"index":${i}}`, 'play-card');
         this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, 'bubbles': true}));
@@ -113,6 +115,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     if (!this.client_player) {
       return;
     }
+    this.bet_button.disabled = false;
     this.bet_input.valueAsNumber = 0;
     this.bet_input.max = this.player.cards.length.toString();
     this.betting_container.classList.add('show');
@@ -124,6 +127,10 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     }
     this.player.bet = amount;
     this.bet_container.innerText = amount.toString();
+  }
+
+  endBetting() {
+    this.tricks_container.innerText = '0';
   }
 
   playing() {
@@ -138,10 +145,21 @@ export class DwgFiddlesticksPlayer extends DwgElement {
       this.currently_playing = false;
     }
     if (this.card_els.length) {
-      this.card_els.splice(index, 1)[0].remove();
+      this.card_els[index].remove();
     }
     this.card_played.src = cardToImagePath(card);
     this.card_played_container.classList.add('show');
+  }
+
+  endTrick(tricks: number) {
+    this.player.tricks = tricks;
+    this.tricks_container.innerText = tricks.toString();
+    this.card_played_container.classList.remove('show');
+  }
+
+  setScore(score: number) {
+    this.player.score = score;
+    this.score_container.innerText = score.toString();
   }
 }
 

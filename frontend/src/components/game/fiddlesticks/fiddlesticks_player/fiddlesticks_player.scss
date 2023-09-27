@@ -58,6 +58,7 @@ dwg-fiddlesticks-player {
 
   #cards-container {
     margin-top: 0.6em;
+    z-index: 3;
 
     .card {
       box-sizing: border-box;
@@ -75,6 +76,7 @@ dwg-fiddlesticks-player {
         position: absolute;
         top: 100%;
         width: var(--width);
+        z-index: 4;
       }
     }
 

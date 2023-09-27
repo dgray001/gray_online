@@ -128,6 +128,10 @@ func (p *Player) AddUpdate(update *UpdateMessage) {
 	p.Updates <- update
 }
 
+func (p *Player) GetNickname() string {
+	return p.nickname
+}
+
 func (p *Player) ToFrontend() gin.H {
 	return gin.H{
 		"client_id": p.client_id,

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/dgray001/gray_online/game"
+	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
 )
 
@@ -37,11 +38,12 @@ type GameFiddlesticks struct {
 }
 
 type FiddlesticksPlayer struct {
-	player *game.Player
-	cards  []*game.StandardCard
-	score  uint16
-	bet    uint8
-	tricks uint8
+	player       *game.Player
+	cards        []*game.StandardCard
+	cards_played []int
+	score        uint16
+	bet          uint8
+	tricks       uint8
 }
 
 func (p *FiddlesticksPlayer) toFrontend() gin.H {
@@ -81,16 +83,17 @@ func CreateGame(g *game.GameBase) *GameFiddlesticks {
 	for _, player := range g.Players {
 		player.Player_id = player_id
 		fiddlesticks.players = append(fiddlesticks.players, &FiddlesticksPlayer{
-			player: player,
-			cards:  []*game.StandardCard{},
-			score:  0,
+			player:       player,
+			cards:        []*game.StandardCard{},
+			cards_played: []int{},
+			score:        0,
 		})
 		player_id++
 	}
 	if len(fiddlesticks.players) < 2 {
 		panic("Need at least two players to play fiddlesticks") // TODO: remove panics
 	}
-	fiddlesticks.max_round = uint8((fiddlesticks.deck.Size() - 1) / len(fiddlesticks.players))
+	fiddlesticks.max_round = 1 //uint8((fiddlesticks.deck.Size() - 1) / len(fiddlesticks.players))
 	return &fiddlesticks
 }
 
@@ -147,7 +150,10 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 		}})
 	case "play-card":
 		if player_id != f.turn {
-			fmt.Println("Not", player_id, "player's turn but", f.turn, "player's turn")
+			message := fmt.Sprintf("Not %d player's turn but %d player's turn", player_id, f.turn)
+			fmt.Println(message)
+			f.players[player_id].player.AddUpdate(&game.UpdateMessage{Kind: "play-card-failed",
+				Content: gin.H{"message": message, "player_id": player_id}})
 			return
 		}
 		if f.betting {
@@ -156,13 +162,26 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 		}
 		card_index_float, ok := action.Action["index"].(float64)
 		if !ok {
-			fmt.Println("Card index invalid:", card_index_float)
+			message := fmt.Sprintf("Card index invalid: %f", card_index_float)
+			fmt.Println(message)
+			f.players[player_id].player.AddUpdate(&game.UpdateMessage{Kind: "play-card-failed",
+				Content: gin.H{"message": message, "player_id": player_id}})
 			return
 		}
 		card_index := int(card_index_float)
+		if util.Contains(f.players[f.turn].cards_played, card_index) {
+			message := fmt.Sprintf("Card with index %d already played", card_index)
+			fmt.Println(message)
+			f.players[player_id].player.AddUpdate(&game.UpdateMessage{Kind: "play-card-failed",
+				Content: gin.H{"message": message, "player_id": player_id}})
+			return
+		}
 		cards := f.players[f.turn].cards
 		if card_index < 0 || card_index >= len(cards) {
-			fmt.Println("Invalid card index", card_index, "for having", len(cards), "cards")
+			message := fmt.Sprintf("Invalid card index %d for having %d cards", card_index, len(cards))
+			fmt.Println(message)
+			f.players[player_id].player.AddUpdate(&game.UpdateMessage{Kind: "play-card-failed",
+				Content: gin.H{"message": message, "player_id": player_id}})
 			return
 		}
 		card := cards[card_index]
@@ -171,10 +190,16 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 			if lead != nil {
 				suit := lead.GetSuit()
 				if card.GetSuit() != suit {
-					for _, other_card := range cards {
+					for i, other_card := range cards {
+						if util.Contains(f.players[f.turn].cards_played, i) {
+							continue
+						}
 						if other_card.GetSuit() == suit {
-							fmt.Println("Must follow suit of lead card", lead.GetName(), "and tried to play",
-								card.GetName(), "but have card that follows:", other_card.GetName())
+							message := fmt.Sprintf("Must follow suit of lead card %s and tried to play %s but have card that follows: %s",
+								lead.GetName(), card.GetName(), other_card.GetName())
+							fmt.Println(message)
+							f.players[player_id].player.AddUpdate(&game.UpdateMessage{Kind: "play-card-failed",
+								Content: gin.H{"message": message, "player_id": player_id}})
 							return
 						}
 					}
@@ -182,19 +207,49 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 			}
 		}
 		f.trick = append(f.trick, card)
-		f.players[f.turn].cards = append(cards[:card_index], cards[card_index+1:]...)
-		f.turn++
-		if f.turn >= len(f.players) {
-			f.turn -= len(f.players)
-		}
-		if f.turn == f.trick_leader {
-			// TODO: implement next trick or ending round
-		}
+		f.players[f.turn].cards_played = append(f.players[f.turn].cards_played, card_index)
 		f.broadcastUpdate(&game.UpdateMessage{Kind: "play-card", Content: gin.H{
 			"index":     card_index,
 			"card":      card.ToFrontend(),
 			"player_id": player_id,
 		}})
+		f.turn++
+		if f.turn >= len(f.players) {
+			f.turn -= len(f.players)
+		}
+		if f.turn == f.trick_leader {
+			winning_index := 0
+			winning_card := f.trick[0]
+			for i, card := range f.trick[1:] {
+				if card.GetSuit() == winning_card.GetSuit() {
+					if card.GetNumber() > winning_card.GetNumber() {
+						winning_index = i + 1
+						winning_card = card
+					}
+				} else if card.GetSuit() == f.trump.GetSuit() {
+					winning_index = i + 1
+					winning_card = card
+				}
+			}
+			f.turn = f.trick_leader + winning_index
+			if f.turn >= len(f.players) {
+				f.turn -= len(f.players)
+			}
+			f.players[f.turn].tricks++
+			f.trick_leader = f.turn
+			f.trick = []*game.StandardCard{}
+			fmt.Println("Trick won by", f.players[f.turn].player.GetNickname(), "with the", winning_card.GetName())
+			if len(f.players[0].cards_played) < len(f.players[0].cards) {
+				// next trick
+			} else {
+				for _, player := range f.players {
+					if player.bet == player.tricks {
+						player.score += 10 + uint16(player.bet)
+					}
+				}
+				f.dealNextRound()
+			}
+		}
 	default:
 		fmt.Println("Unknown game update type", action.Kind)
 	}
@@ -251,6 +306,7 @@ func (f *GameFiddlesticks) broadcastUpdate(update *game.UpdateMessage) {
 
 func (f *GameFiddlesticks) dealNextRound() {
 	if f.round == 1 && !f.rounds_increasing {
+		fmt.Println("game over!")
 		// TODO: Game ends
 		return
 	}
@@ -277,6 +333,7 @@ func (f *GameFiddlesticks) dealNextRound() {
 			j -= len(f.players)
 		}
 		f.players[j].cards = cards
+		f.players[j].cards_played = []int{}
 		f.players[j].tricks = 0
 	}
 	f.trump = f.deck.DrawCard()
@@ -297,4 +354,5 @@ func (f *GameFiddlesticks) dealNextRound() {
 	if f.turn >= len(f.players) {
 		f.turn -= len(f.players)
 	}
+	f.trick_leader = f.turn
 }

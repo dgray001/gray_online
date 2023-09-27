@@ -1,6 +1,6 @@
 import {DwgElement} from '../../dwg_element';
 import {GameBase, GameComponent, GamePlayer} from '../data_models';
-import {StandardCard, cardToImagePath} from '../util/card_util';
+import {StandardCard, cardToImagePath, cardToName} from '../util/card_util';
 import {DwgFiddlesticksPlayer} from './fiddlesticks_player/fiddlesticks_player';
 import {ServerMessage} from '../../lobby/data_models';
 
@@ -54,9 +54,16 @@ declare interface PlayCard {
   player_id: number;
 }
 
+/** Data describing a bet game-update-failed */
+declare interface PlayCardFailed {
+  player_id: number;
+  message: string;
+}
+
 export class DwgFiddlesticks extends DwgElement implements GameComponent {
   round_number: HTMLSpanElement;
   trick_number: HTMLSpanElement;
+  current_trick = 0;
   status_container: HTMLSpanElement;
   trump_card_img: HTMLImageElement;
   trick_cards: HTMLDivElement;
@@ -105,6 +112,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           const dealRoundData = JSON.parse(update.content) as DealRound;
           this.round_number.innerText = dealRoundData.round.toString();
           this.trump_card_img.src = cardToImagePath(dealRoundData.trump);
+          this.game.trump = dealRoundData.trump;
           for (const [player_id, player_el] of this.player_els.entries()) {
             if (dealRoundData.dealer === player_id) {
               player_el.setDealer(true);
@@ -120,13 +128,16 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           this.game.betting = true;
           this.game.dealer = dealRoundData.dealer;
           this.game.round = dealRoundData.round;
+          this.trick_number.innerText = '-';
+          this.current_trick = 0;
           if (this.game.round === this.game.max_round) {
             this.game.rounds_increasing = false;
           }
           this.game.turn = this.game.dealer + 1;
           if (this.game.turn >= this.game.players.length) {
-            this.game.turn = 0;
+            this.game.turn -= this.game.players.length;
           }
+          this.game.trick_leader = this.game.turn;
           for (const [player_id, player] of this.game.players.entries()) {
             player.bet = -1;
             if (player_id === this.player_id) {
@@ -152,16 +163,22 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           let still_betting = this.game.turn !== this.game.dealer;
           this.game.turn++;
           if (this.game.turn >= this.game.players.length) {
-            this.game.turn = 0;
+            this.game.turn -= this.game.players.length;
           }
           if (still_betting) {
             this.player_els[this.game.turn].betting();
             this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Betting`;
           } else {
             this.game.trick_leader = this.game.turn;
-            this.trick_number.innerText = '0';
-            this.player_els[this.game.turn].playing();
+            this.trick_number.innerText = '1';
+            this.current_trick = 1;
             this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
+            for (const [i, player_el] of this.player_els.entries()) {
+              player_el.endBetting();
+              if (i === this.game.turn) {
+                player_el.playing();
+              }
+            }
           }
           break;
         case "play-card":
@@ -177,13 +194,66 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           this.player_els[playCardData.player_id].playCard(playCardData.index, playCardData.card);
           this.game.turn++;
           if (this.game.turn >= this.game.players.length) {
-            this.game.turn = 0;
+            this.game.turn -= this.game.players.length;
           }
           if (this.game.turn === this.game.trick_leader) {
-            // TODO: implement
+            let winning_index = 0;
+            let winning_card = this.game.trick[0];
+            for (let i = 1; i < this.game.trick.length; i++) {
+              const card = this.game.trick[i];
+              if (card.suit === winning_card.suit) {
+                if (card.number > winning_card.number) {
+                  winning_index = i;
+                  winning_card = card;
+                }
+              } else if (card.suit === this.game.trump.suit) {
+                winning_index = i;
+                winning_card = card;
+              }
+            }
+            this.game.turn = this.game.trick_leader + winning_index;
+            if (this.game.turn >= this.game.players.length) {
+              this.game.turn -= this.game.players.length;
+            }
+            this.game.trick_leader = this.game.turn;
+            this.game.players[this.game.turn].tricks++;
+            for (const [i, player_el] of this.player_els.entries()) {
+              player_el.endTrick(this.game.players[i].tricks);
+            }
+            this.game.trick = [];
+            console.log(`Trick won by ${this.game.players[this.game.turn].player.nickname} with the ${cardToName(winning_card)}`);
+            if (this.current_trick === this.game.round) {
+              if (this.game.rounds_increasing && this.game.round === this.game.max_round) {
+                this.game.round--;
+                this.game.rounds_increasing = false;
+              } else if (this.game.round === 1) {
+                // TODO: game over logic
+              } else {
+                this.game.round++; // wait for deal-round update from server
+              }
+              for (const [i, player] of this.game.players.entries()) {
+                if (player.bet === player.tricks) {
+                  player.score += 10 + player.bet;
+                  this.player_els[i].setScore(player.score);
+                  this.player_els[i].newRound();
+                }
+              }
+            } else {
+              this.current_trick++;
+              this.trick_number.innerText = this.current_trick.toString();
+              this.player_els[this.game.turn].playing();
+              this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
+            }
           } else {
             this.player_els[this.game.turn].playing();
             this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
+          }
+          break;
+        case "play-card-failed":
+          const playCardFailedData = JSON.parse(update.content) as PlayCardFailed;
+          if (this.player_id === playCardFailedData.player_id) {
+            this.player_els[playCardFailedData.player_id].playing();
+            // TODO: show message to user
           }
           break;
         default:
@@ -191,7 +261,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           break;
       }
     } catch(e) {
-      console.log(`Error during game update ${update}: ${e}`);
+      console.log(`Error during game update ${JSON.stringify(update)}: ${e}`);
     }
   }
 }

@@ -1,3 +1,3 @@
 Online Games
 
-v0.1t: Play cards
+v0.1u: Play whole game

@@ -1,7 +1,5 @@
 
 v0.2: launch game
- u: playing logic
- v: scoring logic
  w: backend abstract game finish/exit
  x: can see winner when game ends
 
