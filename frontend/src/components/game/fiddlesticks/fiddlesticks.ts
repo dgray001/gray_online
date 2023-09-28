@@ -8,6 +8,7 @@ import html from './fiddlesticks.html';
 
 import './fiddlesticks.scss';
 import './fiddlesticks_player/fiddlesticks_player';
+import '../../dialog_box/message_dialog/message_dialog';
 
 /** Data describing a game of fiddlesticks */
 export declare interface GameFiddlesticks {
@@ -223,20 +224,42 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
             this.game.trick = [];
             console.log(`Trick won by ${this.game.players[this.game.turn].player.nickname} with the ${cardToName(winning_card)}`);
             if (this.current_trick === this.game.round) {
-              if (this.game.rounds_increasing && this.game.round === this.game.max_round) {
-                this.game.round--;
-                this.game.rounds_increasing = false;
-              } else if (this.game.round === 1) {
-                // TODO: game over logic
-              } else {
-                this.game.round++; // wait for deal-round update from server
-              }
               for (const [i, player] of this.game.players.entries()) {
                 if (player.bet === player.tricks) {
                   player.score += 10 + player.bet;
                   this.player_els[i].setScore(player.score);
                   this.player_els[i].newRound();
                 }
+              }
+              if (this.game.rounds_increasing && this.game.round === this.game.max_round) {
+                this.game.rounds_increasing = false;
+              }
+              if (!this.game.rounds_increasing && this.game.round === 1) {
+                this.game.game_base.game_ended = true;
+                let winners = [0];
+                let winning_score = this.game.players[0].score;
+                for (let i = 1; i < this.game.players.length; i++) {
+                  const player = this.game.players[i];
+                  if (player.score > winning_score) {
+                    winners = [i];
+                    winning_score = player.score;
+                  } else if (player.score === winning_score) {
+                    winners.push(i);
+                  }
+                }
+                for (const winner of winners) {
+                  this.player_els[winner].wonGame();
+                }
+                let winner_text = winners.length > 1 ? 'The winners are: ' : 'The winner is: ';
+                winner_text += winners.map(winner => this.game.players[winner].player.nickname).join(', ');
+                winner_text += `\nWith ${winning_score} points`;
+                const winner_dialog = document.createElement('dwg-message-dialog');
+                winner_dialog.setData({message: winner_text});
+                this.appendChild(winner_dialog);
+              } else if (this.game.rounds_increasing) {
+                this.game.round++; // wait for deal-round update from server
+              } else {
+                this.game.round--; // wait for deal-round update from server
               }
             } else {
               this.current_trick++;

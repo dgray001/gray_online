@@ -1,7 +1,8 @@
 
 v0.2: launch game
- w: backend abstract game finish/exit
- x: can see winner when game ends
+ w: can see winner when fiddlesticks ends
+ x: abstract game tracks game-update by order
+ y: frontend abstract game history button
 
 v0.3: flesh out fiddlesticks game
  - can reconnect as anonymous user
@@ -17,7 +18,6 @@ v0.5: save risq game
  - need fully functioning db and user profiles
 
 P3/P4:
- - abstract header (to exit, see players/viewers) in-game
  - loader for client requests in lobby: room-create, room-join, room-leave, room-rename
  - client still leaves room if it fails => sync state
  - handle other failures by syncing state => show message
@@ -29,3 +29,8 @@ P3/P4:
  - frontend animations
  - game updates have an id that ensures the correct order (can request missing)
  - chat updates have an id that ensures the correct order (can request missing)
+ - add abstract dialog then add confirm dialog for confirming actions
+ - when joining a lobby room determine if game is currently in progress => then check if joinee is a player => if not join as viewer
+ - In lobby room have a relaunch button to rejoin room
+ - In waiting room have a relaunch button
+ - Player's button in abstract game header => opens abstract dialog box

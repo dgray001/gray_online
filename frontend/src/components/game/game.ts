@@ -23,6 +23,9 @@ export class DwgGame extends DwgElement {
   game_el: GameComponent;
   chatbox_container: HTMLDivElement;
   chatbox: DwgChatbox;
+  button_game_history: HTMLButtonElement;
+  button_room_players: HTMLButtonElement;
+  button_exit: HTMLButtonElement;
 
   launched: boolean;
   socket: WebSocket;
@@ -41,6 +44,9 @@ export class DwgGame extends DwgElement {
     this.configureElement('game_container');
     this.configureElement('chatbox_container');
     this.configureElement('chatbox');
+    this.configureElement('button_game_history');
+    this.configureElement('button_room_players');
+    this.configureElement('button_exit');
   }
 
   protected override parsedCallback(): void {
@@ -58,6 +64,16 @@ export class DwgGame extends DwgElement {
         message.message,
         message.color,
       ));
+    });
+    this.button_game_history.addEventListener('click', () => {
+      // TODO: game history dialog box
+    });
+    this.button_room_players.addEventListener('click', () => {
+      // TODO: game players dialog box
+    });
+    this.button_exit.addEventListener('click', () => {
+      // TODO: add confirm dialog
+      this.dispatchEvent(new Event("exit_game"));
     });
   }
 
@@ -79,7 +95,7 @@ export class DwgGame extends DwgElement {
           const message = JSON.parse(m.data) as ServerMessage;
           handleMessage(this, message);
         } catch(e) {
-          console.log("Error parsing message: ", m, e)
+          console.log('Error parsing message: ', m, e)
         }
       });
       const response = await apiGet<GameFromServer>(`lobby/games/get/${lobby.game_id}`);

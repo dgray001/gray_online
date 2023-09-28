@@ -1,3 +1,3 @@
 Online Games
 
-v0.1u: Play whole game
+v0.1v: abstract close game

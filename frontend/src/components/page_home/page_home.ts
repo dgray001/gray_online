@@ -46,6 +46,10 @@ export class DwgPageHome extends DwgElement {
         this.lobby.classList.add('hide');
       }
     });
+    this.game.addEventListener('exit_game', () => {
+      this.game.classList.remove('show');
+      this.lobby.classList.remove('hide');
+    });
   }
 
   private tryConnectionAgain(message: string): void {

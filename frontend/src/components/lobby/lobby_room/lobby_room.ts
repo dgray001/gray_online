@@ -124,6 +124,7 @@ export class DwgLobbyRoom extends DwgElement {
             color: 'gray',
           }}));
           this.dispatchEvent(new Event('launch_game'));
+          this.settings_launch_button.disabled = true;
         });
       }
     });

@@ -1,0 +1,12 @@
+#dwg-dialog-box {
+  align-items: center;
+  background-color: rgba(120, 120, 120, 0.8);
+  bottom: 0;
+  display: flex;
+  left: 0;
+  justify-content: center;
+  position: relative; // so sub dialog boxes can stack
+  right: 0;
+  top: 0;
+  z-index: 100;
+}

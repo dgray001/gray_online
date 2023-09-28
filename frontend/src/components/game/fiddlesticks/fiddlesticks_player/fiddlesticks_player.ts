@@ -161,6 +161,10 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.player.score = score;
     this.score_container.innerText = score.toString();
   }
+
+  wonGame() {
+    // TODO: implement by showing crown image
+  }
 }
 
 customElements.define('dwg-fiddlesticks-player', DwgFiddlesticksPlayer);

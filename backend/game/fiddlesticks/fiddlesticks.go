@@ -305,9 +305,33 @@ func (f *GameFiddlesticks) broadcastUpdate(update *game.UpdateMessage) {
 }
 
 func (f *GameFiddlesticks) dealNextRound() {
+	if f.rounds_increasing && f.round == f.max_round {
+		f.rounds_increasing = false
+	}
 	if f.round == 1 && !f.rounds_increasing {
-		fmt.Println("game over!")
-		// TODO: Game ends
+		var winners = []int{0}
+		var winning_score = f.players[0].score
+		for i, player := range f.players[1:] {
+			i++
+			if player.score > winning_score {
+				winning_score = player.score
+				winners = []int{i}
+			} else if player.score == winning_score {
+				winners = append(winners, i)
+			}
+		}
+		var winner_message = "The winner is: "
+		if len(winners) > 1 {
+			winner_message = "The winners are: "
+		}
+		for i, winner := range winners {
+			winner_message += f.players[winner].player.GetNickname()
+			if i+1 < len(winners) {
+				winner_message += ", "
+			}
+		}
+		fmt.Println(winner_message)
+		f.game.EndGame()
 		return
 	}
 	f.dealer++
@@ -315,12 +339,7 @@ func (f *GameFiddlesticks) dealNextRound() {
 		f.dealer = 0
 	}
 	if f.rounds_increasing {
-		if f.round == f.max_round {
-			f.rounds_increasing = false
-			f.round--
-		} else {
-			f.round++
-		}
+		f.round++
 	} else {
 		f.round--
 	}

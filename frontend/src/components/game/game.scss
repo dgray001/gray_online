@@ -28,7 +28,7 @@ dwg-game {
       align-items: center;
       display: flex;
       flex-flow: row nowrap;
-      gap: 1px;
+      gap: 2px;
       justify-content: center;
       margin-left: auto;
       margin-right: 4px;
@@ -36,7 +36,13 @@ dwg-game {
       button {
         border-radius: 0;
         height: var(--header-height);
-        width: var(--header-height);
+        padding: 0;
+        width: calc(1.3 * var(--header-height));
+
+        img {
+          height: 100%;
+          width: calc((100 / 130) * 100%);
+        }
       }
     }
   }
