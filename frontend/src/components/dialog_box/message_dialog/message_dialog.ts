@@ -20,8 +20,8 @@ export class DwgMessageDialog extends DwgDialogBox<MessageDialogData> {
     this.configureElement('ok_button');
   }
 
-  override getContent(): Node {
-    return document.createElement(html);
+  override getHTML(): string {
+    return html;
   }
 
   getData(): MessageDialogData {
@@ -31,13 +31,21 @@ export class DwgMessageDialog extends DwgDialogBox<MessageDialogData> {
     }
   }
 
-  setData(data: MessageDialogData) {
+  setData(data: MessageDialogData, parsed?: boolean) {
     this.setAttribute('message', data.message);
-    this.setAttribute('button_text', data.button_text);
+    if (data.button_text) {
+      this.setAttribute('button_text', data.button_text);
+    }
+    if (!parsed && !this.fully_parsed) {
+      return;
+    }
     this.message_container.innerText = data.message;
     if (data.button_text) {
       this.ok_button.innerText = data.button_text;
     }
+    this.ok_button.addEventListener('click', () => {
+      this.closeDialog();
+    });
   }
 }
 

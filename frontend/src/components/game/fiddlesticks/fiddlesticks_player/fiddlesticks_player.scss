@@ -102,4 +102,18 @@ dwg-fiddlesticks-player {
       display: none;
     }
   }
+
+  #winner-icon {
+    height: 64px;
+    left: min(10%, 10px);
+    opacity: 80%;
+    position: absolute;
+    rotate: -30deg;
+    top: -48px;
+    width: 64px;
+
+    &:not(.show) {
+      display: none;
+    }
+  }
 }

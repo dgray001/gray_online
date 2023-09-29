@@ -19,6 +19,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
   bet_button: HTMLButtonElement;
   card_played_container: HTMLDivElement;
   card_played: HTMLImageElement;
+  winner_icon: HTMLImageElement;
 
   player: FiddlesticksPlayer;
   client_player = false;
@@ -39,6 +40,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.configureElement('bet_button');
     this.configureElement('card_played_container');
     this.configureElement('card_played');
+    this.configureElement('winner_icon');
   }
 
   initialized = false;
@@ -163,7 +165,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
   }
 
   wonGame() {
-    // TODO: implement by showing crown image
+    this.winner_icon.classList.add('show');
   }
 }
 

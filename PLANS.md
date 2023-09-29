@@ -1,6 +1,5 @@
 
 v0.2: launch game
- w: can see winner when fiddlesticks ends
  x: abstract game tracks game-update by order
  y: frontend abstract game history button
 

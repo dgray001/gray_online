@@ -1,3 +1,3 @@
 Online Games
 
-v0.1v: abstract close game
+v0.1w: See winner when fiddlesticks ends
