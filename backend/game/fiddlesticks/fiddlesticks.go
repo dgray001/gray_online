@@ -93,7 +93,7 @@ func CreateGame(g *game.GameBase) *GameFiddlesticks {
 	if len(fiddlesticks.players) < 2 {
 		panic("Need at least two players to play fiddlesticks") // TODO: remove panics
 	}
-	fiddlesticks.max_round = 1 //uint8((fiddlesticks.deck.Size() - 1) / len(fiddlesticks.players))
+	fiddlesticks.max_round = uint8((fiddlesticks.deck.Size() - 1) / len(fiddlesticks.players))
 	return &fiddlesticks
 }
 
