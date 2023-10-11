@@ -1,7 +1,7 @@
 import {DwgElement} from '../dwg_element';
 import {ServerMessage, LobbyRoom, ConnectionMetadata, GameType, createMessage} from '../lobby/data_models';
 import {Game, GameComponent, GameFromServer, serverResponseToGame} from './data_models';
-import {apiGet} from '../../scripts/api';
+import {apiPost} from '../../scripts/api';
 import {ChatMessage, DwgChatbox} from '../chatbox/chatbox';
 import {capitalize} from '../../scripts/util';
 
@@ -98,7 +98,10 @@ export class DwgGame extends DwgElement {
           console.log('Error parsing message: ', m, e)
         }
       });
-      const response = await apiGet<GameFromServer>(`lobby/games/get/${lobby.game_id}`);
+      const response = await apiPost<GameFromServer>(`lobby/games/get/${lobby.game_id}`, {
+        client_id: this.connection_metadata.client_id,
+        viewer: "false", // TODO: add viewer support here somehow
+      });
       if (response.success && !!response.result) {
         this.game = serverResponseToGame(response.result);
         const setGame = (component: string) => {
@@ -119,7 +122,7 @@ export class DwgGame extends DwgElement {
             throw new Error(`Unknown game type: ${this.game.game_base.game_type}`);
         }
         this.game_name.innerText = capitalize(GameType[this.game.game_base.game_type].toLowerCase());
-        for (const [id,player] of this.game.game_base.players) {
+        for (const [id, player] of this.game.game_base.players) {
           const el = document.createElement('div');
           const name = document.createElement('div');
           const status = document.createElement('div');
@@ -146,7 +149,9 @@ export class DwgGame extends DwgElement {
       } else {
         console.log(response.error_message);
       }
-    } catch(e) {}
+    } catch(e) {
+      console.log(e);
+    }
     return false;
   }
 

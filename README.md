@@ -1,3 +1,3 @@
 Online Games
 
-v0.1w: See winner when fiddlesticks ends
+v0.1x: Frontend applies updates in order

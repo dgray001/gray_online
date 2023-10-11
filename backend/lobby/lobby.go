@@ -148,7 +148,7 @@ func (l *Lobby) GetGames() []gin.H {
 		if room.valid() {
 			game := room.game
 			if game != nil && game.Valid() {
-				games = append(games, game.ToFrontend())
+				games = append(games, game.ToFrontend(0, false))
 			}
 		}
 	}

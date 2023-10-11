@@ -1,5 +1,5 @@
 import {DwgElement} from '../../dwg_element';
-import {GameBase, GameComponent, GamePlayer} from '../data_models';
+import {GameBase, GameComponent, GamePlayer, UpdateMessage} from '../data_models';
 import {StandardCard, cardToImagePath, cardToName} from '../util/card_util';
 import {DwgFiddlesticksPlayer} from './fiddlesticks_player/fiddlesticks_player';
 import {ServerMessage} from '../../lobby/data_models';
@@ -106,11 +106,11 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     }
   }
 
-  gameUpdate(update: ServerMessage): void {
+  gameUpdate(update: UpdateMessage): void {
     try {
-      switch(update.data) {
+      switch(update.kind) {
         case "deal-round":
-          const dealRoundData = JSON.parse(update.content) as DealRound;
+          const dealRoundData = JSON.parse(update.update) as DealRound;
           this.round_number.innerText = dealRoundData.round.toString();
           this.trump_card_img.src = cardToImagePath(dealRoundData.trump);
           this.game.trump = dealRoundData.trump;
@@ -154,7 +154,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Betting`;
           break;
         case "bet":
-          const betData = JSON.parse(update.content) as PlayerBet;
+          const betData = JSON.parse(update.update) as PlayerBet;
           if (this.game.turn !== betData.player_id) {
             // TODO: try to sync data
             throw new Error('Player bet out of order');
@@ -183,7 +183,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           }
           break;
         case "play-card":
-          const playCardData = JSON.parse(update.content) as PlayCard;
+          const playCardData = JSON.parse(update.update) as PlayCard;
           if (this.game.turn !== playCardData.player_id) {
             // TODO: try to sync data
             throw new Error('Player played out of order');
@@ -273,14 +273,14 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           }
           break;
         case "play-card-failed":
-          const playCardFailedData = JSON.parse(update.content) as PlayCardFailed;
+          const playCardFailedData = JSON.parse(update.update) as PlayCardFailed;
           if (this.player_id === playCardFailedData.player_id) {
             this.player_els[playCardFailedData.player_id].playing();
             // TODO: show message to user
           }
           break;
         default:
-          console.log(`Unknown game update type ${update.data} from ${update.sender}`);
+          console.log(`Unknown game update type ${update.kind}`);
           break;
       }
     } catch(e) {

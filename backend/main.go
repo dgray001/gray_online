@@ -105,7 +105,7 @@ func main() {
 				api_games.GET("/get", func(c *gin.Context) {
 					c.JSON(200, successResponse(lobby_object.GetGames()))
 				})
-				api_games.GET("/get/:id", func(c *gin.Context) {
+				api_games.POST("/get/:id", func(c *gin.Context) {
 					id_param := c.Param("id")
 					game_id, err := strconv.Atoi(id_param)
 					if err != nil {
@@ -118,7 +118,24 @@ func main() {
 						c.JSON(200, failureResponse("Game doesn't exist"))
 						return
 					}
-					c.JSON(200, successResponse(game.ToFrontend()))
+					type GetGameReq struct {
+						client_id string
+						viewer    string
+					}
+					var req GetGameReq
+					err = c.ShouldBindJSON(&req)
+					if err != nil {
+						fmt.Println(err)
+						c.JSON(200, failureResponse("Binding error"))
+						return
+					}
+					client_id, err := strconv.Atoi(req.client_id)
+					if err != nil {
+						fmt.Println(err)
+						c.JSON(200, failureResponse("Invalid client id"))
+						return
+					}
+					c.JSON(200, successResponse(game.ToFrontend(uint64(client_id), req.viewer == "true")))
 				})
 			}
 		}

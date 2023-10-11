@@ -7,6 +7,7 @@ import (
 
 	"github.com/dgray001/gray_online/game"
 	"github.com/dgray001/gray_online/game/fiddlesticks"
+	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
 )
 
@@ -75,7 +76,7 @@ func (r *LobbyRoom) run() {
 			}
 		case action := <-r.PlayerAction:
 			if r.game != nil {
-				r.game.PlayerAction(action)
+				r.game.PlayerAction(r.game.GetBase().AddAction(action))
 			}
 		}
 	}
@@ -89,7 +90,14 @@ func (c *Client) clientGameUpdates(player *game.Player, room_id_string string) {
 			if err != nil {
 				break
 			}
-			c.send_message <- lobbyMessage{Sender: "room-" + room_id_string, Kind: "game-update", Data: message.Kind, Content: string(encoded_message)}
+			message_id_string := strconv.Itoa(message.Id)
+			if util.RandomChance(0.4) {
+				fmt.Println("sending update")
+				c.send_message <- lobbyMessage{Sender: "room-" + room_id_string + "-" + message_id_string,
+					Kind: "game-update", Data: message.Kind, Content: string(encoded_message)}
+			} else {
+				fmt.Println("not sending update")
+			}
 		}
 	}
 }

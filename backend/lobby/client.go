@@ -330,8 +330,19 @@ func (c *Client) readMessages() {
 				c.send_message <- lobbyMessage{Sender: "server", Kind: "game-update-failed", Content: "Couldn't parse action"}
 				break
 			}
-			player_action := game.PlayerAction{Kind: message.Data, ClientId: int(c.client_id), Action: action}
+			player_action := game.PlayerAction{Kind: message.Data, Client_id: int(c.client_id), Action: action}
 			c.lobby_room.PlayerAction <- player_action
+		case "game-get-update":
+			if c.lobby_room == nil || c.lobby_room.game == nil {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "game-get-update-failed", Content: "Not in game"}
+				break
+			}
+			update_id, err := strconv.Atoi(message.Data)
+			if err != nil {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "game-get-update-failed", Content: "Invalid update id"}
+				break
+			}
+			c.lobby_room.game.GetBase().ResendPlayerUpdate(c.client_id, update_id)
 		case "lobby-chat":
 			fallthrough
 		case "room-chat":

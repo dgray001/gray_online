@@ -46,14 +46,14 @@ type FiddlesticksPlayer struct {
 	tricks       uint8
 }
 
-func (p *FiddlesticksPlayer) toFrontend() gin.H {
+func (p *FiddlesticksPlayer) toFrontend(show_updates bool) gin.H {
 	player := gin.H{
 		"score":  p.score,
 		"bet":    p.bet,
 		"tricks": p.tricks,
 	}
 	if p.player != nil {
-		player["player"] = p.player.ToFrontend()
+		player["player"] = p.player.ToFrontend(show_updates)
 	}
 	cards := []gin.H{}
 	for _, card := range p.cards {
@@ -111,10 +111,10 @@ func (f *GameFiddlesticks) StartGame() {
 }
 
 func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
-	fmt.Println("player action:", action.Kind, action.ClientId, action.Action)
-	player := f.game.Players[uint64(action.ClientId)]
+	fmt.Println("player action:", action.Kind, action.Client_id, action.Action)
+	player := f.game.Players[uint64(action.Client_id)]
 	if player == nil {
-		fmt.Println("Invalid client id", action.ClientId)
+		fmt.Println("Invalid client id", action.Client_id)
 		return
 	}
 	player_id := player.Player_id
@@ -262,7 +262,7 @@ func (f *GameFiddlesticks) Valid() bool {
 	return true
 }
 
-func (f *GameFiddlesticks) ToFrontend() gin.H {
+func (f *GameFiddlesticks) ToFrontend(client_id uint64, is_viewer bool) gin.H {
 	game := gin.H{
 		"round":             f.round,
 		"max_round":         f.max_round,
@@ -273,7 +273,7 @@ func (f *GameFiddlesticks) ToFrontend() gin.H {
 		"trick_leader":      f.trick_leader,
 	}
 	if f.game != nil {
-		game["game_base"] = f.game.ToFrontend()
+		game["game_base"] = f.game.ToFrontend(client_id, is_viewer)
 	}
 	if f.deck != nil {
 		game["deck"] = f.deck.ToFrontend()
@@ -281,7 +281,7 @@ func (f *GameFiddlesticks) ToFrontend() gin.H {
 	players := []gin.H{}
 	for _, player := range f.players {
 		if player != nil {
-			players = append(players, player.toFrontend())
+			players = append(players, player.toFrontend(is_viewer || client_id == player.player.GetClientId()))
 		}
 	}
 	game["players"] = players

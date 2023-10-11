@@ -1,4 +1,4 @@
-import {ServerMessage} from "../lobby/data_models";
+import {ServerMessage, createMessage} from "../lobby/data_models";
 import {DwgGame} from "./game";
 
 function isGameMessage(kind: string): boolean {
@@ -52,14 +52,58 @@ export function handleMessage(game: DwgGame, message: ServerMessage) {
       game.game_container.classList.add('show');
       break;
     case "game-update":
-      game.game_el.gameUpdate(message);
+      handleGameUpdate(game, message);
       break;
     case "game-connected-failed":
     case "game-update-failed":
+    case "game-get-update-failed":
       // TODO: sync state
       break;
     default:
       console.log("Unknown message type", message.kind, "from", message.sender);
       break;
+  }
+}
+
+function handleGameUpdate(game: DwgGame, message: ServerMessage) {
+  const sender_split = message.sender.split('-');
+  if (sender_split.length < 3) {
+    return;
+  }
+  const game_update_id = parseInt(sender_split[2]);
+  if (!game_update_id) {
+    return;
+  }
+  try {
+    const update = JSON.parse(message.content);
+    const updateMessage = {
+      update_id: game_update_id,
+      kind: message.data,
+      update,
+    };
+    game.game.game_base.updates.set(game_update_id, updateMessage);
+    if (game_update_id - 1 === game.game.game_base.last_continuous_update_id) {
+      game.game.game_base.last_continuous_update_id = game_update_id;
+      game.game_el.gameUpdate(updateMessage);
+      while (game.game.game_base.updates.has(game.game.game_base.last_continuous_update_id + 1)) {
+        const nextUpdateMessage = game.game.game_base.updates.get(game.game.game_base.last_continuous_update_id + 1);
+        game.game.game_base.last_continuous_update_id = nextUpdateMessage.update_id;
+        game.game_el.gameUpdate(nextUpdateMessage);
+      }
+    } else if (game_update_id - 1 > game.game.game_base.last_continuous_update_id) {
+      game.socket.send(createMessage(
+        `client-${game.connection_metadata.client_id}`,
+        'game-get-update',
+        '',
+        `${game.game.game_base.last_continuous_update_id + 1}`,
+      ));
+    } else {} // ignore updates that are already applied
+  } catch(e) {
+    game.socket.send(createMessage(
+      `client-${game.connection_metadata.client_id}`,
+      'game-get-update',
+      '',
+      `${game_update_id}`,
+    ));
   }
 }

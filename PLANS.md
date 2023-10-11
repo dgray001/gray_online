@@ -1,7 +1,6 @@
 
 v0.2: launch game
- x: abstract game tracks game-update by order
- y: frontend abstract game history button
+ y: frontend sends ping every 2.5s => ping in each component does something dif
 
 v0.3: flesh out fiddlesticks game
  - can reconnect as anonymous user
@@ -17,6 +16,7 @@ v0.5: save risq game
  - need fully functioning db and user profiles
 
 P3/P4:
+ - frontend abstract game history button
  - loader for client requests in lobby: room-create, room-join, room-leave, room-rename
  - client still leaves room if it fails => sync state
  - handle other failures by syncing state => show message
@@ -33,3 +33,4 @@ P3/P4:
  - In lobby room have a relaunch button to rejoin room
  - In waiting room have a relaunch button
  - Player's button in abstract game header => opens abstract dialog box
+ - Viewer updates stored in game base => backend sends viewer updates
