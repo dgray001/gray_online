@@ -131,6 +131,7 @@ export class DwgLobby extends DwgElement {
     if (!!this.socket) {
       this.socket.close(3000, "opening new connection");
     }
+    this.waitingOnConnectedTimes = 2;
     this.socket = new_socket;
     this.lobby_rooms.refreshRooms();
     this.lobby_users.refreshUsers();
@@ -211,10 +212,20 @@ export class DwgLobby extends DwgElement {
     }
   }
 
+  waitingOnConnectedTimes = 0;
   pingServer() {
     if (!this.socketActive()) {
-      return;
+      this.dispatchEvent(new Event('connected_lost'));
     }
+    if (!this.classList.contains('connected')) {
+      this.waitingOnConnectedTimes--;
+      if (this.waitingOnConnectedTimes < 1) {
+        this.dispatchEvent(new Event('connection_lost'));
+      }
+      return
+    }
+    this.lobby_rooms.refreshRooms();
+    this.lobby_users.refreshUsers();
     if (this.lobby_room_wrapper.classList.contains('show')) {
       this.socket.send(createMessage(
         `client-${this.connection_metadata.client_id}`,

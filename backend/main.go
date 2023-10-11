@@ -56,6 +56,27 @@ func main() {
 				lobby_object.AddClient <- client
 			})
 
+			api_lobby.GET("/reconnect/:nickname/:client_id", func(c *gin.Context) {
+				nickname := c.Param("nickname")
+				if nickname == "" {
+					fmt.Println("Must specify nickname when reconnecting")
+					return
+				}
+				client_id_string := c.Param("client_id")
+				client_id, err := strconv.Atoi(client_id_string)
+				if err != nil || client_id < 1 {
+					fmt.Println("Must specify proper client_id when reconnecting")
+					return
+				}
+				conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+				client := lobby.CreateClient(conn, nickname, lobby_object)
+				lobby_object.ReconnectClient <- lobby.MakeClientId(client, uint64(client_id))
+			})
+
 			api_rooms := api_lobby.Group("/rooms")
 			{
 				api_rooms.GET("/get", func(c *gin.Context) {

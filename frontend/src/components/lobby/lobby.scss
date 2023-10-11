@@ -123,4 +123,24 @@ dwg-lobby {
       width: 70vw;
     }
   }
+
+  #lobby-connected-wrapper {
+    align-items: center;
+    background-color: rgba(150, 150, 150, 0.5);
+    bottom: 0;
+    display: flex;
+    font-size: 3vw;
+    justify-content: center;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+    z-index: 2;
+  }
+
+  &.connected {
+    #lobby-connected-wrapper {
+      display: none;
+    }
+  }
 }

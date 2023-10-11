@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/dgray001/gray_online/game"
 	"github.com/dgray001/gray_online/util"
@@ -19,6 +20,7 @@ type Lobby struct {
 	rooms               map[uint64]*LobbyRoom
 	games               map[uint64]game.Game
 	AddClient           chan *Client
+	ReconnectClient     chan *ClientId
 	RemoveClient        chan *Client
 	CreateRoom          chan *Client
 	RenameRoom          chan *LobbyRoom
@@ -58,6 +60,18 @@ func MakeSettingsRoom(settings *GameSettings, room *LobbyRoom) *SettingsRoom {
 	}
 }
 
+type ClientId struct {
+	client    *Client
+	client_id uint64
+}
+
+func MakeClientId(client *Client, client_id uint64) *ClientId {
+	return &ClientId{
+		client:    client,
+		client_id: client_id,
+	}
+}
+
 func CreateLobby() *Lobby {
 	return &Lobby{
 		next_room_id:        1,
@@ -67,6 +81,7 @@ func CreateLobby() *Lobby {
 		rooms:               make(map[uint64]*LobbyRoom),
 		games:               make(map[uint64]game.Game),
 		AddClient:           make(chan *Client),
+		ReconnectClient:     make(chan *ClientId),
 		RemoveClient:        make(chan *Client),
 		CreateRoom:          make(chan *Client),
 		RenameRoom:          make(chan *LobbyRoom),
@@ -88,6 +103,8 @@ func (l *Lobby) Run() {
 		select {
 		case client := <-l.AddClient:
 			l.addClient(client)
+		case client_id := <-l.ReconnectClient:
+			l.reconnectClient(client_id.client, client_id.client_id)
 		case client := <-l.RemoveClient:
 			l.removeClient(client)
 		case client := <-l.CreateRoom:
@@ -175,8 +192,29 @@ func (l *Lobby) addClient(client *Client) {
 	l.broadcastMessage(lobbyMessage{Sender: "client-" + id_string, Kind: "lobby-joined", Content: client.nickname, Data: id_string})
 }
 
+func (l *Lobby) reconnectClient(client *Client, client_id uint64) {
+	old_client := l.clients[client_id]
+	if old_client == nil {
+		l.addClient(client)
+	} else {
+		old_client.delete_timer.Stop()
+		client.client_id = old_client.client_id
+		client.lobby_room = old_client.lobby_room
+		client.game = old_client.game
+		l.clients[client.client_id] = client
+		id_string := strconv.Itoa(int(client.client_id))
+		client.send_message <- lobbyMessage{Sender: "server", Kind: "lobby-you-joined", Content: client.nickname, Data: id_string}
+		l.broadcastMessage(lobbyMessage{Sender: "client-" + id_string, Kind: "lobby-joined", Content: client.nickname, Data: id_string})
+	}
+}
+
 func (l *Lobby) removeClient(client *Client) {
-	delete(l.clients, client.client_id)
+	delete_client := time.NewTimer(1 * time.Hour)
+	client.delete_timer = delete_client
+	go func() {
+		<-delete_client.C
+		delete(l.clients, client.client_id)
+	}()
 	id_string := strconv.Itoa(int(client.client_id))
 	if client.lobby_room != nil && client.lobby_room.host != nil && client.lobby_room.host.client_id == client.client_id {
 		l.removeRoom(client.lobby_room)

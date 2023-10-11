@@ -36,7 +36,6 @@ export class DwgLobbyUsers extends DwgElement {
     this.users.clear();
     const response = await apiGet<LobbyUserFromServer[]>('lobby/users/get');
     if (response.success) {
-      console.log(response);
       let html = '';
       for (const server_user of response.result) {
         const user = serverResponseToUser(server_user);

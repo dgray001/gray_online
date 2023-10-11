@@ -30,6 +30,7 @@ type Client struct {
 	lobby                  *Lobby
 	lobby_room             *LobbyRoom
 	game                   game.Game
+	delete_timer           *time.Timer
 }
 
 type lobbyMessage struct {
@@ -427,6 +428,9 @@ func (c *Client) valid() bool {
 		return false
 	}
 	if c.connection == nil {
+		return false
+	}
+	if c.delete_timer != nil {
 		return false
 	}
 	return true

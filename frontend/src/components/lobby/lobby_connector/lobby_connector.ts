@@ -23,9 +23,13 @@ export class DwgLobbyConnector extends DwgElement {
 
   protected override parsedCallback(): void {
     this.connect_button.disabled = true;
+    const previous_nickname = localStorage.getItem("client_nickname");
+    if (previous_nickname) {
+      this.nickname.value = previous_nickname;
+      this.validateName();
+    }
     this.nickname.addEventListener('keyup', (e) => {
-      const valid_name = this.validName(this.nickname.value);
-      this.connect_button.disabled = !valid_name;
+      const valid_name = this.validateName();
       if (valid_name && e.key === 'Enter') {
         this.dispatchEvent(this.submitted);
       }
@@ -36,8 +40,10 @@ export class DwgLobbyConnector extends DwgElement {
     }, {re_enable_button: false});
   }
 
-  private validName(name: string): boolean {
-    return !!name.length;
+  private validateName(): boolean {
+    const valid_name = this.nickname.value.length > 1 && this.nickname.value.length < 17;
+    this.connect_button.disabled = !valid_name;
+    return valid_name;
   }
 }
 

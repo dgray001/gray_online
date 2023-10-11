@@ -26,7 +26,11 @@ export class DwgPageHome extends DwgElement {
   protected override parsedCallback(): void {
     this.lobby_connector.addEventListener('submitted', () => {
       const nickname = this.lobby_connector.nickname.value;
-      const socket = new WebSocket(`ws://${location.hostname}:6807/api/lobby/connect/${nickname}`);
+      const client_id_time = parseInt(localStorage.getItem("client_id_time"));
+      const client_id = parseInt(localStorage.getItem("client_id"));
+      const socket = (!!client_id && !!client_id_time && (Date.now() - client_id_time < 1000 * 60 * 60 * 24)) ?
+        new WebSocket(`ws://${location.hostname}:6807/api/lobby/reconnect/${nickname}/${client_id}`) :
+        new WebSocket(`ws://${location.hostname}:6807/api/lobby/connect/${nickname}`);
       socket.addEventListener('error', (e) => {
         console.log(e);
         this.tryConnectionAgain("Could not connect. Check your connection and try again.");
@@ -53,6 +57,7 @@ export class DwgPageHome extends DwgElement {
   }
 
   private tryConnectionAgain(message: string): void {
+    this.lobby.classList.remove('connected');
     this.lobby_connector.classList.remove('hide');
     this.lobby_connector.status_message.innerText = message;
     this.lobby_connector.connect_button.disabled = false;
