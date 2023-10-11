@@ -166,10 +166,17 @@ export class DwgGame extends DwgElement {
     if (!this.socketActive()) {
       return;
     }
-    this.socket.send(createMessage(
-      `client-${this.connection_metadata.client_id}`,
-      'game-resend-last-update',
-    ));
+    if (this.game.game_base.game_started) {
+      this.socket.send(createMessage(
+        `client-${this.connection_metadata.client_id}`,
+        'game-resend-last-update',
+      ));
+    } else {
+      this.socket.send(createMessage(
+        `client-${this.connection_metadata.client_id}`,
+        'game-resend-waiting-room',
+      ));
+    }
   }
 }
 

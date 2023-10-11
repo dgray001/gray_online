@@ -107,11 +107,9 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
   }
 
   gameUpdate(update: UpdateMessage): void {
-    console.log('1', update);
     try {
       switch(update.kind) {
         case "deal-round":
-          console.log('2', update.update);
           const dealRoundData = update.update as DealRound;
           this.round_number.innerText = dealRoundData.round.toString();
           this.trump_card_img.src = cardToImagePath(dealRoundData.trump);

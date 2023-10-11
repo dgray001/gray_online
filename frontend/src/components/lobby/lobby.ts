@@ -215,9 +215,13 @@ export class DwgLobby extends DwgElement {
     if (!this.socketActive()) {
       return;
     }
-    // TODO: ask server for refresh of lobby rooms and users
     if (this.lobby_room_wrapper.classList.contains('show')) {
-      // TODO: ask server for refresh of lobby room
+      this.socket.send(createMessage(
+        `client-${this.connection_metadata.client_id}`,
+        'room-refresh',
+        '',
+        (this.lobby_room.room?.room_id ?? 0).toString(),
+      ));
     }
   }
 }

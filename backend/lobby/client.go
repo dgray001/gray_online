@@ -295,6 +295,18 @@ func (c *Client) readMessages() {
 				break
 			}
 			c.lobby.LaunchGame <- room
+		case "room-refresh":
+			room_id, err := strconv.Atoi(message.Data)
+			if err != nil || room_id < 1 {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-refresh-failed", Content: "Invalid room id"}
+				break
+			}
+			room := c.lobby.GetRoom(uint64(room_id))
+			if room == nil {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-refresh-failed", Content: "Room doesn't exist"}
+				break
+			}
+			// TODO: send refreshed data
 		case "game-connected":
 			game_id, err := strconv.Atoi(message.Data)
 			if err != nil || game_id < 1 {
@@ -349,6 +361,20 @@ func (c *Client) readMessages() {
 				break
 			}
 			c.lobby_room.game.GetBase().ResendLastUpdate(c.client_id)
+		case "game-resend-waiting-room":
+			if c.lobby_room == nil || c.lobby_room.game == nil {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "game-resend-waiting-room-failed", Content: "Not in game"}
+				break
+			}
+			game_base := c.lobby_room.game.GetBase()
+			if game_base == nil {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "game-resend-waiting-room-failed", Content: "No game base returned"}
+				break
+			}
+			room_id_string := strconv.Itoa(int(c.lobby_room.room_id))
+			if game_base.GameStarted() {
+				c.send_message <- lobbyMessage{Sender: "room-" + room_id_string, Kind: "game-start"}
+			}
 		case "lobby-chat":
 			fallthrough
 		case "room-chat":

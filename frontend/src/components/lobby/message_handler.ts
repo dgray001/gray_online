@@ -248,6 +248,10 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
         }
       }
       break;
+    case 'room-refresh-failed':
+      console.log(message.content);
+      lobby.leaveRoom();
+      break;
     case 'room-join-failed':
     case 'room-leave-failed':
     case 'room-rename-failed':

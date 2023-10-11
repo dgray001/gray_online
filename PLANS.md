@@ -1,6 +1,5 @@
 
 v0.2: launch game
- y: frontend sends ping every 2.5s => ping in each component does something dif
 
 v0.3: flesh out fiddlesticks game
  - can reconnect as anonymous user
