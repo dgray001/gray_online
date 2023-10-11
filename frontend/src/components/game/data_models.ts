@@ -34,21 +34,29 @@ export declare interface GameFromServer {
 }
 
 /** Converts a GameFromServer to a proper frontend game object */
-export function serverResponseToGame(game: GameFromServer): Game {
-  return {
-    ...game, // ... game specific fields
+export function serverResponseToGame(gameFromServer: GameFromServer, client_id: number): Game {
+  const players = new Map(gameFromServer.game_base.players.map(player => [player.client_id, player]));
+  const viewers = new Map(gameFromServer.game_base.viewers.map(viewer => [viewer.client_id, viewer]));
+  const game = {
+    ...gameFromServer, // ... game specific fields
     game_base: {
-      game_id: game.game_base.game_id,
-      game_type: game.game_base.game_type,
-      game_started: game.game_base.game_started,
-      game_ended: game.game_base.game_ended,
-      players: new Map(game.game_base.players.map(player => [player.client_id, player])),
-      viewers: new Map(game.game_base.viewers.map(viewer => [viewer.client_id, viewer])),
-      player_actions: game.game_base.player_actions ?
-        new Map(game.game_base.player_actions.map(action => [action.action_id, action])) :
+      game_id: gameFromServer.game_base.game_id,
+      game_type: gameFromServer.game_base.game_type,
+      game_started: gameFromServer.game_base.game_started,
+      game_ended: gameFromServer.game_base.game_ended,
+      players,
+      viewers,
+      player_actions: gameFromServer.game_base.player_actions ?
+        new Map(gameFromServer.game_base.player_actions.map(action => [action.action_id, action])) :
         undefined,
     },
+  } as Game;
+  const updates = players.get(client_id)?.updates ?? viewers.get(client_id)?.updates;
+  if (updates !== undefined) {
+    game.game_base.updates = new Map(updates.map(update => [update.update_id, update]));
+    game.game_base.last_continuous_update_id = updates.length;
   }
+  return game;
 }
 
 /** Data describing a game base */
@@ -90,4 +98,5 @@ export declare interface GameViewer {
   client_id: number;
   nickname: string;
   connected: boolean;
+  updates?: UpdateMessage[];
 }

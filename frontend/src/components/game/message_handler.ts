@@ -84,10 +84,12 @@ function handleGameUpdate(game: DwgGame, message: ServerMessage) {
     game.game.game_base.updates.set(game_update_id, updateMessage);
     if (game_update_id - 1 === game.game.game_base.last_continuous_update_id) {
       game.game.game_base.last_continuous_update_id = game_update_id;
+      console.log(`applying update id ${updateMessage.update_id}`);
       game.game_el.gameUpdate(updateMessage);
       while (game.game.game_base.updates.has(game.game.game_base.last_continuous_update_id + 1)) {
         const nextUpdateMessage = game.game.game_base.updates.get(game.game.game_base.last_continuous_update_id + 1);
         game.game.game_base.last_continuous_update_id = nextUpdateMessage.update_id;
+        console.log(`applying update id ${nextUpdateMessage.update_id}`);
         game.game_el.gameUpdate(nextUpdateMessage);
       }
     } else if (game_update_id - 1 > game.game.game_base.last_continuous_update_id) {
@@ -99,6 +101,7 @@ function handleGameUpdate(game: DwgGame, message: ServerMessage) {
       ));
     } else {} // ignore updates that are already applied
   } catch(e) {
+    console.log(e);
     game.socket.send(createMessage(
       `client-${game.connection_metadata.client_id}`,
       'game-get-update',

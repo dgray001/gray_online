@@ -122,6 +122,9 @@ export class DwgLobby extends DwgElement {
       ));
     });
     this.lobby_rooms.refreshRooms();
+    setInterval(() => {
+      this.pingServer();
+    }, 5000);
   }
 
   setSocket(new_socket: WebSocket) {
@@ -205,6 +208,16 @@ export class DwgLobby extends DwgElement {
         message: 'Error trying to send message',
         color: 'gray',
       });
+    }
+  }
+
+  pingServer() {
+    if (!this.socketActive()) {
+      return;
+    }
+    // TODO: ask server for refresh of lobby rooms and users
+    if (this.lobby_room_wrapper.classList.contains('show')) {
+      // TODO: ask server for refresh of lobby room
     }
   }
 }

@@ -1,3 +1,3 @@
 Online Games
 
-v0.1x: Frontend applies updates in order
+v0.1y: Frontend pings for game updates

@@ -107,10 +107,12 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
   }
 
   gameUpdate(update: UpdateMessage): void {
+    console.log('1', update);
     try {
       switch(update.kind) {
         case "deal-round":
-          const dealRoundData = JSON.parse(update.update) as DealRound;
+          console.log('2', update.update);
+          const dealRoundData = update.update as DealRound;
           this.round_number.innerText = dealRoundData.round.toString();
           this.trump_card_img.src = cardToImagePath(dealRoundData.trump);
           this.game.trump = dealRoundData.trump;
@@ -154,7 +156,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Betting`;
           break;
         case "bet":
-          const betData = JSON.parse(update.update) as PlayerBet;
+          const betData = update.update as PlayerBet;
           if (this.game.turn !== betData.player_id) {
             // TODO: try to sync data
             throw new Error('Player bet out of order');
@@ -183,7 +185,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           }
           break;
         case "play-card":
-          const playCardData = JSON.parse(update.update) as PlayCard;
+          const playCardData = update.update as PlayCard;
           if (this.game.turn !== playCardData.player_id) {
             // TODO: try to sync data
             throw new Error('Player played out of order');
@@ -273,7 +275,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           }
           break;
         case "play-card-failed":
-          const playCardFailedData = JSON.parse(update.update) as PlayCardFailed;
+          const playCardFailedData = update.update as PlayCardFailed;
           if (this.player_id === playCardFailedData.player_id) {
             this.player_els[playCardFailedData.player_id].playing();
             // TODO: show message to user

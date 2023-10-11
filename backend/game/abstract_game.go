@@ -90,6 +90,14 @@ func (g *GameBase) ResendPlayerUpdate(client_id uint64, update_id int) {
 	player.Updates <- player.update_list[update_id-1]
 }
 
+func (g *GameBase) ResendLastUpdate(client_id uint64) {
+	player := g.Players[client_id]
+	if player == nil || len(player.update_list) < 1 {
+		return
+	}
+	player.Updates <- player.update_list[len(player.update_list)-1]
+}
+
 func (g *GameBase) gameEnded() bool {
 	return g.game_ended
 }

@@ -75,6 +75,9 @@ export class DwgGame extends DwgElement {
       // TODO: add confirm dialog
       this.dispatchEvent(new Event("exit_game"));
     });
+    setInterval(() => {
+      this.pingServer();
+    }, 2500);
   }
 
   async launchGame(lobby: LobbyRoom, socket: WebSocket, connection_metadata: ConnectionMetadata): Promise<boolean> {
@@ -103,7 +106,7 @@ export class DwgGame extends DwgElement {
         viewer: "false", // TODO: add viewer support here somehow
       });
       if (response.success && !!response.result) {
-        this.game = serverResponseToGame(response.result);
+        this.game = serverResponseToGame(response.result, this.connection_metadata.client_id);
         const setGame = (component: string) => {
           const game_el = document.createElement(component);
           this.game_container.appendChild(game_el);
@@ -157,6 +160,16 @@ export class DwgGame extends DwgElement {
 
   socketActive() {
     return !!this.socket && this.socket.readyState == WebSocket.OPEN;
+  }
+
+  pingServer() {
+    if (!this.socketActive()) {
+      return;
+    }
+    this.socket.send(createMessage(
+      `client-${this.connection_metadata.client_id}`,
+      'game-resend-last-update',
+    ));
   }
 }
 

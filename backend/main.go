@@ -119,8 +119,8 @@ func main() {
 						return
 					}
 					type GetGameReq struct {
-						client_id string
-						viewer    string
+						Client_id uint64 `json:"client_id" binding:"required"`
+						Viewer    string `json:"viewer" binding:"required"`
 					}
 					var req GetGameReq
 					err = c.ShouldBindJSON(&req)
@@ -129,13 +129,7 @@ func main() {
 						c.JSON(200, failureResponse("Binding error"))
 						return
 					}
-					client_id, err := strconv.Atoi(req.client_id)
-					if err != nil {
-						fmt.Println(err)
-						c.JSON(200, failureResponse("Invalid client id"))
-						return
-					}
-					c.JSON(200, successResponse(game.ToFrontend(uint64(client_id), req.viewer == "true")))
+					c.JSON(200, successResponse(game.ToFrontend(req.Client_id, req.Viewer == "true")))
 				})
 			}
 		}

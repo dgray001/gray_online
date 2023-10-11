@@ -343,6 +343,12 @@ func (c *Client) readMessages() {
 				break
 			}
 			c.lobby_room.game.GetBase().ResendPlayerUpdate(c.client_id, update_id)
+		case "game-resend-last-update":
+			if c.lobby_room == nil || c.lobby_room.game == nil {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "game-resend-last-update-failed", Content: "Not in game"}
+				break
+			}
+			c.lobby_room.game.GetBase().ResendLastUpdate(c.client_id)
 		case "lobby-chat":
 			fallthrough
 		case "room-chat":
