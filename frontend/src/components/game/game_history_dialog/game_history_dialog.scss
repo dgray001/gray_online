@@ -1,0 +1,42 @@
+dwg-game-history-dialog {
+  #wrapper {
+    align-items: center;
+    background-color: rgb(100, 100, 100);
+    border-radius: 8px;
+    color: white;
+    height: 80vh;
+    max-height: 1200px;
+    max-width: 800px;
+    min-height: 300px;
+    min-width: 250px;
+    padding: 1em;
+    position: relative;
+    width: 80vw;
+
+    #close-button {
+      background-color: transparent;
+      border: none;
+      border-top-right-radius: 8px;
+      height: 36px;
+      margin: 0;
+      padding: 0;
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: 36px;
+
+      &:hover {
+        background-color: rgba(255, 100, 100, 0.6);
+      }
+
+      &:active {
+        background-color: rgba(255, 180, 180, 0.8);
+      }
+    }
+
+    #updates-container {
+      margin-top: 36px;
+      width: 100%;
+    }
+  }
+}

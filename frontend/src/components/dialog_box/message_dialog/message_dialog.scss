@@ -5,7 +5,7 @@ dwg-message-dialog {
     color: white;
     display: flex;
     flex-flow: column nowrap;
-    height: 35%;
+    height: 35vh;
     gap: 1em;
     max-height: 400px;
     max-width: 500px;
@@ -13,7 +13,7 @@ dwg-message-dialog {
     min-width: 220px;
     padding: 1em;
     position: relative;
-    width: 35%;
+    width: 35vw;
 
     #ok-button {
       color: black;

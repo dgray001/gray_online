@@ -49,6 +49,8 @@ type Game interface {
 	Valid() bool
 	ToFrontend(client_id uint64, viewer bool) gin.H
 	PlayerAction(action PlayerAction)
+	PlayerDisconnected(client_id uint64)
+	PlayerReconnected(client_id uint64)
 }
 
 func (g *GameBase) PlayerConnected(client_id uint64) bool {
@@ -63,6 +65,14 @@ func (g *GameBase) PlayerConnected(client_id uint64) bool {
 		}
 	}
 	return true
+}
+
+func (g *GameBase) PlayerDisconnected(client_id uint64) {
+	player := g.Players[client_id]
+	if player == nil || !player.connected {
+		return
+	}
+	player.connected = false
 }
 
 func (g *GameBase) GameStarted() bool {

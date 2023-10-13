@@ -3,6 +3,7 @@ package lobby
 import (
 	"encoding/json"
 	"fmt"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -216,8 +217,11 @@ func (l *Lobby) removeClient(client *Client) {
 		delete(l.clients, client.client_id)
 	}()
 	id_string := strconv.Itoa(int(client.client_id))
-	if client.lobby_room != nil && client.lobby_room.host != nil && client.lobby_room.host.client_id == client.client_id {
+	if client.lobby_room != nil && client.lobby_room.host != nil &&
+		client.lobby_room.host.client_id == client.client_id && client.lobby_room.game == nil {
 		l.removeRoom(client.lobby_room)
+	} else if client.lobby_room != nil {
+		client.lobby_room.removeClient(client)
 	}
 	l.broadcastMessage(lobbyMessage{Sender: "client-" + id_string, Kind: "lobby-left", Content: client.nickname, Data: id_string})
 }
@@ -275,6 +279,7 @@ func (l *Lobby) removeRoom(room *LobbyRoom) {
 			viewer.lobby_room = nil
 		}
 	}
+	debug.PrintStack() // for some reason clients are being kicked when game launches
 	l.broadcastMessage(lobbyMessage{Sender: "server", Kind: "room-closed", Data: id_string})
 }
 
@@ -300,6 +305,7 @@ var (
 
 func (l *Lobby) broadcastMessage(message lobbyMessage) {
 	if message.Kind != "ping-update" {
+		debug.PrintStack() // for some reason clients are being kicked when game launches
 		fmt.Printf("Broadcasting message {%s, %s, %s, %s}\n", message.Sender, message.Content, message.Data, message.Kind)
 	}
 	if util.Contains(client_to_lobby_messages, message.Kind) {

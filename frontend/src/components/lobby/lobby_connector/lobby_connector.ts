@@ -23,11 +23,13 @@ export class DwgLobbyConnector extends DwgElement {
 
   protected override parsedCallback(): void {
     this.connect_button.disabled = true;
-    const previous_nickname = localStorage.getItem("client_nickname");
-    if (previous_nickname) {
-      this.nickname.value = previous_nickname;
-      this.validateName();
-    }
+    try {
+      const previous_nickname = localStorage.getItem("client_nickname");
+      if (previous_nickname) {
+        this.nickname.value = previous_nickname;
+        this.validateName();
+      }
+    } catch(e) {} // if local storage isn't accessible
     this.nickname.addEventListener('keyup', (e) => {
       const valid_name = this.validateName();
       if (valid_name && e.key === 'Enter') {

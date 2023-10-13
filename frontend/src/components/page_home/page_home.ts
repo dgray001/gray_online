@@ -26,8 +26,12 @@ export class DwgPageHome extends DwgElement {
   protected override parsedCallback(): void {
     this.lobby_connector.addEventListener('submitted', () => {
       const nickname = this.lobby_connector.nickname.value;
-      const client_id_time = parseInt(localStorage.getItem("client_id_time"));
-      const client_id = parseInt(localStorage.getItem("client_id"));
+      let client_id_time = 0;
+      let client_id = 0;
+      try {
+        client_id_time = parseInt(localStorage.getItem("client_id_time"));
+        client_id = parseInt(localStorage.getItem("client_id"));
+      } catch(e) {} // if localstorage isn't accessible
       const socket = (!!client_id && !!client_id_time && (Date.now() - client_id_time < 1000 * 60 * 60 * 24)) ?
         new WebSocket(`ws://${location.hostname}:6807/api/lobby/reconnect/${nickname}/${client_id}`) :
         new WebSocket(`ws://${location.hostname}:6807/api/lobby/connect/${nickname}`);

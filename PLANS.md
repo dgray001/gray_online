@@ -1,7 +1,5 @@
 v0.3: flesh out fiddlesticks game
  d: frontend can fully restore state => can refresh page safely
- e: lobby connector will ask if you want to reconnect after it verifies that the stored id is valid
- f: frontend abstract game history modal
  g: handle lobby room failures by syncing state
  h: handle all other failures by syncing state
  i: upgrade chatbox styling for normal and in-game

@@ -30,9 +30,11 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
           sender: 'server',
         });
         lobby.lobby_users.addUser({client_id: id, nickname: lobby.connection_metadata.nickname, ping: 0});
-        localStorage.setItem("client_id", message.data);
-        localStorage.setItem("client_nickname", message.content);
-        localStorage.setItem("client_id_time", Date.now().toString());
+        try {
+          localStorage.setItem("client_id", message.data);
+          localStorage.setItem("client_nickname", message.content);
+          localStorage.setItem("client_id_time", Date.now().toString());
+        } catch(e) {} // if localstorage isn't accessible
       } else {
         lobby.socket.close(3001, 'you-joined-lobby message did not return properly formed client id');
         lobby.dispatchEvent(new Event('connection_lost'));

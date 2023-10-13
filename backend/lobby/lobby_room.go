@@ -134,9 +134,13 @@ func (r *LobbyRoom) addClient(c *Client) {
 }
 
 func (r *LobbyRoom) removeClient(c *Client) {
-	if r.host.client_id == c.client_id {
+	if r.host != nil && r.host.client_id == c.client_id && r.game == nil {
 		r.lobby.removeRoom(r)
 		return
+	}
+	if r.game != nil {
+		r.game.PlayerDisconnected(c.client_id)
+		r.game.GetBase().PlayerDisconnected(c.client_id)
 	}
 	if c.lobby_room != nil && c.lobby_room.room_id == r.room_id {
 		c.lobby_room = nil

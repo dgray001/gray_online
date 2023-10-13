@@ -10,6 +10,7 @@ import html from './game.html';
 
 import './game.scss';
 import './fiddlesticks/fiddlesticks';
+import './game_history_dialog/game_history_dialog';
 
 export class DwgGame extends DwgElement {
   client_name_string: HTMLSpanElement;
@@ -66,7 +67,13 @@ export class DwgGame extends DwgElement {
       ));
     });
     this.button_game_history.addEventListener('click', () => {
-      // TODO: game history dialog box
+      if (!this.launched) {
+        return;
+      }
+      const game_history = document.createElement('dwg-game-history-dialog');
+      console.log(this.game.game_base.updates);
+      game_history.setData({updates: this.game.game_base.updates ?? new Map()});
+      this.appendChild(game_history);
     });
     this.button_room_players.addEventListener('click', () => {
       // TODO: game players dialog box
@@ -166,7 +173,7 @@ export class DwgGame extends DwgElement {
     if (!this.socketActive()) {
       return;
     }
-    if (this.game.game_base.game_started) {
+    if (this.game?.game_base?.game_started) {
       this.socket.send(createMessage(
         `client-${this.connection_metadata.client_id}`,
         'game-resend-last-update',

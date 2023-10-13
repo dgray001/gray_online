@@ -255,6 +255,12 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 	}
 }
 
+func (f *GameFiddlesticks) PlayerDisconnected(client_id uint64) {
+}
+
+func (f *GameFiddlesticks) PlayerReconnected(client_id uint64) {
+}
+
 func (f *GameFiddlesticks) Valid() bool {
 	if f.game == nil || f.deck == nil {
 		return false
