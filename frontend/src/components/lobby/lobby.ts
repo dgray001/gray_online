@@ -238,7 +238,7 @@ export class DwgLobby extends DwgElement {
       return
     }
     this.waitingOnConnectedTimes = 2;
-    this.refreshLobbyRooms();
+    //this.refreshLobbyRooms();
     this.lobby_users.refreshUsers();
     if (this.lobby_room_wrapper.classList.contains('show')) {
       this.socket.send(createMessage(

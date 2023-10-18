@@ -1,11 +1,13 @@
 import {DwgElement} from '../../dwg_element';
 import {apiGet} from '../../../scripts/api';
+import {createLock} from '../../../scripts/util';
 import {GameSettings, LobbyRoom, LobbyRoomFromServer, LobbyUser, serverResponseToRoom} from '../data_models';
 
 import html from './lobby_rooms.html';
 import './lobby_rooms.scss';
 
 export class DwgLobbyRooms extends DwgElement {
+  lock = createLock();
   rooms = new Map<number, LobbyRoom>();
 
   constructor() {
@@ -15,34 +17,30 @@ export class DwgLobbyRooms extends DwgElement {
 
   protected override parsedCallback(): void {}
 
-  refresh_rooms_running = false;
   async refreshRooms(client_id: number): Promise<LobbyRoom> {
-    if (this.refresh_rooms_running) {
-      return undefined;
-    }
     let current_room = undefined;
-    this.refresh_rooms_running = true;
-    this.innerHTML = ' ... loading';
-    this.rooms.clear();
-    const response = await apiGet<LobbyRoomFromServer[]>('lobby/rooms/get');
-    if (response.success) {
-      const els: HTMLDivElement[] = [];
-      for (const server_room of response.result) {
-        const room = serverResponseToRoom(server_room);
-        els.push(this.getRoomElement(room));
-        this.rooms.set(room.room_id, room);
-        if (room.players.has(client_id) || room.viewers.has(client_id)) {
-          current_room = room;
+    await this.lock(async () => {
+      this.innerHTML = ' ... loading';
+      this.rooms.clear();
+      const response = await apiGet<LobbyRoomFromServer[]>('lobby/rooms/get');
+      if (response.success) {
+        const els: HTMLDivElement[] = [];
+        for (const server_room of response.result) {
+          const room = serverResponseToRoom(server_room);
+          els.push(this.getRoomElement(room));
+          this.rooms.set(room.room_id, room);
+          if (room.players.has(client_id) || room.viewers.has(client_id)) {
+            current_room = room;
+          }
         }
+        this.innerHTML = '';
+        for (const el of els) {
+          this.appendChild(el);
+        }
+      } else {
+        this.innerHTML = `Error loading rooms: ${response.error_message}`;
       }
-      this.innerHTML = '';
-      for (const el of els) {
-        this.appendChild(el);
-      }
-    } else {
-      this.innerHTML = `Error loading rooms: ${response.error_message}`;
-    }
-    this.refresh_rooms_running = false;
+    });
     return current_room;
   }
 
@@ -137,7 +135,13 @@ export class DwgLobbyRooms extends DwgElement {
 
   playerJoinsRoom(room_id: number, joinee: LobbyUser) {
     const curr_room = this.getRoom(joinee.room_id);
-    if (curr_room) {
+    if (room_id === joinee.room_id) {
+      if (!!curr_room) {
+        curr_room.players.set(joinee.client_id, joinee);
+      }
+      return;
+    }
+    if (!!curr_room) {
       if (curr_room.host.client_id === joinee.client_id) {
         this.removeRoom(joinee.room_id);
       } else {
@@ -145,7 +149,7 @@ export class DwgLobbyRooms extends DwgElement {
       }
     }
     const room = this.getRoom(room_id);
-    if (room) {
+    if (!!room) {
       room.players.set(joinee.client_id, joinee);
     }
   }
@@ -170,7 +174,7 @@ export class DwgLobbyRooms extends DwgElement {
     if (!room) {
       return;
     }
-    if (room.host.client_id === client_id) {
+    if (room.host.client_id === client_id && !room.game_id) {
       this.removeRoom(room_id);
     } else {
       room.players.delete(client_id);

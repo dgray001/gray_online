@@ -47,9 +47,7 @@ export function handleMessage(game: DwgGame, message: ServerMessage) {
       }
       break;
     case "game-start":
-      game.game.game_base.game_started = true;
-      game.waiting_room.classList.add('hide');
-      game.game_container.classList.add('show');
+      game.startGame();
       break;
     case "game-update":
       handleGameUpdate(game, message);
@@ -57,7 +55,8 @@ export function handleMessage(game: DwgGame, message: ServerMessage) {
     case "game-connected-failed":
     case "game-update-failed":
     case "game-get-update-failed":
-      // TODO: sync state
+      console.log(message.content);
+      game.refreshGame();
       break;
     default:
       console.log("Unknown message type", message.kind, "from", message.sender);

@@ -114,3 +114,33 @@ export function setIntervalX(
   }, delay);
   return intervalId;
 }
+
+/** Returns a method lock */
+export function createLock() {
+  let running = false;
+  const queue: Array<() => Promise<unknown>> = [];
+  return (fn: () => Promise<unknown>) => {
+    let delayed_resolve: (value: unknown) => void;
+    let delayed_reject: (value: unknown) => void;
+    const delayed_promise = new Promise((resolve, reject) => {
+      delayed_resolve = resolve;
+      delayed_reject = reject;
+    });
+    const runFn = async () => {
+      await fn().then(delayed_resolve, delayed_reject);
+      const first = queue.shift();
+      if (first) {
+        await first();
+      } else {
+        running = false;
+      }
+    };
+    if (running) {
+      queue.push(runFn);
+    } else {
+      running = true;
+      runFn();
+    }
+    return delayed_promise;
+  };
+}

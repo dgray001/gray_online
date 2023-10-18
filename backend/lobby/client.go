@@ -307,7 +307,12 @@ func (c *Client) readMessages() {
 				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-refresh-failed", Content: "Room doesn't exist"}
 				break
 			}
-			// TODO: send refreshed data
+			room_stringified, err := json.Marshal(room.ToFrontend())
+			if err != nil {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-refresh-failed", Content: "Room not stringified properly"}
+				break
+			}
+			c.send_message <- lobbyMessage{Sender: "room-" + message.Data, Kind: "refresh-room", Content: string(room_stringified), Data: message.Data}
 		case "game-connected":
 			game_id, err := strconv.Atoi(message.Data)
 			if err != nil || game_id < 1 {

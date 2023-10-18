@@ -40,11 +40,11 @@ export class DwgPageHome extends DwgElement {
         this.tryConnectionAgain("Could not connect. Check your connection and try again.");
       });
       socket.addEventListener('open', () => {
-        this.lobby.setSocket(socket);
-        this.lobby.setNickname(nickname);
-        this.lobby.setPing(0);
         this.lobby_connector.classList.add('hide');
         this.lobby.classList.remove('connector-open');
+        this.lobby.setNickname(nickname);
+        this.lobby.setPing(0);
+        this.lobby.setSocket(socket);
       });
     });
     this.lobby.addEventListener('connection_lost', () => {

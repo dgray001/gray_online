@@ -141,7 +141,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
       const client_join_id = parseInt(message.data.replace('client-', ''));
       const joinee = lobby.lobby_users.getUser(client_join_id);
       const room = lobby.lobby_rooms.getRoom(room_join_id);
-      if (room_join_id && client_join_id && joinee) {
+      if (room_join_id && client_join_id && joinee && room) {
         lobby.lobby_users.joinRoom(client_join_id, room_join_id);
         lobby.lobby_rooms.playerJoinsRoom(room_join_id, joinee);
         if (room_join_id === lobby.connection_metadata.room_id) {
@@ -256,9 +256,6 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
       }
       break;
     case 'room-refresh-failed':
-      console.log(message.content);
-      lobby.leaveRoom();
-      break;
     case 'room-join-failed':
     case 'room-leave-failed':
     case 'room-rename-failed':
@@ -268,7 +265,9 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
     case 'room-set-viewer-failed':
     case 'room-settings-updated-failed':
     case 'room-launch-failed':
-      throw new Error(message.content);
+      console.log(message.content);
+      lobby.refreshLobbyRooms();
+      break;
     default:
       console.log("Unknown message type", message.kind, "from", message.sender);
       break;

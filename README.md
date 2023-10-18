@@ -1,3 +1,3 @@
 Online Games
 
-v0.2d: Rejoin lobby has correct state
+v0.2e: Sync state on failures

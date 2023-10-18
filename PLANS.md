@@ -1,6 +1,4 @@
 v0.3: flesh out fiddlesticks game
- g: handle lobby room failures by syncing state
- h: handle all other failures by syncing state
  i: upgrade chatbox styling for normal and in-game
  j: remove all panics from backend (no crashing server)
  k: room selector component in lobby list

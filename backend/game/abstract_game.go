@@ -1,6 +1,9 @@
 package game
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -53,12 +56,16 @@ type Game interface {
 	PlayerReconnected(client_id uint64)
 }
 
+// Returns whether this connection should trigger the game to start
 func (g *GameBase) PlayerConnected(client_id uint64) bool {
 	player := g.Players[client_id]
 	if player == nil || player.connected {
 		return false
 	}
 	player.connected = true
+	if g.game_started {
+		return false
+	}
 	for _, player := range g.Players {
 		if !player.connected {
 			return false
@@ -81,7 +88,7 @@ func (g *GameBase) GameStarted() bool {
 
 func (g *GameBase) StartGame() {
 	if g.game_started {
-		panic("Game already started")
+		fmt.Fprintln(os.Stderr, "Game already started")
 	}
 	g.game_started = true
 }
@@ -114,7 +121,7 @@ func (g *GameBase) gameEnded() bool {
 
 func (g *GameBase) EndGame() {
 	if g.game_ended {
-		panic("Game already ended")
+		fmt.Fprintln(os.Stderr, "Game already ended")
 	}
 	g.game_ended = true
 }

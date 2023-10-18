@@ -42,6 +42,9 @@ export class DwgGameHistoryDialog extends DwgDialogBox<GameHistoryData> {
       update_el.innerText = `ID: ${update.update_id}, Kind: ${update.kind}, data: ${JSON.stringify(update.update)}`;
       this.updates_container.append(update_el);
     }
+    this.close_button.addEventListener('click', () => {
+      this.closeDialog();
+    });
   }
 }
 
