@@ -35,6 +35,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
           localStorage.setItem("client_nickname", message.content);
           localStorage.setItem("client_id_time", Date.now().toString());
         } catch(e) {} // if localstorage isn't accessible
+        lobby.refreshLobbyRooms();
       } else {
         lobby.socket.close(3001, 'you-joined-lobby message did not return properly formed client id');
         lobby.dispatchEvent(new Event('connection_lost'));

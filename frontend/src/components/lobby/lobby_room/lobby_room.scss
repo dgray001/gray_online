@@ -153,6 +153,34 @@ dwg-lobby-room {
             }
           }
         }
+
+        #game-button-container {
+          display: flex;
+          flex-flow: row nowrap;
+          gap: 12px;
+          margin-bottom: 12px;
+
+          &.hide {
+            display: none;
+          }
+
+          .game-button {
+            font-size: 18px;
+            line-height: 18px;
+            height: 30px;
+            width: 90px;
+
+            &#game-resign-button {
+              background: linear-gradient(0deg, rgb(200, 25, 25), rgb(230, 60, 60));
+              margin-left: auto;
+            }
+
+            &#game-rejoin-button {
+              background: linear-gradient(0deg, rgb(180, 180, 35), rgb(210, 210, 60));
+              margin-right: auto;
+            }
+          }
+        }
       }
 
       #user-list {

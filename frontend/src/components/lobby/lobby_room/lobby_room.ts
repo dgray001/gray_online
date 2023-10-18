@@ -8,6 +8,12 @@ import html from './lobby_room.html';
 import './lobby_room.scss';
 import '../lobby_game_settings/lobby_game_settings';
 
+enum GameStatusEnum {
+  NOT_STARTED = 'Game not started',
+  LAUNCHING = 'Game launching ...',
+  IN_PROGRESS = 'Game in progress',
+}
+
 export class DwgLobbyRoom extends DwgElement {
   room_name: HTMLDivElement;
   chatbox: DwgChatbox;
@@ -32,6 +38,9 @@ export class DwgLobbyRoom extends DwgElement {
   settings_launch_button: HTMLButtonElement;
   settings_game_status: HTMLDivElement;
   lobby_game_settings: DwgLobbyGameSettings;
+  game_button_container: HTMLDivElement;
+  game_resign_button: HTMLButtonElement;
+  game_rejoin_button: HTMLButtonElement;
 
   is_host = false;
   room: LobbyRoom;
@@ -60,6 +69,9 @@ export class DwgLobbyRoom extends DwgElement {
     this.configureElement('settings_launch_button');
     this.configureElement('settings_game_status');
     this.configureElement('lobby_game_settings');
+    this.configureElement('game_button_container');
+    this.configureElement('game_resign_button');
+    this.configureElement('game_rejoin_button');
   }
 
   protected override parsedCallback(): void {
@@ -107,7 +119,7 @@ export class DwgLobbyRoom extends DwgElement {
         this.settings_launching = true;
         this.settings_launch_button.innerText = 'Cancel';
         this.settings_launch_button.classList.add('launching');
-        this.settings_game_status.innerText = 'Game launching';
+        this.settings_game_status.innerText = GameStatusEnum.LAUNCHING;
         const countdown = 5;
         this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {'detail': {
           message: `Game is launching in ${countdown} ...`,
@@ -132,19 +144,25 @@ export class DwgLobbyRoom extends DwgElement {
   }
 
   setRoom(room: LobbyRoom, is_host: boolean) {
+    const game_launched = !!room.game_id;
     this.is_host = is_host;
     this.room = room;
     this.room_name.innerText = room.room_name;
     this.updateSettingsDependencies();
     this.num_players_current.innerText = room.players.size.toString();
-    this.settings_game_status.innerText = 'Game not started';
+    this.settings_game_status.innerText = game_launched ? GameStatusEnum.IN_PROGRESS : GameStatusEnum.NOT_STARTED;
     this.classList.add('show');
-    if (is_host) {
-      this.rename_room.classList.add('show');
-      this.settings_button_container.classList.remove('hide');
+    if (game_launched) {
+      this.game_button_container.classList.remove('hide');
     } else {
-      this.rename_room.classList.remove('show');
-      this.settings_button_container.classList.add('hide');
+      this.game_button_container.classList.add('hide');
+      if (is_host) {
+        this.rename_room.classList.add('show');
+        this.settings_button_container.classList.remove('hide');
+      } else {
+        this.rename_room.classList.remove('show');
+        this.settings_button_container.classList.add('hide');
+      }
     }
     this.host_container.replaceChildren(this.getUserElement(room.host, false, true));
     const player_els = [];
@@ -182,7 +200,7 @@ export class DwgLobbyRoom extends DwgElement {
     const el_text = document.createElement('span');
     el_text.innerText = this.getUserElementText(user);
     el.appendChild(el_text);
-    if (is_host) {
+    if (is_host && !this.room.game_id) {
       if (is_player) {
         el.appendChild(this.getUserButton(user.client_id, 'kick', this.kick_img.src));
         el.appendChild(this.getUserButton(user.client_id, 'viewer', this.viewer_img.src));
@@ -372,7 +390,7 @@ export class DwgLobbyRoom extends DwgElement {
       return;
     }
     this.room.game_id = game_id;
-    this.settings_game_status.innerText = 'In progress';
+    this.settings_game_status.innerText = GameStatusEnum.IN_PROGRESS;
   }
 
   private openRename() {

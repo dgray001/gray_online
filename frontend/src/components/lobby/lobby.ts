@@ -43,15 +43,6 @@ export class DwgLobby extends DwgElement {
     this.configureElement('lobby_room');
   }
 
-  private async refreshLobbyRooms() {
-    const current_room = await this.lobby_rooms.refreshRooms(this.connection_metadata.client_id ?? -1);
-    if (!!current_room) {
-      this.enterRoom(current_room, current_room.host.client_id === (this.connection_metadata.client_id ?? -1));
-    } else {
-      this.leaveRoom();
-    }
-  }
-
   protected override parsedCallback(): void {
     this.chatbox.setPlaceholder('Chat with the entire lobby');
     clickButton(this.refresh_lobby_button, async () => {
@@ -178,6 +169,15 @@ export class DwgLobby extends DwgElement {
   setPing(ping: number) {
     this.connection_metadata.ping = ping;
     this.ping_container.innerText = `ping: ${Math.round(ping)}`;
+  }
+
+  async refreshLobbyRooms() {
+    const current_room = await this.lobby_rooms.refreshRooms(this.connection_metadata.client_id ?? -1);
+    if (!!current_room) {
+      this.enterRoom(current_room, current_room.host.client_id === (this.connection_metadata.client_id ?? -1));
+    } else {
+      this.leaveRoom();
+    }
   }
 
   enterRoom(room: LobbyRoom, is_host: boolean) {

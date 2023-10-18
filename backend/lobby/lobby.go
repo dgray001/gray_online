@@ -227,14 +227,14 @@ func (l *Lobby) removeClient(client *Client) {
 		client.lobby_room.host.client_id == client.client_id && client.lobby_room.game == nil {
 		l.removeRoom(client.lobby_room)
 	} else if client.lobby_room != nil {
-		client.lobby_room.removeClient(client)
+		client.lobby_room.removeClient(client, false)
 	}
 	l.broadcastMessage(lobbyMessage{Sender: "client-" + id_string, Kind: "lobby-left", Content: client.nickname, Data: id_string})
 }
 
 func (l *Lobby) createRoom(client *Client) {
 	if client.lobby_room != nil {
-		client.lobby_room.removeClient(client)
+		client.lobby_room.removeClient(client, false)
 	}
 	room_id := l.next_room_id
 	l.next_room_id++
@@ -291,13 +291,13 @@ func (l *Lobby) removeRoom(room *LobbyRoom) {
 
 func (l *Lobby) joinRoom(data *ClientRoom) {
 	if data.client.lobby_room != nil {
-		data.client.lobby_room.removeClient(data.client)
+		data.client.lobby_room.removeClient(data.client, true)
 	}
 	data.room.addClient(data.client)
 }
 
 func (l *Lobby) leaveRoom(data *ClientRoom) {
-	data.room.removeClient(data.client)
+	data.room.removeClient(data.client, true)
 }
 
 var (

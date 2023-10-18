@@ -1,12 +1,11 @@
 v0.3: flesh out fiddlesticks game
- d: frontend can fully restore state => can refresh page safely
  g: handle lobby room failures by syncing state
  h: handle all other failures by syncing state
  i: upgrade chatbox styling for normal and in-game
  j: remove all panics from backend (no crashing server)
  k: room selector component in lobby list
  l: room selector gives info, lets you join as viewer
- m: proper checks for max players/max viewers when joining lobby room
+ m: proper checks for max players/max viewers when joining lobby room => also can't join as player if game started
  n: alternative rules for fiddlesticks => abstract that section
  o: relaunch button in lobby to rejoin room
  p: lobby properly resets when game is over
@@ -30,3 +29,7 @@ P3/P4:
  - add abstract dialog then add confirm dialog for confirming actions
  - when joining a lobby room determine if game is currently in progress => then check if joinee is a player => if not join as viewer
  - Viewer updates stored in game base => backend sends viewer updates
+ - Add function lock => replace LobbyRoom::refresh_rooms_running with function lock
+ - Resign button causes resign => AI takes over
+ - When dc'ed the AI takes over temporarily => if dc'ed for too long the AI takes over
+ - Can launch game with AI

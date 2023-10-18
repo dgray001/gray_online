@@ -1,3 +1,3 @@
 Online Games
 
-v0.2c: rejoin lobby on reconnect
+v0.2d: Rejoin lobby has correct state
