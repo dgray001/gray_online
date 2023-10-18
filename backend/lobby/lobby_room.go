@@ -90,8 +90,10 @@ func (c *Client) clientGameUpdates(player *game.Player, room_id_string string) {
 				break
 			}
 			message_id_string := strconv.Itoa(message.Id)
-			c.send_message <- lobbyMessage{Sender: "room-" + room_id_string + "-" + message_id_string,
-				Kind: "game-update", Data: message.Kind, Content: string(encoded_message)}
+			if c.valid() {
+				c.send_message <- lobbyMessage{Sender: "room-" + room_id_string + "-" + message_id_string,
+					Kind: "game-update", Data: message.Kind, Content: string(encoded_message)}
+			}
 		}
 	}
 }
@@ -107,7 +109,8 @@ func (r *LobbyRoom) broadcastMessage(message lobbyMessage) {
 		select {
 		case client.send_message <- message:
 		default:
-			r.lobby.removeClient(client)
+			fmt.Println("Room failed to send message to client", client.client_id)
+			// r.lobby.removeClient(client)
 		}
 	}
 	for _, client := range r.viewers {
@@ -117,7 +120,8 @@ func (r *LobbyRoom) broadcastMessage(message lobbyMessage) {
 		select {
 		case client.send_message <- message:
 		default:
-			r.lobby.removeClient(client)
+			fmt.Println("Room failed to send message to client", client.client_id)
+			// r.lobby.removeClient(client)
 		}
 	}
 }
@@ -138,14 +142,15 @@ func (r *LobbyRoom) removeClient(c *Client) {
 		r.lobby.removeRoom(r)
 		return
 	}
-	if r.game != nil {
+	if r.game == nil {
+		delete(r.players, c.client_id)
+		if c.lobby_room != nil && c.lobby_room.room_id == r.room_id {
+			c.lobby_room = nil
+		}
+	} else {
 		r.game.PlayerDisconnected(c.client_id)
 		r.game.GetBase().PlayerDisconnected(c.client_id)
 	}
-	if c.lobby_room != nil && c.lobby_room.room_id == r.room_id {
-		c.lobby_room = nil
-	}
-	delete(r.players, c.client_id)
 	delete(r.viewers, c.client_id)
 	client_id_string := strconv.Itoa(int(c.client_id))
 	room_id_string := strconv.Itoa(int(r.room_id))
@@ -218,6 +223,7 @@ func (r *LobbyRoom) updateSettings(s *GameSettings) {
 
 func (r *LobbyRoom) launchGame(game_id uint64) game.Game {
 	if !r.launchable() {
+		fmt.Println("Cannot launch game of id", game_id, ": game not launchable")
 		return nil
 	}
 	base_game := game.CreateBaseGame(game_id, r.game_settings.GameType)
@@ -276,7 +282,10 @@ func (r *LobbyRoom) valid() bool {
 	if r.room_id < 1 {
 		return false
 	}
-	if r.host == nil || !r.host.valid() {
+	if r.game != nil && !r.game.Valid() {
+		return false
+	}
+	if r.game == nil && (r.host == nil || !r.host.valid()) {
 		return false
 	}
 	if len(r.players) > int(r.game_settings.MaxPlayers) {
@@ -285,7 +294,7 @@ func (r *LobbyRoom) valid() bool {
 	if len(r.viewers) > int(r.game_settings.MaxViewers) {
 		return false
 	}
-	for _, client := range r.players {
+	/*for _, client := range r.players {
 		if client == nil || !client.valid() {
 			return false
 		}
@@ -294,7 +303,7 @@ func (r *LobbyRoom) valid() bool {
 		if client == nil || !client.valid() {
 			return false
 		}
-	}
+	}*/
 	return true
 }
 

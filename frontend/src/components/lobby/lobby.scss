@@ -143,4 +143,10 @@ dwg-lobby {
       display: none;
     }
   }
+
+  &.connector-open {
+    #connecting-message {
+      display: none;
+    }
+  }
 }

@@ -197,11 +197,17 @@ func (l *Lobby) reconnectClient(client *Client, client_id uint64) {
 	old_client := l.clients[client_id]
 	if old_client == nil {
 		l.addClient(client)
+	} else if old_client.valid() {
+		l.addClient(client)
 	} else {
-		old_client.delete_timer.Stop()
+		if old_client.delete_timer != nil {
+			old_client.delete_timer.Stop()
+		}
 		client.client_id = old_client.client_id
-		client.lobby_room = old_client.lobby_room
-		client.game = old_client.game
+		if old_client.game != nil {
+			client.lobby_room = old_client.lobby_room
+			client.game = old_client.game
+		}
 		l.clients[client.client_id] = client
 		id_string := strconv.Itoa(int(client.client_id))
 		client.send_message <- lobbyMessage{Sender: "server", Kind: "lobby-you-joined", Content: client.nickname, Data: id_string}
@@ -305,7 +311,6 @@ var (
 
 func (l *Lobby) broadcastMessage(message lobbyMessage) {
 	if message.Kind != "ping-update" {
-		debug.PrintStack() // for some reason clients are being kicked when game launches
 		fmt.Printf("Broadcasting message {%s, %s, %s, %s}\n", message.Sender, message.Content, message.Data, message.Kind)
 	}
 	if util.Contains(client_to_lobby_messages, message.Kind) {
@@ -321,7 +326,8 @@ func (l *Lobby) broadcastMessage(message lobbyMessage) {
 			select {
 			case client.send_message <- message:
 			default:
-				l.removeClient(client)
+				fmt.Println("Failed to send message to client", client.client_id)
+				//l.removeClient(client)
 			}
 		}
 	} else if util.Contains(lobby_messages, message.Kind) {
@@ -332,7 +338,8 @@ func (l *Lobby) broadcastMessage(message lobbyMessage) {
 			select {
 			case client.send_message <- message:
 			default:
-				l.removeClient(client)
+				fmt.Println("Failed to send message to client", client.client_id)
+				//l.removeClient(client)
 			}
 		}
 	} else if util.Contains(client_to_room_messages, message.Kind) {
@@ -357,7 +364,8 @@ func (l *Lobby) broadcastMessage(message lobbyMessage) {
 			select {
 			case client.send_message <- message:
 			default:
-				l.removeClient(client)
+				fmt.Println("Failed to send message to client", client.client_id)
+				//l.removeClient(client)
 			}
 		}
 	} else if util.Contains(room_messages, message.Kind) {
@@ -373,7 +381,8 @@ func (l *Lobby) broadcastMessage(message lobbyMessage) {
 			select {
 			case client.send_message <- message:
 			default:
-				l.removeClient(client)
+				fmt.Println("Failed to send message to client", client.client_id)
+				//l.removeClient(client)
 			}
 		}
 	} else {

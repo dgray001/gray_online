@@ -16,10 +16,11 @@ export class DwgLobbyRooms extends DwgElement {
   protected override parsedCallback(): void {}
 
   refresh_rooms_running = false;
-  async refreshRooms() {
+  async refreshRooms(client_id: number): Promise<LobbyRoom> {
     if (this.refresh_rooms_running) {
-      return;
+      return undefined;
     }
+    let current_room = undefined;
     this.refresh_rooms_running = true;
     this.innerHTML = ' ... loading';
     this.rooms.clear();
@@ -30,6 +31,9 @@ export class DwgLobbyRooms extends DwgElement {
         const room = serverResponseToRoom(server_room);
         els.push(this.getRoomElement(room));
         this.rooms.set(room.room_id, room);
+        if (room.players.has(client_id) || room.viewers.has(client_id)) {
+          current_room = room;
+        }
       }
       this.innerHTML = '';
       for (const el of els) {
@@ -39,6 +43,7 @@ export class DwgLobbyRooms extends DwgElement {
       this.innerHTML = `Error loading rooms: ${response.error_message}`;
     }
     this.refresh_rooms_running = false;
+    return current_room;
   }
 
   private getRoomElement(room: LobbyRoom): HTMLDivElement {

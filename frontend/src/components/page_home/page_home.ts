@@ -44,6 +44,7 @@ export class DwgPageHome extends DwgElement {
         this.lobby.setNickname(nickname);
         this.lobby.setPing(0);
         this.lobby_connector.classList.add('hide');
+        this.lobby.classList.remove('connector-open');
       });
     });
     this.lobby.addEventListener('connection_lost', () => {
@@ -63,9 +64,10 @@ export class DwgPageHome extends DwgElement {
   private tryConnectionAgain(message: string): void {
     this.lobby.classList.remove('connected');
     this.lobby_connector.classList.remove('hide');
+    this.lobby.classList.add('connector-open');
     this.lobby_connector.status_message.innerText = message;
     this.lobby_connector.connect_button.disabled = false;
-    this.lobby_connector.connect_button.innerText = "Connect to Lobby";
+    this.lobby_connector.connect_button.innerText = "Reconnect to Lobby";
   }
 }
 

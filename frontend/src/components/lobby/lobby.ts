@@ -43,10 +43,19 @@ export class DwgLobby extends DwgElement {
     this.configureElement('lobby_room');
   }
 
+  private async refreshLobbyRooms() {
+    const current_room = await this.lobby_rooms.refreshRooms(this.connection_metadata.client_id ?? -1);
+    if (!!current_room) {
+      this.enterRoom(current_room, current_room.host.client_id === (this.connection_metadata.client_id ?? -1));
+    } else {
+      this.leaveRoom();
+    }
+  }
+
   protected override parsedCallback(): void {
     this.chatbox.setPlaceholder('Chat with the entire lobby');
     clickButton(this.refresh_lobby_button, async () => {
-      await this.lobby_rooms.refreshRooms();
+      await this.refreshLobbyRooms();
     });
     clickButton(this.create_room_button, async () => {
       this.socket.send(createMessage(`client-${this.connection_metadata.client_id}`, 'room-create'))
@@ -121,7 +130,8 @@ export class DwgLobby extends DwgElement {
         this.connection_metadata.room_id?.toString(),
       ));
     });
-    this.lobby_rooms.refreshRooms();
+    this.refreshLobbyRooms();
+    this.lobby_users.refreshUsers();
     setInterval(() => {
       this.pingServer();
     }, 5000);
@@ -133,7 +143,7 @@ export class DwgLobby extends DwgElement {
     }
     this.waitingOnConnectedTimes = 2;
     this.socket = new_socket;
-    this.lobby_rooms.refreshRooms();
+    this.refreshLobbyRooms();
     this.lobby_users.refreshUsers();
     this.socket.addEventListener('message', (m) => {
       try {
@@ -214,6 +224,9 @@ export class DwgLobby extends DwgElement {
 
   waitingOnConnectedTimes = 0;
   pingServer() {
+    if (this.classList.contains('connector-open')) {
+      return;
+    }
     if (!this.socketActive()) {
       this.dispatchEvent(new Event('connected_lost'));
     }
@@ -224,7 +237,8 @@ export class DwgLobby extends DwgElement {
       }
       return
     }
-    this.lobby_rooms.refreshRooms();
+    this.waitingOnConnectedTimes = 2;
+    this.refreshLobbyRooms();
     this.lobby_users.refreshUsers();
     if (this.lobby_room_wrapper.classList.contains('show')) {
       this.socket.send(createMessage(
