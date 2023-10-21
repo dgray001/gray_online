@@ -6,4 +6,28 @@ body {
   min-height: 100vh;
   min-width: 100%;
   padding: 0;
+
+  ::-webkit-scrollbar {
+    width: 7px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent; 
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: rgb(122, 89, 89);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    border-radius: 7px;
+  
+    &:hover {
+      background: rgb(92, 70, 70);
+      border: none;
+    }
+  
+    &:active {
+      background: rgb(70, 53, 53);
+    }
+  }
 }

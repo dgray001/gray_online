@@ -1,6 +1,6 @@
 import {DwgElement} from '../dwg_element';
 import {clickButton} from '../../scripts/util';
-import {ChatMessage, DwgChatbox} from '../chatbox/chatbox';
+import {ChatMessage, DwgChatbox, SERVER_CHAT_NAME} from '../chatbox/chatbox';
 
 import {DwgLobbyUsers} from './lobby_users/lobby_users';
 import {DwgLobbyRooms} from './lobby_rooms/lobby_rooms';
@@ -52,15 +52,19 @@ export class DwgLobby extends DwgElement {
       this.socket.send(createMessage(`client-${this.connection_metadata.client_id}`, 'room-create'))
     }, {loading_text: 'Creating Room ...', re_enable_button: false});
     this.lobby_rooms.addEventListener('join_room', async (e: CustomEvent<number>) => {
-      this.socket.send(createMessage(`client-${this.connection_metadata.client_id}`, 'room-join', '', e.detail.toString()))
+      this.socket.send(createMessage(`client-${this.connection_metadata.client_id}`, 'room-join', '', e.detail.toString()));
     });
     this.chatbox.addEventListener('chat_sent', (e: CustomEvent<ChatMessage>) => {
-      this.sendChatMessage(this.chatbox, 'client', 'lobby-chat', e.detail);
+      this.sendChatMessage(this.chatbox, 'lobby-chat', {...e.detail,
+        sender: `client-${this.connection_metadata.client_id}`}, this.connection_metadata.nickname);
     });
     this.lobby_room.addEventListener('chat_sent', (e: CustomEvent<ChatMessage>) => {
       const message = e.detail;
-      message.sender = `room-${this.connection_metadata.room_id}-${this.connection_metadata.client_id}`;
-      this.sendChatMessage(this.lobby_room.chatbox, 'room', 'room-chat', message);
+      const server_message = message.sender === SERVER_CHAT_NAME;
+      const display_sender = server_message ? message.sender : this.connection_metadata.nickname;
+      const sender = `room-${this.connection_metadata.room_id}-${this.connection_metadata.client_id}`;
+      message.sender = server_message ? `${sender}-${message.sender}` : sender;
+      this.sendChatMessage(this.lobby_room.chatbox, 'room-chat', message, display_sender);
     });
     this.lobby_room.addEventListener('leave_room', async () => {
       this.socket.send(createMessage(
@@ -194,12 +198,12 @@ export class DwgLobby extends DwgElement {
     this.create_room_button.innerText = 'Create Room';
   }
 
-  sendChatMessage(chatbox: DwgChatbox, sender_type: string, message_kind: string, message: ChatMessage) {
+  sendChatMessage(chatbox: DwgChatbox, message_kind: string, message: ChatMessage, display_sender: string) {
     let message_sent = false;
     try {
       if (this.socketActive()) {
         this.socket.send(createMessage(
-          message.sender ?? `${sender_type}-${this.connection_metadata.client_id}`,
+          message.sender,
           message_kind,
           message.message,
           message.color,
@@ -207,18 +211,18 @@ export class DwgLobby extends DwgElement {
         message_sent = true;
       }
       if (message_sent) {
-        chatbox.addChat({...message, sender: this.connection_metadata.nickname});
+        chatbox.addChat({...message, sender: display_sender}, true);
       } else {
         chatbox.addChat({
           message: `Message unable to be sent: "${message.message}"`,
           color: 'gray',
-        });
+        }, true);
       }
     } catch(e) {
       chatbox.addChat({
         message: 'Error trying to send message',
         color: 'gray',
-      });
+      }, true);
     }
   }
 

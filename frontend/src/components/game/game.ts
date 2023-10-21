@@ -56,6 +56,9 @@ export class DwgGame extends DwgElement {
       if (e.key === 'Enter') {
         this.chatbox_container.classList.toggle('showing');
         this.chatbox.classList.toggle('show');
+        if (this.chatbox.classList.contains('show')) {
+          this.chatbox.focus();
+        }
       }
     });
     this.chatbox.addEventListener('chat_sent', (e: CustomEvent<ChatMessage>) => {

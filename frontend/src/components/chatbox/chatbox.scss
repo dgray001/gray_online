@@ -14,17 +14,67 @@ dwg-chatbox {
     overflow-y: scroll;
     width: 100%;
     word-break: break-all;
-  
+
     :first-child {
       margin-top: auto;
     }
 
     > *{
       margin-top: 0.3em;
+      transition: background-color 1s;
+
+      &.new-message {
+        background-color: rgba(255, 255, 0, 0.4);
+        transition: none;
+      }
+
+      &.color-gray {
+        color: rgb(100, 100, 100);
+      }
     }
-  
-    > .color-gray {
-      color: rgb(100, 100, 100);
+  }
+
+  #new-messages-container {
+    height: 0;
+    position: relative;
+    width: 100%;
+
+    #new-messages-button {
+      --width: max(130px, 20%);
+      background-color: rgb(110, 140, 255);
+      bottom: 0;
+      border: 0px;
+      border-radius: 1.6em;
+      height: 1.5em;
+      left: calc(50% - 0.5 * var(--width));
+      margin: 0;
+      padding: 0;
+      position: absolute;
+      width: var(--width);
+
+      &:not(.show) {
+        display: none;
+      }
+
+      &:hover {
+        background-color: rgb(130, 160, 255);
+      }
+
+      &:active {
+        background-color: rgb(90, 110, 240);
+      }
+
+      #new-messages-number {
+        font-weight: bold;
+      }
+
+      &.new-message {
+        font-weight: bolder;
+
+        #new-messages-number {
+          font-weight: bolder;
+        }
+      }
     }
   }
 
@@ -43,11 +93,76 @@ dwg-chatbox {
     }
 
     #chat-input {
+      font-size: 1rem;
+      line-height: var(--input-box-height);
+      padding-left: 0.5em;
       width: calc(100% - var(--send-button-width));
     }
 
     #send-chat {
+      font-size: 1rem;
       width: var(--send-button-width);
+    }
+  }
+
+  // Custom chatbox styles
+
+  &.transparent-fade {
+    background-color: transparent;
+    color: white;
+
+    #chat-container {
+      background-color: rgba(90, 90, 90, 0.5);
+      border-radius: 1em;
+      box-sizing: border-box;
+      line-height: 1.1em;
+      padding: 1em;
+
+      > * {
+        transition: background-color 1s;
+
+        &.new-message {
+          background-color: rgba(70, 70, 70, 0.7);
+          transition: none;
+        }
+      }
+    }
+
+    #input-container {
+      background-color: transparent;
+
+      #chat-input {
+        background-color: rgba(90, 90, 90, 0.8);
+        border: none;
+        color: white;
+      }
+
+      #send-chat {
+        background-color: transparent;
+        color: white;
+      }
+    }
+
+    &:not(.show) {
+      pointer-events: none;
+
+      #chat-container {
+        background-color: transparent;
+        transition: background-color 1s 0.1s;
+      }
+
+      &.new-message {
+        color: white;
+      }
+
+      &:not(.new-message) {
+        color: transparent;
+        transition: color 1.5s 2s;
+      }
+
+      #input-container {
+        display: none;
+      }
     }
   }
 }

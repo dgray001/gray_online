@@ -1,5 +1,6 @@
 import {DwgElement} from '../../dwg_element';
 import {clickButton} from '../../../scripts/util';
+import {SERVER_CHAT_NAME} from '../../chatbox/chatbox';
 
 import html from './lobby_connector.html';
 import './lobby_connector.scss';
@@ -42,7 +43,12 @@ export class DwgLobbyConnector extends DwgElement {
     }, {re_enable_button: false});
   }
 
+  invalid_names = [SERVER_CHAT_NAME];
+
   private validateName(): boolean {
+    if (this.invalid_names.includes(this.nickname.value)) {
+      return false;
+    }
     const valid_name = this.nickname.value.length > 1 && this.nickname.value.length < 17;
     this.connect_button.disabled = !valid_name;
     return valid_name;

@@ -11,10 +11,15 @@ export declare interface ChatMessage {
   color?: string;
 }
 
+/** Sender name reserved for server chats */
+export const SERVER_CHAT_NAME = '!!server!!';
+
 export class DwgChatbox extends DwgElement {
   chat_container: HTMLDivElement;
   chat_input: HTMLInputElement;
   send_chat: HTMLButtonElement;
+  new_messages_button: HTMLButtonElement;
+  new_messages_number: HTMLSpanElement;
 
   constructor() {
     super();
@@ -22,6 +27,8 @@ export class DwgChatbox extends DwgElement {
     this.configureElement('chat_container');
     this.configureElement('chat_input');
     this.configureElement('send_chat');
+    this.configureElement('new_messages_button');
+    this.configureElement('new_messages_number');
   }
 
   protected override parsedCallback(): void {
@@ -33,22 +40,65 @@ export class DwgChatbox extends DwgElement {
         this.sendChat();
       }
     });
+    this.new_messages_button.addEventListener('click', () => {
+      this.adjustScroll();
+    });
+    this.chat_container.addEventListener('scroll', () => {
+      if (!this.scrolledUp()) {
+        this.scrolledToBottom();
+      }
+    });
+  }
+
+  scrolledUp(): boolean {
+    const scroll_height = this.chat_container.scrollHeight - this.chat_container.offsetHeight;
+    return (scroll_height - this.chat_container.scrollTop) > DwgChatbox.adjust_scroll_limit;
+  }
+
+  adjustScroll() {
+    this.chat_container.scrollTop = this.chat_container.scrollHeight - this.chat_container.offsetHeight;
+    this.scrolledToBottom();
+  }
+
+  scrolledToBottom() {
+    this.last_new_messages_button_count = 0;
+    this.new_messages_button.classList.remove('show');
   }
 
   static adjust_scroll_limit = 5;
-  addChat(message: ChatMessage) {
-    const scroll_height = this.chat_container.scrollHeight - this.chat_container.offsetHeight;
-    const adjust_scroll = (scroll_height - this.chat_container.scrollTop) < DwgChatbox.adjust_scroll_limit;
-    const open_tag = message.sender === 'server' || message.color === 'gray' ?
-      '<div class="color-gray">' : '<div>'
-    const sender = !!message.sender && message.sender !== 'server' ?
-      `${message.sender}: ` : '';
-    this.chat_container.innerHTML += `${open_tag}<b>${sender}</b>${message.message}</div>`;
-    if (adjust_scroll) {
-      this.chat_container.scrollTop = this.chat_container.scrollHeight - this.chat_container.offsetHeight;
-    } else {
-      // TODO: let you know new messages below
+  last_new_messages_button_timer: number;
+  last_new_messages_button_count = 0;
+  new_chat_elements: HTMLDivElement[] = [];
+  addChat(message: ChatMessage, you_sent = false) {
+    const sender = (!!message.sender && message.sender !== SERVER_CHAT_NAME) ? `${message.sender}: ` : '';
+    const new_element = document.createElement('div');
+    if (message.sender === SERVER_CHAT_NAME || message.color === 'gray') {
+      new_element.classList.add('color-gray');
     }
+    new_element.innerHTML = `<b>${sender}</b>${message.message}`;
+    this.chat_container.appendChild(new_element);
+    const scrolled_up = this.scrolledUp();
+    new_element.classList.add('new-message');
+    this.new_chat_elements.push(new_element);
+    this.classList.add('new-message');
+    if (this.last_new_messages_button_timer) {
+      clearTimeout(this.last_new_messages_button_timer);
+    }
+    if (you_sent || !scrolled_up) {
+      this.adjustScroll();
+    } else {
+      this.new_messages_button.classList.add('show');
+      this.new_messages_button.classList.add('new-message');
+      this.last_new_messages_button_count++;
+      this.new_messages_number.innerText = this.last_new_messages_button_count.toString();
+    }
+    setTimeout(() => {
+      this.new_messages_button.classList.remove('new-message');
+      this.new_chat_elements.forEach(element => {
+        element.classList.remove('new-message');
+      });
+      this.classList.remove('new-message');
+    }, 1500);
   }
 
   sendChat() {
@@ -61,6 +111,10 @@ export class DwgChatbox extends DwgElement {
 
   setPlaceholder(placeholder: string) {
     this.chat_input.placeholder = placeholder;
+  }
+
+  focus() {
+    this.chat_input.focus();
   }
 
   clear() {

@@ -85,20 +85,15 @@ dwg-game {
 
   #chatbox-container {
     background-color: transparent;
-    height: 80vh;
+    height: 75vh;
     left: 1em;
     position: absolute;
     top: 10vh;
     width: 50vw;
+    z-index: 9;
 
     &:not(.showing) {
       pointer-events: none;
-    }
-
-    #chatbox {
-      &:not(.show) {
-        display: none;
-      }
     }
   }
 }

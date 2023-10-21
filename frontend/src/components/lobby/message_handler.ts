@@ -1,3 +1,4 @@
+import { SERVER_CHAT_NAME } from "../chatbox/chatbox";
 import {GameSettings, ServerMessage, LobbyRoom, LobbyRoomFromServer, serverResponseToRoom} from "./data_models";
 import {DwgLobby} from "./lobby";
 
@@ -27,7 +28,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
         lobby.setNickname(message.content);
         lobby.chatbox.addChat({
           message: `You (${message.content}) joined lobby with client id ${id}`,
-          sender: 'server',
+          sender: SERVER_CHAT_NAME,
         });
         lobby.lobby_users.addUser({client_id: id, nickname: lobby.connection_metadata.nickname, ping: 0});
         try {
@@ -46,7 +47,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
       if (join_client_id) {
         lobby.chatbox.addChat({
           message: `${message.content} joined lobby with client id ${join_client_id}`,
-          sender: 'server',
+          sender: SERVER_CHAT_NAME,
         });
         lobby.lobby_users.addUser({client_id: join_client_id, nickname: message.content, ping: 0});
       }
@@ -56,7 +57,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
       if (left_client_id) {
         lobby.chatbox.addChat({
           message: `${message.content} (client id ${left_client_id}) left lobby`,
-          sender: 'server',
+          sender: SERVER_CHAT_NAME,
         });
         const client = lobby.lobby_users.getUser(left_client_id);
         lobby.lobby_users.removeUser(left_client_id);
@@ -75,6 +76,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
         lobby.chatbox.addChat({
           message: message.content,
           sender: lobby.lobby_users.getUser(chat_client_id)?.nickname ?? chat_client_id.toString(),
+          color: message.data,
         });
       }
       break;
@@ -177,10 +179,11 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
         lobby.connection_metadata.room_id === room_chat_room_id &&
         lobby.lobby_room.hasPlayer(room_chat_client_id))
       {
-        lobby.lobby_room.chatbox.addChat({
-          message: message.content,
-          sender: lobby.lobby_room.getClient(room_chat_client_id)?.nickname ?? room_chat_client_id.toString(),
-        });
+        let sender = lobby.lobby_room.getClient(room_chat_client_id)?.nickname ?? room_chat_client_id.toString();
+        if (room_chat_sender_split.length > 3) {
+          sender = room_chat_sender_split[3];
+        }
+        lobby.lobby_room.chatbox.addChat({message: message.content, sender, color: message.data});
       }
       break;
     case 'room-renamed':

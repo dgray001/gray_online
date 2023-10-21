@@ -1,5 +1,5 @@
 import {DwgElement} from '../../dwg_element';
-import {ChatMessage, DwgChatbox} from '../../chatbox/chatbox';
+import {ChatMessage, DwgChatbox, SERVER_CHAT_NAME} from '../../chatbox/chatbox';
 import {GameSettings, GameType, LobbyRoom, LobbyUser, createMessage} from '../data_models';
 import {DwgLobbyGameSettings} from '../lobby_game_settings/lobby_game_settings';
 import {setIntervalX} from '../../../scripts/util';
@@ -123,17 +123,17 @@ export class DwgLobbyRoom extends DwgElement {
         const countdown = 5;
         this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {'detail': {
           message: `Game is launching in ${countdown} ...`,
-          color: 'gray',
+          sender: SERVER_CHAT_NAME,
         }}));
         this.settings_launch_interval_id = setIntervalX((counter) => {
           this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {'detail': {
             message: `${countdown - counter} ...`,
-            color: 'gray',
+            sender: SERVER_CHAT_NAME,
           }}));
         }, 1000, countdown - 1, () => {
           this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {'detail': {
             message: 'Game is launching ...',
-            color: 'gray',
+            sender: SERVER_CHAT_NAME,
           }}));
           this.dispatchEvent(new Event('launch_game'));
           this.settings_launch_button.disabled = true;

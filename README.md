@@ -1,3 +1,3 @@
 Online Games
 
-v0.2e: Sync state on failures
+v0.2f: Upgraded chatbox styling
