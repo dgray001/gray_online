@@ -1,17 +1,15 @@
 v0.3: flesh out fiddlesticks game
- j: remove all panics from backend (no crashing server)
- k: room selector component in lobby list
- l: room selector gives info, lets you join as viewer
- m: proper checks for max players/max viewers when joining lobby room => also can't join as player if game started
- n: alternative rules for fiddlesticks => abstract that section
- o: relaunch button in lobby to rejoin room
- p: lobby properly resets when game is over
- q: loaders for client requests in lobby: room-create, room-join, room-leave, room-rename
- r: beginnings of simple chat emojis and taunts
- s: player's button in abstract game header => opens abstract dialog box
- t: chatbox lets you know there's new messages
- u-w: redo styling for desktop version of site
- x-y: create mobile version of site
+ h: room selector component in lobby list
+ u: room selector gives info, lets you join as viewer
+ j: proper checks for max players/max viewers when joining lobby room => also can't join as player if game started
+ k: alternative rules for fiddlesticks => abstract that section
+ l: relaunch button in lobby to rejoin room
+ m: lobby properly resets when game is over
+ n: loaders for client requests in lobby: room-create, room-join, room-leave, room-rename
+ o: beginnings of simple chat emojis and taunts
+ p: player's button in abstract game header => opens abstract dialog box
+ q-u: redo styling for desktop version of site
+ v-z: create mobile version of site
 
 v0.4: launch risq
  - can launch a simple game of risq

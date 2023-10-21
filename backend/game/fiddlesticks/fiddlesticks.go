@@ -2,6 +2,7 @@ package fiddlesticks
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/dgray001/gray_online/game"
 	"github.com/dgray001/gray_online/util"
@@ -91,7 +92,8 @@ func CreateGame(g *game.GameBase) *GameFiddlesticks {
 		player_id++
 	}
 	if len(fiddlesticks.players) < 2 {
-		panic("Need at least two players to play fiddlesticks") // TODO: remove panics
+		fmt.Fprintln(os.Stderr, "Need at least two players to play fiddlesticks")
+		return nil
 	}
 	fiddlesticks.max_round = uint8((fiddlesticks.deck.Size() - 1) / len(fiddlesticks.players))
 	return &fiddlesticks
