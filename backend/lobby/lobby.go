@@ -38,8 +38,9 @@ type Lobby struct {
 }
 
 type ClientRoom struct {
-	client *Client
-	room   *LobbyRoom
+	client    *Client
+	room      *LobbyRoom
+	bool_flag bool
 }
 
 func MakeClientRoom(client *Client, room *LobbyRoom) *ClientRoom {
@@ -293,7 +294,7 @@ func (l *Lobby) joinRoom(data *ClientRoom) {
 	if data.client.lobby_room != nil {
 		data.client.lobby_room.removeClient(data.client, true)
 	}
-	data.room.addClient(data.client)
+	data.room.addClient(data.client, data.bool_flag)
 }
 
 func (l *Lobby) leaveRoom(data *ClientRoom) {

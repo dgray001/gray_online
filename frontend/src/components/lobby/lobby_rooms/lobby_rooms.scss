@@ -1,18 +1,8 @@
 dwg-lobby-rooms {
+  display: block;
+
   > .lobby-room {
-    font-size: 18px;
-    height: 26px;
-    line-height: 26px;
-    padding: 2px;
-    user-select: none;
+    margin: 2px 0;
     width: 100%;
-
-    &:hover {
-      background-color: rgba(180, 180, 180, 0.15);
-    }
-
-    &:active {
-      background-color: rgba(180, 180, 180, 0.3);
-    }
   }
 }

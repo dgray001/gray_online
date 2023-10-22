@@ -258,8 +258,8 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
         }
       }
       break;
-    case 'room-refresh-failed':
     case 'room-join-failed':
+    case 'room-refresh-failed':
     case 'room-leave-failed':
     case 'room-rename-failed':
     case 'room-kick-failed':
@@ -268,6 +268,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
     case 'room-set-viewer-failed':
     case 'room-settings-updated-failed':
     case 'room-launch-failed':
+      // TODO: show message dialog for the failure message
       console.log(message.content);
       lobby.refreshLobbyRooms();
       break;

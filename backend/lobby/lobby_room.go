@@ -126,7 +126,8 @@ func (r *LobbyRoom) broadcastMessage(message lobbyMessage) {
 	}
 }
 
-func (r *LobbyRoom) addClient(c *Client) {
+func (r *LobbyRoom) addClient(c *Client, join_as_player bool) {
+	// TODO: implement join_as_player
 	r.players[c.client_id] = c
 	if r.host.client_id == c.client_id {
 		r.host = c

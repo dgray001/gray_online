@@ -3,7 +3,7 @@ import {clickButton} from '../../scripts/util';
 import {ChatMessage, DwgChatbox, SERVER_CHAT_NAME} from '../chatbox/chatbox';
 
 import {DwgLobbyUsers} from './lobby_users/lobby_users';
-import {DwgLobbyRooms} from './lobby_rooms/lobby_rooms';
+import {DwgLobbyRooms, JoinRoomData} from './lobby_rooms/lobby_rooms';
 import {DwgLobbyRoom} from './lobby_room/lobby_room';
 import {ConnectionMetadata, ServerMessage, LobbyRoom, createMessage} from './data_models';
 import {handleMessage} from './message_handler';
@@ -51,8 +51,13 @@ export class DwgLobby extends DwgElement {
     clickButton(this.create_room_button, async () => {
       this.socket.send(createMessage(`client-${this.connection_metadata.client_id}`, 'room-create'))
     }, {loading_text: 'Creating Room ...', re_enable_button: false});
-    this.lobby_rooms.addEventListener('join_room', async (e: CustomEvent<number>) => {
-      this.socket.send(createMessage(`client-${this.connection_metadata.client_id}`, 'room-join', '', e.detail.toString()));
+    this.lobby_rooms.addEventListener('join_room', async (e: CustomEvent<JoinRoomData>) => {
+      this.socket.send(createMessage(
+        `client-${this.connection_metadata.client_id}`,
+        e.detail.join_as_player ? 'room-join-player' : 'room-join-viewer',
+        '',
+        e.detail.room_id.toString(),
+      ));
     });
     this.chatbox.addEventListener('chat_sent', (e: CustomEvent<ChatMessage>) => {
       this.sendChatMessage(this.chatbox, 'lobby-chat', {...e.detail,

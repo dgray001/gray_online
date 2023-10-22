@@ -3,8 +3,17 @@ import {apiGet} from '../../../scripts/api';
 import {createLock} from '../../../scripts/util';
 import {GameSettings, LobbyRoom, LobbyRoomFromServer, LobbyUser, serverResponseToRoom} from '../data_models';
 
+import {DwgRoomSelector} from './room_selector/room_selector';
 import html from './lobby_rooms.html';
+
 import './lobby_rooms.scss';
+import './room_selector/room_selector';
+
+/** Data describing a join room event */
+export declare interface JoinRoomData {
+  room_id: number;
+  join_as_player: boolean;
+}
 
 export class DwgLobbyRooms extends DwgElement {
   lock = createLock();
@@ -24,7 +33,7 @@ export class DwgLobbyRooms extends DwgElement {
       this.rooms.clear();
       const response = await apiGet<LobbyRoomFromServer[]>('lobby/rooms/get');
       if (response.success) {
-        const els: HTMLDivElement[] = [];
+        const els: DwgRoomSelector[] = [];
         for (const server_room of response.result) {
           const room = serverResponseToRoom(server_room);
           els.push(this.getRoomElement(room));
@@ -33,10 +42,7 @@ export class DwgLobbyRooms extends DwgElement {
             current_room = room;
           }
         }
-        this.innerHTML = '';
-        for (const el of els) {
-          this.appendChild(el);
-        }
+        this.replaceChildren(...els);
       } else {
         this.innerHTML = `Error loading rooms: ${response.error_message}`;
       }
@@ -44,13 +50,14 @@ export class DwgLobbyRooms extends DwgElement {
     return current_room;
   }
 
-  private getRoomElement(room: LobbyRoom): HTMLDivElement {
-    const el = document.createElement('div');
+  private getRoomElement(room: LobbyRoom): DwgRoomSelector {
+    const el = document.createElement('dwg-room-selector');
     el.classList.add('lobby-room');
     el.id = `room-${room.room_id}`;
-    el.innerText = room.room_name;
-    el.addEventListener('click', () => {
-      this.dispatchEvent(new CustomEvent('join_room', {'detail': room.room_id}));
+    el.setRoom(room);
+    el.addEventListener('join_room', (e: CustomEvent<boolean>) => {
+      const join_data = {'detail': {room_id: room.room_id, join_as_player: e.detail ?? true}};
+      this.dispatchEvent(new CustomEvent<JoinRoomData>('join_room', join_data));
     });
     return el;
   }

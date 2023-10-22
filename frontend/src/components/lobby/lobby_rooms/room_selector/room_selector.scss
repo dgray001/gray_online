@@ -1,0 +1,69 @@
+dwg-room-selector {
+  --height: 42px;
+  background-color: transparent;
+  display: flex;
+  flex-flow: row nowrap;
+  font-size: calc(0.5 * var(--height));
+  height: var(--height);
+  line-height: var(--height);
+  position: relative;
+  user-select: none;
+
+  &:hover {
+    background-color: rgba(180, 180, 180, 0.15);
+
+    #room-buttons {
+      display: flex;
+    }
+  }
+
+  #room-players {
+    margin-left: 0.3em;
+    text-align: left;
+    width: 3em;
+  }
+
+  #room-game {
+    --width: 8em;
+    margin-left: 1em;
+    max-width: var(--width);
+    min-width: var(--width);
+    text-align: left;
+    width: var(--width);
+  }
+
+  #room-name {
+    margin-left: 1em;
+  }
+
+  #room-buttons {
+    --margin: 6px;
+    bottom: var(--margin);
+    display: none;
+    flex-flow: row nowrap;
+    gap: var(--margin);
+    position: absolute;
+    right: var(--margin);
+    top: var(--margin);
+
+    > button {
+      --width: calc(var(--height) - 2 * var(--margin));
+      background-color: rgba(240, 240, 240, 0.8);
+      border: none;
+      border-radius: var(--margin);
+      display: inline-block;
+      height: var(--width);
+      margin: 0;
+      padding: 0;
+      width: var(--width);
+
+      &:hover {
+        background-color: rgba(250, 250, 250, 0.9);
+      }
+
+      &:active {
+        background-color: rgba(230, 230, 230, 0.7);
+      }
+    }
+  }
+}
