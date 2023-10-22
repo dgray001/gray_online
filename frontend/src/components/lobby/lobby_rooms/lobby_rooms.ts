@@ -96,16 +96,20 @@ export class DwgLobbyRooms extends DwgElement {
     return this.rooms.get(room_id);
   }
 
+  roomUpdated(room: LobbyRoom) {
+    const room_el = this.querySelector<DwgRoomSelector>(`#room-${room.room_id}`);
+    if (!!room_el) {
+      room_el.setRoom(room);
+    }
+  }
+
   renameRoom(room_id: number, new_name: string) {
     const room = this.getRoom(room_id);
     if (!room) {
       return;
     }
     room.room_name = new_name;
-    const room_el = this.querySelector<HTMLDivElement>(`#room-${room.room_id}`);
-    if (room_el) {
-      room_el.replaceWith(this.getRoomElement(room));
-    }
+    this.roomUpdated(room);
   }
 
   promoteUser(room_id: number, user_id: number) {
@@ -115,6 +119,7 @@ export class DwgLobbyRooms extends DwgElement {
     }
     if (room.players.has(user_id)) {
       room.host = room.players.get(user_id);
+      this.roomUpdated(room);
     }
   }
 
@@ -126,6 +131,7 @@ export class DwgLobbyRooms extends DwgElement {
     if (room.players.has(user_id)) {
       room.viewers.set(user_id, room.players.get(user_id));
       room.players.delete(user_id);
+      this.roomUpdated(room);
     }
   }
 
@@ -137,6 +143,7 @@ export class DwgLobbyRooms extends DwgElement {
     if (room.viewers.has(user_id)) {
       room.players.set(user_id, room.viewers.get(user_id));
       room.viewers.delete(user_id);
+      this.roomUpdated(room);
     }
   }
 
@@ -145,6 +152,7 @@ export class DwgLobbyRooms extends DwgElement {
     if (room_id === joinee.room_id) {
       if (!!curr_room) {
         curr_room.players.set(joinee.client_id, joinee);
+        this.roomUpdated(curr_room);
       }
       return;
     }
@@ -154,25 +162,29 @@ export class DwgLobbyRooms extends DwgElement {
       } else {
         curr_room.players.delete(joinee.client_id);
       }
+      this.roomUpdated(curr_room);
     }
     const room = this.getRoom(room_id);
     if (!!room) {
       room.players.set(joinee.client_id, joinee);
+      this.roomUpdated(room);
     }
   }
 
   viewerJoinsRoom(room_id: number, joinee: LobbyUser) {
     const curr_room = this.getRoom(joinee.room_id);
-    if (curr_room) {
+    if (!!curr_room) {
       if (curr_room.host.client_id === joinee.client_id) {
         this.removeRoom(joinee.room_id);
       } else {
         curr_room.players.delete(joinee.client_id);
       }
+      this.roomUpdated(curr_room);
     }
     const room = this.getRoom(room_id);
-    if (room) {
+    if (!!room) {
       room.viewers.set(joinee.client_id, joinee);
+      this.roomUpdated(room);
     }
   }
 
@@ -187,6 +199,7 @@ export class DwgLobbyRooms extends DwgElement {
       room.players.delete(client_id);
       room.viewers.delete(client_id);
     }
+    this.roomUpdated(room);
   }
 
   updateRoomSettings(room_id: number, new_settings: GameSettings) {
@@ -195,6 +208,7 @@ export class DwgLobbyRooms extends DwgElement {
       return;
     }
     room.game_settings = new_settings;
+    this.roomUpdated(room);
   }
 
   launchRoom(room_id: number, game_id: number) {
@@ -203,6 +217,7 @@ export class DwgLobbyRooms extends DwgElement {
       return;
     }
     room.game_id = game_id;
+    this.roomUpdated(room);
   }
 }
 

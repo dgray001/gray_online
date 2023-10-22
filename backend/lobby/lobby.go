@@ -31,7 +31,6 @@ type Lobby struct {
 	RoomSetViewer       chan *ClientRoom
 	RoomSetPlayer       chan *ClientRoom
 	RemoveRoom          chan *LobbyRoom
-	JoinRoom            chan *ClientRoom
 	LeaveRoom           chan *ClientRoom
 	LaunchGame          chan *LobbyRoom
 	broadcast           chan lobbyMessage
@@ -93,7 +92,6 @@ func CreateLobby() *Lobby {
 		RoomSetViewer:       make(chan *ClientRoom),
 		RoomSetPlayer:       make(chan *ClientRoom),
 		RemoveRoom:          make(chan *LobbyRoom),
-		JoinRoom:            make(chan *ClientRoom),
 		LeaveRoom:           make(chan *ClientRoom),
 		LaunchGame:          make(chan *LobbyRoom),
 		broadcast:           make(chan lobbyMessage),
@@ -125,8 +123,6 @@ func (l *Lobby) Run() {
 			data.room.setPlayer(data.client)
 		case room := <-l.RemoveRoom:
 			l.removeRoom(room)
-		case data := <-l.JoinRoom:
-			l.joinRoom(data)
 		case data := <-l.LeaveRoom:
 			l.leaveRoom(data)
 		case room := <-l.LaunchGame:
@@ -288,13 +284,6 @@ func (l *Lobby) removeRoom(room *LobbyRoom) {
 	}
 	debug.PrintStack() // for some reason clients are being kicked when game launches
 	l.broadcastMessage(lobbyMessage{Sender: "server", Kind: "room-closed", Data: id_string})
-}
-
-func (l *Lobby) joinRoom(data *ClientRoom) {
-	if data.client.lobby_room != nil {
-		data.client.lobby_room.removeClient(data.client, true)
-	}
-	data.room.addClient(data.client, data.bool_flag)
 }
 
 func (l *Lobby) leaveRoom(data *ClientRoom) {

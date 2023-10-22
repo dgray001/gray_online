@@ -346,7 +346,7 @@ export class DwgLobbyRoom extends DwgElement {
       }
       if (user) {
         this.chatbox.addChat({
-          message: `${user.nickname} (${user.client_id}) ${left_text} the room`,
+          message: `${user.nickname} (client id ${user.client_id}) ${left_text} the room`,
           color: 'gray',
         });
       }
@@ -357,10 +357,16 @@ export class DwgLobbyRoom extends DwgElement {
     if (!this.room) {
       return;
     }
-    if (this.room.players.has(client_id)) {
-      this.room.host = this.room.players.get(client_id);
-      this.setRoom(this.room, is_host);
+    const user = this.room.players.get(client_id);
+    if (!user) {
+      return;
     }
+    this.room.host = user;
+    this.setRoom(this.room, is_host);
+    this.chatbox.addChat({
+      message: `${user.nickname} (client id ${user.client_id}) was promoted as host of room`,
+      color: 'gray',
+    });
   }
 
   playerToViewer(client_id: number) {

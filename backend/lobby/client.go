@@ -116,7 +116,7 @@ func (c *Client) readMessages() {
 				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-join-failed", Content: "Room doesn't exist"}
 				break
 			}
-			c.lobby.JoinRoom <- MakeClientRoom(c, room)
+			room.JoinRoom <- MakeClientRoom(c, room)
 		case "room-join-player":
 			room_id, err := strconv.Atoi(message.Data)
 			if err != nil || room_id < 1 {
@@ -130,7 +130,7 @@ func (c *Client) readMessages() {
 			}
 			client_room := MakeClientRoom(c, room)
 			client_room.bool_flag = true
-			c.lobby.JoinRoom <- client_room
+			room.JoinRoom <- client_room
 		case "room-join-viewer":
 			room_id, err := strconv.Atoi(message.Data)
 			if err != nil || room_id < 1 {
@@ -144,7 +144,7 @@ func (c *Client) readMessages() {
 			}
 			client_room := MakeClientRoom(c, room)
 			client_room.bool_flag = false
-			c.lobby.JoinRoom <- client_room
+			room.JoinRoom <- client_room
 		case "room-leave":
 			room_id, err := strconv.Atoi(message.Data)
 			if err != nil || room_id < 1 {

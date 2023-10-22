@@ -156,9 +156,9 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
     case 'room-joined-viewer':
       const viewer_room_join_id = parseInt(message.sender.replace('room-', ''));
       const viewer_client_join_id = parseInt(message.data.replace('client-', ''));
-      const viewer_joinee = lobby.lobby_users.getUser(client_join_id);
-      const viewer_room = lobby.lobby_rooms.getRoom(room_join_id);
-      if (viewer_room_join_id && viewer_client_join_id && viewer_joinee) {
+      const viewer_joinee = lobby.lobby_users.getUser(viewer_client_join_id);
+      const viewer_room = lobby.lobby_rooms.getRoom(viewer_room_join_id);
+      if (viewer_room_join_id && viewer_client_join_id && viewer_joinee && viewer_room) {
         lobby.lobby_users.joinRoom(viewer_client_join_id, viewer_room_join_id);
         lobby.lobby_rooms.viewerJoinsRoom(viewer_room_join_id, viewer_joinee);
         if (viewer_room_join_id === lobby.connection_metadata.room_id) {
@@ -268,7 +268,9 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
     case 'room-set-viewer-failed':
     case 'room-settings-updated-failed':
     case 'room-launch-failed':
-      // TODO: show message dialog for the failure message
+      const message_dialog = document.createElement('dwg-message-dialog');
+      message_dialog.setData({message: message.content});
+      lobby.appendChild(message_dialog);
       console.log(message.content);
       lobby.refreshLobbyRooms();
       break;

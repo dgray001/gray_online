@@ -1,5 +1,4 @@
 v0.3: flesh out fiddlesticks game
- j: proper checks for max players/max viewers when joining lobby room => also can't join as player if game started => frontend message for room-join-failed
  k: alternative rules for fiddlesticks => abstract that section
  l: relaunch button in lobby to rejoin room
  m: lobby properly resets when game is over

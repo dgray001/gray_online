@@ -115,7 +115,7 @@ func (g *GameBase) ResendLastUpdate(client_id uint64) {
 	player.Updates <- player.update_list[len(player.update_list)-1]
 }
 
-func (g *GameBase) gameEnded() bool {
+func (g *GameBase) GameEnded() bool {
 	return g.game_ended
 }
 

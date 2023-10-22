@@ -1,3 +1,3 @@
 Online Games
 
-v0.2h: Room selector component
+v0.2i: Updated room join logic

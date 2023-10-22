@@ -22,6 +22,7 @@ type LobbyRoom struct {
 	// lobby room and game channels
 	// TODO: move lobby room channels from lobby to lobby room
 	broadcast       chan lobbyMessage
+	JoinRoom        chan *ClientRoom
 	PlayerConnected chan *Client
 	PlayerAction    chan game.PlayerAction
 }
@@ -46,6 +47,7 @@ func CreateLobbyRoom(host *Client, room_id uint64, lobby *Lobby) *LobbyRoom {
 			GameType:   0,
 		},
 		broadcast:       make(chan lobbyMessage),
+		JoinRoom:        make(chan *ClientRoom),
 		PlayerConnected: make(chan *Client),
 		PlayerAction:    make(chan game.PlayerAction),
 	}
@@ -60,6 +62,8 @@ func (r *LobbyRoom) run() {
 		select {
 		case message := <-r.broadcast:
 			r.broadcastMessage(message)
+		case data := <-r.JoinRoom:
+			r.addClient(data.client, data.bool_flag)
 		case client := <-r.PlayerConnected:
 			client.game = r.game
 			start_game := r.game.GetBase().PlayerConnected(client.client_id)
@@ -127,15 +131,47 @@ func (r *LobbyRoom) broadcastMessage(message lobbyMessage) {
 }
 
 func (r *LobbyRoom) addClient(c *Client, join_as_player bool) {
-	// TODO: implement join_as_player
-	r.players[c.client_id] = c
-	if r.host.client_id == c.client_id {
-		r.host = c
+	if r.game != nil && !r.game.GetBase().GameEnded() {
+		join_as_player = false
+	}
+	if c.lobby_room != nil {
+		if c.lobby_room.room_id == r.room_id {
+			c.send_message <- lobbyMessage{Sender: "server", Kind: "room-join-failed", Content: "Already in room"}
+			return
+		}
+		c.lobby_room.removeClient(c, true)
+	}
+	if join_as_player && !r.spaceForPlayer() {
+		join_as_player = false
+	}
+	if !join_as_player && !r.spaceForViewer() {
+		c.send_message <- lobbyMessage{Sender: "server", Kind: "room-join-failed", Content: "No space in room"}
+		return
+	}
+	if join_as_player {
+		r.players[c.client_id] = c
+		if r.host.client_id == c.client_id {
+			r.host = c
+		}
+	} else {
+		r.viewers[c.client_id] = c
 	}
 	c.lobby_room = r
 	client_id_string := strconv.Itoa(int(c.client_id))
 	room_id_string := strconv.Itoa(int(r.room_id))
-	r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-joined-player", Data: client_id_string})
+	message_kind := "room-joined-player"
+	if !join_as_player {
+		message_kind = "room-joined-viewer"
+	}
+	r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: message_kind, Data: client_id_string})
+}
+
+func (r *LobbyRoom) spaceForPlayer() bool {
+	return r.game_settings != nil && int(r.game_settings.MaxPlayers) > len(r.players)
+}
+
+func (r *LobbyRoom) spaceForViewer() bool {
+	return r.game_settings != nil && int(r.game_settings.MaxViewers) > len(r.viewers)
 }
 
 func (r *LobbyRoom) removeClient(c *Client, client_leaves bool) {
