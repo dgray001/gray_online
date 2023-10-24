@@ -1,5 +1,9 @@
 v0.3: flesh out fiddlesticks game
- l: relaunch button in lobby to rejoin room
+ l: rejoin room bugs:
+   => show trump card
+   => remove trump card at end of game
+   => can't seem to receive updates (check update applying logic)
+   => When rejoining seem to receive empty udpate ?? what's that about?
  m: lobby properly resets when game is over
  n: loaders for client requests in lobby: room-create, room-join, room-leave, room-rename
  o: beginnings of simple chat emojis and taunts
@@ -14,13 +18,11 @@ v0.5: save risq game
  - need fully functioning db and user profiles
 
 P3/P4:
- - game launching message shouldn't come from anyone and should be gray for participants
  - frontend animations
  - chat updates have an id that ensures the correct order (can request missing)
  - add abstract dialog then add confirm dialog for confirming actions
  - when joining a lobby room determine if game is currently in progress => then check if joinee is a player => if not join as viewer
  - Viewer updates stored in game base => backend sends viewer updates
- - Add function lock => replace LobbyRoom::refresh_rooms_running with function lock
  - Resign button causes resign => AI takes over
  - When dc'ed the AI takes over temporarily => if dc'ed for too long the AI takes over
  - Can launch game with AI

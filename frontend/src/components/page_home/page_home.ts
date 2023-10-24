@@ -55,6 +55,11 @@ export class DwgPageHome extends DwgElement {
         this.lobby.classList.add('hide');
       }
     });
+    this.lobby.addEventListener('rejoin_game', async (e: CustomEvent<LobbyRoom>) => {
+      if (await this.game.launchGame(e.detail, this.lobby.socket, this.lobby.connection_metadata, true)) {
+        this.lobby.classList.add('hide');
+      }
+    });
     this.game.addEventListener('exit_game', () => {
       this.game.classList.remove('show');
       this.lobby.classList.remove('hide');

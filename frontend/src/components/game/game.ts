@@ -90,8 +90,8 @@ export class DwgGame extends DwgElement {
     }, 2500);
   }
 
-  async launchGame(lobby: LobbyRoom, socket: WebSocket, connection_metadata: ConnectionMetadata): Promise<boolean> {
-    if (this.launched || !lobby || !lobby.game_id || !socket || socket.readyState !== WebSocket.OPEN ||
+  async launchGame(lobby: LobbyRoom, socket: WebSocket, connection_metadata: ConnectionMetadata, rejoining = false): Promise<boolean> {
+    if ((this.launched && !rejoining) || !lobby || !lobby.game_id || !socket || socket.readyState !== WebSocket.OPEN ||
       !connection_metadata || !connection_metadata.client_id || !connection_metadata.room_id || lobby.room_id !== connection_metadata.room_id
     ) {
       console.log('Invalid state to launch game');
@@ -140,6 +140,7 @@ export class DwgGame extends DwgElement {
       this.game_el = game_el as unknown as GameComponent;
       this.game_el.initialize(this.game, this.connection_metadata.client_id);
       game_el.addEventListener('game_update', (e: CustomEvent<string>) => {
+        console.log('Sending game update', e.detail);
         this.socket.send(e.detail);
       });
     };

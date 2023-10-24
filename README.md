@@ -1,3 +1,3 @@
 Online Games
 
-v0.2j: Abstract rules for fiddlesticks
+v0.2k: Initial rejoin room

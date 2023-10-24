@@ -59,6 +59,22 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.initialized = true;
   }
 
+  gameStarted(betting: boolean, current_turn: boolean) {
+    if (betting) {
+      this.bet_container.innerText = this.player.bet.toString(); // TODO: shouldn't show if haven't bet yet
+      this.tricks_container.innerText = '-';
+      if (current_turn) {
+        this.betting();
+      }
+    } else {
+      this.bet_container.innerText = this.player.bet.toString();
+      this.tricks_container.innerText = this.player.tricks.toString();
+      if (current_turn) {
+        this.playing();
+      }
+    }
+  }
+
   setClientPlayer() {
     this.classList.add('client-player');
     this.client_player = true;

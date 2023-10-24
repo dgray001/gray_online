@@ -338,6 +338,7 @@ func (f *GameFiddlesticks) ToFrontend(client_id uint64, is_viewer bool) gin.H {
 }
 
 func (f *GameFiddlesticks) broadcastUpdate(update *game.UpdateMessage) {
+	fmt.Printf("Broadcasting game (%d) update {%s, %s}\n", f.game.Game_id, update.Kind, update.Content)
 	for _, player := range f.players {
 		player.player.AddUpdate(update)
 	}
@@ -394,6 +395,7 @@ func (f *GameFiddlesticks) dealNextRound() {
 		f.players[j].cards = cards
 		f.players[j].cards_played = []int{}
 		f.players[j].tricks = 0
+		f.players[j].bet = 0
 	}
 	f.trump = f.deck.DrawCard()
 	for _, player := range f.players {

@@ -2,7 +2,7 @@ import {DwgElement} from '../../dwg_element';
 import {ChatMessage, DwgChatbox, SERVER_CHAT_NAME} from '../../chatbox/chatbox';
 import {GameSettings, GameType, LobbyRoom, LobbyUser, createMessage} from '../data_models';
 import {DwgLobbyGameSettings} from '../lobby_game_settings/lobby_game_settings';
-import {setIntervalX} from '../../../scripts/util';
+import {capitalize, clickButton, setIntervalX} from '../../../scripts/util';
 
 import html from './lobby_room.html';
 import './lobby_room.scss';
@@ -31,6 +31,8 @@ export class DwgLobbyRoom extends DwgElement {
   settings_title: HTMLDivElement;
   num_players_current: HTMLSpanElement;
   num_players_max: HTMLSpanElement;
+  settings_settings: HTMLDivElement;
+  settings_description: HTMLDivElement;
   settings_button_container: HTMLDivElement;
   settings_settings_button: HTMLButtonElement;
   settings_launching = false;
@@ -64,6 +66,8 @@ export class DwgLobbyRoom extends DwgElement {
     this.configureElement('settings_title');
     this.configureElement('num_players_current');
     this.configureElement('num_players_max');
+    this.configureElement('settings_settings');
+    this.configureElement('settings_description');
     this.configureElement('settings_button_container');
     this.configureElement('settings_settings_button');
     this.configureElement('settings_launch_button');
@@ -140,6 +144,9 @@ export class DwgLobbyRoom extends DwgElement {
         });
       }
     });
+    clickButton(this.game_rejoin_button, () => {
+      this.dispatchEvent(new Event('rejoin_game'));
+    });
     this.room_name.classList.add('show');
   }
 
@@ -192,6 +199,20 @@ export class DwgLobbyRoom extends DwgElement {
   updateSettingsDependencies() {
     this.settings_title.innerText = GameType[this.room.game_settings.game_type || -1] ?? '';
     this.num_players_max.innerText = this.room.game_settings.max_players.toString();
+    if (!this.room.game_settings.game_specific_settings) {
+      this.settings_settings.replaceChildren();
+    } else {
+      const settings: HTMLDivElement[] = []
+      for (const [setting_name, setting] of Object.entries(this.room.game_settings.game_specific_settings)) {
+        const setting_el = document.createElement('div');
+        setting_el.classList.add('setting');
+        setting_el.classList.add('settings-small');
+        setting_el.id = `setting-${setting_name}`;
+        setting_el.innerText = `${capitalize(setting_name.replace('_', ' '))}: ${setting}`;
+        settings.push(setting_el);
+      }
+      this.settings_settings.replaceChildren(...settings);
+    }
   }
 
   private getUserElement(user: LobbyUser, is_host: boolean, is_player: boolean): HTMLDivElement {
@@ -399,6 +420,8 @@ export class DwgLobbyRoom extends DwgElement {
     }
     this.room.game_id = game_id;
     this.settings_game_status.innerText = GameStatusEnum.IN_PROGRESS;
+    this.game_button_container.classList.remove('hide');
+    this.settings_button_container.classList.add('hide');
   }
 
   private openRename() {

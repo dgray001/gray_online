@@ -181,6 +181,12 @@ dwg-lobby-room {
             }
           }
         }
+
+        #settings-settings {
+          display: flex;
+          flex-flow: column nowrap;
+          gap: 0.3em;
+        }
       }
 
       #user-list {

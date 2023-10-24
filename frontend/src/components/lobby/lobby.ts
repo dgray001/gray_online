@@ -130,6 +130,9 @@ export class DwgLobby extends DwgElement {
         this.connection_metadata.room_id?.toString(),
       ));
     });
+    this.lobby_room.addEventListener('rejoin_game', () => {
+      this.dispatchEvent(new CustomEvent('rejoin_game', {'detail': this.lobby_room.room}));
+    });
     this.refreshLobbyRooms();
     this.lobby_users.refreshUsers();
     setInterval(() => {

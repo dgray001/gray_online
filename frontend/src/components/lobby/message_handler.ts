@@ -236,7 +236,6 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
         lobby.lobby_rooms.viewerToPlayer(room_player_id, client_player_id);
       }
       break;
-      break;
     case 'room-settings-updated':
       try {
         const room_id = parseInt(message.sender.replace('room-', ''));
