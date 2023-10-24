@@ -11,21 +11,23 @@ type GameBase struct {
 	Game_id   uint64
 	game_type uint8
 	// here the map keys are the lobby client ids
-	Players        map[uint64]*Player
-	Viewers        map[uint64]*Viewer
-	game_started   bool
-	game_ended     bool
-	player_updates []*PlayerAction
+	Players              map[uint64]*Player
+	Viewers              map[uint64]*Viewer
+	game_started         bool
+	game_ended           bool
+	player_updates       []*PlayerAction
+	GameSpecificSettings map[string]interface{}
 }
 
-func CreateBaseGame(game_id uint64, game_type uint8) *GameBase {
+func CreateBaseGame(game_id uint64, game_type uint8, game_specific_settings map[string]interface{}) *GameBase {
 	return &GameBase{
-		Game_id:      game_id,
-		game_type:    game_type,
-		Players:      make(map[uint64]*Player),
-		Viewers:      make(map[uint64]*Viewer),
-		game_started: false,
-		game_ended:   false,
+		Game_id:              game_id,
+		game_type:            game_type,
+		Players:              make(map[uint64]*Player),
+		Viewers:              make(map[uint64]*Viewer),
+		game_started:         false,
+		game_ended:           false,
+		GameSpecificSettings: game_specific_settings,
 	}
 }
 

@@ -3,6 +3,7 @@ package fiddlesticks
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/dgray001/gray_online/game"
 	"github.com/dgray001/gray_online/util"
@@ -36,6 +37,8 @@ type GameFiddlesticks struct {
 	trump             *game.StandardCard
 	trick_leader      int
 	trick             []*game.StandardCard
+	round_points      uint16
+	trick_points      uint16
 }
 
 type FiddlesticksPlayer struct {
@@ -79,6 +82,8 @@ func CreateGame(g *game.GameBase) *GameFiddlesticks {
 		trump:             nil,
 		trick_leader:      -1,
 		trick:             []*game.StandardCard{},
+		round_points:      10,
+		trick_points:      1,
 	}
 	var player_id = 0
 	for _, player := range g.Players {
@@ -96,6 +101,30 @@ func CreateGame(g *game.GameBase) *GameFiddlesticks {
 		return nil
 	}
 	fiddlesticks.max_round = uint8((fiddlesticks.deck.Size() - 1) / len(fiddlesticks.players))
+	max_round_float, max_round_ok := g.GameSpecificSettings["max_round"].(float64)
+	if max_round_ok {
+		max_round := uint8(max_round_float)
+		if max_round > 0 && max_round < fiddlesticks.max_round {
+			fiddlesticks.max_round = max_round
+		}
+	}
+	round_points_float, round_points_ok := g.GameSpecificSettings["round_points"].(float64)
+	if round_points_ok {
+		round_points := uint16(round_points_float)
+		if round_points >= 0 && round_points < 100 {
+			fiddlesticks.round_points = round_points
+		}
+	}
+	trick_points_float, trick_points_ok := g.GameSpecificSettings["trick_points"].(float64)
+	if trick_points_ok {
+		trick_points := uint16(trick_points_float)
+		if trick_points >= 0 && trick_points < 100 {
+			fiddlesticks.trick_points = trick_points
+		}
+	}
+	if fiddlesticks.round_points == 0 && fiddlesticks.trick_points == 0 {
+		fiddlesticks.round_points = 1
+	}
 	return &fiddlesticks
 }
 
@@ -246,7 +275,7 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 			} else {
 				for _, player := range f.players {
 					if player.bet == player.tricks {
-						player.score += 10 + uint16(player.bet)
+						player.score += f.round_points + f.trick_points*uint16(player.bet)
 					}
 				}
 				f.dealNextRound()
@@ -279,6 +308,8 @@ func (f *GameFiddlesticks) ToFrontend(client_id uint64, is_viewer bool) gin.H {
 		"turn":              f.turn,
 		"betting":           f.betting,
 		"trick_leader":      f.trick_leader,
+		"round_points":      f.round_points,
+		"trick_points":      f.trick_points,
 	}
 	if f.game != nil {
 		game["game_base"] = f.game.ToFrontend(client_id, is_viewer)
@@ -338,6 +369,7 @@ func (f *GameFiddlesticks) dealNextRound() {
 				winner_message += ", "
 			}
 		}
+		winner_message += " with " + strconv.Itoa(int(winning_score)) + " points"
 		fmt.Println(winner_message)
 		f.game.EndGame()
 		return

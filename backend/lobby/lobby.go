@@ -25,7 +25,6 @@ type Lobby struct {
 	RemoveClient        chan *Client
 	CreateRoom          chan *Client
 	RenameRoom          chan *LobbyRoom
-	UpdateSettings      chan *SettingsRoom
 	KickClientFromRoom  chan *ClientRoom
 	PromotePlayerInRoom chan *ClientRoom
 	RoomSetViewer       chan *ClientRoom
@@ -46,18 +45,6 @@ func MakeClientRoom(client *Client, room *LobbyRoom) *ClientRoom {
 	return &ClientRoom{
 		client: client,
 		room:   room,
-	}
-}
-
-type SettingsRoom struct {
-	room     *LobbyRoom
-	settings *GameSettings
-}
-
-func MakeSettingsRoom(settings *GameSettings, room *LobbyRoom) *SettingsRoom {
-	return &SettingsRoom{
-		settings: settings,
-		room:     room,
 	}
 }
 
@@ -86,7 +73,6 @@ func CreateLobby() *Lobby {
 		RemoveClient:        make(chan *Client),
 		CreateRoom:          make(chan *Client),
 		RenameRoom:          make(chan *LobbyRoom),
-		UpdateSettings:      make(chan *SettingsRoom),
 		KickClientFromRoom:  make(chan *ClientRoom),
 		PromotePlayerInRoom: make(chan *ClientRoom),
 		RoomSetViewer:       make(chan *ClientRoom),
@@ -111,8 +97,6 @@ func (l *Lobby) Run() {
 			l.createRoom(client)
 		case room := <-l.RenameRoom:
 			l.renameRoom(room)
-		case data := <-l.UpdateSettings:
-			data.room.updateSettings(data.settings)
 		case data := <-l.KickClientFromRoom:
 			data.room.kickClient(data.client)
 		case data := <-l.PromotePlayerInRoom:

@@ -303,7 +303,7 @@ func (c *Client) readMessages() {
 				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-settings-update-failed", Content: "Data in an improper context"}
 				break
 			}
-			c.lobby.UpdateSettings <- MakeSettingsRoom(&settings, room)
+			room.UpdateSettings <- &settings
 		case "room-launch":
 			room_id, err := strconv.Atoi(message.Data)
 			if err != nil || room_id < 1 {

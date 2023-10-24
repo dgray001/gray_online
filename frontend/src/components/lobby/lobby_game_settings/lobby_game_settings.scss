@@ -27,14 +27,30 @@ dwg-lobby-game-settings {
       line-height: 18px;
     }
 
+    label {
+      font-size: 0.8rem;
+    }
+
     .row-wrapper {
       display: flex;
       flex-flow: row nowrap;
       gap: 8px;
 
+      &.label-row {
+        margin-bottom: -10px;
+      }
+
       > * {
         flex: 1 0 0;
+        min-width: 0;
       }
+    }
+
+    #game-specific-settings {
+      display: flex;
+      flex-flow: column nowrap;
+      gap: 12px;
+      height: fit-content;
     }
   }
 }

@@ -1,3 +1,3 @@
 Online Games
 
-v0.2i: Updated room join logic
+v0.2j: Abstract rules for fiddlesticks

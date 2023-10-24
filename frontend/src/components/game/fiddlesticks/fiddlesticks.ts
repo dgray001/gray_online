@@ -23,6 +23,8 @@ export declare interface GameFiddlesticks {
   trump: StandardCard;
   trick_leader: number;
   trick: StandardCard[];
+  round_points: number;
+  trick_points: number;
 }
 
 /** Data describing a fiddlesticks player */
@@ -226,10 +228,10 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
             if (this.current_trick === this.game.round) {
               for (const [i, player] of this.game.players.entries()) {
                 if (player.bet === player.tricks) {
-                  player.score += 10 + player.bet;
+                  player.score += this.game.round_points + this.game.trick_points * player.bet;
                   this.player_els[i].setScore(player.score);
-                  this.player_els[i].newRound();
                 }
+                this.player_els[i].newRound();
               }
               if (this.game.rounds_increasing && this.game.round === this.game.max_round) {
                 this.game.rounds_increasing = false;

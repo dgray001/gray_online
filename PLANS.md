@@ -1,5 +1,4 @@
 v0.3: flesh out fiddlesticks game
- k: alternative rules for fiddlesticks => abstract that section
  l: relaunch button in lobby to rejoin room
  m: lobby properly resets when game is over
  n: loaders for client requests in lobby: room-create, room-join, room-leave, room-rename

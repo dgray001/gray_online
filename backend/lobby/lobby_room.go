@@ -23,14 +23,16 @@ type LobbyRoom struct {
 	// TODO: move lobby room channels from lobby to lobby room
 	broadcast       chan lobbyMessage
 	JoinRoom        chan *ClientRoom
+	UpdateSettings  chan *GameSettings
 	PlayerConnected chan *Client
 	PlayerAction    chan game.PlayerAction
 }
 
 type GameSettings struct {
-	MaxPlayers uint8 `json:"max_players"`
-	MaxViewers uint8 `json:"max_viewers"`
-	GameType   uint8 `json:"game_type"`
+	MaxPlayers           uint8                  `json:"max_players"`
+	MaxViewers           uint8                  `json:"max_viewers"`
+	GameType             uint8                  `json:"game_type"`
+	GameSpecificSettings map[string]interface{} `json:"game_specific_settings"`
 }
 
 func CreateLobbyRoom(host *Client, room_id uint64, lobby *Lobby) *LobbyRoom {
@@ -48,6 +50,7 @@ func CreateLobbyRoom(host *Client, room_id uint64, lobby *Lobby) *LobbyRoom {
 		},
 		broadcast:       make(chan lobbyMessage),
 		JoinRoom:        make(chan *ClientRoom),
+		UpdateSettings:  make(chan *GameSettings),
 		PlayerConnected: make(chan *Client),
 		PlayerAction:    make(chan game.PlayerAction),
 	}
@@ -64,6 +67,8 @@ func (r *LobbyRoom) run() {
 			r.broadcastMessage(message)
 		case data := <-r.JoinRoom:
 			r.addClient(data.client, data.bool_flag)
+		case settings := <-r.UpdateSettings:
+			r.updateSettings(settings)
 		case client := <-r.PlayerConnected:
 			client.game = r.game
 			start_game := r.game.GetBase().PlayerConnected(client.client_id)
@@ -186,7 +191,10 @@ func (r *LobbyRoom) removeClient(c *Client, client_leaves bool) {
 		}
 	} else if r.game != nil {
 		r.game.PlayerDisconnected(c.client_id)
-		r.game.GetBase().PlayerDisconnected(c.client_id)
+		base := r.game.GetBase()
+		if base != nil {
+			r.game.GetBase().PlayerDisconnected(c.client_id)
+		}
 	}
 	delete(r.viewers, c.client_id)
 	client_id_string := strconv.Itoa(int(c.client_id))
@@ -263,7 +271,7 @@ func (r *LobbyRoom) launchGame(game_id uint64) game.Game {
 		fmt.Println("Cannot launch game of id", game_id, ": game not launchable")
 		return nil
 	}
-	base_game := game.CreateBaseGame(game_id, r.game_settings.GameType)
+	base_game := game.CreateBaseGame(game_id, r.game_settings.GameType, r.game_settings.GameSpecificSettings)
 	for _, player := range r.players {
 		base_game.Players[player.client_id] = game.CreatePlayer(player.client_id, player.nickname)
 	}
@@ -274,7 +282,8 @@ func (r *LobbyRoom) launchGame(game_id uint64) game.Game {
 	case 1:
 		r.game = fiddlesticks.CreateGame(base_game)
 	default:
-		break
+		fmt.Println("GameType not recognized", r.game_settings.GameType)
+		r.game = nil
 	}
 	if r.game == nil {
 		return nil
@@ -346,9 +355,10 @@ func (r *LobbyRoom) valid() bool {
 
 func (s *GameSettings) ToFrontend() gin.H {
 	return gin.H{
-		"game_type":   strconv.Itoa(int(s.GameType)),
-		"max_players": strconv.Itoa(int(s.MaxPlayers)),
-		"max_viewers": strconv.Itoa(int(s.MaxViewers)),
+		"game_type":              strconv.Itoa(int(s.GameType)),
+		"max_players":            strconv.Itoa(int(s.MaxPlayers)),
+		"max_viewers":            strconv.Itoa(int(s.MaxViewers)),
+		"game_specific_settings": s.GameSpecificSettings,
 	}
 }
 

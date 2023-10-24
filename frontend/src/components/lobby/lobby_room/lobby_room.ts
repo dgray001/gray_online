@@ -148,6 +148,7 @@ export class DwgLobbyRoom extends DwgElement {
     this.is_host = is_host;
     this.room = room;
     this.room_name.innerText = room.room_name;
+    this.lobby_game_settings.setSettings(room.game_settings);
     this.updateSettingsDependencies();
     this.num_players_current.innerText = room.players.size.toString();
     this.settings_game_status.innerText = game_launched ? GameStatusEnum.IN_PROGRESS : GameStatusEnum.NOT_STARTED;
@@ -234,6 +235,7 @@ export class DwgLobbyRoom extends DwgElement {
 
   clearRoom() {
     this.room = undefined;
+    this.lobby_game_settings.clearSettings();
     this.chatbox.clear();
     this.classList.remove('show');
   }

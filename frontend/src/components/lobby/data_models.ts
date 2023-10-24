@@ -1,3 +1,4 @@
+import {enumKeys} from "../../scripts/util";
 
 /** Interface describing messages sent from the server to the lobby */
 export declare interface ServerMessage {
@@ -57,6 +58,7 @@ export declare interface GameSettings {
   game_type: GameType;
   max_players: number;
   max_viewers: number;
+  game_specific_settings?: object;
 }
 
 /** Returns default settings */
