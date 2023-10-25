@@ -169,9 +169,9 @@ type UpdateMessage struct {
 
 func (u *UpdateMessage) toFrontend() gin.H {
 	return gin.H{
-		"id":      u.Id,
-		"kind":    u.Kind,
-		"content": u.Content,
+		"update_id": u.Id,
+		"kind":      u.Kind,
+		"content":   u.Content,
 	}
 }
 

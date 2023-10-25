@@ -123,8 +123,15 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
       }
       if (game.game_base.game_ended) {
         // TODO: show ended game state
+      } else {
+        this.setTrumpImage(game.trump);
       }
     }
+  }
+
+  setTrumpImage(trump: StandardCard) {
+    this.trump_card_img.src = cardToImagePath(trump);
+    this.trump_card_img.classList.add('show');
   }
 
   gameUpdate(update: UpdateMessage): void {
@@ -133,7 +140,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
         case "deal-round":
           const dealRoundData = update.update as DealRound;
           this.round_number.innerText = dealRoundData.round.toString();
-          this.trump_card_img.src = cardToImagePath(dealRoundData.trump);
+          this.setTrumpImage(dealRoundData.trump);
           this.game.trump = dealRoundData.trump;
           for (const [player_id, player_el] of this.player_els.entries()) {
             if (dealRoundData.dealer === player_id) {
@@ -245,6 +252,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
             this.game.trick = [];
             console.log(`Trick won by ${this.game.players[this.game.turn].player.nickname} with the ${cardToName(winning_card)}`);
             if (this.current_trick === this.game.round) {
+              this.trump_card_img.classList.remove('show');
               for (const [i, player] of this.game.players.entries()) {
                 if (player.bet === player.tricks) {
                   player.score += this.game.round_points + this.game.trick_points * player.bet;

@@ -1,3 +1,3 @@
 Online Games
 
-v0.2k: Initial rejoin room
+v0.2l: Fixed rejoin room bugs

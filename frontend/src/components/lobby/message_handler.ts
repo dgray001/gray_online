@@ -272,6 +272,12 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
       lobby.appendChild(message_dialog);
       console.log(message.content);
       lobby.refreshLobbyRooms();
+      switch(message.kind) {
+        case 'room-launch-failed':
+          lobby.lobby_room.launchFailed();
+        default:
+          break;
+      }
       break;
     default:
       console.log("Unknown message type", message.kind, "from", message.sender);

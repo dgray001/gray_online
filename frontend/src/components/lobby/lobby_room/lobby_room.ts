@@ -12,6 +12,8 @@ enum GameStatusEnum {
   NOT_STARTED = 'Game not started',
   LAUNCHING = 'Game launching ...',
   IN_PROGRESS = 'Game in progress',
+  LAUNCH_CANCELED = 'Game launch canceled',
+  LAUNCH_FAILED = 'Game launch failed',
 }
 
 export class DwgLobbyRoom extends DwgElement {
@@ -113,17 +115,17 @@ export class DwgLobbyRoom extends DwgElement {
     });
     this.settings_launch_button.addEventListener('click', () => {
       if (this.settings_launching) {
-        this.settings_launching = false;
-        this.settings_launch_button.innerText = 'Launch';
-        this.settings_launch_button.classList.remove('launching');
+        this.setLaunching(false);
+        this.settings_game_status.innerText = GameStatusEnum.LAUNCH_CANCELED;
         if (this.settings_launch_interval_id) {
           clearInterval(this.settings_launch_interval_id);
         }
+        this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {'detail': {
+          message: 'Game launch canceled',
+          sender: SERVER_CHAT_NAME,
+        }}));
       } else {
-        this.settings_launching = true;
-        this.settings_launch_button.innerText = 'Cancel';
-        this.settings_launch_button.classList.add('launching');
-        this.settings_game_status.innerText = GameStatusEnum.LAUNCHING;
+        this.setLaunching(true);
         const countdown = 5;
         this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {'detail': {
           message: `Game is launching in ${countdown} ...`,
@@ -148,6 +150,19 @@ export class DwgLobbyRoom extends DwgElement {
       this.dispatchEvent(new Event('rejoin_game'));
     });
     this.room_name.classList.add('show');
+  }
+
+  setLaunching(launching: boolean) {
+    this.settings_launching = launching;
+    if (launching) {
+      this.settings_launch_button.innerText = 'Cancel';
+      this.settings_launch_button.classList.add('launching');
+      this.settings_game_status.innerText = GameStatusEnum.LAUNCHING;
+    } else {
+      this.settings_launch_button.innerText = 'Launch';
+      this.settings_launch_button.classList.remove('launching');
+      this.settings_launch_button.disabled = false;
+    }
   }
 
   setRoom(room: LobbyRoom, is_host: boolean) {
@@ -422,6 +437,23 @@ export class DwgLobbyRoom extends DwgElement {
     this.settings_game_status.innerText = GameStatusEnum.IN_PROGRESS;
     this.game_button_container.classList.remove('hide');
     this.settings_button_container.classList.add('hide');
+    this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {'detail': {
+      message: 'Game launched',
+      sender: SERVER_CHAT_NAME,
+    }}));
+  }
+
+  launchFailed() {
+    if (!this.room) {
+      return;
+    }
+    this.room.game_id = undefined;
+    this.setLaunching(false);
+    this.settings_game_status.innerText = GameStatusEnum.LAUNCH_FAILED;
+    this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {'detail': {
+      message: 'Game launch failed',
+      sender: SERVER_CHAT_NAME,
+    }}));
   }
 
   private openRename() {

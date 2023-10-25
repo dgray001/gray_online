@@ -1,15 +1,10 @@
 v0.3: flesh out fiddlesticks game
- l: rejoin room bugs:
-   => show trump card
-   => remove trump card at end of game
-   => can't seem to receive updates (check update applying logic)
-   => When rejoining seem to receive empty udpate ?? what's that about?
  m: lobby properly resets when game is over
  n: loaders for client requests in lobby: room-create, room-join, room-leave, room-rename
  o: beginnings of simple chat emojis and taunts
  p: player's button in abstract game header => opens abstract dialog box
- q-u: redo styling for desktop version of site
- v-z: create mobile version of site
+ q-u: redo styling for desktop version of fiddlesticks
+ v-z: create mobile version of site => add new mobile-oriented pages that you redirect to => like /lobby and /room/:id and etc.l..
 
 v0.4: launch risq
  - can launch a simple game of risq
