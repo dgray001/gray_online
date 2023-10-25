@@ -256,6 +256,15 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
           lobby.dispatchEvent(new CustomEvent('game_launched', {'detail': lobby.lobby_room.room}));
         }
       }
+      break; 
+    case 'room-game-over':
+      const game_over_room_id = parseInt(message.sender.replace('room-', ''));
+      if (game_over_room_id) {
+        lobby.lobby_rooms.gameOver(game_over_room_id);
+        if (game_over_room_id === lobby.connection_metadata.room_id) {
+          lobby.lobby_room.gameOver();
+        }
+      }
       break;
     case 'room-join-failed':
     case 'room-refresh-failed':
@@ -275,6 +284,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
       switch(message.kind) {
         case 'room-launch-failed':
           lobby.lobby_room.launchFailed();
+          break;
         default:
           break;
       }

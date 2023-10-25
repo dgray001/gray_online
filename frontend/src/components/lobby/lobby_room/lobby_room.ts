@@ -14,6 +14,7 @@ enum GameStatusEnum {
   IN_PROGRESS = 'Game in progress',
   LAUNCH_CANCELED = 'Game launch canceled',
   LAUNCH_FAILED = 'Game launch failed',
+  GAME_OVER = 'Game over',
 }
 
 export class DwgLobbyRoom extends DwgElement {
@@ -158,10 +159,12 @@ export class DwgLobbyRoom extends DwgElement {
       this.settings_launch_button.innerText = 'Cancel';
       this.settings_launch_button.classList.add('launching');
       this.settings_game_status.innerText = GameStatusEnum.LAUNCHING;
+      this.settings_settings_button.disabled = true;
     } else {
       this.settings_launch_button.innerText = 'Launch';
       this.settings_launch_button.classList.remove('launching');
       this.settings_launch_button.disabled = false;
+      this.settings_settings_button.disabled = false;
     }
   }
 
@@ -179,13 +182,20 @@ export class DwgLobbyRoom extends DwgElement {
       this.game_button_container.classList.remove('hide');
     } else {
       this.game_button_container.classList.add('hide');
-      if (is_host) {
-        this.rename_room.classList.add('show');
-        this.settings_button_container.classList.remove('hide');
+    }
+    if (is_host) {
+      this.rename_room.classList.add('show');
+      this.settings_button_container.classList.remove('hide');
+      if (game_launched) {
+        this.settings_launch_button.disabled = true;
+        this.settings_settings_button.disabled = true;
       } else {
-        this.rename_room.classList.remove('show');
-        this.settings_button_container.classList.add('hide');
+        this.settings_launch_button.disabled = false;
+        this.settings_settings_button.disabled = false;
       }
+    } else {
+      this.rename_room.classList.remove('show');
+      this.settings_button_container.classList.add('hide');
     }
     this.host_container.replaceChildren(this.getUserElement(room.host, false, true));
     const player_els = [];
@@ -452,6 +462,25 @@ export class DwgLobbyRoom extends DwgElement {
     this.settings_game_status.innerText = GameStatusEnum.LAUNCH_FAILED;
     this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {'detail': {
       message: 'Game launch failed',
+      sender: SERVER_CHAT_NAME,
+    }}));
+  }
+
+  gameOver() {
+    if (!this.room) {
+      return;
+    }
+    this.room.game_id = undefined;
+    this.settings_game_status.innerText = GameStatusEnum.GAME_OVER;
+    this.game_button_container.classList.add('hide');
+    if (this.is_host) {
+      this.settings_button_container.classList.remove('hide');
+      this.settings_launch_button.innerText = 'Launch';
+      this.settings_launch_button.disabled = false;
+      this.settings_settings_button.disabled = false;
+    }
+    this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {'detail': {
+      message: 'Game over',
       sender: SERVER_CHAT_NAME,
     }}));
   }

@@ -1,3 +1,3 @@
 Online Games
 
-v0.2l: Fixed rejoin room bugs
+v0.2m: Lobby resets when game over

@@ -2,6 +2,7 @@ import {DwgElement} from '../../dwg_element';
 import {apiGet} from '../../../scripts/api';
 import {createLock} from '../../../scripts/util';
 import {GameSettings, LobbyRoom, LobbyRoomFromServer, LobbyUser, serverResponseToRoom} from '../data_models';
+import {GameBase} from '../../game/data_models';
 
 import {DwgRoomSelector} from './room_selector/room_selector';
 import html from './lobby_rooms.html';
@@ -217,6 +218,15 @@ export class DwgLobbyRooms extends DwgElement {
       return;
     }
     room.game_id = game_id;
+    this.roomUpdated(room);
+  }
+
+  gameOver(room_id: number) {
+    const room = this.getRoom(room_id);
+    if (!room) {
+      return;
+    }
+    room.game_id = undefined;
     this.roomUpdated(room);
   }
 }

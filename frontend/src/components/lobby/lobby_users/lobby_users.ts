@@ -101,7 +101,7 @@ export class DwgLobbyUsers extends DwgElement {
 
   leaveRoom(user_id: number) {
     const user = this.getUser(user_id);
-    if (user) {
+    if (!!user) {
       user.room_id = undefined;
     }
   }

@@ -266,7 +266,7 @@ func (l *Lobby) removeRoom(room *LobbyRoom) {
 			viewer.lobby_room = nil
 		}
 	}
-	debug.PrintStack() // for some reason clients are being kicked when game launches
+	debug.PrintStack() // TODO: for some reason clients are being kicked when game launches
 	l.broadcastMessage(lobbyMessage{Sender: "server", Kind: "room-closed", Data: id_string})
 }
 
@@ -276,9 +276,12 @@ func (l *Lobby) leaveRoom(data *ClientRoom) {
 
 var (
 	client_to_lobby_messages = []string{"lobby-joined", "lobby-left", "lobby-chat"}
-	lobby_messages           = []string{"room-created", "room-closed", "room-joined-player",
-		"room-joined-viewer", "room-left", "room-renamed", "room-kicked", "room-promoted",
-		"ping-update", "room-settings-updated", "room-viewer-set", "room-player-set", "room-launched"}
+	lobby_messages           = []string{
+		"room-created", "room-closed", "room-joined-player", "room-joined-viewer",
+		"room-left", "room-renamed", "room-kicked", "room-promoted", "ping-update",
+		"room-settings-updated", "room-viewer-set", "room-player-set", "room-launched",
+		"room-game-over",
+	}
 	client_to_room_messages = []string{"room-chat"}
 	room_messages           = []string{}
 )

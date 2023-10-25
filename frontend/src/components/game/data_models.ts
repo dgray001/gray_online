@@ -35,7 +35,6 @@ export declare interface GameFromServer {
 
 /** Converts a GameFromServer to a proper frontend game object */
 export function serverResponseToGame(gameFromServer: GameFromServer, client_id: number): Game {
-  console.log("1", gameFromServer, client_id);
   const players = new Map(gameFromServer.game_base.players.map(player => [player.client_id, player]));
   const viewers = new Map(gameFromServer.game_base.viewers.map(viewer => [viewer.client_id, viewer]));
   const game = {
@@ -52,13 +51,10 @@ export function serverResponseToGame(gameFromServer: GameFromServer, client_id: 
         undefined,
     },
   } as Game;
-  console.log("2", players);
   const updates = players.get(client_id)?.updates ?? viewers.get(client_id)?.updates;
-  console.log("3", updates)
   if (updates !== undefined) {
     game.game_base.updates = new Map(updates.map(update => [update.update_id, update]));
     game.game_base.last_continuous_update_id = updates.length;
-    console.log("4", game.game_base.updates, game.game_base.last_continuous_update_id);
   }
   return game;
 }

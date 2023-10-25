@@ -140,6 +140,10 @@ export class DwgGame extends DwgElement {
       this.game_el = game_el as unknown as GameComponent;
       this.game_el.initialize(this.game, this.connection_metadata.client_id);
       game_el.addEventListener('game_update', (e: CustomEvent<string>) => {
+        if (this.game.game_base.game_ended) {
+          console.log('Game already over');
+          return;
+        }
         console.log('Sending game update', e.detail);
         this.socket.send(e.detail);
       });

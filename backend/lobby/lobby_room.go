@@ -79,6 +79,7 @@ func (r *LobbyRoom) run() {
 				for client_id, player := range r.players {
 					go player.clientGameUpdates(r.game.GetBase().Players[client_id], room_id_string)
 				}
+				go r.gameBaseUpdates(r.game.GetBase(), room_id_string)
 				r.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "game-start"})
 				r.game.StartGame()
 			}
@@ -103,6 +104,16 @@ func (c *Client) clientGameUpdates(player *game.Player, room_id_string string) {
 				c.send_message <- lobbyMessage{Sender: "room-" + room_id_string + "-" + message_id_string,
 					Kind: "game-update", Data: message.Kind, Content: string(encoded_message)}
 			}
+		}
+	}
+}
+
+func (r *LobbyRoom) gameBaseUpdates(game_base *game.GameBase, room_id_string string) {
+	for {
+		select {
+		case <-game_base.GameEndedChannel:
+			r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-game-over"})
+			r.game = nil
 		}
 	}
 }
@@ -273,7 +284,7 @@ func (r *LobbyRoom) launchGame(game_id uint64) game.Game {
 	}
 	base_game := game.CreateBaseGame(game_id, r.game_settings.GameType, r.game_settings.GameSpecificSettings)
 	for _, player := range r.players {
-		base_game.Players[player.client_id] = game.CreatePlayer(player.client_id, player.nickname)
+		base_game.Players[player.client_id] = game.CreatePlayer(player.client_id, player.nickname, base_game)
 	}
 	for _, viewer := range r.viewers {
 		base_game.Viewers[viewer.client_id] = game.CreateViewer(viewer.client_id, viewer.nickname)

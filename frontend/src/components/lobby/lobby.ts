@@ -1,6 +1,7 @@
 import {DwgElement} from '../dwg_element';
 import {clickButton} from '../../scripts/util';
 import {ChatMessage, DwgChatbox, SERVER_CHAT_NAME} from '../chatbox/chatbox';
+import {GameBase} from '../game/data_models';
 
 import {DwgLobbyUsers} from './lobby_users/lobby_users';
 import {DwgLobbyRooms, JoinRoomData} from './lobby_rooms/lobby_rooms';

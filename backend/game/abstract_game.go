@@ -17,6 +17,7 @@ type GameBase struct {
 	game_ended           bool
 	player_updates       []*PlayerAction
 	GameSpecificSettings map[string]interface{}
+	GameEndedChannel     chan string
 }
 
 func CreateBaseGame(game_id uint64, game_type uint8, game_specific_settings map[string]interface{}) *GameBase {
@@ -28,6 +29,7 @@ func CreateBaseGame(game_id uint64, game_type uint8, game_specific_settings map[
 		game_started:         false,
 		game_ended:           false,
 		GameSpecificSettings: game_specific_settings,
+		GameEndedChannel:     make(chan string),
 	}
 }
 
@@ -126,6 +128,7 @@ func (g *GameBase) EndGame() {
 		fmt.Fprintln(os.Stderr, "Game already ended")
 	}
 	g.game_ended = true
+	g.GameEndedChannel <- ""
 }
 
 func (g *GameBase) ToFrontend(client_id uint64, is_viewer bool) gin.H {
@@ -182,9 +185,10 @@ type Player struct {
 	connected   bool
 	Updates     chan *UpdateMessage
 	update_list []*UpdateMessage
+	base_game   *GameBase
 }
 
-func CreatePlayer(client_id uint64, nickname string) *Player {
+func CreatePlayer(client_id uint64, nickname string, base_game *GameBase) *Player {
 	return &Player{
 		client_id:   client_id,
 		Player_id:   -1,
@@ -192,10 +196,19 @@ func CreatePlayer(client_id uint64, nickname string) *Player {
 		connected:   false,
 		Updates:     make(chan *UpdateMessage),
 		update_list: []*UpdateMessage{},
+		base_game:   base_game,
 	}
 }
 
 func (p *Player) AddUpdate(update *UpdateMessage) {
+	if !p.base_game.game_started {
+		fmt.Fprintln(os.Stderr, "Can't add update to game that isn't started")
+		return
+	}
+	if p.base_game.game_ended {
+		fmt.Fprintln(os.Stderr, "Can't add update to game that is ended")
+		return
+	}
 	update.Id = len(p.update_list) + 1 // start at 1
 	p.update_list = append(p.update_list, update)
 	p.Updates <- update
