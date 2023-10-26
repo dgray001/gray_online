@@ -199,7 +199,7 @@ export class DwgGame extends DwgElement {
     if (!this.socketActive()) {
       return;
     }
-    if (this.game?.game_base?.game_started) {
+    if (this.game?.game_base?.game_started && !this.game?.game_base?.game_ended) {
       this.socket.send(createMessage(
         `client-${this.connection_metadata.client_id}`,
         'game-resend-last-update',

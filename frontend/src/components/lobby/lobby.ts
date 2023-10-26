@@ -186,9 +186,9 @@ export class DwgLobby extends DwgElement {
 
   async refreshLobbyRooms() {
     const current_room = await this.lobby_rooms.refreshRooms(this.connection_metadata.client_id ?? -1);
-    if (!!current_room) {
+    if (!!current_room && current_room.room_id !== this.lobby_room.room?.room_id) {
       this.enterRoom(current_room, current_room.host.client_id === (this.connection_metadata.client_id ?? -1));
-    } else {
+    } else if (!current_room && !this.lobby_room.room) {
       this.leaveRoom();
     }
   }
@@ -251,8 +251,8 @@ export class DwgLobby extends DwgElement {
       return
     }
     this.waitingOnConnectedTimes = 2;
-    //this.refreshLobbyRooms();
     this.lobby_users.refreshUsers();
+    this.refreshLobbyRooms();
     if (this.lobby_room_wrapper.classList.contains('show')) {
       this.socket.send(createMessage(
         `client-${this.connection_metadata.client_id}`,

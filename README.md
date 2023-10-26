@@ -1,3 +1,3 @@
 Online Games
 
-v0.2m: Lobby resets when game over
+v0.2n: Chat emoticon conversion

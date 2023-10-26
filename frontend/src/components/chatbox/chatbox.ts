@@ -1,5 +1,6 @@
 import {DwgElement} from '../dwg_element';
 import {clickButton} from '../../scripts/util';
+import {emoticons} from '../../data/emoji_data';
 
 import html from './chatbox.html';
 import './chatbox.scss';
@@ -20,6 +21,8 @@ export class DwgChatbox extends DwgElement {
   send_chat: HTMLButtonElement;
   new_messages_button: HTMLButtonElement;
   new_messages_number: HTMLSpanElement;
+
+  convert_emoticons = true;
 
   constructor() {
     super();
@@ -105,7 +108,13 @@ export class DwgChatbox extends DwgElement {
     if (this.inputEmpty()) {
       return;
     }
-    const chat_event = new CustomEvent('chat_sent', {'detail': this.getInput()});
+    const chat_input = this.getInput();
+    if (this.convert_emoticons) {
+      for (const [emoticon, emoji] of emoticons) {
+        chat_input.message = chat_input.message.replace(emoticon, emoji);
+      }
+    }
+    const chat_event = new CustomEvent('chat_sent', {'detail': chat_input});
     this.dispatchEvent(chat_event);
   }
 

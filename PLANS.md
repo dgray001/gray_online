@@ -1,6 +1,4 @@
 v0.3: flesh out fiddlesticks game
- n: loaders for client requests in lobby: room-create, room-join, room-leave, room-rename
- o: beginnings of simple chat emojis and taunts
  p: player's button in abstract game header => opens abstract dialog box
  q-u: redo styling for desktop version of fiddlesticks
  v-z: create mobile version of site => add new mobile-oriented pages that you redirect to => like /lobby and /room/:id and etc.l..
@@ -12,6 +10,7 @@ v0.5: save risq game
  - need fully functioning db and user profiles
 
 P3/P4:
+ - Loaders for client requests in lobby: room-create, room-join, room-leave, room-rename
  - Frontend animations
  - Chat updates have an id that ensures the correct order (can request missing)
  - Add abstract dialog then add confirm dialog for confirming actions
@@ -21,3 +20,6 @@ P3/P4:
  - When dc'ed the AI takes over temporarily => if dc'ed for too long the AI takes over
  - Can launch game with AI
  - Proper viewer logic at every step
+ - Chat emoji selector
+ - Chat taunts
+ - Can turn off emoticon converter in chat

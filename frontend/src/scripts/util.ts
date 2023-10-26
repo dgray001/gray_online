@@ -144,3 +144,12 @@ export function createLock() {
     return delayed_promise;
   };
 }
+
+/** Downloads input string as file */
+export function download(content: string, fileName: string, contentType = 'text/plain') {
+  var a = document.createElement("a");
+  var file = new Blob([content], {type: contentType});
+  a.href = URL.createObjectURL(file);
+  a.download = fileName;
+  a.click();
+}
