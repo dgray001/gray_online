@@ -185,11 +185,12 @@ export class DwgLobbyRoom extends DwgElement {
     }
     if (is_host) {
       this.rename_room.classList.add('show');
-      this.settings_button_container.classList.remove('hide');
       if (game_launched) {
+        this.settings_button_container.classList.add('hide');
         this.settings_launch_button.disabled = true;
         this.settings_settings_button.disabled = true;
       } else {
+        this.settings_button_container.classList.remove('hide');
         this.settings_launch_button.disabled = false;
         this.settings_settings_button.disabled = false;
       }

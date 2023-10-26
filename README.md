@@ -1,3 +1,3 @@
 Online Games
 
-v0.2n: Chat emoticon conversion
+v0.2o: Added confirm dialog

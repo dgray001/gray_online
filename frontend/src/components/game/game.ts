@@ -11,6 +11,7 @@ import html from './game.html';
 import './game.scss';
 import './fiddlesticks/fiddlesticks';
 import './game_history_dialog/game_history_dialog';
+import '../dialog_box/confirm_dialog/confirm_dialog';
 
 export class DwgGame extends DwgElement {
   client_name_string: HTMLSpanElement;
@@ -82,8 +83,12 @@ export class DwgGame extends DwgElement {
       // TODO: game players dialog box
     });
     this.button_exit.addEventListener('click', () => {
-      // TODO: add confirm dialog
-      this.dispatchEvent(new Event("exit_game"));
+      const confirm_dialog = document.createElement('dwg-confirm-dialog');
+      confirm_dialog.setData({question: 'Are you sure you want to exit?'});
+      confirm_dialog.addEventListener('confirmed', () => {
+        this.dispatchEvent(new Event('exit_game'));
+      });
+      this.appendChild(confirm_dialog);
     });
     setInterval(() => {
       this.pingServer();

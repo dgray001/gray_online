@@ -9,4 +9,12 @@
   right: 0;
   top: 0;
   z-index: 100;
+
+  #wrapper {
+    background-color: rgb(80, 80, 80);
+    box-shadow: 0px 0px 3px 3px rgba(200, 200, 200, 0.8);
+    color: white;
+    padding: 1em;
+    position: relative;
+  }
 }

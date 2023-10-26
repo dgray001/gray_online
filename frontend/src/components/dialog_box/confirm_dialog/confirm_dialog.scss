@@ -1,4 +1,4 @@
-dwg-message-dialog {
+dwg-confirm-dialog {
   #wrapper {
     align-items: center;
     display: flex;
@@ -10,11 +10,18 @@ dwg-message-dialog {
     min-height: 220px;
     min-width: 220px;
     width: 35vw;
-
-    #ok-button {
-      color: black;
+  
+    > #button-wrapper {
+      align-items: center;
+      display: flex;
+      flex-flow: row nowrap;
+      gap: 0.5em;
       margin-top: auto;
-      padding: 0.3em 0.6em;
+
+      > buttom {
+        color: black;
+        padding: 0.3em 0.6em;
+      }
     }
   }
 }

@@ -1,7 +1,13 @@
 v0.3: flesh out fiddlesticks game
- p: player's button in abstract game header => opens abstract dialog box
- q-u: redo styling for desktop version of fiddlesticks
- v-z: create mobile version of site => add new mobile-oriented pages that you redirect to => like /lobby and /room/:id and etc.l..
+ p: Universal font sizes, button, and form field styles
+ q: Mobile lobby page
+ r: Mobile lobby component
+ s: Mobile lobby chatbox component
+ t: Mobile lobby users component
+ u: Mobile lobby room component
+ v-w: Desktop fiddlesticks layout/styles
+ x: Mobile game styles
+ y-z: Mobile fiddlesticks styles
 
 v0.4: launch risq
  - can launch a simple game of risq
@@ -10,6 +16,7 @@ v0.5: save risq game
  - need fully functioning db and user profiles
 
 P3/P4:
+ - Player's dialog box in DwgGame
  - Loaders for client requests in lobby: room-create, room-join, room-leave, room-rename
  - Frontend animations
  - Chat updates have an id that ensures the correct order (can request missing)
