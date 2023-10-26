@@ -1,9 +1,10 @@
 dwg-room-selector {
-  --height: 42px;
+  --font-size: var(--font-size-medium);
+  --height: calc(2 * var(--font-size));
   background-color: transparent;
   display: flex;
   flex-flow: row nowrap;
-  font-size: calc(0.5 * var(--height));
+  font-size: var(--font-size);
   height: var(--height);
   line-height: var(--height);
   position: relative;
@@ -12,18 +13,18 @@ dwg-room-selector {
   &:hover {
     background-color: rgba(180, 180, 180, 0.15);
 
-    #room-buttons {
+    > #room-buttons {
       display: flex;
     }
   }
 
-  #room-players {
+  > #room-players {
     margin-left: 0.3em;
     text-align: left;
     width: 3em;
   }
 
-  #room-game {
+  > #room-game {
     --width: 8em;
     margin-left: 1em;
     max-width: var(--width);
@@ -32,11 +33,11 @@ dwg-room-selector {
     width: var(--width);
   }
 
-  #room-name {
+  > #room-name {
     margin-left: 1em;
   }
 
-  #room-buttons {
+  > #room-buttons {
     --margin: 6px;
     bottom: var(--margin);
     display: none;
@@ -64,6 +65,26 @@ dwg-room-selector {
       &:active {
         background-color: rgba(230, 230, 230, 0.7);
       }
+    }
+  }
+}
+
+body.mobile {
+  dwg-room-selector {
+    --font-size: var(--font-size-small);
+
+    > #room-players {
+      margin-left: 0.2em;
+      width: 2em;
+    }
+
+    > #room-game {
+      --width: 7em;
+      margin-left: 0.4em;
+    }
+  
+    > #room-name {
+      margin-left: 0.4em;
     }
   }
 }

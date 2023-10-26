@@ -3,17 +3,21 @@ import {DwgLobby} from '../lobby/lobby';
 import {DwgLobbyConnector} from '../lobby/lobby_connector/lobby_connector';
 import {DwgGame} from '../game/game';
 import {LobbyRoom} from '../lobby/data_models';
+import {clientOnMobile} from '../../scripts/util';
+
+import html from './page_home.html';
+
+import './page_home.scss';
 import '../lobby/lobby';
 import '../game/game';
 import '../lobby/lobby_connector/lobby_connector';
-
-import html from './page_home.html';
-import './page_home.scss';
 
 export class DwgPageHome extends DwgElement {
   lobby: DwgLobby;
   game: DwgGame;
   lobby_connector: DwgLobbyConnector;
+
+  client_on_mobile = false;
 
   constructor() {
     super();
@@ -24,6 +28,10 @@ export class DwgPageHome extends DwgElement {
   }
 
   protected override parsedCallback(): void {
+    this.client_on_mobile = clientOnMobile();
+    if (this.client_on_mobile) {
+      document.body.classList.add('mobile');
+    }
     this.lobby_connector.addEventListener('submitted', () => {
       const nickname = this.lobby_connector.nickname.value;
       let client_id_time = 0;

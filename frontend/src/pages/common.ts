@@ -1,4 +1,4 @@
 // Script run by all pages
 
-// global style
+// Global style
 import '../styles.scss';

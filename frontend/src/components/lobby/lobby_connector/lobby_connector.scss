@@ -21,15 +21,33 @@ dwg-lobby-connector {
     width: 300px;
 
     #nickname {
-      font-size: 24px;
+      font-size: var(--font-size-large);
       margin-top: 20px;
       width: 290px;
     }
 
     #connect-button {
-      font-size: 24px;
+      font-size: var(--font-size-large);
       margin-top: 50px;
       width: 290px;
+    }
+  }
+}
+
+body.mobile {
+  dwg-lobby-connector {
+    #card {
+      box-sizing: border-box;
+      left: 6px;
+      width: calc(100% - 12px);
+
+      #nickname {
+        width: calc(100% - 24px);
+      }
+  
+      #connect-button {
+        width: calc(100% - 24px);
+      }
     }
   }
 }

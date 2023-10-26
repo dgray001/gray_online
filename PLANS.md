@@ -1,8 +1,4 @@
 v0.3: flesh out fiddlesticks game
- q: Mobile lobby page
- r: Mobile lobby component
- s: Mobile lobby chatbox component
- t: Mobile lobby users component
  u: Mobile lobby room component
  v-w: Desktop fiddlesticks layout/styles
  x: Mobile game styles

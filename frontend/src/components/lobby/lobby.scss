@@ -2,6 +2,7 @@ dwg-lobby {
   --name-header-height: calc(1.8 * var(--font-size-medium));
   --buttons-height: calc(1.8 * var(--font-size-large));
   --chat-height: calc(min(450px, max(180px, 25vh)));
+  --lobby-users-width: 250px;
 
   background-color: rgb(20, 60, 120);
   display: flex;
@@ -11,7 +12,7 @@ dwg-lobby {
     display: none;
   }
 
-  #page-header {
+  > #page-header {
     background-color: rgb(0, 30, 60);
     box-sizing: border-box;
     display: block;
@@ -28,7 +29,7 @@ dwg-lobby {
     }
   }
 
-  #buttons {
+  > #buttons {
     background-color: rgb(10, 50, 100);
     border-bottom: 2px solid black;
     box-sizing: border-box;
@@ -65,25 +66,31 @@ dwg-lobby {
         border-radius: 8px;
         transition: none;
       }
+
+      &#lobby-users-button {
+        display: none;
+        margin-left: auto;
+        z-index: 2;
+      }
     }
   }
 
-  #horizontal-container {
+  > #horizontal-container {
     display: flex;
     flex-flow: row nowrap;
     flex: 1 0 0;
     width: 100%;
 
-    #vertical-container {
+    > #vertical-container {
       display: flex;
       flex-flow: column nowrap;
       flex: 1 0 0;
       height: 100%;
 
-      #lobby-rooms {
+      > #lobby-rooms {
         box-sizing: border-box;
         flex: 1 0 0;
-        padding: 12px;
+        padding: 0.5em;
       }
 
       #chatbox {
@@ -91,20 +98,30 @@ dwg-lobby {
         height: var(--chat-height);
         max-height: var(--chat-height);
         min-height: var(--chat-height);
-        padding: 12px;
+        padding: 0.5em;
       }
     }
 
-    #lobby-users {
+    > #lobby-users-backdrop {
+      background-color: rgba(150, 150, 150, 0.5);
+      display: none;
+      height: 100vh;
+      left: 0px;
+      position: absolute;
+      top: 0px;
+      width: 100vw;
+    }
+
+    > #lobby-users {
       background-color: rgb(10, 30, 50);
       box-sizing: border-box;
       height: 100%;
       padding: 8px;
-      width: 250px;
+      width: var(--lobby-users-width);
     }
   }
 
-  #lobby-room-wrapper {
+  > #lobby-room-wrapper {
     background-color: rgba(150, 150, 150, 0.5);
     bottom: 0;
     left: 0;
@@ -125,7 +142,7 @@ dwg-lobby {
     }
   }
 
-  #lobby-connected-wrapper {
+  > #lobby-connected-wrapper {
     align-items: center;
     background-color: rgba(150, 150, 150, 0.5);
     bottom: 0;
@@ -148,6 +165,36 @@ dwg-lobby {
   &.connector-open {
     #connecting-message {
       display: none;
+    }
+  }
+}
+
+body.mobile {
+  dwg-lobby {
+    > #buttons {
+      > #lobby-users-button {
+        display: block;
+      }
+    }
+
+    > #horizontal-container {
+      width: calc(100% + var(--lobby-users-width));
+
+      > #lobby-users-backdrop {
+        &.show {
+          display: block;
+        }
+      }
+
+      > #lobby-users {
+        left: 0px;
+        position: relative;
+        transition: left 400ms ease-in-out;
+
+        &.show {
+          left: calc(-1 * var(--lobby-users-width));
+        }
+      }
     }
   }
 }

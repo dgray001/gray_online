@@ -26,6 +26,8 @@ export class DwgLobby extends DwgElement {
   lobby_users: DwgLobbyUsers;
   lobby_room_wrapper: HTMLDivElement;
   lobby_room: DwgLobbyRoom;
+  lobby_users_button: HTMLButtonElement;
+  lobby_users_backdrop: HTMLDivElement;
 
   socket: WebSocket;
   connection_metadata: ConnectionMetadata = {nickname: "Anonymous", ping: 0};
@@ -42,10 +44,12 @@ export class DwgLobby extends DwgElement {
     this.configureElement('lobby_users');
     this.configureElement('lobby_room_wrapper');
     this.configureElement('lobby_room');
+    this.configureElement('lobby_users_button');
+    this.configureElement('lobby_users_backdrop');
   }
 
   protected override parsedCallback(): void {
-    this.chatbox.setPlaceholder('Chat with the entire lobby');
+    this.chatbox.setPlaceholder('Chat with entire lobby');
     clickButton(this.refresh_lobby_button, async () => {
       await this.refreshLobbyRooms();
     });
@@ -133,6 +137,14 @@ export class DwgLobby extends DwgElement {
     });
     this.lobby_room.addEventListener('rejoin_game', () => {
       this.dispatchEvent(new CustomEvent('rejoin_game', {'detail': this.lobby_room.room}));
+    });
+    this.lobby_users_button.addEventListener('click', () => {
+      this.lobby_users.classList.toggle('show');
+      this.lobby_users_backdrop.classList.toggle('show');
+    });
+    this.lobby_users_backdrop.addEventListener('click', () => {
+      this.lobby_users.classList.remove('show');
+      this.lobby_users_backdrop.classList.remove('show');
     });
     this.refreshLobbyRooms();
     this.lobby_users.refreshUsers();

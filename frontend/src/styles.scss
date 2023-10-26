@@ -7,6 +7,16 @@ body {
   --font-size-small: calc(10px + 0.45vw);
   --font-size-smaller: calc(8px + 0.4vw);
 
+  &.mobile {
+    --font-size-title: calc(18px + 3vw);
+    --font-size-largest: calc(17px + 2.5vw);
+    --font-size-larger: calc(16px + 2vw);
+    --font-size-large: calc(16px + 1.5vw);
+    --font-size-medium: calc(14px + 1vw);
+    --font-size-small: calc(12px + 0.75vw);
+    --font-size-smaller: calc(10px + 0.5vw);
+  }
+
   background-color: black;
   color: white;
   font-family: "Fira Sans", sans-serif;
@@ -25,6 +35,7 @@ body {
     box-shadow: none;
     box-sizing: border-box;
     outline: none;
+    user-select: none;
 
     &:hover {
       background-color: rgb(200, 200, 200);
