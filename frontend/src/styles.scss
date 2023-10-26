@@ -1,4 +1,12 @@
 body {
+  --font-size-title: calc(14px + 2.8vw);
+  --font-size-largest: calc(12px + 2vw);
+  --font-size-larger: calc(12px + 1.5vw);
+  --font-size-large: calc(12px + 1vw);
+  --font-size-medium: calc(12px + 0.5vw);
+  --font-size-small: calc(10px + 0.45vw);
+  --font-size-smaller: calc(8px + 0.4vw);
+
   background-color: black;
   color: white;
   font-family: "Fira Sans", sans-serif;
@@ -6,6 +14,52 @@ body {
   min-height: 100vh;
   min-width: 100%;
   padding: 0;
+
+  button {
+    background-color: rgb(180, 180, 180);
+    border-bottom-color: rgb(130, 130, 130);
+    border-left-color: rgb(230, 230, 230);
+    border-right-color: rgb(130, 130, 130);
+    border-top-color: rgb(230, 230, 230);
+    border-width: 1.5px;
+    box-shadow: none;
+    box-sizing: border-box;
+    outline: none;
+
+    &:hover {
+      background-color: rgb(200, 200, 200);
+    }
+
+    &:active {
+      background-color: rgb(150, 150, 150);
+      border-bottom-color: rgb(230, 230, 230);
+      border-left-color: rgb(130, 130, 130);
+      border-right-color: rgb(230, 230, 230);
+      border-top-color: rgb(130, 130, 130);
+    }
+  }
+
+  input {
+    background-color: rgb(235, 235, 235);
+    border: 1px rgba(0, 0, 0, 0.5) solid;
+    box-shadow: none;
+    box-sizing: border-box;
+    color: black;
+    font-size: var(--font-size-medium);
+    line-height: var(--font-size-medium);
+    outline: none;
+
+    &:hover {
+      background-color: rgb(240, 240, 240);
+      border: 1px rgb(0, 0, 0) solid;
+    }
+
+    &:active, &:focus {
+      background-color: rgb(250, 250, 250);
+      border: 1px rgb(0, 0, 0) solid;
+      outline: 2px solid rgba(0, 0, 0, 0.5);
+    }
+  }
 
   ::-webkit-scrollbar {
     width: 7px;

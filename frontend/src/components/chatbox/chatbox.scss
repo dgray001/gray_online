@@ -1,5 +1,5 @@
 dwg-chatbox {
-  --input-box-height: 35px;
+  --input-box-height: calc(2 * var(--font-size-medium));
   background-color: rgb(200, 200, 200);
   color: black;
   display: block;
@@ -9,6 +9,7 @@ dwg-chatbox {
   #chat-container {
     display: flex;
     flex-flow: column nowrap;
+    font-size: var(--font-size-small);
     height: calc(100% - var(--input-box-height));
     overflow-wrap: anywhere;
     overflow-y: scroll;
@@ -80,7 +81,7 @@ dwg-chatbox {
 
   #input-container {
     --margin: 8px;
-    --send-button-width: 70px;
+    --send-button-width: calc(2.2 * var(--input-box-height));
     display: flex;
     flex-flow: row nowrap;
     height: var(--input-box-height);
@@ -93,14 +94,15 @@ dwg-chatbox {
     }
 
     #chat-input {
-      font-size: 1rem;
+      font-size: var(--font-size-medium);
+      flex: 0 0 calc(100% - var(--send-button-width) - 2px);
       line-height: var(--input-box-height);
       padding-left: 0.5em;
-      width: calc(100% - var(--send-button-width));
     }
 
     #send-chat {
       font-size: 1rem;
+      margin-left: auto;
       width: var(--send-button-width);
     }
   }
@@ -138,7 +140,7 @@ dwg-chatbox {
       }
 
       #send-chat {
-        background-color: transparent;
+        background-color: red;
         color: white;
       }
     }

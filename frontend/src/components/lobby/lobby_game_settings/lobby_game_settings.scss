@@ -23,8 +23,8 @@ dwg-lobby-game-settings {
     width: 50vw;
 
     * {
-      font-size: 18px;
-      line-height: 18px;
+      font-size: var(--font-size-medium);
+      line-height: var(--font-size-medium);
     }
 
     label {

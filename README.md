@@ -1,3 +1,3 @@
 Online Games
 
-v0.2o: Added confirm dialog
+v0.2p: Universal styles

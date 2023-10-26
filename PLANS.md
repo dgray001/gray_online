@@ -1,5 +1,4 @@
 v0.3: flesh out fiddlesticks game
- p: Universal font sizes, button, and form field styles
  q: Mobile lobby page
  r: Mobile lobby component
  s: Mobile lobby chatbox component
