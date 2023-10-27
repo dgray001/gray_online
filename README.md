@@ -1,3 +1,3 @@
 Online Games
 
-v0.2q: Mobile lobby
+v0.2r: Mobile lobby room

@@ -24,4 +24,8 @@ dwg-page-home {
   #game:not(.show) {
     display: none;
   }
+
+  #lobby-connector {
+    z-index: 5;
+  }
 }

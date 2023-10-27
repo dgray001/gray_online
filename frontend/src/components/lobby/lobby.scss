@@ -128,17 +128,19 @@ dwg-lobby {
     position: absolute;
     right: 0;
     top: 0;
+    z-index: 3;
 
     &:not(.show) {
       display: none;
     }
 
     #lobby-room {
+      --width: max(70vw, min(530px, calc(100vw - 16px)));
       box-sizing: border-box;
       height: 70vh;
       margin: 15vh auto;
       padding: 8px;
-      width: 70vw;
+      width: var(--width);
     }
   }
 
@@ -153,7 +155,7 @@ dwg-lobby {
     position: absolute;
     right: 0;
     top: 0;
-    z-index: 2;
+    z-index: 4;
   }
 
   &.connected {
@@ -194,6 +196,16 @@ body.mobile {
         &.show {
           left: calc(-1 * var(--lobby-users-width));
         }
+      }
+    }
+
+    > #lobby-room-wrapper {
+      #lobby-room {
+        box-sizing: border-box;
+        height: 90vh;
+        margin: 5vh 5vw;
+        padding: 6px;
+        width: 90vw;
       }
     }
   }

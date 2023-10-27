@@ -13,18 +13,20 @@ dwg-lobby-room {
   }
 
   #room-header {
+    --font-size-header: min(28px, var(--font-size-large));
+    --header-height: calc(1.6 * var(--font-size-header));
     background-color: rgb(60, 120, 210);
     display: flex;
     flex-flow: row nowrap;
-    height: 36px;
+    height: var(--header-height);
     width: 100%;
 
     #room-name {
       flex: 1 0 0;
-      font-size: 24px;
+      font-size: var(--font-size-header);
       height: 100%;
-      line-height: 36px;
-      padding-left: 8px;
+      line-height: var(--header-height);
+      padding-left: 0.35em;
 
       &:not(.show) {
         display: none;
@@ -34,10 +36,11 @@ dwg-lobby-room {
     #rename-input {
       box-sizing: border-box;
       flex: 1 0 0;
-      font-size: 24px;
+      font-size: var(--font-size-header);
       height: 100%;
-      line-height: 36px;
-      padding-left: 8px;
+      line-height: var(--header-height);
+      min-width: 0px;
+      padding-left: 0.35em;
 
       &:not(.show) {
         display: none;
@@ -51,8 +54,8 @@ dwg-lobby-room {
     }
 
     #cancel-rename {
-      font-size: 18px;
-      width: 80px;
+      font-size: var(--font-size-medium);
+      width: calc(4 * var(--font-size-medium));
 
       &:not(.show) {
         display: none;
@@ -66,7 +69,7 @@ dwg-lobby-room {
       height: 100%;
       margin: 0px;
       padding: 0px;
-      width: 36px;
+      width: var(--header-height);
 
       &:hover {
         background-color: rgba(220, 220, 220, 0.5);
@@ -75,23 +78,29 @@ dwg-lobby-room {
       &:active {
         background-color: rgba(220, 220, 220, 0.8);
       }
+
+      > img {
+        --img-height: min(32px, 0.8 * var(--header-height));
+        height: var(--img-height);
+        width: var(--img-height);
+      }
     }
   }
 
-  #room-body {
+  > #room-body {
     display: flex;
     flex-flow: row nowrap;
     flex: 1 0 0;
     width: 100%;
 
-    #left-panel {
+    > #left-panel {
       background-color: rgb(30, 90, 180);
       display: flex;
       flex-flow: column nowrap;
-      flex: 0 0 320px;
+      flex: 0 0 min(320px, calc(100% - 300px));
       height: 100%;
 
-      #game-settings {
+      > #game-settings {
         box-sizing: border-box;
         flex: 3 0 0;
         height: 100%;
@@ -107,89 +116,77 @@ dwg-lobby-room {
         }
 
         .settings-small {
-          font-size: 14px;
-          line-height: 14px;
+          font-size: var(--font-size-smaller);
+          line-height: var(--font-size-smaller);
         }
 
         .settings-medium {
-          font-size: 16px;
-          line-height: 16px;
+          font-size: var(--font-size-small);
+          line-height: var(--font-size-small);
         }
 
         .settings-large {
-          font-size: 18px;
-          line-height: 18px;
-          margin-top: 12px;
+          font-size: var(--font-size-medium);
+          line-height: var(--font-size-medium);
+          margin-top: 0.6em;
         }
 
-        #settings-button-container {
+        > .button-container {
           display: flex;
           flex-flow: row nowrap;
-          gap: 12px;
-          margin-bottom: 12px;
+          gap: 0.5em;
+          margin-bottom: 0.5em;
 
           &.hide {
             display: none;
           }
 
-          .settings-button {
+          > button {
             font-size: 18px;
             line-height: 18px;
             height: 30px;
             width: 90px;
+          }
+        }
 
-            &#settings-settings-button {
-              background: linear-gradient(0deg, rgb(140, 140, 140), rgb(220, 220, 220));
-              margin-left: auto;
-            }
+        > #settings-button-container {
+          > #settings-settings-button {
+            background: linear-gradient(0deg, rgb(140, 140, 140), rgb(220, 220, 220));
+            margin-left: auto;
+          }
 
-            &#settings-launch-button {
-              background: linear-gradient(0deg, rgb(40, 150, 40), rgb(80, 250, 80));
-              margin-right: auto;
+          > #settings-launch-button {
+            background: linear-gradient(0deg, rgb(40, 150, 40), rgb(80, 250, 80));
+            margin-right: auto;
 
-              &.launching {
-                background: linear-gradient(0deg, rgb(50, 120, 50), rgb(100, 200, 100));
-              }
+            &.launching {
+              background: linear-gradient(0deg, rgb(50, 120, 50), rgb(100, 200, 100));
             }
           }
         }
 
-        #game-button-container {
-          display: flex;
-          flex-flow: row nowrap;
-          gap: 12px;
-          margin-bottom: 12px;
-
-          &.hide {
-            display: none;
+        > #game-button-container {
+          > #game-resign-button {
+            background: linear-gradient(0deg, rgb(200, 25, 25), rgb(230, 60, 60));
+            margin-left: auto;
           }
 
-          .game-button {
-            font-size: 18px;
-            line-height: 18px;
-            height: 30px;
-            width: 90px;
-
-            &#game-resign-button {
-              background: linear-gradient(0deg, rgb(200, 25, 25), rgb(230, 60, 60));
-              margin-left: auto;
-            }
-
-            &#game-rejoin-button {
-              background: linear-gradient(0deg, rgb(180, 180, 35), rgb(210, 210, 60));
-              margin-right: auto;
-            }
+          > #game-rejoin-button {
+            background: linear-gradient(0deg, rgb(180, 180, 35), rgb(210, 210, 60));
+            margin-right: auto;
           }
         }
 
-        #settings-settings {
+        > #settings-settings {
           display: flex;
           flex-flow: column nowrap;
           gap: 0.3em;
         }
       }
 
-      #user-list {
+      > #user-list {
+        --height: calc(1.5 * var(--font-size-medium));
+        --font-size: var(--font-size-medium);
         background-color: rgba(220, 220, 220, 0.3);
         display: flex;
         flex-flow: column nowrap;
@@ -197,23 +194,23 @@ dwg-lobby-room {
 
         .container-label {
           background-color: rgba(220, 220, 220, 0.4);
-          font-size: 20px;
-          height: 24px;
-          line-height: 24px;
+          font-size: var(--font-size);
+          height: var(--height);
+          line-height: var(--height);
           margin-bottom: 2px;
-          margin-top: 6px;
-          padding: 6px 12px 0px;
+          margin-top: 0.3em;
+          padding: 0.2em 0.6em 0.1em;
         }
 
         .room-user {
-          --user-height: 22px;
+          --user-height: calc(var(--height) - 2px);
           display: flex;
           flex-flow: row nowrap;
-          font-size: 18px;
-          gap: 6px;
+          font-size: calc(var(--font-size) - 1px);
+          gap: 0.35em;
           height: var(--user-height);
           line-height: var(--user-height);
-          padding: 3px 6px;
+          padding: 0.15em 0.3em;
           user-select: none;
 
           &:hover {
@@ -251,14 +248,58 @@ dwg-lobby-room {
       }
     }
 
-    #chatbox {
+    > #chatbox {
       box-sizing: border-box;
       flex: 1 0 0;
+      min-width: 0px;
       padding: 8px;
     }
   }
 
   #kick-img, #promote-img, #viewer-img, #player-img {
     display: none;
+  }
+}
+
+body.mobile {
+  dwg-lobby-room {
+    > #room-body {
+      flex-direction: column;
+
+      > #left-panel {
+        flex-direction: row;
+        flex: 0 0 320px;
+
+        > #game-settings {
+          flex: 1 1 0;
+          padding: 6px;
+
+          > .button-container {
+            display: flex;
+            flex-flow: row nowrap;
+
+            &.hide {
+              display: none;
+            }
+
+            > button {
+              font-size: var(--font-size-smaller);
+              line-height: var(--font-size-smaller);
+              height: calc(2 * var(--font-size-smaller));
+            }
+          }
+        }
+
+        > #user-list {
+          --height: calc(1.2 * var(--font-size-medium));
+          --font-size: calc(var(--font-size-medium) - 2px);
+          flex: 1 1 0;
+        }
+      }
+
+      #chatbox {
+        min-height: 0px;
+      }
+    }
   }
 }
