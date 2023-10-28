@@ -1,10 +1,18 @@
-
+import {DEV} from "./util";
 
 /** Data structure for all returns to get requests */
 export interface ApiResponse<T> {
   success: boolean,
   result?: T,
   error_message?: string,
+}
+
+/** Returns websocket path */
+export function websocketPath() {
+  console.log('1');
+  var scheme = window.location.protocol == "https:" ? 'wss://' : 'ws://';
+  return DEV ? `ws://${location.hostname}:6807/api/lobby` :
+    `${scheme}${location.hostname}${location.port ? ':' + location.port: ''}/api/lobby`;
 }
 
 /** Converts string api to actual api url */

@@ -1,1 +1,18 @@
-runtime: go121
+runtime: go
+
+env: flex
+
+runtime_config:
+  operating_system: "ubuntu22"
+  runtime_version: "1.21"
+
+
+# to prevent moolah from going bye bye
+manual_scaling:
+  instances: 1
+
+# to enable web sockets
+network:
+  session_affinity: true
+
+service_account: dwg-games@appspot.gserviceaccount.com

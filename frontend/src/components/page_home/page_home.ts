@@ -3,6 +3,7 @@ import {DwgLobby} from '../lobby/lobby';
 import {DwgLobbyConnector} from '../lobby/lobby_connector/lobby_connector';
 import {DwgGame} from '../game/game';
 import {LobbyRoom} from '../lobby/data_models';
+import {websocketPath} from '../../scripts/api';
 import {clientOnMobile} from '../../scripts/util';
 
 import html from './page_home.html';
@@ -41,8 +42,8 @@ export class DwgPageHome extends DwgElement {
         client_id = parseInt(localStorage.getItem("client_id"));
       } catch(e) {} // if localstorage isn't accessible
       const socket = (!!client_id && !!client_id_time && (Date.now() - client_id_time < 1000 * 60 * 60 * 24)) ?
-        new WebSocket(`ws://${location.hostname}:6807/api/lobby/reconnect/${nickname}/${client_id}`) :
-        new WebSocket(`ws://${location.hostname}:6807/api/lobby/connect/${nickname}`);
+        new WebSocket(`${websocketPath()}/reconnect/${nickname}/${client_id}`) :
+        new WebSocket(`${websocketPath()}/connect/${nickname}`);
       socket.addEventListener('error', (e) => {
         console.log(e);
         this.tryConnectionAgain("Could not connect. Check your connection and try again.");

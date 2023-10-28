@@ -18,21 +18,34 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
+var DEV = false
+
 func main() {
 	// Set environment variables
-	for _, envvar := range environment_variables {
-		os.Setenv(envvar.name, envvar.value)
+	if DEV {
+		for _, envvar := range environment_variables {
+			os.Setenv(envvar.name, envvar.value)
+		}
 	}
 
 	// Run game lobby
 	lobby_object := lobby.CreateLobby()
 	go lobby_object.Run()
 
-	r := gin.Default()
-	//r.SetTrustedProxies(nil)
+	if DEV {
+		gin.SetMode(gin.DebugMode)
+	} else {
+		gin.SetMode(gin.ReleaseMode)
+	}
 
-	// Serve static html
-	r.Use(static.Serve("/", static.LocalFile("static", false)))
+	r := gin.Default()
+
+	if !DEV {
+		r.SetTrustedProxies(nil)
+
+		// Serve static html
+		r.Use(static.Serve("/", static.LocalFile("static", false)))
+	}
 
 	// All api groupings
 	api := r.Group("/api")

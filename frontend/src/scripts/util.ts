@@ -1,5 +1,5 @@
 /** Whether in DEV environment; used for public api keys */
-export const DEV = true;
+export const DEV = false;
 
 /** Loop helper function */
 export const loop = (times: number, callback: Function) => {
