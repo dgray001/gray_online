@@ -2,7 +2,6 @@ import {DwgElement} from '../../dwg_element';
 import {GameBase, GameComponent, GamePlayer, UpdateMessage} from '../data_models';
 import {StandardCard, cardToImagePath, cardToName} from '../util/card_util';
 import {DwgFiddlesticksPlayer} from './fiddlesticks_player/fiddlesticks_player';
-import {ServerMessage} from '../../lobby/data_models';
 
 import html from './fiddlesticks.html';
 
@@ -134,6 +133,14 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     this.trump_card_img.classList.add('show');
   }
 
+  gameTurnUpdated(is_turn: boolean) {
+    if (this.game.turn < 0 || this.game.turn >= this.player_els.length) {
+      return;
+    }
+    const el = this.player_els[this.game.turn];
+    el.classList.toggle('turn', is_turn);
+  }
+
   gameUpdate(update: UpdateMessage): void {
     try {
       switch(update.kind) {
@@ -166,6 +173,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           if (this.game.turn >= this.game.players.length) {
             this.game.turn -= this.game.players.length;
           }
+          this.gameTurnUpdated(true);
           this.game.trick_leader = this.game.turn;
           for (const [player_id, player] of this.game.players.entries()) {
             player.bet = -1;
@@ -187,6 +195,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
             // TODO: try to sync data
             throw new Error('Player bet out of order');
           }
+          this.gameTurnUpdated(false);
           this.game.players[betData.player_id].bet = betData.amount;
           this.player_els[betData.player_id].setBet(betData.amount);
           let still_betting = this.game.turn !== this.game.dealer;
@@ -194,6 +203,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           if (this.game.turn >= this.game.players.length) {
             this.game.turn -= this.game.players.length;
           }
+          this.gameTurnUpdated(true);
           if (still_betting) {
             this.player_els[this.game.turn].betting();
             this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Betting`;
@@ -216,6 +226,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
             // TODO: try to sync data
             throw new Error('Player played out of order');
           }
+          this.gameTurnUpdated(false);
           if (this.player_id === playCardData.player_id) {
             this.game.players[playCardData.player_id].cards.splice(playCardData.index, 1);
           }
@@ -293,10 +304,12 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
             } else {
               this.current_trick++;
               this.trick_number.innerText = this.current_trick.toString();
+              this.gameTurnUpdated(true);
               this.player_els[this.game.turn].playing();
               this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
             }
           } else {
+            this.gameTurnUpdated(true);
             this.player_els[this.game.turn].playing();
             this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
           }

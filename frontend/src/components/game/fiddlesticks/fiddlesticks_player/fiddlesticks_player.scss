@@ -1,4 +1,5 @@
 dwg-fiddlesticks-player {
+  color: black;
   display: flex;
   flex-flow: column nowrap;
   gap: 0.4em;
@@ -6,7 +7,7 @@ dwg-fiddlesticks-player {
   z-index: 2;
 
   > * {
-    margin-left: 2px;
+    padding-left: 0.3em;
     z-index: 2;
   }
 
@@ -31,7 +32,7 @@ dwg-fiddlesticks-player {
   }
 
   #card-played-coverer {
-    background-color: rgb(90, 90, 90);
+    background-color: rgb(255, 225, 190);
     bottom: 0;
     left: 0;
     position: absolute;
@@ -81,7 +82,7 @@ dwg-fiddlesticks-player {
     }
 
     .card:hover {
-      background-color: rgba(255, 255, 255, 0.15);
+      background-color: rgba(55, 55, 55, 0.15);
 
       .card-img {
         display: block;
@@ -89,7 +90,7 @@ dwg-fiddlesticks-player {
     }
 
     .card:active {
-      background-color: rgba(255, 255, 255, 0.3);
+      background-color: rgba(55, 55, 55, 0.3);
 
       .card-img {
         display: block;

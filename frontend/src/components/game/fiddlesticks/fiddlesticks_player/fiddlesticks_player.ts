@@ -1,6 +1,6 @@
 import {DwgElement} from '../../../dwg_element';
 import {createMessage} from '../../../lobby/data_models';
-import {StandardCard, cardToImagePath, cardToName} from '../../util/card_util';
+import {StandardCard, cardToIcon, cardToImagePath} from '../../util/card_util';
 import {FiddlesticksPlayer} from '../fiddlesticks';
 
 import html from './fiddlesticks_player.html';
@@ -110,7 +110,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     for (const [i, card] of cards.entries()) {
       const card_el = document.createElement('div');
       card_el.classList.add('card');
-      card_el.innerText = cardToName(card);
+      card_el.innerHTML = cardToIcon(card, true);
       this.cards_container.appendChild(card_el);
       const card_img = document.createElement('img');
       card_img.classList.add('card-img');

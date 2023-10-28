@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/dgray001/gray_online/lobby"
+	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
@@ -29,6 +30,9 @@ func main() {
 
 	r := gin.Default()
 	//r.SetTrustedProxies(nil)
+
+	// Serve static html
+	r.Use(static.Serve("/", static.LocalFile("static", false)))
 
 	// All api groupings
 	api := r.Group("/api")

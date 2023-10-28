@@ -44,19 +44,39 @@ dwg-fiddlesticks {
   }
 
   #player-container {
-    background-color: rgb(90, 90, 90);
+    background-color: rgb(230, 190, 150);
+    box-sizing: border-box;
     display: flex;
     flex-flow: row nowrap;
     gap: 3px;
     height: 50%;
     justify-content: center;
+    padding: 4px;
     width: 100%;
 
-    > * {
-      border: 1px solid black;
+    @keyframes glowingBorder {
+      0% {
+        box-shadow: 0px 0px 0px 0px rgb(120, 30, 120);
+      }
+      100% {
+        box-shadow: 0px 0px 4px 4px rgb(120, 30, 120);
+      }
+    }
+
+    > dwg-fiddlesticks-player {
+      animation: linear 0.6s infinite alternate glowingBorder paused;
+      border-left: 1px solid black;
+      border-radius: 2px;
+      border-right: 1px solid black;
       flex: 1 1 0;
-      height: 100%;
+      height: calc(100% + 8px);
       max-width: 25vw;
+      position: relative;
+      top: -4px;
+
+      &.turn {
+        animation-play-state: running;
+      }
     }
   }
 }

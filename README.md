@@ -1,3 +1,3 @@
 Online Games
 
-v0.2r: Mobile lobby room
+v0.2s: Prepare for gcloud deploy
