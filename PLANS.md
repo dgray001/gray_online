@@ -1,26 +1,55 @@
 v0.3: flesh out fiddlesticks game
- v-w: Desktop fiddlesticks layout/styles
- x: Mobile game styles
- y-z: Mobile fiddlesticks styles
-
-v0.4: launch risq
- - can launch a simple game of risq
-
-v0.5: save risq game
- - need fully functioning db and user profiles
+ u: Desktop fiddlesticks layout/styles
+ v-w: Mobile fiddlesticks styles
+ x: AI can take over when player AFK
+ y: Resign button causes resign => AI takes over permanently
+ z: Small fixes:
+   => Sometimes updates don't apply properly when refreshing page
 
 P3/P4:
- - Player's dialog box in DwgGame
- - Loaders for client requests in lobby: room-create, room-join, room-leave, room-rename
- - Frontend animations
- - Chat updates have an id that ensures the correct order (can request missing)
- - Add abstract dialog then add confirm dialog for confirming actions
- - When joining a lobby room determine if game is currently in progress => then check if joinee is a player => if not join as viewer
- - Viewer updates stored in game base => backend sends viewer updates
- - Resign button causes resign => AI takes over
- - When dc'ed the AI takes over temporarily => if dc'ed for too long the AI takes over
- - Can launch game with AI
+ - Basic players dialog in game base
+
+v0.4: Euchre game
+ - New game backend logic
+ - New frontend component
  - Proper viewer logic at every step
- - Chat emoji selector
- - Chat taunts
- - Can turn off emoticon converter in chat
+ - Viewer updates stored in game base => backend sends viewer updates
+ - Can launch games with AI
+ - Can pause games
+ - Frontend animations for fiddlesticks and euchre
+ - Upgrade moves dialog and players dialog in game base
+ - Loaders for client requests in lobby: room-create, room-join, room-leave, room-rename
+
+v0.5: More card games
+ - Add 4 more card games with settings / etc.
+ - Styles and animations for all of them
+ - Current game state gets saved in db
+ - Can login and save user profile
+
+v0.6: Can launch risq
+ - Hexagonal board on frontend that can be scrolled and translated
+ - Basic turn logic
+ - Create db tables and design rules
+ - Initial backend logic
+ - Initial frontend logic / animations / styles
+ - Can make friends / personal DMs (all DMs and chatboxes saved)
+ - Can see other people's shats
+ - Upgraded chatbox => emoji selector, taunts, message id, turn off emoticon converter
+
+v0.7: Advanced risq
+ - Can save games if everyone logged in and all players agree
+ - Reporting => admin login can access admin page to see reports, etc.
+ - Can report bugs / email admin / etc.
+ - Advanced risq rules / variations
+
+v0.8: Chess games
+ - Various esoteric chess rules / basic chess rules as well
+
+v0.9: Other esoteric games
+ - Add 4 esoteric board games not found elsewhere on internet
+
+Games to add:
+ - Euchre
+ - Poker(s) => save chips?
+ - Risq
+ - Chess with esoteric variations

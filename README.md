@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.2t: Initial gcloud deploy works
+v0.2u: Add card table images
 
 ## Dev Use
 
