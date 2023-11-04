@@ -6,20 +6,19 @@ dwg-fiddlesticks {
     calc(var(--game-width) - 2 * var(--width-messages))
   );
 
-  background-color: rgb(140, 70, 20);
+  background-color: var(--color-background);
   display: block;
   height: 100%;
   position: relative;
   width: 100%;
 
-  #header-messages-container {
+  > #header-messages-container {
     --width: calc(var(--width-messages) - 2em);
-    background-color: purple;
     font-size: var(--font-size-medium);
     left: calc(0.5 * (100% - var(--table-diameter)) - var(--width-messages) + 1em);
     line-height: 1.7em;
     position: absolute;
-    top: 2em;
+    top: 1em;
     width: var(--width);
 
     > * {
@@ -38,7 +37,7 @@ dwg-fiddlesticks {
     }
   }
 
-  #trump-card-container {
+  > #trump-card-container {
     --line-height: 1.7em;
     --width: calc(var(--width-messages) - 2em);
     --height: calc(var(--line-height) + var(--card-image-scale) * var(--width));
@@ -49,24 +48,21 @@ dwg-fiddlesticks {
     height: var(--height);
     position: absolute;
     text-align: center;
-    top: 2em;
+    top: 1em;
     width: var(--width);
 
-    #trump-text {
-      background-color: rgb(230, 190, 150);
+    > #trump-text {
       border-radius: 0.4em;
-      color: black;
-      font-weight: bold;
       letter-spacing: 1.2px;
     }
 
-    #trump-card {
+    > #trump-card {
       height: calc(var(--card-image-scale) * var(--width));
       position: absolute;
       top: var(--line-height);
       width: var(--width);
 
-      #trump-card-img {
+      > #trump-card-img {
         height: 100%;
         width: 100%;
 
@@ -77,25 +73,26 @@ dwg-fiddlesticks {
     }
   }
 
-  #table-container {
-    background-color: green;
+  > #table-container {
+    --actual-table-diameter: calc(var(--table-diameter) - 4em);
+    background: no-repeat center url('../../../images/card_table1000.png');
+    background-size: contain;
+    height: var(--actual-table-diameter);
+    left: calc(0.5 * (100% - var(--actual-table-diameter)));
+    position: absolute;
+    top: 2em;
+    width: var(--actual-table-diameter);
+  }
+
+  > #player-container {
     height: var(--table-diameter);
     left: calc(0.5 * (100% - var(--table-diameter)));
     position: absolute;
     width: var(--table-diameter);
   }
 
-  #player-container {
-    background-color: blue;
-    height: var(--table-diameter);
-    left: calc(0.5 * (100% - var(--table-diameter)));
-    position: absolute;
-    width: var(--table-diameter);
-  }
-
-  #players-cards-container {
+  > #players-cards-container {
     --width: min(calc(var(--table-diameter) + 2 * var(--width-messages)), 100%);
-    background-color: red;
     height: var(--height-players-cards);
     left: calc(0.5 * (100% - var(--width)));
     position: absolute;

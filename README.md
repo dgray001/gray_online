@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.2v: Fiddlesticks CSS layout
+v0.2w: Initial Card hand component
 
 ## Dev Use
 

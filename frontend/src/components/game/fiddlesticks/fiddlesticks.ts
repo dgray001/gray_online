@@ -2,12 +2,14 @@ import {DwgElement} from '../../dwg_element';
 import {GameBase, GameComponent, GamePlayer, UpdateMessage} from '../data_models';
 import {StandardCard, cardToImagePath, cardToName} from '../util/card_util';
 import {DwgFiddlesticksPlayer} from './fiddlesticks_player/fiddlesticks_player';
+import {DwgCardHand} from '../util/card_hand/card_hand';
 
 import html from './fiddlesticks.html';
 
 import './fiddlesticks.scss';
 import './fiddlesticks_player/fiddlesticks_player';
 import '../../dialog_box/message_dialog/message_dialog';
+import '../util/card_hand/card_hand';
 
 /** Data describing a game of fiddlesticks */
 export declare interface GameFiddlesticks {
@@ -70,6 +72,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
   trump_card_img: HTMLImageElement;
   trick_cards: HTMLDivElement;
   player_container: HTMLDivElement;
+  players_cards_container: DwgCardHand;
 
   game: GameFiddlesticks;
   player_els: DwgFiddlesticksPlayer[] = [];
@@ -84,6 +87,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     this.configureElement('trump_card_img');
     this.configureElement('trick_cards');
     this.configureElement('player_container');
+    this.configureElement('players_cards_container');
   }
 
   protected override parsedCallback(): void {
@@ -110,7 +114,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
       for (const [player_id, player_el] of this.player_els.entries()) {
         player_el.gameStarted(game.betting, !game.game_base.game_ended && player_id === game.turn);
         if (this.player_id == player_id && !game.game_base.game_ended) {
-          player_el.setCards(game.players[player_id].cards);
+          this.players_cards_container.setCards(game.players[player_id].cards);
         }
       }
       if (game.betting) {
@@ -156,7 +160,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
               player_el.setDealer(false);
             }
             if (player_id === this.player_id) {
-              player_el.setCards(dealRoundData.cards);
+              this.players_cards_container.setCards(dealRoundData.cards);
             } else {
               player_el.setHiddenCards(dealRoundData.round);
             }
