@@ -1,6 +1,6 @@
-v0.3: flesh out fiddlesticks game
- u: Desktop fiddlesticks layout/styles
- v-w: Mobile fiddlesticks styles
+4v0.3: flesh out fiddlesticks game
+ v: Desktop fiddlesticks layout/styles
+ w: Mobile fiddlesticks styles
  x: AI can take over when player AFK
  y: Resign button causes resign => AI takes over permanently
  z: Small fixes:

@@ -9,7 +9,6 @@ export interface ApiResponse<T> {
 
 /** Returns websocket path */
 export function websocketPath() {
-  console.log('1');
   var scheme = window.location.protocol == "https:" ? 'wss://' : 'ws://';
   return DEV ? `ws://${location.hostname}:6807/api/lobby` :
     `${scheme}${location.hostname}${location.port ? ':' + location.port: ''}/api/lobby`;

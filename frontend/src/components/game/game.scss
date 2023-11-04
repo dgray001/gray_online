@@ -76,7 +76,13 @@ dwg-game {
   }
 
   #game-container {
-    height: calc(100% - var(--header-height));
+    --game-height: calc(100vh - var(--header-height) - 2em);
+    --game-width: calc(100vw - 2em);
+
+    background-color: rgb(100, 40, 5);
+    box-sizing: border-box;
+    height: calc(100vh - var(--header-height));
+    padding: 1em;
 
     &:not(.show) {
       display: none;

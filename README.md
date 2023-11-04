@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.2u: Add card table images
+v0.2v: Fiddlesticks CSS layout
 
 ## Dev Use
 

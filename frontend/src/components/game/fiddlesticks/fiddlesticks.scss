@@ -1,82 +1,110 @@
 dwg-fiddlesticks {
-  #table-container {
-    background-color: rgb(140, 70, 20);
-    height: 50%;
-    position: relative;
-    width: 100%;
+  --height-players-cards: 182px; // cards are 125x182 here
+  --width-messages: 180px; // width of messages and trump card
+  --table-diameter: min(
+    calc(var(--game-height) - var(--height-players-cards)),
+    calc(var(--game-width) - 2 * var(--width-messages))
+  );
 
-    #header-message {
-      display: flex;
-      flex-flow: row wrap;
-      gap: 3em;
-      left: 1em;
-      position: absolute;
-      top: 1em;
+  background-color: rgb(140, 70, 20);
+  display: block;
+  height: 100%;
+  position: relative;
+  width: 100%;
+
+  #header-messages-container {
+    --width: calc(var(--width-messages) - 2em);
+    background-color: purple;
+    font-size: var(--font-size-medium);
+    left: calc(0.5 * (100% - var(--table-diameter)) - var(--width-messages) + 1em);
+    line-height: 1.7em;
+    position: absolute;
+    top: 2em;
+    width: var(--width);
+
+    > * {
+      .span-align {
+        display: inline-block;
+        text-align: right;
+        width: 50%;
+      }
+
+      .span-center {
+        display: block;
+        margin-top: 0.6em;
+        text-align: center;
+        text-decoration: underline;
+      }
+    }
+  }
+
+  #trump-card-container {
+    --line-height: 1.7em;
+    --width: calc(var(--width-messages) - 2em);
+    --height: calc(var(--line-height) + var(--card-image-scale) * var(--width));
+    border-radius: 0.4em;
+    left: calc(1em + 0.5 * (100% + var(--table-diameter)));
+    line-height: var(--line-height);
+    font-size: var(--font-size-medium);
+    height: var(--height);
+    position: absolute;
+    text-align: center;
+    top: 2em;
+    width: var(--width);
+
+    #trump-text {
+      background-color: rgb(230, 190, 150);
+      border-radius: 0.4em;
+      color: black;
+      font-weight: bold;
+      letter-spacing: 1.2px;
     }
 
-    #trump-card-container {
-      --width: calc(max(50px, min(200px, 15vw)));
-      --height: calc(1.5em + var(--card-image-scale) * var(--width));
-      height: var(--height);
-      line-height: 1.5em;
+    #trump-card {
+      height: calc(var(--card-image-scale) * var(--width));
       position: absolute;
-      right: 4em;
-      text-align: center;
-      top: 2em;
+      top: var(--line-height);
       width: var(--width);
 
-      #trump-card {
-        height: calc(var(--card-image-scale) * var(--width));
-        position: absolute;
-        right: calc(50% - 0.5 * var(--width));
-        width: var(--width);
+      #trump-card-img {
+        height: 100%;
+        width: 100%;
 
-        #trump-card-img {
-          height: 100%;
-          width: 100%;
-
-          &:not(.show) {
-            display: none;
-          }
+        &:not(.show) {
+          display: none;
         }
       }
     }
   }
 
+  #table-container {
+    background-color: green;
+    height: var(--table-diameter);
+    left: calc(0.5 * (100% - var(--table-diameter)));
+    position: absolute;
+    width: var(--table-diameter);
+  }
+
   #player-container {
-    background-color: rgb(230, 190, 150);
-    box-sizing: border-box;
-    display: flex;
-    flex-flow: row nowrap;
-    gap: 3px;
-    height: 50%;
-    justify-content: center;
-    padding: 4px;
-    width: 100%;
+    background-color: blue;
+    height: var(--table-diameter);
+    left: calc(0.5 * (100% - var(--table-diameter)));
+    position: absolute;
+    width: var(--table-diameter);
+  }
 
-    @keyframes glowingBorder {
-      0% {
-        box-shadow: 0px 0px 0px 0px rgb(120, 30, 120);
-      }
-      100% {
-        box-shadow: 0px 0px 4px 4px rgb(120, 30, 120);
-      }
-    }
+  #players-cards-container {
+    --width: min(calc(var(--table-diameter) + 2 * var(--width-messages)), 100%);
+    background-color: red;
+    height: var(--height-players-cards);
+    left: calc(0.5 * (100% - var(--width)));
+    position: absolute;
+    top: var(--table-diameter);
+    width: var(--width);
+  }
+}
 
-    > dwg-fiddlesticks-player {
-      animation: linear 0.6s infinite alternate glowingBorder paused;
-      border-left: 1px solid black;
-      border-radius: 2px;
-      border-right: 1px solid black;
-      flex: 1 1 0;
-      height: calc(100% + 8px);
-      max-width: 25vw;
-      position: relative;
-      top: -4px;
-
-      &.turn {
-        animation-play-state: running;
-      }
-    }
+body.mobile {
+  dwg-fiddlesticks {
   }
 }

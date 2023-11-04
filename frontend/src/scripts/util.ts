@@ -1,8 +1,8 @@
 /** Whether in DEV environment; used for public api keys */
-export const DEV = false;
+export const DEV = true;
 
 /** Loop helper function */
-export const loop = (times: number, callback: Function) => {
+export const loop = (times: number, callback: (i?: number) => void) => {
   for (let i = 0; i < times; i++) {
     callback(i);
   }

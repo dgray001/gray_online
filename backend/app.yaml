@@ -1,17 +1,16 @@
 runtime: go
 
+# to allow for websockets to be used
 env: flex
-
 runtime_config:
   operating_system: "ubuntu22"
   runtime_version: "1.21"
 
-
 # to prevent moolah from going bye bye
 manual_scaling:
-  instances: 1
+  max_instances: 1
 
-# to enable web sockets
+# for websockets to be useful
 network:
   session_affinity: true
 
