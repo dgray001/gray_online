@@ -13,12 +13,6 @@ export class DwgFiddlesticksPlayer extends DwgElement {
   score_container: HTMLSpanElement;
   bet_container: HTMLSpanElement;
   tricks_container: HTMLSpanElement;
-  cards_container: HTMLDivElement;
-  betting_container: HTMLDivElement;
-  bet_input: HTMLInputElement;
-  bet_button: HTMLButtonElement;
-  card_played_container: HTMLDivElement;
-  card_played: HTMLImageElement;
   winner_icon: HTMLImageElement;
 
   player: FiddlesticksPlayer;
@@ -34,12 +28,6 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.configureElement('score_container');
     this.configureElement('bet_container');
     this.configureElement('tricks_container');
-    this.configureElement('cards_container');
-    this.configureElement('betting_container');
-    this.configureElement('bet_input');
-    this.configureElement('bet_button');
-    this.configureElement('card_played_container');
-    this.configureElement('card_played');
     this.configureElement('winner_icon');
   }
 
@@ -78,11 +66,6 @@ export class DwgFiddlesticksPlayer extends DwgElement {
   setClientPlayer() {
     this.classList.add('client-player');
     this.client_player = true;
-    this.bet_button.addEventListener('click', () => {
-      this.bet_button.disabled = true;
-      const game_update = createMessage(`player-${this.player.player.player_id}`, 'game-update', `{"amount":${this.bet_input.value}}`, 'bet');
-      this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, bubbles: true}));
-    });
   }
 
   setDealer(dealer: boolean) {
@@ -104,45 +87,17 @@ export class DwgFiddlesticksPlayer extends DwgElement {
   }
 
   setCards(cards: StandardCard[]) {
+    // TODO: call newRoud() where this would be called
     this.newRound();
-    this.player.cards = cards;
-    this.card_els = [];
-    for (const [i, card] of cards.entries()) {
-      const card_el = document.createElement('div');
-      card_el.classList.add('card');
-      card_el.innerHTML = cardToIcon(card, true);
-      this.cards_container.appendChild(card_el);
-      const card_img = document.createElement('img');
-      card_img.classList.add('card-img');
-      card_img.src = cardToImagePath(card);
-      card_el.appendChild(card_img);
-      this.card_els.push(card_el);
-      card_el.addEventListener('click', () => {
-        if (!this.currently_playing) {
-          return;
-        }
-        // TODO: check if card is playable
-        this.currently_playing = false;
-        const game_update = createMessage(`player-${this.player.player.player_id}`, 'game-update', `{"index":${i}}`, 'play-card');
-        this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, 'bubbles': true}));
-      });
-    }
   }
 
   betting() {
     if (!this.client_player) {
       return;
     }
-    this.bet_button.disabled = false;
-    this.bet_input.valueAsNumber = 0;
-    this.bet_input.max = this.player.cards.length.toString();
-    this.betting_container.classList.add('show');
   }
 
   setBet(amount: number) {
-    if (this.client_player) {
-      this.betting_container.classList.remove('show');
-    }
     this.player.bet = amount;
     this.bet_container.innerText = amount.toString();
   }
@@ -165,14 +120,11 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     if (this.card_els.length) {
       this.card_els[index].remove();
     }
-    this.card_played.src = cardToImagePath(card);
-    this.card_played_container.classList.add('show');
   }
 
   endTrick(tricks: number) {
     this.player.tricks = tricks;
     this.tricks_container.innerText = tricks.toString();
-    this.card_played_container.classList.remove('show');
   }
 
   setScore(score: number) {

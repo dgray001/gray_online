@@ -1,43 +1,24 @@
 dwg-fiddlesticks-player {
+  // --table-diameter: 0; // set by component
+  // --size: 0; // set by component
+  --order: 0; // set by component
+  --num-players: 0; // set by component
+  --turns: calc((0.25 + var(--order) / var(--num-players)) * 1turn);
+  --x: calc(0.5 * var(--diameter) * (1 + cos(var(--turns))) - 0.5 * var(--size));
+  --y: calc(0.5 * var(--diameter) * (1 + sin(var(--turns))) - 0.5 * var(--size));
+  background-color: lightblue;
   color: black;
-  display: none;
+  display: flex;
   flex-flow: column nowrap;
   gap: 0.4em;
+  left: var(--x);
   position: relative;
-  z-index: 2;
+  top: var(--y);
+  z-index: 4;
 
   > * {
     padding-left: 0.3em;
     z-index: 2;
-  }
-
-  #card-played-container {
-    --width: calc(max(35px, min(150px, 12vw)));
-    --height: calc(var(--card-image-scale) * var(--width));
-    height: var(--height);
-    left: calc(50% - 0.5 * var(--width));
-    position: absolute;
-    top: calc(-1 * var(--height));
-    width: var(--width);
-    z-index: 1;
-
-    &:not(.show) {
-      display: none;
-    }
-
-    #card-played {
-      height: 100%;
-      width: 100%;
-    }
-  }
-
-  #card-played-coverer {
-    background-color: rgb(255, 225, 190);
-    bottom: 0;
-    left: 0;
-    position: absolute;
-    right: 0;
-    top: 0;
   }
 
   #name-container-wrapper {
@@ -55,53 +36,6 @@ dwg-fiddlesticks-player {
   .fixed-width {
     display: inline-block;
     width: 30%;
-  }
-
-  #cards-container {
-    margin-top: 0.6em;
-    z-index: 3;
-
-    .card {
-      box-sizing: border-box;
-      margin: 0.2em;
-      padding-left: 1.5em;
-      position: relative;
-      user-select: none;
-
-      .card-img {
-        --width: calc(max(35px, min(150px, 12vw)));
-        --height: calc(var(--card-image-scale) * var(--width));
-        display: none;
-        left: 5%;
-        height: var(--height);
-        position: absolute;
-        top: 100%;
-        width: var(--width);
-        z-index: 4;
-      }
-    }
-
-    .card:hover {
-      background-color: rgba(55, 55, 55, 0.15);
-
-      .card-img {
-        display: block;
-      }
-    }
-
-    .card:active {
-      background-color: rgba(55, 55, 55, 0.3);
-
-      .card-img {
-        display: block;
-      }
-    }
-  }
-
-  #betting-container {
-    &:not(.show) {
-      display: none;
-    }
   }
 
   #winner-icon {

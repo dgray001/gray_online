@@ -3,6 +3,7 @@ import {GameBase, GameComponent, GamePlayer, UpdateMessage} from '../data_models
 import {StandardCard, cardToImagePath, cardToName} from '../util/card_util';
 import {DwgFiddlesticksPlayer} from './fiddlesticks_player/fiddlesticks_player';
 import {DwgCardHand} from '../util/card_hand/card_hand';
+import {createMessage} from '../../lobby/data_models';
 
 import html from './fiddlesticks.html';
 
@@ -72,7 +73,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
   trump_card_img: HTMLImageElement;
   trick_cards: HTMLDivElement;
   player_container: HTMLDivElement;
-  players_cards_container: DwgCardHand;
+  players_cards: DwgCardHand;
 
   game: GameFiddlesticks;
   player_els: DwgFiddlesticksPlayer[] = [];
@@ -87,13 +88,18 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     this.configureElement('trump_card_img');
     this.configureElement('trick_cards');
     this.configureElement('player_container');
-    this.configureElement('players_cards_container');
+    this.configureElement('players_cards');
   }
 
   protected override parsedCallback(): void {
     this.round_number.innerText = '-';
     this.trick_number.innerText = '-';
     this.status_container.innerText = 'Starting game ...';
+    this.players_cards.addEventListener('play_card', (e: CustomEvent<number>) => {
+      // TODO: check if card is playable
+      const game_update = createMessage(`player-${this.player_id}`, 'game-update', `{"index":${e.detail}}`, 'play-card');
+      this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, 'bubbles': true}));
+    });
   }
 
   initialize(game: GameFiddlesticks, client_id: number): void {
@@ -109,12 +115,21 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
         player_el.setClientPlayer();
       }
     }
+    // TODO: if view just don't use player_id
+    for (let i = 0; i < this.player_els.length; i++) {
+      let player_id = this.player_id + i;
+      if (player_id >= this.player_els.length) {
+        player_id -= this.player_els.length;
+      }
+      this.player_els[player_id].style.setProperty('--order', i.toString());
+      this.player_els[player_id].style.setProperty('--num-players', this.player_els.length.toString());
+    }
     if (game.game_base.game_started) {
       this.round_number.innerText = game.round.toString();
       for (const [player_id, player_el] of this.player_els.entries()) {
         player_el.gameStarted(game.betting, !game.game_base.game_ended && player_id === game.turn);
         if (this.player_id == player_id && !game.game_base.game_ended) {
-          this.players_cards_container.setCards(game.players[player_id].cards);
+          this.players_cards.setCards(game.players[player_id].cards);
         }
       }
       if (game.betting) {
@@ -160,7 +175,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
               player_el.setDealer(false);
             }
             if (player_id === this.player_id) {
-              this.players_cards_container.setCards(dealRoundData.cards);
+              this.players_cards.setCards(dealRoundData.cards);
             } else {
               player_el.setHiddenCards(dealRoundData.round);
             }

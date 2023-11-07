@@ -1,16 +1,37 @@
 dwg-card-hand {
-  background-color: red;
+  --height: 0; // set by component
+  --width: 0; // set by component
   display: block;
   height: 100%;
   width: 100%;
 
   > #cards-container {
+    --num-cards: 0; // set by component
+    --card-width: calc(var(--height) / var(--card-image-scale));
+    --card-overlap: min(
+      calc(-0.3 * var(--card-width)),
+      calc(((var(--width) - var(--card-width)) / (var(--num-cards) - 1)) - var(--card-width))
+    );
+    --total-card-width: calc(var(--card-width) + (var(--num-cards) - 1) * (var(--card-width) - (-1 * var(--card-overlap))));
+    --min-padding-left: 3px; // match the -3deg rotation
+    box-sizing: border-box;
+    display: flex;
+    flex-flow: row nowrap;
     height: 100%;
+    justify-content: flex-start;
+    padding-left: max(var(--min-padding-left), 0.5 * (var(--width) - var(--total-card-width)));
     width: 100%;
 
     > .card {
+      --i: 0; // set by component
       height: 100%;
-      width: calc(var(--height) / var(--card-image-scale));
+      transform: translateX(calc(var(--i) * var(--card-overlap))) rotate(-3deg);
+      width: var(--card-width);
+
+      &:hover {
+        transform: translate(calc(var(--i) * var(--card-overlap)), calc(-0.1 * var(--height))) rotate(-1deg);
+        z-index: 2;
+      }
     }
   }
 }

@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.2w: Initial Card hand component
+v0.2x: DwgFiddlesticksPlayer styles
 
 ## Dev Use
 

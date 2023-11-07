@@ -1,13 +1,18 @@
-4v0.3: flesh out fiddlesticks game
+0.3: flesh out fiddlesticks game
+ - Need card hand component to send play_card event
+ - Add betting input to fiddlesticks component
+ - Refactor the fiddlesticks_player component to not handle betting/playing but just have info
  v: Desktop fiddlesticks layout/styles
  w: Mobile fiddlesticks styles
  x: AI can take over when player AFK
  y: Resign button causes resign => AI takes over permanently
  z: Small fixes:
    => Sometimes updates don't apply properly when refreshing page
+   => Need to send ping in lobby for launching game
 
 P3/P4:
  - Basic players dialog in game base
+ - Viewer support
 
 v0.4: Euchre game
  - New game backend logic

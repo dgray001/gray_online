@@ -3,7 +3,7 @@ import {ServerMessage, LobbyRoom, ConnectionMetadata, GameType, createMessage} f
 import {Game, GameComponent, GameFromServer, serverResponseToGame} from './data_models';
 import {apiPost} from '../../scripts/api';
 import {ChatMessage, DwgChatbox} from '../chatbox/chatbox';
-import {capitalize} from '../../scripts/util';
+import {capitalize, until} from '../../scripts/util';
 
 import {handleMessage} from './message_handler';
 import html from './game.html';
@@ -161,6 +161,7 @@ export class DwgGame extends DwgElement {
       default:
         throw new Error(`Unknown game type: ${this.game.game_base.game_type}`);
     }
+    await until(() => (this.game_el as unknown as DwgGame).fully_parsed);
     this.game_name.innerText = capitalize(GameType[this.game.game_base.game_type].toLowerCase());
     if (this.game.game_base.game_started) {
       this.startGame();

@@ -1,10 +1,12 @@
 dwg-fiddlesticks {
   --height-players-cards: 182px; // cards are 125x182 here
   --width-messages: 180px; // width of messages and trump card
+  --size-player: 130px; // size of player box around table
   --table-diameter: min(
-    calc(var(--game-height) - var(--height-players-cards)),
+    calc(var(--game-height) - var(--height-players-cards) - var(--size-player)),
     calc(var(--game-width) - 2 * var(--width-messages))
   );
+  --table-diameter-padding: 0em;
 
   background-color: var(--color-background);
   display: block;
@@ -74,30 +76,38 @@ dwg-fiddlesticks {
   }
 
   > #table-container {
-    --actual-table-diameter: calc(var(--table-diameter) - 4em);
     background: no-repeat center url('../../../images/card_table1000.png');
     background-size: contain;
-    height: var(--actual-table-diameter);
-    left: calc(0.5 * (100% - var(--actual-table-diameter)));
+    height: var(--table-diameter);
+    left: calc(0.5 * (100% - var(--table-diameter)));
     position: absolute;
-    top: 2em;
-    width: var(--actual-table-diameter);
+    top: calc(0.5 * var(--size-player));
+    width: var(--table-diameter);
   }
 
   > #player-container {
     height: var(--table-diameter);
     left: calc(0.5 * (100% - var(--table-diameter)));
     position: absolute;
+    top: calc(0.5 * var(--size-player));
     width: var(--table-diameter);
+
+    > dwg-fiddlesticks-player {
+      --diameter: var(--table-diameter);
+      --size: var(--size-player);
+      height: var(--size);
+      width: var(--size);
+    }
   }
 
-  > #players-cards-container {
+  > #players-cards {
     --width: min(calc(var(--table-diameter) + 2 * var(--width-messages)), 100%);
     height: var(--height-players-cards);
     left: calc(0.5 * (100% - var(--width)));
     position: absolute;
-    top: var(--table-diameter);
+    top: calc(var(--size-player) + var(--table-diameter));
     width: var(--width);
+    z-index: 4;
   }
 }
 
