@@ -116,13 +116,15 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
       }
     }
     // TODO: if view just don't use player_id
-    for (let i = 0; i < this.player_els.length; i++) {
-      let player_id = this.player_id + i;
-      if (player_id >= this.player_els.length) {
-        player_id -= this.player_els.length;
+    if (this.player_id > -1) {
+      for (let i = 0; i < this.player_els.length; i++) {
+        let id = this.player_id + i;
+        if (id >= this.player_els.length) {
+          id -= this.player_els.length;
+        }
+        this.player_els[id].style.setProperty('--order', i.toString());
+        this.player_els[id].style.setProperty('--num-players', this.player_els.length.toString());
       }
-      this.player_els[player_id].style.setProperty('--order', i.toString());
-      this.player_els[player_id].style.setProperty('--num-players', this.player_els.length.toString());
     }
     if (game.game_base.game_started) {
       this.round_number.innerText = game.round.toString();
@@ -170,14 +172,12 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           this.game.trump = dealRoundData.trump;
           for (const [player_id, player_el] of this.player_els.entries()) {
             if (dealRoundData.dealer === player_id) {
-              player_el.setDealer(true);
+              player_el.newRound(true);
             } else {
-              player_el.setDealer(false);
+              player_el.newRound(false);
             }
             if (player_id === this.player_id) {
               this.players_cards.setCards(dealRoundData.cards);
-            } else {
-              player_el.setHiddenCards(dealRoundData.round);
             }
           }
           this.game.betting = true;
@@ -288,7 +288,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
                   player.score += this.game.round_points + this.game.trick_points * player.bet;
                   this.player_els[i].setScore(player.score);
                 }
-                this.player_els[i].newRound();
+                this.player_els[i].endRound();
               }
               if (this.game.rounds_increasing && this.game.round === this.game.max_round) {
                 this.game.rounds_increasing = false;

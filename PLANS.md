@@ -1,6 +1,4 @@
 0.3: flesh out fiddlesticks game
- - Need card hand component to send play_card event
- - Add betting input to fiddlesticks component
  - Refactor the fiddlesticks_player component to not handle betting/playing but just have info
  v: Desktop fiddlesticks layout/styles
  w: Mobile fiddlesticks styles

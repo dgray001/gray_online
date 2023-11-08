@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.2x: DwgFiddlesticksPlayer styles
+v0.2y: DwgFiddlesticksPlayer finished styles
 
 ## Dev Use
 

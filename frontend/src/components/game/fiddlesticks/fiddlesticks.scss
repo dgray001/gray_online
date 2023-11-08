@@ -1,5 +1,5 @@
 dwg-fiddlesticks {
-  --height-players-cards: 182px; // cards are 125x182 here
+  --height-players-cards: calc(182px); // cards are 125x182 here with a 6px top margin
   --width-messages: 180px; // width of messages and trump card
   --size-player: 130px; // size of player box around table
   --table-diameter: min(

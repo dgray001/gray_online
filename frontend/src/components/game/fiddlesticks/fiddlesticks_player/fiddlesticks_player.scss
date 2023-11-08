@@ -6,41 +6,42 @@ dwg-fiddlesticks-player {
   --turns: calc((0.25 + var(--order) / var(--num-players)) * 1turn);
   --x: calc(0.5 * var(--diameter) * (1 + cos(var(--turns))) - 0.5 * var(--size));
   --y: calc(0.5 * var(--diameter) * (1 + sin(var(--turns))) - 0.5 * var(--size));
-  background-color: lightblue;
+  background-color: rgba(240, 240, 240, 0.7);
+  border-radius: calc(0.08 * var(--size));
   color: black;
-  display: flex;
-  flex-flow: column nowrap;
-  gap: 0.4em;
+  display: block;
   left: var(--x);
   position: relative;
   top: var(--y);
   z-index: 4;
 
   > * {
-    padding-left: 0.3em;
-    z-index: 2;
+    box-sizing: border-box;
+    font-size: calc(0.13 * var(--size));
+    height: calc(0.2 * var(--size));
+    line-height: calc(0.2 * var(--size));
+    width: 100%;
   }
 
-  #name-container-wrapper {
-    display: flex;
-    flex-flow: row nowrap;
-    justify-content: center;
-    margin-top: 0.4em;
-    margin-bottom: 0.8em;
+  > #name-container {
+    font-weight: bold;
+    padding: 0 0.4em 0.2em;
+    text-align: center;
+  }
 
-    #dealer-container:not(.show) {
-      display: none;
-    }
+  > #status-container {
+    padding-left: 0.3em;
   }
 
   .fixed-width {
     display: inline-block;
-    width: 30%;
+    padding: 0 0.2em;
+    text-align: right;
+    width: 40%;
   }
 
-  #winner-icon {
+  > .icon {
     height: 64px;
-    left: min(10%, 10px);
     opacity: 80%;
     position: absolute;
     rotate: -30deg;
@@ -49,6 +50,41 @@ dwg-fiddlesticks-player {
 
     &:not(.show) {
       display: none;
+    }
+  }
+
+  > .icon-wrapper {
+    height: 64px;
+    left: min(10%, 10px);
+    opacity: 80%;
+    position: absolute;
+    top: -48px;
+    width: 64px;
+
+    &:not(.show) {
+      display: none;
+    }
+
+    > .icon {
+      height: 100%;
+      rotate: -30deg;
+      width: 100%;
+    }
+
+    > .icon-tooltip {
+      background-color: rgba(60, 60, 60, 0.7);
+      border-radius: 0.6em;
+      color: white;
+      padding: 0.2em 0.4em;
+      position: absolute;
+      top: -1em;
+      white-space: nowrap;
+    }
+
+    &:not(:hover) {
+      > .icon-tooltip {
+        display: none;
+      }
     }
   }
 }

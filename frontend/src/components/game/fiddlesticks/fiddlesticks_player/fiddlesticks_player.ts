@@ -8,12 +8,13 @@ import html from './fiddlesticks_player.html';
 import './fiddlesticks_player.scss';
 
 export class DwgFiddlesticksPlayer extends DwgElement {
-  name_container: HTMLSpanElement;
-  dealer_container: HTMLSpanElement;
+  name_container: HTMLDivElement;
+  status_container: HTMLDivElement;
   score_container: HTMLSpanElement;
   bet_container: HTMLSpanElement;
   tricks_container: HTMLSpanElement;
-  winner_icon: HTMLImageElement;
+  dealer_wrapper: HTMLDivElement;
+  winner_wrapper: HTMLDivElement;
 
   player: FiddlesticksPlayer;
   client_player = false;
@@ -24,11 +25,12 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     super();
     this.htmlString = html;
     this.configureElement('name_container');
-    this.configureElement('dealer_container');
+    this.configureElement('status_container');
     this.configureElement('score_container');
     this.configureElement('bet_container');
     this.configureElement('tricks_container');
-    this.configureElement('winner_icon');
+    this.configureElement('dealer_wrapper');
+    this.configureElement('winner_wrapper');
   }
 
   initialized = false;
@@ -68,27 +70,21 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.client_player = true;
   }
 
-  setDealer(dealer: boolean) {
-    this.dealer_container.classList.toggle('show', dealer);
+  newRound(dealer: boolean) {
+    this.endRound(); // in case it wasn't called
+    this.dealer_wrapper.classList.toggle('show', dealer);
+    if (dealer) {
+      this.status_container.innerText = 'Dealer';
+    }
   }
 
-  /** Should be called at end and beginning of rounds */
-  newRound() {
+  endRound() {
     this.player.bet = -1;
     this.player.tricks = 0;
     this.bet_container.innerText = '-';
     this.tricks_container.innerText = '-';
-  }
-
-  setHiddenCards(_: number) {
-    this.newRound();
-    this.player.cards = [];
-    this.card_els = [];
-  }
-
-  setCards(cards: StandardCard[]) {
-    // TODO: call newRoud() where this would be called
-    this.newRound();
+    this.dealer_wrapper.classList.remove('show');
+    this.status_container.innerText = '';
   }
 
   betting() {
@@ -133,7 +129,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
   }
 
   wonGame() {
-    this.winner_icon.classList.add('show');
+    this.winner_wrapper.classList.add('show');
   }
 }
 
