@@ -3,6 +3,7 @@ package lobby
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -225,7 +226,7 @@ func (l *Lobby) createRoom(client *Client) {
 	client_id_string := strconv.Itoa(int(client.client_id))
 	room_stringified, err := json.Marshal(room.ToFrontend())
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err.Error())
 		room_stringified = []byte{}
 	}
 	l.broadcastMessage(lobbyMessage{

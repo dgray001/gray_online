@@ -3,6 +3,7 @@ package lobby
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 	"time"
 
@@ -97,7 +98,7 @@ func (c *Client) readMessages() {
 		var message lobbyMessage
 		err := c.connection.ReadJSON(&message)
 		if err != nil {
-			fmt.Println("Error at message reader:", err)
+			fmt.Fprintln(os.Stderr, "Error at message reader: "+err.Error())
 			break
 		}
 		fmt.Printf("Receiving client message from %d: {%s, %s, %s, %s}\n",
@@ -438,14 +439,14 @@ func (c *Client) writeMessages() {
 			}
 			err := c.connection.WriteJSON(message)
 			if err != nil {
-				fmt.Println("Error at message writer:", err)
+				fmt.Fprintln(os.Stderr, "Error at message writer: "+err.Error())
 				break
 			}
 		case <-ticker.C:
 			c.connection.SetWriteDeadline(time.Now().Add(write_wait))
 			err := c.connection.WriteMessage(websocket.PingMessage, nil)
 			if err != nil {
-				fmt.Println("Error at ping writer:", err)
+				fmt.Fprintln(os.Stderr, "Error at ping writer: "+err.Error())
 				break
 			}
 			c.ping_start = time.Now()

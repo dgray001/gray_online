@@ -475,10 +475,12 @@ export class DwgLobbyRoom extends DwgElement {
     this.settings_game_status.innerText = GameStatusEnum.GAME_OVER;
     this.game_button_container.classList.add('hide');
     if (this.is_host) {
-      this.settings_button_container.classList.remove('hide');
+      this.settings_launching = false;
+      this.settings_launch_button.classList.remove('launching');
       this.settings_launch_button.innerText = 'Launch';
       this.settings_launch_button.disabled = false;
       this.settings_settings_button.disabled = false;
+      this.settings_button_container.classList.remove('hide');
     }
     this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {'detail': {
       message: 'Game over',

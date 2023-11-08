@@ -3,6 +3,7 @@ package lobby
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strconv"
 
 	"github.com/dgray001/gray_online/game"
@@ -97,6 +98,7 @@ func (c *Client) clientGameUpdates(player *game.Player, room_id_string string) {
 		case message := <-player.Updates:
 			encoded_message, err := json.Marshal(message.Content)
 			if err != nil {
+				fmt.Fprintln(os.Stderr, err.Error())
 				break
 			}
 			message_id_string := strconv.Itoa(message.Id)
@@ -265,7 +267,7 @@ func (r *LobbyRoom) setPlayer(c *Client) {
 func (r *LobbyRoom) updateSettings(s *GameSettings) {
 	settings_stringified, err := json.Marshal(s.ToFrontend())
 	if err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err.Error())
 		return
 	}
 	r.game_settings = s

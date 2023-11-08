@@ -1,7 +1,8 @@
 import {DwgElement} from '../../../dwg_element';
 import {createMessage} from '../../../lobby/data_models';
-import {StandardCard, cardToIcon, cardToImagePath} from '../../util/card_util';
+import {StandardCard} from '../../util/card_util';
 import {FiddlesticksPlayer} from '../fiddlesticks';
+import {until} from '../../../../scripts/util';
 
 import html from './fiddlesticks_player.html';
 
@@ -12,6 +13,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
   status_container: HTMLDivElement;
   score_container: HTMLSpanElement;
   bet_container: HTMLSpanElement;
+  bet_input: HTMLInputElement;
   tricks_container: HTMLSpanElement;
   dealer_wrapper: HTMLDivElement;
   winner_wrapper: HTMLDivElement;
@@ -28,6 +30,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.configureElement('status_container');
     this.configureElement('score_container');
     this.configureElement('bet_container');
+    this.configureElement('bet_input');
     this.configureElement('tricks_container');
     this.configureElement('dealer_wrapper');
     this.configureElement('winner_wrapper');
@@ -49,7 +52,9 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.initialized = true;
   }
 
-  gameStarted(betting: boolean, current_turn: boolean) {
+  async gameStarted(betting: boolean, current_turn: boolean) {
+    console.log(betting, current_turn, this.player);
+    await until(() => this.fully_parsed);
     if (betting) {
       this.bet_container.innerText = this.player.bet.toString(); // TODO: shouldn't show if haven't bet yet
       this.tricks_container.innerText = '-';
@@ -68,6 +73,15 @@ export class DwgFiddlesticksPlayer extends DwgElement {
   setClientPlayer() {
     this.classList.add('client-player');
     this.client_player = true;
+    this.bet_input.addEventListener('keyup', (e) => {
+      if (e.key !== 'Enter') {
+        return;
+      }
+      this.bet_input.disabled = true;
+      const game_update = createMessage(`player-${this.player.player.player_id}`, 'game-update', `{"amount":${this.bet_input.value}}`, 'bet');
+      this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, bubbles: true}));
+      e.stopImmediatePropagation();
+    });
   }
 
   newRound(dealer: boolean) {
@@ -91,11 +105,18 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     if (!this.client_player) {
       return;
     }
+    this.bet_input.disabled = false;
+    this.bet_input.valueAsNumber = 0;
+    this.bet_input.max = this.player.cards.length.toString();
+    this.bet_input.classList.add('show');
   }
 
   setBet(amount: number) {
     this.player.bet = amount;
     this.bet_container.innerText = amount.toString();
+    if (this.client_player) {
+      this.bet_input.classList.remove('show');
+    }
   }
 
   endBetting() {
@@ -109,12 +130,9 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.currently_playing = true;
   }
 
-  playCard(index: number, card: StandardCard) {
+  playCard() {
     if (this.client_player) {
       this.currently_playing = false;
-    }
-    if (this.card_els.length) {
-      this.card_els[index].remove();
     }
   }
 

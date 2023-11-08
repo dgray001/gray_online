@@ -1,6 +1,4 @@
 0.3: flesh out fiddlesticks game
- - Refactor the fiddlesticks_player component to not handle betting/playing but just have info
- v: Desktop fiddlesticks layout/styles
  w: Mobile fiddlesticks styles
  x: AI can take over when player AFK
  y: Resign button causes resign => AI takes over permanently

@@ -33,6 +33,7 @@ export declare interface GameFiddlesticks {
 export declare interface FiddlesticksPlayer {
   player: GamePlayer;
   cards: StandardCard[];
+  cards_played: number[];
   score: number;
   bet: number;
   tricks: number;
@@ -126,26 +127,27 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
         this.player_els[id].style.setProperty('--num-players', this.player_els.length.toString());
       }
     }
-    if (game.game_base.game_started) {
+    if (game.game_base.game_ended) {
+      // TODO: show ended game state
+    }
+    else if (game.game_base.game_started) {
       this.round_number.innerText = game.round.toString();
       for (const [player_id, player_el] of this.player_els.entries()) {
         player_el.gameStarted(game.betting, !game.game_base.game_ended && player_id === game.turn);
         if (this.player_id == player_id && !game.game_base.game_ended) {
-          this.players_cards.setCards(game.players[player_id].cards);
+          this.players_cards.setCards(game.players[player_id].cards, game.players[player_id].cards_played);
         }
       }
       if (game.betting) {
         this.current_trick = 0;
         this.trick_number.innerText = '-';
+        this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Betting`;
       } else {
         this.current_trick = game.players.reduce((a, b) => a + b.tricks, 1);
         this.trick_number.innerText = this.current_trick.toString();
+        this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
       }
-      if (game.game_base.game_ended) {
-        // TODO: show ended game state
-      } else {
-        this.setTrumpImage(game.trump);
-      }
+      this.setTrumpImage(game.trump);
     }
   }
 
@@ -250,7 +252,10 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
             this.game.players[playCardData.player_id].cards.splice(playCardData.index, 1);
           }
           this.game.trick.push(playCardData.card);
-          this.player_els[playCardData.player_id].playCard(playCardData.index, playCardData.card);
+          this.player_els[playCardData.player_id].playCard();
+          if (playCardData.player_id === this.player_id) {
+            this.players_cards.playCard(playCardData.index);
+          }
           this.game.turn++;
           if (this.game.turn >= this.game.players.length) {
             this.game.turn -= this.game.players.length;

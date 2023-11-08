@@ -40,6 +40,16 @@ dwg-fiddlesticks-player {
     width: 40%;
   }
 
+  #bet-input {
+    left: 40%;
+    position: absolute;
+    width: 60%;
+
+    &:not(.show) {
+      display: none;
+    }
+  }
+
   > .icon {
     height: 64px;
     opacity: 80%;

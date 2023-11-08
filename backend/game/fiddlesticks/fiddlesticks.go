@@ -52,9 +52,10 @@ type FiddlesticksPlayer struct {
 
 func (p *FiddlesticksPlayer) toFrontend(show_updates bool) gin.H {
 	player := gin.H{
-		"score":  p.score,
-		"bet":    p.bet,
-		"tricks": p.tricks,
+		"score":        p.score,
+		"bet":          p.bet,
+		"tricks":       p.tricks,
+		"cards_played": p.cards_played,
 	}
 	if p.player != nil {
 		player["player"] = p.player.ToFrontend(show_updates)
