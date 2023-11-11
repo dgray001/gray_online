@@ -32,6 +32,7 @@ type Client struct {
 	lobby_room             *LobbyRoom
 	game                   game.Game
 	delete_timer           *time.Timer
+	deleted                bool
 }
 
 type lobbyMessage struct {
@@ -53,6 +54,7 @@ func CreateClient(connection *websocket.Conn, nickname string, lobby *Lobby) *Cl
 		lobby:                  lobby,
 		lobby_room:             nil,
 		game:                   nil,
+		deleted:                false,
 	}
 	go client.readMessages()
 	go client.writeMessages()
@@ -95,6 +97,9 @@ func (c *Client) readMessages() {
 		return nil
 	})
 	for {
+		if c.deleted {
+			break
+		}
 		var message lobbyMessage
 		err := c.connection.ReadJSON(&message)
 		if err != nil {
@@ -341,7 +346,7 @@ func (c *Client) readMessages() {
 				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-refresh-failed", Content: "Room not stringified properly"}
 				break
 			}
-			c.send_message <- lobbyMessage{Sender: "room-" + message.Data, Kind: "refresh-room", Content: string(room_stringified), Data: message.Data}
+			c.send_message <- lobbyMessage{Sender: "room-" + message.Data, Kind: "room-refreshed", Content: string(room_stringified), Data: message.Data}
 		case "game-connected":
 			game_id, err := strconv.Atoi(message.Data)
 			if err != nil || game_id < 1 {
@@ -430,6 +435,9 @@ func (c *Client) writeMessages() {
 		ticker.Stop()
 	}()
 	for {
+		if c.deleted {
+			break
+		}
 		select {
 		case message, ok := <-c.send_message:
 			c.connection.SetWriteDeadline(time.Now().Add(write_wait))
@@ -456,15 +464,23 @@ func (c *Client) writeMessages() {
 
 func (c *Client) valid() bool {
 	if c == nil {
+		fmt.Fprintln(os.Stderr, "Client invalid because null", c)
 		return false
 	}
 	if c.client_id < 1 {
+		fmt.Fprintln(os.Stderr, "Client invalid because id < 1:", c)
 		return false
 	}
 	if c.connection == nil {
+		fmt.Fprintln(os.Stderr, "Client invalid because connection nil", c)
 		return false
 	}
 	if c.delete_timer != nil {
+		fmt.Fprintln(os.Stderr, "Client invalid because delete timer not nil", c)
+		return false
+	}
+	if c.deleted {
+		fmt.Fprintln(os.Stderr, "Client invalid because deleted", c)
 		return false
 	}
 	return true

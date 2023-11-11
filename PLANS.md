@@ -1,10 +1,12 @@
 0.3: flesh out fiddlesticks game
- w: Mobile fiddlesticks styles
- x: AI can take over when player AFK
- y: Resign button causes resign => AI takes over permanently
- z: Small fixes:
+ ad: Mobile fiddlesticks styles
+ ae: AI can take over when player AFK
+ af: Resign button causes resign => AI takes over permanently
+ ag: Small fixes:
    => Sometimes updates don't apply properly when refreshing page
    => Need to send ping in lobby for launching game
+   => Turn indicators
+   => Refresh room needs to properly set room data (update 'setRoom')
 
 P3/P4:
  - Basic players dialog in game base

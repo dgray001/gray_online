@@ -150,14 +150,14 @@ export class DwgLobby extends DwgElement {
     this.lobby_users.refreshUsers();
     setInterval(() => {
       this.pingServer();
-    }, 8000);
+    }, 5000);
   }
 
   setSocket(new_socket: WebSocket) {
     if (!!this.socket) {
       this.socket.close(3000, "opening new connection");
     }
-    this.waitingOnConnectedTimes = 2;
+    this.waitingOnConnectedTimes = DwgLobby.DEFAULT_CONNECTION_TIMES;
     this.socket = new_socket;
     this.refreshLobbyRooms();
     this.lobby_users.refreshUsers();
@@ -192,6 +192,7 @@ export class DwgLobby extends DwgElement {
   }
 
   setPing(ping: number) {
+    this.waitingOnConnectedTimes = DwgLobby.DEFAULT_CONNECTION_TIMES;
     this.connection_metadata.ping = ping;
     this.ping_container.innerText = `ping: ${Math.round(ping)}`;
   }
@@ -247,22 +248,23 @@ export class DwgLobby extends DwgElement {
     }
   }
 
+  static DEFAULT_CONNECTION_TIMES = 3;
   waitingOnConnectedTimes = 0;
   pingServer() {
-    if (this.classList.contains('connector-open')) {
+    if (this.classList.contains('connector-open') || this.classList.contains('hide')) {
       return;
     }
     if (!this.socketActive()) {
       this.dispatchEvent(new Event('connected_lost'));
     }
     if (!this.classList.contains('connected')) {
-      this.waitingOnConnectedTimes--;
-      if (this.waitingOnConnectedTimes < 1) {
-        this.dispatchEvent(new Event('connection_lost'));
-      }
-      return
+      this.dispatchEvent(new Event('connection_lost'));
+      return;
     }
-    this.waitingOnConnectedTimes = 2;
+    this.waitingOnConnectedTimes--;
+    if (this.waitingOnConnectedTimes < 1) {
+      this.dispatchEvent(new Event('connection_lost'));
+    }
     this.lobby_users.refreshUsers();
     this.refreshLobbyRooms();
     if (this.lobby_room_wrapper.classList.contains('show')) {

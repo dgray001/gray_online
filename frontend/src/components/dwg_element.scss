@@ -1,5 +1,9 @@
 .dwg-element {
-  &:not(.parsed) {
+  &:not(.parsed), &.hide {
     display: none;
+  }
+
+  &.hidden {
+    visibility: hidden;
   }
 }

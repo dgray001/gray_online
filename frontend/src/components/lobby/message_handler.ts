@@ -1,4 +1,4 @@
-import { SERVER_CHAT_NAME } from "../chatbox/chatbox";
+import {SERVER_CHAT_NAME} from "../chatbox/chatbox";
 import {GameSettings, ServerMessage, LobbyRoom, LobbyRoomFromServer, serverResponseToRoom} from "./data_models";
 import {DwgLobby} from "./lobby";
 
@@ -277,9 +277,23 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
         }
       }
       break;
+    case 'room-refreshed':
+      try {
+        const room_data = JSON.parse(message.content) as LobbyRoomFromServer;
+        const room = serverResponseToRoom(room_data);
+        const room_id = parseInt(message.data);
+        if (!!room_id && room_id === room.room_id) {
+          // lobby.lobby_room.setRoom(room, room.host.client_id === lobby.connection_metadata.client_id);
+          if (!!room.game_id && !lobby.classList.contains('hide')) {
+            lobby.dispatchEvent(new CustomEvent('game_launched', {'detail': lobby.lobby_room.room}));
+          }
+        }
+      } catch(e) {}
+      break;
     case 'room-join-failed':
     case 'room-refresh-failed':
     case 'room-leave-failed':
+      lobby.leaveRoom();
     case 'room-rename-failed':
     case 'room-kick-failed':
     case 'room-promote-failed':

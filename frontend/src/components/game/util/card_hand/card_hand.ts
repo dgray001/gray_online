@@ -12,6 +12,7 @@ export class DwgCardHand extends DwgElement {
 
   constructor() {
     super();
+    this.classList.add('hidden');
     this.htmlString = html;
     this.configureElement('cards_container');
   }
@@ -20,6 +21,8 @@ export class DwgCardHand extends DwgElement {
     await until(() => !!this.clientHeight);
     this.style.setProperty('--height', `${this.clientHeight.toString()}px`);
     this.style.setProperty('--width', `${this.clientWidth.toString()}px`);
+    console.log('!');
+    this.classList.remove('hidden');
   }
 
   setCards(cards: StandardCard[], cards_played: number[] = []) {

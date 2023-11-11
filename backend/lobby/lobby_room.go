@@ -94,6 +94,9 @@ func (r *LobbyRoom) run() {
 
 func (c *Client) clientGameUpdates(player *game.Player, room_id_string string) {
 	for {
+		if c.deleted {
+			break
+		}
 		select {
 		case message := <-player.Updates:
 			encoded_message, err := json.Marshal(message.Content)

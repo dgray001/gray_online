@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.2ab: Final desktop styles
+v0.2ac: Update reconnect server logic
 
 ## Dev Use
 

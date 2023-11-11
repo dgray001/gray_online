@@ -76,11 +76,8 @@ export class DwgPageHome extends DwgElement {
 
   private tryConnectionAgain(message: string): void {
     this.lobby.classList.remove('connected');
-    this.lobby_connector.classList.remove('hide');
     this.lobby.classList.add('connector-open');
-    this.lobby_connector.status_message.innerText = message;
-    this.lobby_connector.connect_button.disabled = false;
-    this.lobby_connector.connect_button.innerText = "Reconnect to Lobby";
+    this.lobby_connector.tryReconnecting(message, this.lobby.connection_metadata);
   }
 }
 

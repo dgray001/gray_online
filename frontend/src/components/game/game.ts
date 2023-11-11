@@ -97,7 +97,7 @@ export class DwgGame extends DwgElement {
       this.appendChild(confirm_dialog);
     });
     setInterval(() => {
-      //this.pingServer();
+      this.pingServer();
     }, 2500);
   }
 
@@ -174,6 +174,8 @@ export class DwgGame extends DwgElement {
     } else {
       this.waiting_room.classList.remove('hide');
       this.game_container.classList.remove('show');
+      this.players_waiting_els.clear();
+      this.players_waiting.replaceChildren();
       for (const [id, player] of this.game.game_base.players) {
         const el = document.createElement('div');
         const name = document.createElement('div');

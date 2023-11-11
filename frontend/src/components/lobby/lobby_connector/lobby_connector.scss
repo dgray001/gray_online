@@ -56,7 +56,10 @@ dwg-lobby-connector {
     }
 
     > #status-message {
+      color: rgb(180, 40, 40);
       font-size: var(--font-size-small);
+      margin-top: 0.5em;
+      text-align: center;
     }
   }
 }

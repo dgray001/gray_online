@@ -1,6 +1,7 @@
 import {DwgElement} from '../../dwg_element';
 import {clickButton} from '../../../scripts/util';
 import {SERVER_CHAT_NAME} from '../../chatbox/chatbox';
+import {ConnectionMetadata} from '../data_models';
 
 import html from './lobby_connector.html';
 import './lobby_connector.scss';
@@ -22,6 +23,8 @@ export class DwgLobbyConnector extends DwgElement {
   nickname: HTMLInputElement;
   connect_button: HTMLButtonElement;
   status_message: HTMLDivElement;
+
+  reconnect_data: ConnectData = {nickname: '', try_reconnect: true, client_id: 0};
 
   constructor() {
     super();
@@ -45,20 +48,12 @@ export class DwgLobbyConnector extends DwgElement {
       const client_id = parseInt(localStorage.getItem("client_id"));
       const previous_nickname = localStorage.getItem("client_nickname");
       if (!!previous_nickname) {
-        this.nickname.value = previous_nickname;
-        const previous_name_valid = this.validateName();
+        const previous_name_valid = this.validateName(previous_nickname);
         if (previous_name_valid && !!client_id && !!client_id_time &&
           (Date.now() - client_id_time < 1000 * 60 * 60 * 24))
         {
           this.previous_nickname.innerText = previous_nickname;
-          clickButton(this.reconnect_button, () => {
-            this.connect({nickname: previous_nickname, try_reconnect: true, client_id});
-            return 'Reconnecting ...';
-          }, {re_enable_button: false});
-          clickButton(this.new_connection_button, () => {
-            this.reconnect_wrapper.classList.remove('show');
-            this.connect_wrapper.classList.add('show');
-          });
+          this.reconnect_data = {nickname: previous_nickname, try_reconnect: true, client_id};
           try_reconnect = true;
         }
       }
@@ -69,18 +64,44 @@ export class DwgLobbyConnector extends DwgElement {
       this.connect_wrapper.classList.add('show');
     }
     this.nickname.addEventListener('keyup', (e) => {
-      const valid_name = this.validateName();
+      const valid_name = this.validateInputName();
       if (valid_name && e.key === 'Enter') {
         this.connect({nickname: this.nickname.value, try_reconnect: false});
       }
     });
     clickButton(this.connect_button, () => {
-      if (!this.validateName()) {
+      if (!this.validateInputName()) {
         return;
       }
       this.connect({nickname: this.nickname.value, try_reconnect: false});
       return 'Connecting ...';
     }, {re_enable_button: false});
+    clickButton(this.reconnect_button, () => {
+      this.connect(this.reconnect_data);
+      return 'Reconnecting ...';
+    }, {re_enable_button: false});
+    clickButton(this.new_connection_button, () => {
+      this.reconnect_wrapper.classList.remove('show');
+      this.connect_wrapper.classList.add('show');
+    });
+  }
+
+  tryReconnecting(message: string, connection_metadata: ConnectionMetadata) {
+    this.status_message.innerText = message;
+    this.reconnect_button.disabled = false;
+    this.reconnect_button.innerText = "Reconnect to Lobby";
+    this.connect_button.disabled = false;
+    this.connect_button.innerText = "Reconnect to Lobby";
+    this.reconnect_data.nickname = connection_metadata.nickname;
+    this.reconnect_data.client_id = connection_metadata.client_id;
+    if (this.validateName(this.reconnect_data.nickname) && !!this.reconnect_data.client_id) {
+      this.reconnect_wrapper.classList.add('show');
+      this.connect_wrapper.classList.remove('show');
+    } else {
+      this.reconnect_wrapper.classList.remove('show');
+      this.connect_wrapper.classList.add('show');
+    }
+    this.classList.remove('hide');
   }
 
   connect(connect_data: ConnectData) {
@@ -89,13 +110,17 @@ export class DwgLobbyConnector extends DwgElement {
 
   invalid_names = [SERVER_CHAT_NAME];
 
-  private validateName(): boolean {
-    if (this.invalid_names.includes(this.nickname.value)) {
+  private validateInputName(): boolean {
+    const valid = this.validateName(this.nickname.value);
+    this.connect_button.disabled = !valid;
+    return valid;
+  }
+
+  private validateName(name: string): boolean {
+    if (this.invalid_names.includes(name)) {
       return false;
     }
-    const valid_name = this.nickname.value.length > 1 && this.nickname.value.length < 17;
-    this.connect_button.disabled = !valid_name;
-    return valid_name;
+    return name.length > 1 && name.length < 17;
   }
 }
 

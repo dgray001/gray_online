@@ -27,6 +27,7 @@ dwg-card-hand {
       --i: 0; // set by component
       height: 100%;
       transform: translateX(calc(var(--i) * var(--card-overlap))) rotate(-3deg);
+      user-select: none;
       width: var(--card-width);
 
       &:hover {

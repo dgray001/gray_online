@@ -186,15 +186,19 @@ func (l *Lobby) reconnectClient(client *Client, client_id uint64) {
 			old_client.delete_timer.Stop()
 		}
 		client.client_id = old_client.client_id
-		if old_client.game != nil {
+		old_game := old_client.game
+		if old_game == nil {
+			old_game = old_client.lobby_room.game
+		}
+		if old_client.lobby_room != nil && old_game != nil {
 			client.lobby_room = old_client.lobby_room
-			client.game = old_client.game
-			if client.lobby_room != nil {
-				room_id_string := strconv.Itoa(int(client.lobby_room.room_id))
-				go client.clientGameUpdates(client.game.GetBase().Players[client_id], room_id_string)
-			}
+			client.game = old_game
+			room_id_string := strconv.Itoa(int(client.lobby_room.room_id))
+			go client.clientGameUpdates(client.game.GetBase().Players[client_id], room_id_string)
 		}
 		l.clients[client.client_id] = client
+		old_client.connection = nil
+		old_client.deleted = true
 		id_string := strconv.Itoa(int(client.client_id))
 		client.send_message <- lobbyMessage{Sender: "server", Kind: "lobby-you-joined", Content: client.nickname, Data: id_string + "-reconnect"}
 		l.broadcastMessage(lobbyMessage{Sender: "client-" + id_string, Kind: "lobby-joined", Content: client.nickname, Data: id_string + "-reconnect"})
@@ -202,10 +206,14 @@ func (l *Lobby) reconnectClient(client *Client, client_id uint64) {
 }
 
 func (l *Lobby) removeClient(client *Client) {
+	if client.deleted {
+		return // don't want to remove reconnected client
+	}
 	delete_client := time.NewTimer(1 * time.Hour)
 	client.delete_timer = delete_client
 	go func() {
 		<-delete_client.C
+		client.deleted = true
 		delete(l.clients, client.client_id)
 	}()
 	id_string := strconv.Itoa(int(client.client_id))
