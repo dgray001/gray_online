@@ -76,7 +76,8 @@ dwg-fiddlesticks {
   }
 
   > #table-container {
-    background: no-repeat center url('../../../images/card_table1000.png');
+    background-position: center;
+    background-repeat: no-repeat;
     background-size: contain;
     height: var(--table-diameter);
     left: calc(0.5 * (100% - var(--table-diameter)));

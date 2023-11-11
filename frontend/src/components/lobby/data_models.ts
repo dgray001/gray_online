@@ -75,6 +75,7 @@ export declare interface GameSettingsFromServer {
   game_type: string;
   max_players: string;
   max_viewers: string;
+  game_specific_settings: object;
 }
 
 /** Convert a server response to a TS game settings object */
@@ -83,6 +84,7 @@ export function serverResponseToGameSettings(server_response: GameSettingsFromSe
     game_type: parseInt(server_response.game_type),
     max_players: parseInt(server_response.max_players),
     max_viewers: parseInt(server_response.max_viewers),
+    game_specific_settings: server_response.game_specific_settings,
   }
 }
 

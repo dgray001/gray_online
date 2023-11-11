@@ -1,6 +1,6 @@
 import {DwgElement} from '../dwg_element';
 import {DwgLobby} from '../lobby/lobby';
-import {DwgLobbyConnector} from '../lobby/lobby_connector/lobby_connector';
+import {ConnectData, DwgLobbyConnector} from '../lobby/lobby_connector/lobby_connector';
 import {DwgGame} from '../game/game';
 import {LobbyRoom} from '../lobby/data_models';
 import {websocketPath} from '../../scripts/api';
@@ -33,17 +33,10 @@ export class DwgPageHome extends DwgElement {
     if (this.client_on_mobile) {
       document.body.classList.add('mobile');
     }
-    this.lobby_connector.addEventListener('submitted', () => {
-      const nickname = this.lobby_connector.nickname.value;
-      let client_id_time = 0;
-      let client_id = 0;
-      try {
-        client_id_time = parseInt(localStorage.getItem("client_id_time"));
-        client_id = parseInt(localStorage.getItem("client_id"));
-      } catch(e) {} // if localstorage isn't accessible
-      const socket = (!!client_id && !!client_id_time && (Date.now() - client_id_time < 1000 * 60 * 60 * 24)) ?
-        new WebSocket(`${websocketPath()}/reconnect/${nickname}/${client_id}`) :
-        new WebSocket(`${websocketPath()}/connect/${nickname}`);
+    this.lobby_connector.addEventListener('connect', (e: CustomEvent<ConnectData>) => {
+      const socket = e.detail.try_reconnect ?
+        new WebSocket(`${websocketPath()}/reconnect/${e.detail.nickname}/${e.detail.client_id}`) :
+        new WebSocket(`${websocketPath()}/connect/${e.detail.nickname}`);
       socket.addEventListener('error', (e) => {
         console.log(e);
         this.tryConnectionAgain("Could not connect. Check your connection and try again.");
@@ -51,7 +44,7 @@ export class DwgPageHome extends DwgElement {
       socket.addEventListener('open', () => {
         this.lobby_connector.classList.add('hide');
         this.lobby.classList.remove('connector-open');
-        this.lobby.setNickname(nickname);
+        this.lobby.setNickname(e.detail.nickname);
         this.lobby.setPing(0);
         this.lobby.setSocket(socket);
       });

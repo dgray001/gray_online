@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.2z: Desktop fiddlesticks layout/styles
+v0.2aa: Control reconnect logic
 
 ## Dev Use
 

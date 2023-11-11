@@ -11,7 +11,7 @@ dwg-fiddlesticks-player {
   color: black;
   display: block;
   left: var(--x);
-  position: relative;
+  position: absolute;
   top: var(--y);
   z-index: 4;
 
@@ -87,7 +87,7 @@ dwg-fiddlesticks-player {
       color: white;
       padding: 0.2em 0.4em;
       position: absolute;
-      top: -1em;
+      bottom: -1em;
       white-space: nowrap;
     }
 

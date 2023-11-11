@@ -105,6 +105,8 @@ func (c *Client) clientGameUpdates(player *game.Player, room_id_string string) {
 			if c.valid() {
 				c.send_message <- lobbyMessage{Sender: "room-" + room_id_string + "-" + message_id_string,
 					Kind: "game-update", Data: message.Kind, Content: string(encoded_message)}
+			} else {
+				fmt.Fprintln(os.Stderr, "Room failed to send update message to client", c.client_id)
 			}
 		}
 	}
@@ -131,7 +133,7 @@ func (r *LobbyRoom) broadcastMessage(message lobbyMessage) {
 		select {
 		case client.send_message <- message:
 		default:
-			fmt.Println("Room failed to send message to client", client.client_id)
+			fmt.Fprintln(os.Stderr, "Room failed to send message to client", client.client_id)
 			// r.lobby.removeClient(client)
 		}
 	}
@@ -142,7 +144,7 @@ func (r *LobbyRoom) broadcastMessage(message lobbyMessage) {
 		select {
 		case client.send_message <- message:
 		default:
-			fmt.Println("Room failed to send message to client", client.client_id)
+			fmt.Fprintln(os.Stderr, "Room failed to send message to client", client.client_id)
 			// r.lobby.removeClient(client)
 		}
 	}

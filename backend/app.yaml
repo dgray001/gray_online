@@ -8,7 +8,7 @@ runtime_config:
 
 # to prevent moolah from going bye bye
 manual_scaling:
-  max_instances: 1
+  instances: 1
 
 # for websockets to be useful
 network:

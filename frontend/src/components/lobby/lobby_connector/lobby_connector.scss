@@ -1,34 +1,62 @@
 dwg-lobby-connector {
-  height: 100%;
+  font-size: var(--font-size-large);
+  height: 100vh;
   left: 0px;
   position: absolute;
   top: 0px;
-  width: 100%;
+  width: 100vw;
 
   &.hide {
     display: none;
   }
 
-  #card {
+  > #card {
     background-color: rgb(220, 220, 220);
+    box-shadow: 0 0 8px 8px rgba(60, 60, 60, 0.7);
     color: black;
-    height: 200px;
+    height: 240px;
     left: calc(50% - 100px);
     padding: 16px;
     position: relative;
     top: calc(50% - 150px);
     width: 300px;
 
-    #nickname {
+    button {
       font-size: var(--font-size-large);
       margin-top: 20px;
       width: 290px;
     }
 
-    #connect-button {
-      font-size: var(--font-size-large);
-      margin-top: 50px;
-      width: 290px;
+    > #reconnect-wrapper {
+      &:not(.show) {
+        display: none;
+      }
+
+      > #previous-nickname {
+        height: calc(1.8 * var(--font-size-large));
+        text-align: center;
+      }
+
+      > #new-connection-info {
+        font-size: var(--font-size-small);
+      }
+    }
+
+    > #connect-wrapper {
+      &:not(.show) {
+        display: none;
+      }
+
+      > #nickname {
+        font-size: var(--font-size-large);
+        margin-bottom: 30px;
+        margin-top: 20px;
+        width: 290px;
+      }
+    }
+
+    > #status-message {
+      font-size: var(--font-size-small);
     }
   }
 }

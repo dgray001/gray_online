@@ -171,8 +171,8 @@ func (l *Lobby) addClient(client *Client) {
 	l.setClientId(client)
 	l.clients[client.client_id] = client
 	id_string := strconv.Itoa(int(client.client_id))
-	client.send_message <- lobbyMessage{Sender: "server", Kind: "lobby-you-joined", Content: client.nickname, Data: id_string}
-	l.broadcastMessage(lobbyMessage{Sender: "client-" + id_string, Kind: "lobby-joined", Content: client.nickname, Data: id_string})
+	client.send_message <- lobbyMessage{Sender: "server", Kind: "lobby-you-joined", Content: client.nickname, Data: id_string + "-connect"}
+	l.broadcastMessage(lobbyMessage{Sender: "client-" + id_string, Kind: "lobby-joined", Content: client.nickname, Data: id_string + "-connect"})
 }
 
 func (l *Lobby) reconnectClient(client *Client, client_id uint64) {
@@ -189,11 +189,15 @@ func (l *Lobby) reconnectClient(client *Client, client_id uint64) {
 		if old_client.game != nil {
 			client.lobby_room = old_client.lobby_room
 			client.game = old_client.game
+			if client.lobby_room != nil {
+				room_id_string := strconv.Itoa(int(client.lobby_room.room_id))
+				go client.clientGameUpdates(client.game.GetBase().Players[client_id], room_id_string)
+			}
 		}
 		l.clients[client.client_id] = client
 		id_string := strconv.Itoa(int(client.client_id))
-		client.send_message <- lobbyMessage{Sender: "server", Kind: "lobby-you-joined", Content: client.nickname, Data: id_string}
-		l.broadcastMessage(lobbyMessage{Sender: "client-" + id_string, Kind: "lobby-joined", Content: client.nickname, Data: id_string})
+		client.send_message <- lobbyMessage{Sender: "server", Kind: "lobby-you-joined", Content: client.nickname, Data: id_string + "-reconnect"}
+		l.broadcastMessage(lobbyMessage{Sender: "client-" + id_string, Kind: "lobby-joined", Content: client.nickname, Data: id_string + "-reconnect"})
 	}
 }
 

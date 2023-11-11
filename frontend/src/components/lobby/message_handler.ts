@@ -21,36 +21,47 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
   }
   switch(message.kind) {
     case 'lobby-you-joined':
-      const id = parseInt(message.data);
-      if (id) {
-        lobby.connection_metadata.client_id = id;
-        lobby.classList.add('connected');
-        lobby.setNickname(message.content);
-        lobby.chatbox.addChat({
-          message: `You (${message.content}) joined lobby with client id ${id}`,
-          sender: SERVER_CHAT_NAME,
-        });
-        lobby.lobby_users.addUser({client_id: id, nickname: lobby.connection_metadata.nickname, ping: 0});
-        try {
-          localStorage.setItem("client_id", message.data);
-          localStorage.setItem("client_nickname", message.content);
-          localStorage.setItem("client_id_time", Date.now().toString());
-        } catch(e) {} // if localstorage isn't accessible
-        lobby.refreshLobbyRooms();
-      } else {
-        lobby.socket.close(3001, 'you-joined-lobby message did not return properly formed client id');
+      const you_joined_data_split = message.data.split('-');
+      if (you_joined_data_split.length < 2) {
+        lobby.socket.close(3001, 'you-joined-lobby message did not return properly-formed connect data');
         lobby.dispatchEvent(new Event('connection_lost'));
       }
+      const id = parseInt(you_joined_data_split[0]);
+      if (!id) {
+        lobby.socket.close(3001, 'you-joined-lobby message did not return properly-formed client id');
+        lobby.dispatchEvent(new Event('connection_lost'));
+      }
+      const you_joined_word = you_joined_data_split[1] === 'reconnect' ? 'rejoined' : 'joined';
+      lobby.connection_metadata.client_id = id;
+      lobby.classList.add('connected');
+      lobby.setNickname(message.content);
+      lobby.chatbox.addChat({
+        message: `You (${message.content}) ${you_joined_word} lobby with client id ${id}`,
+        sender: SERVER_CHAT_NAME,
+      });
+      lobby.lobby_users.addUser({client_id: id, nickname: lobby.connection_metadata.nickname, ping: 0});
+      try {
+        localStorage.setItem("client_id", message.data);
+        localStorage.setItem("client_nickname", message.content);
+        localStorage.setItem("client_id_time", Date.now().toString());
+      } catch(e) {} // if localstorage isn't accessible
+      lobby.refreshLobbyRooms();
       break;
     case 'lobby-joined':
-      const join_client_id = parseInt(message.data);
-      if (join_client_id) {
-        lobby.chatbox.addChat({
-          message: `${message.content} joined lobby with client id ${join_client_id}`,
-          sender: SERVER_CHAT_NAME,
-        });
-        lobby.lobby_users.addUser({client_id: join_client_id, nickname: message.content, ping: 0});
+      const joined_data_split = message.data.split('-');
+      if (joined_data_split.length < 2) {
+        break;
       }
+      const join_client_id = parseInt(joined_data_split[0]);
+      if (!join_client_id) {
+        break;
+      }
+      const joined_word = joined_data_split[1] === 'reconnect' ? 'rejoined' : 'joined';
+      lobby.chatbox.addChat({
+        message: `${message.content} ${joined_word} lobby with client id ${join_client_id}`,
+        sender: SERVER_CHAT_NAME,
+      });
+      lobby.lobby_users.addUser({client_id: join_client_id, nickname: message.content, ping: 0});
       break;
     case 'lobby-left':
       const left_client_id = parseInt(message.data);

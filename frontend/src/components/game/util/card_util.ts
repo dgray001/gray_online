@@ -95,5 +95,5 @@ export function cardToImagePath(card: StandardCard): string {
   if (card.number > 10 && card.number < 14) {
     return_string += '2';
   }
-  return `/cards/${return_string}.png`;
+  return `/images/cards/${return_string}.png`;
 }

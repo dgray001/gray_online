@@ -1,9 +1,10 @@
 import {DwgElement} from '../../dwg_element';
 import {GameBase, GameComponent, GamePlayer, UpdateMessage} from '../data_models';
-import {StandardCard, cardToImagePath, cardToName} from '../util/card_util';
+import {StandardCard, cardToIcon, cardToImagePath, cardToName} from '../util/card_util';
 import {DwgFiddlesticksPlayer} from './fiddlesticks_player/fiddlesticks_player';
 import {DwgCardHand} from '../util/card_hand/card_hand';
 import {createMessage} from '../../lobby/data_models';
+import {clientOnMobile} from '../../../scripts/util';
 
 import html from './fiddlesticks.html';
 
@@ -37,6 +38,7 @@ export declare interface FiddlesticksPlayer {
   score: number;
   bet: number;
   tricks: number;
+  order: number; // around table
 }
 
 /** Data describing a deal-round game-update */
@@ -73,6 +75,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
   status_container: HTMLSpanElement;
   trump_card_img: HTMLImageElement;
   trick_cards: HTMLDivElement;
+  table_container: HTMLDivElement;
   player_container: HTMLDivElement;
   players_cards: DwgCardHand;
 
@@ -88,6 +91,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     this.configureElement('status_container');
     this.configureElement('trump_card_img');
     this.configureElement('trick_cards');
+    this.configureElement('table_container');
     this.configureElement('player_container');
     this.configureElement('players_cards');
   }
@@ -101,6 +105,11 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
       const game_update = createMessage(`player-${this.player_id}`, 'game-update', `{"index":${e.detail}}`, 'play-card');
       this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, 'bubbles': true}));
     });
+    if (clientOnMobile()) {
+      this.table_container.style.setProperty('background-image', 'url(/images/card_table400.png)');
+    } else {
+      this.table_container.style.setProperty('background-image', 'url(/images/card_table800.png)');
+    }
   }
 
   initialize(game: GameFiddlesticks, client_id: number): void {
@@ -123,10 +132,12 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
         if (id >= this.player_els.length) {
           id -= this.player_els.length;
         }
+        this.game.players[id].order = i;
         this.player_els[id].style.setProperty('--order', i.toString());
         this.player_els[id].style.setProperty('--num-players', this.player_els.length.toString());
       }
     }
+    this.trick_cards.style.setProperty('--num-players', this.player_els.length.toString());
     if (game.game_base.game_ended) {
       // TODO: show ended game state
     }
@@ -256,6 +267,16 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           if (playCardData.player_id === this.player_id) {
             this.players_cards.playCard(playCardData.index);
           }
+          // TODO: handle viewers properly
+          const card_el = document.createElement('div');
+          const card_el_img = document.createElement('img');
+          card_el_img.src = cardToImagePath(playCardData.card);
+          card_el_img.draggable = false;
+          card_el_img.alt = cardToIcon(playCardData.card);
+          card_el.appendChild(card_el_img);
+          card_el.classList.add('card');
+          card_el.style.setProperty('--i', this.game.players[playCardData.player_id].order.toString());
+          this.trick_cards.appendChild(card_el);
           this.game.turn++;
           if (this.game.turn >= this.game.players.length) {
             this.game.turn -= this.game.players.length;
@@ -284,6 +305,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
             for (const [i, player_el] of this.player_els.entries()) {
               player_el.endTrick(this.game.players[i].tricks);
             }
+            this.trick_cards.replaceChildren();
             this.game.trick = [];
             console.log(`Trick won by ${this.game.players[this.game.turn].player.nickname} with the ${cardToName(winning_card)}`);
             if (this.current_trick === this.game.round) {
