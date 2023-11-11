@@ -1,7 +1,7 @@
 import {DwgElement} from '../../../dwg_element';
 import {createMessage} from '../../../lobby/data_models';
 import {FiddlesticksPlayer} from '../fiddlesticks';
-import {until} from '../../../../scripts/util';
+import {until, untilTimer} from '../../../../scripts/util';
 import {messageDialog} from '../../game';
 
 import html from './fiddlesticks_player.html';
@@ -17,6 +17,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
   tricks_container: HTMLSpanElement;
   dealer_wrapper: HTMLDivElement;
   winner_wrapper: HTMLDivElement;
+  bet_animation: HTMLDivElement;
 
   player: FiddlesticksPlayer;
   client_player = false;
@@ -34,6 +35,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.configureElement('tricks_container');
     this.configureElement('dealer_wrapper');
     this.configureElement('winner_wrapper');
+    this.configureElement('bet_animation');
   }
 
   initialized = false;
@@ -52,7 +54,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.initialized = true;
   }
 
-  async gameStarted(betting: boolean, current_turn: boolean) {
+  async gameStarted(betting: boolean, current_turn: boolean, dealer: boolean) {
     await until(() => this.fully_parsed);
     if (betting) {
       this.bet_container.innerText = this.player.bet.toString(); // TODO: shouldn't show if haven't bet yet
@@ -67,6 +69,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
         this.playing();
       }
     }
+    this.setDealer(dealer);
   }
 
   setClientPlayer() {
@@ -90,6 +93,10 @@ export class DwgFiddlesticksPlayer extends DwgElement {
 
   newRound(dealer: boolean) {
     this.endRound(); // in case it wasn't called
+    this.setDealer(dealer);
+  }
+
+  setDealer(dealer: boolean) {
     this.dealer_wrapper.classList.toggle('show', dealer);
     if (dealer) {
       this.status_container.innerText = 'Dealer';
@@ -106,6 +113,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
   }
 
   betting() {
+    this.classList.add('turn');
     if (!this.client_player) {
       return;
     }
@@ -115,9 +123,21 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.bet_input.classList.add('show');
   }
 
+  async setBetAnimation(amount: number) {
+    const animation_time = 600;
+    this.bet_animation.innerText = amount.toString();
+    this.bet_animation.style.transitionDuration = `${animation_time}ms`;
+    this.bet_animation.classList.add('transition');
+    await untilTimer(animation_time);
+    this.bet_animation.classList.remove('transition');
+    await untilTimer(animation_time);
+    this.setBet(amount);
+  }
+
   setBet(amount: number) {
     this.player.bet = amount;
     this.bet_container.innerText = amount.toString();
+    this.classList.remove('turn');
     if (this.client_player) {
       this.bet_input.classList.remove('show');
     }
@@ -128,6 +148,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
   }
 
   playing() {
+    this.classList.add('turn');
     if (!this.client_player) {
       return;
     }
@@ -135,6 +156,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
   }
 
   playCard() {
+    this.classList.remove('turn');
     if (this.client_player) {
       this.currently_playing = false;
     }

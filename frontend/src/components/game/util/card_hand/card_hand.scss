@@ -6,27 +6,30 @@ dwg-card-hand {
   width: 100%;
 
   > #cards-container {
+    --min-padding: 3px; // match the -3deg rotation
     --num-cards: 0; // set by component
-    --card-width: calc((var(--height) - var(--min-padding-left)) / var(--card-image-scale));
+    --card-width: calc((var(--height) - var(--min-padding)) / var(--card-image-scale));
     --card-overlap: min(
       calc(-0.3 * var(--card-width)),
       calc(((var(--width) - var(--card-width)) / (var(--num-cards) - 1)) - var(--card-width))
     );
-    --total-card-width: calc(var(--card-width) + (var(--num-cards) - 1) * (var(--card-width) - (-1 * var(--card-overlap))));
-    --min-padding-left: 3px; // match the -3deg rotation
+    --total-card-width: calc(var(--card-width) + (var(--num-cards) - 1) * (var(--card-width) + var(--card-overlap)));
     box-sizing: border-box;
     display: flex;
     flex-flow: row nowrap;
-    height: calc(100% - var(--min-padding-left));
+    height: calc(100% - var(--min-padding));
     justify-content: flex-start;
-    margin-top: var(--min-padding-left);
-    padding-left: max(var(--min-padding-left), 0.5 * (var(--width) - var(--total-card-width)));
+    margin-top: var(--min-padding);
+    padding-left: max(var(--min-padding), 0.5 * (var(--width) - var(--total-card-width)));
     width: 100%;
 
     > .card {
       --i: 0; // set by component
+      flex: 0 0 var(--card-width);
       height: 100%;
-      transform: translateX(calc(var(--i) * var(--card-overlap))) rotate(-3deg);
+      max-width: var(--card-width);
+      min-width: var(--card-width);
+      transform: translateX(calc(var(--i) * var(--card-overlap))) rotate(-0deg);
       user-select: none;
       width: var(--card-width);
 

@@ -1,4 +1,5 @@
 import {ServerMessage, createMessage} from "../lobby/data_models";
+import {UpdateMessage} from "./data_models";
 import {DwgGame} from "./game";
 
 function isGameMessage(kind: string): boolean {
@@ -64,7 +65,8 @@ export function handleMessage(game: DwgGame, message: ServerMessage) {
   }
 }
 
-function handleGameUpdate(game: DwgGame, message: ServerMessage) {
+let running_updates = false;
+async function handleGameUpdate(game: DwgGame, message: ServerMessage) {
   const sender_split = message.sender.split('-');
   if (sender_split.length < 3) {
     return;
@@ -72,6 +74,28 @@ function handleGameUpdate(game: DwgGame, message: ServerMessage) {
   const game_update_id = parseInt(sender_split[2]);
   if (!game_update_id) {
     return;
+  }
+  async function runUpdate(update: UpdateMessage) {
+    running_updates = true;
+    if (update.update_id - 1 === game.game.game_base.last_continuous_update_id) {
+      game.game.game_base.last_continuous_update_id = update.update_id;
+      console.log(`applying update id ${update.update_id}`);
+      await game.game_el.gameUpdate(update);
+      while (game.game.game_base.updates.has(game.game.game_base.last_continuous_update_id + 1)) {
+        const nextUpdate = game.game.game_base.updates.get(game.game.game_base.last_continuous_update_id + 1);
+        game.game.game_base.last_continuous_update_id = nextUpdate.update_id;
+        console.log(`applying update id ${nextUpdate.update_id}`);
+        await game.game_el.gameUpdate(nextUpdate);
+      }
+    } else if (update.update_id - 1 > game.game.game_base.last_continuous_update_id) {
+      game.socket.send(createMessage(
+        `client-${game.connection_metadata.client_id}`,
+        'game-get-update',
+        '',
+        `${game.game.game_base.last_continuous_update_id + 1}`,
+      ));
+    } else {} // ignore updates that are already applied
+    running_updates = false;
   }
   try {
     const update = JSON.parse(message.content);
@@ -81,24 +105,9 @@ function handleGameUpdate(game: DwgGame, message: ServerMessage) {
       update,
     };
     game.game.game_base.updates.set(game_update_id, updateMessage);
-    if (game_update_id - 1 === game.game.game_base.last_continuous_update_id) {
-      game.game.game_base.last_continuous_update_id = game_update_id;
-      console.log(`applying update id ${updateMessage.update_id}`);
-      game.game_el.gameUpdate(updateMessage);
-      while (game.game.game_base.updates.has(game.game.game_base.last_continuous_update_id + 1)) {
-        const nextUpdateMessage = game.game.game_base.updates.get(game.game.game_base.last_continuous_update_id + 1);
-        game.game.game_base.last_continuous_update_id = nextUpdateMessage.update_id;
-        console.log(`applying update id ${nextUpdateMessage.update_id}`);
-        game.game_el.gameUpdate(nextUpdateMessage);
-      }
-    } else if (game_update_id - 1 > game.game.game_base.last_continuous_update_id) {
-      game.socket.send(createMessage(
-        `client-${game.connection_metadata.client_id}`,
-        'game-get-update',
-        '',
-        `${game.game.game_base.last_continuous_update_id + 1}`,
-      ));
-    } else {} // ignore updates that are already applied
+    if (!running_updates) {
+      runUpdate(updateMessage);
+    }
   } catch(e) {
     console.log(e);
     game.socket.send(createMessage(

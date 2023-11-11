@@ -89,21 +89,66 @@ dwg-fiddlesticks {
       --width: min(125px, calc(0.18 * var(--table-diameter)));
       --height: calc(var(--card-image-scale) * var(--width));
       --num-players: 0; // set by component
+      --winner: 0; // set by component
+      --winner-rotation: calc((var(--winner) / var(--num-players)) * 1turn);
+      --winner-turns: calc(var(--winner-rotation) + 0.25turn);
+      --x-winner: calc(0.5 * (var(--table-diameter) + var(--table-diameter) * cos(var(--winner-turns))) - 0.5 * var(--width));
+      --y-winner: calc(0.5 * (var(--table-diameter) + var(--table-diameter) * sin(var(--winner-turns))) - 0.5 * var(--height));
+
+      @keyframes towardWinner {
+        from {
+          --x: calc(0.5 * var(--table-diameter) - 0.5 * var(--width));
+          --y: calc(0.5 * var(--table-diameter) - 0.5 * var(--height));
+          left: var(--x);
+          top: var(--y);
+        }
+        to {
+          --turns: calc(var(--rotation) + 0.25turn);
+          --x: calc(0.5 * (var(--table-diameter) + var(--table-diameter) * cos(var(--turns))) - 0.5 * var(--width));
+          --y: calc(0.5 * (var(--table-diameter) + var(--table-diameter) * sin(var(--turns))) - 0.5 * var(--height));
+          left: var(--x);
+          top: var(--y);
+          transform: rotate(var(--rotation));
+        }
+      }
 
       > .card {
         --i: 0; // set by component
         --rotation: calc((var(--i) / var(--num-players)) * 1turn);
         --turns: calc(var(--rotation) + 0.25turn);
-        --x: calc(0.5 * (var(--table-diameter) + var(--height) * cos(var(--turns))) - 0.5 * var(--width));
-        --y: calc(0.5 * (var(--table-diameter) + var(--height) * sin(var(--turns))) - 0.5 * var(--height));
+        --x-start: calc(0.5 * (var(--table-diameter) + var(--table-diameter) * cos(var(--turns))) - 0.5 * var(--width));
+        --y-start: calc(0.5 * (var(--table-diameter) + var(--table-diameter) * sin(var(--turns))) - 0.5 * var(--height));
+        --x-played: calc(0.5 * (var(--table-diameter) + var(--height) * cos(var(--turns))) - 0.5 * var(--width));
+        --y-played: calc(0.5 * (var(--table-diameter) + var(--height) * sin(var(--turns))) - 0.5 * var(--height));
+        --x-center: calc(0.5 * var(--table-diameter) - 0.5 * var(--width));
+        --y-center: calc(0.5 * var(--table-diameter) - 0.5 * var(--height));
 
         display: block;
         height: var(--height);
-        left: var(--x);
+        left: var(--x-start);
         position: absolute;
-        top: var(--y);
+        top: var(--y-start);
         transform: rotate(var(--rotation));
+        transition-duration: 0s; // set by component
+        transition-property: left, top, transform;
+        transition-timing-function: ease-out;
         width: var(--width);
+
+        &.played {
+          left: var(--x-played);
+          top: var(--y-played);
+        }
+
+        &.center {
+          left: var(--x-center);
+          top: var(--y-center);
+        }
+
+        &.winner {
+          left: var(--x-winner);
+          top: var(--y-winner);
+          transform: rotate(var(--winner-rotation));
+        }
 
         > img {
           height: 100%;

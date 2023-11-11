@@ -32,8 +32,8 @@ export function until(condition: () => boolean, poll_timer = 300): Promise<void>
 }
 
 /** Awaits a specific amount of time */
-export function untilTimer(timer: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, timer));
+export async function untilTimer(timer: number): Promise<void> {
+  await new Promise(resolve => setTimeout(resolve, timer));
 }
 
 /** Capitalizes each word in string */

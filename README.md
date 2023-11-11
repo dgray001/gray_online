@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.2ac: Update reconnect server logic
+v0.2ad: Initial fiddlesticks animations
 
 ## Dev Use
 

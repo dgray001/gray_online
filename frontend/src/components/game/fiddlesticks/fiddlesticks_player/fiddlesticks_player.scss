@@ -15,6 +15,10 @@ dwg-fiddlesticks-player {
   top: var(--y);
   z-index: 4;
 
+  &.turn {
+    box-shadow: 0 0 6px 6px rgba(170, 90, 250, 0.7);
+  }
+
   > * {
     box-sizing: border-box;
     font-size: calc(0.13 * var(--size));
@@ -47,6 +51,27 @@ dwg-fiddlesticks-player {
 
     &:not(.show) {
       display: none;
+    }
+  }
+
+  #bet-animation {
+    background-color: rgba(60, 60, 60, 0.7);
+    border-radius: 0.5em;
+    color: white;
+    font-size: 0;
+    font-weight: bold;
+    left: 0px;
+    margin: 0 auto;
+    padding: 0.5em;
+    position: relative;
+    text-align: center;
+    top: calc(-1em - 6px);
+    transition-property: font-size;
+    transition-timing-function: ease;
+    width: fit-content;
+
+    &.transition {
+      font-size: var(--font-size-largest);
     }
   }
 

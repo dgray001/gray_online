@@ -4,7 +4,7 @@ import {StandardCard, cardToIcon, cardToImagePath, cardToName} from '../util/car
 import {DwgFiddlesticksPlayer} from './fiddlesticks_player/fiddlesticks_player';
 import {DwgCardHand} from '../util/card_hand/card_hand';
 import {createMessage} from '../../lobby/data_models';
-import {clientOnMobile} from '../../../scripts/util';
+import {clientOnMobile, until, untilTimer} from '../../../scripts/util';
 import {messageDialog} from '../game';
 
 import html from './fiddlesticks.html';
@@ -83,6 +83,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
   game: GameFiddlesticks;
   player_els: DwgFiddlesticksPlayer[] = [];
   player_id: number = -1;
+  trick_card_els: HTMLDivElement[] = [];
 
   constructor() {
     super();
@@ -145,7 +146,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     else if (game.game_base.game_started) {
       this.round_number.innerText = game.round.toString();
       for (const [player_id, player_el] of this.player_els.entries()) {
-        player_el.gameStarted(game.betting, !game.game_base.game_ended && player_id === game.turn);
+        player_el.gameStarted(game.betting, !game.game_base.game_ended && player_id === game.turn, !game.game_base.game_ended && player_id === game.dealer);
         if (this.player_id == player_id && !game.game_base.game_ended) {
           this.players_cards.setCards(game.players[player_id].cards, game.players[player_id].cards_played);
         }
@@ -168,19 +169,16 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     this.trump_card_img.classList.add('show');
   }
 
-  gameTurnUpdated(is_turn: boolean) {
-    if (this.game.turn < 0 || this.game.turn >= this.player_els.length) {
-      return;
-    }
-    const el = this.player_els[this.game.turn];
-    el.classList.toggle('turn', is_turn);
-  }
-
-  gameUpdate(update: UpdateMessage): void {
+  async gameUpdate(update: UpdateMessage): Promise<void> {
     try {
       switch(update.kind) {
         case "deal-round":
           const dealRoundData = update.update as DealRound;
+          const animation_time = Math.min(150 * dealRoundData.cards.length, 4000) + 250;
+          this.game.betting = true;
+          this.game.dealer = dealRoundData.dealer;
+          this.game.round = dealRoundData.round;
+          this.status_container.innerText = `${this.game.players[this.game.dealer].player.nickname} Dealing`;
           this.round_number.innerText = dealRoundData.round.toString();
           this.setTrumpImage(dealRoundData.trump);
           this.game.trump = dealRoundData.trump;
@@ -191,12 +189,11 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
               player_el.newRound(false);
             }
             if (player_id === this.player_id) {
-              this.players_cards.setCards(dealRoundData.cards);
+              const card_animation_time = Math.min(150, animation_time / dealRoundData.cards.length);
+              this.players_cards.setCards(dealRoundData.cards, [], card_animation_time);
             }
           }
-          this.game.betting = true;
-          this.game.dealer = dealRoundData.dealer;
-          this.game.round = dealRoundData.round;
+          await untilTimer(animation_time);
           this.trick_number.innerText = '-';
           this.current_trick = 0;
           if (this.game.round === this.game.max_round) {
@@ -206,7 +203,6 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           if (this.game.turn >= this.game.players.length) {
             this.game.turn -= this.game.players.length;
           }
-          this.gameTurnUpdated(true);
           this.game.trick_leader = this.game.turn;
           for (const [player_id, player] of this.game.players.entries()) {
             player.bet = -1;
@@ -220,6 +216,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           if (this.game.turn === this.player_id) {
             this.player_els[this.player_id].betting();
           }
+          // Add sound effect for betting
           this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Betting`;
           break;
         case "bet":
@@ -228,16 +225,14 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
             // TODO: try to sync data
             throw new Error('Player bet out of order');
           }
-          this.gameTurnUpdated(false);
           this.game.players[betData.player_id].bet = betData.amount;
-          this.player_els[betData.player_id].setBet(betData.amount);
+          await this.player_els[betData.player_id].setBetAnimation(betData.amount);
           let still_betting = this.game.turn !== this.game.dealer;
           this.status_container.innerText = '';
           this.game.turn++;
           if (this.game.turn >= this.game.players.length) {
             this.game.turn -= this.game.players.length;
           }
-          this.gameTurnUpdated(true);
           if (still_betting) {
             this.player_els[this.game.turn].betting();
             this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Betting`;
@@ -260,7 +255,6 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
             // TODO: try to sync data
             throw new Error('Player played out of order');
           }
-          this.gameTurnUpdated(false);
           if (this.player_id === playCardData.player_id) {
             this.game.players[playCardData.player_id].cards.splice(playCardData.index, 1);
           }
@@ -279,12 +273,20 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           card_el.classList.add('card');
           card_el.style.setProperty('--i', this.game.players[playCardData.player_id].order.toString());
           this.trick_cards.appendChild(card_el);
+          this.trick_card_els.push(card_el);
+          card_el.style.transitionDuration = '1s';
+          await until(() => {
+            return !!getComputedStyle(card_el).left;
+          }, 20);
+          card_el.classList.add('played');
+          await untilTimer(1000);
           this.status_container.innerText = '';
           this.game.turn++;
           if (this.game.turn >= this.game.players.length) {
             this.game.turn -= this.game.players.length;
           }
           if (this.game.turn === this.game.trick_leader) {
+            await untilTimer(500);
             let winning_index = 0;
             let winning_card = this.game.trick[0];
             for (let i = 1; i < this.game.trick.length; i++) {
@@ -299,20 +301,37 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
                 winning_card = card;
               }
             }
+            if (winning_index >= 0 && winning_index < this.trick_card_els.length) {
+              this.trick_card_els[winning_index].style.zIndex = '2';
+            }
             this.game.turn = this.game.trick_leader + winning_index;
             if (this.game.turn >= this.game.players.length) {
               this.game.turn -= this.game.players.length;
             }
             this.game.trick_leader = this.game.turn;
+            for (const trick_card_el of this.trick_card_els) {
+              trick_card_el.classList.remove('played');
+              trick_card_el.classList.add('center');
+            }
+            await untilTimer(1000);
+            this.trick_cards.style.setProperty('--winner', this.game.players[this.game.turn].order.toString());
+            for (const trick_card_el of this.trick_card_els) {
+              trick_card_el.classList.remove('center');
+              trick_card_el.classList.add('winner');
+            }
+            await untilTimer(1000);
             this.game.players[this.game.turn].tricks++;
             for (const [i, player_el] of this.player_els.entries()) {
               player_el.endTrick(this.game.players[i].tricks);
             }
             this.trick_cards.replaceChildren();
+            this.trick_card_els = [];
             this.game.trick = [];
             this.trick_number.innerText = '-';
             console.log(`Trick won by ${this.game.players[this.game.turn].player.nickname} with the ${cardToName(winning_card)}`);
             if (this.current_trick === this.game.round) {
+              await untilTimer(500);
+              // TODO: score animations for a few seconds
               this.trump_card_img.classList.remove('show');
               for (const [i, player] of this.game.players.entries()) {
                 if (player.bet === player.tricks) {
@@ -354,21 +373,12 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
             } else {
               this.current_trick++;
               this.trick_number.innerText = this.current_trick.toString();
-              this.gameTurnUpdated(true);
               this.player_els[this.game.turn].playing();
               this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
             }
           } else {
-            this.gameTurnUpdated(true);
             this.player_els[this.game.turn].playing();
             this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
-          }
-          break;
-        case "play-card-failed":
-          const playCardFailedData = update.update as PlayCardFailed;
-          if (this.player_id === playCardFailedData.player_id) {
-            this.player_els[playCardFailedData.player_id].playing();
-            // TODO: show message to user
           }
           break;
         default:

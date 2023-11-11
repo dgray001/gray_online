@@ -21,13 +21,12 @@ export class DwgCardHand extends DwgElement {
     await until(() => !!this.clientHeight);
     this.style.setProperty('--height', `${this.clientHeight.toString()}px`);
     this.style.setProperty('--width', `${this.clientWidth.toString()}px`);
-    console.log('!');
     this.classList.remove('hidden');
   }
 
-  setCards(cards: StandardCard[], cards_played: number[] = []) {
-    const card_els: HTMLDivElement[] = [];
+  setCards(cards: StandardCard[], cards_played: number[] = [], animation_time = 0) {
     let cards_skipped = 0;
+    this.cards_container.replaceChildren();
     for (const [i, card] of cards.entries()) {
       if (cards_played.some(index => index === i)) {
         cards_skipped++;
@@ -41,14 +40,16 @@ export class DwgCardHand extends DwgElement {
       el.appendChild(img);
       el.classList.add('card');
       el.style.setProperty('--i', (i - cards_skipped).toString());
-      card_els.push(el);
-      this.cards.set(i, el);
-      el.addEventListener('click', () => {
-        this.dispatchEvent(new CustomEvent<number>('play_card', {'detail': i}));
-      });
+      setTimeout(() => {
+        // TODO: add card dealt sound effect
+        this.cards.set(i, el);
+        this.cards_container.style.setProperty('--num-cards', this.cards.size.toString());
+        this.cards_container.appendChild(el);
+        el.addEventListener('click', () => {
+          this.dispatchEvent(new CustomEvent<number>('play_card', {'detail': i}));
+        });
+      }, (1 + i) * animation_time);
     }
-    this.cards_container.style.setProperty('--num-cards', this.cards.size.toString());
-    this.cards_container.replaceChildren(...card_els);
   }
 
   playCard(index: number) {
