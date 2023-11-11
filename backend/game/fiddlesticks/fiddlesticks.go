@@ -153,7 +153,10 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 	switch action.Kind {
 	case "bet":
 		if player_id != f.turn {
-			fmt.Println("Not", player_id, "player's turn but", f.turn, "player's turn")
+			message := fmt.Sprintf("Not %d player's turn but %d player's turn", player_id, f.turn)
+			fmt.Println(message)
+			f.players[player_id].player.AddFailedUpdate(&game.UpdateMessage{Kind: "bet-failed",
+				Content: gin.H{"message": message, "player_id": player_id}})
 			return
 		}
 		if !f.betting {
@@ -162,10 +165,26 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 		}
 		bet_value_float, ok := action.Action["amount"].(float64)
 		if !ok {
-			fmt.Println("Bet value invalid:", bet_value_float)
+			message := fmt.Sprintf("Bet value invalid: %.2f", bet_value_float)
+			fmt.Println(message)
+			f.players[player_id].player.AddFailedUpdate(&game.UpdateMessage{Kind: "bet-failed",
+				Content: gin.H{"message": message, "player_id": player_id}})
 			return
 		}
 		bet_value := uint8(bet_value_float)
+		if bet_value < 0 {
+			message := fmt.Sprintf("Must bet at least 0 but bet %d", bet_value)
+			fmt.Println(message)
+			f.players[player_id].player.AddFailedUpdate(&game.UpdateMessage{Kind: "bet-failed",
+				Content: gin.H{"message": message, "player_id": player_id}})
+			return
+		} else if bet_value > f.round {
+			message := fmt.Sprintf("Cannot bet more than the cards in the round (%d) but bet %d", f.round, bet_value)
+			fmt.Println(message)
+			f.players[player_id].player.AddFailedUpdate(&game.UpdateMessage{Kind: "bet-failed",
+				Content: gin.H{"message": message, "player_id": player_id}})
+			return
+		}
 		f.players[f.turn].bet = bet_value
 		done_betting := f.turn == f.dealer
 		f.turn++
@@ -184,7 +203,7 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 		if player_id != f.turn {
 			message := fmt.Sprintf("Not %d player's turn but %d player's turn", player_id, f.turn)
 			fmt.Println(message)
-			f.players[player_id].player.AddUpdate(&game.UpdateMessage{Kind: "play-card-failed",
+			f.players[player_id].player.AddFailedUpdate(&game.UpdateMessage{Kind: "play-card-failed",
 				Content: gin.H{"message": message, "player_id": player_id}})
 			return
 		}
@@ -196,7 +215,7 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 		if !ok {
 			message := fmt.Sprintf("Card index invalid: %f", card_index_float)
 			fmt.Println(message)
-			f.players[player_id].player.AddUpdate(&game.UpdateMessage{Kind: "play-card-failed",
+			f.players[player_id].player.AddFailedUpdate(&game.UpdateMessage{Kind: "play-card-failed",
 				Content: gin.H{"message": message, "player_id": player_id}})
 			return
 		}
@@ -204,7 +223,7 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 		if util.Contains(f.players[f.turn].cards_played, card_index) {
 			message := fmt.Sprintf("Card with index %d already played", card_index)
 			fmt.Println(message)
-			f.players[player_id].player.AddUpdate(&game.UpdateMessage{Kind: "play-card-failed",
+			f.players[player_id].player.AddFailedUpdate(&game.UpdateMessage{Kind: "play-card-failed",
 				Content: gin.H{"message": message, "player_id": player_id}})
 			return
 		}
@@ -212,7 +231,7 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 		if card_index < 0 || card_index >= len(cards) {
 			message := fmt.Sprintf("Invalid card index %d for having %d cards", card_index, len(cards))
 			fmt.Println(message)
-			f.players[player_id].player.AddUpdate(&game.UpdateMessage{Kind: "play-card-failed",
+			f.players[player_id].player.AddFailedUpdate(&game.UpdateMessage{Kind: "play-card-failed",
 				Content: gin.H{"message": message, "player_id": player_id}})
 			return
 		}
@@ -230,7 +249,7 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 							message := fmt.Sprintf("Must follow suit of lead card %s and tried to play %s but have card that follows: %s",
 								lead.GetName(), card.GetName(), other_card.GetName())
 							fmt.Println(message)
-							f.players[player_id].player.AddUpdate(&game.UpdateMessage{Kind: "play-card-failed",
+							f.players[player_id].player.AddFailedUpdate(&game.UpdateMessage{Kind: "play-card-failed",
 								Content: gin.H{"message": message, "player_id": player_id}})
 							return
 						}

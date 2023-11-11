@@ -1,8 +1,8 @@
 import {DwgElement} from '../../../dwg_element';
 import {createMessage} from '../../../lobby/data_models';
-import {StandardCard} from '../../util/card_util';
 import {FiddlesticksPlayer} from '../fiddlesticks';
 import {until} from '../../../../scripts/util';
+import {messageDialog} from '../../game';
 
 import html from './fiddlesticks_player.html';
 
@@ -53,7 +53,6 @@ export class DwgFiddlesticksPlayer extends DwgElement {
   }
 
   async gameStarted(betting: boolean, current_turn: boolean) {
-    console.log(betting, current_turn, this.player);
     await until(() => this.fully_parsed);
     if (betting) {
       this.bet_container.innerText = this.player.bet.toString(); // TODO: shouldn't show if haven't bet yet
@@ -77,10 +76,15 @@ export class DwgFiddlesticksPlayer extends DwgElement {
       if (e.key !== 'Enter') {
         return;
       }
+      e.stopImmediatePropagation();
+      const bet_value = this.bet_input.valueAsNumber;
+      if (isNaN(bet_value) || bet_value < 0 || bet_value > this.player.cards.length) {
+        messageDialog.call(this, {message: `Invalid bet value ${bet_value}; bet must be in the range of [0, ${this.player.cards.length}]`});
+        return;
+      }
       this.bet_input.disabled = true;
       const game_update = createMessage(`player-${this.player.player.player_id}`, 'game-update', `{"amount":${this.bet_input.value}}`, 'bet');
       this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, bubbles: true}));
-      e.stopImmediatePropagation();
     });
   }
 

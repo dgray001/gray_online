@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.2aa: Control reconnect logic
+v0.2ab: Final desktop styles
 
 ## Dev Use
 

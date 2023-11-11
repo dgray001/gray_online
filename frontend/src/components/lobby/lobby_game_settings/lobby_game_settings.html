@@ -1,13 +1,15 @@
 <div id="game-settings-wrapper">
   <div id="game-settings-title">Game Settings</div>
   <select id="game-chooser"><option value="0" selected hidden>--Choose a game--</option></select>
-  <span class="row-wrapper label-row">
-    <label for="max-players-input">Max Players</label>
-    <label for="max-viewers-input">Max Viewers</label>
-  </span>
   <span class="row-wrapper">
-    <input id="max-players-input" type="number" min="1" max="8" placeholder="Max Players">
-    <input id="max-viewers-input" type="number" min="0" max="16" placeholder="Max Viewers">
+    <span class="input-wrapper">
+      <label for="max-players-input" class="label">Max Players</label>
+      <input id="max-players-input" type="number" min="1" max="8" placeholder="Max Players">
+    </span>
+    <span class="input-wrapper">
+      <label for="max-viewers-input">Max Viewers</label>
+      <input id="max-viewers-input" type="number" min="0" max="16" placeholder="Max Viewers">
+    </span>
   </span>
   <div id="game-specific-settings"></div>
   <button id="save-button">Save</button>

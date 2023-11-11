@@ -226,11 +226,13 @@ dwg-lobby-room {
           }
 
           > button {
+            align-items: center;
             background-color: rgba(220, 220, 220, 0.5);
             border: none;
             border-radius: 4px;
-            display: inline-block;
+            display: inline-flex;
             height: var(--user-height);
+            justify-content: center;
             margin: 0px;
             padding: 0px;
             visibility: hidden;
@@ -242,6 +244,12 @@ dwg-lobby-room {
 
             &:active {
               background-color: rgba(255, 255, 255, 0.7);
+            }
+
+            > img {
+              --size: min(18px, 80%);
+              height: var(--size);
+              width: var(--size);
             }
           }
         }
@@ -294,6 +302,12 @@ body.mobile {
           --height: calc(1.2 * var(--font-size-medium));
           --font-size: calc(var(--font-size-medium) - 2px);
           flex: 1 1 0;
+
+          .room-user {
+            > button {
+              visibility: visible;
+            }
+          }
         }
       }
 

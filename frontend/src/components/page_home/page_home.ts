@@ -5,6 +5,7 @@ import {DwgGame} from '../game/game';
 import {LobbyRoom} from '../lobby/data_models';
 import {websocketPath} from '../../scripts/api';
 import {clientOnMobile} from '../../scripts/util';
+import {MessageDialogData} from '../dialog_box/message_dialog/message_dialog';
 
 import html from './page_home.html';
 
@@ -65,6 +66,11 @@ export class DwgPageHome extends DwgElement {
     this.game.addEventListener('exit_game', () => {
       this.game.classList.remove('show');
       this.lobby.classList.remove('hide');
+    });
+    this.game.addEventListener('show_message_dialog', (e: CustomEvent<MessageDialogData>) => {
+      const dialog = document.createElement('dwg-message-dialog');
+      dialog.setData(e.detail);
+      this.appendChild(dialog);
     });
   }
 

@@ -51,7 +51,7 @@ dwg-room-selector {
       --width: calc(var(--height) - 2 * var(--margin));
       background-color: rgba(240, 240, 240, 0.8);
       border: none;
-      border-radius: var(--margin);
+      border-radius: 5px;
       display: inline-block;
       height: var(--width);
       margin: 0;
@@ -64,6 +64,12 @@ dwg-room-selector {
 
       &:active {
         background-color: rgba(230, 230, 230, 0.7);
+      }
+
+      > img {
+        --size: min(24px, 100%);
+        height: var(--size);
+        width: var(--size);
       }
     }
   }
@@ -85,6 +91,19 @@ body.mobile {
   
     > #room-name {
       margin-left: 0.4em;
+    }
+
+    > #room-buttons {
+      --margin: 1px;
+      display: flex;
+
+      > button {
+        background-color: rgba(240, 240, 240, 0.5);
+
+        &:active {
+          background-color: rgba(230, 230, 230, 0.7);
+        }
+      }
     }
   }
 }

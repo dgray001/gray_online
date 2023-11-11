@@ -5,7 +5,7 @@ import html from './message_dialog.html';
 import './message_dialog.scss';
 
 /** Input data for a message dialog */
-interface MessageDialogData {
+export declare interface MessageDialogData {
   message: string;
   button_text?: string;
 }

@@ -150,7 +150,7 @@ export class DwgLobby extends DwgElement {
     this.lobby_users.refreshUsers();
     setInterval(() => {
       this.pingServer();
-    }, 5000);
+    }, 8000);
   }
 
   setSocket(new_socket: WebSocket) {
@@ -206,7 +206,6 @@ export class DwgLobby extends DwgElement {
   }
 
   enterRoom(room: LobbyRoom, is_host: boolean) {
-    console.log('!', room.game_settings.game_specific_settings);
     this.connection_metadata.room_id = room.room_id;
     this.lobby_room.setRoom(room, is_host);
     this.lobby_room_wrapper.classList.add('show');

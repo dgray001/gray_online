@@ -364,7 +364,7 @@ export class DwgLobbyRoom extends DwgElement {
     } else if (join_as_player) {
       this.players_container.appendChild(this.getUserElement(joinee, this.is_host, true));
     } else {
-      this.viewers_container.appendChild(this.getUserElement(joinee, this.is_host, true));
+      this.viewers_container.appendChild(this.getUserElement(joinee, this.is_host, false));
     }
     if (join_as_player) {
       this.room.players.set(joinee.client_id, joinee);

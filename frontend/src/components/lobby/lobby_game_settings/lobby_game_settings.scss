@@ -10,15 +10,18 @@ dwg-lobby-game-settings {
     display: none;
   }
 
-  #game-settings-wrapper {
+  > #game-settings-wrapper {
     background-color: lightgray;
+    box-shadow: 0 0 6px 6px rgba(70, 70, 70, 0.5);
     box-sizing: border-box;
     color: black;
     display: flex;
     flex-flow: column nowrap;
-    gap: 12px;
+    font-size: var(--font-size-medium);
+    gap: 1.6em;
     height: 50vh;
     margin: 25vh auto;
+    overflow-y: auto;
     padding: 8px;
     width: 50vw;
 
@@ -31,26 +34,57 @@ dwg-lobby-game-settings {
       font-size: 0.8rem;
     }
 
+    input {
+      font-size: var(--font-size-medium);
+    }
+
     .row-wrapper {
       display: flex;
       flex-flow: row nowrap;
       gap: 8px;
 
-      &.label-row {
-        margin-bottom: -10px;
-      }
-
-      > * {
+      > .input-wrapper {
         flex: 1 0 0;
         min-width: 0;
+
+        > input {
+          min-width: 0;
+          width: 100%;
+        }
       }
     }
 
-    #game-specific-settings {
+    > #game-settings-title {
+      font-size: var(--font-size-large);
+      line-height: calc(2 * var(--font-size-large));
+      text-align: center;
+    }
+
+    > #game-specific-settings {
       display: flex;
       flex-flow: column nowrap;
       gap: 12px;
       height: fit-content;
+    }
+
+    > #save-button {
+      font-size: var(--font-size-medium);
+      margin-top: 0.4em;
+    }
+  }
+}
+
+body.mobile {
+  dwg-lobby-game-settings {
+    > #game-settings-wrapper {
+      height: 80vh;
+      margin: 10vh auto;
+      padding: 8px;
+      width: 90vw;
+
+      .row-wrapper {
+        flex-direction: column;
+      }
     }
   }
 }

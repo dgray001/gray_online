@@ -58,10 +58,9 @@ export class DwgLobbyGameSettings extends DwgElement {
     this.game_specific_settings_els.clear();
     switch(game_type) {
       case GameType.FIDDLESTICKS:
-        const [max_round, max_round_label] = this.createNumberElement('max-round', 'Override Max Round', 1, 12);
-        const [round_points, round_points_label] = this.createNumberElement('round-points', 'Round Points', 0, 20, 10);
-        const [trick_points, trick_points_label] = this.createNumberElement('trick-points', 'Trick Points', 0, 10, 1);
-        children.push(this.createRowElement([max_round_label, round_points_label, trick_points_label], true));
+        const max_round = this.createNumberElement('max-round', 'Override Max Round', 1, 12);
+        const round_points = this.createNumberElement('round-points', 'Round Points', 0, 20, 10);
+        const trick_points = this.createNumberElement('trick-points', 'Trick Points', 0, 10, 1);
         children.push(this.createRowElement([max_round, round_points, trick_points]));
         break;
       default:
@@ -72,7 +71,7 @@ export class DwgLobbyGameSettings extends DwgElement {
 
   private createNumberElement(
     id: string, label: string, min: number, max: number, default_value?: number
-  ): [HTMLInputElement, HTMLLabelElement] {
+  ): HTMLSpanElement {
     const el = document.createElement('input');
     el.id = id;
     el.type = 'number';
@@ -82,17 +81,22 @@ export class DwgLobbyGameSettings extends DwgElement {
     if (default_value !== undefined) {
       el.valueAsNumber = default_value;
     }
+
     const label_el = document.createElement('label');
     label_el.setAttribute('for', id);
     label_el.innerText = label;
     this.game_specific_settings_els.set(id, el);
-    return [el, label_el];
+
+    const wrapper_el = document.createElement('span');
+    wrapper_el.classList.add('input-wrapper');
+    wrapper_el.appendChild(label_el);
+    wrapper_el.appendChild(el);
+    return wrapper_el;
   }
 
-  private createRowElement(els: HTMLElement[], label_row = false): HTMLDivElement {
+  private createRowElement(els: HTMLElement[]): HTMLDivElement {
     const el = document.createElement('div');
     el.classList.add('row-wrapper');
-    el.classList.toggle('label-row', label_row);
     el.replaceChildren(...els);
     return el;
   }

@@ -108,6 +108,19 @@ func (c *Client) clientGameUpdates(player *game.Player, room_id_string string) {
 			} else {
 				fmt.Fprintln(os.Stderr, "Room failed to send update message to client", c.client_id)
 			}
+		case message := <-player.FailedUpdates:
+			encoded_message, err := json.Marshal(message.Content)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err.Error())
+				break
+			}
+			message_id_string := strconv.Itoa(message.Id)
+			if c.valid() {
+				c.send_message <- lobbyMessage{Sender: "room-" + room_id_string + "-" + message_id_string,
+					Kind: "game-failed-update", Data: message.Kind, Content: string(encoded_message)}
+			} else {
+				fmt.Fprintln(os.Stderr, "Room failed to send failed update message to client", c.client_id)
+			}
 		}
 	}
 }

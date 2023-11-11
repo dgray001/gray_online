@@ -84,6 +84,33 @@ dwg-fiddlesticks {
     position: absolute;
     top: calc(0.5 * var(--size-player));
     width: var(--table-diameter);
+
+    > #trick-cards {
+      --width: min(125px, calc(0.18 * var(--table-diameter)));
+      --height: calc(var(--card-image-scale) * var(--width));
+      --num-players: 0; // set by component
+
+      > .card {
+        --i: 0; // set by component
+        --rotation: calc((var(--i) / var(--num-players)) * 1turn);
+        --turns: calc(var(--rotation) + 0.25turn);
+        --x: calc(0.5 * (var(--table-diameter) + var(--height) * cos(var(--turns))) - 0.5 * var(--width));
+        --y: calc(0.5 * (var(--table-diameter) + var(--height) * sin(var(--turns))) - 0.5 * var(--height));
+
+        display: block;
+        height: var(--height);
+        left: var(--x);
+        position: absolute;
+        top: var(--y);
+        transform: rotate(var(--rotation));
+        width: var(--width);
+
+        > img {
+          height: 100%;
+          width: 100%;
+        }
+      }
+    }
   }
 
   > #player-container {

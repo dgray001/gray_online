@@ -4,6 +4,7 @@ import {Game, GameComponent, GameFromServer, serverResponseToGame} from './data_
 import {apiPost} from '../../scripts/api';
 import {ChatMessage, DwgChatbox} from '../chatbox/chatbox';
 import {capitalize, until} from '../../scripts/util';
+import {MessageDialogData} from '../dialog_box/message_dialog/message_dialog';
 
 import {handleMessage} from './message_handler';
 import html from './game.html';
@@ -12,6 +13,11 @@ import './game.scss';
 import './fiddlesticks/fiddlesticks';
 import './game_history_dialog/game_history_dialog';
 import '../dialog_box/confirm_dialog/confirm_dialog';
+
+/** Function to dispatch event that will show a dialog message */
+export function messageDialog(data: MessageDialogData) {
+  this.dispatchEvent(new CustomEvent('show_message_dialog', {'detail': data, bubbles: true}));
+}
 
 export class DwgGame extends DwgElement {
   client_name_string: HTMLSpanElement;
@@ -91,7 +97,7 @@ export class DwgGame extends DwgElement {
       this.appendChild(confirm_dialog);
     });
     setInterval(() => {
-      this.pingServer();
+      //this.pingServer();
     }, 2500);
   }
 

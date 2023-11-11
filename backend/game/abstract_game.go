@@ -179,24 +179,26 @@ func (u *UpdateMessage) toFrontend() gin.H {
 }
 
 type Player struct {
-	client_id   uint64
-	Player_id   int
-	nickname    string
-	connected   bool
-	Updates     chan *UpdateMessage
-	update_list []*UpdateMessage
-	base_game   *GameBase
+	client_id     uint64
+	Player_id     int
+	nickname      string
+	connected     bool
+	Updates       chan *UpdateMessage
+	FailedUpdates chan *UpdateMessage
+	update_list   []*UpdateMessage
+	base_game     *GameBase
 }
 
 func CreatePlayer(client_id uint64, nickname string, base_game *GameBase) *Player {
 	return &Player{
-		client_id:   client_id,
-		Player_id:   -1,
-		nickname:    nickname,
-		connected:   false,
-		Updates:     make(chan *UpdateMessage),
-		update_list: []*UpdateMessage{},
-		base_game:   base_game,
+		client_id:     client_id,
+		Player_id:     -1,
+		nickname:      nickname,
+		connected:     false,
+		Updates:       make(chan *UpdateMessage),
+		FailedUpdates: make(chan *UpdateMessage),
+		update_list:   []*UpdateMessage{},
+		base_game:     base_game,
 	}
 }
 
@@ -212,6 +214,10 @@ func (p *Player) AddUpdate(update *UpdateMessage) {
 	update.Id = len(p.update_list) + 1 // start at 1
 	p.update_list = append(p.update_list, update)
 	p.Updates <- update
+}
+
+func (p *Player) AddFailedUpdate(update *UpdateMessage) {
+	p.FailedUpdates <- update
 }
 
 func (p *Player) GetNickname() string {

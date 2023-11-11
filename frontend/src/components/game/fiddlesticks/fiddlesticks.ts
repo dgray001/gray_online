@@ -5,6 +5,7 @@ import {DwgFiddlesticksPlayer} from './fiddlesticks_player/fiddlesticks_player';
 import {DwgCardHand} from '../util/card_hand/card_hand';
 import {createMessage} from '../../lobby/data_models';
 import {clientOnMobile} from '../../../scripts/util';
+import {messageDialog} from '../game';
 
 import html from './fiddlesticks.html';
 
@@ -231,6 +232,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           this.game.players[betData.player_id].bet = betData.amount;
           this.player_els[betData.player_id].setBet(betData.amount);
           let still_betting = this.game.turn !== this.game.dealer;
+          this.status_container.innerText = '';
           this.game.turn++;
           if (this.game.turn >= this.game.players.length) {
             this.game.turn -= this.game.players.length;
@@ -277,6 +279,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           card_el.classList.add('card');
           card_el.style.setProperty('--i', this.game.players[playCardData.player_id].order.toString());
           this.trick_cards.appendChild(card_el);
+          this.status_container.innerText = '';
           this.game.turn++;
           if (this.game.turn >= this.game.players.length) {
             this.game.turn -= this.game.players.length;
@@ -307,6 +310,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
             }
             this.trick_cards.replaceChildren();
             this.game.trick = [];
+            this.trick_number.innerText = '-';
             console.log(`Trick won by ${this.game.players[this.game.turn].player.nickname} with the ${cardToName(winning_card)}`);
             if (this.current_trick === this.game.round) {
               this.trump_card_img.classList.remove('show');
@@ -317,6 +321,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
                 }
                 this.player_els[i].endRound();
               }
+              this.round_number.innerText = '-';
               if (this.game.rounds_increasing && this.game.round === this.game.max_round) {
                 this.game.rounds_increasing = false;
               }
@@ -339,9 +344,8 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
                 let winner_text = winners.length > 1 ? 'The winners are: ' : 'The winner is: ';
                 winner_text += winners.map(winner => this.game.players[winner].player.nickname).join(', ');
                 winner_text += `\nWith ${winning_score} points`;
-                const winner_dialog = document.createElement('dwg-message-dialog');
-                winner_dialog.setData({message: winner_text});
-                this.appendChild(winner_dialog);
+                messageDialog.call(this, {message: winner_text});
+                this.status_container.innerText = 'game over';
               } else if (this.game.rounds_increasing) {
                 this.game.round++; // wait for deal-round update from server
               } else {
