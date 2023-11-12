@@ -47,6 +47,12 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.score_container.innerText = this.player.score.toString();
     this.bet_container.innerText = '-';
     this.tricks_container.innerText = '-';
+    this.dealer_wrapper.addEventListener('click', () => {
+      this.dealer_wrapper.classList.toggle('show-tooltip');
+    });
+    this.winner_wrapper.addEventListener('click', () => {
+      this.winner_wrapper.classList.toggle('show-tooltip');
+    });
   }
 
   initialize(player: FiddlesticksPlayer) {
@@ -124,11 +130,11 @@ export class DwgFiddlesticksPlayer extends DwgElement {
   }
 
   async setBetAnimation(amount: number) {
-    const animation_time = 600;
+    const animation_time = 500;
     this.bet_animation.innerText = amount.toString();
     this.bet_animation.style.transitionDuration = `${animation_time}ms`;
     this.bet_animation.classList.add('transition');
-    await untilTimer(animation_time);
+    await untilTimer(2 * animation_time);
     this.bet_animation.classList.remove('transition');
     await untilTimer(animation_time);
     this.setBet(amount);

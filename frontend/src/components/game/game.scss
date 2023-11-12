@@ -105,3 +105,17 @@ dwg-game {
     }
   }
 }
+
+body.mobile {
+  dwg-game {
+    #header {
+      #client-name {
+        display: none;
+      }
+
+      #room-name {
+        margin-left: 1em;
+      }
+    }
+  }
+}

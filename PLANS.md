@@ -1,11 +1,8 @@
 0.3: flesh out fiddlesticks game
-   => Mobile fiddlesticks styles
+   => Refresh room needs to properly set room data (update 'setRoom')
    => AI can take over when player AFK
    => Resign button causes resign => AI takes over permanently
-   => Sometimes updates don't apply properly when refreshing page
-   => Need to send ping in lobby for launching game
-   => Turn indicators
-   => Refresh room needs to properly set room data (update 'setRoom')
+   => Player's cards can automatically resize => have listener on game div resize
 
 P3/P4:
  - Basic players dialog in game base

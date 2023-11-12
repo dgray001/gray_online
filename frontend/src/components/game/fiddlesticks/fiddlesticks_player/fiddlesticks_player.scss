@@ -6,6 +6,8 @@ dwg-fiddlesticks-player {
   --turns: calc((0.25 + var(--order) / var(--num-players)) * 1turn);
   --x: calc(0.5 * var(--diameter) * (1 + cos(var(--turns))) - 0.5 * var(--size));
   --y: calc(0.5 * var(--diameter) * (1 + sin(var(--turns))) - 0.5 * var(--size));
+  --icon-size: 64px;
+
   background-color: rgba(240, 240, 240, 0.7);
   border-radius: calc(0.08 * var(--size));
   color: black;
@@ -46,6 +48,7 @@ dwg-fiddlesticks-player {
 
   #bet-input {
     left: 40%;
+    font-size: calc(0.13 * var(--size));
     position: absolute;
     width: 60%;
 
@@ -75,26 +78,13 @@ dwg-fiddlesticks-player {
     }
   }
 
-  > .icon {
-    height: 64px;
-    opacity: 80%;
-    position: absolute;
-    rotate: -30deg;
-    top: -48px;
-    width: 64px;
-
-    &:not(.show) {
-      display: none;
-    }
-  }
-
   > .icon-wrapper {
-    height: 64px;
+    height: var(--icon-size);
     left: min(10%, 10px);
-    opacity: 80%;
+    opacity: 75%;
     position: absolute;
-    top: -48px;
-    width: 64px;
+    top: calc(-0.75 * var(--icon-size));
+    width: var(--icon-size);
 
     &:not(.show) {
       display: none;
@@ -119,6 +109,18 @@ dwg-fiddlesticks-player {
     &:not(:hover) {
       > .icon-tooltip {
         display: none;
+      }
+    }
+  }
+}
+
+body.mobile {
+  dwg-fiddlesticks-player {
+    --icon-size: 40px;
+
+    > .icon-wrapper.show-tooltip {
+      > .icon-tooltip {
+        display: block;
       }
     }
   }

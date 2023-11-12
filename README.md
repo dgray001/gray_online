@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.2ad: Initial fiddlesticks animations
+v0.2ae: Mobile fiddlesticks styles
 
 ## Dev Use
 
