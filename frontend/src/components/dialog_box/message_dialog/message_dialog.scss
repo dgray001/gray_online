@@ -1,5 +1,5 @@
 dwg-message-dialog {
-  > #wrapper {
+  #wrapper {
     align-items: center;
     display: flex;
     flex-flow: column nowrap;
@@ -21,7 +21,7 @@ dwg-message-dialog {
 
 body.mobile {
   dwg-message-dialog {
-    > #wrapper {
+    #wrapper {
       height: 50svh;
       width: 50vw;
     }

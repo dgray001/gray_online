@@ -14,6 +14,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
   score_container: HTMLSpanElement;
   bet_container: HTMLSpanElement;
   bet_input: HTMLInputElement;
+  bet_button: HTMLButtonElement;
   tricks_container: HTMLSpanElement;
   dealer_wrapper: HTMLDivElement;
   winner_wrapper: HTMLDivElement;
@@ -32,6 +33,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.configureElement('score_container');
     this.configureElement('bet_container');
     this.configureElement('bet_input');
+    this.configureElement('bet_button');
     this.configureElement('tricks_container');
     this.configureElement('dealer_wrapper');
     this.configureElement('winner_wrapper');
@@ -82,19 +84,26 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.classList.add('client-player');
     this.client_player = true;
     this.bet_input.addEventListener('keyup', (e) => {
-      if (e.key !== 'Enter') {
-        return;
-      }
       e.stopImmediatePropagation();
-      const bet_value = this.bet_input.valueAsNumber;
-      if (isNaN(bet_value) || bet_value < 0 || bet_value > this.player.cards.length) {
-        messageDialog.call(this, {message: `Invalid bet value ${bet_value}; bet must be in the range of [0, ${this.player.cards.length}]`});
-        return;
+      if (e.key === 'Enter') {
+        this.sendBetEvent();
       }
-      this.bet_input.disabled = true;
-      const game_update = createMessage(`player-${this.player.player.player_id}`, 'game-update', `{"amount":${this.bet_input.value}}`, 'bet');
-      this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, bubbles: true}));
     });
+    this.bet_button.addEventListener('click', () => {
+      this.sendBetEvent();
+    });
+  }
+
+  sendBetEvent() {
+    const bet_value = this.bet_input.valueAsNumber;
+    if (isNaN(bet_value) || bet_value < 0 || bet_value > this.player.cards.length) {
+      messageDialog.call(this, {message: `Invalid bet value ${bet_value}; bet must be in the range of [0, ${this.player.cards.length}]`});
+      return;
+    }
+    this.bet_input.disabled = true;
+    this.bet_button.disabled = true;
+    const game_update = createMessage(`player-${this.player.player.player_id}`, 'game-update', `{"amount":${this.bet_input.value}}`, 'bet');
+    this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, bubbles: true}));
   }
 
   newRound(dealer: boolean) {
@@ -124,9 +133,11 @@ export class DwgFiddlesticksPlayer extends DwgElement {
       return;
     }
     this.bet_input.disabled = false;
+    this.bet_button.disabled = false;
     this.bet_input.valueAsNumber = 0;
     this.bet_input.max = this.player.cards.length.toString();
     this.bet_input.classList.add('show');
+    this.bet_button.classList.add('show');
   }
 
   async setBetAnimation(amount: number) {
@@ -146,6 +157,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.classList.remove('turn');
     if (this.client_player) {
       this.bet_input.classList.remove('show');
+      this.bet_button.classList.remove('show');
     }
   }
 

@@ -1,23 +1,21 @@
 0.3: flesh out fiddlesticks game
    => Refresh room needs to properly set room data (update 'setRoom')
-   => AI can take over when player AFK
-   => Resign button causes resign => AI takes over permanently
-   => Player's cards can automatically resize => have listener on game div resize
-
-P3/P4:
- - Basic players dialog in game base
- - Viewer support
+   => Better control over which card you are playing => drag to play
+   => If bet fails need to re-call betting() function
 
 v0.4: Euchre game
  - New game backend logic
  - New frontend component
- - Proper viewer logic at every step
+ - Proper viewer logic/support at every step
  - Viewer updates stored in game base => backend sends viewer updates
  - Can launch games with AI
  - Can pause games
- - Frontend animations for fiddlesticks and euchre
+ - Upgrade frontend animations for fiddlesticks and euchre
  - Upgrade moves dialog and players dialog in game base
  - Loaders for client requests in lobby: room-create, room-join, room-leave, room-rename
+ - Player's cards can automatically resize => listener on game div resize
+ - Can resign from games
+ - AI takes over when AFK / resign
 
 v0.5: More card games
  - Add 4 more card games with settings / etc.

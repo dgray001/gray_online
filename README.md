@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.2af: Use svh in mobile instead of vh
+v0.2ag: Basic bet button
 
 ## Dev Use
 

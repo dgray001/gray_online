@@ -28,7 +28,7 @@ dwg-confirm-dialog {
 
 body.mobile {
   dwg-confirm-dialog {
-    > #wrapper {
+    #wrapper {
       height: 50svh;
       width: 50vw;
     }

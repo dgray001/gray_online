@@ -57,6 +57,18 @@ dwg-fiddlesticks-player {
     }
   }
 
+  #bet-button {
+    left: 105%;
+    font-size: calc(0.13 * var(--size));
+    line-height: calc(0.13 * var(--size));
+    padding: 3px;
+    position: absolute;
+
+    &:not(.show) {
+      display: none;
+    }
+  }
+
   #bet-animation {
     background-color: rgba(60, 60, 60, 0.7);
     border-radius: 0.5em;
