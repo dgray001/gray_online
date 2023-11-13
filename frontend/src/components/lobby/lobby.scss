@@ -3,6 +3,7 @@ dwg-lobby {
   --buttons-height: calc(1.8 * var(--font-size-large));
   --chat-height: calc(min(450px, max(180px, 25vh)));
   --lobby-users-width: 250px;
+  --lobby-rooms-height: calc(100vh - var(--name-header-height) - var(--buttons-height) - var(--chat-height));
 
   background-color: rgb(20, 60, 120);
   display: flex;
@@ -89,12 +90,16 @@ dwg-lobby {
 
       > #lobby-rooms {
         box-sizing: border-box;
-        flex: 1 0 0;
+        flex: 0 0 var(--lobby-rooms-height);
+        height: var(--lobby-rooms-height);
+        max-height: var(--lobby-rooms-height);
+        min-height: var(--lobby-rooms-height);
         padding: 0.5em;
       }
 
-      #chatbox {
+      > #chatbox {
         box-sizing: border-box;
+        flex: 1 1 var(--chat-height);
         height: var(--chat-height);
         max-height: var(--chat-height);
         min-height: var(--chat-height);
@@ -173,6 +178,8 @@ dwg-lobby {
 
 body.mobile {
   dwg-lobby {
+    --lobby-rooms-height: calc(100svh - var(--name-header-height) - var(--buttons-height) - var(--chat-height));
+
     > #buttons {
       > #lobby-users-button {
         display: block;
@@ -183,6 +190,8 @@ body.mobile {
       width: calc(100% + var(--lobby-users-width));
 
       > #lobby-users-backdrop {
+        height: 100svh;
+
         &.show {
           display: block;
         }
@@ -202,8 +211,8 @@ body.mobile {
     > #lobby-room-wrapper {
       #lobby-room {
         box-sizing: border-box;
-        height: 90vh;
-        margin: 5vh 5vw;
+        height: 90svh;
+        margin: 5svh 5vw;
         padding: 6px;
         width: 90vw;
       }

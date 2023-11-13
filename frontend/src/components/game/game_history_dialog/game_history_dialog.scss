@@ -40,3 +40,11 @@ dwg-game-history-dialog {
     }
   }
 }
+
+body.mobile {
+  dwg-game-history-dialog {
+    > #wrapper {
+      height: 80svh;
+    }
+  }
+}

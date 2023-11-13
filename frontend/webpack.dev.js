@@ -24,7 +24,7 @@ module.exports = {
     proxy: {
       '/api': 'http://0.0.0.0:6807', // gin server
     },
-    server: 'https',
+    server: 'http',
     static: {
       directory: path.resolve(__dirname, '../backend/static/'),
     },

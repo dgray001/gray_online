@@ -3,7 +3,7 @@ import {ServerMessage, LobbyRoom, ConnectionMetadata, GameType, createMessage} f
 import {Game, GameComponent, GameFromServer, serverResponseToGame} from './data_models';
 import {apiPost} from '../../scripts/api';
 import {ChatMessage, DwgChatbox} from '../chatbox/chatbox';
-import {capitalize, until} from '../../scripts/util';
+import {capitalize, createLock, until} from '../../scripts/util';
 import {MessageDialogData} from '../dialog_box/message_dialog/message_dialog';
 
 import {handleMessage} from './message_handler';
@@ -31,6 +31,7 @@ export class DwgGame extends DwgElement {
   game_el: GameComponent;
   chatbox_container: HTMLDivElement;
   chatbox: DwgChatbox;
+  open_chatbox_button: HTMLButtonElement;
   button_game_history: HTMLButtonElement;
   button_room_players: HTMLButtonElement;
   button_exit: HTMLButtonElement;
@@ -40,6 +41,8 @@ export class DwgGame extends DwgElement {
   connection_metadata: ConnectionMetadata;
   game_id = 0;
   game: Game;
+
+  chatbox_lock = createLock();
 
   constructor() {
     super();
@@ -53,6 +56,7 @@ export class DwgGame extends DwgElement {
     this.configureElement('game_container');
     this.configureElement('chatbox_container');
     this.configureElement('chatbox');
+    this.configureElement('open_chatbox_button');
     this.configureElement('button_game_history');
     this.configureElement('button_room_players');
     this.configureElement('button_exit');
@@ -61,11 +65,7 @@ export class DwgGame extends DwgElement {
   protected override parsedCallback(): void {
     document.addEventListener('keyup', (e) => {
       if (e.key === 'Enter') {
-        this.chatbox_container.classList.toggle('showing');
-        this.chatbox.classList.toggle('show');
-        if (this.chatbox.classList.contains('show')) {
-          this.chatbox.focus();
-        }
+        this.toggleChatbox();
       }
     });
     this.chatbox.addEventListener('chat_sent', (e: CustomEvent<ChatMessage>) => {
@@ -76,6 +76,9 @@ export class DwgGame extends DwgElement {
         message.message,
         message.color,
       ));
+    });
+    this.open_chatbox_button.addEventListener('click', () => {
+      this.toggleChatbox();
     });
     this.button_game_history.addEventListener('click', () => {
       if (!this.launched) {
@@ -99,6 +102,16 @@ export class DwgGame extends DwgElement {
     setInterval(() => {
       this.pingServer();
     }, 2500);
+  }
+
+  toggleChatbox() {
+    this.chatbox_lock(async () => {
+      this.chatbox_container.classList.toggle('showing');
+      this.chatbox.classList.toggle('show');
+      if (this.chatbox.classList.contains('show')) {
+        this.chatbox.focus();
+      }
+    });
   }
 
   async launchGame(lobby: LobbyRoom, socket: WebSocket, connection_metadata: ConnectionMetadata, rejoining = false): Promise<boolean> {

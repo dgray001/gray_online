@@ -2,6 +2,7 @@ dwg-page-home {
   --margin-size: 16px;
   --height: calc(100vh - 2 * var(--margin-size));
   --width: calc(100% - 2 * var(--margin-size));
+
   background-color: rgb(5, 40, 90);
   display: block;
   height: var(--height);
@@ -27,5 +28,15 @@ dwg-page-home {
 
   #lobby-connector {
     z-index: 5;
+  }
+}
+
+body.mobile {
+  dwg-page-home {
+    --height: calc(100svh - 2 * var(--margin-size));
+
+    #lobby, #game {
+      overflow-y: visible;
+    }
   }
 }

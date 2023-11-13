@@ -187,11 +187,12 @@ func (l *Lobby) reconnectClient(client *Client, client_id uint64) {
 		}
 		client.client_id = old_client.client_id
 		old_game := old_client.game
-		if old_game == nil {
-			old_game = old_client.lobby_room.game
+		old_lobby_room := old_client.lobby_room
+		if old_game == nil && old_lobby_room != nil {
+			old_game = old_lobby_room.game
 		}
-		if old_client.lobby_room != nil && old_game != nil {
-			client.lobby_room = old_client.lobby_room
+		if old_lobby_room != nil && old_game != nil {
+			client.lobby_room = old_lobby_room
 			client.game = old_game
 			room_id_string := strconv.Itoa(int(client.lobby_room.room_id))
 			go client.clientGameUpdates(client.game.GetBase().Players[client_id], room_id_string)

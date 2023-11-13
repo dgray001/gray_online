@@ -25,3 +25,12 @@ dwg-confirm-dialog {
     }
   }
 }
+
+body.mobile {
+  dwg-confirm-dialog {
+    > #wrapper {
+      height: 50svh;
+      width: 50vw;
+    }
+  }
+}

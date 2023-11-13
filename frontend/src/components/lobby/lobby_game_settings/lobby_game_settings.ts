@@ -109,21 +109,22 @@ export class DwgLobbyGameSettings extends DwgElement {
       switch(settings.game_type) {
         case GameType.FIDDLESTICKS:
           const specific_settings = settings.game_specific_settings as GameSettingsFiddlesticks;
-          if (this.game_specific_settings_els.has('max-round')) {
-            this.game_specific_settings_els.get('max-round').valueAsNumber = specific_settings.max_round ?? 0;
-          }
-          if (this.game_specific_settings_els.has('round-points')) {
-            this.game_specific_settings_els.get('round-points').valueAsNumber = specific_settings.round_points ?? 0;
-          }
-          if (this.game_specific_settings_els.has('trick-points')) {
-            this.game_specific_settings_els.get('trick-points').valueAsNumber = specific_settings.trick_points ?? 0;
-          }
+          this.setNumberSetting('max-round', specific_settings.max_round);
+          this.setNumberSetting('round-points', specific_settings.round_points);
+          this.setNumberSetting('trick-points', specific_settings.trick_points);
           break;
         default:
           break;
       }
     } catch(e) {
       console.log(e);
+    }
+  }
+
+  private setNumberSetting(el_id: string, setting?: number) {
+    const el = this.game_specific_settings_els.get(el_id);
+    if (!!el) {
+      el.valueAsNumber = setting ?? 0;
     }
   }
 
