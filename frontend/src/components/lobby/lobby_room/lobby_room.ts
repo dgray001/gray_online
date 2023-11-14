@@ -38,7 +38,6 @@ export class DwgLobbyRoom extends DwgElement {
   settings_description: HTMLDivElement;
   settings_button_container: HTMLDivElement;
   settings_settings_button: HTMLButtonElement;
-  settings_launching = false;
   settings_launch_interval_id: NodeJS.Timer;
   settings_launch_button: HTMLButtonElement;
   settings_game_status: HTMLDivElement;
@@ -48,6 +47,8 @@ export class DwgLobbyRoom extends DwgElement {
   game_rejoin_button: HTMLButtonElement;
 
   is_host = false;
+  settings_launching = false;
+  renaming_room = false;
   room: LobbyRoom;
 
   constructor() {
@@ -191,8 +192,9 @@ export class DwgLobbyRoom extends DwgElement {
     } else {
       this.game_button_container.classList.add('hide');
     }
+    this.renaming_room = is_host && refresh_room && this.renaming_room;
     if (is_host) {
-      this.rename_room.classList.add('show');
+      this.rename_room.classList.toggle('show', !this.renaming_room);
       if (game_launched) {
         this.settings_button_container.classList.add('hide');
       } else {
@@ -494,6 +496,7 @@ export class DwgLobbyRoom extends DwgElement {
   }
 
   private openRename() {
+    this.renaming_room = true;
     this.rename_room.classList.remove('show');
     this.room_name.classList.remove('show');
     this.rename_input.value = this.room.room_name;
@@ -502,6 +505,7 @@ export class DwgLobbyRoom extends DwgElement {
   }
 
   private cancelRename() {
+    this.renaming_room = false;
     this.rename_room.classList.add('show');
     this.room_name.classList.add('show');
     this.rename_input.classList.remove('show');

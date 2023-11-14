@@ -119,7 +119,6 @@ export class DwgGame extends DwgElement {
       !connection_metadata || !connection_metadata.client_id || !connection_metadata.room_id || lobby.room_id !== connection_metadata.room_id
     ) {
       console.log('Invalid state to launch game');
-      // TODO: refresh state
       return;
     }
     this.socket = socket;

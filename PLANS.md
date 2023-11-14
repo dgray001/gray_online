@@ -12,6 +12,7 @@ v0.4: Euchre game
  - Can resign from games
  - AI takes over when AFK / resign
  - Prevent card hand from playing in advance (flag to set whether playable)
+ - Lobby rooms, when being refreshed, can just refresh specific rooms instead of recreating entire els
 
 v0.5: More card games
  - Add 4 more card games with settings / etc.

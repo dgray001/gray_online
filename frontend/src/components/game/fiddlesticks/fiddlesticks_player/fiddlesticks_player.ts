@@ -13,6 +13,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
   status_container: HTMLDivElement;
   score_container: HTMLSpanElement;
   bet_container: HTMLSpanElement;
+  bet_input_wrapper: HTMLDivElement;
   bet_input: HTMLInputElement;
   bet_button: HTMLButtonElement;
   tricks_container: HTMLSpanElement;
@@ -32,6 +33,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.configureElement('status_container');
     this.configureElement('score_container');
     this.configureElement('bet_container');
+    this.configureElement('bet_input_wrapper');
     this.configureElement('bet_input');
     this.configureElement('bet_button');
     this.configureElement('tricks_container');
@@ -49,11 +51,29 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.score_container.innerText = this.player.score.toString();
     this.bet_container.innerText = '-';
     this.tricks_container.innerText = '-';
+    let dealer_timeout: NodeJS.Timeout = undefined;
     this.dealer_wrapper.addEventListener('click', () => {
+      if (dealer_timeout) {
+        clearTimeout(dealer_timeout);
+      }
       this.dealer_wrapper.classList.toggle('show-tooltip');
+      if (this.dealer_wrapper.classList.contains('show-tooltip')) {
+        dealer_timeout = setTimeout(() => {
+          this.dealer_wrapper.classList.remove('show-tooltip');
+        }, 2000);
+      }
     });
+    let winner_timeout: NodeJS.Timeout = undefined;
     this.winner_wrapper.addEventListener('click', () => {
+      if (winner_timeout) {
+        clearTimeout(winner_timeout);
+      }
       this.winner_wrapper.classList.toggle('show-tooltip');
+      if (this.winner_wrapper.classList.contains('show-tooltip')) {
+        winner_timeout = setTimeout(() => {
+          this.winner_wrapper.classList.remove('show-tooltip');
+        }, 2000);
+      }
     });
   }
 
@@ -83,14 +103,17 @@ export class DwgFiddlesticksPlayer extends DwgElement {
   setClientPlayer() {
     this.classList.add('client-player');
     this.client_player = true;
-    this.bet_input.addEventListener('keyup', (e) => {
-      e.stopImmediatePropagation();
-      if (e.key === 'Enter') {
+    // can be called before parsed
+    until(() => this.fully_parsed).then(() => {
+      this.bet_input.addEventListener('keyup', (e) => {
+        e.stopImmediatePropagation();
+        if (e.key === 'Enter') {
+          this.sendBetEvent();
+        }
+      });
+      this.bet_button.addEventListener('click', () => {
         this.sendBetEvent();
-      }
-    });
-    this.bet_button.addEventListener('click', () => {
-      this.sendBetEvent();
+      });
     });
   }
 
@@ -136,8 +159,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.bet_button.disabled = false;
     this.bet_input.valueAsNumber = 0;
     this.bet_input.max = this.player.cards.length.toString();
-    this.bet_input.classList.add('show');
-    this.bet_button.classList.add('show');
+    this.bet_input_wrapper.classList.add('show');
   }
 
   async setBetAnimation(amount: number) {
@@ -156,8 +178,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.bet_container.innerText = amount.toString();
     this.classList.remove('turn');
     if (this.client_player) {
-      this.bet_input.classList.remove('show');
-      this.bet_button.classList.remove('show');
+      this.bet_input_wrapper.classList.remove('show');
     }
   }
 

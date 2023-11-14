@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.2ah: Drag card to play
+v0.3: Fiddlesticks v1 finished
 
 ## Dev Use
 

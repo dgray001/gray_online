@@ -213,10 +213,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
             }
             player.tricks = 0;
           }
-          if (this.game.turn === this.player_id) {
-            this.player_els[this.player_id].betting();
-          }
-          // Add sound effect for betting
+          this.player_els[this.game.turn].betting();
           this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Betting`;
           break;
         case "bet":

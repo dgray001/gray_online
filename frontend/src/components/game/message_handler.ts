@@ -57,7 +57,11 @@ export function handleMessage(game: DwgGame, message: ServerMessage) {
     case "game-update-failed":
     case "game-get-update-failed":
       console.log(message.content);
-      game.refreshGame();
+      try {
+        game.refreshGame();
+      } catch(e) {
+        console.log(e);
+      }
       break;
     default:
       console.log("Unknown message type", message.kind, "from", message.sender);

@@ -65,6 +65,7 @@ export class DwgPageHome extends DwgElement {
     });
     this.game.addEventListener('exit_game', () => {
       this.game.classList.remove('show');
+      this.game.launched = false;
       this.lobby.classList.remove('hide');
     });
     this.game.addEventListener('show_message_dialog', (e: CustomEvent<MessageDialogData>) => {
