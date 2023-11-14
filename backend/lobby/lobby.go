@@ -195,6 +195,7 @@ func (l *Lobby) reconnectClient(client *Client, client_id uint64) {
 			client.lobby_room = old_lobby_room
 			client.game = old_game
 			room_id_string := strconv.Itoa(int(client.lobby_room.room_id))
+			// TODO: use Viewers not Players if the client is a viewer
 			go client.clientGameUpdates(client.game.GetBase().Players[client_id], room_id_string)
 		}
 		l.clients[client.client_id] = client

@@ -168,15 +168,23 @@ export class DwgLobbyRoom extends DwgElement {
     }
   }
 
-  setRoom(room: LobbyRoom, is_host: boolean) {
+  refreshRoom(room: LobbyRoom, is_host: boolean) {
+    this.setRoom(room, is_host, true);
+  }
+
+  setRoom(room: LobbyRoom, is_host: boolean, refresh_room = false) {
     const game_launched = !!room.game_id;
     this.is_host = is_host;
     this.room = room;
     this.room_name.innerText = room.room_name;
-    this.lobby_game_settings.setSettings(room.game_settings);
-    this.updateSettingsDependencies();
+    if (!this.lobby_game_settings.classList.contains('show')) {
+      this.lobby_game_settings.setSettings(room.game_settings);
+      this.updateSettingsDependencies();
+    }
     this.num_players_current.innerText = room.players.size.toString();
-    this.settings_game_status.innerText = game_launched ? GameStatusEnum.IN_PROGRESS : GameStatusEnum.NOT_STARTED;
+    if (!refresh_room || game_launched) {
+      this.settings_game_status.innerText = game_launched ? GameStatusEnum.IN_PROGRESS : GameStatusEnum.NOT_STARTED;
+    }
     this.classList.add('show');
     if (game_launched) {
       this.game_button_container.classList.remove('hide');
@@ -187,17 +195,14 @@ export class DwgLobbyRoom extends DwgElement {
       this.rename_room.classList.add('show');
       if (game_launched) {
         this.settings_button_container.classList.add('hide');
-        this.settings_launch_button.disabled = true;
-        this.settings_settings_button.disabled = true;
       } else {
         this.settings_button_container.classList.remove('hide');
-        this.settings_launch_button.disabled = false;
-        this.settings_settings_button.disabled = false;
       }
     } else {
       this.rename_room.classList.remove('show');
       this.settings_button_container.classList.add('hide');
     }
+    this.setLaunching(this.settings_launching && refresh_room);
     this.host_container.replaceChildren(this.getUserElement(room.host, false, true));
     const player_els = [];
     for (const player of room.players.values()) {

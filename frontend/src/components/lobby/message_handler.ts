@@ -283,7 +283,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
         const room = serverResponseToRoom(room_data);
         const room_id = parseInt(message.data);
         if (!!room_id && room_id === room.room_id) {
-          // lobby.lobby_room.setRoom(room, room.host.client_id === lobby.connection_metadata.client_id);
+          lobby.lobby_room.refreshRoom(room, room.host.client_id === lobby.connection_metadata.client_id);
           if (!!room.game_id && !lobby.classList.contains('hide')) {
             lobby.dispatchEvent(new CustomEvent('game_launched', {'detail': lobby.lobby_room.room}));
           }

@@ -11,20 +11,21 @@ dwg-lobby-connector {
   }
 
   > #card {
+    --width: calc(12 * var(--font-size-large));
     background-color: rgb(220, 220, 220);
     box-shadow: 0 0 8px 8px rgba(60, 60, 60, 0.7);
     color: black;
-    height: 240px;
+    height: calc(10 * var(--font-size-large));
     left: calc(50% - 100px);
     padding: 16px;
     position: relative;
     top: calc(50% - 150px);
-    width: 300px;
+    width: var(--width);
 
     button {
       font-size: var(--font-size-large);
       margin-top: 20px;
-      width: 290px;
+      width: var(--width);
     }
 
     > #reconnect-wrapper {
@@ -51,7 +52,7 @@ dwg-lobby-connector {
         font-size: var(--font-size-large);
         margin-bottom: 30px;
         margin-top: 20px;
-        width: 290px;
+        width: var(--width);
       }
     }
 

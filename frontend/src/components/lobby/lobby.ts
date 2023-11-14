@@ -1,7 +1,6 @@
 import {DwgElement} from '../dwg_element';
 import {clickButton} from '../../scripts/util';
 import {ChatMessage, DwgChatbox, SERVER_CHAT_NAME} from '../chatbox/chatbox';
-import {GameBase} from '../game/data_models';
 
 import {DwgLobbyUsers} from './lobby_users/lobby_users';
 import {DwgLobbyRooms, JoinRoomData} from './lobby_rooms/lobby_rooms';
@@ -15,6 +14,8 @@ import '../chatbox/chatbox';
 import './lobby_users/lobby_users';
 import './lobby_rooms/lobby_rooms';
 import './lobby_room/lobby_room';
+
+const LOBBY_PING_TIME = 5000; // time between lobby refreshes
 
 export class DwgLobby extends DwgElement {
   name_container: HTMLSpanElement;
@@ -150,7 +151,7 @@ export class DwgLobby extends DwgElement {
     this.lobby_users.refreshUsers();
     setInterval(() => {
       this.pingServer();
-    }, 5000);
+    }, LOBBY_PING_TIME);
   }
 
   setSocket(new_socket: WebSocket) {
@@ -256,6 +257,7 @@ export class DwgLobby extends DwgElement {
     }
     if (!this.socketActive()) {
       this.dispatchEvent(new Event('connected_lost'));
+      return;
     }
     if (!this.classList.contains('connected')) {
       this.dispatchEvent(new Event('connection_lost'));
@@ -264,6 +266,7 @@ export class DwgLobby extends DwgElement {
     this.waitingOnConnectedTimes--;
     if (this.waitingOnConnectedTimes < 1) {
       this.dispatchEvent(new Event('connection_lost'));
+      return;
     }
     this.lobby_users.refreshUsers();
     this.refreshLobbyRooms();

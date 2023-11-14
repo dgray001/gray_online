@@ -1,8 +1,3 @@
-0.3: flesh out fiddlesticks game
-   => Refresh room needs to properly set room data (update 'setRoom')
-   => Better control over which card you are playing => drag to play
-   => If bet fails need to re-call betting() function
-
 v0.4: Euchre game
  - New game backend logic
  - New frontend component
@@ -16,6 +11,7 @@ v0.4: Euchre game
  - Player's cards can automatically resize => listener on game div resize
  - Can resign from games
  - AI takes over when AFK / resign
+ - Prevent card hand from playing in advance (flag to set whether playable)
 
 v0.5: More card games
  - Add 4 more card games with settings / etc.

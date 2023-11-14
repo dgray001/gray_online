@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.2ag: Basic bet button
+v0.2ah: Drag card to play
 
 ## Dev Use
 

@@ -1,6 +1,7 @@
 dwg-card-hand {
   --height: 0; // set by component
   --width: 0; // set by component
+  --play-drop-margin: 0; // set by component
   display: block;
   height: 100%;
   width: 100%;
@@ -14,6 +15,7 @@ dwg-card-hand {
       calc(((var(--width) - var(--card-width)) / (var(--num-cards) - 1)) - var(--card-width))
     );
     --total-card-width: calc(var(--card-width) + (var(--num-cards) - 1) * (var(--card-width) + var(--card-overlap)));
+
     box-sizing: border-box;
     display: flex;
     flex-flow: row nowrap;
@@ -29,19 +31,65 @@ dwg-card-hand {
       height: 100%;
       max-width: var(--card-width);
       min-width: var(--card-width);
-      transform: translateX(calc(var(--i) * var(--card-overlap))) rotate(-0deg);
+      touch-action: none;
+      transform: translateX(calc(var(--i) * var(--card-overlap))) rotate(-3deg);
       user-select: none;
       width: var(--card-width);
 
-      &:hover {
+      &.hovering {
         transform: translate(calc(var(--i) * var(--card-overlap)), calc(-0.1 * var(--height))) rotate(-1deg);
-        z-index: 2;
+        z-index: 3;
+      }
+
+      &.dragging {
+        // --x; 0; set by component
+        // --y; 0; set by component
+        transform: translate(calc(var(--i) * var(--card-overlap) + var(--x)), calc(-0.1 * var(--height) + var(--y)));
+        z-index: 3;
       }
 
       > img {
         height: 100%;
         width: 100%;
       }
+    }
+  }
+
+  > #play-drop {
+    background-color: rgba(100, 250, 100, 0.15);
+    height: 100vh;
+    left: -100vw;
+    position: absolute;
+    top: calc(-100vh - var(--play-drop-margin));
+    width: 200vw;
+    z-index: 2;
+
+    &.hovering {
+      background-color: rgba(100, 250, 100, 0.3);
+    }
+  }
+
+  > #cancel-drop {
+    background-color: rgba(250, 100, 100, 0.15);
+    height: 100vh;
+    left: -100vw;
+    position: absolute;
+    top: calc(-1 * var(--play-drop-margin));
+    width: 200vw;
+    z-index: 2;
+
+    &.hovering {
+      background-color: rgba(250, 100, 100, 0.3);
+    }
+  }
+
+  &:not(.dragging) {
+    > #play-drop {
+      display: none;
+    }
+  
+    > #cancel-drop {
+      display: none;
     }
   }
 }

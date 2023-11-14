@@ -94,7 +94,7 @@ func (r *LobbyRoom) run() {
 
 func (c *Client) clientGameUpdates(player *game.Player, room_id_string string) {
 	for {
-		if c.deleted {
+		if c.deleted || player == nil {
 			break
 		}
 		select {
