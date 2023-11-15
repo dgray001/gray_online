@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.3a: Refactor backend for future games
+v0.3b: Euchre skeleton
 
 ## Dev Use
 

@@ -325,8 +325,9 @@ func (c *Client) readMessages() {
 				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-launch-failed", Content: "Not room host"}
 				break
 			}
-			if !room.launchable() {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-launch-failed", Content: "Room not launchable"}
+			launchable, launchable_error := room.launchable()
+			if !launchable {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-launch-failed", Content: "Room not launchable: " + launchable_error}
 				break
 			}
 			c.lobby.LaunchGame <- room

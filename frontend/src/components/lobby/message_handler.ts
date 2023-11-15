@@ -1,5 +1,5 @@
 import {SERVER_CHAT_NAME} from "../chatbox/chatbox";
-import {GameSettings, ServerMessage, LobbyRoom, LobbyRoomFromServer, serverResponseToRoom} from "./data_models";
+import {GameSettings, ServerMessage, LobbyRoom, LobbyRoomFromServer, serverResponseToRoom, GameSettingsFromServer, serverResponseToGameSettings} from "./data_models";
 import {DwgLobby} from "./lobby";
 
 function isLobbyMessage(kind: string): boolean {
@@ -250,7 +250,8 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
     case 'room-settings-updated':
       try {
         const room_id = parseInt(message.sender.replace('room-', ''));
-        const new_settings = JSON.parse(message.data) as GameSettings;
+        const new_settings_from_server = JSON.parse(message.data) as GameSettingsFromServer;
+        const new_settings = serverResponseToGameSettings(new_settings_from_server);
         lobby.lobby_rooms.updateRoomSettings(room_id, new_settings);
         if (room_id === lobby.connection_metadata.room_id) {
           lobby.lobby_room.updateSettings(new_settings);

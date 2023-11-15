@@ -230,7 +230,7 @@ export class DwgLobbyRoom extends DwgElement {
   }
 
   updateSettingsDependencies() {
-    this.settings_title.innerText = GameType[this.room.game_settings.game_type || -1] ?? '';
+    this.settings_title.innerText = GameType[this.room.game_settings.game_type ?? -1] ?? '';
     this.num_players_max.innerText = this.room.game_settings.max_players.toString();
     if (!this.room.game_settings.game_specific_settings) {
       this.settings_settings.replaceChildren();

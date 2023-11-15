@@ -1,11 +1,12 @@
 package fiddlesticks
 
 import (
+	"errors"
 	"fmt"
-	"os"
 	"strconv"
 
 	"github.com/dgray001/gray_online/game"
+	"github.com/dgray001/gray_online/game/game_utils"
 	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
 )
@@ -27,23 +28,23 @@ import (
 type GameFiddlesticks struct {
 	game              *game.GameBase
 	players           []*FiddlesticksPlayer
-	deck              *util.StandardDeck
+	deck              *game_utils.StandardDeck
 	round             uint8
 	max_round         uint8
 	rounds_increasing bool
 	dealer            int
 	turn              int
 	betting           bool
-	trump             *util.StandardCard
+	trump             *game_utils.StandardCard
 	trick_leader      int
-	trick             []*util.StandardCard
+	trick             []*game_utils.StandardCard
 	round_points      uint16
 	trick_points      uint16
 }
 
 type FiddlesticksPlayer struct {
 	player       *game.Player
-	cards        []*util.StandardCard
+	cards        []*game_utils.StandardCard
 	cards_played []int
 	score        uint16
 	bet          uint8
@@ -70,11 +71,11 @@ func (p *FiddlesticksPlayer) toFrontend(show_updates bool) gin.H {
 	return player
 }
 
-func CreateGame(g *game.GameBase) *GameFiddlesticks {
+func CreateGame(g *game.GameBase) (*GameFiddlesticks, error) {
 	fiddlesticks := GameFiddlesticks{
 		game:              g,
 		players:           []*FiddlesticksPlayer{},
-		deck:              util.CreateStandardDeck(),
+		deck:              game_utils.CreateStandardDeck(),
 		round:             0,
 		rounds_increasing: true,
 		dealer:            -1,
@@ -82,7 +83,7 @@ func CreateGame(g *game.GameBase) *GameFiddlesticks {
 		betting:           false,
 		trump:             nil,
 		trick_leader:      -1,
-		trick:             []*util.StandardCard{},
+		trick:             []*game_utils.StandardCard{},
 		round_points:      10,
 		trick_points:      1,
 	}
@@ -91,15 +92,14 @@ func CreateGame(g *game.GameBase) *GameFiddlesticks {
 		player.Player_id = player_id
 		fiddlesticks.players = append(fiddlesticks.players, &FiddlesticksPlayer{
 			player:       player,
-			cards:        []*util.StandardCard{},
+			cards:        []*game_utils.StandardCard{},
 			cards_played: []int{},
 			score:        0,
 		})
 		player_id++
 	}
 	if len(fiddlesticks.players) < 2 {
-		fmt.Fprintln(os.Stderr, "Need at least two players to play fiddlesticks")
-		return nil
+		return nil, errors.New("Need at least two players to play fiddlesticks")
 	}
 	fiddlesticks.max_round = uint8((fiddlesticks.deck.Size() - 1) / len(fiddlesticks.players))
 	max_round_float, max_round_ok := g.GameSpecificSettings["max_round"].(float64)
@@ -126,7 +126,7 @@ func CreateGame(g *game.GameBase) *GameFiddlesticks {
 	if fiddlesticks.round_points == 0 && fiddlesticks.trick_points == 0 {
 		fiddlesticks.round_points = 1
 	}
-	return &fiddlesticks
+	return &fiddlesticks, nil
 }
 
 func (f *GameFiddlesticks) GetBase() *game.GameBase {
@@ -134,7 +134,6 @@ func (f *GameFiddlesticks) GetBase() *game.GameBase {
 }
 
 func (f *GameFiddlesticks) StartGame() {
-	f.game.StartGame()
 	f.dealNextRound()
 }
 
@@ -198,7 +197,7 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 			f.betting = false
 			f.trick_leader = f.turn
 		}
-		f.broadcastUpdate(&game.UpdateMessage{Kind: "bet", Content: gin.H{
+		game.Game_BroadcastUpdate(f, &game.UpdateMessage{Kind: "bet", Content: gin.H{
 			"amount":    bet_value,
 			"player_id": player_id,
 		}})
@@ -262,7 +261,7 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 		}
 		f.trick = append(f.trick, card)
 		f.players[f.turn].cards_played = append(f.players[f.turn].cards_played, card_index)
-		f.broadcastUpdate(&game.UpdateMessage{Kind: "play-card", Content: gin.H{
+		game.Game_BroadcastUpdate(f, &game.UpdateMessage{Kind: "play-card", Content: gin.H{
 			"index":     card_index,
 			"card":      card.ToFrontend(),
 			"player_id": player_id,
@@ -291,7 +290,7 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 			}
 			f.players[f.turn].tricks++
 			f.trick_leader = f.turn
-			f.trick = []*util.StandardCard{}
+			f.trick = []*game_utils.StandardCard{}
 			fmt.Println("Trick won by", f.players[f.turn].player.GetNickname(), "with the", winning_card.GetName())
 			if len(f.players[0].cards_played) < len(f.players[0].cards) {
 				// next trick
@@ -351,13 +350,6 @@ func (f *GameFiddlesticks) ToFrontend(client_id uint64, is_viewer bool) gin.H {
 	}
 	game["trick"] = trick_cards
 	return game
-}
-
-func (f *GameFiddlesticks) broadcastUpdate(update *game.UpdateMessage) {
-	fmt.Printf("Broadcasting game (%d) update {%s, %s}\n", f.game.Game_id, update.Kind, update.Content)
-	for _, player := range f.players {
-		player.player.AddUpdate(update)
-	}
 }
 
 func (f *GameFiddlesticks) dealNextRound() {

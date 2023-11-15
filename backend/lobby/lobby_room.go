@@ -2,11 +2,13 @@ package lobby
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
 
 	"github.com/dgray001/gray_online/game"
+	"github.com/dgray001/gray_online/game/games/euchre"
 	"github.com/dgray001/gray_online/game/games/fiddlesticks"
 	"github.com/gin-gonic/gin"
 )
@@ -27,13 +29,6 @@ type LobbyRoom struct {
 	UpdateSettings  chan *GameSettings
 	PlayerConnected chan *Client
 	PlayerAction    chan game.PlayerAction
-}
-
-type GameSettings struct {
-	MaxPlayers           uint8                  `json:"max_players"`
-	MaxViewers           uint8                  `json:"max_viewers"`
-	GameType             uint8                  `json:"game_type"`
-	GameSpecificSettings map[string]interface{} `json:"game_specific_settings"`
 }
 
 func CreateLobbyRoom(host *Client, room_id uint64, lobby *Lobby) *LobbyRoom {
@@ -82,7 +77,7 @@ func (r *LobbyRoom) run() {
 				}
 				go r.gameBaseUpdates(r.game.GetBase(), room_id_string)
 				r.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "game-start"})
-				r.game.StartGame()
+				game.Game_StartGame(r.game)
 			}
 		case action := <-r.PlayerAction:
 			if r.game != nil {
@@ -297,10 +292,12 @@ func (r *LobbyRoom) updateSettings(s *GameSettings) {
 	})
 }
 
-func (r *LobbyRoom) launchGame(game_id uint64) game.Game {
-	if !r.launchable() {
-		fmt.Println("Cannot launch game of id", game_id, ": game not launchable")
-		return nil
+func (r *LobbyRoom) launchGame(game_id uint64) (game.Game, error) {
+	launchable, launchable_error := r.launchable()
+	if !launchable {
+		message := fmt.Sprintf("Cannot launch game of id %d: %s", game_id, launchable_error)
+		fmt.Fprintln(os.Stderr, message)
+		return nil, errors.New(message)
 	}
 	base_game := game.CreateBaseGame(game_id, r.game_settings.GameType, r.game_settings.GameSpecificSettings)
 	for _, player := range r.players {
@@ -309,50 +306,46 @@ func (r *LobbyRoom) launchGame(game_id uint64) game.Game {
 	for _, viewer := range r.viewers {
 		base_game.Viewers[viewer.client_id] = game.CreateViewer(viewer.client_id, viewer.nickname)
 	}
+	var err error = nil
+	var new_game game.Game = nil
 	switch r.game_settings.GameType {
 	case 1:
-		r.game = fiddlesticks.CreateGame(base_game)
+		new_game, err = fiddlesticks.CreateGame(base_game)
+	case 2:
+		new_game, err = euchre.CreateGame(base_game)
 	default:
-		fmt.Println("GameType not recognized", r.game_settings.GameType)
-		r.game = nil
+		err = errors.New(fmt.Sprintf("GameType not recognized: %d", r.game_settings.GameType))
 	}
-	if r.game == nil {
-		return nil
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		return nil, err
 	}
+	r.game = new_game
 	room_id_string := strconv.Itoa(int(r.room_id))
 	game_id_string := strconv.Itoa(int(game_id))
 	r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-launched", Data: game_id_string})
-	return r.game
+	return r.game, nil
 }
 
 func (r *LobbyRoom) GetGame() game.Game {
 	return r.game
 }
 
-func (s *GameSettings) Launchable() bool {
-	if s.MaxPlayers < 1 || s.MaxPlayers > 8 {
-		return false
-	}
-	if s.MaxViewers < 0 || s.MaxViewers > 16 {
-		return false
-	}
-	if s.GameType != 1 {
-		return false
-	}
-	return true
-}
-
-func (r *LobbyRoom) launchable() bool {
+func (r *LobbyRoom) launchable() (bool, string) {
 	if !r.valid() {
-		return false
+		return false, "Room invalid"
 	}
-	if r.game_settings == nil || !r.game_settings.Launchable() {
-		return false
+	if r.game_settings == nil {
+		return false, "No game settings"
+	}
+	settings_launchable, settings_launchable_error := r.game_settings.Launchable()
+	if !settings_launchable {
+		return false, settings_launchable_error
 	}
 	if r.game != nil {
-		return false
+		return false, "Game already launched"
 	}
-	return true
+	return true, ""
 }
 
 func (r *LobbyRoom) valid() bool {
@@ -371,6 +364,7 @@ func (r *LobbyRoom) valid() bool {
 	if len(r.viewers) > int(r.game_settings.MaxViewers) {
 		return false
 	}
+	// TODO: keep track of who is DC'ed and validate from that
 	/*for _, client := range r.players {
 		if client == nil || !client.valid() {
 			return false
@@ -382,15 +376,6 @@ func (r *LobbyRoom) valid() bool {
 		}
 	}*/
 	return true
-}
-
-func (s *GameSettings) ToFrontend() gin.H {
-	return gin.H{
-		"game_type":              strconv.Itoa(int(s.GameType)),
-		"max_players":            strconv.Itoa(int(s.MaxPlayers)),
-		"max_viewers":            strconv.Itoa(int(s.MaxViewers)),
-		"game_specific_settings": s.GameSpecificSettings,
-	}
 }
 
 func (r *LobbyRoom) ToFrontend() gin.H {

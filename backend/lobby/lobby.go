@@ -111,10 +111,12 @@ func (l *Lobby) Run() {
 		case data := <-l.LeaveRoom:
 			l.leaveRoom(data)
 		case room := <-l.LaunchGame:
-			game := room.launchGame(l.next_game_id)
-			if game != nil {
+			game, err := room.launchGame(l.next_game_id)
+			if err == nil {
 				l.games[l.next_game_id] = game
 				l.next_game_id++
+			} else if room.host != nil {
+				room.host.send_message <- lobbyMessage{Sender: "server", Kind: "room-launch-failed", Content: err.Error()}
 			}
 		case message := <-l.broadcast:
 			l.broadcastMessage(message)

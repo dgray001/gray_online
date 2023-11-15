@@ -1,8 +1,10 @@
 package euchre
 
 import (
+	"errors"
+
 	"github.com/dgray001/gray_online/game"
-	"github.com/dgray001/gray_online/util"
+	"github.com/dgray001/gray_online/game/game_utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -42,20 +44,20 @@ type GameEuchre struct {
 	game         *game.GameBase
 	players      [4]*EuchrePlayer
 	teams        [2]*EuchreTeam
-	deck         *util.StandardDeck
+	deck         *game_utils.StandardDeck
 	round        uint8
 	dealer       int
 	turn         int
 	bidding      bool
-	card_face_up *util.StandardCard
+	card_face_up *game_utils.StandardCard
 	trump_suit   uint8
 	trick_leader int
-	trick        []*util.StandardCard
+	trick        []*game_utils.StandardCard
 }
 
 type EuchrePlayer struct {
 	player       *game.Player
-	cards        []*util.StandardCard
+	cards        []*game_utils.StandardCard
 	cards_played []int
 }
 
@@ -65,8 +67,8 @@ type EuchreTeam struct {
 	tricks  uint8
 }
 
-func (g *GameEuchre) GetId() uint64 {
-	return g.game.Game_id
+func CreateGame(g *game.GameBase) (*GameEuchre, error) {
+	return nil, errors.New("Euchre not implemented")
 }
 
 func (g *GameEuchre) GetBase() *game.GameBase {
@@ -74,11 +76,19 @@ func (g *GameEuchre) GetBase() *game.GameBase {
 }
 
 func (g *GameEuchre) StartGame() {
-	g.game.StartGame()
 }
 
 func (g *GameEuchre) Valid() bool {
 	return false
+}
+
+func (g *GameEuchre) PlayerAction(action game.PlayerAction) {
+}
+
+func (g *GameEuchre) PlayerDisconnected(client_id uint64) {
+}
+
+func (g *GameEuchre) PlayerReconnected(client_id uint64) {
 }
 
 func (g *GameEuchre) ToFrontend(client_id uint64, is_viewer bool) gin.H {
