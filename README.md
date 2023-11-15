@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.3: Fiddlesticks v1 finished
+v0.3a: Refactor backend for future games
 
 ## Dev Use
 

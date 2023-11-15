@@ -361,7 +361,7 @@ func (c *Client) readMessages() {
 				c.send_message <- lobbyMessage{Sender: "server", Kind: "game-connected-failed", Content: "Lobby not launched"}
 				break
 			}
-			if game_id != int(c.lobby_room.game.GetId()) {
+			if game_id != int(game.Game_GetId(c.lobby_room.game)) {
 				c.send_message <- lobbyMessage{Sender: "server", Kind: "game-connected-failed", Content: "Incorrect game id"}
 				break
 			}

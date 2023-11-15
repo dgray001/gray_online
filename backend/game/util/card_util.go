@@ -1,13 +1,10 @@
-package game
+package util
 
 import (
 	"math/rand"
 
 	"github.com/gin-gonic/gin"
 )
-
-type Card struct {
-}
 
 type StandardCard struct {
 	Card

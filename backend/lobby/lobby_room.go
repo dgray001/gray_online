@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"github.com/dgray001/gray_online/game"
-	"github.com/dgray001/gray_online/game/fiddlesticks"
+	"github.com/dgray001/gray_online/game/games/fiddlesticks"
 	"github.com/gin-gonic/gin"
 )
 
@@ -417,7 +417,7 @@ func (r *LobbyRoom) ToFrontend() gin.H {
 	}
 	room["viewers"] = viewers
 	if r.game != nil {
-		room["game_id"] = strconv.Itoa(int(r.game.GetId()))
+		room["game_id"] = strconv.Itoa(int(game.Game_GetId(r.game)))
 	}
 	return room
 }
