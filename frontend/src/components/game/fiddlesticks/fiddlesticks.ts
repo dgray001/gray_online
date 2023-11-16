@@ -1,5 +1,5 @@
 import {DwgElement} from '../../dwg_element';
-import {GameBase, GameComponent, GamePlayer, UpdateMessage} from '../data_models';
+import {GameComponent, UpdateMessage} from '../data_models';
 import {StandardCard, cardToIcon, cardToImagePath, cardToName} from '../util/card_util';
 import {DwgFiddlesticksPlayer} from './fiddlesticks_player/fiddlesticks_player';
 import {DwgCardHand} from '../util/card_hand/card_hand';
@@ -8,66 +8,12 @@ import {clientOnMobile, until, untilTimer} from '../../../scripts/util';
 import {messageDialog} from '../game';
 
 import html from './fiddlesticks.html';
+import {GameFiddlesticks, DealRound, PlayerBet, PlayCard} from './fiddlesticks_data';
 
 import './fiddlesticks.scss';
 import './fiddlesticks_player/fiddlesticks_player';
 import '../../dialog_box/message_dialog/message_dialog';
 import '../util/card_hand/card_hand';
-
-/** Data describing a game of fiddlesticks */
-export declare interface GameFiddlesticks {
-  game_base: GameBase;
-  players: FiddlesticksPlayer[];
-  round: number;
-  max_round: number;
-  rounds_increasing: boolean;
-  dealer: number;
-  turn: number;
-  betting: boolean;
-  trump: StandardCard;
-  trick_leader: number;
-  trick: StandardCard[];
-  round_points: number;
-  trick_points: number;
-}
-
-/** Data describing a fiddlesticks player */
-export declare interface FiddlesticksPlayer {
-  player: GamePlayer;
-  cards: StandardCard[];
-  cards_played: number[];
-  score: number;
-  bet: number;
-  tricks: number;
-  order: number; // around table
-}
-
-/** Data describing a deal-round game-update */
-declare interface DealRound {
-  round: number;
-  dealer: number;
-  trump: StandardCard;
-  cards: StandardCard[];
-}
-
-/** Data describing a bet game-update */
-declare interface PlayerBet {
-  amount: number;
-  player_id: number;
-}
-
-/** Data describing a bet game-update */
-declare interface PlayCard {
-  index: number;
-  card: StandardCard;
-  player_id: number;
-}
-
-/** Data describing a bet game-update-failed */
-declare interface PlayCardFailed {
-  player_id: number;
-  message: string;
-}
 
 export class DwgFiddlesticks extends DwgElement implements GameComponent {
   round_number: HTMLSpanElement;

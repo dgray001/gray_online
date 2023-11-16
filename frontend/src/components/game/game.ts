@@ -1,16 +1,17 @@
 import {DwgElement} from '../dwg_element';
 import {ServerMessage, LobbyRoom, ConnectionMetadata, GameType, createMessage} from '../lobby/data_models';
-import {Game, GameComponent, GameFromServer, serverResponseToGame} from './data_models';
 import {apiPost} from '../../scripts/api';
 import {ChatMessage, DwgChatbox} from '../chatbox/chatbox';
 import {capitalize, createLock, until} from '../../scripts/util';
 import {MessageDialogData} from '../dialog_box/message_dialog/message_dialog';
 
+import {Game, GameComponent, GameFromServer, serverResponseToGame} from './data_models';
 import {handleMessage} from './message_handler';
 import html from './game.html';
 
 import './game.scss';
 import './fiddlesticks/fiddlesticks';
+import './euchre/euchre';
 import './game_history_dialog/game_history_dialog';
 import '../dialog_box/confirm_dialog/confirm_dialog';
 
@@ -175,6 +176,9 @@ export class DwgGame extends DwgElement {
     switch(this.game.game_base.game_type) {
       case GameType.FIDDLESTICKS:
         await setGame('dwg-fiddlesticks');
+        break;
+      case GameType.EUCHRE:
+        await setGame('dwg-euchre');
         break;
       case GameType.UNSPECIFIED:
       default:

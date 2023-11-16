@@ -42,35 +42,6 @@ type GameFiddlesticks struct {
 	trick_points      uint16
 }
 
-type FiddlesticksPlayer struct {
-	player       *game.Player
-	cards        []*game_utils.StandardCard
-	cards_played []int
-	score        uint16
-	bet          uint8
-	tricks       uint8
-}
-
-func (p *FiddlesticksPlayer) toFrontend(show_updates bool) gin.H {
-	player := gin.H{
-		"score":        p.score,
-		"bet":          p.bet,
-		"tricks":       p.tricks,
-		"cards_played": p.cards_played,
-	}
-	if p.player != nil {
-		player["player"] = p.player.ToFrontend(show_updates)
-	}
-	cards := []gin.H{}
-	for _, card := range p.cards {
-		if card != nil {
-			cards = append(cards, card.ToFrontend())
-		}
-	}
-	player["cards"] = cards
-	return player
-}
-
 func CreateGame(g *game.GameBase) (*GameFiddlesticks, error) {
 	fiddlesticks := GameFiddlesticks{
 		game:              g,

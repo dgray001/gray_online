@@ -105,17 +105,47 @@ type Deck interface {
 	ToFrontend() gin.H
 }
 
+type StandardDeckType int8
+
+const (
+	StandardDeckType_ERROR StandardDeckType = iota
+	StandardDeckType_STANDARD52
+	StandardDeckType_STANDARD24
+)
+
 type StandardDeck struct {
-	cards        [52]*StandardCard // position determines which card is which
+	deck_type    StandardDeckType
+	cards        []*StandardCard // position determines which card is which
 	draw_pile    []*StandardCard
 	discard_pile []*StandardCard
 }
 
 func CreateStandardDeck() *StandardDeck {
-	deck := StandardDeck{}
-	for i := 1; i <= 4; i++ {
-		for j := 2; j <= 14; j++ {
-			position := (i-1)*13 + (j - 2)
+	return CreateStandardDeckConfig(StandardDeckType_STANDARD52)
+}
+
+func CreateStandardDeckConfig(deck_type StandardDeckType) *StandardDeck {
+	var cards = 0
+	switch deck_type {
+	case StandardDeckType_STANDARD52:
+		cards = 52
+	case StandardDeckType_STANDARD24:
+		cards = 24
+	}
+	deck := StandardDeck{
+		deck_type: deck_type,
+		cards:     make([]*StandardCard, cards),
+	}
+	var suit_start = 1
+	var suit_end = 4
+	var value_start = 2
+	var value_end = 14
+	if deck_type == StandardDeckType_STANDARD24 {
+		value_start = 9
+	}
+	for i := suit_start; i <= suit_end; i++ {
+		for j := value_start; j <= value_end; j++ {
+			position := (i-suit_start)*(value_end-value_start+1) + (j - value_start)
 			deck.cards[position] = &StandardCard{suit: uint8(i), number: uint8(j)}
 		}
 	}
@@ -135,6 +165,7 @@ func (d *StandardDeck) SizeDiscardPile() int {
 	return len(d.discard_pile)
 }
 
+// Shuffles all cards into the draw pile
 func (d *StandardDeck) Reset() {
 	d.draw_pile = make([]*StandardCard, len(d.cards))
 	d.discard_pile = []*StandardCard{}
@@ -144,6 +175,7 @@ func (d *StandardDeck) Reset() {
 	}
 }
 
+// Shuffles current draw pile
 func (d *StandardDeck) ShuffleDrawPile() {
 	new_draw_pile := make([]*StandardCard, len(d.draw_pile))
 	perm := rand.Perm(len(d.draw_pile))
@@ -153,6 +185,7 @@ func (d *StandardDeck) ShuffleDrawPile() {
 	d.draw_pile = new_draw_pile
 }
 
+// Shuffles current discard pile into current draw pile
 func (d *StandardDeck) ShuffleDiscardPile() {
 	new_draw_pile := make([]*StandardCard, len(d.draw_pile)+len(d.discard_pile))
 	perm := rand.Perm(len(d.draw_pile) + len(d.discard_pile))
@@ -166,6 +199,7 @@ func (d *StandardDeck) ShuffleDiscardPile() {
 	d.draw_pile = new_draw_pile
 }
 
+// removes and returns top card of draw pile, or nil if draw pile is empty
 func (d *StandardDeck) DrawCard() *StandardCard {
 	if len(d.draw_pile) == 0 {
 		return nil
@@ -175,6 +209,7 @@ func (d *StandardDeck) DrawCard() *StandardCard {
 	return card
 }
 
+// Draws cards from the deck into hands of specified size, or returns nil if not enough cards
 func (d *StandardDeck) DealCards(players uint8, cards uint8) [][]*StandardCard {
 	if int(players*cards) > len(d.draw_pile) {
 		return nil

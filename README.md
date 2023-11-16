@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.3b: Euchre skeleton
+v0.3c: Euchre skeleton launchable
 
 ## Dev Use
 

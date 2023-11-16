@@ -51,6 +51,7 @@ export function serverResponseToUser(server_response: LobbyUserFromServer): Lobb
 export enum GameType {
   UNSPECIFIED = 0,
   FIDDLESTICKS = 1,
+  EUCHRE = 2,
 }
 
 /** Settings object for lobby room */

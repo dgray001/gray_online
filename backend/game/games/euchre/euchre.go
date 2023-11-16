@@ -1,8 +1,6 @@
 package euchre
 
 import (
-	"errors"
-
 	"github.com/dgray001/gray_online/game"
 	"github.com/dgray001/gray_online/game/game_utils"
 	"github.com/gin-gonic/gin"
@@ -55,20 +53,45 @@ type GameEuchre struct {
 	trick        []*game_utils.StandardCard
 }
 
-type EuchrePlayer struct {
-	player       *game.Player
-	cards        []*game_utils.StandardCard
-	cards_played []int
-}
-
-type EuchreTeam struct {
-	players [2]*EuchrePlayer
-	score   uint8
-	tricks  uint8
-}
-
 func CreateGame(g *game.GameBase) (*GameEuchre, error) {
-	return nil, errors.New("Euchre not implemented")
+	euchre := GameEuchre{
+		game:         g,
+		players:      [4]*EuchrePlayer{},
+		teams:        [2]*EuchreTeam{},
+		deck:         game_utils.CreateStandardDeckConfig(game_utils.StandardDeckType_STANDARD24),
+		round:        0,
+		dealer:       -1,
+		turn:         -1,
+		bidding:      false,
+		card_face_up: nil,
+		trump_suit:   0,
+		trick_leader: -1,
+		trick:        []*game_utils.StandardCard{},
+	}
+	if len(g.Players) != 4 {
+		//return nil, errors.New("Need exactly 4 players to play euchre")
+	}
+	player_id := 0
+	for _, player := range g.Players {
+		player.Player_id = player_id
+		euchre.players[player_id] = &EuchrePlayer{
+			player:       player,
+			cards:        []*game_utils.StandardCard{},
+			cards_played: []int{},
+		}
+		player_id++
+	}
+	euchre.teams[0] = &EuchreTeam{
+		players: [2]*EuchrePlayer{euchre.players[0], euchre.players[2]},
+		score:   0,
+		tricks:  0,
+	}
+	euchre.teams[1] = &EuchreTeam{
+		players: [2]*EuchrePlayer{euchre.players[1], euchre.players[3]},
+		score:   0,
+		tricks:  0,
+	}
+	return &euchre, nil
 }
 
 func (g *GameEuchre) GetBase() *game.GameBase {
@@ -76,6 +99,7 @@ func (g *GameEuchre) GetBase() *game.GameBase {
 }
 
 func (g *GameEuchre) StartGame() {
+	// TODO: implement
 }
 
 func (g *GameEuchre) Valid() bool {
@@ -83,6 +107,7 @@ func (g *GameEuchre) Valid() bool {
 }
 
 func (g *GameEuchre) PlayerAction(action game.PlayerAction) {
+	// TODO: implement
 }
 
 func (g *GameEuchre) PlayerDisconnected(client_id uint64) {
@@ -92,5 +117,43 @@ func (g *GameEuchre) PlayerReconnected(client_id uint64) {
 }
 
 func (g *GameEuchre) ToFrontend(client_id uint64, is_viewer bool) gin.H {
-	return gin.H{}
+	game := gin.H{
+		"round":        g.round,
+		"dealer":       g.dealer,
+		"turn":         g.turn,
+		"bidding":      g.bidding,
+		"trump_suit":   g.trump_suit,
+		"trick_leader": g.trick_leader,
+	}
+	if g.game != nil {
+		game["game_base"] = g.game.ToFrontend(client_id, is_viewer)
+	}
+	if g.deck != nil {
+		game["deck"] = g.deck.ToFrontend()
+	}
+	players := []gin.H{}
+	for _, player := range g.players {
+		if player != nil {
+			players = append(players, player.toFrontend(is_viewer || client_id == player.player.GetClientId()))
+		}
+	}
+	game["players"] = players
+	teams := []gin.H{}
+	for _, team := range g.teams {
+		if team != nil {
+			teams = append(teams, team.toFrontend())
+		}
+	}
+	game["teams"] = teams
+	if g.card_face_up != nil {
+		game["card_face_up"] = g.card_face_up.ToFrontend()
+	}
+	trick_cards := []gin.H{}
+	for _, card := range g.trick {
+		if card != nil {
+			trick_cards = append(trick_cards, card.ToFrontend())
+		}
+	}
+	game["trick"] = trick_cards
+	return game
 }

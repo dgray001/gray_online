@@ -38,11 +38,14 @@ export class DwgPageHome extends DwgElement {
       const socket = e.detail.try_reconnect ?
         new WebSocket(`${websocketPath()}/reconnect/${e.detail.nickname}/${e.detail.client_id}`) :
         new WebSocket(`${websocketPath()}/connect/${e.detail.nickname}`);
+      let never_connected = true;
       socket.addEventListener('error', (e) => {
         console.log(e);
-        this.tryConnectionAgain("Could not connect. Check your connection and try again.");
+        this.tryConnectionAgain(`${never_connected ? 'Could not connect' :
+          'Connection was lost'}. Check your connection and try again.`);
       });
       socket.addEventListener('open', () => {
+        never_connected = false;
         this.lobby_connector.classList.add('hide');
         this.lobby.classList.remove('connector-open');
         this.lobby.setNickname(e.detail.nickname);
@@ -51,7 +54,7 @@ export class DwgPageHome extends DwgElement {
       });
     });
     this.lobby.addEventListener('connection_lost', () => {
-      this.tryConnectionAgain("Connection was lost. Check your connection and try again.");
+      this.tryConnectionAgain('Connection was lost. Check your connection and try again.');
     });
     this.lobby.addEventListener('game_launched', async (e: CustomEvent<LobbyRoom>) => {
       if (await this.game.launchGame(e.detail, this.lobby.socket, this.lobby.connection_metadata)) {

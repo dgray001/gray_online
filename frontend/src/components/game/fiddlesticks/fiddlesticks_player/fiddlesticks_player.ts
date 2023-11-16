@@ -1,6 +1,6 @@
 import {DwgElement} from '../../../dwg_element';
 import {createMessage} from '../../../lobby/data_models';
-import {FiddlesticksPlayer} from '../fiddlesticks';
+import {FiddlesticksPlayer} from '../fiddlesticks_data';
 import {until, untilTimer} from '../../../../scripts/util';
 import {messageDialog} from '../../game';
 
@@ -21,6 +21,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
   winner_wrapper: HTMLDivElement;
   bet_animation: HTMLDivElement;
 
+  initialized = false;
   player: FiddlesticksPlayer;
   client_player = false;
   card_els: HTMLDivElement[] = [];
@@ -42,7 +43,6 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.configureElement('bet_animation');
   }
 
-  initialized = false;
   protected override parsedCallback(): void {
     if (!this.initialized) {
       throw new Error('Should initialize fiddlesticks player before attaching to dom');
