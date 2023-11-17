@@ -1,6 +1,4 @@
 v0.4: Euchre game
- e: Euchre player actions
- f: Game over message to frontend has who won (print in lobby)
  g: Frontend elements
  h: Frontend initial gameUpdate
  i: Frontend animations / styles (including mobile)

@@ -96,12 +96,12 @@ func (g *GameBase) GameEnded() bool {
 	return g.game_ended
 }
 
-func (g *GameBase) EndGame() {
+func (g *GameBase) EndGame(message string) {
 	if g.game_ended {
 		fmt.Fprintln(os.Stderr, "Game already ended")
 	}
 	g.game_ended = true
-	g.GameEndedChannel <- ""
+	g.GameEndedChannel <- message
 }
 
 func (g *GameBase) ToFrontend(client_id uint64, is_viewer bool) gin.H {

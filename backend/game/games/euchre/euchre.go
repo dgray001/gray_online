@@ -52,10 +52,15 @@ type GameEuchre struct {
 	bidding                  bool
 	bidding_choose_trump     bool
 	dealer_substituting_card bool
+	player_bid               int
+	makers_team              int
+	defenders_team           int
+	going_alone              bool
 	card_face_up             *game_utils.StandardCard
 	trump_suit               uint8
 	trick_leader             int
 	trick                    []*game_utils.StandardCard
+	trick_number             uint8
 }
 
 func CreateGame(g *game.GameBase) (*GameEuchre, error) {
@@ -70,10 +75,15 @@ func CreateGame(g *game.GameBase) (*GameEuchre, error) {
 		bidding:                  false,
 		bidding_choose_trump:     false,
 		dealer_substituting_card: false,
+		player_bid:               -1,
+		makers_team:              -1,
+		defenders_team:           -1,
+		going_alone:              false,
 		card_face_up:             nil,
 		trump_suit:               0,
 		trick_leader:             -1,
 		trick:                    []*game_utils.StandardCard{},
+		trick_number:             1,
 	}
 	if len(g.Players) != 4 {
 		//return nil, errors.New("Need exactly 4 players to play euchre")
@@ -249,19 +259,157 @@ func (g *GameEuchre) PlayerAction(action game.PlayerAction) {
 }
 
 func (g *GameEuchre) executeBid(player *game.Player, going_alone bool) {
-	// TODO: implement
+	g.bidding = false
+	g.makers_team = player.Player_id % 2
+	g.defenders_team = 0
+	if g.makers_team == 0 {
+		g.defenders_team = 1
+	}
+	g.player_bid = player.Player_id
+	g.going_alone = going_alone
+	g.turn = g.dealer + 1
+	if g.turn >= len(g.players) {
+		g.turn -= len(g.players)
+	}
+	g.trick_leader = g.turn
+	g.trump_suit = g.card_face_up.GetSuit()
+	g.dealer_substituting_card = true
+	game.Game_BroadcastUpdate(g, &game.UpdateMessage{Kind: "bid", Content: gin.H{
+		"player_id":   player.Player_id,
+		"going_alone": going_alone,
+	}})
 }
 
 func (g *GameEuchre) executeBidChooseTrump(player *game.Player, going_alone bool, trump_suit uint8) {
-	// TODO: implement
+	g.bidding_choose_trump = false
+	g.makers_team = player.Player_id % 2
+	g.defenders_team = 0
+	if g.makers_team == 0 {
+		g.defenders_team = 1
+	}
+	g.player_bid = player.Player_id
+	g.going_alone = going_alone
+	g.turn = g.dealer + 1
+	if g.turn >= len(g.players) {
+		g.turn -= len(g.players)
+	}
+	g.trick_leader = g.turn
+	g.trump_suit = trump_suit
+	game.Game_BroadcastUpdate(g, &game.UpdateMessage{Kind: "bid-choose-trump", Content: gin.H{
+		"player_id":   player.Player_id,
+		"going_alone": going_alone,
+		"trump_suit":  trump_suit,
+	}})
 }
 
 func (g *GameEuchre) executeDealerSubstituteCard(player *game.Player, card_index int) {
-	// TODO: implement
+	g.dealer_substituting_card = false
+	g.players[g.dealer].cards[card_index] = g.card_face_up
+	game.Game_BroadcastUpdate(g, &game.UpdateMessage{Kind: "dealer-substitutes-card", Content: gin.H{
+		"player_id":  player.Player_id,
+		"card_index": card_index,
+	}})
 }
 
 func (g *GameEuchre) executePlayCard(player *game.Player, card_index int) {
-	// TODO: implement
+	card := g.players[g.turn].cards[card_index]
+	g.trick = append(g.trick, card)
+	g.players[g.turn].cards_played = append(g.players[g.turn].cards_played, card_index)
+	game.Game_BroadcastUpdate(g, &game.UpdateMessage{Kind: "play-card", Content: gin.H{
+		"index":     card_index,
+		"card":      card.ToFrontend(),
+		"player_id": player.Player_id,
+	}})
+	g.turn++
+	if g.turn >= len(g.players) {
+		g.turn -= len(g.players)
+	}
+	if g.going_alone && util.AbsDiffInt(g.turn, g.player_bid) == 2 {
+		g.turn++
+		if g.turn >= len(g.players) {
+			g.turn -= len(g.players)
+		}
+	}
+	if g.turn == g.trick_leader {
+		winning_index := 0
+		winning_card := g.trick[0]
+		for i, card := range g.trick[1:] {
+			if g.cardSuit(card) == g.cardSuit(winning_card) {
+				if g.cardNumber(card) > g.cardNumber(winning_card) {
+					winning_index = i + 1
+					winning_card = card
+				}
+			} else if g.cardSuit(card) == g.trump_suit {
+				winning_index = i + 1
+				winning_card = card
+			}
+		}
+		g.turn = g.trick_leader + winning_index
+		if g.turn >= len(g.players) {
+			g.turn -= len(g.players)
+		}
+		g.teams[g.players[g.turn].player.Player_id%2].tricks++
+		g.trick_leader = g.turn
+		g.trick = []*game_utils.StandardCard{}
+		g.trick_number++
+		fmt.Println("Trick won by", g.players[g.turn].player.GetNickname(), "with the", winning_card.GetName())
+		if g.trick_number <= 5 {
+			// next trick
+		} else {
+			winning_team := 0
+			if g.teams[0].tricks < 3 {
+				winning_team = 1
+			}
+			won_all_five := g.teams[winning_team].tricks == 5
+			if winning_team == g.makers_team {
+				// makers won
+				if won_all_five {
+					if g.going_alone {
+						g.scorePoints(g.makers_team, 4)
+					} else {
+						g.scorePoints(g.makers_team, 2)
+					}
+				} else {
+					g.scorePoints(g.makers_team, 1)
+				}
+			} else {
+				// defenders won
+				g.scorePoints(g.defenders_team, 2)
+			}
+			if !g.game.GameEnded() {
+				g.dealNextRound()
+			}
+		}
+	}
+}
+
+func (g *GameEuchre) scorePoints(team int, points uint8) {
+	g.teams[team].score += points
+	if g.teams[team].score >= 10 {
+		winning_message := fmt.Sprintf("The team of %s and %s won the game with %d points",
+			g.teams[team].players[0].player.GetNickname(), g.teams[team].players[1].player.GetNickname(),
+			g.teams[team].score)
+		fmt.Println(winning_message)
+		g.game.EndGame(winning_message)
+	}
+}
+
+func (g *GameEuchre) cardSuit(card *game_utils.StandardCard) uint8 {
+	if card.GetSuitColor() == game_utils.SuitColor(g.trump_suit) && card.GetNumber() == 11 {
+		return g.trump_suit
+	}
+	return card.GetSuit()
+}
+
+func (g *GameEuchre) cardNumber(card *game_utils.StandardCard) uint8 {
+	if card.GetSuit() == g.trump_suit && card.GetNumber() == 11 {
+		// right bar
+		return 16
+	} else if g.cardSuit(card) == g.trump_suit && card.GetNumber() == 11 {
+		// left bar
+		return 15
+	}
+	return card.GetNumber()
 }
 
 func (g *GameEuchre) PlayerDisconnected(client_id uint64) {
@@ -277,6 +425,10 @@ func (g *GameEuchre) ToFrontend(client_id uint64, is_viewer bool) gin.H {
 		"turn":                     g.turn,
 		"bidding":                  g.bidding,
 		"bidding_choose_trump":     g.bidding_choose_trump,
+		"player_bid":               g.player_bid,
+		"makers_team":              g.makers_team,
+		"defenders_team":           g.defenders_team,
+		"going_alone":              g.going_alone,
 		"dealer_substituting_card": g.dealer_substituting_card,
 		"trump_suit":               g.trump_suit,
 		"trick_leader":             g.trick_leader,

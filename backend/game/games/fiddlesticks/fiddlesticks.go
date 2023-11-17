@@ -341,7 +341,7 @@ func (f *GameFiddlesticks) dealNextRound() {
 		}
 		winner_message += " with " + strconv.Itoa(int(winning_score)) + " points"
 		fmt.Println(winner_message)
-		f.game.EndGame()
+		f.game.EndGame(winner_message)
 		return
 	}
 	f.dealer++

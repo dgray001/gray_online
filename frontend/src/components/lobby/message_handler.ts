@@ -274,7 +274,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
       if (game_over_room_id) {
         lobby.lobby_rooms.gameOver(game_over_room_id);
         if (game_over_room_id === lobby.connection_metadata.room_id) {
-          lobby.lobby_room.gameOver();
+          lobby.lobby_room.gameOver(message.data);
         }
       }
       break;

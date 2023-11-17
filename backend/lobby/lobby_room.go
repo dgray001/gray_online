@@ -125,10 +125,14 @@ func (c *Client) clientGameUpdates(player *game.Player, room_id_string string) {
 
 func (r *LobbyRoom) gameBaseUpdates(game_base *game.GameBase, room_id_string string) {
 	for {
+		if game_base == nil {
+			break
+		}
 		select {
-		case <-game_base.GameEndedChannel:
-			r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-game-over"})
+		case message := <-game_base.GameEndedChannel:
+			r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-game-over", Data: message})
 			r.game = nil
+			break
 		}
 	}
 }

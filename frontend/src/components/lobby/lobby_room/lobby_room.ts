@@ -474,7 +474,7 @@ export class DwgLobbyRoom extends DwgElement {
     }}));
   }
 
-  gameOver() {
+  gameOver(message: string) {
     if (!this.room) {
       return;
     }
@@ -490,7 +490,7 @@ export class DwgLobbyRoom extends DwgElement {
       this.settings_button_container.classList.remove('hide');
     }
     this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {'detail': {
-      message: 'Game over',
+      message: `Game over: ${message}`,
       sender: SERVER_CHAT_NAME,
     }}));
   }

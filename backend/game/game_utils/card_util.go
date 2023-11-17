@@ -71,6 +71,25 @@ func (c *StandardCard) GetSuit() uint8 {
 	return c.suit
 }
 
+func (c *StandardCard) GetSuitColor() string {
+	return SuitColor(c.suit)
+}
+
+func SuitColor(suit uint8) string {
+	switch suit {
+	case 1:
+		return "Red"
+	case 2:
+		return "Black"
+	case 3:
+		return "Red"
+	case 4:
+		return "Black"
+	default:
+		return "Error"
+	}
+}
+
 func (c *StandardCard) GetNumber() uint8 {
 	return c.number
 }

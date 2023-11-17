@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.3d: Euchre deal hand
+v0.3e: Euchre initial backend
 
 ## Dev Use
 
