@@ -6,12 +6,14 @@ export declare interface GameEuchre {
   game_base: GameBase;
   players: EuchrePlayer[];
   bidding: boolean;
+  bidding_choosing_trump: boolean;
+  dealer_substituting_card: boolean;
   dealer: number;
   round: number;
   trick_leader: number;
   trick: StandardCard[];
   trump_suit: number;
-  turn: number
+  turn: number;
 }
 
 /** Data describing a euchre player */

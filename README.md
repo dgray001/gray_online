@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.3c: Euchre skeleton launchable
+v0.3d: Euchre deal hand
 
 ## Dev Use
 

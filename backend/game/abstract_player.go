@@ -79,6 +79,11 @@ func (p *Player) AddFailedUpdate(update *UpdateMessage) {
 	p.FailedUpdates <- update
 }
 
+func (p *Player) AddFailedUpdateShorthand(kind string, message string) {
+	fmt.Println(message)
+	p.AddFailedUpdate(&UpdateMessage{Kind: kind, Content: gin.H{"message": message, "player_id": p.Player_id}})
+}
+
 func (p *Player) GetNickname() string {
 	return p.nickname
 }

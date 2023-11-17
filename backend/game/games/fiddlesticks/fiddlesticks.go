@@ -105,6 +105,7 @@ func (f *GameFiddlesticks) GetBase() *game.GameBase {
 }
 
 func (f *GameFiddlesticks) StartGame() {
+	f.dealer = util.RandomInt(0, len(f.players)-1)
 	f.dealNextRound()
 }
 
@@ -125,87 +126,56 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 	player_id := player.Player_id
 	switch action.Kind {
 	case "bet":
-		if player_id != f.turn {
-			message := fmt.Sprintf("Not %d player's turn but %d player's turn", player_id, f.turn)
-			fmt.Println(message)
-			f.players[player_id].player.AddFailedUpdate(&game.UpdateMessage{Kind: "bet-failed",
-				Content: gin.H{"message": message, "player_id": player_id}})
+		if !f.betting {
+			player.AddFailedUpdateShorthand("bet-failed", "Not currently betting")
 			return
 		}
-		if !f.betting {
-			fmt.Println("Not currently betting")
+		if player_id != f.turn {
+			player.AddFailedUpdateShorthand("bet-failed",
+				fmt.Sprintf("Not %d player's turn but %d player's turn", player_id, f.turn))
 			return
 		}
 		bet_value_float, ok := action.Action["amount"].(float64)
 		if !ok {
-			message := fmt.Sprintf("Bet value invalid: %.2f", bet_value_float)
-			fmt.Println(message)
-			f.players[player_id].player.AddFailedUpdate(&game.UpdateMessage{Kind: "bet-failed",
-				Content: gin.H{"message": message, "player_id": player_id}})
+			player.AddFailedUpdateShorthand("bet-failed", fmt.Sprintf("Bet value invalid: %.2f", bet_value_float))
 			return
 		}
 		bet_value := uint8(bet_value_float)
 		if bet_value < 0 {
-			message := fmt.Sprintf("Must bet at least 0 but bet %d", bet_value)
-			fmt.Println(message)
-			f.players[player_id].player.AddFailedUpdate(&game.UpdateMessage{Kind: "bet-failed",
-				Content: gin.H{"message": message, "player_id": player_id}})
+			player.AddFailedUpdateShorthand("bet-failed", fmt.Sprintf("Must bet at least 0 but bet %d", bet_value))
 			return
 		} else if bet_value > f.round {
-			message := fmt.Sprintf("Cannot bet more than the cards in the round (%d) but bet %d", f.round, bet_value)
-			fmt.Println(message)
-			f.players[player_id].player.AddFailedUpdate(&game.UpdateMessage{Kind: "bet-failed",
-				Content: gin.H{"message": message, "player_id": player_id}})
+			player.AddFailedUpdateShorthand("bet-failed",
+				fmt.Sprintf("Cannot bet more than the cards in the round (%d) but bet %d", f.round, bet_value))
 			return
 		}
-		f.players[f.turn].bet = bet_value
-		done_betting := f.turn == f.dealer
-		f.turn++
-		if f.turn >= len(f.players) {
-			f.turn -= len(f.players)
-		}
-		if done_betting {
-			f.betting = false
-			f.trick_leader = f.turn
-		}
-		game.Game_BroadcastUpdate(f, &game.UpdateMessage{Kind: "bet", Content: gin.H{
-			"amount":    bet_value,
-			"player_id": player_id,
-		}})
+		f.executeBet(player, bet_value)
 	case "play-card":
-		if player_id != f.turn {
-			message := fmt.Sprintf("Not %d player's turn but %d player's turn", player_id, f.turn)
-			fmt.Println(message)
-			f.players[player_id].player.AddFailedUpdate(&game.UpdateMessage{Kind: "play-card-failed",
-				Content: gin.H{"message": message, "player_id": player_id}})
+		if f.betting {
+			player.AddFailedUpdateShorthand("play-card-failed", "Betting not playing cards")
 			return
 		}
-		if f.betting {
-			fmt.Println("Betting not playing cards")
+		if player_id != f.turn {
+			player.AddFailedUpdateShorthand("play-card-failed",
+				fmt.Sprintf("Not %d player's turn but %d player's turn", player_id, f.turn))
 			return
 		}
 		card_index_float, ok := action.Action["index"].(float64)
 		if !ok {
-			message := fmt.Sprintf("Card index invalid: %f", card_index_float)
-			fmt.Println(message)
-			f.players[player_id].player.AddFailedUpdate(&game.UpdateMessage{Kind: "play-card-failed",
-				Content: gin.H{"message": message, "player_id": player_id}})
+			player.AddFailedUpdateShorthand("play-card-failed",
+				fmt.Sprintf("Card index invalid: %f", card_index_float))
 			return
 		}
 		card_index := int(card_index_float)
 		if util.Contains(f.players[f.turn].cards_played, card_index) {
-			message := fmt.Sprintf("Card with index %d already played", card_index)
-			fmt.Println(message)
-			f.players[player_id].player.AddFailedUpdate(&game.UpdateMessage{Kind: "play-card-failed",
-				Content: gin.H{"message": message, "player_id": player_id}})
+			player.AddFailedUpdateShorthand("play-card-failed",
+				fmt.Sprintf("Card with index %d already played", card_index))
 			return
 		}
 		cards := f.players[f.turn].cards
 		if card_index < 0 || card_index >= len(cards) {
-			message := fmt.Sprintf("Invalid card index %d for having %d cards", card_index, len(cards))
-			fmt.Println(message)
-			f.players[player_id].player.AddFailedUpdate(&game.UpdateMessage{Kind: "play-card-failed",
-				Content: gin.H{"message": message, "player_id": player_id}})
+			player.AddFailedUpdateShorthand("play-card-failed",
+				fmt.Sprintf("Invalid card index %d for having %d cards", card_index, len(cards)))
 			return
 		}
 		card := cards[card_index]
@@ -219,63 +189,83 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 							continue
 						}
 						if other_card.GetSuit() == suit {
-							message := fmt.Sprintf("Must follow suit of lead card %s and tried to play %s but have card that follows: %s",
-								lead.GetName(), card.GetName(), other_card.GetName())
-							fmt.Println(message)
-							f.players[player_id].player.AddFailedUpdate(&game.UpdateMessage{Kind: "play-card-failed",
-								Content: gin.H{"message": message, "player_id": player_id}})
+							player.AddFailedUpdateShorthand("play-card-failed",
+								fmt.Sprintf("Must follow suit of lead card %s and tried to play %s but have card that follows: %s",
+									lead.GetName(), card.GetName(), other_card.GetName()))
 							return
 						}
 					}
 				}
 			}
 		}
-		f.trick = append(f.trick, card)
-		f.players[f.turn].cards_played = append(f.players[f.turn].cards_played, card_index)
-		game.Game_BroadcastUpdate(f, &game.UpdateMessage{Kind: "play-card", Content: gin.H{
-			"index":     card_index,
-			"card":      card.ToFrontend(),
-			"player_id": player_id,
-		}})
-		f.turn++
-		if f.turn >= len(f.players) {
-			f.turn -= len(f.players)
-		}
-		if f.turn == f.trick_leader {
-			winning_index := 0
-			winning_card := f.trick[0]
-			for i, card := range f.trick[1:] {
-				if card.GetSuit() == winning_card.GetSuit() {
-					if card.GetNumber() > winning_card.GetNumber() {
-						winning_index = i + 1
-						winning_card = card
-					}
-				} else if card.GetSuit() == f.trump.GetSuit() {
+		f.executePlayCard(player, card_index)
+	default:
+		fmt.Println("Unknown game update type", action.Kind)
+	}
+}
+
+func (f *GameFiddlesticks) executeBet(player *game.Player, bet_value uint8) {
+	f.players[f.turn].bet = bet_value
+	done_betting := f.turn == f.dealer
+	f.turn++
+	if f.turn >= len(f.players) {
+		f.turn -= len(f.players)
+	}
+	if done_betting {
+		f.betting = false
+		f.trick_leader = f.turn
+	}
+	game.Game_BroadcastUpdate(f, &game.UpdateMessage{Kind: "bet", Content: gin.H{
+		"amount":    bet_value,
+		"player_id": player.Player_id,
+	}})
+}
+
+func (f *GameFiddlesticks) executePlayCard(player *game.Player, card_index int) {
+	card := f.players[f.turn].cards[card_index]
+	f.trick = append(f.trick, card)
+	f.players[f.turn].cards_played = append(f.players[f.turn].cards_played, card_index)
+	game.Game_BroadcastUpdate(f, &game.UpdateMessage{Kind: "play-card", Content: gin.H{
+		"index":     card_index,
+		"card":      card.ToFrontend(),
+		"player_id": player.Player_id,
+	}})
+	f.turn++
+	if f.turn >= len(f.players) {
+		f.turn -= len(f.players)
+	}
+	if f.turn == f.trick_leader {
+		winning_index := 0
+		winning_card := f.trick[0]
+		for i, card := range f.trick[1:] {
+			if card.GetSuit() == winning_card.GetSuit() {
+				if card.GetNumber() > winning_card.GetNumber() {
 					winning_index = i + 1
 					winning_card = card
 				}
-			}
-			f.turn = f.trick_leader + winning_index
-			if f.turn >= len(f.players) {
-				f.turn -= len(f.players)
-			}
-			f.players[f.turn].tricks++
-			f.trick_leader = f.turn
-			f.trick = []*game_utils.StandardCard{}
-			fmt.Println("Trick won by", f.players[f.turn].player.GetNickname(), "with the", winning_card.GetName())
-			if len(f.players[0].cards_played) < len(f.players[0].cards) {
-				// next trick
-			} else {
-				for _, player := range f.players {
-					if player.bet == player.tricks {
-						player.score += f.round_points + f.trick_points*uint16(player.bet)
-					}
-				}
-				f.dealNextRound()
+			} else if card.GetSuit() == f.trump.GetSuit() {
+				winning_index = i + 1
+				winning_card = card
 			}
 		}
-	default:
-		fmt.Println("Unknown game update type", action.Kind)
+		f.turn = f.trick_leader + winning_index
+		if f.turn >= len(f.players) {
+			f.turn -= len(f.players)
+		}
+		f.players[f.turn].tricks++
+		f.trick_leader = f.turn
+		f.trick = []*game_utils.StandardCard{}
+		fmt.Println("Trick won by", f.players[f.turn].player.GetNickname(), "with the", winning_card.GetName())
+		if len(f.players[0].cards_played) < len(f.players[0].cards) {
+			// next trick
+		} else {
+			for _, player := range f.players {
+				if player.bet == player.tricks {
+					player.score += f.round_points + f.trick_points*uint16(player.bet)
+				}
+			}
+			f.dealNextRound()
+		}
 	}
 }
 
