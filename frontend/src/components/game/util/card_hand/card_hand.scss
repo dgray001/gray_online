@@ -31,6 +31,7 @@ dwg-card-hand {
       height: 100%;
       max-width: var(--card-width);
       min-width: var(--card-width);
+      order: var(--i);
       touch-action: none;
       transform: translateX(calc(var(--i) * var(--card-overlap))) rotate(-3deg);
       user-select: none;
@@ -83,7 +84,7 @@ dwg-card-hand {
     }
   }
 
-  &:not(.dragging) {
+  &:not(.dragging-playing) {
     > #play-drop {
       display: none;
     }

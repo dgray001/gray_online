@@ -82,7 +82,7 @@ export function cardToName(card: StandardCard): string {
 /** Returns icon name of card */
 export function cardToIcon(card: StandardCard, render_html = true): string {
   if (render_html) {
-    const color = (card.suit === 1 || card.suit === 3) ? '#df0000' : 'black';
+    const color = (card.suit === 1 || card.suit === 3) ? 'rgb(223, 0, 0)' : 'rgb(0, 0, 0)';
     return `<span style="color:${color};">${cardNumberToIconName(card.number)}<span style="font-size:1.4rem;">${cardSuitToIcon(card.suit)}</span></span>`;
   } else {
     return `${cardNumberToIconName(card.number)}${cardSuitToIcon(card.suit)}`;

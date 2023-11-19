@@ -11,12 +11,14 @@ v0.4: Euchre game
  p: Frontend styles / UX cleanup
    => make dialog buttons bigger
    => only refresh ping every second or two
- q: Prevent card hand from playing in advance (flag to set whether playable)
  r: Lobby rooms can just refresh specific rooms instead of recreating entire els
  s: Game info button in game base (left of game updates button) => has all game specific settings and description, etc...
  t: Host can set description of room
  u: Can join room via link
  v: Can see version number of app in-game somehow
+
+ - when you quit and join the old event listeners still there (can receive duplicate messages)
+ - "Client invalid because delete timer not nil"
 
 v0.5: More card games
  - Add 2 more card games

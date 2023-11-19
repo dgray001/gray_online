@@ -7,6 +7,7 @@ dwg-fiddlesticks-player {
   --x: calc(0.5 * var(--diameter) * (1 + cos(var(--turns))) - 0.5 * var(--size));
   --y: calc(0.5 * var(--diameter) * (1 + sin(var(--turns))) - 0.5 * var(--size));
   --icon-size: 64px;
+  --turn-color: rgba(90, 10, 240, 0.7);
 
   background-color: rgba(240, 240, 240, 0.7);
   border-radius: calc(0.08 * var(--size));
@@ -18,7 +19,7 @@ dwg-fiddlesticks-player {
   z-index: 4;
 
   &.turn {
-    box-shadow: 0 0 6px 6px rgba(170, 90, 250, 0.7);
+    box-shadow: 0 0 6px 6px var(--turn-color);
   }
 
   > * {
@@ -54,7 +55,7 @@ dwg-fiddlesticks-player {
 
     background-color: rgba(240, 240, 240, 0.6);
     border-radius: calc(0.08 * var(--size));
-    box-shadow: 0 0 6px 6px rgba(170, 90, 250, 0.7);
+    box-shadow: 0 0 6px 6px var(--turn-color);
     display: flex;
     flex-flow: column nowrap;
     font-size: calc(0.13 * var(--size));
@@ -129,7 +130,7 @@ dwg-fiddlesticks-player {
     }
 
     > .icon-tooltip {
-      background-color: rgba(60, 60, 60, 0.7);
+      background-color: rgba(60, 60, 60, 0.95);
       border-radius: 0.6em;
       bottom: -1em;
       color: white;

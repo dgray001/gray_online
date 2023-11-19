@@ -73,6 +73,7 @@ export class DwgChatbox extends DwgElement {
   last_new_messages_button_count = 0;
   new_chat_elements: HTMLDivElement[] = [];
   addChat(message: ChatMessage, you_sent = false) {
+    const scrolled_up = this.scrolledUp();
     const sender = (!!message.sender && message.sender !== SERVER_CHAT_NAME) ? `${message.sender}: ` : '';
     const new_element = document.createElement('div');
     if (message.sender === SERVER_CHAT_NAME || message.color === 'gray') {
@@ -80,14 +81,13 @@ export class DwgChatbox extends DwgElement {
     }
     new_element.innerHTML = `<b>${sender}</b>${message.message}`;
     this.chat_container.appendChild(new_element);
-    const scrolled_up = this.scrolledUp();
     new_element.classList.add('new-message');
     this.new_chat_elements.push(new_element);
     this.classList.add('new-message');
     if (this.last_new_messages_button_timer) {
       clearTimeout(this.last_new_messages_button_timer);
     }
-    if (you_sent || !scrolled_up) {
+    if (you_sent || !scrolled_up || (this.classList.contains('transparent-fade') && !this.classList.contains('show'))) {
       this.adjustScroll();
     } else {
       this.new_messages_button.classList.add('show');

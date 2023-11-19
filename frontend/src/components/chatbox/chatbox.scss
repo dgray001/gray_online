@@ -107,6 +107,7 @@ dwg-chatbox {
     }
   }
 
+
   // Custom chatbox styles
 
   &.transparent-fade {
@@ -148,11 +149,6 @@ dwg-chatbox {
     &:not(.show) {
       pointer-events: none;
 
-      #chat-container {
-        background-color: transparent;
-        transition: background-color 1s 0.1s;
-      }
-
       &.new-message {
         color: white;
       }
@@ -160,6 +156,20 @@ dwg-chatbox {
       &:not(.new-message) {
         color: transparent;
         transition: color 1.5s 2s;
+      }
+
+      #chat-container {
+        background-color: transparent;
+        scrollbar-width: none;
+        transition: background-color 1s 0.1s;
+      }
+
+      #chat-container::-webkit-scrollbar { 
+        display: none;
+      }
+
+      #new-messages-container {
+        display: none;
       }
 
       #input-container {

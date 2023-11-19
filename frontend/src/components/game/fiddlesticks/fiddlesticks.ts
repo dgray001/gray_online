@@ -95,6 +95,9 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
         player_el.gameStarted(game.betting, !game.game_base.game_ended && player_id === game.turn, !game.game_base.game_ended && player_id === game.dealer);
         if (this.player_id == player_id && !game.game_base.game_ended) {
           this.players_cards.setCards(game.players[player_id].cards, game.players[player_id].cards_played);
+          if (!game.betting && this.game.turn === this.player_id) {
+            this.players_cards.can_play = true;
+          }
         }
       }
       if (game.betting) {
@@ -188,6 +191,9 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
               player_el.endBetting();
               if (i === this.game.turn) {
                 player_el.playing();
+                if (i === this.player_id) {
+                  this.players_cards.can_play = true;
+                }
               }
             }
           }
@@ -205,6 +211,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           this.player_els[playCardData.player_id].playCard();
           if (playCardData.player_id === this.player_id) {
             this.players_cards.playCard(playCardData.index);
+            this.players_cards.can_play = false;
           }
           // TODO: handle viewers properly
           const card_el = document.createElement('div');
@@ -318,10 +325,16 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
               this.trick_number.innerText = this.current_trick.toString();
               this.player_els[this.game.turn].playing();
               this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
+              if (this.game.turn === this.player_id) {
+                this.players_cards.can_play = true;
+              }
             }
           } else {
             this.player_els[this.game.turn].playing();
             this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
+            if (this.game.turn === this.player_id) {
+              this.players_cards.can_play = true;
+            }
           }
           break;
         default:

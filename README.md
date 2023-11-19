@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.3e: Euchre initial backend
+v0.3f: Can reorder cards in hand
 
 ## Dev Use
 
