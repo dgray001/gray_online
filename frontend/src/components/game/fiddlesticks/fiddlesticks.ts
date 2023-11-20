@@ -17,6 +17,7 @@ import '../util/card_hand/card_hand';
 
 export class DwgFiddlesticks extends DwgElement implements GameComponent {
   round_number: HTMLSpanElement;
+  bets_number: HTMLSpanElement;
   trick_number: HTMLSpanElement;
   current_trick = 0;
   status_container: HTMLSpanElement;
@@ -35,6 +36,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     super();
     this.htmlString = html;
     this.configureElement('round_number');
+    this.configureElement('bets_number');
     this.configureElement('trick_number');
     this.configureElement('status_container');
     this.configureElement('trump_card_img');
@@ -46,6 +48,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
 
   protected override parsedCallback(): void {
     this.round_number.innerText = '-';
+    this.bets_number.innerText = '-';
     this.trick_number.innerText = '-';
     this.status_container.innerText = 'Starting game ...';
     this.players_cards.addEventListener('play_card', (e: CustomEvent<number>) => {
@@ -91,6 +94,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     }
     else if (game.game_base.game_started) {
       this.round_number.innerText = game.round.toString();
+      this.updateBetsContainer();
       for (const [player_id, player_el] of this.player_els.entries()) {
         player_el.gameStarted(game.betting, !game.game_base.game_ended && player_id === game.turn, !game.game_base.game_ended && player_id === game.dealer);
         if (this.player_id == player_id && !game.game_base.game_ended) {
@@ -113,6 +117,25 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     }
   }
 
+  private updateBetsContainer() {
+    let bets = 0;
+    let t = this.game.dealer + 1;
+    while (true) {
+      if (t >= this.game.players.length) {
+        t -= this.game.players.length;
+      }
+      if (this.game.betting && t === this.game.turn) {
+        break;
+      }
+      bets += this.game.players[t].bet;
+      if (t === this.game.dealer) {
+        break;
+      }
+      t++;
+    }
+    this.bets_number.innerText = bets.toString();
+  }
+
   setTrumpImage(trump: StandardCard) {
     this.trump_card_img.src = cardToImagePath(trump);
     this.trump_card_img.classList.add('show');
@@ -129,6 +152,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           this.game.round = dealRoundData.round;
           this.status_container.innerText = `${this.game.players[this.game.dealer].player.nickname} Dealing`;
           this.round_number.innerText = dealRoundData.round.toString();
+          this.bets_number.innerText = '0';
           this.setTrumpImage(dealRoundData.trump);
           this.game.trump = dealRoundData.trump;
           for (const [player_id, player_el] of this.player_els.entries()) {
@@ -173,13 +197,14 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           }
           this.game.players[betData.player_id].bet = betData.amount;
           await this.player_els[betData.player_id].setBetAnimation(betData.amount);
-          let still_betting = this.game.turn !== this.game.dealer;
+          this.game.betting = this.game.turn !== this.game.dealer;
           this.status_container.innerText = '';
           this.game.turn++;
           if (this.game.turn >= this.game.players.length) {
             this.game.turn -= this.game.players.length;
           }
-          if (still_betting) {
+          this.updateBetsContainer();
+          if (this.game.betting) {
             this.player_els[this.game.turn].betting();
             this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Betting`;
           } else {
@@ -282,6 +307,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
             if (this.current_trick === this.game.round) {
               await untilTimer(500);
               // TODO: score animations for a few seconds
+              this.bets_number.innerText = '-';
               this.trump_card_img.classList.remove('show');
               for (const [i, player] of this.game.players.entries()) {
                 if (player.bet === player.tricks) {

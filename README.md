@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.3f: Can reorder cards in hand
+v0.3g: Add number of bets to fiddlesticks header messages
 
 ## Dev Use
 
