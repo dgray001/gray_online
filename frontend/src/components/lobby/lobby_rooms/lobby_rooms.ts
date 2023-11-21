@@ -18,6 +18,7 @@ export declare interface JoinRoomData {
 
 export class DwgLobbyRooms extends DwgElement {
   lock = createLock();
+  refreshing_rooms = false;
   rooms = new Map<number, LobbyRoom>();
 
   constructor() {
@@ -31,19 +32,20 @@ export class DwgLobbyRooms extends DwgElement {
     let current_room = undefined;
     await this.lock(async () => {
       this.innerHTML = ' ... loading';
-      this.rooms.clear();
+      const new_rooms = new Map<number, LobbyRoom>();
       const response = await apiGet<LobbyRoomFromServer[]>('lobby/rooms/get');
       if (response.success) {
         const els: DwgRoomSelector[] = [];
         for (const server_room of response.result) {
           const room = serverResponseToRoom(server_room);
           els.push(this.getRoomElement(room));
-          this.rooms.set(room.room_id, room);
+          new_rooms.set(room.room_id, room);
           if (room.players.has(client_id) || room.viewers.has(client_id)) {
             current_room = room;
           }
         }
         this.replaceChildren(...els);
+        this.rooms = new_rooms;
       } else {
         this.innerHTML = `Error loading rooms: ${response.error_message}`;
       }

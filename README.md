@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.3h: Fix duplicate event listeners
+v0.3i: Can join room via link
 
 ## Dev Use
 

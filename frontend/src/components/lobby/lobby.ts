@@ -1,6 +1,7 @@
 import {DwgElement} from '../dwg_element';
 import {clickButton} from '../../scripts/util';
 import {ChatMessage, DwgChatbox, SERVER_CHAT_NAME} from '../chatbox/chatbox';
+import {getUrlParam, removeUrlParam, setUrlParam} from '../../scripts/url';
 
 import {DwgLobbyUsers} from './lobby_users/lobby_users';
 import {DwgLobbyRooms, JoinRoomData} from './lobby_rooms/lobby_rooms';
@@ -16,6 +17,8 @@ import './lobby_rooms/lobby_rooms';
 import './lobby_room/lobby_room';
 
 const LOBBY_PING_TIME = 5000; // time between lobby refreshes
+
+const URL_PARAM_ROOM = 'room_id';
 
 export class DwgLobby extends DwgElement {
   name_container: HTMLSpanElement;
@@ -161,7 +164,7 @@ export class DwgLobby extends DwgElement {
     }
     this.waitingOnConnectedTimes = DwgLobby.DEFAULT_CONNECTION_TIMES;
     this.socket = new_socket;
-    this.refreshLobbyRooms();
+    this.refreshLobbyRooms(true);
     this.lobby_users.refreshUsers();
     this.socket.addEventListener('message', (m) => {
       try {
@@ -198,11 +201,26 @@ export class DwgLobby extends DwgElement {
     this.connection_metadata.ping = ping;
   }
 
-  async refreshLobbyRooms() {
+  async refreshLobbyRooms(check_url = false) {
     const current_room = await this.lobby_rooms.refreshRooms(this.connection_metadata.client_id ?? -1);
+    if (check_url) {
+      const url_room_id = parseInt(getUrlParam(URL_PARAM_ROOM));
+      const room = this.lobby_rooms.getRoom(url_room_id);
+      if (!!room) {
+        this.socket.send(createMessage(
+          `client-${this.connection_metadata.client_id}`,
+          'room-join-player',
+          '',
+          url_room_id.toString(),
+        ));
+        return;
+      } else {
+        removeUrlParam(URL_PARAM_ROOM);
+      }
+    }
     if (!!current_room && current_room.room_id !== this.lobby_room.room?.room_id) {
       this.enterRoom(current_room, current_room.host.client_id === (this.connection_metadata.client_id ?? -1));
-    } else if (!current_room && !this.lobby_room.room) {
+    } else if (!current_room) {
       this.leaveRoom();
     }
   }
@@ -211,14 +229,18 @@ export class DwgLobby extends DwgElement {
     this.connection_metadata.room_id = room.room_id;
     this.lobby_room.setRoom(room, is_host);
     this.lobby_room_wrapper.classList.add('show');
+    setUrlParam(URL_PARAM_ROOM, room.room_id.toString());
   }
 
   leaveRoom() {
     this.connection_metadata.room_id = undefined;
     this.lobby_room_wrapper.classList.remove('show');
-    this.lobby_room.clearRoom();
     this.create_room_button.disabled = false;
     this.create_room_button.innerText = 'Create Room';
+    if (this.lobby_room.inRoom()) {
+      this.lobby_room.clearRoom();
+      removeUrlParam(URL_PARAM_ROOM);
+    }
   }
 
   sendChatMessage(chatbox: DwgChatbox, message_kind: string, message: ChatMessage, display_sender: string) {

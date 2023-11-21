@@ -17,6 +17,7 @@ export function setUrlParam(key: string, value: string): void {
 export function removeUrlParam(key: string): void {
   const params = new URL(window.location.href).searchParams;
   params.delete(key);
+  window.history.replaceState(null, '', `?${params.toString()}`);
 }
 
 export function getPage(): string {
