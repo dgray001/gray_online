@@ -193,12 +193,17 @@ func (l *Lobby) reconnectClient(client *Client, client_id uint64) {
 		if old_game == nil && old_lobby_room != nil {
 			old_game = old_lobby_room.game
 		}
-		if old_lobby_room != nil && old_game != nil {
-			client.lobby_room = old_lobby_room
-			client.game = old_game
-			room_id_string := strconv.Itoa(int(client.lobby_room.room_id))
-			// TODO: use Viewers not Players if the client is a viewer
-			go client.clientGameUpdates(client.game.GetBase().Players[client_id], room_id_string)
+		if old_lobby_room != nil {
+			if old_game == nil {
+				old_lobby_room.removeClient(client, true)
+			} else {
+				client.lobby_room = old_lobby_room
+				client.game = old_game
+				room_id_string := strconv.Itoa(int(client.lobby_room.room_id))
+				old_lobby_room.replaceClient(client)
+				// TODO: use Viewers not Players if the client is a viewer
+				go client.clientGameUpdates(client.game.GetBase().Players[client_id], room_id_string)
+			}
 		}
 		l.clients[client.client_id] = client
 		old_client.connection = nil

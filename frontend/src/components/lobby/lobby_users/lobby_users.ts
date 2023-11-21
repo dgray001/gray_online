@@ -24,6 +24,9 @@ export class DwgLobbyUsers extends DwgElement {
       this.refreshUsers();
     }, {});
     this.refreshUsers();
+    setInterval(() => {
+      this.updatePings();
+    }, 2500);
   }
 
   refresh_users_running = false;
@@ -54,7 +57,7 @@ export class DwgLobbyUsers extends DwgElement {
   }
 
   private getUserInnerText(user: LobbyUser): string {
-    return `${user.nickname} (${user.ping})`;
+    return `${user.nickname} (${Math.round(user.ping)})`;
   }
 
   addUser(user: LobbyUser) {
@@ -70,10 +73,16 @@ export class DwgLobbyUsers extends DwgElement {
   }
 
   updatePing(client_id: number, ping: number) {
-    if (this.users.has(client_id)) {
-      this.users.get(client_id).ping = ping;
+    const user = this.users.get(client_id);
+    if (!!user) {
+      user.ping = ping;
+    }
+  }
+
+  private updatePings() {
+    for (const client_id of this.users.keys()) {
       const user_el = this.querySelector<HTMLDivElement>(`#user-${client_id}`);
-      if (user_el) {
+      if (!!user_el) {
         user_el.innerText = this.getUserInnerText(this.users.get(client_id));
       }
     }
@@ -82,10 +91,9 @@ export class DwgLobbyUsers extends DwgElement {
   removeUser(client_id: number) {
     this.users.delete(client_id);
     const user_el = this.querySelector<HTMLDivElement>(`#user-${client_id}`);
-    if (!user_el) {
-      return;
+    if (!!user_el) {
+      user_el.classList.add('left');
     }
-    user_el.classList.add('left');
   }
 
   getUser(user_id: number): LobbyUser {
@@ -94,7 +102,7 @@ export class DwgLobbyUsers extends DwgElement {
 
   joinRoom(user_id: number, room_id: number) {
     const user = this.getUser(user_id);
-    if (user) {
+    if (!!user) {
       user.room_id = room_id;
     }
   }

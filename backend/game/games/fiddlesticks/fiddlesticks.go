@@ -1,7 +1,6 @@
 package fiddlesticks
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 
@@ -70,7 +69,7 @@ func CreateGame(g *game.GameBase) (*GameFiddlesticks, error) {
 		player_id++
 	}
 	if len(fiddlesticks.players) < 2 {
-		return nil, errors.New("Need at least two players to play fiddlesticks")
+		//return nil, errors.New("Need at least two players to play fiddlesticks")
 	}
 	fiddlesticks.max_round = uint8((fiddlesticks.deck.Size() - 1) / len(fiddlesticks.players))
 	max_round_float, max_round_ok := g.GameSpecificSettings["max_round"].(float64)

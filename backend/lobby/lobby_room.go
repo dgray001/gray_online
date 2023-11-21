@@ -10,6 +10,7 @@ import (
 	"github.com/dgray001/gray_online/game"
 	"github.com/dgray001/gray_online/game/games/euchre"
 	"github.com/dgray001/gray_online/game/games/fiddlesticks"
+	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
 )
 
@@ -100,7 +101,7 @@ func (c *Client) clientGameUpdates(player *game.Player, room_id_string string) {
 				break
 			}
 			message_id_string := strconv.Itoa(message.Id)
-			if c.valid() {
+			if c.validDebug(true) {
 				c.send_message <- lobbyMessage{Sender: "room-" + room_id_string + "-" + message_id_string,
 					Kind: "game-update", Data: message.Kind, Content: string(encoded_message)}
 			} else {
@@ -113,7 +114,7 @@ func (c *Client) clientGameUpdates(player *game.Player, room_id_string string) {
 				break
 			}
 			message_id_string := strconv.Itoa(message.Id)
-			if c.valid() {
+			if c.validDebug(true) {
 				c.send_message <- lobbyMessage{Sender: "room-" + room_id_string + "-" + message_id_string,
 					Kind: "game-failed-update", Data: message.Kind, Content: string(encoded_message)}
 			} else {
@@ -137,29 +138,41 @@ func (r *LobbyRoom) gameBaseUpdates(game_base *game.GameBase, room_id_string str
 	}
 }
 
+func (r *LobbyRoom) replaceClient(client *Client) {
+	if r.host.client_id == client.client_id {
+		r.host = client
+	}
+	if util.MapContains(r.players, client.client_id) {
+		r.players[client.client_id] = client
+	}
+	if util.MapContains(r.viewers, client.client_id) {
+		r.viewers[client.client_id] = client
+	}
+}
+
 func (r *LobbyRoom) broadcastMessage(message lobbyMessage) {
 	if message.Kind != "ping-update" {
 		fmt.Printf("Broadcasting lobby (%d) message {%s, %s, %s, %s}\n", r.room_id, message.Sender, message.Content, message.Data, message.Kind)
 	}
 	for _, client := range r.players {
-		if client == nil || !client.valid() {
+		if client == nil || !client.validDebug(true) {
 			continue
 		}
 		select {
 		case client.send_message <- message:
 		default:
-			fmt.Fprintln(os.Stderr, "Room failed to send message to client", client.client_id)
+			fmt.Fprintln(os.Stderr, "Room failed to send message to player", client.client_id)
 			// r.lobby.removeClient(client)
 		}
 	}
 	for _, client := range r.viewers {
-		if client == nil || !client.valid() {
+		if client == nil || !client.validDebug(true) {
 			continue
 		}
 		select {
 		case client.send_message <- message:
 		default:
-			fmt.Fprintln(os.Stderr, "Room failed to send message to client", client.client_id)
+			fmt.Fprintln(os.Stderr, "Room failed to send message to viewer", client.client_id)
 			// r.lobby.removeClient(client)
 		}
 	}
@@ -359,7 +372,7 @@ func (r *LobbyRoom) valid() bool {
 	if r.game != nil && !r.game.Valid() {
 		return false
 	}
-	if r.game == nil && (r.host == nil || !r.host.valid()) {
+	if r.game == nil && (r.host == nil || !r.host.validDebug(true)) {
 		return false
 	}
 	if len(r.players) > int(r.game_settings.MaxPlayers) {

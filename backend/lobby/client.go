@@ -79,6 +79,9 @@ func (c *Client) readMessages() {
 	c.connection.SetReadLimit(read_limit)
 	c.connection.SetReadDeadline(time.Now().Add(read_wait))
 	c.connection.SetPongHandler(func(string) error {
+		if !c.valid() {
+			return nil
+		}
 		c.ping = time.Now().Sub(c.ping_start)
 		c.connection.SetReadDeadline(time.Now().Add(read_wait))
 		c.ping_broadcast_counter--
@@ -463,28 +466,42 @@ func (c *Client) writeMessages() {
 	}
 }
 
-func (c *Client) valid() bool {
+func (c *Client) validDebug(debug bool) bool {
 	if c == nil {
-		fmt.Fprintln(os.Stderr, "Client invalid because null", c)
+		if debug {
+			fmt.Fprintln(os.Stderr, "Client invalid because null", c)
+		}
 		return false
 	}
 	if c.client_id < 1 {
-		fmt.Fprintln(os.Stderr, "Client invalid because id < 1:", c)
+		if debug {
+			fmt.Fprintln(os.Stderr, "Client invalid because id < 1:", c)
+		}
 		return false
 	}
 	if c.connection == nil {
-		fmt.Fprintln(os.Stderr, "Client invalid because connection nil", c)
+		if debug {
+			fmt.Fprintln(os.Stderr, "Client invalid because connection nil", c)
+		}
 		return false
 	}
 	if c.delete_timer != nil {
-		fmt.Fprintln(os.Stderr, "Client invalid because delete timer not nil", c)
+		if debug {
+			fmt.Fprintln(os.Stderr, "Client invalid because delete timer not nil", c)
+		}
 		return false
 	}
 	if c.deleted {
-		fmt.Fprintln(os.Stderr, "Client invalid because deleted", c)
+		if debug {
+			fmt.Fprintln(os.Stderr, "Client invalid because deleted", c)
+		}
 		return false
 	}
 	return true
+}
+
+func (c *Client) valid() bool {
+	return c.validDebug(false)
 }
 
 func (c *Client) ToFrontend() gin.H {

@@ -151,6 +151,7 @@ export class DwgLobby extends DwgElement {
     this.lobby_users.refreshUsers();
     setInterval(() => {
       this.pingServer();
+      this.ping_container.innerText = `ping: ${Math.round(this.connection_metadata.ping)}`;
     }, LOBBY_PING_TIME);
   }
 
@@ -195,7 +196,6 @@ export class DwgLobby extends DwgElement {
   setPing(ping: number) {
     this.waitingOnConnectedTimes = DwgLobby.DEFAULT_CONNECTION_TIMES;
     this.connection_metadata.ping = ping;
-    this.ping_container.innerText = `ping: ${Math.round(ping)}`;
   }
 
   async refreshLobbyRooms() {

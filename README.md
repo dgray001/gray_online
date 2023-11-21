@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.3g: Add number of bets to fiddlesticks header messages
+v0.3h: Fix duplicate event listeners
 
 ## Dev Use
 

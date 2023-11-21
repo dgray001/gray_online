@@ -37,6 +37,7 @@ export class DwgGame extends DwgElement {
   button_room_players: HTMLButtonElement;
   button_exit: HTMLButtonElement;
 
+  abort_controllers: AbortController[] = [];
   launched: boolean;
   socket: WebSocket;
   connection_metadata: ConnectionMetadata;
@@ -70,6 +71,10 @@ export class DwgGame extends DwgElement {
       }
     });
     this.chatbox.addEventListener('chat_sent', (e: CustomEvent<ChatMessage>) => {
+      if (!this.socketActive()) {
+        console.error('Trying to send chat with invalid socket')
+        return;
+      }
       const message = e.detail;
       this.socket.send(createMessage(
         message.sender ?? `game-${this.connection_metadata.client_id}`,
@@ -129,6 +134,11 @@ export class DwgGame extends DwgElement {
     this.room_name.innerText = lobby.room_name;
     this.game_id = lobby.game_id;
     try {
+      for (const abort_controller of this.abort_controllers) {
+        abort_controller.abort();
+      }
+      const abort_controller = new AbortController();
+      this.abort_controllers.push(abort_controller);
       this.socket.addEventListener('message', (m) => {
         try {
           const message = JSON.parse(m.data) as ServerMessage;
@@ -136,7 +146,7 @@ export class DwgGame extends DwgElement {
         } catch(e) {
           console.log('Error parsing message: ', m, e)
         }
-      });
+      }, {signal: abort_controller.signal});
       return await this.refreshGame();
     } catch(e) {
       console.log(e);
