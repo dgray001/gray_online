@@ -18,7 +18,7 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
-var DEV = true
+var DEV = false
 
 func main() {
 	// Set environment variables

@@ -15,7 +15,7 @@ dwg-lobby-connector {
     background-color: rgb(220, 220, 220);
     box-shadow: 0 0 8px 8px rgba(60, 60, 60, 0.7);
     color: black;
-    height: calc(10 * var(--font-size-large));
+    height: calc(11 * var(--font-size-large));
     left: calc(50% - 100px);
     padding: 16px;
     position: relative;
@@ -23,8 +23,9 @@ dwg-lobby-connector {
     width: var(--width);
 
     button {
+      display: block;
       font-size: var(--font-size-large);
-      margin-top: 20px;
+      margin: 20px auto 0;
       width: var(--width);
     }
 
@@ -40,6 +41,7 @@ dwg-lobby-connector {
 
       > #new-connection-info {
         font-size: var(--font-size-small);
+        text-align: center;
       }
     }
 
@@ -49,9 +51,9 @@ dwg-lobby-connector {
       }
 
       > #nickname {
+        display: block;
         font-size: var(--font-size-large);
-        margin-bottom: 30px;
-        margin-top: 20px;
+        margin: 20px auto 30px;
         width: var(--width);
       }
     }

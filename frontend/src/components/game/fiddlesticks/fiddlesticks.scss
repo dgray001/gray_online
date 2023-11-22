@@ -185,27 +185,30 @@ dwg-fiddlesticks {
 
 body.mobile {
   dwg-fiddlesticks {
-    --height-players-cards: 120px; // cards are 125x182 here with a 6px top margin
+    --height-players-cards: min(120px, 18svh); // cards are 125x182 here with a 6px top margin
     --width-messages: calc(0.5 * var(--game-width)); // width of messages and trump card
-    --height-messages: calc(5 * 1.7em + 0.6em + 1em); // height of header messages + 1em
-    --size-player: 90px; // size of player box around table
+    --height-messages: calc(5 * 1.7em + 0.6em); // height of header messages
+    --size-player: min(90px, 13svh); // size of player box around table
+    --messages-gap: var(--font-size-smallest);
     --table-diameter: min(
-      calc(var(--game-height) - var(--height-players-cards) - var(--size-player) - var(--height-messages)),
+      calc(var(--game-height) - var(--height-players-cards) - var(--size-player) - var(--height-messages) - var(--messages-gap)),
       calc(var(--game-width) - var(--size-player))
     );
-    --total-height: calc(var(--height-messages) + var(--table-diameter) + var(--size-player) + var(--height-players-cards));
+    --total-height: calc(var(--height-messages) + var(--messages-gap) + var(--table-diameter) + var(--size-player) + var(--height-players-cards));
     --leftover-height: calc(var(--game-height) - var(--total-height));
     --margin-top: max(0px, max(calc(var(--leftover-height) - 5em), calc(0.5 * var(--leftover-height))));
 
+    font-size: var(--font-size-smaller);
+
     > #header-messages-container {
-      font-size: var(--font-size-small);
+      font-size: var(--font-size-smallest);
       left: 1em;
       top: calc(0.7 * var(--margin-top));
     }
 
     > #trump-card-container {
       --height: var(--height-messages);
-      font-size: var(--font-size-small);
+      font-size: var(--font-size-smallest);
       left: calc(1em + var(--width-messages));
       top: calc(0.7 * var(--margin-top));
       
@@ -234,18 +237,18 @@ body.mobile {
 
     > #table-container {
       left: calc(0.5 * (var(--game-width) - var(--table-diameter)));
-      top: calc(var(--margin-top) + var(--height-messages) + 0.5 * var(--size-player));
+      top: calc(var(--margin-top) + var(--height-messages) + var(--messages-gap) + 0.5 * var(--size-player));
     }
 
     > #player-container {
       left: calc(0.5 * (var(--game-width) - var(--table-diameter)));
-      top: calc(var(--margin-top) + var(--height-messages) + 0.5 * var(--size-player));
+      top: calc(var(--margin-top) + var(--height-messages) + var(--messages-gap) + 0.5 * var(--size-player));
     }
 
     > #players-cards {
       --width: var(--game-width);
       left: 0;
-      top: calc(var(--margin-top) + var(--height-messages) +  var(--size-player) + var(--table-diameter));
+      top: calc(var(--margin-top) + var(--height-messages) + var(--messages-gap) +  var(--size-player) + var(--table-diameter));
     }
   }
 }

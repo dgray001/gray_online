@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.3i: Can join room via link
+v0.3j: Fix mobile styles for small phones
 
 ## Dev Use
 

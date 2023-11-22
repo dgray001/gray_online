@@ -6,6 +6,7 @@ body {
   --font-size-medium: calc(12px + 0.5vw);
   --font-size-small: calc(10px + 0.45vw);
   --font-size-smaller: calc(8px + 0.4vw);
+  --font-size-smallest: calc(7px + 035vw);
 
   &.mobile {
     --font-size-title: calc(18px + 3vw);
@@ -15,6 +16,7 @@ body {
     --font-size-medium: calc(14px + 1vw);
     --font-size-small: calc(12px + 0.75vw);
     --font-size-smaller: calc(10px + 0.5vw);
+    --font-size-smallest: calc(8px + 0.4vw);
   }
 
   background-color: black;

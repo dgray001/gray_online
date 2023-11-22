@@ -10,6 +10,7 @@ v0.4: Euchre game
  r: Abstract players dialog in game base
  s: Frontend styles / UX cleanup
    => make dialog buttons bigger
+   => can play card with double click
  t: Lobby rooms can just refresh specific rooms instead of recreating entire els
  u: Game info button in game base (left of game updates button) => has all game specific settings and description, etc...
  v: Host can set description of room
