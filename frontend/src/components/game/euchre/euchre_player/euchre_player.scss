@@ -22,6 +22,14 @@ dwg-euchre-player {
     box-shadow: 0 0 6px 6px var(--turn-color);
   }
 
+  &.team0 {
+    background-color: rgba(60, 120, 255, 0.85);
+  }
+
+  &.team1 {
+    background-color: rgba(20, 255, 20, 0.7);
+  }
+
   > * {
     box-sizing: border-box;
     font-size: calc(0.13 * var(--size));
@@ -37,7 +45,7 @@ dwg-euchre-player {
   }
 
   > #status-container {
-    padding-left: 0.3em;
+    padding: 0.6em 0.3em;
     text-align: center;
   }
 

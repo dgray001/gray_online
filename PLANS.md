@@ -1,6 +1,5 @@
 v0.4: Euchre game
  l: Frontend initial gameUpdate
- m: Frontend animations / styles (including mobile)
  n: Viewer updates stored in game base => backend sends viewer updates
  o: Proper viewer support for fiddlesticks
  p: Proper viewer support for euchre
@@ -10,10 +9,13 @@ v0.4: Euchre game
  t: Frontend styles / UX cleanup
    => make dialog buttons bigger
    => can play card with double click
+ m: Euchre animations / styles (including mobile)
  u: Lobby rooms can just refresh specific rooms instead of recreating entire els
  v: Game info button in game base (left of game updates button) => has all game specific settings and description, etc...
  w: Host can set description of room
  x: Can see version number of app in-game somehow
+
+ - Backend removes games after 10 minutes of everyone DC'ing
 
 v0.5: More card games
  - Add 2 more card games

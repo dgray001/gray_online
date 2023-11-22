@@ -1,3 +1,4 @@
+import { until } from '../../../../scripts/util';
 import {DwgElement} from '../../../dwg_element';
 import {EuchrePlayer, EuchreTeam} from '../euchre_data';
 
@@ -37,12 +38,67 @@ export class DwgEuchrePlayer extends DwgElement {
   initialize(player: EuchrePlayer, team: EuchreTeam) {
     this.player = player;
     this.team = team;
+    this.classList.add(`team${team.team_id}`);
     this.initialized = true;
+  }
+
+  async gameStarted(bidding: boolean, current_turn: boolean, dealer: boolean) {
+    await until(() => this.fully_parsed);
+    if (bidding) {
+      this.tricks_container.innerText = '-';
+      if (current_turn) {
+        this.bidding();
+      }
+    } else {
+      this.tricks_container.innerText = this.team.tricks.toString();
+      if (current_turn) {
+        this.playing();
+      }
+    }
+    this.setDealer(dealer);
   }
 
   setClientPlayer() {
     this.classList.add('client-player');
     this.client_player = true;
+  }
+
+  newRound(dealer: boolean) {
+    this.endRound(); // in case it wasn't called
+    this.setDealer(dealer);
+  }
+
+  endRound() {
+    this.tricks_container.innerText = '-';
+    this.status_container.innerText = '';
+  }
+
+  setDealer(dealer: boolean) {
+    // TODO: implement
+  }
+
+  bidding() {
+    // TODO: implement
+  }
+
+  setBid() {
+    // TODO: implement
+  }
+
+  substitutingCard() {
+    // TODO: implement
+  }
+
+  substitutedCard() {
+    // TODO: implement
+  }
+
+  playing() {
+    // TODO: implement
+  }
+
+  playCard() {
+    // TODO: implement
   }
 }
 

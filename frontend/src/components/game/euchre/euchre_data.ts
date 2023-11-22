@@ -16,6 +16,7 @@ export declare interface GameEuchre {
   dealer: number;
   round: number;
   trick_leader: number;
+  card_face_up: StandardCard;
   trick: StandardCard[];
   trump_suit: number;
   turn: number;
@@ -35,6 +36,41 @@ export declare interface EuchrePlayer {
 
 /** Data describing a euchre team */
 export declare interface EuchreTeam {
+  team_id: number;
   score: number;
   tricks: number;
+}
+
+/** Data describing a deal-round game-update */
+export declare interface DealRound {
+  round: number;
+  dealer: number;
+  card_face_up: StandardCard;
+  cards: StandardCard[];
+}
+
+/** Data describing a bid game-update */
+export declare interface PlayerBid {
+  player_id: number;
+  going_alone: boolean;
+}
+
+/** Data describing a bid-choose-trump game-update */
+export declare interface BidChooseTrump {
+  player_id: number;
+  going_alone: boolean;
+  trump_suit: number;
+}
+
+/** Data describing a dealer-substitute-card game-update */
+export declare interface DealerSubstitutesCard {
+  player_id: number;
+  card_index: number;
+}
+
+/** Data describing a bet game-update */
+export declare interface PlayCard {
+  index: number;
+  card: StandardCard;
+  player_id: number;
 }

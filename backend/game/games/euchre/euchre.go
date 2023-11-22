@@ -100,11 +100,13 @@ func CreateGame(g *game.GameBase) (*GameEuchre, error) {
 		player_id++
 	}
 	euchre.teams[0] = &EuchreTeam{
+		team_id: 0,
 		players: [2]*EuchrePlayer{euchre.players[0], euchre.players[2]},
 		score:   0,
 		tricks:  0,
 	}
 	euchre.teams[1] = &EuchreTeam{
+		team_id: 1,
 		players: [2]*EuchrePlayer{euchre.players[1], euchre.players[3]},
 		score:   0,
 		tricks:  0,
@@ -204,7 +206,7 @@ func (g *GameEuchre) PlayerAction(action game.PlayerAction) {
 				fmt.Sprintf("Invalid card index %d for having %d cards", card_index, len(cards)))
 			return
 		}
-		g.executeDealerSubstituteCard(player, card_index)
+		g.executeDealerSubstitutesCard(player, card_index)
 	case "play-card":
 		if g.bidding || g.bidding_choose_trump || g.dealer_substituting_card {
 			player.AddFailedUpdateShorthand("play-card-failed", "Not currently playing card")
@@ -269,9 +271,7 @@ func (g *GameEuchre) executeBid(player *game.Player, going_alone bool) {
 	g.player_bid = player.Player_id
 	g.going_alone = going_alone
 	g.turn = g.dealer + 1
-	if g.turn >= len(g.players) {
-		g.turn -= len(g.players)
-	}
+	g.resolveTurn()
 	g.trick_leader = g.turn
 	g.trump_suit = g.card_face_up.GetSuit()
 	g.dealer_substituting_card = true
@@ -291,9 +291,7 @@ func (g *GameEuchre) executeBidChooseTrump(player *game.Player, going_alone bool
 	g.player_bid = player.Player_id
 	g.going_alone = going_alone
 	g.turn = g.dealer + 1
-	if g.turn >= len(g.players) {
-		g.turn -= len(g.players)
-	}
+	g.resolveTurn()
 	g.trick_leader = g.turn
 	g.trump_suit = trump_suit
 	game.Game_BroadcastUpdate(g, &game.UpdateMessage{Kind: "bid-choose-trump", Content: gin.H{
@@ -303,7 +301,7 @@ func (g *GameEuchre) executeBidChooseTrump(player *game.Player, going_alone bool
 	}})
 }
 
-func (g *GameEuchre) executeDealerSubstituteCard(player *game.Player, card_index int) {
+func (g *GameEuchre) executeDealerSubstitutesCard(player *game.Player, card_index int) {
 	g.dealer_substituting_card = false
 	g.players[g.dealer].cards[card_index] = g.card_face_up
 	game.Game_BroadcastUpdate(g, &game.UpdateMessage{Kind: "dealer-substitutes-card", Content: gin.H{
@@ -322,15 +320,7 @@ func (g *GameEuchre) executePlayCard(player *game.Player, card_index int) {
 		"player_id": player.Player_id,
 	}})
 	g.turn++
-	if g.turn >= len(g.players) {
-		g.turn -= len(g.players)
-	}
-	if g.going_alone && util.AbsDiffInt(g.turn, g.player_bid) == 2 {
-		g.turn++
-		if g.turn >= len(g.players) {
-			g.turn -= len(g.players)
-		}
-	}
+	g.resolveTurn()
 	if g.turn == g.trick_leader {
 		winning_index := 0
 		winning_card := g.trick[0]
@@ -380,6 +370,18 @@ func (g *GameEuchre) executePlayCard(player *game.Player, card_index int) {
 			if !g.game.GameEnded() {
 				g.dealNextRound()
 			}
+		}
+	}
+}
+
+func (g *GameEuchre) resolveTurn() {
+	if g.turn >= len(g.players) {
+		g.turn -= len(g.players)
+	}
+	if g.going_alone && util.AbsDiffInt(g.turn, g.player_bid) == 2 {
+		g.turn++
+		if g.turn >= len(g.players) {
+			g.turn -= len(g.players)
 		}
 	}
 }

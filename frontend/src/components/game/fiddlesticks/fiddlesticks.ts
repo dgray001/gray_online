@@ -19,7 +19,6 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
   round_number: HTMLSpanElement;
   bets_number: HTMLSpanElement;
   trick_number: HTMLSpanElement;
-  current_trick = 0;
   status_container: HTMLSpanElement;
   trump_card_img: HTMLImageElement;
   trick_cards: HTMLDivElement;
@@ -28,6 +27,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
   players_cards: DwgCardHand;
 
   game: GameFiddlesticks;
+  current_trick = 0;
   player_els: DwgFiddlesticksPlayer[] = [];
   player_id: number = -1;
   trick_card_els: HTMLDivElement[] = [];
@@ -146,48 +146,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
       switch(update.kind) {
         case "deal-round":
           const dealRoundData = update.update as DealRound;
-          const animation_time = Math.min(150 * dealRoundData.cards.length, 4000) + 250;
-          this.game.betting = true;
-          this.game.dealer = dealRoundData.dealer;
-          this.game.round = dealRoundData.round;
-          this.status_container.innerText = `${this.game.players[this.game.dealer].player.nickname} Dealing`;
-          this.round_number.innerText = dealRoundData.round.toString();
-          this.bets_number.innerText = '0';
-          this.setTrumpImage(dealRoundData.trump);
-          this.game.trump = dealRoundData.trump;
-          for (const [player_id, player_el] of this.player_els.entries()) {
-            if (dealRoundData.dealer === player_id) {
-              player_el.newRound(true);
-            } else {
-              player_el.newRound(false);
-            }
-            if (player_id === this.player_id) {
-              const card_animation_time = Math.min(150, animation_time / dealRoundData.cards.length);
-              this.players_cards.setCards(dealRoundData.cards, [], card_animation_time);
-            }
-          }
-          await untilTimer(animation_time);
-          this.trick_number.innerText = '-';
-          this.current_trick = 0;
-          if (this.game.round === this.game.max_round) {
-            this.game.rounds_increasing = false;
-          }
-          this.game.turn = this.game.dealer + 1;
-          if (this.game.turn >= this.game.players.length) {
-            this.game.turn -= this.game.players.length;
-          }
-          this.game.trick_leader = this.game.turn;
-          for (const [player_id, player] of this.game.players.entries()) {
-            player.bet = -1;
-            if (player_id === this.player_id) {
-              player.cards = dealRoundData.cards;
-            } else {
-              player.cards = [];
-            }
-            player.tricks = 0;
-          }
-          this.player_els[this.game.turn].betting();
-          this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Betting`;
+          await this.applyDealRound(dealRoundData);
           break;
         case "bet":
           const betData = update.update as PlayerBet;
@@ -195,33 +154,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
             // TODO: try to sync data
             throw new Error('Player bet out of order');
           }
-          this.game.players[betData.player_id].bet = betData.amount;
-          await this.player_els[betData.player_id].setBetAnimation(betData.amount);
-          this.game.betting = this.game.turn !== this.game.dealer;
-          this.status_container.innerText = '';
-          this.game.turn++;
-          if (this.game.turn >= this.game.players.length) {
-            this.game.turn -= this.game.players.length;
-          }
-          this.updateBetsContainer();
-          if (this.game.betting) {
-            this.player_els[this.game.turn].betting();
-            this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Betting`;
-          } else {
-            this.game.trick_leader = this.game.turn;
-            this.trick_number.innerText = '1';
-            this.current_trick = 1;
-            this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
-            for (const [i, player_el] of this.player_els.entries()) {
-              player_el.endBetting();
-              if (i === this.game.turn) {
-                player_el.playing();
-                if (i === this.player_id) {
-                  this.players_cards.can_play = true;
-                }
-              }
-            }
-          }
+          await this.applyBet(betData);
           break;
         case "play-card":
           const playCardData = update.update as PlayCard;
@@ -229,139 +162,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
             // TODO: try to sync data
             throw new Error('Player played out of order');
           }
-          if (this.player_id === playCardData.player_id) {
-            this.game.players[playCardData.player_id].cards.splice(playCardData.index, 1);
-          }
-          this.game.trick.push(playCardData.card);
-          this.player_els[playCardData.player_id].playCard();
-          if (playCardData.player_id === this.player_id) {
-            this.players_cards.playCard(playCardData.index);
-            this.players_cards.can_play = false;
-          }
-          // TODO: handle viewers properly
-          const card_el = document.createElement('div');
-          const card_el_img = document.createElement('img');
-          card_el_img.src = cardToImagePath(playCardData.card);
-          card_el_img.draggable = false;
-          card_el_img.alt = cardToIcon(playCardData.card);
-          card_el.appendChild(card_el_img);
-          card_el.classList.add('card');
-          card_el.style.setProperty('--i', this.game.players[playCardData.player_id].order.toString());
-          this.trick_cards.appendChild(card_el);
-          this.trick_card_els.push(card_el);
-          card_el.style.transitionDuration = '1s';
-          await until(() => {
-            return !!getComputedStyle(card_el).left;
-          }, 20);
-          card_el.classList.add('played');
-          await untilTimer(1000);
-          this.status_container.innerText = '';
-          this.game.turn++;
-          if (this.game.turn >= this.game.players.length) {
-            this.game.turn -= this.game.players.length;
-          }
-          if (this.game.turn === this.game.trick_leader) {
-            await untilTimer(500);
-            let winning_index = 0;
-            let winning_card = this.game.trick[0];
-            for (let i = 1; i < this.game.trick.length; i++) {
-              const card = this.game.trick[i];
-              if (card.suit === winning_card.suit) {
-                if (card.number > winning_card.number) {
-                  winning_index = i;
-                  winning_card = card;
-                }
-              } else if (card.suit === this.game.trump.suit) {
-                winning_index = i;
-                winning_card = card;
-              }
-            }
-            if (winning_index >= 0 && winning_index < this.trick_card_els.length) {
-              this.trick_card_els[winning_index].style.zIndex = '2';
-            }
-            this.game.turn = this.game.trick_leader + winning_index;
-            if (this.game.turn >= this.game.players.length) {
-              this.game.turn -= this.game.players.length;
-            }
-            this.game.trick_leader = this.game.turn;
-            for (const trick_card_el of this.trick_card_els) {
-              trick_card_el.classList.remove('played');
-              trick_card_el.classList.add('center');
-            }
-            await untilTimer(1000);
-            this.trick_cards.style.setProperty('--winner', this.game.players[this.game.turn].order.toString());
-            for (const trick_card_el of this.trick_card_els) {
-              trick_card_el.classList.remove('center');
-              trick_card_el.classList.add('winner');
-            }
-            await untilTimer(1000);
-            this.game.players[this.game.turn].tricks++;
-            for (const [i, player_el] of this.player_els.entries()) {
-              player_el.endTrick(this.game.players[i].tricks);
-            }
-            this.trick_cards.replaceChildren();
-            this.trick_card_els = [];
-            this.game.trick = [];
-            this.trick_number.innerText = '-';
-            console.log(`Trick won by ${this.game.players[this.game.turn].player.nickname} with the ${cardToName(winning_card)}`);
-            if (this.current_trick === this.game.round) {
-              await untilTimer(500);
-              // TODO: score animations for a few seconds
-              this.bets_number.innerText = '-';
-              this.trump_card_img.classList.remove('show');
-              for (const [i, player] of this.game.players.entries()) {
-                if (player.bet === player.tricks) {
-                  player.score += this.game.round_points + this.game.trick_points * player.bet;
-                  this.player_els[i].setScore(player.score);
-                }
-                this.player_els[i].endRound();
-              }
-              this.round_number.innerText = '-';
-              if (this.game.rounds_increasing && this.game.round === this.game.max_round) {
-                this.game.rounds_increasing = false;
-              }
-              if (!this.game.rounds_increasing && this.game.round === 1) {
-                this.game.game_base.game_ended = true;
-                let winners = [0];
-                let winning_score = this.game.players[0].score;
-                for (let i = 1; i < this.game.players.length; i++) {
-                  const player = this.game.players[i];
-                  if (player.score > winning_score) {
-                    winners = [i];
-                    winning_score = player.score;
-                  } else if (player.score === winning_score) {
-                    winners.push(i);
-                  }
-                }
-                for (const winner of winners) {
-                  this.player_els[winner].wonGame();
-                }
-                let winner_text = winners.length > 1 ? 'The winners are: ' : 'The winner is: ';
-                winner_text += winners.map(winner => this.game.players[winner].player.nickname).join(', ');
-                winner_text += `\nWith ${winning_score} points`;
-                messageDialog.call(this, {message: winner_text});
-                this.status_container.innerText = 'game over';
-              } else if (this.game.rounds_increasing) {
-                this.game.round++; // wait for deal-round update from server
-              } else {
-                this.game.round--; // wait for deal-round update from server
-              }
-            } else {
-              this.current_trick++;
-              this.trick_number.innerText = this.current_trick.toString();
-              this.player_els[this.game.turn].playing();
-              this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
-              if (this.game.turn === this.player_id) {
-                this.players_cards.can_play = true;
-              }
-            }
-          } else {
-            this.player_els[this.game.turn].playing();
-            this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
-            if (this.game.turn === this.player_id) {
-              this.players_cards.can_play = true;
-            }
-          }
+          await this.applyPlayCard(playCardData);
           break;
         default:
           console.log(`Unknown game update type ${update.kind}`);
@@ -369,6 +170,219 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
       }
     } catch(e) {
       console.log(`Error during game update ${JSON.stringify(update)}: ${e}`);
+    }
+  }
+
+  private async applyDealRound(data: DealRound) {
+    const animation_time = Math.min(150 * data.cards.length, 4000) + 250;
+    this.game.betting = true;
+    this.game.dealer = data.dealer;
+    this.game.round = data.round;
+    this.status_container.innerText = `${this.game.players[this.game.dealer].player.nickname} Dealing`;
+    this.round_number.innerText = data.round.toString();
+    this.bets_number.innerText = '0';
+    this.setTrumpImage(data.trump);
+    this.game.trump = data.trump;
+    for (const [player_id, player_el] of this.player_els.entries()) {
+      if (data.dealer === player_id) {
+        player_el.newRound(true);
+      } else {
+        player_el.newRound(false);
+      }
+      if (player_id === this.player_id) {
+        const card_animation_time = Math.min(150, animation_time / data.cards.length);
+        this.players_cards.setCards(data.cards, [], card_animation_time);
+      }
+    }
+    await untilTimer(animation_time);
+    this.trick_number.innerText = '-';
+    this.current_trick = 0;
+    if (this.game.round === this.game.max_round) {
+      this.game.rounds_increasing = false;
+    }
+    this.game.turn = this.game.dealer + 1;
+    if (this.game.turn >= this.game.players.length) {
+      this.game.turn -= this.game.players.length;
+    }
+    this.game.trick_leader = this.game.turn;
+    for (const [player_id, player] of this.game.players.entries()) {
+      player.bet = -1;
+      if (player_id === this.player_id) {
+        player.cards = data.cards;
+      } else {
+        player.cards = [];
+      }
+      player.tricks = 0;
+    }
+    this.player_els[this.game.turn].betting();
+    this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Betting`;
+  }
+
+  private async applyBet(data: PlayerBet) {
+    this.game.players[data.player_id].bet = data.amount;
+    await this.player_els[data.player_id].setBetAnimation(data.amount);
+    this.game.betting = this.game.turn !== this.game.dealer;
+    this.status_container.innerText = '';
+    this.game.turn++;
+    if (this.game.turn >= this.game.players.length) {
+      this.game.turn -= this.game.players.length;
+    }
+    this.updateBetsContainer();
+    if (this.game.betting) {
+      this.player_els[this.game.turn].betting();
+      this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Betting`;
+    } else {
+      this.game.trick_leader = this.game.turn;
+      this.trick_number.innerText = '1';
+      this.current_trick = 1;
+      this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
+      for (const [i, player_el] of this.player_els.entries()) {
+        player_el.endBetting();
+        if (i === this.game.turn) {
+          player_el.playing();
+          if (i === this.player_id) {
+            this.players_cards.can_play = true;
+          }
+        }
+      }
+    }
+  }
+
+  private async applyPlayCard(data: PlayCard) {
+    if (this.player_id === data.player_id) {
+      this.game.players[data.player_id].cards.splice(data.index, 1);
+    }
+    this.game.trick.push(data.card);
+    this.player_els[data.player_id].playCard();
+    if (data.player_id === this.player_id) {
+      this.players_cards.playCard(data.index);
+      this.players_cards.can_play = false;
+    }
+    // TODO: handle viewers properly
+    const card_el = document.createElement('div');
+    const card_el_img = document.createElement('img');
+    card_el_img.src = cardToImagePath(data.card);
+    card_el_img.draggable = false;
+    card_el_img.alt = cardToIcon(data.card);
+    card_el.appendChild(card_el_img);
+    card_el.classList.add('card');
+    card_el.style.setProperty('--i', this.game.players[data.player_id].order.toString());
+    this.trick_cards.appendChild(card_el);
+    this.trick_card_els.push(card_el);
+    card_el.style.transitionDuration = '1s';
+    await until(() => {
+      return !!getComputedStyle(card_el).left;
+    }, 20);
+    card_el.classList.add('played');
+    await untilTimer(1000);
+    this.status_container.innerText = '';
+    this.game.turn++;
+    if (this.game.turn >= this.game.players.length) {
+      this.game.turn -= this.game.players.length;
+    }
+    if (this.game.turn !== this.game.trick_leader) {
+      this.player_els[this.game.turn].playing();
+      this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
+      if (this.game.turn === this.player_id) {
+        this.players_cards.can_play = true;
+      }
+      return;
+    }
+    // end of trick
+    await untilTimer(500);
+    let winning_index = 0;
+    let winning_card = this.game.trick[0];
+    for (let i = 1; i < this.game.trick.length; i++) {
+      const card = this.game.trick[i];
+      if (card.suit === winning_card.suit) {
+        if (card.number > winning_card.number) {
+          winning_index = i;
+          winning_card = card;
+        }
+      } else if (card.suit === this.game.trump.suit) {
+        winning_index = i;
+        winning_card = card;
+      }
+    }
+    if (winning_index >= 0 && winning_index < this.trick_card_els.length) {
+      this.trick_card_els[winning_index].style.zIndex = '2';
+    }
+    this.game.turn = this.game.trick_leader + winning_index;
+    if (this.game.turn >= this.game.players.length) {
+      this.game.turn -= this.game.players.length;
+    }
+    this.game.trick_leader = this.game.turn;
+    for (const trick_card_el of this.trick_card_els) {
+      trick_card_el.classList.remove('played');
+      trick_card_el.classList.add('center');
+    }
+    await untilTimer(1000);
+    this.trick_cards.style.setProperty('--winner', this.game.players[this.game.turn].order.toString());
+    for (const trick_card_el of this.trick_card_els) {
+      trick_card_el.classList.remove('center');
+      trick_card_el.classList.add('winner');
+    }
+    await untilTimer(1000);
+    this.game.players[this.game.turn].tricks++;
+    for (const [i, player_el] of this.player_els.entries()) {
+      player_el.endTrick(this.game.players[i].tricks);
+    }
+    this.trick_cards.replaceChildren();
+    this.trick_card_els = [];
+    this.game.trick = [];
+    this.trick_number.innerText = '-';
+    console.log(`Trick won by ${this.game.players[this.game.turn].player.nickname} with the ${cardToName(winning_card)}`);
+    if (this.current_trick !== this.game.round) {
+      this.current_trick++;
+      this.trick_number.innerText = this.current_trick.toString();
+      this.player_els[this.game.turn].playing();
+      this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
+      if (this.game.turn === this.player_id) {
+        this.players_cards.can_play = true;
+      }
+      return;
+    }
+    // end of round
+    await untilTimer(500);
+    // TODO: score animations for a few seconds
+    this.bets_number.innerText = '-';
+    this.trump_card_img.classList.remove('show');
+    for (const [i, player] of this.game.players.entries()) {
+      if (player.bet === player.tricks) {
+        player.score += this.game.round_points + this.game.trick_points * player.bet;
+        this.player_els[i].setScore(player.score);
+      }
+      this.player_els[i].endRound();
+    }
+    this.round_number.innerText = '-';
+    if (this.game.rounds_increasing && this.game.round === this.game.max_round) {
+      this.game.rounds_increasing = false;
+    }
+    if (!this.game.rounds_increasing && this.game.round === 1) {
+      this.game.game_base.game_ended = true;
+      let winners = [0];
+      let winning_score = this.game.players[0].score;
+      for (let i = 1; i < this.game.players.length; i++) {
+        const player = this.game.players[i];
+        if (player.score > winning_score) {
+          winners = [i];
+          winning_score = player.score;
+        } else if (player.score === winning_score) {
+          winners.push(i);
+        }
+      }
+      for (const winner of winners) {
+        this.player_els[winner].wonGame();
+      }
+      let winner_text = winners.length > 1 ? 'The winners are: ' : 'The winner is: ';
+      winner_text += winners.map(winner => this.game.players[winner].player.nickname).join(', ');
+      winner_text += `\nWith ${winning_score} points`;
+      messageDialog.call(this, {message: winner_text});
+      this.status_container.innerText = 'game over';
+    } else if (this.game.rounds_increasing) {
+      this.game.round++; // wait for deal-round update from server
+    } else {
+      this.game.round--; // wait for deal-round update from server
     }
   }
 }

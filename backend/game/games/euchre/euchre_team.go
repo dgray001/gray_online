@@ -4,14 +4,16 @@ import "github.com/gin-gonic/gin"
 
 type EuchreTeam struct {
 	players [2]*EuchrePlayer
+	team_id uint8
 	score   uint8
 	tricks  uint8
 }
 
-func (p *EuchreTeam) toFrontend() gin.H {
+func (t *EuchreTeam) toFrontend() gin.H {
 	team := gin.H{
-		"score":  p.score,
-		"tricks": p.tricks,
+		"team_id": t.team_id,
+		"score":   t.score,
+		"tricks":  t.tricks,
 	}
 	return team
 }

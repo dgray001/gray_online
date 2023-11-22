@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.3k: Fix caching issue with new versions
+v0.3l: Initial frontend updates
 
 ## Dev Use
 
