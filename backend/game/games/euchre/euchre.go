@@ -1,6 +1,7 @@
 package euchre
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/dgray001/gray_online/game"
@@ -86,7 +87,7 @@ func CreateGame(g *game.GameBase) (*GameEuchre, error) {
 		trick_number:             1,
 	}
 	if len(g.Players) != 4 {
-		//return nil, errors.New("Need exactly 4 players to play euchre")
+		return nil, errors.New("Need exactly 4 players to play euchre")
 	}
 	player_id := 0
 	for _, player := range g.Players {

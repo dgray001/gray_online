@@ -1,0 +1,168 @@
+dwg-euchre {
+  --height-players-cards: 182px; // cards are 125x182 here with a 6px top margin
+  --width-messages: 180px; // width of messages and trump card
+  --size-player: 130px; // size of player box around table
+  --table-diameter: min(
+    calc(var(--game-height) - var(--height-players-cards) - var(--size-player)),
+    calc(var(--game-width) - 2 * var(--width-messages))
+  );
+
+  background-color: var(--color-background);
+  display: block;
+  height: 100%;
+  position: relative;
+  width: 100%;
+
+  > #header-messages-container {
+    --width: calc(var(--width-messages) - 2em);
+    font-size: var(--font-size-medium);
+    left: calc(0.5 * (100% - var(--table-diameter)) - var(--width-messages) + 1em);
+    line-height: 1.7em;
+    position: absolute;
+    top: 1em;
+    width: var(--width);
+
+    > * {
+      .span-align {
+        display: inline-block;
+        text-align: right;
+        width: 50%;
+      }
+
+      .span-center {
+        display: block;
+        margin-top: 0.6em;
+        text-align: center;
+        text-decoration: underline;
+      }
+    }
+  }
+
+  > #card-face-up-container {
+    --line-height: 1.7em;
+    --width: calc(var(--width-messages) - 2em);
+    --height: calc(var(--line-height) + var(--card-image-scale) * var(--width));
+
+    border-radius: 0.4em;
+    left: calc(1em + 0.5 * (100% + var(--table-diameter)));
+    line-height: var(--line-height);
+    font-size: var(--font-size-medium);
+    height: var(--height);
+    position: absolute;
+    text-align: center;
+    top: 1em;
+    width: var(--width);
+
+    > #card-face-up-text {
+      border-radius: 0.4em;
+      letter-spacing: 1.2px;
+    }
+
+    > #card-face-up {
+      height: calc(var(--card-image-scale) * var(--width));
+      position: absolute;
+      top: var(--line-height);
+      width: var(--width);
+
+      > #card-face-up-img {
+        height: 100%;
+        width: 100%;
+
+        &:not(.show) {
+          display: none;
+        }
+      }
+    }
+  }
+
+  > #table-container {
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+    height: var(--table-diameter);
+    left: calc(0.5 * (100% - var(--table-diameter)));
+    position: absolute;
+    top: calc(0.5 * var(--size-player));
+    width: var(--table-diameter);
+
+    > #trick-cards {
+      --width: min(125px, calc(0.18 * var(--table-diameter)));
+      --height: calc(var(--card-image-scale) * var(--width));
+      --num-players: 0; // set by component
+      --winner: 0; // set by component
+      --winner-rotation: calc((var(--winner) / var(--num-players)) * 1turn);
+      --winner-turns: calc(var(--winner-rotation) + 0.25turn);
+      --x-winner: calc(0.5 * (var(--table-diameter) + var(--table-diameter) * cos(var(--winner-turns))) - 0.5 * var(--width));
+      --y-winner: calc(0.5 * (var(--table-diameter) + var(--table-diameter) * sin(var(--winner-turns))) - 0.5 * var(--height));
+
+      > .card {
+        --i: 0; // set by component
+        --rotation: calc((var(--i) / var(--num-players)) * 1turn);
+        --turns: calc(var(--rotation) + 0.25turn);
+        --x-start: calc(0.5 * (var(--table-diameter) + var(--table-diameter) * cos(var(--turns))) - 0.5 * var(--width));
+        --y-start: calc(0.5 * (var(--table-diameter) + var(--table-diameter) * sin(var(--turns))) - 0.5 * var(--height));
+        --x-played: calc(0.5 * (var(--table-diameter) + var(--height) * cos(var(--turns))) - 0.5 * var(--width));
+        --y-played: calc(0.5 * (var(--table-diameter) + var(--height) * sin(var(--turns))) - 0.5 * var(--height));
+        --x-center: calc(0.5 * var(--table-diameter) - 0.5 * var(--width));
+        --y-center: calc(0.5 * var(--table-diameter) - 0.5 * var(--height));
+
+        display: block;
+        height: var(--height);
+        left: var(--x-start);
+        position: absolute;
+        top: var(--y-start);
+        transform: rotate(var(--rotation));
+        transition-duration: 0s; // set by component
+        transition-property: left, top, transform;
+        transition-timing-function: ease-out;
+        width: var(--width);
+
+        &.played {
+          left: var(--x-played);
+          top: var(--y-played);
+        }
+
+        &.center {
+          left: var(--x-center);
+          top: var(--y-center);
+        }
+
+        &.winner {
+          left: var(--x-winner);
+          top: var(--y-winner);
+          transform: rotate(var(--winner-rotation));
+        }
+
+        > img {
+          height: 100%;
+          width: 100%;
+        }
+      }
+    }
+  }
+
+  > #player-container {
+    height: var(--table-diameter);
+    left: calc(0.5 * (100% - var(--table-diameter)));
+    position: absolute;
+    top: calc(0.5 * var(--size-player));
+    width: var(--table-diameter);
+
+    > dwg-euchre-player {
+      --diameter: var(--table-diameter);
+      --size: var(--size-player);
+      height: var(--size);
+      width: var(--size);
+    }
+  }
+
+  > #players-cards {
+    --width: min(calc(var(--table-diameter) + 2 * var(--width-messages)), 100%);
+    height: var(--height-players-cards);
+    left: calc(0.5 * (100% - var(--width)));
+    position: absolute;
+    top: calc(var(--size-player) + var(--table-diameter));
+    width: var(--width);
+    z-index: 4;
+  }
+}

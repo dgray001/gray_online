@@ -7,6 +7,7 @@ runtime_config:
   runtime_version: "1.21"
 
 # to prevent moolah from going bye bye
+instance_class: B1
 manual_scaling:
   instances: 1
 

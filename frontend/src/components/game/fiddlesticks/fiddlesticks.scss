@@ -42,6 +42,7 @@ dwg-fiddlesticks {
     --line-height: 1.7em;
     --width: calc(var(--width-messages) - 2em);
     --height: calc(var(--line-height) + var(--card-image-scale) * var(--width));
+
     border-radius: 0.4em;
     left: calc(1em + 0.5 * (100% + var(--table-diameter)));
     line-height: var(--line-height);
@@ -93,23 +94,6 @@ dwg-fiddlesticks {
       --winner-turns: calc(var(--winner-rotation) + 0.25turn);
       --x-winner: calc(0.5 * (var(--table-diameter) + var(--table-diameter) * cos(var(--winner-turns))) - 0.5 * var(--width));
       --y-winner: calc(0.5 * (var(--table-diameter) + var(--table-diameter) * sin(var(--winner-turns))) - 0.5 * var(--height));
-
-      @keyframes towardWinner {
-        from {
-          --x: calc(0.5 * var(--table-diameter) - 0.5 * var(--width));
-          --y: calc(0.5 * var(--table-diameter) - 0.5 * var(--height));
-          left: var(--x);
-          top: var(--y);
-        }
-        to {
-          --turns: calc(var(--rotation) + 0.25turn);
-          --x: calc(0.5 * (var(--table-diameter) + var(--table-diameter) * cos(var(--turns))) - 0.5 * var(--width));
-          --y: calc(0.5 * (var(--table-diameter) + var(--table-diameter) * sin(var(--turns))) - 0.5 * var(--height));
-          left: var(--x);
-          top: var(--y);
-          transform: rotate(var(--rotation));
-        }
-      }
 
       > .card {
         --i: 0; // set by component

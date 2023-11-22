@@ -18,7 +18,7 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
-var DEV = false
+var DEV = true
 
 func main() {
 	// Set environment variables
@@ -42,10 +42,9 @@ func main() {
 
 	if !DEV {
 		r.SetTrustedProxies(nil)
-
-		// Serve static html
-		r.Use(static.Serve("/", static.LocalFile("static", false)))
 	}
+	// Serve static html
+	r.Use(static.Serve("/", static.LocalFile("static", false)))
 
 	// All api groupings
 	api := r.Group("/api")

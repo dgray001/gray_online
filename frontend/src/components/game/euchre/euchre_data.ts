@@ -21,11 +21,16 @@ export declare interface GameEuchre {
   turn: number;
 }
 
+export function getPlayersTeam(game: GameEuchre, player_id: number): EuchreTeam {
+  return game.teams[player_id % 2];
+}
+
 /** Data describing a euchre player */
 export declare interface EuchrePlayer {
   player: GamePlayer;
   cards: StandardCard[];
   cards_played: number[];
+  order: number; // around table
 }
 
 /** Data describing a euchre team */

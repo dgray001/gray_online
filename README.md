@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.3j: Fix mobile styles for small phones
+v0.3k: Fix caching issue with new versions
 
 ## Dev Use
 
@@ -65,4 +65,10 @@ If deploying to GCP
 
 ```bash
 gcloud app deploy
+```
+
+When deploying to GCP, update the version export in /backend/static/scripts/version.js
+
+```bash
+export const version = '<version>';
 ```

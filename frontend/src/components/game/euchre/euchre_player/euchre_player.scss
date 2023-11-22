@@ -1,0 +1,62 @@
+dwg-euchre-player {
+  // --diameter: 0; // set by component
+  // --size: 0; // set by component
+  --order: 0; // set by component
+  --num-players: 0; // set by component
+  --turns: calc((0.25 + var(--order) / var(--num-players)) * 1turn);
+  --x: calc(0.5 * var(--diameter) * (1 + cos(var(--turns))) - 0.5 * var(--size));
+  --y: calc(0.5 * var(--diameter) * (1 + sin(var(--turns))) - 0.5 * var(--size));
+  --icon-size: 64px;
+  --turn-color: rgba(90, 10, 240, 0.7);
+
+  background-color: rgba(240, 240, 240, 0.7);
+  border-radius: calc(0.08 * var(--size));
+  color: black;
+  display: block;
+  left: var(--x);
+  position: absolute;
+  top: var(--y);
+  z-index: 4;
+
+  &.turn {
+    box-shadow: 0 0 6px 6px var(--turn-color);
+  }
+
+  > * {
+    box-sizing: border-box;
+    font-size: calc(0.13 * var(--size));
+    height: calc(0.2 * var(--size));
+    line-height: calc(0.2 * var(--size));
+    width: 100%;
+  }
+
+  > #name-container {
+    font-weight: bold;
+    padding: 0 0.4em 0.2em;
+    text-align: center;
+  }
+
+  > #status-container {
+    padding-left: 0.3em;
+    text-align: center;
+  }
+
+  .fixed-width {
+    display: inline-block;
+    padding: 0 0.2em;
+    text-align: right;
+    width: 40%;
+  }
+}
+
+body.mobile {
+  dwg-euchre-player {
+    --icon-size: 40px;
+
+    > .icon-wrapper.show-tooltip {
+      > .icon-tooltip {
+        opacity: 100%;
+      }
+    }
+  }
+}
