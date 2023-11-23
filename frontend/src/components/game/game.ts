@@ -168,11 +168,11 @@ export class DwgGame extends DwgElement {
       return false;
     }
     this.game = serverResponseToGame(response.result, this.connection_metadata.client_id);
-    const setGame = async (component: string) => {
+    const setGame = async (component: 'dwg-fiddlesticks' | 'dwg-euchre') => {
       const game_el = document.createElement(component);
       this.game_container.replaceChildren(game_el);
-      await until(() => (game_el as DwgGame).fully_parsed);
-      this.game_el = game_el as unknown as GameComponent;
+      await until(() => game_el.fully_parsed);
+      this.game_el = game_el; // assign after attaching to dom to keep TS happy
       this.game_el.initialize(this.game, this.connection_metadata.client_id);
       game_el.addEventListener('game_update', (e: CustomEvent<string>) => {
         if (this.game.game_base.game_ended) {

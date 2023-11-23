@@ -4,19 +4,47 @@ export declare interface StandardCard {
   number: number;
 }
 
+/** Maps suit to its color */
+export function cardSuitToColor(suit: number): string {
+  switch(suit) {
+    case 1:
+    case 3:
+      return 'Red';
+    case 2:
+    case 4:
+      return 'Black';
+    default:
+      return 'error';
+  }
+}
+
+/** Maps suit to its color */
+function cardSuitToRGB(suit: number): string {
+  switch(suit) {
+    case 1:
+    case 3:
+      return 'rgb(223, 0, 0)';
+    case 2:
+    case 4:
+      return 'rgb(0, 0, 0)';
+    default:
+      return 'error';
+  }
+}
+
 /** Maps suits to their string name */
 function cardSuitToName(suit: number): string {
   switch(suit) {
     case 1:
-      return "Diamond";
+      return 'Diamond';
     case 2:
-      return "Club";
+      return 'Club';
     case 3:
-      return "Heart";
+      return 'Heart';
     case 4:
-      return "Spade";
+      return 'Spade';
     default:
-      return "error";
+      return 'error';
   }
 }
 
@@ -82,8 +110,7 @@ export function cardToName(card: StandardCard): string {
 /** Returns icon name of card */
 export function cardToIcon(card: StandardCard, render_html = true): string {
   if (render_html) {
-    const color = (card.suit === 1 || card.suit === 3) ? 'rgb(223, 0, 0)' : 'rgb(0, 0, 0)';
-    return `<span style="color:${color};">${cardNumberToIconName(card.number)}<span style="font-size:1.4rem;">${cardSuitToIcon(card.suit)}</span></span>`;
+    return `<span style="color:${cardSuitToRGB(card.suit)};">${cardNumberToIconName(card.number)}<span style="font-size:1.4rem;">${cardSuitToIcon(card.suit)}</span></span>`;
   } else {
     return `${cardNumberToIconName(card.number)}${cardSuitToIcon(card.suit)}`;
   }

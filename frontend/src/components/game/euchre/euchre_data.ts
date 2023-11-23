@@ -36,6 +36,7 @@ export declare interface EuchrePlayer {
 
 /** Data describing a euchre team */
 export declare interface EuchreTeam {
+  player_ids: number[];
   team_id: number;
   score: number;
   tricks: number;

@@ -3,7 +3,7 @@ import {GameComponent, UpdateMessage} from '../data_models';
 import {DwgCardHand} from '../util/card_hand/card_hand';
 import {createMessage} from '../../lobby/data_models';
 import {clientOnMobile, until, untilTimer} from '../../../scripts/util';
-import {StandardCard, cardToIcon, cardToImagePath} from '../util/card_util';
+import {StandardCard, cardSuitToColor, cardToIcon, cardToImagePath, cardToName} from '../util/card_util';
 
 import html from './euchre.html';
 import {DwgEuchrePlayer} from './euchre_player/euchre_player';
@@ -13,6 +13,7 @@ import './euchre.scss';
 import './euchre_player/euchre_player';
 import '../../dialog_box/message_dialog/message_dialog';
 import '../util/card_hand/card_hand';
+import { messageDialog } from '../game';
 
 export class DwgEuchre extends DwgElement implements GameComponent {
   round_number: HTMLSpanElement;
@@ -292,7 +293,94 @@ export class DwgEuchre extends DwgElement implements GameComponent {
       return;
     }
     // end of trick
-    // TODO: implement
+    await untilTimer(500);
+    let winning_index = 0;
+    let winning_card = this.game.trick[0];
+    for (let i = 1; i < this.game.trick.length; i++) {
+      const card = this.game.trick[i];
+      if (this.cardSuit(card) === this.cardSuit(winning_card)) {
+        if (this.cardNumber(card) > this.cardNumber(winning_card)) {
+          winning_index = i;
+          winning_card = card;
+        }
+      } else if (this.cardSuit(card) === this.game.trump_suit) {
+        winning_index = i;
+        winning_card = card;
+      }
+    }
+    if (winning_index >= 0 && winning_index < this.trick_card_els.length) {
+      this.trick_card_els[winning_index].style.zIndex = '2';
+    }
+    this.game.turn = this.game.trick_leader + winning_index;
+    if (this.game.turn >= this.game.players.length) {
+      this.game.turn -= this.game.players.length;
+    }
+    this.game.trick_leader = this.game.turn;
+    for (const trick_card_el of this.trick_card_els) {
+      trick_card_el.classList.remove('played');
+      trick_card_el.classList.add('center');
+    }
+    await untilTimer(1000);
+    this.trick_cards.style.setProperty('--winner', this.game.players[this.game.turn].order.toString());
+    for (const trick_card_el of this.trick_card_els) {
+      trick_card_el.classList.remove('center');
+      trick_card_el.classList.add('winner');
+    }
+    await untilTimer(1000);
+    getPlayersTeam(this.game, this.game.turn).tricks++;
+    for (const [i, player_el] of this.player_els.entries()) {
+      player_el.endTrick(getPlayersTeam(this.game, i).tricks);
+    }
+    this.trick_cards.replaceChildren();
+    this.trick_card_els = [];
+    this.game.trick = [];
+    this.trick_number.innerText = '-';
+    console.log(`Trick won by ${this.game.players[this.game.turn].player.nickname} with the ${cardToName(winning_card)}`);
+    if (this.current_trick < 5) {
+      this.current_trick++;
+      this.trick_number.innerText = this.current_trick.toString();
+      this.player_els[this.game.turn].playing();
+      this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
+      if (this.game.turn === this.player_id) {
+        this.players_cards.can_play = true;
+      }
+      return;
+    }
+    // end of round
+    await untilTimer(500);
+    // TODO: score animations for a few seconds
+    this.card_face_up_img.classList.remove('show');
+    let winning_team = 0;
+    if (this.game.teams[0].tricks < 3) {
+      winning_team = 1;
+    }
+    const won_all_five = this.game.teams[winning_team].tricks === 5;
+    let game_over = false;
+    if (winning_team == this.game.makers_team) {
+      // makers won
+      if (won_all_five) {
+        if (this.game.going_alone) {
+          game_over = this.scorePoints(this.game.makers_team, 4);
+        } else {
+          game_over = this.scorePoints(this.game.makers_team, 2);
+        }
+      } else {
+        game_over = this.scorePoints(this.game.makers_team, 1);
+      }
+    } else {
+      // defenders won
+      game_over = this.scorePoints(this.game.defenders_team, 2);
+    }
+    for (const [i, _] of this.game.players.entries()) {
+      this.player_els[i].endRound();
+    }
+    this.round_number.innerText = '-';
+    if (game_over) {
+      this.game.game_base.game_ended = true;
+      this.status_container.innerText = 'game over';
+    } else {
+      this.game.round++; // wait for deal-round update from server
+    }
   }
 
   private setCardFaceUpImage(card: StandardCard) {
@@ -311,11 +399,48 @@ export class DwgEuchre extends DwgElement implements GameComponent {
       }
     }
   }
+
+  private cardSuit(card: StandardCard): number {
+    if ((cardSuitToColor(card.suit) === cardSuitToColor(this.game.trump_suit)) && card.number == 11) {
+      return this.game.trump_suit;
+    }
+    return card.suit;
+  }
+
+  private cardNumber(card: StandardCard): number {
+    if (card.suit == this.game.trump_suit && card.number == 11) {
+      // right bar
+      return 16;
+    } else if (this.cardSuit(card) == this.game.trump_suit && card.number == 11) {
+      // left bar
+      return 15;
+    }
+    return card.number;
+  }
+
+  private scorePoints(team_id: number, points: number): boolean {
+    this.game.teams[team_id].score += points;
+    for (const winner of this.game.teams[team_id].player_ids) {
+      this.player_els[winner].setScore(this.game.teams[team_id].score);
+    }
+    if (this.game.teams[team_id].score >= 10) {
+      const winners: string[] = [];
+      for (const winner of this.game.teams[team_id].player_ids) {
+        this.player_els[winner].wonGame();
+        winners.push(this.game.players[winner].player.nickname);
+      }
+      let winner_text = 'The winners are: ' + winners.join(', ');
+      winner_text += `\nWith ${this.game.teams[team_id].score} points`;
+      messageDialog.call(this, {message: winner_text});
+      return true;
+    }
+    return false;
+  }
 }
 
 customElements.define('dwg-euchre', DwgEuchre);
 
-declare global{
+declare global {
   interface HTMLElementTagNameMap {
     'dwg-euchre': DwgEuchre;
   }

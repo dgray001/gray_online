@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.3l: Initial frontend updates
+v0.3m: Initially finished DwgEuchre
 
 ## Dev Use
 

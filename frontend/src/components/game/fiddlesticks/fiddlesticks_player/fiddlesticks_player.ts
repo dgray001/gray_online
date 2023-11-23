@@ -218,7 +218,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
 
 customElements.define('dwg-fiddlesticks-player', DwgFiddlesticksPlayer);
 
-declare global{
+declare global {
   interface HTMLElementTagNameMap {
     'dwg-fiddlesticks-player': DwgFiddlesticksPlayer;
   }

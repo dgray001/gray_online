@@ -309,7 +309,7 @@ export class DwgCardHand extends DwgElement {
 
 customElements.define('dwg-card-hand', DwgCardHand);
 
-declare global{
+declare global {
   interface HTMLElementTagNameMap {
     'dwg-card-hand': DwgCardHand;
   }

@@ -100,11 +100,23 @@ export class DwgEuchrePlayer extends DwgElement {
   playCard() {
     // TODO: implement
   }
+
+  endTrick(tricks: number) {
+    // TODO: implement
+  }
+
+  setScore(score: number) {
+    // TODO: implement
+  }
+
+  wonGame() {
+    // TODO: implement
+  }
 }
 
 customElements.define('dwg-euchre-player', DwgEuchrePlayer);
 
-declare global{
+declare global {
   interface HTMLElementTagNameMap {
     'dwg-euchre-player': DwgEuchrePlayer;
   }

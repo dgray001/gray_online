@@ -359,6 +359,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
       this.game.rounds_increasing = false;
     }
     if (!this.game.rounds_increasing && this.game.round === 1) {
+      // end of game
       this.game.game_base.game_ended = true;
       let winners = [0];
       let winning_score = this.game.players[0].score;
@@ -388,3 +389,9 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
 }
 
 customElements.define('dwg-fiddlesticks', DwgFiddlesticks);
+
+declare global {
+  interface HTMLElementTagNameMap {
+    'dwg-fiddlesticks': DwgFiddlesticks;
+  }
+}

@@ -321,56 +321,58 @@ func (g *GameEuchre) executePlayCard(player *game.Player, card_index int) {
 	}})
 	g.turn++
 	g.resolveTurn()
-	if g.turn == g.trick_leader {
-		winning_index := 0
-		winning_card := g.trick[0]
-		for i, card := range g.trick[1:] {
-			if g.cardSuit(card) == g.cardSuit(winning_card) {
-				if g.cardNumber(card) > g.cardNumber(winning_card) {
-					winning_index = i + 1
-					winning_card = card
-				}
-			} else if g.cardSuit(card) == g.trump_suit {
+	if g.turn != g.trick_leader {
+		return
+	}
+	// end of trick
+	winning_index := 0
+	winning_card := g.trick[0]
+	for i, card := range g.trick[1:] {
+		if g.cardSuit(card) == g.cardSuit(winning_card) {
+			if g.cardNumber(card) > g.cardNumber(winning_card) {
 				winning_index = i + 1
 				winning_card = card
 			}
+		} else if g.cardSuit(card) == g.trump_suit {
+			winning_index = i + 1
+			winning_card = card
 		}
-		g.turn = g.trick_leader + winning_index
-		if g.turn >= len(g.players) {
-			g.turn -= len(g.players)
-		}
-		g.teams[g.players[g.turn].player.Player_id%2].tricks++
-		g.trick_leader = g.turn
-		g.trick = []*game_utils.StandardCard{}
+	}
+	g.turn = g.trick_leader + winning_index
+	if g.turn >= len(g.players) {
+		g.turn -= len(g.players)
+	}
+	g.teams[g.players[g.turn].player.Player_id%2].tricks++
+	g.trick_leader = g.turn
+	g.trick = []*game_utils.StandardCard{}
+	fmt.Println("Trick won by", g.players[g.turn].player.GetNickname(), "with the", winning_card.GetName())
+	if g.trick_number < 5 {
 		g.trick_number++
-		fmt.Println("Trick won by", g.players[g.turn].player.GetNickname(), "with the", winning_card.GetName())
-		if g.trick_number <= 5 {
-			// next trick
-		} else {
-			winning_team := 0
-			if g.teams[0].tricks < 3 {
-				winning_team = 1
-			}
-			won_all_five := g.teams[winning_team].tricks == 5
-			if winning_team == g.makers_team {
-				// makers won
-				if won_all_five {
-					if g.going_alone {
-						g.scorePoints(g.makers_team, 4)
-					} else {
-						g.scorePoints(g.makers_team, 2)
-					}
-				} else {
-					g.scorePoints(g.makers_team, 1)
-				}
+		return
+	}
+	// end of round
+	winning_team := 0
+	if g.teams[0].tricks < 3 {
+		winning_team = 1
+	}
+	won_all_five := g.teams[winning_team].tricks == 5
+	if winning_team == g.makers_team {
+		// makers won
+		if won_all_five {
+			if g.going_alone {
+				g.scorePoints(g.makers_team, 4)
 			} else {
-				// defenders won
-				g.scorePoints(g.defenders_team, 2)
+				g.scorePoints(g.makers_team, 2)
 			}
-			if !g.game.GameEnded() {
-				g.dealNextRound()
-			}
+		} else {
+			g.scorePoints(g.makers_team, 1)
 		}
+	} else {
+		// defenders won
+		g.scorePoints(g.defenders_team, 2)
+	}
+	if !g.game.GameEnded() {
+		g.dealNextRound()
 	}
 }
 

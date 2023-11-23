@@ -44,7 +44,7 @@ def addDwgComponent():
   f.write('\n')
   f.write(f"customElements.define('dwg-{html_class_name}', Dwg{ts_class_name});\n")
   f.write('\n')
-  f.write('declare global{\n')
+  f.write('declare global {\n')
   f.write('  interface HTMLElementTagNameMap {\n')
   f.write(f"    'dwg-{html_class_name}': Dwg{ts_class_name};\n")
   f.write('  }\n')
