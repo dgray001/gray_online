@@ -120,7 +120,7 @@ export class DwgCardHand extends DwgElement {
         this.stopDragging();
         return;
       }
-      this.stopDraggingCard(card);
+      this.stopDraggingCard(card, true);
     });
 
     document.body.addEventListener('touchmove', (e) => {
@@ -276,11 +276,11 @@ export class DwgCardHand extends DwgElement {
     this.classList.remove('dragging-playing');
   }
 
-  private stopDraggingCard(card: CardData) {
+  private stopDraggingCard(card: CardData, returning_to_screen = false) {
     this.dragging_lock(async () => {
       this.stopDragging();
       card.el.classList.remove('dragging');
-      if (this.can_play) {
+      if (!returning_to_screen && this.can_play) {
         if (this.dragging_data.hovering_play_drop) {
           this.dispatchEvent(new CustomEvent<number>('play_card', {'detail': card.i}));
         }

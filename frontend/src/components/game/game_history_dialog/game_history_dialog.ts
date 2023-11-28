@@ -50,7 +50,7 @@ export class DwgGameHistoryDialog extends DwgDialogBox<GameHistoryData> {
 
 customElements.define('dwg-game-history-dialog', DwgGameHistoryDialog);
 
-declare global{
+declare global {
   interface HTMLElementTagNameMap {
     'dwg-game-history-dialog': DwgGameHistoryDialog;
   }

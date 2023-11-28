@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.3m: Initially finished DwgEuchre
+v0.3n: Fiddlesticks stability updates
 
 ## Dev Use
 

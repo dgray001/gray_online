@@ -13,6 +13,7 @@ import './game.scss';
 import './fiddlesticks/fiddlesticks';
 import './euchre/euchre';
 import './game_history_dialog/game_history_dialog';
+import './players_dialog/players_dialog';
 import '../dialog_box/confirm_dialog/confirm_dialog';
 
 /** Function to dispatch event that will show a dialog message */
@@ -95,7 +96,9 @@ export class DwgGame extends DwgElement {
       this.appendChild(game_history);
     });
     this.button_room_players.addEventListener('click', () => {
-      // TODO: game players dialog box
+      const players_dialog = document.createElement('dwg-players-dialog');
+      players_dialog.setData({});
+      this.appendChild(players_dialog);
     });
     this.button_exit.addEventListener('click', () => {
       const confirm_dialog = document.createElement('dwg-confirm-dialog');

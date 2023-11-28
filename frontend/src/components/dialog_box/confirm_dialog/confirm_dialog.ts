@@ -60,7 +60,7 @@ export class DwgConfirmDialog extends DwgDialogBox<ConfirmDialogData> {
 
 customElements.define('dwg-confirm-dialog', DwgConfirmDialog);
 
-declare global{
+declare global {
   interface HTMLElementTagNameMap {
     'dwg-confirm-dialog': DwgConfirmDialog;
   }

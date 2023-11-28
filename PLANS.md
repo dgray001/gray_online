@@ -6,7 +6,6 @@ v0.4: Euchre game
  r: Proper moves dialog for fiddlesticks and euchre
  s: Abstract players dialog in game base
  t: Frontend styles / UX cleanup
-   => make dialog buttons bigger
    => can play card with double click
  m: Euchre animations / styles (including mobile)
  u: Lobby rooms can just refresh specific rooms instead of recreating entire els

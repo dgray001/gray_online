@@ -51,7 +51,7 @@ export class DwgMessageDialog extends DwgDialogBox<MessageDialogData> {
 
 customElements.define('dwg-message-dialog', DwgMessageDialog);
 
-declare global{
+declare global {
   interface HTMLElementTagNameMap {
     'dwg-message-dialog': DwgMessageDialog;
   }

@@ -111,6 +111,13 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
       } else {
         this.current_trick = game.players.reduce((a, b) => a + b.tricks, 1);
         this.trick_number.innerText = this.current_trick.toString();
+        for (const [i, card] of game.trick.entries()) {
+          let player_id = game.trick_leader + i;
+          if (player_id >= game.players.length) {
+            player_id -= game.players.length;
+          }
+          this.addPlayedCard({card, index: i, player_id});
+        }
         this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
       }
       this.setTrumpImage(game.trump);
@@ -259,21 +266,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
       this.players_cards.can_play = false;
     }
     // TODO: handle viewers properly
-    const card_el = document.createElement('div');
-    const card_el_img = document.createElement('img');
-    card_el_img.src = cardToImagePath(data.card);
-    card_el_img.draggable = false;
-    card_el_img.alt = cardToIcon(data.card);
-    card_el.appendChild(card_el_img);
-    card_el.classList.add('card');
-    card_el.style.setProperty('--i', this.game.players[data.player_id].order.toString());
-    this.trick_cards.appendChild(card_el);
-    this.trick_card_els.push(card_el);
-    card_el.style.transitionDuration = '1s';
-    await until(() => {
-      return !!getComputedStyle(card_el).left;
-    }, 20);
-    card_el.classList.add('played');
+    await this.addPlayedCard(data);
     await untilTimer(1000);
     this.status_container.innerText = '';
     this.game.turn++;
@@ -385,6 +378,24 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     } else {
       this.game.round--; // wait for deal-round update from server
     }
+  }
+
+  private async addPlayedCard(data: PlayCard) {
+    const card_el = document.createElement('div');
+    const card_el_img = document.createElement('img');
+    card_el_img.src = cardToImagePath(data.card);
+    card_el_img.draggable = false;
+    card_el_img.alt = cardToIcon(data.card);
+    card_el.appendChild(card_el_img);
+    card_el.classList.add('card');
+    card_el.style.setProperty('--i', this.game.players[data.player_id].order.toString());
+    this.trick_cards.appendChild(card_el);
+    this.trick_card_els.push(card_el);
+    card_el.style.transitionDuration = '1s';
+    await until(() => {
+      return !!getComputedStyle(card_el).left;
+    }, 20);
+    card_el.classList.add('played');
   }
 }
 

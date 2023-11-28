@@ -1,5 +1,5 @@
 import {SERVER_CHAT_NAME} from "../chatbox/chatbox";
-import {GameSettings, ServerMessage, LobbyRoom, LobbyRoomFromServer, serverResponseToRoom, GameSettingsFromServer, serverResponseToGameSettings} from "./data_models";
+import {ServerMessage, LobbyRoom, LobbyRoomFromServer, serverResponseToRoom, GameSettingsFromServer, serverResponseToGameSettings} from "./data_models";
 import {DwgLobby} from "./lobby";
 
 function isLobbyMessage(kind: string): boolean {
@@ -45,7 +45,8 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
         localStorage.setItem("client_nickname", message.content);
         localStorage.setItem("client_id_time", Date.now().toString());
       } catch(e) {} // if localstorage isn't accessible
-      lobby.refreshLobbyRooms();
+      lobby.refreshLobbyRooms(true);
+      lobby.lobby_users.refreshUsers();
       break;
     case 'lobby-joined':
       const joined_data_split = message.data.split('-');
@@ -259,7 +260,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
       } catch(e) {}
       break;
     case 'room-launched':
-      const room_launched_id = parseInt(message.sender.replace('room-', ''));
+      /*const room_launched_id = parseInt(message.sender.replace('room-', ''));
       const game_id = parseInt(message.data);
       if (room_launched_id && game_id) {
         lobby.lobby_rooms.launchRoom(room_launched_id, game_id);
@@ -267,7 +268,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
           lobby.lobby_room.launchRoom(game_id);
           lobby.dispatchEvent(new CustomEvent('game_launched', {'detail': lobby.lobby_room.room}));
         }
-      }
+      }*/
       break; 
     case 'room-game-over':
       const game_over_room_id = parseInt(message.sender.replace('room-', ''));
@@ -285,7 +286,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
         const room_id = parseInt(message.data);
         if (!!room_id && room_id === room.room_id) {
           lobby.lobby_room.refreshRoom(room, room.host.client_id === lobby.connection_metadata.client_id);
-          if (!!room.game_id && !lobby.classList.contains('hide')) {
+          if (!!room.game_id && !lobby.classList.contains('hide') && lobby.canAutoLaunchRoom()) {
             lobby.dispatchEvent(new CustomEvent('game_launched', {'detail': lobby.lobby_room.room}));
           }
         }
@@ -306,7 +307,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
       message_dialog.setData({message: message.content});
       lobby.appendChild(message_dialog);
       console.log(message.content);
-      lobby.refreshLobbyRooms();
+      //lobby.refreshLobbyRooms();
       switch(message.kind) {
         case 'room-launch-failed':
           lobby.lobby_room.launchFailed();

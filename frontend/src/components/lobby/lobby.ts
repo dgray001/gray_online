@@ -164,8 +164,6 @@ export class DwgLobby extends DwgElement {
     }
     this.waitingOnConnectedTimes = DwgLobby.DEFAULT_CONNECTION_TIMES;
     this.socket = new_socket;
-    this.refreshLobbyRooms(true);
-    this.lobby_users.refreshUsers();
     this.socket.addEventListener('message', (m) => {
       try {
         const message = JSON.parse(m.data) as ServerMessage;
@@ -206,7 +204,7 @@ export class DwgLobby extends DwgElement {
     if (check_url) {
       const url_room_id = parseInt(getUrlParam(URL_PARAM_ROOM));
       const room = this.lobby_rooms.getRoom(url_room_id);
-      if (!!room) {
+      if (!!room && current_room?.room_id !== room.room_id) {
         this.socket.send(createMessage(
           `client-${this.connection_metadata.client_id}`,
           'room-join-player',
@@ -230,6 +228,9 @@ export class DwgLobby extends DwgElement {
     this.lobby_room.setRoom(room, is_host);
     this.lobby_room_wrapper.classList.add('show');
     setUrlParam(URL_PARAM_ROOM, room.room_id.toString());
+    if (!room.game_id) {
+      this.can_auto_launch_room = true; // only auto-launch if game not already launched
+    }
   }
 
   leaveRoom() {
@@ -269,6 +270,15 @@ export class DwgLobby extends DwgElement {
         color: 'gray',
       }, true);
     }
+  }
+
+  private can_auto_launch_room = false;
+  canAutoLaunchRoom(): boolean {
+    return this.can_auto_launch_room;
+  }
+
+  returnFromGame() {
+    this.can_auto_launch_room = false;
   }
 
   static DEFAULT_CONNECTION_TIMES = 3;

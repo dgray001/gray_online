@@ -1,4 +1,4 @@
-dwg-game-history-dialog {
+dwg-players-dialog {
   #wrapper {
     --button-size: 36px;
     align-items: center;
@@ -35,7 +35,7 @@ dwg-game-history-dialog {
       }
     }
 
-    #updates-container {
+    #players-container {
       --margin-top: calc(6px + var(--button-size) - var(--font-size-medium));
       height: calc(100% - var(--margin-top));
       margin-top: var(--margin-top);
@@ -46,7 +46,7 @@ dwg-game-history-dialog {
 }
 
 body.mobile {
-  dwg-game-history-dialog {
+  dwg-players-dialog {
     #wrapper {
       height: 80svh;
     }

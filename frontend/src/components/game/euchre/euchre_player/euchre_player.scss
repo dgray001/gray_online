@@ -33,14 +33,14 @@ dwg-euchre-player {
   > * {
     box-sizing: border-box;
     font-size: calc(0.13 * var(--size));
-    height: calc(0.2 * var(--size));
+    height: calc(0.25 * var(--size));
     line-height: calc(0.2 * var(--size));
     width: 100%;
   }
 
   > #name-container {
     font-weight: bold;
-    padding: 0 0.4em 0.2em;
+    padding: 0.7em 0.4em 0.2em;
     text-align: center;
   }
 
