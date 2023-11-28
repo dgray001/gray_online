@@ -43,6 +43,7 @@ export class DwgGame extends DwgElement {
   socket: WebSocket;
   connection_metadata: ConnectionMetadata;
   game_id = 0;
+  is_player = false;
   game: Game;
 
   chatbox_lock = createLock();
@@ -136,6 +137,7 @@ export class DwgGame extends DwgElement {
     this.client_ping.innerText = ` (${this.connection_metadata.ping})`;
     this.room_name.innerText = lobby.room_name;
     this.game_id = lobby.game_id;
+    this.is_player = lobby.players.has(this.connection_metadata.client_id);
     try {
       for (const abort_controller of this.abort_controllers) {
         abort_controller.abort();
@@ -164,7 +166,7 @@ export class DwgGame extends DwgElement {
   async refreshGame() {
     const response = await apiPost<GameFromServer>(`lobby/games/get/${this.game_id}`, {
       client_id: this.connection_metadata.client_id,
-      viewer: "false", // TODO: add viewer support here somehow
+      viewer: this.is_player ? "false" : "true",
     });
     if (!response.success || !response.result) {
       console.log(response.error_message);

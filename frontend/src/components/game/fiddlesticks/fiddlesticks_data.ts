@@ -34,7 +34,7 @@ export declare interface DealRound {
   round: number;
   dealer: number;
   trump: StandardCard;
-  cards: StandardCard[];
+  cards?: StandardCard[];
 }
 
 /** Data describing a bet game-update */

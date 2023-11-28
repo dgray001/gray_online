@@ -6,6 +6,7 @@ type Viewer struct {
 	client_id uint64
 	nickname  string
 	connected bool
+	Updates   chan *UpdateMessage
 }
 
 func CreateViewer(client_id uint64, nickname string) *Viewer {
@@ -13,6 +14,7 @@ func CreateViewer(client_id uint64, nickname string) *Viewer {
 		client_id: client_id,
 		nickname:  nickname,
 		connected: false,
+		Updates:   make(chan *UpdateMessage),
 	}
 }
 

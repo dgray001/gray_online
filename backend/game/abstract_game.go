@@ -30,4 +30,5 @@ func Game_BroadcastUpdate(g Game, update *UpdateMessage) {
 	for _, player := range g.GetBase().Players {
 		player.AddUpdate(update)
 	}
+	g.GetBase().AddViewerUpdate(update)
 }

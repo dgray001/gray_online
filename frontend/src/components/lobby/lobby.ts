@@ -153,7 +153,7 @@ export class DwgLobby extends DwgElement {
     this.refreshLobbyRooms();
     this.lobby_users.refreshUsers();
     setInterval(() => {
-      this.pingServer();
+      //this.pingServer();
       this.ping_container.innerText = `ping: ${Math.round(this.connection_metadata.ping)}`;
     }, LOBBY_PING_TIME);
   }
@@ -207,7 +207,7 @@ export class DwgLobby extends DwgElement {
       if (!!room && current_room?.room_id !== room.room_id) {
         this.socket.send(createMessage(
           `client-${this.connection_metadata.client_id}`,
-          'room-join-player',
+          'room-join',
           '',
           url_room_id.toString(),
         ));

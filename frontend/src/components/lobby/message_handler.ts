@@ -260,7 +260,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
       } catch(e) {}
       break;
     case 'room-launched':
-      /*const room_launched_id = parseInt(message.sender.replace('room-', ''));
+      const room_launched_id = parseInt(message.sender.replace('room-', ''));
       const game_id = parseInt(message.data);
       if (room_launched_id && game_id) {
         lobby.lobby_rooms.launchRoom(room_launched_id, game_id);
@@ -268,7 +268,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
           lobby.lobby_room.launchRoom(game_id);
           lobby.dispatchEvent(new CustomEvent('game_launched', {'detail': lobby.lobby_room.room}));
         }
-      }*/
+      }
       break; 
     case 'room-game-over':
       const game_over_room_id = parseInt(message.sender.replace('room-', ''));
@@ -306,7 +306,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
       const message_dialog = document.createElement('dwg-message-dialog');
       message_dialog.setData({message: message.content});
       lobby.appendChild(message_dialog);
-      console.log(message.content);
+      console.error(message.content);
       //lobby.refreshLobbyRooms();
       switch(message.kind) {
         case 'room-launch-failed':
@@ -317,7 +317,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
       }
       break;
     default:
-      console.log("Unknown message type", message.kind, "from", message.sender);
+      console.error("Unknown message type", message.kind, "from", message.sender);
       break;
   }
 }

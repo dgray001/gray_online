@@ -290,9 +290,6 @@ func (f *GameFiddlesticks) ToFrontend(client_id uint64, is_viewer bool) gin.H {
 	if f.game != nil {
 		game["game_base"] = f.game.ToFrontend(client_id, is_viewer)
 	}
-	if f.deck != nil {
-		game["deck"] = f.deck.ToFrontend()
-	}
 	players := []gin.H{}
 	for _, player := range f.players {
 		if player != nil {
@@ -379,6 +376,11 @@ func (f *GameFiddlesticks) dealNextRound() {
 			"cards":  frontend_cards,
 		}})
 	}
+	f.game.AddViewerUpdate(&game.UpdateMessage{Kind: "deal-round", Content: gin.H{
+		"dealer": f.dealer,
+		"round":  f.round,
+		"trump":  f.trump.ToFrontend(),
+	}})
 	f.betting = true
 	f.turn = f.dealer + 1
 	if f.turn >= len(f.players) {

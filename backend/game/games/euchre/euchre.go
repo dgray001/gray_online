@@ -441,9 +441,6 @@ func (g *GameEuchre) ToFrontend(client_id uint64, is_viewer bool) gin.H {
 	if g.game != nil {
 		game["game_base"] = g.game.ToFrontend(client_id, is_viewer)
 	}
-	if g.deck != nil {
-		game["deck"] = g.deck.ToFrontend()
-	}
 	players := []gin.H{}
 	for _, player := range g.players {
 		if player != nil {
@@ -504,6 +501,11 @@ func (g *GameEuchre) dealNextRound() {
 			"cards":        frontend_cards,
 		}})
 	}
+	g.game.AddViewerUpdate(&game.UpdateMessage{Kind: "deal-round", Content: gin.H{
+		"dealer":       g.dealer,
+		"round":        g.round,
+		"card_face_up": g.card_face_up.ToFrontend(),
+	}})
 	g.bidding = true
 	g.turn = g.dealer + 1
 	if g.turn >= len(g.players) {

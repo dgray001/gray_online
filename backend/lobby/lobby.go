@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -180,8 +179,10 @@ func (l *Lobby) addClient(client *Client) {
 func (l *Lobby) reconnectClient(client *Client, client_id uint64) {
 	old_client := l.clients[client_id]
 	if old_client == nil {
+		fmt.Println("Cannot find old client; starting new connection")
 		l.addClient(client)
 	} else if old_client.valid() {
+		fmt.Println("Old client is valid; starting new connection")
 		l.addClient(client)
 	} else {
 		if old_client.delete_timer != nil {
@@ -200,9 +201,20 @@ func (l *Lobby) reconnectClient(client *Client, client_id uint64) {
 				client.lobby_room = old_lobby_room
 				client.game = old_game
 				room_id_string := strconv.Itoa(int(client.lobby_room.room_id))
-				old_lobby_room.replaceClient(client)
-				// TODO: use Viewers not Players if the client is a viewer
-				go client.clientGameUpdates(client.game.GetBase().Players[client_id], room_id_string)
+				old_lobby_room.replaceClient(client) // doesn't return if room has client
+				player := client.game.GetBase().Players[client_id]
+				if player == nil {
+					viewer := client.game.GetBase().Viewers[client_id]
+					if viewer == nil {
+						fmt.Fprintln(os.Stderr, "Room doesn't have reconnecting client")
+						client.lobby_room = nil
+						client.game = nil
+					} else {
+						go client.viewerGameUpdates(viewer, room_id_string)
+					}
+				} else {
+					go client.playerGameUpdates(player, room_id_string)
+				}
 			}
 		}
 		l.clients[client.client_id] = client
@@ -288,7 +300,6 @@ func (l *Lobby) removeRoom(room *LobbyRoom) {
 			viewer.lobby_room = nil
 		}
 	}
-	debug.PrintStack() // TODO: for some reason clients are being kicked when game launches
 	l.broadcastMessage(lobbyMessage{Sender: "server", Kind: "room-closed", Data: id_string})
 }
 
@@ -325,7 +336,7 @@ func (l *Lobby) broadcastMessage(message lobbyMessage) {
 			select {
 			case client.send_message <- message:
 			default:
-				fmt.Println("Failed to send message to client", client.client_id)
+				fmt.Fprintln(os.Stderr, "Failed to send message to client", client.client_id)
 				//l.removeClient(client)
 			}
 		}
@@ -337,14 +348,14 @@ func (l *Lobby) broadcastMessage(message lobbyMessage) {
 			select {
 			case client.send_message <- message:
 			default:
-				fmt.Println("Failed to send message to client", client.client_id)
+				fmt.Fprintln(os.Stderr, "Failed to send message to client", client.client_id)
 				//l.removeClient(client)
 			}
 		}
 	} else if util.Contains(client_to_room_messages, message.Kind) {
 		send_split := strings.Split(message.Sender, "-")
 		if len(send_split) < 3 {
-			fmt.Println("Sender not properly formed for a client to room message")
+			fmt.Fprintln(os.Stderr, "Sender not properly formed for a client to room message")
 			return
 		}
 		room_id, err := strconv.ParseInt(send_split[1], 10, 0)
@@ -363,7 +374,7 @@ func (l *Lobby) broadcastMessage(message lobbyMessage) {
 			select {
 			case client.send_message <- message:
 			default:
-				fmt.Println("Failed to send message to client", client.client_id)
+				fmt.Fprintln(os.Stderr, "Failed to send message to client", client.client_id)
 				//l.removeClient(client)
 			}
 		}
@@ -380,12 +391,12 @@ func (l *Lobby) broadcastMessage(message lobbyMessage) {
 			select {
 			case client.send_message <- message:
 			default:
-				fmt.Println("Failed to send message to client", client.client_id)
+				fmt.Fprintln(os.Stderr, "Failed to send message to client", client.client_id)
 				//l.removeClient(client)
 			}
 		}
 	} else {
-		fmt.Println("No logic for message kind")
+		fmt.Fprintln(os.Stderr, "No logic for message kind")
 	}
 }
 

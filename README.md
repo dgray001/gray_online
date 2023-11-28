@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.3n: Fiddlesticks stability updates
+v0.3o: Initial viewer support
 
 ## Dev Use
 

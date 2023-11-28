@@ -74,7 +74,10 @@ func (r *LobbyRoom) run() {
 			r.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "game-player-connected", Data: client_id_string})
 			if start_game {
 				for client_id, player := range r.players {
-					go player.clientGameUpdates(r.game.GetBase().Players[client_id], room_id_string)
+					go player.playerGameUpdates(r.game.GetBase().Players[client_id], room_id_string)
+				}
+				for client_id, viewer := range r.viewers {
+					go viewer.viewerGameUpdates(r.game.GetBase().Viewers[client_id], room_id_string)
 				}
 				go r.gameBaseUpdates(r.game.GetBase(), room_id_string)
 				r.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "game-start"})
@@ -88,7 +91,7 @@ func (r *LobbyRoom) run() {
 	}
 }
 
-func (c *Client) clientGameUpdates(player *game.Player, room_id_string string) {
+func (c *Client) playerGameUpdates(player *game.Player, room_id_string string) {
 	for {
 		if c.deleted || player == nil {
 			break
@@ -105,7 +108,7 @@ func (c *Client) clientGameUpdates(player *game.Player, room_id_string string) {
 				c.send_message <- lobbyMessage{Sender: "room-" + room_id_string + "-" + message_id_string,
 					Kind: "game-update", Data: message.Kind, Content: string(encoded_message)}
 			} else {
-				fmt.Fprintln(os.Stderr, "Room failed to send update message to client", c.client_id)
+				fmt.Fprintln(os.Stderr, "Room failed to send update message to player", c.client_id)
 			}
 		case message := <-player.FailedUpdates:
 			encoded_message, err := json.Marshal(message.Content)
@@ -118,7 +121,30 @@ func (c *Client) clientGameUpdates(player *game.Player, room_id_string string) {
 				c.send_message <- lobbyMessage{Sender: "room-" + room_id_string + "-" + message_id_string,
 					Kind: "game-failed-update", Data: message.Kind, Content: string(encoded_message)}
 			} else {
-				fmt.Fprintln(os.Stderr, "Room failed to send failed update message to client", c.client_id)
+				fmt.Fprintln(os.Stderr, "Room failed to send failed update message to player", c.client_id)
+			}
+		}
+	}
+}
+
+func (c *Client) viewerGameUpdates(viewer *game.Viewer, room_id_string string) {
+	for {
+		if c.deleted || viewer == nil {
+			break
+		}
+		select {
+		case message := <-viewer.Updates:
+			encoded_message, err := json.Marshal(message.Content)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err.Error())
+				break
+			}
+			message_id_string := strconv.Itoa(message.Id)
+			if c.validDebug(true) {
+				c.send_message <- lobbyMessage{Sender: "room-" + room_id_string + "-" + message_id_string,
+					Kind: "game-update", Data: message.Kind, Content: string(encoded_message)}
+			} else {
+				fmt.Fprintln(os.Stderr, "Room failed to send update message to viewer", c.client_id)
 			}
 		}
 	}

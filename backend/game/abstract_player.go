@@ -23,20 +23,6 @@ func (a *PlayerAction) toFrontend() gin.H {
 	}
 }
 
-type UpdateMessage struct {
-	Id      int
-	Kind    string
-	Content gin.H
-}
-
-func (u *UpdateMessage) toFrontend() gin.H {
-	return gin.H{
-		"update_id": u.Id,
-		"kind":      u.Kind,
-		"content":   u.Content,
-	}
-}
-
 type Player struct {
 	client_id     uint64
 	Player_id     int

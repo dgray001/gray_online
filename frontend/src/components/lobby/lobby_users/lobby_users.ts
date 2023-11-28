@@ -36,16 +36,17 @@ export class DwgLobbyUsers extends DwgElement {
     }
     this.refresh_users_running = true;
     this.user_container.innerHTML = ' ... loading';
-    this.users.clear();
+    const new_users = new Map<number, LobbyUser>();
     const response = await apiGet<LobbyUserFromServer[]>('lobby/users/get');
     if (response.success) {
       let html = '';
       for (const server_user of response.result) {
         const user = serverResponseToUser(server_user);
         html += this.addUserString(user);
-        this.users.set(user.client_id, user);
+        new_users.set(user.client_id, user);
       }
       this.user_container.innerHTML = html;
+      this.users = new_users;
     } else {
       this.user_container.innerHTML = `Error loading users: ${response.error_message}`;
     }

@@ -51,7 +51,7 @@ export function serverResponseToGame(gameFromServer: GameFromServer, client_id: 
         undefined,
     },
   } as Game;
-  const updates = players.get(client_id)?.updates ?? viewers.get(client_id)?.updates;
+  const updates = players.get(client_id)?.updates ?? gameFromServer.game_base.viewer_updates;
   if (updates !== undefined) {
     game.game_base.updates = new Map(updates.map(update => [update.update_id, update]));
     game.game_base.last_continuous_update_id = updates.length;
@@ -67,7 +67,9 @@ export declare interface GameBaseFromServer {
   game_ended: boolean;
   players: GamePlayer[];
   viewers: GameViewer[];
+  // These fields should only return to viewers
   player_actions?: PlayerAction[];
+  viewer_updates?: UpdateMessage[];
 }
 
 /** Data describing a game base */
@@ -79,7 +81,6 @@ export declare interface GameBase {
   players: Map<number, GamePlayer>;
   viewers: Map<number, GameViewer>;
   player_actions?: Map<number, PlayerAction>; // client -> server updates for viewers
-  // TODO: add last_continuous_action_id for viewer support
   updates?: Map<number, UpdateMessage>; // server -> client updates for players
   last_continuous_update_id?: number; // to keep track of which updates are needed
 }

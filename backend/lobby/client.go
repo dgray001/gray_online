@@ -125,7 +125,9 @@ func (c *Client) readMessages() {
 				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-join-failed", Content: "Room doesn't exist"}
 				break
 			}
-			room.JoinRoom <- MakeClientRoom(c, room)
+			client_room := MakeClientRoom(c, room)
+			client_room.bool_flag = true // default to join as player
+			room.JoinRoom <- client_room
 		case "room-join-player":
 			room_id, err := strconv.Atoi(message.Data)
 			if err != nil || room_id < 1 {
@@ -451,14 +453,14 @@ func (c *Client) writeMessages() {
 			}
 			err := c.connection.WriteJSON(message)
 			if err != nil {
-				fmt.Fprintln(os.Stderr, "Error at message writer: "+err.Error())
+				fmt.Fprintln(os.Stderr, "Error at client ", c.client_id, " message writer: "+err.Error())
 				break
 			}
 		case <-ticker.C:
 			c.connection.SetWriteDeadline(time.Now().Add(write_wait))
 			err := c.connection.WriteMessage(websocket.PingMessage, nil)
 			if err != nil {
-				fmt.Fprintln(os.Stderr, "Error at ping writer: "+err.Error())
+				fmt.Fprintln(os.Stderr, "Error at client ", c.client_id, " ping writer: "+err.Error())
 				break
 			}
 			c.ping_start = time.Now()

@@ -1,5 +1,4 @@
 v0.4: Euchre game
- n: Viewer updates stored in game base => backend sends viewer updates
  o: Proper viewer support for fiddlesticks
  p: Proper viewer support for euchre
  q: Abstract moves dialog
