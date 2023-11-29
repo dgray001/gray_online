@@ -18,6 +18,7 @@ export declare interface CanvasBoardInitializationData {
   size: Point2D;
   max_scale: number;
   draw: (ctx: CanvasRenderingContext2D, transform: BoardTransformData) => {};
+  mousemove: (m: Point2D, transform: BoardTransformData) => {};
 }
 
 /** Data how the board is transformed */
@@ -44,6 +45,7 @@ export class DwgCanvasBoard extends DwgElement {
     arrow_left: false,
     arrow_right: false,
   };
+  mouse: Point2D = {x: 0, y: 0};
 
   constructor() {
     super();
@@ -65,24 +67,27 @@ export class DwgCanvasBoard extends DwgElement {
     this.canvas.width = data.size.x;
     this.canvas.height = data.size.y;
     this.cursor.src = '/images/cursors/cursor.png';
-    setInterval(() => {
-      this.tick();
-      // TODO: ensure last frame is done drawing (need to do tick either way)
-      this.ctx.resetTransform();
-      this.ctx.fillStyle = "black";
-      this.ctx.fillRect(0, 0, this.data.size.x, this.data.size.y);
-      this.ctx.translate(-this.transform.view.x, -this.transform.view.y);
-      this.ctx.scale(this.transform.scale, this.transform.scale);
-      this.data.draw(this.ctx, this.transform);
-    }, 100);
     this.addEventListener('wheel', (e: WheelEvent) => {
       const zoom = 1 + e.deltaY / 250;
       this.setScale(this.transform.scale / zoom);
+      this.data.mousemove({
+        x: (this.mouse.x + this.transform.view.x) / this.transform.scale,
+        y: (this.mouse.y + this.transform.view.y) / this.transform.scale,
+      }, this.transform);
     });
     this.addEventListener('mousemove', (e: MouseEvent) => {
       this.hovered = true;
       this.cursor.style.setProperty('--x', `${e.clientX.toString()}px`);
       this.cursor.style.setProperty('--y', `${e.clientY.toString()}px`);
+      const rect = this.canvas.getBoundingClientRect();
+      this.mouse = {
+        x: (e.clientX - rect.left),
+        y: (e.clientY - rect.top),
+      };
+      this.data.mousemove({
+        x: (this.mouse.x + this.transform.view.x) / this.transform.scale,
+        y: (this.mouse.y + this.transform.view.y) / this.transform.scale,
+      }, this.transform);
     });
     this.addEventListener('mouseenter', (e: MouseEvent) => {
       this.hovered = true;
@@ -135,24 +140,46 @@ export class DwgCanvasBoard extends DwgElement {
           break;
       }
     });
+    await until(() => !!this.canvas.getBoundingClientRect().width);
+    setInterval(() => {
+      this.tick();
+      // TODO: ensure last frame is done drawing (need to do tick either way)
+      this.ctx.resetTransform();
+      this.ctx.fillStyle = "black";
+      this.ctx.fillRect(0, 0, this.data.size.x, this.data.size.y);
+      this.ctx.translate(-this.transform.view.x, -this.transform.view.y);
+      this.ctx.scale(this.transform.scale, this.transform.scale);
+      this.data.draw(this.ctx, this.transform);
+    }, 100);
   }
 
   private tick() {
     const d_view = {x: 0, y: 0};
     const arrow_key_speed = 50 * this.transform.scale;
+    let moved = false;
     if (this.holding_keys.arrow_up) {
       d_view.y -= arrow_key_speed;
+      moved = true;
     }
     if (this.holding_keys.arrow_down) {
       d_view.y += arrow_key_speed;
+      moved = true;
     }
     if (this.holding_keys.arrow_left) {
       d_view.x -= arrow_key_speed;
+      moved = true;
     }
     if (this.holding_keys.arrow_right) {
       d_view.x += arrow_key_speed;
+      moved = true;
     }
-    this.setView({x: this.transform.view.x + d_view.x, y: this.transform.view.y + d_view.y});
+    if (moved) {
+      this.setView({x: this.transform.view.x + d_view.x, y: this.transform.view.y + d_view.y});
+      this.data.mousemove({
+        x: (this.mouse.x + this.transform.view.x) / this.transform.scale,
+        y: (this.mouse.y + this.transform.view.y) / this.transform.scale,
+      }, this.transform);
+    }
   }
 
   private setView(view: Point2D) {

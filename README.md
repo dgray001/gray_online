@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.3q: Canvas board
+v0.3r: Risq hover logic
 
 ## Dev Use
 
