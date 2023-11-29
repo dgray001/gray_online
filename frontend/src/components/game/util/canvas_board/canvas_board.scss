@@ -1,4 +1,26 @@
+
 dwg-canvas-board {
   background-color: black;
+  cursor: none;
   border: 1px solid white;
+  display: block;
+  overflow: hidden;
+
+  #canvas {
+    --h: 0px;
+    --w: 0px;
+    height: var(--h);
+    position: relative;
+    width: var(--w);
+  }
+
+  #cursor {
+    --x: -120px;
+    --y: -120px;
+    left: var(--x);
+    position: absolute;
+    top: var(--y);
+    user-select: none;
+    z-index: 2;
+  }
 }

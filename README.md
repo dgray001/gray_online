@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.3p: Risq skeleton
+v0.3q: Canvas board
 
 ## Dev Use
 

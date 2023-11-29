@@ -1,17 +1,22 @@
 import {DwgElement} from '../../../dwg_element';
 import {UpdateMessage} from '../../data_models';
 import {drawHexagon} from '../../util/canvas_util';
+import {BoardTransformData, DwgCanvasBoard} from '../../util/canvas_board/canvas_board';
+import {Point2D} from '../../util/objects2d';
 
 import html from './risq.html';
 import {GameRisq} from './risq_data';
 
 import './risq.scss';
+import '../../util/canvas_board/canvas_board';
+
+const HEXAGON_RADIUS = 50;
 
 export class DwgRisq extends DwgElement {
-  board: HTMLCanvasElement;
+  board: DwgCanvasBoard;
 
-  ctx: CanvasRenderingContext2D;
-  scale = 1;
+  board_size = 12; // radius from center hexagon
+  canvas_center: Point2D = {x: 0, y: 0};
 
   constructor() {
     super();
@@ -19,40 +24,45 @@ export class DwgRisq extends DwgElement {
     this.configureElement('board');
   }
 
-  protected override parsedCallback(): void {
-    if (!this.board.getContext) {
-      console.error('Browser does not support canvas; cannot draw board');
-      return;
+  private draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData) {
+    ctx.strokeStyle = "green";
+    ctx.lineWidth = 4;
+    for (let j = -this.board_size; j <= this.board_size; j++) {
+      const i_start = Math.max(-this.board_size, -(this.board_size + j));
+      const i_end = Math.min(this.board_size, (this.board_size - j));
+      for (let i = i_start; i <= i_end; i++) {
+        const center = {
+          x: 1.732 * (i + 0.5 * j + this.board_size + 0.5) * HEXAGON_RADIUS + this.canvas_center.x / transform.scale,
+          y: 1.5 * (j + this.board_size + 0.5) * HEXAGON_RADIUS + 0.25 * HEXAGON_RADIUS + this.canvas_center.y / transform.scale,
+        };
+        drawHexagon(ctx, center, HEXAGON_RADIUS);
+      }
     }
-    this.ctx = this.board.getContext('2d');
-    setInterval(() => {this.draw();}, 100);
-    this.board.addEventListener('wheel', (e: WheelEvent) => {
-      const zoom = 1 + e.deltaY/200;
-      this.setScale(this.scale * zoom);
-    });
-  }
-
-  static MAX_SCALE = 2.5;
-  private setScale(scale: number) {
-    if (scale < 1/DwgRisq.MAX_SCALE) {
-      scale = 1/DwgRisq.MAX_SCALE;
-    } else if (scale > DwgRisq.MAX_SCALE) {
-      scale = DwgRisq.MAX_SCALE;
-    }
-    this.scale = scale;
-    this.ctx.resetTransform();
-    this.ctx.scale(this.scale, this.scale);
-  }
-
-  private draw() {
-    this.ctx.fillStyle = "black";
-    this.ctx.fillRect(0, 0, 700/this.scale, 700/this.scale);
-    this.ctx.strokeStyle = "green";
-    this.ctx.lineWidth = 4;
-    drawHexagon(this.ctx, 100/this.scale, 120/this.scale, 50);
+    ctx.fillStyle = "red";
+    ctx.fillRect(
+      (this.canvas_center.x + transform.view.x) / transform.scale - 5,
+      (this.canvas_center.y + transform.view.y) / transform.scale - 5,
+    10, 10);
   }
 
   initialize(game: GameRisq, client_id: number): void {
+    // TODO: set board size from game
+    const canvas_size = {
+      x: 1.732 * HEXAGON_RADIUS * (2 * this.board_size + 1),
+      y: 1.5 * HEXAGON_RADIUS * (2 * this.board_size + 1) + 0.5 * HEXAGON_RADIUS,
+    };
+    this.board.initialize({
+      size: canvas_size,
+      max_scale: 1.8,
+      draw: this.draw.bind(this),
+    }).then(() => {
+      const canvas_rect = this.board.getBoundingClientRect();
+      this.canvas_center = {
+        x: 0.5 * Math.min(canvas_size.x, canvas_rect.width),
+        y: 0.5 * Math.min(canvas_size.y, canvas_rect.height),
+      };
+      console.log(canvas_rect, this.canvas_center);
+    });
   }
 
   async gameUpdate(update: UpdateMessage): Promise<void> {
