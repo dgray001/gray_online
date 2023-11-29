@@ -1,5 +1,5 @@
-import { until } from '../../../../scripts/util';
-import {DwgElement} from '../../../dwg_element';
+import { until } from '../../../../../scripts/util';
+import {DwgElement} from '../../../../dwg_element';
 import {EuchrePlayer, EuchreTeam} from '../euchre_data';
 
 import html from './euchre_player.html';

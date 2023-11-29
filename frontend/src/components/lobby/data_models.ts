@@ -52,6 +52,7 @@ export enum GameType {
   UNSPECIFIED = 0,
   FIDDLESTICKS = 1,
   EUCHRE = 2,
+  RISQ = 3,
 }
 
 /** Settings object for lobby room */

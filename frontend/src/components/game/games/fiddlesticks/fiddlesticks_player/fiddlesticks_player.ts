@@ -1,8 +1,8 @@
-import {DwgElement} from '../../../dwg_element';
-import {createMessage} from '../../../lobby/data_models';
+import {DwgElement} from '../../../../dwg_element';
+import {createMessage} from '../../../../lobby/data_models';
 import {FiddlesticksPlayer} from '../fiddlesticks_data';
-import {until, untilTimer} from '../../../../scripts/util';
-import {messageDialog} from '../../game';
+import {until, untilTimer} from '../../../../../scripts/util';
+import {messageDialog} from '../../../game';
 
 import html from './fiddlesticks_player.html';
 

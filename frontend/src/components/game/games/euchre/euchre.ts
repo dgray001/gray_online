@@ -1,9 +1,10 @@
-import {DwgElement} from '../../dwg_element';
-import {GameComponent, UpdateMessage} from '../data_models';
-import {DwgCardHand} from '../util/card_hand/card_hand';
-import {createMessage} from '../../lobby/data_models';
-import {clientOnMobile, until, untilTimer} from '../../../scripts/util';
-import {StandardCard, cardSuitToColor, cardToIcon, cardToImagePath, cardToName} from '../util/card_util';
+import {DwgElement} from '../../../dwg_element';
+import {GameComponent, UpdateMessage} from '../../data_models';
+import {DwgCardHand} from '../../util/card_hand/card_hand';
+import {createMessage} from '../../../lobby/data_models';
+import {clientOnMobile, until, untilTimer} from '../../../../scripts/util';
+import {StandardCard, cardSuitToColor, cardToIcon, cardToImagePath, cardToName} from '../../util/card_util';
+import {messageDialog} from '../../game';
 
 import html from './euchre.html';
 import {DwgEuchrePlayer} from './euchre_player/euchre_player';
@@ -11,9 +12,8 @@ import {BidChooseTrump, DealRound, DealerSubstitutesCard, GameEuchre, PlayCard, 
 
 import './euchre.scss';
 import './euchre_player/euchre_player';
-import '../../dialog_box/message_dialog/message_dialog';
-import '../util/card_hand/card_hand';
-import { messageDialog } from '../game';
+import '../../../dialog_box/message_dialog/message_dialog';
+import '../../util/card_hand/card_hand';
 
 export class DwgEuchre extends DwgElement implements GameComponent {
   round_number: HTMLSpanElement;

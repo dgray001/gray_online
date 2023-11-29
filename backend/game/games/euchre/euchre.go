@@ -127,6 +127,7 @@ func (g *GameEuchre) Valid() bool {
 	if g.game == nil || g.deck == nil {
 		return false
 	}
+	// TODO: implement
 	return true
 }
 

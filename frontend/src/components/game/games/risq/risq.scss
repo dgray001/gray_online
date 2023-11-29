@@ -1,0 +1,9 @@
+dwg-risq {
+  #board {
+    --size: 700px;
+    background-color: black;
+    border: 1px solid white;
+    height: var(--size);
+    width: var(--size);
+  }
+}

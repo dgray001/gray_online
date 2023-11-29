@@ -1,18 +1,17 @@
 v0.4: Euchre game
- o: Proper viewer support for fiddlesticks
- p: Proper viewer support for euchre
- q: Abstract moves dialog
- r: Proper moves dialog for fiddlesticks and euchre
- s: Abstract players dialog in game base
- t: Frontend styles / UX cleanup
-   => can play card with double click
- m: Euchre animations / styles (including mobile)
- u: Lobby rooms can just refresh specific rooms instead of recreating entire els
- v: Game info button in game base (left of game updates button) => has all game specific settings and description, etc...
- w: Host can set description of room
- x: Can see version number of app in-game somehow
+ p: Proper viewer support for fiddlesticks
+ q: Euchre is playable with proper animations / styles
+ r: Proper viewer support for euchre
+ s: Abstract moves dialog
+ t: Proper moves dialog for fiddlesticks and euchre
+ u: Abstract players dialog in game base
+ v: Lobby rooms can just refresh specific rooms instead of recreating entire els
+ w: Game info button in game base (left of game updates button) => has all game specific settings and description, etc...
+ x: Host can set description of room
+ y: Can see version number of app in-game somehow
+ z: Backend removes game after 10 minutes of everyone DC'ing
 
- - Backend removes games after 10 minutes of everyone DC'ing
+ - Can play card with double click / tap
 
 v0.5: More card games
  - Add 2 more card games

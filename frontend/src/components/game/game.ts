@@ -10,8 +10,9 @@ import {handleMessage} from './message_handler';
 import html from './game.html';
 
 import './game.scss';
-import './fiddlesticks/fiddlesticks';
-import './euchre/euchre';
+import './games/fiddlesticks/fiddlesticks';
+import './games/euchre/euchre';
+import './games/risq/risq';
 import './game_history_dialog/game_history_dialog';
 import './players_dialog/players_dialog';
 import '../dialog_box/confirm_dialog/confirm_dialog';
@@ -173,7 +174,7 @@ export class DwgGame extends DwgElement {
       return false;
     }
     this.game = serverResponseToGame(response.result, this.connection_metadata.client_id);
-    const setGame = async (component: 'dwg-fiddlesticks' | 'dwg-euchre') => {
+    const setGame = async (component: 'dwg-fiddlesticks' | 'dwg-euchre' | 'dwg-risq') => {
       const game_el = document.createElement(component);
       this.game_container.replaceChildren(game_el);
       await until(() => game_el.fully_parsed);
@@ -194,6 +195,9 @@ export class DwgGame extends DwgElement {
         break;
       case GameType.EUCHRE:
         await setGame('dwg-euchre');
+        break;
+      case GameType.RISQ:
+        await setGame('dwg-risq');
         break;
       case GameType.UNSPECIFIED:
       default:

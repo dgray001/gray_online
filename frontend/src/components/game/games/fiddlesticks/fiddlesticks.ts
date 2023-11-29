@@ -1,19 +1,19 @@
-import {DwgElement} from '../../dwg_element';
-import {GameComponent, UpdateMessage} from '../data_models';
-import {StandardCard, cardToIcon, cardToImagePath, cardToName} from '../util/card_util';
+import {DwgElement} from '../../../dwg_element';
+import {GameComponent, UpdateMessage} from '../../data_models';
+import {StandardCard, cardToIcon, cardToImagePath, cardToName} from '../../util/card_util';
 import {DwgFiddlesticksPlayer} from './fiddlesticks_player/fiddlesticks_player';
-import {DwgCardHand} from '../util/card_hand/card_hand';
-import {createMessage} from '../../lobby/data_models';
-import {clientOnMobile, until, untilTimer} from '../../../scripts/util';
-import {messageDialog} from '../game';
+import {DwgCardHand} from '../../util/card_hand/card_hand';
+import {createMessage} from '../../../lobby/data_models';
+import {clientOnMobile, until, untilTimer} from '../../../../scripts/util';
+import {messageDialog} from '../../game';
 
 import html from './fiddlesticks.html';
 import {GameFiddlesticks, DealRound, PlayerBet, PlayCard} from './fiddlesticks_data';
 
 import './fiddlesticks.scss';
 import './fiddlesticks_player/fiddlesticks_player';
-import '../../dialog_box/message_dialog/message_dialog';
-import '../util/card_hand/card_hand';
+import '../../../dialog_box/message_dialog/message_dialog';
+import '../../util/card_hand/card_hand';
 
 export class DwgFiddlesticks extends DwgElement implements GameComponent {
   round_number: HTMLSpanElement;

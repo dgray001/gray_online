@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.3o: Initial viewer support
+v0.3p: Risq skeleton
 
 ## Dev Use
 
