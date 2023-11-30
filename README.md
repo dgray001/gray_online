@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.3u: Fullscreen button
+v0.3v: Fiddlesticks working viewer support
 
 ## Dev Use
 

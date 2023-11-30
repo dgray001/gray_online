@@ -33,7 +33,7 @@ function cardSuitToRGB(suit: number): string {
 }
 
 /** Maps suits to their string name */
-function cardSuitToName(suit: number): string {
+export function cardSuitToName(suit: number): string {
   switch(suit) {
     case 1:
       return 'Diamond';

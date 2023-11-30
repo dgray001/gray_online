@@ -16,7 +16,7 @@ dwg-fiddlesticks {
   > #header-messages-container {
     --width: calc(var(--width-messages) - 2em);
     font-size: var(--font-size-medium);
-    left: calc(0.5 * (100% - var(--table-diameter)) - var(--width-messages) + 1em);
+    left: calc(0.5 * (100% - var(--table-diameter)) - var(--width-messages) + 0.2em);
     line-height: 1.7em;
     position: absolute;
     top: 1em;
@@ -44,7 +44,7 @@ dwg-fiddlesticks {
     --height: calc(var(--line-height) + var(--card-image-scale) * var(--width));
 
     border-radius: 0.4em;
-    left: calc(1em + 0.5 * (100% + var(--table-diameter)));
+    left: calc(1.8em + 0.5 * (100% + var(--table-diameter)));
     line-height: var(--line-height);
     font-size: var(--font-size-medium);
     height: var(--height);

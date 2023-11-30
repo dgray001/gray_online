@@ -141,6 +141,21 @@ func (g *GameEuchre) PlayerAction(action game.PlayerAction) {
 	}
 	player_id := player.Player_id
 	switch action.Kind {
+	case "pass":
+		if !g.bidding && !g.bidding_choose_trump {
+			player.AddFailedUpdateShorthand("pass-failed", "Not currently bidding")
+			return
+		}
+		if player_id != g.turn {
+			player.AddFailedUpdateShorthand("bid-failed",
+				fmt.Sprintf("Not %d player's turn but %d player's turn", player_id, g.turn))
+			return
+		}
+		if g.bidding_choose_trump && g.turn == g.dealer {
+			player.AddFailedUpdateShorthand("pass-failed", "Dealer is stuck and must choose trump")
+			return
+		}
+		g.executePass(player)
 	case "bid":
 		if !g.bidding {
 			player.AddFailedUpdateShorthand("bid-failed", "Not currently bidding")
@@ -261,6 +276,14 @@ func (g *GameEuchre) PlayerAction(action game.PlayerAction) {
 	default:
 		fmt.Fprintln(os.Stderr, "Unknown game update type", action.Kind)
 	}
+}
+
+func (g *GameEuchre) executePass(player *game.Player) {
+	if g.turn == g.dealer {
+		// TODO: implement
+	}
+	g.turn++
+	g.resolveTurn()
 }
 
 func (g *GameEuchre) executeBid(player *game.Player, going_alone bool) {

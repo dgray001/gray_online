@@ -5,6 +5,7 @@ import {DwgFiddlesticksPlayer} from './fiddlesticks_player/fiddlesticks_player';
 import {DwgCardHand} from '../../util/card_hand/card_hand';
 import {createMessage} from '../../../lobby/data_models';
 import {clientOnMobile, until, untilTimer} from '../../../../scripts/util';
+import {modulus} from '../../../../scripts/math';
 import {DwgGame, messageDialog} from '../../game';
 
 import html from './fiddlesticks.html';
@@ -63,7 +64,8 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     }
   }
 
-  initialize(abstract_game: DwgGame, game: GameFiddlesticks, client_id: number): void {
+  initialize(abstract_game: DwgGame, game: GameFiddlesticks): void {
+    this.player_id = abstract_game.player_id;
     this.game = game;
     this.player_els = [];
     for (const [player_id, player] of game.players.entries()) {
@@ -71,22 +73,16 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
       player_el.initialize(player);
       this.player_container.appendChild(player_el);
       this.player_els.push(player_el);
-      if (player.player.client_id === client_id) {
-        this.player_id = player_id;
+      if (this.player_id === player_id) {
         player_el.setClientPlayer();
       }
     }
-    // TODO: if view just don't use player_id
-    if (this.player_id > -1) {
-      for (let i = 0; i < this.player_els.length; i++) {
-        let id = this.player_id + i;
-        if (id >= this.player_els.length) {
-          id -= this.player_els.length;
-        }
-        this.game.players[id].order = i;
-        this.player_els[id].style.setProperty('--order', i.toString());
-        this.player_els[id].style.setProperty('--num-players', this.player_els.length.toString());
-      }
+    for (let i = 0; i < this.player_els.length; i++) {
+      const id = modulus(this.player_id + i, this.game.players.length);
+      const order = abstract_game.is_player ? i : i + 0.5;
+      this.game.players[id].order = order;
+      this.player_els[id].style.setProperty('--order', order.toString());
+      this.player_els[id].style.setProperty('--num-players', this.player_els.length.toString());
     }
     this.trick_cards.style.setProperty('--num-players', this.player_els.length.toString());
     if (game.game_base.game_ended) {
@@ -143,7 +139,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     this.bets_number.innerText = bets.toString();
   }
 
-  setTrumpImage(trump: StandardCard) {
+  private setTrumpImage(trump: StandardCard) {
     this.trump_card_img.src = cardToImagePath(trump);
     this.trump_card_img.classList.add('show');
   }
@@ -181,7 +177,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
   }
 
   private async applyDealRound(data: DealRound) {
-    const animation_time = Math.min(150 * data.cards.length, 4000) + 250;
+    const animation_time = !!data.cards ? Math.min(150 * data.cards.length, 4000) + 250 : 0;
     this.game.betting = true;
     this.game.dealer = data.dealer;
     this.game.round = data.round;
@@ -207,10 +203,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     if (this.game.round === this.game.max_round) {
       this.game.rounds_increasing = false;
     }
-    this.game.turn = this.game.dealer + 1;
-    if (this.game.turn >= this.game.players.length) {
-      this.game.turn -= this.game.players.length;
-    }
+    this.game.turn = (this.game.dealer + 1) % this.game.players.length;
     this.game.trick_leader = this.game.turn;
     for (const [player_id, player] of this.game.players.entries()) {
       player.bet = -1;
@@ -230,10 +223,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     await this.player_els[data.player_id].setBetAnimation(data.amount);
     this.game.betting = this.game.turn !== this.game.dealer;
     this.status_container.innerText = '';
-    this.game.turn++;
-    if (this.game.turn >= this.game.players.length) {
-      this.game.turn -= this.game.players.length;
-    }
+    this.game.turn = (this.game.turn + 1) % this.game.players.length;
     this.updateBetsContainer();
     if (this.game.betting) {
       this.player_els[this.game.turn].betting();
@@ -265,14 +255,10 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
       this.players_cards.playCard(data.index);
       this.players_cards.can_play = false;
     }
-    // TODO: handle viewers properly
     await this.addPlayedCard(data);
     await untilTimer(1000);
     this.status_container.innerText = '';
-    this.game.turn++;
-    if (this.game.turn >= this.game.players.length) {
-      this.game.turn -= this.game.players.length;
-    }
+    this.game.turn = (this.game.turn + 1) % this.game.players.length;
     if (this.game.turn !== this.game.trick_leader) {
       this.player_els[this.game.turn].playing();
       this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
@@ -300,10 +286,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     if (winning_index >= 0 && winning_index < this.trick_card_els.length) {
       this.trick_card_els[winning_index].style.zIndex = '2';
     }
-    this.game.turn = this.game.trick_leader + winning_index;
-    if (this.game.turn >= this.game.players.length) {
-      this.game.turn -= this.game.players.length;
-    }
+    this.game.turn = (this.game.trick_leader + winning_index) % this.game.players.length;
     this.game.trick_leader = this.game.turn;
     for (const trick_card_el of this.trick_card_els) {
       trick_card_el.classList.remove('played');

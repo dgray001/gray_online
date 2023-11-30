@@ -71,6 +71,9 @@ export function handleMessage(game: DwgGame, message: ServerMessage) {
 
 let running_updates = false;
 async function handleGameUpdate(game: DwgGame, message: ServerMessage) {
+  if (!game.game_el) {
+    return;
+  }
   const sender_split = message.sender.split('-');
   if (sender_split.length < 3) {
     return;

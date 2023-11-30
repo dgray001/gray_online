@@ -3,7 +3,7 @@ import {DwgGame} from "./game";
 
 /** Interface for components that represent a frontend game */
 export declare interface GameComponent {
-  initialize(abstract_game: DwgGame, game: Game, client_id: number): void;
+  initialize(abstract_game: DwgGame, game: Game): void;
   gameUpdate(update: UpdateMessage): Promise<void>;
 }
 
@@ -11,6 +11,9 @@ export declare interface GameComponent {
 export declare interface Game {
   game_base: GameBase;
   // ... game specific fields
+  players: {
+    player: GamePlayer;
+  }[];
 }
 
 /** Update message for clients (sent by server) */

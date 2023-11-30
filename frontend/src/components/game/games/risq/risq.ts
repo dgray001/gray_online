@@ -181,7 +181,7 @@ export class DwgRisq extends DwgElement {
     return row[index.y];
   }
 
-  initialize(abstract_game: DwgGame, game: GameRisq, client_id: number): void {
+  initialize(abstract_game: DwgGame, game: GameRisq): void {
     abstract_game.setPadding('0px');
     this.game = game;
     const canvas_size = {

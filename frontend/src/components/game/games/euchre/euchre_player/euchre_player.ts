@@ -1,4 +1,4 @@
-import { until } from '../../../../../scripts/util';
+import {until} from '../../../../../scripts/util';
 import {DwgElement} from '../../../../dwg_element';
 import {EuchrePlayer, EuchreTeam} from '../euchre_data';
 

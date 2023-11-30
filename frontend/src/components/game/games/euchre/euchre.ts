@@ -3,7 +3,8 @@ import {GameComponent, UpdateMessage} from '../../data_models';
 import {DwgCardHand} from '../../util/card_hand/card_hand';
 import {createMessage} from '../../../lobby/data_models';
 import {clientOnMobile, until, untilTimer} from '../../../../scripts/util';
-import {StandardCard, cardSuitToColor, cardToIcon, cardToImagePath, cardToName} from '../../util/card_util';
+import {modulus} from '../../../../scripts/math';
+import {StandardCard, cardSuitToColor, cardSuitToName, cardToIcon, cardToImagePath, cardToName} from '../../util/card_util';
 import {DwgGame, messageDialog} from '../../game';
 
 import html from './euchre.html';
@@ -60,7 +61,8 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     }
   }
 
-  initialize(abstract_game: DwgGame, game: GameEuchre, client_id: number): void {
+  initialize(abstract_game: DwgGame, game: GameEuchre): void {
+    this.player_id = abstract_game.player_id;
     this.game = game;
     this.player_els = [];
     for (const [player_id, player] of game.players.entries()) {
@@ -68,29 +70,22 @@ export class DwgEuchre extends DwgElement implements GameComponent {
       player_el.initialize(player, getPlayersTeam(this.game, player_id));
       this.player_container.appendChild(player_el);
       this.player_els.push(player_el);
-      if (player.player.client_id === client_id) {
-        this.player_id = player_id;
+      if (this.player_id === player_id) {
         player_el.setClientPlayer();
       }
     }
-    // TODO: if view just don't use player_id
-    if (this.player_id > -1) {
-      for (let i = 0; i < this.player_els.length; i++) {
-        let id = this.player_id + i;
-        if (id >= this.player_els.length) {
-          id -= this.player_els.length;
-        }
-        this.game.players[id].order = i;
-        this.player_els[id].style.setProperty('--order', i.toString());
-        this.player_els[id].style.setProperty('--num-players', this.player_els.length.toString());
-      }
+    for (let i = 0; i < this.player_els.length; i++) {
+      const id = modulus(this.player_id + i, this.game.players.length);
+      const order = abstract_game.is_player ? i : i + 0.5;
+      this.game.players[id].order = order;
+      this.player_els[id].style.setProperty('--order', order.toString());
+      this.player_els[id].style.setProperty('--num-players', this.player_els.length.toString());
     }
     this.trick_cards.style.setProperty('--num-players', this.player_els.length.toString());
     if (game.game_base.game_ended) {
       // TODO: show ended game state
     }
     else if (game.game_base.game_started) {
-      // TODO: implement
       this.round_number.innerText = game.round.toString();
       for (const [player_id, player_el] of this.player_els.entries()) {
         player_el.gameStarted(game.bidding, !game.game_base.game_ended && player_id === game.turn, !game.game_base.game_ended && player_id === game.dealer);
@@ -108,17 +103,27 @@ export class DwgEuchre extends DwgElement implements GameComponent {
         if (game.bidding) {
           this.setCardFaceUpImage(game.card_face_up);
         } else if (game.bidding_choosing_trump) {
-          // TODO: back of card img
+          this.setBackOfCard();
         } else {
-          // TODO: trump img
+          this.setTrumpImage();
         }
       } else {
         this.current_trick = game.teams.reduce((a, b) => a + b.tricks, 1);
         this.trick_number.innerText = this.current_trick.toString();
         this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
-        // TODO: trump img
+        this.setTrumpImage();
       }
     }
+  }
+
+  private setBackOfCard() {
+    this.card_face_up_img.src = `/images/cards/card_back.png`;
+    this.card_face_up_img.classList.add('show');
+  }
+
+  private setTrumpImage() {
+    this.card_face_up_img.src = `/images/cards/suit_${cardSuitToName(this.game.trump_suit)}s.png`;
+    this.card_face_up_img.classList.add('show');
   }
 
   async gameUpdate(update: UpdateMessage): Promise<void> {
@@ -170,7 +175,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
   }
 
   private async applyDealRound(data: DealRound) {
-    const animation_time = Math.min(150 * data.cards.length, 4000) + 250;
+    const animation_time = !!data.cards ? Math.min(150 * data.cards.length, 4000) + 250 : 0;
     this.game.bidding = true;
     this.game.dealer = data.dealer;
     this.game.round = data.round;
@@ -240,7 +245,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     this.resolveTurn();
     this.game.trick_leader = this.game.turn;
     this.game.trump_suit = data.trump_suit;
-    // TODO: set trump img
+    this.setTrumpImage();
     this.player_els[this.game.turn].playing();
     this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
   }
@@ -249,7 +254,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     // TODO: animation
     this.game.dealer_substituting_card = false;
     this.player_els[data.player_id].substitutedCard();
-    // TODO: set trump img
+    this.setTrumpImage();
     this.player_els[this.game.turn].playing();
     this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
   }
@@ -264,7 +269,6 @@ export class DwgEuchre extends DwgElement implements GameComponent {
       this.players_cards.playCard(data.index);
       this.players_cards.can_play = false;
     }
-    // TODO: handle viewers properly
     const card_el = document.createElement('div');
     const card_el_img = document.createElement('img');
     card_el_img.src = cardToImagePath(data.card);

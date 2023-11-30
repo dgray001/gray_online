@@ -1,21 +1,17 @@
 v0.4: Euchre game
- p: Proper viewer support for fiddlesticks
- q: Euchre is playable with proper animations / styles
- r: Proper viewer support for euchre
- s: Abstract moves dialog
- t: Proper moves dialog for fiddlesticks and euchre
- u: Abstract players dialog in game base
- v: Lobby rooms can just refresh specific rooms instead of recreating entire els
- w: Game info button in game base (left of game updates button) => has all game specific settings and description, etc...
- x: Host can set description of room
- y: Can see version number of app in-game somehow
- z: Backend removes game after 10 minutes of everyone DC'ing
+ w: Euchre is playable with proper animations / styles / viewer support
+ x: Can see version number of app in-game somehow
+ y: Skeleton game info button (left of updates)
 
-v0.5: More card games
- - Add 2 more card games
-    => one should be poker => start with chips and winner is one with all chips => initially just 5 card draw
-    => other should be egyptian rat crap with fun slap animations
-    => abstract out the table / players / played card component and animations
+v0.5: Can launch risq
+ - Basic orders for risq (move, gather, build)
+ - Abstract moves dialog
+ - Proper moves dialog for fiddlesticks and euchre
+ - Abstract players dialog in game base
+ - Lobby rooms can just refresh specific rooms instead of recreating entire els
+ - Implement game info button => has game specific settings, description, etc...
+ - Host can set description of room
+ - Backend removes game after 10 minutes of everyone DC'ing
  - Can launch games with AI (all games must handle)
  - Timed turns (or not) and can pause game if timed
  - AI takes over when player AFK
@@ -23,32 +19,32 @@ v0.5: More card games
  - Can resign from game => AI takes over
  - Loaders for client requests in lobby: room-create, room-join, room-leave, room-rename
  - Player's cards can automatically resize => listener on game div resize
+
+v0.6: Advanced risq
+ - Setup db in prod and dev
+ - Can create profile / login
+ - Reporting => admin login can access admin page to see reports, etc.
+ - Can report bugs / email admin / etc.
+ - Advanced risq mechanics
+    => various terrains / resources
+    => various buildings
+    => various units / can assign formations/etc. to control how they fight
+ - Can make friends / personal DMs (all DMs and chatboxes saved)
+ - Can see other people's stats
+
+v0.7: Savable games
+ - Can save games if everyone logged in and all players agree
+ - Can launch a saved game if logged in
+ - Risq is fully playable with custom settings
  - Upgraded chatbox => emoji selector, taunts, message id, turn off emoticon converter
  - Upgrade frontend animations for all games (add sound effects)
 
-v0.6: Can launch risq
- - Hexagonal board on frontend that can be scrolled and translated
- - Basic turn logic
- - Create db tables and design rules
- - Initial backend logic
- - Initial frontend logic / animations / styles
- - Can make friends / personal DMs (all DMs and chatboxes saved)
- - Can see other people's shats
+v0.8: More card games
+ - Poker => save chips?
+ - Egyptian rats crap
+ - Abstract card table, card player, and trick cards / animations
 
-v0.7: Advanced risq
- - Can save games if everyone logged in and all players agree
- - Reporting => admin login can access admin page to see reports, etc.
- - Can report bugs / email admin / etc.
- - Advanced risq rules / variations
-
-v0.8: Chess games
- - Various esoteric chess rules / basic chess rules as well
-
-v0.9: Other esoteric games
- - Add 4 esoteric board games not found elsewhere on internet
+v0.9: Add more esoteric games
 
 Games to add:
- - Euchre
- - Poker(s) => save chips?
- - Risq
  - Chess with esoteric variations

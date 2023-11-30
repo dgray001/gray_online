@@ -47,6 +47,7 @@ export class DwgGame extends DwgElement {
   socket: WebSocket;
   connection_metadata: ConnectionMetadata;
   game_id = 0;
+  player_id = -1;
   is_player = false;
   game: Game;
 
@@ -201,7 +202,16 @@ export class DwgGame extends DwgElement {
       this.game_container.replaceChildren(game_el);
       await until(() => game_el.fully_parsed);
       this.game_el = game_el; // assign after attaching to dom to keep TS happy
-      this.game_el.initialize(this, this.game, this.connection_metadata.client_id);
+      this.player_id = -1;
+      this.is_player = false;
+      for (const [player_id, player] of this.game.players.entries()) {
+        if (player.player.client_id === this.connection_metadata.client_id) {
+          this.player_id = player_id;
+          this.is_player = true;
+          break;
+        }
+      }
+      this.game_el.initialize(this, this.game);
       game_el.addEventListener('game_update', (e: CustomEvent<string>) => {
         if (this.game.game_base.game_ended) {
           console.log('Game already over');

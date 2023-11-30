@@ -235,8 +235,8 @@ export class DwgCardHand extends DwgElement {
       const rect = card.el.getBoundingClientRect();
       if (p.x < this.dragging_data.start.x && card.i_dom > 0) {
         const left_card = this.cards.get('i_dom', card.i_dom - 1);
-        const left_rect = left_card.el.getBoundingClientRect();
-        if (!!left_card && rect.x < left_rect.x) {
+        const left_rect = left_card?.el?.getBoundingClientRect();
+        if (!!left_card && rect.x < left_rect?.x) {
           const dif = this.dragging_data.start_rect.x - left_rect.x;
           this.dragging_data.start_rect.x -= dif;
           this.dragging_data.start.x -= dif;
@@ -249,8 +249,8 @@ export class DwgCardHand extends DwgElement {
         }
       } else if (p.x > this.dragging_data.start.x && card.i_dom < this.cards.size() - 1) {
         const right_card = this.cards.get('i_dom', card.i_dom + 1);
-        const right_rect = right_card.el.getBoundingClientRect();
-        if (!!right_card && rect.x > right_rect.x) {
+        const right_rect = right_card?.el?.getBoundingClientRect();
+        if (!!right_card && rect.x > right_rect?.x) {
           const dif = right_rect.x - this.dragging_data.start_rect.x;
           this.dragging_data.start_rect.x += dif;
           this.dragging_data.start.x += dif;
