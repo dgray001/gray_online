@@ -30,22 +30,25 @@ export class DwgRisq extends DwgElement {
   private draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData) {
     ctx.strokeStyle = "rgba(250, 250, 250, 0.9)";
     ctx.lineWidth = 2;
-    for (const [j, row] of this.game.spaces.entries()) {
-      for (const [i, space] of row.entries()) {
+    for (const row of this.game.spaces) {
+      for (const space of row) {
         space.center = this.coordinateToCanvas(space.coordinate, transform.scale);
-        if (space.clicked) {
-          ctx.fillStyle = "rgba(210, 210, 210, 0.4)";
-        } else if (space.hovered) {
-          ctx.fillStyle = "rgba(190, 190, 190, 0.3)";
-        } else if (space.hovered_neighbor) {
-          ctx.fillStyle = "rgba(240, 240, 100, 0.2)";
-        } else if (space.hovered_row) {
-          ctx.fillStyle = "rgba(240, 190, 140, 0.1)";
+        if (space.visibility > 0) {
+          ctx.fillStyle = "green";
         } else {
           ctx.fillStyle = "transparent";
         }
         drawHexagon(ctx, space.center, HEXAGON_RADIUS);
         ctx.fill();
+        if (space.hovered) {
+          if (space.clicked) {
+            ctx.fillStyle = "rgba(210, 210, 210, 0.4)";
+          } else {
+            ctx.fillStyle = "rgba(190, 190, 190, 0.2)";
+          }
+          drawHexagon(ctx, space.center, HEXAGON_RADIUS);
+          ctx.fill();
+        }
       }
     }
     ctx.fillStyle = "red";

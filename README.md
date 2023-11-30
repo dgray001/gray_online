@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.3s: Risq initial board
+v0.3t: Risq starting positions
 
 ## Dev Use
 

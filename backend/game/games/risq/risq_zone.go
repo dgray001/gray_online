@@ -8,29 +8,29 @@ import (
 type RisqZone struct {
 	coordinate game_utils.Coordinate2D
 	building   *RisqBuilding
-	units      []*RisqUnit
+	units      map[uint64]*RisqUnit
 }
 
 func createRisqZone(i int, j int) *RisqZone {
 	zone := RisqZone{
 		coordinate: game_utils.Coordinate2D{X: i, Y: j},
 		building:   nil,
-		units:      make([]*RisqUnit, 0),
+		units:      make(map[uint64]*RisqUnit, 0),
 	}
 	return &zone
 }
 
-func (s *RisqZone) toFrontend() gin.H {
+func (z *RisqZone) toFrontend() gin.H {
 	zone := gin.H{
-		"coordinate": s.coordinate.ToFrontend(),
+		"coordinate": z.coordinate.ToFrontend(),
 	}
-	if s.building != nil && !s.building.deleted {
-		zone["building"] = s.building.toFrontend()
+	if z.building != nil && !z.building.deleted {
+		zone["building"] = z.building.toFrontend()
 	}
-	units := []gin.H{}
-	for _, unit := range s.units {
-		if unit != nil {
-			units = append(units, unit.toFrontend())
+	units := make(map[uint64]gin.H, 0)
+	for _, unit := range z.units {
+		if unit != nil && !unit.deleted {
+			units[unit.internal_id] = unit.toFrontend()
 		}
 	}
 	zone["units"] = units

@@ -3,6 +3,7 @@ package euchre
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/dgray001/gray_online/game"
 	"github.com/dgray001/gray_online/game/game_utils"
@@ -135,7 +136,7 @@ func (g *GameEuchre) PlayerAction(action game.PlayerAction) {
 	fmt.Println("player action:", action.Kind, action.Client_id, action.Action)
 	player := g.game.Players[uint64(action.Client_id)]
 	if player == nil {
-		fmt.Println("Invalid client id", action.Client_id)
+		fmt.Fprintln(os.Stderr, "Invalid client id", action.Client_id)
 		return
 	}
 	player_id := player.Player_id
@@ -258,7 +259,7 @@ func (g *GameEuchre) PlayerAction(action game.PlayerAction) {
 		}
 		g.executePlayCard(player, card_index)
 	default:
-		fmt.Println("Unknown game update type", action.Kind)
+		fmt.Fprintln(os.Stderr, "Unknown game update type", action.Kind)
 	}
 }
 

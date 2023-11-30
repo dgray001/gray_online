@@ -17,8 +17,10 @@ export declare interface RisqPlayer {
 /** Data describing a hexagonal space in risq */
 export declare interface RisqSpace {
   coordinate: Point2D;
+  visibility: number;
   zones: RisqZone[][];
   center: Point2D;
+  // purely frontend fields
   hovered: boolean;
   hovered_neighbor: boolean;
   hovered_row: boolean;
@@ -34,8 +36,26 @@ export declare interface RisqZone {
 
 /** Data describing a risq unit */
 export declare interface RisqUnit {
+  internal_id: number;
+  player_id: number;
+  unit_id: number;
+  max_health: number;
+  speed: number;
+  attack_type: number;
+  attack_blunt: number;
+  attack_piercing: number;
+  attack_magic: number;
+  defense_blunt: number;
+  defense_piercing: number;
+  defense_magic: number;
+  penetration_blunt: number;
+  penetration_piercing: number;
+  penetration_magic: number;
 }
 
-/** Data describing a risq unit */
+/** Data describing a risq building */
 export declare interface RisqBuilding {
+  internal_id: number;
+  player_id: number;
+  building_id: number;
 }

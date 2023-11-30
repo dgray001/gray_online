@@ -453,14 +453,14 @@ func (c *Client) writeMessages() {
 			}
 			err := c.connection.WriteJSON(message)
 			if err != nil {
-				fmt.Fprintln(os.Stderr, "Error at client ", c.client_id, " message writer: "+err.Error())
+				fmt.Fprintln(os.Stderr, "Error at client ", c.client_id, " message writer: ", err.Error())
 				break
 			}
 		case <-ticker.C:
 			c.connection.SetWriteDeadline(time.Now().Add(write_wait))
 			err := c.connection.WriteMessage(websocket.PingMessage, nil)
 			if err != nil {
-				fmt.Fprintln(os.Stderr, "Error at client ", c.client_id, " ping writer: "+err.Error())
+				fmt.Fprintln(os.Stderr, "Error at client ", c.client_id, " ping writer: ", err.Error())
 				break
 			}
 			c.ping_start = time.Now()

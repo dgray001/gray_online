@@ -3,6 +3,7 @@ package fiddlesticks
 import (
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 
 	"github.com/dgray001/gray_online/game"
@@ -120,7 +121,7 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 	fmt.Println("player action:", action.Kind, action.Client_id, action.Action)
 	player := f.game.Players[uint64(action.Client_id)]
 	if player == nil {
-		fmt.Println("Invalid client id", action.Client_id)
+		fmt.Fprintln(os.Stderr, "Invalid client id", action.Client_id)
 		return
 	}
 	player_id := player.Player_id
@@ -200,7 +201,7 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 		}
 		f.executePlayCard(player, card_index)
 	default:
-		fmt.Println("Unknown game update type", action.Kind)
+		fmt.Fprintln(os.Stderr, "Unknown game update type", action.Kind)
 	}
 }
 
