@@ -429,7 +429,7 @@ func (c *Client) readMessages() {
 			}
 			c.lobby.broadcast <- message
 		default:
-			fmt.Println("Message kind unknown: " + message.Kind)
+			fmt.Fprintln(os.Stderr, "Message kind unknown: "+message.Kind)
 		}
 	}
 }
@@ -454,6 +454,7 @@ func (c *Client) writeMessages() {
 			err := c.connection.WriteJSON(message)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "Error at client ", c.client_id, " message writer: ", err.Error())
+				c.deleted = true
 				break
 			}
 		case <-ticker.C:
@@ -461,6 +462,7 @@ func (c *Client) writeMessages() {
 			err := c.connection.WriteMessage(websocket.PingMessage, nil)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "Error at client ", c.client_id, " ping writer: ", err.Error())
+				c.deleted = true
 				break
 			}
 			c.ping_start = time.Now()

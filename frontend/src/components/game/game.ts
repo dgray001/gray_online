@@ -37,6 +37,9 @@ export class DwgGame extends DwgElement {
   open_chatbox_button: HTMLButtonElement;
   button_game_history: HTMLButtonElement;
   button_room_players: HTMLButtonElement;
+  button_fullscreen: HTMLButtonElement;
+  maximize_img: HTMLImageElement;
+  minimize_img: HTMLImageElement;
   button_exit: HTMLButtonElement;
 
   abort_controllers: AbortController[] = [];
@@ -64,10 +67,14 @@ export class DwgGame extends DwgElement {
     this.configureElement('open_chatbox_button');
     this.configureElement('button_game_history');
     this.configureElement('button_room_players');
+    this.configureElement('button_fullscreen');
+    this.configureElement('maximize_img');
+    this.configureElement('minimize_img');
     this.configureElement('button_exit');
   }
 
   protected override parsedCallback(): void {
+    this.minimize_img.classList.add('hide');
     document.addEventListener('keyup', (e) => {
       if (e.key === 'Enter') {
         this.toggleChatbox();
@@ -102,6 +109,17 @@ export class DwgGame extends DwgElement {
       players_dialog.setData({});
       this.appendChild(players_dialog);
     });
+    this.button_fullscreen.addEventListener('click', () => {
+      if (!!document.fullscreenElement) {
+        document.exitFullscreen();
+        this.maximize_img.classList.remove('hide');
+        this.minimize_img.classList.add('hide');
+      } else {
+        this.requestFullscreen();
+        this.maximize_img.classList.add('hide');
+        this.minimize_img.classList.remove('hide');
+      }
+    });
     this.button_exit.addEventListener('click', () => {
       const confirm_dialog = document.createElement('dwg-confirm-dialog');
       confirm_dialog.setData({question: 'Are you sure you want to exit?'});
@@ -123,6 +141,10 @@ export class DwgGame extends DwgElement {
         this.chatbox.focus();
       }
     });
+  }
+
+  setPadding(padding: string) {
+    this.game_container.style.setProperty('--padding', padding);
   }
 
   async launchGame(lobby: LobbyRoom, socket: WebSocket, connection_metadata: ConnectionMetadata, rejoining = false): Promise<boolean> {
@@ -179,7 +201,7 @@ export class DwgGame extends DwgElement {
       this.game_container.replaceChildren(game_el);
       await until(() => game_el.fully_parsed);
       this.game_el = game_el; // assign after attaching to dom to keep TS happy
-      this.game_el.initialize(this.game, this.connection_metadata.client_id);
+      this.game_el.initialize(this, this.game, this.connection_metadata.client_id);
       game_el.addEventListener('game_update', (e: CustomEvent<string>) => {
         if (this.game.game_base.game_ended) {
           console.log('Game already over');

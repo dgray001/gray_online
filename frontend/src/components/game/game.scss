@@ -43,6 +43,10 @@ dwg-game {
         > img {
           height: 100%;
           width: calc((100 / 130) * 100%);
+
+          &.hide {
+            display: none;
+          }
         }
       }
     }

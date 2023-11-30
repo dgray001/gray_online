@@ -157,6 +157,7 @@ func (r *LobbyRoom) gameBaseUpdates(game_base *game.GameBase, room_id_string str
 			break
 		}
 		select {
+		case <-game_base.ViewerUpdates:
 		case message := <-game_base.GameEndedChannel:
 			r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-game-over", Data: message})
 			r.game = nil

@@ -17,6 +17,7 @@ dwg-players-dialog {
     #close-button {
       background-color: transparent;
       border: none;
+      border-radius: 0px;
       border-top-right-radius: 8px;
       height: var(--button-size);
       margin: 0;

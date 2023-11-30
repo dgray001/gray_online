@@ -1,8 +1,9 @@
 import {GameType} from "../lobby/data_models";
+import {DwgGame} from "./game";
 
 /** Interface for components that represent a frontend game */
 export declare interface GameComponent {
-  initialize(game: Game, client_id: number): void;
+  initialize(abstract_game: DwgGame, game: Game, client_id: number): void;
   gameUpdate(update: UpdateMessage): Promise<void>;
 }
 

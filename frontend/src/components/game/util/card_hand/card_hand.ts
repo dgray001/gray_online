@@ -168,6 +168,12 @@ export class DwgCardHand extends DwgElement {
         this.cards_container.style.setProperty('--num-cards', this.cards.size().toString());
         this.cards_container.appendChild(el);
 
+        el.addEventListener('dblclick', () => {
+          if (this.can_play) {
+            this.dispatchEvent(new CustomEvent<number>('play_card', {'detail': card_data.i}));
+          }
+        });
+
         el.addEventListener('mousedown', (e) => {
           if (e.button !== 0) {
             return;

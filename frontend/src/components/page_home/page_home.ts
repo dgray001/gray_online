@@ -51,6 +51,9 @@ export class DwgPageHome extends DwgElement {
         this.lobby.setNickname(e.detail.nickname);
         this.lobby.setPing(0);
         this.lobby.setSocket(socket);
+        this.game.launched = false;
+        this.game.classList.remove('show');
+        this.lobby.classList.remove('hide');
       });
     });
     this.lobby.addEventListener('connection_lost', () => {

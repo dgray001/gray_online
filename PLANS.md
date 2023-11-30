@@ -11,8 +11,6 @@ v0.4: Euchre game
  y: Can see version number of app in-game somehow
  z: Backend removes game after 10 minutes of everyone DC'ing
 
- - Can play card with double click / tap
-
 v0.5: More card games
  - Add 2 more card games
     => one should be poker => start with chips and winner is one with all chips => initially just 5 card draw

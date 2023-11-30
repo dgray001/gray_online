@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.3t: Risq starting positions
+v0.3u: Fullscreen button
 
 ## Dev Use
 

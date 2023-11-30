@@ -107,6 +107,12 @@ func (g *GameBase) AddViewerUpdate(update *UpdateMessage) {
 	update.Id = len(g.viewer_update_list) + 1 // start at 1
 	g.viewer_update_list = append(g.viewer_update_list, update)
 	g.ViewerUpdates <- update
+	for _, viewer := range g.Viewers {
+		if viewer == nil && viewer.connected {
+			continue
+		}
+		viewer.Updates <- update
+	}
 }
 
 func (g *GameBase) ResendPlayerUpdate(client_id uint64, update_id int) {

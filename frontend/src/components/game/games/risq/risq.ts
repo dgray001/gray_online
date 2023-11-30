@@ -3,6 +3,7 @@ import {UpdateMessage} from '../../data_models';
 import {drawHexagon} from '../../util/canvas_util';
 import {BoardTransformData, DwgCanvasBoard} from '../../util/canvas_board/canvas_board';
 import {Point2D, equalsPoint2D, hexagonalBoardNeighbors, hexagonalBoardRows, roundAxialCoordinate} from '../../util/objects2d';
+import {DwgGame} from '../../game';
 
 import html from './risq.html';
 import {GameRisq, RisqSpace} from './risq_data';
@@ -180,7 +181,8 @@ export class DwgRisq extends DwgElement {
     return row[index.y];
   }
 
-  initialize(game: GameRisq, client_id: number): void {
+  initialize(abstract_game: DwgGame, game: GameRisq, client_id: number): void {
+    abstract_game.setPadding('0px');
     this.game = game;
     const canvas_size = {
       x: 1.732 * HEXAGON_RADIUS * (2 * game.board_size + 1),

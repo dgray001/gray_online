@@ -4,7 +4,7 @@ import {DwgCardHand} from '../../util/card_hand/card_hand';
 import {createMessage} from '../../../lobby/data_models';
 import {clientOnMobile, until, untilTimer} from '../../../../scripts/util';
 import {StandardCard, cardSuitToColor, cardToIcon, cardToImagePath, cardToName} from '../../util/card_util';
-import {messageDialog} from '../../game';
+import {DwgGame, messageDialog} from '../../game';
 
 import html from './euchre.html';
 import {DwgEuchrePlayer} from './euchre_player/euchre_player';
@@ -60,7 +60,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     }
   }
 
-  initialize(game: GameEuchre, client_id: number): void {
+  initialize(abstract_game: DwgGame, game: GameEuchre, client_id: number): void {
     this.game = game;
     this.player_els = [];
     for (const [player_id, player] of game.players.entries()) {

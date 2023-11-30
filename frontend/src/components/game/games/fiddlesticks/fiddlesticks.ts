@@ -5,7 +5,7 @@ import {DwgFiddlesticksPlayer} from './fiddlesticks_player/fiddlesticks_player';
 import {DwgCardHand} from '../../util/card_hand/card_hand';
 import {createMessage} from '../../../lobby/data_models';
 import {clientOnMobile, until, untilTimer} from '../../../../scripts/util';
-import {messageDialog} from '../../game';
+import {DwgGame, messageDialog} from '../../game';
 
 import html from './fiddlesticks.html';
 import {GameFiddlesticks, DealRound, PlayerBet, PlayCard} from './fiddlesticks_data';
@@ -63,7 +63,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     }
   }
 
-  initialize(game: GameFiddlesticks, client_id: number): void {
+  initialize(abstract_game: DwgGame, game: GameFiddlesticks, client_id: number): void {
     this.game = game;
     this.player_els = [];
     for (const [player_id, player] of game.players.entries()) {
