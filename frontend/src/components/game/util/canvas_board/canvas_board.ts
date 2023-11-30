@@ -19,6 +19,8 @@ export declare interface CanvasBoardInitializationData {
   max_scale: number;
   draw: (ctx: CanvasRenderingContext2D, transform: BoardTransformData) => {};
   mousemove: (m: Point2D, transform: BoardTransformData) => {};
+  mousedown: (e: MouseEvent) => {};
+  mouseup: (e: MouseEvent) => {};
 }
 
 /** Data how the board is transformed */
@@ -89,10 +91,18 @@ export class DwgCanvasBoard extends DwgElement {
         y: (this.mouse.y + this.transform.view.y) / this.transform.scale,
       }, this.transform);
     });
-    this.addEventListener('mouseenter', (e: MouseEvent) => {
+    this.addEventListener('mousedown', (e: MouseEvent) => {
+      e.stopImmediatePropagation();
+      this.data.mousedown(e);
+    });
+    this.addEventListener('mouseup', (e: MouseEvent) => {
+      e.stopImmediatePropagation();
+      this.data.mouseup(e);
+    });
+    this.addEventListener('mouseenter', () => {
       this.hovered = true;
     });
-    this.addEventListener('mouseleave', (e: MouseEvent) => {
+    this.addEventListener('mouseleave', () => {
       this.hovered = false;
     });
     this.addEventListener('contextmenu', (e) => {
@@ -150,12 +160,12 @@ export class DwgCanvasBoard extends DwgElement {
       this.ctx.translate(-this.transform.view.x, -this.transform.view.y);
       this.ctx.scale(this.transform.scale, this.transform.scale);
       this.data.draw(this.ctx, this.transform);
-    }, 100);
+    }, 20);
   }
 
   private tick() {
     const d_view = {x: 0, y: 0};
-    const arrow_key_speed = 50 * this.transform.scale;
+    const arrow_key_speed = 20 * this.transform.scale;
     let moved = false;
     if (this.holding_keys.arrow_up) {
       d_view.y -= arrow_key_speed;

@@ -2,7 +2,7 @@ import {DwgElement} from '../../../dwg_element';
 import {UpdateMessage} from '../../data_models';
 import {drawHexagon} from '../../util/canvas_util';
 import {BoardTransformData, DwgCanvasBoard} from '../../util/canvas_board/canvas_board';
-import {Point2D} from '../../util/objects2d';
+import {Point2D, equalsPoint2D, hexagonalBoardNeighbors, hexagonalBoardRows, roundAxialCoordinate} from '../../util/objects2d';
 
 import html from './risq.html';
 import {GameRisq, RisqSpace} from './risq_data';
@@ -17,6 +17,7 @@ export class DwgRisq extends DwgElement {
 
   game: GameRisq;
   canvas_center: Point2D = {x: 0, y: 0};
+  mouse_canvas: Point2D = {x: 0, y: 0};
   mouse_coordinate: Point2D = {x: 0, y: 0};
   hovered_space?: RisqSpace;
 
@@ -32,13 +33,19 @@ export class DwgRisq extends DwgElement {
     for (const [j, row] of this.game.spaces.entries()) {
       for (const [i, space] of row.entries()) {
         space.center = this.coordinateToCanvas(space.coordinate, transform.scale);
-        if (space.hovered) {
-          ctx.fillStyle = "rgba(190, 190, 190, 0.2)";
+        if (space.clicked) {
+          ctx.fillStyle = "rgba(210, 210, 210, 0.4)";
+        } else if (space.hovered) {
+          ctx.fillStyle = "rgba(190, 190, 190, 0.3)";
+        } else if (space.hovered_neighbor) {
+          ctx.fillStyle = "rgba(240, 240, 100, 0.2)";
+        } else if (space.hovered_row) {
+          ctx.fillStyle = "rgba(240, 190, 140, 0.1)";
+        } else {
+          ctx.fillStyle = "transparent";
         }
         drawHexagon(ctx, space.center, HEXAGON_RADIUS);
-        if (space.hovered) {
-          ctx.fill();
-        }
+        ctx.fill();
       }
     }
     ctx.fillStyle = "red";
@@ -47,7 +54,7 @@ export class DwgRisq extends DwgElement {
       (this.canvas_center.y + transform.view.y) / transform.scale - 5,
     10, 10);
     ctx.fillStyle = "blue";
-    ctx.fillRect(this.mouse_coordinate.x - 5, this.mouse_coordinate.y - 5, 10, 10);
+    ctx.fillRect(this.mouse_canvas.x - 5, this.mouse_canvas.y - 5, 10, 10);
   }
 
   private canvasToCoordinate(canvas: Point2D, scale: number): Point2D {
@@ -73,20 +80,101 @@ export class DwgRisq extends DwgElement {
   }
 
   private mousemove(m: Point2D, transform: BoardTransformData) {
+    this.mouse_canvas = m;
     this.mouse_coordinate = this.canvasToCoordinate(m, transform.scale);
-    if (!!this.hovered_space) {
-      this.hovered_space.hovered = false;
-    }
-    const index = this.coordinateToIndex({x: Math.round(this.mouse_coordinate.x), y: Math.round(this.mouse_coordinate.y)});
-    if (index.x < 0 || index.x >= this.game.spaces.length) {
+    const index = this.coordinateToIndex(roundAxialCoordinate(this.mouse_coordinate));
+    const new_hovered_space = this.getSpace(index);
+    if (!new_hovered_space) {
+      this.removeHoveredFlags();
+      if (!!this.hovered_space) {
+        this.hovered_space.clicked = false;
+        this.hovered_space = undefined;
+      }
       return;
+    }
+    if (equalsPoint2D(new_hovered_space.coordinate, this.hovered_space?.coordinate)) {
+      this.updateHoveredFlags();
+      return;
+    }
+    this.removeHoveredFlags();
+    if (!!this.hovered_space) {
+      this.hovered_space.clicked = false;
+    }
+    this.hovered_space = new_hovered_space;
+    this.updateHoveredFlags();
+  }
+
+  private removeHoveredFlags() {
+    if (!this.hovered_space) {
+      return;
+    }
+    this.hovered_space.hovered = false;
+    for (const neighbor of this.getBoardNeighbors(this.hovered_space)) {
+      neighbor.hovered_neighbor = false;
+    }
+    for (const row of this.getBoardRows(this.hovered_space)) {
+      row.hovered_row = false;
+    }
+  }
+
+  private updateHoveredFlags() {
+    if (!this.hovered_space) {
+      return;
+    }
+    this.hovered_space.hovered = true;
+    for (const neighbor of this.getBoardNeighbors(this.hovered_space)) {
+      neighbor.hovered_neighbor = true;
+    }
+    for (const row of this.getBoardRows(this.hovered_space)) {
+      row.hovered_row = true;
+    }
+  }
+
+  private getBoardNeighbors(space: RisqSpace): RisqSpace[] {
+    const neighbors: RisqSpace[] = [];
+    for (const neighbor of hexagonalBoardNeighbors(space.coordinate, this.game.board_size)) {
+      const index = this.coordinateToIndex(neighbor);
+      const space = this.getSpace(index);
+      if (!!space) {
+        neighbors.push(space);
+      }
+    }
+    return neighbors;
+  }
+
+  private getBoardRows(space: RisqSpace): RisqSpace[] {
+    const rows: RisqSpace[] = [];
+    for (const neighbor of hexagonalBoardRows(space.coordinate, this.game.board_size)) {
+      const index = this.coordinateToIndex(neighbor);
+      const space = this.getSpace(index);
+      if (!!space) {
+        rows.push(space);
+      }
+    }
+    return rows;
+  }
+
+  private mousedown(e: MouseEvent) {
+    if (!!this.hovered_space) {
+      this.hovered_space.clicked = true;
+    }
+  }
+
+  private mouseup(e: MouseEvent) {
+    if (!!this.hovered_space) {
+      this.hovered_space.clicked = false;
+    }
+  }
+
+  private getSpace(index: Point2D): RisqSpace|undefined {
+    if (index.x < 0 || index.x >= this.game.spaces.length) {
+      return undefined;
     }
     const row = this.game.spaces[index.x];
     if (index.y < 0 || index.y >= row.length) {
-      return;
+      return undefined;
     }
-    this.hovered_space = row[index.y];
-    this.hovered_space.hovered = true;
+    return row[index.y];
   }
 
   initialize(game: GameRisq, client_id: number): void {
@@ -100,6 +188,8 @@ export class DwgRisq extends DwgElement {
       max_scale: 1.8,
       draw: this.draw.bind(this),
       mousemove: this.mousemove.bind(this),
+      mousedown: this.mousedown.bind(this),
+      mouseup: this.mouseup.bind(this),
     }).then(() => {
       const canvas_rect = this.board.getBoundingClientRect();
       this.canvas_center = {

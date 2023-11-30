@@ -14,3 +14,14 @@ func (c *Coordinate2D) ToFrontend() gin.H {
 	}
 	return coordinate
 }
+
+func AxialDirectionVectors() [6]Coordinate2D {
+	return [6]Coordinate2D{
+		{X: 1, Y: 0},
+		{X: 1, Y: -1},
+		{X: 0, Y: -1},
+		{X: -1, Y: 0},
+		{X: -1, Y: 1},
+		{X: 0, Y: 1},
+	}
+}

@@ -13,12 +13,15 @@ import (
 	 >>>>> RISQ <<<<<
 	 ================
 
-	 Objective: ???
-	 Description: ???
+	 Objective: Build your empire and conquer the world!
+	 Description: Strategy board game with simultaneous turn resolution, hexgonal
+	   map, complex deterministic mechanics (no randomness after map generation),
+		 resource gathering, empire-building, complex combat, and medieval themes.
 */
 
 type GameRisq struct {
 	game       *game.GameBase
+	players    []*RisqPlayer
 	board_size uint16
 	spaces     [][]*RisqSpace
 }
@@ -26,7 +29,14 @@ type GameRisq struct {
 func CreateGame(g *game.GameBase) (*GameRisq, error) {
 	risq := GameRisq{
 		game:       g,
-		board_size: 3,
+		players:    []*RisqPlayer{},
+		board_size: 4,
+	}
+	var player_id = 0
+	for _, player := range g.Players {
+		player.Player_id = player_id
+		risq.players = append(risq.players, createRisqPlayer(player))
+		player_id++
 	}
 	risq.spaces = make([][]*RisqSpace, 2*int(risq.board_size)+1)
 	for j := range risq.spaces {
@@ -81,11 +91,22 @@ func (r *GameRisq) ToFrontend(client_id uint64, is_viewer bool) gin.H {
 	if r.game != nil {
 		game["game_base"] = r.game.ToFrontend(client_id, is_viewer)
 	}
+	player_id := -1
+	players := []gin.H{}
+	for id, player := range r.players {
+		if player != nil {
+			if client_id == player.player.GetClientId() {
+				player_id = id
+			}
+			players = append(players, player.toFrontend(is_viewer || client_id == player.player.GetClientId()))
+		}
+	}
+	game["players"] = players
 	spaces := [][]gin.H{}
 	for _, row := range r.spaces {
 		spaces_row := []gin.H{}
 		for _, space := range row {
-			spaces_row = append(spaces_row, space.toFrontend())
+			spaces_row = append(spaces_row, space.toFrontend(player_id, is_viewer))
 		}
 		spaces = append(spaces, spaces_row)
 	}

@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.3r: Risq hover logic
+v0.3s: Risq initial board
 
 ## Dev Use
 
