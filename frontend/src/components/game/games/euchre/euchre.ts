@@ -9,7 +9,7 @@ import {DwgGame, messageDialog} from '../../game';
 
 import html from './euchre.html';
 import {DwgEuchrePlayer} from './euchre_player/euchre_player';
-import {BidChooseTrump, DealRound, DealerSubstitutesCard, GameEuchre, PlayCard, PlayerBid, getPlayersTeam} from './euchre_data';
+import {BidChooseTrump, DealRound, DealerSubstitutesCard, GameEuchre, PlayCard, PlayerBid, PlayerPass, getPlayersTeam} from './euchre_data';
 
 import './euchre.scss';
 import './euchre_player/euchre_player';
@@ -88,7 +88,8 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     else if (game.game_base.game_started) {
       this.round_number.innerText = game.round.toString();
       for (const [player_id, player_el] of this.player_els.entries()) {
-        player_el.gameStarted(game.bidding, !game.game_base.game_ended && player_id === game.turn, !game.game_base.game_ended && player_id === game.dealer);
+        player_el.gameStarted(game.bidding, game.bidding_choosing_trump, game.dealer_substituting_card,
+          !game.game_base.game_ended && player_id === game.turn, !game.game_base.game_ended && player_id === game.dealer);
         if (this.player_id == player_id && !game.game_base.game_ended) {
           this.players_cards.setCards(game.players[player_id].cards, game.players[player_id].cards_played);
           if (!game.bidding && this.game.turn === this.player_id) {
@@ -132,6 +133,18 @@ export class DwgEuchre extends DwgElement implements GameComponent {
         case 'deal-round':
           const dealRoundData = update.update as DealRound;
           await this.applyDealRound(dealRoundData);
+          break;
+        case 'pass':
+          const passData = update.update as PlayerPass;
+          if (this.game.turn !== passData.player_id) {
+            // TODO: try to sync data
+            throw new Error('Player pass out of order');
+          }
+          if (this.game.bidding_choosing_trump && this.game.turn === this.game.dealer) {
+            // TODO: try to sync data
+            throw new Error('Dealer is stuck and must choose trump');
+          }
+          await this.applyPlayerPass(passData);
           break;
         case 'bid':
           const bidData = update.update as PlayerBid;
@@ -195,10 +208,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
       }
     }
     await untilTimer(animation_time);
-    this.game.turn = this.game.dealer + 1;
-    if (this.game.turn >= this.game.players.length) {
-      this.game.turn -= this.game.players.length;
-    }
+    this.game.turn = (this.game.dealer + 1) % this.game.players.length;
     this.game.trick_leader = this.game.turn;
     for (const [player_id, player] of this.game.players.entries()) {
       if (player_id === this.player_id) {
@@ -212,16 +222,35 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     }
     this.trick_number.innerText = '-';
     this.current_trick = 0;
-    this.player_els[this.game.turn].bidding();
+    this.player_els[this.game.turn].bidding(false, false);
     this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Bidding`;
   }
 
+  private async applyPlayerPass(data: PlayerPass) {
+    await this.player_els[data.player_id].setPassAnimation();
+    this.player_els[data.player_id].setPass();
+    if (this.game.turn === this.game.dealer) {
+      this.game.bidding = false;
+      this.game.bidding_choosing_trump = true;
+    }
+    this.game.turn++;
+    this.resolveTurn();
+    this.player_els[this.game.turn].bidding(this.game.bidding_choosing_trump, this.game.turn === this.game.dealer);
+    const bidding_text = this.game.bidding ? 'Bidding' : 'Choosing Trump';
+    this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} ${bidding_text}`;
+  }
+
   private async applyPlayerBid(data: PlayerBid) {
-    // TODO: await this.player_els[data.player_id].setBidAnimation(data.amount);
-    this.player_els[data.player_id].setBid();
+    await this.player_els[data.player_id].setBidAnimation();
     this.game.bidding = false;
     this.game.makers_team = data.player_id % 2;
     this.game.defenders_team = this.game.makers_team == 0 ? 1 : 0;
+    for (const player_id of this.game.teams[this.game.makers_team].player_ids) {
+      this.player_els[player_id].setBid(true);
+    }
+    for (const player_id of this.game.teams[this.game.defenders_team].player_ids) {
+      this.player_els[player_id].setBid(false);
+    }
     this.game.player_bid = data.player_id;
     this.game.going_alone = data.going_alone;
     this.game.turn = this.game.dealer + 1;
@@ -234,11 +263,16 @@ export class DwgEuchre extends DwgElement implements GameComponent {
   }
 
   private async applyBidChooseTrump(data: BidChooseTrump) {
-    // TODO: await this.player_els[data.player_id].setBidAnimation(data.amount);
-    this.player_els[data.player_id].setBid();
+    await this.player_els[data.player_id].setBidAnimation();
     this.game.bidding_choosing_trump = false;
     this.game.makers_team = data.player_id % 2;
     this.game.defenders_team = this.game.makers_team == 0 ? 1 : 0;
+    for (const player_id of this.game.teams[this.game.makers_team].player_ids) {
+      this.player_els[player_id].setBid(true);
+    }
+    for (const player_id of this.game.teams[this.game.defenders_team].player_ids) {
+      this.player_els[player_id].setBid(false);
+    }
     this.game.player_bid = data.player_id;
     this.game.going_alone = data.going_alone;
     this.game.turn = this.game.dealer + 1;
@@ -255,6 +289,9 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     this.game.dealer_substituting_card = false;
     this.player_els[data.player_id].substitutedCard();
     this.setTrumpImage();
+    for (const player_el of this.player_els.values()) {
+      player_el.endBidding();
+    }
     this.player_els[this.game.turn].playing();
     this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
   }

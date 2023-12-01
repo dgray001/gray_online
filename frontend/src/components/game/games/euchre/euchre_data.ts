@@ -50,6 +50,11 @@ export declare interface DealRound {
   cards?: StandardCard[];
 }
 
+/** Data describing a pass game-update */
+export declare interface PlayerPass {
+  player_id: number;
+}
+
 /** Data describing a bid game-update */
 export declare interface PlayerBid {
   player_id: number;

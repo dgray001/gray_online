@@ -25,7 +25,6 @@ export class DwgFiddlesticksPlayer extends DwgElement {
   player: FiddlesticksPlayer;
   client_player = false;
   card_els: HTMLDivElement[] = [];
-  currently_playing = false; // if this player is playing a card
 
   constructor() {
     super();
@@ -188,17 +187,10 @@ export class DwgFiddlesticksPlayer extends DwgElement {
 
   playing() {
     this.classList.add('turn');
-    if (!this.client_player) {
-      return;
-    }
-    this.currently_playing = true;
   }
 
   playCard() {
     this.classList.remove('turn');
-    if (this.client_player) {
-      this.currently_playing = false;
-    }
   }
 
   endTrick(tricks: number) {

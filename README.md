@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.3v: Fiddlesticks working viewer support
+v0.3w: Initial Euchre playability
 
 ## Dev Use
 

@@ -38,6 +38,51 @@ dwg-euchre-player {
     width: 100%;
   }
 
+  > #icons-wrapper {
+    display: flex;
+    flex-flow: row nowrap;
+    gap: 5px;
+    height: var(--icon-size);
+    left: min(10%, 10px);
+    position: absolute;
+    top: calc(-0.75 * var(--icon-size));
+    width: 100%;
+
+    > .icon-wrapper {
+      height: var(--icon-size);
+      opacity: 75%;
+      width: var(--icon-size);
+  
+      &:not(.show) {
+        display: none;
+      }
+  
+      > .icon {
+        height: 100%;
+        rotate: -30deg;
+        width: 100%;
+      }
+  
+      > .icon-tooltip {
+        background-color: rgba(60, 60, 60, 0.95);
+        border-radius: 0.6em;
+        bottom: -1em;
+        color: white;
+        padding: 0.2em 0.4em;
+        position: absolute;
+        transition: opacity 0.5s;
+        user-select: none;
+        white-space: nowrap;
+      }
+  
+      &:not(:hover) {
+        > .icon-tooltip {
+          opacity: 0%;
+        }
+      }
+    }
+  }
+
   > #name-container {
     font-weight: bold;
     padding: 0.7em 0.4em 0.2em;
@@ -54,6 +99,27 @@ dwg-euchre-player {
     padding: 0 0.2em;
     text-align: right;
     width: 40%;
+  }
+
+  #bid-animation {
+    background-color: rgba(60, 60, 60, 0.7);
+    border-radius: 0.5em;
+    color: white;
+    font-size: 0;
+    font-weight: bold;
+    left: 0px;
+    margin: 0 auto;
+    padding: 0.5em;
+    position: relative;
+    text-align: center;
+    top: calc(-1em - 6px);
+    transition-property: font-size;
+    transition-timing-function: ease;
+    width: fit-content;
+
+    &.transition {
+      font-size: var(--font-size-largest);
+    }
   }
 }
 

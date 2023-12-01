@@ -1,7 +1,7 @@
 v0.4: Euchre game
- w: Euchre is playable with proper animations / styles / viewer support
- x: Can see version number of app in-game somehow
- y: Skeleton game info button (left of updates)
+ x: Euchre is playable with proper animations / styles / viewer support
+ y: Can see version number of app in-game somehow
+ z: Skeleton game info button (left of updates)
 
 v0.5: Can launch risq
  - Basic orders for risq (move, gather, build)

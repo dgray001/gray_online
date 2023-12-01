@@ -280,10 +280,14 @@ func (g *GameEuchre) PlayerAction(action game.PlayerAction) {
 
 func (g *GameEuchre) executePass(player *game.Player) {
 	if g.turn == g.dealer {
-		// TODO: implement
+		g.bidding = false
+		g.bidding_choose_trump = true
 	}
 	g.turn++
 	g.resolveTurn()
+	game.Game_BroadcastUpdate(g, &game.UpdateMessage{Kind: "pass", Content: gin.H{
+		"player_id": player.Player_id,
+	}})
 }
 
 func (g *GameEuchre) executeBid(player *game.Player, going_alone bool) {
