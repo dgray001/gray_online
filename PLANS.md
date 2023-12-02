@@ -1,7 +1,5 @@
 v0.4: Euchre game
- x: Euchre is playable with proper animations / styles / viewer support
- y: Can see version number of app in-game somehow
- z: Skeleton game info button (left of updates)
+ z: Can see version number of app in-game somehow
 
 v0.5: Can launch risq
  - Basic orders for risq (move, gather, build)
@@ -19,6 +17,7 @@ v0.5: Can launch risq
  - Can resign from game => AI takes over
  - Loaders for client requests in lobby: room-create, room-join, room-leave, room-rename
  - Player's cards can automatically resize => listener on game div resize
+ - Implement game info button
 
 v0.6: Advanced risq
  - Setup db in prod and dev

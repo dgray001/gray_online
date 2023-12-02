@@ -95,36 +95,42 @@ export class DwgEuchrePlayer extends DwgElement {
       this.bid_button.addEventListener('click', () => {
         this.disableButtons();
         const update = {going_alone: this.going_alone.checked};
-        const game_update = createMessage(`player-${this.player.player.player_id}`, 'game-update', JSON.stringify(update), 'bid');
+        const game_update = createMessage(`player-${this.player.player.player_id}`,
+          'game-update', JSON.stringify(update), 'bid');
         this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, bubbles: true}));
       });
       this.spades_button.addEventListener('click', () => {
         this.disableButtons();
         const update = {going_alone: this.going_alone.checked, trump_suit: 4};
-        const game_update = createMessage(`player-${this.player.player.player_id}`, 'game-update', JSON.stringify(update), 'bid');
+        const game_update = createMessage(`player-${this.player.player.player_id}`,
+          'game-update', JSON.stringify(update), 'bid-choose-trump');
         this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, bubbles: true}));
       });
       this.diamonds_button.addEventListener('click', () => {
         this.disableButtons();
         const update = {going_alone: this.going_alone.checked, trump_suit: 1};
-        const game_update = createMessage(`player-${this.player.player.player_id}`, 'game-update', JSON.stringify(update), 'bid');
+        const game_update = createMessage(`player-${this.player.player.player_id}`,
+          'game-update', JSON.stringify(update), 'bid-choose-trump');
         this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, bubbles: true}));
       });
       this.clubs_button.addEventListener('click', () => {
         this.disableButtons();
         const update = {going_alone: this.going_alone.checked, trump_suit: 2};
-        const game_update = createMessage(`player-${this.player.player.player_id}`, 'game-update', JSON.stringify(update), 'bid');
+        const game_update = createMessage(`player-${this.player.player.player_id}`,
+          'game-update', JSON.stringify(update), 'bid-choose-trump');
         this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, bubbles: true}));
       });
       this.hearts_button.addEventListener('click', () => {
         this.disableButtons();
         const update = {going_alone: this.going_alone.checked, trump_suit: 3};
-        const game_update = createMessage(`player-${this.player.player.player_id}`, 'game-update', JSON.stringify(update), 'bid');
+        const game_update = createMessage(`player-${this.player.player.player_id}`,
+          'game-update', JSON.stringify(update), 'bid-choose-trump');
         this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, bubbles: true}));
       });
       this.pass_button.addEventListener('click', () => {
         this.disableButtons();
-        const game_update = createMessage(`player-${this.player.player.player_id}`, 'game-update', '{}', 'pass');
+        const game_update = createMessage(`player-${this.player.player.player_id}`,
+          'game-update', '{}', 'pass');
         this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, bubbles: true}));
       });
     });
@@ -155,6 +161,7 @@ export class DwgEuchrePlayer extends DwgElement {
       icon_wrapper.appendChild(tooltip_el);
       this.icons_wrapper.append(icon_wrapper);
       this.status_container.innerText = capitalize(icon);
+      this.icons.set(icon, icon_wrapper);
     } else if (this.icons.has(icon)) {
       this.icons.get(icon).remove();
       this.icons.delete(icon);
@@ -170,6 +177,10 @@ export class DwgEuchrePlayer extends DwgElement {
     this.tricks_container.innerText = '-';
     this.status_container.innerText = '';
     this.toggleIcon('dealer', '', '', false);
+    this.toggleIcon('maker', '', '', false);
+    this.toggleIcon('defender', '', '', false);
+    this.toggleIcon('alone', '', '', false);
+    this.classList.remove('going-alone-ally');
   }
 
   setDealer(dealer: boolean) {
@@ -183,26 +194,34 @@ export class DwgEuchrePlayer extends DwgElement {
       return;
     }
     this.bid_input_wrapper.classList.add('show');
-    console.log(bidding_choosing_trump, this.bid_input_wrapper.classList.toggle('choosing-trump', bidding_choosing_trump));
-    this.going_alone.value = 'false';
+    this.bid_input_wrapper.classList.toggle('choosing-trump', !!bidding_choosing_trump);
+    this.going_alone.checked = false;
     if (bidding_choosing_trump) {
       this.bid_input_message.innerText = 'Choose Trump';
       this.spades_button.disabled = false;
+      this.spades_button.classList.remove('disabled');
       this.diamonds_button.disabled = false;
+      this.diamonds_button.classList.remove('disabled');
       this.clubs_button.disabled = false;
+      this.clubs_button.classList.remove('disabled');
       this.hearts_button.disabled = false;
+      this.hearts_button.classList.remove('disabled');
       switch(card_face_up_suit) {
         case 1:
           this.diamonds_button.disabled = true;
+          this.diamonds_button.classList.add('disabled');
           break;
         case 2:
           this.clubs_button.disabled = true;
+          this.clubs_button.classList.add('disabled');
           break;
         case 3:
           this.hearts_button.disabled = true;
+          this.hearts_button.classList.add('disabled');
           break;
         case 4:
           this.spades_button.disabled = true;
+          this.spades_button.classList.add('disabled');
           break;
         default:
           break;
@@ -217,7 +236,7 @@ export class DwgEuchrePlayer extends DwgElement {
 
   async setPassAnimation() {
     const animation_time = 500;
-    this.bid_animation.innerText = '> Pass <';
+    this.bid_animation.innerText = 'Pass';
     this.bid_animation.style.transitionDuration = `${animation_time}ms`;
     this.bid_animation.classList.add('transition');
     await untilTimer(2 * animation_time);
@@ -233,9 +252,12 @@ export class DwgEuchrePlayer extends DwgElement {
     }
   }
 
-  async setBidAnimation() {
+  async setBidAnimation(trump_suit_name?: string) {
     const animation_time = 500;
-    this.bid_animation.innerText = this.dealer ? '> I\'ll take it! <' : '> Pick it up! <';
+    this.bid_animation.innerText = this.dealer ? 'I\'ll take it!' : 'Pick it up!';
+    if (!!trump_suit_name) {
+      this.bid_animation.innerText = `${trump_suit_name}s`;
+    }
     this.bid_animation.style.transitionDuration = `${animation_time}ms`;
     this.bid_animation.classList.add('transition');
     await untilTimer(2 * animation_time);
@@ -243,11 +265,19 @@ export class DwgEuchrePlayer extends DwgElement {
     await untilTimer(animation_time);
   }
 
-  setBid(makers: boolean) {
+  setBid(makers: boolean, going_alone?: boolean, going_alone_ally?: boolean) {
     if (makers) {
       this.toggleIcon('maker', 'sword', 'Maker Team', true);
     } else {
       this.toggleIcon('defender', 'shield', 'Defender Team', true);
+    }
+    if (going_alone) {
+      if (going_alone_ally) {
+        this.classList.add('going-alone-ally');
+        this.status_container.innerText = '';
+      } else {
+        this.toggleIcon('alone', 'fist', 'Going Alone', true);
+      }
     }
     this.classList.remove('turn');
     if (this.client_player) {

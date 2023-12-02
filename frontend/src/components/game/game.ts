@@ -14,6 +14,7 @@ import './games/fiddlesticks/fiddlesticks';
 import './games/euchre/euchre';
 import './games/risq/risq';
 import './game_history_dialog/game_history_dialog';
+import './game_info_dialog/game_info_dialog';
 import './players_dialog/players_dialog';
 import '../dialog_box/confirm_dialog/confirm_dialog';
 
@@ -35,6 +36,7 @@ export class DwgGame extends DwgElement {
   chatbox_container: HTMLDivElement;
   chatbox: DwgChatbox;
   open_chatbox_button: HTMLButtonElement;
+  button_game_info: HTMLButtonElement;
   button_game_history: HTMLButtonElement;
   button_room_players: HTMLButtonElement;
   button_fullscreen: HTMLButtonElement;
@@ -66,6 +68,7 @@ export class DwgGame extends DwgElement {
     this.configureElement('chatbox_container');
     this.configureElement('chatbox');
     this.configureElement('open_chatbox_button');
+    this.configureElement('button_game_info');
     this.configureElement('button_game_history');
     this.configureElement('button_room_players');
     this.configureElement('button_fullscreen');
@@ -96,6 +99,11 @@ export class DwgGame extends DwgElement {
     });
     this.open_chatbox_button.addEventListener('click', () => {
       this.toggleChatbox();
+    });
+    this.button_game_info.addEventListener('click', () => {
+      const game_info = document.createElement('dwg-game-info-dialog');
+      game_info.setData({});
+      this.appendChild(game_info);
     });
     this.button_game_history.addEventListener('click', () => {
       if (!this.launched) {

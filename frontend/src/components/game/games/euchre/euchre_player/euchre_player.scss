@@ -31,6 +31,10 @@ dwg-euchre-player {
     --background-color: rgba(20, 255, 20, 0.7);
   }
 
+  &.going-alone-ally {
+    opacity: 60%;
+  }
+
   > * {
     box-sizing: border-box;
     font-size: calc(0.13 * var(--size));
@@ -169,13 +173,35 @@ dwg-euchre-player {
     > .suits-button-row {
       > button {
         height: var(--height);
+        margin: 0;
+        padding: 0;
         width: var(--height);
+
+        &:disabled {
+          opacity: 80%;
+        }
+
+        &.disabled:after {
+          border-top: 2px solid darkred;
+          content: '';
+          display: block;
+          position: absolute;
+          transform:
+            translateX(calc(-1 * var(--height) / (2 * tan(67.5deg))))
+            translateY(calc(1px - var(--gap) - 0.5 * var(--height)))
+            rotate(-45deg);
+          width: calc(1.414 * var(--height));
+        }
 
         > img {
           height: 100%;
           width: 100%;
         }
       }
+    }
+
+    > button {
+      font-size: calc(0.13 * var(--size));
     }
   }
 }

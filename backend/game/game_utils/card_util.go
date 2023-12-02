@@ -15,6 +15,13 @@ type StandardCard struct {
 	number uint8
 }
 
+func CreatBlankCard() *StandardCard {
+	return &StandardCard{
+		suit:   0,
+		number: 0,
+	}
+}
+
 func (c *StandardCard) GetName() string {
 	return c.getNumberName() + " of " + c.getSuitName() + "s"
 }

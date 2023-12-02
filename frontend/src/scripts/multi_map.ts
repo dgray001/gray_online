@@ -42,6 +42,13 @@ export class MultiMap<K, V> {
     return deleted;
   }
 
+  public clear() {
+    for (const [i, keyname] of this.keynames.entries()) {
+      this.maps.get(keyname).clear();
+    }
+    this._size = 0;
+  }
+
   public size(): number {
     return this._size;
   }

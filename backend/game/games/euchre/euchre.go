@@ -257,13 +257,13 @@ func (g *GameEuchre) PlayerAction(action game.PlayerAction) {
 		if len(g.trick) > 0 {
 			lead := g.trick[0]
 			if lead != nil {
-				suit := lead.GetSuit()
-				if card.GetSuit() != suit {
+				suit := g.cardSuit(lead)
+				if g.cardSuit(card) != suit {
 					for i, other_card := range cards {
 						if util.Contains(g.players[g.turn].cards_played, i) {
 							continue
 						}
-						if other_card.GetSuit() == suit {
+						if g.cardSuit(other_card) == suit {
 							player.AddFailedUpdateShorthand("play-card-failed",
 								fmt.Sprintf("Must follow suit of lead card %s and tried to play %s but have card that follows: %s",
 									lead.GetName(), card.GetName(), other_card.GetName()))
@@ -284,8 +284,7 @@ func (g *GameEuchre) executePass(player *game.Player) {
 		g.bidding = false
 		g.bidding_choose_trump = true
 	}
-	g.turn++
-	g.resolveTurn()
+	g.turn = (g.turn + 1) % len(g.players)
 	game.Game_BroadcastUpdate(g, &game.UpdateMessage{Kind: "pass", Content: gin.H{
 		"player_id": player.Player_id,
 	}})
@@ -350,7 +349,9 @@ func (g *GameEuchre) executePlayCard(player *game.Player, card_index int) {
 		"player_id": player.Player_id,
 	}})
 	g.turn++
-	g.resolveTurn()
+	if g.resolveTurn() {
+		g.trick = append(g.trick, game_utils.CreatBlankCard())
+	}
 	if g.turn != g.trick_leader {
 		return
 	}
@@ -406,7 +407,7 @@ func (g *GameEuchre) executePlayCard(player *game.Player, card_index int) {
 	}
 }
 
-func (g *GameEuchre) resolveTurn() {
+func (g *GameEuchre) resolveTurn() bool {
 	if g.turn >= len(g.players) {
 		g.turn -= len(g.players)
 	}
@@ -415,7 +416,9 @@ func (g *GameEuchre) resolveTurn() {
 		if g.turn >= len(g.players) {
 			g.turn -= len(g.players)
 		}
+		return true
 	}
+	return false
 }
 
 func (g *GameEuchre) scorePoints(team int, points uint8) {

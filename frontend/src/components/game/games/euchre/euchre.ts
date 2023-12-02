@@ -51,7 +51,8 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     this.status_container.innerText = 'Starting game ...';
     this.players_cards.addEventListener('play_card', (e: CustomEvent<number>) => {
       // TODO: check if card is playable
-      const game_update = createMessage(`player-${this.player_id}`, 'game-update', `{"index":${e.detail}}`, 'play-card');
+      const game_update = createMessage(`player-${this.player_id}`, 'game-update',
+        `{"index":${e.detail}}`, this.game.dealer_substituting_card ? 'dealer-substitutes-card' : 'play-card');
       this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, 'bubbles': true}));
     });
     if (clientOnMobile()) {
@@ -233,8 +234,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
       this.game.bidding_choosing_trump = true;
       this.setBackOfCard(); // TODO: animation to flip over
     }
-    this.game.turn++;
-    this.resolveTurn();
+    this.game.turn = (this.game.turn + 1) % this.game.players.length;
     this.player_els[this.game.turn].bidding(this.game.bidding_choosing_trump, this.game.turn === this.game.dealer, this.game.card_face_up.suit);
     const bidding_text = this.game.bidding ? 'Bidding' : 'Choosing Trump';
     this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} ${bidding_text}`;
@@ -246,7 +246,11 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     this.game.makers_team = data.player_id % 2;
     this.game.defenders_team = this.game.makers_team == 0 ? 1 : 0;
     for (const player_id of this.game.teams[this.game.makers_team].player_ids) {
-      this.player_els[player_id].setBid(true);
+      const going_alone_ally = data.player_id !== player_id;
+      this.player_els[player_id].setBid(true, data.going_alone, going_alone_ally);
+      if (going_alone_ally && this.player_id === player_id) {
+        this.players_cards.removeCards();
+      }
     }
     for (const player_id of this.game.teams[this.game.defenders_team].player_ids) {
       this.player_els[player_id].setBid(false);
@@ -256,19 +260,28 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     this.game.turn = this.game.dealer + 1;
     this.resolveTurn();
     this.game.trick_leader = this.game.turn;
+    this.trick_number.innerText = '1';
+    this.current_trick = 1;
     this.game.trump_suit = this.game.card_face_up.suit;
     this.game.dealer_substituting_card = true;
     this.player_els[this.game.dealer].substitutingCard();
     this.status_container.innerText = `${this.game.players[this.game.dealer].player.nickname} Substituting Card`;
+    if (this.game.dealer === this.player_id) {
+      this.players_cards.can_play = true;
+    }
   }
 
   private async applyBidChooseTrump(data: BidChooseTrump) {
-    await this.player_els[data.player_id].setBidAnimation();
+    await this.player_els[data.player_id].setBidAnimation(cardSuitToName(data.trump_suit));
     this.game.bidding_choosing_trump = false;
     this.game.makers_team = data.player_id % 2;
     this.game.defenders_team = this.game.makers_team == 0 ? 1 : 0;
     for (const player_id of this.game.teams[this.game.makers_team].player_ids) {
-      this.player_els[player_id].setBid(true);
+      const going_alone_ally = data.player_id !== player_id;
+      this.player_els[player_id].setBid(true, data.going_alone, going_alone_ally);
+      if (going_alone_ally && this.player_id === player_id) {
+        this.players_cards.removeCards();
+      }
     }
     for (const player_id of this.game.teams[this.game.defenders_team].player_ids) {
       this.player_els[player_id].setBid(false);
@@ -278,22 +291,24 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     this.game.turn = this.game.dealer + 1;
     this.resolveTurn();
     this.game.trick_leader = this.game.turn;
+    this.trick_number.innerText = '1';
+    this.current_trick = 1;
     this.game.trump_suit = data.trump_suit;
     this.setTrumpImage();
-    this.player_els[this.game.turn].playing();
-    this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
+    this.setPlaying();
   }
 
   private async applyDealerSubstitutesCard(data: DealerSubstitutesCard) {
-    // TODO: animation
     this.game.dealer_substituting_card = false;
     this.player_els[data.player_id].substitutedCard();
     this.setTrumpImage();
+    if (this.player_id === this.game.dealer) {
+      this.players_cards.substituteCard(data.card_index, this.game.card_face_up);
+    }
     for (const player_el of this.player_els.values()) {
       player_el.endBidding();
     }
-    this.player_els[this.game.turn].playing();
-    this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
+    this.setPlaying();
   }
 
   private async applyPlayCard(data: PlayCard) {
@@ -324,13 +339,11 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     await untilTimer(1000);
     this.status_container.innerText = '';
     this.game.turn++;
-    this.resolveTurn();
+    if (this.resolveTurn()) {
+      this.game.trick.push({number: 0, suit: 0});
+    }
     if (this.game.turn !== this.game.trick_leader) {
-      this.player_els[this.game.turn].playing();
-      this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
-      if (this.game.turn === this.player_id) {
-        this.players_cards.can_play = true;
-      }
+      this.setPlaying();
       return;
     }
     // end of trick
@@ -352,10 +365,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     if (winning_index >= 0 && winning_index < this.trick_card_els.length) {
       this.trick_card_els[winning_index].style.zIndex = '2';
     }
-    this.game.turn = this.game.trick_leader + winning_index;
-    if (this.game.turn >= this.game.players.length) {
-      this.game.turn -= this.game.players.length;
-    }
+    this.game.turn = (this.game.trick_leader + winning_index) % this.game.players.length;
     this.game.trick_leader = this.game.turn;
     for (const trick_card_el of this.trick_card_els) {
       trick_card_el.classList.remove('played');
@@ -377,14 +387,11 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     this.game.trick = [];
     this.trick_number.innerText = '-';
     console.log(`Trick won by ${this.game.players[this.game.turn].player.nickname} with the ${cardToName(winning_card)}`);
+    console.log('1', this.current_trick);
     if (this.current_trick < 5) {
       this.current_trick++;
       this.trick_number.innerText = this.current_trick.toString();
-      this.player_els[this.game.turn].playing();
-      this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
-      if (this.game.turn === this.player_id) {
-        this.players_cards.can_play = true;
-      }
+      this.setPlaying();
       return;
     }
     // end of round
@@ -396,8 +403,9 @@ export class DwgEuchre extends DwgElement implements GameComponent {
       winning_team = 1;
     }
     const won_all_five = this.game.teams[winning_team].tricks === 5;
+    console.log('2', winning_team, won_all_five, this.game.going_alone);
     let game_over = false;
-    if (winning_team == this.game.makers_team) {
+    if (winning_team === this.game.makers_team) {
       // makers won
       if (won_all_five) {
         if (this.game.going_alone) {
@@ -424,12 +432,21 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     }
   }
 
+  private setPlaying() {
+    console.log('3', this.game.turn, this.player_id);
+    this.player_els[this.game.turn].playing();
+    this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
+    if (this.game.turn === this.player_id) {
+      this.players_cards.can_play = true;
+    }
+  }
+
   private setCardFaceUpImage(card: StandardCard) {
     this.card_face_up_img.src = cardToImagePath(card);
     this.card_face_up_img.classList.add('show');
   }
 
-  private resolveTurn() {
+  private resolveTurn(): boolean {
     if (this.game.turn >= this.game.players.length) {
       this.game.turn -= this.game.players.length;
     }
@@ -438,7 +455,9 @@ export class DwgEuchre extends DwgElement implements GameComponent {
       if (this.game.turn >= this.game.players.length) {
         this.game.turn -= this.game.players.length;
       }
+      return true;
     }
+    return false;
   }
 
   private cardSuit(card: StandardCard): number {
@@ -460,6 +479,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
   }
 
   private scorePoints(team_id: number, points: number): boolean {
+    console.log('1', team_id, points);
     this.game.teams[team_id].score += points;
     for (const winner of this.game.teams[team_id].player_ids) {
       this.player_els[winner].setScore(this.game.teams[team_id].score);

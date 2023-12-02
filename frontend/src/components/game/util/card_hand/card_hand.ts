@@ -152,56 +152,61 @@ export class DwgCardHand extends DwgElement {
         cards_skipped++;
         continue;
       }
-      const el = document.createElement('div');
-      const img = document.createElement('img');
-      img.src = cardToImagePath(card);
-      img.draggable = false;
-      img.alt = cardToIcon(card);
-      el.appendChild(img);
-      el.classList.add('card');
       const i_dom = i - cards_skipped;
-      el.style.setProperty('--i', i_dom.toString());
-      const card_data: CardData = {i, i_dom, el};
-      setTimeout(() => {
-        // TODO: add card dealt sound effect
-        this.cards.set([i, i_dom], card_data);
-        this.cards_container.style.setProperty('--num-cards', this.cards.size().toString());
-        this.cards_container.appendChild(el);
-
-        el.addEventListener('dblclick', () => {
-          if (this.can_play) {
-            this.dispatchEvent(new CustomEvent<number>('play_card', {'detail': card_data.i}));
-          }
-        });
-
-        el.addEventListener('mousedown', (e) => {
-          if (e.button !== 0) {
-            return;
-          }
-          e.stopImmediatePropagation();
-          this.startDraggingCard({x: e.x, y: e.y}, card_data);
-        });
-
-        el.addEventListener('mouseenter', (e) => {
-          e.stopImmediatePropagation();
-          el.classList.add('hovering');
-        });
-
-        el.addEventListener('mouseleave', (e) => {
-          e.stopImmediatePropagation();
-          el.classList.remove('hovering');
-        });
-
-        el.addEventListener('touchstart', (e) => {
-          e.stopImmediatePropagation();
-          if (e.touches.length === 0) {
-            return;
-          }
-          const touch = e.touches[0];
-          this.startDraggingCard({x: touch.clientX, y: touch.clientY}, card_data, touch.identifier);
-        });
-      }, (1 + i) * animation_time);
+      const card_data: CardData = {i, i_dom, el: undefined};
+      this.createCardEl(card, card_data, animation_time)
     }
+  }
+
+  private createCardEl(card: StandardCard, data: CardData, animation_time = 0) {
+    const el = document.createElement('div');
+    const img = document.createElement('img');
+    img.src = cardToImagePath(card);
+    img.draggable = false;
+    img.alt = cardToIcon(card);
+    el.appendChild(img);
+    el.classList.add('card');
+    el.style.setProperty('--i', data.i_dom.toString());
+    data.el = el;
+    setTimeout(() => {
+      // TODO: add card dealt sound effect
+      this.cards.set([data.i, data.i_dom], data);
+      this.cards_container.style.setProperty('--num-cards', this.cards.size().toString());
+      this.cards_container.appendChild(el);
+
+      el.addEventListener('dblclick', () => {
+        if (this.can_play) {
+          this.dispatchEvent(new CustomEvent<number>('play_card', {'detail': data.i}));
+        }
+      });
+
+      el.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) {
+          return;
+        }
+        e.stopImmediatePropagation();
+        this.startDraggingCard({x: e.x, y: e.y}, data);
+      });
+
+      el.addEventListener('mouseenter', (e) => {
+        e.stopImmediatePropagation();
+        el.classList.add('hovering');
+      });
+
+      el.addEventListener('mouseleave', (e) => {
+        e.stopImmediatePropagation();
+        el.classList.remove('hovering');
+      });
+
+      el.addEventListener('touchstart', (e) => {
+        e.stopImmediatePropagation();
+        if (e.touches.length === 0) {
+          return;
+        }
+        const touch = e.touches[0];
+        this.startDraggingCard({x: touch.clientX, y: touch.clientY}, data, touch.identifier);
+      });
+    }, (1 + data.i) * animation_time);
   }
 
   private startDraggingCard(p: Point2D, card: CardData, touch_identifier = 0) {
@@ -310,6 +315,23 @@ export class DwgCardHand extends DwgElement {
       other_card.i_dom--;
       other_card.el.style.setProperty('--i', other_card.i_dom.toString());
     }
+  }
+
+  substituteCard(index: number, new_card: StandardCard) {
+    const card = this.cards.get('i', index);
+    if (!card) {
+      console.error('Trying to substitute card that does not exist');
+      return;
+    }
+    card.el.remove();
+    card.el = undefined;
+    this.createCardEl(new_card, card);
+  }
+
+  removeCards() {
+    this.cards.clear();
+    this.cards_container.replaceChildren();
+    this.can_play = false;
   }
 }
 

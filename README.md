@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.3x: Euchre turn menu
+v0.3y: Euchre is playable
 
 ## Dev Use
 
