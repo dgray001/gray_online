@@ -17,6 +17,7 @@ interface HoldingKeysData {
 export declare interface CanvasBoardInitializationData {
   size: Point2D;
   max_scale: number;
+  fill_space?: boolean;
   draw: (ctx: CanvasRenderingContext2D, transform: BoardTransformData) => {};
   mousemove: (m: Point2D, transform: BoardTransformData) => {};
   mousedown: (e: MouseEvent) => {};
@@ -57,11 +58,28 @@ export class DwgCanvasBoard extends DwgElement {
   }
 
   async initialize(data: CanvasBoardInitializationData) {
+    if (data.size.x < 1 || data.size.y < 1) {
+      console.error('Size must be at least 1px in each direction');
+      return;
+    }
     this.data = data;
     await until(() => this.fully_parsed);
     if (!this.canvas.getContext) {
       console.error('Browser does not support canvas; cannot draw board');
       return;
+    }
+    if (data.fill_space) {
+      await until(() => !!this.getBoundingClientRect().width);
+      const rect = this.getBoundingClientRect();
+      const aspect_ratio = data.size.x / data.size.y;
+      data.size.x = Math.max(data.size.x, rect.width);
+      data.size.y = Math.max(data.size.y, rect.height);
+      const new_ratio = data.size.x / data.size.y;
+      if (new_ratio > aspect_ratio) {
+        data.size.y = data.size.x / aspect_ratio;
+      } else {
+        data.size.x = data.size.y * aspect_ratio;
+      }
     }
     this.ctx = this.canvas.getContext('2d');
     this.canvas.style.setProperty('--w', `${data.size.x.toString()}px`);

@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.4: Euchre
+v0.4a: Board resized to fit screen
 
 ## Dev Use
 

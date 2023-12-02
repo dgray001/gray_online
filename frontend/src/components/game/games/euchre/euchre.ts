@@ -62,7 +62,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     }
   }
 
-  initialize(abstract_game: DwgGame, game: GameEuchre): void {
+  async initialize(abstract_game: DwgGame, game: GameEuchre): Promise<void> {
     this.player_id = abstract_game.player_id;
     this.game = game;
     this.player_els = [];

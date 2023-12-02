@@ -205,6 +205,8 @@ export class DwgGame extends DwgElement {
       return false;
     }
     this.game = serverResponseToGame(response.result, this.connection_metadata.client_id);
+    let game_initialized = false;
+    let waiting_room_initialized = false;
     const setGame = async (component: 'dwg-fiddlesticks' | 'dwg-euchre' | 'dwg-risq') => {
       const game_el = document.createElement(component);
       this.game_container.replaceChildren(game_el);
@@ -219,7 +221,19 @@ export class DwgGame extends DwgElement {
           break;
         }
       }
-      this.game_el.initialize(this, this.game);
+      this.game_el.initialize(this, this.game).then(() => {
+        game_initialized = true;
+        if (waiting_room_initialized) {
+          this.socket.send(createMessage(
+            `client-${this.connection_metadata.client_id}`,
+            'game-connected',
+            '',
+            this.game_id.toString(),
+          ));
+          this.launched = true;
+          return true;
+        }
+      });
       game_el.addEventListener('game_update', (e: CustomEvent<string>) => {
         if (this.game.game_base.game_ended) {
           console.log('Game already over');
@@ -268,14 +282,17 @@ export class DwgGame extends DwgElement {
       }
     }
     this.classList.add('show');
-    this.socket.send(createMessage(
-      `client-${this.connection_metadata.client_id}`,
-      'game-connected',
-      '',
-      this.game_id.toString(),
-    ));
-    this.launched = true;
-    return true;
+    waiting_room_initialized = true;
+    if (game_initialized) {
+      this.socket.send(createMessage(
+        `client-${this.connection_metadata.client_id}`,
+        'game-connected',
+        '',
+        this.game_id.toString(),
+      ));
+      this.launched = true;
+      return true;
+    }
   }
 
   startGame() {

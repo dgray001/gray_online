@@ -11,12 +11,13 @@ import {GameRisq, RisqSpace} from './risq_data';
 import './risq.scss';
 import '../../util/canvas_board/canvas_board';
 
-const HEXAGON_RADIUS = 60;
+const DEFAULT_HEXAGON_RADIUS = 60;
 
 export class DwgRisq extends DwgElement {
   board: DwgCanvasBoard;
 
   game: GameRisq;
+  hexagon_radius = DEFAULT_HEXAGON_RADIUS;
   canvas_center: Point2D = {x: 0, y: 0};
   mouse_canvas: Point2D = {x: 0, y: 0};
   mouse_coordinate: Point2D = {x: 0, y: 0};
@@ -39,7 +40,7 @@ export class DwgRisq extends DwgElement {
         } else {
           ctx.fillStyle = "transparent";
         }
-        drawHexagon(ctx, space.center, HEXAGON_RADIUS);
+        drawHexagon(ctx, space.center, this.hexagon_radius);
         ctx.fill();
         if (space.hovered) {
           if (space.clicked) {
@@ -47,7 +48,7 @@ export class DwgRisq extends DwgElement {
           } else {
             ctx.fillStyle = "rgba(190, 190, 190, 0.2)";
           }
-          drawHexagon(ctx, space.center, HEXAGON_RADIUS);
+          drawHexagon(ctx, space.center, this.hexagon_radius);
           ctx.fill();
         }
       }
@@ -62,17 +63,17 @@ export class DwgRisq extends DwgElement {
   }
 
   private canvasToCoordinate(canvas: Point2D, scale: number): Point2D {
-    const cy = (((canvas.y - 0.25 * HEXAGON_RADIUS - this.canvas_center.y / scale) / (1.5 * HEXAGON_RADIUS)) - this.game.board_size - 0.5);
+    const cy = (((canvas.y - 0.25 * this.hexagon_radius - this.canvas_center.y / scale) / (1.5 * this.hexagon_radius)) - this.game.board_size - 0.5);
     return {
-      x: ((canvas.x - this.canvas_center.x / scale) / (1.732 * HEXAGON_RADIUS)) - 0.5 * cy - this.game.board_size - 0.5,
+      x: ((canvas.x - this.canvas_center.x / scale) / (1.732 * this.hexagon_radius)) - 0.5 * cy - this.game.board_size - 0.5,
       y: cy,
     };
   }
 
   private coordinateToCanvas(coordinate: Point2D, scale: number): Point2D {
     return {
-      x: 1.732 * (coordinate.x + 0.5 * coordinate.y + this.game.board_size + 0.5) * HEXAGON_RADIUS + this.canvas_center.x / scale,
-      y: 1.5 * (coordinate.y + this.game.board_size + 0.5) * HEXAGON_RADIUS + 0.25 * HEXAGON_RADIUS + this.canvas_center.y / scale,
+      x: 1.732 * (coordinate.x + 0.5 * coordinate.y + this.game.board_size + 0.5) * this.hexagon_radius + this.canvas_center.x / scale,
+      y: 1.5 * (coordinate.y + this.game.board_size + 0.5) * this.hexagon_radius + 0.25 * this.hexagon_radius + this.canvas_center.y / scale,
     };
   }
 
@@ -181,16 +182,17 @@ export class DwgRisq extends DwgElement {
     return row[index.y];
   }
 
-  initialize(abstract_game: DwgGame, game: GameRisq): void {
+  async initialize(abstract_game: DwgGame, game: GameRisq): Promise<void> {
     abstract_game.setPadding('0px');
     this.game = game;
     const canvas_size = {
-      x: 1.732 * HEXAGON_RADIUS * (2 * game.board_size + 1),
-      y: 1.5 * HEXAGON_RADIUS * (2 * game.board_size + 1) + 0.5 * HEXAGON_RADIUS,
+      x: 1.732 * this.hexagon_radius * (2 * game.board_size + 1),
+      y: 1.5 * this.hexagon_radius * (2 * game.board_size + 1) + 0.5 * this.hexagon_radius,
     };
     this.board.initialize({
       size: canvas_size,
       max_scale: 1.8,
+      fill_space: true,
       draw: this.draw.bind(this),
       mousemove: this.mousemove.bind(this),
       mousedown: this.mousedown.bind(this),
@@ -201,6 +203,8 @@ export class DwgRisq extends DwgElement {
         x: 0.5 * Math.min(canvas_size.x, canvas_rect.width),
         y: 0.5 * Math.min(canvas_size.y, canvas_rect.height),
       };
+      // canvas board component should respect scale
+      this.hexagon_radius = (2 * this.canvas_center.x) / (1.732 * (2 * game.board_size + 1));
     });
   }
 

@@ -64,7 +64,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     }
   }
 
-  initialize(abstract_game: DwgGame, game: GameFiddlesticks): void {
+  async initialize(abstract_game: DwgGame, game: GameFiddlesticks): Promise<void> {
     this.player_id = abstract_game.player_id;
     this.game = game;
     this.player_els = [];
