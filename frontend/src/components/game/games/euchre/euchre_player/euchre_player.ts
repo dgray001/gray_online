@@ -252,11 +252,14 @@ export class DwgEuchrePlayer extends DwgElement {
     }
   }
 
-  async setBidAnimation(trump_suit_name?: string) {
+  async setBidAnimation(going_alone: boolean, trump_suit_name?: string) {
     const animation_time = 500;
-    this.bid_animation.innerText = this.dealer ? 'I\'ll take it!' : 'Pick it up!';
-    if (!!trump_suit_name) {
+    if (going_alone) {
+      this.bid_animation.innerText = 'Going alone!';
+    } else if (!!trump_suit_name) {
       this.bid_animation.innerText = `${trump_suit_name}s`;
+    } else {
+      this.bid_animation.innerText = this.dealer ? 'I\'ll take it!' : 'Pick it up!';
     }
     this.bid_animation.style.transitionDuration = `${animation_time}ms`;
     this.bid_animation.classList.add('transition');

@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.3y: Euchre is playable
+v0.4: Euchre
 
 ## Dev Use
 

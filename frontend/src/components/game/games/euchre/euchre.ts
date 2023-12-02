@@ -241,14 +241,14 @@ export class DwgEuchre extends DwgElement implements GameComponent {
   }
 
   private async applyPlayerBid(data: PlayerBid) {
-    await this.player_els[data.player_id].setBidAnimation();
+    await this.player_els[data.player_id].setBidAnimation(data.going_alone);
     this.game.bidding = false;
     this.game.makers_team = data.player_id % 2;
     this.game.defenders_team = this.game.makers_team == 0 ? 1 : 0;
     for (const player_id of this.game.teams[this.game.makers_team].player_ids) {
       const going_alone_ally = data.player_id !== player_id;
       this.player_els[player_id].setBid(true, data.going_alone, going_alone_ally);
-      if (going_alone_ally && this.player_id === player_id) {
+      if (data.going_alone && going_alone_ally && this.player_id === player_id) {
         this.players_cards.removeCards();
       }
     }
@@ -263,23 +263,28 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     this.trick_number.innerText = '1';
     this.current_trick = 1;
     this.game.trump_suit = this.game.card_face_up.suit;
-    this.game.dealer_substituting_card = true;
-    this.player_els[this.game.dealer].substitutingCard();
-    this.status_container.innerText = `${this.game.players[this.game.dealer].player.nickname} Substituting Card`;
-    if (this.game.dealer === this.player_id) {
-      this.players_cards.can_play = true;
+    if (data.going_alone) {
+      this.setTrumpImage();
+      this.setPlaying();
+    } else {
+      this.game.dealer_substituting_card = true;
+      this.player_els[this.game.dealer].substitutingCard();
+      this.status_container.innerText = `${this.game.players[this.game.dealer].player.nickname} Substituting Card`;
+      if (this.game.dealer === this.player_id) {
+        this.players_cards.can_play = true;
+      }
     }
   }
 
   private async applyBidChooseTrump(data: BidChooseTrump) {
-    await this.player_els[data.player_id].setBidAnimation(cardSuitToName(data.trump_suit));
+    await this.player_els[data.player_id].setBidAnimation(data.going_alone, cardSuitToName(data.trump_suit));
     this.game.bidding_choosing_trump = false;
     this.game.makers_team = data.player_id % 2;
     this.game.defenders_team = this.game.makers_team == 0 ? 1 : 0;
     for (const player_id of this.game.teams[this.game.makers_team].player_ids) {
       const going_alone_ally = data.player_id !== player_id;
       this.player_els[player_id].setBid(true, data.going_alone, going_alone_ally);
-      if (going_alone_ally && this.player_id === player_id) {
+      if (data.going_alone && going_alone_ally && this.player_id === player_id) {
         this.players_cards.removeCards();
       }
     }
@@ -387,7 +392,6 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     this.game.trick = [];
     this.trick_number.innerText = '-';
     console.log(`Trick won by ${this.game.players[this.game.turn].player.nickname} with the ${cardToName(winning_card)}`);
-    console.log('1', this.current_trick);
     if (this.current_trick < 5) {
       this.current_trick++;
       this.trick_number.innerText = this.current_trick.toString();
@@ -403,7 +407,6 @@ export class DwgEuchre extends DwgElement implements GameComponent {
       winning_team = 1;
     }
     const won_all_five = this.game.teams[winning_team].tricks === 5;
-    console.log('2', winning_team, won_all_five, this.game.going_alone);
     let game_over = false;
     if (winning_team === this.game.makers_team) {
       // makers won
@@ -433,7 +436,6 @@ export class DwgEuchre extends DwgElement implements GameComponent {
   }
 
   private setPlaying() {
-    console.log('3', this.game.turn, this.player_id);
     this.player_els[this.game.turn].playing();
     this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
     if (this.game.turn === this.player_id) {
@@ -479,7 +481,6 @@ export class DwgEuchre extends DwgElement implements GameComponent {
   }
 
   private scorePoints(team_id: number, points: number): boolean {
-    console.log('1', team_id, points);
     this.game.teams[team_id].score += points;
     for (const winner of this.game.teams[team_id].player_ids) {
       this.player_els[winner].setScore(this.game.teams[team_id].score);

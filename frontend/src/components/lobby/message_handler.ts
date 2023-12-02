@@ -1,3 +1,4 @@
+import {getUrlParam} from "../../scripts/url";
 import {SERVER_CHAT_NAME} from "../chatbox/chatbox";
 import {ServerMessage, LobbyRoom, LobbyRoomFromServer, serverResponseToRoom, GameSettingsFromServer, serverResponseToGameSettings} from "./data_models";
 import {DwgLobby} from "./lobby";
@@ -36,7 +37,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
       lobby.classList.add('connected');
       lobby.setNickname(message.content);
       lobby.chatbox.addChat({
-        message: `You (${message.content}) ${you_joined_word} lobby with client id ${id}`,
+        message: `You (${message.content}) ${you_joined_word} v${getUrlParam('v')} lobby with client id ${id}`,
         sender: SERVER_CHAT_NAME,
       });
       lobby.lobby_users.addUser({client_id: id, nickname: lobby.connection_metadata.nickname, ping: 0});

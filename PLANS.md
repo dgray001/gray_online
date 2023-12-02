@@ -1,6 +1,3 @@
-v0.4: Euchre game
- z: Can see version number of app in-game somehow
-
 v0.5: Can launch risq
  - Basic orders for risq (move, gather, build)
  - Abstract moves dialog

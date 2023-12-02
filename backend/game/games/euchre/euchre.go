@@ -303,7 +303,7 @@ func (g *GameEuchre) executeBid(player *game.Player, going_alone bool) {
 	g.resolveTurn()
 	g.trick_leader = g.turn
 	g.trump_suit = g.card_face_up.GetSuit()
-	g.dealer_substituting_card = true
+	g.dealer_substituting_card = !going_alone
 	game.Game_BroadcastUpdate(g, &game.UpdateMessage{Kind: "bid", Content: gin.H{
 		"player_id":   player.Player_id,
 		"going_alone": going_alone,
@@ -382,6 +382,7 @@ func (g *GameEuchre) executePlayCard(player *game.Player, card_index int) {
 		return
 	}
 	// end of round
+	g.trick_number = 0
 	winning_team := 0
 	if g.teams[0].tricks < 3 {
 		winning_team = 1
@@ -545,4 +546,5 @@ func (g *GameEuchre) dealNextRound() {
 		g.turn -= len(g.players)
 	}
 	g.trick_leader = g.turn
+	g.trick_number = 1
 }
