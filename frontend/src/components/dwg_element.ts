@@ -57,4 +57,10 @@ export abstract class DwgElement extends HTMLElement {
     }
     this.elsMetadata.push({element_id, name} as ElementMetadata);
   }
+
+  protected configureElements(...names: string[]) {
+    for (const name of names) {
+      this.configureElement(name);
+    }
+  }
 }

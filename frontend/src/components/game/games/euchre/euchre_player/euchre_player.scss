@@ -6,10 +6,11 @@ dwg-euchre-player {
   --turns: calc((0.25 + var(--order) / var(--num-players)) * 1turn);
   --x: calc(0.5 * var(--diameter) * (1 + cos(var(--turns))) - 0.5 * var(--size));
   --y: calc(0.5 * var(--diameter) * (1 + sin(var(--turns))) - 0.5 * var(--size));
-  --icon-size: 64px;
-  --turn-color: rgba(90, 10, 240, 0.7);
+  --icon-size: 48px;
+  --turn-color: rgba(250, 140, 140, 0.95);
+  --background-color: rgba(240, 240, 240, 0.7);
 
-  background-color: rgba(240, 240, 240, 0.7);
+  background-color: var(--background-color);
   border-radius: calc(0.08 * var(--size));
   color: black;
   display: block;
@@ -23,11 +24,11 @@ dwg-euchre-player {
   }
 
   &.team0 {
-    background-color: rgba(60, 120, 255, 0.85);
+    --background-color: rgba(60, 120, 255, 0.85);
   }
 
   &.team1 {
-    background-color: rgba(20, 255, 20, 0.7);
+    --background-color: rgba(20, 255, 20, 0.7);
   }
 
   > * {
@@ -46,16 +47,12 @@ dwg-euchre-player {
     left: min(10%, 10px);
     position: absolute;
     top: calc(-0.75 * var(--icon-size));
-    width: 100%;
+    width: fit-content;
 
     > .icon-wrapper {
       height: var(--icon-size);
       opacity: 75%;
       width: var(--icon-size);
-  
-      &:not(.show) {
-        display: none;
-      }
   
       > .icon {
         height: 100%;
@@ -85,12 +82,12 @@ dwg-euchre-player {
 
   > #name-container {
     font-weight: bold;
-    padding: 0.7em 0.4em 0.2em;
+    padding: 0.5em 0.4em 0.2em;
     text-align: center;
   }
 
   > #status-container {
-    padding: 0.6em 0.3em;
+    padding: 0.1em 0.3em;
     text-align: center;
   }
 
@@ -118,7 +115,67 @@ dwg-euchre-player {
     width: fit-content;
 
     &.transition {
-      font-size: var(--font-size-largest);
+      font-size: var(--font-size-large);
+    }
+  }
+
+  > #bid-input-wrapper {
+    --height: 32px;
+    --gap: 5px;
+    --padding: 0.5em;
+    --total-height: calc(4 * var(--height) + 3 * var(--gap) + 2 * var(--padding));
+
+    background-color: var(--background-color);
+    border-radius: calc(0.08 * var(--size));
+    box-shadow: 0 0 6px 6px var(--turn-color);
+    display: flex;
+    flex-flow: column nowrap;
+    font-size: calc(0.13 * var(--size));
+    gap: var(--gap);
+    height: var(--total-height);
+    line-height: calc(0.2 * var(--size));
+    padding: var(--padding);
+    position: absolute;
+    text-align: center;
+    top: calc(-1.1 * var(--total-height));
+    width: 100%;
+    z-index: 2;
+
+    &:not(.show) {
+      display: none;
+    }
+
+    &.choosing-trump {
+      --total-height: calc(5 * var(--height) + 4 * var(--gap) + 2 * var(--padding));
+
+      > #bid-button {
+        display: none;
+      }
+    }
+
+    &:not(.choosing-trump) {
+      > .suits-button-row {
+        display: none;
+      }
+    }
+
+    > * {
+      flex: 0 0 var(--height);
+      height: var(--height);
+      max-height: var(--height);
+      min-height: var(--height);
+    }
+
+    > .suits-button-row {
+      > button {
+        height: var(--height);
+        width: var(--height);
+
+        > img {
+          height: 100%;
+          width: 100%;
+        }
+      }
     }
   }
 }

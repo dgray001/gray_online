@@ -192,15 +192,16 @@ func (g *GameEuchre) PlayerAction(action game.PlayerAction) {
 		trump_suit_float, ok := action.Action["trump_suit"].(float64)
 		if !ok {
 			player.AddFailedUpdateShorthand("bid-choose-trump-failed",
-				fmt.Sprintf("Trump suit value invalid: %t", going_alone))
+				fmt.Sprintf("Trump suit value invalid: %f.2", trump_suit_float))
 			return
 		}
 		trump_suit := uint8(trump_suit_float)
 		if trump_suit < 1 || trump_suit > 4 {
 			player.AddFailedUpdateShorthand("bid-choose-trump-failed",
-				fmt.Sprintf("Not a valid suit number: %t", going_alone))
+				fmt.Sprintf("Not a valid suit number: %d", trump_suit))
 			return
 		}
+		g.executeBidChooseTrump(player, going_alone, trump_suit)
 	case "dealer-substitutes-card":
 		if !g.dealer_substituting_card {
 			player.AddFailedUpdateShorthand("dealer-substitutes-card-failed", "Dealer not currently substituting card")

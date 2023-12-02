@@ -7,7 +7,7 @@ dwg-fiddlesticks-player {
   --x: calc(0.5 * var(--diameter) * (1 + cos(var(--turns))) - 0.5 * var(--size));
   --y: calc(0.5 * var(--diameter) * (1 + sin(var(--turns))) - 0.5 * var(--size));
   --icon-size: 64px;
-  --turn-color: rgba(90, 10, 240, 0.7);
+  --turn-color: rgba(90, 10, 240, 0.8);
 
   background-color: rgba(240, 240, 240, 0.7);
   border-radius: calc(0.08 * var(--size));

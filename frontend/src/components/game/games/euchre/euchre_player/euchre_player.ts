@@ -1,6 +1,7 @@
-import {capitalize, until, untilTimer} from '../../../../../scripts/util';
+import {capitalize, clickButton, until, untilTimer} from '../../../../../scripts/util';
 import {DwgElement} from '../../../../dwg_element';
-import {EuchrePlayer, EuchreTeam} from '../euchre_data';
+import { createMessage } from '../../../../lobby/data_models';
+import {EuchrePlayer, EuchreTeam, GameEuchre} from '../euchre_data';
 
 import html from './euchre_player.html';
 
@@ -14,14 +15,14 @@ export class DwgEuchrePlayer extends DwgElement {
   icons_wrapper: HTMLDivElement;
   bid_animation: HTMLDivElement;
   bid_input_wrapper: HTMLDivElement;
+  bid_input_message: HTMLDivElement;
+  going_alone: HTMLInputElement;
   bid_button: HTMLButtonElement;
+  spades_button: HTMLButtonElement;
+  diamonds_button: HTMLButtonElement;
+  clubs_button: HTMLButtonElement;
+  hearts_button: HTMLButtonElement;
   pass_button: HTMLButtonElement;
-  bid_choose_trump_input_wrapper: HTMLDivElement;
-  trump_button_spades: HTMLButtonElement;
-  trump_button_diamonds: HTMLButtonElement;
-  trump_button_clubs: HTMLButtonElement;
-  trump_button_hearts: HTMLButtonElement;
-  trump_pass_button: HTMLButtonElement;
 
   initialized = false;
   player: EuchrePlayer;
@@ -40,14 +41,14 @@ export class DwgEuchrePlayer extends DwgElement {
     this.configureElement('icons_wrapper');
     this.configureElement('bid_animation');
     this.configureElement('bid_input_wrapper');
+    this.configureElement('bid_input_message');
+    this.configureElement('going_alone');
     this.configureElement('bid_button');
+    this.configureElement('spades_button');
+    this.configureElement('diamonds_button');
+    this.configureElement('clubs_button');
+    this.configureElement('hearts_button');
     this.configureElement('pass_button');
-    this.configureElement('bid_choose_trump_input_wrapper');
-    this.configureElement('trump_button_spades');
-    this.configureElement('trump_button_diamonds');
-    this.configureElement('trump_button_clubs');
-    this.configureElement('trump_button_hearts');
-    this.configureElement('trump_pass_button');
   }
 
   protected override parsedCallback(): void {
@@ -66,17 +67,17 @@ export class DwgEuchrePlayer extends DwgElement {
     this.initialized = true;
   }
 
-  async gameStarted(bidding: boolean, bidding_choosing_trump: boolean, dealer_substituting_card: boolean, current_turn: boolean, dealer: boolean) {
+  async gameStarted(game: GameEuchre, current_turn: boolean, dealer: boolean) {
     await until(() => this.fully_parsed);
     this.setDealer(dealer);
-    if (bidding || bidding_choosing_trump || dealer_substituting_card) {
+    if (game.bidding || game.bidding_choosing_trump || game.dealer_substituting_card) {
       this.tricks_container.innerText = '-';
-      if (dealer_substituting_card) {
+      if (game.dealer_substituting_card) {
         if (dealer) {
           this.substitutingCard();
         }
       } else if (current_turn) {
-        this.bidding(bidding_choosing_trump, dealer);
+        this.bidding(game.bidding_choosing_trump, dealer, game.card_face_up?.suit);
       }
     } else {
       this.tricks_container.innerText = this.team.tricks.toString();
@@ -89,17 +90,64 @@ export class DwgEuchrePlayer extends DwgElement {
   setClientPlayer() {
     this.classList.add('client-player');
     this.client_player = true;
-    // TODO: add event listeners for bidding and passing
+    // can be called before parsed
+    until(() => this.fully_parsed).then(() => {
+      this.bid_button.addEventListener('click', () => {
+        this.disableButtons();
+        const update = {going_alone: this.going_alone.checked};
+        const game_update = createMessage(`player-${this.player.player.player_id}`, 'game-update', JSON.stringify(update), 'bid');
+        this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, bubbles: true}));
+      });
+      this.spades_button.addEventListener('click', () => {
+        this.disableButtons();
+        const update = {going_alone: this.going_alone.checked, trump_suit: 4};
+        const game_update = createMessage(`player-${this.player.player.player_id}`, 'game-update', JSON.stringify(update), 'bid');
+        this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, bubbles: true}));
+      });
+      this.diamonds_button.addEventListener('click', () => {
+        this.disableButtons();
+        const update = {going_alone: this.going_alone.checked, trump_suit: 1};
+        const game_update = createMessage(`player-${this.player.player.player_id}`, 'game-update', JSON.stringify(update), 'bid');
+        this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, bubbles: true}));
+      });
+      this.clubs_button.addEventListener('click', () => {
+        this.disableButtons();
+        const update = {going_alone: this.going_alone.checked, trump_suit: 2};
+        const game_update = createMessage(`player-${this.player.player.player_id}`, 'game-update', JSON.stringify(update), 'bid');
+        this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, bubbles: true}));
+      });
+      this.hearts_button.addEventListener('click', () => {
+        this.disableButtons();
+        const update = {going_alone: this.going_alone.checked, trump_suit: 3};
+        const game_update = createMessage(`player-${this.player.player.player_id}`, 'game-update', JSON.stringify(update), 'bid');
+        this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, bubbles: true}));
+      });
+      this.pass_button.addEventListener('click', () => {
+        this.disableButtons();
+        const game_update = createMessage(`player-${this.player.player.player_id}`, 'game-update', '{}', 'pass');
+        this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, bubbles: true}));
+      });
+    });
+  }
+
+  private disableButtons() {
+    this.bid_button.disabled = true;
+    this.spades_button.disabled = true;
+    this.diamonds_button.disabled = true;
+    this.clubs_button.disabled = true;
+    this.hearts_button.disabled = true;
+    this.pass_button.disabled = true;
   }
 
   private toggleIcon(icon: string, src: string, tooltip: string, toggle: boolean) {
     if (toggle) {
       const icon_wrapper = document.createElement('div');
+      icon_wrapper.classList.add('icon-wrapper');
       const icon_el = document.createElement('img');
       icon_el.draggable = false;
       icon_el.alt = icon;
       icon_el.classList.add('icon');
-      icon_el.src = `../../../../../images/icons/${src}32.png`;
+      icon_el.src = `/images/icons/${src}32.png`;
       const tooltip_el = document.createElement('div');
       tooltip_el.classList.add('icon-tooltip');
       tooltip_el.innerText = tooltip;
@@ -129,16 +177,41 @@ export class DwgEuchrePlayer extends DwgElement {
     this.toggleIcon('dealer', 'cards', 'Dealt Round', dealer);
   }
 
-  bidding(bidding_choosing_trump: boolean, is_dealer: boolean) {
+  bidding(bidding_choosing_trump: boolean, is_dealer: boolean, card_face_up_suit?: number) {
     this.classList.add('turn');
     if (!this.client_player) {
       return;
     }
+    this.bid_input_wrapper.classList.add('show');
+    console.log(bidding_choosing_trump, this.bid_input_wrapper.classList.toggle('choosing-trump', bidding_choosing_trump));
+    this.going_alone.value = 'false';
     if (bidding_choosing_trump) {
-      this.bid_choose_trump_input_wrapper.classList.add('show');
-      this.trump_pass_button.disabled = is_dealer;
+      this.bid_input_message.innerText = 'Choose Trump';
+      this.spades_button.disabled = false;
+      this.diamonds_button.disabled = false;
+      this.clubs_button.disabled = false;
+      this.hearts_button.disabled = false;
+      switch(card_face_up_suit) {
+        case 1:
+          this.diamonds_button.disabled = true;
+          break;
+        case 2:
+          this.clubs_button.disabled = true;
+          break;
+        case 3:
+          this.hearts_button.disabled = true;
+          break;
+        case 4:
+          this.spades_button.disabled = true;
+          break;
+        default:
+          break;
+      }
+      this.pass_button.disabled = is_dealer;
     } else {
-      this.bid_input_wrapper.classList.add('show');
+      this.bid_input_message.innerText = 'Bid or Pass';
+      this.bid_button.disabled = false;
+      this.pass_button.disabled = false;
     }
   }
 
@@ -156,7 +229,6 @@ export class DwgEuchrePlayer extends DwgElement {
   setPass() {
     this.classList.remove('turn');
     if (this.client_player) {
-      this.bid_choose_trump_input_wrapper.classList.remove('show');
       this.bid_input_wrapper.classList.remove('show');
     }
   }
@@ -179,7 +251,6 @@ export class DwgEuchrePlayer extends DwgElement {
     }
     this.classList.remove('turn');
     if (this.client_player) {
-      this.bid_choose_trump_input_wrapper.classList.remove('show');
       this.bid_input_wrapper.classList.remove('show');
     }
   }
