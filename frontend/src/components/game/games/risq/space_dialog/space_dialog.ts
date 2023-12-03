@@ -16,6 +16,7 @@ export declare interface SpaceDialogData {
 }
 
 export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
+  wrapper: HTMLDivElement;
   canvas: HTMLCanvasElement;
 
   private data: SpaceDialogData;
@@ -30,6 +31,7 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
 
   constructor() {
     super();
+    this.configureElement('wrapper');
     this.configureElement('canvas');
   }
 
@@ -74,24 +76,34 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
     this.canvas.style.setProperty('--h', `${this.size.y.toString()}px`);
     this.canvas.width = this.size.x;
     this.canvas.height = this.size.y;
-    this.addEventListener('mousemove', (e: MouseEvent) => {
+    this.wrapper.addEventListener('mousemove', (e: MouseEvent) => {
       this.hovered = true;
       const rect = this.canvas.getBoundingClientRect();
       this.mousemove({x: (e.clientX - rect.left), y: (e.clientY - rect.top)});
     });
-    this.addEventListener('mousedown', (e: MouseEvent) => {
+    this.wrapper.addEventListener('mousedown', (e: MouseEvent) => {
       e.stopImmediatePropagation();
       this.mousedown(e);
     });
-    this.addEventListener('mouseup', (e: MouseEvent) => {
+    this.wrapper.addEventListener('mouseup', (e: MouseEvent) => {
       e.stopImmediatePropagation();
       this.mouseup(e);
     });
-    this.addEventListener('mouseenter', () => {
+    this.wrapper.addEventListener('mouseenter', () => {
       this.hovered = true;
     });
-    this.addEventListener('mouseleave', () => {
+    this.wrapper.addEventListener('mouseleave', () => {
       this.hovered = false;
+      if (!!this.hovered_zone) {
+        this.hovered_zone.hovered = false;
+        this.hovered_zone.clicked = false;
+        this.hovered_zone = undefined;
+      }
+      if (!!this.hovered_space) {
+        this.hovered_space.hovered = false;
+        this.hovered_space.clicked = false;
+        this.hovered_space = undefined;
+      }
     });
     this.addEventListener('contextmenu', (e) => {
       e.preventDefault();

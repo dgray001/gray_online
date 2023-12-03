@@ -44,6 +44,7 @@ export class DwgRisq extends DwgElement {
       fill_space: true,
       draw: this.draw.bind(this),
       mousemove: this.mousemove.bind(this),
+      mouseleave: this.mouseleave.bind(this),
       mousedown: this.mousedown.bind(this),
       mouseup: this.mouseup.bind(this),
     }).then(() => {
@@ -98,6 +99,14 @@ export class DwgRisq extends DwgElement {
     }
     this.hovered_space = new_hovered_space;
     this.updateHoveredFlags();
+  }
+
+  private mouseleave() {
+    if (!!this.hovered_space) {
+      this.hovered_space.hovered = false;
+      this.hovered_space.clicked = false;
+      this.hovered_space = undefined;
+    }
   }
 
   private mousedown(_e: MouseEvent) {

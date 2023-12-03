@@ -65,7 +65,7 @@ func CreateGame(g *game.GameBase) (*GameRisq, error) {
 		starting_distance = util.RandomInt(3, 3)
 	default:
 		risq.board_size = 4
-		starting_distance = util.RandomInt(4, 4)
+		starting_distance = util.RandomInt(2, 3)
 	}
 	risq.spaces = make([][]*RisqSpace, 2*int(risq.board_size)+1)
 	for j := range risq.spaces {

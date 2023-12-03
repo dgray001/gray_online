@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.4b: Initial space dialog
+v0.4c: Proper mouseleave handling
 
 ## Dev Use
 

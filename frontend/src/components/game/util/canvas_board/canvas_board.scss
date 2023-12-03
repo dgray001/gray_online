@@ -22,5 +22,9 @@ dwg-canvas-board {
     top: var(--y);
     user-select: none;
     z-index: 2;
+
+    &.hide {
+      display: none;
+    }
   }
 }

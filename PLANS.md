@@ -1,7 +1,24 @@
 v0.5: Can launch risq
- - Basic orders for risq (move, gather, build)
- - Abstract moves dialog
- - Proper moves dialog for fiddlesticks and euchre
+ c: Show summary info on main board and space dialog
+ d: Show detailed info on space dialog
+ e: Collapsible right panel (shows turn number)
+ f: Collapsible right panel shows player resources (space for future minimap)
+ g: Closable left panel
+ h: Selecting building opens building in left panel
+ i: Selecting resources opens them in left panel
+ j: Selecting units opens them in left panel => is group of units if 2+
+ k: Can select individual units from left panel
+ l: More advanced visibility possibilities
+ m: Show who controls a space with mixed control for current battles
+ n: Right panel has all player's "scores"
+ o: Right panel has whether players are finished with orders (UI to finish with orders)
+ p: API to handle orders update
+ q: Backend processes unit move orders
+ r: Frontend processes turn outcome => summary report dialog
+ s: Villager gather order
+ t: Villager build order
+
+ - Proper updates dialog for fiddlesticks and euchre
  - Abstract players dialog in game base
  - Lobby rooms can just refresh specific rooms instead of recreating entire els
  - Implement game info button => has game specific settings, description, etc...

@@ -18,10 +18,11 @@ export declare interface CanvasBoardInitializationData {
   size: Point2D;
   max_scale: number;
   fill_space?: boolean;
-  draw: (ctx: CanvasRenderingContext2D, transform: BoardTransformData) => {};
-  mousemove: (m: Point2D, transform: BoardTransformData) => {};
-  mousedown: (e: MouseEvent) => {};
-  mouseup: (e: MouseEvent) => {};
+  draw: (ctx: CanvasRenderingContext2D, transform: BoardTransformData) => void;
+  mousemove: (m: Point2D, transform: BoardTransformData) => void;
+  mouseleave: () => void;
+  mousedown: (e: MouseEvent) => void;
+  mouseup: (e: MouseEvent) => void;
 }
 
 /** Data how the board is transformed */
@@ -119,9 +120,12 @@ export class DwgCanvasBoard extends DwgElement {
     });
     this.addEventListener('mouseenter', () => {
       this.hovered = true;
+      this.cursor.classList.remove('hide');
     });
     this.addEventListener('mouseleave', () => {
       this.hovered = false;
+      this.cursor.classList.add('hide');
+      this.data.mouseleave();
     });
     this.addEventListener('contextmenu', (e) => {
       e.preventDefault();
