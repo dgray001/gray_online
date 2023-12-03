@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.4a: Board resized to fit screen
+v0.4b: Initial space dialog
 
 ## Dev Use
 

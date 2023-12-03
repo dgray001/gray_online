@@ -7,6 +7,9 @@ export declare interface Point2D {
 
 /** Returns whether the points exist and equal each other */
 export function equalsPoint2D(p1: Point2D|undefined, p2: Point2D|undefined): boolean {
+  if (!p1 && !p2) {
+    return true;
+  }
   if (!p1 || !p2) {
     return false;
   }
@@ -21,6 +24,11 @@ export function addPoint2D(p1: Point2D, p2: Point2D): Point2D {
 /** Returns a point resulting from subtracting the two points */
 export function subtractPoint2D(p1: Point2D, p2: Point2D): Point2D {
   return {x: p1.x - p2.x, y: p1.y - p2.y};
+}
+
+/** Returns a point resulting from multiplying the point with a scalar */
+export function multiplyPoint2D(s: number, p: Point2D): Point2D {
+  return {x: s * p.x, y: s * p.y};
 }
 
 /** Returns the rounded integer axial coordinate from a fractional coordinate */
@@ -53,6 +61,17 @@ export const axialDirectionVectors: Point2D[] = [
   {x: -1, y: 1},
   {x: 0, y: 1},
 ];
+
+/** Returns whether the point is in the regular hexagon around the origin */
+export function pointInHexagon(p: Point2D, r: number): boolean {
+  // largely stolen from http://www.playchilla.com/how-to-check-if-a-point-is-inside-a-hexagon
+  const ar = 0.5 * 1.732 * r;
+  const q4p = {x: Math.abs(p.x), y: Math.abs(p.y)}; // transform p to Q4
+  if (q4p.x > ar || q4p.y > r) {
+    return false; // bounding test (since qq is in quadrant 2 only 2 tests are needed)
+  }
+  return (r * ar - 0.5 * r * q4p.x - ar * q4p.y) >= 0; // finally the dot product can be reduced to this due to the hexagon symmetry
+}
 
 /** Returns whether the point is in the hexagonal board */
 export function pointInHexagonalBoard(p: Point2D, board_size: number): boolean {

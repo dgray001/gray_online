@@ -1,3 +1,4 @@
+import {ColorRGB} from '../../../../scripts/color_rgb';
 import {GameBase, GamePlayer} from '../../data_models';
 import {Point2D} from '../../util/objects2d';
 
@@ -32,6 +33,9 @@ export declare interface RisqZone {
   coordinate: Point2D;
   units: RisqUnit[];
   building?: RisqBuilding;
+  // purely frontend fields
+  hovered: boolean;
+  clicked: boolean;
 }
 
 /** Data describing a risq unit */
@@ -58,4 +62,54 @@ export declare interface RisqBuilding {
   internal_id: number;
   player_id: number;
   building_id: number;
+}
+
+/** Returns the space from the input index, if the space exists */
+export function getSpace(game: GameRisq, index: Point2D): RisqSpace|undefined {
+  if (index.x < 0 || index.x >= game.spaces.length) {
+    return undefined;
+  }
+  const row = game.spaces[index.x];
+  if (index.y < 0 || index.y >= row.length) {
+    return undefined;
+  }
+  return row[index.y];
+}
+
+/** Transforms the input coordinate in axial space to index space */
+export function coordinateToIndex(board_size: number, coordinate: Point2D): Point2D {
+  return {
+    x: coordinate.y + board_size,
+    y: coordinate.x - Math.max(-board_size, -(board_size + coordinate.y)),
+  };
+}
+
+/** Transforms the input coordinate in index space to axial space */
+export function indexToCoordinate(board_size: number, index: Point2D): Point2D {
+  const cy = index.x - board_size;
+  return {
+    x: index.y + Math.max(-board_size, -(board_size + cy)),
+    y: cy,
+  };
+}
+
+/** Returns the fill color for the input space */
+export function getSpaceFill(space: RisqSpace): ColorRGB {
+  const color = new ColorRGB(0, 0, 0, 0);
+  if (!!space) {
+    color.setColor(90, 90, 90, 0.8);
+    if (space.visibility > 0) {
+      color.setColor(10, 120, 10, 0.8);
+      if (space.hovered) {
+        if (space.clicked) {
+          color.addColor(210, 210, 210, 0.4);
+        } else {
+          color.addColor(190, 190, 190, 0.2);
+        }
+      }
+    } else if (space.hovered) {
+      color.addColor(150, 150, 150, 0.1);
+    }
+  }
+  return color;
 }
