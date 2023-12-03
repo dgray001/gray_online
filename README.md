@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.4c: Proper mouseleave handling
+v0.4d: Summary info on main board
 
 ## Dev Use
 

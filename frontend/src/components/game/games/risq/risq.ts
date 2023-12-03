@@ -4,10 +4,10 @@ import {drawHexagon} from '../../util/canvas_util';
 import {BoardTransformData, DwgCanvasBoard} from '../../util/canvas_board/canvas_board';
 import {Point2D, equalsPoint2D, hexagonalBoardNeighbors, hexagonalBoardRows, roundAxialCoordinate} from '../../util/objects2d';
 import {DwgGame} from '../../game';
-import {ColorRGB} from '../../../../scripts/color_rgb';
+import {createLock, until} from '../../../../scripts/util';
 
 import html from './risq.html';
-import {GameRisq, RisqSpace, coordinateToIndex, getSpace, getSpaceFill} from './risq_data';
+import {GameRisq, GameRisqFromServer, RisqSpace, coordinateToIndex, getSpace, getSpaceFill, serverToGameRisq} from './risq_data';
 
 import './risq.scss';
 import '../../util/canvas_board/canvas_board';
@@ -16,27 +16,40 @@ import './space_dialog/space_dialog';
 const DEFAULT_HEXAGON_RADIUS = 60;
 
 export class DwgRisq extends DwgElement {
-  board: DwgCanvasBoard;
+  private board: DwgCanvasBoard;
 
-  game: GameRisq;
-  hexagon_radius = DEFAULT_HEXAGON_RADIUS;
-  canvas_center: Point2D = {x: 0, y: 0};
-  mouse_canvas: Point2D = {x: 0, y: 0};
-  mouse_coordinate: Point2D = {x: 0, y: 0};
-  hovered_space?: RisqSpace;
+  private game: GameRisq;
+  private hex_r = DEFAULT_HEXAGON_RADIUS;
+  private hex_a = 0.5 * 1.732 * DEFAULT_HEXAGON_RADIUS;
+  private canvas_center: Point2D = {x: 0, y: 0};
+  private mouse_canvas: Point2D = {x: 0, y: 0};
+  private mouse_coordinate: Point2D = {x: 0, y: 0};
+  private hovered_space?: RisqSpace;
+  private icons = new Map<string, HTMLImageElement>();
 
   constructor() {
     super();
     this.htmlString = html;
     this.configureElement('board');
+    for (const icon of ['unit', 'building']) {
+      this.createIcon(icon);
+    }
   }
 
-  async initialize(abstract_game: DwgGame, game: GameRisq): Promise<void> {
+  private createIcon(name: string) {
+    const el = document.createElement('img');
+    el.src = `/images/icons/${name}64.png`;
+    el.draggable = false;
+    el.alt = name;
+    this.icons.set(name, el);
+  }
+
+  async initialize(abstract_game: DwgGame, game: GameRisqFromServer): Promise<void> {
     abstract_game.setPadding('0px');
-    this.game = game;
+    this.game = serverToGameRisq(game);
     const canvas_size = {
-      x: 1.732 * this.hexagon_radius * (2 * game.board_size + 1),
-      y: 1.5 * this.hexagon_radius * (2 * game.board_size + 1) + 0.5 * this.hexagon_radius,
+      x: 1.732 * this.hex_r * (2 * game.board_size + 1),
+      y: 1.5 * this.hex_r * (2 * game.board_size + 1) + 0.5 * this.hex_r,
     };
     this.board.initialize({
       size: canvas_size,
@@ -54,7 +67,8 @@ export class DwgRisq extends DwgElement {
         y: 0.5 * Math.min(canvas_size.y, canvas_rect.height),
       };
       // canvas board component should respect scale
-      this.hexagon_radius = (2 * this.canvas_center.x) / (1.732 * (2 * game.board_size + 1));
+      this.hex_r = (2 * this.canvas_center.x) / (1.732 * (2 * game.board_size + 1));
+      this.hex_a = 0.5 * 1.732 * this.hex_r;
     });
   }
 
@@ -63,14 +77,29 @@ export class DwgRisq extends DwgElement {
 
   private draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData) {
     ctx.strokeStyle = 'rgba(250, 250, 250, 0.9)';
+    ctx.textAlign = 'left';
     ctx.lineWidth = 2;
     for (const row of this.game.spaces) {
       for (const space of row) {
         ctx.fillStyle = getSpaceFill(space).getString();
         space.center = this.coordinateToCanvas(space.coordinate, transform.scale);
-        drawHexagon(ctx, space.center, this.hexagon_radius);
+        drawHexagon(ctx, space.center, this.hex_r);
         if (space.visibility > 0) {
-          // TODO: draw summary info of space
+          ctx.fillStyle = 'black';
+          ctx.textBaseline = 'top';
+          const h = (5 * this.hex_r / 4) / 3 - 4;
+          ctx.font = `bold ${h}px serif`;
+          const x1 = space.center.x - 0.5 * this.hex_a;
+          const y1 = space.center.y - 5 * this.hex_r / 8;
+          ctx.drawImage(this.icons.get('building'), x1, y1, h, h);
+          ctx.fillText(`: ${space.buildings.size.toString()}`, x1 + h + 2, y1, 1.5 * this.hex_a - h - 2);
+          const x2 = space.center.x - 0.5 * this.hex_a;
+          const y2 = space.center.y - 5 * this.hex_r / 8 + h + 2;
+          ctx.drawImage(this.icons.get('unit'), x2, y2, h, h);
+          ctx.fillText(`: ${space.units.size.toString()}`, x2 + h + 2, y2, 1.5 * this.hex_a - h - 2);
+          /*const x3 = space.center.x - 0.5 * this.hex_a;
+          const y3 = space.center.y - 5 * this.hex_r / 8 + 2 * h + 4;
+          ctx.drawImage(this.icons.get('resource'), x1, y1, h, h);*/
         }
       }
     }
@@ -124,27 +153,31 @@ export class DwgRisq extends DwgElement {
     }
   }
 
-  private openSpaceDialog(space: RisqSpace) {
+  private _space_dialog_lock = createLock(true);
+  private async openSpaceDialog(space: RisqSpace) {
     if (!space) {
       return;
     }
-    const space_dialog = document.createElement('dwg-space-dialog');
-    space_dialog.setData({space, game: this.game});
-    this.appendChild(space_dialog);
+    this._space_dialog_lock(async () => {
+      const space_dialog = document.createElement('dwg-space-dialog');
+      space_dialog.setData({space, game: this.game});
+      this.appendChild(space_dialog);
+      await until(() => !document.body.contains(space_dialog));
+    });
   }
 
   private canvasToCoordinate(canvas: Point2D, scale: number): Point2D {
-    const cy = (((canvas.y - 0.25 * this.hexagon_radius - this.canvas_center.y / scale) / (1.5 * this.hexagon_radius)) - this.game.board_size - 0.5);
+    const cy = (((canvas.y - 0.25 * this.hex_r - this.canvas_center.y / scale) / (1.5 * this.hex_r)) - this.game.board_size - 0.5);
     return {
-      x: ((canvas.x - this.canvas_center.x / scale) / (1.732 * this.hexagon_radius)) - 0.5 * cy - this.game.board_size - 0.5,
+      x: ((canvas.x - this.canvas_center.x / scale) / (1.732 * this.hex_r)) - 0.5 * cy - this.game.board_size - 0.5,
       y: cy,
     };
   }
 
   private coordinateToCanvas(coordinate: Point2D, scale: number): Point2D {
     return {
-      x: 1.732 * (coordinate.x + 0.5 * coordinate.y + this.game.board_size + 0.5) * this.hexagon_radius + this.canvas_center.x / scale,
-      y: 1.5 * (coordinate.y + this.game.board_size + 0.5) * this.hexagon_radius + 0.25 * this.hexagon_radius + this.canvas_center.y / scale,
+      x: 1.732 * (coordinate.x + 0.5 * coordinate.y + this.game.board_size + 0.5) * this.hex_r + this.canvas_center.x / scale,
+      y: 1.5 * (coordinate.y + this.game.board_size + 0.5) * this.hex_r + 0.25 * this.hex_r + this.canvas_center.y / scale,
     };
   }
 

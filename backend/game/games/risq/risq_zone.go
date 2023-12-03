@@ -27,10 +27,10 @@ func (z *RisqZone) toFrontend() gin.H {
 	if z.building != nil && !z.building.deleted {
 		zone["building"] = z.building.toFrontend()
 	}
-	units := make(map[uint64]gin.H, 0)
+	units := make([]gin.H, 0)
 	for _, unit := range z.units {
 		if unit != nil && !unit.deleted {
-			units[unit.internal_id] = unit.toFrontend()
+			units = append(units, unit.toFrontend())
 		}
 	}
 	zone["units"] = units

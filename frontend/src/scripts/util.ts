@@ -116,7 +116,7 @@ export function setIntervalX(
 }
 
 /** Returns a method lock */
-export function createLock() {
+export function createLock(throwaway_extras = false) {
   let running = false;
   const queue: Array<() => Promise<unknown>> = [];
   return (fn: () => Promise<unknown>) => {
@@ -136,7 +136,9 @@ export function createLock() {
       }
     };
     if (running) {
-      queue.push(runFn);
+      if (!throwaway_extras) {
+        queue.push(runFn);
+      }
     } else {
       running = true;
       runFn();

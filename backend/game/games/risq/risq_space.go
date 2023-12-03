@@ -12,12 +12,16 @@ import (
 type RisqSpace struct {
 	coordinate game_utils.Coordinate2D
 	zones      [][]*RisqZone
+	buildings  map[uint64]*RisqBuilding
+	units      map[uint64]*RisqUnit
 	visibility map[int]uint8
 }
 
 func createRisqSpace(i int, j int) *RisqSpace {
 	space := RisqSpace{
 		coordinate: game_utils.Coordinate2D{X: i, Y: j},
+		buildings:  make(map[uint64]*RisqBuilding),
+		units:      make(map[uint64]*RisqUnit),
 		visibility: make(map[int]uint8),
 	}
 	space.zones = make([][]*RisqZone, 3)
@@ -62,6 +66,7 @@ func (s *RisqSpace) setBuilding(c *game_utils.Coordinate2D, building *RisqBuildi
 		fmt.Fprintln(os.Stderr, "Can't set building when building already there")
 		return
 	}
+	s.buildings[building.internal_id] = building
 	zone.building = building
 	s.visibility[building.player_id] = 1
 }
@@ -72,6 +77,7 @@ func (s *RisqSpace) setUnit(c *game_utils.Coordinate2D, unit *RisqUnit) {
 		fmt.Fprintln(os.Stderr, "Invalid zone coordinate: ", c.X, c.Y)
 		return
 	}
+	s.units[unit.internal_id] = unit
 	zone.units[unit.internal_id] = unit
 	s.visibility[unit.player_id] = 1
 }
@@ -104,5 +110,19 @@ func (s *RisqSpace) toFrontend(player_id int, is_viewer bool) gin.H {
 		zones = append(zones, zones_row)
 	}
 	space["zones"] = zones
+	buildings := make([]gin.H, 0)
+	for _, building := range s.buildings {
+		if building != nil && !building.deleted {
+			buildings = append(buildings, building.toFrontend())
+		}
+	}
+	space["buildings"] = buildings
+	units := make([]gin.H, 0)
+	for _, unit := range s.units {
+		if unit != nil && !unit.deleted {
+			units = append(units, unit.toFrontend())
+		}
+	}
+	space["units"] = units
 	return space
 }
