@@ -28,11 +28,23 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
   private hovered_zone?: RisqZone = undefined;
   private hovered_space?: RisqSpace = undefined;
   private hovered = false;
+  private icons = new Map<string, HTMLImageElement>();
 
   constructor() {
     super();
     this.configureElement('wrapper');
     this.configureElement('canvas');
+    for (const icon of ['unit', 'building', 'unit_white', 'building_white']) {
+      this.createIcon(icon);
+    }
+  }
+
+  private createIcon(name: string) {
+    const el = document.createElement('img');
+    el.src = `/images/icons/${name}64.png`;
+    el.draggable = false;
+    el.alt = name;
+    this.icons.set(name, el);
   }
 
   override getHTML(): string {
@@ -178,8 +190,8 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
       const index = coordinateToIndex(this.data.game.board_size, addPoint2D(this.data.space.coordinate, axial_vector));
       const adjacent_space = getSpace(this.data.game, index);
       this.ctx.strokeStyle = 'rgba(250, 250, 250, 0.8)';
-      const fill_color = getSpaceFill(adjacent_space);
-      this.ctx.fillStyle = fill_color.dAlpha(-0.2).getString();;
+      const fill_color = getSpaceFill(adjacent_space).dAlpha(-0.2);
+      this.ctx.fillStyle = fill_color.getString();
       this.ctx.beginPath();
       this.ctx.lineTo(r * Math.cos(a * i + Math.PI / 6), r * Math.sin(a * i + Math.PI / 6));
       this.ctx.lineTo(3 * r * Math.cos(a * i + Math.PI / 6), 3 * r * Math.sin(a * i + Math.PI / 6));
@@ -188,23 +200,29 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
       this.ctx.closePath();
       this.ctx.stroke();
       this.ctx.fill();
-      // TODO: draw space summary
+      if (adjacent_space.visibility >= 0) { // TODO: change to > 0
+        let building_img = this.icons.get('building');
+        let unit_img = this.icons.get('unit');
+        if (fill_color.getBrightness() > 0.5) {
+          this.ctx.fillStyle = 'black';
+        } else {
+          this.ctx.fillStyle = 'white';
+          building_img = this.icons.get('building_white');
+          unit_img = this.icons.get('unit_white');
+        }
+        this.ctx.textBaseline = 'top';
+        const h = (5 * this.hex_r / 4) / 3 - 4;
+        this.ctx.font = `bold ${h}px serif`;
+        const x1 = adjacent_space.center.x - 0.5 * this.hex_a;
+        const y1 = adjacent_space.center.y - 5 * this.hex_r / 8;
+        this.ctx.drawImage(building_img, x1, y1, h, h);
+        this.ctx.fillText(`: ${adjacent_space.buildings.size.toString()}`, x1 + h + 2, y1, 1.5 * this.hex_a - h - 2);
+        const x2 = adjacent_space.center.x - 0.5 * this.hex_a;
+        const y2 = adjacent_space.center.y - 5 * this.hex_r / 8 + h + 2;
+        this.ctx.drawImage(unit_img, x2, y2, h, h);
+        this.ctx.fillText(`: ${adjacent_space.units.size.toString()}`, x2 + h + 2, y2, 1.5 * this.hex_a - h - 2);
+      }
     }
-    // Other method from https://rangevoting.org/PuzzGerryOpt.html
-    /*drawHexagon(this.ctx, {x: 0, y: 0}, 0.4464 * r, 0);
-    for (let i = 0; i < 6; i++) {
-      // draw the pentagon above the central hexagon then rotate and repeat
-      this.ctx.beginPath();
-      this.ctx.lineTo(0.4464 * r * Math.cos(0), 0.4464 * r * Math.sin(0));
-      this.ctx.lineTo(0.4464 * r * Math.cos(Math.PI / 3), 0.4464 * r * Math.sin(Math.PI / 3));
-      this.ctx.lineTo(0.5 * 1.732 * r * Math.cos(Math.PI / 3), 0.5 * 1.732 * r * Math.sin(Math.PI / 3));
-      this.ctx.lineTo(r * Math.cos(Math.PI / 6), r * Math.sin(Math.PI / 6));
-      this.ctx.lineTo(0.5 * 1.732 * r * Math.cos(0), 0.5 * 1.732 * r * Math.sin(0));
-      this.ctx.closePath();
-      this.ctx.stroke();
-      this.ctx.fill();
-      this.ctx.rotate(Math.PI / 3);
-    }*/
   }
 
   private mousemove(p: Point2D) {

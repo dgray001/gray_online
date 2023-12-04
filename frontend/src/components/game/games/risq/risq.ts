@@ -31,7 +31,7 @@ export class DwgRisq extends DwgElement {
     super();
     this.htmlString = html;
     this.configureElement('board');
-    for (const icon of ['unit', 'building']) {
+    for (const icon of ['unit', 'building', 'unit_white', 'building_white']) {
       this.createIcon(icon);
     }
   }
@@ -81,21 +81,30 @@ export class DwgRisq extends DwgElement {
     ctx.lineWidth = 2;
     for (const row of this.game.spaces) {
       for (const space of row) {
-        ctx.fillStyle = getSpaceFill(space).getString();
+        const fill = getSpaceFill(space);
+        ctx.fillStyle = fill.getString();
         space.center = this.coordinateToCanvas(space.coordinate, transform.scale);
         drawHexagon(ctx, space.center, this.hex_r);
         if (space.visibility > 0) {
-          ctx.fillStyle = 'black';
+          let building_img = this.icons.get('building');
+          let unit_img = this.icons.get('unit');
+          if (fill.getBrightness() > 0.5) {
+            ctx.fillStyle = 'black';
+          } else {
+            ctx.fillStyle = 'white';
+            building_img = this.icons.get('building_white');
+            unit_img = this.icons.get('unit_white');
+          }
           ctx.textBaseline = 'top';
           const h = (5 * this.hex_r / 4) / 3 - 4;
           ctx.font = `bold ${h}px serif`;
           const x1 = space.center.x - 0.5 * this.hex_a;
           const y1 = space.center.y - 5 * this.hex_r / 8;
-          ctx.drawImage(this.icons.get('building'), x1, y1, h, h);
+          ctx.drawImage(building_img, x1, y1, h, h);
           ctx.fillText(`: ${space.buildings.size.toString()}`, x1 + h + 2, y1, 1.5 * this.hex_a - h - 2);
           const x2 = space.center.x - 0.5 * this.hex_a;
           const y2 = space.center.y - 5 * this.hex_r / 8 + h + 2;
-          ctx.drawImage(this.icons.get('unit'), x2, y2, h, h);
+          ctx.drawImage(unit_img, x2, y2, h, h);
           ctx.fillText(`: ${space.units.size.toString()}`, x2 + h + 2, y2, 1.5 * this.hex_a - h - 2);
           /*const x3 = space.center.x - 0.5 * this.hex_a;
           const y3 = space.center.y - 5 * this.hex_r / 8 + 2 * h + 4;

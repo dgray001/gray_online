@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.4d: Summary info on main board
+v0.4e: Fix security vulnerabilities
 
 ## Dev Use
 

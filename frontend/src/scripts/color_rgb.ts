@@ -42,6 +42,10 @@ export class ColorRGB {
     return this;
   }
 
+  getBrightness(): number {
+    return (this.data.r + this.data.g + this.data.b) / (3 * 255);
+  }
+
   private cleanInput(r: number, g: number, b:number, a?: number): ColorRGBData {
     if (r < 0) {
       r = 0;
