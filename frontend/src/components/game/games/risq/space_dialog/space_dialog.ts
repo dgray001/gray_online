@@ -2,8 +2,11 @@ import {ColorRGB} from '../../../../../scripts/color_rgb';
 import {atangent} from '../../../../../scripts/math';
 import {DwgDialogBox} from '../../../../dialog_box/dialog_box';
 import {drawHexagon} from '../../../util/canvas_util';
-import {Point2D, addPoint2D, equalsPoint2D, multiplyPoint2D, pointInHexagon, subtractPoint2D} from '../../../util/objects2d';
+import {Point2D, addPoint2D, equalsPoint2D, multiplyPoint2D, pointInHexagon, rotatePoint, subtractPoint2D} from '../../../util/objects2d';
+import {buildingImage} from '../risq_buildings';
 import {GameRisq, RisqSpace, RisqZone, coordinateToIndex, getSpace, getSpaceFill, indexToCoordinate} from '../risq_data';
+import {unitImage} from '../risq_unit';
+import {organizeZoneUnits} from '../risq_zone';
 
 import html from './space_dialog.html';
 
@@ -117,8 +120,7 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
     this.wrapper.addEventListener('mouseleave', () => {
       this.hovered = false;
       if (!!this.hovered_zone) {
-        this.hovered_zone.hovered = false;
-        this.hovered_zone.clicked = false;
+        this.unhoverZone(this.hovered_zone);
         this.hovered_zone = undefined;
       }
       if (!!this.hovered_space) {
@@ -153,11 +155,13 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
     let zone = this.data.space.zones[1][1];
     this.setZoneFill(zone);
     drawHexagon(this.ctx, {x: 0, y: 0}, 0.4 * r);
-    this.drawZone(zone,
-      {x: 0.2 * r * Math.cos(0), y: 0.2 * r * Math.sin(0)},
-      {x: 0.2 * r * Math.cos(2 * Math.PI / 3), y: 0.2 * r * Math.sin(2 * Math.PI / 2)},
-      {x: 0.2 * r * Math.cos(4 * Math.PI / 3), y: 0.2 * r * Math.sin(4 * Math.PI / 2)},
+    this.drawZone(zone, 0.42 * r,
+      {x: 0.18 * r * Math.cos(1 * Math.PI / 4), y: 0.18 * r * Math.sin(1 * Math.PI / 4)},
+      {x: 0.18 * r * Math.cos(3 * Math.PI / 4), y: 0.18 * r * Math.sin(3 * Math.PI / 4)},
+      {x: 0.18 * r * Math.cos(5 * Math.PI / 4), y: 0.18 * r * Math.sin(5 * Math.PI / 4)},
+      {x: 0.18 * r * Math.cos(7 * Math.PI / 4), y: 0.18 * r * Math.sin(7 * Math.PI / 4)},
     );
+    this.ctx.lineWidth = 4;
     const a = Math.PI / 3;
     for (var i = 0; i < 6; i++) {
       let direction_vector: Point2D = {x: 0, y: 0};
@@ -191,11 +195,16 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
       this.ctx.closePath();
       this.ctx.stroke();
       this.ctx.fill();
-      this.drawZone(zone,
-        {x: 0.2 * r * Math.cos(0), y: 0.2 * r * Math.sin(0)},
-        {x: 0.2 * r * Math.cos(2 * Math.PI / 3), y: 0.2 * r * Math.sin(2 * Math.PI / 2)},
-        {x: 0.2 * r * Math.cos(4 * Math.PI / 3), y: 0.2 * r * Math.sin(4 * Math.PI / 2)},
+      this.ctx.rotate(a * (1 + i));
+      const theta = Math.PI / 15;
+      this.drawZone(zone, 0.42 * r,
+        {x: 0.76 * r * Math.cos(-theta), y: 0.76 * r * Math.sin(-theta)},
+        {x: 0.76 * r * Math.cos(theta), y: 0.76 * r * Math.sin(theta)},
+        {x: 0.53 * r * Math.cos(-theta), y: 0.53 * r * Math.sin(-theta)},
+        {x: 0.53 * r * Math.cos(theta), y: 0.53 * r * Math.sin(theta)},
       );
+      this.ctx.rotate(-a * (1 + i));
+      this.ctx.lineWidth = 4;
       const axial_vector = indexToCoordinate(1, direction_vector);
       const index = coordinateToIndex(this.data.game.board_size, addPoint2D(this.data.space.coordinate, axial_vector));
       const adjacent_space = getSpace(this.data.game, index);
@@ -250,13 +259,15 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
     let new_hovered_space: RisqSpace|undefined = undefined;
     if (pointInHexagon(this.mouse, 0.4 * this.radius)) {
       new_hovered_zone = this.data.space.zones[1][1];
+      this.resolveHoveredZone(new_hovered_zone, 0);
     } else {
       const angle = atangent(this.mouse.y, this.mouse.x);
-      const index = Math.floor((angle + Math.PI / 6) / (Math.PI / 3));
+      let index = Math.floor((angle + Math.PI / 6) / (Math.PI / 3));
       let direction_vector: Point2D = {x: 0, y: 0};
       switch(index) {
-        case 0:
         case 6:
+          index = 0;
+        case 0:
           direction_vector = {x: 1, y: 2};
           break;
         case 1:
@@ -280,20 +291,11 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
       }
       if (pointInHexagon(this.mouse, this.radius)) {
         new_hovered_zone = this.data.space.zones[direction_vector.x][direction_vector.y];
+        this.resolveHoveredZone(new_hovered_zone, -(Math.PI / 3) * (1 + 5 - index));
       } else {
         const axial_vector = indexToCoordinate(1, direction_vector);
         const index = coordinateToIndex(this.data.game.board_size, addPoint2D(this.data.space.coordinate, axial_vector));
         new_hovered_space = getSpace(this.data.game, index);
-      }
-    }
-    if (!equalsPoint2D(this.hovered_zone?.coordinate, new_hovered_zone?.coordinate)) {
-      if (!!this.hovered_zone) {
-        this.hovered_zone.clicked = false;
-        this.hovered_zone.hovered = false;
-      }
-      this.hovered_zone = new_hovered_zone;
-      if (!!this.hovered_zone) {
-        this.hovered_zone.hovered = true;
       }
     }
     if (!equalsPoint2D(this.hovered_space?.coordinate, new_hovered_space?.coordinate)) {
@@ -306,17 +308,53 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
         this.hovered_space.hovered = true;
       }
     }
+    if (!!this.hovered_zone && !equalsPoint2D(this.hovered_zone?.coordinate, new_hovered_zone?.coordinate)) {
+      this.unhoverZone(this.hovered_zone);
+      this.hovered_zone = undefined;
+    }
+    this.hovered_zone = new_hovered_zone;
+  }
+
+  private unhoverZone(zone: RisqZone) {
+    zone.clicked = false;
+    zone.hovered = false;
+    for (const part of zone.hovered_data) {
+      part.clicked = false;
+      part.hovered = false;
+    }
+  }
+
+  private resolveHoveredZone(zone: RisqZone, rotate: number) {
+    zone.hovered = true;
+    const p = rotatePoint(this.mouse, rotate);
+    for (const part of zone.hovered_data) {
+      const dx = p.x - part.c.x;
+      const dy = p.y - part.c.y;
+      if ((dx * dx / (part.r.x * part.r.x)) + (dy * dy / (part.r.y * part.r.y)) <= 1) {
+        part.hovered = true;
+      } else {
+        part.hovered = false;
+      }
+    }
   }
 
   private mousedown(_e: MouseEvent) {
     if (!!this.hovered_zone) {
       this.hovered_zone.clicked = true;
+      for (const part of this.hovered_zone.hovered_data) {
+        if (part.hovered) {
+          part.clicked = true;
+        }
+      }
     }
   }
 
   private mouseup(_e: MouseEvent) {
     if (!!this.hovered_zone) {
       this.hovered_zone.clicked = false;
+      for (const part of this.hovered_zone.hovered_data) {
+        part.clicked = false;
+      }
     }
   }
 
@@ -333,35 +371,90 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
   private setZoneFill(zone: RisqZone) {
     this.ctx.strokeStyle = 'rgba(250, 250, 250, 0.9)';
     const color = new ColorRGB(10, 120, 10, 0.8);
-    if (zone.hovered) {
+    if (zone.hovered && !zone.hovered_data.some(p => p.hovered)) {
       if (zone.clicked) {
-        color.addColor(210, 210, 210, 0.4);
+        color.addColor(210, 210, 210, 0.05);
       } else {
-        color.addColor(190, 190, 190, 0.2);
+        color.addColor(190, 190, 190, 0.03);
       }
     }
     this.ctx.fillStyle = color.getString();
   }
 
-  private setSpaceFill(space: RisqSpace) {
-    this.ctx.strokeStyle = 'rgba(250, 250, 250, 0.8)';
-    const color = new ColorRGB(0, 0, 0, 0);
-    if (!!space) {
-      if (space.hovered) {
-        if (space.clicked) {
-          color.addColor(210, 210, 210, 0.4);
+  private drawZone(zone: RisqZone, r: number, p1: Point2D, p2: Point2D, p3: Point2D, p4: Point2D) {
+    this.ctx.textAlign = 'left';
+    this.ctx.textBaseline = 'top';
+    this.ctx.lineWidth = 1;
+    const rp = 0.5 * r;
+    if (zone.hovered_data.length !== 4) {
+      const r_part = {x: 0.5 * rp, y: 0.5 * rp};
+      zone.hovered_data = [
+        {c: p1, r: r_part}, {c: p2, r: r_part}, {c: p3, r: r_part}, {c: p4, r: r_part},
+      ];
+    } else {
+      zone.hovered_data[0].c = p1;
+      zone.hovered_data[1].c = p2;
+      zone.hovered_data[2].c = p3;
+      zone.hovered_data[3].c = p4;
+    }
+    for (const [i, part] of zone.hovered_data.entries()) {
+      this.ctx.strokeStyle = 'transparent';
+      if (part.hovered) {
+        if (part.clicked) {
+          this.ctx.fillStyle = 'rgba(200, 200, 200, 0.4)';
         } else {
-          color.addColor(190, 190, 190, 0.2);
+          this.ctx.fillStyle = 'rgba(200, 200, 200, 0.2)';
         }
       } else {
-        color.setColor(5, 90, 5, 0.7);
+        this.ctx.fillStyle = 'transparent';
       }
+      switch(i) {
+        case 0: // building
+          if (!!zone.building) {
+            this.ctx.drawImage(buildingImage(zone.building), part.c.x - part.r.x, part.c.y - part.r.y, 2 * part.r.x, 2 * part.r.y);
+          } else {
+            this.ctx.strokeStyle = 'rgba(200, 200, 200, 0.5)';
+          }
+          break;
+        case 1: // units
+          if (!zone.units_by_type) {
+            organizeZoneUnits(zone);
+          }
+          if (zone.units_by_type.size === 0) {
+            this.ctx.strokeStyle = 'rgba(200, 200, 200, 0.5)';
+            // TODO: draw 'no units'
+          } else if (zone.units_by_type.size === 1) {
+            const unit_data = [...zone.units_by_type.values()][0];
+            const unit = zone.units.get([...unit_data.units.values()][0]);
+            this.ctx.drawImage(unitImage(unit), part.c.x - part.r.x, part.c.y - part.r.y, 2 * part.r.x, 2 * part.r.y);
+            const fs = this.ctx.fillStyle;
+            this.ctx.fillStyle = 'white';
+            this.ctx.font = `bold ${1.5 * part.r.y}px serif`;
+            this.ctx.fillText(unit_data.units.size.toString(), part.c.x - part.r.x, part.c.y - 0.75 * part.r.y, 2 * part.r.x);
+            this.ctx.fillStyle = fs;
+          } else if (zone.units_by_type.size === 2) {
+            // TODO: implement
+          } else {
+            // TODO: implement
+          }
+          break;
+        case 2: // resources
+          this.ctx.strokeStyle = 'rgba(200, 200, 200, 0.2)';
+          this.ctx.fillStyle = 'transparent';
+          break;
+        case 3: // ??
+          this.ctx.strokeStyle = 'rgba(200, 200, 200, 0.2)';
+          this.ctx.fillStyle = 'transparent';
+          break;
+        default:
+          console.error('No implemented');
+          break;
+      }
+      this.ctx.beginPath();
+      this.ctx.ellipse(part.c.x, part.c.y, part.r.x, part.r.y, 0, 0, 2 * Math.PI);
+      this.ctx.stroke();
+      this.ctx.fill();
     }
-    this.ctx.fillStyle = color.getString();
-  }
-
-  private drawZone(zone: RisqZone, p1: Point2D, p2: Point2D, p3: Point2D) {
-    //
   }
 }
 

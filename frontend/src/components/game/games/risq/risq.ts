@@ -146,10 +146,15 @@ export class DwgRisq extends DwgElement {
     }
   }
 
-  private mousedown(_e: MouseEvent) {
-    if (!!this.hovered_space) {
-      this.hovered_space.clicked = true;
+  private mousedown(e: MouseEvent): boolean {
+    if (e.button !== 0) {
+      return false;
     }
+    if (!!this.hovered_space && this.hovered_space.visibility > 0) {
+      this.hovered_space.clicked = true;
+      return true;
+    }
+    return false;
   }
 
   private mouseup(_e: MouseEvent) {

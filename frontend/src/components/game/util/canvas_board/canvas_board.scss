@@ -1,8 +1,9 @@
 
 dwg-canvas-board {
   background-color: black;
-  cursor: none;
   border: 1px solid white;
+  box-sizing: border-box;
+  cursor: none;
   display: block;
   overflow: hidden;
 

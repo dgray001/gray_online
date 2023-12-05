@@ -1,6 +1,6 @@
 import {DwgElement} from '../../../dwg_element';
 import {until} from '../../../../scripts/util';
-import {Point2D} from '../objects2d';
+import {Point2D, addPoint2D, subtractPoint2D} from '../objects2d';
 
 import html from './canvas_board.html';
 
@@ -21,7 +21,7 @@ export declare interface CanvasBoardInitializationData {
   draw: (ctx: CanvasRenderingContext2D, transform: BoardTransformData) => void;
   mousemove: (m: Point2D, transform: BoardTransformData) => void;
   mouseleave: () => void;
-  mousedown: (e: MouseEvent) => void;
+  mousedown: (e: MouseEvent) => boolean; // returns whether something was clicked
   mouseup: (e: MouseEvent) => void;
 }
 
@@ -49,6 +49,8 @@ export class DwgCanvasBoard extends DwgElement {
     arrow_left: false,
     arrow_right: false,
   };
+  cursor_move_threshold = 5;
+  dragging = false;
   mouse: Point2D = {x: 0, y: 0};
 
   constructor() {
@@ -101,21 +103,30 @@ export class DwgCanvasBoard extends DwgElement {
       this.cursor.style.setProperty('--x', `${e.clientX.toString()}px`);
       this.cursor.style.setProperty('--y', `${e.clientY.toString()}px`);
       const rect = this.canvas.getBoundingClientRect();
-      this.mouse = {
+      const new_mouse = {
         x: (e.clientX - rect.left),
         y: (e.clientY - rect.top),
       };
-      this.data.mousemove({
-        x: (this.mouse.x + this.transform.view.x) / this.transform.scale,
-        y: (this.mouse.y + this.transform.view.y) / this.transform.scale,
-      }, this.transform);
+      const dif_mouse = subtractPoint2D(new_mouse, this.mouse);
+      this.mouse = new_mouse;
+      if (this.dragging) {
+        this.setView(subtractPoint2D(this.transform.view, dif_mouse));
+      } else {
+        this.data.mousemove({
+          x: (this.mouse.x + this.transform.view.x) / this.transform.scale,
+          y: (this.mouse.y + this.transform.view.y) / this.transform.scale,
+        }, this.transform);
+      }
     });
     this.addEventListener('mousedown', (e: MouseEvent) => {
       e.stopImmediatePropagation();
-      this.data.mousedown(e);
+      if (!this.data.mousedown(e)) {
+        this.dragging = true;
+      }
     });
     this.addEventListener('mouseup', (e: MouseEvent) => {
       e.stopImmediatePropagation();
+      this.dragging = false;
       this.data.mouseup(e);
     });
     this.addEventListener('mouseenter', () => {
@@ -124,6 +135,7 @@ export class DwgCanvasBoard extends DwgElement {
     });
     this.addEventListener('mouseleave', () => {
       this.hovered = false;
+      this.dragging = false;
       this.cursor.classList.add('hide');
       this.data.mouseleave();
     });
@@ -189,6 +201,7 @@ export class DwgCanvasBoard extends DwgElement {
     const d_view = {x: 0, y: 0};
     const arrow_key_speed = 20 * this.transform.scale;
     let moved = false;
+    const rect = this.getBoundingClientRect();
     if (this.holding_keys.arrow_up) {
       d_view.y -= arrow_key_speed;
       moved = true;
@@ -204,6 +217,24 @@ export class DwgCanvasBoard extends DwgElement {
     if (this.holding_keys.arrow_right) {
       d_view.x += arrow_key_speed;
       moved = true;
+    }
+    if (!this.dragging) {
+      if (this.mouse.y < this.cursor_move_threshold) {
+        d_view.y -= arrow_key_speed;
+        moved = true;
+      }
+      if (this.mouse.y > rect.height - this.cursor_move_threshold) {
+        d_view.y += arrow_key_speed;
+        moved = true;
+      }
+      if (this.mouse.x < this.cursor_move_threshold) {
+        d_view.x -= arrow_key_speed;
+        moved = true;
+      }
+      if (this.mouse.x > rect.width - this.cursor_move_threshold) {
+        d_view.x += arrow_key_speed;
+        moved = true;
+      }
     }
     if (moved) {
       this.setView({x: this.transform.view.x + d_view.x, y: this.transform.view.y + d_view.y});

@@ -31,6 +31,14 @@ export function multiplyPoint2D(s: number, p: Point2D): Point2D {
   return {x: s * p.x, y: s * p.y};
 }
 
+/** Rotates point using standard 2D rotation matrix */
+export function rotatePoint(p: Point2D, a: number): Point2D {
+  return {
+    x: p.x * Math.cos(a) - p.y * Math.sin(a),
+    y: p.x * Math.sin(a) + p.y * Math.cos(a),
+  };
+}
+
 /** Returns the rounded integer axial coordinate from a fractional coordinate */
 export function roundAxialCoordinate(p: Point2D): Point2D {
   let q = Math.round(p.x);

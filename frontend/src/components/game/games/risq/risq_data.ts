@@ -30,6 +30,22 @@ export declare interface RisqSpace {
   clicked: boolean;
 }
 
+/** Describes rectangle hover data */
+export declare interface RectHoverData {
+  ps: Point2D;
+  pe: Point2D;
+  hovered?: boolean;
+  clicked?: boolean;
+}
+
+/** Describes ellipse hover data */
+export declare interface EllipHoverData {
+  c: Point2D;
+  r: Point2D;
+  hovered?: boolean;
+  clicked?: boolean;
+}
+
 /** Data describing zones inside a risq space */
 export declare interface RisqZone {
   coordinate: Point2D;
@@ -38,6 +54,15 @@ export declare interface RisqZone {
   // purely frontend fields
   hovered: boolean;
   clicked: boolean;
+  hovered_data: EllipHoverData[];
+  units_by_type?: Map<number, UnitByTypeData>; // <unit_id, internal_ids>
+}
+
+/** Data describing units_by_type data */
+export declare interface UnitByTypeData {
+  unit_id: number;
+  units: Set<number>; // internal ids
+  hover_data?: RectHoverData;
 }
 
 /** Data describing a risq unit */
@@ -189,6 +214,7 @@ export function serverToRisqZone(server_zone: RisqZoneFromServer): RisqZone {
     // purely frontend fields
     hovered: false,
     clicked: false,
+    hovered_data: [],
   };
 }
 

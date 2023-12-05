@@ -1,5 +1,4 @@
 v0.5: Can launch risq
- f: Show detailed info on space dialog
  g: Collapsible right panel (shows turn number)
  h: Collapsible right panel shows player resources (space for future minimap)
  i: Closable left panel
