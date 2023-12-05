@@ -1,12 +1,11 @@
 dwg-space-dialog {
   #wrapper {
-    --base-size: min(95vw, 95vh);
     align-items: center;
     display: flex;
     flex-flow: column nowrap;
-    height: calc(1.732 * 0.5 * var(--base-width));
+    height: var(--h);
     gap: 1em;
     padding: 0 !important;
-    width: var(--base-width);
+    width: var(--w);
   }
 }

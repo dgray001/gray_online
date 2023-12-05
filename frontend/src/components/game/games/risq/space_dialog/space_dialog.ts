@@ -80,9 +80,19 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
         zone.clicked = false;
       }
     }
-    const size = Math.min(0.95 * window.innerHeight, 0.95 * window.innerWidth);
-    this.size = {x: size, y: 0.5 * 1.732 * size};
-    this.radius = 0.38 * size;
+    const max_size = 0.9;
+    if (0.5 * 1.732 * max_size * window.innerWidth > max_size * window.innerHeight) {
+      this.size = {
+        x: max_size * window.innerHeight / (0.5 * 1.732),
+        y: max_size * window.innerHeight,
+      };
+    } else {
+      this.size = {
+        x: max_size * window.innerWidth,
+        y: max_size * window.innerWidth * (0.5 * 1.732),
+      };
+    }
+    this.radius = 0.37 * this.size.x;
     this.ctx = this.canvas.getContext('2d');
     this.canvas.style.setProperty('--w', `${this.size.x.toString()}px`);
     this.canvas.style.setProperty('--h', `${this.size.y.toString()}px`);
@@ -200,7 +210,10 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
       this.ctx.closePath();
       this.ctx.stroke();
       this.ctx.fill();
-      if (adjacent_space.visibility >= 0) { // TODO: change to > 0
+      if (!adjacent_space) {
+        continue;
+      }
+      if (adjacent_space.visibility > 0) {
         let building_img = this.icons.get('building');
         let unit_img = this.icons.get('unit');
         if (fill_color.getBrightness() > 0.5) {
@@ -211,16 +224,22 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
           unit_img = this.icons.get('unit_white');
         }
         this.ctx.textBaseline = 'top';
-        const h = (5 * this.hex_r / 4) / 3 - 4;
-        this.ctx.font = `bold ${h}px serif`;
-        const x1 = adjacent_space.center.x - 0.5 * this.hex_a;
-        const y1 = adjacent_space.center.y - 5 * this.hex_r / 8;
-        this.ctx.drawImage(building_img, x1, y1, h, h);
-        this.ctx.fillText(`: ${adjacent_space.buildings.size.toString()}`, x1 + h + 2, y1, 1.5 * this.hex_a - h - 2);
-        const x2 = adjacent_space.center.x - 0.5 * this.hex_a;
-        const y2 = adjacent_space.center.y - 5 * this.hex_r / 8 + h + 2;
-        this.ctx.drawImage(unit_img, x2, y2, h, h);
-        this.ctx.fillText(`: ${adjacent_space.units.size.toString()}`, x2 + h + 2, y2, 1.5 * this.hex_a - h - 2);
+        const hex_r = 0.27 * r;
+        const hex_a = 0.5 * 1.732 * hex_r;
+        const c_x = (0.5 * 1.732 * r + hex_a) * Math.cos(a * i + Math.PI / 3);
+        const c_y = (0.5 * 1.732 * r + hex_a) * Math.sin(a * i + Math.PI / 3);
+        const inset_offset = 0.25; // this determines how the inset rect (for summaries) is constructed
+        const inset_w = 2 * hex_a * (1 - inset_offset);
+        const inset_h = hex_r * (1 + inset_offset);
+        const inset_row = inset_h / 3 - 4;
+        this.ctx.font = `bold ${inset_row}px serif`;
+        const xs = c_x - 0.5 * inset_w;
+        const y1 = c_y - 0.5 * inset_h;
+        this.ctx.drawImage(building_img, xs, y1, inset_row, inset_row);
+        this.ctx.fillText(`: ${adjacent_space.buildings?.size.toString()}`, xs + inset_row + 2, y1, inset_w - inset_row - 2);
+        const y2 = c_y - 0.5 * inset_h + inset_row + 2;
+        this.ctx.drawImage(unit_img, xs, y2, inset_row, inset_row);
+        this.ctx.fillText(`: ${adjacent_space.units?.size.toString()}`, xs + inset_row + 2, y2, inset_w - inset_row - 2);
       }
     }
   }

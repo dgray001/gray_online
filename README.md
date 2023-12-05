@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.4e: Fix security vulnerabilities
+v0.4f: Summary info in space dialog
 
 ## Dev Use
 

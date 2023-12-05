@@ -79,6 +79,11 @@ export class DwgRisq extends DwgElement {
     ctx.strokeStyle = 'rgba(250, 250, 250, 0.9)';
     ctx.textAlign = 'left';
     ctx.lineWidth = 2;
+    const inset_offset = 0.25; // this determines how the inset rect (for summaries) is constructed
+    const inset_w = 2 * this.hex_a * (1 - inset_offset);
+    const inset_h = this.hex_r * (1 + inset_offset);
+    const inset_row = inset_h / 3 - 4;
+    ctx.font = `bold ${inset_row}px serif`;
     for (const row of this.game.spaces) {
       for (const space of row) {
         const fill = getSpaceFill(space);
@@ -96,19 +101,13 @@ export class DwgRisq extends DwgElement {
             unit_img = this.icons.get('unit_white');
           }
           ctx.textBaseline = 'top';
-          const h = (5 * this.hex_r / 4) / 3 - 4;
-          ctx.font = `bold ${h}px serif`;
-          const x1 = space.center.x - 0.5 * this.hex_a;
-          const y1 = space.center.y - 5 * this.hex_r / 8;
-          ctx.drawImage(building_img, x1, y1, h, h);
-          ctx.fillText(`: ${space.buildings.size.toString()}`, x1 + h + 2, y1, 1.5 * this.hex_a - h - 2);
-          const x2 = space.center.x - 0.5 * this.hex_a;
-          const y2 = space.center.y - 5 * this.hex_r / 8 + h + 2;
-          ctx.drawImage(unit_img, x2, y2, h, h);
-          ctx.fillText(`: ${space.units.size.toString()}`, x2 + h + 2, y2, 1.5 * this.hex_a - h - 2);
-          /*const x3 = space.center.x - 0.5 * this.hex_a;
-          const y3 = space.center.y - 5 * this.hex_r / 8 + 2 * h + 4;
-          ctx.drawImage(this.icons.get('resource'), x1, y1, h, h);*/
+          const xs = space.center.x - 0.5 * inset_w;
+          const y1 = space.center.y - 0.5 * inset_h;
+          ctx.drawImage(building_img, xs, y1, inset_row, inset_row);
+          ctx.fillText(`: ${space.buildings.size.toString()}`, xs + inset_row + 2, y1, inset_w - inset_row - 2);
+          const y2 = space.center.y - 0.5 * inset_h + inset_row + 2;
+          ctx.drawImage(unit_img, xs, y2, inset_row, inset_row);
+          ctx.fillText(`: ${space.units.size.toString()}`, xs + inset_row + 2, y2, inset_w - inset_row - 2);
         }
       }
     }
