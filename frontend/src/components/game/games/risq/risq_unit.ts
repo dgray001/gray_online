@@ -6,6 +6,9 @@ export function unitImage(unit: RisqUnit): HTMLImageElement {
   let filename = '';
   switch(unit.unit_id) {
     case 1:
+    case 2:
+    case 3:
+    case 4:
       filename = 'villager';
       break;
     default:

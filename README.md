@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.4g: Details info in space dialog
+v0.4h: Buggy space info
 
 ## Dev Use
 
