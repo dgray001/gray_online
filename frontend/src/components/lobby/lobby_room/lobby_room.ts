@@ -3,10 +3,12 @@ import {ChatMessage, DwgChatbox, SERVER_CHAT_NAME} from '../../chatbox/chatbox';
 import {GameSettings, GameType, LobbyRoom, LobbyUser, createMessage} from '../data_models';
 import {DwgLobbyGameSettings} from '../lobby_game_settings/lobby_game_settings';
 import {capitalize, clickButton, setIntervalX} from '../../../scripts/util';
+import {DwgRoomUser} from './room_user/room_user';
 
 import html from './lobby_room.html';
 import './lobby_room.scss';
 import '../lobby_game_settings/lobby_game_settings';
+import './room_user/room_user';
 
 enum GameStatusEnum {
   NOT_STARTED = 'Game not started',
@@ -27,10 +29,6 @@ export class DwgLobbyRoom extends DwgElement {
   host_container: HTMLDivElement;
   players_container: HTMLDivElement;
   viewers_container: HTMLDivElement;
-  kick_img: HTMLImageElement;
-  promote_img: HTMLImageElement;
-  viewer_img: HTMLImageElement;
-  player_img: HTMLImageElement;
   settings_title: HTMLDivElement;
   num_players_current: HTMLSpanElement;
   num_players_max: HTMLSpanElement;
@@ -47,12 +45,13 @@ export class DwgLobbyRoom extends DwgElement {
   game_rejoin_button: HTMLButtonElement;
 
   is_host = false;
+  client_id = -1;
   settings_launching = false;
   renaming_room = false;
   room: LobbyRoom;
-  host_el: HTMLDivElement;
-  player_els = new Map<number, HTMLDivElement>();
-  viewer_els = new Map<number,  HTMLDivElement>();
+  host_el: DwgRoomUser;
+  player_els = new Map<number, DwgRoomUser>();
+  viewer_els = new Map<number,  DwgRoomUser>();
 
   constructor() {
     super();
@@ -66,10 +65,6 @@ export class DwgLobbyRoom extends DwgElement {
     this.configureElement('host_container');
     this.configureElement('players_container');
     this.configureElement('viewers_container');
-    this.configureElement('kick_img');
-    this.configureElement('promote_img');
-    this.configureElement('viewer_img');
-    this.configureElement('player_img');
     this.configureElement('settings_title');
     this.configureElement('num_players_current');
     this.configureElement('num_players_max');
@@ -151,6 +146,12 @@ export class DwgLobbyRoom extends DwgElement {
         });
       }
     });
+    this.game_resign_button.disabled = true;
+    /*
+    clickButton(this.game_resign_button, () => {
+      this.dispatchEvent(new Event('resign_game'));
+    });
+    */
     clickButton(this.game_rejoin_button, () => {
       this.dispatchEvent(new Event('rejoin_game'));
     });
@@ -176,12 +177,13 @@ export class DwgLobbyRoom extends DwgElement {
   }
 
   refreshRoom(room: LobbyRoom, is_host: boolean) {
-    this.setRoom(room, is_host, true);
+    this.setRoom(room, is_host, this.client_id, true);
   }
 
-  setRoom(room: LobbyRoom, is_host: boolean, refresh_room = false) {
+  setRoom(room: LobbyRoom, is_host: boolean, client_id: number, refresh_room = false) {
     const game_launched = !!room.game_id;
     this.is_host = is_host;
+    this.client_id = client_id;
     this.room = room;
     this.room_name.innerText = room.room_name;
     if (!this.lobby_game_settings.classList.contains('show')) {
@@ -211,7 +213,7 @@ export class DwgLobbyRoom extends DwgElement {
       this.settings_button_container.classList.add('hide');
     }
     this.setLaunching(this.settings_launching && refresh_room);
-    this.host_el = this.getUserElement(room.host, false, true);
+    this.host_el = this.getUserElement(room.host, is_host, true);
     this.host_container.replaceChildren(this.host_el);
     this.player_els.clear();
     for (const player of room.players.values()) {
@@ -223,7 +225,7 @@ export class DwgLobbyRoom extends DwgElement {
     this.players_container.replaceChildren(...this.player_els.values());
     this.viewer_els.clear();
     for (const viewer of room.viewers.values()) {
-      this.viewer_els.set(viewer.client_id, this.getUserElement(viewer, is_host, true));
+      this.viewer_els.set(viewer.client_id, this.getUserElement(viewer, is_host, false));
     }
     this.viewers_container.replaceChildren(...this.viewer_els.values());
   }
@@ -255,43 +257,12 @@ export class DwgLobbyRoom extends DwgElement {
     }
   }
 
-  private getUserElement(user: LobbyUser, is_host: boolean, is_player: boolean): HTMLDivElement {
-    const el = document.createElement('div');
+  private getUserElement(user: LobbyUser, is_host: boolean, is_player: boolean): DwgRoomUser {
+    const el = document.createElement('dwg-room-user');
     el.classList.add('room-user');
     el.id = `user-${user.client_id}`;
-    const el_text = document.createElement('span');
-    el_text.innerText = this.getUserElementText(user);
-    el.appendChild(el_text);
-    if (is_host && !this.room.game_id) {
-      if (is_player) {
-        el.appendChild(this.getUserButton(user.client_id, 'kick', this.kick_img.src));
-        el.appendChild(this.getUserButton(user.client_id, 'viewer', this.viewer_img.src));
-        el.appendChild(this.getUserButton(user.client_id, 'promote', this.promote_img.src));
-      } else {
-        el.appendChild(this.getUserButton(user.client_id, 'kick', this.kick_img.src));
-        el.appendChild(this.getUserButton(user.client_id, 'player', this.player_img.src));
-      }
-    }
+    el.setConfig(user, is_host, is_player, this.client_id === user.client_id, !!this.room.game_id);
     return el;
-  }
-
-  private getUserButton(client_id: number, name: string, src: string): HTMLButtonElement {
-    const button = document.createElement('button');
-    button.id = `${name}-button-${client_id}`;
-    button.classList.add(`${name}-button`);
-    const icon = document.createElement('img');
-    icon.src = src;
-    icon.alt = name;
-    icon.draggable = false;
-    button.appendChild(icon);
-    button.addEventListener('click', () => {
-      this.dispatchEvent(new CustomEvent(`${name}_player`, {'detail': client_id}));
-    });
-    return button;
-  }
-
-  private getUserElementText(user: LobbyUser): string {
-    return `${user.nickname} (${Math.round(user.ping)})`;
   }
 
   clearRoom() {
@@ -373,12 +344,12 @@ export class DwgLobbyRoom extends DwgElement {
       return;
     }
     if (!!this.host_el) {
-      this.host_el.innerText = this.getUserElementText(this.room.host);
+      this.host_el.updatePing(this.room.host.ping);
     }
     for (const [client_id, player_el] of this.player_els.entries()) {
       const player = this.room.players.get(client_id);
       if (!!player) {
-        player_el.innerText = this.getUserElementText(player);
+        player_el.updatePing(player.ping);
       } else {
         player_el.remove();
       }
@@ -386,7 +357,7 @@ export class DwgLobbyRoom extends DwgElement {
     for (const [client_id, viewer_el] of this.viewer_els.entries()) {
       const viewer = this.room.viewers.get(client_id);
       if (!!viewer) {
-        viewer_el.innerText = this.getUserElementText(viewer);
+        viewer_el.updatePing(viewer.ping);
       } else {
         viewer_el.remove();
       }
@@ -398,8 +369,8 @@ export class DwgLobbyRoom extends DwgElement {
       return;
     }
     const user_el = this.querySelector<HTMLDivElement>(`#user-${joinee.client_id}`);
-    if (user_el) {
-      user_el.replaceWith(this.getUserElement(joinee, this.is_host, true));
+    if (!!user_el) {
+      user_el.replaceWith(this.getUserElement(joinee, this.is_host, join_as_player));
     } else if (join_as_player) {
       const player_el = this.getUserElement(joinee, this.is_host, true);
       this.player_els.set(joinee.client_id, player_el);
@@ -454,7 +425,7 @@ export class DwgLobbyRoom extends DwgElement {
       return;
     }
     this.room.host = user;
-    this.setRoom(this.room, is_host);
+    this.setRoom(this.room, is_host, this.client_id);
     this.chatbox.addChat({
       message: `${user.nickname} (client id ${user.client_id}) was promoted as host of room`,
       color: 'gray',
@@ -468,7 +439,7 @@ export class DwgLobbyRoom extends DwgElement {
     if (this.room.players.has(client_id)) {
       this.room.viewers.set(client_id, this.room.players.get(client_id));
       this.room.players.delete(client_id);
-      this.setRoom(this.room, this.is_host);
+      this.setRoom(this.room, this.is_host, this.client_id);
     }
   }
 
@@ -479,7 +450,7 @@ export class DwgLobbyRoom extends DwgElement {
     if (this.room.viewers.has(client_id)) {
       this.room.players.set(client_id, this.room.viewers.get(client_id));
       this.room.viewers.delete(client_id);
-      this.setRoom(this.room, this.is_host);
+      this.setRoom(this.room, this.is_host, this.client_id);
     }
   }
 

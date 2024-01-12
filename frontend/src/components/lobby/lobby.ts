@@ -153,7 +153,7 @@ export class DwgLobby extends DwgElement {
     this.refreshLobbyRooms();
     this.lobby_users.refreshUsers();
     setInterval(() => {
-      this.pingServer();
+      //this.pingServer();
       this.ping_container.innerText = `ping: ${Math.round(this.connection_metadata.ping)}`;
     }, LOBBY_PING_TIME);
   }
@@ -169,7 +169,7 @@ export class DwgLobby extends DwgElement {
         const message = JSON.parse(m.data) as ServerMessage;
         handleMessage(this, message);
       } catch(e) {
-        console.log("Error parsing message: ", m, e)
+        console.error("Error parsing message: ", m, e)
       }
     });
   }
@@ -225,7 +225,7 @@ export class DwgLobby extends DwgElement {
 
   enterRoom(room: LobbyRoom, is_host: boolean) {
     this.connection_metadata.room_id = room.room_id;
-    this.lobby_room.setRoom(room, is_host);
+    this.lobby_room.setRoom(room, is_host, this.connection_metadata.client_id);
     this.lobby_room_wrapper.classList.add('show');
     setUrlParam(URL_PARAM_ROOM, room.room_id.toString());
     if (!room.game_id) {

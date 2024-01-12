@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.4h: Buggy space info
+v0.4j: Room user component
 
 ## Dev Use
 

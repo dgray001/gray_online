@@ -366,6 +366,7 @@ func (l *Lobby) broadcastMessage(message lobbyMessage) {
 		if err != nil {
 			client_id = -1
 		}
+		fmt.Println("Sending chat from client", client_id)
 		for _, client := range l.clients {
 			if client == nil || !client.valid() || client.lobby_room == nil ||
 				client.lobby_room.room_id != uint64(room_id) || client.client_id == uint64(client_id) {
@@ -375,6 +376,8 @@ func (l *Lobby) broadcastMessage(message lobbyMessage) {
 			case client.send_message <- message:
 			default:
 				fmt.Fprintln(os.Stderr, "Failed to send message to client", client.client_id)
+				// Had this happen occasionally and must be in room chat
+				fmt.Fprintln(os.Stderr, "client", client, message)
 				//l.removeClient(client)
 			}
 		}

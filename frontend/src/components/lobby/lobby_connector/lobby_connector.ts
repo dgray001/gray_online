@@ -5,6 +5,7 @@ import {ConnectionMetadata} from '../data_models';
 
 import html from './lobby_connector.html';
 import './lobby_connector.scss';
+import { apiGet } from '../../../scripts/api';
 
 /** Connection Data */
 export declare interface ConnectData {
@@ -40,7 +41,7 @@ export class DwgLobbyConnector extends DwgElement {
     this.configureElement('status_message');
   }
 
-  protected override parsedCallback(): void {
+  protected override async parsedCallback(): Promise<void> {
     this.connect_button.disabled = true;
     let try_reconnect = false;
     try {
@@ -62,6 +63,11 @@ export class DwgLobbyConnector extends DwgElement {
       this.reconnect_wrapper.classList.add('show');
     } else {
       this.connect_wrapper.classList.add('show');
+    }
+    const pong = await apiGet<string>('ping');
+    if (!pong.success) {
+      this.status_message.innerHTML = 'Cannot connect to server at this time; you can try refreshing the page';
+      return;
     }
     this.nickname.addEventListener('keyup', (e) => {
       const valid_name = this.validateInputName();

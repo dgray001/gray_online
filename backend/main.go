@@ -18,7 +18,7 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
-var DEV = false
+var DEV = true
 
 func main() {
 	// Set environment variables
@@ -50,9 +50,7 @@ func main() {
 	api := r.Group("/api")
 	{
 		api.GET("/ping", func(c *gin.Context) {
-			c.JSON(200, gin.H{
-				"message": "pong",
-			})
+			c.JSON(200, successResponse("pong"))
 		})
 
 		api_lobby := api.Group("/lobby")

@@ -91,14 +91,19 @@ dwg-lobby-room {
     display: flex;
     flex-flow: row nowrap;
     flex: 1 0 0;
+    min-height: 0px;
     width: 100%;
 
     > #left-panel {
+      --width: min(320px, calc(100% - 300px));
       background-color: rgb(30, 90, 180);
       display: flex;
       flex-flow: column nowrap;
-      flex: 0 0 min(320px, calc(100% - 300px));
+      flex: 0 0 var(--width);
       height: 100%;
+      max-width: var(--width);
+      min-width: var(--width);
+      width: var(--width);
 
       > #game-settings {
         box-sizing: border-box;
@@ -200,58 +205,6 @@ dwg-lobby-room {
           margin-bottom: 2px;
           margin-top: 0.3em;
           padding: 0.2em 0.6em 0.1em;
-        }
-
-        .room-user {
-          --user-height: calc(var(--height) - 2px);
-          display: flex;
-          flex-flow: row nowrap;
-          font-size: calc(var(--font-size) - 1px);
-          gap: 0.35em;
-          height: var(--user-height);
-          line-height: var(--user-height);
-          padding: 0.15em 0.3em;
-          user-select: none;
-
-          &:hover {
-            background-color: rgba(255, 255, 255, 0.2);
-
-            > button {
-              visibility: visible;
-            }
-          }
-
-          :nth-child(2) {
-            margin-left: auto;
-          }
-
-          > button {
-            align-items: center;
-            background-color: rgba(220, 220, 220, 0.5);
-            border: none;
-            border-radius: 4px;
-            display: inline-flex;
-            height: var(--user-height);
-            justify-content: center;
-            margin: 0px;
-            padding: 0px;
-            visibility: hidden;
-            width: var(--user-height);
-
-            &:hover {
-              background-color: rgba(250, 250, 250, 0.6);
-            }
-
-            &:active {
-              background-color: rgba(255, 255, 255, 0.7);
-            }
-
-            > img {
-              --size: min(18px, 80%);
-              height: var(--size);
-              width: var(--size);
-            }
-          }
         }
       }
     }

@@ -1,4 +1,6 @@
 v0.5: Can launch risq
+ k: Fix backend validation for promote/demote in room
+
  g: Collapsible right panel (shows turn number)
  h: Collapsible right panel shows player resources (space for future minimap)
  i: Closable left panel

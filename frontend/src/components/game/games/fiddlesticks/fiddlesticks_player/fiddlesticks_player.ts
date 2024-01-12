@@ -156,7 +156,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     }
     this.bet_input.disabled = false;
     this.bet_button.disabled = false;
-    this.bet_input.valueAsNumber = 0;
+    this.bet_input.valueAsNumber = undefined;
     this.bet_input.max = this.player.cards.length.toString();
     this.bet_input_wrapper.classList.add('show');
   }
