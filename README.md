@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.4j: Room user component
+v0.4k: Lobby user component
 
 ## Dev Use
 

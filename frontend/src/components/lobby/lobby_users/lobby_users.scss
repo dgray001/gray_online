@@ -2,7 +2,19 @@ dwg-lobby-users {
   display: flex;
   flex-flow: column nowrap;
 
-  #header {
+  &.loading {
+    > #user-container {
+      display: none;
+    }
+  }
+
+  &:not(.loading) {
+    > #loading-message {
+      display: none;
+    }
+  }
+
+  > #header {
     height: 36px;
 
     #refresh-button {
@@ -34,30 +46,19 @@ dwg-lobby-users {
     }
   }
 
-  #user-container {
+  > #loading-message {
+    color: rgba(250, 250, 250, 0.9);
+    font-size: var(--size-medium);
+  }
+
+  > #user-container {
     display: flex;
     flex-flow: column nowrap;
     flex: 1 0 0;
 
     .lobby-user {
-      box-sizing: border-box;
-      font-size: 16px;
-      height: 22px;
-      padding: 2px;
-      user-select: none;
+      --height: var(--font-size-largest);
       width: 100%;
-
-      &:hover {
-        background-color: rgba(180, 180, 180, 0.15);
-      }
-
-      &:active {
-        background-color: rgba(180, 180, 180, 0.3);
-      }
-
-      &.left {
-        text-decoration: line-through;
-      }
     }
   }
 }

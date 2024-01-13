@@ -35,7 +35,8 @@ dwg-room-user {
       bottom: 100%;
       border-radius: 0.3em;
       display: none;
-      font-size: var(--size-small);
+      font-size: var(--font-size-medium);
+      line-height: var(--font-size-medium);
       padding: 0.3em;
       position: absolute;
       white-space: nowrap;

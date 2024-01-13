@@ -1,27 +1,37 @@
 import {DwgElement} from '../../dwg_element';
 import {apiGet} from '../../../scripts/api';
-import {clickButton} from '../../../scripts/util';
+import {clickButton, untilTimer} from '../../../scripts/util';
 import {LobbyUser, LobbyUserFromServer, serverResponseToUser} from '../data_models';
+import {DwgLobbyUser} from './lobby_user/lobby_user';
 
 import html from './lobby_users.html';
 import './lobby_users.scss';
+import './lobby_user/lobby_user';
+
+interface UserData {
+  data: LobbyUser;
+  el: DwgLobbyUser;
+  refreshed: boolean;
+}
 
 export class DwgLobbyUsers extends DwgElement {
   refresh_button: HTMLButtonElement;
+  loading_message: HTMLDivElement;
   user_container: HTMLDivElement;
 
-  users = new Map<number, LobbyUser>();
+  users = new Map<number, UserData>();
 
   constructor() {
     super();
     this.htmlString = html;
     this.configureElement('refresh_button');
+    this.configureElement('loading_message');
     this.configureElement('user_container');
   }
 
   protected override parsedCallback(): void {
     clickButton(this.refresh_button, () => {
-      this.refreshUsers();
+      this.refreshUsers(true);
     }, {});
     this.refreshUsers();
     setInterval(() => {
@@ -29,76 +39,81 @@ export class DwgLobbyUsers extends DwgElement {
     }, 2500);
   }
 
-  refresh_users_running = false;
-  async refreshUsers() {
-    if (this.refresh_users_running) {
+  private first_load = true;
+  async refreshUsers(force_load_message = false) {
+    if (this.classList.contains('loading')) {
       return;
     }
-    this.refresh_users_running = true;
-    this.user_container.innerHTML = ' ... loading';
-    const new_users = new Map<number, LobbyUser>();
+    if (this.first_load || force_load_message) {
+      this.classList.add('loading');
+      this.loading_message.innerHTML = ' ... loading';
+      this.first_load = false;
+    }
+    await untilTimer(200);
     const response = await apiGet<LobbyUserFromServer[]>('lobby/users/get');
     if (response.success) {
-      let html = '';
+      for (const data of this.users.values()) {
+        data.refreshed = false;
+      }
       for (const server_user of response.result) {
         const user = serverResponseToUser(server_user);
-        html += this.addUserString(user);
-        new_users.set(user.client_id, user);
+        this.addUser(user);
       }
-      this.user_container.innerHTML = html;
-      this.users = new_users;
+      const keys = [...this.users.keys()];
+      for (const k of keys) {
+        const data = this.users.get(k);
+        if (!data) {
+          continue;
+        }
+        if (!data.refreshed) {
+          data.el.remove();
+          this.users
+        }
+      }
+      this.classList.remove('loading');
     } else {
-      this.user_container.innerHTML = `Error loading users: ${response.error_message}`;
+      this.loading_message.innerHTML = `Error loading users: ${response.error_message}`;
     }
-    this.refresh_users_running = false;
-  }
-
-  private addUserString(user: LobbyUser): string {
-    return `<div class="lobby-user" id="user-${user.client_id}">${this.getUserInnerText(user)}</div>`;
-  }
-
-  private getUserInnerText(user: LobbyUser): string {
-    return `${user.nickname} (${Math.round(user.ping)})`;
   }
 
   addUser(user: LobbyUser) {
     if (this.users.has(user.client_id)) {
-      const user_el = this.querySelector<HTMLDivElement>(`#user-${user.client_id}`);
-      if (user_el) {
-        user_el.replaceWith(this.addUserString(user));
-      }
+      this.users.get(user.client_id).data = user;
+      this.users.get(user.client_id).refreshed = true;
+      this.users.get(user.client_id).el.updateUser(user);
     } else {
-      this.user_container.innerHTML += this.addUserString(user);
+      const el = document.createElement('dwg-lobby-user');
+      el.classList.add('lobby-user');
+      el.updateUser(user);
+      this.user_container.appendChild(el);
+      this.users.set(user.client_id, {data: user, el, refreshed: true});
     }
-    this.users.set(user.client_id, user);
   }
 
   updatePing(client_id: number, ping: number) {
     const user = this.users.get(client_id);
     if (!!user) {
-      user.ping = ping;
+      user.data.ping = ping;
+      user.el.updatePing(ping);
     }
   }
 
   private updatePings() {
-    for (const client_id of this.users.keys()) {
-      const user_el = this.querySelector<HTMLDivElement>(`#user-${client_id}`);
-      if (!!user_el) {
-        user_el.innerText = this.getUserInnerText(this.users.get(client_id));
-      }
+    for (const user of this.users.values()) {
+      user.el.updatePing(user.data.ping);
     }
   }
 
   removeUser(client_id: number) {
     this.users.delete(client_id);
-    const user_el = this.querySelector<HTMLDivElement>(`#user-${client_id}`);
+    const user_el = this.querySelector<DwgLobbyUser>(`#user-${client_id}`);
     if (!!user_el) {
       user_el.classList.add('left');
     }
   }
 
   getUser(user_id: number): LobbyUser {
-    return this.users.get(user_id);
+    return this.users.get(user_id).data;
   }
 
   joinRoom(user_id: number, room_id: number) {

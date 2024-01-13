@@ -29,7 +29,7 @@ def addDwgComponent():
   f.write(f"import './{filename}.scss';\n")
   f.write('\n')
   f.write(f'export class Dwg{ts_class_name} extends DwgElement {{\n')
-  f.write('  example: HTMLDivElement;\n')
+  f.write('  private example: HTMLDivElement;\n')
   f.write('\n')
   f.write('  constructor() {\n')
   f.write('    super();\n')

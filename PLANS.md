@@ -1,5 +1,15 @@
 v0.5: Can launch risq
- k: Fix backend validation for promote/demote in room
+ m: Lobby user component
+ - Proper updates dialog for fiddlesticks and euchre
+ - Abstract players dialog in game base
+ - Lobby rooms can just refresh specific rooms instead of recreating entire els
+ - Lobby users refresh specific users instead of recreating entire els
+ - Implement game info button => has game specific settings, description, etc...
+ - Host can set description of room
+ - Backend removes game after 10 minutes of everyone DC'ing
+ - Loaders for client requests in lobby: room-create, room-join, room-leave, room-rename
+
+v0.6: Advanced risq
 
  g: Collapsible right panel (shows turn number)
  h: Collapsible right panel shows player resources (space for future minimap)
@@ -18,22 +28,12 @@ v0.5: Can launch risq
  u: Villager gather order
  v: Villager build order
 
- - Proper updates dialog for fiddlesticks and euchre
- - Abstract players dialog in game base
- - Lobby rooms can just refresh specific rooms instead of recreating entire els
- - Implement game info button => has game specific settings, description, etc...
- - Host can set description of room
- - Backend removes game after 10 minutes of everyone DC'ing
  - Can launch games with AI (all games must handle)
  - Timed turns (or not) and can pause game if timed
  - AI takes over when player AFK
- - Room can be removed when all players leave for x amount of time
  - Can resign from game => AI takes over
- - Loaders for client requests in lobby: room-create, room-join, room-leave, room-rename
  - Player's cards can automatically resize => listener on game div resize
- - Implement game info button
 
-v0.6: Advanced risq
  - Setup db in prod and dev
  - Can create profile / login
  - Reporting => admin login can access admin page to see reports, etc.
