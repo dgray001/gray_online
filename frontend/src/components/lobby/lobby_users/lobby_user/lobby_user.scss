@@ -26,11 +26,11 @@ dwg-lobby-user {
   }
 
   > #ping {
-    height: calc(var(--height) - 0.3em);
+    height: calc(0.8 * var(--height) - 0.3em);
     left: 0.3em;
     position: absolute;
-    top: 0.15em;
-    width: calc(var(--height) - 0.3em);
+    top: calc(0.1 * var(--height) + 0.15em);
+    width: calc(0.8 * var(--height) - 0.3em);
 
     &:hover {
       > #ping-text {
@@ -47,12 +47,12 @@ dwg-lobby-user {
       padding: 0.3em;
       position: absolute;
       right: calc(100% + 0.3em);
-      top: 0;
+      top: calc(-0.1 * var(--height) - 0.075em);
       white-space: nowrap;
     }
   }
 
   > #user-name {
-    margin-left: calc(var(--height) + 0.5em);
+    margin-left: calc(0.8 * var(--height) + 0.3em);
   }
 }

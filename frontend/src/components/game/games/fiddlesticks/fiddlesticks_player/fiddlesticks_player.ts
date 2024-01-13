@@ -1,7 +1,7 @@
 import {DwgElement} from '../../../../dwg_element';
 import {createMessage} from '../../../../lobby/data_models';
 import {FiddlesticksPlayer} from '../fiddlesticks_data';
-import {until, untilTimer} from '../../../../../scripts/util';
+import {DEV, until, untilTimer} from '../../../../../scripts/util';
 import {messageDialog} from '../../../game';
 
 import html from './fiddlesticks_player.html';
@@ -84,7 +84,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
   async gameStarted(betting: boolean, current_turn: boolean, dealer: boolean) {
     await until(() => this.fully_parsed);
     if (betting) {
-      this.bet_container.innerText = this.player.bet.toString(); // TODO: shouldn't show if haven't bet yet
+      this.bet_container.innerText = this.player.has_bet ? this.player.bet.toString() : '-';
       this.tricks_container.innerText = '-';
       if (current_turn) {
         this.betting();
@@ -156,7 +156,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     }
     this.bet_input.disabled = false;
     this.bet_button.disabled = false;
-    this.bet_input.valueAsNumber = undefined;
+    this.bet_input.valueAsNumber = DEV ? 0 : undefined;
     this.bet_input.max = this.player.cards.length.toString();
     this.bet_input_wrapper.classList.add('show');
   }

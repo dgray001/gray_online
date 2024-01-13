@@ -25,6 +25,7 @@ export declare interface FiddlesticksPlayer {
   cards_played: number[];
   score: number;
   bet: number;
+  has_bet: boolean;
   tricks: number;
   order: number; // around table
 }

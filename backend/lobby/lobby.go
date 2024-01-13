@@ -191,7 +191,7 @@ func (l *Lobby) reconnectClient(client *Client, client_id uint64) {
 		client.client_id = old_client.client_id
 		old_game := old_client.game
 		old_lobby_room := old_client.lobby_room
-		if old_game == nil && old_lobby_room != nil {
+		if old_client.gameNil() && old_lobby_room != nil {
 			old_game = old_lobby_room.game
 		}
 		if old_lobby_room != nil {
@@ -238,10 +238,7 @@ func (l *Lobby) removeClient(client *Client) {
 		delete(l.clients, client.client_id)
 	}()
 	id_string := strconv.Itoa(int(client.client_id))
-	if client.lobby_room != nil && client.lobby_room.host != nil &&
-		client.lobby_room.host.client_id == client.client_id && client.lobby_room.game == nil {
-		l.removeRoom(client.lobby_room)
-	} else if client.lobby_room != nil {
+	if client.lobby_room != nil {
 		client.lobby_room.removeClient(client, false)
 	}
 	l.broadcastMessage(lobbyMessage{Sender: "client-" + id_string, Kind: "lobby-left", Content: client.nickname, Data: id_string})

@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.4k: Lobby user component
+v0.4l: Fix disconnect bugs
 
 ## Dev Use
 

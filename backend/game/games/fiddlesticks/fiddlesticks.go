@@ -206,6 +206,7 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 
 func (f *GameFiddlesticks) executeBet(player *game.Player, bet_value uint8) {
 	f.players[f.turn].bet = bet_value
+	f.players[f.turn].has_bet = true
 	done_betting := f.turn == f.dealer
 	f.turn++
 	if f.turn >= len(f.players) {
@@ -361,7 +362,7 @@ func (f *GameFiddlesticks) dealNextRound() {
 		f.players[j].cards = cards
 		f.players[j].cards_played = []int{}
 		f.players[j].tricks = 0
-		f.players[j].bet = 0
+		f.players[j].has_bet = false
 	}
 	f.trump = f.deck.DrawCard()
 	for _, player := range f.players {

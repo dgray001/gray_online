@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/dgray001/gray_online/game"
 	"github.com/dgray001/gray_online/game/games/euchre"
@@ -24,6 +25,7 @@ type LobbyRoom struct {
 	lobby         *Lobby
 	game          game.Game
 	game_settings *GameSettings
+	delete_timer  *time.Timer
 	// lobby room and game channels
 	// TODO: move lobby room channels from lobby to lobby room
 	broadcast       chan lobbyMessage
@@ -176,6 +178,13 @@ func (r *LobbyRoom) replaceClient(client *Client) {
 	if util.MapContains(r.viewers, client.client_id) {
 		r.viewers[client.client_id] = client
 	}
+	if r.gameStarted() {
+		game.Game_PlayerReconnected(r.game, client.client_id)
+	}
+	if r.delete_timer != nil {
+		r.delete_timer.Stop()
+		r.delete_timer = nil
+	}
 }
 
 func (r *LobbyRoom) broadcastMessage(message lobbyMessage) {
@@ -206,8 +215,16 @@ func (r *LobbyRoom) broadcastMessage(message lobbyMessage) {
 	}
 }
 
+func (r *LobbyRoom) gameNil() bool {
+	return r.game == nil || r.game.GetBase() == nil
+}
+
+func (r *LobbyRoom) gameStarted() bool {
+	return r.game != nil && r.game.GetBase() != nil && r.game.GetBase().GameStarted() && !r.game.GetBase().GameEnded()
+}
+
 func (r *LobbyRoom) addClient(c *Client, join_as_player bool) {
-	if r.game != nil && !r.game.GetBase().GameEnded() {
+	if r.gameStarted() {
 		join_as_player = false
 	}
 	if c.lobby_room != nil {
@@ -251,20 +268,25 @@ func (r *LobbyRoom) spaceForViewer() bool {
 }
 
 func (r *LobbyRoom) removeClient(c *Client, client_leaves bool) {
-	if r.host != nil && r.host.client_id == c.client_id && r.game == nil {
+	if r.host != nil && r.host.client_id == c.client_id && !r.gameStarted() {
+		// TODO: make someone else the room host if game not started
 		r.lobby.removeRoom(r)
 		return
 	}
-	if r.game == nil || client_leaves {
+	if r.gameStarted() {
+		if game.Game_PlayerDisconnected(r.game, c.client_id) {
+			delete_room := time.NewTimer(15 * time.Second)
+			r.delete_timer = delete_room
+			go func() {
+				<-delete_room.C
+				r.lobby.removeRoom(r)
+			}()
+		}
+	}
+	if !r.gameStarted() || client_leaves {
 		delete(r.players, c.client_id)
 		if c.lobby_room != nil && c.lobby_room.room_id == r.room_id {
 			c.lobby_room = nil
-		}
-	} else if r.game != nil {
-		r.game.PlayerDisconnected(c.client_id)
-		base := r.game.GetBase()
-		if base != nil {
-			r.game.GetBase().PlayerDisconnected(c.client_id)
 		}
 	}
 	delete(r.viewers, c.client_id)

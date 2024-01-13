@@ -70,12 +70,19 @@ func (g *GameBase) PlayerConnected(client_id uint64) bool {
 	return true
 }
 
-func (g *GameBase) PlayerDisconnected(client_id uint64) {
+// Returns whether this disconnect should trigger the game to end
+func (g *GameBase) PlayerDisconnected(client_id uint64) bool {
 	player := g.Players[client_id]
 	if player == nil || !player.connected {
-		return
+		return false
 	}
 	player.connected = false
+	for _, player := range g.Players {
+		if player.connected {
+			return false
+		}
+	}
+	return true
 }
 
 func (g *GameBase) GameStarted() bool {

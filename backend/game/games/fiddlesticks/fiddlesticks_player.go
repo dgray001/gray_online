@@ -12,6 +12,7 @@ type FiddlesticksPlayer struct {
 	cards_played []int
 	score        uint16
 	bet          uint8
+	has_bet      bool
 	tricks       uint8
 }
 
@@ -21,6 +22,7 @@ func (p *FiddlesticksPlayer) toFrontend(show_updates bool) gin.H {
 		"bet":          p.bet,
 		"tricks":       p.tricks,
 		"cards_played": p.cards_played,
+		"has_bet":      p.has_bet,
 	}
 	if p.player != nil {
 		player["player"] = p.player.ToFrontend(show_updates)

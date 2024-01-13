@@ -153,7 +153,7 @@ export class DwgLobby extends DwgElement {
     this.refreshLobbyRooms();
     this.lobby_users.refreshUsers();
     setInterval(() => {
-      //this.pingServer();
+      this.pingServer();
       this.ping_container.innerText = `ping: ${Math.round(this.connection_metadata.ping)}`;
     }, LOBBY_PING_TIME);
   }

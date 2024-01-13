@@ -176,6 +176,13 @@ export class DwgLobbyRooms extends DwgElement {
 
   viewerJoinsRoom(room_id: number, joinee: LobbyUser) {
     const curr_room = this.getRoom(joinee.room_id);
+    if (room_id === joinee.room_id) {
+      if (!!curr_room) {
+        curr_room.viewers.set(joinee.client_id, joinee);
+        this.roomUpdated(curr_room);
+      }
+      return;
+    }
     if (!!curr_room) {
       if (curr_room.host.client_id === joinee.client_id) {
         this.removeRoom(joinee.room_id);

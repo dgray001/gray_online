@@ -31,13 +31,16 @@ dwg-lobby {
   }
 
   > #buttons {
+    --padding: 6px;
+
     background-color: rgb(10, 50, 100);
     border-bottom: 2px solid black;
     box-sizing: border-box;
     display: flex;
     flex-flow: row nowrap;
-    gap: 8px;
+    gap: var(--padding);
     height: var(--buttons-height);
+    padding-left: var(--padding);
     max-height: var(--buttons-height);
     min-height: var(--buttons-height);
     width: 100%;
@@ -45,10 +48,11 @@ dwg-lobby {
     > button {
       background-color: transparent;
       border: none;
-      border-radius: 16px;
+      border-radius: calc(2 * var(--padding));
       color: white;
-      font-size: 20px;
-      padding: 8px;
+      font-size: calc(0.7 * (var(--buttons-height) - 2 * var(--padding)));
+      line-height: calc(var(--buttons-height) - 2 * var(--padding));
+      padding: var(--padding);
       transition:
         background-color 200ms,
         border-radius 200ms;

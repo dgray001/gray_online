@@ -49,7 +49,6 @@ export class DwgLobbyUsers extends DwgElement {
       this.loading_message.innerHTML = ' ... loading';
       this.first_load = false;
     }
-    await untilTimer(200);
     const response = await apiGet<LobbyUserFromServer[]>('lobby/users/get');
     if (response.success) {
       for (const data of this.users.values()) {

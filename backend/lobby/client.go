@@ -187,6 +187,10 @@ func (c *Client) readMessages() {
 				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-rename-failed", Content: "Not room host"}
 				break
 			}
+			if room.gameStarted() {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-rename-failed", Content: "Game started"}
+				break
+			}
 			room.room_name = message.Content
 			c.lobby.RenameRoom <- room
 		case "room-kick":
@@ -202,6 +206,10 @@ func (c *Client) readMessages() {
 			}
 			if room.host.client_id != c.client_id {
 				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-kick-failed", Content: "Not room host"}
+				break
+			}
+			if room.gameStarted() {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-kick-failed", Content: "Game started"}
 				break
 			}
 			client_id, err := strconv.Atoi(message.Content)
@@ -228,6 +236,10 @@ func (c *Client) readMessages() {
 			}
 			if room.host.client_id != c.client_id {
 				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-promote-failed", Content: "Not room host"}
+				break
+			}
+			if room.gameStarted() {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-promote-failed", Content: "Game started"}
 				break
 			}
 			client_id, err := strconv.Atoi(message.Content)
@@ -261,6 +273,10 @@ func (c *Client) readMessages() {
 				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-set-viewer-failed", Content: "Not room host"}
 				break
 			}
+			if room.gameStarted() {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-set-viewer-failed", Content: "Game started"}
+				break
+			}
 			client := c.lobby.GetClient(uint64(client_id))
 			if client == nil {
 				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-set-viewer-failed", Content: "Client doesn't exist"}
@@ -287,6 +303,10 @@ func (c *Client) readMessages() {
 				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-set-player-failed", Content: "Not room host"}
 				break
 			}
+			if room.gameStarted() {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-set-player-failed", Content: "Game started"}
+				break
+			}
 			client := c.lobby.GetClient(uint64(client_id))
 			if client == nil {
 				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-set-player-failed", Content: "Client doesn't exist"}
@@ -306,6 +326,10 @@ func (c *Client) readMessages() {
 			}
 			if room.host.client_id != c.client_id {
 				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-settings-update-failed", Content: "Not room host"}
+				break
+			}
+			if room.gameStarted() {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-settings-update-failed", Content: "Game started"}
 				break
 			}
 			settings := GameSettings{}
@@ -506,6 +530,14 @@ func (c *Client) validDebug(debug bool) bool {
 
 func (c *Client) valid() bool {
 	return c.validDebug(false)
+}
+
+func (c *Client) gameNil() bool {
+	return c.game == nil || c.game.GetBase() == nil
+}
+
+func (c *Client) gameStarted() bool {
+	return c.game != nil && c.game.GetBase() != nil && c.game.GetBase().GameStarted() && !c.game.GetBase().GameEnded()
 }
 
 func (c *Client) ToFrontend() gin.H {

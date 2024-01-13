@@ -18,11 +18,11 @@ dwg-room-user {
   }
 
   > #ping {
-    height: var(--user-height);
+    height: calc(0.8 * var(--user-height));
     left: 0.3em;
     position: absolute;
-    top: 0.15em;
-    width: var(--user-height);
+    top: calc(0.1 * var(--user-height) + 0.15em);
+    width: calc(0.8 * var(--user-height));
 
     &:hover {
       > #ping-text {
@@ -44,7 +44,7 @@ dwg-room-user {
   }
 
   > #user-name {
-    margin-left: calc(var(--user-height) + 0.5em);
+    margin-left: calc(0.8 * var(--user-height) + 0.5em);
   }
 
   > #buttons {
