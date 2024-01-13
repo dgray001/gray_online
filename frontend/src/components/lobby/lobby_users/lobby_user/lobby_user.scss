@@ -21,10 +21,6 @@ dwg-lobby-user {
     background-color: rgba(180, 180, 180, 0.3);
   }
 
-  &.left {
-    text-decoration: line-through;
-  }
-
   > #ping {
     height: calc(0.8 * var(--height) - 0.3em);
     left: 0.3em;

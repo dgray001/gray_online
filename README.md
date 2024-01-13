@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.4l: Fix disconnect bugs
+v0.4m: Can rejoin game you left
 
 ## Dev Use
 

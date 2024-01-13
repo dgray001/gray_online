@@ -62,12 +62,18 @@ func Game_PlayerDisconnected(g Game, client_id uint64) bool {
 	return false
 }
 
-func Game_PlayerReconnected(g Game, client_id uint64) {
-	g.PlayerReconnected(client_id)
+// Returns whether player really reconnected
+func Game_PlayerReconnected(g Game, client_id uint64) bool {
 	base := g.GetBase()
-	if base != nil {
-		base.PlayerConnected(client_id)
-	} else {
+	if base == nil {
 		fmt.Fprintln(os.Stderr, "Game base is nil")
+		return false
 	}
+	g.PlayerReconnected(client_id)
+	player := base.Players[client_id]
+	if player != nil && !player.connected {
+		base.PlayerConnected(client_id)
+		return true
+	}
+	return false
 }

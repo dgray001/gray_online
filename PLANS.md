@@ -1,4 +1,6 @@
 v0.5: Can launch risq
+ 
+
  - Proper updates dialog for fiddlesticks and euchre
  - Abstract players dialog in game base
  - Lobby rooms can just refresh specific rooms instead of recreating entire els

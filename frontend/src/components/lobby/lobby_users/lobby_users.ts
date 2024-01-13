@@ -104,11 +104,11 @@ export class DwgLobbyUsers extends DwgElement {
   }
 
   removeUser(client_id: number) {
-    this.users.delete(client_id);
-    const user_el = this.querySelector<DwgLobbyUser>(`#user-${client_id}`);
-    if (!!user_el) {
-      user_el.classList.add('left');
+    if (!this.users.has(client_id)) {
+      return;
     }
+    this.users.get(client_id).el.remove();
+    this.users.delete(client_id);
   }
 
   getUser(user_id: number): LobbyUser {

@@ -225,6 +225,17 @@ func (r *LobbyRoom) gameStarted() bool {
 
 func (r *LobbyRoom) addClient(c *Client, join_as_player bool) {
 	if r.gameStarted() {
+		if game.Game_PlayerReconnected(r.game, c.client_id) {
+			c.lobby_room = r
+			r.players[c.client_id] = c
+			if r.host != nil && r.host.client_id == c.client_id {
+				r.host = c
+			}
+			client_id_string := strconv.Itoa(int(c.client_id))
+			room_id_string := strconv.Itoa(int(r.room_id))
+			r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-joined-player", Data: client_id_string})
+			return
+		}
 		join_as_player = false
 	}
 	if c.lobby_room != nil {
