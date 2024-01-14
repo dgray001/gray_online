@@ -52,6 +52,7 @@ export class DwgGame extends DwgElement {
   player_id = -1;
   is_player = false;
   game: Game;
+  lobby_room: LobbyRoom;
 
   chatbox_lock = createLock();
 
@@ -115,7 +116,10 @@ export class DwgGame extends DwgElement {
     });
     this.button_room_players.addEventListener('click', () => {
       const players_dialog = document.createElement('dwg-players-dialog');
-      players_dialog.setData({});
+      players_dialog.setData({
+        players: [...this.game.game_base.players.values()].sort((a, b) => a.player_id - b.player_id),
+        lobby_players: this.lobby_room.players,
+      });
       this.appendChild(players_dialog);
     });
     this.button_fullscreen.addEventListener('click', () => {
@@ -163,6 +167,7 @@ export class DwgGame extends DwgElement {
       console.log('Invalid state to launch game');
       return;
     }
+    this.lobby_room = lobby;
     this.socket = socket;
     this.connection_metadata = connection_metadata;
     this.client_name_string.innerText = this.connection_metadata.nickname;

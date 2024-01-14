@@ -1,4 +1,3 @@
-import {enumKeys} from "../../scripts/util";
 
 /** Interface describing messages sent from the server to the lobby */
 export declare interface ServerMessage {

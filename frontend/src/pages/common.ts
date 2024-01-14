@@ -2,3 +2,5 @@
 
 // Global style
 import '../styles.scss';
+
+document.body.ontouchstart = () => {};

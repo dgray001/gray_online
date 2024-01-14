@@ -1,0 +1,83 @@
+dwg-players-dialog-player {
+  display: flex;
+  color: white;
+  flex-flow: row nowrap;
+  font-size: var(--font-size-large);
+  gap: var(--font-size-small);
+  height: var(--font-size-largest);
+  line-height: var(--font-size-largest);
+  overflow: hidden;
+  user-select: none;
+  width: 100%;
+
+  > #ping {
+    flex: 0 0 calc(0.8 * var(--font-size-largest));
+    padding: calc(0.1 * var(--font-size-largest));
+    position: relative;
+
+    &:not(:hover) {
+      > #ping-text {
+        display: none;
+      }
+    }
+
+    > #ping-text {
+      background-color: rgba(90, 90, 90, 0.9);
+      bottom: calc(50% - 0.5 * (var(--font-size-medium) + 0.6em));
+      font-size: var(--font-size-medium);
+      left: calc(100% + var(--font-size-small));
+      line-height: var(--font-size-medium);
+      padding: 0.3em;
+      position: absolute;
+      white-space: nowrap;
+      z-index: 2;
+    }
+  }
+
+  > #nickname {
+    white-space: nowrap;
+  }
+
+  > #rejoin-link {
+    background-color: transparent;
+    border: none;
+    border-radius: 1em !important;
+    color: white;
+    display: block;
+    font-size: var(--font-size-medium) !important;
+    margin-left: auto;
+    min-width: 0;
+    padding: 0 1em !important;
+    position: relative;
+
+    &:hover {
+      background-color: rgba(150, 150, 150, 0.2);
+    }
+
+    &:active {
+      background-color: rgba(150, 150, 150, 0.4);
+    }
+
+    &:not(:hover) {
+      > #rejoin-link-image {
+        display: none;
+      }
+    }
+
+    > #rejoin-link-text {
+      overflow-x: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    > #rejoin-link-image {
+      background-color: rgba(90, 90, 90, 0.9);
+      height: calc(0.6 * var(--font-size-largest));
+      position: absolute;
+      right: calc(0.2 * var(--font-size-largest));
+      top: calc(0.2 * var(--font-size-largest));
+      width: calc(0.6 * var(--font-size-largest));
+      z-index: 2;
+    }
+  }
+}

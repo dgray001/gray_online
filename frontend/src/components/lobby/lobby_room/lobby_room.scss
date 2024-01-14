@@ -170,6 +170,10 @@ dwg-lobby-room {
           }
         }
 
+        > #lobby-game-settings {
+          z-index: 2;
+        }
+
         > #game-button-container {
           > #game-resign-button {
             background: linear-gradient(0deg, rgb(200, 25, 25), rgb(230, 60, 60));
@@ -228,6 +232,7 @@ body.mobile {
       flex-direction: column;
 
       > #left-panel {
+        --width: 100%;
         flex-direction: row;
         flex: 0 0 320px;
 

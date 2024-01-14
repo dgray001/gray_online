@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.4m: Can rejoin game you left
+v0.4n: Basic players dialog
 
 ## Dev Use
 
