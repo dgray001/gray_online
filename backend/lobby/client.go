@@ -61,6 +61,10 @@ func CreateClient(connection *websocket.Conn, nickname string, lobby *Lobby) *Cl
 	return &client
 }
 
+func (c *Client) GetNickname() string {
+	return c.nickname
+}
+
 // Close send message channel
 func (c *Client) close() {
 	close(c.send_message)

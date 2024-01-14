@@ -9,6 +9,7 @@ import './players_dialog_player/players_dialog_player';
 
 /** Input data for a players dialog box */
 interface PlayersData {
+  room_id: number;
   players: GamePlayer[];
   lobby_players: Map<number, LobbyUser>;
 }
@@ -43,7 +44,7 @@ export class DwgPlayersDialog extends DwgDialogBox<PlayersData> {
       const el = document.createElement('dwg-players-dialog-player');
       el.id = `player-${player.player_id}`;
       el.classList.add('player');
-      el.setData(player, lobby_player);
+      el.setData(player, lobby_player, this.data.room_id);
       this.players_container.appendChild(el);
     }
     this.close_button.addEventListener('click', () => {

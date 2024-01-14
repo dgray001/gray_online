@@ -119,6 +119,7 @@ export class DwgGame extends DwgElement {
       players_dialog.setData({
         players: [...this.game.game_base.players.values()].sort((a, b) => a.player_id - b.player_id),
         lobby_players: this.lobby_room.players,
+        room_id: this.lobby_room.room_id,
       });
       this.appendChild(players_dialog);
     });

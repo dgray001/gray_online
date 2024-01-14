@@ -82,6 +82,14 @@ func main() {
 					fmt.Println("Must specify proper client_id when reconnecting")
 					return
 				}
+				if nickname == "!!previous!!" {
+					old_client := lobby_object.GetClient(uint64(client_id))
+					if old_client == nil {
+						fmt.Println("Cannot find old client to reconnect to")
+						return
+					}
+					nickname = old_client.GetNickname()
+				}
 				conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 				if err != nil {
 					fmt.Println(err)

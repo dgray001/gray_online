@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.4n: Basic players dialog
+v0.4o: Rejoin as input client
 
 ## Dev Use
 

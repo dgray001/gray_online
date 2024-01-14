@@ -2,10 +2,11 @@ import {DwgElement} from '../../dwg_element';
 import {clickButton} from '../../../scripts/util';
 import {SERVER_CHAT_NAME} from '../../chatbox/chatbox';
 import {ConnectionMetadata} from '../data_models';
+import {apiGet} from '../../../scripts/api';
+import {getUrlParam} from '../../../scripts/url';
 
 import html from './lobby_connector.html';
 import './lobby_connector.scss';
-import { apiGet } from '../../../scripts/api';
 
 /** Connection Data */
 export declare interface ConnectData {
@@ -13,6 +14,9 @@ export declare interface ConnectData {
   try_reconnect: boolean;
   client_id?: number; // defined if try_reconnect is true
 }
+
+/** A 'nickname' that causes a default to previous nickname from server */
+export const PREVIOUS_NICKNAME = '!!previous!!';
 
 export class DwgLobbyConnector extends DwgElement {
   card: HTMLDivElement;
@@ -44,7 +48,13 @@ export class DwgLobbyConnector extends DwgElement {
   protected override async parsedCallback(): Promise<void> {
     this.connect_button.disabled = true;
     let try_reconnect = false;
-    try {
+    // check url param
+    const url_client_id = parseInt(getUrlParam('client_id'));
+    if (!!url_client_id && url_client_id > 0) {
+      this.previous_nickname.innerHTML = `<em>Client ${url_client_id}</em>`;
+      this.reconnect_data = {nickname: PREVIOUS_NICKNAME, try_reconnect: true, client_id: url_client_id};
+      try_reconnect = true;
+    } else { try {
       const client_id_time = parseInt(localStorage.getItem("client_id_time"));
       const client_id = parseInt(localStorage.getItem("client_id"));
       const previous_nickname = localStorage.getItem("client_nickname");
@@ -58,7 +68,8 @@ export class DwgLobbyConnector extends DwgElement {
           try_reconnect = true;
         }
       }
-    } catch(e) {} // if local storage isn't accessible
+    } catch(e) {} // if local storage not accessible
+    }
     if (try_reconnect) {
       this.reconnect_wrapper.classList.add('show');
     } else {

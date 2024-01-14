@@ -1,4 +1,4 @@
-import { copyToClipboard } from '../../../../scripts/util';
+import {copyToClipboard} from '../../../../scripts/util';
 import {DwgElement} from '../../../dwg_element';
 import {LobbyUser} from '../../../lobby/data_models';
 import {GamePlayer} from '../../data_models';
@@ -16,6 +16,7 @@ export class DwgPlayersDialogPlayer extends DwgElement {
 
   private rejoin_url: string;
   private player: GamePlayer;
+  private room_id: number;
   private lobby_player: LobbyUser|undefined;
   private copy_timeout: NodeJS.Timeout;
 
@@ -50,7 +51,7 @@ export class DwgPlayersDialogPlayer extends DwgElement {
       }
     }
     this.nickname.innerText = this.player.nickname;
-    this.rejoin_url = `${window.location.origin}${window.location.pathname}?room_id=${this.lobby_player.room_id}&client_id=${this.player.client_id}`;
+    this.rejoin_url = `${window.location.origin}${window.location.pathname}?room_id=${this.room_id}&client_id=${this.player.client_id}`;
     this.rejoin_link.addEventListener('click', async () => {
       const copied = await copyToClipboard(this.rejoin_url);
       if (copied) {
@@ -73,9 +74,10 @@ export class DwgPlayersDialogPlayer extends DwgElement {
     });
   }
 
-  setData(player: GamePlayer, lobby_player: LobbyUser) {
+  setData(player: GamePlayer, lobby_player: LobbyUser, room_id: number) {
     this.player = player;
     this.lobby_player = lobby_player;
+    this.room_id = room_id;
   }
 }
 

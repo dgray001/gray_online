@@ -3,9 +3,8 @@ v0.5: Can launch risq
  - Can send messages to lobby, to lobby room, to game room, to individual player (if to player then it sends based on player's location)
    - Can 'respond' which just pre-adds the to individual player prefix to message
  - Proper updates dialog for fiddlesticks and euchre
- - Abstract players dialog in game base
  - Lobby rooms can just refresh specific rooms instead of recreating entire els
- - Implement game info button => has game specific settings, description, etc...
+ - Implement game info dialog => has game specific settings, description, etc...
  - Host can set description of room
  - Loaders for client requests in lobby: room-create, room-join, room-leave, room-rename
 
