@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.4p: Can choose where to chat
+v0.4q: Fix safari
 
 ## Dev Use
 

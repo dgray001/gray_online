@@ -1,10 +1,7 @@
 v0.5: Can launch risq
 
-SAFARI BROKEN
-
  - fullscreen mode need to recalc card horizontal line
  
- - Proper updates dialog for fiddlesticks and euchre
  - Lobby rooms can just refresh specific rooms instead of recreating entire els
  - Implement game info dialog => has game specific settings, description, etc...
  - Host can set description of room
@@ -29,6 +26,7 @@ v0.6: Advanced risq
  u: Villager gather order
  v: Villager build order
 
+ - Proper updates dialog for fiddlesticks and euchre
  - Can launch games with AI (all games must handle)
  - Timed turns (or not) and can pause game if timed
  - AI takes over when player AFK

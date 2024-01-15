@@ -79,7 +79,7 @@ export class DwgLobbyGameSettings extends DwgElement {
     el.min = min.toString();
     el.max = max.toString();
     if (default_value !== undefined) {
-      el.valueAsNumber = default_value;
+      el.value = default_value.toString();
     }
 
     const label_el = document.createElement('label');
@@ -103,8 +103,8 @@ export class DwgLobbyGameSettings extends DwgElement {
 
   setSettings(settings: GameSettings) {
     this.game_chooser.value = settings.game_type.toString();
-    this.max_players_input.valueAsNumber = settings.max_players;
-    this.max_viewers_input.valueAsNumber = settings.max_viewers;
+    this.max_players_input.value = settings.max_players.toString();
+    this.max_viewers_input.value = settings.max_viewers.toString();
     try {
       switch(settings.game_type) {
         case GameType.FIDDLESTICKS:
@@ -124,7 +124,7 @@ export class DwgLobbyGameSettings extends DwgElement {
   private setNumberSetting(el_id: string, setting?: number) {
     const el = this.game_specific_settings_els.get(el_id);
     if (!!el) {
-      el.valueAsNumber = setting ?? 0;
+      el.value = setting.toString() ?? '0';
     }
   }
 

@@ -117,7 +117,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
   }
 
   sendBetEvent() {
-    const bet_value = this.bet_input.valueAsNumber;
+    const bet_value = parseInt(this.bet_input.value) ?? NaN;
     if (isNaN(bet_value) || bet_value < 0 || bet_value > this.player.cards.length) {
       messageDialog.call(this, {message: `Invalid bet value ${bet_value}; bet must be in the range of [0, ${this.player.cards.length}]`});
       return;
@@ -156,7 +156,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     }
     this.bet_input.disabled = false;
     this.bet_button.disabled = false;
-    this.bet_input.valueAsNumber = DEV ? 0 : undefined;
+    this.bet_input.value = DEV ? '0' : '';
     this.bet_input.max = this.player.cards.length.toString();
     this.bet_input_wrapper.classList.add('show');
   }
