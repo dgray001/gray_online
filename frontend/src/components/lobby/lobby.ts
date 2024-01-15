@@ -74,11 +74,38 @@ export class DwgLobby extends DwgElement {
     });
     this.lobby_room.addEventListener('chat_sent', (e: CustomEvent<ChatMessage>) => {
       const message = e.detail;
-      const server_message = message.sender === SERVER_CHAT_NAME;
-      const display_sender = server_message ? message.sender : this.connection_metadata.nickname;
-      const sender = `room-${this.connection_metadata.room_id}-${this.connection_metadata.client_id}`;
-      message.sender = server_message ? `${sender}-${message.sender}` : sender;
-      this.sendChatMessage(this.lobby_room.chatbox, 'room-chat', message, display_sender);
+      if (message.message.startsWith('\\l')) {
+        message.message = message.message.slice(2).trim();
+        this.sendChatMessage(this.chatbox, 'lobby-chat', {...e.detail,
+          sender: `client-${this.connection_metadata.client_id}`}, this.connection_metadata.nickname);
+      } else if (message.message.startsWith('\\u')) {
+        message.message = message.message.slice(2).trim(); // TODO: implement
+      } else if (message.message.startsWith('\\g')) {
+        message.message = message.message.slice(2).trim();
+        const room = this.lobby_room.getRoom();
+        if (!!room.game_id) {
+          this.socket.send(createMessage(
+            message.sender ?? `game-${this.connection_metadata.client_id}`,
+            'game-chat',
+            message.message,
+            message.color,
+          ));
+        } else {
+          this.lobby_room.chatbox.addChat({
+            message: 'Cannot send message to unlaunched game',
+            color: 'gray',
+          }, true);
+        }
+      } else {
+        if (message.message.startsWith('\\r')) {
+          message.message = message.message.slice(2).trim();
+        }
+        const server_message = message.sender === SERVER_CHAT_NAME;
+        const display_sender = server_message ? message.sender : this.connection_metadata.nickname;
+        const sender = `room-${this.connection_metadata.room_id}-${this.connection_metadata.client_id}`;
+        message.sender = server_message ? `${sender}-${message.sender}` : sender;
+        this.sendChatMessage(this.lobby_room.chatbox, 'room-chat', message, display_sender);
+      }
     });
     this.lobby_room.addEventListener('leave_room', async () => {
       this.socket.send(createMessage(
@@ -246,6 +273,7 @@ export class DwgLobby extends DwgElement {
 
   sendChatMessage(chatbox: DwgChatbox, message_kind: string, message: ChatMessage, display_sender: string) {
     let message_sent = false;
+    message.message = message.message.trim();
     try {
       if (this.socketActive()) {
         this.socket.send(createMessage(

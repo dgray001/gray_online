@@ -1,7 +1,9 @@
 v0.5: Can launch risq
+
+SAFARI BROKEN
+
+ - fullscreen mode need to recalc card horizontal line
  
- - Can send messages to lobby, to lobby room, to game room, to individual player (if to player then it sends based on player's location)
-   - Can 'respond' which just pre-adds the to individual player prefix to message
  - Proper updates dialog for fiddlesticks and euchre
  - Lobby rooms can just refresh specific rooms instead of recreating entire els
  - Implement game info dialog => has game specific settings, description, etc...
@@ -32,6 +34,7 @@ v0.6: Advanced risq
  - AI takes over when player AFK
  - Can resign from game => AI takes over
  - Player's cards can automatically resize => listener on game div resize
+ - Can chat with individual players
 
  - Setup db in prod and dev
  - Can create profile / login

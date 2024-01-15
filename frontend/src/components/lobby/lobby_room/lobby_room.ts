@@ -276,6 +276,10 @@ export class DwgLobbyRoom extends DwgElement {
     return !!this.room;
   }
 
+  getRoom(): LobbyRoom {
+    return this.room;
+  }
+
   renameRoom(new_name: string, renamer_id: number) {
     if (this.room) {
       this.room.room_name = new_name;

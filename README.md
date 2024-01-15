@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.4o: Rejoin as input client
+v0.4p: Can choose where to chat
 
 ## Dev Use
 

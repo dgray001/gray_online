@@ -91,12 +91,35 @@ export class DwgGame extends DwgElement {
         return;
       }
       const message = e.detail;
-      this.socket.send(createMessage(
-        message.sender ?? `game-${this.connection_metadata.client_id}`,
-        'game-chat',
-        message.message,
-        message.color,
-      ));
+      if (message.message.startsWith('\\l')) {
+        message.message = message.message.slice(2).trim();
+        this.socket.send(createMessage(
+          message.sender ?? `client-${this.connection_metadata.client_id}`,
+          'lobby-chat',
+          message.message,
+          message.color,
+        ));
+      } else if (message.message.startsWith('\\u')) {
+        message.message = message.message.slice(2).trim(); // TODO: implement
+      } else if (message.message.startsWith('\\r')) {
+        message.message = message.message.slice(2).trim();
+        this.socket.send(createMessage(
+          message.sender ?? `room-${this.connection_metadata.room_id}-${this.connection_metadata.client_id}`,
+          'room-chat',
+          message.message,
+          message.color,
+        ));
+      } else {
+        if (message.message.startsWith('\\g')) {
+          message.message = message.message.slice(2).trim();
+        }
+        this.socket.send(createMessage(
+          message.sender ?? `game-${this.connection_metadata.client_id}`,
+          'game-chat',
+          message.message,
+          message.color,
+        ));
+      }
     });
     this.open_chatbox_button.addEventListener('click', () => {
       this.toggleChatbox();
