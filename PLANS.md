@@ -1,8 +1,5 @@
 v0.5: Can launch risq
 
- - fullscreen mode need to recalc card horizontal line
- 
- - Lobby rooms can just refresh specific rooms instead of recreating entire els
  - Implement game info dialog => has game specific settings, description, etc...
  - Host can set description of room
  - Loaders for client requests in lobby: room-create, room-join, room-leave, room-rename
@@ -32,6 +29,7 @@ v0.6: Advanced risq
  - AI takes over when player AFK
  - Can resign from game => AI takes over
  - Player's cards can automatically resize => listener on game div resize
+   - fullscreen mode need to recalc card horizontal line
  - Can chat with individual players
 
  - Setup db in prod and dev

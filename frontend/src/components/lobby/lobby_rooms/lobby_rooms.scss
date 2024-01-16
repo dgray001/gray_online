@@ -1,8 +1,26 @@
 dwg-lobby-rooms {
   display: block;
 
-  > .lobby-room {
-    margin: 2px 0;
-    width: 100%;
+  &.loading {
+    > #room-container {
+      display: none;
+    }
+  }
+
+  &:not(.loading) {
+    > #loading-message {
+      display: none;
+    }
+  }
+
+  > #user-container {
+    display: flex;
+    flex-flow: column nowrap;
+    flex: 1 0 0;
+
+    > .lobby-room {
+      margin: 2px 0;
+      width: 100%;
+    }
   }
 }

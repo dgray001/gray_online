@@ -1,6 +1,6 @@
 import {DwgElement} from '../../dwg_element';
 import {apiGet} from '../../../scripts/api';
-import {clickButton, untilTimer} from '../../../scripts/util';
+import {clickButton} from '../../../scripts/util';
 import {LobbyUser, LobbyUserFromServer, serverResponseToUser} from '../data_models';
 import {DwgLobbyUser} from './lobby_user/lobby_user';
 
@@ -66,7 +66,7 @@ export class DwgLobbyUsers extends DwgElement {
         }
         if (!data.refreshed) {
           data.el.remove();
-          this.users
+          this.users.delete(data.data.client_id);
         }
       }
       this.classList.remove('loading');

@@ -135,9 +135,9 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
         if (lobby.connection_metadata.room_id === closed_room_id) {
           lobby.leaveRoom();
         }
-        const room = lobby.lobby_rooms.getRoom(closed_room_id);
+        const room = lobby.lobby_rooms.getRoom(closed_room_id)?.data;
         lobby.lobby_rooms.removeRoom(closed_room_id);
-        if (room) {
+        if (!!room) {
           for (const client_id of room.players.keys()) {
             lobby.lobby_users.leaveRoom(client_id);
           }
@@ -162,7 +162,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
         if (room_join_id === lobby.connection_metadata.room_id) {
           lobby.lobby_room.joinRoom(joinee, true);
         } else if (client_join_id === lobby.connection_metadata.client_id && room) {
-          lobby.enterRoom(lobby.lobby_rooms.getRoom(room_join_id), false);
+          lobby.enterRoom(lobby.lobby_rooms.getRoom(room_join_id)?.data, false);
         }
       }
       break;
@@ -177,7 +177,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
         if (viewer_room_join_id === lobby.connection_metadata.room_id) {
           lobby.lobby_room.joinRoom(viewer_joinee, false);
         } else if (viewer_client_join_id === lobby.connection_metadata.client_id && viewer_room) {
-          lobby.enterRoom(lobby.lobby_rooms.getRoom(viewer_room_join_id), false);
+          lobby.enterRoom(lobby.lobby_rooms.getRoom(viewer_room_join_id)?.data, false);
         }
       }
       break;

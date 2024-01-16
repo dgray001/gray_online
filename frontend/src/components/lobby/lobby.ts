@@ -55,7 +55,7 @@ export class DwgLobby extends DwgElement {
   protected override parsedCallback(): void {
     this.chatbox.setPlaceholder('Chat with entire lobby');
     clickButton(this.refresh_lobby_button, async () => {
-      await this.refreshLobbyRooms();
+      await this.refreshLobbyRooms(false, true);
     });
     clickButton(this.create_room_button, async () => {
       this.socket.send(createMessage(`client-${this.connection_metadata.client_id}`, 'room-create'))
@@ -226,11 +226,12 @@ export class DwgLobby extends DwgElement {
     this.connection_metadata.ping = ping;
   }
 
-  async refreshLobbyRooms(check_url = false) {
-    const current_room = await this.lobby_rooms.refreshRooms(this.connection_metadata.client_id ?? -1);
+  async refreshLobbyRooms(check_url = false, show_load_message = false) {
+    const current_room = await this.lobby_rooms.refreshRooms(
+      this.connection_metadata.client_id ?? -1, show_load_message);
     if (check_url) {
       const url_room_id = parseInt(getUrlParam(URL_PARAM_ROOM));
-      const room = this.lobby_rooms.getRoom(url_room_id);
+      const room = this.lobby_rooms.getRoom(url_room_id)?.data;
       if (!!room && current_room?.room_id !== room.room_id) {
         this.socket.send(createMessage(
           `client-${this.connection_metadata.client_id}`,

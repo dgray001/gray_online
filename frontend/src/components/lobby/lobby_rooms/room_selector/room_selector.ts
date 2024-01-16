@@ -28,6 +28,10 @@ export class DwgRoomSelector extends DwgElement {
   }
 
   protected override parsedCallback(): void {
+    if (!this.room) {
+      console.error('Must set room before attaching to dom');
+      return;
+    }
     this.setRoomData();
     this.addEventListener('dblclick', () => {
       this.dispatchEvent(new Event('join_room'));
@@ -40,7 +44,7 @@ export class DwgRoomSelector extends DwgElement {
     });
   }
 
-  setRoom(room: LobbyRoom) {
+  updateRoom(room: LobbyRoom) {
     this.room = room;
     if (this.fully_parsed) {
       this.setRoomData();

@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.4q: Fix safari
+v0.4s: Lobby rooms don't recreate els
 
 ## Dev Use
 

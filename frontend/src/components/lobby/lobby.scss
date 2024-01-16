@@ -1,6 +1,6 @@
 dwg-lobby {
-  --name-header-height: calc(1.8 * var(--font-size-medium));
-  --buttons-height: calc(1.8 * var(--font-size-large));
+  --name-header-height: calc(1.6 * var(--font-size-small));
+  --buttons-height: calc(1.5 * var(--font-size-large));
   --chat-height: calc(min(450px, max(180px, 25vh)));
   --lobby-users-width: 250px;
   --lobby-rooms-height: calc(100vh - var(--name-header-height) - var(--buttons-height) - var(--chat-height));
@@ -17,7 +17,7 @@ dwg-lobby {
     background-color: rgb(0, 30, 60);
     box-sizing: border-box;
     display: block;
-    font-size: var(--font-size-medium);
+    font-size: var(--font-size-small);
     height: var(--name-header-height);
     line-height: var(--name-header-height);
     max-height: var(--name-header-height);

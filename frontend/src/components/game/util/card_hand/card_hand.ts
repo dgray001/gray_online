@@ -1,6 +1,6 @@
 import {DwgElement} from '../../../dwg_element';
 import {StandardCard, cardToIcon, cardToImagePath} from '../card_util';
-import {createLock, until} from '../../../../scripts/util';
+import {createLock, until, untilTimer} from '../../../../scripts/util';
 import {Point2D} from '../objects2d';
 import {MultiMap} from '../../../../scripts/multi_map';
 
@@ -237,6 +237,9 @@ export class DwgCardHand extends DwgElement {
 
   private dragCard(p: Point2D, card: CardData) {
     this.dragging_lock(async () => {
+      if (!this.dragging_data.dragging) {
+        return;
+      }
       const rect = card.el.getBoundingClientRect();
       if (p.x < this.dragging_data.start.x && card.i_dom > 0) {
         const left_card = this.cards.get('i_dom', card.i_dom - 1);
@@ -307,14 +310,16 @@ export class DwgCardHand extends DwgElement {
     }
     card.el.remove();
     this.cards.delete([index, card.i_dom]);
-    this.cards_container.style.setProperty('--num-cards', this.cards.size().toString());
-    for (const other_card of this.cards.values()) {
-      if (other_card.i_dom <= card.i_dom) {
-        continue;
+    this.dragging_lock(async () => {
+      this.cards_container.style.setProperty('--num-cards', this.cards.size().toString());
+      for (const other_card of this.cards.values()) {
+        if (other_card.i_dom <= card.i_dom) {
+          continue;
+        }
+        other_card.i_dom--;
+        other_card.el.style.setProperty('--i', other_card.i_dom.toString());
       }
-      other_card.i_dom--;
-      other_card.el.style.setProperty('--i', other_card.i_dom.toString());
-    }
+    });
   }
 
   substituteCard(index: number, new_card: StandardCard) {
