@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.4s: Lobby rooms don't recreate els
+v0.4t: Host can set description of room
 
 ## Dev Use
 

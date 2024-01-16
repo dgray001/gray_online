@@ -100,17 +100,22 @@ export class DwgLobbyRoom extends DwgElement {
       }
     });
     this.settings_settings_button.addEventListener('click', () => {
-      this.lobby_game_settings.setSettings(this.room.game_settings);
+      this.lobby_game_settings.setSettings(this.room.game_settings, this.room.room_description);
       this.lobby_game_settings.classList.add('show');
     });
     this.lobby_game_settings.addEventListener('saved', () => {
-      const message = createMessage(
+      this.dispatchEvent(new CustomEvent('save_settings', {'detail': createMessage(
         `client-${this.room.host.client_id}`,
         'room-settings-update',
         JSON.stringify(this.lobby_game_settings.getSettings()),
         this.room.room_id.toString(),
-      );
-      this.dispatchEvent(new CustomEvent('save_settings', {'detail': message}));
+      )}));
+      this.dispatchEvent(new CustomEvent('save_settings', {'detail': createMessage(
+        `client-${this.room.host.client_id}`,
+        'room-update-description',
+        this.lobby_game_settings.getDescription(),
+        this.room.room_id.toString(),
+      )}))
       this.lobby_game_settings.classList.remove('show');
     });
     this.settings_launch_button.addEventListener('click', () => {
@@ -187,7 +192,7 @@ export class DwgLobbyRoom extends DwgElement {
     this.room = room;
     this.room_name.innerText = room.room_name;
     if (!this.lobby_game_settings.classList.contains('show')) {
-      this.lobby_game_settings.setSettings(room.game_settings);
+      this.lobby_game_settings.setSettings(room.game_settings, room.room_description);
       this.updateSettingsDependencies();
     }
     this.num_players_current.innerText = room.players.size.toString();
@@ -300,6 +305,13 @@ export class DwgLobbyRoom extends DwgElement {
           color: 'gray',
         });
       }
+    }
+  }
+
+  updateRoomDescription(new_description: string) {
+    if (!!this.room) {
+      this.room.room_description = new_description;
+      this.settings_description.innerText = new_description;
     }
   }
 

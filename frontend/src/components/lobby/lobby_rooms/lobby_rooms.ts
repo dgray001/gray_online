@@ -131,6 +131,15 @@ export class DwgLobbyRooms extends DwgElement {
     this.roomUpdated(room);
   }
 
+  updateRoomDescription(room_id: number, new_description: string) {
+    const room = this.getRoom(room_id);
+    if (!room) {
+      return;
+    }
+    room.data.room_description = new_description;
+    this.roomUpdated(room);
+  }
+
   promoteUser(room_id: number, user_id: number) {
     const room = this.getRoom(room_id);
     if (!room) {

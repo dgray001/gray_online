@@ -17,15 +17,16 @@ import (
 )
 
 type LobbyRoom struct {
-	room_id       uint64
-	room_name     string
-	host          *Client
-	players       map[uint64]*Client
-	viewers       map[uint64]*Client
-	lobby         *Lobby
-	game          game.Game
-	game_settings *GameSettings
-	delete_timer  *time.Timer
+	room_id          uint64
+	room_name        string
+	room_description string
+	host             *Client
+	players          map[uint64]*Client
+	viewers          map[uint64]*Client
+	lobby            *Lobby
+	game             game.Game
+	game_settings    *GameSettings
+	delete_timer     *time.Timer
 	// lobby room and game channels
 	// TODO: move lobby room channels from lobby to lobby room
 	broadcast       chan lobbyMessage
@@ -37,12 +38,13 @@ type LobbyRoom struct {
 
 func CreateLobbyRoom(host *Client, room_id uint64, lobby *Lobby) *LobbyRoom {
 	room := LobbyRoom{
-		room_id:   room_id,
-		room_name: fmt.Sprintf("%s's room", host.nickname),
-		host:      host,
-		players:   make(map[uint64]*Client),
-		viewers:   make(map[uint64]*Client),
-		lobby:     lobby,
+		room_id:          room_id,
+		room_name:        fmt.Sprintf("%s's room", host.nickname),
+		room_description: "",
+		host:             host,
+		players:          make(map[uint64]*Client),
+		viewers:          make(map[uint64]*Client),
+		lobby:            lobby,
 		game_settings: &GameSettings{
 			MaxPlayers: 8,
 			MaxViewers: 16,
@@ -460,9 +462,10 @@ func (r *LobbyRoom) valid() bool {
 
 func (r *LobbyRoom) ToFrontend() gin.H {
 	room := gin.H{
-		"room_id":       strconv.Itoa(int(r.room_id)),
-		"room_name":     r.room_name,
-		"game_settings": r.game_settings.ToFrontend(),
+		"room_id":          strconv.Itoa(int(r.room_id)),
+		"room_name":        r.room_name,
+		"room_description": r.room_description,
+		"game_settings":    r.game_settings.ToFrontend(),
 	}
 	if r.host != nil {
 		room["host"] = r.host.ToFrontend()

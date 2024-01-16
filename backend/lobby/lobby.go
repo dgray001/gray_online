@@ -14,25 +14,26 @@ import (
 )
 
 type Lobby struct {
-	next_room_id        uint64
-	next_client_id      uint64
-	next_game_id        uint64
-	clients             map[uint64]*Client
-	rooms               map[uint64]*LobbyRoom
-	games               map[uint64]game.Game
-	AddClient           chan *Client
-	ReconnectClient     chan *ClientId
-	RemoveClient        chan *Client
-	CreateRoom          chan *Client
-	RenameRoom          chan *LobbyRoom
-	KickClientFromRoom  chan *ClientRoom
-	PromotePlayerInRoom chan *ClientRoom
-	RoomSetViewer       chan *ClientRoom
-	RoomSetPlayer       chan *ClientRoom
-	RemoveRoom          chan *LobbyRoom
-	LeaveRoom           chan *ClientRoom
-	LaunchGame          chan *LobbyRoom
-	broadcast           chan lobbyMessage
+	next_room_id          uint64
+	next_client_id        uint64
+	next_game_id          uint64
+	clients               map[uint64]*Client
+	rooms                 map[uint64]*LobbyRoom
+	games                 map[uint64]game.Game
+	AddClient             chan *Client
+	ReconnectClient       chan *ClientId
+	RemoveClient          chan *Client
+	CreateRoom            chan *Client
+	RenameRoom            chan *LobbyRoom
+	UpdateRoomDescription chan *LobbyRoom
+	KickClientFromRoom    chan *ClientRoom
+	PromotePlayerInRoom   chan *ClientRoom
+	RoomSetViewer         chan *ClientRoom
+	RoomSetPlayer         chan *ClientRoom
+	RemoveRoom            chan *LobbyRoom
+	LeaveRoom             chan *ClientRoom
+	LaunchGame            chan *LobbyRoom
+	broadcast             chan lobbyMessage
 }
 
 type ClientRoom struct {
@@ -62,25 +63,26 @@ func MakeClientId(client *Client, client_id uint64) *ClientId {
 
 func CreateLobby() *Lobby {
 	return &Lobby{
-		next_room_id:        1,
-		next_client_id:      1,
-		next_game_id:        1,
-		clients:             make(map[uint64]*Client),
-		rooms:               make(map[uint64]*LobbyRoom),
-		games:               make(map[uint64]game.Game),
-		AddClient:           make(chan *Client),
-		ReconnectClient:     make(chan *ClientId),
-		RemoveClient:        make(chan *Client),
-		CreateRoom:          make(chan *Client),
-		RenameRoom:          make(chan *LobbyRoom),
-		KickClientFromRoom:  make(chan *ClientRoom),
-		PromotePlayerInRoom: make(chan *ClientRoom),
-		RoomSetViewer:       make(chan *ClientRoom),
-		RoomSetPlayer:       make(chan *ClientRoom),
-		RemoveRoom:          make(chan *LobbyRoom),
-		LeaveRoom:           make(chan *ClientRoom),
-		LaunchGame:          make(chan *LobbyRoom),
-		broadcast:           make(chan lobbyMessage),
+		next_room_id:          1,
+		next_client_id:        1,
+		next_game_id:          1,
+		clients:               make(map[uint64]*Client),
+		rooms:                 make(map[uint64]*LobbyRoom),
+		games:                 make(map[uint64]game.Game),
+		AddClient:             make(chan *Client),
+		ReconnectClient:       make(chan *ClientId),
+		RemoveClient:          make(chan *Client),
+		CreateRoom:            make(chan *Client),
+		RenameRoom:            make(chan *LobbyRoom),
+		UpdateRoomDescription: make(chan *LobbyRoom),
+		KickClientFromRoom:    make(chan *ClientRoom),
+		PromotePlayerInRoom:   make(chan *ClientRoom),
+		RoomSetViewer:         make(chan *ClientRoom),
+		RoomSetPlayer:         make(chan *ClientRoom),
+		RemoveRoom:            make(chan *LobbyRoom),
+		LeaveRoom:             make(chan *ClientRoom),
+		LaunchGame:            make(chan *LobbyRoom),
+		broadcast:             make(chan lobbyMessage),
 	}
 }
 
@@ -97,6 +99,8 @@ func (l *Lobby) Run() {
 			l.createRoom(client)
 		case room := <-l.RenameRoom:
 			l.renameRoom(room)
+		case room := <-l.UpdateRoomDescription:
+			l.updateRoomDescription(room)
 		case data := <-l.KickClientFromRoom:
 			data.room.kickClient(data.client)
 		case data := <-l.PromotePlayerInRoom:
@@ -281,6 +285,20 @@ func (l *Lobby) renameRoom(room *LobbyRoom) {
 	})
 }
 
+func (l *Lobby) updateRoomDescription(room *LobbyRoom) {
+	if room == nil || room.host == nil {
+		return
+	}
+	room_id_string := strconv.Itoa(int(room.room_id))
+	host_id_string := strconv.Itoa(int(room.host.client_id))
+	l.broadcastMessage(lobbyMessage{
+		Sender:  "room-" + room_id_string,
+		Kind:    "room-description-updated",
+		Content: room.room_description,
+		Data:    host_id_string,
+	})
+}
+
 func (l *Lobby) removeRoom(room *LobbyRoom) {
 	delete(l.rooms, room.room_id)
 	id_string := strconv.Itoa(int(room.room_id))
@@ -310,7 +328,7 @@ var (
 		"room-created", "room-closed", "room-joined-player", "room-joined-viewer",
 		"room-left", "room-renamed", "room-kicked", "room-promoted", "ping-update",
 		"room-settings-updated", "room-viewer-set", "room-player-set", "room-launched",
-		"room-game-over",
+		"room-game-over", "room-description-updated",
 	}
 	client_to_room_messages = []string{"room-chat"}
 	room_messages           = []string{}

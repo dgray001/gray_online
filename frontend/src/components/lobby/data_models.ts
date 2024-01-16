@@ -93,6 +93,7 @@ export function serverResponseToGameSettings(server_response: GameSettingsFromSe
 export declare interface LobbyRoom {
   room_id: number;
   room_name: string;
+  room_description: string;
   host: LobbyUser;
   players: Map<number, LobbyUser>;
   viewers: Map<number, LobbyUser>;
@@ -104,6 +105,7 @@ export declare interface LobbyRoom {
 export declare interface LobbyRoomFromServer {
   room_id: string;
   room_name: string;
+  room_description: string;
   host: LobbyUserFromServer;
   players: LobbyUserFromServer[];
   viewers: LobbyUserFromServer[];
@@ -116,6 +118,7 @@ export function serverResponseToRoom(server_response: LobbyRoomFromServer): Lobb
   return {
     room_id: parseInt(server_response.room_id),
     room_name: server_response.room_name,
+    room_description: server_response.room_description,
     host: serverResponseToUser(server_response.host),
     players: new Map(server_response.players.map((server_user) => {
       const user = serverResponseToUser(server_user);

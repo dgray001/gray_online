@@ -197,6 +197,27 @@ func (c *Client) readMessages() {
 			}
 			room.room_name = message.Content
 			c.lobby.RenameRoom <- room
+		case "room-update-description":
+			room_id, err := strconv.Atoi(message.Data)
+			if err != nil || room_id < 1 {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-update-description-failed", Content: "Invalid room id"}
+				break
+			}
+			room := c.lobby.GetRoom(uint64(room_id))
+			if room == nil {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-update-description-failed", Content: "Room doesn't exist"}
+				break
+			}
+			if room.host.client_id != c.client_id {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-update-description-failed", Content: "Not room host"}
+				break
+			}
+			if room.gameStarted() {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-update-description-failed", Content: "Game started"}
+				break
+			}
+			room.room_description = message.Content
+			c.lobby.UpdateRoomDescription <- room
 		case "room-kick":
 			room_id, err := strconv.Atoi(message.Data)
 			if err != nil || room_id < 1 {

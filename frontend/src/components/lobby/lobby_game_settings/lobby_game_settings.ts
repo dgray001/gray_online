@@ -18,6 +18,7 @@ export class DwgLobbyGameSettings extends DwgElement {
   max_players_input: HTMLInputElement;
   max_viewers_input: HTMLInputElement;
   game_specific_settings: HTMLDivElement;
+  room_description: HTMLTextAreaElement;
   save_button: HTMLButtonElement;
 
   game_specific_settings_els = new Map<string, HTMLInputElement>();
@@ -30,6 +31,7 @@ export class DwgLobbyGameSettings extends DwgElement {
     this.configureElement('max_players_input');
     this.configureElement('max_viewers_input');
     this.configureElement('game_specific_settings');
+    this.configureElement('room_description');
     this.configureElement('save_button');
   }
 
@@ -101,7 +103,7 @@ export class DwgLobbyGameSettings extends DwgElement {
     return el;
   }
 
-  setSettings(settings: GameSettings) {
+  setSettings(settings: GameSettings, room_description: string) {
     this.game_chooser.value = settings.game_type.toString();
     this.max_players_input.value = settings.max_players.toString();
     this.max_viewers_input.value = settings.max_viewers.toString();
@@ -119,6 +121,7 @@ export class DwgLobbyGameSettings extends DwgElement {
     } catch(e) {
       console.log(e);
     }
+    this.room_description.value = room_description;
   }
 
   private setNumberSetting(el_id: string, setting?: number) {
@@ -154,6 +157,10 @@ export class DwgLobbyGameSettings extends DwgElement {
         break;
     }
     return settings;
+  }
+
+  getDescription(): string {
+    return this.room_description.value;
   }
 }
 

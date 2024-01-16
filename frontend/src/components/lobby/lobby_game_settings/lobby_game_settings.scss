@@ -67,6 +67,10 @@ dwg-lobby-game-settings {
       height: fit-content;
     }
 
+    > #room-description {
+      resize: vertical;
+    }
+
     > #save-button {
       font-size: var(--font-size-medium);
       margin-top: 0.4em;

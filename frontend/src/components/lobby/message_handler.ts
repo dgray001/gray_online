@@ -202,7 +202,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
     case 'room-renamed':
       const room_renamed_id = parseInt(message.sender.replace('room-', ''));
       const renamer_client_id = parseInt(message.data);
-      if (room_renamed_id && renamer_client_id) {
+      if (!!room_renamed_id && !!renamer_client_id) {
         if (renamer_client_id === lobby.connection_metadata.client_id) {
           // TODO: loader for renaming room
         }
@@ -210,6 +210,19 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
           lobby.lobby_room.renameRoom(message.content, renamer_client_id);
         }
         lobby.lobby_rooms.renameRoom(room_renamed_id, message.content);
+      }
+      break;
+    case 'room-description-updated':
+      const room_description_updated_id = parseInt(message.sender.replace('room-', ''));
+      const description_updater_id = parseInt(message.data);
+      if (!!room_description_updated_id && !!description_updater_id) {
+        if (description_updater_id === lobby.connection_metadata.client_id) {
+          // TODO: loader for updating room description
+        }
+        if (lobby.lobby_room.room && lobby.lobby_room.room.room_id === room_description_updated_id) {
+          lobby.lobby_room.updateRoomDescription(message.content);
+        }
+        lobby.lobby_rooms.updateRoomDescription(room_description_updated_id, message.content);
       }
       break;
     case 'room-kicked':

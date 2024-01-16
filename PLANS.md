@@ -1,9 +1,5 @@
 v0.5: Can launch risq
 
- - Implement game info dialog => has game specific settings, description, etc...
- - Host can set description of room
- - Loaders for client requests in lobby: room-create, room-join, room-leave, room-rename
-
 v0.6: Advanced risq
 
  g: Collapsible right panel (shows turn number)
@@ -31,6 +27,8 @@ v0.6: Advanced risq
  - Player's cards can automatically resize => listener on game div resize
    - fullscreen mode need to recalc card horizontal line
  - Can chat with individual players
+ - Implement game info dialog => has game specific settings, description, etc...
+ - Loaders for client requests in lobby: room-create, room-join, room-leave, room-rename
 
  - Setup db in prod and dev
  - Can create profile / login
