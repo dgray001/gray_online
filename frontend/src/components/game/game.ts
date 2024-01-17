@@ -126,7 +126,7 @@ export class DwgGame extends DwgElement {
     });
     this.button_game_info.addEventListener('click', () => {
       const game_info = document.createElement('dwg-game-info-dialog');
-      game_info.setData({});
+      game_info.setData({game: this.game, room: this.lobby_room});
       this.appendChild(game_info);
     });
     this.button_game_history.addEventListener('click', () => {

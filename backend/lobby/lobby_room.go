@@ -268,6 +268,9 @@ func (r *LobbyRoom) addClient(c *Client, join_as_player bool) {
 	message_kind := "room-joined-player"
 	if !join_as_player {
 		message_kind = "room-joined-viewer"
+		if !r.gameNil() {
+			r.game.GetBase().Viewers[c.client_id] = game.CreateViewer(c.client_id, c.nickname)
+		}
 	}
 	r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: message_kind, Data: client_id_string})
 }
@@ -302,7 +305,12 @@ func (r *LobbyRoom) removeClient(c *Client, client_leaves bool) {
 			c.lobby_room = nil
 		}
 	}
-	delete(r.viewers, c.client_id)
+	if util.MapContains(r.viewers, c.client_id) {
+		delete(r.viewers, c.client_id)
+		if c.lobby_room != nil && c.lobby_room.room_id == r.room_id {
+			c.lobby_room = nil
+		}
+	}
 	client_id_string := strconv.Itoa(int(c.client_id))
 	room_id_string := strconv.Itoa(int(r.room_id))
 	r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-left", Data: client_id_string})

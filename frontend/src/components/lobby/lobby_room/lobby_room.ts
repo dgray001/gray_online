@@ -260,6 +260,7 @@ export class DwgLobbyRoom extends DwgElement {
       }
       this.settings_settings.replaceChildren(...settings);
     }
+    this.settings_description.innerText = this.room.room_description;
   }
 
   private getUserElement(user: LobbyUser, is_host: boolean, is_player: boolean): DwgRoomUser {

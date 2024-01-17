@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.4t: Host can set description of room
+v0.4u: Basic game info dialog
 
 ## Dev Use
 

@@ -24,12 +24,13 @@ export function handleMessage(game: DwgGame, message: ServerMessage) {
       // TODO: implement
       break;
     case "game-chat":
-      const chat_client_id = parseInt(message.sender.replace('game-', ''));
+      console.log(message.sender, game.game?.game_base?.viewers);
+      const chat_client_id = parseInt((message.sender ?? '').replace('game-', ''));
       if (chat_client_id) {
         const sender = game.game?.game_base?.players.get(chat_client_id) ?? game.game?.game_base?.viewers.get(chat_client_id);
         game.chatbox.addChat({
           message: message.content,
-          sender: sender.nickname ?? chat_client_id.toString(),
+          sender: sender?.nickname ?? chat_client_id.toString(),
         });
       }
       break;
