@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.4x: Fix play drop area in fullscreen for card hand
+v0.4y: Can manually close space dialog
 
 ## Dev Use
 

@@ -7,5 +7,14 @@ dwg-space-dialog {
     gap: 1em;
     padding: 0 !important;
     width: var(--w);
+
+    > #close-button {
+      --size: 36px;
+      right: 0;
+      margin: 0;
+      padding: 4px;
+      position: absolute;
+      top: calc(-1 * var(--size));
+    }
   }
 }

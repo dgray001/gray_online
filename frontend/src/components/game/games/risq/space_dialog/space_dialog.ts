@@ -19,8 +19,9 @@ export declare interface SpaceDialogData {
 }
 
 export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
-  wrapper: HTMLDivElement;
-  canvas: HTMLCanvasElement;
+  private wrapper: HTMLDivElement;
+  private canvas: HTMLCanvasElement;
+  private close_button: HTMLButtonElement;
 
   private data: SpaceDialogData;
   private size: Point2D;
@@ -37,6 +38,7 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
     super();
     this.configureElement('wrapper');
     this.configureElement('canvas');
+    this.configureElement('close_button');
     for (const icon of ['unit', 'building', 'unit_white', 'building_white']) {
       this.createIcon(icon);
     }
@@ -133,6 +135,9 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
       e.preventDefault();
     }, false);
     document.body.addEventListener('keyup', this.keyup.bind(this));
+    this.close_button.addEventListener('click', () => {
+      this.closeDialog();
+    });
     this.draw_interval = setInterval(() => {
       // if this.draw() becomes async I would need to ensure no race condition here
       this.ctx.resetTransform();
