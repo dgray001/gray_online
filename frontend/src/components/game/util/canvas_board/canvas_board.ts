@@ -1,6 +1,6 @@
 import {DwgElement} from '../../../dwg_element';
 import {until} from '../../../../scripts/util';
-import {Point2D, addPoint2D, subtractPoint2D} from '../objects2d';
+import {Point2D, subtractPoint2D} from '../objects2d';
 
 import html from './canvas_board.html';
 
@@ -15,7 +15,7 @@ interface HoldingKeysData {
 
 /** Data describing how the canvas should be initialized */
 export declare interface CanvasBoardInitializationData {
-  size: Point2D;
+  board_size: Point2D;
   max_scale: number;
   fill_space?: boolean;
   draw: (ctx: CanvasRenderingContext2D, transform: BoardTransformData) => void;
@@ -25,6 +25,12 @@ export declare interface CanvasBoardInitializationData {
   mouseup: (e: MouseEvent) => void;
 }
 
+/** Data describing the size of a the board */
+export declare interface CanvasBoardSize {
+  board_size: Point2D;
+  el_size: DOMRect;
+}
+
 /** Data how the board is transformed */
 export declare interface BoardTransformData {
   scale: number;
@@ -32,26 +38,38 @@ export declare interface BoardTransformData {
 }
 
 export class DwgCanvasBoard extends DwgElement {
-  canvas: HTMLCanvasElement;
-  cursor: HTMLImageElement;
+  private canvas: HTMLCanvasElement;
+  private cursor: HTMLImageElement;
 
-  ctx: CanvasRenderingContext2D;
-  data: CanvasBoardInitializationData;
-  transform: BoardTransformData = {
+  private ctx: CanvasRenderingContext2D;
+  private data: CanvasBoardInitializationData;
+  private orig_size: Point2D;
+  private transform: BoardTransformData = {
     scale: 1,
     view: {x: 0, y: 0},
   };
 
-  hovered = false;
-  holding_keys: HoldingKeysData = {
+  private hovered = false;
+  private holding_keys: HoldingKeysData = {
     arrow_up: false,
     arrow_down: false,
     arrow_left: false,
     arrow_right: false,
   };
-  cursor_move_threshold = 5;
-  dragging = false;
-  mouse: Point2D = {x: 0, y: 0};
+  private cursor_move_threshold = 5;
+  private dragging = false;
+  private mouse: Point2D = {x: 0, y: 0};
+
+  private bounding_rect: DOMRect;
+  private resize_observer = new ResizeObserver(async (els) => {
+    for (const el of els) {
+      await this.updateSize(this.data, el.contentRect);
+      this.dispatchEvent(new CustomEvent<CanvasBoardSize>('canvas_resize', {'detail': {
+        board_size: this.data.board_size,
+        el_size: this.bounding_rect,
+      }, 'bubbles': true}));
+    }
+  });
 
   constructor() {
     super();
@@ -60,36 +78,84 @@ export class DwgCanvasBoard extends DwgElement {
     this.configureElement('cursor');
   }
 
-  async initialize(data: CanvasBoardInitializationData) {
-    if (data.size.x < 1 || data.size.y < 1) {
+  getBoundingRect(): DOMRect {
+    return this.bounding_rect;
+  }
+
+  async initialize(data: CanvasBoardInitializationData): Promise<CanvasBoardSize> {
+    this.orig_size = {
+      x: data.board_size.x,
+      y: data.board_size.y,
+    };
+    const success = await this.updateSize(data);
+    if (!success) {
+      return undefined;
+    }
+    this.cursor.src = '/images/cursors/cursor.png';
+    this.addEventListeners();
+    await until(() => !!this.canvas.getBoundingClientRect()?.width);
+    this.resize_observer.observe(this);
+    setInterval(() => {
+      this.tick();
+      // If ever made async everything after tick() needs to run at same time (just skip until last finished)
+      this.ctx.resetTransform();
+      this.ctx.fillStyle = "black";
+      this.ctx.fillRect(0, 0, this.data.board_size.x, this.data.board_size.y);
+      this.ctx.translate(-this.transform.view.x, -this.transform.view.y);
+      this.ctx.scale(this.transform.scale, this.transform.scale);
+      this.data.draw(this.ctx, this.transform);
+    }, 20);
+    return {
+      board_size: this.data.board_size,
+      el_size: this.bounding_rect,
+    };
+  }
+
+  async updateSize(data: CanvasBoardInitializationData, override_rect?: DOMRect): Promise<boolean> {
+    if (!data || this.orig_size.x < 1 || this.orig_size.y < 1) {
       console.error('Size must be at least 1px in each direction');
-      return;
+      return false;
     }
     this.data = data;
     await until(() => this.fully_parsed);
     if (!this.canvas.getContext) {
       console.error('Browser does not support canvas; cannot draw board');
-      return;
+      return false;
+    }
+    await this.setSize(override_rect);
+    return true;
+  }
+
+  private async setSize(rect?: DOMRect) {
+    const data = this.data;
+    if (!!rect) {
+      this.bounding_rect = rect;
+    } else {
+      await until(() => {
+        this.bounding_rect = this.getBoundingClientRect();
+        return !!this.bounding_rect?.width;
+      });
+      rect = this.bounding_rect;
     }
     if (data.fill_space) {
-      await until(() => !!this.getBoundingClientRect().width);
-      const rect = this.getBoundingClientRect();
-      const aspect_ratio = data.size.x / data.size.y;
-      data.size.x = Math.max(data.size.x, rect.width);
-      data.size.y = Math.max(data.size.y, rect.height);
-      const new_ratio = data.size.x / data.size.y;
+      const aspect_ratio = this.orig_size.x / this.orig_size.y;
+      data.board_size.x = Math.max(this.orig_size.x, rect.width);
+      data.board_size.y = Math.max(this.orig_size.y, rect.height);
+      const new_ratio = data.board_size.x / data.board_size.y;
       if (new_ratio > aspect_ratio) {
-        data.size.y = data.size.x / aspect_ratio;
+        data.board_size.y = data.board_size.x / aspect_ratio;
       } else {
-        data.size.x = data.size.y * aspect_ratio;
+        data.board_size.x = data.board_size.y * aspect_ratio;
       }
     }
     this.ctx = this.canvas.getContext('2d');
-    this.canvas.style.setProperty('--w', `${data.size.x.toString()}px`);
-    this.canvas.style.setProperty('--h', `${data.size.y.toString()}px`);
-    this.canvas.width = data.size.x;
-    this.canvas.height = data.size.y;
-    this.cursor.src = '/images/cursors/cursor.png';
+    this.canvas.style.setProperty('--w', `${data.board_size.x.toString()}px`);
+    this.canvas.style.setProperty('--h', `${data.board_size.y.toString()}px`);
+    this.canvas.width = data.board_size.x;
+    this.canvas.height = data.board_size.y;
+  }
+
+  private addEventListeners() {
     this.addEventListener('wheel', (e: WheelEvent) => {
       const zoom = 1 + e.deltaY / 250;
       this.setScale(this.transform.scale / zoom);
@@ -184,24 +250,13 @@ export class DwgCanvasBoard extends DwgElement {
           break;
       }
     });
-    await until(() => !!this.canvas.getBoundingClientRect().width);
-    setInterval(() => {
-      this.tick();
-      // TODO: ensure last frame is done drawing (need to do tick either way)
-      this.ctx.resetTransform();
-      this.ctx.fillStyle = "black";
-      this.ctx.fillRect(0, 0, this.data.size.x, this.data.size.y);
-      this.ctx.translate(-this.transform.view.x, -this.transform.view.y);
-      this.ctx.scale(this.transform.scale, this.transform.scale);
-      this.data.draw(this.ctx, this.transform);
-    }, 20);
   }
 
   private tick() {
     const d_view = {x: 0, y: 0};
     const arrow_key_speed = 20 * this.transform.scale;
     let moved = false;
-    const rect = this.getBoundingClientRect();
+    const rect = this.canvas.getBoundingClientRect();
     if (this.holding_keys.arrow_up) {
       d_view.y -= arrow_key_speed;
       moved = true;
@@ -248,13 +303,13 @@ export class DwgCanvasBoard extends DwgElement {
   private setView(view: Point2D) {
     if (view.x < 0) {
       view.x = 0;
-    } else if (view.x > this.data.size.x * this.transform.scale) {
-      view.x = this.data.size.x * this.transform.scale;
+    } else if (view.x > this.data.board_size.x * this.transform.scale) {
+      view.x = this.data.board_size.x * this.transform.scale;
     }
     if (view.y < 0) {
       view.y = 0;
-    } else if (view.y > this.data.size.y * this.transform.scale) {
-      view.y = this.data.size.y * this.transform.scale;
+    } else if (view.y > this.data.board_size.y * this.transform.scale) {
+      view.y = this.data.board_size.y * this.transform.scale;
     }
     this.transform.view = view;
   }

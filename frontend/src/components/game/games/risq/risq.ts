@@ -1,10 +1,10 @@
 import {DwgElement} from '../../../dwg_element';
 import {UpdateMessage} from '../../data_models';
-import {drawHexagon} from '../../util/canvas_util';
-import {BoardTransformData, DwgCanvasBoard} from '../../util/canvas_board/canvas_board';
-import {Point2D, equalsPoint2D, hexagonalBoardNeighbors, hexagonalBoardRows, roundAxialCoordinate} from '../../util/objects2d';
+import {drawCircle, drawHexagon} from '../../util/canvas_util';
+import {BoardTransformData, CanvasBoardSize, DwgCanvasBoard} from '../../util/canvas_board/canvas_board';
+import {Point2D, addPoint2D, equalsPoint2D, hexagonalBoardNeighbors, hexagonalBoardRows, multiplyPoint2D, roundAxialCoordinate} from '../../util/objects2d';
 import {DwgGame} from '../../game';
-import {createLock, until} from '../../../../scripts/util';
+import {DEV, createLock, until} from '../../../../scripts/util';
 
 import html from './risq.html';
 import {GameRisq, GameRisqFromServer, RisqSpace, coordinateToIndex, getSpace, getSpaceFill, serverToGameRisq} from './risq_data';
@@ -14,6 +14,8 @@ import '../../util/canvas_board/canvas_board';
 import './space_dialog/space_dialog';
 
 const DEFAULT_HEXAGON_RADIUS = 60;
+
+const DRAW_CENTER_DOT = false;
 
 export class DwgRisq extends DwgElement {
   private board: DwgCanvasBoard;
@@ -47,12 +49,12 @@ export class DwgRisq extends DwgElement {
   async initialize(abstract_game: DwgGame, game: GameRisqFromServer): Promise<void> {
     abstract_game.setPadding('0px');
     this.game = serverToGameRisq(game);
-    const canvas_size = {
+    const board_size: Point2D = {
       x: 1.732 * this.hex_r * (2 * game.board_size + 1),
       y: 1.5 * this.hex_r * (2 * game.board_size + 1) + 0.5 * this.hex_r,
     };
     this.board.initialize({
-      size: canvas_size,
+      board_size,
       max_scale: 1.8,
       fill_space: true,
       draw: this.draw.bind(this),
@@ -60,16 +62,22 @@ export class DwgRisq extends DwgElement {
       mouseleave: this.mouseleave.bind(this),
       mousedown: this.mousedown.bind(this),
       mouseup: this.mouseup.bind(this),
-    }).then(() => {
-      const canvas_rect = this.board.getBoundingClientRect();
-      this.canvas_center = {
-        x: 0.5 * Math.min(canvas_size.x, canvas_rect.width),
-        y: 0.5 * Math.min(canvas_size.y, canvas_rect.height),
-      };
-      // canvas board component should respect scale
-      this.hex_r = (2 * this.canvas_center.x) / (1.732 * (2 * game.board_size + 1));
-      this.hex_a = 0.5 * 1.732 * this.hex_r;
+    }).then((size_data) => {
+      this.boardResize(size_data.board_size, size_data.el_size);
+      this.board.addEventListener('canvas_resize', (e: CustomEvent<CanvasBoardSize>) => {
+        this.boardResize(e.detail.board_size, e.detail.el_size);
+      });
     });
+  }
+
+  private boardResize(board_size: Point2D, canvas_size: DOMRect) {
+    this.canvas_center = {
+      x: 0.5 * Math.min(board_size.x, canvas_size.width),
+      y: 0.5 * Math.min(board_size.y, canvas_size.height),
+    };
+    // not sure why exactly I rescaled the hexagons but I did at some point
+    this.hex_r = board_size.x / (1.732 * (2 * this.game.board_size + 1));
+    this.hex_a = 0.5 * 1.732 * this.hex_r;
   }
 
   async gameUpdate(update: UpdateMessage): Promise<void> {
@@ -110,6 +118,12 @@ export class DwgRisq extends DwgElement {
           ctx.fillText(`: ${space.units.size.toString()}`, xs + inset_row + 2, y2, inset_w - inset_row - 2);
         }
       }
+    }
+    if (DRAW_CENTER_DOT && DEV) {
+      ctx.fillStyle = 'red';
+      ctx.strokeStyle = 'transparent';
+      const vis_center = multiplyPoint2D(1 / transform.scale, addPoint2D(this.canvas_center, transform.view));
+      drawCircle(ctx, vis_center, 6 / transform.scale);
     }
   }
 

@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.4u: Basic game info dialog
+v0.4v: Resize observer for canvas board
 
 ## Dev Use
 

@@ -5,6 +5,15 @@ export function drawHexagon(ctx: CanvasRenderingContext2D, c: Point2D, r: number
   drawNgon(ctx, 6, c, r, o);
 }
 
+/** Draws a circle on the canvas */
+export function drawCircle(ctx: CanvasRenderingContext2D, c: Point2D, r: number) {
+  ctx.beginPath();
+  ctx.ellipse(c.x, c.y, r, r, 0, 0, 2 * Math.PI)
+  ctx.closePath();
+  ctx.stroke();
+  ctx.fill();
+}
+
 /** Draws a regular n-gon on the canvas */
 export function drawNgon(ctx: CanvasRenderingContext2D, n: number, c: Point2D, r: number, o = 0) {
   if (n < 3) {

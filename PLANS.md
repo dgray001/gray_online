@@ -1,4 +1,5 @@
 v0.5: Can launch risq
+ v-z: Fix viz bugs in risq
 
 v0.6: Advanced risq
 
@@ -27,8 +28,14 @@ v0.6: Advanced risq
  - Player's cards can automatically resize => listener on game div resize
    - fullscreen mode need to recalc card horizontal line
  - Can chat with individual players
- - Implement game info dialog => has game specific settings, description, etc...
  - Loaders for client requests in lobby: room-create, room-join, room-leave, room-rename
+
+v0.7: Savable games
+ - Can save games if everyone logged in and all players agree
+ - Can launch a saved game if logged in
+ - Risq is fully playable with custom settings
+ - Upgraded chatbox => emoji selector, taunts, message id, turn off emoticon converter
+ - Upgrade frontend animations for all games (add sound effects)
 
  - Setup db in prod and dev
  - Can create profile / login
@@ -40,13 +47,6 @@ v0.6: Advanced risq
     => various units / can assign formations/etc. to control how they fight
  - Can make friends / personal DMs (all DMs and chatboxes saved)
  - Can see other people's stats
-
-v0.7: Savable games
- - Can save games if everyone logged in and all players agree
- - Can launch a saved game if logged in
- - Risq is fully playable with custom settings
- - Upgraded chatbox => emoji selector, taunts, message id, turn off emoticon converter
- - Upgrade frontend animations for all games (add sound effects)
 
 v0.8: More card games
  - Poker => save chips?
