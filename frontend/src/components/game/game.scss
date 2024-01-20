@@ -98,6 +98,7 @@ dwg-game {
 
   > #chatbox-container {
     --left: 3px;
+
     background-color: transparent;
     height: 75vh;
     left: var(--left);
@@ -146,7 +147,7 @@ dwg-game {
 
 body.mobile {
   dwg-game {
-    --header-height: calc(1.5 * var(--font-size-smaller));
+    --header-height: calc(1.5 * var(--font-size-medium));
 
     > #header {
       > #client-name {
@@ -159,6 +160,10 @@ body.mobile {
 
       > #game-name {
         display: none;
+      }
+
+      > #button-container {
+        gap: 3px;
       }
     }
 

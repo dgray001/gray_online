@@ -24,14 +24,13 @@ interface CardDraggingData {
 }
 
 export class DwgCardHand extends DwgElement {
-  cards_container: HTMLDivElement;
-  play_drop: HTMLDivElement;
-  cancel_drop: HTMLDivElement;
+  private cards_container: HTMLDivElement;
+  private play_drop: HTMLDivElement;
+  private cancel_drop: HTMLDivElement;
 
-  play_drop_cutoff = 0; // if y is less than this then card is being played
   can_play = false; // flag to specify whether a card can be played
-  cards = new MultiMap<number, CardData>(['i', 'i_dom']);
-  dragging_data: CardDraggingData = {
+  private cards = new MultiMap<number, CardData>(['i', 'i_dom']);
+  private dragging_data: CardDraggingData = {
     dragging: false,
     index: -1,
     touch_identifier: -1,
@@ -39,7 +38,8 @@ export class DwgCardHand extends DwgElement {
     start_rect: new DOMRect(0, 0, 0, 0),
     hovering_play_drop: false,
   };
-  dragging_lock = createLock();
+
+  private dragging_lock = createLock();
 
   constructor() {
     super();
@@ -52,14 +52,20 @@ export class DwgCardHand extends DwgElement {
 
   protected override async parsedCallback(): Promise<void> {
     await until(() => !!this.clientHeight);
+    this.resizeCallback();
+    this.setEventListeners();
+    this.classList.remove('hidden');
+  }
+
+  private resizeCallback() {
     const rect = this.getBoundingClientRect();
     this.style.setProperty('--height', `${rect.height.toString()}px`);
     this.style.setProperty('--width', `${rect.width.toString()}px`);
     const play_drop_margin = 0.4 * rect.height;
-    this.play_drop_cutoff = rect.top - play_drop_margin;
     this.style.setProperty('--play-drop-margin', `${play_drop_margin.toString()}px`);
-    this.classList.remove('hidden');
+  }
 
+  private setEventListeners() {
     document.body.addEventListener('mouseup', (e) => {
       if (e.button !== 0) {
         return;
@@ -272,7 +278,7 @@ export class DwgCardHand extends DwgElement {
       }
       card.el.style.setProperty('--x', `${(p.x - this.dragging_data.start.x).toString()}px`);
       card.el.style.setProperty('--y', `${(p.y - this.dragging_data.start.y).toString()}px`);
-      if (p.y < this.play_drop_cutoff) {
+      if (p.y < this.cancel_drop.getBoundingClientRect()?.top) {
         this.play_drop.classList.add('hovering');
         this.cancel_drop.classList.remove('hovering');
         this.dragging_data.hovering_play_drop = true;

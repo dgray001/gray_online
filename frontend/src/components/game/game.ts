@@ -85,13 +85,16 @@ export class DwgGame extends DwgElement {
         this.toggleChatbox();
       }
     });
+    this.chatbox.style.setProperty('--gray-color', 'rgba(220, 220, 220, 0.9)');
     this.chatbox.addEventListener('chat_sent', (e: CustomEvent<ChatMessage>) => {
       if (!this.socketActive()) {
         console.error('Trying to send chat with invalid socket')
         return;
       }
       const message = e.detail;
-      if (message.message.startsWith('\\l')) {
+      if (message.message.startsWith('\\s')) {
+        this.setSetting(message.message.slice(2).trim());
+      } else if (message.message.startsWith('\\l')) {
         message.message = message.message.slice(2).trim();
         this.socket.send(createMessage(
           message.sender ?? `client-${this.connection_metadata.client_id}`,
@@ -182,6 +185,31 @@ export class DwgGame extends DwgElement {
 
   setPadding(padding: string) {
     this.game_container.style.setProperty('--padding', padding);
+  }
+
+  private setSetting(s: string) {
+    switch(s) {
+      case 'help':
+        this.chatbox.addChat({
+          message: 'There are no commands; this feature is not yet implemented',
+          color: 'gray',
+        }, true);
+        return;
+      default:
+        break;
+    }
+    const split = s.split('=', 2).map(s => s.trim());
+    if (split.length !== 2) {
+      return;
+    }
+    switch(split[0]) {
+      default:
+        this.chatbox.addChat({
+          message: `Unrecognized setting key "${split[0]}", try "help" to see a list of commands`,
+          color: 'gray',
+        }, true);
+        break;
+    }
   }
 
   async launchGame(lobby: LobbyRoom, socket: WebSocket, connection_metadata: ConnectionMetadata, rejoining = false): Promise<boolean> {

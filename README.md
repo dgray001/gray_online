@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.4w: Fix visual issue in Risq
+v0.4x: Fix play drop area in fullscreen for card hand
 
 ## Dev Use
 

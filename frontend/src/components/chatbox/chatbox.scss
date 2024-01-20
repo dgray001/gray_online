@@ -1,5 +1,7 @@
 dwg-chatbox {
   --input-box-height: calc(2 * var(--font-size-medium));
+  --gray-color: rgb(100, 100, 100);
+
   background-color: rgb(200, 200, 200);
   color: black;
   display: block;
@@ -30,7 +32,7 @@ dwg-chatbox {
       }
 
       &.color-gray {
-        color: rgb(100, 100, 100);
+        color: var(--gray-color);
       }
     }
   }
