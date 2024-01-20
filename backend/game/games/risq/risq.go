@@ -181,6 +181,31 @@ func (r *GameRisq) createPlayerStart(p *RisqPlayer, s *RisqSpace) {
 		p.units[villager.internal_id] = villager
 		s.setUnit(&game_utils.Coordinate2D{X: 0, Y: 0}, villager)
 	}
+	// remove everything underneath this
+	village_center2 := createRisqBuilding(r.nextBuildingInternalId(), 1, p.player.Player_id)
+	p.buildings[village_center2.internal_id] = village_center2
+	s.setBuilding(&game_utils.Coordinate2D{X: 1, Y: 0}, village_center2)
+	for i := 0; i < 3; i++ {
+		villager := createRisqUnit(r.nextUnitInternalId(), 1, p.player.Player_id)
+		p.units[villager.internal_id] = villager
+		s.setUnit(&game_utils.Coordinate2D{X: 1, Y: 0}, villager)
+	}
+	village_center3 := createRisqBuilding(r.nextBuildingInternalId(), 1, p.player.Player_id)
+	p.buildings[village_center3.internal_id] = village_center3
+	s.setBuilding(&game_utils.Coordinate2D{X: -1, Y: 1}, village_center3)
+	for i := 0; i < 3; i++ {
+		villager := createRisqUnit(r.nextUnitInternalId(), 1, p.player.Player_id)
+		p.units[villager.internal_id] = villager
+		s.setUnit(&game_utils.Coordinate2D{X: -1, Y: 1}, villager)
+	}
+	village_center4 := createRisqBuilding(r.nextBuildingInternalId(), 1, p.player.Player_id)
+	p.buildings[village_center4.internal_id] = village_center4
+	s.setBuilding(&game_utils.Coordinate2D{X: 0, Y: -1}, village_center4)
+	for i := 0; i < 3; i++ {
+		villager := createRisqUnit(r.nextUnitInternalId(), 1, p.player.Player_id)
+		p.units[villager.internal_id] = villager
+		s.setUnit(&game_utils.Coordinate2D{X: 0, Y: -1}, villager)
+	}
 }
 
 func (r *GameRisq) nextBuildingInternalId() uint64 {

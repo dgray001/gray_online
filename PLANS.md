@@ -1,5 +1,4 @@
 v0.5: Can launch risq
- v-z: Fix viz bugs in risq
 
 v0.6: Advanced risq
 

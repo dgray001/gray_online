@@ -1,7 +1,7 @@
 import {ColorRGB} from '../../../../../scripts/color_rgb';
 import {atangent} from '../../../../../scripts/math';
 import {DwgDialogBox} from '../../../../dialog_box/dialog_box';
-import {drawHexagon} from '../../../util/canvas_util';
+import {drawCircle, drawEllipse, drawHexagon} from '../../../util/canvas_util';
 import {Point2D, addPoint2D, equalsPoint2D, multiplyPoint2D, pointInHexagon, rotatePoint, subtractPoint2D} from '../../../util/objects2d';
 import {buildingImage} from '../risq_buildings';
 import {GameRisq, RisqSpace, RisqZone, coordinateToIndex, getSpace, getSpaceFill, indexToCoordinate} from '../risq_data';
@@ -134,7 +134,7 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
     }, false);
     document.body.addEventListener('keyup', this.keyup.bind(this));
     this.draw_interval = setInterval(() => {
-      // TODO: ensure last frame is done drawing (need to do tick either way)
+      // if this.draw() becomes async I would need to ensure no race condition here
       this.ctx.resetTransform();
       this.ctx.fillStyle = "black";
       this.ctx.fillRect(0, 0, this.size.x, this.size.y);
@@ -149,13 +149,14 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
     const c = multiplyPoint2D(0.5, this.size);
     this.ctx.translate(c.x, c.y);
     const r = this.radius;
+    const zone_r = 0.42 * r;
     drawHexagon(this.ctx, {x: 0, y: 0}, r);
     this.ctx.fillStyle = 'rgb(10, 120, 10, 0.8)';
     this.ctx.lineWidth = 2;
     let zone = this.data.space.zones[1][1];
     this.setZoneFill(zone);
     drawHexagon(this.ctx, {x: 0, y: 0}, 0.4 * r);
-    this.drawZone(zone, 0.42 * r, 0,
+    this.drawZone(zone, zone_r, 0,
       {x: 0.18 * r * Math.cos(1 * Math.PI / 4), y: 0.18 * r * Math.sin(1 * Math.PI / 4)},
       {x: 0.18 * r * Math.cos(3 * Math.PI / 4), y: 0.18 * r * Math.sin(3 * Math.PI / 4)},
       {x: 0.18 * r * Math.cos(5 * Math.PI / 4), y: 0.18 * r * Math.sin(5 * Math.PI / 4)},
@@ -198,7 +199,7 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
       const rotation = a * (1 + i);
       this.ctx.rotate(rotation);
       const theta = Math.PI / 15;
-      this.drawZone(zone, 0.42 * r, rotation,
+      this.drawZone(zone, zone_r, rotation,
         {x: 0.76 * r * Math.cos(-theta), y: 0.76 * r * Math.sin(-theta)},
         {x: 0.76 * r * Math.cos(theta), y: 0.76 * r * Math.sin(theta)},
         {x: 0.53 * r * Math.cos(-theta), y: 0.53 * r * Math.sin(-theta)},
@@ -383,18 +384,14 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
   }
 
   private drawZone(zone: RisqZone, r: number, rotation: number, p1: Point2D, p2: Point2D, p3: Point2D, p4: Point2D) {
-    function drawText(ctx: CanvasRenderingContext2D, s: string, ts: number, x: number, y: number, w: number) {
-      const tx = x + 0.5 * w;
-      const ty = y + 0.5 * ts;
-      ctx.translate(tx, ty);
-      ctx.rotate(-rotation);
+    function drawText(ctx: CanvasRenderingContext2D, s: string, ts: number,
+      x: number, y: number, w: number, fill_style = 'white')
+    {
       const fs = ctx.fillStyle;
-      ctx.fillStyle = 'white';
+      ctx.fillStyle = fill_style;
       ctx.font = `bold ${ts}px serif`;
-      ctx.fillText(s, -0.5 * w, -0.5 * ts, w);
+      ctx.fillText(s, x, y, w);
       ctx.fillStyle = fs;
-      ctx.rotate(rotation);
-      ctx.translate(-tx, -ty);
     }
 
     this.ctx.textAlign = 'left';
@@ -423,10 +420,12 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
       } else {
         this.ctx.fillStyle = 'transparent';
       }
+      this.ctx.translate(part.c.x, part.c.y);
+      this.ctx.rotate(-rotation);
       switch(i) {
         case 0: // building
           if (!!zone.building) {
-            this.ctx.drawImage(buildingImage(zone.building), part.c.x - part.r.x, part.c.y - part.r.y, 2 * part.r.x, 2 * part.r.y);
+            this.ctx.drawImage(buildingImage(zone.building), -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
           } else {
             this.ctx.strokeStyle = 'rgba(200, 200, 200, 0.5)';
           }
@@ -437,102 +436,103 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
           }
           if (zone.units_by_type.size === 0) {
             this.ctx.strokeStyle = 'rgba(200, 200, 200, 0.5)';
-            drawText(this.ctx, '0', 1.5 * part.r.y, part.c.x - 0.5 * part.r.x, part.c.y - 0.5 * part.r.y, 1.5 * part.r.x);
+            drawText(this.ctx, '0', 1.4 * part.r.y, -0.5 * part.r.x, -0.7 * part.r.y, part.r.x);
           } else if (zone.units_by_type.size === 1) {
             const unit_data = [...zone.units_by_type.values()][0];
             const unit = zone.units.get([...unit_data.units.values()][0]);
-            this.ctx.drawImage(unitImage(unit), part.c.x - part.r.x, part.c.y - part.r.y, 2 * part.r.x, 2 * part.r.y);
-            const fs = this.ctx.fillStyle;
-            this.ctx.fillStyle = 'white';
-            this.ctx.font = `bold ${1.5 * part.r.y}px serif`;
-            this.ctx.fillText(unit_data.units.size.toString(), part.c.x - part.r.x, part.c.y - 0.75 * part.r.y, 2 * part.r.x);
-            this.ctx.fillStyle = fs;
+            this.ctx.drawImage(unitImage(unit), -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
+            drawText(this.ctx, unit_data.units.size.toString(), 1.4 * part.r.y, -part.r.x, -0.7 * part.r.y, 2 * part.r.x);
           } else if (zone.units_by_type.size === 2) {
             const unit_data = [...zone.units_by_type.values()];
             for (let j = 0; j < 2; j++) {
               const units = [...unit_data[j].units.values()];
               const unit = zone.units.get(units[0]);
-              this.ctx.drawImage(unitImage(unit), part.c.x - (1 - 0.5 * j) * part.r.x,
-                part.c.y - (1 - 0.5 * j) * part.r.y, 1.5 * part.r.x, 1.5 * part.r.y);
-              const fs: string = this.ctx.fillStyle;
-              this.ctx.fillStyle = 'white';
-              this.ctx.font = `bold ${part.r.y}px serif`;
-              this.ctx.fillText(units.length.toString(), part.c.x - (1 - 0.5 * j) * part.r.x,
-                part.c.y - (1 - 0.5 * j) * part.r.y, 2 * part.r.x);
-              this.ctx.fillStyle = fs;
+              this.ctx.drawImage(unitImage(unit), (0.5 * j - 1) * part.r.x, (0.5 * j - 1) * part.r.y, 1.5 * part.r.x, 1.5 * part.r.y);
+              drawText(this.ctx, units.length.toString(), part.r.y, (0.5 * j - 1) * part.r.x, (0.5 * j - 1) * part.r.y, 2 * part.r.x);
             }
           } else if (zone.units_by_type.size === 3) {
             const unit_data = [...zone.units_by_type.values()];
             for (let j = 0; j < 2; j++) {
               const units = [...unit_data[j].units.values()];
               const unit = zone.units.get(units[0]);
-              this.ctx.drawImage(unitImage(unit), part.c.x - (0.9 - 0.8 * j) * part.r.x,
-                part.c.y - 0.9 * part.r.y, part.r.x, part.r.y);
-              const fs: string = this.ctx.fillStyle;
-              this.ctx.fillStyle = 'white';
-              this.ctx.font = `bold ${0.75 * part.r.y}px serif`;
-              this.ctx.fillText(units.length.toString(), part.c.x - (1 - 0.8 * j) * part.r.x,
-                part.c.y -0.9 * part.r.y, 1.5 * part.r.x);
-              this.ctx.fillStyle = fs;
+              this.ctx.drawImage(unitImage(unit), (0.8 * j - 0.9) * part.r.x, -0.9 * part.r.y, part.r.x, part.r.y);
+              drawText(
+                this.ctx,
+                units.length.toString(),
+                0.75 * part.r.y,
+                (0.8 * j - 1) * part.r.x,
+                -0.9 * part.r.y,
+                1.5 * part.r.x
+              );
             }
             const units = [...unit_data[2].units.values()];
             const unit = zone.units.get(units[0]);
-            this.ctx.drawImage(unitImage(unit), part.c.x - 0.5 * part.r.x,
-              part.c.y - 0.1 * part.r.y, part.r.x, part.r.y);
-            const fs: string = this.ctx.fillStyle;
-            this.ctx.fillStyle = 'white';
-            this.ctx.font = `bold ${0.75 * part.r.y}px serif`;
-            this.ctx.fillText(units.length.toString(), part.c.x - 0.5 * part.r.x,
-              part.c.y -0.1 * part.r.y, 1.5 * part.r.x);
-            this.ctx.fillStyle = fs;
+            this.ctx.drawImage(unitImage(unit), -0.5 * part.r.x, -0.1 * part.r.y, part.r.x, part.r.y);
+            drawText(
+              this.ctx,
+              units.length.toString(),
+              0.75 * part.r.y,
+              -0.5 * part.r.x,
+              -0.1 * part.r.y,
+              1.5 * part.r.x
+            );
           } else if (zone.units_by_type.size === 4) {
             const unit_data = [...zone.units_by_type.values()];
             for (let j = 0; j < 2; j++) {
               const units = [...unit_data[j].units.values()];
               const unit = zone.units.get(units[0]);
-              this.ctx.drawImage(unitImage(unit), part.c.x - (0.9 - 0.8 * j) * part.r.x,
-                part.c.y - 0.9 * part.r.y, part.r.x, part.r.y);
-              const fs: string = this.ctx.fillStyle;
-              this.ctx.fillStyle = 'white';
-              this.ctx.font = `bold ${0.75 * part.r.y}px serif`;
-              this.ctx.fillText(units.length.toString(), part.c.x - (0.9 - 0.8 * j) * part.r.x,
-                part.c.y -0.9 * part.r.y, 1.5 * part.r.x);
-              this.ctx.fillStyle = fs;
+              this.ctx.drawImage(unitImage(unit), (0.8 * j - 0.9) * part.r.x, -0.9 * part.r.y, part.r.x, part.r.y);
+              drawText(
+                this.ctx,
+                units.length.toString(),
+                0.75 * part.r.y,
+                (0.8 * j - 0.9) * part.r.x,
+                -0.9 * part.r.y,
+                1.5 * part.r.x
+              );
             }
             for (let j = 0; j < 2; j++) {
               const units = [...unit_data[2+j].units.values()];
               const unit = zone.units.get(units[0]);
-              this.ctx.drawImage(unitImage(unit), part.c.x - (0.9 - 0.8 * j) * part.r.x,
-                part.c.y - 0.1 * part.r.y, part.r.x, part.r.y);
-              const fs: string = this.ctx.fillStyle;
-              this.ctx.fillStyle = 'white';
-              this.ctx.font = `bold ${0.75 * part.r.y}px serif`;
-              this.ctx.fillText(units.length.toString(), part.c.x - (0.9 - 0.8 * j) * part.r.x,
-                part.c.y -0.1 * part.r.y, 1.5 * part.r.x);
-              this.ctx.fillStyle = fs;
+              this.ctx.drawImage(unitImage(unit), (0.8 * j - 0.9) * part.r.x, -0.1 * part.r.y, part.r.x, part.r.y);
+              drawText(
+                this.ctx,
+                units.length.toString(),
+                0.75 * part.r.y,
+                (0.8 * j - 0.9) * part.r.x,
+                -0.1 * part.r.y,
+                1.5 * part.r.x
+              );
             }
           } else {
             const unit_data = [...zone.units_by_type.values()];
             for (let j = 0; j < 2; j++) {
               const units = [...unit_data[j].units.values()];
               const unit = zone.units.get(units[0]);
-              this.ctx.drawImage(unitImage(unit), part.c.x - (0.9 - 0.8 * j) * part.r.x,
-                part.c.y - 0.9 * part.r.y, part.r.x, part.r.y);
+              this.ctx.drawImage(unitImage(unit), (0.8 * j - 0.9) * part.r.x, -0.9 * part.r.y, part.r.x, part.r.y);
             }
             for (let j = 0; j < 1; j++) {
               const units = [...unit_data[2+j].units.values()];
               const unit = zone.units.get(units[0]);
-              this.ctx.drawImage(unitImage(unit), part.c.x - (0.9 - 0.8 * j) * part.r.x,
-                part.c.y - 0.1 * part.r.y, part.r.x, part.r.y);
+              this.ctx.drawImage(unitImage(unit), (0.8 * j - 0.9) * part.r.x, -0.1 * part.r.y, part.r.x, part.r.y);
             }
-            const fs: string = this.ctx.fillStyle;
-            this.ctx.fillStyle = 'white';
-            this.ctx.font = `bold ${0.8 * part.r.y}px serif`;
-            this.ctx.fillText('...', part.c.x + 0.1 * part.r.x, part.c.y - 0.1 * part.r.y, 1.5 * part.r.x);
-            this.ctx.font = `bold ${1.5 * part.r.y}px serif`;
-            this.ctx.fillText(zone.units.size.toString(), part.c.x - 0.5 * part.r.x,
-              part.c.y - 0.75 * part.r.y, 1.5 * part.r.x);
-            this.ctx.fillStyle = fs;
+            drawText(
+              this.ctx,
+              '...',
+              0.8 * part.r.y,
+              0.1 * part.r.x,
+              -0.1 * part.r.y,
+              part.r.x,
+              'rgba(150, 150, 150, 0.8)'
+            );
+            drawText(
+              this.ctx,
+              (13 * zone.units.size).toString(),
+              1.4 * part.r.y,
+              -part.r.x,
+              -0.7 * part.r.y,
+              2 * part.r.x
+            );
           }
           break;
         case 2: // resources
@@ -547,10 +547,9 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
           console.error('No implemented');
           break;
       }
-      this.ctx.beginPath();
-      this.ctx.ellipse(part.c.x, part.c.y, part.r.x, part.r.y, 0, 0, 2 * Math.PI);
-      this.ctx.stroke();
-      this.ctx.fill();
+      this.ctx.rotate(rotation);
+      this.ctx.translate(-part.c.x, -part.c.y);
+      drawEllipse(this.ctx, part.c, part.r);
     }
   }
 }

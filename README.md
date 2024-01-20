@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.4v: Resize observer for canvas board
+v0.4w: Fix visual issue in Risq
 
 ## Dev Use
 

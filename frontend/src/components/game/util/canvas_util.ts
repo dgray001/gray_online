@@ -8,7 +8,16 @@ export function drawHexagon(ctx: CanvasRenderingContext2D, c: Point2D, r: number
 /** Draws a circle on the canvas */
 export function drawCircle(ctx: CanvasRenderingContext2D, c: Point2D, r: number) {
   ctx.beginPath();
-  ctx.ellipse(c.x, c.y, r, r, 0, 0, 2 * Math.PI)
+  ctx.ellipse(c.x, c.y, r, r, 0, 0, 2 * Math.PI);
+  ctx.closePath();
+  ctx.stroke();
+  ctx.fill();
+}
+
+/** Draws a ellipse on the canvas */
+export function drawEllipse(ctx: CanvasRenderingContext2D, c: Point2D, r: Point2D) {
+  ctx.beginPath();
+  ctx.ellipse(c.x, c.y, r.x, r.y, 0, 0, 2 * Math.PI);
   ctx.closePath();
   ctx.stroke();
   ctx.fill();
