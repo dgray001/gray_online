@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.4y: Can manually close space dialog
+v0.5a: Abstract button
 
 ## Dev Use
 

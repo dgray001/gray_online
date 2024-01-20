@@ -12,6 +12,7 @@ import {GameRisq, GameRisqFromServer, RisqSpace, coordinateToIndex, getSpace, ge
 import './risq.scss';
 import '../../util/canvas_board/canvas_board';
 import './space_dialog/space_dialog';
+import { TestButton } from './test_button';
 
 const DEFAULT_HEXAGON_RADIUS = 60;
 
@@ -83,7 +84,10 @@ export class DwgRisq extends DwgElement {
   async gameUpdate(update: UpdateMessage): Promise<void> {
   }
 
+  private test_button = new TestButton();
+
   private draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData) {
+    // set config
     ctx.strokeStyle = 'rgba(250, 250, 250, 0.9)';
     ctx.textAlign = 'left';
     ctx.lineWidth = 2;
@@ -92,6 +96,7 @@ export class DwgRisq extends DwgElement {
     const inset_h = this.hex_r * (1 + inset_offset);
     const inset_row = inset_h / 3 - 4;
     ctx.font = `bold ${inset_row}px serif`;
+    // draw spaces
     for (const row of this.game.spaces) {
       for (const space of row) {
         const fill = getSpaceFill(space);
@@ -119,6 +124,9 @@ export class DwgRisq extends DwgElement {
         }
       }
     }
+    // draw right collapsible panel
+    this.test_button.draw(ctx, transform, Date.now());
+    // draw red dot
     if (DRAW_CENTER_DOT && DEV) {
       ctx.fillStyle = 'red';
       ctx.strokeStyle = 'transparent';
@@ -128,6 +136,7 @@ export class DwgRisq extends DwgElement {
   }
 
   private mousemove(m: Point2D, transform: BoardTransformData) {
+    this.test_button.mousemove(m, transform, Date.now()); // TODO: remove
     this.mouse_canvas = m;
     this.mouse_coordinate = this.canvasToCoordinate(m, transform.scale);
     const index = coordinateToIndex(this.game.board_size, roundAxialCoordinate(this.mouse_coordinate));
@@ -161,6 +170,10 @@ export class DwgRisq extends DwgElement {
   }
 
   private mousedown(e: MouseEvent): boolean {
+    const clicked = this.test_button.mousedown(e, Date.now()); // TODO: remove
+    if (clicked) {
+      return true;
+    }
     if (e.button !== 0) {
       return false;
     }
@@ -172,6 +185,7 @@ export class DwgRisq extends DwgElement {
   }
 
   private mouseup(_e: MouseEvent) {
+    this.test_button.mouseup(_e, Date.now()); // TODO: remove
     if (!!this.hovered_space) {
       if (this.hovered_space.clicked && this.hovered_space.visibility > 0) {
         this.openSpaceDialog(this.hovered_space);

@@ -1,23 +1,31 @@
-v0.5: Can launch risq
 
-v0.6: Advanced risq
-
- g: Collapsible right panel (shows turn number)
- h: Collapsible right panel shows player resources (space for future minimap)
- i: Closable left panel
- j: Selecting building opens building in left panel
- k: Selecting resources opens them in left panel
- l: Selecting units opens them in left panel => is group of units if 2+
- m: Can select individual units from left panel
- n: More advanced visibility possibilities
- o: Show who controls a space with mixed control for current battles
- p: Right panel has all player's "scores"
- q: Right panel has whether players are finished with orders (UI to finish with orders)
- r: API to handle orders update
- s: Backend processes unit move orders
- t: Frontend processes turn outcome => summary report dialog
- u: Villager gather order
- v: Villager build order
+v0.6: Playable Risq
+ a: Collapsible right panel (shows turn number)
+ b: Collapsible right panel shows player resources (space for future minimap)
+ c: Closable left panel
+ d: Selecting building opens in left panel
+ e: Selecting empty plot opens in left panel (empty building plot in left panel)
+ f: Selecting unit opens them in left panel => group if 2+
+ g: Can select unit from group or shift click to select of type
+ h: Resource images / backend (each zone has one resource)
+ i: Backend calculates player "score" and right panel shows it
+ j: Orders abstraction
+ k: UI to "finish" orders and right panel shows who is finished with orders
+ l: Units and buildings have an array of orders they will complete in order
+ m: Can see orders on left panel for building
+ n: Can add to orders by creating a unit (villager)
+ o: Can cancel creation of unit (villager)
+ p: Movement backend logic
+ q: Movement frontend logic
+ r: Villager can create building
+ s: Villager can gather resources
+ t: Idle icon above buildings/units if idle
+ u: Limit on number of units in zone
+ v: Population limit / houses
+ w: Barracks / soldier
+ x: Backend creates summary report for each zone/space/player
+ y: Frontend shows summart report
+ z: Attack order => can win
 
  - Proper updates dialog for fiddlesticks and euchre
  - Can launch games with AI (all games must handle)
@@ -29,7 +37,7 @@ v0.6: Advanced risq
  - Can chat with individual players
  - Loaders for client requests in lobby: room-create, room-join, room-leave, room-rename
 
-v0.7: Savable games
+v0.7: Advanced Risq
  - Can save games if everyone logged in and all players agree
  - Can launch a saved game if logged in
  - Risq is fully playable with custom settings
