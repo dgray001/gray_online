@@ -137,6 +137,10 @@ export abstract class DwgButton implements CanvasComponent {
   protected abstract clicked(source: ClickSource): void;
   protected abstract released(source: ClickSource): void;
 
-  abstract getWidth(): number;
-  abstract getHeight(): number;
+  abstract xi(): number;
+  abstract xf(): number;
+  abstract yi(): number;
+  abstract yf(): number;
+  abstract w(): number;
+  abstract h(): number;
 }

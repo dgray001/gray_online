@@ -9,6 +9,12 @@ export declare interface CanvasComponent {
   mousemove: (m: Point2D, transform: BoardTransformData) => boolean;
   mousedown: (e: MouseEvent) => boolean;
   mouseup: (e: MouseEvent) => void;
+  xi: () => number;
+  xf: () => number;
+  yi: () => number;
+  yf: () => number;
+  w: () => number;
+  h: () => number;
 }
 
 /** Config for drawing */

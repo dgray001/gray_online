@@ -85,15 +85,32 @@ export abstract class DwgRectButton extends DwgButton {
     this.center_p = addPoint2D(this.rect_config.p, this.radius_p);
   }
 
-  override getWidth(): number {
+  xi(): number {
+    return this.rect_config.p.x;
+  }
+  yi(): number {
+    return this.rect_config.p.y;
+  }
+  xf(): number {
+    return this.rect_config.p.x + this.rect_config.w;
+  }
+  yf(): number {
+    return this.rect_config.p.y + this.rect_config.h;
+  }
+  xc(): number {
+    return this.center_p.x;
+  }
+  yc(): number {
+    return this.center_p.y;
+  }
+  w(): number {
     return this.rect_config.w;
   }
-
-  override getHeight(): number {
+  h(): number {
     return this.rect_config.h;
   }
 
-  override _draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
+  protected override _draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
     // translate animation
     if (!!this.target_p && !!this.speed_p) {
       if (this.reached_target.x && this.reached_target.y) {

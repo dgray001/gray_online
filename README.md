@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.5b: Right panel button
+v0.5c: Collapsible right panel
 
 ## Dev Use
 

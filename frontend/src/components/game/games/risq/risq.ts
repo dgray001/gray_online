@@ -5,15 +5,15 @@ import {BoardTransformData, CanvasBoardSize, DwgCanvasBoard} from '../../util/ca
 import {Point2D, addPoint2D, equalsPoint2D, hexagonalBoardNeighbors, hexagonalBoardRows, multiplyPoint2D, roundAxialCoordinate} from '../../util/objects2d';
 import {DwgGame} from '../../game';
 import {DEV, createLock, until} from '../../../../scripts/util';
+import {Rotation} from '../../util/canvas_components/canvas_component';
 
 import html from './risq.html';
 import {GameRisq, GameRisqFromServer, RisqSpace, coordinateToIndex, getSpace, getSpaceFill, serverToGameRisq} from './risq_data';
+import {RisqRightPanel} from './canvas_components/right_panel';
 
 import './risq.scss';
 import '../../util/canvas_board/canvas_board';
 import './space_dialog/space_dialog';
-import {RightPanelButton} from './canvas_components/right_panel_button';
-import { Rotation } from '../../util/canvas_components/canvas_component';
 
 const DEFAULT_HEXAGON_RADIUS = 60;
 
@@ -26,16 +26,18 @@ export class DwgRisq extends DwgElement {
   private hex_r = DEFAULT_HEXAGON_RADIUS;
   private hex_a = 0.5 * 1.732 * DEFAULT_HEXAGON_RADIUS;
   private canvas_center: Point2D = {x: 0, y: 0};
-  private canvas_size: DOMRect;
+  private canvas_size: DOMRect = DOMRect.fromRect();
   private mouse_canvas: Point2D = {x: 0, y: 0};
   private mouse_coordinate: Point2D = {x: 0, y: 0};
   private hovered_space?: RisqSpace;
   private icons = new Map<string, HTMLImageElement>();
   private last_time = Date.now();
-  private right_panel_size = 300;
-  private right_panel_open = false;
 
-  private right_panel_button = new RightPanelButton(this);
+  private right_panel = new RisqRightPanel(this, {
+    w: 300,
+    is_open: false,
+    background: 'rgb(222,184,135)',
+  });
 
   constructor() {
     super();
@@ -78,6 +80,10 @@ export class DwgRisq extends DwgElement {
     });
   }
 
+  getGame(): GameRisq {
+    return this.game;
+  }
+
   private boardResize(board_size: Point2D, canvas_size: DOMRect) {
     // Update canvas dependencies
     this.canvas_center = {
@@ -88,25 +94,15 @@ export class DwgRisq extends DwgElement {
     this.hex_r = board_size.x / (1.732 * (2 * this.game.board_size + 1));
     this.hex_a = 0.5 * 1.732 * this.hex_r;
     // Update other dependencies
-    this.toggleRightPanel(this.right_panel_open);
+    this.toggleRightPanel(this.right_panel.isOpen());
+  }
+
+  canvasSize(): DOMRect {
+    return this.canvas_size;
   }
 
   toggleRightPanel(open?: boolean) {
-    this.right_panel_open = open ?? !this.right_panel_open;
-    const position: Point2D = {
-      x: this.canvas_size.width - this.right_panel_button.getWidth(),
-      y: 0.5 * this.right_panel_button.getHeight(),
-    };
-    if (this.right_panel_open) {
-      position.x -= this.right_panel_size;
-    }
-    this.right_panel_button.setPosition(position, () => {
-      const rotation: Rotation = {
-        direction: this.right_panel_open,
-        angle: this.right_panel_open ? 0.5 * Math.PI : -0.5 * Math.PI,
-      };
-      this.right_panel_button.setRotation(rotation);
-    });
+    this.right_panel.toggle(open);
   }
 
   async gameUpdate(update: UpdateMessage): Promise<void> {
@@ -154,7 +150,7 @@ export class DwgRisq extends DwgElement {
       }
     }
     // draw right collapsible panel
-    this.right_panel_button.draw(ctx, transform, dt);
+    this.right_panel.draw(ctx, transform, dt);
     // draw red dot
     if (DRAW_CENTER_DOT && DEV) {
       ctx.fillStyle = 'red';
@@ -165,12 +161,14 @@ export class DwgRisq extends DwgElement {
   }
 
   private mousemove(m: Point2D, transform: BoardTransformData) {
-    this.right_panel_button.mousemove(m, transform);
     this.mouse_canvas = m;
+    const hovered_other_component = (
+      this.right_panel.mousemove(m, transform)
+    );
     this.mouse_coordinate = this.canvasToCoordinate(m, transform.scale);
     const index = coordinateToIndex(this.game.board_size, roundAxialCoordinate(this.mouse_coordinate));
     const new_hovered_space = getSpace(this.game, index);
-    if (!new_hovered_space) {
+    if (hovered_other_component || !new_hovered_space) {
       this.removeHoveredFlags();
       if (!!this.hovered_space) {
         this.hovered_space.clicked = false;
@@ -199,8 +197,7 @@ export class DwgRisq extends DwgElement {
   }
 
   private mousedown(e: MouseEvent): boolean {
-    const clicked = this.right_panel_button.mousedown(e);
-    if (clicked) {
+    if (this.right_panel.mousedown(e)) {
       return true;
     }
     if (e.button !== 0) {
@@ -214,7 +211,7 @@ export class DwgRisq extends DwgElement {
   }
 
   private mouseup(_e: MouseEvent) {
-    this.right_panel_button.mouseup(_e);
+    this.right_panel.mouseup(_e);
     if (!!this.hovered_space) {
       if (this.hovered_space.clicked && this.hovered_space.visibility > 0) {
         this.openSpaceDialog(this.hovered_space);

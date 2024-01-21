@@ -1,7 +1,7 @@
 import {DwgSquareButton} from '../../../util/canvas_components/button/square_button';
 import {DwgRisq} from '../risq';
 
-export class RightPanelButton extends DwgSquareButton {
+export class RisqRightPanelButton extends DwgSquareButton {
   private risq: DwgRisq;
 
   constructor(risq: DwgRisq) {
@@ -31,6 +31,9 @@ export class RightPanelButton extends DwgSquareButton {
   protected unhovered(): void {}
   protected clicked(): void {}
   protected released(): void {
+    if (!this.isHovering()) {
+      return;
+    }
     this.risq.toggleRightPanel();
     this.setHovering(false);
   }

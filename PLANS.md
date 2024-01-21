@@ -1,6 +1,5 @@
 
 v0.6: Playable Risq
- a: Collapsible right panel (shows turn number)
  b: Collapsible right panel shows player resources (space for future minimap)
  c: Closable left panel
  d: Selecting building opens in left panel
