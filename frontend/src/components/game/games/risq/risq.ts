@@ -12,7 +12,8 @@ import {GameRisq, GameRisqFromServer, RisqSpace, coordinateToIndex, getSpace, ge
 import './risq.scss';
 import '../../util/canvas_board/canvas_board';
 import './space_dialog/space_dialog';
-import { TestButton } from './test_button';
+import {RightPanelButton} from './canvas_components/right_panel_button';
+import { Rotation } from '../../util/canvas_components/canvas_component';
 
 const DEFAULT_HEXAGON_RADIUS = 60;
 
@@ -25,10 +26,16 @@ export class DwgRisq extends DwgElement {
   private hex_r = DEFAULT_HEXAGON_RADIUS;
   private hex_a = 0.5 * 1.732 * DEFAULT_HEXAGON_RADIUS;
   private canvas_center: Point2D = {x: 0, y: 0};
+  private canvas_size: DOMRect;
   private mouse_canvas: Point2D = {x: 0, y: 0};
   private mouse_coordinate: Point2D = {x: 0, y: 0};
   private hovered_space?: RisqSpace;
   private icons = new Map<string, HTMLImageElement>();
+  private last_time = Date.now();
+  private right_panel_size = 300;
+  private right_panel_open = false;
+
+  private right_panel_button = new RightPanelButton(this);
 
   constructor() {
     super();
@@ -72,21 +79,43 @@ export class DwgRisq extends DwgElement {
   }
 
   private boardResize(board_size: Point2D, canvas_size: DOMRect) {
+    // Update canvas dependencies
     this.canvas_center = {
       x: 0.5 * Math.min(board_size.x, canvas_size.width),
       y: 0.5 * Math.min(board_size.y, canvas_size.height),
     };
-    // not sure why exactly I rescaled the hexagons but I did at some point
+    this.canvas_size = canvas_size;
     this.hex_r = board_size.x / (1.732 * (2 * this.game.board_size + 1));
     this.hex_a = 0.5 * 1.732 * this.hex_r;
+    // Update other dependencies
+    this.toggleRightPanel(this.right_panel_open);
+  }
+
+  toggleRightPanel(open?: boolean) {
+    this.right_panel_open = open ?? !this.right_panel_open;
+    const position: Point2D = {
+      x: this.canvas_size.width - this.right_panel_button.getWidth(),
+      y: 0.5 * this.right_panel_button.getHeight(),
+    };
+    if (this.right_panel_open) {
+      position.x -= this.right_panel_size;
+    }
+    this.right_panel_button.setPosition(position, () => {
+      const rotation: Rotation = {
+        direction: this.right_panel_open,
+        angle: this.right_panel_open ? 0.5 * Math.PI : -0.5 * Math.PI,
+      };
+      this.right_panel_button.setRotation(rotation);
+    });
   }
 
   async gameUpdate(update: UpdateMessage): Promise<void> {
   }
 
-  private test_button = new TestButton();
-
   private draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData) {
+    const now = Date.now();
+    const dt = now - this.last_time;
+    this.last_time = now;
     // set config
     ctx.strokeStyle = 'rgba(250, 250, 250, 0.9)';
     ctx.textAlign = 'left';
@@ -125,7 +154,7 @@ export class DwgRisq extends DwgElement {
       }
     }
     // draw right collapsible panel
-    this.test_button.draw(ctx, transform, Date.now());
+    this.right_panel_button.draw(ctx, transform, dt);
     // draw red dot
     if (DRAW_CENTER_DOT && DEV) {
       ctx.fillStyle = 'red';
@@ -136,7 +165,7 @@ export class DwgRisq extends DwgElement {
   }
 
   private mousemove(m: Point2D, transform: BoardTransformData) {
-    this.test_button.mousemove(m, transform, Date.now()); // TODO: remove
+    this.right_panel_button.mousemove(m, transform);
     this.mouse_canvas = m;
     this.mouse_coordinate = this.canvasToCoordinate(m, transform.scale);
     const index = coordinateToIndex(this.game.board_size, roundAxialCoordinate(this.mouse_coordinate));
@@ -170,7 +199,7 @@ export class DwgRisq extends DwgElement {
   }
 
   private mousedown(e: MouseEvent): boolean {
-    const clicked = this.test_button.mousedown(e, Date.now()); // TODO: remove
+    const clicked = this.right_panel_button.mousedown(e);
     if (clicked) {
       return true;
     }
@@ -185,7 +214,7 @@ export class DwgRisq extends DwgElement {
   }
 
   private mouseup(_e: MouseEvent) {
-    this.test_button.mouseup(_e, Date.now()); // TODO: remove
+    this.right_panel_button.mouseup(_e);
     if (!!this.hovered_space) {
       if (this.hovered_space.clicked && this.hovered_space.visibility > 0) {
         this.openSpaceDialog(this.hovered_space);

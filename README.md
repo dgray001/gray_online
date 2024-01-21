@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.5a: Abstract button
+v0.5b: Right panel button
 
 ## Dev Use
 

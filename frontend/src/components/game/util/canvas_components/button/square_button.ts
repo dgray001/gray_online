@@ -9,6 +9,10 @@ export declare interface SquareButtonConfig {
   p: Point2D;
   s: number;
   draw_config: DrawConfig;
+  move_animation_speed?: number;
+  rotate_animation_speed?: number;
+  image_path?: string;
+  rotation?: number;
 }
 
 export abstract class DwgSquareButton extends DwgRectButton {

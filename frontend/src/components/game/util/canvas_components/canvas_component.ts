@@ -5,35 +5,35 @@ import {Point2D} from "../objects2d";
 export declare interface CanvasComponent {
   isHovering: () => boolean;
   isClicking: () => boolean;
-  draw: (ctx: CanvasRenderingContext2D, transform: BoardTransformData, t: number) => void;
-  mousemove: (m: Point2D, transform: BoardTransformData, t: number) => boolean;
-  mousedown: (e: MouseEvent, t: number) => boolean;
-  mouseup: (e: MouseEvent, t: number) => void;
+  draw: (ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number) => void;
+  mousemove: (m: Point2D, transform: BoardTransformData) => boolean;
+  mousedown: (e: MouseEvent) => boolean;
+  mouseup: (e: MouseEvent) => void;
 }
 
 /** Config for drawing */
 export declare interface DrawConfig {
-  /** Sets canvas fillStyle */
+  /** sets canvas fillStyle */
   fill_style: string;
-  /** Sets canvas strokeStyle */
+  /** sets canvas strokeStyle */
   stroke_style: string;
-  /** Sets canvas lineWidth */
+  /** sets canvas lineWidth */
   stroke_width: number;
-  /** Sets canvas fillStyle when hovered */
+  /** sets canvas fillStyle when hovered */
   hover_fill_style?: string;
-  /** Sets canvas strokeStyle when hovered */
+  /** sets canvas strokeStyle when hovered */
   hover_stroke_style?: string;
-  /** Sets canvas lineWidth when hovered */
+  /** sets canvas lineWidth when hovered */
   hover_stroke_width?: number;
-  /** Sets canvas fillStyle when clicked */
+  /** sets canvas fillStyle when clicked */
   click_fill_style?: string;
-  /** Sets canvas strokeStyle when clicked */
+  /** sets canvas strokeStyle when clicked */
   click_stroke_style?: string;
-  /** Sets canvas lineWidth when clicked */
+  /** sets canvas lineWidth when clicked */
   click_stroke_width?: number;
-  /** Draw with clicked config when clicked and not hovered */
+  /** draw with clicked config when clicked and not hovered */
   draw_clicked_when_unhovered?: boolean;
-  /** Forces draw to ignore transformations */
+  /** forces draw to ignore transformations */
   fixed_position?: boolean;
 }
 
@@ -77,4 +77,12 @@ export function configDraw(ctx: CanvasRenderingContext2D, transform: BoardTransf
     ctx.translate(-transform.view.x, -transform.view.y);
     ctx.scale(transform.scale, transform.scale);
   }
+}
+
+/** Data describing a rotation */
+export declare interface Rotation {
+  /** should be true for counterclockwise */
+  direction: boolean;
+  /** can represent an angle move or a target angle */
+  angle: number;
 }

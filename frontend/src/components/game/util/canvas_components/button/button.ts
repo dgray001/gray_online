@@ -37,12 +37,14 @@ export declare interface ButtonConfig {
   hold_click_time?: number;
   /** whether user must be hovering button for it to fire hold clicks */
   hold_click_hover?: boolean;
+  /** only triggers click on right click */
+  only_right_click?: boolean;
 }
 
 export abstract class DwgButton implements CanvasComponent {
   private hovering = false;
   private clicking = false;
-  private click_start = 0;
+  private click_hold_timer = 0;
   private hold_clicks = 0;
 
   private config: ButtonConfig;
@@ -63,23 +65,31 @@ export abstract class DwgButton implements CanvasComponent {
     return this.hovering;
   }
 
+  protected setHovering(hovering: boolean) {
+    this.hovering = hovering;
+  }
+
   isClicking() {
     return this.clicking;
   }
 
-  draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, t: number): void {
+  protected setClicking(clicking: boolean) {
+    this.clicking = clicking;
+  }
+
+  draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
     if (this.clicking && this.config.hold_click) {
-      const time = this.hold_clicks > 0 ? this.config.hold_click_time : this.config.hold_click_delay;
-      if (t > this.click_start + time) {
-        this.click_start = t;
+      this.click_hold_timer -= dt;
+      if (this.click_hold_timer < 0) {
+        this.click_hold_timer += this.config.hold_click_time;
         this.hold_clicks++;
         this.clicked(ClickSource.HOLD_CLICK);
       }
     }
-    this._draw(ctx, transform);
+    this._draw(ctx, transform, dt);
   }
 
-  mousemove(m: Point2D, transform: BoardTransformData, _t: number): boolean {
+  mousemove(m: Point2D, transform: BoardTransformData): boolean {
     const previous_hovered = this.hovering;
     this.hovering = this.mouseOver(m, transform);
     if (!previous_hovered && this.hovering) {
@@ -90,14 +100,17 @@ export abstract class DwgButton implements CanvasComponent {
     return this.hovering;
   }
 
-  mousedown(e: MouseEvent, t: number): boolean {
+  mousedown(e: MouseEvent): boolean {
     const source = MouseEventToClickSource(e);
     if (source === ClickSource.UNKNOWN) {
       return false;
     }
+    if (this.config.only_right_click && source !== ClickSource.LEFT_MOUSE) {
+      return false;
+    }
     if (this.hovering && !this.clicking) {
       this.clicking = true;
-      this.click_start = t;
+      this.click_hold_timer = this.config.hold_click_delay;
       this.hold_clicks = 0;
       this.clicked(source);
       return true;
@@ -105,7 +118,7 @@ export abstract class DwgButton implements CanvasComponent {
     return false;
   }
 
-  mouseup(e: MouseEvent, _t: number) {
+  mouseup(e: MouseEvent) {
     const source = MouseEventToClickSource(e);
     if (source === ClickSource.UNKNOWN) {
       return;
@@ -116,11 +129,14 @@ export abstract class DwgButton implements CanvasComponent {
     }
   }
 
-  protected abstract _draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData): void;
+  protected abstract _draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, t: number): void;
   abstract mouseOver(m: Point2D, transform: BoardTransformData): boolean;
 
   protected abstract hovered(): void;
   protected abstract unhovered(): void;
   protected abstract clicked(source: ClickSource): void;
   protected abstract released(source: ClickSource): void;
+
+  abstract getWidth(): number;
+  abstract getHeight(): number;
 }
