@@ -25,6 +25,7 @@ type RisqUnit struct {
 	internal_id          uint64
 	player_id            int
 	unit_id              uint32
+	zone                 *RisqZone
 	health               int
 	max_health           int
 	speed                int
@@ -88,6 +89,12 @@ func (u *RisqUnit) toFrontend() gin.H {
 		"penetration_blunt":    u.penetration_blunt,
 		"penetration_piercing": u.penetration_piercing,
 		"penetration_magic":    u.penetration_magic,
+	}
+	if u.zone != nil {
+		unit["zone_coordinate"] = u.zone.coordinate.ToFrontend()
+		if u.zone.space != nil {
+			unit["space_coordinate"] = u.zone.space.coordinate.ToFrontend()
+		}
 	}
 	return unit
 }

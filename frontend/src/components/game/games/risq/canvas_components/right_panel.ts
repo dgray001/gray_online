@@ -1,6 +1,6 @@
 import {BoardTransformData} from '../../../util/canvas_board/canvas_board';
 import {CanvasComponent, Rotation, configDraw} from '../../../util/canvas_components/canvas_component';
-import {drawRect, drawText} from '../../../util/canvas_util';
+import {drawLine, drawRect, drawText} from '../../../util/canvas_util';
 import {Point2D} from '../../../util/objects2d';
 import {DwgRisq} from '../risq';
 import {RisqRightPanelButton} from './right_panel_button';
@@ -23,7 +23,7 @@ export class RisqRightPanel implements CanvasComponent {
     this.risq = risq;
     this.config = config;
     this.open_button = new RisqRightPanelButton(risq);
-    this.toggle(config.is_open);
+    this.toggle(config.is_open, true);
   }
 
   isHovering(): boolean {
@@ -38,7 +38,7 @@ export class RisqRightPanel implements CanvasComponent {
     return this.config.is_open;
   }
 
-  toggle(open?: boolean) {
+  toggle(open?: boolean, initial?: boolean) {
     this.config.is_open = open ?? !this.config.is_open;
     const position: Point2D = {
       x: this.risq.canvasSize().width - this.open_button.w(),
@@ -54,8 +54,8 @@ export class RisqRightPanel implements CanvasComponent {
         direction: this.config.is_open,
         angle: this.config.is_open ? 0.5 * Math.PI : -0.5 * Math.PI,
       };
-      this.open_button.setRotation(rotation);
-    });
+      this.open_button.setRotation(rotation, undefined, initial);
+    }, initial);
   }
 
   draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number) {
@@ -74,11 +74,57 @@ export class RisqRightPanel implements CanvasComponent {
             w: this.w(),
             fill_style: 'black',
             align: 'center',
-            font: '12px',
+            font: 'bold 36px serif',
           });
+          const player = this.risq.getPlayer();
+          let yi = this.yi() + 40;
+          this.drawSeparator(ctx, yi);
+          yi += 5;
+          ctx.font = '24px serif';
+          this.drawPopulation(ctx, yi, player.units.size, player.population_limit);
+          yi += 30;
+          let r: keyof typeof player.resources;
+          for (r in player.resources) {
+            if (!!player) {
+              this.drawResource(ctx, yi, r, player.resources[r]);
+            }
+            yi += 30;
+          }
+          yi += 5;
+          this.drawSeparator(ctx, yi);
+          yi += 5;
         }
       });
     }
+  }
+
+  private drawSeparator(ctx: CanvasRenderingContext2D, yi: number) {
+    ctx.strokeStyle = 'rgba(60, 60, 60, 0.6)';
+    ctx.lineWidth = 2;
+    drawLine(ctx, {x: this.xi() + 0.15 * this.w(), y: yi}, {x: this.xf() - 0.15 * this.w(), y: yi});
+  }
+
+  private drawPopulation(ctx: CanvasRenderingContext2D, yi: number, pop: number, limit: number) {
+    ctx.beginPath();
+    ctx.drawImage(this.risq.getIcon('icons/unit64'), this.xi() + 0.1 * this.w(), yi, 30, 30);
+    drawText(ctx, `${pop}/${limit}`, {
+      p: {x: this.xi() + 0.1 * this.w() + 36, y: yi + 15},
+      w: 0.9 * this.w() - 36,
+      fill_style: 'black',
+      baseline: 'middle',
+    });
+  }
+
+  private drawResource(ctx: CanvasRenderingContext2D, yi: number, r: string, a: number) {
+    ctx.beginPath();
+    ctx.drawImage(this.risq.getIcon(`risq/resources/${r}`), this.xi() + 0.1 * this.w(), yi, 30, 30);
+    // TODO: add number of workers on each resource
+    drawText(ctx, a.toString(), {
+      p: {x: this.xi() + 0.1 * this.w() + 36, y: yi + 15},
+      w: 0.9 * this.w() - 36,
+      fill_style: 'black',
+      baseline: 'middle',
+    });
   }
 
   mousemove(m: Point2D, transform: BoardTransformData): boolean {

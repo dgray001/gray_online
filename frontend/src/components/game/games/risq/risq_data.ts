@@ -1,4 +1,3 @@
-import {ColorRGB} from '../../../../scripts/color_rgb';
 import {GameBase, GamePlayer} from '../../data_models';
 import {Point2D} from '../../util/objects2d';
 
@@ -13,6 +12,18 @@ export declare interface GameRisq {
 /** Data describing a risq player */
 export declare interface RisqPlayer {
   player: GamePlayer;
+  buildings: Map<number, RisqBuilding>; // key is internal_id
+  units: Map<number, RisqUnit>; // key is internal_id
+  resources: RisqResources;
+  population_limit: number;
+}
+
+/** Data describing resources of a player in risq */
+export declare interface RisqResources {
+  food: number;
+  wood: number;
+  gold: number;
+  stone: number;
 }
 
 /** Data describing a hexagonal space in risq */
@@ -70,6 +81,8 @@ export declare interface RisqUnit {
   internal_id: number;
   player_id: number;
   unit_id: number;
+  space_coordinate: Point2D;
+  zone_coordinate: Point2D;
   max_health: number;
   speed: number;
   attack_type: number;
@@ -89,6 +102,9 @@ export declare interface RisqBuilding {
   internal_id: number;
   player_id: number;
   building_id: number;
+  space_coordinate: Point2D;
+  zone_coordinate: Point2D;
+  population_support: number;
 }
 
 /** Data describing a game of risq as returned by server */
@@ -102,6 +118,10 @@ export declare interface GameRisqFromServer {
 /** Data describing a risq player */
 export declare interface RisqPlayerFromServer {
   player: GamePlayer;
+  buildings: RisqBuildingFromServer[];
+  units: RisqUnitFromServer[];
+  resources: RisqResources;
+  population_limit: number;
 }
 
 /** Data describing a hexagonal space in risq */
@@ -125,6 +145,8 @@ export declare interface RisqUnitFromServer {
   internal_id: number;
   player_id: number;
   unit_id: number;
+  space_coordinate: Point2D;
+  zone_coordinate: Point2D;
   max_health: number;
   speed: number;
   attack_type: number;
@@ -144,6 +166,9 @@ export declare interface RisqBuildingFromServer {
   internal_id: number;
   player_id: number;
   building_id: number;
+  space_coordinate: Point2D;
+  zone_coordinate: Point2D;
+  population_support: number;
 }
 
 /** Converts a server response to a frontend risq game */
@@ -161,10 +186,25 @@ export function serverToGameRisq(server_game: GameRisqFromServer): GameRisq {
   }
   return {
     game_base: server_game.game_base,
-    players: server_game.players,
+    players: server_game.players.map(p => serverToRisqPlayer(p)),
     board_size: server_game.board_size,
     spaces,
   };
+}
+
+/** Converts a server response ot a frontend risq player */
+export function serverToRisqPlayer(server_player: RisqPlayerFromServer): RisqPlayer {
+  if (!server_player) {
+    return undefined;
+  }
+  const player: RisqPlayer = {
+    player: server_player.player,
+    resources: server_player.resources,
+    buildings: new Map(server_player.buildings.map(b => [b.internal_id, serverToRisqBuilding(b)])),
+    units: new Map(server_player.units.map(u => [u.internal_id, serverToRisqUnit(u)])),
+    population_limit: server_player.population_limit,
+  };
+  return player;
 }
 
 /** Converts a server response to a frontend risq space */
@@ -240,6 +280,10 @@ export function getSpace(game: GameRisq, index: Point2D): RisqSpace|undefined {
     return undefined;
   }
   const row = game.spaces[index.x];
+  if (!row) {
+    console.log(game.spaces, index.x);
+    return undefined;
+  }
   if (index.y < 0 || index.y >= row.length) {
     return undefined;
   }
@@ -261,25 +305,4 @@ export function indexToCoordinate(board_size: number, index: Point2D): Point2D {
     x: index.y + Math.max(-board_size, -(board_size + cy)),
     y: cy,
   };
-}
-
-/** Returns the fill color for the input space */
-export function getSpaceFill(space: RisqSpace): ColorRGB {
-  const color = new ColorRGB(0, 0, 0, 0);
-  if (!!space) {
-    color.setColor(90, 90, 90, 0.8);
-    if (space.visibility > 0) {
-      color.setColor(10, 120, 10, 0.8);
-      if (space.hovered) {
-        if (space.clicked) {
-          color.addColor(210, 210, 210, 0.4);
-        } else {
-          color.addColor(190, 190, 190, 0.2);
-        }
-      }
-    } else if (space.hovered) {
-      color.addColor(150, 150, 150, 0.1);
-    }
-  }
-  return color;
 }

@@ -47,6 +47,14 @@ export function drawNgon(ctx: CanvasRenderingContext2D, n: number, c: Point2D, r
   ctx.fill();
 }
 
+/** Draws a line */
+export function drawLine(ctx: CanvasRenderingContext2D, pi: Point2D, pf: Point2D) {
+  ctx.beginPath();
+  ctx.lineTo(pi.x, pi.y);
+  ctx.lineTo(pf.x, pf.y);
+  ctx.stroke();
+}
+
 /** Config data for drawing text */
 export declare interface DrawTextConfig {
   p: Point2D;
@@ -78,5 +86,4 @@ export function drawText(ctx: CanvasRenderingContext2D, s: string, config: DrawT
     ctx.lineWidth = config.stroke_width;
     ctx.strokeText(s, config.p.x, config.p.y, config.w);
   }
-  ctx.closePath();
 }

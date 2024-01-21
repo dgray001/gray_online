@@ -1,15 +1,15 @@
 import {DwgElement} from '../../../dwg_element';
 import {UpdateMessage} from '../../data_models';
-import {drawCircle, drawHexagon} from '../../util/canvas_util';
+import {drawCircle} from '../../util/canvas_util';
 import {BoardTransformData, CanvasBoardSize, DwgCanvasBoard} from '../../util/canvas_board/canvas_board';
-import {Point2D, addPoint2D, equalsPoint2D, hexagonalBoardNeighbors, hexagonalBoardRows, multiplyPoint2D, roundAxialCoordinate} from '../../util/objects2d';
+import {Point2D, addPoint2D, equalsPoint2D, hexagonalBoardNeighbors, hexagonalBoardRows, multiplyPoint2D, roundAxialCoordinate, subtractPoint2D} from '../../util/objects2d';
 import {DwgGame} from '../../game';
 import {DEV, createLock, until} from '../../../../scripts/util';
-import {Rotation} from '../../util/canvas_components/canvas_component';
 
 import html from './risq.html';
-import {GameRisq, GameRisqFromServer, RisqSpace, coordinateToIndex, getSpace, getSpaceFill, serverToGameRisq} from './risq_data';
+import {GameRisq, GameRisqFromServer, RisqPlayer, RisqSpace, coordinateToIndex, getSpace, indexToCoordinate, serverToGameRisq} from './risq_data';
 import {RisqRightPanel} from './canvas_components/right_panel';
+import {DrawRisqSpaceConfig, drawRisqSpace} from './risq_space';
 
 import './risq.scss';
 import '../../util/canvas_board/canvas_board';
@@ -23,9 +23,11 @@ export class DwgRisq extends DwgElement {
   private board: DwgCanvasBoard;
 
   private game: GameRisq;
+  private player_id: number;
   private hex_r = DEFAULT_HEXAGON_RADIUS;
   private hex_a = 0.5 * 1.732 * DEFAULT_HEXAGON_RADIUS;
   private canvas_center: Point2D = {x: 0, y: 0};
+  private last_transform: BoardTransformData = {view: {x: 0, y: 0}, scale: 1};
   private canvas_size: DOMRect = DOMRect.fromRect();
   private mouse_canvas: Point2D = {x: 0, y: 0};
   private mouse_coordinate: Point2D = {x: 0, y: 0};
@@ -35,7 +37,7 @@ export class DwgRisq extends DwgElement {
 
   private right_panel = new RisqRightPanel(this, {
     w: 300,
-    is_open: false,
+    is_open: true,
     background: 'rgb(222,184,135)',
   });
 
@@ -43,20 +45,28 @@ export class DwgRisq extends DwgElement {
     super();
     this.htmlString = html;
     this.configureElement('board');
-    for (const icon of ['unit', 'building', 'unit_white', 'building_white']) {
-      this.createIcon(icon);
-    }
   }
 
   private createIcon(name: string) {
+    if (this.icons.has(name)) {
+      return;
+    }
     const el = document.createElement('img');
-    el.src = `/images/icons/${name}64.png`;
+    el.src = `/images/${name}.png`;
     el.draggable = false;
     el.alt = name;
     this.icons.set(name, el);
   }
 
+  getIcon(name: string) {
+    if (!this.icons.has(name)) {
+      this.createIcon(name);
+    }
+    return this.icons.get(name);
+  }
+
   async initialize(abstract_game: DwgGame, game: GameRisqFromServer): Promise<void> {
+    this.player_id = abstract_game.is_player ? abstract_game.player_id : -1;
     abstract_game.setPadding('0px');
     this.game = serverToGameRisq(game);
     const board_size: Point2D = {
@@ -65,7 +75,7 @@ export class DwgRisq extends DwgElement {
     };
     this.board.initialize({
       board_size,
-      max_scale: 1.8,
+      max_scale: 1,
       fill_space: true,
       draw: this.draw.bind(this),
       mousemove: this.mousemove.bind(this),
@@ -74,6 +84,11 @@ export class DwgRisq extends DwgElement {
       mouseup: this.mouseup.bind(this),
     }).then((size_data) => {
       this.boardResize(size_data.board_size, size_data.el_size);
+      if (abstract_game.is_player) {
+        this.goToVillageCenter();
+      } else {
+        // center of board
+      }
       this.board.addEventListener('canvas_resize', (e: CustomEvent<CanvasBoardSize>) => {
         this.boardResize(e.detail.board_size, e.detail.el_size);
       });
@@ -84,8 +99,27 @@ export class DwgRisq extends DwgElement {
     return this.game;
   }
 
+  getPlayer(): RisqPlayer|undefined {
+    return this.player_id > - 1 ? this.game.players[this.player_id] : undefined;
+  }
+
+  private goToVillageCenter() {
+    if (this.player_id < 0) {
+      return;
+    }
+    for (const building of this.game.players[this.player_id].buildings.values()) {
+      if (building.building_id !== 1) {
+        continue;
+      }
+      const view = this.coordinateToCanvas(building.space_coordinate, this.last_transform.scale ?? 1);
+      this.board.setView(subtractPoint2D(view, this.canvas_center));
+      return;
+    }
+  }
+
   private boardResize(board_size: Point2D, canvas_size: DOMRect) {
     // Update canvas dependencies
+    const canvas_ratio = 0.5 * Math.min(board_size.x, canvas_size.width) / this.canvas_center.x;
     this.canvas_center = {
       x: 0.5 * Math.min(board_size.x, canvas_size.width),
       y: 0.5 * Math.min(board_size.y, canvas_size.height),
@@ -93,6 +127,8 @@ export class DwgRisq extends DwgElement {
     this.canvas_size = canvas_size;
     this.hex_r = board_size.x / (1.732 * (2 * this.game.board_size + 1));
     this.hex_a = 0.5 * 1.732 * this.hex_r;
+    this.board.setMaxScale(0.45 * canvas_size.height / this.hex_r);
+    this.board.scaleView(canvas_ratio);
     // Update other dependencies
     this.toggleRightPanel(this.right_panel.isOpen());
   }
@@ -113,6 +149,7 @@ export class DwgRisq extends DwgElement {
     const dt = now - this.last_time;
     this.last_time = now;
     // set config
+    this.last_transform = transform;
     ctx.strokeStyle = 'rgba(250, 250, 250, 0.9)';
     ctx.textAlign = 'left';
     ctx.lineWidth = 2;
@@ -120,33 +157,23 @@ export class DwgRisq extends DwgElement {
     const inset_w = 2 * this.hex_a * (1 - inset_offset);
     const inset_h = this.hex_r * (1 + inset_offset);
     const inset_row = inset_h / 3 - 4;
+    const draw_config: DrawRisqSpaceConfig = {
+      hex_r: this.hex_r, inset_w, inset_h, inset_row,
+    };
     ctx.font = `bold ${inset_row}px serif`;
     // draw spaces
     for (const row of this.game.spaces) {
       for (const space of row) {
-        const fill = getSpaceFill(space);
-        ctx.fillStyle = fill.getString();
         space.center = this.coordinateToCanvas(space.coordinate, transform.scale);
-        drawHexagon(ctx, space.center, this.hex_r);
-        if (space.visibility > 0) {
-          let building_img = this.icons.get('building');
-          let unit_img = this.icons.get('unit');
-          if (fill.getBrightness() > 0.5) {
-            ctx.fillStyle = 'black';
-          } else {
-            ctx.fillStyle = 'white';
-            building_img = this.icons.get('building_white');
-            unit_img = this.icons.get('unit_white');
-          }
-          ctx.textBaseline = 'top';
-          const xs = space.center.x - 0.5 * inset_w;
-          const y1 = space.center.y - 0.5 * inset_h;
-          ctx.drawImage(building_img, xs, y1, inset_row, inset_row);
-          ctx.fillText(`: ${space.buildings.size.toString()}`, xs + inset_row + 2, y1, inset_w - inset_row - 2);
-          const y2 = space.center.y - 0.5 * inset_h + inset_row + 2;
-          ctx.drawImage(unit_img, xs, y2, inset_row, inset_row);
-          ctx.fillText(`: ${space.units.size.toString()}`, xs + inset_row + 2, y2, inset_w - inset_row - 2);
+        if (
+          space.center.x + this.hex_a < transform.view.x / transform.scale ||
+          space.center.x - this.hex_a > (transform.view.x + this.canvas_size.width) / transform.scale ||
+          space.center.y + this.hex_r < transform.view.y / transform.scale ||
+          space.center.y - this.hex_r > (transform.view.y + this.canvas_size.height) / transform.scale
+        ) {
+          continue;
         }
+        drawRisqSpace(ctx, this, space, draw_config);
       }
     }
     // draw right collapsible panel
@@ -220,12 +247,12 @@ export class DwgRisq extends DwgElement {
     }
   }
 
-  private _space_dialog_lock = createLock(true);
+  private space_dialog_lock = createLock(true);
   private async openSpaceDialog(space: RisqSpace) {
     if (!space) {
       return;
     }
-    this._space_dialog_lock(async () => {
+    this.space_dialog_lock(async () => {
       const space_dialog = document.createElement('dwg-space-dialog');
       space_dialog.setData({space, game: this.game});
       this.appendChild(space_dialog);

@@ -59,6 +59,7 @@ export class DwgCanvasBoard extends DwgElement {
   private cursor_move_threshold = 5;
   private dragging = false;
   private mouse: Point2D = {x: 0, y: 0};
+  private cursor_in_range = false;
 
   private bounding_rect: DOMRect;
   private resize_observer = new ResizeObserver(async (els) => {
@@ -114,6 +115,10 @@ export class DwgCanvasBoard extends DwgElement {
   async updateSize(data: CanvasBoardInitializationData, override_rect?: DOMRect): Promise<boolean> {
     if (!data || this.orig_size.x < 1 || this.orig_size.y < 1) {
       console.error('Size must be at least 1px in each direction');
+      return false;
+    }
+    if (!data.max_scale || data.max_scale < 1) {
+      console.error(`Max scale of ${data.max_scale} is invalid`);
       return false;
     }
     this.data = data;
@@ -274,6 +279,7 @@ export class DwgCanvasBoard extends DwgElement {
       moved = true;
     }
     if (!this.dragging) {
+      const maybe_cursor_in_range = !this.cursor_in_range && !moved;
       if (this.mouse.y < this.cursor_move_threshold) {
         d_view.y -= arrow_key_speed;
         moved = true;
@@ -290,6 +296,13 @@ export class DwgCanvasBoard extends DwgElement {
         d_view.x += arrow_key_speed;
         moved = true;
       }
+      if (maybe_cursor_in_range) {
+        if (moved) {
+          moved = false;
+        } else {
+          this.cursor_in_range = true;
+        }
+      }
     }
     if (moved) {
       this.setView({x: this.transform.view.x + d_view.x, y: this.transform.view.y + d_view.y});
@@ -300,7 +313,17 @@ export class DwgCanvasBoard extends DwgElement {
     }
   }
 
-  private setView(view: Point2D) {
+  scaleView(scale: number) {
+    this.setView({
+      x: this.transform.view.x * scale,
+      y: this.transform.view.y * scale,
+    });
+  }
+
+  setView(view: Point2D) {
+    if (isNaN(view.x) || isNaN(view.y)) {
+      return;
+    }
     if (view.x < 0) {
       view.x = 0;
     } else if (view.x > this.data.board_size.x * this.transform.scale) {
@@ -314,7 +337,27 @@ export class DwgCanvasBoard extends DwgElement {
     this.transform.view = view;
   }
 
-  private setScale(scale: number) {
+  setMaxScale(max_scale: number) {
+    if (!max_scale || max_scale < 1) {
+      return;
+    }
+    const scale_ratio = max_scale / this.data.max_scale;
+    this.data.max_scale = max_scale;
+    if (!!scale_ratio) {
+      if (this.transform.scale > 1) {
+        this.setScale(this.transform.scale * scale_ratio);
+      } else if (this.transform.scale < 1) {
+        this.setScale(this.transform.scale / scale_ratio);
+      }
+    } else {
+      this.setScale(this.transform.scale);
+    }
+  }
+
+  setScale(scale: number): number {
+    if (!scale) {
+      return this.transform.scale;
+    }
     if (scale < 1 / this.data.max_scale) {
       scale = 1 / this.data.max_scale;
     } else if (scale > this.data.max_scale) {
@@ -323,6 +366,7 @@ export class DwgCanvasBoard extends DwgElement {
     this.transform.view.x *= scale / this.transform.scale;
     this.transform.view.y *= scale / this.transform.scale;
     this.transform.scale = scale;
+    return scale;
   }
 }
 

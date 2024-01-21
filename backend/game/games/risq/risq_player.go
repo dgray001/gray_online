@@ -21,25 +21,37 @@ func createRisqPlayer(player *game.Player) *RisqPlayer {
 	}
 }
 
+func (p *RisqPlayer) populationLimit() uint16 {
+	limit := uint16(0)
+	for _, building := range p.buildings {
+		if building != nil && !building.deleted {
+			limit += building.population_support
+		}
+	}
+	return limit
+}
+
 func (p *RisqPlayer) toFrontend(show_updates bool) gin.H {
-	player := gin.H{}
+	player := gin.H{
+		"population_limit": p.populationLimit(),
+	}
 	if p.player != nil {
 		player["player"] = p.player.ToFrontend(show_updates)
 	}
 	if p.resources != nil {
 		player["resources"] = p.resources.toFrontend()
 	}
-	buildings := make(map[uint64]gin.H, 0)
+	buildings := make([]gin.H, 0)
 	for _, building := range p.buildings {
 		if building != nil && !building.deleted {
-			buildings[building.internal_id] = building.toFrontend()
+			buildings = append(buildings, building.toFrontend())
 		}
 	}
 	player["buildings"] = buildings
-	units := make(map[uint64]gin.H, 0)
+	units := make([]gin.H, 0)
 	for _, unit := range p.units {
 		if unit != nil && !unit.deleted {
-			units[unit.internal_id] = unit.toFrontend()
+			units = append(units, unit.toFrontend())
 		}
 	}
 	player["units"] = units

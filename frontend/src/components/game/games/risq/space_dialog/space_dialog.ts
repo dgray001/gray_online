@@ -1,10 +1,11 @@
 import {ColorRGB} from '../../../../../scripts/color_rgb';
 import {atangent} from '../../../../../scripts/math';
 import {DwgDialogBox} from '../../../../dialog_box/dialog_box';
-import {drawCircle, drawEllipse, drawHexagon} from '../../../util/canvas_util';
+import {drawEllipse, drawHexagon} from '../../../util/canvas_util';
 import {Point2D, addPoint2D, equalsPoint2D, multiplyPoint2D, pointInHexagon, rotatePoint, subtractPoint2D} from '../../../util/objects2d';
 import {buildingImage} from '../risq_buildings';
-import {GameRisq, RisqSpace, RisqZone, coordinateToIndex, getSpace, getSpaceFill, indexToCoordinate} from '../risq_data';
+import {GameRisq, RisqSpace, RisqZone, coordinateToIndex, getSpace, indexToCoordinate} from '../risq_data';
+import {getSpaceFill} from '../risq_space';
 import {unitImage} from '../risq_unit';
 import {organizeZoneUnits} from '../risq_zone';
 
@@ -532,7 +533,7 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
             );
             drawText(
               this.ctx,
-              (13 * zone.units.size).toString(),
+              zone.units.size.toString(),
               1.4 * part.r.y,
               -part.r.x,
               -0.7 * part.r.y,

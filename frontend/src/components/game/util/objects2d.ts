@@ -83,8 +83,7 @@ export function pointInHexagon(p: Point2D, r: number): boolean {
 
 /** Returns whether the point is in the hexagonal board */
 export function pointInHexagonalBoard(p: Point2D, board_size: number): boolean {
-  const c = roundAxialCoordinate(p);
-  return coordinateInHexagonalBoard(c, board_size);
+  return coordinateInHexagonalBoard(roundAxialCoordinate(p), board_size);
 }
 
 /** Returns whether the rounded axial coordinate is in the hexagonal board */

@@ -44,8 +44,8 @@ export abstract class DwgRectButton extends DwgButton {
     this.refreshPositionDependencies();
   }
 
-  setPosition(p: Point2D, callback?: () => void) {
-    if (this.rect_config.move_animation_speed > 0 && !equalsPoint2D(p, this.rect_config.p)) {
+  setPosition(p: Point2D, callback?: () => void, no_animation = false) {
+    if (this.rect_config.move_animation_speed > 0 && !equalsPoint2D(p, this.rect_config.p) && !no_animation) {
       this.target_p = p;
       this.speed_p = {
         x: (p.x - this.rect_config.p.x) / this.rect_config.move_animation_speed,
@@ -62,8 +62,8 @@ export abstract class DwgRectButton extends DwgButton {
     }
   }
 
-  setRotation(rotation: Rotation, callback?: () => void) {
-    if (this.rect_config.rotate_animation_speed > 0 && rotation.angle !== this.rect_config.rotation) {
+  setRotation(rotation: Rotation, callback?: () => void, no_animation = false) {
+    if (this.rect_config.rotate_animation_speed > 0 && rotation.angle !== this.rect_config.rotation && !no_animation) {
       this.rotate_target = rotation;
       const rotation_needed = (rotation.angle - this.rect_config.rotation) % (2 * Math.PI);
       this.rotate_speed = rotation_needed / this.rect_config.rotate_animation_speed;

@@ -26,6 +26,7 @@ type GameRisq struct {
 	game                      *game.GameBase
 	players                   []*RisqPlayer
 	board_size                uint16
+	population_limit          uint16
 	spaces                    [][]*RisqSpace
 	next_building_internal_id uint64
 	next_unit_internal_id     uint64
@@ -35,6 +36,7 @@ func CreateGame(g *game.GameBase) (*GameRisq, error) {
 	risq := GameRisq{
 		game:                      g,
 		players:                   []*RisqPlayer{},
+		population_limit:          100,
 		next_building_internal_id: 0,
 		next_unit_internal_id:     0,
 	}
@@ -47,7 +49,7 @@ func CreateGame(g *game.GameBase) (*GameRisq, error) {
 	if len(risq.players) < 2 {
 		//return nil, errors.New("Need at least two players to play risq")
 	} else if len(risq.players) > 6 {
-		return nil, errors.New("Can have of six players playing risq")
+		return nil, errors.New("Can have max of six players playing risq")
 	}
 	starting_distance := 0
 	switch len(risq.players) {
@@ -174,37 +176,12 @@ func CreateGame(g *game.GameBase) (*GameRisq, error) {
 
 func (r *GameRisq) createPlayerStart(p *RisqPlayer, s *RisqSpace) {
 	village_center := createRisqBuilding(r.nextBuildingInternalId(), 1, p.player.Player_id)
-	p.buildings[village_center.internal_id] = village_center
 	s.setBuilding(&game_utils.Coordinate2D{X: 0, Y: 0}, village_center)
+	p.buildings[village_center.internal_id] = village_center
 	for i := 0; i < 3; i++ {
 		villager := createRisqUnit(r.nextUnitInternalId(), 1, p.player.Player_id)
-		p.units[villager.internal_id] = villager
 		s.setUnit(&game_utils.Coordinate2D{X: 0, Y: 0}, villager)
-	}
-	// remove everything underneath this
-	village_center2 := createRisqBuilding(r.nextBuildingInternalId(), 1, p.player.Player_id)
-	p.buildings[village_center2.internal_id] = village_center2
-	s.setBuilding(&game_utils.Coordinate2D{X: 1, Y: 0}, village_center2)
-	for i := 0; i < 3; i++ {
-		villager := createRisqUnit(r.nextUnitInternalId(), 1, p.player.Player_id)
 		p.units[villager.internal_id] = villager
-		s.setUnit(&game_utils.Coordinate2D{X: 1, Y: 0}, villager)
-	}
-	village_center3 := createRisqBuilding(r.nextBuildingInternalId(), 1, p.player.Player_id)
-	p.buildings[village_center3.internal_id] = village_center3
-	s.setBuilding(&game_utils.Coordinate2D{X: -1, Y: 1}, village_center3)
-	for i := 0; i < 3; i++ {
-		villager := createRisqUnit(r.nextUnitInternalId(), 1, p.player.Player_id)
-		p.units[villager.internal_id] = villager
-		s.setUnit(&game_utils.Coordinate2D{X: -1, Y: 1}, villager)
-	}
-	village_center4 := createRisqBuilding(r.nextBuildingInternalId(), 1, p.player.Player_id)
-	p.buildings[village_center4.internal_id] = village_center4
-	s.setBuilding(&game_utils.Coordinate2D{X: 0, Y: -1}, village_center4)
-	for i := 0; i < 3; i++ {
-		villager := createRisqUnit(r.nextUnitInternalId(), 1, p.player.Player_id)
-		p.units[villager.internal_id] = villager
-		s.setUnit(&game_utils.Coordinate2D{X: 0, Y: -1}, villager)
 	}
 }
 
@@ -272,7 +249,8 @@ func (r *GameRisq) PlayerReconnected(client_id uint64) {
 
 func (r *GameRisq) ToFrontend(client_id uint64, is_viewer bool) gin.H {
 	game := gin.H{
-		"board_size": r.board_size,
+		"board_size":       r.board_size,
+		"population_limit": r.population_limit,
 	}
 	if r.game != nil {
 		game["game_base"] = r.game.ToFrontend(client_id, is_viewer)

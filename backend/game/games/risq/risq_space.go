@@ -31,7 +31,7 @@ func createRisqSpace(i int, j int) *RisqSpace {
 		space.zones[j] = make([]*RisqZone, l)
 		for i := range space.zones[j] {
 			q := max(-1, -(1+r)) + i
-			space.zones[j][i] = createRisqZone(q, r)
+			space.zones[j][i] = createRisqZone(q, r, &space)
 		}
 	}
 	return &space
@@ -68,6 +68,7 @@ func (s *RisqSpace) setBuilding(c *game_utils.Coordinate2D, building *RisqBuildi
 	}
 	s.buildings[building.internal_id] = building
 	zone.building = building
+	building.zone = zone
 	s.visibility[building.player_id] = 1
 }
 
@@ -79,6 +80,7 @@ func (s *RisqSpace) setUnit(c *game_utils.Coordinate2D, unit *RisqUnit) {
 	}
 	s.units[unit.internal_id] = unit
 	zone.units[unit.internal_id] = unit
+	unit.zone = zone
 	s.visibility[unit.player_id] = 1
 }
 
