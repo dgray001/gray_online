@@ -1,3 +1,4 @@
+import { clampNumber } from "./math";
 
 declare interface ColorRGBData {
   r: number;
@@ -47,28 +48,10 @@ export class ColorRGB {
   }
 
   private cleanInput(r: number, g: number, b:number, a?: number): ColorRGBData {
-    if (r < 0) {
-      r = 0;
-    } else if (r > 255) {
-      r = 255;
-    }
-    if (g < 0) {
-      g = 0;
-    } else if (g > 255) {
-      g = 255;
-    }
-    if (b < 0) {
-      b = 0;
-    } else if (b > 255) {
-      b = 255;
-    }
-    if (a === undefined) {
-      a = 1;
-    } else if (a < 0) {
-      a = 0;
-    } else if (a > 1) {
-      a = 1;
-    }
+    r = clampNumber(r, 0, 255);
+    g = clampNumber(g, 0, 255);
+    b = clampNumber(b, 0, 255);
+    a = clampNumber(a, 0, 1, false);
     return {r, g, b, a};
   }
 

@@ -69,30 +69,32 @@ export class RisqRightPanel implements CanvasComponent {
       }, false, false, () => {
         drawRect(ctx, {x: this.xi(), y: this.yi()}, this.w(), this.h());
         if (!this.opening && this.config.is_open) {
-          drawText(ctx, `Turn ${0}`, {
+          drawText(ctx, `Turn ${this.risq.getGame().turn_number}`, {
             p: {x: this.xc(), y: this.yi()},
             w: this.w(),
             fill_style: 'black',
             align: 'center',
             font: 'bold 36px serif',
           });
-          const player = this.risq.getPlayer();
           let yi = this.yi() + 40;
+          const player = this.risq.getPlayer();
           this.drawSeparator(ctx, yi);
           yi += 5;
-          ctx.font = '24px serif';
-          this.drawPopulation(ctx, yi, player.units.size, player.population_limit);
-          yi += 30;
-          let r: keyof typeof player.resources;
-          for (r in player.resources) {
-            if (!!player) {
-              this.drawResource(ctx, yi, r, player.resources[r]);
-            }
+          if (!!player) {
+            ctx.font = '24px serif';
+            this.drawPopulation(ctx, yi, player.units.size, player.population_limit);
             yi += 30;
+            let r: keyof typeof player.resources;
+            for (r in player.resources) {
+              if (!!player) {
+                this.drawResource(ctx, yi, r, player.resources[r]);
+              }
+              yi += 30;
+            }
+            yi += 5;
+            this.drawSeparator(ctx, yi);
+            yi += 5;
           }
-          yi += 5;
-          this.drawSeparator(ctx, yi);
-          yi += 5;
         }
       });
     }

@@ -1,3 +1,4 @@
+import {ColorRGB} from '../../../../scripts/color_rgb';
 import {GameBase, GamePlayer} from '../../data_models';
 import {Point2D} from '../../util/objects2d';
 
@@ -6,6 +7,8 @@ export declare interface GameRisq {
   game_base: GameBase;
   players: RisqPlayer[];
   board_size: number;
+  population_limit: number;
+  turn_number: number;
   spaces: RisqSpace[][];
 }
 
@@ -16,6 +19,7 @@ export declare interface RisqPlayer {
   units: Map<number, RisqUnit>; // key is internal_id
   resources: RisqResources;
   population_limit: number;
+  color: ColorRGB;
 }
 
 /** Data describing resources of a player in risq */
@@ -86,6 +90,7 @@ export declare interface RisqUnit {
   internal_id: number;
   player_id: number;
   unit_id: number;
+  display_name: string;
   space_coordinate: Point2D;
   zone_coordinate: Point2D;
   max_health: number;
@@ -107,6 +112,7 @@ export declare interface RisqBuilding {
   internal_id: number;
   player_id: number;
   building_id: number;
+  display_name: string;
   space_coordinate: Point2D;
   zone_coordinate: Point2D;
   population_support: number;
@@ -116,6 +122,7 @@ export declare interface RisqBuilding {
 export declare interface RisqResource {
   internal_id: number;
   resource_id: number;
+  display_name: string;
   space_coordinate: Point2D;
   zone_coordinate: Point2D;
   resources_left: number;
@@ -126,6 +133,8 @@ export declare interface GameRisqFromServer {
   game_base: GameBase; // alredy been converted
   players: RisqPlayerFromServer[];
   board_size: number;
+  population_limit: number;
+  turn_number: number;
   spaces: RisqSpaceFromServer[][];
 }
 
@@ -136,6 +145,7 @@ export declare interface RisqPlayerFromServer {
   units: RisqUnitFromServer[];
   resources: RisqResources;
   population_limit: number;
+  color: string;
 }
 
 /** Data describing a hexagonal space in risq */
@@ -161,6 +171,7 @@ export declare interface RisqUnitFromServer {
   internal_id: number;
   player_id: number;
   unit_id: number;
+  display_name: string;
   space_coordinate: Point2D;
   zone_coordinate: Point2D;
   max_health: number;
@@ -182,6 +193,7 @@ export declare interface RisqBuildingFromServer {
   internal_id: number;
   player_id: number;
   building_id: number;
+  display_name: string;
   space_coordinate: Point2D;
   zone_coordinate: Point2D;
   population_support: number;
@@ -191,6 +203,7 @@ export declare interface RisqBuildingFromServer {
 export declare interface RisqResourceFromServer {
   internal_id: number;
   resource_id: number;
+  display_name: string;
   space_coordinate: Point2D;
   zone_coordinate: Point2D;
   resources_left: number;
@@ -213,6 +226,8 @@ export function serverToGameRisq(server_game: GameRisqFromServer): GameRisq {
     game_base: server_game.game_base,
     players: server_game.players.map(p => serverToRisqPlayer(p)),
     board_size: server_game.board_size,
+    population_limit: server_game.population_limit,
+    turn_number: server_game.turn_number,
     spaces,
   };
 }
@@ -222,12 +237,18 @@ export function serverToRisqPlayer(server_player: RisqPlayerFromServer): RisqPla
   if (!server_player) {
     return undefined;
   }
+  let color_split: number[] = server_player.color.split(',').map(c => parseInt(c.trim()));
+  if (color_split.length !== 3) {
+    console.error('Error parsing player color', server_player.color);
+    color_split = [0, 0, 0];
+  }
   const player: RisqPlayer = {
     player: server_player.player,
     resources: server_player.resources,
     buildings: new Map(server_player.buildings.map(b => [b.internal_id, serverToRisqBuilding(b)])),
     units: new Map(server_player.units.map(u => [u.internal_id, serverToRisqUnit(u)])),
     population_limit: server_player.population_limit,
+    color: new ColorRGB(color_split[0], color_split[1], color_split[2]),
   };
   return player;
 }
@@ -349,4 +370,9 @@ export function indexToCoordinate(board_size: number, index: Point2D): Point2D {
     x: index.y + Math.max(-board_size, -(board_size + cy)),
     y: cy,
   };
+}
+
+/** Data describing a start-turn update */
+export declare interface StartTurnData {
+  game: GameRisqFromServer;
 }

@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.5h: Left panel can be opened and closed
+v0.5i: Objects have display names
 
 ## Dev Use
 

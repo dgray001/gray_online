@@ -7,7 +7,7 @@ import {DwgGame} from '../../game';
 import {DEV, createLock} from '../../../../scripts/util';
 
 import html from './risq.html';
-import {GameRisq, GameRisqFromServer, RisqPlayer, RisqSpace, RisqZone, coordinateToIndex, getSpace, serverToGameRisq} from './risq_data';
+import {GameRisq, GameRisqFromServer, RisqPlayer, RisqSpace, RisqZone, StartTurnData, coordinateToIndex, getSpace, serverToGameRisq} from './risq_data';
 import {RisqRightPanel} from './canvas_components/right_panel';
 import {DrawRisqSpaceConfig, DrawRisqSpaceDetail, drawRisqSpace} from './risq_space';
 import {LeftPanelDataType, RisqLeftPanel} from './canvas_components/left_panel';
@@ -168,6 +168,23 @@ export class DwgRisq extends DwgElement {
   }
 
   async gameUpdate(update: UpdateMessage): Promise<void> {
+    try {
+      switch(update.kind) {
+        case "start-turn":
+          const startTurnData = update.update as StartTurnData;
+          await this.applyStartTurn(startTurnData);
+          break;
+        default:
+          console.log(`Unknown game update type ${update.kind}`);
+          break;
+      }
+    } catch(e) {
+      console.log(`Error during game update ${JSON.stringify(update)}: ${e}`);
+    }
+  }
+
+  private async applyStartTurn(data: StartTurnData) {
+    this.game = serverToGameRisq(data.game);
   }
 
   private draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData) {
@@ -330,7 +347,7 @@ export class DwgRisq extends DwgElement {
                   if (!!this.hovered_zone.resource) {
                     this.left_panel.openPanel(LeftPanelDataType.RESOURCE, this.hovered_zone.resource);
                   } else {
-                    //this.left_panel.openPanel();
+                    this.left_panel.openPanel(LeftPanelDataType.BUILDING, this.hovered_zone.building);
                   }
                   break;
                 case 1:

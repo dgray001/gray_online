@@ -31,6 +31,7 @@ type GameRisq struct {
 	next_resource_internal_id uint64
 	next_building_internal_id uint64
 	next_unit_internal_id     uint64
+	turn_number               uint16
 }
 
 func CreateGame(g *game.GameBase) (*GameRisq, error) {
@@ -41,11 +42,29 @@ func CreateGame(g *game.GameBase) (*GameRisq, error) {
 		next_resource_internal_id: 0,
 		next_building_internal_id: 0,
 		next_unit_internal_id:     0,
+		turn_number:               0,
 	}
 	var player_id = 0
 	for _, player := range g.Players {
 		player.Player_id = player_id
-		risq.players = append(risq.players, createRisqPlayer(player))
+		color := ""
+		switch player_id {
+		case 0:
+			color = "90, 90, 250"
+		case 1:
+			color = "250, 90, 90"
+		case 2:
+			color = "90, 250, 90"
+		case 3:
+			color = "190, 190, 50"
+		case 4:
+			color = "190, 50, 190"
+		case 5:
+			color = "50, 190, 190"
+		default:
+			fmt.Fprintln(os.Stderr, "Unknown player id for color", player_id)
+		}
+		risq.players = append(risq.players, createRisqPlayer(player, risq.population_limit, color))
 		player_id++
 	}
 	if len(risq.players) < 2 {
@@ -240,6 +259,19 @@ func (r *GameRisq) GetBase() *game.GameBase {
 }
 
 func (r *GameRisq) StartGame() {
+	r.startNextTurn()
+}
+
+func (r *GameRisq) startNextTurn() {
+	r.turn_number++
+	for _, player := range r.players {
+		player.player.AddUpdate(&game.UpdateMessage{Kind: "start-turn", Content: gin.H{
+			"game": r.ToFrontend(player.player.GetClientId(), false),
+		}})
+	}
+	r.game.AddViewerUpdate(&game.UpdateMessage{Kind: "start-turn", Content: gin.H{
+		"game": r.ToFrontend(0, true),
+	}})
 }
 
 func (r *GameRisq) Valid() bool {
@@ -272,6 +304,7 @@ func (r *GameRisq) ToFrontend(client_id uint64, is_viewer bool) gin.H {
 	game := gin.H{
 		"board_size":       r.board_size,
 		"population_limit": r.population_limit,
+		"turn_number":      r.turn_number,
 	}
 	if r.game != nil {
 		game["game_base"] = r.game.ToFrontend(client_id, is_viewer)
@@ -280,7 +313,7 @@ func (r *GameRisq) ToFrontend(client_id uint64, is_viewer bool) gin.H {
 	players := []gin.H{}
 	for id, player := range r.players {
 		if player != nil {
-			if client_id == player.player.GetClientId() {
+			if !is_viewer && client_id == player.player.GetClientId() {
 				player_id = id
 			}
 			players = append(players, player.toFrontend(is_viewer || client_id == player.player.GetClientId()))

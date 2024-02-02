@@ -25,6 +25,7 @@ type RisqUnit struct {
 	internal_id          uint64
 	player_id            int
 	unit_id              uint32
+	display_name         string
 	zone                 *RisqZone
 	health               int
 	max_health           int
@@ -62,9 +63,16 @@ func createRisqUnit(internal_id uint64, unit_id uint32, player_id int) *RisqUnit
 	}
 	switch unit_id {
 	case 1: // villager
+		unit.display_name = "Villager"
 		unit.max_health = 25
 		unit.attack_type = AttackType_BLUNT
 		unit.attack_blunt = 3
+	case 11: // swordsman
+		unit.display_name = "Swordsman"
+		unit.max_health = 35
+		unit.attack_type = AttackType_BLUNT_PIERCING
+		unit.attack_blunt = 4
+		unit.attack_piercing = 4
 	default:
 		fmt.Fprintln(os.Stderr, "Creating unknown unit id: ", unit_id)
 	}
@@ -77,6 +85,7 @@ func (u *RisqUnit) toFrontend() gin.H {
 		"internal_id":          u.internal_id,
 		"player_id":            u.player_id,
 		"unit_id":              u.unit_id,
+		"display_name":         u.display_name,
 		"max_health":           u.max_health,
 		"speed":                u.speed,
 		"attack_type":          u.attack_type,

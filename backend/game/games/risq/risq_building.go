@@ -9,6 +9,7 @@ type RisqBuilding struct {
 	internal_id        uint64
 	player_id          int
 	building_id        uint32
+	display_name       string
 	zone               *RisqZone
 	population_support uint16
 }
@@ -23,8 +24,10 @@ func createRisqBuilding(internal_id uint64, building_id uint32, player_id int) *
 	}
 	switch building_id {
 	case 1: // village center
+		building.display_name = "Village Center"
 		building.population_support = 5
 	case 2: // housing
+		building.display_name = "Housing"
 		building.population_support = 5
 	}
 	return &building
@@ -35,6 +38,7 @@ func (b *RisqBuilding) toFrontend() gin.H {
 		"internal_id":        b.internal_id,
 		"player_id":          b.player_id,
 		"building_id":        b.building_id,
+		"display_name":       b.display_name,
 		"population_support": b.population_support,
 	}
 	if b.zone != nil {

@@ -3,7 +3,7 @@ import {CanvasComponent, configDraw} from '../../../util/canvas_components/canva
 import {drawRect, drawText} from '../../../util/canvas_util';
 import {Point2D} from '../../../util/objects2d';
 import {DwgRisq} from '../risq';
-import {RisqResource} from '../risq_data';
+import {RisqBuilding, RisqResource} from '../risq_data';
 import {RisqLeftPanelButton} from './left_panel_close';
 
 /** Config for the left panel */
@@ -15,6 +15,7 @@ export declare interface LeftPanelConfig {
 /** All the data types that can be displayed in the left panel */
 export enum LeftPanelDataType {
   RESOURCE,
+  BUILDING,
 }
 
 export class RisqLeftPanel implements CanvasComponent {
@@ -84,6 +85,9 @@ export class RisqLeftPanel implements CanvasComponent {
         case LeftPanelDataType.RESOURCE:
           this.drawResource(ctx, this.data);
           break;
+        case LeftPanelDataType.BUILDING:
+          this.drawBuilding(ctx, this.data);
+          break;
         default:
           console.error('Unknown data type for left panel', this.data_type);
           break;
@@ -93,13 +97,27 @@ export class RisqLeftPanel implements CanvasComponent {
   }
 
   private drawResource(ctx: CanvasRenderingContext2D, resource: RisqResource) {
-    drawText(ctx, `Turn ${0}`, {
+    let yi = this.yi() + this.drawName(ctx, resource.display_name);
+    // TODO: draw image
+    // TODO: draw resource type and what's left and base gather speed
+  }
+
+  private drawBuilding(ctx: CanvasRenderingContext2D, building: RisqBuilding) {
+    let yi = this.yi() + this.drawName(ctx, building?.display_name ?? 'Empty Plot');
+    // TODO: draw image
+    // TODO: draw other building stuff
+  }
+
+  private drawName(ctx: CanvasRenderingContext2D, name: string): number {
+    const text_size = Math.min(40, this.size.y / 3 / 3);
+    drawText(ctx, name, {
       p: {x: this.xc(), y: this.yi()},
       w: this.w(),
       fill_style: 'black',
       align: 'center',
-      font: 'bold 36px serif',
+      font: `bold ${0.85 * text_size}px serif`,
     });
+    return text_size;
   }
 
   mousemove(m: Point2D, transform: BoardTransformData): boolean {

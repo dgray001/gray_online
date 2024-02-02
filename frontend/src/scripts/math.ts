@@ -15,3 +15,26 @@ export function atangent(y: number, x: number): number {
   }
   return 2 * Math.PI - atan;
 }
+
+/** Clamps number that may or may not be undefined */
+export function clampNumber(n: number, min: number, max: number, default_min = true): number {
+  if (isNaN(min) || min === undefined || min === null) {
+    return n;
+  }
+  if (isNaN(max) || max === undefined || max === null) {
+    return n;
+  }
+  if (max < min) {
+    return clampNumber(n, max, min);
+  }
+  if (isNaN(n) || n === undefined || n === null) {
+    return default_min ? min : max;
+  }
+  if (n > max) {
+    return max;
+  }
+  if (n < min) {
+    return min;
+  }
+  return n;
+}

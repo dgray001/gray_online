@@ -6,18 +6,22 @@ import (
 )
 
 type RisqPlayer struct {
-	player    *game.Player
-	resources *RisqPlayerResources
-	buildings map[uint64]*RisqBuilding
-	units     map[uint64]*RisqUnit
+	player               *game.Player
+	resources            *RisqPlayerResources
+	buildings            map[uint64]*RisqBuilding
+	units                map[uint64]*RisqUnit
+	max_population_limit uint16
+	color                string
 }
 
-func createRisqPlayer(player *game.Player) *RisqPlayer {
+func createRisqPlayer(player *game.Player, max_population_limit uint16, color string) *RisqPlayer {
 	return &RisqPlayer{
-		player:    player,
-		resources: createRisqPlayerResources(),
-		buildings: make(map[uint64]*RisqBuilding),
-		units:     make(map[uint64]*RisqUnit, 0),
+		player:               player,
+		resources:            createRisqPlayerResources(),
+		buildings:            make(map[uint64]*RisqBuilding),
+		units:                make(map[uint64]*RisqUnit, 0),
+		max_population_limit: max_population_limit,
+		color:                color,
 	}
 }
 
@@ -28,12 +32,16 @@ func (p *RisqPlayer) populationLimit() uint16 {
 			limit += building.population_support
 		}
 	}
+	if limit > p.max_population_limit {
+		limit = p.max_population_limit
+	}
 	return limit
 }
 
 func (p *RisqPlayer) toFrontend(show_updates bool) gin.H {
 	player := gin.H{
 		"population_limit": p.populationLimit(),
+		"color":            p.color,
 	}
 	if p.player != nil {
 		player["player"] = p.player.ToFrontend(show_updates)
