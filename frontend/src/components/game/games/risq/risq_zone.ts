@@ -1,9 +1,10 @@
 import {ColorRGB} from "../../../../scripts/color_rgb";
-import { atangent } from "../../../../scripts/math";
+import {atangent} from "../../../../scripts/math";
 import {drawEllipse} from "../../util/canvas_util";
 import {Point2D, pointInHexagon, rotatePoint, subtractPoint2D} from "../../util/objects2d";
 import {buildingImage} from "./risq_buildings";
 import {RisqSpace, RisqZone, UnitByTypeData} from "./risq_data";
+import {resourceImage} from "./risq_resources";
 import {unitImage} from "./risq_unit";
 
 /** Multiplier for inner zone relative to whole radius */
@@ -81,7 +82,11 @@ export function drawRisqZone(ctx: CanvasRenderingContext2D, zone: RisqZone,
     ctx.rotate(-rotation);
     switch(i) {
       case 0: // resources / building
-        ctx.drawImage(buildingImage(zone.building), -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
+        if (!!zone.resource) {
+          ctx.drawImage(resourceImage(zone.resource), -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
+        } else {
+          ctx.drawImage(buildingImage(zone.building), -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
+        }
         break;
       case 1: // economic units
       case 2: // military units

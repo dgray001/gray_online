@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.5f: Hover logic for zones
+v0.5g: Resources visible in game
 
 ## Dev Use
 

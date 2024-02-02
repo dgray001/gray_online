@@ -1,5 +1,5 @@
-import {capitalize} from "../../../../scripts/util";
-import {RisqBuilding} from "./risq_data";
+import {capitalize} from '../../../../scripts/util';
+import {RisqBuilding} from './risq_data';
 
 /** Returns image of the building */
 export function buildingImage(building: RisqBuilding): HTMLImageElement {

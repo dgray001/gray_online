@@ -31,6 +31,7 @@ export declare interface RisqSpace {
   coordinate: Point2D;
   visibility: number;
   zones?: RisqZone[][];
+  resources?: Map<number, RisqResource>;
   buildings?: Map<number, RisqBuilding>;
   units?: Map<number, RisqUnit>;
   // purely frontend fields
@@ -60,6 +61,7 @@ export declare interface EllipHoverData {
 /** Data describing zones inside a risq space */
 export declare interface RisqZone {
   coordinate: Point2D;
+  resource?: RisqResource;
   building?: RisqBuilding;
   units: Map<number, RisqUnit>;
   // purely frontend fields
@@ -108,6 +110,15 @@ export declare interface RisqBuilding {
   population_support: number;
 }
 
+/** Data describing resources in a zone */
+export declare interface RisqResource {
+  internal_id: number;
+  resource_id: number;
+  space_coordinate: Point2D;
+  zone_coordinate: Point2D;
+  resources_left: number;
+}
+
 /** Data describing a game of risq as returned by server */
 export declare interface GameRisqFromServer {
   game_base: GameBase; // alredy been converted
@@ -130,6 +141,7 @@ export declare interface RisqSpaceFromServer {
   coordinate: Point2D;
   visibility: number;
   zones?: RisqZoneFromServer[][];
+  resources?: RisqResourceFromServer[];
   buildings?: RisqBuildingFromServer[];
   units?: RisqUnitFromServer[];
 }
@@ -138,6 +150,7 @@ export declare interface RisqSpaceFromServer {
 export declare interface RisqZoneFromServer {
   coordinate: Point2D;
   building?: RisqBuildingFromServer;
+  resource?: RisqResourceFromServer;
   units: RisqUnitFromServer[];
 }
 
@@ -170,6 +183,15 @@ export declare interface RisqBuildingFromServer {
   space_coordinate: Point2D;
   zone_coordinate: Point2D;
   population_support: number;
+}
+
+/** Data describing resources in a zone */
+export declare interface RisqResourceFromServer {
+  internal_id: number;
+  resource_id: number;
+  space_coordinate: Point2D;
+  zone_coordinate: Point2D;
+  resources_left: number;
 }
 
 /** Converts a server response to a frontend risq game */
@@ -234,11 +256,17 @@ export function serverToRisqSpace(server_space: RisqSpaceFromServer): RisqSpace 
     }
     space.zones = zones;
   }
+  if (!!server_space.resources) {
+    space.resources = new Map(server_space.resources.map(server_resource =>
+      [server_resource.internal_id, serverToRisqResource(server_resource)]));
+  }
   if (!!server_space.buildings) {
-    space.buildings = new Map(server_space.buildings.map(server_building => [server_building.internal_id, serverToRisqBuilding(server_building)]));
+    space.buildings = new Map(server_space.buildings.map(server_building =>
+      [server_building.internal_id, serverToRisqBuilding(server_building)]));
   }
   if (!!server_space.units) {
-    space.units = new Map(server_space.units.map(server_unit => [server_unit.internal_id, serverToRisqUnit(server_unit)]));
+    space.units = new Map(server_space.units.map(server_unit =>
+      [server_unit.internal_id, serverToRisqUnit(server_unit)]));
   }
   return space;
 }
@@ -250,6 +278,7 @@ export function serverToRisqZone(server_zone: RisqZoneFromServer): RisqZone {
   }
   return {
     coordinate: server_zone.coordinate,
+    resource: serverToRisqResource(server_zone.resource),
     building: serverToRisqBuilding(server_zone.building),
     units: new Map(server_zone.units.map(server_unit => [server_unit.internal_id, serverToRisqUnit(server_unit)])),
     // purely frontend fields
@@ -265,6 +294,14 @@ export function serverToRisqBuilding(server_building: RisqBuildingFromServer): R
     return undefined;
   }
   return server_building;
+}
+
+/** Converts a server response to a frontend risq resource */
+export function serverToRisqResource(server_resource: RisqResourceFromServer): RisqResource {
+  if (!server_resource) {
+    return undefined;
+  }
+  return server_resource;
 }
 
 /** Converts a server response to a frontend risq zone */

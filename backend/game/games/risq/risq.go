@@ -28,6 +28,7 @@ type GameRisq struct {
 	board_size                uint16
 	population_limit          uint16
 	spaces                    [][]*RisqSpace
+	next_resource_internal_id uint64
 	next_building_internal_id uint64
 	next_unit_internal_id     uint64
 }
@@ -37,6 +38,7 @@ func CreateGame(g *game.GameBase) (*GameRisq, error) {
 		game:                      g,
 		players:                   []*RisqPlayer{},
 		population_limit:          100,
+		next_resource_internal_id: 0,
 		next_building_internal_id: 0,
 		next_unit_internal_id:     0,
 	}
@@ -186,6 +188,22 @@ func (r *GameRisq) createPlayerStart(p *RisqPlayer, s *RisqSpace) {
 	infantry := createRisqUnit(r.nextUnitInternalId(), 11, p.player.Player_id)
 	s.setUnit(&game_utils.Coordinate2D{X: 0, Y: 0}, infantry)
 	p.units[infantry.internal_id] = infantry
+	zones := s.getZonesAsRandomArray(false)
+	forage := createRisqResource(r.nextResourceInternalId(), 1)
+	s.setResource(&zones[0].coordinate, forage)
+	deer := createRisqResource(r.nextResourceInternalId(), 2)
+	s.setResource(&zones[1].coordinate, deer)
+	tree1 := createRisqResource(r.nextResourceInternalId(), 11)
+	s.setResource(&zones[2].coordinate, tree1)
+	tree2 := createRisqResource(r.nextResourceInternalId(), 14)
+	s.setResource(&zones[3].coordinate, tree2)
+	stone := createRisqResource(r.nextResourceInternalId(), 21)
+	s.setResource(&zones[4].coordinate, stone)
+}
+
+func (r *GameRisq) nextResourceInternalId() uint64 {
+	r.next_resource_internal_id++
+	return r.next_resource_internal_id
 }
 
 func (r *GameRisq) nextBuildingInternalId() uint64 {

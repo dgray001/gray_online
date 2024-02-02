@@ -12,6 +12,7 @@ import (
 type RisqSpace struct {
 	coordinate game_utils.Coordinate2D
 	zones      [][]*RisqZone
+	resources  map[uint64]*RisqResource
 	buildings  map[uint64]*RisqBuilding
 	units      map[uint64]*RisqUnit
 	visibility map[int]uint8
@@ -20,6 +21,7 @@ type RisqSpace struct {
 func createRisqSpace(i int, j int) *RisqSpace {
 	space := RisqSpace{
 		coordinate: game_utils.Coordinate2D{X: i, Y: j},
+		resources:  make(map[uint64]*RisqResource),
 		buildings:  make(map[uint64]*RisqBuilding),
 		units:      make(map[uint64]*RisqUnit),
 		visibility: make(map[int]uint8),
@@ -44,6 +46,18 @@ func (s *RisqSpace) coordinateToIndex(c *game_utils.Coordinate2D) *game_utils.Co
 	}
 }
 
+func (s *RisqSpace) getZonesAsRandomArray(include_middle bool) []*RisqZone {
+	zones := make([]*RisqZone, 0)
+	for i, row := range s.zones {
+		for j, zone := range row {
+			if include_middle || i != 1 || j != 1 {
+				zones = append(zones, zone)
+			}
+		}
+	}
+	return util.Shuffle(zones)
+}
+
 func (s *RisqSpace) getZone(c *game_utils.Coordinate2D) *RisqZone {
 	index := s.coordinateToIndex(c)
 	if index.X < 0 || index.X >= len(s.zones) {
@@ -62,7 +76,11 @@ func (s *RisqSpace) setBuilding(c *game_utils.Coordinate2D, building *RisqBuildi
 		fmt.Fprintln(os.Stderr, "Invalid zone coordinate: ", c.X, c.Y)
 		return
 	}
-	if zone.building != nil {
+	if zone.resource != nil && zone.resource.resources_left > 0 {
+		fmt.Fprintln(os.Stderr, "Can't set building when resource already there")
+		return
+	}
+	if zone.building != nil && !zone.building.deleted {
 		fmt.Fprintln(os.Stderr, "Can't set building when building already there")
 		return
 	}
@@ -82,6 +100,25 @@ func (s *RisqSpace) setUnit(c *game_utils.Coordinate2D, unit *RisqUnit) {
 	zone.units[unit.internal_id] = unit
 	unit.zone = zone
 	s.visibility[unit.player_id] = 1
+}
+
+func (s *RisqSpace) setResource(c *game_utils.Coordinate2D, resource *RisqResource) {
+	zone := s.getZone(c)
+	if zone == nil {
+		fmt.Fprintln(os.Stderr, "Invalid zone coordinate: ", c.X, c.Y)
+		return
+	}
+	if zone.resource != nil && zone.resource.resources_left > 0 {
+		fmt.Fprintln(os.Stderr, "Can't set resource when resource already there")
+		return
+	}
+	if zone.building != nil && !zone.building.deleted {
+		fmt.Fprintln(os.Stderr, "Can't set resource when building already there")
+		return
+	}
+	s.resources[resource.internal_id] = resource
+	zone.resource = resource
+	resource.zone = zone
 }
 
 func (s *RisqSpace) getVisibility(player_id int) uint8 {
@@ -112,6 +149,13 @@ func (s *RisqSpace) toFrontend(player_id int, is_viewer bool) gin.H {
 		zones = append(zones, zones_row)
 	}
 	space["zones"] = zones
+	resources := make([]gin.H, 0)
+	for _, resource := range s.resources {
+		if resource != nil && resource.resources_left > 0 {
+			resources = append(resources, resource.toFrontend())
+		}
+	}
+	space["resources"] = resources
 	buildings := make([]gin.H, 0)
 	for _, building := range s.buildings {
 		if building != nil && !building.deleted {
