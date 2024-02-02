@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.5d: Center start view on village center
+v0.5e: Scale determines draw details
 
 ## Dev Use
 

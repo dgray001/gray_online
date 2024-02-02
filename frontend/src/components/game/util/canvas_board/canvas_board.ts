@@ -18,6 +18,7 @@ export declare interface CanvasBoardInitializationData {
   board_size: Point2D;
   max_scale: number;
   fill_space?: boolean;
+  allow_side_move?: boolean;
   draw: (ctx: CanvasRenderingContext2D, transform: BoardTransformData) => void;
   mousemove: (m: Point2D, transform: BoardTransformData) => void;
   mouseleave: () => void;
@@ -84,6 +85,7 @@ export class DwgCanvasBoard extends DwgElement {
   }
 
   async initialize(data: CanvasBoardInitializationData): Promise<CanvasBoardSize> {
+    data.allow_side_move = data.allow_side_move ?? true;
     this.orig_size = {
       x: data.board_size.x,
       y: data.board_size.y,
@@ -278,7 +280,7 @@ export class DwgCanvasBoard extends DwgElement {
       d_view.x += arrow_key_speed;
       moved = true;
     }
-    if (!this.dragging) {
+    if (!this.dragging && this.data.allow_side_move) {
       const maybe_cursor_in_range = !this.cursor_in_range && !moved;
       if (this.mouse.y < this.cursor_move_threshold) {
         d_view.y -= arrow_key_speed;
@@ -335,6 +337,10 @@ export class DwgCanvasBoard extends DwgElement {
       view.y = this.data.board_size.y * this.transform.scale;
     }
     this.transform.view = view;
+  }
+
+  getMaxScale(): number {
+    return this.data.max_scale;
   }
 
   setMaxScale(max_scale: number) {

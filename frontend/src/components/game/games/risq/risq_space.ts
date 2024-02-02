@@ -1,7 +1,16 @@
 import {ColorRGB} from "../../../../scripts/color_rgb";
 import {drawHexagon} from "../../util/canvas_util";
+import {Point2D} from "../../util/objects2d";
 import {DwgRisq} from "./risq";
 import {RisqSpace} from "./risq_data";
+import {drawRisqZone, setZoneFill} from "./risq_zone";
+
+/** How much detail to draw in a space */
+export enum DrawRisqSpaceDetail {
+  OWNERSHIP,
+  SPACE_DETAILS,
+  ZONE_DETAILS,
+}
 
 /** Config data for drawing a risq space */
 export declare interface DrawRisqSpaceConfig {
@@ -9,16 +18,27 @@ export declare interface DrawRisqSpaceConfig {
   inset_w: number;
   inset_h: number;
   inset_row: number;
+  draw_detail: DrawRisqSpaceDetail;
 }
 
 /** Draws the input risq space */
 export function drawRisqSpace(ctx: CanvasRenderingContext2D, game: DwgRisq,
   space: RisqSpace, config: DrawRisqSpaceConfig
 ) {
+  ctx.strokeStyle = 'rgba(250, 250, 250, 0.9)';
+  ctx.textAlign = 'left';
   const fill = getSpaceFill(space);
   ctx.fillStyle = fill.getString();
-  drawHexagon(ctx, space.center, config.hex_r);
-  if (space.visibility > 0) {
+  if (config.draw_detail === DrawRisqSpaceDetail.OWNERSHIP) {
+    ctx.lineWidth = 3;
+    drawHexagon(ctx, space.center, config.hex_r);
+    return;
+  } else if (config.draw_detail === DrawRisqSpaceDetail.SPACE_DETAILS) {
+    ctx.lineWidth = 2;
+    drawHexagon(ctx, space.center, config.hex_r);
+    if (space.visibility < 1) {
+      return;
+    }
     let building_img = game.getIcon('icons/building64');
     let unit_img = game.getIcon('icons/unit64');
     if (fill.getBrightness() > 0.5) {
@@ -35,7 +55,73 @@ export function drawRisqSpace(ctx: CanvasRenderingContext2D, game: DwgRisq,
     ctx.fillText(`: ${space.buildings.size.toString()}`, xs + config.inset_row + 2, y1, config.inset_w - config.inset_row - 2);
     const y2 = space.center.y - 0.5 * config.inset_h + config.inset_row + 2;
     ctx.drawImage(unit_img, xs, y2, config.inset_row, config.inset_row);
-    ctx.fillText(`: ${space.units.size.toString()}`, xs + config.inset_row + 2, y2, config.inset_w - config.inset_row - 2);
+    ctx.fillText(`: ${space.units.size.toString()}`, xs + config.inset_row + 2,
+      y2, config.inset_w - config.inset_row - 2);
+  } else if (config.draw_detail === DrawRisqSpaceDetail.ZONE_DETAILS) {
+    ctx.lineWidth = 1;
+    drawHexagon(ctx, space.center, config.hex_r);
+    if (space.visibility < 1) {
+      return;
+    }
+    ctx.translate(space.center.x, space.center.y);
+    ctx.fillStyle = 'rgb(10, 120, 10, 0.8)';
+    ctx.lineWidth = 0.35;
+    let zone = space.zones[1][1];
+    setZoneFill(ctx, zone);
+    const r = config.hex_r;
+    let zone_r = 0.45 * r;
+    drawHexagon(ctx, {x: 0, y: 0}, 0.4 * r);
+    drawRisqZone(ctx, zone, zone_r, 0,
+      {x: 0.18 * r * Math.cos(3 * Math.PI / 6), y: 0.18 * r * Math.sin(3 * Math.PI / 6)},
+      {x: 0.18 * r * Math.cos(7 * Math.PI / 6), y: 0.18 * r * Math.sin(7 * Math.PI / 6)},
+      {x: 0.18 * r * Math.cos(11 * Math.PI / 6), y: 0.18 * r * Math.sin(11 * Math.PI / 6)},
+    );
+    // TODO: draw zone details
+    zone_r = 0.43 * r;
+    const a = Math.PI / 3;
+    for (var i = 0; i < 6; i++) {
+      let direction_vector: Point2D = {x: 0, y: 0};
+      switch(i) {
+        case 0:
+          direction_vector = {x: 2, y: 1};
+          break;
+        case 1:
+          direction_vector = {x: 2, y: 0};
+          break;
+        case 2:
+          direction_vector = {x: 1, y: 0};
+          break;
+        case 3:
+          direction_vector = {x: 0, y: 0};
+          break;
+        case 4:
+          direction_vector = {x: 0, y: 1};
+          break;
+        case 5:
+          direction_vector = {x: 1, y: 2};
+          break;
+      }
+      zone = space.zones[direction_vector.x][direction_vector.y];
+      setZoneFill(ctx, zone);
+      ctx.beginPath();
+      ctx.lineTo(0.4 * r * Math.cos(a * i + Math.PI / 6), 0.4 * r * Math.sin(a * i + Math.PI / 6));
+      ctx.lineTo(0.4 * r * Math.cos(a * i + Math.PI / 2), 0.4 * r * Math.sin(a * i + Math.PI / 2));
+      ctx.lineTo(r * Math.cos(a * i + Math.PI / 2), r * Math.sin(a * i + Math.PI / 2));
+      ctx.lineTo(r * Math.cos(a * i + Math.PI / 6), r * Math.sin(a * i + Math.PI / 6));
+      ctx.closePath();
+      ctx.stroke();
+      ctx.fill();
+      const rotation = a * (1 + i);
+      ctx.rotate(rotation);
+      const theta = Math.PI / 12;
+      drawRisqZone(ctx, zone, zone_r, rotation,
+        {x: 0.73 * r * Math.cos(0), y: 0.76 * r * Math.sin(0)},
+        {x: 0.53 * r * Math.cos(-theta), y: 0.53 * r * Math.sin(-theta)},
+        {x: 0.53 * r * Math.cos(theta), y: 0.53 * r * Math.sin(theta)},
+      );
+      ctx.rotate(-rotation);
+    }
+    ctx.translate(-space.center.x, -space.center.y);
   }
 }
 

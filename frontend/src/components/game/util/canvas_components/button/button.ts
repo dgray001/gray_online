@@ -37,8 +37,8 @@ export declare interface ButtonConfig {
   hold_click_time?: number;
   /** whether user must be hovering button for it to fire hold clicks */
   hold_click_hover?: boolean;
-  /** only triggers click on right click */
-  only_right_click?: boolean;
+  /** only triggers click on left click */
+  only_left_click?: boolean;
 }
 
 export abstract class DwgButton implements CanvasComponent {
@@ -105,7 +105,7 @@ export abstract class DwgButton implements CanvasComponent {
     if (source === ClickSource.UNKNOWN) {
       return false;
     }
-    if (this.config.only_right_click && source !== ClickSource.LEFT_MOUSE) {
+    if (this.config.only_left_click && source !== ClickSource.LEFT_MOUSE) {
       return false;
     }
     if (this.hovering && !this.clicking) {

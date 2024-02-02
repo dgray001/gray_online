@@ -1,5 +1,10 @@
 
 v0.6: Visible Risq
+
+NOTES:
+ - each zone holds resource OR building (if there's a resource must clear it build)
+ - 
+
  e: Zooming out too much just shows terrain color and zooming in shows zones
  f: Can click space to see in right panel info about the space
  g: Can click zone to see in right panel info about that zone

@@ -9,7 +9,8 @@ import {DEV, createLock, until} from '../../../../scripts/util';
 import html from './risq.html';
 import {GameRisq, GameRisqFromServer, RisqPlayer, RisqSpace, coordinateToIndex, getSpace, indexToCoordinate, serverToGameRisq} from './risq_data';
 import {RisqRightPanel} from './canvas_components/right_panel';
-import {DrawRisqSpaceConfig, drawRisqSpace} from './risq_space';
+import {DrawRisqSpaceConfig, DrawRisqSpaceDetail, drawRisqSpace} from './risq_space';
+import {RisqLeftPanel} from './canvas_components/left_panel';
 
 import './risq.scss';
 import '../../util/canvas_board/canvas_board';
@@ -34,7 +35,9 @@ export class DwgRisq extends DwgElement {
   private hovered_space?: RisqSpace;
   private icons = new Map<string, HTMLImageElement>();
   private last_time = Date.now();
+  private draw_detail: DrawRisqSpaceDetail = DrawRisqSpaceDetail.SPACE_DETAILS;
 
+  private left_panel = new RisqLeftPanel(this, {w: 200});
   private right_panel = new RisqRightPanel(this, {
     w: 300,
     is_open: true,
@@ -77,6 +80,7 @@ export class DwgRisq extends DwgElement {
       board_size,
       max_scale: 1,
       fill_space: true,
+      allow_side_move: false,
       draw: this.draw.bind(this),
       mousemove: this.mousemove.bind(this),
       mouseleave: this.mouseleave.bind(this),
@@ -87,7 +91,7 @@ export class DwgRisq extends DwgElement {
       if (abstract_game.is_player) {
         this.goToVillageCenter();
       } else {
-        // center of board
+        // TODO: go to center of board
       }
       this.board.addEventListener('canvas_resize', (e: CustomEvent<CanvasBoardSize>) => {
         this.boardResize(e.detail.board_size, e.detail.el_size);
@@ -130,6 +134,7 @@ export class DwgRisq extends DwgElement {
     this.board.setMaxScale(0.45 * canvas_size.height / this.hex_r);
     this.board.scaleView(canvas_ratio);
     // Update other dependencies
+    this.left_panel.resolveSize();
     this.toggleRightPanel(this.right_panel.isOpen());
   }
 
@@ -150,15 +155,13 @@ export class DwgRisq extends DwgElement {
     this.last_time = now;
     // set config
     this.last_transform = transform;
-    ctx.strokeStyle = 'rgba(250, 250, 250, 0.9)';
-    ctx.textAlign = 'left';
-    ctx.lineWidth = 2;
     const inset_offset = 0.25; // this determines how the inset rect (for summaries) is constructed
     const inset_w = 2 * this.hex_a * (1 - inset_offset);
     const inset_h = this.hex_r * (1 + inset_offset);
     const inset_row = inset_h / 3 - 4;
+    this.draw_detail = this.getDrawDetail(transform.scale);
     const draw_config: DrawRisqSpaceConfig = {
-      hex_r: this.hex_r, inset_w, inset_h, inset_row,
+      hex_r: this.hex_r, inset_w, inset_h, inset_row, draw_detail: this.draw_detail,
     };
     ctx.font = `bold ${inset_row}px serif`;
     // draw spaces
@@ -187,6 +190,16 @@ export class DwgRisq extends DwgElement {
     }
   }
 
+  private getDrawDetail(scale: number): DrawRisqSpaceDetail {
+    const max_scale = this.board.getMaxScale();
+    if (scale > 0.6 * (max_scale - 1) + 1) {
+      return DrawRisqSpaceDetail.ZONE_DETAILS;
+    } else if (scale < 1 / (0.2 * (max_scale - 1) + 1)) {
+      return DrawRisqSpaceDetail.OWNERSHIP;
+    }
+    return DrawRisqSpaceDetail.SPACE_DETAILS;
+  }
+
   private mousemove(m: Point2D, transform: BoardTransformData) {
     this.mouse_canvas = m;
     const hovered_other_component = (
@@ -210,6 +223,9 @@ export class DwgRisq extends DwgElement {
     this.removeHoveredFlags();
     if (!!this.hovered_space) {
       this.hovered_space.clicked = false;
+      if (this.draw_detail === DrawRisqSpaceDetail.ZONE_DETAILS) {
+        // TODO: implement hover logic for zones
+      }
     }
     this.hovered_space = new_hovered_space;
     this.updateHoveredFlags();
@@ -232,7 +248,8 @@ export class DwgRisq extends DwgElement {
     }
     if (!!this.hovered_space && this.hovered_space.visibility > 0) {
       this.hovered_space.clicked = true;
-      return true;
+      // TODO: check if zone stuff is clicked
+      return this.draw_detail !== DrawRisqSpaceDetail.ZONE_DETAILS;
     }
     return false;
   }
@@ -241,23 +258,10 @@ export class DwgRisq extends DwgElement {
     this.right_panel.mouseup(_e);
     if (!!this.hovered_space) {
       if (this.hovered_space.clicked && this.hovered_space.visibility > 0) {
-        this.openSpaceDialog(this.hovered_space);
+        // TODO: implement
       }
       this.hovered_space.clicked = false;
     }
-  }
-
-  private space_dialog_lock = createLock(true);
-  private async openSpaceDialog(space: RisqSpace) {
-    if (!space) {
-      return;
-    }
-    this.space_dialog_lock(async () => {
-      const space_dialog = document.createElement('dwg-space-dialog');
-      space_dialog.setData({space, game: this.game});
-      this.appendChild(space_dialog);
-      await until(() => !document.body.contains(space_dialog));
-    });
   }
 
   private canvasToCoordinate(canvas: Point2D, scale: number): Point2D {
