@@ -183,6 +183,9 @@ func (r *GameRisq) createPlayerStart(p *RisqPlayer, s *RisqSpace) {
 		s.setUnit(&game_utils.Coordinate2D{X: 0, Y: 0}, villager)
 		p.units[villager.internal_id] = villager
 	}
+	infantry := createRisqUnit(r.nextUnitInternalId(), 11, p.player.Player_id)
+	s.setUnit(&game_utils.Coordinate2D{X: 0, Y: 0}, infantry)
+	p.units[infantry.internal_id] = infantry
 }
 
 func (r *GameRisq) nextBuildingInternalId() uint64 {

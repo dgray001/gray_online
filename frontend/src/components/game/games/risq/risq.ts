@@ -4,13 +4,14 @@ import {drawCircle} from '../../util/canvas_util';
 import {BoardTransformData, CanvasBoardSize, DwgCanvasBoard} from '../../util/canvas_board/canvas_board';
 import {Point2D, addPoint2D, equalsPoint2D, hexagonalBoardNeighbors, hexagonalBoardRows, multiplyPoint2D, roundAxialCoordinate, subtractPoint2D} from '../../util/objects2d';
 import {DwgGame} from '../../game';
-import {DEV, createLock, until} from '../../../../scripts/util';
+import {DEV, createLock} from '../../../../scripts/util';
 
 import html from './risq.html';
-import {GameRisq, GameRisqFromServer, RisqPlayer, RisqSpace, coordinateToIndex, getSpace, indexToCoordinate, serverToGameRisq} from './risq_data';
+import {GameRisq, GameRisqFromServer, RisqPlayer, RisqSpace, RisqZone, coordinateToIndex, getSpace, serverToGameRisq} from './risq_data';
 import {RisqRightPanel} from './canvas_components/right_panel';
 import {DrawRisqSpaceConfig, DrawRisqSpaceDetail, drawRisqSpace} from './risq_space';
 import {RisqLeftPanel} from './canvas_components/left_panel';
+import {resolveHoveredZones, unhoverRisqZone} from './risq_zone';
 
 import './risq.scss';
 import '../../util/canvas_board/canvas_board';
@@ -33,6 +34,7 @@ export class DwgRisq extends DwgElement {
   private mouse_canvas: Point2D = {x: 0, y: 0};
   private mouse_coordinate: Point2D = {x: 0, y: 0};
   private hovered_space?: RisqSpace;
+  private hovered_zone?: RisqZone;
   private icons = new Map<string, HTMLImageElement>();
   private last_time = Date.now();
   private draw_detail: DrawRisqSpaceDetail = DrawRisqSpaceDetail.SPACE_DETAILS;
@@ -89,9 +91,9 @@ export class DwgRisq extends DwgElement {
     }).then((size_data) => {
       this.boardResize(size_data.board_size, size_data.el_size);
       if (abstract_game.is_player) {
-        this.goToVillageCenter();
+        this.goToVillageCenter(this.player_id);
       } else {
-        // TODO: go to center of board
+        this.goToVillageCenter(0);
       }
       this.board.addEventListener('canvas_resize', (e: CustomEvent<CanvasBoardSize>) => {
         this.boardResize(e.detail.board_size, e.detail.el_size);
@@ -107,11 +109,11 @@ export class DwgRisq extends DwgElement {
     return this.player_id > - 1 ? this.game.players[this.player_id] : undefined;
   }
 
-  private goToVillageCenter() {
-    if (this.player_id < 0) {
+  private goToVillageCenter(player_id: number) {
+    if (player_id < 0) {
       return;
     }
-    for (const building of this.game.players[this.player_id].buildings.values()) {
+    for (const building of this.game.players[player_id].buildings.values()) {
       if (building.building_id !== 1) {
         continue;
       }
@@ -121,21 +123,33 @@ export class DwgRisq extends DwgElement {
     }
   }
 
+  private board_resize_lock = createLock();
   private boardResize(board_size: Point2D, canvas_size: DOMRect) {
-    // Update canvas dependencies
-    const canvas_ratio = 0.5 * Math.min(board_size.x, canvas_size.width) / this.canvas_center.x;
-    this.canvas_center = {
-      x: 0.5 * Math.min(board_size.x, canvas_size.width),
-      y: 0.5 * Math.min(board_size.y, canvas_size.height),
-    };
-    this.canvas_size = canvas_size;
-    this.hex_r = board_size.x / (1.732 * (2 * this.game.board_size + 1));
-    this.hex_a = 0.5 * 1.732 * this.hex_r;
-    this.board.setMaxScale(0.45 * canvas_size.height / this.hex_r);
-    this.board.scaleView(canvas_ratio);
-    // Update other dependencies
-    this.left_panel.resolveSize();
-    this.toggleRightPanel(this.right_panel.isOpen());
+    this.board_resize_lock(async () => {
+      // Update canvas dependencies
+      const canvas_ratio = 0.5 * Math.min(board_size.x, canvas_size.width) / this.canvas_center.x;
+      this.canvas_center = {
+        x: 0.5 * Math.min(board_size.x, canvas_size.width),
+        y: 0.5 * Math.min(board_size.y, canvas_size.height),
+      };
+      this.canvas_size = canvas_size;
+      this.hex_r = board_size.x / (1.732 * (2 * this.game.board_size + 1));
+      this.hex_a = 0.5 * 1.732 * this.hex_r;
+      this.board.setMaxScale(0.45 * canvas_size.height / this.hex_r);
+      this.board.scaleView(canvas_ratio);
+      // Update other dependencies
+      for (const row of (this.game?.spaces ?? [])) {
+        for (const space of row) {
+          for (const zone_row of space.zones ?? []) {
+            for (const zone of zone_row) {
+              zone.reset_hovered_data = true;
+            }
+          }
+        }
+      }
+      this.left_panel.resolveSize();
+      this.toggleRightPanel(this.right_panel.isOpen());
+    });
   }
 
   canvasSize(): DOMRect {
@@ -213,19 +227,41 @@ export class DwgRisq extends DwgElement {
       if (!!this.hovered_space) {
         this.hovered_space.clicked = false;
         this.hovered_space = undefined;
+        if (!!this.hovered_zone) {
+          unhoverRisqZone(this.hovered_zone);
+          this.hovered_zone = undefined;
+        }
       }
       return;
     }
+
+    const resolveZones = () => {
+      if (this.draw_detail === DrawRisqSpaceDetail.ZONE_DETAILS) {
+        let new_hovered_zone = resolveHoveredZones(m, this.hovered_space, this.hex_r);
+        if (!!this.hovered_zone && !equalsPoint2D(new_hovered_zone?.coordinate, this.hovered_zone?.coordinate)) {
+          unhoverRisqZone(this.hovered_zone);
+          this.hovered_zone = undefined;
+        }
+        this.hovered_zone = new_hovered_zone;
+      } else if (!!this.hovered_zone) {
+        unhoverRisqZone(this.hovered_zone);
+        this.hovered_zone = undefined;
+      }
+    };
+
     if (equalsPoint2D(new_hovered_space.coordinate, this.hovered_space?.coordinate)) {
       this.updateHoveredFlags();
+      resolveZones.call(this);
       return;
     }
     this.removeHoveredFlags();
     if (!!this.hovered_space) {
       this.hovered_space.clicked = false;
-      if (this.draw_detail === DrawRisqSpaceDetail.ZONE_DETAILS) {
-        // TODO: implement hover logic for zones
+      if (!!this.hovered_zone) {
+        unhoverRisqZone(this.hovered_zone);
+        this.hovered_zone = undefined;
       }
+      resolveZones.call(this);
     }
     this.hovered_space = new_hovered_space;
     this.updateHoveredFlags();
@@ -248,8 +284,19 @@ export class DwgRisq extends DwgElement {
     }
     if (!!this.hovered_space && this.hovered_space.visibility > 0) {
       this.hovered_space.clicked = true;
-      // TODO: check if zone stuff is clicked
-      return this.draw_detail !== DrawRisqSpaceDetail.ZONE_DETAILS;
+      if (this.draw_detail !== DrawRisqSpaceDetail.ZONE_DETAILS) {
+        return true;
+      }
+      if (!!this.hovered_zone) {
+        this.hovered_space.clicked = false;
+        this.hovered_zone.clicked = true;
+        for (const part of this.hovered_zone.hovered_data) {
+          if (part.hovered) {
+            part.clicked = true;
+            return true;
+          }
+        }
+      }
     }
     return false;
   }
@@ -257,8 +304,28 @@ export class DwgRisq extends DwgElement {
   private mouseup(_e: MouseEvent) {
     this.right_panel.mouseup(_e);
     if (!!this.hovered_space) {
-      if (this.hovered_space.clicked && this.hovered_space.visibility > 0) {
-        // TODO: implement
+      if (!!this.hovered_zone) {
+        if (
+          this.hovered_zone.clicked &&
+          this.hovered_space.visibility > 0 &&
+          this.draw_detail === DrawRisqSpaceDetail.ZONE_DETAILS
+        ) {
+          for (const part of this.hovered_zone.hovered_data) {
+            if (part.clicked) {
+              // TODO: implement part in left panel
+            }
+          }
+        }
+        this.hovered_zone.clicked = false;
+        for (const part of this.hovered_zone.hovered_data) {
+          part.clicked = false;
+        }
+      } else if (
+        this.hovered_space.clicked &&
+        this.hovered_space.visibility > 0 &&
+        this.draw_detail !== DrawRisqSpaceDetail.ZONE_DETAILS
+      ) {
+        // TODO: implement space in left panel
       }
       this.hovered_space.clicked = false;
     }

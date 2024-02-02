@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.5e: Scale determines draw details
+v0.5f: Hover logic for zones
 
 ## Dev Use
 

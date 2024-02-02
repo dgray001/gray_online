@@ -3,7 +3,7 @@ import {drawHexagon} from "../../util/canvas_util";
 import {Point2D} from "../../util/objects2d";
 import {DwgRisq} from "./risq";
 import {RisqSpace} from "./risq_data";
-import {drawRisqZone, setZoneFill} from "./risq_zone";
+import {INNER_ZONE_MULTIPLIER, drawRisqZone, setZoneFill} from "./risq_zone";
 
 /** How much detail to draw in a space */
 export enum DrawRisqSpaceDetail {
@@ -69,14 +69,14 @@ export function drawRisqSpace(ctx: CanvasRenderingContext2D, game: DwgRisq,
     let zone = space.zones[1][1];
     setZoneFill(ctx, zone);
     const r = config.hex_r;
+    const inner_r = INNER_ZONE_MULTIPLIER * r;
     let zone_r = 0.45 * r;
-    drawHexagon(ctx, {x: 0, y: 0}, 0.4 * r);
+    drawHexagon(ctx, {x: 0, y: 0}, inner_r);
     drawRisqZone(ctx, zone, zone_r, 0,
       {x: 0.18 * r * Math.cos(3 * Math.PI / 6), y: 0.18 * r * Math.sin(3 * Math.PI / 6)},
       {x: 0.18 * r * Math.cos(7 * Math.PI / 6), y: 0.18 * r * Math.sin(7 * Math.PI / 6)},
       {x: 0.18 * r * Math.cos(11 * Math.PI / 6), y: 0.18 * r * Math.sin(11 * Math.PI / 6)},
     );
-    // TODO: draw zone details
     zone_r = 0.43 * r;
     const a = Math.PI / 3;
     for (var i = 0; i < 6; i++) {
@@ -104,8 +104,8 @@ export function drawRisqSpace(ctx: CanvasRenderingContext2D, game: DwgRisq,
       zone = space.zones[direction_vector.x][direction_vector.y];
       setZoneFill(ctx, zone);
       ctx.beginPath();
-      ctx.lineTo(0.4 * r * Math.cos(a * i + Math.PI / 6), 0.4 * r * Math.sin(a * i + Math.PI / 6));
-      ctx.lineTo(0.4 * r * Math.cos(a * i + Math.PI / 2), 0.4 * r * Math.sin(a * i + Math.PI / 2));
+      ctx.lineTo(inner_r * Math.cos(a * i + Math.PI / 6), inner_r * Math.sin(a * i + Math.PI / 6));
+      ctx.lineTo(inner_r * Math.cos(a * i + Math.PI / 2), inner_r * Math.sin(a * i + Math.PI / 2));
       ctx.lineTo(r * Math.cos(a * i + Math.PI / 2), r * Math.sin(a * i + Math.PI / 2));
       ctx.lineTo(r * Math.cos(a * i + Math.PI / 6), r * Math.sin(a * i + Math.PI / 6));
       ctx.closePath();

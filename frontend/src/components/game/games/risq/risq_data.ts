@@ -67,6 +67,7 @@ export declare interface RisqZone {
   clicked: boolean;
   hovered_data: EllipHoverData[];
   units_by_type?: Map<number, UnitByTypeData>; // <unit_id, internal_ids>
+  reset_hovered_data?: boolean;
 }
 
 /** Data describing units_by_type data */

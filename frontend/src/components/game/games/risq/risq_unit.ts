@@ -6,10 +6,10 @@ export function unitImage(unit: RisqUnit): HTMLImageElement {
   let filename = '';
   switch(unit.unit_id) {
     case 1:
-    case 2:
-    case 3:
-    case 4:
       filename = 'villager';
+      break;
+    case 11:
+      filename = 'swordsman';
       break;
     default:
       console.error('Trying to get unit image from unknown unit id', unit.unit_id);
