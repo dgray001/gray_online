@@ -67,6 +67,7 @@ export class DwgRisq extends DwgElement {
   }
 
   getIcon(name: string) {
+    // TODO: ability to get image variations (player colors on image??)
     if (!this.icons.has(name)) {
       this.createIcon(name);
     }

@@ -3,8 +3,9 @@ import {atangent} from '../../../../../scripts/math';
 import {DwgDialogBox} from '../../../../dialog_box/dialog_box';
 import {drawEllipse, drawHexagon} from '../../../util/canvas_util';
 import {Point2D, addPoint2D, equalsPoint2D, multiplyPoint2D, pointInHexagon, rotatePoint, subtractPoint2D} from '../../../util/objects2d';
+import {DwgRisq} from '../risq';
 import {buildingImage} from '../risq_buildings';
-import {GameRisq, RisqSpace, RisqZone, coordinateToIndex, getSpace, indexToCoordinate} from '../risq_data';
+import {RisqSpace, RisqZone, coordinateToIndex, getSpace, indexToCoordinate} from '../risq_data';
 import {getSpaceFill} from '../risq_space';
 import {unitImage} from '../risq_unit';
 import {organizeZoneUnits} from '../risq_zone';
@@ -16,7 +17,7 @@ import './space_dialog.scss';
 /** Input data for a space dialog */
 export declare interface SpaceDialogData {
   space: RisqSpace;
-  game: GameRisq;
+  game: DwgRisq;
 }
 
 export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
@@ -214,8 +215,8 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
       this.ctx.rotate(-rotation);
       this.ctx.lineWidth = 4;
       const axial_vector = indexToCoordinate(1, direction_vector);
-      const index = coordinateToIndex(this.data.game.board_size, addPoint2D(this.data.space.coordinate, axial_vector));
-      const adjacent_space = getSpace(this.data.game, index);
+      const index = coordinateToIndex(this.data.game.getGame().board_size, addPoint2D(this.data.space.coordinate, axial_vector));
+      const adjacent_space = getSpace(this.data.game.getGame(), index);
       this.ctx.strokeStyle = 'rgba(250, 250, 250, 0.8)';
       const fill_color = getSpaceFill(adjacent_space).dAlpha(-0.2);
       this.ctx.fillStyle = fill_color.getString();
@@ -302,8 +303,8 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
         this.resolveHoveredZone(new_hovered_zone, -(Math.PI / 3) * (1 + 5 - index));
       } else {
         const axial_vector = indexToCoordinate(1, direction_vector);
-        const index = coordinateToIndex(this.data.game.board_size, addPoint2D(this.data.space.coordinate, axial_vector));
-        new_hovered_space = getSpace(this.data.game, index);
+        const index = coordinateToIndex(this.data.game.getGame().board_size, addPoint2D(this.data.space.coordinate, axial_vector));
+        new_hovered_space = getSpace(this.data.game.getGame(), index);
       }
     }
     if (!equalsPoint2D(this.hovered_space?.coordinate, new_hovered_space?.coordinate)) {
@@ -431,7 +432,8 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
       switch(i) {
         case 0: // building
           if (!!zone.building) {
-            this.ctx.drawImage(buildingImage(zone.building), -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
+            this.ctx.drawImage(this.data.game.getIcon(buildingImage(zone.building)),
+              -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
           } else {
             this.ctx.strokeStyle = 'rgba(200, 200, 200, 0.5)';
           }

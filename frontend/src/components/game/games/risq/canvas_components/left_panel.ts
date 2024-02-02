@@ -1,9 +1,10 @@
 import {BoardTransformData} from '../../../util/canvas_board/canvas_board';
 import {CanvasComponent, configDraw} from '../../../util/canvas_components/canvas_component';
-import {drawRect, drawText} from '../../../util/canvas_util';
+import {drawLine, drawRect, drawText} from '../../../util/canvas_util';
 import {Point2D} from '../../../util/objects2d';
 import {DwgRisq} from '../risq';
 import {RisqBuilding, RisqResource} from '../risq_data';
+import {resourceImage, resourceTypeImage} from '../risq_resources';
 import {RisqLeftPanelButton} from './left_panel_close';
 
 /** Config for the left panel */
@@ -98,8 +99,26 @@ export class RisqLeftPanel implements CanvasComponent {
 
   private drawResource(ctx: CanvasRenderingContext2D, resource: RisqResource) {
     let yi = this.yi() + this.drawName(ctx, resource.display_name);
-    // TODO: draw image
-    // TODO: draw resource type and what's left and base gather speed
+    yi += this.drawImage(ctx, yi, resourceImage(resource));
+    this.drawSeparator(ctx, yi);
+    yi += 12;
+    ctx.beginPath();
+    ctx.drawImage(this.risq.getIcon(resourceTypeImage(resource)), this.xi() + 0.1 * this.w(), yi, 40, 40);
+    drawText(ctx, resource.resources_left.toString(), {
+      p: {x: this.xi() + 0.1 * this.w() + 48, y: yi + 20},
+      w: 0.9 * this.w() - 48,
+      fill_style: 'black',
+      baseline: 'middle',
+      font: '36px serif',
+    });
+    yi += 50;
+    drawText(ctx, `Base gather speed: ${resource.base_gather_speed}`, {
+      p: {x: this.xi() + 0.1 * this.w(), y: yi + 12},
+      w: 0.9 * this.w(),
+      fill_style: 'black',
+      baseline: 'middle',
+      font: '18px serif',
+    });
   }
 
   private drawBuilding(ctx: CanvasRenderingContext2D, building: RisqBuilding) {
@@ -118,6 +137,20 @@ export class RisqLeftPanel implements CanvasComponent {
       font: `bold ${0.85 * text_size}px serif`,
     });
     return text_size;
+  }
+
+  private drawImage(ctx: CanvasRenderingContext2D, yi: number, img_name: string): number {
+    ctx.beginPath();
+    const max_img_height = (this.size.y / 3) - yi + this.yi();
+    const img_height = Math.min(max_img_height - 2, 0.8 * this.w());
+    ctx.drawImage(this.risq.getIcon(img_name), 0.5 * (this.w() - img_height), yi, img_height, img_height);
+    return max_img_height;
+  }
+
+  private drawSeparator(ctx: CanvasRenderingContext2D, yi: number) {
+    ctx.strokeStyle = 'rgba(60, 60, 60, 0.6)';
+    ctx.lineWidth = 2;
+    drawLine(ctx, {x: this.xi() + 0.15 * this.w(), y: yi}, {x: this.xf() - 0.15 * this.w(), y: yi});
   }
 
   mousemove(m: Point2D, transform: BoardTransformData): boolean {

@@ -1,6 +1,5 @@
 
 v0.6: Visible Risq
- j: Resource left panel shows resource type and resources left
  k: Building left panel shows building type and (if owned) space for buttons
  l: Space left panel shows info about the space
    => include zones graphic to select zones (and show ownership of zones)

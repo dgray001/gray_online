@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.5i: Objects have display names
+v0.5j: Resource left panel
 
 ## Dev Use
 

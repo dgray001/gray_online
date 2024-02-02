@@ -78,7 +78,7 @@ export function drawRisqSpace(ctx: CanvasRenderingContext2D, game: DwgRisq,
     const inner_r = INNER_ZONE_MULTIPLIER * r;
     let zone_r = 0.45 * r;
     drawHexagon(ctx, {x: 0, y: 0}, inner_r);
-    drawRisqZone(ctx, zone, zone_r, 0,
+    drawRisqZone(ctx, game, zone, zone_r, 0,
       {x: 0.18 * r * Math.cos(3 * Math.PI / 6), y: 0.18 * r * Math.sin(3 * Math.PI / 6)},
       {x: 0.18 * r * Math.cos(7 * Math.PI / 6), y: 0.18 * r * Math.sin(7 * Math.PI / 6)},
       {x: 0.18 * r * Math.cos(11 * Math.PI / 6), y: 0.18 * r * Math.sin(11 * Math.PI / 6)},
@@ -120,7 +120,7 @@ export function drawRisqSpace(ctx: CanvasRenderingContext2D, game: DwgRisq,
       const rotation = a * (1 + i);
       ctx.rotate(rotation);
       const theta = Math.PI / 12;
-      drawRisqZone(ctx, zone, zone_r, rotation,
+      drawRisqZone(ctx, game, zone, zone_r, rotation,
         {x: 0.73 * r * Math.cos(0), y: 0.76 * r * Math.sin(0)},
         {x: 0.53 * r * Math.cos(-theta), y: 0.53 * r * Math.sin(-theta)},
         {x: 0.53 * r * Math.cos(theta), y: 0.53 * r * Math.sin(theta)},

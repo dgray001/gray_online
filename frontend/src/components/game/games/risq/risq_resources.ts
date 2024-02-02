@@ -1,9 +1,8 @@
-import {capitalize} from '../../../../scripts/util';
 import {RisqResource} from './risq_data';
 
-/** Returns image of the resource */
-export function resourceImage(resource: RisqResource): HTMLImageElement {
-  let filename = 'empty_plot';
+/** Returns image path of the resource */
+export function resourceImage(resource: RisqResource): string {
+  let filename = 'error';
   if (!!resource) {
     switch(resource.resource_id) {
       // food
@@ -42,11 +41,23 @@ export function resourceImage(resource: RisqResource): HTMLImageElement {
         break;
       default:
         console.error('Trying to get resource image from unknown resource id', resource.resource_id);
-        return new Image();
+        return ``;
     }
   }
-  const img = new Image();
-  img.src = `/images/risq/resources/${filename}.png`;
-  img.alt = filename.split('_').map(word => capitalize(word)).join(' ');
-  return img;
+  return `risq/resources/${filename}`;
+}
+
+/** Returns the image path of the resource type */
+export function resourceTypeImage(resource: RisqResource): string {
+  let filename = 'error';
+  if (resource.resource_id < 11) {
+    filename = 'food';
+  } else if (resource.resource_id < 21) {
+    filename = 'wood';
+  } else if (resource.resource_id < 31) {
+    filename = 'stone';
+  } else if (resource.resource_id < 41) {
+    filename = 'gold';
+  }
+  return `risq/resources/${filename}`;
 }

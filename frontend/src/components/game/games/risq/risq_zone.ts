@@ -2,6 +2,7 @@ import {ColorRGB} from "../../../../scripts/color_rgb";
 import {atangent} from "../../../../scripts/math";
 import {drawEllipse} from "../../util/canvas_util";
 import {Point2D, pointInHexagon, rotatePoint, subtractPoint2D} from "../../util/objects2d";
+import {DwgRisq} from "./risq";
 import {buildingImage} from "./risq_buildings";
 import {RisqSpace, RisqZone, UnitByTypeData} from "./risq_data";
 import {resourceImage} from "./risq_resources";
@@ -40,7 +41,7 @@ export function setZoneFill(ctx: CanvasRenderingContext2D, zone: RisqZone) {
 }
 
 /** Draws the input risq zone */
-export function drawRisqZone(ctx: CanvasRenderingContext2D, zone: RisqZone,
+export function drawRisqZone(ctx: CanvasRenderingContext2D, game: DwgRisq, zone: RisqZone,
   r: number, rotation: number, p1: Point2D, p2: Point2D, p3: Point2D
 ) {
   function drawText(ctx: CanvasRenderingContext2D, s: string, ts: number,
@@ -83,9 +84,11 @@ export function drawRisqZone(ctx: CanvasRenderingContext2D, zone: RisqZone,
     switch(i) {
       case 0: // resources / building
         if (!!zone.resource) {
-          ctx.drawImage(resourceImage(zone.resource), -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
+          ctx.drawImage(game.getIcon(resourceImage(zone.resource)),
+            -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
         } else {
-          ctx.drawImage(buildingImage(zone.building), -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
+          ctx.drawImage(game.getIcon(buildingImage(zone.building)),
+            -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
         }
         break;
       case 1: // economic units

@@ -126,6 +126,7 @@ export declare interface RisqResource {
   space_coordinate: Point2D;
   zone_coordinate: Point2D;
   resources_left: number;
+  base_gather_speed: number;
 }
 
 /** Data describing a game of risq as returned by server */
@@ -207,6 +208,7 @@ export declare interface RisqResourceFromServer {
   space_coordinate: Point2D;
   zone_coordinate: Point2D;
   resources_left: number;
+  base_gather_speed: number;
 }
 
 /** Converts a server response to a frontend risq game */
