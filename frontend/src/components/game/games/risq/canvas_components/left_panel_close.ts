@@ -19,7 +19,7 @@ export class RisqLeftPanelButton extends DwgSquareButton {
         click_fill_style: 'rgb(210, 210, 210, 0.7)',
         fixed_position: true,
       },
-      image_path: 'icons/close64',
+      image_path: 'icons/close_gray32',
     });
     this.risq = risq;
   }
@@ -31,7 +31,7 @@ export class RisqLeftPanelButton extends DwgSquareButton {
     if (!this.isHovering()) {
       return;
     }
-    this.risq.toggleRightPanel();
+    this.risq.closeLeftPanel();
     this.setHovering(false);
   }
 }

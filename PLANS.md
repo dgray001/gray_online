@@ -1,20 +1,21 @@
 
 v0.6: Visible Risq
+ i: Backend has turn number on risq object and names for all units/buildings/resources and players have color
+   => display name for resource and building
+ j: Resource left panel shows resource type and resources left
+ k: Building left panel shows building type and (if owned) space for buttons
+ l: Space left panel shows info about the space
+   => include zones graphic to select zones (and show ownership of zones)
+   => show data based on visibility => num of units/buildings/resources
+ m: Zone left panel shows info about the zone (resource/building/units)
+ n: Can select units (have generic for units that are villager and military)
+ o: Can select individual unit from group (show basic stats)
+ p: Separate view for only military units
+ q: Separate view for only villager units
+ r: Can shift select to filter by type
+ s: Backend calculates player score and frontend shows it
 
-NOTES:
- - each zone holds resource OR building (if there's a resource must clear it build)
-
- f: Can click space to see in right panel info about the space
- g: Can click zone to see in right panel info about that zone
- h: Zoom in more and can see zone info
- i: Closable left panel
- j: Can select building in zone (including empty plot)
- k: Can select unit(s) in zone
- l: Can select unit from unit group in right panel (or shift click to filter by type)
- m: Zones have resources that are selectable
- n: Backend calculates player score and frontend shows it
  o: Frontend has scrollable area for orders (below scores)
- p: Split units in zone by villager and military
  q: Can toggle between views: building/villager/military/resource
  r: Orders abstraction (backend game update of "add order") => each order has unique id
  s: Backend game update of "finish orders" with frontend button (UI to show) => confirm dialog box

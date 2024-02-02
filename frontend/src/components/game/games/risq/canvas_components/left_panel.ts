@@ -1,12 +1,20 @@
 import {BoardTransformData} from '../../../util/canvas_board/canvas_board';
-import {CanvasComponent} from '../../../util/canvas_components/canvas_component';
+import {CanvasComponent, configDraw} from '../../../util/canvas_components/canvas_component';
+import {drawRect, drawText} from '../../../util/canvas_util';
 import {Point2D} from '../../../util/objects2d';
 import {DwgRisq} from '../risq';
+import {RisqResource} from '../risq_data';
 import {RisqLeftPanelButton} from './left_panel_close';
 
 /** Config for the left panel */
 export declare interface LeftPanelConfig {
   w: number;
+  background: string;
+}
+
+/** All the data types that can be displayed in the left panel */
+export enum LeftPanelDataType {
+  RESOURCE,
 }
 
 export class RisqLeftPanel implements CanvasComponent {
@@ -16,13 +24,17 @@ export class RisqLeftPanel implements CanvasComponent {
   private config: LeftPanelConfig;
   private size: Point2D;
   private showing = false;
+  private hovering = false;
+  private data_type: LeftPanelDataType;
+  private data: any; // data being shown in panel
 
   constructor(risq: DwgRisq, config: LeftPanelConfig) {
     this.risq = risq;
     if (config.w < 1) {
-      config.w = 100;
+      config.w = 120;
     }
     this.config = config;
+    this.close_button = new RisqLeftPanelButton(risq);
     this.resolveSize();
   }
 
@@ -32,28 +44,89 @@ export class RisqLeftPanel implements CanvasComponent {
       h = 0.8 * this.risq.canvasSize().height;
     }
     this.size = {x: h / 3, y: h};
+    this.close_button.setPosition({x: this.size.x, y: this.yi()});
   }
 
   isHovering(): boolean {
-    return false;
+    return this.hovering;
   }
 
   isClicking(): boolean {
     return false;
   }
 
+  isShowing(): boolean {
+    return this.showing;
+  }
+
+  close() {
+    this.showing = false;
+  }
+
+  openPanel(data_type: LeftPanelDataType, data: any) {
+    this.data_type = data_type;
+    this.data = data;
+    this.showing = true;
+  }
+
   draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number) {
+    if (!this.isShowing()) {
+      return;
+    }
+    configDraw(ctx, transform, {
+      fill_style: this.config.background,
+      stroke_style: 'transparent',
+      stroke_width: 0,
+      fixed_position: true,
+    }, false, false, () => {
+      drawRect(ctx, {x: this.xi(), y: this.yi()}, this.w(), this.h());
+      switch(this.data_type) {
+        case LeftPanelDataType.RESOURCE:
+          this.drawResource(ctx, this.data);
+          break;
+        default:
+          console.error('Unknown data type for left panel', this.data_type);
+          break;
+      }
+    });
+    this.close_button.draw(ctx, transform, dt);
+  }
+
+  private drawResource(ctx: CanvasRenderingContext2D, resource: RisqResource) {
+    drawText(ctx, `Turn ${0}`, {
+      p: {x: this.xc(), y: this.yi()},
+      w: this.w(),
+      fill_style: 'black',
+      align: 'center',
+      font: 'bold 36px serif',
+    });
   }
 
   mousemove(m: Point2D, transform: BoardTransformData): boolean {
-    return false;
+    if (this.close_button.mousemove(m, transform)) {
+      return true;
+    }
+    m = {
+      x: m.x * transform.scale - transform.view.x,
+      y: m.y * transform.scale - transform.view.y,
+    };
+    if (m.x > this.xi() && m.y > this.yi() && m.x < this.xf() && m.y < this.yf()) {
+      this.hovering = true;
+    } else {
+      this.hovering = false;
+    }
+    return this.isHovering();
   }
 
   mousedown(e: MouseEvent): boolean {
+    if (this.close_button.mousedown(e)) {
+      return true;
+    }
     return false;
   }
 
-  mouseup(_e: MouseEvent) {
+  mouseup(e: MouseEvent) {
+    this.close_button.mouseup(e);
   }
 
   xi(): number {

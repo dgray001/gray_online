@@ -18,6 +18,7 @@ export class RisqRightPanel implements CanvasComponent {
   private risq: DwgRisq;
   private config: RightPanelConfig;
   private opening = false;
+  private hovering = false;
 
   constructor(risq: DwgRisq, config: RightPanelConfig) {
     this.risq = risq;
@@ -27,7 +28,7 @@ export class RisqRightPanel implements CanvasComponent {
   }
 
   isHovering(): boolean {
-    return false;
+    return this.hovering;
   }
 
   isClicking(): boolean {
@@ -59,7 +60,6 @@ export class RisqRightPanel implements CanvasComponent {
   }
 
   draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number) {
-    this.open_button.draw(ctx, transform, dt);
     if (this.opening || this.config.is_open) {
       configDraw(ctx, transform, {
         fill_style: this.config.background,
@@ -96,6 +96,7 @@ export class RisqRightPanel implements CanvasComponent {
         }
       });
     }
+    this.open_button.draw(ctx, transform, dt);
   }
 
   private drawSeparator(ctx: CanvasRenderingContext2D, yi: number) {
@@ -106,7 +107,7 @@ export class RisqRightPanel implements CanvasComponent {
 
   private drawPopulation(ctx: CanvasRenderingContext2D, yi: number, pop: number, limit: number) {
     ctx.beginPath();
-    ctx.drawImage(this.risq.getIcon('icons/unit64'), this.xi() + 0.1 * this.w(), yi, 30, 30);
+    ctx.drawImage(this.risq.getIcon('icons/person64'), this.xi() + 0.1 * this.w(), yi, 30, 30);
     drawText(ctx, `${pop}/${limit}`, {
       p: {x: this.xi() + 0.1 * this.w() + 36, y: yi + 15},
       w: 0.9 * this.w() - 36,
@@ -131,18 +132,27 @@ export class RisqRightPanel implements CanvasComponent {
     if (this.open_button.mousemove(m, transform)) {
       return true;
     }
-    return false;
+    m = {
+      x: m.x * transform.scale - transform.view.x,
+      y: m.y * transform.scale - transform.view.y,
+    };
+    if (m.x > this.xi() && m.y > this.yi() && m.x < this.xf() && m.y < this.yf()) {
+      this.hovering = true;
+    } else {
+      this.hovering = false;
+    }
+    return this.isHovering();
   }
 
   mousedown(e: MouseEvent): boolean {
     if (this.open_button.mousedown(e)) {
       return true;
     }
-    return false;
+    return this.isHovering();
   }
 
-  mouseup(_e: MouseEvent) {
-    this.open_button.mouseup(_e);
+  mouseup(e: MouseEvent) {
+    this.open_button.mouseup(e);
   }
 
   xi(): number {

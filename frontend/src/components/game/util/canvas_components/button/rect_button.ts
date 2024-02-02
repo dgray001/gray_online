@@ -167,7 +167,7 @@ export abstract class DwgRectButton extends DwgButton {
       ctx.translate(this.center_p.x, this.center_p.y);
       ctx.rotate(this.rect_config.rotation);
       if (!!this.img) {
-        ctx.drawImage(this.img, -this.radius_p.x, -this.radius_p.y);
+        ctx.drawImage(this.img, -this.radius_p.x, -this.radius_p.y, this.rect_config.w, this.rect_config.h);
       }
       ctx.rect(-this.radius_p.x, -this.radius_p.y, this.rect_config.w, this.rect_config.h);
       ctx.rotate(-this.rect_config.rotation);
@@ -182,13 +182,7 @@ export abstract class DwgRectButton extends DwgButton {
         y: m.y * transform.scale - transform.view.y,
       };
     }
-    if (m.x < this.rect_config.p.x || m.y < this.rect_config.p.y) {
-      return false;
-    }
-    if (
-      m.x > this.rect_config.p.x + this.rect_config.w ||
-      m.y > this.rect_config.p.y + this.rect_config.h
-    ) {
+    if (m.x < this.xi() || m.y < this.yi() || m.x > this.xf() || m.y > this.yf()) {
       return false;
     }
     return true;

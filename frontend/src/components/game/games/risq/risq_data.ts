@@ -34,6 +34,8 @@ export declare interface RisqSpace {
   resources?: Map<number, RisqResource>;
   buildings?: Map<number, RisqBuilding>;
   units?: Map<number, RisqUnit>;
+  num_military_units: number;
+  num_villager_units: number;
   // purely frontend fields
   center: Point2D;
   hovered: boolean;
@@ -238,6 +240,8 @@ export function serverToRisqSpace(server_space: RisqSpaceFromServer): RisqSpace 
   const space: RisqSpace = {
     coordinate: server_space.coordinate,
     visibility: server_space.visibility,
+    num_military_units: 0,
+    num_villager_units: 0,
     // purely frontend fields
     center: {x: 0, y: 0},
     hovered: false,
@@ -267,6 +271,8 @@ export function serverToRisqSpace(server_space: RisqSpaceFromServer): RisqSpace 
   if (!!server_space.units) {
     space.units = new Map(server_space.units.map(server_unit =>
       [server_unit.internal_id, serverToRisqUnit(server_unit)]));
+    space.num_military_units = [...space.units.values()].filter(u => u.unit_id > 10).length;
+    space.num_villager_units = [...space.units.values()].filter(u => u.unit_id < 11).length;
   }
   return space;
 }

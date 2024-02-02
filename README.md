@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.5g: Resources visible in game
+v0.5h: Left panel can be opened and closed
 
 ## Dev Use
 

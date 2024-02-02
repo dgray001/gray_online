@@ -40,12 +40,14 @@ export function drawRisqSpace(ctx: CanvasRenderingContext2D, game: DwgRisq,
       return;
     }
     let building_img = game.getIcon('icons/building64');
+    let villager_img = game.getIcon('icons/villager64');
     let unit_img = game.getIcon('icons/unit64');
     if (fill.getBrightness() > 0.5) {
       ctx.fillStyle = 'black';
     } else {
       ctx.fillStyle = 'white';
       building_img = game.getIcon('icons/building_white64');
+      villager_img = game.getIcon('icons/villager_white64');
       unit_img = game.getIcon('icons/unit_white64');
     }
     ctx.textBaseline = 'top';
@@ -54,9 +56,13 @@ export function drawRisqSpace(ctx: CanvasRenderingContext2D, game: DwgRisq,
     ctx.drawImage(building_img, xs, y1, config.inset_row, config.inset_row);
     ctx.fillText(`: ${space.buildings.size.toString()}`, xs + config.inset_row + 2, y1, config.inset_w - config.inset_row - 2);
     const y2 = space.center.y - 0.5 * config.inset_h + config.inset_row + 2;
-    ctx.drawImage(unit_img, xs, y2, config.inset_row, config.inset_row);
-    ctx.fillText(`: ${space.units.size.toString()}`, xs + config.inset_row + 2,
+    ctx.drawImage(villager_img, xs, y2, config.inset_row, config.inset_row);
+    ctx.fillText(`: ${space.num_villager_units.toString()}`, xs + config.inset_row + 2,
       y2, config.inset_w - config.inset_row - 2);
+    const y3 = space.center.y - 0.5 * config.inset_h + 2 * (config.inset_row + 2);
+    ctx.drawImage(unit_img, xs, y3, config.inset_row, config.inset_row);
+    ctx.fillText(`: ${space.num_military_units.toString()}`, xs + config.inset_row + 2,
+      y3, config.inset_w - config.inset_row - 2);
   } else if (config.draw_detail === DrawRisqSpaceDetail.ZONE_DETAILS) {
     ctx.lineWidth = 1;
     drawHexagon(ctx, space.center, config.hex_r);

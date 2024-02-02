@@ -10,7 +10,7 @@ import html from './risq.html';
 import {GameRisq, GameRisqFromServer, RisqPlayer, RisqSpace, RisqZone, coordinateToIndex, getSpace, serverToGameRisq} from './risq_data';
 import {RisqRightPanel} from './canvas_components/right_panel';
 import {DrawRisqSpaceConfig, DrawRisqSpaceDetail, drawRisqSpace} from './risq_space';
-import {RisqLeftPanel} from './canvas_components/left_panel';
+import {LeftPanelDataType, RisqLeftPanel} from './canvas_components/left_panel';
 import {resolveHoveredZones, unhoverRisqZone} from './risq_zone';
 
 import './risq.scss';
@@ -39,7 +39,10 @@ export class DwgRisq extends DwgElement {
   private last_time = Date.now();
   private draw_detail: DrawRisqSpaceDetail = DrawRisqSpaceDetail.SPACE_DETAILS;
 
-  private left_panel = new RisqLeftPanel(this, {w: 200});
+  private left_panel = new RisqLeftPanel(this, {
+    w: 300,
+    background: 'rgb(222,184,135)',
+  });
   private right_panel = new RisqRightPanel(this, {
     w: 300,
     is_open: true,
@@ -160,6 +163,10 @@ export class DwgRisq extends DwgElement {
     this.right_panel.toggle(open);
   }
 
+  closeLeftPanel() {
+    this.left_panel.close();
+  }
+
   async gameUpdate(update: UpdateMessage): Promise<void> {
   }
 
@@ -193,8 +200,9 @@ export class DwgRisq extends DwgElement {
         drawRisqSpace(ctx, this, space, draw_config);
       }
     }
-    // draw right collapsible panel
+    // draw panels
     this.right_panel.draw(ctx, transform, dt);
+    this.left_panel.draw(ctx, transform, dt);
     // draw red dot
     if (DRAW_CENTER_DOT && DEV) {
       ctx.fillStyle = 'red';
@@ -216,9 +224,10 @@ export class DwgRisq extends DwgElement {
 
   private mousemove(m: Point2D, transform: BoardTransformData) {
     this.mouse_canvas = m;
-    const hovered_other_component = (
-      this.right_panel.mousemove(m, transform)
-    );
+    const hovered_other_component = [
+      this.right_panel.mousemove(m, transform),
+      this.left_panel.mousemove(m, transform),
+    ].some(b => !!b);
     this.mouse_coordinate = this.canvasToCoordinate(m, transform.scale);
     const index = coordinateToIndex(this.game.board_size, roundAxialCoordinate(this.mouse_coordinate));
     const new_hovered_space = getSpace(this.game, index);
@@ -276,7 +285,10 @@ export class DwgRisq extends DwgElement {
   }
 
   private mousedown(e: MouseEvent): boolean {
-    if (this.right_panel.mousedown(e)) {
+    if ([
+      this.right_panel.mousedown(e),
+      this.left_panel.mousedown(e),
+    ].some(b => !!b)) {
       return true;
     }
     if (e.button !== 0) {
@@ -301,8 +313,9 @@ export class DwgRisq extends DwgElement {
     return false;
   }
 
-  private mouseup(_e: MouseEvent) {
-    this.right_panel.mouseup(_e);
+  private mouseup(e: MouseEvent) {
+    this.right_panel.mouseup(e);
+    this.left_panel.mouseup(e);
     if (!!this.hovered_space) {
       if (!!this.hovered_zone) {
         if (
@@ -310,9 +323,25 @@ export class DwgRisq extends DwgElement {
           this.hovered_space.visibility > 0 &&
           this.draw_detail === DrawRisqSpaceDetail.ZONE_DETAILS
         ) {
-          for (const part of this.hovered_zone.hovered_data) {
+          for (const [i, part] of this.hovered_zone.hovered_data.entries()) {
             if (part.clicked) {
-              // TODO: implement part in left panel
+              switch(i) {
+                case 0:
+                  if (!!this.hovered_zone.resource) {
+                    this.left_panel.openPanel(LeftPanelDataType.RESOURCE, this.hovered_zone.resource);
+                  } else {
+                    //this.left_panel.openPanel();
+                  }
+                  break;
+                case 1:
+                  //this.left_panel.openPanel();
+                  break;
+                case 2:
+                  //this.left_panel.openPanel();
+                  break;
+                default:
+                  break;
+              }
             }
           }
         }
