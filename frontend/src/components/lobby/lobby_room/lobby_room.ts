@@ -130,6 +130,7 @@ export class DwgLobbyRoom extends DwgElement {
           sender: SERVER_CHAT_NAME,
         }}));
       } else {
+        // TODO: check if launchable
         this.setLaunching(true);
         const countdown = 5;
         this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {'detail': {

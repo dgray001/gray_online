@@ -145,3 +145,9 @@ export class DwgChatbox extends DwgElement {
 }
 
 customElements.define('dwg-chatbox', DwgChatbox);
+
+declare global {
+  interface HTMLElementTagNameMap {
+    'dwg-chatbox': DwgChatbox;
+  }
+}

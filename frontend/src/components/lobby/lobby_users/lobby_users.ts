@@ -15,11 +15,11 @@ interface UserData {
 }
 
 export class DwgLobbyUsers extends DwgElement {
-  refresh_button: HTMLButtonElement;
-  loading_message: HTMLDivElement;
-  user_container: HTMLDivElement;
+  private refresh_button: HTMLButtonElement;
+  private loading_message: HTMLDivElement;
+  private user_container: HTMLDivElement;
 
-  users = new Map<number, UserData>();
+  private users = new Map<number, UserData>();
 
   constructor() {
     super();
@@ -107,12 +107,12 @@ export class DwgLobbyUsers extends DwgElement {
     if (!this.users.has(client_id)) {
       return;
     }
-    this.users.get(client_id).el.remove();
+    this.users.get(client_id)?.el.remove();
     this.users.delete(client_id);
   }
 
   getUser(user_id: number): LobbyUser {
-    return this.users.get(user_id).data;
+    return this.users.get(user_id)?.data;
   }
 
   joinRoom(user_id: number, room_id: number) {

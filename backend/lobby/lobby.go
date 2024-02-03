@@ -199,7 +199,7 @@ func (l *Lobby) reconnectClient(client *Client, client_id uint64) {
 			old_game = old_lobby_room.game
 		}
 		if old_lobby_room != nil {
-			if old_game == nil {
+			if old_game == nil || old_game.GetBase() == nil {
 				old_lobby_room.removeClient(client, true)
 			} else {
 				client.lobby_room = old_lobby_room

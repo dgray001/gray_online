@@ -15,6 +15,8 @@ import '../chatbox/chatbox';
 import './lobby_users/lobby_users';
 import './lobby_rooms/lobby_rooms';
 import './lobby_room/lobby_room';
+import '../dialog_box/message_dialog/message_dialog';
+import '../dialog_box/confirm_dialog/confirm_dialog';
 
 const LOBBY_PING_TIME = 5000; // time between lobby refreshes
 

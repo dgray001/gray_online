@@ -4,18 +4,17 @@ import {apiPost} from '../../scripts/api';
 import {ChatMessage, DwgChatbox} from '../chatbox/chatbox';
 import {capitalize, createLock, until} from '../../scripts/util';
 import {MessageDialogData} from '../dialog_box/message_dialog/message_dialog';
+import {getUrlParam} from '../../scripts/url';
 
 import {Game, GameComponent, GameFromServer, serverResponseToGame} from './data_models';
 import {handleMessage} from './message_handler';
 import html from './game.html';
 
 import './game.scss';
-import './games/fiddlesticks/fiddlesticks';
-import './games/euchre/euchre';
-import './games/risq/risq';
 import './game_history_dialog/game_history_dialog';
 import './game_info_dialog/game_info_dialog';
 import './players_dialog/players_dialog';
+import '../dialog_box/message_dialog/message_dialog';
 import '../dialog_box/confirm_dialog/confirm_dialog';
 
 /** Function to dispatch event that will show a dialog message */
@@ -44,6 +43,7 @@ export class DwgGame extends DwgElement {
   minimize_img: HTMLImageElement;
   button_exit: HTMLButtonElement;
 
+  bundles_attached = new Set<string>();
   abort_controllers: AbortController[] = [];
   launched: boolean;
   socket: WebSocket;
@@ -265,6 +265,18 @@ export class DwgGame extends DwgElement {
     let game_initialized = false;
     let waiting_room_initialized = false;
     const setGame = async (component: 'dwg-fiddlesticks' | 'dwg-euchre' | 'dwg-risq') => {
+      if (!this.bundles_attached.has(component)) {
+        const script = document.createElement('script');
+        script.setAttribute('src', `/dist/${component.replace('dwg-', '')}.bundle.js?v=${getUrlParam('v')}`);
+        script.async = false;
+        let script_loaded = false;
+        script.addEventListener('load', () => {
+          script_loaded = true;
+        });
+        document.body.appendChild(script);
+        await until(() => script_loaded);
+        this.bundles_attached.add(component);
+      }
       const game_el = document.createElement(component);
       this.game_container.replaceChildren(game_el);
       await until(() => game_el.fully_parsed);
@@ -378,4 +390,12 @@ export class DwgGame extends DwgElement {
   }
 }
 
-customElements.define('dwg-game', DwgGame);
+if (!customElements.get('dwg-game')) {
+  customElements.define('dwg-game', DwgGame);
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    'dwg-game': DwgGame;
+  }
+}

@@ -57,6 +57,8 @@ export function handleMessage(game: DwgGame, message: ServerMessage) {
     case "game-connected-failed":
     case "game-update-failed":
     case "game-get-update-failed":
+    case "game-resend-last-update-failed":
+    case "game-resend-waiting-room-failed":
       console.log(message.content);
       try {
         game.refreshGame();
@@ -113,7 +115,7 @@ async function handleGameUpdate(game: DwgGame, message: ServerMessage) {
       update,
     };
     game.game.game_base.updates.set(game_update_id, updateMessage);
-    if (!running_updates) {
+    if (!running_updates && game.game.game_base.game_started && !game.game.game_base.game_ended && game.launched) {
       runUpdate(updateMessage);
     }
   } catch(e) {

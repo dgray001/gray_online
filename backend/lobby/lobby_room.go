@@ -89,7 +89,7 @@ func (r *LobbyRoom) run() {
 				game.Game_StartGame(r.game)
 			}
 		case action := <-r.PlayerAction:
-			if r.game != nil {
+			if !r.gameNil() {
 				r.game.PlayerAction(r.game.GetBase().AddAction(action))
 			}
 		}
@@ -432,7 +432,7 @@ func (r *LobbyRoom) launchable() (bool, string) {
 	if !settings_launchable {
 		return false, settings_launchable_error
 	}
-	if r.game != nil {
+	if !r.gameNil() {
 		return false, "Game already launched"
 	}
 	return true, ""
@@ -442,10 +442,10 @@ func (r *LobbyRoom) valid() bool {
 	if r.room_id < 1 {
 		return false
 	}
-	if r.game != nil && !r.game.Valid() {
+	if !r.gameNil() && !r.game.Valid() {
 		return false
 	}
-	if r.game == nil && (r.host == nil || !r.host.validDebug(true)) {
+	if r.gameNil() && (r.host == nil || !r.host.validDebug(true)) {
 		return false
 	}
 	if len(r.players) > int(r.game_settings.MaxPlayers) {
@@ -492,7 +492,7 @@ func (r *LobbyRoom) ToFrontend() gin.H {
 		}
 	}
 	room["viewers"] = viewers
-	if r.game != nil {
+	if !r.gameNil() {
 		room["game_id"] = strconv.Itoa(int(game.Game_GetId(r.game)))
 	}
 	return room

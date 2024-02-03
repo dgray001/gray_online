@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.5j: Resource left panel
+v0.5k: Code split by game
 
 ## Dev Use
 
