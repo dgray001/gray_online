@@ -107,7 +107,7 @@ export function hexagonalBoardNeighbors(p: Point2D, board_size: number): Point2D
   return neighbors;
 }
 
-/** Returns neighbor coordinates given axial coordinates and board size */
+/** Returns row coordinates given axial coordinates and board size */
 export function hexagonalBoardRows(p: Point2D, board_size: number): Point2D[] {
   const c = roundAxialCoordinate(p);
   const neighbors: Point2D[] = [];

@@ -10,33 +10,51 @@ import (
 )
 
 type RisqSpace struct {
-	coordinate game_utils.Coordinate2D
-	zones      [][]*RisqZone
-	resources  map[uint64]*RisqResource
-	buildings  map[uint64]*RisqBuilding
-	units      map[uint64]*RisqUnit
-	visibility map[int]uint8
+	coordinate      game_utils.Coordinate2D
+	coordinate_key  uint
+	zones           [][]*RisqZone
+	resources       map[uint64]*RisqResource
+	buildings       map[uint64]*RisqBuilding
+	units           map[uint64]*RisqUnit
+	visibility      map[int]uint8
+	adjacent_spaces map[uint]*RisqSpace
 }
 
-func createRisqSpace(i int, j int) *RisqSpace {
+func createRisqSpace(q int, r int) *RisqSpace {
 	space := RisqSpace{
-		coordinate: game_utils.Coordinate2D{X: i, Y: j},
-		resources:  make(map[uint64]*RisqResource),
-		buildings:  make(map[uint64]*RisqBuilding),
-		units:      make(map[uint64]*RisqUnit),
-		visibility: make(map[int]uint8),
+		coordinate:      game_utils.Coordinate2D{X: q, Y: r},
+		coordinate_key:  util.Pair(q, r),
+		resources:       make(map[uint64]*RisqResource),
+		buildings:       make(map[uint64]*RisqBuilding),
+		units:           make(map[uint64]*RisqUnit),
+		visibility:      make(map[int]uint8),
+		adjacent_spaces: make(map[uint]*RisqSpace),
 	}
 	space.zones = make([][]*RisqZone, 3)
 	for j := range space.zones {
-		r := j - 1
-		l := 3 - util.AbsInt(r)
+		r_zone := j - 1
+		l := 3 - util.AbsInt(r_zone)
 		space.zones[j] = make([]*RisqZone, l)
 		for i := range space.zones[j] {
-			q := max(-1, -(1+r)) + i
-			space.zones[j][i] = createRisqZone(q, r, &space)
+			q_zone := max(-1, -(1+r_zone)) + i
+			space.zones[j][i] = createRisqZone(q_zone, r_zone, &space)
 		}
 	}
 	return &space
+}
+
+func (s *RisqSpace) setAdjacentSpace(adj *RisqSpace, v *game_utils.Coordinate2D) {
+	zone := s.getZone(v)
+	if zone == nil {
+		fmt.Fprintln(os.Stderr, "Invalid zone coordinate: ", v.X, v.Y)
+		return
+	}
+	if zone.adjacent_space != nil {
+		fmt.Fprintln(os.Stderr, "Already set adjacent space for this zone: ", v.X, v.Y)
+		return
+	}
+	zone.adjacent_space = adj
+	s.adjacent_spaces[util.Pair(v.X, v.Y)] = adj
 }
 
 func (s *RisqSpace) coordinateToIndex(c *game_utils.Coordinate2D) *game_utils.Coordinate2D {
@@ -87,7 +105,7 @@ func (s *RisqSpace) setBuilding(c *game_utils.Coordinate2D, building *RisqBuildi
 	s.buildings[building.internal_id] = building
 	zone.building = building
 	building.zone = zone
-	s.visibility[building.player_id] = 1
+	s.addVision(building.vision(), zone, building.player_id)
 }
 
 func (s *RisqSpace) setUnit(c *game_utils.Coordinate2D, unit *RisqUnit) {
@@ -99,7 +117,42 @@ func (s *RisqSpace) setUnit(c *game_utils.Coordinate2D, unit *RisqUnit) {
 	s.units[unit.internal_id] = unit
 	zone.units[unit.internal_id] = unit
 	unit.zone = zone
-	s.visibility[unit.player_id] = 1
+	s.addVision(unit.vision(), zone, unit.player_id)
+}
+
+func (s *RisqSpace) addVision(v *RisqVision, z *RisqZone, player_id int) {
+	checked := make(map[uint]bool)
+	if s.getVisibility(player_id) < v.space {
+		s.visibility[player_id] = v.space
+	}
+	checked[s.coordinate_key] = true
+	if z.isCenter() {
+		for _, adj := range s.adjacent_spaces {
+			if adj.getVisibility(player_id) < v.adjacent {
+				adj.visibility[player_id] = v.adjacent
+			}
+			checked[adj.coordinate_key] = true
+		}
+	} else {
+		// TODO: implement with edge_adjacent and edge_opposite
+		for _, adj := range s.adjacent_spaces {
+			if adj.getVisibility(player_id) < v.adjacent {
+				adj.visibility[player_id] = v.adjacent
+			}
+			checked[adj.coordinate_key] = true
+		}
+	}
+	for _, adj := range s.adjacent_spaces {
+		for _, sec := range adj.adjacent_spaces {
+			if util.MapContains(checked, sec.coordinate_key) {
+				continue
+			}
+			if sec.getVisibility(player_id) < v.secondary {
+				sec.visibility[player_id] = v.secondary
+			}
+			checked[sec.coordinate_key] = true
+		}
+	}
 }
 
 func (s *RisqSpace) setResource(c *game_utils.Coordinate2D, resource *RisqResource) {

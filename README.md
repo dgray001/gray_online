@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.5k: Code split by game
+v0.5l: Proper vision handling
 
 ## Dev Use
 

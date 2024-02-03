@@ -6,22 +6,28 @@ import (
 )
 
 type RisqZone struct {
-	coordinate game_utils.Coordinate2D
-	building   *RisqBuilding
-	resource   *RisqResource
-	units      map[uint64]*RisqUnit
-	space      *RisqSpace
+	coordinate     game_utils.Coordinate2D
+	building       *RisqBuilding
+	resource       *RisqResource
+	units          map[uint64]*RisqUnit
+	space          *RisqSpace
+	adjacent_space *RisqSpace
 }
 
 func createRisqZone(i int, j int, space *RisqSpace) *RisqZone {
 	zone := RisqZone{
-		coordinate: game_utils.Coordinate2D{X: i, Y: j},
-		building:   nil,
-		resource:   nil,
-		units:      make(map[uint64]*RisqUnit, 0),
-		space:      space,
+		coordinate:     game_utils.Coordinate2D{X: i, Y: j},
+		building:       nil,
+		resource:       nil,
+		units:          make(map[uint64]*RisqUnit, 0),
+		space:          space,
+		adjacent_space: nil,
 	}
 	return &zone
+}
+
+func (z *RisqZone) isCenter() bool {
+	return z.coordinate.X == 0 && z.coordinate.Y == 0
 }
 
 func (z *RisqZone) toFrontend() gin.H {

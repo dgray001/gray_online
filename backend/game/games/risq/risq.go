@@ -100,6 +100,16 @@ func CreateGame(g *game.GameBase) (*GameRisq, error) {
 			risq.spaces[j][i] = createRisqSpace(q, r)
 		}
 	}
+	for _, row := range risq.spaces {
+		for _, space := range row {
+			for _, v := range game_utils.AxialDirectionVectors() {
+				adjacent := risq.getSpace(space.coordinate.Add(&v))
+				if adjacent != nil {
+					space.setAdjacentSpace(adjacent, &v)
+				}
+			}
+		}
+	}
 	starting_location := util.RandomInt(0, 5)
 	axial_unit_vectors := game_utils.AxialDirectionVectors()
 	starting_space0 := risq.getSpace(axial_unit_vectors[starting_location].Multiply(starting_distance))

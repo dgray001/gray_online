@@ -1,5 +1,6 @@
 import {BoardTransformData} from '../../canvas_board/canvas_board';
-import {Point2D, addPoint2D, equalsPoint2D} from '../../objects2d';
+import { drawRect } from '../../canvas_util';
+import {Point2D, addPoint2D, equalsPoint2D, multiplyPoint2D} from '../../objects2d';
 import {DrawConfig, Rotation, configDraw} from '../canvas_component';
 import {ButtonConfig, DwgButton} from './button';
 
@@ -164,12 +165,13 @@ export abstract class DwgRectButton extends DwgButton {
     }
     // actual draw
     configDraw(ctx, transform, this.rect_config.draw_config, this.isHovering(), this.isClicking(), () => {
+      ctx.beginPath();
       ctx.translate(this.center_p.x, this.center_p.y);
       ctx.rotate(this.rect_config.rotation);
       if (!!this.img) {
         ctx.drawImage(this.img, -this.radius_p.x, -this.radius_p.y, this.rect_config.w, this.rect_config.h);
       }
-      ctx.rect(-this.radius_p.x, -this.radius_p.y, this.rect_config.w, this.rect_config.h);
+      drawRect(ctx, multiplyPoint2D(-1, this.radius_p), this.rect_config.w, this.rect_config.h);
       ctx.rotate(-this.rect_config.rotation);
       ctx.translate(-this.center_p.x, -this.center_p.y);
     });

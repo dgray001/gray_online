@@ -3,6 +3,7 @@ import {CanvasComponent, configDraw} from '../../../util/canvas_components/canva
 import {drawLine, drawRect, drawText} from '../../../util/canvas_util';
 import {Point2D} from '../../../util/objects2d';
 import {DwgRisq} from '../risq';
+import {buildingImage} from '../risq_buildings';
 import {RisqBuilding, RisqResource} from '../risq_data';
 import {resourceImage, resourceTypeImage} from '../risq_resources';
 import {RisqLeftPanelButton} from './left_panel_close';
@@ -41,12 +42,12 @@ export class RisqLeftPanel implements CanvasComponent {
   }
 
   resolveSize() {
-    let h = 3 * this.config.w;
-    if (h > 0.8 * this.risq.canvasSize().height) {
-      h = 0.8 * this.risq.canvasSize().height;
+    let h = 4 * this.config.w;
+    if (h > this.risq.canvasSize().height) {
+      h = this.risq.canvasSize().height;
     }
     this.size = {x: h / 3, y: h};
-    this.close_button.setPosition({x: this.size.x, y: this.yi()});
+    this.close_button.setPosition({x: this.size.x, y: this.yi() + 0.5 * this.close_button.h()});
   }
 
   isHovering(): boolean {
@@ -94,6 +95,7 @@ export class RisqLeftPanel implements CanvasComponent {
           break;
       }
     });
+    ctx.beginPath();
     this.close_button.draw(ctx, transform, dt);
   }
 
@@ -101,7 +103,7 @@ export class RisqLeftPanel implements CanvasComponent {
     let yi = this.yi() + this.drawName(ctx, resource.display_name);
     yi += this.drawImage(ctx, yi, resourceImage(resource));
     this.drawSeparator(ctx, yi);
-    yi += 12;
+    yi += 8;
     ctx.beginPath();
     ctx.drawImage(this.risq.getIcon(resourceTypeImage(resource)), this.xi() + 0.1 * this.w(), yi, 40, 40);
     drawText(ctx, resource.resources_left.toString(), {
@@ -123,12 +125,30 @@ export class RisqLeftPanel implements CanvasComponent {
 
   private drawBuilding(ctx: CanvasRenderingContext2D, building: RisqBuilding) {
     let yi = this.yi() + this.drawName(ctx, building?.display_name ?? 'Empty Plot');
-    // TODO: draw image
+    yi += this.drawImage(ctx, yi, buildingImage(building));
+    this.drawSeparator(ctx, yi);
+    if (!building) {
+      yi += 12;
+      drawText(ctx, 'An empty piece of land that we can build on', {
+        p: {x: this.xi() + 0.1 * this.w(), y: yi},
+        w: 0.9 * this.w(),
+        fill_style: 'black',
+        align: 'left',
+        font: `14px serif`,
+      });
+      return;
+    }
+    // TODO: if visibility
+    this.drawSeparator(ctx, this.yi() + this.size.y / 2);
+    if (this.risq.getPlayer().player.player_id === building.player_id) {
+      // TODO: 
+      this.drawSeparator(ctx, this.yi() + 3 * this.size.y / 4);
+    }
     // TODO: draw other building stuff
   }
 
   private drawName(ctx: CanvasRenderingContext2D, name: string): number {
-    const text_size = Math.min(40, this.size.y / 3 / 3);
+    const text_size = Math.min(40, this.size.y / 4 / 3);
     drawText(ctx, name, {
       p: {x: this.xc(), y: this.yi()},
       w: this.w(),
@@ -141,16 +161,16 @@ export class RisqLeftPanel implements CanvasComponent {
 
   private drawImage(ctx: CanvasRenderingContext2D, yi: number, img_name: string): number {
     ctx.beginPath();
-    const max_img_height = (this.size.y / 3) - yi + this.yi();
-    const img_height = Math.min(max_img_height - 2, 0.8 * this.w());
+    const max_img_height = (this.size.y / 4) - yi + this.yi();
+    const img_height = Math.min(max_img_height - 6, 0.8 * this.w());
     ctx.drawImage(this.risq.getIcon(img_name), 0.5 * (this.w() - img_height), yi, img_height, img_height);
     return max_img_height;
   }
 
   private drawSeparator(ctx: CanvasRenderingContext2D, yi: number) {
-    ctx.strokeStyle = 'rgba(60, 60, 60, 0.6)';
+    ctx.strokeStyle = 'rgba(60, 60, 60, 0.7)';
     ctx.lineWidth = 2;
-    drawLine(ctx, {x: this.xi() + 0.15 * this.w(), y: yi}, {x: this.xf() - 0.15 * this.w(), y: yi});
+    drawLine(ctx, {x: this.xi() + 0.1 * this.w(), y: yi}, {x: this.xf() - 0.1 * this.w(), y: yi});
   }
 
   mousemove(m: Point2D, transform: BoardTransformData): boolean {

@@ -95,16 +95,7 @@ export declare interface RisqUnit {
   zone_coordinate: Point2D;
   max_health: number;
   speed: number;
-  attack_type: number;
-  attack_blunt: number;
-  attack_piercing: number;
-  attack_magic: number;
-  defense_blunt: number;
-  defense_piercing: number;
-  defense_magic: number;
-  penetration_blunt: number;
-  penetration_piercing: number;
-  penetration_magic: number;
+  combat_stats: RisqCombatStats;
 }
 
 /** Data describing a risq building */
@@ -116,6 +107,21 @@ export declare interface RisqBuilding {
   space_coordinate: Point2D;
   zone_coordinate: Point2D;
   population_support: number;
+  combat_stats: RisqCombatStats;
+}
+
+/** Data describing combat stats */
+export declare interface RisqCombatStats {
+  attack_type: number;
+  attack_blunt: number;
+  attack_piercing: number;
+  attack_magic: number;
+  defense_blunt: number;
+  defense_piercing: number;
+  defense_magic: number;
+  penetration_blunt: number;
+  penetration_piercing: number;
+  penetration_magic: number;
 }
 
 /** Data describing resources in a zone */
@@ -177,16 +183,7 @@ export declare interface RisqUnitFromServer {
   zone_coordinate: Point2D;
   max_health: number;
   speed: number;
-  attack_type: number;
-  attack_blunt: number;
-  attack_piercing: number;
-  attack_magic: number;
-  defense_blunt: number;
-  defense_piercing: number;
-  defense_magic: number;
-  penetration_blunt: number;
-  penetration_piercing: number;
-  penetration_magic: number;
+  combat_stats: RisqCombatStatsFromServer;
 }
 
 /** Data describing a risq building */
@@ -198,6 +195,21 @@ export declare interface RisqBuildingFromServer {
   space_coordinate: Point2D;
   zone_coordinate: Point2D;
   population_support: number;
+  combat_stats: RisqCombatStatsFromServer;
+}
+
+/** Data describing combat stats */
+export declare interface RisqCombatStatsFromServer {
+  attack_type: number;
+  attack_blunt: number;
+  attack_piercing: number;
+  attack_magic: number;
+  defense_blunt: number;
+  defense_piercing: number;
+  defense_magic: number;
+  penetration_blunt: number;
+  penetration_piercing: number;
+  penetration_magic: number;
 }
 
 /** Data describing resources in a zone */

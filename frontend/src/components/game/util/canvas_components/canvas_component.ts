@@ -76,9 +76,6 @@ export function configDraw(ctx: CanvasRenderingContext2D, transform: BoardTransf
   }
   ctx.beginPath();
   draw();
-  ctx.fill();
-  ctx.stroke();
-  ctx.closePath();
   if (config.fixed_position) {
     ctx.translate(-transform.view.x, -transform.view.y);
     ctx.scale(transform.scale, transform.scale);
