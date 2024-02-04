@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.5l: Proper vision handling
+v0.5m: Building left panel data type
 
 ## Dev Use
 

@@ -1,6 +1,5 @@
 
 v0.6: Visible Risq
- k: Building left panel shows space for buttons
  l: Space left panel shows info about the space
    => include zones graphic to select zones (and show ownership of zones)
    => show data based on visibility => num of units/buildings/resources

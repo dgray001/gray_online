@@ -33,7 +33,7 @@ export declare interface RisqResources {
 /** Data describing a hexagonal space in risq */
 export declare interface RisqSpace {
   coordinate: Point2D;
-  visibility: number;
+  visibility: number; // See risq_vision.go for value meanings
   zones?: RisqZone[][];
   resources?: Map<number, RisqResource>;
   buildings?: Map<number, RisqBuilding>;
@@ -93,7 +93,6 @@ export declare interface RisqUnit {
   display_name: string;
   space_coordinate: Point2D;
   zone_coordinate: Point2D;
-  max_health: number;
   speed: number;
   combat_stats: RisqCombatStats;
 }
@@ -112,7 +111,9 @@ export declare interface RisqBuilding {
 
 /** Data describing combat stats */
 export declare interface RisqCombatStats {
-  attack_type: number;
+  health: number;
+  max_health: number;
+  attack_type: RisqAttackType;
   attack_blunt: number;
   attack_piercing: number;
   attack_magic: number;
@@ -122,6 +123,18 @@ export declare interface RisqCombatStats {
   penetration_blunt: number;
   penetration_piercing: number;
   penetration_magic: number;
+}
+
+/** All the attack types */
+export enum RisqAttackType {
+  NONE = 0,
+  BLUNT = 1,
+  PIERCING = 2,
+  MAGIC = 3,
+  BLUNT_PIERCING = 4,
+  PIERCING_MAGIC = 5,
+  MAGIC_BLUNT = 6,
+  BLUNT_PIERCING_MAGIC = 7,
 }
 
 /** Data describing resources in a zone */
@@ -181,7 +194,6 @@ export declare interface RisqUnitFromServer {
   display_name: string;
   space_coordinate: Point2D;
   zone_coordinate: Point2D;
-  max_health: number;
   speed: number;
   combat_stats: RisqCombatStatsFromServer;
 }
@@ -200,7 +212,9 @@ export declare interface RisqBuildingFromServer {
 
 /** Data describing combat stats */
 export declare interface RisqCombatStatsFromServer {
-  attack_type: number;
+  health: number;
+  max_health: number;
+  attack_type: RisqAttackType;
   attack_blunt: number;
   attack_piercing: number;
   attack_magic: number;

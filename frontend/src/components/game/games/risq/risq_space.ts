@@ -21,28 +21,33 @@ export declare interface DrawRisqSpaceConfig {
   draw_detail: DrawRisqSpaceDetail;
 }
 
+const space_line_width = new Map<DrawRisqSpaceDetail, number>([
+  [DrawRisqSpaceDetail.OWNERSHIP, 3],
+  [DrawRisqSpaceDetail.SPACE_DETAILS, 2],
+  [DrawRisqSpaceDetail.ZONE_DETAILS, 1.2],
+]);
+
 /** Draws the input risq space */
 export function drawRisqSpace(ctx: CanvasRenderingContext2D, game: DwgRisq,
   space: RisqSpace, config: DrawRisqSpaceConfig
 ) {
   ctx.strokeStyle = 'rgba(250, 250, 250, 0.9)';
-  ctx.textAlign = 'left';
   const fill = getSpaceFill(space);
   ctx.fillStyle = fill.getString();
+  ctx.lineWidth = space_line_width.get(config.draw_detail);
+  drawHexagon(ctx, space.center, config.hex_r);
+  ctx.textAlign = 'left';
+  const black_text = fill.getBrightness() > 0.5;
   if (config.draw_detail === DrawRisqSpaceDetail.OWNERSHIP) {
-    ctx.lineWidth = 3;
-    drawHexagon(ctx, space.center, config.hex_r);
-    return;
+    return; // ownership and terrain indicated by space fill color
   } else if (config.draw_detail === DrawRisqSpaceDetail.SPACE_DETAILS) {
-    ctx.lineWidth = 2;
-    drawHexagon(ctx, space.center, config.hex_r);
-    if (space.visibility < 1) {
+    if (space.visibility < 2) {
       return;
     }
     let building_img = game.getIcon('icons/building64');
     let villager_img = game.getIcon('icons/villager64');
     let unit_img = game.getIcon('icons/unit64');
-    if (fill.getBrightness() > 0.5) {
+    if (black_text) {
       ctx.fillStyle = 'black';
     } else {
       ctx.fillStyle = 'white';
@@ -64,21 +69,20 @@ export function drawRisqSpace(ctx: CanvasRenderingContext2D, game: DwgRisq,
     ctx.fillText(`: ${space.num_military_units.toString()}`, xs + config.inset_row + 2,
       y3, config.inset_w - config.inset_row - 2);
   } else if (config.draw_detail === DrawRisqSpaceDetail.ZONE_DETAILS) {
-    ctx.lineWidth = 1;
-    drawHexagon(ctx, space.center, config.hex_r);
-    if (space.visibility < 1) {
+    if (space.visibility < 3) {
       return;
     }
     ctx.translate(space.center.x, space.center.y);
     ctx.fillStyle = 'rgb(10, 120, 10, 0.8)';
-    ctx.lineWidth = 0.35;
+    ctx.strokeStyle = 'rgba(0, 250, 250, 0.2)';
+    ctx.lineWidth = 0.1;
     let zone = space.zones[1][1];
     setZoneFill(ctx, zone);
     const r = config.hex_r;
     const inner_r = INNER_ZONE_MULTIPLIER * r;
     let zone_r = 0.45 * r;
     drawHexagon(ctx, {x: 0, y: 0}, inner_r);
-    drawRisqZone(ctx, game, zone, zone_r, 0,
+    drawRisqZone(ctx, game, zone, black_text, zone_r, 0,
       {x: 0.18 * r * Math.cos(3 * Math.PI / 6), y: 0.18 * r * Math.sin(3 * Math.PI / 6)},
       {x: 0.18 * r * Math.cos(7 * Math.PI / 6), y: 0.18 * r * Math.sin(7 * Math.PI / 6)},
       {x: 0.18 * r * Math.cos(11 * Math.PI / 6), y: 0.18 * r * Math.sin(11 * Math.PI / 6)},
@@ -120,7 +124,7 @@ export function drawRisqSpace(ctx: CanvasRenderingContext2D, game: DwgRisq,
       const rotation = a * (1 + i);
       ctx.rotate(rotation);
       const theta = Math.PI / 12;
-      drawRisqZone(ctx, game, zone, zone_r, rotation,
+      drawRisqZone(ctx, game, zone, black_text, zone_r, rotation,
         {x: 0.73 * r * Math.cos(0), y: 0.76 * r * Math.sin(0)},
         {x: 0.53 * r * Math.cos(-theta), y: 0.53 * r * Math.sin(-theta)},
         {x: 0.53 * r * Math.cos(theta), y: 0.53 * r * Math.sin(theta)},
@@ -137,6 +141,7 @@ export function getSpaceFill(space: RisqSpace): ColorRGB {
   if (!!space) {
     color.setColor(90, 90, 90, 0.8);
     if (space.visibility > 0) {
+      // TODO: background color of space based on ownership and terrain
       color.setColor(10, 120, 10, 0.8);
       if (space.hovered) {
         if (space.clicked) {

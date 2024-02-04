@@ -42,13 +42,17 @@ export function setZoneFill(ctx: CanvasRenderingContext2D, zone: RisqZone) {
 
 /** Draws the input risq zone */
 export function drawRisqZone(ctx: CanvasRenderingContext2D, game: DwgRisq, zone: RisqZone,
-  r: number, rotation: number, p1: Point2D, p2: Point2D, p3: Point2D
+  black_text: boolean, r: number, rotation: number, p1: Point2D, p2: Point2D, p3: Point2D
 ) {
+  const primary_color = black_text ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
+  const secondary_color = black_text ? 'rgba(40, 40, 40, 0.4)' : 'rgba(210, 210, 210, 0.4)';
+  const tertiary_color = black_text ? 'rgb(60, 60, 60, 0.2)' : 'rgba(190, 190, 190, 0.2)';
+
   function drawText(ctx: CanvasRenderingContext2D, s: string, ts: number,
-    x: number, y: number, w: number, fill_style = 'white')
+    x: number, y: number, w: number, fill_primary = true)
   {
     const fs = ctx.fillStyle;
-    ctx.fillStyle = fill_style;
+    ctx.fillStyle = fill_primary ? primary_color : secondary_color;
     ctx.font = `bold ${ts}px serif`;
     ctx.fillText(s, x, y, w);
     ctx.fillStyle = fs;
@@ -72,9 +76,9 @@ export function drawRisqZone(ctx: CanvasRenderingContext2D, game: DwgRisq, zone:
     ctx.strokeStyle = 'transparent';
     if (part.hovered) {
       if (part.clicked) {
-        ctx.fillStyle = 'rgba(200, 200, 200, 0.4)';
+        ctx.fillStyle = secondary_color;
       } else {
-        ctx.fillStyle = 'rgba(200, 200, 200, 0.2)';
+        ctx.fillStyle = tertiary_color;
       }
     } else {
       ctx.fillStyle = 'transparent';
@@ -99,7 +103,7 @@ export function drawRisqZone(ctx: CanvasRenderingContext2D, game: DwgRisq, zone:
         const units = [...zone.units_by_type.values()];
         const units_by_type = i === 1 ? units.filter(u => u.unit_id < 11) : units.filter(u => u.unit_id > 10);
         if (units_by_type.length === 0) {
-          ctx.strokeStyle = 'rgba(200, 200, 200, 0.2)';
+          ctx.strokeStyle = secondary_color;
         } else if (units_by_type.length === 1) {
           const unit = zone.units.get([...units_by_type[0].units.values()][0]);
           ctx.drawImage(unitImage(unit), -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
@@ -182,7 +186,7 @@ export function drawRisqZone(ctx: CanvasRenderingContext2D, game: DwgRisq, zone:
             0.1 * part.r.x,
             -0.1 * part.r.y,
             part.r.x,
-            'rgba(150, 150, 150, 0.8)'
+            false
           );
           drawText(
             ctx,
@@ -193,14 +197,6 @@ export function drawRisqZone(ctx: CanvasRenderingContext2D, game: DwgRisq, zone:
             2 * part.r.x
           );
         }
-        break;
-      case 2: // resources
-        ctx.strokeStyle = 'rgba(200, 200, 200, 0.2)';
-        ctx.fillStyle = 'transparent';
-        break;
-      case 3: // ??
-        ctx.strokeStyle = 'rgba(200, 200, 200, 0.2)';
-        ctx.fillStyle = 'transparent';
         break;
       default:
         console.error('No implemented');

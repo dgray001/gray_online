@@ -16,6 +16,8 @@ const (
 )
 
 type RisqCombatStats struct {
+	health               int
+	max_health           int
 	attack_type          AttackType
 	attack_blunt         int
 	attack_piercing      int
@@ -30,6 +32,8 @@ type RisqCombatStats struct {
 
 func createRisqCombatStats() RisqCombatStats {
 	return RisqCombatStats{
+		health:               1,
+		max_health:           1,
 		attack_type:          AttackType_NONE,
 		attack_blunt:         0,
 		attack_piercing:      0,
@@ -43,8 +47,19 @@ func createRisqCombatStats() RisqCombatStats {
 	}
 }
 
+func (c *RisqCombatStats) setMaxHealth(max_health int) {
+	if max_health < 1 {
+		return
+	}
+	ratio := float64(c.health) / float64(c.max_health)
+	c.max_health = max_health
+	c.health = int(ratio*float64(max_health) + 0.5)
+}
+
 func (cs *RisqCombatStats) toFrontend() gin.H {
 	return gin.H{
+		"health":               cs.health,
+		"max_health":           cs.max_health,
 		"attack_type":          cs.attack_type,
 		"attack_blunt":         cs.attack_blunt,
 		"attack_piercing":      cs.attack_piercing,

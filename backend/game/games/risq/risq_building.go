@@ -12,8 +12,6 @@ type RisqBuilding struct {
 	display_name       string
 	zone               *RisqZone
 	population_support uint16
-	health             int
-	max_health         int
 	cs                 RisqCombatStats
 }
 
@@ -29,9 +27,11 @@ func createRisqBuilding(internal_id uint64, building_id uint32, player_id int) *
 	switch building_id {
 	case 1: // village center
 		building.display_name = "Village Center"
+		building.cs.setMaxHealth(350)
 		building.population_support = 5
 	case 2: // housing
 		building.display_name = "Housing"
+		building.cs.setMaxHealth(120)
 		building.population_support = 5
 	}
 	return &building

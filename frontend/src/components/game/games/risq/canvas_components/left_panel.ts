@@ -4,7 +4,7 @@ import {drawLine, drawRect, drawText} from '../../../util/canvas_util';
 import {Point2D} from '../../../util/objects2d';
 import {DwgRisq} from '../risq';
 import {buildingImage} from '../risq_buildings';
-import {RisqBuilding, RisqResource} from '../risq_data';
+import {RisqAttackType, RisqBuilding, RisqCombatStats, RisqResource} from '../risq_data';
 import {resourceImage, resourceTypeImage} from '../risq_resources';
 import {RisqLeftPanelButton} from './left_panel_close';
 
@@ -29,6 +29,7 @@ export class RisqLeftPanel implements CanvasComponent {
   private showing = false;
   private hovering = false;
   private data_type: LeftPanelDataType;
+  private visibility: number;
   private data: any; // data being shown in panel
 
   constructor(risq: DwgRisq, config: LeftPanelConfig) {
@@ -64,10 +65,23 @@ export class RisqLeftPanel implements CanvasComponent {
 
   close() {
     this.showing = false;
+    this.data_type = undefined;
+    this.visibility = undefined;
+    this.data = undefined;
   }
 
-  openPanel(data_type: LeftPanelDataType, data: any) {
+  openPanel(data_type: LeftPanelDataType, visibility: number, data: any) {
+    if (visibility < 1) {
+      return; // not explored
+    }
+    if (visibility < 3 && [
+      LeftPanelDataType.RESOURCE,
+      LeftPanelDataType.BUILDING,
+    ].includes(data_type)) {
+      return; // zones not visible
+    }
     this.data_type = data_type;
+    this.visibility = visibility;
     this.data = data;
     this.showing = true;
   }
@@ -106,7 +120,8 @@ export class RisqLeftPanel implements CanvasComponent {
     yi += 8;
     ctx.beginPath();
     ctx.drawImage(this.risq.getIcon(resourceTypeImage(resource)), this.xi() + 0.1 * this.w(), yi, 40, 40);
-    drawText(ctx, resource.resources_left.toString(), {
+    const resources_left = this.visibility < 5 ? '??' : resource.resources_left.toString();
+    drawText(ctx, resources_left, {
       p: {x: this.xi() + 0.1 * this.w() + 48, y: yi + 20},
       w: 0.9 * this.w() - 48,
       fill_style: 'black',
@@ -129,7 +144,7 @@ export class RisqLeftPanel implements CanvasComponent {
     this.drawSeparator(ctx, yi);
     if (!building) {
       yi += 12;
-      drawText(ctx, 'An empty piece of land that we can build on', {
+      drawText(ctx, 'An empty lot that can be built on', {
         p: {x: this.xi() + 0.1 * this.w(), y: yi},
         w: 0.9 * this.w(),
         fill_style: 'black',
@@ -138,17 +153,52 @@ export class RisqLeftPanel implements CanvasComponent {
       });
       return;
     }
-    // TODO: if visibility
-    this.drawSeparator(ctx, this.yi() + this.size.y / 2);
+    yi = this.yi() + 0.25 * this.size.y + 6;
+    this.drawCombatStats(ctx, yi, yi + 0.25 * this.size.y - 12, building.combat_stats);
     if (this.risq.getPlayer().player.player_id === building.player_id) {
-      // TODO: 
-      this.drawSeparator(ctx, this.yi() + 3 * this.size.y / 4);
+      this.drawSeparator(ctx, this.yi() + 0.5 * this.size.y);
+      // TODO: draw action buttons
+      this.drawSeparator(ctx, this.yi() + 0.75 * this.size.y );
+      // TODO: draw orders
     }
-    // TODO: draw other building stuff
+  }
+
+  private drawCombatStats(ctx: CanvasRenderingContext2D, yi: number, yf: number, cs: RisqCombatStats
+  ) {
+    const gap_size = 4;
+    const num_rows = 4;
+    if (!(yf - yi > (num_rows + 1) * gap_size)) {
+      return;
+    }
+    const row_size = (1 / num_rows) * (yf - yi);
+    yi += gap_size;
+    const xi = this.xi() + 0.1 * this.w();
+    const health_height = Math.min(14, 0.4 * row_size);
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 0.4;
+    ctx.fillStyle = 'black';
+    drawRect(ctx, {x: xi, y: yi}, 0.8 * this.w(), health_height);
+    if (cs.max_health > 0 && cs.health > 0) {
+      ctx.fillStyle = 'rgb(100, 250, 100)';
+      drawRect(ctx, {x: xi, y: yi}, (cs.health / cs.max_health) * 0.8 * this.w(), health_height);
+    }
+    drawText(ctx, `${cs.health} / ${cs.max_health}`, {
+      p: {x: xi, y: yi + health_height + 0.1 * row_size},
+      w: 0.8 * this.w(),
+      fill_style: 'black',
+      align: 'left',
+      font: `${health_height}px serif`,
+    });
+    yi += row_size + gap_size;
+    if (cs.attack_type !== RisqAttackType.NONE) {
+      // TODO: draw attack
+      // TODO: draw piercing
+    }
+    // TODO: draw defense
   }
 
   private drawName(ctx: CanvasRenderingContext2D, name: string): number {
-    const text_size = Math.min(40, this.size.y / 4 / 3);
+    const text_size = Math.min(40, (1 / 12) * this.size.y);
     drawText(ctx, name, {
       p: {x: this.xc(), y: this.yi()},
       w: this.w(),
@@ -161,7 +211,7 @@ export class RisqLeftPanel implements CanvasComponent {
 
   private drawImage(ctx: CanvasRenderingContext2D, yi: number, img_name: string): number {
     ctx.beginPath();
-    const max_img_height = (this.size.y / 4) - yi + this.yi();
+    const max_img_height = (0.25 * this.size.y) - yi + this.yi();
     const img_height = Math.min(max_img_height - 6, 0.8 * this.w());
     ctx.drawImage(this.risq.getIcon(img_name), 0.5 * (this.w() - img_height), yi, img_height, img_height);
     return max_img_height;

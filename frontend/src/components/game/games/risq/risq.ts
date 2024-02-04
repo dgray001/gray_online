@@ -346,9 +346,17 @@ export class DwgRisq extends DwgElement {
               switch(i) {
                 case 0:
                   if (!!this.hovered_zone.resource) {
-                    this.left_panel.openPanel(LeftPanelDataType.RESOURCE, this.hovered_zone.resource);
+                    this.left_panel.openPanel(
+                      LeftPanelDataType.RESOURCE,
+                      this.hovered_space.visibility,
+                      this.hovered_zone.resource
+                    );
                   } else {
-                    this.left_panel.openPanel(LeftPanelDataType.BUILDING, this.hovered_zone.building);
+                    this.left_panel.openPanel(
+                      LeftPanelDataType.BUILDING,
+                      this.hovered_space.visibility,
+                      this.hovered_zone.building
+                    );
                   }
                   break;
                 case 1:
