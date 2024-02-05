@@ -9,7 +9,22 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type TerrainType int8
+
+const (
+	TerrainType_FLATLANDS AttackType = iota
+	TerrainType_HILLY
+	TerrainType_MOUNTAINOUS
+	TerrainType_VALLEY
+	TerrainType_SWAMP
+	TerrainType_SHALLOWS
+	TerrainType_WATER
+	TerrainType_DEEP_WATER
+	// TODO: add impassable terrains
+)
+
 type RisqSpace struct {
+	terrain         TerrainType
 	coordinate      game_utils.Coordinate2D
 	coordinate_key  uint
 	zones           [][]*RisqZone
@@ -20,8 +35,9 @@ type RisqSpace struct {
 	adjacent_spaces map[uint]*RisqSpace
 }
 
-func createRisqSpace(q int, r int) *RisqSpace {
+func createRisqSpace(q int, r int, terrain TerrainType) *RisqSpace {
 	space := RisqSpace{
+		terrain:         terrain,
 		coordinate:      game_utils.Coordinate2D{X: q, Y: r},
 		coordinate_key:  util.Pair(q, r),
 		resources:       make(map[uint64]*RisqResource),
@@ -185,6 +201,7 @@ func (s *RisqSpace) getVisibility(player_id int) uint8 {
 
 func (s *RisqSpace) toFrontend(player_id int, is_viewer bool) gin.H {
 	space := gin.H{
+		"terrain":    s.terrain,
 		"coordinate": s.coordinate.ToFrontend(),
 	}
 	v := s.getVisibility(player_id)

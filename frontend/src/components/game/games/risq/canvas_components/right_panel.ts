@@ -3,6 +3,8 @@ import {CanvasComponent, Rotation, configDraw} from '../../../util/canvas_compon
 import {drawLine, drawRect, drawText} from '../../../util/canvas_util';
 import {Point2D} from '../../../util/objects2d';
 import {DwgRisq} from '../risq';
+import {RisqPlayer, RisqResourceType} from '../risq_data';
+import {resourceTypeImage} from '../risq_resources';
 import {RisqRightPanelButton} from './right_panel_button';
 
 /** Config for the right panel */
@@ -84,12 +86,11 @@ export class RisqRightPanel implements CanvasComponent {
             ctx.font = '24px serif';
             this.drawPopulation(ctx, yi, player.units.size, player.population_limit);
             yi += 30;
-            let r: keyof typeof player.resources;
-            for (r in player.resources) {
-              if (!!player) {
-                this.drawResource(ctx, yi, r, player.resources[r]);
+            if (!!player) {
+              for (const [r, a] of [...player.resources.entries()].sort((a, b) => a[0] - b[0])) {
+                this.drawResource(ctx, yi, r, a);
+                yi += 30;
               }
-              yi += 30;
             }
             yi += 5;
             this.drawSeparator(ctx, yi);
@@ -118,9 +119,9 @@ export class RisqRightPanel implements CanvasComponent {
     });
   }
 
-  private drawResource(ctx: CanvasRenderingContext2D, yi: number, r: string, a: number) {
+  private drawResource(ctx: CanvasRenderingContext2D, yi: number, r: RisqResourceType, a: number) {
     ctx.beginPath();
-    ctx.drawImage(this.risq.getIcon(`risq/resources/${r}`), this.xi() + 0.1 * this.w(), yi, 30, 30);
+    ctx.drawImage(this.risq.getIcon(resourceTypeImage(r)), this.xi() + 0.1 * this.w(), yi, 30, 30);
     // TODO: add number of workers on each resource
     drawText(ctx, a.toString(), {
       p: {x: this.xi() + 0.1 * this.w() + 36, y: yi + 15},

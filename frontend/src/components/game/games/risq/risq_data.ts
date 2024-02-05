@@ -1,6 +1,8 @@
 import {ColorRGB} from '../../../../scripts/color_rgb';
+import {capitalize} from '../../../../scripts/util';
 import {GameBase, GamePlayer} from '../../data_models';
 import {Point2D} from '../../util/objects2d';
+import { resourceType } from './risq_resources';
 
 /** Data describing a game of risq */
 export declare interface GameRisq {
@@ -17,35 +19,57 @@ export declare interface RisqPlayer {
   player: GamePlayer;
   buildings: Map<number, RisqBuilding>; // key is internal_id
   units: Map<number, RisqUnit>; // key is internal_id
-  resources: RisqResources;
+  resources: Map<RisqResourceType, number>;
   population_limit: number;
   color: ColorRGB;
 }
 
-/** Data describing resources of a player in risq */
-export declare interface RisqResources {
-  food: number;
-  wood: number;
-  gold: number;
-  stone: number;
+/** All the resource types */
+export enum RisqResourceType {
+  ERROR,
+  FOOD,
+  WOOD,
+  STONE,
+  GOLD,
 }
+
+/** All the terrain types */
+export enum RisqTerrainType {
+  FLATLANDS = 0,
+  HILLY = 1,
+  MOUNTAINOUS = 2,
+  VALLEY = 3,
+  SWAMP = 4,
+  SHALLOWS = 5,
+  WATER = 6,
+  DEEP_WATER = 7,
+}
+
+/** Converts terrain type to a string */
+export function risqTerrainName(terrain: RisqTerrainType): string {
+  return capitalize(RisqTerrainType[terrain].replace('_', ' ').toLowerCase());
+}
+
+export const ZONE_VISIBILITY = 3; // can see zones
 
 /** Data describing a hexagonal space in risq */
 export declare interface RisqSpace {
+  terrain: RisqTerrainType;
   coordinate: Point2D;
   visibility: number; // See risq_vision.go for value meanings
   zones?: RisqZone[][];
   resources?: Map<number, RisqResource>;
   buildings?: Map<number, RisqBuilding>;
   units?: Map<number, RisqUnit>;
-  num_military_units: number;
-  num_villager_units: number;
   // purely frontend fields
   center: Point2D;
   hovered: boolean;
   hovered_neighbor: boolean;
   hovered_row: boolean;
   clicked: boolean;
+  num_military_units?: number;
+  num_villager_units?: number;
+  total_resources?: Map<RisqResourceType, number>;
 }
 
 /** Describes rectangle hover data */
@@ -150,7 +174,7 @@ export declare interface RisqResource {
 
 /** Data describing a game of risq as returned by server */
 export declare interface GameRisqFromServer {
-  game_base: GameBase; // alredy been converted
+  game_base: GameBase; // already been converted
   players: RisqPlayerFromServer[];
   board_size: number;
   population_limit: number;
@@ -158,18 +182,26 @@ export declare interface GameRisqFromServer {
   spaces: RisqSpaceFromServer[][];
 }
 
+/** Data describing risq player resources from server */
+export declare interface RisqPlayerResourcesFromServer {
+  wood: number;
+  food: number;
+  stone: number;
+}
+
 /** Data describing a risq player */
 export declare interface RisqPlayerFromServer {
   player: GamePlayer;
   buildings: RisqBuildingFromServer[];
   units: RisqUnitFromServer[];
-  resources: RisqResources;
+  resources: RisqPlayerResourcesFromServer;
   population_limit: number;
   color: string;
 }
 
 /** Data describing a hexagonal space in risq */
 export declare interface RisqSpaceFromServer {
+  terrain: RisqTerrainType;
   coordinate: Point2D;
   visibility: number;
   zones?: RisqZoneFromServer[][];
@@ -260,6 +292,15 @@ export function serverToGameRisq(server_game: GameRisqFromServer): GameRisq {
   };
 }
 
+/** Converts a server response to frontend resources */
+export function serverToRisqResources(server_resources: RisqPlayerResourcesFromServer): Map<RisqResourceType, number> {
+  return new Map<RisqResourceType, number>([
+    [RisqResourceType.FOOD, server_resources.food],
+    [RisqResourceType.WOOD, server_resources.wood],
+    [RisqResourceType.STONE, server_resources.stone],
+  ]);
+}
+
 /** Converts a server response ot a frontend risq player */
 export function serverToRisqPlayer(server_player: RisqPlayerFromServer): RisqPlayer {
   if (!server_player) {
@@ -272,7 +313,7 @@ export function serverToRisqPlayer(server_player: RisqPlayerFromServer): RisqPla
   }
   const player: RisqPlayer = {
     player: server_player.player,
-    resources: server_player.resources,
+    resources: serverToRisqResources(server_player.resources),
     buildings: new Map(server_player.buildings.map(b => [b.internal_id, serverToRisqBuilding(b)])),
     units: new Map(server_player.units.map(u => [u.internal_id, serverToRisqUnit(u)])),
     population_limit: server_player.population_limit,
@@ -287,6 +328,7 @@ export function serverToRisqSpace(server_space: RisqSpaceFromServer): RisqSpace 
     return undefined;
   }
   const space: RisqSpace = {
+    terrain: server_space.terrain,
     coordinate: server_space.coordinate,
     visibility: server_space.visibility,
     num_military_units: 0,
@@ -312,6 +354,15 @@ export function serverToRisqSpace(server_space: RisqSpaceFromServer): RisqSpace 
   if (!!server_space.resources) {
     space.resources = new Map(server_space.resources.map(server_resource =>
       [server_resource.internal_id, serverToRisqResource(server_resource)]));
+    space.total_resources = new Map<RisqResourceType, number>();
+    for (const resource of space.resources.values()) {
+      const resource_type = resourceType(resource);
+      if (space.total_resources.has(resource_type)) {
+        space.total_resources.set(resource_type, space.total_resources.get(resource_type) + resource.resources_left);
+      } else {
+        space.total_resources.set(resource_type, resource.resources_left);
+      }
+    }
   }
   if (!!server_space.buildings) {
     space.buildings = new Map(server_space.buildings.map(server_building =>

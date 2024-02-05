@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.5m: Building left panel data type
+v0.5n: Space left panel
 
 ## Dev Use
 

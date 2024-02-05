@@ -1,4 +1,4 @@
-import {RisqResource} from './risq_data';
+import {RisqResource, RisqResourceType} from './risq_data';
 
 /** Returns image path of the resource */
 export function resourceImage(resource: RisqResource): string {
@@ -47,17 +47,37 @@ export function resourceImage(resource: RisqResource): string {
   return `risq/resources/${filename}`;
 }
 
-/** Returns the image path of the resource type */
-export function resourceTypeImage(resource: RisqResource): string {
-  let filename = 'error';
+/** Returns the resource gathered from the resource type */
+export function resourceType(resource: RisqResource): RisqResourceType {
   if (resource.resource_id < 11) {
-    filename = 'food';
+    return RisqResourceType.FOOD;
   } else if (resource.resource_id < 21) {
-    filename = 'wood';
+    return RisqResourceType.WOOD;
   } else if (resource.resource_id < 31) {
-    filename = 'stone';
+    return RisqResourceType.STONE;
   } else if (resource.resource_id < 41) {
-    filename = 'gold';
+    return RisqResourceType.GOLD;
+  }
+  return RisqResourceType.ERROR;
+}
+
+/** Returns the image path of the resource type */
+export function resourceTypeImage(resource: RisqResource|RisqResourceType): string {
+  let filename = 'error';
+  const resource_type = typeof resource === 'number' ? resource : resourceType(resource);
+  switch(resource_type) {
+    case RisqResourceType.FOOD:
+      filename = 'food';
+      break;
+    case RisqResourceType.WOOD:
+      filename = 'wood';
+      break;
+    case RisqResourceType.STONE:
+      filename = 'stone';
+      break;
+    case RisqResourceType.GOLD:
+      filename = 'gold';
+      break;
   }
   return `risq/resources/${filename}`;
 }

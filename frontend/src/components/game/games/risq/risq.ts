@@ -202,7 +202,6 @@ export class DwgRisq extends DwgElement {
     const draw_config: DrawRisqSpaceConfig = {
       hex_r: this.hex_r, inset_w, inset_h, inset_row, draw_detail: this.draw_detail,
     };
-    ctx.font = `bold ${inset_row}px serif`;
     // draw spaces
     for (const row of this.game.spaces) {
       for (const space of row) {
@@ -315,7 +314,7 @@ export class DwgRisq extends DwgElement {
     if (!!this.hovered_space && this.hovered_space.visibility > 0) {
       this.hovered_space.clicked = true;
       if (this.draw_detail !== DrawRisqSpaceDetail.ZONE_DETAILS) {
-        return true;
+        return true; // TODO: make false
       }
       if (!!this.hovered_zone) {
         this.hovered_space.clicked = false;
@@ -341,34 +340,44 @@ export class DwgRisq extends DwgElement {
           this.hovered_space.visibility > 0 &&
           this.draw_detail === DrawRisqSpaceDetail.ZONE_DETAILS
         ) {
+          let open_zone = true;
           for (const [i, part] of this.hovered_zone.hovered_data.entries()) {
             if (part.clicked) {
+              open_zone = false;
               switch(i) {
-                case 0:
+                case 0: // building / resource
                   if (!!this.hovered_zone.resource) {
                     this.left_panel.openPanel(
                       LeftPanelDataType.RESOURCE,
                       this.hovered_space.visibility,
-                      this.hovered_zone.resource
+                      this.hovered_zone.resource,
                     );
                   } else {
                     this.left_panel.openPanel(
                       LeftPanelDataType.BUILDING,
                       this.hovered_space.visibility,
-                      this.hovered_zone.building
+                      this.hovered_zone.building,
                     );
                   }
                   break;
-                case 1:
+                case 1: // economic units
                   //this.left_panel.openPanel();
                   break;
-                case 2:
+                case 2: // military units
                   //this.left_panel.openPanel();
                   break;
                 default:
                   break;
               }
+              break;
             }
+          }
+          if (open_zone) {
+            this.left_panel.openPanel(
+              LeftPanelDataType.ZONE,
+              this.hovered_space.visibility,
+              {space: this.hovered_space, zone: this.hovered_zone},
+            );
           }
         }
         this.hovered_zone.clicked = false;
@@ -380,7 +389,11 @@ export class DwgRisq extends DwgElement {
         this.hovered_space.visibility > 0 &&
         this.draw_detail !== DrawRisqSpaceDetail.ZONE_DETAILS
       ) {
-        // TODO: implement space in left panel
+        this.left_panel.openPanel(
+          LeftPanelDataType.SPACE,
+          this.hovered_space.visibility,
+          this.hovered_space,
+        );
       }
       this.hovered_space.clicked = false;
     }

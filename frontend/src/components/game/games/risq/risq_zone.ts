@@ -27,10 +27,10 @@ export function organizeZoneUnits(zone: RisqZone) {
 }
 
 /** Sets zone fill for the input zone */
-export function setZoneFill(ctx: CanvasRenderingContext2D, zone: RisqZone) {
+export function setZoneFill(ctx: CanvasRenderingContext2D, zone: RisqZone, check_hover = true) {
   ctx.strokeStyle = 'rgba(250, 250, 250, 0.9)';
   const color = new ColorRGB(10, 120, 10, 0.8);
-  if (zone.hovered && !zone.hovered_data.some(p => p.hovered)) {
+  if (check_hover && zone.hovered && !zone.hovered_data.some(p => p.hovered)) {
     if (zone.clicked) {
       color.addColor(210, 210, 210, 0.06);
     } else {

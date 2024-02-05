@@ -97,7 +97,7 @@ func CreateGame(g *game.GameBase) (*GameRisq, error) {
 		risq.spaces[j] = make([]*RisqSpace, l)
 		for i := range risq.spaces[j] {
 			q := max(-int(risq.board_size), -(int(risq.board_size)+r)) + i
-			risq.spaces[j][i] = createRisqSpace(q, r)
+			risq.spaces[j][i] = createRisqSpace(q, r, TerrainType(TerrainType_FLATLANDS))
 		}
 	}
 	for _, row := range risq.spaces {

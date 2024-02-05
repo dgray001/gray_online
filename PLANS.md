@@ -1,8 +1,5 @@
 
 v0.6: Visible Risq
- l: Space left panel shows info about the space
-   => include zones graphic to select zones (and show ownership of zones)
-   => show data based on visibility => num of units/buildings/resources
  m: Zone left panel shows info about the zone (resource/building/units)
  n: Can select units (have generic for units that are villager and military)
  o: Can select individual unit from group (show basic stats)

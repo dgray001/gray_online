@@ -44,6 +44,7 @@ export function drawRisqSpace(ctx: CanvasRenderingContext2D, game: DwgRisq,
     if (space.visibility < 2) {
       return;
     }
+    // TODO: draw resources as fourth row (resource icons of resources that are there)
     let building_img = game.getIcon('icons/building64');
     let villager_img = game.getIcon('icons/villager64');
     let unit_img = game.getIcon('icons/unit64');
@@ -56,17 +57,18 @@ export function drawRisqSpace(ctx: CanvasRenderingContext2D, game: DwgRisq,
       unit_img = game.getIcon('icons/unit_white64');
     }
     ctx.textBaseline = 'top';
+    ctx.font = `bold ${config.inset_row}px serif`;
     const xs = space.center.x - 0.5 * config.inset_w;
     const y1 = space.center.y - 0.5 * config.inset_h;
     ctx.drawImage(building_img, xs, y1, config.inset_row, config.inset_row);
-    ctx.fillText(`: ${space.buildings.size.toString()}`, xs + config.inset_row + 2, y1, config.inset_w - config.inset_row - 2);
+    ctx.fillText(`: ${space.buildings?.size.toString()}`, xs + config.inset_row + 2, y1, config.inset_w - config.inset_row - 2);
     const y2 = space.center.y - 0.5 * config.inset_h + config.inset_row + 2;
     ctx.drawImage(villager_img, xs, y2, config.inset_row, config.inset_row);
-    ctx.fillText(`: ${space.num_villager_units.toString()}`, xs + config.inset_row + 2,
+    ctx.fillText(`: ${space.num_villager_units?.toString()}`, xs + config.inset_row + 2,
       y2, config.inset_w - config.inset_row - 2);
     const y3 = space.center.y - 0.5 * config.inset_h + 2 * (config.inset_row + 2);
     ctx.drawImage(unit_img, xs, y3, config.inset_row, config.inset_row);
-    ctx.fillText(`: ${space.num_military_units.toString()}`, xs + config.inset_row + 2,
+    ctx.fillText(`: ${space.num_military_units?.toString()}`, xs + config.inset_row + 2,
       y3, config.inset_w - config.inset_row - 2);
   } else if (config.draw_detail === DrawRisqSpaceDetail.ZONE_DETAILS) {
     if (space.visibility < 3) {
@@ -74,7 +76,7 @@ export function drawRisqSpace(ctx: CanvasRenderingContext2D, game: DwgRisq,
     }
     ctx.translate(space.center.x, space.center.y);
     ctx.fillStyle = 'rgb(10, 120, 10, 0.8)';
-    ctx.strokeStyle = 'rgba(0, 250, 250, 0.2)';
+    ctx.strokeStyle = 'rgba(250, 250, 250, 0.2)';
     ctx.lineWidth = 0.1;
     let zone = space.zones[1][1];
     setZoneFill(ctx, zone);
@@ -136,14 +138,14 @@ export function drawRisqSpace(ctx: CanvasRenderingContext2D, game: DwgRisq,
 }
 
 /** Returns the fill color for the input space */
-export function getSpaceFill(space: RisqSpace): ColorRGB {
+export function getSpaceFill(space: RisqSpace, check_hover = true): ColorRGB {
   const color = new ColorRGB(0, 0, 0, 0);
   if (!!space) {
     color.setColor(90, 90, 90, 0.8);
     if (space.visibility > 0) {
       // TODO: background color of space based on ownership and terrain
       color.setColor(10, 120, 10, 0.8);
-      if (space.hovered) {
+      if (check_hover && space.hovered) {
         if (space.clicked) {
           color.addColor(210, 210, 210, 0.4);
         } else {

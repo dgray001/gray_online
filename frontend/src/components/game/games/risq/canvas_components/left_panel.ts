@@ -1,11 +1,13 @@
 import {BoardTransformData} from '../../../util/canvas_board/canvas_board';
 import {CanvasComponent, configDraw} from '../../../util/canvas_components/canvas_component';
-import {drawLine, drawRect, drawText} from '../../../util/canvas_util';
+import {drawHexagon, drawLine, drawRect, drawText} from '../../../util/canvas_util';
 import {Point2D} from '../../../util/objects2d';
 import {DwgRisq} from '../risq';
 import {buildingImage} from '../risq_buildings';
-import {RisqAttackType, RisqBuilding, RisqCombatStats, RisqResource} from '../risq_data';
+import {RisqAttackType, RisqBuilding, RisqCombatStats, RisqResource, RisqSpace, RisqZone, ZONE_VISIBILITY, risqTerrainName} from '../risq_data';
 import {resourceImage, resourceTypeImage} from '../risq_resources';
+import {getSpaceFill} from '../risq_space';
+import {INNER_ZONE_MULTIPLIER, setZoneFill} from '../risq_zone';
 import {RisqLeftPanelButton} from './left_panel_close';
 
 /** Config for the left panel */
@@ -18,6 +20,8 @@ export declare interface LeftPanelConfig {
 export enum LeftPanelDataType {
   RESOURCE,
   BUILDING,
+  SPACE,
+  ZONE,
 }
 
 export class RisqLeftPanel implements CanvasComponent {
@@ -74,9 +78,10 @@ export class RisqLeftPanel implements CanvasComponent {
     if (visibility < 1) {
       return; // not explored
     }
-    if (visibility < 3 && [
+    if (visibility < ZONE_VISIBILITY && [
       LeftPanelDataType.RESOURCE,
       LeftPanelDataType.BUILDING,
+      LeftPanelDataType.ZONE,
     ].includes(data_type)) {
       return; // zones not visible
     }
@@ -104,6 +109,12 @@ export class RisqLeftPanel implements CanvasComponent {
         case LeftPanelDataType.BUILDING:
           this.drawBuilding(ctx, this.data);
           break;
+        case LeftPanelDataType.SPACE:
+          this.drawSpace(ctx, this.data);
+          break;
+        case LeftPanelDataType.ZONE:
+          this.drawZone(ctx, this.data);
+          break;
         default:
           console.error('Unknown data type for left panel', this.data_type);
           break;
@@ -120,7 +131,7 @@ export class RisqLeftPanel implements CanvasComponent {
     yi += 8;
     ctx.beginPath();
     ctx.drawImage(this.risq.getIcon(resourceTypeImage(resource)), this.xi() + 0.1 * this.w(), yi, 40, 40);
-    const resources_left = this.visibility < 5 ? '??' : resource.resources_left.toString();
+    const resources_left = this.visibility < 4 ? '??' : resource.resources_left.toString();
     drawText(ctx, resources_left, {
       p: {x: this.xi() + 0.1 * this.w() + 48, y: yi + 20},
       w: 0.9 * this.w() - 48,
@@ -158,13 +169,211 @@ export class RisqLeftPanel implements CanvasComponent {
     if (this.risq.getPlayer().player.player_id === building.player_id) {
       this.drawSeparator(ctx, this.yi() + 0.5 * this.size.y);
       // TODO: draw action buttons
-      this.drawSeparator(ctx, this.yi() + 0.75 * this.size.y );
+      this.drawSeparator(ctx, this.yi() + 0.75 * this.size.y);
       // TODO: draw orders
     }
   }
 
-  private drawCombatStats(ctx: CanvasRenderingContext2D, yi: number, yf: number, cs: RisqCombatStats
-  ) {
+  private drawSpace(ctx: CanvasRenderingContext2D, space: RisqSpace) {
+    let yi = this.yi() + this.drawName(ctx, risqTerrainName(space.terrain));
+    drawText(ctx, 'space', {
+      p: {x: this.xc(), y: yi},
+      w: this.w(),
+      fill_style: 'black',
+      align: 'center',
+      font: '18px serif',
+    });
+    yi += 26;
+    const separator_distance = 8;
+    const hexagon_height = Math.min(this.w(), this.yi() + 0.4 * this.h() - yi - separator_distance);
+    ctx.strokeStyle = 'rgba(250, 250, 250, 1)';
+    ctx.lineWidth = 2;
+    ctx.fillStyle = getSpaceFill(space, false).getString();
+    const r = 0.5 * hexagon_height;
+    const inner_r = INNER_ZONE_MULTIPLIER * r;
+    const c = {x: this.xc(), y: yi + r};
+    drawHexagon(ctx, c, r);
+    if (this.visibility >= ZONE_VISIBILITY) {
+      ctx.strokeStyle = 'rgba(250, 250, 250, 0.7)';
+      ctx.lineWidth = 0.5;
+      let zone = space.zones[1][1];
+      setZoneFill(ctx, zone, false);
+      drawHexagon(ctx, c, inner_r);
+      const a = Math.PI / 3;
+      for (var i = 0; i < 6; i++) {
+        let direction_vector: Point2D = {x: 0, y: 0};
+        switch(i) {
+          case 0:
+            direction_vector = {x: 2, y: 1};
+            break;
+          case 1:
+            direction_vector = {x: 2, y: 0};
+            break;
+          case 2:
+            direction_vector = {x: 1, y: 0};
+            break;
+          case 3:
+            direction_vector = {x: 0, y: 0};
+            break;
+          case 4:
+            direction_vector = {x: 0, y: 1};
+            break;
+          case 5:
+            direction_vector = {x: 1, y: 2};
+            break;
+        }
+        zone = space.zones[direction_vector.x][direction_vector.y];
+        setZoneFill(ctx, zone, false);
+        ctx.beginPath();
+        ctx.lineTo(c.x + inner_r * Math.cos(a * i + Math.PI / 6), c.y + inner_r * Math.sin(a * i + Math.PI / 6));
+        ctx.lineTo(c.x + inner_r * Math.cos(a * i + Math.PI / 2), c.y + inner_r * Math.sin(a * i + Math.PI / 2));
+        ctx.lineTo(c.x + r * Math.cos(a * i + Math.PI / 2), c.y + r * Math.sin(a * i + Math.PI / 2));
+        ctx.lineTo(c.x + r * Math.cos(a * i + Math.PI / 6), c.y + r * Math.sin(a * i + Math.PI / 6));
+        ctx.closePath();
+        ctx.stroke();
+        ctx.fill();
+      }
+    }
+    yi += hexagon_height + separator_distance;
+    this.drawSeparator(ctx, yi);
+    yi += separator_distance;
+    if (this.visibility >= 2) {
+      const rows = 4;
+      const image_size = Math.min(
+        36,
+        (1 / rows) * (0.6 * this.h() - separator_distance - (rows - 1) * separator_distance),
+      );
+      ctx.fillStyle = 'black';
+      const draw_row = (img: HTMLImageElement, text: string) => {
+        ctx.drawImage(img, this.xi() + 0.1 * this.w(), yi, image_size, image_size);
+        drawText(ctx, `: ${text}`, {
+          p: {x: this.xi() + 0.1 * this.w() + image_size + 2, y: yi},
+          w: 0.9 * this.w() - image_size - 2,
+          fill_style: 'black',
+          align: 'left',
+          font: `bold ${image_size}px serif`,
+        });
+        yi += image_size + separator_distance;
+      };
+      draw_row(this.risq.getIcon('icons/building64'), space.buildings?.size.toString());
+      draw_row(this.risq.getIcon('icons/villager64'), space.num_villager_units?.toString());
+      draw_row(this.risq.getIcon('icons/unit64'), space.num_military_units?.toString());
+      const resources = [...space.total_resources.entries()].filter(r => r[1] > 0).map(r => r[0]).sort((a, b) => a - b);
+      const num_resources = resources.length + 0.3 * (resources.length - 1); // account for slashes
+      const resource_image_size = Math.min(image_size, (1.0 / num_resources) * 0.8 * this.w());
+      for (const [i, r] of resources.entries()) {
+        if (i > 0) {
+          drawText(ctx, '/', {
+            p: {x: this.xi() + 0.1 * this.w() + (i * 1.3 - 0.15) * resource_image_size, y: yi},
+            w: 0.3 * resource_image_size,
+            fill_style: 'black',
+            align: 'center',
+            font: `bold ${resource_image_size}px serif`,
+          });
+        }
+        ctx.drawImage(
+          this.risq.getIcon(resourceTypeImage(r)),
+          this.xi() + 0.1 * this.w() + i * 1.3 * resource_image_size,
+          yi, resource_image_size, resource_image_size
+        );
+      }
+      yi += image_size + separator_distance;
+    }
+  }
+
+  private drawZone(ctx: CanvasRenderingContext2D, data: {space: RisqSpace, zone: RisqZone}) {
+    let yi = this.yi() + this.drawName(ctx, risqTerrainName(data.space.terrain));
+    drawText(ctx, 'zone', {
+      p: {x: this.xc(), y: yi},
+      w: this.w(),
+      fill_style: 'black',
+      align: 'center',
+      font: '18px serif',
+    });
+    yi += 26;
+    const separator_distance = 8;
+    const hexagon_height = Math.min(this.w(), this.yi() + 0.4 * this.h() - yi - separator_distance);
+    ctx.strokeStyle = 'rgba(250, 250, 250, 1)';
+    ctx.lineWidth = 2;
+    ctx.fillStyle = getSpaceFill(data.space, false).getString();
+    const r = 0.5 * hexagon_height;
+    const inner_r = INNER_ZONE_MULTIPLIER * r;
+    const c = {x: this.xc(), y: yi + r};
+    drawHexagon(ctx, c, r);
+    ctx.strokeStyle = 'rgba(250, 250, 250, 0.7)';
+    ctx.lineWidth = 0.5;
+    let zone = data.space.zones[1][1];
+    setZoneFill(ctx, zone, false);
+    drawHexagon(ctx, c, inner_r);
+    if (this.visibility >= ZONE_VISIBILITY) {
+      const a = Math.PI / 3;
+      for (var i = 0; i < 6; i++) {
+        let direction_vector: Point2D = {x: 0, y: 0};
+        switch(i) {
+          case 0:
+            direction_vector = {x: 2, y: 1};
+            break;
+          case 1:
+            direction_vector = {x: 2, y: 0};
+            break;
+          case 2:
+            direction_vector = {x: 1, y: 0};
+            break;
+          case 3:
+            direction_vector = {x: 0, y: 0};
+            break;
+          case 4:
+            direction_vector = {x: 0, y: 1};
+            break;
+          case 5:
+            direction_vector = {x: 1, y: 2};
+            break;
+        }
+        zone = data.space.zones[direction_vector.x][direction_vector.y];
+        setZoneFill(ctx, zone, false);
+        ctx.beginPath();
+        ctx.lineTo(c.x + inner_r * Math.cos(a * i + Math.PI / 6), c.y + inner_r * Math.sin(a * i + Math.PI / 6));
+        ctx.lineTo(c.x + inner_r * Math.cos(a * i + Math.PI / 2), c.y + inner_r * Math.sin(a * i + Math.PI / 2));
+        ctx.lineTo(c.x + r * Math.cos(a * i + Math.PI / 2), c.y + r * Math.sin(a * i + Math.PI / 2));
+        ctx.lineTo(c.x + r * Math.cos(a * i + Math.PI / 6), c.y + r * Math.sin(a * i + Math.PI / 6));
+        ctx.closePath();
+        ctx.stroke();
+        ctx.fill();
+      }
+    }
+    yi += hexagon_height + separator_distance;
+    this.drawSeparator(ctx, yi);
+    yi += separator_distance;
+    // TODO: draw resources/buildings/units based on visibility (max height = 0.6 * this.h() - separator_distance)
+  }
+
+  private drawName(ctx: CanvasRenderingContext2D, name: string): number {
+    const text_size = Math.min(40, (1 / 12) * this.size.y);
+    drawText(ctx, name, {
+      p: {x: this.xc(), y: this.yi()},
+      w: this.w(),
+      fill_style: 'black',
+      align: 'center',
+      font: `bold ${0.85 * text_size}px serif`,
+    });
+    return text_size;
+  }
+
+  private drawImage(ctx: CanvasRenderingContext2D, yi: number, img_name: string): number {
+    ctx.beginPath();
+    const max_img_height = (0.25 * this.size.y) - yi + this.yi();
+    const img_height = Math.min(max_img_height - 6, 0.8 * this.w());
+    ctx.drawImage(this.risq.getIcon(img_name), 0.5 * (this.w() - img_height), yi, img_height, img_height);
+    return max_img_height;
+  }
+
+  private drawSeparator(ctx: CanvasRenderingContext2D, yi: number) {
+    ctx.strokeStyle = 'rgba(60, 60, 60, 0.7)';
+    ctx.lineWidth = 2;
+    drawLine(ctx, {x: this.xi() + 0.1 * this.w(), y: yi}, {x: this.xf() - 0.1 * this.w(), y: yi});
+  }
+
+  private drawCombatStats(ctx: CanvasRenderingContext2D, yi: number, yf: number, cs: RisqCombatStats) {
     const gap_size = 4;
     const num_rows = 4;
     if (!(yf - yi > (num_rows + 1) * gap_size)) {
@@ -195,32 +404,6 @@ export class RisqLeftPanel implements CanvasComponent {
       // TODO: draw piercing
     }
     // TODO: draw defense
-  }
-
-  private drawName(ctx: CanvasRenderingContext2D, name: string): number {
-    const text_size = Math.min(40, (1 / 12) * this.size.y);
-    drawText(ctx, name, {
-      p: {x: this.xc(), y: this.yi()},
-      w: this.w(),
-      fill_style: 'black',
-      align: 'center',
-      font: `bold ${0.85 * text_size}px serif`,
-    });
-    return text_size;
-  }
-
-  private drawImage(ctx: CanvasRenderingContext2D, yi: number, img_name: string): number {
-    ctx.beginPath();
-    const max_img_height = (0.25 * this.size.y) - yi + this.yi();
-    const img_height = Math.min(max_img_height - 6, 0.8 * this.w());
-    ctx.drawImage(this.risq.getIcon(img_name), 0.5 * (this.w() - img_height), yi, img_height, img_height);
-    return max_img_height;
-  }
-
-  private drawSeparator(ctx: CanvasRenderingContext2D, yi: number) {
-    ctx.strokeStyle = 'rgba(60, 60, 60, 0.7)';
-    ctx.lineWidth = 2;
-    drawLine(ctx, {x: this.xi() + 0.1 * this.w(), y: yi}, {x: this.xf() - 0.1 * this.w(), y: yi});
   }
 
   mousemove(m: Point2D, transform: BoardTransformData): boolean {
