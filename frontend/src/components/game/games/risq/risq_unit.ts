@@ -1,8 +1,7 @@
-import {capitalize} from "../../../../scripts/util";
 import {RisqUnit} from "./risq_data";
 
-/** Returns image of the unit */
-export function unitImage(unit: RisqUnit): HTMLImageElement {
+/** Returns image path of the unit */
+export function unitImage(unit: RisqUnit): string {
   let filename = '';
   switch(unit.unit_id) {
     case 1:
@@ -13,11 +12,7 @@ export function unitImage(unit: RisqUnit): HTMLImageElement {
       break;
     default:
       console.error('Trying to get unit image from unknown unit id', unit.unit_id);
-      return new Image();
+      return '';
   }
-  const img = new Image();
-  img.src = `/images/risq/units/${filename}.png`;
-  img.alt = filename.split('_').map(word => capitalize(word)).join(' ');
-  // TODO: add player color
-  return img;
+  return `risq/units/${filename}`;
 }

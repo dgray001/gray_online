@@ -291,7 +291,7 @@ func (r *LobbyRoom) removeClient(c *Client, client_leaves bool) {
 	}
 	if r.gameStarted() {
 		if game.Game_PlayerDisconnected(r.game, c.client_id) {
-			delete_room := time.NewTimer(15 * time.Second)
+			delete_room := time.NewTimer(45 * time.Second)
 			r.delete_timer = delete_room
 			go func() {
 				<-delete_room.C

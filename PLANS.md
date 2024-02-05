@@ -1,12 +1,11 @@
 
 v0.6: Visible Risq
- m: Zone left panel shows info about the zone (resource/building/units)
- n: Can select units (have generic for units that are villager and military)
- o: Can select individual unit from group (show basic stats)
- p: Separate view for only military units
- q: Separate view for only villager units
- r: Can shift select to filter by type
- s: Backend calculates player score and frontend shows it
+ p: Can select units (have generic for units that are villager and military)
+ q: Can select individual unit from group (show basic stats)
+ r: Separate view for only military units
+ s: Separate view for only villager units
+ t: Can shift select to filter by type
+ u: Backend calculates player score and frontend shows it
 
  o: Frontend has scrollable area for orders (below scores)
  q: Can toggle between views: building/villager/military/resource

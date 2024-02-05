@@ -7,6 +7,7 @@ import {buildingImage} from '../risq_buildings';
 import {RisqAttackType, RisqBuilding, RisqCombatStats, RisqResource, RisqSpace, RisqZone, ZONE_VISIBILITY, risqTerrainName} from '../risq_data';
 import {resourceImage, resourceTypeImage} from '../risq_resources';
 import {getSpaceFill} from '../risq_space';
+import {unitImage} from '../risq_unit';
 import {INNER_ZONE_MULTIPLIER, setZoneFill} from '../risq_zone';
 import {RisqLeftPanelButton} from './left_panel_close';
 
@@ -344,7 +345,65 @@ export class RisqLeftPanel implements CanvasComponent {
     yi += hexagon_height + separator_distance;
     this.drawSeparator(ctx, yi);
     yi += separator_distance;
-    // TODO: draw resources/buildings/units based on visibility (max height = 0.6 * this.h() - separator_distance)
+    const max_image_size = 36; // it should be this size
+    const u_img_mult = 1.3;
+    const units_per_row = Math.floor((0.8 * this.w() - 1.6 * max_image_size) / (u_img_mult * max_image_size));
+    const economic_rows = Math.ceil(data.zone.economic_units.length / units_per_row);
+    const military_rows = Math.ceil(data.zone.military_units.length / units_per_row);
+    const rows = 1 + economic_rows + military_rows;
+    const image_size = Math.min(
+      max_image_size,
+      (1 / rows) * (0.6 * this.h() - separator_distance - (rows - 1) * separator_distance),
+    );
+    ctx.fillStyle = 'black';
+    const draw_row = (img: HTMLImageElement, text: string) => {
+      ctx.drawImage(img, this.xi() + 0.1 * this.w(), yi, image_size, image_size);
+      drawText(ctx, `: ${text}`, {
+        p: {x: this.xi() + 0.1 * this.w() + image_size + 2, y: yi + 0.5 * image_size},
+        w: 0.9 * this.w() - image_size - 2,
+        fill_style: 'black',
+        align: 'left',
+        baseline: 'middle',
+        font: `bold ${image_size}px serif`,
+      });
+    };
+    if (!!data.zone.resource) {
+      draw_row(this.risq.getIcon(resourceImage(data.zone.resource)), data.zone.resource.display_name);
+    } else {
+      draw_row(this.risq.getIcon(buildingImage(data.zone.building)), data.zone.building?.display_name ?? 'Empty Plot');
+    }
+    yi += image_size + separator_distance;
+    let xi = this.xi() + 0.1 * this.w() + 0.6 * image_size;
+    if (data.zone.economic_units.length > 0) {
+      draw_row(this.risq.getIcon('icons/villager64'), '');
+      let i = 1;
+      let j = 0;
+      for (const u of data.zone.economic_units) {
+        ctx.drawImage(this.risq.getIcon(unitImage(data.zone.units.get(u))),
+          xi + i * u_img_mult * image_size, yi + j * u_img_mult * image_size, image_size, image_size);
+        i++;
+        if (i > units_per_row) {
+          i = 1;
+          j++;
+        }
+      }
+      yi += economic_rows * u_img_mult * image_size + separator_distance;
+    }
+    if (data.zone.military_units.length > 0) {
+      draw_row(this.risq.getIcon('icons/unit64'), '');
+      let i = 1;
+      let j = 0;
+      for (const u of data.zone.military_units) {
+        ctx.drawImage(this.risq.getIcon(unitImage(data.zone.units.get(u))),
+          xi + i * u_img_mult * image_size, yi + j * u_img_mult * image_size, image_size, image_size);
+        i++;
+        if (i > units_per_row) {
+          i = 1;
+          j++;
+        }
+      }
+      yi += military_rows * u_img_mult * image_size + separator_distance;
+    }
   }
 
   private drawName(ctx: CanvasRenderingContext2D, name: string): number {
@@ -426,7 +485,7 @@ export class RisqLeftPanel implements CanvasComponent {
     if (this.close_button.mousedown(e)) {
       return true;
     }
-    return false;
+    return this.isHovering();
   }
 
   mouseup(e: MouseEvent) {

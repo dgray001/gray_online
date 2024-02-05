@@ -3,6 +3,7 @@ import {capitalize} from '../../../../scripts/util';
 import {GameBase, GamePlayer} from '../../data_models';
 import {Point2D} from '../../util/objects2d';
 import { resourceType } from './risq_resources';
+import { organizeZoneUnits } from './risq_zone';
 
 /** Data describing a game of risq */
 export declare interface GameRisq {
@@ -93,12 +94,16 @@ export declare interface RisqZone {
   coordinate: Point2D;
   resource?: RisqResource;
   building?: RisqBuilding;
-  units: Map<number, RisqUnit>;
+  units: Map<number, RisqUnit>; // <internal_ids, unit>
   // purely frontend fields
   hovered: boolean;
   clicked: boolean;
   hovered_data: EllipHoverData[];
-  units_by_type?: Map<number, UnitByTypeData>; // <unit_id, internal_ids>
+  units_by_type: Map<number, UnitByTypeData>; // <unit_id, internal_ids>
+  economic_units_by_type: UnitByTypeData[];
+  military_units_by_type: UnitByTypeData[];
+  economic_units: number[]; // internal_id[]
+  military_units: number[]; // internal_id[]
   reset_hovered_data?: boolean;
 }
 
@@ -382,15 +387,22 @@ export function serverToRisqZone(server_zone: RisqZoneFromServer): RisqZone {
   if (!server_zone) {
     return undefined;
   }
+  const units = new Map(server_zone.units.map(server_unit => [server_unit.internal_id, serverToRisqUnit(server_unit)]));
+  const units_by_type = organizeZoneUnits(units);
   return {
     coordinate: server_zone.coordinate,
     resource: serverToRisqResource(server_zone.resource),
     building: serverToRisqBuilding(server_zone.building),
-    units: new Map(server_zone.units.map(server_unit => [server_unit.internal_id, serverToRisqUnit(server_unit)])),
+    units,
     // purely frontend fields
     hovered: false,
     clicked: false,
     hovered_data: [],
+    units_by_type,
+    military_units_by_type: [...units_by_type.values()].filter(u => u.unit_id > 10).sort((a, b) => a.unit_id - b.unit_id),
+    economic_units_by_type: [...units_by_type.values()].filter(u => u.unit_id < 11).sort((a, b) => a.unit_id - b.unit_id),
+    military_units: [...units.values()].filter(u => u.unit_id > 10).sort((a, b) => a.unit_id - b.unit_id).map(u => u.internal_id),
+    economic_units: [...units.values(), ...units.values(), ...units.values()].filter(u => u.unit_id < 11).sort((a, b) => a.unit_id - b.unit_id).map(u => u.internal_id),
   };
 }
 

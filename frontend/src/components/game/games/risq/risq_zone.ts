@@ -4,7 +4,7 @@ import {drawEllipse} from "../../util/canvas_util";
 import {Point2D, pointInHexagon, rotatePoint, subtractPoint2D} from "../../util/objects2d";
 import {DwgRisq} from "./risq";
 import {buildingImage} from "./risq_buildings";
-import {RisqSpace, RisqZone, UnitByTypeData} from "./risq_data";
+import {RisqSpace, RisqUnit, RisqZone, UnitByTypeData} from "./risq_data";
 import {resourceImage} from "./risq_resources";
 import {unitImage} from "./risq_unit";
 
@@ -12,18 +12,19 @@ import {unitImage} from "./risq_unit";
 export const INNER_ZONE_MULTIPLIER = 0.4;
 
 /** Organizes units by unit id for easier processing */
-export function organizeZoneUnits(zone: RisqZone) {
-  zone.units_by_type = new Map<number, UnitByTypeData>();
-  for (const unit of zone.units.values()) {
-    if (zone.units_by_type.has(unit.unit_id)) {
-      zone.units_by_type.get(unit.unit_id).units.add(unit.internal_id);
+export function organizeZoneUnits(units: Map<number, RisqUnit>): Map<number, UnitByTypeData> {
+  const units_by_type = new Map<number, UnitByTypeData>();
+  for (const unit of units.values()) {
+    if (units_by_type.has(unit.unit_id)) {
+      units_by_type.get(unit.unit_id).units.add(unit.internal_id);
     } else {
-      zone.units_by_type.set(unit.unit_id, {
+      units_by_type.set(unit.unit_id, {
         unit_id: unit.unit_id,
         units: new Set<number>([unit.internal_id]),
       });
     }
   }
+  return units_by_type;
 }
 
 /** Sets zone fill for the input zone */
@@ -97,30 +98,29 @@ export function drawRisqZone(ctx: CanvasRenderingContext2D, game: DwgRisq, zone:
         break;
       case 1: // economic units
       case 2: // military units
-        if (!zone.units_by_type) {
-          organizeZoneUnits(zone);
-        }
-        const units = [...zone.units_by_type.values()];
-        const units_by_type = i === 1 ? units.filter(u => u.unit_id < 11) : units.filter(u => u.unit_id > 10);
+        const units_by_type = i === 1 ? zone.economic_units_by_type : zone.military_units_by_type;
         if (units_by_type.length === 0) {
           ctx.strokeStyle = secondary_color;
         } else if (units_by_type.length === 1) {
           const unit = zone.units.get([...units_by_type[0].units.values()][0]);
-          ctx.drawImage(unitImage(unit), -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
+          ctx.drawImage(game.getIcon(unitImage(unit)), -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
           drawText(ctx, units_by_type[0].units.size.toString(),
             1.4 * part.r.y, -part.r.x, -0.7 * part.r.y, 2 * part.r.x);
         } else if (units_by_type.length === 2) {
           for (let j = 0; j < 2; j++) {
             const units = [...units_by_type[j].units.values()];
             const unit = zone.units.get(units[0]);
-            ctx.drawImage(unitImage(unit), (0.5 * j - 1) * part.r.x, (0.5 * j - 1) * part.r.y, 1.5 * part.r.x, 1.5 * part.r.y);
-            drawText(ctx, units.length.toString(), part.r.y, (0.5 * j - 1) * part.r.x, (0.5 * j - 1) * part.r.y, 2 * part.r.x);
+            ctx.drawImage(game.getIcon(unitImage(unit)), (0.5 * j - 1) * part.r.x,
+              (0.5 * j - 1) * part.r.y, 1.5 * part.r.x, 1.5 * part.r.y);
+            drawText(ctx, units.length.toString(), part.r.y, (0.5 * j - 1) * part.r.x,
+              (0.5 * j - 1) * part.r.y, 2 * part.r.x);
           }
         } else if (units_by_type.length === 3) {
           for (let j = 0; j < 2; j++) {
             const units = [...units_by_type[j].units.values()];
             const unit = zone.units.get(units[0]);
-            ctx.drawImage(unitImage(unit), (0.8 * j - 0.9) * part.r.x, -0.9 * part.r.y, part.r.x, part.r.y);
+            ctx.drawImage(game.getIcon(unitImage(unit)), (0.8 * j - 0.9) * part.r.x,
+              -0.9 * part.r.y, part.r.x, part.r.y);
             drawText(
               ctx,
               units.length.toString(),
@@ -132,7 +132,8 @@ export function drawRisqZone(ctx: CanvasRenderingContext2D, game: DwgRisq, zone:
           }
           const units = [...units_by_type[2].units.values()];
           const unit = zone.units.get(units[0]);
-          ctx.drawImage(unitImage(unit), -0.5 * part.r.x, -0.1 * part.r.y, part.r.x, part.r.y);
+          ctx.drawImage(game.getIcon(unitImage(unit)), -0.5 * part.r.x,
+            -0.1 * part.r.y, part.r.x, part.r.y);
           drawText(
             ctx,
             units.length.toString(),
@@ -145,7 +146,8 @@ export function drawRisqZone(ctx: CanvasRenderingContext2D, game: DwgRisq, zone:
           for (let j = 0; j < 2; j++) {
             const units = [...units_by_type[j].units.values()];
             const unit = zone.units.get(units[0]);
-            ctx.drawImage(unitImage(unit), (0.8 * j - 0.9) * part.r.x, -0.9 * part.r.y, part.r.x, part.r.y);
+            ctx.drawImage(game.getIcon(unitImage(unit)), (0.8 * j - 0.9) * part.r.x,
+              -0.9 * part.r.y, part.r.x, part.r.y);
             drawText(
               ctx,
               units.length.toString(),
@@ -158,7 +160,8 @@ export function drawRisqZone(ctx: CanvasRenderingContext2D, game: DwgRisq, zone:
           for (let j = 0; j < 2; j++) {
             const units = [...units_by_type[2+j].units.values()];
             const unit = zone.units.get(units[0]);
-            ctx.drawImage(unitImage(unit), (0.8 * j - 0.9) * part.r.x, -0.1 * part.r.y, part.r.x, part.r.y);
+            ctx.drawImage(game.getIcon(unitImage(unit)), (0.8 * j - 0.9) * part.r.x,
+              -0.1 * part.r.y, part.r.x, part.r.y);
             drawText(
               ctx,
               units.length.toString(),
@@ -172,12 +175,14 @@ export function drawRisqZone(ctx: CanvasRenderingContext2D, game: DwgRisq, zone:
           for (let j = 0; j < 2; j++) {
             const units = [...units_by_type[j].units.values()];
             const unit = zone.units.get(units[0]);
-            ctx.drawImage(unitImage(unit), (0.8 * j - 0.9) * part.r.x, -0.9 * part.r.y, part.r.x, part.r.y);
+            ctx.drawImage(game.getIcon(unitImage(unit)), (0.8 * j - 0.9) * part.r.x,
+              -0.9 * part.r.y, part.r.x, part.r.y);
           }
           for (let j = 0; j < 1; j++) {
             const units = [...units_by_type[2+j].units.values()];
             const unit = zone.units.get(units[0]);
-            ctx.drawImage(unitImage(unit), (0.8 * j - 0.9) * part.r.x, -0.1 * part.r.y, part.r.x, part.r.y);
+            ctx.drawImage(game.getIcon(unitImage(unit)), (0.8 * j - 0.9) * part.r.x,
+              -0.1 * part.r.y, part.r.x, part.r.y);
           }
           drawText(
             ctx,

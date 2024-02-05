@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.5n: Space left panel
+v0.5o: Zone left panel
 
 ## Dev Use
 
