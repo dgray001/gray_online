@@ -12,14 +12,18 @@ import {unitImage} from "./risq_unit";
 export const INNER_ZONE_MULTIPLIER = 0.4;
 
 /** Organizes units by unit id for easier processing */
-export function organizeZoneUnits(units: Map<number, RisqUnit>): Map<number, UnitByTypeData> {
-  const units_by_type = new Map<number, UnitByTypeData>();
+export function organizeZoneUnits(units: Map<number, RisqUnit>): Map<number, Map<number, UnitByTypeData>> {
+  const units_by_type = new Map<number, Map<number, UnitByTypeData>>();
   for (const unit of units.values()) {
-    if (units_by_type.has(unit.unit_id)) {
-      units_by_type.get(unit.unit_id).units.add(unit.internal_id);
+    if (!units_by_type.has(unit.player_id)) {
+      units_by_type.set(unit.player_id, new Map<number, UnitByTypeData>());
+    }
+    if (units_by_type.get(unit.player_id).has(unit.unit_id)) {
+      units_by_type.get(unit.player_id).get(unit.unit_id).units.add(unit.internal_id);
     } else {
-      units_by_type.set(unit.unit_id, {
+      units_by_type.get(unit.player_id).set(unit.unit_id, {
         unit_id: unit.unit_id,
+        player_id: unit.player_id,
         units: new Set<number>([unit.internal_id]),
       });
     }
@@ -98,7 +102,15 @@ export function drawRisqZone(ctx: CanvasRenderingContext2D, game: DwgRisq, zone:
         break;
       case 1: // economic units
       case 2: // military units
-        const units_by_type = i === 1 ? zone.economic_units_by_type : zone.military_units_by_type;
+        const units_by_player_and_type = i === 1 ? zone.economic_units_by_type : zone.military_units_by_type;
+        if (units_by_player_and_type.size === 0) {
+          ctx.strokeStyle = secondary_color;
+          break;
+        } else if (units_by_player_and_type.size > 1) {
+          // TODO: handle displaying multiplayer units => either battle or allies
+          break;
+        }
+        const units_by_type = [...units_by_player_and_type.values()][0];
         if (units_by_type.length === 0) {
           ctx.strokeStyle = secondary_color;
         } else if (units_by_type.length === 1) {

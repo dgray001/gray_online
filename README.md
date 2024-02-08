@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.5o: Zone left panel
+v0.5p: Can select single unit
 
 ## Dev Use
 

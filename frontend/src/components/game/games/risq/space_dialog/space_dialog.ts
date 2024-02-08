@@ -439,24 +439,28 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
           }
           break;
         case 1: // units
-          if (zone.units_by_type.size === 0) {
+          if (zone.units_by_type.size !== 1) {
+            break;
+          }
+          const units_by_type = [...zone.units_by_type.values()][0];
+          if (units_by_type.size === 0) {
             this.ctx.strokeStyle = 'rgba(200, 200, 200, 0.5)';
             drawText(this.ctx, '0', 1.4 * part.r.y, -0.5 * part.r.x, -0.7 * part.r.y, part.r.x);
-          } else if (zone.units_by_type.size === 1) {
-            const unit_data = [...zone.units_by_type.values()][0];
+          } else if (units_by_type.size === 1) {
+            const unit_data = [...units_by_type.values()][0];
             const unit = zone.units.get([...unit_data.units.values()][0]);
             this.ctx.drawImage(this.data.game.getIcon(unitImage(unit)), -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
             drawText(this.ctx, unit_data.units.size.toString(), 1.4 * part.r.y, -part.r.x, -0.7 * part.r.y, 2 * part.r.x);
-          } else if (zone.units_by_type.size === 2) {
-            const unit_data = [...zone.units_by_type.values()];
+          } else if (units_by_type.size === 2) {
+            const unit_data = [...units_by_type.values()];
             for (let j = 0; j < 2; j++) {
               const units = [...unit_data[j].units.values()];
               const unit = zone.units.get(units[0]);
               this.ctx.drawImage(this.data.game.getIcon(unitImage(unit)), (0.5 * j - 1) * part.r.x, (0.5 * j - 1) * part.r.y, 1.5 * part.r.x, 1.5 * part.r.y);
               drawText(this.ctx, units.length.toString(), part.r.y, (0.5 * j - 1) * part.r.x, (0.5 * j - 1) * part.r.y, 2 * part.r.x);
             }
-          } else if (zone.units_by_type.size === 3) {
-            const unit_data = [...zone.units_by_type.values()];
+          } else if (units_by_type.size === 3) {
+            const unit_data = [...units_by_type.values()];
             for (let j = 0; j < 2; j++) {
               const units = [...unit_data[j].units.values()];
               const unit = zone.units.get(units[0]);
@@ -481,8 +485,8 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
               -0.1 * part.r.y,
               1.5 * part.r.x
             );
-          } else if (zone.units_by_type.size === 4) {
-            const unit_data = [...zone.units_by_type.values()];
+          } else if (units_by_type.size === 4) {
+            const unit_data = [...units_by_type.values()];
             for (let j = 0; j < 2; j++) {
               const units = [...unit_data[j].units.values()];
               const unit = zone.units.get(units[0]);
@@ -510,7 +514,7 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
               );
             }
           } else {
-            const unit_data = [...zone.units_by_type.values()];
+            const unit_data = [...units_by_type.values()];
             for (let j = 0; j < 2; j++) {
               const units = [...unit_data[j].units.values()];
               const unit = zone.units.get(units[0]);

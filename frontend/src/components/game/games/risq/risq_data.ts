@@ -99,9 +99,9 @@ export declare interface RisqZone {
   hovered: boolean;
   clicked: boolean;
   hovered_data: EllipHoverData[];
-  units_by_type: Map<number, UnitByTypeData>; // <unit_id, internal_ids>
-  economic_units_by_type: UnitByTypeData[];
-  military_units_by_type: UnitByTypeData[];
+  units_by_type: Map<number, Map<number, UnitByTypeData>>; // <player_id, <unit_id, internal_ids>>
+  economic_units_by_type: Map<number, UnitByTypeData[]>; // <player_id, units_by_type>
+  military_units_by_type: Map<number, UnitByTypeData[]>; // <player_id, units_by_type>
   economic_units: number[]; // internal_id[]
   military_units: number[]; // internal_id[]
   reset_hovered_data?: boolean;
@@ -109,6 +109,7 @@ export declare interface RisqZone {
 
 /** Data describing units_by_type data */
 export declare interface UnitByTypeData {
+  player_id: number;
   unit_id: number;
   units: Set<number>; // internal ids
   hover_data?: RectHoverData;
@@ -389,6 +390,25 @@ export function serverToRisqZone(server_zone: RisqZoneFromServer): RisqZone {
   }
   const units = new Map(server_zone.units.map(server_unit => [server_unit.internal_id, serverToRisqUnit(server_unit)]));
   const units_by_type = organizeZoneUnits(units);
+  const economic_units_by_type = new Map<number, UnitByTypeData[]>();
+  const military_units_by_type = new Map<number, UnitByTypeData[]>();
+  for (const [player_id, player_units] of units_by_type.entries()) {
+    economic_units_by_type.set(player_id, []);
+    military_units_by_type.set(player_id, []);
+    for (const [unit_id, units] of player_units.entries()) {
+      if (unit_id < 11) {
+        economic_units_by_type.get(player_id).push(units);
+      } else {
+        military_units_by_type.get(player_id).push(units);
+      }
+    }
+    if (economic_units_by_type.get(player_id).length === 0) {
+      economic_units_by_type.delete(player_id);
+    }
+    if (military_units_by_type.get(player_id).length === 0) {
+      military_units_by_type.delete(player_id);
+    }
+  }
   return {
     coordinate: server_zone.coordinate,
     resource: serverToRisqResource(server_zone.resource),
@@ -399,10 +419,10 @@ export function serverToRisqZone(server_zone: RisqZoneFromServer): RisqZone {
     clicked: false,
     hovered_data: [],
     units_by_type,
-    military_units_by_type: [...units_by_type.values()].filter(u => u.unit_id > 10).sort((a, b) => a.unit_id - b.unit_id),
-    economic_units_by_type: [...units_by_type.values()].filter(u => u.unit_id < 11).sort((a, b) => a.unit_id - b.unit_id),
+    economic_units_by_type,
+    military_units_by_type,
     military_units: [...units.values()].filter(u => u.unit_id > 10).sort((a, b) => a.unit_id - b.unit_id).map(u => u.internal_id),
-    economic_units: [...units.values(), ...units.values(), ...units.values()].filter(u => u.unit_id < 11).sort((a, b) => a.unit_id - b.unit_id).map(u => u.internal_id),
+    economic_units: [...units.values()].filter(u => u.unit_id < 11).sort((a, b) => a.unit_id - b.unit_id).map(u => u.internal_id),
   };
 }
 

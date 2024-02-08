@@ -4,7 +4,7 @@ import {drawHexagon, drawLine, drawRect, drawText} from '../../../util/canvas_ut
 import {Point2D} from '../../../util/objects2d';
 import {DwgRisq} from '../risq';
 import {buildingImage} from '../risq_buildings';
-import {RisqAttackType, RisqBuilding, RisqCombatStats, RisqResource, RisqSpace, RisqZone, ZONE_VISIBILITY, risqTerrainName} from '../risq_data';
+import {RisqAttackType, RisqBuilding, RisqCombatStats, RisqResource, RisqSpace, RisqUnit, RisqZone, UnitByTypeData, ZONE_VISIBILITY, risqTerrainName} from '../risq_data';
 import {resourceImage, resourceTypeImage} from '../risq_resources';
 import {getSpaceFill} from '../risq_space';
 import {unitImage} from '../risq_unit';
@@ -23,6 +23,11 @@ export enum LeftPanelDataType {
   BUILDING,
   SPACE,
   ZONE,
+  MULTIPLE_PLAYERS_UNITS,
+  UNITS,
+  ECONOMIC_UNITS,
+  MILITARY_UNITS,
+  UNIT,
 }
 
 export class RisqLeftPanel implements CanvasComponent {
@@ -83,6 +88,11 @@ export class RisqLeftPanel implements CanvasComponent {
       LeftPanelDataType.RESOURCE,
       LeftPanelDataType.BUILDING,
       LeftPanelDataType.ZONE,
+      LeftPanelDataType.MULTIPLE_PLAYERS_UNITS,
+      LeftPanelDataType.UNITS,
+      LeftPanelDataType.ECONOMIC_UNITS,
+      LeftPanelDataType.MILITARY_UNITS,
+      LeftPanelDataType.UNIT,
     ].includes(data_type)) {
       return; // zones not visible
     }
@@ -90,6 +100,55 @@ export class RisqLeftPanel implements CanvasComponent {
     this.visibility = visibility;
     this.data = data;
     this.showing = true;
+    switch(data_type) {
+      case LeftPanelDataType.MULTIPLE_PLAYERS_UNITS:
+      case LeftPanelDataType.UNITS:
+      case LeftPanelDataType.ECONOMIC_UNITS:
+      case LeftPanelDataType.MILITARY_UNITS:
+        this.checkUnitsData(data);
+        break;
+      default:
+        break;
+    }
+  }
+
+  private checkUnitsData(data: {space: RisqSpace, units: Map<number, UnitByTypeData[]>}) {
+    if (!data || !data.space || !data.space.units || !data.units || data.units.size < 1) {
+      this.close();
+      return;
+    }
+    const new_data: [number, UnitByTypeData[]][] = [];
+    for (const [player_id, units_by_type] of data.units.entries()) {
+      if (player_id < 0 || units_by_type.length < 1) {
+        continue;
+      }
+      new_data.push([player_id, units_by_type.filter(u => u.units.size > 0)]);
+    }           
+    if (new_data.length < 1) {
+      this.close();
+      return;
+    }
+    if (new_data.length > 1) {
+      this.data_type = LeftPanelDataType.MULTIPLE_PLAYERS_UNITS;
+      this.data = {space: data.space, units: new_data};
+      return;
+    }
+    const units_by_type = new_data[0][1];
+    if (units_by_type.length === 1 && units_by_type[0].units.size === 1) {
+      this.data_type = LeftPanelDataType.UNIT;
+      this.data = data.space.units.get([...units_by_type[0].units.values()][0]); // set data as internal id
+      return;
+    }
+    this.data = {space: data.space, units: units_by_type};
+    const has_economic_units = units_by_type.some(u => u.unit_id < 11);
+    const has_military_units = units_by_type.some(u => u.unit_id > 10);
+    if (has_economic_units && has_military_units) {
+      this.data_type = LeftPanelDataType.UNITS;
+    } else if (has_economic_units) {
+      this.data_type = LeftPanelDataType.ECONOMIC_UNITS;
+    } else if (has_military_units) {
+      this.data_type = LeftPanelDataType.MILITARY_UNITS;
+    }
   }
 
   draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number) {
@@ -116,6 +175,21 @@ export class RisqLeftPanel implements CanvasComponent {
         case LeftPanelDataType.ZONE:
           this.drawZone(ctx, this.data);
           break;
+        case LeftPanelDataType.MULTIPLE_PLAYERS_UNITS:
+          // TODO: implement
+          break;
+        case LeftPanelDataType.UNITS:
+          // TODO: implement
+          break;
+        case LeftPanelDataType.ECONOMIC_UNITS:
+          // TODO: implement
+          break;
+        case LeftPanelDataType.MILITARY_UNITS:
+          // TODO: implement
+          break;
+        case LeftPanelDataType.UNIT:
+          this.drawUnit(ctx, this.data);
+          break;
         default:
           console.error('Unknown data type for left panel', this.data_type);
           break;
@@ -123,6 +197,20 @@ export class RisqLeftPanel implements CanvasComponent {
     });
     ctx.beginPath();
     this.close_button.draw(ctx, transform, dt);
+  }
+
+  private drawUnit(ctx: CanvasRenderingContext2D, unit: RisqUnit) {
+    let yi = this.yi() + this.drawName(ctx, unit.display_name);
+    yi += this.drawImage(ctx, yi, unitImage(unit));
+    this.drawSeparator(ctx, yi);
+    yi = this.yi() + 0.25 * this.size.y + 6;
+    this.drawCombatStats(ctx, yi, yi + 0.25 * this.size.y - 12, unit.combat_stats);
+    if (this.risq.getPlayer().player.player_id === unit.player_id) {
+      this.drawSeparator(ctx, this.yi() + 0.5 * this.size.y);
+      // TODO: draw action buttons
+      this.drawSeparator(ctx, this.yi() + 0.75 * this.size.y);
+      // TODO: draw orders
+    }
   }
 
   private drawResource(ctx: CanvasRenderingContext2D, resource: RisqResource) {
@@ -434,7 +522,7 @@ export class RisqLeftPanel implements CanvasComponent {
 
   private drawCombatStats(ctx: CanvasRenderingContext2D, yi: number, yf: number, cs: RisqCombatStats) {
     const gap_size = 4;
-    const num_rows = 4;
+    const num_rows = 4; // health, attack, piercing, defense
     if (!(yf - yi > (num_rows + 1) * gap_size)) {
       return;
     }
@@ -458,11 +546,45 @@ export class RisqLeftPanel implements CanvasComponent {
       font: `${health_height}px serif`,
     });
     yi += row_size + gap_size;
+    const draw_stat_row = (stats: [string, number][]) => {
+      let xi = this.xi() + 0.1 * this.w();
+      const dx = 0.8 * this.w() / stats.length;
+      const image_size = Math.min(0.7 * row_size, 0.3 * dx);
+      let drew_one = false;
+      for (const s of stats.filter(s => !!s[1])) {
+        drew_one = true;
+        ctx.drawImage(this.risq.getIcon(s[0]), xi, yi, image_size, image_size);
+        drawText(ctx, s[1].toString(), {
+          p: {x: xi + image_size + 0.1 * dx, y: yi + 0.5 * image_size},
+          w: dx - image_size,
+          fill_style: 'black',
+          align: 'left',
+          baseline: 'middle',
+          font: `${0.9 * image_size}px serif`,
+        });
+        xi += dx;
+      }
+      if (drew_one) {
+        yi += row_size + gap_size;
+      }
+    };
     if (cs.attack_type !== RisqAttackType.NONE) {
-      // TODO: draw attack
-      // TODO: draw piercing
+      draw_stat_row([
+        ['risq/icons/attack_blunt', cs.attack_blunt],
+        ['risq/icons/attack_piercing', cs.attack_piercing],
+        ['risq/icons/attack_magic', cs.attack_magic],
+      ]);
+      draw_stat_row([
+        ['risq/icons/penetration_blunt', cs.penetration_blunt],
+        ['risq/icons/penetration_piercing', cs.penetration_piercing],
+        ['risq/icons/penetration_magic', cs.penetration_magic],
+      ]);
     }
-    // TODO: draw defense
+    draw_stat_row([
+      ['risq/icons/defense_blunt', cs.defense_blunt],
+      ['risq/icons/defense_piercing', cs.defense_piercing],
+      ['risq/icons/defense_magic', cs.defense_magic],
+    ]);
   }
 
   mousemove(m: Point2D, transform: BoardTransformData): boolean {

@@ -314,7 +314,7 @@ export class DwgRisq extends DwgElement {
     if (!!this.hovered_space && this.hovered_space.visibility > 0) {
       this.hovered_space.clicked = true;
       if (this.draw_detail !== DrawRisqSpaceDetail.ZONE_DETAILS) {
-        return true; // TODO: make false
+        return false;
       }
       if (!!this.hovered_zone) {
         this.hovered_space.clicked = false;
@@ -361,10 +361,18 @@ export class DwgRisq extends DwgElement {
                   }
                   break;
                 case 1: // economic units
-                  //this.left_panel.openPanel();
+                  this.left_panel.openPanel(
+                    LeftPanelDataType.ECONOMIC_UNITS,
+                    this.hovered_space.visibility,
+                    {space: this.hovered_space, units: this.hovered_zone.economic_units_by_type},
+                  );
                   break;
                 case 2: // military units
-                  //this.left_panel.openPanel();
+                  this.left_panel.openPanel(
+                    LeftPanelDataType.MILITARY_UNITS,
+                    this.hovered_space.visibility,
+                    {space: this.hovered_space, units: this.hovered_zone.military_units_by_type},
+                  );
                   break;
                 default:
                   break;
