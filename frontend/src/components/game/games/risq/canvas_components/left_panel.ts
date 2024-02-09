@@ -1,14 +1,15 @@
 import {BoardTransformData} from '../../../util/canvas_board/canvas_board';
+import {DwgButton} from '../../../util/canvas_components/button/button';
 import {CanvasComponent, configDraw} from '../../../util/canvas_components/canvas_component';
 import {drawHexagon, drawLine, drawRect, drawText} from '../../../util/canvas_util';
-import {Point2D} from '../../../util/objects2d';
+import {Point2D, equalsPoint2D} from '../../../util/objects2d';
 import {DwgRisq} from '../risq';
 import {buildingImage} from '../risq_buildings';
-import {RisqAttackType, RisqBuilding, RisqCombatStats, RisqResource, RisqSpace, RisqUnit, RisqZone, UnitByTypeData, ZONE_VISIBILITY, risqTerrainName} from '../risq_data';
+import {RisqAttackType, RisqBuilding, RisqCombatStats, RisqResource, RisqSpace, RisqUnit, RisqZone, UnitByTypeData, ZONE_VISIBILITY, coordinateToIndex, risqTerrainName} from '../risq_data';
 import {resourceImage, resourceTypeImage} from '../risq_resources';
 import {getSpaceFill} from '../risq_space';
 import {unitImage} from '../risq_unit';
-import {INNER_ZONE_MULTIPLIER, setZoneFill} from '../risq_zone';
+import {INNER_ZONE_MULTIPLIER, getZoneFill, resolveHoveredZones} from '../risq_zone';
 import {RisqLeftPanelButton} from './left_panel_close';
 
 /** Config for the left panel */
@@ -41,6 +42,8 @@ export class RisqLeftPanel implements CanvasComponent {
   private data_type: LeftPanelDataType;
   private visibility: number;
   private data: any; // data being shown in panel
+  private buttons: DwgButton[] = [];
+  private hovered_zone?: RisqZone; // relevant when drawing space and zone
 
   constructor(risq: DwgRisq, config: LeftPanelConfig) {
     this.risq = risq;
@@ -78,6 +81,7 @@ export class RisqLeftPanel implements CanvasComponent {
     this.data_type = undefined;
     this.visibility = undefined;
     this.data = undefined;
+    this.hovered_zone = undefined;
   }
 
   openPanel(data_type: LeftPanelDataType, visibility: number, data: any) {
@@ -179,13 +183,13 @@ export class RisqLeftPanel implements CanvasComponent {
           // TODO: implement
           break;
         case LeftPanelDataType.UNITS:
-          // TODO: implement
+          this.drawUnits(ctx, this.data);
           break;
         case LeftPanelDataType.ECONOMIC_UNITS:
-          // TODO: implement
+          this.drawUnits(ctx, this.data);
           break;
         case LeftPanelDataType.MILITARY_UNITS:
-          // TODO: implement
+          this.drawUnits(ctx, this.data);
           break;
         case LeftPanelDataType.UNIT:
           this.drawUnit(ctx, this.data);
@@ -194,9 +198,61 @@ export class RisqLeftPanel implements CanvasComponent {
           console.error('Unknown data type for left panel', this.data_type);
           break;
       }
+      for (const button of this.buttons) {
+        button.draw(ctx, transform, dt);
+      }
     });
     ctx.beginPath();
     this.close_button.draw(ctx, transform, dt);
+  }
+
+  private drawUnits(ctx: CanvasRenderingContext2D, data: {space: RisqSpace, units: UnitByTypeData[]}) {
+    const total_units = data.units.map(u => u.units.size).reduce((a, b) => a + b);
+    let yi = this.yi() + this.drawName(ctx, `${total_units} Units`);
+    const separator_distance = 8;
+    const image_size = total_units < 40 ? 64 : 36;
+    const u_img_mult = 1.3;
+    const units_per_row = Math.floor((0.8 * this.w()) / (u_img_mult * image_size));
+    if (units_per_row < 1) {
+      return;
+    }
+    const rows = data.units.map(u => Math.ceil(u.units.size / units_per_row)).reduce((a, b) => a + b);
+    const max_height = (this.yi() + 0.5 * this.size.y - separator_distance) - yi;
+    const max_rows = Math.floor(max_height / (image_size + separator_distance));
+    if (rows > max_rows) {
+      // TODO: implement just number of each unit
+    } else {
+      yi = this.yi() + 0.5 * this.size.y - rows * (image_size + separator_distance);
+      for (const unit_data of data.units) {
+        if (unit_data.units.size < 1) {
+          continue;
+        }
+        let i = 0;
+        for (const unit_id of unit_data.units.values()) {
+          const unit = data.space.units.get(unit_id);
+          if (!unit) {
+            continue;
+          }
+          if (i >= units_per_row) {
+            i = 0;
+            yi += image_size + separator_distance;
+          }
+          ctx.drawImage(
+            this.risq.getIcon(unitImage(unit)),
+            this.xi() + 0.1 * this.w() + i * (image_size + separator_distance),
+            yi, image_size, image_size
+          );
+          i++;
+        }
+        yi += image_size + separator_distance;
+      }
+    }
+    if (this.risq.getPlayer().player.player_id === data.units[0].player_id) {
+      this.drawSeparator(ctx, this.yi() + 0.5 * this.size.y);
+      // TODO: draw action buttons => based on this.data_type
+      this.drawSeparator(ctx, this.yi() + 0.75 * this.size.y);
+      // TODO: draw orders => only if they share orders
+    }
   }
 
   private drawUnit(ctx: CanvasRenderingContext2D, unit: RisqUnit) {
@@ -274,56 +330,7 @@ export class RisqLeftPanel implements CanvasComponent {
     });
     yi += 26;
     const separator_distance = 8;
-    const hexagon_height = Math.min(this.w(), this.yi() + 0.4 * this.h() - yi - separator_distance);
-    ctx.strokeStyle = 'rgba(250, 250, 250, 1)';
-    ctx.lineWidth = 2;
-    ctx.fillStyle = getSpaceFill(space, false).getString();
-    const r = 0.5 * hexagon_height;
-    const inner_r = INNER_ZONE_MULTIPLIER * r;
-    const c = {x: this.xc(), y: yi + r};
-    drawHexagon(ctx, c, r);
-    if (this.visibility >= ZONE_VISIBILITY) {
-      ctx.strokeStyle = 'rgba(250, 250, 250, 0.7)';
-      ctx.lineWidth = 0.5;
-      let zone = space.zones[1][1];
-      setZoneFill(ctx, zone, false);
-      drawHexagon(ctx, c, inner_r);
-      const a = Math.PI / 3;
-      for (var i = 0; i < 6; i++) {
-        let direction_vector: Point2D = {x: 0, y: 0};
-        switch(i) {
-          case 0:
-            direction_vector = {x: 2, y: 1};
-            break;
-          case 1:
-            direction_vector = {x: 2, y: 0};
-            break;
-          case 2:
-            direction_vector = {x: 1, y: 0};
-            break;
-          case 3:
-            direction_vector = {x: 0, y: 0};
-            break;
-          case 4:
-            direction_vector = {x: 0, y: 1};
-            break;
-          case 5:
-            direction_vector = {x: 1, y: 2};
-            break;
-        }
-        zone = space.zones[direction_vector.x][direction_vector.y];
-        setZoneFill(ctx, zone, false);
-        ctx.beginPath();
-        ctx.lineTo(c.x + inner_r * Math.cos(a * i + Math.PI / 6), c.y + inner_r * Math.sin(a * i + Math.PI / 6));
-        ctx.lineTo(c.x + inner_r * Math.cos(a * i + Math.PI / 2), c.y + inner_r * Math.sin(a * i + Math.PI / 2));
-        ctx.lineTo(c.x + r * Math.cos(a * i + Math.PI / 2), c.y + r * Math.sin(a * i + Math.PI / 2));
-        ctx.lineTo(c.x + r * Math.cos(a * i + Math.PI / 6), c.y + r * Math.sin(a * i + Math.PI / 6));
-        ctx.closePath();
-        ctx.stroke();
-        ctx.fill();
-      }
-    }
-    yi += hexagon_height + separator_distance;
+    yi += this.drawSpaceHexagon(ctx, space, separator_distance, yi);
     this.drawSeparator(ctx, yi);
     yi += separator_distance;
     if (this.visibility >= 2) {
@@ -370,31 +377,33 @@ export class RisqLeftPanel implements CanvasComponent {
     }
   }
 
-  private drawZone(ctx: CanvasRenderingContext2D, data: {space: RisqSpace, zone: RisqZone}) {
-    let yi = this.yi() + this.drawName(ctx, risqTerrainName(data.space.terrain));
-    drawText(ctx, 'zone', {
-      p: {x: this.xc(), y: yi},
-      w: this.w(),
-      fill_style: 'black',
-      align: 'center',
-      font: '18px serif',
-    });
-    yi += 26;
-    const separator_distance = 8;
+  private hexagon_r: number = 0;
+  private hexagon_c: Point2D = {x: 0, y: 0};
+  private drawSpaceHexagon(ctx: CanvasRenderingContext2D, space: RisqSpace,
+    separator_distance: number, yi: number, curr_zone: Point2D = {x: -1, y: -1}
+  ): number {
     const hexagon_height = Math.min(this.w(), this.yi() + 0.4 * this.h() - yi - separator_distance);
     ctx.strokeStyle = 'rgba(250, 250, 250, 1)';
     ctx.lineWidth = 2;
-    ctx.fillStyle = getSpaceFill(data.space, false).getString();
+    ctx.fillStyle = getSpaceFill(space, false).getString();
     const r = 0.5 * hexagon_height;
+    this.hexagon_r = r;
     const inner_r = INNER_ZONE_MULTIPLIER * r;
     const c = {x: this.xc(), y: yi + r};
+    this.hexagon_c = c;
     drawHexagon(ctx, c, r);
-    ctx.strokeStyle = 'rgba(250, 250, 250, 0.7)';
-    ctx.lineWidth = 0.5;
-    let zone = data.space.zones[1][1];
-    setZoneFill(ctx, zone, false);
-    drawHexagon(ctx, c, inner_r);
     if (this.visibility >= ZONE_VISIBILITY) {
+      ctx.strokeStyle = 'rgba(250, 250, 250, 0.7)';
+      ctx.lineWidth = 0.5;
+      let zone = space.zones[1][1];
+      const zone_fill = getZoneFill(zone, true, 4);
+      if (curr_zone.x === 1 && curr_zone.y === 1) {
+        zone_fill.addColor(255, 255, 255, 0.2);
+      } else {
+        zone_fill.dAlpha(-0.2);
+      }
+      ctx.fillStyle = zone_fill.getString();
+      drawHexagon(ctx, c, inner_r);
       const a = Math.PI / 3;
       for (var i = 0; i < 6; i++) {
         let direction_vector: Point2D = {x: 0, y: 0};
@@ -418,8 +427,14 @@ export class RisqLeftPanel implements CanvasComponent {
             direction_vector = {x: 1, y: 2};
             break;
         }
-        zone = data.space.zones[direction_vector.x][direction_vector.y];
-        setZoneFill(ctx, zone, false);
+        zone = space.zones[direction_vector.x][direction_vector.y];
+        const zone_fill = getZoneFill(zone, true, 4);
+        if (curr_zone.x === direction_vector.x && curr_zone.y === direction_vector.y) {
+          zone_fill.addColor(255, 255, 255, 0.2);
+        } else {
+          zone_fill.dAlpha(-0.2);
+        }
+        ctx.fillStyle = zone_fill.getString();
         ctx.beginPath();
         ctx.lineTo(c.x + inner_r * Math.cos(a * i + Math.PI / 6), c.y + inner_r * Math.sin(a * i + Math.PI / 6));
         ctx.lineTo(c.x + inner_r * Math.cos(a * i + Math.PI / 2), c.y + inner_r * Math.sin(a * i + Math.PI / 2));
@@ -430,7 +445,21 @@ export class RisqLeftPanel implements CanvasComponent {
         ctx.fill();
       }
     }
-    yi += hexagon_height + separator_distance;
+    return hexagon_height + separator_distance;
+  }
+
+  private drawZone(ctx: CanvasRenderingContext2D, data: {space: RisqSpace, zone: RisqZone}) {
+    let yi = this.yi() + this.drawName(ctx, risqTerrainName(data.space.terrain));
+    drawText(ctx, 'zone', {
+      p: {x: this.xc(), y: yi},
+      w: this.w(),
+      fill_style: 'black',
+      align: 'center',
+      font: '18px serif',
+    });
+    yi += 26;
+    const separator_distance = 8;
+    yi += this.drawSpaceHexagon(ctx, data.space, separator_distance, yi, coordinateToIndex(1, data.zone.coordinate));
     this.drawSeparator(ctx, yi);
     yi += separator_distance;
     const max_image_size = 36; // it should be this size
@@ -600,6 +629,23 @@ export class RisqLeftPanel implements CanvasComponent {
     } else {
       this.hovering = false;
     }
+    switch(this.data_type) {
+      case LeftPanelDataType.SPACE:
+      case LeftPanelDataType.ZONE:
+        const space: RisqSpace = this.data_type === LeftPanelDataType.SPACE ? this.data : this.data.space;
+        const new_hovered_zone = resolveHoveredZones(m, space, this.hexagon_r, this.hexagon_c, true);
+        if (!!this.hovered_zone && !equalsPoint2D(this.hovered_zone.coordinate, new_hovered_zone?.coordinate)) {
+          this.hovered_zone.hovered = false;
+          this.hovered_zone.clicked = false;
+        }
+        this.hovered_zone = new_hovered_zone;
+        break;
+      default:
+        break;
+    }
+    for (const button of this.buttons) {
+      button.mousemove(m, transform);
+    }
     return this.isHovering();
   }
 
@@ -607,11 +653,41 @@ export class RisqLeftPanel implements CanvasComponent {
     if (this.close_button.mousedown(e)) {
       return true;
     }
+    switch(this.data_type) {
+      case LeftPanelDataType.SPACE:
+      case LeftPanelDataType.ZONE:
+        if (!!this.hovered_zone) {
+          this.hovered_zone.clicked = true;
+        }
+        break;
+      default:
+        break;
+    }
+    for (const button of this.buttons) {
+      button.mousedown(e);
+    }
     return this.isHovering();
   }
 
   mouseup(e: MouseEvent) {
     this.close_button.mouseup(e);
+    switch(this.data_type) {
+      case LeftPanelDataType.SPACE:
+      case LeftPanelDataType.ZONE:
+        if (!!this.hovered_zone) {
+          this.hovered_zone.clicked = false;
+          if (this.hovered_zone.hovered) {
+            const space: RisqSpace = this.data_type === LeftPanelDataType.SPACE ? this.data : this.data.space;
+            this.openPanel(LeftPanelDataType.ZONE, this.visibility, {space, zone: this.hovered_zone});
+          }
+        }
+        break;
+      default:
+        break;
+    }
+    for (const button of this.buttons) {
+      button.mouseup(e);
+    }
   }
 
   xi(): number {

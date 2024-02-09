@@ -3,7 +3,7 @@ import {drawHexagon} from "../../util/canvas_util";
 import {Point2D} from "../../util/objects2d";
 import {DwgRisq} from "./risq";
 import {RisqSpace} from "./risq_data";
-import {INNER_ZONE_MULTIPLIER, drawRisqZone, setZoneFill} from "./risq_zone";
+import {INNER_ZONE_MULTIPLIER, drawRisqZone, getZoneFill} from "./risq_zone";
 
 /** How much detail to draw in a space */
 export enum DrawRisqSpaceDetail {
@@ -75,11 +75,10 @@ export function drawRisqSpace(ctx: CanvasRenderingContext2D, game: DwgRisq,
       return;
     }
     ctx.translate(space.center.x, space.center.y);
-    ctx.fillStyle = 'rgb(10, 120, 10, 0.8)';
-    ctx.strokeStyle = 'rgba(250, 250, 250, 0.2)';
-    ctx.lineWidth = 0.1;
     let zone = space.zones[1][1];
-    setZoneFill(ctx, zone);
+    ctx.strokeStyle = 'rgba(250, 250, 250, 0.9)';
+    ctx.lineWidth = 0.1;
+    ctx.fillStyle = getZoneFill(zone).getString();
     const r = config.hex_r;
     const inner_r = INNER_ZONE_MULTIPLIER * r;
     let zone_r = 0.45 * r;
@@ -114,7 +113,8 @@ export function drawRisqSpace(ctx: CanvasRenderingContext2D, game: DwgRisq,
           break;
       }
       zone = space.zones[direction_vector.x][direction_vector.y];
-      setZoneFill(ctx, zone);
+      ctx.strokeStyle = 'rgba(250, 250, 250, 0.9)';
+      ctx.fillStyle = getZoneFill(zone).getString();
       ctx.beginPath();
       ctx.lineTo(inner_r * Math.cos(a * i + Math.PI / 6), inner_r * Math.sin(a * i + Math.PI / 6));
       ctx.lineTo(inner_r * Math.cos(a * i + Math.PI / 2), inner_r * Math.sin(a * i + Math.PI / 2));

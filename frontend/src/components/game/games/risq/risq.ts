@@ -240,6 +240,7 @@ export class DwgRisq extends DwgElement {
   }
 
   private mousemove(m: Point2D, transform: BoardTransformData) {
+    this.draw_detail = this.getDrawDetail(transform.scale);
     this.mouse_canvas = m;
     const hovered_other_component = [
       this.right_panel.mousemove(m, transform),

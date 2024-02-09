@@ -1,7 +1,5 @@
 
 v0.6: Visible Risq
- p: Can select units (have generic for units that are villager and military)
- q: Can select individual unit from group (show basic stats)
  r: Separate view for only military units
  s: Separate view for only villager units
  t: Can shift select to filter by type

@@ -31,18 +31,17 @@ export function organizeZoneUnits(units: Map<number, RisqUnit>): Map<number, Map
   return units_by_type;
 }
 
-/** Sets zone fill for the input zone */
-export function setZoneFill(ctx: CanvasRenderingContext2D, zone: RisqZone, check_hover = true) {
-  ctx.strokeStyle = 'rgba(250, 250, 250, 0.9)';
+/** Gets zone fill for the input zone */
+export function getZoneFill(zone: RisqZone, check_hover = true, alpha_multiplier = 1): ColorRGB {
   const color = new ColorRGB(10, 120, 10, 0.8);
   if (check_hover && zone.hovered && !zone.hovered_data.some(p => p.hovered)) {
     if (zone.clicked) {
-      color.addColor(210, 210, 210, 0.06);
+      color.addColor(210, 210, 210, alpha_multiplier * 0.06);
     } else {
-      color.addColor(190, 190, 190, 0.03);
+      color.addColor(190, 190, 190, alpha_multiplier * 0.03);
     }
   }
-  ctx.fillStyle = color.getString();
+  return color;
 }
 
 /** Draws the input risq zone */
@@ -226,13 +225,18 @@ export function drawRisqZone(ctx: CanvasRenderingContext2D, game: DwgRisq, zone:
 }
 
 /** Resolves hover logic for the zones of a risq space */
-export function resolveHoveredZones(p: Point2D, space: RisqSpace, r: number): RisqZone|undefined {
+export function resolveHoveredZones(p: Point2D, space: RisqSpace, r: number,
+  override_center?: Point2D, ignore_parts?: boolean
+): RisqZone|undefined {
   if (!space.zones) {
     return undefined;
   }
 
   const resolveZoneDependencies = (m: Point2D, zone: RisqZone, rotate: number) => {
     zone.hovered = true;
+    if (ignore_parts) {
+      return;
+    }
     const p = rotatePoint(m, rotate);
     for (const part of zone.hovered_data) {
       const dx = p.x - part.c.x;
@@ -245,12 +249,12 @@ export function resolveHoveredZones(p: Point2D, space: RisqSpace, r: number): Ri
     }
   };
 
-  const m = subtractPoint2D({x: p.x, y: p.y}, space.center);
+  const m = subtractPoint2D({x: p.x, y: p.y}, override_center ?? space.center);
   let new_hovered_zone: RisqZone|undefined = undefined;
   if (pointInHexagon(m, INNER_ZONE_MULTIPLIER * r)) {
     new_hovered_zone = space.zones[1][1];
     resolveZoneDependencies(m, new_hovered_zone, 0);
-  } else {
+  } else if (pointInHexagon(m, r)) {
     const angle = atangent(m.y, m.x);
     let index = Math.floor((angle + Math.PI / 6) / (Math.PI / 3));
     let direction_vector: Point2D = {x: 0, y: 0};
