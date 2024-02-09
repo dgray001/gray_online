@@ -125,6 +125,8 @@ export declare interface RisqUnit {
   zone_coordinate: Point2D;
   speed: number;
   combat_stats: RisqCombatStats;
+  // purely frontend fields
+  hover_data: RectHoverData;
 }
 
 /** Data describing a risq building */
@@ -447,7 +449,8 @@ export function serverToRisqUnit(server_unit: RisqUnitFromServer): RisqUnit {
   if (!server_unit) {
     return undefined;
   }
-  return server_unit;
+  (server_unit as RisqUnit).hover_data = {ps: {x: 0, y: 0}, pe: {x: 0, y: 0}};
+  return server_unit as RisqUnit;
 }
 
 /** Returns the space from the input index, if the space exists */

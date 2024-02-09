@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.5q: Can select zones in left panel
+v0.5r: Can select individual units in units and zone views
 
 ## Dev Use
 

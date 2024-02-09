@@ -1,5 +1,11 @@
 import {RisqUnit} from "./risq_data";
 
+/** Fill style for healthbar background rect */
+export const UNIT_HEALTHBAR_COLOR_BACKGROUND = 'black';
+
+/** Fill style for healthbar health rect */
+export const UNIT_HEALTHBAR_COLOR_HEALTH = 'rgb(100, 250, 100)';
+
 /** Returns image path of the unit */
 export function unitImage(unit: RisqUnit): string {
   let filename = '';

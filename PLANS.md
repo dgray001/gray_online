@@ -1,22 +1,19 @@
 
 v0.6: Visible Risq
- r: Separate view for only military units
- s: Separate view for only villager units
- t: Can shift select to filter by type
- u: Backend calculates player score and frontend shows it
-
- o: Frontend has scrollable area for orders (below scores)
- q: Can toggle between views: building/villager/military/resource
- r: Orders abstraction (backend game update of "add order") => each order has unique id
- s: Backend game update of "finish orders" with frontend button (UI to show) => confirm dialog box
- t: Backend orders abstraction on each unit and building
- u: Left panel shows unit / building orders in the order the will complete
- v: Unit and building return list of possible orders based on game state => send to frontend
- w: Frontend can see/add building orders for making unit => population limit
- x: Frontend shows summary report skeleton each turn (backend creates from zone/space/player)
- y: Can cancel existing orders (as part of orders turn)
+ s: More select options => can shift select to select by type, can select all units/etc... in zone and space
+ t: Backend calculates player score and frontend shows it
+ u: Abstract scrollbar
+ v: Scrollable area for orders for buildings / units => add order list in backend and data on frontend
+ w: Can see all new orders in right panel with button to "finish orders" and can see who is finished
+ x: Order to build unit in building => update works => population limit
+ y: Frontend shows summary report skeleton each turn (backend creates from zone/space/player)
+ z Can toggle between views: building/villager/military/resource
 
 v0.7: Playable Risq
+ r: Orders abstraction (backend game update of "add order") => each order has unique id
+ u: Left panel shows unit / building orders in the order the will complete
+ v: Unit and building return list of possible orders based on game state => send to frontend
+ y: Can cancel existing orders (as part of orders turn)
  o: Can cancel creation of unit (villager)
  p: Movement backend logic
  q: Movement frontend logic
