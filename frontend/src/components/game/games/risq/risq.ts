@@ -323,6 +323,7 @@ export class DwgRisq extends DwgElement {
         for (const part of this.hovered_zone.hovered_data) {
           if (part.hovered) {
             part.clicked = true;
+            this.hovered_zone.clicked = false;
             return true;
           }
         }
@@ -337,13 +338,12 @@ export class DwgRisq extends DwgElement {
     if (!!this.hovered_space) {
       if (!!this.hovered_zone) {
         if (
-          this.hovered_zone.clicked &&
           this.hovered_space.visibility > 0 &&
           this.draw_detail === DrawRisqSpaceDetail.ZONE_DETAILS
         ) {
           let open_zone = true;
           for (const [i, part] of this.hovered_zone.hovered_data.entries()) {
-            if (part.clicked) {
+            if (part.clicked && part.hovered) {
               open_zone = false;
               switch(i) {
                 case 0: // building / resource
@@ -381,7 +381,7 @@ export class DwgRisq extends DwgElement {
               break;
             }
           }
-          if (open_zone) {
+          if (open_zone && this.hovered_zone.clicked) {
             this.left_panel.openPanel(
               LeftPanelDataType.ZONE,
               this.hovered_space.visibility,

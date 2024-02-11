@@ -139,6 +139,8 @@ export declare interface RisqBuilding {
   zone_coordinate: Point2D;
   population_support: number;
   combat_stats: RisqCombatStats;
+  // purely frontend fields
+  hover_data: RectHoverData;
 }
 
 /** Data describing combat stats */
@@ -178,6 +180,8 @@ export declare interface RisqResource {
   zone_coordinate: Point2D;
   resources_left: number;
   base_gather_speed: number;
+  // purely frontend fields
+  hover_data: RectHoverData; // left panel
 }
 
 /** Data describing a game of risq as returned by server */
@@ -433,7 +437,8 @@ export function serverToRisqBuilding(server_building: RisqBuildingFromServer): R
   if (!server_building) {
     return undefined;
   }
-  return server_building;
+  (server_building as RisqBuilding).hover_data = {ps: {x: 0, y: 0}, pe: {x: 0, y: 0}};
+  return server_building as RisqBuilding;
 }
 
 /** Converts a server response to a frontend risq resource */
@@ -441,7 +446,8 @@ export function serverToRisqResource(server_resource: RisqResourceFromServer): R
   if (!server_resource) {
     return undefined;
   }
-  return server_resource;
+  (server_resource as RisqResource).hover_data = {ps: {x: 0, y: 0}, pe: {x: 0, y: 0}};
+  return server_resource as RisqResource;
 }
 
 /** Converts a server response to a frontend risq zone */

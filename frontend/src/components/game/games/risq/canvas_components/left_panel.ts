@@ -5,7 +5,7 @@ import {drawHexagon, drawLine, drawRect, drawText} from '../../../util/canvas_ut
 import {Point2D, equalsPoint2D} from '../../../util/objects2d';
 import {DwgRisq} from '../risq';
 import {buildingImage} from '../risq_buildings';
-import {RisqAttackType, RisqBuilding, RisqCombatStats, RisqResource, RisqSpace, RisqUnit, RisqZone, UnitByTypeData, ZONE_VISIBILITY, coordinateToIndex, risqTerrainName} from '../risq_data';
+import {RectHoverData, RisqAttackType, RisqBuilding, RisqCombatStats, RisqResource, RisqSpace, RisqUnit, RisqZone, UnitByTypeData, ZONE_VISIBILITY, coordinateToIndex, risqTerrainName} from '../risq_data';
 import {resourceImage, resourceTypeImage} from '../risq_resources';
 import {getSpaceFill} from '../risq_space';
 import {UNIT_HEALTHBAR_COLOR_BACKGROUND, UNIT_HEALTHBAR_COLOR_HEALTH, unitImage} from '../risq_unit';
@@ -32,6 +32,14 @@ export enum LeftPanelDataType {
   UNIT,
 }
 
+/** Possible objects in a space/zone that can be hovered */
+export enum HoverableObjectType {
+  NONE,
+  UNIT,
+  BUILDING,
+  RESOURCE,
+}
+
 export class RisqLeftPanel implements CanvasComponent {
   private close_button: RisqLeftPanelButton;
 
@@ -45,7 +53,8 @@ export class RisqLeftPanel implements CanvasComponent {
   private data: any; // data being shown in panel
   private buttons: DwgButton[] = [];
   private hovered_zone?: RisqZone; // relevant when drawing space and zone
-  private hovered_unit?: RisqUnit; // relevant when drawing multiple units
+  private hovered_object?: RisqUnit|RisqBuilding|RisqResource;
+  private hovered_object_type: HoverableObjectType = HoverableObjectType.NONE;
 
   constructor(risq: DwgRisq, config: LeftPanelConfig) {
     this.risq = risq;
@@ -498,21 +507,38 @@ export class RisqLeftPanel implements CanvasComponent {
       (1 / rows) * (0.6 * this.h() - separator_distance - (rows - 1) * separator_distance),
     );
     ctx.fillStyle = 'black';
-    const draw_row = (img: HTMLImageElement, text: string) => {
-      ctx.drawImage(img, this.xi() + 0.1 * this.w(), yi, image_size, image_size);
+    const draw_row = (img: HTMLImageElement, text: string, hover_data?: RectHoverData) => {
+      const ps = {x: this.xi() + 0.1 * this.w(), y: yi};
+      const pe = {x: ps.x + 0.8 * this.w(), y: ps.y + image_size};
+      if (hover_data?.hovered) {
+        ctx.strokeStyle = 'transparent';
+        if (hover_data?.clicked) {
+          ctx.fillStyle = 'rgba(250, 250, 250, 0.4)';
+        } else {
+          ctx.fillStyle = 'rgba(210, 210, 210, 0.25)';
+        }
+        drawRect(ctx, ps, pe.x - ps.x, pe.y - ps.y);
+      }
+      ctx.drawImage(img, ps.x, ps.y, image_size, image_size);
       drawText(ctx, `: ${text}`, {
-        p: {x: this.xi() + 0.1 * this.w() + image_size + 2, y: yi + 0.5 * image_size},
-        w: 0.9 * this.w() - image_size - 2,
+        p: {x: ps.x + image_size + 2, y: yi + 0.5 * image_size},
+        w: 0.8 * this.w() - image_size - 2,
         fill_style: 'black',
         align: 'left',
         baseline: 'middle',
         font: `bold ${image_size}px serif`,
       });
+      if (!!hover_data) {
+        hover_data.ps = ps;
+        hover_data.pe = pe;
+      }
     };
     if (!!data.zone.resource) {
-      draw_row(this.risq.getIcon(resourceImage(data.zone.resource)), data.zone.resource.display_name);
+      draw_row(this.risq.getIcon(resourceImage(data.zone.resource)),
+        data.zone.resource.display_name, data.zone.resource.hover_data);
     } else {
-      draw_row(this.risq.getIcon(buildingImage(data.zone.building)), data.zone.building?.display_name ?? 'Empty Plot');
+      draw_row(this.risq.getIcon(buildingImage(data.zone.building)),
+        data.zone.building?.display_name ?? 'Empty Plot', data.zone.building?.hover_data);
     }
     yi += image_size + separator_distance;
     let xi = this.xi() + 0.1 * this.w() + 0.6 * image_size;
@@ -641,23 +667,29 @@ export class RisqLeftPanel implements CanvasComponent {
     ]);
   }
 
-  private unitHoverLogic(m: Point2D, unit: RisqUnit): boolean {
-    if (!unit) {
+  private objectHoverLogic(m: Point2D, object: RisqUnit|RisqBuilding|RisqResource,
+    object_type: HoverableObjectType
+  ): boolean {
+    if (!object) {
       return false;
     }
     if (
-      m.x < unit.hover_data.ps.x || m.y < unit.hover_data.ps.y ||
-      m.x > unit.hover_data.pe.x || m.y > unit.hover_data.pe.y
+      m.x < object.hover_data.ps.x || m.y < object.hover_data.ps.y ||
+      m.x > object.hover_data.pe.x || m.y > object.hover_data.pe.y
     ) {
-      unit.hover_data.hovered = false;
+      object.hover_data.hovered = false;
       return false;
     } else {
-      if (!!this.hovered_unit && this.hovered_unit.internal_id !== unit.internal_id) {
-        this.hovered_unit.hover_data.hovered = false;
-        this.hovered_unit.hover_data.clicked = false;
+      if (!!this.hovered_object && (
+        this.hovered_object.internal_id !== object.internal_id ||
+        this.hovered_object_type !== object_type
+      )) {
+        this.hovered_object.hover_data.hovered = false;
+        this.hovered_object.hover_data.clicked = false;
       }
-      unit.hover_data.hovered = true;
-      this.hovered_unit = unit;
+      object.hover_data.hovered = true;
+      this.hovered_object = object;
+      this.hovered_object_type = !!object ? object_type : HoverableObjectType.NONE;
       return true;
     }
   }
@@ -688,8 +720,10 @@ export class RisqLeftPanel implements CanvasComponent {
         if (this.data_type === LeftPanelDataType.ZONE) {
           const unit_ids: number[] = [...this.data.zone.economic_units, ...this.data.zone.military_units];
           for (const unit_id of unit_ids) {
-            this.unitHoverLogic(m, this.data.zone?.units.get(unit_id));
+            this.objectHoverLogic(m, this.data.zone?.units.get(unit_id), HoverableObjectType.UNIT);
           }
+          this.objectHoverLogic(m, this.data.zone?.resource, HoverableObjectType.RESOURCE);
+          this.objectHoverLogic(m, this.data.zone?.building, HoverableObjectType.BUILDING);
         }
         break;
       case LeftPanelDataType.UNITS:
@@ -700,7 +734,7 @@ export class RisqLeftPanel implements CanvasComponent {
             continue;
           }
           for (const unit_id of unit_data.units.values()) {
-            this.unitHoverLogic(m, this.data.space?.units.get(unit_id));
+            this.objectHoverLogic(m, this.data.space?.units.get(unit_id), HoverableObjectType.UNIT);
           }
         }
         break;
@@ -722,15 +756,15 @@ export class RisqLeftPanel implements CanvasComponent {
       case LeftPanelDataType.ZONE:
         if (!!this.hovered_zone) {
           this.hovered_zone.clicked = true;
-        } else if (!!this.hovered_unit) {
-          this.hovered_unit.hover_data.clicked = true;
+        } else if (!!this.hovered_object) {
+          this.hovered_object.hover_data.clicked = true;
         }
         break;
       case LeftPanelDataType.UNITS:
       case LeftPanelDataType.ECONOMIC_UNITS:
       case LeftPanelDataType.MILITARY_UNITS:
-        if (!!this.hovered_unit) {
-          this.hovered_unit.hover_data.clicked = true;
+        if (!!this.hovered_object) {
+          this.hovered_object.hover_data.clicked = true;
         }
         break;
       default:
@@ -747,19 +781,38 @@ export class RisqLeftPanel implements CanvasComponent {
     switch(this.data_type) {
       case LeftPanelDataType.SPACE:
       case LeftPanelDataType.ZONE:
+        const space: RisqSpace = this.data_type === LeftPanelDataType.SPACE ? this.data : this.data.space;
         if (!!this.hovered_zone && this.hovered_zone.clicked) {
           this.hovered_zone.clicked = false;
           if (this.hovered_zone.hovered) {
-            const space: RisqSpace = this.data_type === LeftPanelDataType.SPACE ? this.data : this.data.space;
             this.openPanel(LeftPanelDataType.ZONE, this.visibility, {space, zone: this.hovered_zone});
           }
-        } else if (!!this.hovered_unit && this.hovered_unit.hover_data.clicked) {
-          this.hovered_unit.hover_data.clicked = false;
-          if (this.hovered_unit.hover_data.hovered) {
-            if (e.shiftKey) {
-              //
-            } else {
-              this.openPanel(LeftPanelDataType.UNIT, this.visibility, this.hovered_unit);
+        } else if (!!this.hovered_object && this.hovered_object.hover_data.clicked) {
+          this.hovered_object.hover_data.clicked = false;
+          if (this.hovered_object.hover_data.hovered) {
+            switch(this.hovered_object_type) {
+              case HoverableObjectType.UNIT:
+                if (e.shiftKey) {
+                  const units_by_type: Map<number, UnitByTypeData> =
+                    this.data.zone.units_by_type.get((this.hovered_object as RisqUnit).player_id);
+                  if (!!units_by_type) {
+                    this.openPanel(LeftPanelDataType.UNITS_BY_TYPE, this.visibility, {
+                      space, units: [...units_by_type.values()].filter(
+                        (u: UnitByTypeData) => u.unit_id === (this.hovered_object as RisqUnit).unit_id)
+                    });
+                  }
+                } else {
+                  this.openPanel(LeftPanelDataType.UNIT, this.visibility, this.hovered_object);
+                }
+                break;
+              case HoverableObjectType.BUILDING:
+                this.openPanel(LeftPanelDataType.BUILDING, this.visibility, this.hovered_object);
+                break;
+              case HoverableObjectType.RESOURCE:
+                this.openPanel(LeftPanelDataType.RESOURCE, this.visibility, this.hovered_object);
+                break;
+              default:
+                break;
             }
           }
         }
@@ -767,15 +820,16 @@ export class RisqLeftPanel implements CanvasComponent {
       case LeftPanelDataType.UNITS:
       case LeftPanelDataType.ECONOMIC_UNITS:
       case LeftPanelDataType.MILITARY_UNITS:
-        if (!!this.hovered_unit && this.hovered_unit.hover_data.clicked) {
-          this.hovered_unit.hover_data.clicked = false;
-          if (this.hovered_unit.hover_data.hovered) {
+        if (!!this.hovered_object && this.hovered_object.hover_data.clicked) {
+          this.hovered_object.hover_data.clicked = false;
+          if (this.hovered_object.hover_data.hovered) {
             if (e.shiftKey) {
               this.openPanel(LeftPanelDataType.UNITS_BY_TYPE, this.visibility, {
-                space: this.data.space, units: this.data.units
+                space: this.data.space, units: this.data.units.filter(
+                  (u: UnitByTypeData) => u.unit_id === (this.hovered_object as RisqUnit).unit_id)
               });
             } else {
-              this.openPanel(LeftPanelDataType.UNIT, this.visibility, this.hovered_unit);
+              this.openPanel(LeftPanelDataType.UNIT, this.visibility, this.hovered_object);
             }
           }
         }

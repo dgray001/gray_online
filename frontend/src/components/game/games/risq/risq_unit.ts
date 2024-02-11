@@ -16,6 +16,9 @@ export function unitImage(unit: RisqUnit): string {
     case 11:
       filename = 'swordsman';
       break;
+    case 12:
+      filename = 'villager_aoe';
+      break;
     default:
       console.error('Trying to get unit image from unknown unit id', unit.unit_id);
       return '';

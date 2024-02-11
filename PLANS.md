@@ -1,6 +1,5 @@
 
 v0.6: Visible Risq
- s: More select options => can shift select to select by type, can select all units/etc... in zone and space
  t: Backend calculates player score and frontend shows it
  u: Abstract scrollbar
  v: Scrollable area for orders for buildings / units => add order list in backend and data on frontend
@@ -25,6 +24,7 @@ v0.7: Playable Risq
  w: Barracks / soldier
  z: Attack order => can win
 
+ - Can select all units in zone / space
  - Proper updates dialog for fiddlesticks and euchre
  - Can launch games with AI (all games must handle)
  - Timed turns (or not) and can pause game if timed
