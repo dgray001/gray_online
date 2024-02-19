@@ -38,9 +38,26 @@ func (p *RisqPlayer) populationLimit() uint16 {
 	return limit
 }
 
+func (p *RisqPlayer) score() uint {
+	score := uint(0)
+	score += p.resources.score()
+	for _, building := range p.buildings {
+		score += building.score()
+	}
+	for _, unit := range p.units {
+		score += unit.score()
+	}
+	return score
+}
+
+func (p *RisqPlayer) valid() bool {
+	return true
+}
+
 func (p *RisqPlayer) toFrontend(show_updates bool) gin.H {
 	player := gin.H{
 		"population_limit": p.populationLimit(),
+		"score":            p.score(),
 		"color":            p.color,
 	}
 	if p.player != nil {

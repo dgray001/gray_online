@@ -3,7 +3,7 @@ import {CanvasComponent, Rotation, configDraw} from '../../../util/canvas_compon
 import {drawLine, drawRect, drawText} from '../../../util/canvas_util';
 import {Point2D} from '../../../util/objects2d';
 import {DwgRisq} from '../risq';
-import {RisqPlayer, RisqResourceType} from '../risq_data';
+import {GameRisqScoreEntry, RisqResourceType} from '../risq_data';
 import {resourceTypeImage} from '../risq_resources';
 import {RisqRightPanelButton} from './right_panel_button';
 
@@ -96,6 +96,9 @@ export class RisqRightPanel implements CanvasComponent {
             this.drawSeparator(ctx, yi);
             yi += 5;
           }
+          for (const score of this.risq.getGame().scores) {
+            this.drawScore(ctx, yi, score);
+          }
         }
       });
     }
@@ -128,6 +131,17 @@ export class RisqRightPanel implements CanvasComponent {
       w: 0.9 * this.w() - 36,
       fill_style: 'black',
       baseline: 'middle',
+    });
+  }
+
+  private drawScore(ctx: CanvasRenderingContext2D, yi: number, score: GameRisqScoreEntry) {
+    ctx.beginPath();
+    drawText(ctx, `${score.nickname}: ${score.score}`, {
+      p: {x: this.xi() + 0.9 * this.w(), y: yi + 15},
+      w: 0.8 * this.w(),
+      fill_style: score.color.getString(),
+      baseline: 'middle',
+      align: 'right',
     });
   }
 

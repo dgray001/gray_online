@@ -16,6 +16,10 @@ func createRisqPlayerResources() *RisqPlayerResources {
 	}
 }
 
+func (r *RisqPlayerResources) score() uint {
+	return uint(r.food) + uint(r.wood) + uint(r.stone)
+}
+
 func (r *RisqPlayerResources) toFrontend() gin.H {
 	resources := gin.H{
 		"food":  r.food,

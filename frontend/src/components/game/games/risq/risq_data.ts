@@ -2,17 +2,26 @@ import {ColorRGB} from '../../../../scripts/color_rgb';
 import {capitalize} from '../../../../scripts/util';
 import {GameBase, GamePlayer} from '../../data_models';
 import {Point2D} from '../../util/objects2d';
-import { resourceType } from './risq_resources';
-import { organizeZoneUnits } from './risq_zone';
+import {resourceType} from './risq_resources';
+import {organizeZoneUnits} from './risq_zone';
 
 /** Data describing a game of risq */
 export declare interface GameRisq {
   game_base: GameBase;
   players: RisqPlayer[];
+  scores: GameRisqScoreEntry[];
   board_size: number;
   population_limit: number;
   turn_number: number;
   spaces: RisqSpace[][];
+}
+
+/** Data describing an entry in the scores array */
+export declare interface GameRisqScoreEntry {
+  player_id: number;
+  nickname: string;
+  score: number;
+  color: ColorRGB;
 }
 
 /** Data describing a risq player */
@@ -22,6 +31,7 @@ export declare interface RisqPlayer {
   units: Map<number, RisqUnit>; // key is internal_id
   resources: Map<RisqResourceType, number>;
   population_limit: number;
+  score: number;
   color: ColorRGB;
 }
 
@@ -208,6 +218,7 @@ export declare interface RisqPlayerFromServer {
   units: RisqUnitFromServer[];
   resources: RisqPlayerResourcesFromServer;
   population_limit: number;
+  score: number;
   color: string;
 }
 
@@ -294,9 +305,20 @@ export function serverToGameRisq(server_game: GameRisqFromServer): GameRisq {
     }
     spaces.push(row);
   }
+  const players = server_game.players.map(p => serverToRisqPlayer(p));
+  const scores: GameRisqScoreEntry[] = [];
+  for (const player of players) {
+    scores.push({
+      player_id: player.player.player_id,
+      nickname: player.player.nickname,
+      score: player.score,
+      color: player.color,
+    });
+  }
   return {
     game_base: server_game.game_base,
-    players: server_game.players.map(p => serverToRisqPlayer(p)),
+    players,
+    scores: scores.sort((a, b) => a.score - b.score),
     board_size: server_game.board_size,
     population_limit: server_game.population_limit,
     turn_number: server_game.turn_number,
@@ -329,6 +351,7 @@ export function serverToRisqPlayer(server_player: RisqPlayerFromServer): RisqPla
     buildings: new Map(server_player.buildings.map(b => [b.internal_id, serverToRisqBuilding(b)])),
     units: new Map(server_player.units.map(u => [u.internal_id, serverToRisqUnit(u)])),
     population_limit: server_player.population_limit,
+    score: server_player.score,
     color: new ColorRGB(color_split[0], color_split[1], color_split[2]),
   };
   return player;

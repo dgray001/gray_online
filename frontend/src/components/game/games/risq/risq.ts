@@ -77,7 +77,7 @@ export class DwgRisq extends DwgElement {
   async initialize(abstract_game: DwgGame, game: GameRisqFromServer): Promise<void> {
     this.player_id = abstract_game.is_player ? abstract_game.player_id : -1;
     abstract_game.setPadding('0px');
-    this.game = serverToGameRisq(game);
+    this.setNewGameData(game);
     const board_size: Point2D = {
       x: 1.732 * this.hex_r * (2 * game.board_size + 1),
       y: 1.5 * this.hex_r * (2 * game.board_size + 1) + 0.5 * this.hex_r,
@@ -184,8 +184,12 @@ export class DwgRisq extends DwgElement {
     }
   }
 
+  private setNewGameData(new_game: GameRisqFromServer) {
+    this.game = serverToGameRisq(new_game);
+  }
+
   private async applyStartTurn(data: StartTurnData) {
-    this.game = serverToGameRisq(data.game);
+    this.setNewGameData(data.game);
   }
 
   private draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData) {

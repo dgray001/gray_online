@@ -1,6 +1,5 @@
 
 v0.6: Visible Risq
- t: Backend calculates player score and frontend shows it
  u: Abstract scrollbar
  v: Scrollable area for orders for buildings / units => add order list in backend and data on frontend
  w: Can see all new orders in right panel with button to "finish orders" and can see who is finished

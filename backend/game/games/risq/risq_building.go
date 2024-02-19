@@ -47,6 +47,10 @@ func (b *RisqBuilding) vision() *RisqVision {
 	}
 }
 
+func (b *RisqBuilding) score() uint {
+	return 0
+}
+
 func (b *RisqBuilding) toFrontend() gin.H {
 	building := gin.H{
 		"internal_id":        b.internal_id,

@@ -55,6 +55,10 @@ func (u *RisqUnit) vision() *RisqVision {
 	}
 }
 
+func (u *RisqUnit) score() uint {
+	return 0
+}
+
 func (u *RisqUnit) toFrontend() gin.H {
 	unit := gin.H{
 		"internal_id":  u.internal_id,

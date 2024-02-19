@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.5s: More select options for zone
+v0.5t: Initial score abstraction
 
 ## Dev Use
 
