@@ -38,3 +38,50 @@ export function clampNumber(n: number, min: number, max: number, default_min = t
   }
   return n;
 }
+
+/** Bounded number */
+export declare interface BoundedNumber {
+  value_min: number;
+  value_max: number;
+  value: number;
+}
+
+/** Returns valid bounded number */
+export function validateBoundedNumber(n: BoundedNumber): BoundedNumber {
+  if (isNaN(n.value)) {
+    n.value = 0;
+  }
+  if (isNaN(n.value_min)) {
+    n.value_min = 0;
+  }
+  if (isNaN(n.value_max)) {
+    n.value_max = 0;
+  }
+  if (n.value_max < n.value_min) {
+    const max = n.value_max;
+    n.value_max = n.value_min;
+    n.value_min = max;
+  }
+  if (n.value < n.value_min) {
+    n.value = n.value_min;
+  }
+  if (n.value > n.value_max) {
+    n.value = n.value_max;
+  }
+  return n;
+}
+
+/** Sets a new value for a bounded number, returning the set value */
+export function setBoundedNumber(n: BoundedNumber, v: number): number {
+  if (isNaN(v)) {
+    return n.value;
+  }
+  if (v < n.value_min) {
+    n.value = n.value_min;
+  } else if (v > n.value_max) {
+    n.value = n.value_max;
+  } else {
+    n.value = v;
+  }
+  return n.value;
+}

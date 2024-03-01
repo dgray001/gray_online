@@ -1,4 +1,3 @@
-import {DwgElement} from '../../../../dwg_element';
 import {BoardTransformData} from '../../canvas_board/canvas_board';
 import {Point2D} from '../../objects2d';
 import {CanvasComponent} from '../canvas_component';

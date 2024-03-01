@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.5t: Initial score abstraction
+v0.5u: Initial scrollbar and fix client bug
 
 ## Dev Use
 

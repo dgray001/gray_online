@@ -67,8 +67,13 @@ func (c *Client) GetNickname() string {
 
 // Close send message channel
 func (c *Client) close() {
+	if c == nil {
+		return
+	}
 	close(c.send_message)
-	c.connection.Close()
+	if c.connection != nil {
+		c.connection.Close()
+	}
 }
 
 func (c *Client) pingString() string {
@@ -86,7 +91,7 @@ func (c *Client) readMessages() {
 		if !c.valid() {
 			return nil
 		}
-		c.ping = time.Now().Sub(c.ping_start)
+		c.ping = time.Since(c.ping_start)
 		c.connection.SetReadDeadline(time.Now().Add(read_wait))
 		c.ping_broadcast_counter--
 		ping_message := lobbyMessage{

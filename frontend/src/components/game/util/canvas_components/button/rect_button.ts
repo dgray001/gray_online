@@ -1,5 +1,5 @@
 import {BoardTransformData} from '../../canvas_board/canvas_board';
-import { drawRect } from '../../canvas_util';
+import {drawRect} from '../../canvas_util';
 import {Point2D, addPoint2D, equalsPoint2D, multiplyPoint2D} from '../../objects2d';
 import {DrawConfig, Rotation, configDraw} from '../canvas_component';
 import {ButtonConfig, DwgButton} from './button';
@@ -156,6 +156,9 @@ export abstract class DwgRectButton extends DwgButton {
         this.rect_config.rotation = this.rotate_target.angle;
         this.rotate_target = undefined;
         this.rotate_speed = undefined;
+        if (!!this.rotate_callback) {
+          this.rotate_callback();
+        }
       } else {
         this.rect_config.rotation += da;
         if (Math.abs(this.rect_config.rotation - this.rotate_target.angle) <= Math.abs(da)) {
