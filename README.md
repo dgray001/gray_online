@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.5u: Initial scrollbar and fix client bug
+v0.5v: Zoom config
 
 ## Dev Use
 

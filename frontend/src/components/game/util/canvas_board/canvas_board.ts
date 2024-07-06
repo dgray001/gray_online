@@ -24,6 +24,7 @@ export declare interface CanvasBoardInitializationData {
   mouseleave: () => void;
   mousedown: (e: MouseEvent) => boolean; // returns whether something was clicked
   mouseup: (e: MouseEvent) => void;
+  zoom_config: ZoomConfig;
 }
 
 /** Data describing the size of a the board */
@@ -38,6 +39,13 @@ export declare interface BoardTransformData {
   view: Point2D;
 }
 
+/** Data describing how zoom can operate */
+export declare interface ZoomConfig {
+  zoom_constant: number;
+  max_zoom?: number;
+  min_zoom?: number;
+}
+
 export class DwgCanvasBoard extends DwgElement {
   private canvas: HTMLCanvasElement;
   private cursor: HTMLImageElement;
@@ -49,6 +57,7 @@ export class DwgCanvasBoard extends DwgElement {
     scale: 1,
     view: {x: 0, y: 0},
   };
+  private zoom_config: ZoomConfig;
 
   private hovered = false;
   private holding_keys: HoldingKeysData = {
@@ -86,6 +95,7 @@ export class DwgCanvasBoard extends DwgElement {
 
   async initialize(data: CanvasBoardInitializationData): Promise<CanvasBoardSize> {
     data.allow_side_move = data.allow_side_move ?? true;
+    this.zoom_config = Object.assign({}, data.zoom_config);
     this.orig_size = {
       x: data.board_size.x,
       y: data.board_size.y,
@@ -164,7 +174,13 @@ export class DwgCanvasBoard extends DwgElement {
 
   private addEventListeners() {
     this.addEventListener('wheel', (e: WheelEvent) => {
-      const zoom = 1 + e.deltaY / 250;
+      let zoom = 1 + e.deltaY / this.zoom_config.zoom_constant;
+      if (!!this.zoom_config.max_zoom && this.zoom_config.max_zoom < zoom) {
+        zoom = this.zoom_config.max_zoom;
+      }
+      if (!!this.zoom_config.min_zoom && this.zoom_config.min_zoom > zoom) {
+        zoom = this.zoom_config.min_zoom;
+      }
       this.setScale(this.transform.scale / zoom);
       this.data.mousemove({
         x: (this.mouse.x + this.transform.view.x) / this.transform.scale,

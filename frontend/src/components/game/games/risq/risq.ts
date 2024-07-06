@@ -92,6 +92,11 @@ export class DwgRisq extends DwgElement {
       mouseleave: this.mouseleave.bind(this),
       mousedown: this.mousedown.bind(this),
       mouseup: this.mouseup.bind(this),
+      zoom_config: {
+        zoom_constant: 650,
+        max_zoom: 1.3,
+        min_zoom: 0.7,
+      },
     }).then((size_data) => {
       this.boardResize(size_data.board_size, size_data.el_size);
       if (abstract_game.is_player) {

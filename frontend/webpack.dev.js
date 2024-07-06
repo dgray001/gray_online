@@ -18,7 +18,7 @@ module.exports = {
     https: {
         key: fs.readFileSync("cert.key"),
         cert: fs.readFileSync("cert.crt"),
-        ca: fs.readFileSync("ca.crt"),
+        ca: fs.readFileSync("ca.csr"),
     },
     port: 8080,
     proxy: {
