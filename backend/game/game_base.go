@@ -115,7 +115,7 @@ func (g *GameBase) AddViewerUpdate(update *UpdateMessage) {
 	g.viewer_update_list = append(g.viewer_update_list, update)
 	g.ViewerUpdates <- update
 	for _, viewer := range g.Viewers {
-		if viewer == nil && viewer.connected {
+		if viewer == nil || !viewer.connected {
 			continue
 		}
 		viewer.Updates <- update

@@ -35,7 +35,7 @@ func NewSet() *Set {
 
 //optional functionalities
 
-//AddMulti Add multiple values in the set
+// AddMulti Add multiple values in the set
 func (s *Set) AddMulti(list ...int) {
 	for _, v := range list {
 		s.Add(v)

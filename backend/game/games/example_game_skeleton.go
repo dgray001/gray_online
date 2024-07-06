@@ -10,9 +10,9 @@ import (
 /*
    ===================
    >>>>> EXAMPLE <<<<<
-	 ===================
+   ===================
 
-	 Description: a description of the game
+   Description: a description of the game
 */
 
 type GameExample struct {

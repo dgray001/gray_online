@@ -17,7 +17,7 @@ func (s *GameSettings) Launchable() (bool, string) {
 	if s.MaxPlayers < 1 || s.MaxPlayers > 8 {
 		return false, "Invalid max players"
 	}
-	if s.MaxViewers < 0 || s.MaxViewers > 16 {
+	if s.MaxViewers > 16 {
 		return false, "Invalid max viewers"
 	}
 	if s.GameType < 1 || s.GameType > 3 {

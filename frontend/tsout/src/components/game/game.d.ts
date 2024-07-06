@@ -1,0 +1,71 @@
+import { DwgElement } from '../dwg_element';
+import { LobbyRoom, ConnectionMetadata } from '../lobby/data_models';
+import { ChatMessage } from '../chatbox/chatbox';
+import { MessageDialogData } from '../dialog_box/message_dialog/message_dialog';
+import { Game, GameComponent, GamePlayer, GameViewer } from './data_models';
+import './game.scss';
+import './game_history_dialog/game_history_dialog';
+import './game_info_dialog/game_info_dialog';
+import './players_dialog/players_dialog';
+import '../dialog_box/message_dialog/message_dialog';
+import '../dialog_box/confirm_dialog/confirm_dialog';
+export declare function messageDialog(data: MessageDialogData): void;
+export declare class DwgGame extends DwgElement {
+    private client_name_string;
+    private client_ping;
+    private room_name;
+    private game_name;
+    private waiting_room;
+    private players_waiting;
+    private players_waiting_els;
+    private game_container;
+    private game_el;
+    private chatbox_container;
+    private chatbox;
+    private open_chatbox_button;
+    private button_game_info;
+    private button_game_history;
+    private button_room_players;
+    private button_fullscreen;
+    private maximize_img;
+    private minimize_img;
+    private button_exit;
+    private bundles_attached;
+    private abort_controllers;
+    private launched;
+    private socket;
+    private connection_metadata;
+    private game_id;
+    private player_id;
+    private is_player;
+    private game;
+    private lobby_room;
+    chatbox_lock: (fn: () => Promise<unknown>) => Promise<unknown>;
+    constructor();
+    isPlayer(): boolean;
+    playerId(): number;
+    getPlayers(): Map<number, GamePlayer> | undefined;
+    getViewers(): Map<number, GameViewer> | undefined;
+    addChat(message: ChatMessage, you_sent?: boolean): void;
+    getLaunched(): boolean;
+    getGameEl(): GameComponent | undefined;
+    getSocket(): WebSocket;
+    getConnectionMetadata(): ConnectionMetadata;
+    getGame(): Game | undefined;
+    protected parsedCallback(): void;
+    toggleChatbox(): void;
+    setPadding(padding: string): void;
+    private setSetting;
+    launchGame(lobby: LobbyRoom, socket: WebSocket, connection_metadata: ConnectionMetadata, rejoining?: boolean): Promise<boolean>;
+    socketActive(): boolean;
+    refreshGame(): Promise<boolean>;
+    playerConnected(player_id: number): void;
+    startGame(): void;
+    exitGame(): void;
+    pingServer(): void;
+}
+declare global {
+    interface HTMLElementTagNameMap {
+        'dwg-game': DwgGame;
+    }
+}

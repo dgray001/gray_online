@@ -509,7 +509,6 @@ func (c *Client) writeMessages() {
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "Error at client ", c.client_id, " message writer: ", err.Error())
 				c.deleted = true
-				break
 			}
 		case <-ticker.C:
 			c.connection.SetWriteDeadline(time.Now().Add(write_wait))
@@ -566,9 +565,11 @@ func (c *Client) gameNil() bool {
 	return c.game == nil || c.game.GetBase() == nil
 }
 
-func (c *Client) gameStarted() bool {
-	return c.game != nil && c.game.GetBase() != nil && c.game.GetBase().GameStarted() && !c.game.GetBase().GameEnded()
-}
+/*
+  func (c *Client) gameStarted() bool {
+  	return c.game != nil && c.game.GetBase() != nil && c.game.GetBase().GameStarted() && !c.game.GetBase().GameEnded()
+  }
+*/
 
 func (c *Client) ToFrontend() gin.H {
 	client := gin.H{

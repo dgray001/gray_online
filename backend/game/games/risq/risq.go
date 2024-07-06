@@ -13,13 +13,13 @@ import (
 
 /*
    ================
-	 >>>>> RISQ <<<<<
-	 ================
+   >>>>> RISQ <<<<<
+   ================
 
-	 Objective: Build your empire and conquer the world!
-	 Description: Strategy board game with simultaneous turn resolution, hexgonal
-	   map, complex deterministic mechanics (no randomness after map generation),
-		 resource gathering, empire-building, complex combat, and medieval themes.
+   Objective: Build your empire and conquer the world!
+   Description: Strategy board game with simultaneous turn resolution, hexgonal
+     map, complex deterministic mechanics (no randomness after map generation),
+  	 resource gathering, empire-building, complex combat, and medieval themes.
 */
 
 type GameRisq struct {

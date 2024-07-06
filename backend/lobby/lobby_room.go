@@ -165,7 +165,6 @@ func (r *LobbyRoom) gameBaseUpdates(game_base *game.GameBase, room_id_string str
 		case message := <-game_base.GameEndedChannel:
 			r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-game-over", Data: message})
 			r.game = nil
-			break
 		}
 	}
 }
@@ -456,15 +455,15 @@ func (r *LobbyRoom) valid() bool {
 	}
 	// TODO: keep track of who is DC'ed and validate from that
 	/*for _, client := range r.players {
-		if client == nil || !client.valid() {
-			return false
-		}
-	}
-	for _, client := range r.viewers {
-		if client == nil || !client.valid() {
-			return false
-		}
-	}*/
+	    if client == nil || !client.valid() {
+	      return false
+	    }
+	  }
+	  for _, client := range r.viewers {
+	    if client == nil || !client.valid() {
+	      return false
+	    }
+	  }*/
 	return true
 }
 

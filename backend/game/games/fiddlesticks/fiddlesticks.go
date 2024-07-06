@@ -1,6 +1,7 @@
 package fiddlesticks
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -14,15 +15,15 @@ import (
 /*
    ========================
    >>>>> FIDDLESTICKS <<<<<
-	 ========================
+   ========================
 
-	 Objective: end the game with the most points
-	 Description: earn the exact number of tricks you bet to earn points for that round.
-	  The number of cards per player will increase by one each round until there's not enough cards to deal.
-		After that decrease the number of cards by one to finish the second half of the game.
-	 Betting: starting to left of dealer, players bet on the number of tricks they think they will win.
-	 Tricks: play starts to left of dealer, trump is next card in deck, must follow suit, winner starts next trick, etc.
-	 Scoring: a player only scores points if they win the exact number of tricks they bet
+     Objective: end the game with the most points
+     Description: earn the exact number of tricks you bet to earn points for that round.
+      The number of cards per player will increase by one each round until there's not enough cards to deal.
+        After that decrease the number of cards by one to finish the second half of the game.
+     Betting: starting to left of dealer, players bet on the number of tricks they think they will win.
+     Tricks: play starts to left of dealer, trump is next card in deck, must follow suit, winner starts next trick, etc.
+     Scoring: a player only scores points if they win the exact number of tricks they bet
 */
 
 type GameFiddlesticks struct {
@@ -70,7 +71,7 @@ func CreateGame(g *game.GameBase) (*GameFiddlesticks, error) {
 		player_id++
 	}
 	if len(fiddlesticks.players) < 2 {
-		//return nil, errors.New("Need at least two players to play fiddlesticks")
+		return nil, errors.New("Need at least two players to play fiddlesticks")
 	}
 	fiddlesticks.max_round = uint8((fiddlesticks.deck.Size() - 1) / len(fiddlesticks.players))
 	max_round_float, max_round_ok := g.GameSpecificSettings["max_round"].(float64)

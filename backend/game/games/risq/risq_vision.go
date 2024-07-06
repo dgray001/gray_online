@@ -3,17 +3,17 @@ package risq
 /**
 Visibility Levels (all ∈ this range):
   0: unexplored: nothing visible
-	1: not visible: terrain, ownership (no zones)
-	2: poor visibility, total resources / buildings / units (no zones)
-	3: modest visibility, resources / buildings / units in zones (no stats)
-	4: good visibility, full stats of all resources / buildings / units
-	5: spies, can see enemy orders
+  1: not visible: terrain, ownership (no zones)
+  2: poor visibility, total resources / buildings / units (no zones)
+  3: modest visibility, resources / buildings / units in zones (no stats)
+  4: good visibility, full stats of all resources / buildings / units
+  5: spies, can see enemy orders
 
 Inequalities:
-	space >= edge_adjacent
-	edge_adjacent >= adjacent
-	adjacent >= edge_opposite
-	edge_opposite >= secondary
+  space >= edge_adjacent
+  edge_adjacent >= adjacent
+  adjacent >= edge_opposite
+  edge_opposite >= secondary
 */
 
 type RisqVision struct {
