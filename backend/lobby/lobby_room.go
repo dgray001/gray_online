@@ -404,7 +404,7 @@ func (r *LobbyRoom) launchGame(game_id uint64) (game.Game, error) {
 	case 3:
 		new_game, err = risq.CreateGame(base_game)
 	default:
-		err = errors.New(fmt.Sprintf("GameType not recognized: %d", r.game_settings.GameType))
+		err = fmt.Errorf(fmt.Sprintf("GameType not recognized: %d", r.game_settings.GameType))
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())

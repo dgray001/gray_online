@@ -18,25 +18,27 @@ import './lobby_room/lobby_room';
 import '../dialog_box/message_dialog/message_dialog';
 import '../dialog_box/confirm_dialog/confirm_dialog';
 
-const LOBBY_PING_TIME = 5000; // time between lobby refreshes
+const LOBBY_PING_TIME = 3500; // time between lobby refreshes
 
 const URL_PARAM_ROOM = 'room_id';
 
 export class DwgLobby extends DwgElement {
-  name_container: HTMLSpanElement;
-  ping_container: HTMLSpanElement;
-  refresh_lobby_button: HTMLButtonElement;
-  create_room_button: HTMLButtonElement;
-  lobby_rooms: DwgLobbyRooms;
-  chatbox: DwgChatbox;
-  lobby_users: DwgLobbyUsers;
-  lobby_room_wrapper: HTMLDivElement;
-  lobby_room: DwgLobbyRoom;
-  lobby_users_button: HTMLButtonElement;
-  lobby_users_backdrop: HTMLDivElement;
+  private name_container: HTMLSpanElement;
+  private ping_container: HTMLSpanElement;
+  private refresh_lobby_button: HTMLButtonElement;
+  private create_room_button: HTMLButtonElement;
+  private lobby_rooms: DwgLobbyRooms;
+  private chatbox: DwgChatbox;
+  private lobby_users: DwgLobbyUsers;
+  private lobby_room_wrapper: HTMLDivElement;
+  private lobby_room: DwgLobbyRoom;
+  private lobby_users_button: HTMLButtonElement;
+  private lobby_users_backdrop: HTMLDivElement;
 
-  socket: WebSocket;
-  connection_metadata: ConnectionMetadata = {nickname: "Anonymous", ping: 0};
+  private socket: WebSocket;
+  private connection_metadata: ConnectionMetadata = {nickname: "Anonymous", ping: 0};
+  private entered_game = false;
+  private exited_game = false;
 
   constructor() {
     super();
@@ -52,6 +54,18 @@ export class DwgLobby extends DwgElement {
     this.configureElement('lobby_room');
     this.configureElement('lobby_users_button');
     this.configureElement('lobby_users_backdrop');
+  }
+
+  getLobbyRoom(): DwgLobbyRoom {
+    return this.lobby_room;
+  }
+
+  getLobbyRooms(): DwgLobbyRooms {
+    return this.lobby_rooms;
+  }
+
+  getLobbyUsers(): DwgLobbyUsers {
+    return this.lobby_users;
   }
 
   protected override parsedCallback(): void {
@@ -93,7 +107,7 @@ export class DwgLobby extends DwgElement {
             message.color,
           ));
         } else {
-          this.lobby_room.chatbox.addChat({
+          this.lobby_room.getChatbox().addChat({
             message: 'Cannot send message to unlaunched game',
             color: 'gray',
           }, true);
@@ -106,7 +120,7 @@ export class DwgLobby extends DwgElement {
         const display_sender = server_message ? message.sender : this.connection_metadata.nickname;
         const sender = `room-${this.connection_metadata.room_id}-${this.connection_metadata.client_id}`;
         message.sender = server_message ? `${sender}-${message.sender}` : sender;
-        this.sendChatMessage(this.lobby_room.chatbox, 'room-chat', message, display_sender);
+        this.sendChatMessage(this.lobby_room.getChatbox(), 'room-chat', message, display_sender);
       }
     });
     this.lobby_room.addEventListener('leave_room', async () => {
@@ -169,7 +183,7 @@ export class DwgLobby extends DwgElement {
       ));
     });
     this.lobby_room.addEventListener('rejoin_game', () => {
-      this.dispatchEvent(new CustomEvent('rejoin_game', {'detail': this.lobby_room.room}));
+      this.dispatchEvent(new CustomEvent('rejoin_game', {'detail': this.lobby_room.getRoom()}));
     });
     this.lobby_users_button.addEventListener('click', () => {
       this.lobby_users.classList.toggle('show');
@@ -185,6 +199,30 @@ export class DwgLobby extends DwgElement {
       this.pingServer();
       this.ping_container.innerText = `ping: ${Math.round(this.connection_metadata.ping)}`;
     }, LOBBY_PING_TIME);
+  }
+
+  getChatbox(): DwgChatbox {
+    return this.chatbox;
+  }
+
+  getCreateRoomButton(): HTMLButtonElement {
+    return this.create_room_button;
+  }
+
+  getSocket(): WebSocket {
+    return this.socket;
+  }
+
+  getConnectionMetadata(): ConnectionMetadata {
+    return this.connection_metadata;
+  }
+
+  connect(nickname: string, new_socket: WebSocket) {
+    this.classList.remove('connector-open');
+    this.setNickname(nickname);
+    this.setPing(0);
+    this.setSocket(new_socket);
+    this.classList.remove('hide');
   }
 
   setSocket(new_socket: WebSocket) {
@@ -246,7 +284,7 @@ export class DwgLobby extends DwgElement {
         removeUrlParam(URL_PARAM_ROOM);
       }
     }
-    if (!!current_room && current_room.room_id !== this.lobby_room.room?.room_id) {
+    if (!!current_room && current_room.room_id !== this.lobby_room.getRoom()?.room_id) {
       this.enterRoom(current_room, current_room.host.client_id === (this.connection_metadata.client_id ?? -1));
     } else if (!current_room) {
       this.leaveRoom();
@@ -259,7 +297,9 @@ export class DwgLobby extends DwgElement {
     this.lobby_room_wrapper.classList.add('show');
     setUrlParam(URL_PARAM_ROOM, room.room_id.toString());
     if (!room.game_id) {
-      this.can_auto_launch_room = true; // only auto-launch if game not already launched
+       // reset when entering new room
+      this.exited_game = false;
+      this.entered_game = false;
     }
   }
 
@@ -303,13 +343,18 @@ export class DwgLobby extends DwgElement {
     }
   }
 
-  private can_auto_launch_room = false;
   canAutoLaunchRoom(): boolean {
-    return this.can_auto_launch_room;
+    return !this.exited_game && !this.entered_game;
   }
 
-  returnFromGame() {
-    this.can_auto_launch_room = false;
+  enterGame() {
+    this.classList.add('hide');
+    this.entered_game = true;
+  }
+
+  exitGame() {
+    this.classList.remove('hide');
+    this.exited_game = true;
   }
 
   static DEFAULT_CONNECTION_TIMES = 3;
@@ -338,7 +383,7 @@ export class DwgLobby extends DwgElement {
         `client-${this.connection_metadata.client_id}`,
         'room-refresh',
         '',
-        (this.lobby_room.room?.room_id ?? 0).toString(),
+        (this.lobby_room.getRoom()?.room_id ?? 0).toString(),
       ));
     }
   }

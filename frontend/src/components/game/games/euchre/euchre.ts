@@ -63,7 +63,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
   }
 
   async initialize(abstract_game: DwgGame, game: GameEuchre): Promise<void> {
-    this.player_id = abstract_game.player_id;
+    this.player_id = abstract_game.playerId();
     this.game = game;
     this.player_els = [];
     for (const [player_id, player] of game.players.entries()) {
@@ -77,7 +77,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     }
     for (let i = 0; i < this.player_els.length; i++) {
       const id = modulus(this.player_id + i, this.game.players.length);
-      const order = abstract_game.is_player ? i : i + 0.5;
+      const order = abstract_game.isPlayer() ? i : i + 0.5;
       this.game.players[id].order = order;
       this.player_els[id].style.setProperty('--order', order.toString());
       this.player_els[id].style.setProperty('--num-players', this.player_els.length.toString());

@@ -24,11 +24,10 @@ export function handleMessage(game: DwgGame, message: ServerMessage) {
       // TODO: implement
       break;
     case "game-chat":
-      console.log(message.sender, game.game?.game_base?.viewers);
       const chat_client_id = parseInt((message.sender ?? '').replace('game-', ''));
       if (chat_client_id) {
-        const sender = game.game?.game_base?.players.get(chat_client_id) ?? game.game?.game_base?.viewers.get(chat_client_id);
-        game.chatbox.addChat({
+        const sender = game.getPlayers()?.get(chat_client_id) ?? game.getViewers()?.get(chat_client_id);
+        game.addChat({
           message: message.content,
           sender: sender?.nickname ?? chat_client_id.toString(),
         });
@@ -36,16 +35,8 @@ export function handleMessage(game: DwgGame, message: ServerMessage) {
       break;
     case "game-player-connected":
       const connectee_id = parseInt(message.data);
-      if (connectee_id) {
-        const el = game.players_waiting_els.get(connectee_id);
-        if (!!el) {
-          el.innerText = 'Connected';
-          el.classList.add('connected');
-        }
-        const player = game.game?.game_base?.players.get(connectee_id);
-        if (player) {
-          player.connected = true;
-        }
+      if (!!connectee_id) {
+        game.playerConnected(connectee_id);
       }
       break;
     case "game-start":
@@ -74,7 +65,7 @@ export function handleMessage(game: DwgGame, message: ServerMessage) {
 
 let running_updates = false;
 async function handleGameUpdate(game: DwgGame, message: ServerMessage) {
-  if (!game.game_el) {
+  if (!game.getGameEl() || !game.getGame) {
     return;
   }
   const sender_split = message.sender.split('-');
@@ -87,22 +78,22 @@ async function handleGameUpdate(game: DwgGame, message: ServerMessage) {
   }
   async function runUpdate(update: UpdateMessage) {
     running_updates = true;
-    if (update.update_id - 1 === game.game.game_base.last_continuous_update_id) {
-      game.game.game_base.last_continuous_update_id = update.update_id;
+    if (update.update_id - 1 === game.getGame().game_base.last_continuous_update_id) {
+      game.getGame().game_base.last_continuous_update_id = update.update_id;
       console.log(`applying update id ${update.update_id}`);
-      await game.game_el.gameUpdate(update);
-      while (game.game.game_base.updates.has(game.game.game_base.last_continuous_update_id + 1)) {
-        const nextUpdate = game.game.game_base.updates.get(game.game.game_base.last_continuous_update_id + 1);
-        game.game.game_base.last_continuous_update_id = nextUpdate.update_id;
+      await game.getGameEl().gameUpdate(update);
+      while (game.getGame().game_base.updates.has(game.getGame().game_base.last_continuous_update_id + 1)) {
+        const nextUpdate = game.getGame().game_base.updates.get(game.getGame().game_base.last_continuous_update_id + 1);
+        game.getGame().game_base.last_continuous_update_id = nextUpdate.update_id;
         console.log(`applying update id ${nextUpdate.update_id}`);
-        await game.game_el.gameUpdate(nextUpdate);
+        await game.getGameEl().gameUpdate(nextUpdate);
       }
-    } else if (update.update_id - 1 > game.game.game_base.last_continuous_update_id) {
-      game.socket.send(createMessage(
-        `client-${game.connection_metadata.client_id}`,
+    } else if (update.update_id - 1 > game.getGame().game_base.last_continuous_update_id) {
+      game.getSocket().send(createMessage(
+        `client-${game.getConnectionMetadata().client_id}`,
         'game-get-update',
         '',
-        `${game.game.game_base.last_continuous_update_id + 1}`,
+        `${game.getGame().game_base.last_continuous_update_id + 1}`,
       ));
     } else {} // ignore updates that are already applied
     running_updates = false;
@@ -114,14 +105,14 @@ async function handleGameUpdate(game: DwgGame, message: ServerMessage) {
       kind: message.data,
       update,
     };
-    game.game.game_base.updates.set(game_update_id, updateMessage);
-    if (!running_updates && game.game.game_base.game_started && !game.game.game_base.game_ended && game.launched) {
+    game.getGame().game_base.updates.set(game_update_id, updateMessage);
+    if (!running_updates && game.getGame().game_base.game_started && !game.getGame().game_base.game_ended && game.getLaunched()) {
       runUpdate(updateMessage);
     }
   } catch(e) {
     console.log(e);
-    game.socket.send(createMessage(
-      `client-${game.connection_metadata.client_id}`,
+    game.getSocket().send(createMessage(
+      `client-${game.getConnectionMetadata().client_id}`,
       'game-get-update',
       '',
       `${game_update_id}`,

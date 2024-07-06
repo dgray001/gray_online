@@ -75,7 +75,7 @@ export class DwgRisq extends DwgElement {
   }
 
   async initialize(abstract_game: DwgGame, game: GameRisqFromServer): Promise<void> {
-    this.player_id = abstract_game.is_player ? abstract_game.player_id : -1;
+    this.player_id = abstract_game.isPlayer() ? abstract_game.playerId() : -1;
     abstract_game.setPadding('0px');
     this.setNewGameData(game);
     const board_size: Point2D = {
@@ -99,7 +99,7 @@ export class DwgRisq extends DwgElement {
       },
     }).then((size_data) => {
       this.boardResize(size_data.board_size, size_data.el_size);
-      if (abstract_game.is_player) {
+      if (abstract_game.isPlayer()) {
         this.goToVillageCenter(this.player_id);
       } else {
         this.goToVillageCenter(0);

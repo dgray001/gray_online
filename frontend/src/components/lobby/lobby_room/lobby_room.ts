@@ -20,38 +20,38 @@ enum GameStatusEnum {
 }
 
 export class DwgLobbyRoom extends DwgElement {
-  room_name: HTMLDivElement;
-  chatbox: DwgChatbox;
-  leave_room: HTMLButtonElement;
-  rename_input: HTMLInputElement;
-  rename_room: HTMLButtonElement;
-  cancel_rename: HTMLButtonElement;
-  host_container: HTMLDivElement;
-  players_container: HTMLDivElement;
-  viewers_container: HTMLDivElement;
-  settings_title: HTMLDivElement;
-  num_players_current: HTMLSpanElement;
-  num_players_max: HTMLSpanElement;
-  settings_settings: HTMLDivElement;
-  settings_description: HTMLDivElement;
-  settings_button_container: HTMLDivElement;
-  settings_settings_button: HTMLButtonElement;
-  settings_launch_interval_id: NodeJS.Timer;
-  settings_launch_button: HTMLButtonElement;
-  settings_game_status: HTMLDivElement;
-  lobby_game_settings: DwgLobbyGameSettings;
-  game_button_container: HTMLDivElement;
-  game_resign_button: HTMLButtonElement;
-  game_rejoin_button: HTMLButtonElement;
+  private room_name: HTMLDivElement;
+  private chatbox: DwgChatbox;
+  private leave_room: HTMLButtonElement;
+  private rename_input: HTMLInputElement;
+  private rename_room: HTMLButtonElement;
+  private cancel_rename: HTMLButtonElement;
+  private host_container: HTMLDivElement;
+  private players_container: HTMLDivElement;
+  private viewers_container: HTMLDivElement;
+  private settings_title: HTMLDivElement;
+  private num_players_current: HTMLSpanElement;
+  private num_players_max: HTMLSpanElement;
+  private settings_settings: HTMLDivElement;
+  private settings_description: HTMLDivElement;
+  private settings_button_container: HTMLDivElement;
+  private settings_settings_button: HTMLButtonElement;
+  private settings_launch_interval_id: NodeJS.Timer;
+  private settings_launch_button: HTMLButtonElement;
+  private settings_game_status: HTMLDivElement;
+  private lobby_game_settings: DwgLobbyGameSettings;
+  private game_button_container: HTMLDivElement;
+  private game_resign_button: HTMLButtonElement;
+  private game_rejoin_button: HTMLButtonElement;
 
-  is_host = false;
-  client_id = -1;
-  settings_launching = false;
-  renaming_room = false;
-  room: LobbyRoom;
-  host_el: DwgRoomUser;
-  player_els = new Map<number, DwgRoomUser>();
-  viewer_els = new Map<number,  DwgRoomUser>();
+  private is_host = false;
+  private client_id = -1;
+  private settings_launching = false;
+  private renaming_room = false;
+  private room: LobbyRoom;
+  private host_el: DwgRoomUser;
+  private player_els = new Map<number, DwgRoomUser>();
+  private viewer_els = new Map<number,  DwgRoomUser>();
 
   constructor() {
     super();
@@ -78,6 +78,10 @@ export class DwgLobbyRoom extends DwgElement {
     this.configureElement('game_button_container');
     this.configureElement('game_resign_button');
     this.configureElement('game_rejoin_button');
+  }
+
+  getChatbox(): DwgChatbox {
+    return this.chatbox;
   }
 
   protected override parsedCallback(): void {

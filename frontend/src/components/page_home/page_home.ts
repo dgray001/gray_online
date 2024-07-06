@@ -15,11 +15,11 @@ import '../game/game';
 import '../lobby/lobby_connector/lobby_connector';
 
 export class DwgPageHome extends DwgElement {
-  lobby: DwgLobby;
-  game: DwgGame;
-  lobby_connector: DwgLobbyConnector;
+  private lobby: DwgLobby;
+  private game: DwgGame;
+  private lobby_connector: DwgLobbyConnector;
 
-  client_on_mobile = false;
+  private client_on_mobile = false;
 
   constructor() {
     super();
@@ -47,33 +47,26 @@ export class DwgPageHome extends DwgElement {
       socket.addEventListener('open', () => {
         never_connected = false;
         this.lobby_connector.classList.add('hide');
-        this.lobby.classList.remove('connector-open');
-        this.lobby.setNickname(e.detail.nickname);
-        this.lobby.setPing(0);
-        this.lobby.setSocket(socket);
-        this.game.launched = false;
-        this.game.classList.remove('show');
-        this.lobby.classList.remove('hide');
+        this.lobby.connect(e.detail.nickname, socket);
+        this.game.exitGame();
       });
     });
     this.lobby.addEventListener('connection_lost', () => {
       this.tryConnectionAgain('Connection was lost. Check your connection and try again.');
     });
     this.lobby.addEventListener('game_launched', async (e: CustomEvent<LobbyRoom>) => {
-      if (await this.game.launchGame(e.detail, this.lobby.socket, this.lobby.connection_metadata)) {
+      if (await this.game.launchGame(e.detail, this.lobby.getSocket(), this.lobby.getConnectionMetadata())) {
         this.lobby.classList.add('hide');
       }
     });
     this.lobby.addEventListener('rejoin_game', async (e: CustomEvent<LobbyRoom>) => {
-      if (await this.game.launchGame(e.detail, this.lobby.socket, this.lobby.connection_metadata, true)) {
-        this.lobby.classList.add('hide');
+      if (await this.game.launchGame(e.detail, this.lobby.getSocket(), this.lobby.getConnectionMetadata(), true)) {
+        this.lobby.enterGame();
       }
     });
     this.game.addEventListener('exit_game', () => {
-      this.game.launched = false;
-      this.game.classList.remove('show');
-      this.lobby.returnFromGame();
-      this.lobby.classList.remove('hide');
+      this.game.exitGame();
+      this.lobby.exitGame();
     });
     this.game.addEventListener('show_message_dialog', (e: CustomEvent<MessageDialogData>) => {
       const dialog = document.createElement('dwg-message-dialog');
@@ -85,7 +78,7 @@ export class DwgPageHome extends DwgElement {
   private tryConnectionAgain(message: string): void {
     this.lobby.classList.remove('connected');
     this.lobby.classList.add('connector-open');
-    this.lobby_connector.tryReconnecting(message, this.lobby.connection_metadata);
+    this.lobby_connector.tryReconnecting(message, this.lobby.getConnectionMetadata());
   }
 }
 

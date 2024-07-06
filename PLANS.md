@@ -1,4 +1,8 @@
 
+ - Fix end of game flash bug
+ - Fix reconnect not showing bug
+ - Fix auto-reconnecting when exiting (have flag for when you're waiting for game then only auto-connect then)
+
 v0.6: Visible Risq
  u: Abstract scrollbar
  v: Scrollable area for orders for buildings / units => add order list in backend and data on frontend

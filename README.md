@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.5v: Zoom config
+v0.5w: Clean up code
 
 ## Dev Use
 

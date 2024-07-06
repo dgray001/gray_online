@@ -6,7 +6,7 @@ import {capitalize, createLock, until} from '../../scripts/util';
 import {MessageDialogData} from '../dialog_box/message_dialog/message_dialog';
 import {getUrlParam} from '../../scripts/url';
 
-import {Game, GameComponent, GameFromServer, serverResponseToGame} from './data_models';
+import {Game, GameComponent, GameFromServer, serverResponseToGame, GamePlayer, GameViewer} from './data_models';
 import {handleMessage} from './message_handler';
 import html from './game.html';
 
@@ -23,36 +23,36 @@ export function messageDialog(data: MessageDialogData) {
 }
 
 export class DwgGame extends DwgElement {
-  client_name_string: HTMLSpanElement;
-  client_ping: HTMLSpanElement;
-  room_name: HTMLDivElement;
-  game_name: HTMLDivElement;
-  waiting_room: HTMLDivElement;
-  players_waiting: HTMLDivElement;
-  players_waiting_els = new Map<number, HTMLDivElement>();
-  game_container: HTMLDivElement;
-  game_el: GameComponent;
-  chatbox_container: HTMLDivElement;
-  chatbox: DwgChatbox;
-  open_chatbox_button: HTMLButtonElement;
-  button_game_info: HTMLButtonElement;
-  button_game_history: HTMLButtonElement;
-  button_room_players: HTMLButtonElement;
-  button_fullscreen: HTMLButtonElement;
-  maximize_img: HTMLImageElement;
-  minimize_img: HTMLImageElement;
-  button_exit: HTMLButtonElement;
+  private client_name_string: HTMLSpanElement;
+  private client_ping: HTMLSpanElement;
+  private room_name: HTMLDivElement;
+  private game_name: HTMLDivElement;
+  private waiting_room: HTMLDivElement;
+  private players_waiting: HTMLDivElement;
+  private players_waiting_els = new Map<number, HTMLDivElement>();
+  private game_container: HTMLDivElement;
+  private game_el: GameComponent;
+  private chatbox_container: HTMLDivElement;
+  private chatbox: DwgChatbox;
+  private open_chatbox_button: HTMLButtonElement;
+  private button_game_info: HTMLButtonElement;
+  private button_game_history: HTMLButtonElement;
+  private button_room_players: HTMLButtonElement;
+  private button_fullscreen: HTMLButtonElement;
+  private maximize_img: HTMLImageElement;
+  private minimize_img: HTMLImageElement;
+  private button_exit: HTMLButtonElement;
 
-  bundles_attached = new Set<string>();
-  abort_controllers: AbortController[] = [];
-  launched: boolean;
-  socket: WebSocket;
-  connection_metadata: ConnectionMetadata;
-  game_id = 0;
-  player_id = -1;
-  is_player = false;
-  game: Game;
-  lobby_room: LobbyRoom;
+  private bundles_attached = new Set<string>();
+  private abort_controllers: AbortController[] = [];
+  private launched: boolean;
+  private socket: WebSocket;
+  private connection_metadata: ConnectionMetadata;
+  private game_id = 0;
+  private player_id = -1;
+  private is_player = false;
+  private game: Game;
+  private lobby_room: LobbyRoom;
 
   chatbox_lock = createLock();
 
@@ -76,6 +76,46 @@ export class DwgGame extends DwgElement {
     this.configureElement('maximize_img');
     this.configureElement('minimize_img');
     this.configureElement('button_exit');
+  }
+
+  isPlayer(): boolean {
+    return this.is_player;
+  }
+
+  playerId(): number {
+    return this.player_id;
+  }
+
+  getPlayers(): Map<number, GamePlayer>|undefined {
+    return this.game?.game_base?.players;
+  }
+
+  getViewers(): Map<number, GameViewer>|undefined {
+    return this.game?.game_base?.viewers;
+  }
+
+  addChat(message: ChatMessage, you_sent = false) {
+    this.chatbox.addChat(message, you_sent);
+  }
+
+  getLaunched(): boolean {
+    return this.launched;
+  }
+
+  getGameEl(): GameComponent|undefined {
+    return this.game_el
+  }
+
+  getSocket(): WebSocket {
+    return this.socket;
+  }
+
+  getConnectionMetadata(): ConnectionMetadata {
+    return this.connection_metadata;
+  }
+
+  getGame(): Game|undefined {
+    return this.game;
   }
 
   protected override parsedCallback(): void {
@@ -364,10 +404,36 @@ export class DwgGame extends DwgElement {
     }
   }
 
+  playerConnected(player_id: number) {
+    const el = this.players_waiting_els.get(player_id);
+    if (!!el) {
+      el.innerText = 'Connected';
+      el.classList.add('connected');
+    }
+    const player = this.getPlayers()?.get(player_id);
+    if (player) {
+      player.connected = true;
+    }
+  }
+
   startGame() {
+    if (!this.game) {
+      return;
+    }
     this.game.game_base.game_started = true;
     this.waiting_room.classList.add('hide');
     this.game_container.classList.add('show');
+  }
+
+  exitGame() {
+    this.launched = false;
+    this.classList.remove('show');
+    this.socket?.close();
+    this.socket = undefined;
+    this.connection_metadata = undefined;
+    this.lobby_room = undefined;
+    this.game_id = 0;
+    this.game = undefined;
   }
 
   pingServer() {
