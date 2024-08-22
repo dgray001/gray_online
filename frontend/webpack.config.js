@@ -15,6 +15,10 @@ module.exports = {
       dependOn: 'index',
       import: './src/components/game/games/risq/risq.ts',
     },
+    test_game: {
+      dependOn: 'index',
+      import: './src/components/game/games/test_game/test_game.ts',
+    },
   },
   module: {
     rules: [

@@ -28,7 +28,8 @@ export declare enum GameType {
     UNSPECIFIED = 0,
     FIDDLESTICKS = 1,
     EUCHRE = 2,
-    RISQ = 3
+    RISQ = 3,
+    TEST_GAME = 4
 }
 export declare interface GameSettings {
     game_type: GameType;

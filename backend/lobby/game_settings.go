@@ -20,7 +20,7 @@ func (s *GameSettings) Launchable() (bool, string) {
 	if s.MaxViewers > 16 {
 		return false, "Invalid max viewers"
 	}
-	if s.GameType < 1 || s.GameType > 3 {
+	if s.GameType < 1 || s.GameType > 4 {
 		return false, "Invalid game type: " + strconv.Itoa(int(s.GameType))
 	}
 	return true, ""

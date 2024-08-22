@@ -12,6 +12,7 @@ import (
 	"github.com/dgray001/gray_online/game/games/euchre"
 	"github.com/dgray001/gray_online/game/games/fiddlesticks"
 	"github.com/dgray001/gray_online/game/games/risq"
+	"github.com/dgray001/gray_online/game/games/test_game"
 	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
 )
@@ -402,6 +403,8 @@ func (r *LobbyRoom) launchGame(game_id uint64) (game.Game, error) {
 		new_game, err = euchre.CreateGame(base_game)
 	case 3:
 		new_game, err = risq.CreateGame(base_game)
+	case 4:
+		new_game, err = test_game.CreateGame(base_game)
 	default:
 		err = fmt.Errorf(fmt.Sprintf("GameType not recognized: %d", r.game_settings.GameType))
 	}

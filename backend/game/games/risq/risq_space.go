@@ -199,7 +199,7 @@ func (s *RisqSpace) getVisibility(player_id int) uint8 {
 	}
 }
 
-func (s *RisqSpace) toFrontend(player_id int, is_viewer bool) gin.H {
+func (s *RisqSpace) toFrontend(player_id int, _ bool) gin.H {
 	space := gin.H{
 		"terrain":    s.terrain,
 		"coordinate": s.coordinate.ToFrontend(),

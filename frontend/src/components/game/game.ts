@@ -6,7 +6,7 @@ import {capitalize, createLock, until} from '../../scripts/util';
 import {MessageDialogData} from '../dialog_box/message_dialog/message_dialog';
 import {getUrlParam} from '../../scripts/url';
 
-import {Game, GameComponent, GameFromServer, serverResponseToGame, GamePlayer, GameViewer} from './data_models';
+import {Game, GameComponent, GameFromServer, serverResponseToGame, GamePlayer, GameViewer, GameHtmlTag} from './data_models';
 import {handleMessage} from './message_handler';
 import html from './game.html';
 
@@ -302,12 +302,13 @@ export class DwgGame extends DwgElement {
       return false;
     }
     this.game = serverResponseToGame(response.result, this.connection_metadata.client_id);
+    console.log(this.game);
     let game_initialized = false;
     let waiting_room_initialized = false;
-    const setGame = async (component: 'dwg-fiddlesticks' | 'dwg-euchre' | 'dwg-risq') => {
+    const setGame = async (component: GameHtmlTag) => {
       if (!this.bundles_attached.has(component)) {
         const script = document.createElement('script');
-        script.setAttribute('src', `/dist/${component.replace('dwg-', '')}.bundle.js?v=${getUrlParam('v')}`);
+        script.setAttribute('src', `/dist/${component.replace('dwg-', '').replace('-', '_')}.bundle.js?v=${getUrlParam('v')}`);
         script.async = false;
         let script_loaded = false;
         script.addEventListener('load', () => {
@@ -362,11 +363,14 @@ export class DwgGame extends DwgElement {
       case GameType.RISQ:
         await setGame('dwg-risq');
         break;
+      case GameType.TEST_GAME:
+        await setGame('dwg-test-game');
+        break;
       case GameType.UNSPECIFIED:
       default:
         throw new Error(`Unknown game type: ${this.game.game_base.game_type}`);
     }
-    this.game_name.innerText = capitalize(GameType[this.game.game_base.game_type].toLowerCase());
+    this.game_name.innerText = capitalize(GameType[this.game.game_base.game_type].toLowerCase().replace('_', ' '));
     if (this.game.game_base.game_started) {
       this.startGame();
     } else {

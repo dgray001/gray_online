@@ -1,6 +1,6 @@
 
- - Fix end of game flash bug
- - Fix reconnect not showing bug
+ y: Fix end of game flash bug
+ z: Fix reconnect not showing bug
 
 v0.6: Visible Risq
  u: Abstract scrollbar

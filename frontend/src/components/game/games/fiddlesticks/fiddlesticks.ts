@@ -17,21 +17,21 @@ import '../../../dialog_box/message_dialog/message_dialog';
 import '../../util/card_hand/card_hand';
 
 export class DwgFiddlesticks extends DwgElement implements GameComponent {
-  round_number: HTMLSpanElement;
-  bets_number: HTMLSpanElement;
-  trick_number: HTMLSpanElement;
-  status_container: HTMLSpanElement;
-  trump_card_img: HTMLImageElement;
-  trick_cards: HTMLDivElement;
-  table_container: HTMLDivElement;
-  player_container: HTMLDivElement;
-  players_cards: DwgCardHand;
+  private round_number: HTMLSpanElement;
+  private bets_number: HTMLSpanElement;
+  private trick_number: HTMLSpanElement;
+  private status_container: HTMLSpanElement;
+  private trump_card_img: HTMLImageElement;
+  private trick_cards: HTMLDivElement;
+  private table_container: HTMLDivElement;
+  private player_container: HTMLDivElement;
+  private players_cards: DwgCardHand;
 
-  game: GameFiddlesticks;
-  current_trick = 0;
-  player_els: DwgFiddlesticksPlayer[] = [];
-  player_id: number = -1;
-  trick_card_els: HTMLDivElement[] = [];
+  private game: GameFiddlesticks;
+  private current_trick = 0;
+  private player_els: DwgFiddlesticksPlayer[] = [];
+  private player_id: number = -1;
+  private trick_card_els: HTMLDivElement[] = [];
 
   constructor() {
     super();

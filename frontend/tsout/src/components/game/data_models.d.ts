@@ -1,5 +1,6 @@
 import { GameType } from "../lobby/data_models";
 import { DwgGame } from "./game";
+export type GameHtmlTag = 'dwg-fiddlesticks' | 'dwg-euchre' | 'dwg-risq' | 'dwg-test-game';
 export declare interface GameComponent {
     initialize(abstract_game: DwgGame, game: Game): Promise<void>;
     gameUpdate(update: UpdateMessage): Promise<void>;

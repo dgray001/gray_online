@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.5x: Clean up code more
+v0.5y: Can launch test game
 
 ## Dev Use
 

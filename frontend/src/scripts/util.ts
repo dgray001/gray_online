@@ -37,8 +37,8 @@ export async function untilTimer(timer: number): Promise<void> {
 }
 
 /** Capitalizes each word in string */
-export function capitalize(str: string): string {
-  const str_split = str.trim().split(' ');
+export function capitalize(str: string, word_split = ' '): string {
+  const str_split = str.trim().split(word_split);
   return str_split.map(str => {
     const lower = str.toLowerCase();
     return str.charAt(0).toUpperCase() + lower.slice(1);
