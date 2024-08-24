@@ -64,6 +64,11 @@ export class DwgPageHome extends DwgElement {
         this.lobby.enterGame();
       }
     });
+    this.lobby.addEventListener('refresh_game_lobby', (e: CustomEvent<LobbyRoom>) => {
+      if (!!this.game && !!e.detail) {
+        this.game?.refreshRoom(e.detail);
+      }
+    });
     this.game.addEventListener('exit_game', () => {
       this.game.exitGame();
       this.lobby.exitGame();

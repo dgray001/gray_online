@@ -1,5 +1,14 @@
- - Fix bug preventing new game from being launched after end of game (exiting game kills socket connection)
- - Fix bug where players that reconnect aren't shown as reconnecting properly
+
+ - Proper updates dialog for fiddlesticks and euchre
+ - Timed turns (or not) and can pause game if timed
+ - AI takes over when player AFK
+ - Can resign from game => AI takes over
+ - Loaders for client requests in lobby: room-create, room-join, room-leave, room-rename
+ - Can chat with individual players
+ - Upgraded chatbox => emoji selector, taunts, message id, turn off emoticon converter
+ - Upgrade frontend animations for all games (add sound effects)
+ - Setup db in prod and dev
+ - Can create profile / login
 
 v0.7: Playable Risq
  u: Abstract scrollbar
@@ -24,25 +33,15 @@ v0.7: Playable Risq
  z: Attack order => can win
 
  - Can select all units in zone / space
- - Proper updates dialog for fiddlesticks and euchre
  - Can launch games with AI (all games must handle)
- - Timed turns (or not) and can pause game if timed
- - AI takes over when player AFK
- - Can resign from game => AI takes over
  - Player's cards can automatically resize => listener on game div resize
    - fullscreen mode need to recalc card horizontal line
- - Can chat with individual players
- - Loaders for client requests in lobby: room-create, room-join, room-leave, room-rename
 
 v0.8: Advanced Risq
  - Can save games if everyone logged in and all players agree
  - Can launch a saved game if logged in
  - Risq is fully playable with custom settings
- - Upgraded chatbox => emoji selector, taunts, message id, turn off emoticon converter
- - Upgrade frontend animations for all games (add sound effects)
 
- - Setup db in prod and dev
- - Can create profile / login
  - Reporting => admin login can access admin page to see reports, etc.
  - Can report bugs / email admin / etc.
  - Advanced risq mechanics

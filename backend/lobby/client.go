@@ -447,6 +447,12 @@ func (c *Client) readMessages() {
 			}
 			player_action := game.PlayerAction{Kind: message.Data, Client_id: int(c.client_id), Action: action}
 			c.lobby_room.PlayerAction <- player_action
+		case "game-exit":
+			if c.lobby_room == nil || c.lobby_room.game == nil {
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "game-update-failed", Content: "Not in game"}
+				break
+			}
+			c.lobby_room.playerDisconnected(c)
 		case "game-get-update":
 			if c.lobby_room == nil || c.lobby_room.game == nil {
 				c.send_message <- lobbyMessage{Sender: "server", Kind: "game-get-update-failed", Content: "Not in game"}

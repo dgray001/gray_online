@@ -15,10 +15,10 @@ interface PlayersData {
 }
 
 export class DwgPlayersDialog extends DwgDialogBox<PlayersData> {
-  close_button: HTMLButtonElement;
-  players_container: HTMLDivElement;
+  private close_button: HTMLButtonElement;
+  private players_container: HTMLDivElement;
 
-  data: PlayersData;
+  private data: PlayersData;
 
   constructor() {
     super();

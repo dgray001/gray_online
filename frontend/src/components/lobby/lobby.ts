@@ -288,6 +288,8 @@ export class DwgLobby extends DwgElement {
       this.enterRoom(current_room, current_room.host.client_id === (this.connection_metadata.client_id ?? -1));
     } else if (!current_room) {
       this.leaveRoom();
+    } else { // already in room
+      this.dispatchEvent(new CustomEvent('refresh_game_lobby', {detail: current_room, bubbles: true}));
     }
   }
 

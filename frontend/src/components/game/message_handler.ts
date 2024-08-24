@@ -37,6 +37,12 @@ export function handleMessage(game: DwgGame, message: ServerMessage) {
         });
       }
       break;
+    case "game-player-disconnected":
+      const disconnectee_id = parseInt(message.data);
+      if (!!disconnectee_id) {
+        game.playerDisconnected(disconnectee_id);
+      }
+      break;
     case "game-player-connected":
       const connectee_id = parseInt(message.data);
       if (!!connectee_id) {

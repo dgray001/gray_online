@@ -282,14 +282,7 @@ func (r *LobbyRoom) removeClient(c *Client, client_leaves bool) {
 		return
 	}
 	if r.gameStarted() {
-		if game.Game_PlayerDisconnected(r.game, c.client_id) {
-			delete_room := time.NewTimer(45 * time.Second)
-			r.delete_timer = delete_room
-			go func() {
-				<-delete_room.C
-				r.lobby.removeRoom(r)
-			}()
-		}
+		r.playerDisconnected(c)
 	}
 	if !r.gameStarted() || client_leaves {
 		delete(r.players, c.client_id)
@@ -306,6 +299,21 @@ func (r *LobbyRoom) removeClient(c *Client, client_leaves bool) {
 	client_id_string := strconv.Itoa(int(c.client_id))
 	room_id_string := strconv.Itoa(int(r.room_id))
 	r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-left", Data: client_id_string})
+}
+
+/** This needs to be the way we disconnect players from a game */
+func (r *LobbyRoom) playerDisconnected(c *Client) {
+	if game.Game_PlayerDisconnected(r.game, c.client_id) {
+		delete_room := time.NewTimer(45 * time.Second)
+		r.delete_timer = delete_room
+		go func() {
+			<-delete_room.C
+			r.lobby.removeRoom(r)
+		}()
+	}
+	client_id_string := strconv.Itoa(int(c.client_id))
+	room_id_string := strconv.Itoa(int(r.room_id))
+	r.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "game-player-disconnected", Data: client_id_string})
 }
 
 func (r *LobbyRoom) kickClient(c *Client) {

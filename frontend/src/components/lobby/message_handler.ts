@@ -62,6 +62,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
         message: `${message.content} ${joined_word} lobby with client id ${join_client_id}`,
         sender: SERVER_CHAT_NAME,
       });
+      lobby.refreshLobbyRooms();
       lobby.getLobbyUsers().addUser({client_id: join_client_id, nickname: message.content, ping: 0});
       break;
     case 'lobby-left':

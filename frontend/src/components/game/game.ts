@@ -255,21 +255,30 @@ export class DwgGame extends DwgElement {
     }
   }
 
-  async launchGame(lobby: LobbyRoom, socket: WebSocket, connection_metadata: ConnectionMetadata, rejoining = false): Promise<boolean> {
-    if ((this.launched && !rejoining) || !lobby || !lobby.game_id || !socket || socket.readyState !== WebSocket.OPEN ||
-      !connection_metadata || !connection_metadata.client_id || !connection_metadata.room_id || lobby.room_id !== connection_metadata.room_id
+  refreshRoom(room: LobbyRoom) {
+    if (!room || !room.game_id || !this.connection_metadata?.room_id || room.room_id !== this.connection_metadata?.room_id) {
+      console.log('Invalid room state');
+      this.exitGame();
+      return;
+    }
+    this.lobby_room = room;
+    this.room_name.innerText = room.room_name;
+    this.game_id = room.game_id;
+    this.is_player = room.players.has(this.connection_metadata.client_id);
+  }
+
+  async launchGame(room: LobbyRoom, socket: WebSocket, connection_metadata: ConnectionMetadata, rejoining = false): Promise<boolean> {
+    if ((this.launched && !rejoining) || !room || !room.game_id || !socket || socket.readyState !== WebSocket.OPEN ||
+      !connection_metadata || !connection_metadata.client_id || !connection_metadata.room_id || room.room_id !== connection_metadata.room_id
     ) {
       console.log('Invalid state to launch game');
       return;
     }
-    this.lobby_room = lobby;
     this.socket = socket;
     this.connection_metadata = connection_metadata;
+    this.refreshRoom(room);
     this.client_name_string.innerText = this.connection_metadata.nickname;
     this.client_ping.innerText = ` (${this.connection_metadata.ping})`;
-    this.room_name.innerText = lobby.room_name;
-    this.game_id = lobby.game_id;
-    this.is_player = lobby.players.has(this.connection_metadata.client_id);
     try {
       for (const abort_controller of this.abort_controllers) {
         abort_controller.abort();
@@ -421,6 +430,18 @@ export class DwgGame extends DwgElement {
     return false;
   }
 
+  playerDisconnected(player_id: number) {
+    const el = this.players_waiting_els.get(player_id);
+    if (!!el) {
+      el.innerText = 'Connecting ...';
+      el.classList.remove('connected');
+    }
+    const player = this.getPlayers()?.get(player_id);
+    if (!!player) {
+      player.connected = false;
+    }
+  }
+
   playerConnected(player_id: number) {
     const el = this.players_waiting_els.get(player_id);
     if (!!el) {
@@ -428,7 +449,7 @@ export class DwgGame extends DwgElement {
       el.classList.add('connected');
     }
     const player = this.getPlayers()?.get(player_id);
-    if (player) {
+    if (!!player) {
       player.connected = true;
     }
   }
@@ -445,7 +466,10 @@ export class DwgGame extends DwgElement {
   exitGame() {
     this.launched = false;
     this.classList.remove('show');
-    this.socket?.close();
+    this.socketSend(createMessage(
+      `client-${this.clientId()}`,
+      'game-exit',
+    ));
     this.socket = undefined;
     this.connection_metadata = undefined;
     this.lobby_room = undefined;
