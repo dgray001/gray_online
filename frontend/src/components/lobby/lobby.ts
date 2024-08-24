@@ -18,7 +18,7 @@ import './lobby_room/lobby_room';
 import '../dialog_box/message_dialog/message_dialog';
 import '../dialog_box/confirm_dialog/confirm_dialog';
 
-const LOBBY_PING_TIME = 3500; // time between lobby refreshes
+const LOBBY_PING_TIME = 3500_000; // time between lobby refreshes
 
 const URL_PARAM_ROOM = 'room_id';
 

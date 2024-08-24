@@ -51,6 +51,13 @@ func (g *TestGame) Valid() bool {
 func (g *TestGame) PlayerAction(action game.PlayerAction) {
 	fmt.Println("player action:", action.Kind, action.Client_id, action.Action)
 	switch action.Kind {
+	case "show_info":
+		game.Game_BroadcastUpdate(g, &game.UpdateMessage{
+			Kind:    "show_info",
+			Content: g.ToFrontend(0, false),
+		})
+	case "end_game":
+		g.game.EndGame("Game ended")
 	default:
 		fmt.Fprintln(os.Stderr, "Unknown game update type", action.Kind)
 	}

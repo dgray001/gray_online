@@ -17,6 +17,8 @@ import './players_dialog/players_dialog';
 import '../dialog_box/message_dialog/message_dialog';
 import '../dialog_box/confirm_dialog/confirm_dialog';
 
+const SERVER_PING_TIME = 3500_000; // time between game refreshes
+
 /** Function to dispatch event that will show a dialog message */
 export function messageDialog(data: MessageDialogData) {
   this.dispatchEvent(new CustomEvent('show_message_dialog', {'detail': data, bubbles: true}));
@@ -53,8 +55,9 @@ export class DwgGame extends DwgElement {
   private is_player = false;
   private game: Game;
   private lobby_room: LobbyRoom;
+  private ping_interval: NodeJS.Timer;
 
-  chatbox_lock = createLock();
+  private chatbox_lock = createLock();
 
   constructor() {
     super();
@@ -136,7 +139,7 @@ export class DwgGame extends DwgElement {
         this.setSetting(message.message.slice(2).trim());
       } else if (message.message.startsWith('\\l')) {
         message.message = message.message.slice(2).trim();
-        this.socket.send(createMessage(
+        this.socketSend(createMessage(
           message.sender ?? `client-${this.connection_metadata.client_id}`,
           'lobby-chat',
           message.message,
@@ -146,7 +149,7 @@ export class DwgGame extends DwgElement {
         message.message = message.message.slice(2).trim(); // TODO: implement
       } else if (message.message.startsWith('\\r')) {
         message.message = message.message.slice(2).trim();
-        this.socket.send(createMessage(
+        this.socketSend(createMessage(
           message.sender ?? `room-${this.connection_metadata.room_id}-${this.connection_metadata.client_id}`,
           'room-chat',
           message.message,
@@ -156,7 +159,7 @@ export class DwgGame extends DwgElement {
         if (message.message.startsWith('\\g')) {
           message.message = message.message.slice(2).trim();
         }
-        this.socket.send(createMessage(
+        this.socketSend(createMessage(
           message.sender ?? `game-${this.connection_metadata.client_id}`,
           'game-chat',
           message.message,
@@ -208,9 +211,9 @@ export class DwgGame extends DwgElement {
       });
       this.appendChild(confirm_dialog);
     });
-    setInterval(() => {
+    this.ping_interval = setInterval(() => {
       this.pingServer();
-    }, 2500);
+    }, SERVER_PING_TIME);
   }
 
   toggleChatbox() {
@@ -292,17 +295,27 @@ export class DwgGame extends DwgElement {
     return !!this.socket && this.socket.readyState == WebSocket.OPEN;
   }
 
-  async refreshGame() {
+  socketSend(message: string) {
+    if (!this.socketActive()) {
+      return;
+    }
+    this.socket?.send(message);
+  }
+
+  private clientId(): number {
+    return this.connection_metadata?.client_id ? this.connection_metadata.client_id : -1;
+  }
+
+  async refreshGame(): Promise<boolean> {
     const response = await apiPost<GameFromServer>(`lobby/games/get/${this.game_id}`, {
-      client_id: this.connection_metadata.client_id,
+      client_id: this.clientId(),
       viewer: this.is_player ? "false" : "true",
     });
     if (!response.success || !response.result) {
       console.log(response.error_message);
       return false;
     }
-    this.game = serverResponseToGame(response.result, this.connection_metadata.client_id);
-    console.log(this.game);
+    this.game = serverResponseToGame(response.result, this.clientId());
     let game_initialized = false;
     let waiting_room_initialized = false;
     const setGame = async (component: GameHtmlTag) => {
@@ -325,7 +338,7 @@ export class DwgGame extends DwgElement {
       this.player_id = -1;
       this.is_player = false;
       for (const [player_id, player] of this.game.players.entries()) {
-        if (player.player.client_id === this.connection_metadata.client_id) {
+        if (player.player.client_id === this.clientId()) {
           this.player_id = player_id;
           this.is_player = true;
           break;
@@ -334,14 +347,13 @@ export class DwgGame extends DwgElement {
       this.game_el.initialize(this, this.game).then(() => {
         game_initialized = true;
         if (waiting_room_initialized) {
-          this.socket.send(createMessage(
-            `client-${this.connection_metadata.client_id}`,
+          this.socketSend(createMessage(
+            `client-${this.clientId()}`,
             'game-connected',
             '',
             this.game_id.toString(),
           ));
           this.launched = true;
-          return true;
         }
       });
       game_el.addEventListener('game_update', (e: CustomEvent<string>) => {
@@ -350,7 +362,7 @@ export class DwgGame extends DwgElement {
           return;
         }
         console.log('Sending game update', e.detail);
-        this.socket.send(e.detail);
+        this.socketSend(e.detail);
       });
     };
     switch(this.game.game_base.game_type) {
@@ -397,8 +409,8 @@ export class DwgGame extends DwgElement {
     this.classList.add('show');
     waiting_room_initialized = true;
     if (game_initialized) {
-      this.socket.send(createMessage(
-        `client-${this.connection_metadata.client_id}`,
+      this.socketSend(createMessage(
+        `client-${this.clientId()}`,
         'game-connected',
         '',
         this.game_id.toString(),
@@ -406,6 +418,7 @@ export class DwgGame extends DwgElement {
       this.launched = true;
       return true;
     }
+    return false;
   }
 
   playerConnected(player_id: number) {
@@ -438,6 +451,7 @@ export class DwgGame extends DwgElement {
     this.lobby_room = undefined;
     this.game_id = 0;
     this.game = undefined;
+    clearInterval(this.ping_interval);
   }
 
   pingServer() {
@@ -447,13 +461,13 @@ export class DwgGame extends DwgElement {
     if (this.game?.game_base?.game_ended) {
       // nothing to do
     } else if (this.game?.game_base?.game_started) {
-      this.socket.send(createMessage(
-        `client-${this.connection_metadata.client_id}`,
+      this.socketSend(createMessage(
+        `client-${this.clientId()}`,
         'game-resend-last-update',
       ));
     } else {
-      this.socket.send(createMessage(
-        `client-${this.connection_metadata.client_id}`,
+      this.socketSend(createMessage(
+        `client-${this.clientId()}`,
         'game-resend-waiting-room',
       ));
     }

@@ -2,6 +2,10 @@ import {ServerMessage, createMessage} from "../lobby/data_models";
 import {UpdateMessage} from "./data_models";
 import {DwgGame} from "./game";
 
+/** After this many repeated errors the frontend should shutdown */
+const MAX_ERROR_COUNT = 3;
+let error_count = 0;
+
 function isGameMessage(kind: string): boolean {
   const lobby_prefixes = ['game', 'ping'];
   return !lobby_prefixes.every(prefix => !kind.startsWith(`${prefix}-`));
@@ -16,13 +20,14 @@ export function handleMessage(game: DwgGame, message: ServerMessage) {
     console.log("not a game message", message);
     return;
   }
+  let errored = false;
   if (message.kind !== 'ping-update') {
     console.log(message);
   }
   switch(message.kind) {
     case "ping-update":
       // TODO: implement
-      break;
+      return; // doesn't affect error count
     case "game-chat":
       const chat_client_id = parseInt((message.sender ?? '').replace('game-', ''));
       if (chat_client_id) {
@@ -50,6 +55,7 @@ export function handleMessage(game: DwgGame, message: ServerMessage) {
     case "game-get-update-failed":
     case "game-resend-last-update-failed":
     case "game-resend-waiting-room-failed":
+      errored = true;
       console.log(message.content);
       try {
         game.refreshGame();
@@ -58,8 +64,18 @@ export function handleMessage(game: DwgGame, message: ServerMessage) {
       }
       break;
     default:
+      errored = true;
       console.log("Unknown message type", message.kind, "from", message.sender);
       break;
+  }
+  if (errored) {
+    error_count++;
+    if (error_count >= MAX_ERROR_COUNT) {
+      game.dispatchEvent(new CustomEvent('connection_lost', {
+        detail: 'An error was encountered; please refresh your connection.'}));
+    }
+  } else {
+    error_count = 0;
   }
 }
 

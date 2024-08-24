@@ -9,22 +9,22 @@ import html from './fiddlesticks_player.html';
 import './fiddlesticks_player.scss';
 
 export class DwgFiddlesticksPlayer extends DwgElement {
-  name_container: HTMLDivElement;
-  status_container: HTMLDivElement;
-  score_container: HTMLSpanElement;
-  bet_container: HTMLSpanElement;
-  bet_input_wrapper: HTMLDivElement;
-  bet_input: HTMLInputElement;
-  bet_button: HTMLButtonElement;
-  tricks_container: HTMLSpanElement;
-  dealer_wrapper: HTMLDivElement;
-  winner_wrapper: HTMLDivElement;
-  bet_animation: HTMLDivElement;
+  private name_container: HTMLDivElement;
+  private status_container: HTMLDivElement;
+  private score_container: HTMLSpanElement;
+  private bet_container: HTMLSpanElement;
+  private bet_input_wrapper: HTMLDivElement;
+  private bet_input: HTMLInputElement;
+  private bet_button: HTMLButtonElement;
+  private tricks_container: HTMLSpanElement;
+  private dealer_wrapper: HTMLDivElement;
+  private winner_wrapper: HTMLDivElement;
+  private bet_animation: HTMLDivElement;
 
-  initialized = false;
-  player: FiddlesticksPlayer;
-  client_player = false;
-  card_els: HTMLDivElement[] = [];
+  private initialized = false;
+  private player: FiddlesticksPlayer;
+  private client_player = false;
+  private card_els: HTMLDivElement[] = [];
 
   constructor() {
     super();

@@ -4,7 +4,7 @@ export declare const loop: (times: number, callback: (i?: number) => void) => vo
 export declare const asyncLoop: (times: number, callback: Function) => Promise<void>;
 export declare function until(condition: () => boolean, poll_timer?: number): Promise<void>;
 export declare function untilTimer(timer: number): Promise<void>;
-export declare function capitalize(str: string): string;
+export declare function capitalize(str: string, word_split?: string): string;
 interface ClickButtonOptions {
     loading_text?: string;
     disable_button?: boolean;

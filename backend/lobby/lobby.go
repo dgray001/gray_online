@@ -348,24 +348,14 @@ func (l *Lobby) broadcastMessage(message lobbyMessage) {
 			if client == nil || !client.valid() || client.client_id == uint64(sender_id) {
 				continue
 			}
-			select {
-			case client.send_message <- message:
-			default:
-				fmt.Fprintln(os.Stderr, "Failed to send message to client", client.client_id)
-				//l.removeClient(client)
-			}
+			client.send_message <- message
 		}
 	} else if util.Contains(lobby_messages, message.Kind) {
 		for _, client := range l.clients {
 			if client == nil || !client.valid() {
 				continue
 			}
-			select {
-			case client.send_message <- message:
-			default:
-				fmt.Fprintln(os.Stderr, "Failed to send message to client", client.client_id)
-				//l.removeClient(client)
-			}
+			client.send_message <- message
 		}
 	} else if util.Contains(client_to_room_messages, message.Kind) {
 		send_split := strings.Split(message.Sender, "-")
@@ -387,14 +377,7 @@ func (l *Lobby) broadcastMessage(message lobbyMessage) {
 				client.lobby_room.room_id != uint64(room_id) || client.client_id == uint64(client_id) {
 				continue
 			}
-			select {
-			case client.send_message <- message:
-			default:
-				fmt.Fprintln(os.Stderr, "Failed to send message to client", client.client_id)
-				// Had this happen occasionally and must be in room chat
-				fmt.Fprintln(os.Stderr, "client", client, message)
-				//l.removeClient(client)
-			}
+			client.send_message <- message
 		}
 	} else if util.Contains(room_messages, message.Kind) {
 		room_id_string := strings.TrimPrefix(message.Sender, "room-")
@@ -406,12 +389,7 @@ func (l *Lobby) broadcastMessage(message lobbyMessage) {
 			if client == nil || !client.valid() || client.lobby_room == nil || client.lobby_room.room_id != uint64(room_id) {
 				continue
 			}
-			select {
-			case client.send_message <- message:
-			default:
-				fmt.Fprintln(os.Stderr, "Failed to send message to client", client.client_id)
-				//l.removeClient(client)
-			}
+			client.send_message <- message
 		}
 	} else {
 		fmt.Fprintln(os.Stderr, "No logic for message kind")

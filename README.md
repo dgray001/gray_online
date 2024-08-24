@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.5y: Can launch test game
+v0.5z: Fix backend race condition on channel selects
 
 ## Dev Use
 

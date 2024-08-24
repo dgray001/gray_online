@@ -86,7 +86,7 @@ func (r *LobbyRoom) run() {
 					go viewer.viewerGameUpdates(r.game.GetBase().Viewers[client_id], room_id_string)
 				}
 				go r.gameBaseUpdates(r.game.GetBase(), room_id_string)
-				r.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "game-start"})
+				r.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "game-start", Data: ""})
 				game.Game_StartGame(r.game)
 			}
 		case action := <-r.PlayerAction:
@@ -195,25 +195,17 @@ func (r *LobbyRoom) broadcastMessage(message lobbyMessage) {
 	}
 	for _, client := range r.players {
 		if client == nil || !client.validDebug(true) {
+			fmt.Fprintln(os.Stderr, "Room failed to send message to player", client.client_id)
 			continue
 		}
-		select {
-		case client.send_message <- message:
-		default:
-			fmt.Fprintln(os.Stderr, "Room failed to send message to player", client.client_id)
-			// r.lobby.removeClient(client)
-		}
+		client.send_message <- message
 	}
 	for _, client := range r.viewers {
 		if client == nil || !client.validDebug(true) {
+			fmt.Fprintln(os.Stderr, "Room failed to send message to viewer", client.client_id)
 			continue
 		}
-		select {
-		case client.send_message <- message:
-		default:
-			fmt.Fprintln(os.Stderr, "Room failed to send message to viewer", client.client_id)
-			// r.lobby.removeClient(client)
-		}
+		client.send_message <- message
 	}
 }
 

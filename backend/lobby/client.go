@@ -437,10 +437,13 @@ func (c *Client) readMessages() {
 				break
 			}
 			action := gin.H{}
-			err := json.Unmarshal([]byte(message.Content), &action)
-			if err != nil {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "game-update-failed", Content: "Couldn't parse action"}
-				break
+			if message.Content != "" {
+				err := json.Unmarshal([]byte(message.Content), &action)
+				if err != nil {
+					fmt.Println(err)
+					c.send_message <- lobbyMessage{Sender: "server", Kind: "game-update-failed", Content: "Couldn't parse action"}
+					break
+				}
 			}
 			player_action := game.PlayerAction{Kind: message.Data, Client_id: int(c.client_id), Action: action}
 			c.lobby_room.PlayerAction <- player_action

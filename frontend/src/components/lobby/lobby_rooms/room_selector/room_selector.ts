@@ -58,7 +58,7 @@ export class DwgRoomSelector extends DwgElement {
     this.room_curr_players.innerText = this.room.players?.size.toString();
     this.room_max_players.innerText = this.room.game_settings?.max_players?.toString();
     this.room_name.innerText = this.room.room_name;
-    this.room_game.innerText = capitalize((GameType[this.room.game_settings.game_type || -1] ?? '').toLowerCase());
+    this.room_game.innerText = capitalize((GameType[this.room.game_settings.game_type || -1] ?? '').toLowerCase().replace('_', ' '));
   }
 }
 

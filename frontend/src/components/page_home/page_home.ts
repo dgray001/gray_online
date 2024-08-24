@@ -73,9 +73,14 @@ export class DwgPageHome extends DwgElement {
       dialog.setData(e.detail);
       this.appendChild(dialog);
     });
+    this.game.addEventListener('connection_lost', (e: CustomEvent<string>) => {
+      this.tryConnectionAgain(e.detail);
+    });
   }
 
   private tryConnectionAgain(message: string): void {
+    this.game.exitGame();
+    this.lobby.exitGame();
     this.lobby.classList.remove('connected');
     this.lobby.classList.add('connector-open');
     this.lobby_connector.tryReconnecting(message, this.lobby.getConnectionMetadata());
