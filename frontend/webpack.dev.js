@@ -15,16 +15,18 @@ module.exports = {
     compress: true,
     liveReload: true,
     host: '0.0.0.0',
-    https: {
-        key: fs.readFileSync("cert.key"),
-        cert: fs.readFileSync("cert.crt"),
-        ca: fs.readFileSync("ca.csr"),
-    },
     port: 8080,
     proxy: {
       '/api': 'http://0.0.0.0:6807', // gin server
     },
-    server: 'https',
+		server: {
+			type: 'https',
+      options: {
+        key: fs.readFileSync("cert.key"),
+        cert: fs.readFileSync("cert.crt"),
+        ca: fs.readFileSync("ca.csr"),
+      },
+		},
     static: {
       directory: path.resolve(__dirname, '../backend/static/'),
     },

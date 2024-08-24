@@ -14,11 +14,10 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
     return;
   }
   if (!isLobbyMessage(message.kind)) {
-    console.log("not a lobby message", message);
     return;
   }
   if (message.kind !== 'ping-update') {
-    console.log(message);
+    console.log('Lobby message:', message);
   }
   switch(message.kind) {
     case 'lobby-you-joined':

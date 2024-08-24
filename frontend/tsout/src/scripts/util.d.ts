@@ -1,5 +1,5 @@
 /// <reference types="node" />
-export declare const DEV = true;
+export declare const DEV = false;
 export declare const loop: (times: number, callback: (i?: number) => void) => void;
 export declare const asyncLoop: (times: number, callback: Function) => Promise<void>;
 export declare function until(condition: () => boolean, poll_timer?: number): Promise<void>;

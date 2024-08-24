@@ -1,4 +1,4 @@
-import {clickButton, enumKeys} from '../../../scripts/util';
+import {clickButton, DEV, enumKeys} from '../../../scripts/util';
 import {DwgElement} from '../../dwg_element';
 import {GameSettings, GameType} from '../data_models';
 
@@ -38,6 +38,9 @@ export class DwgLobbyGameSettings extends DwgElement {
   protected override parsedCallback(): void {
     for (const gameKey of enumKeys(GameType)) {
       if (!GameType[gameKey]) {
+        continue;
+      }
+      if (!DEV && gameKey === GameType[GameType.TEST_GAME].toString()) {
         continue;
       }
       const option = document.createElement('option');

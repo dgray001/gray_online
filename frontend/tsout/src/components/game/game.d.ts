@@ -40,7 +40,8 @@ export declare class DwgGame extends DwgElement {
     private is_player;
     private game;
     private lobby_room;
-    chatbox_lock: (fn: () => Promise<unknown>) => Promise<unknown>;
+    private ping_interval;
+    private chatbox_lock;
     constructor();
     isPlayer(): boolean;
     playerId(): number;
@@ -58,6 +59,8 @@ export declare class DwgGame extends DwgElement {
     private setSetting;
     launchGame(lobby: LobbyRoom, socket: WebSocket, connection_metadata: ConnectionMetadata, rejoining?: boolean): Promise<boolean>;
     socketActive(): boolean;
+    socketSend(message: string): void;
+    private clientId;
     refreshGame(): Promise<boolean>;
     playerConnected(player_id: number): void;
     startGame(): void;

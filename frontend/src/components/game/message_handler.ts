@@ -17,12 +17,11 @@ export function handleMessage(game: DwgGame, message: ServerMessage) {
     return;
   }
   if (!isGameMessage(message.kind)) {
-    console.log("not a game message", message);
     return;
   }
   let errored = false;
   if (message.kind !== 'ping-update') {
-    console.log(message);
+    console.log('Game message:', message);
   }
   switch(message.kind) {
     case "ping-update":

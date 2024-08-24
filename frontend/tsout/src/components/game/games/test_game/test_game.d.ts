@@ -4,6 +4,7 @@ import { DwgGame } from '../../game';
 import { GameTestGame } from './test_game_data';
 import './test_game.scss';
 export declare class DwgTestGame extends DwgElement implements GameComponent {
+    private show_info;
     private end_game;
     private game;
     private player_id;

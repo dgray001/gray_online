@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.5z: Fix backend race condition on channel selects
+v0.6: Fiddlesticks playable
 
 ## Dev Use
 

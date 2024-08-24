@@ -1,16 +1,13 @@
+ - Fix bug preventing new game from being launched after end of game (exiting game kills socket connection)
+ - Fix bug where players that reconnect aren't shown as reconnecting properly
 
- y: Fix end of game flash bug
- z: Fix reconnect not showing bug
-
-v0.6: Visible Risq
+v0.7: Playable Risq
  u: Abstract scrollbar
  v: Scrollable area for orders for buildings / units => add order list in backend and data on frontend
  w: Can see all new orders in right panel with button to "finish orders" and can see who is finished
  x: Order to build unit in building => update works => population limit
  y: Frontend shows summary report skeleton each turn (backend creates from zone/space/player)
  z Can toggle between views: building/villager/military/resource
-
-v0.7: Playable Risq
  r: Orders abstraction (backend game update of "add order") => each order has unique id
  u: Left panel shows unit / building orders in the order the will complete
  v: Unit and building return list of possible orders based on game state => send to frontend
