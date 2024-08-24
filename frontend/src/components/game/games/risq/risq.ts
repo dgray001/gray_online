@@ -177,7 +177,7 @@ export class DwgRisq extends DwgElement {
     try {
       switch(update.kind) {
         case "start-turn":
-          const startTurnData = update.update as StartTurnData;
+          const startTurnData = update.content as StartTurnData;
           await this.applyStartTurn(startTurnData);
           break;
         default:
@@ -480,6 +480,12 @@ export class DwgRisq extends DwgElement {
       }
     }
     return rows;
+  }
+
+  updateDialogComponent(update: UpdateMessage): HTMLElement {
+    const update_el = document.createElement('div');
+    update_el.innerText = `ID: ${update.update_id}, Kind: ${update.kind}, data: ${JSON.stringify(update.content)}`;
+    return update_el;
   }
 }
 

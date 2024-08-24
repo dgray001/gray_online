@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6a: Players disconnect and reconnect properly
+v0.6b: Fiddlesticks readable game updates
 
 ## Dev Use
 

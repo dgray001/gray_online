@@ -45,6 +45,18 @@ export function capitalize(str: string, word_split = ' '): string {
   }).join(' ');
 }
 
+/** Formats a multiline html string by removing extra whitespace */
+export function formatMultilineHtmlString(str: string): string {
+  return str.replace(/(\r\n|\n|\r)(\s*)/gm, '');
+}
+
+/** Removes all line breaks from a string */
+export function removeLinebreaks(str: string): string {
+  console.log(str);
+  console.log(str.replace(/(\r\n|\n|\r)(\s*)/gm, ''));
+  return str.replace(/(\r\n|\n|\r)/gm, '');
+}
+
 /** Options for clickButton function */
 interface ClickButtonOptions {
   loading_text?: string;

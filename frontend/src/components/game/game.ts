@@ -180,7 +180,7 @@ export class DwgGame extends DwgElement {
         return;
       }
       const game_history = document.createElement('dwg-game-history-dialog');
-      game_history.setData({updates: this.game.game_base.updates ?? new Map()});
+      game_history.setData({game: this.game_el, updates: this.game.game_base.updates ?? new Map()});
       this.appendChild(game_history);
     });
     this.button_room_players.addEventListener('click', () => {

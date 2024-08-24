@@ -120,11 +120,10 @@ async function handleGameUpdate(game: DwgGame, message: ServerMessage) {
     running_updates = false;
   }
   try {
-    const update = JSON.parse(message.content);
     const updateMessage = {
       update_id: game_update_id,
       kind: message.data,
-      update,
+      content: JSON.parse(message.content),
     };
     game.getGame().game_base.updates.set(game_update_id, updateMessage);
     if (!running_updates && game.getGame().game_base.game_started && !game.getGame().game_base.game_ended && game.getLaunched()) {

@@ -185,49 +185,51 @@ func (l *Lobby) reconnectClient(client *Client, client_id uint64) {
 	if old_client == nil {
 		fmt.Println("Cannot find old client; starting new connection")
 		l.addClient(client)
-	} else if old_client.valid() {
+		return
+	}
+	if old_client.valid() {
 		fmt.Println("Old client is valid; starting new connection")
 		l.addClient(client)
-	} else {
-		if old_client.delete_timer != nil {
-			old_client.delete_timer.Stop()
-		}
-		client.client_id = old_client.client_id
-		old_game := old_client.game
-		old_lobby_room := old_client.lobby_room
-		if old_client.gameNil() && old_lobby_room != nil {
-			old_game = old_lobby_room.game
-		}
-		if old_lobby_room != nil {
-			if old_game == nil || old_game.GetBase() == nil {
-				old_lobby_room.removeClient(client, true)
-			} else {
-				client.lobby_room = old_lobby_room
-				client.game = old_game
-				room_id_string := strconv.Itoa(int(client.lobby_room.room_id))
-				old_lobby_room.replaceClient(client) // doesn't return if room has client
-				player := client.game.GetBase().Players[client_id]
-				if player == nil {
-					viewer := client.game.GetBase().Viewers[client_id]
-					if viewer == nil {
-						fmt.Fprintln(os.Stderr, "Room doesn't have reconnecting client")
-						client.lobby_room = nil
-						client.game = nil
-					} else {
-						go client.viewerGameUpdates(viewer, room_id_string)
-					}
+		return
+	}
+	if old_client.delete_timer != nil {
+		old_client.delete_timer.Stop()
+	}
+	client.client_id = old_client.client_id
+	old_game := old_client.game
+	old_lobby_room := old_client.lobby_room
+	if old_client.gameNil() && old_lobby_room != nil {
+		old_game = old_lobby_room.game
+	}
+	if old_lobby_room != nil {
+		if old_game == nil || old_game.GetBase() == nil {
+			old_lobby_room.removeClient(client, true)
+		} else {
+			client.lobby_room = old_lobby_room
+			client.game = old_game
+			room_id_string := strconv.Itoa(int(client.lobby_room.room_id))
+			old_lobby_room.replaceClient(client) // doesn't return if room has client
+			player := client.game.GetBase().Players[client_id]
+			if player == nil {
+				viewer := client.game.GetBase().Viewers[client_id]
+				if viewer == nil {
+					fmt.Fprintln(os.Stderr, "Room doesn't have reconnecting client")
+					client.lobby_room = nil
+					client.game = nil
 				} else {
-					go client.playerGameUpdates(player, room_id_string)
+					go client.viewerGameUpdates(viewer, room_id_string)
 				}
+			} else {
+				go client.playerGameUpdates(player, room_id_string)
 			}
 		}
-		l.clients[client.client_id] = client
-		old_client.connection = nil
-		old_client.deleted = true
-		id_string := strconv.Itoa(int(client.client_id))
-		client.send_message <- lobbyMessage{Sender: "server", Kind: "lobby-you-joined", Content: client.nickname, Data: id_string + "-reconnect"}
-		l.broadcastMessage(lobbyMessage{Sender: "client-" + id_string, Kind: "lobby-joined", Content: client.nickname, Data: id_string + "-reconnect"})
 	}
+	l.clients[client.client_id] = client
+	old_client.connection = nil
+	old_client.deleted = true
+	id_string := strconv.Itoa(int(client.client_id))
+	client.send_message <- lobbyMessage{Sender: "server", Kind: "lobby-you-joined", Content: client.nickname, Data: id_string + "-reconnect"}
+	l.broadcastMessage(lobbyMessage{Sender: "client-" + id_string, Kind: "lobby-joined", Content: client.nickname, Data: id_string + "-reconnect"})
 }
 
 func (l *Lobby) removeClient(client *Client) {

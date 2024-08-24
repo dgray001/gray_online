@@ -38,6 +38,9 @@ dwg-game-history-dialog {
 
     #updates-container {
       --margin-top: calc(6px + var(--button-size) - var(--font-size-medium));
+      display: flex;
+      flex-flow: column nowrap;
+      gap: var(--font-size-small);
       height: calc(100% - var(--margin-top));
       margin-top: var(--margin-top);
       overflow-y: auto;

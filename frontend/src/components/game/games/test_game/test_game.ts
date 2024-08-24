@@ -48,6 +48,12 @@ export class DwgTestGame extends DwgElement implements GameComponent {
       console.log(`Error during game update ${JSON.stringify(update)}: ${e}`);
     }
   }
+
+  updateDialogComponent(update: UpdateMessage): HTMLElement {
+    const update_el = document.createElement('div');
+    update_el.innerText = `ID: ${update.update_id}, Kind: ${update.kind}, data: ${JSON.stringify(update.content)}`;
+    return update_el;
+  }
 }
 
 customElements.define('dwg-test-game', DwgTestGame);

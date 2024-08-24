@@ -131,11 +131,11 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     try {
       switch(update.kind) {
         case 'deal-round':
-          const dealRoundData = update.update as DealRound;
+          const dealRoundData = update.content as DealRound;
           await this.applyDealRound(dealRoundData);
           break;
         case 'pass':
-          const passData = update.update as PlayerPass;
+          const passData = update.content as PlayerPass;
           if (this.game.turn !== passData.player_id) {
             // TODO: try to sync data
             throw new Error('Player pass out of order');
@@ -147,7 +147,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
           await this.applyPlayerPass(passData);
           break;
         case 'bid':
-          const bidData = update.update as PlayerBid;
+          const bidData = update.content as PlayerBid;
           if (this.game.turn !== bidData.player_id) {
             // TODO: try to sync data
             throw new Error('Player bid out of order');
@@ -155,7 +155,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
           await this.applyPlayerBid(bidData);
           break;
         case 'bid-choose-trump':
-          const bidChooseTrumpData = update.update as BidChooseTrump;
+          const bidChooseTrumpData = update.content as BidChooseTrump;
           if (this.game.turn !== bidChooseTrumpData.player_id) {
             // TODO: try to sync data
             throw new Error('Player bid choose trump out of order');
@@ -163,7 +163,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
           await this.applyBidChooseTrump(bidChooseTrumpData);
           break;
         case 'dealer-substitutes-card':
-          const dealerSubstitutesCardData = update.update as DealerSubstitutesCard;
+          const dealerSubstitutesCardData = update.content as DealerSubstitutesCard;
           if (this.game.dealer !== dealerSubstitutesCardData.player_id) {
             // TODO: try to sync data
             throw new Error('Only dealer can substitute card');
@@ -171,7 +171,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
           await this.applyDealerSubstitutesCard(dealerSubstitutesCardData);
           break;
         case 'play-card':
-          const playCardData = update.update as PlayCard;
+          const playCardData = update.content as PlayCard;
           if (this.game.turn !== playCardData.player_id) {
             // TODO: try to sync data
             throw new Error('Player played out of order');
@@ -497,6 +497,12 @@ export class DwgEuchre extends DwgElement implements GameComponent {
       return true;
     }
     return false;
+  }
+
+  updateDialogComponent(update: UpdateMessage): HTMLElement {
+    const update_el = document.createElement('div');
+    update_el.innerText = `ID: ${update.update_id}, Kind: ${update.kind}, data: ${JSON.stringify(update.content)}`;
+    return update_el;
   }
 }
 

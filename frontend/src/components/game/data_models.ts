@@ -8,6 +8,7 @@ export type GameHtmlTag = 'dwg-fiddlesticks' | 'dwg-euchre' | 'dwg-risq' | 'dwg-
 export declare interface GameComponent {
   initialize(abstract_game: DwgGame, game: Game): Promise<void>;
   gameUpdate(update: UpdateMessage): Promise<void>;
+  updateDialogComponent(update: UpdateMessage): HTMLElement;
 }
 
 /** Data describing a game */
@@ -23,7 +24,7 @@ export declare interface Game {
 export declare interface UpdateMessage {
   update_id: number;
   kind: string;
-  update: any; // type needs to be coerced by game logic
+  content: any; // type needs to be coerced by game logic
 }
 
 /** Update message for server (sent by client) */

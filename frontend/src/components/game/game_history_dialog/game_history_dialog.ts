@@ -1,5 +1,5 @@
 import {DwgDialogBox} from '../../dialog_box/dialog_box';
-import {UpdateMessage} from '../data_models';
+import {GameComponent, UpdateMessage} from '../data_models';
 
 import html from './game_history_dialog.html';
 
@@ -8,14 +8,14 @@ import './game_history_dialog.scss';
 /** Input data for a game history dialog box */
 interface GameHistoryData {
   updates: Map<number, UpdateMessage>;
-  // TODO: add field for game history entry type (one for each game)
+  game: GameComponent;
 }
 
 export class DwgGameHistoryDialog extends DwgDialogBox<GameHistoryData> {
-  close_button: HTMLButtonElement;
-  updates_container: HTMLDivElement;
+  private close_button: HTMLButtonElement;
+  private updates_container: HTMLDivElement;
 
-  data: GameHistoryData;
+  private data: GameHistoryData;
 
   constructor() {
     super();
@@ -27,20 +27,20 @@ export class DwgGameHistoryDialog extends DwgDialogBox<GameHistoryData> {
     return html;
   }
 
-  getData(): GameHistoryData {
+  override getData(): GameHistoryData {
     return this.data;
   }
 
-  setData(data: GameHistoryData, parsed?: boolean) {
+  override setData(data: GameHistoryData, parsed?: boolean) {
     this.data = data;
     if (!parsed && !this.fully_parsed) {
       return;
     }
-    const sorted_updates = [...data.updates.values()].sort((a, b) => a.update_id - b.update_id);
+    const sorted_updates = [...data.updates.values()].sort((a, b) => b.update_id - a.update_id);
     for (const update of sorted_updates) {
-      const update_el = document.createElement('div');
-      update_el.innerText = `ID: ${update.update_id}, Kind: ${update.kind}, data: ${JSON.stringify(update.update)}`;
-      this.updates_container.append(update_el);
+      const el = data.game.updateDialogComponent(update);
+      el.classList.add('update');
+      this.updates_container.appendChild(el);
     }
     this.close_button.addEventListener('click', () => {
       this.closeDialog();

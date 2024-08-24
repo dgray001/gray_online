@@ -149,11 +149,11 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     try {
       switch(update.kind) {
         case "deal-round":
-          const dealRoundData = update.update as DealRound;
+          const dealRoundData = update.content as DealRound;
           await this.applyDealRound(dealRoundData);
           break;
         case "bet":
-          const betData = update.update as PlayerBet;
+          const betData = update.content as PlayerBet;
           if (this.game.turn !== betData.player_id) {
             // TODO: try to sync data
             throw new Error('Player bet out of order');
@@ -161,7 +161,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           await this.applyBet(betData);
           break;
         case "play-card":
-          const playCardData = update.update as PlayCard;
+          const playCardData = update.content as PlayCard;
           if (this.game.turn !== playCardData.player_id) {
             // TODO: try to sync data
             throw new Error('Player played out of order');
@@ -380,6 +380,46 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
       return !!getComputedStyle(card_el).left;
     }, 20);
     card_el.classList.add('played');
+  }
+
+  updateDialogComponent(update: UpdateMessage): HTMLElement {
+    const el = document.createElement('div');
+    const strs: string[] = [];
+    switch(update.kind) {
+      case 'deal-round':
+        const deal_data = update.content as DealRound;
+        const dealer = this.game.players[deal_data.dealer].player.nickname;
+        strs.push(`Round ${deal_data.round} dealt by ${dealer}`);
+        strs.push(`Card flipped over as trump was ${cardToIcon(deal_data.trump)}`);
+        if (!!deal_data.cards) {
+          const cards_dealt = deal_data.cards.map(c => cardToIcon(c)).join(', ');
+          strs.push(`Cards dealt to you: ${cards_dealt}`);
+        }
+        break;
+      case 'bet':
+        const bet_data = update.content as PlayerBet;
+        const better = this.game.players[bet_data.player_id].player.nickname;
+        strs.push(`${better} bet ${bet_data.amount} points`);
+        break;
+      case 'play-card':
+        const play_data = update.content as PlayCard;
+        const player = this.game.players[play_data.player_id].player.nickname;
+        strs.push(`${player} played ${cardToIcon(play_data.card)}`);
+        break;
+      default:
+        strs.push(`Unknown update type for fiddlesticks: ${update.kind}`);
+        break;
+    }
+    if (strs.length === 1) {
+      el.innerHTML = strs[0];
+    } else {
+      for (const s of strs) {
+        const s_el = document.createElement('div');
+        s_el.innerHTML = s;
+        el.appendChild(s_el);
+      }
+    }
+    return el;
   }
 }
 

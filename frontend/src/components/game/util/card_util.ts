@@ -1,3 +1,5 @@
+import {formatMultilineHtmlString} from "../../../scripts/util";
+
 /** Data describing a standard card */
 export declare interface StandardCard {
   suit: number;
@@ -110,7 +112,13 @@ export function cardToName(card: StandardCard): string {
 /** Returns icon name of card */
 export function cardToIcon(card: StandardCard, render_html = true): string {
   if (render_html) {
-    return `<span style="color:${cardSuitToRGB(card.suit)};">${cardNumberToIconName(card.number)}<span style="font-size:1.4rem;">${cardSuitToIcon(card.suit)}</span></span>`;
+    return formatMultilineHtmlString(`
+    <span style="margin-right: 0.9em">
+      ${cardNumberToIconName(card.number)}
+      <span style="color:${cardSuitToRGB(card.suit)}; font-size: 1.3em; margin-left: 0.05em; margin-top: -0.15em; position: absolute;">
+        ${cardSuitToIcon(card.suit)}
+      </span>
+    </span>`);
   } else {
     return `${cardNumberToIconName(card.number)}${cardSuitToIcon(card.suit)}`;
   }
