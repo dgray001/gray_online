@@ -548,3 +548,9 @@ export class DwgLobbyRoom extends DwgElement {
 }
 
 customElements.define('dwg-lobby-room', DwgLobbyRoom);
+
+declare global {
+  interface HTMLElementTagNameMap {
+    'dwg-lobby-room': DwgLobbyRoom;
+  }
+}

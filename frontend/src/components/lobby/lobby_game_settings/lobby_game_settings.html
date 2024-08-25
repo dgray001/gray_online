@@ -1,17 +1,21 @@
-<div id="game-settings-wrapper">
+<div id="game-settings-wrapper" class="set-h set-w">
   <div id="game-settings-title">Game Settings</div>
   <select id="game-chooser"><option value="0" selected hidden>--Choose a game--</option></select>
-  <span class="row-wrapper">
-    <span class="input-wrapper">
-      <label for="max-players-input" class="label">Max Players</label>
-      <input id="max-players-input" type="number" min="1" max="8" placeholder="Max Players">
+  <div id="settings-wrapper">
+    <span id="max-players-wrapper" class="row-wrapper">
+      <span class="input-wrapper">
+        <label for="max-players-input" class="label">Max Players</label>
+        <input id="max-players-input" type="number" min="1" max="8" placeholder="Max Players">
+      </span>
+      <span class="input-wrapper">
+        <label for="max-viewers-input">Max Viewers</label>
+        <input id="max-viewers-input" type="number" min="0" max="16" placeholder="Max Viewers">
+      </span>
     </span>
-    <span class="input-wrapper">
-      <label for="max-viewers-input">Max Viewers</label>
-      <input id="max-viewers-input" type="number" min="0" max="16" placeholder="Max Viewers">
+    <div id="game-specific-settings"></div>
+    <span id="description-wrapper" class="row-wrapper">
+      <textarea id="room-description" placeholder="Set a description for your room"></textarea>
     </span>
-  </span>
-  <div id="game-specific-settings"></div>
-  <textarea id="room-description" placeholder="Set a description for your room"></textarea>
+  </div>
   <button id="save-button">Save</button>
 </div>

@@ -11,6 +11,9 @@ dwg-lobby-game-settings {
   }
 
   > #game-settings-wrapper {
+    --gap: 1.3em;
+    --size-h: 50vh;
+    --size-w: 50vw;
     background-color: lightgray;
     box-shadow: 0 0 6px 6px rgba(70, 70, 70, 0.5);
     box-sizing: border-box;
@@ -18,60 +21,82 @@ dwg-lobby-game-settings {
     display: flex;
     flex-flow: column nowrap;
     font-size: var(--font-size-medium);
-    gap: 1.6em;
-    height: 50vh;
-    margin: 25vh auto;
-    overflow-y: auto;
+    gap: var(--gap);
+    margin: calc(0.5 * (100vh - var(--size-h))) auto;
+    overflow: hidden;
     padding: 8px;
-    width: 50vw;
+    position: relative;
 
     * {
       font-size: var(--font-size-medium);
       line-height: var(--font-size-medium);
     }
 
-    label {
-      font-size: 0.8rem;
-    }
-
-    input {
-      font-size: var(--font-size-medium);
-    }
-
-    .row-wrapper {
-      display: flex;
-      flex-flow: row nowrap;
-      gap: 8px;
-
-      > .input-wrapper {
-        flex: 1 0 0;
-        min-width: 0;
-
-        > input {
-          min-width: 0;
-          width: 100%;
-        }
-      }
-    }
-
     > #game-settings-title {
+      flex: 0 0 fit-content;
       font-size: var(--font-size-large);
       line-height: calc(2 * var(--font-size-large));
       text-align: center;
     }
 
-    > #game-specific-settings {
-      display: flex;
-      flex-flow: column nowrap;
-      gap: 12px;
-      height: fit-content;
+    > #game-chooser {
+      flex: 0 0 fit-content;
     }
 
-    > #room-description {
-      resize: vertical;
+    > #settings-wrapper {
+      box-sizing: border-box;
+      flex: 1 0 0;
+      overflow-y: auto;
+      position: relative;
+      width: 100%;
+
+      label {
+        font-size: 0.8rem;
+      }
+  
+      input {
+        font-size: var(--font-size-medium);
+      }
+  
+      .row-wrapper {
+        display: flex;
+        flex-flow: row nowrap;
+        gap: 8px;
+  
+        > .input-wrapper {
+          flex: 1 0 0;
+          min-width: 0;
+  
+          > input {
+            min-width: 0;
+            width: 100%;
+          }
+        }
+      }
+
+      > #max-players-wrapper {
+        margin-bottom: var(--gap);
+      }
+
+      > #description-wrapper {
+        margin-top: var(--gap);
+  
+        > #room-description {
+          resize: vertical;
+          width: 100%;
+        }
+      }
+
+      > #game-specific-settings {
+        display: flex;
+        flex-flow: column nowrap;
+        gap: calc(0.7 * var(--gap));
+        height: fit-content;
+      }
     }
 
     > #save-button {
+      flex: 0 0 fit-content;
       font-size: var(--font-size-medium);
       margin-top: 0.4em;
     }
@@ -81,10 +106,9 @@ dwg-lobby-game-settings {
 body.mobile {
   dwg-lobby-game-settings {
     > #game-settings-wrapper {
-      height: 80svh;
-      margin: 10svh auto;
+      --size-h: 80vh;
+      --size-w: 90vw;
       padding: 8px;
-      width: 90vw;
 
       .row-wrapper {
         flex-direction: column;

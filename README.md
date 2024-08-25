@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6c: Fiddlesticks min round
+v0.6d: Prepare for ai players in settings
 
 ## Dev Use
 

@@ -121,4 +121,16 @@ body {
     min-height: var(--size);
     width: var(--size);
   }
+
+  .set-h {
+    height: var(--size-h);
+    max-height: var(--size-h);
+    min-height: var(--size-h);
+  }
+
+  .set-w {
+    max-width: var(--size-w);
+    min-width: var(--size-w);
+    width: var(--size-w);
+  }
 }
