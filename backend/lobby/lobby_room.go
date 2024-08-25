@@ -90,6 +90,7 @@ func (r *LobbyRoom) run() {
 				game.Game_StartGame(r.game)
 			}
 		case action := <-r.PlayerAction:
+			fmt.Println("Received player action: ", action)
 			if !r.gameNil() {
 				r.game.PlayerAction(r.game.GetBase().AddAction(action))
 			}
@@ -389,7 +390,7 @@ func (r *LobbyRoom) launchGame(game_id uint64) (game.Game, error) {
 	}
 	base_game := game.CreateBaseGame(game_id, r.game_settings.GameType, r.game_settings.GameSpecificSettings)
 	for _, player := range r.players {
-		base_game.Players[player.client_id] = game.CreatePlayer(player.client_id, player.nickname, base_game)
+		game.CreatePlayer(player.client_id, player.nickname, base_game)
 	}
 	for _, viewer := range r.viewers {
 		base_game.Viewers[viewer.client_id] = game.CreateViewer(viewer.client_id, viewer.nickname)

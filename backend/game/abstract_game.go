@@ -34,6 +34,7 @@ func Game_StartGame(g Game) {
 	} else {
 		fmt.Fprintln(os.Stderr, "Game base is nil")
 	}
+	fmt.Println("Starting game id ", base.Game_id)
 	g.StartGame()
 }
 

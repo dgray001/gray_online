@@ -1,0 +1,30 @@
+dwg-ai-selector {
+  > #player-wrapper {
+    display: flex;
+    flex-flow: column nowrap;
+    gap: 0.4em;
+
+    > .player {
+      --size-h: 1.2em;
+      line-height: var(--size-h);
+      padding: 0.2em;
+      position: relative;
+
+      &:hover {
+        background-color: rgba(120, 120, 120, 0.1);
+      }
+
+      > .remove-button {
+        --size: calc(var(--size-h) + 0.4em);
+        padding: 2px;
+        position: absolute;
+        right: 0.5em;
+        top: 0;
+      }
+    }
+  }
+
+  > #add-player-button {
+    margin-top: 0.8em;
+  }
+}

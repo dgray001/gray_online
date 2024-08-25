@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6d: Prepare for ai players in settings
+v0.6e: Can launch fiddlesticks with ai players
 
 ## Dev Use
 

@@ -25,6 +25,7 @@ func (a *PlayerAction) toFrontend() gin.H {
 
 type Player struct {
 	client_id     uint64
+	ai_player_id  uint32 // specific to the game
 	Player_id     int
 	nickname      string
 	connected     bool
@@ -34,9 +35,10 @@ type Player struct {
 	base_game     *GameBase
 }
 
-func CreatePlayer(client_id uint64, nickname string, base_game *GameBase) *Player {
-	return &Player{
+func CreatePlayer(client_id uint64, nickname string, base_game *GameBase) {
+	player := &Player{
 		client_id:     client_id,
+		ai_player_id:  0,
 		Player_id:     -1,
 		nickname:      nickname,
 		connected:     false,
@@ -44,6 +46,40 @@ func CreatePlayer(client_id uint64, nickname string, base_game *GameBase) *Playe
 		FailedUpdates: make(chan *UpdateMessage),
 		update_list:   []*UpdateMessage{},
 		base_game:     base_game,
+	}
+	base_game.Players[client_id] = player
+}
+
+func CreateAiPlayer(nickname string, base_game *GameBase) *Player {
+	ai_id := base_game.NextAiId()
+	player := &Player{
+		client_id:     0,
+		ai_player_id:  ai_id,
+		Player_id:     -1,
+		nickname:      nickname,
+		connected:     false,
+		Updates:       make(chan *UpdateMessage),
+		FailedUpdates: make(chan *UpdateMessage),
+		update_list:   []*UpdateMessage{},
+		base_game:     base_game,
+	}
+	base_game.AiPlayers[ai_id] = player
+	go player.aiGameUpdates()
+	return player
+}
+
+// To prevent the update channels from blocking
+func (p *Player) aiGameUpdates() {
+	for {
+		if p == nil {
+			break
+		}
+		select {
+		case update := <-p.Updates:
+			fmt.Println("AI player", p.ai_player_id, "received update", update)
+		case update := <-p.FailedUpdates:
+			fmt.Println("AI player", p.ai_player_id, "received failed update", update)
+		}
 	}
 }
 
@@ -80,10 +116,11 @@ func (p *Player) GetClientId() uint64 {
 
 func (p *Player) ToFrontend(show_updates bool) gin.H {
 	player := gin.H{
-		"client_id": p.client_id,
-		"player_id": p.Player_id,
-		"nickname":  p.nickname,
-		"connected": p.connected,
+		"client_id":    p.client_id,
+		"ai_player_id": p.ai_player_id,
+		"player_id":    p.Player_id,
+		"nickname":     p.nickname,
+		"connected":    p.connected,
 	}
 	if show_updates {
 		updates := []gin.H{}

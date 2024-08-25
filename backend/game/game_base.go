@@ -25,8 +25,11 @@ type GameBase struct {
 	Game_id   uint64
 	game_type uint8
 	// here the map keys are the lobby client ids
-	Players              map[uint64]*Player
-	Viewers              map[uint64]*Viewer
+	Players map[uint64]*Player
+	Viewers map[uint64]*Viewer
+	// the game base should maintain a separate ai id counter
+	next_ai_id           uint32
+	AiPlayers            map[uint32]*Player
 	game_started         bool
 	game_ended           bool
 	player_updates       []*PlayerAction
@@ -42,6 +45,8 @@ func CreateBaseGame(game_id uint64, game_type uint8, game_specific_settings map[
 		game_type:            game_type,
 		Players:              make(map[uint64]*Player),
 		Viewers:              make(map[uint64]*Viewer),
+		next_ai_id:           1,
+		AiPlayers:            make(map[uint32]*Player),
 		game_started:         false,
 		game_ended:           false,
 		player_updates:       make([]*PlayerAction, 0),
@@ -50,6 +55,12 @@ func CreateBaseGame(game_id uint64, game_type uint8, game_specific_settings map[
 		GameSpecificSettings: game_specific_settings,
 		GameEndedChannel:     make(chan string),
 	}
+}
+
+func (g *GameBase) NextAiId() uint32 {
+	next_ai_id := g.next_ai_id + 1
+	g.next_ai_id++
+	return next_ai_id
 }
 
 // Returns whether this connection should trigger the game to start
@@ -173,6 +184,11 @@ func (g *GameBase) ToFrontend(client_id uint64, is_viewer bool) gin.H {
 	for _, player := range g.Players {
 		if player != nil {
 			players = append(players, player.ToFrontend(is_viewer || client_id == player.client_id))
+		}
+	}
+	for _, player := range g.AiPlayers {
+		if player != nil {
+			players = append(players, player.ToFrontend(is_viewer))
 		}
 	}
 	game_base["players"] = players

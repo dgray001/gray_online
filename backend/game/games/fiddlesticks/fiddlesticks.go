@@ -44,6 +44,10 @@ type GameFiddlesticks struct {
 	trick_points      uint16
 }
 
+type FiddlesticksAiPlayerFromFrontend struct {
+	nickname string
+}
+
 func CreateGame(g *game.GameBase) (*GameFiddlesticks, error) {
 	fiddlesticks := GameFiddlesticks{
 		game:              g,
@@ -71,6 +75,30 @@ func CreateGame(g *game.GameBase) (*GameFiddlesticks, error) {
 			score:        0,
 		})
 		player_id++
+	}
+	ai_players, ai_players_ok := g.GameSpecificSettings["ai_players"].([]interface{})
+	if ai_players_ok {
+		for _, ai_player := range ai_players {
+			ai, ai_ok := ai_player.(map[string]interface{})
+			if !ai_ok {
+				fmt.Println("Failed to cast ai: ", ai_player)
+				continue
+			}
+			nickname, nickname_ok := ai["nickname"].(string)
+			if !nickname_ok {
+				fmt.Println("Failed to cast nickname: ", ai["nickname"])
+				continue
+			}
+			player := game.CreateAiPlayer(nickname, g)
+			player.Player_id = player_id
+			fiddlesticks.players = append(fiddlesticks.players, &FiddlesticksPlayer{
+				player:       player,
+				cards:        []*game_utils.StandardCard{},
+				cards_played: []int{},
+				score:        0,
+			})
+			player_id++
+		}
 	}
 	if len(fiddlesticks.players) < 2 {
 		return nil, errors.New("Need at least two players to play fiddlesticks")
@@ -377,6 +405,12 @@ func (f *GameFiddlesticks) dealNextRound() {
 		f.players[j].has_bet = false
 	}
 	f.trump = f.deck.DrawCard()
+	f.betting = true
+	f.turn = f.dealer + 1
+	if f.turn >= len(f.players) {
+		f.turn -= len(f.players)
+	}
+	f.trick_leader = f.turn
 	for _, player := range f.players {
 		frontend_cards := []gin.H{}
 		for _, card := range player.cards {
@@ -394,10 +428,4 @@ func (f *GameFiddlesticks) dealNextRound() {
 		"round":  f.round,
 		"trump":  f.trump.ToFrontend(),
 	}})
-	f.betting = true
-	f.turn = f.dealer + 1
-	if f.turn >= len(f.players) {
-		f.turn -= len(f.players)
-	}
-	f.trick_leader = f.turn
 }
