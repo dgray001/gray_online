@@ -31,6 +31,7 @@ type GameFiddlesticks struct {
 	players           []*FiddlesticksPlayer
 	deck              *game_utils.StandardDeck
 	round             uint8
+	min_round         uint8
 	max_round         uint8
 	rounds_increasing bool
 	dealer            int
@@ -49,6 +50,7 @@ func CreateGame(g *game.GameBase) (*GameFiddlesticks, error) {
 		players:           []*FiddlesticksPlayer{},
 		deck:              game_utils.CreateStandardDeck(),
 		round:             0,
+		min_round:         1,
 		rounds_increasing: true,
 		dealer:            -1,
 		turn:              -1,
@@ -79,6 +81,14 @@ func CreateGame(g *game.GameBase) (*GameFiddlesticks, error) {
 		max_round := uint8(max_round_float)
 		if max_round > 0 && max_round < fiddlesticks.max_round {
 			fiddlesticks.max_round = max_round
+		}
+	}
+	min_round_float, min_round_ok := g.GameSpecificSettings["min_round"].(float64)
+	if min_round_ok {
+		min_round := uint8(min_round_float)
+		if min_round > 0 && min_round <= fiddlesticks.max_round {
+			fiddlesticks.min_round = min_round
+			fiddlesticks.round = min_round - 1
 		}
 	}
 	round_points_float, round_points_ok := g.GameSpecificSettings["round_points"].(float64)
@@ -280,6 +290,7 @@ func (f *GameFiddlesticks) PlayerReconnected(client_id uint64) {
 func (f *GameFiddlesticks) ToFrontend(client_id uint64, is_viewer bool) gin.H {
 	game := gin.H{
 		"round":             f.round,
+		"min_round":         f.min_round,
 		"max_round":         f.max_round,
 		"rounds_increasing": f.rounds_increasing,
 		"dealer":            f.dealer,
@@ -316,7 +327,7 @@ func (f *GameFiddlesticks) dealNextRound() {
 	if f.rounds_increasing && f.round == f.max_round {
 		f.rounds_increasing = false
 	}
-	if f.round == 1 && !f.rounds_increasing {
+	if f.round == f.min_round && !f.rounds_increasing {
 		var winners = []int{0}
 		var winning_score = f.players[0].score
 		for i, player := range f.players[1:] {

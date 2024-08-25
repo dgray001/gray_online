@@ -6,6 +6,7 @@ export declare interface GameFiddlesticks {
   game_base: GameBase;
   players: FiddlesticksPlayer[];
   round: number;
+  min_round: number;
   max_round: number;
   rounds_increasing: boolean;
   dealer: number;

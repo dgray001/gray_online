@@ -335,7 +335,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     if (this.game.rounds_increasing && this.game.round === this.game.max_round) {
       this.game.rounds_increasing = false;
     }
-    if (!this.game.rounds_increasing && this.game.round === 1) {
+    if (!this.game.rounds_increasing && this.game.round === this.game.min_round) {
       // end of game
       this.game.game_base.game_ended = true;
       let winners = [0];

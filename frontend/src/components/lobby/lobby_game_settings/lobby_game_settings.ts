@@ -7,6 +7,7 @@ import './lobby_game_settings.scss';
 
 /** Data describing fiddlesticks-specific game settings */
 declare interface GameSettingsFiddlesticks {
+  min_round?: number;
   max_round?: number;
   round_points: number;
   trick_points: number;
@@ -63,10 +64,11 @@ export class DwgLobbyGameSettings extends DwgElement {
     this.game_specific_settings_els.clear();
     switch(game_type) {
       case GameType.FIDDLESTICKS:
-        const max_round = this.createNumberElement('max-round', 'Override Max Round', 1, 12);
+        const min_round = this.createNumberElement('min-round', 'Override Min Round', 1, 17);
+        const max_round = this.createNumberElement('max-round', 'Override Max Round', 1, 17);
         const round_points = this.createNumberElement('round-points', 'Round Points', 0, 20, 10);
         const trick_points = this.createNumberElement('trick-points', 'Trick Points', 0, 10, 1);
-        children.push(this.createRowElement([max_round, round_points, trick_points]));
+        children.push(this.createRowElement([min_round, max_round, round_points, trick_points]));
         break;
       default:
         break;
@@ -114,6 +116,7 @@ export class DwgLobbyGameSettings extends DwgElement {
       switch(settings.game_type) {
         case GameType.FIDDLESTICKS:
           const specific_settings = settings.game_specific_settings as GameSettingsFiddlesticks;
+          this.setNumberSetting('min-round', specific_settings.min_round);
           this.setNumberSetting('max-round', specific_settings.max_round);
           this.setNumberSetting('round-points', specific_settings.round_points);
           this.setNumberSetting('trick-points', specific_settings.trick_points);
@@ -151,6 +154,7 @@ export class DwgLobbyGameSettings extends DwgElement {
     switch(settings.game_type) {
       case GameType.FIDDLESTICKS:
         settings.game_specific_settings = {
+          min_round: this.game_specific_settings_els.get('min-round')?.valueAsNumber || 0,
           max_round: this.game_specific_settings_els.get('max-round')?.valueAsNumber || 0,
           round_points: this.game_specific_settings_els.get('round-points')?.valueAsNumber || 0,
           trick_points: this.game_specific_settings_els.get('trick-points')?.valueAsNumber || 0,

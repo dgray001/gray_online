@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6b: Fiddlesticks readable game updates
+v0.6c: Fiddlesticks min round
 
 ## Dev Use
 
