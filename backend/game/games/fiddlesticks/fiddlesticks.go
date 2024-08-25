@@ -48,7 +48,7 @@ type FiddlesticksAiPlayerFromFrontend struct {
 	nickname string
 }
 
-func CreateGame(g *game.GameBase) (*GameFiddlesticks, error) {
+func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameFiddlesticks, error) {
 	fiddlesticks := GameFiddlesticks{
 		game:              g,
 		players:           []*FiddlesticksPlayer{},
@@ -90,6 +90,7 @@ func CreateGame(g *game.GameBase) (*GameFiddlesticks, error) {
 				continue
 			}
 			player := game.CreateAiPlayer(nickname, g)
+			go runAi(player, &fiddlesticks, action_channel)
 			player.Player_id = player_id
 			fiddlesticks.players = append(fiddlesticks.players, &FiddlesticksPlayer{
 				player:       player,
@@ -156,10 +157,13 @@ func (f *GameFiddlesticks) Valid() bool {
 }
 
 func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
-	fmt.Println("player action:", action.Kind, action.Client_id, action.Action)
-	player := f.game.Players[uint64(action.Client_id)]
+	fmt.Println("player action:", action.Kind, action.Client_id, action.Ai_id, action.Action)
+	player := f.game.AiPlayers[uint32(action.Ai_id)]
 	if player == nil {
-		fmt.Fprintln(os.Stderr, "Invalid client id", action.Client_id)
+		player = f.game.Players[uint64(action.Client_id)]
+	}
+	if player == nil {
+		fmt.Fprintln(os.Stderr, "Invalid client or ai id", action.Client_id, action.Ai_id)
 		return
 	}
 	player_id := player.Player_id
@@ -218,29 +222,43 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 			return
 		}
 		card := cards[card_index]
-		if len(f.trick) > 0 {
-			lead := f.trick[0]
-			if lead != nil {
-				suit := lead.GetSuit()
-				if card.GetSuit() != suit {
-					for i, other_card := range cards {
-						if util.Contains(f.players[f.turn].cards_played, i) {
-							continue
-						}
-						if other_card.GetSuit() == suit {
-							player.AddFailedUpdateShorthand("play-card-failed",
-								fmt.Sprintf("Must follow suit of lead card %s and tried to play %s but have card that follows: %s",
-									lead.GetName(), card.GetName(), other_card.GetName()))
-							return
-						}
-					}
-				}
-			}
+		valid_cards, lead_suit := f.validCards(player_id)
+		if !util.Contains(valid_cards, card_index) {
+			player.AddFailedUpdateShorthand("play-card-failed",
+				fmt.Sprintf("Must follow suit of lead card %d but tried to play %s", lead_suit, card.GetName()))
+			return
 		}
 		f.executePlayCard(player, card_index)
 	default:
 		fmt.Fprintln(os.Stderr, "Unknown game update type", action.Kind)
 	}
+}
+
+func (f *GameFiddlesticks) validCards(player_id int) ([]int, uint8) {
+	cards := f.players[player_id].cards
+	cards_played := f.players[player_id].cards_played
+	valid_cards := []int{}
+	lead_suit := uint8(0)
+	has_lead_suit := false
+	if len(f.trick) > 0 && f.trick[0] != nil {
+		lead_suit = f.trick[0].GetSuit()
+		for card_id, card := range cards {
+			if !util.Contains(cards_played, card_id) && lead_suit == card.GetSuit() {
+				has_lead_suit = true
+				break
+			}
+		}
+	}
+	for card_id, card := range cards {
+		if util.Contains(cards_played, card_id) {
+			continue
+		}
+		if has_lead_suit && lead_suit != card.GetSuit() {
+			continue
+		}
+		valid_cards = append(valid_cards, card_id)
+	}
+	return valid_cards, lead_suit
 }
 
 func (f *GameFiddlesticks) executeBet(player *game.Player, bet_value uint8) {
@@ -265,15 +283,11 @@ func (f *GameFiddlesticks) executePlayCard(player *game.Player, card_index int) 
 	card := f.players[f.turn].cards[card_index]
 	f.trick = append(f.trick, card)
 	f.players[f.turn].cards_played = append(f.players[f.turn].cards_played, card_index)
-	game.Game_BroadcastUpdate(f, &game.UpdateMessage{Kind: "play-card", Content: gin.H{
-		"index":     card_index,
-		"card":      card.ToFrontend(),
-		"player_id": player.Player_id,
-	}})
 	f.turn++
 	if f.turn >= len(f.players) {
 		f.turn -= len(f.players)
 	}
+	deal_next_round := false
 	if f.turn == f.trick_leader {
 		winning_index := 0
 		winning_card := f.trick[0]
@@ -304,8 +318,16 @@ func (f *GameFiddlesticks) executePlayCard(player *game.Player, card_index int) 
 					player.score += f.round_points + f.trick_points*uint16(player.bet)
 				}
 			}
-			f.dealNextRound()
+			deal_next_round = true
 		}
+	}
+	game.Game_BroadcastUpdate(f, &game.UpdateMessage{Kind: "play-card", Content: gin.H{
+		"index":     card_index,
+		"card":      card.ToFrontend(),
+		"player_id": player.Player_id,
+	}})
+	if deal_next_round {
+		f.dealNextRound()
 	}
 }
 

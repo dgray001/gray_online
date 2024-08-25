@@ -50,7 +50,7 @@ func CreateClient(connection *websocket.Conn, nickname string, lobby *Lobby) *Cl
 		ping:                   0,
 		ping_start:             time.Now(),
 		ping_broadcast_counter: 1,
-		send_message:           make(chan lobbyMessage),
+		send_message:           make(chan lobbyMessage, 4),
 		lobby:                  lobby,
 		lobby_room:             nil,
 		game:                   nil,

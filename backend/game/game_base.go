@@ -50,15 +50,15 @@ func CreateBaseGame(game_id uint64, game_type uint8, game_specific_settings map[
 		game_started:         false,
 		game_ended:           false,
 		player_updates:       make([]*PlayerAction, 0),
-		ViewerUpdates:        make(chan *UpdateMessage),
+		ViewerUpdates:        make(chan *UpdateMessage, 12),
 		viewer_update_list:   make([]*UpdateMessage, 0),
 		GameSpecificSettings: game_specific_settings,
-		GameEndedChannel:     make(chan string),
+		GameEndedChannel:     make(chan string, 4),
 	}
 }
 
 func (g *GameBase) NextAiId() uint32 {
-	next_ai_id := g.next_ai_id + 1
+	next_ai_id := g.next_ai_id
 	g.next_ai_id++
 	return next_ai_id
 }

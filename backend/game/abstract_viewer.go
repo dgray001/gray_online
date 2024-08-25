@@ -14,7 +14,7 @@ func CreateViewer(client_id uint64, nickname string) *Viewer {
 		client_id: client_id,
 		nickname:  nickname,
 		connected: false,
-		Updates:   make(chan *UpdateMessage),
+		Updates:   make(chan *UpdateMessage, 24),
 	}
 }
 

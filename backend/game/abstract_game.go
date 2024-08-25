@@ -45,6 +45,9 @@ func Game_BroadcastUpdate(g Game, update *UpdateMessage) {
 		for _, player := range base.Players {
 			player.AddUpdate(update)
 		}
+		for _, player := range base.AiPlayers {
+			player.AddUpdate(update)
+		}
 		base.AddViewerUpdate(update)
 	} else {
 		fmt.Fprintln(os.Stderr, "Game base is nil")

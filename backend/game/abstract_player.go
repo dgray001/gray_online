@@ -12,6 +12,7 @@ type PlayerAction struct {
 	Client_id int
 	Kind      string
 	Action    gin.H
+	Ai_id     int
 }
 
 func (a *PlayerAction) toFrontend() gin.H {
@@ -20,6 +21,7 @@ func (a *PlayerAction) toFrontend() gin.H {
 		"client_id": a.Client_id,
 		"kind":      a.Kind,
 		"action":    a.Action,
+		"ai_id":     a.Ai_id,
 	}
 }
 
@@ -42,8 +44,8 @@ func CreatePlayer(client_id uint64, nickname string, base_game *GameBase) {
 		Player_id:     -1,
 		nickname:      nickname,
 		connected:     false,
-		Updates:       make(chan *UpdateMessage),
-		FailedUpdates: make(chan *UpdateMessage),
+		Updates:       make(chan *UpdateMessage, 24),
+		FailedUpdates: make(chan *UpdateMessage, 24),
 		update_list:   []*UpdateMessage{},
 		base_game:     base_game,
 	}
@@ -64,23 +66,7 @@ func CreateAiPlayer(nickname string, base_game *GameBase) *Player {
 		base_game:     base_game,
 	}
 	base_game.AiPlayers[ai_id] = player
-	go player.aiGameUpdates()
 	return player
-}
-
-// To prevent the update channels from blocking
-func (p *Player) aiGameUpdates() {
-	for {
-		if p == nil {
-			break
-		}
-		select {
-		case update := <-p.Updates:
-			fmt.Println("AI player", p.ai_player_id, "received update", update)
-		case update := <-p.FailedUpdates:
-			fmt.Println("AI player", p.ai_player_id, "received failed update", update)
-		}
-	}
 }
 
 func (p *Player) AddUpdate(update *UpdateMessage) {
@@ -112,6 +98,14 @@ func (p *Player) GetNickname() string {
 
 func (p *Player) GetClientId() uint64 {
 	return p.client_id
+}
+
+func (p *Player) GetBase() *GameBase {
+	return p.base_game
+}
+
+func (p *Player) GetAiId() uint32 {
+	return p.ai_player_id
 }
 
 func (p *Player) ToFrontend(show_updates bool) gin.H {

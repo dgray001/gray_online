@@ -51,11 +51,11 @@ func CreateLobbyRoom(host *Client, room_id uint64, lobby *Lobby) *LobbyRoom {
 			MaxViewers: 16,
 			GameType:   0,
 		},
-		broadcast:       make(chan lobbyMessage),
-		JoinRoom:        make(chan *ClientRoom),
-		UpdateSettings:  make(chan *GameSettings),
-		PlayerConnected: make(chan *Client),
-		PlayerAction:    make(chan game.PlayerAction),
+		broadcast:       make(chan lobbyMessage, 4),
+		JoinRoom:        make(chan *ClientRoom, 4),
+		UpdateSettings:  make(chan *GameSettings, 4),
+		PlayerConnected: make(chan *Client, 4),
+		PlayerAction:    make(chan game.PlayerAction, 12),
 	}
 	room.players[host.client_id] = host
 	host.lobby_room = &room
@@ -399,7 +399,7 @@ func (r *LobbyRoom) launchGame(game_id uint64) (game.Game, error) {
 	var new_game game.Game = nil
 	switch r.game_settings.GameType {
 	case 1:
-		new_game, err = fiddlesticks.CreateGame(base_game)
+		new_game, err = fiddlesticks.CreateGame(base_game, r.PlayerAction)
 	case 2:
 		new_game, err = euchre.CreateGame(base_game)
 	case 3:
