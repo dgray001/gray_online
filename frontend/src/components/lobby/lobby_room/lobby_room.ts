@@ -4,6 +4,7 @@ import {GameSettings, GameType, LobbyRoom, LobbyUser, createMessage} from '../da
 import {DwgLobbyGameSettings} from '../lobby_game_settings/lobby_game_settings';
 import {capitalize, clickButton, setIntervalX} from '../../../scripts/util';
 import {DwgRoomUser} from './room_user/room_user';
+import {getReadableGameSettings} from '../lobby_game_settings/game_specific_data';
 
 import html from './lobby_room.html';
 import './lobby_room.scss';
@@ -254,16 +255,17 @@ export class DwgLobbyRoom extends DwgElement {
     if (!this.room.game_settings.game_specific_settings) {
       this.settings_settings.replaceChildren();
     } else {
-      const settings: HTMLDivElement[] = []
-      for (const [setting_name, setting] of Object.entries(this.room.game_settings.game_specific_settings)) {
+      const settings_els: HTMLDivElement[] = []
+      const settings = getReadableGameSettings(this.room.game_settings.game_specific_settings, this.room.game_settings.game_type);
+      for (const [setting_name, setting] of settings) {
         const setting_el = document.createElement('div');
         setting_el.classList.add('setting');
         setting_el.classList.add('settings-small');
         setting_el.id = `setting-${setting_name}`;
-        setting_el.innerText = `${capitalize(setting_name.replace('_', ' '))}: ${setting}`;
-        settings.push(setting_el);
+        setting_el.innerText = `${setting_name}: ${setting}`;
+        settings_els.push(setting_el);
       }
-      this.settings_settings.replaceChildren(...settings);
+      this.settings_settings.replaceChildren(...settings_els);
     }
     this.settings_description.innerText = this.room.room_description;
   }

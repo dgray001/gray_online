@@ -31,6 +31,7 @@ export class DwgAiSelector extends DwgElement {
     if (!this.data) {
       throw new Error('Must set ai selector data before adding to dom');
     }
+    this.setPlayers(this.data.ai_players);
     this.add_player_button.addEventListener('click', () => {
       switch(this.data.game_type) {
         case GameType.FIDDLESTICKS:
@@ -38,7 +39,7 @@ export class DwgAiSelector extends DwgElement {
           const nickname = generateName();
           el.innerText = nickname;
           this.data.ai_players.push({nickname} satisfies AiPlayerFiddlesticks);
-          this.addPlayer(el);
+          this.player_wrapper.appendChild(this.addPlayer(el));
           break;
         default:
           throw new Error('Unknown game type in ai selector');
@@ -47,27 +48,32 @@ export class DwgAiSelector extends DwgElement {
   }
 
   setData(data: AiSelectorData) {
+    if (this.fully_parsed) {
+      throw new Error('Cannot set data when already added to dom');
+    }
     this.data = data;
-    this.setPlayers(data.ai_players);
+    this.els = [];
   }
 
   setPlayers(ai_players: any[]) {
     this.data.ai_players = ai_players;
+    this.els = [];
     switch(this.data.game_type) {
       case GameType.FIDDLESTICKS:
         const players: AiPlayerFiddlesticks[] = ai_players;
-        for (const [id, player] of players.entries()) {
+        const player_els = players.map((p) => {
           const el = document.createElement('div');
-          el.innerText = player.nickname;
-          this.addPlayer(el);
-        }
+          el.innerText = p.nickname;
+          return this.addPlayer(el);
+        });
+        this.player_wrapper.replaceChildren(...player_els);
         break;
       default:
         throw new Error('Unknown game type in ai selector');
     }
   }
 
-  private addPlayer(el: HTMLElement) {
+  private addPlayer(el: HTMLElement): HTMLDivElement {
     const wrapper = document.createElement('div');
     wrapper.classList.add('player');
     wrapper.classList.add('set-h');
@@ -79,10 +85,14 @@ export class DwgAiSelector extends DwgElement {
     remove_icon.src = '/images/icons/close64.png';
     remove_icon.draggable = false;
     remove_button.appendChild(remove_icon);
+    el.id = `player-${this.els.length}`;
+    this.els.push(el);
     remove_button.addEventListener('click', () => {
       wrapper.remove();
       const index = parseInt(el.id.replace('player-', ''));
+      console.log(this.data.ai_players, index);
       this.data.ai_players.splice(index, 1);
+      console.log(this.data.ai_players);
       this.els.splice(index, 1);
       for (const [id, el] of this.els.entries()) {
         if (id < index) {
@@ -90,12 +100,11 @@ export class DwgAiSelector extends DwgElement {
         }
         el.id = `player-${id}`;
       }
+      console.log(this.getPlayers().length);
     });
-    el.id = `player-${this.els.length}`;
-    this.els.push(el);
     wrapper.appendChild(el);
     wrapper.appendChild(remove_button);
-    this.player_wrapper.appendChild(wrapper);
+    return wrapper;
   }
 
   getPlayers(): any[] {

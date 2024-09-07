@@ -1,7 +1,7 @@
  - After reconnecting sometimes in backend the connection is nil (or delete_timer is not nil)
     => noticed when using client_id url param but not sure if that matters
     => connection is definitely not nil since update goes through from client to server just not vice versa
-
+ 
  - Fiddlesticks updates grouped by round and trick, includes trick winner and turn points
  - Proper updates dialog for euchre
  - Timed turns (or not) and can pause game if timed

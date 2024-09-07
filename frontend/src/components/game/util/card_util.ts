@@ -6,6 +6,14 @@ export declare interface StandardCard {
   number: number;
 }
 
+/** Function to sort cards */
+export function sortStandardCards(a: StandardCard, b: StandardCard): number {
+  if (a.suit !== b.suit) {
+    return a.suit - b.suit;
+  }
+  return a.number - b.number;
+}
+
 /** Maps suit to its color */
 export function cardSuitToColor(suit: number): string {
   switch(suit) {
@@ -38,11 +46,11 @@ function cardSuitToRGB(suit: number): string {
 export function cardSuitToName(suit: number): string {
   switch(suit) {
     case 1:
-      return 'Diamond';
+      return 'Heart';
     case 2:
       return 'Club';
     case 3:
-      return 'Heart';
+      return 'Diamond';
     case 4:
       return 'Spade';
     default:
@@ -54,11 +62,11 @@ export function cardSuitToName(suit: number): string {
 function cardSuitToIcon(suit: number): string {
   switch(suit) {
     case 1:
-      return "♦";
+      return "♥";
     case 2:
       return "♣";
     case 3:
-      return "♥";
+      return "♦";
     case 4:
       return "♠";
     default:

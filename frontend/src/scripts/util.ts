@@ -45,6 +45,11 @@ export function capitalize(str: string, word_split = ' '): string {
   }).join(' ');
 }
 
+/** Gets random element of array */
+export function getRandom<T>(a: T[]): T {
+  return a[Math.floor(Math.random() * a.length)];
+}
+
 /** Formats a multiline html string by removing extra whitespace */
 export function formatMultilineHtmlString(str: string): string {
   return str.replace(/(\r\n|\n|\r)(\s*)/gm, '');

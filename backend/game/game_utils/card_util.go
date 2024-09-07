@@ -62,11 +62,11 @@ func (c *StandardCard) getNumberName() string {
 func (c *StandardCard) getSuitName() string {
 	switch c.suit {
 	case 1:
-		return "Diamond"
+		return "Heart"
 	case 2:
 		return "Club"
 	case 3:
-		return "Heart"
+		return "Diamond"
 	case 4:
 		return "Spade"
 	default:

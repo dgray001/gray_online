@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6f: Can play fiddlesticks with ai
+v0.6g: Card hand presorts your cards
 
 ## Dev Use
 

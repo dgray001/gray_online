@@ -1,5 +1,5 @@
 import {DwgElement} from '../../../dwg_element';
-import {StandardCard, cardToIcon, cardToImagePath} from '../card_util';
+import {StandardCard, cardToIcon, cardToImagePath, sortStandardCards} from '../card_util';
 import {createLock, until, untilTimer} from '../../../../scripts/util';
 import {Point2D} from '../objects2d';
 import {MultiMap} from '../../../../scripts/multi_map';
@@ -153,7 +153,7 @@ export class DwgCardHand extends DwgElement {
   setCards(cards: StandardCard[], cards_played: number[] = [], animation_time = 0) {
     let cards_skipped = 0;
     this.cards_container.replaceChildren();
-    for (const [i, card] of cards.entries()) {
+    for (const [i, card] of cards.sort(sortStandardCards).entries()) {
       if (cards_played.some(index => index === i)) {
         cards_skipped++;
         continue;
