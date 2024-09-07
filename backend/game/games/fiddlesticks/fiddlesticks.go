@@ -157,7 +157,7 @@ func (f *GameFiddlesticks) Valid() bool {
 }
 
 func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
-	fmt.Println("player action:", action.Kind, action.Client_id, action.Ai_id, action.Action)
+	fmt.Println("Player action:", action.Kind, action.Client_id, action.Ai_id, action.Action)
 	player := f.game.AiPlayers[uint32(action.Ai_id)]
 	if player == nil {
 		player = f.game.Players[uint64(action.Client_id)]

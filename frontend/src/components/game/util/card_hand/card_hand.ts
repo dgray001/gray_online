@@ -9,9 +9,10 @@ import html from './card_hand.html';
 import './card_hand.scss';
 
 interface CardData {
+  card: StandardCard;
   i: number; // actual card index in hand
-  i_dom: number; // displayed card index
-  el: HTMLDivElement;
+  i_dom?: number; // displayed card index
+  el?: HTMLDivElement;
 }
 
 interface CardDraggingData {
@@ -151,25 +152,29 @@ export class DwgCardHand extends DwgElement {
   }
 
   setCards(cards: StandardCard[], cards_played: number[] = [], animation_time = 0) {
-    let cards_skipped = 0;
     this.cards_container.replaceChildren();
-    for (const [i, card] of cards.sort(sortStandardCards).entries()) {
-      if (cards_played.some(index => index === i)) {
+    const card_data: CardData[] = cards.map((card, i) => {
+      return {i, card} satisfies CardData;
+    }).sort((a, b) => {
+      return sortStandardCards(a.card, b.card);
+    });
+    let cards_skipped = 0;
+    for (const [i_dom, data] of card_data.entries()) {
+      if (cards_played.some(i => i === data.i)) {
         cards_skipped++;
         continue;
       }
-      const i_dom = i - cards_skipped;
-      const card_data: CardData = {i, i_dom, el: undefined};
-      this.createCardEl(card, card_data, animation_time)
+      data.i_dom = i_dom - cards_skipped;
+      this.createCardEl(data, animation_time)
     }
   }
 
-  private createCardEl(card: StandardCard, data: CardData, animation_time = 0) {
+  private createCardEl(data: CardData, animation_time = 0) {
     const el = document.createElement('div');
     const img = document.createElement('img');
-    img.src = cardToImagePath(card);
+    img.src = cardToImagePath(data.card);
     img.draggable = false;
-    img.alt = cardToIcon(card);
+    img.alt = cardToIcon(data.card);
     el.appendChild(img);
     el.classList.add('card');
     el.style.setProperty('--i', data.i_dom.toString());
@@ -212,7 +217,7 @@ export class DwgCardHand extends DwgElement {
         const touch = e.touches[0];
         this.startDraggingCard({x: touch.clientX, y: touch.clientY}, data, touch.identifier);
       });
-    }, (1 + data.i) * animation_time);
+    }, (1 + data.i_dom) * animation_time);
   }
 
   private startDraggingCard(p: Point2D, card: CardData, touch_identifier = 0) {
@@ -336,7 +341,8 @@ export class DwgCardHand extends DwgElement {
     }
     card.el.remove();
     card.el = undefined;
-    this.createCardEl(new_card, card);
+    card.card = new_card;
+    this.createCardEl(card);
   }
 
   removeCards() {

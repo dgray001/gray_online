@@ -26,28 +26,30 @@ func (a *PlayerAction) toFrontend() gin.H {
 }
 
 type Player struct {
-	client_id     uint64
-	ai_player_id  uint32 // specific to the game
-	Player_id     int
-	nickname      string
-	connected     bool
-	Updates       chan *UpdateMessage
-	FailedUpdates chan *UpdateMessage
-	update_list   []*UpdateMessage
-	base_game     *GameBase
+	client_id        uint64
+	ai_player_id     uint32 // specific to the game
+	Player_id        int
+	nickname         string
+	connected        bool
+	Updates          chan *UpdateMessage
+	FailedUpdates    chan *UpdateMessage
+	FlushConnections chan bool
+	update_list      []*UpdateMessage
+	base_game        *GameBase
 }
 
 func CreatePlayer(client_id uint64, nickname string, base_game *GameBase) {
 	player := &Player{
-		client_id:     client_id,
-		ai_player_id:  0,
-		Player_id:     -1,
-		nickname:      nickname,
-		connected:     false,
-		Updates:       make(chan *UpdateMessage, 24),
-		FailedUpdates: make(chan *UpdateMessage, 24),
-		update_list:   []*UpdateMessage{},
-		base_game:     base_game,
+		client_id:        client_id,
+		ai_player_id:     0,
+		Player_id:        -1,
+		nickname:         nickname,
+		connected:        false,
+		Updates:          make(chan *UpdateMessage, 24),
+		FailedUpdates:    make(chan *UpdateMessage, 24),
+		FlushConnections: make(chan bool),
+		update_list:      []*UpdateMessage{},
+		base_game:        base_game,
 	}
 	base_game.Players[client_id] = player
 }
@@ -55,15 +57,16 @@ func CreatePlayer(client_id uint64, nickname string, base_game *GameBase) {
 func CreateAiPlayer(nickname string, base_game *GameBase) *Player {
 	ai_id := base_game.NextAiId()
 	player := &Player{
-		client_id:     0,
-		ai_player_id:  ai_id,
-		Player_id:     -1,
-		nickname:      nickname,
-		connected:     false,
-		Updates:       make(chan *UpdateMessage),
-		FailedUpdates: make(chan *UpdateMessage),
-		update_list:   []*UpdateMessage{},
-		base_game:     base_game,
+		client_id:        0,
+		ai_player_id:     ai_id,
+		Player_id:        -1,
+		nickname:         nickname,
+		connected:        false,
+		Updates:          make(chan *UpdateMessage),
+		FailedUpdates:    make(chan *UpdateMessage),
+		FlushConnections: make(chan bool),
+		update_list:      []*UpdateMessage{},
+		base_game:        base_game,
 	}
 	base_game.AiPlayers[ai_id] = player
 	return player

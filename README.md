@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6g: Card hand presorts your cards
+v0.6h: Fix bugs
 
 ## Dev Use
 

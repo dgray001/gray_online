@@ -177,6 +177,7 @@ func (c *Client) readMessages() {
 				break
 			}
 			if c.lobby_room == nil || c.lobby_room.room_id != room.room_id {
+				fmt.Println(c.lobby_room, room)
 				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-leave-failed", Content: "Not in that room"}
 				break
 			}
@@ -414,7 +415,7 @@ func (c *Client) readMessages() {
 				break
 			}
 			if c.lobby_room == nil {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "game-connected-failed", Content: "Client not in lobby"}
+				c.send_message <- lobbyMessage{Sender: "server", Kind: "game-connected-failed", Content: "Client not in lobby room"}
 				break
 			}
 			if c.lobby_room.game == nil {

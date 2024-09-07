@@ -99,10 +99,19 @@ func (r *LobbyRoom) run() {
 }
 
 func (c *Client) playerGameUpdates(player *game.Player, room_id_string string) {
+	if player == nil {
+		return
+	}
+	fmt.Println("Begin player game updates for", c.client_id, player.Player_id)
+	select {
+	case <-player.FlushConnections:
+	default:
+	}
 	for {
-		if c.deleted || player == nil {
+		if c.deleted {
 			break
 		}
+		fmt.Println("Iterate player game updates for", c.client_id, player.Player_id, c.valid())
 		select {
 		case message := <-player.Updates:
 			encoded_message, err := json.Marshal(message.Content)
@@ -130,8 +139,16 @@ func (c *Client) playerGameUpdates(player *game.Player, room_id_string string) {
 			} else {
 				fmt.Fprintln(os.Stderr, "Room failed to send failed update message to player", c.client_id)
 			}
+		case game_over := <-player.FlushConnections:
+			if game_over {
+				fmt.Println("Player game updates flushed because game is over")
+			} else {
+				fmt.Println("Player game updates flushed because player disconnected")
+			}
+			break
 		}
 	}
+	fmt.Println("End player game updates for", c.client_id, player.Player_id)
 }
 
 func (c *Client) viewerGameUpdates(viewer *game.Viewer, room_id_string string) {

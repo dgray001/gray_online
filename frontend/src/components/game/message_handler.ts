@@ -55,11 +55,14 @@ export function handleMessage(game: DwgGame, message: ServerMessage) {
     case "game-update":
       handleGameUpdate(game, message);
       break;
+    case "game-failed-update": // player did something incorrect
+      // TODO: implement
+      break;
     case "game-connected-failed":
-    case "game-update-failed":
     case "game-get-update-failed":
     case "game-resend-last-update-failed":
     case "game-resend-waiting-room-failed":
+    case "game-update-failed":
       errored = true;
       console.log(message.content);
       try {
