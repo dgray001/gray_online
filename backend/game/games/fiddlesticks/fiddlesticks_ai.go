@@ -34,7 +34,7 @@ func checkTurn(p *game.Player, f *GameFiddlesticks, action_channel chan game.Pla
 	}
 	if f.betting {
 		action := gin.H{
-			"amount": 1.0,
+			"amount": float64(util.RandomInt(0, int(f.round))),
 		}
 		player_action := game.PlayerAction{Kind: "bet", Ai_id: int(p.GetAiId()), Action: action}
 		action_channel <- player_action

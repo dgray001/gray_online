@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6h: Fix bugs
+v0.6i: Finish random ai
 
 ## Dev Use
 
