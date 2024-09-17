@@ -48,8 +48,8 @@ type FiddlesticksAiPlayerFromFrontend struct {
 	nickname string
 }
 
-func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameFiddlesticks, error) {
-	fiddlesticks := GameFiddlesticks{
+func InitializeGame(g *game.GameBase) *GameFiddlesticks {
+	return &GameFiddlesticks{
 		game:              g,
 		players:           []*FiddlesticksPlayer{},
 		deck:              game_utils.CreateStandardDeck(),
@@ -65,6 +65,10 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameF
 		round_points:      10,
 		trick_points:      1,
 	}
+}
+
+func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameFiddlesticks, error) {
+	fiddlesticks := InitializeGame(g)
 	var player_id = 0
 	for _, player := range g.Players {
 		player.Player_id = player_id
@@ -98,7 +102,7 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameF
 				score:        0,
 				ai_model_id:  1,
 			}
-			go runAi(fiddlesticks_player, &fiddlesticks, action_channel)
+			go runAi(fiddlesticks_player, fiddlesticks, action_channel)
 			player.Player_id = player_id
 			fiddlesticks.players = append(fiddlesticks.players, fiddlesticks_player)
 			player_id++
@@ -120,7 +124,6 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameF
 		min_round := uint8(min_round_float)
 		if min_round > 0 && min_round <= fiddlesticks.max_round {
 			fiddlesticks.min_round = min_round
-			fiddlesticks.round = min_round - 1
 		}
 	}
 	round_points_float, round_points_ok := g.GameSpecificSettings["round_points"].(float64)
@@ -140,7 +143,29 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameF
 	if fiddlesticks.round_points == 0 && fiddlesticks.trick_points == 0 {
 		fiddlesticks.round_points = 1
 	}
-	return &fiddlesticks, nil
+	return fiddlesticks, nil
+}
+
+func (f *GameFiddlesticks) AddInternalAiPlayer(ai_model_id uint8) {
+	player := &game.Player{
+		Player_id: len(f.players),
+	}
+	fiddlesticks_player := &FiddlesticksPlayer{
+		player:       player,
+		cards:        []*game_utils.StandardCard{},
+		cards_played: []int{},
+		score:        0,
+		ai_model_id:  ai_model_id,
+	}
+	fiddlesticks_player.createAiModel()
+	f.players = append(f.players, fiddlesticks_player)
+}
+
+func (f *GameFiddlesticks) SetSettings(min_round uint8, max_round uint8, round_points uint16, trick_points uint16) {
+	f.min_round = min_round
+	f.max_round = max_round
+	f.round_points = round_points
+	f.trick_points = trick_points
 }
 
 func (f *GameFiddlesticks) GetBase() *game.GameBase {
@@ -148,8 +173,36 @@ func (f *GameFiddlesticks) GetBase() *game.GameBase {
 }
 
 func (f *GameFiddlesticks) StartGame() {
+	f.round = f.min_round - 1
 	f.dealer = util.RandomInt(0, len(f.players)-1)
-	f.dealNextRound()
+	f.dealNextRound(true)
+}
+
+func (f *GameFiddlesticks) StartAiGame() {
+	f.round = f.min_round - 1
+	f.dealer = len(f.players) - 1
+	f.dealNextRound(false)
+}
+
+/** Returns whether the game is over */
+func (f *GameFiddlesticks) ExecuteAiTurn() bool {
+	if !f.GetBase().GameStarted() {
+		return false
+	}
+	if f.GetBase().GameEnded() {
+		return true
+	}
+	player := f.players[f.turn]
+	if f.betting {
+		bid := GetAiBid(player, f)
+		fmt.Println("AI player", f.turn, "betting", bid)
+		f.executeBet(player.player, bid, false)
+	} else {
+		card_index := GetAiPlayCard(player, f)
+		fmt.Println("AI player", f.turn, "playing", player.cards[card_index].GetName())
+		f.executePlayCard(player.player, card_index, false)
+	}
+	return false
 }
 
 func (f *GameFiddlesticks) Valid() bool {
@@ -195,7 +248,7 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 				fmt.Sprintf("Cannot bet more than the cards in the round (%d) but bet %d", f.round, bet_value))
 			return
 		}
-		f.executeBet(player, bet_value)
+		f.executeBet(player, bet_value, true)
 	case "play-card":
 		if f.betting {
 			player.AddFailedUpdateShorthand("play-card-failed", "Betting not playing cards")
@@ -231,7 +284,7 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 				fmt.Sprintf("Must follow suit of lead card %d but tried to play %s", lead_suit, card.GetName()))
 			return
 		}
-		f.executePlayCard(player, card_index)
+		f.executePlayCard(player, card_index, true)
 	default:
 		fmt.Fprintln(os.Stderr, "Unknown game update type", action.Kind)
 	}
@@ -292,7 +345,7 @@ func (f *GameFiddlesticks) cardBeatsCard(c1 *game_utils.StandardCard, c2 *game_u
 	return c1.GetNumber() > c2.GetNumber()
 }
 
-func (f *GameFiddlesticks) executeBet(player *game.Player, bet_value uint8) {
+func (f *GameFiddlesticks) executeBet(player *game.Player, bet_value uint8, broadcast bool) {
 	f.players[f.turn].bet = bet_value
 	f.players[f.turn].has_bet = true
 	done_betting := f.turn == f.dealer
@@ -304,13 +357,16 @@ func (f *GameFiddlesticks) executeBet(player *game.Player, bet_value uint8) {
 		f.betting = false
 		f.trick_leader = f.turn
 	}
-	game.Game_BroadcastUpdate(f, &game.UpdateMessage{Kind: "bet", Content: gin.H{
-		"amount":    bet_value,
-		"player_id": player.Player_id,
-	}})
+	if broadcast {
+		update := &game.UpdateMessage{Kind: "bet", Content: gin.H{
+			"amount":    bet_value,
+			"player_id": player.Player_id,
+		}}
+		game.Game_BroadcastUpdate(f, update)
+	}
 }
 
-func (f *GameFiddlesticks) executePlayCard(player *game.Player, card_index int) {
+func (f *GameFiddlesticks) executePlayCard(player *game.Player, card_index int, broadcast bool) {
 	card := f.players[f.turn].cards[card_index]
 	f.trick = append(f.trick, card)
 	f.players[f.turn].cards_played = append(f.players[f.turn].cards_played, card_index)
@@ -328,7 +384,9 @@ func (f *GameFiddlesticks) executePlayCard(player *game.Player, card_index int) 
 		f.players[f.turn].tricks++
 		f.trick_leader = f.turn
 		f.trick = []*game_utils.StandardCard{}
-		fmt.Println("Trick won by", f.players[f.turn].player.GetNickname(), "with the", winning_card.GetName())
+		if broadcast {
+			fmt.Println("Trick won by", f.players[f.turn].player.GetNickname(), "with the", winning_card.GetName())
+		}
 		if len(f.players[0].cards_played) < len(f.players[0].cards) {
 			// next trick
 		} else {
@@ -340,13 +398,16 @@ func (f *GameFiddlesticks) executePlayCard(player *game.Player, card_index int) 
 			deal_next_round = true
 		}
 	}
-	game.Game_BroadcastUpdate(f, &game.UpdateMessage{Kind: "play-card", Content: gin.H{
+	update := &game.UpdateMessage{Kind: "play-card", Content: gin.H{
 		"index":     card_index,
 		"card":      card.ToFrontend(),
 		"player_id": player.Player_id,
-	}})
+	}}
+	if broadcast {
+		game.Game_BroadcastUpdate(f, update)
+	}
 	if deal_next_round {
-		f.dealNextRound()
+		f.dealNextRound(broadcast)
 	}
 }
 
@@ -392,7 +453,7 @@ func (f *GameFiddlesticks) ToFrontend(client_id uint64, is_viewer bool) gin.H {
 	return game
 }
 
-func (f *GameFiddlesticks) dealNextRound() {
+func (f *GameFiddlesticks) dealNextRound(broadcast bool) {
 	if f.rounds_increasing && f.round == f.max_round {
 		f.rounds_increasing = false
 	}
@@ -419,7 +480,9 @@ func (f *GameFiddlesticks) dealNextRound() {
 			}
 		}
 		winner_message += " with " + strconv.Itoa(int(winning_score)) + " points"
-		fmt.Println(winner_message)
+		if broadcast {
+			fmt.Println(winner_message)
+		}
 		f.game.EndGame(winner_message)
 		return
 	}
@@ -457,16 +520,21 @@ func (f *GameFiddlesticks) dealNextRound() {
 		for _, card := range player.cards {
 			frontend_cards = append(frontend_cards, card.ToFrontend())
 		}
-		player.player.AddUpdate(&game.UpdateMessage{Kind: "deal-round", Content: gin.H{
+		update := &game.UpdateMessage{Kind: "deal-round", Content: gin.H{
 			"dealer": f.dealer,
 			"round":  f.round,
 			"trump":  f.trump.ToFrontend(),
 			"cards":  frontend_cards,
+		}}
+		if broadcast {
+			player.player.AddUpdate(update)
+		}
+	}
+	if broadcast {
+		f.game.AddViewerUpdate(&game.UpdateMessage{Kind: "deal-round", Content: gin.H{
+			"dealer": f.dealer,
+			"round":  f.round,
+			"trump":  f.trump.ToFrontend(),
 		}})
 	}
-	f.game.AddViewerUpdate(&game.UpdateMessage{Kind: "deal-round", Content: gin.H{
-		"dealer": f.dealer,
-		"round":  f.round,
-		"trump":  f.trump.ToFrontend(),
-	}})
 }

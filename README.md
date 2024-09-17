@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6k: Fiddlesticks initial model theory2
+v0.6l: Can run AI game
 
 ## Dev Use
 

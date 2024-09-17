@@ -47,7 +47,7 @@ func CreatePlayer(client_id uint64, nickname string, base_game *GameBase) {
 		connected:        false,
 		Updates:          make(chan *UpdateMessage, 24),
 		FailedUpdates:    make(chan *UpdateMessage, 24),
-		FlushConnections: make(chan bool),
+		FlushConnections: make(chan bool, 2),
 		update_list:      []*UpdateMessage{},
 		base_game:        base_game,
 	}
@@ -62,9 +62,9 @@ func CreateAiPlayer(nickname string, base_game *GameBase) *Player {
 		Player_id:        -1,
 		nickname:         nickname,
 		connected:        false,
-		Updates:          make(chan *UpdateMessage),
-		FailedUpdates:    make(chan *UpdateMessage),
-		FlushConnections: make(chan bool),
+		Updates:          make(chan *UpdateMessage, 24),
+		FailedUpdates:    make(chan *UpdateMessage, 24),
+		FlushConnections: make(chan bool, 2),
 		update_list:      []*UpdateMessage{},
 		base_game:        base_game,
 	}

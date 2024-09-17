@@ -54,6 +54,18 @@ func Game_BroadcastUpdate(g Game, update *UpdateMessage) {
 	}
 }
 
+func Game_BroadcastAiUpdate(g Game, update *UpdateMessage) {
+	base := g.GetBase()
+	if base != nil {
+		for _, player := range base.AiPlayers {
+			//player.Updates <- update
+			player.AddUpdate(update)
+		}
+	} else {
+		fmt.Fprintln(os.Stderr, "Game base is nil")
+	}
+}
+
 // Returns whether this is the last player to disconnect
 func Game_PlayerDisconnected(g Game, client_id uint64) bool {
 	g.PlayerDisconnected(client_id)

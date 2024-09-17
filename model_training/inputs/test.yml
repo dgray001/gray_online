@@ -1,2 +1,9 @@
 
-test:
+Game:
+  min_round: 2
+  max_round: 3
+  Player:
+  End:
+  Player:
+  End:
+End:

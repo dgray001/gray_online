@@ -19,17 +19,17 @@ type FiddlesticksPlayer struct {
 	instantiated_ai_model bool
 }
 
-func (p *FiddlesticksPlayer) createAiModel() FiddlesticksAiModel {
+func (p *FiddlesticksPlayer) createAiModel() {
 	p.instantiated_ai_model = true
 	switch p.ai_model_id {
 	case 0: // random model
-		return FiddlesticksAiModelRandom{}
+		p.ai_model = FiddlesticksAiModelRandom{}
 	case 1: // theory model 1
-		return createFiddlesticksAiModelTheory1()
+		p.ai_model = createFiddlesticksAiModelTheory1()
 	case 2: // theory model 2
-		return createFiddlesticksAiModelTheory2()
+		p.ai_model = createFiddlesticksAiModelTheory2()
 	default:
-		return FiddlesticksAiModelRandom{}
+		p.ai_model = FiddlesticksAiModelRandom{}
 	}
 }
 

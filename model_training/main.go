@@ -2,55 +2,43 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 	"strings"
+
+	"fiddlesticks.live/parser"
+	"fiddlesticks.live/utils"
 )
 
 func main() {
-	if len(os.Args) < 3 {
-		printError("Must specify input and output file paths")
+	if len(os.Args) < 2 {
+		utils.PrintError("Must specify input file path")
 		return
 	}
 
 	in_path := "inputs/" + os.Args[1] + ".yml"
 	in_file, e := os.Open(in_path)
-	errorCheck(e, "Input file not found: %s", in_path)
+	utils.ErrorCheck(e, "Input file not found for path %s", in_path)
 	scanner := bufio.NewScanner(in_file)
 	scanner.Split(bufio.ScanLines)
-	q := []InputObject{}
-	q = append(q, createInput())
+
+	q := make([]parser.InputObject, 0, 5)
+	input := parser.CreateInput()
+	q = append(q, input)
 	for scanner.Scan() {
-		if len(q) < 1 {
-			break
-		}
 		line_split := strings.SplitN(scanner.Text(), ":", 2)
 		if len(line_split) < 2 {
 			continue
 		}
-		q = q[0].addLine(q, line_split[0], line_split[1])
+		k := strings.TrimSpace(line_split[0])
+		if k == "End" {
+			q = q[:len(q)-1]
+			continue
+		}
+		q = q[len(q)-1].AddLine(q, k, strings.TrimSpace(line_split[1]))
 	}
+	input.Print()
+	utils.ErrorCheck(input.Validate(), "Input validation error")
+	utils.ErrorCheckSoft(in_file.Close(), "Failed to close input file")
 
-	e = in_file.Close()
-	errorCheckSoft(e, "Failed to close input file")
-}
-
-func errorCheckSoft(e error, msg string, a ...any) {
-	if e == nil {
-		return
-	}
-	printError(msg, a...)
-}
-
-func errorCheck(e error, msg string, a ...any) {
-	if e == nil {
-		return
-	}
-	printError(msg, a...)
-	panic("")
-}
-
-func printError(msg string, a ...any) {
-	s := fmt.Sprintf("Error: "+msg, a...)
-	fmt.Fprintln(os.Stderr, s)
+	utils.ErrorCheckSoft(input.Run(), "Run errored")
 }

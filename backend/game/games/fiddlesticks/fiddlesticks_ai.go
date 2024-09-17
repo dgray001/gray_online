@@ -22,7 +22,7 @@ func runAi(p *FiddlesticksPlayer, f *GameFiddlesticks, action_channel chan game.
 		}
 		if !p.instantiatedAiModel() {
 			fmt.Println("Instantiating model for AI player", p.player.GetAiId())
-			p.ai_model = p.createAiModel()
+			p.createAiModel()
 		}
 		select {
 		case update := <-p.player.Updates:
@@ -47,41 +47,54 @@ func checkTurn(p *FiddlesticksPlayer, f *GameFiddlesticks, action_channel chan g
 		return
 	}
 	if f.betting {
-		raw_bid := p.ai_model.Bet(p, f)
-		bid := int(raw_bid)
-		if util.RandomChance(math.Mod(raw_bid, 1)) {
-			bid += 1
-		}
+		bid := GetAiBid(p, f)
 		action := gin.H{
 			"amount": float64(bid),
 		}
 		player_action := game.PlayerAction{Kind: "bet", Ai_id: int(p.player.GetAiId()), Action: action}
+		fmt.Println("Betting for ai player", p.player.Player_id, ":", bid)
 		action_channel <- player_action
 	} else {
-		valid_cards, _ := f.validCards(p.player.Player_id)
-		if len(valid_cards) == 0 {
-			return
-		}
-		card_weights := p.ai_model.CardWeights(p, f, valid_cards)
-		total_weight := float64(0)
-		for _, weight := range card_weights {
-			total_weight += weight
-		}
-		card_index := 0
-		random_choice := total_weight * rand.Float64()
-		for i, weight := range card_weights {
-			if random_choice <= float64(weight) {
-				card_index = i
-				break
-			}
-			random_choice -= float64(weight)
-		}
+		card_index := GetAiPlayCard(p, f)
 		action := gin.H{
-			"index": float64(valid_cards[card_index]),
+			"index": float64(card_index),
 		}
 		player_action := game.PlayerAction{Kind: "play-card", Ai_id: int(p.player.GetAiId()), Action: action}
+		fmt.Println("Playing card for ai player", p.player.Player_id, ":", p.cards[card_index].GetName())
 		action_channel <- player_action
 	}
+}
+
+func GetAiBid(p *FiddlesticksPlayer, f *GameFiddlesticks) uint8 {
+	raw_bid := p.ai_model.Bet(p, f)
+	bid := uint8(raw_bid)
+	if util.RandomChance(math.Mod(raw_bid, 1)) {
+		bid += 1
+	}
+	return bid
+}
+
+func GetAiPlayCard(p *FiddlesticksPlayer, f *GameFiddlesticks) int {
+	valid_cards, _ := f.validCards(p.player.Player_id)
+	if len(valid_cards) == 0 {
+		fmt.Fprintln(os.Stderr, "No valid cards for AI to play")
+		return 0
+	}
+	card_weights := p.ai_model.CardWeights(p, f, valid_cards)
+	total_weight := float64(0)
+	for _, weight := range card_weights {
+		total_weight += weight
+	}
+	card_index := 0
+	random_choice := total_weight * rand.Float64()
+	for i, weight := range card_weights {
+		if random_choice <= float64(weight) {
+			card_index = i
+			break
+		}
+		random_choice -= float64(weight)
+	}
+	return valid_cards[card_index]
 }
 
 type FiddlesticksAiModel interface {
