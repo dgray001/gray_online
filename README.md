@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6i: Finish random ai
+v0.6j: Fiddlesticks initial model theory1
 
 ## Dev Use
 

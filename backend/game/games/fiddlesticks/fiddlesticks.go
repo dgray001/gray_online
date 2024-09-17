@@ -73,6 +73,7 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameF
 			cards:        []*game_utils.StandardCard{},
 			cards_played: []int{},
 			score:        0,
+			ai_model_id:  1,
 		})
 		player_id++
 	}
@@ -90,14 +91,16 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameF
 				continue
 			}
 			player := game.CreateAiPlayer(nickname, g)
-			go runAi(player, &fiddlesticks, action_channel)
-			player.Player_id = player_id
-			fiddlesticks.players = append(fiddlesticks.players, &FiddlesticksPlayer{
+			fiddlesticks_player := &FiddlesticksPlayer{
 				player:       player,
 				cards:        []*game_utils.StandardCard{},
 				cards_played: []int{},
 				score:        0,
-			})
+				ai_model_id:  1,
+			}
+			go runAi(fiddlesticks_player, &fiddlesticks, action_channel)
+			player.Player_id = player_id
+			fiddlesticks.players = append(fiddlesticks.players, fiddlesticks_player)
 			player_id++
 		}
 	}
@@ -261,6 +264,34 @@ func (f *GameFiddlesticks) validCards(player_id int) ([]int, uint8) {
 	return valid_cards, lead_suit
 }
 
+func (f *GameFiddlesticks) winningTrickCard() (*game_utils.StandardCard, int) {
+	if len(f.trick) == 0 {
+		return nil, -1
+	}
+	winning_index := 0
+	winning_card := f.trick[0]
+	for i, card := range f.trick[1:] {
+		if f.cardBeatsCard(card, winning_card) {
+			winning_index = i + 1
+			winning_card = card
+		}
+	}
+	return winning_card, winning_index
+}
+
+func (f *GameFiddlesticks) cardBeatsCard(c1 *game_utils.StandardCard, c2 *game_utils.StandardCard) bool {
+	if c1 == nil {
+		return false
+	}
+	if c2 == nil {
+		return true
+	}
+	if c1.GetSuit() != c2.GetSuit() {
+		return c1.GetSuit() == f.trump.GetSuit()
+	}
+	return c1.GetNumber() > c2.GetNumber()
+}
+
 func (f *GameFiddlesticks) executeBet(player *game.Player, bet_value uint8) {
 	f.players[f.turn].bet = bet_value
 	f.players[f.turn].has_bet = true
@@ -289,19 +320,7 @@ func (f *GameFiddlesticks) executePlayCard(player *game.Player, card_index int) 
 	}
 	deal_next_round := false
 	if f.turn == f.trick_leader {
-		winning_index := 0
-		winning_card := f.trick[0]
-		for i, card := range f.trick[1:] {
-			if card.GetSuit() == winning_card.GetSuit() {
-				if card.GetNumber() > winning_card.GetNumber() {
-					winning_index = i + 1
-					winning_card = card
-				}
-			} else if card.GetSuit() == f.trump.GetSuit() {
-				winning_index = i + 1
-				winning_card = card
-			}
-		}
+		winning_card, winning_index := f.winningTrickCard()
 		f.turn = f.trick_leader + winning_index
 		if f.turn >= len(f.players) {
 			f.turn -= len(f.players)

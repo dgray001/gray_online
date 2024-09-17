@@ -15,11 +15,23 @@ type StandardCard struct {
 	number uint8
 }
 
+type standardCardStatic struct{}
+
+var StandardCardStatic standardCardStatic
+
 func CreatBlankCard() *StandardCard {
 	return &StandardCard{
 		suit:   0,
 		number: 0,
 	}
+}
+
+func (c *StandardCard) Index() uint16 {
+	return uint16(c.GetSuit()) | uint16(c.GetNumber())<<8
+}
+
+func (standardCardStatic) AceValue() uint8 {
+	return 14
 }
 
 func (c *StandardCard) GetName() string {
