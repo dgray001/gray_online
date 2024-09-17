@@ -26,6 +26,8 @@ func (p *FiddlesticksPlayer) createAiModel() FiddlesticksAiModel {
 		return FiddlesticksAiModelRandom{}
 	case 1: // theory model 1
 		return createFiddlesticksAiModelTheory1()
+	case 2: // theory model 2
+		return createFiddlesticksAiModelTheory2()
 	default:
 		return FiddlesticksAiModelRandom{}
 	}

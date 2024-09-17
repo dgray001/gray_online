@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6j: Fiddlesticks initial model theory1
+v0.6k: Fiddlesticks initial model theory2
 
 ## Dev Use
 

@@ -1,6 +1,8 @@
 package fiddlesticks
 
-import "github.com/dgray001/gray_online/util"
+import (
+	"math/rand"
+)
 
 /**
 Random model just bets and plays cards randomly within what is legal
@@ -8,10 +10,14 @@ Random model just bets and plays cards randomly within what is legal
 
 type FiddlesticksAiModelRandom struct{}
 
-func (m FiddlesticksAiModelRandom) Bet(p *FiddlesticksPlayer, f *GameFiddlesticks) int {
-	return util.RandomInt(0, int(f.round))
+func (m FiddlesticksAiModelRandom) Bet(p *FiddlesticksPlayer, f *GameFiddlesticks) float64 {
+	return float64(f.round) * rand.Float64()
 }
 
-func (m FiddlesticksAiModelRandom) PlayCard(p *FiddlesticksPlayer, f *GameFiddlesticks, valid_cards []int) int {
-	return util.RandomInt(0, len(valid_cards)-1)
+func (m FiddlesticksAiModelRandom) CardWeights(p *FiddlesticksPlayer, f *GameFiddlesticks, valid_cards []int) []float64 {
+	weights := make([]float64, len(valid_cards))
+	for i := range weights {
+		weights[i] = 1
+	}
+	return weights
 }

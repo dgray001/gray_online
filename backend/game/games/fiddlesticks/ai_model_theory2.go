@@ -42,7 +42,7 @@ func (m FiddlesticksAiModelTheory2) Bet(p *FiddlesticksPlayer, f *GameFiddlestic
 	return bid
 }
 
-func (m FiddlesticksAiModelTheory2) PlayCard(p *FiddlesticksPlayer, f *GameFiddlesticks, valid_cards []int) []float64 {
+func (m FiddlesticksAiModelTheory2) CardWeights(p *FiddlesticksPlayer, f *GameFiddlesticks, valid_cards []int) []float64 {
 	// probability the model will play this card
 	weights := make([]float64, len(valid_cards))
 	total_weight := float64(0)

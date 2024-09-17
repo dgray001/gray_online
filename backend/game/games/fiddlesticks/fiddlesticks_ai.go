@@ -62,7 +62,7 @@ func checkTurn(p *FiddlesticksPlayer, f *GameFiddlesticks, action_channel chan g
 		if len(valid_cards) == 0 {
 			return
 		}
-		card_weights := p.ai_model.PlayCard(p, f, valid_cards)
+		card_weights := p.ai_model.CardWeights(p, f, valid_cards)
 		total_weight := float64(0)
 		for _, weight := range card_weights {
 			total_weight += weight
@@ -88,5 +88,5 @@ type FiddlesticksAiModel interface {
 	// returns a float value which is then resolved into an int based on probability
 	Bet(p *FiddlesticksPlayer, f *GameFiddlesticks) float64
 	// returns un-normalized weights which must be the same length as the valid_Cards slice
-	PlayCard(p *FiddlesticksPlayer, f *GameFiddlesticks, valid_cards []int) []float64
+	CardWeights(p *FiddlesticksPlayer, f *GameFiddlesticks, valid_cards []int) []float64
 }
