@@ -111,37 +111,22 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameF
 	if len(fiddlesticks.players) < 2 {
 		return nil, errors.New("Need at least two players to play fiddlesticks")
 	}
-	fiddlesticks.max_round = uint8((fiddlesticks.deck.Size() - 1) / len(fiddlesticks.players))
+	fiddlesticks.setMaxRound(0)
 	max_round_float, max_round_ok := g.GameSpecificSettings["max_round"].(float64)
 	if max_round_ok {
-		max_round := uint8(max_round_float)
-		if max_round > 0 && max_round < fiddlesticks.max_round {
-			fiddlesticks.max_round = max_round
-		}
+		fiddlesticks.setMaxRound(uint8(max_round_float))
 	}
 	min_round_float, min_round_ok := g.GameSpecificSettings["min_round"].(float64)
 	if min_round_ok {
-		min_round := uint8(min_round_float)
-		if min_round > 0 && min_round <= fiddlesticks.max_round {
-			fiddlesticks.min_round = min_round
-		}
+		fiddlesticks.setMinRound(uint8(min_round_float))
 	}
 	round_points_float, round_points_ok := g.GameSpecificSettings["round_points"].(float64)
 	if round_points_ok {
-		round_points := uint16(round_points_float)
-		if round_points >= 0 && round_points < 100 {
-			fiddlesticks.round_points = round_points
-		}
+		fiddlesticks.setRoundPoints(uint16(round_points_float))
 	}
 	trick_points_float, trick_points_ok := g.GameSpecificSettings["trick_points"].(float64)
 	if trick_points_ok {
-		trick_points := uint16(trick_points_float)
-		if trick_points >= 0 && trick_points < 100 {
-			fiddlesticks.trick_points = trick_points
-		}
-	}
-	if fiddlesticks.round_points == 0 && fiddlesticks.trick_points == 0 {
-		fiddlesticks.round_points = 1
+		fiddlesticks.setRoundPoints(uint16(trick_points_float))
 	}
 	return fiddlesticks, nil
 }
@@ -168,6 +153,43 @@ func (f *GameFiddlesticks) SetSettings(min_round uint8, max_round uint8, round_p
 	f.trick_points = trick_points
 }
 
+func (f *GameFiddlesticks) setMaxRound(max_round uint8) {
+	f.max_round = uint8((f.deck.Size() - 1) / len(f.players))
+	if max_round > 0 && max_round < f.max_round {
+		f.max_round = max_round
+	}
+}
+
+func (f *GameFiddlesticks) setMinRound(min_round uint8) {
+	if min_round > 0 && min_round <= f.max_round {
+		f.min_round = min_round
+	} else {
+		f.min_round = 1
+	}
+}
+
+func (f *GameFiddlesticks) setRoundPoints(round_points uint16) {
+	if round_points >= 0 && round_points < 100 {
+		f.round_points = round_points
+	} else {
+		f.round_points = 10
+	}
+	if f.round_points == 0 && f.trick_points == 0 {
+		f.round_points = 1
+	}
+}
+
+func (f *GameFiddlesticks) setTrickPoints(trick_points uint16) {
+	if trick_points >= 0 && trick_points < 100 {
+		f.trick_points = trick_points
+	} else {
+		f.trick_points = 1
+	}
+	if f.round_points == 0 && f.trick_points == 0 {
+		f.round_points = 1
+	}
+}
+
 func (f *GameFiddlesticks) GetBase() *game.GameBase {
 	return f.game
 }
@@ -178,14 +200,18 @@ func (f *GameFiddlesticks) StartGame() {
 	f.dealNextRound(true)
 }
 
-func (f *GameFiddlesticks) StartAiGame() {
+func (f *GameFiddlesticks) StartAiGame(random_dealer bool) {
 	f.round = f.min_round - 1
-	f.dealer = len(f.players) - 1
+	if random_dealer {
+		f.dealer = util.RandomInt(0, len(f.players)-1)
+	} else {
+		f.dealer = len(f.players) - 1
+	}
 	f.dealNextRound(false)
 }
 
 /** Returns whether the game is over */
-func (f *GameFiddlesticks) ExecuteAiTurn() bool {
+func (f *GameFiddlesticks) ExecuteAiTurn(debug bool) bool {
 	if !f.GetBase().GameStarted() {
 		return false
 	}
@@ -195,14 +221,29 @@ func (f *GameFiddlesticks) ExecuteAiTurn() bool {
 	player := f.players[f.turn]
 	if f.betting {
 		bid := GetAiBid(player, f)
-		fmt.Println("AI player", f.turn, "betting", bid)
+		if debug {
+			fmt.Println("AI player", f.turn, "betting", bid)
+		}
 		f.executeBet(player.player, bid, false)
 	} else {
 		card_index := GetAiPlayCard(player, f)
-		fmt.Println("AI player", f.turn, "playing", player.cards[card_index].GetName())
+		if debug {
+			fmt.Println("AI player", f.turn, "playing", player.cards[card_index].GetName())
+		}
 		f.executePlayCard(player.player, card_index, false)
 	}
 	return false
+}
+
+func (f *GameFiddlesticks) GetGameResults() (uint16, []uint16) {
+	total_rounds := 2*(f.max_round-f.min_round) + 1
+	total_cards := 2*uint16(0.5*float64(f.max_round*(f.max_round+1)-f.min_round*(f.min_round-1))) - uint16(f.max_round)
+	max_score := f.round_points*uint16(total_rounds) + f.trick_points*total_cards
+	scores := make([]uint16, len(f.players))
+	for i, p := range f.players {
+		scores[i] = p.score
+	}
+	return max_score, scores
 }
 
 func (f *GameFiddlesticks) Valid() bool {

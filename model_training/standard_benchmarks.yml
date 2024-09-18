@@ -1,0 +1,18 @@
+
+StandardBenchmark:
+  iterations: 100000
+  ai_model_id: 0
+  output: random_model
+End:
+
+StandardBenchmark:
+  iterations: 100000
+  ai_model_id: 1
+  output: theory1_model
+End:
+
+StandardBenchmark:
+  iterations: 100000
+  ai_model_id: 2
+  output: theory2_model
+End:
