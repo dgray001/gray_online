@@ -1,4 +1,4 @@
-package parser
+package runner
 
 import (
 	"fmt"
@@ -8,75 +8,7 @@ import (
 	"time"
 
 	"fiddlesticks.live/utils"
-	"github.com/dgray001/gray_online/game"
-	"github.com/dgray001/gray_online/game/games/fiddlesticks"
 )
-
-func (i *Input) Run() error {
-	time_start := time.Now().UTC()
-	fmt.Println("")
-	fmt.Println("Begin Run")
-	for _, g := range i.games {
-		e := g.run()
-		if e != nil {
-			return e
-		}
-	}
-	for _, b := range i.benchmarks {
-		e := b.run()
-		if e != nil {
-			return e
-		}
-	}
-	for _, b := range i.standard_benchmarks {
-		e := b.run()
-		if e != nil {
-			return e
-		}
-	}
-	time_dif := time.Now().UTC().Sub(time_start)
-	fmt.Println("\nEnd Run")
-	fmt.Println("Total Time:", time_dif.String())
-	return nil
-}
-
-func (i *InputGame) run() error {
-	fmt.Println("")
-	fmt.Println("Begin Game")
-	f := i.initialize()
-	go startGame(f, i.debug)
-	<-f.GetBase().GameEndedChannel
-	// TODO: stop the start game loop
-	fmt.Println("End Game")
-	max_score, scores := f.GetGameResults()
-	fmt.Println("Max Score:", max_score)
-	for i, s := range scores {
-		fmt.Println("AI player", i, "score", s)
-	}
-	return nil
-}
-
-func (i *InputGame) initialize() *fiddlesticks.GameFiddlesticks {
-	game_base := &game.GameBase{
-		GameEndedChannel: make(chan string),
-	}
-	f := fiddlesticks.InitializeGame(game_base)
-	f.SetSettings(i.min_round, i.max_round, i.round_points, i.trick_points)
-	for _, p := range i.players {
-		f.AddInternalAiPlayer(p.ai_model_id)
-	}
-	return f
-}
-
-func startGame(f *fiddlesticks.GameFiddlesticks, debug bool) {
-	f.GetBase().StartGame()
-	f.StartAiGame(false)
-	for {
-		if f.ExecuteAiTurn(debug) {
-			break
-		}
-	}
-}
 
 func (i *InputBenchmark) run() error {
 	fmt.Println("")
@@ -117,23 +49,21 @@ func (i *InputBenchmark) run() error {
 				trick_points: i.trick_points,
 				round_points: i.round_points,
 				players:      players,
+				iterations:   i.iterations,
 			}
-			score := float64(0)
-			for j := uint32(0); j < i.iterations; j++ {
-				f := input_game.initialize()
-				go startGame(f, false)
-				<-f.GetBase().GameEndedChannel
-				max_score, scores := f.GetGameResults()
-				score += float64(scores[0]) / float64(max_score)
-			}
-			player_row[r] = strconv.FormatFloat(score/float64(i.iterations), 'f', 3, 64)
+			f := input_game.initialize()
+			go startGame(f, false)
+			<-f.GetBase().GameEndedChannel
+			max_score, scores := f.GetGameResults()
+			score := float64(scores[0]) / float64(max_score)
+			player_row[r] = strconv.FormatFloat(score, 'f', 3, 64)
 		}
 		data[p] = &player_row
 		row_string := "P" + strconv.FormatInt(int64(len(players)), 10) + " " + strings.Join(player_row, " ")
 		file_string += row_string + "\n"
 	}
 	file_data := []byte(file_string)
-	err := os.WriteFile("outputs/"+i.output+".txt", file_data, 0644)
+	err := os.WriteFile("outputs/benchmarks/"+i.output+".txt", file_data, 0644)
 	utils.ErrorCheck(err, "Error writing file")
 	fmt.Println("End Benchmark")
 	time_dif := time.Now().UTC().Sub(time_start)
@@ -150,7 +80,7 @@ func (i *InputStandardBenchmark) run() error {
 		max_round:   12,
 		ai_model_id: i.ai_model_id,
 	}
-	output_string := fmt.Sprintf("benchmark_%s_", i.output)
+	output_string := i.output + "_"
 	benchmark.round_points = 1
 	benchmark.trick_points = 0
 	benchmark.output = output_string + "round1"

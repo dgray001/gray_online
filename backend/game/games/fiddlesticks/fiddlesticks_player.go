@@ -10,7 +10,7 @@ type FiddlesticksPlayer struct {
 	player                *game.Player
 	cards                 []*game_utils.StandardCard
 	cards_played          []int
-	score                 uint16
+	score                 uint32
 	bet                   uint8
 	has_bet               bool
 	tricks                uint8
@@ -19,15 +19,15 @@ type FiddlesticksPlayer struct {
 	instantiated_ai_model bool
 }
 
-func (p *FiddlesticksPlayer) createAiModel() {
+func (p *FiddlesticksPlayer) createAiModel(model_input map[string]string) {
 	p.instantiated_ai_model = true
 	switch p.ai_model_id {
 	case 0: // random model
 		p.ai_model = FiddlesticksAiModelRandom{}
 	case 1: // theory model 1
-		p.ai_model = createFiddlesticksAiModelTheory1()
+		p.ai_model = createFiddlesticksAiModelTheory1(model_input)
 	case 2: // theory model 2
-		p.ai_model = createFiddlesticksAiModelTheory2()
+		p.ai_model = createFiddlesticksAiModelTheory2(model_input)
 	default:
 		p.ai_model = FiddlesticksAiModelRandom{}
 	}

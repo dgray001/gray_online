@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6m: Standard benchmarking
+v0.6n: Evolve theory models 1 and 2
 
 ## Dev Use
 

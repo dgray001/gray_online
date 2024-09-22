@@ -22,7 +22,7 @@ func runAi(p *FiddlesticksPlayer, f *GameFiddlesticks, action_channel chan game.
 		}
 		if !p.instantiatedAiModel() {
 			fmt.Println("Instantiating model for AI player", p.player.GetAiId())
-			p.createAiModel()
+			p.createAiModel(nil)
 		}
 		select {
 		case update := <-p.player.Updates:

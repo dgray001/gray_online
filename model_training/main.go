@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"fiddlesticks.live/parser"
+	"fiddlesticks.live/runner"
 	"fiddlesticks.live/utils"
 )
 
@@ -21,8 +21,8 @@ func main() {
 	scanner := bufio.NewScanner(in_file)
 	scanner.Split(bufio.ScanLines)
 
-	q := make([]parser.InputObject, 0, 5)
-	input := parser.CreateInput()
+	q := make([]runner.InputObject, 0, 5)
+	input := runner.CreateInput()
 	q = append(q, input)
 	for scanner.Scan() {
 		line_split := strings.SplitN(scanner.Text(), ":", 2)

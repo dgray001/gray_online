@@ -1,9 +1,12 @@
 package fiddlesticks
 
 import (
+	"fmt"
 	"math"
+	"os"
 
 	"github.com/dgray001/gray_online/game/game_utils"
+	"github.com/dgray001/gray_online/util"
 )
 
 /**
@@ -23,10 +26,19 @@ type FiddlesticksAiModelTheory1 struct {
 	aggressive_factor float64
 }
 
-func createFiddlesticksAiModelTheory1() FiddlesticksAiModelTheory1 {
-	return FiddlesticksAiModelTheory1{
-		aggressive_factor: 1,
+func createFiddlesticksAiModelTheory1(model_input map[string]string) FiddlesticksAiModelTheory1 {
+	m := FiddlesticksAiModelTheory1{
+		aggressive_factor: 0.8,
 	}
+	for k, v := range model_input {
+		switch k {
+		case "aggressive_factor":
+			m.aggressive_factor = util.ParseFloat(v)
+		default:
+			fmt.Fprintln(os.Stderr, "Unknown model input key for theory model 1:", k)
+		}
+	}
+	return m
 }
 
 func (m FiddlesticksAiModelTheory1) Bet(p *FiddlesticksPlayer, f *GameFiddlesticks) float64 {

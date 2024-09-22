@@ -42,6 +42,8 @@ type GameFiddlesticks struct {
 	trick             []*game_utils.StandardCard
 	round_points      uint16
 	trick_points      uint16
+	iterations        uint32 // how many times to repeat each round
+	iteration         uint32
 }
 
 type FiddlesticksAiPlayerFromFrontend struct {
@@ -64,6 +66,8 @@ func InitializeGame(g *game.GameBase) *GameFiddlesticks {
 		trick:             []*game_utils.StandardCard{},
 		round_points:      10,
 		trick_points:      1,
+		iterations:        1,
+		iteration:         1, // need to increment round on first deal
 	}
 }
 
@@ -131,7 +135,7 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameF
 	return fiddlesticks, nil
 }
 
-func (f *GameFiddlesticks) AddInternalAiPlayer(ai_model_id uint8) {
+func (f *GameFiddlesticks) AddInternalAiPlayer(ai_model_id uint8, model_input map[string]string) {
 	player := &game.Player{
 		Player_id: len(f.players),
 	}
@@ -142,15 +146,17 @@ func (f *GameFiddlesticks) AddInternalAiPlayer(ai_model_id uint8) {
 		score:        0,
 		ai_model_id:  ai_model_id,
 	}
-	fiddlesticks_player.createAiModel()
+	fiddlesticks_player.createAiModel(model_input)
 	f.players = append(f.players, fiddlesticks_player)
 }
 
-func (f *GameFiddlesticks) SetSettings(min_round uint8, max_round uint8, round_points uint16, trick_points uint16) {
-	f.min_round = min_round
-	f.max_round = max_round
+func (f *GameFiddlesticks) SetSettings(min_round uint8, max_round uint8, round_points uint16, trick_points uint16, iterations uint32) {
+	f.setMaxRound(max_round)
+	f.setMinRound(min_round)
 	f.round_points = round_points
 	f.trick_points = trick_points
+	f.iterations = iterations
+	f.iteration = iterations // need to increment round on first deal
 }
 
 func (f *GameFiddlesticks) setMaxRound(max_round uint8) {
@@ -235,11 +241,11 @@ func (f *GameFiddlesticks) ExecuteAiTurn(debug bool) bool {
 	return false
 }
 
-func (f *GameFiddlesticks) GetGameResults() (uint16, []uint16) {
+func (f *GameFiddlesticks) GetGameResults() (uint32, []uint32) {
 	total_rounds := 2*(f.max_round-f.min_round) + 1
 	total_cards := 2*uint16(0.5*float64(f.max_round*(f.max_round+1)-f.min_round*(f.min_round-1))) - uint16(f.max_round)
-	max_score := f.round_points*uint16(total_rounds) + f.trick_points*total_cards
-	scores := make([]uint16, len(f.players))
+	max_score := f.iterations * uint32(f.round_points*uint16(total_rounds)+f.trick_points*total_cards)
+	scores := make([]uint32, len(f.players))
 	for i, p := range f.players {
 		scores[i] = p.score
 	}
@@ -433,7 +439,7 @@ func (f *GameFiddlesticks) executePlayCard(player *game.Player, card_index int, 
 		} else {
 			for _, player := range f.players {
 				if player.bet == player.tricks {
-					player.score += f.round_points + f.trick_points*uint16(player.bet)
+					player.score += uint32(f.round_points + f.trick_points*uint16(player.bet))
 				}
 			}
 			deal_next_round = true
@@ -498,7 +504,8 @@ func (f *GameFiddlesticks) dealNextRound(broadcast bool) {
 	if f.rounds_increasing && f.round == f.max_round {
 		f.rounds_increasing = false
 	}
-	if f.round == f.min_round && !f.rounds_increasing {
+	f.iteration++
+	if f.round == f.min_round && !f.rounds_increasing && f.iteration >= f.iterations {
 		var winners = []int{0}
 		var winning_score = f.players[0].score
 		for i, player := range f.players[1:] {
@@ -531,10 +538,13 @@ func (f *GameFiddlesticks) dealNextRound(broadcast bool) {
 	if f.dealer >= len(f.players) {
 		f.dealer = 0
 	}
-	if f.rounds_increasing {
-		f.round++
-	} else {
-		f.round--
+	if f.iteration >= f.iterations {
+		f.iteration = 0
+		if f.rounds_increasing {
+			f.round++
+		} else {
+			f.round--
+		}
 	}
 	f.deck.Reset()
 	dealt_cards := f.deck.DealCards(uint8(len(f.players)), f.round)
