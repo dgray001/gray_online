@@ -26,7 +26,7 @@ func CreatBlankCard() *StandardCard {
 	}
 }
 
-func (c *StandardCard) Index() uint16 {
+func (c *StandardCard) Hash() uint16 {
 	return uint16(c.GetSuit()) | uint16(c.GetNumber())<<8
 }
 
@@ -132,6 +132,7 @@ func (c *StandardCard) ToFrontend() gin.H {
 
 type Deck interface {
 	Size() int
+	GetCards() []*StandardCard
 	SizeDrawPile() int
 	SizeDiscardPile() int
 	Reset()
@@ -193,6 +194,10 @@ func CreateStandardDeckConfig(deck_type StandardDeckType) *StandardDeck {
 
 func (d *StandardDeck) Size() int {
 	return len(d.cards)
+}
+
+func (d *StandardDeck) GetCards() []*StandardCard {
+	return d.cards
 }
 
 func (d *StandardDeck) SizeDrawPile() int {

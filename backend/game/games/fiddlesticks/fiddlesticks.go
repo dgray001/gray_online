@@ -213,7 +213,10 @@ func (f *GameFiddlesticks) StartAiGame(random_dealer bool) {
 	} else {
 		f.dealer = len(f.players) - 1
 	}
-	f.dealNextRound(false)
+	update := f.dealNextRound(false)
+	for _, p := range f.players {
+		p.ai_model.ApplyUpdate(p, f, update)
+	}
 }
 
 /** Returns whether the game is over */
@@ -224,19 +227,25 @@ func (f *GameFiddlesticks) ExecuteAiTurn(debug bool) bool {
 	if f.GetBase().GameEnded() {
 		return true
 	}
+	updates := make([]*game.UpdateMessage, 0, 2)
 	player := f.players[f.turn]
 	if f.betting {
 		bid := GetAiBid(player, f)
 		if debug {
 			fmt.Println("AI player", f.turn, "betting", bid)
 		}
-		f.executeBet(player.player, bid, false)
+		updates = append(updates, f.executeBet(player.player, bid, false))
 	} else {
 		card_index := GetAiPlayCard(player, f)
 		if debug {
 			fmt.Println("AI player", f.turn, "playing", player.cards[card_index].GetName())
 		}
-		f.executePlayCard(player.player, card_index, false)
+		updates = append(updates, f.executePlayCard(player.player, card_index, false)...)
+	}
+	for _, update := range updates {
+		for _, p := range f.players {
+			p.ai_model.ApplyUpdate(p, f, update)
+		}
 	}
 	return false
 }
@@ -392,7 +401,7 @@ func (f *GameFiddlesticks) cardBeatsCard(c1 *game_utils.StandardCard, c2 *game_u
 	return c1.GetNumber() > c2.GetNumber()
 }
 
-func (f *GameFiddlesticks) executeBet(player *game.Player, bet_value uint8, broadcast bool) {
+func (f *GameFiddlesticks) executeBet(player *game.Player, bet_value uint8, broadcast bool) *game.UpdateMessage {
 	f.players[f.turn].bet = bet_value
 	f.players[f.turn].has_bet = true
 	done_betting := f.turn == f.dealer
@@ -404,16 +413,17 @@ func (f *GameFiddlesticks) executeBet(player *game.Player, bet_value uint8, broa
 		f.betting = false
 		f.trick_leader = f.turn
 	}
+	update := &game.UpdateMessage{Kind: "bet", Content: gin.H{
+		"amount":    bet_value,
+		"player_id": player.Player_id,
+	}}
 	if broadcast {
-		update := &game.UpdateMessage{Kind: "bet", Content: gin.H{
-			"amount":    bet_value,
-			"player_id": player.Player_id,
-		}}
 		game.Game_BroadcastUpdate(f, update)
 	}
+	return update
 }
 
-func (f *GameFiddlesticks) executePlayCard(player *game.Player, card_index int, broadcast bool) {
+func (f *GameFiddlesticks) executePlayCard(player *game.Player, card_index int, broadcast bool) []*game.UpdateMessage {
 	card := f.players[f.turn].cards[card_index]
 	f.trick = append(f.trick, card)
 	f.players[f.turn].cards_played = append(f.players[f.turn].cards_played, card_index)
@@ -450,12 +460,18 @@ func (f *GameFiddlesticks) executePlayCard(player *game.Player, card_index int, 
 		"card":      card.ToFrontend(),
 		"player_id": player.Player_id,
 	}}
+	updates := make([]*game.UpdateMessage, 1, 2)
+	updates[0] = update
 	if broadcast {
 		game.Game_BroadcastUpdate(f, update)
 	}
 	if deal_next_round {
-		f.dealNextRound(broadcast)
+		deal_update := f.dealNextRound(broadcast)
+		if deal_update != nil {
+			updates = append(updates, deal_update)
+		}
 	}
+	return updates
 }
 
 func (f *GameFiddlesticks) PlayerDisconnected(client_id uint64) {
@@ -500,7 +516,7 @@ func (f *GameFiddlesticks) ToFrontend(client_id uint64, is_viewer bool) gin.H {
 	return game
 }
 
-func (f *GameFiddlesticks) dealNextRound(broadcast bool) {
+func (f *GameFiddlesticks) dealNextRound(broadcast bool) *game.UpdateMessage {
 	if f.rounds_increasing && f.round == f.max_round {
 		f.rounds_increasing = false
 	}
@@ -532,7 +548,7 @@ func (f *GameFiddlesticks) dealNextRound(broadcast bool) {
 			fmt.Println(winner_message)
 		}
 		f.game.EndGame(winner_message)
-		return
+		return nil
 	}
 	f.dealer++
 	if f.dealer >= len(f.players) {
@@ -566,26 +582,28 @@ func (f *GameFiddlesticks) dealNextRound(broadcast bool) {
 		f.turn -= len(f.players)
 	}
 	f.trick_leader = f.turn
-	for _, player := range f.players {
-		frontend_cards := []gin.H{}
-		for _, card := range player.cards {
-			frontend_cards = append(frontend_cards, card.ToFrontend())
-		}
-		update := &game.UpdateMessage{Kind: "deal-round", Content: gin.H{
-			"dealer": f.dealer,
-			"round":  f.round,
-			"trump":  f.trump.ToFrontend(),
-			"cards":  frontend_cards,
-		}}
-		if broadcast {
+	if broadcast {
+		for _, player := range f.players {
+			frontend_cards := []gin.H{}
+			for _, card := range player.cards {
+				frontend_cards = append(frontend_cards, card.ToFrontend())
+			}
+			update := &game.UpdateMessage{Kind: "deal-round", Content: gin.H{
+				"dealer": f.dealer,
+				"round":  f.round,
+				"trump":  f.trump.ToFrontend(),
+				"cards":  frontend_cards,
+			}}
 			player.player.AddUpdate(update)
 		}
 	}
+	update := &game.UpdateMessage{Kind: "deal-round", Content: gin.H{
+		"dealer": f.dealer,
+		"round":  f.round,
+		"trump":  f.trump.ToFrontend(),
+	}}
 	if broadcast {
-		f.game.AddViewerUpdate(&game.UpdateMessage{Kind: "deal-round", Content: gin.H{
-			"dealer": f.dealer,
-			"round":  f.round,
-			"trump":  f.trump.ToFrontend(),
-		}})
+		f.game.AddViewerUpdate(update)
 	}
+	return update
 }

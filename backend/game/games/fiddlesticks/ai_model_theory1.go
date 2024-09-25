@@ -5,6 +5,7 @@ import (
 	"math"
 	"os"
 
+	"github.com/dgray001/gray_online/game"
 	"github.com/dgray001/gray_online/game/game_utils"
 	"github.com/dgray001/gray_online/util"
 )
@@ -39,6 +40,9 @@ func createFiddlesticksAiModelTheory1(model_input map[string]string) Fiddlestick
 		}
 	}
 	return m
+}
+
+func (m FiddlesticksAiModelTheory1) ApplyUpdate(p *FiddlesticksPlayer, f *GameFiddlesticks, u *game.UpdateMessage) {
 }
 
 func (m FiddlesticksAiModelTheory1) Bet(p *FiddlesticksPlayer, f *GameFiddlesticks) float64 {

@@ -5,6 +5,7 @@ import (
 	"math"
 	"os"
 
+	"github.com/dgray001/gray_online/game"
 	"github.com/dgray001/gray_online/game/game_utils"
 	"github.com/dgray001/gray_online/util"
 )
@@ -44,6 +45,9 @@ func createFiddlesticksAiModelTheory2(model_input map[string]string) Fiddlestick
 	return m
 }
 
+func (m FiddlesticksAiModelTheory2) ApplyUpdate(p *FiddlesticksPlayer, f *GameFiddlesticks, u *game.UpdateMessage) {
+}
+
 func (m FiddlesticksAiModelTheory2) Bet(p *FiddlesticksPlayer, f *GameFiddlesticks) float64 {
 	bid := float64(0)
 	trump_suit := f.trump.GetSuit()
@@ -54,7 +58,6 @@ func (m FiddlesticksAiModelTheory2) Bet(p *FiddlesticksPlayer, f *GameFiddlestic
 }
 
 func (m FiddlesticksAiModelTheory2) CardWeights(p *FiddlesticksPlayer, f *GameFiddlesticks, valid_cards []int) []float64 {
-	// probability the model will play this card
 	weights := make([]float64, len(valid_cards))
 	total_weight := float64(0)
 	tricks_needed := p.bet - p.tricks

@@ -27,6 +27,13 @@ func runAi(p *FiddlesticksPlayer, f *GameFiddlesticks, action_channel chan game.
 		select {
 		case update := <-p.player.Updates:
 			fmt.Println("AI player", p.player.GetAiId(), "received update", update)
+			if p.player == nil || p.player.GetBase() == nil || !p.player.GetBase().GameStarted() || p.player.GetBase().GameEnded() {
+				break
+			}
+			if f.GetBase() == nil || !f.GetBase().GameStarted() || f.GetBase().GameEnded() {
+				break
+			}
+			p.ai_model.ApplyUpdate(p, f, update)
 			checkTurn(p, f, action_channel)
 			fmt.Println("Finished checking for AI player", p.player.GetAiId())
 		case update := <-p.player.FailedUpdates:
@@ -37,12 +44,6 @@ func runAi(p *FiddlesticksPlayer, f *GameFiddlesticks, action_channel chan game.
 }
 
 func checkTurn(p *FiddlesticksPlayer, f *GameFiddlesticks, action_channel chan game.PlayerAction) {
-	if p == nil || p.player == nil || p.player.GetBase() == nil || !p.player.GetBase().GameStarted() || p.player.GetBase().GameEnded() {
-		return
-	}
-	if f == nil || f.GetBase() == nil || !f.GetBase().GameStarted() || f.GetBase().GameEnded() {
-		return
-	}
 	if f.turn != p.player.Player_id {
 		return
 	}
@@ -98,6 +99,8 @@ func GetAiPlayCard(p *FiddlesticksPlayer, f *GameFiddlesticks) int {
 }
 
 type FiddlesticksAiModel interface {
+	// applies an update, allowing for the update of information
+	ApplyUpdate(p *FiddlesticksPlayer, f *GameFiddlesticks, update *game.UpdateMessage)
 	// returns a float value which is then resolved into an int based on probability
 	Bet(p *FiddlesticksPlayer, f *GameFiddlesticks) float64
 	// returns un-normalized weights which must be the same length as the valid_Cards slice

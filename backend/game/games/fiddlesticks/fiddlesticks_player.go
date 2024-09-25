@@ -28,6 +28,10 @@ func (p *FiddlesticksPlayer) createAiModel(model_input map[string]string) {
 		p.ai_model = createFiddlesticksAiModelTheory1(model_input)
 	case 2: // theory model 2
 		p.ai_model = createFiddlesticksAiModelTheory2(model_input)
+	case 3: // theory model 3
+		p.ai_model = createFiddlesticksAiModelTheory3(model_input)
+	case 4: // theory model 4
+		p.ai_model = createFiddlesticksAiModelTheory4(model_input)
 	default:
 		p.ai_model = FiddlesticksAiModelRandom{}
 	}
