@@ -24,8 +24,8 @@ type FiddlesticksAiModelTheory2 struct {
 	non_trump_max float64 // value of a non trump ace card
 }
 
-func createFiddlesticksAiModelTheory2(model_input map[string]string) FiddlesticksAiModelTheory2 {
-	m := FiddlesticksAiModelTheory2{
+func createFiddlesticksAiModelTheory2(model_input map[string]string) *FiddlesticksAiModelTheory2 {
+	m := &FiddlesticksAiModelTheory2{
 		trump_min:     0.25,
 		non_trump_min: 8,
 		non_trump_max: 0.4,
@@ -45,10 +45,10 @@ func createFiddlesticksAiModelTheory2(model_input map[string]string) Fiddlestick
 	return m
 }
 
-func (m FiddlesticksAiModelTheory2) ApplyUpdate(p *FiddlesticksPlayer, f *GameFiddlesticks, u *game.UpdateMessage) {
+func (m *FiddlesticksAiModelTheory2) ApplyUpdate(p *FiddlesticksPlayer, f *GameFiddlesticks, u *game.UpdateMessage) {
 }
 
-func (m FiddlesticksAiModelTheory2) Bet(p *FiddlesticksPlayer, f *GameFiddlesticks) float64 {
+func (m *FiddlesticksAiModelTheory2) Bet(p *FiddlesticksPlayer, f *GameFiddlesticks) float64 {
 	bid := float64(0)
 	trump_suit := f.trump.GetSuit()
 	for _, card := range p.cards {
@@ -57,7 +57,7 @@ func (m FiddlesticksAiModelTheory2) Bet(p *FiddlesticksPlayer, f *GameFiddlestic
 	return bid
 }
 
-func (m FiddlesticksAiModelTheory2) CardWeights(p *FiddlesticksPlayer, f *GameFiddlesticks, valid_cards []int) []float64 {
+func (m *FiddlesticksAiModelTheory2) CardWeights(p *FiddlesticksPlayer, f *GameFiddlesticks, valid_cards []int) []float64 {
 	weights := make([]float64, len(valid_cards))
 	total_weight := float64(0)
 	tricks_needed := p.bet - p.tricks

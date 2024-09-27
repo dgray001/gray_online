@@ -2,6 +2,7 @@ package game_utils
 
 import (
 	"math/rand"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -34,8 +35,19 @@ func (standardCardStatic) AceValue() uint8 {
 	return 14
 }
 
+func (standardCardStatic) CreateCard(suit uint8, number uint8) *StandardCard {
+	return &StandardCard{
+		suit:   suit,
+		number: number,
+	}
+}
+
 func (c *StandardCard) GetName() string {
 	return c.getNumberName() + " of " + c.getSuitName() + "s"
+}
+
+func (c *StandardCard) GetShortName() string {
+	return c.getShortNumberName() + c.getSuitIcon()
 }
 
 func (c *StandardCard) getNumberName() string {
@@ -71,6 +83,24 @@ func (c *StandardCard) getNumberName() string {
 	}
 }
 
+func (c *StandardCard) getShortNumberName() string {
+	if c.number > 1 && c.number < 11 {
+		return strconv.Itoa(int(c.number))
+	}
+	switch c.number {
+	case 11:
+		return "J"
+	case 12:
+		return "Q"
+	case 13:
+		return "K"
+	case 14:
+		return "A"
+	default:
+		return "?"
+	}
+}
+
 func (c *StandardCard) getSuitName() string {
 	switch c.suit {
 	case 1:
@@ -83,6 +113,21 @@ func (c *StandardCard) getSuitName() string {
 		return "Spade"
 	default:
 		return "Error"
+	}
+}
+
+func (c *StandardCard) getSuitIcon() string {
+	switch c.suit {
+	case 1:
+		return "♥"
+	case 2:
+		return "♣"
+	case 3:
+		return "♦"
+	case 4:
+		return "♠"
+	default:
+		return "✪"
 	}
 }
 

@@ -27,8 +27,8 @@ type FiddlesticksAiModelTheory1 struct {
 	aggressive_factor float64
 }
 
-func createFiddlesticksAiModelTheory1(model_input map[string]string) FiddlesticksAiModelTheory1 {
-	m := FiddlesticksAiModelTheory1{
+func createFiddlesticksAiModelTheory1(model_input map[string]string) *FiddlesticksAiModelTheory1 {
+	m := &FiddlesticksAiModelTheory1{
 		aggressive_factor: 0.8,
 	}
 	for k, v := range model_input {
@@ -42,10 +42,10 @@ func createFiddlesticksAiModelTheory1(model_input map[string]string) Fiddlestick
 	return m
 }
 
-func (m FiddlesticksAiModelTheory1) ApplyUpdate(p *FiddlesticksPlayer, f *GameFiddlesticks, u *game.UpdateMessage) {
+func (m *FiddlesticksAiModelTheory1) ApplyUpdate(p *FiddlesticksPlayer, f *GameFiddlesticks, u *game.UpdateMessage) {
 }
 
-func (m FiddlesticksAiModelTheory1) Bet(p *FiddlesticksPlayer, f *GameFiddlesticks) float64 {
+func (m *FiddlesticksAiModelTheory1) Bet(p *FiddlesticksPlayer, f *GameFiddlesticks) float64 {
 	bid := float64(0)
 	trump_suit := f.trump.GetSuit()
 	for _, card := range p.cards {
