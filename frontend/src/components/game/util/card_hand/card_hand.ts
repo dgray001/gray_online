@@ -187,7 +187,7 @@ export class DwgCardHand extends DwgElement {
 
       el.addEventListener('dblclick', () => {
         if (this.can_play) {
-          this.dispatchEvent(new CustomEvent<number>('play_card', {'detail': data.i}));
+          this.dispatchEvent(new CustomEvent<number>('play_card', {detail: data.i}));
         }
       });
 
@@ -307,7 +307,7 @@ export class DwgCardHand extends DwgElement {
       card.el.classList.remove('dragging');
       if (!returning_to_screen && this.can_play) {
         if (this.dragging_data.hovering_play_drop) {
-          this.dispatchEvent(new CustomEvent<number>('play_card', {'detail': card.i}));
+          this.dispatchEvent(new CustomEvent<number>('play_card', {detail: card.i}));
         }
       }
     });

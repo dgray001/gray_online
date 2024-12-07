@@ -40,7 +40,7 @@ export class DwgPageHome extends DwgElement {
         new WebSocket(`${websocketPath()}/connect/${e.detail.nickname}`);
       let never_connected = true;
       socket.addEventListener('error', (e) => {
-        console.log(e);
+        console.error(e);
         this.tryConnectionAgain(`${never_connected ? 'Could not connect' :
           'Connection was lost'}. Check your connection and try again.`);
       });
@@ -65,7 +65,8 @@ export class DwgPageHome extends DwgElement {
       }
     });
     this.lobby.addEventListener('refresh_game_lobby', (e: CustomEvent<LobbyRoom>) => {
-      if (!!this.game && !!e.detail) {
+      console.log(this.game, e.detail, e.detail.game_id);
+      if (!!this.game && !!e.detail && !!e.detail.game_id) {
         this.game?.refreshRoom(e.detail);
       }
     });

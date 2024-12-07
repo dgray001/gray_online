@@ -75,7 +75,7 @@ export class DwgCanvasBoard extends DwgElement {
   private resize_observer = new ResizeObserver(async (els) => {
     for (const el of els) {
       await this.updateSize(this.data, el.contentRect);
-      this.dispatchEvent(new CustomEvent<CanvasBoardSize>('canvas_resize', {'detail': {
+      this.dispatchEvent(new CustomEvent<CanvasBoardSize>('canvas_resize', {detail: {
         board_size: this.data.board_size,
         el_size: this.bounding_rect,
       }, 'bubbles': true}));

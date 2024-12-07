@@ -19,22 +19,20 @@ export declare interface ConnectData {
 export const PREVIOUS_NICKNAME = '!!previous!!';
 
 export class DwgLobbyConnector extends DwgElement {
-  card: HTMLDivElement;
-  reconnect_wrapper: HTMLDivElement;
-  previous_nickname: HTMLDivElement;
-  reconnect_button: HTMLButtonElement;
-  new_connection_button: HTMLButtonElement;
-  connect_wrapper: HTMLDivElement;
-  nickname: HTMLInputElement;
-  connect_button: HTMLButtonElement;
-  status_message: HTMLDivElement;
+  private reconnect_wrapper: HTMLDivElement;
+  private previous_nickname: HTMLDivElement;
+  private reconnect_button: HTMLButtonElement;
+  private new_connection_button: HTMLButtonElement;
+  private connect_wrapper: HTMLDivElement;
+  private nickname: HTMLInputElement;
+  private connect_button: HTMLButtonElement;
+  private status_message: HTMLDivElement;
 
-  reconnect_data: ConnectData = {nickname: '', try_reconnect: true, client_id: 0};
+  private reconnect_data: ConnectData = {nickname: '', try_reconnect: true, client_id: 0};
 
   constructor() {
     super();
     this.htmlString = html;
-    this.configureElement('card');
     this.configureElement('reconnect_wrapper');
     this.configureElement('previous_nickname');
     this.configureElement('reconnect_button');
@@ -122,7 +120,7 @@ export class DwgLobbyConnector extends DwgElement {
   }
 
   connect(connect_data: ConnectData) {
-    this.dispatchEvent(new CustomEvent<ConnectData>('connect', {'detail': connect_data}))
+    this.dispatchEvent(new CustomEvent<ConnectData>('connect', {detail: connect_data}))
   }
 
   invalid_names = [SERVER_CHAT_NAME];

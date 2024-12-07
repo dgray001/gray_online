@@ -104,7 +104,7 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameF
 				cards:        []*game_utils.StandardCard{},
 				cards_played: []int{},
 				score:        0,
-				ai_model_id:  1,
+				ai_model_id:  2,
 			}
 			go runAi(fiddlesticks_player, fiddlesticks, action_channel)
 			player.Player_id = player_id

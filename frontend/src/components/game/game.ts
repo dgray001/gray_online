@@ -17,11 +17,11 @@ import './players_dialog/players_dialog';
 import '../dialog_box/message_dialog/message_dialog';
 import '../dialog_box/confirm_dialog/confirm_dialog';
 
-const SERVER_PING_TIME = 3500_000; // time between game refreshes
+const SERVER_PING_TIME = 3500; // time between game refreshes
 
 /** Function to dispatch event that will show a dialog message */
 export function messageDialog(data: MessageDialogData) {
-  this.dispatchEvent(new CustomEvent('show_message_dialog', {'detail': data, bubbles: true}));
+  this.dispatchEvent(new CustomEvent('show_message_dialog', {detail: data, bubbles: true}));
 }
 
 export class DwgGame extends DwgElement {
@@ -212,6 +212,9 @@ export class DwgGame extends DwgElement {
       this.appendChild(confirm_dialog);
     });
     this.ping_interval = setInterval(() => {
+      if (!this.launched) {
+        return;
+      }
       this.pingServer();
     }, SERVER_PING_TIME);
   }
@@ -257,7 +260,7 @@ export class DwgGame extends DwgElement {
 
   refreshRoom(room: LobbyRoom) {
     if (!room || !room.game_id || !this.connection_metadata?.room_id || room.room_id !== this.connection_metadata?.room_id) {
-      console.log('Invalid room state');
+      console.error('Invalid game state');
       this.exitGame();
       return;
     }
@@ -480,6 +483,7 @@ export class DwgGame extends DwgElement {
 
   pingServer() {
     if (!this.socketActive()) {
+      this.dispatchEvent(new CustomEvent<string>('connection_lost', {detail: 'Lost connection in game'}));
       return;
     }
     if (this.game?.game_base?.game_ended) {

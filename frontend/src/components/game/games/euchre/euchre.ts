@@ -53,7 +53,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
       // TODO: check if card is playable
       const game_update = createMessage(`player-${this.player_id}`, 'game-update',
         `{"index":${e.detail}}`, this.game.dealer_substituting_card ? 'dealer-substitutes-card' : 'play-card');
-      this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, 'bubbles': true}));
+      this.dispatchEvent(new CustomEvent('game_update', {detail: game_update, 'bubbles': true}));
     });
     if (clientOnMobile()) {
       this.table_container.style.setProperty('background-image', 'url(/images/card_table400.png)');

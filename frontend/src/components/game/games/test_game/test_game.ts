@@ -28,7 +28,7 @@ export class DwgTestGame extends DwgElement implements GameComponent {
     });
     this.end_game.addEventListener('click', () => {
       const game_update = createMessage('player', 'game-update', '', 'end_game');
-      this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, bubbles: true}));
+      this.dispatchEvent(new CustomEvent('game_update', {detail: game_update, bubbles: true}));
     });
   }
 

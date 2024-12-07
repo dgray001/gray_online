@@ -88,7 +88,7 @@ export class DwgLobbyRoom extends DwgElement {
   protected override parsedCallback(): void {
     this.chatbox.setPlaceholder('Chat with room');
     this.chatbox.addEventListener('chat_sent', (e: CustomEvent<ChatMessage>) => {
-      this.dispatchEvent(new CustomEvent('chat_sent', {'detail': e.detail}));
+      this.dispatchEvent(new CustomEvent('chat_sent', {detail: e.detail}));
     });
     this.leave_room.addEventListener('click', () => {
       this.dispatchEvent(new Event('leave_room'));
@@ -109,13 +109,13 @@ export class DwgLobbyRoom extends DwgElement {
       this.lobby_game_settings.classList.add('show');
     });
     this.lobby_game_settings.addEventListener('saved', () => {
-      this.dispatchEvent(new CustomEvent('save_settings', {'detail': createMessage(
+      this.dispatchEvent(new CustomEvent('save_settings', {detail: createMessage(
         `client-${this.room.host.client_id}`,
         'room-settings-update',
         JSON.stringify(this.lobby_game_settings.getSettings()),
         this.room.room_id.toString(),
       )}));
-      this.dispatchEvent(new CustomEvent('save_settings', {'detail': createMessage(
+      this.dispatchEvent(new CustomEvent('save_settings', {detail: createMessage(
         `client-${this.room.host.client_id}`,
         'room-update-description',
         this.lobby_game_settings.getDescription(),
@@ -130,7 +130,7 @@ export class DwgLobbyRoom extends DwgElement {
         if (this.settings_launch_interval_id) {
           clearInterval(this.settings_launch_interval_id);
         }
-        this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {'detail': {
+        this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {detail: {
           message: 'Game launch canceled',
           sender: SERVER_CHAT_NAME,
         }}));
@@ -138,17 +138,17 @@ export class DwgLobbyRoom extends DwgElement {
         // TODO: check if launchable
         this.setLaunching(true);
         const countdown = 5;
-        this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {'detail': {
+        this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {detail: {
           message: `Game is launching in ${countdown} ...`,
           sender: SERVER_CHAT_NAME,
         }}));
         this.settings_launch_interval_id = setIntervalX((counter) => {
-          this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {'detail': {
+          this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {detail: {
             message: `${countdown - counter} ...`,
             sender: SERVER_CHAT_NAME,
           }}));
         }, 1000, countdown - 1, () => {
-          this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {'detail': {
+          this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {detail: {
             message: 'Game is launching ...',
             sender: SERVER_CHAT_NAME,
           }}));
@@ -486,7 +486,7 @@ export class DwgLobbyRoom extends DwgElement {
     this.settings_game_status.innerText = GameStatusEnum.IN_PROGRESS;
     this.game_button_container.classList.remove('hide');
     this.settings_button_container.classList.add('hide');
-    this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {'detail': {
+    this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {detail: {
       message: 'Game launched',
       sender: SERVER_CHAT_NAME,
     }}));
@@ -499,7 +499,7 @@ export class DwgLobbyRoom extends DwgElement {
     this.room.game_id = undefined;
     this.setLaunching(false);
     this.settings_game_status.innerText = GameStatusEnum.LAUNCH_FAILED;
-    this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {'detail': {
+    this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {detail: {
       message: 'Game launch failed',
       sender: SERVER_CHAT_NAME,
     }}));
@@ -520,7 +520,7 @@ export class DwgLobbyRoom extends DwgElement {
       this.settings_settings_button.disabled = false;
       this.settings_button_container.classList.remove('hide');
     }
-    this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {'detail': {
+    this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {detail: {
       message: `Game over: ${message}`,
       sender: SERVER_CHAT_NAME,
     }}));
@@ -544,7 +544,7 @@ export class DwgLobbyRoom extends DwgElement {
   }
 
   private submitRename() {
-    this.dispatchEvent(new CustomEvent('rename_room', {'detail': this.rename_input.value}));
+    this.dispatchEvent(new CustomEvent('rename_room', {detail: this.rename_input.value}));
     this.cancelRename();
   }
 }

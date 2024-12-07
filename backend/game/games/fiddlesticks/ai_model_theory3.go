@@ -152,7 +152,7 @@ func (m *FiddlesticksAiModelTheory3) ApplyUpdate(p *FiddlesticksPlayer, f *GameF
 		}
 		if suit != lead_suit {
 			m.opponents[player_id].missingSuit(lead_suit)
-			// account for missing suit in card probabilities
+			// TODO: account for missing suit in card probabilities
 		}
 	default:
 		fmt.Fprintln(os.Stderr, "Unknown update kind for theory model 3:", u.Kind)

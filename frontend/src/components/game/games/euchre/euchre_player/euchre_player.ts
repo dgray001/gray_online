@@ -97,41 +97,41 @@ export class DwgEuchrePlayer extends DwgElement {
         const update = {going_alone: this.going_alone.checked};
         const game_update = createMessage(`player-${this.player.player.player_id}`,
           'game-update', JSON.stringify(update), 'bid');
-        this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, bubbles: true}));
+        this.dispatchEvent(new CustomEvent('game_update', {detail: game_update, bubbles: true}));
       });
       this.spades_button.addEventListener('click', () => {
         this.disableButtons();
         const update = {going_alone: this.going_alone.checked, trump_suit: 4};
         const game_update = createMessage(`player-${this.player.player.player_id}`,
           'game-update', JSON.stringify(update), 'bid-choose-trump');
-        this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, bubbles: true}));
+        this.dispatchEvent(new CustomEvent('game_update', {detail: game_update, bubbles: true}));
       });
       this.diamonds_button.addEventListener('click', () => {
         this.disableButtons();
         const update = {going_alone: this.going_alone.checked, trump_suit: 1};
         const game_update = createMessage(`player-${this.player.player.player_id}`,
           'game-update', JSON.stringify(update), 'bid-choose-trump');
-        this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, bubbles: true}));
+        this.dispatchEvent(new CustomEvent('game_update', {detail: game_update, bubbles: true}));
       });
       this.clubs_button.addEventListener('click', () => {
         this.disableButtons();
         const update = {going_alone: this.going_alone.checked, trump_suit: 2};
         const game_update = createMessage(`player-${this.player.player.player_id}`,
           'game-update', JSON.stringify(update), 'bid-choose-trump');
-        this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, bubbles: true}));
+        this.dispatchEvent(new CustomEvent('game_update', {detail: game_update, bubbles: true}));
       });
       this.hearts_button.addEventListener('click', () => {
         this.disableButtons();
         const update = {going_alone: this.going_alone.checked, trump_suit: 3};
         const game_update = createMessage(`player-${this.player.player.player_id}`,
           'game-update', JSON.stringify(update), 'bid-choose-trump');
-        this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, bubbles: true}));
+        this.dispatchEvent(new CustomEvent('game_update', {detail: game_update, bubbles: true}));
       });
       this.pass_button.addEventListener('click', () => {
         this.disableButtons();
         const game_update = createMessage(`player-${this.player.player.player_id}`,
           'game-update', '{}', 'pass');
-        this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, bubbles: true}));
+        this.dispatchEvent(new CustomEvent('game_update', {detail: game_update, bubbles: true}));
       });
     });
   }

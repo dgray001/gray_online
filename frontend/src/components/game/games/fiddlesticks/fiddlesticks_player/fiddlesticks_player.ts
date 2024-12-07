@@ -125,7 +125,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.bet_input.disabled = true;
     this.bet_button.disabled = true;
     const game_update = createMessage(`player-${this.player.player.player_id}`, 'game-update', `{"amount":${this.bet_input.value}}`, 'bet');
-    this.dispatchEvent(new CustomEvent('game_update', {'detail': game_update, bubbles: true}));
+    this.dispatchEvent(new CustomEvent('game_update', {detail: game_update, bubbles: true}));
   }
 
   newRound(dealer: boolean) {

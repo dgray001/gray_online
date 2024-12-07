@@ -18,7 +18,7 @@ import './lobby_room/lobby_room';
 import '../dialog_box/message_dialog/message_dialog';
 import '../dialog_box/confirm_dialog/confirm_dialog';
 
-const LOBBY_PING_TIME = 3500_000; // time between lobby refreshes
+const LOBBY_PING_TIME = 3500; // time between lobby refreshes
 
 const URL_PARAM_ROOM = 'room_id';
 
@@ -183,7 +183,7 @@ export class DwgLobby extends DwgElement {
       ));
     });
     this.lobby_room.addEventListener('rejoin_game', () => {
-      this.dispatchEvent(new CustomEvent('rejoin_game', {'detail': this.lobby_room.getRoom()}));
+      this.dispatchEvent(new CustomEvent('rejoin_game', {detail: this.lobby_room.getRoom()}));
     });
     this.lobby_users_button.addEventListener('click', () => {
       this.lobby_users.classList.toggle('show');
@@ -288,7 +288,7 @@ export class DwgLobby extends DwgElement {
       this.enterRoom(current_room, current_room.host.client_id === (this.connection_metadata.client_id ?? -1));
     } else if (!current_room) {
       this.leaveRoom();
-    } else { // already in room
+    } else if (!this.exited_game) {
       this.dispatchEvent(new CustomEvent('refresh_game_lobby', {detail: current_room, bubbles: true}));
     }
   }
@@ -366,7 +366,7 @@ export class DwgLobby extends DwgElement {
       return;
     }
     if (!this.socketActive()) {
-      this.dispatchEvent(new Event('connected_lost'));
+      this.dispatchEvent(new Event('connection_lost'));
       return;
     }
     if (!this.classList.contains('connected')) {

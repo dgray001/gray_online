@@ -14,7 +14,7 @@ export function getReadableGameSettings(settings: object, game_type: GameType):[
           const ai_players = setting as AiPlayerFiddlesticks[];
           add('AI Players', ai_players.length);
           for (const player of ai_players) {
-            add('Random Model', player.nickname);
+            add('Theory Model 2', player.nickname);
           }
         } else {
           add(setting_name, setting);

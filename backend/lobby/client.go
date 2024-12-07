@@ -28,6 +28,7 @@ type Client struct {
 	ping_start             time.Time
 	ping_broadcast_counter uint8
 	send_message           chan lobbyMessage
+	closed                 bool
 	lobby                  *Lobby
 	lobby_room             *LobbyRoom
 	game                   game.Game
@@ -70,10 +71,19 @@ func (c *Client) close() {
 	if c == nil {
 		return
 	}
+	c.closed = true
 	close(c.send_message)
 	if c.connection != nil {
 		c.connection.Close()
 	}
+}
+
+// Add to send message channel
+func (c *Client) send(lm lobbyMessage) {
+	if c.closed || c.send_message == nil {
+		return
+	}
+	c.send_message <- lm
 }
 
 func (c *Client) pingString() string {
@@ -104,7 +114,7 @@ func (c *Client) readMessages() {
 			c.ping_broadcast_counter = ping_broadcast_count
 			c.lobby.broadcastMessage(ping_message)
 		} else {
-			c.send_message <- ping_message
+			c.send(ping_message)
 		}
 		return nil
 	})
@@ -126,12 +136,12 @@ func (c *Client) readMessages() {
 		case "room-join":
 			room_id, err := strconv.Atoi(message.Data)
 			if err != nil || room_id < 1 {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-join-failed", Content: "Invalid room id"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-join-failed", Content: "Invalid room id"})
 				break
 			}
 			room := c.lobby.GetRoom(uint64(room_id))
 			if room == nil {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-join-failed", Content: "Room doesn't exist"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-join-failed", Content: "Room doesn't exist"})
 				break
 			}
 			client_room := MakeClientRoom(c, room)
@@ -140,12 +150,12 @@ func (c *Client) readMessages() {
 		case "room-join-player":
 			room_id, err := strconv.Atoi(message.Data)
 			if err != nil || room_id < 1 {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-join-failed", Content: "Invalid room id"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-join-failed", Content: "Invalid room id"})
 				break
 			}
 			room := c.lobby.GetRoom(uint64(room_id))
 			if room == nil {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-join-failed", Content: "Room doesn't exist"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-join-failed", Content: "Room doesn't exist"})
 				break
 			}
 			client_room := MakeClientRoom(c, room)
@@ -154,12 +164,12 @@ func (c *Client) readMessages() {
 		case "room-join-viewer":
 			room_id, err := strconv.Atoi(message.Data)
 			if err != nil || room_id < 1 {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-join-failed", Content: "Invalid room id"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-join-failed", Content: "Invalid room id"})
 				break
 			}
 			room := c.lobby.GetRoom(uint64(room_id))
 			if room == nil {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-join-failed", Content: "Room doesn't exist"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-join-failed", Content: "Room doesn't exist"})
 				break
 			}
 			client_room := MakeClientRoom(c, room)
@@ -168,37 +178,37 @@ func (c *Client) readMessages() {
 		case "room-leave":
 			room_id, err := strconv.Atoi(message.Data)
 			if err != nil || room_id < 1 {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-leave-failed", Content: "Invalid room id"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-leave-failed", Content: "Invalid room id"})
 				break
 			}
 			room := c.lobby.GetRoom(uint64(room_id))
 			if room == nil {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-leave-failed", Content: "Room doesn't exist"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-leave-failed", Content: "Room doesn't exist"})
 				break
 			}
 			if c.lobby_room == nil || c.lobby_room.room_id != room.room_id {
 				fmt.Println(c.lobby_room, room)
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-leave-failed", Content: "Not in that room"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-leave-failed", Content: "Not in that room"})
 				break
 			}
 			c.lobby.LeaveRoom <- MakeClientRoom(c, room)
 		case "room-rename":
 			room_id, err := strconv.Atoi(message.Data)
 			if err != nil || room_id < 1 {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-rename-failed", Content: "Invalid room id"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-rename-failed", Content: "Invalid room id"})
 				break
 			}
 			room := c.lobby.GetRoom(uint64(room_id))
 			if room == nil {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-rename-failed", Content: "Room doesn't exist"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-rename-failed", Content: "Room doesn't exist"})
 				break
 			}
 			if room.host.client_id != c.client_id {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-rename-failed", Content: "Not room host"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-rename-failed", Content: "Not room host"})
 				break
 			}
 			if room.gameStarted() {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-rename-failed", Content: "Game started"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-rename-failed", Content: "Game started"})
 				break
 			}
 			room.room_name = message.Content
@@ -206,20 +216,20 @@ func (c *Client) readMessages() {
 		case "room-update-description":
 			room_id, err := strconv.Atoi(message.Data)
 			if err != nil || room_id < 1 {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-update-description-failed", Content: "Invalid room id"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-update-description-failed", Content: "Invalid room id"})
 				break
 			}
 			room := c.lobby.GetRoom(uint64(room_id))
 			if room == nil {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-update-description-failed", Content: "Room doesn't exist"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-update-description-failed", Content: "Room doesn't exist"})
 				break
 			}
 			if room.host.client_id != c.client_id {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-update-description-failed", Content: "Not room host"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-update-description-failed", Content: "Not room host"})
 				break
 			}
 			if room.gameStarted() {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-update-description-failed", Content: "Game started"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-update-description-failed", Content: "Game started"})
 				break
 			}
 			room.room_description = message.Content
@@ -227,203 +237,203 @@ func (c *Client) readMessages() {
 		case "room-kick":
 			room_id, err := strconv.Atoi(message.Data)
 			if err != nil || room_id < 1 {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-kick-failed", Content: "Invalid room id"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-kick-failed", Content: "Invalid room id"})
 				break
 			}
 			room := c.lobby.GetRoom(uint64(room_id))
 			if room == nil {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-kick-failed", Content: "Room doesn't exist"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-kick-failed", Content: "Room doesn't exist"})
 				break
 			}
 			if room.host.client_id != c.client_id {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-kick-failed", Content: "Not room host"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-kick-failed", Content: "Not room host"})
 				break
 			}
 			if room.gameStarted() {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-kick-failed", Content: "Game started"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-kick-failed", Content: "Game started"})
 				break
 			}
 			client_id, err := strconv.Atoi(message.Content)
 			if err != nil || client_id < 1 {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-kick-failed", Content: "Invalid client id"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-kick-failed", Content: "Invalid client id"})
 				break
 			}
 			client := c.lobby.GetClient(uint64(client_id))
 			if client == nil {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-kick-failed", Content: "Client doesn't exist"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-kick-failed", Content: "Client doesn't exist"})
 				break
 			}
 			c.lobby.KickClientFromRoom <- MakeClientRoom(client, room)
 		case "room-promote":
 			room_id, err := strconv.Atoi(message.Data)
 			if err != nil || room_id < 1 {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-promote-failed", Content: "Invalid room id"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-promote-failed", Content: "Invalid room id"})
 				break
 			}
 			room := c.lobby.GetRoom(uint64(room_id))
 			if room == nil {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-promote-failed", Content: "Room doesn't exist"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-promote-failed", Content: "Room doesn't exist"})
 				break
 			}
 			if room.host.client_id != c.client_id {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-promote-failed", Content: "Not room host"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-promote-failed", Content: "Not room host"})
 				break
 			}
 			if room.gameStarted() {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-promote-failed", Content: "Game started"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-promote-failed", Content: "Game started"})
 				break
 			}
 			client_id, err := strconv.Atoi(message.Content)
 			if err != nil || client_id < 1 {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-promote-failed", Content: "Invalid client id"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-promote-failed", Content: "Invalid client id"})
 				break
 			}
 			client := c.lobby.GetClient(uint64(client_id))
 			if client == nil {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-promote-failed", Content: "Client doesn't exist"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-promote-failed", Content: "Client doesn't exist"})
 				break
 			}
 			c.lobby.PromotePlayerInRoom <- MakeClientRoom(client, room)
 		case "room-set-viewer":
 			room_id, err := strconv.Atoi(message.Data)
 			if err != nil || room_id < 1 {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-set-viewer-failed", Content: "Invalid room id"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-set-viewer-failed", Content: "Invalid room id"})
 				break
 			}
 			room := c.lobby.GetRoom(uint64(room_id))
 			if room == nil {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-set-viewer-failed", Content: "Room doesn't exist"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-set-viewer-failed", Content: "Room doesn't exist"})
 				break
 			}
 			client_id, err := strconv.Atoi(message.Content)
 			if err != nil || client_id < 1 {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-set-viewer-failed", Content: "Invalid client id"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-set-viewer-failed", Content: "Invalid client id"})
 				break
 			}
 			if room.host.client_id != c.client_id && client_id != int(c.client_id) {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-set-viewer-failed", Content: "Not room host"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-set-viewer-failed", Content: "Not room host"})
 				break
 			}
 			if room.gameStarted() {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-set-viewer-failed", Content: "Game started"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-set-viewer-failed", Content: "Game started"})
 				break
 			}
 			client := c.lobby.GetClient(uint64(client_id))
 			if client == nil {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-set-viewer-failed", Content: "Client doesn't exist"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-set-viewer-failed", Content: "Client doesn't exist"})
 				break
 			}
 			c.lobby.RoomSetViewer <- MakeClientRoom(client, room)
 		case "room-set-player":
 			room_id, err := strconv.Atoi(message.Data)
 			if err != nil || room_id < 1 {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-set-player-failed", Content: "Invalid room id"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-set-player-failed", Content: "Invalid room id"})
 				break
 			}
 			room := c.lobby.GetRoom(uint64(room_id))
 			if room == nil {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-set-player-failed", Content: "Room doesn't exist"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-set-player-failed", Content: "Room doesn't exist"})
 				break
 			}
 			client_id, err := strconv.Atoi(message.Content)
 			if err != nil || client_id < 1 {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-set-player-failed", Content: "Invalid client id"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-set-player-failed", Content: "Invalid client id"})
 				break
 			}
 			if room.host.client_id != c.client_id && client_id != int(c.client_id) {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-set-player-failed", Content: "Not room host"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-set-player-failed", Content: "Not room host"})
 				break
 			}
 			if room.gameStarted() {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-set-player-failed", Content: "Game started"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-set-player-failed", Content: "Game started"})
 				break
 			}
 			client := c.lobby.GetClient(uint64(client_id))
 			if client == nil {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-set-player-failed", Content: "Client doesn't exist"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-set-player-failed", Content: "Client doesn't exist"})
 				break
 			}
 			c.lobby.RoomSetPlayer <- MakeClientRoom(client, room)
 		case "room-settings-update":
 			room_id, err := strconv.Atoi(message.Data)
 			if err != nil || room_id < 1 {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-settings-update-failed", Content: "Invalid room id"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-settings-update-failed", Content: "Invalid room id"})
 				break
 			}
 			room := c.lobby.GetRoom(uint64(room_id))
 			if room == nil {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-settings-update-failed", Content: "Room doesn't exist"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-settings-update-failed", Content: "Room doesn't exist"})
 				break
 			}
 			if room.host.client_id != c.client_id {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-settings-update-failed", Content: "Not room host"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-settings-update-failed", Content: "Not room host"})
 				break
 			}
 			if room.gameStarted() {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-settings-update-failed", Content: "Game started"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-settings-update-failed", Content: "Game started"})
 				break
 			}
 			settings := GameSettings{}
 			unmarshal_err := json.Unmarshal([]byte(message.Content), &settings)
 			if unmarshal_err != nil {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-settings-update-failed", Content: "Data in an improper context"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-settings-update-failed", Content: "Data in an improper context"})
 				break
 			}
 			room.UpdateSettings <- &settings
 		case "room-launch":
 			room_id, err := strconv.Atoi(message.Data)
 			if err != nil || room_id < 1 {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-launch-failed", Content: "Invalid room id"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-launch-failed", Content: "Invalid room id"})
 				break
 			}
 			room := c.lobby.GetRoom(uint64(room_id))
 			if room == nil {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-launch-failed", Content: "Room doesn't exist"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-launch-failed", Content: "Room doesn't exist"})
 				break
 			}
 			if room.host.client_id != c.client_id {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-launch-failed", Content: "Not room host"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-launch-failed", Content: "Not room host"})
 				break
 			}
 			launchable, launchable_error := room.launchable()
 			if !launchable {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-launch-failed", Content: "Room not launchable: " + launchable_error}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-launch-failed", Content: "Room not launchable: " + launchable_error})
 				break
 			}
 			c.lobby.LaunchGame <- room
 		case "room-refresh":
 			room_id, err := strconv.Atoi(message.Data)
 			if err != nil || room_id < 1 {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-refresh-failed", Content: "Invalid room id"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-refresh-failed", Content: "Invalid room id"})
 				break
 			}
 			room := c.lobby.GetRoom(uint64(room_id))
 			if room == nil {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-refresh-failed", Content: "Room doesn't exist"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-refresh-failed", Content: "Room doesn't exist"})
 				break
 			}
 			room_stringified, err := json.Marshal(room.ToFrontend())
 			if err != nil {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "room-refresh-failed", Content: "Room not stringified properly"}
+				c.send(lobbyMessage{Sender: "server", Kind: "room-refresh-failed", Content: "Room not stringified properly"})
 				break
 			}
-			c.send_message <- lobbyMessage{Sender: "room-" + message.Data, Kind: "room-refreshed", Content: string(room_stringified), Data: message.Data}
+			c.send(lobbyMessage{Sender: "room-" + message.Data, Kind: "room-refreshed", Content: string(room_stringified), Data: message.Data})
 		case "game-connected":
 			game_id, err := strconv.Atoi(message.Data)
 			if err != nil || game_id < 1 {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "game-connected-failed", Content: "Invalid game id"}
+				c.send(lobbyMessage{Sender: "server", Kind: "game-connected-failed", Content: "Invalid game id"})
 				break
 			}
 			if c.lobby_room == nil {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "game-connected-failed", Content: "Client not in lobby room"}
+				c.send(lobbyMessage{Sender: "server", Kind: "game-connected-failed", Content: "Client not in lobby room"})
 				break
 			}
 			if c.lobby_room.game == nil {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "game-connected-failed", Content: "Lobby not launched"}
+				c.send(lobbyMessage{Sender: "server", Kind: "game-connected-failed", Content: "Lobby not launched"})
 				break
 			}
 			if game_id != int(game.Game_GetId(c.lobby_room.game)) {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "game-connected-failed", Content: "Incorrect game id"}
+				c.send(lobbyMessage{Sender: "server", Kind: "game-connected-failed", Content: "Incorrect game id"})
 				break
 			}
 			c.lobby_room.PlayerConnected <- c
@@ -434,7 +444,7 @@ func (c *Client) readMessages() {
 			c.lobby_room.broadcast <- message
 		case "game-update":
 			if c.lobby_room == nil || c.lobby_room.game == nil {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "game-update-failed", Content: "Not in game"}
+				c.send(lobbyMessage{Sender: "server", Kind: "game-update-failed", Content: "Not in game"})
 				break
 			}
 			action := gin.H{}
@@ -442,7 +452,7 @@ func (c *Client) readMessages() {
 				err := json.Unmarshal([]byte(message.Content), &action)
 				if err != nil {
 					fmt.Println(err)
-					c.send_message <- lobbyMessage{Sender: "server", Kind: "game-update-failed", Content: "Couldn't parse action"}
+					c.send(lobbyMessage{Sender: "server", Kind: "game-update-failed", Content: "Couldn't parse action"})
 					break
 				}
 			}
@@ -450,40 +460,40 @@ func (c *Client) readMessages() {
 			c.lobby_room.PlayerAction <- player_action
 		case "game-exit":
 			if c.lobby_room == nil || c.lobby_room.game == nil {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "game-update-failed", Content: "Not in game"}
+				c.send(lobbyMessage{Sender: "server", Kind: "game-update-failed", Content: "Not in game"})
 				break
 			}
 			c.lobby_room.playerDisconnected(c)
 		case "game-get-update":
 			if c.lobby_room == nil || c.lobby_room.game == nil {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "game-get-update-failed", Content: "Not in game"}
+				c.send(lobbyMessage{Sender: "server", Kind: "game-get-update-failed", Content: "Not in game"})
 				break
 			}
 			update_id, err := strconv.Atoi(message.Data)
 			if err != nil {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "game-get-update-failed", Content: "Invalid update id"}
+				c.send(lobbyMessage{Sender: "server", Kind: "game-get-update-failed", Content: "Invalid update id"})
 				break
 			}
 			c.lobby_room.game.GetBase().ResendPlayerUpdate(c.client_id, update_id)
 		case "game-resend-last-update":
 			if c.lobby_room == nil || c.lobby_room.game == nil {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "game-resend-last-update-failed", Content: "Not in game"}
+				c.send(lobbyMessage{Sender: "server", Kind: "game-resend-last-update-failed", Content: "Not in game"})
 				break
 			}
 			c.lobby_room.game.GetBase().ResendLastUpdate(c.client_id)
 		case "game-resend-waiting-room":
 			if c.lobby_room == nil || c.lobby_room.game == nil {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "game-resend-waiting-room-failed", Content: "Not in game"}
+				c.send(lobbyMessage{Sender: "server", Kind: "game-resend-waiting-room-failed", Content: "Not in game"})
 				break
 			}
 			game_base := c.lobby_room.game.GetBase()
 			if game_base == nil {
-				c.send_message <- lobbyMessage{Sender: "server", Kind: "game-resend-waiting-room-failed", Content: "No game base returned"}
+				c.send(lobbyMessage{Sender: "server", Kind: "game-resend-waiting-room-failed", Content: "No game base returned"})
 				break
 			}
 			room_id_string := strconv.Itoa(int(c.lobby_room.room_id))
 			if game_base.GameStarted() {
-				c.send_message <- lobbyMessage{Sender: "room-" + room_id_string, Kind: "game-start"}
+				c.send(lobbyMessage{Sender: "room-" + room_id_string, Kind: "game-start"})
 			}
 		case "lobby-chat":
 			fallthrough

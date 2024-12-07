@@ -114,7 +114,7 @@ export class DwgChatbox extends DwgElement {
         chat_input.message = chat_input.message.replace(emoticon, emoji);
       }
     }
-    const chat_event = new CustomEvent('chat_sent', {'detail': chat_input});
+    const chat_event = new CustomEvent('chat_sent', {detail: chat_input});
     this.dispatchEvent(chat_event);
   }
 

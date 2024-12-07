@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6p: Theory model 3
+v0.6q: Small code improvements
 
 ## Dev Use
 

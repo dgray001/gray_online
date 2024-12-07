@@ -79,7 +79,7 @@ export function handleMessage(game: DwgGame, message: ServerMessage) {
   if (errored) {
     error_count++;
     if (error_count >= MAX_ERROR_COUNT) {
-      game.dispatchEvent(new CustomEvent('connection_lost', {
+      game.dispatchEvent(new CustomEvent<string>('connection_lost', {
         detail: 'An error was encountered; please refresh your connection.'}));
     }
   } else {

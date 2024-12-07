@@ -280,7 +280,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
         lobby.getLobbyRooms().launchRoom(room_launched_id, game_id);
         if (room_launched_id === lobby.getConnectionMetadata().room_id) {
           lobby.getLobbyRoom().launchRoom(game_id);
-          lobby.dispatchEvent(new CustomEvent('game_launched', {'detail': lobby.getLobbyRoom().getRoom()}));
+          lobby.dispatchEvent(new CustomEvent('game_launched', {detail: lobby.getLobbyRoom().getRoom()}));
         }
       }
       break;
@@ -301,7 +301,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
         if (!!room_id && room_id === room.room_id) {
           lobby.getLobbyRoom().refreshRoom(room, room.host.client_id === lobby.getConnectionMetadata().client_id);
           if (!!room.game_id && !lobby.classList.contains('hide') && lobby.canAutoLaunchRoom()) {
-            lobby.dispatchEvent(new CustomEvent('game_launched', {'detail': lobby.getLobbyRoom().getRoom()}));
+            lobby.dispatchEvent(new CustomEvent('game_launched', {detail: lobby.getLobbyRoom().getRoom()}));
           }
         }
       } catch(e) {}

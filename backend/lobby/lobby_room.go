@@ -216,14 +216,14 @@ func (r *LobbyRoom) broadcastMessage(message lobbyMessage) {
 			fmt.Fprintln(os.Stderr, "Room failed to send message to player", client.client_id)
 			continue
 		}
-		client.send_message <- message
+		client.send(message)
 	}
 	for _, client := range r.viewers {
 		if client == nil || !client.validDebug(true) {
 			fmt.Fprintln(os.Stderr, "Room failed to send message to viewer", client.client_id)
 			continue
 		}
-		client.send_message <- message
+		client.send(message)
 	}
 }
 

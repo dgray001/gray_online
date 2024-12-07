@@ -46,10 +46,14 @@ export class DwgLobbyGameSettings extends DwgElement {
       this.dispatchEvent(new Event('saved'));
     });
     this.game_chooser.addEventListener('change', () => {
-      const value = parseInt(this.game_chooser.value) ?? 0;
-      const settings = this.getGameSpecificHTML(value);
-      this.game_specific_settings.replaceChildren(...settings);
+      this.setGameChooserValue(this.game_chooser.value);
     });
+  }
+
+  private setGameChooserValue(value: string) {
+    this.game_chooser.value = value;
+    const settings = this.getGameSpecificHTML(parseInt(value) ?? 0);
+    this.game_specific_settings.replaceChildren(...settings);
   }
 
   getGameSpecificHTML(game_type: GameType): HTMLElement[] {
@@ -115,7 +119,7 @@ export class DwgLobbyGameSettings extends DwgElement {
   }
 
   setSettings(settings: GameSettings, room_description: string) {
-    this.game_chooser.value = settings.game_type.toString();
+    this.setGameChooserValue(settings.game_type.toString());
     this.max_players_input.value = settings.max_players.toString();
     this.max_viewers_input.value = settings.max_viewers.toString();
     try {
@@ -127,13 +131,15 @@ export class DwgLobbyGameSettings extends DwgElement {
           this.setNumberSetting('round-points', specific_settings.round_points);
           this.setNumberSetting('trick-points', specific_settings.trick_points);
           const ai_players = this.game_specific_settings_els.get('ai-players') as DwgAiSelector;
-          ai_players.setPlayers(specific_settings.ai_players);
+          if (!!ai_players) {
+            ai_players.setPlayers(specific_settings.ai_players);
+          }
           break;
         default:
           break;
       }
     } catch(e) {
-      console.log(e);
+      console.error(e);
     }
     this.room_description.value = room_description;
   }

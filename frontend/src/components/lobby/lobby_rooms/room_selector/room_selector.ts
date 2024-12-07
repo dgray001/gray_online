@@ -37,10 +37,10 @@ export class DwgRoomSelector extends DwgElement {
       this.dispatchEvent(new Event('join_room'));
     });
     this.button_join_player.addEventListener('click', () => {
-      this.dispatchEvent(new CustomEvent<boolean>('join_room', {'detail': true}));
+      this.dispatchEvent(new CustomEvent<boolean>('join_room', {detail: true}));
     });
     this.button_join_viewer.addEventListener('click', () => {
-      this.dispatchEvent(new CustomEvent<boolean>('join_room', {'detail': false}));
+      this.dispatchEvent(new CustomEvent<boolean>('join_room', {detail: false}));
     });
   }
 
