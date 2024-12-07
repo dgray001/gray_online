@@ -27,7 +27,9 @@ func CreatBlankCard() *StandardCard {
 	}
 }
 
-func (c *StandardCard) Hash() uint16 {
+type StandardCardHash = uint16
+
+func (c *StandardCard) Hash() StandardCardHash {
 	return uint16(c.GetSuit()) | uint16(c.GetNumber())<<8
 }
 

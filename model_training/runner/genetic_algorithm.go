@@ -104,6 +104,7 @@ func (p *InputGeneticAlgorithmPlayer) mutate(t float64) []*InputPlayer {
 			mi["non_trump_max"] = mutateFloat(non_trump_max, 0, 1, t)
 			model_inputs[i] = mi
 		}
+	case 3: // theory model 3
 	default:
 		utils.PrintError("Unknown AI model id for genetic algorithm: %d", p.ai_model_id)
 	}

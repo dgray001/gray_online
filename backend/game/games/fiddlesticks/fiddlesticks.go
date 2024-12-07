@@ -426,6 +426,7 @@ func (f *GameFiddlesticks) executeBet(player *game.Player, bet_value uint8, broa
 func (f *GameFiddlesticks) executePlayCard(player *game.Player, card_index int, broadcast bool) []*game.UpdateMessage {
 	card := f.players[f.turn].cards[card_index]
 	f.trick = append(f.trick, card)
+	lead_suit := f.trick[0].GetSuit()
 	f.players[f.turn].cards_played = append(f.players[f.turn].cards_played, card_index)
 	f.turn++
 	if f.turn >= len(f.players) {
@@ -440,7 +441,7 @@ func (f *GameFiddlesticks) executePlayCard(player *game.Player, card_index int, 
 		}
 		f.players[f.turn].tricks++
 		f.trick_leader = f.turn
-		f.trick = []*game_utils.StandardCard{}
+		f.trick = make([]*game_utils.StandardCard, 0, len(f.players))
 		if broadcast {
 			fmt.Println("Trick won by", f.players[f.turn].player.GetNickname(), "with the", winning_card.GetName())
 		}
@@ -459,6 +460,7 @@ func (f *GameFiddlesticks) executePlayCard(player *game.Player, card_index int, 
 		"index":     card_index,
 		"card":      card.ToFrontend(),
 		"player_id": player.Player_id,
+		"lead_suit": lead_suit,
 	}}
 	updates := make([]*game.UpdateMessage, 1, 2)
 	updates[0] = update

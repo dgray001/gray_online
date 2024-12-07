@@ -23,6 +23,7 @@ func (p *CardLocationProbability) reset(players []*FiddlesticksPlayer, model_pla
 	p.played = false
 	p.hand = false
 	p.trump = false
+	p.unknown = false
 	p.kitty = 0
 	for k := range p.player {
 		delete(p.player, k)
@@ -54,6 +55,7 @@ func (p *CardLocationProbability) isUnknown(prob_kitty float64, prob_hand float6
 func (p *CardLocationProbability) cardPlayed() {
 	p.played = true
 	p.hand = false
+	p.unknown = false
 	p.kitty = 0
 	for k := range p.player {
 		p.player[k] = 0
