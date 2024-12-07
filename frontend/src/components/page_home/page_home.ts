@@ -49,6 +49,7 @@ export class DwgPageHome extends DwgElement {
         this.lobby_connector.classList.add('hide');
         this.lobby.connect(e.detail.nickname, socket);
         this.game.exitGame();
+        this.lobby.exitGame();
       });
     });
     this.lobby.addEventListener('connection_lost', () => {
@@ -65,7 +66,6 @@ export class DwgPageHome extends DwgElement {
       }
     });
     this.lobby.addEventListener('refresh_game_lobby', (e: CustomEvent<LobbyRoom>) => {
-      console.log(this.game, e.detail, e.detail.game_id);
       if (!!this.game && !!e.detail && !!e.detail.game_id) {
         this.game?.refreshRoom(e.detail);
       }

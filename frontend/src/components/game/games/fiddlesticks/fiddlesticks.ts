@@ -66,6 +66,8 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
 
   async initialize(abstract_game: DwgGame, game: GameFiddlesticks): Promise<void> {
     this.player_id = abstract_game.playerId();
+    console.log('Initializing game:', game);
+    console.log((new Error()).stack);
     this.game = game;
     this.player_els = [];
     for (const [player_id, player] of game.players.entries()) {
@@ -87,7 +89,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     this.trick_cards.style.setProperty('--num-players', this.player_els.length.toString());
     if (game.game_base.game_ended) {
       // TODO: show ended game state
-    } else if (game.game_base.game_started) {
+    } else if (game.game_base.game_started && game.dealer >= 0) {
       this.round_number.innerText = game.round.toString();
       this.updateBetsContainer();
       for (const [player_id, player_el] of this.player_els.entries()) {
@@ -104,7 +106,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
       if (game.betting) {
         this.current_trick = 0;
         this.trick_number.innerText = '-';
-        this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Betting`;
+        this.status_container.innerText = `${game.players[game.turn].player.nickname} Betting`;
       } else {
         this.current_trick = game.players.reduce((a, b) => a + b.tricks, 1);
         this.trick_number.innerText = this.current_trick.toString();
@@ -321,6 +323,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     }
     // end of round
     await untilTimer(500);
+    console.log('Round over');
     // TODO: score animations for a few seconds
     this.bets_number.innerText = '-';
     this.trump_card_img.classList.remove('show');
@@ -337,6 +340,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     }
     if (!this.game.rounds_increasing && this.game.round === this.game.min_round) {
       // end of game
+      console.log('Game over');
       this.game.game_base.game_ended = true;
       let winners = [0];
       let winning_score = this.game.players[0].score;

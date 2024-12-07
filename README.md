@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6q: Small code improvements
+v0.6r: AI runs in background for each player
 
 ## Dev Use
 

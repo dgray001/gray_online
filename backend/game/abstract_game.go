@@ -30,12 +30,12 @@ func Game_GetId(g Game) uint64 {
 func Game_StartGame(g Game) {
 	base := g.GetBase()
 	if base != nil {
+		fmt.Println("Starting game id ", base.Game_id)
 		base.StartGame()
+		g.StartGame() // must be after base.StartGame() in case this sends game updates
 	} else {
 		fmt.Fprintln(os.Stderr, "Game base is nil")
 	}
-	fmt.Println("Starting game id ", base.Game_id)
-	g.StartGame()
 }
 
 func Game_BroadcastUpdate(g Game, update *UpdateMessage) {
@@ -58,7 +58,6 @@ func Game_BroadcastAiUpdate(g Game, update *UpdateMessage) {
 	base := g.GetBase()
 	if base != nil {
 		for _, player := range base.AiPlayers {
-			//player.Updates <- update
 			player.AddUpdate(update)
 		}
 	} else {

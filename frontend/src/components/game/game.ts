@@ -211,12 +211,6 @@ export class DwgGame extends DwgElement {
       });
       this.appendChild(confirm_dialog);
     });
-    this.ping_interval = setInterval(() => {
-      if (!this.launched) {
-        return;
-      }
-      this.pingServer();
-    }, SERVER_PING_TIME);
   }
 
   toggleChatbox() {
@@ -427,6 +421,12 @@ export class DwgGame extends DwgElement {
         '',
         this.game_id.toString(),
       ));
+      this.ping_interval = setInterval(() => {
+        if (!this.launched) {
+          return;
+        }
+        this.pingServer();
+      }, SERVER_PING_TIME);
       this.launched = true;
       return true;
     }

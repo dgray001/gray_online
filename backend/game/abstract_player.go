@@ -32,6 +32,7 @@ type Player struct {
 	nickname         string
 	connected        bool
 	Updates          chan *UpdateMessage
+	AiUpdates        chan *UpdateMessage
 	FailedUpdates    chan *UpdateMessage
 	FlushConnections chan bool
 	update_list      []*UpdateMessage
@@ -46,6 +47,7 @@ func CreatePlayer(client_id uint64, nickname string, base_game *GameBase) {
 		nickname:         nickname,
 		connected:        false,
 		Updates:          make(chan *UpdateMessage, 24),
+		AiUpdates:        make(chan *UpdateMessage, 24),
 		FailedUpdates:    make(chan *UpdateMessage, 24),
 		FlushConnections: make(chan bool, 2),
 		update_list:      []*UpdateMessage{},
@@ -63,6 +65,7 @@ func CreateAiPlayer(nickname string, base_game *GameBase) *Player {
 		nickname:         nickname,
 		connected:        false,
 		Updates:          make(chan *UpdateMessage, 24),
+		AiUpdates:        make(chan *UpdateMessage, 24),
 		FailedUpdates:    make(chan *UpdateMessage, 24),
 		FlushConnections: make(chan bool, 2),
 		update_list:      []*UpdateMessage{},
@@ -84,6 +87,7 @@ func (p *Player) AddUpdate(update *UpdateMessage) {
 	update.Id = len(p.update_list) + 1 // start at 1
 	p.update_list = append(p.update_list, update)
 	p.Updates <- update
+	p.AiUpdates <- update
 }
 
 func (p *Player) AddFailedUpdate(update *UpdateMessage) {
@@ -97,6 +101,10 @@ func (p *Player) AddFailedUpdateShorthand(kind string, message string) {
 
 func (p *Player) GetNickname() string {
 	return p.nickname
+}
+
+func (p *Player) GetConnected() bool {
+	return p.connected
 }
 
 func (p *Player) GetClientId() uint64 {

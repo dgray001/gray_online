@@ -460,12 +460,18 @@ func (c *Client) readMessages() {
 			c.lobby_room.PlayerAction <- player_action
 		case "game-exit":
 			if c.lobby_room == nil || c.lobby_room.game == nil {
+				if c.game != nil && c.game.GetBase().GameEnded() {
+					break
+				}
 				c.send(lobbyMessage{Sender: "server", Kind: "game-update-failed", Content: "Not in game"})
 				break
 			}
 			c.lobby_room.playerDisconnected(c)
 		case "game-get-update":
 			if c.lobby_room == nil || c.lobby_room.game == nil {
+				if c.game != nil && c.game.GetBase().GameEnded() {
+					break
+				}
 				c.send(lobbyMessage{Sender: "server", Kind: "game-get-update-failed", Content: "Not in game"})
 				break
 			}
@@ -477,6 +483,9 @@ func (c *Client) readMessages() {
 			c.lobby_room.game.GetBase().ResendPlayerUpdate(c.client_id, update_id)
 		case "game-resend-last-update":
 			if c.lobby_room == nil || c.lobby_room.game == nil {
+				if c.game != nil && c.game.GetBase().GameEnded() {
+					break
+				}
 				c.send(lobbyMessage{Sender: "server", Kind: "game-resend-last-update-failed", Content: "Not in game"})
 				break
 			}

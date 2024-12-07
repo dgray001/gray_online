@@ -62,7 +62,8 @@ export function serverResponseToGame(gameFromServer: GameFromServer, client_id: 
   const updates = players.get(client_id)?.updates ?? gameFromServer.game_base.viewer_updates;
   if (updates !== undefined) {
     game.game_base.updates = new Map(updates.map(update => [update.update_id, update]));
-    game.game_base.last_continuous_update_id = updates.length;
+    game.game_base.last_applied_update_id = updates.length;
+    game.game_base.highest_received_update_id = Math.max(...updates.map(update => update.update_id));
   }
   return game;
 }
@@ -90,7 +91,8 @@ export declare interface GameBase {
   viewers: Map<number, GameViewer>;
   player_actions?: Map<number, PlayerAction>; // client -> server updates for viewers
   updates?: Map<number, UpdateMessage>; // server -> client updates for players
-  last_continuous_update_id?: number; // to keep track of which updates are needed
+  last_applied_update_id?: number; // to keep track of which updates are needed
+  highest_received_update_id?: number; // to keep track of which updates are needed
 }
 
 /** Data describing a game player */

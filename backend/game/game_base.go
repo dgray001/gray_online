@@ -150,6 +150,7 @@ func (g *GameBase) ResendViewerUpdate(client_id uint64, update_id int) {
 }
 
 func (g *GameBase) ResendLastUpdate(client_id uint64) {
+	fmt.Println("Resending last update for client", client_id)
 	player := g.Players[client_id]
 	if player == nil || len(player.update_list) < 1 {
 		viewer := g.Viewers[client_id]

@@ -1,5 +1,5 @@
 import {ServerMessage, createMessage} from "../lobby/data_models";
-import {UpdateMessage} from "./data_models";
+import {GameBase, UpdateMessage} from "./data_models";
 import {DwgGame} from "./game";
 
 /** After this many repeated errors the frontend should shutdown */
@@ -58,7 +58,8 @@ export function handleMessage(game: DwgGame, message: ServerMessage) {
     case "game-failed-update": // player did something incorrect
       // TODO: implement
       break;
-    case "game-connected-failed":
+    case "game-connected-failed": // can be called at end of game before client realizes game is over
+      break;
     case "game-get-update-failed":
     case "game-resend-last-update-failed":
     case "game-resend-waiting-room-failed":
@@ -100,26 +101,38 @@ async function handleGameUpdate(game: DwgGame, message: ServerMessage) {
   if (!game_update_id) {
     return;
   }
+  const game_base: GameBase = game.getGame().game_base;
   async function runUpdate(update: UpdateMessage) {
     running_updates = true;
-    if (update.update_id - 1 === game.getGame().game_base.last_continuous_update_id) {
-      game.getGame().game_base.last_continuous_update_id = update.update_id;
+    if (update.update_id - 1 === game_base.last_applied_update_id) {
+      game_base.last_applied_update_id = update.update_id;
       console.log(`applying update id ${update.update_id}`);
       await game.getGameEl().gameUpdate(update);
-      while (game.getGame().game_base.updates.has(game.getGame().game_base.last_continuous_update_id + 1)) {
-        const nextUpdate = game.getGame().game_base.updates.get(game.getGame().game_base.last_continuous_update_id + 1);
-        game.getGame().game_base.last_continuous_update_id = nextUpdate.update_id;
+      while (true) {
+        const nextUpdate = game_base.updates.get(game_base.last_applied_update_id + 1);
+        if (!nextUpdate) {
+          break;
+        }
+        game_base.last_applied_update_id = nextUpdate.update_id;
         console.log(`applying update id ${nextUpdate.update_id}`);
         await game.getGameEl().gameUpdate(nextUpdate);
       }
-    } else if (update.update_id - 1 > game.getGame().game_base.last_continuous_update_id) {
+    } else if (update.update_id - 1 > game_base.last_applied_update_id) {
       game.getSocket().send(createMessage(
         `client-${game.getConnectionMetadata().client_id}`,
         'game-get-update',
         '',
-        `${game.getGame().game_base.last_continuous_update_id + 1}`,
+        `${game_base.last_applied_update_id + 1}`,
       ));
     } else {} // ignore updates that are already applied
+    if (game_base.highest_received_update_id > game_base.last_applied_update_id) { // check if received higher update while updating
+      game.getSocket().send(createMessage(
+        `client-${game.getConnectionMetadata().client_id}`,
+        'game-get-update',
+        '',
+        `${game_base.last_applied_update_id + 1}`,
+      ));
+    }
     running_updates = false;
   }
   try {
@@ -128,8 +141,10 @@ async function handleGameUpdate(game: DwgGame, message: ServerMessage) {
       kind: message.data,
       content: JSON.parse(message.content),
     };
-    game.getGame().game_base.updates.set(game_update_id, updateMessage);
-    if (!running_updates && game.getGame().game_base.game_started && !game.getGame().game_base.game_ended && game.getLaunched()) {
+    console.log(`received game update ${game_update_id}: ${JSON.stringify(updateMessage)}`)
+    game_base.updates.set(game_update_id, updateMessage);
+    game_base.highest_received_update_id = Math.max(game_base.highest_received_update_id ?? 0, game_update_id);
+    if (!running_updates && game_base.game_started && !game_base.game_ended && game.getLaunched()) {
       runUpdate(updateMessage);
     }
   } catch(e) {

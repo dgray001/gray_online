@@ -201,6 +201,9 @@ export class DwgCardHand extends DwgElement {
 
       el.addEventListener('mouseenter', (e) => {
         e.stopImmediatePropagation();
+        if (this.dragging_data.dragging) {
+          return;
+        }
         el.classList.add('hovering');
       });
 

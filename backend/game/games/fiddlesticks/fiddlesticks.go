@@ -76,13 +76,15 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameF
 	var player_id = 0
 	for _, player := range g.Players {
 		player.Player_id = player_id
-		fiddlesticks.players = append(fiddlesticks.players, &FiddlesticksPlayer{
+		fiddlesticks_player := &FiddlesticksPlayer{
 			player:       player,
 			cards:        []*game_utils.StandardCard{},
 			cards_played: []int{},
 			score:        0,
-			ai_model_id:  1,
-		})
+			ai_model_id:  2,
+		}
+		go runAi(fiddlesticks_player, fiddlesticks, action_channel)
+		fiddlesticks.players = append(fiddlesticks.players, fiddlesticks_player)
 		player_id++
 	}
 	ai_players, ai_players_ok := g.GameSpecificSettings["ai_players"].([]interface{})
@@ -130,7 +132,7 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameF
 	}
 	trick_points_float, trick_points_ok := g.GameSpecificSettings["trick_points"].(float64)
 	if trick_points_ok {
-		fiddlesticks.setRoundPoints(uint16(trick_points_float))
+		fiddlesticks.setTrickPoints(uint16(trick_points_float))
 	}
 	return fiddlesticks, nil
 }

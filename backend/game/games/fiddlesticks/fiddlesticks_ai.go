@@ -25,7 +25,7 @@ func runAi(p *FiddlesticksPlayer, f *GameFiddlesticks, action_channel chan game.
 			p.createAiModel(nil)
 		}
 		select {
-		case update := <-p.player.Updates:
+		case update := <-p.player.AiUpdates:
 			fmt.Println("AI player", p.player.GetAiId(), "received update", update)
 			if p.player == nil || p.player.GetBase() == nil || !p.player.GetBase().GameStarted() || p.player.GetBase().GameEnded() {
 				break
@@ -52,7 +52,12 @@ func checkTurn(p *FiddlesticksPlayer, f *GameFiddlesticks, action_channel chan g
 		action := gin.H{
 			"amount": float64(bid),
 		}
-		player_action := game.PlayerAction{Kind: "bet", Ai_id: int(p.player.GetAiId()), Action: action}
+		player_action := createPlayerAction(p.player, "bet", action)
+		if p.player.GetConnected() {
+			fmt.Println("Storing bet for player", p.player.Player_id, ":", bid)
+			// store action
+			return
+		}
 		fmt.Println("Betting for ai player", p.player.Player_id, ":", bid)
 		action_channel <- player_action
 	} else {
@@ -60,10 +65,25 @@ func checkTurn(p *FiddlesticksPlayer, f *GameFiddlesticks, action_channel chan g
 		action := gin.H{
 			"index": float64(card_index),
 		}
-		player_action := game.PlayerAction{Kind: "play-card", Ai_id: int(p.player.GetAiId()), Action: action}
+		player_action := createPlayerAction(p.player, "play-card", action)
+		if p.player.GetConnected() {
+			fmt.Println("Storing play card for player", p.player.Player_id, ":", p.cards[card_index].GetName())
+			// store action
+			return
+		}
 		fmt.Println("Playing card for ai player", p.player.Player_id, ":", p.cards[card_index].GetName())
 		action_channel <- player_action
 	}
+}
+
+func createPlayerAction(p *game.Player, kind string, action gin.H) game.PlayerAction {
+	player_action := game.PlayerAction{Kind: kind, Action: action}
+	if p.GetClientId() > 0 {
+		player_action.Client_id = int(p.GetClientId())
+	} else {
+		player_action.Ai_id = int(p.GetAiId())
+	}
+	return player_action
 }
 
 func GetAiBid(p *FiddlesticksPlayer, f *GameFiddlesticks) uint8 {

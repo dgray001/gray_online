@@ -114,6 +114,7 @@ func (c *Client) playerGameUpdates(player *game.Player, room_id_string string) {
 		fmt.Println("Iterate player game updates for", c.client_id, player.Player_id, c.valid())
 		select {
 		case message := <-player.Updates:
+			fmt.Println("Received player game update", message.Id, "for", c.client_id, player.Player_id)
 			encoded_message, err := json.Marshal(message.Content)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())
