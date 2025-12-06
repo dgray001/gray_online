@@ -3,6 +3,7 @@ import {createMessage} from '../../../../lobby/data_models';
 import {FiddlesticksPlayer} from '../fiddlesticks_data';
 import {DEV, until, untilTimer} from '../../../../../scripts/util';
 import {messageDialog} from '../../../game';
+import {Sounds} from '../../../../../sounds/Sounds';
 
 import html from './fiddlesticks_player.html';
 
@@ -154,6 +155,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     if (!this.client_player) {
       return;
     }
+    Sounds.play('turn_notification');
     this.bet_input.disabled = false;
     this.bet_button.disabled = false;
     this.bet_input.value = DEV ? '0' : '';
@@ -187,6 +189,10 @@ export class DwgFiddlesticksPlayer extends DwgElement {
 
   playing() {
     this.classList.add('turn');
+    if (!this.client_player) {
+      return;
+    }
+    Sounds.play('turn_notification');
   }
 
   playCard() {

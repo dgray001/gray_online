@@ -211,7 +211,7 @@ func (l *Lobby) reconnectClient(client *Client, client_id uint64) {
 			client.lobby_room = old_lobby_room
 			client.game = old_game
 			room_id_string := strconv.Itoa(int(client.lobby_room.room_id))
-			old_lobby_room.replaceClient(client) // doesn't return if room has client
+			old_lobby_room.replaceClient(client)
 			player := client.game.GetBase().Players[client_id]
 			if player == nil {
 				viewer := client.game.GetBase().Viewers[client_id]

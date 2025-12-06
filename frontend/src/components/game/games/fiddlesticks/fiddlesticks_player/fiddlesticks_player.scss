@@ -8,143 +8,149 @@ dwg-fiddlesticks-player {
   --y: calc(0.5 * var(--diameter) * (1 + sin(var(--turns))) - 0.5 * var(--size));
   --icon-size: 64px;
   --turn-color: rgba(90, 10, 240, 0.8);
+  --background-color: rgba(240, 240, 240, 0.7);
 
-  background-color: rgba(240, 240, 240, 0.7);
-  border-radius: calc(0.08 * var(--size));
-  color: black;
   display: block;
   left: var(--x);
   position: absolute;
   top: var(--y);
-  z-index: 4;
-
+  
   &.turn {
-    box-shadow: 0 0 6px 6px var(--turn-color);
+    background: conic-gradient(var(--background-color) var(--turn-left), (--turn-color));
+    box-shadow: 0 0 8px 2px var(--turn-color);
   }
 
-  > * {
-    box-sizing: border-box;
-    font-size: calc(0.13 * var(--size));
-    height: calc(0.2 * var(--size));
-    line-height: calc(0.2 * var(--size));
-    width: 100%;
-  }
-
-  > #name-container {
-    font-weight: bold;
-    padding: 0.3em 0.4em 0.2em;
-    text-align: center;
-  }
-
-  > #status-container {
-    padding-left: 0.3em;
-    text-align: center;
-  }
-
-  .fixed-width {
-    display: inline-block;
-    padding: 0 0.2em;
-    text-align: right;
-    width: 40%;
-  }
-
-  #bet-input-wrapper {
-    --height: calc(0.2 * var(--size));
-    --gap: 5px;
-    --padding: 0.5em;
-    --total-height: calc(3 * var(--height) + 2 * var(--gap) + 2 * var(--padding));
-
-    background-color: rgba(240, 240, 240, 0.6);
+  > #wrapper {
+    background-color: var(--background-color);
     border-radius: calc(0.08 * var(--size));
-    box-shadow: 0 0 6px 6px var(--turn-color);
-    display: flex;
-    flex-flow: column nowrap;
-    font-size: calc(0.13 * var(--size));
-    gap: var(--gap);
-    height: var(--total-height);
-    line-height: calc(0.2 * var(--size));
-    padding: var(--padding);
-    position: absolute;
-    text-align: center;
-    top: calc(-1.1 * var(--total-height));
-    width: 100%;
-    z-index: 2;
-
-    &:not(.show) {
-      display: none;
-    }
-
+    color: black;
+    display: block;
+    z-index: 4;
+  
     > * {
-      flex: 0 0 var(--height);
-      height: var(--height);
-      max-height: var(--height);
-      min-height: var(--height);
-    }
-
-    > #bet-input {
+      box-sizing: border-box;
       font-size: calc(0.13 * var(--size));
-    }
-
-    > #bet-button {
-      font-size: calc(0.18 * var(--size));
-      line-height: calc(0.18 * var(--size));
-    }
-  }
-
-  #bet-animation {
-    background-color: rgba(60, 60, 60, 0.7);
-    border-radius: 0.5em;
-    color: white;
-    font-size: 0;
-    font-weight: bold;
-    left: 0px;
-    margin: 0 auto;
-    padding: 0.5em;
-    position: relative;
-    text-align: center;
-    top: calc(-1em - 6px);
-    transition-property: font-size;
-    transition-timing-function: ease;
-    width: fit-content;
-
-    &.transition {
-      font-size: var(--font-size-largest);
-    }
-  }
-
-  > .icon-wrapper {
-    height: var(--icon-size);
-    left: min(10%, 10px);
-    opacity: 75%;
-    position: absolute;
-    top: calc(-0.75 * var(--icon-size));
-    width: var(--icon-size);
-
-    &:not(.show) {
-      display: none;
-    }
-
-    > .icon {
-      height: 100%;
-      rotate: -30deg;
+      height: calc(0.2 * var(--size));
+      line-height: calc(0.2 * var(--size));
       width: 100%;
     }
-
-    > .icon-tooltip {
-      background-color: rgba(60, 60, 60, 0.95);
-      border-radius: 0.6em;
-      bottom: -1em;
-      color: white;
-      padding: 0.2em 0.4em;
-      position: absolute;
-      transition: opacity 0.5s;
-      user-select: none;
-      white-space: nowrap;
+  
+    > #name-container {
+      font-weight: bold;
+      padding: 0.3em 0.4em 0.2em;
+      text-align: center;
     }
-
-    &:not(:hover) {
+  
+    > #status-container {
+      padding-left: 0.3em;
+      text-align: center;
+    }
+  
+    .fixed-width {
+      display: inline-block;
+      padding: 0 0.2em;
+      text-align: right;
+      width: 40%;
+    }
+  
+    #bet-input-wrapper {
+      --height: calc(0.2 * var(--size));
+      --gap: 5px;
+      --padding: 0.5em;
+      --total-height: calc(3 * var(--height) + 2 * var(--gap) + 2 * var(--padding));
+  
+      background-color: rgba(240, 240, 240, 0.6);
+      border-radius: calc(0.08 * var(--size));
+      box-shadow: 0 0 6px 6px var(--turn-color);
+      display: flex;
+      flex-flow: column nowrap;
+      font-size: calc(0.13 * var(--size));
+      gap: var(--gap);
+      height: var(--total-height);
+      line-height: calc(0.2 * var(--size));
+      padding: var(--padding);
+      position: absolute;
+      text-align: center;
+      top: calc(-1.1 * var(--total-height));
+      width: 100%;
+      z-index: 2;
+  
+      &:not(.show) {
+        display: none;
+      }
+  
+      > * {
+        flex: 0 0 var(--height);
+        height: var(--height);
+        max-height: var(--height);
+        min-height: var(--height);
+      }
+  
+      > #bet-input {
+        font-size: calc(0.13 * var(--size));
+      }
+  
+      > #bet-button {
+        font-size: calc(0.18 * var(--size));
+        line-height: calc(0.18 * var(--size));
+      }
+    }
+  
+    #bet-animation {
+      background-color: rgba(60, 60, 60, 0.7);
+      border-radius: 0.5em;
+      color: white;
+      font-size: 0;
+      font-weight: bold;
+      left: 0px;
+      margin: 0 auto;
+      padding: 0.5em;
+      position: relative;
+      text-align: center;
+      top: calc(-1em - 6px);
+      transition-property: font-size;
+      transition-timing-function: ease;
+      width: fit-content;
+  
+      &.transition {
+        font-size: var(--font-size-largest);
+      }
+    }
+  
+    > .icon-wrapper {
+      height: var(--icon-size);
+      left: min(10%, 10px);
+      opacity: 75%;
+      position: absolute;
+      top: calc(-0.75 * var(--icon-size));
+      width: var(--icon-size);
+  
+      &:not(.show) {
+        display: none;
+      }
+  
+      > .icon {
+        height: 100%;
+        rotate: -30deg;
+        width: 100%;
+      }
+  
       > .icon-tooltip {
-        opacity: 0%;
+        background-color: rgba(60, 60, 60, 0.95);
+        border-radius: 0.6em;
+        bottom: -1em;
+        color: white;
+        padding: 0.2em 0.4em;
+        position: absolute;
+        transition: opacity 0.5s;
+        user-select: none;
+        white-space: nowrap;
+      }
+  
+      &:not(:hover) {
+        > .icon-tooltip {
+          opacity: 0%;
+        }
       }
     }
   }
@@ -154,9 +160,11 @@ body.mobile {
   dwg-fiddlesticks-player {
     --icon-size: 40px;
 
-    > .icon-wrapper.show-tooltip {
-      > .icon-tooltip {
-        opacity: 100%;
+    > #wrapper {
+      > .icon-wrapper.show-tooltip {
+        > .icon-tooltip {
+          opacity: 100%;
+        }
       }
     }
   }

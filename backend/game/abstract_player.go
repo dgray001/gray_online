@@ -75,6 +75,10 @@ func CreateAiPlayer(nickname string, base_game *GameBase) *Player {
 	return player
 }
 
+func (p *Player) IsHumanPlayer() bool {
+	return p.client_id > 0
+}
+
 func (p *Player) AddUpdate(update *UpdateMessage) {
 	if !p.base_game.game_started {
 		fmt.Fprintln(os.Stderr, "Can't add update to game that isn't started")

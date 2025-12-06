@@ -55,7 +55,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     this.players_cards.addEventListener('play_card', (e: CustomEvent<number>) => {
       // TODO: check if card is playable
       const game_update = createMessage(`player-${this.player_id}`, 'game-update', `{"index":${e.detail}}`, 'play-card');
-      this.dispatchEvent(new CustomEvent('game_update', {detail: game_update, 'bubbles': true}));
+      this.dispatchEvent(new CustomEvent('game_update', {detail: game_update, bubbles: true}));
     });
     if (clientOnMobile()) {
       this.table_container.style.setProperty('background-image', 'url(/images/card_table400.png)');
@@ -66,8 +66,6 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
 
   async initialize(abstract_game: DwgGame, game: GameFiddlesticks): Promise<void> {
     this.player_id = abstract_game.playerId();
-    console.log('Initializing game:', game);
-    console.log((new Error()).stack);
     this.game = game;
     this.player_els = [];
     for (const [player_id, player] of game.players.entries()) {

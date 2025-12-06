@@ -44,6 +44,7 @@ func runAi(p *FiddlesticksPlayer, f *GameFiddlesticks, action_channel chan game.
 }
 
 func checkTurn(p *FiddlesticksPlayer, f *GameFiddlesticks, action_channel chan game.PlayerAction) {
+	p.clearTurnTimer()
 	if f.turn != p.player.Player_id {
 		return
 	}
@@ -53,9 +54,9 @@ func checkTurn(p *FiddlesticksPlayer, f *GameFiddlesticks, action_channel chan g
 			"amount": float64(bid),
 		}
 		player_action := createPlayerAction(p.player, "bet", action)
-		if p.player.GetConnected() {
-			fmt.Println("Storing bet for player", p.player.Player_id, ":", bid)
-			// store action
+		if p.player.IsHumanPlayer() {
+			fmt.Println("Storing bet for human player", p.player.Player_id, ":", bid)
+			p.storeTurnAction(player_action, action_channel, f.turn_duration)
 			return
 		}
 		fmt.Println("Betting for ai player", p.player.Player_id, ":", bid)
@@ -66,9 +67,9 @@ func checkTurn(p *FiddlesticksPlayer, f *GameFiddlesticks, action_channel chan g
 			"index": float64(card_index),
 		}
 		player_action := createPlayerAction(p.player, "play-card", action)
-		if p.player.GetConnected() {
-			fmt.Println("Storing play card for player", p.player.Player_id, ":", p.cards[card_index].GetName())
-			// store action
+		if p.player.IsHumanPlayer() {
+			fmt.Println("Storing play card for human player", p.player.Player_id, ":", p.cards[card_index].GetName())
+			p.storeTurnAction(player_action, action_channel, f.turn_duration)
 			return
 		}
 		fmt.Println("Playing card for ai player", p.player.Player_id, ":", p.cards[card_index].GetName())

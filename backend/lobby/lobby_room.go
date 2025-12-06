@@ -297,6 +297,7 @@ func (r *LobbyRoom) spaceForViewer() bool {
 func (r *LobbyRoom) removeClient(c *Client, client_leaves bool) {
 	if r.host != nil && r.host.client_id == c.client_id && !r.gameStarted() {
 		// TODO: make someone else the room host if game not started
+		fmt.Println("Removing room since host left unstarted game")
 		r.lobby.removeRoom(r)
 		return
 	}
@@ -327,6 +328,7 @@ func (r *LobbyRoom) playerDisconnected(c *Client) {
 		r.delete_timer = delete_room
 		go func() {
 			<-delete_room.C
+			fmt.Println("Removing room since everyone left for 45 seconds")
 			r.lobby.removeRoom(r)
 		}()
 	}

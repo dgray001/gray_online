@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/dgray001/gray_online/game"
 	"github.com/dgray001/gray_online/game/game_utils"
@@ -44,6 +45,7 @@ type GameFiddlesticks struct {
 	trick_points      uint16
 	iterations        uint32 // how many times to repeat each round
 	iteration         uint32
+	turn_duration     time.Duration
 }
 
 type FiddlesticksAiPlayerFromFrontend struct {
@@ -68,6 +70,7 @@ func InitializeGame(g *game.GameBase) *GameFiddlesticks {
 		trick_points:      1,
 		iterations:        1,
 		iteration:         1, // need to increment round on first deal
+		turn_duration:     35 * time.Second,
 	}
 }
 
