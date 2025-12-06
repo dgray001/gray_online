@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6r: AI runs in background for each player
+v0.6t: Update go version
 
 ## Dev Use
 
