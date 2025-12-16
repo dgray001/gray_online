@@ -55,7 +55,7 @@ export class DwgGame extends DwgElement {
   private is_player = false;
   private game: Game;
   private lobby_room: LobbyRoom;
-  private ping_interval: NodeJS.Timer;
+  private ping_interval: NodeJS.Timeout;
 
   private chatbox_lock = createLock();
 

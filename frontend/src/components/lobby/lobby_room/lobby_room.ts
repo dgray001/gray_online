@@ -37,7 +37,7 @@ export class DwgLobbyRoom extends DwgElement {
   private settings_description: HTMLDivElement;
   private settings_button_container: HTMLDivElement;
   private settings_settings_button: HTMLButtonElement;
-  private settings_launch_interval_id: NodeJS.Timer;
+  private settings_launch_interval_id: NodeJS.Timeout;
   private settings_launch_button: HTMLButtonElement;
   private settings_game_status: HTMLDivElement;
   private lobby_game_settings: DwgLobbyGameSettings;

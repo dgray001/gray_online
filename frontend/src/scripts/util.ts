@@ -118,7 +118,7 @@ export function enumKeys<O extends object, K extends keyof O = keyof O>(obj: O):
 /** Sets interval x times */
 export function setIntervalX(
   fn: (counter?: number) => void, delay: number, repetitions: number, fn_end = () => {}
-): NodeJS.Timer {
+): NodeJS.Timeout {
   let counter = 0;
   const intervalId = setInterval(() => {
     counter++;

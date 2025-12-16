@@ -8,7 +8,6 @@ import {buildingImage} from '../risq_buildings';
 import {RisqSpace, RisqZone, coordinateToIndex, getSpace, indexToCoordinate} from '../risq_data';
 import {getSpaceFill} from '../risq_space';
 import {unitImage} from '../risq_unit';
-import {organizeZoneUnits} from '../risq_zone';
 
 import html from './space_dialog.html';
 
@@ -29,7 +28,7 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
   private size: Point2D;
   private radius: number;
   private ctx: CanvasRenderingContext2D;
-  private draw_interval?: NodeJS.Timer = undefined;
+  private draw_interval?: NodeJS.Timeout = undefined;
   private mouse: Point2D = {x: 0, y: 0};
   private hovered_zone?: RisqZone = undefined;
   private hovered_space?: RisqSpace = undefined;
