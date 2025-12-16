@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6t: Update go version
+v0.6u: Added skeleton dev page
 
 ## Dev Use
 

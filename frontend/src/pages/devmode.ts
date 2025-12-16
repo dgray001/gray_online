@@ -4,6 +4,4 @@ import './common';
 import './index.scss';
 
 // dependencies
-import '../components/page_home/page_home';
-
-console.log('!')
+import '../components/page_dev/page_dev';

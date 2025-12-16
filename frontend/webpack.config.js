@@ -3,6 +3,9 @@ module.exports = {
 		index: {
 			import: './src/pages/index.ts',
 		},
+		devmode: {
+			import: './src/pages/devmode.ts',
+		},
 		fiddlesticks: {
 			dependOn: 'index',
 			import: './src/components/game/games/fiddlesticks/fiddlesticks.ts',
