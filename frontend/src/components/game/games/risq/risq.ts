@@ -1,17 +1,39 @@
-import {DwgElement} from '../../../dwg_element';
-import {UpdateMessage} from '../../data_models';
-import {drawCircle} from '../../util/canvas_util';
-import {BoardTransformData, CanvasBoardSize, DwgCanvasBoard} from '../../util/canvas_board/canvas_board';
-import {Point2D, addPoint2D, equalsPoint2D, hexagonalBoardNeighbors, hexagonalBoardRows, multiplyPoint2D, roundAxialCoordinate, subtractPoint2D} from '../../util/objects2d';
-import {DwgGame} from '../../game';
-import {DEV, createLock} from '../../../../scripts/util';
+import { DwgElement } from '../../../dwg_element';
+import type { UpdateMessage } from '../../data_models';
+import { drawCircle } from '../../util/canvas_util';
+import type { BoardTransformData, CanvasBoardSize, DwgCanvasBoard } from '../../util/canvas_board/canvas_board';
+import type {
+  Point2D} from '../../util/objects2d';
+import {
+  addPoint2D,
+  equalsPoint2D,
+  hexagonalBoardNeighbors,
+  hexagonalBoardRows,
+  multiplyPoint2D,
+  roundAxialCoordinate,
+  subtractPoint2D,
+} from '../../util/objects2d';
+import type { DwgGame } from '../../game';
+import { DEV, createLock } from '../../../../scripts/util';
 
 import html from './risq.html';
-import {GameRisq, GameRisqFromServer, RisqPlayer, RisqSpace, RisqZone, StartTurnData, coordinateToIndex, getSpace, serverToGameRisq} from './risq_data';
-import {RisqRightPanel} from './canvas_components/right_panel';
-import {DrawRisqSpaceConfig, DrawRisqSpaceDetail, drawRisqSpace} from './risq_space';
-import {LeftPanelDataType, RisqLeftPanel} from './canvas_components/left_panel';
-import {resolveHoveredZones, unhoverRisqZone} from './risq_zone';
+import type {
+  GameRisq,
+  GameRisqFromServer,
+  RisqPlayer,
+  RisqSpace,
+  RisqZone,
+  StartTurnData} from './risq_data';
+import {
+  coordinateToIndex,
+  getSpace,
+  serverToGameRisq,
+} from './risq_data';
+import { RisqRightPanel } from './canvas_components/right_panel';
+import type { DrawRisqSpaceConfig} from './risq_space';
+import { DrawRisqSpaceDetail, drawRisqSpace } from './risq_space';
+import { LeftPanelDataType, RisqLeftPanel } from './canvas_components/left_panel';
+import { resolveHoveredZones, unhoverRisqZone } from './risq_zone';
 
 import './risq.scss';
 import '../../util/canvas_board/canvas_board';
@@ -28,11 +50,14 @@ export class DwgRisq extends DwgElement {
   private player_id: number;
   private hex_r = DEFAULT_HEXAGON_RADIUS;
   private hex_a = 0.5 * 1.732 * DEFAULT_HEXAGON_RADIUS;
-  private canvas_center: Point2D = {x: 0, y: 0};
-  private last_transform: BoardTransformData = {view: {x: 0, y: 0}, scale: 1};
+  private canvas_center: Point2D = { x: 0, y: 0 };
+  private last_transform: BoardTransformData = {
+    view: { x: 0, y: 0 },
+    scale: 1,
+  };
   private canvas_size: DOMRect = DOMRect.fromRect();
-  private mouse_canvas: Point2D = {x: 0, y: 0};
-  private mouse_coordinate: Point2D = {x: 0, y: 0};
+  private mouse_canvas: Point2D = { x: 0, y: 0 };
+  private mouse_coordinate: Point2D = { x: 0, y: 0 };
   private hovered_space?: RisqSpace;
   private hovered_zone?: RisqZone;
   private icons = new Map<string, HTMLImageElement>();
@@ -82,40 +107,42 @@ export class DwgRisq extends DwgElement {
       x: 1.732 * this.hex_r * (2 * game.board_size + 1),
       y: 1.5 * this.hex_r * (2 * game.board_size + 1) + 0.5 * this.hex_r,
     };
-    this.board.initialize({
-      board_size,
-      max_scale: 1,
-      fill_space: true,
-      allow_side_move: false,
-      draw: this.draw.bind(this),
-      mousemove: this.mousemove.bind(this),
-      mouseleave: this.mouseleave.bind(this),
-      mousedown: this.mousedown.bind(this),
-      mouseup: this.mouseup.bind(this),
-      zoom_config: {
-        zoom_constant: 650,
-        max_zoom: 1.3,
-        min_zoom: 0.7,
-      },
-    }).then((size_data) => {
-      this.boardResize(size_data.board_size, size_data.el_size);
-      if (abstract_game.isPlayer()) {
-        this.goToVillageCenter(this.player_id);
-      } else {
-        this.goToVillageCenter(0);
-      }
-      this.board.addEventListener('canvas_resize', (e: CustomEvent<CanvasBoardSize>) => {
-        this.boardResize(e.detail.board_size, e.detail.el_size);
+    this.board
+      .initialize({
+        board_size,
+        max_scale: 1,
+        fill_space: true,
+        allow_side_move: false,
+        draw: this.draw.bind(this),
+        mousemove: this.mousemove.bind(this),
+        mouseleave: this.mouseleave.bind(this),
+        mousedown: this.mousedown.bind(this),
+        mouseup: this.mouseup.bind(this),
+        zoom_config: {
+          zoom_constant: 650,
+          max_zoom: 1.3,
+          min_zoom: 0.7,
+        },
+      })
+      .then((size_data) => {
+        this.boardResize(size_data.board_size, size_data.el_size);
+        if (abstract_game.isPlayer()) {
+          this.goToVillageCenter(this.player_id);
+        } else {
+          this.goToVillageCenter(0);
+        }
+        this.board.addEventListener('canvas_resize', (e: CustomEvent<CanvasBoardSize>) => {
+          this.boardResize(e.detail.board_size, e.detail.el_size);
+        });
       });
-    });
   }
 
   getGame(): GameRisq {
     return this.game;
   }
 
-  getPlayer(): RisqPlayer|undefined {
-    return this.player_id > - 1 ? this.game.players[this.player_id] : undefined;
+  getPlayer(): RisqPlayer | undefined {
+    return this.player_id > -1 ? this.game.players[this.player_id] : undefined;
   }
 
   private goToVillageCenter(player_id: number) {
@@ -136,7 +163,7 @@ export class DwgRisq extends DwgElement {
   private boardResize(board_size: Point2D, canvas_size: DOMRect) {
     this.board_resize_lock(async () => {
       // Update canvas dependencies
-      const canvas_ratio = 0.5 * Math.min(board_size.x, canvas_size.width) / this.canvas_center.x;
+      const canvas_ratio = (0.5 * Math.min(board_size.x, canvas_size.width)) / this.canvas_center.x;
       this.canvas_center = {
         x: 0.5 * Math.min(board_size.x, canvas_size.width),
         y: 0.5 * Math.min(board_size.y, canvas_size.height),
@@ -144,10 +171,10 @@ export class DwgRisq extends DwgElement {
       this.canvas_size = canvas_size;
       this.hex_r = board_size.x / (1.732 * (2 * this.game.board_size + 1));
       this.hex_a = 0.5 * 1.732 * this.hex_r;
-      this.board.setMaxScale(0.45 * canvas_size.height / this.hex_r);
+      this.board.setMaxScale((0.45 * canvas_size.height) / this.hex_r);
       this.board.scaleView(canvas_ratio);
       // Update other dependencies
-      for (const row of (this.game?.spaces ?? [])) {
+      for (const row of this.game?.spaces ?? []) {
         for (const space of row) {
           for (const zone_row of space.zones ?? []) {
             for (const zone of zone_row) {
@@ -175,8 +202,8 @@ export class DwgRisq extends DwgElement {
 
   async gameUpdate(update: UpdateMessage): Promise<void> {
     try {
-      switch(update.kind) {
-        case "start-turn":
+      switch (update.kind) {
+        case 'start-turn':
           const startTurnData = update.content as StartTurnData;
           await this.applyStartTurn(startTurnData);
           break;
@@ -184,7 +211,7 @@ export class DwgRisq extends DwgElement {
           console.log(`Unknown game update type ${update.kind}`);
           break;
       }
-    } catch(e) {
+    } catch (e) {
       console.log(`Error during game update ${JSON.stringify(update)}: ${e}`);
     }
   }
@@ -209,7 +236,11 @@ export class DwgRisq extends DwgElement {
     const inset_row = inset_h / 3 - 4;
     this.draw_detail = this.getDrawDetail(transform.scale);
     const draw_config: DrawRisqSpaceConfig = {
-      hex_r: this.hex_r, inset_w, inset_h, inset_row, draw_detail: this.draw_detail,
+      hex_r: this.hex_r,
+      inset_w,
+      inset_h,
+      inset_row,
+      draw_detail: this.draw_detail,
     };
     // draw spaces
     for (const row of this.game.spaces) {
@@ -254,7 +285,7 @@ export class DwgRisq extends DwgElement {
     const hovered_other_component = [
       this.right_panel.mousemove(m, transform),
       this.left_panel.mousemove(m, transform),
-    ].some(b => !!b);
+    ].some((b) => !!b);
     this.mouse_coordinate = this.canvasToCoordinate(m, transform.scale);
     const index = coordinateToIndex(this.game.board_size, roundAxialCoordinate(this.mouse_coordinate));
     const new_hovered_space = getSpace(this.game, index);
@@ -273,7 +304,7 @@ export class DwgRisq extends DwgElement {
 
     const resolveZones = () => {
       if (this.draw_detail === DrawRisqSpaceDetail.ZONE_DETAILS) {
-        let new_hovered_zone = resolveHoveredZones(m, this.hovered_space, this.hex_r);
+        const new_hovered_zone = resolveHoveredZones(m, this.hovered_space, this.hex_r);
         if (!!this.hovered_zone && !equalsPoint2D(new_hovered_zone?.coordinate, this.hovered_zone?.coordinate)) {
           unhoverRisqZone(this.hovered_zone);
           this.hovered_zone = undefined;
@@ -312,10 +343,7 @@ export class DwgRisq extends DwgElement {
   }
 
   private mousedown(e: MouseEvent): boolean {
-    if ([
-      this.right_panel.mousedown(e),
-      this.left_panel.mousedown(e),
-    ].some(b => !!b)) {
+    if ([this.right_panel.mousedown(e), this.left_panel.mousedown(e)].some((b) => !!b)) {
       return true;
     }
     if (e.button !== 0) {
@@ -346,43 +374,38 @@ export class DwgRisq extends DwgElement {
     this.left_panel.mouseup(e);
     if (!!this.hovered_space) {
       if (!!this.hovered_zone) {
-        if (
-          this.hovered_space.visibility > 0 &&
-          this.draw_detail === DrawRisqSpaceDetail.ZONE_DETAILS
-        ) {
+        if (this.hovered_space.visibility > 0 && this.draw_detail === DrawRisqSpaceDetail.ZONE_DETAILS) {
           let open_zone = true;
           for (const [i, part] of this.hovered_zone.hovered_data.entries()) {
             if (part.clicked && part.hovered) {
               open_zone = false;
-              switch(i) {
+              switch (i) {
                 case 0: // building / resource
                   if (!!this.hovered_zone.resource) {
                     this.left_panel.openPanel(
                       LeftPanelDataType.RESOURCE,
                       this.hovered_space.visibility,
-                      this.hovered_zone.resource,
+                      this.hovered_zone.resource
                     );
                   } else {
                     this.left_panel.openPanel(
                       LeftPanelDataType.BUILDING,
                       this.hovered_space.visibility,
-                      this.hovered_zone.building,
+                      this.hovered_zone.building
                     );
                   }
                   break;
                 case 1: // economic units
-                  this.left_panel.openPanel(
-                    LeftPanelDataType.ECONOMIC_UNITS,
-                    this.hovered_space.visibility,
-                    {space: this.hovered_space, units: this.hovered_zone.economic_units_by_type},
-                  );
+                  this.left_panel.openPanel(LeftPanelDataType.ECONOMIC_UNITS, this.hovered_space.visibility, {
+                    space: this.hovered_space,
+                    units: this.hovered_zone.economic_units_by_type,
+                  });
                   break;
                 case 2: // military units
-                  this.left_panel.openPanel(
-                    LeftPanelDataType.MILITARY_UNITS,
-                    this.hovered_space.visibility,
-                    {space: this.hovered_space, units: this.hovered_zone.military_units_by_type},
-                  );
+                  this.left_panel.openPanel(LeftPanelDataType.MILITARY_UNITS, this.hovered_space.visibility, {
+                    space: this.hovered_space,
+                    units: this.hovered_zone.military_units_by_type,
+                  });
                   break;
                 default:
                   break;
@@ -391,11 +414,10 @@ export class DwgRisq extends DwgElement {
             }
           }
           if (open_zone && this.hovered_zone.clicked) {
-            this.left_panel.openPanel(
-              LeftPanelDataType.ZONE,
-              this.hovered_space.visibility,
-              {space: this.hovered_space, zone: this.hovered_zone},
-            );
+            this.left_panel.openPanel(LeftPanelDataType.ZONE, this.hovered_space.visibility, {
+              space: this.hovered_space,
+              zone: this.hovered_zone,
+            });
           }
         }
         this.hovered_zone.clicked = false;
@@ -407,28 +429,30 @@ export class DwgRisq extends DwgElement {
         this.hovered_space.visibility > 0 &&
         this.draw_detail !== DrawRisqSpaceDetail.ZONE_DETAILS
       ) {
-        this.left_panel.openPanel(
-          LeftPanelDataType.SPACE,
-          this.hovered_space.visibility,
-          this.hovered_space,
-        );
+        this.left_panel.openPanel(LeftPanelDataType.SPACE, this.hovered_space.visibility, this.hovered_space);
       }
       this.hovered_space.clicked = false;
     }
   }
 
   private canvasToCoordinate(canvas: Point2D, scale: number): Point2D {
-    const cy = (((canvas.y - 0.25 * this.hex_r - this.canvas_center.y / scale) / (1.5 * this.hex_r)) - this.game.board_size - 0.5);
+    const cy =
+      (canvas.y - 0.25 * this.hex_r - this.canvas_center.y / scale) / (1.5 * this.hex_r) - this.game.board_size - 0.5;
     return {
-      x: ((canvas.x - this.canvas_center.x / scale) / (1.732 * this.hex_r)) - 0.5 * cy - this.game.board_size - 0.5,
+      x: (canvas.x - this.canvas_center.x / scale) / (1.732 * this.hex_r) - 0.5 * cy - this.game.board_size - 0.5,
       y: cy,
     };
   }
 
   private coordinateToCanvas(coordinate: Point2D, scale: number): Point2D {
     return {
-      x: 1.732 * (coordinate.x + 0.5 * coordinate.y + this.game.board_size + 0.5) * this.hex_r + this.canvas_center.x / scale,
-      y: 1.5 * (coordinate.y + this.game.board_size + 0.5) * this.hex_r + 0.25 * this.hex_r + this.canvas_center.y / scale,
+      x:
+        1.732 * (coordinate.x + 0.5 * coordinate.y + this.game.board_size + 0.5) * this.hex_r +
+        this.canvas_center.x / scale,
+      y:
+        1.5 * (coordinate.y + this.game.board_size + 0.5) * this.hex_r +
+        0.25 * this.hex_r +
+        this.canvas_center.y / scale,
     };
   }
 

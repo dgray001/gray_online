@@ -1,10 +1,10 @@
-import {DwgElement} from '../../../dwg_element';
-import {GameComponent, UpdateMessage} from '../../data_models';
-import {DwgGame} from '../../game';
-import {createMessage} from '../../../lobby/data_models';
+import { DwgElement } from '../../../dwg_element';
+import type { GameComponent, UpdateMessage } from '../../data_models';
+import type { DwgGame } from '../../game';
+import { createMessage } from '../../../lobby/data_models';
 
 import html from './test_game.html';
-import {GameTestGame} from './test_game_data';
+import type { GameTestGame } from './test_game_data';
 
 import './test_game.scss';
 
@@ -28,7 +28,7 @@ export class DwgTestGame extends DwgElement implements GameComponent {
     });
     this.end_game.addEventListener('click', () => {
       const game_update = createMessage('player', 'game-update', '', 'end_game');
-      this.dispatchEvent(new CustomEvent('game_update', {detail: game_update, bubbles: true}));
+      this.dispatchEvent(new CustomEvent('game_update', { detail: game_update, bubbles: true }));
     });
   }
 
@@ -39,12 +39,12 @@ export class DwgTestGame extends DwgElement implements GameComponent {
 
   async gameUpdate(update: UpdateMessage): Promise<void> {
     try {
-      switch(update.kind) {
+      switch (update.kind) {
         default:
           console.log(`Unknown game update type ${update.kind}`);
           break;
       }
-    } catch(e) {
+    } catch (e) {
       console.log(`Error during game update ${JSON.stringify(update)}: ${e}`);
     }
   }

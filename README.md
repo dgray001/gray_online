@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6u: Added skeleton dev page
+v0.6v: Added linter and prettier
 
 ## Dev Use
 

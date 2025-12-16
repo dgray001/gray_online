@@ -1,15 +1,17 @@
-import {DwgElement} from '../../../dwg_element';
-import {GameComponent, UpdateMessage} from '../../data_models';
-import {StandardCard, cardToIcon, cardToImagePath, cardToName} from '../../util/card_util';
-import {DwgFiddlesticksPlayer} from './fiddlesticks_player/fiddlesticks_player';
-import {DwgCardHand} from '../../util/card_hand/card_hand';
-import {createMessage} from '../../../lobby/data_models';
-import {clientOnMobile, until, untilTimer} from '../../../../scripts/util';
-import {modulus} from '../../../../scripts/math';
-import {DwgGame, messageDialog} from '../../game';
+import { DwgElement } from '../../../dwg_element';
+import type { GameComponent, UpdateMessage } from '../../data_models';
+import type { StandardCard} from '../../util/card_util';
+import { cardToIcon, cardToImagePath, cardToName } from '../../util/card_util';
+import type { DwgFiddlesticksPlayer } from './fiddlesticks_player/fiddlesticks_player';
+import type { DwgCardHand } from '../../util/card_hand/card_hand';
+import { createMessage } from '../../../lobby/data_models';
+import { clientOnMobile, until, untilTimer } from '../../../../scripts/util';
+import { modulus } from '../../../../scripts/math';
+import type { DwgGame} from '../../game';
+import { messageDialog } from '../../game';
 
 import html from './fiddlesticks.html';
-import {GameFiddlesticks, DealRound, PlayerBet, PlayCard} from './fiddlesticks_data';
+import type { GameFiddlesticks, DealRound, PlayerBet, PlayCard } from './fiddlesticks_data';
 
 import './fiddlesticks.scss';
 import './fiddlesticks_player/fiddlesticks_player';
@@ -54,8 +56,18 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     this.status_container.innerText = 'Starting game ...';
     this.players_cards.addEventListener('play_card', (e: CustomEvent<number>) => {
       // TODO: check if card is playable
-      const game_update = createMessage(`player-${this.player_id}`, 'game-update', `{"index":${e.detail}}`, 'play-card');
-      this.dispatchEvent(new CustomEvent('game_update', {detail: game_update, bubbles: true}));
+      const game_update = createMessage(
+        `player-${this.player_id}`,
+        'game-update',
+        `{"index":${e.detail}}`,
+        'play-card'
+      );
+      this.dispatchEvent(
+        new CustomEvent('game_update', {
+          detail: game_update,
+          bubbles: true,
+        })
+      );
     });
     if (clientOnMobile()) {
       this.table_container.style.setProperty('background-image', 'url(/images/card_table400.png)');
@@ -113,7 +125,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           if (player_id >= game.players.length) {
             player_id -= game.players.length;
           }
-          this.addPlayedCard({card, index: i, player_id});
+          this.addPlayedCard({ card, index: i, player_id });
         }
         this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
       }
@@ -147,12 +159,12 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
 
   async gameUpdate(update: UpdateMessage): Promise<void> {
     try {
-      switch(update.kind) {
-        case "deal-round":
+      switch (update.kind) {
+        case 'deal-round':
           const dealRoundData = update.content as DealRound;
           await this.applyDealRound(dealRoundData);
           break;
-        case "bet":
+        case 'bet':
           const betData = update.content as PlayerBet;
           if (this.game.turn !== betData.player_id) {
             // TODO: try to sync data
@@ -160,7 +172,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           }
           await this.applyBet(betData);
           break;
-        case "play-card":
+        case 'play-card':
           const playCardData = update.content as PlayCard;
           if (this.game.turn !== playCardData.player_id) {
             // TODO: try to sync data
@@ -172,7 +184,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           console.log(`Unknown game update type ${update.kind}`);
           break;
       }
-    } catch(e) {
+    } catch (e) {
       console.log(`Error during game update ${JSON.stringify(update)}: ${e}`);
     }
   }
@@ -308,7 +320,9 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     this.trick_card_els = [];
     this.game.trick = [];
     this.trick_number.innerText = '-';
-    console.log(`Trick won by ${this.game.players[this.game.turn].player.nickname} with the ${cardToName(winning_card)}`);
+    console.log(
+      `Trick won by ${this.game.players[this.game.turn].player.nickname} with the ${cardToName(winning_card)}`
+    );
     if (this.current_trick !== this.game.round) {
       this.current_trick++;
       this.trick_number.innerText = this.current_trick.toString();
@@ -355,9 +369,9 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
         this.player_els[winner].wonGame();
       }
       let winner_text = winners.length > 1 ? 'The winners are: ' : 'The winner is: ';
-      winner_text += winners.map(winner => this.game.players[winner].player.nickname).join(', ');
+      winner_text += winners.map((winner) => this.game.players[winner].player.nickname).join(', ');
       winner_text += `\nWith ${winning_score} points`;
-      messageDialog.call(this, {message: winner_text});
+      messageDialog.call(this, { message: winner_text });
       this.status_container.innerText = 'game over';
     } else if (this.game.rounds_increasing) {
       this.game.round++; // wait for deal-round update from server
@@ -387,14 +401,14 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
   updateDialogComponent(update: UpdateMessage): HTMLElement {
     const el = document.createElement('div');
     const strs: string[] = [];
-    switch(update.kind) {
+    switch (update.kind) {
       case 'deal-round':
         const deal_data = update.content as DealRound;
         const dealer = this.game.players[deal_data.dealer].player.nickname;
         strs.push(`Round ${deal_data.round} dealt by ${dealer}`);
         strs.push(`Card flipped over as trump was ${cardToIcon(deal_data.trump)}`);
         if (!!deal_data.cards) {
-          const cards_dealt = deal_data.cards.map(c => cardToIcon(c)).join(', ');
+          const cards_dealt = deal_data.cards.map((c) => cardToIcon(c)).join(', ');
           strs.push(`Cards dealt to you: ${cards_dealt}`);
         }
         break;

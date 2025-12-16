@@ -1,12 +1,13 @@
-import {clickButton, DEV, enumKeys} from '../../../scripts/util';
-import {DwgElement} from '../../dwg_element';
-import {GameSettings, GameType} from '../data_models';
+import { clickButton, DEV, enumKeys } from '../../../scripts/util';
+import { DwgElement } from '../../dwg_element';
+import type { GameSettings} from '../data_models';
+import { GameType } from '../data_models';
 
 import html from './lobby_game_settings.html';
 import './lobby_game_settings.scss';
 import './ai_selector/ai_selector';
-import {GameSettingsFiddlesticks} from './game_specific_data';
-import {AiSelectorData, DwgAiSelector} from './ai_selector/ai_selector';
+import type { GameSettingsFiddlesticks } from './game_specific_data';
+import type { AiSelectorData, DwgAiSelector } from './ai_selector/ai_selector';
 
 export class DwgLobbyGameSettings extends DwgElement {
   private game_chooser: HTMLSelectElement;
@@ -59,7 +60,7 @@ export class DwgLobbyGameSettings extends DwgElement {
   getGameSpecificHTML(game_type: GameType): HTMLElement[] {
     const children: HTMLElement[] = [];
     this.game_specific_settings_els.clear();
-    switch(game_type) {
+    switch (game_type) {
       case GameType.FIDDLESTICKS:
         const min_round = this.createNumberElement('min-round', 'Min Round', 1, 17);
         const max_round = this.createNumberElement('max-round', 'Max Round', 1, 17);
@@ -69,7 +70,10 @@ export class DwgLobbyGameSettings extends DwgElement {
         children.push(this.createRowElement([round_points, trick_points]));
         children.push(this.createLabelElement('AI Players'));
         const ai_selector = document.createElement('dwg-ai-selector');
-        ai_selector.setData({game_type, ai_players: []} satisfies AiSelectorData);
+        ai_selector.setData({
+          game_type,
+          ai_players: [],
+        } satisfies AiSelectorData);
         ai_selector.id = 'ai-players';
         this.game_specific_settings_els.set('ai-players', ai_selector);
         children.push(ai_selector);
@@ -87,7 +91,11 @@ export class DwgLobbyGameSettings extends DwgElement {
   }
 
   private createNumberElement(
-    id: string, label: string, min: number, max: number, default_value?: number
+    id: string,
+    label: string,
+    min: number,
+    max: number,
+    default_value?: number
   ): HTMLSpanElement {
     const el = document.createElement('input');
     el.id = id;
@@ -123,7 +131,7 @@ export class DwgLobbyGameSettings extends DwgElement {
     this.max_players_input.value = settings.max_players.toString();
     this.max_viewers_input.value = settings.max_viewers.toString();
     try {
-      switch(settings.game_type) {
+      switch (settings.game_type) {
         case GameType.FIDDLESTICKS:
           const specific_settings = settings.game_specific_settings as GameSettingsFiddlesticks;
           this.setNumberSetting('min-round', specific_settings.min_round);
@@ -138,7 +146,7 @@ export class DwgLobbyGameSettings extends DwgElement {
         default:
           break;
       }
-    } catch(e) {
+    } catch (e) {
       console.error(e);
     }
     this.room_description.value = room_description;
@@ -169,7 +177,7 @@ export class DwgLobbyGameSettings extends DwgElement {
       max_players: this.max_players_input.valueAsNumber || 0,
       max_viewers: this.max_viewers_input.valueAsNumber || 0,
     } as GameSettings;
-    switch(settings.game_type) {
+    switch (settings.game_type) {
       case GameType.FIDDLESTICKS:
         const ai_players = this.game_specific_settings_els.get('ai-players') as DwgAiSelector;
         settings.game_specific_settings = {

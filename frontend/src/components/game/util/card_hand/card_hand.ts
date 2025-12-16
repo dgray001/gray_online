@@ -1,8 +1,9 @@
-import {DwgElement} from '../../../dwg_element';
-import {StandardCard, cardToIcon, cardToImagePath, sortStandardCards} from '../card_util';
-import {createLock, until, untilTimer} from '../../../../scripts/util';
-import {Point2D} from '../objects2d';
-import {MultiMap} from '../../../../scripts/multi_map';
+import { DwgElement } from '../../../dwg_element';
+import type { StandardCard} from '../card_util';
+import { cardToIcon, cardToImagePath, sortStandardCards } from '../card_util';
+import { createLock, until, untilTimer } from '../../../../scripts/util';
+import type { Point2D } from '../objects2d';
+import { MultiMap } from '../../../../scripts/multi_map';
 
 import html from './card_hand.html';
 
@@ -35,7 +36,7 @@ export class DwgCardHand extends DwgElement {
     dragging: false,
     index: -1,
     touch_identifier: -1,
-    start: {x: 0, y: 0},
+    start: { x: 0, y: 0 },
     start_rect: new DOMRect(0, 0, 0, 0),
     hovering_play_drop: false,
   };
@@ -147,25 +148,27 @@ export class DwgCardHand extends DwgElement {
       if (touch.identifier !== this.dragging_data.touch_identifier) {
         return;
       }
-      this.dragCard({x: touch.clientX, y: touch.clientY}, card);
+      this.dragCard({ x: touch.clientX, y: touch.clientY }, card);
     });
   }
 
   setCards(cards: StandardCard[], cards_played: number[] = [], animation_time = 0) {
     this.cards_container.replaceChildren();
-    const card_data: CardData[] = cards.map((card, i) => {
-      return {i, card} satisfies CardData;
-    }).sort((a, b) => {
-      return sortStandardCards(a.card, b.card);
-    });
+    const card_data: CardData[] = cards
+      .map((card, i) => {
+        return { i, card } satisfies CardData;
+      })
+      .sort((a, b) => {
+        return sortStandardCards(a.card, b.card);
+      });
     let cards_skipped = 0;
     for (const [i_dom, data] of card_data.entries()) {
-      if (cards_played.some(i => i === data.i)) {
+      if (cards_played.some((i) => i === data.i)) {
         cards_skipped++;
         continue;
       }
       data.i_dom = i_dom - cards_skipped;
-      this.createCardEl(data, animation_time)
+      this.createCardEl(data, animation_time);
     }
   }
 
@@ -179,48 +182,51 @@ export class DwgCardHand extends DwgElement {
     el.classList.add('card');
     el.style.setProperty('--i', data.i_dom.toString());
     data.el = el;
-    setTimeout(() => {
-      // TODO: add card dealt sound effect
-      this.cards.set([data.i, data.i_dom], data);
-      this.cards_container.style.setProperty('--num-cards', this.cards.size().toString());
-      this.cards_container.appendChild(el);
+    setTimeout(
+      () => {
+        // TODO: add card dealt sound effect
+        this.cards.set([data.i, data.i_dom], data);
+        this.cards_container.style.setProperty('--num-cards', this.cards.size().toString());
+        this.cards_container.appendChild(el);
 
-      el.addEventListener('dblclick', () => {
-        if (this.can_play) {
-          this.dispatchEvent(new CustomEvent<number>('play_card', {detail: data.i}));
-        }
-      });
+        el.addEventListener('dblclick', () => {
+          if (this.can_play) {
+            this.dispatchEvent(new CustomEvent<number>('play_card', { detail: data.i }));
+          }
+        });
 
-      el.addEventListener('mousedown', (e) => {
-        if (e.button !== 0) {
-          return;
-        }
-        e.stopImmediatePropagation();
-        this.startDraggingCard({x: e.x, y: e.y}, data);
-      });
+        el.addEventListener('mousedown', (e) => {
+          if (e.button !== 0) {
+            return;
+          }
+          e.stopImmediatePropagation();
+          this.startDraggingCard({ x: e.x, y: e.y }, data);
+        });
 
-      el.addEventListener('mouseenter', (e) => {
-        e.stopImmediatePropagation();
-        if (this.dragging_data.dragging) {
-          return;
-        }
-        el.classList.add('hovering');
-      });
+        el.addEventListener('mouseenter', (e) => {
+          e.stopImmediatePropagation();
+          if (this.dragging_data.dragging) {
+            return;
+          }
+          el.classList.add('hovering');
+        });
 
-      el.addEventListener('mouseleave', (e) => {
-        e.stopImmediatePropagation();
-        el.classList.remove('hovering');
-      });
+        el.addEventListener('mouseleave', (e) => {
+          e.stopImmediatePropagation();
+          el.classList.remove('hovering');
+        });
 
-      el.addEventListener('touchstart', (e) => {
-        e.stopImmediatePropagation();
-        if (e.touches.length === 0) {
-          return;
-        }
-        const touch = e.touches[0];
-        this.startDraggingCard({x: touch.clientX, y: touch.clientY}, data, touch.identifier);
-      });
-    }, (1 + data.i_dom) * animation_time);
+        el.addEventListener('touchstart', (e) => {
+          e.stopImmediatePropagation();
+          if (e.touches.length === 0) {
+            return;
+          }
+          const touch = e.touches[0];
+          this.startDraggingCard({ x: touch.clientX, y: touch.clientY }, data, touch.identifier);
+        });
+      },
+      (1 + data.i_dom) * animation_time
+    );
   }
 
   private startDraggingCard(p: Point2D, card: CardData, touch_identifier = 0) {
@@ -310,7 +316,7 @@ export class DwgCardHand extends DwgElement {
       card.el.classList.remove('dragging');
       if (!returning_to_screen && this.can_play) {
         if (this.dragging_data.hovering_play_drop) {
-          this.dispatchEvent(new CustomEvent<number>('play_card', {detail: card.i}));
+          this.dispatchEvent(new CustomEvent<number>('play_card', { detail: card.i }));
         }
       }
     });

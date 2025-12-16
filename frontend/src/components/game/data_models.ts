@@ -1,5 +1,5 @@
-import {GameType} from "../lobby/data_models";
-import {DwgGame} from "./game";
+import type { GameType } from '../lobby/data_models';
+import type { DwgGame } from './game';
 
 /** HTML tags for all game types */
 export type GameHtmlTag = 'dwg-fiddlesticks' | 'dwg-euchre' | 'dwg-risq' | 'dwg-test-game';
@@ -43,8 +43,8 @@ export declare interface GameFromServer {
 
 /** Converts a GameFromServer to a proper frontend game object */
 export function serverResponseToGame(gameFromServer: GameFromServer, client_id: number): Game {
-  const players = new Map(gameFromServer.game_base.players.map(player => [player.client_id, player]));
-  const viewers = new Map(gameFromServer.game_base.viewers.map(viewer => [viewer.client_id, viewer]));
+  const players = new Map(gameFromServer.game_base.players.map((player) => [player.client_id, player]));
+  const viewers = new Map(gameFromServer.game_base.viewers.map((viewer) => [viewer.client_id, viewer]));
   const game = {
     ...gameFromServer, // ... game specific fields
     game_base: {
@@ -54,16 +54,16 @@ export function serverResponseToGame(gameFromServer: GameFromServer, client_id: 
       game_ended: gameFromServer.game_base.game_ended,
       players,
       viewers,
-      player_actions: gameFromServer.game_base.player_actions ?
-        new Map(gameFromServer.game_base.player_actions.map(action => [action.action_id, action])) :
-        undefined,
+      player_actions: gameFromServer.game_base.player_actions
+        ? new Map(gameFromServer.game_base.player_actions.map((action) => [action.action_id, action]))
+        : undefined,
     },
   } as Game;
   const updates = players.get(client_id)?.updates ?? gameFromServer.game_base.viewer_updates;
   if (updates !== undefined) {
-    game.game_base.updates = new Map(updates.map(update => [update.update_id, update]));
+    game.game_base.updates = new Map(updates.map((update) => [update.update_id, update]));
     game.game_base.last_applied_update_id = updates.length;
-    game.game_base.highest_received_update_id = Math.max(...updates.map(update => update.update_id));
+    game.game_base.highest_received_update_id = Math.max(...updates.map((update) => update.update_id));
   }
   return game;
 }

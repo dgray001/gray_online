@@ -1,6 +1,7 @@
-import {DwgElement} from '../../../dwg_element';
-import {until} from '../../../../scripts/util';
-import {Point2D, subtractPoint2D} from '../objects2d';
+import { DwgElement } from '../../../dwg_element';
+import { until } from '../../../../scripts/util';
+import type { Point2D} from '../objects2d';
+import { subtractPoint2D } from '../objects2d';
 
 import html from './canvas_board.html';
 
@@ -55,7 +56,7 @@ export class DwgCanvasBoard extends DwgElement {
   private orig_size: Point2D;
   private transform: BoardTransformData = {
     scale: 1,
-    view: {x: 0, y: 0},
+    view: { x: 0, y: 0 },
   };
   private zoom_config: ZoomConfig;
 
@@ -68,17 +69,22 @@ export class DwgCanvasBoard extends DwgElement {
   };
   private cursor_move_threshold = 5;
   private dragging = false;
-  private mouse: Point2D = {x: 0, y: 0};
+  private mouse: Point2D = { x: 0, y: 0 };
   private cursor_in_range = false;
 
   private bounding_rect: DOMRect;
   private resize_observer = new ResizeObserver(async (els) => {
     for (const el of els) {
       await this.updateSize(this.data, el.contentRect);
-      this.dispatchEvent(new CustomEvent<CanvasBoardSize>('canvas_resize', {detail: {
-        board_size: this.data.board_size,
-        el_size: this.bounding_rect,
-      }, 'bubbles': true}));
+      this.dispatchEvent(
+        new CustomEvent<CanvasBoardSize>('canvas_resize', {
+          detail: {
+            board_size: this.data.board_size,
+            el_size: this.bounding_rect,
+          },
+          bubbles: true,
+        })
+      );
     }
   });
 
@@ -112,7 +118,7 @@ export class DwgCanvasBoard extends DwgElement {
       this.tick();
       // If ever made async everything after tick() needs to run at same time (just skip until last finished)
       this.ctx.resetTransform();
-      this.ctx.fillStyle = "black";
+      this.ctx.fillStyle = 'black';
       this.ctx.fillRect(0, 0, this.data.board_size.x, this.data.board_size.y);
       this.ctx.translate(-this.transform.view.x, -this.transform.view.y);
       this.ctx.scale(this.transform.scale, this.transform.scale);
@@ -182,10 +188,13 @@ export class DwgCanvasBoard extends DwgElement {
         zoom = this.zoom_config.min_zoom;
       }
       this.setScale(this.transform.scale / zoom);
-      this.data.mousemove({
-        x: (this.mouse.x + this.transform.view.x) / this.transform.scale,
-        y: (this.mouse.y + this.transform.view.y) / this.transform.scale,
-      }, this.transform);
+      this.data.mousemove(
+        {
+          x: (this.mouse.x + this.transform.view.x) / this.transform.scale,
+          y: (this.mouse.y + this.transform.view.y) / this.transform.scale,
+        },
+        this.transform
+      );
     });
     this.addEventListener('mousemove', (e: MouseEvent) => {
       this.hovered = true;
@@ -193,18 +202,21 @@ export class DwgCanvasBoard extends DwgElement {
       this.cursor.style.setProperty('--y', `${e.clientY.toString()}px`);
       const rect = this.canvas.getBoundingClientRect();
       const new_mouse = {
-        x: (e.clientX - rect.left),
-        y: (e.clientY - rect.top),
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
       };
       const dif_mouse = subtractPoint2D(new_mouse, this.mouse);
       this.mouse = new_mouse;
       if (this.dragging) {
         this.setView(subtractPoint2D(this.transform.view, dif_mouse));
       } else {
-        this.data.mousemove({
-          x: (this.mouse.x + this.transform.view.x) / this.transform.scale,
-          y: (this.mouse.y + this.transform.view.y) / this.transform.scale,
-        }, this.transform);
+        this.data.mousemove(
+          {
+            x: (this.mouse.x + this.transform.view.x) / this.transform.scale,
+            y: (this.mouse.y + this.transform.view.y) / this.transform.scale,
+          },
+          this.transform
+        );
       }
     });
     this.addEventListener('mousedown', (e: MouseEvent) => {
@@ -228,14 +240,18 @@ export class DwgCanvasBoard extends DwgElement {
       this.cursor.classList.add('hide');
       this.data.mouseleave();
     });
-    this.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-    }, false);
+    this.addEventListener(
+      'contextmenu',
+      (e) => {
+        e.preventDefault();
+      },
+      false
+    );
     document.body.addEventListener('keydown', (e) => {
       if (!this.hovered) {
         return;
       }
-      switch(e.key) {
+      switch (e.key) {
         case 'ArrowUp':
           this.holding_keys.arrow_up = true;
           break;
@@ -256,7 +272,7 @@ export class DwgCanvasBoard extends DwgElement {
       if (!this.hovered) {
         return;
       }
-      switch(e.key) {
+      switch (e.key) {
         case 'ArrowUp':
           this.holding_keys.arrow_up = false;
           break;
@@ -276,7 +292,7 @@ export class DwgCanvasBoard extends DwgElement {
   }
 
   private tick() {
-    const d_view = {x: 0, y: 0};
+    const d_view = { x: 0, y: 0 };
     const arrow_key_speed = 20 * this.transform.scale;
     let moved = false;
     const rect = this.canvas.getBoundingClientRect();
@@ -323,11 +339,17 @@ export class DwgCanvasBoard extends DwgElement {
       }
     }
     if (moved) {
-      this.setView({x: this.transform.view.x + d_view.x, y: this.transform.view.y + d_view.y});
-      this.data.mousemove({
-        x: (this.mouse.x + this.transform.view.x) / this.transform.scale,
-        y: (this.mouse.y + this.transform.view.y) / this.transform.scale,
-      }, this.transform);
+      this.setView({
+        x: this.transform.view.x + d_view.x,
+        y: this.transform.view.y + d_view.y,
+      });
+      this.data.mousemove(
+        {
+          x: (this.mouse.x + this.transform.view.x) / this.transform.scale,
+          y: (this.mouse.y + this.transform.view.y) / this.transform.scale,
+        },
+        this.transform
+      );
     }
   }
 

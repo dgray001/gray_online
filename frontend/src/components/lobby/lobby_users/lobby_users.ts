@@ -1,8 +1,9 @@
-import {DwgElement} from '../../dwg_element';
-import {apiGet} from '../../../scripts/api';
-import {clickButton} from '../../../scripts/util';
-import {LobbyUser, LobbyUserFromServer, serverResponseToUser} from '../data_models';
-import {DwgLobbyUser} from './lobby_user/lobby_user';
+import { DwgElement } from '../../dwg_element';
+import { apiGet } from '../../../scripts/api';
+import { clickButton } from '../../../scripts/util';
+import type { LobbyUser, LobbyUserFromServer} from '../data_models';
+import { serverResponseToUser } from '../data_models';
+import type { DwgLobbyUser } from './lobby_user/lobby_user';
 
 import html from './lobby_users.html';
 import './lobby_users.scss';
@@ -30,9 +31,13 @@ export class DwgLobbyUsers extends DwgElement {
   }
 
   protected override parsedCallback(): void {
-    clickButton(this.refresh_button, () => {
-      this.refreshUsers(true);
-    }, {});
+    clickButton(
+      this.refresh_button,
+      () => {
+        this.refreshUsers(true);
+      },
+      {}
+    );
     this.refreshUsers();
     setInterval(() => {
       this.updatePings();
@@ -85,7 +90,7 @@ export class DwgLobbyUsers extends DwgElement {
       el.classList.add('lobby-user');
       el.updateUser(user);
       this.user_container.appendChild(el);
-      this.users.set(user.client_id, {data: user, el, refreshed: true});
+      this.users.set(user.client_id, { data: user, el, refreshed: true });
     }
   }
 

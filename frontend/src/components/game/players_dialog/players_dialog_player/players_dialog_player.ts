@@ -1,7 +1,7 @@
-import {copyToClipboard} from '../../../../scripts/util';
-import {DwgElement} from '../../../dwg_element';
-import {LobbyUser} from '../../../lobby/data_models';
-import {GamePlayer} from '../../data_models';
+import { copyToClipboard } from '../../../../scripts/util';
+import { DwgElement } from '../../../dwg_element';
+import type { LobbyUser } from '../../../lobby/data_models';
+import type { GamePlayer } from '../../data_models';
 
 import html from './players_dialog_player.html';
 
@@ -17,7 +17,7 @@ export class DwgPlayersDialogPlayer extends DwgElement {
   private rejoin_url: string;
   private player: GamePlayer;
   private room_id: number;
-  private lobby_player: LobbyUser|undefined;
+  private lobby_player: LobbyUser | undefined;
   private copy_timeout: NodeJS.Timeout;
 
   constructor() {

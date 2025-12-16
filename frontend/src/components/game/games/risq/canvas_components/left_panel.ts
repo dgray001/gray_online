@@ -1,16 +1,32 @@
-import {BoardTransformData} from '../../../util/canvas_board/canvas_board';
-import {DwgButton} from '../../../util/canvas_components/button/button';
-import {CanvasComponent, configDraw} from '../../../util/canvas_components/canvas_component';
-import {drawHexagon, drawLine, drawRect, drawText} from '../../../util/canvas_util';
-import {Point2D, equalsPoint2D} from '../../../util/objects2d';
-import {DwgRisq} from '../risq';
-import {buildingImage} from '../risq_buildings';
-import {RectHoverData, RisqAttackType, RisqBuilding, RisqCombatStats, RisqResource, RisqSpace, RisqUnit, RisqZone, UnitByTypeData, ZONE_VISIBILITY, coordinateToIndex, risqTerrainName} from '../risq_data';
-import {resourceImage, resourceTypeImage} from '../risq_resources';
-import {getSpaceFill} from '../risq_space';
-import {UNIT_HEALTHBAR_COLOR_BACKGROUND, UNIT_HEALTHBAR_COLOR_HEALTH, unitImage} from '../risq_unit';
-import {INNER_ZONE_MULTIPLIER, getZoneFill, resolveHoveredZones} from '../risq_zone';
-import {RisqLeftPanelButton} from './left_panel_close';
+import type { BoardTransformData } from '../../../util/canvas_board/canvas_board';
+import type { DwgButton } from '../../../util/canvas_components/button/button';
+import type { CanvasComponent} from '../../../util/canvas_components/canvas_component';
+import { configDraw } from '../../../util/canvas_components/canvas_component';
+import { drawHexagon, drawLine, drawRect, drawText } from '../../../util/canvas_util';
+import type { Point2D} from '../../../util/objects2d';
+import { equalsPoint2D } from '../../../util/objects2d';
+import type { DwgRisq } from '../risq';
+import { buildingImage } from '../risq_buildings';
+import type {
+  RectHoverData,
+  RisqBuilding,
+  RisqCombatStats,
+  RisqResource,
+  RisqSpace,
+  RisqUnit,
+  RisqZone,
+  UnitByTypeData} from '../risq_data';
+import {
+  RisqAttackType,
+  ZONE_VISIBILITY,
+  coordinateToIndex,
+  risqTerrainName,
+} from '../risq_data';
+import { resourceImage, resourceTypeImage } from '../risq_resources';
+import { getSpaceFill } from '../risq_space';
+import { UNIT_HEALTHBAR_COLOR_BACKGROUND, UNIT_HEALTHBAR_COLOR_HEALTH, unitImage } from '../risq_unit';
+import { INNER_ZONE_MULTIPLIER, getZoneFill, resolveHoveredZones } from '../risq_zone';
+import { RisqLeftPanelButton } from './left_panel_close';
 
 /** Config for the left panel */
 export declare interface LeftPanelConfig {
@@ -53,7 +69,7 @@ export class RisqLeftPanel implements CanvasComponent {
   private data: any; // data being shown in panel
   private buttons: DwgButton[] = [];
   private hovered_zone?: RisqZone; // relevant when drawing space and zone
-  private hovered_object?: RisqUnit|RisqBuilding|RisqResource;
+  private hovered_object?: RisqUnit | RisqBuilding | RisqResource;
   private hovered_object_type: HoverableObjectType = HoverableObjectType.NONE;
 
   constructor(risq: DwgRisq, config: LeftPanelConfig) {
@@ -71,8 +87,11 @@ export class RisqLeftPanel implements CanvasComponent {
     if (h > this.risq.canvasSize().height) {
       h = this.risq.canvasSize().height;
     }
-    this.size = {x: h / 3, y: h};
-    this.close_button.setPosition({x: this.size.x, y: this.yi() + 0.5 * this.close_button.h()});
+    this.size = { x: h / 3, y: h };
+    this.close_button.setPosition({
+      x: this.size.x,
+      y: this.yi() + 0.5 * this.close_button.h(),
+    });
   }
 
   isHovering(): boolean {
@@ -99,24 +118,27 @@ export class RisqLeftPanel implements CanvasComponent {
     if (visibility < 1) {
       return; // not explored
     }
-    if (visibility < ZONE_VISIBILITY && [
-      LeftPanelDataType.RESOURCE,
-      LeftPanelDataType.BUILDING,
-      LeftPanelDataType.ZONE,
-      LeftPanelDataType.MULTIPLE_PLAYERS_UNITS,
-      LeftPanelDataType.UNITS,
-      LeftPanelDataType.UNITS_BY_TYPE,
-      LeftPanelDataType.ECONOMIC_UNITS,
-      LeftPanelDataType.MILITARY_UNITS,
-      LeftPanelDataType.UNIT,
-    ].includes(data_type)) {
+    if (
+      visibility < ZONE_VISIBILITY &&
+      [
+        LeftPanelDataType.RESOURCE,
+        LeftPanelDataType.BUILDING,
+        LeftPanelDataType.ZONE,
+        LeftPanelDataType.MULTIPLE_PLAYERS_UNITS,
+        LeftPanelDataType.UNITS,
+        LeftPanelDataType.UNITS_BY_TYPE,
+        LeftPanelDataType.ECONOMIC_UNITS,
+        LeftPanelDataType.MILITARY_UNITS,
+        LeftPanelDataType.UNIT,
+      ].includes(data_type)
+    ) {
       return; // zones not visible
     }
     this.data_type = data_type;
     this.visibility = visibility;
     this.data = data;
     this.showing = true;
-    switch(data_type) {
+    switch (data_type) {
       case LeftPanelDataType.MULTIPLE_PLAYERS_UNITS:
       case LeftPanelDataType.UNITS:
       case LeftPanelDataType.ECONOMIC_UNITS:
@@ -131,7 +153,7 @@ export class RisqLeftPanel implements CanvasComponent {
     }
   }
 
-  private checkUnitsData(data: {space: RisqSpace, units: Map<number, UnitByTypeData[]>}) {
+  private checkUnitsData(data: { space: RisqSpace; units: Map<number, UnitByTypeData[]> }) {
     if (!data || !data.space || !data.space.units || !data.units || data.units.size < 1) {
       this.close();
       return;
@@ -141,29 +163,29 @@ export class RisqLeftPanel implements CanvasComponent {
       if (player_id < 0 || units_by_type.length < 1) {
         continue;
       }
-      new_data.push([player_id, units_by_type.filter(u => u.units.size > 0)]);
-    }           
+      new_data.push([player_id, units_by_type.filter((u) => u.units.size > 0)]);
+    }
     if (new_data.length < 1) {
       this.close();
       return;
     }
     if (new_data.length > 1) {
       this.data_type = LeftPanelDataType.MULTIPLE_PLAYERS_UNITS;
-      this.data = {space: data.space, units: new_data};
+      this.data = { space: data.space, units: new_data };
       return;
     }
-    this.checkUnitsByTypeData({space: data.space, units: new_data[0][1]});
+    this.checkUnitsByTypeData({ space: data.space, units: new_data[0][1] });
   }
 
-  private checkUnitsByTypeData(data: {space: RisqSpace, units: UnitByTypeData[]}) {
+  private checkUnitsByTypeData(data: { space: RisqSpace; units: UnitByTypeData[] }) {
     if (data.units.length === 1 && data.units[0].units.size === 1) {
       this.data_type = LeftPanelDataType.UNIT;
       this.data = data.space.units.get([...data.units[0].units.values()][0]); // set data as internal id
       return;
     }
-    this.data = {space: data.space, units: data.units};
-    const has_economic_units = data.units.some(u => u.unit_id < 11);
-    const has_military_units = data.units.some(u => u.unit_id > 10);
+    this.data = { space: data.space, units: data.units };
+    const has_economic_units = data.units.some((u) => u.unit_id < 11);
+    const has_military_units = data.units.some((u) => u.unit_id > 10);
     if (has_economic_units && has_military_units) {
       this.data_type = LeftPanelDataType.UNITS;
     } else if (has_economic_units) {
@@ -177,45 +199,52 @@ export class RisqLeftPanel implements CanvasComponent {
     if (!this.isShowing()) {
       return;
     }
-    configDraw(ctx, transform, {
-      fill_style: this.config.background,
-      stroke_style: 'transparent',
-      stroke_width: 0,
-      fixed_position: true,
-    }, false, false, () => {
-      drawRect(ctx, {x: this.xi(), y: this.yi()}, this.w(), this.h());
-      switch(this.data_type) {
-        case LeftPanelDataType.RESOURCE:
-          this.drawResource(ctx, this.data);
-          break;
-        case LeftPanelDataType.BUILDING:
-          this.drawBuilding(ctx, this.data);
-          break;
-        case LeftPanelDataType.SPACE:
-          this.drawSpace(ctx, this.data);
-          break;
-        case LeftPanelDataType.ZONE:
-          this.drawZone(ctx, this.data);
-          break;
-        case LeftPanelDataType.MULTIPLE_PLAYERS_UNITS:
-          // TODO: implement
-          break;
-        case LeftPanelDataType.UNITS:
-        case LeftPanelDataType.ECONOMIC_UNITS:
-        case LeftPanelDataType.MILITARY_UNITS:
-          this.drawUnits(ctx, this.data);
-          break;
-        case LeftPanelDataType.UNIT:
-          this.drawUnit(ctx, this.data);
-          break;
-        default:
-          console.error('Unknown data type for left panel', this.data_type);
-          break;
+    configDraw(
+      ctx,
+      transform,
+      {
+        fill_style: this.config.background,
+        stroke_style: 'transparent',
+        stroke_width: 0,
+        fixed_position: true,
+      },
+      false,
+      false,
+      () => {
+        drawRect(ctx, { x: this.xi(), y: this.yi() }, this.w(), this.h());
+        switch (this.data_type) {
+          case LeftPanelDataType.RESOURCE:
+            this.drawResource(ctx, this.data);
+            break;
+          case LeftPanelDataType.BUILDING:
+            this.drawBuilding(ctx, this.data);
+            break;
+          case LeftPanelDataType.SPACE:
+            this.drawSpace(ctx, this.data);
+            break;
+          case LeftPanelDataType.ZONE:
+            this.drawZone(ctx, this.data);
+            break;
+          case LeftPanelDataType.MULTIPLE_PLAYERS_UNITS:
+            // TODO: implement
+            break;
+          case LeftPanelDataType.UNITS:
+          case LeftPanelDataType.ECONOMIC_UNITS:
+          case LeftPanelDataType.MILITARY_UNITS:
+            this.drawUnits(ctx, this.data);
+            break;
+          case LeftPanelDataType.UNIT:
+            this.drawUnit(ctx, this.data);
+            break;
+          default:
+            console.error('Unknown data type for left panel', this.data_type);
+            break;
+        }
+        for (const button of this.buttons) {
+          button.draw(ctx, transform, dt);
+        }
       }
-      for (const button of this.buttons) {
-        button.draw(ctx, transform, dt);
-      }
-    });
+    );
     ctx.beginPath();
     this.close_button.draw(ctx, transform, dt);
   }
@@ -225,10 +254,15 @@ export class RisqLeftPanel implements CanvasComponent {
     ctx.strokeStyle = UNIT_HEALTHBAR_COLOR_BACKGROUND;
     ctx.lineWidth = 0.4;
     ctx.fillStyle = UNIT_HEALTHBAR_COLOR_BACKGROUND;
-    drawRect(ctx, {x: p.x, y: p.y + 0.8 * s}, s, 0.18 * s);
+    drawRect(ctx, { x: p.x, y: p.y + 0.8 * s }, s, 0.18 * s);
     if (unit.combat_stats.max_health > 0 && unit.combat_stats.health > 0) {
       ctx.fillStyle = UNIT_HEALTHBAR_COLOR_HEALTH;
-      drawRect(ctx, {x: p.x, y: p.y + 0.8 * s}, (unit.combat_stats.health / unit.combat_stats.max_health) * s, 0.2 * s);
+      drawRect(
+        ctx,
+        { x: p.x, y: p.y + 0.8 * s },
+        (unit.combat_stats.health / unit.combat_stats.max_health) * s,
+        0.2 * s
+      );
     }
     if (unit.hover_data.hovered) {
       if (unit.hover_data.clicked) {
@@ -240,11 +274,11 @@ export class RisqLeftPanel implements CanvasComponent {
       drawRect(ctx, p, s, s);
     }
     unit.hover_data.ps = p;
-    unit.hover_data.pe = {x: p.x + s, y: p.y + s};
+    unit.hover_data.pe = { x: p.x + s, y: p.y + s };
   }
 
-  private drawUnits(ctx: CanvasRenderingContext2D, data: {space: RisqSpace, units: UnitByTypeData[]}) {
-    const total_units = data.units.map(u => u.units.size).reduce((a, b) => a + b);
+  private drawUnits(ctx: CanvasRenderingContext2D, data: { space: RisqSpace; units: UnitByTypeData[] }) {
+    const total_units = data.units.map((u) => u.units.size).reduce((a, b) => a + b);
     let yi = this.yi() + this.drawName(ctx, `${total_units} Units`);
     const separator_distance = 8;
     const image_size = total_units < 40 ? 64 : 36;
@@ -253,8 +287,8 @@ export class RisqLeftPanel implements CanvasComponent {
     if (units_per_row < 1) {
       return;
     }
-    const rows = data.units.map(u => Math.ceil(u.units.size / units_per_row)).reduce((a, b) => a + b);
-    const max_height = (this.yi() + 0.5 * this.size.y - separator_distance) - yi;
+    const rows = data.units.map((u) => Math.ceil(u.units.size / units_per_row)).reduce((a, b) => a + b);
+    const max_height = this.yi() + 0.5 * this.size.y - separator_distance - yi;
     const max_rows = Math.floor(max_height / (image_size + separator_distance));
     if (rows > max_rows) {
       // TODO: implement just number of each unit
@@ -275,7 +309,7 @@ export class RisqLeftPanel implements CanvasComponent {
             yi += image_size + separator_distance;
           }
           const x = this.xi() + 0.1 * this.w() + i * (image_size + separator_distance);
-          this.drawUnitImage(ctx, unit, {x, y: yi}, image_size);
+          this.drawUnitImage(ctx, unit, { x, y: yi }, image_size);
           i++;
         }
         yi += image_size + separator_distance;
@@ -312,7 +346,7 @@ export class RisqLeftPanel implements CanvasComponent {
     ctx.drawImage(this.risq.getIcon(resourceTypeImage(resource)), this.xi() + 0.1 * this.w(), yi, 40, 40);
     const resources_left = this.visibility < 4 ? '??' : resource.resources_left.toString();
     drawText(ctx, resources_left, {
-      p: {x: this.xi() + 0.1 * this.w() + 48, y: yi + 20},
+      p: { x: this.xi() + 0.1 * this.w() + 48, y: yi + 20 },
       w: 0.9 * this.w() - 48,
       fill_style: 'black',
       baseline: 'middle',
@@ -320,7 +354,7 @@ export class RisqLeftPanel implements CanvasComponent {
     });
     yi += 50;
     drawText(ctx, `Base gather speed: ${resource.base_gather_speed}`, {
-      p: {x: this.xi() + 0.1 * this.w(), y: yi + 12},
+      p: { x: this.xi() + 0.1 * this.w(), y: yi + 12 },
       w: 0.9 * this.w(),
       fill_style: 'black',
       baseline: 'middle',
@@ -335,7 +369,7 @@ export class RisqLeftPanel implements CanvasComponent {
     if (!building) {
       yi += 12;
       drawText(ctx, 'An empty lot that can be built on', {
-        p: {x: this.xi() + 0.1 * this.w(), y: yi},
+        p: { x: this.xi() + 0.1 * this.w(), y: yi },
         w: 0.9 * this.w(),
         fill_style: 'black',
         align: 'left',
@@ -356,7 +390,7 @@ export class RisqLeftPanel implements CanvasComponent {
   private drawSpace(ctx: CanvasRenderingContext2D, space: RisqSpace) {
     let yi = this.yi() + this.drawName(ctx, risqTerrainName(space.terrain));
     drawText(ctx, 'space', {
-      p: {x: this.xc(), y: yi},
+      p: { x: this.xc(), y: yi },
       w: this.w(),
       fill_style: 'black',
       align: 'center',
@@ -371,13 +405,13 @@ export class RisqLeftPanel implements CanvasComponent {
       const rows = 4;
       const image_size = Math.min(
         36,
-        (1 / rows) * (0.6 * this.h() - separator_distance - (rows - 1) * separator_distance),
+        (1 / rows) * (0.6 * this.h() - separator_distance - (rows - 1) * separator_distance)
       );
       ctx.fillStyle = 'black';
       const draw_row = (img: HTMLImageElement, text: string) => {
         ctx.drawImage(img, this.xi() + 0.1 * this.w(), yi, image_size, image_size);
         drawText(ctx, `: ${text}`, {
-          p: {x: this.xi() + 0.1 * this.w() + image_size + 2, y: yi},
+          p: { x: this.xi() + 0.1 * this.w() + image_size + 2, y: yi },
           w: 0.9 * this.w() - image_size - 2,
           fill_style: 'black',
           align: 'left',
@@ -388,13 +422,19 @@ export class RisqLeftPanel implements CanvasComponent {
       draw_row(this.risq.getIcon('icons/building64'), space.buildings?.size.toString());
       draw_row(this.risq.getIcon('icons/villager64'), space.num_villager_units?.toString());
       draw_row(this.risq.getIcon('icons/unit64'), space.num_military_units?.toString());
-      const resources = [...space.total_resources.entries()].filter(r => r[1] > 0).map(r => r[0]).sort((a, b) => a - b);
+      const resources = [...space.total_resources.entries()]
+        .filter((r) => r[1] > 0)
+        .map((r) => r[0])
+        .sort((a, b) => a - b);
       const num_resources = resources.length + 0.3 * (resources.length - 1); // account for slashes
       const resource_image_size = Math.min(image_size, (1.0 / num_resources) * 0.8 * this.w());
       for (const [i, r] of resources.entries()) {
         if (i > 0) {
           drawText(ctx, '/', {
-            p: {x: this.xi() + 0.1 * this.w() + (i * 1.3 - 0.15) * resource_image_size, y: yi},
+            p: {
+              x: this.xi() + 0.1 * this.w() + (i * 1.3 - 0.15) * resource_image_size,
+              y: yi,
+            },
             w: 0.3 * resource_image_size,
             fill_style: 'black',
             align: 'center',
@@ -404,7 +444,9 @@ export class RisqLeftPanel implements CanvasComponent {
         ctx.drawImage(
           this.risq.getIcon(resourceTypeImage(r)),
           this.xi() + 0.1 * this.w() + i * 1.3 * resource_image_size,
-          yi, resource_image_size, resource_image_size
+          yi,
+          resource_image_size,
+          resource_image_size
         );
       }
       yi += image_size + separator_distance;
@@ -412,9 +454,13 @@ export class RisqLeftPanel implements CanvasComponent {
   }
 
   private hexagon_r: number = 0;
-  private hexagon_c: Point2D = {x: 0, y: 0};
-  private drawSpaceHexagon(ctx: CanvasRenderingContext2D, space: RisqSpace,
-    separator_distance: number, yi: number, curr_zone: Point2D = {x: -1, y: -1}
+  private hexagon_c: Point2D = { x: 0, y: 0 };
+  private drawSpaceHexagon(
+    ctx: CanvasRenderingContext2D,
+    space: RisqSpace,
+    separator_distance: number,
+    yi: number,
+    curr_zone: Point2D = { x: -1, y: -1 }
   ): number {
     const hexagon_height = Math.min(this.w(), this.yi() + 0.4 * this.h() - yi - separator_distance);
     ctx.strokeStyle = 'rgba(250, 250, 250, 1)';
@@ -423,7 +469,7 @@ export class RisqLeftPanel implements CanvasComponent {
     const r = 0.5 * hexagon_height;
     this.hexagon_r = r;
     const inner_r = INNER_ZONE_MULTIPLIER * r;
-    const c = {x: this.xc(), y: yi + r};
+    const c = { x: this.xc(), y: yi + r };
     this.hexagon_c = c;
     drawHexagon(ctx, c, r);
     if (this.visibility >= ZONE_VISIBILITY) {
@@ -439,26 +485,26 @@ export class RisqLeftPanel implements CanvasComponent {
       ctx.fillStyle = zone_fill.getString();
       drawHexagon(ctx, c, inner_r);
       const a = Math.PI / 3;
-      for (var i = 0; i < 6; i++) {
-        let direction_vector: Point2D = {x: 0, y: 0};
-        switch(i) {
+      for (let i = 0; i < 6; i++) {
+        let direction_vector: Point2D = { x: 0, y: 0 };
+        switch (i) {
           case 0:
-            direction_vector = {x: 2, y: 1};
+            direction_vector = { x: 2, y: 1 };
             break;
           case 1:
-            direction_vector = {x: 2, y: 0};
+            direction_vector = { x: 2, y: 0 };
             break;
           case 2:
-            direction_vector = {x: 1, y: 0};
+            direction_vector = { x: 1, y: 0 };
             break;
           case 3:
-            direction_vector = {x: 0, y: 0};
+            direction_vector = { x: 0, y: 0 };
             break;
           case 4:
-            direction_vector = {x: 0, y: 1};
+            direction_vector = { x: 0, y: 1 };
             break;
           case 5:
-            direction_vector = {x: 1, y: 2};
+            direction_vector = { x: 1, y: 2 };
             break;
         }
         zone = space.zones[direction_vector.x][direction_vector.y];
@@ -482,10 +528,10 @@ export class RisqLeftPanel implements CanvasComponent {
     return hexagon_height + separator_distance;
   }
 
-  private drawZone(ctx: CanvasRenderingContext2D, data: {space: RisqSpace, zone: RisqZone}) {
+  private drawZone(ctx: CanvasRenderingContext2D, data: { space: RisqSpace; zone: RisqZone }) {
     let yi = this.yi() + this.drawName(ctx, risqTerrainName(data.space.terrain));
     drawText(ctx, 'zone', {
-      p: {x: this.xc(), y: yi},
+      p: { x: this.xc(), y: yi },
       w: this.w(),
       fill_style: 'black',
       align: 'center',
@@ -504,12 +550,12 @@ export class RisqLeftPanel implements CanvasComponent {
     const rows = 1 + economic_rows + military_rows;
     const image_size = Math.min(
       max_image_size,
-      (1 / rows) * (0.6 * this.h() - separator_distance - (rows - 1) * separator_distance),
+      (1 / rows) * (0.6 * this.h() - separator_distance - (rows - 1) * separator_distance)
     );
     ctx.fillStyle = 'black';
     const draw_row = (img: HTMLImageElement, text: string, hover_data?: RectHoverData) => {
-      const ps = {x: this.xi() + 0.1 * this.w(), y: yi};
-      const pe = {x: ps.x + 0.8 * this.w(), y: ps.y + image_size};
+      const ps = { x: this.xi() + 0.1 * this.w(), y: yi };
+      const pe = { x: ps.x + 0.8 * this.w(), y: ps.y + image_size };
       if (hover_data?.hovered) {
         ctx.strokeStyle = 'transparent';
         if (hover_data?.clicked) {
@@ -521,7 +567,7 @@ export class RisqLeftPanel implements CanvasComponent {
       }
       ctx.drawImage(img, ps.x, ps.y, image_size, image_size);
       drawText(ctx, `: ${text}`, {
-        p: {x: ps.x + image_size + 2, y: yi + 0.5 * image_size},
+        p: { x: ps.x + image_size + 2, y: yi + 0.5 * image_size },
         w: 0.8 * this.w() - image_size - 2,
         fill_style: 'black',
         align: 'left',
@@ -534,20 +580,29 @@ export class RisqLeftPanel implements CanvasComponent {
       }
     };
     if (!!data.zone.resource) {
-      draw_row(this.risq.getIcon(resourceImage(data.zone.resource)),
-        data.zone.resource.display_name, data.zone.resource.hover_data);
+      draw_row(
+        this.risq.getIcon(resourceImage(data.zone.resource)),
+        data.zone.resource.display_name,
+        data.zone.resource.hover_data
+      );
     } else {
-      draw_row(this.risq.getIcon(buildingImage(data.zone.building)),
-        data.zone.building?.display_name ?? 'Empty Plot', data.zone.building?.hover_data);
+      draw_row(
+        this.risq.getIcon(buildingImage(data.zone.building)),
+        data.zone.building?.display_name ?? 'Empty Plot',
+        data.zone.building?.hover_data
+      );
     }
     yi += image_size + separator_distance;
-    let xi = this.xi() + 0.1 * this.w() + 0.6 * image_size;
+    const xi = this.xi() + 0.1 * this.w() + 0.6 * image_size;
     if (data.zone.economic_units.length > 0) {
       draw_row(this.risq.getIcon('icons/villager64'), '');
       let i = 1;
       let j = 0;
       for (const u of data.zone.economic_units) {
-        const p = {x: xi + i * u_img_mult * image_size, y: yi + j * u_img_mult * image_size};
+        const p = {
+          x: xi + i * u_img_mult * image_size,
+          y: yi + j * u_img_mult * image_size,
+        };
         this.drawUnitImage(ctx, data.zone.units.get(u), p, image_size);
         i++;
         if (i > units_per_row) {
@@ -562,7 +617,10 @@ export class RisqLeftPanel implements CanvasComponent {
       let i = 1;
       let j = 0;
       for (const u of data.zone.military_units) {
-        const p = {x: xi + i * u_img_mult * image_size, y: yi + j * u_img_mult * image_size};
+        const p = {
+          x: xi + i * u_img_mult * image_size,
+          y: yi + j * u_img_mult * image_size,
+        };
         this.drawUnitImage(ctx, data.zone.units.get(u), p, image_size);
         i++;
         if (i > units_per_row) {
@@ -577,7 +635,7 @@ export class RisqLeftPanel implements CanvasComponent {
   private drawName(ctx: CanvasRenderingContext2D, name: string): number {
     const text_size = Math.min(40, (1 / 12) * this.size.y);
     drawText(ctx, name, {
-      p: {x: this.xc(), y: this.yi()},
+      p: { x: this.xc(), y: this.yi() },
       w: this.w(),
       fill_style: 'black',
       align: 'center',
@@ -588,7 +646,7 @@ export class RisqLeftPanel implements CanvasComponent {
 
   private drawImage(ctx: CanvasRenderingContext2D, yi: number, img_name: string): number {
     ctx.beginPath();
-    const max_img_height = (0.25 * this.size.y) - yi + this.yi();
+    const max_img_height = 0.25 * this.size.y - yi + this.yi();
     const img_height = Math.min(max_img_height - 6, 0.8 * this.w());
     ctx.drawImage(this.risq.getIcon(img_name), 0.5 * (this.w() - img_height), yi, img_height, img_height);
     return max_img_height;
@@ -597,7 +655,7 @@ export class RisqLeftPanel implements CanvasComponent {
   private drawSeparator(ctx: CanvasRenderingContext2D, yi: number) {
     ctx.strokeStyle = 'rgba(60, 60, 60, 0.7)';
     ctx.lineWidth = 2;
-    drawLine(ctx, {x: this.xi() + 0.1 * this.w(), y: yi}, {x: this.xf() - 0.1 * this.w(), y: yi});
+    drawLine(ctx, { x: this.xi() + 0.1 * this.w(), y: yi }, { x: this.xf() - 0.1 * this.w(), y: yi });
   }
 
   private drawCombatStats(ctx: CanvasRenderingContext2D, yi: number, yf: number, cs: RisqCombatStats) {
@@ -613,13 +671,13 @@ export class RisqLeftPanel implements CanvasComponent {
     ctx.strokeStyle = UNIT_HEALTHBAR_COLOR_BACKGROUND;
     ctx.lineWidth = 0.4;
     ctx.fillStyle = UNIT_HEALTHBAR_COLOR_BACKGROUND;
-    drawRect(ctx, {x: xi, y: yi}, 0.8 * this.w(), health_height);
+    drawRect(ctx, { x: xi, y: yi }, 0.8 * this.w(), health_height);
     if (cs.max_health > 0 && cs.health > 0) {
       ctx.fillStyle = UNIT_HEALTHBAR_COLOR_HEALTH;
-      drawRect(ctx, {x: xi, y: yi}, (cs.health / cs.max_health) * 0.8 * this.w(), health_height);
+      drawRect(ctx, { x: xi, y: yi }, (cs.health / cs.max_health) * 0.8 * this.w(), health_height);
     }
     drawText(ctx, `${cs.health} / ${cs.max_health}`, {
-      p: {x: xi, y: yi + health_height + 0.1 * row_size},
+      p: { x: xi, y: yi + health_height + 0.1 * row_size },
       w: 0.8 * this.w(),
       fill_style: 'black',
       align: 'left',
@@ -628,14 +686,14 @@ export class RisqLeftPanel implements CanvasComponent {
     yi += row_size + gap_size;
     const draw_stat_row = (stats: [string, number][]) => {
       let xi = this.xi() + 0.1 * this.w();
-      const dx = 0.8 * this.w() / stats.length;
+      const dx = (0.8 * this.w()) / stats.length;
       const image_size = Math.min(0.7 * row_size, 0.3 * dx);
       let drew_one = false;
-      for (const s of stats.filter(s => !!s[1])) {
+      for (const s of stats.filter((s) => !!s[1])) {
         drew_one = true;
         ctx.drawImage(this.risq.getIcon(s[0]), xi, yi, image_size, image_size);
         drawText(ctx, s[1].toString(), {
-          p: {x: xi + image_size + 0.1 * dx, y: yi + 0.5 * image_size},
+          p: { x: xi + image_size + 0.1 * dx, y: yi + 0.5 * image_size },
           w: dx - image_size,
           fill_style: 'black',
           align: 'left',
@@ -667,23 +725,27 @@ export class RisqLeftPanel implements CanvasComponent {
     ]);
   }
 
-  private objectHoverLogic(m: Point2D, object: RisqUnit|RisqBuilding|RisqResource,
+  private objectHoverLogic(
+    m: Point2D,
+    object: RisqUnit | RisqBuilding | RisqResource,
     object_type: HoverableObjectType
   ): boolean {
     if (!object) {
       return false;
     }
     if (
-      m.x < object.hover_data.ps.x || m.y < object.hover_data.ps.y ||
-      m.x > object.hover_data.pe.x || m.y > object.hover_data.pe.y
+      m.x < object.hover_data.ps.x ||
+      m.y < object.hover_data.ps.y ||
+      m.x > object.hover_data.pe.x ||
+      m.y > object.hover_data.pe.y
     ) {
       object.hover_data.hovered = false;
       return false;
     } else {
-      if (!!this.hovered_object && (
-        this.hovered_object.internal_id !== object.internal_id ||
-        this.hovered_object_type !== object_type
-      )) {
+      if (
+        !!this.hovered_object &&
+        (this.hovered_object.internal_id !== object.internal_id || this.hovered_object_type !== object_type)
+      ) {
         this.hovered_object.hover_data.hovered = false;
         this.hovered_object.hover_data.clicked = false;
       }
@@ -707,7 +769,7 @@ export class RisqLeftPanel implements CanvasComponent {
     } else {
       this.hovering = false;
     }
-    switch(this.data_type) {
+    switch (this.data_type) {
       case LeftPanelDataType.SPACE:
       case LeftPanelDataType.ZONE:
         const space: RisqSpace = this.data_type === LeftPanelDataType.SPACE ? this.data : this.data.space;
@@ -751,7 +813,7 @@ export class RisqLeftPanel implements CanvasComponent {
     if (this.close_button.mousedown(e)) {
       return true;
     }
-    switch(this.data_type) {
+    switch (this.data_type) {
       case LeftPanelDataType.SPACE:
       case LeftPanelDataType.ZONE:
         if (!!this.hovered_zone) {
@@ -778,27 +840,33 @@ export class RisqLeftPanel implements CanvasComponent {
 
   mouseup(e: MouseEvent) {
     this.close_button.mouseup(e);
-    switch(this.data_type) {
+    switch (this.data_type) {
       case LeftPanelDataType.SPACE:
       case LeftPanelDataType.ZONE:
         const space: RisqSpace = this.data_type === LeftPanelDataType.SPACE ? this.data : this.data.space;
         if (!!this.hovered_zone && this.hovered_zone.clicked) {
           this.hovered_zone.clicked = false;
           if (this.hovered_zone.hovered) {
-            this.openPanel(LeftPanelDataType.ZONE, this.visibility, {space, zone: this.hovered_zone});
+            this.openPanel(LeftPanelDataType.ZONE, this.visibility, {
+              space,
+              zone: this.hovered_zone,
+            });
           }
         } else if (!!this.hovered_object && this.hovered_object.hover_data.clicked) {
           this.hovered_object.hover_data.clicked = false;
           if (this.hovered_object.hover_data.hovered) {
-            switch(this.hovered_object_type) {
+            switch (this.hovered_object_type) {
               case HoverableObjectType.UNIT:
                 if (e.shiftKey) {
-                  const units_by_type: Map<number, UnitByTypeData> =
-                    this.data.zone.units_by_type.get((this.hovered_object as RisqUnit).player_id);
+                  const units_by_type: Map<number, UnitByTypeData> = this.data.zone.units_by_type.get(
+                    (this.hovered_object as RisqUnit).player_id
+                  );
                   if (!!units_by_type) {
                     this.openPanel(LeftPanelDataType.UNITS_BY_TYPE, this.visibility, {
-                      space, units: [...units_by_type.values()].filter(
-                        (u: UnitByTypeData) => u.unit_id === (this.hovered_object as RisqUnit).unit_id)
+                      space,
+                      units: [...units_by_type.values()].filter(
+                        (u: UnitByTypeData) => u.unit_id === (this.hovered_object as RisqUnit).unit_id
+                      ),
                     });
                   }
                 } else {
@@ -825,8 +893,10 @@ export class RisqLeftPanel implements CanvasComponent {
           if (this.hovered_object.hover_data.hovered) {
             if (e.shiftKey) {
               this.openPanel(LeftPanelDataType.UNITS_BY_TYPE, this.visibility, {
-                space: this.data.space, units: this.data.units.filter(
-                  (u: UnitByTypeData) => u.unit_id === (this.hovered_object as RisqUnit).unit_id)
+                space: this.data.space,
+                units: this.data.units.filter(
+                  (u: UnitByTypeData) => u.unit_id === (this.hovered_object as RisqUnit).unit_id
+                ),
               });
             } else {
               this.openPanel(LeftPanelDataType.UNIT, this.visibility, this.hovered_object);

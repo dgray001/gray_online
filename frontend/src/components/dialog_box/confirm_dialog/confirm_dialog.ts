@@ -1,4 +1,4 @@
-import {DwgDialogBox} from '../dialog_box';
+import { DwgDialogBox } from '../dialog_box';
 
 import html from './confirm_dialog.html';
 
@@ -33,7 +33,7 @@ export class DwgConfirmDialog extends DwgDialogBox<ConfirmDialogData> {
       question: this.getAttribute('question') ?? '',
       yes_text: this.getAttribute('yes_text') ?? 'yes',
       no_text: this.getAttribute('no_text') ?? 'no',
-    }
+    };
   }
 
   setData(data: ConfirmDialogData, parsed?: boolean) {

@@ -1,9 +1,9 @@
-import {ColorRGB} from '../../../../scripts/color_rgb';
-import {capitalize} from '../../../../scripts/util';
-import {GameBase, GamePlayer} from '../../data_models';
-import {Point2D} from '../../util/objects2d';
-import {resourceType} from './risq_resources';
-import {organizeZoneUnits} from './risq_zone';
+import { ColorRGB } from '../../../../scripts/color_rgb';
+import { capitalize } from '../../../../scripts/util';
+import type { GameBase, GamePlayer } from '../../data_models';
+import type { Point2D } from '../../util/objects2d';
+import { resourceType } from './risq_resources';
+import { organizeZoneUnits } from './risq_zone';
 
 /** Data describing a game of risq */
 export declare interface GameRisq {
@@ -305,7 +305,7 @@ export function serverToGameRisq(server_game: GameRisqFromServer): GameRisq {
     }
     spaces.push(row);
   }
-  const players = server_game.players.map(p => serverToRisqPlayer(p));
+  const players = server_game.players.map((p) => serverToRisqPlayer(p));
   const scores: GameRisqScoreEntry[] = [];
   for (const player of players) {
     scores.push({
@@ -340,7 +340,7 @@ export function serverToRisqPlayer(server_player: RisqPlayerFromServer): RisqPla
   if (!server_player) {
     return undefined;
   }
-  let color_split: number[] = server_player.color.split(',').map(c => parseInt(c.trim()));
+  let color_split: number[] = server_player.color.split(',').map((c) => parseInt(c.trim()));
   if (color_split.length !== 3) {
     console.error('Error parsing player color', server_player.color);
     color_split = [0, 0, 0];
@@ -348,8 +348,8 @@ export function serverToRisqPlayer(server_player: RisqPlayerFromServer): RisqPla
   const player: RisqPlayer = {
     player: server_player.player,
     resources: serverToRisqResources(server_player.resources),
-    buildings: new Map(server_player.buildings.map(b => [b.internal_id, serverToRisqBuilding(b)])),
-    units: new Map(server_player.units.map(u => [u.internal_id, serverToRisqUnit(u)])),
+    buildings: new Map(server_player.buildings.map((b) => [b.internal_id, serverToRisqBuilding(b)])),
+    units: new Map(server_player.units.map((u) => [u.internal_id, serverToRisqUnit(u)])),
     population_limit: server_player.population_limit,
     score: server_player.score,
     color: new ColorRGB(color_split[0], color_split[1], color_split[2]),
@@ -369,7 +369,7 @@ export function serverToRisqSpace(server_space: RisqSpaceFromServer): RisqSpace 
     num_military_units: 0,
     num_villager_units: 0,
     // purely frontend fields
-    center: {x: 0, y: 0},
+    center: { x: 0, y: 0 },
     hovered: false,
     hovered_neighbor: false,
     hovered_row: false,
@@ -387,8 +387,12 @@ export function serverToRisqSpace(server_space: RisqSpaceFromServer): RisqSpace 
     space.zones = zones;
   }
   if (!!server_space.resources) {
-    space.resources = new Map(server_space.resources.map(server_resource =>
-      [server_resource.internal_id, serverToRisqResource(server_resource)]));
+    space.resources = new Map(
+      server_space.resources.map((server_resource) => [
+        server_resource.internal_id,
+        serverToRisqResource(server_resource),
+      ])
+    );
     space.total_resources = new Map<RisqResourceType, number>();
     for (const resource of space.resources.values()) {
       const resource_type = resourceType(resource);
@@ -400,14 +404,19 @@ export function serverToRisqSpace(server_space: RisqSpaceFromServer): RisqSpace 
     }
   }
   if (!!server_space.buildings) {
-    space.buildings = new Map(server_space.buildings.map(server_building =>
-      [server_building.internal_id, serverToRisqBuilding(server_building)]));
+    space.buildings = new Map(
+      server_space.buildings.map((server_building) => [
+        server_building.internal_id,
+        serverToRisqBuilding(server_building),
+      ])
+    );
   }
   if (!!server_space.units) {
-    space.units = new Map(server_space.units.map(server_unit =>
-      [server_unit.internal_id, serverToRisqUnit(server_unit)]));
-    space.num_military_units = [...space.units.values()].filter(u => u.unit_id > 10).length;
-    space.num_villager_units = [...space.units.values()].filter(u => u.unit_id < 11).length;
+    space.units = new Map(
+      server_space.units.map((server_unit) => [server_unit.internal_id, serverToRisqUnit(server_unit)])
+    );
+    space.num_military_units = [...space.units.values()].filter((u) => u.unit_id > 10).length;
+    space.num_villager_units = [...space.units.values()].filter((u) => u.unit_id < 11).length;
   }
   return space;
 }
@@ -417,7 +426,9 @@ export function serverToRisqZone(server_zone: RisqZoneFromServer): RisqZone {
   if (!server_zone) {
     return undefined;
   }
-  const units = new Map(server_zone.units.map(server_unit => [server_unit.internal_id, serverToRisqUnit(server_unit)]));
+  const units = new Map(
+    server_zone.units.map((server_unit) => [server_unit.internal_id, serverToRisqUnit(server_unit)])
+  );
   const units_by_type = organizeZoneUnits(units);
   const economic_units_by_type = new Map<number, UnitByTypeData[]>();
   const military_units_by_type = new Map<number, UnitByTypeData[]>();
@@ -450,8 +461,14 @@ export function serverToRisqZone(server_zone: RisqZoneFromServer): RisqZone {
     units_by_type,
     economic_units_by_type,
     military_units_by_type,
-    military_units: [...units.values()].filter(u => u.unit_id > 10).sort((a, b) => a.unit_id - b.unit_id).map(u => u.internal_id),
-    economic_units: [...units.values()].filter(u => u.unit_id < 11).sort((a, b) => a.unit_id - b.unit_id).map(u => u.internal_id),
+    military_units: [...units.values()]
+      .filter((u) => u.unit_id > 10)
+      .sort((a, b) => a.unit_id - b.unit_id)
+      .map((u) => u.internal_id),
+    economic_units: [...units.values()]
+      .filter((u) => u.unit_id < 11)
+      .sort((a, b) => a.unit_id - b.unit_id)
+      .map((u) => u.internal_id),
   };
 }
 
@@ -460,7 +477,10 @@ export function serverToRisqBuilding(server_building: RisqBuildingFromServer): R
   if (!server_building) {
     return undefined;
   }
-  (server_building as RisqBuilding).hover_data = {ps: {x: 0, y: 0}, pe: {x: 0, y: 0}};
+  (server_building as RisqBuilding).hover_data = {
+    ps: { x: 0, y: 0 },
+    pe: { x: 0, y: 0 },
+  };
   return server_building as RisqBuilding;
 }
 
@@ -469,7 +489,10 @@ export function serverToRisqResource(server_resource: RisqResourceFromServer): R
   if (!server_resource) {
     return undefined;
   }
-  (server_resource as RisqResource).hover_data = {ps: {x: 0, y: 0}, pe: {x: 0, y: 0}};
+  (server_resource as RisqResource).hover_data = {
+    ps: { x: 0, y: 0 },
+    pe: { x: 0, y: 0 },
+  };
   return server_resource as RisqResource;
 }
 
@@ -478,12 +501,15 @@ export function serverToRisqUnit(server_unit: RisqUnitFromServer): RisqUnit {
   if (!server_unit) {
     return undefined;
   }
-  (server_unit as RisqUnit).hover_data = {ps: {x: 0, y: 0}, pe: {x: 0, y: 0}};
+  (server_unit as RisqUnit).hover_data = {
+    ps: { x: 0, y: 0 },
+    pe: { x: 0, y: 0 },
+  };
   return server_unit as RisqUnit;
 }
 
 /** Returns the space from the input index, if the space exists */
-export function getSpace(game: GameRisq, index: Point2D): RisqSpace|undefined {
+export function getSpace(game: GameRisq, index: Point2D): RisqSpace | undefined {
   if (index.x < 0 || index.x >= game.spaces.length) {
     return undefined;
   }

@@ -1,5 +1,5 @@
-import {DwgSquareButton} from '../../../util/canvas_components/button/square_button';
-import {DwgRisq} from '../risq';
+import { DwgSquareButton } from '../../../util/canvas_components/button/square_button';
+import type { DwgRisq } from '../risq';
 
 export class RisqLeftPanelButton extends DwgSquareButton {
   private risq: DwgRisq;
@@ -9,7 +9,7 @@ export class RisqLeftPanelButton extends DwgSquareButton {
       button_config: {
         only_left_click: true,
       },
-      p: {x: 0, y: 0},
+      p: { x: 0, y: 0 },
       s: 36,
       draw_config: {
         fill_style: 'transparent',

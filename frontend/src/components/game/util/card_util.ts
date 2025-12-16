@@ -1,4 +1,4 @@
-import {formatMultilineHtmlString} from "../../../scripts/util";
+import { formatMultilineHtmlString } from '../../../scripts/util';
 
 /** Data describing a standard card */
 export declare interface StandardCard {
@@ -16,7 +16,7 @@ export function sortStandardCards(a: StandardCard, b: StandardCard): number {
 
 /** Maps suit to its color */
 export function cardSuitToColor(suit: number): string {
-  switch(suit) {
+  switch (suit) {
     case 1:
     case 3:
       return 'Red';
@@ -30,7 +30,7 @@ export function cardSuitToColor(suit: number): string {
 
 /** Maps suit to its color */
 function cardSuitToRGB(suit: number): string {
-  switch(suit) {
+  switch (suit) {
     case 1:
     case 3:
       return 'rgb(223, 0, 0)';
@@ -44,7 +44,7 @@ function cardSuitToRGB(suit: number): string {
 
 /** Maps suits to their string name */
 export function cardSuitToName(suit: number): string {
-  switch(suit) {
+  switch (suit) {
     case 1:
       return 'Heart';
     case 2:
@@ -60,17 +60,17 @@ export function cardSuitToName(suit: number): string {
 
 /** Maps suits to their icon */
 function cardSuitToIcon(suit: number): string {
-  switch(suit) {
+  switch (suit) {
     case 1:
-      return "♥";
+      return '♥';
     case 2:
-      return "♣";
+      return '♣';
     case 3:
-      return "♦";
+      return '♦';
     case 4:
-      return "♠";
+      return '♠';
     default:
-      return "✪";
+      return '✪';
   }
 }
 
@@ -79,17 +79,17 @@ function cardNumberToName(card_number: number): string {
   if (card_number > 1 && card_number < 11) {
     return card_number.toString();
   }
-  switch(card_number) {
+  switch (card_number) {
     case 11:
-      return "Jack";
+      return 'Jack';
     case 12:
-      return "Queen";
+      return 'Queen';
     case 13:
-      return "King";
+      return 'King';
     case 14:
-      return "Ace";
+      return 'Ace';
     default:
-      return "error";
+      return 'error';
   }
 }
 
@@ -98,17 +98,17 @@ function cardNumberToIconName(card_number: number): string {
   if (card_number > 1 && card_number < 11) {
     return card_number.toString();
   }
-  switch(card_number) {
+  switch (card_number) {
     case 11:
-      return "J";
+      return 'J';
     case 12:
-      return "Q";
+      return 'Q';
     case 13:
-      return "K";
+      return 'K';
     case 14:
-      return "A";
+      return 'A';
     default:
-      return "?";
+      return '?';
   }
 }
 

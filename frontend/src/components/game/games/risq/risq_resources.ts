@@ -1,10 +1,11 @@
-import {RisqResource, RisqResourceType} from './risq_data';
+import type { RisqResource} from './risq_data';
+import { RisqResourceType } from './risq_data';
 
 /** Returns image path of the resource */
 export function resourceImage(resource: RisqResource): string {
   let filename = 'error';
   if (!!resource) {
-    switch(resource.resource_id) {
+    switch (resource.resource_id) {
       // food
       case 1:
         filename = 'forage_bush';
@@ -62,10 +63,10 @@ export function resourceType(resource: RisqResource): RisqResourceType {
 }
 
 /** Returns the image path of the resource type */
-export function resourceTypeImage(resource: RisqResource|RisqResourceType): string {
+export function resourceTypeImage(resource: RisqResource | RisqResourceType): string {
   let filename = 'error';
   const resource_type = typeof resource === 'number' ? resource : resourceType(resource);
-  switch(resource_type) {
+  switch (resource_type) {
     case RisqResourceType.FOOD:
       filename = 'food';
       break;

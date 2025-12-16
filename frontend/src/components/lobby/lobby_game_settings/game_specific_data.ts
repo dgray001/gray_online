@@ -1,14 +1,14 @@
-import {capitalize} from "../../../scripts/util";
-import {GameType} from "../data_models";
+import { capitalize } from '../../../scripts/util';
+import { GameType } from '../data_models';
 
 /** Returns a map of readable game settings */
-export function getReadableGameSettings(settings: object, game_type: GameType):[string, string][] {
+export function getReadableGameSettings(settings: object, game_type: GameType): [string, string][] {
   const m: [string, string][] = [];
   const add = (s1: string, s2: any) => {
     m.push([capitalize(s1.replace('_', ' ')), s2.toString()]);
   };
   for (const [setting_name, setting] of Object.entries(settings)) {
-    switch(game_type) {
+    switch (game_type) {
       case GameType.FIDDLESTICKS:
         if (setting_name === 'ai_players') {
           const ai_players = setting as AiPlayerFiddlesticks[];
@@ -40,5 +40,5 @@ export declare interface GameSettingsFiddlesticks {
 /** Deta describing the settings for an ai player in fiddlesticks */
 export declare interface AiPlayerFiddlesticks {
   nickname: string;
-  //model: AiPlayerFiddlesticksModel;
+  // model: AiPlayerFiddlesticksModel;
 }

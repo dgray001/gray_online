@@ -1,7 +1,7 @@
-import {capitalize, clickButton, until, untilTimer} from '../../../../../scripts/util';
-import {DwgElement} from '../../../../dwg_element';
+import { capitalize, clickButton, until, untilTimer } from '../../../../../scripts/util';
+import { DwgElement } from '../../../../dwg_element';
 import { createMessage } from '../../../../lobby/data_models';
-import {EuchrePlayer, EuchreTeam, GameEuchre} from '../euchre_data';
+import type { EuchrePlayer, EuchreTeam, GameEuchre } from '../euchre_data';
 
 import html from './euchre_player.html';
 
@@ -94,44 +94,93 @@ export class DwgEuchrePlayer extends DwgElement {
     until(() => this.fully_parsed).then(() => {
       this.bid_button.addEventListener('click', () => {
         this.disableButtons();
-        const update = {going_alone: this.going_alone.checked};
-        const game_update = createMessage(`player-${this.player.player.player_id}`,
-          'game-update', JSON.stringify(update), 'bid');
-        this.dispatchEvent(new CustomEvent('game_update', {detail: game_update, bubbles: true}));
+        const update = { going_alone: this.going_alone.checked };
+        const game_update = createMessage(
+          `player-${this.player.player.player_id}`,
+          'game-update',
+          JSON.stringify(update),
+          'bid'
+        );
+        this.dispatchEvent(
+          new CustomEvent('game_update', {
+            detail: game_update,
+            bubbles: true,
+          })
+        );
       });
       this.spades_button.addEventListener('click', () => {
         this.disableButtons();
-        const update = {going_alone: this.going_alone.checked, trump_suit: 4};
-        const game_update = createMessage(`player-${this.player.player.player_id}`,
-          'game-update', JSON.stringify(update), 'bid-choose-trump');
-        this.dispatchEvent(new CustomEvent('game_update', {detail: game_update, bubbles: true}));
+        const update = { going_alone: this.going_alone.checked, trump_suit: 4 };
+        const game_update = createMessage(
+          `player-${this.player.player.player_id}`,
+          'game-update',
+          JSON.stringify(update),
+          'bid-choose-trump'
+        );
+        this.dispatchEvent(
+          new CustomEvent('game_update', {
+            detail: game_update,
+            bubbles: true,
+          })
+        );
       });
       this.diamonds_button.addEventListener('click', () => {
         this.disableButtons();
-        const update = {going_alone: this.going_alone.checked, trump_suit: 1};
-        const game_update = createMessage(`player-${this.player.player.player_id}`,
-          'game-update', JSON.stringify(update), 'bid-choose-trump');
-        this.dispatchEvent(new CustomEvent('game_update', {detail: game_update, bubbles: true}));
+        const update = { going_alone: this.going_alone.checked, trump_suit: 1 };
+        const game_update = createMessage(
+          `player-${this.player.player.player_id}`,
+          'game-update',
+          JSON.stringify(update),
+          'bid-choose-trump'
+        );
+        this.dispatchEvent(
+          new CustomEvent('game_update', {
+            detail: game_update,
+            bubbles: true,
+          })
+        );
       });
       this.clubs_button.addEventListener('click', () => {
         this.disableButtons();
-        const update = {going_alone: this.going_alone.checked, trump_suit: 2};
-        const game_update = createMessage(`player-${this.player.player.player_id}`,
-          'game-update', JSON.stringify(update), 'bid-choose-trump');
-        this.dispatchEvent(new CustomEvent('game_update', {detail: game_update, bubbles: true}));
+        const update = { going_alone: this.going_alone.checked, trump_suit: 2 };
+        const game_update = createMessage(
+          `player-${this.player.player.player_id}`,
+          'game-update',
+          JSON.stringify(update),
+          'bid-choose-trump'
+        );
+        this.dispatchEvent(
+          new CustomEvent('game_update', {
+            detail: game_update,
+            bubbles: true,
+          })
+        );
       });
       this.hearts_button.addEventListener('click', () => {
         this.disableButtons();
-        const update = {going_alone: this.going_alone.checked, trump_suit: 3};
-        const game_update = createMessage(`player-${this.player.player.player_id}`,
-          'game-update', JSON.stringify(update), 'bid-choose-trump');
-        this.dispatchEvent(new CustomEvent('game_update', {detail: game_update, bubbles: true}));
+        const update = { going_alone: this.going_alone.checked, trump_suit: 3 };
+        const game_update = createMessage(
+          `player-${this.player.player.player_id}`,
+          'game-update',
+          JSON.stringify(update),
+          'bid-choose-trump'
+        );
+        this.dispatchEvent(
+          new CustomEvent('game_update', {
+            detail: game_update,
+            bubbles: true,
+          })
+        );
       });
       this.pass_button.addEventListener('click', () => {
         this.disableButtons();
-        const game_update = createMessage(`player-${this.player.player.player_id}`,
-          'game-update', '{}', 'pass');
-        this.dispatchEvent(new CustomEvent('game_update', {detail: game_update, bubbles: true}));
+        const game_update = createMessage(`player-${this.player.player.player_id}`, 'game-update', '{}', 'pass');
+        this.dispatchEvent(
+          new CustomEvent('game_update', {
+            detail: game_update,
+            bubbles: true,
+          })
+        );
       });
     });
   }
@@ -206,7 +255,7 @@ export class DwgEuchrePlayer extends DwgElement {
       this.clubs_button.classList.remove('disabled');
       this.hearts_button.disabled = false;
       this.hearts_button.classList.remove('disabled');
-      switch(card_face_up_suit) {
+      switch (card_face_up_suit) {
         case 1:
           this.diamonds_button.disabled = true;
           this.diamonds_button.classList.add('disabled');
@@ -259,7 +308,7 @@ export class DwgEuchrePlayer extends DwgElement {
     } else if (!!trump_suit_name) {
       this.bid_animation.innerText = `${trump_suit_name}s`;
     } else {
-      this.bid_animation.innerText = this.dealer ? 'I\'ll take it!' : 'Pick it up!';
+      this.bid_animation.innerText = this.dealer ? "I'll take it!" : 'Pick it up!';
     }
     this.bid_animation.style.transitionDuration = `${animation_time}ms`;
     this.bid_animation.classList.add('transition');

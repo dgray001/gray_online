@@ -1,6 +1,6 @@
-import {DwgElement} from '../dwg_element';
-import {clickButton} from '../../scripts/util';
-import {emoticons} from '../../data/emoji_data';
+import { DwgElement } from '../dwg_element';
+import { clickButton } from '../../scripts/util';
+import { emoticons } from '../../data/emoji_data';
 
 import html from './chatbox.html';
 import './chatbox.scss';
@@ -55,7 +55,7 @@ export class DwgChatbox extends DwgElement {
 
   scrolledUp(): boolean {
     const scroll_height = this.chat_container.scrollHeight - this.chat_container.offsetHeight;
-    return (scroll_height - this.chat_container.scrollTop) > DwgChatbox.adjust_scroll_limit;
+    return scroll_height - this.chat_container.scrollTop > DwgChatbox.adjust_scroll_limit;
   }
 
   adjustScroll() {
@@ -74,7 +74,7 @@ export class DwgChatbox extends DwgElement {
   new_chat_elements: HTMLDivElement[] = [];
   addChat(message: ChatMessage, you_sent = false) {
     const scrolled_up = this.scrolledUp();
-    const sender = (!!message.sender && message.sender !== SERVER_CHAT_NAME) ? `${message.sender}: ` : '';
+    const sender = !!message.sender && message.sender !== SERVER_CHAT_NAME ? `${message.sender}: ` : '';
     const new_element = document.createElement('div');
     if (message.sender === SERVER_CHAT_NAME || message.color === 'gray') {
       new_element.classList.add('color-gray');
@@ -97,7 +97,7 @@ export class DwgChatbox extends DwgElement {
     }
     setTimeout(() => {
       this.new_messages_button.classList.remove('new-message');
-      this.new_chat_elements.forEach(element => {
+      this.new_chat_elements.forEach((element) => {
         element.classList.remove('new-message');
       });
       this.classList.remove('new-message');
@@ -114,7 +114,7 @@ export class DwgChatbox extends DwgElement {
         chat_input.message = chat_input.message.replace(emoticon, emoji);
       }
     }
-    const chat_event = new CustomEvent('chat_sent', {detail: chat_input});
+    const chat_event = new CustomEvent('chat_sent', { detail: chat_input });
     this.dispatchEvent(chat_event);
   }
 

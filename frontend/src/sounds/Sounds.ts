@@ -1,4 +1,3 @@
-
 export class Sounds {
   private static instance: Sounds = new Sounds();
 

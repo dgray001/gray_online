@@ -1,9 +1,10 @@
-import {DwgElement} from '../../dwg_element';
-import {apiGet} from '../../../scripts/api';
-import {createLock} from '../../../scripts/util';
-import {GameSettings, LobbyRoom, LobbyRoomFromServer, LobbyUser, serverResponseToRoom} from '../data_models';
+import { DwgElement } from '../../dwg_element';
+import { apiGet } from '../../../scripts/api';
+import { createLock } from '../../../scripts/util';
+import type { GameSettings, LobbyRoom, LobbyRoomFromServer, LobbyUser} from '../data_models';
+import { serverResponseToRoom } from '../data_models';
 
-import {DwgRoomSelector} from './room_selector/room_selector';
+import type { DwgRoomSelector } from './room_selector/room_selector';
 import html from './lobby_rooms.html';
 
 import './lobby_rooms.scss';
@@ -22,8 +23,8 @@ interface RoomData {
 }
 
 export class DwgLobbyRooms extends DwgElement {
-  private loading_message: HTMLDivElement;
-  private room_container: HTMLDivElement;
+  private loading_message!: HTMLDivElement;
+  private room_container!: HTMLDivElement;
 
   lock = createLock();
   refreshing_rooms = false;
@@ -32,8 +33,7 @@ export class DwgLobbyRooms extends DwgElement {
   constructor() {
     super();
     this.htmlString = html;
-    this.configureElement('loading_message');
-    this.configureElement('room_container');
+    this.configureElement('loading_message', 'room_container');
   }
 
   protected override parsedCallback(): void {}
@@ -88,11 +88,13 @@ export class DwgLobbyRooms extends DwgElement {
       el.id = `room-selector-${room.room_id}`;
       el.updateRoom(room);
       el.addEventListener('join_room', (e: CustomEvent<boolean>) => {
-        const join_data = {'detail': {room_id: room.room_id, join_as_player: e.detail ?? true}};
+        const join_data = {
+          detail: { room_id: room.room_id, join_as_player: e.detail ?? true },
+        };
         this.dispatchEvent(new CustomEvent<JoinRoomData>('join_room', join_data));
       });
       this.room_container.appendChild(el);
-      this.rooms.set(room.room_id, {data: room, el, refreshed: true});
+      this.rooms.set(room.room_id, { data: room, el, refreshed: true });
     }
   }
 
@@ -111,10 +113,10 @@ export class DwgLobbyRooms extends DwgElement {
         removeIds.push(room.data.room_id);
       }
     }
-    removeIds.forEach(id => this.removeRoom(id));
+    removeIds.forEach((id) => this.removeRoom(id));
   }
 
-  getRoom(room_id: number): RoomData {
+  getRoom(room_id: number): RoomData | undefined {
     return this.rooms.get(room_id);
   }
 

@@ -1,13 +1,15 @@
-import {DwgElement} from '../dwg_element';
-import {clickButton} from '../../scripts/util';
-import {ChatMessage, DwgChatbox, SERVER_CHAT_NAME} from '../chatbox/chatbox';
-import {getUrlParam, removeUrlParam, setUrlParam} from '../../scripts/url';
+import { DwgElement } from '../dwg_element';
+import { clickButton } from '../../scripts/util';
+import type { ChatMessage, DwgChatbox} from '../chatbox/chatbox';
+import { SERVER_CHAT_NAME } from '../chatbox/chatbox';
+import { getUrlParam, removeUrlParam, setUrlParam } from '../../scripts/url';
 
-import {DwgLobbyUsers} from './lobby_users/lobby_users';
-import {DwgLobbyRooms, JoinRoomData} from './lobby_rooms/lobby_rooms';
-import {DwgLobbyRoom} from './lobby_room/lobby_room';
-import {ConnectionMetadata, ServerMessage, LobbyRoom, createMessage} from './data_models';
-import {handleMessage} from './message_handler';
+import type { DwgLobbyUsers } from './lobby_users/lobby_users';
+import type { DwgLobbyRooms, JoinRoomData } from './lobby_rooms/lobby_rooms';
+import type { DwgLobbyRoom } from './lobby_room/lobby_room';
+import type { ConnectionMetadata, ServerMessage, LobbyRoom} from './data_models';
+import { createMessage } from './data_models';
+import { handleMessage } from './message_handler';
 import html from './lobby.html';
 
 import './lobby.scss';
@@ -36,7 +38,10 @@ export class DwgLobby extends DwgElement {
   private lobby_users_backdrop: HTMLDivElement;
 
   private socket: WebSocket;
-  private connection_metadata: ConnectionMetadata = {nickname: "Anonymous", ping: 0};
+  private connection_metadata: ConnectionMetadata = {
+    nickname: 'Anonymous',
+    ping: 0,
+  };
   private entered_game = false;
   private exited_game = false;
 
@@ -73,44 +78,69 @@ export class DwgLobby extends DwgElement {
     clickButton(this.refresh_lobby_button, async () => {
       await this.refreshLobbyRooms(false, true);
     });
-    clickButton(this.create_room_button, async () => {
-      this.socket.send(createMessage(`client-${this.connection_metadata.client_id}`, 'room-create'))
-    }, {loading_text: 'Creating Room ...', re_enable_button: false});
+    clickButton(
+      this.create_room_button,
+      async () => {
+        this.socket.send(createMessage(`client-${this.connection_metadata.client_id}`, 'room-create'));
+      },
+      { loading_text: 'Creating Room ...', re_enable_button: false }
+    );
     this.lobby_rooms.addEventListener('join_room', async (e: CustomEvent<JoinRoomData>) => {
-      this.socket.send(createMessage(
-        `client-${this.connection_metadata.client_id}`,
-        e.detail.join_as_player ? 'room-join-player' : 'room-join-viewer',
-        '',
-        e.detail.room_id.toString(),
-      ));
+      this.socket.send(
+        createMessage(
+          `client-${this.connection_metadata.client_id}`,
+          e.detail.join_as_player ? 'room-join-player' : 'room-join-viewer',
+          '',
+          e.detail.room_id.toString()
+        )
+      );
     });
     this.chatbox.addEventListener('chat_sent', (e: CustomEvent<ChatMessage>) => {
-      this.sendChatMessage(this.chatbox, 'lobby-chat', {...e.detail,
-        sender: `client-${this.connection_metadata.client_id}`}, this.connection_metadata.nickname);
+      this.sendChatMessage(
+        this.chatbox,
+        'lobby-chat',
+        {
+          ...e.detail,
+          sender: `client-${this.connection_metadata.client_id}`,
+        },
+        this.connection_metadata.nickname
+      );
     });
     this.lobby_room.addEventListener('chat_sent', (e: CustomEvent<ChatMessage>) => {
       const message = e.detail;
       if (message.message.startsWith('\\l')) {
         message.message = message.message.slice(2).trim();
-        this.sendChatMessage(this.chatbox, 'lobby-chat', {...e.detail,
-          sender: `client-${this.connection_metadata.client_id}`}, this.connection_metadata.nickname);
+        this.sendChatMessage(
+          this.chatbox,
+          'lobby-chat',
+          {
+            ...e.detail,
+            sender: `client-${this.connection_metadata.client_id}`,
+          },
+          this.connection_metadata.nickname
+        );
       } else if (message.message.startsWith('\\u')) {
         message.message = message.message.slice(2).trim(); // TODO: implement
       } else if (message.message.startsWith('\\g')) {
         message.message = message.message.slice(2).trim();
         const room = this.lobby_room.getRoom();
         if (!!room.game_id) {
-          this.socket.send(createMessage(
-            message.sender ?? `game-${this.connection_metadata.client_id}`,
-            'game-chat',
-            message.message,
-            message.color,
-          ));
+          this.socket.send(
+            createMessage(
+              message.sender ?? `game-${this.connection_metadata.client_id}`,
+              'game-chat',
+              message.message,
+              message.color
+            )
+          );
         } else {
-          this.lobby_room.getChatbox().addChat({
-            message: 'Cannot send message to unlaunched game',
-            color: 'gray',
-          }, true);
+          this.lobby_room.getChatbox().addChat(
+            {
+              message: 'Cannot send message to unlaunched game',
+              color: 'gray',
+            },
+            true
+          );
         }
       } else {
         if (message.message.startsWith('\\r')) {
@@ -124,66 +154,80 @@ export class DwgLobby extends DwgElement {
       }
     });
     this.lobby_room.addEventListener('leave_room', async () => {
-      this.socket.send(createMessage(
-        `client-${this.connection_metadata.client_id}`,
-        'room-leave',
-        '',
-        this.connection_metadata.room_id?.toString(),
-      ));
+      this.socket.send(
+        createMessage(
+          `client-${this.connection_metadata.client_id}`,
+          'room-leave',
+          '',
+          this.connection_metadata.room_id?.toString()
+        )
+      );
     });
     this.lobby_room.addEventListener('rename_room', (e: CustomEvent<string>) => {
-      this.socket.send(createMessage(
-        `client-${this.connection_metadata.client_id}`,
-        'room-rename',
-        e.detail,
-        this.connection_metadata.room_id?.toString(),
-      ));
+      this.socket.send(
+        createMessage(
+          `client-${this.connection_metadata.client_id}`,
+          'room-rename',
+          e.detail,
+          this.connection_metadata.room_id?.toString()
+        )
+      );
     });
     this.lobby_room.addEventListener('kick_player', (e: CustomEvent<number>) => {
-      this.socket.send(createMessage(
-        `client-${this.connection_metadata.client_id}`,
-        'room-kick',
-        e.detail.toString(),
-        this.connection_metadata.room_id?.toString(),
-      ));
+      this.socket.send(
+        createMessage(
+          `client-${this.connection_metadata.client_id}`,
+          'room-kick',
+          e.detail.toString(),
+          this.connection_metadata.room_id?.toString()
+        )
+      );
     });
     this.lobby_room.addEventListener('viewer_player', (e: CustomEvent<number>) => {
-      this.socket.send(createMessage(
-        `client-${this.connection_metadata.client_id}`,
-        'room-set-viewer',
-        e.detail.toString(),
-        this.connection_metadata.room_id?.toString(),
-      ));
+      this.socket.send(
+        createMessage(
+          `client-${this.connection_metadata.client_id}`,
+          'room-set-viewer',
+          e.detail.toString(),
+          this.connection_metadata.room_id?.toString()
+        )
+      );
     });
     this.lobby_room.addEventListener('player_player', (e: CustomEvent<number>) => {
-      this.socket.send(createMessage(
-        `client-${this.connection_metadata.client_id}`,
-        'room-set-player',
-        e.detail.toString(),
-        this.connection_metadata.room_id?.toString(),
-      ));
+      this.socket.send(
+        createMessage(
+          `client-${this.connection_metadata.client_id}`,
+          'room-set-player',
+          e.detail.toString(),
+          this.connection_metadata.room_id?.toString()
+        )
+      );
     });
     this.lobby_room.addEventListener('promote_player', (e: CustomEvent<number>) => {
-      this.socket.send(createMessage(
-        `client-${this.connection_metadata.client_id}`,
-        'room-promote',
-        e.detail.toString(),
-        this.connection_metadata.room_id?.toString(),
-      ));
+      this.socket.send(
+        createMessage(
+          `client-${this.connection_metadata.client_id}`,
+          'room-promote',
+          e.detail.toString(),
+          this.connection_metadata.room_id?.toString()
+        )
+      );
     });
     this.lobby_room.addEventListener('save_settings', (e: CustomEvent<string>) => {
       this.socket.send(e.detail);
     });
     this.lobby_room.addEventListener('launch_game', () => {
-      this.socket.send(createMessage(
-        `client-${this.connection_metadata.client_id}`,
-        'room-launch',
-        '',
-        this.connection_metadata.room_id?.toString(),
-      ));
+      this.socket.send(
+        createMessage(
+          `client-${this.connection_metadata.client_id}`,
+          'room-launch',
+          '',
+          this.connection_metadata.room_id?.toString()
+        )
+      );
     });
     this.lobby_room.addEventListener('rejoin_game', () => {
-      this.dispatchEvent(new CustomEvent('rejoin_game', {detail: this.lobby_room.getRoom()}));
+      this.dispatchEvent(new CustomEvent('rejoin_game', { detail: this.lobby_room.getRoom() }));
     });
     this.lobby_users_button.addEventListener('click', () => {
       this.lobby_users.classList.toggle('show');
@@ -227,7 +271,7 @@ export class DwgLobby extends DwgElement {
 
   setSocket(new_socket: WebSocket) {
     if (!!this.socket) {
-      this.socket.close(3000, "opening new connection");
+      this.socket.close(3000, 'opening new connection');
     }
     this.waitingOnConnectedTimes = DwgLobby.DEFAULT_CONNECTION_TIMES;
     this.socket = new_socket;
@@ -235,8 +279,8 @@ export class DwgLobby extends DwgElement {
       try {
         const message = JSON.parse(m.data) as ServerMessage;
         handleMessage(this, message);
-      } catch(e) {
-        console.error("Error parsing message: ", m, e)
+      } catch (e) {
+        console.error('Error parsing message: ', m, e);
       }
     });
   }
@@ -268,17 +312,16 @@ export class DwgLobby extends DwgElement {
 
   async refreshLobbyRooms(check_url = false, show_load_message = false) {
     const current_room = await this.lobby_rooms.refreshRooms(
-      this.connection_metadata.client_id ?? -1, show_load_message);
+      this.connection_metadata.client_id ?? -1,
+      show_load_message
+    );
     if (check_url) {
       const url_room_id = parseInt(getUrlParam(URL_PARAM_ROOM));
       const room = this.lobby_rooms.getRoom(url_room_id)?.data;
       if (!!room && current_room?.room_id !== room.room_id) {
-        this.socket.send(createMessage(
-          `client-${this.connection_metadata.client_id}`,
-          'room-join',
-          '',
-          url_room_id.toString(),
-        ));
+        this.socket.send(
+          createMessage(`client-${this.connection_metadata.client_id}`, 'room-join', '', url_room_id.toString())
+        );
         return;
       } else {
         removeUrlParam(URL_PARAM_ROOM);
@@ -289,7 +332,12 @@ export class DwgLobby extends DwgElement {
     } else if (!current_room) {
       this.leaveRoom();
     } else if (!this.exited_game) {
-      this.dispatchEvent(new CustomEvent('refresh_game_lobby', {detail: current_room, bubbles: true}));
+      this.dispatchEvent(
+        new CustomEvent('refresh_game_lobby', {
+          detail: current_room,
+          bubbles: true,
+        })
+      );
     }
   }
 
@@ -299,7 +347,7 @@ export class DwgLobby extends DwgElement {
     this.lobby_room_wrapper.classList.add('show');
     setUrlParam(URL_PARAM_ROOM, room.room_id.toString());
     if (!room.game_id) {
-       // reset when entering new room
+      // reset when entering new room
       this.exited_game = false;
       this.entered_game = false;
     }
@@ -321,27 +369,28 @@ export class DwgLobby extends DwgElement {
     message.message = message.message.trim();
     try {
       if (this.socketActive()) {
-        this.socket.send(createMessage(
-          message.sender,
-          message_kind,
-          message.message,
-          message.color,
-        ));
+        this.socket.send(createMessage(message.sender, message_kind, message.message, message.color));
         message_sent = true;
       }
       if (message_sent) {
-        chatbox.addChat({...message, sender: display_sender}, true);
+        chatbox.addChat({ ...message, sender: display_sender }, true);
       } else {
-        chatbox.addChat({
-          message: `Message unable to be sent: "${message.message}"`,
-          color: 'gray',
-        }, true);
+        chatbox.addChat(
+          {
+            message: `Message unable to be sent: "${message.message}"`,
+            color: 'gray',
+          },
+          true
+        );
       }
-    } catch(e) {
-      chatbox.addChat({
-        message: 'Error trying to send message',
-        color: 'gray',
-      }, true);
+    } catch (e) {
+      chatbox.addChat(
+        {
+          message: 'Error trying to send message',
+          color: 'gray',
+        },
+        true
+      );
     }
   }
 
@@ -381,12 +430,14 @@ export class DwgLobby extends DwgElement {
     this.lobby_users.refreshUsers();
     this.refreshLobbyRooms();
     if (this.lobby_room_wrapper.classList.contains('show')) {
-      this.socket.send(createMessage(
-        `client-${this.connection_metadata.client_id}`,
-        'room-refresh',
-        '',
-        (this.lobby_room.getRoom()?.room_id ?? 0).toString(),
-      ));
+      this.socket.send(
+        createMessage(
+          `client-${this.connection_metadata.client_id}`,
+          'room-refresh',
+          '',
+          (this.lobby_room.getRoom()?.room_id ?? 0).toString()
+        )
+      );
     }
   }
 }

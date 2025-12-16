@@ -1,5 +1,5 @@
-import {DwgElement} from '../dwg_element';
-import {until} from '../../scripts/util';
+import { DwgElement } from '../dwg_element';
+import { until } from '../../scripts/util';
 
 import html from './dialog_box.html';
 

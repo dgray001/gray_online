@@ -1,15 +1,34 @@
-import {DwgElement} from '../../../dwg_element';
-import {GameComponent, UpdateMessage} from '../../data_models';
-import {DwgCardHand} from '../../util/card_hand/card_hand';
-import {createMessage} from '../../../lobby/data_models';
-import {clientOnMobile, until, untilTimer} from '../../../../scripts/util';
-import {modulus} from '../../../../scripts/math';
-import {StandardCard, cardSuitToColor, cardSuitToName, cardToIcon, cardToImagePath, cardToName} from '../../util/card_util';
-import {DwgGame, messageDialog} from '../../game';
+import { DwgElement } from '../../../dwg_element';
+import type { GameComponent, UpdateMessage } from '../../data_models';
+import type { DwgCardHand } from '../../util/card_hand/card_hand';
+import { createMessage } from '../../../lobby/data_models';
+import { clientOnMobile, until, untilTimer } from '../../../../scripts/util';
+import { modulus } from '../../../../scripts/math';
+import type {
+  StandardCard} from '../../util/card_util';
+import {
+  cardSuitToColor,
+  cardSuitToName,
+  cardToIcon,
+  cardToImagePath,
+  cardToName,
+} from '../../util/card_util';
+import type { DwgGame} from '../../game';
+import { messageDialog } from '../../game';
 
 import html from './euchre.html';
-import {DwgEuchrePlayer} from './euchre_player/euchre_player';
-import {BidChooseTrump, DealRound, DealerSubstitutesCard, GameEuchre, PlayCard, PlayerBid, PlayerPass, getPlayersTeam} from './euchre_data';
+import type { DwgEuchrePlayer } from './euchre_player/euchre_player';
+import type {
+  BidChooseTrump,
+  DealRound,
+  DealerSubstitutesCard,
+  GameEuchre,
+  PlayCard,
+  PlayerBid,
+  PlayerPass} from './euchre_data';
+import {
+  getPlayersTeam,
+} from './euchre_data';
 
 import './euchre.scss';
 import './euchre_player/euchre_player';
@@ -51,9 +70,18 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     this.status_container.innerText = 'Starting game ...';
     this.players_cards.addEventListener('play_card', (e: CustomEvent<number>) => {
       // TODO: check if card is playable
-      const game_update = createMessage(`player-${this.player_id}`, 'game-update',
-        `{"index":${e.detail}}`, this.game.dealer_substituting_card ? 'dealer-substitutes-card' : 'play-card');
-      this.dispatchEvent(new CustomEvent('game_update', {detail: game_update, 'bubbles': true}));
+      const game_update = createMessage(
+        `player-${this.player_id}`,
+        'game-update',
+        `{"index":${e.detail}}`,
+        this.game.dealer_substituting_card ? 'dealer-substitutes-card' : 'play-card'
+      );
+      this.dispatchEvent(
+        new CustomEvent('game_update', {
+          detail: game_update,
+          bubbles: true,
+        })
+      );
     });
     if (clientOnMobile()) {
       this.table_container.style.setProperty('background-image', 'url(/images/card_table400.png)');
@@ -85,11 +113,14 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     this.trick_cards.style.setProperty('--num-players', this.player_els.length.toString());
     if (game.game_base.game_ended) {
       // TODO: show ended game state
-    }
-    else if (game.game_base.game_started) {
+    } else if (game.game_base.game_started) {
       this.round_number.innerText = game.round.toString();
       for (const [player_id, player_el] of this.player_els.entries()) {
-        player_el.gameStarted(game, !game.game_base.game_ended && player_id === game.turn, !game.game_base.game_ended && player_id === game.dealer);
+        player_el.gameStarted(
+          game,
+          !game.game_base.game_ended && player_id === game.turn,
+          !game.game_base.game_ended && player_id === game.dealer
+        );
         if (this.player_id == player_id && !game.game_base.game_ended) {
           this.players_cards.setCards(game.players[player_id].cards, game.players[player_id].cards_played);
           if (!game.bidding && this.game.turn === this.player_id) {
@@ -129,7 +160,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
 
   async gameUpdate(update: UpdateMessage): Promise<void> {
     try {
-      switch(update.kind) {
+      switch (update.kind) {
         case 'deal-round':
           const dealRoundData = update.content as DealRound;
           await this.applyDealRound(dealRoundData);
@@ -182,7 +213,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
           console.log(`Unknown game update type ${update.kind}`);
           break;
       }
-    } catch(e) {
+    } catch (e) {
       console.log(`Error during game update ${JSON.stringify(update)}: ${e}`);
     }
   }
@@ -235,7 +266,11 @@ export class DwgEuchre extends DwgElement implements GameComponent {
       this.setBackOfCard(); // TODO: animation to flip over
     }
     this.game.turn = (this.game.turn + 1) % this.game.players.length;
-    this.player_els[this.game.turn].bidding(this.game.bidding_choosing_trump, this.game.turn === this.game.dealer, this.game.card_face_up.suit);
+    this.player_els[this.game.turn].bidding(
+      this.game.bidding_choosing_trump,
+      this.game.turn === this.game.dealer,
+      this.game.card_face_up.suit
+    );
     const bidding_text = this.game.bidding ? 'Bidding' : 'Choosing Trump';
     this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} ${bidding_text}`;
   }
@@ -345,7 +380,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     this.status_container.innerText = '';
     this.game.turn++;
     if (this.resolveTurn()) {
-      this.game.trick.push({number: 0, suit: 0});
+      this.game.trick.push({ number: 0, suit: 0 });
     }
     if (this.game.turn !== this.game.trick_leader) {
       this.setPlaying();
@@ -391,7 +426,9 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     this.trick_card_els = [];
     this.game.trick = [];
     this.trick_number.innerText = '-';
-    console.log(`Trick won by ${this.game.players[this.game.turn].player.nickname} with the ${cardToName(winning_card)}`);
+    console.log(
+      `Trick won by ${this.game.players[this.game.turn].player.nickname} with the ${cardToName(winning_card)}`
+    );
     if (this.current_trick < 5) {
       this.current_trick++;
       this.trick_number.innerText = this.current_trick.toString();
@@ -452,7 +489,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     if (this.game.turn >= this.game.players.length) {
       this.game.turn -= this.game.players.length;
     }
-    if (this.game.going_alone && (Math.round(Math.abs(this.game.turn - this.game.player_bid)) === 2)) {
+    if (this.game.going_alone && Math.round(Math.abs(this.game.turn - this.game.player_bid)) === 2) {
       this.game.turn++;
       if (this.game.turn >= this.game.players.length) {
         this.game.turn -= this.game.players.length;
@@ -463,7 +500,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
   }
 
   private cardSuit(card: StandardCard): number {
-    if ((cardSuitToColor(card.suit) === cardSuitToColor(this.game.trump_suit)) && card.number == 11) {
+    if (cardSuitToColor(card.suit) === cardSuitToColor(this.game.trump_suit) && card.number == 11) {
       return this.game.trump_suit;
     }
     return card.suit;
@@ -493,7 +530,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
       }
       let winner_text = 'The winners are: ' + winners.join(', ');
       winner_text += `\nWith ${this.game.teams[team_id].score} points`;
-      messageDialog.call(this, {message: winner_text});
+      messageDialog.call(this, { message: winner_text });
       return true;
     }
     return false;

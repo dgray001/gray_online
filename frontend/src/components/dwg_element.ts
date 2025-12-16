@@ -1,4 +1,4 @@
-import {until} from '../scripts/util';
+import { until } from '../scripts/util';
 
 import './dwg_element.scss';
 
@@ -27,7 +27,7 @@ export abstract class DwgElement extends HTMLElement {
     let parsed = true;
     for (const elMetadata of this.elsMetadata) {
       // @ts-ignore -> check value in subclass
-      let el: HTMLElement|null = elMetadata.found_element ? this[elMetadata.name] : null;
+      let el: HTMLElement | null = elMetadata.found_element ? this[elMetadata.name] : null;
       if (!elMetadata.found_element) {
         el = this.querySelector(`#${elMetadata.element_id}`);
         if (!!el) {
@@ -55,7 +55,7 @@ export abstract class DwgElement extends HTMLElement {
     if (!element_id) {
       element_id = name.replace(/_/g, '-');
     }
-    this.elsMetadata.push({element_id, name} as ElementMetadata);
+    this.elsMetadata.push({ element_id, name } as ElementMetadata);
   }
 
   protected configureElements(...names: string[]) {

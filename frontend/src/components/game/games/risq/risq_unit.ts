@@ -1,4 +1,4 @@
-import {RisqUnit} from "./risq_data";
+import type { RisqUnit } from './risq_data';
 
 /** Fill style for healthbar background rect */
 export const UNIT_HEALTHBAR_COLOR_BACKGROUND = 'black';
@@ -9,7 +9,7 @@ export const UNIT_HEALTHBAR_COLOR_HEALTH = 'rgb(100, 250, 100)';
 /** Returns image path of the unit */
 export function unitImage(unit: RisqUnit): string {
   let filename = '';
-  switch(unit.unit_id) {
+  switch (unit.unit_id) {
     case 1:
       filename = 'villager';
       break;

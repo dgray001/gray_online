@@ -1,4 +1,3 @@
-
 /** Interface describing messages sent from the server to the lobby */
 export declare interface ServerMessage {
   sender: string;
@@ -9,7 +8,7 @@ export declare interface ServerMessage {
 
 /** Function to convert string data into a lobby message object */
 export function createMessage(sender: string, kind: string, content?: string, data?: string): string {
-  return JSON.stringify({sender, kind, content, data} as ServerMessage);
+  return JSON.stringify({ sender, kind, content, data } as ServerMessage);
 }
 
 /** Interface describing the connection between the frontend and the server */
@@ -24,7 +23,7 @@ export declare interface ConnectionMetadata {
 export declare interface LobbyUser {
   client_id: number;
   nickname: string;
-  ping: number,
+  ping: number;
   room_id?: number;
 }
 
@@ -43,7 +42,7 @@ export function serverResponseToUser(server_response: LobbyUserFromServer): Lobb
     nickname: server_response.nickname,
     ping: parseInt(server_response.ping),
     room_id: parseInt(server_response.room_id) ?? undefined,
-  }
+  };
 }
 
 /** Enum for possible games the lobby can launch */
@@ -69,7 +68,7 @@ export function defaultGameSettings(): GameSettings {
     game_type: GameType.UNSPECIFIED,
     max_players: 8,
     max_viewers: 16,
-  }
+  };
 }
 
 /** Settings object for lobby room */
@@ -87,7 +86,7 @@ export function serverResponseToGameSettings(server_response: GameSettingsFromSe
     max_players: parseInt(server_response.max_players),
     max_viewers: parseInt(server_response.max_viewers),
     game_specific_settings: server_response.game_specific_settings,
-  }
+  };
 }
 
 /** Object describing lobby room data */
@@ -121,15 +120,19 @@ export function serverResponseToRoom(server_response: LobbyRoomFromServer): Lobb
     room_name: server_response.room_name,
     room_description: server_response.room_description,
     host: serverResponseToUser(server_response.host),
-    players: new Map(server_response.players.map((server_user) => {
-      const user = serverResponseToUser(server_user);
-      return [user.client_id, user];
-    })),
-    viewers: new Map(server_response.viewers.map((server_user) => {
-      const user = serverResponseToUser(server_user);
-      return [user.client_id, user];
-    })),
+    players: new Map(
+      server_response.players.map((server_user) => {
+        const user = serverResponseToUser(server_user);
+        return [user.client_id, user];
+      })
+    ),
+    viewers: new Map(
+      server_response.viewers.map((server_user) => {
+        const user = serverResponseToUser(server_user);
+        return [user.client_id, user];
+      })
+    ),
     game_settings: serverResponseToGameSettings(server_response.game_settings),
     game_id: server_response.game_id ? parseInt(server_response.game_id) : undefined,
-  }
+  };
 }

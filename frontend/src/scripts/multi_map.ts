@@ -11,7 +11,7 @@ export class MultiMap<K, V> {
     }
   }
 
-  public get(keyname: string, key: K): V|undefined {
+  public get(keyname: string, key: K): V | undefined {
     return this.maps.get(keyname)?.get(key);
   }
 
@@ -21,9 +21,9 @@ export class MultiMap<K, V> {
       return false;
     }
     for (const [i, keyname] of this.keynames.entries()) {
-      this.maps.get(keyname).set(keys[i], value);
+      this.maps.get(keyname)?.set(keys[i], value); // TODO: what if doesn't exist
     }
-    this._size = this.maps.get(this.keynames[0]).size;
+    this._size = this.maps.get(this.keynames[0])!.size; // TODO: what if doesn't exist
     return true;
   }
 
@@ -34,17 +34,17 @@ export class MultiMap<K, V> {
     }
     let deleted = true;
     for (const [i, keyname] of this.keynames.entries()) {
-      if (!this.maps.get(keyname).delete(keys[i])) {
+      if (!this.maps.get(keyname)?.delete(keys[i])) { // TODO: what if doesn't exist
         deleted = false;
       }
     }
-    this._size = this.maps.get(this.keynames[0]).size;
+    this._size = this.maps.get(this.keynames[0])!.size; // TODO: what if doesn't exist
     return deleted;
   }
 
   public clear() {
-    for (const [i, keyname] of this.keynames.entries()) {
-      this.maps.get(keyname).clear();
+    for (const [_, keyname] of this.keynames.entries()) {
+      this.maps.get(keyname)?.clear(); // TODO: what if doesn't exist
     }
     this._size = 0;
   }
@@ -57,13 +57,13 @@ export class MultiMap<K, V> {
     if (this.maps.has(keyname)) {
       return [].values();
     }
-    return this.maps.get(keyname)?.keys();
+    return this.maps.get(keyname)!.keys(); // TODO: what if doesn't exist
   }
 
   public values(): IterableIterator<V> {
     if (this._size === 0) {
       return [].values();
     }
-    return this.maps.get(this.keynames[0]).values();
+    return this.maps.get(this.keynames[0])!.values(); // TODO: what if doesn't exist
   }
 }

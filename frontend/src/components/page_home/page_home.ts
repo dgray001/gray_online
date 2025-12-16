@@ -1,11 +1,11 @@
-import {DwgElement} from '../dwg_element';
-import {DwgLobby} from '../lobby/lobby';
-import {ConnectData, DwgLobbyConnector} from '../lobby/lobby_connector/lobby_connector';
-import {DwgGame} from '../game/game';
-import {LobbyRoom} from '../lobby/data_models';
-import {websocketPath} from '../../scripts/api';
-import {clientOnMobile} from '../../scripts/util';
-import {MessageDialogData} from '../dialog_box/message_dialog/message_dialog';
+import { DwgElement } from '../dwg_element';
+import type { DwgLobby } from '../lobby/lobby';
+import type { ConnectData, DwgLobbyConnector } from '../lobby/lobby_connector/lobby_connector';
+import type { DwgGame } from '../game/game';
+import type { LobbyRoom } from '../lobby/data_models';
+import { websocketPath } from '../../scripts/api';
+import { clientOnMobile } from '../../scripts/util';
+import type { MessageDialogData } from '../dialog_box/message_dialog/message_dialog';
 
 import html from './page_home.html';
 
@@ -15,18 +15,16 @@ import '../game/game';
 import '../lobby/lobby_connector/lobby_connector';
 
 export class DwgPageHome extends DwgElement {
-  private lobby: DwgLobby;
-  private game: DwgGame;
-  private lobby_connector: DwgLobbyConnector;
+  private lobby!: DwgLobby;
+  private game!: DwgGame;
+  private lobby_connector!: DwgLobbyConnector;
 
   private client_on_mobile = false;
 
   constructor() {
     super();
     this.htmlString = html;
-    this.configureElement('lobby');
-    this.configureElement('game');
-    this.configureElement('lobby_connector');
+    this.configureElements('lobby', 'game', 'lobby_connector');
   }
 
   protected override parsedCallback(): void {
@@ -35,14 +33,15 @@ export class DwgPageHome extends DwgElement {
       document.body.classList.add('mobile');
     }
     this.lobby_connector.addEventListener('connect', (e: CustomEvent<ConnectData>) => {
-      const socket = e.detail.try_reconnect ?
-        new WebSocket(`${websocketPath()}/reconnect/${e.detail.nickname}/${e.detail.client_id}`) :
-        new WebSocket(`${websocketPath()}/connect/${e.detail.nickname}`);
+      const socket = e.detail.try_reconnect
+        ? new WebSocket(`${websocketPath()}/reconnect/${e.detail.nickname}/${e.detail.client_id}`)
+        : new WebSocket(`${websocketPath()}/connect/${e.detail.nickname}`);
       let never_connected = true;
       socket.addEventListener('error', (e) => {
         console.error(e);
-        this.tryConnectionAgain(`${never_connected ? 'Could not connect' :
-          'Connection was lost'}. Check your connection and try again.`);
+        this.tryConnectionAgain(
+          `${never_connected ? 'Could not connect' : 'Connection was lost'}. Check your connection and try again.`
+        );
       });
       socket.addEventListener('open', () => {
         never_connected = false;

@@ -1,4 +1,4 @@
-import {GameBase, GamePlayer} from '../../data_models';
+import type { GameBase, GamePlayer } from '../../data_models';
 
 /** Data describing a test game */
 export declare interface GameTestGame {

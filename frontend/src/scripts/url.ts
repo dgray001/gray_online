@@ -7,8 +7,7 @@ export function setUrlParam(key: string, value: string): void {
   const params = new URL(window.location.href).searchParams;
   if (!!value) {
     params.set(key, value);
-  }
-  else {
+  } else {
     params.delete(key);
   }
   window.history.replaceState(null, '', `?${params.toString()}`);

@@ -1,5 +1,5 @@
-import {BoardTransformData} from "../canvas_board/canvas_board";
-import {Point2D} from "../objects2d";
+import type { BoardTransformData } from '../canvas_board/canvas_board';
+import type { Point2D } from '../objects2d';
 
 /** Data a canvas component must have */
 export declare interface CanvasComponent {
@@ -44,14 +44,19 @@ export declare interface DrawConfig {
 }
 
 /** Applies input draw config to the input canvas */
-export function configDraw(ctx: CanvasRenderingContext2D, transform: BoardTransformData,
-  config: DrawConfig, hovering: boolean, clicking: boolean, draw: () => void
+export function configDraw(
+  ctx: CanvasRenderingContext2D,
+  transform: BoardTransformData,
+  config: DrawConfig,
+  hovering: boolean,
+  clicking: boolean,
+  draw: () => void
 ) {
   if (clicking) {
     if (hovering) {
-      ctx.fillStyle = config.click_fill_style ?? (config.hover_fill_style ?? config.fill_style);
-      ctx.strokeStyle = config.click_stroke_style ?? (config.hover_stroke_style ?? config.stroke_style);
-      ctx.lineWidth = config.click_stroke_width ?? (config.hover_stroke_width ?? config.stroke_width);
+      ctx.fillStyle = config.click_fill_style ?? config.hover_fill_style ?? config.fill_style;
+      ctx.strokeStyle = config.click_stroke_style ?? config.hover_stroke_style ?? config.stroke_style;
+      ctx.lineWidth = config.click_stroke_width ?? config.hover_stroke_width ?? config.stroke_width;
     } else if (config.draw_clicked_when_unhovered) {
       ctx.fillStyle = config.click_fill_style ?? config.fill_style;
       ctx.strokeStyle = config.click_stroke_style ?? config.stroke_style;

@@ -1,7 +1,8 @@
-import {capitalize} from '../../../scripts/util';
-import {DwgDialogBox} from '../../dialog_box/dialog_box';
-import {GameType, LobbyRoom} from '../../lobby/data_models';
-import {Game} from '../data_models';
+import { capitalize } from '../../../scripts/util';
+import { DwgDialogBox } from '../../dialog_box/dialog_box';
+import type { LobbyRoom } from '../../lobby/data_models';
+import { GameType } from '../../lobby/data_models';
+import type { Game } from '../data_models';
 
 import html from './game_info_dialog.html';
 
@@ -58,7 +59,7 @@ export class DwgGameInfoDialog extends DwgDialogBox<GameInfoData> {
     if (!this.data.room.game_settings.game_specific_settings) {
       this.game_specific_settings.replaceChildren();
     } else {
-      const settings: HTMLDivElement[] = []
+      const settings: HTMLDivElement[] = [];
       for (const [setting_name, setting] of Object.entries(this.data.room.game_settings.game_specific_settings)) {
         const setting_el = document.createElement('div');
         setting_el.classList.add('setting');

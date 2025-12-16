@@ -1,25 +1,22 @@
-import {DwgElement} from '../../../dwg_element';
-import { LobbyUser } from '../../data_models';
+import { DwgElement } from '../../../dwg_element';
+import type { LobbyUser } from '../../data_models';
 
 import html from './lobby_user.html';
 
 import './lobby_user.scss';
 
 export class DwgLobbyUser extends DwgElement {
-  private ping_image: HTMLImageElement;
-  private ping_text: HTMLDivElement;
-  private user_name: HTMLDivElement;
-  private buttons: HTMLDivElement;
+  private ping_image!: HTMLImageElement;
+  private ping_text!: HTMLDivElement;
+  private user_name!: HTMLDivElement;
+  private buttons!: HTMLDivElement;
 
-  private user: LobbyUser;
-
+  private user!: LobbyUser;
+  
   constructor() {
     super();
     this.htmlString = html;
-    this.configureElement('ping_image');
-    this.configureElement('ping_text');
-    this.configureElement('user_name');
-    this.configureElement('buttons');
+    this.configureElements('ping_image', 'ping_text', 'user_name', 'buttons');
   }
 
   protected override parsedCallback(): void {

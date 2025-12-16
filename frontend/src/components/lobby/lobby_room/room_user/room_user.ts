@@ -1,5 +1,5 @@
-import {DwgElement} from '../../../dwg_element';
-import {LobbyUser} from '../../data_models';
+import { DwgElement } from '../../../dwg_element';
+import type { LobbyUser } from '../../data_models';
 
 import html from './room_user.html';
 
@@ -85,7 +85,7 @@ export class DwgRoomUser extends DwgElement {
     icon.draggable = false;
     button.appendChild(icon);
     button.addEventListener('click', () => {
-      this.dispatchEvent(new CustomEvent(`${name}_player`, {'bubbles': true, 'detail': client_id}));
+      this.dispatchEvent(new CustomEvent(`${name}_player`, { bubbles: true, detail: client_id }));
     });
     return button;
   }

@@ -7,7 +7,11 @@
     "build": "webpack --config webpack.prod.js",
     "dev": "webpack serve --config webpack.dev.js",
     "add": "python addComponent.py",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint \"{src,apps,libs,test}/**/*.{js,mjs,cjs,ts,tsx}\" --fix",
+    "format": "prettier --write \"{src,apps,libs,test}/**/*.{js,mjs,cjs,ts,tsx,html,css,json,yaml,md}\"",
+    "lint-check": "eslint \"{src,apps,libs,test}/**/*.{js,mjs,cjs,ts,tsx}\"",
+    "format-check": "prettier --check \"{src,apps,libs,test}/**/*.{js,mjs,cjs,ts,tsx,html,css,json,yaml,md}\""
   },
   "repository": {
     "type": "git",
@@ -22,12 +26,18 @@
   "devDependencies": {
     "@types/node": "^18.15.11",
     "@types/webpack": "^5.28.1",
+    "@typescript-eslint/eslint-plugin": "^8.50.0",
+    "@typescript-eslint/parser": "^8.50.0",
     "@webpack-cli/generators": "^3.0.7",
     "clean-webpack-plugin": "^4.0.0",
     "copy-webpack-plugin": "^11.0.0",
     "declaration-bundler-webpack-plugin": "^1.0.3",
+    "eslint": "^9.39.2",
+    "eslint-config-google": "^0.14.0",
+    "eslint-config-prettier": "^10.1.8",
     "file-loader": "^6.2.0",
     "json-loader": "^0.5.7",
+    "prettier": "^3.7.4",
     "sass": "^1.69.4",
     "ts-loader": "^9.4.2",
     "typescript": "^5.0.4",

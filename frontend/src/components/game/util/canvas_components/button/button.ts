@@ -1,6 +1,6 @@
-import {BoardTransformData} from '../../canvas_board/canvas_board';
-import {Point2D} from '../../objects2d';
-import {CanvasComponent} from '../canvas_component';
+import type { BoardTransformData } from '../../canvas_board/canvas_board';
+import type { Point2D } from '../../objects2d';
+import type { CanvasComponent } from '../canvas_component';
 
 /** Possible ways one can click a button */
 export enum ClickSource {
@@ -14,7 +14,7 @@ export enum ClickSource {
 
 /** Converts a javascript mouse event to a click source */
 export function MouseEventToClickSource(e: MouseEvent): ClickSource {
-  switch(e.button) {
+  switch (e.button) {
     case 0:
       return ClickSource.LEFT_MOUSE;
     case 1:

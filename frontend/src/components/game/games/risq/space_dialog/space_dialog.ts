@@ -1,13 +1,23 @@
-import {ColorRGB} from '../../../../../scripts/color_rgb';
-import {atangent} from '../../../../../scripts/math';
-import {DwgDialogBox} from '../../../../dialog_box/dialog_box';
-import {drawEllipse, drawHexagon} from '../../../util/canvas_util';
-import {Point2D, addPoint2D, equalsPoint2D, multiplyPoint2D, pointInHexagon, rotatePoint, subtractPoint2D} from '../../../util/objects2d';
-import {DwgRisq} from '../risq';
-import {buildingImage} from '../risq_buildings';
-import {RisqSpace, RisqZone, coordinateToIndex, getSpace, indexToCoordinate} from '../risq_data';
-import {getSpaceFill} from '../risq_space';
-import {unitImage} from '../risq_unit';
+import { ColorRGB } from '../../../../../scripts/color_rgb';
+import { atangent } from '../../../../../scripts/math';
+import { DwgDialogBox } from '../../../../dialog_box/dialog_box';
+import { drawEllipse, drawHexagon } from '../../../util/canvas_util';
+import type {
+  Point2D} from '../../../util/objects2d';
+import {
+  addPoint2D,
+  equalsPoint2D,
+  multiplyPoint2D,
+  pointInHexagon,
+  rotatePoint,
+  subtractPoint2D,
+} from '../../../util/objects2d';
+import type { DwgRisq } from '../risq';
+import { buildingImage } from '../risq_buildings';
+import type { RisqSpace, RisqZone} from '../risq_data';
+import { coordinateToIndex, getSpace, indexToCoordinate } from '../risq_data';
+import { getSpaceFill } from '../risq_space';
+import { unitImage } from '../risq_unit';
 
 import html from './space_dialog.html';
 
@@ -29,7 +39,7 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
   private radius: number;
   private ctx: CanvasRenderingContext2D;
   private draw_interval?: NodeJS.Timeout = undefined;
-  private mouse: Point2D = {x: 0, y: 0};
+  private mouse: Point2D = { x: 0, y: 0 };
   private hovered_zone?: RisqZone = undefined;
   private hovered_space?: RisqSpace = undefined;
   private hovered = false;
@@ -89,7 +99,7 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
     const max_size = 0.9;
     if (0.5 * 1.732 * max_size * window.innerWidth > max_size * window.innerHeight) {
       this.size = {
-        x: max_size * window.innerHeight / (0.5 * 1.732),
+        x: (max_size * window.innerHeight) / (0.5 * 1.732),
         y: max_size * window.innerHeight,
       };
     } else {
@@ -107,7 +117,7 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
     this.wrapper.addEventListener('mousemove', (e: MouseEvent) => {
       this.hovered = true;
       const rect = this.canvas.getBoundingClientRect();
-      this.mousemove({x: (e.clientX - rect.left), y: (e.clientY - rect.top)});
+      this.mousemove({ x: e.clientX - rect.left, y: e.clientY - rect.top });
     });
     this.wrapper.addEventListener('mousedown', (e: MouseEvent) => {
       e.stopImmediatePropagation();
@@ -132,9 +142,13 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
         this.hovered_space = undefined;
       }
     });
-    this.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-    }, false);
+    this.addEventListener(
+      'contextmenu',
+      (e) => {
+        e.preventDefault();
+      },
+      false
+    );
     document.body.addEventListener('keyup', this.keyup.bind(this));
     this.close_button.addEventListener('click', () => {
       this.closeDialog();
@@ -142,7 +156,7 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
     this.draw_interval = setInterval(() => {
       // if this.draw() becomes async I would need to ensure no race condition here
       this.ctx.resetTransform();
-      this.ctx.fillStyle = "black";
+      this.ctx.fillStyle = 'black';
       this.ctx.fillRect(0, 0, this.size.x, this.size.y);
       this.draw();
     }, 20);
@@ -156,40 +170,55 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
     this.ctx.translate(c.x, c.y);
     const r = this.radius;
     const zone_r = 0.42 * r;
-    drawHexagon(this.ctx, {x: 0, y: 0}, r);
+    drawHexagon(this.ctx, { x: 0, y: 0 }, r);
     this.ctx.fillStyle = 'rgb(10, 120, 10, 0.8)';
     this.ctx.lineWidth = 2;
     let zone = this.data.space.zones[1][1];
     this.setZoneFill(zone);
-    drawHexagon(this.ctx, {x: 0, y: 0}, 0.4 * r);
-    this.drawZone(zone, zone_r, 0,
-      {x: 0.18 * r * Math.cos(1 * Math.PI / 4), y: 0.18 * r * Math.sin(1 * Math.PI / 4)},
-      {x: 0.18 * r * Math.cos(3 * Math.PI / 4), y: 0.18 * r * Math.sin(3 * Math.PI / 4)},
-      {x: 0.18 * r * Math.cos(5 * Math.PI / 4), y: 0.18 * r * Math.sin(5 * Math.PI / 4)},
-      {x: 0.18 * r * Math.cos(7 * Math.PI / 4), y: 0.18 * r * Math.sin(7 * Math.PI / 4)},
+    drawHexagon(this.ctx, { x: 0, y: 0 }, 0.4 * r);
+    this.drawZone(
+      zone,
+      zone_r,
+      0,
+      {
+        x: 0.18 * r * Math.cos((1 * Math.PI) / 4),
+        y: 0.18 * r * Math.sin((1 * Math.PI) / 4),
+      },
+      {
+        x: 0.18 * r * Math.cos((3 * Math.PI) / 4),
+        y: 0.18 * r * Math.sin((3 * Math.PI) / 4),
+      },
+      {
+        x: 0.18 * r * Math.cos((5 * Math.PI) / 4),
+        y: 0.18 * r * Math.sin((5 * Math.PI) / 4),
+      },
+      {
+        x: 0.18 * r * Math.cos((7 * Math.PI) / 4),
+        y: 0.18 * r * Math.sin((7 * Math.PI) / 4),
+      }
     );
     this.ctx.lineWidth = 4;
     const a = Math.PI / 3;
-    for (var i = 0; i < 6; i++) {
-      let direction_vector: Point2D = {x: 0, y: 0};
-      switch(i) {
+    for (let i = 0; i < 6; i++) {
+      let direction_vector: Point2D = { x: 0, y: 0 };
+      switch (i) {
         case 0:
-          direction_vector = {x: 2, y: 1};
+          direction_vector = { x: 2, y: 1 };
           break;
         case 1:
-          direction_vector = {x: 2, y: 0};
+          direction_vector = { x: 2, y: 0 };
           break;
         case 2:
-          direction_vector = {x: 1, y: 0};
+          direction_vector = { x: 1, y: 0 };
           break;
         case 3:
-          direction_vector = {x: 0, y: 0};
+          direction_vector = { x: 0, y: 0 };
           break;
         case 4:
-          direction_vector = {x: 0, y: 1};
+          direction_vector = { x: 0, y: 1 };
           break;
         case 5:
-          direction_vector = {x: 1, y: 2};
+          direction_vector = { x: 1, y: 2 };
           break;
       }
       zone = this.data.space.zones[direction_vector.x][direction_vector.y];
@@ -205,16 +234,22 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
       const rotation = a * (1 + i);
       this.ctx.rotate(rotation);
       const theta = Math.PI / 15;
-      this.drawZone(zone, zone_r, rotation,
-        {x: 0.76 * r * Math.cos(-theta), y: 0.76 * r * Math.sin(-theta)},
-        {x: 0.76 * r * Math.cos(theta), y: 0.76 * r * Math.sin(theta)},
-        {x: 0.53 * r * Math.cos(-theta), y: 0.53 * r * Math.sin(-theta)},
-        {x: 0.53 * r * Math.cos(theta), y: 0.53 * r * Math.sin(theta)},
+      this.drawZone(
+        zone,
+        zone_r,
+        rotation,
+        { x: 0.76 * r * Math.cos(-theta), y: 0.76 * r * Math.sin(-theta) },
+        { x: 0.76 * r * Math.cos(theta), y: 0.76 * r * Math.sin(theta) },
+        { x: 0.53 * r * Math.cos(-theta), y: 0.53 * r * Math.sin(-theta) },
+        { x: 0.53 * r * Math.cos(theta), y: 0.53 * r * Math.sin(theta) }
       );
       this.ctx.rotate(-rotation);
       this.ctx.lineWidth = 4;
       const axial_vector = indexToCoordinate(1, direction_vector);
-      const index = coordinateToIndex(this.data.game.getGame().board_size, addPoint2D(this.data.space.coordinate, axial_vector));
+      const index = coordinateToIndex(
+        this.data.game.getGame().board_size,
+        addPoint2D(this.data.space.coordinate, axial_vector)
+      );
       const adjacent_space = getSpace(this.data.game.getGame(), index);
       this.ctx.strokeStyle = 'rgba(250, 250, 250, 0.8)';
       const fill_color = getSpaceFill(adjacent_space).dAlpha(-0.2);
@@ -253,45 +288,55 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
         const xs = c_x - 0.5 * inset_w;
         const y1 = c_y - 0.5 * inset_h;
         this.ctx.drawImage(building_img, xs, y1, inset_row, inset_row);
-        this.ctx.fillText(`: ${adjacent_space.buildings?.size.toString()}`, xs + inset_row + 2, y1, inset_w - inset_row - 2);
+        this.ctx.fillText(
+          `: ${adjacent_space.buildings?.size.toString()}`,
+          xs + inset_row + 2,
+          y1,
+          inset_w - inset_row - 2
+        );
         const y2 = c_y - 0.5 * inset_h + inset_row + 2;
         this.ctx.drawImage(unit_img, xs, y2, inset_row, inset_row);
-        this.ctx.fillText(`: ${adjacent_space.units?.size.toString()}`, xs + inset_row + 2, y2, inset_w - inset_row - 2);
+        this.ctx.fillText(
+          `: ${adjacent_space.units?.size.toString()}`,
+          xs + inset_row + 2,
+          y2,
+          inset_w - inset_row - 2
+        );
       }
     }
   }
 
   private mousemove(p: Point2D) {
-    this.mouse = subtractPoint2D({x: p.x, y: p.y}, multiplyPoint2D(0.5, this.size));
-    let new_hovered_zone: RisqZone|undefined = undefined;
-    let new_hovered_space: RisqSpace|undefined = undefined;
+    this.mouse = subtractPoint2D({ x: p.x, y: p.y }, multiplyPoint2D(0.5, this.size));
+    let new_hovered_zone: RisqZone | undefined = undefined;
+    let new_hovered_space: RisqSpace | undefined = undefined;
     if (pointInHexagon(this.mouse, 0.4 * this.radius)) {
       new_hovered_zone = this.data.space.zones[1][1];
       this.resolveHoveredZone(new_hovered_zone, 0);
     } else {
       const angle = atangent(this.mouse.y, this.mouse.x);
       let index = Math.floor((angle + Math.PI / 6) / (Math.PI / 3));
-      let direction_vector: Point2D = {x: 0, y: 0};
-      switch(index) {
+      let direction_vector: Point2D = { x: 0, y: 0 };
+      switch (index) {
         case 6:
           index = 0;
         case 0:
-          direction_vector = {x: 1, y: 2};
+          direction_vector = { x: 1, y: 2 };
           break;
         case 1:
-          direction_vector = {x: 0, y: 1};
+          direction_vector = { x: 0, y: 1 };
           break;
         case 2:
-          direction_vector = {x: 0, y: 0};
+          direction_vector = { x: 0, y: 0 };
           break;
         case 3:
-          direction_vector = {x: 1, y: 0};
+          direction_vector = { x: 1, y: 0 };
           break;
         case 4:
-          direction_vector = {x: 2, y: 0};
+          direction_vector = { x: 2, y: 0 };
           break;
         case 5:
-          direction_vector = {x: 2, y: 1};
+          direction_vector = { x: 2, y: 1 };
           break;
         default:
           console.error('Unknown zone hovered', angle);
@@ -302,7 +347,10 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
         this.resolveHoveredZone(new_hovered_zone, -(Math.PI / 3) * (1 + 5 - index));
       } else {
         const axial_vector = indexToCoordinate(1, direction_vector);
-        const index = coordinateToIndex(this.data.game.getGame().board_size, addPoint2D(this.data.space.coordinate, axial_vector));
+        const index = coordinateToIndex(
+          this.data.game.getGame().board_size,
+          addPoint2D(this.data.space.coordinate, axial_vector)
+        );
         new_hovered_space = getSpace(this.data.game.getGame(), index);
       }
     }
@@ -338,7 +386,7 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
     for (const part of zone.hovered_data) {
       const dx = p.x - part.c.x;
       const dy = p.y - part.c.y;
-      if ((dx * dx / (part.r.x * part.r.x)) + (dy * dy / (part.r.y * part.r.y)) <= 1) {
+      if ((dx * dx) / (part.r.x * part.r.x) + (dy * dy) / (part.r.y * part.r.y) <= 1) {
         part.hovered = true;
       } else {
         part.hovered = false;
@@ -367,7 +415,7 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
   }
 
   private keyup(e: KeyboardEvent) {
-    switch(e.key) {
+    switch (e.key) {
       case 'Escape':
         this.closeDialog();
         break;
@@ -379,7 +427,7 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
   private setZoneFill(zone: RisqZone) {
     this.ctx.strokeStyle = 'rgba(250, 250, 250, 0.9)';
     const color = new ColorRGB(10, 120, 10, 0.8);
-    if (zone.hovered && !zone.hovered_data.some(p => p.hovered)) {
+    if (zone.hovered && !zone.hovered_data.some((p) => p.hovered)) {
       if (zone.clicked) {
         color.addColor(210, 210, 210, 0.05);
       } else {
@@ -390,9 +438,15 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
   }
 
   private drawZone(zone: RisqZone, r: number, rotation: number, p1: Point2D, p2: Point2D, p3: Point2D, p4: Point2D) {
-    function drawText(ctx: CanvasRenderingContext2D, s: string, ts: number,
-      x: number, y: number, w: number, fill_style = 'white')
-    {
+    function drawText(
+      ctx: CanvasRenderingContext2D,
+      s: string,
+      ts: number,
+      x: number,
+      y: number,
+      w: number,
+      fill_style = 'white'
+    ) {
       const fs = ctx.fillStyle;
       ctx.fillStyle = fill_style;
       ctx.font = `bold ${ts}px serif`;
@@ -405,9 +459,12 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
     this.ctx.lineWidth = 1;
     const rp = 0.5 * r;
     if (zone.hovered_data.length !== 4) {
-      const r_part = {x: 0.5 * rp, y: 0.5 * rp};
+      const r_part = { x: 0.5 * rp, y: 0.5 * rp };
       zone.hovered_data = [
-        {c: p1, r: r_part}, {c: p2, r: r_part}, {c: p3, r: r_part}, {c: p4, r: r_part},
+        { c: p1, r: r_part },
+        { c: p2, r: r_part },
+        { c: p3, r: r_part },
+        { c: p4, r: r_part },
       ];
     } else {
       zone.hovered_data[0].c = p1;
@@ -428,11 +485,16 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
       }
       this.ctx.translate(part.c.x, part.c.y);
       this.ctx.rotate(-rotation);
-      switch(i) {
+      switch (i) {
         case 0: // building
           if (!!zone.building) {
-            this.ctx.drawImage(this.data.game.getIcon(buildingImage(zone.building)),
-              -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
+            this.ctx.drawImage(
+              this.data.game.getIcon(buildingImage(zone.building)),
+              -part.r.x,
+              -part.r.y,
+              2 * part.r.x,
+              2 * part.r.y
+            );
           } else {
             this.ctx.strokeStyle = 'rgba(200, 200, 200, 0.5)';
           }
@@ -448,22 +510,54 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
           } else if (units_by_type.size === 1) {
             const unit_data = [...units_by_type.values()][0];
             const unit = zone.units.get([...unit_data.units.values()][0]);
-            this.ctx.drawImage(this.data.game.getIcon(unitImage(unit)), -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
-            drawText(this.ctx, unit_data.units.size.toString(), 1.4 * part.r.y, -part.r.x, -0.7 * part.r.y, 2 * part.r.x);
+            this.ctx.drawImage(
+              this.data.game.getIcon(unitImage(unit)),
+              -part.r.x,
+              -part.r.y,
+              2 * part.r.x,
+              2 * part.r.y
+            );
+            drawText(
+              this.ctx,
+              unit_data.units.size.toString(),
+              1.4 * part.r.y,
+              -part.r.x,
+              -0.7 * part.r.y,
+              2 * part.r.x
+            );
           } else if (units_by_type.size === 2) {
             const unit_data = [...units_by_type.values()];
             for (let j = 0; j < 2; j++) {
               const units = [...unit_data[j].units.values()];
               const unit = zone.units.get(units[0]);
-              this.ctx.drawImage(this.data.game.getIcon(unitImage(unit)), (0.5 * j - 1) * part.r.x, (0.5 * j - 1) * part.r.y, 1.5 * part.r.x, 1.5 * part.r.y);
-              drawText(this.ctx, units.length.toString(), part.r.y, (0.5 * j - 1) * part.r.x, (0.5 * j - 1) * part.r.y, 2 * part.r.x);
+              this.ctx.drawImage(
+                this.data.game.getIcon(unitImage(unit)),
+                (0.5 * j - 1) * part.r.x,
+                (0.5 * j - 1) * part.r.y,
+                1.5 * part.r.x,
+                1.5 * part.r.y
+              );
+              drawText(
+                this.ctx,
+                units.length.toString(),
+                part.r.y,
+                (0.5 * j - 1) * part.r.x,
+                (0.5 * j - 1) * part.r.y,
+                2 * part.r.x
+              );
             }
           } else if (units_by_type.size === 3) {
             const unit_data = [...units_by_type.values()];
             for (let j = 0; j < 2; j++) {
               const units = [...unit_data[j].units.values()];
               const unit = zone.units.get(units[0]);
-              this.ctx.drawImage(this.data.game.getIcon(unitImage(unit)), (0.8 * j - 0.9) * part.r.x, -0.9 * part.r.y, part.r.x, part.r.y);
+              this.ctx.drawImage(
+                this.data.game.getIcon(unitImage(unit)),
+                (0.8 * j - 0.9) * part.r.x,
+                -0.9 * part.r.y,
+                part.r.x,
+                part.r.y
+              );
               drawText(
                 this.ctx,
                 units.length.toString(),
@@ -475,7 +569,13 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
             }
             const units = [...unit_data[2].units.values()];
             const unit = zone.units.get(units[0]);
-            this.ctx.drawImage(this.data.game.getIcon(unitImage(unit)), -0.5 * part.r.x, -0.1 * part.r.y, part.r.x, part.r.y);
+            this.ctx.drawImage(
+              this.data.game.getIcon(unitImage(unit)),
+              -0.5 * part.r.x,
+              -0.1 * part.r.y,
+              part.r.x,
+              part.r.y
+            );
             drawText(
               this.ctx,
               units.length.toString(),
@@ -489,7 +589,13 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
             for (let j = 0; j < 2; j++) {
               const units = [...unit_data[j].units.values()];
               const unit = zone.units.get(units[0]);
-              this.ctx.drawImage(this.data.game.getIcon(unitImage(unit)), (0.8 * j - 0.9) * part.r.x, -0.9 * part.r.y, part.r.x, part.r.y);
+              this.ctx.drawImage(
+                this.data.game.getIcon(unitImage(unit)),
+                (0.8 * j - 0.9) * part.r.x,
+                -0.9 * part.r.y,
+                part.r.x,
+                part.r.y
+              );
               drawText(
                 this.ctx,
                 units.length.toString(),
@@ -500,9 +606,15 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
               );
             }
             for (let j = 0; j < 2; j++) {
-              const units = [...unit_data[2+j].units.values()];
+              const units = [...unit_data[2 + j].units.values()];
               const unit = zone.units.get(units[0]);
-              this.ctx.drawImage(this.data.game.getIcon(unitImage(unit)), (0.8 * j - 0.9) * part.r.x, -0.1 * part.r.y, part.r.x, part.r.y);
+              this.ctx.drawImage(
+                this.data.game.getIcon(unitImage(unit)),
+                (0.8 * j - 0.9) * part.r.x,
+                -0.1 * part.r.y,
+                part.r.x,
+                part.r.y
+              );
               drawText(
                 this.ctx,
                 units.length.toString(),
@@ -517,12 +629,24 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
             for (let j = 0; j < 2; j++) {
               const units = [...unit_data[j].units.values()];
               const unit = zone.units.get(units[0]);
-              this.ctx.drawImage(this.data.game.getIcon(unitImage(unit)), (0.8 * j - 0.9) * part.r.x, -0.9 * part.r.y, part.r.x, part.r.y);
+              this.ctx.drawImage(
+                this.data.game.getIcon(unitImage(unit)),
+                (0.8 * j - 0.9) * part.r.x,
+                -0.9 * part.r.y,
+                part.r.x,
+                part.r.y
+              );
             }
             for (let j = 0; j < 1; j++) {
-              const units = [...unit_data[2+j].units.values()];
+              const units = [...unit_data[2 + j].units.values()];
               const unit = zone.units.get(units[0]);
-              this.ctx.drawImage(this.data.game.getIcon(unitImage(unit)), (0.8 * j - 0.9) * part.r.x, -0.1 * part.r.y, part.r.x, part.r.y);
+              this.ctx.drawImage(
+                this.data.game.getIcon(unitImage(unit)),
+                (0.8 * j - 0.9) * part.r.x,
+                -0.1 * part.r.y,
+                part.r.x,
+                part.r.y
+              );
             }
             drawText(
               this.ctx,
@@ -533,14 +657,7 @@ export class DwgSpaceDialog extends DwgDialogBox<SpaceDialogData> {
               part.r.x,
               'rgba(150, 150, 150, 0.8)'
             );
-            drawText(
-              this.ctx,
-              zone.units.size.toString(),
-              1.4 * part.r.y,
-              -part.r.x,
-              -0.7 * part.r.y,
-              2 * part.r.x
-            );
+            drawText(this.ctx, zone.units.size.toString(), 1.4 * part.r.y, -part.r.x, -0.7 * part.r.y, 2 * part.r.x);
           }
           break;
         case 2: // resources

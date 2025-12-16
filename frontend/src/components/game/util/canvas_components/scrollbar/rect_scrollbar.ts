@@ -1,8 +1,9 @@
-import {Point2D} from "../../objects2d";
-import {DwgRectButton} from "../button/rect_button";
-import {DwgScrollbar, ScrollbarConfig} from "./scrollbar";
+import type { Point2D } from '../../objects2d';
+import { DwgRectButton } from '../button/rect_button';
+import type { ScrollbarConfig } from './scrollbar';
+import { DwgScrollbar } from './scrollbar';
 
-/*abstract class DwgRectScrollbarButton extends DwgRectButton {
+/* abstract class DwgRectScrollbarButton extends DwgRectButton {
   protected scrollbar: DwgRectScrollbar;
 
   constructor(scrollbar: DwgRectScrollbar) {
@@ -38,7 +39,7 @@ class DwgRectScrollbarArrowButton extends DwgRectScrollbarButton {
   }
 }
 */
-/*class DwgRectScrollbarSpaceButton extends DwgRectScrollbarButton {
+/* class DwgRectScrollbarSpaceButton extends DwgRectScrollbarButton {
   private scrollbar_arrow_config: RectScrollbarArrowButtonConfig;
 
   constructor(scrollbar: DwgRectScrollbar, config: RectScrollbarArrowButtonConfig) {

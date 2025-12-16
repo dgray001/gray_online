@@ -1,8 +1,11 @@
-import {BoardTransformData} from '../../canvas_board/canvas_board';
-import {drawRect} from '../../canvas_util';
-import {Point2D, addPoint2D, equalsPoint2D, multiplyPoint2D} from '../../objects2d';
-import {DrawConfig, Rotation, configDraw} from '../canvas_component';
-import {ButtonConfig, DwgButton} from './button';
+import type { BoardTransformData } from '../../canvas_board/canvas_board';
+import { drawRect } from '../../canvas_util';
+import type { Point2D} from '../../objects2d';
+import { addPoint2D, equalsPoint2D, multiplyPoint2D } from '../../objects2d';
+import type { DrawConfig, Rotation} from '../canvas_component';
+import { configDraw } from '../canvas_component';
+import type { ButtonConfig} from './button';
+import { DwgButton } from './button';
 
 /** Config data for a rect button */
 export declare interface RectButtonConfig {
@@ -24,7 +27,7 @@ export abstract class DwgRectButton extends DwgButton {
   private speed_p: Point2D;
   private target_p: Point2D;
   private target_callback: () => void;
-  private reached_target = {x: false, y: false};
+  private reached_target = { x: false, y: false };
   private rotate_target: Rotation;
   private rotate_speed: number;
   private rotate_reached: boolean;
@@ -52,7 +55,7 @@ export abstract class DwgRectButton extends DwgButton {
         x: (p.x - this.rect_config.p.x) / this.rect_config.move_animation_speed,
         y: (p.y - this.rect_config.p.y) / this.rect_config.move_animation_speed,
       };
-      this.reached_target = {x: false, y: false};
+      this.reached_target = { x: false, y: false };
       this.target_callback = callback;
     } else {
       this.rect_config.p = p;
@@ -115,7 +118,7 @@ export abstract class DwgRectButton extends DwgButton {
     // translate animation
     if (!!this.target_p && !!this.speed_p) {
       if (this.reached_target.x && this.reached_target.y) {
-        this.rect_config.p = {...this.target_p};
+        this.rect_config.p = { ...this.target_p };
         this.target_p = undefined;
         this.speed_p = undefined;
         if (!!this.target_callback) {

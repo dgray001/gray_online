@@ -1,11 +1,19 @@
-import {getUrlParam} from "../../scripts/url";
-import {SERVER_CHAT_NAME} from "../chatbox/chatbox";
-import {ServerMessage, LobbyRoom, LobbyRoomFromServer, serverResponseToRoom, GameSettingsFromServer, serverResponseToGameSettings} from "./data_models";
-import {DwgLobby} from "./lobby";
+import { getUrlParam } from '../../scripts/url';
+import { SERVER_CHAT_NAME } from '../chatbox/chatbox';
+import type {
+  ServerMessage,
+  LobbyRoom,
+  LobbyRoomFromServer,
+  GameSettingsFromServer} from './data_models';
+import {
+  serverResponseToRoom,
+  serverResponseToGameSettings,
+} from './data_models';
+import type { DwgLobby } from './lobby';
 
 function isLobbyMessage(kind: string): boolean {
   const lobby_prefixes = ['room', 'lobby', 'ping'];
-  return !lobby_prefixes.every(prefix => !kind.startsWith(`${prefix}-`));
+  return !lobby_prefixes.every((prefix) => !kind.startsWith(`${prefix}-`));
 }
 
 /** Handles messages for the frontend lobby */
@@ -19,7 +27,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
   if (message.kind !== 'ping-update') {
     console.log('Lobby message:', message);
   }
-  switch(message.kind) {
+  switch (message.kind) {
     case 'lobby-you-joined':
       const you_joined_data_split = message.data.split('-');
       if (you_joined_data_split.length < 2) {
@@ -39,12 +47,16 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
         message: `You (${message.content}) ${you_joined_word} v${getUrlParam('v')} lobby with client id ${id}`,
         sender: SERVER_CHAT_NAME,
       });
-      lobby.getLobbyUsers().addUser({client_id: id, nickname: lobby.getConnectionMetadata().nickname, ping: 0});
+      lobby.getLobbyUsers().addUser({
+        client_id: id,
+        nickname: lobby.getConnectionMetadata().nickname,
+        ping: 0,
+      });
       try {
-        localStorage.setItem("client_id", message.data);
-        localStorage.setItem("client_nickname", message.content);
-        localStorage.setItem("client_id_time", Date.now().toString());
-      } catch(e) {} // if localstorage isn't accessible
+        localStorage.setItem('client_id', message.data);
+        localStorage.setItem('client_nickname', message.content);
+        localStorage.setItem('client_id_time', Date.now().toString());
+      } catch (_e) {} // if localstorage isn't accessible TODO: implement error handling
       lobby.refreshLobbyRooms(true);
       lobby.getLobbyUsers().refreshUsers();
       break;
@@ -63,7 +75,11 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
         sender: SERVER_CHAT_NAME,
       });
       lobby.refreshLobbyRooms();
-      lobby.getLobbyUsers().addUser({client_id: join_client_id, nickname: message.content, ping: 0});
+      lobby.getLobbyUsers().addUser({
+        client_id: join_client_id,
+        nickname: message.content,
+        ping: 0,
+      });
       break;
     case 'lobby-left':
       const left_client_id = parseInt(message.data);
@@ -75,12 +91,15 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
         const client = lobby.getLobbyUsers().getUser(left_client_id);
         lobby.getLobbyUsers().removeUser(left_client_id);
         lobby.getLobbyRooms().userDisconnected(left_client_id);
-        if (client && client.room_id === lobby.getConnectionMetadata().room_id &&
-          client.client_id === lobby.getLobbyRoom().getHost()?.client_id) {
-            lobby.leaveRoom();
-          } else {
-            lobby.getLobbyRoom().leaveRoom(left_client_id, 'disconnected from');
-          }
+        if (
+          client &&
+          client.room_id === lobby.getConnectionMetadata().room_id &&
+          client.client_id === lobby.getLobbyRoom().getHost()?.client_id
+        ) {
+          lobby.leaveRoom();
+        } else {
+          lobby.getLobbyRoom().leaveRoom(left_client_id, 'disconnected from');
+        }
       }
       break;
     case 'lobby-chat':
@@ -105,24 +124,24 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
       }
       break;
     case 'room-created':
-      const setRoom = (room: LobbyRoom, host_id: number) => {
+      const set_room = (room: LobbyRoom, host_id: number) => {
         lobby.getLobbyRooms().addRoom(room);
         if (lobby.getConnectionMetadata().client_id === host_id) {
           lobby.enterRoom(room, true);
           setTimeout(() => {
             // quick fix in case server responds instantly (like in dev)
-            lobby.getCreateRoomButton().innerText = "Room Created";
+            lobby.getCreateRoomButton().innerText = 'Room Created';
           }, 1);
         }
-      }
+      };
       try {
         const host_id = parseInt(message.sender.replace('client-', ''));
         const host = lobby.getLobbyUsers().getUser(host_id);
         const server_room = JSON.parse(message.content) as LobbyRoomFromServer;
         const room = serverResponseToRoom(server_room);
         host.room_id = room.room_id;
-        setRoom.bind(this, room, host_id)();
-      } catch(e) {
+        set_room(room, host_id);
+      } catch (_e) { // TODO: implement
         const new_room_id = parseInt(message.data);
         if (new_room_id) {
           // TODO: send get room request
@@ -188,15 +207,17 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
       }
       const room_chat_room_id = parseInt(room_chat_sender_split[1]);
       const room_chat_client_id = parseInt(room_chat_sender_split[2]);
-      if (room_chat_room_id && room_chat_client_id &&
+      if (
+        room_chat_room_id &&
+        room_chat_client_id &&
         lobby.getConnectionMetadata().room_id === room_chat_room_id &&
-        lobby.getLobbyRoom().hasPlayer(room_chat_client_id))
-      {
+        lobby.getLobbyRoom().hasPlayer(room_chat_client_id)
+      ) {
         let sender = lobby.getLobbyRoom().getClient(room_chat_client_id)?.nickname ?? room_chat_client_id.toString();
         if (room_chat_sender_split.length > 3) {
           sender = room_chat_sender_split[3];
         }
-        lobby.getLobbyRoom().getChatbox().addChat({message: message.content, sender, color: message.data});
+        lobby.getLobbyRoom().getChatbox().addChat({ message: message.content, sender, color: message.data });
       }
       break;
     case 'room-renamed':
@@ -237,7 +258,9 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
       const client_promote_id = parseInt(message.data);
       if (room_promote_id && client_promote_id) {
         if (room_promote_id === lobby.getConnectionMetadata().room_id) {
-          lobby.getLobbyRoom().promoteUser(client_promote_id, client_promote_id === lobby.getConnectionMetadata().client_id);
+          lobby
+            .getLobbyRoom()
+            .promoteUser(client_promote_id, client_promote_id === lobby.getConnectionMetadata().client_id);
         }
         lobby.getLobbyRooms().promoteUser(room_promote_id, client_promote_id);
       }
@@ -271,7 +294,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
         if (room_id === lobby.getConnectionMetadata().room_id) {
           lobby.getLobbyRoom().updateSettings(new_settings);
         }
-      } catch(e) {}
+      } catch (_e) {} // TODO: implement
       break;
     case 'room-launched':
       const room_launched_id = parseInt(message.sender.replace('room-', ''));
@@ -280,7 +303,11 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
         lobby.getLobbyRooms().launchRoom(room_launched_id, game_id);
         if (room_launched_id === lobby.getConnectionMetadata().room_id) {
           lobby.getLobbyRoom().launchRoom(game_id);
-          lobby.dispatchEvent(new CustomEvent('game_launched', {detail: lobby.getLobbyRoom().getRoom()}));
+          lobby.dispatchEvent(
+            new CustomEvent('game_launched', {
+              detail: lobby.getLobbyRoom().getRoom(),
+            })
+          );
         }
       }
       break;
@@ -301,10 +328,14 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
         if (!!room_id && room_id === room.room_id) {
           lobby.getLobbyRoom().refreshRoom(room, room.host.client_id === lobby.getConnectionMetadata().client_id);
           if (!!room.game_id && !lobby.classList.contains('hide') && lobby.canAutoLaunchRoom()) {
-            lobby.dispatchEvent(new CustomEvent('game_launched', {detail: lobby.getLobbyRoom().getRoom()}));
+            lobby.dispatchEvent(
+              new CustomEvent('game_launched', {
+                detail: lobby.getLobbyRoom().getRoom(),
+              })
+            );
           }
         }
-      } catch(e) {}
+      } catch (_e) {} // TODO: implement
       break;
     case 'room-join-failed':
     case 'room-refresh-failed':
@@ -318,11 +349,11 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
     case 'room-settings-updated-failed':
     case 'room-launch-failed':
       const message_dialog = document.createElement('dwg-message-dialog');
-      message_dialog.setData({message: message.content});
+      message_dialog.setData({ message: message.content });
       lobby.appendChild(message_dialog);
       console.error(message.content);
-      //lobby.refreshLobbyRooms();
-      switch(message.kind) {
+      // lobby.refreshLobbyRooms(); // TODO: what is supposed to happen here
+      switch (message.kind) {
         case 'room-launch-failed':
           lobby.getLobbyRoom().launchFailed();
           break;
@@ -331,7 +362,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
       }
       break;
     default:
-      console.error("Unknown message type", message.kind, "from", message.sender);
+      console.error('Unknown message type', message.kind, 'from', message.sender);
       break;
   }
 }

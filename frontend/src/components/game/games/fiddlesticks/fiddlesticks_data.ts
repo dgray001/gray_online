@@ -1,5 +1,5 @@
-import {GameBase, GamePlayer} from '../../data_models';
-import {StandardCard} from '../../util/card_util';
+import type { GameBase, GamePlayer } from '../../data_models';
+import type { StandardCard } from '../../util/card_util';
 
 /** Data describing a game of fiddlesticks */
 export declare interface GameFiddlesticks {

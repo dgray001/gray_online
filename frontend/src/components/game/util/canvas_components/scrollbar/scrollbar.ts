@@ -1,8 +1,9 @@
-import {BoundedNumber, setBoundedNumber, validateBoundedNumber} from '../../../../../scripts/math';
-import {BoardTransformData} from '../../canvas_board/canvas_board';
-import {Point2D} from '../../objects2d';
-import {DwgButton} from '../button/button';
-import {CanvasComponent} from '../canvas_component';
+import type { BoundedNumber} from '../../../../../scripts/math';
+import { setBoundedNumber, validateBoundedNumber } from '../../../../../scripts/math';
+import type { BoardTransformData } from '../../canvas_board/canvas_board';
+import type { Point2D } from '../../objects2d';
+import type { DwgButton } from '../button/button';
+import type { CanvasComponent } from '../canvas_component';
 
 /** Config describing a scrollbar */
 export declare interface ScrollbarConfig {
@@ -75,7 +76,7 @@ export abstract class DwgScrollbar implements CanvasComponent {
     for (const button of this.buttons) {
       button_hovering.push(button.mousemove(m, transform));
     }
-    this.hovering = button_hovering.some(v => !!v);
+    this.hovering = button_hovering.some((v) => !!v);
     return this.hovering;
   }
 
@@ -84,7 +85,7 @@ export abstract class DwgScrollbar implements CanvasComponent {
     for (const button of this.buttons) {
       button_hovering.push(button.mousedown(e));
     }
-    this.clicking = button_hovering.some(v => !!v);
+    this.clicking = button_hovering.some((v) => !!v);
     return this.clicking;
   }
 

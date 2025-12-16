@@ -1,4 +1,4 @@
-import { clampNumber } from "./math";
+import { clampNumber } from './math';
 
 declare interface ColorRGBData {
   r: number;
@@ -9,13 +9,13 @@ declare interface ColorRGBData {
 
 /** Class describing an RGB color */
 export class ColorRGB {
-  private data: ColorRGBData = {r: 0, g: 0, b: 0, a: 0};
+  private data: ColorRGBData = { r: 0, g: 0, b: 0, a: 0 };
 
-  constructor(r: number, g: number, b:number, a?: number) {
+  constructor(r: number, g: number, b: number, a?: number) {
     this.setColor(r, g, b, a);
   }
 
-  setColor(r: number, g: number, b:number, a?: number) {
+  setColor(r: number, g: number, b: number, a?: number) {
     this.data = this.cleanInput(r, g, b, a);
   }
 
@@ -23,7 +23,7 @@ export class ColorRGB {
     return `rgb(${this.data.r}, ${this.data.g}, ${this.data.b}, ${this.data.a})`;
   }
 
-  addColor(r: number, g: number, b:number, a?: number): ColorRGB {
+  addColor(r: number, g: number, b: number, a?: number): ColorRGB {
     const input = this.cleanInput(r, g, b, a);
     const new_a = this.data.a + input.a;
     if (new_a === 0) {
@@ -47,12 +47,12 @@ export class ColorRGB {
     return (this.data.r + this.data.g + this.data.b) / (3 * 255);
   }
 
-  private cleanInput(r: number, g: number, b:number, a?: number): ColorRGBData {
+  private cleanInput(r: number, g: number, b: number, a?: number): ColorRGBData {
     r = clampNumber(r, 0, 255);
     g = clampNumber(g, 0, 255);
     b = clampNumber(b, 0, 255);
     a = clampNumber(a, 0, 1, false);
-    return {r, g, b, a};
+    return { r, g, b, a };
   }
 
   private cleanData() {

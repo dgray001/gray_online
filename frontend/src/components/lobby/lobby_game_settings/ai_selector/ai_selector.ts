@@ -1,11 +1,10 @@
-
-import {DwgElement} from '../../../dwg_element';
-import {GameType} from '../../data_models';
-import {AiPlayerFiddlesticks} from '../game_specific_data';
+import { DwgElement } from '../../../dwg_element';
+import { GameType } from '../../data_models';
+import type { AiPlayerFiddlesticks } from '../game_specific_data';
 
 import html from './ai_selector.html';
 import './ai_selector.scss';
-import {generateName} from './name_generator';
+import { generateName } from './name_generator';
 
 /** Data needed to configure an ai selector */
 export declare interface AiSelectorData {
@@ -33,12 +32,14 @@ export class DwgAiSelector extends DwgElement {
     }
     this.setPlayers(this.data.ai_players);
     this.add_player_button.addEventListener('click', () => {
-      switch(this.data.game_type) {
+      switch (this.data.game_type) {
         case GameType.FIDDLESTICKS:
           const el = document.createElement('div');
           const nickname = generateName();
           el.innerText = nickname;
-          this.data.ai_players.push({nickname} satisfies AiPlayerFiddlesticks);
+          this.data.ai_players.push({
+            nickname,
+          } satisfies AiPlayerFiddlesticks);
           this.player_wrapper.appendChild(this.addPlayer(el));
           break;
         default:
@@ -58,7 +59,7 @@ export class DwgAiSelector extends DwgElement {
   setPlayers(ai_players: any[]) {
     this.data.ai_players = ai_players;
     this.els = [];
-    switch(this.data.game_type) {
+    switch (this.data.game_type) {
       case GameType.FIDDLESTICKS:
         const players: AiPlayerFiddlesticks[] = ai_players;
         const player_els = players.map((p) => {
@@ -108,7 +109,7 @@ export class DwgAiSelector extends DwgElement {
   }
 
   getPlayers(): any[] {
-    switch(this.data.game_type) {
+    switch (this.data.game_type) {
       case GameType.FIDDLESTICKS:
         return this.data.ai_players;
       default:

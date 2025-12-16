@@ -1,5 +1,5 @@
-import {DwgDialogBox} from '../../dialog_box/dialog_box';
-import {GameComponent, UpdateMessage} from '../data_models';
+import { DwgDialogBox } from '../../dialog_box/dialog_box';
+import type { GameComponent, UpdateMessage } from '../data_models';
 
 import html from './game_history_dialog.html';
 

@@ -1,6 +1,6 @@
-import {DwgDialogBox} from '../../dialog_box/dialog_box';
-import {LobbyUser} from '../../lobby/data_models';
-import {GamePlayer} from '../data_models';
+import { DwgDialogBox } from '../../dialog_box/dialog_box';
+import type { LobbyUser } from '../../lobby/data_models';
+import type { GamePlayer } from '../data_models';
 
 import html from './players_dialog.html';
 

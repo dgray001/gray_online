@@ -1,10 +1,12 @@
-import {DwgElement} from '../../dwg_element';
-import {ChatMessage, DwgChatbox, SERVER_CHAT_NAME} from '../../chatbox/chatbox';
-import {GameSettings, GameType, LobbyRoom, LobbyUser, createMessage} from '../data_models';
-import {DwgLobbyGameSettings} from '../lobby_game_settings/lobby_game_settings';
-import {capitalize, clickButton, setIntervalX} from '../../../scripts/util';
-import {DwgRoomUser} from './room_user/room_user';
-import {getReadableGameSettings} from '../lobby_game_settings/game_specific_data';
+import { DwgElement } from '../../dwg_element';
+import type { ChatMessage, DwgChatbox} from '../../chatbox/chatbox';
+import { SERVER_CHAT_NAME } from '../../chatbox/chatbox';
+import type { GameSettings, LobbyRoom, LobbyUser} from '../data_models';
+import { GameType, createMessage } from '../data_models';
+import type { DwgLobbyGameSettings } from '../lobby_game_settings/lobby_game_settings';
+import { capitalize, clickButton, setIntervalX } from '../../../scripts/util';
+import type { DwgRoomUser } from './room_user/room_user';
+import { getReadableGameSettings } from '../lobby_game_settings/game_specific_data';
 
 import html from './lobby_room.html';
 import './lobby_room.scss';
@@ -52,7 +54,7 @@ export class DwgLobbyRoom extends DwgElement {
   private room: LobbyRoom;
   private host_el: DwgRoomUser;
   private player_els = new Map<number, DwgRoomUser>();
-  private viewer_els = new Map<number,  DwgRoomUser>();
+  private viewer_els = new Map<number, DwgRoomUser>();
 
   constructor() {
     super();
@@ -88,7 +90,7 @@ export class DwgLobbyRoom extends DwgElement {
   protected override parsedCallback(): void {
     this.chatbox.setPlaceholder('Chat with room');
     this.chatbox.addEventListener('chat_sent', (e: CustomEvent<ChatMessage>) => {
-      this.dispatchEvent(new CustomEvent('chat_sent', {detail: e.detail}));
+      this.dispatchEvent(new CustomEvent('chat_sent', { detail: e.detail }));
     });
     this.leave_room.addEventListener('click', () => {
       this.dispatchEvent(new Event('leave_room'));
@@ -109,18 +111,26 @@ export class DwgLobbyRoom extends DwgElement {
       this.lobby_game_settings.classList.add('show');
     });
     this.lobby_game_settings.addEventListener('saved', () => {
-      this.dispatchEvent(new CustomEvent('save_settings', {detail: createMessage(
-        `client-${this.room.host.client_id}`,
-        'room-settings-update',
-        JSON.stringify(this.lobby_game_settings.getSettings()),
-        this.room.room_id.toString(),
-      )}));
-      this.dispatchEvent(new CustomEvent('save_settings', {detail: createMessage(
-        `client-${this.room.host.client_id}`,
-        'room-update-description',
-        this.lobby_game_settings.getDescription(),
-        this.room.room_id.toString(),
-      )}))
+      this.dispatchEvent(
+        new CustomEvent('save_settings', {
+          detail: createMessage(
+            `client-${this.room.host.client_id}`,
+            'room-settings-update',
+            JSON.stringify(this.lobby_game_settings.getSettings()),
+            this.room.room_id.toString()
+          ),
+        })
+      );
+      this.dispatchEvent(
+        new CustomEvent('save_settings', {
+          detail: createMessage(
+            `client-${this.room.host.client_id}`,
+            'room-update-description',
+            this.lobby_game_settings.getDescription(),
+            this.room.room_id.toString()
+          ),
+        })
+      );
       this.lobby_game_settings.classList.remove('show');
     });
     this.settings_launch_button.addEventListener('click', () => {
@@ -130,37 +140,58 @@ export class DwgLobbyRoom extends DwgElement {
         if (this.settings_launch_interval_id) {
           clearInterval(this.settings_launch_interval_id);
         }
-        this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {detail: {
-          message: 'Game launch canceled',
-          sender: SERVER_CHAT_NAME,
-        }}));
+        this.dispatchEvent(
+          new CustomEvent<ChatMessage>('chat_sent', {
+            detail: {
+              message: 'Game launch canceled',
+              sender: SERVER_CHAT_NAME,
+            },
+          })
+        );
       } else {
         // TODO: check if launchable
         this.setLaunching(true);
         const countdown = 5;
-        this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {detail: {
-          message: `Game is launching in ${countdown} ...`,
-          sender: SERVER_CHAT_NAME,
-        }}));
-        this.settings_launch_interval_id = setIntervalX((counter) => {
-          this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {detail: {
-            message: `${countdown - counter} ...`,
-            sender: SERVER_CHAT_NAME,
-          }}));
-        }, 1000, countdown - 1, () => {
-          this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {detail: {
-            message: 'Game is launching ...',
-            sender: SERVER_CHAT_NAME,
-          }}));
-          this.dispatchEvent(new Event('launch_game'));
-          this.settings_launch_button.disabled = true;
-        });
+        this.dispatchEvent(
+          new CustomEvent<ChatMessage>('chat_sent', {
+            detail: {
+              message: `Game is launching in ${countdown} ...`,
+              sender: SERVER_CHAT_NAME,
+            },
+          })
+        );
+        this.settings_launch_interval_id = setIntervalX(
+          (counter) => {
+            this.dispatchEvent(
+              new CustomEvent<ChatMessage>('chat_sent', {
+                detail: {
+                  message: `${countdown - counter} ...`,
+                  sender: SERVER_CHAT_NAME,
+                },
+              })
+            );
+          },
+          1000,
+          countdown - 1,
+          () => {
+            this.dispatchEvent(
+              new CustomEvent<ChatMessage>('chat_sent', {
+                detail: {
+                  message: 'Game is launching ...',
+                  sender: SERVER_CHAT_NAME,
+                },
+              })
+            );
+            this.dispatchEvent(new Event('launch_game'));
+            this.settings_launch_button.disabled = true;
+          }
+        );
       }
     });
     this.game_resign_button.disabled = true;
     /*
     clickButton(this.game_resign_button, () => {
-      this.dispatchEvent(new Event('resign_game'));
+      this.dispatchEvent(new Event('resign_game')); // TODO: implement
     });
     */
     clickButton(this.game_rejoin_button, () => {
@@ -255,8 +286,11 @@ export class DwgLobbyRoom extends DwgElement {
     if (!this.room.game_settings.game_specific_settings) {
       this.settings_settings.replaceChildren();
     } else {
-      const settings_els: HTMLDivElement[] = []
-      const settings = getReadableGameSettings(this.room.game_settings.game_specific_settings, this.room.game_settings.game_type);
+      const settings_els: HTMLDivElement[] = [];
+      const settings = getReadableGameSettings(
+        this.room.game_settings.game_specific_settings,
+        this.room.game_settings.game_type
+      );
       for (const [setting_name, setting] of settings) {
         const setting_el = document.createElement('div');
         setting_el.classList.add('setting');
@@ -486,10 +520,14 @@ export class DwgLobbyRoom extends DwgElement {
     this.settings_game_status.innerText = GameStatusEnum.IN_PROGRESS;
     this.game_button_container.classList.remove('hide');
     this.settings_button_container.classList.add('hide');
-    this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {detail: {
-      message: 'Game launched',
-      sender: SERVER_CHAT_NAME,
-    }}));
+    this.dispatchEvent(
+      new CustomEvent<ChatMessage>('chat_sent', {
+        detail: {
+          message: 'Game launched',
+          sender: SERVER_CHAT_NAME,
+        },
+      })
+    );
   }
 
   launchFailed() {
@@ -499,10 +537,14 @@ export class DwgLobbyRoom extends DwgElement {
     this.room.game_id = undefined;
     this.setLaunching(false);
     this.settings_game_status.innerText = GameStatusEnum.LAUNCH_FAILED;
-    this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {detail: {
-      message: 'Game launch failed',
-      sender: SERVER_CHAT_NAME,
-    }}));
+    this.dispatchEvent(
+      new CustomEvent<ChatMessage>('chat_sent', {
+        detail: {
+          message: 'Game launch failed',
+          sender: SERVER_CHAT_NAME,
+        },
+      })
+    );
   }
 
   gameOver(message: string) {
@@ -520,10 +562,14 @@ export class DwgLobbyRoom extends DwgElement {
       this.settings_settings_button.disabled = false;
       this.settings_button_container.classList.remove('hide');
     }
-    this.dispatchEvent(new CustomEvent<ChatMessage>('chat_sent', {detail: {
-      message: `Game over: ${message}`,
-      sender: SERVER_CHAT_NAME,
-    }}));
+    this.dispatchEvent(
+      new CustomEvent<ChatMessage>('chat_sent', {
+        detail: {
+          message: `Game over: ${message}`,
+          sender: SERVER_CHAT_NAME,
+        },
+      })
+    );
   }
 
   private openRename() {
@@ -544,7 +590,7 @@ export class DwgLobbyRoom extends DwgElement {
   }
 
   private submitRename() {
-    this.dispatchEvent(new CustomEvent('rename_room', {detail: this.rename_input.value}));
+    this.dispatchEvent(new CustomEvent('rename_room', { detail: this.rename_input.value }));
     this.cancelRename();
   }
 }

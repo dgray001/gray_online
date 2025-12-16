@@ -1,9 +1,9 @@
-import {DwgElement} from '../../../../dwg_element';
-import {createMessage} from '../../../../lobby/data_models';
-import {FiddlesticksPlayer} from '../fiddlesticks_data';
-import {DEV, until, untilTimer} from '../../../../../scripts/util';
-import {messageDialog} from '../../../game';
-import {Sounds} from '../../../../../sounds/Sounds';
+import { DwgElement } from '../../../../dwg_element';
+import { createMessage } from '../../../../lobby/data_models';
+import type { FiddlesticksPlayer } from '../fiddlesticks_data';
+import { DEV, until, untilTimer } from '../../../../../scripts/util';
+import { messageDialog } from '../../../game';
+import { Sounds } from '../../../../../sounds/Sounds';
 
 import html from './fiddlesticks_player.html';
 
@@ -120,13 +120,20 @@ export class DwgFiddlesticksPlayer extends DwgElement {
   sendBetEvent() {
     const bet_value = parseInt(this.bet_input.value) ?? NaN;
     if (isNaN(bet_value) || bet_value < 0 || bet_value > this.player.cards.length) {
-      messageDialog.call(this, {message: `Invalid bet value ${bet_value}; bet must be in the range of [0, ${this.player.cards.length}]`});
+      messageDialog.call(this, {
+        message: `Invalid bet value ${bet_value}; bet must be in the range of [0, ${this.player.cards.length}]`,
+      });
       return;
     }
     this.bet_input.disabled = true;
     this.bet_button.disabled = true;
-    const game_update = createMessage(`player-${this.player.player.player_id}`, 'game-update', `{"amount":${this.bet_input.value}}`, 'bet');
-    this.dispatchEvent(new CustomEvent('game_update', {detail: game_update, bubbles: true}));
+    const game_update = createMessage(
+      `player-${this.player.player.player_id}`,
+      'game-update',
+      `{"amount":${this.bet_input.value}}`,
+      'bet'
+    );
+    this.dispatchEvent(new CustomEvent('game_update', { detail: game_update, bubbles: true }));
   }
 
   newRound(dealer: boolean) {

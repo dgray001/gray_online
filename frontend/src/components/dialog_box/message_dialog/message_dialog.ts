@@ -1,4 +1,4 @@
-import {DwgDialogBox} from '../dialog_box';
+import { DwgDialogBox } from '../dialog_box';
 
 import html from './message_dialog.html';
 
@@ -28,7 +28,7 @@ export class DwgMessageDialog extends DwgDialogBox<MessageDialogData> {
     return {
       message: this.getAttribute('message') ?? '',
       button_text: this.getAttribute('button_text') ?? undefined,
-    }
+    };
   }
 
   setData(data: MessageDialogData, parsed?: boolean) {
