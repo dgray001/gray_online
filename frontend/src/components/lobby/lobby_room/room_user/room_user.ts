@@ -6,12 +6,12 @@ import html from './room_user.html';
 import './room_user.scss';
 
 export class DwgRoomUser extends DwgElement {
-  private ping_image: HTMLImageElement;
-  private ping_text: HTMLDivElement;
-  private user_name: HTMLDivElement;
-  private buttons: HTMLDivElement;
+  private ping_image!: HTMLImageElement;
+  private ping_text!: HTMLDivElement;
+  private user_name!: HTMLDivElement;
+  private buttons!: HTMLDivElement;
 
-  private user: LobbyUser;
+  private user!: LobbyUser;
   private is_host = false;
   private is_player = false;
   private is_self = false;
@@ -19,11 +19,8 @@ export class DwgRoomUser extends DwgElement {
 
   constructor() {
     super();
-    this.htmlString = html;
-    this.configureElement('ping_image');
-    this.configureElement('ping_text');
-    this.configureElement('user_name');
-    this.configureElement('buttons');
+    this.html_string = html;
+    this.configureElements('ping_image', 'ping_text', 'user_name', 'buttons');
   }
 
   protected override parsedCallback(): void {

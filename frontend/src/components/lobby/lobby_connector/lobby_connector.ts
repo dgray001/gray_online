@@ -19,14 +19,14 @@ export declare interface ConnectData {
 export const PREVIOUS_NICKNAME = '!!previous!!';
 
 export class DwgLobbyConnector extends DwgElement {
-  private reconnect_wrapper: HTMLDivElement;
-  private previous_nickname: HTMLDivElement;
-  private reconnect_button: HTMLButtonElement;
-  private new_connection_button: HTMLButtonElement;
-  private connect_wrapper: HTMLDivElement;
-  private nickname: HTMLInputElement;
-  private connect_button: HTMLButtonElement;
-  private status_message: HTMLDivElement;
+  private reconnect_wrapper!: HTMLDivElement;
+  private previous_nickname!: HTMLDivElement;
+  private reconnect_button!: HTMLButtonElement;
+  private new_connection_button!: HTMLButtonElement;
+  private connect_wrapper!: HTMLDivElement;
+  private nickname!: HTMLInputElement;
+  private connect_button!: HTMLButtonElement;
+  private status_message!: HTMLDivElement;
 
   private reconnect_data: ConnectData = {
     nickname: '',
@@ -36,15 +36,17 @@ export class DwgLobbyConnector extends DwgElement {
 
   constructor() {
     super();
-    this.htmlString = html;
-    this.configureElement('reconnect_wrapper');
-    this.configureElement('previous_nickname');
-    this.configureElement('reconnect_button');
-    this.configureElement('new_connection_button');
-    this.configureElement('connect_wrapper');
-    this.configureElement('nickname');
-    this.configureElement('connect_button');
-    this.configureElement('status_message');
+    this.html_string = html;
+    this.configureElements(
+      'reconnect_wrapper',
+      'previous_nickname',
+      'reconnect_button',
+      'new_connection_button',
+      'connect_wrapper',
+      'nickname',
+      'connect_button',
+      'status_message'
+    );
   }
 
   protected override async parsedCallback(): Promise<void> {
@@ -62,8 +64,8 @@ export class DwgLobbyConnector extends DwgElement {
       try_reconnect = true;
     } else {
       try {
-        const client_id_time = parseInt(localStorage.getItem('client_id_time'));
-        const client_id = parseInt(localStorage.getItem('client_id'));
+        const client_id_time = parseInt(localStorage.getItem('client_id_time') ?? '');
+        const client_id = parseInt(localStorage.getItem('client_id') ?? '');
         const previous_nickname = localStorage.getItem('client_nickname');
         if (!!previous_nickname) {
           const previous_name_valid = this.validateName(previous_nickname);
@@ -82,7 +84,7 @@ export class DwgLobbyConnector extends DwgElement {
             try_reconnect = true;
           }
         }
-      } catch (e) {} // if local storage not accessible
+      } catch (_e) {} // if local storage not accessible, TODO: implement
     }
     if (try_reconnect) {
       this.reconnect_wrapper.classList.add('show');

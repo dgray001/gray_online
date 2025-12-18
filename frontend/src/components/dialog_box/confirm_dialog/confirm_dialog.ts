@@ -13,15 +13,13 @@ interface ConfirmDialogData {
 
 /** Will emit a 'confirmed' event if confirmed is clicked */
 export class DwgConfirmDialog extends DwgDialogBox<ConfirmDialogData> {
-  message_container: HTMLDivElement;
-  yes_button: HTMLButtonElement;
-  no_button: HTMLButtonElement;
+  private message_container!: HTMLDivElement;
+  private yes_button!: HTMLButtonElement;
+  private no_button!: HTMLButtonElement;
 
   constructor() {
     super();
-    this.configureElement('message_container');
-    this.configureElement('yes_button');
-    this.configureElement('no_button');
+    this.configureElements('message_container', 'yes_button', 'no_button');
   }
 
   override getHTML(): string {

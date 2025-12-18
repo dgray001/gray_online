@@ -12,15 +12,14 @@ interface GameHistoryData {
 }
 
 export class DwgGameHistoryDialog extends DwgDialogBox<GameHistoryData> {
-  private close_button: HTMLButtonElement;
-  private updates_container: HTMLDivElement;
+  private close_button!: HTMLButtonElement;
+  private updates_container!: HTMLDivElement;
 
-  private data: GameHistoryData;
+  private data!: GameHistoryData;
 
   constructor() {
     super();
-    this.configureElement('close_button');
-    this.configureElement('updates_container');
+    this.configureElements('close_button', 'updates_container');
   }
 
   override getHTML(): string {

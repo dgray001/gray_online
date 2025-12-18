@@ -15,25 +15,27 @@ interface GameInfoData {
 }
 
 export class DwgGameInfoDialog extends DwgDialogBox<GameInfoData> {
-  private close_button: HTMLButtonElement;
-  private room_title: HTMLDivElement;
-  private game_title: HTMLDivElement;
-  private num_players_current: HTMLSpanElement;
-  private num_players_max: HTMLSpanElement;
-  private game_specific_settings: HTMLDivElement;
-  private room_description: HTMLDivElement;
+  private close_button!: HTMLButtonElement;
+  private room_title!: HTMLDivElement;
+  private game_title!: HTMLDivElement;
+  private num_players_current!: HTMLSpanElement;
+  private num_players_max!: HTMLSpanElement;
+  private game_specific_settings!: HTMLDivElement;
+  private room_description!: HTMLDivElement;
 
-  private data: GameInfoData;
+  private data!: GameInfoData;
 
   constructor() {
     super();
-    this.configureElement('close_button');
-    this.configureElement('room_title');
-    this.configureElement('game_title');
-    this.configureElement('num_players_current');
-    this.configureElement('num_players_max');
-    this.configureElement('game_specific_settings');
-    this.configureElement('room_description');
+    this.configureElements(
+      'close_button',
+      'room_title',
+      'game_title',
+      'num_players_current',
+      'num_players_max',
+      'game_specific_settings',
+      'room_description'
+    );
   }
 
   override getHTML(): string {

@@ -6,19 +6,22 @@ import html from './dialog_box.html';
 import './dialog_box.scss';
 
 export abstract class DwgDialogBox<T> extends DwgElement {
-  content_container: HTMLDivElement;
+  private content_container!: HTMLDivElement;
 
   constructor() {
     super();
-    this.htmlString = html;
+    this.html_string = html;
     this.configureElement('content_container');
   }
 
   override async connectedCallback() {
     super.connectedCallback(); // don't await
     await until(() => {
-      this.content_container = this.querySelector('#content-container');
-      return !!this.content_container;
+      const container = this.querySelector<HTMLDivElement>('#content-container');
+      if (container) {
+        this.content_container = container;
+      }
+      return !!container;
     });
     this.classList.add('dwg-dialog-box');
     this.content_container.innerHTML = this.getHTML();

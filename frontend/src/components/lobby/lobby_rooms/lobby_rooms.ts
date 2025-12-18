@@ -1,7 +1,7 @@
 import { DwgElement } from '../../dwg_element';
 import { apiGet } from '../../../scripts/api';
 import { createLock } from '../../../scripts/util';
-import type { GameSettings, LobbyRoom, LobbyRoomFromServer, LobbyUser} from '../data_models';
+import type { GameSettings, LobbyRoom, LobbyRoomFromServer, LobbyUser } from '../data_models';
 import { serverResponseToRoom } from '../data_models';
 
 import type { DwgRoomSelector } from './room_selector/room_selector';
@@ -32,15 +32,15 @@ export class DwgLobbyRooms extends DwgElement {
 
   constructor() {
     super();
-    this.htmlString = html;
+    this.html_string = html;
     this.configureElement('loading_message', 'room_container');
   }
 
   protected override parsedCallback(): void {}
 
   private first_load = true;
-  async refreshRooms(client_id: number, show_load_message = false): Promise<LobbyRoom> {
-    let current_room = undefined;
+  async refreshRooms(client_id: number, show_load_message = false): Promise<LobbyRoom | undefined> {
+    let current_room: LobbyRoom | undefined = undefined;
     await this.lock(async () => {
       if (this.first_load || show_load_message) {
         this.classList.add('loading');
@@ -78,16 +78,17 @@ export class DwgLobbyRooms extends DwgElement {
   }
 
   addRoom(room: LobbyRoom) {
-    if (this.rooms.has(room.room_id)) {
-      this.rooms.get(room.room_id).data = room;
-      this.rooms.get(room.room_id).refreshed = true;
-      this.rooms.get(room.room_id).el.updateRoom(room);
+    const existing_room = this.rooms.get(room.room_id);
+    if (existing_room) {
+      existing_room.data = room;
+      existing_room.refreshed = true;
+      existing_room.el.updateRoom(room);
     } else {
       const el = document.createElement('dwg-room-selector');
       el.classList.add('lobby-room');
       el.id = `room-selector-${room.room_id}`;
       el.updateRoom(room);
-      el.addEventListener('join_room', (e: CustomEvent<boolean>) => {
+      el.addEventListener('join_lobby_room', (e) => {
         const join_data = {
           detail: { room_id: room.room_id, join_as_player: e.detail ?? true },
         };
@@ -107,16 +108,19 @@ export class DwgLobbyRooms extends DwgElement {
   }
 
   userDisconnected(client_id: number) {
-    const removeIds = [];
+    const remove_ids = [];
     for (const room of this.rooms.values()) {
       if (client_id === room.data.host.client_id) {
-        removeIds.push(room.data.room_id);
+        remove_ids.push(room.data.room_id);
       }
     }
-    removeIds.forEach((id) => this.removeRoom(id));
+    remove_ids.forEach((id) => this.removeRoom(id));
   }
 
-  getRoom(room_id: number): RoomData | undefined {
+  getRoom(room_id: number | undefined): RoomData | undefined {
+    if (!room_id) {
+      return undefined;
+    }
     return this.rooms.get(room_id);
   }
 
@@ -147,8 +151,9 @@ export class DwgLobbyRooms extends DwgElement {
     if (!room) {
       return;
     }
-    if (room.data.players.has(user_id)) {
-      room.data.host = room.data.players.get(user_id);
+    const player = room.data.players.get(user_id);
+    if (player) {
+      room.data.host = player;
       this.roomUpdated(room);
     }
   }
@@ -158,8 +163,9 @@ export class DwgLobbyRooms extends DwgElement {
     if (!room) {
       return;
     }
-    if (room.data.players.has(user_id)) {
-      room.data.viewers.set(user_id, room.data.players.get(user_id));
+    const player = room.data.players.get(user_id);
+    if (player) {
+      room.data.viewers.set(user_id, player);
       room.data.players.delete(user_id);
       this.roomUpdated(room);
     }
@@ -170,8 +176,9 @@ export class DwgLobbyRooms extends DwgElement {
     if (!room) {
       return;
     }
-    if (room.data.viewers.has(user_id)) {
-      room.data.players.set(user_id, room.data.viewers.get(user_id));
+    const viewer = room.data.viewers.get(user_id);
+    if (viewer) {
+      room.data.players.set(user_id, viewer);
       room.data.viewers.delete(user_id);
       this.roomUpdated(room);
     }
@@ -188,7 +195,7 @@ export class DwgLobbyRooms extends DwgElement {
     }
     if (!!curr_room) {
       if (curr_room.data.host.client_id === joinee.client_id) {
-        this.removeRoom(joinee.room_id);
+        this.removeRoom(curr_room.data.room_id);
       } else {
         curr_room.data.players.delete(joinee.client_id);
       }
@@ -212,7 +219,7 @@ export class DwgLobbyRooms extends DwgElement {
     }
     if (!!curr_room) {
       if (curr_room.data.host.client_id === joinee.client_id) {
-        this.removeRoom(joinee.room_id);
+        this.removeRoom(curr_room.data.room_id);
       } else {
         curr_room.data.players.delete(joinee.client_id);
       }

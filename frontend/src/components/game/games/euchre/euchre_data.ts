@@ -47,7 +47,7 @@ export declare interface DealRound {
   round: number;
   dealer: number;
   card_face_up: StandardCard;
-  cards?: StandardCard[];
+  cards: StandardCard[];
 }
 
 /** Data describing a pass game-update */

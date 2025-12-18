@@ -32,12 +32,18 @@ export declare interface FiddlesticksPlayer {
 }
 
 /** Data describing a deal-round game-update */
-export declare interface DealRound {
+interface BaseDealRound {
   round: number;
   dealer: number;
   trump: StandardCard;
-  cards?: StandardCard[];
 }
+export interface PlayerDealRound extends BaseDealRound {
+  cards: StandardCard[];
+}
+export interface ViewerDealRound extends BaseDealRound {
+  cards?: never;
+}
+export type DealRound = PlayerDealRound | ViewerDealRound;
 
 /** Data describing a bet game-update */
 export declare interface PlayerBet {

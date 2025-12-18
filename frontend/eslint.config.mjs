@@ -51,6 +51,7 @@ export default [
 				{
 					selector: ["function", "method"],
 					format: ["camelCase"],
+					leadingUnderscore: "allow",
 				},
 				// Enforce snake_case for standard variables and properties
 				{

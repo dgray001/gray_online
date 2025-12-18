@@ -28,7 +28,7 @@ export class ColorRGB {
     const new_a = this.data.a + input.a;
     if (new_a === 0) {
       this.data.a = 0;
-      return;
+      return this;
     }
     const new_r = (this.data.a * this.data.r + input.a * input.r) / new_a;
     const new_g = (this.data.a * this.data.g + input.a * input.g) / new_a;
@@ -51,7 +51,7 @@ export class ColorRGB {
     r = clampNumber(r, 0, 255);
     g = clampNumber(g, 0, 255);
     b = clampNumber(b, 0, 255);
-    a = clampNumber(a, 0, 1, false);
+    a = clampNumber(a ?? 1, 0, 1, false);
     return { r, g, b, a };
   }
 

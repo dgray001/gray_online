@@ -1,29 +1,31 @@
 import { DwgElement } from '../../../dwg_element';
 import { GameType } from '../../data_models';
 import type { AiPlayerFiddlesticks } from '../game_specific_data';
+import { generateName } from './name_generator';
 
 import html from './ai_selector.html';
 import './ai_selector.scss';
-import { generateName } from './name_generator';
+
+/** Possible ai player types */
+export type AiPlayerType = AiPlayerFiddlesticks;
 
 /** Data needed to configure an ai selector */
 export declare interface AiSelectorData {
   game_type: GameType;
-  ai_players: any[]; // type depends on game type
+  ai_players: AiPlayerType[]; // type depends on game type
 }
 
 export class DwgAiSelector extends DwgElement {
-  private player_wrapper: HTMLDivElement;
-  private add_player_button: HTMLButtonElement;
+  private player_wrapper!: HTMLDivElement;
+  private add_player_button!: HTMLButtonElement;
 
-  private data: AiSelectorData;
+  private data!: AiSelectorData;
   private els: HTMLElement[] = [];
 
   constructor() {
     super();
-    this.htmlString = html;
-    this.configureElement('player_wrapper');
-    this.configureElement('add_player_button');
+    this.html_string = html;
+    this.configureElements('player_wrapper', 'add_player_button');
   }
 
   protected override parsedCallback(): void {
@@ -56,7 +58,7 @@ export class DwgAiSelector extends DwgElement {
     this.els = [];
   }
 
-  setPlayers(ai_players: any[]) {
+  setPlayers(ai_players: AiPlayerType[]) {
     this.data.ai_players = ai_players;
     this.els = [];
     switch (this.data.game_type) {
@@ -108,7 +110,7 @@ export class DwgAiSelector extends DwgElement {
     return wrapper;
   }
 
-  getPlayers(): any[] {
+  getPlayers(): AiPlayerType[] {
     switch (this.data.game_type) {
       case GameType.FIDDLESTICKS:
         return this.data.ai_players;

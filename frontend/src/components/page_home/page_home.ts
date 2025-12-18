@@ -1,11 +1,9 @@
 import { DwgElement } from '../dwg_element';
 import type { DwgLobby } from '../lobby/lobby';
-import type { ConnectData, DwgLobbyConnector } from '../lobby/lobby_connector/lobby_connector';
+import type { DwgLobbyConnector } from '../lobby/lobby_connector/lobby_connector';
 import type { DwgGame } from '../game/game';
-import type { LobbyRoom } from '../lobby/data_models';
 import { websocketPath } from '../../scripts/api';
 import { clientOnMobile } from '../../scripts/util';
-import type { MessageDialogData } from '../dialog_box/message_dialog/message_dialog';
 
 import html from './page_home.html';
 
@@ -23,7 +21,7 @@ export class DwgPageHome extends DwgElement {
 
   constructor() {
     super();
-    this.htmlString = html;
+    this.html_string = html;
     this.configureElements('lobby', 'game', 'lobby_connector');
   }
 
@@ -32,7 +30,7 @@ export class DwgPageHome extends DwgElement {
     if (this.client_on_mobile) {
       document.body.classList.add('mobile');
     }
-    this.lobby_connector.addEventListener('connect', (e: CustomEvent<ConnectData>) => {
+    this.lobby_connector.addEventListener('connect', (e) => {
       const socket = e.detail.try_reconnect
         ? new WebSocket(`${websocketPath()}/reconnect/${e.detail.nickname}/${e.detail.client_id}`)
         : new WebSocket(`${websocketPath()}/connect/${e.detail.nickname}`);
@@ -54,17 +52,17 @@ export class DwgPageHome extends DwgElement {
     this.lobby.addEventListener('connection_lost', () => {
       this.tryConnectionAgain('Connection was lost. Check your connection and try again.');
     });
-    this.lobby.addEventListener('game_launched', async (e: CustomEvent<LobbyRoom>) => {
+    this.lobby.addEventListener('game_launched', async (e) => {
       if (await this.game.launchGame(e.detail, this.lobby.getSocket(), this.lobby.getConnectionMetadata())) {
         this.lobby.classList.add('hide');
       }
     });
-    this.lobby.addEventListener('rejoin_game', async (e: CustomEvent<LobbyRoom>) => {
+    this.lobby.addEventListener('rejoin_game', async (e) => {
       if (await this.game.launchGame(e.detail, this.lobby.getSocket(), this.lobby.getConnectionMetadata(), true)) {
         this.lobby.enterGame();
       }
     });
-    this.lobby.addEventListener('refresh_game_lobby', (e: CustomEvent<LobbyRoom>) => {
+    this.lobby.addEventListener('refresh_game_lobby', (e) => {
       if (!!this.game && !!e.detail && !!e.detail.game_id) {
         this.game?.refreshRoom(e.detail);
       }
@@ -73,12 +71,12 @@ export class DwgPageHome extends DwgElement {
       this.game.exitGame();
       this.lobby.exitGame();
     });
-    this.game.addEventListener('show_message_dialog', (e: CustomEvent<MessageDialogData>) => {
+    this.game.addEventListener('show_message_dialog', (e) => {
       const dialog = document.createElement('dwg-message-dialog');
       dialog.setData(e.detail);
       this.appendChild(dialog);
     });
-    this.game.addEventListener('connection_lost', (e: CustomEvent<string>) => {
+    this.game.addEventListener('connection_lost', (e) => {
       this.tryConnectionAgain(e.detail);
     });
   }

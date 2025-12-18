@@ -11,13 +11,12 @@ export declare interface MessageDialogData {
 }
 
 export class DwgMessageDialog extends DwgDialogBox<MessageDialogData> {
-  message_container: HTMLDivElement;
-  ok_button: HTMLButtonElement;
+  private message_container!: HTMLDivElement;
+  private ok_button!: HTMLButtonElement;
 
   constructor() {
     super();
-    this.configureElement('message_container');
-    this.configureElement('ok_button');
+    this.configureElements('message_container', 'ok_button');
   }
 
   override getHTML(): string {

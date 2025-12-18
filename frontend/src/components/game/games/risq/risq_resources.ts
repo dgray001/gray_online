@@ -1,4 +1,4 @@
-import type { RisqResource} from './risq_data';
+import type { RisqResource } from './risq_data';
 import { RisqResourceType } from './risq_data';
 
 /** Returns image path of the resource */

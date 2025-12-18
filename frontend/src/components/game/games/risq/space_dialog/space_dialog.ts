@@ -2,8 +2,7 @@ import { ColorRGB } from '../../../../../scripts/color_rgb';
 import { atangent } from '../../../../../scripts/math';
 import { DwgDialogBox } from '../../../../dialog_box/dialog_box';
 import { drawEllipse, drawHexagon } from '../../../util/canvas_util';
-import type {
-  Point2D} from '../../../util/objects2d';
+import type { Point2D } from '../../../util/objects2d';
 import {
   addPoint2D,
   equalsPoint2D,
@@ -14,7 +13,7 @@ import {
 } from '../../../util/objects2d';
 import type { DwgRisq } from '../risq';
 import { buildingImage } from '../risq_buildings';
-import type { RisqSpace, RisqZone} from '../risq_data';
+import type { RisqSpace, RisqZone } from '../risq_data';
 import { coordinateToIndex, getSpace, indexToCoordinate } from '../risq_data';
 import { getSpaceFill } from '../risq_space';
 import { unitImage } from '../risq_unit';

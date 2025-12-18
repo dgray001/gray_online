@@ -1,7 +1,7 @@
 import { DwgElement } from '../../dwg_element';
 import { apiGet } from '../../../scripts/api';
 import { clickButton } from '../../../scripts/util';
-import type { LobbyUser, LobbyUserFromServer} from '../data_models';
+import type { LobbyUser, LobbyUserFromServer } from '../data_models';
 import { serverResponseToUser } from '../data_models';
 import type { DwgLobbyUser } from './lobby_user/lobby_user';
 
@@ -16,18 +16,16 @@ interface UserData {
 }
 
 export class DwgLobbyUsers extends DwgElement {
-  private refresh_button: HTMLButtonElement;
-  private loading_message: HTMLDivElement;
-  private user_container: HTMLDivElement;
+  private refresh_button!: HTMLButtonElement;
+  private loading_message!: HTMLDivElement;
+  private user_container!: HTMLDivElement;
 
   private users = new Map<number, UserData>();
 
   constructor() {
     super();
-    this.htmlString = html;
-    this.configureElement('refresh_button');
-    this.configureElement('loading_message');
-    this.configureElement('user_container');
+    this.html_string = html;
+    this.configureElements('refresh_button', 'loading_message', 'user_container');
   }
 
   protected override parsedCallback(): void {
@@ -81,10 +79,11 @@ export class DwgLobbyUsers extends DwgElement {
   }
 
   addUser(user: LobbyUser) {
-    if (this.users.has(user.client_id)) {
-      this.users.get(user.client_id).data = user;
-      this.users.get(user.client_id).refreshed = true;
-      this.users.get(user.client_id).el.updateUser(user);
+    const existing_user = this.users.get(user.client_id);
+    if (existing_user) {
+      existing_user.data = user;
+      existing_user.refreshed = true;
+      existing_user.el.updateUser(user);
     } else {
       const el = document.createElement('dwg-lobby-user');
       el.classList.add('lobby-user');
@@ -116,7 +115,7 @@ export class DwgLobbyUsers extends DwgElement {
     this.users.delete(client_id);
   }
 
-  getUser(user_id: number): LobbyUser {
+  getUser(user_id: number): LobbyUser | undefined {
     return this.users.get(user_id)?.data;
   }
 

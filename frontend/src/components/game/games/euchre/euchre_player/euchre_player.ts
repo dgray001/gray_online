@@ -1,4 +1,4 @@
-import { capitalize, clickButton, until, untilTimer } from '../../../../../scripts/util';
+import { capitalize, until, untilTimer } from '../../../../../scripts/util';
 import { DwgElement } from '../../../../dwg_element';
 import { createMessage } from '../../../../lobby/data_models';
 import type { EuchrePlayer, EuchreTeam, GameEuchre } from '../euchre_data';
@@ -8,47 +8,49 @@ import html from './euchre_player.html';
 import './euchre_player.scss';
 
 export class DwgEuchrePlayer extends DwgElement {
-  name_container: HTMLDivElement;
-  status_container: HTMLDivElement;
-  score_container: HTMLSpanElement;
-  tricks_container: HTMLSpanElement;
-  icons_wrapper: HTMLDivElement;
-  bid_animation: HTMLDivElement;
-  bid_input_wrapper: HTMLDivElement;
-  bid_input_message: HTMLDivElement;
-  going_alone: HTMLInputElement;
-  bid_button: HTMLButtonElement;
-  spades_button: HTMLButtonElement;
-  diamonds_button: HTMLButtonElement;
-  clubs_button: HTMLButtonElement;
-  hearts_button: HTMLButtonElement;
-  pass_button: HTMLButtonElement;
+  private name_container!: HTMLDivElement;
+  private status_container!: HTMLDivElement;
+  private score_container!: HTMLSpanElement;
+  private tricks_container!: HTMLSpanElement;
+  private icons_wrapper!: HTMLDivElement;
+  private bid_animation!: HTMLDivElement;
+  private bid_input_wrapper!: HTMLDivElement;
+  private bid_input_message!: HTMLDivElement;
+  private going_alone!: HTMLInputElement;
+  private bid_button!: HTMLButtonElement;
+  private spades_button!: HTMLButtonElement;
+  private diamonds_button!: HTMLButtonElement;
+  private clubs_button!: HTMLButtonElement;
+  private hearts_button!: HTMLButtonElement;
+  private pass_button!: HTMLButtonElement;
 
-  initialized = false;
-  player: EuchrePlayer;
-  team: EuchreTeam;
-  client_player = false;
-  dealer = false;
-  icons = new Map<string, HTMLDivElement>();
+  private initialized = false;
+  private player!: EuchrePlayer;
+  private team!: EuchreTeam;
+  private client_player = false;
+  private dealer = false;
+  private icons = new Map<string, HTMLDivElement>();
 
   constructor() {
     super();
-    this.htmlString = html;
-    this.configureElement('name_container');
-    this.configureElement('status_container');
-    this.configureElement('score_container');
-    this.configureElement('tricks_container');
-    this.configureElement('icons_wrapper');
-    this.configureElement('bid_animation');
-    this.configureElement('bid_input_wrapper');
-    this.configureElement('bid_input_message');
-    this.configureElement('going_alone');
-    this.configureElement('bid_button');
-    this.configureElement('spades_button');
-    this.configureElement('diamonds_button');
-    this.configureElement('clubs_button');
-    this.configureElement('hearts_button');
-    this.configureElement('pass_button');
+    this.html_string = html;
+    this.configureElements(
+      'name_container',
+      'status_container',
+      'score_container',
+      'tricks_container',
+      'icons_wrapper',
+      'bid_animation',
+      'bid_input_wrapper',
+      'bid_input_message',
+      'going_alone',
+      'bid_button',
+      'spades_button',
+      'diamonds_button',
+      'clubs_button',
+      'hearts_button',
+      'pass_button'
+    );
   }
 
   protected override parsedCallback(): void {
@@ -212,7 +214,7 @@ export class DwgEuchrePlayer extends DwgElement {
       this.status_container.innerText = capitalize(icon);
       this.icons.set(icon, icon_wrapper);
     } else if (this.icons.has(icon)) {
-      this.icons.get(icon).remove();
+      this.icons.get(icon)?.remove();
       this.icons.delete(icon);
     }
   }

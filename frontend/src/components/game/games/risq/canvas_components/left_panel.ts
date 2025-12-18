@@ -1,9 +1,9 @@
 import type { BoardTransformData } from '../../../util/canvas_board/canvas_board';
 import type { DwgButton } from '../../../util/canvas_components/button/button';
-import type { CanvasComponent} from '../../../util/canvas_components/canvas_component';
+import type { CanvasComponent } from '../../../util/canvas_components/canvas_component';
 import { configDraw } from '../../../util/canvas_components/canvas_component';
 import { drawHexagon, drawLine, drawRect, drawText } from '../../../util/canvas_util';
-import type { Point2D} from '../../../util/objects2d';
+import type { Point2D } from '../../../util/objects2d';
 import { equalsPoint2D } from '../../../util/objects2d';
 import type { DwgRisq } from '../risq';
 import { buildingImage } from '../risq_buildings';
@@ -15,58 +15,28 @@ import type {
   RisqSpace,
   RisqUnit,
   RisqZone,
-  UnitByTypeData} from '../risq_data';
-import {
-  RisqAttackType,
-  ZONE_VISIBILITY,
-  coordinateToIndex,
-  risqTerrainName,
+  UnitByTypeData,
 } from '../risq_data';
+import { RisqAttackType, ZONE_VISIBILITY, coordinateToIndex, risqTerrainName } from '../risq_data';
 import { resourceImage, resourceTypeImage } from '../risq_resources';
 import { getSpaceFill } from '../risq_space';
 import { UNIT_HEALTHBAR_COLOR_BACKGROUND, UNIT_HEALTHBAR_COLOR_HEALTH, unitImage } from '../risq_unit';
 import { INNER_ZONE_MULTIPLIER, getZoneFill, resolveHoveredZones } from '../risq_zone';
 import { RisqLeftPanelButton } from './left_panel_close';
-
-/** Config for the left panel */
-export declare interface LeftPanelConfig {
-  w: number;
-  background: string;
-}
-
-/** All the data types that can be displayed in the left panel */
-export enum LeftPanelDataType {
-  RESOURCE,
-  BUILDING,
-  SPACE,
-  ZONE,
-  MULTIPLE_PLAYERS_UNITS,
-  UNITS,
-  UNITS_BY_TYPE, // must all be of same player
-  ECONOMIC_UNITS,
-  MILITARY_UNITS,
-  UNIT,
-}
-
-/** Possible objects in a space/zone that can be hovered */
-export enum HoverableObjectType {
-  NONE,
-  UNIT,
-  BUILDING,
-  RESOURCE,
-}
+import type { LeftPanelConfig, LeftPanelData, PlayerUnitsDrawData, UnitsDrawData } from './left_panel_data';
+import { HoverableObjectType, LeftPanelDataType } from './left_panel_data';
 
 export class RisqLeftPanel implements CanvasComponent {
   private close_button: RisqLeftPanelButton;
 
   private risq: DwgRisq;
   private config: LeftPanelConfig;
-  private size: Point2D;
+  private size?: Point2D;
   private showing = false;
   private hovering = false;
-  private data_type: LeftPanelDataType;
-  private visibility: number;
-  private data: any; // data being shown in panel
+  private data_type?: LeftPanelDataType;
+  private visibility?: number;
+  private data?: LeftPanelData;
   private buttons: DwgButton[] = [];
   private hovered_zone?: RisqZone; // relevant when drawing space and zone
   private hovered_object?: RisqUnit | RisqBuilding | RisqResource;
@@ -114,7 +84,7 @@ export class RisqLeftPanel implements CanvasComponent {
     this.hovered_zone = undefined;
   }
 
-  openPanel(data_type: LeftPanelDataType, visibility: number, data: any) {
+  openPanel(open_data: LeftPanelData, visibility: number) {
     if (visibility < 1) {
       return; // not explored
     }
@@ -130,36 +100,35 @@ export class RisqLeftPanel implements CanvasComponent {
         LeftPanelDataType.ECONOMIC_UNITS,
         LeftPanelDataType.MILITARY_UNITS,
         LeftPanelDataType.UNIT,
-      ].includes(data_type)
+      ].includes(open_data.data_type)
     ) {
       return; // zones not visible
     }
-    this.data_type = data_type;
     this.visibility = visibility;
-    this.data = data;
+    this.data = open_data;
     this.showing = true;
-    switch (data_type) {
-      case LeftPanelDataType.MULTIPLE_PLAYERS_UNITS:
+    switch (open_data.data_type) {
       case LeftPanelDataType.UNITS:
       case LeftPanelDataType.ECONOMIC_UNITS:
       case LeftPanelDataType.MILITARY_UNITS:
-        this.checkUnitsData(data);
+        this.checkUnitsData(open_data.data);
         break;
       case LeftPanelDataType.UNITS_BY_TYPE:
-        this.checkUnitsByTypeData(data);
+        this.checkUnitsByTypeData(open_data.data);
         break;
       default:
+        // TODO: implement others
         break;
     }
   }
 
-  private checkUnitsData(data: { space: RisqSpace; units: Map<number, UnitByTypeData[]> }) {
-    if (!data || !data.space || !data.space.units || !data.units || data.units.size < 1) {
+  private checkUnitsData(data: UnitsDrawData) {
+    if (!data || !data.space || !data.space.units || !data.units_by_player || data.units_by_player.size < 1) {
       this.close();
       return;
     }
     const new_data: [number, UnitByTypeData[]][] = [];
-    for (const [player_id, units_by_type] of data.units.entries()) {
+    for (const [player_id, units_by_type] of data.units_by_player.entries()) {
       if (player_id < 0 || units_by_type.length < 1) {
         continue;
       }
@@ -170,20 +139,22 @@ export class RisqLeftPanel implements CanvasComponent {
       return;
     }
     if (new_data.length > 1) {
-      this.data_type = LeftPanelDataType.MULTIPLE_PLAYERS_UNITS;
-      this.data = { space: data.space, units: new_data };
+      this.data = {
+        data_type: LeftPanelDataType.MULTIPLE_PLAYERS_UNITS,
+        data: { space: data.space, units: new_data },
+      };
       return;
     }
     this.checkUnitsByTypeData({ space: data.space, units: new_data[0][1] });
   }
 
-  private checkUnitsByTypeData(data: { space: RisqSpace; units: UnitByTypeData[] }) {
+  private checkUnitsByTypeData(data: PlayerUnitsDrawData) {
     if (data.units.length === 1 && data.units[0].units.size === 1) {
       this.data_type = LeftPanelDataType.UNIT;
-      this.data = data.space.units.get([...data.units[0].units.values()][0]); // set data as internal id
+      this.data = data.space.units?.get([...data.units[0].units.values()][0]); // set data as internal id
       return;
     }
-    this.data = { space: data.space, units: data.units };
+    this.data = { data_type: LeftPanelDataType.UNITS_BY_TYPE, data: { space: data.space, units: data.units } };
     const has_economic_units = data.units.some((u) => u.unit_id < 11);
     const has_military_units = data.units.some((u) => u.unit_id > 10);
     if (has_economic_units && has_military_units) {
@@ -233,6 +204,9 @@ export class RisqLeftPanel implements CanvasComponent {
           case LeftPanelDataType.MILITARY_UNITS:
             this.drawUnits(ctx, this.data);
             break;
+          case LeftPanelDataType.UNITS_BY_TYPE:
+            // TODO: implement
+            break;
           case LeftPanelDataType.UNIT:
             this.drawUnit(ctx, this.data);
             break;
@@ -277,7 +251,7 @@ export class RisqLeftPanel implements CanvasComponent {
     unit.hover_data.pe = { x: p.x + s, y: p.y + s };
   }
 
-  private drawUnits(ctx: CanvasRenderingContext2D, data: { space: RisqSpace; units: UnitByTypeData[] }) {
+  private drawUnits(ctx: CanvasRenderingContext2D, data: UnitsDrawData) {
     const total_units = data.units.map((u) => u.units.size).reduce((a, b) => a + b);
     let yi = this.yi() + this.drawName(ctx, `${total_units} Units`);
     const separator_distance = 8;

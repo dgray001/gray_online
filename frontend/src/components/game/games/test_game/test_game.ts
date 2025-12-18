@@ -17,7 +17,7 @@ export class DwgTestGame extends DwgElement implements GameComponent {
 
   constructor() {
     super();
-    this.htmlString = html;
+    this.html_string = html;
     this.configureElement('show_info');
     this.configureElement('end_game');
   }

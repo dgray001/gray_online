@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6v: Added linter and prettier
+v0.6w: Fix lint and ts issues
 
 ## Dev Use
 

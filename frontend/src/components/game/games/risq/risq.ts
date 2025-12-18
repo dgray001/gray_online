@@ -2,8 +2,7 @@ import { DwgElement } from '../../../dwg_element';
 import type { UpdateMessage } from '../../data_models';
 import { drawCircle } from '../../util/canvas_util';
 import type { BoardTransformData, CanvasBoardSize, DwgCanvasBoard } from '../../util/canvas_board/canvas_board';
-import type {
-  Point2D} from '../../util/objects2d';
+import type { Point2D } from '../../util/objects2d';
 import {
   addPoint2D,
   equalsPoint2D,
@@ -17,34 +16,25 @@ import type { DwgGame } from '../../game';
 import { DEV, createLock } from '../../../../scripts/util';
 
 import html from './risq.html';
-import type {
-  GameRisq,
-  GameRisqFromServer,
-  RisqPlayer,
-  RisqSpace,
-  RisqZone,
-  StartTurnData} from './risq_data';
-import {
-  coordinateToIndex,
-  getSpace,
-  serverToGameRisq,
-} from './risq_data';
+import type { GameRisq, GameRisqFromServer, RisqPlayer, RisqSpace, RisqZone, StartTurnData } from './risq_data';
+import { coordinateToIndex, getSpace, serverToGameRisq } from './risq_data';
 import { RisqRightPanel } from './canvas_components/right_panel';
-import type { DrawRisqSpaceConfig} from './risq_space';
+import type { DrawRisqSpaceConfig } from './risq_space';
 import { DrawRisqSpaceDetail, drawRisqSpace } from './risq_space';
-import { LeftPanelDataType, RisqLeftPanel } from './canvas_components/left_panel';
+import { RisqLeftPanel } from './canvas_components/left_panel';
 import { resolveHoveredZones, unhoverRisqZone } from './risq_zone';
 
 import './risq.scss';
 import '../../util/canvas_board/canvas_board';
 import './space_dialog/space_dialog';
+import { LeftPanelDataType } from './canvas_components/left_panel_data';
 
 const DEFAULT_HEXAGON_RADIUS = 60;
 
 const DRAW_CENTER_DOT = false;
 
 export class DwgRisq extends DwgElement {
-  private board: DwgCanvasBoard;
+  private board!: DwgCanvasBoard;
 
   private game: GameRisq;
   private player_id: number;
@@ -76,7 +66,7 @@ export class DwgRisq extends DwgElement {
 
   constructor() {
     super();
-    this.htmlString = html;
+    this.html_string = html;
     this.configureElement('board');
   }
 
@@ -204,8 +194,8 @@ export class DwgRisq extends DwgElement {
     try {
       switch (update.kind) {
         case 'start-turn':
-          const startTurnData = update.content as StartTurnData;
-          await this.applyStartTurn(startTurnData);
+          const start_turn_data = update.content as StartTurnData;
+          await this.applyStartTurn(start_turn_data);
           break;
         default:
           console.log(`Unknown game update type ${update.kind}`);
@@ -302,7 +292,7 @@ export class DwgRisq extends DwgElement {
       return;
     }
 
-    const resolveZones = () => {
+    const resolve_zones = () => {
       if (this.draw_detail === DrawRisqSpaceDetail.ZONE_DETAILS) {
         const new_hovered_zone = resolveHoveredZones(m, this.hovered_space, this.hex_r);
         if (!!this.hovered_zone && !equalsPoint2D(new_hovered_zone?.coordinate, this.hovered_zone?.coordinate)) {
@@ -318,7 +308,7 @@ export class DwgRisq extends DwgElement {
 
     if (equalsPoint2D(new_hovered_space.coordinate, this.hovered_space?.coordinate)) {
       this.updateHoveredFlags();
-      resolveZones.call(this);
+      resolve_zones.call(this);
       return;
     }
     this.removeHoveredFlags();
@@ -328,7 +318,7 @@ export class DwgRisq extends DwgElement {
         unhoverRisqZone(this.hovered_zone);
         this.hovered_zone = undefined;
       }
-      resolveZones.call(this);
+      resolve_zones.call(this);
     }
     this.hovered_space = new_hovered_space;
     this.updateHoveredFlags();

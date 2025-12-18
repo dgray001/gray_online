@@ -4,16 +4,9 @@ import type { DwgCardHand } from '../../util/card_hand/card_hand';
 import { createMessage } from '../../../lobby/data_models';
 import { clientOnMobile, until, untilTimer } from '../../../../scripts/util';
 import { modulus } from '../../../../scripts/math';
-import type {
-  StandardCard} from '../../util/card_util';
-import {
-  cardSuitToColor,
-  cardSuitToName,
-  cardToIcon,
-  cardToImagePath,
-  cardToName,
-} from '../../util/card_util';
-import type { DwgGame} from '../../game';
+import type { StandardCard } from '../../util/card_util';
+import { cardSuitToColor, cardSuitToName, cardToIcon, cardToImagePath, cardToName } from '../../util/card_util';
+import type { DwgGame } from '../../game';
 import { messageDialog } from '../../game';
 
 import html from './euchre.html';
@@ -25,10 +18,9 @@ import type {
   GameEuchre,
   PlayCard,
   PlayerBid,
-  PlayerPass} from './euchre_data';
-import {
-  getPlayersTeam,
+  PlayerPass,
 } from './euchre_data';
+import { getPlayersTeam } from './euchre_data';
 
 import './euchre.scss';
 import './euchre_player/euchre_player';
@@ -36,32 +28,34 @@ import '../../../dialog_box/message_dialog/message_dialog';
 import '../../util/card_hand/card_hand';
 
 export class DwgEuchre extends DwgElement implements GameComponent {
-  round_number: HTMLSpanElement;
-  trick_number: HTMLSpanElement;
-  status_container: HTMLSpanElement;
-  card_face_up_img: HTMLImageElement;
-  table_container: HTMLDivElement;
-  trick_cards: HTMLDivElement;
-  player_container: HTMLDivElement;
-  players_cards: DwgCardHand;
+  private round_number!: HTMLSpanElement;
+  private trick_number!: HTMLSpanElement;
+  private status_container!: HTMLSpanElement;
+  private card_face_up_img!: HTMLImageElement;
+  private table_container!: HTMLDivElement;
+  private trick_cards!: HTMLDivElement;
+  private player_container!: HTMLDivElement;
+  private players_cards!: DwgCardHand;
 
-  game: GameEuchre;
-  current_trick = 0;
-  player_els: DwgEuchrePlayer[] = [];
-  player_id: number = -1;
-  trick_card_els: HTMLDivElement[] = [];
+  private game!: GameEuchre;
+  private current_trick = 0;
+  private player_els: DwgEuchrePlayer[] = [];
+  private player_id: number = -1;
+  private trick_card_els: HTMLDivElement[] = [];
 
   constructor() {
     super();
-    this.htmlString = html;
-    this.configureElement('round_number');
-    this.configureElement('trick_number');
-    this.configureElement('status_container');
-    this.configureElement('card_face_up_img');
-    this.configureElement('table_container');
-    this.configureElement('trick_cards');
-    this.configureElement('player_container');
-    this.configureElement('players_cards');
+    this.html_string = html;
+    this.configureElements(
+      'round_number',
+      'trick_number',
+      'status_container',
+      'card_face_up_img',
+      'table_container',
+      'trick_cards',
+      'player_container',
+      'player_cards'
+    );
   }
 
   protected override parsedCallback(): void {
@@ -121,7 +115,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
           !game.game_base.game_ended && player_id === game.turn,
           !game.game_base.game_ended && player_id === game.dealer
         );
-        if (this.player_id == player_id && !game.game_base.game_ended) {
+        if (this.player_id === player_id && !game.game_base.game_ended) {
           this.players_cards.setCards(game.players[player_id].cards, game.players[player_id].cards_played);
           if (!game.bidding && this.game.turn === this.player_id) {
             this.players_cards.can_play = true;
@@ -162,12 +156,12 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     try {
       switch (update.kind) {
         case 'deal-round':
-          const dealRoundData = update.content as DealRound;
-          await this.applyDealRound(dealRoundData);
+          const deal_round_data = update.content as DealRound;
+          await this.applyDealRound(deal_round_data);
           break;
         case 'pass':
-          const passData = update.content as PlayerPass;
-          if (this.game.turn !== passData.player_id) {
+          const pass_data = update.content as PlayerPass;
+          if (this.game.turn !== pass_data.player_id) {
             // TODO: try to sync data
             throw new Error('Player pass out of order');
           }
@@ -175,39 +169,39 @@ export class DwgEuchre extends DwgElement implements GameComponent {
             // TODO: try to sync data
             throw new Error('Dealer is stuck and must choose trump');
           }
-          await this.applyPlayerPass(passData);
+          await this.applyPlayerPass(pass_data);
           break;
         case 'bid':
-          const bidData = update.content as PlayerBid;
-          if (this.game.turn !== bidData.player_id) {
+          const bid_data = update.content as PlayerBid;
+          if (this.game.turn !== bid_data.player_id) {
             // TODO: try to sync data
             throw new Error('Player bid out of order');
           }
-          await this.applyPlayerBid(bidData);
+          await this.applyPlayerBid(bid_data);
           break;
         case 'bid-choose-trump':
-          const bidChooseTrumpData = update.content as BidChooseTrump;
-          if (this.game.turn !== bidChooseTrumpData.player_id) {
+          const bid_choose_trump_data = update.content as BidChooseTrump;
+          if (this.game.turn !== bid_choose_trump_data.player_id) {
             // TODO: try to sync data
             throw new Error('Player bid choose trump out of order');
           }
-          await this.applyBidChooseTrump(bidChooseTrumpData);
+          await this.applyBidChooseTrump(bid_choose_trump_data);
           break;
         case 'dealer-substitutes-card':
-          const dealerSubstitutesCardData = update.content as DealerSubstitutesCard;
-          if (this.game.dealer !== dealerSubstitutesCardData.player_id) {
+          const dealer_substitutes_card_data = update.content as DealerSubstitutesCard;
+          if (this.game.dealer !== dealer_substitutes_card_data.player_id) {
             // TODO: try to sync data
             throw new Error('Only dealer can substitute card');
           }
-          await this.applyDealerSubstitutesCard(dealerSubstitutesCardData);
+          await this.applyDealerSubstitutesCard(dealer_substitutes_card_data);
           break;
         case 'play-card':
-          const playCardData = update.content as PlayCard;
-          if (this.game.turn !== playCardData.player_id) {
+          const play_card_data = update.content as PlayCard;
+          if (this.game.turn !== play_card_data.player_id) {
             // TODO: try to sync data
             throw new Error('Player played out of order');
           }
-          await this.applyPlayCard(playCardData);
+          await this.applyPlayCard(play_card_data);
           break;
         default:
           console.log(`Unknown game update type ${update.kind}`);
@@ -279,7 +273,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     await this.player_els[data.player_id].setBidAnimation(data.going_alone);
     this.game.bidding = false;
     this.game.makers_team = data.player_id % 2;
-    this.game.defenders_team = this.game.makers_team == 0 ? 1 : 0;
+    this.game.defenders_team = this.game.makers_team === 0 ? 1 : 0;
     for (const player_id of this.game.teams[this.game.makers_team].player_ids) {
       const going_alone_ally = data.player_id !== player_id;
       this.player_els[player_id].setBid(true, data.going_alone, going_alone_ally);
@@ -315,7 +309,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     await this.player_els[data.player_id].setBidAnimation(data.going_alone, cardSuitToName(data.trump_suit));
     this.game.bidding_choosing_trump = false;
     this.game.makers_team = data.player_id % 2;
-    this.game.defenders_team = this.game.makers_team == 0 ? 1 : 0;
+    this.game.defenders_team = this.game.makers_team === 0 ? 1 : 0;
     for (const player_id of this.game.teams[this.game.makers_team].player_ids) {
       const going_alone_ally = data.player_id !== player_id;
       this.player_els[player_id].setBid(true, data.going_alone, going_alone_ally);
@@ -500,17 +494,17 @@ export class DwgEuchre extends DwgElement implements GameComponent {
   }
 
   private cardSuit(card: StandardCard): number {
-    if (cardSuitToColor(card.suit) === cardSuitToColor(this.game.trump_suit) && card.number == 11) {
+    if (cardSuitToColor(card.suit) === cardSuitToColor(this.game.trump_suit) && card.number === 11) {
       return this.game.trump_suit;
     }
     return card.suit;
   }
 
   private cardNumber(card: StandardCard): number {
-    if (card.suit == this.game.trump_suit && card.number == 11) {
+    if (card.suit === this.game.trump_suit && card.number === 11) {
       // right bar
       return 16;
-    } else if (this.cardSuit(card) == this.game.trump_suit && card.number == 11) {
+    } else if (this.cardSuit(card) === this.game.trump_suit && card.number === 11) {
       // left bar
       return 15;
     }

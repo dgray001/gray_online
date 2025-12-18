@@ -13,7 +13,7 @@ export enum ClickSource {
 }
 
 /** Converts a javascript mouse event to a click source */
-export function MouseEventToClickSource(e: MouseEvent): ClickSource {
+export function mouseEventToClickSource(e: MouseEvent): ClickSource {
   switch (e.button) {
     case 0:
       return ClickSource.LEFT_MOUSE;
@@ -100,7 +100,7 @@ export abstract class DwgButton implements CanvasComponent {
   }
 
   mousedown(e: MouseEvent): boolean {
-    const source = MouseEventToClickSource(e);
+    const source = mouseEventToClickSource(e);
     if (source === ClickSource.UNKNOWN) {
       return false;
     }
@@ -118,7 +118,7 @@ export abstract class DwgButton implements CanvasComponent {
   }
 
   mouseup(e: MouseEvent) {
-    const source = MouseEventToClickSource(e);
+    const source = mouseEventToClickSource(e);
     if (source === ClickSource.UNKNOWN) {
       return;
     }

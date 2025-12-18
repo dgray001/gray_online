@@ -1,14 +1,7 @@
 import { getUrlParam } from '../../scripts/url';
 import { SERVER_CHAT_NAME } from '../chatbox/chatbox';
-import type {
-  ServerMessage,
-  LobbyRoom,
-  LobbyRoomFromServer,
-  GameSettingsFromServer} from './data_models';
-import {
-  serverResponseToRoom,
-  serverResponseToGameSettings,
-} from './data_models';
+import type { ServerMessage, LobbyRoom, LobbyRoomFromServer, GameSettingsFromServer } from './data_models';
+import { serverResponseToRoom, serverResponseToGameSettings } from './data_models';
 import type { DwgLobby } from './lobby';
 
 function isLobbyMessage(kind: string): boolean {
@@ -31,12 +24,12 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
     case 'lobby-you-joined':
       const you_joined_data_split = message.data.split('-');
       if (you_joined_data_split.length < 2) {
-        lobby.getSocket().close(3001, 'you-joined-lobby message did not return properly-formed connect data');
+        lobby.closeSocket(3001, 'you-joined-lobby message did not return properly-formed connect data');
         lobby.dispatchEvent(new Event('connection_lost'));
       }
       const id = parseInt(you_joined_data_split[0]);
       if (!id) {
-        lobby.getSocket().close(3001, 'you-joined-lobby message did not return properly-formed client id');
+        lobby.closeSocket(3001, 'you-joined-lobby message did not return properly-formed client id');
         lobby.dispatchEvent(new Event('connection_lost'));
       }
       const you_joined_word = you_joined_data_split[1] === 'reconnect' ? 'rejoined' : 'joined';
@@ -137,11 +130,16 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
       try {
         const host_id = parseInt(message.sender.replace('client-', ''));
         const host = lobby.getLobbyUsers().getUser(host_id);
+        if (!host) {
+          // TODO: handle
+          throw new Error('No host when trying to create room');
+        }
         const server_room = JSON.parse(message.content) as LobbyRoomFromServer;
         const room = serverResponseToRoom(server_room);
         host.room_id = room.room_id;
         set_room(room, host_id);
-      } catch (_e) { // TODO: implement
+      } catch (_e) {
+        // TODO: implement
         const new_room_id = parseInt(message.data);
         if (new_room_id) {
           // TODO: send get room request
@@ -181,7 +179,10 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
         if (room_join_id === lobby.getConnectionMetadata().room_id) {
           lobby.getLobbyRoom().joinRoom(joinee, true);
         } else if (client_join_id === lobby.getConnectionMetadata().client_id && room) {
-          lobby.enterRoom(lobby.getLobbyRooms().getRoom(room_join_id)?.data, false);
+          const room_to_enter = lobby.getLobbyRooms().getRoom(room_join_id)?.data;
+          if (room_to_enter) {
+            lobby.enterRoom(room_to_enter, false);
+          }
         }
       }
       break;
@@ -196,7 +197,10 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
         if (viewer_room_join_id === lobby.getConnectionMetadata().room_id) {
           lobby.getLobbyRoom().joinRoom(viewer_joinee, false);
         } else if (viewer_client_join_id === lobby.getConnectionMetadata().client_id && viewer_room) {
-          lobby.enterRoom(lobby.getLobbyRooms().getRoom(viewer_room_join_id)?.data, false);
+          const room_to_enter = lobby.getLobbyRooms().getRoom(viewer_room_join_id)?.data;
+          if (room_to_enter) {
+            lobby.enterRoom(room_to_enter, false);
+          }
         }
       }
       break;
@@ -227,7 +231,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
         if (renamer_client_id === lobby.getConnectionMetadata().client_id) {
           // TODO: loader for renaming room
         }
-        if (lobby.getLobbyRoom().getRoom() && lobby.getLobbyRoom().getRoom().room_id === room_renamed_id) {
+        if (lobby.getLobbyRoom().getRoom()?.room_id === room_renamed_id) {
           lobby.getLobbyRoom().renameRoom(message.content, renamer_client_id);
         }
         lobby.getLobbyRooms().renameRoom(room_renamed_id, message.content);
@@ -240,7 +244,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
         if (description_updater_id === lobby.getConnectionMetadata().client_id) {
           // TODO: loader for updating room description
         }
-        if (lobby.getLobbyRoom().getRoom() && lobby.getLobbyRoom().getRoom().room_id === room_description_updated_id) {
+        if (lobby.getLobbyRoom().getRoom()?.room_id === room_description_updated_id) {
           lobby.getLobbyRoom().updateRoomDescription(message.content);
         }
         lobby.getLobbyRooms().updateRoomDescription(room_description_updated_id, message.content);

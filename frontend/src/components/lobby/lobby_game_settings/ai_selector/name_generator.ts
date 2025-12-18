@@ -644,7 +644,7 @@ export function generateName(): string {
   return nickname;
 }
 
-const romanLookup: [string, number][] = [
+const roman_lookup: [string, number][] = [
   ['M', 1000],
   ['CM', 900],
   ['D', 500],
@@ -662,7 +662,7 @@ const romanLookup: [string, number][] = [
 
 function romanNumeral(i: number): string {
   let roman = '';
-  for (const [r, n] of romanLookup) {
+  for (const [r, n] of roman_lookup) {
     while (i >= n) {
       roman += r;
       i -= n;

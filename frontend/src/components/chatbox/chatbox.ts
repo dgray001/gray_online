@@ -16,22 +16,18 @@ export declare interface ChatMessage {
 export const SERVER_CHAT_NAME = '!!server!!';
 
 export class DwgChatbox extends DwgElement {
-  chat_container: HTMLDivElement;
-  chat_input: HTMLInputElement;
-  send_chat: HTMLButtonElement;
-  new_messages_button: HTMLButtonElement;
-  new_messages_number: HTMLSpanElement;
+  private chat_container!: HTMLDivElement;
+  private chat_input!: HTMLInputElement;
+  private send_chat!: HTMLButtonElement;
+  private new_messages_button!: HTMLButtonElement;
+  private new_messages_number!: HTMLSpanElement;
 
   convert_emoticons = true;
 
   constructor() {
     super();
-    this.htmlString = html;
-    this.configureElement('chat_container');
-    this.configureElement('chat_input');
-    this.configureElement('send_chat');
-    this.configureElement('new_messages_button');
-    this.configureElement('new_messages_number');
+    this.html_string = html;
+    this.configureElements('chat_container', 'chat_input', 'send_chat', 'new_messages_button', 'new_messages_number');
   }
 
   protected override parsedCallback(): void {
@@ -68,10 +64,11 @@ export class DwgChatbox extends DwgElement {
     this.new_messages_button.classList.remove('show');
   }
 
-  static adjust_scroll_limit = 5;
-  last_new_messages_button_timer: number;
-  last_new_messages_button_count = 0;
-  new_chat_elements: HTMLDivElement[] = [];
+  private static adjust_scroll_limit = 5;
+  private last_new_messages_button_timer?: number;
+  private last_new_messages_button_count = 0;
+  private new_chat_elements: HTMLDivElement[] = [];
+
   addChat(message: ChatMessage, you_sent = false) {
     const scrolled_up = this.scrolledUp();
     const sender = !!message.sender && message.sender !== SERVER_CHAT_NAME ? `${message.sender}: ` : '';

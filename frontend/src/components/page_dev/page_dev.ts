@@ -11,7 +11,7 @@ export class DwgPageDev extends DwgElement {
 
   constructor() {
     super();
-    this.htmlString = html;
+    this.html_string = html;
     this.configureElement('game');
   }
 

@@ -13,6 +13,10 @@
     "sourceMap": true,
     "target": "es6",
     "typeRoots": ["./node_modules/@types"],
+    "skipLibCheck": true,  // Skips type checking of all declaration (*.d.ts) files
   },
   "include": ["src", "src/types.d.ts", "eslint.config.mjs"],
+  "exclude": [
+    "node_modules",
+  ],
 }

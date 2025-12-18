@@ -12,10 +12,10 @@ export class DwgLobbyUser extends DwgElement {
   private buttons!: HTMLDivElement;
 
   private user!: LobbyUser;
-  
+
   constructor() {
     super();
-    this.htmlString = html;
+    this.html_string = html;
     this.configureElements('ping_image', 'ping_text', 'user_name', 'buttons');
   }
 

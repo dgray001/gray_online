@@ -1,17 +1,17 @@
 import { DwgElement } from '../../../dwg_element';
 import type { GameComponent, UpdateMessage } from '../../data_models';
-import type { StandardCard} from '../../util/card_util';
+import type { StandardCard } from '../../util/card_util';
 import { cardToIcon, cardToImagePath, cardToName } from '../../util/card_util';
 import type { DwgFiddlesticksPlayer } from './fiddlesticks_player/fiddlesticks_player';
 import type { DwgCardHand } from '../../util/card_hand/card_hand';
 import { createMessage } from '../../../lobby/data_models';
 import { clientOnMobile, until, untilTimer } from '../../../../scripts/util';
 import { modulus } from '../../../../scripts/math';
-import type { DwgGame} from '../../game';
+import type { DwgGame } from '../../game';
 import { messageDialog } from '../../game';
 
 import html from './fiddlesticks.html';
-import type { GameFiddlesticks, DealRound, PlayerBet, PlayCard } from './fiddlesticks_data';
+import type { GameFiddlesticks, DealRound, PlayerBet, PlayCard, PlayerDealRound } from './fiddlesticks_data';
 
 import './fiddlesticks.scss';
 import './fiddlesticks_player/fiddlesticks_player';
@@ -19,17 +19,17 @@ import '../../../dialog_box/message_dialog/message_dialog';
 import '../../util/card_hand/card_hand';
 
 export class DwgFiddlesticks extends DwgElement implements GameComponent {
-  private round_number: HTMLSpanElement;
-  private bets_number: HTMLSpanElement;
-  private trick_number: HTMLSpanElement;
-  private status_container: HTMLSpanElement;
-  private trump_card_img: HTMLImageElement;
-  private trick_cards: HTMLDivElement;
-  private table_container: HTMLDivElement;
-  private player_container: HTMLDivElement;
-  private players_cards: DwgCardHand;
+  private round_number!: HTMLSpanElement;
+  private bets_number!: HTMLSpanElement;
+  private trick_number!: HTMLSpanElement;
+  private status_container!: HTMLSpanElement;
+  private trump_card_img!: HTMLImageElement;
+  private trick_cards!: HTMLDivElement;
+  private table_container!: HTMLDivElement;
+  private player_container!: HTMLDivElement;
+  private players_cards!: DwgCardHand;
 
-  private game: GameFiddlesticks;
+  private game!: GameFiddlesticks;
   private current_trick = 0;
   private player_els: DwgFiddlesticksPlayer[] = [];
   private player_id: number = -1;
@@ -37,16 +37,18 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
 
   constructor() {
     super();
-    this.htmlString = html;
-    this.configureElement('round_number');
-    this.configureElement('bets_number');
-    this.configureElement('trick_number');
-    this.configureElement('status_container');
-    this.configureElement('trump_card_img');
-    this.configureElement('trick_cards');
-    this.configureElement('table_container');
-    this.configureElement('player_container');
-    this.configureElement('players_cards');
+    this.html_string = html;
+    this.configureElements(
+      'round_number',
+      'bets_number',
+      'trick_number',
+      'status_container',
+      'trump_card_img',
+      'trick_cards',
+      'table_container',
+      'player_container',
+      'players_cards'
+    );
   }
 
   protected override parsedCallback(): void {
@@ -106,7 +108,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
         const turn = player_id === game.turn;
         const dealer = player_id === game.dealer;
         player_el.gameStarted(game.betting, turn, dealer);
-        if (this.player_id == player_id && !game.game_base.game_ended) {
+        if (this.player_id === player_id && !game.game_base.game_ended) {
           this.players_cards.setCards(game.players[player_id].cards, game.players[player_id].cards_played);
           if (!game.betting && this.game.turn === this.player_id) {
             this.players_cards.can_play = true;
@@ -161,24 +163,24 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     try {
       switch (update.kind) {
         case 'deal-round':
-          const dealRoundData = update.content as DealRound;
-          await this.applyDealRound(dealRoundData);
+          const deal_round_data = update.content as DealRound;
+          await this.applyDealRound(deal_round_data);
           break;
         case 'bet':
-          const betData = update.content as PlayerBet;
-          if (this.game.turn !== betData.player_id) {
+          const bet_data = update.content as PlayerBet;
+          if (this.game.turn !== bet_data.player_id) {
             // TODO: try to sync data
             throw new Error('Player bet out of order');
           }
-          await this.applyBet(betData);
+          await this.applyBet(bet_data);
           break;
         case 'play-card':
-          const playCardData = update.content as PlayCard;
-          if (this.game.turn !== playCardData.player_id) {
+          const play_card_data = update.content as PlayCard;
+          if (this.game.turn !== play_card_data.player_id) {
             // TODO: try to sync data
             throw new Error('Player played out of order');
           }
-          await this.applyPlayCard(playCardData);
+          await this.applyPlayCard(play_card_data);
           break;
         default:
           console.log(`Unknown game update type ${update.kind}`);
@@ -206,8 +208,8 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
         player_el.newRound(false);
       }
       if (player_id === this.player_id) {
-        const card_animation_time = Math.min(150, animation_time / data.cards.length);
-        this.players_cards.setCards(data.cards, [], card_animation_time);
+        const card_animation_time = Math.min(150, animation_time / (data as PlayerDealRound).cards.length);
+        this.players_cards.setCards((data as PlayerDealRound).cards, [], card_animation_time);
       }
     }
     await untilTimer(animation_time);
@@ -221,7 +223,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     for (const [player_id, player] of this.game.players.entries()) {
       player.bet = -1;
       if (player_id === this.player_id) {
-        player.cards = data.cards;
+        player.cards = (data as PlayerDealRound).cards;
       } else {
         player.cards = [];
       }

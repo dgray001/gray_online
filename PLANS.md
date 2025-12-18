@@ -1,6 +1,6 @@
 202512: Restarting this project
-v: Can launch risq (and other games) directly with url in local for faster testing
-w: continue with abstract scrollbar, etc...
+x: Can launch risq (and other games) directly with url in local for faster testing
+y: continue with abstract scrollbar, etc...
 
  
  - After reconnecting sometimes in backend the connection is nil (or delete_timer is not nil)

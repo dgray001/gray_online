@@ -1,4 +1,4 @@
-import type { BoundedNumber} from '../../../../../scripts/math';
+import type { BoundedNumber } from '../../../../../scripts/math';
 import { setBoundedNumber, validateBoundedNumber } from '../../../../../scripts/math';
 import type { BoardTransformData } from '../../canvas_board/canvas_board';
 import type { Point2D } from '../../objects2d';

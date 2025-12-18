@@ -1,5 +1,5 @@
 import { DwgElement } from '../dwg_element';
-import type { ServerMessage, LobbyRoom, ConnectionMetadata} from '../lobby/data_models';
+import type { ServerMessage, LobbyRoom, ConnectionMetadata } from '../lobby/data_models';
 import { GameType, createMessage } from '../lobby/data_models';
 import { apiPost } from '../../scripts/api';
 import type { ChatMessage, DwgChatbox } from '../chatbox/chatbox';
@@ -7,16 +7,8 @@ import { capitalize, createLock, until } from '../../scripts/util';
 import type { MessageDialogData } from '../dialog_box/message_dialog/message_dialog';
 import { getUrlParam } from '../../scripts/url';
 
-import type {
-  Game,
-  GameComponent,
-  GameFromServer,
-  GamePlayer,
-  GameViewer,
-  GameHtmlTag} from './data_models';
-import {
-  serverResponseToGame
-} from './data_models';
+import type { Game, GameComponent, GameFromServer, GamePlayer, GameViewer, GameHtmlTag } from './data_models';
+import { serverResponseToGame } from './data_models';
 import { handleMessage } from './message_handler';
 import html from './game.html';
 
@@ -30,65 +22,67 @@ import '../dialog_box/confirm_dialog/confirm_dialog';
 const SERVER_PING_TIME = 3500; // time between game refreshes
 
 /** Function to dispatch event that will show a dialog message */
-export function messageDialog(data: MessageDialogData) {
+export function messageDialog(this: EventTarget, data: MessageDialogData) {
   this.dispatchEvent(new CustomEvent('show_message_dialog', { detail: data, bubbles: true }));
 }
 
 export class DwgGame extends DwgElement {
-  private client_name_string: HTMLSpanElement;
-  private client_ping: HTMLSpanElement;
-  private room_name: HTMLDivElement;
-  private game_name: HTMLDivElement;
-  private waiting_room: HTMLDivElement;
-  private players_waiting: HTMLDivElement;
+  private client_name_string!: HTMLSpanElement;
+  private client_ping!: HTMLSpanElement;
+  private room_name!: HTMLDivElement;
+  private game_name!: HTMLDivElement;
+  private waiting_room!: HTMLDivElement;
+  private players_waiting!: HTMLDivElement;
   private players_waiting_els = new Map<number, HTMLDivElement>();
-  private game_container: HTMLDivElement;
-  private game_el: GameComponent;
-  private chatbox_container: HTMLDivElement;
-  private chatbox: DwgChatbox;
-  private open_chatbox_button: HTMLButtonElement;
-  private button_game_info: HTMLButtonElement;
-  private button_game_history: HTMLButtonElement;
-  private button_room_players: HTMLButtonElement;
-  private button_fullscreen: HTMLButtonElement;
-  private maximize_img: HTMLImageElement;
-  private minimize_img: HTMLImageElement;
-  private button_exit: HTMLButtonElement;
+  private game_container!: HTMLDivElement;
+  private game_el!: GameComponent;
+  private chatbox_container!: HTMLDivElement;
+  private chatbox!: DwgChatbox;
+  private open_chatbox_button!: HTMLButtonElement;
+  private button_game_info!: HTMLButtonElement;
+  private button_game_history!: HTMLButtonElement;
+  private button_room_players!: HTMLButtonElement;
+  private button_fullscreen!: HTMLButtonElement;
+  private maximize_img!: HTMLImageElement;
+  private minimize_img!: HTMLImageElement;
+  private button_exit!: HTMLButtonElement;
 
   private bundles_attached = new Set<string>();
   private abort_controllers: AbortController[] = [];
-  private launched: boolean;
-  private socket: WebSocket;
-  private connection_metadata: ConnectionMetadata;
+  private launched = false;
+  private socket?: WebSocket;
+  private connection_metadata?: ConnectionMetadata;
   private game_id = 0;
   private player_id = -1;
   private is_player = false;
-  private game: Game;
-  private lobby_room: LobbyRoom;
-  private ping_interval: NodeJS.Timeout;
+  private game?: Game;
+  private lobby_room?: LobbyRoom;
+  private ping_interval?: NodeJS.Timeout;
 
   private chatbox_lock = createLock();
 
   constructor() {
     super();
-    this.htmlString = html;
-    this.configureElement('client_name_string');
-    this.configureElement('client_ping');
-    this.configureElement('room_name');
-    this.configureElement('game_name');
-    this.configureElement('waiting_room');
-    this.configureElement('players_waiting');
-    this.configureElement('game_container');
-    this.configureElement('chatbox_container');
-    this.configureElement('chatbox');
-    this.configureElement('open_chatbox_button');
-    this.configureElement('button_game_info');
-    this.configureElement('button_game_history');
-    this.configureElement('button_room_players');
-    this.configureElement('button_fullscreen');
-    this.configureElement('maximize_img');
-    this.configureElement('minimize_img');
-    this.configureElement('button_exit');
+    this.html_string = html;
+    this.configureElements(
+      'client_name_string',
+      'client_ping',
+      'room_name',
+      'game_name',
+      'waiting_room',
+      'players_waiting',
+      'game_container',
+      'chatbox_container',
+      'chatbox',
+      'open_chatbox_button',
+      'button_game_info',
+      'button_game_history',
+      'button_room_players',
+      'button_fullscreen',
+      'maximize_img',
+      'minimize_img',
+      'button_exit'
+    );
   }
 
   isPlayer(): boolean {
@@ -119,11 +113,11 @@ export class DwgGame extends DwgElement {
     return this.game_el;
   }
 
-  getSocket(): WebSocket {
+  getSocket(): WebSocket | undefined {
     return this.socket;
   }
 
-  getConnectionMetadata(): ConnectionMetadata {
+  getConnectionMetadata(): ConnectionMetadata | undefined {
     return this.connection_metadata;
   }
 
@@ -139,7 +133,7 @@ export class DwgGame extends DwgElement {
       }
     });
     this.chatbox.style.setProperty('--gray-color', 'rgba(220, 220, 220, 0.9)');
-    this.chatbox.addEventListener('chat_sent', (e: CustomEvent<ChatMessage>) => {
+    this.chatbox.addEventListener('chat_sent', (e) => {
       if (!this.socketActive()) {
         console.error('Trying to send chat with invalid socket');
         return;
@@ -151,7 +145,7 @@ export class DwgGame extends DwgElement {
         message.message = message.message.slice(2).trim();
         this.socketSend(
           createMessage(
-            message.sender ?? `client-${this.connection_metadata.client_id}`,
+            message.sender ?? `client-${this.connection_metadata?.client_id}`,
             'lobby-chat',
             message.message,
             message.color
@@ -163,7 +157,7 @@ export class DwgGame extends DwgElement {
         message.message = message.message.slice(2).trim();
         this.socketSend(
           createMessage(
-            message.sender ?? `room-${this.connection_metadata.room_id}-${this.connection_metadata.client_id}`,
+            message.sender ?? `room-${this.connection_metadata?.room_id}-${this.connection_metadata?.client_id}`,
             'room-chat',
             message.message,
             message.color
@@ -175,7 +169,7 @@ export class DwgGame extends DwgElement {
         }
         this.socketSend(
           createMessage(
-            message.sender ?? `game-${this.connection_metadata.client_id}`,
+            message.sender ?? `game-${this.connection_metadata?.client_id}`,
             'game-chat',
             message.message,
             message.color
@@ -187,12 +181,15 @@ export class DwgGame extends DwgElement {
       this.toggleChatbox();
     });
     this.button_game_info.addEventListener('click', () => {
+      if (!this.game || !this.lobby_room) {
+        return;
+      }
       const game_info = document.createElement('dwg-game-info-dialog');
       game_info.setData({ game: this.game, room: this.lobby_room });
       this.appendChild(game_info);
     });
     this.button_game_history.addEventListener('click', () => {
-      if (!this.launched) {
+      if (!this.launched || !this.game) {
         return;
       }
       const game_history = document.createElement('dwg-game-history-dialog');
@@ -203,6 +200,9 @@ export class DwgGame extends DwgElement {
       this.appendChild(game_history);
     });
     this.button_room_players.addEventListener('click', () => {
+      if (!this.game || !this.lobby_room) {
+        return;
+      }
       const players_dialog = document.createElement('dwg-players-dialog');
       players_dialog.setData({
         players: [...this.game.game_base.players.values()].sort((a, b) => a.player_id - b.player_id),
@@ -291,13 +291,13 @@ export class DwgGame extends DwgElement {
     this.lobby_room = room;
     this.room_name.innerText = room.room_name;
     this.game_id = room.game_id;
-    this.is_player = room.players.has(this.connection_metadata.client_id);
+    this.is_player = !!this.connection_metadata.client_id && room.players.has(this.connection_metadata.client_id);
   }
 
   async launchGame(
-    room: LobbyRoom,
-    socket: WebSocket,
-    connection_metadata: ConnectionMetadata,
+    room: LobbyRoom | undefined,
+    socket: WebSocket | undefined,
+    connection_metadata: ConnectionMetadata | undefined,
     rejoining = false
   ): Promise<boolean> {
     if (
@@ -311,8 +311,14 @@ export class DwgGame extends DwgElement {
       !connection_metadata.room_id ||
       room.room_id !== connection_metadata.room_id
     ) {
-      console.log('Invalid state to launch game');
-      return;
+      console.log('Invalid state to launch game: ', {
+        launched: this.launched,
+        rejoining,
+        room,
+        socket,
+        connection_metadata,
+      });
+      return false;
     }
     this.socket = socket;
     this.connection_metadata = connection_metadata;
@@ -345,7 +351,7 @@ export class DwgGame extends DwgElement {
   }
 
   socketActive() {
-    return !!this.socket && this.socket.readyState == WebSocket.OPEN;
+    return !!this.socket && this.socket.readyState === WebSocket.OPEN;
   }
 
   socketSend(message: string) {
@@ -368,10 +374,11 @@ export class DwgGame extends DwgElement {
       console.log(response.error_message);
       return false;
     }
-    this.game = serverResponseToGame(response.result, this.clientId());
+    const new_game = serverResponseToGame(response.result, this.clientId());
+    this.game = new_game;
     let game_initialized = false;
     let waiting_room_initialized = false;
-    const setGame = async (component: GameHtmlTag) => {
+    const set_game = async (component: GameHtmlTag) => {
       if (!this.bundles_attached.has(component)) {
         const script = document.createElement('script');
         script.setAttribute(
@@ -393,22 +400,22 @@ export class DwgGame extends DwgElement {
       this.game_el = game_el; // assign after attaching to dom to keep TS happy
       this.player_id = -1;
       this.is_player = false;
-      for (const [player_id, player] of this.game.players.entries()) {
+      for (const [player_id, player] of new_game.players.entries()) {
         if (player.player.client_id === this.clientId()) {
           this.player_id = player_id;
           this.is_player = true;
           break;
         }
       }
-      this.game_el.initialize(this, this.game).then(() => {
+      this.game_el.initialize(this, new_game).then(() => {
         game_initialized = true;
         if (waiting_room_initialized) {
           this.socketSend(createMessage(`client-${this.clientId()}`, 'game-connected', '', this.game_id.toString()));
           this.launched = true;
         }
       });
-      game_el.addEventListener('game_update', (e: CustomEvent<string>) => {
-        if (this.game.game_base.game_ended) {
+      game_el.addEventListener('game_update', (e) => {
+        if (new_game.game_base.game_ended) {
           console.log('Game already over');
           return;
         }
@@ -416,32 +423,32 @@ export class DwgGame extends DwgElement {
         this.socketSend(e.detail);
       });
     };
-    switch (this.game.game_base.game_type) {
+    switch (new_game.game_base.game_type) {
       case GameType.FIDDLESTICKS:
-        await setGame('dwg-fiddlesticks');
+        await set_game('dwg-fiddlesticks');
         break;
       case GameType.EUCHRE:
-        await setGame('dwg-euchre');
+        await set_game('dwg-euchre');
         break;
       case GameType.RISQ:
-        await setGame('dwg-risq');
+        await set_game('dwg-risq');
         break;
       case GameType.TEST_GAME:
-        await setGame('dwg-test-game');
+        await set_game('dwg-test-game');
         break;
       case GameType.UNSPECIFIED:
       default:
-        throw new Error(`Unknown game type: ${this.game.game_base.game_type}`);
+        throw new Error(`Unknown game type: ${new_game.game_base.game_type}`);
     }
-    this.game_name.innerText = capitalize(GameType[this.game.game_base.game_type].toLowerCase().replace('_', ' '));
-    if (this.game.game_base.game_started) {
+    this.game_name.innerText = capitalize(GameType[new_game.game_base.game_type].toLowerCase().replace('_', ' '));
+    if (new_game.game_base.game_started) {
       this.startGame();
     } else {
       this.waiting_room.classList.remove('hide');
       this.game_container.classList.remove('show');
       this.players_waiting_els.clear();
       this.players_waiting.replaceChildren();
-      for (const [id, player] of this.game.game_base.players) {
+      for (const [id, player] of new_game.game_base.players) {
         const el = document.createElement('div');
         const name = document.createElement('div');
         const status = document.createElement('div');

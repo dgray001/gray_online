@@ -1,7 +1,7 @@
 import { ColorRGB } from '../../../../scripts/color_rgb';
 import { atangent } from '../../../../scripts/math';
 import { drawEllipse } from '../../util/canvas_util';
-import type { Point2D} from '../../util/objects2d';
+import type { Point2D } from '../../util/objects2d';
 import { pointInHexagon, rotatePoint, subtractPoint2D } from '../../util/objects2d';
 import type { DwgRisq } from './risq';
 import { buildingImage } from './risq_buildings';

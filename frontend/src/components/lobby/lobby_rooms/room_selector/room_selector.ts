@@ -8,24 +8,26 @@ import html from './room_selector.html';
 import './room_selector.scss';
 
 export class DwgRoomSelector extends DwgElement {
-  room_name: HTMLDivElement;
-  room_curr_players: HTMLSpanElement;
-  room_max_players: HTMLSpanElement;
-  room_game: HTMLDivElement;
-  button_join_player: HTMLButtonElement;
-  button_join_viewer: HTMLButtonElement;
+  private room_name!: HTMLDivElement;
+  private room_curr_players!: HTMLSpanElement;
+  private room_max_players!: HTMLSpanElement;
+  private room_game!: HTMLDivElement;
+  private button_join_player!: HTMLButtonElement;
+  private button_join_viewer!: HTMLButtonElement;
 
-  room: LobbyRoom;
+  private room!: LobbyRoom;
 
   constructor() {
     super();
-    this.htmlString = html;
-    this.configureElement('room_name');
-    this.configureElement('room_curr_players');
-    this.configureElement('room_max_players');
-    this.configureElement('room_game');
-    this.configureElement('button_join_player');
-    this.configureElement('button_join_viewer');
+    this.html_string = html;
+    this.configureElements(
+      'room_name',
+      'room_curr_players',
+      'room_max_players',
+      'room_game',
+      'button_join_player',
+      'button_join_viewer'
+    );
   }
 
   protected override parsedCallback(): void {
@@ -35,13 +37,13 @@ export class DwgRoomSelector extends DwgElement {
     }
     this.setRoomData();
     this.addEventListener('dblclick', () => {
-      this.dispatchEvent(new Event('join_room'));
+      this.dispatchEvent(new Event('join_lobby_room'));
     });
     this.button_join_player.addEventListener('click', () => {
-      this.dispatchEvent(new CustomEvent<boolean>('join_room', { detail: true }));
+      this.dispatchEvent(new CustomEvent<boolean>('join_lobby_room', { detail: true }));
     });
     this.button_join_viewer.addEventListener('click', () => {
-      this.dispatchEvent(new CustomEvent<boolean>('join_room', { detail: false }));
+      this.dispatchEvent(new CustomEvent<boolean>('join_lobby_room', { detail: false }));
     });
   }
 

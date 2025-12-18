@@ -6,7 +6,7 @@ export function loop(times: number, callback: (i?: number) => void): void {
   for (let i = 0; i < times; i++) {
     callback(i);
   }
-};
+}
 
 /** Async loop helper function */
 export async function asyncLoop(times: number, callback: Function): Promise<void> {
@@ -16,7 +16,7 @@ export async function asyncLoop(times: number, callback: Function): Promise<void
     }
     resolve();
   });
-};
+}
 
 /** Returns promise that resolves when condition function becomes true */
 export function until(condition: () => boolean, poll_timer = 300): Promise<void> {
@@ -121,7 +121,7 @@ export function enumKeys<O extends object, K extends keyof O = keyof O>(obj: O):
 
 /** Sets interval x times */
 export function setIntervalX(
-  fn: (counter?: number) => void,
+  fn: ((counter: number) => void) | (() => void),
   delay: number,
   repetitions: number,
   fn_end = () => {}
@@ -158,7 +158,7 @@ export function createLock(throwaway_extras = false) {
       } else {
         running = false;
       }
-    };
+    }
     if (running) {
       if (!throwaway_extras) {
         queue.push(runFn);

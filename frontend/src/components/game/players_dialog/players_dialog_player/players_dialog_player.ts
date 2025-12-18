@@ -22,7 +22,7 @@ export class DwgPlayersDialogPlayer extends DwgElement {
 
   constructor() {
     super();
-    this.htmlString = html;
+    this.html_string = html;
     this.configureElement('ping_text');
     this.configureElement('ping_image');
     this.configureElement('nickname');

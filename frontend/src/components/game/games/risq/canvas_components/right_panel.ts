@@ -1,5 +1,5 @@
 import type { BoardTransformData } from '../../../util/canvas_board/canvas_board';
-import type { CanvasComponent, Rotation} from '../../../util/canvas_components/canvas_component';
+import type { CanvasComponent, Rotation } from '../../../util/canvas_components/canvas_component';
 import { configDraw } from '../../../util/canvas_components/canvas_component';
 import { drawLine, drawRect, drawText } from '../../../util/canvas_util';
 import type { Point2D } from '../../../util/objects2d';

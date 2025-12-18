@@ -60,7 +60,7 @@ export function roundAxialCoordinate(p: Point2D): Point2D {
 }
 
 /** Returns the ordered list of axial direction vectors for a hexagonal grid */
-export const axialDirectionVectors: Point2D[] = [
+export const AXIAL_DIRECTION_VECTORS: Point2D[] = [
   { x: 1, y: 0 },
   { x: 1, y: -1 },
   { x: 0, y: -1 },
@@ -97,7 +97,7 @@ export function coordinateInHexagonalBoard(c: Point2D, board_size: number): bool
 export function hexagonalBoardNeighbors(p: Point2D, board_size: number): Point2D[] {
   const c = roundAxialCoordinate(p);
   const neighbors: Point2D[] = [];
-  for (const v of axialDirectionVectors) {
+  for (const v of AXIAL_DIRECTION_VECTORS) {
     const potential_neighbor = addPoint2D(c, v);
     if (coordinateInHexagonalBoard(potential_neighbor, board_size)) {
       neighbors.push(potential_neighbor);
@@ -110,7 +110,7 @@ export function hexagonalBoardNeighbors(p: Point2D, board_size: number): Point2D
 export function hexagonalBoardRows(p: Point2D, board_size: number): Point2D[] {
   const c = roundAxialCoordinate(p);
   const neighbors: Point2D[] = [];
-  for (const v of axialDirectionVectors) {
+  for (const v of AXIAL_DIRECTION_VECTORS) {
     let last_row = c;
     while (true) {
       last_row = addPoint2D(last_row, v);

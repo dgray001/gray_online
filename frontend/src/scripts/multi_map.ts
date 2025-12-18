@@ -34,7 +34,8 @@ export class MultiMap<K, V> {
     }
     let deleted = true;
     for (const [i, keyname] of this.keynames.entries()) {
-      if (!this.maps.get(keyname)?.delete(keys[i])) { // TODO: what if doesn't exist
+      if (!this.maps.get(keyname)?.delete(keys[i])) {
+        // TODO: what if doesn't exist
         deleted = false;
       }
     }

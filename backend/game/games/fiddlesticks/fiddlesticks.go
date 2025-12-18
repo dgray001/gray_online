@@ -180,7 +180,7 @@ func (f *GameFiddlesticks) setMinRound(min_round uint8) {
 }
 
 func (f *GameFiddlesticks) setRoundPoints(round_points uint16) {
-	if round_points >= 0 && round_points < 100 {
+	if round_points < 100 {
 		f.round_points = round_points
 	} else {
 		f.round_points = 10
@@ -191,7 +191,7 @@ func (f *GameFiddlesticks) setRoundPoints(round_points uint16) {
 }
 
 func (f *GameFiddlesticks) setTrickPoints(trick_points uint16) {
-	if trick_points >= 0 && trick_points < 100 {
+	if trick_points < 100 {
 		f.trick_points = trick_points
 	} else {
 		f.trick_points = 1
@@ -301,10 +301,7 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 			return
 		}
 		bet_value := uint8(bet_value_float)
-		if bet_value < 0 {
-			player.AddFailedUpdateShorthand("bet-failed", fmt.Sprintf("Must bet at least 0 but bet %d", bet_value))
-			return
-		} else if bet_value > f.round {
+		if bet_value > f.round {
 			player.AddFailedUpdateShorthand("bet-failed",
 				fmt.Sprintf("Cannot bet more than the cards in the round (%d) but bet %d", f.round, bet_value))
 			return

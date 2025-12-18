@@ -10,37 +10,38 @@ import html from './fiddlesticks_player.html';
 import './fiddlesticks_player.scss';
 
 export class DwgFiddlesticksPlayer extends DwgElement {
-  private name_container: HTMLDivElement;
-  private status_container: HTMLDivElement;
-  private score_container: HTMLSpanElement;
-  private bet_container: HTMLSpanElement;
-  private bet_input_wrapper: HTMLDivElement;
-  private bet_input: HTMLInputElement;
-  private bet_button: HTMLButtonElement;
-  private tricks_container: HTMLSpanElement;
-  private dealer_wrapper: HTMLDivElement;
-  private winner_wrapper: HTMLDivElement;
-  private bet_animation: HTMLDivElement;
+  private name_container!: HTMLDivElement;
+  private status_container!: HTMLDivElement;
+  private score_container!: HTMLSpanElement;
+  private bet_container!: HTMLSpanElement;
+  private bet_input_wrapper!: HTMLDivElement;
+  private bet_input!: HTMLInputElement;
+  private bet_button!: HTMLButtonElement;
+  private tricks_container!: HTMLSpanElement;
+  private dealer_wrapper!: HTMLDivElement;
+  private winner_wrapper!: HTMLDivElement;
+  private bet_animation!: HTMLDivElement;
 
   private initialized = false;
-  private player: FiddlesticksPlayer;
+  private player!: FiddlesticksPlayer;
   private client_player = false;
-  private card_els: HTMLDivElement[] = [];
 
   constructor() {
     super();
-    this.htmlString = html;
-    this.configureElement('name_container');
-    this.configureElement('status_container');
-    this.configureElement('score_container');
-    this.configureElement('bet_container');
-    this.configureElement('bet_input_wrapper');
-    this.configureElement('bet_input');
-    this.configureElement('bet_button');
-    this.configureElement('tricks_container');
-    this.configureElement('dealer_wrapper');
-    this.configureElement('winner_wrapper');
-    this.configureElement('bet_animation');
+    this.html_string = html;
+    this.configureElements(
+      'name_container',
+      'status_container',
+      'score_container',
+      'bet_container',
+      'bet_input_wrapper',
+      'bet_input',
+      'bet_button',
+      'tricks_container',
+      'dealer_wrapper',
+      'winner_wrapper',
+      'bet_animation'
+    );
   }
 
   protected override parsedCallback(): void {
@@ -51,7 +52,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.score_container.innerText = this.player.score.toString();
     this.bet_container.innerText = '-';
     this.tricks_container.innerText = '-';
-    let dealer_timeout: NodeJS.Timeout = undefined;
+    let dealer_timeout: NodeJS.Timeout | undefined = undefined;
     this.dealer_wrapper.addEventListener('click', () => {
       if (dealer_timeout) {
         clearTimeout(dealer_timeout);
@@ -63,7 +64,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
         }, 2000);
       }
     });
-    let winner_timeout: NodeJS.Timeout = undefined;
+    let winner_timeout: NodeJS.Timeout | undefined = undefined;
     this.winner_wrapper.addEventListener('click', () => {
       if (winner_timeout) {
         clearTimeout(winner_timeout);

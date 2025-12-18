@@ -1,11 +1,19 @@
 import { DEV } from './util';
 
-/** Data structure for all returns to get requests */
-export interface ApiResponse<T> {
-  success: boolean;
-  result?: T;
-  error_message?: string;
+interface ApiSuccessResponse<T> {
+  success: true;
+  result: T;
+  error_message?: never;
 }
+
+interface ApiErrorResponse {
+  success: false;
+  result?: never;
+  error_message: string;
+}
+
+/** Data structure for all returns to get requests */
+export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
 
 /** Returns websocket path */
 export function websocketPath() {
@@ -46,12 +54,12 @@ export async function apiPost<T>(api: string, data: unknown): Promise<ApiRespons
   const filename = is_file ? data.name : undefined;
   const body = is_file ? data : JSON.stringify(data);
   try {
+    const custom_headers = new Headers();
+    custom_headers.append('Content-Type', content_type);
+    custom_headers.append('X-File-Name', filename ?? '');
     const response = await fetch(apiToUrl(api), {
       method: 'POST',
-      headers: {
-        'Content-Type': content_type,
-        'X-File-Name': filename,
-      },
+      headers: custom_headers,
       body,
     });
     return (await response.json()) as ApiResponse<T>;

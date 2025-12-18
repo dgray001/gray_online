@@ -1,6 +1,6 @@
 import { clickButton, DEV, enumKeys } from '../../../scripts/util';
 import { DwgElement } from '../../dwg_element';
-import type { GameSettings} from '../data_models';
+import type { GameSettings } from '../data_models';
 import { GameType } from '../data_models';
 
 import html from './lobby_game_settings.html';
@@ -10,37 +10,39 @@ import type { GameSettingsFiddlesticks } from './game_specific_data';
 import type { AiSelectorData, DwgAiSelector } from './ai_selector/ai_selector';
 
 export class DwgLobbyGameSettings extends DwgElement {
-  private game_chooser: HTMLSelectElement;
-  private max_players_input: HTMLInputElement;
-  private max_viewers_input: HTMLInputElement;
-  private game_specific_settings: HTMLDivElement;
-  private room_description: HTMLTextAreaElement;
-  private save_button: HTMLButtonElement;
+  private game_chooser!: HTMLSelectElement;
+  private max_players_input!: HTMLInputElement;
+  private max_viewers_input!: HTMLInputElement;
+  private game_specific_settings!: HTMLDivElement;
+  private room_description!: HTMLTextAreaElement;
+  private save_button!: HTMLButtonElement;
 
   private game_specific_settings_els = new Map<string, HTMLElement>();
 
   constructor() {
     super();
-    this.htmlString = html;
-    this.configureElement('game_chooser');
-    this.configureElement('max_players_input');
-    this.configureElement('max_viewers_input');
-    this.configureElement('game_specific_settings');
-    this.configureElement('room_description');
-    this.configureElement('save_button');
+    this.html_string = html;
+    this.configureElements(
+      'game_chooser',
+      'max_players_input',
+      'max_viewers_input',
+      'game_specific_settings',
+      'room_description',
+      'save_button'
+    );
   }
 
   protected override parsedCallback(): void {
-    for (const gameKey of enumKeys(GameType)) {
-      if (!GameType[gameKey]) {
+    for (const game_key of enumKeys(GameType)) {
+      if (!GameType[game_key]) {
         continue;
       }
-      if (!DEV && gameKey === GameType[GameType.TEST_GAME].toString()) {
+      if (!DEV && game_key === GameType[GameType.TEST_GAME].toString()) {
         continue;
       }
       const option = document.createElement('option');
-      option.value = GameType[gameKey].toString();
-      option.innerText = gameKey;
+      option.value = GameType[game_key].toString();
+      option.innerText = game_key;
       this.game_chooser.appendChild(option);
     }
     clickButton(this.save_button, () => {
@@ -155,7 +157,7 @@ export class DwgLobbyGameSettings extends DwgElement {
   private setNumberSetting(el_id: string, setting?: number) {
     const el = this.game_specific_settings_els.get(el_id) as HTMLInputElement;
     if (!!el) {
-      el.value = setting.toString() ?? '0';
+      el.value = setting?.toString() ?? '0';
     }
   }
 

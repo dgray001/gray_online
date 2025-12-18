@@ -1,6 +1,6 @@
 import { DwgElement } from '../../../dwg_element';
 import { until } from '../../../../scripts/util';
-import type { Point2D} from '../objects2d';
+import type { Point2D } from '../objects2d';
 import { subtractPoint2D } from '../objects2d';
 
 import html from './canvas_board.html';
@@ -90,7 +90,7 @@ export class DwgCanvasBoard extends DwgElement {
 
   constructor() {
     super();
-    this.htmlString = html;
+    this.html_string = html;
     this.configureElement('canvas');
     this.configureElement('cursor');
   }

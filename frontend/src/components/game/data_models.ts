@@ -24,6 +24,7 @@ export declare interface Game {
 export declare interface UpdateMessage {
   update_id: number;
   kind: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   content: any; // type needs to be coerced by game logic
 }
 
@@ -32,6 +33,7 @@ export declare interface PlayerAction {
   action_id: number;
   client_id: number;
   kind: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   action: any; // type needs to be coerced by game logic
 }
 
@@ -42,24 +44,24 @@ export declare interface GameFromServer {
 }
 
 /** Converts a GameFromServer to a proper frontend game object */
-export function serverResponseToGame(gameFromServer: GameFromServer, client_id: number): Game {
-  const players = new Map(gameFromServer.game_base.players.map((player) => [player.client_id, player]));
-  const viewers = new Map(gameFromServer.game_base.viewers.map((viewer) => [viewer.client_id, viewer]));
+export function serverResponseToGame(game_from_server: GameFromServer, client_id: number): Game {
+  const players = new Map(game_from_server.game_base.players.map((player) => [player.client_id, player]));
+  const viewers = new Map(game_from_server.game_base.viewers.map((viewer) => [viewer.client_id, viewer]));
   const game = {
-    ...gameFromServer, // ... game specific fields
+    ...game_from_server, // ... game specific fields
     game_base: {
-      game_id: gameFromServer.game_base.game_id,
-      game_type: gameFromServer.game_base.game_type,
-      game_started: gameFromServer.game_base.game_started,
-      game_ended: gameFromServer.game_base.game_ended,
+      game_id: game_from_server.game_base.game_id,
+      game_type: game_from_server.game_base.game_type,
+      game_started: game_from_server.game_base.game_started,
+      game_ended: game_from_server.game_base.game_ended,
       players,
       viewers,
-      player_actions: gameFromServer.game_base.player_actions
-        ? new Map(gameFromServer.game_base.player_actions.map((action) => [action.action_id, action]))
+      player_actions: game_from_server.game_base.player_actions
+        ? new Map(game_from_server.game_base.player_actions.map((action) => [action.action_id, action]))
         : undefined,
     },
   } as Game;
-  const updates = players.get(client_id)?.updates ?? gameFromServer.game_base.viewer_updates;
+  const updates = players.get(client_id)?.updates ?? game_from_server.game_base.viewer_updates;
   if (updates !== undefined) {
     game.game_base.updates = new Map(updates.map((update) => [update.update_id, update]));
     game.game_base.last_applied_update_id = updates.length;

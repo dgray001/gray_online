@@ -1,6 +1,6 @@
-import type { ServerMessage} from '../lobby/data_models';
+import type { ServerMessage } from '../lobby/data_models';
 import { createMessage } from '../lobby/data_models';
-import type { GameBase, UpdateMessage } from './data_models';
+import type { UpdateMessage } from './data_models';
 import type { DwgGame } from './game';
 
 /** After this many repeated errors the frontend should shutdown */
@@ -94,7 +94,9 @@ export function handleMessage(game: DwgGame, message: ServerMessage) {
 
 let running_updates = false;
 async function handleGameUpdate(game: DwgGame, message: ServerMessage) {
-  if (!game.getGameEl() || !game.getGame) {
+  const game_ob = game.getGame();
+  const game_el = game.getGameEl();
+  if (!game_ob || !game_el) {
     return;
   }
   const sender_split = message.sender.split('-');
@@ -105,68 +107,69 @@ async function handleGameUpdate(game: DwgGame, message: ServerMessage) {
   if (!game_update_id) {
     return;
   }
-  const game_base: GameBase = game.getGame().game_base;
+  const game_base = game_ob.game_base;
   async function runUpdate(update: UpdateMessage) {
     running_updates = true;
-    if (update.update_id - 1 === game_base.last_applied_update_id) {
+    const last_update_id = game_base?.last_applied_update_id ?? -2;
+    if (update.update_id - 1 === last_update_id) {
       game_base.last_applied_update_id = update.update_id;
       console.log(`applying update id ${update.update_id}`);
-      await game.getGameEl().gameUpdate(update);
+      await game_el?.gameUpdate(update);
       while (true) {
-        const nextUpdate = game_base.updates.get(game_base.last_applied_update_id + 1);
-        if (!nextUpdate) {
+        const next_update = game_base.updates?.get(last_update_id + 1);
+        if (!next_update) {
           break;
         }
-        game_base.last_applied_update_id = nextUpdate.update_id;
-        console.log(`applying update id ${nextUpdate.update_id}`);
-        await game.getGameEl().gameUpdate(nextUpdate);
+        game_base.last_applied_update_id = next_update.update_id;
+        console.log(`applying update id ${next_update.update_id}`);
+        await game_el?.gameUpdate(next_update);
       }
-    } else if (update.update_id - 1 > game_base.last_applied_update_id) {
+    } else if (update.update_id - 1 > last_update_id) {
       game
         .getSocket()
-        .send(
+        ?.send(
           createMessage(
-            `client-${game.getConnectionMetadata().client_id}`,
+            `client-${game.getConnectionMetadata()?.client_id}`,
             'game-get-update',
             '',
-            `${game_base.last_applied_update_id + 1}`
+            `${last_update_id + 1}`
           )
         );
     } else {
     } // ignore updates that are already applied
-    if (game_base.highest_received_update_id > game_base.last_applied_update_id) {
+    if ((game_base.highest_received_update_id ?? -2) > last_update_id) {
       // check if received higher update while updating
       game
         .getSocket()
-        .send(
+        ?.send(
           createMessage(
-            `client-${game.getConnectionMetadata().client_id}`,
+            `client-${game.getConnectionMetadata()?.client_id}`,
             'game-get-update',
             '',
-            `${game_base.last_applied_update_id + 1}`
+            `${last_update_id + 1}`
           )
         );
     }
     running_updates = false;
   }
   try {
-    const updateMessage = {
+    const update_message = {
       update_id: game_update_id,
       kind: message.data,
       content: JSON.parse(message.content),
     };
-    console.log(`received game update ${game_update_id}: ${JSON.stringify(updateMessage)}`);
-    game_base.updates.set(game_update_id, updateMessage);
+    console.log(`received game update ${game_update_id}: ${JSON.stringify(update_message)}`);
+    game_base.updates?.set(game_update_id, update_message);
     game_base.highest_received_update_id = Math.max(game_base.highest_received_update_id ?? 0, game_update_id);
     if (!running_updates && game_base.game_started && !game_base.game_ended && game.getLaunched()) {
-      runUpdate(updateMessage);
+      runUpdate(update_message);
     }
   } catch (e) {
     console.log(e);
     game
       .getSocket()
-      .send(
-        createMessage(`client-${game.getConnectionMetadata().client_id}`, 'game-get-update', '', `${game_update_id}`)
+      ?.send(
+        createMessage(`client-${game.getConnectionMetadata()?.client_id}`, 'game-get-update', '', `${game_update_id}`)
       );
   }
 }
