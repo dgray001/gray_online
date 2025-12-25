@@ -5,7 +5,7 @@ import { SERVER_CHAT_NAME } from '../chatbox/chatbox';
 import { getUrlParam, removeUrlParam, setUrlParam } from '../../scripts/url';
 
 import type { DwgLobbyUsers } from './lobby_users/lobby_users';
-import type { DwgLobbyRooms, JoinRoomData } from './lobby_rooms/lobby_rooms';
+import type { DwgLobbyRooms } from './lobby_rooms/lobby_rooms';
 import type { DwgLobbyRoom } from './lobby_room/lobby_room';
 import type { ConnectionMetadata, ServerMessage, LobbyRoom } from './data_models';
 import { createMessage } from './data_models';
@@ -97,7 +97,7 @@ export class DwgLobby extends DwgElement {
         )
       );
     });
-    this.chatbox.addEventListener('chat_sent', (e: CustomEvent<ChatMessage>) => {
+    this.chatbox.addEventListener('chat_sent', (e) => {
       this.sendChatMessage(
         this.chatbox,
         'lobby-chat',
@@ -108,7 +108,7 @@ export class DwgLobby extends DwgElement {
         this.connection_metadata.nickname
       );
     });
-    this.lobby_room.addEventListener('chat_sent', (e: CustomEvent<ChatMessage>) => {
+    this.lobby_room.addEventListener('chat_sent', (e) => {
       const message = e.detail;
       if (message.message.startsWith('\\l')) {
         message.message = message.message.slice(2).trim();

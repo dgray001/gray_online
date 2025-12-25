@@ -19,10 +19,11 @@ export function organizeZoneUnits(units: Map<number, RisqUnit>): Map<number, Map
     if (!units_by_type.has(unit.player_id)) {
       units_by_type.set(unit.player_id, new Map<number, UnitByTypeData>());
     }
-    if (units_by_type.get(unit.player_id).has(unit.unit_id)) {
-      units_by_type.get(unit.player_id).get(unit.unit_id).units.add(unit.internal_id);
+    const units_by_type_data = units_by_type.get(unit.player_id)?.get(unit.unit_id);
+    if (units_by_type_data) {
+      units_by_type_data.units.add(unit.internal_id);
     } else {
-      units_by_type.get(unit.player_id).set(unit.unit_id, {
+      units_by_type.get(unit.player_id)!.set(unit.unit_id, {
         unit_id: unit.unit_id,
         player_id: unit.player_id,
         units: new Set<number>([unit.internal_id]),
@@ -261,16 +262,16 @@ export function drawRisqZone(
 /** Resolves hover logic for the zones of a risq space */
 export function resolveHoveredZones(
   p: Point2D,
-  space: RisqSpace,
+  space: RisqSpace | undefined,
   r: number,
   override_center?: Point2D,
   ignore_parts?: boolean
 ): RisqZone | undefined {
-  if (!space.zones) {
+  if (!space?.zones) {
     return undefined;
   }
 
-  const resolveZoneDependencies = (m: Point2D, zone: RisqZone, rotate: number) => {
+  const resolve_zone_dependencies = (m: Point2D, zone: RisqZone, rotate: number) => {
     zone.hovered = true;
     if (ignore_parts) {
       return;
@@ -291,7 +292,7 @@ export function resolveHoveredZones(
   let new_hovered_zone: RisqZone | undefined = undefined;
   if (pointInHexagon(m, INNER_ZONE_MULTIPLIER * r)) {
     new_hovered_zone = space.zones[1][1];
-    resolveZoneDependencies(m, new_hovered_zone, 0);
+    resolve_zone_dependencies(m, new_hovered_zone, 0);
   } else if (pointInHexagon(m, r)) {
     const angle = atangent(m.y, m.x);
     let index = Math.floor((angle + Math.PI / 6) / (Math.PI / 3));
@@ -322,7 +323,7 @@ export function resolveHoveredZones(
         return;
     }
     new_hovered_zone = space.zones[direction_vector.x][direction_vector.y];
-    resolveZoneDependencies(m, new_hovered_zone, -(Math.PI / 3) * (1 + 5 - index));
+    resolve_zone_dependencies(m, new_hovered_zone, -(Math.PI / 3) * (1 + 5 - index));
   }
   return new_hovered_zone;
 }

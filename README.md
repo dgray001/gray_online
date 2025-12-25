@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6w: Fix lint and ts issues
+v0.6x-1: Dev page launches room
 
 ## Dev Use
 

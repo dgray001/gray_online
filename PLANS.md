@@ -2,7 +2,17 @@
 x: Can launch risq (and other games) directly with url in local for faster testing
 y: continue with abstract scrollbar, etc...
 
- 
+
+** NEED TO MAKE IT SO THE FOLLOWING HAPPEN IN THE DEV PAGE
+Game message: 
+Object { sender: "room-16", kind: "game-player-connected", content: "", data: "14" }
+message_handler.ts:32:17
+Game message: 
+Object { sender: "room-16", kind: "game-start", content: "", data: "" }
+
+
+
+
  - After reconnecting sometimes in backend the connection is nil (or delete_timer is not nil)
     => noticed when using client_id url param but not sure if that matters
     => connection is definitely not nil since update goes through from client to server just not vice versa

@@ -2,12 +2,12 @@ import { clickButton, DEV, enumKeys } from '../../../scripts/util';
 import { DwgElement } from '../../dwg_element';
 import type { GameSettings } from '../data_models';
 import { GameType } from '../data_models';
+import type { GameSettingsFiddlesticks } from './game_specific_data';
+import type { AiSelectorData, DwgAiSelector } from './ai_selector/ai_selector';
 
 import html from './lobby_game_settings.html';
 import './lobby_game_settings.scss';
 import './ai_selector/ai_selector';
-import type { GameSettingsFiddlesticks } from './game_specific_data';
-import type { AiSelectorData, DwgAiSelector } from './ai_selector/ai_selector';
 
 export class DwgLobbyGameSettings extends DwgElement {
   private game_chooser!: HTMLSelectElement;

@@ -44,3 +44,9 @@ export declare interface AiPlayerFiddlesticks {
   nickname: string;
   // model: AiPlayerFiddlesticksModel;
 }
+
+declare module '../../lobby/data_models' {
+  interface GameSettingsRegistry {
+    [GameType.FIDDLESTICKS]: GameSettingsFiddlesticks;
+  }
+}

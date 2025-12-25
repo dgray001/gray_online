@@ -37,6 +37,7 @@ export abstract class DwgElement extends HTMLElement {
         }
       }
       if (!el_metadata.found_element) {
+        console.log('!!', el_metadata.name);
         parsed = false;
         continue;
       }

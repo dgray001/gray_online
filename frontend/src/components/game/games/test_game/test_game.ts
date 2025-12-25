@@ -9,10 +9,10 @@ import type { GameTestGame } from './test_game_data';
 import './test_game.scss';
 
 export class DwgTestGame extends DwgElement implements GameComponent {
-  private show_info: HTMLButtonElement;
-  private end_game: HTMLButtonElement;
+  private show_info!: HTMLButtonElement;
+  private end_game!: HTMLButtonElement;
 
-  private game: GameTestGame;
+  private game!: GameTestGame;
   private player_id: number = -1;
 
   constructor() {

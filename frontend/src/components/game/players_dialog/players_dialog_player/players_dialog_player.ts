@@ -8,31 +8,27 @@ import html from './players_dialog_player.html';
 import './players_dialog_player.scss';
 
 export class DwgPlayersDialogPlayer extends DwgElement {
-  private ping_text: HTMLDivElement;
-  private ping_image: HTMLImageElement;
-  private nickname: HTMLDivElement;
-  private rejoin_link: HTMLButtonElement;
-  private rejoin_link_text: HTMLButtonElement;
+  private ping_text!: HTMLDivElement;
+  private ping_image!: HTMLImageElement;
+  private nickname!: HTMLDivElement;
+  private rejoin_link!: HTMLButtonElement;
+  private rejoin_link_text!: HTMLButtonElement;
 
-  private rejoin_url: string;
-  private player: GamePlayer;
-  private room_id: number;
-  private lobby_player: LobbyUser | undefined;
-  private copy_timeout: NodeJS.Timeout;
+  private rejoin_url: string = '';
+  private player!: GamePlayer;
+  private room_id!: number;
+  private lobby_player?: LobbyUser;
+  private copy_timeout: NodeJS.Timeout | undefined;
 
   constructor() {
     super();
     this.html_string = html;
-    this.configureElement('ping_text');
-    this.configureElement('ping_image');
-    this.configureElement('nickname');
-    this.configureElement('rejoin_link');
-    this.configureElement('rejoin_link_text');
+    this.configureElements('ping_text', 'ping_image', 'nickname', 'rejoin_link', 'rejoin_link_text');
   }
 
   protected override parsedCallback(): void {
-    if (!this.player) {
-      console.error('Must set player before attaching to dom');
+    if (!this.player || !this.lobby_player || this.room_id) {
+      console.error('Must set data before attaching to dom');
       return;
     }
     if (!this.lobby_player || !this.player.connected) {
@@ -74,7 +70,7 @@ export class DwgPlayersDialogPlayer extends DwgElement {
     });
   }
 
-  setData(player: GamePlayer, lobby_player: LobbyUser, room_id: number) {
+  setData(player: GamePlayer, lobby_player: LobbyUser | undefined, room_id: number) {
     this.player = player;
     this.lobby_player = lobby_player;
     this.room_id = room_id;

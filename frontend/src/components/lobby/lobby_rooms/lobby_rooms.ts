@@ -33,7 +33,7 @@ export class DwgLobbyRooms extends DwgElement {
   constructor() {
     super();
     this.html_string = html;
-    this.configureElement('loading_message', 'room_container');
+    this.configureElements('loading_message', 'room_container');
   }
 
   protected override parsedCallback(): void {}

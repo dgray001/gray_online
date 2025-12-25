@@ -4,6 +4,10 @@ dwg-game {
 
   background-color: black;
 
+  &:not(.show) {
+    display: none;
+  }
+
   > #header {
     background-color: rgb(50, 50, 50);
     display: flex;

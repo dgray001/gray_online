@@ -2,7 +2,8 @@ import type { ConnectData } from './components/lobby/lobby_connector/lobby_conne
 import type { LobbyRoom } from './components/lobby/data_models';
 import type { MessageDialogData } from './components/dialog_box/message_dialog/message_dialog';
 import type { ChatMessage } from './components/chatbox/chatbox';
-import { JoinRoomData } from './components/lobby/lobby_rooms/lobby_rooms';
+import type { JoinRoomData } from './components/lobby/lobby_rooms/lobby_rooms';
+import type { CanvasBoardSize } from './components/game/util/canvas_board/canvas_board';
 
 // Custom events go here
 interface MyCustomEventMap {
@@ -22,8 +23,8 @@ interface MyCustomEventMap {
   promote_player: CustomEvent<number>;
   save_settings: CustomEvent<string>;
   join_lobby_room: CustomEvent<boolean>;
-  player_player: CustomEvent<number>;
-  player_player: CustomEvent<number>;
+  play_card: CustomEvent<number>;
+  canvas_resize: CustomEvent<CanvasBoardSize>;
 }
 
 declare global {

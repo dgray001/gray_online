@@ -110,19 +110,21 @@ async function handleGameUpdate(game: DwgGame, message: ServerMessage) {
   const game_base = game_ob.game_base;
   async function runUpdate(update: UpdateMessage) {
     running_updates = true;
-    const last_update_id = game_base?.last_applied_update_id ?? -2;
-    if (update.update_id - 1 === last_update_id) {
+    let last_update_id = game_base?.last_applied_update_id ?? -2;
+    if (update.update_id - 1 === last_update_id) { // running update for next update
       game_base.last_applied_update_id = update.update_id;
       console.log(`applying update id ${update.update_id}`);
       await game_el?.gameUpdate(update);
+      last_update_id = update.update_id;
       while (true) {
         const next_update = game_base.updates?.get(last_update_id + 1);
         if (!next_update) {
           break;
         }
         game_base.last_applied_update_id = next_update.update_id;
-        console.log(`applying update id ${next_update.update_id}`);
+        console.log(`applying next update id ${next_update.update_id}`);
         await game_el?.gameUpdate(next_update);
+        last_update_id = next_update.update_id;
       }
     } else if (update.update_id - 1 > last_update_id) {
       game

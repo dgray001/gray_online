@@ -1,7 +1,7 @@
 import { DwgElement } from '../../../dwg_element';
 import type { UpdateMessage } from '../../data_models';
 import { drawCircle } from '../../util/canvas_util';
-import type { BoardTransformData, CanvasBoardSize, DwgCanvasBoard } from '../../util/canvas_board/canvas_board';
+import type { BoardTransformData, DwgCanvasBoard } from '../../util/canvas_board/canvas_board';
 import type { Point2D } from '../../util/objects2d';
 import {
   addPoint2D,
@@ -36,8 +36,8 @@ const DRAW_CENTER_DOT = false;
 export class DwgRisq extends DwgElement {
   private board!: DwgCanvasBoard;
 
-  private game: GameRisq;
-  private player_id: number;
+  private game?: GameRisq;
+  private player_id: number = -1;
   private hex_r = DEFAULT_HEXAGON_RADIUS;
   private hex_a = 0.5 * 1.732 * DEFAULT_HEXAGON_RADIUS;
   private canvas_center: Point2D = { x: 0, y: 0 };
@@ -121,22 +121,25 @@ export class DwgRisq extends DwgElement {
         } else {
           this.goToVillageCenter(0);
         }
-        this.board.addEventListener('canvas_resize', (e: CustomEvent<CanvasBoardSize>) => {
+        this.board.addEventListener('canvas_resize', (e) => {
           this.boardResize(e.detail.board_size, e.detail.el_size);
         });
       });
   }
 
-  getGame(): GameRisq {
+  getGame(): GameRisq | undefined {
     return this.game;
   }
 
   getPlayer(): RisqPlayer | undefined {
+    if (!this.game) {
+      return undefined;
+    }
     return this.player_id > -1 ? this.game.players[this.player_id] : undefined;
   }
 
   private goToVillageCenter(player_id: number) {
-    if (player_id < 0) {
+    if (player_id < 0 || !this.game) {
       return;
     }
     for (const building of this.game.players[player_id].buildings.values()) {
@@ -152,6 +155,9 @@ export class DwgRisq extends DwgElement {
   private board_resize_lock = createLock();
   private boardResize(board_size: Point2D, canvas_size: DOMRect) {
     this.board_resize_lock(async () => {
+      if (!this.game) {
+        return;
+      }
       // Update canvas dependencies
       const canvas_ratio = (0.5 * Math.min(board_size.x, canvas_size.width)) / this.canvas_center.x;
       this.canvas_center = {
@@ -215,6 +221,9 @@ export class DwgRisq extends DwgElement {
   }
 
   private draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData) {
+    if (!this.game) {
+      return;
+    }
     const now = Date.now();
     const dt = now - this.last_time;
     this.last_time = now;
@@ -270,6 +279,9 @@ export class DwgRisq extends DwgElement {
   }
 
   private mousemove(m: Point2D, transform: BoardTransformData) {
+    if (!this.game) {
+      return;
+    }
     this.draw_detail = this.getDrawDetail(transform.scale);
     this.mouse_canvas = m;
     const hovered_other_component = [
@@ -435,6 +447,9 @@ export class DwgRisq extends DwgElement {
   }
 
   private coordinateToCanvas(coordinate: Point2D, scale: number): Point2D {
+    if (!this.game) {
+      return { x: 0, y: 0 };
+    }
     return {
       x:
         1.732 * (coordinate.x + 0.5 * coordinate.y + this.game.board_size + 0.5) * this.hex_r +
@@ -473,6 +488,9 @@ export class DwgRisq extends DwgElement {
   }
 
   private getBoardNeighbors(space: RisqSpace): RisqSpace[] {
+    if (!this.game) {
+      return [];
+    }
     const neighbors: RisqSpace[] = [];
     for (const neighbor of hexagonalBoardNeighbors(space.coordinate, this.game.board_size)) {
       const index = coordinateToIndex(this.game.board_size, neighbor);
@@ -485,6 +503,9 @@ export class DwgRisq extends DwgElement {
   }
 
   private getBoardRows(space: RisqSpace): RisqSpace[] {
+    if (!this.game) {
+      return [];
+    }
     const rows: RisqSpace[] = [];
     for (const neighbor of hexagonalBoardRows(space.coordinate, this.game.board_size)) {
       const index = coordinateToIndex(this.game.board_size, neighbor);

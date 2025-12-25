@@ -91,7 +91,7 @@ export class DwgLobbyRoom extends DwgElement {
 
   protected override parsedCallback(): void {
     this.chatbox.setPlaceholder('Chat with room');
-    this.chatbox.addEventListener('chat_sent', (e: CustomEvent<ChatMessage>) => {
+    this.chatbox.addEventListener('chat_sent', (e) => {
       this.dispatchEvent(new CustomEvent('chat_sent', { detail: e.detail }));
     });
     this.leave_room.addEventListener('click', () => {

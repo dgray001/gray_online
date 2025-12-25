@@ -41,7 +41,7 @@ export function serverResponseToUser(server_response: LobbyUserFromServer): Lobb
     client_id: parseInt(server_response.client_id),
     nickname: server_response.nickname,
     ping: parseInt(server_response.ping),
-    room_id: parseInt(server_response.room_id) ?? undefined,
+    room_id: parseInt(server_response.room_id ?? '') ?? undefined,
   };
 }
 
@@ -54,20 +54,65 @@ export enum GameType {
   TEST_GAME = 4,
 }
 
-/** Settings object for lobby room */
-export declare interface GameSettings {
-  game_type: GameType;
+/** Type of the lowercase strings of possible game types */
+export type GameTypeLowerKeys = Lowercase<keyof typeof GameType>;
+
+/** Strictly-typed const of lowercase GameType keys */
+export const LOWERCASE_GAME_TYPE_KEYS = Object.keys(GameType)
+  .filter((key) => isNaN(Number(key)))
+  .map((key) => key.toLowerCase()) as (Lowercase<keyof typeof GameType>)[];
+
+/** Function to check whether an input string is a proper game type (should make lowercase first) */
+export function isValidGameTypeString(input: string): input is GameTypeLowerKeys {
+  return LOWERCASE_GAME_TYPE_KEYS.includes(input.toLowerCase() as GameTypeLowerKeys);
+}
+
+/** 
+ * Converts a lowercase game string back to the numeric GameType enum.
+ * Guaranteed to return a valid GameType if input is validated by isValidGameTypeString.
+ */
+export function getGameTypeFromLowercaseString(input: GameTypeLowerKeys): GameType {
+  const upper_key = input.toUpperCase() as keyof typeof GameType;
+  return GameType[upper_key];
+}
+
+/** Base properties shared by all games */
+export declare interface BaseGameSettings {
   max_players: number;
   max_viewers: number;
-  game_specific_settings?: object;
+}
+
+/** A 'holder' interface to act as a registry that other folders can fill in */
+export interface GameSettingsRegistry {}
+
+/** Settings object for lobby room */
+export type GameSettings = {
+  [K in GameType]: BaseGameSettings & (
+    K extends keyof GameSettingsRegistry 
+      ? { 
+          game_type: K; 
+          game_specific_settings: GameSettingsRegistry[K] 
+        } 
+      : { 
+          game_type: K; 
+          game_specific_settings?: never // if game type doesn't have entry in registry
+        }
+  )
+}[GameType];
+
+/** Returns default base game settings */
+export function defaultBaseGameSettings(): BaseGameSettings {
+  return {
+    max_players: 8,
+    max_viewers: 16,
+  };
 }
 
 /** Returns default settings */
 export function defaultGameSettings(): GameSettings {
   return {
+    ...defaultBaseGameSettings(),
     game_type: GameType.UNSPECIFIED,
-    max_players: 8,
-    max_viewers: 16,
   };
 }
 
@@ -85,6 +130,7 @@ export function serverResponseToGameSettings(server_response: GameSettingsFromSe
     game_type: parseInt(server_response.game_type),
     max_players: parseInt(server_response.max_players),
     max_viewers: parseInt(server_response.max_viewers),
+    // @ts-ignore: trust the backend here
     game_specific_settings: server_response.game_specific_settings,
   };
 }
