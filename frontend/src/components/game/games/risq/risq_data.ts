@@ -61,14 +61,20 @@ export function risqTerrainName(terrain: RisqTerrainType): string {
   return capitalize(RisqTerrainType[terrain].replace('_', ' ').toLowerCase());
 }
 
-export const ZONE_VISIBILITY = 3; // can see zones
+export const NO_VISIBILITY = 0;
+export const TERRAIN_VISIBILITY = 1;
+export const SPACE_VISIBILITY = 2;
+export const ZONE_VISIBILITY = 3;
+export const FULL_VISIBILITY = 4;
+
+export type SPACE_ZONES_TYPE = [[RisqZone, RisqZone], [RisqZone, RisqZone, RisqZone], [RisqZone, RisqZone]];
 
 /** Data describing a hexagonal space in risq */
 export declare interface RisqSpace {
   terrain: RisqTerrainType;
   coordinate: Point2D;
   visibility: number; // See risq_vision.go for value meanings
-  zones?: RisqZone[][];
+  zones?: SPACE_ZONES_TYPE;
   resources?: Map<number, RisqResource>;
   buildings?: Map<number, RisqBuilding>;
   units?: Map<number, RisqUnit>;
@@ -293,7 +299,7 @@ export declare interface RisqResourceFromServer {
 }
 
 /** Converts a server response to a frontend risq game */
-export function serverToGameRisq(server_game: GameRisqFromServer): GameRisq {
+export function serverToGameRisq(server_game: GameRisqFromServer): GameRisq | undefined {
   if (!server_game) {
     return undefined;
   }
@@ -301,11 +307,14 @@ export function serverToGameRisq(server_game: GameRisqFromServer): GameRisq {
   for (const server_row of server_game.spaces) {
     const row: RisqSpace[] = [];
     for (const space of server_row) {
+      if (!space) {
+        continue;
+      }
       row.push(serverToRisqSpace(space));
     }
     spaces.push(row);
   }
-  const players = server_game.players.map((p) => serverToRisqPlayer(p));
+  const players = server_game.players.filter((p) => !!p).map((p) => serverToRisqPlayer(p));
   const scores: GameRisqScoreEntry[] = [];
   for (const player of players) {
     scores.push({
@@ -337,9 +346,6 @@ export function serverToRisqResources(server_resources: RisqPlayerResourcesFromS
 
 /** Converts a server response ot a frontend risq player */
 export function serverToRisqPlayer(server_player: RisqPlayerFromServer): RisqPlayer {
-  if (!server_player) {
-    return undefined;
-  }
   let color_split: number[] = server_player.color.split(',').map((c) => parseInt(c.trim()));
   if (color_split.length !== 3) {
     console.error('Error parsing player color', server_player.color);
@@ -348,8 +354,18 @@ export function serverToRisqPlayer(server_player: RisqPlayerFromServer): RisqPla
   const player: RisqPlayer = {
     player: server_player.player,
     resources: serverToRisqResources(server_player.resources),
-    buildings: new Map(server_player.buildings.map((b) => [b.internal_id, serverToRisqBuilding(b)])),
-    units: new Map(server_player.units.map((u) => [u.internal_id, serverToRisqUnit(u)])),
+    buildings: new Map(
+      server_player.buildings
+        .map((b) => serverToRisqBuilding(b))
+        .filter((b) => !!b)
+        .map((b) => [b.internal_id, b])
+    ),
+    units: new Map(
+      server_player.units
+        .map((u) => serverToRisqUnit(u))
+        .filter((u) => !!u)
+        .map((u) => [u.internal_id, u])
+    ),
     population_limit: server_player.population_limit,
     score: server_player.score,
     color: new ColorRGB(color_split[0], color_split[1], color_split[2]),
@@ -359,9 +375,6 @@ export function serverToRisqPlayer(server_player: RisqPlayerFromServer): RisqPla
 
 /** Converts a server response to a frontend risq space */
 export function serverToRisqSpace(server_space: RisqSpaceFromServer): RisqSpace {
-  if (!server_space) {
-    return undefined;
-  }
   const space: RisqSpace = {
     terrain: server_space.terrain,
     coordinate: server_space.coordinate,
@@ -384,36 +397,37 @@ export function serverToRisqSpace(server_space: RisqSpaceFromServer): RisqSpace 
       }
       zones.push(row);
     }
-    space.zones = zones;
+    // TODO: maybe validation that the zones are coming correctly from server?
+    space.zones = zones as SPACE_ZONES_TYPE;
   }
   if (!!server_space.resources) {
     space.resources = new Map(
-      server_space.resources.map((server_resource) => [
-        server_resource.internal_id,
-        serverToRisqResource(server_resource),
-      ])
+      server_space.resources
+        .map((r) => serverToRisqResource(r))
+        .filter((r) => !!r)
+        .map((r) => [r.internal_id, r])
     );
     space.total_resources = new Map<RisqResourceType, number>();
     for (const resource of space.resources.values()) {
       const resource_type = resourceType(resource);
-      if (space.total_resources.has(resource_type)) {
-        space.total_resources.set(resource_type, space.total_resources.get(resource_type) + resource.resources_left);
-      } else {
-        space.total_resources.set(resource_type, resource.resources_left);
-      }
+      const existing_resources = space.total_resources.get(resource_type) ?? 0;
+      space.total_resources.set(resource_type, existing_resources + resource.resources_left);
     }
   }
   if (!!server_space.buildings) {
     space.buildings = new Map(
-      server_space.buildings.map((server_building) => [
-        server_building.internal_id,
-        serverToRisqBuilding(server_building),
-      ])
+      server_space.buildings
+        .map((b) => serverToRisqBuilding(b))
+        .filter((b) => !!b)
+        .map((b) => [b.internal_id, b])
     );
   }
   if (!!server_space.units) {
     space.units = new Map(
-      server_space.units.map((server_unit) => [server_unit.internal_id, serverToRisqUnit(server_unit)])
+      server_space.units
+        .map((u) => serverToRisqUnit(u))
+        .filter((u) => !!u)
+        .map((u) => [u.internal_id, u])
     );
     space.num_military_units = [...space.units.values()].filter((u) => u.unit_id > 10).length;
     space.num_villager_units = [...space.units.values()].filter((u) => u.unit_id < 11).length;
@@ -423,11 +437,11 @@ export function serverToRisqSpace(server_space: RisqSpaceFromServer): RisqSpace 
 
 /** Converts a server response to a frontend risq zone */
 export function serverToRisqZone(server_zone: RisqZoneFromServer): RisqZone {
-  if (!server_zone) {
-    return undefined;
-  }
   const units = new Map(
-    server_zone.units.map((server_unit) => [server_unit.internal_id, serverToRisqUnit(server_unit)])
+    server_zone.units
+      .map((u) => serverToRisqUnit(u))
+      .filter((u) => !!u)
+      .map((u) => [u.internal_id, u])
   );
   const units_by_type = organizeZoneUnits(units);
   const economic_units_by_type = new Map<number, UnitByTypeData[]>();
@@ -437,15 +451,15 @@ export function serverToRisqZone(server_zone: RisqZoneFromServer): RisqZone {
     military_units_by_type.set(player_id, []);
     for (const [unit_id, units] of player_units.entries()) {
       if (unit_id < 11) {
-        economic_units_by_type.get(player_id).push(units);
+        economic_units_by_type.get(player_id)!.push(units);
       } else {
-        military_units_by_type.get(player_id).push(units);
+        military_units_by_type.get(player_id)!.push(units);
       }
     }
-    if (economic_units_by_type.get(player_id).length === 0) {
+    if (economic_units_by_type.get(player_id)!.length === 0) {
       economic_units_by_type.delete(player_id);
     }
-    if (military_units_by_type.get(player_id).length === 0) {
+    if (military_units_by_type.get(player_id)!.length === 0) {
       military_units_by_type.delete(player_id);
     }
   }
@@ -473,7 +487,7 @@ export function serverToRisqZone(server_zone: RisqZoneFromServer): RisqZone {
 }
 
 /** Converts a server response to a frontend risq zone */
-export function serverToRisqBuilding(server_building: RisqBuildingFromServer): RisqBuilding {
+export function serverToRisqBuilding(server_building?: RisqBuildingFromServer): RisqBuilding | undefined {
   if (!server_building) {
     return undefined;
   }
@@ -485,7 +499,7 @@ export function serverToRisqBuilding(server_building: RisqBuildingFromServer): R
 }
 
 /** Converts a server response to a frontend risq resource */
-export function serverToRisqResource(server_resource: RisqResourceFromServer): RisqResource {
+export function serverToRisqResource(server_resource?: RisqResourceFromServer): RisqResource | undefined {
   if (!server_resource) {
     return undefined;
   }
@@ -497,7 +511,7 @@ export function serverToRisqResource(server_resource: RisqResourceFromServer): R
 }
 
 /** Converts a server response to a frontend risq zone */
-export function serverToRisqUnit(server_unit: RisqUnitFromServer): RisqUnit {
+export function serverToRisqUnit(server_unit?: RisqUnitFromServer): RisqUnit | undefined {
   if (!server_unit) {
     return undefined;
   }

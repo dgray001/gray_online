@@ -23,11 +23,11 @@ import type { DrawRisqSpaceConfig } from './risq_space';
 import { DrawRisqSpaceDetail, drawRisqSpace } from './risq_space';
 import { RisqLeftPanel } from './canvas_components/left_panel';
 import { resolveHoveredZones, unhoverRisqZone } from './risq_zone';
+import { LeftPanelDataType } from './canvas_components/left_panel_data';
 
 import './risq.scss';
 import '../../util/canvas_board/canvas_board';
 import './space_dialog/space_dialog';
-import { LeftPanelDataType } from './canvas_components/left_panel_data';
 
 const DEFAULT_HEXAGON_RADIUS = 60;
 
@@ -70,23 +70,23 @@ export class DwgRisq extends DwgElement {
     this.configureElement('board');
   }
 
-  private createIcon(name: string) {
-    if (this.icons.has(name)) {
-      return;
-    }
+  /** This will replace an existing icon */
+  private createIcon(name: string): HTMLImageElement {
     const el = document.createElement('img');
     el.src = `/images/${name}.png`;
     el.draggable = false;
     el.alt = name;
     this.icons.set(name, el);
+    return el;
   }
 
-  getIcon(name: string) {
+  getIcon(name: string): HTMLImageElement {
+    const icon = this.icons.get(name);
     // TODO: ability to get image variations (player colors on image??)
-    if (!this.icons.has(name)) {
-      this.createIcon(name);
+    if (!icon) {
+      return this.createIcon(name);
     }
-    return this.icons.get(name);
+    return icon;
   }
 
   async initialize(abstract_game: DwgGame, game: GameRisqFromServer): Promise<void> {
@@ -115,6 +115,10 @@ export class DwgRisq extends DwgElement {
         },
       })
       .then((size_data) => {
+        if (!size_data) {
+          console.error('Not able to initialize game board');
+          return;
+        }
         this.boardResize(size_data.board_size, size_data.el_size);
         if (abstract_game.isPlayer()) {
           this.goToVillageCenter(this.player_id);
@@ -288,7 +292,7 @@ export class DwgRisq extends DwgElement {
       this.right_panel.mousemove(m, transform),
       this.left_panel.mousemove(m, transform),
     ].some((b) => !!b);
-    this.mouse_coordinate = this.canvasToCoordinate(m, transform.scale);
+    this.mouse_coordinate = this.canvasToCoordinate(m, transform.scale, this.game.board_size);
     const index = coordinateToIndex(this.game.board_size, roundAxialCoordinate(this.mouse_coordinate));
     const new_hovered_space = getSpace(this.game, index);
     if (hovered_other_component || !new_hovered_space) {
@@ -385,29 +389,39 @@ export class DwgRisq extends DwgElement {
                 case 0: // building / resource
                   if (!!this.hovered_zone.resource) {
                     this.left_panel.openPanel(
-                      LeftPanelDataType.RESOURCE,
-                      this.hovered_space.visibility,
-                      this.hovered_zone.resource
+                      { data_type: LeftPanelDataType.RESOURCE, data: this.hovered_zone.resource },
+                      this.hovered_space.visibility
                     );
-                  } else {
+                  } else if (!!this.hovered_zone.building) {
                     this.left_panel.openPanel(
-                      LeftPanelDataType.BUILDING,
-                      this.hovered_space.visibility,
-                      this.hovered_zone.building
+                      { data_type: LeftPanelDataType.BUILDING, data: this.hovered_zone.building },
+                      this.hovered_space.visibility
                     );
                   }
                   break;
                 case 1: // economic units
-                  this.left_panel.openPanel(LeftPanelDataType.ECONOMIC_UNITS, this.hovered_space.visibility, {
-                    space: this.hovered_space,
-                    units: this.hovered_zone.economic_units_by_type,
-                  });
+                  this.left_panel.openPanel(
+                    {
+                      data_type: LeftPanelDataType.UNITS,
+                      data: {
+                        space: this.hovered_space,
+                        units_by_player: this.hovered_zone.economic_units_by_type,
+                      },
+                    },
+                    this.hovered_space.visibility
+                  );
                   break;
                 case 2: // military units
-                  this.left_panel.openPanel(LeftPanelDataType.MILITARY_UNITS, this.hovered_space.visibility, {
-                    space: this.hovered_space,
-                    units: this.hovered_zone.military_units_by_type,
-                  });
+                  this.left_panel.openPanel(
+                    {
+                      data_type: LeftPanelDataType.UNITS,
+                      data: {
+                        space: this.hovered_space,
+                        units_by_player: this.hovered_zone.military_units_by_type,
+                      },
+                    },
+                    this.hovered_space.visibility
+                  );
                   break;
                 default:
                   break;
@@ -416,10 +430,16 @@ export class DwgRisq extends DwgElement {
             }
           }
           if (open_zone && this.hovered_zone.clicked) {
-            this.left_panel.openPanel(LeftPanelDataType.ZONE, this.hovered_space.visibility, {
-              space: this.hovered_space,
-              zone: this.hovered_zone,
-            });
+            this.left_panel.openPanel(
+              {
+                data_type: LeftPanelDataType.ZONE,
+                data: {
+                  space: this.hovered_space,
+                  zone: this.hovered_zone,
+                },
+              },
+              this.hovered_space.visibility
+            );
           }
         }
         this.hovered_zone.clicked = false;
@@ -431,17 +451,19 @@ export class DwgRisq extends DwgElement {
         this.hovered_space.visibility > 0 &&
         this.draw_detail !== DrawRisqSpaceDetail.ZONE_DETAILS
       ) {
-        this.left_panel.openPanel(LeftPanelDataType.SPACE, this.hovered_space.visibility, this.hovered_space);
+        this.left_panel.openPanel(
+          { data_type: LeftPanelDataType.SPACE, data: this.hovered_space },
+          this.hovered_space.visibility
+        );
       }
       this.hovered_space.clicked = false;
     }
   }
 
-  private canvasToCoordinate(canvas: Point2D, scale: number): Point2D {
-    const cy =
-      (canvas.y - 0.25 * this.hex_r - this.canvas_center.y / scale) / (1.5 * this.hex_r) - this.game.board_size - 0.5;
+  private canvasToCoordinate(canvas: Point2D, scale: number, board_size: number): Point2D {
+    const cy = (canvas.y - 0.25 * this.hex_r - this.canvas_center.y / scale) / (1.5 * this.hex_r) - board_size - 0.5;
     return {
-      x: (canvas.x - this.canvas_center.x / scale) / (1.732 * this.hex_r) - 0.5 * cy - this.game.board_size - 0.5,
+      x: (canvas.x - this.canvas_center.x / scale) / (1.732 * this.hex_r) - 0.5 * cy - board_size - 0.5,
       y: cy,
     };
   }

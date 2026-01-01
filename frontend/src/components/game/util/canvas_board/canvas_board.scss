@@ -14,19 +14,4 @@ dwg-canvas-board {
     position: relative;
     width: var(--w);
   }
-
-  #cursor {
-    --x: -120px;
-    --y: -120px;
-
-    left: var(--x);
-    position: absolute;
-    top: var(--y);
-    user-select: none;
-    z-index: 2;
-
-    &.hide {
-      display: none;
-    }
-  }
 }

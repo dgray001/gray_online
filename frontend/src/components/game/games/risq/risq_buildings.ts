@@ -1,7 +1,7 @@
 import type { RisqBuilding } from './risq_data';
 
 /** Returns image path of the building */
-export function buildingImage(building: RisqBuilding): string {
+export function buildingImage(building: RisqBuilding | undefined): string {
   let filename = 'empty_plot';
   if (!!building) {
     switch (building.building_id) {

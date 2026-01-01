@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6x-2: Dev page launches game
+v0.6y: Left panel works again (mostly)
 
 ## Dev Use
 

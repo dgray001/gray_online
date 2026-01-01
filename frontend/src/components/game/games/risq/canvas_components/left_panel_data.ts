@@ -24,6 +24,11 @@ export interface PlayerUnitsDrawData {
   units: UnitByTypeData[];
 }
 
+export interface MultiplePlayersUnitsDrawData {
+  space: RisqSpace;
+  units_by_player: [number, UnitByTypeData[]][];
+}
+
 /** All the data types that can be displayed in the left panel */
 export enum LeftPanelDataType {
   RESOURCE,
@@ -55,12 +60,15 @@ export interface SpaceData {
 
 export interface ZoneData {
   data_type: LeftPanelDataType.ZONE;
-  data: RisqZone;
+  data: {
+    space: RisqSpace;
+    zone: RisqZone;
+  };
 }
 
 export interface MultiplePlayersUnitsData {
   data_type: LeftPanelDataType.MULTIPLE_PLAYERS_UNITS;
-  data: unknown; // TODO: implement
+  data: MultiplePlayersUnitsDrawData;
 }
 
 export interface UnitsData {
@@ -75,12 +83,12 @@ export interface UnitsByTypeData {
 
 export interface EconomicUnitsData {
   data_type: LeftPanelDataType.ECONOMIC_UNITS;
-  data: UnitsDrawData;
+  data: PlayerUnitsDrawData;
 }
 
 export interface MilitaryUnitsData {
   data_type: LeftPanelDataType.MILITARY_UNITS;
-  data: UnitsDrawData;
+  data: PlayerUnitsDrawData;
 }
 
 export interface UnitData {

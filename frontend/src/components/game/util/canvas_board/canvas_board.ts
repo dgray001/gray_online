@@ -48,17 +48,17 @@ export declare interface ZoomConfig {
 }
 
 export class DwgCanvasBoard extends DwgElement {
-  private canvas: HTMLCanvasElement;
-  private cursor: HTMLImageElement;
+  private canvas!: HTMLCanvasElement;
 
-  private ctx: CanvasRenderingContext2D;
-  private data: CanvasBoardInitializationData;
-  private orig_size: Point2D;
+  private initialized_successfully = false;
+  private ctx!: CanvasRenderingContext2D;
+  private data!: CanvasBoardInitializationData;
+  private orig_size!: Point2D;
   private transform: BoardTransformData = {
     scale: 1,
     view: { x: 0, y: 0 },
   };
-  private zoom_config: ZoomConfig;
+  private zoom_config!: ZoomConfig;
 
   private hovered = false;
   private holding_keys: HoldingKeysData = {
@@ -72,7 +72,7 @@ export class DwgCanvasBoard extends DwgElement {
   private mouse: Point2D = { x: 0, y: 0 };
   private cursor_in_range = false;
 
-  private bounding_rect: DOMRect;
+  private bounding_rect!: DOMRect;
   private resize_observer = new ResizeObserver(async (els) => {
     for (const el of els) {
       await this.updateSize(this.data, el.contentRect);
@@ -92,14 +92,13 @@ export class DwgCanvasBoard extends DwgElement {
     super();
     this.html_string = html;
     this.configureElement('canvas');
-    this.configureElement('cursor');
   }
 
   getBoundingRect(): DOMRect {
     return this.bounding_rect;
   }
 
-  async initialize(data: CanvasBoardInitializationData): Promise<CanvasBoardSize> {
+  async initialize(data: CanvasBoardInitializationData): Promise<CanvasBoardSize | undefined> {
     data.allow_side_move = data.allow_side_move ?? true;
     this.zoom_config = Object.assign({}, data.zoom_config);
     this.orig_size = {
@@ -110,7 +109,7 @@ export class DwgCanvasBoard extends DwgElement {
     if (!success) {
       return undefined;
     }
-    this.cursor.src = '/images/cursors/cursor.png';
+    this.canvas.style.cursor = 'url("/images/cursors/cursor.png") 0 0, auto';
     this.addEventListeners();
     await until(() => !!this.canvas.getBoundingClientRect()?.width);
     this.resize_observer.observe(this);
@@ -124,6 +123,7 @@ export class DwgCanvasBoard extends DwgElement {
       this.ctx.scale(this.transform.scale, this.transform.scale);
       this.data.draw(this.ctx, this.transform);
     }, 20);
+    this.initialized_successfully = true;
     return {
       board_size: this.data.board_size,
       el_size: this.bounding_rect,
@@ -146,6 +146,9 @@ export class DwgCanvasBoard extends DwgElement {
       return false;
     }
     await this.setSize(override_rect);
+    if (!this.ctx) {
+      return false;
+    }
     return true;
   }
 
@@ -171,7 +174,7 @@ export class DwgCanvasBoard extends DwgElement {
         data.board_size.x = data.board_size.y * aspect_ratio;
       }
     }
-    this.ctx = this.canvas.getContext('2d');
+    this.ctx = this.canvas.getContext('2d')!;
     this.canvas.style.setProperty('--w', `${data.board_size.x.toString()}px`);
     this.canvas.style.setProperty('--h', `${data.board_size.y.toString()}px`);
     this.canvas.width = data.board_size.x;
@@ -198,8 +201,6 @@ export class DwgCanvasBoard extends DwgElement {
     });
     this.addEventListener('mousemove', (e: MouseEvent) => {
       this.hovered = true;
-      this.cursor.style.setProperty('--x', `${e.clientX.toString()}px`);
-      this.cursor.style.setProperty('--y', `${e.clientY.toString()}px`);
       const rect = this.canvas.getBoundingClientRect();
       const new_mouse = {
         x: e.clientX - rect.left,
@@ -232,12 +233,10 @@ export class DwgCanvasBoard extends DwgElement {
     });
     this.addEventListener('mouseenter', () => {
       this.hovered = true;
-      this.cursor.classList.remove('hide');
     });
     this.addEventListener('mouseleave', () => {
       this.hovered = false;
       this.dragging = false;
-      this.cursor.classList.add('hide');
       this.data.mouseleave();
     });
     this.addEventListener(
