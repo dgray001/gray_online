@@ -7,7 +7,7 @@ export class RisqRightPanelButton extends DwgSquareButton {
   constructor(risq: DwgRisq) {
     super({
       button_config: {
-        only_left_click: true,
+        allow_nonleft_clicks: false,
       },
       p: { x: 0, y: 0 },
       s: 36,

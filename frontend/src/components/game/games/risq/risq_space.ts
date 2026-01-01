@@ -21,11 +21,11 @@ export declare interface DrawRisqSpaceConfig {
   draw_detail: DrawRisqSpaceDetail;
 }
 
-const space_line_width = new Map<DrawRisqSpaceDetail, number>([
-  [DrawRisqSpaceDetail.OWNERSHIP, 3],
-  [DrawRisqSpaceDetail.SPACE_DETAILS, 2],
-  [DrawRisqSpaceDetail.ZONE_DETAILS, 1.2],
-]);
+const space_line_width: Record<DrawRisqSpaceDetail, number> = {
+  [DrawRisqSpaceDetail.OWNERSHIP]: 3,
+  [DrawRisqSpaceDetail.SPACE_DETAILS]: 2,
+  [DrawRisqSpaceDetail.ZONE_DETAILS]: 1.2,
+};
 
 /** Draws the input risq space */
 export function drawRisqSpace(
@@ -37,7 +37,7 @@ export function drawRisqSpace(
   ctx.strokeStyle = 'rgba(250, 250, 250, 0.9)';
   const fill = getSpaceFill(space);
   ctx.fillStyle = fill.getString();
-  ctx.lineWidth = space_line_width.get(config.draw_detail);
+  ctx.lineWidth = space_line_width[config.draw_detail];
   drawHexagon(ctx, space.center, config.hex_r);
   ctx.textAlign = 'left';
   const black_text = fill.getBrightness() > 0.5;
@@ -87,7 +87,7 @@ export function drawRisqSpace(
       config.inset_w - config.inset_row - 2
     );
   } else if (config.draw_detail === DrawRisqSpaceDetail.ZONE_DETAILS) {
-    if (space.visibility < 3) {
+    if (space.visibility < 3 || !space.zones) {
       return;
     }
     ctx.translate(space.center.x, space.center.y);

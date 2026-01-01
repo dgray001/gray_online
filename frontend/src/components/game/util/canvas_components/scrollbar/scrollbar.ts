@@ -12,8 +12,8 @@ export declare interface ScrollbarConfig {
 }
 
 export abstract class DwgScrollbar implements CanvasComponent {
-  private config: ScrollbarConfig;
-  private buttons: DwgButton[];
+  private config!: ScrollbarConfig;
+  private buttons: DwgButton[] = [];
   private hovering = false;
   private clicking = false;
 

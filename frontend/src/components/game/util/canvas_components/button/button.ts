@@ -1,44 +1,7 @@
 import type { BoardTransformData } from '../../canvas_board/canvas_board';
 import type { Point2D } from '../../objects2d';
 import type { CanvasComponent } from '../canvas_component';
-
-/** Possible ways one can click a button */
-export enum ClickSource {
-  UNKNOWN,
-  LEFT_MOUSE,
-  RIGHT_MOUSE,
-  MIDDLE_MOUSE,
-  ENTER_KEY,
-  HOLD_CLICK,
-}
-
-/** Converts a javascript mouse event to a click source */
-export function mouseEventToClickSource(e: MouseEvent): ClickSource {
-  switch (e.button) {
-    case 0:
-      return ClickSource.LEFT_MOUSE;
-    case 1:
-      return ClickSource.MIDDLE_MOUSE;
-    case 2:
-      return ClickSource.RIGHT_MOUSE;
-    default:
-      return ClickSource.UNKNOWN;
-  }
-}
-
-/** Data describing a button config */
-export declare interface ButtonConfig {
-  /** whether this button should continue firing clicks if user holds it */
-  hold_click?: boolean;
-  /** initial delay before the first hold click */
-  hold_click_delay?: number;
-  /** time between subsequent hold clicks */
-  hold_click_time?: number;
-  /** whether user must be hovering button for it to fire hold clicks */
-  hold_click_hover?: boolean;
-  /** only triggers click on left click */
-  only_left_click?: boolean;
-}
+import { ClickSource, mouseEventToClickSource, type ButtonConfig } from './button_config';
 
 export abstract class DwgButton implements CanvasComponent {
   private hovering = false;
@@ -49,12 +12,12 @@ export abstract class DwgButton implements CanvasComponent {
   private config: ButtonConfig;
 
   constructor(config: ButtonConfig) {
-    if (config.hold_click) {
-      if (config.hold_click_time < 1) {
-        config.hold_click = false;
+    if (config.hold_config) {
+      if (config.hold_config.hold_click_time < 1) {
+        config.hold_config = undefined;
         console.error('Must set hold click time for hold click buttons');
-      } else if (config.hold_click_delay < 1) {
-        config.hold_click_delay = config.hold_click_time;
+      } else if (config.hold_config.hold_click_delay < 1) {
+        config.hold_config.hold_click_delay = config.hold_config.hold_click_time;
       }
     }
     this.config = config;
@@ -77,10 +40,10 @@ export abstract class DwgButton implements CanvasComponent {
   }
 
   draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
-    if (this.clicking && this.config.hold_click) {
+    if (this.clicking && this.config.hold_config) {
       this.click_hold_timer -= dt;
       if (this.click_hold_timer < 0) {
-        this.click_hold_timer += this.config.hold_click_time;
+        this.click_hold_timer += this.config.hold_config.hold_click_time;
         this.hold_clicks++;
         this.clicked(ClickSource.HOLD_CLICK);
       }
@@ -99,24 +62,28 @@ export abstract class DwgButton implements CanvasComponent {
     return this.hovering;
   }
 
+  /** Returns whether this mousedown event triggered a click event on the button */
   mousedown(e: MouseEvent): boolean {
     const source = mouseEventToClickSource(e);
     if (source === ClickSource.UNKNOWN) {
       return false;
     }
-    if (this.config.only_left_click && source !== ClickSource.LEFT_MOUSE) {
+    if (!this.config.allow_nonleft_clicks && source !== ClickSource.LEFT_MOUSE) {
       return false;
     }
     if (this.hovering && !this.clicking) {
       this.clicking = true;
-      this.click_hold_timer = this.config.hold_click_delay;
       this.hold_clicks = 0;
+      if (this.config.hold_config) {
+        this.click_hold_timer = this.config.hold_config.hold_click_delay;
+      }
       this.clicked(source);
       return true;
     }
     return false;
   }
 
+  /** Returns whether this mouseup event triggered a release event on the button */
   mouseup(e: MouseEvent) {
     const source = mouseEventToClickSource(e);
     if (source === ClickSource.UNKNOWN) {

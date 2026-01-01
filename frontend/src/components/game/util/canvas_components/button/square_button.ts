@@ -1,6 +1,6 @@
 import type { Point2D } from '../../objects2d';
 import type { DrawConfig } from '../canvas_component';
-import type { ButtonConfig } from './button';
+import type { ButtonConfig } from './button_config';
 import { DwgRectButton } from './rect_button';
 
 /** Config data for a square button */

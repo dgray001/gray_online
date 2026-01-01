@@ -4,7 +4,7 @@ import type { Point2D } from '../../objects2d';
 import { addPoint2D, equalsPoint2D, multiplyPoint2D } from '../../objects2d';
 import type { DrawConfig, Rotation } from '../canvas_component';
 import { configDraw } from '../canvas_component';
-import type { ButtonConfig } from './button';
+import type { ButtonConfig } from './button_config';
 import { DwgButton } from './button';
 
 /** Config data for a rect button */

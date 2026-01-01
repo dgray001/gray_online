@@ -71,7 +71,7 @@ export declare interface DrawTextConfig {
 /** Draws text from config */
 export function drawText(ctx: CanvasRenderingContext2D, s: string, config: DrawTextConfig) {
   ctx.beginPath();
-  if (!!ctx.font) {
+  if (!!config.font) {
     ctx.font = config.font;
   }
   ctx.textAlign = config.align ?? 'left';
@@ -81,7 +81,7 @@ export function drawText(ctx: CanvasRenderingContext2D, s: string, config: DrawT
     ctx.fillStyle = config.fill_style;
     ctx.fillText(s, config.p.x, config.p.y, config.w);
   }
-  if (!!config.stroke_style) {
+  if (!!config.stroke_style && !!config.stroke_width) {
     ctx.strokeStyle = config.stroke_style;
     ctx.lineWidth = config.stroke_width;
     ctx.strokeText(s, config.p.x, config.p.y, config.w);

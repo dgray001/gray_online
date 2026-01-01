@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6y: Left panel works again (mostly)
+v0.6z: Fix lint / ts issues
 
 ## Dev Use
 

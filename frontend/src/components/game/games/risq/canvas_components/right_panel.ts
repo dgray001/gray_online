@@ -82,7 +82,7 @@ export class RisqRightPanel implements CanvasComponent {
         () => {
           drawRect(ctx, { x: this.xi(), y: this.yi() }, this.w(), this.h());
           if (!this.opening && this.config.is_open) {
-            drawText(ctx, `Turn ${this.risq.getGame().turn_number}`, {
+            drawText(ctx, `Turn ${this.risq.getGame()?.turn_number ?? '??'}`, {
               p: { x: this.xc(), y: this.yi() },
               w: this.w(),
               fill_style: 'black',
@@ -107,7 +107,7 @@ export class RisqRightPanel implements CanvasComponent {
               this.drawSeparator(ctx, yi);
               yi += 5;
             }
-            for (const score of this.risq.getGame().scores) {
+            for (const score of this.risq.getGame()?.scores ?? []) {
               this.drawScore(ctx, yi, score);
             }
           }
