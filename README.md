@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6x-1: Dev page launches room
+v0.6x-2: Dev page launches game
 
 ## Dev Use
 

@@ -370,8 +370,8 @@ export class DwgGame extends DwgElement {
       client_id: this.clientId(),
       viewer: this.is_player ? 'false' : 'true',
     });
-    if (!response.success || !response.result) {
-      console.log(response.error_message);
+    if (!response.success) {
+      console.error(response.error_message);
       return false;
     }
     const new_game = serverResponseToGame(response.result, this.clientId());
@@ -383,7 +383,7 @@ export class DwgGame extends DwgElement {
         const script = document.createElement('script');
         script.setAttribute(
           'src',
-          `/dist/${component.replace('dwg-', '').replace('-', '_')}.bundle.js?v=${getUrlParam('v')}`
+          `${window.location.origin}/dist/${component.replace('dwg-', '').replace('-', '_')}.bundle.js?v=${getUrlParam('v')}`
         );
         script.async = false;
         let script_loaded = false;
@@ -394,6 +394,7 @@ export class DwgGame extends DwgElement {
         await until(() => script_loaded);
         this.bundles_attached.add(component);
       }
+      await customElements.whenDefined(component);
       const game_el = document.createElement(component);
       this.game_container.replaceChildren(game_el);
       await until(() => game_el.fully_parsed);

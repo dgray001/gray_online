@@ -111,7 +111,8 @@ async function handleGameUpdate(game: DwgGame, message: ServerMessage) {
   async function runUpdate(update: UpdateMessage) {
     running_updates = true;
     let last_update_id = game_base?.last_applied_update_id ?? -2;
-    if (update.update_id - 1 === last_update_id) { // running update for next update
+    // running update for next update
+    if (update.update_id - 1 === last_update_id) {
       game_base.last_applied_update_id = update.update_id;
       console.log(`applying update id ${update.update_id}`);
       await game_el?.gameUpdate(update);

@@ -2,16 +2,20 @@ import { DwgElement } from '../dwg_element';
 import type { DwgGame } from '../game/game';
 import { getUrlParam } from '../../scripts/url';
 import { websocketPath } from '../../scripts/api';
-import type { GameTypeLowerKeys, ConnectionMetadata, GameSettings, LobbyRoom} from '../lobby/data_models';
-import { createMessage, GameType, defaultBaseGameSettings, getGameTypeFromLowercaseString, isValidGameTypeString } from '../lobby/data_models';
+import type { GameTypeLowerKeys, ConnectionMetadata, GameSettings, LobbyRoom } from '../lobby/data_models';
+import {
+  createMessage,
+  GameType,
+  defaultBaseGameSettings,
+  getGameTypeFromLowercaseString,
+  isValidGameTypeString,
+} from '../lobby/data_models';
 import type { DwgLobby } from '../lobby/lobby';
+import { until } from '../../scripts/util';
 
 import html from './page_dev.html';
 
 import './page_dev.scss';
-import '../game/game';
-import '../lobby/lobby';
-import { until } from '../../scripts/util';
 
 export class DwgPageDev extends DwgElement {
   private game!: DwgGame;
@@ -59,19 +63,18 @@ export class DwgPageDev extends DwgElement {
       });
       const game_type = getGameTypeFromLowercaseString(game);
       const game_settings = this.createGameSettings(game_type);
-      socket.send(createMessage(
-            `client-${connection_metadata.client_id}`,
-            'room-settings-update',
-            JSON.stringify(game_settings),
-            lobby_room.room_id.toString(),
-          ));
+      socket.send(
+        createMessage(
+          `client-${connection_metadata.client_id}`,
+          'room-settings-update',
+          JSON.stringify(game_settings),
+          lobby_room.room_id.toString()
+        )
+      );
       await until(() => this.lobby.getLobbyRoom().getRoom()?.game_settings.game_type === game_type);
-      socket.send(createMessage(
-            `client-${connection_metadata.client_id}`,
-            'room-launch',
-            '',
-            lobby_room.room_id.toString(),
-          ));
+      socket.send(
+        createMessage(`client-${connection_metadata.client_id}`, 'room-launch', '', lobby_room.room_id.toString())
+      );
       await until(() => !!this.lobby.getLobbyRoom().getRoom()?.game_id);
       console.log('Launching game from dev page with the background room:', lobby_room);
       this.game.launchGame(lobby_room, this.lobby.getSocket(), connection_metadata);
@@ -83,7 +86,7 @@ export class DwgPageDev extends DwgElement {
 
   private createGameSettings(game_type: GameType): GameSettings {
     const base = defaultBaseGameSettings();
-    switch(game_type) {
+    switch (game_type) {
       case GameType.FIDDLESTICKS:
         return {
           ...base,

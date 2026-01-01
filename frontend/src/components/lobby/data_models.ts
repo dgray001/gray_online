@@ -60,14 +60,14 @@ export type GameTypeLowerKeys = Lowercase<keyof typeof GameType>;
 /** Strictly-typed const of lowercase GameType keys */
 export const LOWERCASE_GAME_TYPE_KEYS = Object.keys(GameType)
   .filter((key) => isNaN(Number(key)))
-  .map((key) => key.toLowerCase()) as (Lowercase<keyof typeof GameType>)[];
+  .map((key) => key.toLowerCase()) as Lowercase<keyof typeof GameType>[];
 
 /** Function to check whether an input string is a proper game type (should make lowercase first) */
 export function isValidGameTypeString(input: string): input is GameTypeLowerKeys {
   return LOWERCASE_GAME_TYPE_KEYS.includes(input.toLowerCase() as GameTypeLowerKeys);
 }
 
-/** 
+/**
  * Converts a lowercase game string back to the numeric GameType enum.
  * Guaranteed to return a valid GameType if input is validated by isValidGameTypeString.
  */
@@ -87,17 +87,16 @@ export interface GameSettingsRegistry {}
 
 /** Settings object for lobby room */
 export type GameSettings = {
-  [K in GameType]: BaseGameSettings & (
-    K extends keyof GameSettingsRegistry 
-      ? { 
-          game_type: K; 
-          game_specific_settings: GameSettingsRegistry[K] 
-        } 
-      : { 
-          game_type: K; 
-          game_specific_settings?: never // if game type doesn't have entry in registry
+  [K in GameType]: BaseGameSettings &
+    (K extends keyof GameSettingsRegistry
+      ? {
+          game_type: K;
+          game_specific_settings: GameSettingsRegistry[K];
         }
-  )
+      : {
+          game_type: K;
+          game_specific_settings?: never; // if game type doesn't have entry in registry
+        });
 }[GameType];
 
 /** Returns default base game settings */
