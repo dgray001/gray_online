@@ -63,6 +63,7 @@ export declare interface DrawTextConfig {
   stroke_style?: string;
   stroke_width?: number;
   font?: string;
+  min_font_size?: number;
   align?: CanvasTextAlign;
   baseline?: CanvasTextBaseline;
   direction?: CanvasDirection;
@@ -72,7 +73,7 @@ export declare interface DrawTextConfig {
 export function drawText(ctx: CanvasRenderingContext2D, s: string, config: DrawTextConfig) {
   ctx.beginPath();
   if (!!config.font) {
-    ctx.font = config.font;
+    ctx.font = getFittedFont(ctx, s, config.font, config.w, config.min_font_size ?? 8);
   }
   ctx.textAlign = config.align ?? 'left';
   ctx.textBaseline = config.baseline ?? 'top';
@@ -86,4 +87,23 @@ export function drawText(ctx: CanvasRenderingContext2D, s: string, config: DrawT
     ctx.lineWidth = config.stroke_width;
     ctx.strokeText(s, config.p.x, config.p.y, config.w);
   }
+}
+
+/** Returns the font with a lower font size if necessary based on max width */
+export function getFittedFont(ctx: CanvasRenderingContext2D, text: string, font: string, max_width: number, min_size: number): string {
+    const match = font.match(/^(.*?)(\d+)px(.*)$/);
+    if (!match || match.length < 4) {
+      return font;
+    }
+    const prefix = match[1]
+    const font_size = parseInt(match[2], 10);
+    const suffix = match[3];
+    if (!font_size || font_size < 1) {
+      return font;
+    }
+    ctx.font = `${prefix}1px${suffix}`;
+    const one_px_width = ctx.measureText(text).width;
+    const max_size = Math.floor(max_width / one_px_width);
+    const final_size = Math.max(Math.min(font_size, max_size), min_size);
+    return `${prefix}${final_size.toFixed(0)}px${suffix}`;
 }

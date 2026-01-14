@@ -1,11 +1,11 @@
-import type { BoardTransformData } from '../../../util/canvas_board/canvas_board';
-import type { CanvasComponent, Rotation } from '../../../util/canvas_components/canvas_component';
-import { configDraw } from '../../../util/canvas_components/canvas_component';
-import { drawLine, drawRect, drawText } from '../../../util/canvas_util';
-import type { Point2D } from '../../../util/objects2d';
-import type { DwgRisq } from '../risq';
-import type { GameRisqScoreEntry, RisqResourceType } from '../risq_data';
-import { resourceTypeImage } from '../risq_resources';
+import type { BoardTransformData } from '../../../../util/canvas_board/canvas_board';
+import type { CanvasComponent, Rotation } from '../../../../util/canvas_components/canvas_component';
+import { configDraw } from '../../../../util/canvas_components/canvas_component';
+import { drawLine, drawRect, drawText } from '../../../../util/canvas_util';
+import type { Point2D } from '../../../../util/objects2d';
+import type { DwgRisq } from '../../risq';
+import type { GameRisqScoreEntry, RisqResourceType } from '../../risq_data';
+import { resourceTypeImage } from '../../risq_resources';
 import { RisqRightPanelButton } from './right_panel_button';
 
 /** Config for the right panel */
@@ -81,36 +81,43 @@ export class RisqRightPanel implements CanvasComponent {
         false,
         () => {
           drawRect(ctx, { x: this.xi(), y: this.yi() }, this.w(), this.h());
-          if (!this.opening && this.config.is_open) {
-            drawText(ctx, `Turn ${this.risq.getGame()?.turn_number ?? '??'}`, {
-              p: { x: this.xc(), y: this.yi() },
-              w: this.w(),
-              fill_style: 'black',
-              align: 'center',
-              font: 'bold 36px serif',
-            });
-            let yi = this.yi() + 40;
-            const player = this.risq.getPlayer();
+          if (this.opening) {
+            return;
+          }
+          let yi = this.yi() + 3;
+          drawText(ctx, `Turn ${this.risq.getGame()?.turn_number ?? '??'}`, {
+            p: { x: this.xc(), y: yi },
+            w: this.w(),
+            fill_style: 'black',
+            align: 'center',
+            font: 'bold 36px serif',
+          });
+          yi += 40;
+          const player = this.risq.getPlayer();
+          this.drawSeparator(ctx, yi);
+          yi += 5;
+          if (!!player) {
+            ctx.font = '24px serif';
+            this.drawPopulation(ctx, yi, player.units.size, player.population_limit);
+            yi += 30;
+            if (!!player) {
+              for (const [r, a] of [...player.resources.entries()].sort((a, b) => a[0] - b[0])) {
+                this.drawResource(ctx, yi, r, a);
+                yi += 30;
+              }
+            }
+            yi += 5;
             this.drawSeparator(ctx, yi);
             yi += 5;
-            if (!!player) {
-              ctx.font = '24px serif';
-              this.drawPopulation(ctx, yi, player.units.size, player.population_limit);
-              yi += 30;
-              if (!!player) {
-                for (const [r, a] of [...player.resources.entries()].sort((a, b) => a[0] - b[0])) {
-                  this.drawResource(ctx, yi, r, a);
-                  yi += 30;
-                }
-              }
-              yi += 5;
-              this.drawSeparator(ctx, yi);
-              yi += 5;
-            }
-            for (const score of this.risq.getGame()?.scores ?? []) {
-              this.drawScore(ctx, yi, score);
-            }
           }
+          for (const score of this.risq.getGame()?.scores ?? []) {
+            this.drawScore(ctx, yi, score);
+            yi += 30;
+          }
+          yi += 5;
+          this.drawSeparator(ctx, yi);
+          yi += 5;
+          // TODO: logic in case yi has gone off the rectangle
         }
       );
     }

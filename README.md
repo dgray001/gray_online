@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6z: Fix lint / ts issues
+v0.6aa: Prepare abstract RectScrollbar
 
 ## Dev Use
 

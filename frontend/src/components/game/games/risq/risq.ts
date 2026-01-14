@@ -18,16 +18,15 @@ import { DEV, createLock } from '../../../../scripts/util';
 import html from './risq.html';
 import type { GameRisq, GameRisqFromServer, RisqPlayer, RisqSpace, RisqZone, StartTurnData } from './risq_data';
 import { coordinateToIndex, getSpace, serverToGameRisq } from './risq_data';
-import { RisqRightPanel } from './canvas_components/right_panel';
+import { RisqRightPanel } from './canvas_components/right_panel/right_panel';
 import type { DrawRisqSpaceConfig } from './risq_space';
 import { DrawRisqSpaceDetail, drawRisqSpace } from './risq_space';
-import { RisqLeftPanel } from './canvas_components/left_panel';
+import { RisqLeftPanel } from './canvas_components/left_panel/left_panel';
 import { resolveHoveredZones, unhoverRisqZone } from './risq_zone';
-import { LeftPanelDataType } from './canvas_components/left_panel_data';
+import { LeftPanelDataType } from './canvas_components/left_panel/left_panel_data';
 
 import './risq.scss';
 import '../../util/canvas_board/canvas_board';
-import './space_dialog/space_dialog';
 
 const DEFAULT_HEXAGON_RADIUS = 60;
 
@@ -348,12 +347,13 @@ export class DwgRisq extends DwgElement {
     }
   }
 
+  // returns false if mousedown event should initiate dragging
   private mousedown(e: MouseEvent): boolean {
     if ([this.right_panel.mousedown(e), this.left_panel.mousedown(e)].some((b) => !!b)) {
       return true;
     }
     if (e.button !== 0) {
-      return false;
+      return true;
     }
     if (!!this.hovered_space && this.hovered_space.visibility > 0) {
       this.hovered_space.clicked = true;

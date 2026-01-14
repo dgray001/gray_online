@@ -1,12 +1,12 @@
-import type { BoardTransformData } from '../../../util/canvas_board/canvas_board';
-import type { DwgButton } from '../../../util/canvas_components/button/button';
-import type { CanvasComponent } from '../../../util/canvas_components/canvas_component';
-import { configDraw } from '../../../util/canvas_components/canvas_component';
-import { drawHexagon, drawLine, drawRect, drawText } from '../../../util/canvas_util';
-import type { Point2D } from '../../../util/objects2d';
-import { equalsPoint2D } from '../../../util/objects2d';
-import type { DwgRisq } from '../risq';
-import { buildingImage } from '../risq_buildings';
+import type { BoardTransformData } from '../../../../util/canvas_board/canvas_board';
+import type { DwgButton } from '../../../../util/canvas_components/button/button';
+import type { CanvasComponent } from '../../../../util/canvas_components/canvas_component';
+import { configDraw } from '../../../../util/canvas_components/canvas_component';
+import { drawHexagon, drawLine, drawRect, drawText } from '../../../../util/canvas_util';
+import type { Point2D } from '../../../../util/objects2d';
+import { equalsPoint2D } from '../../../../util/objects2d';
+import type { DwgRisq } from '../../risq';
+import { buildingImage } from '../../risq_buildings';
 import type {
   RectHoverData,
   RisqBuilding,
@@ -16,12 +16,12 @@ import type {
   RisqUnit,
   RisqZone,
   UnitByTypeData,
-} from '../risq_data';
-import { RisqAttackType, ZONE_VISIBILITY, coordinateToIndex, risqTerrainName } from '../risq_data';
-import { resourceImage, resourceTypeImage } from '../risq_resources';
-import { getSpaceFill } from '../risq_space';
-import { UNIT_HEALTHBAR_COLOR_BACKGROUND, UNIT_HEALTHBAR_COLOR_HEALTH, unitImage } from '../risq_unit';
-import { INNER_ZONE_MULTIPLIER, getZoneFill, resolveHoveredZones } from '../risq_zone';
+} from '../../risq_data';
+import { RisqAttackType, ZONE_VISIBILITY, coordinateToIndex, risqTerrainName } from '../../risq_data';
+import { resourceImage, resourceTypeImage } from '../../risq_resources';
+import { getSpaceFill } from '../../risq_space';
+import { UNIT_HEALTHBAR_COLOR_BACKGROUND, UNIT_HEALTHBAR_COLOR_HEALTH, unitImage } from '../../risq_unit';
+import { INNER_ZONE_MULTIPLIER, getZoneFill, resolveHoveredZones } from '../../risq_zone';
 import { RisqLeftPanelButton } from './left_panel_close';
 import type { LeftPanelConfig, LeftPanelData, PlayerUnitsDrawData, UnitsDrawData } from './left_panel_data';
 import { HoverableObjectType, LeftPanelDataType } from './left_panel_data';
@@ -228,6 +228,7 @@ export class RisqLeftPanel implements CanvasComponent {
         for (const button of this.buttons) {
           button.draw(ctx, transform, dt);
         }
+        // TODO: logic in case yi has gone off the rectangle
       }
     );
     ctx.beginPath();
@@ -628,13 +629,13 @@ export class RisqLeftPanel implements CanvasComponent {
   private drawName(ctx: CanvasRenderingContext2D, name: string): number {
     const text_size = Math.min(40, (1 / 12) * this.size.y);
     drawText(ctx, name, {
-      p: { x: this.xc(), y: this.yi() },
+      p: { x: this.xc(), y: this.yi() + 3 },
       w: this.w(),
       fill_style: 'black',
       align: 'center',
       font: `bold ${0.85 * text_size}px serif`,
     });
-    return text_size;
+    return text_size + 3;
   }
 
   private drawImage(ctx: CanvasRenderingContext2D, yi: number, img_name: string): number {

@@ -1,4 +1,4 @@
-import type { RisqBuilding, RisqResource, RisqSpace, RisqUnit, RisqZone, UnitByTypeData } from '../risq_data';
+import type { RisqBuilding, RisqResource, RisqSpace, RisqUnit, RisqZone, UnitByTypeData } from '../../risq_data';
 
 /** Config for the left panel */
 export declare interface LeftPanelConfig {

@@ -1,7 +1,7 @@
-import { DwgSquareButton } from '../../../util/canvas_components/button/square_button';
-import type { DwgRisq } from '../risq';
+import { DwgSquareButton } from '../../../../util/canvas_components/button/square_button';
+import type { DwgRisq } from '../../risq';
 
-export class RisqLeftPanelButton extends DwgSquareButton {
+export class RisqRightPanelButton extends DwgSquareButton {
   private risq: DwgRisq;
 
   constructor(risq: DwgRisq) {
@@ -19,7 +19,10 @@ export class RisqLeftPanelButton extends DwgSquareButton {
         click_fill_style: 'rgb(210, 210, 210, 0.7)',
         fixed_position: true,
       },
-      image_path: 'icons/close_gray32',
+      move_animation_speed: 200,
+      rotate_animation_speed: 400,
+      image_path: 'icons/triangle_gray36',
+      rotation: -0.5 * Math.PI,
     });
     this.risq = risq;
   }
@@ -31,7 +34,7 @@ export class RisqLeftPanelButton extends DwgSquareButton {
     if (!this.isHovering()) {
       return;
     }
-    this.risq.closeLeftPanel();
+    this.risq.toggleRightPanel();
     this.setHovering(false);
   }
 }

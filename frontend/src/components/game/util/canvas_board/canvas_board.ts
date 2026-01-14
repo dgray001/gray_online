@@ -236,7 +236,6 @@ export class DwgCanvasBoard extends DwgElement {
     });
     this.addEventListener('mouseleave', () => {
       this.hovered = false;
-      this.dragging = false;
       this.data.mouseleave();
     });
     this.addEventListener(
