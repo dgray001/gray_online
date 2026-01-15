@@ -6,6 +6,7 @@ import type { Point2D } from '../../../../util/objects2d';
 import type { DwgRisq } from '../../risq';
 import type { GameRisqScoreEntry, RisqResourceType } from '../../risq_data';
 import { resourceTypeImage } from '../../risq_resources';
+import { RisqOrdersScrollbar } from './orders_scrollbar';
 import { RisqRightPanelButton } from './right_panel_button';
 
 /** Config for the right panel */
@@ -16,7 +17,12 @@ export declare interface RightPanelConfig {
 }
 
 export class RisqRightPanel implements CanvasComponent {
+  // For use in the draw function
+  private static PADDING = 5;
+
   private open_button: RisqRightPanelButton;
+  private orders_scrollbar: RisqOrdersScrollbar;
+  private need_to_set_orders_scrollbar_position = true;
 
   private risq: DwgRisq;
   private config: RightPanelConfig;
@@ -27,6 +33,7 @@ export class RisqRightPanel implements CanvasComponent {
     this.risq = risq;
     this.config = config;
     this.open_button = new RisqRightPanelButton(risq);
+    this.orders_scrollbar = new RisqOrdersScrollbar(risq, config.w - 2 * RisqRightPanel.PADDING);
     this.toggle(config.is_open, true);
   }
 
@@ -61,6 +68,7 @@ export class RisqRightPanel implements CanvasComponent {
           angle: this.config.is_open ? 0.5 * Math.PI : -0.5 * Math.PI,
         };
         this.open_button.setRotation(rotation, undefined, initial);
+        this.need_to_set_orders_scrollbar_position = true;
       },
       initial
     );
@@ -84,10 +92,10 @@ export class RisqRightPanel implements CanvasComponent {
           if (this.opening) {
             return;
           }
-          let yi = this.yi() + 3;
+          let yi = this.yi() + RisqRightPanel.PADDING;
           drawText(ctx, `Turn ${this.risq.getGame()?.turn_number ?? '??'}`, {
             p: { x: this.xc(), y: yi },
-            w: this.w(),
+            w: this.paddedW(),
             fill_style: 'black',
             align: 'center',
             font: 'bold 36px serif',
@@ -95,7 +103,7 @@ export class RisqRightPanel implements CanvasComponent {
           yi += 40;
           const player = this.risq.getPlayer();
           this.drawSeparator(ctx, yi);
-          yi += 5;
+          yi += RisqRightPanel.PADDING;
           if (!!player) {
             ctx.font = '24px serif';
             this.drawPopulation(ctx, yi, player.units.size, player.population_limit);
@@ -106,20 +114,29 @@ export class RisqRightPanel implements CanvasComponent {
                 yi += 30;
               }
             }
-            yi += 5;
+            yi += RisqRightPanel.PADDING;
             this.drawSeparator(ctx, yi);
-            yi += 5;
+            yi += RisqRightPanel.PADDING;
           }
           for (const score of this.risq.getGame()?.scores ?? []) {
             this.drawScore(ctx, yi, score);
             yi += 30;
           }
-          yi += 5;
+          yi += RisqRightPanel.PADDING;
           this.drawSeparator(ctx, yi);
-          yi += 5;
+          yi += RisqRightPanel.PADDING;
           // TODO: logic in case yi has gone off the rectangle
+          if (this.need_to_set_orders_scrollbar_position) {
+            const scrollbar_width = Math.min(0.1 * this.paddedW(), 20);
+            this.orders_scrollbar.setPosition({ x: this.xf() - RisqRightPanel.PADDING - scrollbar_width, y: yi });
+            this.orders_scrollbar.setSize(scrollbar_width, this.yf() - yi - RisqRightPanel.PADDING);
+            this.need_to_set_orders_scrollbar_position = false;
+          }
         }
       );
+      if (this.config.is_open) {
+        this.orders_scrollbar.draw(ctx, transform, dt);
+      }
     }
     this.open_button.draw(ctx, transform, dt);
   }
@@ -168,6 +185,7 @@ export class RisqRightPanel implements CanvasComponent {
     if (this.open_button.mousemove(m, transform)) {
       return true;
     }
+    this.orders_scrollbar.mousemove(m, transform);
     m = {
       x: m.x * transform.scale - transform.view.x,
       y: m.y * transform.scale - transform.view.y,
@@ -184,11 +202,13 @@ export class RisqRightPanel implements CanvasComponent {
     if (this.open_button.mousedown(e)) {
       return true;
     }
+    this.orders_scrollbar.mousedown(e);
     return this.isHovering();
   }
 
   mouseup(e: MouseEvent) {
     this.open_button.mouseup(e);
+    this.orders_scrollbar.mouseup(e);
   }
 
   xi(): number {
@@ -211,6 +231,9 @@ export class RisqRightPanel implements CanvasComponent {
   }
   w(): number {
     return this.xf() - this.xi();
+  }
+  paddedW(): number {
+    return this.w() - 2 * RisqRightPanel.PADDING;
   }
   h(): number {
     return this.yf() - this.yi();

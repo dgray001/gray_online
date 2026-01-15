@@ -11,9 +11,9 @@ export declare interface ScrollbarConfig {
   step_size: number;
 }
 
-export abstract class DwgScrollbar implements CanvasComponent {
+export abstract class DwgScrollbar<T extends DwgButton = DwgButton> implements CanvasComponent {
   private config!: ScrollbarConfig;
-  protected buttons: DwgButton[] = [];
+  protected buttons: T[] = [];
   private hovering = false;
   private clicking = false;
 
@@ -21,7 +21,7 @@ export abstract class DwgScrollbar implements CanvasComponent {
     this.setConfig(config);
   }
 
-  protected addButton(button: DwgButton) {
+  protected addButton(button: T) {
     this.buttons.push(button);
   }
 
@@ -55,6 +55,7 @@ export abstract class DwgScrollbar implements CanvasComponent {
 
   protected setScroll(v: number) {
     setBoundedNumber(this.config.value, v);
+    this.scrollCallback(this.config.value.value);
   }
 
   isHovering() {
@@ -95,6 +96,7 @@ export abstract class DwgScrollbar implements CanvasComponent {
     }
   }
 
+  abstract scrollCallback(value: number): void;
   abstract xi(): number;
   abstract xf(): number;
   abstract yi(): number;

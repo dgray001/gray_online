@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6aa: Prepare abstract RectScrollbar
+v0.6ab: Begin rect scrollbar implementation
 
 ## Dev Use
 
