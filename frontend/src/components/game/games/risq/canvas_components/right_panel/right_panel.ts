@@ -127,9 +127,12 @@ export class RisqRightPanel implements CanvasComponent {
           yi += RisqRightPanel.PADDING;
           // TODO: logic in case yi has gone off the rectangle
           if (this.need_to_set_orders_scrollbar_position) {
-            const scrollbar_width = Math.min(0.1 * this.paddedW(), 20);
-            this.orders_scrollbar.setPosition({ x: this.xf() - RisqRightPanel.PADDING - scrollbar_width, y: yi });
-            this.orders_scrollbar.setSize(scrollbar_width, this.yf() - yi - RisqRightPanel.PADDING);
+            this.orders_scrollbar.setAllSizes(
+              Math.min(0.1 * this.paddedW(), 20),
+              { x: this.xi() + RisqRightPanel.PADDING, y: yi },
+              this.w() - 2 * RisqRightPanel.PADDING,
+              this.yf() - yi - RisqRightPanel.PADDING
+            );
             this.need_to_set_orders_scrollbar_position = false;
           }
         }
@@ -179,6 +182,10 @@ export class RisqRightPanel implements CanvasComponent {
       baseline: 'middle',
       align: 'right',
     });
+  }
+
+  scroll(_dy: number): boolean {
+    return false; // TODO: implement
   }
 
   mousemove(m: Point2D, transform: BoardTransformData): boolean {

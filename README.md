@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6ab: Begin rect scrollbar implementation
+v0.6ac: Rect scrollbar arrow buttons
 
 ## Dev Use
 

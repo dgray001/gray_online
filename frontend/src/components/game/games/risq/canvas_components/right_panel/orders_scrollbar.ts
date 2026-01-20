@@ -6,12 +6,13 @@ export class RisqOrdersScrollbar extends DwgRectScrollbar {
   constructor(risq: DwgRisq, w: number) {
     super({
       scrollbar_config: {
-        value: { value: 0, value_min: 0, value_max: 25 },
+        value: { value: 0, value_min: 0, value_max: 250 },
         step_size: 1,
       },
       p: { x: 0, y: 0 },
       w,
       h: 0,
+      scrollbar_size: 0,
       vertical: true,
       draw_config: {
         fill_style: 'rgba(180, 180, 180)',

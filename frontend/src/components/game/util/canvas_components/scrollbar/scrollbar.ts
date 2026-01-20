@@ -27,6 +27,9 @@ export abstract class DwgScrollbar<T extends DwgButton = DwgButton> implements C
 
   setConfig(config: ScrollbarConfig) {
     config.value = validateBoundedNumber(config.value);
+    if (config.step_size === 0) {
+      config.step_size = 1;
+    }
     config.step_size = Math.min(config.step_size, config.value.value_max - config.value.value_min);
     if (config.step_size < 0) {
       config.step_size = -1 * config.step_size;
@@ -46,8 +49,24 @@ export abstract class DwgScrollbar<T extends DwgButton = DwgButton> implements C
     return this.config.value.value_max;
   }
 
+  // returns how many steps the scrollbar can be scrolled
+  totalSteps(): number {
+    if (!this.config.step_size) {
+      return 0;
+    }
+    const value_dif = this.maxValue() - this.minValue();
+    return value_dif / this.config.step_size;
+  }
+
+  step(): number {
+    if (!this.config.step_size) {
+      return 0;
+    }
+    return (this.value() - this.minValue()) / this.config.step_size;
+  }
+
   /** Returns the actual dif from this operation */
-  scroll(dif: number): number {
+  _scroll(dif: number): number {
     const prev = this.value();
     this.setScroll(prev + dif);
     return this.value() - prev;
@@ -72,6 +91,14 @@ export abstract class DwgScrollbar<T extends DwgButton = DwgButton> implements C
     }
   }
 
+  scroll(dy: number, _dx?: number): boolean {
+    if (this.hovering) {
+      this._scroll(dy * this.config.step_size);
+      return true;
+    }
+    return false;
+  }
+
   mousemove(m: Point2D, transform: BoardTransformData): boolean {
     const button_hovering: boolean[] = [];
     for (const button of this.buttons) {
@@ -82,11 +109,11 @@ export abstract class DwgScrollbar<T extends DwgButton = DwgButton> implements C
   }
 
   mousedown(e: MouseEvent): boolean {
-    const button_hovering: boolean[] = [];
+    const button_clicking: boolean[] = [];
     for (const button of this.buttons) {
-      button_hovering.push(button.mousedown(e));
+      button_clicking.push(button.mousedown(e));
     }
-    this.clicking = button_hovering.some((v) => !!v);
+    this.clicking = button_clicking.some((v) => !!v);
     return this.clicking;
   }
 

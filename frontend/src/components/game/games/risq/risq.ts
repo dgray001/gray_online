@@ -103,6 +103,7 @@ export class DwgRisq extends DwgElement {
         fill_space: true,
         allow_side_move: false,
         draw: this.draw.bind(this),
+        scroll: this.scrollDwg.bind(this),
         mousemove: this.mousemove.bind(this),
         mouseleave: this.mouseleave.bind(this),
         mousedown: this.mousedown.bind(this),
@@ -279,6 +280,19 @@ export class DwgRisq extends DwgElement {
       return DrawRisqSpaceDetail.OWNERSHIP;
     }
     return DrawRisqSpaceDetail.SPACE_DETAILS;
+  }
+
+  // scroll() signature already used by HTMLElement
+  private scrollDwg(dy: number): boolean {
+    if (this.left_panel.isHovering()) {
+      this.left_panel.scroll(dy);
+      return true;
+    }
+    if (this.right_panel.isHovering()) {
+      this.right_panel.scroll(dy);
+      return true;
+    }
+    return false;
   }
 
   private mousemove(m: Point2D, transform: BoardTransformData) {

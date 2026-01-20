@@ -21,9 +21,12 @@ export declare interface CanvasBoardInitializationData {
   fill_space?: boolean;
   allow_side_move?: boolean;
   draw: (ctx: CanvasRenderingContext2D, transform: BoardTransformData) => void;
+  // returns whether something was scrolled
+  scroll?: (dy: number, dx?: number) => boolean;
   mousemove: (m: Point2D, transform: BoardTransformData) => void;
   mouseleave: () => void;
-  mousedown: (e: MouseEvent) => boolean; // returns whether something was clicked
+  // returns whether something was clicked
+  mousedown: (e: MouseEvent) => boolean;
   mouseup: (e: MouseEvent) => void;
   zoom_config: ZoomConfig;
 }
@@ -183,6 +186,11 @@ export class DwgCanvasBoard extends DwgElement {
 
   private addEventListeners() {
     this.addEventListener('wheel', (e: WheelEvent) => {
+      if (this.data.scroll) {
+        if (this.data.scroll(e.deltaY, e.deltaX)) {
+          return;
+        }
+      }
       let zoom = 1 + e.deltaY / this.zoom_config.zoom_constant;
       if (!!this.zoom_config.max_zoom && this.zoom_config.max_zoom < zoom) {
         zoom = this.zoom_config.max_zoom;

@@ -750,6 +750,10 @@ export class RisqLeftPanel implements CanvasComponent {
     }
   }
 
+  scroll(_dy: number): boolean {
+    return false;
+  }
+
   mousemove(m: Point2D, transform: BoardTransformData): boolean {
     if (this.close_button.mousemove(m, transform)) {
       return true;
