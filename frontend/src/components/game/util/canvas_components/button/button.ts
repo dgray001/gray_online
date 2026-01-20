@@ -58,6 +58,10 @@ export abstract class DwgButton implements CanvasComponent {
       this.hovered();
     } else if (previous_hovered && !this.hovering) {
       this.unhovered();
+      if (this.clicking && this.config.hold_config?.hold_click_hover) {
+        this.clicking = false;
+        this.released(ClickSource.HOLD_CLICK);
+      }
     }
     return this.hovering;
   }

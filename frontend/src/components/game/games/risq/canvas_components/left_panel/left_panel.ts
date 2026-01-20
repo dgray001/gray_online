@@ -750,7 +750,7 @@ export class RisqLeftPanel implements CanvasComponent {
     }
   }
 
-  scroll(_dy: number): boolean {
+  scroll(_dy: number, _mode: number): boolean {
     return false;
   }
 

@@ -283,13 +283,13 @@ export class DwgRisq extends DwgElement {
   }
 
   // scroll() signature already used by HTMLElement
-  private scrollDwg(dy: number): boolean {
+  private scrollDwg(dy: number, mode: number): boolean {
     if (this.left_panel.isHovering()) {
-      this.left_panel.scroll(dy);
+      this.left_panel.scroll(dy, mode);
       return true;
     }
     if (this.right_panel.isHovering()) {
-      this.right_panel.scroll(dy);
+      this.right_panel.scroll(dy, mode);
       return true;
     }
     return false;

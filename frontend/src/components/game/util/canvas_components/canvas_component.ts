@@ -7,7 +7,7 @@ export declare interface CanvasComponent {
   isClicking: () => boolean;
   draw: (ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number) => void;
   // should return true if scroll had an effect on the component
-  scroll?: (dy: number, dx?: number) => boolean;
+  scroll?: (dy: number, mode: number, dx?: number) => boolean;
   // should return true if the component is hovered
   mousemove: (m: Point2D, transform: BoardTransformData) => boolean;
   // should return true if mousedown had an effect on the component

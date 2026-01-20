@@ -184,8 +184,8 @@ export class RisqRightPanel implements CanvasComponent {
     });
   }
 
-  scroll(_dy: number): boolean {
-    return false; // TODO: implement
+  scroll(dy: number, mode: number): boolean {
+    return this.orders_scrollbar.scroll(dy, mode);
   }
 
   mousemove(m: Point2D, transform: BoardTransformData): boolean {

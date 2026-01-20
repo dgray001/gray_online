@@ -22,7 +22,7 @@ export declare interface CanvasBoardInitializationData {
   allow_side_move?: boolean;
   draw: (ctx: CanvasRenderingContext2D, transform: BoardTransformData) => void;
   // returns whether something was scrolled
-  scroll?: (dy: number, dx?: number) => boolean;
+  scroll?: (dy: number, mode: number, dx?: number) => boolean;
   mousemove: (m: Point2D, transform: BoardTransformData) => void;
   mouseleave: () => void;
   // returns whether something was clicked
@@ -187,7 +187,7 @@ export class DwgCanvasBoard extends DwgElement {
   private addEventListeners() {
     this.addEventListener('wheel', (e: WheelEvent) => {
       if (this.data.scroll) {
-        if (this.data.scroll(e.deltaY, e.deltaX)) {
+        if (this.data.scroll(e.deltaY, e.deltaMode, e.deltaX)) {
           return;
         }
       }

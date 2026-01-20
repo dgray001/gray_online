@@ -16,6 +16,10 @@ abstract class DwgRectScrollbarButton extends DwgRectButton {
     this.scrollbar = scrollbar;
   }
 
+  updateHovering(m: Point2D, transform: BoardTransformData) {
+    this.setHovering(this.mouseOver(m, transform));
+  }
+
   protected hovered(): void {}
   protected unhovered(): void {}
   protected released(): void {}
@@ -97,7 +101,9 @@ interface RectScrollbarBarButtonConfig {
 }
 
 class DwgRectScrollbarBarButton extends DwgRectScrollbarButton {
-  private scrollbar_arrow_config: RectScrollbarBarButtonConfig;
+  private scrollbar_bar_config: RectScrollbarBarButtonConfig;
+  private click_m = 0;
+  private click_v = 0;
 
   constructor(scrollbar: DwgRectScrollbar, config: RectScrollbarBarButtonConfig) {
     super(scrollbar, {
@@ -106,7 +112,25 @@ class DwgRectScrollbarBarButton extends DwgRectScrollbarButton {
       },
       ...config.rect_button_config,
     });
-    this.scrollbar_arrow_config = config;
+    this.scrollbar_bar_config = config;
+  }
+
+  override mousemove(m: Point2D, transform: BoardTransformData): boolean {
+    super.mousemove(m, transform);
+    if (this.scrollbar.isFixedPosition()) {
+      m = {
+        x: m.x * transform.scale - transform.view.x,
+        y: m.y * transform.scale - transform.view.y,
+      };
+    }
+    if (this.isClicking() && this.click_m && this.scrollbar.getBarDifSize()) {
+      const mp = this.scrollbar.isVertical() ? m.y : m.x;
+      this.scrollbar.scrollTo(this.click_v + (mp - this.click_m) / this.scrollbar.getBarDifSize());
+    } else {
+      this.click_m = this.scrollbar.isVertical() ? m.y : m.x;
+      this.click_v = this.scrollbar.value();
+    }
+    return this.isHovering();
   }
 
   protected clicked(): void {}
@@ -131,7 +155,7 @@ export declare interface RectScrollbarConfig {
   bar_dif_size?: number;
 }
 
-export abstract class DwgRectScrollbar extends DwgScrollbar<DwgRectButton> {
+export abstract class DwgRectScrollbar extends DwgScrollbar<DwgRectScrollbarButton> {
   private rect_config: RectScrollbarConfig;
   private background_config: DrawConfig;
   private scrollbar_p: Point2D = { x: 0, y: 0 };
@@ -139,6 +163,7 @@ export abstract class DwgRectScrollbar extends DwgScrollbar<DwgRectButton> {
   private scrollbar_h = 0;
   private max_bar_dif_size = 10;
   private bar_dif_size = 0;
+  private bar_button: DwgRectScrollbarBarButton;
 
   constructor(config: RectScrollbarConfig) {
     super(config.scrollbar_config);
@@ -174,15 +199,14 @@ export abstract class DwgRectScrollbar extends DwgScrollbar<DwgRectButton> {
         },
       })
     );
-    this.addButton(
-      new DwgRectScrollbarBarButton(this, {
-        min_bar_size: this.getMinBarSize(),
-        bar_dif_size: this.bar_dif_size,
-        rect_button_config: {
-          ...arrow_button_config,
-        },
-      })
-    );
+    this.bar_button = new DwgRectScrollbarBarButton(this, {
+      min_bar_size: this.getMinBarSize(),
+      bar_dif_size: this.bar_dif_size,
+      rect_button_config: {
+        ...arrow_button_config,
+      },
+    });
+    this.addButton(this.bar_button);
     this.addButton(
       new DwgRectScrollbarSpaceButton(this, {
         increase: false,
@@ -208,11 +232,16 @@ export abstract class DwgRectScrollbar extends DwgScrollbar<DwgRectButton> {
     return this.rect_config.min_bar_size ?? 0.5 * this.rect_config.scrollbar_size;
   }
 
+  getBarDifSize(): number {
+    return this.bar_dif_size;
+  }
+
   private updateButtonPositions() {
     const size = this.rect_config.scrollbar_size;
+    const vertical = this.rect_config.vertical;
     const p: Point2D = {
-      x: this.rect_config.vertical ? this.xf() - size : this.xi(),
-      y: this.rect_config.vertical ? this.yi() : this.yf() - size,
+      x: vertical ? this.xf() - size : this.xi(),
+      y: vertical ? this.yi() : this.yf() - size,
     };
     this.buttons[0].setPosition({ ...p });
     this.buttons[0].setSize(size, size);
@@ -222,14 +251,60 @@ export abstract class DwgRectScrollbar extends DwgScrollbar<DwgRectButton> {
     });
     this.buttons[1].setSize(size, size);
     this.scrollbar_p = p;
-    this.scrollbar_w = this.rect_config.vertical ? size : this.w();
-    this.scrollbar_h = this.rect_config.vertical ? this.h() : size;
-    this.updateBarAndSpaceButtonPositions();
+    this.scrollbar_w = vertical ? size : this.w();
+    this.scrollbar_h = vertical ? this.h() : size;
+    const total_bar_area_size = (vertical ? this.h() : this.w()) - 2 * this.rect_config.scrollbar_size;
+    const bar_size = Math.max(total_bar_area_size - this.max_bar_dif_size * this.totalSteps(), this.getMinBarSize());
+    if (total_bar_area_size <= 0 || bar_size <= 0 || this.totalSteps() < 1) {
+      this.bar_dif_size = 0;
+      this.buttons[2].setSize(0, 0);
+      this.buttons[3].setSize(0, 0);
+      this.buttons[4].setSize(0, 0);
+      return;
+    }
+    this.bar_dif_size = (total_bar_area_size - bar_size) / this.totalSteps();
+    const bar_area_offset = this.step() * this.bar_dif_size;
+    const bar_offset = this.rect_config.scrollbar_size + bar_area_offset;
+    this.buttons[2].setPosition({
+      x: p.x + (vertical ? 0 : bar_offset),
+      y: p.y + (vertical ? bar_offset : 0),
+    });
+    this.buttons[2].setSize(vertical ? this.scrollbar_w : bar_size, vertical ? bar_size : this.scrollbar_h);
+    this.buttons[3].setPosition({
+      x: p.x + (vertical ? 0 : this.rect_config.scrollbar_size),
+      y: p.y + (vertical ? this.rect_config.scrollbar_size : 0),
+    });
+    this.buttons[3].setSize(
+      vertical ? this.scrollbar_w : bar_area_offset,
+      vertical ? bar_area_offset : this.scrollbar_h
+    );
+    this.buttons[4].setPosition({
+      x: p.x + (vertical ? 0 : bar_offset + bar_size),
+      y: p.y + (vertical ? bar_offset + bar_size : 0),
+    });
+    this.buttons[4].setSize(
+      vertical ? this.scrollbar_w : total_bar_area_size - bar_area_offset - bar_size,
+      vertical ? total_bar_area_size - bar_area_offset - bar_size : this.scrollbar_h
+    );
   }
 
   protected override setScroll(v: number): void {
     super.setScroll(v);
     this.updateButtonPositions();
+    if (!this.last_mousemove_m || !this.last_mousemove_transform) {
+      return;
+    }
+    this.buttons[2].updateHovering(this.last_mousemove_m, this.last_mousemove_transform);
+    this.buttons[3].updateHovering(this.last_mousemove_m, this.last_mousemove_transform);
+    this.buttons[4].updateHovering(this.last_mousemove_m, this.last_mousemove_transform);
+  }
+
+  isFixedPosition(): boolean {
+    return this.rect_config.draw_config.fixed_position ?? false;
+  }
+
+  isVertical(): boolean {
+    return this.rect_config.vertical;
   }
 
   setScrollbarSize(size: number) {
@@ -266,33 +341,24 @@ export abstract class DwgRectScrollbar extends DwgScrollbar<DwgRectButton> {
     this.updateButtonPositions();
   }
 
-  private updateBarAndSpaceButtonPositions() {
-    const total_bar_area_size = (this.rect_config.vertical ? this.h() : this.w()) - 2 * this.rect_config.scrollbar_size;
-    const bar_size = Math.max(total_bar_area_size - this.max_bar_dif_size * this.totalSteps(), this.getMinBarSize());
-    if (total_bar_area_size <= 0 || bar_size <= 0 || this.totalSteps() < 1) {
-      this.bar_dif_size = 0;
-      this.buttons[2].setSize(0, 0);
-      this.buttons[3].setSize(0, 0);
-      this.buttons[4].setSize(0, 0);
-      return;
-    }
-    this.bar_dif_size = (total_bar_area_size - bar_size) / this.totalSteps();
-    const bar_offset = this.rect_config.scrollbar_size + this.step() * this.bar_dif_size;
-    this.buttons[2].setPosition({
-      x: this.scrollbar_p.x + (this.rect_config.vertical ? 0 : bar_offset),
-      y: this.scrollbar_p.y + (this.rect_config.vertical ? bar_offset : 0),
-    });
-    this.buttons[2].setSize(
-      this.rect_config.vertical ? this.scrollbar_w : bar_size,
-      this.rect_config.vertical ? bar_size : this.scrollbar_h
-    );
-  }
-
   override draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
     configDraw(ctx, transform, this.background_config, false, false, () => {
       drawRect(ctx, { ...this.scrollbar_p }, this.scrollbar_w, this.scrollbar_h);
     });
     super.draw(ctx, transform, dt);
+  }
+
+  mouseOver(m: Point2D, transform: BoardTransformData): boolean {
+    if (this.rect_config.draw_config.fixed_position) {
+      m = {
+        x: m.x * transform.scale - transform.view.x,
+        y: m.y * transform.scale - transform.view.y,
+      };
+    }
+    if (m.x < this.xi() || m.y < this.yi() || m.x > this.xf() || m.y > this.yf()) {
+      return false;
+    }
+    return true;
   }
 
   xi(): number {

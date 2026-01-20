@@ -36,6 +36,9 @@ export declare interface HoldButtonConfig {
   hold_click_delay: number;
   /** time between subsequent hold clicks */
   hold_click_time: number;
-  /** whether user must be hovering button for it to fire hold clicks */
+  /**
+   * whether user must be hovering button for it to fire hold clicks
+   * as a note, the hold clicks will still fire if no mousemove event is fired after the click event
+   */
   hold_click_hover?: boolean;
 }

@@ -9,6 +9,10 @@ import type { CanvasComponent } from '../canvas_component';
 export declare interface ScrollbarConfig {
   value: BoundedNumber;
   step_size: number;
+  // will divide the scroll by this in pixel mode
+  scroll_pixel_constant?: number;
+  // how many lines a 'page' is for a page scroll event
+  scroll_pages?: number;
 }
 
 export abstract class DwgScrollbar<T extends DwgButton = DwgButton> implements CanvasComponent {
@@ -16,9 +20,19 @@ export abstract class DwgScrollbar<T extends DwgButton = DwgButton> implements C
   protected buttons: T[] = [];
   private hovering = false;
   private clicking = false;
+  protected last_mousemove_m?: Point2D;
+  protected last_mousemove_transform?: BoardTransformData;
+  private scroll_pixel_constant = 80;
+  private scroll_pages = 20;
 
   constructor(config: ScrollbarConfig) {
     this.setConfig(config);
+    if (config.scroll_pixel_constant && config.scroll_pixel_constant > 0) {
+      this.scroll_pixel_constant = config.scroll_pixel_constant;
+    }
+    if (config.scroll_pages && config.scroll_pages > 0) {
+      this.scroll_pages = config.scroll_pages;
+    }
   }
 
   protected addButton(button: T) {
@@ -72,6 +86,13 @@ export abstract class DwgScrollbar<T extends DwgButton = DwgButton> implements C
     return this.value() - prev;
   }
 
+  // Returns the dif that was scrolled
+  scrollTo(value: number): number {
+    const prev = this.value();
+    this.setScroll(value);
+    return this.value() - prev;
+  }
+
   protected setScroll(v: number) {
     setBoundedNumber(this.config.value, v);
     this.scrollCallback(this.config.value.value);
@@ -91,20 +112,31 @@ export abstract class DwgScrollbar<T extends DwgButton = DwgButton> implements C
     }
   }
 
-  scroll(dy: number, _dx?: number): boolean {
+  scroll(dy: number, mode: number, _dx?: number): boolean {
     if (this.hovering) {
-      this._scroll(dy * this.config.step_size);
+      if (mode === 0) {
+        this._scroll((dy * this.config.step_size) / this.scroll_pixel_constant);
+      } else if (mode === 1) {
+        this._scroll(dy);
+      } else if (mode === 2) {
+        this._scroll(dy * this.scroll_pages);
+      } else {
+        console.error('Unknown scroll mode', mode);
+        return false;
+      }
       return true;
     }
     return false;
   }
 
   mousemove(m: Point2D, transform: BoardTransformData): boolean {
+    this.last_mousemove_m = m;
+    this.last_mousemove_transform = transform;
     const button_hovering: boolean[] = [];
     for (const button of this.buttons) {
       button_hovering.push(button.mousemove(m, transform));
     }
-    this.hovering = button_hovering.some((v) => !!v);
+    this.hovering = button_hovering.some((v) => !!v) || this.mouseOver(m, transform);
     return this.hovering;
   }
 
@@ -123,6 +155,7 @@ export abstract class DwgScrollbar<T extends DwgButton = DwgButton> implements C
     }
   }
 
+  abstract mouseOver(m: Point2D, transform: BoardTransformData): boolean;
   abstract scrollCallback(value: number): void;
   abstract xi(): number;
   abstract xf(): number;
