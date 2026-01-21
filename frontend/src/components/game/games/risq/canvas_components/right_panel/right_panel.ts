@@ -41,9 +41,15 @@ export class RisqRightPanel implements CanvasComponent {
     return this.hovering;
   }
 
+  setHovering(hovering: boolean) {
+    this.hovering = hovering;
+  };
+
   isClicking(): boolean {
     return false;
   }
+
+  setClicking(_clicking: boolean) {}
 
   isOpen(): boolean {
     return this.config.is_open;

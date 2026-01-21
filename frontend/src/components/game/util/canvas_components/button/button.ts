@@ -27,7 +27,7 @@ export abstract class DwgButton implements CanvasComponent {
     return this.hovering;
   }
 
-  protected setHovering(hovering: boolean) {
+  setHovering(hovering: boolean) {
     this.hovering = hovering;
   }
 
@@ -35,7 +35,7 @@ export abstract class DwgButton implements CanvasComponent {
     return this.clicking;
   }
 
-  protected setClicking(clicking: boolean) {
+  setClicking(clicking: boolean) {
     this.clicking = clicking;
   }
 

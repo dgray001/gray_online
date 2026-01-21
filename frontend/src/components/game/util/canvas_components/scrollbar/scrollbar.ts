@@ -5,7 +5,7 @@ import type { Point2D } from '../../objects2d';
 import type { DwgButton } from '../button/button';
 import type { CanvasComponent } from '../canvas_component';
 
-/** Config describing a scrollbar */
+/** Data describing a scrollbar config */
 export declare interface ScrollbarConfig {
   value: BoundedNumber;
   step_size: number;
@@ -27,12 +27,6 @@ export abstract class DwgScrollbar<T extends DwgButton = DwgButton> implements C
 
   constructor(config: ScrollbarConfig) {
     this.setConfig(config);
-    if (config.scroll_pixel_constant && config.scroll_pixel_constant > 0) {
-      this.scroll_pixel_constant = config.scroll_pixel_constant;
-    }
-    if (config.scroll_pages && config.scroll_pages > 0) {
-      this.scroll_pages = config.scroll_pages;
-    }
   }
 
   protected addButton(button: T) {
@@ -47,6 +41,12 @@ export abstract class DwgScrollbar<T extends DwgButton = DwgButton> implements C
     config.step_size = Math.min(config.step_size, config.value.value_max - config.value.value_min);
     if (config.step_size < 0) {
       config.step_size = -1 * config.step_size;
+    }
+    if (config.scroll_pixel_constant && config.scroll_pixel_constant > 0) {
+      this.scroll_pixel_constant = config.scroll_pixel_constant;
+    }
+    if (config.scroll_pages && config.scroll_pages > 0) {
+      this.scroll_pages = config.scroll_pages;
     }
     this.config = config;
   }
@@ -102,8 +102,16 @@ export abstract class DwgScrollbar<T extends DwgButton = DwgButton> implements C
     return this.hovering;
   }
 
+  setHovering(hovering: boolean) {
+    this.hovering = hovering;
+  }
+
   isClicking() {
     return this.clicking;
+  }
+
+  setClicking(clicking: boolean) {
+    this.clicking = clicking;
   }
 
   draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number) {

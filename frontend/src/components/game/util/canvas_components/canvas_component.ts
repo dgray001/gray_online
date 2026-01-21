@@ -4,7 +4,9 @@ import type { Point2D } from '../objects2d';
 /** Data a canvas component must have */
 export declare interface CanvasComponent {
   isHovering: () => boolean;
+  setHovering: (hovering: boolean) => void;
   isClicking: () => boolean;
+  setClicking: (clicking: boolean) => void;
   draw: (ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number) => void;
   // should return true if scroll had an effect on the component
   scroll?: (dy: number, mode: number, dx?: number) => boolean;
