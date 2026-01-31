@@ -63,6 +63,12 @@ export abstract class DwgScrollbar<T extends DwgButton = DwgButton> implements C
     return this.config.value.value_max;
   }
 
+  setValue(value: BoundedNumber) {
+    this.config.value = value;
+    this.setConfig(this.config);
+    this.updateButtonPositions();
+  }
+
   // returns how many steps the scrollbar can be scrolled
   totalSteps(): number {
     if (!this.config.step_size) {
@@ -163,6 +169,7 @@ export abstract class DwgScrollbar<T extends DwgButton = DwgButton> implements C
     }
   }
 
+  protected abstract updateButtonPositions(): void;
   abstract mouseOver(m: Point2D, transform: BoardTransformData): boolean;
   abstract scrollCallback(value: number): void;
   abstract xi(): number;

@@ -9,13 +9,15 @@ export class RisqOrdersScrollbar extends DwgRectScrollbar {
   constructor(risq: DwgRisq, w: number, background: ColorRGB) {
     super({
       scrollbar_config: {
-        value: { value: 0, value_min: 0, value_max: 4 },
+        value: { value: 0, value_min: 0, value_max: 0 },
         step_size: 1,
+        scroll_pixel_constant: 10,
       },
       p: { x: 0, y: 0 },
       w,
       h: 0,
       scrollbar_size: 0,
+      bar_dif_size: 1,
       vertical: true,
       draw_config: {
         fill_style: background.copy().getString(),
@@ -34,7 +36,6 @@ export class RisqOrdersScrollbar extends DwgRectScrollbar {
       },
       background_color: 'rgb(0, 0, 0)',
     } satisfies RectScrollbarConfig);
-    console.log('!! 1', background);
     this.game = risq;
   }
 

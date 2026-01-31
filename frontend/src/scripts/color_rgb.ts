@@ -37,7 +37,6 @@ export class ColorRGB {
     const new_r = (this.data.a * this.data.r + input.a * input.r) / new_a;
     const new_g = (this.data.a * this.data.g + input.a * input.g) / new_a;
     const new_b = (this.data.a * this.data.b + input.a * input.b) / new_a;
-    console.log(this.data, input, new_r, new_g, new_b, new_a);
     this.data = this.cleanInput(new_r, new_g, new_b, new_a);
     return this;
   }

@@ -34,7 +34,11 @@ export class RisqRightPanel implements CanvasComponent {
     this.risq = risq;
     this.config = config;
     this.open_button = new RisqRightPanelButton(risq);
-    this.orders_list = new RisqOrdersList(risq, config.w - 2 * RisqRightPanel.PADDING, config.background.copy().addColor(255, 0, 0, 0.1));
+    this.orders_list = new RisqOrdersList(
+      risq,
+      config.w - 2 * RisqRightPanel.PADDING,
+      config.background.copy().addColor(255, 0, 0, 0.2)
+    );
     this.toggle(config.is_open, true);
   }
 
@@ -145,7 +149,7 @@ export class RisqRightPanel implements CanvasComponent {
         }
       );
     }
-    if (this.config.is_open) {
+    if (this.config.is_open && !this.opening) {
       this.orders_list.draw(ctx, transform, dt);
     }
     this.open_button.draw(ctx, transform, dt);

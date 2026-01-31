@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6af: Orders listbox initial style
+v0.6ag: Listbox draws items
 
 ## Dev Use
 

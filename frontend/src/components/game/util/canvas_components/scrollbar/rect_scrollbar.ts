@@ -236,7 +236,7 @@ export abstract class DwgRectScrollbar extends DwgScrollbar<DwgRectScrollbarButt
     return this.bar_dif_size;
   }
 
-  private updateButtonPositions() {
+  protected updateButtonPositions() {
     const size = this.rect_config.scrollbar_size;
     const vertical = this.rect_config.vertical;
     const p: Point2D = {
@@ -254,15 +254,16 @@ export abstract class DwgRectScrollbar extends DwgScrollbar<DwgRectScrollbarButt
     this.scrollbar_w = vertical ? size : this.w();
     this.scrollbar_h = vertical ? this.h() : size;
     const total_bar_area_size = (vertical ? this.h() : this.w()) - 2 * this.rect_config.scrollbar_size;
-    const bar_size = Math.max(total_bar_area_size - this.max_bar_dif_size * this.totalSteps(), this.getMinBarSize());
-    if (total_bar_area_size <= 0 || bar_size <= 0 || this.totalSteps() < 1) {
+    const total_steps = this.totalSteps();
+    const bar_size = Math.max(total_bar_area_size - this.max_bar_dif_size * total_steps, this.getMinBarSize());
+    if (total_bar_area_size <= 0 || bar_size <= 0) {
       this.bar_dif_size = 0;
       this.buttons[2].setSize(0, 0);
       this.buttons[3].setSize(0, 0);
       this.buttons[4].setSize(0, 0);
       return;
     }
-    this.bar_dif_size = (total_bar_area_size - bar_size) / this.totalSteps();
+    this.bar_dif_size = total_steps < 1 ? 0 : (total_bar_area_size - bar_size) / total_steps;
     const bar_area_offset = this.step() * this.bar_dif_size;
     const bar_offset = this.rect_config.scrollbar_size + bar_area_offset;
     this.buttons[2].setPosition({
@@ -310,6 +311,10 @@ export abstract class DwgRectScrollbar extends DwgScrollbar<DwgRectScrollbarButt
   setScrollbarSize(size: number) {
     this.rect_config.scrollbar_size = size;
     this.updateButtonPositions();
+  }
+
+  getScrollbarSize(): number {
+    return this.rect_config.scrollbar_size;
   }
 
   setPosition(p: Point2D) {
