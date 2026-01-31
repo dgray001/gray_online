@@ -28,7 +28,7 @@ export declare interface DrawConfig {
   /** sets canvas fillStyle */
   fill_style: string;
   /** sets canvas strokeStyle */
-  stroke_style: string;
+  stroke_style?: string;
   /** sets canvas lineWidth */
   stroke_width: number;
   /** sets canvas fillStyle when hovered */
@@ -47,7 +47,11 @@ export declare interface DrawConfig {
   draw_clicked_when_unhovered?: boolean;
   /** forces draw to ignore transformations */
   fixed_position?: boolean;
+  /** ignore all stroke styles and just match them to the fill style */
+  stroke_matches_fill_style?: boolean;
 }
+
+const default_stroke_style = 'transparent';
 
 /** Applies input draw config to the input canvas */
 export function configDraw(
@@ -61,25 +65,29 @@ export function configDraw(
   if (clicking) {
     if (hovering) {
       ctx.fillStyle = config.click_fill_style ?? config.hover_fill_style ?? config.fill_style;
-      ctx.strokeStyle = config.click_stroke_style ?? config.hover_stroke_style ?? config.stroke_style;
+      ctx.strokeStyle =
+        config.click_stroke_style ?? config.hover_stroke_style ?? config.stroke_style ?? default_stroke_style;
       ctx.lineWidth = config.click_stroke_width ?? config.hover_stroke_width ?? config.stroke_width;
     } else if (config.draw_clicked_when_unhovered) {
       ctx.fillStyle = config.click_fill_style ?? config.fill_style;
-      ctx.strokeStyle = config.click_stroke_style ?? config.stroke_style;
+      ctx.strokeStyle = config.click_stroke_style ?? config.stroke_style ?? default_stroke_style;
       ctx.lineWidth = config.click_stroke_width ?? config.stroke_width;
     } else {
       ctx.fillStyle = config.fill_style;
-      ctx.strokeStyle = config.stroke_style;
+      ctx.strokeStyle = config.stroke_style ?? default_stroke_style;
       ctx.lineWidth = config.stroke_width;
     }
   } else if (hovering) {
     ctx.fillStyle = config.hover_fill_style ?? config.fill_style;
-    ctx.strokeStyle = config.hover_stroke_style ?? config.stroke_style;
+    ctx.strokeStyle = config.hover_stroke_style ?? config.stroke_style ?? default_stroke_style;
     ctx.lineWidth = config.hover_stroke_width ?? config.stroke_width;
   } else {
     ctx.fillStyle = config.fill_style;
-    ctx.strokeStyle = config.stroke_style;
+    ctx.strokeStyle = config.stroke_style ?? default_stroke_style;
     ctx.lineWidth = config.stroke_width;
+  }
+  if (config.stroke_matches_fill_style) {
+    ctx.strokeStyle = ctx.fillStyle;
   }
   if (config.fixed_position) {
     ctx.scale(1 / transform.scale, 1 / transform.scale);

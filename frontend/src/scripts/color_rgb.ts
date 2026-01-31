@@ -15,6 +15,10 @@ export class ColorRGB {
     this.setColor(r, g, b, a);
   }
 
+  copy(): ColorRGB {
+    return new ColorRGB(this.data.r, this.data.g, this.data.b, this.data.a);
+  }
+
   setColor(r: number, g: number, b: number, a?: number) {
     this.data = this.cleanInput(r, g, b, a);
   }
@@ -33,6 +37,7 @@ export class ColorRGB {
     const new_r = (this.data.a * this.data.r + input.a * input.r) / new_a;
     const new_g = (this.data.a * this.data.g + input.a * input.g) / new_a;
     const new_b = (this.data.a * this.data.b + input.a * input.b) / new_a;
+    console.log(this.data, input, new_r, new_g, new_b, new_a);
     this.data = this.cleanInput(new_r, new_g, new_b, new_a);
     return this;
   }
@@ -43,6 +48,17 @@ export class ColorRGB {
     return this;
   }
 
+  // The input db should be in [-1,1] and should represent the % brightness change
+  dBrightness(db: number): ColorRGB {
+    const change = db * 255;
+    this.data.r += change;
+    this.data.g += change;
+    this.data.b += change;
+    this.cleanData();
+    return this;
+  }
+
+  // Returns brightness as a percent value from [0,1]
   getBrightness(): number {
     return (this.data.r + this.data.g + this.data.b) / (3 * 255);
   }

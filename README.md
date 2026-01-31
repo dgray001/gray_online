@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6ae: Begin listbox
+v0.6af: Orders listbox initial style
 
 ## Dev Use
 

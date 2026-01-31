@@ -1,3 +1,4 @@
+import type { ColorRGB } from '../../../../../../scripts/color_rgb';
 import type { BoardTransformData } from '../../../../util/canvas_board/canvas_board';
 import type { CanvasComponent, Rotation } from '../../../../util/canvas_components/canvas_component';
 import { configDraw } from '../../../../util/canvas_components/canvas_component';
@@ -6,14 +7,14 @@ import type { Point2D } from '../../../../util/objects2d';
 import type { DwgRisq } from '../../risq';
 import type { GameRisqScoreEntry, RisqResourceType } from '../../risq_data';
 import { resourceTypeImage } from '../../risq_resources';
-import { RisqOrdersScrollbar } from './orders_scrollbar';
+import { RisqOrdersList } from './orders_list';
 import { RisqRightPanelButton } from './right_panel_button';
 
 /** Config for the right panel */
 export declare interface RightPanelConfig {
   w: number;
   is_open: boolean;
-  background: string;
+  background: ColorRGB;
 }
 
 export class RisqRightPanel implements CanvasComponent {
@@ -21,7 +22,7 @@ export class RisqRightPanel implements CanvasComponent {
   private static PADDING = 5;
 
   private open_button: RisqRightPanelButton;
-  private orders_scrollbar: RisqOrdersScrollbar;
+  private orders_list: RisqOrdersList;
   private need_to_set_orders_scrollbar_position = true;
 
   private risq: DwgRisq;
@@ -33,7 +34,7 @@ export class RisqRightPanel implements CanvasComponent {
     this.risq = risq;
     this.config = config;
     this.open_button = new RisqRightPanelButton(risq);
-    this.orders_scrollbar = new RisqOrdersScrollbar(risq, config.w - 2 * RisqRightPanel.PADDING);
+    this.orders_list = new RisqOrdersList(risq, config.w - 2 * RisqRightPanel.PADDING, config.background.copy().addColor(255, 0, 0, 0.1));
     this.toggle(config.is_open, true);
   }
 
@@ -43,7 +44,7 @@ export class RisqRightPanel implements CanvasComponent {
 
   setHovering(hovering: boolean) {
     this.hovering = hovering;
-  };
+  }
 
   isClicking(): boolean {
     return false;
@@ -86,7 +87,7 @@ export class RisqRightPanel implements CanvasComponent {
         ctx,
         transform,
         {
-          fill_style: this.config.background,
+          fill_style: this.config.background.getString(),
           stroke_style: 'transparent',
           stroke_width: 0,
           fixed_position: true,
@@ -133,7 +134,7 @@ export class RisqRightPanel implements CanvasComponent {
           yi += RisqRightPanel.PADDING;
           // TODO: logic in case yi has gone off the rectangle
           if (this.need_to_set_orders_scrollbar_position) {
-            this.orders_scrollbar.setAllSizes(
+            this.orders_list.setAllSizes(
               Math.min(0.1 * this.paddedW(), 20),
               { x: this.xi() + RisqRightPanel.PADDING, y: yi },
               this.w() - 2 * RisqRightPanel.PADDING,
@@ -143,9 +144,9 @@ export class RisqRightPanel implements CanvasComponent {
           }
         }
       );
-      if (this.config.is_open) {
-        this.orders_scrollbar.draw(ctx, transform, dt);
-      }
+    }
+    if (this.config.is_open) {
+      this.orders_list.draw(ctx, transform, dt);
     }
     this.open_button.draw(ctx, transform, dt);
   }
@@ -191,14 +192,14 @@ export class RisqRightPanel implements CanvasComponent {
   }
 
   scroll(dy: number, mode: number): boolean {
-    return this.orders_scrollbar.scroll(dy, mode);
+    return this.orders_list.scroll(dy, mode);
   }
 
   mousemove(m: Point2D, transform: BoardTransformData): boolean {
     if (this.open_button.mousemove(m, transform)) {
       return true;
     }
-    this.orders_scrollbar.mousemove(m, transform);
+    this.orders_list.mousemove(m, transform);
     m = {
       x: m.x * transform.scale - transform.view.x,
       y: m.y * transform.scale - transform.view.y,
@@ -215,13 +216,13 @@ export class RisqRightPanel implements CanvasComponent {
     if (this.open_button.mousedown(e)) {
       return true;
     }
-    this.orders_scrollbar.mousedown(e);
+    this.orders_list.mousedown(e);
     return this.isHovering();
   }
 
   mouseup(e: MouseEvent) {
     this.open_button.mouseup(e);
-    this.orders_scrollbar.mouseup(e);
+    this.orders_list.mouseup(e);
   }
 
   xi(): number {

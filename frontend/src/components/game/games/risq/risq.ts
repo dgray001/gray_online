@@ -27,6 +27,7 @@ import { LeftPanelDataType } from './canvas_components/left_panel/left_panel_dat
 
 import './risq.scss';
 import '../../util/canvas_board/canvas_board';
+import { ColorRGB } from '../../../../scripts/color_rgb';
 
 const DEFAULT_HEXAGON_RADIUS = 60;
 
@@ -60,7 +61,7 @@ export class DwgRisq extends DwgElement {
   private right_panel = new RisqRightPanel(this, {
     w: 300,
     is_open: true,
-    background: 'rgb(222,184,135)',
+    background: new ColorRGB(222, 184, 135),
   });
 
   constructor() {

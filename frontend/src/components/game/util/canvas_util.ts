@@ -10,8 +10,8 @@ export function drawCircle(ctx: CanvasRenderingContext2D, c: Point2D, r: number)
   ctx.beginPath();
   ctx.ellipse(c.x, c.y, r, r, 0, 0, 2 * Math.PI);
   ctx.closePath();
-  ctx.stroke();
   ctx.fill();
+  ctx.stroke();
 }
 
 /** Draws a ellipse on the canvas */
@@ -19,8 +19,8 @@ export function drawEllipse(ctx: CanvasRenderingContext2D, c: Point2D, r: Point2
   ctx.beginPath();
   ctx.ellipse(c.x, c.y, r.x, r.y, 0, 0, 2 * Math.PI);
   ctx.closePath();
-  ctx.stroke();
   ctx.fill();
+  ctx.stroke();
 }
 
 /** Draws a rectangle on the canvas */
@@ -28,8 +28,8 @@ export function drawRect(ctx: CanvasRenderingContext2D, pi: Point2D, w: number, 
   ctx.beginPath();
   ctx.roundRect(pi.x, pi.y, w, h, r);
   ctx.closePath();
-  ctx.stroke();
   ctx.fill();
+  ctx.stroke();
 }
 
 /** Draws a regular n-gon on the canvas */
@@ -43,8 +43,8 @@ export function drawNgon(ctx: CanvasRenderingContext2D, n: number, c: Point2D, r
     ctx.lineTo(c.x + r * Math.cos(a * i + o), c.y + r * Math.sin(a * i + o));
   }
   ctx.closePath();
-  ctx.stroke();
   ctx.fill();
+  ctx.stroke();
 }
 
 /** Draws a line */
@@ -78,14 +78,14 @@ export function drawText(ctx: CanvasRenderingContext2D, s: string, config: DrawT
   ctx.textAlign = config.align ?? 'left';
   ctx.textBaseline = config.baseline ?? 'top';
   ctx.direction = config.direction ?? 'ltr';
-  if (!!config.fill_style) {
-    ctx.fillStyle = config.fill_style;
-    ctx.fillText(s, config.p.x, config.p.y, config.w);
-  }
   if (!!config.stroke_style && !!config.stroke_width) {
     ctx.strokeStyle = config.stroke_style;
     ctx.lineWidth = config.stroke_width;
     ctx.strokeText(s, config.p.x, config.p.y, config.w);
+  }
+  if (!!config.fill_style) {
+    ctx.fillStyle = config.fill_style;
+    ctx.fillText(s, config.p.x, config.p.y, config.w);
   }
 }
 
