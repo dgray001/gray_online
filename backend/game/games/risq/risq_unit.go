@@ -8,24 +8,28 @@ import (
 )
 
 type RisqUnit struct {
-	deleted      bool
-	internal_id  uint64
-	player_id    int
-	unit_id      uint32
-	display_name string
-	zone         *RisqZone
-	speed        int
-	cs           RisqCombatStats
+	deleted       bool
+	internal_id   uint64
+	player_id     int
+	unit_id       uint32
+	display_name  string
+	zone          *RisqZone
+	speed         int
+	cs            RisqCombatStats
+	active_orders []*RisqOrder
+	past_orders   []*RisqOrder
 }
 
 func createRisqUnit(internal_id uint64, unit_id uint32, player_id int) *RisqUnit {
 	unit := RisqUnit{
-		deleted:     false,
-		internal_id: internal_id,
-		player_id:   player_id,
-		unit_id:     unit_id,
-		speed:       1,
-		cs:          createRisqCombatStats(),
+		deleted:       false,
+		internal_id:   internal_id,
+		player_id:     player_id,
+		unit_id:       unit_id,
+		speed:         1,
+		cs:            createRisqCombatStats(),
+		active_orders: make([]*RisqOrder, 0),
+		past_orders:   make([]*RisqOrder, 0),
 	}
 	switch unit_id {
 	case 1: // villager
@@ -59,6 +63,20 @@ func (u *RisqUnit) score() uint {
 	return 0
 }
 
+func (u *RisqUnit) isDeleted() bool {
+	return u.deleted
+}
+
+func (u *RisqUnit) receiveOrder(o *RisqOrder) bool {
+	// TODO: implement
+	u.past_orders = append(u.past_orders, o)
+	return false
+}
+
+func (u *RisqUnit) resolveOrders(risq *GameRisq) {
+	// TODO: implement
+}
+
 func (u *RisqUnit) toFrontend() gin.H {
 	unit := gin.H{
 		"internal_id":  u.internal_id,
@@ -74,5 +92,12 @@ func (u *RisqUnit) toFrontend() gin.H {
 			unit["space_coordinate"] = u.zone.space.coordinate.ToFrontend()
 		}
 	}
+	active_orders := make([]gin.H, 0)
+	for _, order := range u.active_orders {
+		if order != nil && !order.executed {
+			active_orders = append(active_orders, order.toFrontend())
+		}
+	}
+	unit["active_orders"] = active_orders
 	return unit
 }

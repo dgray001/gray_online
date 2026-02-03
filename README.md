@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6ah: Listbox v1 finished
+v0.6ai: Backend orders data structure
 
 ## Dev Use
 

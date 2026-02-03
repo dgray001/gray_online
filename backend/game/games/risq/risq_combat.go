@@ -2,7 +2,7 @@ package risq
 
 import "github.com/gin-gonic/gin"
 
-type AttackType int8
+type AttackType uint8
 
 const (
 	AttackType_NONE AttackType = iota

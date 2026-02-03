@@ -13,6 +13,8 @@ type RisqBuilding struct {
 	zone               *RisqZone
 	population_support uint16
 	cs                 RisqCombatStats
+	active_orders      []*RisqOrder
+	past_orders        []*RisqOrder
 }
 
 func createRisqBuilding(internal_id uint64, building_id uint32, player_id int) *RisqBuilding {
@@ -23,6 +25,8 @@ func createRisqBuilding(internal_id uint64, building_id uint32, player_id int) *
 		building_id:        building_id,
 		population_support: 0,
 		cs:                 createRisqCombatStats(),
+		active_orders:      make([]*RisqOrder, 0),
+		past_orders:        make([]*RisqOrder, 0),
 	}
 	switch building_id {
 	case 1: // village center
@@ -51,6 +55,20 @@ func (b *RisqBuilding) score() uint {
 	return 0
 }
 
+func (b *RisqBuilding) isDeleted() bool {
+	return b.deleted
+}
+
+func (b *RisqBuilding) receiveOrder(o *RisqOrder) bool {
+	// TODO: implement
+	b.past_orders = append(b.past_orders, o)
+	return false
+}
+
+func (b *RisqBuilding) resolveOrders(risq *GameRisq) {
+	// TODO: implement
+}
+
 func (b *RisqBuilding) toFrontend() gin.H {
 	building := gin.H{
 		"internal_id":        b.internal_id,
@@ -66,5 +84,12 @@ func (b *RisqBuilding) toFrontend() gin.H {
 			building["space_coordinate"] = b.zone.space.coordinate.ToFrontend()
 		}
 	}
+	active_orders := make([]gin.H, 0)
+	for _, order := range b.active_orders {
+		if order != nil && !order.executed {
+			active_orders = append(active_orders, order.toFrontend())
+		}
+	}
+	building["active_orders"] = active_orders
 	return building
 }

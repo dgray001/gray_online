@@ -12,6 +12,8 @@ type RisqPlayer struct {
 	units                map[uint64]*RisqUnit
 	max_population_limit uint16
 	color                string
+	active_orders        []*RisqOrder
+	past_orders          []*RisqOrder
 }
 
 func createRisqPlayer(player *game.Player, max_population_limit uint16, color string) *RisqPlayer {
@@ -22,6 +24,8 @@ func createRisqPlayer(player *game.Player, max_population_limit uint16, color st
 		units:                make(map[uint64]*RisqUnit, 0),
 		max_population_limit: max_population_limit,
 		color:                color,
+		active_orders:        make([]*RisqOrder, 0),
+		past_orders:          make([]*RisqOrder, 0),
 	}
 }
 
@@ -80,5 +84,12 @@ func (p *RisqPlayer) toFrontend(show_updates bool) gin.H {
 		}
 	}
 	player["units"] = units
+	active_orders := make([]gin.H, 0)
+	for _, order := range p.active_orders {
+		if order != nil && !order.executed {
+			active_orders = append(active_orders, order.toFrontend())
+		}
+	}
+	player["active_orders"] = active_orders
 	return player
 }

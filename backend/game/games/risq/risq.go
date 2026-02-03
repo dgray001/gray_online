@@ -31,6 +31,7 @@ type GameRisq struct {
 	next_resource_internal_id uint64
 	next_building_internal_id uint64
 	next_unit_internal_id     uint64
+	next_order_internal_id    uint64
 	turn_number               uint16
 }
 
@@ -42,6 +43,7 @@ func CreateGame(g *game.GameBase) (*GameRisq, error) {
 		next_resource_internal_id: 0,
 		next_building_internal_id: 0,
 		next_unit_internal_id:     0,
+		next_order_internal_id:    0,
 		turn_number:               0,
 	}
 	var player_id = 0
@@ -243,6 +245,11 @@ func (r *GameRisq) nextBuildingInternalId() uint64 {
 func (r *GameRisq) nextUnitInternalId() uint64 {
 	r.next_unit_internal_id++
 	return r.next_unit_internal_id
+}
+
+func (r *GameRisq) nextOrderInternalId() uint64 {
+	r.next_order_internal_id++
+	return r.next_order_internal_id
 }
 
 func (r *GameRisq) coordinateToIndex(c *game_utils.Coordinate2D) *game_utils.Coordinate2D {

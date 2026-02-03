@@ -9,10 +9,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type TerrainType int8
+type TerrainType uint8
 
 const (
-	TerrainType_FLATLANDS AttackType = iota
+	TerrainType_FLATLANDS TerrainType = iota
 	TerrainType_HILLY
 	TerrainType_MOUNTAINOUS
 	TerrainType_VALLEY
@@ -20,7 +20,6 @@ const (
 	TerrainType_SHALLOWS
 	TerrainType_WATER
 	TerrainType_DEEP_WATER
-	// TODO: add impassable terrains
 )
 
 type RisqSpace struct {

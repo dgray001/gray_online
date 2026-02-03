@@ -1,4 +1,5 @@
 202512: Restarting this project
+
  v: Scrollable area for orders for buildings / units => add order list in backend and data on frontend
  w: Can see all new orders in right panel with button to "finish orders" and can see who is finished
  x: Order to build unit in building => update works => population limit
