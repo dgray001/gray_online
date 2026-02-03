@@ -1,24 +1,4 @@
 202512: Restarting this project
-y: continue with abstract scrollbar, etc...
-
- - After reconnecting sometimes in backend the connection is nil (or delete_timer is not nil)
-    => noticed when using client_id url param but not sure if that matters
-    => connection is definitely not nil since update goes through from client to server just not vice versa
- 
- - Fiddlesticks updates grouped by round and trick, includes trick winner and turn points
- - Proper updates dialog for euchre
- - Timed turns (or not) and can pause game if timed
- - AI takes over when player AFK
- - Can resign from game => AI takes over
- - Loaders for client requests in lobby: room-create, room-join, room-leave, room-rename
- - Can chat with individual players
- - Upgraded chatbox => emoji selector, taunts, message id, turn off emoticon converter
- - Upgrade frontend animations for all games (add sound effects)
- - Setup db in prod and dev
- - Can create profile / login
-
-v0.7: Playable Risq
- u: Abstract scrollbar
  v: Scrollable area for orders for buildings / units => add order list in backend and data on frontend
  w: Can see all new orders in right panel with button to "finish orders" and can see who is finished
  x: Order to build unit in building => update works => population limit
@@ -39,11 +19,29 @@ v0.7: Playable Risq
  w: Barracks / soldier
  z: Attack order => can win
 
+v0.7: Playable Risq
+
  - Can select all units in zone / space
  - Can launch games with AI (all games must handle)
  - Player's cards can automatically resize => listener on game div resize
    - fullscreen mode need to recalc card horizontal line
 
+
+ - After reconnecting sometimes in backend the connection is nil (or delete_timer is not nil)
+    => noticed when using client_id url param but not sure if that matters
+    => connection is definitely not nil since update goes through from client to server just not vice versa
+ 
+ - Fiddlesticks updates grouped by round and trick, includes trick winner and turn points
+ - Proper updates dialog for euchre
+ - Timed turns (or not) and can pause game if timed
+ - AI takes over when player AFK
+ - Can resign from game => AI takes over
+ - Loaders for client requests in lobby: room-create, room-join, room-leave, room-rename
+ - Can chat with individual players
+ - Upgraded chatbox => emoji selector, taunts, message id, turn off emoticon converter
+ - Upgrade frontend animations for all games (add sound effects)
+ - Setup db in prod and dev
+ - Can create profile / login
 v0.8: Advanced Risq
  - Can save games if everyone logged in and all players agree
  - Can launch a saved game if logged in

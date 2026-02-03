@@ -56,10 +56,10 @@ export class RisqOrder implements CanvasComponent {
   }
 
   mousemove(m: Point2D, transform: BoardTransformData): boolean {
-      m = {
-        x: m.x * transform.view.x,
-        y: m.y * transform.view.y,
-      };
+    m = {
+      x: m.x * transform.view.x,
+      y: m.y * transform.view.y,
+    };
     if (m.x < this.xi() || m.y < this.yi() || m.x > this.xf() || m.y > this.yf()) {
       this.hovering = false;
     } else {

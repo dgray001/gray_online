@@ -66,12 +66,7 @@ export class DwgListbox<
       let [xi, yi, value, padding] = [this.xi(), this.yi(), this.config.scrollbar.value(), this.getPadding()];
       ctx.save();
       ctx.beginPath();
-      ctx.rect(
-        this.xi() + padding, 
-        this.yi() + padding, 
-        this.w() - (padding * 2), 
-        this.h() - (padding * 2)
-      );
+      ctx.rect(this.xi() + padding, this.yi() + padding, this.w() - padding * 2, this.h() - padding * 2);
       ctx.clip();
       yi += padding - value;
       ctx.translate(xi + padding, yi);
@@ -98,7 +93,7 @@ export class DwgListbox<
         if (draw_el) {
           el.draw(ctx, transform, dt);
         }
-        const yi_adjust = el.h() + ((i + 1 < this.config.list.length) ? this.getGap() : 0);
+        const yi_adjust = el.h() + (i + 1 < this.config.list.length ? this.getGap() : 0);
         yi += yi_adjust;
         ctx.translate(0, yi_adjust);
       }

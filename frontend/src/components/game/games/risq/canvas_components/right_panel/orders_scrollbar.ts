@@ -35,6 +35,8 @@ export class RisqOrdersScrollbar extends DwgRectScrollbar {
         stroke_matches_fill_style: true,
       },
       background_color: 'rgb(0, 0, 0)',
+      arrow_scroll_amount: 4,
+      space_scroll_amount: 40,
     } satisfies RectScrollbarConfig);
     this.game = risq;
   }

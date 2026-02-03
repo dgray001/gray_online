@@ -153,6 +153,10 @@ export declare interface RectScrollbarConfig {
   background_color: string;
   min_bar_size?: number;
   bar_dif_size?: number;
+  // Amount the arrow buttons should scroll per click event
+  arrow_scroll_amount?: number;
+  // Amount the space buttons should scroll per click event
+  space_scroll_amount?: number;
 }
 
 export abstract class DwgRectScrollbar extends DwgScrollbar<DwgRectScrollbarButton> {
@@ -186,6 +190,7 @@ export abstract class DwgRectScrollbar extends DwgScrollbar<DwgRectScrollbarButt
     this.addButton(
       new DwgRectScrollbarArrowButton(this, {
         increase: false,
+        amount: config.arrow_scroll_amount,
         rect_button_config: {
           ...arrow_button_config,
         },
@@ -194,6 +199,7 @@ export abstract class DwgRectScrollbar extends DwgScrollbar<DwgRectScrollbarButt
     this.addButton(
       new DwgRectScrollbarArrowButton(this, {
         increase: true,
+        amount: config.arrow_scroll_amount,
         rect_button_config: {
           ...arrow_button_config,
         },
@@ -210,6 +216,7 @@ export abstract class DwgRectScrollbar extends DwgScrollbar<DwgRectScrollbarButt
     this.addButton(
       new DwgRectScrollbarSpaceButton(this, {
         increase: false,
+        amount: config.space_scroll_amount,
         rect_button_config: {
           ...arrow_button_config,
           draw_config: config.space_draw_config,
@@ -219,6 +226,7 @@ export abstract class DwgRectScrollbar extends DwgScrollbar<DwgRectScrollbarButt
     this.addButton(
       new DwgRectScrollbarSpaceButton(this, {
         increase: true,
+        amount: config.space_scroll_amount,
         rect_button_config: {
           ...arrow_button_config,
           draw_config: config.space_draw_config,
