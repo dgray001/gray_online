@@ -33,6 +33,7 @@ export declare interface RisqPlayer {
   population_limit: number;
   score: number;
   color: ColorRGB;
+  active_orders: RisqOrder[];
 }
 
 /** All the resource types */
@@ -141,6 +142,7 @@ export declare interface RisqUnit {
   zone_coordinate: Point2D;
   speed: number;
   combat_stats: RisqCombatStats;
+  active_orders: RisqOrder[];
   // purely frontend fields
   hover_data: RectHoverData;
 }
@@ -155,6 +157,7 @@ export declare interface RisqBuilding {
   zone_coordinate: Point2D;
   population_support: number;
   combat_stats: RisqCombatStats;
+  active_orders: RisqOrder[];
   // purely frontend fields
   hover_data: RectHoverData;
 }
@@ -200,6 +203,28 @@ export declare interface RisqResource {
   hover_data: RectHoverData; // left panel
 }
 
+/** All the order types */
+export enum RisqOrderType {
+  NONE = 0,
+  OrderType_UnitMove = 1,
+  OrderType_UnitGather = 2,
+  OrderType_UnitRepair = 3,
+  OrderType_UnitAttack = 4,
+  OrderType_UnitDefend = 5,
+  OrderType_UnitGarrison = 6,
+  OrderType_BuildingCreate = 7,
+  OrderType_BuildingResearch = 8,
+}
+
+/** Data describing an order */
+export declare interface RisqOrder {
+  internal_id: number;
+  player_id: number;
+  order_type: RisqOrderType;
+  target_id: number;
+  subjects: number[];
+}
+
 /** Data describing a game of risq as returned by server */
 export declare interface GameRisqFromServer {
   game_base: GameBase; // already been converted
@@ -226,6 +251,7 @@ export declare interface RisqPlayerFromServer {
   population_limit: number;
   score: number;
   color: string;
+  active_orders: RisqOrderFromServer[];
 }
 
 /** Data describing a hexagonal space in risq */
@@ -257,6 +283,7 @@ export declare interface RisqUnitFromServer {
   zone_coordinate: Point2D;
   speed: number;
   combat_stats: RisqCombatStatsFromServer;
+  active_orders: RisqOrderFromServer[];
 }
 
 /** Data describing a risq building */
@@ -269,6 +296,7 @@ export declare interface RisqBuildingFromServer {
   zone_coordinate: Point2D;
   population_support: number;
   combat_stats: RisqCombatStatsFromServer;
+  active_orders: RisqOrderFromServer[];
 }
 
 /** Data describing combat stats */
@@ -296,6 +324,15 @@ export declare interface RisqResourceFromServer {
   zone_coordinate: Point2D;
   resources_left: number;
   base_gather_speed: number;
+}
+
+/** Data describing an order as returned by the server */
+export declare interface RisqOrderFromServer {
+  internal_id: number;
+  player_id: number;
+  order_type: number;
+  target_id: number;
+  subjects: number[];
 }
 
 /** Converts a server response to a frontend risq game */
@@ -369,6 +406,7 @@ export function serverToRisqPlayer(server_player: RisqPlayerFromServer): RisqPla
     population_limit: server_player.population_limit,
     score: server_player.score,
     color: new ColorRGB(color_split[0], color_split[1], color_split[2]),
+    active_orders: server_player.active_orders.map((o) => serverToRisqOrder(o)).filter((o) => !!o),
   };
   return player;
 }
@@ -397,7 +435,6 @@ export function serverToRisqSpace(server_space: RisqSpaceFromServer): RisqSpace 
       }
       zones.push(row);
     }
-    // TODO: maybe validation that the zones are coming correctly from server?
     space.zones = zones as SPACE_ZONES_TYPE;
   }
   if (!!server_space.resources) {
@@ -491,11 +528,15 @@ export function serverToRisqBuilding(server_building?: RisqBuildingFromServer): 
   if (!server_building) {
     return undefined;
   }
-  (server_building as RisqBuilding).hover_data = {
-    ps: { x: 0, y: 0 },
-    pe: { x: 0, y: 0 },
+  const building: RisqBuilding = {
+    ...server_building,
+    active_orders: server_building.active_orders.map((o) => serverToRisqOrder(o)).filter((o) => !!o),
+    hover_data: {
+      ps: { x: 0, y: 0 },
+      pe: { x: 0, y: 0 },
+    },
   };
-  return server_building as RisqBuilding;
+  return building;
 }
 
 /** Converts a server response to a frontend risq resource */
@@ -515,11 +556,26 @@ export function serverToRisqUnit(server_unit?: RisqUnitFromServer): RisqUnit | u
   if (!server_unit) {
     return undefined;
   }
-  (server_unit as RisqUnit).hover_data = {
-    ps: { x: 0, y: 0 },
-    pe: { x: 0, y: 0 },
+  const unit: RisqUnit = {
+    ...server_unit,
+    active_orders: server_unit.active_orders.map((o) => serverToRisqOrder(o)).filter((o) => !!o),
+    hover_data: {
+      ps: { x: 0, y: 0 },
+      pe: { x: 0, y: 0 },
+    },
   };
-  return server_unit as RisqUnit;
+  return unit;
+}
+
+/** Converts a server response to a frontend risq order */
+export function serverToRisqOrder(server_order?: RisqOrderFromServer): RisqOrder | undefined {
+  if (!server_order) {
+    return undefined;
+  }
+  const order: RisqOrder = {
+    ...server_order,
+  };
+  return order;
 }
 
 /** Returns the space from the input index, if the space exists */

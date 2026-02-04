@@ -179,7 +179,7 @@ export abstract class DwgRectScrollbar extends DwgScrollbar<DwgRectScrollbarButt
       stroke_width: 0,
       hover_fill_style: config.background_color,
       click_fill_style: config.background_color,
-      fixed_position: true,
+      fixed_position: config.draw_config.fixed_position,
     };
     const arrow_button_config = {
       p: { x: 0, y: 0 },

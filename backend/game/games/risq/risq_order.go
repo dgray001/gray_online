@@ -5,6 +5,7 @@ import "github.com/gin-gonic/gin"
 type Orderable interface {
 	toFrontend() gin.H
 	isDeleted() bool
+	internalId() uint64
 	receiveOrder(o *RisqOrder) bool
 	resolveOrders(risq *GameRisq)
 }
@@ -40,6 +41,10 @@ type RisqOrder struct {
 	target_id int64
 	// Whether the order has been executed
 	executed bool
+	// The turn that the order was received by the player
+	turn_received uint16
+	// The turn that the order was executed
+	turn_executed uint16
 }
 
 func createRisqOrder(internal_id uint64, order_type OrderType, player_id int, subjects []Orderable, target_id int64) *RisqOrder {
@@ -55,15 +60,17 @@ func createRisqOrder(internal_id uint64, order_type OrderType, player_id int, su
 
 func (o *RisqOrder) toFrontend() gin.H {
 	order := gin.H{
-		"internal_id": o.internal_id,
-		"player_id":   o.player_id,
-		"order_type":  o.order_type,
-		"target_id":   o.target_id,
+		"internal_id":   o.internal_id,
+		"player_id":     o.player_id,
+		"order_type":    o.order_type,
+		"target_id":     o.target_id,
+		"turn_received": o.turn_received,
+		"turn_executed": o.turn_executed,
 	}
-	subjects := make([]gin.H, 0)
+	subjects := make([]uint64, 0)
 	for _, subject := range o.subjects {
 		if subject != nil && !subject.isDeleted() {
-			subjects = append(subjects, subject.toFrontend())
+			subjects = append(subjects, subject.internalId())
 		}
 	}
 	order["subjects"] = subjects

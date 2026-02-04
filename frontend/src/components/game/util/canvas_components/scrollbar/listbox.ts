@@ -26,9 +26,25 @@ export class DwgListbox<
   // Time between scrollbar adjustments
   static SCROLLBAR_ADJUST_TIME = 100;
   private scrollbar_adjust_time = DwgListbox.SCROLLBAR_ADJUST_TIME;
+  // Maintain a list of coordinates for mouse move events
+  private list_coordinates: Point2D[] = [];
+  private check_mousemove_on_next_draw = false;
 
   constructor(config: ListboxConfig<T, R>) {
     config.scrollbar.setValue({ value: 0, value_min: 0, value_max: 0 });
+    const scroll_callback = config.scrollbar.scrollCallback;
+    config.scrollbar.scrollCallback = (value: number) => {
+      if (scroll_callback) {
+        scroll_callback(value);
+      }
+      this.check_mousemove_on_next_draw = true;
+    };
+    for (const _ of config.list) {
+      this.list_coordinates.push({
+        x: 0,
+        y: 0,
+      });
+    }
     this.config = config;
   }
 
@@ -92,6 +108,17 @@ export class DwgListbox<
         }
         if (draw_el) {
           el.draw(ctx, transform, dt);
+          if (this.config.draw_config.fixed_position) {
+            this.list_coordinates[i] = {
+              x: transform.view.x + xi + padding,
+              y: transform.view.y + yi,
+            };
+          } else {
+            this.list_coordinates[i] = {
+              x: xi + padding,
+              y: yi,
+            };
+          }
         }
         const yi_adjust = el.h() + (i + 1 < this.config.list.length ? this.getGap() : 0);
         yi += yi_adjust;
@@ -110,6 +137,13 @@ export class DwgListbox<
       }
     });
     this.config.scrollbar.draw(ctx, transform, dt);
+    if (this.check_mousemove_on_next_draw) {
+      const last_m = this.config.scrollbar.getLastMousemoveM();
+      const last_transform = this.config.scrollbar.getLastMousemoveTransform();
+      if (!!last_m && !!last_transform) {
+        this.mousemove(last_m, last_transform);
+      }
+    }
   }
 
   scroll(dy: number, mode: number, _dx?: number): boolean {
@@ -117,15 +151,19 @@ export class DwgListbox<
   }
 
   mousemove(m: Point2D, transform: BoardTransformData): boolean {
+    this.config.scrollbar.mousemove(m, transform);
+    const is_hovering = this.isHovering();
     for (const [i, el] of this.config.list.entries()) {
-      if (i < this.draw_start || i > this.draw_end) {
+      if (!is_hovering || i < this.draw_start || i > this.draw_end) {
         el.setHovering(false);
       } else {
-        el.mousemove(m, transform);
+        el.mousemove(m, {
+          view: { ...this.list_coordinates[i] },
+          scale: this.config.draw_config.fixed_position ? transform.scale : 1,
+        });
       }
     }
-    this.config.scrollbar.mousemove(m, transform);
-    return this.isHovering();
+    return is_hovering;
   }
 
   mousedown(e: MouseEvent): boolean {

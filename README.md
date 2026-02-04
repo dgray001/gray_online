@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6ai: Backend orders data structure
+v0.6aj: Listbox scaling works and frontend has order data
 
 ## Dev Use
 

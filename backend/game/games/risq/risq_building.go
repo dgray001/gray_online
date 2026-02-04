@@ -59,6 +59,10 @@ func (b *RisqBuilding) isDeleted() bool {
 	return b.deleted
 }
 
+func (b *RisqBuilding) internalId() uint64 {
+	return b.internal_id
+}
+
 func (b *RisqBuilding) receiveOrder(o *RisqOrder) bool {
 	// TODO: implement
 	b.past_orders = append(b.past_orders, o)
