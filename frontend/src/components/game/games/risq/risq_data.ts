@@ -216,6 +216,16 @@ export enum RisqOrderType {
   OrderType_BuildingResearch = 8,
 }
 
+/** Returns whether the order is for units */
+export function isUnitOrder(order: RisqOrderType): boolean {
+  return order >= RisqOrderType.OrderType_UnitMove && order <= RisqOrderType.OrderType_UnitGarrison;
+}
+
+/** Returns whether the order is for buildings */
+export function isBuildingOrder(order: RisqOrderType): boolean {
+  return order >= RisqOrderType.OrderType_BuildingCreate && order <= RisqOrderType.OrderType_BuildingResearch;
+}
+
 /** Data describing an order */
 export declare interface RisqOrder {
   internal_id: number;
@@ -406,7 +416,15 @@ export function serverToRisqPlayer(server_player: RisqPlayerFromServer): RisqPla
     population_limit: server_player.population_limit,
     score: server_player.score,
     color: new ColorRGB(color_split[0], color_split[1], color_split[2]),
-    active_orders: server_player.active_orders.map((o) => serverToRisqOrder(o)).filter((o) => !!o),
+    active_orders: [
+      {
+        internal_id: 1,
+        order_type: RisqOrderType.OrderType_UnitMove,
+        player_id: 0,
+        target_id: 1,
+        subjects: [2],
+      },
+    ], // server_player.active_orders.map((o) => serverToRisqOrder(o)).filter((o) => !!o),
   };
   return player;
 }

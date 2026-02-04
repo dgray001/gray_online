@@ -1,5 +1,6 @@
 import { ColorRGB } from '../../../../scripts/color_rgb';
-import { drawHexagon } from '../../util/canvas_util';
+import { DEV } from '../../../../scripts/util';
+import { drawHexagon, drawText } from '../../util/canvas_util';
 import type { Point2D } from '../../util/objects2d';
 import type { DwgRisq } from './risq';
 import type { RisqSpace } from './risq_data';
@@ -17,6 +18,7 @@ export declare interface DrawRisqSpaceConfig {
   hex_r: number;
   inset_w: number;
   inset_h: number;
+  // height of a 'row' in the inset box (there are 3 rows)
   inset_row: number;
   draw_detail: DrawRisqSpaceDetail;
 }
@@ -39,6 +41,16 @@ export function drawRisqSpace(
   ctx.fillStyle = fill.getString();
   ctx.lineWidth = space_line_width[config.draw_detail];
   drawHexagon(ctx, space.center, config.hex_r);
+  if (DEV) {
+    drawText(ctx, space.coordinate.x + ', ' + space.coordinate.y, {
+      p: space.center,
+      w: 1.5 * config.hex_r,
+      fill_style: 'rgba(0, 0, 0, 0.8)',
+      align: 'center',
+      baseline: 'middle',
+      font: `${0.6 * config.inset_row}px serif`,
+    });
+  }
   ctx.textAlign = 'left';
   const black_text = fill.getBrightness() > 0.5;
   if (config.draw_detail === DrawRisqSpaceDetail.OWNERSHIP) {

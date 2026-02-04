@@ -39,13 +39,18 @@ export class DwgListbox<
       }
       this.check_mousemove_on_next_draw = true;
     };
-    for (const _ of config.list) {
+    this.config = config;
+    this.setList(config.list);
+  }
+
+  setList(list: T[]) {
+    this.config.list = list;
+    for (const _ of this.config.list) {
       this.list_coordinates.push({
         x: 0,
         y: 0,
       });
     }
-    this.config = config;
   }
 
   isHovering() {
@@ -132,7 +137,7 @@ export class DwgListbox<
         this.config.scrollbar.setValue({
           value,
           value_min: 0,
-          value_max: yi - initial_yi - this.h() + 2 * padding,
+          value_max: yi >= this.yf() - padding ? yi - initial_yi - this.h() + 2 * padding : 0,
         });
       }
     });

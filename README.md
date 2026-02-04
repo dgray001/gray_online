@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6aj: Listbox scaling works and frontend has order data
+v0.6ak: Display basic order information
 
 ## Dev Use
 

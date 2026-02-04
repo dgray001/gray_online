@@ -211,7 +211,7 @@ func (r *GameRisq) createPlayerStart(p *RisqPlayer, s *RisqSpace) {
 	village_center := createRisqBuilding(r.nextBuildingInternalId(), 1, p.player.Player_id)
 	s.setBuilding(&game_utils.Coordinate2D{X: 0, Y: 0}, village_center)
 	p.buildings[village_center.internal_id] = village_center
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		villager := createRisqUnit(r.nextUnitInternalId(), 1, p.player.Player_id)
 		s.setUnit(&game_utils.Coordinate2D{X: 0, Y: 0}, villager)
 		p.units[villager.internal_id] = villager

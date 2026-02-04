@@ -97,12 +97,12 @@ export function getFittedFont(
   max_width: number,
   min_size: number
 ): string {
-  const match = font.match(/^(.*?)(\d+)px(.*)$/);
+  const match = font.match(/^(.*?)(\d*\.?\d+)px(.*)$/);
   if (!match || match.length < 4) {
     return font;
   }
   const prefix = match[1];
-  const font_size = parseInt(match[2], 10);
+  const font_size = parseFloat(match[2]);
   const suffix = match[3];
   if (!font_size || font_size < 1) {
     return font;

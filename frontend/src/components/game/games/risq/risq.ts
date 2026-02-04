@@ -219,6 +219,7 @@ export class DwgRisq extends DwgElement {
 
   private setNewGameData(new_game: GameRisqFromServer) {
     this.game = serverToGameRisq(new_game);
+    this.right_panel.dataRefreshed();
   }
 
   private async applyStartTurn(data: StartTurnData) {

@@ -2,23 +2,16 @@ import type { ColorRGB } from '../../../../../../scripts/color_rgb';
 import { DwgListbox } from '../../../../util/canvas_components/scrollbar/listbox';
 import type { Point2D } from '../../../../util/objects2d';
 import type { DwgRisq } from '../../risq';
-import { RisqOrder } from './order';
+import type { RisqOrder } from '../../risq_data';
+import { RisqOrderComponent } from './order';
 import { RisqOrdersScrollbar } from './orders_scrollbar';
 
-export class RisqOrdersList extends DwgListbox<RisqOrder, RisqOrdersScrollbar> {
+export class RisqOrdersList extends DwgListbox<RisqOrderComponent, RisqOrdersScrollbar> {
   private game: DwgRisq;
 
   constructor(risq: DwgRisq, w: number, background: ColorRGB) {
     super({
-      list: [
-        new RisqOrder({ w }),
-        new RisqOrder({ w }),
-        new RisqOrder({ w }),
-        new RisqOrder({ w }),
-        new RisqOrder({ w }),
-        new RisqOrder({ w }),
-        new RisqOrder({ w }),
-      ],
+      list: [],
       scrollbar: new RisqOrdersScrollbar(risq, w, background.copy().dBrightness(-0.1)),
       draw_config: {
         fill_style: background.copy().dBrightness(-0.2).getString(),
@@ -30,6 +23,27 @@ export class RisqOrdersList extends DwgListbox<RisqOrder, RisqOrdersScrollbar> {
       gap: 2,
     });
     this.game = risq;
+  }
+
+  setOrders(orders: RisqOrder[]) {
+    this.setList(
+      orders.map(
+        (o) =>
+          new RisqOrderComponent({
+            w: 0,
+            order: o,
+            game: this.game,
+          })
+      )
+    );
+  }
+
+  addOrder(_order: RisqOrder) {
+    // TODO: implement
+  }
+
+  removeOrder(_order: RisqOrder) {
+    // TODO: implement
   }
 
   override setAllSizes(size: number, p: Point2D, w: number, h: number): void {

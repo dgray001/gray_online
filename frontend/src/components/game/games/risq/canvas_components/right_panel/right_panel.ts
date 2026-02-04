@@ -42,6 +42,10 @@ export class RisqRightPanel implements CanvasComponent {
     this.toggle(config.is_open, true);
   }
 
+  dataRefreshed() {
+    this.orders_list.setOrders(this.risq.getPlayer()?.active_orders ?? []);
+  }
+
   isHovering(): boolean {
     return this.hovering;
   }
@@ -104,7 +108,9 @@ export class RisqRightPanel implements CanvasComponent {
             return;
           }
           let yi = this.yi() + RisqRightPanel.PADDING;
-          drawText(ctx, `Turn ${this.risq.getGame()?.turn_number ?? '??'}`, {
+          const player = this.risq.getPlayer();
+          const game = this.risq.getGame();
+          drawText(ctx, `Turn ${game?.turn_number ?? '??'}`, {
             p: { x: this.xc(), y: yi },
             w: this.paddedW(),
             fill_style: 'black',
@@ -112,7 +118,6 @@ export class RisqRightPanel implements CanvasComponent {
             font: 'bold 36px serif',
           });
           yi += 40;
-          const player = this.risq.getPlayer();
           this.drawSeparator(ctx, yi);
           yi += RisqRightPanel.PADDING;
           if (!!player) {
@@ -129,7 +134,7 @@ export class RisqRightPanel implements CanvasComponent {
             this.drawSeparator(ctx, yi);
             yi += RisqRightPanel.PADDING;
           }
-          for (const score of this.risq.getGame()?.scores ?? []) {
+          for (const score of game?.scores ?? []) {
             this.drawScore(ctx, yi, score);
             yi += 30;
           }
