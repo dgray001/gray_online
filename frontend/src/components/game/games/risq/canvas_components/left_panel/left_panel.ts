@@ -17,7 +17,7 @@ import type {
   RisqZone,
   UnitByTypeData,
 } from '../../risq_data';
-import { RisqAttackType, ZONE_VISIBILITY, coordinateToIndex, risqTerrainName } from '../../risq_data';
+import { FULL_VISIBILITY, RisqAttackType, ZONE_VISIBILITY, coordinateToIndex, risqTerrainName } from '../../risq_data';
 import { resourceImage, resourceTypeImage } from '../../risq_resources';
 import { getSpaceFill } from '../../risq_space';
 import { UNIT_HEALTHBAR_COLOR_BACKGROUND, UNIT_HEALTHBAR_COLOR_HEALTH, unitImage } from '../../risq_unit';
@@ -81,6 +81,32 @@ export class RisqLeftPanel implements CanvasComponent {
     return this.showing;
   }
 
+  getData(): LeftPanelData | undefined {
+    return this.data;
+  }
+
+  // Returns whether the current selection in the left panel is orderable
+  isOrderable(): boolean {
+    const player_id = this.risq.getPlayer()?.player.player_id ?? -1;
+    if (!this.showing || !this.data || !this.visibility || this.visibility < FULL_VISIBILITY || player_id < 0) {
+      return false;
+    }
+    switch (this.data.data_type) {
+      case LeftPanelDataType.BUILDING:
+      case LeftPanelDataType.UNIT:
+        return this.data.data.player_id === player_id;
+      case LeftPanelDataType.UNITS_BY_TYPE:
+      case LeftPanelDataType.ECONOMIC_UNITS:
+      case LeftPanelDataType.MILITARY_UNITS:
+        if (this.data.data.units.length < 1) {
+          return false;
+        }
+        return this.data.data.units[0].player_id === player_id;
+      default:
+        return false;
+    }
+  }
+
   close() {
     this.showing = false;
     this.visibility = undefined;
@@ -108,6 +134,8 @@ export class RisqLeftPanel implements CanvasComponent {
     ) {
       return; // zones not visible
     }
+    this.hovered_object = undefined;
+    this.hovered_object_type = HoverableObjectType.NONE;
     this.visibility = visibility;
     this.data = open_data;
     this.showing = true;

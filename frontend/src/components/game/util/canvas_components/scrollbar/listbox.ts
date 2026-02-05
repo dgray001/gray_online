@@ -45,12 +45,17 @@ export class DwgListbox<
 
   setList(list: T[]) {
     this.config.list = list;
+    this.list_coordinates = [];
     for (const _ of this.config.list) {
       this.list_coordinates.push({
         x: 0,
         y: 0,
       });
     }
+  }
+
+  protected getList(): T[] {
+    return this.config.list;
   }
 
   isHovering() {

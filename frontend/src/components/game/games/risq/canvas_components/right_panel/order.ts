@@ -2,13 +2,14 @@ import type { BoardTransformData } from '../../../../util/canvas_board/canvas_bo
 import { configDraw, type CanvasComponent } from '../../../../util/canvas_components/canvas_component';
 import { drawRect, drawText } from '../../../../util/canvas_util';
 import type { Point2D } from '../../../../util/objects2d';
-import { DwgRisq } from '../../risq';
-import { isBuildingOrder, isUnitOrder, RisqOrderType, type RisqOrder } from '../../risq_data';
+import type { DwgRisq } from '../../risq';
+import type { RisqFrontendOrder } from '../../risq_data';
+import { isBuildingOrder, isUnitOrder, RisqOrderType } from '../../risq_data';
 
 /** Data describing a risq order config */
 export declare interface RisqOrderComponentConfig {
   w: number;
-  order: RisqOrder;
+  order: RisqFrontendOrder;
   game: DwgRisq;
 }
 
@@ -19,6 +20,10 @@ export class RisqOrderComponent implements CanvasComponent {
 
   constructor(config: RisqOrderComponentConfig) {
     this.config = config;
+  }
+
+  getOrder(): RisqFrontendOrder {
+    return this.config.order;
   }
 
   isHovering() {
@@ -65,9 +70,12 @@ export class RisqOrderComponent implements CanvasComponent {
         }
         const row_h = (this.h() - 2 * this.padding()) / 3;
         let yc = this.yi() + this.padding() + 0.5 * row_h;
-        const subject_text = order.subjects.length > 1 ? `${this.getSubjectName()}, +${order.subjects.length - 1} more` : this.getSubjectName();
+        const subject_text =
+          order.subjects.length > 1
+            ? `${this.getSubjectName()}, +${order.subjects.length - 1} more`
+            : this.getSubjectName();
         drawText(ctx, subject_text, {
-          p: {x: this.xi() + this.padding(), y: yc},
+          p: { x: this.xi() + this.padding(), y: yc },
           w: this.w() - 2 * this.padding(),
           align: 'left',
           baseline: 'middle',
@@ -76,7 +84,7 @@ export class RisqOrderComponent implements CanvasComponent {
         });
         yc += row_h;
         drawText(ctx, RisqOrderType[order.order_type], {
-          p: {x: this.xi() + this.padding(), y: yc},
+          p: { x: this.xi() + this.padding(), y: yc },
           w: this.w() - 2 * this.padding(),
           align: 'left',
           baseline: 'middle',
@@ -85,7 +93,7 @@ export class RisqOrderComponent implements CanvasComponent {
         });
         yc += row_h;
         drawText(ctx, order.target_id.toString(), {
-          p: {x: this.xi() + this.padding(), y: yc},
+          p: { x: this.xi() + this.padding(), y: yc },
           w: this.w() - 2 * this.padding(),
           align: 'left',
           baseline: 'middle',

@@ -200,8 +200,9 @@ func (s *RisqSpace) getVisibility(player_id int) uint8 {
 
 func (s *RisqSpace) toFrontend(player_id int, _ bool) gin.H {
 	space := gin.H{
-		"terrain":    s.terrain,
-		"coordinate": s.coordinate.ToFrontend(),
+		"terrain":        s.terrain,
+		"coordinate":     s.coordinate.ToFrontend(),
+		"coordinate_key": s.coordinate_key,
 	}
 	v := s.getVisibility(player_id)
 	space["visibility"] = v

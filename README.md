@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6ak: Display basic order information
+v0.6al: Can add basic move orders
 
 ## Dev Use
 

@@ -14,20 +14,21 @@ import {
 } from '../../util/objects2d';
 import type { DwgGame } from '../../game';
 import { DEV, createLock } from '../../../../scripts/util';
+import { ColorRGB } from '../../../../scripts/color_rgb';
 
 import html from './risq.html';
 import type { GameRisq, GameRisqFromServer, RisqPlayer, RisqSpace, RisqZone, StartTurnData } from './risq_data';
-import { coordinateToIndex, getSpace, serverToGameRisq } from './risq_data';
+import { coordinateToIndex, getSpace, RisqOrderType, serverToGameRisq } from './risq_data';
 import { RisqRightPanel } from './canvas_components/right_panel/right_panel';
 import type { DrawRisqSpaceConfig } from './risq_space';
 import { DrawRisqSpaceDetail, drawRisqSpace } from './risq_space';
 import { RisqLeftPanel } from './canvas_components/left_panel/left_panel';
 import { resolveHoveredZones, unhoverRisqZone } from './risq_zone';
+import type { UnitData } from './canvas_components/left_panel/left_panel_data';
 import { LeftPanelDataType } from './canvas_components/left_panel/left_panel_data';
 
 import './risq.scss';
 import '../../util/canvas_board/canvas_board';
-import { ColorRGB } from '../../../../scripts/color_rgb';
 
 const DEFAULT_HEXAGON_RADIUS = 60;
 
@@ -368,27 +369,63 @@ export class DwgRisq extends DwgElement {
     if ([this.right_panel.mousedown(e), this.left_panel.mousedown(e)].some((b) => !!b)) {
       return true;
     }
-    if (e.button !== 0) {
-      return true;
-    }
-    if (!!this.hovered_space && this.hovered_space.visibility > 0) {
-      this.hovered_space.clicked = true;
-      if (this.draw_detail !== DrawRisqSpaceDetail.ZONE_DETAILS) {
-        return false;
-      }
-      if (!!this.hovered_zone) {
-        this.hovered_space.clicked = false;
-        this.hovered_zone.clicked = true;
-        for (const part of this.hovered_zone.hovered_data) {
-          if (part.hovered) {
-            part.clicked = true;
-            this.hovered_zone.clicked = false;
-            return true;
+    // left click
+    if (e.button === 0) {
+      if (!!this.hovered_space && this.hovered_space.visibility > 0) {
+        this.hovered_space.clicked = true;
+        if (this.draw_detail !== DrawRisqSpaceDetail.ZONE_DETAILS) {
+          return false;
+        }
+        if (!!this.hovered_zone) {
+          this.hovered_space.clicked = false;
+          this.hovered_zone.clicked = true;
+          for (const part of this.hovered_zone.hovered_data) {
+            if (part.hovered) {
+              part.clicked = true;
+              this.hovered_zone.clicked = false;
+              return true;
+            }
           }
         }
       }
+      // right click
+    } else if (e.button === 2 && this.left_panel.isOrderable()) {
+      const left_panel_data = this.left_panel.getData();
+      switch (left_panel_data?.data_type) {
+        case LeftPanelDataType.UNIT:
+          this.unitOrder(left_panel_data);
+          break;
+        default:
+          break;
+      }
     }
-    return false;
+    // only drag on left click
+    // TODO: implement rotate on right click
+    return e.button !== 0;
+  }
+
+  private unitOrder(data: UnitData) {
+    if (!this.hovered_space) {
+      return;
+    }
+    // TODO: implement attack vs just move
+    // TODO: implement if holding the shift key
+    if (
+      this.hovered_space.visibility < 3 ||
+      this.draw_detail !== DrawRisqSpaceDetail.ZONE_DETAILS ||
+      !this.hovered_zone
+    ) {
+      // TODO: if able to attack *not* holding ctrl, then add move and then attack commands (or just attack if in range)
+      // move to hovered space
+      this.right_panel.addOrder({
+        player_id: this.player_id,
+        order_type: RisqOrderType.OrderType_UnitMove,
+        subjects: [data.data.internal_id],
+        target_id: this.hovered_space.coordinate_key,
+      });
+    } else {
+      // move to hovered zone
+    }
   }
 
   private mouseup(e: MouseEvent) {

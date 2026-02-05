@@ -74,6 +74,7 @@ export type SPACE_ZONES_TYPE = [[RisqZone, RisqZone], [RisqZone, RisqZone, RisqZ
 export declare interface RisqSpace {
   terrain: RisqTerrainType;
   coordinate: Point2D;
+  coordinate_key: number;
   visibility: number; // See risq_vision.go for value meanings
   zones?: SPACE_ZONES_TYPE;
   resources?: Map<number, RisqResource>;
@@ -235,6 +236,8 @@ export declare interface RisqOrder {
   subjects: number[];
 }
 
+export type RisqFrontendOrder = Omit<RisqOrder, 'internal_id'>;
+
 /** Data describing a game of risq as returned by server */
 export declare interface GameRisqFromServer {
   game_base: GameBase; // already been converted
@@ -268,6 +271,7 @@ export declare interface RisqPlayerFromServer {
 export declare interface RisqSpaceFromServer {
   terrain: RisqTerrainType;
   coordinate: Point2D;
+  coordinate_key: number;
   visibility: number;
   zones?: RisqZoneFromServer[][];
   resources?: RisqResourceFromServer[];
@@ -416,15 +420,7 @@ export function serverToRisqPlayer(server_player: RisqPlayerFromServer): RisqPla
     population_limit: server_player.population_limit,
     score: server_player.score,
     color: new ColorRGB(color_split[0], color_split[1], color_split[2]),
-    active_orders: [
-      {
-        internal_id: 1,
-        order_type: RisqOrderType.OrderType_UnitMove,
-        player_id: 0,
-        target_id: 1,
-        subjects: [2],
-      },
-    ], // server_player.active_orders.map((o) => serverToRisqOrder(o)).filter((o) => !!o),
+    active_orders: server_player.active_orders.map((o) => serverToRisqOrder(o)).filter((o) => !!o),
   };
   return player;
 }
@@ -434,6 +430,7 @@ export function serverToRisqSpace(server_space: RisqSpaceFromServer): RisqSpace 
   const space: RisqSpace = {
     terrain: server_space.terrain,
     coordinate: server_space.coordinate,
+    coordinate_key: server_space.coordinate_key,
     visibility: server_space.visibility,
     num_military_units: 0,
     num_villager_units: 0,
@@ -603,7 +600,6 @@ export function getSpace(game: GameRisq, index: Point2D): RisqSpace | undefined 
   }
   const row = game.spaces[index.x];
   if (!row) {
-    console.log(game.spaces, index.x);
     return undefined;
   }
   if (index.y < 0 || index.y >= row.length) {

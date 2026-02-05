@@ -5,7 +5,7 @@ import { configDraw } from '../../../../util/canvas_components/canvas_component'
 import { drawLine, drawRect, drawText } from '../../../../util/canvas_util';
 import type { Point2D } from '../../../../util/objects2d';
 import type { DwgRisq } from '../../risq';
-import type { GameRisqScoreEntry, RisqResourceType } from '../../risq_data';
+import type { GameRisqScoreEntry, RisqFrontendOrder, RisqResourceType } from '../../risq_data';
 import { resourceTypeImage } from '../../risq_resources';
 import { RisqOrdersList } from './orders_list';
 import { RisqRightPanelButton } from './right_panel_button';
@@ -87,6 +87,10 @@ export class RisqRightPanel implements CanvasComponent {
       },
       initial
     );
+  }
+
+  addOrder(order: RisqFrontendOrder) {
+    this.orders_list.addOrder(order);
   }
 
   draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number) {
