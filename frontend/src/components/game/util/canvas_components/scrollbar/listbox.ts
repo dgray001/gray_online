@@ -1,7 +1,7 @@
 import type { BoardTransformData } from '../../canvas_board/canvas_board';
-import { drawRect } from '../../canvas_util';
+import { drawRect, drawText } from '../../canvas_util';
 import type { Point2D } from '../../objects2d';
-import { configDraw, type CanvasComponent, type DrawConfig } from '../canvas_component';
+import { configDraw, xc, type CanvasComponent, type DrawConfig } from '../canvas_component';
 import type { DwgRectScrollbar } from './rect_scrollbar';
 
 /** Data describing a listbox config */
@@ -11,7 +11,11 @@ export declare interface ListboxConfig<T extends CanvasComponent, R extends DwgR
   draw_config: DrawConfig;
   gap?: number;
   padding?: number;
-  // TODO: implement title (need to adjust how we determine scrollable area)
+  title?: {
+    text: string;
+    size: number;
+    font_color: string;
+  };
 }
 
 export class DwgListbox<
@@ -29,6 +33,7 @@ export class DwgListbox<
   // Maintain a list of coordinates for mouse move events
   private list_coordinates: Point2D[] = [];
   private check_mousemove_on_next_draw = false;
+  private disabled = false;
 
   constructor(config: ListboxConfig<T, R>) {
     config.scrollbar.setValue({ value: 0, value_min: 0, value_max: 0 });
@@ -59,6 +64,9 @@ export class DwgListbox<
   }
 
   isHovering() {
+    if (this.disabled) {
+      return false;
+    }
     return this.config.scrollbar.isHovering();
   }
 
@@ -67,6 +75,9 @@ export class DwgListbox<
   }
 
   isClicking() {
+    if (this.disabled) {
+      return false;
+    }
     return this.config.scrollbar.isClicking();
   }
 
@@ -75,7 +86,8 @@ export class DwgListbox<
   }
 
   setAllSizes(size: number, p: Point2D, w: number, h: number) {
-    this.config.scrollbar.setAllSizes(size, p, w, h);
+    const title_size = this.config.title?.size ?? 0;
+    this.config.scrollbar.setAllSizes(size, { x: p.x, y: p.y + title_size }, w, h - title_size);
   }
 
   getPadding(): number {
@@ -86,13 +98,44 @@ export class DwgListbox<
     return this.config.gap ?? 0;
   }
 
+  disable() {
+    this.disabled = true;
+    this.config.scrollbar.disable();
+  }
+
+  enable() {
+    this.disabled = false;
+    this.config.scrollbar.enable();
+  }
+
   draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
     configDraw(ctx, transform, this.config.draw_config, this.isHovering(), this.isClicking(), () => {
       drawRect(ctx, { x: this.xi(), y: this.yi() }, this.w(), this.h());
-      let [xi, yi, value, padding] = [this.xi(), this.yi(), this.config.scrollbar.value(), this.getPadding()];
+      if (this.config.title) {
+        drawRect(ctx, { x: this.xi(), y: this.yi() }, this.w(), this.config.title.size);
+        drawText(ctx, this.config.title.text, {
+          p: { x: xc(this), y: this.yi() + this.config.title.size - this.getPadding() },
+          w: this.w() - 2 * this.getPadding(),
+          font: `${this.config.title.size - 2 * this.getPadding()}px serif`,
+          fill_style: this.config.title.font_color,
+          align: 'center',
+          baseline: 'ideographic',
+        });
+      }
+      let [xi, yi, value, padding] = [
+        this.xi(),
+        this.config.scrollbar.yi(),
+        this.config.scrollbar.value(),
+        this.getPadding(),
+      ];
       ctx.save();
       ctx.beginPath();
-      ctx.rect(this.xi() + padding, this.yi() + padding, this.w() - padding * 2, this.h() - padding * 2);
+      ctx.rect(
+        this.xi() + padding,
+        this.config.scrollbar.yi() + padding,
+        this.w() - padding * 2,
+        this.config.scrollbar.h() - padding * 2
+      );
       ctx.clip();
       yi += padding - value;
       ctx.translate(xi + padding, yi);
@@ -102,14 +145,14 @@ export class DwgListbox<
       for (const [i, el] of this.config.list.entries()) {
         let draw_el = true;
         if (!found_start) {
-          if (yi + el.h() >= this.yi() + padding) {
+          if (yi + el.h() >= this.config.scrollbar.yi() + padding) {
             this.draw_start = i;
             found_start = true;
           } else {
             draw_el = false;
           }
         } else if (!found_end) {
-          if (yi + el.h() >= this.yf() - padding) {
+          if (yi + el.h() >= this.config.scrollbar.yf() - padding) {
             this.draw_end = i;
             found_end = true;
           }
@@ -154,6 +197,14 @@ export class DwgListbox<
         this.mousemove(last_m, last_transform);
       }
     }
+    if (this.disabled) {
+      configDraw(ctx, transform, {
+        ...this.config.draw_config,
+        fill_style: 'rgba(255, 255, 255, 0.4)',
+      }, false, false, ()=> {
+        drawRect(ctx, { x: this.xi(), y: this.yi() }, this.w(), this.h());
+      });
+    }
   }
 
   scroll(dy: number, mode: number, _dx?: number): boolean {
@@ -164,7 +215,7 @@ export class DwgListbox<
     this.config.scrollbar.mousemove(m, transform);
     const is_hovering = this.isHovering();
     for (const [i, el] of this.config.list.entries()) {
-      if (!is_hovering || i < this.draw_start || i > this.draw_end) {
+      if (this.disabled || !is_hovering || i < this.draw_start || i > this.draw_end) {
         el.setHovering(false);
       } else {
         el.mousemove(m, {
@@ -177,20 +228,20 @@ export class DwgListbox<
   }
 
   mousedown(e: MouseEvent): boolean {
+    this.config.scrollbar.mousedown(e);
     for (const [i, el] of this.config.list.entries()) {
-      if (i < this.draw_start || i > this.draw_end) {
+      if (this.disabled || i < this.draw_start || i > this.draw_end) {
         continue;
       } else {
         el.mousedown(e);
       }
     }
-    this.config.scrollbar.mousedown(e);
     return this.isClicking();
   }
 
   mouseup(e: MouseEvent): void {
     for (const [i, el] of this.config.list.entries()) {
-      if (i < this.draw_start || i > this.draw_end) {
+      if (this.disabled || i < this.draw_start || i > this.draw_end) {
         el.setClicking(false);
       } else {
         el.mouseup(e);
@@ -212,7 +263,11 @@ export class DwgListbox<
   }
 
   yi(): number {
-    return this.config.scrollbar.yi();
+    const yi = this.config.scrollbar.yi();
+    if (this.config.title) {
+      return yi - this.config.title.size;
+    }
+    return yi;
   }
 
   yf(): number {
@@ -224,6 +279,10 @@ export class DwgListbox<
   }
 
   h(): number {
-    return this.config.scrollbar.h();
+    const h = this.config.scrollbar.h();
+    if (this.config.title) {
+      return h + this.config.title.size;
+    }
+    return h;
   }
 }

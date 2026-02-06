@@ -9,6 +9,7 @@ import type { GameRisqScoreEntry, RisqFrontendOrder, RisqResourceType } from '..
 import { resourceTypeImage } from '../../risq_resources';
 import { RisqOrdersList } from './orders_list';
 import { RisqRightPanelButton } from './right_panel_button';
+import { RisqSubmitOrdersButton } from './submit_orders_button';
 
 /** Config for the right panel */
 export declare interface RightPanelConfig {
@@ -20,10 +21,12 @@ export declare interface RightPanelConfig {
 export class RisqRightPanel implements CanvasComponent {
   // For use in the draw function
   private static PADDING = 5;
+  private static SUBMIT_SIZE = 30;
 
   private open_button: RisqRightPanelButton;
   private orders_list: RisqOrdersList;
-  private need_to_set_orders_scrollbar_position = true;
+  private submit_button: RisqSubmitOrdersButton;
+  private need_to_set_position = true;
 
   private risq: DwgRisq;
   private config: RightPanelConfig;
@@ -39,11 +42,20 @@ export class RisqRightPanel implements CanvasComponent {
       config.w - 2 * RisqRightPanel.PADDING,
       config.background.copy().addColor(255, 0, 0, 0.2)
     );
+    this.submit_button = new RisqSubmitOrdersButton(risq, RisqRightPanel.SUBMIT_SIZE);
     this.toggle(config.is_open, true);
   }
 
   dataRefreshed() {
     this.orders_list.setOrders(this.risq.getPlayer()?.active_orders ?? []);
+    if (this.risq.givingOrders() && !this.risq.ordersSubmitted()) {
+      this.orders_list.enable();
+      this.submit_button.setText(this.risq.ordersSubmittedTimes() > 0 ? 'Resubmit Orders': 'Submit Orders');
+    } else {
+      this.orders_list.disable();
+      this.submit_button.setText('Unsubmit Orders');
+    }
+    this.submit_button.enable();
   }
 
   isHovering(): boolean {
@@ -83,7 +95,7 @@ export class RisqRightPanel implements CanvasComponent {
           angle: this.config.is_open ? 0.5 * Math.PI : -0.5 * Math.PI,
         };
         this.open_button.setRotation(rotation, undefined, initial);
-        this.need_to_set_orders_scrollbar_position = true;
+        this.need_to_set_position = true;
       },
       initial
     );
@@ -91,6 +103,26 @@ export class RisqRightPanel implements CanvasComponent {
 
   addOrder(order: RisqFrontendOrder) {
     this.orders_list.addOrder(order);
+  }
+
+  getOrders(): RisqFrontendOrder[] {
+    return this.orders_list.getOrders();
+  }
+
+  setOrders(orders: RisqFrontendOrder[]) {
+    this.orders_list.setOrders(orders);
+  }
+
+  submittingOrders() {
+    this.orders_list.disable();
+    this.submit_button.disable();
+    this.submit_button.setText('Submitting Orders ...');
+  }
+
+  unsubmittingOrders() {
+    this.orders_list.disable();
+    this.submit_button.disable();
+    this.submit_button.setText('Unsubmitting Orders ...');
   }
 
   draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number) {
@@ -146,20 +178,25 @@ export class RisqRightPanel implements CanvasComponent {
           this.drawSeparator(ctx, yi);
           yi += RisqRightPanel.PADDING;
           // TODO: logic in case yi has gone off the rectangle
-          if (this.need_to_set_orders_scrollbar_position) {
+          if (this.need_to_set_position) {
+            const orders_list_height = this.yf() - yi - 2 * RisqRightPanel.PADDING - RisqRightPanel.SUBMIT_SIZE;
             this.orders_list.setAllSizes(
               Math.min(0.1 * this.paddedW(), 20),
               { x: this.xi() + RisqRightPanel.PADDING, y: yi },
               this.w() - 2 * RisqRightPanel.PADDING,
-              this.yf() - yi - RisqRightPanel.PADDING
+              orders_list_height,
             );
-            this.need_to_set_orders_scrollbar_position = false;
+            yi += orders_list_height + RisqRightPanel.PADDING;
+            this.submit_button.setPosition({ x: this.xi() + RisqRightPanel.PADDING, y: yi });
+            this.submit_button.setW(this.w() - 2 * RisqRightPanel.PADDING)
+            this.need_to_set_position = false;
           }
         }
       );
     }
     if (this.config.is_open && !this.opening) {
       this.orders_list.draw(ctx, transform, dt);
+      this.submit_button.draw(ctx, transform, dt);
     }
     this.open_button.draw(ctx, transform, dt);
   }
@@ -213,6 +250,7 @@ export class RisqRightPanel implements CanvasComponent {
       return true;
     }
     this.orders_list.mousemove(m, transform);
+    this.submit_button.mousemove(m, transform);
     m = {
       x: m.x * transform.scale - transform.view.x,
       y: m.y * transform.scale - transform.view.y,
@@ -230,12 +268,14 @@ export class RisqRightPanel implements CanvasComponent {
       return true;
     }
     this.orders_list.mousedown(e);
+    this.submit_button.mousedown(e);
     return this.isHovering();
   }
 
   mouseup(e: MouseEvent) {
     this.open_button.mouseup(e);
     this.orders_list.mouseup(e);
+    this.submit_button.mouseup(e);
   }
 
   xi(): number {

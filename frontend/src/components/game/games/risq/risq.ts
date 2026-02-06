@@ -29,6 +29,7 @@ import { LeftPanelDataType } from './canvas_components/left_panel/left_panel_dat
 
 import './risq.scss';
 import '../../util/canvas_board/canvas_board';
+import { createMessage } from '../../../lobby/data_models';
 
 const DEFAULT_HEXAGON_RADIUS = 60;
 
@@ -54,6 +55,10 @@ export class DwgRisq extends DwgElement {
   private icons = new Map<string, HTMLImageElement>();
   private last_time = Date.now();
   private draw_detail: DrawRisqSpaceDetail = DrawRisqSpaceDetail.SPACE_DETAILS;
+  private toggling_submit_orders_button = false;
+  private giving_orders = false;
+  private orders_submitted = false;
+  private orders_submitted_times = 0;
 
   private left_panel = new RisqLeftPanel(this, {
     w: 300,
@@ -107,6 +112,8 @@ export class DwgRisq extends DwgElement {
         draw: this.draw.bind(this),
         scroll: this.scrollDwg.bind(this),
         mousemove: this.mousemove.bind(this),
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        draggingCallback: this.draggingCallback.bind(this),
         mouseleave: this.mouseleave.bind(this),
         mousedown: this.mousedown.bind(this),
         mouseup: this.mouseup.bind(this),
@@ -224,6 +231,11 @@ export class DwgRisq extends DwgElement {
   }
 
   private async applyStartTurn(data: StartTurnData) {
+    if (this.player_id > -1) {
+      this.giving_orders = true;
+      this.orders_submitted = false;
+      this.orders_submitted_times = 0;
+    }
     this.setNewGameData(data.game);
   }
 
@@ -356,6 +368,13 @@ export class DwgRisq extends DwgElement {
     this.updateHoveredFlags();
   }
 
+  private draggingCallback() {
+    this.removeHoveredFlags();
+    if (!!this.hovered_space) {
+      this.hovered_space.clicked = false;
+    }
+  }
+
   private mouseleave() {
     if (!!this.hovered_space) {
       this.hovered_space.hovered = false;
@@ -419,12 +438,17 @@ export class DwgRisq extends DwgElement {
       // move to hovered space
       this.right_panel.addOrder({
         player_id: this.player_id,
-        order_type: RisqOrderType.OrderType_UnitMove,
+        order_type: RisqOrderType.OrderType_UnitMoveSpace,
         subjects: [data.data.internal_id],
         target_id: this.hovered_space.coordinate_key,
       });
     } else {
-      // move to hovered zone
+      this.right_panel.addOrder({
+        player_id: this.player_id,
+        order_type: RisqOrderType.OrderType_UnitMoveZone,
+        subjects: [data.data.internal_id],
+        target_id: this.hovered_zone.coordinate_key,
+      });
     }
   }
 
@@ -596,6 +620,56 @@ export class DwgRisq extends DwgElement {
     const update_el = document.createElement('div');
     update_el.innerText = `ID: ${update.update_id}, Kind: ${update.kind}, data: ${JSON.stringify(update.content)}`;
     return update_el;
+  }
+
+  async toggleSubmitOrdersButton() {
+    if (this.toggling_submit_orders_button || !this.giving_orders) {
+      this.toggling_submit_orders_button = false;
+      return;
+    }
+    this.toggling_submit_orders_button = true;
+    if (this.orders_submitted) {
+      this.right_panel.unsubmittingOrders();
+      const game_update = createMessage(
+        `player-${this.player_id}`,
+        'game-update',
+        JSON.stringify(this.right_panel.getOrders()),
+        'unsubmit-orders'
+      );
+      this.dispatchEvent(
+        new CustomEvent('game_update', {
+          detail: game_update,
+          bubbles: true,
+        })
+      );
+    } else {
+      this.right_panel.submittingOrders();
+      const game_update = createMessage(
+        `player-${this.player_id}`,
+        'game-update',
+        JSON.stringify(this.right_panel.getOrders()),
+        'submit-orders'
+      );
+      this.dispatchEvent(
+        new CustomEvent('game_update', {
+          detail: game_update,
+          bubbles: true,
+        })
+      );
+      this.orders_submitted_times++;
+    }
+  }
+
+  givingOrders(): boolean {
+    return this.giving_orders;
+  }
+
+  ordersSubmitted(): boolean {
+    return this.orders_submitted;
+  }
+
+  ordersSubmittedTimes(): number {
+    return this.orders_submitted_times;
   }
 }
 

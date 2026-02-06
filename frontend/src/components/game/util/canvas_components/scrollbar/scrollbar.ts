@@ -128,6 +128,18 @@ export abstract class DwgScrollbar<T extends DwgButton = DwgButton> implements C
     return this.last_mousemove_transform;
   }
 
+  disable() {
+    for (const button of this.buttons) {
+      button.disable();
+    }
+  }
+
+  enable() {
+    for (const button of this.buttons) {
+      button.enable();
+    }
+  }
+
   draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number) {
     for (const button of this.buttons) {
       button.draw(ctx, transform, dt);

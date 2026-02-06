@@ -1,11 +1,15 @@
 import type { BoardTransformData } from '../../canvas_board/canvas_board';
-import { drawRect } from '../../canvas_util';
+import type { DrawTextConfig } from '../../canvas_util';
+import { drawRect, drawText } from '../../canvas_util';
 import type { Point2D } from '../../objects2d';
 import { addPoint2D, equalsPoint2D, multiplyPoint2D } from '../../objects2d';
 import type { DrawConfig, Rotation } from '../canvas_component';
 import { configDraw } from '../canvas_component';
 import type { ButtonConfig } from './button_config';
 import { DwgButton } from './button';
+import type { WithRequired } from '../../../../../scripts/types';
+
+type RectButtonTextConfig = WithRequired<Omit<DrawTextConfig, 'p' | 'w'>, 'align' | 'baseline' | 'font'>;
 
 /** Config data for a rect button */
 export declare interface RectButtonConfig {
@@ -18,6 +22,12 @@ export declare interface RectButtonConfig {
   rotate_animation_speed?: number;
   image_path?: string;
   rotation?: number;
+  text?: {
+    text: string;
+    config: RectButtonTextConfig;
+    padding?: number;
+  };
+  r?: number;
 }
 
 export abstract class DwgRectButton extends DwgButton {
@@ -33,6 +43,7 @@ export abstract class DwgRectButton extends DwgButton {
   private rotate_reached?: boolean;
   private rotate_callback?: () => void;
   private img?: HTMLImageElement;
+  private text_align_p?: Point2D;
 
   constructor(config: RectButtonConfig) {
     super(config.button_config);
@@ -69,15 +80,25 @@ export abstract class DwgRectButton extends DwgButton {
 
   setW(w: number) {
     this.rect_config.w = w;
+    this.refreshPositionDependencies();
   }
 
   setH(h: number) {
     this.rect_config.h = h;
+    this.refreshPositionDependencies();
   }
 
   setSize(w: number, h: number) {
-    this.setW(w);
-    this.setH(h);
+    this.rect_config.w = w;
+    this.rect_config.h = h;
+    this.refreshPositionDependencies();
+  }
+
+  setText(s: string) {
+    if (!this.rect_config.text) {
+      return;
+    }
+    this.rect_config.text.text = s;
   }
 
   setRotation(rotation: Rotation, callback?: () => void, no_animation = false) {
@@ -108,6 +129,37 @@ export abstract class DwgRectButton extends DwgButton {
       y: 0.5 * this.rect_config.h,
     };
     this.center_p = addPoint2D(this.rect_config.p, this.radius_p);
+    if (!!this.rect_config.text) {
+      this.text_align_p = { x: 0, y: 0 };
+      const padding = this.rect_config.text.padding ?? 0;
+      switch (this.rect_config.text.config.align) {
+        case 'center':
+          this.text_align_p.x = 0;
+          break;
+        case 'left':
+        case 'start':
+          this.text_align_p.x = padding - 0.5 * this.w();
+          break;
+        case 'right':
+        case 'end':
+          this.text_align_p.y = 0.5 * this.w() - padding;
+          break;
+      }
+      switch (this.rect_config.text.config.baseline) {
+        case 'alphabetic':
+        case 'hanging':
+        case 'middle':
+          this.text_align_p.y = 0;
+          break;
+        case 'top':
+          this.text_align_p.y = padding - 0.5 * this.h();
+          break;
+        case 'ideographic':
+        case 'bottom':
+          this.text_align_p.y = 0.5 * this.h() - padding;
+          break;
+      }
+    }
   }
 
   xi(): number {
@@ -200,7 +252,14 @@ export abstract class DwgRectButton extends DwgButton {
       if (!!this.img) {
         ctx.drawImage(this.img, -this.radius_p.x, -this.radius_p.y, this.rect_config.w, this.rect_config.h);
       }
-      drawRect(ctx, multiplyPoint2D(-1, this.radius_p), this.rect_config.w, this.rect_config.h);
+      drawRect(ctx, multiplyPoint2D(-1, this.radius_p), this.rect_config.w, this.rect_config.h, this.rect_config.r);
+      if (!!this.rect_config.text && !!this.text_align_p) {
+        drawText(ctx, this.rect_config.text.text, {
+          ...this.rect_config.text.config,
+          p: this.text_align_p,
+          w: this.w() - 2 * (this.rect_config.text.padding ?? 0),
+        });
+      }
       if (!!this.rect_config.rotation) {
         ctx.rotate(-this.rect_config.rotation);
       }

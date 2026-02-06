@@ -24,6 +24,7 @@ export declare interface CanvasBoardInitializationData {
   // returns whether something was scrolled
   scroll?: (dy: number, mode: number, dx?: number) => boolean;
   mousemove: (m: Point2D, transform: BoardTransformData) => void;
+  draggingCallback?: () => void;
   mouseleave: () => void;
   // returns whether something was clicked
   mousedown: (e: MouseEvent) => boolean;
@@ -43,6 +44,14 @@ export declare interface BoardTransformData {
   view: Point2D;
 }
 
+/** Returns a default board transform data object */
+export function defaultTransform(): BoardTransformData {
+  return {
+    scale: 1,
+    view: { x: 0, y: 0 },
+  };
+}
+
 /** Data describing how zoom can operate */
 export declare interface ZoomConfig {
   zoom_constant: number;
@@ -57,10 +66,7 @@ export class DwgCanvasBoard extends DwgElement {
   private ctx!: CanvasRenderingContext2D;
   private data!: CanvasBoardInitializationData;
   private orig_size!: Point2D;
-  private transform: BoardTransformData = {
-    scale: 1,
-    view: { x: 0, y: 0 },
-  };
+  private transform: BoardTransformData = defaultTransform();
   private zoom_config!: ZoomConfig;
 
   private hovered = false;
@@ -72,6 +78,7 @@ export class DwgCanvasBoard extends DwgElement {
   };
   private cursor_move_threshold = 5;
   private dragging = false;
+  private dragged = false;
   private mouse: Point2D = { x: 0, y: 0 };
   private cursor_in_range = false;
 
@@ -218,6 +225,10 @@ export class DwgCanvasBoard extends DwgElement {
       this.mouse = new_mouse;
       if (this.dragging) {
         this.setView(subtractPoint2D(this.transform.view, dif_mouse));
+        if (this.data.draggingCallback) {
+          this.data.draggingCallback();
+        }
+        this.dragged = true;
       } else {
         this.data.mousemove(
           {
@@ -237,7 +248,18 @@ export class DwgCanvasBoard extends DwgElement {
     this.addEventListener('mouseup', (e: MouseEvent) => {
       e.stopImmediatePropagation();
       this.dragging = false;
-      this.data.mouseup(e);
+      if (this.dragged) {
+        this.data.mousemove(
+          {
+            x: (this.mouse.x + this.transform.view.x) / this.transform.scale,
+            y: (this.mouse.y + this.transform.view.y) / this.transform.scale,
+          },
+          this.transform
+        );
+        this.dragged = false;
+      } else {
+        this.data.mouseup(e);
+      }
     });
     this.addEventListener('mouseenter', () => {
       this.hovered = true;

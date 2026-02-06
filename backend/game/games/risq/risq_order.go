@@ -15,12 +15,16 @@ type OrderType uint8
 const (
 	OrderType_None OrderType = iota
 	// A move only command where unit will not automatically attack, gather, etc
-	OrderType_UnitMove
+	OrderType_UnitMoveSpace
+	OrderType_UnitMoveZone
 	// These orders will first move the unit if necessary
 	OrderType_UnitGather
 	OrderType_UnitBuild
 	OrderType_UnitRepair
-	OrderType_UnitAttack
+	OrderType_UnitAttackSpace
+	OrderType_UnitAttackZone
+	OrderType_UnitAttackUnit
+	OrderType_UnitAttackBuilding
 	OrderType_UnitDefend
 	OrderType_UnitGarrison
 	// Orders to control buildings

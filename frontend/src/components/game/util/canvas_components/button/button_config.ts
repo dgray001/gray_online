@@ -28,6 +28,8 @@ export declare interface ButtonConfig {
   hold_config?: HoldButtonConfig;
   /** Only recognize a specific click source */
   allow_nonleft_clicks?: boolean;
+  /** If true the button will start as disabled */
+  start_disabled?: boolean;
 }
 
 /** Data describing hold click config */

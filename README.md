@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6al: Can add basic move orders
+v0.6am: Frontend orders basic data and logic structure
 
 ## Dev Use
 

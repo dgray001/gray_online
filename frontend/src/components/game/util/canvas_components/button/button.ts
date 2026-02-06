@@ -1,4 +1,4 @@
-import type { BoardTransformData } from '../../canvas_board/canvas_board';
+import { defaultTransform, type BoardTransformData } from '../../canvas_board/canvas_board';
 import type { Point2D } from '../../objects2d';
 import type { CanvasComponent } from '../canvas_component';
 import { ClickSource, mouseEventToClickSource, type ButtonConfig } from './button_config';
@@ -8,6 +8,9 @@ export abstract class DwgButton implements CanvasComponent {
   private clicking = false;
   private click_hold_timer = 0;
   private hold_clicks = 0;
+  private disabled: boolean;
+  private last_m: Point2D = { x: 0, y: 0 };
+  private last_transform: BoardTransformData = defaultTransform();
 
   private config: ButtonConfig;
 
@@ -20,6 +23,7 @@ export abstract class DwgButton implements CanvasComponent {
         config.hold_config.hold_click_delay = config.hold_config.hold_click_time;
       }
     }
+    this.disabled = !!config.start_disabled;
     this.config = config;
   }
 
@@ -39,8 +43,24 @@ export abstract class DwgButton implements CanvasComponent {
     this.clicking = clicking;
   }
 
+  isDisabled(): boolean {
+    return this.disabled;
+  }
+
+  disable() {
+    this.disabled = true;
+    this.hovering = false;
+    this.clicking = false;
+  }
+
+  enable() {
+    this.disabled = false;
+    this.mousemove(this.last_m, this.last_transform);
+  }
+
   draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
-    if (this.clicking && this.config.hold_config) {
+    this.last_transform = transform;
+    if (this.clicking && this.config.hold_config && !this.disabled) {
       this.click_hold_timer -= dt;
       if (this.click_hold_timer < 0) {
         this.click_hold_timer += this.config.hold_config.hold_click_time;
@@ -52,6 +72,11 @@ export abstract class DwgButton implements CanvasComponent {
   }
 
   mousemove(m: Point2D, transform: BoardTransformData): boolean {
+    this.last_m = m;
+    if (this.disabled) {
+      this.hovering = false;
+      false;
+    }
     const previous_hovered = this.hovering;
     this.hovering = this.mouseOver(m, transform);
     if (!previous_hovered && this.hovering) {
@@ -68,6 +93,9 @@ export abstract class DwgButton implements CanvasComponent {
 
   /** Returns whether this mousedown event triggered a click event on the button */
   mousedown(e: MouseEvent): boolean {
+    if (this.disabled) {
+      return false;
+    }
     const source = mouseEventToClickSource(e);
     if (source === ClickSource.UNKNOWN) {
       return false;
@@ -89,6 +117,9 @@ export abstract class DwgButton implements CanvasComponent {
 
   /** Returns whether this mouseup event triggered a release event on the button */
   mouseup(e: MouseEvent) {
+    if (this.disabled) {
+      return;
+    }
     const source = mouseEventToClickSource(e);
     if (source === ClickSource.UNKNOWN) {
       return;

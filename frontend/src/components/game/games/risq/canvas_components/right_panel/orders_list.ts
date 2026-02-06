@@ -21,6 +21,11 @@ export class RisqOrdersList extends DwgListbox<RisqOrderComponent, RisqOrdersScr
       },
       padding: 2,
       gap: 2,
+      title: {
+        text: 'Orders',
+        size: 30,
+        font_color: 'rgb(0, 0, 0)',
+      },
     });
     this.game = risq;
   }
@@ -36,6 +41,10 @@ export class RisqOrdersList extends DwgListbox<RisqOrderComponent, RisqOrdersScr
           })
       )
     );
+  }
+
+  getOrders(): RisqFrontendOrder[] {
+    return this.getList().map((o) => o.getOrder());
   }
 
   addOrder(order: RisqFrontendOrder, replace = true) {

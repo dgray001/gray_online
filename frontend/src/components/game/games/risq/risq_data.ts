@@ -110,6 +110,7 @@ export declare interface EllipHoverData {
 /** Data describing zones inside a risq space */
 export declare interface RisqZone {
   coordinate: Point2D;
+  coordinate_key: number;
   resource?: RisqResource;
   building?: RisqBuilding;
   units: Map<number, RisqUnit>; // <internal_ids, unit>
@@ -207,19 +208,24 @@ export declare interface RisqResource {
 /** All the order types */
 export enum RisqOrderType {
   NONE = 0,
-  OrderType_UnitMove = 1,
-  OrderType_UnitGather = 2,
-  OrderType_UnitRepair = 3,
-  OrderType_UnitAttack = 4,
-  OrderType_UnitDefend = 5,
-  OrderType_UnitGarrison = 6,
-  OrderType_BuildingCreate = 7,
-  OrderType_BuildingResearch = 8,
+  OrderType_UnitMoveSpace,
+  OrderType_UnitMoveZone,
+  OrderType_UnitGather,
+  OrderType_UnitBuild,
+  OrderType_UnitRepair,
+  OrderType_UnitAttackSpace,
+  OrderType_UnitAttackZone,
+  OrderType_UnitAttackUnit,
+  OrderType_UnitAttackBuilding,
+  OrderType_UnitDefend,
+  OrderType_UnitGarrison,
+  OrderType_BuildingCreate,
+  OrderType_BuildingResearch,
 }
 
 /** Returns whether the order is for units */
 export function isUnitOrder(order: RisqOrderType): boolean {
-  return order >= RisqOrderType.OrderType_UnitMove && order <= RisqOrderType.OrderType_UnitGarrison;
+  return order >= RisqOrderType.OrderType_UnitMoveSpace && order <= RisqOrderType.OrderType_UnitGarrison;
 }
 
 /** Returns whether the order is for buildings */
@@ -282,6 +288,7 @@ export declare interface RisqSpaceFromServer {
 /** Data describing zones inside a risq space */
 export declare interface RisqZoneFromServer {
   coordinate: Point2D;
+  coordinate_key: number;
   building?: RisqBuildingFromServer;
   resource?: RisqResourceFromServer;
   units: RisqUnitFromServer[];
@@ -517,6 +524,7 @@ export function serverToRisqZone(server_zone: RisqZoneFromServer): RisqZone {
   }
   return {
     coordinate: server_zone.coordinate,
+    coordinate_key: server_zone.coordinate_key,
     resource: serverToRisqResource(server_zone.resource),
     building: serverToRisqBuilding(server_zone.building),
     units,

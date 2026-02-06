@@ -2,11 +2,13 @@ package risq
 
 import (
 	"github.com/dgray001/gray_online/game/game_utils"
+	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
 )
 
 type RisqZone struct {
 	coordinate     game_utils.Coordinate2D
+	coordinate_key uint
 	building       *RisqBuilding
 	resource       *RisqResource
 	units          map[uint64]*RisqUnit
@@ -17,6 +19,7 @@ type RisqZone struct {
 func createRisqZone(i int, j int, space *RisqSpace) *RisqZone {
 	zone := RisqZone{
 		coordinate:     game_utils.Coordinate2D{X: i, Y: j},
+		coordinate_key: util.Pair(int(space.coordinate_key), int(util.Pair(i, j))),
 		building:       nil,
 		resource:       nil,
 		units:          make(map[uint64]*RisqUnit, 0),
@@ -32,7 +35,8 @@ func (z *RisqZone) isCenter() bool {
 
 func (z *RisqZone) toFrontend() gin.H {
 	zone := gin.H{
-		"coordinate": z.coordinate.ToFrontend(),
+		"coordinate":     z.coordinate.ToFrontend(),
+		"coordinate_key": z.coordinate_key,
 	}
 	if z.resource != nil && z.resource.resources_left > 0 {
 		zone["resource"] = z.resource.toFrontend()

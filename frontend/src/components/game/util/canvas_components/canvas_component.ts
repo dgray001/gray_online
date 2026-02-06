@@ -23,6 +23,16 @@ export declare interface CanvasComponent {
   h: () => number;
 }
 
+/** Default xc function for all canvas components */
+export function xc(cc: CanvasComponent): number {
+  return cc.xi() + 0.5 * cc.w();
+}
+
+/** Default yc function for all canvas components */
+export function yc(cc: CanvasComponent): number {
+  return cc.yi() + 0.5 * cc.h();
+}
+
 /** Config for drawing */
 export declare interface DrawConfig {
   /** sets canvas fillStyle */
