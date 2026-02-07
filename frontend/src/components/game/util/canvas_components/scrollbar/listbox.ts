@@ -198,12 +198,19 @@ export class DwgListbox<
       }
     }
     if (this.disabled) {
-      configDraw(ctx, transform, {
-        ...this.config.draw_config,
-        fill_style: 'rgba(255, 255, 255, 0.4)',
-      }, false, false, ()=> {
-        drawRect(ctx, { x: this.xi(), y: this.yi() }, this.w(), this.h());
-      });
+      configDraw(
+        ctx,
+        transform,
+        {
+          ...this.config.draw_config,
+          fill_style: 'rgba(255, 255, 255, 0.4)',
+        },
+        false,
+        false,
+        () => {
+          drawRect(ctx, { x: this.xi(), y: this.yi() }, this.w(), this.h());
+        }
+      );
     }
   }
 

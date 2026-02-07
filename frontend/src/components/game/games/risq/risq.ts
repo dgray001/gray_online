@@ -17,7 +17,7 @@ import { DEV, createLock } from '../../../../scripts/util';
 import { ColorRGB } from '../../../../scripts/color_rgb';
 
 import html from './risq.html';
-import type { GameRisq, GameRisqFromServer, RisqPlayer, RisqSpace, RisqZone, StartTurnData } from './risq_data';
+import type { GameRisq, GameRisqFromServer, RisqPlayer, RisqSpace, RisqZone, StartTurnData, SubmittedOrdersData, UnsubmittedOrdersData } from './risq_data';
 import { coordinateToIndex, getSpace, RisqOrderType, serverToGameRisq } from './risq_data';
 import { RisqRightPanel } from './canvas_components/right_panel/right_panel';
 import type { DrawRisqSpaceConfig } from './risq_space';
@@ -56,8 +56,6 @@ export class DwgRisq extends DwgElement {
   private last_time = Date.now();
   private draw_detail: DrawRisqSpaceDetail = DrawRisqSpaceDetail.SPACE_DETAILS;
   private toggling_submit_orders_button = false;
-  private giving_orders = false;
-  private orders_submitted = false;
   private orders_submitted_times = 0;
 
   private left_panel = new RisqLeftPanel(this, {
@@ -216,6 +214,14 @@ export class DwgRisq extends DwgElement {
           const start_turn_data = update.content as StartTurnData;
           await this.applyStartTurn(start_turn_data);
           break;
+        case 'submitted-orders':
+          const submitted_orders_data = update.content as SubmittedOrdersData;
+          await this.applySubmittedOrders(submitted_orders_data);
+          break;
+        case 'unsubmitted-orders':
+          const unsubmitted_orders_data = update.content as UnsubmittedOrdersData;
+          await this.applyUnsubmittedOrders(unsubmitted_orders_data);
+          break;
         default:
           console.log(`Unknown game update type ${update.kind}`);
           break;
@@ -232,9 +238,21 @@ export class DwgRisq extends DwgElement {
 
   private async applyStartTurn(data: StartTurnData) {
     if (this.player_id > -1) {
-      this.giving_orders = true;
-      this.orders_submitted = false;
       this.orders_submitted_times = 0;
+    }
+    this.setNewGameData(data.game);
+  }
+
+  private async applySubmittedOrders(data: SubmittedOrdersData) {
+    if (data.player_id === this.player_id) {
+      this.toggling_submit_orders_button = false;
+    }
+    this.setNewGameData(data.game);
+  }
+
+  private async applyUnsubmittedOrders(data: UnsubmittedOrdersData) {
+    if (data.player_id === this.player_id) {
+      this.toggling_submit_orders_button = false;
     }
     this.setNewGameData(data.game);
   }
@@ -623,17 +641,18 @@ export class DwgRisq extends DwgElement {
   }
 
   async toggleSubmitOrdersButton() {
-    if (this.toggling_submit_orders_button || !this.giving_orders) {
+    const player = this.getPlayer();
+    if (this.toggling_submit_orders_button || !this.givingOrders() || !player) {
       this.toggling_submit_orders_button = false;
       return;
     }
     this.toggling_submit_orders_button = true;
-    if (this.orders_submitted) {
+    if (player.orders_submitted) {
       this.right_panel.unsubmittingOrders();
       const game_update = createMessage(
         `player-${this.player_id}`,
         'game-update',
-        JSON.stringify(this.right_panel.getOrders()),
+        '',
         'unsubmit-orders'
       );
       this.dispatchEvent(
@@ -647,7 +666,7 @@ export class DwgRisq extends DwgElement {
       const game_update = createMessage(
         `player-${this.player_id}`,
         'game-update',
-        JSON.stringify(this.right_panel.getOrders()),
+        JSON.stringify({ orders: this.right_panel.getOrders() }),
         'submit-orders'
       );
       this.dispatchEvent(
@@ -661,11 +680,7 @@ export class DwgRisq extends DwgElement {
   }
 
   givingOrders(): boolean {
-    return this.giving_orders;
-  }
-
-  ordersSubmitted(): boolean {
-    return this.orders_submitted;
+    return (this.game?.giving_orders ?? false);
   }
 
   ordersSubmittedTimes(): number {

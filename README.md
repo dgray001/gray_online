@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6am: Frontend orders basic data and logic structure
+v0.6an: Validate orders in backend
 
 ## Dev Use
 

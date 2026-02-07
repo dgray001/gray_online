@@ -45,9 +45,10 @@ func cantorPair(i uint, j uint) uint {
 }
 
 func invertCantorPair(z uint) (uint, uint) {
-	w := math.Abs(0.5 * (math.Sqrt(8*float64(z)) - 1))
-	t := 0.5 * (w*w + w)
-	y := float64(z) - t
+	// Important to note the use of int logic here to avoid floating point errors
+	w := uint((math.Sqrt(8*float64(z)+1) - 1) / 2)
+	t := (w*w + w) / 2
+	y := z - t
 	x := w - y
-	return uint(x + 0.5), uint(y + 0.5)
+	return x, y
 }

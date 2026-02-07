@@ -14,6 +14,7 @@ type RisqPlayer struct {
 	color                string
 	active_orders        []*RisqOrder
 	past_orders          []*RisqOrder
+	orders_submitted     bool
 }
 
 func createRisqPlayer(player *game.Player, max_population_limit uint16, color string) *RisqPlayer {
@@ -26,6 +27,7 @@ func createRisqPlayer(player *game.Player, max_population_limit uint16, color st
 		color:                color,
 		active_orders:        make([]*RisqOrder, 0),
 		past_orders:          make([]*RisqOrder, 0),
+		orders_submitted:     false,
 	}
 }
 
@@ -63,6 +65,7 @@ func (p *RisqPlayer) toFrontend(show_updates bool) gin.H {
 		"population_limit": p.populationLimit(),
 		"score":            p.score(),
 		"color":            p.color,
+		"orders_submitted": p.orders_submitted,
 	}
 	if p.player != nil {
 		player["player"] = p.player.ToFrontend(show_updates)

@@ -47,15 +47,21 @@ export class RisqRightPanel implements CanvasComponent {
   }
 
   dataRefreshed() {
-    this.orders_list.setOrders(this.risq.getPlayer()?.active_orders ?? []);
-    if (this.risq.givingOrders() && !this.risq.ordersSubmitted()) {
-      this.orders_list.enable();
-      this.submit_button.setText(this.risq.ordersSubmittedTimes() > 0 ? 'Resubmit Orders': 'Submit Orders');
+    const player = this.risq.getPlayer();
+    if (!!player) {
+      this.orders_list.setOrders(player.active_orders);
+      if (this.risq.givingOrders() && !player.orders_submitted) {
+        this.orders_list.enable();
+        this.submit_button.setText(this.risq.ordersSubmittedTimes() > 0 ? 'Resubmit Orders' : 'Submit Orders');
+      } else {
+        this.orders_list.disable();
+        this.submit_button.setText('Unsubmit Orders');
+      }
+      this.submit_button.enable();
     } else {
       this.orders_list.disable();
-      this.submit_button.setText('Unsubmit Orders');
+      this.submit_button.disable();
     }
-    this.submit_button.enable();
   }
 
   isHovering(): boolean {
@@ -184,11 +190,11 @@ export class RisqRightPanel implements CanvasComponent {
               Math.min(0.1 * this.paddedW(), 20),
               { x: this.xi() + RisqRightPanel.PADDING, y: yi },
               this.w() - 2 * RisqRightPanel.PADDING,
-              orders_list_height,
+              orders_list_height
             );
             yi += orders_list_height + RisqRightPanel.PADDING;
             this.submit_button.setPosition({ x: this.xi() + RisqRightPanel.PADDING, y: yi });
-            this.submit_button.setW(this.w() - 2 * RisqRightPanel.PADDING)
+            this.submit_button.setW(this.w() - 2 * RisqRightPanel.PADDING);
             this.need_to_set_position = false;
           }
         }

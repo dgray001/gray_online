@@ -33,6 +33,7 @@ type GameRisq struct {
 	next_unit_internal_id     uint64
 	next_order_internal_id    uint64
 	turn_number               uint16
+	giving_orders             bool
 }
 
 func CreateGame(g *game.GameBase) (*GameRisq, error) {
@@ -282,6 +283,10 @@ func (r *GameRisq) StartGame() {
 func (r *GameRisq) startNextTurn() {
 	r.turn_number++
 	for _, player := range r.players {
+		player.orders_submitted = false
+	}
+	r.giving_orders = true
+	for _, player := range r.players {
 		player.player.AddUpdate(&game.UpdateMessage{Kind: "start-turn", Content: gin.H{
 			"game": r.ToFrontend(player.player.GetClientId(), false),
 		}})
@@ -311,9 +316,43 @@ func (r *GameRisq) PlayerAction(action game.PlayerAction) {
 		return
 	}
 	switch action.Kind {
+	case "submit-orders":
+		if !r.giving_orders {
+			player.AddFailedUpdateShorthand("submit-orders-failed", "Not currently giving orders")
+			return
+		}
+		if r.players[player.Player_id].orders_submitted {
+			player.AddFailedUpdateShorthand("submit-orders-failed", "Orders already submitted")
+			return
+		}
+		orders, err := r.getOrdersFromPlayerAction(action.Action)
+		if err != nil {
+			player.AddFailedUpdateShorthand("submit-orders-failed", err.Error())
+			return
+		}
+		r.executeSubmitOrders(player.Player_id, orders)
+	case "unsubmit-orders":
+		if !r.giving_orders {
+			player.AddFailedUpdateShorthand("unsubmit-orders-failed", "Not currently giving orders")
+			return
+		}
+		if !r.players[player.Player_id].orders_submitted {
+			player.AddFailedUpdateShorthand("submit-orders-failed", "Orders not submitted")
+			return
+		}
+		r.executeUnsubmitOrders(player.Player_id)
 	default:
 		fmt.Fprintln(os.Stderr, "Unknown game update type", action.Kind)
 	}
+}
+
+func (r *GameRisq) executeSubmitOrders(player_id int, orders []OrderFromFrontend) {
+	fmt.Println("Execute orders", player_id, orders)
+	// TODO: implement
+}
+
+func (r *GameRisq) executeUnsubmitOrders(player_id int) {
+	// TODO: implement
 }
 
 func (r *GameRisq) PlayerDisconnected(client_id uint64) {
@@ -327,6 +366,7 @@ func (r *GameRisq) ToFrontend(client_id uint64, is_viewer bool) gin.H {
 		"board_size":       r.board_size,
 		"population_limit": r.population_limit,
 		"turn_number":      r.turn_number,
+		"giving_orders":    r.giving_orders,
 	}
 	if r.game != nil {
 		game["game_base"] = r.game.ToFrontend(client_id, is_viewer)

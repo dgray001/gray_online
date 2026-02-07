@@ -14,6 +14,7 @@ export declare interface GameRisq {
   population_limit: number;
   turn_number: number;
   spaces: RisqSpace[][];
+  giving_orders: boolean;
 }
 
 /** Data describing an entry in the scores array */
@@ -34,6 +35,7 @@ export declare interface RisqPlayer {
   score: number;
   color: ColorRGB;
   active_orders: RisqOrder[];
+  orders_submitted: boolean;
 }
 
 /** All the resource types */
@@ -252,6 +254,7 @@ export declare interface GameRisqFromServer {
   population_limit: number;
   turn_number: number;
   spaces: RisqSpaceFromServer[][];
+  giving_orders: boolean;
 }
 
 /** Data describing risq player resources from server */
@@ -271,6 +274,7 @@ export declare interface RisqPlayerFromServer {
   score: number;
   color: string;
   active_orders: RisqOrderFromServer[];
+  orders_submitted: boolean;
 }
 
 /** Data describing a hexagonal space in risq */
@@ -390,6 +394,7 @@ export function serverToGameRisq(server_game: GameRisqFromServer): GameRisq | un
     population_limit: server_game.population_limit,
     turn_number: server_game.turn_number,
     spaces,
+    giving_orders: server_game.giving_orders,
   };
 }
 
@@ -428,6 +433,7 @@ export function serverToRisqPlayer(server_player: RisqPlayerFromServer): RisqPla
     score: server_player.score,
     color: new ColorRGB(color_split[0], color_split[1], color_split[2]),
     active_orders: server_player.active_orders.map((o) => serverToRisqOrder(o)).filter((o) => !!o),
+    orders_submitted: server_player.orders_submitted,
   };
   return player;
 }
@@ -636,4 +642,16 @@ export function indexToCoordinate(board_size: number, index: Point2D): Point2D {
 /** Data describing a start-turn update */
 export declare interface StartTurnData {
   game: GameRisqFromServer;
+}
+
+/** Data describing a submitted-orders update */
+export declare interface SubmittedOrdersData {
+  game: GameRisqFromServer;
+  player_id: number;
+}
+
+/** Data describing an unsubmitted-orders update */
+export declare interface UnsubmittedOrdersData {
+  game: GameRisqFromServer;
+  player_id: number;
 }
