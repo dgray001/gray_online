@@ -33,7 +33,8 @@ type GameRisq struct {
 	next_unit_internal_id     uint64
 	next_order_internal_id    uint64
 	turn_number               uint16
-	giving_orders             bool
+	// True if waiting for players to give orders and false if resolving active orders
+	giving_orders bool
 }
 
 func CreateGame(g *game.GameBase) (*GameRisq, error) {
@@ -347,12 +348,67 @@ func (r *GameRisq) PlayerAction(action game.PlayerAction) {
 }
 
 func (r *GameRisq) executeSubmitOrders(player_id int, orders []OrderFromFrontend) {
-	fmt.Println("Execute orders", player_id, orders)
-	// TODO: implement
+	fmt.Println("Executing submit orders for:", player_id, orders)
+	player := r.players[player_id]
+	new_orders := make([]*RisqOrder, 0, len(orders))
+	for _, o := range orders {
+		order_type := OrderType(o.Order_type)
+		subjects := make([]Orderable, 0)
+		if order_type.isUnitOrder() {
+			for _, subject_id := range o.Subjects {
+				subjects = append(subjects, r.players[o.Player_id].units[subject_id])
+			}
+		} else if order_type.isBuildingOrder() {
+			for _, subject_id := range o.Subjects {
+				subjects = append(subjects, r.players[o.Player_id].buildings[subject_id])
+			}
+		}
+		new_orders = append(new_orders, createRisqOrder(r.nextOrderInternalId(), order_type, player_id, subjects, o.Target_id))
+	}
+	player.active_orders = new_orders
+	player.orders_submitted = true
+	all_orders_submitted := true
+	for _, player := range r.players {
+		if !player.orders_submitted {
+			all_orders_submitted = false
+		}
+	}
+	if all_orders_submitted {
+		r.giving_orders = false
+	}
+	for _, player := range r.players {
+		player.player.AddUpdate(&game.UpdateMessage{Kind: "submitted-orders", Content: gin.H{
+			"player_id": player_id,
+			"game":      r.ToFrontend(player.player.GetClientId(), false),
+		}})
+	}
+	r.game.AddViewerUpdate(&game.UpdateMessage{Kind: "submitted-orders", Content: gin.H{
+		"player_id": player_id,
+		"game":      r.ToFrontend(0, true),
+	}})
+	r.resolveActiveOrders()
 }
 
 func (r *GameRisq) executeUnsubmitOrders(player_id int) {
-	// TODO: implement
+	fmt.Println("Executing unsubmit orders for:", player_id)
+	player := r.players[player_id]
+	player.orders_submitted = false
+	for _, player := range r.players {
+		player.player.AddUpdate(&game.UpdateMessage{Kind: "unsubmitted-orders", Content: gin.H{
+			"player_id": player_id,
+			"game":      r.ToFrontend(player.player.GetClientId(), false),
+		}})
+	}
+	r.game.AddViewerUpdate(&game.UpdateMessage{Kind: "unsubmitted-orders", Content: gin.H{
+		"player_id": player_id,
+		"game":      r.ToFrontend(0, true),
+	}})
+}
+
+func (r *GameRisq) resolveActiveOrders() {
+	r.giving_orders = false
+	// TODO: 1. Add orders to orderable objects (call receiveOrder)
+	// TODO: 2. Call execute order
 }
 
 func (r *GameRisq) PlayerDisconnected(client_id uint64) {

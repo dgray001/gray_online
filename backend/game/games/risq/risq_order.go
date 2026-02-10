@@ -14,7 +14,7 @@ type Orderable interface {
 	toFrontend() gin.H
 	isDeleted() bool
 	internalId() uint64
-	receiveOrder(o *RisqOrder) bool
+	receiveOrder(o *RisqOrder)
 	resolveOrders(risq *GameRisq)
 }
 

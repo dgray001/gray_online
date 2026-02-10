@@ -1,5 +1,15 @@
 202512: Restarting this project
 
+
+Next big thing is to implement the simultaneous execution engine
+
+So what I think should happen:
+1. Each orderable has an internal intent object and a current combat object. Units intent objects essentially say whether the unit will move out of the current space (or current zone which is like a part of a space where I have 7 zones per hexagonal space). Building intent objects say whether they will *finish* a unit or technology this turn. The current combat object maintains a list of incoming attacks against this unit or building, and a list of attacks this unit/building is attacking. So each "attack" object is pointed to by both attacker and defender.
+2. During intent phase the internal intent object is populated (including the 2 combat arrays) for each orderable. For attack objects, there should be a field to indicate how much "stamina" or "energy" the unit has left when attacking. This way a unit that moves and then attacks will have less stamina essentially. The move parts of the unit intent objects should also indicate how much stamina is left *after* the move.
+3. During resolution I can then essentially put the remainingStamina into the combat logic. For example, if a unit moves while another is attacking it, then a faster unit will take less "retreat damage" than a slower unit. Likewise, if a building creates a unit on the turn that the building is destroyed, then the unit can start with less health or something
+
+
+
  v: Scrollable area for orders for buildings / units => add order list in backend and data on frontend
  w: Can see all new orders in right panel with button to "finish orders" and can see who is finished
  x: Order to build unit in building => update works => population limit

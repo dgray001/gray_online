@@ -71,10 +71,9 @@ func (u *RisqUnit) internalId() uint64 {
 	return u.internal_id
 }
 
-func (u *RisqUnit) receiveOrder(o *RisqOrder) bool {
+func (u *RisqUnit) receiveOrder(o *RisqOrder) {
 	// TODO: implement
 	u.past_orders = append(u.past_orders, o)
-	return false
 }
 
 func (u *RisqUnit) resolveOrders(risq *GameRisq) {

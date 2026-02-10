@@ -426,7 +426,7 @@ export class DwgRisq extends DwgElement {
         }
       }
       // right click
-    } else if (e.button === 2 && this.left_panel.isOrderable()) {
+    } else if (e.button === 2 && this.left_panel.isOrderable() && this.canGiveOrders()) {
       const left_panel_data = this.left_panel.getData();
       switch (left_panel_data?.data_type) {
         case LeftPanelDataType.UNIT:
@@ -439,6 +439,21 @@ export class DwgRisq extends DwgElement {
     // only drag on left click
     // TODO: implement rotate on right click
     return e.button !== 0;
+  }
+
+  private canGiveOrders(): boolean {
+    const player = this.getPlayer();
+    const game = this.getGame();
+    if (!player || !game) {
+      return false;
+    }
+    if (player.orders_submitted) {
+      return false;
+    }
+    if (!game.giving_orders) {
+      return false;
+    }
+    return true;
   }
 
   private unitOrder(data: UnitData) {

@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6an: Validate orders in backend
+v0.6ao: Backend api to handle order submission and unsubmission
 
 ## Dev Use
 
