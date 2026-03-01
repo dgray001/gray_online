@@ -82,6 +82,7 @@ export declare interface RisqSpace {
   resources?: Map<number, RisqResource>;
   buildings?: Map<number, RisqBuilding>;
   units?: Map<number, RisqUnit>;
+  ownership: number;
   // purely frontend fields
   center: Point2D;
   hovered: boolean;
@@ -116,6 +117,7 @@ export declare interface RisqZone {
   resource?: RisqResource;
   building?: RisqBuilding;
   units: Map<number, RisqUnit>; // <internal_ids, unit>
+  ownership: number;
   // purely frontend fields
   hovered: boolean;
   clicked: boolean;
@@ -144,7 +146,7 @@ export declare interface RisqUnit {
   display_name: string;
   space_coordinate: Point2D;
   zone_coordinate: Point2D;
-  speed: number;
+  stamina: number;
   combat_stats: RisqCombatStats;
   active_orders: RisqOrder[];
   // purely frontend fields
@@ -287,6 +289,7 @@ export declare interface RisqSpaceFromServer {
   resources?: RisqResourceFromServer[];
   buildings?: RisqBuildingFromServer[];
   units?: RisqUnitFromServer[];
+  ownership: number;
 }
 
 /** Data describing zones inside a risq space */
@@ -296,6 +299,7 @@ export declare interface RisqZoneFromServer {
   building?: RisqBuildingFromServer;
   resource?: RisqResourceFromServer;
   units: RisqUnitFromServer[];
+  ownership: number;
 }
 
 /** Data describing a risq unit */
@@ -306,7 +310,7 @@ export declare interface RisqUnitFromServer {
   display_name: string;
   space_coordinate: Point2D;
   zone_coordinate: Point2D;
-  speed: number;
+  stamina: number;
   combat_stats: RisqCombatStatsFromServer;
   active_orders: RisqOrderFromServer[];
 }
@@ -447,6 +451,7 @@ export function serverToRisqSpace(server_space: RisqSpaceFromServer): RisqSpace 
     visibility: server_space.visibility,
     num_military_units: 0,
     num_villager_units: 0,
+    ownership: server_space.ownership,
     // purely frontend fields
     center: { x: 0, y: 0 },
     hovered: false,
@@ -549,6 +554,7 @@ export function serverToRisqZone(server_zone: RisqZoneFromServer): RisqZone {
       .filter((u) => u.unit_id < 11)
       .sort((a, b) => a.unit_id - b.unit_id)
       .map((u) => u.internal_id),
+    ownership: server_zone.ownership,
   };
 }
 

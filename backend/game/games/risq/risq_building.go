@@ -15,6 +15,7 @@ type RisqBuilding struct {
 	cs                 RisqCombatStats
 	active_orders      []*RisqOrder
 	past_orders        []*RisqOrder
+	intent             *RisqBuildingIntent
 }
 
 func createRisqBuilding(internal_id uint64, building_id uint32, player_id int) *RisqBuilding {
@@ -27,6 +28,7 @@ func createRisqBuilding(internal_id uint64, building_id uint32, player_id int) *
 		cs:                 createRisqCombatStats(),
 		active_orders:      make([]*RisqOrder, 0),
 		past_orders:        make([]*RisqOrder, 0),
+		intent:             nil,
 	}
 	switch building_id {
 	case 1: // village center
@@ -64,12 +66,26 @@ func (b *RisqBuilding) internalId() uint64 {
 }
 
 func (b *RisqBuilding) receiveOrder(o *RisqOrder) {
-	// TODO: implement
 	b.past_orders = append(b.past_orders, o)
+	b.active_orders = append(b.active_orders, o)
 }
 
-func (b *RisqBuilding) resolveOrders(risq *GameRisq) {
+func (b *RisqBuilding) tickIntent(risq *GameRisq) bool {
+	b.intent = nil
+	if len(b.active_orders) == 0 {
+		return false
+	}
 	// TODO: implement
+	panic("BUILDING ORDERS NOT IMPLEMENTED!!")
+	return b.intent != nil
+}
+
+func (b *RisqBuilding) tickExecute(risq *GameRisq) {
+	if b.intent == nil {
+		return
+	}
+	// TODO: implement
+	panic("BUILDING ORDERS NOT IMPLEMENTED!!")
 }
 
 func (b *RisqBuilding) toFrontend() gin.H {

@@ -1,6 +1,8 @@
 package risq
 
 import (
+	"iter"
+
 	"github.com/dgray001/gray_online/game"
 	"github.com/gin-gonic/gin"
 )
@@ -58,6 +60,27 @@ func (p *RisqPlayer) score() uint {
 
 func (p *RisqPlayer) valid() bool {
 	return true
+}
+
+func (p *RisqPlayer) allOrderables() iter.Seq[Orderable] {
+	return func(yield func(Orderable) bool) {
+		for _, u := range p.units {
+			if u.isDeleted() {
+				continue
+			}
+			if !yield(u) {
+				return
+			}
+		}
+		for _, b := range p.buildings {
+			if b.isDeleted() {
+				continue
+			}
+			if !yield(b) {
+				return
+			}
+		}
+	}
 }
 
 func (p *RisqPlayer) toFrontend(show_updates bool) gin.H {

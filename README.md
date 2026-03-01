@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6ao: Backend api to handle order submission and unsubmission
+v0.6ap: Skeleton game engine logic
 
 ## Dev Use
 

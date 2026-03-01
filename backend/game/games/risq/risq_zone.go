@@ -14,6 +14,8 @@ type RisqZone struct {
 	units          map[uint64]*RisqUnit
 	space          *RisqSpace
 	adjacent_space *RisqSpace
+	adjacent_zones []*RisqZone
+	ownership      int
 }
 
 func createRisqZone(i int, j int, space *RisqSpace) *RisqZone {
@@ -25,6 +27,8 @@ func createRisqZone(i int, j int, space *RisqSpace) *RisqZone {
 		units:          make(map[uint64]*RisqUnit, 0),
 		space:          space,
 		adjacent_space: nil,
+		adjacent_zones: make([]*RisqZone, 0, 6),
+		ownership:      -1,
 	}
 	return &zone
 }
@@ -37,6 +41,7 @@ func (z *RisqZone) toFrontend() gin.H {
 	zone := gin.H{
 		"coordinate":     z.coordinate.ToFrontend(),
 		"coordinate_key": z.coordinate_key,
+		"ownership":      z.ownership,
 	}
 	if z.resource != nil && z.resource.resources_left > 0 {
 		zone["resource"] = z.resource.toFrontend()

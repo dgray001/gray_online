@@ -3,6 +3,7 @@ package risq
 import (
 	"errors"
 	"fmt"
+	"iter"
 	"os"
 
 	"github.com/dgray001/gray_online/game"
@@ -386,7 +387,9 @@ func (r *GameRisq) executeSubmitOrders(player_id int, orders []OrderFromFrontend
 		"player_id": player_id,
 		"game":      r.ToFrontend(0, true),
 	}})
-	r.resolveActiveOrders()
+	if all_orders_submitted {
+		r.resolveActiveOrders()
+	}
 }
 
 func (r *GameRisq) executeUnsubmitOrders(player_id int) {
@@ -407,8 +410,40 @@ func (r *GameRisq) executeUnsubmitOrders(player_id int) {
 
 func (r *GameRisq) resolveActiveOrders() {
 	r.giving_orders = false
-	// TODO: 1. Add orders to orderable objects (call receiveOrder)
-	// TODO: 2. Call execute order
+	for _, player := range r.players {
+		for _, order := range player.active_orders {
+			order.turn_received = r.turn_number
+			for _, subject := range order.subjects {
+				subject.receiveOrder(order)
+			}
+		}
+	}
+	for {
+		no_intents := true
+		for o := range r.allOrderables() {
+			if o.tickIntent(r) {
+				no_intents = false
+			}
+		}
+		if no_intents {
+			break
+		}
+		for o := range r.allOrderables() {
+			o.tickExecute(r)
+		}
+	}
+}
+
+func (r *GameRisq) allOrderables() iter.Seq[Orderable] {
+	return func(yield func(Orderable) bool) {
+		for _, player := range r.players {
+			for o := range player.allOrderables() {
+				if !yield(o) {
+					return
+				}
+			}
+		}
+	}
 }
 
 func (r *GameRisq) PlayerDisconnected(client_id uint64) {

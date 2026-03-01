@@ -14,10 +14,11 @@ type RisqUnit struct {
 	unit_id       uint32
 	display_name  string
 	zone          *RisqZone
-	speed         int
+	stamina       int
 	cs            RisqCombatStats
 	active_orders []*RisqOrder
 	past_orders   []*RisqOrder
+	intent        *RisqUnitIntent
 }
 
 func createRisqUnit(internal_id uint64, unit_id uint32, player_id int) *RisqUnit {
@@ -26,10 +27,11 @@ func createRisqUnit(internal_id uint64, unit_id uint32, player_id int) *RisqUnit
 		internal_id:   internal_id,
 		player_id:     player_id,
 		unit_id:       unit_id,
-		speed:         1,
+		stamina:       5,
 		cs:            createRisqCombatStats(),
 		active_orders: make([]*RisqOrder, 0),
 		past_orders:   make([]*RisqOrder, 0),
+		intent:        nil,
 	}
 	switch unit_id {
 	case 1: // villager
@@ -72,11 +74,28 @@ func (u *RisqUnit) internalId() uint64 {
 }
 
 func (u *RisqUnit) receiveOrder(o *RisqOrder) {
-	// TODO: implement
 	u.past_orders = append(u.past_orders, o)
+	u.active_orders = append(u.active_orders, o)
 }
 
-func (u *RisqUnit) resolveOrders(risq *GameRisq) {
+func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
+	u.intent = nil
+	if len(u.active_orders) == 0 {
+		return false
+	}
+	order := u.active_orders[0]
+	switch order.order_type {
+	// TODO: implement
+	default:
+		fmt.Fprintln(os.Stderr, "Order type not implemented:", order.order_type)
+	}
+	return u.intent != nil
+}
+
+func (u *RisqUnit) tickExecute(risq *GameRisq) {
+	if u.intent == nil {
+		return
+	}
 	// TODO: implement
 }
 
@@ -86,7 +105,7 @@ func (u *RisqUnit) toFrontend() gin.H {
 		"player_id":    u.player_id,
 		"unit_id":      u.unit_id,
 		"display_name": u.display_name,
-		"speed":        u.speed,
+		"stamina":      u.stamina,
 		"combat_stats": u.cs.toFrontend(),
 	}
 	if u.zone != nil {

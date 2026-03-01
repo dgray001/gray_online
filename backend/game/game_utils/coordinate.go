@@ -1,10 +1,20 @@
 package game_utils
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/dgray001/gray_online/util"
+	"github.com/gin-gonic/gin"
+)
 
 type Coordinate2D struct {
 	X int
 	Y int
+}
+
+func (c *Coordinate2D) Invert() *Coordinate2D {
+	return &Coordinate2D{
+		X: -c.X,
+		Y: -c.Y,
+	}
 }
 
 func (c1 *Coordinate2D) Add(c2 *Coordinate2D) *Coordinate2D {
@@ -45,4 +55,11 @@ func AxialDirectionVectors() [6]Coordinate2D {
 		{X: -1, Y: 1},
 		{X: 0, Y: 1},
 	}
+}
+
+func AxialDistance(a Coordinate2D, b Coordinate2D) uint {
+	dq := util.AbsInt(a.X - b.X)
+	dr := util.AbsInt(a.Y - b.Y)
+	ds := util.AbsInt((a.X + a.Y) - (b.X + b.Y))
+	return uint((dq + dr + ds) / 2)
 }

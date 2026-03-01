@@ -15,7 +15,9 @@ type Orderable interface {
 	isDeleted() bool
 	internalId() uint64
 	receiveOrder(o *RisqOrder)
-	resolveOrders(risq *GameRisq)
+	// Returns whether the orderable has an intent
+	tickIntent(risq *GameRisq) bool
+	tickExecute(risq *GameRisq)
 }
 
 type OrderFromFrontend struct {

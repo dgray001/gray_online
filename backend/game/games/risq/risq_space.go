@@ -32,6 +32,7 @@ type RisqSpace struct {
 	units           map[uint64]*RisqUnit
 	visibility      map[int]uint8
 	adjacent_spaces map[uint]*RisqSpace
+	ownership       int
 }
 
 func createRisqSpace(q int, r int, terrain TerrainType) *RisqSpace {
@@ -44,6 +45,7 @@ func createRisqSpace(q int, r int, terrain TerrainType) *RisqSpace {
 		units:           make(map[uint64]*RisqUnit),
 		visibility:      make(map[int]uint8),
 		adjacent_spaces: make(map[uint]*RisqSpace),
+		ownership:       -1,
 	}
 	space.zones = make([][]*RisqZone, 3)
 	for j := range space.zones {
@@ -55,12 +57,28 @@ func createRisqSpace(q int, r int, terrain TerrainType) *RisqSpace {
 			space.zones[j][i] = createRisqZone(q_zone, r_zone, &space)
 		}
 	}
+	center := space.zones[1][1]
+	outers := []*RisqZone{
+		space.zones[0][0], space.zones[0][1],
+		space.zones[1][0], space.zones[1][2],
+		space.zones[2][0], space.zones[2][1],
+	}
+	for _, z := range outers {
+		center.adjacent_zones = append(center.adjacent_zones, z)
+		z.adjacent_zones = append(z.adjacent_zones, center)
+		for _, other := range outers {
+			if game_utils.AxialDistance(z.coordinate, other.coordinate) == 1 {
+				z.adjacent_zones = append(z.adjacent_zones, other)
+			}
+		}
+	}
 	return &space
 }
 
 func (s *RisqSpace) setAdjacentSpace(adj *RisqSpace, v *game_utils.Coordinate2D) {
 	zone := s.getZone(v)
-	if zone == nil {
+	adj_zone := adj.getZone(v.Invert())
+	if zone == nil || adj_zone == nil {
 		fmt.Fprintln(os.Stderr, "Invalid zone coordinate: ", v.X, v.Y)
 		return
 	}
@@ -68,8 +86,9 @@ func (s *RisqSpace) setAdjacentSpace(adj *RisqSpace, v *game_utils.Coordinate2D)
 		fmt.Fprintln(os.Stderr, "Already set adjacent space for this zone: ", v.X, v.Y)
 		return
 	}
-	zone.adjacent_space = adj
 	s.adjacent_spaces[util.Pair(v.X, v.Y)] = adj
+	zone.adjacent_space = adj
+	zone.adjacent_zones = append(zone.adjacent_zones, adj_zone)
 }
 
 func (s *RisqSpace) coordinateToIndex(c *game_utils.Coordinate2D) *game_utils.Coordinate2D {
@@ -203,6 +222,7 @@ func (s *RisqSpace) toFrontend(player_id int, _ bool) gin.H {
 		"terrain":        s.terrain,
 		"coordinate":     s.coordinate.ToFrontend(),
 		"coordinate_key": s.coordinate_key,
+		"ownership":      s.ownership,
 	}
 	v := s.getVisibility(player_id)
 	space["visibility"] = v
