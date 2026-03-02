@@ -33,6 +33,18 @@ func createRisqZone(i int, j int, space *RisqSpace) *RisqZone {
 	return &zone
 }
 
+func invertZoneKey(k uint, r *GameRisq) (*RisqSpace, *RisqZone) {
+	space_key, zone_key := util.InvertPair(k)
+	x, y := util.InvertPair(uint(space_key))
+	space := r.getSpace(&game_utils.Coordinate2D{X: x, Y: y})
+	if space == nil {
+		return nil, nil
+	}
+	i, j := util.InvertPair(uint(zone_key))
+	zone := space.getZone(&game_utils.Coordinate2D{X: i, Y: j})
+	return space, zone
+}
+
 func (z *RisqZone) isCenter() bool {
 	return z.coordinate.X == 0 && z.coordinate.Y == 0
 }

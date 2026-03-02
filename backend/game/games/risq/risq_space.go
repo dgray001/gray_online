@@ -75,6 +75,11 @@ func createRisqSpace(q int, r int, terrain TerrainType) *RisqSpace {
 	return &space
 }
 
+func invertSpaceKey(k uint, r *GameRisq) *RisqSpace {
+	x, y := util.InvertPair(k)
+	return r.getSpace(&game_utils.Coordinate2D{X: x, Y: y})
+}
+
 func (s *RisqSpace) setAdjacentSpace(adj *RisqSpace, v *game_utils.Coordinate2D) {
 	zone := s.getZone(v)
 	adj_zone := adj.getZone(v.Invert())

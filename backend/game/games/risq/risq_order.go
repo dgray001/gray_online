@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/dgray001/gray_online/game/game_utils"
-	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
 )
 
@@ -164,13 +162,18 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend) error {
 	// Validate target id
 	switch order_type {
 	case OrderType_UnitMoveSpace:
-		x, y := util.InvertPair(uint(order.Target_id))
-		space := r.getSpace(&game_utils.Coordinate2D{X: x, Y: y})
+		space := invertSpaceKey(uint(order.Target_id), r)
 		if space == nil {
-			return fmt.Errorf("Invalid space target %d inverted to (%d, %d)", order.Target_id, x, y)
+			return fmt.Errorf("Invalid space target inverted from %d", order.Target_id)
 		}
 	case OrderType_UnitMoveZone:
-		// TODO: implement
+		space, zone := invertZoneKey(uint(order.Target_id), r)
+		if space == nil {
+			return fmt.Errorf("Invalid space target inverted from zone key %d", order.Target_id)
+		}
+		if zone == nil {
+			return fmt.Errorf("Invalid zone target inverted from zone key %d", order.Target_id)
+		}
 	default:
 		return fmt.Errorf("Unimplemented order type: %d", order_type)
 	}

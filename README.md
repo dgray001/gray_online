@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6ar: Implement execution of basic move order
+v0.6as: Implement execution of basic zone move order
 
 ## Dev Use
 

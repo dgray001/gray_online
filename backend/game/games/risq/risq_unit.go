@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/dgray001/gray_online/game/game_utils"
-	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
 )
 
@@ -91,12 +89,11 @@ func (u *RisqUnit) receiveOrder(o *RisqOrder) {
 func (u *RisqUnit) orderComplete(o *RisqOrder, risq *GameRisq) bool {
 	switch o.order_type {
 	case OrderType_UnitMoveSpace:
-		x, y := util.InvertPair(uint(o.target_id))
-		space := risq.getSpace(&game_utils.Coordinate2D{X: x, Y: y})
+		space := invertSpaceKey(uint(o.target_id), risq)
 		return u.zone.space == space
 	case OrderType_UnitMoveZone:
-		// TODO: implement
-		return false
+		_, zone := invertZoneKey(uint(o.target_id), risq)
+		return u.zone == zone
 	default:
 		return true
 	}
@@ -110,11 +107,11 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 	}
 	switch order.order_type {
 	case OrderType_UnitMoveSpace:
-		x, y := util.InvertPair(uint(order.target_id))
-		space := risq.getSpace(&game_utils.Coordinate2D{X: x, Y: y})
+		space := invertSpaceKey(uint(order.target_id), risq)
 		u.intent.setMove(u.findPath(space.getCenterZone()))
 	case OrderType_UnitMoveZone:
-		// TODO: implement
+		_, zone := invertZoneKey(uint(order.target_id), risq)
+		u.intent.setMove(u.findPath(zone))
 	default:
 		fmt.Fprintln(os.Stderr, "Order type not implemented:", order.order_type)
 	}
