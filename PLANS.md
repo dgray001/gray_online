@@ -1,49 +1,59 @@
 v0.8: Playable Risq
+ a: Cursor update based on order type
+ b: Villager gather order frontend
+ c: Gather order backend
+ d: Village center build villager order
+ e: Build unit order backend
+ f: Population limit shown on frontend
+ g: Stamina and stamina costs shown on frontend
+ h: Current orders shown on frontend
+ i: Orders are human-readable on frontend
+ j: Can cancel orders from left or right panel
+ k: Villagers can build housing frontend
+ l: Build buildings backend
+ m: Backend recalculates vision each turn
+ n: Can toggle between views UX
+ o: Terrain view (default) and control view
+ p: Buttons to toggle between summary or other overlay views (for each space)
+ q: Add resources to summary view
+ r: Implement other views (buildings, villagers, military, resources)
+ s-v: Left panel updates to handle all this including sending orders to all selected and selecting things directly from map
+ w-z: Show orders on map from selected things (arc lines for movement, etc)
+ za-zz: Risq is playable (? maybe ?)
 
- x: Order to build unit in building => update works => population limit
- y: Frontend shows summary report skeleton each turn (backend creates from zone/space/player)
- z Can toggle between views: building/villager/military/resource
- u: Left panel shows unit / building orders in the order they will complete
- v: Unit and building return list of possible orders based on game state => send to frontend
- y: Can cancel existing orders (as part of orders turn)
- o: Can cancel creation of unit (villager)
- r: Villager can create building
- s: Villager can gather resources
- t: Idle icon above buildings/units if idle
- u: Limit on number of units in zone (?)
- v: Population limit / houses
- w: Barracks / soldier
- z: Attack order => can win
+Risq Plans:
+ - Summary report after each turn with animations (configurable)
+ - Combat implementation with color logic, etc
+ - Idle icons and button to go to next idle thing
+ - Design basic building / unit / tech trees -> UX to show these??
+ - Limitations on number of units in a space / zone?
+ - Design scoring system
+ - Logic around game ending
 
-v0.7: Playable Risq
+Fiddlesticks Plans:
+ - Revamp update dialog box
+ - Update turn timer UX
+ - Host can pause game and if host leaves then someone else takes over as host
 
- - Can select all units in zone / space
- - Can launch games with AI (all games must handle)
- - Player's cards can automatically resize => listener on game div resize
-   - fullscreen mode need to recalc card horizontal line
-
-
- - After reconnecting sometimes in backend the connection is nil (or delete_timer is not nil)
-    => noticed when using client_id url param but not sure if that matters
-    => connection is definitely not nil since update goes through from client to server just not vice versa
- 
- - Fiddlesticks updates grouped by round and trick, includes trick winner and turn points
- - Proper updates dialog for euchre
- - Timed turns (or not) and can pause game if timed
- - AI takes over when player AFK
- - Can resign from game => AI takes over
+Lobby Plans:
  - Loaders for client requests in lobby: room-create, room-join, room-leave, room-rename
  - Can chat with individual players
  - Upgraded chatbox => emoji selector, taunts, message id, turn off emoticon converter
- - Upgrade frontend animations for all games (add sound effects)
+
+Bugs:
+ - After reconnecting sometimes in backend the connection is nil (or delete_timer is not nil)
+    => noticed when using client_id url param but not sure if that matters
+    => connection is definitely not nil since update goes through from client to server just not vice versa
+ - Player's cards can automatically resize => listener on game div resize
+   - fullscreen mode need to recalc card horizontal line
+
+v0.9: Database
  - Setup db in prod and dev
  - Can create profile / login
-v0.8: Advanced Risq
- - Can save games if everyone logged in and all players agree
+ - Can save games (handle ai players, people not logged in, etc)
  - Can launch a saved game if logged in
  - Risq is fully playable with custom settings
-
- - Reporting => admin login can access admin page to see reports, etc.
+ - Reporting => admin login can access admin page to see error reports, etc.
  - Can report bugs / email admin / etc.
  - Advanced risq mechanics
     => various terrains / resources

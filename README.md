@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6au: Fiddlesticks turn timer
+v0.7: Initial Risq
 
 ## Dev Use
 
