@@ -3,6 +3,7 @@ dwg-fiddlesticks-player {
   // --size: 0; // set by component
   --order: 0; // set by component
   --num-players: 0; // set by component
+  --turn-percent-left: 0; // set by component
   --turns: calc((0.25 + var(--order) / var(--num-players)) * 1turn);
   --x: calc(0.5 * var(--diameter) * (1 + cos(var(--turns))) - 0.5 * var(--size));
   --y: calc(0.5 * var(--diameter) * (1 + sin(var(--turns))) - 0.5 * var(--size));
@@ -12,12 +13,26 @@ dwg-fiddlesticks-player {
 
   display: block;
   left: var(--x);
+  overflow: visible;
   position: absolute;
   top: var(--y);
   
   &.turn {
     background: conic-gradient(var(--background-color) var(--turn-left), (--turn-color));
     box-shadow: 0 0 8px 2px var(--turn-color);
+    > #wrapper {
+      --turn-color-translucent: color-mix(in srgb, var(--turn-color), transparent 60%);
+      background:
+        linear-gradient(
+          to bottom,
+          var(--background-color) calc(100% - (var(--turn-percent-left) * 1%)),
+          var(--turn-color-translucent) 0
+        ),
+        var(--background-color)
+        ;
+      box-shadow: 0 0 10px 2px var(--turn-color);
+      transition: background 0.1s linear;
+    }
   }
 
   > #wrapper {

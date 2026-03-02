@@ -56,7 +56,7 @@ func checkTurn(p *FiddlesticksPlayer, f *GameFiddlesticks, action_channel chan g
 		player_action := createPlayerAction(p.player, "bet", action)
 		if p.player.IsHumanPlayer() {
 			fmt.Println("Storing bet for human player", p.player.Player_id, ":", bid)
-			p.storeTurnAction(player_action, action_channel, f.turn_duration)
+			p.storeTurnAction(player_action, action_channel, 2*f.turn_duration)
 			return
 		}
 		fmt.Println("Betting for ai player", p.player.Player_id, ":", bid)

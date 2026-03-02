@@ -36,6 +36,8 @@ interface BaseDealRound {
   round: number;
   dealer: number;
   trump: StandardCard;
+  turn_duration: number;
+  turn_start_time: number;
 }
 export interface PlayerDealRound extends BaseDealRound {
   cards: StandardCard[];
@@ -49,6 +51,8 @@ export type DealRound = PlayerDealRound | ViewerDealRound;
 export declare interface PlayerBet {
   amount: number;
   player_id: number;
+  turn_duration: number;
+  turn_start_time: number;
 }
 
 /** Data describing a bet game-update */
@@ -56,4 +60,6 @@ export declare interface PlayCard {
   index: number;
   card: StandardCard;
   player_id: number;
+  turn_duration: number;
+  turn_start_time: number;
 }

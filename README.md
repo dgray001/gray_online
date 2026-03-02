@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6at: State-snapshot updates for risq
+v0.6au: Fiddlesticks turn timer
 
 ## Dev Use
 

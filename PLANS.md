@@ -1,31 +1,16 @@
-202512: Restarting this project
+v0.8: Playable Risq
 
-
-Next big thing is to implement the simultaneous execution engine
-
-So what I think should happen:
-1. Each orderable has an internal intent object and a current combat object. Units intent objects essentially say whether the unit will move out of the current space (or current zone which is like a part of a space where I have 7 zones per hexagonal space). Building intent objects say whether they will *finish* a unit or technology this turn. The current combat object maintains a list of incoming attacks against this unit or building, and a list of attacks this unit/building is attacking. So each "attack" object is pointed to by both attacker and defender.
-2. During intent phase the internal intent object is populated (including the 2 combat arrays) for each orderable. For attack objects, there should be a field to indicate how much "stamina" or "energy" the unit has left when attacking. This way a unit that moves and then attacks will have less stamina essentially. The move parts of the unit intent objects should also indicate how much stamina is left *after* the move.
-3. During resolution I can then essentially put the remainingStamina into the combat logic. For example, if a unit moves while another is attacking it, then a faster unit will take less "retreat damage" than a slower unit. Likewise, if a building creates a unit on the turn that the building is destroyed, then the unit can start with less health or something
-
-
-
- v: Scrollable area for orders for buildings / units => add order list in backend and data on frontend
- w: Can see all new orders in right panel with button to "finish orders" and can see who is finished
  x: Order to build unit in building => update works => population limit
  y: Frontend shows summary report skeleton each turn (backend creates from zone/space/player)
  z Can toggle between views: building/villager/military/resource
- r: Orders abstraction (backend game update of "add order") => each order has unique id
- u: Left panel shows unit / building orders in the order the will complete
+ u: Left panel shows unit / building orders in the order they will complete
  v: Unit and building return list of possible orders based on game state => send to frontend
  y: Can cancel existing orders (as part of orders turn)
  o: Can cancel creation of unit (villager)
- p: Movement backend logic
- q: Movement frontend logic
  r: Villager can create building
  s: Villager can gather resources
  t: Idle icon above buildings/units if idle
- u: Limit on number of units in zone
+ u: Limit on number of units in zone (?)
  v: Population limit / houses
  w: Barracks / soldier
  z: Attack order => can win
@@ -67,12 +52,8 @@ v0.8: Advanced Risq
  - Can make friends / personal DMs (all DMs and chatboxes saved)
  - Can see other people's stats
 
-v0.8: More card games
- - Poker => save chips?
- - Egyptian rats crap
- - Abstract card table, card player, and trick cards / animations
-
-v0.9: Add more esoteric games
-
 Games to add:
  - Chess with esoteric variations
+ - Poker
+ - Egyptian rat crap
+ - Ben games?

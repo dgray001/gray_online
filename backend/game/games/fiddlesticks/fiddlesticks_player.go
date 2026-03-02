@@ -56,6 +56,7 @@ func (p *FiddlesticksPlayer) clearTurnTimer() {
 func (p *FiddlesticksPlayer) storeTurnAction(action game.PlayerAction, action_channel chan game.PlayerAction, d time.Duration) {
 	turn_timer := time.NewTimer(d)
 	p.turn_timer = turn_timer
+	p.turn_start_time = time.Now()
 	go func() {
 		<-turn_timer.C
 		fmt.Println("Turn timer up so AI playing turn for", p.player.Player_id)
@@ -76,7 +77,7 @@ func (p *FiddlesticksPlayer) toFrontend(show_updates bool) gin.H {
 		player["player"] = p.player.ToFrontend(show_updates)
 	}
 	if p.turn_timer != nil {
-		player["elapsed_time"] = time.Since(p.turn_start_time).Milliseconds()
+		player["turn_start_time"] = p.turn_start_time.UnixMilli()
 	}
 	cards := []gin.H{}
 	for _, card := range p.cards {

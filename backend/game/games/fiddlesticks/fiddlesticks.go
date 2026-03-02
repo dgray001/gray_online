@@ -412,14 +412,21 @@ func (f *GameFiddlesticks) executeBet(player *game.Player, bet_value uint8, broa
 	if f.turn >= len(f.players) {
 		f.turn -= len(f.players)
 	}
+	f.players[f.turn].turn_start_time = time.Now()
 	if done_betting {
 		f.betting = false
 		f.trick_leader = f.turn
 	}
 	update := &game.UpdateMessage{Kind: "bet", Content: gin.H{
-		"amount":    bet_value,
-		"player_id": player.Player_id,
+		"amount":          bet_value,
+		"player_id":       player.Player_id,
+		"turn_start_time": f.players[f.turn].turn_start_time.UnixMilli(),
 	}}
+	if f.betting {
+		update.Content["turn_duration"] = 2 * f.turn_duration.Milliseconds()
+	} else {
+		update.Content["turn_duration"] = f.turn_duration.Milliseconds()
+	}
 	if broadcast {
 		game.Game_BroadcastUpdate(f, update)
 	}
@@ -465,6 +472,11 @@ func (f *GameFiddlesticks) executePlayCard(player *game.Player, card_index int, 
 		"player_id": player.Player_id,
 		"lead_suit": lead_suit,
 	}}
+	if !deal_next_round {
+		f.players[f.turn].turn_start_time = time.Now()
+		update.Content["turn_start_time"] = f.players[f.turn].turn_start_time.UnixMilli()
+		update.Content["turn_duration"] = f.turn_duration.Milliseconds()
+	}
 	updates := make([]*game.UpdateMessage, 1, 2)
 	updates[0] = update
 	if broadcast {
@@ -483,42 +495,6 @@ func (f *GameFiddlesticks) PlayerDisconnected(client_id uint64) {
 }
 
 func (f *GameFiddlesticks) PlayerReconnected(client_id uint64) {
-}
-
-func (f *GameFiddlesticks) ToFrontend(client_id uint64, is_viewer bool) gin.H {
-	game := gin.H{
-		"round":             f.round,
-		"min_round":         f.min_round,
-		"max_round":         f.max_round,
-		"rounds_increasing": f.rounds_increasing,
-		"dealer":            f.dealer,
-		"turn":              f.turn,
-		"betting":           f.betting,
-		"trick_leader":      f.trick_leader,
-		"round_points":      f.round_points,
-		"trick_points":      f.trick_points,
-	}
-	if f.game != nil {
-		game["game_base"] = f.game.ToFrontend(client_id, is_viewer)
-	}
-	players := []gin.H{}
-	for _, player := range f.players {
-		if player != nil {
-			players = append(players, player.toFrontend(is_viewer || client_id == player.player.GetClientId()))
-		}
-	}
-	game["players"] = players
-	if f.trump != nil {
-		game["trump"] = f.trump.ToFrontend()
-	}
-	trick_cards := []gin.H{}
-	for _, card := range f.trick {
-		if card != nil {
-			trick_cards = append(trick_cards, card.ToFrontend())
-		}
-	}
-	game["trick"] = trick_cards
-	return game
 }
 
 func (f *GameFiddlesticks) dealNextRound(broadcast bool) *game.UpdateMessage {
@@ -586,6 +562,7 @@ func (f *GameFiddlesticks) dealNextRound(broadcast bool) *game.UpdateMessage {
 	if f.turn >= len(f.players) {
 		f.turn -= len(f.players)
 	}
+	f.players[f.turn].turn_start_time = time.Now()
 	f.trick_leader = f.turn
 	if broadcast {
 		for _, player := range f.players {
@@ -594,21 +571,62 @@ func (f *GameFiddlesticks) dealNextRound(broadcast bool) *game.UpdateMessage {
 				frontend_cards = append(frontend_cards, card.ToFrontend())
 			}
 			update := &game.UpdateMessage{Kind: "deal-round", Content: gin.H{
-				"dealer": f.dealer,
-				"round":  f.round,
-				"trump":  f.trump.ToFrontend(),
-				"cards":  frontend_cards,
+				"dealer":          f.dealer,
+				"round":           f.round,
+				"trump":           f.trump.ToFrontend(),
+				"cards":           frontend_cards,
+				"turn_duration":   2 * f.turn_duration.Milliseconds(),
+				"turn_start_time": f.players[f.turn].turn_start_time.UnixMilli(),
 			}}
 			player.player.AddUpdate(update)
 		}
 	}
 	update := &game.UpdateMessage{Kind: "deal-round", Content: gin.H{
-		"dealer": f.dealer,
-		"round":  f.round,
-		"trump":  f.trump.ToFrontend(),
+		"dealer":          f.dealer,
+		"round":           f.round,
+		"trump":           f.trump.ToFrontend(),
+		"turn_duration":   2 * f.turn_duration.Milliseconds(),
+		"turn_start_time": f.players[f.turn].turn_start_time.UnixMilli(),
 	}}
 	if broadcast {
 		f.game.AddViewerUpdate(update)
 	}
 	return update
+}
+
+func (f *GameFiddlesticks) ToFrontend(client_id uint64, is_viewer bool) gin.H {
+	game := gin.H{
+		"round":             f.round,
+		"min_round":         f.min_round,
+		"max_round":         f.max_round,
+		"rounds_increasing": f.rounds_increasing,
+		"dealer":            f.dealer,
+		"turn":              f.turn,
+		"betting":           f.betting,
+		"trick_leader":      f.trick_leader,
+		"round_points":      f.round_points,
+		"trick_points":      f.trick_points,
+		"turn_duration":     f.turn_duration.Milliseconds(),
+	}
+	if f.game != nil {
+		game["game_base"] = f.game.ToFrontend(client_id, is_viewer)
+	}
+	players := []gin.H{}
+	for _, player := range f.players {
+		if player != nil {
+			players = append(players, player.toFrontend(is_viewer || client_id == player.player.GetClientId()))
+		}
+	}
+	game["players"] = players
+	if f.trump != nil {
+		game["trump"] = f.trump.ToFrontend()
+	}
+	trick_cards := []gin.H{}
+	for _, card := range f.trick {
+		if card != nil {
+			trick_cards = append(trick_cards, card.ToFrontend())
+		}
+	}
+	game["trick"] = trick_cards
+	return game
 }

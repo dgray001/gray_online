@@ -89,13 +89,13 @@ export class DwgFiddlesticksPlayer extends DwgElement {
       this.bet_container.innerText = this.player.has_bet ? this.player.bet.toString() : '-';
       this.tricks_container.innerText = '-';
       if (current_turn) {
-        this.betting();
+        this.betting(0, 0); // TODO: implement
       }
     } else {
       this.bet_container.innerText = this.player.bet.toString();
       this.tricks_container.innerText = this.player.tricks.toString();
       if (current_turn) {
-        this.playing();
+        this.playing(0, 0); // TODO: implement
       }
     }
     this.setDealer(dealer);
@@ -158,8 +158,9 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.status_container.innerText = '';
   }
 
-  betting() {
+  betting(turn_start_time: number, turn_duration: number) {
     this.classList.add('turn');
+    this.startTimer(turn_start_time, turn_duration);
     if (!this.client_player) {
       return;
     }
@@ -195,8 +196,30 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.tricks_container.innerText = '0';
   }
 
-  playing() {
+  private timer_request?: number;
+  private startTimer(turn_start_time: number, turn_duration: number) {
+    this.stopTimer();
+    const tick = () => {
+      const elapsed = Date.now() - turn_start_time;
+      const turn_percent_left = Math.max(0, 100 - (elapsed / turn_duration) * 100);
+      this.style.setProperty('--turn-percent-left', turn_percent_left.toString());
+      if (turn_percent_left > 0 && this.classList.contains('turn')) {
+        this.timer_request = requestAnimationFrame(tick);
+      }
+    };
+    this.timer_request = requestAnimationFrame(tick);
+  }
+
+  private stopTimer() {
+    if (this.timer_request) {
+      cancelAnimationFrame(this.timer_request);
+    }
+    this.style.setProperty('--turn-percent-left', '0');
+  }
+
+  playing(turn_start_time: number, turn_duration: number) {
     this.classList.add('turn');
+    this.startTimer(turn_start_time, turn_duration);
     if (!this.client_player) {
       return;
     }
