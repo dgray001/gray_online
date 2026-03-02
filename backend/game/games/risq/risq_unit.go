@@ -10,30 +10,32 @@ import (
 )
 
 type RisqUnit struct {
-	deleted       bool
-	internal_id   uint64
-	player_id     int
-	unit_id       uint32
-	display_name  string
-	zone          *RisqZone
-	stamina       int
-	cs            RisqCombatStats
-	active_orders []*RisqOrder
-	past_orders   []*RisqOrder
-	intent        *RisqUnitIntent
+	deleted         bool
+	internal_id     uint64
+	player_id       int
+	unit_id         uint32
+	display_name    string
+	zone            *RisqZone
+	turn_stamina    int
+	current_stamina int
+	max_stamina     int
+	cs              RisqCombatStats
+	order_queue     RisqOrderQueue
+	intent          *RisqUnitIntent
 }
 
 func createRisqUnit(internal_id uint64, unit_id uint32, player_id int) *RisqUnit {
 	unit := RisqUnit{
-		deleted:       false,
-		internal_id:   internal_id,
-		player_id:     player_id,
-		unit_id:       unit_id,
-		stamina:       5,
-		cs:            createRisqCombatStats(),
-		active_orders: make([]*RisqOrder, 0),
-		past_orders:   make([]*RisqOrder, 0),
-		intent:        createRisqUnitIntent(),
+		deleted:         false,
+		internal_id:     internal_id,
+		player_id:       player_id,
+		unit_id:         unit_id,
+		turn_stamina:    10,
+		current_stamina: 0,
+		max_stamina:     15,
+		cs:              createRisqCombatStats(),
+		order_queue:     createRisqOrderQueue(),
+		intent:          createRisqUnitIntent(),
 	}
 	switch unit_id {
 	case 1: // villager
@@ -75,17 +77,37 @@ func (u *RisqUnit) internalId() uint64 {
 	return u.internal_id
 }
 
+func (u *RisqUnit) refreshStamina() {
+	u.current_stamina += u.turn_stamina
+	if u.current_stamina > u.max_stamina {
+		u.current_stamina = u.max_stamina
+	}
+}
+
 func (u *RisqUnit) receiveOrder(o *RisqOrder) {
-	u.past_orders = append(u.past_orders, o)
-	u.active_orders = append(u.active_orders, o)
+	u.order_queue.receiveOrder(o)
+}
+
+func (u *RisqUnit) orderComplete(o *RisqOrder, risq *GameRisq) bool {
+	switch o.order_type {
+	case OrderType_UnitMoveSpace:
+		x, y := util.InvertPair(uint(o.target_id))
+		space := risq.getSpace(&game_utils.Coordinate2D{X: x, Y: y})
+		return u.zone.space == space
+	case OrderType_UnitMoveZone:
+		// TODO: implement
+		return false
+	default:
+		return true
+	}
 }
 
 func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 	u.intent.resetIntent()
-	if len(u.active_orders) == 0 {
+	order := u.order_queue.nextOrder(u, risq)
+	if order == nil {
 		return false
 	}
-	order := u.active_orders[0]
 	switch order.order_type {
 	case OrderType_UnitMoveSpace:
 		x, y := util.InvertPair(uint(order.target_id))
@@ -96,6 +118,9 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 	default:
 		fmt.Fprintln(os.Stderr, "Order type not implemented:", order.order_type)
 	}
+	if u.intent.intent_cost > u.current_stamina {
+		u.intent.resetIntent()
+	}
 	return u.intent.hasIntent()
 }
 
@@ -103,17 +128,34 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 	if !u.intent.hasIntent() {
 		return
 	}
-	// TODO: implement
+	move := u.intent.move
+	if move != nil {
+		fmt.Println("Moving unit", u.display_name, "to zone"+move.next_step.coordinate.ToString(), "in space", move.next_step.space.coordinate.ToString())
+		old_zone := u.zone
+		new_zone := move.next_step
+		if old_zone.space == new_zone.space {
+			delete(old_zone.units, u.internal_id)
+			u.zone = new_zone
+			new_zone.units[u.internal_id] = u
+		} else {
+			old_zone.space.removeUnit(u)
+			new_zone.space.setUnit(&new_zone.coordinate, u)
+		}
+	}
+	u.current_stamina -= u.intent.intent_cost
+	fmt.Println("Unit in zone", u.zone.coordinate.ToString(), "of space", u.zone.space.coordinate.ToString())
 }
 
 func (u *RisqUnit) toFrontend() gin.H {
 	unit := gin.H{
-		"internal_id":  u.internal_id,
-		"player_id":    u.player_id,
-		"unit_id":      u.unit_id,
-		"display_name": u.display_name,
-		"stamina":      u.stamina,
-		"combat_stats": u.cs.toFrontend(),
+		"internal_id":     u.internal_id,
+		"player_id":       u.player_id,
+		"unit_id":         u.unit_id,
+		"display_name":    u.display_name,
+		"turn_stamina":    u.turn_stamina,
+		"current_stamina": u.current_stamina,
+		"max_stamina":     u.max_stamina,
+		"combat_stats":    u.cs.toFrontend(),
 	}
 	if u.zone != nil {
 		unit["zone_coordinate"] = u.zone.coordinate.ToFrontend()
@@ -122,7 +164,7 @@ func (u *RisqUnit) toFrontend() gin.H {
 		}
 	}
 	active_orders := make([]gin.H, 0)
-	for _, order := range u.active_orders {
+	for _, order := range u.order_queue.active_orders {
 		if order != nil && !order.executed {
 			active_orders = append(active_orders, order.toFrontend())
 		}

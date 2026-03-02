@@ -146,7 +146,9 @@ export declare interface RisqUnit {
   display_name: string;
   space_coordinate: Point2D;
   zone_coordinate: Point2D;
-  stamina: number;
+  turn_stamina: number;
+  current_stamina: number;
+  max_stamina: number;
   combat_stats: RisqCombatStats;
   active_orders: RisqOrder[];
   // purely frontend fields
@@ -310,7 +312,9 @@ export declare interface RisqUnitFromServer {
   display_name: string;
   space_coordinate: Point2D;
   zone_coordinate: Point2D;
-  stamina: number;
+  turn_stamina: number;
+  current_stamina: number;
+  max_stamina: number;
   combat_stats: RisqCombatStatsFromServer;
   active_orders: RisqOrderFromServer[];
 }
@@ -324,6 +328,9 @@ export declare interface RisqBuildingFromServer {
   space_coordinate: Point2D;
   zone_coordinate: Point2D;
   population_support: number;
+  turn_stamina: number;
+  current_stamina: number;
+  max_stamina: number;
   combat_stats: RisqCombatStatsFromServer;
   active_orders: RisqOrderFromServer[];
 }

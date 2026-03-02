@@ -12,6 +12,9 @@ type RisqBuilding struct {
 	display_name       string
 	zone               *RisqZone
 	population_support uint16
+	turn_stamina       int
+	current_stamina    int
+	max_stamina        int
 	cs                 RisqCombatStats
 	active_orders      []*RisqOrder
 	past_orders        []*RisqOrder
@@ -25,6 +28,9 @@ func createRisqBuilding(internal_id uint64, building_id uint32, player_id int) *
 		player_id:          player_id,
 		building_id:        building_id,
 		population_support: 0,
+		turn_stamina:       10,
+		current_stamina:    0,
+		max_stamina:        15,
 		cs:                 createRisqCombatStats(),
 		active_orders:      make([]*RisqOrder, 0),
 		past_orders:        make([]*RisqOrder, 0),
@@ -65,10 +71,22 @@ func (b *RisqBuilding) internalId() uint64 {
 	return b.internal_id
 }
 
+func (b *RisqBuilding) refreshStamina() {
+	b.current_stamina += b.turn_stamina
+	if b.current_stamina > b.max_stamina {
+		b.current_stamina = b.max_stamina
+	}
+}
+
 func (b *RisqBuilding) receiveOrder(o *RisqOrder) {
 	// TODO: if order costs resources then remove resources here
 	b.past_orders = append(b.past_orders, o)
 	b.active_orders = append(b.active_orders, o)
+}
+
+func (b *RisqBuilding) orderComplete(o *RisqOrder, risq *GameRisq) bool {
+	// TODO: implement
+	return true
 }
 
 func (b *RisqBuilding) tickIntent(risq *GameRisq) bool {

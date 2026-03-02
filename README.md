@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6aq: Implement initial A* pathfinding
+v0.6ar: Implement execution of basic move order
 
 ## Dev Use
 

@@ -287,6 +287,10 @@ func (r *GameRisq) startNextTurn() {
 	for _, player := range r.players {
 		player.orders_submitted = false
 	}
+	for o := range r.allOrderables() {
+		o.refreshStamina()
+	}
+	// TODO: calculate vision from scratch
 	r.giving_orders = true
 	for _, player := range r.players {
 		player.player.AddUpdate(&game.UpdateMessage{Kind: "start-turn", Content: gin.H{
@@ -409,6 +413,7 @@ func (r *GameRisq) executeUnsubmitOrders(player_id int) {
 }
 
 func (r *GameRisq) resolveActiveOrders() {
+	fmt.Println("Resolving active orders")
 	r.giving_orders = false
 	for _, player := range r.players {
 		for _, order := range player.active_orders {
@@ -432,6 +437,7 @@ func (r *GameRisq) resolveActiveOrders() {
 			o.tickExecute(r)
 		}
 	}
+	r.startNextTurn()
 }
 
 func (r *GameRisq) allOrderables() iter.Seq[Orderable] {

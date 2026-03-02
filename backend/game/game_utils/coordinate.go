@@ -1,6 +1,8 @@
 package game_utils
 
 import (
+	"strconv"
+
 	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
 )
@@ -8,6 +10,10 @@ import (
 type Coordinate2D struct {
 	X int
 	Y int
+}
+
+func (c *Coordinate2D) ToString() string {
+	return "(" + strconv.Itoa(c.X) + ", " + strconv.Itoa(c.Y) + ")"
 }
 
 func (c *Coordinate2D) Invert() *Coordinate2D {

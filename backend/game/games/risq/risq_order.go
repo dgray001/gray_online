@@ -14,10 +14,18 @@ type Orderable interface {
 	toFrontend() gin.H
 	isDeleted() bool
 	internalId() uint64
+	refreshStamina()
 	receiveOrder(o *RisqOrder)
+	// Returns whether the order is already complete
+	orderComplete(o *RisqOrder, risq *GameRisq) bool
 	// Returns whether the orderable has an intent
 	tickIntent(risq *GameRisq) bool
 	tickExecute(risq *GameRisq)
+}
+
+type RisqOrderQueue struct {
+	active_orders []*RisqOrder
+	past_orders   []*RisqOrder
 }
 
 type OrderFromFrontend struct {
@@ -167,5 +175,30 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend) error {
 		return fmt.Errorf("Unimplemented order type: %d", order_type)
 	}
 	// Order is valid
+	return nil
+}
+
+func createRisqOrderQueue() RisqOrderQueue {
+	return RisqOrderQueue{
+		active_orders: make([]*RisqOrder, 0),
+		past_orders:   make([]*RisqOrder, 0),
+	}
+}
+
+func (q *RisqOrderQueue) receiveOrder(o *RisqOrder) {
+	q.past_orders = append(q.past_orders, o)
+	q.active_orders = append(q.active_orders, o)
+}
+
+func (q *RisqOrderQueue) nextOrder(orderable Orderable, risq *GameRisq) *RisqOrder {
+	for len(q.active_orders) > 0 {
+		o := q.active_orders[0]
+		if !orderable.orderComplete(o, risq) {
+			return o
+		}
+		o.executed = true
+		o.turn_executed = risq.turn_number
+		q.active_orders = q.active_orders[1:]
+	}
 	return nil
 }

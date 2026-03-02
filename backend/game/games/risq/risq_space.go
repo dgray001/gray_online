@@ -158,6 +158,13 @@ func (s *RisqSpace) setUnit(c *game_utils.Coordinate2D, unit *RisqUnit) {
 	s.addVision(unit.vision(), zone, unit.player_id)
 }
 
+func (s *RisqSpace) removeUnit(unit *RisqUnit) {
+	delete(s.units, unit.internal_id)
+	if unit.zone != nil {
+		delete(unit.zone.units, unit.internal_id)
+	}
+}
+
 func (s *RisqSpace) addVision(v *RisqVision, z *RisqZone, player_id int) {
 	checked := make(map[uint]bool)
 	if s.getVisibility(player_id) < v.space {

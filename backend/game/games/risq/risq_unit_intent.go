@@ -1,5 +1,7 @@
 package risq
 
+import "fmt"
+
 type RisqUnitIntent struct {
 	intent_cost int
 	move        *MoveIntent
@@ -36,4 +38,20 @@ func (i *RisqUnitIntent) setMove(m *MoveIntent) {
 			i.intent_cost = 6
 		}
 	}
+}
+
+func (i *RisqUnitIntent) _printConsole(prefix string) {
+	fmt.Println(prefix + "RisqUnitIntent {")
+	fmt.Println(prefix+"  intent_cost:", i.intent_cost)
+	fmt.Print(prefix + "  move:")
+	i.move.printConsole("  ")
+	fmt.Println(prefix + "}")
+}
+
+func (m *MoveIntent) printConsole(prefix string) {
+	fmt.Println(prefix + "MoveIntent {")
+	fmt.Println(prefix + "  path:")
+	fmt.Println(prefix + "  next_step:")
+	fmt.Println(prefix+"  intra_step:", m.intra_step)
+	fmt.Println(prefix + "}")
 }
