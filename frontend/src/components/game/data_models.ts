@@ -40,6 +40,9 @@ export declare interface PlayerAction {
 /** Data describing a game returned from the server */
 export declare interface GameFromServer {
   game_base: GameBaseFromServer;
+  players: {
+    player: GamePlayer;
+  }[];
   // ... game specific fields
 }
 
@@ -47,20 +50,21 @@ export declare interface GameFromServer {
 export function serverResponseToGame(game_from_server: GameFromServer, client_id: number): Game {
   const players = new Map(game_from_server.game_base.players.map((player) => [player.client_id, player]));
   const viewers = new Map(game_from_server.game_base.viewers.map((viewer) => [viewer.client_id, viewer]));
-  const game = {
+  const game: Game = {
     ...game_from_server, // ... game specific fields
     game_base: {
       game_id: game_from_server.game_base.game_id,
       game_type: game_from_server.game_base.game_type,
       game_started: game_from_server.game_base.game_started,
       game_ended: game_from_server.game_base.game_ended,
+      persistant_history: game_from_server.game_base.persistant_history,
       players,
       viewers,
       player_actions: game_from_server.game_base.player_actions
         ? new Map(game_from_server.game_base.player_actions.map((action) => [action.action_id, action]))
         : undefined,
     },
-  } as Game;
+  };
   const updates = players.get(client_id)?.updates ?? game_from_server.game_base.viewer_updates;
   if (updates !== undefined) {
     game.game_base.updates = new Map(updates.map((update) => [update.update_id, update]));
@@ -76,6 +80,7 @@ export declare interface GameBaseFromServer {
   game_type: GameType;
   game_started: boolean;
   game_ended: boolean;
+  persistant_history: boolean;
   players: GamePlayer[];
   viewers: GameViewer[];
   // These fields should only return to viewers
@@ -89,6 +94,7 @@ export declare interface GameBase {
   game_type: GameType;
   game_started: boolean;
   game_ended: boolean;
+  persistant_history: boolean;
   players: Map<number, GamePlayer>;
   viewers: Map<number, GameViewer>;
   player_actions?: Map<number, PlayerAction>; // client -> server updates for viewers

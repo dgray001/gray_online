@@ -3,13 +3,14 @@ package lobby
 import (
 	"strconv"
 
+	"github.com/dgray001/gray_online/game"
 	"github.com/gin-gonic/gin"
 )
 
 type GameSettings struct {
 	MaxPlayers           uint8                  `json:"max_players"`
 	MaxViewers           uint8                  `json:"max_viewers"`
-	GameType             uint8                  `json:"game_type"`
+	GameType             game.GameType          `json:"game_type"`
 	GameSpecificSettings map[string]interface{} `json:"game_specific_settings"`
 }
 

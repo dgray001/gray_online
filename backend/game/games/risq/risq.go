@@ -475,7 +475,7 @@ func (r *GameRisq) ToFrontend(client_id uint64, is_viewer bool) gin.H {
 			if !is_viewer && client_id == player.player.GetClientId() {
 				player_id = id
 			}
-			players = append(players, player.toFrontend(is_viewer || client_id == player.player.GetClientId()))
+			players = append(players, player.toFrontend())
 		}
 	}
 	game["players"] = players

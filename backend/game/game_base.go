@@ -23,7 +23,7 @@ func (u *UpdateMessage) toFrontend() gin.H {
 
 type GameBase struct {
 	Game_id   uint64
-	game_type uint8
+	game_type GameType
 	// here the map keys are the lobby client ids
 	Players map[uint64]*Player
 	Viewers map[uint64]*Viewer
@@ -39,7 +39,7 @@ type GameBase struct {
 	GameEndedChannel     chan string
 }
 
-func CreateBaseGame(game_id uint64, game_type uint8, game_specific_settings map[string]interface{}) *GameBase {
+func CreateBaseGame(game_id uint64, game_type GameType, game_specific_settings map[string]interface{}) *GameBase {
 	return &GameBase{
 		Game_id:              game_id,
 		game_type:            game_type,
@@ -54,6 +54,15 @@ func CreateBaseGame(game_id uint64, game_type uint8, game_specific_settings map[
 		viewer_update_list:   make([]*UpdateMessage, 0),
 		GameSpecificSettings: game_specific_settings,
 		GameEndedChannel:     make(chan string, 4),
+	}
+}
+
+func (g *GameBase) PersistantHistory() bool {
+	switch g.game_type {
+	case GameType_RISQ:
+		return false
+	default:
+		return true
 	}
 }
 
@@ -122,6 +131,9 @@ func (g *GameBase) AddViewerUpdate(update *UpdateMessage) {
 		fmt.Fprintln(os.Stderr, "Can't add update to game that is ended")
 		return
 	}
+	if !g.PersistantHistory() {
+		g.viewer_update_list = make([]*UpdateMessage, 0)
+	}
 	update.Id = len(g.viewer_update_list) + 1 // start at 1
 	g.viewer_update_list = append(g.viewer_update_list, update)
 	g.ViewerUpdates <- update
@@ -135,6 +147,9 @@ func (g *GameBase) AddViewerUpdate(update *UpdateMessage) {
 
 func (g *GameBase) ResendPlayerUpdate(client_id uint64, update_id int) {
 	player := g.Players[client_id]
+	if !g.PersistantHistory() {
+		update_id = 1
+	}
 	if player == nil || update_id < 1 || update_id > len(player.update_list) {
 		return
 	}
@@ -143,6 +158,9 @@ func (g *GameBase) ResendPlayerUpdate(client_id uint64, update_id int) {
 
 func (g *GameBase) ResendViewerUpdate(client_id uint64, update_id int) {
 	viewer := g.Viewers[client_id]
+	if !g.PersistantHistory() {
+		update_id = 1
+	}
 	if viewer == nil || update_id < 1 || update_id > len(g.viewer_update_list) {
 		return
 	}
@@ -176,20 +194,21 @@ func (g *GameBase) EndGame(message string) {
 
 func (g *GameBase) ToFrontend(client_id uint64, is_viewer bool) gin.H {
 	game_base := gin.H{
-		"game_id":      g.Game_id,
-		"game_type":    g.game_type,
-		"game_started": g.game_started,
-		"game_ended":   g.game_ended,
+		"game_id":            g.Game_id,
+		"game_type":          g.game_type,
+		"game_started":       g.game_started,
+		"game_ended":         g.game_ended,
+		"persistant_history": g.PersistantHistory(),
 	}
 	players := []gin.H{}
 	for _, player := range g.Players {
 		if player != nil {
-			players = append(players, player.ToFrontend(is_viewer || client_id == player.client_id))
+			players = append(players, player.ToFrontend(g.PersistantHistory() && (is_viewer || client_id == player.client_id)))
 		}
 	}
 	for _, player := range g.AiPlayers {
 		if player != nil {
-			players = append(players, player.ToFrontend(is_viewer))
+			players = append(players, player.ToFrontend(g.PersistantHistory() && is_viewer))
 		}
 	}
 	game_base["players"] = players

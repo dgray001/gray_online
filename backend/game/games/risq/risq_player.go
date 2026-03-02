@@ -83,7 +83,7 @@ func (p *RisqPlayer) allOrderables() iter.Seq[Orderable] {
 	}
 }
 
-func (p *RisqPlayer) toFrontend(show_updates bool) gin.H {
+func (p *RisqPlayer) toFrontend() gin.H {
 	player := gin.H{
 		"population_limit": p.populationLimit(),
 		"score":            p.score(),
@@ -91,7 +91,7 @@ func (p *RisqPlayer) toFrontend(show_updates bool) gin.H {
 		"orders_submitted": p.orders_submitted,
 	}
 	if p.player != nil {
-		player["player"] = p.player.ToFrontend(show_updates)
+		player["player"] = p.player.ToFrontend(false)
 	}
 	if p.resources != nil {
 		player["resources"] = p.resources.toFrontend()

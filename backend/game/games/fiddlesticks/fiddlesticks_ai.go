@@ -36,7 +36,7 @@ func runAi(p *FiddlesticksPlayer, f *GameFiddlesticks, action_channel chan game.
 			p.ai_model.ApplyUpdate(p, f, update)
 			checkTurn(p, f, action_channel)
 			fmt.Println("Finished checking for AI player", p.player.GetAiId())
-		case update := <-p.player.FailedUpdates:
+		case update := <-p.player.AiFailedUpdates:
 			fmt.Fprintln(os.Stderr, "AI player", p.player.GetAiId(), "received failed update", update)
 		}
 	}

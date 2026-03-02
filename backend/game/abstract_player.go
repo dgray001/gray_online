@@ -28,27 +28,33 @@ func (a *PlayerAction) toFrontend() gin.H {
 type Player struct {
 	client_id        uint64
 	ai_player_id     uint32 // specific to the game
+	ai_running       bool   // can be true for human players
 	Player_id        int
 	nickname         string
 	connected        bool
 	Updates          chan *UpdateMessage
-	AiUpdates        chan *UpdateMessage
 	FailedUpdates    chan *UpdateMessage
+	AiUpdates        chan *UpdateMessage
+	AiFailedUpdates  chan *UpdateMessage
 	FlushConnections chan bool
 	update_list      []*UpdateMessage
 	base_game        *GameBase
 }
 
+const UPDATE_CHANNEL_SIZE = 2
+
 func CreatePlayer(client_id uint64, nickname string, base_game *GameBase) {
 	player := &Player{
 		client_id:        client_id,
 		ai_player_id:     0,
+		ai_running:       false,
 		Player_id:        -1,
 		nickname:         nickname,
 		connected:        false,
-		Updates:          make(chan *UpdateMessage, 24),
-		AiUpdates:        make(chan *UpdateMessage, 24),
-		FailedUpdates:    make(chan *UpdateMessage, 24),
+		Updates:          make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
+		AiUpdates:        make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
+		FailedUpdates:    make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
+		AiFailedUpdates:  make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
 		FlushConnections: make(chan bool, 2),
 		update_list:      []*UpdateMessage{},
 		base_game:        base_game,
@@ -61,12 +67,14 @@ func CreateAiPlayer(nickname string, base_game *GameBase) *Player {
 	player := &Player{
 		client_id:        0,
 		ai_player_id:     ai_id,
+		ai_running:       true,
 		Player_id:        -1,
 		nickname:         nickname,
 		connected:        false,
-		Updates:          make(chan *UpdateMessage, 24),
-		AiUpdates:        make(chan *UpdateMessage, 24),
-		FailedUpdates:    make(chan *UpdateMessage, 24),
+		Updates:          make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
+		AiUpdates:        make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
+		FailedUpdates:    make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
+		AiFailedUpdates:  make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
 		FlushConnections: make(chan bool, 2),
 		update_list:      []*UpdateMessage{},
 		base_game:        base_game,
@@ -79,6 +87,10 @@ func (p *Player) IsHumanPlayer() bool {
 	return p.client_id > 0
 }
 
+func (p *Player) RunningAi() {
+	p.ai_running = true
+}
+
 func (p *Player) AddUpdate(update *UpdateMessage) {
 	if !p.base_game.game_started {
 		fmt.Fprintln(os.Stderr, "Can't add update to game that isn't started")
@@ -88,14 +100,26 @@ func (p *Player) AddUpdate(update *UpdateMessage) {
 		fmt.Fprintln(os.Stderr, "Can't add update to game that is ended")
 		return
 	}
+	if !p.base_game.PersistantHistory() {
+		p.update_list = make([]*UpdateMessage, 0)
+	}
 	update.Id = len(p.update_list) + 1 // start at 1
 	p.update_list = append(p.update_list, update)
-	p.Updates <- update
-	p.AiUpdates <- update
+	if p.IsHumanPlayer() {
+		p.Updates <- update
+	}
+	if p.ai_running {
+		p.AiUpdates <- update
+	}
 }
 
 func (p *Player) AddFailedUpdate(update *UpdateMessage) {
-	p.FailedUpdates <- update
+	if p.IsHumanPlayer() {
+		p.FailedUpdates <- update
+	}
+	if p.ai_running {
+		p.AiFailedUpdates <- update
+	}
 }
 
 func (p *Player) AddFailedUpdateShorthand(kind string, message string) {

@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6as: Implement execution of basic zone move order
+v0.6at: State-snapshot updates for risq
 
 ## Dev Use
 

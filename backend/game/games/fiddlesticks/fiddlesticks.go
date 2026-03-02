@@ -79,6 +79,7 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameF
 	var player_id = 0
 	for _, player := range g.Players {
 		player.Player_id = player_id
+		player.RunningAi()
 		fiddlesticks_player := &FiddlesticksPlayer{
 			player:       player,
 			cards:        []*game_utils.StandardCard{},

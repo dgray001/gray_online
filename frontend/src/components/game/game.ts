@@ -19,7 +19,7 @@ import './players_dialog/players_dialog';
 import '../dialog_box/message_dialog/message_dialog';
 import '../dialog_box/confirm_dialog/confirm_dialog';
 
-const SERVER_PING_TIME = 3500; // time between game refreshes
+const SERVER_PING_TIME = 350000; // time between game refreshes
 
 /** Function to dispatch event that will show a dialog message */
 export function messageDialog(this: EventTarget, data: MessageDialogData) {

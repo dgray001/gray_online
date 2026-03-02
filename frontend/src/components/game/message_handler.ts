@@ -110,11 +110,17 @@ async function handleGameUpdate(game: DwgGame, message: ServerMessage) {
   const game_base = game_ob.game_base;
   async function runUpdate(update: UpdateMessage) {
     running_updates = true;
+    if (!game_base.persistant_history) {
+      console.log('Applying state-snapshot update');
+      await game_el?.gameUpdate(update);
+      running_updates = false;
+      return;
+    }
     let last_update_id = game_base?.last_applied_update_id ?? -2;
     // running update for next update
     if (update.update_id - 1 === last_update_id) {
       game_base.last_applied_update_id = update.update_id;
-      console.log(`applying update id ${update.update_id}`);
+      console.log(`Applying update id ${update.update_id}`);
       await game_el?.gameUpdate(update);
       last_update_id = update.update_id;
       while (true) {
@@ -123,7 +129,7 @@ async function handleGameUpdate(game: DwgGame, message: ServerMessage) {
           break;
         }
         game_base.last_applied_update_id = next_update.update_id;
-        console.log(`applying next update id ${next_update.update_id}`);
+        console.log(`Applying next update id ${next_update.update_id}`);
         await game_el?.gameUpdate(next_update);
         last_update_id = next_update.update_id;
       }
@@ -161,7 +167,7 @@ async function handleGameUpdate(game: DwgGame, message: ServerMessage) {
       kind: message.data,
       content: JSON.parse(message.content),
     };
-    console.log(`received game update ${game_update_id}: ${JSON.stringify(update_message)}`);
+    console.log(`Received game update ${game_update_id}: ${JSON.stringify(update_message)}`);
     game_base.updates?.set(game_update_id, update_message);
     game_base.highest_received_update_id = Math.max(game_base.highest_received_update_id ?? 0, game_update_id);
     if (!running_updates && game_base.game_started && !game_base.game_ended && game.getLaunched()) {

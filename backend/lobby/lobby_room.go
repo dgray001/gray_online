@@ -418,13 +418,13 @@ func (r *LobbyRoom) launchGame(game_id uint64) (game.Game, error) {
 	var err error = nil
 	var new_game game.Game = nil
 	switch r.game_settings.GameType {
-	case 1:
+	case game.GameType_FIDDLESTICKS:
 		new_game, err = fiddlesticks.CreateGame(base_game, r.PlayerAction)
-	case 2:
+	case game.GameType_EUCHRE:
 		new_game, err = euchre.CreateGame(base_game)
-	case 3:
+	case game.GameType_RISQ:
 		new_game, err = risq.CreateGame(base_game)
-	case 4:
+	case game.GameType_TEST_GAME:
 		new_game, err = test_game.CreateGame(base_game)
 	default:
 		err = fmt.Errorf("%s", fmt.Sprintf("GameType not recognized: %d", r.game_settings.GameType))
