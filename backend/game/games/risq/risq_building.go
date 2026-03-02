@@ -66,6 +66,7 @@ func (b *RisqBuilding) internalId() uint64 {
 }
 
 func (b *RisqBuilding) receiveOrder(o *RisqOrder) {
+	// TODO: if order costs resources then remove resources here
 	b.past_orders = append(b.past_orders, o)
 	b.active_orders = append(b.active_orders, o)
 }
@@ -77,7 +78,7 @@ func (b *RisqBuilding) tickIntent(risq *GameRisq) bool {
 	}
 	// TODO: implement
 	panic("BUILDING ORDERS NOT IMPLEMENTED!!")
-	return b.intent != nil
+	// return b.intent != nil
 }
 
 func (b *RisqBuilding) tickExecute(risq *GameRisq) {

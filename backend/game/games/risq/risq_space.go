@@ -122,6 +122,10 @@ func (s *RisqSpace) getZone(c *game_utils.Coordinate2D) *RisqZone {
 	return row[index.Y]
 }
 
+func (s *RisqSpace) getCenterZone() *RisqZone {
+	return s.zones[1][1]
+}
+
 func (s *RisqSpace) setBuilding(c *game_utils.Coordinate2D, building *RisqBuilding) {
 	zone := s.getZone(c)
 	if zone == nil {

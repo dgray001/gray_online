@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/dgray001/gray_online/game/game_utils"
+	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
 )
 
@@ -31,7 +33,7 @@ func createRisqUnit(internal_id uint64, unit_id uint32, player_id int) *RisqUnit
 		cs:            createRisqCombatStats(),
 		active_orders: make([]*RisqOrder, 0),
 		past_orders:   make([]*RisqOrder, 0),
-		intent:        nil,
+		intent:        createRisqUnitIntent(),
 	}
 	switch unit_id {
 	case 1: // villager
@@ -79,21 +81,26 @@ func (u *RisqUnit) receiveOrder(o *RisqOrder) {
 }
 
 func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
-	u.intent = nil
+	u.intent.resetIntent()
 	if len(u.active_orders) == 0 {
 		return false
 	}
 	order := u.active_orders[0]
 	switch order.order_type {
-	// TODO: implement
+	case OrderType_UnitMoveSpace:
+		x, y := util.InvertPair(uint(order.target_id))
+		space := risq.getSpace(&game_utils.Coordinate2D{X: x, Y: y})
+		u.intent.setMove(u.findPath(space.getCenterZone()))
+	case OrderType_UnitMoveZone:
+		// TODO: implement
 	default:
 		fmt.Fprintln(os.Stderr, "Order type not implemented:", order.order_type)
 	}
-	return u.intent != nil
+	return u.intent.hasIntent()
 }
 
 func (u *RisqUnit) tickExecute(risq *GameRisq) {
-	if u.intent == nil {
+	if !u.intent.hasIntent() {
 		return
 	}
 	// TODO: implement

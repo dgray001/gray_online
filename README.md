@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.6ap: Skeleton game engine logic
+v0.6aq: Implement initial A* pathfinding
 
 ## Dev Use
 

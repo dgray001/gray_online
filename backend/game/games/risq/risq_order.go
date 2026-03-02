@@ -162,6 +162,7 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend) error {
 			return fmt.Errorf("Invalid space target %d inverted to (%d, %d)", order.Target_id, x, y)
 		}
 	case OrderType_UnitMoveZone:
+		// TODO: implement
 	default:
 		return fmt.Errorf("Unimplemented order type: %d", order_type)
 	}
