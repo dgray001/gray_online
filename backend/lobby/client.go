@@ -83,7 +83,11 @@ func (c *Client) send(lm lobbyMessage) {
 	if c.closed || c.send_message == nil {
 		return
 	}
-	c.send_message <- lm
+	defer func() { _ = recover() }()
+	select {
+	case c.send_message <- lm:
+	default:
+	}
 }
 
 func (c *Client) pingString() string {
@@ -211,7 +215,9 @@ func (c *Client) readMessages() {
 				c.send(lobbyMessage{Sender: "server", Kind: "room-rename-failed", Content: "Game started"})
 				break
 			}
+			c.lobby.mu.Lock()
 			room.room_name = message.Content
+			c.lobby.mu.Unlock()
 			c.lobby.RenameRoom <- room
 		case "room-update-description":
 			room_id, err := strconv.Atoi(message.Data)
@@ -232,7 +238,9 @@ func (c *Client) readMessages() {
 				c.send(lobbyMessage{Sender: "server", Kind: "room-update-description-failed", Content: "Game started"})
 				break
 			}
+			c.lobby.mu.Lock()
 			room.room_description = message.Content
+			c.lobby.mu.Unlock()
 			c.lobby.UpdateRoomDescription <- room
 		case "room-kick":
 			room_id, err := strconv.Atoi(message.Data)

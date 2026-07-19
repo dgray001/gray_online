@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.7: Initial Risq
+v0.7a: Mutext logic for lobby actions
 
 ## Dev Use
 

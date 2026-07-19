@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dgray001/gray_online/game"
@@ -14,6 +15,7 @@ import (
 )
 
 type Lobby struct {
+	mu                    sync.Mutex
 	next_room_id          uint64
 	next_client_id        uint64
 	next_game_id          uint64
@@ -90,7 +92,9 @@ func (l *Lobby) Run() {
 	for {
 		select {
 		case client := <-l.AddClient:
+			l.mu.Lock()
 			l.addClient(client)
+			l.mu.Unlock()
 		case client_id := <-l.ReconnectClient:
 			l.reconnectClient(client_id.client, client_id.client_id)
 		case client := <-l.RemoveClient:
@@ -98,36 +102,56 @@ func (l *Lobby) Run() {
 		case client := <-l.CreateRoom:
 			l.createRoom(client)
 		case room := <-l.RenameRoom:
+			l.mu.Lock()
 			l.renameRoom(room)
+			l.mu.Unlock()
 		case room := <-l.UpdateRoomDescription:
+			l.mu.Lock()
 			l.updateRoomDescription(room)
+			l.mu.Unlock()
 		case data := <-l.KickClientFromRoom:
+			l.mu.Lock()
 			data.room.kickClient(data.client)
+			l.mu.Unlock()
 		case data := <-l.PromotePlayerInRoom:
+			l.mu.Lock()
 			data.room.promotePlayer(data.client)
+			l.mu.Unlock()
 		case data := <-l.RoomSetViewer:
+			l.mu.Lock()
 			data.room.setViewer(data.client)
+			l.mu.Unlock()
 		case data := <-l.RoomSetPlayer:
+			l.mu.Lock()
 			data.room.setPlayer(data.client)
+			l.mu.Unlock()
 		case room := <-l.RemoveRoom:
+			l.mu.Lock()
 			l.removeRoom(room)
+			l.mu.Unlock()
 		case data := <-l.LeaveRoom:
 			l.leaveRoom(data)
 		case room := <-l.LaunchGame:
+			l.mu.Lock()
 			game, err := room.launchGame(l.next_game_id)
 			if err == nil {
 				l.games[l.next_game_id] = game
 				l.next_game_id++
 			} else if room.host != nil {
-				room.host.send_message <- lobbyMessage{Sender: "server", Kind: "room-launch-failed", Content: err.Error()}
+				room.host.send(lobbyMessage{Sender: "server", Kind: "room-launch-failed", Content: err.Error()})
 			}
+			l.mu.Unlock()
 		case message := <-l.broadcast:
+			l.mu.Lock()
 			l.broadcastMessage(message)
+			l.mu.Unlock()
 		}
 	}
 }
 
 func (l *Lobby) GetRooms() []gin.H {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	rooms := []gin.H{}
 	for _, room := range l.rooms {
 		if room.valid() {
@@ -138,6 +162,8 @@ func (l *Lobby) GetRooms() []gin.H {
 }
 
 func (l *Lobby) GetUsers() []gin.H {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	users := []gin.H{}
 	for _, user := range l.clients {
 		if user.valid() {
@@ -148,6 +174,8 @@ func (l *Lobby) GetUsers() []gin.H {
 }
 
 func (l *Lobby) GetGames() []gin.H {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	games := []gin.H{}
 	for _, room := range l.rooms {
 		if room.valid() {
@@ -169,6 +197,8 @@ func (l *Lobby) GetRoom(room_id uint64) *LobbyRoom {
 }
 
 func (l *Lobby) GetGame(game_id uint64) game.Game {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	return l.games[game_id]
 }
 
@@ -176,7 +206,7 @@ func (l *Lobby) addClient(client *Client) {
 	l.setClientId(client)
 	l.clients[client.client_id] = client
 	id_string := strconv.Itoa(int(client.client_id))
-	client.send_message <- lobbyMessage{Sender: "server", Kind: "lobby-you-joined", Content: client.nickname, Data: id_string + "-connect"}
+	client.send(lobbyMessage{Sender: "server", Kind: "lobby-you-joined", Content: client.nickname, Data: id_string + "-connect"})
 	l.broadcastMessage(lobbyMessage{Sender: "client-" + id_string, Kind: "lobby-joined", Content: client.nickname, Data: id_string + "-connect"})
 }
 
@@ -234,7 +264,7 @@ func (l *Lobby) reconnectClient(client *Client, client_id uint64) {
 	old_client.connection = nil
 	old_client.deleted = true
 	id_string := strconv.Itoa(int(client.client_id))
-	client.send_message <- lobbyMessage{Sender: "server", Kind: "lobby-you-joined", Content: client.nickname, Data: id_string + "-reconnect"}
+	client.send(lobbyMessage{Sender: "server", Kind: "lobby-you-joined", Content: client.nickname, Data: id_string + "-reconnect"})
 	l.broadcastMessage(lobbyMessage{Sender: "client-" + id_string, Kind: "lobby-joined", Content: client.nickname, Data: id_string + "-reconnect"})
 }
 
@@ -357,14 +387,14 @@ func (l *Lobby) broadcastMessage(message lobbyMessage) {
 			if client == nil || !client.valid() || client.client_id == uint64(sender_id) {
 				continue
 			}
-			client.send_message <- message
+			client.send(message)
 		}
 	} else if util.Contains(lobby_messages, message.Kind) {
 		for _, client := range l.clients {
 			if client == nil || !client.valid() {
 				continue
 			}
-			client.send_message <- message
+			client.send(message)
 		}
 	} else if util.Contains(client_to_room_messages, message.Kind) {
 		send_split := strings.Split(message.Sender, "-")
@@ -386,7 +416,7 @@ func (l *Lobby) broadcastMessage(message lobbyMessage) {
 				client.lobby_room.room_id != uint64(room_id) || client.client_id == uint64(client_id) {
 				continue
 			}
-			client.send_message <- message
+			client.send(message)
 		}
 	} else if util.Contains(room_messages, message.Kind) {
 		room_id_string := strings.TrimPrefix(message.Sender, "room-")
@@ -398,7 +428,7 @@ func (l *Lobby) broadcastMessage(message lobbyMessage) {
 			if client == nil || !client.valid() || client.lobby_room == nil || client.lobby_room.room_id != uint64(room_id) {
 				continue
 			}
-			client.send_message <- message
+			client.send(message)
 		}
 	} else {
 		fmt.Fprintln(os.Stderr, "No logic for message kind")

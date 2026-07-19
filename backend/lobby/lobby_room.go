@@ -71,7 +71,9 @@ func (r *LobbyRoom) run() {
 		case data := <-r.JoinRoom:
 			r.addClient(data.client, data.bool_flag)
 		case settings := <-r.UpdateSettings:
+			r.lobby.mu.Lock()
 			r.updateSettings(settings)
+			r.lobby.mu.Unlock()
 		case client := <-r.PlayerConnected:
 			client.game = r.game
 			start_game := r.game.GetBase().PlayerConnected(client.client_id)
@@ -253,7 +255,7 @@ func (r *LobbyRoom) addClient(c *Client, join_as_player bool) {
 	}
 	if c.lobby_room != nil {
 		if c.lobby_room.room_id == r.room_id {
-			c.send_message <- lobbyMessage{Sender: "server", Kind: "room-join-failed", Content: "Already in room"}
+			c.send(lobbyMessage{Sender: "server", Kind: "room-join-failed", Content: "Already in room"})
 			return
 		}
 		c.lobby_room.removeClient(c, true)
@@ -262,7 +264,7 @@ func (r *LobbyRoom) addClient(c *Client, join_as_player bool) {
 		join_as_player = false
 	}
 	if !join_as_player && !r.spaceForViewer() {
-		c.send_message <- lobbyMessage{Sender: "server", Kind: "room-join-failed", Content: "No space in room"}
+		c.send(lobbyMessage{Sender: "server", Kind: "room-join-failed", Content: "No space in room"})
 		return
 	}
 	if join_as_player {

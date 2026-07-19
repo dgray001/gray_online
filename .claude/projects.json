@@ -1,0 +1,84 @@
+{
+  "default": "risq",
+  "shared": {
+    "files": [
+      "README.md",
+      "PLANS.md",
+      "backend/game/abstract_game.go",
+      "backend/game/abstract_player.go",
+      "backend/game/abstract_viewer.go",
+      "backend/game/game_base.go",
+      "backend/game/game_type.go",
+      "backend/util/*",
+      "frontend/src/components/dwg_element.ts",
+      "frontend/src/components/dwg_element.scss",
+      "frontend/src/components/game/data_models.ts",
+      "frontend/src/components/game/game.ts",
+      "frontend/src/components/game/game.html",
+      "frontend/src/components/game/game.scss",
+      "frontend/src/components/game/message_handler.ts",
+      "frontend/src/scripts/*",
+      "frontend/src/types.d.ts",
+      "frontend/src/modules.d.ts",
+      "frontend/src/styles.scss"
+    ]
+  },
+  "projects": {
+    "risq": {
+      "name": "Risq",
+      "files": [
+        "backend/game/games/risq/*",
+        "backend/game/game_utils/coordinate.go",
+        "frontend/src/components/game/games/risq/**/*",
+        "frontend/src/components/game/util/canvas_board/**/*",
+        "frontend/src/components/game/util/canvas_components/**/*",
+        "frontend/src/components/game/util/canvas_util.ts",
+        "frontend/src/components/game/util/objects2d.ts"
+      ]
+    },
+    "cards": {
+      "name": "Card Games",
+      "files": [
+        "backend/game/games/fiddlesticks/*",
+        "backend/game/games/euchre/*",
+        "backend/game/game_utils/card_util.go",
+        "frontend/src/components/game/games/fiddlesticks/**/*",
+        "frontend/src/components/game/games/euchre/**/*",
+        "frontend/src/components/game/util/card_hand/**/*",
+        "frontend/src/components/game/util/card_util.ts",
+        "frontend/src/components/lobby/lobby_game_settings/ai_selector/**/*",
+        "frontend/src/components/lobby/lobby_game_settings/game_specific_data.ts",
+        "model_training/**/*"
+      ]
+    },
+    "infrastructure": {
+      "name": "Infrastructure",
+      "files": [
+        "backend/lobby/*",
+        "backend/game/games/example_game_skeleton.go",
+        "backend/game/games/test_game/*",
+        "backend/api.go",
+        "backend/main.go",
+        "backend/environment_variables.go",
+        "backend/static/index.html",
+        "backend/static/devmode/index.html",
+        "frontend/src/components/lobby/*",
+        "frontend/src/components/lobby/lobby_connector/**/*",
+        "frontend/src/components/lobby/lobby_room/**/*",
+        "frontend/src/components/lobby/lobby_rooms/**/*",
+        "frontend/src/components/lobby/lobby_users/**/*",
+        "frontend/src/components/lobby/lobby_game_settings/*",
+        "frontend/src/components/chatbox/*",
+        "frontend/src/components/dialog_box/**/*",
+        "frontend/src/components/game/games/test_game/**/*",
+        "frontend/src/components/game/game_history_dialog/**/*",
+        "frontend/src/components/game/game_info_dialog/**/*",
+        "frontend/src/components/game/players_dialog/**/*",
+        "frontend/src/components/page_home/**/*",
+        "frontend/src/components/page_dev/**/*",
+        "frontend/src/pages/*",
+        "frontend/src/data/*"
+      ]
+    }
+  }
+}
