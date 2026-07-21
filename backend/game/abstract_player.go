@@ -103,13 +103,15 @@ func (p *Player) AddUpdate(update *UpdateMessage) {
 	if !p.base_game.PersistantHistory() {
 		p.update_list = make([]*UpdateMessage, 0)
 	}
-	update.Id = len(p.update_list) + 1 // start at 1
-	p.update_list = append(p.update_list, update)
+	// copy so this recipient's Id assignment can't race other recipients' AddUpdate/AddViewerUpdate calls on the shared update
+	own_update := *update
+	own_update.Id = len(p.update_list) + 1 // start at 1
+	p.update_list = append(p.update_list, &own_update)
 	if p.IsHumanPlayer() {
-		p.Updates <- update
+		p.Updates <- &own_update
 	}
 	if p.ai_running {
-		p.AiUpdates <- update
+		p.AiUpdates <- &own_update
 	}
 }
 

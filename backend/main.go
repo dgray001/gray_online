@@ -172,7 +172,7 @@ func main() {
 						c.JSON(200, failureResponse("Binding error"))
 						return
 					}
-					c.JSON(200, successResponse(game.ToFrontend(req.Client_id, req.Viewer == "true")))
+					c.JSON(200, successResponse(game.GetBase().RequestToFrontend(req.Client_id, req.Viewer == "true")))
 				})
 			}
 		}

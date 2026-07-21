@@ -17,6 +17,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type GameStateRequest struct {
+	ClientId uint64
+	IsViewer bool
+	Reply    chan gin.H
+}
+
 type LobbyRoom struct {
 	room_id          uint64
 	room_name        string
@@ -39,6 +45,7 @@ type LobbyRoom struct {
 	PlayerDisconnected chan *Client
 	PlayerAction       chan game.PlayerAction
 	GameEnded          chan string
+	GameStateRequest   chan *GameStateRequest
 }
 
 func CreateLobbyRoom(host *Client, room_id uint64, lobby *Lobby) *LobbyRoom {
@@ -64,6 +71,7 @@ func CreateLobbyRoom(host *Client, room_id uint64, lobby *Lobby) *LobbyRoom {
 		PlayerDisconnected: make(chan *Client, 4),
 		PlayerAction:       make(chan game.PlayerAction, 12),
 		GameEnded:          make(chan string, 4),
+		GameStateRequest:   make(chan *GameStateRequest, 4),
 	}
 	room.players[host.client_id] = host
 	host.lobby_room = &room
@@ -114,6 +122,12 @@ func (r *LobbyRoom) run() {
 			r.lobby.mu.Lock()
 			r.game = nil
 			r.lobby.mu.Unlock()
+		case req := <-r.GameStateRequest:
+			if r.game == nil {
+				req.Reply <- gin.H{}
+			} else {
+				req.Reply <- r.game.ToFrontend(req.ClientId, req.IsViewer)
+			}
 		}
 	}
 }
@@ -491,6 +505,7 @@ func (r *LobbyRoom) launchGame(game_id uint64) (game.Game, error) {
 		return nil, errors.New(message)
 	}
 	base_game := game.CreateBaseGame(game_id, r.game_settings.GameType, r.game_settings.GameSpecificSettings)
+	base_game.RequestToFrontend = r.RequestToFrontend
 	for _, player := range r.players {
 		game.CreatePlayer(player.client_id, player.nickname, base_game)
 	}
@@ -526,6 +541,12 @@ func (r *LobbyRoom) launchGame(game_id uint64) (game.Game, error) {
 
 func (r *LobbyRoom) GetGame() game.Game {
 	return r.game
+}
+
+func (r *LobbyRoom) RequestToFrontend(client_id uint64, is_viewer bool) gin.H {
+	reply := make(chan gin.H, 1)
+	r.GameStateRequest <- &GameStateRequest{ClientId: client_id, IsViewer: is_viewer, Reply: reply}
+	return <-reply
 }
 
 func (r *LobbyRoom) launchableLocked() (bool, string) {

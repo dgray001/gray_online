@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.7b: Mutex logic for lobby room
+v0.7c: Fix race conditions on game object
 
 ## Dev Use
 

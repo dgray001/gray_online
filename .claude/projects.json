@@ -48,7 +48,10 @@
         "frontend/src/components/game/util/card_util.ts",
         "frontend/src/components/lobby/lobby_game_settings/ai_selector/**/*",
         "frontend/src/components/lobby/lobby_game_settings/game_specific_data.ts",
-        "model_training/**/*"
+        "model_training/main.go",
+        "model_training/runner/*",
+        "model_training/utils/*",
+        "model_training/standard_benchmarks.yml"
       ]
     },
     "infrastructure": {

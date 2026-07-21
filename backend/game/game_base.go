@@ -37,6 +37,8 @@ type GameBase struct {
 	viewer_update_list   []*UpdateMessage
 	GameSpecificSettings map[string]interface{}
 	GameEndedChannel     chan string
+	// set by the owning room at launch; routes a state read onto its actor goroutine
+	RequestToFrontend func(client_id uint64, is_viewer bool) gin.H
 }
 
 func CreateBaseGame(game_id uint64, game_type GameType, game_specific_settings map[string]interface{}) *GameBase {
@@ -134,14 +136,16 @@ func (g *GameBase) AddViewerUpdate(update *UpdateMessage) {
 	if !g.PersistantHistory() {
 		g.viewer_update_list = make([]*UpdateMessage, 0)
 	}
-	update.Id = len(g.viewer_update_list) + 1 // start at 1
-	g.viewer_update_list = append(g.viewer_update_list, update)
-	g.ViewerUpdates <- update
+	// copy so this Id assignment can't race other recipients' AddUpdate/AddViewerUpdate calls on the shared update
+	own_update := *update
+	own_update.Id = len(g.viewer_update_list) + 1 // start at 1
+	g.viewer_update_list = append(g.viewer_update_list, &own_update)
+	g.ViewerUpdates <- &own_update
 	for _, viewer := range g.Viewers {
 		if viewer == nil || !viewer.connected {
 			continue
 		}
-		viewer.Updates <- update
+		viewer.Updates <- &own_update
 	}
 }
 
