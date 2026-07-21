@@ -152,6 +152,7 @@ export class DwgCardHand extends DwgElement {
 
   setCards(cards: StandardCard[], cards_played: number[] = [], animation_time = 0) {
     this.cards_container.replaceChildren();
+    this.cards.clear();
     const card_data: CardData[] = cards
       .map((card, i) => {
         return { i, card, i_dom: -1 } satisfies CardData;
@@ -342,11 +343,13 @@ export class DwgCardHand extends DwgElement {
     this.cards.delete([index, card.i_dom]);
     this.dragging_lock(async () => {
       this.cards_container.style.setProperty('--num-cards', this.cards.size().toString());
-      for (const other_card of this.cards.values()) {
-        if (other_card.i_dom <= card.i_dom) {
-          continue;
-        }
+      const shifted = [...this.cards.values()].filter((c) => c.i_dom > card.i_dom);
+      for (const other_card of shifted) {
+        this.cards.delete([other_card.i, other_card.i_dom]);
+      }
+      for (const other_card of shifted) {
         other_card.i_dom--;
+        this.cards.set([other_card.i, other_card.i_dom], other_card);
         other_card.el?.style.setProperty('--i', other_card.i_dom.toString());
       }
     });

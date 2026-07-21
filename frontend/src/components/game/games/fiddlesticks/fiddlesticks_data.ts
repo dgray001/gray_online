@@ -17,6 +17,7 @@ export declare interface GameFiddlesticks {
   trick: StandardCard[];
   round_points: number;
   trick_points: number;
+  turn_duration: number;
 }
 
 /** Data describing a fiddlesticks player */
@@ -29,6 +30,7 @@ export declare interface FiddlesticksPlayer {
   has_bet: boolean;
   tricks: number;
   order: number; // around table
+  turn_start_time?: number; // only set by server for the current-turn human player
 }
 
 /** Data describing a deal-round game-update */

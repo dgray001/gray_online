@@ -396,8 +396,10 @@ export class DwgEuchre extends DwgElement implements GameComponent {
         winning_card = card;
       }
     }
-    if (winning_index >= 0 && winning_index < this.trick_card_els.length) {
-      this.trick_card_els[winning_index].style.zIndex = '2';
+    const blanks_before_winner = this.game.trick.slice(0, winning_index).filter((c) => c.suit === 0).length;
+    const winning_el_index = winning_index - blanks_before_winner;
+    if (winning_el_index >= 0 && winning_el_index < this.trick_card_els.length) {
+      this.trick_card_els[winning_el_index].style.zIndex = '2';
     }
     this.game.turn = (this.game.trick_leader + winning_index) % this.game.players.length;
     this.game.trick_leader = this.game.turn;

@@ -55,7 +55,7 @@ export class MultiMap<K, V> {
   }
 
   public keys(keyname: string): IterableIterator<K> {
-    if (this.maps.has(keyname)) {
+    if (!this.maps.has(keyname)) {
       return [].values();
     }
     return this.maps.get(keyname)!.keys(); // TODO: what if doesn't exist

@@ -104,10 +104,11 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     } else if (game.game_base.game_started && game.dealer >= 0) {
       this.round_number.innerText = game.round.toString();
       this.updateBetsContainer();
+      const turn_duration = game.betting ? 2 * game.turn_duration : game.turn_duration;
       for (const [player_id, player_el] of this.player_els.entries()) {
         const turn = player_id === game.turn;
         const dealer = player_id === game.dealer;
-        player_el.gameStarted(game.betting, turn, dealer);
+        player_el.gameStarted(game.betting, turn, dealer, game.players[game.turn].turn_start_time, turn_duration);
         if (this.player_id === player_id && !game.game_base.game_ended) {
           this.players_cards.setCards(game.players[player_id].cards, game.players[player_id].cards_played);
           if (!game.betting && this.game.turn === this.player_id) {
