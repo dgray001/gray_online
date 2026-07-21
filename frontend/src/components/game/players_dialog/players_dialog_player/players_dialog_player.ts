@@ -27,7 +27,7 @@ export class DwgPlayersDialogPlayer extends DwgElement {
   }
 
   protected override parsedCallback(): void {
-    if (!this.player || !this.lobby_player || this.room_id) {
+    if (!this.player || !this.room_id) {
       console.error('Must set data before attaching to dom');
       return;
     }

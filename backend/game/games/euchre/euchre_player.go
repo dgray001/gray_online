@@ -20,9 +20,11 @@ func (p *EuchrePlayer) toFrontend(show_updates bool) gin.H {
 		player["player"] = p.player.ToFrontend(show_updates)
 	}
 	cards := []gin.H{}
-	for _, card := range p.cards {
-		if card != nil {
-			cards = append(cards, card.ToFrontend())
+	if show_updates {
+		for _, card := range p.cards {
+			if card != nil {
+				cards = append(cards, card.ToFrontend())
+			}
 		}
 	}
 	player["cards"] = cards

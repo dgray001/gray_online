@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.7c: Fix race conditions on game object
+v0.7e: Fix reliability issues
 
 ## Dev Use
 

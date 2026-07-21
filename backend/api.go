@@ -15,11 +15,3 @@ func failureResponse(error_message string) gin.H {
 		"error_message": error_message,
 	}
 }
-
-func failureResponseWiothResult(error_message string, result any) gin.H {
-	return gin.H{
-		"success":       false,
-		"result":        result,
-		"error_message": error_message,
-	}
-}

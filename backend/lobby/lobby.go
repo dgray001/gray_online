@@ -90,44 +90,53 @@ func CreateLobby() *Lobby {
 
 func (l *Lobby) Run() {
 	for {
-		select {
-		case client := <-l.AddClient:
-			l.addClient(client)
-		case client_id := <-l.ReconnectClient:
-			l.reconnectClient(client_id.client, client_id.client_id)
-		case client := <-l.RemoveClient:
-			l.removeClient(client)
-		case client := <-l.CreateRoom:
-			l.createRoom(client)
-		case room := <-l.RenameRoom:
-			l.renameRoom(room)
-		case room := <-l.UpdateRoomDescription:
-			l.updateRoomDescription(room)
-		case data := <-l.KickClientFromRoom:
-			data.room.kickClient(data.client)
-		case data := <-l.PromotePlayerInRoom:
-			data.room.promotePlayer(data.client)
-		case data := <-l.RoomSetViewer:
-			data.room.setViewer(data.client)
-		case data := <-l.RoomSetPlayer:
-			data.room.setPlayer(data.client)
-		case room := <-l.RemoveRoom:
-			l.removeRoom(room)
-		case data := <-l.LeaveRoom:
-			l.leaveRoom(data)
-		case room := <-l.LaunchGame:
-			game, err := room.launchGame(l.next_game_id)
-			if err == nil {
-				l.mu.Lock()
-				l.games[l.next_game_id] = game
-				l.next_game_id++
-				l.mu.Unlock()
-			} else if room.host != nil {
-				room.host.send(lobbyMessage{Sender: "server", Kind: "room-launch-failed", Content: err.Error()})
-			}
-		case message := <-l.broadcast:
-			l.broadcastMessage(message)
+		l.runOnce()
+	}
+}
+
+func (l *Lobby) runOnce() {
+	defer func() {
+		if rec := recover(); rec != nil {
+			fmt.Fprintln(os.Stderr, "recovered from panic in lobby actor loop:", rec)
 		}
+	}()
+	select {
+	case client := <-l.AddClient:
+		l.addClient(client)
+	case client_id := <-l.ReconnectClient:
+		l.reconnectClient(client_id.client, client_id.client_id)
+	case client := <-l.RemoveClient:
+		l.removeClient(client)
+	case client := <-l.CreateRoom:
+		l.createRoom(client)
+	case room := <-l.RenameRoom:
+		l.renameRoom(room)
+	case room := <-l.UpdateRoomDescription:
+		l.updateRoomDescription(room)
+	case data := <-l.KickClientFromRoom:
+		data.room.kickClient(data.client)
+	case data := <-l.PromotePlayerInRoom:
+		data.room.promotePlayer(data.client)
+	case data := <-l.RoomSetViewer:
+		data.room.setViewer(data.client)
+	case data := <-l.RoomSetPlayer:
+		data.room.setPlayer(data.client)
+	case room := <-l.RemoveRoom:
+		l.removeRoom(room)
+	case data := <-l.LeaveRoom:
+		l.leaveRoom(data)
+	case room := <-l.LaunchGame:
+		game, err := room.launchGame(l.next_game_id)
+		if err == nil {
+			l.mu.Lock()
+			l.games[l.next_game_id] = game
+			l.next_game_id++
+			l.mu.Unlock()
+		} else if room.host != nil {
+			room.host.send(lobbyMessage{Sender: "server", Kind: "room-launch-failed", Content: err.Error()})
+		}
+	case message := <-l.broadcast:
+		l.broadcastMessage(message)
 	}
 }
 
@@ -217,8 +226,8 @@ func (l *Lobby) reconnectClient(client *Client, client_id uint64) {
 	if old_client.delete_timer != nil {
 		old_client.delete_timer.Stop()
 	}
-	l.mu.Unlock()
 	client.client_id = old_client.client_id
+	l.mu.Unlock()
 	old_game := old_client.game
 	old_lobby_room := old_client.lobby_room
 	if old_client.gameNil() && old_lobby_room != nil {
@@ -264,9 +273,9 @@ func (l *Lobby) reconnectClient(client *Client, client_id uint64) {
 
 func (l *Lobby) removeClient(client *Client) {
 	l.mu.Lock()
-	if client.deleted {
+	if l.clients[client.client_id] != client {
 		l.mu.Unlock()
-		return // don't want to remove reconnected client
+		return // this client_id was already taken over by a reconnect
 	}
 	delete_client := time.NewTimer(1 * time.Hour)
 	client.delete_timer = delete_client

@@ -83,13 +83,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.initialized = true;
   }
 
-  async gameStarted(
-    betting: boolean,
-    current_turn: boolean,
-    dealer: boolean,
-    turn_start_time = 0,
-    turn_duration = 0
-  ) {
+  async gameStarted(betting: boolean, current_turn: boolean, dealer: boolean, turn_start_time = 0, turn_duration = 0) {
     await until(() => this.fully_parsed);
     if (betting) {
       this.bet_container.innerText = this.player.has_bet ? this.player.bet.toString() : '-';

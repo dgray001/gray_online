@@ -38,7 +38,7 @@ type GameBase struct {
 	GameSpecificSettings map[string]interface{}
 	GameEndedChannel     chan string
 	// set by the owning room at launch; routes a state read onto its actor goroutine
-	RequestToFrontend func(client_id uint64, is_viewer bool) gin.H
+	RequestToFrontend func(client_id uint64, is_viewer bool) (gin.H, error)
 }
 
 func CreateBaseGame(game_id uint64, game_type GameType, game_specific_settings map[string]interface{}) *GameBase {
@@ -114,6 +114,7 @@ func (g *GameBase) GameStarted() bool {
 func (g *GameBase) StartGame() {
 	if g.game_started {
 		fmt.Fprintln(os.Stderr, "Game already started")
+		return
 	}
 	g.game_started = true
 }
@@ -191,6 +192,7 @@ func (g *GameBase) GameEnded() bool {
 func (g *GameBase) EndGame(message string) {
 	if g.game_ended {
 		fmt.Fprintln(os.Stderr, "Game already ended")
+		return
 	}
 	g.game_ended = true
 	g.GameEndedChannel <- message

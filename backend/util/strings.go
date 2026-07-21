@@ -17,13 +17,3 @@ func ParseInt(s string) int {
 	}
 	return i
 }
-
-func ParseBool(s string) bool {
-	trues := []string{"True", "true"}
-	for _, t := range trues {
-		if t == s {
-			return true
-		}
-	}
-	return false
-}

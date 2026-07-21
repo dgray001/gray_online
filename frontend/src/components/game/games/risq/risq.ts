@@ -17,7 +17,16 @@ import { DEV, createLock } from '../../../../scripts/util';
 import { ColorRGB } from '../../../../scripts/color_rgb';
 
 import html from './risq.html';
-import type { GameRisq, GameRisqFromServer, RisqPlayer, RisqSpace, RisqZone, StartTurnData, SubmittedOrdersData, UnsubmittedOrdersData } from './risq_data';
+import type {
+  GameRisq,
+  GameRisqFromServer,
+  RisqPlayer,
+  RisqSpace,
+  RisqZone,
+  StartTurnData,
+  SubmittedOrdersData,
+  UnsubmittedOrdersData,
+} from './risq_data';
 import { coordinateToIndex, getSpace, RisqOrderType, serverToGameRisq } from './risq_data';
 import { RisqRightPanel } from './canvas_components/right_panel/right_panel';
 import type { DrawRisqSpaceConfig } from './risq_space';
@@ -664,12 +673,7 @@ export class DwgRisq extends DwgElement {
     this.toggling_submit_orders_button = true;
     if (player.orders_submitted) {
       this.right_panel.unsubmittingOrders();
-      const game_update = createMessage(
-        `player-${this.player_id}`,
-        'game-update',
-        '',
-        'unsubmit-orders'
-      );
+      const game_update = createMessage(`player-${this.player_id}`, 'game-update', '', 'unsubmit-orders');
       this.dispatchEvent(
         new CustomEvent('game_update', {
           detail: game_update,
@@ -695,7 +699,7 @@ export class DwgRisq extends DwgElement {
   }
 
   givingOrders(): boolean {
-    return (this.game?.giving_orders ?? false);
+    return this.game?.giving_orders ?? false;
   }
 
   ordersSubmittedTimes(): number {

@@ -8,4 +8,6 @@ declare module '*.png' {
   export = value;
 }
 
+declare module '*.scss';
+
 declare module 'eslint-config-google';

@@ -53,6 +53,8 @@ export function handleMessage(game: DwgGame, message: ServerMessage) {
     case 'game-start':
       game.startGame();
       break;
+    case 'game-resend-waiting-room-ack':
+      break; // still waiting on other players, nothing to do
     case 'game-update':
       handleGameUpdate(game, message);
       break;

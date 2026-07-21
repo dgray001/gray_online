@@ -40,6 +40,9 @@ Lobby Plans:
  - Can chat with individual players
  - Upgraded chatbox => emoji selector, taunts, message id, turn off emoticon converter
 
+Testing Plans:
+ - Formalize the ad-hoc concurrency/reconnect repro scripts (currently one-off Node scripts written per-investigation) into a real backend test suite instead of relying on agents to improvise and run them each time
+
 Bugs:
  - After reconnecting sometimes in backend the connection is nil (or delete_timer is not nil)
     => noticed when using client_id url param but not sure if that matters

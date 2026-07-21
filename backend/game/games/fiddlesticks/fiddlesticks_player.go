@@ -80,9 +80,11 @@ func (p *FiddlesticksPlayer) toFrontend(show_updates bool) gin.H {
 		player["turn_start_time"] = p.turn_start_time.UnixMilli()
 	}
 	cards := []gin.H{}
-	for _, card := range p.cards {
-		if card != nil {
-			cards = append(cards, card.ToFrontend())
+	if show_updates {
+		for _, card := range p.cards {
+			if card != nil {
+				cards = append(cards, card.ToFrontend())
+			}
 		}
 	}
 	player["cards"] = cards

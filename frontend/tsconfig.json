@@ -3,7 +3,7 @@
     "allowJs": true,
     "declaration": true,
     "module": "es6",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "strict": true,
     "noImplicitAny": true,
     "outDir": "./tsout",
@@ -13,6 +13,7 @@
     "sourceMap": true,
     "target": "es6",
     "typeRoots": ["./node_modules/@types"],
+    "types": ["node"],
     "skipLibCheck": true, // Skips type checking of all declaration (*.d.ts) files
   },
   "include": ["src", "src/types.d.ts", "eslint.config.mjs"],
