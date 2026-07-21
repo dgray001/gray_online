@@ -30,11 +30,15 @@ type LobbyRoom struct {
 	delete_timer     *time.Timer
 	// lobby room and game channels
 	// TODO: move lobby room channels from lobby to lobby room
-	broadcast       chan lobbyMessage
-	JoinRoom        chan *ClientRoom
-	UpdateSettings  chan *GameSettings
-	PlayerConnected chan *Client
-	PlayerAction    chan game.PlayerAction
+	broadcast          chan lobbyMessage
+	JoinRoom           chan *ClientRoom
+	LeaveRoom          chan *ClientRoom
+	PlayerReplaced     chan *Client
+	UpdateSettings     chan *GameSettings
+	PlayerConnected    chan *Client
+	PlayerDisconnected chan *Client
+	PlayerAction       chan game.PlayerAction
+	GameEnded          chan string
 }
 
 func CreateLobbyRoom(host *Client, room_id uint64, lobby *Lobby) *LobbyRoom {
@@ -51,11 +55,15 @@ func CreateLobbyRoom(host *Client, room_id uint64, lobby *Lobby) *LobbyRoom {
 			MaxViewers: 16,
 			GameType:   0,
 		},
-		broadcast:       make(chan lobbyMessage, 4),
-		JoinRoom:        make(chan *ClientRoom, 4),
-		UpdateSettings:  make(chan *GameSettings, 4),
-		PlayerConnected: make(chan *Client, 4),
-		PlayerAction:    make(chan game.PlayerAction, 12),
+		broadcast:          make(chan lobbyMessage, 4),
+		JoinRoom:           make(chan *ClientRoom, 4),
+		LeaveRoom:          make(chan *ClientRoom, 4),
+		PlayerReplaced:     make(chan *Client, 4),
+		UpdateSettings:     make(chan *GameSettings, 4),
+		PlayerConnected:    make(chan *Client, 4),
+		PlayerDisconnected: make(chan *Client, 4),
+		PlayerAction:       make(chan game.PlayerAction, 12),
+		GameEnded:          make(chan string, 4),
 	}
 	room.players[host.client_id] = host
 	host.lobby_room = &room
@@ -70,10 +78,14 @@ func (r *LobbyRoom) run() {
 			r.broadcastMessage(message)
 		case data := <-r.JoinRoom:
 			r.addClient(data.client, data.bool_flag)
+		case data := <-r.LeaveRoom:
+			r.removeClient(data.client, data.bool_flag)
+		case client := <-r.PlayerReplaced:
+			r.replaceClient(client)
+		case client := <-r.PlayerDisconnected:
+			r.playerDisconnected(client)
 		case settings := <-r.UpdateSettings:
-			r.lobby.mu.Lock()
 			r.updateSettings(settings)
-			r.lobby.mu.Unlock()
 		case client := <-r.PlayerConnected:
 			client.game = r.game
 			start_game := r.game.GetBase().PlayerConnected(client.client_id)
@@ -87,7 +99,7 @@ func (r *LobbyRoom) run() {
 				for client_id, viewer := range r.viewers {
 					go viewer.viewerGameUpdates(r.game.GetBase().Viewers[client_id], room_id_string)
 				}
-				go r.gameBaseUpdates(r.game.GetBase(), room_id_string)
+				go r.gameBaseUpdates(r.game.GetBase())
 				r.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "game-start", Data: ""})
 				game.Game_StartGame(r.game)
 			}
@@ -96,6 +108,12 @@ func (r *LobbyRoom) run() {
 			if !r.gameNil() {
 				r.game.PlayerAction(r.game.GetBase().AddAction(action))
 			}
+		case message := <-r.GameEnded:
+			room_id_string := strconv.Itoa(int(r.room_id))
+			r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-game-over", Data: message})
+			r.lobby.mu.Lock()
+			r.game = nil
+			r.lobby.mu.Unlock()
 		}
 	}
 }
@@ -177,7 +195,7 @@ func (c *Client) viewerGameUpdates(viewer *game.Viewer, room_id_string string) {
 	}
 }
 
-func (r *LobbyRoom) gameBaseUpdates(game_base *game.GameBase, room_id_string string) {
+func (r *LobbyRoom) gameBaseUpdates(game_base *game.GameBase) {
 	for {
 		if game_base == nil {
 			break
@@ -185,13 +203,14 @@ func (r *LobbyRoom) gameBaseUpdates(game_base *game.GameBase, room_id_string str
 		select {
 		case <-game_base.ViewerUpdates:
 		case message := <-game_base.GameEndedChannel:
-			r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-game-over", Data: message})
-			r.game = nil
+			r.GameEnded <- message
+			return
 		}
 	}
 }
 
 func (r *LobbyRoom) replaceClient(client *Client) {
+	r.lobby.mu.Lock()
 	if r.host.client_id == client.client_id {
 		r.host = client
 	}
@@ -201,12 +220,15 @@ func (r *LobbyRoom) replaceClient(client *Client) {
 	if util.MapContains(r.viewers, client.client_id) {
 		r.viewers[client.client_id] = client
 	}
-	if r.gameStarted() {
-		game.Game_PlayerReconnected(r.game, client.client_id)
-	}
+	game_started := r.gameStartedLocked()
+	current_game := r.game
 	if r.delete_timer != nil {
 		r.delete_timer.Stop()
 		r.delete_timer = nil
+	}
+	r.lobby.mu.Unlock()
+	if game_started {
+		game.Game_PlayerReconnected(current_game, client.client_id)
 	}
 }
 
@@ -214,38 +236,58 @@ func (r *LobbyRoom) broadcastMessage(message lobbyMessage) {
 	if message.Kind != "ping-update" {
 		fmt.Printf("Broadcasting lobby (%d) message {%s, %s, %s, %s}\n", r.room_id, message.Sender, message.Content, message.Data, message.Kind)
 	}
-	for _, client := range r.players {
-		if client == nil || !client.validDebug(true) {
-			fmt.Fprintln(os.Stderr, "Room failed to send message to player", client.client_id)
+	r.lobby.mu.Lock()
+	defer r.lobby.mu.Unlock()
+	for client_id, client := range r.players {
+		if client == nil || !client.validDebugLocked(true) {
+			fmt.Fprintln(os.Stderr, "Room failed to send message to player", client_id)
 			continue
 		}
 		client.send(message)
 	}
-	for _, client := range r.viewers {
-		if client == nil || !client.validDebug(true) {
-			fmt.Fprintln(os.Stderr, "Room failed to send message to viewer", client.client_id)
+	for client_id, client := range r.viewers {
+		if client == nil || !client.validDebugLocked(true) {
+			fmt.Fprintln(os.Stderr, "Room failed to send message to viewer", client_id)
 			continue
 		}
 		client.send(message)
 	}
 }
 
-func (r *LobbyRoom) gameNil() bool {
+func (r *LobbyRoom) gameNilLocked() bool {
 	return r.game == nil || r.game.GetBase() == nil
 }
 
-func (r *LobbyRoom) gameStarted() bool {
+func (r *LobbyRoom) gameNil() bool {
+	r.lobby.mu.Lock()
+	defer r.lobby.mu.Unlock()
+	return r.gameNilLocked()
+}
+
+func (r *LobbyRoom) gameStartedLocked() bool {
 	return r.game != nil && r.game.GetBase() != nil && r.game.GetBase().GameStarted() && !r.game.GetBase().GameEnded()
 }
 
+func (r *LobbyRoom) gameStarted() bool {
+	r.lobby.mu.Lock()
+	defer r.lobby.mu.Unlock()
+	return r.gameStartedLocked()
+}
+
 func (r *LobbyRoom) addClient(c *Client, join_as_player bool) {
-	if r.gameStarted() {
-		if game.Game_PlayerReconnected(r.game, c.client_id) {
+	r.lobby.mu.Lock()
+	game_started := r.gameStartedLocked()
+	current_game := r.game
+	r.lobby.mu.Unlock()
+	if game_started {
+		if game.Game_PlayerReconnected(current_game, c.client_id) {
+			r.lobby.mu.Lock()
 			c.lobby_room = r
 			r.players[c.client_id] = c
 			if r.host != nil && r.host.client_id == c.client_id {
 				r.host = c
 			}
+			r.lobby.mu.Unlock()
 			client_id_string := strconv.Itoa(int(c.client_id))
 			room_id_string := strconv.Itoa(int(r.room_id))
 			r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-joined-player", Data: client_id_string})
@@ -253,17 +295,22 @@ func (r *LobbyRoom) addClient(c *Client, join_as_player bool) {
 		}
 		join_as_player = false
 	}
-	if c.lobby_room != nil {
-		if c.lobby_room.room_id == r.room_id {
+	r.lobby.mu.Lock()
+	old_lobby_room := c.lobby_room
+	r.lobby.mu.Unlock()
+	if old_lobby_room != nil {
+		if old_lobby_room.room_id == r.room_id {
 			c.send(lobbyMessage{Sender: "server", Kind: "room-join-failed", Content: "Already in room"})
 			return
 		}
-		c.lobby_room.removeClient(c, true)
+		old_lobby_room.LeaveRoom <- &ClientRoom{client: c, room: old_lobby_room, bool_flag: true}
 	}
+	r.lobby.mu.Lock()
 	if join_as_player && !r.spaceForPlayer() {
 		join_as_player = false
 	}
 	if !join_as_player && !r.spaceForViewer() {
+		r.lobby.mu.Unlock()
 		c.send(lobbyMessage{Sender: "server", Kind: "room-join-failed", Content: "No space in room"})
 		return
 	}
@@ -276,15 +323,20 @@ func (r *LobbyRoom) addClient(c *Client, join_as_player bool) {
 		r.viewers[c.client_id] = c
 	}
 	c.lobby_room = r
-	client_id_string := strconv.Itoa(int(c.client_id))
-	room_id_string := strconv.Itoa(int(r.room_id))
 	message_kind := "room-joined-player"
+	var new_viewer_game *game.GameBase
 	if !join_as_player {
 		message_kind = "room-joined-viewer"
-		if !r.gameNil() {
-			r.game.GetBase().Viewers[c.client_id] = game.CreateViewer(c.client_id, c.nickname)
+		if !r.gameNilLocked() {
+			new_viewer_game = r.game.GetBase()
 		}
 	}
+	r.lobby.mu.Unlock()
+	if new_viewer_game != nil {
+		new_viewer_game.Viewers[c.client_id] = game.CreateViewer(c.client_id, c.nickname)
+	}
+	client_id_string := strconv.Itoa(int(c.client_id))
+	room_id_string := strconv.Itoa(int(r.room_id))
 	r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: message_kind, Data: client_id_string})
 }
 
@@ -297,16 +349,21 @@ func (r *LobbyRoom) spaceForViewer() bool {
 }
 
 func (r *LobbyRoom) removeClient(c *Client, client_leaves bool) {
-	if r.host != nil && r.host.client_id == c.client_id && !r.gameStarted() {
+	r.lobby.mu.Lock()
+	game_started := r.gameStartedLocked()
+	is_host_leaving_unstarted := r.host != nil && r.host.client_id == c.client_id && !game_started
+	r.lobby.mu.Unlock()
+	if is_host_leaving_unstarted {
 		// TODO: make someone else the room host if game not started
 		fmt.Println("Removing room since host left unstarted game")
 		r.lobby.removeRoom(r)
 		return
 	}
-	if r.gameStarted() {
+	if game_started {
 		r.playerDisconnected(c)
 	}
-	if !r.gameStarted() || client_leaves {
+	r.lobby.mu.Lock()
+	if !game_started || client_leaves {
 		delete(r.players, c.client_id)
 		if c.lobby_room != nil && c.lobby_room.room_id == r.room_id {
 			c.lobby_room = nil
@@ -318,6 +375,7 @@ func (r *LobbyRoom) removeClient(c *Client, client_leaves bool) {
 			c.lobby_room = nil
 		}
 	}
+	r.lobby.mu.Unlock()
 	client_id_string := strconv.Itoa(int(c.client_id))
 	room_id_string := strconv.Itoa(int(r.room_id))
 	r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-left", Data: client_id_string})
@@ -325,9 +383,14 @@ func (r *LobbyRoom) removeClient(c *Client, client_leaves bool) {
 
 /** This needs to be the way we disconnect players from a game */
 func (r *LobbyRoom) playerDisconnected(c *Client) {
-	if game.Game_PlayerDisconnected(r.game, c.client_id) {
+	r.lobby.mu.Lock()
+	current_game := r.game
+	r.lobby.mu.Unlock()
+	if game.Game_PlayerDisconnected(current_game, c.client_id) {
 		delete_room := time.NewTimer(45 * time.Second)
+		r.lobby.mu.Lock()
 		r.delete_timer = delete_room
+		r.lobby.mu.Unlock()
 		go func() {
 			<-delete_room.C
 			fmt.Println("Removing room since everyone left for 45 seconds")
@@ -340,7 +403,9 @@ func (r *LobbyRoom) playerDisconnected(c *Client) {
 }
 
 func (r *LobbyRoom) kickClient(c *Client) {
+	r.lobby.mu.Lock()
 	if r.host.client_id == c.client_id {
+		r.lobby.mu.Unlock()
 		return
 	}
 	if c.lobby_room != nil && c.lobby_room.room_id == r.room_id {
@@ -348,41 +413,52 @@ func (r *LobbyRoom) kickClient(c *Client) {
 	}
 	delete(r.players, c.client_id)
 	delete(r.viewers, c.client_id)
+	r.lobby.mu.Unlock()
 	client_id_string := strconv.Itoa(int(c.client_id))
 	room_id_string := strconv.Itoa(int(r.room_id))
 	r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-kicked", Data: client_id_string})
 }
 
 func (r *LobbyRoom) promotePlayer(c *Client) {
+	r.lobby.mu.Lock()
 	if r.host.client_id == c.client_id {
+		r.lobby.mu.Unlock()
 		return
 	}
 	if c.lobby_room == nil || c.lobby_room.room_id != r.room_id {
+		r.lobby.mu.Unlock()
 		return
 	}
 	r.host = c
+	r.lobby.mu.Unlock()
 	client_id_string := strconv.Itoa(int(c.client_id))
 	room_id_string := strconv.Itoa(int(r.room_id))
 	r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-promoted", Data: client_id_string})
 }
 
 func (r *LobbyRoom) setViewer(c *Client) {
+	r.lobby.mu.Lock()
 	if r.host.client_id == c.client_id || r.players[c.client_id] == nil {
+		r.lobby.mu.Unlock()
 		return
 	}
 	delete(r.players, c.client_id)
 	r.viewers[c.client_id] = c
+	r.lobby.mu.Unlock()
 	client_id_string := strconv.Itoa(int(c.client_id))
 	room_id_string := strconv.Itoa(int(r.room_id))
 	r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-viewer-set", Data: client_id_string})
 }
 
 func (r *LobbyRoom) setPlayer(c *Client) {
+	r.lobby.mu.Lock()
 	if r.host.client_id == c.client_id || r.viewers[c.client_id] == nil {
+		r.lobby.mu.Unlock()
 		return
 	}
 	delete(r.viewers, c.client_id)
 	r.players[c.client_id] = c
+	r.lobby.mu.Unlock()
 	client_id_string := strconv.Itoa(int(c.client_id))
 	room_id_string := strconv.Itoa(int(r.room_id))
 	r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-player-set", Data: client_id_string})
@@ -394,7 +470,9 @@ func (r *LobbyRoom) updateSettings(s *GameSettings) {
 		fmt.Fprintln(os.Stderr, err.Error())
 		return
 	}
+	r.lobby.mu.Lock()
 	r.game_settings = s
+	r.lobby.mu.Unlock()
 	room_id_string := strconv.Itoa(int(r.room_id))
 	r.lobby.broadcastMessage(lobbyMessage{
 		Sender: "room-" + room_id_string,
@@ -404,8 +482,10 @@ func (r *LobbyRoom) updateSettings(s *GameSettings) {
 }
 
 func (r *LobbyRoom) launchGame(game_id uint64) (game.Game, error) {
-	launchable, launchable_error := r.launchable()
+	r.lobby.mu.Lock()
+	launchable, launchable_error := r.launchableLocked()
 	if !launchable {
+		r.lobby.mu.Unlock()
 		message := fmt.Sprintf("Cannot launch game of id %d: %s", game_id, launchable_error)
 		fmt.Fprintln(os.Stderr, message)
 		return nil, errors.New(message)
@@ -432,22 +512,24 @@ func (r *LobbyRoom) launchGame(game_id uint64) (game.Game, error) {
 		err = fmt.Errorf("%s", fmt.Sprintf("GameType not recognized: %d", r.game_settings.GameType))
 	}
 	if err != nil {
+		r.lobby.mu.Unlock()
 		fmt.Fprintln(os.Stderr, err.Error())
 		return nil, err
 	}
 	r.game = new_game
+	r.lobby.mu.Unlock()
 	room_id_string := strconv.Itoa(int(r.room_id))
 	game_id_string := strconv.Itoa(int(game_id))
 	r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-launched", Data: game_id_string})
-	return r.game, nil
+	return new_game, nil
 }
 
 func (r *LobbyRoom) GetGame() game.Game {
 	return r.game
 }
 
-func (r *LobbyRoom) launchable() (bool, string) {
-	if !r.valid() {
+func (r *LobbyRoom) launchableLocked() (bool, string) {
+	if !r.validLocked() {
 		return false, "Room invalid"
 	}
 	if r.game_settings == nil {
@@ -457,20 +539,26 @@ func (r *LobbyRoom) launchable() (bool, string) {
 	if !settings_launchable {
 		return false, settings_launchable_error
 	}
-	if !r.gameNil() {
+	if !r.gameNilLocked() {
 		return false, "Game already launched"
 	}
 	return true, ""
 }
 
-func (r *LobbyRoom) valid() bool {
+func (r *LobbyRoom) launchable() (bool, string) {
+	r.lobby.mu.Lock()
+	defer r.lobby.mu.Unlock()
+	return r.launchableLocked()
+}
+
+func (r *LobbyRoom) validLocked() bool {
 	if r.room_id < 1 {
 		return false
 	}
-	if !r.gameNil() && !r.game.Valid() {
+	if !r.gameNilLocked() && !r.game.Valid() {
 		return false
 	}
-	if r.gameNil() && (r.host == nil || !r.host.validDebug(true)) {
+	if r.gameNilLocked() && (r.host == nil || !r.host.validDebugLocked(true)) {
 		return false
 	}
 	if len(r.players) > int(r.game_settings.MaxPlayers) {
@@ -493,7 +581,13 @@ func (r *LobbyRoom) valid() bool {
 	return true
 }
 
-func (r *LobbyRoom) ToFrontend() gin.H {
+func (r *LobbyRoom) valid() bool {
+	r.lobby.mu.Lock()
+	defer r.lobby.mu.Unlock()
+	return r.validLocked()
+}
+
+func (r *LobbyRoom) toFrontendLocked() gin.H {
 	room := gin.H{
 		"room_id":          strconv.Itoa(int(r.room_id)),
 		"room_name":        r.room_name,
@@ -501,24 +595,30 @@ func (r *LobbyRoom) ToFrontend() gin.H {
 		"game_settings":    r.game_settings.ToFrontend(),
 	}
 	if r.host != nil {
-		room["host"] = r.host.ToFrontend()
+		room["host"] = r.host.toFrontendLocked()
 	}
 	players := []gin.H{}
 	for _, player := range r.players {
 		if player != nil {
-			players = append(players, player.ToFrontend())
+			players = append(players, player.toFrontendLocked())
 		}
 	}
 	room["players"] = players
 	viewers := []gin.H{}
 	for _, viewer := range r.viewers {
 		if viewer != nil {
-			viewers = append(viewers, viewer.ToFrontend())
+			viewers = append(viewers, viewer.toFrontendLocked())
 		}
 	}
 	room["viewers"] = viewers
-	if !r.gameNil() {
+	if !r.gameNilLocked() {
 		room["game_id"] = strconv.Itoa(int(game.Game_GetId(r.game)))
 	}
 	return room
+}
+
+func (r *LobbyRoom) ToFrontend() gin.H {
+	r.lobby.mu.Lock()
+	defer r.lobby.mu.Unlock()
+	return r.toFrontendLocked()
 }

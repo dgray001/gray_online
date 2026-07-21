@@ -28,7 +28,6 @@ type Client struct {
 	ping_start             time.Time
 	ping_broadcast_counter uint8
 	send_message           chan lobbyMessage
-	closed                 bool
 	lobby                  *Lobby
 	lobby_room             *LobbyRoom
 	game                   game.Game
@@ -66,31 +65,26 @@ func (c *Client) GetNickname() string {
 	return c.nickname
 }
 
-// Close send message channel
 func (c *Client) close() {
 	if c == nil {
 		return
 	}
-	c.closed = true
-	close(c.send_message)
 	if c.connection != nil {
 		c.connection.Close()
 	}
 }
 
-// Add to send message channel
 func (c *Client) send(lm lobbyMessage) {
-	if c.closed || c.send_message == nil {
+	if c.send_message == nil {
 		return
 	}
-	defer func() { _ = recover() }()
 	select {
 	case c.send_message <- lm:
 	default:
 	}
 }
 
-func (c *Client) pingString() string {
+func (c *Client) pingStringLocked() string {
 	return strconv.FormatInt(int64(c.ping/time.Millisecond), 10)
 }
 
@@ -102,20 +96,26 @@ func (c *Client) readMessages() {
 	c.connection.SetReadLimit(read_limit)
 	c.connection.SetReadDeadline(time.Now().Add(read_wait))
 	c.connection.SetPongHandler(func(string) error {
-		if !c.valid() {
+		c.lobby.mu.Lock()
+		if !c.validDebugLocked(false) {
+			c.lobby.mu.Unlock()
 			return nil
 		}
 		c.ping = time.Since(c.ping_start)
-		c.connection.SetReadDeadline(time.Now().Add(read_wait))
 		c.ping_broadcast_counter--
+		broadcast_wide := c.ping_broadcast_counter < 1
+		if broadcast_wide {
+			c.ping_broadcast_counter = ping_broadcast_count
+		}
 		ping_message := lobbyMessage{
 			Sender:  "server",
 			Kind:    "ping-update",
 			Data:    strconv.FormatUint(c.client_id, 10),
-			Content: c.pingString(),
+			Content: c.pingStringLocked(),
 		}
-		if c.ping_broadcast_counter < 1 {
-			c.ping_broadcast_counter = ping_broadcast_count
+		c.lobby.mu.Unlock()
+		c.connection.SetReadDeadline(time.Now().Add(read_wait))
+		if broadcast_wide {
 			c.lobby.broadcastMessage(ping_message)
 		} else {
 			c.send(ping_message)
@@ -123,7 +123,10 @@ func (c *Client) readMessages() {
 		return nil
 	})
 	for {
-		if c.deleted {
+		c.lobby.mu.Lock()
+		deleted := c.deleted
+		c.lobby.mu.Unlock()
+		if deleted {
 			break
 		}
 		var message lobbyMessage
@@ -474,7 +477,7 @@ func (c *Client) readMessages() {
 				c.send(lobbyMessage{Sender: "server", Kind: "game-update-failed", Content: "Not in game"})
 				break
 			}
-			c.lobby_room.playerDisconnected(c)
+			c.lobby_room.PlayerDisconnected <- c
 		case "game-get-update":
 			if c.lobby_room == nil || c.lobby_room.game == nil {
 				if c.game != nil && c.game.GetBase().GameEnded() {
@@ -532,35 +535,40 @@ func (c *Client) writeMessages() {
 		ticker.Stop()
 	}()
 	for {
-		if c.deleted {
+		c.lobby.mu.Lock()
+		deleted := c.deleted
+		c.lobby.mu.Unlock()
+		if deleted {
 			break
 		}
 		select {
-		case message, ok := <-c.send_message:
+		case message := <-c.send_message:
 			c.connection.SetWriteDeadline(time.Now().Add(write_wait))
-			if !ok {
-				c.connection.WriteMessage(websocket.CloseMessage, []byte{})
-				return
-			}
 			err := c.connection.WriteJSON(message)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "Error at client", c.client_id, "message writer: ", err.Error())
+				c.lobby.mu.Lock()
 				c.deleted = true
+				c.lobby.mu.Unlock()
 			}
 		case <-ticker.C:
 			c.connection.SetWriteDeadline(time.Now().Add(write_wait))
 			err := c.connection.WriteMessage(websocket.PingMessage, nil)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "Error at client", c.client_id, "ping writer: ", err.Error())
+				c.lobby.mu.Lock()
 				c.deleted = true
+				c.lobby.mu.Unlock()
 				break
 			}
+			c.lobby.mu.Lock()
 			c.ping_start = time.Now()
+			c.lobby.mu.Unlock()
 		}
 	}
 }
 
-func (c *Client) validDebug(debug bool) bool {
+func (c *Client) validDebugLocked(debug bool) bool {
 	if c == nil {
 		if debug {
 			fmt.Fprintln(os.Stderr, "Client invalid because null", c)
@@ -594,6 +602,19 @@ func (c *Client) validDebug(debug bool) bool {
 	return true
 }
 
+func (c *Client) validDebug(debug bool) bool {
+	if c == nil {
+		return false
+	}
+	c.lobby.mu.Lock()
+	defer c.lobby.mu.Unlock()
+	return c.validDebugLocked(debug)
+}
+
+func (c *Client) validLocked() bool {
+	return c.validDebugLocked(false)
+}
+
 func (c *Client) valid() bool {
 	return c.validDebug(false)
 }
@@ -608,14 +629,20 @@ func (c *Client) gameNil() bool {
   }
 */
 
-func (c *Client) ToFrontend() gin.H {
+func (c *Client) toFrontendLocked() gin.H {
 	client := gin.H{
 		"client_id": strconv.Itoa(int(c.client_id)),
 		"nickname":  c.nickname,
-		"ping":      c.pingString(),
+		"ping":      c.pingStringLocked(),
 	}
 	if c.lobby_room != nil {
 		client["room_id"] = c.lobby_room.room_id
 	}
 	return client
+}
+
+func (c *Client) ToFrontend() gin.H {
+	c.lobby.mu.Lock()
+	defer c.lobby.mu.Unlock()
+	return c.toFrontendLocked()
 }

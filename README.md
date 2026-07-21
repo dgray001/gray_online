@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.7a: Mutext logic for lobby actions
+v0.7b: Mutex logic for lobby room
 
 ## Dev Use
 
