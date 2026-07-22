@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.7f: Egyptian rat slap skeleton
+v0.7g: Rat crap backend
 
 ## Dev Use
 
