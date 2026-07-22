@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.7e: Fix reliability issues
+v0.7f: Egyptian rat slap skeleton
 
 ## Dev Use
 

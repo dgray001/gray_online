@@ -50,8 +50,9 @@ export enum GameType {
   UNSPECIFIED = 0,
   FIDDLESTICKS = 1,
   EUCHRE = 2,
-  RISQ = 3,
-  TEST_GAME = 4,
+  EGYPTIAN_RAT_SLAP = 3,
+  RISQ = 4,
+  TEST_GAME = 5,
 }
 
 /** Type of the lowercase strings of possible game types */

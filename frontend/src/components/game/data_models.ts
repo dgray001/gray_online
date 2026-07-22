@@ -2,7 +2,7 @@ import type { GameType } from '../lobby/data_models';
 import type { DwgGame } from './game';
 
 /** HTML tags for all game types */
-export type GameHtmlTag = 'dwg-fiddlesticks' | 'dwg-euchre' | 'dwg-risq' | 'dwg-test-game';
+export type GameHtmlTag = 'dwg-fiddlesticks' | 'dwg-euchre' | 'dwg-egyptian-rat-slap' | 'dwg-risq' | 'dwg-test-game';
 
 /** Interface for components that represent a frontend game */
 export declare interface GameComponent {

@@ -29,9 +29,7 @@
     "@types/webpack": "^5.28.1",
     "@typescript-eslint/eslint-plugin": "^8.65.0",
     "@typescript-eslint/parser": "^8.65.0",
-    "@webpack-cli/generators": "^3.0.7",
     "clean-webpack-plugin": "^4.0.0",
-    "copy-webpack-plugin": "^11.0.0",
     "declaration-bundler-webpack-plugin": "^1.0.3",
     "eslint": "^9.39.2",
     "eslint-config-google": "^0.14.0",
@@ -44,8 +42,7 @@
     "typescript": "^6.0.3",
     "webpack": "^5.78.0",
     "webpack-cli": "^5.1.4",
-    "webpack-dev-server": "^5.2.2",
-    "wepack-cli": "^0.0.1-security"
+    "webpack-dev-server": "^6.0.0"
   },
   "dependencies": {
     "@mux/upchunk": "^3.1.0",

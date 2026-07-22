@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dgray001/gray_online/game"
+	"github.com/dgray001/gray_online/game/games/egyptian_rat_slap"
 	"github.com/dgray001/gray_online/game/games/euchre"
 	"github.com/dgray001/gray_online/game/games/fiddlesticks"
 	"github.com/dgray001/gray_online/game/games/risq"
@@ -593,6 +594,8 @@ func (r *LobbyRoom) launchGame(game_id uint64) (game.Game, error) {
 		new_game, err = fiddlesticks.CreateGame(base_game, r.PlayerAction)
 	case game.GameType_EUCHRE:
 		new_game, err = euchre.CreateGame(base_game)
+	case game.GameType_EGYPTIAN_RAT_SLAP:
+		new_game, err = egyptian_rat_slap.CreateGame(base_game)
 	case game.GameType_RISQ:
 		new_game, err = risq.CreateGame(base_game)
 	case game.GameType_TEST_GAME:

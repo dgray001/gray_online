@@ -383,7 +383,7 @@ export class DwgGame extends DwgElement {
         const script = document.createElement('script');
         script.setAttribute(
           'src',
-          `${window.location.origin}/dist/${component.replace('dwg-', '').replace('-', '_')}.bundle.js?v=${getUrlParam('v')}`
+          `${window.location.origin}/dist/${component.replace('dwg-', '').replace(/-/g, '_')}.bundle.js?v=${getUrlParam('v')}`
         );
         script.async = false;
         let script_loaded = false;
@@ -430,6 +430,9 @@ export class DwgGame extends DwgElement {
         break;
       case GameType.EUCHRE:
         await set_game('dwg-euchre');
+        break;
+      case GameType.EGYPTIAN_RAT_SLAP:
+        await set_game('dwg-egyptian-rat-slap');
         break;
       case GameType.RISQ:
         await set_game('dwg-risq');
