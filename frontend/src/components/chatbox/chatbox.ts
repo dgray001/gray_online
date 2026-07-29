@@ -76,7 +76,10 @@ export class DwgChatbox extends DwgElement {
     if (message.sender === SERVER_CHAT_NAME || message.color === 'gray') {
       new_element.classList.add('color-gray');
     }
-    new_element.innerHTML = `<b>${sender}</b>${message.message}`;
+    const sender_el = document.createElement('b');
+    sender_el.innerText = sender;
+    new_element.appendChild(sender_el);
+    new_element.appendChild(document.createTextNode(message.message));
     this.chat_container.appendChild(new_element);
     new_element.classList.add('new-message');
     this.new_chat_elements.push(new_element);

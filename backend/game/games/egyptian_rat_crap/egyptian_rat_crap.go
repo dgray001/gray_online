@@ -78,8 +78,13 @@ func (g *GameEgyptianRatCrap) StartGame() {
 		i++
 	}
 	g.turn = util.RandomInt(0, len(g.players)-1)
+	pile_counts := make([]int, len(g.players))
+	for i, p := range g.players {
+		pile_counts[i] = len(p.pile)
+	}
 	game.Game_BroadcastUpdate(g, &game.UpdateMessage{Kind: "deal", Content: gin.H{
-		"turn": g.turn,
+		"turn":        g.turn,
+		"pile_counts": pile_counts,
 	}})
 	g.startTurnTimer()
 }

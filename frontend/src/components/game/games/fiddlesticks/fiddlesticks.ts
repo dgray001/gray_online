@@ -206,9 +206,9 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     this.game.trump = data.trump;
     for (const [player_id, player_el] of this.player_els.entries()) {
       if (data.dealer === player_id) {
-        player_el.newRound(true);
+        await player_el.newRound(true);
       } else {
-        player_el.newRound(false);
+        await player_el.newRound(false);
       }
       if (player_id === this.player_id) {
         const card_animation_time = Math.min(150, animation_time / (data as PlayerDealRound).cards.length);

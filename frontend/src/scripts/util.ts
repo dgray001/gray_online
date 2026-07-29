@@ -1,5 +1,5 @@
 /** Whether in DEV environment; used for public api keys */
-export const DEV = true;
+export const DEV = false;
 
 /** Loop helper function */
 export function loop(times: number, callback: (i?: number) => void): void {
@@ -43,7 +43,7 @@ export function capitalize(str: string, word_split = ' '): string {
       const lower = str.toLowerCase();
       return str.charAt(0).toUpperCase() + lower.slice(1);
     })
-    .join(' ');
+    .join(word_split);
 }
 
 /** Gets random element of array */
@@ -90,11 +90,12 @@ export function clickButton(
     if (options.disable_button) {
       button.disabled = true;
     }
-    const has_changed_text = false;
+    let has_changed_text = false;
     const original_text = button.innerText;
     function changeButtonText(text?: clickButtonReturn, enable_button?: boolean) {
       if (typeof text === 'string') {
         button.innerText = text;
+        has_changed_text = true;
       } else if (has_changed_text) {
         button.innerText = original_text;
       }

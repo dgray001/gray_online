@@ -34,6 +34,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
       }
       const you_joined_word = you_joined_data_split[1] === 'reconnect' ? 'rejoined' : 'joined';
       lobby.getConnectionMetadata().client_id = id;
+      lobby.getConnectionMetadata().token = you_joined_data_split[2];
       lobby.classList.add('connected');
       lobby.setNickname(message.content);
       lobby.getChatbox().addChat({

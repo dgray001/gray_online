@@ -141,12 +141,20 @@ func (g *GameBase) AddViewerUpdate(update *UpdateMessage) {
 	own_update := *update
 	own_update.Id = len(g.viewer_update_list) + 1 // start at 1
 	g.viewer_update_list = append(g.viewer_update_list, &own_update)
-	g.ViewerUpdates <- &own_update
+	select {
+	case g.ViewerUpdates <- &own_update:
+	default:
+		fmt.Fprintln(os.Stderr, "Dropped viewer update - ViewerUpdates buffer full:", own_update.Kind)
+	}
 	for _, viewer := range g.Viewers {
 		if viewer == nil || !viewer.connected {
 			continue
 		}
-		viewer.Updates <- &own_update
+		select {
+		case viewer.Updates <- &own_update:
+		default:
+			fmt.Fprintln(os.Stderr, "Dropped update to viewer", viewer.client_id, "- update buffer full:", own_update.Kind)
+		}
 	}
 }
 

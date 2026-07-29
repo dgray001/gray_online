@@ -203,7 +203,7 @@ func (l *Lobby) addClient(client *Client) {
 	l.clients[client.client_id] = client
 	l.mu.Unlock()
 	id_string := strconv.Itoa(int(client.client_id))
-	client.send(lobbyMessage{Sender: "server", Kind: "lobby-you-joined", Content: client.nickname, Data: id_string + "-connect"})
+	client.send(lobbyMessage{Sender: "server", Kind: "lobby-you-joined", Content: client.nickname, Data: id_string + "-connect-" + client.token})
 	l.broadcastMessage(lobbyMessage{Sender: "client-" + id_string, Kind: "lobby-joined", Content: client.nickname, Data: id_string + "-connect"})
 }
 
@@ -267,7 +267,7 @@ func (l *Lobby) reconnectClient(client *Client, client_id uint64) {
 	old_client.deleted = true
 	l.mu.Unlock()
 	id_string := strconv.Itoa(int(client.client_id))
-	client.send(lobbyMessage{Sender: "server", Kind: "lobby-you-joined", Content: client.nickname, Data: id_string + "-reconnect"})
+	client.send(lobbyMessage{Sender: "server", Kind: "lobby-you-joined", Content: client.nickname, Data: id_string + "-reconnect-" + client.token})
 	l.broadcastMessage(lobbyMessage{Sender: "client-" + id_string, Kind: "lobby-joined", Content: client.nickname, Data: id_string + "-reconnect"})
 }
 

@@ -16,6 +16,7 @@ export declare interface ConnectionMetadata {
   nickname: string;
   ping: number;
   client_id?: number;
+  token?: string;
   room_id?: number;
 }
 
@@ -37,11 +38,12 @@ export declare interface LobbyUserFromServer {
 
 /** Convert a server response to a TS lobby user object */
 export function serverResponseToUser(server_response: LobbyUserFromServer): LobbyUser {
+  const room_id = parseInt(server_response.room_id ?? '');
   return {
     client_id: parseInt(server_response.client_id),
     nickname: server_response.nickname,
     ping: parseInt(server_response.ping),
-    room_id: parseInt(server_response.room_id ?? '') ?? undefined,
+    room_id: Number.isNaN(room_id) ? undefined : room_id,
   };
 }
 
@@ -50,7 +52,7 @@ export enum GameType {
   UNSPECIFIED = 0,
   FIDDLESTICKS = 1,
   EUCHRE = 2,
-  EGYPTIAN_RAT_SLAP = 3,
+  EGYPTIAN_RAT_CRAP = 3,
   RISQ = 4,
   TEST_GAME = 5,
 }

@@ -108,10 +108,18 @@ func (p *Player) AddUpdate(update *UpdateMessage) {
 	own_update.Id = len(p.update_list) + 1 // start at 1
 	p.update_list = append(p.update_list, &own_update)
 	if p.IsHumanPlayer() {
-		p.Updates <- &own_update
+		select {
+		case p.Updates <- &own_update:
+		default:
+			fmt.Fprintln(os.Stderr, "Dropped update to player", p.Player_id, "- update buffer full:", own_update.Kind)
+		}
 	}
 	if p.ai_running {
-		p.AiUpdates <- &own_update
+		select {
+		case p.AiUpdates <- &own_update:
+		default:
+			fmt.Fprintln(os.Stderr, "Dropped update to AI player", p.Player_id, "- update buffer full:", own_update.Kind)
+		}
 	}
 }
 

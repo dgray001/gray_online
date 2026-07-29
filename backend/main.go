@@ -18,7 +18,7 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
-var DEV = true
+var DEV = false
 
 func main() {
 	// Set environment variables
@@ -163,6 +163,7 @@ func main() {
 					}
 					type GetGameReq struct {
 						Client_id uint64 `json:"client_id" binding:"required"`
+						Token     string `json:"token"`
 						Viewer    string `json:"viewer" binding:"required"`
 					}
 					var req GetGameReq
@@ -171,6 +172,13 @@ func main() {
 						fmt.Println(err)
 						c.JSON(200, failureResponse("Binding error"))
 						return
+					}
+					if req.Viewer != "true" {
+						client := lobby_object.GetClient(req.Client_id)
+						if client == nil || !client.ValidToken(req.Token) {
+							c.JSON(200, failureResponse("Invalid token"))
+							return
+						}
 					}
 					result, err := game.GetBase().RequestToFrontend(req.Client_id, req.Viewer == "true")
 					if err != nil {

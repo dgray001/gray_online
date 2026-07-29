@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.7g: Rat crap backend
+v0.7h: Rat crap frontend
 
 ## Dev Use
 

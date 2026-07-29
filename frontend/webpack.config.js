@@ -14,9 +14,9 @@ module.exports = {
 			dependOn: 'index',
 			import: './src/components/game/games/euchre/euchre.ts',
 		},
-		egyptian_rat_slap: {
+		egyptian_rat_crap: {
 			dependOn: 'index',
-			import: './src/components/game/games/egyptian_rat_slap/egyptian_rat_slap.ts',
+			import: './src/components/game/games/egyptian_rat_crap/egyptian_rat_crap.ts',
 		},
 		risq: {
 			dependOn: 'index',

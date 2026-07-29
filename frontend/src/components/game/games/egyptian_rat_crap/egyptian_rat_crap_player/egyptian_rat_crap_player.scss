@@ -1,0 +1,115 @@
+dwg-egyptian-rat-crap-player {
+  // --diameter: 0; // set by component
+  // --size: 0; // set by component
+  --order: 0; // set by component
+  --num-players: 0; // set by component
+  --turns: calc((0.25 + var(--order) / var(--num-players)) * 1turn);
+  --x: calc(0.5 * var(--diameter) * (1 + cos(var(--turns))) - 0.5 * var(--size));
+  --y: calc(0.5 * var(--diameter) * (1 + sin(var(--turns))) - 0.5 * var(--size));
+  --icon-size: 48px;
+  --turn-color: rgba(90, 220, 90, 0.85);
+  --background-color: rgba(240, 240, 240, 0.7);
+
+  background-color: var(--background-color);
+  border-radius: calc(0.08 * var(--size));
+  color: black;
+  display: block;
+  left: var(--x);
+  position: absolute;
+  top: var(--y);
+  z-index: 4;
+
+  &.turn {
+    box-shadow: 0 0 6px 6px var(--turn-color);
+  }
+
+  &.slapped {
+    opacity: 60%;
+  }
+
+  > * {
+    box-sizing: border-box;
+    font-size: calc(0.13 * var(--size));
+    height: calc(0.2 * var(--size));
+    line-height: calc(0.2 * var(--size));
+    width: 100%;
+  }
+
+  > #name-container {
+    font-weight: bold;
+    padding: 0.3em 0.4em 0.2em;
+    text-align: center;
+  }
+
+  > #status-container {
+    padding-left: 0.3em;
+    text-align: center;
+  }
+
+  .fixed-width {
+    display: inline-block;
+    padding: 0 0.2em;
+    text-align: right;
+    width: 40%;
+  }
+
+  > #winner-wrapper.icon-wrapper {
+    height: var(--icon-size);
+    left: min(10%, 10px);
+    opacity: 75%;
+    position: absolute;
+    top: calc(-0.75 * var(--icon-size));
+    width: var(--icon-size);
+
+    &:not(.show) {
+      display: none;
+    }
+
+    > .icon {
+      height: 100%;
+      rotate: -30deg;
+      width: 100%;
+    }
+
+    > .icon-tooltip {
+      background-color: rgba(60, 60, 60, 0.95);
+      border-radius: 0.6em;
+      bottom: -1em;
+      color: white;
+      padding: 0.2em 0.4em;
+      position: absolute;
+      transition: opacity 0.5s;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    &:not(:hover) {
+      > .icon-tooltip {
+        opacity: 0%;
+      }
+    }
+  }
+
+  > #action-wrapper {
+    display: flex;
+    flex-flow: row nowrap;
+    gap: 5px;
+    height: calc(0.22 * var(--size));
+    position: absolute;
+    top: calc(-1.3 * 0.22 * var(--size));
+    width: 100%;
+
+    &:not(.show) {
+      display: none;
+    }
+
+    > button {
+      flex: 1 1 auto;
+      font-size: calc(0.11 * var(--size));
+
+      &:disabled {
+        opacity: 60%;
+      }
+    }
+  }
+}

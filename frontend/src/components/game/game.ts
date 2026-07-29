@@ -368,6 +368,7 @@ export class DwgGame extends DwgElement {
   async refreshGame(): Promise<boolean> {
     const response = await apiPost<GameFromServer>(`lobby/games/get/${this.game_id}`, {
       client_id: this.clientId(),
+      token: this.connection_metadata?.token,
       viewer: this.is_player ? 'false' : 'true',
     });
     if (!response.success) {
@@ -431,8 +432,8 @@ export class DwgGame extends DwgElement {
       case GameType.EUCHRE:
         await set_game('dwg-euchre');
         break;
-      case GameType.EGYPTIAN_RAT_SLAP:
-        await set_game('dwg-egyptian-rat-slap');
+      case GameType.EGYPTIAN_RAT_CRAP:
+        await set_game('dwg-egyptian-rat-crap');
         break;
       case GameType.RISQ:
         await set_game('dwg-risq');

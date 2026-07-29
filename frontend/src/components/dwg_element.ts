@@ -23,6 +23,13 @@ export abstract class DwgElement extends HTMLElement {
     this.fully_parsed = true;
   }
 
+  disconnectedCallback() {
+    this.fully_parsed = false;
+    for (const el_metadata of this.els_metadata) {
+      el_metadata.found_element = false;
+    }
+  }
+
   private elementsParsed(): boolean {
     let parsed = true;
     for (const el_metadata of this.els_metadata) {

@@ -1,6 +1,8 @@
 package lobby
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -23,6 +25,7 @@ const (
 type Client struct {
 	client_id              uint64
 	nickname               string
+	token                  string
 	connection             *websocket.Conn
 	ping                   time.Duration
 	ping_start             time.Time
@@ -46,6 +49,7 @@ func CreateClient(connection *websocket.Conn, nickname string, lobby *Lobby) *Cl
 	client := Client{
 		client_id:              0,
 		nickname:               nickname,
+		token:                  generateToken(),
 		connection:             connection,
 		ping:                   0,
 		ping_start:             time.Now(),
@@ -61,8 +65,18 @@ func CreateClient(connection *websocket.Conn, nickname string, lobby *Lobby) *Cl
 	return &client
 }
 
+func generateToken() string {
+	b := make([]byte, 16)
+	rand.Read(b)
+	return hex.EncodeToString(b)
+}
+
 func (c *Client) GetNickname() string {
 	return c.nickname
+}
+
+func (c *Client) ValidToken(token string) bool {
+	return c.token != "" && c.token == token
 }
 
 func (c *Client) close() {
@@ -81,6 +95,7 @@ func (c *Client) send(lm lobbyMessage) {
 	select {
 	case c.send_message <- lm:
 	default:
+		fmt.Fprintln(os.Stderr, "Dropped message to client", c.client_id, "- send buffer full:", lm.Kind)
 	}
 }
 
@@ -577,7 +592,7 @@ func (c *Client) handleMessage(message lobbyMessage) {
 				break
 			}
 			expected_sender := "room-" + strconv.Itoa(int(lobby_room.room_id)) + "-" + strconv.FormatUint(c.client_id, 10)
-			if message.Sender != expected_sender {
+			if message.Sender != expected_sender && message.Sender != expected_sender+"-!!server!!" {
 				fmt.Fprintln(os.Stderr, "Client", c.client_id, "sent room-chat with mismatched sender, dropping:", message.Sender)
 				break
 			}

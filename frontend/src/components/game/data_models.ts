@@ -2,7 +2,7 @@ import type { GameType } from '../lobby/data_models';
 import type { DwgGame } from './game';
 
 /** HTML tags for all game types */
-export type GameHtmlTag = 'dwg-fiddlesticks' | 'dwg-euchre' | 'dwg-egyptian-rat-slap' | 'dwg-risq' | 'dwg-test-game';
+export type GameHtmlTag = 'dwg-fiddlesticks' | 'dwg-euchre' | 'dwg-egyptian-rat-crap' | 'dwg-risq' | 'dwg-test-game';
 
 /** Interface for components that represent a frontend game */
 export declare interface GameComponent {
@@ -69,7 +69,9 @@ export function serverResponseToGame(game_from_server: GameFromServer, client_id
   if (updates !== undefined) {
     game.game_base.updates = new Map(updates.map((update) => [update.update_id, update]));
     game.game_base.last_applied_update_id = updates.length;
-    game.game_base.highest_received_update_id = Math.max(...updates.map((update) => update.update_id));
+    game.game_base.highest_received_update_id = updates.length
+      ? Math.max(...updates.map((update) => update.update_id))
+      : undefined;
   }
   return game;
 }

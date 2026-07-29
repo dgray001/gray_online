@@ -137,8 +137,8 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.dispatchEvent(new CustomEvent('game_update', { detail: game_update, bubbles: true }));
   }
 
-  newRound(dealer: boolean) {
-    this.endRound(); // in case it wasn't called
+  async newRound(dealer: boolean) {
+    await this.endRound(); // in case it wasn't called
     this.setDealer(dealer);
   }
 
@@ -149,7 +149,8 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     }
   }
 
-  endRound() {
+  async endRound() {
+    await until(() => this.fully_parsed);
     this.player.bet = -1;
     this.player.tricks = 0;
     this.bet_container.innerText = '-';

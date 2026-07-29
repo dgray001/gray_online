@@ -1,0 +1,90 @@
+dwg-egyptian-rat-crap {
+  --width-messages: 180px;
+  --size-player: 130px;
+  --table-diameter: min(
+    calc(var(--game-height) - var(--size-player)),
+    calc(var(--game-width) - 2 * var(--width-messages))
+  );
+
+  background-color: var(--color-background);
+  display: block;
+  height: 100%;
+  position: relative;
+  width: 100%;
+
+  > #header-messages-container {
+    --width: calc(var(--width-messages) - 2em);
+    font-size: var(--font-size-medium);
+    left: calc(0.5 * (100% - var(--table-diameter)) - var(--width-messages) + 1em);
+    line-height: 1.7em;
+    position: absolute;
+    top: 1em;
+    width: var(--width);
+
+    > * {
+      .span-align {
+        display: inline-block;
+        text-align: right;
+        width: 50%;
+      }
+
+      .span-center {
+        display: block;
+        margin-top: 0.6em;
+        text-align: center;
+        text-decoration: underline;
+      }
+    }
+  }
+
+  > #table-container {
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+    height: var(--table-diameter);
+    left: calc(0.5 * (100% - var(--table-diameter)));
+    position: absolute;
+    top: calc(0.5 * var(--size-player));
+    width: var(--table-diameter);
+
+    > #central-pile {
+      --width: min(125px, calc(0.22 * var(--table-diameter)));
+      --height: calc(var(--card-image-scale) * var(--width));
+
+      border-radius: 0.4em;
+      height: var(--height);
+      left: calc(0.5 * var(--table-diameter) - 0.5 * var(--width));
+      position: absolute;
+      top: calc(0.5 * var(--table-diameter) - 0.5 * var(--height));
+      transition: box-shadow 0.15s ease-in-out;
+      width: var(--width);
+
+      &.slappable {
+        box-shadow: 0 0 16px 8px rgba(255, 215, 0, 0.85);
+      }
+
+      > img {
+        height: 100%;
+        left: 0;
+        position: absolute;
+        top: 0;
+        width: 100%;
+      }
+    }
+  }
+
+  > #player-container {
+    height: var(--table-diameter);
+    left: calc(0.5 * (100% - var(--table-diameter)));
+    position: absolute;
+    top: calc(0.5 * var(--size-player));
+    width: var(--table-diameter);
+
+    > dwg-egyptian-rat-crap-player {
+      --diameter: var(--table-diameter);
+      --size: var(--size-player);
+      height: var(--size);
+      width: var(--size);
+    }
+  }
+}
