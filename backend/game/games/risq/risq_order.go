@@ -174,6 +174,17 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend) error {
 		if zone == nil {
 			return fmt.Errorf("Invalid zone target inverted from zone key %d", order.Target_id)
 		}
+	case OrderType_UnitGather:
+		space, zone := invertZoneKey(uint(order.Target_id), r)
+		if space == nil {
+			return fmt.Errorf("Invalid space target inverted from zone key %d", order.Target_id)
+		}
+		if zone == nil {
+			return fmt.Errorf("Invalid zone target inverted from zone key %d", order.Target_id)
+		}
+		if zone.resource == nil {
+			return fmt.Errorf("No resource in target zone")
+		}
 	default:
 		return fmt.Errorf("Unimplemented order type: %d", order_type)
 	}

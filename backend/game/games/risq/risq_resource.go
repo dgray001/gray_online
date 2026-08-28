@@ -12,8 +12,27 @@ type RisqResource struct {
 	resource_id       uint32
 	display_name      string
 	zone              *RisqZone
-	resources_left    int
+	resources_left    float64
 	base_gather_speed int
+}
+
+type RisqResourceCategory uint8
+
+const (
+	RisqResourceCategory_FOOD RisqResourceCategory = iota
+	RisqResourceCategory_WOOD
+	RisqResourceCategory_STONE
+)
+
+func (r *RisqResource) category() RisqResourceCategory {
+	switch {
+	case r.resource_id < 11:
+		return RisqResourceCategory_FOOD
+	case r.resource_id < 21:
+		return RisqResourceCategory_WOOD
+	default:
+		return RisqResourceCategory_STONE
+	}
 }
 
 func createRisqResource(internal_id uint64, resource_id uint32) *RisqResource {
@@ -59,11 +78,6 @@ func createRisqResource(internal_id uint64, resource_id uint32) *RisqResource {
 	// stone
 	case 21: // stonemine
 		resource.display_name = "Stone Mine"
-		resource.resources_left = 250
-		resource.base_gather_speed = 10
-	// gold
-	case 31: // goldmine
-		resource.display_name = "Gold Mine"
 		resource.resources_left = 250
 		resource.base_gather_speed = 10
 	default:

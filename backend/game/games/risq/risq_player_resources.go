@@ -3,21 +3,28 @@ package risq
 import "github.com/gin-gonic/gin"
 
 type RisqPlayerResources struct {
-	food  uint16
-	wood  uint16
-	stone uint16
+	food  float64
+	wood  float64
+	stone float64
 }
 
 func createRisqPlayerResources() *RisqPlayerResources {
-	return &RisqPlayerResources{
-		food:  0,
-		wood:  0,
-		stone: 0,
+	return &RisqPlayerResources{}
+}
+
+func (r *RisqPlayerResources) addGathered(category RisqResourceCategory, amount float64) {
+	switch category {
+	case RisqResourceCategory_FOOD:
+		r.food += amount
+	case RisqResourceCategory_WOOD:
+		r.wood += amount
+	case RisqResourceCategory_STONE:
+		r.stone += amount
 	}
 }
 
 func (r *RisqPlayerResources) score() uint {
-	return uint(r.food) + uint(r.wood) + uint(r.stone)
+	return uint(r.food + r.wood + r.stone)
 }
 
 func (r *RisqPlayerResources) toFrontend() gin.H {

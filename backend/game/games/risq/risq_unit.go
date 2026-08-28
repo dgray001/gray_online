@@ -94,6 +94,9 @@ func (u *RisqUnit) orderComplete(o *RisqOrder, risq *GameRisq) bool {
 	case OrderType_UnitMoveZone:
 		_, zone := invertZoneKey(uint(o.target_id), risq)
 		return u.zone == zone
+	case OrderType_UnitGather:
+		_, zone := invertZoneKey(uint(o.target_id), risq)
+		return zone.resource == nil || zone.resource.resources_left == 0
 	default:
 		return true
 	}
@@ -112,11 +115,24 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 	case OrderType_UnitMoveZone:
 		_, zone := invertZoneKey(uint(order.target_id), risq)
 		u.intent.setMove(u.findPath(zone))
+	case OrderType_UnitGather:
+		_, zone := invertZoneKey(uint(order.target_id), risq)
+		if u.zone != zone {
+			u.intent.setMove(u.findPath(zone))
+		} else {
+			u.intent.setGather(zone.resource)
+		}
 	default:
 		fmt.Fprintln(os.Stderr, "Order type not implemented:", order.order_type)
 	}
-	if u.intent.intent_cost > u.current_stamina {
-		u.intent.resetIntent()
+	if u.intent.hasIntent() {
+		if u.current_stamina < u.intent.min_cost {
+			u.intent.resetIntent()
+		} else if u.current_stamina < u.intent.max_cost {
+			u.intent.intent_cost = u.current_stamina
+		} else {
+			u.intent.intent_cost = u.intent.max_cost
+		}
 	}
 	return u.intent.hasIntent()
 }
@@ -125,11 +141,11 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 	if !u.intent.hasIntent() {
 		return
 	}
-	move := u.intent.move
-	if move != nil {
-		fmt.Println("Moving unit", u.display_name, "to zone"+move.next_step.coordinate.ToString(), "in space", move.next_step.space.coordinate.ToString())
+	switch detail := u.intent.detail.(type) {
+	case *MoveIntent:
+		fmt.Println("Moving unit", u.display_name, "to zone"+detail.next_step.coordinate.ToString(), "in space", detail.next_step.space.coordinate.ToString())
 		old_zone := u.zone
-		new_zone := move.next_step
+		new_zone := detail.next_step
 		if old_zone.space == new_zone.space {
 			delete(old_zone.units, u.internal_id)
 			u.zone = new_zone
@@ -138,6 +154,13 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 			old_zone.space.removeUnit(u)
 			new_zone.space.setUnit(&new_zone.coordinate, u)
 		}
+	case *GatherIntent:
+		amount := float64(u.intent.intent_cost) * (float64(detail.resource.base_gather_speed) / gatherRateStaminaBase)
+		if amount > detail.resource.resources_left {
+			amount = detail.resource.resources_left
+		}
+		detail.resource.resources_left -= amount
+		risq.players[u.player_id].resources.addGathered(detail.resource.category(), amount)
 	}
 	u.current_stamina -= u.intent.intent_cost
 	fmt.Println("Unit in zone", u.zone.coordinate.ToString(), "of space", u.zone.space.coordinate.ToString())
