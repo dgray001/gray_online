@@ -46,6 +46,10 @@ func (p *RisqPlayer) populationLimit() uint16 {
 	return limit
 }
 
+func (p *RisqPlayer) populationCapped() bool {
+	return uint16(len(p.units)) >= p.populationLimit()
+}
+
 func (p *RisqPlayer) score() uint {
 	score := uint(0)
 	score += p.resources.score()

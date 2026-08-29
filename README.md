@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.7i: Backend gather order
+v0.7j: Backend create order
 
 ## Dev Use
 

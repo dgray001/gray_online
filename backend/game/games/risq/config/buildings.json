@@ -1,0 +1,15 @@
+[
+  {
+    "building_id": 1,
+    "display_name": "Village Center",
+    "max_health": 350,
+    "population_support": 5,
+    "produces": [1]
+  },
+  {
+    "building_id": 2,
+    "display_name": "Housing",
+    "max_health": 120,
+    "population_support": 5
+  }
+]

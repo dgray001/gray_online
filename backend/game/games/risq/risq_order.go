@@ -13,7 +13,7 @@ type Orderable interface {
 	isDeleted() bool
 	internalId() uint64
 	refreshStamina()
-	receiveOrder(o *RisqOrder)
+	receiveOrder(o *RisqOrder, risq *GameRisq)
 	// Returns whether the order is already complete
 	orderComplete(o *RisqOrder, risq *GameRisq) bool
 	// Returns whether the orderable has an intent
@@ -184,6 +184,27 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend) error {
 		}
 		if zone.resource == nil {
 			return fmt.Errorf("No resource in target zone")
+		}
+		for _, subject_id := range order.Subjects {
+			if r.players[order.Player_id].units[subject_id].unit_id != 1 {
+				return fmt.Errorf("Only villagers can gather")
+			}
+		}
+	case OrderType_BuildingCreate:
+		unit_id := uint32(order.Target_id)
+		config, ok := unitConfigs[unit_id]
+		if !ok {
+			return fmt.Errorf("Invalid or unsupported unit id for production: %d", unit_id)
+		}
+		for _, subject_id := range order.Subjects {
+			building := r.players[order.Player_id].buildings[subject_id]
+			if !buildingConfigs[building.building_id].canProduce(unit_id) {
+				return fmt.Errorf("Building id %d cannot produce unit id %d", building.building_id, unit_id)
+			}
+		}
+		total := config.cost.times(len(order.Subjects))
+		if !r.players[order.Player_id].resources.canAfford(total) {
+			return fmt.Errorf("Not enough resources to produce %d unit(s)", len(order.Subjects))
 		}
 	default:
 		return fmt.Errorf("Unimplemented order type: %d", order_type)

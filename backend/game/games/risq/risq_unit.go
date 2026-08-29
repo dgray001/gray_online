@@ -19,7 +19,7 @@ type RisqUnit struct {
 	max_stamina     int
 	cs              RisqCombatStats
 	order_queue     RisqOrderQueue
-	intent          *RisqUnitIntent
+	intent          *RisqIntent
 }
 
 func createRisqUnit(internal_id uint64, unit_id uint32, player_id int) *RisqUnit {
@@ -33,24 +33,28 @@ func createRisqUnit(internal_id uint64, unit_id uint32, player_id int) *RisqUnit
 		max_stamina:     15,
 		cs:              createRisqCombatStats(),
 		order_queue:     createRisqOrderQueue(),
-		intent:          createRisqUnitIntent(),
+		intent:          createRisqIntent(),
 	}
-	switch unit_id {
-	case 1: // villager
-		unit.display_name = "Villager"
-		unit.cs.setMaxHealth(25)
-		unit.cs.attack_type = AttackType_BLUNT
-		unit.cs.attack_blunt = 3
-	case 11: // swordsman
-		unit.display_name = "Swordsman"
-		unit.cs.setMaxHealth(35)
-		unit.cs.attack_type = AttackType_BLUNT_PIERCING
-		unit.cs.attack_blunt = 4
-		unit.cs.attack_piercing = 4
-	default:
+	config, ok := unitConfigs[unit_id]
+	if !ok {
 		fmt.Fprintln(os.Stderr, "Creating unknown unit id: ", unit_id)
+		return &unit
 	}
+	unit.display_name = config.display_name
+	unit.cs.setMaxHealth(config.max_health)
+	unit.cs.attack_type = config.attack_type
+	unit.cs.attack_blunt = config.attack_blunt
+	unit.cs.attack_piercing = config.attack_piercing
 	return &unit
+}
+
+func unitProductionCost(unit_id uint32) (RisqResourceCost, int) {
+	config, ok := unitConfigs[unit_id]
+	if !ok {
+		fmt.Fprintln(os.Stderr, "Unknown unit id for production cost: ", unit_id)
+		return RisqResourceCost{}, 0
+	}
+	return config.cost, config.production_stamina
 }
 
 func (u *RisqUnit) vision() *RisqVision {
@@ -82,7 +86,7 @@ func (u *RisqUnit) refreshStamina() {
 	}
 }
 
-func (u *RisqUnit) receiveOrder(o *RisqOrder) {
+func (u *RisqUnit) receiveOrder(o *RisqOrder, risq *GameRisq) {
 	u.order_queue.receiveOrder(o)
 }
 

@@ -2,27 +2,13 @@ package risq
 
 import "fmt"
 
-// Stamina spent per gather tick, capped to whatever stamina remains
-const gatherTickStaminaCost = 3
+\const gatherTickStaminaCost = 3
 
-// base_gather_speed is defined as resource gathered per this much stamina
-const gatherRateStaminaBase = 10.0
-
-type IntentKind interface {
-	isIntentKind()
-}
-
-type RisqUnitIntent struct {
-	intent_cost int
-	min_cost    int
-	max_cost    int
-	detail      IntentKind
-}
+\const gatherRateStaminaBase = 10.0
 
 type MoveIntent struct {
 	path      []*RisqZone
 	next_step *RisqZone
-	// true if the next step is a move within a space
 	intra_step bool
 }
 
@@ -34,24 +20,11 @@ type GatherIntent struct {
 
 func (*GatherIntent) isIntentKind() {}
 
-func createRisqUnitIntent() *RisqUnitIntent {
-	return &RisqUnitIntent{}
-}
-
-func (i *RisqUnitIntent) resetIntent() {
-	i.intent_cost = 0
-	i.min_cost = 0
-	i.max_cost = 0
-	i.detail = nil
-}
-
-func (i *RisqUnitIntent) hasIntent() bool {
-	return i.detail != nil
-}
-
-func (i *RisqUnitIntent) setMove(m *MoveIntent) {
+func (i *RisqIntent) setMove(m *MoveIntent) {
 	if m == nil {
-		i.resetIntent()
+		i.detail = nil
+		i.min_cost = 0
+		i.max_cost = 0
 		return
 	}
 	i.detail = m
@@ -64,14 +37,14 @@ func (i *RisqUnitIntent) setMove(m *MoveIntent) {
 	}
 }
 
-func (i *RisqUnitIntent) setGather(resource *RisqResource) {
+func (i *RisqIntent) setGather(resource *RisqResource) {
 	i.detail = &GatherIntent{resource: resource}
 	i.min_cost = 1
 	i.max_cost = gatherTickStaminaCost
 }
 
-func (i *RisqUnitIntent) _printConsole(prefix string) {
-	fmt.Println(prefix + "RisqUnitIntent {")
+func (i *RisqIntent) _printConsole(prefix string) {
+	fmt.Println(prefix + "RisqIntent {")
 	fmt.Println(prefix+"  intent_cost:", i.intent_cost)
 	if move, ok := i.detail.(*MoveIntent); ok {
 		fmt.Print(prefix + "  move:")

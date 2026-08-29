@@ -1,0 +1,19 @@
+[
+  {
+    "unit_id": 1,
+    "display_name": "Villager",
+    "max_health": 25,
+    "attack_type": "BLUNT",
+    "attack_blunt": 3,
+    "cost": { "food": 50 },
+    "production_stamina": 35
+  },
+  {
+    "unit_id": 11,
+    "display_name": "Swordsman",
+    "max_health": 35,
+    "attack_type": "BLUNT_PIERCING",
+    "attack_blunt": 4,
+    "attack_piercing": 4
+  }
+]
