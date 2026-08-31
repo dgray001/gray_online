@@ -10,6 +10,8 @@
     "building_id": 2,
     "display_name": "Housing",
     "max_health": 120,
-    "population_support": 5
+    "population_support": 5,
+    "cost": { "wood": 30 },
+    "build_stamina": 25
   }
 ]

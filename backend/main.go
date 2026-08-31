@@ -18,7 +18,7 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
-var DEV = false
+var DEV = os.Getenv("GAE_APPLICATION") == ""
 
 func main() {
 	// Set environment variables

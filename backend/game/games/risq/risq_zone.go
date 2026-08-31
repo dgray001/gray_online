@@ -45,6 +45,12 @@ func invertZoneKey(k uint, r *GameRisq) (*RisqSpace, *RisqZone) {
 	return space, zone
 }
 
+func invertBuildKey(k uint, r *GameRisq) (uint32, *RisqSpace, *RisqZone) {
+	building_id, zone_key := util.InvertPair(k)
+	space, zone := invertZoneKey(uint(zone_key), r)
+	return uint32(building_id), space, zone
+}
+
 func (z *RisqZone) isCenter() bool {
 	return z.coordinate.X == 0 && z.coordinate.Y == 0
 }

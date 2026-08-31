@@ -1,5 +1,5 @@
 /** Whether in DEV environment; used for public api keys */
-export const DEV = false;
+export const DEV = process.env.NODE_ENV !== 'production';
 
 /** Loop helper function */
 export function loop(times: number, callback: (i?: number) => void): void {

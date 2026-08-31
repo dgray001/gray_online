@@ -87,7 +87,29 @@ func (u *RisqUnit) refreshStamina() {
 }
 
 func (u *RisqUnit) receiveOrder(o *RisqOrder, risq *GameRisq) {
+	already_received := o.received
 	u.order_queue.receiveOrder(o)
+	if already_received {
+		return
+	}
+	switch o.order_type {
+	case OrderType_UnitBuild:
+		building_id, _, _ := invertBuildKey(uint(o.target_id), risq)
+		cost, _ := buildingProductionCost(building_id)
+		risq.players[u.player_id].resources.spend(cost)
+	}
+}
+
+func (u *RisqUnit) orderReceivable(o *RisqOrder, risq *GameRisq) bool {
+	switch o.order_type {
+	case OrderType_UnitBuild:
+		_, _, zone := invertBuildKey(uint(o.target_id), risq)
+		if zone.building != nil || risq.players[u.player_id].hasActiveBuildClaim(zone, o, risq) {
+			return false
+		}
+	default:
+	}
+	return true
 }
 
 func (u *RisqUnit) orderComplete(o *RisqOrder, risq *GameRisq) bool {
@@ -101,6 +123,12 @@ func (u *RisqUnit) orderComplete(o *RisqOrder, risq *GameRisq) bool {
 	case OrderType_UnitGather:
 		_, zone := invertZoneKey(uint(o.target_id), risq)
 		return zone.resource == nil || zone.resource.resources_left == 0
+	case OrderType_UnitBuild:
+		_, _, zone := invertBuildKey(uint(o.target_id), risq)
+		if zone.building == nil {
+			return false
+		}
+		return zone.building.player_id != u.player_id || !zone.building.underConstruction()
 	default:
 		return true
 	}
@@ -126,18 +154,17 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 		} else {
 			u.intent.setGather(zone.resource)
 		}
+	case OrderType_UnitBuild:
+		building_id, _, zone := invertBuildKey(uint(order.target_id), risq)
+		if u.zone != zone {
+			u.intent.setMove(u.findPath(zone))
+		} else {
+			u.intent.setBuild(zone.building, building_id, zone)
+		}
 	default:
 		fmt.Fprintln(os.Stderr, "Order type not implemented:", order.order_type)
 	}
-	if u.intent.hasIntent() {
-		if u.current_stamina < u.intent.min_cost {
-			u.intent.resetIntent()
-		} else if u.current_stamina < u.intent.max_cost {
-			u.intent.intent_cost = u.current_stamina
-		} else {
-			u.intent.intent_cost = u.intent.max_cost
-		}
-	}
+	u.intent.resolveCost(u.current_stamina)
 	return u.intent.hasIntent()
 }
 
@@ -165,6 +192,23 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 		}
 		detail.resource.resources_left -= amount
 		risq.players[u.player_id].resources.addGathered(detail.resource.category(), amount)
+	case *ConstructionIntent:
+		if detail.zone.building != nil && detail.zone.building.player_id != u.player_id {
+			return
+		}
+		building := detail.building_under_construction
+		if building == nil {
+			if detail.zone.building != nil {
+				building = detail.zone.building
+			} else {
+				_, stamina_required := buildingProductionCost(detail.building_id)
+				building = createRisqBuilding(risq.nextBuildingInternalId(), detail.building_id, u.player_id)
+				building.stamina_remaining = stamina_required
+				detail.zone.space.setBuilding(&detail.zone.coordinate, building)
+				risq.players[u.player_id].buildings[building.internal_id] = building
+			}
+		}
+		building.stamina_remaining -= u.intent.intent_cost
 	}
 	u.current_stamina -= u.intent.intent_cost
 	fmt.Println("Unit in zone", u.zone.coordinate.ToString(), "of space", u.zone.space.coordinate.ToString())

@@ -1,9 +1,7 @@
 v0.8: Playable Risq
  a: Cursor update based on order type
  b: Villager gather order frontend
- c: Gather order backend
  d: Village center build villager order
- e: Build unit order backend
  f: Population limit shown on frontend
  g: Stamina and stamina costs shown on frontend
  h: Current orders shown on frontend

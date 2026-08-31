@@ -12,6 +12,7 @@ import {
 } from '../lobby/data_models';
 import type { DwgLobby } from '../lobby/lobby';
 import { until } from '../../scripts/util';
+import '../lobby/lobby_game_settings/game_specific_data';
 
 import html from './page_dev.html';
 
@@ -94,7 +95,15 @@ export class DwgPageDev extends DwgElement {
           game_specific_settings: {
             round_points: 10,
             trick_points: 1,
-            ai_players: [],
+            ai_players: [{ nickname: 'AI Player' }],
+          },
+        };
+      case GameType.EGYPTIAN_RAT_CRAP:
+        return {
+          ...base,
+          game_type,
+          game_specific_settings: {
+            ai_players: [{ nickname: 'AI Player' }],
           },
         };
       default:

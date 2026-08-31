@@ -45,8 +45,19 @@ export declare interface AiPlayerFiddlesticks {
   // model: AiPlayerFiddlesticksModel;
 }
 
+/** Data describing egyptian-rat-crap-specific game settings */
+export declare interface GameSettingsEgyptianRatCrap {
+  ai_players: AiPlayerEgyptianRatCrap[];
+}
+
+/** Data describing the settings for an ai player in egyptian rat crap */
+export declare interface AiPlayerEgyptianRatCrap {
+  nickname: string;
+}
+
 declare module '../../lobby/data_models' {
   interface GameSettingsRegistry {
     [GameType.FIDDLESTICKS]: GameSettingsFiddlesticks;
+    [GameType.EGYPTIAN_RAT_CRAP]: GameSettingsEgyptianRatCrap;
   }
 }

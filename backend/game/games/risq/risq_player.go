@@ -36,7 +36,7 @@ func createRisqPlayer(player *game.Player, max_population_limit uint16, color st
 func (p *RisqPlayer) populationLimit() uint16 {
 	limit := uint16(0)
 	for _, building := range p.buildings {
-		if building != nil && !building.deleted {
+		if building != nil && !building.deleted && !building.underConstruction() {
 			limit += building.population_support
 		}
 	}
@@ -85,6 +85,21 @@ func (p *RisqPlayer) allOrderables() iter.Seq[Orderable] {
 			}
 		}
 	}
+}
+
+func (p *RisqPlayer) hasActiveBuildClaim(zone *RisqZone, excluding *RisqOrder, risq *GameRisq) bool {
+	for _, unit := range p.units {
+		for _, order := range unit.order_queue.active_orders {
+			if order == excluding || order.order_type != OrderType_UnitBuild || !order.received {
+				continue
+			}
+			_, _, other_zone := invertBuildKey(uint(order.target_id), risq)
+			if other_zone == zone {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (p *RisqPlayer) toFrontend() gin.H {

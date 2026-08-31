@@ -59,6 +59,28 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameE
 		})
 		player_id++
 	}
+	ai_players, ai_players_ok := g.GameSpecificSettings["ai_players"].([]interface{})
+	if ai_players_ok {
+		for _, ai_player := range ai_players {
+			ai, ai_ok := ai_player.(map[string]interface{})
+			if !ai_ok {
+				fmt.Println("Failed to cast ai: ", ai_player)
+				continue
+			}
+			nickname, nickname_ok := ai["nickname"].(string)
+			if !nickname_ok {
+				fmt.Println("Failed to cast nickname: ", ai["nickname"])
+				continue
+			}
+			player := game.CreateAiPlayer(nickname, g)
+			player.Player_id = player_id
+			egyptian_rat_crap.players = append(egyptian_rat_crap.players, &EgyptianRatCrapPlayer{
+				player: player,
+				pile:   []*game_utils.StandardCard{},
+			})
+			player_id++
+		}
+	}
 	if len(egyptian_rat_crap.players) < 2 {
 		return nil, errors.New("need at least two players to play egyptian rat crap")
 	}

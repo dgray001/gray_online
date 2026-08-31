@@ -1,14 +1,14 @@
 package risq
 
-import "fmt"
+const gatherTickStaminaCost = 3
 
-\const gatherTickStaminaCost = 3
+const gatherRateStaminaBase = 10.0
 
-\const gatherRateStaminaBase = 10.0
+const unitBuildTickStaminaCost = 3
 
 type MoveIntent struct {
-	path      []*RisqZone
-	next_step *RisqZone
+	path       []*RisqZone
+	next_step  *RisqZone
 	intra_step bool
 }
 
@@ -43,20 +43,16 @@ func (i *RisqIntent) setGather(resource *RisqResource) {
 	i.max_cost = gatherTickStaminaCost
 }
 
-func (i *RisqIntent) _printConsole(prefix string) {
-	fmt.Println(prefix + "RisqIntent {")
-	fmt.Println(prefix+"  intent_cost:", i.intent_cost)
-	if move, ok := i.detail.(*MoveIntent); ok {
-		fmt.Print(prefix + "  move:")
-		move.printConsole("  ")
-	}
-	fmt.Println(prefix + "}")
+type ConstructionIntent struct {
+	building_under_construction *RisqBuilding
+	building_id                 uint32
+	zone                        *RisqZone
 }
 
-func (m *MoveIntent) printConsole(prefix string) {
-	fmt.Println(prefix + "MoveIntent {")
-	fmt.Println(prefix + "  path:")
-	fmt.Println(prefix + "  next_step:")
-	fmt.Println(prefix+"  intra_step:", m.intra_step)
-	fmt.Println(prefix + "}")
+func (*ConstructionIntent) isIntentKind() {}
+
+func (i *RisqIntent) setBuild(building_under_construction *RisqBuilding, building_id uint32, zone *RisqZone) {
+	i.detail = &ConstructionIntent{building_under_construction: building_under_construction, building_id: building_id, zone: zone}
+	i.min_cost = 1
+	i.max_cost = unitBuildTickStaminaCost
 }

@@ -13,8 +13,10 @@ type Orderable interface {
 	isDeleted() bool
 	internalId() uint64
 	refreshStamina()
+	// Returns whether the order is receivable by this subject
+	orderReceivable(o *RisqOrder, risq *GameRisq) bool
 	receiveOrder(o *RisqOrder, risq *GameRisq)
-	// Returns whether the order is already complete
+	// Returns whether the order is already complete (called by tickIntent)
 	orderComplete(o *RisqOrder, risq *GameRisq) bool
 	// Returns whether the orderable has an intent
 	tickIntent(risq *GameRisq) bool
@@ -68,6 +70,8 @@ type RisqOrder struct {
 	order_type OrderType
 	// What the order is targeting (could be a space, a unit, or a technology)
 	target_id int64
+	// Whether this order has been received (used for one-time effects)
+	received bool
 	// Whether the order has been executed
 	executed bool
 	// The turn that the order was received by the player
@@ -206,6 +210,26 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend) error {
 		if !r.players[order.Player_id].resources.canAfford(total) {
 			return fmt.Errorf("Not enough resources to produce %d unit(s)", len(order.Subjects))
 		}
+	case OrderType_UnitBuild:
+		building_id, space, zone := invertBuildKey(uint(order.Target_id), r)
+		if space == nil || zone == nil {
+			return fmt.Errorf("Invalid space or zone target inverted from build key %d", order.Target_id)
+		}
+		cost, stamina_required := buildingProductionCost(building_id)
+		if stamina_required <= 0 {
+			return fmt.Errorf("Invalid or unbuildable building id: %d", building_id)
+		}
+		if zone.building != nil || zone.resource != nil {
+			return fmt.Errorf("Target zone is already occupied")
+		}
+		for _, subject_id := range order.Subjects {
+			if r.players[order.Player_id].units[subject_id].unit_id != 1 {
+				return fmt.Errorf("Only villagers can build")
+			}
+		}
+		if !r.players[order.Player_id].resources.canAfford(cost) {
+			return fmt.Errorf("Not enough resources to build")
+		}
 	default:
 		return fmt.Errorf("Unimplemented order type: %d", order_type)
 	}
@@ -221,6 +245,7 @@ func createRisqOrderQueue() RisqOrderQueue {
 }
 
 func (q *RisqOrderQueue) receiveOrder(o *RisqOrder) {
+	o.received = true
 	q.past_orders = append(q.past_orders, o)
 	q.active_orders = append(q.active_orders, o)
 }
@@ -228,6 +253,11 @@ func (q *RisqOrderQueue) receiveOrder(o *RisqOrder) {
 func (q *RisqOrderQueue) nextOrder(orderable Orderable, risq *GameRisq) *RisqOrder {
 	for len(q.active_orders) > 0 {
 		o := q.active_orders[0]
+		if !o.received {
+			o.executed = false
+			q.active_orders = q.active_orders[1:]
+			continue
+		}
 		if !orderable.orderComplete(o, risq) {
 			return o
 		}
