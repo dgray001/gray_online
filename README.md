@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.7l: Left panel action buttons
+v0.7m: Cursor update based on order type
 
 ## Dev Use
 

@@ -29,6 +29,7 @@ import { getSpaceFill } from '../../risq_space';
 import { UNIT_HEALTHBAR_COLOR_BACKGROUND, UNIT_HEALTHBAR_COLOR_HEALTH, unitImage } from '../../risq_unit';
 import { INNER_ZONE_MULTIPLIER, getZoneFill, resolveHoveredZones } from '../../risq_zone';
 import type { RisqActionButton } from './action_button';
+import { RisqDeleteButton } from './delete_button';
 import { RisqLeftPanelButton } from './left_panel_close';
 import type { LeftPanelConfig, LeftPanelData, PlayerUnitsDrawData, UnitsDrawData } from './left_panel_data';
 import { HoverableObjectType, LeftPanelDataType } from './left_panel_data';
@@ -79,12 +80,10 @@ export class RisqLeftPanel implements CanvasComponent {
           },
           0
         ),
-        new RisqOrderButton(
-          this.risq,
+        new RisqDeleteButton(
           {
             row: 0,
             col: RisqLeftPanel.ACTION_GRID_COLS - 1,
-            order_type: RisqOrderType.OrderType_UnitDelete,
             image_path: 'icons/skull128',
             description: 'Delete',
           },

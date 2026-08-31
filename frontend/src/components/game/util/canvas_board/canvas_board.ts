@@ -119,7 +119,7 @@ export class DwgCanvasBoard extends DwgElement {
     if (!success) {
       return undefined;
     }
-    this.canvas.style.cursor = 'url("/images/cursors/cursor.png") 0 0, auto';
+    this.setCursor('cursors/cursor');
     this.addEventListeners();
     await until(() => !!this.canvas.getBoundingClientRect()?.width);
     this.resize_observer.observe(this);
@@ -379,6 +379,10 @@ export class DwgCanvasBoard extends DwgElement {
         this.transform
       );
     }
+  }
+
+  setCursor(image_path: string) {
+    this.canvas.style.cursor = `url("/images/${image_path}.png") 0 0, auto`;
   }
 
   scaleView(scale: number) {

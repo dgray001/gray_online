@@ -22,12 +22,14 @@ import type {
   GameRisqFromServer,
   RisqPlayer,
   RisqSpace,
+  RisqUnit,
   RisqZone,
   StartTurnData,
   SubmittedOrdersData,
   UnsubmittedOrdersData,
 } from './risq_data';
 import { coordinateToIndex, getSpace, RisqOrderType, serverToGameRisq } from './risq_data';
+import { cursorImageForOrderType, DEFAULT_CURSOR_IMAGE } from './risq_cursor';
 import { RisqRightPanel } from './canvas_components/right_panel/right_panel';
 import type { DrawRisqSpaceConfig } from './risq_space';
 import { DrawRisqSpaceDetail, drawRisqSpace } from './risq_space';
@@ -362,6 +364,7 @@ export class DwgRisq extends DwgElement {
           this.hovered_zone = undefined;
         }
       }
+      this.board.setCursor(DEFAULT_CURSOR_IMAGE);
       return;
     }
 
@@ -382,6 +385,7 @@ export class DwgRisq extends DwgElement {
     if (equalsPoint2D(new_hovered_space.coordinate, this.hovered_space?.coordinate)) {
       this.updateHoveredFlags();
       resolve_zones.call(this);
+      this.updateCursor();
       return;
     }
     this.removeHoveredFlags();
@@ -395,6 +399,7 @@ export class DwgRisq extends DwgElement {
     }
     this.hovered_space = new_hovered_space;
     this.updateHoveredFlags();
+    this.updateCursor();
   }
 
   private draggingCallback() {
@@ -456,6 +461,7 @@ export class DwgRisq extends DwgElement {
     this.armed_button_callback?.();
     this.armed_order = order_type;
     this.armed_button_callback = on_disarm;
+    this.updateCursor();
   }
 
   getArmedOrder(): RisqOrderType {
@@ -466,6 +472,30 @@ export class DwgRisq extends DwgElement {
     this.armed_button_callback?.();
     this.armed_order = RisqOrderType.NONE;
     this.armed_button_callback = undefined;
+    this.updateCursor();
+  }
+
+  // Shared by unitOrder() and the cursor so both always agree on what a right-click would do
+  private resolveActiveOrderType(unit: RisqUnit): RisqOrderType {
+    switch (this.getArmedOrder()) {
+      case RisqOrderType.OrderType_UnitGather:
+        if (unit.unit_id === 1 && !!this.hovered_zone?.resource) {
+          return RisqOrderType.OrderType_UnitGather;
+        }
+        break;
+      default:
+        break;
+    }
+    return RisqOrderType.OrderType_UnitMoveSpace;
+  }
+
+  private updateCursor() {
+    const left_panel_data = this.left_panel.getData();
+    if (left_panel_data?.data_type === LeftPanelDataType.UNIT && this.left_panel.isOrderable()) {
+      this.board.setCursor(cursorImageForOrderType(this.resolveActiveOrderType(left_panel_data.data)));
+    } else {
+      this.board.setCursor(DEFAULT_CURSOR_IMAGE);
+    }
   }
 
   private canGiveOrders(): boolean {
@@ -487,21 +517,15 @@ export class DwgRisq extends DwgElement {
     if (!this.hovered_space) {
       return;
     }
-    switch (this.getArmedOrder()) {
-      case RisqOrderType.OrderType_UnitGather:
-        if (!!this.hovered_zone?.resource) {
-          this.right_panel.addOrder({
-            player_id: this.player_id,
-            order_type: RisqOrderType.OrderType_UnitGather,
-            subjects: [data.data.internal_id],
-            target_id: this.hovered_zone.coordinate_key,
-          });
-          this.disarmOrder();
-          return;
-        }
-        break;
-      default:
-        break;
+    if (this.resolveActiveOrderType(data.data) === RisqOrderType.OrderType_UnitGather && !!this.hovered_zone?.resource) {
+      this.right_panel.addOrder({
+        player_id: this.player_id,
+        order_type: RisqOrderType.OrderType_UnitGather,
+        subjects: [data.data.internal_id],
+        target_id: this.hovered_zone.coordinate_key,
+      });
+      this.disarmOrder();
+      return;
     }
     // TODO: implement attack vs just move
     // TODO: implement if holding the shift key
@@ -530,7 +554,7 @@ export class DwgRisq extends DwgElement {
   }
 
   private mouseup(e: MouseEvent) {
-    this.disarmOrder();
+    const armed_before = this.armed_order;
     this.right_panel.mouseup(e);
     this.left_panel.mouseup(e);
     if (!!this.hovered_space) {
@@ -612,6 +636,9 @@ export class DwgRisq extends DwgElement {
         );
       }
       this.hovered_space.clicked = false;
+    }
+    if (armed_before !== RisqOrderType.NONE && this.armed_order === armed_before) {
+      this.disarmOrder();
     }
   }
 
