@@ -225,13 +225,14 @@ export enum RisqOrderType {
   OrderType_UnitAttackBuilding,
   OrderType_UnitDefend,
   OrderType_UnitGarrison,
+  OrderType_UnitDelete,
   OrderType_BuildingCreate,
   OrderType_BuildingResearch,
 }
 
 /** Returns whether the order is for units */
 export function isUnitOrder(order: RisqOrderType): boolean {
-  return order >= RisqOrderType.OrderType_UnitMoveSpace && order <= RisqOrderType.OrderType_UnitGarrison;
+  return order >= RisqOrderType.OrderType_UnitMoveSpace && order <= RisqOrderType.OrderType_UnitDelete;
 }
 
 /** Returns whether the order is for buildings */

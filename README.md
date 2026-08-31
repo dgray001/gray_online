@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.7k: Backend build order
+v0.7l: Left panel action buttons
 
 ## Dev Use
 

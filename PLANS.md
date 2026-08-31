@@ -1,23 +1,20 @@
 v0.8: Playable Risq
- a: Cursor update based on order type
- b: Villager gather order frontend
- d: Village center build villager order
- f: Population limit shown on frontend
- g: Stamina and stamina costs shown on frontend
- h: Current orders shown on frontend
- i: Orders are human-readable on frontend
- j: Can cancel orders from left or right panel
- k: Villagers can build housing frontend
- l: Build buildings backend
- m: Backend recalculates vision each turn
- n: Can toggle between views UX
- o: Terrain view (default) and control view
- p: Buttons to toggle between summary or other overlay views (for each space)
- q: Add resources to summary view
- r: Implement other views (buildings, villagers, military, resources)
- s-v: Left panel updates to handle all this including sending orders to all selected and selecting things directly from map
- w-z: Show orders on map from selected things (arc lines for movement, etc)
- za-zz: Risq is playable (? maybe ?)
+ m: Cursor update based on order type
+ n: Villager gather order frontend
+ o: Village center build villager order
+ p: Villagers can build housing frontend
+ q: Stamina and stamina costs shown on frontend
+ r: Orders are human-readable on frontend
+ s: Can cancel orders from left or right panel
+ t: Backend recalculates vision each turn
+ u: Can toggle between views UX
+ v: Terrain view (default) and control view
+ w: Buttons to toggle between summary or other overlay views (for each space)
+ x: Add resources to summary view
+ y: Implement other views (buildings, villagers, military, resources)
+ z-zc: Left panel updates to handle all this including sending orders to all selected and selecting things directly from map
+ zd-zg: Show orders on map from selected things (arc lines for movement, etc)
+ zh-zz: Risq is playable (? maybe ?)
 
 Risq Plans:
  - Summary report after each turn with animations (configurable)

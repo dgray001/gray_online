@@ -52,6 +52,7 @@ const (
 	OrderType_UnitAttackBuilding
 	OrderType_UnitDefend
 	OrderType_UnitGarrison
+	OrderType_UnitDelete
 	// Orders to control buildings
 	OrderType_BuildingCreate
 	OrderType_BuildingResearch
@@ -253,11 +254,6 @@ func (q *RisqOrderQueue) receiveOrder(o *RisqOrder) {
 func (q *RisqOrderQueue) nextOrder(orderable Orderable, risq *GameRisq) *RisqOrder {
 	for len(q.active_orders) > 0 {
 		o := q.active_orders[0]
-		if !o.received {
-			o.executed = false
-			q.active_orders = q.active_orders[1:]
-			continue
-		}
 		if !orderable.orderComplete(o, risq) {
 			return o
 		}

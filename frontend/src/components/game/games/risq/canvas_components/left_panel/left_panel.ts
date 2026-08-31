@@ -1,5 +1,4 @@
 import type { BoardTransformData } from '../../../../util/canvas_board/canvas_board';
-import type { DwgButton } from '../../../../util/canvas_components/button/button';
 import type { CanvasComponent } from '../../../../util/canvas_components/canvas_component';
 import { configDraw } from '../../../../util/canvas_components/canvas_component';
 import { drawHexagon, drawLine, drawRect, drawText } from '../../../../util/canvas_util';
@@ -17,16 +16,30 @@ import type {
   RisqZone,
   UnitByTypeData,
 } from '../../risq_data';
-import { FULL_VISIBILITY, RisqAttackType, ZONE_VISIBILITY, coordinateToIndex, risqTerrainName } from '../../risq_data';
+import {
+  FULL_VISIBILITY,
+  RisqAttackType,
+  RisqOrderType,
+  ZONE_VISIBILITY,
+  coordinateToIndex,
+  risqTerrainName,
+} from '../../risq_data';
 import { resourceImage, resourceTypeImage } from '../../risq_resources';
 import { getSpaceFill } from '../../risq_space';
 import { UNIT_HEALTHBAR_COLOR_BACKGROUND, UNIT_HEALTHBAR_COLOR_HEALTH, unitImage } from '../../risq_unit';
 import { INNER_ZONE_MULTIPLIER, getZoneFill, resolveHoveredZones } from '../../risq_zone';
+import type { RisqActionButton } from './action_button';
 import { RisqLeftPanelButton } from './left_panel_close';
 import type { LeftPanelConfig, LeftPanelData, PlayerUnitsDrawData, UnitsDrawData } from './left_panel_data';
 import { HoverableObjectType, LeftPanelDataType } from './left_panel_data';
+import { RisqOrderButton } from './order_button';
 
 export class RisqLeftPanel implements CanvasComponent {
+  // For use in the draw function
+  private static PADDING = 5;
+  private static ACTION_GRID_ROWS = 4;
+  private static ACTION_GRID_COLS = 5;
+
   private close_button: RisqLeftPanelButton;
 
   private risq: DwgRisq;
@@ -36,7 +49,7 @@ export class RisqLeftPanel implements CanvasComponent {
   private hovering = false;
   private visibility?: number;
   private data?: LeftPanelData;
-  private buttons: DwgButton[] = [];
+  private buttons: RisqActionButton[] = [];
   private hovered_zone?: RisqZone; // relevant when drawing space and zone
   private hovered_object?: RisqUnit | RisqBuilding | RisqResource;
   private hovered_object_type: HoverableObjectType = HoverableObjectType.NONE;
@@ -51,6 +64,37 @@ export class RisqLeftPanel implements CanvasComponent {
     this.resolveSize();
   }
 
+  private refreshActionButtons() {
+    this.buttons = [];
+    if (this.data?.data_type === LeftPanelDataType.UNIT) {
+      this.buttons.push(
+        new RisqOrderButton(
+          this.risq,
+          {
+            row: 0,
+            col: 0,
+            order_type: RisqOrderType.OrderType_UnitMoveSpace,
+            image_path: 'icons/move',
+            description: 'Move',
+          },
+          0
+        ),
+        new RisqOrderButton(
+          this.risq,
+          {
+            row: 0,
+            col: RisqLeftPanel.ACTION_GRID_COLS - 1,
+            order_type: RisqOrderType.OrderType_UnitDelete,
+            image_path: 'icons/skull128',
+            description: 'Delete',
+          },
+          0
+        )
+      );
+    }
+    this.resolveSize();
+  }
+
   resolveSize() {
     let h = 4 * this.config.w;
     if (h > this.risq.canvasSize().height) {
@@ -61,6 +105,21 @@ export class RisqLeftPanel implements CanvasComponent {
       x: this.size.x,
       y: this.yi() + 0.5 * this.close_button.h(),
     });
+    const y0 = this.yi() + 0.5 * this.size.y + RisqLeftPanel.PADDING;
+    const y1 = this.yi() + 0.75 * this.size.y;
+    const s = Math.min(
+      (this.w() - (RisqLeftPanel.ACTION_GRID_COLS + 1) * RisqLeftPanel.PADDING) / RisqLeftPanel.ACTION_GRID_COLS,
+      (y1 - y0 - (RisqLeftPanel.ACTION_GRID_ROWS - 1) * RisqLeftPanel.PADDING) / RisqLeftPanel.ACTION_GRID_ROWS
+    );
+    const grid_w = RisqLeftPanel.ACTION_GRID_COLS * s + (RisqLeftPanel.ACTION_GRID_COLS - 1) * RisqLeftPanel.PADDING;
+    const x0 = this.xi() + 0.5 * (this.w() - grid_w);
+    for (const button of this.buttons) {
+      button.setSize(s, s);
+      button.setPosition({
+        x: x0 + button.col * (s + RisqLeftPanel.PADDING),
+        y: y0 + button.row * (s + RisqLeftPanel.PADDING),
+      });
+    }
   }
 
   isHovering(): boolean {
@@ -112,6 +171,7 @@ export class RisqLeftPanel implements CanvasComponent {
     this.visibility = undefined;
     this.data = undefined;
     this.hovered_zone = undefined;
+    this.buttons = [];
   }
 
   openPanel(open_data: LeftPanelData, visibility: number) {
@@ -152,6 +212,7 @@ export class RisqLeftPanel implements CanvasComponent {
         // TODO: implement other validations
         break;
     }
+    this.refreshActionButtons();
   }
 
   private checkUnitsData(data: UnitsDrawData) {
@@ -259,12 +320,14 @@ export class RisqLeftPanel implements CanvasComponent {
             console.error('Unknown data type for left panel', this.data);
             break;
         }
-        for (const button of this.buttons) {
-          button.draw(ctx, transform, dt);
-        }
         // TODO: logic in case yi has gone off the rectangle
       }
     );
+    ctx.beginPath();
+    for (const button of this.buttons) {
+      button.draw(ctx, transform, dt);
+      button.drawTooltip(ctx, transform);
+    }
     ctx.beginPath();
     this.close_button.draw(ctx, transform, dt);
   }
@@ -792,6 +855,9 @@ export class RisqLeftPanel implements CanvasComponent {
     if (this.close_button.mousemove(m, transform)) {
       return true;
     }
+    for (const button of this.buttons) {
+      button.mousemove(m, transform);
+    }
     m = {
       x: m.x * transform.scale - transform.view.x,
       y: m.y * transform.scale - transform.view.y,
@@ -844,9 +910,6 @@ export class RisqLeftPanel implements CanvasComponent {
         break;
       default:
         break;
-    }
-    for (const button of this.buttons) {
-      button.mousemove(m, transform);
     }
     return this.isHovering();
   }

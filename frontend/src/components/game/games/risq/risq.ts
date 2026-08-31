@@ -66,6 +66,8 @@ export class DwgRisq extends DwgElement {
   private draw_detail: DrawRisqSpaceDetail = DrawRisqSpaceDetail.SPACE_DETAILS;
   private toggling_submit_orders_button = false;
   private orders_submitted_times = 0;
+  private armed_order = RisqOrderType.NONE;
+  private armed_button_callback?: () => void;
 
   private left_panel = new RisqLeftPanel(this, {
     w: 300,
@@ -450,6 +452,22 @@ export class DwgRisq extends DwgElement {
     return e.button !== 0;
   }
 
+  armOrder(order_type: RisqOrderType, on_disarm: () => void) {
+    this.armed_button_callback?.();
+    this.armed_order = order_type;
+    this.armed_button_callback = on_disarm;
+  }
+
+  getArmedOrder(): RisqOrderType {
+    return this.armed_order;
+  }
+
+  disarmOrder() {
+    this.armed_button_callback?.();
+    this.armed_order = RisqOrderType.NONE;
+    this.armed_button_callback = undefined;
+  }
+
   private canGiveOrders(): boolean {
     const player = this.getPlayer();
     const game = this.getGame();
@@ -468,6 +486,22 @@ export class DwgRisq extends DwgElement {
   private unitOrder(data: UnitData) {
     if (!this.hovered_space) {
       return;
+    }
+    switch (this.getArmedOrder()) {
+      case RisqOrderType.OrderType_UnitGather:
+        if (!!this.hovered_zone?.resource) {
+          this.right_panel.addOrder({
+            player_id: this.player_id,
+            order_type: RisqOrderType.OrderType_UnitGather,
+            subjects: [data.data.internal_id],
+            target_id: this.hovered_zone.coordinate_key,
+          });
+          this.disarmOrder();
+          return;
+        }
+        break;
+      default:
+        break;
     }
     // TODO: implement attack vs just move
     // TODO: implement if holding the shift key
@@ -492,9 +526,11 @@ export class DwgRisq extends DwgElement {
         target_id: this.hovered_zone.coordinate_key,
       });
     }
+    this.disarmOrder();
   }
 
   private mouseup(e: MouseEvent) {
+    this.disarmOrder();
     this.right_panel.mouseup(e);
     this.left_panel.mouseup(e);
     if (!!this.hovered_space) {
