@@ -112,7 +112,13 @@ export function drawRisqZone(
         if (!!zone.resource) {
           ctx.drawImage(game.getIcon(resourceImage(zone.resource)), -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
         } else {
-          ctx.drawImage(game.getIcon(buildingImage(zone.building)), -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
+          ctx.drawImage(
+            game.getIcon(buildingImage(zone.building?.building_id)),
+            -part.r.x,
+            -part.r.y,
+            2 * part.r.x,
+            2 * part.r.y
+          );
         }
         break;
       case 1: // economic units

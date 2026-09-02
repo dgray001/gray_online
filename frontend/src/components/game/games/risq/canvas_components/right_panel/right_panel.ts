@@ -5,7 +5,7 @@ import { configDraw } from '../../../../util/canvas_components/canvas_component'
 import { drawLine, drawRect, drawText } from '../../../../util/canvas_util';
 import type { Point2D } from '../../../../util/objects2d';
 import type { DwgRisq } from '../../risq';
-import type { GameRisqScoreEntry, RisqFrontendOrder, RisqResourceType } from '../../risq_data';
+import type { GameRisqScoreEntry, RisqFrontendOrder, RisqPlayerResource, RisqResourceType } from '../../risq_data';
 import { resourceTypeImage } from '../../risq_resources';
 import { RisqOrdersList } from './orders_list';
 import { RisqRightPanelButton } from './right_panel_button';
@@ -107,8 +107,8 @@ export class RisqRightPanel implements CanvasComponent {
     );
   }
 
-  addOrder(order: RisqFrontendOrder) {
-    this.orders_list.addOrder(order);
+  addOrder(order: RisqFrontendOrder, replace = true) {
+    this.orders_list.addOrder(order, replace);
   }
 
   getOrders(): RisqFrontendOrder[] {
@@ -166,11 +166,9 @@ export class RisqRightPanel implements CanvasComponent {
             ctx.font = '24px serif';
             this.drawPopulation(ctx, yi, player.units.size, player.population_limit);
             yi += 30;
-            if (!!player) {
-              for (const [r, a] of [...player.resources.entries()].sort((a, b) => a[0] - b[0])) {
-                this.drawResource(ctx, yi, r, a);
-                yi += 30;
-              }
+            for (const [rt, pr] of [...player.resources.entries()].sort((a, b) => a[0] - b[0])) {
+              this.drawResource(ctx, yi, rt, pr);
+              yi += 30;
             }
             yi += RisqRightPanel.PADDING;
             this.drawSeparator(ctx, yi);
@@ -224,11 +222,11 @@ export class RisqRightPanel implements CanvasComponent {
     });
   }
 
-  private drawResource(ctx: CanvasRenderingContext2D, yi: number, r: RisqResourceType, a: number) {
+  private drawResource(ctx: CanvasRenderingContext2D, yi: number, rt: RisqResourceType, pr: RisqPlayerResource) {
     ctx.beginPath();
-    ctx.drawImage(this.risq.getIcon(resourceTypeImage(r)), this.xi() + 0.1 * this.w(), yi, 30, 30);
-    // TODO: add number of workers on each resource
-    drawText(ctx, a.toFixed(1), {
+    ctx.drawImage(this.risq.getIcon(resourceTypeImage(rt)), this.xi() + 0.1 * this.w(), yi, 30, 30);
+    // TODO: show spent, gainnig, and workers for each resource
+    drawText(ctx, (pr.amount - pr.spending).toFixed(1), {
       p: { x: this.xi() + 0.1 * this.w() + 36, y: yi + 15 },
       w: 0.9 * this.w() - 36,
       fill_style: 'black',

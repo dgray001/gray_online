@@ -1,5 +1,4 @@
 v0.8: Playable Risq
- p: Villagers can build housing frontend
  q: Stamina and stamina costs shown on frontend
  r: Orders are human-readable on frontend
  s: Can cancel orders from left or right panel

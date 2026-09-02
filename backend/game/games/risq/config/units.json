@@ -6,7 +6,8 @@
     "attack_type": "BLUNT",
     "attack_blunt": 3,
     "cost": { "food": 50 },
-    "production_stamina": 35
+    "production_stamina": 35,
+    "builds": [{ "row": 2, "col": 0, "id": 2 }]
   },
   {
     "unit_id": 11,

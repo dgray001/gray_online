@@ -17,17 +17,19 @@ type UnitConfig struct {
 	attack_piercing    int
 	cost               RisqResourceCost
 	production_stamina int
+	builds             []Producible
 }
 
 type unitConfigJSON struct {
-	UnitId            uint32   `json:"unit_id"`
-	DisplayName       string   `json:"display_name"`
-	MaxHealth         int      `json:"max_health"`
-	AttackType        string   `json:"attack_type"`
-	AttackBlunt       int      `json:"attack_blunt"`
-	AttackPiercing    int      `json:"attack_piercing"`
-	Cost              costJSON `json:"cost"`
-	ProductionStamina int      `json:"production_stamina"`
+	UnitId            uint32           `json:"unit_id"`
+	DisplayName       string           `json:"display_name"`
+	MaxHealth         int              `json:"max_health"`
+	AttackType        string           `json:"attack_type"`
+	AttackBlunt       int              `json:"attack_blunt"`
+	AttackPiercing    int              `json:"attack_piercing"`
+	Cost              costJSON         `json:"cost"`
+	ProductionStamina int              `json:"production_stamina"`
+	Builds            []producibleJSON `json:"builds"`
 }
 
 type costJSON struct {
@@ -72,6 +74,11 @@ func init() {
 		if err != nil {
 			panic(fmt.Sprintf("config/units.json unit_id %d: %v", e.UnitId, err))
 		}
+		default_kind := ProducibleKind_BUILDING
+		builds, err := parseProducibles(e.Builds, &default_kind)
+		if err != nil {
+			panic(fmt.Sprintf("config/units.json unit_id %d: %v", e.UnitId, err))
+		}
 		unitConfigs[e.UnitId] = UnitConfig{
 			display_name:    e.DisplayName,
 			max_health:      e.MaxHealth,
@@ -84,6 +91,7 @@ func init() {
 				stone: e.Cost.Stone,
 			},
 			production_stamina: e.ProductionStamina,
+			builds:             builds,
 		}
 	}
 }

@@ -138,7 +138,12 @@ func (b *RisqBuilding) receiveOrder(o *RisqOrder, risq *GameRisq) {
 	case OrderType_BuildingCreate:
 		unit_id := uint32(o.target_id)
 		cost, stamina_required := unitProductionCost(unit_id)
-		risq.players[b.player_id].resources.spend(cost)
+		resources := risq.players[b.player_id].resources
+		if !resources.canAfford(cost) {
+			// TODO: surface this failure in the per-player turn report
+			return
+		}
+		resources.spend(cost)
 		b.production_queue = append(b.production_queue, &RisqBuildingProductionItem{
 			order:             o,
 			unit_id:           unit_id,

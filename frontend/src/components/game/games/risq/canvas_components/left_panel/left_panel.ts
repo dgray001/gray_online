@@ -30,6 +30,7 @@ import { getSpaceFill } from '../../risq_space';
 import { UNIT_HEALTHBAR_COLOR_BACKGROUND, UNIT_HEALTHBAR_COLOR_HEALTH, unitImage } from '../../risq_unit';
 import { INNER_ZONE_MULTIPLIER, getZoneFill, resolveHoveredZones } from '../../risq_zone';
 import type { RisqActionButton } from './action_button/action_button';
+import { RisqBuildButton } from './action_button/build_button';
 import { RisqCreateButton } from './action_button/create_button';
 import { RisqDeleteButton } from './action_button/delete_button';
 import { RisqLeftPanelButton } from './left_panel_close';
@@ -69,6 +70,10 @@ export class RisqLeftPanel implements CanvasComponent {
 
   private refreshActionButtons() {
     this.buttons = [];
+    if (!this.isOrderable()) {
+      this.resolveSize();
+      return;
+    }
     switch (this.data?.data_type) {
       case LeftPanelDataType.UNIT:
         this.buttons.push(
@@ -108,6 +113,9 @@ export class RisqLeftPanel implements CanvasComponent {
             )
           );
         }
+        for (const producible of this.data.data.builds) {
+          this.buttons.push(new RisqBuildButton({ producible }, this.risq, 0));
+        }
         break;
       case LeftPanelDataType.BUILDING:
         for (const producible of this.data.data.produces) {
@@ -117,12 +125,8 @@ export class RisqLeftPanel implements CanvasComponent {
           this.buttons.push(
             new RisqCreateButton(
               {
-                row: producible.row,
-                col: producible.col,
                 building_id: this.data.data.internal_id,
-                unit_id: producible.id,
-                image_path: unitImage(producible.id),
-                description: `Create ${producible.display_name}`,
+                producible,
               },
               this.risq,
               0
@@ -132,6 +136,9 @@ export class RisqLeftPanel implements CanvasComponent {
         break;
       default:
         break;
+    }
+    for (const button of this.buttons) {
+      button.dataRefreshed();
     }
     this.resolveSize();
   }
@@ -183,6 +190,10 @@ export class RisqLeftPanel implements CanvasComponent {
 
   getData(): LeftPanelData | undefined {
     return this.data;
+  }
+
+  dataRefreshed() {
+    this.refreshActionButtons();
   }
 
   // Returns whether the current selection in the left panel is orderable
@@ -538,7 +549,7 @@ export class RisqLeftPanel implements CanvasComponent {
 
   private drawBuilding(ctx: CanvasRenderingContext2D, building: RisqBuilding) {
     let yi = this.yi() + this.drawName(ctx, building?.display_name ?? 'Empty Plot');
-    yi += this.drawImage(ctx, yi, buildingImage(building));
+    yi += this.drawImage(ctx, yi, buildingImage(building?.building_id));
     this.drawSeparator(ctx, yi);
     if (!building) {
       yi += 12;
@@ -761,7 +772,7 @@ export class RisqLeftPanel implements CanvasComponent {
       );
     } else {
       draw_row(
-        this.risq.getIcon(buildingImage(data.zone.building)),
+        this.risq.getIcon(buildingImage(data.zone.building?.building_id)),
         data.zone.building?.display_name ?? 'Empty Plot',
         data.zone.building?.hover_data
       );

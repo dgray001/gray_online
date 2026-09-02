@@ -100,6 +100,11 @@ func (u *RisqUnit) receiveOrder(o *RisqOrder, risq *GameRisq) {
 	case OrderType_UnitBuild:
 		building_id, _, zone := invertBuildKey(uint(o.target_id), risq)
 		player := risq.players[u.player_id]
+		cost, _ := buildingProductionCost(building_id)
+		if !player.resources.canAfford(cost) {
+			// TODO: surface this failure in the per-player turn report
+			return
+		}
 		player.planned_foundations[zone.coordinate_key] = createRisqPlannedFoundation(building_id, o, player)
 	}
 }
@@ -244,6 +249,11 @@ func (u *RisqUnit) toFrontend() gin.H {
 		"max_stamina":     u.max_stamina,
 		"combat_stats":    u.cs.toFrontend(),
 	}
+	builds := make([]gin.H, 0)
+	for _, p := range unitConfigs[u.unit_id].builds {
+		builds = append(builds, p.toFrontend())
+	}
+	unit["builds"] = builds
 	if u.zone != nil {
 		unit["zone_coordinate"] = u.zone.coordinate.ToFrontend()
 		if u.zone.space != nil {

@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.7o: Village center build villager order
+v0.7p: Villagers can build housing frontend
 
 ## Dev Use
 

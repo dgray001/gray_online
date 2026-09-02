@@ -226,17 +226,12 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend) error {
 				return fmt.Errorf("Building id %d cannot produce unit id %d", building.building_id, unit_id)
 			}
 		}
-		cost, _ := unitProductionCost(unit_id)
-		total := cost.times(len(order.Subjects))
-		if !r.players[order.Player_id].resources.canAfford(total) {
-			return fmt.Errorf("Not enough resources to produce %d unit(s)", len(order.Subjects))
-		}
 	case OrderType_UnitBuild:
 		building_id, space, zone := invertBuildKey(uint(order.Target_id), r)
 		if space == nil || zone == nil {
 			return fmt.Errorf("Invalid space or zone target inverted from build key %d", order.Target_id)
 		}
-		cost, stamina_required := buildingProductionCost(building_id)
+		_, stamina_required := buildingProductionCost(building_id)
 		if stamina_required <= 0 {
 			return fmt.Errorf("Invalid or unbuildable building id: %d", building_id)
 		}
@@ -247,9 +242,6 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend) error {
 			if r.players[order.Player_id].units[subject_id].unit_id != 1 {
 				return fmt.Errorf("Only villagers can build")
 			}
-		}
-		if !r.players[order.Player_id].resources.canAfford(cost) {
-			return fmt.Errorf("Not enough resources to build")
 		}
 	case OrderType_UnitCancelOrder:
 		for _, subject_id := range order.Subjects {

@@ -27,7 +27,15 @@ import type {
   SubmittedOrdersData,
   UnsubmittedOrdersData,
 } from './risq_data';
-import { coordinateToIndex, getSpace, RisqOrderType, ZONE_VISIBILITY, serverToGameRisq } from './risq_data';
+import {
+  cantorPair,
+  coordinateToIndex,
+  getSpace,
+  RisqOrderType,
+  RisqResourceType,
+  ZONE_VISIBILITY,
+  serverToGameRisq,
+} from './risq_data';
 import { cursorImageForOrderType, DEFAULT_CURSOR_IMAGE } from './risq_cursor';
 import { RisqRightPanel } from './canvas_components/right_panel/right_panel';
 import type { DrawRisqSpaceConfig } from './risq_space';
@@ -68,6 +76,7 @@ export class DwgRisq extends DwgElement {
   private toggling_submit_orders_button = false;
   private orders_submitted_times = 0;
   private armed_order = RisqOrderType.NONE;
+  private armed_building_id = 0;
   private armed_button_callback?: () => void;
 
   private left_panel = new RisqLeftPanel(this, {
@@ -250,6 +259,7 @@ export class DwgRisq extends DwgElement {
   private setNewGameData(new_game: GameRisqFromServer) {
     this.game = serverToGameRisq(new_game);
     this.right_panel.dataRefreshed();
+    this.left_panel.dataRefreshed();
   }
 
   private async applyStartTurn(data: StartTurnData) {
@@ -469,9 +479,10 @@ export class DwgRisq extends DwgElement {
     return e.button !== 0;
   }
 
-  armOrder(order_type: RisqOrderType, on_disarm: () => void) {
+  armOrder(order_type: RisqOrderType, on_disarm: () => void, building_id = 0) {
     this.armed_button_callback?.();
     this.armed_order = order_type;
+    this.armed_building_id = building_id;
     this.armed_button_callback = on_disarm;
     this.updateCursor();
   }
@@ -483,6 +494,7 @@ export class DwgRisq extends DwgElement {
   disarmOrder() {
     this.armed_button_callback?.();
     this.armed_order = RisqOrderType.NONE;
+    this.armed_building_id = 0;
     this.armed_button_callback = undefined;
     this.updateCursor();
   }
@@ -491,12 +503,41 @@ export class DwgRisq extends DwgElement {
     if (!this.canGiveOrders()) {
       return;
     }
-    this.right_panel.addOrder({
-      player_id: this.player_id,
-      order_type: RisqOrderType.OrderType_BuildingCreate,
-      subjects: [building_id],
-      target_id: unit_id,
-    });
+    this.right_panel.addOrder(
+      {
+        player_id: this.player_id,
+        order_type: RisqOrderType.OrderType_BuildingCreate,
+        subjects: [building_id],
+        target_id: unit_id,
+      },
+      false
+    );
+    this.updateResourceSpending();
+    this.left_panel.dataRefreshed();
+  }
+
+  private updateResourceSpending() {
+    const player = this.getPlayer();
+    if (!player) {
+      return;
+    }
+    for (const pr of player.resources.values()) {
+      pr.spending = 0;
+    }
+    for (const order of this.right_panel.getOrders()) {
+      if (order.order_type !== RisqOrderType.OrderType_BuildingCreate) {
+        continue;
+      }
+      for (const subject_id of order.subjects) {
+        const cost = player.buildings.get(subject_id)?.produces.find((p) => p.id === order.target_id)?.cost;
+        if (!cost) {
+          continue;
+        }
+        player.resources.get(RisqResourceType.FOOD)!.spending += cost.food;
+        player.resources.get(RisqResourceType.WOOD)!.spending += cost.wood;
+        player.resources.get(RisqResourceType.STONE)!.spending += cost.stone;
+      }
+    }
   }
 
   private resolveActiveOrderType(): RisqOrderType {
@@ -519,6 +560,11 @@ export class DwgRisq extends DwgElement {
       case RisqOrderType.OrderType_UnitGather:
         if (is_villager && zone_valid && !!this.hovered_zone?.resource) {
           return RisqOrderType.OrderType_UnitGather;
+        }
+        break;
+      case RisqOrderType.OrderType_UnitBuild:
+        if (is_villager && zone_valid && !this.hovered_zone?.resource && !this.hovered_zone?.building) {
+          return RisqOrderType.OrderType_UnitBuild;
         }
         break;
       default:
@@ -588,6 +634,17 @@ export class DwgRisq extends DwgElement {
           order_type: RisqOrderType.OrderType_UnitGather,
           subjects: [data.data.internal_id],
           target_id: this.hovered_zone.coordinate_key,
+        });
+        break;
+      case RisqOrderType.OrderType_UnitBuild:
+        if (!this.hovered_zone) {
+          return;
+        }
+        this.right_panel.addOrder({
+          player_id: this.player_id,
+          order_type: RisqOrderType.OrderType_UnitBuild,
+          subjects: [data.data.internal_id],
+          target_id: cantorPair(this.armed_building_id, this.hovered_zone.coordinate_key),
         });
         break;
       default:

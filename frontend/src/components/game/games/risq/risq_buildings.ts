@@ -1,10 +1,8 @@
-import type { RisqBuilding } from './risq_data';
-
 /** Returns image path of the building */
-export function buildingImage(building: RisqBuilding | undefined): string {
+export function buildingImage(building_id: number | undefined): string {
   let filename = 'empty_plot';
-  if (!!building) {
-    switch (building.building_id) {
+  if (building_id !== undefined) {
+    switch (building_id) {
       case 1:
         filename = 'village_center';
         break;
@@ -12,7 +10,7 @@ export function buildingImage(building: RisqBuilding | undefined): string {
         filename = 'housing';
         break;
       default:
-        console.error('Trying to get building image from unknown building id', building.building_id);
+        console.error('Trying to get building image from unknown building id', building_id);
         return '';
     }
   }

@@ -30,12 +30,20 @@ export declare interface RisqPlayer {
   player: GamePlayer;
   buildings: Map<number, RisqBuilding>; // key is internal_id
   units: Map<number, RisqUnit>; // key is internal_id
-  resources: Map<RisqResourceType, number>;
+  resources: Map<RisqResourceType, RisqPlayerResource>;
   population_limit: number;
   score: number;
   color: ColorRGB;
   active_orders: RisqOrder[];
   orders_submitted: boolean;
+}
+
+/** Data describing frontend resource state */
+export declare interface RisqPlayerResource {
+  amount: number;
+  spending: number;
+  gaining: number;
+  workers: number;
 }
 
 /** All the resource types */
@@ -151,6 +159,7 @@ export declare interface RisqUnit {
   max_stamina: number;
   combat_stats: RisqCombatStats;
   active_orders: RisqOrder[];
+  builds: RisqProducible[];
   // purely frontend fields
   hover_data: RectHoverData;
 }
@@ -171,10 +180,12 @@ export declare interface RisqBuilding {
   hover_data: RectHoverData;
 }
 
-/** All the kinds a building's produces entry can be */
+/** All the kinds a producible entry can be */
 export enum RisqProducibleKind {
+  NONE,
   UNIT,
   TECH,
+  BUILDING,
 }
 
 /** Data describing something a building can produce, with its cost already resolved for this player */
@@ -192,6 +203,19 @@ export declare interface RisqCost {
   food: number;
   wood: number;
   stone: number;
+}
+
+/** Returns whether the player can currently afford the input cost, accounting for already-queued spending */
+export function canAffordCost(player: RisqPlayer, cost: RisqCost): boolean {
+  const net = (type: RisqResourceType) => {
+    const pr = player.resources.get(type);
+    return pr ? pr.amount - pr.spending : 0;
+  };
+  return (
+    net(RisqResourceType.FOOD) >= cost.food &&
+    net(RisqResourceType.WOOD) >= cost.wood &&
+    net(RisqResourceType.STONE) >= cost.stone
+  );
 }
 
 /** Data describing combat stats */
@@ -250,18 +274,26 @@ export enum RisqOrderType {
   OrderType_UnitDefend,
   OrderType_UnitGarrison,
   OrderType_UnitDelete,
+  OrderType_UnitCancelOrder,
   OrderType_BuildingCreate,
   OrderType_BuildingResearch,
+  OrderType_BuildingCancelOrder,
+  OrderType_CancelFoundation,
 }
 
 /** Returns whether the order is for units */
 export function isUnitOrder(order: RisqOrderType): boolean {
-  return order >= RisqOrderType.OrderType_UnitMoveSpace && order <= RisqOrderType.OrderType_UnitDelete;
+  return order >= RisqOrderType.OrderType_UnitMoveSpace && order <= RisqOrderType.OrderType_UnitCancelOrder;
 }
 
 /** Returns whether the order is for buildings */
 export function isBuildingOrder(order: RisqOrderType): boolean {
-  return order >= RisqOrderType.OrderType_BuildingCreate && order <= RisqOrderType.OrderType_BuildingResearch;
+  return order >= RisqOrderType.OrderType_BuildingCreate && order <= RisqOrderType.OrderType_BuildingCancelOrder;
+}
+
+/** Returns whether the order is a subject-less, player-level order */
+export function isPlayerOrder(order: RisqOrderType): boolean {
+  return order === RisqOrderType.OrderType_CancelFoundation;
 }
 
 /** Data describing an order */
@@ -342,6 +374,7 @@ export declare interface RisqUnitFromServer {
   max_stamina: number;
   combat_stats: RisqCombatStatsFromServer;
   active_orders: RisqOrderFromServer[];
+  builds: RisqProducible[];
 }
 
 /** Data describing a risq building */
@@ -436,11 +469,37 @@ export function serverToGameRisq(server_game: GameRisqFromServer): GameRisq | un
 }
 
 /** Converts a server response to frontend resources */
-export function serverToRisqResources(server_resources: RisqPlayerResourcesFromServer): Map<RisqResourceType, number> {
-  return new Map<RisqResourceType, number>([
-    [RisqResourceType.FOOD, server_resources.food],
-    [RisqResourceType.WOOD, server_resources.wood],
-    [RisqResourceType.STONE, server_resources.stone],
+export function serverToRisqResources(
+  server_resources: RisqPlayerResourcesFromServer
+): Map<RisqResourceType, RisqPlayerResource> {
+  return new Map<RisqResourceType, RisqPlayerResource>([
+    [
+      RisqResourceType.FOOD,
+      {
+        amount: server_resources.food,
+        spending: 0,
+        gaining: 0,
+        workers: 0,
+      },
+    ],
+    [
+      RisqResourceType.WOOD,
+      {
+        amount: server_resources.wood,
+        spending: 0,
+        gaining: 0,
+        workers: 0,
+      },
+    ],
+    [
+      RisqResourceType.STONE,
+      {
+        amount: server_resources.stone,
+        spending: 0,
+        gaining: 0,
+        workers: 0,
+      },
+    ],
   ]);
 }
 
@@ -676,6 +735,13 @@ export function indexToCoordinate(board_size: number, index: Point2D): Point2D {
     x: index.y + Math.max(-board_size, -(board_size + cy)),
     y: cy,
   };
+}
+
+/** Cantor pairing function adapted to work with negatives, mirroring backend's util.Pair */
+export function cantorPair(i: number, j: number): number {
+  const ni = i < 0 ? -2 * i - 1 : 2 * i;
+  const nj = j < 0 ? -2 * j - 1 : 2 * j;
+  return ((ni + nj) * (ni + nj + 1)) / 2 + nj;
 }
 
 /** Data describing a start-turn update */

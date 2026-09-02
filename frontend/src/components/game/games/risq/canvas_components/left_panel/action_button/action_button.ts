@@ -40,6 +40,8 @@ export abstract class RisqActionButton extends DwgSquareButton {
   protected unhovered(): void {}
   protected clicked(): void {}
 
+  dataRefreshed(): void {}
+
   override draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
     super.draw(ctx, transform, dt);
   }
