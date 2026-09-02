@@ -228,7 +228,7 @@ export class RisqRightPanel implements CanvasComponent {
     ctx.beginPath();
     ctx.drawImage(this.risq.getIcon(resourceTypeImage(r)), this.xi() + 0.1 * this.w(), yi, 30, 30);
     // TODO: add number of workers on each resource
-    drawText(ctx, a.toString(), {
+    drawText(ctx, a.toFixed(1), {
       p: { x: this.xi() + 0.1 * this.w() + 36, y: yi + 15 },
       w: 0.9 * this.w() - 36,
       fill_style: 'black',

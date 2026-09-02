@@ -17,6 +17,14 @@ type RisqPlayer struct {
 	active_orders        []*RisqOrder
 	past_orders          []*RisqOrder
 	orders_submitted     bool
+	planned_foundations  map[uint]*RisqPlannedFoundation
+}
+
+// Private commitment to build at a zone before any stamina makes it a real, objective RisqBuilding
+type RisqPlannedFoundation struct {
+	building_id    uint32
+	cost           RisqResourceCost
+	creating_order *RisqOrder
 }
 
 func createRisqPlayer(player *game.Player, max_population_limit uint16, color string) *RisqPlayer {
@@ -30,7 +38,23 @@ func createRisqPlayer(player *game.Player, max_population_limit uint16, color st
 		active_orders:        make([]*RisqOrder, 0),
 		past_orders:          make([]*RisqOrder, 0),
 		orders_submitted:     false,
+		planned_foundations:  make(map[uint]*RisqPlannedFoundation),
 	}
+}
+
+func createRisqPlannedFoundation(building_id uint32, creating_order *RisqOrder, player *RisqPlayer) *RisqPlannedFoundation {
+	cost, _ := buildingProductionCost(building_id)
+	player.resources.spend(cost)
+	return &RisqPlannedFoundation{building_id: building_id, cost: cost, creating_order: creating_order}
+}
+
+func (p *RisqPlayer) cancelPlannedFoundation(zone *RisqZone) {
+	foundation, ok := p.planned_foundations[zone.coordinate_key]
+	if !ok {
+		return
+	}
+	p.resources.refund(foundation.cost)
+	delete(p.planned_foundations, zone.coordinate_key)
 }
 
 func (p *RisqPlayer) populationLimit() uint16 {
@@ -87,19 +111,12 @@ func (p *RisqPlayer) allOrderables() iter.Seq[Orderable] {
 	}
 }
 
-func (p *RisqPlayer) hasActiveBuildClaim(zone *RisqZone, excluding *RisqOrder, risq *GameRisq) bool {
-	for _, unit := range p.units {
-		for _, order := range unit.order_queue.active_orders {
-			if order == excluding || order.order_type != OrderType_UnitBuild || !order.received {
-				continue
-			}
-			_, _, other_zone := invertBuildKey(uint(order.target_id), risq)
-			if other_zone == zone {
-				return true
-			}
-		}
+func (p *RisqPlayer) receivePlayerOrder(o *RisqOrder, risq *GameRisq) {
+	switch o.order_type {
+	case OrderType_CancelFoundation:
+		_, zone := invertZoneKey(uint(o.target_id), risq)
+		p.cancelPlannedFoundation(zone)
 	}
-	return false
 }
 
 func (p *RisqPlayer) toFrontend() gin.H {
@@ -131,7 +148,7 @@ func (p *RisqPlayer) toFrontend() gin.H {
 	player["units"] = units
 	active_orders := make([]gin.H, 0)
 	for _, order := range p.active_orders {
-		if order != nil && !order.executed {
+		if order != nil && !order.executed && !order.cancelled {
 			active_orders = append(active_orders, order.toFrontend())
 		}
 	}

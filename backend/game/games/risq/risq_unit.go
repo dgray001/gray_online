@@ -87,6 +87,10 @@ func (u *RisqUnit) refreshStamina() {
 }
 
 func (u *RisqUnit) receiveOrder(o *RisqOrder, risq *GameRisq) {
+	if o.order_type == OrderType_UnitCancelOrder {
+		u.order_queue.cancelOrder(uint64(o.target_id))
+		return
+	}
 	already_received := o.received
 	u.order_queue.receiveOrder(o)
 	if already_received {
@@ -94,9 +98,9 @@ func (u *RisqUnit) receiveOrder(o *RisqOrder, risq *GameRisq) {
 	}
 	switch o.order_type {
 	case OrderType_UnitBuild:
-		building_id, _, _ := invertBuildKey(uint(o.target_id), risq)
-		cost, _ := buildingProductionCost(building_id)
-		risq.players[u.player_id].resources.spend(cost)
+		building_id, _, zone := invertBuildKey(uint(o.target_id), risq)
+		player := risq.players[u.player_id]
+		player.planned_foundations[zone.coordinate_key] = createRisqPlannedFoundation(building_id, o, player)
 	}
 }
 
@@ -104,7 +108,8 @@ func (u *RisqUnit) orderReceivable(o *RisqOrder, risq *GameRisq) bool {
 	switch o.order_type {
 	case OrderType_UnitBuild:
 		_, _, zone := invertBuildKey(uint(o.target_id), risq)
-		if zone.building != nil || risq.players[u.player_id].hasActiveBuildClaim(zone, o, risq) {
+		foundation := risq.players[u.player_id].planned_foundations[zone.coordinate_key]
+		if zone.building != nil || (foundation != nil && foundation.creating_order != o) {
 			return false
 		}
 	default:
@@ -112,26 +117,40 @@ func (u *RisqUnit) orderReceivable(o *RisqOrder, risq *GameRisq) bool {
 	return true
 }
 
-func (u *RisqUnit) orderComplete(o *RisqOrder, risq *GameRisq) bool {
+func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 	switch o.order_type {
 	case OrderType_UnitMoveSpace:
 		space := invertSpaceKey(uint(o.target_id), risq)
-		return u.zone.space == space
+		if u.zone.space != space {
+			return OrderStatus_InProgress
+		}
 	case OrderType_UnitMoveZone:
 		_, zone := invertZoneKey(uint(o.target_id), risq)
-		return u.zone == zone
+		if u.zone != zone {
+			return OrderStatus_InProgress
+		}
 	case OrderType_UnitGather:
 		_, zone := invertZoneKey(uint(o.target_id), risq)
-		return zone.resource == nil || zone.resource.resources_left == 0
+		if zone.resource != nil && zone.resource.resources_left > 0 {
+			return OrderStatus_InProgress
+		}
 	case OrderType_UnitBuild:
 		_, _, zone := invertBuildKey(uint(o.target_id), risq)
 		if zone.building == nil {
-			return false
+			if risq.players[u.player_id].planned_foundations[zone.coordinate_key] == nil {
+				return OrderStatus_Cancelled
+			}
+			return OrderStatus_InProgress
 		}
-		return zone.building.player_id != u.player_id || !zone.building.underConstruction()
-	default:
-		return true
+		if zone.building.player_id != u.player_id {
+			risq.players[u.player_id].cancelPlannedFoundation(zone)
+			return OrderStatus_Cancelled
+		}
+		if zone.building.underConstruction() {
+			return OrderStatus_InProgress
+		}
 	}
+	return OrderStatus_Executed
 }
 
 func (u *RisqUnit) tickIntent(risq *GameRisq) bool {

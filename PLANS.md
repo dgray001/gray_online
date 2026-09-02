@@ -1,6 +1,4 @@
 v0.8: Playable Risq
- 
- n: Villager gather order frontend
  o: Village center build villager order
  p: Villagers can build housing frontend
  q: Stamina and stamina costs shown on frontend

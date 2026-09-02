@@ -86,7 +86,7 @@ func (b *RisqBuilding) refreshStamina() {
 }
 
 type RisqBuildingProductionItem struct {
-	// the order that queued this item, used to match it back up in orderComplete
+	// the order that queued this item
 	order             *RisqOrder
 	unit_id           uint32
 	stamina_remaining int
@@ -113,11 +113,27 @@ func (b *RisqBuilding) orderReceivable(o *RisqOrder, risq *GameRisq) bool {
 }
 
 func (b *RisqBuilding) receiveOrder(o *RisqOrder, risq *GameRisq) {
-	already_received := o.received
-	b.order_queue.receiveOrder(o)
-	if already_received {
+	if o.order_type == OrderType_BuildingCancelOrder {
+		target := b.order_queue.cancelOrder(uint64(o.target_id))
+		if target == nil || target.order_type != OrderType_BuildingCreate {
+			return
+		}
+		item := b.findProductionItem(target)
+		if item == nil {
+			fmt.Fprintln(os.Stderr, "Cancelled a non-complete BuildingCreate order with no matching production item:", target.internal_id)
+			return
+		}
+		cost, _ := unitProductionCost(item.unit_id)
+		risq.players[b.player_id].resources.refund(cost)
+		for i, pi := range b.production_queue {
+			if pi == item {
+				b.production_queue = append(b.production_queue[:i], b.production_queue[i+1:]...)
+				break
+			}
+		}
 		return
 	}
+	b.order_queue.receiveOrder(o)
 	switch o.order_type {
 	case OrderType_BuildingCreate:
 		unit_id := uint32(o.target_id)
@@ -131,14 +147,15 @@ func (b *RisqBuilding) receiveOrder(o *RisqOrder, risq *GameRisq) {
 	}
 }
 
-func (b *RisqBuilding) orderComplete(o *RisqOrder, risq *GameRisq) bool {
+func (b *RisqBuilding) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 	switch o.order_type {
 	case OrderType_BuildingCreate:
 		item := b.findProductionItem(o)
-		return item == nil || item.stamina_remaining <= 0
-	default:
-		return true
+		if item != nil && item.stamina_remaining > 0 {
+			return OrderStatus_InProgress
+		}
 	}
+	return OrderStatus_Executed
 }
 
 func (b *RisqBuilding) tickIntent(risq *GameRisq) bool {

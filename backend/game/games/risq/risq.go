@@ -418,6 +418,10 @@ func (r *GameRisq) resolveActiveOrders() {
 	for _, player := range r.players {
 		for _, order := range player.active_orders {
 			order.turn_received = r.turn_number
+			if order.order_type.isPlayerOrder() {
+				player.receivePlayerOrder(order, r)
+				continue
+			}
 			for _, subject := range order.subjects {
 				if subject.orderReceivable(order, r) {
 					subject.receiveOrder(order, r)

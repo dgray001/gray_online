@@ -88,8 +88,23 @@ export class RisqLeftPanel implements CanvasComponent {
             description: 'Delete',
           },
           0
-        )
+        ),
       );
+      if (this.data.data.unit_id === 1) {
+        this.buttons.push(
+          new RisqOrderButton(
+            this.risq,
+            {
+              row: 1,
+              col: 0,
+              order_type: RisqOrderType.OrderType_UnitGather,
+              image_path: 'icons/gather',
+              description: 'Gather',
+            },
+            0
+          )
+        );
+      }
     }
     this.resolveSize();
   }
@@ -426,7 +441,7 @@ export class RisqLeftPanel implements CanvasComponent {
     yi += 8;
     ctx.beginPath();
     ctx.drawImage(this.risq.getIcon(resourceTypeImage(resource)), this.xi() + 0.1 * this.w(), yi, 40, 40);
-    const resources_left = (this.visibility ?? 0) < 4 ? '??' : resource.resources_left.toString();
+    const resources_left = (this.visibility ?? 0) < 4 ? '??' : resource.resources_left.toFixed(1);
     drawText(ctx, resources_left, {
       p: { x: this.xi() + 0.1 * this.w() + 48, y: yi + 20 },
       w: 0.9 * this.w() - 48,

@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.7m: Cursor update based on order type
+v0.7n: Villager gather order frontend
 
 ## Dev Use
 

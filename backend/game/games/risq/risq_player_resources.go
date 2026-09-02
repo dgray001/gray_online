@@ -47,6 +47,12 @@ func (r *RisqPlayerResources) spend(cost RisqResourceCost) {
 	r.stone -= cost.stone
 }
 
+func (r *RisqPlayerResources) refund(cost RisqResourceCost) {
+	r.food += cost.food
+	r.wood += cost.wood
+	r.stone += cost.stone
+}
+
 func (r *RisqPlayerResources) score() uint {
 	return uint(r.food + r.wood + r.stone)
 }

@@ -253,7 +253,13 @@ export class DwgRisq extends DwgElement {
     if (this.player_id > -1) {
       this.orders_submitted_times = 0;
     }
+    this.clearSelection();
     this.setNewGameData(data.game);
+  }
+
+  private clearSelection() {
+    this.left_panel.close();
+    this.disarmOrder();
   }
 
   private async applySubmittedOrders(data: SubmittedOrdersData) {
@@ -347,6 +353,9 @@ export class DwgRisq extends DwgElement {
     }
     this.draw_detail = this.getDrawDetail(transform.scale);
     this.mouse_canvas = m;
+    if (!!this.hovered_space) {
+      this.hovered_space.center = this.coordinateToCanvas(this.hovered_space.coordinate, transform.scale);
+    }
     const hovered_other_component = [
       this.right_panel.mousemove(m, transform),
       this.left_panel.mousemove(m, transform),
@@ -477,14 +486,13 @@ export class DwgRisq extends DwgElement {
 
   // Shared by unitOrder() and the cursor so both always agree on what a right-click would do
   private resolveActiveOrderType(unit: RisqUnit): RisqOrderType {
-    switch (this.getArmedOrder()) {
-      case RisqOrderType.OrderType_UnitGather:
-        if (unit.unit_id === 1 && !!this.hovered_zone?.resource) {
-          return RisqOrderType.OrderType_UnitGather;
-        }
-        break;
-      default:
-        break;
+    if (unit.unit_id === 1 && !!this.hovered_zone?.resource) {
+      if (this.getArmedOrder() === RisqOrderType.OrderType_UnitGather) {
+        return RisqOrderType.OrderType_UnitGather; // armed: gather anywhere in the zone
+      }
+      if (this.hovered_zone.hovered_data[0]?.hovered) {
+        return RisqOrderType.OrderType_UnitGather; // default: hovering the resource specifically
+      }
     }
     return RisqOrderType.OrderType_UnitMoveSpace;
   }

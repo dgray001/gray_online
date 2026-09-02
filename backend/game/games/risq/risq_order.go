@@ -16,8 +16,8 @@ type Orderable interface {
 	// Returns whether the order is receivable by this subject
 	orderReceivable(o *RisqOrder, risq *GameRisq) bool
 	receiveOrder(o *RisqOrder, risq *GameRisq)
-	// Returns whether the order is already complete (called by tickIntent)
-	orderComplete(o *RisqOrder, risq *GameRisq) bool
+	// Returns whether the order is in progress, executed, or cancelled (called by tickIntent)
+	orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus
 	// Returns whether the orderable has an intent
 	tickIntent(risq *GameRisq) bool
 	tickExecute(risq *GameRisq)
@@ -27,6 +27,14 @@ type RisqOrderQueue struct {
 	active_orders []*RisqOrder
 	past_orders   []*RisqOrder
 }
+
+type OrderStatus uint8
+
+const (
+	OrderStatus_InProgress OrderStatus = iota
+	OrderStatus_Executed
+	OrderStatus_Cancelled
+)
 
 type OrderFromFrontend struct {
 	Player_id  int      `json:"player_id"`
@@ -53,9 +61,13 @@ const (
 	OrderType_UnitDefend
 	OrderType_UnitGarrison
 	OrderType_UnitDelete
+	OrderType_UnitCancelOrder
 	// Orders to control buildings
 	OrderType_BuildingCreate
 	OrderType_BuildingResearch
+	OrderType_BuildingCancelOrder
+	// Player-level orders with no subjects
+	OrderType_CancelFoundation
 	// Used to validate input from the frontend
 	OrderType_END
 )
@@ -75,6 +87,8 @@ type RisqOrder struct {
 	received bool
 	// Whether the order has been executed
 	executed bool
+	// Whether the order was canceled before completion
+	cancelled bool
 	// The turn that the order was received by the player
 	turn_received uint16
 	// The turn that the order was executed
@@ -112,11 +126,15 @@ func (o *RisqOrder) toFrontend() gin.H {
 }
 
 func (ot OrderType) isUnitOrder() bool {
-	return ot >= OrderType_UnitMoveSpace && ot <= OrderType_UnitGarrison
+	return ot >= OrderType_UnitMoveSpace && ot <= OrderType_UnitCancelOrder
 }
 
 func (ot OrderType) isBuildingOrder() bool {
-	return ot >= OrderType_BuildingCreate && ot <= OrderType_BuildingResearch
+	return ot >= OrderType_BuildingCreate && ot <= OrderType_BuildingCancelOrder
+}
+
+func (ot OrderType) isPlayerOrder() bool {
+	return ot >= OrderType_CancelFoundation && ot <= OrderType_CancelFoundation
 }
 
 func (r *GameRisq) getOrdersFromPlayerAction(action gin.H) ([]OrderFromFrontend, error) {
@@ -161,8 +179,10 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend) error {
 				return fmt.Errorf("Invalid building subject id")
 			}
 		}
-	} else {
-		return errors.New("Invalid order type")
+	} else if order_type.isPlayerOrder() {
+		if len(order.Subjects) > 0 {
+			return errors.New("Invalid subjects in player order")
+		}
 	}
 	// Validate target id
 	switch order_type {
@@ -231,6 +251,26 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend) error {
 		if !r.players[order.Player_id].resources.canAfford(cost) {
 			return fmt.Errorf("Not enough resources to build")
 		}
+	case OrderType_UnitCancelOrder:
+		for _, subject_id := range order.Subjects {
+			if r.players[order.Player_id].units[subject_id].order_queue.findActiveOrder(uint64(order.Target_id)) == nil {
+				return fmt.Errorf("Unit does not have an active order with id %d", order.Target_id)
+			}
+		}
+	case OrderType_BuildingCancelOrder:
+		for _, subject_id := range order.Subjects {
+			if r.players[order.Player_id].buildings[subject_id].order_queue.findActiveOrder(uint64(order.Target_id)) == nil {
+				return fmt.Errorf("Building does not have an active order with id %d", order.Target_id)
+			}
+		}
+	case OrderType_CancelFoundation:
+		_, zone := invertZoneKey(uint(order.Target_id), r)
+		if zone == nil {
+			return fmt.Errorf("Invalid zone target inverted from zone key %d", order.Target_id)
+		}
+		if r.players[order.Player_id].planned_foundations[zone.coordinate_key] == nil {
+			return fmt.Errorf("No planned foundation at this zone")
+		}
 	default:
 		return fmt.Errorf("Unimplemented order type: %d", order_type)
 	}
@@ -251,14 +291,39 @@ func (q *RisqOrderQueue) receiveOrder(o *RisqOrder) {
 	q.active_orders = append(q.active_orders, o)
 }
 
+func (q *RisqOrderQueue) findActiveOrder(internal_id uint64) *RisqOrder {
+	for _, order := range q.active_orders {
+		if order.internal_id == internal_id {
+			return order
+		}
+	}
+	return nil
+}
+
+// Finds, cancels, and removes the order with this internal id; returns it (or nil if not found)
+func (q *RisqOrderQueue) cancelOrder(internal_id uint64) *RisqOrder {
+	for i, order := range q.active_orders {
+		if order.internal_id == internal_id {
+			order.cancelled = true
+			q.active_orders = append(q.active_orders[:i], q.active_orders[i+1:]...)
+			return order
+		}
+	}
+	return nil
+}
+
 func (q *RisqOrderQueue) nextOrder(orderable Orderable, risq *GameRisq) *RisqOrder {
 	for len(q.active_orders) > 0 {
 		o := q.active_orders[0]
-		if !orderable.orderComplete(o, risq) {
+		switch orderable.orderStatus(o, risq) {
+		case OrderStatus_InProgress:
 			return o
+		case OrderStatus_Cancelled:
+			o.cancelled = true
+		default:
+			o.executed = true
+			o.turn_executed = risq.turn_number
 		}
-		o.executed = true
-		o.turn_executed = risq.turn_number
 		q.active_orders = q.active_orders[1:]
 	}
 	return nil
