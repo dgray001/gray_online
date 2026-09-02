@@ -166,8 +166,32 @@ export declare interface RisqBuilding {
   population_support: number;
   combat_stats: RisqCombatStats;
   active_orders: RisqOrder[];
+  produces: RisqProducible[];
   // purely frontend fields
   hover_data: RectHoverData;
+}
+
+/** All the kinds a building's produces entry can be */
+export enum RisqProducibleKind {
+  UNIT,
+  TECH,
+}
+
+/** Data describing something a building can produce, with its cost already resolved for this player */
+export declare interface RisqProducible {
+  row: number;
+  col: number;
+  kind: RisqProducibleKind;
+  id: number;
+  cost: RisqCost;
+  display_name: string;
+}
+
+/** Data describing a resource cost */
+export declare interface RisqCost {
+  food: number;
+  wood: number;
+  stone: number;
 }
 
 /** Data describing combat stats */
@@ -334,6 +358,7 @@ export declare interface RisqBuildingFromServer {
   max_stamina: number;
   combat_stats: RisqCombatStatsFromServer;
   active_orders: RisqOrderFromServer[];
+  produces: RisqProducible[];
 }
 
 /** Data describing combat stats */

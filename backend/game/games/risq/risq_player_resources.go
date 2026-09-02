@@ -14,6 +14,14 @@ type RisqResourceCost struct {
 	stone float64
 }
 
+func (c RisqResourceCost) toFrontend() gin.H {
+	return gin.H{
+		"food":  c.food,
+		"wood":  c.wood,
+		"stone": c.stone,
+	}
+}
+
 func (c RisqResourceCost) times(n int) RisqResourceCost {
 	return RisqResourceCost{
 		food:  c.food * float64(n),

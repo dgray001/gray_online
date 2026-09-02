@@ -20,6 +20,7 @@ import {
   FULL_VISIBILITY,
   RisqAttackType,
   RisqOrderType,
+  RisqProducibleKind,
   ZONE_VISIBILITY,
   coordinateToIndex,
   risqTerrainName,
@@ -28,12 +29,13 @@ import { resourceImage, resourceTypeImage } from '../../risq_resources';
 import { getSpaceFill } from '../../risq_space';
 import { UNIT_HEALTHBAR_COLOR_BACKGROUND, UNIT_HEALTHBAR_COLOR_HEALTH, unitImage } from '../../risq_unit';
 import { INNER_ZONE_MULTIPLIER, getZoneFill, resolveHoveredZones } from '../../risq_zone';
-import type { RisqActionButton } from './action_button';
-import { RisqDeleteButton } from './delete_button';
+import type { RisqActionButton } from './action_button/action_button';
+import { RisqCreateButton } from './action_button/create_button';
+import { RisqDeleteButton } from './action_button/delete_button';
 import { RisqLeftPanelButton } from './left_panel_close';
 import type { LeftPanelConfig, LeftPanelData, PlayerUnitsDrawData, UnitsDrawData } from './left_panel_data';
 import { HoverableObjectType, LeftPanelDataType } from './left_panel_data';
-import { RisqOrderButton } from './order_button';
+import { RisqOrderButton } from './action_button/order_button';
 
 export class RisqLeftPanel implements CanvasComponent {
   // For use in the draw function
@@ -67,44 +69,69 @@ export class RisqLeftPanel implements CanvasComponent {
 
   private refreshActionButtons() {
     this.buttons = [];
-    if (this.data?.data_type === LeftPanelDataType.UNIT) {
-      this.buttons.push(
-        new RisqOrderButton(
-          this.risq,
-          {
-            row: 0,
-            col: 0,
-            order_type: RisqOrderType.OrderType_UnitMoveSpace,
-            image_path: 'icons/move',
-            description: 'Move',
-          },
-          0
-        ),
-        new RisqDeleteButton(
-          {
-            row: 0,
-            col: RisqLeftPanel.ACTION_GRID_COLS - 1,
-            image_path: 'icons/skull128',
-            description: 'Delete',
-          },
-          0
-        ),
-      );
-      if (this.data.data.unit_id === 1) {
+    switch (this.data?.data_type) {
+      case LeftPanelDataType.UNIT:
         this.buttons.push(
           new RisqOrderButton(
-            this.risq,
             {
-              row: 1,
+              row: 0,
               col: 0,
-              order_type: RisqOrderType.OrderType_UnitGather,
-              image_path: 'icons/gather',
-              description: 'Gather',
+              order_type: RisqOrderType.OrderType_UnitMoveSpace,
+              image_path: 'icons/move',
+              description: 'Move',
+            },
+            this.risq,
+            0
+          ),
+          new RisqDeleteButton(
+            {
+              row: 0,
+              col: RisqLeftPanel.ACTION_GRID_COLS - 1,
+              image_path: 'icons/skull128',
+              description: 'Delete',
             },
             0
           )
         );
-      }
+        if (this.data.data.unit_id === 1) {
+          this.buttons.push(
+            new RisqOrderButton(
+              {
+                row: 1,
+                col: 0,
+                order_type: RisqOrderType.OrderType_UnitGather,
+                image_path: 'icons/gather',
+                description: 'Gather',
+              },
+              this.risq,
+              0
+            )
+          );
+        }
+        break;
+      case LeftPanelDataType.BUILDING:
+        for (const producible of this.data.data.produces) {
+          if (producible.kind !== RisqProducibleKind.UNIT) {
+            continue;
+          }
+          this.buttons.push(
+            new RisqCreateButton(
+              {
+                row: producible.row,
+                col: producible.col,
+                building_id: this.data.data.internal_id,
+                unit_id: producible.id,
+                image_path: unitImage(producible.id),
+                description: `Create ${producible.display_name}`,
+              },
+              this.risq,
+              0
+            )
+          );
+        }
+        break;
+      default:
+        break;
     }
     this.resolveSize();
   }
@@ -175,6 +202,56 @@ export class RisqLeftPanel implements CanvasComponent {
           return false;
         }
         return this.data.data.units[0].player_id === player_id;
+      default:
+        return false;
+    }
+  }
+
+  // Returns whether the current selection is a unit or units
+  isUnit(): boolean {
+    if (!this.showing || !this.data) {
+      return false;
+    }
+    switch (this.data.data_type) {
+      case LeftPanelDataType.MULTIPLE_PLAYERS_UNITS:
+      case LeftPanelDataType.UNITS:
+      case LeftPanelDataType.UNITS_BY_TYPE:
+      case LeftPanelDataType.ECONOMIC_UNITS:
+      case LeftPanelDataType.MILITARY_UNITS:
+      case LeftPanelDataType.UNIT:
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  // Returns whether the current selection is at least one villager
+  isVillager(): boolean {
+    if (!this.isUnit() || !this.data) {
+      return false;
+    }
+    switch (this.data.data_type) {
+      case LeftPanelDataType.UNIT:
+        return this.data.data.unit_id === 1;
+      case LeftPanelDataType.MULTIPLE_PLAYERS_UNITS:
+        return this.data.data.units_by_player.some(([, units]) => units.some((u) => u.unit_id === 1));
+      case LeftPanelDataType.UNITS_BY_TYPE:
+      case LeftPanelDataType.ECONOMIC_UNITS:
+      case LeftPanelDataType.MILITARY_UNITS:
+        return this.data.data.units.some((u) => u.unit_id === 1);
+      default:
+        return false;
+    }
+  }
+
+  // Returns whether the current selection is a building
+  isBuilding(): boolean {
+    if (!this.showing || !this.data) {
+      return false;
+    }
+    switch (this.data.data_type) {
+      case LeftPanelDataType.BUILDING:
+        return true;
       default:
         return false;
     }
@@ -347,7 +424,7 @@ export class RisqLeftPanel implements CanvasComponent {
   }
 
   private drawUnitImage(ctx: CanvasRenderingContext2D, unit: RisqUnit, p: Point2D, s: number) {
-    ctx.drawImage(this.risq.getIcon(unitImage(unit)), p.x, p.y, s, s);
+    ctx.drawImage(this.risq.getIcon(unitImage(unit.unit_id)), p.x, p.y, s, s);
     ctx.strokeStyle = UNIT_HEALTHBAR_COLOR_BACKGROUND;
     ctx.lineWidth = 0.4;
     ctx.fillStyle = UNIT_HEALTHBAR_COLOR_BACKGROUND;
@@ -422,7 +499,7 @@ export class RisqLeftPanel implements CanvasComponent {
 
   private drawUnit(ctx: CanvasRenderingContext2D, unit: RisqUnit) {
     let yi = this.yi() + this.drawName(ctx, unit.display_name);
-    yi += this.drawImage(ctx, yi, unitImage(unit));
+    yi += this.drawImage(ctx, yi, unitImage(unit.unit_id));
     this.drawSeparator(ctx, yi);
     yi = this.yi() + 0.25 * this.size.y + 6;
     this.drawCombatStats(ctx, yi, yi + 0.25 * this.size.y - 12, unit.combat_stats);

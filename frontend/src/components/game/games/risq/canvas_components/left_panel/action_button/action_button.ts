@@ -1,7 +1,7 @@
-import type { BoardTransformData } from '../../../../util/canvas_board/canvas_board';
-import { configDraw } from '../../../../util/canvas_components/canvas_component';
-import { DwgSquareButton } from '../../../../util/canvas_components/button/square_button';
-import { drawRect, drawText } from '../../../../util/canvas_util';
+import type { BoardTransformData } from '../../../../../util/canvas_board/canvas_board';
+import { configDraw } from '../../../../../util/canvas_components/canvas_component';
+import { DwgSquareButton } from '../../../../../util/canvas_components/button/square_button';
+import { drawRect, drawText } from '../../../../../util/canvas_util';
 
 export declare interface RisqActionButtonConfig {
   row: number;
@@ -48,24 +48,31 @@ export abstract class RisqActionButton extends DwgSquareButton {
     if (!this.isHovering()) {
       return;
     }
-    configDraw(ctx, transform, { fill_style: 'transparent', stroke_width: 0, fixed_position: true }, false, false, () => {
-      const h = 20;
-      const font = '12px serif';
-      ctx.font = font;
-      const w = ctx.measureText(this.description).width + 8;
-      const p = { x: this.xi(), y: this.yi() - 2 - h };
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
-      ctx.strokeStyle = 'rgba(250, 250, 250, 0.9)';
-      ctx.lineWidth = 1;
-      drawRect(ctx, p, w, h, 3);
-      drawText(ctx, this.description, {
-        p: { x: p.x + 4, y: p.y + 0.5 * h },
-        w: w - 8,
-        fill_style: 'white',
-        align: 'left',
-        baseline: 'middle',
-        font,
-      });
-    });
+    configDraw(
+      ctx,
+      transform,
+      { fill_style: 'transparent', stroke_width: 0, fixed_position: true },
+      false,
+      false,
+      () => {
+        const h = 20;
+        const font = '12px serif';
+        ctx.font = font;
+        const w = ctx.measureText(this.description).width + 8;
+        const p = { x: this.xi(), y: this.yi() - 2 - h };
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+        ctx.strokeStyle = 'rgba(250, 250, 250, 0.9)';
+        ctx.lineWidth = 1;
+        drawRect(ctx, p, w, h, 3);
+        drawText(ctx, this.description, {
+          p: { x: p.x + 4, y: p.y + 0.5 * h },
+          w: w - 8,
+          fill_style: 'white',
+          align: 'left',
+          baseline: 'middle',
+          font,
+        });
+      }
+    );
   }
 }

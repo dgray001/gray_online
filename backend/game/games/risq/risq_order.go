@@ -217,8 +217,7 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend) error {
 		}
 	case OrderType_BuildingCreate:
 		unit_id := uint32(order.Target_id)
-		config, ok := unitConfigs[unit_id]
-		if !ok {
+		if _, ok := unitConfigs[unit_id]; !ok {
 			return fmt.Errorf("Invalid or unsupported unit id for production: %d", unit_id)
 		}
 		for _, subject_id := range order.Subjects {
@@ -227,7 +226,8 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend) error {
 				return fmt.Errorf("Building id %d cannot produce unit id %d", building.building_id, unit_id)
 			}
 		}
-		total := config.cost.times(len(order.Subjects))
+		cost, _ := unitProductionCost(unit_id)
+		total := cost.times(len(order.Subjects))
 		if !r.players[order.Player_id].resources.canAfford(total) {
 			return fmt.Errorf("Not enough resources to produce %d unit(s)", len(order.Subjects))
 		}

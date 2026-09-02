@@ -4,7 +4,7 @@
     "display_name": "Village Center",
     "max_health": 350,
     "population_support": 5,
-    "produces": [1]
+    "produces": [{ "row": 1, "col": 0, "kind": "unit", "id": 1 }]
   },
   {
     "building_id": 2,

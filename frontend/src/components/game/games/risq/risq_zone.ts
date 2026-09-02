@@ -131,7 +131,7 @@ export function drawRisqZone(
         } else if (units_by_type.length === 1) {
           const unit = zone.units.get([...units_by_type[0].units.values()][0]);
           if (!!unit) {
-            ctx.drawImage(game.getIcon(unitImage(unit)), -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
+            ctx.drawImage(game.getIcon(unitImage(unit.unit_id)), -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
             drawText(
               ctx,
               units_by_type[0].units.size.toString(),
@@ -149,7 +149,7 @@ export function drawRisqZone(
             const unit = zone.units.get(units[0]);
             if (!!unit) {
               ctx.drawImage(
-                game.getIcon(unitImage(unit)),
+                game.getIcon(unitImage(unit.unit_id)),
                 (0.5 * j - 1) * part.r.x,
                 (0.5 * j - 1) * part.r.y,
                 1.5 * part.r.x,
@@ -173,7 +173,7 @@ export function drawRisqZone(
             const unit = zone.units.get(units[0]);
             if (!!unit) {
               ctx.drawImage(
-                game.getIcon(unitImage(unit)),
+                game.getIcon(unitImage(unit.unit_id)),
                 (0.8 * j - 0.9) * part.r.x,
                 -0.9 * part.r.y,
                 part.r.x,
@@ -194,7 +194,7 @@ export function drawRisqZone(
           const units = [...units_by_type[2].units.values()];
           const unit = zone.units.get(units[0]);
           if (!!unit) {
-            ctx.drawImage(game.getIcon(unitImage(unit)), -0.5 * part.r.x, -0.1 * part.r.y, part.r.x, part.r.y);
+            ctx.drawImage(game.getIcon(unitImage(unit.unit_id)), -0.5 * part.r.x, -0.1 * part.r.y, part.r.x, part.r.y);
             drawText(ctx, units.length.toString(), 0.75 * part.r.y, -0.5 * part.r.x, -0.1 * part.r.y, 1.5 * part.r.x);
           } else {
             console.error(`Error drawing 3 units in zone; please check zone data: ${zone}`);
@@ -205,7 +205,7 @@ export function drawRisqZone(
             const unit = zone.units.get(units[0]);
             if (!!unit) {
               ctx.drawImage(
-                game.getIcon(unitImage(unit)),
+                game.getIcon(unitImage(unit.unit_id)),
                 (0.8 * j - 0.9) * part.r.x,
                 -0.9 * part.r.y,
                 part.r.x,
@@ -228,7 +228,7 @@ export function drawRisqZone(
             const unit = zone.units.get(units[0]);
             if (!!unit) {
               ctx.drawImage(
-                game.getIcon(unitImage(unit)),
+                game.getIcon(unitImage(unit.unit_id)),
                 (0.8 * j - 0.9) * part.r.x,
                 -0.1 * part.r.y,
                 part.r.x,
@@ -252,7 +252,7 @@ export function drawRisqZone(
             const unit = zone.units.get(units[0]);
             if (!!unit) {
               ctx.drawImage(
-                game.getIcon(unitImage(unit)),
+                game.getIcon(unitImage(unit.unit_id)),
                 (0.8 * j - 0.9) * part.r.x,
                 -0.9 * part.r.y,
                 part.r.x,
@@ -267,7 +267,7 @@ export function drawRisqZone(
             const unit = zone.units.get(units[0]);
             if (!!unit) {
               ctx.drawImage(
-                game.getIcon(unitImage(unit)),
+                game.getIcon(unitImage(unit.unit_id)),
                 (0.8 * j - 0.9) * part.r.x,
                 -0.1 * part.r.y,
                 part.r.x,

@@ -90,6 +90,7 @@ type RisqBuildingProductionItem struct {
 	order             *RisqOrder
 	unit_id           uint32
 	stamina_remaining int
+	cost              RisqResourceCost
 }
 
 func (item *RisqBuildingProductionItem) toFrontend() gin.H {
@@ -123,8 +124,7 @@ func (b *RisqBuilding) receiveOrder(o *RisqOrder, risq *GameRisq) {
 			fmt.Fprintln(os.Stderr, "Cancelled a non-complete BuildingCreate order with no matching production item:", target.internal_id)
 			return
 		}
-		cost, _ := unitProductionCost(item.unit_id)
-		risq.players[b.player_id].resources.refund(cost)
+		risq.players[b.player_id].resources.refund(item.cost)
 		for i, pi := range b.production_queue {
 			if pi == item {
 				b.production_queue = append(b.production_queue[:i], b.production_queue[i+1:]...)
@@ -143,6 +143,7 @@ func (b *RisqBuilding) receiveOrder(o *RisqOrder, risq *GameRisq) {
 			order:             o,
 			unit_id:           unit_id,
 			stamina_remaining: stamina_required,
+			cost:              cost,
 		})
 	}
 }
@@ -208,6 +209,11 @@ func (b *RisqBuilding) toFrontend() gin.H {
 		"under_construction": b.underConstruction(),
 		"stamina_remaining":  b.stamina_remaining,
 	}
+	produces := make([]gin.H, 0)
+	for _, p := range buildingConfigs[b.building_id].produces {
+		produces = append(produces, p.toFrontend())
+	}
+	building["produces"] = produces
 	if b.zone != nil {
 		building["zone_coordinate"] = b.zone.coordinate.ToFrontend()
 		if b.zone.space != nil {

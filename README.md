@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.7n: Villager gather order frontend
+v0.7o: Village center build villager order
 
 ## Dev Use
 

@@ -1,8 +1,8 @@
-import type { DwgRisq } from '../../risq';
-import type { RisqOrderType } from '../../risq_data';
+import type { DwgRisq } from '../../../risq';
+import { RisqOrderType } from '../../../risq_data';
+import { DrawRisqSpaceDetail } from '../../../risq_space';
 import { RisqActionButton } from './action_button';
 
-/** Declarative placement + look of one order button in the action grid */
 export declare interface OrderButtonConfig {
   row: number;
   col: number;
@@ -16,7 +16,7 @@ export class RisqOrderButton extends RisqActionButton {
   private order_type: RisqOrderType;
   private armed = false;
 
-  constructor(risq: DwgRisq, config: OrderButtonConfig, s: number) {
+  constructor(config: OrderButtonConfig, risq: DwgRisq, s: 0) {
     super(config, s);
     this.risq = risq;
     this.order_type = config.order_type;
@@ -26,6 +26,18 @@ export class RisqOrderButton extends RisqActionButton {
     return super.isClicking() || this.armed;
   }
 
+  private getOrderType(): RisqOrderType {
+    switch (this.order_type) {
+      case RisqOrderType.OrderType_UnitMoveSpace:
+      case RisqOrderType.OrderType_UnitMoveZone:
+        return this.risq.drawDetail() === DrawRisqSpaceDetail.ZONE_DETAILS
+          ? RisqOrderType.OrderType_UnitMoveZone
+          : RisqOrderType.OrderType_UnitMoveSpace;
+      default:
+        return this.order_type;
+    }
+  }
+
   protected released(): void {
     if (this.isHovering()) {
       if (this.armed) {
@@ -33,7 +45,7 @@ export class RisqOrderButton extends RisqActionButton {
         this.risq.disarmOrder();
       } else {
         this.armed = true;
-        this.risq.armOrder(this.order_type, () => {
+        this.risq.armOrder(this.getOrderType(), () => {
           this.armed = false;
         });
       }

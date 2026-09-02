@@ -22,13 +22,12 @@ import type {
   GameRisqFromServer,
   RisqPlayer,
   RisqSpace,
-  RisqUnit,
   RisqZone,
   StartTurnData,
   SubmittedOrdersData,
   UnsubmittedOrdersData,
 } from './risq_data';
-import { coordinateToIndex, getSpace, RisqOrderType, serverToGameRisq } from './risq_data';
+import { coordinateToIndex, getSpace, RisqOrderType, ZONE_VISIBILITY, serverToGameRisq } from './risq_data';
 import { cursorImageForOrderType, DEFAULT_CURSOR_IMAGE } from './risq_cursor';
 import { RisqRightPanel } from './canvas_components/right_panel/right_panel';
 import type { DrawRisqSpaceConfig } from './risq_space';
@@ -210,6 +209,10 @@ export class DwgRisq extends DwgElement {
 
   canvasSize(): DOMRect {
     return this.canvas_size;
+  }
+
+  drawDetail(): DrawRisqSpaceDetail {
+    return this.draw_detail;
   }
 
   toggleRightPanel(open?: boolean) {
@@ -484,26 +487,55 @@ export class DwgRisq extends DwgElement {
     this.updateCursor();
   }
 
-  // Shared by unitOrder() and the cursor so both always agree on what a right-click would do
-  private resolveActiveOrderType(unit: RisqUnit): RisqOrderType {
-    if (unit.unit_id === 1 && !!this.hovered_zone?.resource) {
-      if (this.getArmedOrder() === RisqOrderType.OrderType_UnitGather) {
-        return RisqOrderType.OrderType_UnitGather; // armed: gather anywhere in the zone
-      }
-      if (this.hovered_zone.hovered_data[0]?.hovered) {
-        return RisqOrderType.OrderType_UnitGather; // default: hovering the resource specifically
-      }
+  createUnit(building_id: number, unit_id: number) {
+    if (!this.canGiveOrders()) {
+      return;
     }
-    return RisqOrderType.OrderType_UnitMoveSpace;
+    this.right_panel.addOrder({
+      player_id: this.player_id,
+      order_type: RisqOrderType.OrderType_BuildingCreate,
+      subjects: [building_id],
+      target_id: unit_id,
+    });
+  }
+
+  private resolveActiveOrderType(): RisqOrderType {
+    if (!this.left_panel.getData() || !this.left_panel.isOrderable() || !this.canGiveOrders() || !this.hovered_space) {
+      return RisqOrderType.NONE;
+    }
+    const is_unit = this.left_panel.isUnit();
+    const is_villager = this.left_panel.isVillager();
+    const zone_valid =
+      this.drawDetail() === DrawRisqSpaceDetail.ZONE_DETAILS &&
+      this.hovered_space.visibility >= ZONE_VISIBILITY &&
+      !!this.hovered_zone;
+    switch (this.getArmedOrder()) {
+      case RisqOrderType.OrderType_UnitMoveSpace:
+      case RisqOrderType.OrderType_UnitMoveZone:
+        if (is_unit) {
+          return zone_valid ? RisqOrderType.OrderType_UnitMoveZone : RisqOrderType.OrderType_UnitMoveSpace;
+        }
+        break;
+      case RisqOrderType.OrderType_UnitGather:
+        if (is_villager && zone_valid && !!this.hovered_zone?.resource) {
+          return RisqOrderType.OrderType_UnitGather;
+        }
+        break;
+      default:
+        break;
+    }
+    if (is_unit) {
+      if (is_villager && zone_valid && !!this.hovered_zone?.resource && this.hovered_zone.hovered_data[0]?.hovered) {
+        return RisqOrderType.OrderType_UnitGather;
+      }
+      return zone_valid ? RisqOrderType.OrderType_UnitMoveZone : RisqOrderType.OrderType_UnitMoveSpace;
+    }
+    return RisqOrderType.NONE;
   }
 
   private updateCursor() {
-    const left_panel_data = this.left_panel.getData();
-    if (left_panel_data?.data_type === LeftPanelDataType.UNIT && this.left_panel.isOrderable()) {
-      this.board.setCursor(cursorImageForOrderType(this.resolveActiveOrderType(left_panel_data.data)));
-    } else {
-      this.board.setCursor(DEFAULT_CURSOR_IMAGE);
-    }
+    const active_order = this.resolveActiveOrderType();
+    this.board.setCursor(cursorImageForOrderType(active_order));
   }
 
   private canGiveOrders(): boolean {
@@ -525,38 +557,41 @@ export class DwgRisq extends DwgElement {
     if (!this.hovered_space) {
       return;
     }
-    if (this.resolveActiveOrderType(data.data) === RisqOrderType.OrderType_UnitGather && !!this.hovered_zone?.resource) {
-      this.right_panel.addOrder({
-        player_id: this.player_id,
-        order_type: RisqOrderType.OrderType_UnitGather,
-        subjects: [data.data.internal_id],
-        target_id: this.hovered_zone.coordinate_key,
-      });
-      this.disarmOrder();
-      return;
-    }
     // TODO: implement attack vs just move
     // TODO: implement if holding the shift key
-    if (
-      this.hovered_space.visibility < 3 ||
-      this.draw_detail !== DrawRisqSpaceDetail.ZONE_DETAILS ||
-      !this.hovered_zone
-    ) {
-      // TODO: if able to attack *not* holding ctrl, then add move and then attack commands (or just attack if in range)
-      // move to hovered space
-      this.right_panel.addOrder({
-        player_id: this.player_id,
-        order_type: RisqOrderType.OrderType_UnitMoveSpace,
-        subjects: [data.data.internal_id],
-        target_id: this.hovered_space.coordinate_key,
-      });
-    } else {
-      this.right_panel.addOrder({
-        player_id: this.player_id,
-        order_type: RisqOrderType.OrderType_UnitMoveZone,
-        subjects: [data.data.internal_id],
-        target_id: this.hovered_zone.coordinate_key,
-      });
+    switch (this.resolveActiveOrderType()) {
+      case RisqOrderType.OrderType_UnitMoveSpace:
+        this.right_panel.addOrder({
+          player_id: this.player_id,
+          order_type: RisqOrderType.OrderType_UnitMoveSpace,
+          subjects: [data.data.internal_id],
+          target_id: this.hovered_space.coordinate_key,
+        });
+        break;
+      case RisqOrderType.OrderType_UnitMoveZone:
+        if (!this.hovered_zone) {
+          return;
+        }
+        this.right_panel.addOrder({
+          player_id: this.player_id,
+          order_type: RisqOrderType.OrderType_UnitMoveZone,
+          subjects: [data.data.internal_id],
+          target_id: this.hovered_zone.coordinate_key,
+        });
+        break;
+      case RisqOrderType.OrderType_UnitGather:
+        if (!this.hovered_zone) {
+          return;
+        }
+        this.right_panel.addOrder({
+          player_id: this.player_id,
+          order_type: RisqOrderType.OrderType_UnitGather,
+          subjects: [data.data.internal_id],
+          target_id: this.hovered_zone.coordinate_key,
+        });
+        break;
+      default:
+        return;
     }
     this.disarmOrder();
   }
