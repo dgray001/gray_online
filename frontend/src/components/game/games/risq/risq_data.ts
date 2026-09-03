@@ -274,26 +274,25 @@ export enum RisqOrderType {
   OrderType_UnitDefend,
   OrderType_UnitGarrison,
   OrderType_UnitDelete,
-  OrderType_UnitCancelOrder,
   OrderType_BuildingCreate,
   OrderType_BuildingResearch,
-  OrderType_BuildingCancelOrder,
+  OrderType_CancelOrder,
   OrderType_CancelFoundation,
 }
 
 /** Returns whether the order is for units */
 export function isUnitOrder(order: RisqOrderType): boolean {
-  return order >= RisqOrderType.OrderType_UnitMoveSpace && order <= RisqOrderType.OrderType_UnitCancelOrder;
+  return order >= RisqOrderType.OrderType_UnitMoveSpace && order <= RisqOrderType.OrderType_UnitDelete;
 }
 
 /** Returns whether the order is for buildings */
 export function isBuildingOrder(order: RisqOrderType): boolean {
-  return order >= RisqOrderType.OrderType_BuildingCreate && order <= RisqOrderType.OrderType_BuildingCancelOrder;
+  return order >= RisqOrderType.OrderType_BuildingCreate && order <= RisqOrderType.OrderType_BuildingResearch;
 }
 
 /** Returns whether the order is a subject-less, player-level order */
 export function isPlayerOrder(order: RisqOrderType): boolean {
-  return order === RisqOrderType.OrderType_CancelFoundation;
+  return order >= RisqOrderType.OrderType_CancelOrder && order <= RisqOrderType.OrderType_CancelFoundation;
 }
 
 /** Data describing an order */
@@ -305,7 +304,11 @@ export declare interface RisqOrder {
   subjects: number[];
 }
 
-export type RisqFrontendOrder = Omit<RisqOrder, 'internal_id'>;
+/** Data describing a frontend order which may be previously submitted or may be unsubmitted */
+export type RisqFrontendOrder = Omit<RisqOrder, 'internal_id'> & {
+  internal_id?: number;
+  clear_previous_orders?: boolean;
+};
 
 /** Data describing a game of risq as returned by server */
 export declare interface GameRisqFromServer {

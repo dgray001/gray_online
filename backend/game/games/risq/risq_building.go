@@ -20,7 +20,7 @@ type RisqBuilding struct {
 	max_stamina        int
 	cs                 RisqCombatStats
 	order_queue        RisqOrderQueue
-	production_queue   []*RisqBuildingProductionItem
+	production_queue   map[uint64]*RisqBuildingProductionItem
 	intent             *RisqIntent
 	// build stamina still needed to finish a unit-constructed foundation; 0 means not under construction
 	stamina_remaining int
@@ -42,7 +42,7 @@ func createRisqBuilding(internal_id uint64, building_id uint32, player_id int) *
 		max_stamina:        15,
 		cs:                 createRisqCombatStats(),
 		order_queue:        createRisqOrderQueue(),
-		production_queue:   make([]*RisqBuildingProductionItem, 0),
+		production_queue:   make(map[uint64]*RisqBuildingProductionItem),
 		intent:             createRisqIntent(),
 	}
 	config, ok := buildingConfigs[building_id]
@@ -86,27 +86,16 @@ func (b *RisqBuilding) refreshStamina() {
 }
 
 type RisqBuildingProductionItem struct {
-	// the order that queued this item
-	order             *RisqOrder
-	unit_id           uint32
+	item_id           uint32
 	stamina_remaining int
 	cost              RisqResourceCost
 }
 
 func (item *RisqBuildingProductionItem) toFrontend() gin.H {
 	return gin.H{
-		"unit_id":           item.unit_id,
+		"item_id":           item.item_id,
 		"stamina_remaining": item.stamina_remaining,
 	}
-}
-
-func (b *RisqBuilding) findProductionItem(o *RisqOrder) *RisqBuildingProductionItem {
-	for _, item := range b.production_queue {
-		if item.order == o {
-			return item
-		}
-	}
-	return nil
 }
 
 func (b *RisqBuilding) orderReceivable(o *RisqOrder, risq *GameRisq) bool {
@@ -114,25 +103,6 @@ func (b *RisqBuilding) orderReceivable(o *RisqOrder, risq *GameRisq) bool {
 }
 
 func (b *RisqBuilding) receiveOrder(o *RisqOrder, risq *GameRisq) {
-	if o.order_type == OrderType_BuildingCancelOrder {
-		target := b.order_queue.cancelOrder(uint64(o.target_id))
-		if target == nil || target.order_type != OrderType_BuildingCreate {
-			return
-		}
-		item := b.findProductionItem(target)
-		if item == nil {
-			fmt.Fprintln(os.Stderr, "Cancelled a non-complete BuildingCreate order with no matching production item:", target.internal_id)
-			return
-		}
-		risq.players[b.player_id].resources.refund(item.cost)
-		for i, pi := range b.production_queue {
-			if pi == item {
-				b.production_queue = append(b.production_queue[:i], b.production_queue[i+1:]...)
-				break
-			}
-		}
-		return
-	}
 	b.order_queue.receiveOrder(o)
 	switch o.order_type {
 	case OrderType_BuildingCreate:
@@ -144,20 +114,31 @@ func (b *RisqBuilding) receiveOrder(o *RisqOrder, risq *GameRisq) {
 			return
 		}
 		resources.spend(cost)
-		b.production_queue = append(b.production_queue, &RisqBuildingProductionItem{
-			order:             o,
-			unit_id:           unit_id,
+		b.production_queue[o.internal_id] = &RisqBuildingProductionItem{
+			item_id:           unit_id,
 			stamina_remaining: stamina_required,
 			cost:              cost,
-		})
+		}
+	}
+}
+
+func (b *RisqBuilding) cancelOrder(o *RisqOrder, risq *GameRisq) {
+	b.order_queue.cancelOrder(o.internal_id)
+	switch o.order_type {
+	case OrderType_BuildingCreate:
+		item, ok := b.production_queue[o.internal_id]
+		if !ok {
+			return
+		}
+		risq.players[b.player_id].resources.refund(item.cost)
+		delete(b.production_queue, o.internal_id)
 	}
 }
 
 func (b *RisqBuilding) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 	switch o.order_type {
 	case OrderType_BuildingCreate:
-		item := b.findProductionItem(o)
-		if item != nil && item.stamina_remaining > 0 {
+		if item, ok := b.production_queue[o.internal_id]; ok && item.stamina_remaining > 0 {
 			return OrderStatus_InProgress
 		}
 	}
@@ -172,12 +153,12 @@ func (b *RisqBuilding) tickIntent(risq *GameRisq) bool {
 	}
 	switch order.order_type {
 	case OrderType_BuildingCreate:
-		b.intent.setProduce(b.findProductionItem(order))
+		b.intent.setCreate(order.internal_id, b.production_queue[order.internal_id])
 	default:
 		fmt.Fprintln(os.Stderr, "Order type not implemented:", order.order_type)
 	}
 	b.intent.resolveCost(b.current_stamina)
-	if _, producing := b.intent.detail.(*ProductionIntent); producing && risq.players[b.player_id].populationCapped() {
+	if _, creating := b.intent.detail.(*CreateIntent); creating && risq.players[b.player_id].populationCapped() {
 		b.intent.resetIntent()
 	}
 	return b.intent.hasIntent()
@@ -187,17 +168,17 @@ func (b *RisqBuilding) tickExecute(risq *GameRisq) {
 	if !b.intent.hasIntent() {
 		return
 	}
-	if detail, ok := b.intent.detail.(*ProductionIntent); ok {
+	if detail, ok := b.intent.detail.(*CreateIntent); ok {
 		if risq.players[b.player_id].populationCapped() {
 			return
 		}
 		item := detail.item
 		item.stamina_remaining -= b.intent.intent_cost
 		if item.stamina_remaining <= 0 {
-			unit := createRisqUnit(risq.nextUnitInternalId(), item.unit_id, b.player_id)
+			unit := createRisqUnit(risq.nextUnitInternalId(), item.item_id, b.player_id)
 			b.zone.space.setUnit(&b.zone.coordinate, unit)
 			risq.players[b.player_id].units[unit.internal_id] = unit
-			b.production_queue = b.production_queue[1:]
+			delete(b.production_queue, detail.order_internal_id)
 		}
 	}
 	b.current_stamina -= b.intent.intent_cost
@@ -226,18 +207,17 @@ func (b *RisqBuilding) toFrontend() gin.H {
 		}
 	}
 	active_orders := make([]gin.H, 0)
-	for _, order := range b.order_queue.active_orders {
-		if order != nil && !order.executed {
-			active_orders = append(active_orders, order.toFrontend())
-		}
-	}
-	building["active_orders"] = active_orders
 	production_queue := make([]gin.H, 0)
-	for _, item := range b.production_queue {
-		if item != nil {
+	for _, order := range b.order_queue.active_orders {
+		if order == nil || order.executed {
+			continue
+		}
+		active_orders = append(active_orders, order.toFrontend())
+		if item, ok := b.production_queue[order.internal_id]; ok {
 			production_queue = append(production_queue, item.toFrontend())
 		}
 	}
+	building["active_orders"] = active_orders
 	building["production_queue"] = production_queue
 	return building
 }

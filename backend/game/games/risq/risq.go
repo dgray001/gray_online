@@ -368,9 +368,9 @@ func (r *GameRisq) executeSubmitOrders(player_id int, orders []OrderFromFrontend
 				subjects = append(subjects, r.players[o.Player_id].buildings[subject_id])
 			}
 		}
-		new_orders = append(new_orders, createRisqOrder(r.nextOrderInternalId(), order_type, player_id, subjects, o.Target_id))
+		new_orders = append(new_orders, createRisqOrder(r.nextOrderInternalId(), order_type, player_id, subjects, o.Target_id, o.Clear_previous_orders))
 	}
-	player.active_orders = new_orders
+	player.active_orders = append(player.active_orders, new_orders...)
 	player.orders_submitted = true
 	all_orders_submitted := true
 	for _, player := range r.players {
@@ -417,15 +417,35 @@ func (r *GameRisq) resolveActiveOrders() {
 	r.giving_orders = false
 	for _, player := range r.players {
 		for _, order := range player.active_orders {
+			if order.received {
+				continue
+			}
+			order.received = true
 			order.turn_received = r.turn_number
 			if order.order_type.isPlayerOrder() {
 				player.receivePlayerOrder(order, r)
+				order.executed = true
+				order.turn_executed = r.turn_number
 				continue
 			}
 			for _, subject := range order.subjects {
-				if subject.orderReceivable(order, r) {
-					subject.receiveOrder(order, r)
+				if !subject.orderReceivable(order, r) {
+					continue
 				}
+				if order.clear_previous_orders {
+					for _, other := range player.active_orders {
+						if other == order || other.executed || other.cancelled {
+							continue
+						}
+						for _, other_subject := range other.subjects {
+							if other_subject == subject {
+								subject.cancelOrder(other, r)
+								break
+							}
+						}
+					}
+				}
+				subject.receiveOrder(order, r)
 			}
 		}
 	}
@@ -442,6 +462,15 @@ func (r *GameRisq) resolveActiveOrders() {
 		for o := range r.allOrderables() {
 			o.tickExecute(r)
 		}
+	}
+	for _, player := range r.players {
+		kept := player.active_orders[:0]
+		for _, order := range player.active_orders {
+			if order.received && !order.executed && !order.cancelled {
+				kept = append(kept, order)
+			}
+		}
+		player.active_orders = kept
 	}
 	r.startNextTurn()
 }

@@ -30,21 +30,27 @@ export class RisqOrdersList extends DwgListbox<RisqOrderComponent, RisqOrdersScr
     this.game = risq;
   }
 
+  private newOrderComponent(order: RisqFrontendOrder): RisqOrderComponent {
+    return new RisqOrderComponent({
+      w: this.config.scrollbar.w() - this.config.scrollbar.getScrollbarSize() - 2 * this.getPadding(),
+      order,
+      game: this.game,
+    });
+  }
+
   setOrders(orders: RisqFrontendOrder[]) {
-    this.setList(
-      orders.map(
-        (o) =>
-          new RisqOrderComponent({
-            w: this.config.scrollbar.w() - this.config.scrollbar.getScrollbarSize() - 2 * this.getPadding(),
-            order: o,
-            game: this.game,
-          })
-      )
-    );
+    const pending = this.getList().filter((el) => el.getOrder().internal_id === undefined);
+    this.setList([...orders.map((o) => this.newOrderComponent(o)), ...pending]);
   }
 
   getOrders(): RisqFrontendOrder[] {
-    return this.getList().map((o) => o.getOrder());
+    return this.getList()
+      .map((o) => o.getOrder())
+      .filter((o) => o.internal_id === undefined);
+  }
+
+  clearPendingOrders() {
+    this.setList(this.getList().filter((el) => el.getOrder().internal_id !== undefined));
   }
 
   addOrder(order: RisqFrontendOrder, replace = true) {
@@ -53,8 +59,9 @@ export class RisqOrdersList extends DwgListbox<RisqOrderComponent, RisqOrdersScr
       list = list.reduce((acc, el) => {
         const o = el.getOrder();
         if (
-          (isUnitOrder(order.order_type) && isUnitOrder(o.order_type)) ||
-          (isBuildingOrder(order.order_type) && isBuildingOrder(o.order_type))
+          o.internal_id === undefined &&
+          ((isUnitOrder(order.order_type) && isUnitOrder(o.order_type)) ||
+            (isBuildingOrder(order.order_type) && isBuildingOrder(o.order_type)))
         ) {
           for (const new_id of order.subjects) {
             o.subjects = o.subjects.filter((id) => id !== new_id);
@@ -67,13 +74,7 @@ export class RisqOrdersList extends DwgListbox<RisqOrderComponent, RisqOrdersScr
         return acc;
       }, [] as RisqOrderComponent[]);
     }
-    list.push(
-      new RisqOrderComponent({
-        w: this.config.scrollbar.w() - this.config.scrollbar.getScrollbarSize() - 2 * this.getPadding(),
-        order,
-        game: this.game,
-      })
-    );
+    list.push(this.newOrderComponent(order));
     this.setList(list);
   }
 

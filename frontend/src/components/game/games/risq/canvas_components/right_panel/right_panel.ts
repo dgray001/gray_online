@@ -119,6 +119,10 @@ export class RisqRightPanel implements CanvasComponent {
     this.orders_list.setOrders(orders);
   }
 
+  clearPendingOrders() {
+    this.orders_list.clearPendingOrders();
+  }
+
   submittingOrders() {
     this.orders_list.disable();
     this.submit_button.disable();

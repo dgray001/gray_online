@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.7p: Villagers can build housing frontend
+v0.7q: Order cancellation backend
 
 ## Dev Use
 

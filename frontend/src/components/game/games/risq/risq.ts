@@ -78,6 +78,9 @@ export class DwgRisq extends DwgElement {
   private armed_order = RisqOrderType.NONE;
   private armed_building_id = 0;
   private armed_button_callback?: () => void;
+  private ctrl_held = false;
+  private shift_held = false;
+  private alt_held = false;
 
   private left_panel = new RisqLeftPanel(this, {
     w: 300,
@@ -118,6 +121,16 @@ export class DwgRisq extends DwgElement {
     this.player_id = abstract_game.isPlayer() ? abstract_game.playerId() : -1;
     abstract_game.setPadding('0px');
     this.setNewGameData(game);
+    document.body.addEventListener('keydown', (e) => {
+      this.ctrl_held = e.ctrlKey;
+      this.shift_held = e.shiftKey;
+      this.alt_held = e.altKey;
+    });
+    document.body.addEventListener('keyup', (e) => {
+      this.ctrl_held = e.ctrlKey;
+      this.shift_held = e.shiftKey;
+      this.alt_held = e.altKey;
+    });
     const board_size: Point2D = {
       x: 1.732 * this.hex_r * (2 * game.board_size + 1),
       y: 1.5 * this.hex_r * (2 * game.board_size + 1) + 0.5 * this.hex_r,
@@ -509,6 +522,7 @@ export class DwgRisq extends DwgElement {
         order_type: RisqOrderType.OrderType_BuildingCreate,
         subjects: [building_id],
         target_id: unit_id,
+        clear_previous_orders: false,
       },
       false
     );
@@ -612,6 +626,7 @@ export class DwgRisq extends DwgElement {
           order_type: RisqOrderType.OrderType_UnitMoveSpace,
           subjects: [data.data.internal_id],
           target_id: this.hovered_space.coordinate_key,
+          clear_previous_orders: !this.ctrl_held,
         });
         break;
       case RisqOrderType.OrderType_UnitMoveZone:
@@ -623,6 +638,7 @@ export class DwgRisq extends DwgElement {
           order_type: RisqOrderType.OrderType_UnitMoveZone,
           subjects: [data.data.internal_id],
           target_id: this.hovered_zone.coordinate_key,
+          clear_previous_orders: !this.ctrl_held,
         });
         break;
       case RisqOrderType.OrderType_UnitGather:
@@ -634,6 +650,7 @@ export class DwgRisq extends DwgElement {
           order_type: RisqOrderType.OrderType_UnitGather,
           subjects: [data.data.internal_id],
           target_id: this.hovered_zone.coordinate_key,
+          clear_previous_orders: !this.ctrl_held,
         });
         break;
       case RisqOrderType.OrderType_UnitBuild:
@@ -645,6 +662,7 @@ export class DwgRisq extends DwgElement {
           order_type: RisqOrderType.OrderType_UnitBuild,
           subjects: [data.data.internal_id],
           target_id: cantorPair(this.armed_building_id, this.hovered_zone.coordinate_key),
+          clear_previous_orders: !this.ctrl_held,
         });
         break;
       default:
@@ -857,6 +875,7 @@ export class DwgRisq extends DwgElement {
           bubbles: true,
         })
       );
+      this.right_panel.clearPendingOrders();
       this.orders_submitted_times++;
     }
   }

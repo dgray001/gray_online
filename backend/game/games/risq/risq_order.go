@@ -16,6 +16,7 @@ type Orderable interface {
 	// Returns whether the order is receivable by this subject
 	orderReceivable(o *RisqOrder, risq *GameRisq) bool
 	receiveOrder(o *RisqOrder, risq *GameRisq)
+	cancelOrder(o *RisqOrder, risq *GameRisq)
 	// Returns whether the order is in progress, executed, or cancelled (called by tickIntent)
 	orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus
 	// Returns whether the orderable has an intent
@@ -37,10 +38,11 @@ const (
 )
 
 type OrderFromFrontend struct {
-	Player_id  int      `json:"player_id"`
-	Subjects   []uint64 `json:"subjects"`
-	Order_type uint8    `json:"order_type"`
-	Target_id  int64    `json:"target_id"`
+	Player_id             int      `json:"player_id"`
+	Subjects              []uint64 `json:"subjects"`
+	Order_type            uint8    `json:"order_type"`
+	Target_id             int64    `json:"target_id"`
+	Clear_previous_orders bool     `json:"clear_previous_orders"`
 }
 
 type OrderType uint8
@@ -61,12 +63,11 @@ const (
 	OrderType_UnitDefend
 	OrderType_UnitGarrison
 	OrderType_UnitDelete
-	OrderType_UnitCancelOrder
 	// Orders to control buildings
 	OrderType_BuildingCreate
 	OrderType_BuildingResearch
-	OrderType_BuildingCancelOrder
 	// Player-level orders with no subjects
+	OrderType_CancelOrder
 	OrderType_CancelFoundation
 	// Used to validate input from the frontend
 	OrderType_END
@@ -83,6 +84,8 @@ type RisqOrder struct {
 	order_type OrderType
 	// What the order is targeting (could be a space, a unit, or a technology)
 	target_id int64
+	// Whether receiving this order should cancel each subject's other active orders
+	clear_previous_orders bool
 	// Whether this order has been received (used for one-time effects)
 	received bool
 	// Whether the order has been executed
@@ -95,13 +98,14 @@ type RisqOrder struct {
 	turn_executed uint16
 }
 
-func createRisqOrder(internal_id uint64, order_type OrderType, player_id int, subjects []Orderable, target_id int64) *RisqOrder {
+func createRisqOrder(internal_id uint64, order_type OrderType, player_id int, subjects []Orderable, target_id int64, clear_previous_orders bool) *RisqOrder {
 	order := RisqOrder{
-		internal_id: internal_id,
-		player_id:   player_id,
-		subjects:    subjects,
-		order_type:  order_type,
-		target_id:   target_id,
+		internal_id:           internal_id,
+		player_id:             player_id,
+		subjects:              subjects,
+		order_type:            order_type,
+		target_id:             target_id,
+		clear_previous_orders: clear_previous_orders,
 	}
 	return &order
 }
@@ -126,15 +130,15 @@ func (o *RisqOrder) toFrontend() gin.H {
 }
 
 func (ot OrderType) isUnitOrder() bool {
-	return ot >= OrderType_UnitMoveSpace && ot <= OrderType_UnitCancelOrder
+	return ot >= OrderType_UnitMoveSpace && ot <= OrderType_UnitDelete
 }
 
 func (ot OrderType) isBuildingOrder() bool {
-	return ot >= OrderType_BuildingCreate && ot <= OrderType_BuildingCancelOrder
+	return ot >= OrderType_BuildingCreate && ot <= OrderType_BuildingResearch
 }
 
 func (ot OrderType) isPlayerOrder() bool {
-	return ot >= OrderType_CancelFoundation && ot <= OrderType_CancelFoundation
+	return ot >= OrderType_CancelOrder && ot <= OrderType_CancelFoundation
 }
 
 func (r *GameRisq) getOrdersFromPlayerAction(action gin.H) ([]OrderFromFrontend, error) {
@@ -243,17 +247,16 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend) error {
 				return fmt.Errorf("Only villagers can build")
 			}
 		}
-	case OrderType_UnitCancelOrder:
-		for _, subject_id := range order.Subjects {
-			if r.players[order.Player_id].units[subject_id].order_queue.findActiveOrder(uint64(order.Target_id)) == nil {
-				return fmt.Errorf("Unit does not have an active order with id %d", order.Target_id)
+	case OrderType_CancelOrder:
+		found := false
+		for _, active_order := range r.players[order.Player_id].active_orders {
+			if active_order.internal_id == uint64(order.Target_id) {
+				found = true
+				break
 			}
 		}
-	case OrderType_BuildingCancelOrder:
-		for _, subject_id := range order.Subjects {
-			if r.players[order.Player_id].buildings[subject_id].order_queue.findActiveOrder(uint64(order.Target_id)) == nil {
-				return fmt.Errorf("Building does not have an active order with id %d", order.Target_id)
-			}
+		if !found {
+			return fmt.Errorf("No active order with id %d", order.Target_id)
 		}
 	case OrderType_CancelFoundation:
 		_, zone := invertZoneKey(uint(order.Target_id), r)
@@ -278,18 +281,8 @@ func createRisqOrderQueue() RisqOrderQueue {
 }
 
 func (q *RisqOrderQueue) receiveOrder(o *RisqOrder) {
-	o.received = true
 	q.past_orders = append(q.past_orders, o)
 	q.active_orders = append(q.active_orders, o)
-}
-
-func (q *RisqOrderQueue) findActiveOrder(internal_id uint64) *RisqOrder {
-	for _, order := range q.active_orders {
-		if order.internal_id == internal_id {
-			return order
-		}
-	}
-	return nil
 }
 
 // Finds, cancels, and removes the order with this internal id; returns it (or nil if not found)

@@ -4,3 +4,4 @@
 *.key
 frontend/tsout/**
 backend/static/dist/**
+.claude/**

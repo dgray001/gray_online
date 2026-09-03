@@ -87,15 +87,7 @@ func (u *RisqUnit) refreshStamina() {
 }
 
 func (u *RisqUnit) receiveOrder(o *RisqOrder, risq *GameRisq) {
-	if o.order_type == OrderType_UnitCancelOrder {
-		u.order_queue.cancelOrder(uint64(o.target_id))
-		return
-	}
-	already_received := o.received
 	u.order_queue.receiveOrder(o)
-	if already_received {
-		return
-	}
 	switch o.order_type {
 	case OrderType_UnitBuild:
 		building_id, _, zone := invertBuildKey(uint(o.target_id), risq)
@@ -106,6 +98,14 @@ func (u *RisqUnit) receiveOrder(o *RisqOrder, risq *GameRisq) {
 			return
 		}
 		player.planned_foundations[zone.coordinate_key] = createRisqPlannedFoundation(building_id, o, player)
+	}
+}
+
+func (u *RisqUnit) cancelOrder(o *RisqOrder, risq *GameRisq) {
+	u.order_queue.cancelOrder(o.internal_id)
+	switch o.order_type {
+	case OrderType_UnitBuild:
+		// the planned foundation is independent of the order that created it; cancelling the order doesn't touch it
 	}
 }
 

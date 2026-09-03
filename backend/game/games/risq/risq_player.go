@@ -113,6 +113,16 @@ func (p *RisqPlayer) allOrderables() iter.Seq[Orderable] {
 
 func (p *RisqPlayer) receivePlayerOrder(o *RisqOrder, risq *GameRisq) {
 	switch o.order_type {
+	case OrderType_CancelOrder:
+		for _, active_order := range p.active_orders {
+			if active_order.internal_id != uint64(o.target_id) {
+				continue
+			}
+			for _, subject := range active_order.subjects {
+				subject.cancelOrder(active_order, risq)
+			}
+			break
+		}
 	case OrderType_CancelFoundation:
 		_, zone := invertZoneKey(uint(o.target_id), risq)
 		p.cancelPlannedFoundation(zone)
