@@ -2,11 +2,12 @@ import type { ColorRGB } from '../../../../../../scripts/color_rgb';
 import { DwgListbox } from '../../../../util/canvas_components/scrollbar/listbox';
 import type { Point2D } from '../../../../util/objects2d';
 import type { DwgRisq } from '../../risq';
-import { isBuildingOrder, isUnitOrder, type RisqFrontendOrder, type RisqOrder } from '../../risq_data';
-import { RisqOrderComponent } from './order';
+import { RisqOrderType, type RisqFrontendOrder } from '../../risq_data';
+import { collapseBuildingCreateOrders, isBuildingOrder, isUnitOrder, type RisqOrderRowEntry } from '../../risq_orders';
+import { RisqOrderRow } from '../order_row/order_row';
 import { RisqOrdersScrollbar } from './orders_scrollbar';
 
-export class RisqOrdersList extends DwgListbox<RisqOrderComponent, RisqOrdersScrollbar> {
+export class RisqOrdersList extends DwgListbox<RisqOrderRow, RisqOrdersScrollbar> {
   private game: DwgRisq;
 
   constructor(risq: DwgRisq, w: number, background: ColorRGB) {
@@ -30,56 +31,78 @@ export class RisqOrdersList extends DwgListbox<RisqOrderComponent, RisqOrdersScr
     this.game = risq;
   }
 
-  private newOrderComponent(order: RisqFrontendOrder): RisqOrderComponent {
-    return new RisqOrderComponent({
+  private newOrderRow(entry: RisqOrderRowEntry): RisqOrderRow {
+    return new RisqOrderRow({
       w: this.config.scrollbar.w() - this.config.scrollbar.getScrollbarSize() - 2 * this.getPadding(),
-      order,
+      order: entry.order,
+      collapsed_orders: entry.collapsed_orders,
       game: this.game,
+      show_subject: true,
+      onCancel: (order) => this.cancelOrder(order),
+      onCancelAll: (orders) => orders.forEach((order) => this.cancelOrder(order)),
     });
   }
 
+  private allOrders(): RisqFrontendOrder[] {
+    return this.getList().flatMap((row) => row.getOrders());
+  }
+
+  private setGroupedList(orders: RisqFrontendOrder[]) {
+    this.setList(collapseBuildingCreateOrders(orders).map((entry) => this.newOrderRow(entry)));
+  }
+
+  /** Replaces the already-active (server-truth) orders; queued-but-unsubmitted orders are untouched */
   setOrders(orders: RisqFrontendOrder[]) {
-    const pending = this.getList().filter((el) => el.getOrder().internal_id === undefined);
-    this.setList([...orders.map((o) => this.newOrderComponent(o)), ...pending]);
+    const pending = this.allOrders().filter((o) => o.internal_id === undefined);
+    this.setGroupedList([...orders, ...pending]);
   }
 
+  /** Only the queued-but-unsubmitted orders (no `internal_id` yet) are ever sent on submit */
   getOrders(): RisqFrontendOrder[] {
-    return this.getList()
-      .map((o) => o.getOrder())
-      .filter((o) => o.internal_id === undefined);
+    return this.allOrders().filter((o) => o.internal_id === undefined);
   }
 
+  /** Called once a submission has actually been sent, since those orders are now tracked server-side */
   clearPendingOrders() {
-    this.setList(this.getList().filter((el) => el.getOrder().internal_id !== undefined));
+    this.setGroupedList(this.allOrders().filter((o) => o.internal_id !== undefined));
   }
 
-  addOrder(order: RisqFrontendOrder, replace = true) {
-    let list: RisqOrderComponent[] = [...this.getList()];
-    if (replace) {
-      list = list.reduce((acc, el) => {
-        const o = el.getOrder();
+  addOrder(order: RisqFrontendOrder) {
+    let orders = this.allOrders();
+    if (order.clear_previous_orders) {
+      orders = orders.filter((o) => {
         if (
-          o.internal_id === undefined &&
-          ((isUnitOrder(order.order_type) && isUnitOrder(o.order_type)) ||
-            (isBuildingOrder(order.order_type) && isBuildingOrder(o.order_type)))
+          o.internal_id !== undefined ||
+          !(
+            (isUnitOrder(order.order_type) && isUnitOrder(o.order_type)) ||
+            (isBuildingOrder(order.order_type) && isBuildingOrder(o.order_type))
+          )
         ) {
-          for (const new_id of order.subjects) {
-            o.subjects = o.subjects.filter((id) => id !== new_id);
-            if (!o.subjects.length) {
-              return acc;
-            }
-          }
+          return true;
         }
-        acc.push(el);
-        return acc;
-      }, [] as RisqOrderComponent[]);
+        for (const new_id of order.subjects) {
+          o.subjects = o.subjects.filter((id) => id !== new_id);
+        }
+        return o.subjects.length > 0;
+      });
     }
-    list.push(this.newOrderComponent(order));
-    this.setList(list);
+    orders.push(order);
+    this.setGroupedList(orders);
   }
 
-  removeOrder(_order: RisqOrder) {
-    // TODO: implement
+  /** Cancels a single order: dropped locally if never submitted, otherwise queues a CancelOrder for next submit */
+  cancelOrder(order: RisqFrontendOrder) {
+    if (order.internal_id === undefined) {
+      this.setGroupedList(this.allOrders().filter((o) => o !== order));
+      return;
+    }
+    this.addOrder({
+      player_id: order.player_id,
+      order_type: RisqOrderType.OrderType_CancelOrder,
+      subjects: [],
+      target_id: order.internal_id,
+      clear_previous_orders: false,
+    });
   }
 
   override setAllSizes(size: number, p: Point2D, w: number, h: number): void {

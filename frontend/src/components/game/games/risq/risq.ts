@@ -17,26 +17,19 @@ import { DEV, createLock } from '../../../../scripts/util';
 import { ColorRGB } from '../../../../scripts/color_rgb';
 
 import html from './risq.html';
-import type {
-  GameRisq,
-  GameRisqFromServer,
-  RisqPlayer,
-  RisqSpace,
-  RisqZone,
-  StartTurnData,
-  SubmittedOrdersData,
-  UnsubmittedOrdersData,
-} from './risq_data';
+import type { GameRisq, GameRisqFromServer, RisqPlayer, RisqSpace, RisqZone } from './risq_data';
+import { RisqOrderType, RisqResourceType, ZONE_VISIBILITY, serverToGameRisq } from './risq_data';
+import { cantorPair, coordinateToIndex, getSpace } from './risq_coordinates';
+import type { StartTurnData, SubmittedOrdersData, UnsubmittedOrdersData } from './risq_updates';
 import {
-  cantorPair,
-  coordinateToIndex,
-  getSpace,
-  RisqOrderType,
-  RisqResourceType,
-  ZONE_VISIBILITY,
-  serverToGameRisq,
-} from './risq_data';
-import { cursorImageForOrderType, DEFAULT_CURSOR_IMAGE } from './risq_cursor';
+  BUILD_CURSOR_SIZE,
+  buildOrderCursorKey,
+  cursorImageForOrderType,
+  DEFAULT_CURSOR_IMAGE,
+  drawBuildOrderCursor,
+} from './risq_cursor';
+import { buildingImage } from './risq_buildings';
+import { RisqImageCache } from './risq_image_cache';
 import { RisqRightPanel } from './canvas_components/right_panel/right_panel';
 import type { DrawRisqSpaceConfig } from './risq_space';
 import { DrawRisqSpaceDetail, drawRisqSpace } from './risq_space';
@@ -71,6 +64,7 @@ export class DwgRisq extends DwgElement {
   private hovered_space?: RisqSpace;
   private hovered_zone?: RisqZone;
   private icons = new Map<string, HTMLImageElement>();
+  private image_cache = new RisqImageCache();
   private last_time = Date.now();
   private draw_detail: DrawRisqSpaceDetail = DrawRisqSpaceDetail.SPACE_DETAILS;
   private toggling_submit_orders_button = false;
@@ -516,16 +510,13 @@ export class DwgRisq extends DwgElement {
     if (!this.canGiveOrders()) {
       return;
     }
-    this.right_panel.addOrder(
-      {
-        player_id: this.player_id,
-        order_type: RisqOrderType.OrderType_BuildingCreate,
-        subjects: [building_id],
-        target_id: unit_id,
-        clear_previous_orders: false,
-      },
-      false
-    );
+    this.right_panel.addOrder({
+      player_id: this.player_id,
+      order_type: RisqOrderType.OrderType_BuildingCreate,
+      subjects: [building_id],
+      target_id: unit_id,
+      clear_previous_orders: false,
+    });
     this.updateResourceSpending();
     this.left_panel.dataRefreshed();
   }
@@ -554,20 +545,47 @@ export class DwgRisq extends DwgElement {
     }
   }
 
+  private atSelectedUnitPosition(zone_valid: boolean): boolean {
+    if (this.ctrl_held || !this.hovered_space) {
+      return false;
+    }
+    const data = this.left_panel.getData();
+    if (data?.data_type !== LeftPanelDataType.UNIT) {
+      return false;
+    }
+    const unit = data.data;
+    if (!equalsPoint2D(this.hovered_space.coordinate, unit.space_coordinate)) {
+      return false;
+    }
+    return zone_valid ? equalsPoint2D(this.hovered_zone?.coordinate, unit.zone_coordinate) : true;
+  }
+
+  private isZoneValid(): boolean {
+    return (
+      this.drawDetail() === DrawRisqSpaceDetail.ZONE_DETAILS &&
+      !!this.hovered_space &&
+      this.hovered_space.visibility >= ZONE_VISIBILITY &&
+      !!this.hovered_zone
+    );
+  }
+
+  private buildTargetValid(): boolean {
+    return (
+      this.left_panel.isVillager() && this.isZoneValid() && !this.hovered_zone?.resource && !this.hovered_zone?.building
+    );
+  }
+
   private resolveActiveOrderType(): RisqOrderType {
     if (!this.left_panel.getData() || !this.left_panel.isOrderable() || !this.canGiveOrders() || !this.hovered_space) {
       return RisqOrderType.NONE;
     }
     const is_unit = this.left_panel.isUnit();
     const is_villager = this.left_panel.isVillager();
-    const zone_valid =
-      this.drawDetail() === DrawRisqSpaceDetail.ZONE_DETAILS &&
-      this.hovered_space.visibility >= ZONE_VISIBILITY &&
-      !!this.hovered_zone;
+    const zone_valid = this.isZoneValid();
     switch (this.getArmedOrder()) {
       case RisqOrderType.OrderType_UnitMoveSpace:
       case RisqOrderType.OrderType_UnitMoveZone:
-        if (is_unit) {
+        if (is_unit && !this.atSelectedUnitPosition(zone_valid)) {
           return zone_valid ? RisqOrderType.OrderType_UnitMoveZone : RisqOrderType.OrderType_UnitMoveSpace;
         }
         break;
@@ -588,12 +606,30 @@ export class DwgRisq extends DwgElement {
       if (is_villager && zone_valid && !!this.hovered_zone?.resource && this.hovered_zone.hovered_data[0]?.hovered) {
         return RisqOrderType.OrderType_UnitGather;
       }
+      if (this.atSelectedUnitPosition(zone_valid)) {
+        return RisqOrderType.NONE;
+      }
       return zone_valid ? RisqOrderType.OrderType_UnitMoveZone : RisqOrderType.OrderType_UnitMoveSpace;
     }
     return RisqOrderType.NONE;
   }
 
   private updateCursor() {
+    if (this.getArmedOrder() === RisqOrderType.OrderType_UnitBuild && this.armed_building_id) {
+      const building_icon = this.getIcon(buildingImage(this.armed_building_id));
+      const build_icon = this.getIcon(cursorImageForOrderType(RisqOrderType.OrderType_UnitBuild));
+      const valid = this.buildTargetValid();
+      const url = this.image_cache.getCursorUrl(
+        buildOrderCursorKey(this.armed_building_id, valid),
+        BUILD_CURSOR_SIZE,
+        [building_icon, build_icon],
+        (ctx) => drawBuildOrderCursor(ctx, build_icon, building_icon, valid)
+      );
+      if (url) {
+        this.board.setCursorUrl(url);
+        return;
+      }
+    }
     const active_order = this.resolveActiveOrderType();
     this.board.setCursor(cursorImageForOrderType(active_order));
   }

@@ -1,23 +1,30 @@
 v0.8: Playable Risq
- s: Orders are human-readable on frontend
- t: Backend recalculates vision each turn
- u: Can toggle between views UX
- v: Terrain view (default) and control view
- w: Buttons to toggle between summary or other overlay views (for each space)
- x: Add resources to summary view
- y: Implement other views (buildings, villagers, military, resources)
- z-zc: Left panel updates to handle all this including sending orders to all selected and selecting things directly from map
- zd-zg: Show orders on map from selected things (arc lines for movement, etc)
- zh-zz: Risq is playable (? maybe ?)
+ t: Backend recalculates vision each turn (potential bug on edge adjacent vs edge opposite)
+ u: Fog of war
+ v: Player colors and space ownership
+ w: Passive gold income
+ x: Views toggleable (terrain, ownership, buildings, villagers, military, resources ---- and add resources to summary view if not there)
+ y: Research order
+ z: Orders in left panel
+ za: Orders for groups (and general ui improvements)
+ zb: Show orders on map (like arc lines for movement)
+ zc: Attack order (combat implementation with color logic, etc)
+ zd: Summary report
+ ze: Next idle thing button (idle icons, etc)
+ zf: Design minimal playable game
+ - Unit deletion
+ - Ownership logic
+ - Partial move pathfinding
+ - Pop capped on UI
 
-Risq Plans:
- - Summary report after each turn with animations (configurable)
- - Combat implementation with color logic, etc
- - Idle icons and button to go to next idle thing
- - Design basic building / unit / tech trees -> UX to show these??
- - Limitations on number of units in a space / zone?
+Future Risq Plans:
+ - Make summary report animated and can view it after close (bottom bar)
+ - Design basic building / unit / tech trees -> UX to show these (bottom bar)
  - Design scoring system
- - Logic around game ending
+ - Settings setup (including alt win conditions)
+ - Drag multiselect
+ - Control groups
+ - Different maps / terrain / etc
 
 Fiddlesticks Plans:
  - Revamp update dialog box

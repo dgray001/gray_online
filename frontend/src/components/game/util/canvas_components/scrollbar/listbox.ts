@@ -177,6 +177,9 @@ export class DwgListbox<
         yi += yi_adjust;
         ctx.translate(0, yi_adjust);
       }
+      if (!found_end) {
+        this.draw_end = this.config.list.length - 1;
+      }
       ctx.translate(-xi - padding, -yi);
       ctx.restore();
       this.scrollbar_adjust_time -= dt;

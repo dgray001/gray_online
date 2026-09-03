@@ -384,7 +384,11 @@ export class DwgCanvasBoard extends DwgElement {
   }
 
   setCursor(image_path: string) {
-    this.canvas.style.cursor = `url("/images/${image_path}.png") 0 0, auto`;
+    this.setCursorUrl(`/images/${image_path}.png`);
+  }
+
+  setCursorUrl(url: string) {
+    this.canvas.style.cursor = `url("${url}") 0 0, auto`;
   }
 
   scaleView(scale: number) {

@@ -1,5 +1,8 @@
 /** Returns image path of the building */
-export function buildingImage(building_id: number | undefined): string {
+export function buildingImage(building_id: number | undefined, under_construction?: boolean): string {
+  if (building_id !== undefined && under_construction) {
+    return 'risq/buildings/construction';
+  }
   let filename = 'empty_plot';
   if (building_id !== undefined) {
     switch (building_id) {

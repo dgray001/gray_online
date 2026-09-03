@@ -216,6 +216,9 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 		}
 		detail.resource.resources_left -= amount
 		risq.players[u.player_id].resources.addGathered(detail.resource.category(), amount)
+		if detail.resource.resources_left <= 0 && detail.resource.zone != nil {
+			detail.resource.zone.resource = nil
+		}
 	case *ConstructionIntent:
 		if detail.zone.building != nil && detail.zone.building.player_id != u.player_id {
 			return

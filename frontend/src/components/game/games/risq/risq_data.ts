@@ -176,11 +176,22 @@ export declare interface RisqBuilding {
   turn_stamina: number;
   current_stamina: number;
   max_stamina: number;
+  under_construction: boolean;
+  stamina_remaining: number;
+  construction_stamina_total: number;
   combat_stats: RisqCombatStats;
   active_orders: RisqOrder[];
   produces: RisqProducible[];
+  production_queue: RisqProductionQueueItem[];
   // purely frontend fields
   hover_data: RectHoverData;
+}
+
+/** Data describing a single item in a building's production queue */
+export declare interface RisqProductionQueueItem {
+  item_id: number;
+  stamina_remaining: number;
+  order_internal_id: number;
 }
 
 /** All the kinds a producible entry can be */
@@ -285,21 +296,6 @@ export enum RisqOrderType {
   OrderType_CancelFoundation,
 }
 
-/** Returns whether the order is for units */
-export function isUnitOrder(order: RisqOrderType): boolean {
-  return order >= RisqOrderType.OrderType_UnitMoveSpace && order <= RisqOrderType.OrderType_UnitDelete;
-}
-
-/** Returns whether the order is for buildings */
-export function isBuildingOrder(order: RisqOrderType): boolean {
-  return order >= RisqOrderType.OrderType_BuildingCreate && order <= RisqOrderType.OrderType_BuildingResearch;
-}
-
-/** Returns whether the order is a subject-less, player-level order */
-export function isPlayerOrder(order: RisqOrderType): boolean {
-  return order >= RisqOrderType.OrderType_CancelOrder && order <= RisqOrderType.OrderType_CancelFoundation;
-}
-
 /** Data describing an order */
 export declare interface RisqOrder {
   internal_id: number;
@@ -397,9 +393,13 @@ export declare interface RisqBuildingFromServer {
   turn_stamina: number;
   current_stamina: number;
   max_stamina: number;
+  under_construction: boolean;
+  stamina_remaining: number;
+  construction_stamina_total: number;
   combat_stats: RisqCombatStatsFromServer;
   active_orders: RisqOrderFromServer[];
   produces: RisqProducible[];
+  production_queue: RisqProductionQueueItem[];
 }
 
 /** Data describing combat stats */
@@ -711,86 +711,4 @@ export function serverToRisqOrder(server_order?: RisqOrderFromServer): RisqOrder
     ...server_order,
   };
   return order;
-}
-
-/** Returns the space from the input index, if the space exists */
-export function getSpace(game: GameRisq, index: Point2D): RisqSpace | undefined {
-  if (index.x < 0 || index.x >= game.spaces.length) {
-    return undefined;
-  }
-  const row = game.spaces[index.x];
-  if (!row) {
-    return undefined;
-  }
-  if (index.y < 0 || index.y >= row.length) {
-    return undefined;
-  }
-  return row[index.y];
-}
-
-/** Transforms the input coordinate in axial space to index space */
-export function coordinateToIndex(board_size: number, coordinate: Point2D): Point2D {
-  return {
-    x: coordinate.y + board_size,
-    y: coordinate.x - Math.max(-board_size, -(board_size + coordinate.y)),
-  };
-}
-
-/** Transforms the input coordinate in index space to axial space */
-export function indexToCoordinate(board_size: number, index: Point2D): Point2D {
-  const cy = index.x - board_size;
-  return {
-    x: index.y + Math.max(-board_size, -(board_size + cy)),
-    y: cy,
-  };
-}
-
-/** Cantor pairing function adapted to work with negatives, mirroring backend's util.Pair */
-export function cantorPair(i: number, j: number): number {
-  const ni = i < 0 ? -2 * i - 1 : 2 * i;
-  const nj = j < 0 ? -2 * j - 1 : 2 * j;
-  return ((ni + nj) * (ni + nj + 1)) / 2 + nj;
-}
-
-function natToInt(n: number): number {
-  return n % 2 === 0 ? n / 2 : -(n + 1) / 2;
-}
-
-/** Inverts cantorPair, mirroring backend's util.InvertPair */
-export function invertPair(z: number): Point2D {
-  const w = Math.floor((Math.sqrt(8 * z + 1) - 1) / 2);
-  const t = (w * w + w) / 2;
-  const ny = z - t;
-  const nx = w - ny;
-  return { x: natToInt(nx), y: natToInt(ny) };
-}
-
-/** Decodes a zone target key into its space and zone-local axial coordinates, mirroring backend's invertZoneKey */
-export function invertZoneKey(key: number): { space: Point2D; zone: Point2D } {
-  const outer = invertPair(key);
-  return { space: invertPair(outer.x), zone: invertPair(outer.y) };
-}
-
-/** Decodes a build target key into the building id plus its zone's coordinates, mirroring backend's invertBuildKey */
-export function invertBuildKey(key: number): { building_id: number; space: Point2D; zone: Point2D } {
-  const outer = invertPair(key);
-  const { space, zone } = invertZoneKey(outer.y);
-  return { building_id: outer.x, space, zone };
-}
-
-/** Data describing a start-turn update */
-export declare interface StartTurnData {
-  game: GameRisqFromServer;
-}
-
-/** Data describing a submitted-orders update */
-export declare interface SubmittedOrdersData {
-  game: GameRisqFromServer;
-  player_id: number;
-}
-
-/** Data describing an unsubmitted-orders update */
-export declare interface UnsubmittedOrdersData {
-  game: GameRisqFromServer;
-  player_id: number;
 }

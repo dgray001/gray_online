@@ -22,9 +22,9 @@ import {
   RisqOrderType,
   RisqProducibleKind,
   ZONE_VISIBILITY,
-  coordinateToIndex,
   risqTerrainName,
 } from '../../risq_data';
+import { coordinateToIndex } from '../../risq_coordinates';
 import { resourceImage, resourceTypeImage } from '../../risq_resources';
 import { getSpaceFill } from '../../risq_space';
 import { UNIT_HEALTHBAR_COLOR_BACKGROUND, UNIT_HEALTHBAR_COLOR_HEALTH, unitImage } from '../../risq_unit';
@@ -118,6 +118,9 @@ export class RisqLeftPanel implements CanvasComponent {
         }
         break;
       case LeftPanelDataType.BUILDING:
+        if (this.data.data.under_construction) {
+          break;
+        }
         for (const producible of this.data.data.produces) {
           if (producible.kind !== RisqProducibleKind.UNIT) {
             continue;
@@ -549,7 +552,7 @@ export class RisqLeftPanel implements CanvasComponent {
 
   private drawBuilding(ctx: CanvasRenderingContext2D, building: RisqBuilding) {
     let yi = this.yi() + this.drawName(ctx, building?.display_name ?? 'Empty Plot');
-    yi += this.drawImage(ctx, yi, buildingImage(building?.building_id));
+    yi += this.drawImage(ctx, yi, buildingImage(building?.building_id, building?.under_construction));
     this.drawSeparator(ctx, yi);
     if (!building) {
       yi += 12;
@@ -772,7 +775,7 @@ export class RisqLeftPanel implements CanvasComponent {
       );
     } else {
       draw_row(
-        this.risq.getIcon(buildingImage(data.zone.building?.building_id)),
+        this.risq.getIcon(buildingImage(data.zone.building?.building_id, data.zone.building?.under_construction)),
         data.zone.building?.display_name ?? 'Empty Plot',
         data.zone.building?.hover_data
       );

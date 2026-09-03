@@ -226,6 +226,9 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend) error {
 		}
 		for _, subject_id := range order.Subjects {
 			building := r.players[order.Player_id].buildings[subject_id]
+			if building.underConstruction() {
+				return fmt.Errorf("Building id %d is still under construction", subject_id)
+			}
 			if !buildingConfigs[building.building_id].canProduce(unit_id) {
 				return fmt.Errorf("Building id %d cannot produce unit id %d", building.building_id, unit_id)
 			}

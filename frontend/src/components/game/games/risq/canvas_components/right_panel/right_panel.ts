@@ -107,8 +107,8 @@ export class RisqRightPanel implements CanvasComponent {
     );
   }
 
-  addOrder(order: RisqFrontendOrder, replace = true) {
-    this.orders_list.addOrder(order, replace);
+  addOrder(order: RisqFrontendOrder) {
+    this.orders_list.addOrder(order);
   }
 
   getOrders(): RisqFrontendOrder[] {

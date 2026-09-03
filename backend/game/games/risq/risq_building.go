@@ -111,7 +111,7 @@ func (item *RisqBuildingProductionItem) toFrontend() gin.H {
 }
 
 func (b *RisqBuilding) orderReceivable(o *RisqOrder, risq *GameRisq) bool {
-	return true
+	return !b.underConstruction()
 }
 
 func (b *RisqBuilding) receiveOrder(o *RisqOrder, risq *GameRisq) {
@@ -198,17 +198,18 @@ func (b *RisqBuilding) tickExecute(risq *GameRisq) {
 
 func (b *RisqBuilding) toFrontend() gin.H {
 	building := gin.H{
-		"internal_id":        b.internal_id,
-		"player_id":          b.player_id,
-		"building_id":        b.building_id,
-		"display_name":       b.display_name,
-		"population_support": b.population_support,
-		"combat_stats":       b.cs.toFrontend(),
-		"under_construction": b.underConstruction(),
-		"stamina_remaining":  b.stamina_remaining,
-		"turn_stamina":       b.turn_stamina,
-		"current_stamina":    b.current_stamina,
-		"max_stamina":        b.max_stamina,
+		"internal_id":                b.internal_id,
+		"player_id":                  b.player_id,
+		"building_id":                b.building_id,
+		"display_name":               b.display_name,
+		"population_support":         b.population_support,
+		"combat_stats":               b.cs.toFrontend(),
+		"under_construction":         b.underConstruction(),
+		"stamina_remaining":          b.stamina_remaining,
+		"construction_stamina_total": b.construction_stamina_total,
+		"turn_stamina":               b.turn_stamina,
+		"current_stamina":            b.current_stamina,
+		"max_stamina":                b.max_stamina,
 	}
 	produces := make([]gin.H, 0)
 	for _, p := range buildingConfigs[b.building_id].produces {
@@ -229,7 +230,9 @@ func (b *RisqBuilding) toFrontend() gin.H {
 		}
 		active_orders = append(active_orders, order.toFrontend())
 		if item, ok := b.production_queue[order.internal_id]; ok {
-			production_queue = append(production_queue, item.toFrontend())
+			item_frontend := item.toFrontend()
+			item_frontend["order_internal_id"] = order.internal_id
+			production_queue = append(production_queue, item_frontend)
 		}
 	}
 	building["active_orders"] = active_orders

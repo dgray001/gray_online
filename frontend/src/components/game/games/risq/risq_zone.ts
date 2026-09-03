@@ -113,7 +113,7 @@ export function drawRisqZone(
           ctx.drawImage(game.getIcon(resourceImage(zone.resource)), -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
         } else {
           ctx.drawImage(
-            game.getIcon(buildingImage(zone.building?.building_id)),
+            game.getIcon(buildingImage(zone.building?.building_id, zone.building?.under_construction)),
             -part.r.x,
             -part.r.y,
             2 * part.r.x,
