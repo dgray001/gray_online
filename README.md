@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.7q: Order cancellation backend
+v0.7r: Stamina and stamina costs shown on frontend
 
 ## Dev Use
 

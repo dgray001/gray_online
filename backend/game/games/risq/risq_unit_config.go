@@ -11,6 +11,7 @@ var unitsConfigJSON []byte
 
 type UnitConfig struct {
 	display_name       string
+	description        string
 	max_health         int
 	attack_type        AttackType
 	attack_blunt       int
@@ -23,6 +24,7 @@ type UnitConfig struct {
 type unitConfigJSON struct {
 	UnitId            uint32           `json:"unit_id"`
 	DisplayName       string           `json:"display_name"`
+	Description       string           `json:"description"`
 	MaxHealth         int              `json:"max_health"`
 	AttackType        string           `json:"attack_type"`
 	AttackBlunt       int              `json:"attack_blunt"`
@@ -81,6 +83,7 @@ func init() {
 		}
 		unitConfigs[e.UnitId] = UnitConfig{
 			display_name:    e.DisplayName,
+			description:     e.Description,
 			max_health:      e.MaxHealth,
 			attack_type:     attack_type,
 			attack_blunt:    e.AttackBlunt,

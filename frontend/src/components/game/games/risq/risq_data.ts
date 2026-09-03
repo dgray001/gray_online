@@ -173,6 +173,9 @@ export declare interface RisqBuilding {
   space_coordinate: Point2D;
   zone_coordinate: Point2D;
   population_support: number;
+  turn_stamina: number;
+  current_stamina: number;
+  max_stamina: number;
   combat_stats: RisqCombatStats;
   active_orders: RisqOrder[];
   produces: RisqProducible[];
@@ -195,7 +198,9 @@ export declare interface RisqProducible {
   kind: RisqProducibleKind;
   id: number;
   cost: RisqCost;
+  stamina_cost: number;
   display_name: string;
+  description: string;
 }
 
 /** Data describing a resource cost */
@@ -745,6 +750,32 @@ export function cantorPair(i: number, j: number): number {
   const ni = i < 0 ? -2 * i - 1 : 2 * i;
   const nj = j < 0 ? -2 * j - 1 : 2 * j;
   return ((ni + nj) * (ni + nj + 1)) / 2 + nj;
+}
+
+function natToInt(n: number): number {
+  return n % 2 === 0 ? n / 2 : -(n + 1) / 2;
+}
+
+/** Inverts cantorPair, mirroring backend's util.InvertPair */
+export function invertPair(z: number): Point2D {
+  const w = Math.floor((Math.sqrt(8 * z + 1) - 1) / 2);
+  const t = (w * w + w) / 2;
+  const ny = z - t;
+  const nx = w - ny;
+  return { x: natToInt(nx), y: natToInt(ny) };
+}
+
+/** Decodes a zone target key into its space and zone-local axial coordinates, mirroring backend's invertZoneKey */
+export function invertZoneKey(key: number): { space: Point2D; zone: Point2D } {
+  const outer = invertPair(key);
+  return { space: invertPair(outer.x), zone: invertPair(outer.y) };
+}
+
+/** Decodes a build target key into the building id plus its zone's coordinates, mirroring backend's invertBuildKey */
+export function invertBuildKey(key: number): { building_id: number; space: Point2D; zone: Point2D } {
+  const outer = invertPair(key);
+  const { space, zone } = invertZoneKey(outer.y);
+  return { building_id: outer.x, space, zone };
 }
 
 /** Data describing a start-turn update */

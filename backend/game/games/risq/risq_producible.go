@@ -69,13 +69,17 @@ func (p Producible) toFrontend() gin.H {
 	}
 	switch p.kind {
 	case ProducibleKind_UNIT:
-		cost, _ := unitProductionCost(p.id)
+		cost, stamina_cost := unitProductionCost(p.id)
 		entry["cost"] = cost.toFrontend()
+		entry["stamina_cost"] = stamina_cost
 		entry["display_name"] = unitConfigs[p.id].display_name
+		entry["description"] = unitConfigs[p.id].description
 	case ProducibleKind_BUILDING:
-		cost, _ := buildingProductionCost(p.id)
+		cost, stamina_cost := buildingProductionCost(p.id)
 		entry["cost"] = cost.toFrontend()
+		entry["stamina_cost"] = stamina_cost
 		entry["display_name"] = buildingConfigs[p.id].display_name
+		entry["description"] = buildingConfigs[p.id].description
 	}
 	return entry
 }

@@ -3,6 +3,7 @@ import { RisqActionButton } from './action_button';
 import type { RisqProducible } from '../../../risq_data';
 import { canAffordCost } from '../../../risq_data';
 import { unitImage } from '../../../risq_unit';
+import type { RisqTooltipData } from '../../risq_tooltip';
 
 export declare interface CreateButtonConfig {
   building_id: number;
@@ -47,5 +48,14 @@ export class RisqCreateButton extends RisqActionButton {
     if (this.isHovering()) {
       this.risq.createUnit(this.building_id, this.producible.id);
     }
+  }
+
+  protected override getTooltipData(): RisqTooltipData {
+    return {
+      title: this.description,
+      description: this.producible.description,
+      cost: this.producible.cost,
+      stamina_cost: this.producible.stamina_cost,
+    };
   }
 }

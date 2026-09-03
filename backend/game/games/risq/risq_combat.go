@@ -1,6 +1,9 @@
 package risq
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/dgray001/gray_online/util"
+	"github.com/gin-gonic/gin"
+)
 
 type AttackType uint8
 
@@ -45,6 +48,14 @@ func createRisqCombatStats() RisqCombatStats {
 		penetration_piercing: 0,
 		penetration_magic:    0,
 	}
+}
+
+func (c *RisqCombatStats) setHealthRatio(ratio float64) {
+	c.health = int(util.Clamp(ratio, 0.0, 1.0)*float64(c.max_health) + 0.5)
+}
+
+func (c *RisqCombatStats) addHealth(amount int) {
+	c.health = util.Clamp(c.health+amount, 0, c.max_health)
 }
 
 func (c *RisqCombatStats) setMaxHealth(max_health int) {

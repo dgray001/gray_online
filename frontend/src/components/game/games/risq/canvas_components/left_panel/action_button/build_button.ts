@@ -4,6 +4,7 @@ import type { RisqProducible } from '../../../risq_data';
 import { canAffordCost } from '../../../risq_data';
 import { buildingImage } from '../../../risq_buildings';
 import { RisqActionButton } from './action_button';
+import type { RisqTooltipData } from '../../risq_tooltip';
 
 export declare interface BuildButtonConfig {
   producible: RisqProducible;
@@ -62,5 +63,14 @@ export class RisqBuildButton extends RisqActionButton {
         );
       }
     }
+  }
+
+  protected override getTooltipData(): RisqTooltipData {
+    return {
+      title: this.description,
+      description: this.producible.description,
+      cost: this.producible.cost,
+      stamina_cost: this.producible.stamina_cost,
+    };
   }
 }

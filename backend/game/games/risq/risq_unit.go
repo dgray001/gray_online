@@ -228,11 +228,16 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 				_, stamina_required := buildingProductionCost(detail.building_id)
 				building = createRisqBuilding(risq.nextBuildingInternalId(), detail.building_id, u.player_id)
 				building.stamina_remaining = stamina_required
+				building.construction_stamina_total = stamina_required
+				building.cs.setHealthRatio(constructionHealthRatio(stamina_required, stamina_required))
 				detail.zone.space.setBuilding(&detail.zone.coordinate, building)
 				risq.players[u.player_id].buildings[building.internal_id] = building
 			}
 		}
+		old_ratio := constructionHealthRatio(building.stamina_remaining, building.construction_stamina_total)
 		building.stamina_remaining -= u.intent.intent_cost
+		new_ratio := constructionHealthRatio(building.stamina_remaining, building.construction_stamina_total)
+		building.cs.addHealth(int(float64(building.cs.max_health)*(new_ratio-old_ratio) + 0.5))
 	}
 	u.current_stamina -= u.intent.intent_cost
 	fmt.Println("Unit in zone", u.zone.coordinate.ToString(), "of space", u.zone.space.coordinate.ToString())

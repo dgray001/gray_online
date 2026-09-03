@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
 )
 
@@ -23,11 +24,22 @@ type RisqBuilding struct {
 	production_queue   map[uint64]*RisqBuildingProductionItem
 	intent             *RisqIntent
 	// build stamina still needed to finish a unit-constructed foundation; 0 means not under construction
-	stamina_remaining int
+	stamina_remaining          int
+	construction_stamina_total int
 }
 
 func (b *RisqBuilding) underConstruction() bool {
 	return b.stamina_remaining > 0
+}
+
+const constructionMinHealthRatio = 0.1
+
+func constructionHealthRatio(stamina_remaining int, construction_stamina_total int) float64 {
+	if construction_stamina_total <= 0 {
+		return 1
+	}
+	progress := util.Clamp(1-float64(stamina_remaining)/float64(construction_stamina_total), 0.0, 1.0)
+	return constructionMinHealthRatio + (1-constructionMinHealthRatio)*progress
 }
 
 func createRisqBuilding(internal_id uint64, building_id uint32, player_id int) *RisqBuilding {
@@ -194,6 +206,9 @@ func (b *RisqBuilding) toFrontend() gin.H {
 		"combat_stats":       b.cs.toFrontend(),
 		"under_construction": b.underConstruction(),
 		"stamina_remaining":  b.stamina_remaining,
+		"turn_stamina":       b.turn_stamina,
+		"current_stamina":    b.current_stamina,
+		"max_stamina":        b.max_stamina,
 	}
 	produces := make([]gin.H, 0)
 	for _, p := range buildingConfigs[b.building_id].produces {

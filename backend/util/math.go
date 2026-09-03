@@ -1,6 +1,19 @@
 package util
 
-import "math"
+import (
+	"cmp"
+	"math"
+)
+
+func Clamp[T cmp.Ordered](x T, min T, max T) T {
+	if x < min {
+		return min
+	}
+	if x > max {
+		return max
+	}
+	return x
+}
 
 func AbsInt(x int) int {
 	return AbsDiffInt(x, 0)

@@ -59,6 +59,14 @@ export function roundAxialCoordinate(p: Point2D): Point2D {
   return { x: q, y: r };
 }
 
+/** Returns the axial hex distance between two coordinates, mirroring the backend's AxialDistance */
+export function axialDistance(a: Point2D, b: Point2D): number {
+  const dq = Math.abs(a.x - b.x);
+  const dr = Math.abs(a.y - b.y);
+  const ds = Math.abs(a.x + a.y - b.x - b.y);
+  return (dq + dr + ds) / 2;
+}
+
 /** Returns the ordered list of axial direction vectors for a hexagonal grid */
 export const AXIAL_DIRECTION_VECTORS: Point2D[] = [
   { x: 1, y: 0 },

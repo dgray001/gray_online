@@ -428,7 +428,7 @@ export class RisqLeftPanel implements CanvasComponent {
     ctx.beginPath();
     for (const button of this.buttons) {
       button.draw(ctx, transform, dt);
-      button.drawTooltip(ctx, transform);
+      button.drawTooltip(ctx, transform, this.risq);
     }
     ctx.beginPath();
     this.close_button.draw(ctx, transform, dt);
@@ -513,7 +513,7 @@ export class RisqLeftPanel implements CanvasComponent {
     yi += this.drawImage(ctx, yi, unitImage(unit.unit_id));
     this.drawSeparator(ctx, yi);
     yi = this.yi() + 0.25 * this.size.y + 6;
-    this.drawCombatStats(ctx, yi, yi + 0.25 * this.size.y - 12, unit.combat_stats);
+    this.drawCombatStats(ctx, yi, yi + 0.25 * this.size.y - 12, unit.combat_stats, unit.current_stamina);
     if (this.risq.getPlayer()?.player.player_id === unit.player_id) {
       this.drawSeparator(ctx, this.yi() + 0.5 * this.size.y);
       // TODO: draw action buttons
@@ -563,7 +563,7 @@ export class RisqLeftPanel implements CanvasComponent {
       return;
     }
     yi = this.yi() + 0.25 * this.size.y + 6;
-    this.drawCombatStats(ctx, yi, yi + 0.25 * this.size.y - 12, building.combat_stats);
+    this.drawCombatStats(ctx, yi, yi + 0.25 * this.size.y - 12, building.combat_stats, building.current_stamina);
     if (this.risq.getPlayer()?.player.player_id === building.player_id) {
       this.drawSeparator(ctx, this.yi() + 0.5 * this.size.y);
       // TODO: draw action buttons
@@ -851,7 +851,13 @@ export class RisqLeftPanel implements CanvasComponent {
     drawLine(ctx, { x: this.xi() + 0.1 * this.w(), y: yi }, { x: this.xf() - 0.1 * this.w(), y: yi });
   }
 
-  private drawCombatStats(ctx: CanvasRenderingContext2D, yi: number, yf: number, cs: RisqCombatStats) {
+  private drawCombatStats(
+    ctx: CanvasRenderingContext2D,
+    yi: number,
+    yf: number,
+    cs: RisqCombatStats,
+    current_stamina: number
+  ) {
     const gap_size = 4;
     const num_rows = 4; // health, attack, piercing, defense
     if (!(yf - yi > (num_rows + 1) * gap_size)) {
@@ -869,11 +875,30 @@ export class RisqLeftPanel implements CanvasComponent {
       ctx.fillStyle = UNIT_HEALTHBAR_COLOR_HEALTH;
       drawRect(ctx, { x: xi, y: yi }, (cs.health / cs.max_health) * 0.8 * this.w(), health_height);
     }
+    const info_row_y = yi + health_height + 0.1 * row_size;
     drawText(ctx, `${cs.health} / ${cs.max_health}`, {
-      p: { x: xi, y: yi + health_height + 0.1 * row_size },
+      p: { x: xi, y: info_row_y },
       w: 0.8 * this.w(),
       fill_style: 'black',
       align: 'left',
+      font: `${health_height}px serif`,
+    });
+    const row_right = xi + 0.8 * this.w();
+    const stamina_text = `${current_stamina}`;
+    ctx.font = `${health_height}px serif`;
+    const stamina_text_width = ctx.measureText(stamina_text).width;
+    ctx.drawImage(
+      this.risq.getIcon('risq/icons/stamina'),
+      row_right - stamina_text_width - health_height - 4,
+      info_row_y,
+      health_height,
+      health_height
+    );
+    drawText(ctx, stamina_text, {
+      p: { x: row_right, y: info_row_y },
+      w: stamina_text_width,
+      fill_style: 'black',
+      align: 'right',
       font: `${health_height}px serif`,
     });
     yi += row_size + gap_size;

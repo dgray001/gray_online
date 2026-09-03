@@ -1,7 +1,5 @@
 v0.8: Playable Risq
- q: Stamina and stamina costs shown on frontend
- r: Orders are human-readable on frontend
- s: Can cancel orders from left or right panel
+ s: Orders are human-readable on frontend
  t: Backend recalculates vision each turn
  u: Can toggle between views UX
  v: Terrain view (default) and control view

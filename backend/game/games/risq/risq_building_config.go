@@ -12,6 +12,7 @@ var buildingsConfigJSON []byte
 
 type BuildingConfig struct {
 	display_name       string
+	description        string
 	max_health         int
 	population_support uint16
 	produces           []Producible
@@ -42,6 +43,7 @@ func buildingProductionCost(building_id uint32) (RisqResourceCost, int) {
 type buildingConfigJSON struct {
 	BuildingId        uint32           `json:"building_id"`
 	DisplayName       string           `json:"display_name"`
+	Description       string           `json:"description"`
 	MaxHealth         int              `json:"max_health"`
 	PopulationSupport uint16           `json:"population_support"`
 	Produces          []producibleJSON `json:"produces"`
@@ -64,6 +66,7 @@ func init() {
 		}
 		buildingConfigs[e.BuildingId] = BuildingConfig{
 			display_name:       e.DisplayName,
+			description:        e.Description,
 			max_health:         e.MaxHealth,
 			population_support: e.PopulationSupport,
 			produces:           produces,

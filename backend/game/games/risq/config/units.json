@@ -2,6 +2,7 @@
   {
     "unit_id": 1,
     "display_name": "Villager",
+    "description": "Gathers resources and constructs/repairs buildings.",
     "max_health": 25,
     "attack_type": "BLUNT",
     "attack_blunt": 3,
@@ -12,6 +13,7 @@
   {
     "unit_id": 11,
     "display_name": "Swordsman",
+    "description": "",
     "max_health": 35,
     "attack_type": "BLUNT_PIERCING",
     "attack_blunt": 4,
