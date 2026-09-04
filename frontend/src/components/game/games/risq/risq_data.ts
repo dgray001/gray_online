@@ -36,6 +36,7 @@ export declare interface RisqPlayer {
   color: ColorRGB;
   active_orders: RisqOrder[];
   orders_submitted: boolean;
+  researched_techs: Map<number, boolean>;
 }
 
 /** Data describing frontend resource state */
@@ -93,7 +94,8 @@ export declare interface RisqSpace {
   buildings?: Map<number, RisqBuilding>;
   units?: Map<number, RisqUnit>;
   unit_count?: number;
-  ownership: number;
+  ownership?: number;
+  gold_income?: number;
   // purely frontend fields
   center: Point2D;
   hovered: boolean;
@@ -193,6 +195,7 @@ export declare interface RisqBuilding {
 
 /** Data describing a single item in a building's production queue */
 export declare interface RisqProductionQueueItem {
+  kind: RisqProducibleKind;
   item_id: number;
   stamina_remaining: number;
   order_internal_id: number;
@@ -298,6 +301,7 @@ export enum RisqOrderType {
   OrderType_UnitDelete,
   OrderType_BuildingCreate,
   OrderType_BuildingResearch,
+  OrderType_BuildingDelete,
   OrderType_CancelOrder,
   OrderType_CancelFoundation,
 }
@@ -347,6 +351,7 @@ export declare interface RisqPlayerFromServer {
   color: string;
   active_orders: RisqOrderFromServer[];
   orders_submitted: boolean;
+  researched_techs: Record<string, boolean>;
 }
 
 /** Data describing a hexagonal space in risq */
@@ -360,7 +365,8 @@ export declare interface RisqSpaceFromServer {
   buildings?: RisqBuildingFromServer[];
   units?: RisqUnitFromServer[];
   unit_count?: number;
-  ownership: number;
+  ownership?: number;
+  gold_income?: number;
 }
 
 /** Data describing zones inside a risq space */
@@ -556,6 +562,9 @@ export function serverToRisqPlayer(server_player: RisqPlayerFromServer): RisqPla
     color: new ColorRGB(color_split[0], color_split[1], color_split[2]),
     active_orders: server_player.active_orders.map((o) => serverToRisqOrder(o)).filter((o) => !!o),
     orders_submitted: server_player.orders_submitted,
+    researched_techs: new Map(
+      Object.entries(server_player.researched_techs).map(([tech_id, researched]) => [Number(tech_id), researched])
+    ),
   };
   return player;
 }
@@ -571,6 +580,7 @@ export function serverToRisqSpace(server_space: RisqSpaceFromServer): RisqSpace 
     num_villager_units: 0,
     unit_count: server_space.unit_count,
     ownership: server_space.ownership,
+    gold_income: server_space.gold_income,
     // purely frontend fields
     center: { x: 0, y: 0 },
     hovered: false,

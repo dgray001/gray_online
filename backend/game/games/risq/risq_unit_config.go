@@ -18,6 +18,7 @@ type UnitConfig struct {
 	attack_piercing    int
 	cost               RisqResourceCost
 	production_stamina int
+	turn_stamina       int
 	builds             []Producible
 	vision             RisqVision
 }
@@ -32,6 +33,7 @@ type unitConfigJSON struct {
 	AttackPiercing    int              `json:"attack_piercing"`
 	Cost              costJSON         `json:"cost"`
 	ProductionStamina int              `json:"production_stamina"`
+	TurnStamina       int              `json:"turn_stamina"`
 	Builds            []producibleJSON `json:"builds"`
 	Vision            *risqVisionJSON  `json:"vision"`
 }
@@ -98,6 +100,7 @@ func init() {
 				gold:  e.Cost.Gold,
 			},
 			production_stamina: e.ProductionStamina,
+			turn_stamina:       e.TurnStamina,
 			builds:             builds,
 			vision:             resolveVision(e.Vision),
 		}

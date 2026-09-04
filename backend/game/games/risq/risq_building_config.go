@@ -18,12 +18,22 @@ type BuildingConfig struct {
 	produces           []Producible
 	cost               RisqResourceCost
 	build_stamina      int
+	turn_stamina       int
 	vision             RisqVision
 }
 
 func (c BuildingConfig) canProduce(unit_id uint32) bool {
 	for _, p := range c.produces {
 		if p.kind == ProducibleKind_UNIT && p.id == unit_id {
+			return true
+		}
+	}
+	return false
+}
+
+func (c BuildingConfig) canResearch(tech_id uint32) bool {
+	for _, p := range c.produces {
+		if p.kind == ProducibleKind_TECH && p.id == tech_id {
 			return true
 		}
 	}
@@ -49,6 +59,7 @@ type buildingConfigJSON struct {
 	Produces          []producibleJSON `json:"produces"`
 	Cost              costJSON         `json:"cost"`
 	BuildStamina      int              `json:"build_stamina"`
+	TurnStamina       int              `json:"turn_stamina"`
 	Vision            *risqVisionJSON  `json:"vision"`
 }
 
@@ -78,6 +89,7 @@ func init() {
 				gold:  e.Cost.Gold,
 			},
 			build_stamina: e.BuildStamina,
+			turn_stamina:  e.TurnStamina,
 			vision:        resolveVision(e.Vision),
 		}
 	}

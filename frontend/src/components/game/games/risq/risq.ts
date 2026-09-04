@@ -35,6 +35,7 @@ import type { DrawRisqSpaceConfig } from './risq_space';
 import { DrawRisqSpaceDetail, drawRisqSpace } from './risq_space';
 import { RisqLeftPanel } from './canvas_components/left_panel/left_panel';
 import { resolveHoveredZones, unhoverRisqZone } from './risq_zone';
+import { RisqViewMode, nextViewMode } from './risq_view_mode';
 import type { UnitData } from './canvas_components/left_panel/left_panel_data';
 import { LeftPanelDataType } from './canvas_components/left_panel/left_panel_data';
 
@@ -67,6 +68,7 @@ export class DwgRisq extends DwgElement {
   private image_cache = new RisqImageCache();
   private last_time = Date.now();
   private draw_detail: DrawRisqSpaceDetail = DrawRisqSpaceDetail.SPACE_DETAILS;
+  private view_mode: RisqViewMode = RisqViewMode.ALL;
   private toggling_submit_orders_button = false;
   private orders_submitted_times = 0;
   private armed_order = RisqOrderType.NONE;
@@ -119,6 +121,9 @@ export class DwgRisq extends DwgElement {
       this.ctrl_held = e.ctrlKey;
       this.shift_held = e.shiftKey;
       this.alt_held = e.altKey;
+      if (e.key.toLowerCase() === 'v') {
+        this.view_mode = nextViewMode(this.view_mode);
+      }
     });
     document.body.addEventListener('keyup', (e) => {
       this.ctrl_held = e.ctrlKey;
@@ -320,6 +325,7 @@ export class DwgRisq extends DwgElement {
       inset_h,
       inset_row,
       draw_detail: this.draw_detail,
+      view_mode: this.view_mode,
     };
     // draw spaces
     for (const row of this.game.spaces) {
@@ -525,6 +531,21 @@ export class DwgRisq extends DwgElement {
     this.left_panel.dataRefreshed();
   }
 
+  researchTech(building_id: number, tech_id: number) {
+    if (!this.canGiveOrders()) {
+      return;
+    }
+    this.right_panel.addOrder({
+      player_id: this.player_id,
+      order_type: RisqOrderType.OrderType_BuildingResearch,
+      subjects: [building_id],
+      target_id: tech_id,
+      clear_previous_orders: false,
+    });
+    this.updateResourceSpending();
+    this.left_panel.dataRefreshed();
+  }
+
   private updateResourceSpending() {
     const player = this.getPlayer();
     if (!player) {
@@ -534,7 +555,10 @@ export class DwgRisq extends DwgElement {
       pr.spending = 0;
     }
     for (const order of this.right_panel.getOrders()) {
-      if (order.order_type !== RisqOrderType.OrderType_BuildingCreate) {
+      if (
+        order.order_type !== RisqOrderType.OrderType_BuildingCreate &&
+        order.order_type !== RisqOrderType.OrderType_BuildingResearch
+      ) {
         continue;
       }
       for (const subject_id of order.subjects) {

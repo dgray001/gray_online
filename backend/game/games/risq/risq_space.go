@@ -34,8 +34,9 @@ type RisqSpace struct {
 	adjacent_spaces map[uint]*RisqSpace
 	ownership       int
 	// player_id -> zone coordinate_key -> last-known snapshot while that player's vision is at fog level
-	building_cache map[int]map[uint]RisqBuildingCache
-	resource_cache map[int]map[uint]RisqResourceCache
+	building_cache  map[int]map[uint]RisqBuildingCache
+	resource_cache  map[int]map[uint]RisqResourceCache
+	ownership_cache map[int]int
 }
 
 func createRisqSpace(q int, r int, terrain TerrainType) *RisqSpace {
@@ -51,6 +52,7 @@ func createRisqSpace(q int, r int, terrain TerrainType) *RisqSpace {
 		ownership:       -1,
 		building_cache:  make(map[int]map[uint]RisqBuildingCache),
 		resource_cache:  make(map[int]map[uint]RisqResourceCache),
+		ownership_cache: make(map[int]int),
 	}
 	space.zones = make([][]*RisqZone, 3)
 	for j := range space.zones {
@@ -175,6 +177,13 @@ func (s *RisqSpace) removeUnit(unit *RisqUnit) {
 	}
 }
 
+func (s *RisqSpace) removeBuilding(building *RisqBuilding) {
+	delete(s.buildings, building.internal_id)
+	if building.zone != nil && building.zone.building == building {
+		building.zone.building = nil
+	}
+}
+
 func (s *RisqSpace) addVision(v *RisqVision, z *RisqZone, player_id int) {
 	checked := make(map[uint]bool)
 	elevate := func(space *RisqSpace, level uint8) {
@@ -261,6 +270,7 @@ func (s *RisqSpace) refreshCache(player_id int) {
 	}
 	s.building_cache[player_id] = buildings
 	s.resource_cache[player_id] = resources
+	s.ownership_cache[player_id] = s.ownership
 }
 
 func (s *RisqSpace) toFrontend(player_id int, _is_viewer bool) gin.H {
@@ -268,12 +278,19 @@ func (s *RisqSpace) toFrontend(player_id int, _is_viewer bool) gin.H {
 		"terrain":        s.terrain,
 		"coordinate":     s.coordinate.ToFrontend(),
 		"coordinate_key": s.coordinate_key,
-		"ownership":      s.ownership,
 	}
 	v := s.getVisibility(player_id)
 	space["visibility"] = v
 	if v == VisibilityUnexplored {
 		return space
+	}
+	space["gold_income"] = spaceGoldIncome
+	if v == VisibilityFog {
+		if owner, ok := s.ownership_cache[player_id]; ok {
+			space["ownership"] = owner
+		}
+	} else {
+		space["ownership"] = s.ownership
 	}
 	zones := [][]gin.H{}
 	for _, row := range s.zones {

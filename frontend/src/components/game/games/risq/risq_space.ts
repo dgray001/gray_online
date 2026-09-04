@@ -4,9 +4,10 @@ import { drawHexagon, drawText } from '../../util/canvas_util';
 import type { Point2D } from '../../util/objects2d';
 import type { DwgRisq } from './risq';
 import type { RisqSpace } from './risq_data';
-import { RisqVisibilityLevel } from './risq_data';
+import { RisqResourceType, RisqVisibilityLevel } from './risq_data';
 import { resourceTypeImage } from './risq_resources';
 import { COMBO_UNIT_ICON_SIZE, comboUnitIconKey, drawComboUnitIcon } from './risq_unit';
+import { RisqViewMode, spaceOwnerColor } from './risq_view_mode';
 import { INNER_ZONE_MULTIPLIER, drawRisqZone, getZoneFill } from './risq_zone';
 
 /** How much detail to draw in a space */
@@ -24,6 +25,7 @@ export declare interface DrawRisqSpaceConfig {
   // height of a 'row' in the inset box (up to 4 rows)
   inset_row: number;
   draw_detail: DrawRisqSpaceDetail;
+  view_mode: RisqViewMode;
 }
 
 const space_line_width: Record<DrawRisqSpaceDetail, number> = {
@@ -39,8 +41,9 @@ export function drawRisqSpace(
   space: RisqSpace,
   config: DrawRisqSpaceConfig
 ) {
+  const owner_color = spaceOwnerColor(space, game.getGame()?.players ?? []);
   ctx.strokeStyle = 'rgba(250, 250, 250, 0.9)';
-  const fill = getSpaceFill(space);
+  const fill = getSpaceFill(space, config.view_mode, owner_color);
   ctx.fillStyle = fill.getString();
   ctx.lineWidth = space_line_width[config.draw_detail];
   drawHexagon(ctx, space.center, config.hex_r);
@@ -56,7 +59,7 @@ export function drawRisqSpace(
   }
   ctx.textAlign = 'left';
   const black_text = fill.getBrightness() > 0.5;
-  drawSpaceContent(ctx, game, space, config, black_text);
+  drawSpaceContent(ctx, game, space, config, black_text, owner_color);
   if (space.visibility === RisqVisibilityLevel.FOG) {
     ctx.strokeStyle = 'transparent';
     ctx.fillStyle = 'rgba(40, 45, 55, 0.5)';
@@ -69,7 +72,8 @@ function drawSpaceContent(
   game: DwgRisq,
   space: RisqSpace,
   config: DrawRisqSpaceConfig,
-  black_text: boolean
+  black_text: boolean,
+  owner_color: ColorRGB | undefined
 ) {
   if (config.draw_detail === DrawRisqSpaceDetail.OWNERSHIP) {
     return; // ownership and terrain indicated by space fill color
@@ -80,6 +84,7 @@ function drawSpaceContent(
     let building_img = game.getIcon('icons/building64');
     let villager_img = game.getIcon('icons/villager64');
     let unit_img = game.getIcon('icons/unit64');
+    const gold_img = game.getIcon(resourceTypeImage(RisqResourceType.GOLD));
     if (black_text) {
       ctx.fillStyle = 'black';
     } else {
@@ -97,19 +102,33 @@ function drawSpaceContent(
       ctx.fillText(`: ${count}`, xs + config.inset_row + 2, y, config.inset_w - config.inset_row - 2);
       y += config.inset_row + 2;
     };
-    draw_count_row(building_img, space.buildings?.size.toString() ?? '0');
-    const resources = [...(space.total_resources?.entries() ?? [])].filter(([, amount]) => amount > 0);
-    for (const [i, [resource_type]] of resources.entries()) {
-      ctx.drawImage(
-        game.getIcon(resourceTypeImage(resource_type)),
-        xs + i * (config.inset_row + 2),
-        y,
-        config.inset_row,
-        config.inset_row
-      );
+    if (config.view_mode === RisqViewMode.OWNERSHIP) {
+      draw_count_row(gold_img, space.gold_income?.toString() ?? '??');
+      return;
     }
-    if (resources.length > 0) {
-      y += config.inset_row + 2;
+    if (config.view_mode === RisqViewMode.ALL) {
+      draw_count_row(building_img, space.buildings?.size.toString() ?? '0');
+    }
+    if (config.view_mode !== RisqViewMode.MILITARY) {
+      const resources = [...(space.total_resources?.entries() ?? [])].filter(([, amount]) => amount > 0);
+      for (const [i, [resource_type]] of resources.entries()) {
+        ctx.drawImage(
+          game.getIcon(resourceTypeImage(resource_type)),
+          xs + i * (config.inset_row + 2),
+          y,
+          config.inset_row,
+          config.inset_row
+        );
+      }
+      if (resources.length > 0) {
+        y += config.inset_row + 2;
+      }
+    }
+    if (config.view_mode === RisqViewMode.RESOURCE) {
+      if (space.visibility >= RisqVisibilityLevel.GOOD) {
+        draw_count_row(villager_img, space.num_villager_units?.toString() ?? '0');
+      }
+      return;
     }
     if (space.visibility === RisqVisibilityLevel.POOR) {
       const combo_icon = game
@@ -121,7 +140,9 @@ function drawSpaceContent(
         draw_count_row(combo_icon, space.unit_count?.toString() ?? '0');
       }
     } else if (space.visibility >= RisqVisibilityLevel.GOOD) {
-      draw_count_row(villager_img, space.num_villager_units?.toString() ?? '0');
+      if (config.view_mode === RisqViewMode.ALL) {
+        draw_count_row(villager_img, space.num_villager_units?.toString() ?? '0');
+      }
       draw_count_row(unit_img, space.num_military_units?.toString() ?? '0');
     }
   } else if (config.draw_detail === DrawRisqSpaceDetail.ZONE_DETAILS) {
@@ -132,7 +153,7 @@ function drawSpaceContent(
     let zone = space.zones[1][1];
     ctx.strokeStyle = 'rgba(250, 250, 250, 0.9)';
     ctx.lineWidth = 0.1;
-    ctx.fillStyle = getZoneFill(zone).getString();
+    ctx.fillStyle = getZoneFill(zone, config.view_mode, owner_color).getString();
     const r = config.hex_r;
     const inner_r = INNER_ZONE_MULTIPLIER * r;
     let zone_r = 0.45 * r;
@@ -142,6 +163,7 @@ function drawSpaceContent(
       game,
       zone,
       space.visibility,
+      config.view_mode,
       black_text,
       zone_r,
       0,
@@ -184,7 +206,7 @@ function drawSpaceContent(
       }
       zone = space.zones[direction_vector.x][direction_vector.y];
       ctx.strokeStyle = 'rgba(250, 250, 250, 0.9)';
-      ctx.fillStyle = getZoneFill(zone).getString();
+      ctx.fillStyle = getZoneFill(zone, config.view_mode, owner_color).getString();
       ctx.beginPath();
       ctx.lineTo(inner_r * Math.cos(a * i + Math.PI / 6), inner_r * Math.sin(a * i + Math.PI / 6));
       ctx.lineTo(inner_r * Math.cos(a * i + Math.PI / 2), inner_r * Math.sin(a * i + Math.PI / 2));
@@ -201,6 +223,7 @@ function drawSpaceContent(
         game,
         zone,
         space.visibility,
+        config.view_mode,
         black_text,
         zone_r,
         rotation,
@@ -215,13 +238,28 @@ function drawSpaceContent(
 }
 
 /** Returns the fill color for the input space */
-export function getSpaceFill(space: RisqSpace, check_hover = true): ColorRGB {
+export function getSpaceFill(
+  space: RisqSpace,
+  view_mode: RisqViewMode = RisqViewMode.ALL,
+  owner_color: ColorRGB | undefined = undefined,
+  check_hover = true
+): ColorRGB {
   const color = new ColorRGB(0, 0, 0, 0);
   if (!!space) {
     color.setColor(90, 90, 90, 0.8);
     if (space.visibility > 0) {
-      // TODO: background color of space based on ownership and terrain
-      color.setColor(10, 120, 10, 0.8);
+      if (view_mode === RisqViewMode.OWNERSHIP) {
+        if (owner_color) {
+          color.setColor(owner_color.getR(), owner_color.getG(), owner_color.getB(), 0.85);
+        } else {
+          color.setColor(90, 90, 90, 0.85);
+        }
+      } else {
+        color.setColor(10, 120, 10, 0.8);
+        if (view_mode !== RisqViewMode.RESOURCE && !!owner_color) {
+          color.addColor(owner_color.getR(), owner_color.getG(), owner_color.getB(), 0.25);
+        }
+      }
       if (check_hover && space.hovered) {
         if (space.clicked) {
           color.addColor(210, 210, 210, 0.4);

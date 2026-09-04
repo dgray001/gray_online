@@ -18,7 +18,6 @@ type RisqBuilding struct {
 	population_support uint16
 	turn_stamina       int
 	current_stamina    int
-	max_stamina        int
 	cs                 RisqCombatStats
 	order_queue        RisqOrderQueue
 	production_queue   map[uint64]*RisqBuildingProductionItem
@@ -51,7 +50,6 @@ func createRisqBuilding(internal_id uint64, building_id uint32, player_id int) *
 		population_support: 0,
 		turn_stamina:       10,
 		current_stamina:    0,
-		max_stamina:        15,
 		cs:                 createRisqCombatStats(),
 		order_queue:        createRisqOrderQueue(),
 		production_queue:   make(map[uint64]*RisqBuildingProductionItem),
@@ -65,6 +63,7 @@ func createRisqBuilding(internal_id uint64, building_id uint32, player_id int) *
 	building.display_name = config.display_name
 	building.cs.setMaxHealth(config.max_health)
 	building.population_support = config.population_support
+	building.turn_stamina = config.turn_stamina
 	return &building
 }
 
@@ -85,14 +84,24 @@ func (b *RisqBuilding) internalId() uint64 {
 	return b.internal_id
 }
 
+func (b *RisqBuilding) delete(risq *GameRisq) {
+	delete(risq.players[b.player_id].buildings, b.internal_id)
+	if b.zone != nil && b.zone.space != nil {
+		b.zone.space.removeBuilding(b)
+	}
+	b.deleted = true
+}
+
 func (b *RisqBuilding) refreshStamina() {
 	b.current_stamina += b.turn_stamina
-	if b.current_stamina > b.max_stamina {
-		b.current_stamina = b.max_stamina
+	max_stamina := maxStaminaFor(b.turn_stamina)
+	if b.current_stamina > max_stamina {
+		b.current_stamina = max_stamina
 	}
 }
 
 type RisqBuildingProductionItem struct {
+	kind              ProducibleKind
 	item_id           uint32
 	stamina_remaining int
 	cost              RisqResourceCost
@@ -100,12 +109,22 @@ type RisqBuildingProductionItem struct {
 
 func (item *RisqBuildingProductionItem) toFrontend() gin.H {
 	return gin.H{
+		"kind":              item.kind,
 		"item_id":           item.item_id,
 		"stamina_remaining": item.stamina_remaining,
 	}
 }
 
 func (b *RisqBuilding) orderReceivable(o *RisqOrder, risq *GameRisq) bool {
+	if o.order_type == OrderType_BuildingDelete {
+		return true
+	}
+	if o.order_type == OrderType_BuildingResearch {
+		tech_id := uint32(o.target_id)
+		if _, exists := risq.players[b.player_id].researched_techs[tech_id]; exists {
+			return false
+		}
+	}
 	return !b.underConstruction()
 }
 
@@ -122,23 +141,40 @@ func (b *RisqBuilding) receiveOrder(o *RisqOrder, risq *GameRisq) {
 		}
 		resources.spend(cost)
 		b.production_queue[o.internal_id] = &RisqBuildingProductionItem{
+			kind:              ProducibleKind_UNIT,
 			item_id:           unit_id,
 			stamina_remaining: stamina_required,
 			cost:              cost,
 		}
+	case OrderType_BuildingResearch:
+		tech_id := uint32(o.target_id)
+		tech := techConfigs[tech_id]
+		resources := risq.players[b.player_id].resources
+		if !resources.canAfford(tech.cost) {
+			// TODO: surface this failure in the per-player turn report
+			return
+		}
+		resources.spend(tech.cost)
+		b.production_queue[o.internal_id] = &RisqBuildingProductionItem{
+			kind:              ProducibleKind_TECH,
+			item_id:           tech_id,
+			stamina_remaining: tech.research_stamina,
+			cost:              tech.cost,
+		}
+		risq.players[b.player_id].researched_techs[tech_id] = false
 	}
 }
 
 func (b *RisqBuilding) cancelOrder(o *RisqOrder, risq *GameRisq) {
 	b.order_queue.cancelOrder(o.internal_id)
-	switch o.order_type {
-	case OrderType_BuildingCreate:
-		item, ok := b.production_queue[o.internal_id]
-		if !ok {
-			return
-		}
-		risq.players[b.player_id].resources.refund(item.cost)
-		delete(b.production_queue, o.internal_id)
+	item, ok := b.production_queue[o.internal_id]
+	if !ok {
+		return
+	}
+	risq.players[b.player_id].resources.refund(item.cost)
+	delete(b.production_queue, o.internal_id)
+	if item.kind == ProducibleKind_TECH {
+		delete(risq.players[b.player_id].researched_techs, item.item_id)
 	}
 }
 
@@ -146,6 +182,14 @@ func (b *RisqBuilding) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 	switch o.order_type {
 	case OrderType_BuildingCreate:
 		if item, ok := b.production_queue[o.internal_id]; ok && item.stamina_remaining > 0 {
+			return OrderStatus_InProgress
+		}
+	case OrderType_BuildingResearch:
+		if item, ok := b.production_queue[o.internal_id]; ok && item.stamina_remaining > 0 {
+			return OrderStatus_InProgress
+		}
+	case OrderType_BuildingDelete:
+		if !b.deleted {
 			return OrderStatus_InProgress
 		}
 	}
@@ -160,12 +204,16 @@ func (b *RisqBuilding) tickIntent(risq *GameRisq) bool {
 	}
 	switch order.order_type {
 	case OrderType_BuildingCreate:
-		b.intent.setCreate(order.internal_id, b.production_queue[order.internal_id])
+		b.intent.setProduction(order.internal_id, b.production_queue[order.internal_id])
+	case OrderType_BuildingResearch:
+		b.intent.setProduction(order.internal_id, b.production_queue[order.internal_id])
+	case OrderType_BuildingDelete:
+		b.intent.setDelete()
 	default:
 		fmt.Fprintln(os.Stderr, "Order type not implemented:", order.order_type)
 	}
 	b.intent.resolveCost(b.current_stamina)
-	if _, creating := b.intent.detail.(*CreateIntent); creating && risq.players[b.player_id].populationCapped() {
+	if production, ok := b.intent.detail.(*ProductionIntent); ok && production.item.kind == ProducibleKind_UNIT && risq.players[b.player_id].populationCapped() {
 		b.intent.resetIntent()
 	}
 	return b.intent.hasIntent()
@@ -175,18 +223,26 @@ func (b *RisqBuilding) tickExecute(risq *GameRisq) {
 	if !b.intent.hasIntent() {
 		return
 	}
-	if detail, ok := b.intent.detail.(*CreateIntent); ok {
-		if risq.players[b.player_id].populationCapped() {
+	if detail, ok := b.intent.detail.(*ProductionIntent); ok {
+		item := detail.item
+		if item.kind == ProducibleKind_UNIT && risq.players[b.player_id].populationCapped() {
 			return
 		}
-		item := detail.item
 		item.stamina_remaining -= b.intent.intent_cost
 		if item.stamina_remaining <= 0 {
-			unit := createRisqUnit(risq.nextUnitInternalId(), item.item_id, b.player_id)
-			b.zone.space.setUnit(&b.zone.coordinate, unit)
-			risq.players[b.player_id].units[unit.internal_id] = unit
+			switch item.kind {
+			case ProducibleKind_UNIT:
+				unit := createRisqUnit(risq.nextUnitInternalId(), item.item_id, risq.players[b.player_id])
+				b.zone.space.setUnit(&b.zone.coordinate, unit)
+				risq.players[b.player_id].units[unit.internal_id] = unit
+			case ProducibleKind_TECH:
+				risq.completeResearch(risq.players[b.player_id], item.item_id)
+			}
 			delete(b.production_queue, detail.order_internal_id)
 		}
+	}
+	if _, ok := b.intent.detail.(*DeleteIntent); ok {
+		b.delete(risq)
 	}
 	b.current_stamina -= b.intent.intent_cost
 }
@@ -212,7 +268,7 @@ func (b *RisqBuilding) toFrontend(viewer_player_id int) gin.H {
 		"construction_stamina_total": b.construction_stamina_total,
 		"turn_stamina":               b.turn_stamina,
 		"current_stamina":            b.current_stamina,
-		"max_stamina":                b.max_stamina,
+		"max_stamina":                maxStaminaFor(b.turn_stamina),
 	}
 	building["produces"] = buildingProducesToFrontend(b.building_id)
 	if b.zone != nil {

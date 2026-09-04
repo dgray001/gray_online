@@ -91,8 +91,8 @@ func (r *GameRisq) startNextTurn() {
 	for o := range r.allOrderables() {
 		o.refreshStamina()
 	}
+	r.recalculateOwnership()
 	r.recalculateVision()
-	// TODO: credit each player gold passively based on land ownership, once ownership is implemented
 	r.giving_orders = true
 	for _, player := range r.players {
 		player.player.AddUpdate(&game.UpdateMessage{Kind: "start-turn", Content: gin.H{

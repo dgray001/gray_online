@@ -1,0 +1,12 @@
+[
+  {
+    "tech_id": 1,
+    "display_name": "Loom",
+    "description": "Villagers become more resilient and can work slightly longer without rest.",
+    "cost": { "food": 50 },
+    "research_stamina": 30,
+    "affects_unit_id": 1,
+    "bonus_max_health": 5,
+    "bonus_turn_stamina": 2
+  }
+]

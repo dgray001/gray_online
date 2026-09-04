@@ -7,7 +7,11 @@
     "population_support": 5,
     "cost": { "wood": 250, "stone": 100 },
     "build_stamina": 50,
-    "produces": [{ "row": 1, "col": 0, "kind": "unit", "id": 1 }]
+    "turn_stamina": 10,
+    "produces": [
+      { "row": 1, "col": 0, "kind": "unit", "id": 1 },
+      { "row": 2, "col": 0, "kind": "tech", "id": 1 }
+    ]
   },
   {
     "building_id": 2,

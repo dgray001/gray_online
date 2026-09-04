@@ -16,21 +16,19 @@ type RisqUnit struct {
 	zone            *RisqZone
 	turn_stamina    int
 	current_stamina int
-	max_stamina     int
 	cs              RisqCombatStats
 	order_queue     RisqOrderQueue
 	intent          *RisqIntent
 }
 
-func createRisqUnit(internal_id uint64, unit_id uint32, player_id int) *RisqUnit {
+func createRisqUnit(internal_id uint64, unit_id uint32, player *RisqPlayer) *RisqUnit {
 	unit := RisqUnit{
 		deleted:         false,
 		internal_id:     internal_id,
-		player_id:       player_id,
+		player_id:       player.player.Player_id,
 		unit_id:         unit_id,
 		turn_stamina:    10,
 		current_stamina: 0,
-		max_stamina:     15,
 		cs:              createRisqCombatStats(),
 		order_queue:     createRisqOrderQueue(),
 		intent:          createRisqIntent(),
@@ -45,6 +43,17 @@ func createRisqUnit(internal_id uint64, unit_id uint32, player_id int) *RisqUnit
 	unit.cs.attack_type = config.attack_type
 	unit.cs.attack_blunt = config.attack_blunt
 	unit.cs.attack_piercing = config.attack_piercing
+	unit.turn_stamina = config.turn_stamina
+	for tech_id, researched := range player.researched_techs {
+		if !researched {
+			continue
+		}
+		tech, ok := techConfigs[tech_id]
+		if !ok || tech.affects_unit_id != unit_id {
+			continue
+		}
+		applyTechBonus(&unit, tech)
+	}
 	return &unit
 }
 
@@ -74,10 +83,19 @@ func (u *RisqUnit) internalId() uint64 {
 	return u.internal_id
 }
 
+func (u *RisqUnit) delete(risq *GameRisq) {
+	delete(risq.players[u.player_id].units, u.internal_id)
+	if u.zone != nil && u.zone.space != nil {
+		u.zone.space.removeUnit(u)
+	}
+	u.deleted = true
+}
+
 func (u *RisqUnit) refreshStamina() {
 	u.current_stamina += u.turn_stamina
-	if u.current_stamina > u.max_stamina {
-		u.current_stamina = u.max_stamina
+	max_stamina := maxStaminaFor(u.turn_stamina)
+	if u.current_stamina > max_stamina {
+		u.current_stamina = max_stamina
 	}
 }
 
@@ -149,6 +167,10 @@ func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 		if zone.building.underConstruction() {
 			return OrderStatus_InProgress
 		}
+	case OrderType_UnitDelete:
+		if !u.deleted {
+			return OrderStatus_InProgress
+		}
 	}
 	return OrderStatus_Executed
 }
@@ -180,6 +202,8 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 		} else {
 			u.intent.setBuild(zone.building, building_id, zone)
 		}
+	case OrderType_UnitDelete:
+		u.intent.setDelete()
 	default:
 		fmt.Fprintln(os.Stderr, "Order type not implemented:", order.order_type)
 	}
@@ -236,6 +260,8 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 		building.stamina_remaining -= u.intent.intent_cost
 		new_ratio := constructionHealthRatio(building.stamina_remaining, building.construction_stamina_total)
 		building.cs.addHealth(int(float64(building.cs.max_health)*(new_ratio-old_ratio) + 0.5))
+	case *DeleteIntent:
+		u.delete(risq)
 	}
 	u.current_stamina -= u.intent.intent_cost
 	fmt.Println("Unit in zone", u.zone.coordinate.ToString(), "of space", u.zone.space.coordinate.ToString())
@@ -249,7 +275,7 @@ func (u *RisqUnit) toFrontend(viewer_player_id int) gin.H {
 		"display_name":    u.display_name,
 		"turn_stamina":    u.turn_stamina,
 		"current_stamina": u.current_stamina,
-		"max_stamina":     u.max_stamina,
+		"max_stamina":     maxStaminaFor(u.turn_stamina),
 		"combat_stats":    u.cs.toFrontend(),
 	}
 	builds := make([]gin.H, 0)

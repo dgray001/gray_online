@@ -80,6 +80,12 @@ func (p Producible) toFrontend() gin.H {
 		entry["stamina_cost"] = stamina_cost
 		entry["display_name"] = buildingConfigs[p.id].display_name
 		entry["description"] = buildingConfigs[p.id].description
+	case ProducibleKind_TECH:
+		tech := techConfigs[p.id]
+		entry["cost"] = tech.cost.toFrontend()
+		entry["stamina_cost"] = tech.research_stamina
+		entry["display_name"] = tech.display_name
+		entry["description"] = tech.description
 	}
 	return entry
 }

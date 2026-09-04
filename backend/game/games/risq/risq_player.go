@@ -18,6 +18,7 @@ type RisqPlayer struct {
 	past_orders          []*RisqOrder
 	orders_submitted     bool
 	planned_foundations  map[uint]*RisqPlannedFoundation
+	researched_techs     map[uint32]bool
 }
 
 // Private commitment to build at a zone before any stamina makes it a real, objective RisqBuilding
@@ -39,6 +40,7 @@ func createRisqPlayer(player *game.Player, max_population_limit uint16, color st
 		past_orders:          make([]*RisqOrder, 0),
 		orders_submitted:     false,
 		planned_foundations:  make(map[uint]*RisqPlannedFoundation),
+		researched_techs:     make(map[uint32]bool),
 	}
 }
 
@@ -165,5 +167,6 @@ func (p *RisqPlayer) toFrontend(viewer_player_id int) gin.H {
 		}
 	}
 	player["active_orders"] = active_orders
+	player["researched_techs"] = p.researched_techs
 	return player
 }

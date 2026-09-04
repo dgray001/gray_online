@@ -66,6 +66,7 @@ const (
 	// Orders to control buildings
 	OrderType_BuildingCreate
 	OrderType_BuildingResearch
+	OrderType_BuildingDelete
 	// Player-level orders with no subjects
 	OrderType_CancelOrder
 	OrderType_CancelFoundation
@@ -134,7 +135,7 @@ func (ot OrderType) isUnitOrder() bool {
 }
 
 func (ot OrderType) isBuildingOrder() bool {
-	return ot >= OrderType_BuildingCreate && ot <= OrderType_BuildingResearch
+	return ot >= OrderType_BuildingCreate && ot <= OrderType_BuildingDelete
 }
 
 func (ot OrderType) isPlayerOrder() bool {
@@ -233,6 +234,26 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend) error {
 				return fmt.Errorf("Building id %d cannot produce unit id %d", building.building_id, unit_id)
 			}
 		}
+	case OrderType_BuildingResearch:
+		tech_id := uint32(order.Target_id)
+		if _, ok := techConfigs[tech_id]; !ok {
+			return fmt.Errorf("Invalid or unsupported tech id: %d", tech_id)
+		}
+		if researched, exists := r.players[order.Player_id].researched_techs[tech_id]; exists {
+			if researched {
+				return fmt.Errorf("Tech id %d is already researched", tech_id)
+			}
+			return fmt.Errorf("Tech id %d is already being researched", tech_id)
+		}
+		for _, subject_id := range order.Subjects {
+			building := r.players[order.Player_id].buildings[subject_id]
+			if building.underConstruction() {
+				return fmt.Errorf("Building id %d is still under construction", subject_id)
+			}
+			if !buildingConfigs[building.building_id].canResearch(tech_id) {
+				return fmt.Errorf("Building id %d cannot research tech id %d", building.building_id, tech_id)
+			}
+		}
 	case OrderType_UnitBuild:
 		building_id, space, zone := invertBuildKey(uint(order.Target_id), r)
 		if space == nil || zone == nil {
@@ -250,6 +271,8 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend) error {
 				return fmt.Errorf("Only villagers can build")
 			}
 		}
+	case OrderType_UnitDelete:
+	case OrderType_BuildingDelete:
 	case OrderType_CancelOrder:
 		found := false
 		for _, active_order := range r.players[order.Player_id].active_orders {

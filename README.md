@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.7t: Backend recalculates vision each turn
+v0.7u: Space ownership
 
 ## Dev Use
 

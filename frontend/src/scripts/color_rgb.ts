@@ -27,6 +27,22 @@ export class ColorRGB {
     return `rgb(${this.data.r}, ${this.data.g}, ${this.data.b}, ${this.data.a})`;
   }
 
+  getR(): number {
+    return this.data.r;
+  }
+
+  getG(): number {
+    return this.data.g;
+  }
+
+  getB(): number {
+    return this.data.b;
+  }
+
+  getAlpha(): number {
+    return this.data.a;
+  }
+
   addColor(r: number, g: number, b: number, a?: number): ColorRGB {
     const input = this.cleanInput(r, g, b, a);
     const new_a = this.data.a + input.a;

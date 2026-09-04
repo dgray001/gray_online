@@ -9,6 +9,7 @@ import type { RisqSpace, RisqUnit, RisqZone, UnitByTypeData } from './risq_data'
 import { RisqVisibilityLevel } from './risq_data';
 import { resourceImage } from './risq_resources';
 import { COMBO_UNIT_ICON_SIZE, comboUnitIconKey, drawComboUnitIcon, unitImage } from './risq_unit';
+import { RisqViewMode } from './risq_view_mode';
 
 /** Multiplier for inner zone relative to whole radius */
 export const INNER_ZONE_MULTIPLIER = 0.4;
@@ -34,9 +35,40 @@ export function organizeZoneUnits(units: Map<number, RisqUnit>): Map<number, Map
   return units_by_type;
 }
 
+/** Groups the input units by player, keeping only economic (unit_id < 11) or military types */
+export function unitsByPlayerFiltered(units: Map<number, RisqUnit>, economic: boolean): Map<number, UnitByTypeData[]> {
+  const units_by_type = organizeZoneUnits(units);
+  const result = new Map<number, UnitByTypeData[]>();
+  for (const [player_id, player_units] of units_by_type.entries()) {
+    const filtered = [...player_units.values()].filter((u) => u.unit_id < 11 === economic);
+    if (filtered.length > 0) {
+      result.set(player_id, filtered);
+    }
+  }
+  return result;
+}
+
 /** Gets zone fill for the input zone */
-export function getZoneFill(zone: RisqZone, check_hover = true, alpha_multiplier = 1): ColorRGB {
-  const color = new ColorRGB(10, 120, 10, 0.8);
+export function getZoneFill(
+  zone: RisqZone,
+  view_mode: RisqViewMode = RisqViewMode.ALL,
+  owner_color: ColorRGB | undefined = undefined,
+  check_hover = true,
+  alpha_multiplier = 1
+): ColorRGB {
+  const color = new ColorRGB(0, 0, 0, 0);
+  if (view_mode === RisqViewMode.OWNERSHIP) {
+    if (owner_color) {
+      color.setColor(owner_color.getR(), owner_color.getG(), owner_color.getB(), 0.85);
+    } else {
+      color.setColor(90, 90, 90, 0.85);
+    }
+  } else {
+    color.setColor(10, 120, 10, 0.8);
+    if (view_mode !== RisqViewMode.RESOURCE && !!owner_color) {
+      color.addColor(owner_color.getR(), owner_color.getG(), owner_color.getB(), alpha_multiplier * 0.06);
+    }
+  }
   if (check_hover && zone.hovered && !zone.hovered_data.some((p) => p.hovered)) {
     if (zone.clicked) {
       color.addColor(210, 210, 210, alpha_multiplier * 0.06);
@@ -53,6 +85,7 @@ export function drawRisqZone(
   game: DwgRisq,
   zone: RisqZone,
   visibility: number,
+  view_mode: RisqViewMode,
   black_text: boolean,
   r: number,
   rotation: number,
@@ -111,7 +144,7 @@ export function drawRisqZone(
     ctx.rotate(-rotation);
     switch (i) {
       case 0: // resources / building
-        if (!!zone.resource) {
+        if (!!zone.resource && view_mode !== RisqViewMode.MILITARY && view_mode !== RisqViewMode.OWNERSHIP) {
           ctx.drawImage(game.getIcon(resourceImage(zone.resource)), -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
         } else {
           ctx.drawImage(
@@ -125,6 +158,14 @@ export function drawRisqZone(
         break;
       case 1: // economic units
       case 2: // military units
+        if (i === 1 && (view_mode === RisqViewMode.MILITARY || view_mode === RisqViewMode.OWNERSHIP)) {
+          ctx.strokeStyle = secondary_color;
+          break;
+        }
+        if (i === 2 && (view_mode === RisqViewMode.RESOURCE || view_mode === RisqViewMode.OWNERSHIP)) {
+          ctx.strokeStyle = secondary_color;
+          break;
+        }
         if (visibility === RisqVisibilityLevel.POOR) {
           if (i === 2 && !!zone.unit_count) {
             const villager_img = game.getIcon('icons/villager64');

@@ -34,11 +34,13 @@ import {
   drawComboUnitIcon,
   unitImage,
 } from '../../risq_unit';
-import { INNER_ZONE_MULTIPLIER, getZoneFill, resolveHoveredZones } from '../../risq_zone';
+import { INNER_ZONE_MULTIPLIER, getZoneFill, resolveHoveredZones, unitsByPlayerFiltered } from '../../risq_zone';
+import { RisqViewMode } from '../../risq_view_mode';
 import type { RisqActionButton } from './action_button/action_button';
 import { RisqBuildButton } from './action_button/build_button';
 import { RisqCreateButton } from './action_button/create_button';
 import { RisqDeleteButton } from './action_button/delete_button';
+import { RisqResearchButton } from './action_button/research_button';
 import { RisqLeftPanelButton } from './left_panel_close';
 import type { LeftPanelConfig, LeftPanelData, PlayerUnitsDrawData, UnitsDrawData } from './left_panel_data';
 import { HoverableObjectType, LeftPanelDataType } from './left_panel_data';
@@ -63,6 +65,8 @@ export class RisqLeftPanel implements CanvasComponent {
   private hovered_zone?: RisqZone; // relevant when drawing space and zone
   private hovered_object?: RisqUnit | RisqBuilding | RisqResource;
   private hovered_object_type: HoverableObjectType = HoverableObjectType.NONE;
+  private space_villager_row: RectHoverData = { ps: { x: 0, y: 0 }, pe: { x: 0, y: 0 } };
+  private space_military_row: RectHoverData = { ps: { x: 0, y: 0 }, pe: { x: 0, y: 0 } };
 
   constructor(risq: DwgRisq, config: LeftPanelConfig) {
     this.risq = risq;
@@ -128,19 +132,32 @@ export class RisqLeftPanel implements CanvasComponent {
           break;
         }
         for (const producible of this.data.data.produces) {
-          if (producible.kind !== RisqProducibleKind.UNIT) {
-            continue;
+          if (producible.kind === RisqProducibleKind.UNIT) {
+            this.buttons.push(
+              new RisqCreateButton(
+                {
+                  building_id: this.data.data.internal_id,
+                  producible,
+                },
+                this.risq,
+                0
+              )
+            );
+          } else if (producible.kind === RisqProducibleKind.TECH) {
+            if (this.risq.getPlayer()?.researched_techs.get(producible.id)) {
+              continue;
+            }
+            this.buttons.push(
+              new RisqResearchButton(
+                {
+                  building_id: this.data.data.internal_id,
+                  producible,
+                },
+                this.risq,
+                0
+              )
+            );
           }
-          this.buttons.push(
-            new RisqCreateButton(
-              {
-                building_id: this.data.data.internal_id,
-                producible,
-              },
-              this.risq,
-              0
-            )
-          );
         }
         break;
       default:
@@ -605,15 +622,27 @@ export class RisqLeftPanel implements CanvasComponent {
         (1 / rows) * (0.6 * this.h() - separator_distance - (rows - 1) * separator_distance)
       );
       ctx.fillStyle = 'black';
-      const draw_row = (img: CanvasImageSource, text: string) => {
-        ctx.drawImage(img, this.xi() + 0.1 * this.w(), yi, image_size, image_size);
+      const draw_row = (img: CanvasImageSource, text: string, hover_data?: RectHoverData) => {
+        const ps = { x: this.xi() + 0.1 * this.w(), y: yi };
+        const pe = { x: ps.x + 0.9 * this.w(), y: ps.y + image_size };
+        if (hover_data?.hovered) {
+          ctx.strokeStyle = 'transparent';
+          ctx.fillStyle = hover_data.clicked ? 'rgba(250, 250, 250, 0.4)' : 'rgba(210, 210, 210, 0.25)';
+          drawRect(ctx, ps, pe.x - ps.x, pe.y - ps.y);
+          ctx.fillStyle = 'black';
+        }
+        ctx.drawImage(img, ps.x, yi, image_size, image_size);
         drawText(ctx, `: ${text}`, {
-          p: { x: this.xi() + 0.1 * this.w() + image_size + 2, y: yi },
+          p: { x: ps.x + image_size + 2, y: yi },
           w: 0.9 * this.w() - image_size - 2,
           fill_style: 'black',
           align: 'left',
           font: `bold ${image_size}px serif`,
         });
+        if (!!hover_data) {
+          hover_data.ps = ps;
+          hover_data.pe = pe;
+        }
         yi += image_size + separator_distance;
       };
       draw_row(this.risq.getIcon('icons/building64'), space.buildings?.size.toString() ?? '??');
@@ -629,8 +658,16 @@ export class RisqLeftPanel implements CanvasComponent {
           draw_row(combo_icon, space.unit_count?.toString() ?? '??');
         }
       } else {
-        draw_row(this.risq.getIcon('icons/villager64'), space.num_villager_units?.toString() ?? '??');
-        draw_row(this.risq.getIcon('icons/unit64'), space.num_military_units?.toString() ?? '??');
+        draw_row(
+          this.risq.getIcon('icons/villager64'),
+          space.num_villager_units?.toString() ?? '??',
+          this.space_villager_row
+        );
+        draw_row(
+          this.risq.getIcon('icons/unit64'),
+          space.num_military_units?.toString() ?? '??',
+          this.space_military_row
+        );
       }
       const resources = [...(space.total_resources?.entries() ?? [])]
         .filter((r) => r[1] > 0)
@@ -675,7 +712,7 @@ export class RisqLeftPanel implements CanvasComponent {
     const hexagon_height = Math.min(this.w(), this.yi() + 0.4 * this.h() - yi - separator_distance);
     ctx.strokeStyle = 'rgba(250, 250, 250, 1)';
     ctx.lineWidth = 2;
-    ctx.fillStyle = getSpaceFill(space, false).getString();
+    ctx.fillStyle = getSpaceFill(space, RisqViewMode.ALL, undefined, false).getString();
     const r = 0.5 * hexagon_height;
     this.hexagon_r = r;
     const inner_r = INNER_ZONE_MULTIPLIER * r;
@@ -686,7 +723,7 @@ export class RisqLeftPanel implements CanvasComponent {
       ctx.strokeStyle = 'rgba(250, 250, 250, 0.7)';
       ctx.lineWidth = 0.5;
       let zone = space.zones[1][1];
-      const zone_fill = getZoneFill(zone, true, 4);
+      const zone_fill = getZoneFill(zone, RisqViewMode.ALL, undefined, true, 4);
       if (curr_zone.x === 1 && curr_zone.y === 1) {
         zone_fill.addColor(255, 255, 255, 0.2);
       } else {
@@ -718,7 +755,7 @@ export class RisqLeftPanel implements CanvasComponent {
             break;
         }
         zone = space.zones[direction_vector.x][direction_vector.y];
-        const zone_fill = getZoneFill(zone, true, 4);
+        const zone_fill = getZoneFill(zone, RisqViewMode.ALL, undefined, true, 4);
         if (curr_zone.x === direction_vector.x && curr_zone.y === direction_vector.y) {
           zone_fill.addColor(255, 255, 255, 0.2);
         } else {
@@ -1013,6 +1050,15 @@ export class RisqLeftPanel implements CanvasComponent {
     }
   }
 
+  private rowHovered(m: Point2D, hover_data: RectHoverData): boolean {
+    if (m.x < hover_data.ps.x || m.y < hover_data.ps.y || m.x > hover_data.pe.x || m.y > hover_data.pe.y) {
+      hover_data.hovered = false;
+      return false;
+    }
+    hover_data.hovered = true;
+    return true;
+  }
+
   scroll(_dy: number, _mode: number): boolean {
     return false;
   }
@@ -1044,6 +1090,10 @@ export class RisqLeftPanel implements CanvasComponent {
           this.hovered_zone.clicked = false;
         }
         this.hovered_zone = new_hovered_zone;
+        if (this.data.data_type === LeftPanelDataType.SPACE) {
+          this.rowHovered(m, this.space_villager_row);
+          this.rowHovered(m, this.space_military_row);
+        }
         if (this.data.data_type === LeftPanelDataType.ZONE) {
           const zone = this.data.data.zone;
           const unit_ids: number[] = [...zone.economic_units, ...zone.military_units];
@@ -1091,6 +1141,10 @@ export class RisqLeftPanel implements CanvasComponent {
           this.hovered_zone.clicked = true;
         } else if (!!this.hovered_object) {
           this.hovered_object.hover_data.clicked = true;
+        } else if (this.space_villager_row.hovered) {
+          this.space_villager_row.clicked = true;
+        } else if (this.space_military_row.hovered) {
+          this.space_military_row.clicked = true;
         }
         break;
       case LeftPanelDataType.UNITS:
@@ -1169,6 +1223,28 @@ export class RisqLeftPanel implements CanvasComponent {
               default:
                 break;
             }
+          }
+        } else if (this.space_villager_row.clicked) {
+          this.space_villager_row.clicked = false;
+          if (this.space_villager_row.hovered && this.data.data_type === LeftPanelDataType.SPACE) {
+            this.openPanel(
+              {
+                data_type: LeftPanelDataType.UNITS,
+                data: { space, units_by_player: unitsByPlayerFiltered(space.units ?? new Map(), true) },
+              },
+              this.visibility ?? 0
+            );
+          }
+        } else if (this.space_military_row.clicked) {
+          this.space_military_row.clicked = false;
+          if (this.space_military_row.hovered && this.data.data_type === LeftPanelDataType.SPACE) {
+            this.openPanel(
+              {
+                data_type: LeftPanelDataType.UNITS,
+                data: { space, units_by_player: unitsByPlayerFiltered(space.units ?? new Map(), false) },
+              },
+              this.visibility ?? 0
+            );
           }
         }
         break;
