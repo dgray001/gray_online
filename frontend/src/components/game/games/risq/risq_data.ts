@@ -72,11 +72,13 @@ export function risqTerrainName(terrain: RisqTerrainType): string {
   return capitalize(RisqTerrainType[terrain].replace('_', ' ').toLowerCase());
 }
 
-export const NO_VISIBILITY = 0;
-export const TERRAIN_VISIBILITY = 1;
-export const SPACE_VISIBILITY = 2;
-export const ZONE_VISIBILITY = 3;
-export const FULL_VISIBILITY = 4;
+export enum RisqVisibilityLevel {
+  UNEXPLORED = 0,
+  FOG = 1,
+  POOR = 2,
+  GOOD = 3,
+  SPY = 4,
+}
 
 export type SPACE_ZONES_TYPE = [[RisqZone, RisqZone], [RisqZone, RisqZone, RisqZone], [RisqZone, RisqZone]];
 
@@ -90,6 +92,7 @@ export declare interface RisqSpace {
   resources?: Map<number, RisqResource>;
   buildings?: Map<number, RisqBuilding>;
   units?: Map<number, RisqUnit>;
+  unit_count?: number;
   ownership: number;
   // purely frontend fields
   center: Point2D;
@@ -125,6 +128,7 @@ export declare interface RisqZone {
   resource?: RisqResource;
   building?: RisqBuilding;
   units: Map<number, RisqUnit>; // <internal_ids, unit>
+  unit_count?: number;
   ownership: number;
   // purely frontend fields
   hovered: boolean;
@@ -219,6 +223,7 @@ export declare interface RisqCost {
   food: number;
   wood: number;
   stone: number;
+  gold: number;
 }
 
 /** Returns whether the player can currently afford the input cost, accounting for already-queued spending */
@@ -230,7 +235,8 @@ export function canAffordCost(player: RisqPlayer, cost: RisqCost): boolean {
   return (
     net(RisqResourceType.FOOD) >= cost.food &&
     net(RisqResourceType.WOOD) >= cost.wood &&
-    net(RisqResourceType.STONE) >= cost.stone
+    net(RisqResourceType.STONE) >= cost.stone &&
+    net(RisqResourceType.GOLD) >= cost.gold
   );
 }
 
@@ -327,6 +333,7 @@ export declare interface RisqPlayerResourcesFromServer {
   wood: number;
   food: number;
   stone: number;
+  gold: number;
 }
 
 /** Data describing a risq player */
@@ -334,7 +341,7 @@ export declare interface RisqPlayerFromServer {
   player: GamePlayer;
   buildings: RisqBuildingFromServer[];
   units: RisqUnitFromServer[];
-  resources: RisqPlayerResourcesFromServer;
+  resources?: RisqPlayerResourcesFromServer;
   population_limit: number;
   score: number;
   color: string;
@@ -352,6 +359,7 @@ export declare interface RisqSpaceFromServer {
   resources?: RisqResourceFromServer[];
   buildings?: RisqBuildingFromServer[];
   units?: RisqUnitFromServer[];
+  unit_count?: number;
   ownership: number;
 }
 
@@ -361,7 +369,8 @@ export declare interface RisqZoneFromServer {
   coordinate_key: number;
   building?: RisqBuildingFromServer;
   resource?: RisqResourceFromServer;
-  units: RisqUnitFromServer[];
+  units?: RisqUnitFromServer[];
+  unit_count?: number;
   ownership: number;
 }
 
@@ -508,6 +517,15 @@ export function serverToRisqResources(
         workers: 0,
       },
     ],
+    [
+      RisqResourceType.GOLD,
+      {
+        amount: server_resources.gold,
+        spending: 0,
+        gaining: 0,
+        workers: 0,
+      },
+    ],
   ]);
 }
 
@@ -520,7 +538,7 @@ export function serverToRisqPlayer(server_player: RisqPlayerFromServer): RisqPla
   }
   const player: RisqPlayer = {
     player: server_player.player,
-    resources: serverToRisqResources(server_player.resources),
+    resources: server_player.resources ? serverToRisqResources(server_player.resources) : new Map(),
     buildings: new Map(
       server_player.buildings
         .map((b) => serverToRisqBuilding(b))
@@ -551,6 +569,7 @@ export function serverToRisqSpace(server_space: RisqSpaceFromServer): RisqSpace 
     visibility: server_space.visibility,
     num_military_units: 0,
     num_villager_units: 0,
+    unit_count: server_space.unit_count,
     ownership: server_space.ownership,
     // purely frontend fields
     center: { x: 0, y: 0 },
@@ -608,7 +627,7 @@ export function serverToRisqSpace(server_space: RisqSpaceFromServer): RisqSpace 
 /** Converts a server response to a frontend risq zone */
 export function serverToRisqZone(server_zone: RisqZoneFromServer): RisqZone {
   const units = new Map(
-    server_zone.units
+    (server_zone.units ?? [])
       .map((u) => serverToRisqUnit(u))
       .filter((u) => !!u)
       .map((u) => [u.internal_id, u])
@@ -639,6 +658,7 @@ export function serverToRisqZone(server_zone: RisqZoneFromServer): RisqZone {
     resource: serverToRisqResource(server_zone.resource),
     building: serverToRisqBuilding(server_zone.building),
     units,
+    unit_count: server_zone.unit_count,
     // purely frontend fields
     hovered: false,
     clicked: false,

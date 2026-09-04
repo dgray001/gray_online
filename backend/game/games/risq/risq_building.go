@@ -69,13 +69,8 @@ func createRisqBuilding(internal_id uint64, building_id uint32, player_id int) *
 }
 
 func (b *RisqBuilding) vision() *RisqVision {
-	return &RisqVision{
-		space:         4,
-		edge_adjacent: 4,
-		adjacent:      3,
-		edge_opposite: 2,
-		secondary:     0,
-	}
+	v := buildingConfigs[b.building_id].vision
+	return &v
 }
 
 func (b *RisqBuilding) score() uint {
@@ -196,7 +191,15 @@ func (b *RisqBuilding) tickExecute(risq *GameRisq) {
 	b.current_stamina -= b.intent.intent_cost
 }
 
-func (b *RisqBuilding) toFrontend() gin.H {
+func buildingProducesToFrontend(building_id uint32) []gin.H {
+	produces := make([]gin.H, 0)
+	for _, p := range buildingConfigs[building_id].produces {
+		produces = append(produces, p.toFrontend())
+	}
+	return produces
+}
+
+func (b *RisqBuilding) toFrontend(viewer_player_id int) gin.H {
 	building := gin.H{
 		"internal_id":                b.internal_id,
 		"player_id":                  b.player_id,
@@ -211,11 +214,7 @@ func (b *RisqBuilding) toFrontend() gin.H {
 		"current_stamina":            b.current_stamina,
 		"max_stamina":                b.max_stamina,
 	}
-	produces := make([]gin.H, 0)
-	for _, p := range buildingConfigs[b.building_id].produces {
-		produces = append(produces, p.toFrontend())
-	}
-	building["produces"] = produces
+	building["produces"] = buildingProducesToFrontend(b.building_id)
 	if b.zone != nil {
 		building["zone_coordinate"] = b.zone.coordinate.ToFrontend()
 		if b.zone.space != nil {
@@ -224,15 +223,17 @@ func (b *RisqBuilding) toFrontend() gin.H {
 	}
 	active_orders := make([]gin.H, 0)
 	production_queue := make([]gin.H, 0)
-	for _, order := range b.order_queue.active_orders {
-		if order == nil || order.executed {
-			continue
-		}
-		active_orders = append(active_orders, order.toFrontend())
-		if item, ok := b.production_queue[order.internal_id]; ok {
-			item_frontend := item.toFrontend()
-			item_frontend["order_internal_id"] = order.internal_id
-			production_queue = append(production_queue, item_frontend)
+	if showOrdersTo(b.player_id, b.zone, viewer_player_id) {
+		for _, order := range b.order_queue.active_orders {
+			if order == nil || order.executed {
+				continue
+			}
+			active_orders = append(active_orders, order.toFrontend())
+			if item, ok := b.production_queue[order.internal_id]; ok {
+				item_frontend := item.toFrontend()
+				item_frontend["order_internal_id"] = order.internal_id
+				production_queue = append(production_queue, item_frontend)
+			}
 		}
 	}
 	building["active_orders"] = active_orders

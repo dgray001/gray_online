@@ -17,17 +17,23 @@ import type {
   UnitByTypeData,
 } from '../../risq_data';
 import {
-  FULL_VISIBILITY,
   RisqAttackType,
   RisqOrderType,
   RisqProducibleKind,
-  ZONE_VISIBILITY,
+  RisqVisibilityLevel,
   risqTerrainName,
 } from '../../risq_data';
 import { coordinateToIndex } from '../../risq_coordinates';
 import { resourceImage, resourceTypeImage } from '../../risq_resources';
 import { getSpaceFill } from '../../risq_space';
-import { UNIT_HEALTHBAR_COLOR_BACKGROUND, UNIT_HEALTHBAR_COLOR_HEALTH, unitImage } from '../../risq_unit';
+import {
+  COMBO_UNIT_ICON_SIZE,
+  UNIT_HEALTHBAR_COLOR_BACKGROUND,
+  UNIT_HEALTHBAR_COLOR_HEALTH,
+  comboUnitIconKey,
+  drawComboUnitIcon,
+  unitImage,
+} from '../../risq_unit';
 import { INNER_ZONE_MULTIPLIER, getZoneFill, resolveHoveredZones } from '../../risq_zone';
 import type { RisqActionButton } from './action_button/action_button';
 import { RisqBuildButton } from './action_button/build_button';
@@ -202,7 +208,13 @@ export class RisqLeftPanel implements CanvasComponent {
   // Returns whether the current selection in the left panel is orderable
   isOrderable(): boolean {
     const player_id = this.risq.getPlayer()?.player.player_id ?? -1;
-    if (!this.showing || !this.data || !this.visibility || this.visibility < FULL_VISIBILITY || player_id < 0) {
+    if (
+      !this.showing ||
+      !this.data ||
+      !this.visibility ||
+      this.visibility < RisqVisibilityLevel.GOOD ||
+      player_id < 0
+    ) {
       return false;
     }
     switch (this.data.data_type) {
@@ -280,15 +292,12 @@ export class RisqLeftPanel implements CanvasComponent {
   }
 
   openPanel(open_data: LeftPanelData, visibility: number) {
-    if (visibility < 1) {
+    if (visibility < RisqVisibilityLevel.FOG) {
       return; // not explored
     }
     if (
-      visibility < ZONE_VISIBILITY &&
+      visibility < RisqVisibilityLevel.GOOD &&
       [
-        LeftPanelDataType.RESOURCE,
-        LeftPanelDataType.BUILDING,
-        LeftPanelDataType.ZONE,
         LeftPanelDataType.MULTIPLE_PLAYERS_UNITS,
         LeftPanelDataType.UNITS,
         LeftPanelDataType.UNITS_BY_TYPE,
@@ -297,7 +306,7 @@ export class RisqLeftPanel implements CanvasComponent {
         LeftPanelDataType.UNIT,
       ].includes(open_data.data_type)
     ) {
-      return; // zones not visible
+      return; // units not individually identifiable yet
     }
     this.hovered_object = undefined;
     this.hovered_object_type = HoverableObjectType.NONE;
@@ -532,7 +541,7 @@ export class RisqLeftPanel implements CanvasComponent {
     yi += 8;
     ctx.beginPath();
     ctx.drawImage(this.risq.getIcon(resourceTypeImage(resource)), this.xi() + 0.1 * this.w(), yi, 40, 40);
-    const resources_left = (this.visibility ?? 0) < 4 ? '??' : resource.resources_left.toFixed(1);
+    const resources_left = resource.resources_left.toFixed(1);
     drawText(ctx, resources_left, {
       p: { x: this.xi() + 0.1 * this.w() + 48, y: yi + 20 },
       w: 0.9 * this.w() - 48,
@@ -589,14 +598,14 @@ export class RisqLeftPanel implements CanvasComponent {
     yi += this.drawSpaceHexagon(ctx, space, separator_distance, yi);
     this.drawSeparator(ctx, yi);
     yi += separator_distance;
-    if ((this.visibility ?? 0) >= 2) {
+    if ((this.visibility ?? 0) >= RisqVisibilityLevel.POOR) {
       const rows = 4;
       const image_size = Math.min(
         36,
         (1 / rows) * (0.6 * this.h() - separator_distance - (rows - 1) * separator_distance)
       );
       ctx.fillStyle = 'black';
-      const draw_row = (img: HTMLImageElement, text: string) => {
+      const draw_row = (img: CanvasImageSource, text: string) => {
         ctx.drawImage(img, this.xi() + 0.1 * this.w(), yi, image_size, image_size);
         drawText(ctx, `: ${text}`, {
           p: { x: this.xi() + 0.1 * this.w() + image_size + 2, y: yi },
@@ -608,8 +617,21 @@ export class RisqLeftPanel implements CanvasComponent {
         yi += image_size + separator_distance;
       };
       draw_row(this.risq.getIcon('icons/building64'), space.buildings?.size.toString() ?? '??');
-      draw_row(this.risq.getIcon('icons/villager64'), space.num_villager_units?.toString() ?? '??');
-      draw_row(this.risq.getIcon('icons/unit64'), space.num_military_units?.toString() ?? '??');
+      if (this.visibility === RisqVisibilityLevel.POOR) {
+        const villager_img = this.risq.getIcon('icons/villager64');
+        const unit_img = this.risq.getIcon('icons/unit64');
+        const combo_icon = this.risq
+          .getImageCache()
+          .getImage(comboUnitIconKey(false), COMBO_UNIT_ICON_SIZE, [villager_img, unit_img], (combo_ctx) =>
+            drawComboUnitIcon(combo_ctx, villager_img, unit_img)
+          );
+        if (combo_icon) {
+          draw_row(combo_icon, space.unit_count?.toString() ?? '??');
+        }
+      } else {
+        draw_row(this.risq.getIcon('icons/villager64'), space.num_villager_units?.toString() ?? '??');
+        draw_row(this.risq.getIcon('icons/unit64'), space.num_military_units?.toString() ?? '??');
+      }
       const resources = [...(space.total_resources?.entries() ?? [])]
         .filter((r) => r[1] > 0)
         .map((r) => r[0])
@@ -660,7 +682,7 @@ export class RisqLeftPanel implements CanvasComponent {
     const c = { x: this.xc(), y: yi + r };
     this.hexagon_c = c;
     drawHexagon(ctx, c, r);
-    if ((this.visibility ?? 0) >= ZONE_VISIBILITY && space.zones) {
+    if ((this.visibility ?? 0) >= RisqVisibilityLevel.FOG && space.zones) {
       ctx.strokeStyle = 'rgba(250, 250, 250, 0.7)';
       ctx.lineWidth = 0.5;
       let zone = space.zones[1][1];
@@ -735,13 +757,14 @@ export class RisqLeftPanel implements CanvasComponent {
     const units_per_row = Math.floor((0.8 * this.w() - 1.6 * max_image_size) / (u_img_mult * max_image_size));
     const economic_rows = Math.ceil(data.zone.economic_units.length / units_per_row);
     const military_rows = Math.ceil(data.zone.military_units.length / units_per_row);
-    const rows = 1 + economic_rows + military_rows;
+    const unit_count_rows = this.visibility === RisqVisibilityLevel.POOR && !!data.zone.unit_count ? 1 : 0;
+    const rows = 1 + unit_count_rows + economic_rows + military_rows;
     const image_size = Math.min(
       max_image_size,
       (1 / rows) * (0.6 * this.h() - separator_distance - (rows - 1) * separator_distance)
     );
     ctx.fillStyle = 'black';
-    const draw_row = (img: HTMLImageElement, text: string, hover_data?: RectHoverData) => {
+    const draw_row = (img: CanvasImageSource, text: string, hover_data?: RectHoverData) => {
       const ps = { x: this.xi() + 0.1 * this.w(), y: yi };
       const pe = { x: ps.x + 0.8 * this.w(), y: ps.y + image_size };
       if (hover_data?.hovered) {
@@ -782,6 +805,19 @@ export class RisqLeftPanel implements CanvasComponent {
     }
     yi += image_size + separator_distance;
     const xi = this.xi() + 0.1 * this.w() + 0.6 * image_size;
+    if (unit_count_rows > 0) {
+      const villager_img = this.risq.getIcon('icons/villager64');
+      const unit_img = this.risq.getIcon('icons/unit64');
+      const combo_icon = this.risq
+        .getImageCache()
+        .getImage(comboUnitIconKey(false), COMBO_UNIT_ICON_SIZE, [villager_img, unit_img], (combo_ctx) =>
+          drawComboUnitIcon(combo_ctx, villager_img, unit_img)
+        );
+      if (combo_icon) {
+        draw_row(combo_icon, data.zone.unit_count!.toString());
+      }
+      yi += image_size + separator_distance;
+    }
     if (data.zone.economic_units.length > 0) {
       draw_row(this.risq.getIcon('icons/villager64'), '');
       let i = 1;

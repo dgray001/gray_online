@@ -58,13 +58,8 @@ func unitProductionCost(unit_id uint32) (RisqResourceCost, int) {
 }
 
 func (u *RisqUnit) vision() *RisqVision {
-	return &RisqVision{
-		space:         4,
-		edge_adjacent: 4,
-		adjacent:      3,
-		edge_opposite: 2,
-		secondary:     0,
-	}
+	v := unitConfigs[u.unit_id].vision
+	return &v
 }
 
 func (u *RisqUnit) score() uint {
@@ -246,7 +241,7 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 	fmt.Println("Unit in zone", u.zone.coordinate.ToString(), "of space", u.zone.space.coordinate.ToString())
 }
 
-func (u *RisqUnit) toFrontend() gin.H {
+func (u *RisqUnit) toFrontend(viewer_player_id int) gin.H {
 	unit := gin.H{
 		"internal_id":     u.internal_id,
 		"player_id":       u.player_id,
@@ -269,9 +264,11 @@ func (u *RisqUnit) toFrontend() gin.H {
 		}
 	}
 	active_orders := make([]gin.H, 0)
-	for _, order := range u.order_queue.active_orders {
-		if order != nil && !order.executed {
-			active_orders = append(active_orders, order.toFrontend())
+	if showOrdersTo(u.player_id, u.zone, viewer_player_id) {
+		for _, order := range u.order_queue.active_orders {
+			if order != nil && !order.executed {
+				active_orders = append(active_orders, order.toFrontend())
+			}
 		}
 	}
 	unit["active_orders"] = active_orders

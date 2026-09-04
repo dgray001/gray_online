@@ -1,14 +1,12 @@
 package risq
 
 import (
-	"errors"
 	"fmt"
 	"iter"
 	"os"
 
 	"github.com/dgray001/gray_online/game"
 	"github.com/dgray001/gray_online/game/game_utils"
-	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
 )
 
@@ -36,203 +34,6 @@ type GameRisq struct {
 	turn_number               uint16
 	// True if waiting for players to give orders and false if resolving active orders
 	giving_orders bool
-}
-
-func CreateGame(g *game.GameBase) (*GameRisq, error) {
-	risq := GameRisq{
-		game:                      g,
-		players:                   []*RisqPlayer{},
-		population_limit:          100,
-		next_resource_internal_id: 0,
-		next_building_internal_id: 0,
-		next_unit_internal_id:     0,
-		next_order_internal_id:    0,
-		turn_number:               0,
-	}
-	var player_id = 0
-	for _, player := range g.Players {
-		player.Player_id = player_id
-		color := ""
-		switch player_id {
-		case 0:
-			color = "90, 90, 250"
-		case 1:
-			color = "250, 90, 90"
-		case 2:
-			color = "90, 250, 90"
-		case 3:
-			color = "190, 190, 50"
-		case 4:
-			color = "190, 50, 190"
-		case 5:
-			color = "50, 190, 190"
-		default:
-			fmt.Fprintln(os.Stderr, "Unknown player id for color", player_id)
-		}
-		risq.players = append(risq.players, createRisqPlayer(player, risq.population_limit, color))
-		player_id++
-	}
-	if len(risq.players) < 2 {
-		//return nil, errors.New("Need at least two players to play risq")
-	} else if len(risq.players) > 6 {
-		return nil, errors.New("can have max of six players playing risq")
-	}
-	starting_distance := 0
-	switch len(risq.players) {
-	case 6:
-		risq.board_size = 6
-		starting_distance = util.RandomInt(4, 5)
-	case 5:
-		risq.board_size = 6
-		starting_distance = util.RandomInt(4, 5)
-	case 4:
-		risq.board_size = 5
-		starting_distance = util.RandomInt(3, 4)
-	case 3:
-		risq.board_size = 4
-		starting_distance = util.RandomInt(3, 3)
-	default:
-		risq.board_size = 4
-		starting_distance = util.RandomInt(4, 4)
-	}
-	risq.spaces = make([][]*RisqSpace, 2*int(risq.board_size)+1)
-	for j := range risq.spaces {
-		r := j - int(risq.board_size)
-		l := 2*int(risq.board_size) + 1 - util.AbsInt(r)
-		risq.spaces[j] = make([]*RisqSpace, l)
-		for i := range risq.spaces[j] {
-			q := max(-int(risq.board_size), -(int(risq.board_size)+r)) + i
-			risq.spaces[j][i] = createRisqSpace(q, r, TerrainType(TerrainType_FLATLANDS))
-		}
-	}
-	for _, row := range risq.spaces {
-		for _, space := range row {
-			for _, v := range game_utils.AxialDirectionVectors() {
-				adjacent := risq.getSpace(space.coordinate.Add(&v))
-				if adjacent != nil {
-					space.setAdjacentSpace(adjacent, &v)
-				}
-			}
-		}
-	}
-	starting_location := util.RandomInt(0, 5)
-	axial_unit_vectors := game_utils.AxialDirectionVectors()
-	starting_space0 := risq.getSpace(axial_unit_vectors[starting_location].Multiply(starting_distance))
-	if starting_space0 == nil {
-		return nil, errors.New("starting space 0 is nil")
-	}
-	risq.createPlayerStart(risq.players[0], starting_space0)
-	switch len(risq.players) {
-	case 1:
-	case 2:
-		starting_space1 := risq.getSpace(axial_unit_vectors[(starting_location+3)%6].Multiply(starting_distance))
-		if starting_space1 == nil {
-			return nil, errors.New("starting space 1 is nil")
-		}
-		risq.createPlayerStart(risq.players[1], starting_space1)
-	case 3:
-		starting_space1 := risq.getSpace(axial_unit_vectors[(starting_location+2)%6].Multiply(starting_distance))
-		if starting_space1 == nil {
-			return nil, errors.New("starting space 1 is nil")
-		}
-		risq.createPlayerStart(risq.players[1], starting_space1)
-		starting_space2 := risq.getSpace(axial_unit_vectors[(starting_location+4)%6].Multiply(starting_distance))
-		if starting_space2 == nil {
-			return nil, errors.New("starting space 2 is nil")
-		}
-		risq.createPlayerStart(risq.players[2], starting_space2)
-	case 4:
-		starting_space1 := risq.getSpace(axial_unit_vectors[(starting_location+1)%6].Multiply(starting_distance))
-		if starting_space1 == nil {
-			return nil, errors.New("starting space 1 is nil")
-		}
-		risq.createPlayerStart(risq.players[1], starting_space1)
-		starting_space2 := risq.getSpace(axial_unit_vectors[(starting_location+3)%6].Multiply(starting_distance))
-		if starting_space2 == nil {
-			return nil, errors.New("starting space 2 is nil")
-		}
-		risq.createPlayerStart(risq.players[2], starting_space2)
-		starting_space3 := risq.getSpace(axial_unit_vectors[(starting_location+4)%6].Multiply(starting_distance))
-		if starting_space3 == nil {
-			return nil, errors.New("starting space 3 is nil")
-		}
-		risq.createPlayerStart(risq.players[3], starting_space3)
-	case 5:
-		starting_space1 := risq.getSpace(axial_unit_vectors[(starting_location+1)%6].Multiply(starting_distance))
-		if starting_space1 == nil {
-			return nil, errors.New("starting space 1 is nil")
-		}
-		risq.createPlayerStart(risq.players[1], starting_space1)
-		starting_space2 := risq.getSpace(axial_unit_vectors[(starting_location+2)%6].Multiply(starting_distance))
-		if starting_space2 == nil {
-			return nil, errors.New("starting space 2 is nil")
-		}
-		risq.createPlayerStart(risq.players[2], starting_space2)
-		starting_space3 := risq.getSpace(axial_unit_vectors[(starting_location+3)%6].Multiply(starting_distance))
-		if starting_space3 == nil {
-			return nil, errors.New("starting space 3 is nil")
-		}
-		risq.createPlayerStart(risq.players[3], starting_space3)
-		starting_space4 := risq.getSpace(axial_unit_vectors[(starting_location+4)%6].Multiply(starting_distance))
-		if starting_space4 == nil {
-			return nil, errors.New("starting space 4 is nil")
-		}
-		risq.createPlayerStart(risq.players[4], starting_space4)
-	case 6:
-		starting_space1 := risq.getSpace(axial_unit_vectors[(starting_location+1)%6].Multiply(starting_distance))
-		if starting_space1 == nil {
-			return nil, errors.New("starting space 1 is nil")
-		}
-		risq.createPlayerStart(risq.players[1], starting_space1)
-		starting_space2 := risq.getSpace(axial_unit_vectors[(starting_location+2)%6].Multiply(starting_distance))
-		if starting_space2 == nil {
-			return nil, errors.New("starting space 2 is nil")
-		}
-		risq.createPlayerStart(risq.players[2], starting_space2)
-		starting_space3 := risq.getSpace(axial_unit_vectors[(starting_location+3)%6].Multiply(starting_distance))
-		if starting_space3 == nil {
-			return nil, errors.New("starting space 3 is nil")
-		}
-		risq.createPlayerStart(risq.players[3], starting_space3)
-		starting_space4 := risq.getSpace(axial_unit_vectors[(starting_location+4)%6].Multiply(starting_distance))
-		if starting_space4 == nil {
-			return nil, errors.New("starting space 4 is nil")
-		}
-		risq.createPlayerStart(risq.players[4], starting_space4)
-		starting_space5 := risq.getSpace(axial_unit_vectors[(starting_location+5)%6].Multiply(starting_distance))
-		if starting_space5 == nil {
-			return nil, errors.New("starting space 5 is nil")
-		}
-		risq.createPlayerStart(risq.players[5], starting_space4)
-	default:
-		return nil, errors.New("unknown number of players")
-	}
-	return &risq, nil
-}
-
-func (r *GameRisq) createPlayerStart(p *RisqPlayer, s *RisqSpace) {
-	village_center := createRisqBuilding(r.nextBuildingInternalId(), 1, p.player.Player_id)
-	s.setBuilding(&game_utils.Coordinate2D{X: 0, Y: 0}, village_center)
-	p.buildings[village_center.internal_id] = village_center
-	for range 3 {
-		villager := createRisqUnit(r.nextUnitInternalId(), 1, p.player.Player_id)
-		s.setUnit(&game_utils.Coordinate2D{X: 0, Y: 0}, villager)
-		p.units[villager.internal_id] = villager
-	}
-	infantry := createRisqUnit(r.nextUnitInternalId(), 11, p.player.Player_id)
-	s.setUnit(&game_utils.Coordinate2D{X: 0, Y: 0}, infantry)
-	p.units[infantry.internal_id] = infantry
-	zones := s.getZonesAsRandomArray(false)
-	forage := createRisqResource(r.nextResourceInternalId(), 1)
-	s.setResource(&zones[0].coordinate, forage)
-	deer := createRisqResource(r.nextResourceInternalId(), 2)
-	s.setResource(&zones[1].coordinate, deer)
-	tree1 := createRisqResource(r.nextResourceInternalId(), 11)
-	s.setResource(&zones[2].coordinate, tree1)
-	tree2 := createRisqResource(r.nextResourceInternalId(), 14)
-	s.setResource(&zones[3].coordinate, tree2)
-	stone := createRisqResource(r.nextResourceInternalId(), 21)
-	s.setResource(&zones[4].coordinate, stone)
 }
 
 func (r *GameRisq) nextResourceInternalId() uint64 {
@@ -290,7 +91,8 @@ func (r *GameRisq) startNextTurn() {
 	for o := range r.allOrderables() {
 		o.refreshStamina()
 	}
-	// TODO: calculate vision from scratch
+	r.recalculateVision()
+	// TODO: credit each player gold passively based on land ownership, once ownership is implemented
 	r.giving_orders = true
 	for _, player := range r.players {
 		player.player.AddUpdate(&game.UpdateMessage{Kind: "start-turn", Content: gin.H{
@@ -475,6 +277,46 @@ func (r *GameRisq) resolveActiveOrders() {
 	r.startNextTurn()
 }
 
+func (r *GameRisq) recalculateVision() {
+	for _, row := range r.spaces {
+		for _, space := range row {
+			for player_id, v := range space.visibility {
+				if v > VisibilityFog {
+					space.visibility[player_id] = VisibilityFog
+				}
+			}
+		}
+	}
+	for _, player := range r.players {
+		for _, unit := range player.units {
+			if unit.deleted || unit.zone == nil {
+				continue
+			}
+			unit.zone.space.addVision(unit.vision(), unit.zone, unit.player_id)
+		}
+		for _, building := range player.buildings {
+			if building.deleted || building.zone == nil {
+				continue
+			}
+			building.zone.space.addVision(building.vision(), building.zone, building.player_id)
+		}
+	}
+	r.refreshVisionCaches()
+}
+
+func (r *GameRisq) refreshVisionCaches() {
+	for _, row := range r.spaces {
+		for _, space := range row {
+			for _, player := range r.players {
+				player_id := player.player.Player_id
+				if space.getVisibility(player_id) >= VisibilityPoor {
+					space.refreshCache(player_id)
+				}
+			}
+		}
+	}
+}
+
 func (r *GameRisq) allOrderables() iter.Seq[Orderable] {
 	return func(yield func(Orderable) bool) {
 		for _, player := range r.players {
@@ -504,13 +346,18 @@ func (r *GameRisq) ToFrontend(client_id uint64, is_viewer bool) gin.H {
 		game["game_base"] = r.game.ToFrontend(client_id, is_viewer)
 	}
 	player_id := -1
-	players := []gin.H{}
-	for id, player := range r.players {
-		if player != nil {
-			if !is_viewer && client_id == player.player.GetClientId() {
+	if !is_viewer {
+		for id, player := range r.players {
+			if player != nil && player.player.GetClientId() == client_id {
 				player_id = id
+				break
 			}
-			players = append(players, player.toFrontend())
+		}
+	}
+	players := []gin.H{}
+	for _, player := range r.players {
+		if player != nil {
+			players = append(players, player.toFrontend(player_id))
 		}
 	}
 	game["players"] = players

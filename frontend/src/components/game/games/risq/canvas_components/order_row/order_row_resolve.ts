@@ -66,7 +66,7 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
   };
 
   const resource_cost = (
-    cost: { food: number; wood: number; stone: number } | undefined,
+    cost: { food: number; wood: number; stone: number; gold: number } | undefined,
     multiplier = 1
   ): CostChip[] => {
     if (!cost) {
@@ -81,6 +81,9 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
     }
     if (cost.stone) {
       chips.push({ icon: resourceTypeImage(RisqResourceType.STONE), amount: cost.stone * multiplier });
+    }
+    if (cost.gold) {
+      chips.push({ icon: resourceTypeImage(RisqResourceType.GOLD), amount: cost.gold * multiplier });
     }
     return chips;
   };

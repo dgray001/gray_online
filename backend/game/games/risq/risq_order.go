@@ -9,7 +9,7 @@ import (
 )
 
 type Orderable interface {
-	toFrontend() gin.H
+	toFrontend(viewer_player_id int) gin.H
 	isDeleted() bool
 	internalId() uint64
 	refreshStamina()

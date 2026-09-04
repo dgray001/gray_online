@@ -16,9 +16,9 @@ type BuildingConfig struct {
 	max_health         int
 	population_support uint16
 	produces           []Producible
-	// zero-value cost/build_stamina means this building type can't be constructed by a unit
-	cost          RisqResourceCost
-	build_stamina int
+	cost               RisqResourceCost
+	build_stamina      int
+	vision             RisqVision
 }
 
 func (c BuildingConfig) canProduce(unit_id uint32) bool {
@@ -49,6 +49,7 @@ type buildingConfigJSON struct {
 	Produces          []producibleJSON `json:"produces"`
 	Cost              costJSON         `json:"cost"`
 	BuildStamina      int              `json:"build_stamina"`
+	Vision            *risqVisionJSON  `json:"vision"`
 }
 
 var buildingConfigs map[uint32]BuildingConfig
@@ -74,8 +75,10 @@ func init() {
 				food:  e.Cost.Food,
 				wood:  e.Cost.Wood,
 				stone: e.Cost.Stone,
+				gold:  e.Cost.Gold,
 			},
 			build_stamina: e.BuildStamina,
+			vision:        resolveVision(e.Vision),
 		}
 	}
 }

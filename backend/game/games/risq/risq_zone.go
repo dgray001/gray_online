@@ -16,6 +16,21 @@ type RisqZone struct {
 	adjacent_space *RisqSpace
 	adjacent_zones []*RisqZone
 	ownership      int
+	// index into game_utils.AxialDirectionVectors() this outer zone faces, or -1 for the center zone
+	direction int
+}
+
+// Returns the direction index this zone coordinate faces, or -1 for the center zone (0, 0)
+func zoneDirection(i int, j int) int {
+	if i == 0 && j == 0 {
+		return -1
+	}
+	for idx, d := range game_utils.AxialDirectionVectors() {
+		if d.X == i && d.Y == j {
+			return idx
+		}
+	}
+	return -1
 }
 
 func createRisqZone(i int, j int, space *RisqSpace) *RisqZone {
@@ -29,6 +44,7 @@ func createRisqZone(i int, j int, space *RisqSpace) *RisqZone {
 		adjacent_space: nil,
 		adjacent_zones: make([]*RisqZone, 0, 6),
 		ownership:      -1,
+		direction:      zoneDirection(i, j),
 	}
 	return &zone
 }
@@ -52,27 +68,40 @@ func invertBuildKey(k uint, r *GameRisq) (uint32, *RisqSpace, *RisqZone) {
 }
 
 func (z *RisqZone) isCenter() bool {
-	return z.coordinate.X == 0 && z.coordinate.Y == 0
+	return z.direction < 0
 }
 
-func (z *RisqZone) toFrontend() gin.H {
+func (z *RisqZone) toFrontend(player_id int, v VisibilityLevel, space *RisqSpace) gin.H {
 	zone := gin.H{
 		"coordinate":     z.coordinate.ToFrontend(),
 		"coordinate_key": z.coordinate_key,
 		"ownership":      z.ownership,
 	}
+	if v == VisibilityFog {
+		if cache, ok := space.resource_cache[player_id][z.coordinate_key]; ok {
+			zone["resource"] = cache.toFrontend()
+		}
+		if cache, ok := space.building_cache[player_id][z.coordinate_key]; ok {
+			zone["building"] = cache.toFrontend()
+		}
+		return zone
+	}
 	if z.resource != nil && z.resource.resources_left > 0 {
 		zone["resource"] = z.resource.toFrontend()
 	}
 	if z.building != nil && !z.building.deleted {
-		zone["building"] = z.building.toFrontend()
+		zone["building"] = z.building.toFrontend(player_id)
 	}
-	units := make([]gin.H, 0)
-	for _, unit := range z.units {
-		if unit != nil && !unit.deleted {
-			units = append(units, unit.toFrontend())
+	if v >= VisibilityGood {
+		units := make([]gin.H, 0)
+		for _, unit := range z.units {
+			if unit != nil && !unit.deleted {
+				units = append(units, unit.toFrontend(player_id))
+			}
 		}
+		zone["units"] = units
+	} else {
+		zone["unit_count"] = nonDeletedUnitCount(z.units)
 	}
-	zone["units"] = units
 	return zone
 }

@@ -31,7 +31,8 @@ function costStats(data: RisqTooltipData): [string, string][] {
     entries.push(
       [resourceTypeImage(RisqResourceType.FOOD), data.cost.food],
       [resourceTypeImage(RisqResourceType.WOOD), data.cost.wood],
-      [resourceTypeImage(RisqResourceType.STONE), data.cost.stone]
+      [resourceTypeImage(RisqResourceType.STONE), data.cost.stone],
+      [resourceTypeImage(RisqResourceType.GOLD), data.cost.gold]
     );
   }
   if (data.stamina_cost !== undefined) {

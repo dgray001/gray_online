@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.7s: Orders are human-readable on frontend
+v0.7t: Backend recalculates vision each turn
 
 ## Dev Use
 

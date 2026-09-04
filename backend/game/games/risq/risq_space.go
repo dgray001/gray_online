@@ -33,6 +33,9 @@ type RisqSpace struct {
 	visibility      map[int]uint8
 	adjacent_spaces map[uint]*RisqSpace
 	ownership       int
+	// player_id -> zone coordinate_key -> last-known snapshot while that player's vision is at fog level
+	building_cache map[int]map[uint]RisqBuildingCache
+	resource_cache map[int]map[uint]RisqResourceCache
 }
 
 func createRisqSpace(q int, r int, terrain TerrainType) *RisqSpace {
@@ -46,6 +49,8 @@ func createRisqSpace(q int, r int, terrain TerrainType) *RisqSpace {
 		visibility:      make(map[int]uint8),
 		adjacent_spaces: make(map[uint]*RisqSpace),
 		ownership:       -1,
+		building_cache:  make(map[int]map[uint]RisqBuildingCache),
+		resource_cache:  make(map[int]map[uint]RisqResourceCache),
 	}
 	space.zones = make([][]*RisqZone, 3)
 	for j := range space.zones {
@@ -172,25 +177,32 @@ func (s *RisqSpace) removeUnit(unit *RisqUnit) {
 
 func (s *RisqSpace) addVision(v *RisqVision, z *RisqZone, player_id int) {
 	checked := make(map[uint]bool)
-	if s.getVisibility(player_id) < v.space {
-		s.visibility[player_id] = v.space
+	elevate := func(space *RisqSpace, level uint8) {
+		if space == nil {
+			return
+		}
+		if space.getVisibility(player_id) < level {
+			space.visibility[player_id] = level
+		}
+		checked[space.coordinate_key] = true
 	}
-	checked[s.coordinate_key] = true
+	elevate(s, v.space)
 	if z.isCenter() {
 		for _, adj := range s.adjacent_spaces {
-			if adj.getVisibility(player_id) < v.adjacent {
-				adj.visibility[player_id] = v.adjacent
-			}
-			checked[adj.coordinate_key] = true
+			elevate(adj, v.adjacent)
 		}
 	} else {
-		// TODO: implement with edge_adjacent and edge_opposite
-		for _, adj := range s.adjacent_spaces {
-			if adj.getVisibility(player_id) < v.adjacent {
-				adj.visibility[player_id] = v.adjacent
-			}
-			checked[adj.coordinate_key] = true
+		dirs := game_utils.AxialDirectionVectors()
+		spaceInDirection := func(offset int) *RisqSpace {
+			d := dirs[(z.direction+offset)%6]
+			return s.adjacent_spaces[util.Pair(d.X, d.Y)]
 		}
+		elevate(spaceInDirection(0), v.edge_adjacent)
+		elevate(spaceInDirection(1), v.adjacent)
+		elevate(spaceInDirection(5), v.adjacent)
+		elevate(spaceInDirection(2), v.edge_opposite)
+		elevate(spaceInDirection(3), v.edge_opposite)
+		elevate(spaceInDirection(4), v.edge_opposite)
 	}
 	for _, adj := range s.adjacent_spaces {
 		for _, sec := range adj.adjacent_spaces {
@@ -233,6 +245,24 @@ func (s *RisqSpace) getVisibility(player_id int) uint8 {
 	}
 }
 
+// snapshots this space's current buildings/resources for player_id, replacing its prior cache entirely
+func (s *RisqSpace) refreshCache(player_id int) {
+	buildings := make(map[uint]RisqBuildingCache)
+	resources := make(map[uint]RisqResourceCache)
+	for _, row := range s.zones {
+		for _, zone := range row {
+			if zone.building != nil && !zone.building.deleted {
+				buildings[zone.coordinate_key] = cacheRisqBuilding(zone.building)
+			}
+			if zone.resource != nil && zone.resource.resources_left > 0 {
+				resources[zone.coordinate_key] = cacheRisqResource(zone.resource)
+			}
+		}
+	}
+	s.building_cache[player_id] = buildings
+	s.resource_cache[player_id] = resources
+}
+
 func (s *RisqSpace) toFrontend(player_id int, _is_viewer bool) gin.H {
 	space := gin.H{
 		"terrain":        s.terrain,
@@ -242,19 +272,31 @@ func (s *RisqSpace) toFrontend(player_id int, _is_viewer bool) gin.H {
 	}
 	v := s.getVisibility(player_id)
 	space["visibility"] = v
-	if v < 1 {
-		return space // unexplored
+	if v == VisibilityUnexplored {
+		return space
 	}
-	// TODO: visibility effects what you can see
 	zones := [][]gin.H{}
 	for _, row := range s.zones {
 		zones_row := []gin.H{}
 		for _, zone := range row {
-			zones_row = append(zones_row, zone.toFrontend())
+			zones_row = append(zones_row, zone.toFrontend(player_id, v, s))
 		}
 		zones = append(zones, zones_row)
 	}
 	space["zones"] = zones
+	if v == VisibilityFog {
+		resources := make([]gin.H, 0)
+		for _, cache := range s.resource_cache[player_id] {
+			resources = append(resources, cache.toFrontend())
+		}
+		space["resources"] = resources
+		buildings := make([]gin.H, 0)
+		for _, cache := range s.building_cache[player_id] {
+			buildings = append(buildings, cache.toFrontend())
+		}
+		space["buildings"] = buildings
+		return space
+	}
 	resources := make([]gin.H, 0)
 	for _, resource := range s.resources {
 		if resource != nil && resource.resources_left > 0 {
@@ -265,16 +307,20 @@ func (s *RisqSpace) toFrontend(player_id int, _is_viewer bool) gin.H {
 	buildings := make([]gin.H, 0)
 	for _, building := range s.buildings {
 		if building != nil && !building.deleted {
-			buildings = append(buildings, building.toFrontend())
+			buildings = append(buildings, building.toFrontend(player_id))
 		}
 	}
 	space["buildings"] = buildings
-	units := make([]gin.H, 0)
-	for _, unit := range s.units {
-		if unit != nil && !unit.deleted {
-			units = append(units, unit.toFrontend())
+	if v >= VisibilityGood {
+		units := make([]gin.H, 0)
+		for _, unit := range s.units {
+			if unit != nil && !unit.deleted {
+				units = append(units, unit.toFrontend(player_id))
+			}
 		}
+		space["units"] = units
+	} else {
+		space["unit_count"] = nonDeletedUnitCount(s.units)
 	}
-	space["units"] = units
 	return space
 }

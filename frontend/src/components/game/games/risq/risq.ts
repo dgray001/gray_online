@@ -18,7 +18,7 @@ import { ColorRGB } from '../../../../scripts/color_rgb';
 
 import html from './risq.html';
 import type { GameRisq, GameRisqFromServer, RisqPlayer, RisqSpace, RisqZone } from './risq_data';
-import { RisqOrderType, RisqResourceType, ZONE_VISIBILITY, serverToGameRisq } from './risq_data';
+import { RisqOrderType, RisqResourceType, RisqVisibilityLevel, serverToGameRisq } from './risq_data';
 import { cantorPair, coordinateToIndex, getSpace } from './risq_coordinates';
 import type { StartTurnData, SubmittedOrdersData, UnsubmittedOrdersData } from './risq_updates';
 import {
@@ -170,6 +170,10 @@ export class DwgRisq extends DwgElement {
     return this.game;
   }
 
+  getImageCache(): RisqImageCache {
+    return this.image_cache;
+  }
+
   getPlayer(): RisqPlayer | undefined {
     if (!this.game) {
       return undefined;
@@ -308,7 +312,7 @@ export class DwgRisq extends DwgElement {
     const inset_offset = 0.25; // this determines how the inset rect (for summaries) is constructed
     const inset_w = 2 * this.hex_a * (1 - inset_offset);
     const inset_h = this.hex_r * (1 + inset_offset);
-    const inset_row = inset_h / 3 - 4;
+    const inset_row = inset_h / 4 - 4;
     this.draw_detail = this.getDrawDetail(transform.scale);
     const draw_config: DrawRisqSpaceConfig = {
       hex_r: this.hex_r,
@@ -541,6 +545,7 @@ export class DwgRisq extends DwgElement {
         player.resources.get(RisqResourceType.FOOD)!.spending += cost.food;
         player.resources.get(RisqResourceType.WOOD)!.spending += cost.wood;
         player.resources.get(RisqResourceType.STONE)!.spending += cost.stone;
+        player.resources.get(RisqResourceType.GOLD)!.spending += cost.gold;
       }
     }
   }
@@ -564,7 +569,7 @@ export class DwgRisq extends DwgElement {
     return (
       this.drawDetail() === DrawRisqSpaceDetail.ZONE_DETAILS &&
       !!this.hovered_space &&
-      this.hovered_space.visibility >= ZONE_VISIBILITY &&
+      this.hovered_space.visibility >= RisqVisibilityLevel.FOG &&
       !!this.hovered_zone
     );
   }

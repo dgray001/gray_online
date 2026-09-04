@@ -22,6 +22,7 @@ const (
 	RisqResourceCategory_FOOD RisqResourceCategory = iota
 	RisqResourceCategory_WOOD
 	RisqResourceCategory_STONE
+	RisqResourceCategory_GOLD
 )
 
 func (r *RisqResource) category() RisqResourceCategory {

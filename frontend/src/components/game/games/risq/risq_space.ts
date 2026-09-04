@@ -4,6 +4,9 @@ import { drawHexagon, drawText } from '../../util/canvas_util';
 import type { Point2D } from '../../util/objects2d';
 import type { DwgRisq } from './risq';
 import type { RisqSpace } from './risq_data';
+import { RisqVisibilityLevel } from './risq_data';
+import { resourceTypeImage } from './risq_resources';
+import { COMBO_UNIT_ICON_SIZE, comboUnitIconKey, drawComboUnitIcon } from './risq_unit';
 import { INNER_ZONE_MULTIPLIER, drawRisqZone, getZoneFill } from './risq_zone';
 
 /** How much detail to draw in a space */
@@ -18,7 +21,7 @@ export declare interface DrawRisqSpaceConfig {
   hex_r: number;
   inset_w: number;
   inset_h: number;
-  // height of a 'row' in the inset box (there are 3 rows)
+  // height of a 'row' in the inset box (up to 4 rows)
   inset_row: number;
   draw_detail: DrawRisqSpaceDetail;
 }
@@ -53,13 +56,27 @@ export function drawRisqSpace(
   }
   ctx.textAlign = 'left';
   const black_text = fill.getBrightness() > 0.5;
+  drawSpaceContent(ctx, game, space, config, black_text);
+  if (space.visibility === RisqVisibilityLevel.FOG) {
+    ctx.strokeStyle = 'transparent';
+    ctx.fillStyle = 'rgba(40, 45, 55, 0.5)';
+    drawHexagon(ctx, space.center, config.hex_r);
+  }
+}
+
+function drawSpaceContent(
+  ctx: CanvasRenderingContext2D,
+  game: DwgRisq,
+  space: RisqSpace,
+  config: DrawRisqSpaceConfig,
+  black_text: boolean
+) {
   if (config.draw_detail === DrawRisqSpaceDetail.OWNERSHIP) {
     return; // ownership and terrain indicated by space fill color
   } else if (config.draw_detail === DrawRisqSpaceDetail.SPACE_DETAILS) {
-    if (space.visibility < 2) {
+    if (space.visibility < RisqVisibilityLevel.FOG) {
       return;
     }
-    // TODO: draw resources as fourth row (resource icons of resources that are there)
     let building_img = game.getIcon('icons/building64');
     let villager_img = game.getIcon('icons/villager64');
     let unit_img = game.getIcon('icons/unit64');
@@ -74,32 +91,41 @@ export function drawRisqSpace(
     ctx.textBaseline = 'top';
     ctx.font = `bold ${config.inset_row}px serif`;
     const xs = space.center.x - 0.5 * config.inset_w;
-    const y1 = space.center.y - 0.5 * config.inset_h;
-    ctx.drawImage(building_img, xs, y1, config.inset_row, config.inset_row);
-    ctx.fillText(
-      `: ${space.buildings?.size.toString()}`,
-      xs + config.inset_row + 2,
-      y1,
-      config.inset_w - config.inset_row - 2
-    );
-    const y2 = space.center.y - 0.5 * config.inset_h + config.inset_row + 2;
-    ctx.drawImage(villager_img, xs, y2, config.inset_row, config.inset_row);
-    ctx.fillText(
-      `: ${space.num_villager_units?.toString()}`,
-      xs + config.inset_row + 2,
-      y2,
-      config.inset_w - config.inset_row - 2
-    );
-    const y3 = space.center.y - 0.5 * config.inset_h + 2 * (config.inset_row + 2);
-    ctx.drawImage(unit_img, xs, y3, config.inset_row, config.inset_row);
-    ctx.fillText(
-      `: ${space.num_military_units?.toString()}`,
-      xs + config.inset_row + 2,
-      y3,
-      config.inset_w - config.inset_row - 2
-    );
+    let y = space.center.y - 0.5 * config.inset_h;
+    const draw_count_row = (img: CanvasImageSource, count: string) => {
+      ctx.drawImage(img, xs, y, config.inset_row, config.inset_row);
+      ctx.fillText(`: ${count}`, xs + config.inset_row + 2, y, config.inset_w - config.inset_row - 2);
+      y += config.inset_row + 2;
+    };
+    draw_count_row(building_img, space.buildings?.size.toString() ?? '0');
+    const resources = [...(space.total_resources?.entries() ?? [])].filter(([, amount]) => amount > 0);
+    for (const [i, [resource_type]] of resources.entries()) {
+      ctx.drawImage(
+        game.getIcon(resourceTypeImage(resource_type)),
+        xs + i * (config.inset_row + 2),
+        y,
+        config.inset_row,
+        config.inset_row
+      );
+    }
+    if (resources.length > 0) {
+      y += config.inset_row + 2;
+    }
+    if (space.visibility === RisqVisibilityLevel.POOR) {
+      const combo_icon = game
+        .getImageCache()
+        .getImage(comboUnitIconKey(!black_text), COMBO_UNIT_ICON_SIZE, [villager_img, unit_img], (combo_ctx) =>
+          drawComboUnitIcon(combo_ctx, villager_img, unit_img)
+        );
+      if (combo_icon) {
+        draw_count_row(combo_icon, space.unit_count?.toString() ?? '0');
+      }
+    } else if (space.visibility >= RisqVisibilityLevel.GOOD) {
+      draw_count_row(villager_img, space.num_villager_units?.toString() ?? '0');
+      draw_count_row(unit_img, space.num_military_units?.toString() ?? '0');
+    }
   } else if (config.draw_detail === DrawRisqSpaceDetail.ZONE_DETAILS) {
-    if (space.visibility < 3 || !space.zones) {
+    if (space.visibility < RisqVisibilityLevel.FOG || !space.zones) {
       return;
     }
     ctx.translate(space.center.x, space.center.y);
@@ -115,6 +141,7 @@ export function drawRisqSpace(
       ctx,
       game,
       zone,
+      space.visibility,
       black_text,
       zone_r,
       0,
@@ -173,6 +200,7 @@ export function drawRisqSpace(
         ctx,
         game,
         zone,
+        space.visibility,
         black_text,
         zone_r,
         rotation,

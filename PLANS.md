@@ -1,17 +1,13 @@
 v0.8: Playable Risq
- t: Backend recalculates vision each turn (potential bug on edge adjacent vs edge opposite)
- u: Fog of war
- v: Player colors and space ownership
- w: Passive gold income
- x: Views toggleable (terrain, ownership, buildings, villagers, military, resources ---- and add resources to summary view if not there)
- y: Research order
- z: Orders in left panel
- za: Orders for groups (and general ui improvements)
- zb: Show orders on map (like arc lines for movement)
- zc: Attack order (combat implementation with color logic, etc)
- zd: Summary report
- ze: Next idle thing button (idle icons, etc)
- zf: Design minimal playable game
+ u: Space ownership (passive gold income)
+ v: Views toggleable (terrain, ownership, buildings, villagers, military, resources ---- and add resources to summary view if not there)
+ w: Research order (orders in left panel)
+ x: Orders for groups (and general ui improvements)
+ y: Show orders on map (like arc lines for movement)
+ z: Attack order (combat implementation with color logic, etc)
+ za: Summary report
+ zb: Next idle thing button (idle icons, etc)
+ zc: Design minimal playable game
  - Unit deletion
  - Ownership logic
  - Partial move pathfinding

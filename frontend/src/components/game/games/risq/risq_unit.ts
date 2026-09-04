@@ -23,3 +23,19 @@ export function unitImage(unit_id: number): string {
   }
   return `risq/units/${filename}`;
 }
+
+export const COMBO_UNIT_ICON_SIZE = 64;
+
+export function comboUnitIconKey(white: boolean): string {
+  return white ? 'combo_unit_white' : 'combo_unit';
+}
+
+export function drawComboUnitIcon(
+  ctx: CanvasRenderingContext2D,
+  villager_icon: HTMLImageElement,
+  unit_icon: HTMLImageElement
+) {
+  const icon_size = 0.72 * COMBO_UNIT_ICON_SIZE;
+  ctx.drawImage(villager_icon, 0, 0, icon_size, icon_size);
+  ctx.drawImage(unit_icon, COMBO_UNIT_ICON_SIZE - icon_size, COMBO_UNIT_ICON_SIZE - icon_size, icon_size, icon_size);
+}

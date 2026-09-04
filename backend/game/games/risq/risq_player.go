@@ -129,7 +129,7 @@ func (p *RisqPlayer) receivePlayerOrder(o *RisqOrder, risq *GameRisq) {
 	}
 }
 
-func (p *RisqPlayer) toFrontend() gin.H {
+func (p *RisqPlayer) toFrontend(viewer_player_id int) gin.H {
 	player := gin.H{
 		"population_limit": p.populationLimit(),
 		"score":            p.score(),
@@ -139,27 +139,29 @@ func (p *RisqPlayer) toFrontend() gin.H {
 	if p.player != nil {
 		player["player"] = p.player.ToFrontend(false)
 	}
-	if p.resources != nil {
+	if p.resources != nil && p.player != nil && p.player.Player_id == viewer_player_id {
 		player["resources"] = p.resources.toFrontend()
 	}
 	buildings := make([]gin.H, 0)
 	for _, building := range p.buildings {
 		if building != nil && !building.deleted {
-			buildings = append(buildings, building.toFrontend())
+			buildings = append(buildings, building.toFrontend(viewer_player_id))
 		}
 	}
 	player["buildings"] = buildings
 	units := make([]gin.H, 0)
 	for _, unit := range p.units {
 		if unit != nil && !unit.deleted {
-			units = append(units, unit.toFrontend())
+			units = append(units, unit.toFrontend(viewer_player_id))
 		}
 	}
 	player["units"] = units
 	active_orders := make([]gin.H, 0)
-	for _, order := range p.active_orders {
-		if order != nil && !order.executed && !order.cancelled {
-			active_orders = append(active_orders, order.toFrontend())
+	if p.player != nil && p.player.Player_id == viewer_player_id {
+		for _, order := range p.active_orders {
+			if order != nil && !order.executed && !order.cancelled {
+				active_orders = append(active_orders, order.toFrontend())
+			}
 		}
 	}
 	player["active_orders"] = active_orders

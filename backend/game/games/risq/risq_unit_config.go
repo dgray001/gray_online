@@ -19,6 +19,7 @@ type UnitConfig struct {
 	cost               RisqResourceCost
 	production_stamina int
 	builds             []Producible
+	vision             RisqVision
 }
 
 type unitConfigJSON struct {
@@ -32,12 +33,14 @@ type unitConfigJSON struct {
 	Cost              costJSON         `json:"cost"`
 	ProductionStamina int              `json:"production_stamina"`
 	Builds            []producibleJSON `json:"builds"`
+	Vision            *risqVisionJSON  `json:"vision"`
 }
 
 type costJSON struct {
 	Food  float64 `json:"food"`
 	Wood  float64 `json:"wood"`
 	Stone float64 `json:"stone"`
+	Gold  float64 `json:"gold"`
 }
 
 func parseAttackType(s string) (AttackType, error) {
@@ -92,9 +95,11 @@ func init() {
 				food:  e.Cost.Food,
 				wood:  e.Cost.Wood,
 				stone: e.Cost.Stone,
+				gold:  e.Cost.Gold,
 			},
 			production_stamina: e.ProductionStamina,
 			builds:             builds,
+			vision:             resolveVision(e.Vision),
 		}
 	}
 }

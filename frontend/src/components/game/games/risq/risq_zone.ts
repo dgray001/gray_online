@@ -6,8 +6,9 @@ import { pointInHexagon, rotatePoint, subtractPoint2D } from '../../util/objects
 import type { DwgRisq } from './risq';
 import { buildingImage } from './risq_buildings';
 import type { RisqSpace, RisqUnit, RisqZone, UnitByTypeData } from './risq_data';
+import { RisqVisibilityLevel } from './risq_data';
 import { resourceImage } from './risq_resources';
-import { unitImage } from './risq_unit';
+import { COMBO_UNIT_ICON_SIZE, comboUnitIconKey, drawComboUnitIcon, unitImage } from './risq_unit';
 
 /** Multiplier for inner zone relative to whole radius */
 export const INNER_ZONE_MULTIPLIER = 0.4;
@@ -51,6 +52,7 @@ export function drawRisqZone(
   ctx: CanvasRenderingContext2D,
   game: DwgRisq,
   zone: RisqZone,
+  visibility: number,
   black_text: boolean,
   r: number,
   rotation: number,
@@ -123,6 +125,24 @@ export function drawRisqZone(
         break;
       case 1: // economic units
       case 2: // military units
+        if (visibility === RisqVisibilityLevel.POOR) {
+          if (i === 2 && !!zone.unit_count) {
+            const villager_img = game.getIcon('icons/villager64');
+            const unit_img = game.getIcon('icons/unit64');
+            const combo_icon = game
+              .getImageCache()
+              .getImage(comboUnitIconKey(false), COMBO_UNIT_ICON_SIZE, [villager_img, unit_img], (combo_ctx) =>
+                drawComboUnitIcon(combo_ctx, villager_img, unit_img)
+              );
+            if (combo_icon) {
+              ctx.drawImage(combo_icon, -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
+            }
+            drawText(ctx, zone.unit_count.toString(), 1.4 * part.r.y, -part.r.x, -0.7 * part.r.y, 2 * part.r.x);
+          } else {
+            ctx.strokeStyle = secondary_color;
+          }
+          break;
+        }
         const units_by_player_and_type = i === 1 ? zone.economic_units_by_type : zone.military_units_by_type;
         if (units_by_player_and_type.size === 0) {
           ctx.strokeStyle = secondary_color;

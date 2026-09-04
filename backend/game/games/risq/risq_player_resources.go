@@ -6,12 +6,14 @@ type RisqPlayerResources struct {
 	food  float64
 	wood  float64
 	stone float64
+	gold  float64
 }
 
 type RisqResourceCost struct {
 	food  float64
 	wood  float64
 	stone float64
+	gold  float64
 }
 
 func (c RisqResourceCost) toFrontend() gin.H {
@@ -19,6 +21,7 @@ func (c RisqResourceCost) toFrontend() gin.H {
 		"food":  c.food,
 		"wood":  c.wood,
 		"stone": c.stone,
+		"gold":  c.gold,
 	}
 }
 
@@ -27,6 +30,7 @@ func (c RisqResourceCost) times(n int) RisqResourceCost {
 		food:  c.food * float64(n),
 		wood:  c.wood * float64(n),
 		stone: c.stone * float64(n),
+		gold:  c.gold * float64(n),
 	}
 }
 
@@ -42,27 +46,31 @@ func (r *RisqPlayerResources) addGathered(category RisqResourceCategory, amount 
 		r.wood += amount
 	case RisqResourceCategory_STONE:
 		r.stone += amount
+	case RisqResourceCategory_GOLD:
+		r.gold += amount
 	}
 }
 
 func (r *RisqPlayerResources) canAfford(cost RisqResourceCost) bool {
-	return r.food >= cost.food && r.wood >= cost.wood && r.stone >= cost.stone
+	return r.food >= cost.food && r.wood >= cost.wood && r.stone >= cost.stone && r.gold >= cost.gold
 }
 
 func (r *RisqPlayerResources) spend(cost RisqResourceCost) {
 	r.food -= cost.food
 	r.wood -= cost.wood
 	r.stone -= cost.stone
+	r.gold -= cost.gold
 }
 
 func (r *RisqPlayerResources) refund(cost RisqResourceCost) {
 	r.food += cost.food
 	r.wood += cost.wood
 	r.stone += cost.stone
+	r.gold += cost.gold
 }
 
 func (r *RisqPlayerResources) score() uint {
-	return uint(r.food + r.wood + r.stone)
+	return uint(r.food + r.wood + r.stone + r.gold)
 }
 
 func (r *RisqPlayerResources) toFrontend() gin.H {
@@ -70,6 +78,7 @@ func (r *RisqPlayerResources) toFrontend() gin.H {
 		"food":  r.food,
 		"wood":  r.wood,
 		"stone": r.stone,
+		"gold":  r.gold,
 	}
 	return resources
 }
