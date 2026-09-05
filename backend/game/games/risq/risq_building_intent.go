@@ -1,6 +1,6 @@
 package risq
 
-const productionTickStaminaCost = 5
+const buildingTickStaminaCost = 5
 
 type ProductionIntent struct {
 	order_internal_id uint64
@@ -12,5 +12,5 @@ func (*ProductionIntent) isIntentKind() {}
 func (i *RisqIntent) setProduction(order_internal_id uint64, item *RisqBuildingProductionItem) {
 	i.detail = &ProductionIntent{order_internal_id: order_internal_id, item: item}
 	i.min_cost = 1
-	i.max_cost = productionTickStaminaCost
+	i.max_cost = buildingTickStaminaCost
 }

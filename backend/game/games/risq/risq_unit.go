@@ -85,6 +85,7 @@ func (u *RisqUnit) internalId() uint64 {
 
 func (u *RisqUnit) delete(risq *GameRisq) {
 	delete(risq.players[u.player_id].units, u.internal_id)
+	delete(risq.units, u.internal_id)
 	if u.zone != nil && u.zone.space != nil {
 		u.zone.space.removeUnit(u)
 	}
@@ -171,6 +172,11 @@ func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 		if !u.deleted {
 			return OrderStatus_InProgress
 		}
+	case OrderType_UnitAttackBuilding:
+		target := risq.buildings[uint64(o.target_id)]
+		if target != nil && !target.isDeleted() {
+			return OrderStatus_InProgress
+		}
 	}
 	return OrderStatus_Executed
 }
@@ -204,6 +210,13 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 		}
 	case OrderType_UnitDelete:
 		u.intent.setDelete()
+	case OrderType_UnitAttackBuilding:
+		target := risq.buildings[uint64(order.target_id)]
+		if u.zone != target.zone {
+			u.intent.setMove(u.findPath(target.zone))
+		} else {
+			u.intent.setAttackBuilding(target)
+		}
 	default:
 		fmt.Fprintln(os.Stderr, "Order type not implemented:", order.order_type)
 	}
@@ -254,14 +267,21 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 				building.cs.setHealthRatio(constructionHealthRatio(stamina_required, stamina_required))
 				detail.zone.space.setBuilding(&detail.zone.coordinate, building)
 				risq.players[u.player_id].buildings[building.internal_id] = building
+				risq.buildings[building.internal_id] = building
 			}
 		}
 		old_ratio := constructionHealthRatio(building.stamina_remaining, building.construction_stamina_total)
 		building.stamina_remaining -= u.intent.intent_cost
 		new_ratio := constructionHealthRatio(building.stamina_remaining, building.construction_stamina_total)
-		building.cs.addHealth(int(float64(building.cs.max_health)*(new_ratio-old_ratio) + 0.5))
+		building.cs.addHealth(float64(building.cs.max_health) * (new_ratio - old_ratio))
 	case *DeleteIntent:
 		u.delete(risq)
+	case *AttackBuildingIntent:
+		damage := combatDamage(&u.cs, &detail.target.cs, u.intent.intent_cost)
+		detail.target.cs.addHealth(-damage)
+		if detail.target.cs.health <= 0 {
+			detail.target.delete(risq)
+		}
 	}
 	u.current_stamina -= u.intent.intent_cost
 	fmt.Println("Unit in zone", u.zone.coordinate.ToString(), "of space", u.zone.space.coordinate.ToString())

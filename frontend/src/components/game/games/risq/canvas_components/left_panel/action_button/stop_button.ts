@@ -1,15 +1,15 @@
 import type { DwgRisq } from '../../../risq';
 import { RisqActionButton, type RisqActionButtonConfig } from './action_button';
 
-export declare interface DeleteButtonConfig extends RisqActionButtonConfig {
+export declare interface StopButtonConfig extends RisqActionButtonConfig {
   unit_internal_id: number;
 }
 
-export class RisqDeleteButton extends RisqActionButton {
+export class RisqStopButton extends RisqActionButton {
   private risq: DwgRisq;
   private unit_internal_id: number;
 
-  constructor(config: DeleteButtonConfig, risq: DwgRisq, s: number) {
+  constructor(config: StopButtonConfig, risq: DwgRisq, s: number) {
     super(config, s);
     this.risq = risq;
     this.unit_internal_id = config.unit_internal_id;
@@ -17,7 +17,7 @@ export class RisqDeleteButton extends RisqActionButton {
 
   protected released(): void {
     if (this.isHovering()) {
-      this.risq.confirmDeleteUnit(this.unit_internal_id);
+      this.risq.stopUnit(this.unit_internal_id);
     }
   }
 }

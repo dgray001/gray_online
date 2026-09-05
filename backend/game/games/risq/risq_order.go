@@ -271,6 +271,14 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend) error {
 				return fmt.Errorf("Only villagers can build")
 			}
 		}
+	case OrderType_UnitAttackUnit:
+		if r.units[uint64(order.Target_id)] == nil {
+			return fmt.Errorf("Invalid unit target id %d", order.Target_id)
+		}
+	case OrderType_UnitAttackBuilding:
+		if r.buildings[uint64(order.Target_id)] == nil {
+			return fmt.Errorf("Invalid building target id %d", order.Target_id)
+		}
 	case OrderType_UnitDelete:
 	case OrderType_BuildingDelete:
 	case OrderType_CancelOrder:

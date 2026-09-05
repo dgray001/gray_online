@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.7u: Space ownership
+v0.7v: Basic attack logic
 
 ## Dev Use
 

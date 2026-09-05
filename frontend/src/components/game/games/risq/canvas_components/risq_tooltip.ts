@@ -88,7 +88,11 @@ export function drawRisqTooltip(
     const w = Math.max(row1_w, desc_w, stats_w) + 2 * PADDING;
     const num_rows = 1 + (data.description ? 1 : 0) + (stats.length ? 1 : 0);
     const h = num_rows * ROW_HEIGHT + 2 * PADDING;
-    const box_p = { x: p.x, y: p.y - 2 - h };
+    const canvas_size = risq.canvasSize();
+    const box_p = {
+      x: Math.max(0, Math.min(p.x, canvas_size.width - w)),
+      y: Math.max(0, p.y - 2 - h),
+    };
     ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
     ctx.strokeStyle = 'rgba(250, 250, 250, 0.9)';
     ctx.lineWidth = 1;

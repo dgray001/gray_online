@@ -60,6 +60,8 @@ func CreateGame(g *game.GameBase) (*GameRisq, error) {
 	risq := GameRisq{
 		game:                      g,
 		players:                   []*RisqPlayer{},
+		units:                     make(map[uint64]*RisqUnit),
+		buildings:                 make(map[uint64]*RisqBuilding),
 		population_limit:          100,
 		next_resource_internal_id: 0,
 		next_building_internal_id: 0,
@@ -225,14 +227,17 @@ func (r *GameRisq) createPlayerStart(p *RisqPlayer, s *RisqSpace) {
 	village_center := createRisqBuilding(r.nextBuildingInternalId(), 1, p.player.Player_id)
 	s.setBuilding(&game_utils.Coordinate2D{X: 0, Y: 0}, village_center)
 	p.buildings[village_center.internal_id] = village_center
+	r.buildings[village_center.internal_id] = village_center
 	for range 3 {
 		villager := createRisqUnit(r.nextUnitInternalId(), 1, p)
 		s.setUnit(&game_utils.Coordinate2D{X: 0, Y: 0}, villager)
 		p.units[villager.internal_id] = villager
+		r.units[villager.internal_id] = villager
 	}
 	infantry := createRisqUnit(r.nextUnitInternalId(), 11, p)
 	s.setUnit(&game_utils.Coordinate2D{X: 0, Y: 0}, infantry)
 	p.units[infantry.internal_id] = infantry
+	r.units[infantry.internal_id] = infantry
 	zones := s.getZonesAsRandomArray(false)
 	forage := createRisqResource(r.nextResourceInternalId(), 1)
 	s.setResource(&zones[0].coordinate, forage)

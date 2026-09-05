@@ -105,6 +105,15 @@ export class RisqOrdersList extends DwgListbox<RisqOrderRow, RisqOrdersScrollbar
     });
   }
 
+  /** Cancels every order (submitted or pending) that has the given subject */
+  cancelOrdersForSubject(subject_internal_id: number) {
+    for (const order of this.allOrders()) {
+      if (order.subjects.includes(subject_internal_id)) {
+        this.cancelOrder(order);
+      }
+    }
+  }
+
   override setAllSizes(size: number, p: Point2D, w: number, h: number): void {
     super.setAllSizes(size, p, w, h);
     for (const el of this.config.list) {

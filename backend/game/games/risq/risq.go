@@ -27,6 +27,8 @@ type GameRisq struct {
 	board_size                uint16
 	population_limit          uint16
 	spaces                    [][]*RisqSpace
+	units                     map[uint64]*RisqUnit
+	buildings                 map[uint64]*RisqBuilding
 	next_resource_internal_id uint64
 	next_building_internal_id uint64
 	next_unit_internal_id     uint64

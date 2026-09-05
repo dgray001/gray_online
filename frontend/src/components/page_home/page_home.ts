@@ -84,6 +84,8 @@ export class DwgPageHome extends DwgElement {
   private tryConnectionAgain(message: string): void {
     this.game.exitGame();
     this.lobby.exitGame();
+    this.game.querySelectorAll('.dwg-dialog-box').forEach((el) => el.remove());
+    this.lobby.querySelectorAll('.dwg-dialog-box').forEach((el) => el.remove());
     this.lobby.classList.remove('connected');
     this.lobby.classList.add('connector-open');
     this.lobby_connector.tryReconnecting(message, this.lobby.getConnectionMetadata());

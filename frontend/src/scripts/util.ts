@@ -190,6 +190,12 @@ export function clientOnMobile() {
   return regex1.test(navigator.userAgent) || regex2.test(navigator.userAgent.substring(0, 4));
 }
 
+/** Whether the currently focused element is a text input, so global hotkeys should be suppressed */
+export function isTypingInInput(): boolean {
+  const el = document.activeElement;
+  return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement;
+}
+
 /** Copies input text to clipboard */
 export async function copyToClipboard(text: string): Promise<boolean> {
   if (!navigator.clipboard) {

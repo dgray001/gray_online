@@ -86,6 +86,7 @@ func (b *RisqBuilding) internalId() uint64 {
 
 func (b *RisqBuilding) delete(risq *GameRisq) {
 	delete(risq.players[b.player_id].buildings, b.internal_id)
+	delete(risq.buildings, b.internal_id)
 	if b.zone != nil && b.zone.space != nil {
 		b.zone.space.removeBuilding(b)
 	}
@@ -235,6 +236,7 @@ func (b *RisqBuilding) tickExecute(risq *GameRisq) {
 				unit := createRisqUnit(risq.nextUnitInternalId(), item.item_id, risq.players[b.player_id])
 				b.zone.space.setUnit(&b.zone.coordinate, unit)
 				risq.players[b.player_id].units[unit.internal_id] = unit
+				risq.units[unit.internal_id] = unit
 			case ProducibleKind_TECH:
 				risq.completeResearch(risq.players[b.player_id], item.item_id)
 			}

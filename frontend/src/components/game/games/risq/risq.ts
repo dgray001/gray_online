@@ -13,7 +13,7 @@ import {
   subtractPoint2D,
 } from '../../util/objects2d';
 import type { DwgGame } from '../../game';
-import { DEV, createLock } from '../../../../scripts/util';
+import { DEV, createLock, isTypingInInput } from '../../../../scripts/util';
 import { ColorRGB } from '../../../../scripts/color_rgb';
 
 import html from './risq.html';
@@ -41,6 +41,7 @@ import { LeftPanelDataType } from './canvas_components/left_panel/left_panel_dat
 
 import './risq.scss';
 import '../../util/canvas_board/canvas_board';
+import '../../../dialog_box/confirm_dialog/confirm_dialog';
 import { createMessage } from '../../../lobby/data_models';
 
 const DEFAULT_HEXAGON_RADIUS = 60;
@@ -78,6 +79,24 @@ export class DwgRisq extends DwgElement {
   private shift_held = false;
   private alt_held = false;
 
+  private handleKeydown = (e: KeyboardEvent) => {
+    if (isTypingInInput()) {
+      return;
+    }
+    this.ctrl_held = e.ctrlKey;
+    this.shift_held = e.shiftKey;
+    this.alt_held = e.altKey;
+    if (e.key.toLowerCase() === 'v') {
+      this.view_mode = nextViewMode(this.view_mode);
+    }
+  };
+
+  private handleKeyup = (e: KeyboardEvent) => {
+    this.ctrl_held = e.ctrlKey;
+    this.shift_held = e.shiftKey;
+    this.alt_held = e.altKey;
+  };
+
   private left_panel = new RisqLeftPanel(this, {
     w: 300,
     background: 'rgb(222,184,135)',
@@ -92,6 +111,12 @@ export class DwgRisq extends DwgElement {
     super();
     this.html_string = html;
     this.configureElement('board');
+  }
+
+  override disconnectedCallback(): void {
+    super.disconnectedCallback();
+    document.body.removeEventListener('keydown', this.handleKeydown);
+    document.body.removeEventListener('keyup', this.handleKeyup);
   }
 
   /** This will replace an existing icon */
@@ -117,19 +142,8 @@ export class DwgRisq extends DwgElement {
     this.player_id = abstract_game.isPlayer() ? abstract_game.playerId() : -1;
     abstract_game.setPadding('0px');
     this.setNewGameData(game);
-    document.body.addEventListener('keydown', (e) => {
-      this.ctrl_held = e.ctrlKey;
-      this.shift_held = e.shiftKey;
-      this.alt_held = e.altKey;
-      if (e.key.toLowerCase() === 'v') {
-        this.view_mode = nextViewMode(this.view_mode);
-      }
-    });
-    document.body.addEventListener('keyup', (e) => {
-      this.ctrl_held = e.ctrlKey;
-      this.shift_held = e.shiftKey;
-      this.alt_held = e.altKey;
-    });
+    document.body.addEventListener('keydown', this.handleKeydown);
+    document.body.addEventListener('keyup', this.handleKeyup);
     const board_size: Point2D = {
       x: 1.732 * this.hex_r * (2 * game.board_size + 1),
       y: 1.5 * this.hex_r * (2 * game.board_size + 1) + 0.5 * this.hex_r,
@@ -544,6 +558,36 @@ export class DwgRisq extends DwgElement {
     });
     this.updateResourceSpending();
     this.left_panel.dataRefreshed();
+  }
+
+  confirmDeleteUnit(internal_id: number) {
+    const dialog = document.createElement('dwg-confirm-dialog');
+    dialog.setData({ question: 'Delete this unit? This cannot be undone.' });
+    dialog.addEventListener('confirmed', () => {
+      this.deleteUnit(internal_id);
+    });
+    this.appendChild(dialog);
+  }
+
+  private deleteUnit(internal_id: number) {
+    if (!this.canGiveOrders()) {
+      return;
+    }
+    this.right_panel.addOrder({
+      player_id: this.player_id,
+      order_type: RisqOrderType.OrderType_UnitDelete,
+      subjects: [internal_id],
+      target_id: 0,
+      clear_previous_orders: true,
+    });
+    this.left_panel.close();
+  }
+
+  stopUnit(internal_id: number) {
+    if (!this.canGiveOrders()) {
+      return;
+    }
+    this.right_panel.cancelOrdersForSubject(internal_id);
   }
 
   private updateResourceSpending() {

@@ -24,6 +24,7 @@ import {
   risqTerrainName,
 } from '../../risq_data';
 import { coordinateToIndex } from '../../risq_coordinates';
+import { drawRisqTooltip } from '../risq_tooltip';
 import { resourceImage, resourceTypeImage } from '../../risq_resources';
 import { getSpaceFill } from '../../risq_space';
 import {
@@ -41,6 +42,7 @@ import { RisqBuildButton } from './action_button/build_button';
 import { RisqCreateButton } from './action_button/create_button';
 import { RisqDeleteButton } from './action_button/delete_button';
 import { RisqResearchButton } from './action_button/research_button';
+import { RisqStopButton } from './action_button/stop_button';
 import { RisqLeftPanelButton } from './left_panel_close';
 import type { LeftPanelConfig, LeftPanelData, PlayerUnitsDrawData, UnitsDrawData } from './left_panel_data';
 import { HoverableObjectType, LeftPanelDataType } from './left_panel_data';
@@ -67,6 +69,7 @@ export class RisqLeftPanel implements CanvasComponent {
   private hovered_object_type: HoverableObjectType = HoverableObjectType.NONE;
   private space_villager_row: RectHoverData = { ps: { x: 0, y: 0 }, pe: { x: 0, y: 0 } };
   private space_military_row: RectHoverData = { ps: { x: 0, y: 0 }, pe: { x: 0, y: 0 } };
+  private healthbar_row: RectHoverData = { ps: { x: 0, y: 0 }, pe: { x: 0, y: 0 } };
 
   constructor(risq: DwgRisq, config: LeftPanelConfig) {
     this.risq = risq;
@@ -98,13 +101,26 @@ export class RisqLeftPanel implements CanvasComponent {
             this.risq,
             0
           ),
+          new RisqStopButton(
+            {
+              row: 0,
+              col: 1,
+              image_path: 'icons/hand_stop128',
+              description: 'Stop',
+              unit_internal_id: this.data.data.internal_id,
+            },
+            this.risq,
+            0
+          ),
           new RisqDeleteButton(
             {
               row: 0,
               col: RisqLeftPanel.ACTION_GRID_COLS - 1,
               image_path: 'icons/skull128',
               description: 'Delete',
+              unit_internal_id: this.data.data.internal_id,
             },
+            this.risq,
             0
           )
         );
@@ -305,6 +321,7 @@ export class RisqLeftPanel implements CanvasComponent {
     this.visibility = undefined;
     this.data = undefined;
     this.hovered_zone = undefined;
+    this.healthbar_row.hovered = false;
     this.buttons = [];
   }
 
@@ -454,6 +471,21 @@ export class RisqLeftPanel implements CanvasComponent {
         // TODO: logic in case yi has gone off the rectangle
       }
     );
+    if (
+      this.healthbar_row.hovered &&
+      (this.data?.data_type === LeftPanelDataType.UNIT || this.data?.data_type === LeftPanelDataType.BUILDING)
+    ) {
+      const cs = this.data.data.combat_stats;
+      drawRisqTooltip(
+        ctx,
+        transform,
+        this.risq,
+        { x: this.healthbar_row.pe.x, y: this.healthbar_row.pe.y },
+        {
+          title: `${cs.health.toFixed(1)} / ${cs.max_health}`,
+        }
+      );
+    }
     ctx.beginPath();
     for (const button of this.buttons) {
       button.draw(ctx, transform, dt);
@@ -951,8 +983,10 @@ export class RisqLeftPanel implements CanvasComponent {
       ctx.fillStyle = UNIT_HEALTHBAR_COLOR_HEALTH;
       drawRect(ctx, { x: xi, y: yi }, (cs.health / cs.max_health) * 0.8 * this.w(), health_height);
     }
+    this.healthbar_row.ps = { x: xi, y: yi };
+    this.healthbar_row.pe = { x: xi + 0.8 * this.w(), y: yi + health_height };
     const info_row_y = yi + health_height + 0.1 * row_size;
-    drawText(ctx, `${cs.health} / ${cs.max_health}`, {
+    drawText(ctx, `${Math.round(cs.health)} / ${cs.max_health}`, {
       p: { x: xi, y: info_row_y },
       w: 0.8 * this.w(),
       fill_style: 'black',
@@ -1123,6 +1157,10 @@ export class RisqLeftPanel implements CanvasComponent {
             this.objectHoverLogic(m, unit, HoverableObjectType.UNIT);
           }
         }
+        break;
+      case LeftPanelDataType.UNIT:
+      case LeftPanelDataType.BUILDING:
+        this.rowHovered(m, this.healthbar_row);
         break;
       default:
         break;

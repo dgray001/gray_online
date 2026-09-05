@@ -1,10 +1,8 @@
 package risq
 
-const gatherTickStaminaCost = 3
+const unitTickStaminaCost = 3
 
 const gatherRateStaminaBase = 10.0
-
-const unitBuildTickStaminaCost = 3
 
 type MoveIntent struct {
 	path       []*RisqZone
@@ -40,7 +38,19 @@ func (i *RisqIntent) setMove(m *MoveIntent) {
 func (i *RisqIntent) setGather(resource *RisqResource) {
 	i.detail = &GatherIntent{resource: resource}
 	i.min_cost = 1
-	i.max_cost = gatherTickStaminaCost
+	i.max_cost = unitTickStaminaCost
+}
+
+type AttackBuildingIntent struct {
+	target *RisqBuilding
+}
+
+func (*AttackBuildingIntent) isIntentKind() {}
+
+func (i *RisqIntent) setAttackBuilding(target *RisqBuilding) {
+	i.detail = &AttackBuildingIntent{target: target}
+	i.min_cost = 1
+	i.max_cost = unitTickStaminaCost
 }
 
 type ConstructionIntent struct {
@@ -54,5 +64,5 @@ func (*ConstructionIntent) isIntentKind() {}
 func (i *RisqIntent) setBuild(building_under_construction *RisqBuilding, building_id uint32, zone *RisqZone) {
 	i.detail = &ConstructionIntent{building_under_construction: building_under_construction, building_id: building_id, zone: zone}
 	i.min_cost = 1
-	i.max_cost = unitBuildTickStaminaCost
+	i.max_cost = unitTickStaminaCost
 }

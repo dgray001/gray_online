@@ -48,7 +48,7 @@ export class DwgGame extends DwgElement {
   private button_exit!: HTMLButtonElement;
 
   private bundles_attached = new Set<string>();
-  private abort_controllers: AbortController[] = [];
+  private abort_controller?: AbortController;
   private launched = false;
   private socket?: WebSocket;
   private connection_metadata?: ConnectionMetadata;
@@ -326,11 +326,9 @@ export class DwgGame extends DwgElement {
     this.client_name_string.innerText = this.connection_metadata.nickname;
     this.client_ping.innerText = ` (${this.connection_metadata.ping})`;
     try {
-      for (const abort_controller of this.abort_controllers) {
-        abort_controller.abort();
-      }
+      this.abort_controller?.abort();
       const abort_controller = new AbortController();
-      this.abort_controllers.push(abort_controller);
+      this.abort_controller = abort_controller;
       this.socket.addEventListener(
         'message',
         (m) => {

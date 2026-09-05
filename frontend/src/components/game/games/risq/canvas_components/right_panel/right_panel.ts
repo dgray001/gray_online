@@ -123,6 +123,10 @@ export class RisqRightPanel implements CanvasComponent {
     this.orders_list.clearPendingOrders();
   }
 
+  cancelOrdersForSubject(subject_internal_id: number) {
+    this.orders_list.cancelOrdersForSubject(subject_internal_id);
+  }
+
   submittingOrders() {
     this.orders_list.disable();
     this.submit_button.disable();

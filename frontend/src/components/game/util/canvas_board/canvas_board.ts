@@ -1,5 +1,5 @@
 import { DwgElement } from '../../../dwg_element';
-import { until } from '../../../../scripts/util';
+import { isTypingInInput, until } from '../../../../scripts/util';
 import type { Point2D } from '../objects2d';
 import { subtractPoint2D } from '../objects2d';
 
@@ -77,6 +77,7 @@ export class DwgCanvasBoard extends DwgElement {
     arrow_right: false,
   };
   private cursor_move_threshold = 5;
+  private draw_interval?: ReturnType<typeof setInterval>;
   private dragging = false;
   private dragged = false;
   private mouse: Point2D = { x: 0, y: 0 };
@@ -123,7 +124,7 @@ export class DwgCanvasBoard extends DwgElement {
     this.addEventListeners();
     await until(() => !!this.canvas.getBoundingClientRect()?.width);
     this.resize_observer.observe(this);
-    setInterval(() => {
+    this.draw_interval = setInterval(() => {
       this.tick();
       // If ever made async everything after tick() needs to run at same time (just skip until last finished)
       this.ctx.resetTransform();
@@ -277,48 +278,60 @@ export class DwgCanvasBoard extends DwgElement {
       },
       false
     );
-    document.body.addEventListener('keydown', (e) => {
-      if (!this.hovered) {
-        return;
-      }
-      switch (e.key) {
-        case 'ArrowUp':
-          this.holding_keys.arrow_up = true;
-          break;
-        case 'ArrowDown':
-          this.holding_keys.arrow_down = true;
-          break;
-        case 'ArrowLeft':
-          this.holding_keys.arrow_left = true;
-          break;
-        case 'ArrowRight':
-          this.holding_keys.arrow_right = true;
-          break;
-        default:
-          break;
-      }
-    });
-    document.body.addEventListener('keyup', (e) => {
-      if (!this.hovered) {
-        return;
-      }
-      switch (e.key) {
-        case 'ArrowUp':
-          this.holding_keys.arrow_up = false;
-          break;
-        case 'ArrowDown':
-          this.holding_keys.arrow_down = false;
-          break;
-        case 'ArrowLeft':
-          this.holding_keys.arrow_left = false;
-          break;
-        case 'ArrowRight':
-          this.holding_keys.arrow_right = false;
-          break;
-        default:
-          break;
-      }
-    });
+    document.body.addEventListener('keydown', this.handleKeydown);
+    document.body.addEventListener('keyup', this.handleKeyup);
+  }
+
+  private handleKeydown = (e: KeyboardEvent) => {
+    if (!this.hovered || isTypingInInput()) {
+      return;
+    }
+    switch (e.key) {
+      case 'ArrowUp':
+        this.holding_keys.arrow_up = true;
+        break;
+      case 'ArrowDown':
+        this.holding_keys.arrow_down = true;
+        break;
+      case 'ArrowLeft':
+        this.holding_keys.arrow_left = true;
+        break;
+      case 'ArrowRight':
+        this.holding_keys.arrow_right = true;
+        break;
+      default:
+        break;
+    }
+  };
+
+  private handleKeyup = (e: KeyboardEvent) => {
+    if (!this.hovered) {
+      return;
+    }
+    switch (e.key) {
+      case 'ArrowUp':
+        this.holding_keys.arrow_up = false;
+        break;
+      case 'ArrowDown':
+        this.holding_keys.arrow_down = false;
+        break;
+      case 'ArrowLeft':
+        this.holding_keys.arrow_left = false;
+        break;
+      case 'ArrowRight':
+        this.holding_keys.arrow_right = false;
+        break;
+      default:
+        break;
+    }
+  };
+
+  override disconnectedCallback(): void {
+    super.disconnectedCallback();
+    clearInterval(this.draw_interval);
+    this.resize_observer.disconnect();
+    document.body.removeEventListener('keydown', this.handleKeydown);
+    document.body.removeEventListener('keyup', this.handleKeyup);
   }
 
   private tick() {
