@@ -103,14 +103,28 @@ export class RisqOrderRow implements CanvasComponent {
     ctx.drawImage(game.getIcon(this.resolved.subject_icon!), x, yc - ICON_S / 2, ICON_S, ICON_S);
     const count = this.config.order.subjects.length;
     if (count > 1) {
-      drawText(ctx, `×${count}`, {
-        p: { x: x + 0.5 * ICON_S, y: yc + ICON_S / 2 - 7 },
-        w: ICON_S,
-        fill_style: 'rgb(59, 36, 19)',
-        align: 'left',
-        font: 'bold 8px sans-serif',
-      });
+      this.drawCountBadge(ctx, `×${count}`, x + ICON_S, yc + ICON_S / 2);
     }
+  }
+
+  private drawCountBadge(ctx: CanvasRenderingContext2D, label: string, right: number, bottom: number): void {
+    ctx.font = 'bold 8px sans-serif';
+    const bw = ctx.measureText(label).width + 5;
+    const bh = 10;
+    const bx = right - bw + 3;
+    const by = bottom - bh + 4;
+    ctx.fillStyle = 'rgba(59, 36, 19, 0.7)';
+    ctx.strokeStyle = 'transparent';
+    ctx.lineWidth = 0;
+    drawRect(ctx, { x: bx, y: by }, bw, bh, 3);
+    drawText(ctx, label, {
+      p: { x: bx + bw / 2, y: by + bh / 2 + 1 },
+      w: bw,
+      fill_style: 'rgb(241, 226, 196)',
+      align: 'center',
+      baseline: 'middle',
+      font: 'bold 8px sans-serif',
+    });
   }
 
   draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
@@ -256,6 +270,8 @@ export class RisqOrderRow implements CanvasComponent {
     this.cancel_button.mouseup(e);
     if (this.cancel_all_clicking && this.cancel_all_hover && this.config.collapsed_orders) {
       this.config.onCancelAll?.([this.config.order, ...this.config.collapsed_orders]);
+    } else if (this.clicking && this.hovering) {
+      this.config.onSelect?.(this.config.order);
     }
     this.cancel_all_clicking = false;
     this.clicking = false;

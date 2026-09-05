@@ -11,4 +11,5 @@ export interface RisqOrderRowConfig {
   collapsed_orders?: RisqFrontendOrder[];
   onCancel: (order: RisqFrontendOrder) => void;
   onCancelAll?: (orders: RisqFrontendOrder[]) => void;
+  onSelect?: (order: RisqFrontendOrder) => void;
 }

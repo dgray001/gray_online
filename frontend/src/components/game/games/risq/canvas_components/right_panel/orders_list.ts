@@ -42,6 +42,7 @@ export class RisqOrdersList extends DwgListbox<RisqOrderRow, RisqOrdersScrollbar
       show_subject: true,
       onCancel: (order) => this.orders.cancel(order),
       onCancelAll: (orders) => orders.forEach((order) => this.orders.cancel(order)),
+      onSelect: (order) => this.game.selectOrderSubjects(order),
     });
   }
 

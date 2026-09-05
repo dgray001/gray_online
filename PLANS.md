@@ -1,14 +1,12 @@
 v0.8: Playable Risq
-  (and general ui improvements)
- y: Show orders on map (like arc lines for movement)
+ y: Show orders on map
  z: Attack order (combat implementation)
  za: Summary report
- zb: Next idle thing button (idle icons, etc)
- zc: Design minimal playable game
- - Unit deletion
- - Ownership logic
- - Partial move pathfinding
- - Pop capped on UI
+ zb: Design minimal playable tech tree
+ UI Issues:
+  - Moving to active unit when clicking next idle will take you in the black somewhere
+  - Opening left panel with idle button on a vil automatically sets hover state of build housing to true (why is that idk)
+  - Need to show pop capped in UI
 
 Future Risq Plans:
  - Make summary report animated and can view it after close (bottom bar)
@@ -19,6 +17,9 @@ Future Risq Plans:
  - Control groups
  - Color logic for attacks
  - Different maps / terrain / etc
+ - Ownership edge cases and "regions"
+ - Mercenaries
+ - Partial move pathfinding
 
 Fiddlesticks Plans:
  - Revamp update dialog box

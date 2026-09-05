@@ -8,8 +8,10 @@ import type { DwgRisq } from '../../risq';
 import type { GameRisqScoreEntry, RisqPlayerResource, RisqResourceType } from '../../risq_data';
 import { resourceTypeImage } from '../../risq_resources';
 import { RisqOrdersList } from './orders_list';
+import { RisqNextIdleButton } from './next_idle_button';
 import { RisqRightPanelButton } from './right_panel_button';
 import { RisqSubmitOrdersButton } from './submit_orders_button';
+import { RisqSubmitIconButton } from './submit_icon_button';
 
 /** Config for the right panel */
 export declare interface RightPanelConfig {
@@ -26,7 +28,10 @@ export class RisqRightPanel implements CanvasComponent {
   private open_button: RisqRightPanelButton;
   private orders_list: RisqOrdersList;
   private submit_button: RisqSubmitOrdersButton;
+  private submit_icon_button: RisqSubmitIconButton;
+  private next_idle_button: RisqNextIdleButton;
   private need_to_set_position = true;
+  private submit_row_y = 0;
 
   private risq: DwgRisq;
   private config: RightPanelConfig;
@@ -43,24 +48,57 @@ export class RisqRightPanel implements CanvasComponent {
       config.background.copy().addColor(255, 0, 0, 0.2)
     );
     this.submit_button = new RisqSubmitOrdersButton(risq, RisqRightPanel.SUBMIT_SIZE);
+    this.submit_icon_button = new RisqSubmitIconButton(risq, RisqRightPanel.SUBMIT_SIZE);
+    this.next_idle_button = new RisqNextIdleButton(risq, RisqRightPanel.SUBMIT_SIZE);
     this.toggle(config.is_open, true);
   }
 
   dataRefreshed() {
     const player = this.risq.getPlayer();
     this.orders_list.refresh();
-    if (!!player) {
-      if (this.risq.givingOrders() && !player.orders_submitted) {
-        this.orders_list.enable();
-        this.submit_button.setText(this.risq.ordersSubmittedTimes() > 0 ? 'Resubmit Orders' : 'Submit Orders');
-      } else {
-        this.orders_list.disable();
-        this.submit_button.setText('Unsubmit Orders');
-      }
-      this.submit_button.enable();
-    } else {
+    if (!player) {
       this.orders_list.disable();
       this.submit_button.disable();
+      this.submit_icon_button.disable();
+      this.next_idle_button.disable();
+      return;
+    }
+    if (this.risq.givingOrders() && !player.orders_submitted) {
+      this.orders_list.enable();
+      this.submit_button.setText(this.risq.ordersSubmittedTimes() > 0 ? 'Resubmit Orders' : 'Submit Orders');
+    } else {
+      this.orders_list.disable();
+      this.submit_button.setText('Unsubmit Orders');
+    }
+    this.next_idle_button.setText(`Next Idle (${this.risq.idleUnitCount()})`);
+    if (this.hasIdleUnits()) {
+      this.submit_icon_button.enable();
+      this.next_idle_button.enable();
+      this.submit_button.disable();
+    } else {
+      this.submit_button.enable();
+      this.submit_icon_button.disable();
+      this.next_idle_button.disable();
+    }
+  }
+
+  private hasIdleUnits(): boolean {
+    const player = this.risq.getPlayer();
+    return !!player && this.risq.givingOrders() && !player.orders_submitted && this.risq.idleUnitCount() > 0;
+  }
+
+  private layoutButtons() {
+    const y = this.submit_row_y;
+    const left = this.xi() + RisqRightPanel.PADDING;
+    if (this.hasIdleUnits()) {
+      const icon_w = RisqRightPanel.SUBMIT_SIZE;
+      const idle_w = this.w() - 2 * RisqRightPanel.PADDING - icon_w - RisqRightPanel.PADDING;
+      this.next_idle_button.setPosition({ x: left, y });
+      this.next_idle_button.setW(idle_w);
+      this.submit_icon_button.setPosition({ x: left + idle_w + RisqRightPanel.PADDING, y });
+    } else {
+      this.submit_button.setPosition({ x: left, y });
+      this.submit_button.setW(this.w() - 2 * RisqRightPanel.PADDING);
     }
   }
 
@@ -179,8 +217,7 @@ export class RisqRightPanel implements CanvasComponent {
               orders_list_height
             );
             yi += orders_list_height + RisqRightPanel.PADDING;
-            this.submit_button.setPosition({ x: this.xi() + RisqRightPanel.PADDING, y: yi });
-            this.submit_button.setW(this.w() - 2 * RisqRightPanel.PADDING);
+            this.submit_row_y = yi;
             this.need_to_set_position = false;
           }
         }
@@ -188,7 +225,13 @@ export class RisqRightPanel implements CanvasComponent {
     }
     if (this.config.is_open && !this.opening) {
       this.orders_list.draw(ctx, transform, dt);
-      this.submit_button.draw(ctx, transform, dt);
+      this.layoutButtons();
+      if (this.hasIdleUnits()) {
+        this.next_idle_button.draw(ctx, transform, dt);
+        this.submit_icon_button.draw(ctx, transform, dt);
+      } else {
+        this.submit_button.draw(ctx, transform, dt);
+      }
     }
     this.open_button.draw(ctx, transform, dt);
   }
@@ -242,7 +285,12 @@ export class RisqRightPanel implements CanvasComponent {
       return true;
     }
     this.orders_list.mousemove(m, transform);
-    this.submit_button.mousemove(m, transform);
+    if (this.hasIdleUnits()) {
+      this.next_idle_button.mousemove(m, transform);
+      this.submit_icon_button.mousemove(m, transform);
+    } else {
+      this.submit_button.mousemove(m, transform);
+    }
     m = {
       x: m.x * transform.scale - transform.view.x,
       y: m.y * transform.scale - transform.view.y,
@@ -260,14 +308,24 @@ export class RisqRightPanel implements CanvasComponent {
       return true;
     }
     this.orders_list.mousedown(e);
-    this.submit_button.mousedown(e);
+    if (this.hasIdleUnits()) {
+      this.next_idle_button.mousedown(e);
+      this.submit_icon_button.mousedown(e);
+    } else {
+      this.submit_button.mousedown(e);
+    }
     return this.isHovering();
   }
 
   mouseup(e: MouseEvent) {
     this.open_button.mouseup(e);
     this.orders_list.mouseup(e);
-    this.submit_button.mouseup(e);
+    if (this.hasIdleUnits()) {
+      this.next_idle_button.mouseup(e);
+      this.submit_icon_button.mouseup(e);
+    } else {
+      this.submit_button.mouseup(e);
+    }
   }
 
   xi(): number {

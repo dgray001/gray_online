@@ -4,6 +4,9 @@ const unitTickStaminaCost = 3
 
 const gatherRateStaminaBase = 10.0
 
+const repairSpeedFactor = 0.6
+const repairCostFactor = 1.0
+
 type MoveIntent struct {
 	path       []*RisqZone
 	next_step  *RisqZone
@@ -49,6 +52,18 @@ func (*AttackBuildingIntent) isIntentKind() {}
 
 func (i *RisqIntent) setAttackBuilding(target *RisqBuilding) {
 	i.detail = &AttackBuildingIntent{target: target}
+	i.min_cost = 1
+	i.max_cost = unitTickStaminaCost
+}
+
+type RepairIntent struct {
+	target *RisqBuilding
+}
+
+func (*RepairIntent) isIntentKind() {}
+
+func (i *RisqIntent) setRepair(target *RisqBuilding) {
+	i.detail = &RepairIntent{target: target}
 	i.min_cost = 1
 	i.max_cost = unitTickStaminaCost
 }

@@ -162,14 +162,14 @@ func (r *GameRisq) executeSubmitOrders(player_id int, orders []OrderFromFrontend
 	new_orders := make([]*RisqOrder, 0, len(orders))
 	for _, o := range orders {
 		order_type := OrderType(o.Order_type)
-		subjects := make([]Orderable, 0)
+		subjects := make(map[uint64]Orderable)
 		if order_type.isUnitOrder() {
 			for _, subject_id := range o.Subjects {
-				subjects = append(subjects, r.players[o.Player_id].units[subject_id])
+				subjects[subject_id] = r.players[o.Player_id].units[subject_id]
 			}
 		} else if order_type.isBuildingOrder() {
 			for _, subject_id := range o.Subjects {
-				subjects = append(subjects, r.players[o.Player_id].buildings[subject_id])
+				subjects[subject_id] = r.players[o.Player_id].buildings[subject_id]
 			}
 		}
 		new_orders = append(new_orders, createRisqOrder(r.nextOrderInternalId(), order_type, player_id, subjects, o.Target_id, o.Clear_previous_orders))
@@ -231,7 +231,7 @@ func (r *GameRisq) resolveActiveOrders() {
 				order.turn_resolved = r.turn_number
 				continue
 			}
-			for _, subject := range order.subjects {
+			for subject_id, subject := range order.subjects {
 				if !subject.orderReceivable(order, r) {
 					continue
 				}
@@ -240,11 +240,8 @@ func (r *GameRisq) resolveActiveOrders() {
 						if other == order || other.executed || other.cancelled {
 							continue
 						}
-						for _, other_subject := range other.subjects {
-							if other_subject == subject {
-								subject.cancelOrder(other, r)
-								break
-							}
+						if _, ok := other.subjects[subject_id]; ok {
+							subject.cancelOrder(other, r)
 						}
 					}
 				}

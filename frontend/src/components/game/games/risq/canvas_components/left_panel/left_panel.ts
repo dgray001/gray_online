@@ -95,7 +95,7 @@ export class RisqLeftPanel implements CanvasComponent {
               row: 0,
               col: 0,
               order_type: RisqOrderType.OrderType_UnitMoveSpace,
-              image_path: 'icons/move',
+              image_path: 'icons/move128',
               description: 'Move',
             },
             this.risq,
@@ -131,8 +131,19 @@ export class RisqLeftPanel implements CanvasComponent {
                 row: 1,
                 col: 0,
                 order_type: RisqOrderType.OrderType_UnitGather,
-                image_path: 'icons/gather',
+                image_path: 'icons/gather128',
                 description: 'Gather',
+              },
+              this.risq,
+              0
+            ),
+            new RisqOrderButton(
+              {
+                row: 1,
+                col: 1,
+                order_type: RisqOrderType.OrderType_UnitRepair,
+                image_path: 'icons/repair128',
+                description: 'Repair',
               },
               this.risq,
               0

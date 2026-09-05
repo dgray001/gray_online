@@ -34,6 +34,8 @@ function shortLabel(order_type: RisqOrderType): string {
       return 'Gather';
     case RisqOrderType.OrderType_UnitBuild:
       return 'Build';
+    case RisqOrderType.OrderType_UnitRepair:
+      return 'Repair';
     case RisqOrderType.OrderType_BuildingCreate:
       return 'Create';
     case RisqOrderType.OrderType_UnitDelete:
@@ -104,17 +106,17 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
   switch (order.order_type) {
     case RisqOrderType.OrderType_UnitMoveSpace: {
       const target_space = invertPair(order.target_id);
-      base = { icon: 'icons/move', name: 'Move', target: distance_text(target_space), cost: [] };
+      base = { icon: 'icons/move32', name: 'Move', target: distance_text(target_space), cost: [] };
       break;
     }
     case RisqOrderType.OrderType_UnitMoveZone: {
       const { space, zone } = invertZoneKey(order.target_id);
-      base = { icon: 'icons/move', name: 'Move', target: distance_text(space, zone), cost: [] };
+      base = { icon: 'icons/move32', name: 'Move', target: distance_text(space, zone), cost: [] };
       break;
     }
     case RisqOrderType.OrderType_UnitGather: {
       const { space, zone } = invertZoneKey(order.target_id);
-      base = { icon: 'icons/gather', name: 'Gather', target: zone_resource_name(space, zone), cost: [] };
+      base = { icon: 'icons/gather32', name: 'Gather', target: zone_resource_name(space, zone), cost: [] };
       break;
     }
     case RisqOrderType.OrderType_UnitBuild: {
@@ -173,8 +175,20 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
       base = { icon: 'icons/close_gray32', name: 'Cancel Foundation', target: distance_text(space, zone), cost: [] };
       break;
     }
+    case RisqOrderType.OrderType_UnitRepair: {
+      const building = game?.players
+        .flatMap((p) => [...p.buildings.values()])
+        .find((b) => b.internal_id === order.target_id);
+      base = {
+        icon: 'icons/repair32',
+        name: `Repair ${building?.display_name ?? 'Building'}`,
+        target: building ? distance_text(building.space_coordinate, building.zone_coordinate) : '',
+        cost: [],
+      };
+      break;
+    }
     case RisqOrderType.OrderType_UnitDelete: {
-      base = { icon: 'icons/skull128', name: 'Delete', target: '', cost: [] };
+      base = { icon: 'icons/skull32', name: 'Delete', target: '', cost: [] };
       break;
     }
     default:
@@ -183,7 +197,7 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
   }
 
   if (isPlayerOrder(order.order_type)) {
-    return { ...base, subject_icon: 'icons/person64' };
+    return { ...base, subject_icon: 'icons/person32' };
   }
   if (isUnitOrder(order.order_type) && player) {
     const subject_units = groupUnitsByType(player.units, order.subjects);

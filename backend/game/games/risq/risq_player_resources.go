@@ -34,6 +34,15 @@ func (c RisqResourceCost) times(n int) RisqResourceCost {
 	}
 }
 
+func (c RisqResourceCost) scale(f float64) RisqResourceCost {
+	return RisqResourceCost{
+		food:  c.food * f,
+		wood:  c.wood * f,
+		stone: c.stone * f,
+		gold:  c.gold * f,
+	}
+}
+
 func createRisqPlayerResources() *RisqPlayerResources {
 	return &RisqPlayerResources{}
 }
@@ -53,6 +62,24 @@ func (r *RisqPlayerResources) addGathered(category RisqResourceCategory, amount 
 
 func (r *RisqPlayerResources) canAfford(cost RisqResourceCost) bool {
 	return r.food >= cost.food && r.wood >= cost.wood && r.stone >= cost.stone && r.gold >= cost.gold
+}
+
+// Returns the fraction of cost affordable in [0, 1] (1 if cost is free)
+func (r *RisqPlayerResources) affordFraction(cost RisqResourceCost) float64 {
+	fraction := 1.0
+	limit := func(available float64, needed float64) {
+		if needed > 0 && available/needed < fraction {
+			fraction = available / needed
+		}
+	}
+	limit(r.food, cost.food)
+	limit(r.wood, cost.wood)
+	limit(r.stone, cost.stone)
+	limit(r.gold, cost.gold)
+	if fraction < 0 {
+		return 0
+	}
+	return fraction
 }
 
 func (r *RisqPlayerResources) spend(cost RisqResourceCost) {

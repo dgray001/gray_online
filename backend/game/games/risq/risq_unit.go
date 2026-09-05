@@ -91,12 +91,14 @@ func (u *RisqUnit) delete(risq *GameRisq) {
 	}
 	u.deleted = true
 	for _, o := range u.order_queue.active_orders {
+		delete(o.subjects, u.internal_id)
 		if o.order_type == OrderType_UnitDelete {
 			o.executed = true
-		} else {
+			o.turn_resolved = risq.turn_number
+		} else if len(o.subjects) == 0 {
 			o.cancelled = true
+			o.turn_resolved = risq.turn_number
 		}
-		o.turn_resolved = risq.turn_number
 	}
 	u.order_queue.active_orders = nil
 }
@@ -128,7 +130,12 @@ func (u *RisqUnit) receiveOrder(o *RisqOrder, risq *GameRisq) {
 }
 
 func (u *RisqUnit) cancelOrder(o *RisqOrder, risq *GameRisq) {
-	u.order_queue.cancelOrder(o.internal_id, risq.turn_number)
+	u.order_queue.removeOrder(o.internal_id)
+	delete(o.subjects, u.internal_id)
+	if len(o.subjects) == 0 {
+		o.cancelled = true
+		o.turn_resolved = risq.turn_number
+	}
 	switch o.order_type {
 	case OrderType_UnitBuild:
 		// the planned foundation is independent of the order that created it; cancelling the order doesn't touch it
@@ -151,6 +158,10 @@ func (u *RisqUnit) orderReceivable(o *RisqOrder, risq *GameRisq) bool {
 	default:
 	}
 	return true
+}
+
+func (r *GameRisq) canAssist(player_id int, b *RisqBuilding) bool {
+	return b.player_id == player_id // TODO: own-or-ally once diplomacy exists
 }
 
 func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
@@ -183,6 +194,11 @@ func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 			return OrderStatus_Cancelled
 		}
 		if zone.building.underConstruction() {
+			return OrderStatus_InProgress
+		}
+	case OrderType_UnitRepair:
+		target := risq.buildings[uint64(o.target_id)]
+		if target != nil && !target.isDeleted() && !target.underConstruction() && risq.canAssist(u.player_id, target) && target.cs.health < float64(target.cs.max_health) {
 			return OrderStatus_InProgress
 		}
 	case OrderType_UnitDelete:
@@ -233,6 +249,16 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 			u.intent.setMove(u.findPath(target.zone))
 		} else {
 			u.intent.setAttackBuilding(target)
+		}
+	case OrderType_UnitRepair:
+		target := risq.buildings[uint64(order.target_id)]
+		if target == nil {
+			break
+		}
+		if u.zone != target.zone {
+			u.intent.setMove(u.findPath(target.zone))
+		} else {
+			u.intent.setRepair(target)
 		}
 	default:
 		fmt.Fprintln(os.Stderr, "Order type not implemented:", order.order_type)
@@ -303,6 +329,28 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 		if detail.target.cs.health <= 0 {
 			detail.target.delete(risq)
 		}
+	case *RepairIntent:
+		building := detail.target
+		if building.deleted || building.underConstruction() || !risq.canAssist(u.player_id, building) {
+			return
+		}
+		config := buildingConfigs[building.building_id]
+		if config.build_stamina <= 0 {
+			return
+		}
+		max_health := float64(building.cs.max_health)
+		heal := repairSpeedFactor * max_health / float64(config.build_stamina) * float64(u.intent.intent_cost)
+		if remaining := max_health - building.cs.health; heal > remaining {
+			heal = remaining
+		}
+		player := risq.players[u.player_id]
+		cost := config.cost.scale(repairCostFactor * heal / max_health)
+		afford := player.resources.affordFraction(cost)
+		if afford <= 0 {
+			return
+		}
+		building.cs.addHealth(heal * afford)
+		player.resources.spend(cost.scale(afford))
 	}
 	u.current_stamina -= u.intent.intent_cost
 	fmt.Println("Unit in zone", u.zone.coordinate.ToString(), "of space", u.zone.space.coordinate.ToString())

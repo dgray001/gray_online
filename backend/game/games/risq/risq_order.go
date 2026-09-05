@@ -79,8 +79,8 @@ type RisqOrder struct {
 	internal_id uint64
 	// The player id of who is creating this order
 	player_id int
-	// The list of targets this order is effecting
-	subjects []Orderable
+	// The targets this order is effecting, keyed by subject internal id for O(1) removal
+	subjects map[uint64]Orderable
 	// What the order actually is
 	order_type OrderType
 	// What the order is targeting (could be a space, a unit, or a technology)
@@ -99,7 +99,7 @@ type RisqOrder struct {
 	turn_resolved uint16
 }
 
-func createRisqOrder(internal_id uint64, order_type OrderType, player_id int, subjects []Orderable, target_id int64, clear_previous_orders bool) *RisqOrder {
+func createRisqOrder(internal_id uint64, order_type OrderType, player_id int, subjects map[uint64]Orderable, target_id int64, clear_previous_orders bool) *RisqOrder {
 	order := RisqOrder{
 		internal_id:           internal_id,
 		player_id:             player_id,
@@ -277,6 +277,19 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend, player_id int)
 				return fmt.Errorf("Only villagers can build")
 			}
 		}
+	case OrderType_UnitRepair:
+		building := r.buildings[uint64(order.Target_id)]
+		if building == nil {
+			return fmt.Errorf("Invalid building target id %d", order.Target_id)
+		}
+		if building.underConstruction() {
+			return fmt.Errorf("Cannot repair a building under construction")
+		}
+		for _, subject_id := range order.Subjects {
+			if r.players[order.Player_id].units[subject_id].unit_id != 1 {
+				return fmt.Errorf("Only villagers can repair")
+			}
+		}
 	case OrderType_UnitAttackUnit:
 		if r.units[uint64(order.Target_id)] == nil {
 			return fmt.Errorf("Invalid unit target id %d", order.Target_id)
@@ -334,15 +347,6 @@ func (q *RisqOrderQueue) removeOrder(internal_id uint64) *RisqOrder {
 		}
 	}
 	return nil
-}
-
-func (o *RisqOrder) removeSubject(subject Orderable) {
-	for i, s := range o.subjects {
-		if s == subject {
-			o.subjects = append(o.subjects[:i], o.subjects[i+1:]...)
-			return
-		}
-	}
 }
 
 func (q *RisqOrderQueue) nextOrder(orderable Orderable, risq *GameRisq) *RisqOrder {

@@ -21,6 +21,8 @@ export declare interface RectButtonConfig {
   move_animation_speed?: number;
   rotate_animation_speed?: number;
   image_path?: string;
+  /** If true, the image draws on top of the fill instead of behind it*/
+  image_on_top?: boolean;
   rotation?: number;
   text?: {
     text: string;
@@ -249,10 +251,13 @@ export abstract class DwgRectButton extends DwgButton {
       if (!!this.rect_config.rotation) {
         ctx.rotate(this.rect_config.rotation);
       }
-      if (!!this.img) {
+      if (!!this.img && !this.rect_config.image_on_top) {
         ctx.drawImage(this.img, -this.radius_p.x, -this.radius_p.y, this.rect_config.w, this.rect_config.h);
       }
       drawRect(ctx, multiplyPoint2D(-1, this.radius_p), this.rect_config.w, this.rect_config.h, this.rect_config.r);
+      if (!!this.img && this.rect_config.image_on_top) {
+        ctx.drawImage(this.img, -this.radius_p.x, -this.radius_p.y, this.rect_config.w, this.rect_config.h);
+      }
       if (!!this.rect_config.text && !!this.text_align_p) {
         drawText(ctx, this.rect_config.text.text, {
           ...this.rect_config.text.config,

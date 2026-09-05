@@ -17,7 +17,16 @@ import { DEV, createLock, isTypingInInput } from '../../../../scripts/util';
 import { ColorRGB } from '../../../../scripts/color_rgb';
 
 import html from './risq.html';
-import type { GameRisq, GameRisqFromServer, RisqFrontendOrder, RisqPlayer, RisqSpace, RisqZone } from './risq_data';
+import type {
+  GameRisq,
+  GameRisqFromServer,
+  RisqBuilding,
+  RisqFrontendOrder,
+  RisqPlayer,
+  RisqSpace,
+  RisqUnit,
+  RisqZone,
+} from './risq_data';
 import { RisqOrderType, RisqResourceType, RisqVisibilityLevel, serverToGameRisq } from './risq_data';
 import { cantorPair, coordinateToIndex, getSpace, invertBuildKey, invertPair, invertZoneKey } from './risq_coordinates';
 import type { StartTurnData, SubmittedOrdersData, UnsubmittedOrdersData } from './risq_updates';
@@ -34,7 +43,7 @@ import { RisqRightPanel } from './canvas_components/right_panel/right_panel';
 import type { DrawRisqSpaceConfig } from './risq_space';
 import { DrawRisqSpaceDetail, drawRisqSpace } from './risq_space';
 import { RisqLeftPanel } from './canvas_components/left_panel/left_panel';
-import { RisqOrdersModel } from './risq_orders';
+import { RisqOrdersModel, isBuildingOrder, isUnitOrder } from './risq_orders';
 import { groupUnitsByType, resolveHoveredZones, unhoverRisqZone, zoneCenterOffset } from './risq_zone';
 import { RisqViewMode, nextViewMode } from './risq_view_mode';
 import type {
@@ -90,6 +99,8 @@ export class DwgRisq extends DwgElement {
   // control groups 1-10 ('0' is group 10)
   private control_groups = new Map<number, { kind: 'unit' | 'building'; ids: number[] }>();
   private orders_model = new RisqOrdersModel(() => this.ordersChanged());
+  private idle_units: RisqUnit[] = [];
+  private last_idle_selected?: number;
 
   private handleKeydown = (e: KeyboardEvent) => {
     if (isTypingInInput()) {
@@ -219,8 +230,41 @@ export class DwgRisq extends DwgElement {
   }
 
   private ordersChanged() {
+    this.refreshPanels();
+  }
+
+  private refreshPanels() {
+    this.recomputeIdleUnits();
     this.right_panel.dataRefreshed();
     this.left_panel.dataRefreshed();
+  }
+
+  private recomputeIdleUnits() {
+    const player = this.getPlayer();
+    if (!player) {
+      this.idle_units = [];
+      return;
+    }
+    this.idle_units = [...player.units.values()]
+      .filter((u) => this.orders_model.effectiveForSubject(u.internal_id).every((o) => !isUnitOrder(o.order_type)))
+      .sort((a, b) => a.internal_id - b.internal_id);
+  }
+
+  idleUnitCount(): number {
+    return this.idle_units.length;
+  }
+
+  idleBuildingCount(): number {
+    const player = this.getPlayer();
+    if (!player) {
+      return 0;
+    }
+    return [...player.buildings.values()].filter(
+      (b) =>
+        !b.under_construction &&
+        b.produces.length > 0 &&
+        this.orders_model.effectiveForSubject(b.internal_id).every((o) => !isBuildingOrder(o.order_type))
+    ).length;
   }
 
   getImageCache(): RisqImageCache {
@@ -323,8 +367,7 @@ export class DwgRisq extends DwgElement {
   private setNewGameData(new_game: GameRisqFromServer) {
     this.game = serverToGameRisq(new_game);
     this.orders_model.setSubmitted(this.getPlayer()?.active_orders ?? []);
-    this.right_panel.dataRefreshed();
-    this.left_panel.dataRefreshed();
+    this.refreshPanels();
   }
 
   private async applyStartTurn(data: StartTurnData) {
@@ -457,6 +500,15 @@ export class DwgRisq extends DwgElement {
         const decoded = invertBuildKey(order.target_id);
         target_space = decoded.space;
         target_zone = decoded.zone;
+        break;
+      }
+      case RisqOrderType.OrderType_UnitRepair: {
+        const building = this.findBuildingById(order.target_id);
+        if (!building) {
+          return undefined;
+        }
+        target_space = building.space_coordinate;
+        target_zone = building.zone_coordinate;
         break;
       }
       default:
@@ -692,6 +744,81 @@ export class DwgRisq extends DwgElement {
     this.orders_model.cancelForSubject(internal_id);
   }
 
+  selectOrderSubjects(order: RisqFrontendOrder) {
+    const player = this.getPlayer();
+    const game = this.game;
+    if (!player || !game) {
+      return;
+    }
+    if (isBuildingOrder(order.order_type)) {
+      const building = player.buildings.get(order.subjects[0]);
+      if (building) {
+        this.left_panel.openPanel({ data_type: LeftPanelDataType.BUILDING, data: building }, RisqVisibilityLevel.SPY);
+      }
+      return;
+    }
+    if (!isUnitOrder(order.order_type)) {
+      return;
+    }
+    const units_by_type = groupUnitsByType(player.units, order.subjects);
+    const first = order.subjects.map((id) => player.units.get(id)).find((u) => !!u);
+    if (units_by_type.length === 0 || !first) {
+      return;
+    }
+    const space = getSpace(game, coordinateToIndex(game.board_size, first.space_coordinate));
+    if (!space) {
+      return;
+    }
+    this.left_panel.openPanel(
+      {
+        data_type: LeftPanelDataType.UNITS,
+        data: { space, units_by_player: new Map([[player.player.player_id, units_by_type]]) },
+      },
+      RisqVisibilityLevel.SPY
+    );
+  }
+
+  selectNextIdleUnit() {
+    if (!this.game || this.idle_units.length === 0) {
+      return;
+    }
+    let idx = 0;
+    if (this.last_idle_selected !== undefined) {
+      const found = this.idle_units.findIndex((u) => u.internal_id > this.last_idle_selected!);
+      idx = found === -1 ? 0 : found;
+    }
+    const unit = this.idle_units[idx];
+    this.last_idle_selected = unit.internal_id;
+    this.left_panel.openPanel({ data_type: LeftPanelDataType.UNIT, data: unit }, RisqVisibilityLevel.SPY);
+    const view = this.coordinateToCanvas(unit.space_coordinate, this.last_transform.scale);
+    this.board.setView(subtractPoint2D(view, this.canvas_center));
+  }
+
+  confirmSubmitOrders() {
+    const n_units = this.idleUnitCount();
+    const n_buildings = this.idleBuildingCount();
+    const n = n_units + n_buildings;
+    if (n === 0) {
+      this.toggleSubmitOrdersButton();
+      return;
+    }
+    let noun: string;
+    if (n_units > 0 && n_buildings > 0) {
+      noun = 'units and buildings';
+    } else if (n_buildings > 0) {
+      noun = n_buildings === 1 ? 'building' : 'buildings';
+    } else {
+      noun = n_units === 1 ? 'unit' : 'units';
+    }
+    const dialog = document.createElement('dwg-confirm-dialog');
+    dialog.setData({
+      question: `Are you sure you want to submit orders? You have ${n} idle ${noun}.`,
+      size: DialogSize.SMALL,
+    });
+    dialog.addEventListener('confirmed', () => this.toggleSubmitOrdersButton());
+    this.appendChild(dialog);
+  }
+
   private assignControlGroup(group: number) {
     if (!this.left_panel.isOrderable()) {
       return;
@@ -799,6 +926,27 @@ export class DwgRisq extends DwgElement {
     );
   }
 
+  private repairTargetValid(): boolean {
+    const b = this.hovered_zone?.building;
+    return (
+      this.isZoneValid() &&
+      !!b &&
+      b.player_id === this.player_id &&
+      !b.under_construction &&
+      b.combat_stats.health < b.combat_stats.max_health
+    );
+  }
+
+  private findBuildingById(internal_id: number): RisqBuilding | undefined {
+    for (const player of this.game?.players ?? []) {
+      const building = player.buildings.get(internal_id);
+      if (building) {
+        return building;
+      }
+    }
+    return undefined;
+  }
+
   private resolveActiveOrderType(): RisqOrderType {
     if (!this.left_panel.getData() || !this.left_panel.isOrderable() || !this.canGiveOrders() || !this.hovered_space) {
       return RisqOrderType.NONE;
@@ -821,6 +969,11 @@ export class DwgRisq extends DwgElement {
       case RisqOrderType.OrderType_UnitBuild:
         if (is_villager && zone_valid && !this.hovered_zone?.resource && !this.hovered_zone?.building) {
           return RisqOrderType.OrderType_UnitBuild;
+        }
+        break;
+      case RisqOrderType.OrderType_UnitRepair:
+        if (is_villager && this.repairTargetValid()) {
+          return RisqOrderType.OrderType_UnitRepair;
         }
         break;
       default:
@@ -925,6 +1078,18 @@ export class DwgRisq extends DwgElement {
           clear_previous_orders: !this.ctrl_held,
         });
         break;
+      case RisqOrderType.OrderType_UnitRepair:
+        if (!this.hovered_zone?.building) {
+          return;
+        }
+        this.orders_model.add({
+          player_id: this.player_id,
+          order_type: RisqOrderType.OrderType_UnitRepair,
+          subjects: [data.data.internal_id],
+          target_id: this.hovered_zone.building.internal_id,
+          clear_previous_orders: !this.ctrl_held,
+        });
+        break;
       default:
         return;
     }
@@ -1005,6 +1170,18 @@ export class DwgRisq extends DwgElement {
           order_type: RisqOrderType.OrderType_UnitBuild,
           subjects: units.filter((u) => u.unit_id === 1).map((u) => u.internal_id),
           target_id: cantorPair(this.armed_building_id, this.hovered_zone.coordinate_key),
+          clear_previous_orders: !this.ctrl_held,
+        });
+        break;
+      case RisqOrderType.OrderType_UnitRepair:
+        if (!this.hovered_zone?.building) {
+          return;
+        }
+        this.orders_model.add({
+          player_id: this.player_id,
+          order_type: RisqOrderType.OrderType_UnitRepair,
+          subjects: units.filter((u) => u.unit_id === 1).map((u) => u.internal_id),
+          target_id: this.hovered_zone.building.internal_id,
           clear_previous_orders: !this.ctrl_held,
         });
         break;

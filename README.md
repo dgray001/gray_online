@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.7w: Orders for groups
+v0.7x: Next idle thing button
 
 ## Dev Use
 
