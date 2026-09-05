@@ -2,7 +2,7 @@ import { ColorRGB } from '../../../../scripts/color_rgb';
 import { atangent } from '../../../../scripts/math';
 import { drawEllipse } from '../../util/canvas_util';
 import type { Point2D } from '../../util/objects2d';
-import { pointInHexagon, rotatePoint, subtractPoint2D } from '../../util/objects2d';
+import { equalsPoint2D, pointInHexagon, rotatePoint, subtractPoint2D } from '../../util/objects2d';
 import type { DwgRisq } from './risq';
 import { buildingImage } from './risq_buildings';
 import type { RisqSpace, RisqUnit, RisqZone, UnitByTypeData } from './risq_data';
@@ -13,6 +13,25 @@ import { RisqViewMode } from './risq_view_mode';
 
 /** Multiplier for inner zone relative to whole radius */
 export const INNER_ZONE_MULTIPLIER = 0.4;
+
+const OUTER_ZONE_COORDINATES: Point2D[] = [
+  { x: 2, y: 1 },
+  { x: 2, y: 0 },
+  { x: 1, y: 0 },
+  { x: 0, y: 0 },
+  { x: 0, y: 1 },
+  { x: 1, y: 2 },
+];
+
+export function zoneCenterOffset(zone_coordinate: Point2D, hex_r: number): Point2D {
+  const i = OUTER_ZONE_COORDINATES.findIndex((dv) => equalsPoint2D(dv, zone_coordinate));
+  if (i === -1) {
+    return { x: 0, y: 0 };
+  }
+  const angle = (Math.PI / 3) * (i + 1);
+  const r = 0.75 * hex_r;
+  return { x: r * Math.cos(angle), y: r * Math.sin(angle) };
+}
 
 /** Organizes units by unit id for easier processing */
 export function organizeZoneUnits(units: Map<number, RisqUnit>): Map<number, Map<number, UnitByTypeData>> {
@@ -46,6 +65,89 @@ export function unitsByPlayerFiltered(units: Map<number, RisqUnit>, economic: bo
     }
   }
   return result;
+}
+
+/** Groups an arbitrary, possibly multi-space list of a single player's unit ids by unit type */
+export function groupUnitsByType(units: Map<number, RisqUnit>, ids: number[]): UnitByTypeData[] {
+  const by_type = new Map<number, UnitByTypeData>();
+  for (const id of ids) {
+    const unit = units.get(id);
+    if (!unit) {
+      continue;
+    }
+    const existing = by_type.get(unit.unit_id);
+    if (existing) {
+      existing.units.add(id);
+    } else {
+      by_type.set(unit.unit_id, { player_id: unit.player_id, unit_id: unit.unit_id, units: new Set([id]) });
+    }
+  }
+  return [...by_type.values()];
+}
+
+export const UNIT_CLUSTER_ICON_SIZE = 64;
+
+/** Cache key for a multi-unit-type cluster icon, sensitive to the types, their counts, and the shown total */
+export function unitClusterIconKey(units_by_type: UnitByTypeData[], total: number): string {
+  return 'unit_cluster:' + units_by_type.map((t) => `${t.unit_id}x${t.units.size}`).join(',') + `:${total}`;
+}
+
+/** Draws one player's unit types centered at the origin, arranging 1/2/3/4/many types each with its count */
+export function drawUnitTypeCluster(
+  ctx: CanvasRenderingContext2D,
+  game: DwgRisq,
+  units_by_type: UnitByTypeData[],
+  r: Point2D,
+  total: number,
+  primary_color: string,
+  secondary_color: string
+) {
+  const draw_count = (s: string, ts: number, x: number, y: number, w: number, fill_primary = true) => {
+    const fs = ctx.fillStyle;
+    ctx.fillStyle = fill_primary ? primary_color : secondary_color;
+    ctx.font = `bold ${ts}px serif`;
+    ctx.fillText(s, x, y, w);
+    ctx.fillStyle = fs;
+  };
+  const icon = (t: UnitByTypeData) => game.getIcon(unitImage(t.unit_id));
+  if (units_by_type.length === 1) {
+    const t = units_by_type[0];
+    ctx.drawImage(icon(t), -r.x, -r.y, 2 * r.x, 2 * r.y);
+    draw_count(t.units.size.toString(), 1.4 * r.y, -r.x, -0.7 * r.y, 2 * r.x);
+  } else if (units_by_type.length === 2) {
+    for (let j = 0; j < 2; j++) {
+      const t = units_by_type[j];
+      ctx.drawImage(icon(t), (0.5 * j - 1) * r.x, (0.5 * j - 1) * r.y, 1.5 * r.x, 1.5 * r.y);
+      draw_count(t.units.size.toString(), r.y, (0.5 * j - 1) * r.x, (0.5 * j - 1) * r.y, 2 * r.x);
+    }
+  } else if (units_by_type.length === 3) {
+    for (let j = 0; j < 2; j++) {
+      const t = units_by_type[j];
+      ctx.drawImage(icon(t), (0.8 * j - 0.9) * r.x, -0.9 * r.y, r.x, r.y);
+      draw_count(t.units.size.toString(), 0.75 * r.y, (0.8 * j - 1) * r.x, -0.9 * r.y, 1.5 * r.x);
+    }
+    const t = units_by_type[2];
+    ctx.drawImage(icon(t), -0.5 * r.x, -0.1 * r.y, r.x, r.y);
+    draw_count(t.units.size.toString(), 0.75 * r.y, -0.5 * r.x, -0.1 * r.y, 1.5 * r.x);
+  } else if (units_by_type.length === 4) {
+    for (let j = 0; j < 2; j++) {
+      const t = units_by_type[j];
+      ctx.drawImage(icon(t), (0.8 * j - 0.9) * r.x, -0.9 * r.y, r.x, r.y);
+      draw_count(t.units.size.toString(), 0.75 * r.y, (0.8 * j - 0.9) * r.x, -0.9 * r.y, 1.5 * r.x);
+    }
+    for (let j = 0; j < 2; j++) {
+      const t = units_by_type[2 + j];
+      ctx.drawImage(icon(t), (0.8 * j - 0.9) * r.x, -0.1 * r.y, r.x, r.y);
+      draw_count(t.units.size.toString(), 0.75 * r.y, (0.8 * j - 0.9) * r.x, -0.1 * r.y, 1.5 * r.x);
+    }
+  } else {
+    for (let j = 0; j < 2; j++) {
+      ctx.drawImage(icon(units_by_type[j]), (0.8 * j - 0.9) * r.x, -0.9 * r.y, r.x, r.y);
+    }
+    ctx.drawImage(icon(units_by_type[2]), -0.9 * r.x, -0.1 * r.y, r.x, r.y);
+    draw_count('...', 0.8 * r.y, 0.1 * r.x, -0.1 * r.y, r.x, false);
+    draw_count(total.toString(), 1.4 * r.y, -r.x, -0.7 * r.y, 2 * r.x);
+  }
 }
 
 /** Gets zone fill for the input zone */
@@ -195,157 +297,8 @@ export function drawRisqZone(
         const units_by_type = [...units_by_player_and_type.values()][0];
         if (units_by_type.length === 0) {
           ctx.strokeStyle = secondary_color;
-        } else if (units_by_type.length === 1) {
-          const unit = zone.units.get([...units_by_type[0].units.values()][0]);
-          if (!!unit) {
-            ctx.drawImage(game.getIcon(unitImage(unit.unit_id)), -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
-            drawText(
-              ctx,
-              units_by_type[0].units.size.toString(),
-              1.4 * part.r.y,
-              -part.r.x,
-              -0.7 * part.r.y,
-              2 * part.r.x
-            );
-          } else {
-            console.error(`Error drawing unit in zone; please check zone data: ${zone}`);
-          }
-        } else if (units_by_type.length === 2) {
-          for (let j = 0; j < 2; j++) {
-            const units = [...units_by_type[j].units.values()];
-            const unit = zone.units.get(units[0]);
-            if (!!unit) {
-              ctx.drawImage(
-                game.getIcon(unitImage(unit.unit_id)),
-                (0.5 * j - 1) * part.r.x,
-                (0.5 * j - 1) * part.r.y,
-                1.5 * part.r.x,
-                1.5 * part.r.y
-              );
-              drawText(
-                ctx,
-                units.length.toString(),
-                part.r.y,
-                (0.5 * j - 1) * part.r.x,
-                (0.5 * j - 1) * part.r.y,
-                2 * part.r.x
-              );
-            } else {
-              console.error(`Error drawing 2 units in zone; please check zone data: ${zone}`);
-            }
-          }
-        } else if (units_by_type.length === 3) {
-          for (let j = 0; j < 2; j++) {
-            const units = [...units_by_type[j].units.values()];
-            const unit = zone.units.get(units[0]);
-            if (!!unit) {
-              ctx.drawImage(
-                game.getIcon(unitImage(unit.unit_id)),
-                (0.8 * j - 0.9) * part.r.x,
-                -0.9 * part.r.y,
-                part.r.x,
-                part.r.y
-              );
-              drawText(
-                ctx,
-                units.length.toString(),
-                0.75 * part.r.y,
-                (0.8 * j - 1) * part.r.x,
-                -0.9 * part.r.y,
-                1.5 * part.r.x
-              );
-            } else {
-              console.error(`Error drawing 3 units in zone; please check zone data: ${zone}`);
-            }
-          }
-          const units = [...units_by_type[2].units.values()];
-          const unit = zone.units.get(units[0]);
-          if (!!unit) {
-            ctx.drawImage(game.getIcon(unitImage(unit.unit_id)), -0.5 * part.r.x, -0.1 * part.r.y, part.r.x, part.r.y);
-            drawText(ctx, units.length.toString(), 0.75 * part.r.y, -0.5 * part.r.x, -0.1 * part.r.y, 1.5 * part.r.x);
-          } else {
-            console.error(`Error drawing 3 units in zone; please check zone data: ${zone}`);
-          }
-        } else if (units_by_type.length === 4) {
-          for (let j = 0; j < 2; j++) {
-            const units = [...units_by_type[j].units.values()];
-            const unit = zone.units.get(units[0]);
-            if (!!unit) {
-              ctx.drawImage(
-                game.getIcon(unitImage(unit.unit_id)),
-                (0.8 * j - 0.9) * part.r.x,
-                -0.9 * part.r.y,
-                part.r.x,
-                part.r.y
-              );
-              drawText(
-                ctx,
-                units.length.toString(),
-                0.75 * part.r.y,
-                (0.8 * j - 0.9) * part.r.x,
-                -0.9 * part.r.y,
-                1.5 * part.r.x
-              );
-            } else {
-              console.error(`Error drawing 4 units in zone; please check zone data: ${zone}`);
-            }
-          }
-          for (let j = 0; j < 2; j++) {
-            const units = [...units_by_type[2 + j].units.values()];
-            const unit = zone.units.get(units[0]);
-            if (!!unit) {
-              ctx.drawImage(
-                game.getIcon(unitImage(unit.unit_id)),
-                (0.8 * j - 0.9) * part.r.x,
-                -0.1 * part.r.y,
-                part.r.x,
-                part.r.y
-              );
-              drawText(
-                ctx,
-                units.length.toString(),
-                0.75 * part.r.y,
-                (0.8 * j - 0.9) * part.r.x,
-                -0.1 * part.r.y,
-                1.5 * part.r.x
-              );
-            } else {
-              console.error(`Error drawing 4 units in zone; please check zone data: ${zone}`);
-            }
-          }
         } else {
-          for (let j = 0; j < 2; j++) {
-            const units = [...units_by_type[j].units.values()];
-            const unit = zone.units.get(units[0]);
-            if (!!unit) {
-              ctx.drawImage(
-                game.getIcon(unitImage(unit.unit_id)),
-                (0.8 * j - 0.9) * part.r.x,
-                -0.9 * part.r.y,
-                part.r.x,
-                part.r.y
-              );
-            } else {
-              console.error(`Error drawing units in zone; please check zone data: ${zone}`);
-            }
-          }
-          for (let j = 0; j < 1; j++) {
-            const units = [...units_by_type[2 + j].units.values()];
-            const unit = zone.units.get(units[0]);
-            if (!!unit) {
-              ctx.drawImage(
-                game.getIcon(unitImage(unit.unit_id)),
-                (0.8 * j - 0.9) * part.r.x,
-                -0.1 * part.r.y,
-                part.r.x,
-                part.r.y
-              );
-            } else {
-              console.error(`Error drawing units in zone; please check zone data: ${zone}`);
-            }
-          }
-          drawText(ctx, '...', 0.8 * part.r.y, 0.1 * part.r.x, -0.1 * part.r.y, part.r.x, false);
-          drawText(ctx, zone.units.size.toString(), 1.4 * part.r.y, -part.r.x, -0.7 * part.r.y, 2 * part.r.x);
+          drawUnitTypeCluster(ctx, game, units_by_type, part.r, zone.units.size, primary_color, secondary_color);
         }
         break;
       default:

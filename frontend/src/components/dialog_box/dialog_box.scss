@@ -1,4 +1,11 @@
 .dwg-dialog-box {
+  --dialog-h: 35vh;
+  --dialog-w: 35vw;
+  --dialog-max-h: 400px;
+  --dialog-max-w: 500px;
+  --dialog-min-h: 220px;
+  --dialog-min-w: 220px;
+
   align-items: center;
   background-color: rgba(120, 120, 120, 0.8);
   bottom: 0;
@@ -10,13 +17,37 @@
   top: 0;
   z-index: 100;
 
+  &.size-small {
+    --dialog-h: 25vh;
+    --dialog-w: 25vw;
+    --dialog-max-h: 300px;
+    --dialog-max-w: 380px;
+    --dialog-min-h: 160px;
+    --dialog-min-w: 180px;
+  }
+
+  &.size-large {
+    --dialog-h: 55vh;
+    --dialog-w: 55vw;
+    --dialog-max-h: 640px;
+    --dialog-max-w: 760px;
+    --dialog-min-h: 300px;
+    --dialog-min-w: 320px;
+  }
+
   #wrapper {
     background-color: rgb(80, 80, 80);
     box-shadow: 0px 0px 3px 3px rgba(200, 200, 200, 0.8);
     color: white;
     font-size: var(--font-size-medium);
+    height: var(--dialog-h);
+    max-height: var(--dialog-max-h);
+    max-width: var(--dialog-max-w);
+    min-height: var(--dialog-min-h);
+    min-width: var(--dialog-min-w);
     padding: 1em;
     position: relative;
+    width: var(--dialog-w);
 
     button {
       border-radius: 0.2em;

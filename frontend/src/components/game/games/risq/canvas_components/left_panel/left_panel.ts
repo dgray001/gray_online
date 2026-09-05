@@ -389,10 +389,14 @@ export class RisqLeftPanel implements CanvasComponent {
     this.checkUnitsByTypeData({ space: data.space, units: new_data[0][1] });
   }
 
+  private resolveUnit(player_id: number, unit_id: number): RisqUnit | undefined {
+    return this.risq.getGame()?.players[player_id]?.units.get(unit_id);
+  }
+
   /** Check units of a single player and change datatype accordingly */
   private checkUnitsByTypeData(data: PlayerUnitsDrawData) {
     if (data.units.length === 1 && data.units[0].units.size === 1) {
-      const unit = data.space.units?.get([...data.units[0].units.values()][0]);
+      const unit = this.resolveUnit(data.units[0].player_id, [...data.units[0].units.values()][0]);
       if (!!unit) {
         this.data = { data_type: LeftPanelDataType.UNIT, data: unit }; // set data as internal id
       } else {
@@ -546,7 +550,7 @@ export class RisqLeftPanel implements CanvasComponent {
         }
         let i = 0;
         for (const unit_id of unit_data.units.values()) {
-          const unit = data.space.units?.get(unit_id);
+          const unit = this.resolveUnit(unit_data.player_id, unit_id);
           if (!unit) {
             continue;
           }
@@ -1150,7 +1154,7 @@ export class RisqLeftPanel implements CanvasComponent {
             continue;
           }
           for (const unit_id of unit_data.units.values()) {
-            const unit = this.data.data.space.units?.get(unit_id);
+            const unit = this.resolveUnit(unit_data.player_id, unit_id);
             if (!unit) {
               continue;
             }

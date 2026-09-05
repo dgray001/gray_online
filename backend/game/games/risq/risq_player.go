@@ -23,9 +23,8 @@ type RisqPlayer struct {
 
 // Private commitment to build at a zone before any stamina makes it a real, objective RisqBuilding
 type RisqPlannedFoundation struct {
-	building_id    uint32
-	cost           RisqResourceCost
-	creating_order *RisqOrder
+	building_id uint32
+	cost        RisqResourceCost
 }
 
 func createRisqPlayer(player *game.Player, max_population_limit uint16, color string) *RisqPlayer {
@@ -44,10 +43,10 @@ func createRisqPlayer(player *game.Player, max_population_limit uint16, color st
 	}
 }
 
-func createRisqPlannedFoundation(building_id uint32, creating_order *RisqOrder, player *RisqPlayer) *RisqPlannedFoundation {
+func createRisqPlannedFoundation(building_id uint32, player *RisqPlayer) *RisqPlannedFoundation {
 	cost, _ := buildingProductionCost(building_id)
 	player.resources.spend(cost)
-	return &RisqPlannedFoundation{building_id: building_id, cost: cost, creating_order: creating_order}
+	return &RisqPlannedFoundation{building_id: building_id, cost: cost}
 }
 
 func (p *RisqPlayer) cancelPlannedFoundation(zone *RisqZone) {

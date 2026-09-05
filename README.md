@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.7v: Basic attack logic
+v0.7w: Orders for groups
 
 ## Dev Use
 

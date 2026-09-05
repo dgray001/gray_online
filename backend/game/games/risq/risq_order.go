@@ -95,8 +95,8 @@ type RisqOrder struct {
 	cancelled bool
 	// The turn that the order was received by the player
 	turn_received uint16
-	// The turn that the order was executed
-	turn_executed uint16
+	// The turn that the order was resolved (executed or cancelled)
+	turn_resolved uint16
 }
 
 func createRisqOrder(internal_id uint64, order_type OrderType, player_id int, subjects []Orderable, target_id int64, clear_previous_orders bool) *RisqOrder {
@@ -118,7 +118,7 @@ func (o *RisqOrder) toFrontend() gin.H {
 		"order_type":    o.order_type,
 		"target_id":     o.target_id,
 		"turn_received": o.turn_received,
-		"turn_executed": o.turn_executed,
+		"turn_resolved": o.turn_resolved,
 	}
 	subjects := make([]uint64, 0)
 	for _, subject := range o.subjects {
@@ -142,7 +142,7 @@ func (ot OrderType) isPlayerOrder() bool {
 	return ot >= OrderType_CancelOrder && ot <= OrderType_CancelFoundation
 }
 
-func (r *GameRisq) getOrdersFromPlayerAction(action gin.H) ([]OrderFromFrontend, error) {
+func (r *GameRisq) getOrdersFromPlayerAction(action gin.H, player_id int) ([]OrderFromFrontend, error) {
 	orders := make([]OrderFromFrontend, 0)
 	bytes, err1 := json.Marshal(action["orders"])
 	if err1 != nil {
@@ -153,7 +153,7 @@ func (r *GameRisq) getOrdersFromPlayerAction(action gin.H) ([]OrderFromFrontend,
 		return orders, err2
 	}
 	for _, order := range orders {
-		err3 := r.validateFrontendOrder(order)
+		err3 := r.validateFrontendOrder(order, player_id)
 		if err3 != nil {
 			return orders, err3
 		}
@@ -161,15 +161,15 @@ func (r *GameRisq) getOrdersFromPlayerAction(action gin.H) ([]OrderFromFrontend,
 	return orders, nil
 }
 
-func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend) error {
+func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend, player_id int) error {
 	// Validate order type
 	order_type := OrderType(order.Order_type)
 	if order_type <= OrderType_None || order_type >= OrderType_END {
 		return fmt.Errorf("Invalid order type: %d", order_type)
 	}
-	// Validate player id
-	if order.Player_id < 0 || order.Player_id >= len(r.players) {
-		return fmt.Errorf("Invalid player id: %d", order.Player_id)
+	// Order owner must be the submitting player
+	if order.Player_id != player_id {
+		return fmt.Errorf("Order player id %d does not match submitter %d", order.Player_id, player_id)
 	}
 	// Validate order type and subjects
 	if order_type.isUnitOrder() {
@@ -263,8 +263,14 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend) error {
 		if stamina_required <= 0 {
 			return fmt.Errorf("Invalid or unbuildable building id: %d", building_id)
 		}
-		if zone.building != nil || zone.resource != nil {
+		if zone.resource != nil {
 			return fmt.Errorf("Target zone is already occupied")
+		}
+		if zone.building != nil {
+			b := zone.building
+			if b.player_id != order.Player_id || !b.underConstruction() || b.building_id != building_id {
+				return fmt.Errorf("Target zone is already occupied")
+			}
 		}
 		for _, subject_id := range order.Subjects {
 			if r.players[order.Player_id].units[subject_id].unit_id != 1 {
@@ -320,15 +326,23 @@ func (q *RisqOrderQueue) receiveOrder(o *RisqOrder) {
 }
 
 // Finds, cancels, and removes the order with this internal id; returns it (or nil if not found)
-func (q *RisqOrderQueue) cancelOrder(internal_id uint64) *RisqOrder {
+func (q *RisqOrderQueue) removeOrder(internal_id uint64) *RisqOrder {
 	for i, order := range q.active_orders {
 		if order.internal_id == internal_id {
-			order.cancelled = true
 			q.active_orders = append(q.active_orders[:i], q.active_orders[i+1:]...)
 			return order
 		}
 	}
 	return nil
+}
+
+func (o *RisqOrder) removeSubject(subject Orderable) {
+	for i, s := range o.subjects {
+		if s == subject {
+			o.subjects = append(o.subjects[:i], o.subjects[i+1:]...)
+			return
+		}
+	}
 }
 
 func (q *RisqOrderQueue) nextOrder(orderable Orderable, risq *GameRisq) *RisqOrder {
@@ -339,9 +353,10 @@ func (q *RisqOrderQueue) nextOrder(orderable Orderable, risq *GameRisq) *RisqOrd
 			return o
 		case OrderStatus_Cancelled:
 			o.cancelled = true
+			o.turn_resolved = risq.turn_number
 		default:
 			o.executed = true
-			o.turn_executed = risq.turn_number
+			o.turn_resolved = risq.turn_number
 		}
 		q.active_orders = q.active_orders[1:]
 	}

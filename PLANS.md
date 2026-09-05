@@ -1,7 +1,7 @@
 v0.8: Playable Risq
- x: Orders for groups (and general ui improvements)
+  (and general ui improvements)
  y: Show orders on map (like arc lines for movement)
- z: Attack order (combat implementation with color logic, etc)
+ z: Attack order (combat implementation)
  za: Summary report
  zb: Next idle thing button (idle icons, etc)
  zc: Design minimal playable game
@@ -17,6 +17,7 @@ Future Risq Plans:
  - Settings setup (including alt win conditions)
  - Drag multiselect
  - Control groups
+ - Color logic for attacks
  - Different maps / terrain / etc
 
 Fiddlesticks Plans:

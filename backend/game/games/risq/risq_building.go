@@ -167,7 +167,7 @@ func (b *RisqBuilding) receiveOrder(o *RisqOrder, risq *GameRisq) {
 }
 
 func (b *RisqBuilding) cancelOrder(o *RisqOrder, risq *GameRisq) {
-	b.order_queue.cancelOrder(o.internal_id)
+	b.order_queue.cancelOrder(o.internal_id, risq.turn_number)
 	item, ok := b.production_queue[o.internal_id]
 	if !ok {
 		return

@@ -1,6 +1,6 @@
 import { DwgElement } from '../../../dwg_element';
 import type { UpdateMessage } from '../../data_models';
-import { drawCircle } from '../../util/canvas_util';
+import { drawArrow, drawCircle } from '../../util/canvas_util';
 import type { BoardTransformData, DwgCanvasBoard } from '../../util/canvas_board/canvas_board';
 import type { Point2D } from '../../util/objects2d';
 import {
@@ -17,9 +17,9 @@ import { DEV, createLock, isTypingInInput } from '../../../../scripts/util';
 import { ColorRGB } from '../../../../scripts/color_rgb';
 
 import html from './risq.html';
-import type { GameRisq, GameRisqFromServer, RisqPlayer, RisqSpace, RisqZone } from './risq_data';
+import type { GameRisq, GameRisqFromServer, RisqFrontendOrder, RisqPlayer, RisqSpace, RisqZone } from './risq_data';
 import { RisqOrderType, RisqResourceType, RisqVisibilityLevel, serverToGameRisq } from './risq_data';
-import { cantorPair, coordinateToIndex, getSpace } from './risq_coordinates';
+import { cantorPair, coordinateToIndex, getSpace, invertBuildKey, invertPair, invertZoneKey } from './risq_coordinates';
 import type { StartTurnData, SubmittedOrdersData, UnsubmittedOrdersData } from './risq_updates';
 import {
   BUILD_CURSOR_SIZE,
@@ -34,19 +34,28 @@ import { RisqRightPanel } from './canvas_components/right_panel/right_panel';
 import type { DrawRisqSpaceConfig } from './risq_space';
 import { DrawRisqSpaceDetail, drawRisqSpace } from './risq_space';
 import { RisqLeftPanel } from './canvas_components/left_panel/left_panel';
-import { resolveHoveredZones, unhoverRisqZone } from './risq_zone';
+import { RisqOrdersModel } from './risq_orders';
+import { groupUnitsByType, resolveHoveredZones, unhoverRisqZone, zoneCenterOffset } from './risq_zone';
 import { RisqViewMode, nextViewMode } from './risq_view_mode';
-import type { UnitData } from './canvas_components/left_panel/left_panel_data';
+import type {
+  EconomicUnitsData,
+  MilitaryUnitsData,
+  UnitData,
+  UnitsByTypeData,
+} from './canvas_components/left_panel/left_panel_data';
 import { LeftPanelDataType } from './canvas_components/left_panel/left_panel_data';
 
 import './risq.scss';
 import '../../util/canvas_board/canvas_board';
 import '../../../dialog_box/confirm_dialog/confirm_dialog';
+import { DialogSize } from '../../../dialog_box/dialog_box';
 import { createMessage } from '../../../lobby/data_models';
 
 const DEFAULT_HEXAGON_RADIUS = 60;
 
 const DRAW_CENTER_DOT = false;
+
+const DRAW_ORDER_ARROWS = false;
 
 export class DwgRisq extends DwgElement {
   private board!: DwgCanvasBoard;
@@ -78,6 +87,9 @@ export class DwgRisq extends DwgElement {
   private ctrl_held = false;
   private shift_held = false;
   private alt_held = false;
+  // control groups 1-10 ('0' is group 10)
+  private control_groups = new Map<number, { kind: 'unit' | 'building'; ids: number[] }>();
+  private orders_model = new RisqOrdersModel(() => this.ordersChanged());
 
   private handleKeydown = (e: KeyboardEvent) => {
     if (isTypingInInput()) {
@@ -86,8 +98,21 @@ export class DwgRisq extends DwgElement {
     this.ctrl_held = e.ctrlKey;
     this.shift_held = e.shiftKey;
     this.alt_held = e.altKey;
-    if (e.key.toLowerCase() === 'v') {
-      this.view_mode = nextViewMode(this.view_mode);
+    if (/^[0-9]$/.test(e.key)) {
+      const group = e.key === '0' ? 10 : parseInt(e.key, 10);
+      if (e.ctrlKey) {
+        this.assignControlGroup(group);
+      } else {
+        this.selectControlGroup(group);
+      }
+      return;
+    }
+    switch (e.key.toLowerCase()) {
+      case 'v':
+        this.view_mode = nextViewMode(this.view_mode);
+        break;
+      default:
+        break;
     }
   };
 
@@ -189,6 +214,15 @@ export class DwgRisq extends DwgElement {
     return this.game;
   }
 
+  getOrdersModel(): RisqOrdersModel {
+    return this.orders_model;
+  }
+
+  private ordersChanged() {
+    this.right_panel.dataRefreshed();
+    this.left_panel.dataRefreshed();
+  }
+
   getImageCache(): RisqImageCache {
     return this.image_cache;
   }
@@ -288,6 +322,7 @@ export class DwgRisq extends DwgElement {
 
   private setNewGameData(new_game: GameRisqFromServer) {
     this.game = serverToGameRisq(new_game);
+    this.orders_model.setSubmitted(this.getPlayer()?.active_orders ?? []);
     this.right_panel.dataRefreshed();
     this.left_panel.dataRefreshed();
   }
@@ -356,6 +391,7 @@ export class DwgRisq extends DwgElement {
         drawRisqSpace(ctx, this, space, draw_config);
       }
     }
+    this.drawSelectedUnitOrders(ctx);
     // draw panels
     this.right_panel.draw(ctx, transform, dt);
     this.left_panel.draw(ctx, transform, dt);
@@ -366,6 +402,68 @@ export class DwgRisq extends DwgElement {
       const vis_center = multiplyPoint2D(1 / transform.scale, addPoint2D(this.canvas_center, transform.view));
       drawCircle(ctx, vis_center, 6 / transform.scale);
     }
+  }
+
+  private drawSelectedUnitOrders(ctx: CanvasRenderingContext2D) {
+    if (!DRAW_ORDER_ARROWS) {
+      return; // TODO: order arrows are positioned wrong; reimplement next commit
+    }
+    const data = this.left_panel.getData();
+    if (data?.data_type !== LeftPanelDataType.UNIT) {
+      return;
+    }
+    const unit = data.data;
+    const orders = this.orders_model.effectiveForSubject(unit.internal_id);
+    if (!orders.length) {
+      return;
+    }
+    let from = addPoint2D(
+      this.coordinateToCanvas(unit.space_coordinate, this.last_transform.scale),
+      zoneCenterOffset(unit.zone_coordinate, this.hex_r)
+    );
+    ctx.strokeStyle = 'rgba(255, 225, 0, 0.9)';
+    ctx.fillStyle = 'rgba(255, 225, 0, 0.9)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([8, 5]);
+    for (const order of orders) {
+      const to = this.orderTargetPoint(order);
+      if (!to) {
+        continue;
+      }
+      drawArrow(ctx, from, to, 10);
+      from = to;
+    }
+    ctx.setLineDash([]);
+  }
+
+  private orderTargetPoint(order: RisqFrontendOrder): Point2D | undefined {
+    if (!this.game) {
+      return undefined;
+    }
+    let target_space: Point2D;
+    let target_zone: Point2D | undefined;
+    switch (order.order_type) {
+      case RisqOrderType.OrderType_UnitMoveSpace:
+        target_space = invertPair(order.target_id);
+        break;
+      case RisqOrderType.OrderType_UnitMoveZone:
+      case RisqOrderType.OrderType_UnitGather: {
+        const decoded = invertZoneKey(order.target_id);
+        target_space = decoded.space;
+        target_zone = decoded.zone;
+        break;
+      }
+      case RisqOrderType.OrderType_UnitBuild: {
+        const decoded = invertBuildKey(order.target_id);
+        target_space = decoded.space;
+        target_zone = decoded.zone;
+        break;
+      }
+      default:
+        return undefined;
+    }
+    const p = this.coordinateToCanvas(target_space, this.last_transform.scale);
+    return target_zone ? addPoint2D(p, zoneCenterOffset(target_zone, this.hex_r)) : p;
   }
 
   private getDrawDetail(scale: number): DrawRisqSpaceDetail {
@@ -501,6 +599,11 @@ export class DwgRisq extends DwgElement {
         case LeftPanelDataType.UNIT:
           this.unitOrder(left_panel_data);
           break;
+        case LeftPanelDataType.UNITS_BY_TYPE:
+        case LeftPanelDataType.ECONOMIC_UNITS:
+        case LeftPanelDataType.MILITARY_UNITS:
+          this.unitGroupOrder(left_panel_data);
+          break;
         default:
           break;
       }
@@ -534,7 +637,7 @@ export class DwgRisq extends DwgElement {
     if (!this.canGiveOrders()) {
       return;
     }
-    this.right_panel.addOrder({
+    this.orders_model.add({
       player_id: this.player_id,
       order_type: RisqOrderType.OrderType_BuildingCreate,
       subjects: [building_id],
@@ -549,7 +652,7 @@ export class DwgRisq extends DwgElement {
     if (!this.canGiveOrders()) {
       return;
     }
-    this.right_panel.addOrder({
+    this.orders_model.add({
       player_id: this.player_id,
       order_type: RisqOrderType.OrderType_BuildingResearch,
       subjects: [building_id],
@@ -562,7 +665,7 @@ export class DwgRisq extends DwgElement {
 
   confirmDeleteUnit(internal_id: number) {
     const dialog = document.createElement('dwg-confirm-dialog');
-    dialog.setData({ question: 'Delete this unit? This cannot be undone.' });
+    dialog.setData({ question: 'Are you sure you want to delete this unit?', size: DialogSize.SMALL });
     dialog.addEventListener('confirmed', () => {
       this.deleteUnit(internal_id);
     });
@@ -573,21 +676,69 @@ export class DwgRisq extends DwgElement {
     if (!this.canGiveOrders()) {
       return;
     }
-    this.right_panel.addOrder({
+    this.orders_model.add({
       player_id: this.player_id,
       order_type: RisqOrderType.OrderType_UnitDelete,
       subjects: [internal_id],
       target_id: 0,
       clear_previous_orders: true,
     });
-    this.left_panel.close();
   }
 
   stopUnit(internal_id: number) {
     if (!this.canGiveOrders()) {
       return;
     }
-    this.right_panel.cancelOrdersForSubject(internal_id);
+    this.orders_model.cancelForSubject(internal_id);
+  }
+
+  private assignControlGroup(group: number) {
+    if (!this.left_panel.isOrderable()) {
+      return;
+    }
+    const data = this.left_panel.getData();
+    switch (data?.data_type) {
+      case LeftPanelDataType.UNIT:
+        this.control_groups.set(group, { kind: 'unit', ids: [data.data.internal_id] });
+        break;
+      case LeftPanelDataType.BUILDING:
+        this.control_groups.set(group, { kind: 'building', ids: [data.data.internal_id] });
+        break;
+      case LeftPanelDataType.UNITS_BY_TYPE:
+      case LeftPanelDataType.ECONOMIC_UNITS:
+      case LeftPanelDataType.MILITARY_UNITS:
+        this.control_groups.set(group, { kind: 'unit', ids: data.data.units.flatMap((u) => [...u.units]) });
+        break;
+      default:
+        break;
+    }
+  }
+
+  private selectControlGroup(group: number) {
+    const group_data = this.control_groups.get(group);
+    const player = this.getPlayer();
+    if (!group_data || !player) {
+      return;
+    }
+    if (group_data.kind === 'building') {
+      const building = player.buildings.get(group_data.ids[0]);
+      if (!building) {
+        this.control_groups.delete(group);
+        return;
+      }
+      this.left_panel.openPanel({ data_type: LeftPanelDataType.BUILDING, data: building }, RisqVisibilityLevel.SPY);
+      return;
+    }
+    const alive_ids = group_data.ids.filter((id) => player.units.has(id));
+    if (alive_ids.length === 0) {
+      this.control_groups.delete(group);
+      return;
+    }
+    group_data.ids = alive_ids;
+    this.left_panel.openPanel(
+      { data_type: LeftPanelDataType.UNITS_BY_TYPE, data: { units: groupUnitsByType(player.units, alive_ids) } },
+      RisqVisibilityLevel.SPY
+    );
   }
 
   private updateResourceSpending() {
@@ -598,7 +749,7 @@ export class DwgRisq extends DwgElement {
     for (const pr of player.resources.values()) {
       pr.spending = 0;
     }
-    for (const order of this.right_panel.getOrders()) {
+    for (const order of this.orders_model.pendingOrders()) {
       if (
         order.order_type !== RisqOrderType.OrderType_BuildingCreate &&
         order.order_type !== RisqOrderType.OrderType_BuildingResearch
@@ -730,7 +881,7 @@ export class DwgRisq extends DwgElement {
     // TODO: implement if holding the shift key
     switch (this.resolveActiveOrderType()) {
       case RisqOrderType.OrderType_UnitMoveSpace:
-        this.right_panel.addOrder({
+        this.orders_model.add({
           player_id: this.player_id,
           order_type: RisqOrderType.OrderType_UnitMoveSpace,
           subjects: [data.data.internal_id],
@@ -742,7 +893,7 @@ export class DwgRisq extends DwgElement {
         if (!this.hovered_zone) {
           return;
         }
-        this.right_panel.addOrder({
+        this.orders_model.add({
           player_id: this.player_id,
           order_type: RisqOrderType.OrderType_UnitMoveZone,
           subjects: [data.data.internal_id],
@@ -754,7 +905,7 @@ export class DwgRisq extends DwgElement {
         if (!this.hovered_zone) {
           return;
         }
-        this.right_panel.addOrder({
+        this.orders_model.add({
           player_id: this.player_id,
           order_type: RisqOrderType.OrderType_UnitGather,
           subjects: [data.data.internal_id],
@@ -766,10 +917,93 @@ export class DwgRisq extends DwgElement {
         if (!this.hovered_zone) {
           return;
         }
-        this.right_panel.addOrder({
+        this.orders_model.add({
           player_id: this.player_id,
           order_type: RisqOrderType.OrderType_UnitBuild,
           subjects: [data.data.internal_id],
+          target_id: cantorPair(this.armed_building_id, this.hovered_zone.coordinate_key),
+          clear_previous_orders: !this.ctrl_held,
+        });
+        break;
+      default:
+        return;
+    }
+    this.disarmOrder();
+  }
+
+  // Returns whether the given unit is already sitting at the current hover target (never true while ctrl is held)
+  private isUnitAtHoverTarget(internal_id: number, zone_valid: boolean): boolean {
+    if (this.ctrl_held || !this.hovered_space) {
+      return false;
+    }
+    const unit = this.getPlayer()?.units.get(internal_id);
+    if (!unit || !equalsPoint2D(this.hovered_space.coordinate, unit.space_coordinate)) {
+      return false;
+    }
+    return zone_valid ? equalsPoint2D(this.hovered_zone?.coordinate, unit.zone_coordinate) : true;
+  }
+
+  private unitGroupOrder(data: UnitsByTypeData | EconomicUnitsData | MilitaryUnitsData) {
+    if (!this.hovered_space) {
+      return;
+    }
+    const units = data.data.units.flatMap((u) =>
+      [...u.units].map((internal_id) => ({ unit_id: u.unit_id, internal_id }))
+    );
+    // TODO: implement attack vs just move
+    // TODO: implement if holding the shift key
+    switch (this.resolveActiveOrderType()) {
+      case RisqOrderType.OrderType_UnitMoveSpace: {
+        const subjects = units.filter((u) => !this.isUnitAtHoverTarget(u.internal_id, false)).map((u) => u.internal_id);
+        if (subjects.length === 0) {
+          break;
+        }
+        this.orders_model.add({
+          player_id: this.player_id,
+          order_type: RisqOrderType.OrderType_UnitMoveSpace,
+          subjects,
+          target_id: this.hovered_space.coordinate_key,
+          clear_previous_orders: !this.ctrl_held,
+        });
+        break;
+      }
+      case RisqOrderType.OrderType_UnitMoveZone: {
+        if (!this.hovered_zone) {
+          return;
+        }
+        const subjects = units.filter((u) => !this.isUnitAtHoverTarget(u.internal_id, true)).map((u) => u.internal_id);
+        if (subjects.length === 0) {
+          break;
+        }
+        this.orders_model.add({
+          player_id: this.player_id,
+          order_type: RisqOrderType.OrderType_UnitMoveZone,
+          subjects,
+          target_id: this.hovered_zone.coordinate_key,
+          clear_previous_orders: !this.ctrl_held,
+        });
+        break;
+      }
+      case RisqOrderType.OrderType_UnitGather:
+        if (!this.hovered_zone) {
+          return;
+        }
+        this.orders_model.add({
+          player_id: this.player_id,
+          order_type: RisqOrderType.OrderType_UnitGather,
+          subjects: units.filter((u) => u.unit_id === 1).map((u) => u.internal_id),
+          target_id: this.hovered_zone.coordinate_key,
+          clear_previous_orders: !this.ctrl_held,
+        });
+        break;
+      case RisqOrderType.OrderType_UnitBuild:
+        if (!this.hovered_zone) {
+          return;
+        }
+        this.orders_model.add({
+          player_id: this.player_id,
+          order_type: RisqOrderType.OrderType_UnitBuild,
+          subjects: units.filter((u) => u.unit_id === 1).map((u) => u.internal_id),
           target_id: cantorPair(this.armed_building_id, this.hovered_zone.coordinate_key),
           clear_previous_orders: !this.ctrl_held,
         });
@@ -975,7 +1209,7 @@ export class DwgRisq extends DwgElement {
       const game_update = createMessage(
         `player-${this.player_id}`,
         'game-update',
-        JSON.stringify({ orders: this.right_panel.getOrders() }),
+        JSON.stringify({ orders: this.orders_model.pendingOrders() }),
         'submit-orders'
       );
       this.dispatchEvent(
@@ -984,7 +1218,7 @@ export class DwgRisq extends DwgElement {
           bubbles: true,
         })
       );
-      this.right_panel.clearPendingOrders();
+      this.orders_model.clearPending();
       this.orders_submitted_times++;
     }
   }

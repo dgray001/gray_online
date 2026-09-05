@@ -1,30 +1,21 @@
 import { DwgElement } from '../dwg_element';
-import { until } from '../../scripts/util';
 
 import html from './dialog_box.html';
 
 import './dialog_box.scss';
 
+/** Shared sizing option for any dialog; maps to a `size-*` class on the dialog element */
+export enum DialogSize {
+  SMALL = 'small',
+  MEDIUM = 'medium',
+  LARGE = 'large',
+}
+
 export abstract class DwgDialogBox<T> extends DwgElement {
-  private content_container!: HTMLDivElement;
-
-  constructor() {
-    super();
-    this.html_string = html;
-    this.configureElement('content_container');
-  }
-
   override async connectedCallback() {
-    super.connectedCallback(); // don't await
-    await until(() => {
-      const container = this.querySelector<HTMLDivElement>('#content-container');
-      if (container) {
-        this.content_container = container;
-      }
-      return !!container;
-    });
+    this.html_string = html.replace('id="content-container">', `id="content-container">${this.getHTML()}`);
     this.classList.add('dwg-dialog-box');
-    this.content_container.innerHTML = this.getHTML();
+    await super.connectedCallback();
   }
 
   protected override parsedCallback(): void {

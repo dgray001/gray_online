@@ -130,95 +130,24 @@ func CreateGame(g *game.GameBase) (*GameRisq, error) {
 	}
 	starting_location := util.RandomInt(0, 5)
 	axial_unit_vectors := game_utils.AxialDirectionVectors()
-	starting_space0 := risq.getSpace(axial_unit_vectors[starting_location].Multiply(starting_distance))
-	if starting_space0 == nil {
-		return nil, errors.New("starting space 0 is nil")
+	direction_offsets := map[int][]int{
+		1: {0},
+		2: {0, 3},
+		3: {0, 2, 4},
+		4: {0, 1, 3, 4},
+		5: {0, 1, 2, 3, 4},
+		6: {0, 1, 2, 3, 4, 5},
 	}
-	risq.createPlayerStart(risq.players[0], starting_space0)
-	switch len(risq.players) {
-	case 1:
-	case 2:
-		starting_space1 := risq.getSpace(axial_unit_vectors[(starting_location+3)%6].Multiply(starting_distance))
-		if starting_space1 == nil {
-			return nil, errors.New("starting space 1 is nil")
-		}
-		risq.createPlayerStart(risq.players[1], starting_space1)
-	case 3:
-		starting_space1 := risq.getSpace(axial_unit_vectors[(starting_location+2)%6].Multiply(starting_distance))
-		if starting_space1 == nil {
-			return nil, errors.New("starting space 1 is nil")
-		}
-		risq.createPlayerStart(risq.players[1], starting_space1)
-		starting_space2 := risq.getSpace(axial_unit_vectors[(starting_location+4)%6].Multiply(starting_distance))
-		if starting_space2 == nil {
-			return nil, errors.New("starting space 2 is nil")
-		}
-		risq.createPlayerStart(risq.players[2], starting_space2)
-	case 4:
-		starting_space1 := risq.getSpace(axial_unit_vectors[(starting_location+1)%6].Multiply(starting_distance))
-		if starting_space1 == nil {
-			return nil, errors.New("starting space 1 is nil")
-		}
-		risq.createPlayerStart(risq.players[1], starting_space1)
-		starting_space2 := risq.getSpace(axial_unit_vectors[(starting_location+3)%6].Multiply(starting_distance))
-		if starting_space2 == nil {
-			return nil, errors.New("starting space 2 is nil")
-		}
-		risq.createPlayerStart(risq.players[2], starting_space2)
-		starting_space3 := risq.getSpace(axial_unit_vectors[(starting_location+4)%6].Multiply(starting_distance))
-		if starting_space3 == nil {
-			return nil, errors.New("starting space 3 is nil")
-		}
-		risq.createPlayerStart(risq.players[3], starting_space3)
-	case 5:
-		starting_space1 := risq.getSpace(axial_unit_vectors[(starting_location+1)%6].Multiply(starting_distance))
-		if starting_space1 == nil {
-			return nil, errors.New("starting space 1 is nil")
-		}
-		risq.createPlayerStart(risq.players[1], starting_space1)
-		starting_space2 := risq.getSpace(axial_unit_vectors[(starting_location+2)%6].Multiply(starting_distance))
-		if starting_space2 == nil {
-			return nil, errors.New("starting space 2 is nil")
-		}
-		risq.createPlayerStart(risq.players[2], starting_space2)
-		starting_space3 := risq.getSpace(axial_unit_vectors[(starting_location+3)%6].Multiply(starting_distance))
-		if starting_space3 == nil {
-			return nil, errors.New("starting space 3 is nil")
-		}
-		risq.createPlayerStart(risq.players[3], starting_space3)
-		starting_space4 := risq.getSpace(axial_unit_vectors[(starting_location+4)%6].Multiply(starting_distance))
-		if starting_space4 == nil {
-			return nil, errors.New("starting space 4 is nil")
-		}
-		risq.createPlayerStart(risq.players[4], starting_space4)
-	case 6:
-		starting_space1 := risq.getSpace(axial_unit_vectors[(starting_location+1)%6].Multiply(starting_distance))
-		if starting_space1 == nil {
-			return nil, errors.New("starting space 1 is nil")
-		}
-		risq.createPlayerStart(risq.players[1], starting_space1)
-		starting_space2 := risq.getSpace(axial_unit_vectors[(starting_location+2)%6].Multiply(starting_distance))
-		if starting_space2 == nil {
-			return nil, errors.New("starting space 2 is nil")
-		}
-		risq.createPlayerStart(risq.players[2], starting_space2)
-		starting_space3 := risq.getSpace(axial_unit_vectors[(starting_location+3)%6].Multiply(starting_distance))
-		if starting_space3 == nil {
-			return nil, errors.New("starting space 3 is nil")
-		}
-		risq.createPlayerStart(risq.players[3], starting_space3)
-		starting_space4 := risq.getSpace(axial_unit_vectors[(starting_location+4)%6].Multiply(starting_distance))
-		if starting_space4 == nil {
-			return nil, errors.New("starting space 4 is nil")
-		}
-		risq.createPlayerStart(risq.players[4], starting_space4)
-		starting_space5 := risq.getSpace(axial_unit_vectors[(starting_location+5)%6].Multiply(starting_distance))
-		if starting_space5 == nil {
-			return nil, errors.New("starting space 5 is nil")
-		}
-		risq.createPlayerStart(risq.players[5], starting_space4)
-	default:
+	offsets, ok := direction_offsets[len(risq.players)]
+	if !ok {
 		return nil, errors.New("unknown number of players")
+	}
+	for i, offset := range offsets {
+		space := risq.getSpace(axial_unit_vectors[(starting_location+offset)%6].Multiply(starting_distance))
+		if space == nil {
+			return nil, errors.New("starting space is nil")
+		}
+		risq.createPlayerStart(risq.players[i], space)
 	}
 	return &risq, nil
 }

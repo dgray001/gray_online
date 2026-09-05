@@ -31,8 +31,10 @@ func (r *RisqResource) category() RisqResourceCategory {
 		return RisqResourceCategory_FOOD
 	case r.resource_id < 21:
 		return RisqResourceCategory_WOOD
-	default:
+	case r.resource_id < 31:
 		return RisqResourceCategory_STONE
+	default:
+		return RisqResourceCategory_GOLD
 	}
 }
 

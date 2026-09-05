@@ -20,7 +20,7 @@ export interface UnitsDrawData {
 }
 
 export interface PlayerUnitsDrawData {
-  space: RisqSpace;
+  space?: RisqSpace;
   units: UnitByTypeData[];
 }
 

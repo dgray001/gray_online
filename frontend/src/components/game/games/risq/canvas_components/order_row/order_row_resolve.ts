@@ -6,6 +6,8 @@ import { RisqOrderType, RisqResourceType } from '../../risq_data';
 import { isBuildingOrder, isPlayerOrder, isUnitOrder } from '../../risq_orders';
 import { resourceTypeImage } from '../../risq_resources';
 import { unitImage } from '../../risq_unit';
+import { groupUnitsByType } from '../../risq_zone';
+import type { UnitByTypeData } from '../../risq_data';
 import type { RisqOrderRowConfig } from './order_row_data';
 
 export interface CostChip {
@@ -19,6 +21,7 @@ export interface ResolvedRow {
   target: string;
   cost: CostChip[];
   subject_icon?: string;
+  subject_units?: UnitByTypeData[];
   progress?: number;
 }
 
@@ -170,6 +173,10 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
       base = { icon: 'icons/close_gray32', name: 'Cancel Foundation', target: distance_text(space, zone), cost: [] };
       break;
     }
+    case RisqOrderType.OrderType_UnitDelete: {
+      base = { icon: 'icons/skull128', name: 'Delete', target: '', cost: [] };
+      break;
+    }
     default:
       base = { icon: 'icons/fist32', name: shortLabel(order.order_type), target: '', cost: [] };
       break;
@@ -177,6 +184,12 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
 
   if (isPlayerOrder(order.order_type)) {
     return { ...base, subject_icon: 'icons/person64' };
+  }
+  if (isUnitOrder(order.order_type) && player) {
+    const subject_units = groupUnitsByType(player.units, order.subjects);
+    if (subject_units.length > 1) {
+      return { ...base, subject_units };
+    }
   }
   return {
     ...base,

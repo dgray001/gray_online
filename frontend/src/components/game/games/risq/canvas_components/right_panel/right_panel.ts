@@ -5,7 +5,7 @@ import { configDraw } from '../../../../util/canvas_components/canvas_component'
 import { drawLine, drawRect, drawText } from '../../../../util/canvas_util';
 import type { Point2D } from '../../../../util/objects2d';
 import type { DwgRisq } from '../../risq';
-import type { GameRisqScoreEntry, RisqFrontendOrder, RisqPlayerResource, RisqResourceType } from '../../risq_data';
+import type { GameRisqScoreEntry, RisqPlayerResource, RisqResourceType } from '../../risq_data';
 import { resourceTypeImage } from '../../risq_resources';
 import { RisqOrdersList } from './orders_list';
 import { RisqRightPanelButton } from './right_panel_button';
@@ -48,8 +48,8 @@ export class RisqRightPanel implements CanvasComponent {
 
   dataRefreshed() {
     const player = this.risq.getPlayer();
+    this.orders_list.refresh();
     if (!!player) {
-      this.orders_list.setOrders(player.active_orders);
       if (this.risq.givingOrders() && !player.orders_submitted) {
         this.orders_list.enable();
         this.submit_button.setText(this.risq.ordersSubmittedTimes() > 0 ? 'Resubmit Orders' : 'Submit Orders');
@@ -105,26 +105,6 @@ export class RisqRightPanel implements CanvasComponent {
       },
       initial
     );
-  }
-
-  addOrder(order: RisqFrontendOrder) {
-    this.orders_list.addOrder(order);
-  }
-
-  getOrders(): RisqFrontendOrder[] {
-    return this.orders_list.getOrders();
-  }
-
-  setOrders(orders: RisqFrontendOrder[]) {
-    this.orders_list.setOrders(orders);
-  }
-
-  clearPendingOrders() {
-    this.orders_list.clearPendingOrders();
-  }
-
-  cancelOrdersForSubject(subject_internal_id: number) {
-    this.orders_list.cancelOrdersForSubject(subject_internal_id);
   }
 
   submittingOrders() {

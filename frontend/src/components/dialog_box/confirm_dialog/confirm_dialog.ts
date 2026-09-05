@@ -1,4 +1,4 @@
-import { DwgDialogBox } from '../dialog_box';
+import { DwgDialogBox, DialogSize } from '../dialog_box';
 
 import html from './confirm_dialog.html';
 
@@ -9,6 +9,7 @@ interface ConfirmDialogData {
   question: string;
   yes_text?: string;
   no_text?: string;
+  size?: DialogSize;
 }
 
 /** Will emit a 'confirmed' event if confirmed is clicked */
@@ -31,11 +32,14 @@ export class DwgConfirmDialog extends DwgDialogBox<ConfirmDialogData> {
       question: this.getAttribute('question') ?? '',
       yes_text: this.getAttribute('yes_text') ?? 'yes',
       no_text: this.getAttribute('no_text') ?? 'no',
+      size: (this.getAttribute('size') as DialogSize) ?? DialogSize.MEDIUM,
     };
   }
 
   setData(data: ConfirmDialogData, parsed?: boolean) {
     this.setAttribute('question', data.question);
+    this.setAttribute('size', data.size ?? DialogSize.MEDIUM);
+    this.classList.add(`size-${data.size ?? DialogSize.MEDIUM}`);
     if (!parsed && !this.fully_parsed) {
       return;
     }

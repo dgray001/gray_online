@@ -82,6 +82,16 @@ func createRisqSpace(q int, r int, terrain TerrainType) *RisqSpace {
 	return &space
 }
 
+func nonDeletedUnitCount(units map[uint64]*RisqUnit) int {
+	count := 0
+	for _, u := range units {
+		if u != nil && !u.deleted {
+			count++
+		}
+	}
+	return count
+}
+
 func invertSpaceKey(k uint, r *GameRisq) *RisqSpace {
 	x, y := util.InvertPair(k)
 	return r.getSpace(&game_utils.Coordinate2D{X: x, Y: y})

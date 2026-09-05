@@ -1,4 +1,4 @@
-import { DwgDialogBox } from '../dialog_box';
+import { DwgDialogBox, DialogSize } from '../dialog_box';
 
 import html from './message_dialog.html';
 
@@ -8,6 +8,7 @@ import './message_dialog.scss';
 export declare interface MessageDialogData {
   message: string;
   button_text?: string;
+  size?: DialogSize;
 }
 
 export class DwgMessageDialog extends DwgDialogBox<MessageDialogData> {
@@ -27,11 +28,14 @@ export class DwgMessageDialog extends DwgDialogBox<MessageDialogData> {
     return {
       message: this.getAttribute('message') ?? '',
       button_text: this.getAttribute('button_text') ?? undefined,
+      size: (this.getAttribute('size') as DialogSize) ?? DialogSize.MEDIUM,
     };
   }
 
   setData(data: MessageDialogData, parsed?: boolean) {
     this.setAttribute('message', data.message);
+    this.setAttribute('size', data.size ?? DialogSize.MEDIUM);
+    this.classList.add(`size-${data.size ?? DialogSize.MEDIUM}`);
     if (data.button_text) {
       this.setAttribute('button_text', data.button_text);
     }

@@ -55,6 +55,17 @@ export function drawLine(ctx: CanvasRenderingContext2D, pi: Point2D, pf: Point2D
   ctx.stroke();
 }
 
+export function drawArrow(ctx: CanvasRenderingContext2D, pi: Point2D, pf: Point2D, head_size: number) {
+  drawLine(ctx, pi, pf);
+  const angle = Math.atan2(pf.y - pi.y, pf.x - pi.x);
+  ctx.beginPath();
+  ctx.moveTo(pf.x, pf.y);
+  ctx.lineTo(pf.x - head_size * Math.cos(angle - Math.PI / 6), pf.y - head_size * Math.sin(angle - Math.PI / 6));
+  ctx.lineTo(pf.x - head_size * Math.cos(angle + Math.PI / 6), pf.y - head_size * Math.sin(angle + Math.PI / 6));
+  ctx.closePath();
+  ctx.fill();
+}
+
 /** Config data for drawing text */
 export declare interface DrawTextConfig {
   p: Point2D;

@@ -4,6 +4,8 @@ import { configDraw } from '../../../../util/canvas_components/canvas_component'
 import { drawLine, drawRect, drawText } from '../../../../util/canvas_util';
 import type { Point2D } from '../../../../util/objects2d';
 import type { RisqFrontendOrder } from '../../risq_data';
+import { UNIT_CLUSTER_ICON_SIZE, drawUnitTypeCluster, unitClusterIconKey } from '../../risq_zone';
+import { unitImage } from '../../risq_unit';
 import { RisqOrderCancelButton } from './order_cancel_button';
 import type { RisqOrderRowConfig } from './order_row_data';
 import type { ResolvedRow } from './order_row_resolve';
@@ -70,6 +72,47 @@ export class RisqOrderRow implements CanvasComponent {
     return !!this.config.collapsed_orders?.length;
   }
 
+  private drawSubject(ctx: CanvasRenderingContext2D, x: number, yc: number): void {
+    const game = this.config.game;
+    const units = this.resolved.subject_units;
+    if (units) {
+      const total = this.config.order.subjects.length;
+      const s = UNIT_CLUSTER_ICON_SIZE;
+      const cluster = game.getImageCache().getImage(
+        unitClusterIconKey(units, total),
+        s,
+        units.map((t) => game.getIcon(unitImage(t.unit_id))),
+        (cctx) => {
+          cctx.translate(s / 2, s / 2);
+          drawUnitTypeCluster(
+            cctx,
+            game,
+            units,
+            { x: s / 2, y: s / 2 },
+            total,
+            'rgb(59, 36, 19)',
+            'rgba(59, 36, 19, 0.4)'
+          );
+        }
+      );
+      if (cluster) {
+        ctx.drawImage(cluster, x, yc - ICON_S / 2, ICON_S, ICON_S);
+      }
+      return;
+    }
+    ctx.drawImage(game.getIcon(this.resolved.subject_icon!), x, yc - ICON_S / 2, ICON_S, ICON_S);
+    const count = this.config.order.subjects.length;
+    if (count > 1) {
+      drawText(ctx, `×${count}`, {
+        p: { x: x + 0.5 * ICON_S, y: yc + ICON_S / 2 - 7 },
+        w: ICON_S,
+        fill_style: 'rgb(59, 36, 19)',
+        align: 'left',
+        font: 'bold 8px sans-serif',
+      });
+    }
+  }
+
   draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
     configDraw(
       ctx,
@@ -87,18 +130,8 @@ export class RisqOrderRow implements CanvasComponent {
         drawRect(ctx, { x: this.xi(), y: this.yi() }, this.w(), ROW_H, 3);
         let x = this.xi() + PADDING;
         const yc = this.yi() + ROW_H / 2;
-        if (this.config.show_subject && this.resolved.subject_icon) {
-          ctx.drawImage(this.config.game.getIcon(this.resolved.subject_icon), x, yc - ICON_S / 2, ICON_S, ICON_S);
-          const count = this.config.order.subjects.length;
-          if (count > 1) {
-            drawText(ctx, `×${count}`, {
-              p: { x, y: yc + ICON_S / 2 - 7 },
-              w: ICON_S,
-              fill_style: 'rgb(59, 36, 19)',
-              align: 'right',
-              font: 'bold 8px sans-serif',
-            });
-          }
+        if (this.config.show_subject && (this.resolved.subject_units || this.resolved.subject_icon)) {
+          this.drawSubject(ctx, x, yc);
           x += ICON_S + 4;
           ctx.strokeStyle = 'rgba(59, 36, 19, 0.4)';
           ctx.lineWidth = 1;

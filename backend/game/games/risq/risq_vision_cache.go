@@ -102,13 +102,3 @@ func (c RisqResourceCache) toFrontend() gin.H {
 		"space_coordinate":  c.space_coordinate.ToFrontend(),
 	}
 }
-
-func nonDeletedUnitCount(units map[uint64]*RisqUnit) int {
-	count := 0
-	for _, u := range units {
-		if u != nil && !u.deleted {
-			count++
-		}
-	}
-	return count
-}

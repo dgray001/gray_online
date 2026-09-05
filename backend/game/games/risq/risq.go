@@ -135,7 +135,7 @@ func (r *GameRisq) PlayerAction(action game.PlayerAction) {
 			player.AddFailedUpdateShorthand("submit-orders-failed", "Orders already submitted")
 			return
 		}
-		orders, err := r.getOrdersFromPlayerAction(action.Action)
+		orders, err := r.getOrdersFromPlayerAction(action.Action, player.Player_id)
 		if err != nil {
 			player.AddFailedUpdateShorthand("submit-orders-failed", err.Error())
 			return
@@ -147,7 +147,7 @@ func (r *GameRisq) PlayerAction(action game.PlayerAction) {
 			return
 		}
 		if !r.players[player.Player_id].orders_submitted {
-			player.AddFailedUpdateShorthand("submit-orders-failed", "Orders not submitted")
+			player.AddFailedUpdateShorthand("unsubmit-orders-failed", "Orders not submitted")
 			return
 		}
 		r.executeUnsubmitOrders(player.Player_id)
@@ -218,7 +218,6 @@ func (r *GameRisq) executeUnsubmitOrders(player_id int) {
 
 func (r *GameRisq) resolveActiveOrders() {
 	fmt.Println("Resolving active orders")
-	r.giving_orders = false
 	for _, player := range r.players {
 		for _, order := range player.active_orders {
 			if order.received {
@@ -229,7 +228,7 @@ func (r *GameRisq) resolveActiveOrders() {
 			if order.order_type.isPlayerOrder() {
 				player.receivePlayerOrder(order, r)
 				order.executed = true
-				order.turn_executed = r.turn_number
+				order.turn_resolved = r.turn_number
 				continue
 			}
 			for _, subject := range order.subjects {

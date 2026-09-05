@@ -90,6 +90,15 @@ func (u *RisqUnit) delete(risq *GameRisq) {
 		u.zone.space.removeUnit(u)
 	}
 	u.deleted = true
+	for _, o := range u.order_queue.active_orders {
+		if o.order_type == OrderType_UnitDelete {
+			o.executed = true
+		} else {
+			o.cancelled = true
+		}
+		o.turn_resolved = risq.turn_number
+	}
+	u.order_queue.active_orders = nil
 }
 
 func (u *RisqUnit) refreshStamina() {
@@ -106,17 +115,20 @@ func (u *RisqUnit) receiveOrder(o *RisqOrder, risq *GameRisq) {
 	case OrderType_UnitBuild:
 		building_id, _, zone := invertBuildKey(uint(o.target_id), risq)
 		player := risq.players[u.player_id]
+		if zone.building != nil || player.planned_foundations[zone.coordinate_key] != nil {
+			return
+		}
 		cost, _ := buildingProductionCost(building_id)
 		if !player.resources.canAfford(cost) {
 			// TODO: surface this failure in the per-player turn report
 			return
 		}
-		player.planned_foundations[zone.coordinate_key] = createRisqPlannedFoundation(building_id, o, player)
+		player.planned_foundations[zone.coordinate_key] = createRisqPlannedFoundation(building_id, player)
 	}
 }
 
 func (u *RisqUnit) cancelOrder(o *RisqOrder, risq *GameRisq) {
-	u.order_queue.cancelOrder(o.internal_id)
+	u.order_queue.cancelOrder(o.internal_id, risq.turn_number)
 	switch o.order_type {
 	case OrderType_UnitBuild:
 		// the planned foundation is independent of the order that created it; cancelling the order doesn't touch it
@@ -126,11 +138,16 @@ func (u *RisqUnit) cancelOrder(o *RisqOrder, risq *GameRisq) {
 func (u *RisqUnit) orderReceivable(o *RisqOrder, risq *GameRisq) bool {
 	switch o.order_type {
 	case OrderType_UnitBuild:
-		_, _, zone := invertBuildKey(uint(o.target_id), risq)
-		foundation := risq.players[u.player_id].planned_foundations[zone.coordinate_key]
-		if zone.building != nil || (foundation != nil && foundation.creating_order != o) {
+		building_id, _, zone := invertBuildKey(uint(o.target_id), risq)
+		if zone.resource != nil {
 			return false
 		}
+		if zone.building != nil {
+			b := zone.building
+			return b.player_id == u.player_id && b.underConstruction() && b.building_id == building_id
+		}
+		foundation := risq.players[u.player_id].planned_foundations[zone.coordinate_key]
+		return foundation == nil || foundation.building_id == building_id
 	default:
 	}
 	return true
@@ -154,14 +171,14 @@ func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 			return OrderStatus_InProgress
 		}
 	case OrderType_UnitBuild:
-		_, _, zone := invertBuildKey(uint(o.target_id), risq)
+		building_id, _, zone := invertBuildKey(uint(o.target_id), risq)
 		if zone.building == nil {
 			if risq.players[u.player_id].planned_foundations[zone.coordinate_key] == nil {
 				return OrderStatus_Cancelled
 			}
 			return OrderStatus_InProgress
 		}
-		if zone.building.player_id != u.player_id {
+		if zone.building.player_id != u.player_id || zone.building.building_id != building_id {
 			risq.players[u.player_id].cancelPlannedFoundation(zone)
 			return OrderStatus_Cancelled
 		}
@@ -268,7 +285,11 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 				detail.zone.space.setBuilding(&detail.zone.coordinate, building)
 				risq.players[u.player_id].buildings[building.internal_id] = building
 				risq.buildings[building.internal_id] = building
+				delete(risq.players[u.player_id].planned_foundations, detail.zone.coordinate_key)
 			}
+		}
+		if building.deleted || !building.underConstruction() {
+			return
 		}
 		old_ratio := constructionHealthRatio(building.stamina_remaining, building.construction_stamina_total)
 		building.stamina_remaining -= u.intent.intent_cost
