@@ -21,5 +21,15 @@
     "population_support": 5,
     "cost": { "wood": 30 },
     "build_stamina": 16
+  },
+  {
+    "building_id": 3,
+    "display_name": "Outpost",
+    "description": "Used to see longer distances",
+    "max_health": 90,
+    "population_support": 0,
+    "cost": { "wood": 25 },
+    "build_stamina": 12,
+    "vision": { "space": 3, "edge_adjacent": 3, "adjacent": 3, "edge_opposite": 3, "secondary": 2 }
   }
 ]

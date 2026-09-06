@@ -38,14 +38,14 @@ import {
   drawBuildOrderCursor,
 } from './risq_cursor';
 import { buildingImage } from './risq_buildings';
-import { RisqImageCache } from './risq_image_cache';
+import { PLAYER_ICON_SIZE, RisqImageCache } from './risq_image_cache';
 import { RisqRightPanel } from './canvas_components/right_panel/right_panel';
 import type { DrawRisqSpaceConfig } from './risq_space';
 import { DrawRisqSpaceDetail, drawRisqSpace } from './risq_space';
 import { RisqLeftPanel } from './canvas_components/left_panel/left_panel';
 import { RisqOrdersModel, isBuildingOrder, isUnitOrder } from './risq_orders';
 import { groupUnitsByType, resolveHoveredZones, unhoverRisqZone, zoneCenterOffset } from './risq_zone';
-import { RisqViewMode, nextViewMode } from './risq_view_mode';
+import { RisqViewMode, nextViewMode } from './risq_terrain';
 import type {
   EconomicUnitsData,
   MilitaryUnitsData,
@@ -167,11 +167,16 @@ export class DwgRisq extends DwgElement {
 
   getIcon(name: string): HTMLImageElement {
     const icon = this.icons.get(name);
-    // TODO: ability to get image variations (player colors on image??)
     if (!icon) {
       return this.createIcon(name);
     }
     return icon;
+  }
+
+  /** Returns the unit/building icon at `name` with its color-key pixels swapped for the given player color */
+  getPlayerColoredIcon(name: string, color: ColorRGB): HTMLImageElement | HTMLCanvasElement {
+    const icon = this.getIcon(name);
+    return this.image_cache.getPlayerColoredIcon(name, icon, PLAYER_ICON_SIZE, color) ?? icon;
   }
 
   async initialize(abstract_game: DwgGame, game: GameRisqFromServer): Promise<void> {
@@ -286,8 +291,9 @@ export class DwgRisq extends DwgElement {
       if (building.building_id !== 1) {
         continue;
       }
-      const view = this.coordinateToCanvas(building.space_coordinate, this.last_transform.scale ?? 1);
-      this.board.setView(subtractPoint2D(view, this.canvas_center));
+      const scale = this.last_transform.scale ?? 1;
+      const view = this.coordinateToCanvas(building.space_coordinate, scale);
+      this.board.setView(subtractPoint2D(multiplyPoint2D(scale, view), this.canvas_center));
       return;
     }
   }
@@ -790,8 +796,12 @@ export class DwgRisq extends DwgElement {
     const unit = this.idle_units[idx];
     this.last_idle_selected = unit.internal_id;
     this.left_panel.openPanel({ data_type: LeftPanelDataType.UNIT, data: unit }, RisqVisibilityLevel.SPY);
-    const view = this.coordinateToCanvas(unit.space_coordinate, this.last_transform.scale);
-    this.board.setView(subtractPoint2D(view, this.canvas_center));
+    const scale = this.last_transform.scale;
+    const view = addPoint2D(
+      this.coordinateToCanvas(unit.space_coordinate, scale),
+      zoneCenterOffset(unit.zone_coordinate, this.hex_r)
+    );
+    this.board.setView(subtractPoint2D(multiplyPoint2D(scale, view), this.canvas_center));
   }
 
   confirmSubmitOrders() {
@@ -921,8 +931,13 @@ export class DwgRisq extends DwgElement {
   }
 
   private buildTargetValid(): boolean {
+    const ownership = this.hovered_space?.ownership;
     return (
-      this.left_panel.isVillager() && this.isZoneValid() && !this.hovered_zone?.resource && !this.hovered_zone?.building
+      this.left_panel.isVillager() &&
+      this.isZoneValid() &&
+      !this.hovered_zone?.resource &&
+      !this.hovered_zone?.building &&
+      (ownership === undefined || ownership < 0 || ownership === this.player_id)
     );
   }
 
@@ -967,7 +982,7 @@ export class DwgRisq extends DwgElement {
         }
         break;
       case RisqOrderType.OrderType_UnitBuild:
-        if (is_villager && zone_valid && !this.hovered_zone?.resource && !this.hovered_zone?.building) {
+        if (this.buildTargetValid()) {
           return RisqOrderType.OrderType_UnitBuild;
         }
         break;
@@ -993,7 +1008,7 @@ export class DwgRisq extends DwgElement {
 
   private updateCursor() {
     if (this.getArmedOrder() === RisqOrderType.OrderType_UnitBuild && this.armed_building_id) {
-      const building_icon = this.getIcon(buildingImage(this.armed_building_id));
+      const building_icon = this.getIcon(buildingImage(this.armed_building_id, false, true));
       const build_icon = this.getIcon(cursorImageForOrderType(RisqOrderType.OrderType_UnitBuild));
       const valid = this.buildTargetValid();
       const url = this.image_cache.getCursorUrl(

@@ -7,8 +7,8 @@ import type { RisqSpace } from './risq_data';
 import { RisqResourceType, RisqVisibilityLevel } from './risq_data';
 import { resourceTypeImage } from './risq_resources';
 import { COMBO_UNIT_ICON_SIZE, comboUnitIconKey, drawComboUnitIcon } from './risq_unit';
-import { RisqViewMode, spaceOwnerColor } from './risq_view_mode';
-import { INNER_ZONE_MULTIPLIER, drawRisqZone, getZoneFill } from './risq_zone';
+import { FOG_OVERLAY_IMAGE, RisqViewMode, spaceOwnerColor, terrainImage } from './risq_terrain';
+import { INNER_ZONE_MULTIPLIER, OUTER_ZONE_INDICES, drawRisqZone, getZoneFill } from './risq_zone';
 
 /** How much detail to draw in a space */
 export enum DrawRisqSpaceDetail {
@@ -34,6 +34,21 @@ const space_line_width: Record<DrawRisqSpaceDetail, number> = {
   [DrawRisqSpaceDetail.ZONE_DETAILS]: 1.2,
 };
 
+/** Draws a hex-cut image (see scripts/cut_hex_texture.py) stretched to fill a hexagon of radius r */
+export function drawHexImage(ctx: CanvasRenderingContext2D, img: CanvasImageSource, c: Point2D, r: number) {
+  const w = Math.sqrt(3) * r;
+  const h = 2 * r;
+  ctx.drawImage(img, c.x - 0.5 * w, c.y - 0.5 * h, w, h);
+}
+
+function fillHexOverlay(ctx: CanvasRenderingContext2D, c: Point2D, r: number, fill_style: string) {
+  const prev_stroke = ctx.strokeStyle;
+  ctx.strokeStyle = 'transparent';
+  ctx.fillStyle = fill_style;
+  drawHexagon(ctx, c, r);
+  ctx.strokeStyle = prev_stroke;
+}
+
 /** Draws the input risq space */
 export function drawRisqSpace(
   ctx: CanvasRenderingContext2D,
@@ -43,10 +58,30 @@ export function drawRisqSpace(
 ) {
   const owner_color = spaceOwnerColor(space, game.getGame()?.players ?? []);
   ctx.strokeStyle = 'rgba(250, 250, 250, 0.9)';
-  const fill = getSpaceFill(space, config.view_mode, owner_color);
-  ctx.fillStyle = fill.getString();
   ctx.lineWidth = space_line_width[config.draw_detail];
-  drawHexagon(ctx, space.center, config.hex_r);
+  let black_text = false;
+  if (config.view_mode === RisqViewMode.OWNERSHIP || space.visibility === RisqVisibilityLevel.UNEXPLORED) {
+    const fill = getSpaceFill(space, config.view_mode, owner_color);
+    ctx.fillStyle = fill.getString();
+    drawHexagon(ctx, space.center, config.hex_r);
+    black_text = fill.getBrightness() > 0.5;
+  } else {
+    drawHexImage(ctx, game.getIcon(terrainImage(space.terrain)), space.center, config.hex_r);
+    if (config.view_mode !== RisqViewMode.RESOURCE && !!owner_color) {
+      const tint = `rgba(${owner_color.getR()}, ${owner_color.getG()}, ${owner_color.getB()}, 0.25)`;
+      fillHexOverlay(ctx, space.center, config.hex_r, tint);
+    }
+    if (space.hovered) {
+      fillHexOverlay(
+        ctx,
+        space.center,
+        config.hex_r,
+        space.clicked ? 'rgba(210, 210, 210, 0.4)' : 'rgba(190, 190, 190, 0.2)'
+      );
+    }
+    ctx.fillStyle = 'transparent';
+    drawHexagon(ctx, space.center, config.hex_r);
+  }
   if (DEV) {
     drawText(ctx, space.coordinate.x + ', ' + space.coordinate.y, {
       p: space.center,
@@ -58,12 +93,11 @@ export function drawRisqSpace(
     });
   }
   ctx.textAlign = 'left';
-  const black_text = fill.getBrightness() > 0.5;
   drawSpaceContent(ctx, game, space, config, black_text, owner_color);
   if (space.visibility === RisqVisibilityLevel.FOG) {
-    ctx.strokeStyle = 'transparent';
-    ctx.fillStyle = 'rgba(40, 45, 55, 0.5)';
-    drawHexagon(ctx, space.center, config.hex_r);
+    ctx.globalAlpha = 0.55;
+    drawHexImage(ctx, game.getIcon(FOG_OVERLAY_IMAGE), space.center, config.hex_r);
+    ctx.globalAlpha = 1;
   }
 }
 
@@ -183,27 +217,7 @@ function drawSpaceContent(
     zone_r = 0.43 * r;
     const a = Math.PI / 3;
     for (let i = 0; i < 6; i++) {
-      let direction_vector: Point2D = { x: 0, y: 0 };
-      switch (i) {
-        case 0:
-          direction_vector = { x: 2, y: 1 };
-          break;
-        case 1:
-          direction_vector = { x: 2, y: 0 };
-          break;
-        case 2:
-          direction_vector = { x: 1, y: 0 };
-          break;
-        case 3:
-          direction_vector = { x: 0, y: 0 };
-          break;
-        case 4:
-          direction_vector = { x: 0, y: 1 };
-          break;
-        case 5:
-          direction_vector = { x: 1, y: 2 };
-          break;
-      }
+      const direction_vector = OUTER_ZONE_INDICES[i];
       zone = space.zones[direction_vector.x][direction_vector.y];
       ctx.strokeStyle = 'rgba(250, 250, 250, 0.9)';
       ctx.fillStyle = getZoneFill(zone, config.view_mode, owner_color).getString();

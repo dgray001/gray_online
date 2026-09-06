@@ -4,8 +4,8 @@ export const UNIT_HEALTHBAR_COLOR_BACKGROUND = 'black';
 /** Fill style for healthbar health rect */
 export const UNIT_HEALTHBAR_COLOR_HEALTH = 'rgb(100, 250, 100)';
 
-/** Returns image path of the unit */
-export function unitImage(unit_id: number): string {
+/** Returns image path of the unit; pass plain to get the uncolored source (no player-color marker pixels) */
+export function unitImage(unit_id: number, plain = false): string {
   let filename = '';
   switch (unit_id) {
     case 1:
@@ -20,6 +20,9 @@ export function unitImage(unit_id: number): string {
     default:
       console.error('Trying to get unit image from unknown unit id', unit_id);
       return '';
+  }
+  if (plain) {
+    filename += '_plain';
   }
   return `risq/units/${filename}`;
 }

@@ -9,6 +9,8 @@ export interface RisqOrderRowConfig {
   order: RisqFrontendOrder;
   /** Other same-producible BuildingCreate orders collapsed behind this one, not yet started */
   collapsed_orders?: RisqFrontendOrder[];
+  /** Whether a cancel for this (already-submitted) order is pending, drawn as a strikethrough */
+  cancelling?: boolean;
   onCancel: (order: RisqFrontendOrder) => void;
   onCancelAll?: (orders: RisqFrontendOrder[]) => void;
   onSelect?: (order: RisqFrontendOrder) => void;

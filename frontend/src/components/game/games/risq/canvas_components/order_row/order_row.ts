@@ -178,6 +178,11 @@ export class RisqOrderRow implements CanvasComponent {
         if (this.isCollapsed()) {
           this.drawCancelAllStrip(ctx);
         }
+        if (this.config.cancelling) {
+          ctx.strokeStyle = 'rgb(122, 46, 27)';
+          ctx.lineWidth = 3;
+          drawLine(ctx, { x: this.xi(), y: yc }, { x: this.xi() + this.w(), y: yc });
+        }
       }
     );
   }

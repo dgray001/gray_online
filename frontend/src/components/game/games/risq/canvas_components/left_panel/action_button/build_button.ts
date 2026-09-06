@@ -20,7 +20,7 @@ export class RisqBuildButton extends RisqActionButton {
       {
         row: config.producible.row,
         col: config.producible.col,
-        image_path: buildingImage(config.producible.id),
+        image_path: buildingImage(config.producible.id, false, true),
         description: `Build ${config.producible.display_name}`,
       },
       s

@@ -9,12 +9,11 @@ import type { RisqSpace, RisqUnit, RisqZone, UnitByTypeData } from './risq_data'
 import { RisqVisibilityLevel } from './risq_data';
 import { resourceImage } from './risq_resources';
 import { COMBO_UNIT_ICON_SIZE, comboUnitIconKey, drawComboUnitIcon, unitImage } from './risq_unit';
-import { RisqViewMode } from './risq_view_mode';
+import { RisqViewMode } from './risq_terrain';
+import { coordinateToIndex } from './risq_coordinates';
 
-/** Multiplier for inner zone relative to whole radius */
-export const INNER_ZONE_MULTIPLIER = 0.4;
-
-const OUTER_ZONE_COORDINATES: Point2D[] = [
+/** space.zones[][] array indices for the six outer zones, in draw-loop order (index i -> rotation (PI/3)*(i+1)) */
+export const OUTER_ZONE_INDICES: Point2D[] = [
   { x: 2, y: 1 },
   { x: 2, y: 0 },
   { x: 1, y: 0 },
@@ -23,14 +22,17 @@ const OUTER_ZONE_COORDINATES: Point2D[] = [
   { x: 1, y: 2 },
 ];
 
+/** Multiplier for inner zone relative to whole radius */
+export const INNER_ZONE_MULTIPLIER = 0.4;
+
+/** Pixel offset of a zone's center from its space's center, matching how drawSpaceContent positions it */
 export function zoneCenterOffset(zone_coordinate: Point2D, hex_r: number): Point2D {
-  const i = OUTER_ZONE_COORDINATES.findIndex((dv) => equalsPoint2D(dv, zone_coordinate));
+  const index = coordinateToIndex(1, zone_coordinate);
+  const i = OUTER_ZONE_INDICES.findIndex((dv) => equalsPoint2D(dv, index));
   if (i === -1) {
     return { x: 0, y: 0 };
   }
-  const angle = (Math.PI / 3) * (i + 1);
-  const r = 0.75 * hex_r;
-  return { x: r * Math.cos(angle), y: r * Math.sin(angle) };
+  return rotatePoint({ x: 0.73 * hex_r, y: 0 }, (Math.PI / 3) * (i + 1));
 }
 
 /** Organizes units by unit id for easier processing */
@@ -109,7 +111,10 @@ export function drawUnitTypeCluster(
     ctx.fillText(s, x, y, w);
     ctx.fillStyle = fs;
   };
-  const icon = (t: UnitByTypeData) => game.getIcon(unitImage(t.unit_id));
+  const icon = (t: UnitByTypeData) => {
+    const color = game.getGame()?.players[t.player_id]?.color;
+    return color ? game.getPlayerColoredIcon(unitImage(t.unit_id), color) : game.getIcon(unitImage(t.unit_id));
+  };
   if (units_by_type.length === 1) {
     const t = units_by_type[0];
     ctx.drawImage(icon(t), -r.x, -r.y, 2 * r.x, 2 * r.y);
@@ -165,11 +170,8 @@ export function getZoneFill(
     } else {
       color.setColor(90, 90, 90, 0.85);
     }
-  } else {
-    color.setColor(10, 120, 10, 0.8);
-    if (view_mode !== RisqViewMode.RESOURCE && !!owner_color) {
-      color.addColor(owner_color.getR(), owner_color.getG(), owner_color.getB(), alpha_multiplier * 0.06);
-    }
+  } else if (view_mode !== RisqViewMode.RESOURCE && !!owner_color) {
+    color.addColor(owner_color.getR(), owner_color.getG(), owner_color.getB(), alpha_multiplier * 0.06);
   }
   if (check_hover && zone.hovered && !zone.hovered_data.some((p) => p.hovered)) {
     if (zone.clicked) {
@@ -249,13 +251,12 @@ export function drawRisqZone(
         if (!!zone.resource && view_mode !== RisqViewMode.MILITARY && view_mode !== RisqViewMode.OWNERSHIP) {
           ctx.drawImage(game.getIcon(resourceImage(zone.resource)), -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
         } else {
-          ctx.drawImage(
-            game.getIcon(buildingImage(zone.building?.building_id, zone.building?.under_construction)),
-            -part.r.x,
-            -part.r.y,
-            2 * part.r.x,
-            2 * part.r.y
-          );
+          const building_image = buildingImage(zone.building?.building_id, zone.building?.under_construction);
+          const building_color = zone.building ? game.getGame()?.players[zone.building.player_id]?.color : undefined;
+          const building_icon = building_color
+            ? game.getPlayerColoredIcon(building_image, building_color)
+            : game.getIcon(building_image);
+          ctx.drawImage(building_icon, -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
         }
         break;
       case 1: // economic units

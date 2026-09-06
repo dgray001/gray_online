@@ -7,6 +7,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// set by main.go at startup
+var DEV = false
+
 type GameSettings struct {
 	MaxPlayers           uint8                  `json:"max_players"`
 	MaxViewers           uint8                  `json:"max_viewers"`
@@ -21,7 +24,11 @@ func (s *GameSettings) Launchable() (bool, string) {
 	if s.MaxViewers > 16 {
 		return false, "Invalid max viewers"
 	}
-	if s.GameType < 1 || s.GameType > 4 {
+	max_game_type := game.GameType_RISQ
+	if DEV {
+		max_game_type = game.GameType_TEST_GAME
+	}
+	if s.GameType < 1 || s.GameType > max_game_type {
 		return false, "Invalid game type: " + strconv.Itoa(int(s.GameType))
 	}
 	return true, ""

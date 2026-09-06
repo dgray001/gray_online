@@ -120,16 +120,19 @@ func (g *GameEgyptianRatCrap) Valid() bool {
 
 func (g *GameEgyptianRatCrap) PlayerAction(action game.PlayerAction) {
 	fmt.Println("player action:", action.Kind, action.Client_id, action.Action)
-	switch action.Kind {
-	case "timeout-flip":
-		g.resolveTimeoutFlip()
-		return
-	case "resolve-challenge-award":
-		g.resolveChallengeAward()
-		return
-	case "resolve-turn":
-		g.resolveTurnAnnounce()
-		return
+	// Internally sent actions
+	if action.Client_id == 0 {
+		switch action.Kind {
+		case "timeout-flip":
+			g.resolveTimeoutFlip()
+			return
+		case "resolve-challenge-award":
+			g.resolveChallengeAward()
+			return
+		case "resolve-turn":
+			g.resolveTurnAnnounce()
+			return
+		}
 	}
 	player := g.game.Players[uint64(action.Client_id)]
 	if player == nil {

@@ -104,10 +104,19 @@ export class RisqOrdersModel {
     this.on_change();
   }
 
+  isCancelling(internal_id: number): boolean {
+    return this.pending.some(
+      (o) => o.order_type === RisqOrderType.OrderType_CancelOrder && o.target_id === internal_id
+    );
+  }
+
   cancel(order: RisqFrontendOrder) {
     if (order.internal_id === undefined) {
       this.pending = this.pending.filter((o) => o !== order);
       this.on_change();
+      return;
+    }
+    if (this.isCancelling(order.internal_id)) {
       return;
     }
     this.add({

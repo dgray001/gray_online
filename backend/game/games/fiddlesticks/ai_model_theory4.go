@@ -38,7 +38,7 @@ func (m *FiddlesticksAiModelTheory4) ApplyUpdate(p *FiddlesticksPlayer, f *GameF
 	case "play-card":
 		// TODO: implement
 	default:
-		fmt.Fprintln(os.Stderr, "Unknown update kind for theory model 3:", u.Kind)
+		fmt.Fprintln(os.Stderr, "Unknown update kind for theory model 4:", u.Kind)
 	}
 }
 

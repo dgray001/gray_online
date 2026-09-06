@@ -5,3 +5,4 @@
 frontend/tsout/**
 backend/static/dist/**
 .claude/**
+backend/static/images/risq/wip/**

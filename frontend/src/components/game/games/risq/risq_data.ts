@@ -1,8 +1,8 @@
 import { ColorRGB } from '../../../../scripts/color_rgb';
-import { capitalize } from '../../../../scripts/util';
 import type { GameBase, GamePlayer } from '../../data_models';
 import type { Point2D } from '../../util/objects2d';
 import { resourceType } from './risq_resources';
+import type { RisqTerrainType } from './risq_terrain';
 import { organizeZoneUnits } from './risq_zone';
 
 /** Data describing a game of risq */
@@ -54,23 +54,6 @@ export enum RisqResourceType {
   WOOD,
   STONE,
   GOLD,
-}
-
-/** All the terrain types */
-export enum RisqTerrainType {
-  FLATLANDS = 0,
-  HILLY = 1,
-  MOUNTAINOUS = 2,
-  VALLEY = 3,
-  SWAMP = 4,
-  SHALLOWS = 5,
-  WATER = 6,
-  DEEP_WATER = 7,
-}
-
-/** Converts terrain type to a string */
-export function risqTerrainName(terrain: RisqTerrainType): string {
-  return capitalize(RisqTerrainType[terrain].replace('_', ' ').toLowerCase());
 }
 
 export enum RisqVisibilityLevel {

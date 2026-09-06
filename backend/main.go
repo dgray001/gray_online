@@ -29,6 +29,7 @@ func main() {
 	}
 
 	// Run game lobby
+	lobby.DEV = DEV
 	lobby_object := lobby.CreateLobby()
 	go lobby_object.Run()
 

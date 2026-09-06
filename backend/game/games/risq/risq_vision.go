@@ -37,8 +37,8 @@ var defaultRisqVision = RisqVision{
 	space:         VisibilityGood,
 	edge_adjacent: VisibilityGood,
 	adjacent:      VisibilityPoor,
-	edge_opposite: VisibilityFog,
-	secondary:     VisibilityFog,
+	edge_opposite: VisibilityPoor,
+	secondary:     VisibilityUnexplored,
 }
 
 type risqVisionJSON struct {

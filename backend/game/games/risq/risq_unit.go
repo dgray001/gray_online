@@ -146,6 +146,9 @@ func (u *RisqUnit) orderReceivable(o *RisqOrder, risq *GameRisq) bool {
 	switch o.order_type {
 	case OrderType_UnitBuild:
 		building_id, _, zone := invertBuildKey(uint(o.target_id), risq)
+		if owner := zone.space.ownership; owner >= 0 && owner != u.player_id {
+			return false
+		}
 		if zone.resource != nil {
 			return false
 		}
@@ -185,6 +188,15 @@ func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 		building_id, _, zone := invertBuildKey(uint(o.target_id), risq)
 		if zone.building == nil {
 			if risq.players[u.player_id].planned_foundations[zone.coordinate_key] == nil {
+				return OrderStatus_Cancelled
+			}
+			owner := zone.space.computeOwnership()
+			if owner >= 0 && owner != u.player_id {
+				risq.players[u.player_id].cancelPlannedFoundation(zone)
+				return OrderStatus_Cancelled
+			}
+			if u.zone == zone && owner != u.player_id {
+				risq.players[u.player_id].cancelPlannedFoundation(zone)
 				return OrderStatus_Cancelled
 			}
 			return OrderStatus_InProgress
@@ -303,6 +315,9 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 			if detail.zone.building != nil {
 				building = detail.zone.building
 			} else {
+				if owner := detail.zone.space.computeOwnership(); owner != u.player_id {
+					return
+				}
 				_, stamina_required := buildingProductionCost(detail.building_id)
 				building = createRisqBuilding(risq.nextBuildingInternalId(), detail.building_id, u.player_id)
 				building.stamina_remaining = stamina_required

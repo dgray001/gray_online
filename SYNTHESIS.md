@@ -55,10 +55,9 @@ Add `disconnectedCallback` that resets the `found_element` flags so `elementsPar
 Several components' ping-refresh `setInterval`s are never stored/cleared; `refreshGame()` stacks a new interval on every call, including error-recovery retries.
 Store each interval id on the instance, `clearInterval` before creating a new one, and clear in `disconnectedCallback` (once #9 adds it) for `lobby.ts`/`lobby_room.ts`/`lobby_users.ts`/`game.ts`.
 
-11: GameType/kind literals duplicated with no shared source
-Backend and frontend independently hand-maintain the `GameType` enum and message `kind` string literals; `Launchable()` also hardcodes `> 4`.
-1) Generate the frontend enum/constants from the Go source at build time — eliminates drift entirely.
-2) Keep manual duplication but add a named Go constant (`MaxGameType`) referenced by `Launchable()`, with a sync-reminder comment on each side — cheaper, weaker guarantee.
+11 [PARTIAL]: GameType/kind literals duplicated with no shared source
+Backend and frontend independently hand-maintain the `GameType` enum and message `kind` string literals. `Launchable()`'s hardcoded `> 4` bound is fixed (now bounds against `game.GameType_RISQ`/`game.GameType_TEST_GAME` directly, gated on the new `lobby.DEV`, set from `main.go`'s `DEV` at startup).
+Remaining: the enum/kind literals are still hand-duplicated between Go and TS with no shared source. Generate the frontend enum/constants from the Go source at build time to eliminate drift entirely, or accept the manual duplication as-is.
 
 12: Module-scoped state in game message handler
 `message_handler.ts`'s `error_count`/`running_updates` are module-scoped, shared across every `DwgGame` instance rather than per-instance.
@@ -101,3 +100,7 @@ Pick one convention (stringify, matching the majority pattern in `toFrontendLock
 20: Duplicated room-join cases and repeated validation blocks
 `room-join`/`room-join-player` are byte-identical; the room-id-parse/lookup/host-check/game-started-check block repeats near-verbatim across ~10 switch cases.
 Merge `room-join`/`room-join-player` into one case. Extract the parse→lookup→host-check→game-started-check block into a shared helper called by each case.
+
+21: reconnectClient reads/writes client fields after releasing l.mu
+`Lobby.reconnectClient` unlocks `l.mu` then reads `old_client.game`/`old_client.lobby_room` (and calls `old_client.gameNil()`, which reads `c.game` unlocked) and later writes the fresh client's `game`/`lobby_room` fields — all outside the lock, while every other accessor of these fields (`getGame`/`getLobbyRoom`, `removeClient`, `LobbyRoom.replaceClient`, the room actor's `addClient`/`removeClient`) holds `l.mu`. A room actor mutating the same disconnected client's fields (e.g. a queued `LeaveRoom`) concurrently with a reconnect is a real data race, and can make reconnect observe a stale/nil `lobby_room`/`game` and route the player into the wrong branch.
+Capture the fields (and the `game == nil || game.GetBase() == nil` decision) into locals before `l.mu.Unlock()`, and move the later writes to the fresh client's fields back under the lock, matching every other setter's convention.

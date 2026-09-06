@@ -2,19 +2,35 @@ package risq
 
 const spaceGoldIncome = 2.0
 
+// A space is owned by whoever is the sole building owner there; with no buildings at all,
+// ownership instead falls to whoever is the sole unit owner there.
 func (s *RisqSpace) computeOwnership() int {
-	owner := -1
+	building_owner := -1
 	for _, building := range s.buildings {
 		if building == nil || building.deleted {
 			continue
 		}
-		if owner == -1 {
-			owner = building.player_id
-		} else if owner != building.player_id {
+		if building_owner == -1 {
+			building_owner = building.player_id
+		} else if building_owner != building.player_id {
 			return -1
 		}
 	}
-	return owner
+	if building_owner != -1 {
+		return building_owner
+	}
+	unit_owner := -1
+	for _, unit := range s.units {
+		if unit == nil || unit.deleted {
+			continue
+		}
+		if unit_owner == -1 {
+			unit_owner = unit.player_id
+		} else if unit_owner != unit.player_id {
+			return -1
+		}
+	}
+	return unit_owner
 }
 
 func (r *GameRisq) recalculateOwnership() {

@@ -16,17 +16,11 @@ import type {
   RisqZone,
   UnitByTypeData,
 } from '../../risq_data';
-import {
-  RisqAttackType,
-  RisqOrderType,
-  RisqProducibleKind,
-  RisqVisibilityLevel,
-  risqTerrainName,
-} from '../../risq_data';
+import { RisqAttackType, RisqOrderType, RisqProducibleKind, RisqVisibilityLevel } from '../../risq_data';
 import { coordinateToIndex } from '../../risq_coordinates';
 import { drawRisqTooltip } from '../risq_tooltip';
 import { resourceImage, resourceTypeImage } from '../../risq_resources';
-import { getSpaceFill } from '../../risq_space';
+import { drawHexImage } from '../../risq_space';
 import {
   COMBO_UNIT_ICON_SIZE,
   UNIT_HEALTHBAR_COLOR_BACKGROUND,
@@ -35,8 +29,16 @@ import {
   drawComboUnitIcon,
   unitImage,
 } from '../../risq_unit';
-import { INNER_ZONE_MULTIPLIER, getZoneFill, resolveHoveredZones, unitsByPlayerFiltered } from '../../risq_zone';
-import { RisqViewMode } from '../../risq_view_mode';
+import {
+  INNER_ZONE_MULTIPLIER,
+  OUTER_ZONE_INDICES,
+  getZoneFill,
+  resolveHoveredZones,
+  unitsByPlayerFiltered,
+} from '../../risq_zone';
+import { RisqViewMode, risqTerrainName, terrainImage } from '../../risq_terrain';
+import { ColorRGB } from '../../../../../../scripts/color_rgb';
+import { RisqOrdersList } from '../right_panel/orders_list';
 import type { RisqActionButton } from './action_button/action_button';
 import { RisqBuildButton } from './action_button/build_button';
 import { RisqCreateButton } from './action_button/create_button';
@@ -44,7 +46,7 @@ import { RisqDeleteButton } from './action_button/delete_button';
 import { RisqResearchButton } from './action_button/research_button';
 import { RisqStopButton } from './action_button/stop_button';
 import { RisqLeftPanelButton } from './left_panel_close';
-import type { LeftPanelConfig, LeftPanelData, PlayerUnitsDrawData, UnitsByTypeData, UnitsDrawData } from './left_panel_data';
+import type { LeftPanelConfig, LeftPanelData, PlayerUnitsDrawData, UnitsDrawData } from './left_panel_data';
 import { HoverableObjectType, LeftPanelDataType } from './left_panel_data';
 import { RisqOrderButton } from './action_button/order_button';
 
@@ -55,6 +57,7 @@ export class RisqLeftPanel implements CanvasComponent {
   private static ACTION_GRID_COLS = 5;
 
   private close_button: RisqLeftPanelButton;
+  private order_rows_list: RisqOrdersList;
 
   private risq: DwgRisq;
   private config: LeftPanelConfig;
@@ -78,11 +81,13 @@ export class RisqLeftPanel implements CanvasComponent {
     }
     this.config = config;
     this.close_button = new RisqLeftPanelButton(risq);
+    this.order_rows_list = new RisqOrdersList(risq, config.w, new ColorRGB(222, 184, 135), false);
     this.resolveSize();
   }
 
   private refreshActionButtons() {
     this.buttons = [];
+    this.refreshOrderRows();
     if (!this.isOrderable()) {
       this.resolveSize();
       return;
@@ -190,10 +195,37 @@ export class RisqLeftPanel implements CanvasComponent {
       default:
         break;
     }
+    this.resolveSize();
     for (const button of this.buttons) {
       button.dataRefreshed();
     }
-    this.resolveSize();
+  }
+
+  // Whether the currently selected unit/building's own order queue should be shown
+  private showOrderRows(): boolean {
+    if (!this.data) {
+      return false;
+    }
+    if (this.data.data_type !== LeftPanelDataType.UNIT && this.data.data_type !== LeftPanelDataType.BUILDING) {
+      return false;
+    }
+    return this.data.data.player_id === this.risq.getPlayer()?.player.player_id;
+  }
+
+  private refreshOrderRows() {
+    // -1 never matches a real internal_id, so an unowned/non-unit selection just shows an empty list
+    let subject_internal_id = -1;
+    let subject_kind: 'unit' | 'building' | undefined;
+    if (
+      this.showOrderRows() &&
+      this.data &&
+      (this.data.data_type === LeftPanelDataType.UNIT || this.data.data_type === LeftPanelDataType.BUILDING)
+    ) {
+      subject_internal_id = this.data.data.internal_id;
+      subject_kind = this.data.data_type === LeftPanelDataType.UNIT ? 'unit' : 'building';
+    }
+    this.order_rows_list.setSubject(subject_internal_id, subject_kind);
+    this.order_rows_list.refresh();
   }
 
   resolveSize() {
@@ -221,6 +253,13 @@ export class RisqLeftPanel implements CanvasComponent {
         y: y0 + button.row * (s + RisqLeftPanel.PADDING),
       });
     }
+    const orders_y0 = this.yi() + 0.75 * this.size.y + RisqLeftPanel.PADDING;
+    this.order_rows_list.setAllSizes(
+      Math.min(0.1 * this.w(), 16),
+      { x: this.xi() + RisqLeftPanel.PADDING, y: orders_y0 },
+      this.w() - 2 * RisqLeftPanel.PADDING,
+      this.yi() + this.size.y - orders_y0 - RisqLeftPanel.PADDING
+    );
   }
 
   isHovering(): boolean {
@@ -506,12 +545,19 @@ export class RisqLeftPanel implements CanvasComponent {
       button.draw(ctx, transform, dt);
       button.drawTooltip(ctx, transform, this.risq);
     }
+    if (this.showOrderRows()) {
+      this.order_rows_list.draw(ctx, transform, dt);
+    }
     ctx.beginPath();
     this.close_button.draw(ctx, transform, dt);
   }
 
   private drawUnitImage(ctx: CanvasRenderingContext2D, unit: RisqUnit, p: Point2D, s: number) {
-    ctx.drawImage(this.risq.getIcon(unitImage(unit.unit_id)), p.x, p.y, s, s);
+    const color = this.risq.getGame()?.players[unit.player_id]?.color;
+    const icon = color
+      ? this.risq.getPlayerColoredIcon(unitImage(unit.unit_id), color)
+      : this.risq.getIcon(unitImage(unit.unit_id));
+    ctx.drawImage(icon, p.x, p.y, s, s);
     ctx.strokeStyle = UNIT_HEALTHBAR_COLOR_BACKGROUND;
     ctx.lineWidth = 0.4;
     ctx.fillStyle = UNIT_HEALTHBAR_COLOR_BACKGROUND;
@@ -586,7 +632,7 @@ export class RisqLeftPanel implements CanvasComponent {
 
   private drawUnit(ctx: CanvasRenderingContext2D, unit: RisqUnit) {
     let yi = this.yi() + this.drawName(ctx, unit.display_name);
-    yi += this.drawImage(ctx, yi, unitImage(unit.unit_id));
+    yi += this.drawImage(ctx, yi, unitImage(unit.unit_id), this.risq.getGame()?.players[unit.player_id]?.color);
     this.drawSeparator(ctx, yi);
     yi = this.yi() + 0.25 * this.size.y + 6;
     this.drawCombatStats(ctx, yi, yi + 0.25 * this.size.y - 12, unit.combat_stats, unit.current_stamina);
@@ -623,7 +669,12 @@ export class RisqLeftPanel implements CanvasComponent {
 
   private drawBuilding(ctx: CanvasRenderingContext2D, building: RisqBuilding) {
     let yi = this.yi() + this.drawName(ctx, building?.display_name ?? 'Empty Plot');
-    yi += this.drawImage(ctx, yi, buildingImage(building?.building_id, building?.under_construction));
+    yi += this.drawImage(
+      ctx,
+      yi,
+      buildingImage(building?.building_id, building?.under_construction),
+      building ? this.risq.getGame()?.players[building.player_id]?.color : undefined
+    );
     this.drawSeparator(ctx, yi);
     if (!building) {
       yi += 12;
@@ -757,12 +808,13 @@ export class RisqLeftPanel implements CanvasComponent {
     const hexagon_height = Math.min(this.w(), this.yi() + 0.4 * this.h() - yi - separator_distance);
     ctx.strokeStyle = 'rgba(250, 250, 250, 1)';
     ctx.lineWidth = 2;
-    ctx.fillStyle = getSpaceFill(space, RisqViewMode.ALL, undefined, false).getString();
     const r = 0.5 * hexagon_height;
     this.hexagon_r = r;
     const inner_r = INNER_ZONE_MULTIPLIER * r;
     const c = { x: this.xc(), y: yi + r };
     this.hexagon_c = c;
+    drawHexImage(ctx, this.risq.getIcon(terrainImage(space.terrain)), c, r);
+    ctx.fillStyle = 'transparent';
     drawHexagon(ctx, c, r);
     if ((this.visibility ?? 0) >= RisqVisibilityLevel.FOG && space.zones) {
       ctx.strokeStyle = 'rgba(250, 250, 250, 0.7)';
@@ -771,40 +823,16 @@ export class RisqLeftPanel implements CanvasComponent {
       const zone_fill = getZoneFill(zone, RisqViewMode.ALL, undefined, true, 4);
       if (curr_zone.x === 1 && curr_zone.y === 1) {
         zone_fill.addColor(255, 255, 255, 0.2);
-      } else {
-        zone_fill.dAlpha(-0.2);
       }
       ctx.fillStyle = zone_fill.getString();
       drawHexagon(ctx, c, inner_r);
       const a = Math.PI / 3;
       for (let i = 0; i < 6; i++) {
-        let direction_vector: Point2D = { x: 0, y: 0 };
-        switch (i) {
-          case 0:
-            direction_vector = { x: 2, y: 1 };
-            break;
-          case 1:
-            direction_vector = { x: 2, y: 0 };
-            break;
-          case 2:
-            direction_vector = { x: 1, y: 0 };
-            break;
-          case 3:
-            direction_vector = { x: 0, y: 0 };
-            break;
-          case 4:
-            direction_vector = { x: 0, y: 1 };
-            break;
-          case 5:
-            direction_vector = { x: 1, y: 2 };
-            break;
-        }
+        const direction_vector = OUTER_ZONE_INDICES[i];
         zone = space.zones[direction_vector.x][direction_vector.y];
         const zone_fill = getZoneFill(zone, RisqViewMode.ALL, undefined, true, 4);
         if (curr_zone.x === direction_vector.x && curr_zone.y === direction_vector.y) {
           zone_fill.addColor(255, 255, 255, 0.2);
-        } else {
-          zone_fill.dAlpha(-0.2);
         }
         ctx.fillStyle = zone_fill.getString();
         ctx.beginPath();
@@ -879,8 +907,14 @@ export class RisqLeftPanel implements CanvasComponent {
         data.zone.resource.hover_data
       );
     } else {
+      const building_image = buildingImage(data.zone.building?.building_id, data.zone.building?.under_construction);
+      const building_color = data.zone.building
+        ? this.risq.getGame()?.players[data.zone.building.player_id]?.color
+        : undefined;
       draw_row(
-        this.risq.getIcon(buildingImage(data.zone.building?.building_id, data.zone.building?.under_construction)),
+        building_color
+          ? this.risq.getPlayerColoredIcon(building_image, building_color)
+          : this.risq.getIcon(building_image),
         data.zone.building?.display_name ?? 'Empty Plot',
         data.zone.building?.hover_data
       );
@@ -958,11 +992,12 @@ export class RisqLeftPanel implements CanvasComponent {
     return text_size + 3;
   }
 
-  private drawImage(ctx: CanvasRenderingContext2D, yi: number, img_name: string): number {
+  private drawImage(ctx: CanvasRenderingContext2D, yi: number, img_name: string, color?: ColorRGB): number {
     ctx.beginPath();
     const max_img_height = 0.25 * this.size.y - yi + this.yi();
     const img_height = Math.min(max_img_height - 6, 0.8 * this.w());
-    ctx.drawImage(this.risq.getIcon(img_name), 0.5 * (this.w() - img_height), yi, img_height, img_height);
+    const icon = color ? this.risq.getPlayerColoredIcon(img_name, color) : this.risq.getIcon(img_name);
+    ctx.drawImage(icon, 0.5 * (this.w() - img_height), yi, img_height, img_height);
     return max_img_height;
   }
 
@@ -1106,7 +1141,10 @@ export class RisqLeftPanel implements CanvasComponent {
     return true;
   }
 
-  scroll(_dy: number, _mode: number): boolean {
+  scroll(dy: number, mode: number): boolean {
+    if (this.showOrderRows() && this.order_rows_list.isHovering()) {
+      return this.order_rows_list.scroll(dy, mode);
+    }
     return false;
   }
 
@@ -1116,6 +1154,9 @@ export class RisqLeftPanel implements CanvasComponent {
     }
     for (const button of this.buttons) {
       button.mousemove(m, transform);
+    }
+    if (this.showOrderRows() && this.order_rows_list.mousemove(m, transform)) {
+      return true;
     }
     m = {
       x: m.x * transform.scale - transform.view.x,
@@ -1211,11 +1252,17 @@ export class RisqLeftPanel implements CanvasComponent {
     for (const button of this.buttons) {
       button.mousedown(e);
     }
+    if (this.showOrderRows()) {
+      this.order_rows_list.mousedown(e);
+    }
     return this.isHovering();
   }
 
   mouseup(e: MouseEvent) {
     this.close_button.mouseup(e);
+    if (this.showOrderRows()) {
+      this.order_rows_list.mouseup(e);
+    }
     switch (this.data?.data_type) {
       case LeftPanelDataType.SPACE:
       case LeftPanelDataType.ZONE:
@@ -1323,7 +1370,9 @@ export class RisqLeftPanel implements CanvasComponent {
               for (const units_by_type of this.data.data.units) {
                 const new_units_by_type: UnitByTypeData = {
                   ...units_by_type,
-                  units: new Set<number>([...units_by_type.units.values()].filter((u) => u !== (this.hovered_object as RisqUnit).internal_id)),
+                  units: new Set<number>(
+                    [...units_by_type.units.values()].filter((u) => u !== (this.hovered_object as RisqUnit).internal_id)
+                  ),
                 };
                 if (new_units_by_type.units.size > 0) {
                   new_units_by_type_data.push(new_units_by_type);

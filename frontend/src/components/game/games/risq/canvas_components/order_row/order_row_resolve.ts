@@ -132,7 +132,7 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
           ? 1 - site.stamina_remaining / site.construction_stamina_total
           : undefined;
       base = {
-        icon: buildingImage(building_id),
+        icon: buildingImage(building_id, false, true),
         name: `Build ${producible?.display_name ?? 'Building'}`,
         target: distance_text(space, zone),
         cost: resource_cost(producible?.cost),
@@ -149,7 +149,7 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
           ? 1 - queue_item.stamina_remaining / producible.stamina_cost
           : undefined;
       base = {
-        icon: unitImage(order.target_id),
+        icon: unitImage(order.target_id, true),
         name:
           qty > 1
             ? `Create ${producible?.display_name ?? 'Unit'} ×${qty}`
@@ -208,9 +208,9 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
   return {
     ...base,
     subject_icon: subject_unit
-      ? unitImage(subject_unit.unit_id)
+      ? unitImage(subject_unit.unit_id, true)
       : subject_building
-        ? buildingImage(subject_building.building_id)
+        ? buildingImage(subject_building.building_id, false, true)
         : undefined,
   };
 }

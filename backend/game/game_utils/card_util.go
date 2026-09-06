@@ -283,10 +283,11 @@ func (d *StandardDeck) ShuffleDiscardPile() {
 		if i < len(d.draw_pile) {
 			new_draw_pile[v] = d.draw_pile[i]
 		} else {
-			new_draw_pile[v] = d.discard_pile[i]
+			new_draw_pile[v] = d.discard_pile[i-len(d.draw_pile)]
 		}
 	}
 	d.draw_pile = new_draw_pile
+	d.discard_pile = []*StandardCard{}
 }
 
 // removes and returns top card of draw pile, or nil if draw pile is empty
