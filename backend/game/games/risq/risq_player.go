@@ -19,6 +19,8 @@ type RisqPlayer struct {
 	orders_submitted     bool
 	planned_foundations  map[uint]*RisqPlannedFoundation
 	researched_techs     map[uint32]bool
+	report               *RisqTurnReport
+	score                uint
 }
 
 // Private commitment to build at a zone before any stamina makes it a real, objective RisqBuilding
@@ -75,18 +77,6 @@ func (p *RisqPlayer) populationCapped() bool {
 	return uint16(len(p.units)) >= p.populationLimit()
 }
 
-func (p *RisqPlayer) score() uint {
-	score := uint(0)
-	score += p.resources.score()
-	for _, building := range p.buildings {
-		score += building.score()
-	}
-	for _, unit := range p.units {
-		score += unit.score()
-	}
-	return score
-}
-
 func (p *RisqPlayer) valid() bool {
 	return true
 }
@@ -133,7 +123,7 @@ func (p *RisqPlayer) receivePlayerOrder(o *RisqOrder, risq *GameRisq) {
 func (p *RisqPlayer) toFrontend(viewer_player_id int) gin.H {
 	player := gin.H{
 		"population_limit": p.populationLimit(),
-		"score":            p.score(),
+		"score":            p.score,
 		"color":            p.color,
 		"orders_submitted": p.orders_submitted,
 	}
@@ -142,6 +132,7 @@ func (p *RisqPlayer) toFrontend(viewer_player_id int) gin.H {
 	}
 	if p.resources != nil && p.player != nil && p.player.Player_id == viewer_player_id {
 		player["resources"] = p.resources.toFrontend()
+		player["turn_report"] = p.report.toFrontend()
 	}
 	buildings := make([]gin.H, 0)
 	for _, building := range p.buildings {

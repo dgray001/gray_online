@@ -44,7 +44,7 @@ import { RisqDeleteButton } from './action_button/delete_button';
 import { RisqResearchButton } from './action_button/research_button';
 import { RisqStopButton } from './action_button/stop_button';
 import { RisqLeftPanelButton } from './left_panel_close';
-import type { LeftPanelConfig, LeftPanelData, PlayerUnitsDrawData, UnitsDrawData } from './left_panel_data';
+import type { LeftPanelConfig, LeftPanelData, PlayerUnitsDrawData, UnitsByTypeData, UnitsDrawData } from './left_panel_data';
 import { HoverableObjectType, LeftPanelDataType } from './left_panel_data';
 import { RisqOrderButton } from './action_button/order_button';
 
@@ -592,9 +592,7 @@ export class RisqLeftPanel implements CanvasComponent {
     this.drawCombatStats(ctx, yi, yi + 0.25 * this.size.y - 12, unit.combat_stats, unit.current_stamina);
     if (this.risq.getPlayer()?.player.player_id === unit.player_id) {
       this.drawSeparator(ctx, this.yi() + 0.5 * this.size.y);
-      // TODO: draw action buttons
       this.drawSeparator(ctx, this.yi() + 0.75 * this.size.y);
-      // TODO: draw orders
     }
   }
 
@@ -1316,6 +1314,27 @@ export class RisqLeftPanel implements CanvasComponent {
                     units: this.data.data.units.filter(
                       (u: UnitByTypeData) => u.unit_id === (this.hovered_object as RisqUnit).unit_id
                     ),
+                  },
+                },
+                this.visibility ?? 0
+              );
+            } else if (e.ctrlKey) {
+              const new_units_by_type_data: UnitByTypeData[] = [];
+              for (const units_by_type of this.data.data.units) {
+                const new_units_by_type: UnitByTypeData = {
+                  ...units_by_type,
+                  units: new Set<number>([...units_by_type.units.values()].filter((u) => u !== (this.hovered_object as RisqUnit).internal_id)),
+                };
+                if (new_units_by_type.units.size > 0) {
+                  new_units_by_type_data.push(new_units_by_type);
+                }
+              }
+              this.openPanel(
+                {
+                  data_type: LeftPanelDataType.UNITS_BY_TYPE,
+                  data: {
+                    space: this.data.data.space,
+                    units: new_units_by_type_data,
                   },
                 },
                 this.visibility ?? 0

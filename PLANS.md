@@ -1,12 +1,18 @@
 v0.8: Playable Risq
  y: Show orders on map
  z: Attack order (combat implementation)
- za: Summary report
  zb: Design minimal playable tech tree
  UI Issues:
   - Moving to active unit when clicking next idle will take you in the black somewhere
   - Opening left panel with idle button on a vil automatically sets hover state of build housing to true (why is that idk)
   - Need to show pop capped in UI
+  - Only fog should give an overlay
+  - Need per-player unit and building colors
+  - Make sure shift click in left panel works correctly for units data type (should select units of that type)
+  - Test scroll logic with many orders
+  - Shouldn't be able to cancel the same order multiple times
+  - When unsubmitting the new orders have order ids but they aren't "active orders" but ui treats them as such
+  - The rows in left panel when a space is selected don't go through proper logic because I don't see them as a psossibility in HoverableObjectType
 
 Future Risq Plans:
  - Make summary report animated and can view it after close (bottom bar)
@@ -14,7 +20,6 @@ Future Risq Plans:
  - Design scoring system
  - Settings setup (including alt win conditions)
  - Drag multiselect
- - Control groups
  - Color logic for attacks
  - Different maps / terrain / etc
  - Ownership edge cases and "regions"

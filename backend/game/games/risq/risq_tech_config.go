@@ -63,6 +63,7 @@ func applyTechBonus(u *RisqUnit, tech TechConfig) {
 
 func (r *GameRisq) completeResearch(player *RisqPlayer, tech_id uint32) {
 	player.researched_techs[tech_id] = true
+	player.report.recordTech(tech_id)
 	tech, ok := techConfigs[tech_id]
 	if !ok {
 		return

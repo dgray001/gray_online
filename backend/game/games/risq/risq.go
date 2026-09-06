@@ -34,6 +34,7 @@ type GameRisq struct {
 	next_unit_internal_id     uint64
 	next_order_internal_id    uint64
 	turn_number               uint16
+	current_tick              uint16
 	// True if waiting for players to give orders and false if resolving active orders
 	giving_orders bool
 }
@@ -95,6 +96,8 @@ func (r *GameRisq) startNextTurn() {
 	}
 	r.recalculateOwnership()
 	r.recalculateVision()
+	r.refreshScores()
+	r.finalizeTurnReports()
 	r.giving_orders = true
 	for _, player := range r.players {
 		player.player.AddUpdate(&game.UpdateMessage{Kind: "start-turn", Content: gin.H{
@@ -218,11 +221,13 @@ func (r *GameRisq) executeUnsubmitOrders(player_id int) {
 
 func (r *GameRisq) resolveActiveOrders() {
 	fmt.Println("Resolving active orders")
+	r.beginTurnReports()
 	for _, player := range r.players {
 		for _, order := range player.active_orders {
 			if order.received {
 				continue
 			}
+			player.report.orders.added++
 			order.received = true
 			order.turn_received = r.turn_number
 			if order.order_type.isPlayerOrder() {
@@ -259,6 +264,7 @@ func (r *GameRisq) resolveActiveOrders() {
 		if no_intents {
 			break
 		}
+		r.current_tick++
 		for o := range r.allOrderables() {
 			o.tickExecute(r)
 		}
@@ -266,11 +272,17 @@ func (r *GameRisq) resolveActiveOrders() {
 	for _, player := range r.players {
 		kept := player.active_orders[:0]
 		for _, order := range player.active_orders {
+			if order.executed {
+				player.report.orders.executed++
+			} else if order.cancelled {
+				player.report.orders.cancelled++
+			}
 			if order.received && !order.executed && !order.cancelled {
 				kept = append(kept, order)
 			}
 		}
 		player.active_orders = kept
+		player.report.orders.active = len(kept)
 	}
 	r.startNextTurn()
 }

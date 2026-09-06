@@ -7,6 +7,9 @@ type RisqPlayerResources struct {
 	wood  float64
 	stone float64
 	gold  float64
+	// per-turn flow by category, reset each turn
+	gathered [4]float64
+	spent    [4]float64
 }
 
 type RisqResourceCost struct {
@@ -58,6 +61,7 @@ func (r *RisqPlayerResources) addGathered(category RisqResourceCategory, amount 
 	case RisqResourceCategory_GOLD:
 		r.gold += amount
 	}
+	r.gathered[category] += amount
 }
 
 func (r *RisqPlayerResources) canAfford(cost RisqResourceCost) bool {
@@ -87,6 +91,10 @@ func (r *RisqPlayerResources) spend(cost RisqResourceCost) {
 	r.wood -= cost.wood
 	r.stone -= cost.stone
 	r.gold -= cost.gold
+	r.spent[RisqResourceCategory_FOOD] += cost.food
+	r.spent[RisqResourceCategory_WOOD] += cost.wood
+	r.spent[RisqResourceCategory_STONE] += cost.stone
+	r.spent[RisqResourceCategory_GOLD] += cost.gold
 }
 
 func (r *RisqPlayerResources) refund(cost RisqResourceCost) {
@@ -94,10 +102,23 @@ func (r *RisqPlayerResources) refund(cost RisqResourceCost) {
 	r.wood += cost.wood
 	r.stone += cost.stone
 	r.gold += cost.gold
+	r.gathered[RisqResourceCategory_FOOD] += cost.food
+	r.gathered[RisqResourceCategory_WOOD] += cost.wood
+	r.gathered[RisqResourceCategory_STONE] += cost.stone
+	r.gathered[RisqResourceCategory_GOLD] += cost.gold
+}
+
+func (r *RisqPlayerResources) resetFlow() {
+	r.gathered = [4]float64{}
+	r.spent = [4]float64{}
 }
 
 func (r *RisqPlayerResources) score() uint {
-	return uint(r.food + r.wood + r.stone + r.gold)
+	return uint(r.food + r.wood + r.stone + 2*r.gold)
+}
+
+func (c RisqResourceCost) points() uint {
+	return uint(c.food + c.wood + c.stone + 2*c.gold)
 }
 
 func (r *RisqPlayerResources) toFrontend() gin.H {

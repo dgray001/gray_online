@@ -72,7 +72,7 @@ func (u *RisqUnit) vision() *RisqVision {
 }
 
 func (u *RisqUnit) score() uint {
-	return 0
+	return unitConfigs[u.unit_id].cost.points()
 }
 
 func (u *RisqUnit) isDeleted() bool {
@@ -122,7 +122,7 @@ func (u *RisqUnit) receiveOrder(o *RisqOrder, risq *GameRisq) {
 		}
 		cost, _ := buildingProductionCost(building_id)
 		if !player.resources.canAfford(cost) {
-			// TODO: surface this failure in the per-player turn report
+			player.report.recordFailure(o.order_type, o.target_id, "cannot afford building")
 			return
 		}
 		player.planned_foundations[zone.coordinate_key] = createRisqPlannedFoundation(building_id, player)
@@ -321,14 +321,13 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 		building.stamina_remaining -= u.intent.intent_cost
 		new_ratio := constructionHealthRatio(building.stamina_remaining, building.construction_stamina_total)
 		building.cs.addHealth(float64(building.cs.max_health) * (new_ratio - old_ratio))
+		if !building.underConstruction() {
+			risq.players[building.player_id].report.recordBuildingBuilt(building.building_id, building.zone.space.coordinate, building.zone.coordinate)
+		}
 	case *DeleteIntent:
 		u.delete(risq)
 	case *AttackBuildingIntent:
-		damage := combatDamage(&u.cs, &detail.target.cs, u.intent.intent_cost)
-		detail.target.cs.addHealth(-damage)
-		if detail.target.cs.health <= 0 {
-			detail.target.delete(risq)
-		}
+		risq.unitAttackBuilding(u, detail.target)
 	case *RepairIntent:
 		building := detail.target
 		if building.deleted || building.underConstruction() || !risq.canAssist(u.player_id, building) {

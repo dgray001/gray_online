@@ -24,6 +24,7 @@ func (r *GameRisq) recalculateOwnership() {
 			space.ownership = owner
 			if owner >= 0 && owner < len(r.players) {
 				r.players[owner].resources.addGathered(RisqResourceCategory_GOLD, spaceGoldIncome)
+				r.players[owner].report.recordGoldFromLand(spaceGoldIncome)
 			}
 		}
 	}

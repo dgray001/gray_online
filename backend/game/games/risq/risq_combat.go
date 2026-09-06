@@ -136,3 +136,19 @@ func combatDamage(attacker *RisqCombatStats, defender *RisqCombatStats, stamina_
 	}
 	return damage
 }
+
+// Applies a unit's attack against a building, deleting it and logging the raze/loss if it dies
+func (r *GameRisq) unitAttackBuilding(attacker *RisqUnit, target *RisqBuilding) {
+	damage := combatDamage(&attacker.cs, &target.cs, attacker.intent.intent_cost)
+	target.cs.addHealth(-damage)
+	if target.cs.health > 0 {
+		return
+	}
+	space := target.zone.space.coordinate
+	zone := target.zone.coordinate
+	r.players[attacker.player_id].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: CombatEvent_BuildingRazed,
+		self_player: attacker.player_id, other_player: target.player_id, target_id: uint64(target.building_id), space: space, zone: zone, damage: damage})
+	r.players[target.player_id].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: CombatEvent_BuildingLost,
+		self_player: target.player_id, other_player: attacker.player_id, target_id: uint64(target.building_id), space: space, zone: zone, damage: damage})
+	target.delete(r)
+}

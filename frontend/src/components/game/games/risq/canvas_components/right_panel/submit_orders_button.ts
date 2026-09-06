@@ -39,6 +39,8 @@ export class RisqSubmitOrdersButton extends DwgRectButton {
   protected unhovered(): void {}
   protected clicked(): void {}
   protected released(): void {
-    this.risq.toggleSubmitOrdersButton();
+    if (this.isHovering()) {
+      this.risq.toggleSubmitOrdersButton();
+    }
   }
 }

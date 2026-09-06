@@ -73,7 +73,7 @@ func (b *RisqBuilding) vision() *RisqVision {
 }
 
 func (b *RisqBuilding) score() uint {
-	return 0
+	return buildingConfigs[b.building_id].cost.points()
 }
 
 func (b *RisqBuilding) isDeleted() bool {
@@ -137,7 +137,7 @@ func (b *RisqBuilding) receiveOrder(o *RisqOrder, risq *GameRisq) {
 		cost, stamina_required := unitProductionCost(unit_id)
 		resources := risq.players[b.player_id].resources
 		if !resources.canAfford(cost) {
-			// TODO: surface this failure in the per-player turn report
+			risq.players[b.player_id].report.recordFailure(o.order_type, o.target_id, "cannot afford unit")
 			return
 		}
 		resources.spend(cost)
@@ -152,7 +152,7 @@ func (b *RisqBuilding) receiveOrder(o *RisqOrder, risq *GameRisq) {
 		tech := techConfigs[tech_id]
 		resources := risq.players[b.player_id].resources
 		if !resources.canAfford(tech.cost) {
-			// TODO: surface this failure in the per-player turn report
+			risq.players[b.player_id].report.recordFailure(o.order_type, o.target_id, "cannot afford research")
 			return
 		}
 		resources.spend(tech.cost)
@@ -242,6 +242,7 @@ func (b *RisqBuilding) tickExecute(risq *GameRisq) {
 				b.zone.space.setUnit(&b.zone.coordinate, unit)
 				risq.players[b.player_id].units[unit.internal_id] = unit
 				risq.units[unit.internal_id] = unit
+				risq.players[b.player_id].report.recordUnitCreated(item.item_id)
 			case ProducibleKind_TECH:
 				risq.completeResearch(risq.players[b.player_id], item.item_id)
 			}

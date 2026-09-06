@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.7x: Next idle thing button
+v0.7y: Summary report backend
 
 ## Dev Use
 
