@@ -1,7 +1,6 @@
 v0.8: Playable Risq
- y: Show orders on map
- z: Attack order (combat implementation)
- zb: Design minimal playable tech tree
+ zc: Design minimal playable tech tree
+ zd: Summary report frontend
  UI Issues:
   - Need to show pop capped in UI
   - Make sure shift click in left panel works correctly for units data type (should select units of that type)
@@ -19,6 +18,7 @@ Future Risq Plans:
  - Ownership edge cases and "regions"
  - Mercenaries
  - Partial move pathfinding
+ - Message logic for top of screen (like for pop capped)
 
 Fiddlesticks Plans:
  - Revamp update dialog box

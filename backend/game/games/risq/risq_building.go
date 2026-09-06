@@ -85,11 +85,6 @@ func (b *RisqBuilding) internalId() uint64 {
 }
 
 func (b *RisqBuilding) delete(risq *GameRisq) {
-	delete(risq.players[b.player_id].buildings, b.internal_id)
-	delete(risq.buildings, b.internal_id)
-	if b.zone != nil && b.zone.space != nil {
-		b.zone.space.removeBuilding(b)
-	}
 	b.deleted = true
 }
 

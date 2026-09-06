@@ -298,6 +298,19 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend, player_id int)
 		if r.buildings[uint64(order.Target_id)] == nil {
 			return fmt.Errorf("Invalid building target id %d", order.Target_id)
 		}
+	case OrderType_UnitAttackZone:
+		space, zone := invertZoneKey(uint(order.Target_id), r)
+		if space == nil {
+			return fmt.Errorf("Invalid space target inverted from zone key %d", order.Target_id)
+		}
+		if zone == nil {
+			return fmt.Errorf("Invalid zone target inverted from zone key %d", order.Target_id)
+		}
+	case OrderType_UnitAttackSpace:
+		space := invertSpaceKey(uint(order.Target_id), r)
+		if space == nil {
+			return fmt.Errorf("Invalid space target inverted from %d", order.Target_id)
+		}
 	case OrderType_UnitDelete:
 	case OrderType_BuildingDelete:
 	case OrderType_CancelOrder:

@@ -16,6 +16,26 @@ export function isPlayerOrder(order: RisqOrderType): boolean {
   return order >= RisqOrderType.OrderType_CancelOrder && order <= RisqOrderType.OrderType_CancelFoundation;
 }
 
+/** Returns the arrow color used to draw the order on the map */
+export function orderArrowColor(order_type: RisqOrderType): string {
+  switch (order_type) {
+    case RisqOrderType.OrderType_UnitMoveSpace:
+    case RisqOrderType.OrderType_UnitMoveZone:
+      return 'rgba(20, 20, 20, 0.9)';
+    case RisqOrderType.OrderType_UnitGather:
+      return 'rgba(255, 150, 0, 0.9)';
+    case RisqOrderType.OrderType_UnitAttackSpace:
+    case RisqOrderType.OrderType_UnitAttackZone:
+    case RisqOrderType.OrderType_UnitAttackUnit:
+    case RisqOrderType.OrderType_UnitAttackBuilding:
+      return 'rgba(220, 30, 30, 0.9)';
+    case RisqOrderType.OrderType_UnitBuild:
+      return 'rgba(40, 110, 230, 0.9)';
+    default:
+      return 'rgba(255, 225, 0, 0.9)';
+  }
+}
+
 /** One ledger row's worth of orders: a representative order plus any same-producible orders collapsed behind it */
 export declare interface RisqOrderRowEntry {
   order: RisqFrontendOrder;

@@ -139,9 +139,10 @@ func combatDamage(attacker *RisqCombatStats, defender *RisqCombatStats, stamina_
 
 // Applies a unit's attack against a building, deleting it and logging the raze/loss if it dies
 func (r *GameRisq) unitAttackBuilding(attacker *RisqUnit, target *RisqBuilding) {
+	was_alive := target.cs.health > 0
 	damage := combatDamage(&attacker.cs, &target.cs, attacker.intent.intent_cost)
 	target.cs.addHealth(-damage)
-	if target.cs.health > 0 {
+	if !was_alive || target.cs.health > 0 {
 		return
 	}
 	space := target.zone.space.coordinate
@@ -151,4 +152,122 @@ func (r *GameRisq) unitAttackBuilding(attacker *RisqUnit, target *RisqBuilding) 
 	r.players[target.player_id].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: CombatEvent_BuildingLost,
 		self_player: target.player_id, other_player: attacker.player_id, target_id: uint64(target.building_id), space: space, zone: zone, damage: damage})
 	target.delete(r)
+}
+
+func (r *GameRisq) unitAttackUnit(attacker *RisqUnit, target *RisqUnit) {
+	was_alive := target.cs.health > 0
+	damage := combatDamage(&attacker.cs, &target.cs, attacker.intent.intent_cost)
+	target.cs.addHealth(-damage)
+	if !was_alive || target.cs.health > 0 {
+		return
+	}
+	space := target.zone.space.coordinate
+	zone := target.zone.coordinate
+	r.players[attacker.player_id].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: CombatEvent_UnitKilled,
+		self_player: attacker.player_id, other_player: target.player_id, target_id: uint64(target.unit_id), space: space, zone: zone, damage: damage})
+	r.players[target.player_id].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: CombatEvent_UnitLost,
+		self_player: target.player_id, other_player: attacker.player_id, target_id: uint64(target.unit_id), space: space, zone: zone, damage: damage})
+	target.delete(r)
+}
+
+// Returns the lowest-internal_id enemy unit in the zone, or nil
+func zoneEnemyUnit(zone *RisqZone, player_id int) *RisqUnit {
+	var best *RisqUnit
+	for _, u := range zone.units {
+		if u.deleted || u.player_id == player_id {
+			continue
+		}
+		if best == nil || u.internal_id < best.internal_id {
+			best = u
+		}
+	}
+	return best
+}
+
+func zoneEnemyBuilding(zone *RisqZone, player_id int) *RisqBuilding {
+	if zone.building == nil || zone.building.deleted || zone.building.player_id == player_id {
+		return nil
+	}
+	return zone.building
+}
+
+func zoneHasEnemy(zone *RisqZone, player_id int) bool {
+	return zoneEnemyUnit(zone, player_id) != nil || zoneEnemyBuilding(zone, player_id) != nil
+}
+
+func spaceHasEnemy(space *RisqSpace, player_id int) bool {
+	for _, row := range space.zones {
+		for _, zone := range row {
+			if zoneHasEnemy(zone, player_id) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// Returns the zone-hop distance between two zones of the same space via BFS
+func zoneDistanceWithinSpace(from *RisqZone, to *RisqZone) int {
+	if from == to {
+		return 0
+	}
+	space := from.space
+	visited := map[*RisqZone]bool{from: true}
+	frontier := []*RisqZone{from}
+	for dist := 1; len(frontier) > 0; dist++ {
+		next := []*RisqZone{}
+		for _, z := range frontier {
+			for _, adj := range z.adjacent_zones {
+				if adj.space != space || visited[adj] {
+					continue
+				}
+				if adj == to {
+					return dist
+				}
+				visited[adj] = true
+				next = append(next, adj)
+			}
+		}
+		frontier = next
+	}
+	return -1
+}
+
+// Picks the nearest enemy unit in the space by zone-hops from u, tied by lowest internal_id; if none, the nearest
+// enemy building the same way. At most one of the two return values is non-nil.
+func spaceAttackTarget(u *RisqUnit, space *RisqSpace) (*RisqUnit, *RisqBuilding) {
+	var best_unit *RisqUnit
+	best_unit_dist := -1
+	for _, row := range space.zones {
+		for _, zone := range row {
+			target := zoneEnemyUnit(zone, u.player_id)
+			if target == nil {
+				continue
+			}
+			dist := zoneDistanceWithinSpace(u.zone, zone)
+			if best_unit == nil || dist < best_unit_dist || (dist == best_unit_dist && target.internal_id < best_unit.internal_id) {
+				best_unit = target
+				best_unit_dist = dist
+			}
+		}
+	}
+	if best_unit != nil {
+		return best_unit, nil
+	}
+	var best_building *RisqBuilding
+	best_building_dist := -1
+	for _, row := range space.zones {
+		for _, zone := range row {
+			target := zoneEnemyBuilding(zone, u.player_id)
+			if target == nil {
+				continue
+			}
+			dist := zoneDistanceWithinSpace(u.zone, zone)
+			if best_building == nil || dist < best_building_dist || (dist == best_building_dist && target.internal_id < best_building.internal_id) {
+				best_building = target
+				best_building_dist = dist
+			}
+		}
+	}
+	return nil, best_building
 }

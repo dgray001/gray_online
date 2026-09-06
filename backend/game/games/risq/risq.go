@@ -284,7 +284,33 @@ func (r *GameRisq) resolveActiveOrders() {
 		player.active_orders = kept
 		player.report.orders.active = len(kept)
 	}
+	r.cleanupDeleted()
 	r.startNextTurn()
+}
+
+func (r *GameRisq) cleanupDeleted() {
+	for _, player := range r.players {
+		for id, u := range player.units {
+			if !u.deleted {
+				continue
+			}
+			if u.zone != nil && u.zone.space != nil {
+				u.zone.space.removeUnit(u)
+			}
+			delete(player.units, id)
+			delete(r.units, id)
+		}
+		for id, b := range player.buildings {
+			if !b.deleted {
+				continue
+			}
+			if b.zone != nil && b.zone.space != nil {
+				b.zone.space.removeBuilding(b)
+			}
+			delete(player.buildings, id)
+			delete(r.buildings, id)
+		}
+	}
 }
 
 func (r *GameRisq) recalculateVision() {

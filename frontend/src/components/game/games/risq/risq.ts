@@ -43,8 +43,14 @@ import { RisqRightPanel } from './canvas_components/right_panel/right_panel';
 import type { DrawRisqSpaceConfig } from './risq_space';
 import { DrawRisqSpaceDetail, drawRisqSpace } from './risq_space';
 import { RisqLeftPanel } from './canvas_components/left_panel/left_panel';
-import { RisqOrdersModel, isBuildingOrder, isUnitOrder } from './risq_orders';
-import { groupUnitsByType, resolveHoveredZones, unhoverRisqZone, zoneCenterOffset } from './risq_zone';
+import { RisqOrdersModel, isBuildingOrder, isUnitOrder, orderArrowColor } from './risq_orders';
+import {
+  groupUnitsByType,
+  resolveHoveredZones,
+  unhoverRisqZone,
+  zoneCenterOffset,
+  zoneUnitPartOffset,
+} from './risq_zone';
 import { RisqViewMode, nextViewMode } from './risq_terrain';
 import type {
   EconomicUnitsData,
@@ -63,8 +69,6 @@ import { createMessage } from '../../../lobby/data_models';
 const DEFAULT_HEXAGON_RADIUS = 60;
 
 const DRAW_CENTER_DOT = false;
-
-const DRAW_ORDER_ARROWS = false;
 
 export class DwgRisq extends DwgElement {
   private board!: DwgCanvasBoard;
@@ -454,9 +458,6 @@ export class DwgRisq extends DwgElement {
   }
 
   private drawSelectedUnitOrders(ctx: CanvasRenderingContext2D) {
-    if (!DRAW_ORDER_ARROWS) {
-      return; // TODO: order arrows are positioned wrong; reimplement next commit
-    }
     const data = this.left_panel.getData();
     if (data?.data_type !== LeftPanelDataType.UNIT) {
       return;
@@ -466,31 +467,37 @@ export class DwgRisq extends DwgElement {
     if (!orders.length) {
       return;
     }
-    let from = addPoint2D(
-      this.coordinateToCanvas(unit.space_coordinate, this.last_transform.scale),
-      zoneCenterOffset(unit.zone_coordinate, this.hex_r)
-    );
-    ctx.strokeStyle = 'rgba(255, 225, 0, 0.9)';
-    ctx.fillStyle = 'rgba(255, 225, 0, 0.9)';
+    const zone_view = this.draw_detail === DrawRisqSpaceDetail.ZONE_DETAILS;
+    const unit_offset = zoneUnitPartOffset(unit.zone_coordinate, this.hex_r, unit.unit_id >= 11);
+    let from = this.orderPoint(unit.space_coordinate, unit_offset, zone_view);
     ctx.lineWidth = 2;
     ctx.setLineDash([8, 5]);
     for (const order of orders) {
-      const to = this.orderTargetPoint(order);
+      const to = this.orderTargetPoint(order, zone_view);
       if (!to) {
         continue;
       }
+      const color = orderArrowColor(order.order_type);
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
       drawArrow(ctx, from, to, 10);
       from = to;
     }
     ctx.setLineDash([]);
   }
 
-  private orderTargetPoint(order: RisqFrontendOrder): Point2D | undefined {
+  /** Space/zone-view-aware canvas point for an order endpoint; offset is ignored (space-to-space) outside zone view */
+  private orderPoint(space: Point2D, offset: Point2D | undefined, zone_view: boolean): Point2D {
+    const p = this.coordinateToCanvas(space, this.last_transform.scale);
+    return zone_view && offset ? addPoint2D(p, offset) : p;
+  }
+
+  private orderTargetPoint(order: RisqFrontendOrder, zone_view: boolean): Point2D | undefined {
     if (!this.game) {
       return undefined;
     }
     let target_space: Point2D;
-    let target_zone: Point2D | undefined;
+    let target_offset: Point2D | undefined;
     switch (order.order_type) {
       case RisqOrderType.OrderType_UnitMoveSpace:
         target_space = invertPair(order.target_id);
@@ -499,29 +506,38 @@ export class DwgRisq extends DwgElement {
       case RisqOrderType.OrderType_UnitGather: {
         const decoded = invertZoneKey(order.target_id);
         target_space = decoded.space;
-        target_zone = decoded.zone;
+        target_offset = zoneCenterOffset(decoded.zone, this.hex_r);
         break;
       }
       case RisqOrderType.OrderType_UnitBuild: {
         const decoded = invertBuildKey(order.target_id);
         target_space = decoded.space;
-        target_zone = decoded.zone;
+        target_offset = zoneCenterOffset(decoded.zone, this.hex_r);
         break;
       }
-      case RisqOrderType.OrderType_UnitRepair: {
+      case RisqOrderType.OrderType_UnitRepair:
+      case RisqOrderType.OrderType_UnitAttackBuilding: {
         const building = this.findBuildingById(order.target_id);
         if (!building) {
           return undefined;
         }
         target_space = building.space_coordinate;
-        target_zone = building.zone_coordinate;
+        target_offset = zoneCenterOffset(building.zone_coordinate, this.hex_r);
+        break;
+      }
+      case RisqOrderType.OrderType_UnitAttackUnit: {
+        const target_unit = this.findUnitById(order.target_id);
+        if (!target_unit) {
+          return undefined;
+        }
+        target_space = target_unit.space_coordinate;
+        target_offset = zoneUnitPartOffset(target_unit.zone_coordinate, this.hex_r, target_unit.unit_id >= 11);
         break;
       }
       default:
         return undefined;
     }
-    const p = this.coordinateToCanvas(target_space, this.last_transform.scale);
-    return target_zone ? addPoint2D(p, zoneCenterOffset(target_zone, this.hex_r)) : p;
+    return this.orderPoint(target_space, target_offset, zone_view);
   }
 
   private getDrawDetail(scale: number): DrawRisqSpaceDetail {
@@ -957,6 +973,16 @@ export class DwgRisq extends DwgElement {
       const building = player.buildings.get(internal_id);
       if (building) {
         return building;
+      }
+    }
+    return undefined;
+  }
+
+  private findUnitById(internal_id: number): RisqUnit | undefined {
+    for (const player of this.game?.players ?? []) {
+      const unit = player.units.get(internal_id);
+      if (unit) {
+        return unit;
       }
     }
     return undefined;

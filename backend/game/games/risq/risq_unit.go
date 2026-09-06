@@ -84,11 +84,6 @@ func (u *RisqUnit) internalId() uint64 {
 }
 
 func (u *RisqUnit) delete(risq *GameRisq) {
-	delete(risq.players[u.player_id].units, u.internal_id)
-	delete(risq.units, u.internal_id)
-	if u.zone != nil && u.zone.space != nil {
-		u.zone.space.removeUnit(u)
-	}
 	u.deleted = true
 	for _, o := range u.order_queue.active_orders {
 		delete(o.subjects, u.internal_id)
@@ -222,6 +217,21 @@ func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 		if target != nil && !target.isDeleted() {
 			return OrderStatus_InProgress
 		}
+	case OrderType_UnitAttackUnit:
+		target := risq.units[uint64(o.target_id)]
+		if target != nil && !target.isDeleted() {
+			return OrderStatus_InProgress
+		}
+	case OrderType_UnitAttackZone:
+		_, zone := invertZoneKey(uint(o.target_id), risq)
+		if u.zone != zone || zoneHasEnemy(zone, u.player_id) {
+			return OrderStatus_InProgress
+		}
+	case OrderType_UnitAttackSpace:
+		space := invertSpaceKey(uint(o.target_id), risq)
+		if u.zone.space != space || spaceHasEnemy(space, u.player_id) {
+			return OrderStatus_InProgress
+		}
 	}
 	return OrderStatus_Executed
 }
@@ -261,6 +271,39 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 			u.intent.setMove(u.findPath(target.zone))
 		} else {
 			u.intent.setAttackBuilding(target)
+		}
+	case OrderType_UnitAttackUnit:
+		target := risq.units[uint64(order.target_id)]
+		if u.zone != target.zone {
+			u.intent.setMove(u.findPath(target.zone))
+		} else {
+			u.intent.setAttackUnit(target)
+		}
+	case OrderType_UnitAttackZone:
+		_, zone := invertZoneKey(uint(order.target_id), risq)
+		if u.zone != zone {
+			u.intent.setMove(u.findPath(zone))
+		} else if target := zoneEnemyUnit(zone, u.player_id); target != nil {
+			u.intent.setAttackUnit(target)
+		} else if target := zoneEnemyBuilding(zone, u.player_id); target != nil {
+			u.intent.setAttackBuilding(target)
+		}
+	case OrderType_UnitAttackSpace:
+		space := invertSpaceKey(uint(order.target_id), risq)
+		if u.zone.space != space {
+			u.intent.setMove(u.findPath(space.getCenterZone()))
+		} else if target_unit, target_building := spaceAttackTarget(u, space); target_unit != nil {
+			if u.zone == target_unit.zone {
+				u.intent.setAttackUnit(target_unit)
+			} else {
+				u.intent.setMove(u.findPath(target_unit.zone))
+			}
+		} else if target_building != nil {
+			if u.zone == target_building.zone {
+				u.intent.setAttackBuilding(target_building)
+			} else {
+				u.intent.setMove(u.findPath(target_building.zone))
+			}
 		}
 	case OrderType_UnitRepair:
 		target := risq.buildings[uint64(order.target_id)]
@@ -343,6 +386,8 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 		u.delete(risq)
 	case *AttackBuildingIntent:
 		risq.unitAttackBuilding(u, detail.target)
+	case *AttackUnitIntent:
+		risq.unitAttackUnit(u, detail.target)
 	case *RepairIntent:
 		building := detail.target
 		if building.deleted || building.underConstruction() || !risq.canAssist(u.player_id, building) {

@@ -56,6 +56,18 @@ func (i *RisqIntent) setAttackBuilding(target *RisqBuilding) {
 	i.max_cost = unitTickStaminaCost
 }
 
+type AttackUnitIntent struct {
+	target *RisqUnit
+}
+
+func (*AttackUnitIntent) isIntentKind() {}
+
+func (i *RisqIntent) setAttackUnit(target *RisqUnit) {
+	i.detail = &AttackUnitIntent{target: target}
+	i.min_cost = 1
+	i.max_cost = unitTickStaminaCost
+}
+
 type RepairIntent struct {
 	target *RisqBuilding
 }

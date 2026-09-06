@@ -35,6 +35,21 @@ export function zoneCenterOffset(zone_coordinate: Point2D, hex_r: number): Point
   return rotatePoint({ x: 0.73 * hex_r, y: 0 }, (Math.PI / 3) * (i + 1));
 }
 
+/** Angular offset of a zone's economic/military units circle from its building/resource circle, matching drawRisqSpace */
+const ZONE_UNIT_PART_ANGLE = Math.PI / 12;
+
+/** Pixel offset of a zone's economic- or military-units circle center from its space's center, matching how drawRisqSpace positions it */
+export function zoneUnitPartOffset(zone_coordinate: Point2D, hex_r: number, military: boolean): Point2D {
+  const index = coordinateToIndex(1, zone_coordinate);
+  const i = OUTER_ZONE_INDICES.findIndex((dv) => equalsPoint2D(dv, index));
+  if (i === -1) {
+    const angle = military ? (11 * Math.PI) / 6 : (7 * Math.PI) / 6;
+    return { x: 0.18 * hex_r * Math.cos(angle), y: 0.18 * hex_r * Math.sin(angle) };
+  }
+  const angle = military ? ZONE_UNIT_PART_ANGLE : -ZONE_UNIT_PART_ANGLE;
+  return rotatePoint({ x: 0.53 * hex_r * Math.cos(angle), y: 0.53 * hex_r * Math.sin(angle) }, (Math.PI / 3) * (i + 1));
+}
+
 /** Organizes units by unit id for easier processing */
 export function organizeZoneUnits(units: Map<number, RisqUnit>): Map<number, Map<number, UnitByTypeData>> {
   const units_by_type = new Map<number, Map<number, UnitByTypeData>>();
