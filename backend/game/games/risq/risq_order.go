@@ -22,6 +22,25 @@ type Orderable interface {
 	// Returns whether the orderable has an intent
 	tickIntent(risq *GameRisq) bool
 	tickExecute(risq *GameRisq)
+	// Removes this orderable from all maps/zones/orders once deleted; called once per player per turn
+	cleanupDeleted(risq *GameRisq)
+}
+
+// Resolves orders naming internal_id as a subject; shared by RisqUnit/RisqBuilding's cleanupDeleted
+func resolveOrdersOnDeath(risq *GameRisq, queue *RisqOrderQueue, internal_id uint64, self_delete_order_type OrderType) {
+	for _, o := range queue.active_orders {
+		if len(o.subjects) > 1 {
+			delete(o.subjects, internal_id)
+			continue
+		}
+		if o.order_type == self_delete_order_type {
+			o.executed = true
+		} else {
+			o.cancelled = true
+		}
+		o.turn_resolved = risq.turn_number
+	}
+	queue.active_orders = nil
 }
 
 type RisqOrderQueue struct {
@@ -173,12 +192,18 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend, player_id int)
 	}
 	// Validate order type and subjects
 	if order_type.isUnitOrder() {
+		if len(order.Subjects) == 0 {
+			return errors.New("Order must have at least one subject")
+		}
 		for _, subject_id := range order.Subjects {
 			if r.players[order.Player_id].units[subject_id] == nil {
 				return fmt.Errorf("Invalid unit subject id")
 			}
 		}
 	} else if order_type.isBuildingOrder() {
+		if len(order.Subjects) == 0 {
+			return errors.New("Order must have at least one subject")
+		}
 		for _, subject_id := range order.Subjects {
 			if r.players[order.Player_id].buildings[subject_id] == nil {
 				return fmt.Errorf("Invalid building subject id")
@@ -273,8 +298,12 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend, player_id int)
 			}
 		}
 		for _, subject_id := range order.Subjects {
-			if r.players[order.Player_id].units[subject_id].unit_id != 1 {
+			unit := r.players[order.Player_id].units[subject_id]
+			if unit.unit_id != 1 {
 				return fmt.Errorf("Only villagers can build")
+			}
+			if !unitConfigs[unit.unit_id].canBuild(building_id) {
+				return fmt.Errorf("Unit id %d cannot build building id %d", unit.unit_id, building_id)
 			}
 		}
 	case OrderType_UnitRepair:
@@ -369,11 +398,19 @@ func (q *RisqOrderQueue) nextOrder(orderable Orderable, risq *GameRisq) *RisqOrd
 		case OrderStatus_InProgress:
 			return o
 		case OrderStatus_Cancelled:
-			o.cancelled = true
-			o.turn_resolved = risq.turn_number
+			if len(o.subjects) > 1 {
+				delete(o.subjects, orderable.internalId())
+			} else {
+				o.cancelled = true
+				o.turn_resolved = risq.turn_number
+			}
 		default:
-			o.executed = true
-			o.turn_resolved = risq.turn_number
+			if len(o.subjects) > 1 {
+				delete(o.subjects, orderable.internalId())
+			} else {
+				o.executed = true
+				o.turn_resolved = risq.turn_number
+			}
 		}
 		q.active_orders = q.active_orders[1:]
 	}

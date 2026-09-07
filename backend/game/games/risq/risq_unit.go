@@ -87,19 +87,13 @@ func (u *RisqUnit) internalId() uint64 {
 	return u.internal_id
 }
 
-func (u *RisqUnit) delete(risq *GameRisq) {
-	u.deleted = true
-	for _, o := range u.order_queue.active_orders {
-		delete(o.subjects, u.internal_id)
-		if o.order_type == OrderType_UnitDelete {
-			o.executed = true
-			o.turn_resolved = risq.turn_number
-		} else if len(o.subjects) == 0 {
-			o.cancelled = true
-			o.turn_resolved = risq.turn_number
-		}
+func (u *RisqUnit) cleanupDeleted(risq *GameRisq) {
+	resolveOrdersOnDeath(risq, &u.order_queue, u.internal_id, OrderType_UnitDelete)
+	if u.zone != nil && u.zone.space != nil {
+		u.zone.space.removeUnit(u)
 	}
-	u.order_queue.active_orders = nil
+	delete(risq.players[u.player_id].units, u.internal_id)
+	delete(risq.units, u.internal_id)
 }
 
 func (u *RisqUnit) refreshStamina() {
@@ -130,8 +124,9 @@ func (u *RisqUnit) receiveOrder(o *RisqOrder, risq *GameRisq) {
 
 func (u *RisqUnit) cancelOrder(o *RisqOrder, risq *GameRisq) {
 	u.order_queue.removeOrder(o.internal_id)
-	delete(o.subjects, u.internal_id)
-	if len(o.subjects) == 0 {
+	if len(o.subjects) > 1 {
+		delete(o.subjects, u.internal_id)
+	} else {
 		o.cancelled = true
 		o.turn_resolved = risq.turn_number
 	}
@@ -157,6 +152,12 @@ func (u *RisqUnit) orderReceivable(o *RisqOrder, risq *GameRisq) bool {
 		}
 		foundation := risq.players[u.player_id].planned_foundations[zone.coordinate_key]
 		return foundation == nil || foundation.building_id == building_id
+	case OrderType_UnitAttackUnit:
+		target := risq.units[uint64(o.target_id)]
+		return target != nil && canAttack(u.player_id, target.player_id)
+	case OrderType_UnitAttackBuilding:
+		target := risq.buildings[uint64(o.target_id)]
+		return target != nil && canAttack(u.player_id, target.player_id)
 	default:
 	}
 	return true
@@ -164,6 +165,10 @@ func (u *RisqUnit) orderReceivable(o *RisqOrder, risq *GameRisq) bool {
 
 func (r *GameRisq) canAssist(player_id int, b *RisqBuilding) bool {
 	return b.player_id == player_id // TODO: own-or-ally once diplomacy exists
+}
+
+func canAttack(attacker_player_id int, target_player_id int) bool {
+	return attacker_player_id != target_player_id // TODO: not-ally once diplomacy exists
 }
 
 func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
@@ -185,6 +190,9 @@ func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 		}
 	case OrderType_UnitBuild:
 		building_id, _, zone := invertBuildKey(uint(o.target_id), risq)
+		if zone.building != nil && zone.building.deleted {
+			return OrderStatus_Cancelled
+		}
 		if zone.building == nil {
 			if risq.players[u.player_id].planned_foundations[zone.coordinate_key] == nil {
 				return OrderStatus_Cancelled
@@ -209,7 +217,13 @@ func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 		}
 	case OrderType_UnitRepair:
 		target := risq.buildings[uint64(o.target_id)]
-		if target != nil && !target.isDeleted() && !target.underConstruction() && risq.canAssist(u.player_id, target) && target.cs.health < float64(target.cs.max_health) {
+		if target == nil || target.isDeleted() {
+			return OrderStatus_Cancelled
+		}
+		if !target.underConstruction() && risq.canAssist(u.player_id, target) && target.cs.health < float64(target.cs.max_health) {
+			if _, cost, ok := repairHealAndCost(target, 1); !ok || risq.players[u.player_id].resources.affordFraction(cost) <= 0 {
+				return OrderStatus_Cancelled
+			}
 			return OrderStatus_InProgress
 		}
 	case OrderType_UnitDelete:
@@ -218,14 +232,22 @@ func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 		}
 	case OrderType_UnitAttackBuilding:
 		target := risq.buildings[uint64(o.target_id)]
-		if target != nil && !target.isDeleted() {
-			return OrderStatus_InProgress
+		if target == nil || target.isDeleted() {
+			break
 		}
+		if !canAttack(u.player_id, target.player_id) {
+			return OrderStatus_Cancelled
+		}
+		return OrderStatus_InProgress
 	case OrderType_UnitAttackUnit:
 		target := risq.units[uint64(o.target_id)]
-		if target != nil && !target.isDeleted() {
-			return OrderStatus_InProgress
+		if target == nil || target.isDeleted() {
+			break
 		}
+		if !canAttack(u.player_id, target.player_id) {
+			return OrderStatus_Cancelled
+		}
+		return OrderStatus_InProgress
 	case OrderType_UnitAttackZone:
 		_, zone := invertZoneKey(uint(o.target_id), risq)
 		if u.zone != zone || zoneHasEnemy(zone, u.player_id) {
@@ -344,13 +366,19 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 			new_zone.space.setUnit(&new_zone.coordinate, u)
 		}
 	case *GatherIntent:
-		amount := float64(u.intent.intent_cost) * (float64(detail.resource.base_gather_speed) / gatherRateStaminaBase)
+		amount, ok := risq.gather_allotments[u]
+		if !ok {
+			amount = float64(u.intent.intent_cost) * (float64(detail.resource.base_gather_speed) / gatherRateStaminaBase)
+		}
 		if amount > detail.resource.resources_left {
 			amount = detail.resource.resources_left
 		}
 		detail.resource.resources_left -= amount
 		risq.players[u.player_id].resources.addGathered(detail.resource.category(), amount)
 		if detail.resource.resources_left <= 0 && detail.resource.zone != nil {
+			if detail.resource.zone.space != nil {
+				delete(detail.resource.zone.space.resources, detail.resource.internal_id)
+			}
 			detail.resource.zone.resource = nil
 		}
 	case *ConstructionIntent:
@@ -387,7 +415,7 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 			risq.players[building.player_id].report.recordBuildingBuilt(building.building_id, building.zone.space.coordinate, building.zone.coordinate)
 		}
 	case *DeleteIntent:
-		u.delete(risq)
+		u.deleted = true
 	case *AttackBuildingIntent:
 		risq.unitAttackBuilding(u, detail.target)
 	case *AttackUnitIntent:
@@ -397,17 +425,11 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 		if building.deleted || building.underConstruction() || !risq.canAssist(u.player_id, building) {
 			return
 		}
-		config := buildingConfigs[building.building_id]
-		if config.build_stamina <= 0 {
+		heal, cost, ok := repairHealAndCost(building, u.intent.intent_cost)
+		if !ok {
 			return
 		}
-		max_health := float64(building.cs.max_health)
-		heal := repairSpeedFactor * max_health / float64(config.build_stamina) * float64(u.intent.intent_cost)
-		if remaining := max_health - building.cs.health; heal > remaining {
-			heal = remaining
-		}
 		player := risq.players[u.player_id]
-		cost := config.cost.scale(repairCostFactor * heal / max_health)
 		afford := player.resources.affordFraction(cost)
 		if afford <= 0 {
 			return

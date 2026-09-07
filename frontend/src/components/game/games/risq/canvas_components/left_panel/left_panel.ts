@@ -50,6 +50,7 @@ import { RisqLeftPanelButton } from './left_panel_close';
 import type { LeftPanelConfig, LeftPanelData, PlayerUnitsDrawData, UnitsDrawData } from './left_panel_data';
 import { HoverableObjectType, LeftPanelDataType } from './left_panel_data';
 import { RisqOrderButton } from './action_button/order_button';
+import { RisqSpaceUnitsRowButton } from './space_units_row_button';
 
 export class RisqLeftPanel implements CanvasComponent {
   // For use in the draw function
@@ -71,8 +72,8 @@ export class RisqLeftPanel implements CanvasComponent {
   private hovered_zone?: RisqZone; // relevant when drawing space and zone
   private hovered_object?: RisqUnit | RisqBuilding | RisqResource;
   private hovered_object_type: HoverableObjectType = HoverableObjectType.NONE;
-  private space_villager_row: RectHoverData = { ps: { x: 0, y: 0 }, pe: { x: 0, y: 0 } };
-  private space_military_row: RectHoverData = { ps: { x: 0, y: 0 }, pe: { x: 0, y: 0 } };
+  private space_villager_row_button?: RisqSpaceUnitsRowButton;
+  private space_military_row_button?: RisqSpaceUnitsRowButton;
   private healthbar_row: RectHoverData = { ps: { x: 0, y: 0 }, pe: { x: 0, y: 0 } };
 
   constructor(risq: DwgRisq, config: LeftPanelConfig) {
@@ -560,6 +561,10 @@ export class RisqLeftPanel implements CanvasComponent {
       button.draw(ctx, transform, dt);
       button.drawTooltip(ctx, transform, this.risq);
     }
+    if (this.data?.data_type === LeftPanelDataType.SPACE) {
+      this.space_villager_row_button?.draw(ctx, transform, dt);
+      this.space_military_row_button?.draw(ctx, transform, dt);
+    }
     if (this.showOrderRows()) {
       this.order_rows_list.draw(ctx, transform, dt);
     }
@@ -769,15 +774,23 @@ export class RisqLeftPanel implements CanvasComponent {
           draw_row(combo_icon, space.unit_count?.toString() ?? '??');
         }
       } else {
-        draw_row(
+        yi += this.layoutSpaceUnitsRowButton(
+          'villager',
           this.risq.getIcon('icons/villager64'),
           space.num_villager_units?.toString() ?? '??',
-          this.space_villager_row
+          true,
+          yi,
+          image_size,
+          separator_distance
         );
-        draw_row(
+        yi += this.layoutSpaceUnitsRowButton(
+          'military',
           this.risq.getIcon('icons/unit64'),
           space.num_military_units?.toString() ?? '??',
-          this.space_military_row
+          false,
+          yi,
+          image_size,
+          separator_distance
         );
       }
       const resources = [...(space.total_resources?.entries() ?? [])]
@@ -809,6 +822,54 @@ export class RisqLeftPanel implements CanvasComponent {
       }
       yi += image_size + separator_distance;
     }
+  }
+
+  openSpaceUnitsRow(economic: boolean): void {
+    if (this.data?.data_type !== LeftPanelDataType.SPACE) {
+      return;
+    }
+    const space = this.data.data;
+    this.openPanel(
+      {
+        data_type: LeftPanelDataType.UNITS,
+        data: { space, units_by_player: unitsByPlayerFiltered(space.units ?? new Map(), economic) },
+      },
+      this.visibility ?? 0
+    );
+  }
+
+  /** Positions the space panel's villager/military row button, returning the row's height */
+  private layoutSpaceUnitsRowButton(
+    kind: 'villager' | 'military',
+    icon: HTMLImageElement,
+    count: string,
+    economic: boolean,
+    yi: number,
+    image_size: number,
+    separator_distance: number
+  ): number {
+    const p = { x: this.xi() + 0.1 * this.w(), y: yi };
+    const w = 0.9 * this.w();
+    let button = kind === 'villager' ? this.space_villager_row_button : this.space_military_row_button;
+    if (!button) {
+      button = new RisqSpaceUnitsRowButton({
+        p,
+        w,
+        h: image_size,
+        icon,
+        panel: this,
+        economic,
+      });
+      if (kind === 'villager') {
+        this.space_villager_row_button = button;
+      } else {
+        this.space_military_row_button = button;
+      }
+    }
+    button.setPosition(p);
+    button.setSize(w, image_size);
+    button.setRowText(`: ${count}`);
+    return image_size + separator_distance;
   }
 
   private hexagon_r: number = 0;
@@ -1173,6 +1234,7 @@ export class RisqLeftPanel implements CanvasComponent {
     if (this.showOrderRows() && this.order_rows_list.mousemove(m, transform)) {
       return true;
     }
+    const raw_m = m;
     m = {
       x: m.x * transform.scale - transform.view.x,
       y: m.y * transform.scale - transform.view.y,
@@ -1194,8 +1256,8 @@ export class RisqLeftPanel implements CanvasComponent {
         }
         this.hovered_zone = new_hovered_zone;
         if (this.data.data_type === LeftPanelDataType.SPACE) {
-          this.rowHovered(m, this.space_villager_row);
-          this.rowHovered(m, this.space_military_row);
+          this.space_villager_row_button?.mousemove(raw_m, transform);
+          this.space_military_row_button?.mousemove(raw_m, transform);
         }
         if (this.data.data_type === LeftPanelDataType.ZONE) {
           const zone = this.data.data.zone;
@@ -1248,13 +1310,13 @@ export class RisqLeftPanel implements CanvasComponent {
           this.hovered_zone.clicked = true;
         } else if (!!this.hovered_object) {
           this.hovered_object.hover_data.clicked = true;
-        } else if (this.space_villager_row.hovered) {
-          this.space_villager_row.clicked = true;
-        } else if (this.space_military_row.hovered) {
-          this.space_military_row.clicked = true;
+        } else if (this.data.data_type === LeftPanelDataType.SPACE) {
+          this.space_villager_row_button?.mousedown(e);
+          this.space_military_row_button?.mousedown(e);
         }
         break;
       case LeftPanelDataType.UNITS:
+      case LeftPanelDataType.UNITS_BY_TYPE:
       case LeftPanelDataType.ECONOMIC_UNITS:
       case LeftPanelDataType.MILITARY_UNITS:
         if (!!this.hovered_object) {
@@ -1337,28 +1399,9 @@ export class RisqLeftPanel implements CanvasComponent {
                 break;
             }
           }
-        } else if (this.space_villager_row.clicked) {
-          this.space_villager_row.clicked = false;
-          if (this.space_villager_row.hovered && this.data.data_type === LeftPanelDataType.SPACE) {
-            this.openPanel(
-              {
-                data_type: LeftPanelDataType.UNITS,
-                data: { space, units_by_player: unitsByPlayerFiltered(space.units ?? new Map(), true) },
-              },
-              this.visibility ?? 0
-            );
-          }
-        } else if (this.space_military_row.clicked) {
-          this.space_military_row.clicked = false;
-          if (this.space_military_row.hovered && this.data.data_type === LeftPanelDataType.SPACE) {
-            this.openPanel(
-              {
-                data_type: LeftPanelDataType.UNITS,
-                data: { space, units_by_player: unitsByPlayerFiltered(space.units ?? new Map(), false) },
-              },
-              this.visibility ?? 0
-            );
-          }
+        } else if (this.data.data_type === LeftPanelDataType.SPACE) {
+          this.space_villager_row_button?.mouseup(e);
+          this.space_military_row_button?.mouseup(e);
         }
         break;
       case LeftPanelDataType.UNITS_BY_TYPE:

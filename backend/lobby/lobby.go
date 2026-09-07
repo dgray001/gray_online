@@ -227,12 +227,12 @@ func (l *Lobby) reconnectClient(client *Client, client_id uint64) {
 		old_client.delete_timer.Stop()
 	}
 	client.client_id = old_client.client_id
-	l.mu.Unlock()
 	old_game := old_client.game
 	old_lobby_room := old_client.lobby_room
 	if old_client.gameNil() && old_lobby_room != nil {
 		old_game = old_lobby_room.game
 	}
+	l.mu.Unlock()
 	if old_lobby_room != nil {
 		if old_game == nil || old_game.GetBase() == nil {
 			fmt.Println("Removing client", client.client_id, "from old room", old_lobby_room.room_id)

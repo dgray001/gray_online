@@ -21,6 +21,7 @@ type RisqTurnReport struct {
 	techs_researched []uint32
 	combat           []RisqCombatEvent
 	orders           RisqOrdersReport
+	eliminated       bool
 }
 
 type RisqScoreLine struct {
@@ -137,6 +138,13 @@ func (r *RisqTurnReport) recordCombat(e RisqCombatEvent) {
 		return
 	}
 	r.combat = append(r.combat, e)
+}
+
+func (r *RisqTurnReport) recordEliminated() {
+	if r == nil {
+		return
+	}
+	r.eliminated = true
 }
 
 func (r *RisqTurnReport) recordFailure(order_type OrderType, target_id int64, reason string) {
@@ -307,8 +315,9 @@ func (rep *RisqTurnReport) toFrontend() gin.H {
 		failures = append(failures, gin.H{"order_type": f.order_type, "target_id": f.target_id, "reason": f.reason})
 	}
 	return gin.H{
-		"turn":   rep.turn,
-		"scores": scores,
+		"turn":       rep.turn,
+		"eliminated": rep.eliminated,
+		"scores":     scores,
 		"land": gin.H{
 			"held_start":     rep.land.held_start,
 			"held_end":       rep.land.held_end,

@@ -1,26 +1,45 @@
 package risq
 
 import (
+	"fmt"
 	"iter"
+	"os"
 
 	"github.com/dgray001/gray_online/game"
 	"github.com/gin-gonic/gin"
 )
 
 type RisqPlayer struct {
-	player               *game.Player
-	resources            *RisqPlayerResources
-	buildings            map[uint64]*RisqBuilding
-	units                map[uint64]*RisqUnit
-	max_population_limit uint16
-	color                string
-	active_orders        []*RisqOrder
-	past_orders          []*RisqOrder
-	orders_submitted     bool
-	planned_foundations  map[uint]*RisqPlannedFoundation
-	researched_techs     map[uint32]bool
-	report               *RisqTurnReport
-	score                uint
+	player                *game.Player
+	resources             *RisqPlayerResources
+	buildings             map[uint64]*RisqBuilding
+	units                 map[uint64]*RisqUnit
+	max_population_limit  uint16
+	color                 string
+	active_orders         []*RisqOrder
+	past_orders           []*RisqOrder
+	orders_submitted      bool
+	planned_foundations   map[uint]*RisqPlannedFoundation
+	researched_techs      map[uint32]bool
+	report                *RisqTurnReport
+	score                 uint
+	ai_model             RisqAiModel
+	eliminated            bool
+}
+
+func (p *RisqPlayer) createAiModel(raw map[string]interface{}) {
+	rules_raw, ok := raw["rules"].([]interface{})
+	if !ok {
+		p.ai_model = &RisqAiModelNoop{}
+		return
+	}
+	rules, err := parseRisqAiRules(rules_raw)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "failed to parse ai rules, falling back to noop:", err)
+		p.ai_model = &RisqAiModelNoop{}
+		return
+	}
+	p.ai_model = &RisqAiModelRules{rules: rules}
 }
 
 // Private commitment to build at a zone before any stamina makes it a real, objective RisqBuilding
@@ -74,11 +93,15 @@ func (p *RisqPlayer) populationLimit() uint16 {
 }
 
 func (p *RisqPlayer) populationCapped() bool {
-	return uint16(len(p.units)) >= p.populationLimit()
+	return uint16(nonDeletedUnitCount(p.units)) >= p.populationLimit()
 }
 
 func (p *RisqPlayer) valid() bool {
 	return true
+}
+
+func (p *RisqPlayer) canSubmitOrders() bool {
+	return !p.eliminated
 }
 
 func (p *RisqPlayer) allOrderables() iter.Seq[Orderable] {
@@ -126,6 +149,7 @@ func (p *RisqPlayer) toFrontend(viewer_player_id int) gin.H {
 		"score":            p.score,
 		"color":            p.color,
 		"orders_submitted": p.orders_submitted,
+		"eliminated":       p.eliminated,
 	}
 	if p.player != nil {
 		player["player"] = p.player.ToFrontend(false)
@@ -134,18 +158,27 @@ func (p *RisqPlayer) toFrontend(viewer_player_id int) gin.H {
 		player["resources"] = p.resources.toFrontend()
 		player["turn_report"] = p.report.toFrontend()
 	}
+	is_owner := p.player != nil && p.player.Player_id == viewer_player_id
 	buildings := make([]gin.H, 0)
 	for _, building := range p.buildings {
-		if building != nil && !building.deleted {
-			buildings = append(buildings, building.toFrontend(viewer_player_id))
+		if building == nil || building.deleted {
+			continue
 		}
+		if !is_owner && (building.zone == nil || building.zone.space == nil || building.zone.space.getVisibility(viewer_player_id) < VisibilityPoor) {
+			continue
+		}
+		buildings = append(buildings, building.toFrontend(viewer_player_id))
 	}
 	player["buildings"] = buildings
 	units := make([]gin.H, 0)
 	for _, unit := range p.units {
-		if unit != nil && !unit.deleted {
-			units = append(units, unit.toFrontend(viewer_player_id))
+		if unit == nil || unit.deleted {
+			continue
 		}
+		if !is_owner && (unit.zone == nil || unit.zone.space == nil || unit.zone.space.getVisibility(viewer_player_id) < VisibilityGood) {
+			continue
+		}
+		units = append(units, unit.toFrontend(viewer_player_id))
 	}
 	player["units"] = units
 	active_orders := make([]gin.H, 0)

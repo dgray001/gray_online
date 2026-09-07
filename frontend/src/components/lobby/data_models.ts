@@ -132,8 +132,8 @@ export function serverResponseToGameSettings(server_response: GameSettingsFromSe
     game_type: parseInt(server_response.game_type),
     max_players: parseInt(server_response.max_players),
     max_viewers: parseInt(server_response.max_viewers),
-    // @ts-ignore: trust the backend here
-    game_specific_settings: server_response.game_specific_settings,
+    // server is trusted and doesn't shape-validate this at the wire layer either; see architecture doc
+    game_specific_settings: server_response.game_specific_settings as GameSettings['game_specific_settings'],
   };
 }
 

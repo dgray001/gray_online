@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.7zb: Summary report frontend
+v0.8: Playable Risq
 
 ## Dev Use
 

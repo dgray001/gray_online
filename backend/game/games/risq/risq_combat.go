@@ -151,7 +151,7 @@ func (r *GameRisq) unitAttackBuilding(attacker *RisqUnit, target *RisqBuilding) 
 		self_player: attacker.player_id, other_player: target.player_id, target_id: uint64(target.building_id), space: space, zone: zone, damage: damage})
 	r.players[target.player_id].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: CombatEvent_BuildingLost,
 		self_player: target.player_id, other_player: attacker.player_id, target_id: uint64(target.building_id), space: space, zone: zone, damage: damage})
-	target.delete(r)
+	target.deleted = true
 }
 
 func (r *GameRisq) unitAttackUnit(attacker *RisqUnit, target *RisqUnit) {
@@ -167,7 +167,7 @@ func (r *GameRisq) unitAttackUnit(attacker *RisqUnit, target *RisqUnit) {
 		self_player: attacker.player_id, other_player: target.player_id, target_id: uint64(target.unit_id), space: space, zone: zone, damage: damage})
 	r.players[target.player_id].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: CombatEvent_UnitLost,
 		self_player: target.player_id, other_player: attacker.player_id, target_id: uint64(target.unit_id), space: space, zone: zone, damage: damage})
-	target.delete(r)
+	target.deleted = true
 }
 
 // Returns the lowest-internal_id enemy unit in the zone, or nil

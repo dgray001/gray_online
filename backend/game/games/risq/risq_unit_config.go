@@ -27,6 +27,15 @@ type UnitConfig struct {
 	vision               RisqVision
 }
 
+func (c UnitConfig) canBuild(building_id uint32) bool {
+	for _, p := range c.builds {
+		if p.kind == ProducibleKind_BUILDING && p.id == building_id {
+			return true
+		}
+	}
+	return false
+}
+
 type unitConfigJSON struct {
 	UnitId              uint32           `json:"unit_id"`
 	DisplayName         string           `json:"display_name"`

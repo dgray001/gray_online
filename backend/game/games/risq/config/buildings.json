@@ -4,6 +4,8 @@
     "display_name": "Village Center",
     "description": "Used to create villagers and research some core technologies.",
     "max_health": 350,
+    "defense_blunt": 1,
+    "defense_piercing": 3,
     "population_support": 5,
     "cost": { "wood": 250, "stone": 100 },
     "build_stamina": 50,
@@ -18,38 +20,43 @@
     "display_name": "Housing",
     "description": "Used to expand max population",
     "max_health": 120,
+    "defense_blunt": 1,
+    "defense_piercing": 3,
     "population_support": 5,
     "cost": { "wood": 30 },
     "build_stamina": 16
   },
   {
-    "building_id": 3,
-    "display_name": "Outpost",
-    "description": "Used to see longer distances",
-    "max_health": 90,
-    "population_support": 0,
-    "cost": { "wood": 25 },
-    "build_stamina": 12,
-    "vision": { "space": 3, "edge_adjacent": 3, "adjacent": 3, "edge_opposite": 3, "secondary": 2 }
-  },
-  {
     "building_id": 11,
     "display_name": "Blacksmith",
-    "description": "Researches infantry upgrades.",
+    "description": "Researches military hardware upgrades.",
     "max_health": 180,
-    "population_support": 0,
-    "cost": { "wood": 100, "gold": 50 },
+    "defense_blunt": 1,
+    "defense_piercing": 3,
+    "cost": { "wood": 100, "stone": 100 },
     "build_stamina": 30,
     "turn_stamina": 10,
     "produces": []
   },
   {
     "building_id": 21,
+    "display_name": "Outpost",
+    "description": "Used to see longer distances",
+    "max_health": 90,
+    "defense_blunt": 1,
+    "defense_piercing": 3,
+    "cost": { "wood": 25 },
+    "build_stamina": 12,
+    "vision": { "space": 3, "edge_adjacent": 3, "adjacent": 3, "edge_opposite": 3, "secondary": 2 }
+  },
+  {
+    "building_id": 22,
     "display_name": "Barracks",
     "description": "Trains basic and light infantry.",
     "max_health": 200,
-    "population_support": 0,
-    "cost": { "wood": 150, "stone": 30 },
+    "defense_blunt": 2,
+    "defense_piercing": 4,
+    "cost": { "wood": 150, "stone": 50 },
     "build_stamina": 35,
     "turn_stamina": 10,
     "produces": [
@@ -58,16 +65,18 @@
     ]
   },
   {
-    "building_id": 22,
+    "building_id": 23,
     "display_name": "Redoubt",
     "description": "Trains heavy infantry.",
     "max_health": 250,
-    "population_support": 0,
-    "cost": { "wood": 120, "stone": 100 },
-    "build_stamina": 45,
+    "defense_blunt": 3,
+    "defense_piercing": 5,
+    "cost": { "wood": 250, "stone": 250 },
+    "build_stamina": 50,
     "turn_stamina": 10,
     "produces": [
       { "row": 1, "col": 0, "kind": "unit", "id": 13 }
-    ]
+    ],
+    "vision": { "space": 3, "edge_adjacent": 3, "adjacent": 3, "edge_opposite": 3, "secondary": 2 }
   }
 ]

@@ -59,7 +59,7 @@ func (u *RisqUnit) findPath(target *RisqZone) *MoveIntent {
 				neighbor_n = &PathNode{zone: neighbor}
 				tracker[neighbor] = neighbor_n
 				open_set = append(open_set, neighbor)
-			}
+			} // TODO: doesn't reopen an already-expanded (no-longer-in-open_set) node if a cheaper path is found later; fine while move costs are fixed, breaks with variable terrain cost
 			neighbor_n.parent = n
 			neighbor_n.g = neighbor_g
 			h_score := game_utils.AxialDistance(neighbor.space.coordinate, target.space.coordinate) * 6

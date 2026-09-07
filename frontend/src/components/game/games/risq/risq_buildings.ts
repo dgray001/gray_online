@@ -12,8 +12,13 @@ export function buildingImage(building_id: number | undefined, under_constructio
       case 2:
         filename = 'housing';
         break;
-      case 3:
+      case 21:
         filename = 'outpost';
+        break;
+      case 11: // blacksmith
+      case 22: // barracks
+      case 23: // redoubt
+        filename = 'empty_plot'; // no building image yet
         break;
       default:
         console.error('Trying to get building image from unknown building id', building_id);

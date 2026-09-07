@@ -64,6 +64,8 @@ func createRisqBuilding(internal_id uint64, building_id uint32, player_id int) *
 	building.cs.setMaxHealth(config.max_health)
 	building.population_support = config.population_support
 	building.turn_stamina = config.turn_stamina
+	building.cs.defense_blunt = config.defense_blunt
+	building.cs.defense_piercing = config.defense_piercing
 	return &building
 }
 
@@ -84,8 +86,20 @@ func (b *RisqBuilding) internalId() uint64 {
 	return b.internal_id
 }
 
-func (b *RisqBuilding) delete(risq *GameRisq) {
-	b.deleted = true
+func (b *RisqBuilding) cleanupDeleted(risq *GameRisq) {
+	player := risq.players[b.player_id]
+	for _, item := range b.production_queue {
+		player.resources.refund(item.cost)
+		if item.kind == ProducibleKind_TECH {
+			delete(player.researched_techs, item.item_id)
+		}
+	}
+	resolveOrdersOnDeath(risq, &b.order_queue, b.internal_id, OrderType_BuildingDelete)
+	if b.zone != nil && b.zone.space != nil {
+		b.zone.space.removeBuilding(b)
+	}
+	delete(player.buildings, b.internal_id)
+	delete(risq.buildings, b.internal_id)
 }
 
 func (b *RisqBuilding) refreshStamina() {
@@ -163,8 +177,9 @@ func (b *RisqBuilding) receiveOrder(o *RisqOrder, risq *GameRisq) {
 
 func (b *RisqBuilding) cancelOrder(o *RisqOrder, risq *GameRisq) {
 	b.order_queue.removeOrder(o.internal_id)
-	delete(o.subjects, b.internal_id)
-	if len(o.subjects) == 0 {
+	if len(o.subjects) > 1 {
+		delete(o.subjects, b.internal_id)
+	} else {
 		o.cancelled = true
 		o.turn_resolved = risq.turn_number
 	}
@@ -245,7 +260,7 @@ func (b *RisqBuilding) tickExecute(risq *GameRisq) {
 		}
 	}
 	if _, ok := b.intent.detail.(*DeleteIntent); ok {
-		b.delete(risq)
+		b.deleted = true
 	}
 	b.current_stamina -= b.intent.intent_cost
 }

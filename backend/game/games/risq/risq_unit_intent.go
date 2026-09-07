@@ -7,6 +7,21 @@ const gatherRateStaminaBase = 10.0
 const repairSpeedFactor = 0.6
 const repairCostFactor = 1.0
 
+// Returns the heal amount and resource cost for spending stamina repairing building; ok is false if unrepairable
+func repairHealAndCost(building *RisqBuilding, stamina int) (heal float64, cost RisqResourceCost, ok bool) {
+	config := buildingConfigs[building.building_id]
+	if config.build_stamina <= 0 {
+		return 0, RisqResourceCost{}, false
+	}
+	max_health := float64(building.cs.max_health)
+	heal = repairSpeedFactor * max_health / float64(config.build_stamina) * float64(stamina)
+	if remaining := max_health - building.cs.health; heal > remaining {
+		heal = remaining
+	}
+	cost = config.cost.scale(repairCostFactor * heal / max_health)
+	return heal, cost, true
+}
+
 type MoveIntent struct {
 	path       []*RisqZone
 	next_step  *RisqZone
@@ -20,6 +35,64 @@ type GatherIntent struct {
 }
 
 func (*GatherIntent) isIntentKind() {}
+
+type gatherDemand struct {
+	unit   *RisqUnit
+	amount float64
+}
+
+// Computes each gatherer's actual allotment for a contested resource: whoever asks for less than an
+// equal share gets their full request, and only the leftover is split among those who asked for more
+func computeGatherAllotments(orderables []Orderable) map[*RisqUnit]float64 {
+	by_resource := make(map[*RisqResource][]gatherDemand)
+	for _, o := range orderables {
+		u, ok := o.(*RisqUnit)
+		if !ok || !u.intent.hasIntent() {
+			continue
+		}
+		gather, ok := u.intent.detail.(*GatherIntent)
+		if !ok {
+			continue
+		}
+		amount := float64(u.intent.intent_cost) * (float64(gather.resource.base_gather_speed) / gatherRateStaminaBase)
+		by_resource[gather.resource] = append(by_resource[gather.resource], gatherDemand{unit: u, amount: amount})
+	}
+	allotments := make(map[*RisqUnit]float64)
+	for resource, demands := range by_resource {
+		for unit, amount := range waterFillGather(demands, resource.resources_left) {
+			allotments[unit] = amount
+		}
+	}
+	return allotments
+}
+
+func waterFillGather(demands []gatherDemand, available float64) map[*RisqUnit]float64 {
+	result := make(map[*RisqUnit]float64, len(demands))
+	remaining := demands
+	for len(remaining) > 0 {
+		fair_share := available / float64(len(remaining))
+		next := remaining[:0]
+		progressed := false
+		for _, d := range remaining {
+			if d.amount <= fair_share {
+				result[d.unit] = d.amount
+				available -= d.amount
+				progressed = true
+			} else {
+				next = append(next, d)
+			}
+		}
+		remaining = next
+		if !progressed {
+			fair_share = available / float64(len(remaining))
+			for _, d := range remaining {
+				result[d.unit] = fair_share
+			}
+			break
+		}
+	}
+	return result
+}
 
 func (i *RisqIntent) setMove(m *MoveIntent) {
 	if m == nil {

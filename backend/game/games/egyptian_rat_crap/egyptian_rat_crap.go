@@ -82,7 +82,7 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameE
 		}
 	}
 	if len(egyptian_rat_crap.players) < 2 {
-		return nil, errors.New("need at least two players to play egyptian rat crap")
+		return nil, errors.New("Need at least two players to play egyptian rat crap")
 	}
 	return &egyptian_rat_crap, nil
 }

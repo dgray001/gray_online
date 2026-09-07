@@ -471,6 +471,7 @@ export class DwgGame extends DwgElement {
     waiting_room_initialized = true;
     if (game_initialized) {
       this.socketSend(createMessage(`client-${this.clientId()}`, 'game-connected', '', this.game_id.toString()));
+      clearInterval(this.ping_interval);
       this.ping_interval = setInterval(() => {
         if (!this.launched) {
           return;

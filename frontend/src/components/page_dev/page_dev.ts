@@ -106,6 +106,14 @@ export class DwgPageDev extends DwgElement {
             ai_players: [{ nickname: 'AI Player' }],
           },
         };
+      case GameType.RISQ:
+        return {
+          ...base,
+          game_type,
+          game_specific_settings: {
+            ai_players: [{ nickname: 'AI Player 1' }, { nickname: 'AI Player 2' }],
+          },
+        };
       default:
         return {
           ...base,

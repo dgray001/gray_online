@@ -1,13 +1,12 @@
-v0.8: Playable Risq
- zc: Design minimal playable tech tree
- UI Issues:
-  - Make sure shift click in left panel works correctly for units data type (should select units of that type)
-  - The rows in left panel when a space is selected don't go through proper logic because I don't see them as a psossibility in HoverableObjectType
-
-Future Risq Plans:
+v0.9: Risq beta version
+ - Redesign how resources/buildings/units are drawn on map to make it more user-friendly
  - Make summary report animated and can view it after close (bottom bar)
+ - Bottom bar includes summary report, minimap, view buttons, etc
+ - Finish "level 1" tech tree
+ - Expanded "level 2" tech tree
+ - Design customizable AI players
+ - Fully customizable hotkeys
  - Design basic building / unit / tech trees -> UX to show these (bottom bar)
- - Design scoring system
  - Settings setup (including alt win conditions)
  - Drag multiselect
  - Color logic for attacks

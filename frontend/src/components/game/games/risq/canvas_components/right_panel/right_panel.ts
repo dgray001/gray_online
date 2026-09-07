@@ -267,13 +267,24 @@ export class RisqRightPanel implements CanvasComponent {
 
   private drawScore(ctx: CanvasRenderingContext2D, yi: number, score: GameRisqScoreEntry) {
     ctx.beginPath();
-    drawText(ctx, `${score.nickname}: ${score.score}`, {
+    const text = `${score.nickname}: ${score.score}`;
+    drawText(ctx, text, {
       p: { x: this.xi() + 0.9 * this.w(), y: yi + 15 },
       w: 0.8 * this.w(),
       fill_style: score.color.getString(),
       baseline: 'middle',
       align: 'right',
     });
+    if (score.eliminated) {
+      const text_w = Math.min(ctx.measureText(text).width, 0.8 * this.w());
+      ctx.strokeStyle = score.color.getString();
+      ctx.lineWidth = 2;
+      drawLine(
+        ctx,
+        { x: this.xi() + 0.9 * this.w() - text_w, y: yi + 15 },
+        { x: this.xi() + 0.9 * this.w(), y: yi + 15 }
+      );
+    }
   }
 
   scroll(dy: number, mode: number): boolean {

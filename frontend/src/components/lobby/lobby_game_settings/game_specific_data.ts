@@ -22,6 +22,17 @@ export function getReadableGameSettings(settings: object, game_type: GameType): 
           add(setting_name, setting);
         }
         break;
+      case GameType.RISQ:
+        if (setting_name === 'ai_players') {
+          const ai_players = setting as AiPlayerRisq[];
+          add('AI Players', ai_players.length);
+          for (const player of ai_players) {
+            add('AI Player', player.nickname);
+          }
+        } else {
+          add(setting_name, setting);
+        }
+        break;
       default:
         add(setting_name, setting);
         break;
@@ -55,9 +66,20 @@ export declare interface AiPlayerEgyptianRatCrap {
   nickname: string;
 }
 
+/** Data describing risq-specific game settings */
+export declare interface GameSettingsRisq {
+  ai_players: AiPlayerRisq[];
+}
+
+/** Data describing the settings for an ai player in risq */
+export declare interface AiPlayerRisq {
+  nickname: string;
+}
+
 declare module '../../lobby/data_models' {
   interface GameSettingsRegistry {
     [GameType.FIDDLESTICKS]: GameSettingsFiddlesticks;
     [GameType.EGYPTIAN_RAT_CRAP]: GameSettingsEgyptianRatCrap;
+    [GameType.RISQ]: GameSettingsRisq;
   }
 }

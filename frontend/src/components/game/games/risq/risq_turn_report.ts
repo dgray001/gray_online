@@ -71,6 +71,7 @@ export declare interface RisqReportOrderFailure {
 /** The end-of-turn report for a single player */
 export declare interface RisqTurnReport {
   turn: number;
+  eliminated: boolean;
   scores: RisqReportScoreLine[];
   land: RisqReportLand;
   resources: RisqReportResourceLine[];
@@ -129,6 +130,7 @@ export declare interface RisqReportOrderFailureFromServer {
 /** The end-of-turn report for a single player, as returned by the server */
 export declare interface RisqTurnReportFromServer {
   turn: number;
+  eliminated: boolean;
   scores: RisqReportScoreLine[];
   land: RisqReportLand;
   resources: RisqReportResourceLineFromServer[];

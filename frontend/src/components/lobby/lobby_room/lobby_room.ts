@@ -52,6 +52,7 @@ export class DwgLobbyRoom extends DwgElement {
   private settings_launching = false;
   private renaming_room = false;
   private room?: LobbyRoom;
+  private ping_interval?: NodeJS.Timeout;
   private host_el?: DwgRoomUser;
   private player_els = new Map<number, DwgRoomUser>();
   private viewer_els = new Map<number, DwgRoomUser>();
@@ -206,7 +207,8 @@ export class DwgLobbyRoom extends DwgElement {
       this.dispatchEvent(new Event('rejoin_game'));
     });
     this.room_name.classList.add('show');
-    setInterval(() => {
+    clearInterval(this.ping_interval);
+    this.ping_interval = setInterval(() => {
       this.updatePings();
     }, 1500);
   }

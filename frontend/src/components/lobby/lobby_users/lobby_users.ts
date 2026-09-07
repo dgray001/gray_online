@@ -21,6 +21,7 @@ export class DwgLobbyUsers extends DwgElement {
   private user_container!: HTMLDivElement;
 
   private users = new Map<number, UserData>();
+  private ping_interval?: NodeJS.Timeout;
 
   constructor() {
     super();
@@ -37,7 +38,8 @@ export class DwgLobbyUsers extends DwgElement {
       {}
     );
     this.refreshUsers();
-    setInterval(() => {
+    clearInterval(this.ping_interval);
+    this.ping_interval = setInterval(() => {
       this.updatePings();
     }, 2500);
   }

@@ -37,6 +37,8 @@ type GameRisq struct {
 	current_tick              uint16
 	// True if waiting for players to give orders and false if resolving active orders
 	giving_orders bool
+	// Recomputed each tick: contested resources are water-filled instead of first-come-first-served
+	gather_allotments map[*RisqUnit]float64
 }
 
 func (r *GameRisq) nextResourceInternalId() uint64 {
@@ -97,6 +99,7 @@ func (r *GameRisq) startNextTurn() {
 	r.recalculateOwnership()
 	r.recalculateVision()
 	r.refreshScores()
+	r.updateEliminated()
 	r.finalizeTurnReports()
 	r.giving_orders = true
 	for _, player := range r.players {
@@ -110,13 +113,25 @@ func (r *GameRisq) startNextTurn() {
 	r.checkWinCondition()
 }
 
+func (r *GameRisq) updateEliminated() {
+	for _, player := range r.players {
+		if player.eliminated {
+			continue
+		}
+		if len(player.units) == 0 && len(player.buildings) == 0 {
+			player.eliminated = true
+			player.report.recordEliminated()
+		}
+	}
+}
+
 func (r *GameRisq) checkWinCondition() {
 	if len(r.players) < 2 {
 		return
 	}
 	var remaining []*RisqPlayer
 	for _, player := range r.players {
-		if len(player.units) > 0 || len(player.buildings) > 0 {
+		if !player.eliminated {
 			remaining = append(remaining, player)
 		}
 	}
@@ -143,16 +158,26 @@ func (r *GameRisq) Valid() bool {
 }
 
 func (r *GameRisq) PlayerAction(action game.PlayerAction) {
-	fmt.Println("player action:", action.Kind, action.Client_id, action.Action)
-	player := r.game.Players[uint64(action.Client_id)]
+	fmt.Println("player action:", action.Kind, action.Client_id, action.Ai_id, action.Action)
+	player := r.game.AiPlayers[uint32(action.Ai_id)]
 	if player == nil {
-		fmt.Fprintln(os.Stderr, "Invalid client id", action.Client_id)
+		player = r.game.Players[uint64(action.Client_id)]
+	}
+	if player == nil {
+		fmt.Fprintln(os.Stderr, "Invalid client or ai id", action.Client_id, action.Ai_id)
+		return
+	}
+	if r.game.GameEnded() {
 		return
 	}
 	switch action.Kind {
 	case "submit-orders":
 		if !r.giving_orders {
 			player.AddFailedUpdateShorthand("submit-orders-failed", "Not currently giving orders")
+			return
+		}
+		if !r.players[player.Player_id].canSubmitOrders() {
+			player.AddFailedUpdateShorthand("submit-orders-failed", "Eliminated players cannot submit orders")
 			return
 		}
 		if r.players[player.Player_id].orders_submitted {
@@ -202,7 +227,7 @@ func (r *GameRisq) executeSubmitOrders(player_id int, orders []OrderFromFrontend
 	player.orders_submitted = true
 	all_orders_submitted := true
 	for _, player := range r.players {
-		if !player.orders_submitted {
+		if !player.orders_submitted && player.canSubmitOrders() {
 			all_orders_submitted = false
 		}
 	}
@@ -249,6 +274,7 @@ func (r *GameRisq) executeUnsubmitOrders(player_id int) {
 
 func (r *GameRisq) resolveActiveOrders() {
 	fmt.Println("Resolving active orders")
+	r.current_tick = 0
 	r.beginTurnReports()
 	for _, player := range r.players {
 		for _, order := range player.active_orders {
@@ -264,13 +290,14 @@ func (r *GameRisq) resolveActiveOrders() {
 				order.turn_resolved = r.turn_number
 				continue
 			}
+			accepted := false
 			for subject_id, subject := range order.subjects {
 				if !subject.orderReceivable(order, r) {
 					continue
 				}
 				if order.clear_previous_orders {
 					for _, other := range player.active_orders {
-						if other == order || other.executed || other.cancelled {
+						if other == order || other.executed || other.cancelled || !other.received {
 							continue
 						}
 						if _, ok := other.subjects[subject_id]; ok {
@@ -279,24 +306,35 @@ func (r *GameRisq) resolveActiveOrders() {
 					}
 				}
 				subject.receiveOrder(order, r)
+				accepted = true
+			}
+			if !accepted {
+				order.cancelled = true
+				order.turn_resolved = r.turn_number
 			}
 		}
 	}
 	for {
-		no_intents := true
+		orderables := make([]Orderable, 0)
 		for o := range r.allOrderables() {
+			orderables = append(orderables, o)
+		}
+		intent_count := 0
+		for _, o := range orderables {
 			if o.tickIntent(r) {
-				no_intents = false
+				intent_count++
 			}
 		}
-		if no_intents {
+		if intent_count == 0 {
 			break
 		}
+		r.gather_allotments = computeGatherAllotments(orderables)
 		r.current_tick++
-		for o := range r.allOrderables() {
+		for _, o := range orderables {
 			o.tickExecute(r)
 		}
 	}
+	r.cleanupDeleted()
 	for _, player := range r.players {
 		kept := player.active_orders[:0]
 		for _, order := range player.active_orders {
@@ -312,31 +350,22 @@ func (r *GameRisq) resolveActiveOrders() {
 		player.active_orders = kept
 		player.report.orders.active = len(kept)
 	}
-	r.cleanupDeleted()
 	r.startNextTurn()
 }
 
 func (r *GameRisq) cleanupDeleted() {
 	for _, player := range r.players {
-		for id, u := range player.units {
-			if !u.deleted {
-				continue
-			}
-			if u.zone != nil && u.zone.space != nil {
-				u.zone.space.removeUnit(u)
-			}
-			delete(player.units, id)
-			delete(r.units, id)
+		orderables := make([]Orderable, 0, len(player.units)+len(player.buildings))
+		for _, u := range player.units {
+			orderables = append(orderables, u)
 		}
-		for id, b := range player.buildings {
-			if !b.deleted {
-				continue
+		for _, b := range player.buildings {
+			orderables = append(orderables, b)
+		}
+		for _, o := range orderables {
+			if o.isDeleted() {
+				o.cleanupDeleted(r)
 			}
-			if b.zone != nil && b.zone.space != nil {
-				b.zone.space.removeBuilding(b)
-			}
-			delete(player.buildings, id)
-			delete(r.buildings, id)
 		}
 	}
 }

@@ -25,6 +25,7 @@ export declare interface GameRisqScoreEntry {
   nickname: string;
   score: number;
   color: ColorRGB;
+  eliminated: boolean;
 }
 
 /** Data describing a risq player */
@@ -38,6 +39,7 @@ export declare interface RisqPlayer {
   color: ColorRGB;
   active_orders: RisqOrder[];
   orders_submitted: boolean;
+  eliminated: boolean;
   researched_techs: Map<number, boolean>;
   turn_report?: RisqTurnReport;
 }
@@ -337,6 +339,7 @@ export declare interface RisqPlayerFromServer {
   color: string;
   active_orders: RisqOrderFromServer[];
   orders_submitted: boolean;
+  eliminated: boolean;
   researched_techs: Record<string, boolean>;
   turn_report?: RisqTurnReportFromServer;
 }
@@ -464,6 +467,7 @@ export function serverToGameRisq(server_game: GameRisqFromServer): GameRisq | un
       nickname: player.player.nickname,
       score: player.score,
       color: player.color,
+      eliminated: player.eliminated,
     });
   }
   return {
@@ -549,6 +553,7 @@ export function serverToRisqPlayer(server_player: RisqPlayerFromServer): RisqPla
     color: new ColorRGB(color_split[0], color_split[1], color_split[2]),
     active_orders: server_player.active_orders.map((o) => serverToRisqOrder(o)).filter((o) => !!o),
     orders_submitted: server_player.orders_submitted,
+    eliminated: server_player.eliminated,
     researched_techs: new Map(
       Object.entries(server_player.researched_techs).map(([tech_id, researched]) => [Number(tech_id), researched])
     ),

@@ -12,10 +12,9 @@ export function unitImage(unit_id: number, plain = false): string {
       filename = 'villager';
       break;
     case 11:
-      filename = 'swordsman';
-      break;
     case 12:
-      filename = 'villager_aoe';
+    case 13:
+      filename = 'swordsman';
       break;
     default:
       console.error('Trying to get unit image from unknown unit id', unit_id);

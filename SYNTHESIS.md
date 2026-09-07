@@ -5,102 +5,38 @@ current state of work, not a historical record.
 
 ---
 
-## Security
-
-1: Reconnect endpoint allows client_id hijack
-`/reconnect/:nickname/:client_id` doesn't check the nickname matches the original client; disconnected clients stay hijackable for 1 hour; the "rejoin link" hands out the credential.
-1) Validate nickname matches before rebinding — cheap, partial fix since nicknames aren't secret.
-2) Issue an unguessable per-connection token at connect time, require it for reconnect instead of the raw client_id.
-3) Accept as a known risk for a closed family deployment; fix only the nickname check and document the tradeoff.
-
-2: Game-state endpoint trusts client-asserted identity
-`POST /api/lobby/games/get/:id` trusts a body-supplied `client_id`/`viewer` with no check the caller owns it — discloses any player's private hand.
-Require the request to authenticate as the connection it claims to be (reuse the websocket connection's own identity, or an unguessable per-connection token) instead of trusting the body.
-
-3: Websocket origin check disabled
-`CheckOrigin` on the websocket upgrader unconditionally returns `true`.
-Check the `Origin` header against an allowlist of known frontend host(s), env-configurable for dev vs prod.
-
-4: No auth required to join the lobby
-Connecting only requires a bare nickname — possibly an accepted tradeoff for a private family tool.
-1) Accept as-is; confirm intent and document as an accepted risk.
-2) Add a shared invite-link token/passphrase requirement at connect.
-
 ## Concurrency / reliability
 
-5: Unlocked read of update history races room actor
+1: Unlocked read of update history races room actor
 `Client.readMessages` reads `update_list`/`viewer_update_list` unlocked while the room actor concurrently appends to them.
 1) Route resend requests (`game-get-update`, `game-resend-last-update`) through the existing `RequestToFrontend`/`GameStateRequest` actor mechanism instead of reading directly.
 2) Add a mutex around the slices, held by both readers and the actor's append path.
 
-6 [SKIPPED — deemed low risk]: GetGames/validLocked bypass actor-routing for game state
-`Lobby.GetGames()`/`LobbyRoom.validLocked()` call `ToFrontend`/`Valid()` directly under `l.mu`, bypassing `RequestToFrontend`/`GameStateRequest` and racing the room actor's own mutations. Naively routing through `RequestToFrontend` while still holding `l.mu` would introduce a real deadlock (room actor could be blocked waiting on `l.mu` while `GetGames()` waits on the room's reply), so the real fix needs more care than a simple swap; `GetGames()` also appears unreachable from the current frontend, and `Valid()` is a no-op (`return true`) for the one in-scope game type. Owner judged not worth the complexity right now.
-
-7: AddUpdate can block the room's actor goroutine forever
+2: AddUpdate can block the room's actor goroutine forever
 `AddUpdate`/`AddViewerUpdate` block on small fixed-size channels — a stalled or gone consumer freezes the entire room.
 1) Non-blocking `select`/`default` send (mirroring `Client.send()`), drop-and-log on a full buffer.
 2) `select` with a `time.After` timeout, treat a stuck consumer as disconnected and clean it up.
 
 ## Frontend bugs
 
-8: MultiMap.set() leaves stale secondary-index entries
+3: MultiMap.set() leaves stale secondary-index entries
 `set()` doesn't clean up a value's old entry in a keyname's map when the value is re-keyed under that dimension. (The headline "inverted keys()" claim was refuted — current code is correct there, no fix needed.)
 Before inserting under a new key, look up and remove the value's prior entry in any changed key dimension (needs a reverse value→keys index), or document that callers must delete the old entry themselves first.
 
-9: DwgElement has no reattach/cleanup lifecycle
+4: DwgElement has no reattach/cleanup lifecycle
 No `disconnectedCallback`/reattach guard — detach+reattach leaves cached element refs pointing at stale DOM and duplicates global listeners (e.g. `game.ts`'s keyup handler).
 Add `disconnectedCallback` that resets the `found_element` flags so `elementsParsed()` re-queries on reattach, and remove global listeners there too (paired with the same handler reference used to add them).
 
-10: setInterval timers never cleared
-Several components' ping-refresh `setInterval`s are never stored/cleared; `refreshGame()` stacks a new interval on every call, including error-recovery retries.
-Store each interval id on the instance, `clearInterval` before creating a new one, and clear in `disconnectedCallback` (once #9 adds it) for `lobby.ts`/`lobby_room.ts`/`lobby_users.ts`/`game.ts`.
-
-11 [PARTIAL]: GameType/kind literals duplicated with no shared source
+6 [PARTIAL]: GameType/kind literals duplicated with no shared source
 Backend and frontend independently hand-maintain the `GameType` enum and message `kind` string literals. `Launchable()`'s hardcoded `> 4` bound is fixed (now bounds against `game.GameType_RISQ`/`game.GameType_TEST_GAME` directly, gated on the new `lobby.DEV`, set from `main.go`'s `DEV` at startup).
 Remaining: the enum/kind literals are still hand-duplicated between Go and TS with no shared source. Generate the frontend enum/constants from the Go source at build time to eliminate drift entirely, or accept the manual duplication as-is.
 
-12: Module-scoped state in game message handler
+7: Module-scoped state in game message handler
 `message_handler.ts`'s `error_count`/`running_updates` are module-scoped, shared across every `DwgGame` instance rather than per-instance.
 Move both into `DwgGame` instance fields (or a per-instance state object) passed into `handleMessage`/`handleGameUpdate`.
 
-## Config / operational
-
-13: Two unlinked DEV flags must be kept in sync manually
-Backend and frontend each hardcode their own `DEV` flag; the frontend one failing silently exposes the TEST_GAME option in prod.
-1) Derive frontend `DEV` from a build-time env var set by the same deploy pipeline that sets the backend flag — single source of truth.
-2) Have the backend expose its `DEV` state to the frontend at connect time instead of a separate hardcoded copy.
-
-14: Plaintext committed config sets a bad precedent
-`environment_variables.go` is a plaintext, git-committed config array — harmless now, but a bad pattern to extend once v0.9 adds DB/login credentials.
-Before v0.9 adds real secrets, move to env vars sourced from a non-committed `.env`/secret manager rather than extending this file's pattern.
-
-15: Logging has no structure, levels, or alerting
-All logging is unstructured `fmt.Println`/`fmt.Fprintln` with no severity levels and no aggregation/alerting.
-Swap to a minimal structured logger (stdlib `log/slog`, no new dependency) with levels; rely on App Engine's existing stdout/stderr capture for aggregation given the low user count.
-
 ## Dead code / hygiene
 
-16 [PARTIAL]: Stale/unimplemented TODOs in lobby_room.go
-The "move lobby room channels" TODO described already-completed work — deleted. "Make someone else host" is still unimplemented — a host leaving an unstarted room still destroys it, evicting everyone else.
-Remaining: promote another player/viewer (reuse `promotePlayer`) instead of calling `removeRoom` when others remain, or explicitly accept "leaving destroys the room" as intended and delete that TODO too.
-
-17 [DEFERRED]: Blocking sends in playerGameUpdates/viewerGameUpdates
-Reassessed: the blocking send here is likely deliberate, not a bug — it gives sequenced game updates a delivery guarantee via backpressure, unlike the fire-and-forget `Client.send()` used for pings/lobby broadcasts. Switching to non-blocking would trade a narrow race for silent game-update loss, which is worse. The real (much narrower) risk is a TOCTOU window between the `validDebug` check and the blocking send, where the client could go invalid in between and the goroutine blocks forever on a dead connection.
-Bound the existing blocking send with a timeout (`select` with `time.After`) instead of making it non-blocking — preserves the delivery guarantee, eliminates the theoretical hang.
-
-18: Inconsistent wire-format stringification
+8: Inconsistent wire-format stringification
 `room_id` is sent raw while sibling fields are stringified; `game_type` is stringified on one endpoint but raw on another.
 Pick one convention (stringify, matching the majority pattern in `toFrontendLocked`) and apply it consistently to `room_id` and `game_type`; update the corresponding TS types.
-
-19: Unvalidated settings pass-through with @ts-ignore
-`serverResponseToGameSettings` passes `game_specific_settings` through with `@ts-ignore` — no runtime validation at a trust boundary.
-1) Add runtime shape validation (hand-written or a small schema lib) per game type before assigning.
-2) Leave as-is given the low-stakes trusted-server context, but replace the blanket `@ts-ignore` with a narrower cast plus a comment stating the accepted risk explicitly.
-
-20: Duplicated room-join cases and repeated validation blocks
-`room-join`/`room-join-player` are byte-identical; the room-id-parse/lookup/host-check/game-started-check block repeats near-verbatim across ~10 switch cases.
-Merge `room-join`/`room-join-player` into one case. Extract the parse→lookup→host-check→game-started-check block into a shared helper called by each case.
-
-21: reconnectClient reads/writes client fields after releasing l.mu
-`Lobby.reconnectClient` unlocks `l.mu` then reads `old_client.game`/`old_client.lobby_room` (and calls `old_client.gameNil()`, which reads `c.game` unlocked) and later writes the fresh client's `game`/`lobby_room` fields — all outside the lock, while every other accessor of these fields (`getGame`/`getLobbyRoom`, `removeClient`, `LobbyRoom.replaceClient`, the room actor's `addClient`/`removeClient`) holds `l.mu`. A room actor mutating the same disconnected client's fields (e.g. a queued `LeaveRoom`) concurrently with a reconnect is a real data race, and can make reconnect observe a stale/nil `lobby_room`/`game` and route the player into the wrong branch.
-Capture the fields (and the `game == nil || game.GetBase() == nil` decision) into locals before `l.mu.Unlock()`, and move the later writes to the fresh client's fields back under the lock, matching every other setter's convention.

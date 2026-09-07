@@ -2,7 +2,7 @@ import { clickButton, DEV, enumKeys } from '../../../scripts/util';
 import { DwgElement } from '../../dwg_element';
 import type { GameSettings } from '../data_models';
 import { GameType } from '../data_models';
-import type { GameSettingsFiddlesticks } from './game_specific_data';
+import type { GameSettingsFiddlesticks, GameSettingsRisq } from './game_specific_data';
 import type { AiSelectorData, DwgAiSelector } from './ai_selector/ai_selector';
 
 import html from './lobby_game_settings.html';
@@ -80,6 +80,17 @@ export class DwgLobbyGameSettings extends DwgElement {
         this.game_specific_settings_els.set('ai-players', ai_selector);
         children.push(ai_selector);
         break;
+      case GameType.RISQ:
+        children.push(this.createLabelElement('AI Players'));
+        const risq_ai_selector = document.createElement('dwg-ai-selector');
+        risq_ai_selector.setData({
+          game_type,
+          ai_players: [],
+        } satisfies AiSelectorData);
+        risq_ai_selector.id = 'ai-players';
+        this.game_specific_settings_els.set('ai-players', risq_ai_selector);
+        children.push(risq_ai_selector);
+        break;
       default:
         break;
     }
@@ -143,6 +154,13 @@ export class DwgLobbyGameSettings extends DwgElement {
           const ai_players = this.game_specific_settings_els.get('ai-players') as DwgAiSelector;
           if (!!ai_players) {
             ai_players.setPlayers(specific_settings.ai_players);
+          }
+          break;
+        case GameType.RISQ:
+          const risq_settings = settings.game_specific_settings as GameSettingsRisq;
+          const risq_ai_players = this.game_specific_settings_els.get('ai-players') as DwgAiSelector;
+          if (!!risq_ai_players) {
+            risq_ai_players.setPlayers(risq_settings.ai_players);
           }
           break;
         default:

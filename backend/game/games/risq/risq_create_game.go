@@ -56,7 +56,7 @@ func nextAvailableRisqColor(used map[string]bool) string {
 	return ""
 }
 
-func CreateGame(g *game.GameBase) (*GameRisq, error) {
+func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameRisq, error) {
 	risq := GameRisq{
 		game:                      g,
 		players:                   []*RisqPlayer{},
@@ -85,10 +85,32 @@ func CreateGame(g *game.GameBase) (*GameRisq, error) {
 		risq.players = append(risq.players, createRisqPlayer(player, risq.population_limit, color))
 		player_id++
 	}
+	ai_players, ai_players_ok := g.GameSpecificSettings["ai_players"].([]interface{})
+	if ai_players_ok {
+		for _, ai_player := range ai_players {
+			ai, ai_ok := ai_player.(map[string]interface{})
+			if !ai_ok {
+				continue
+			}
+			nickname, nickname_ok := ai["nickname"].(string)
+			if !nickname_ok {
+				continue
+			}
+			player := game.CreateAiPlayer(nickname, g)
+			player.Player_id = player_id
+			color := nextAvailableRisqColor(used_colors)
+			used_colors[color] = true
+			risq_player := createRisqPlayer(player, risq.population_limit, color)
+			risq_player.createAiModel(ai)
+			go runAi(risq_player, &risq, action_channel)
+			risq.players = append(risq.players, risq_player)
+			player_id++
+		}
+	}
 	if len(risq.players) < 2 {
-		//return nil, errors.New("Need at least two players to play risq")
+		return nil, errors.New("Need at least two players to play risq")
 	} else if len(risq.players) > 12 {
-		return nil, errors.New("can have max of twelve players playing risq")
+		return nil, errors.New("Can have max of twelve players playing risq")
 	}
 	starting_distance := 0
 	switch len(risq.players) {

@@ -597,7 +597,7 @@ func (r *LobbyRoom) launchGame(game_id uint64) (game.Game, error) {
 	case game.GameType_EGYPTIAN_RAT_CRAP:
 		new_game, err = egyptian_rat_crap.CreateGame(base_game, r.PlayerAction)
 	case game.GameType_RISQ:
-		new_game, err = risq.CreateGame(base_game)
+		new_game, err = risq.CreateGame(base_game, r.PlayerAction)
 	case game.GameType_TEST_GAME:
 		new_game, err = test_game.CreateGame(base_game)
 	default:

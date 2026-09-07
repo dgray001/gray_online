@@ -19,6 +19,8 @@ type BuildingConfig struct {
 	cost               RisqResourceCost
 	build_stamina      int
 	turn_stamina       int
+	defense_blunt      int
+	defense_piercing   int
 	vision             RisqVision
 }
 
@@ -60,6 +62,8 @@ type buildingConfigJSON struct {
 	Cost              costJSON         `json:"cost"`
 	BuildStamina      int              `json:"build_stamina"`
 	TurnStamina       int              `json:"turn_stamina"`
+	DefenseBlunt      int              `json:"defense_blunt"`
+	DefensePiercing   int              `json:"defense_piercing"`
 	Vision            *risqVisionJSON  `json:"vision"`
 }
 
@@ -88,9 +92,11 @@ func init() {
 				stone: e.Cost.Stone,
 				gold:  e.Cost.Gold,
 			},
-			build_stamina: e.BuildStamina,
-			turn_stamina:  e.TurnStamina,
-			vision:        resolveVision(e.Vision),
+			build_stamina:    e.BuildStamina,
+			turn_stamina:     e.TurnStamina,
+			defense_blunt:    e.DefenseBlunt,
+			defense_piercing: e.DefensePiercing,
+			vision:           resolveVision(e.Vision),
 		}
 	}
 }

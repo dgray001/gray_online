@@ -44,6 +44,7 @@ export class DwgLobby extends DwgElement {
   };
   private entered_game = false;
   private exited_game = false;
+  private ping_interval?: NodeJS.Timeout;
 
   constructor() {
     super();
@@ -241,7 +242,8 @@ export class DwgLobby extends DwgElement {
     });
     this.refreshLobbyRooms();
     this.lobby_users.refreshUsers();
-    setInterval(() => {
+    clearInterval(this.ping_interval);
+    this.ping_interval = setInterval(() => {
       this.pingServer();
       this.ping_container.innerText = `ping: ${Math.round(this.connection_metadata.ping)}`;
     }, LOBBY_PING_TIME);

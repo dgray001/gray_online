@@ -77,7 +77,7 @@ export class DwgLobbyConnector extends DwgElement {
           ) {
             this.previous_nickname.innerText = previous_nickname;
             this.reconnect_data = {
-              nickname: previous_nickname,
+              nickname: PREVIOUS_NICKNAME,
               try_reconnect: true,
               client_id,
             };
