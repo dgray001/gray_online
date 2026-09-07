@@ -88,10 +88,11 @@ type RisqCombatEvent struct {
 
 func createRisqTurnReport(turn uint16, p *RisqPlayer, owned map[uint]bool) *RisqTurnReport {
 	rep := &RisqTurnReport{
-		turn:          turn,
-		pop_start:     uint16(len(p.units)),
-		cap_start:     p.populationLimit(),
-		units_created: make(map[uint32]int),
+		turn:             turn,
+		pop_start:        uint16(len(p.units)),
+		cap_start:        p.populationLimit(),
+		units_created:    make(map[uint32]int),
+		techs_researched: make([]uint32, 0),
 	}
 	rep.land.start_keys = owned
 	rep.land.held_start = len(owned)

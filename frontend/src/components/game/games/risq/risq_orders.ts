@@ -8,7 +8,7 @@ export function isUnitOrder(order: RisqOrderType): boolean {
 
 /** Returns whether the order is for buildings */
 export function isBuildingOrder(order: RisqOrderType): boolean {
-  return order >= RisqOrderType.OrderType_BuildingCreate && order <= RisqOrderType.OrderType_BuildingResearch;
+  return order >= RisqOrderType.OrderType_BuildingCreate && order <= RisqOrderType.OrderType_BuildingDelete;
 }
 
 /** Returns whether the order is a subject-less, player-level order */
@@ -95,12 +95,26 @@ export class RisqOrdersModel {
     this.submitted = [...orders];
   }
 
+  revertSubmittedToPending() {
+    for (const order of this.submitted) {
+      order.internal_id = undefined;
+    }
+    this.pending.push(...this.submitted);
+    this.submitted = [];
+    this.on_change();
+  }
+
   all(): RisqFrontendOrder[] {
     return [...this.submitted, ...this.pending];
   }
 
   pendingOrders(): RisqFrontendOrder[] {
     return [...this.pending];
+  }
+
+  private stripPendingSubject(order: RisqFrontendOrder, subject_internal_id: number): boolean {
+    order.subjects = order.subjects.filter((id) => id !== subject_internal_id);
+    return order.subjects.length > 0;
   }
 
   add(order: RisqFrontendOrder) {
@@ -114,10 +128,11 @@ export class RisqOrdersModel {
         ) {
           return true;
         }
+        let has_subjects = true;
         for (const new_id of order.subjects) {
-          o.subjects = o.subjects.filter((id) => id !== new_id);
+          has_subjects = this.stripPendingSubject(o, new_id);
         }
-        return o.subjects.length > 0;
+        return has_subjects;
       });
     }
     this.pending.push(order);
@@ -150,9 +165,28 @@ export class RisqOrdersModel {
 
   cancelForSubject(subject_internal_id: number) {
     for (const order of this.all()) {
-      if (order.subjects.includes(subject_internal_id)) {
-        this.cancel(order);
+      if (!order.subjects.includes(subject_internal_id)) {
+        continue;
       }
+      if (order.subjects.length === 1) {
+        this.cancel(order);
+        continue;
+      }
+      if (order.internal_id === undefined) {
+        if (!this.stripPendingSubject(order, subject_internal_id)) {
+          this.pending = this.pending.filter((o) => o !== order);
+        }
+        this.on_change();
+        continue;
+      }
+      this.cancel(order);
+      this.add({
+        player_id: order.player_id,
+        order_type: order.order_type,
+        subjects: order.subjects.filter((id) => id !== subject_internal_id),
+        target_id: order.target_id,
+        clear_previous_orders: false,
+      });
     }
   }
 
@@ -161,14 +195,15 @@ export class RisqOrdersModel {
     this.on_change();
   }
 
-  effectiveForSubject(subject_internal_id: number): RisqFrontendOrder[] {
+  effectiveForSubject(subject_internal_id: number, kind: 'unit' | 'building'): RisqFrontendOrder[] {
     const all = this.all();
     const cancelled = new Set(
       all.filter((o) => o.order_type === RisqOrderType.OrderType_CancelOrder).map((o) => o.target_id)
     );
+    const kind_matches = kind === 'unit' ? isUnitOrder : isBuildingOrder;
     let effective: RisqFrontendOrder[] = [];
     for (const order of all) {
-      if (!order.subjects.includes(subject_internal_id)) {
+      if (!kind_matches(order.order_type) || !order.subjects.includes(subject_internal_id)) {
         continue;
       }
       if (order.internal_id !== undefined && cancelled.has(order.internal_id)) {

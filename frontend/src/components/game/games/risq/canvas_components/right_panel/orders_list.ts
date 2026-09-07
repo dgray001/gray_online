@@ -14,6 +14,7 @@ export class RisqOrdersList extends DwgListbox<RisqOrderRow, RisqOrdersScrollbar
   private subject_internal_id?: number;
   // unit and building internal ids are separate counters and can collide, so the subject filter must also match order category
   private subject_kind?: 'unit' | 'building';
+  private cancel_disabled = false;
 
   constructor(risq: DwgRisq, w: number, background: ColorRGB, with_title = true) {
     super({
@@ -44,8 +45,23 @@ export class RisqOrdersList extends DwgListbox<RisqOrderRow, RisqOrdersScrollbar
     this.subject_kind = subject_kind;
   }
 
+  // Overridden so disabling only blocks each row's cancel button; rows stay clickable/scrollable for viewing
+  override disable(): void {
+    this.cancel_disabled = true;
+    for (const row of this.config.list) {
+      row.disableCancel();
+    }
+  }
+
+  override enable(): void {
+    this.cancel_disabled = false;
+    for (const row of this.config.list) {
+      row.enableCancel();
+    }
+  }
+
   private newOrderRow(entry: RisqOrderRowEntry): RisqOrderRow {
-    return new RisqOrderRow({
+    const row = new RisqOrderRow({
       w: this.config.scrollbar.w() - this.config.scrollbar.getScrollbarSize() - 2 * this.getPadding(),
       order: entry.order,
       collapsed_orders: entry.collapsed_orders,
@@ -56,6 +72,10 @@ export class RisqOrdersList extends DwgListbox<RisqOrderRow, RisqOrdersScrollbar
       onCancelAll: (orders) => orders.forEach((order) => this.orders.cancel(order)),
       onSelect: (order) => this.game.selectOrderSubjects(order),
     });
+    if (this.cancel_disabled) {
+      row.disableCancel();
+    }
+    return row;
   }
 
   refresh() {

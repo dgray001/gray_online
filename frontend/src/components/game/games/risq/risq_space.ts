@@ -241,7 +241,7 @@ function drawSpaceContent(
         black_text,
         zone_r,
         rotation,
-        { x: 0.73 * r * Math.cos(0), y: 0.76 * r * Math.sin(0) },
+        { x: 0.73 * r * Math.cos(0), y: 0.73 * r * Math.sin(0) },
         { x: 0.53 * r * Math.cos(-theta), y: 0.53 * r * Math.sin(-theta) },
         { x: 0.53 * r * Math.cos(theta), y: 0.53 * r * Math.sin(theta) }
       );

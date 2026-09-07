@@ -1,10 +1,7 @@
 v0.8: Playable Risq
  zc: Design minimal playable tech tree
- zd: Summary report frontend
  UI Issues:
-  - Need to show pop capped in UI
   - Make sure shift click in left panel works correctly for units data type (should select units of that type)
-  - When unsubmitting the new orders have order ids but they aren't "active orders" but ui treats them as such
   - The rows in left panel when a space is selected don't go through proper logic because I don't see them as a psossibility in HoverableObjectType
 
 Future Risq Plans:

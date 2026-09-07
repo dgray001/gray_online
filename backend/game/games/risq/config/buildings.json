@@ -31,5 +31,43 @@
     "cost": { "wood": 25 },
     "build_stamina": 12,
     "vision": { "space": 3, "edge_adjacent": 3, "adjacent": 3, "edge_opposite": 3, "secondary": 2 }
+  },
+  {
+    "building_id": 11,
+    "display_name": "Blacksmith",
+    "description": "Researches infantry upgrades.",
+    "max_health": 180,
+    "population_support": 0,
+    "cost": { "wood": 100, "gold": 50 },
+    "build_stamina": 30,
+    "turn_stamina": 10,
+    "produces": []
+  },
+  {
+    "building_id": 21,
+    "display_name": "Barracks",
+    "description": "Trains basic and light infantry.",
+    "max_health": 200,
+    "population_support": 0,
+    "cost": { "wood": 150, "stone": 30 },
+    "build_stamina": 35,
+    "turn_stamina": 10,
+    "produces": [
+      { "row": 1, "col": 0, "kind": "unit", "id": 11 },
+      { "row": 1, "col": 1, "kind": "unit", "id": 12 }
+    ]
+  },
+  {
+    "building_id": 22,
+    "display_name": "Redoubt",
+    "description": "Trains heavy infantry.",
+    "max_health": 250,
+    "population_support": 0,
+    "cost": { "wood": 120, "stone": 100 },
+    "build_stamina": 45,
+    "turn_stamina": 10,
+    "produces": [
+      { "row": 1, "col": 0, "kind": "unit", "id": 13 }
+    ]
   }
 ]

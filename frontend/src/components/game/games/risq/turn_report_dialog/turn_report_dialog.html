@@ -1,0 +1,71 @@
+<div id="wrapper">
+  <header id="masthead">
+    <h1 id="title"></h1>
+  </header>
+
+  <div id="scroll-area">
+    <section id="section-scores">
+      <h2 class="eyebrow">Summary</h2>
+      <div class="tbl-wrap">
+        <table class="board">
+          <thead>
+            <tr>
+              <th>Civilization</th>
+              <th>Was</th>
+              <th></th>
+              <th>Now</th>
+              <th>Rank</th>
+            </tr>
+          </thead>
+          <tbody id="scores-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="section-land">
+      <h2 class="eyebrow">Land</h2>
+      <div class="tiles" id="land-tiles"></div>
+    </section>
+
+    <section id="section-resources">
+      <h2 class="eyebrow">Resources</h2>
+      <div class="tbl-wrap">
+        <table class="ledger">
+          <thead>
+            <tr>
+              <th>Resource</th>
+              <th>Start</th>
+              <th>Gathered</th>
+              <th>Spent</th>
+              <th>Final</th>
+            </tr>
+          </thead>
+          <tbody id="resources-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="section-production">
+      <h2 class="eyebrow">Production</h2>
+      <div class="pop" id="pop-line"></div>
+      <ul class="lines" id="production-lines"></ul>
+      <p class="empty" id="production-empty">Nothing to report.</p>
+    </section>
+
+    <section id="section-combat">
+      <h2 class="eyebrow">Combat</h2>
+      <ul class="lines" id="combat-lines"></ul>
+      <p class="empty" id="combat-empty">Nothing to report.</p>
+    </section>
+
+    <section id="section-orders">
+      <h2 class="eyebrow">Orders</h2>
+      <div class="order-summary" id="order-summary"></div>
+      <ul class="lines fails" id="order-failures"></ul>
+    </section>
+  </div>
+
+  <footer>
+    <button id="close-button" type="button">Close Report</button>
+  </footer>
+</div>

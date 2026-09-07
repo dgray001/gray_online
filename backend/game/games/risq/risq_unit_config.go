@@ -10,32 +10,40 @@ import (
 var unitsConfigJSON []byte
 
 type UnitConfig struct {
-	display_name       string
-	description        string
-	max_health         int
-	attack_type        AttackType
-	attack_blunt       int
-	attack_piercing    int
-	cost               RisqResourceCost
-	production_stamina int
-	turn_stamina       int
-	builds             []Producible
-	vision             RisqVision
+	display_name         string
+	description          string
+	max_health           int
+	attack_type          AttackType
+	attack_blunt         int
+	attack_piercing      int
+	defense_blunt        int
+	defense_piercing     int
+	penetration_blunt    int
+	penetration_piercing int
+	cost                 RisqResourceCost
+	production_stamina   int
+	turn_stamina         int
+	builds               []Producible
+	vision               RisqVision
 }
 
 type unitConfigJSON struct {
-	UnitId            uint32           `json:"unit_id"`
-	DisplayName       string           `json:"display_name"`
-	Description       string           `json:"description"`
-	MaxHealth         int              `json:"max_health"`
-	AttackType        string           `json:"attack_type"`
-	AttackBlunt       int              `json:"attack_blunt"`
-	AttackPiercing    int              `json:"attack_piercing"`
-	Cost              costJSON         `json:"cost"`
-	ProductionStamina int              `json:"production_stamina"`
-	TurnStamina       int              `json:"turn_stamina"`
-	Builds            []producibleJSON `json:"builds"`
-	Vision            *risqVisionJSON  `json:"vision"`
+	UnitId              uint32           `json:"unit_id"`
+	DisplayName         string           `json:"display_name"`
+	Description         string           `json:"description"`
+	MaxHealth           int              `json:"max_health"`
+	AttackType          string           `json:"attack_type"`
+	AttackBlunt         int              `json:"attack_blunt"`
+	AttackPiercing      int              `json:"attack_piercing"`
+	DefenseBlunt        int              `json:"defense_blunt"`
+	DefensePiercing     int              `json:"defense_piercing"`
+	PenetrationBlunt    int              `json:"penetration_blunt"`
+	PenetrationPiercing int              `json:"penetration_piercing"`
+	Cost                costJSON         `json:"cost"`
+	ProductionStamina   int              `json:"production_stamina"`
+	TurnStamina         int              `json:"turn_stamina"`
+	Builds              []producibleJSON `json:"builds"`
+	Vision              *risqVisionJSON  `json:"vision"`
 }
 
 type costJSON struct {
@@ -87,12 +95,16 @@ func init() {
 			panic(fmt.Sprintf("config/units.json unit_id %d: %v", e.UnitId, err))
 		}
 		unitConfigs[e.UnitId] = UnitConfig{
-			display_name:    e.DisplayName,
-			description:     e.Description,
-			max_health:      e.MaxHealth,
-			attack_type:     attack_type,
-			attack_blunt:    e.AttackBlunt,
-			attack_piercing: e.AttackPiercing,
+			display_name:         e.DisplayName,
+			description:          e.Description,
+			max_health:           e.MaxHealth,
+			attack_type:          attack_type,
+			attack_blunt:         e.AttackBlunt,
+			attack_piercing:      e.AttackPiercing,
+			defense_blunt:        e.DefenseBlunt,
+			defense_piercing:     e.DefensePiercing,
+			penetration_blunt:    e.PenetrationBlunt,
+			penetration_piercing: e.PenetrationPiercing,
 			cost: RisqResourceCost{
 				food:  e.Cost.Food,
 				wood:  e.Cost.Wood,

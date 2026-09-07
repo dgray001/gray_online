@@ -14,6 +14,17 @@ interface HoldingKeysData {
   arrow_right: boolean;
 }
 
+/** Modifier key state */
+export declare interface ModifierKeys {
+  ctrl: boolean;
+  shift: boolean;
+  alt: boolean;
+}
+
+function modifiersFrom(e: MouseEvent): ModifierKeys {
+  return { ctrl: e.ctrlKey, shift: e.shiftKey, alt: e.altKey };
+}
+
 /** Data describing how the canvas should be initialized */
 export declare interface CanvasBoardInitializationData {
   board_size: Point2D;
@@ -23,7 +34,7 @@ export declare interface CanvasBoardInitializationData {
   draw: (ctx: CanvasRenderingContext2D, transform: BoardTransformData) => void;
   // returns whether something was scrolled
   scroll?: (dy: number, mode: number, dx?: number) => boolean;
-  mousemove: (m: Point2D, transform: BoardTransformData) => void;
+  mousemove: (m: Point2D, transform: BoardTransformData, modifiers: ModifierKeys) => void;
   draggingCallback?: () => void;
   mouseleave: () => void;
   // returns whether something was clicked
@@ -212,7 +223,8 @@ export class DwgCanvasBoard extends DwgElement {
           x: (this.mouse.x + this.transform.view.x) / this.transform.scale,
           y: (this.mouse.y + this.transform.view.y) / this.transform.scale,
         },
-        this.transform
+        this.transform,
+        modifiersFrom(e)
       );
     });
     this.addEventListener('mousemove', (e: MouseEvent) => {
@@ -236,7 +248,8 @@ export class DwgCanvasBoard extends DwgElement {
             x: (this.mouse.x + this.transform.view.x) / this.transform.scale,
             y: (this.mouse.y + this.transform.view.y) / this.transform.scale,
           },
-          this.transform
+          this.transform,
+          modifiersFrom(e)
         );
       }
     });
@@ -255,7 +268,8 @@ export class DwgCanvasBoard extends DwgElement {
             x: (this.mouse.x + this.transform.view.x) / this.transform.scale,
             y: (this.mouse.y + this.transform.view.y) / this.transform.scale,
           },
-          this.transform
+          this.transform,
+          modifiersFrom(e)
         );
         this.dragged = false;
       } else {
@@ -391,7 +405,8 @@ export class DwgCanvasBoard extends DwgElement {
           x: (this.mouse.x + this.transform.view.x) / this.transform.scale,
           y: (this.mouse.y + this.transform.view.y) / this.transform.scale,
         },
-        this.transform
+        this.transform,
+        { ctrl: false, shift: false, alt: false }
       );
     }
   }

@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.7za: Show orders on map
+v0.7zb: Summary report frontend
 
 ## Dev Use
 

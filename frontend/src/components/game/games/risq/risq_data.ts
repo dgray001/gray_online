@@ -4,6 +4,8 @@ import type { Point2D } from '../../util/objects2d';
 import { resourceType } from './risq_resources';
 import type { RisqTerrainType } from './risq_terrain';
 import { organizeZoneUnits } from './risq_zone';
+import type { RisqTurnReport, RisqTurnReportFromServer } from './risq_turn_report';
+import { serverToRisqTurnReport } from './risq_turn_report';
 
 /** Data describing a game of risq */
 export declare interface GameRisq {
@@ -37,6 +39,7 @@ export declare interface RisqPlayer {
   active_orders: RisqOrder[];
   orders_submitted: boolean;
   researched_techs: Map<number, boolean>;
+  turn_report?: RisqTurnReport;
 }
 
 /** Data describing frontend resource state */
@@ -335,6 +338,7 @@ export declare interface RisqPlayerFromServer {
   active_orders: RisqOrderFromServer[];
   orders_submitted: boolean;
   researched_techs: Record<string, boolean>;
+  turn_report?: RisqTurnReportFromServer;
 }
 
 /** Data describing a hexagonal space in risq */
@@ -548,6 +552,7 @@ export function serverToRisqPlayer(server_player: RisqPlayerFromServer): RisqPla
     researched_techs: new Map(
       Object.entries(server_player.researched_techs).map(([tech_id, researched]) => [Number(tech_id), researched])
     ),
+    turn_report: server_player.turn_report ? serverToRisqTurnReport(server_player.turn_report) : undefined,
   };
   return player;
 }

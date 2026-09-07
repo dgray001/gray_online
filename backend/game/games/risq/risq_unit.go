@@ -43,6 +43,10 @@ func createRisqUnit(internal_id uint64, unit_id uint32, player *RisqPlayer) *Ris
 	unit.cs.attack_type = config.attack_type
 	unit.cs.attack_blunt = config.attack_blunt
 	unit.cs.attack_piercing = config.attack_piercing
+	unit.cs.defense_blunt = config.defense_blunt
+	unit.cs.defense_piercing = config.defense_piercing
+	unit.cs.penetration_blunt = config.penetration_blunt
+	unit.cs.penetration_piercing = config.penetration_piercing
 	unit.turn_stamina = config.turn_stamina
 	for tech_id, researched := range player.researched_techs {
 		if !researched {

@@ -107,6 +107,27 @@ func (r *GameRisq) startNextTurn() {
 	r.game.AddViewerUpdate(&game.UpdateMessage{Kind: "start-turn", Content: gin.H{
 		"game": r.ToFrontend(0, true),
 	}})
+	r.checkWinCondition()
+}
+
+func (r *GameRisq) checkWinCondition() {
+	if len(r.players) < 2 {
+		return
+	}
+	var remaining []*RisqPlayer
+	for _, player := range r.players {
+		if len(player.units) > 0 || len(player.buildings) > 0 {
+			remaining = append(remaining, player)
+		}
+	}
+	if len(remaining) > 1 {
+		return
+	}
+	if len(remaining) == 1 {
+		r.game.EndGame(fmt.Sprintf("%s wins!", remaining[0].player.GetNickname()))
+	} else {
+		r.game.EndGame("No players remaining")
+	}
 }
 
 func (r *GameRisq) Valid() bool {
@@ -207,6 +228,13 @@ func (r *GameRisq) executeUnsubmitOrders(player_id int) {
 	fmt.Println("Executing unsubmit orders for:", player_id)
 	player := r.players[player_id]
 	player.orders_submitted = false
+	kept := player.active_orders[:0]
+	for _, order := range player.active_orders {
+		if order.received {
+			kept = append(kept, order)
+		}
+	}
+	player.active_orders = kept
 	for _, player := range r.players {
 		player.player.AddUpdate(&game.UpdateMessage{Kind: "unsubmitted-orders", Content: gin.H{
 			"player_id": player_id,
@@ -314,13 +342,17 @@ func (r *GameRisq) cleanupDeleted() {
 }
 
 func (r *GameRisq) recalculateVision() {
+	previously_visible := make(map[*RisqSpace]map[int]bool)
 	for _, row := range r.spaces {
 		for _, space := range row {
+			had_vision := make(map[int]bool, len(space.visibility))
 			for player_id, v := range space.visibility {
+				had_vision[player_id] = v >= VisibilityPoor
 				if v > VisibilityFog {
 					space.visibility[player_id] = VisibilityFog
 				}
 			}
+			previously_visible[space] = had_vision
 		}
 	}
 	for _, player := range r.players {
@@ -337,15 +369,16 @@ func (r *GameRisq) recalculateVision() {
 			building.zone.space.addVision(building.vision(), building.zone, building.player_id)
 		}
 	}
-	r.refreshVisionCaches()
+	r.refreshVisionCaches(previously_visible)
 }
 
-func (r *GameRisq) refreshVisionCaches() {
+// Refreshes a space's cache for a player if they had or now have vision of the space
+func (r *GameRisq) refreshVisionCaches(previously_visible map[*RisqSpace]map[int]bool) {
 	for _, row := range r.spaces {
 		for _, space := range row {
 			for _, player := range r.players {
 				player_id := player.player.Player_id
-				if space.getVisibility(player_id) >= VisibilityPoor {
+				if previously_visible[space][player_id] || space.getVisibility(player_id) >= VisibilityPoor {
 					space.refreshCache(player_id)
 				}
 			}

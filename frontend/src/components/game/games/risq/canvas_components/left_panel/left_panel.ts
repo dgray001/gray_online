@@ -34,6 +34,7 @@ import {
   OUTER_ZONE_INDICES,
   getZoneFill,
   resolveHoveredZones,
+  unhoverRisqZone,
   unitsByPlayerFiltered,
 } from '../../risq_zone';
 import { RisqViewMode, risqTerrainName, terrainImage } from '../../risq_terrain';
@@ -81,7 +82,12 @@ export class RisqLeftPanel implements CanvasComponent {
     }
     this.config = config;
     this.close_button = new RisqLeftPanelButton(risq);
-    this.order_rows_list = new RisqOrdersList(risq, config.w, new ColorRGB(222, 184, 135), false);
+    this.order_rows_list = new RisqOrdersList(
+      risq,
+      config.w,
+      new ColorRGB(222, 184, 135).addColor(255, 0, 0, 0.2),
+      false
+    );
     this.resolveSize();
   }
 
@@ -226,6 +232,12 @@ export class RisqLeftPanel implements CanvasComponent {
     }
     this.order_rows_list.setSubject(subject_internal_id, subject_kind);
     this.order_rows_list.refresh();
+    const player = this.risq.getPlayer();
+    if (this.risq.givingOrders() && !!player && !player.orders_submitted) {
+      this.order_rows_list.enable();
+    } else {
+      this.order_rows_list.disable();
+    }
   }
 
   resolveSize() {
@@ -370,7 +382,10 @@ export class RisqLeftPanel implements CanvasComponent {
     this.showing = false;
     this.visibility = undefined;
     this.data = undefined;
-    this.hovered_zone = undefined;
+    if (!!this.hovered_zone) {
+      unhoverRisqZone(this.hovered_zone);
+      this.hovered_zone = undefined;
+    }
     this.healthbar_row.hovered = false;
     this.buttons = [];
   }

@@ -46,6 +46,14 @@ export class RisqOrderRow implements CanvasComponent {
     return [this.config.order, ...(this.config.collapsed_orders ?? [])];
   }
 
+  disableCancel(): void {
+    this.cancel_button.disable();
+  }
+
+  enableCancel(): void {
+    this.cancel_button.enable();
+  }
+
   private positionButtons(): void {
     this.cancel_button.setPosition({ x: this.xi() + this.w() - PADDING - CANCEL_S, y: this.yi() + PADDING });
   }
@@ -174,9 +182,11 @@ export class RisqOrderRow implements CanvasComponent {
         if (this.resolved.progress !== undefined) {
           this.drawProgress(ctx, this.resolved.progress);
         }
-        this.cancel_button.draw(ctx, transform, dt);
-        if (this.isCollapsed()) {
-          this.drawCancelAllStrip(ctx);
+        if (!this.cancel_button.isDisabled()) {
+          this.cancel_button.draw(ctx, transform, dt);
+          if (this.isCollapsed()) {
+            this.drawCancelAllStrip(ctx);
+          }
         }
         if (this.config.cancelling) {
           ctx.strokeStyle = 'rgb(122, 46, 27)';
@@ -247,6 +257,10 @@ export class RisqOrderRow implements CanvasComponent {
     };
     this.hovering = !(m.x < this.xi() || m.y < this.yi() || m.x > this.xf() || m.y > this.yf());
     this.cancel_button.mousemove(m, transform);
+    if (this.cancel_button.isDisabled()) {
+      this.cancel_all_hover = false;
+      return this.hovering;
+    }
     if (this.isCollapsed()) {
       const sy = this.yi() + ROW_H;
       this.cancel_all_hover = this.hovering && m.y >= sy && m.y <= sy + COLLAPSED_STRIP_H;
@@ -260,7 +274,7 @@ export class RisqOrderRow implements CanvasComponent {
     if (this.cancel_button.mousedown(e)) {
       return true;
     }
-    if (this.cancel_all_hover) {
+    if (!this.cancel_button.isDisabled() && this.cancel_all_hover) {
       this.cancel_all_clicking = true;
       return true;
     }
@@ -273,7 +287,12 @@ export class RisqOrderRow implements CanvasComponent {
 
   mouseup(e: MouseEvent): void {
     this.cancel_button.mouseup(e);
-    if (this.cancel_all_clicking && this.cancel_all_hover && this.config.collapsed_orders) {
+    if (
+      !this.cancel_button.isDisabled() &&
+      this.cancel_all_clicking &&
+      this.cancel_all_hover &&
+      this.config.collapsed_orders
+    ) {
       this.config.onCancelAll?.([this.config.order, ...this.config.collapsed_orders]);
     } else if (this.clicking && this.hovering) {
       this.config.onSelect?.(this.config.order);
@@ -298,6 +317,6 @@ export class RisqOrderRow implements CanvasComponent {
     return this.config.w;
   }
   h(): number {
-    return this.isCollapsed() ? ROW_H + COLLAPSED_STRIP_H : ROW_H;
+    return this.isCollapsed() && !this.cancel_button.isDisabled() ? ROW_H + COLLAPSED_STRIP_H : ROW_H;
   }
 }

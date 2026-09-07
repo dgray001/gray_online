@@ -188,7 +188,7 @@ export class DwgListbox<
         this.config.scrollbar.setValue({
           value,
           value_min: 0,
-          value_max: yi >= this.yf() - padding ? yi - initial_yi - this.h() + 2 * padding : 0,
+          value_max: yi >= this.yf() - padding ? yi - initial_yi - this.config.scrollbar.h() + 2 * padding : 0,
         });
       }
     });

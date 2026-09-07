@@ -16,12 +16,40 @@
   },
   {
     "unit_id": 11,
-    "display_name": "Swordsman",
-    "description": "",
+    "display_name": "Basic Infantry",
+    "description": "A standard line trooper, unremarkable in every way.",
     "max_health": 35,
-    "attack_type": "BLUNT_PIERCING",
+    "attack_type": "BLUNT",
     "attack_blunt": 4,
-    "attack_piercing": 4,
+    "defense_blunt": 2,
+    "defense_piercing": 2,
+    "cost": { "food": 60, "gold": 20 },
+    "production_stamina": 30,
     "turn_stamina": 10
+  },
+  {
+    "unit_id": 12,
+    "display_name": "Light Infantry",
+    "description": "Fast and cheap, but lightly armored.",
+    "max_health": 25,
+    "attack_type": "PIERCING",
+    "attack_piercing": 3,
+    "cost": { "food": 40, "gold": 10 },
+    "production_stamina": 20,
+    "turn_stamina": 14
+  },
+  {
+    "unit_id": 13,
+    "display_name": "Heavy Infantry",
+    "description": "Slow and expensive, but hits hard and shrugs off hits.",
+    "max_health": 55,
+    "attack_type": "BLUNT_PIERCING",
+    "attack_blunt": 5,
+    "attack_piercing": 5,
+    "defense_blunt": 4,
+    "defense_piercing": 4,
+    "cost": { "food": 70, "gold": 40, "stone": 10 },
+    "production_stamina": 45,
+    "turn_stamina": 7
   }
 ]

@@ -248,7 +248,7 @@ export class RisqRightPanel implements CanvasComponent {
     drawText(ctx, `${pop}/${limit}`, {
       p: { x: this.xi() + 0.1 * this.w() + 36, y: yi + 15 },
       w: 0.9 * this.w() - 36,
-      fill_style: 'black',
+      fill_style: pop >= limit ? 'rgb(200, 30, 30)' : 'black',
       baseline: 'middle',
     });
   }

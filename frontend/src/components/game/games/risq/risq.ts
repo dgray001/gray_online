@@ -1,7 +1,7 @@
 import { DwgElement } from '../../../dwg_element';
 import type { UpdateMessage } from '../../data_models';
 import { drawArrow, drawCircle } from '../../util/canvas_util';
-import type { BoardTransformData, DwgCanvasBoard } from '../../util/canvas_board/canvas_board';
+import type { BoardTransformData, DwgCanvasBoard, ModifierKeys } from '../../util/canvas_board/canvas_board';
 import type { Point2D } from '../../util/objects2d';
 import {
   addPoint2D,
@@ -27,7 +27,13 @@ import type {
   RisqUnit,
   RisqZone,
 } from './risq_data';
-import { RisqOrderType, RisqResourceType, RisqVisibilityLevel, serverToGameRisq } from './risq_data';
+import {
+  RisqOrderType,
+  RisqProducibleKind,
+  RisqResourceType,
+  RisqVisibilityLevel,
+  serverToGameRisq,
+} from './risq_data';
 import { cantorPair, coordinateToIndex, getSpace, invertBuildKey, invertPair, invertZoneKey } from './risq_coordinates';
 import type { StartTurnData, SubmittedOrdersData, UnsubmittedOrdersData } from './risq_updates';
 import {
@@ -63,6 +69,7 @@ import { LeftPanelDataType } from './canvas_components/left_panel/left_panel_dat
 import './risq.scss';
 import '../../util/canvas_board/canvas_board';
 import '../../../dialog_box/confirm_dialog/confirm_dialog';
+import './turn_report_dialog/turn_report_dialog';
 import { DialogSize } from '../../../dialog_box/dialog_box';
 import { createMessage } from '../../../lobby/data_models';
 
@@ -97,9 +104,6 @@ export class DwgRisq extends DwgElement {
   private armed_order = RisqOrderType.NONE;
   private armed_building_id = 0;
   private armed_button_callback?: () => void;
-  private ctrl_held = false;
-  private shift_held = false;
-  private alt_held = false;
   // control groups 1-10 ('0' is group 10)
   private control_groups = new Map<number, { kind: 'unit' | 'building'; ids: number[] }>();
   private orders_model = new RisqOrdersModel(() => this.ordersChanged());
@@ -110,9 +114,6 @@ export class DwgRisq extends DwgElement {
     if (isTypingInInput()) {
       return;
     }
-    this.ctrl_held = e.ctrlKey;
-    this.shift_held = e.shiftKey;
-    this.alt_held = e.altKey;
     if (/^[0-9]$/.test(e.key)) {
       const group = e.key === '0' ? 10 : parseInt(e.key, 10);
       if (e.ctrlKey) {
@@ -129,12 +130,6 @@ export class DwgRisq extends DwgElement {
       default:
         break;
     }
-  };
-
-  private handleKeyup = (e: KeyboardEvent) => {
-    this.ctrl_held = e.ctrlKey;
-    this.shift_held = e.shiftKey;
-    this.alt_held = e.altKey;
   };
 
   private left_panel = new RisqLeftPanel(this, {
@@ -156,7 +151,6 @@ export class DwgRisq extends DwgElement {
   override disconnectedCallback(): void {
     super.disconnectedCallback();
     document.body.removeEventListener('keydown', this.handleKeydown);
-    document.body.removeEventListener('keyup', this.handleKeyup);
   }
 
   /** This will replace an existing icon */
@@ -188,7 +182,6 @@ export class DwgRisq extends DwgElement {
     abstract_game.setPadding('0px');
     this.setNewGameData(game);
     document.body.addEventListener('keydown', this.handleKeydown);
-    document.body.addEventListener('keyup', this.handleKeyup);
     const board_size: Point2D = {
       x: 1.732 * this.hex_r * (2 * game.board_size + 1),
       y: 1.5 * this.hex_r * (2 * game.board_size + 1) + 0.5 * this.hex_r,
@@ -243,6 +236,7 @@ export class DwgRisq extends DwgElement {
   }
 
   private refreshPanels() {
+    this.updateResourceSpending();
     this.recomputeIdleUnits();
     this.right_panel.dataRefreshed();
     this.left_panel.dataRefreshed();
@@ -255,7 +249,7 @@ export class DwgRisq extends DwgElement {
       return;
     }
     this.idle_units = [...player.units.values()]
-      .filter((u) => this.orders_model.effectiveForSubject(u.internal_id).every((o) => !isUnitOrder(o.order_type)))
+      .filter((u) => this.orders_model.effectiveForSubject(u.internal_id, 'unit').length === 0)
       .sort((a, b) => a.internal_id - b.internal_id);
   }
 
@@ -272,7 +266,7 @@ export class DwgRisq extends DwgElement {
       (b) =>
         !b.under_construction &&
         b.produces.length > 0 &&
-        this.orders_model.effectiveForSubject(b.internal_id).every((o) => !isBuildingOrder(o.order_type))
+        this.orders_model.effectiveForSubject(b.internal_id, 'building').length === 0
     ).length;
   }
 
@@ -376,6 +370,8 @@ export class DwgRisq extends DwgElement {
 
   private setNewGameData(new_game: GameRisqFromServer) {
     this.game = serverToGameRisq(new_game);
+    this.hovered_space = undefined;
+    this.hovered_zone = undefined;
     this.orders_model.setSubmitted(this.getPlayer()?.active_orders ?? []);
     this.refreshPanels();
   }
@@ -386,6 +382,12 @@ export class DwgRisq extends DwgElement {
     }
     this.clearSelection();
     this.setNewGameData(data.game);
+    const player = this.getPlayer();
+    if (this.player_id > -1 && player?.turn_report) {
+      const dialog = document.createElement('dwg-risq-turn-report-dialog');
+      dialog.setData({ risq: this, player, report: player.turn_report });
+      this.appendChild(dialog);
+    }
   }
 
   private clearSelection() {
@@ -396,6 +398,7 @@ export class DwgRisq extends DwgElement {
   private async applySubmittedOrders(data: SubmittedOrdersData) {
     if (data.player_id === this.player_id) {
       this.toggling_submit_orders_button = false;
+      this.orders_model.clearPending();
     }
     this.setNewGameData(data.game);
   }
@@ -403,6 +406,7 @@ export class DwgRisq extends DwgElement {
   private async applyUnsubmittedOrders(data: UnsubmittedOrdersData) {
     if (data.player_id === this.player_id) {
       this.toggling_submit_orders_button = false;
+      this.orders_model.revertSubmittedToPending();
     }
     this.setNewGameData(data.game);
   }
@@ -463,7 +467,7 @@ export class DwgRisq extends DwgElement {
       return;
     }
     const unit = data.data;
-    const orders = this.orders_model.effectiveForSubject(unit.internal_id);
+    const orders = this.orders_model.effectiveForSubject(unit.internal_id, 'unit');
     if (!orders.length) {
       return;
     }
@@ -474,7 +478,7 @@ export class DwgRisq extends DwgElement {
     ctx.setLineDash([8, 5]);
     for (const order of orders) {
       const to = this.orderTargetPoint(order, zone_view);
-      if (!to) {
+      if (!to || equalsPoint2D(from, to)) {
         continue;
       }
       const color = orderArrowColor(order.order_type);
@@ -563,7 +567,7 @@ export class DwgRisq extends DwgElement {
     return false;
   }
 
-  private mousemove(m: Point2D, transform: BoardTransformData) {
+  private mousemove(m: Point2D, transform: BoardTransformData, modifiers: ModifierKeys) {
     if (!this.game) {
       return;
     }
@@ -610,7 +614,7 @@ export class DwgRisq extends DwgElement {
     if (equalsPoint2D(new_hovered_space.coordinate, this.hovered_space?.coordinate)) {
       this.updateHoveredFlags();
       resolve_zones.call(this);
-      this.updateCursor();
+      this.updateCursor(modifiers.ctrl);
       return;
     }
     this.removeHoveredFlags();
@@ -620,11 +624,11 @@ export class DwgRisq extends DwgElement {
         unhoverRisqZone(this.hovered_zone);
         this.hovered_zone = undefined;
       }
-      resolve_zones.call(this);
     }
     this.hovered_space = new_hovered_space;
+    resolve_zones.call(this);
     this.updateHoveredFlags();
-    this.updateCursor();
+    this.updateCursor(modifiers.ctrl);
   }
 
   private draggingCallback() {
@@ -635,6 +639,10 @@ export class DwgRisq extends DwgElement {
   }
 
   private mouseleave() {
+    if (!!this.hovered_zone) {
+      unhoverRisqZone(this.hovered_zone);
+      this.hovered_zone = undefined;
+    }
     if (!!this.hovered_space) {
       this.hovered_space.hovered = false;
       this.hovered_space.clicked = false;
@@ -671,12 +679,12 @@ export class DwgRisq extends DwgElement {
       const left_panel_data = this.left_panel.getData();
       switch (left_panel_data?.data_type) {
         case LeftPanelDataType.UNIT:
-          this.unitOrder(left_panel_data);
+          this.unitOrder(left_panel_data, e.ctrlKey);
           break;
         case LeftPanelDataType.UNITS_BY_TYPE:
         case LeftPanelDataType.ECONOMIC_UNITS:
         case LeftPanelDataType.MILITARY_UNITS:
-          this.unitGroupOrder(left_panel_data);
+          this.unitGroupOrder(left_panel_data, e.ctrlKey);
           break;
         default:
           break;
@@ -692,11 +700,15 @@ export class DwgRisq extends DwgElement {
     this.armed_order = order_type;
     this.armed_building_id = building_id;
     this.armed_button_callback = on_disarm;
-    this.updateCursor();
+    this.updateCursor(false);
   }
 
   getArmedOrder(): RisqOrderType {
     return this.armed_order;
+  }
+
+  getArmedBuildingId(): number {
+    return this.armed_building_id;
   }
 
   disarmOrder() {
@@ -704,7 +716,7 @@ export class DwgRisq extends DwgElement {
     this.armed_order = RisqOrderType.NONE;
     this.armed_building_id = 0;
     this.armed_button_callback = undefined;
-    this.updateCursor();
+    this.updateCursor(false);
   }
 
   createUnit(building_id: number, unit_id: number) {
@@ -718,8 +730,6 @@ export class DwgRisq extends DwgElement {
       target_id: unit_id,
       clear_previous_orders: false,
     });
-    this.updateResourceSpending();
-    this.left_panel.dataRefreshed();
   }
 
   researchTech(building_id: number, tech_id: number) {
@@ -733,8 +743,6 @@ export class DwgRisq extends DwgElement {
       target_id: tech_id,
       clear_previous_orders: false,
     });
-    this.updateResourceSpending();
-    this.left_panel.dataRefreshed();
   }
 
   confirmDeleteUnit(internal_id: number) {
@@ -903,14 +911,18 @@ export class DwgRisq extends DwgElement {
       pr.spending = 0;
     }
     for (const order of this.orders_model.pendingOrders()) {
-      if (
-        order.order_type !== RisqOrderType.OrderType_BuildingCreate &&
-        order.order_type !== RisqOrderType.OrderType_BuildingResearch
-      ) {
+      let kind: RisqProducibleKind;
+      if (order.order_type === RisqOrderType.OrderType_BuildingCreate) {
+        kind = RisqProducibleKind.UNIT;
+      } else if (order.order_type === RisqOrderType.OrderType_BuildingResearch) {
+        kind = RisqProducibleKind.TECH;
+      } else {
         continue;
       }
       for (const subject_id of order.subjects) {
-        const cost = player.buildings.get(subject_id)?.produces.find((p) => p.id === order.target_id)?.cost;
+        const cost = player.buildings
+          .get(subject_id)
+          ?.produces.find((p) => p.kind === kind && p.id === order.target_id)?.cost;
         if (!cost) {
           continue;
         }
@@ -922,8 +934,8 @@ export class DwgRisq extends DwgElement {
     }
   }
 
-  private atSelectedUnitPosition(zone_valid: boolean): boolean {
-    if (this.ctrl_held || !this.hovered_space) {
+  private atSelectedUnitPosition(zone_valid: boolean, ctrl_held: boolean): boolean {
+    if (ctrl_held || !this.hovered_space) {
       return false;
     }
     const data = this.left_panel.getData();
@@ -988,7 +1000,7 @@ export class DwgRisq extends DwgElement {
     return undefined;
   }
 
-  private resolveActiveOrderType(): RisqOrderType {
+  private resolveActiveOrderType(ctrl_held: boolean): RisqOrderType {
     if (!this.left_panel.getData() || !this.left_panel.isOrderable() || !this.canGiveOrders() || !this.hovered_space) {
       return RisqOrderType.NONE;
     }
@@ -998,7 +1010,7 @@ export class DwgRisq extends DwgElement {
     switch (this.getArmedOrder()) {
       case RisqOrderType.OrderType_UnitMoveSpace:
       case RisqOrderType.OrderType_UnitMoveZone:
-        if (is_unit && !this.atSelectedUnitPosition(zone_valid)) {
+        if (is_unit && !this.atSelectedUnitPosition(zone_valid, ctrl_held)) {
           return zone_valid ? RisqOrderType.OrderType_UnitMoveZone : RisqOrderType.OrderType_UnitMoveSpace;
         }
         break;
@@ -1024,7 +1036,7 @@ export class DwgRisq extends DwgElement {
       if (is_villager && zone_valid && !!this.hovered_zone?.resource && this.hovered_zone.hovered_data[0]?.hovered) {
         return RisqOrderType.OrderType_UnitGather;
       }
-      if (this.atSelectedUnitPosition(zone_valid)) {
+      if (this.atSelectedUnitPosition(zone_valid, ctrl_held)) {
         return RisqOrderType.NONE;
       }
       return zone_valid ? RisqOrderType.OrderType_UnitMoveZone : RisqOrderType.OrderType_UnitMoveSpace;
@@ -1032,7 +1044,7 @@ export class DwgRisq extends DwgElement {
     return RisqOrderType.NONE;
   }
 
-  private updateCursor() {
+  private updateCursor(ctrl_held: boolean) {
     if (this.getArmedOrder() === RisqOrderType.OrderType_UnitBuild && this.armed_building_id) {
       const building_icon = this.getIcon(buildingImage(this.armed_building_id, false, true));
       const build_icon = this.getIcon(cursorImageForOrderType(RisqOrderType.OrderType_UnitBuild));
@@ -1048,7 +1060,7 @@ export class DwgRisq extends DwgElement {
         return;
       }
     }
-    const active_order = this.resolveActiveOrderType();
+    const active_order = this.resolveActiveOrderType(ctrl_held);
     this.board.setCursor(cursorImageForOrderType(active_order));
   }
 
@@ -1067,20 +1079,20 @@ export class DwgRisq extends DwgElement {
     return true;
   }
 
-  private unitOrder(data: UnitData) {
+  private unitOrder(data: UnitData, ctrl_held: boolean) {
     if (!this.hovered_space) {
       return;
     }
     // TODO: implement attack vs just move
     // TODO: implement if holding the shift key
-    switch (this.resolveActiveOrderType()) {
+    switch (this.resolveActiveOrderType(ctrl_held)) {
       case RisqOrderType.OrderType_UnitMoveSpace:
         this.orders_model.add({
           player_id: this.player_id,
           order_type: RisqOrderType.OrderType_UnitMoveSpace,
           subjects: [data.data.internal_id],
           target_id: this.hovered_space.coordinate_key,
-          clear_previous_orders: !this.ctrl_held,
+          clear_previous_orders: !ctrl_held,
         });
         break;
       case RisqOrderType.OrderType_UnitMoveZone:
@@ -1092,7 +1104,7 @@ export class DwgRisq extends DwgElement {
           order_type: RisqOrderType.OrderType_UnitMoveZone,
           subjects: [data.data.internal_id],
           target_id: this.hovered_zone.coordinate_key,
-          clear_previous_orders: !this.ctrl_held,
+          clear_previous_orders: !ctrl_held,
         });
         break;
       case RisqOrderType.OrderType_UnitGather:
@@ -1104,7 +1116,7 @@ export class DwgRisq extends DwgElement {
           order_type: RisqOrderType.OrderType_UnitGather,
           subjects: [data.data.internal_id],
           target_id: this.hovered_zone.coordinate_key,
-          clear_previous_orders: !this.ctrl_held,
+          clear_previous_orders: !ctrl_held,
         });
         break;
       case RisqOrderType.OrderType_UnitBuild:
@@ -1116,7 +1128,7 @@ export class DwgRisq extends DwgElement {
           order_type: RisqOrderType.OrderType_UnitBuild,
           subjects: [data.data.internal_id],
           target_id: cantorPair(this.armed_building_id, this.hovered_zone.coordinate_key),
-          clear_previous_orders: !this.ctrl_held,
+          clear_previous_orders: !ctrl_held,
         });
         break;
       case RisqOrderType.OrderType_UnitRepair:
@@ -1128,7 +1140,7 @@ export class DwgRisq extends DwgElement {
           order_type: RisqOrderType.OrderType_UnitRepair,
           subjects: [data.data.internal_id],
           target_id: this.hovered_zone.building.internal_id,
-          clear_previous_orders: !this.ctrl_held,
+          clear_previous_orders: !ctrl_held,
         });
         break;
       default:
@@ -1138,8 +1150,8 @@ export class DwgRisq extends DwgElement {
   }
 
   // Returns whether the given unit is already sitting at the current hover target (never true while ctrl is held)
-  private isUnitAtHoverTarget(internal_id: number, zone_valid: boolean): boolean {
-    if (this.ctrl_held || !this.hovered_space) {
+  private isUnitAtHoverTarget(internal_id: number, zone_valid: boolean, ctrl_held: boolean): boolean {
+    if (ctrl_held || !this.hovered_space) {
       return false;
     }
     const unit = this.getPlayer()?.units.get(internal_id);
@@ -1149,7 +1161,7 @@ export class DwgRisq extends DwgElement {
     return zone_valid ? equalsPoint2D(this.hovered_zone?.coordinate, unit.zone_coordinate) : true;
   }
 
-  private unitGroupOrder(data: UnitsByTypeData | EconomicUnitsData | MilitaryUnitsData) {
+  private unitGroupOrder(data: UnitsByTypeData | EconomicUnitsData | MilitaryUnitsData, ctrl_held: boolean) {
     if (!this.hovered_space) {
       return;
     }
@@ -1158,9 +1170,11 @@ export class DwgRisq extends DwgElement {
     );
     // TODO: implement attack vs just move
     // TODO: implement if holding the shift key
-    switch (this.resolveActiveOrderType()) {
+    switch (this.resolveActiveOrderType(ctrl_held)) {
       case RisqOrderType.OrderType_UnitMoveSpace: {
-        const subjects = units.filter((u) => !this.isUnitAtHoverTarget(u.internal_id, false)).map((u) => u.internal_id);
+        const subjects = units
+          .filter((u) => !this.isUnitAtHoverTarget(u.internal_id, false, ctrl_held))
+          .map((u) => u.internal_id);
         if (subjects.length === 0) {
           break;
         }
@@ -1169,7 +1183,7 @@ export class DwgRisq extends DwgElement {
           order_type: RisqOrderType.OrderType_UnitMoveSpace,
           subjects,
           target_id: this.hovered_space.coordinate_key,
-          clear_previous_orders: !this.ctrl_held,
+          clear_previous_orders: !ctrl_held,
         });
         break;
       }
@@ -1177,7 +1191,9 @@ export class DwgRisq extends DwgElement {
         if (!this.hovered_zone) {
           return;
         }
-        const subjects = units.filter((u) => !this.isUnitAtHoverTarget(u.internal_id, true)).map((u) => u.internal_id);
+        const subjects = units
+          .filter((u) => !this.isUnitAtHoverTarget(u.internal_id, true, ctrl_held))
+          .map((u) => u.internal_id);
         if (subjects.length === 0) {
           break;
         }
@@ -1186,7 +1202,7 @@ export class DwgRisq extends DwgElement {
           order_type: RisqOrderType.OrderType_UnitMoveZone,
           subjects,
           target_id: this.hovered_zone.coordinate_key,
-          clear_previous_orders: !this.ctrl_held,
+          clear_previous_orders: !ctrl_held,
         });
         break;
       }
@@ -1199,7 +1215,7 @@ export class DwgRisq extends DwgElement {
           order_type: RisqOrderType.OrderType_UnitGather,
           subjects: units.filter((u) => u.unit_id === 1).map((u) => u.internal_id),
           target_id: this.hovered_zone.coordinate_key,
-          clear_previous_orders: !this.ctrl_held,
+          clear_previous_orders: !ctrl_held,
         });
         break;
       case RisqOrderType.OrderType_UnitBuild:
@@ -1211,7 +1227,7 @@ export class DwgRisq extends DwgElement {
           order_type: RisqOrderType.OrderType_UnitBuild,
           subjects: units.filter((u) => u.unit_id === 1).map((u) => u.internal_id),
           target_id: cantorPair(this.armed_building_id, this.hovered_zone.coordinate_key),
-          clear_previous_orders: !this.ctrl_held,
+          clear_previous_orders: !ctrl_held,
         });
         break;
       case RisqOrderType.OrderType_UnitRepair:
@@ -1223,7 +1239,7 @@ export class DwgRisq extends DwgElement {
           order_type: RisqOrderType.OrderType_UnitRepair,
           subjects: units.filter((u) => u.unit_id === 1).map((u) => u.internal_id),
           target_id: this.hovered_zone.building.internal_id,
-          clear_previous_orders: !this.ctrl_held,
+          clear_previous_orders: !ctrl_held,
         });
         break;
       default:
@@ -1234,6 +1250,7 @@ export class DwgRisq extends DwgElement {
 
   private mouseup(e: MouseEvent) {
     const armed_before = this.armed_order;
+    const armed_callback_before = this.armed_button_callback;
     this.right_panel.mouseup(e);
     this.left_panel.mouseup(e);
     if (!!this.hovered_space) {
@@ -1316,7 +1333,11 @@ export class DwgRisq extends DwgElement {
       }
       this.hovered_space.clicked = false;
     }
-    if (armed_before !== RisqOrderType.NONE && this.armed_order === armed_before) {
+    if (
+      armed_before !== RisqOrderType.NONE &&
+      this.armed_order === armed_before &&
+      this.armed_button_callback === armed_callback_before
+    ) {
       this.disarmOrder();
     }
   }
@@ -1436,7 +1457,6 @@ export class DwgRisq extends DwgElement {
           bubbles: true,
         })
       );
-      this.orders_model.clearPending();
       this.orders_submitted_times++;
     }
   }

@@ -144,7 +144,7 @@ export function drawUnitTypeCluster(
     for (let j = 0; j < 2; j++) {
       const t = units_by_type[j];
       ctx.drawImage(icon(t), (0.8 * j - 0.9) * r.x, -0.9 * r.y, r.x, r.y);
-      draw_count(t.units.size.toString(), 0.75 * r.y, (0.8 * j - 1) * r.x, -0.9 * r.y, 1.5 * r.x);
+      draw_count(t.units.size.toString(), 0.75 * r.y, (0.8 * j - 0.9) * r.x, -0.9 * r.y, 1.5 * r.x);
     }
     const t = units_by_type[2];
     ctx.drawImage(icon(t), -0.5 * r.x, -0.1 * r.y, r.x, r.y);
@@ -314,7 +314,8 @@ export function drawRisqZone(
         if (units_by_type.length === 0) {
           ctx.strokeStyle = secondary_color;
         } else {
-          drawUnitTypeCluster(ctx, game, units_by_type, part.r, zone.units.size, primary_color, secondary_color);
+          const category_total = units_by_type.reduce((sum, t) => sum + t.units.size, 0);
+          drawUnitTypeCluster(ctx, game, units_by_type, part.r, category_total, primary_color, secondary_color);
         }
         break;
       default:

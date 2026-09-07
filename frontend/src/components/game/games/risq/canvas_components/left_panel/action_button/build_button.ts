@@ -34,6 +34,9 @@ export class RisqBuildButton extends RisqActionButton {
   }
 
   override dataRefreshed(): void {
+    this.armed =
+      this.risq.getArmedOrder() === RisqOrderType.OrderType_UnitBuild &&
+      this.risq.getArmedBuildingId() === this.producible.id;
     const player = this.risq.getPlayer();
     if (
       !!player &&

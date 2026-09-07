@@ -2,7 +2,7 @@ import type { Point2D } from '../../../../util/objects2d';
 import { axialDistance, equalsPoint2D } from '../../../../util/objects2d';
 import { buildingImage } from '../../risq_buildings';
 import { coordinateToIndex, getSpace, invertBuildKey, invertPair, invertZoneKey } from '../../risq_coordinates';
-import { RisqOrderType, RisqResourceType } from '../../risq_data';
+import { RisqOrderType, RisqProducibleKind, RisqResourceType } from '../../risq_data';
 import { isBuildingOrder, isPlayerOrder, isUnitOrder } from '../../risq_orders';
 import { resourceTypeImage } from '../../risq_resources';
 import { unitImage } from '../../risq_unit';
@@ -25,7 +25,7 @@ export interface ResolvedRow {
   progress?: number;
 }
 
-function shortLabel(order_type: RisqOrderType): string {
+export function shortLabel(order_type: RisqOrderType): string {
   switch (order_type) {
     case RisqOrderType.OrderType_UnitMoveSpace:
     case RisqOrderType.OrderType_UnitMoveZone:
@@ -38,6 +38,11 @@ function shortLabel(order_type: RisqOrderType): string {
       return 'Repair';
     case RisqOrderType.OrderType_BuildingCreate:
       return 'Create';
+    case RisqOrderType.OrderType_BuildingResearch:
+      return 'Research';
+    case RisqOrderType.OrderType_UnitAttackUnit:
+    case RisqOrderType.OrderType_UnitAttackBuilding:
+      return 'Attack';
     case RisqOrderType.OrderType_UnitDelete:
       return 'Delete';
     default:
@@ -141,7 +146,9 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
       break;
     }
     case RisqOrderType.OrderType_BuildingCreate: {
-      const producible = subject_building?.produces.find((p) => p.id === order.target_id);
+      const producible = subject_building?.produces.find(
+        (p) => p.kind === RisqProducibleKind.UNIT && p.id === order.target_id
+      );
       const qty = 1 + (config.collapsed_orders?.length ?? 0);
       const queue_item = subject_building?.production_queue.find((i) => i.order_internal_id === order.internal_id);
       const progress =
@@ -157,6 +164,48 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
         target: '',
         cost: resource_cost(producible?.cost, qty),
         progress,
+      };
+      break;
+    }
+    case RisqOrderType.OrderType_BuildingResearch: {
+      const producible = subject_building?.produces.find(
+        (p) => p.kind === RisqProducibleKind.TECH && p.id === order.target_id
+      );
+      const queue_item = subject_building?.production_queue.find((i) => i.order_internal_id === order.internal_id);
+      const progress =
+        queue_item && producible && producible.stamina_cost > 0
+          ? 1 - queue_item.stamina_remaining / producible.stamina_cost
+          : undefined;
+      base = {
+        icon: 'icons/research32',
+        name: `Research ${producible?.display_name ?? 'Tech'}`,
+        target: '',
+        cost: resource_cost(producible?.cost),
+        progress,
+      };
+      break;
+    }
+    case RisqOrderType.OrderType_UnitAttackUnit: {
+      const target_unit = game?.players
+        .flatMap((p) => [...p.units.values()])
+        .find((u) => u.internal_id === order.target_id);
+      base = {
+        icon: 'icons/sword32',
+        name: `Attack ${target_unit?.display_name ?? 'Unit'}`,
+        target: target_unit ? distance_text(target_unit.space_coordinate, target_unit.zone_coordinate) : '',
+        cost: [],
+      };
+      break;
+    }
+    case RisqOrderType.OrderType_UnitAttackBuilding: {
+      const target_building = game?.players
+        .flatMap((p) => [...p.buildings.values()])
+        .find((b) => b.internal_id === order.target_id);
+      base = {
+        icon: 'icons/sword32',
+        name: `Attack ${target_building?.display_name ?? 'Building'}`,
+        target: target_building ? distance_text(target_building.space_coordinate, target_building.zone_coordinate) : '',
+        cost: [],
       };
       break;
     }

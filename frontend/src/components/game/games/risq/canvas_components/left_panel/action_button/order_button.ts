@@ -26,6 +26,10 @@ export class RisqOrderButton extends RisqActionButton {
     return super.isClicking() || this.armed;
   }
 
+  override dataRefreshed(): void {
+    this.armed = this.risq.getArmedOrder() === this.getOrderType();
+  }
+
   private getOrderType(): RisqOrderType {
     switch (this.order_type) {
       case RisqOrderType.OrderType_UnitMoveSpace:
