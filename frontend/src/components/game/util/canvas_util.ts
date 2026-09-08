@@ -56,8 +56,9 @@ export function drawLine(ctx: CanvasRenderingContext2D, pi: Point2D, pf: Point2D
 }
 
 export function drawArrow(ctx: CanvasRenderingContext2D, pi: Point2D, pf: Point2D, head_size: number) {
-  drawLine(ctx, pi, pf);
   const angle = Math.atan2(pf.y - pi.y, pf.x - pi.x);
+  const base = { x: pf.x - head_size * Math.cos(angle), y: pf.y - head_size * Math.sin(angle) };
+  drawLine(ctx, pi, base);
   ctx.beginPath();
   ctx.moveTo(pf.x, pf.y);
   ctx.lineTo(pf.x - head_size * Math.cos(angle - Math.PI / 6), pf.y - head_size * Math.sin(angle - Math.PI / 6));

@@ -1,0 +1,15 @@
+{
+  "rules": [
+    { "when": { "always": {} }, "then": [{ "action": "gather", "category": "food" }] },
+    { "when": { "always": {} }, "then": [{ "action": "gather", "category": "wood" }] },
+    { "when": { "always": {} }, "then": [{ "action": "gather", "category": "stone" }] },
+    { "when": { "always": {} }, "then": [{ "action": "produce" }] },
+    { "when": { "always": {} }, "then": [{ "action": "research" }] },
+    { "when": { "always": {} }, "then": [{ "action": "build", "building_id": 2, "max_pop_headroom": 2 }] },
+    { "when": { "always": {} }, "then": [{ "action": "build", "building_id": 22, "max_count": 1 }] },
+    { "when": { "always": {} }, "then": [{ "action": "build", "building_id": 11, "max_count": 1 }] },
+    { "when": { "always": {} }, "then": [{ "action": "build", "building_id": 23, "max_count": 1 }] },
+    { "when": { "always": {} }, "then": [{ "action": "attack" }] },
+    { "when": { "always": {} }, "then": [{ "action": "explore" }] }
+  ]
+}

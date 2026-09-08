@@ -416,6 +416,8 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 		}
 	case *DeleteIntent:
 		u.deleted = true
+		risq.players[u.player_id].units_lost++
+		// TODO: check for recent damage to assign kill
 	case *AttackBuildingIntent:
 		risq.unitAttackBuilding(u, detail.target)
 	case *AttackUnitIntent:

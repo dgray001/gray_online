@@ -25,29 +25,208 @@ export const OUTER_ZONE_INDICES: Point2D[] = [
 /** Multiplier for inner zone relative to whole radius */
 export const INNER_ZONE_MULTIPLIER = 0.4;
 
-/** Pixel offset of a zone's center from its space's center, matching how drawSpaceContent positions it */
-export function zoneCenterOffset(zone_coordinate: Point2D, hex_r: number): Point2D {
+/** Radius multiplier (of hex_r) for a zone's building/resource circle; same for center and edge zones */
+export const BUILDING_CIRCLE_RADIUS_MULTIPLIER = 0.13;
+/** Radius multiplier (of hex_r) for one unit-slot circle; same for center and edge zones */
+export const UNIT_SLOT_CIRCLE_RADIUS_MULTIPLIER = 0.07;
+
+/** Number of generic unit slots around the center zone's building circle (one ring) */
+export const CENTER_ZONE_UNIT_SLOTS = 8;
+const CENTER_UNIT_RING_RADIUS_MULTIPLIER = 0.22;
+
+/** Number of generic unit slots orbiting an edge zone's building, on its inward side */
+export const EDGE_ZONE_UNIT_SLOTS = 6;
+const EDGE_BUILDING_RADIAL_MULTIPLIER = 0.7; // angle 0 hits an edge midpoint, so the boundary is the apothem (~0.866), not 1.0
+
+function findOuterZoneIndex(zone_coordinate: Point2D): number {
   const index = coordinateToIndex(1, zone_coordinate);
-  const i = OUTER_ZONE_INDICES.findIndex((dv) => equalsPoint2D(dv, index));
-  if (i === -1) {
-    return { x: 0, y: 0 };
-  }
-  return rotatePoint({ x: 0.73 * hex_r, y: 0 }, (Math.PI / 3) * (i + 1));
+  return OUTER_ZONE_INDICES.findIndex((dv) => equalsPoint2D(dv, index));
 }
 
-/** Angular offset of a zone's economic/military units circle from its building/resource circle, matching drawRisqSpace */
-const ZONE_UNIT_PART_ANGLE = Math.PI / 12;
+/** Local-frame (pre-space-rotation) offset of a zone's building/resource circle from its space's center */
+function buildingLocalOffset(is_center: boolean, hex_r: number): Point2D {
+  return is_center ? { x: 0, y: 0 } : { x: EDGE_BUILDING_RADIAL_MULTIPLIER * hex_r, y: 0 };
+}
 
-/** Pixel offset of a zone's economic- or military-units circle center from its space's center, matching how drawRisqSpace positions it */
-export function zoneUnitPartOffset(zone_coordinate: Point2D, hex_r: number, military: boolean): Point2D {
-  const index = coordinateToIndex(1, zone_coordinate);
-  const i = OUTER_ZONE_INDICES.findIndex((dv) => equalsPoint2D(dv, index));
-  if (i === -1) {
-    const angle = military ? (11 * Math.PI) / 6 : (7 * Math.PI) / 6;
-    return { x: 0.18 * hex_r * Math.cos(angle), y: 0.18 * hex_r * Math.sin(angle) };
+/** Whether a space-center-relative point is within an edge zone's own footprint */
+function isInsideEdgeZoneFootprint(p: Point2D, hex_r: number): boolean {
+  const radius = Math.hypot(p.x, p.y);
+  if (radius < INNER_ZONE_MULTIPLIER * hex_r) {
+    return false;
   }
-  const angle = military ? ZONE_UNIT_PART_ANGLE : -ZONE_UNIT_PART_ANGLE;
-  return rotatePoint({ x: 0.53 * hex_r * Math.cos(angle), y: 0.53 * hex_r * Math.sin(angle) }, (Math.PI / 3) * (i + 1));
+  const angle = Math.atan2(p.y, p.x);
+  if (Math.abs(angle) > Math.PI / 6) {
+    return false;
+  }
+  const boundary = ((Math.sqrt(3) / 2) * hex_r) / Math.cos(angle);
+  return radius <= boundary;
+}
+
+/** Binary-searches the distance from the building, along a given angle, to the zone's boundary */
+function distanceToEdgeZoneBoundary(building: Point2D, angle: number, hex_r: number): number {
+  const dir = { x: Math.cos(angle), y: Math.sin(angle) };
+  let lo = 0;
+  let hi = 2 * hex_r;
+  for (let i = 0; i < 30; i++) {
+    const mid = (lo + hi) / 2;
+    const p = { x: building.x + mid * dir.x, y: building.y + mid * dir.y };
+    if (isInsideEdgeZoneFootprint(p, hex_r)) {
+      lo = mid;
+    } else {
+      hi = mid;
+    }
+  }
+  return lo;
+}
+
+/** Fill order: center pair, middle pair, corner pair (each equidistant from building/boundary along its own angle) */
+function edgeUnitSlotLocalOffsets(hex_r: number): Point2D[] {
+  const building = buildingLocalOffset(false, hex_r);
+  const building_r = BUILDING_CIRCLE_RADIUS_MULTIPLIER * hex_r;
+  const corner = { x: hex_r * Math.cos(Math.PI / 6), y: hex_r * Math.sin(Math.PI / 6) };
+  const corner_angle = Math.atan2(corner.y - building.y, corner.x - building.x);
+  const sweep_step = (2 * (Math.PI - corner_angle)) / (EDGE_ZONE_UNIT_SLOTS - 1);
+  const sweep_angle = (i: number) => corner_angle + i * sweep_step;
+  const slot_at_angle = (angle: number): Point2D => {
+    const d = distanceToEdgeZoneBoundary(building, angle, hex_r);
+    const r = (d + building_r) / 2;
+    return { x: building.x + r * Math.cos(angle), y: building.y + r * Math.sin(angle) };
+  };
+  const center_positions = [slot_at_angle(sweep_angle(2)), slot_at_angle(sweep_angle(3))];
+  const middle_positions = [slot_at_angle(sweep_angle(1)), slot_at_angle(sweep_angle(4))];
+  const spacing = Math.hypot(
+    center_positions[0].x - middle_positions[0].x,
+    center_positions[0].y - middle_positions[0].y
+  );
+  // on the corner's interior angle bisector, at `spacing` from the adjacent middle slot
+  const corner_slot = (mirror: boolean): Point2D => {
+    const q = mirror ? { x: corner.x, y: -corner.y } : corner;
+    const m = mirror ? middle_positions[1] : middle_positions[0];
+    const edge_a = { x: 0, y: mirror ? 1 : -1 }; // toward the other outer corner
+    const edge_b = { x: -Math.cos(Math.PI / 6), y: (mirror ? 1 : -1) * Math.sin(Math.PI / 6) }; // toward the origin
+    const bx = edge_a.x + edge_b.x;
+    const by = edge_a.y + edge_b.y;
+    const b_len = Math.hypot(bx, by);
+    const dir = { x: bx / b_len, y: by / b_len };
+    const vx = q.x - m.x;
+    const vy = q.y - m.y;
+    const v_dot_dir = vx * dir.x + vy * dir.y;
+    const disc = Math.max(0, v_dot_dir * v_dot_dir - (vx * vx + vy * vy - spacing * spacing));
+    const sqrt_disc = Math.sqrt(disc);
+    const t1 = -v_dot_dir - sqrt_disc;
+    const t = t1 >= 0 ? t1 : -v_dot_dir + sqrt_disc;
+    return { x: q.x + t * dir.x, y: q.y + t * dir.y };
+  };
+  return [
+    center_positions[0],
+    center_positions[1],
+    middle_positions[0],
+    middle_positions[1],
+    corner_slot(false),
+    corner_slot(true),
+  ];
+}
+
+/** Local-frame (pre-space-rotation) offsets of a zone's unit-slot circles from its space's center */
+function unitSlotLocalOffsets(is_center: boolean, hex_r: number): Point2D[] {
+  if (is_center) {
+    return Array.from({ length: CENTER_ZONE_UNIT_SLOTS }, (_, i) => {
+      const angle = -((2 * Math.PI * i) / CENTER_ZONE_UNIT_SLOTS); // start right, go counterclockwise on screen
+      return {
+        x: CENTER_UNIT_RING_RADIUS_MULTIPLIER * hex_r * Math.cos(angle),
+        y: CENTER_UNIT_RING_RADIUS_MULTIPLIER * hex_r * Math.sin(angle),
+      };
+    });
+  }
+  return edgeUnitSlotLocalOffsets(hex_r);
+}
+
+/** Pixel offset of a zone's building/resource circle from its space's center, matching how drawRisqSpace positions it */
+export function zoneBuildingOffset(zone_coordinate: Point2D, hex_r: number): Point2D {
+  const i = findOuterZoneIndex(zone_coordinate);
+  const local = buildingLocalOffset(i === -1, hex_r);
+  return i === -1 ? local : rotatePoint(local, (Math.PI / 3) * (i + 1));
+}
+
+/** Pixel offset of a zone's center from its space's center, matching how drawSpaceContent positions it */
+export function zoneCenterOffset(zone_coordinate: Point2D, hex_r: number): Point2D {
+  return zoneBuildingOffset(zone_coordinate, hex_r);
+}
+
+/** Local-frame (pre-space-rotation) unit-slot offsets for a zone, for use by drawRisqSpace while already inside its own rotation */
+export function zoneUnitSlotLocalOffsets(zone_coordinate: Point2D, hex_r: number): Point2D[] {
+  return unitSlotLocalOffsets(findOuterZoneIndex(zone_coordinate) === -1, hex_r);
+}
+
+/** Local-frame (pre-space-rotation) building/resource offset for a zone, for use by drawRisqSpace while already inside its own rotation */
+export function zoneBuildingLocalOffset(zone_coordinate: Point2D, hex_r: number): Point2D {
+  return buildingLocalOffset(findOuterZoneIndex(zone_coordinate) === -1, hex_r);
+}
+
+/** Pixel offsets of all of a zone's unit-slot circles from its space's center */
+export function zoneUnitSlotOffsets(zone_coordinate: Point2D, hex_r: number): Point2D[] {
+  const i = findOuterZoneIndex(zone_coordinate);
+  const local = unitSlotLocalOffsets(i === -1, hex_r);
+  return i === -1 ? local : local.map((p) => rotatePoint(p, (Math.PI / 3) * (i + 1)));
+}
+
+/** Finds the zone object at the given coordinate within a space */
+export function getRisqZone(space: RisqSpace | undefined, zone_coordinate: Point2D): RisqZone | undefined {
+  if (!space?.zones) {
+    return undefined;
+  }
+  const i = findOuterZoneIndex(zone_coordinate);
+  if (i === -1) {
+    return space.zones[1][1];
+  }
+  const dv = OUTER_ZONE_INDICES[i];
+  return space.zones[dv.x][dv.y];
+}
+
+/** Pixel offset of the specific unit-slot circle a given unit currently occupies, or undefined if not found */
+export function unitSlotWorldPosition(
+  zone: RisqZone,
+  zone_coordinate: Point2D,
+  hex_r: number,
+  active_player_id: number,
+  internal_id: number
+): Point2D | undefined {
+  const is_center = findOuterZoneIndex(zone_coordinate) === -1;
+  const num_slots = is_center ? CENTER_ZONE_UNIT_SLOTS : EDGE_ZONE_UNIT_SLOTS;
+  const filled_slots = buildZoneUnitSlots(zone, active_player_id, num_slots);
+  const slot_index = filled_slots.findIndex((groups) => groups.some((g) => g.units.has(internal_id)));
+  if (slot_index === -1) {
+    return undefined;
+  }
+  return zoneUnitSlotOffsets(zone_coordinate, hex_r)[slot_index];
+}
+
+/** Pixel offset to aim an order arrow at when its target is a whole zone rather than a specific unit/building */
+export function zoneApproachPoint(zone_coordinate: Point2D, hex_r: number, from: Point2D): Point2D {
+  const i = findOuterZoneIndex(zone_coordinate);
+  if (i === -1) {
+    const angle = Math.atan2(from.y, from.x);
+    return {
+      x: CENTER_UNIT_RING_RADIUS_MULTIPLIER * hex_r * Math.cos(angle),
+      y: CENTER_UNIT_RING_RADIUS_MULTIPLIER * hex_r * Math.sin(angle),
+    };
+  }
+  const rotation = (Math.PI / 3) * (i + 1);
+  const local_from = rotatePoint(from, -rotation);
+  const local_building = buildingLocalOffset(false, hex_r);
+  const building_r = BUILDING_CIRCLE_RADIUS_MULTIPLIER * hex_r;
+  const angle = Math.atan2(local_from.y - local_building.y, local_from.x - local_building.x);
+  // shift so 0 deg sits perpendicular to the outward axis, making the inward-centered half exactly [0, 180)
+  const deg = ((angle * 180) / Math.PI - 90 + 360) % 360;
+  if (deg >= 180) {
+    const slots = zoneUnitSlotOffsets(zone_coordinate, hex_r);
+    return deg < 270 ? slots[5] : slots[4];
+  }
+  // short of the building itself, landing among the little circles instead
+  const d = distanceToEdgeZoneBoundary(local_building, angle, hex_r);
+  const r = (d + building_r) / 2;
+  const local_point = { x: local_building.x + r * Math.cos(angle), y: local_building.y + r * Math.sin(angle) };
+  return rotatePoint(local_point, rotation);
 }
 
 /** Organizes units by unit id for easier processing */
@@ -198,6 +377,73 @@ export function getZoneFill(
   return color;
 }
 
+function bandGroupsByUnitId(groups: UnitByTypeData[], band_size: number): UnitByTypeData[][] {
+  const bands = new Map<number, UnitByTypeData[]>();
+  for (const g of groups) {
+    const band_index = Math.floor((g.unit_id - 1) / band_size);
+    if (!bands.has(band_index)) {
+      bands.set(band_index, []);
+    }
+    bands.get(band_index)!.push(g);
+  }
+  return [...bands.entries()].sort(([a], [b]) => a - b).map(([, g]) => g);
+}
+
+/** Assigns a zone's units to at most `num_slots` slots, active player first by unit id, coarsening others then active until it fits */
+export function buildZoneUnitSlots(zone: RisqZone, active_player_id: number, num_slots: number): UnitByTypeData[][] {
+  const active_groups = [...(zone.units_by_type.get(active_player_id)?.values() ?? [])].sort(
+    (a, b) => a.unit_id - b.unit_id
+  );
+  const other_by_player = new Map(
+    [...zone.units_by_type.entries()].filter(([player_id]) => player_id !== active_player_id)
+  );
+  const other_flat = [...other_by_player.values()]
+    .flatMap((m) => [...m.values()])
+    .sort((a, b) => a.unit_id - b.unit_id);
+  const to_individuals = (groups: UnitByTypeData[]): UnitByTypeData[] =>
+    groups.flatMap((g) => [...g.units].sort((a, b) => a - b).map((uid) => ({ ...g, units: new Set([uid]) })));
+
+  let slots: UnitByTypeData[][] = [
+    ...to_individuals(active_groups).map((g) => [g]),
+    ...to_individuals(other_flat).map((g) => [g]),
+  ];
+  if (slots.length <= num_slots) {
+    return slots;
+  }
+  slots = [...active_groups.map((g) => [g]), ...other_flat.map((g) => [g])];
+  if (slots.length <= num_slots) {
+    return slots;
+  }
+  slots = [...active_groups.map((g) => [g]), ...[...other_by_player.values()].map((m) => [...m.values()])];
+  if (slots.length <= num_slots) {
+    return slots;
+  }
+  slots = [...active_groups.map((g) => [g]), ...(other_flat.length > 0 ? [other_flat] : [])];
+  if (slots.length <= num_slots) {
+    return slots;
+  }
+  for (let band = 10; band <= 100; band += 10) {
+    slots = [...bandGroupsByUnitId(active_groups, band), ...(other_flat.length > 0 ? [other_flat] : [])];
+    if (slots.length <= num_slots) {
+      return slots;
+    }
+  }
+  return slots;
+}
+
+function unitVisibleInViewMode(unit_id: number, view_mode: RisqViewMode): boolean {
+  if (view_mode === RisqViewMode.OWNERSHIP) {
+    return false;
+  }
+  if (view_mode === RisqViewMode.MILITARY) {
+    return unit_id >= 11;
+  }
+  if (view_mode === RisqViewMode.RESOURCE) {
+    return unit_id < 11;
+  }
+  return true;
+}
+
 /** Draws the input risq zone */
 export function drawRisqZone(
   ctx: CanvasRenderingContext2D,
@@ -206,11 +452,11 @@ export function drawRisqZone(
   visibility: number,
   view_mode: RisqViewMode,
   black_text: boolean,
-  r: number,
+  hex_r: number,
   rotation: number,
-  p1: Point2D,
-  p2: Point2D,
-  p3: Point2D
+  building_pos: Point2D,
+  unit_slot_positions: Point2D[],
+  active_player_id: number
 ) {
   const primary_color = black_text ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
   const secondary_color = black_text ? 'rgba(40, 40, 40, 0.4)' : 'rgba(210, 210, 210, 0.4)';
@@ -234,21 +480,30 @@ export function drawRisqZone(
 
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-  const rp = 0.5 * r;
-  if (zone.hovered_data.length !== 3 || zone.reset_hovered_data) {
-    const r_part = { x: 0.5 * rp, y: 0.5 * rp };
+  const building_r = BUILDING_CIRCLE_RADIUS_MULTIPLIER * hex_r;
+  const unit_r = UNIT_SLOT_CIRCLE_RADIUS_MULTIPLIER * hex_r;
+  const filled_slots = buildZoneUnitSlots(zone, active_player_id, unit_slot_positions.length);
+  zone.unit_slots = filled_slots;
+
+  const target_len = 1 + filled_slots.length;
+  if (zone.hovered_data.length !== target_len || zone.reset_hovered_data) {
     zone.hovered_data = [
-      { c: p1, r: r_part },
-      { c: p2, r: r_part },
-      { c: p3, r: r_part },
+      { c: building_pos, r: { x: building_r, y: building_r } },
+      ...filled_slots.map((_, i) => ({ c: unit_slot_positions[i], r: { x: unit_r, y: unit_r } })),
     ];
     zone.reset_hovered_data = false;
   } else {
-    zone.hovered_data[0].c = p1;
-    zone.hovered_data[1].c = p2;
-    zone.hovered_data[2].c = p3;
+    zone.hovered_data[0].c = building_pos;
+    for (let i = 0; i < filled_slots.length; i++) {
+      zone.hovered_data[i + 1].c = unit_slot_positions[i];
+    }
   }
   for (const [i, part] of zone.hovered_data.entries()) {
+    const selected =
+      i === 0
+        ? (!!zone.resource && game.isBuildingOrResourceSelected(zone.resource.internal_id)) ||
+          (!!zone.building && game.isBuildingOrResourceSelected(zone.building.internal_id))
+        : filled_slots[i - 1].some((t) => [...t.units].some((uid) => game.isUnitSelected(uid)));
     ctx.strokeStyle = 'transparent';
     if (part.hovered) {
       if (part.clicked) {
@@ -261,70 +516,54 @@ export function drawRisqZone(
     }
     ctx.translate(part.c.x, part.c.y);
     ctx.rotate(-rotation);
-    switch (i) {
-      case 0: // resources / building
-        if (!!zone.resource && view_mode !== RisqViewMode.MILITARY && view_mode !== RisqViewMode.OWNERSHIP) {
-          ctx.drawImage(game.getIcon(resourceImage(zone.resource)), -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
-        } else {
-          const building_image = buildingImage(zone.building?.building_id, zone.building?.under_construction);
-          const building_color = zone.building ? game.getGame()?.players[zone.building.player_id]?.color : undefined;
-          const building_icon = building_color
-            ? game.getPlayerColoredIcon(building_image, building_color)
-            : game.getIcon(building_image);
-          ctx.drawImage(building_icon, -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
+    if (i === 0) {
+      // resources / building
+      if (!!zone.resource && view_mode !== RisqViewMode.MILITARY && view_mode !== RisqViewMode.OWNERSHIP) {
+        ctx.drawImage(game.getIcon(resourceImage(zone.resource)), -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
+      } else {
+        const building_image = buildingImage(zone.building?.building_id, zone.building?.under_construction);
+        const building_color = zone.building ? game.getGame()?.players[zone.building.player_id]?.color : undefined;
+        const building_icon = building_color
+          ? game.getPlayerColoredIcon(building_image, building_color)
+          : game.getIcon(building_image);
+        ctx.drawImage(building_icon, -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
+      }
+    } else if (visibility === RisqVisibilityLevel.POOR) {
+      if (i === 1 && !!zone.unit_count && view_mode !== RisqViewMode.OWNERSHIP) {
+        const villager_img = game.getIcon('icons/villager64');
+        const unit_img = game.getIcon('icons/unit64');
+        const combo_icon = game
+          .getImageCache()
+          .getImage(comboUnitIconKey(false), COMBO_UNIT_ICON_SIZE, [villager_img, unit_img], (combo_ctx) =>
+            drawComboUnitIcon(combo_ctx, villager_img, unit_img)
+          );
+        if (combo_icon) {
+          ctx.drawImage(combo_icon, -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
         }
-        break;
-      case 1: // economic units
-      case 2: // military units
-        if (i === 1 && (view_mode === RisqViewMode.MILITARY || view_mode === RisqViewMode.OWNERSHIP)) {
-          ctx.strokeStyle = secondary_color;
-          break;
-        }
-        if (i === 2 && (view_mode === RisqViewMode.RESOURCE || view_mode === RisqViewMode.OWNERSHIP)) {
-          ctx.strokeStyle = secondary_color;
-          break;
-        }
-        if (visibility === RisqVisibilityLevel.POOR) {
-          if (i === 2 && !!zone.unit_count) {
-            const villager_img = game.getIcon('icons/villager64');
-            const unit_img = game.getIcon('icons/unit64');
-            const combo_icon = game
-              .getImageCache()
-              .getImage(comboUnitIconKey(false), COMBO_UNIT_ICON_SIZE, [villager_img, unit_img], (combo_ctx) =>
-                drawComboUnitIcon(combo_ctx, villager_img, unit_img)
-              );
-            if (combo_icon) {
-              ctx.drawImage(combo_icon, -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
-            }
-            drawText(ctx, zone.unit_count.toString(), 1.4 * part.r.y, -part.r.x, -0.7 * part.r.y, 2 * part.r.x);
-          } else {
-            ctx.strokeStyle = secondary_color;
-          }
-          break;
-        }
-        const units_by_player_and_type = i === 1 ? zone.economic_units_by_type : zone.military_units_by_type;
-        if (units_by_player_and_type.size === 0) {
-          ctx.strokeStyle = secondary_color;
-          break;
-        } else if (units_by_player_and_type.size > 1) {
-          // TODO: handle displaying multiplayer units => either battle or allies
-          break;
-        }
-        const units_by_type = [...units_by_player_and_type.values()][0];
-        if (units_by_type.length === 0) {
-          ctx.strokeStyle = secondary_color;
-        } else {
-          const category_total = units_by_type.reduce((sum, t) => sum + t.units.size, 0);
-          drawUnitTypeCluster(ctx, game, units_by_type, part.r, category_total, primary_color, secondary_color);
-        }
-        break;
-      default:
-        console.error('No implemented');
-        break;
+        drawText(ctx, zone.unit_count.toString(), 1.4 * part.r.y, -part.r.x, -0.7 * part.r.y, 2 * part.r.x);
+      } else {
+        ctx.strokeStyle = secondary_color;
+      }
+    } else {
+      const slot = filled_slots[i - 1].filter((t) => unitVisibleInViewMode(t.unit_id, view_mode));
+      if (slot.length === 0) {
+        ctx.strokeStyle = secondary_color;
+      } else {
+        const slot_total = slot.reduce((sum, t) => sum + t.units.size, 0);
+        drawUnitTypeCluster(ctx, game, slot, part.r, slot_total, primary_color, secondary_color);
+      }
     }
     ctx.rotate(rotation);
     ctx.translate(-part.c.x, -part.c.y);
-    drawEllipse(ctx, part.c, part.r);
+    if (selected) {
+      const prev_line_width = ctx.lineWidth;
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 0.6;
+      drawEllipse(ctx, part.c, part.r);
+      ctx.lineWidth = prev_line_width;
+    } else {
+      drawEllipse(ctx, part.c, part.r);
+    }
   }
 }
 

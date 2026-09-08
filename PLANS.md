@@ -1,5 +1,4 @@
 v0.9: Risq beta version
- - Redesign how resources/buildings/units are drawn on map to make it more user-friendly
  - Make summary report animated and can view it after close (bottom bar)
  - Bottom bar includes summary report, minimap, view buttons, etc
  - Finish "level 1" tech tree

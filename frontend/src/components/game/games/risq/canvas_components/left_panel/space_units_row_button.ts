@@ -51,7 +51,7 @@ export class RisqSpaceUnitsRowButton extends DwgRectButton {
     this.row_text = text;
   }
 
-  protected override _draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
+  protected override _draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, _dt: number): void {
     configDraw(ctx, transform, this.draw_config, this.isHovering(), this.isClicking(), () => {
       drawRect(ctx, { x: this.xi(), y: this.yi() }, this.w(), this.h());
       ctx.drawImage(this.icon, this.xi(), this.yi(), this.h(), this.h());

@@ -125,8 +125,7 @@ export declare interface RisqZone {
   clicked: boolean;
   hovered_data: EllipHoverData[];
   units_by_type: Map<number, Map<number, UnitByTypeData>>; // <player_id, <unit_id, internal_ids>>
-  economic_units_by_type: Map<number, UnitByTypeData[]>; // <player_id, units_by_type>
-  military_units_by_type: Map<number, UnitByTypeData[]>; // <player_id, units_by_type>
+  unit_slots?: UnitByTypeData[][]; // index i corresponds to hovered_data[i + 1]; recomputed each draw
   economic_units: number[]; // internal_id[]
   military_units: number[]; // internal_id[]
   reset_hovered_data?: boolean;
@@ -636,25 +635,6 @@ export function serverToRisqZone(server_zone: RisqZoneFromServer): RisqZone {
       .map((u) => [u.internal_id, u])
   );
   const units_by_type = organizeZoneUnits(units);
-  const economic_units_by_type = new Map<number, UnitByTypeData[]>();
-  const military_units_by_type = new Map<number, UnitByTypeData[]>();
-  for (const [player_id, player_units] of units_by_type.entries()) {
-    economic_units_by_type.set(player_id, []);
-    military_units_by_type.set(player_id, []);
-    for (const [unit_id, units] of player_units.entries()) {
-      if (unit_id < 11) {
-        economic_units_by_type.get(player_id)!.push(units);
-      } else {
-        military_units_by_type.get(player_id)!.push(units);
-      }
-    }
-    if (economic_units_by_type.get(player_id)!.length === 0) {
-      economic_units_by_type.delete(player_id);
-    }
-    if (military_units_by_type.get(player_id)!.length === 0) {
-      military_units_by_type.delete(player_id);
-    }
-  }
   return {
     coordinate: server_zone.coordinate,
     coordinate_key: server_zone.coordinate_key,
@@ -667,8 +647,6 @@ export function serverToRisqZone(server_zone: RisqZoneFromServer): RisqZone {
     clicked: false,
     hovered_data: [],
     units_by_type,
-    economic_units_by_type,
-    military_units_by_type,
     military_units: [...units.values()]
       .filter((u) => u.unit_id > 10)
       .sort((a, b) => a.unit_id - b.unit_id)

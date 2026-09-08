@@ -208,30 +208,47 @@ export class RisqLeftPanel implements CanvasComponent {
     }
   }
 
-  // Whether the currently selected unit/building's own order queue should be shown
+  // Whether the currently selected unit(s)/building's own order queue should be shown
   private showOrderRows(): boolean {
     if (!this.data) {
       return false;
     }
-    if (this.data.data_type !== LeftPanelDataType.UNIT && this.data.data_type !== LeftPanelDataType.BUILDING) {
-      return false;
+    const own_player_id = this.risq.getPlayer()?.player.player_id;
+    switch (this.data.data_type) {
+      case LeftPanelDataType.UNIT:
+      case LeftPanelDataType.BUILDING:
+        return this.data.data.player_id === own_player_id;
+      case LeftPanelDataType.UNITS_BY_TYPE:
+      case LeftPanelDataType.ECONOMIC_UNITS:
+      case LeftPanelDataType.MILITARY_UNITS:
+        return this.data.data.units.some((u) => u.player_id === own_player_id);
+      default:
+        return false;
     }
-    return this.data.data.player_id === this.risq.getPlayer()?.player.player_id;
   }
 
   private refreshOrderRows() {
-    // -1 never matches a real internal_id, so an unowned/non-unit selection just shows an empty list
-    let subject_internal_id = -1;
+    // an empty list never matches a real internal_id, so an unowned/non-orderable selection just shows an empty list
+    let subject_internal_ids: number[] = [];
     let subject_kind: 'unit' | 'building' | undefined;
-    if (
-      this.showOrderRows() &&
-      this.data &&
-      (this.data.data_type === LeftPanelDataType.UNIT || this.data.data_type === LeftPanelDataType.BUILDING)
-    ) {
-      subject_internal_id = this.data.data.internal_id;
-      subject_kind = this.data.data_type === LeftPanelDataType.UNIT ? 'unit' : 'building';
+    if (this.showOrderRows() && this.data) {
+      switch (this.data.data_type) {
+        case LeftPanelDataType.UNIT:
+        case LeftPanelDataType.BUILDING:
+          subject_internal_ids = [this.data.data.internal_id];
+          subject_kind = this.data.data_type === LeftPanelDataType.UNIT ? 'unit' : 'building';
+          break;
+        case LeftPanelDataType.UNITS_BY_TYPE:
+        case LeftPanelDataType.ECONOMIC_UNITS:
+        case LeftPanelDataType.MILITARY_UNITS:
+          subject_internal_ids = this.data.data.units.flatMap((u) => [...u.units]);
+          subject_kind = 'unit';
+          break;
+        default:
+          break;
+      }
     }
-    this.order_rows_list.setSubject(subject_internal_id, subject_kind);
+    this.order_rows_list.setSubject(subject_internal_ids, subject_kind);
     this.order_rows_list.refresh();
     const player = this.risq.getPlayer();
     if (this.risq.givingOrders() && !!player && !player.orders_submitted) {

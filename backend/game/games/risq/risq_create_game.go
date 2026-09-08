@@ -2,6 +2,7 @@ package risq
 
 import (
 	"errors"
+	"sort"
 	"strconv"
 
 	"github.com/dgray001/gray_online/game"
@@ -130,6 +131,27 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameR
 		risq.board_size = 4
 		starting_distance = util.RandomInt(4, 4)
 	}
+	if override, ok := g.GameSpecificSettings["board_size"].(float64); ok && override >= 2 {
+		risq.board_size = uint16(override)
+	}
+	if override, ok := g.GameSpecificSettings["starting_distance"].(float64); ok && override >= 0 {
+		starting_distance = int(override)
+	}
+	if starting_distance > int(risq.board_size) {
+		starting_distance = int(risq.board_size)
+	}
+	starting_units := map[uint32]int{1: 3, 11: 1}
+	if raw, ok := g.GameSpecificSettings["starting_units"].(map[string]interface{}); ok {
+		starting_units = make(map[uint32]int, len(raw))
+		for id_str, count_raw := range raw {
+			id, err := strconv.ParseUint(id_str, 10, 32)
+			count, count_ok := count_raw.(float64)
+			if err != nil || !count_ok {
+				continue
+			}
+			starting_units[uint32(id)] = int(count)
+		}
+	}
 	risq.spaces = make([][]*RisqSpace, 2*int(risq.board_size)+1)
 	for j := range risq.spaces {
 		r := j - int(risq.board_size)
@@ -169,26 +191,29 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameR
 		if space == nil {
 			return nil, errors.New("starting space is nil")
 		}
-		risq.createPlayerStart(risq.players[i], space)
+		risq.createPlayerStart(risq.players[i], space, starting_units)
 	}
 	return &risq, nil
 }
 
-func (r *GameRisq) createPlayerStart(p *RisqPlayer, s *RisqSpace) {
+func (r *GameRisq) createPlayerStart(p *RisqPlayer, s *RisqSpace, starting_units map[uint32]int) {
 	village_center := createRisqBuilding(r.nextBuildingInternalId(), 1, p.player.Player_id)
 	s.setBuilding(&game_utils.Coordinate2D{X: 0, Y: 0}, village_center)
 	p.buildings[village_center.internal_id] = village_center
 	r.buildings[village_center.internal_id] = village_center
-	for range 3 {
-		villager := createRisqUnit(r.nextUnitInternalId(), 1, p)
-		s.setUnit(&game_utils.Coordinate2D{X: 0, Y: 0}, villager)
-		p.units[villager.internal_id] = villager
-		r.units[villager.internal_id] = villager
+	unit_ids := make([]uint32, 0, len(starting_units))
+	for unit_id := range starting_units {
+		unit_ids = append(unit_ids, unit_id)
 	}
-	infantry := createRisqUnit(r.nextUnitInternalId(), 11, p)
-	s.setUnit(&game_utils.Coordinate2D{X: 0, Y: 0}, infantry)
-	p.units[infantry.internal_id] = infantry
-	r.units[infantry.internal_id] = infantry
+	sort.Slice(unit_ids, func(i, j int) bool { return unit_ids[i] < unit_ids[j] })
+	for _, unit_id := range unit_ids {
+		for range starting_units[unit_id] {
+			unit := createRisqUnit(r.nextUnitInternalId(), unit_id, p)
+			s.setUnit(&game_utils.Coordinate2D{X: 0, Y: 0}, unit)
+			p.units[unit.internal_id] = unit
+			r.units[unit.internal_id] = unit
+		}
+	}
 	zones := s.getZonesAsRandomArray(false)
 	forage := createRisqResource(r.nextResourceInternalId(), 1)
 	s.setResource(&zones[0].coordinate, forage)

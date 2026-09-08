@@ -8,7 +8,14 @@ import { RisqResourceType, RisqVisibilityLevel } from './risq_data';
 import { resourceTypeImage } from './risq_resources';
 import { COMBO_UNIT_ICON_SIZE, comboUnitIconKey, drawComboUnitIcon } from './risq_unit';
 import { FOG_OVERLAY_IMAGE, RisqViewMode, spaceOwnerColor, terrainImage } from './risq_terrain';
-import { INNER_ZONE_MULTIPLIER, OUTER_ZONE_INDICES, drawRisqZone, getZoneFill } from './risq_zone';
+import {
+  INNER_ZONE_MULTIPLIER,
+  OUTER_ZONE_INDICES,
+  drawRisqZone,
+  getZoneFill,
+  zoneBuildingLocalOffset,
+  zoneUnitSlotLocalOffsets,
+} from './risq_zone';
 
 /** How much detail to draw in a space */
 export enum DrawRisqSpaceDetail {
@@ -190,7 +197,7 @@ function drawSpaceContent(
     ctx.fillStyle = getZoneFill(zone, config.view_mode, owner_color).getString();
     const r = config.hex_r;
     const inner_r = INNER_ZONE_MULTIPLIER * r;
-    let zone_r = 0.45 * r;
+    const active_player_id = game.getPlayerId();
     drawHexagon(ctx, { x: 0, y: 0 }, inner_r);
     drawRisqZone(
       ctx,
@@ -199,22 +206,12 @@ function drawSpaceContent(
       space.visibility,
       config.view_mode,
       black_text,
-      zone_r,
+      r,
       0,
-      {
-        x: 0.18 * r * Math.cos((3 * Math.PI) / 6),
-        y: 0.18 * r * Math.sin((3 * Math.PI) / 6),
-      },
-      {
-        x: 0.18 * r * Math.cos((7 * Math.PI) / 6),
-        y: 0.18 * r * Math.sin((7 * Math.PI) / 6),
-      },
-      {
-        x: 0.18 * r * Math.cos((11 * Math.PI) / 6),
-        y: 0.18 * r * Math.sin((11 * Math.PI) / 6),
-      }
+      zoneBuildingLocalOffset(zone.coordinate, r),
+      zoneUnitSlotLocalOffsets(zone.coordinate, r),
+      active_player_id
     );
-    zone_r = 0.43 * r;
     const a = Math.PI / 3;
     for (let i = 0; i < 6; i++) {
       const direction_vector = OUTER_ZONE_INDICES[i];
@@ -231,7 +228,6 @@ function drawSpaceContent(
       ctx.fill();
       const rotation = a * (1 + i);
       ctx.rotate(rotation);
-      const theta = Math.PI / 12;
       drawRisqZone(
         ctx,
         game,
@@ -239,11 +235,11 @@ function drawSpaceContent(
         space.visibility,
         config.view_mode,
         black_text,
-        zone_r,
+        r,
         rotation,
-        { x: 0.73 * r * Math.cos(0), y: 0.73 * r * Math.sin(0) },
-        { x: 0.53 * r * Math.cos(-theta), y: 0.53 * r * Math.sin(-theta) },
-        { x: 0.53 * r * Math.cos(theta), y: 0.53 * r * Math.sin(theta) }
+        zoneBuildingLocalOffset(zone.coordinate, r),
+        zoneUnitSlotLocalOffsets(zone.coordinate, r),
+        active_player_id
       );
       ctx.rotate(-rotation);
     }

@@ -19,7 +19,7 @@ func runAi(p *RisqPlayer, r *GameRisq, action_channel chan game.PlayerAction) {
 			if !p.player.GetBase().GameStarted() || p.player.GetBase().GameEnded() {
 				break
 			}
-			p.ai_model.ApplyUpdate(p, r, update)
+			p.ai_model.ApplyUpdate(newAiView(p, r), update.Kind)
 			if update.Kind == "start-turn" {
 				submitAiOrders(p, r, action_channel)
 			}
@@ -31,6 +31,16 @@ func runAi(p *RisqPlayer, r *GameRisq, action_channel chan game.PlayerAction) {
 }
 
 func submitAiOrders(p *RisqPlayer, r *GameRisq, action_channel chan game.PlayerAction) {
-	orders := p.ai_model.DecideOrders(p, r)
+	ai_orders := p.ai_model.DecideOrders(newAiView(p, r))
+	orders := make([]OrderFromFrontend, len(ai_orders))
+	for i, o := range ai_orders {
+		orders[i] = OrderFromFrontend{
+			Player_id:             p.player.Player_id,
+			Subjects:              o.Subjects,
+			Order_type:            o.OrderType,
+			Target_id:             o.TargetID,
+			Clear_previous_orders: o.ClearPreviousOrders,
+		}
+	}
 	action_channel <- game.PlayerAction{Kind: "submit-orders", Ai_id: int(p.player.GetAiId()), Action: gin.H{"orders": orders}}
 }

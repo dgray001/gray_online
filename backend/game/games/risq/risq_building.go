@@ -261,6 +261,8 @@ func (b *RisqBuilding) tickExecute(risq *GameRisq) {
 	}
 	if _, ok := b.intent.detail.(*DeleteIntent); ok {
 		b.deleted = true
+		risq.players[b.player_id].buildings_lost++
+		// TODO: check for recent damage to assign raze
 	}
 	b.current_stamina -= b.intent.intent_cost
 }

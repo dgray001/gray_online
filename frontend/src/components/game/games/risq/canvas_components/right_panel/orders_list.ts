@@ -10,8 +10,8 @@ import { RisqOrdersScrollbar } from './orders_scrollbar';
 export class RisqOrdersList extends DwgListbox<RisqOrderRow, RisqOrdersScrollbar> {
   private game: DwgRisq;
   private orders: RisqOrdersModel;
-  // when set, only orders targeting this subject are shown (used by the left panel); undefined shows all
-  private subject_internal_id?: number;
+  // when set, only orders targeting one of these subjects are shown (used by the left panel); undefined shows all
+  private subject_internal_ids?: number[];
   // unit and building internal ids are separate counters and can collide, so the subject filter must also match order category
   private subject_kind?: 'unit' | 'building';
   private cancel_disabled = false;
@@ -40,8 +40,8 @@ export class RisqOrdersList extends DwgListbox<RisqOrderRow, RisqOrdersScrollbar
     this.orders = risq.getOrdersModel();
   }
 
-  setSubject(subject_internal_id: number | undefined, subject_kind: 'unit' | 'building' | undefined) {
-    this.subject_internal_id = subject_internal_id;
+  setSubject(subject_internal_ids: number[] | undefined, subject_kind: 'unit' | 'building' | undefined) {
+    this.subject_internal_ids = subject_internal_ids;
     this.subject_kind = subject_kind;
   }
 
@@ -67,7 +67,7 @@ export class RisqOrdersList extends DwgListbox<RisqOrderRow, RisqOrdersScrollbar
       collapsed_orders: entry.collapsed_orders,
       cancelling: entry.order.internal_id !== undefined && this.orders.isCancelling(entry.order.internal_id),
       game: this.game,
-      show_subject: this.subject_internal_id === undefined,
+      show_subject: this.subject_internal_ids === undefined || this.subject_internal_ids.length !== 1,
       onCancel: (order) => this.orders.cancel(order),
       onCancelAll: (orders) => orders.forEach((order) => this.orders.cancel(order)),
       onSelect: (order) => this.game.selectOrderSubjects(order),
@@ -79,12 +79,14 @@ export class RisqOrdersList extends DwgListbox<RisqOrderRow, RisqOrdersScrollbar
   }
 
   refresh() {
-    const subject_internal_id = this.subject_internal_id;
+    const subject_internal_ids = this.subject_internal_ids;
     const kind_matches = this.subject_kind === 'building' ? isBuildingOrder : isUnitOrder;
     const orders =
-      subject_internal_id === undefined
+      subject_internal_ids === undefined
         ? this.orders.all()
-        : this.orders.all().filter((o) => kind_matches(o.order_type) && o.subjects.includes(subject_internal_id));
+        : this.orders
+            .all()
+            .filter((o) => kind_matches(o.order_type) && o.subjects.some((s) => subject_internal_ids.includes(s)));
     this.setList(collapseBuildingCreateOrders(orders).map((entry) => this.newOrderRow(entry)));
   }
 

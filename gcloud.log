@@ -1,0 +1,2998 @@
+[
+  {
+    "protoPayload": {
+      "@type": "type.googleapis.com/google.cloud.audit.AuditLog",
+      "status": {},
+      "authenticationInfo": {
+        "principalEmail": "yodan.and.the.sixth.character@gmail.com",
+        "oauthInfo": {
+          "oauthClientId": "32555940559.apps.googleusercontent.com"
+        }
+      },
+      "requestMetadata": {
+        "callerIp": "2600:1700:6f00:5390::48",
+        "callerSuppliedUserAgent": "google-cloud-sdk gcloud/558.0.0 command/gcloud.app.deploy invocation-id/36d393e981b04a8eb9ef0d4e6286d7d3 environment/None environment-version/None client-os/LINUX client-os-ver/7.1.9 client-pltf-arch/x86_64 interactive/True from-script/False python/3.13.10 term/xterm-256color  (Linux 7.1.9-arch1-2),gzip(gfe)",
+        "requestAttributes": {
+          "time": "2026-09-07T17:00:09.659582272Z",
+          "auth": {}
+        },
+        "destinationAttributes": {}
+      },
+      "serviceName": "appengine.googleapis.com",
+      "methodName": "google.appengine.v1.Versions.CreateVersion",
+      "authorizationInfo": [
+        {
+          "resource": "projects/dwg-games/locations/us-central1/applications/dwg-games/services/default",
+          "permission": "appengine.versions.create",
+          "granted": true,
+          "resourceAttributes": {},
+          "permissionType": "ADMIN_WRITE"
+        }
+      ],
+      "resourceName": "apps/dwg-games/services/default/versions/20260907t125957",
+      "request": {
+        "@type": "type.googleapis.com/google.appengine.v1.CreateVersionRequest",
+        "parent": "projects/dwg-games/locations/us-central1/applications/dwg-games/services/default"
+      },
+      "metadata": {
+        "parent": "projects/dwg-games/locations/us-central1/applications/dwg-games/services/default",
+        "@type": "type.googleapis.com/google.appengine.v1.CreateVersionRequest",
+        "version": {
+          "serviceAccount": "dwg-games@appspot.gserviceaccount.com",
+          "env": "flex",
+          "network": {
+            "sessionAffinity": true
+          },
+          "instanceClass": "B1",
+          "manualScaling": {
+            "instances": 1
+          },
+          "betaSettings": {
+            "vm_runtime": "go",
+            "module_yaml_path": "app.yaml"
+          },
+          "entrypoint": {
+            "shell": ""
+          },
+          "runtime": "vm",
+          "flexibleRuntimeSettings": {
+            "runtimeVersion": "1.25",
+            "operatingSystem": "ubuntu22"
+          },
+          "id": "20260907t125957"
+        }
+      },
+      "resourceLocation": {
+        "currentLocations": [
+          "us-central1"
+        ]
+      }
+    },
+    "insertId": "1dy3ncec21h",
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "module_id": "default",
+        "project_id": "dwg-games",
+        "zone": "",
+        "version_id": "20260907t125957"
+      }
+    },
+    "timestamp": "2026-09-07T17:00:09.629185904Z",
+    "severity": "NOTICE",
+    "logName": "projects/dwg-games/logs/cloudaudit.googleapis.com%2Factivity",
+    "operation": {
+      "id": "operation-1788800409683-65ae78cfe4554-ea8be219-6c8a411e",
+      "producer": "appengine.googleapis.com",
+      "first": true
+    },
+    "receiveTimestamp": "2026-09-07T17:00:11.713054536Z"
+  },
+  {
+    "textPayload": "The instance aef-default-20260907t125957-2c6n with COS based image was created for version 20260907t125957",
+    "insertId": "1ax0130fd9ug18",
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "zone": "",
+        "version_id": "20260907t125957",
+        "project_id": "dwg-games",
+        "module_id": "default"
+      }
+    },
+    "timestamp": "2026-09-07T17:05:37.286978006Z",
+    "labels": {
+      "compute.googleapis.com/resource_type": "instance",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_id": "5053027613723021430"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fvm.events",
+    "receiveTimestamp": "2026-09-07T17:05:37.395390434Z"
+  },
+  {
+    "insertId": "qntq9afd519hu",
+    "jsonPayload": {
+      "trace": "-",
+      "appLatencySeconds": "-",
+      "failReason": null,
+      "latencySeconds": "0.000"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.163",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "zone": "",
+        "module_id": "default",
+        "version_id": "20260907t125957",
+        "project_id": "dwg-games"
+      }
+    },
+    "timestamp": "2026-09-07T17:06:00.492Z",
+    "severity": "INFO",
+    "labels": {
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "appengine.googleapis.com/trace_id": "-"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:06:19.043171166Z"
+  },
+  {
+    "insertId": "qntq9afd519hv",
+    "jsonPayload": {
+      "appLatencySeconds": "-",
+      "failReason": null,
+      "latencySeconds": "0.000",
+      "trace": "-"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.164",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "project_id": "dwg-games",
+        "module_id": "default",
+        "version_id": "20260907t125957",
+        "zone": ""
+      }
+    },
+    "timestamp": "2026-09-07T17:06:00.862Z",
+    "severity": "INFO",
+    "labels": {
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "appengine.googleapis.com/trace_id": "-"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:06:19.043171166Z"
+  },
+  {
+    "insertId": "qntq9afd519hw",
+    "jsonPayload": {
+      "appLatencySeconds": "-",
+      "failReason": null,
+      "trace": "-",
+      "latencySeconds": "0.000"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.162",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "version_id": "20260907t125957",
+        "project_id": "dwg-games",
+        "zone": "",
+        "module_id": "default"
+      }
+    },
+    "timestamp": "2026-09-07T17:06:00.975Z",
+    "severity": "INFO",
+    "labels": {
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "appengine.googleapis.com/trace_id": "-"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:06:19.043171166Z"
+  },
+  {
+    "insertId": "fkia8xfbvzatj",
+    "jsonPayload": {
+      "failReason": null,
+      "trace": "-",
+      "latencySeconds": "0.000",
+      "appLatencySeconds": "-"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.163",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "version_id": "20260907t125957",
+        "zone": "",
+        "module_id": "default",
+        "project_id": "dwg-games"
+      }
+    },
+    "timestamp": "2026-09-07T17:06:30.484Z",
+    "severity": "INFO",
+    "labels": {
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "appengine.googleapis.com/trace_id": "-",
+      "compute.googleapis.com/zone": "us-central1-c"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:06:33.964047744Z"
+  },
+  {
+    "insertId": "fkia8xfbvzatk",
+    "jsonPayload": {
+      "failReason": null,
+      "latencySeconds": "0.000",
+      "trace": "-",
+      "appLatencySeconds": "-"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.164",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "version_id": "20260907t125957",
+        "project_id": "dwg-games",
+        "module_id": "default",
+        "zone": ""
+      }
+    },
+    "timestamp": "2026-09-07T17:06:30.857Z",
+    "severity": "INFO",
+    "labels": {
+      "appengine.googleapis.com/trace_id": "-",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/zone": "us-central1-c"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:06:33.964047744Z"
+  },
+  {
+    "insertId": "fkia8xfbvzatl",
+    "jsonPayload": {
+      "trace": "-",
+      "failReason": null,
+      "appLatencySeconds": "-",
+      "latencySeconds": "0.000"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.162",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "zone": "",
+        "module_id": "default",
+        "project_id": "dwg-games",
+        "version_id": "20260907t125957"
+      }
+    },
+    "timestamp": "2026-09-07T17:06:30.966Z",
+    "severity": "INFO",
+    "labels": {
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "appengine.googleapis.com/trace_id": "-",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_id": "5053027613723021430"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:06:33.964047744Z"
+  },
+  {
+    "textPayload": "[GIN-debug] [WARNING] Creating an Engine instance with the Logger and Recovery middleware already attached.\n",
+    "insertId": "ijf2srjyetkhqwl7n",
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "module_id": "default",
+        "zone": "",
+        "version_id": "20260907t125957",
+        "project_id": "dwg-games"
+      }
+    },
+    "timestamp": "2026-09-07T17:06:52Z",
+    "labels": {
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-09-07T17:07:13.984302724Z"
+  },
+  {
+    "textPayload": "\n",
+    "insertId": "ijf2srjyetkhqwl7p",
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "version_id": "20260907t125957",
+        "project_id": "dwg-games",
+        "zone": "",
+        "module_id": "default"
+      }
+    },
+    "timestamp": "2026-09-07T17:06:52Z",
+    "labels": {
+      "compute.googleapis.com/zone": "us-central1-c",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/resource_name": "513e0672fa74"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-09-07T17:07:13.984302724Z"
+  },
+  {
+    "textPayload": "[GIN-debug] [WARNING] Running in \"debug\" mode. Switch to \"release\" mode in production.\n",
+    "insertId": "ijf2srjyetkhqwl7q",
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "version_id": "20260907t125957",
+        "zone": "",
+        "project_id": "dwg-games",
+        "module_id": "default"
+      }
+    },
+    "timestamp": "2026-09-07T17:06:52Z",
+    "labels": {
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_name": "513e0672fa74"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-09-07T17:07:13.984302724Z"
+  },
+  {
+    "textPayload": " - using env:\texport GIN_MODE=release\n",
+    "insertId": "ijf2srjyetkhqwl7r",
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "version_id": "20260907t125957",
+        "project_id": "dwg-games",
+        "module_id": "default",
+        "zone": ""
+      }
+    },
+    "timestamp": "2026-09-07T17:06:52Z",
+    "labels": {
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_name": "513e0672fa74"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-09-07T17:07:13.984302724Z"
+  },
+  {
+    "textPayload": " - using code:\tgin.SetMode(gin.ReleaseMode)\n",
+    "insertId": "ijf2srjyetkhqwl7s",
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "module_id": "default",
+        "project_id": "dwg-games",
+        "version_id": "20260907t125957",
+        "zone": ""
+      }
+    },
+    "timestamp": "2026-09-07T17:06:52Z",
+    "labels": {
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/zone": "us-central1-c"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-09-07T17:07:13.984302724Z"
+  },
+  {
+    "textPayload": "\n",
+    "insertId": "ijf2srjyetkhqwl7t",
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "zone": "",
+        "project_id": "dwg-games",
+        "version_id": "20260907t125957",
+        "module_id": "default"
+      }
+    },
+    "timestamp": "2026-09-07T17:06:52Z",
+    "labels": {
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/zone": "us-central1-c"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-09-07T17:07:13.984302724Z"
+  },
+  {
+    "textPayload": "[GIN-debug] GET    /api/ping                 --> main.main.func1 (4 handlers)\n",
+    "insertId": "ijf2srjyetkhqwl7u",
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "project_id": "dwg-games",
+        "module_id": "default",
+        "zone": "",
+        "version_id": "20260907t125957"
+      }
+    },
+    "timestamp": "2026-09-07T17:06:52Z",
+    "labels": {
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_name": "513e0672fa74"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-09-07T17:07:13.984302724Z"
+  },
+  {
+    "textPayload": "[GIN-debug] GET    /api/lobby/connect/:nickname --> main.main.func2 (4 handlers)\n",
+    "insertId": "ijf2srjyetkhqwl7v",
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "version_id": "20260907t125957",
+        "zone": "",
+        "project_id": "dwg-games",
+        "module_id": "default"
+      }
+    },
+    "timestamp": "2026-09-07T17:06:52Z",
+    "labels": {
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_id": "5053027613723021430"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-09-07T17:07:13.984302724Z"
+  },
+  {
+    "textPayload": "[GIN-debug] GET    /api/lobby/reconnect/:nickname/:client_id --> main.main.func3 (4 handlers)\n",
+    "insertId": "ijf2srjyetkhqwl7w",
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "module_id": "default",
+        "zone": "",
+        "project_id": "dwg-games",
+        "version_id": "20260907t125957"
+      }
+    },
+    "timestamp": "2026-09-07T17:06:52Z",
+    "labels": {
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_id": "5053027613723021430"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-09-07T17:07:13.984302724Z"
+  },
+  {
+    "textPayload": "[GIN-debug] GET    /api/lobby/rooms/get      --> main.main.func4 (4 handlers)\n",
+    "insertId": "ijf2srjyetkhqwl7x",
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "version_id": "20260907t125957",
+        "module_id": "default",
+        "project_id": "dwg-games",
+        "zone": ""
+      }
+    },
+    "timestamp": "2026-09-07T17:06:52Z",
+    "labels": {
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/zone": "us-central1-c"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-09-07T17:07:13.984302724Z"
+  },
+  {
+    "textPayload": "[GIN-debug] GET    /api/lobby/rooms/get/:id  --> main.main.func5 (4 handlers)\n",
+    "insertId": "ijf2srjyetkhqwl7y",
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "project_id": "dwg-games",
+        "module_id": "default",
+        "version_id": "20260907t125957",
+        "zone": ""
+      }
+    },
+    "timestamp": "2026-09-07T17:06:52Z",
+    "labels": {
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-09-07T17:07:13.984302724Z"
+  },
+  {
+    "textPayload": "[GIN-debug] GET    /api/lobby/users/get      --> main.main.func6 (4 handlers)\n",
+    "insertId": "ijf2srjyetkhqwl7z",
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "project_id": "dwg-games",
+        "zone": "",
+        "module_id": "default",
+        "version_id": "20260907t125957"
+      }
+    },
+    "timestamp": "2026-09-07T17:06:52Z",
+    "labels": {
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/zone": "us-central1-c"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-09-07T17:07:13.984302724Z"
+  },
+  {
+    "textPayload": "[GIN-debug] GET    /api/lobby/users/get/:id  --> main.main.func7 (4 handlers)\n",
+    "insertId": "ijf2srjyetkhqwl8a",
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "module_id": "default",
+        "project_id": "dwg-games",
+        "version_id": "20260907t125957",
+        "zone": ""
+      }
+    },
+    "timestamp": "2026-09-07T17:06:52Z",
+    "labels": {
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-09-07T17:07:13.984302724Z"
+  },
+  {
+    "textPayload": "[GIN-debug] GET    /api/lobby/games/get      --> main.main.func8 (4 handlers)\n",
+    "insertId": "ijf2srjyetkhqwl8b",
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "project_id": "dwg-games",
+        "zone": "",
+        "version_id": "20260907t125957",
+        "module_id": "default"
+      }
+    },
+    "timestamp": "2026-09-07T17:06:52Z",
+    "labels": {
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_id": "5053027613723021430"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-09-07T17:07:13.984302724Z"
+  },
+  {
+    "textPayload": "[GIN-debug] POST   /api/lobby/games/get/:id  --> main.main.func9 (4 handlers)\n",
+    "insertId": "ijf2srjyetkhqwl8c",
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "zone": "",
+        "module_id": "default",
+        "version_id": "20260907t125957",
+        "project_id": "dwg-games"
+      }
+    },
+    "timestamp": "2026-09-07T17:06:52Z",
+    "labels": {
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/zone": "us-central1-c"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-09-07T17:07:13.984302724Z"
+  },
+  {
+    "textPayload": "[GIN-debug] [WARNING] You trusted all proxies, this is NOT safe. We recommend you to set a value.\n",
+    "insertId": "ijf2srjyetkhqwl8d",
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "version_id": "20260907t125957",
+        "zone": "",
+        "project_id": "dwg-games",
+        "module_id": "default"
+      }
+    },
+    "timestamp": "2026-09-07T17:06:52Z",
+    "labels": {
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-09-07T17:07:13.984302724Z"
+  },
+  {
+    "textPayload": "Please check https://github.com/gin-gonic/gin/blob/master/docs/doc.md#dont-trust-all-proxies for details.\n",
+    "insertId": "ijf2srjyetkhqwl8e",
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "module_id": "default",
+        "zone": "",
+        "project_id": "dwg-games",
+        "version_id": "20260907t125957"
+      }
+    },
+    "timestamp": "2026-09-07T17:06:52Z",
+    "labels": {
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/zone": "us-central1-c"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-09-07T17:07:13.984302724Z"
+  },
+  {
+    "textPayload": "[GIN-debug] Environment variable PORT=\"6807\"\n",
+    "insertId": "ijf2srjyetkhqwl8f",
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "zone": "",
+        "version_id": "20260907t125957",
+        "module_id": "default",
+        "project_id": "dwg-games"
+      }
+    },
+    "timestamp": "2026-09-07T17:06:52Z",
+    "labels": {
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/zone": "us-central1-c"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-09-07T17:07:13.984302724Z"
+  },
+  {
+    "textPayload": "[GIN-debug] Listening and serving HTTP on :6807\n",
+    "insertId": "ijf2srjyetkhqwl8g",
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "module_id": "default",
+        "zone": "",
+        "project_id": "dwg-games",
+        "version_id": "20260907t125957"
+      }
+    },
+    "timestamp": "2026-09-07T17:06:52Z",
+    "labels": {
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/resource_id": "5053027613723021430"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fstdout",
+    "receiveTimestamp": "2026-09-07T17:07:13.984302724Z"
+  },
+  {
+    "insertId": "6ybbmkfc5pm0a",
+    "jsonPayload": {
+      "latencySeconds": "0.000",
+      "trace": "-",
+      "failReason": null,
+      "appLatencySeconds": "-"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.163",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "zone": "",
+        "module_id": "default",
+        "project_id": "dwg-games",
+        "version_id": "20260907t125957"
+      }
+    },
+    "timestamp": "2026-09-07T17:07:00.480Z",
+    "severity": "INFO",
+    "labels": {
+      "appengine.googleapis.com/trace_id": "-",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:07:03.988098743Z"
+  },
+  {
+    "insertId": "6ybbmkfc5pm0b",
+    "jsonPayload": {
+      "latencySeconds": "0.000",
+      "trace": "-",
+      "appLatencySeconds": "-",
+      "failReason": null
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.164",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "project_id": "dwg-games",
+        "module_id": "default",
+        "version_id": "20260907t125957",
+        "zone": ""
+      }
+    },
+    "timestamp": "2026-09-07T17:07:00.852Z",
+    "severity": "INFO",
+    "labels": {
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "appengine.googleapis.com/trace_id": "-"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:07:03.988098743Z"
+  },
+  {
+    "insertId": "6ybbmkfc5pm0c",
+    "jsonPayload": {
+      "trace": "-",
+      "latencySeconds": "0.000",
+      "appLatencySeconds": "-",
+      "failReason": null
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.162",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "version_id": "20260907t125957",
+        "zone": "",
+        "project_id": "dwg-games",
+        "module_id": "default"
+      }
+    },
+    "timestamp": "2026-09-07T17:07:00.963Z",
+    "severity": "INFO",
+    "labels": {
+      "appengine.googleapis.com/trace_id": "-",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_name": "513e0672fa74"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:07:03.988098743Z"
+  },
+  {
+    "protoPayload": {
+      "@type": "type.googleapis.com/google.cloud.audit.AuditLog",
+      "status": {},
+      "authenticationInfo": {
+        "principalEmail": "yodan.and.the.sixth.character@gmail.com",
+        "oauthInfo": {
+          "oauthClientId": "32555940559.apps.googleusercontent.com"
+        }
+      },
+      "requestMetadata": {
+        "requestAttributes": {},
+        "destinationAttributes": {}
+      },
+      "serviceName": "appengine.googleapis.com",
+      "methodName": "google.appengine.v1.Versions.CreateVersion",
+      "resourceName": "apps/dwg-games/services/default/versions/20260907t125957",
+      "response": {
+        "@type": "type.googleapis.com/google.appengine.v1.Version"
+      },
+      "resourceLocation": {
+        "currentLocations": [
+          "us-central1"
+        ]
+      }
+    },
+    "insertId": "rh0jcjb7i",
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "zone": "",
+        "module_id": "default",
+        "version_id": "20260907t125957",
+        "project_id": "dwg-games"
+      }
+    },
+    "timestamp": "2026-09-07T17:07:29.724809412Z",
+    "severity": "NOTICE",
+    "logName": "projects/dwg-games/logs/cloudaudit.googleapis.com%2Factivity",
+    "operation": {
+      "id": "operation-1788800409683-65ae78cfe4554-ea8be219-6c8a411e",
+      "producer": "appengine.googleapis.com",
+      "last": true
+    },
+    "receiveTimestamp": "2026-09-07T17:07:30.080544510Z"
+  },
+  {
+    "insertId": "1g7yewdfceyxuj",
+    "jsonPayload": {
+      "failReason": null,
+      "appLatencySeconds": "-",
+      "latencySeconds": "0.000",
+      "trace": "-"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.163",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "zone": "",
+        "version_id": "20260907t125957",
+        "project_id": "dwg-games",
+        "module_id": "default"
+      }
+    },
+    "timestamp": "2026-09-07T17:07:30.479Z",
+    "severity": "INFO",
+    "labels": {
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "appengine.googleapis.com/trace_id": "-",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_id": "5053027613723021430"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:07:33.982375925Z"
+  },
+  {
+    "insertId": "1g7yewdfceyxuk",
+    "jsonPayload": {
+      "latencySeconds": "0.000",
+      "trace": "-",
+      "failReason": null,
+      "appLatencySeconds": "-"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.164",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "version_id": "20260907t125957",
+        "project_id": "dwg-games",
+        "module_id": "default",
+        "zone": ""
+      }
+    },
+    "timestamp": "2026-09-07T17:07:30.853Z",
+    "severity": "INFO",
+    "labels": {
+      "appengine.googleapis.com/trace_id": "-",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_id": "5053027613723021430"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:07:33.982375925Z"
+  },
+  {
+    "insertId": "1g7yewdfceyxul",
+    "jsonPayload": {
+      "trace": "-",
+      "failReason": null,
+      "latencySeconds": "0.000",
+      "appLatencySeconds": "-"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.162",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "version_id": "20260907t125957",
+        "zone": "",
+        "project_id": "dwg-games",
+        "module_id": "default"
+      }
+    },
+    "timestamp": "2026-09-07T17:07:30.963Z",
+    "severity": "INFO",
+    "labels": {
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "appengine.googleapis.com/trace_id": "-"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:07:33.982375925Z"
+  },
+  {
+    "textPayload": "[error] 34#34: *93 connect() failed (111: Connection refused) while connecting to upstream, client: 216.239.36.21, server: , request: \"GET /wp-login.php HTTP/1.1\", upstream: \"http://172.17.0.1:8080/wp-login.php\", host: \"fiddlesticks.live\"",
+    "insertId": "ijf2srjyetkhqwl9u",
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "version_id": "20260907t125957",
+        "module_id": "default",
+        "zone": "",
+        "project_id": "dwg-games"
+      }
+    },
+    "timestamp": "2026-09-07T17:07:58Z",
+    "labels": {
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/zone": "us-central1-c"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.error",
+    "receiveTimestamp": "2026-09-07T17:08:03.991232033Z"
+  },
+  {
+    "insertId": "11hvvttfdprhjx",
+    "jsonPayload": {
+      "appLatencySeconds": "0.020",
+      "latencySeconds": "0.020",
+      "trace": "8ced3cda551ecb6bf7e7ae5e080d95b9"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/wp-login.php",
+      "status": 502,
+      "responseSize": "150",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; rv:143.0) Gecko/20100101 Firefox/143.0",
+      "remoteIp": "129.146.72.189",
+      "referer": "-",
+      "latency": "0.020s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "version_id": "20260907t125957",
+        "project_id": "dwg-games",
+        "zone": "",
+        "module_id": "default"
+      }
+    },
+    "timestamp": "2026-09-07T17:07:58.006291456Z",
+    "labels": {
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "appengine.googleapis.com/trace_id": "8ced3cda551ecb6bf7e7ae5e080d95b9"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.request",
+    "trace": "projects/dwg-games/traces/8ced3cda551ecb6bf7e7ae5e080d95b9",
+    "receiveTimestamp": "2026-09-07T17:07:58.990885131Z"
+  },
+  {
+    "insertId": "r7irwxf6sungf",
+    "jsonPayload": {
+      "appLatencySeconds": "-",
+      "trace": "-",
+      "failReason": null,
+      "latencySeconds": "0.000"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.163",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "zone": "",
+        "module_id": "default",
+        "project_id": "dwg-games",
+        "version_id": "20260907t125957"
+      }
+    },
+    "timestamp": "2026-09-07T17:08:00.479Z",
+    "severity": "INFO",
+    "labels": {
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "appengine.googleapis.com/trace_id": "-"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:08:03.991232033Z"
+  },
+  {
+    "insertId": "r7irwxf6sungg",
+    "jsonPayload": {
+      "trace": "-",
+      "latencySeconds": "0.000",
+      "appLatencySeconds": "-",
+      "failReason": null
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.164",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "version_id": "20260907t125957",
+        "module_id": "default",
+        "zone": "",
+        "project_id": "dwg-games"
+      }
+    },
+    "timestamp": "2026-09-07T17:08:00.851Z",
+    "severity": "INFO",
+    "labels": {
+      "compute.googleapis.com/zone": "us-central1-c",
+      "appengine.googleapis.com/trace_id": "-",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_name": "513e0672fa74"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:08:03.991232033Z"
+  },
+  {
+    "insertId": "r7irwxf6sungh",
+    "jsonPayload": {
+      "trace": "-",
+      "failReason": null,
+      "latencySeconds": "0.000",
+      "appLatencySeconds": "-"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.162",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "version_id": "20260907t125957",
+        "project_id": "dwg-games",
+        "zone": "",
+        "module_id": "default"
+      }
+    },
+    "timestamp": "2026-09-07T17:08:00.964Z",
+    "severity": "INFO",
+    "labels": {
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "appengine.googleapis.com/trace_id": "-",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_id": "5053027613723021430"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:08:03.991232033Z"
+  },
+  {
+    "insertId": "1ucklg4fcuf2k5",
+    "jsonPayload": {
+      "appLatencySeconds": "-",
+      "failReason": null,
+      "latencySeconds": "0.000",
+      "trace": "-"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.163",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "project_id": "dwg-games",
+        "version_id": "20260907t125957",
+        "zone": "",
+        "module_id": "default"
+      }
+    },
+    "timestamp": "2026-09-07T17:08:30.476Z",
+    "severity": "INFO",
+    "labels": {
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "appengine.googleapis.com/trace_id": "-",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:08:33.988327746Z"
+  },
+  {
+    "insertId": "1ucklg4fcuf2k6",
+    "jsonPayload": {
+      "failReason": null,
+      "trace": "-",
+      "latencySeconds": "0.000",
+      "appLatencySeconds": "-"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.164",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "project_id": "dwg-games",
+        "version_id": "20260907t125957",
+        "zone": "",
+        "module_id": "default"
+      }
+    },
+    "timestamp": "2026-09-07T17:08:30.850Z",
+    "severity": "INFO",
+    "labels": {
+      "appengine.googleapis.com/trace_id": "-",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_id": "5053027613723021430"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:08:33.988327746Z"
+  },
+  {
+    "insertId": "1ucklg4fcuf2k7",
+    "jsonPayload": {
+      "latencySeconds": "0.000",
+      "failReason": null,
+      "trace": "-",
+      "appLatencySeconds": "-"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.162",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "zone": "",
+        "version_id": "20260907t125957",
+        "project_id": "dwg-games",
+        "module_id": "default"
+      }
+    },
+    "timestamp": "2026-09-07T17:08:30.962Z",
+    "severity": "INFO",
+    "labels": {
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "appengine.googleapis.com/trace_id": "-",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:08:33.988327746Z"
+  },
+  {
+    "insertId": "1ohreq0fdc9erm",
+    "jsonPayload": {
+      "trace": "-",
+      "appLatencySeconds": "-",
+      "failReason": null,
+      "latencySeconds": "0.000"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.163",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "version_id": "20260907t125957",
+        "project_id": "dwg-games",
+        "zone": "",
+        "module_id": "default"
+      }
+    },
+    "timestamp": "2026-09-07T17:09:00.487Z",
+    "severity": "INFO",
+    "labels": {
+      "appengine.googleapis.com/trace_id": "-",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:09:03.975032942Z"
+  },
+  {
+    "textPayload": "Health checks: instance=aef-default-20260907t125957-2c6n start=2026-09-07T17:05:48+00:00 end=2026-09-07T17:05:59+00:00 total=9 unhealthy=9 healthy=0",
+    "insertId": "1ixz6g4fcuyisa",
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "version_id": "20260907t125957",
+        "project_id": "dwg-games",
+        "zone": "",
+        "module_id": "default"
+      }
+    },
+    "timestamp": "2026-09-07T17:09:00.488036870Z",
+    "labels": {
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_type": "instance",
+      "compute.googleapis.com/resource_id": "5053027613723021430"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fvm.events",
+    "receiveTimestamp": "2026-09-07T17:09:00.550077185Z"
+  },
+  {
+    "textPayload": "Health checks: instance=aef-default-20260907t125957-2c6n start=2026-09-07T17:06:00+00:00 end=2026-09-07T17:06:59+00:00 total=42 unhealthy=30 healthy=12",
+    "insertId": "1ixz6g4fcuyisb",
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "zone": "",
+        "module_id": "default",
+        "project_id": "dwg-games",
+        "version_id": "20260907t125957"
+      }
+    },
+    "timestamp": "2026-09-07T17:09:00.488036871Z",
+    "labels": {
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/resource_type": "instance"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fvm.events",
+    "receiveTimestamp": "2026-09-07T17:09:00.550077185Z"
+  },
+  {
+    "insertId": "1ohreq0fdc9ern",
+    "jsonPayload": {
+      "trace": "-",
+      "failReason": null,
+      "latencySeconds": "0.000",
+      "appLatencySeconds": "-"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.164",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "zone": "",
+        "version_id": "20260907t125957",
+        "module_id": "default",
+        "project_id": "dwg-games"
+      }
+    },
+    "timestamp": "2026-09-07T17:09:00.857Z",
+    "severity": "INFO",
+    "labels": {
+      "appengine.googleapis.com/trace_id": "-",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_id": "5053027613723021430"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:09:03.975032942Z"
+  },
+  {
+    "insertId": "1ohreq0fdc9ero",
+    "jsonPayload": {
+      "appLatencySeconds": "-",
+      "failReason": null,
+      "latencySeconds": "0.000",
+      "trace": "-"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.162",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "zone": "",
+        "version_id": "20260907t125957",
+        "module_id": "default",
+        "project_id": "dwg-games"
+      }
+    },
+    "timestamp": "2026-09-07T17:09:00.961Z",
+    "severity": "INFO",
+    "labels": {
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "appengine.googleapis.com/trace_id": "-"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:09:03.975032942Z"
+  },
+  {
+    "insertId": "2tn4slf4m3ppn",
+    "jsonPayload": {
+      "failReason": null,
+      "appLatencySeconds": "-",
+      "trace": "-",
+      "latencySeconds": "0.000"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.163",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "zone": "",
+        "module_id": "default",
+        "project_id": "dwg-games",
+        "version_id": "20260907t125957"
+      }
+    },
+    "timestamp": "2026-09-07T17:09:30.475Z",
+    "severity": "INFO",
+    "labels": {
+      "appengine.googleapis.com/trace_id": "-",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_name": "513e0672fa74"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:09:33.974201480Z"
+  },
+  {
+    "insertId": "2tn4slf4m3ppo",
+    "jsonPayload": {
+      "appLatencySeconds": "-",
+      "failReason": null,
+      "latencySeconds": "0.000",
+      "trace": "-"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.164",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "module_id": "default",
+        "project_id": "dwg-games",
+        "zone": "",
+        "version_id": "20260907t125957"
+      }
+    },
+    "timestamp": "2026-09-07T17:09:30.849Z",
+    "severity": "INFO",
+    "labels": {
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "appengine.googleapis.com/trace_id": "-",
+      "compute.googleapis.com/zone": "us-central1-c"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:09:33.974201480Z"
+  },
+  {
+    "insertId": "2tn4slf4m3ppp",
+    "jsonPayload": {
+      "trace": "-",
+      "failReason": null,
+      "latencySeconds": "0.000",
+      "appLatencySeconds": "-"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.162",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "zone": "",
+        "project_id": "dwg-games",
+        "module_id": "default",
+        "version_id": "20260907t125957"
+      }
+    },
+    "timestamp": "2026-09-07T17:09:30.961Z",
+    "severity": "INFO",
+    "labels": {
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "appengine.googleapis.com/trace_id": "-"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:09:33.974201480Z"
+  },
+  {
+    "insertId": "1se1kvqfcxxclo",
+    "jsonPayload": {
+      "appLatencySeconds": "-",
+      "latencySeconds": "0.000",
+      "trace": "-",
+      "failReason": null
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.163",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "version_id": "20260907t125957",
+        "project_id": "dwg-games",
+        "zone": "",
+        "module_id": "default"
+      }
+    },
+    "timestamp": "2026-09-07T17:10:00.474Z",
+    "severity": "INFO",
+    "labels": {
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "appengine.googleapis.com/trace_id": "-"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:10:03.973105767Z"
+  },
+  {
+    "insertId": "1se1kvqfcxxclp",
+    "jsonPayload": {
+      "latencySeconds": "0.000",
+      "trace": "-",
+      "appLatencySeconds": "-",
+      "failReason": null
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.164",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "version_id": "20260907t125957",
+        "project_id": "dwg-games",
+        "module_id": "default",
+        "zone": ""
+      }
+    },
+    "timestamp": "2026-09-07T17:10:00.848Z",
+    "severity": "INFO",
+    "labels": {
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "appengine.googleapis.com/trace_id": "-"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:10:03.973105767Z"
+  },
+  {
+    "insertId": "1se1kvqfcxxclq",
+    "jsonPayload": {
+      "latencySeconds": "0.000",
+      "appLatencySeconds": "-",
+      "trace": "-",
+      "failReason": null
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.162",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "version_id": "20260907t125957",
+        "project_id": "dwg-games",
+        "module_id": "default",
+        "zone": ""
+      }
+    },
+    "timestamp": "2026-09-07T17:10:00.960Z",
+    "severity": "INFO",
+    "labels": {
+      "appengine.googleapis.com/trace_id": "-",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/zone": "us-central1-c"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:10:03.973105767Z"
+  },
+  {
+    "textPayload": "Health checks: instance=aef-default-20260907t125957-2c6n start=2026-09-07T17:07:00+00:00 end=2026-09-07T17:07:59+00:00 total=42 unhealthy=0 healthy=42",
+    "insertId": "wh0o85f8fc3ud",
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "zone": "",
+        "module_id": "default",
+        "project_id": "dwg-games",
+        "version_id": "20260907t125957"
+      }
+    },
+    "timestamp": "2026-09-07T17:10:01.900015592Z",
+    "labels": {
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/resource_type": "instance"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fvm.events",
+    "receiveTimestamp": "2026-09-07T17:10:01.946748037Z"
+  },
+  {
+    "insertId": "1ghqlikfdnszo5",
+    "jsonPayload": {
+      "trace": "-",
+      "appLatencySeconds": "-",
+      "failReason": null,
+      "latencySeconds": "0.000"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.163",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "module_id": "default",
+        "project_id": "dwg-games",
+        "version_id": "20260907t125957",
+        "zone": ""
+      }
+    },
+    "timestamp": "2026-09-07T17:10:30.473Z",
+    "severity": "INFO",
+    "labels": {
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "appengine.googleapis.com/trace_id": "-"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:10:33.965830856Z"
+  },
+  {
+    "insertId": "1ghqlikfdnszo6",
+    "jsonPayload": {
+      "appLatencySeconds": "-",
+      "latencySeconds": "0.000",
+      "failReason": null,
+      "trace": "-"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.164",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "module_id": "default",
+        "project_id": "dwg-games",
+        "version_id": "20260907t125957",
+        "zone": ""
+      }
+    },
+    "timestamp": "2026-09-07T17:10:30.847Z",
+    "severity": "INFO",
+    "labels": {
+      "appengine.googleapis.com/trace_id": "-",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_name": "513e0672fa74"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:10:33.965830856Z"
+  },
+  {
+    "insertId": "1ghqlikfdnszo7",
+    "jsonPayload": {
+      "latencySeconds": "0.000",
+      "appLatencySeconds": "-",
+      "failReason": null,
+      "trace": "-"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.162",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "zone": "",
+        "version_id": "20260907t125957",
+        "project_id": "dwg-games",
+        "module_id": "default"
+      }
+    },
+    "timestamp": "2026-09-07T17:10:30.959Z",
+    "severity": "INFO",
+    "labels": {
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "appengine.googleapis.com/trace_id": "-",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:10:33.965830856Z"
+  },
+  {
+    "insertId": "uirv7xfd0wwca",
+    "jsonPayload": {
+      "failReason": null,
+      "trace": "-",
+      "appLatencySeconds": "-",
+      "latencySeconds": "0.000"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.163",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "module_id": "default",
+        "zone": "",
+        "version_id": "20260907t125957",
+        "project_id": "dwg-games"
+      }
+    },
+    "timestamp": "2026-09-07T17:11:00.473Z",
+    "severity": "INFO",
+    "labels": {
+      "appengine.googleapis.com/trace_id": "-",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:11:03.971696484Z"
+  },
+  {
+    "insertId": "uirv7xfd0wwcb",
+    "jsonPayload": {
+      "latencySeconds": "0.000",
+      "appLatencySeconds": "-",
+      "trace": "-",
+      "failReason": null
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.164",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "module_id": "default",
+        "project_id": "dwg-games",
+        "zone": "",
+        "version_id": "20260907t125957"
+      }
+    },
+    "timestamp": "2026-09-07T17:11:00.846Z",
+    "severity": "INFO",
+    "labels": {
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "appengine.googleapis.com/trace_id": "-",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/zone": "us-central1-c"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:11:03.971696484Z"
+  },
+  {
+    "insertId": "uirv7xfd0wwcc",
+    "jsonPayload": {
+      "appLatencySeconds": "-",
+      "latencySeconds": "0.000",
+      "failReason": null,
+      "trace": "-"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.162",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "module_id": "default",
+        "zone": "",
+        "project_id": "dwg-games",
+        "version_id": "20260907t125957"
+      }
+    },
+    "timestamp": "2026-09-07T17:11:00.960Z",
+    "severity": "INFO",
+    "labels": {
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "appengine.googleapis.com/trace_id": "-",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:11:03.971696484Z"
+  },
+  {
+    "textPayload": "Health checks: instance=aef-default-20260907t125957-2c6n start=2026-09-07T17:08:00+00:00 end=2026-09-07T17:08:59+00:00 total=42 unhealthy=0 healthy=42",
+    "insertId": "65fpuffdp38pp",
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "zone": "",
+        "module_id": "default",
+        "project_id": "dwg-games",
+        "version_id": "20260907t125957"
+      }
+    },
+    "timestamp": "2026-09-07T17:11:01.876542568Z",
+    "labels": {
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/resource_type": "instance"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fvm.events",
+    "receiveTimestamp": "2026-09-07T17:11:01.925898730Z"
+  },
+  {
+    "insertId": "1knlss1f1ikloa",
+    "jsonPayload": {
+      "latencySeconds": "0.000",
+      "failReason": null,
+      "appLatencySeconds": "-",
+      "trace": "-"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.163",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "project_id": "dwg-games",
+        "zone": "",
+        "version_id": "20260907t125957",
+        "module_id": "default"
+      }
+    },
+    "timestamp": "2026-09-07T17:11:30.474Z",
+    "severity": "INFO",
+    "labels": {
+      "compute.googleapis.com/zone": "us-central1-c",
+      "appengine.googleapis.com/trace_id": "-",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_id": "5053027613723021430"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:11:33.983691672Z"
+  },
+  {
+    "insertId": "1knlss1f1iklob",
+    "jsonPayload": {
+      "trace": "-",
+      "latencySeconds": "0.000",
+      "failReason": null,
+      "appLatencySeconds": "-"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.164",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "module_id": "default",
+        "project_id": "dwg-games",
+        "zone": "",
+        "version_id": "20260907t125957"
+      }
+    },
+    "timestamp": "2026-09-07T17:11:30.845Z",
+    "severity": "INFO",
+    "labels": {
+      "appengine.googleapis.com/trace_id": "-",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/resource_id": "5053027613723021430"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:11:33.983691672Z"
+  },
+  {
+    "insertId": "1knlss1f1ikloc",
+    "jsonPayload": {
+      "latencySeconds": "0.000",
+      "failReason": null,
+      "appLatencySeconds": "-",
+      "trace": "-"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.162",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "module_id": "default",
+        "zone": "",
+        "project_id": "dwg-games",
+        "version_id": "20260907t125957"
+      }
+    },
+    "timestamp": "2026-09-07T17:11:30.958Z",
+    "severity": "INFO",
+    "labels": {
+      "appengine.googleapis.com/trace_id": "-",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_name": "513e0672fa74"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:11:33.983691672Z"
+  },
+  {
+    "insertId": "u2emuf38ohff",
+    "jsonPayload": {
+      "trace": "-",
+      "failReason": null,
+      "appLatencySeconds": "-",
+      "latencySeconds": "0.000"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.163",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "version_id": "20260907t125957",
+        "zone": "",
+        "module_id": "default",
+        "project_id": "dwg-games"
+      }
+    },
+    "timestamp": "2026-09-07T17:12:00.472Z",
+    "severity": "INFO",
+    "labels": {
+      "appengine.googleapis.com/trace_id": "-",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_id": "5053027613723021430"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:12:03.963555139Z"
+  },
+  {
+    "insertId": "u2emuf38ohfg",
+    "jsonPayload": {
+      "trace": "-",
+      "appLatencySeconds": "-",
+      "failReason": null,
+      "latencySeconds": "0.000"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.164",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "project_id": "dwg-games",
+        "module_id": "default",
+        "zone": "",
+        "version_id": "20260907t125957"
+      }
+    },
+    "timestamp": "2026-09-07T17:12:00.845Z",
+    "severity": "INFO",
+    "labels": {
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "appengine.googleapis.com/trace_id": "-",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_name": "513e0672fa74"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:12:03.963555139Z"
+  },
+  {
+    "insertId": "u2emuf38ohfh",
+    "jsonPayload": {
+      "trace": "-",
+      "failReason": null,
+      "latencySeconds": "0.000",
+      "appLatencySeconds": "-"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.162",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "zone": "",
+        "module_id": "default",
+        "project_id": "dwg-games",
+        "version_id": "20260907t125957"
+      }
+    },
+    "timestamp": "2026-09-07T17:12:00.957Z",
+    "severity": "INFO",
+    "labels": {
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "appengine.googleapis.com/trace_id": "-",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:12:03.963555139Z"
+  },
+  {
+    "textPayload": "Health checks: instance=aef-default-20260907t125957-2c6n start=2026-09-07T17:09:00+00:00 end=2026-09-07T17:09:59+00:00 total=42 unhealthy=0 healthy=42",
+    "insertId": "63veeefbzcx3z",
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "version_id": "20260907t125957",
+        "project_id": "dwg-games",
+        "module_id": "default",
+        "zone": ""
+      }
+    },
+    "timestamp": "2026-09-07T17:12:01.872772932Z",
+    "labels": {
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/resource_type": "instance"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fvm.events",
+    "receiveTimestamp": "2026-09-07T17:12:01.919246317Z"
+  },
+  {
+    "insertId": "1o8gw2pfbnxsd4",
+    "jsonPayload": {
+      "appLatencySeconds": "-",
+      "failReason": null,
+      "latencySeconds": "0.000",
+      "trace": "-"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.163",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "version_id": "20260907t125957",
+        "project_id": "dwg-games",
+        "module_id": "default",
+        "zone": ""
+      }
+    },
+    "timestamp": "2026-09-07T17:12:30.472Z",
+    "severity": "INFO",
+    "labels": {
+      "appengine.googleapis.com/trace_id": "-",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/zone": "us-central1-c"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:12:33.954856450Z"
+  },
+  {
+    "insertId": "1o8gw2pfbnxsd5",
+    "jsonPayload": {
+      "appLatencySeconds": "-",
+      "failReason": null,
+      "latencySeconds": "0.000",
+      "trace": "-"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.164",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "zone": "",
+        "version_id": "20260907t125957",
+        "project_id": "dwg-games",
+        "module_id": "default"
+      }
+    },
+    "timestamp": "2026-09-07T17:12:30.844Z",
+    "severity": "INFO",
+    "labels": {
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "appengine.googleapis.com/trace_id": "-",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/zone": "us-central1-c"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:12:33.954856450Z"
+  },
+  {
+    "insertId": "1o8gw2pfbnxsd6",
+    "jsonPayload": {
+      "latencySeconds": "0.000",
+      "appLatencySeconds": "-",
+      "failReason": null,
+      "trace": "-"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.162",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "zone": "",
+        "version_id": "20260907t125957",
+        "project_id": "dwg-games",
+        "module_id": "default"
+      }
+    },
+    "timestamp": "2026-09-07T17:12:30.958Z",
+    "severity": "INFO",
+    "labels": {
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "appengine.googleapis.com/trace_id": "-"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:12:33.954856450Z"
+  },
+  {
+    "insertId": "1mkesedfbg8tix",
+    "jsonPayload": {
+      "failReason": null,
+      "appLatencySeconds": "-",
+      "trace": "-",
+      "latencySeconds": "0.000"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.163",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "zone": "",
+        "project_id": "dwg-games",
+        "module_id": "default",
+        "version_id": "20260907t125957"
+      }
+    },
+    "timestamp": "2026-09-07T17:13:00.472Z",
+    "severity": "INFO",
+    "labels": {
+      "compute.googleapis.com/zone": "us-central1-c",
+      "appengine.googleapis.com/trace_id": "-",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_id": "5053027613723021430"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:13:03.952873568Z"
+  },
+  {
+    "insertId": "1mkesedfbg8tiy",
+    "jsonPayload": {
+      "latencySeconds": "0.000",
+      "trace": "-",
+      "appLatencySeconds": "-",
+      "failReason": null
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.164",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "zone": "",
+        "version_id": "20260907t125957",
+        "project_id": "dwg-games",
+        "module_id": "default"
+      }
+    },
+    "timestamp": "2026-09-07T17:13:00.843Z",
+    "severity": "INFO",
+    "labels": {
+      "appengine.googleapis.com/trace_id": "-",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/resource_name": "513e0672fa74"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:13:03.952873568Z"
+  },
+  {
+    "insertId": "1mkesedfbg8tiz",
+    "jsonPayload": {
+      "latencySeconds": "0.000",
+      "appLatencySeconds": "-",
+      "failReason": null,
+      "trace": "-"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.162",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "zone": "",
+        "module_id": "default",
+        "version_id": "20260907t125957",
+        "project_id": "dwg-games"
+      }
+    },
+    "timestamp": "2026-09-07T17:13:00.957Z",
+    "severity": "INFO",
+    "labels": {
+      "appengine.googleapis.com/trace_id": "-",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/zone": "us-central1-c"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:13:03.952873568Z"
+  },
+  {
+    "textPayload": "Health checks: instance=aef-default-20260907t125957-2c6n start=2026-09-07T17:10:00+00:00 end=2026-09-07T17:10:59+00:00 total=42 unhealthy=0 healthy=42",
+    "insertId": "1dyn2pcf680afe",
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "zone": "",
+        "module_id": "default",
+        "version_id": "20260907t125957",
+        "project_id": "dwg-games"
+      }
+    },
+    "timestamp": "2026-09-07T17:13:01.870548725Z",
+    "labels": {
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/resource_type": "instance",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fvm.events",
+    "receiveTimestamp": "2026-09-07T17:13:01.911088152Z"
+  },
+  {
+    "insertId": "fkia8xfbw6hb2",
+    "jsonPayload": {
+      "appLatencySeconds": "-",
+      "failReason": null,
+      "latencySeconds": "0.000",
+      "trace": "-"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.163",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "zone": "",
+        "version_id": "20260907t125957",
+        "module_id": "default",
+        "project_id": "dwg-games"
+      }
+    },
+    "timestamp": "2026-09-07T17:13:30.471Z",
+    "severity": "INFO",
+    "labels": {
+      "appengine.googleapis.com/trace_id": "-",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/resource_id": "5053027613723021430"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:13:33.948573260Z"
+  },
+  {
+    "insertId": "fkia8xfbw6hb3",
+    "jsonPayload": {
+      "appLatencySeconds": "-",
+      "trace": "-",
+      "failReason": null,
+      "latencySeconds": "0.000"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.164",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "project_id": "dwg-games",
+        "module_id": "default",
+        "version_id": "20260907t125957",
+        "zone": ""
+      }
+    },
+    "timestamp": "2026-09-07T17:13:30.843Z",
+    "severity": "INFO",
+    "labels": {
+      "appengine.googleapis.com/trace_id": "-",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_id": "5053027613723021430"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:13:33.948573260Z"
+  },
+  {
+    "insertId": "fkia8xfbw6hb4",
+    "jsonPayload": {
+      "latencySeconds": "0.000",
+      "trace": "-",
+      "failReason": null,
+      "appLatencySeconds": "-"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.162",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "project_id": "dwg-games",
+        "module_id": "default",
+        "version_id": "20260907t125957",
+        "zone": ""
+      }
+    },
+    "timestamp": "2026-09-07T17:13:30.956Z",
+    "severity": "INFO",
+    "labels": {
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "appengine.googleapis.com/trace_id": "-",
+      "compute.googleapis.com/zone": "us-central1-c"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:13:33.948573260Z"
+  },
+  {
+    "insertId": "utqntsfcdtgqy",
+    "jsonPayload": {
+      "appLatencySeconds": "-",
+      "latencySeconds": "0.000",
+      "trace": "-",
+      "failReason": null
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.163",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "zone": "",
+        "version_id": "20260907t125957",
+        "project_id": "dwg-games",
+        "module_id": "default"
+      }
+    },
+    "timestamp": "2026-09-07T17:14:00.470Z",
+    "severity": "INFO",
+    "labels": {
+      "compute.googleapis.com/zone": "us-central1-c",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "appengine.googleapis.com/trace_id": "-",
+      "compute.googleapis.com/resource_name": "513e0672fa74"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:14:03.962428223Z"
+  },
+  {
+    "insertId": "utqntsfcdtgqz",
+    "jsonPayload": {
+      "trace": "-",
+      "latencySeconds": "0.000",
+      "appLatencySeconds": "-",
+      "failReason": null
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.164",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "module_id": "default",
+        "version_id": "20260907t125957",
+        "zone": "",
+        "project_id": "dwg-games"
+      }
+    },
+    "timestamp": "2026-09-07T17:14:00.842Z",
+    "severity": "INFO",
+    "labels": {
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "appengine.googleapis.com/trace_id": "-",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:14:03.962428223Z"
+  },
+  {
+    "insertId": "utqntsfcdtgr0",
+    "jsonPayload": {
+      "latencySeconds": "0.000",
+      "appLatencySeconds": "-",
+      "trace": "-",
+      "failReason": null
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.162",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "zone": "",
+        "version_id": "20260907t125957",
+        "project_id": "dwg-games",
+        "module_id": "default"
+      }
+    },
+    "timestamp": "2026-09-07T17:14:00.957Z",
+    "severity": "INFO",
+    "labels": {
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "appengine.googleapis.com/trace_id": "-",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_id": "5053027613723021430"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:14:03.962428223Z"
+  },
+  {
+    "textPayload": "Health checks: instance=aef-default-20260907t125957-2c6n start=2026-09-07T17:11:00+00:00 end=2026-09-07T17:11:59+00:00 total=42 unhealthy=0 healthy=42",
+    "insertId": "1fwaw0qfdpdwfb",
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "zone": "",
+        "module_id": "default",
+        "project_id": "dwg-games",
+        "version_id": "20260907t125957"
+      }
+    },
+    "timestamp": "2026-09-07T17:14:01.878898143Z",
+    "labels": {
+      "compute.googleapis.com/resource_type": "instance",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_id": "5053027613723021430"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fvm.events",
+    "receiveTimestamp": "2026-09-07T17:14:01.920901012Z"
+  },
+  {
+    "insertId": "1fncjogfdntcht",
+    "jsonPayload": {
+      "failReason": null,
+      "latencySeconds": "0.000",
+      "trace": "-",
+      "appLatencySeconds": "-"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.163",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "project_id": "dwg-games",
+        "module_id": "default",
+        "version_id": "20260907t125957",
+        "zone": ""
+      }
+    },
+    "timestamp": "2026-09-07T17:14:30.470Z",
+    "severity": "INFO",
+    "labels": {
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/zone": "us-central1-c",
+      "appengine.googleapis.com/trace_id": "-"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:14:33.944349548Z"
+  },
+  {
+    "insertId": "1fncjogfdntchu",
+    "jsonPayload": {
+      "appLatencySeconds": "-",
+      "latencySeconds": "0.000",
+      "failReason": null,
+      "trace": "-"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.164",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "zone": "",
+        "module_id": "default",
+        "project_id": "dwg-games",
+        "version_id": "20260907t125957"
+      }
+    },
+    "timestamp": "2026-09-07T17:14:30.842Z",
+    "severity": "INFO",
+    "labels": {
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "appengine.googleapis.com/trace_id": "-",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:14:33.944349548Z"
+  },
+  {
+    "insertId": "1fncjogfdntchv",
+    "jsonPayload": {
+      "latencySeconds": "0.000",
+      "trace": "-",
+      "failReason": null,
+      "appLatencySeconds": "-"
+    },
+    "httpRequest": {
+      "requestMethod": "GET",
+      "requestUrl": "/liveness_check",
+      "status": 200,
+      "responseSize": "2",
+      "userAgent": "GoogleHC/1.0",
+      "remoteIp": "35.191.238.162",
+      "referer": "-",
+      "latency": "0s",
+      "protocol": "HTTP/1.1"
+    },
+    "resource": {
+      "type": "gae_app",
+      "labels": {
+        "version_id": "20260907t125957",
+        "project_id": "dwg-games",
+        "zone": "",
+        "module_id": "default"
+      }
+    },
+    "timestamp": "2026-09-07T17:14:30.957Z",
+    "severity": "INFO",
+    "labels": {
+      "compute.googleapis.com/zone": "us-central1-c",
+      "compute.googleapis.com/resource_name": "513e0672fa74",
+      "compute.googleapis.com/resource_id": "5053027613723021430",
+      "appengine.googleapis.com/instance_name": "aef-default-20260907t125957-2c6n",
+      "appengine.googleapis.com/trace_id": "-"
+    },
+    "logName": "projects/dwg-games/logs/appengine.googleapis.com%2Fnginx.health_check",
+    "trace": "projects/dwg-games/traces/-",
+    "receiveTimestamp": "2026-09-07T17:14:33.944349548Z"
+  }
+]

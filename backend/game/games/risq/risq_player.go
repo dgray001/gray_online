@@ -1,45 +1,37 @@
 package risq
 
 import (
-	"fmt"
 	"iter"
-	"os"
 
 	"github.com/dgray001/gray_online/game"
+	"github.com/dgray001/gray_online/game/games/risq/ai"
 	"github.com/gin-gonic/gin"
 )
 
 type RisqPlayer struct {
-	player                *game.Player
-	resources             *RisqPlayerResources
-	buildings             map[uint64]*RisqBuilding
-	units                 map[uint64]*RisqUnit
-	max_population_limit  uint16
-	color                 string
-	active_orders         []*RisqOrder
-	past_orders           []*RisqOrder
-	orders_submitted      bool
-	planned_foundations   map[uint]*RisqPlannedFoundation
-	researched_techs      map[uint32]bool
-	report                *RisqTurnReport
-	score                 uint
-	ai_model             RisqAiModel
-	eliminated            bool
+	player               *game.Player
+	resources            *RisqPlayerResources
+	buildings            map[uint64]*RisqBuilding
+	units                map[uint64]*RisqUnit
+	max_population_limit uint16
+	color                string
+	active_orders        []*RisqOrder
+	past_orders          []*RisqOrder
+	orders_submitted     bool
+	planned_foundations  map[uint]*RisqPlannedFoundation
+	researched_techs     map[uint32]bool
+	report               *RisqTurnReport
+	score                uint
+	ai_model             ai.Model
+	eliminated           bool
+	kills                uint
+	razes                uint
+	units_lost           uint
+	buildings_lost       uint
 }
 
 func (p *RisqPlayer) createAiModel(raw map[string]interface{}) {
-	rules_raw, ok := raw["rules"].([]interface{})
-	if !ok {
-		p.ai_model = &RisqAiModelNoop{}
-		return
-	}
-	rules, err := parseRisqAiRules(rules_raw)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "failed to parse ai rules, falling back to noop:", err)
-		p.ai_model = &RisqAiModelNoop{}
-		return
-	}
-	p.ai_model = &RisqAiModelRules{rules: rules}
+	p.ai_model = ai.ParseModel(raw)
 }
 
 // Private commitment to build at a zone before any stamina makes it a real, objective RisqBuilding

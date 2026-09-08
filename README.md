@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.8: Playable Risq
+v0.8a: Improve ui of units on map
 
 ## Dev Use
 

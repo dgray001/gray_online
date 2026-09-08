@@ -26,6 +26,7 @@ import type {
   RisqSpace,
   RisqUnit,
   RisqZone,
+  UnitByTypeData,
 } from './risq_data';
 import {
   RisqOrderType,
@@ -51,11 +52,14 @@ import { DrawRisqSpaceDetail, drawRisqSpace } from './risq_space';
 import { RisqLeftPanel } from './canvas_components/left_panel/left_panel';
 import { RisqOrdersModel, isBuildingOrder, isUnitOrder, orderArrowColor } from './risq_orders';
 import {
+  UNIT_SLOT_CIRCLE_RADIUS_MULTIPLIER,
+  getRisqZone,
   groupUnitsByType,
   resolveHoveredZones,
   unhoverRisqZone,
+  unitSlotWorldPosition,
+  zoneApproachPoint,
   zoneCenterOffset,
-  zoneUnitPartOffset,
 } from './risq_zone';
 import { RisqViewMode, nextViewMode } from './risq_terrain';
 import type {
@@ -225,6 +229,10 @@ export class DwgRisq extends DwgElement {
 
   getGame(): GameRisq | undefined {
     return this.game;
+  }
+
+  getPlayerId(): number {
+    return this.player_id;
   }
 
   getOrdersModel(): RisqOrdersModel {
@@ -437,18 +445,13 @@ export class DwgRisq extends DwgElement {
     for (const row of this.game.spaces) {
       for (const space of row) {
         space.center = this.coordinateToCanvas(space.coordinate, transform.scale);
-        if (
-          space.center.x + this.hex_a < transform.view.x / transform.scale ||
-          space.center.x - this.hex_a > (transform.view.x + this.canvas_size.width) / transform.scale ||
-          space.center.y + this.hex_r < transform.view.y / transform.scale ||
-          space.center.y - this.hex_r > (transform.view.y + this.canvas_size.height) / transform.scale
-        ) {
+        if (!this.isSpaceOnScreen(space)) {
           continue;
         }
         drawRisqSpace(ctx, this, space, draw_config);
       }
     }
-    this.drawSelectedUnitOrders(ctx);
+    this.drawUnitOrders(ctx);
     // draw panels
     this.right_panel.draw(ctx, transform, dt);
     this.left_panel.draw(ctx, transform, dt);
@@ -461,33 +464,88 @@ export class DwgRisq extends DwgElement {
     }
   }
 
-  private drawSelectedUnitOrders(ctx: CanvasRenderingContext2D) {
-    const data = this.left_panel.getData();
-    if (data?.data_type !== LeftPanelDataType.UNIT) {
+  private drawUnitOrders(ctx: CanvasRenderingContext2D) {
+    const player = this.getPlayer();
+    if (!player) {
       return;
     }
-    const unit = data.data;
+    const selected = this.selectedUnitIds();
+    for (const unit of player.units.values()) {
+      this.drawOrdersForUnit(ctx, unit, selected.has(unit.internal_id));
+    }
+  }
+
+  private selectedUnitIds(): Set<number> {
+    const data = this.left_panel.getData();
+    switch (data?.data_type) {
+      case LeftPanelDataType.UNIT:
+        return new Set([data.data.internal_id]);
+      case LeftPanelDataType.UNITS_BY_TYPE:
+      case LeftPanelDataType.ECONOMIC_UNITS:
+      case LeftPanelDataType.MILITARY_UNITS:
+        return new Set(data.data.units.flatMap((u) => [...u.units]));
+      default:
+        return new Set();
+    }
+  }
+
+  // when the left panel's current selection is exactly one unit/building/resource, its kind and id; otherwise undefined
+  private currentSingleSelection(): { kind: 'unit' | 'building' | 'resource'; id: number } | undefined {
+    const data = this.left_panel.getData();
+    switch (data?.data_type) {
+      case LeftPanelDataType.UNIT:
+        return { kind: 'unit', id: data.data.internal_id };
+      case LeftPanelDataType.BUILDING:
+        return { kind: 'building', id: data.data.internal_id };
+      case LeftPanelDataType.RESOURCE:
+        return { kind: 'resource', id: data.data.internal_id };
+      case LeftPanelDataType.UNITS_BY_TYPE:
+      case LeftPanelDataType.ECONOMIC_UNITS:
+      case LeftPanelDataType.MILITARY_UNITS: {
+        const ids = this.selectedUnitIds();
+        return ids.size === 1 ? { kind: 'unit', id: [...ids][0] } : undefined;
+      }
+      default:
+        return undefined;
+    }
+  }
+
+  isUnitSelected(internal_id: number): boolean {
+    return this.selectedUnitIds().has(internal_id);
+  }
+
+  isBuildingOrResourceSelected(internal_id: number): boolean {
+    const data = this.left_panel.getData();
+    return (
+      (data?.data_type === LeftPanelDataType.BUILDING || data?.data_type === LeftPanelDataType.RESOURCE) &&
+      data.data.internal_id === internal_id
+    );
+  }
+
+  private drawOrdersForUnit(ctx: CanvasRenderingContext2D, unit: RisqUnit, selected: boolean) {
     const orders = this.orders_model.effectiveForSubject(unit.internal_id, 'unit');
     if (!orders.length) {
       return;
     }
     const zone_view = this.draw_detail === DrawRisqSpaceDetail.ZONE_DETAILS;
-    const unit_offset = zoneUnitPartOffset(unit.zone_coordinate, this.hex_r, unit.unit_id >= 11);
+    const unit_offset = this.unitAnchorOffset(unit);
     let from = this.orderPoint(unit.space_coordinate, unit_offset, zone_view);
-    ctx.lineWidth = 2;
+    ctx.lineWidth = selected ? 2 : 1;
+    ctx.globalAlpha = selected ? 1 : 0.35;
     ctx.setLineDash([8, 5]);
     for (const order of orders) {
-      const to = this.orderTargetPoint(order, zone_view);
+      const to = this.orderTargetPoint(order, zone_view, from);
       if (!to || equalsPoint2D(from, to)) {
         continue;
       }
       const color = orderArrowColor(order.order_type);
       ctx.strokeStyle = color;
       ctx.fillStyle = color;
-      drawArrow(ctx, from, to, 10);
+      drawArrow(ctx, from, to, selected ? 10 : 6);
       from = to;
     }
     ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
   }
 
   /** Space/zone-view-aware canvas point for an order endpoint; offset is ignored (space-to-space) outside zone view */
@@ -496,7 +554,23 @@ export class DwgRisq extends DwgElement {
     return zone_view && offset ? addPoint2D(p, offset) : p;
   }
 
-  private orderTargetPoint(order: RisqFrontendOrder, zone_view: boolean): Point2D | undefined {
+  /** Offset (relative to its space's center) of the specific unit-slot circle a unit currently occupies */
+  private unitAnchorOffset(unit: RisqUnit): Point2D | undefined {
+    if (!this.game) {
+      return undefined;
+    }
+    const space = getSpace(this.game, coordinateToIndex(this.game.board_size, unit.space_coordinate));
+    const zone = getRisqZone(space, unit.zone_coordinate);
+    if (!zone) {
+      return zoneCenterOffset(unit.zone_coordinate, this.hex_r);
+    }
+    return (
+      unitSlotWorldPosition(zone, unit.zone_coordinate, this.hex_r, this.player_id, unit.internal_id) ??
+      zoneCenterOffset(unit.zone_coordinate, this.hex_r)
+    );
+  }
+
+  private orderTargetPoint(order: RisqFrontendOrder, zone_view: boolean, from: Point2D): Point2D | undefined {
     if (!this.game) {
       return undefined;
     }
@@ -507,6 +581,13 @@ export class DwgRisq extends DwgElement {
         target_space = invertPair(order.target_id);
         break;
       case RisqOrderType.OrderType_UnitMoveZone:
+      case RisqOrderType.OrderType_UnitAttackZone: {
+        const decoded = invertZoneKey(order.target_id);
+        target_space = decoded.space;
+        const space_canvas = this.coordinateToCanvas(target_space, this.last_transform.scale);
+        target_offset = zoneApproachPoint(decoded.zone, this.hex_r, subtractPoint2D(from, space_canvas));
+        break;
+      }
       case RisqOrderType.OrderType_UnitGather: {
         const decoded = invertZoneKey(order.target_id);
         target_space = decoded.space;
@@ -535,7 +616,7 @@ export class DwgRisq extends DwgElement {
           return undefined;
         }
         target_space = target_unit.space_coordinate;
-        target_offset = zoneUnitPartOffset(target_unit.zone_coordinate, this.hex_r, target_unit.unit_id >= 11);
+        target_offset = this.unitAnchorOffset(target_unit);
         break;
       }
       default:
@@ -1000,6 +1081,77 @@ export class DwgRisq extends DwgElement {
     return undefined;
   }
 
+  private unitsInZoneOfType(zone: RisqZone, player_id: number, unit_id: number): number[] {
+    return [...zone.units.values()]
+      .filter((u) => u.player_id === player_id && u.unit_id === unit_id)
+      .map((u) => u.internal_id);
+  }
+
+  // space-level bounding-box check first (cheap pre-filter), then whether the unit's own rendered circle overlaps the viewport
+  private unitsOnScreenOfType(player_id: number, unit_id: number): number[] {
+    const ids: number[] = [];
+    for (const row of this.game?.spaces ?? []) {
+      for (const space of row) {
+        if (!this.isSpaceOnScreen(space)) {
+          continue;
+        }
+        for (const zone_row of space.zones ?? []) {
+          for (const zone of zone_row) {
+            for (const unit of zone.units.values()) {
+              if (unit.player_id !== player_id || unit.unit_id !== unit_id) {
+                continue;
+              }
+              const canvas_pos = this.orderPoint(unit.space_coordinate, this.unitAnchorOffset(unit), true);
+              const radius = UNIT_SLOT_CIRCLE_RADIUS_MULTIPLIER * this.hex_r;
+              if (this.isCircleOnScreen(canvas_pos, radius)) {
+                ids.push(unit.internal_id);
+              }
+            }
+          }
+        }
+      }
+    }
+    return ids;
+  }
+
+  private isSpaceOnScreen(space: RisqSpace): boolean {
+    const transform = this.last_transform;
+    return !(
+      space.center.x + this.hex_a < transform.view.x / transform.scale ||
+      space.center.x - this.hex_a > (transform.view.x + this.canvas_size.width) / transform.scale ||
+      space.center.y + this.hex_r < transform.view.y / transform.scale ||
+      space.center.y - this.hex_r > (transform.view.y + this.canvas_size.height) / transform.scale
+    );
+  }
+
+  private isCircleOnScreen(c: Point2D, radius: number): boolean {
+    const transform = this.last_transform;
+    const x0 = transform.view.x / transform.scale;
+    const x1 = (transform.view.x + this.canvas_size.width) / transform.scale;
+    const y0 = transform.view.y / transform.scale;
+    const y1 = (transform.view.y + this.canvas_size.height) / transform.scale;
+    const closest_x = Math.min(Math.max(c.x, x0), x1);
+    const closest_y = Math.min(Math.max(c.y, y0), y1);
+    const dx = c.x - closest_x;
+    const dy = c.y - closest_y;
+    return dx * dx + dy * dy <= radius * radius;
+  }
+
+  private openUnitTypeSelection(
+    player_id: number,
+    internal_ids: number[],
+    space: RisqSpace | undefined,
+    visibility: number
+  ) {
+    if (internal_ids.length === 0) {
+      return;
+    }
+    const units_map =
+      this.game?.players.find((p) => p.player.player_id === player_id)?.units ?? new Map<number, RisqUnit>();
+    const units = groupUnitsByType(units_map, internal_ids);
+    this.left_panel.openPanel({ data_type: LeftPanelDataType.UNITS_BY_TYPE, data: { space, units } }, visibility);
+  }
+
   private resolveActiveOrderType(ctrl_held: boolean): RisqOrderType {
     if (!this.left_panel.getData() || !this.left_panel.isOrderable() || !this.canGiveOrders() || !this.hovered_space) {
       return RisqOrderType.NONE;
@@ -1260,46 +1412,60 @@ export class DwgRisq extends DwgElement {
           for (const [i, part] of this.hovered_zone.hovered_data.entries()) {
             if (part.clicked && part.hovered) {
               open_zone = false;
-              switch (i) {
-                case 0: // building / resource
-                  if (!!this.hovered_zone.resource) {
-                    this.left_panel.openPanel(
-                      { data_type: LeftPanelDataType.RESOURCE, data: this.hovered_zone.resource },
-                      this.hovered_space.visibility
-                    );
-                  } else if (!!this.hovered_zone.building) {
-                    this.left_panel.openPanel(
-                      { data_type: LeftPanelDataType.BUILDING, data: this.hovered_zone.building },
-                      this.hovered_space.visibility
-                    );
+              if (i === 0) {
+                const target_id = this.hovered_zone.resource?.internal_id ?? this.hovered_zone.building?.internal_id;
+                const current = this.currentSingleSelection();
+                if (
+                  target_id !== undefined &&
+                  current &&
+                  (current.kind === 'building' || current.kind === 'resource') &&
+                  current.id === target_id
+                ) {
+                  this.left_panel.close();
+                } else if (!!this.hovered_zone.resource) {
+                  this.left_panel.openPanel(
+                    { data_type: LeftPanelDataType.RESOURCE, data: this.hovered_zone.resource },
+                    this.hovered_space.visibility
+                  );
+                } else if (!!this.hovered_zone.building) {
+                  this.left_panel.openPanel(
+                    { data_type: LeftPanelDataType.BUILDING, data: this.hovered_zone.building },
+                    this.hovered_space.visibility
+                  );
+                }
+              } else if (e.detail >= 2) {
+                const target = this.hovered_zone.unit_slots?.[i - 1]?.[0];
+                if (target) {
+                  const ids =
+                    e.detail >= 3
+                      ? this.unitsOnScreenOfType(target.player_id, target.unit_id)
+                      : this.unitsInZoneOfType(this.hovered_zone, target.player_id, target.unit_id);
+                  this.openUnitTypeSelection(
+                    target.player_id,
+                    ids,
+                    e.detail >= 3 ? undefined : this.hovered_space,
+                    this.hovered_space.visibility
+                  );
+                }
+              } else {
+                const slot_groups = this.hovered_zone.unit_slots?.[i - 1] ?? [];
+                const slot_unit_ids = slot_groups.flatMap((t) => [...t.units]);
+                const current = this.currentSingleSelection();
+                if (slot_unit_ids.length === 1 && current?.kind === 'unit' && current.id === slot_unit_ids[0]) {
+                  this.left_panel.close();
+                } else {
+                  const units_by_player = new Map<number, UnitByTypeData[]>();
+                  for (const t of slot_groups) {
+                    if (!units_by_player.has(t.player_id)) {
+                      units_by_player.set(t.player_id, []);
+                    }
+                    units_by_player.get(t.player_id)!.push(t);
                   }
-                  break;
-                case 1: // economic units
                   this.left_panel.openPanel(
-                    {
-                      data_type: LeftPanelDataType.UNITS,
-                      data: {
-                        space: this.hovered_space,
-                        units_by_player: this.hovered_zone.economic_units_by_type,
-                      },
-                    },
+                    { data_type: LeftPanelDataType.UNITS, data: { space: this.hovered_space, units_by_player } },
                     this.hovered_space.visibility
                   );
-                  break;
-                case 2: // military units
-                  this.left_panel.openPanel(
-                    {
-                      data_type: LeftPanelDataType.UNITS,
-                      data: {
-                        space: this.hovered_space,
-                        units_by_player: this.hovered_zone.military_units_by_type,
-                      },
-                    },
-                    this.hovered_space.visibility
-                  );
-                  break;
-                default:
-                  break;
+                }
               }
               break;
             }

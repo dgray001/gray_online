@@ -24,7 +24,7 @@ export function buildingImage(building_id: number | undefined, under_constructio
         console.error('Trying to get building image from unknown building id', building_id);
         return '';
     }
-    if (plain) {
+    if (plain && filename !== 'empty_plot') {
       filename += '_plain';
     }
   }

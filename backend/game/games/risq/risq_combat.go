@@ -151,6 +151,8 @@ func (r *GameRisq) unitAttackBuilding(attacker *RisqUnit, target *RisqBuilding) 
 		self_player: attacker.player_id, other_player: target.player_id, target_id: uint64(target.building_id), space: space, zone: zone, damage: damage})
 	r.players[target.player_id].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: CombatEvent_BuildingLost,
 		self_player: target.player_id, other_player: attacker.player_id, target_id: uint64(target.building_id), space: space, zone: zone, damage: damage})
+	r.players[attacker.player_id].razes++
+	r.players[target.player_id].buildings_lost++
 	target.deleted = true
 }
 
@@ -158,6 +160,9 @@ func (r *GameRisq) unitAttackUnit(attacker *RisqUnit, target *RisqUnit) {
 	was_alive := target.cs.health > 0
 	damage := combatDamage(&attacker.cs, &target.cs, attacker.intent.intent_cost)
 	target.cs.addHealth(-damage)
+	util.DebugLog.Printf("combat tick=%d: unit %d (player %d, stamina %d) hits unit %d (player %d) for %.2f, health now %.2f/%d",
+		r.current_tick, attacker.internal_id, attacker.player_id, attacker.intent.intent_cost,
+		target.internal_id, target.player_id, damage, target.cs.health, target.cs.max_health)
 	if !was_alive || target.cs.health > 0 {
 		return
 	}
@@ -167,6 +172,8 @@ func (r *GameRisq) unitAttackUnit(attacker *RisqUnit, target *RisqUnit) {
 		self_player: attacker.player_id, other_player: target.player_id, target_id: uint64(target.unit_id), space: space, zone: zone, damage: damage})
 	r.players[target.player_id].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: CombatEvent_UnitLost,
 		self_player: target.player_id, other_player: attacker.player_id, target_id: uint64(target.unit_id), space: space, zone: zone, damage: damage})
+	r.players[attacker.player_id].kills++
+	r.players[target.player_id].units_lost++
 	target.deleted = true
 }
 
