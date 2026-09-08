@@ -1,8 +1,46 @@
 package ai
 
-import "fmt"
+type conditionAll struct {
+	conditions []Condition
+}
 
-type conditionAll struct{ conditions []Condition }
+type conditionAny struct {
+	conditions []Condition
+}
+
+type conditionNot struct {
+	condition Condition
+}
+
+type conditionAlways struct{}
+
+type conditionBuildingCountAtLeast struct {
+	building_id *uint32
+	count       int
+}
+
+type conditionBuildingCountAtMost struct {
+	building_id *uint32
+	count       int
+}
+
+type conditionPopulationHeadroomAtLeast struct {
+	amount int
+}
+
+type conditionPopulationHeadroomAtMost struct {
+	amount int
+}
+
+type conditionPopulationAtLeast struct {
+	amount  int
+	unit_id *uint32
+}
+
+type conditionPopulationAtMost struct {
+	amount  int
+	unit_id *uint32
+}
 
 func (c *conditionAll) Evaluate(view View) bool {
 	for _, condition := range c.conditions {
@@ -13,8 +51,6 @@ func (c *conditionAll) Evaluate(view View) bool {
 	return true
 }
 
-type conditionAny struct{ conditions []Condition }
-
 func (c *conditionAny) Evaluate(view View) bool {
 	for _, condition := range c.conditions {
 		if condition.Evaluate(view) {
@@ -24,69 +60,74 @@ func (c *conditionAny) Evaluate(view View) bool {
 	return false
 }
 
-type conditionNot struct{ condition Condition }
-
 func (c *conditionNot) Evaluate(view View) bool {
 	return !c.condition.Evaluate(view)
 }
-
-type conditionAlways struct{}
 
 func (c *conditionAlways) Evaluate(View) bool {
 	return true
 }
 
-func parseCondition(raw map[string]interface{}) (Condition, error) {
-	if len(raw) != 1 {
-		return nil, fmt.Errorf("condition must have exactly one key, got %d", len(raw))
+func (c *conditionBuildingCountAtLeast) Evaluate(view View) bool {
+	if c.building_id == nil {
+		return len(view.Buildings()) >= c.count
 	}
-	var key string
-	var value interface{}
-	for k, v := range raw {
-		key, value = k, v
-	}
-	switch key {
-	case "all":
-		return parseConditionList(value, func(cs []Condition) Condition {
-			return &conditionAll{conditions: cs}
-		})
-	case "any":
-		return parseConditionList(value, func(cs []Condition) Condition {
-			return &conditionAny{conditions: cs}
-		})
-	case "not":
-		inner, ok := value.(map[string]interface{})
-		if !ok {
-			return nil, fmt.Errorf("not condition must be an object")
+	n := 0
+	for _, b := range view.Buildings() {
+		if b.BuildingID == *c.building_id {
+			n++
 		}
-		condition, err := parseCondition(inner)
-		if err != nil {
-			return nil, err
-		}
-		return &conditionNot{condition: condition}, nil
-	case "always":
-		return &conditionAlways{}, nil
-	default:
-		return nil, fmt.Errorf("unknown condition type %q", key)
 	}
+	return n >= c.count
 }
 
-func parseConditionList(value interface{}, build func([]Condition) Condition) (Condition, error) {
-	list, ok := value.([]interface{})
-	if !ok {
-		return nil, fmt.Errorf("expected a list of conditions")
+func (c *conditionBuildingCountAtMost) Evaluate(view View) bool {
+	if c.building_id == nil {
+		return len(view.Buildings()) <= c.count
 	}
-	conditions := make([]Condition, 0, len(list))
-	for _, item := range list {
-		obj, ok := item.(map[string]interface{})
-		if !ok {
-			return nil, fmt.Errorf("condition list item must be an object")
+	n := 0
+	for _, b := range view.Buildings() {
+		if b.BuildingID == *c.building_id {
+			n++
 		}
-		condition, err := parseCondition(obj)
-		if err != nil {
-			return nil, err
-		}
-		conditions = append(conditions, condition)
 	}
-	return build(conditions), nil
+	return n <= c.count
+}
+
+func (c *conditionPopulationHeadroomAtLeast) Evaluate(view View) bool {
+	current, limit := view.Population()
+	return limit-current >= c.amount
+}
+
+func (c *conditionPopulationHeadroomAtMost) Evaluate(view View) bool {
+	current, limit := view.Population()
+	return limit-current <= c.amount
+}
+
+func (c *conditionPopulationAtLeast) Evaluate(view View) bool {
+	if c.unit_id == nil {
+		current, _ := view.Population()
+		return current >= c.amount
+	}
+	count := 0
+	for _, u := range view.Units() {
+		if u.UnitID == *c.unit_id {
+			count++
+		}
+	}
+	return count >= c.amount
+}
+
+func (c *conditionPopulationAtMost) Evaluate(view View) bool {
+	if c.unit_id == nil {
+		current, _ := view.Population()
+		return current <= c.amount
+	}
+	count := 0
+	for _, u := range view.Units() {
+		if u.UnitID == *c.unit_id {
+			count++
+		}
+	}
+	return count <= c.amount
 }

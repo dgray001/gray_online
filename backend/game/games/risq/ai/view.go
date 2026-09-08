@@ -1,7 +1,9 @@
 package ai
 
 // Axial hex coordinate; space- or zone-level depending on context.
-type Coordinate struct{ X, Y int }
+type Coordinate struct {
+	X, Y int
+}
 
 type ZoneRef struct {
 	Space Coordinate
@@ -30,7 +32,45 @@ type UnitView struct {
 	Kind           UnitKind
 	Location       ZoneRef
 	CurrentStamina int
-	Idle           bool // no active orders
+	CurrentOrder   *CurrentOrder
+	Builds         []Producible
+}
+
+// Mirrors the unit-applicable subset of risq.OrderType, so config can filter eligible units by task
+type OrderKind uint8
+
+const (
+	OrderKindMove OrderKind = iota
+	OrderKindGather
+	OrderKindBuild
+	OrderKindRepair
+	OrderKindAttackSpace
+	OrderKindAttackZone
+	OrderKindAttackUnit
+	OrderKindAttackBuilding
+	OrderKindDefend
+	OrderKindGarrison
+	OrderKindDelete
+)
+
+var orderKindNames = map[string]OrderKind{
+	"move":            OrderKindMove,
+	"gather":          OrderKindGather,
+	"build":           OrderKindBuild,
+	"repair":          OrderKindRepair,
+	"attack_space":    OrderKindAttackSpace,
+	"attack_zone":     OrderKindAttackZone,
+	"attack_unit":     OrderKindAttackUnit,
+	"attack_building": OrderKindAttackBuilding,
+	"defend":          OrderKindDefend,
+	"garrison":        OrderKindGarrison,
+	"delete":          OrderKindDelete,
+}
+
+type CurrentOrder struct {
+	Kind OrderKind
+	// set only when Kind == OrderKindGather and the target resource is still known
+	GatherCategory *ResourceCategory
 }
 
 type ProducibleKind uint8
@@ -38,9 +78,12 @@ type ProducibleKind uint8
 const (
 	ProducibleUnit ProducibleKind = iota
 	ProducibleTech
+	ProducibleBuilding
 )
 
-type Cost struct{ Food, Wood, Stone, Gold float64 }
+type Cost struct {
+	Food, Wood, Stone, Gold float64
+}
 
 // Something a building can currently be ordered to make (already-researched techs excluded).
 type Producible struct {
@@ -54,7 +97,7 @@ type BuildingView struct {
 	BuildingID        uint32
 	Location          ZoneRef
 	UnderConstruction bool
-	Idle              bool // can produce something and isn't
+	Idle              bool
 	Producibles       []Producible
 }
 
@@ -71,6 +114,7 @@ type View interface {
 	Nickname() string
 	Units() []UnitView
 	IdleUnits() []UnitView
+	EligibleUnits(kinds ...OrderKind) []UnitView
 	Buildings() []BuildingView
 	IdleBuildings() []BuildingView
 	Resource(category ResourceCategory) float64
@@ -83,6 +127,7 @@ type View interface {
 	NearestBuildSite(from ZoneRef, building_id uint32) (ZoneRef, bool)
 	NearestUnexplored(from ZoneRef) (ZoneRef, bool)
 	BuildCost(building_id uint32) Cost
+	RandomIntn(n int) int
 
 	MoveOrder(u UnitView, target ZoneRef, clear_previous bool) Order
 	GatherOrder(u UnitView, target ZoneRef, clear_previous bool) Order

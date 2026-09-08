@@ -43,7 +43,7 @@ func loadScenario(path string) (Scenario, error) {
 func resolveAiConfig(inputs_dir, name string) (map[string]interface{}, error) {
 	data := risq.DefaultAiConfigJSON
 	if name != "" && name != "default" {
-		read, err := os.ReadFile(filepath.Join(inputs_dir, name))
+		read, err := os.ReadFile(filepath.Join(inputs_dir, name+".json"))
 		if err != nil {
 			return nil, err
 		}

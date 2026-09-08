@@ -10,6 +10,8 @@ type RisqPlayerResources struct {
 	// per-turn flow by category, reset each turn
 	gathered [4]float64
 	spent    [4]float64
+	// cumulative gathered (not refunds) across the whole game, never reset
+	lifetime_gathered [4]float64
 }
 
 type RisqResourceCost struct {
@@ -47,7 +49,7 @@ func (c RisqResourceCost) scale(f float64) RisqResourceCost {
 }
 
 func createRisqPlayerResources() *RisqPlayerResources {
-	return &RisqPlayerResources{}
+	return &RisqPlayerResources{food: 200, wood: 100, stone: 50}
 }
 
 func (r *RisqPlayerResources) addGathered(category RisqResourceCategory, amount float64) {
@@ -62,6 +64,16 @@ func (r *RisqPlayerResources) addGathered(category RisqResourceCategory, amount 
 		r.gold += amount
 	}
 	r.gathered[category] += amount
+	r.lifetime_gathered[category] += amount
+}
+
+func (r *RisqPlayerResources) LifetimeGathered() RisqResourceCost {
+	return RisqResourceCost{
+		food:  r.lifetime_gathered[RisqResourceCategory_FOOD],
+		wood:  r.lifetime_gathered[RisqResourceCategory_WOOD],
+		stone: r.lifetime_gathered[RisqResourceCategory_STONE],
+		gold:  r.lifetime_gathered[RisqResourceCategory_GOLD],
+	}
 }
 
 func (r *RisqPlayerResources) canAfford(cost RisqResourceCost) bool {

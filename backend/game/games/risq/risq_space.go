@@ -2,6 +2,7 @@ package risq
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 
 	"github.com/dgray001/gray_online/game/game_utils"
@@ -120,7 +121,7 @@ func (s *RisqSpace) coordinateToIndex(c *game_utils.Coordinate2D) *game_utils.Co
 	}
 }
 
-func (s *RisqSpace) getZonesAsRandomArray(include_middle bool) []*RisqZone {
+func (s *RisqSpace) getZonesAsRandomArray(include_middle bool, rng *rand.Rand) []*RisqZone {
 	zones := make([]*RisqZone, 0)
 	for i, row := range s.zones {
 		for j, zone := range row {
@@ -129,7 +130,7 @@ func (s *RisqSpace) getZonesAsRandomArray(include_middle bool) []*RisqZone {
 			}
 		}
 	}
-	return util.Shuffle(zones)
+	return util.ShuffleFrom(rng, zones)
 }
 
 func (s *RisqSpace) getZone(c *game_utils.Coordinate2D) *RisqZone {

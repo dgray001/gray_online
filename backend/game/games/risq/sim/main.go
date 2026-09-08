@@ -30,7 +30,7 @@ func main() {
 
 	players := make([]PlayerConfig, len(scenario.Players))
 	for i, p := range scenario.Players {
-		config, err := resolveAiConfig("inputs", p.AiConfig)
+		config, err := resolveAiConfig("../config/ai", p.AiConfig)
 		if err != nil {
 			log.Fatalf("player %d ai config: %v", i, err)
 		}

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"math/rand"
+	"maps"
 	"time"
 
 	"github.com/dgray001/gray_online/game"
@@ -10,7 +10,7 @@ import (
 
 type PlayerConfig struct {
 	Nickname string
-	AiConfig map[string]interface{}
+	AiConfig map[string]any
 }
 
 type Result struct {
@@ -20,17 +20,14 @@ type Result struct {
 }
 
 func RunGame(seed int64, players []PlayerConfig, board_size int, starting_distance int, max_turns uint16, timeout time.Duration) Result {
-	rand.Seed(seed)
-	ai_players := make([]interface{}, len(players))
+	ai_players := make([]any, len(players))
 	for i, p := range players {
-		config := make(map[string]interface{}, len(p.AiConfig)+1)
-		for k, v := range p.AiConfig {
-			config[k] = v
-		}
+		config := make(map[string]any, len(p.AiConfig)+1)
+		maps.Copy(config, p.AiConfig)
 		config["nickname"] = p.Nickname
 		ai_players[i] = config
 	}
-	settings := map[string]interface{}{"ai_players": ai_players}
+	settings := map[string]any{"ai_players": ai_players, "seed": float64(seed)}
 	if board_size > 0 {
 		settings["board_size"] = float64(board_size)
 	}

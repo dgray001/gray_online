@@ -2,7 +2,6 @@ package ai
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/dgray001/gray_online/util"
 )
@@ -48,40 +47,4 @@ func (m *RulesModel) DecideOrders(view View) []Order {
 	}
 	util.DebugLog.Printf("ai %s: submitting orders %+v", view.Nickname(), orders)
 	return orders
-}
-
-func parseRules(raw []interface{}) ([]Rule, error) {
-	rules := make([]Rule, 0, len(raw))
-	for _, item := range raw {
-		obj, ok := item.(map[string]interface{})
-		if !ok {
-			return nil, fmt.Errorf("rule must be an object")
-		}
-		when_raw, ok := obj["when"].(map[string]interface{})
-		if !ok {
-			return nil, fmt.Errorf("rule missing \"when\" object")
-		}
-		when, err := parseCondition(when_raw)
-		if err != nil {
-			return nil, err
-		}
-		then_raw, ok := obj["then"].([]interface{})
-		if !ok {
-			return nil, fmt.Errorf("rule missing \"then\" list")
-		}
-		then := make([]Action, 0, len(then_raw))
-		for _, action_raw := range then_raw {
-			action_obj, ok := action_raw.(map[string]interface{})
-			if !ok {
-				return nil, fmt.Errorf("action must be an object")
-			}
-			action, err := parseAction(action_obj)
-			if err != nil {
-				return nil, err
-			}
-			then = append(then, action)
-		}
-		rules = append(rules, Rule{when: when, then: then})
-	}
-	return rules, nil
 }

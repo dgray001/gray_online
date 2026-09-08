@@ -9,3 +9,5 @@ backend/static/images/risq/wip/**
 backend/game/games/risq/sim/inputs/**
 backend/game/games/risq/sim/outputs/**
 backend/game/games/risq/sim/sim
+backend/game/games/risq/sim/sim_bin
+backend/game/games/risq/ttk/ttk

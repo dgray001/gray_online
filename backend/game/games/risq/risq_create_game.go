@@ -2,8 +2,10 @@ package risq
 
 import (
 	"errors"
+	"math/rand"
 	"sort"
 	"strconv"
+	"time"
 
 	"github.com/dgray001/gray_online/game"
 	"github.com/dgray001/gray_online/game/game_utils"
@@ -58,6 +60,10 @@ func nextAvailableRisqColor(used map[string]bool) string {
 }
 
 func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameRisq, error) {
+	seed, ok := g.GameSpecificSettings["seed"].(float64)
+	if !ok {
+		seed = float64(time.Now().UnixNano())
+	}
 	risq := GameRisq{
 		game:                      g,
 		players:                   []*RisqPlayer{},
@@ -69,6 +75,7 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameR
 		next_unit_internal_id:     0,
 		next_order_internal_id:    0,
 		turn_number:               0,
+		rng:                       rand.New(rand.NewSource(int64(seed))),
 	}
 	requested_colors := requestedRisqPlayerColors(g)
 	used_colors := make(map[string]bool)
@@ -83,7 +90,8 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameR
 			color = nextAvailableRisqColor(used_colors)
 			used_colors[color] = true
 		}
-		risq.players = append(risq.players, createRisqPlayer(player, risq.population_limit, color))
+		player_rng := rand.New(rand.NewSource(int64(seed) + int64(player_id) + 1))
+		risq.players = append(risq.players, createRisqPlayer(player, risq.population_limit, color, player_rng))
 		player_id++
 	}
 	ai_players, ai_players_ok := g.GameSpecificSettings["ai_players"].([]interface{})
@@ -101,7 +109,8 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameR
 			player.Player_id = player_id
 			color := nextAvailableRisqColor(used_colors)
 			used_colors[color] = true
-			risq_player := createRisqPlayer(player, risq.population_limit, color)
+			player_rng := rand.New(rand.NewSource(int64(seed) + int64(player_id) + 1))
+			risq_player := createRisqPlayer(player, risq.population_limit, color, player_rng)
 			risq_player.createAiModel(ai)
 			go runAi(risq_player, &risq, action_channel)
 			risq.players = append(risq.players, risq_player)
@@ -117,19 +126,19 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameR
 	switch len(risq.players) {
 	case 6:
 		risq.board_size = 6
-		starting_distance = util.RandomInt(4, 5)
+		starting_distance = util.RandomIntFrom(risq.rng, 4, 5)
 	case 5:
 		risq.board_size = 6
-		starting_distance = util.RandomInt(4, 5)
+		starting_distance = util.RandomIntFrom(risq.rng, 4, 5)
 	case 4:
 		risq.board_size = 5
-		starting_distance = util.RandomInt(3, 4)
+		starting_distance = util.RandomIntFrom(risq.rng, 3, 4)
 	case 3:
 		risq.board_size = 4
-		starting_distance = util.RandomInt(3, 3)
+		starting_distance = util.RandomIntFrom(risq.rng, 3, 3)
 	default:
 		risq.board_size = 4
-		starting_distance = util.RandomInt(4, 4)
+		starting_distance = util.RandomIntFrom(risq.rng, 4, 4)
 	}
 	if override, ok := g.GameSpecificSettings["board_size"].(float64); ok && override >= 2 {
 		risq.board_size = uint16(override)
@@ -172,7 +181,7 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameR
 			}
 		}
 	}
-	starting_location := util.RandomInt(0, 5)
+	starting_location := util.RandomIntFrom(risq.rng, 0, 5)
 	axial_unit_vectors := game_utils.AxialDirectionVectors()
 	direction_offsets := map[int][]int{
 		1: {0},
@@ -186,12 +195,29 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameR
 	if !ok {
 		return nil, errors.New("unknown number of players")
 	}
+	placed := make(map[uint]bool)
 	for i, offset := range offsets {
 		space := risq.getSpace(axial_unit_vectors[(starting_location+offset)%6].Multiply(starting_distance))
 		if space == nil {
 			return nil, errors.New("starting space is nil")
 		}
 		risq.createPlayerStart(risq.players[i], space, starting_units)
+		placed[space.coordinate_key] = true
+		for _, v := range axial_unit_vectors {
+			ring_space := risq.getSpace(space.coordinate.Add(&v))
+			if ring_space == nil || placed[ring_space.coordinate_key] {
+				continue
+			}
+			risq.placeFixedResourceSet(ring_space)
+			placed[ring_space.coordinate_key] = true
+		}
+	}
+	for _, row := range risq.spaces {
+		for _, space := range row {
+			if !placed[space.coordinate_key] {
+				risq.placeUniformResources(space)
+			}
+		}
 	}
 	return &risq, nil
 }
@@ -214,15 +240,41 @@ func (r *GameRisq) createPlayerStart(p *RisqPlayer, s *RisqSpace, starting_units
 			r.units[unit.internal_id] = unit
 		}
 	}
-	zones := s.getZonesAsRandomArray(false)
-	forage := createRisqResource(r.nextResourceInternalId(), 1)
-	s.setResource(&zones[0].coordinate, forage)
-	deer := createRisqResource(r.nextResourceInternalId(), 2)
-	s.setResource(&zones[1].coordinate, deer)
-	tree1 := createRisqResource(r.nextResourceInternalId(), 11)
-	s.setResource(&zones[2].coordinate, tree1)
-	tree2 := createRisqResource(r.nextResourceInternalId(), 14)
-	s.setResource(&zones[3].coordinate, tree2)
-	stone := createRisqResource(r.nextResourceInternalId(), 21)
-	s.setResource(&zones[4].coordinate, stone)
+	r.placeFixedResourceSet(s)
+}
+
+// Fixed 5-node set (2 food, 2 wood, 1 stone) used for player starts and the ring around them
+func (r *GameRisq) placeFixedResourceSet(s *RisqSpace) {
+	zones := s.getZonesAsRandomArray(false, r.rng)
+	resource_ids := []uint32{1, 2, 11, 14, 21} // forage, deer, cedar, oak, stonemine
+	for i, resource_id := range resource_ids {
+		s.setResource(&zones[i].coordinate, createRisqResource(r.nextResourceInternalId(), resource_id))
+	}
+}
+
+// Probability an outer zone gets a resource node in the general (non-fixed) map
+const uniformResourceChance = 0.3
+
+var uniformFoodIds = []uint32{1, 2}
+var uniformWoodIds = []uint32{11, 12, 13, 14, 15, 16}
+var uniformStoneIds = []uint32{21}
+
+// Food/wood weighted equally and common, stone scarcer, since farms don't exist yet
+func (r *GameRisq) placeUniformResources(s *RisqSpace) {
+	for _, zone := range s.getZonesAsRandomArray(false, r.rng) {
+		if r.rng.Float64() >= uniformResourceChance {
+			continue
+		}
+		var ids []uint32
+		switch roll := r.rng.Float64(); {
+		case roll < 0.4:
+			ids = uniformFoodIds
+		case roll < 0.8:
+			ids = uniformWoodIds
+		default:
+			ids = uniformStoneIds
+		}
+		resource_id := ids[r.rng.Intn(len(ids))]
+		s.setResource(&zone.coordinate, createRisqResource(r.nextResourceInternalId(), resource_id))
+	}
 }

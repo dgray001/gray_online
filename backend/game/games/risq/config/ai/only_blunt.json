@@ -1,0 +1,13 @@
+{
+  "rules": [
+    { "when": { "always": {} }, "then": [{ "action": "gather", "eligible": ["gather"] }] },
+    { "when": { "population_at_least": { "amount": 6, "unit_id": 1 } }, "then": [{ "action": "research", "tech_id": 1 }] },
+    { "when": { "always": {} }, "then": [{ "action": "produce", "unit_id": 1 }] },
+    { "when": { "population_headroom_at_most": { "amount": 2 } }, "then": [{ "action": "build", "building_id": 2, "eligible": ["gather"] }] },
+    { "when": { "building_count_less_than": { "building_id": 22, "count": 1 } }, "then": [{ "action": "build", "building_id": 22, "eligible": ["gather"] }] },
+    { "when": { "building_count_less_than": { "building_id": 11, "count": 1 } }, "then": [{ "action": "build", "building_id": 11, "eligible": ["gather"] }] },
+    { "when": { "building_count_less_than": { "building_id": 22, "count": 3 } }, "then": [{ "action": "build", "building_id": 22, "eligible": ["gather"] }] },
+    { "when": { "population_at_least": { "amount": 6 } }, "then": [{ "action": "produce", "unit_id": 11 }] },
+    { "when": { "always": {} }, "then": [{ "action": "attack" }, { "action": "explore" }] }
+  ]
+}

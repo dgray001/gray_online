@@ -19,6 +19,14 @@ func Shuffle[T any](s []T) []T {
 	return s
 }
 
+func ShuffleFrom[T any](rng *rand.Rand, s []T) []T {
+	for i := range s {
+		j := rng.Intn(i + 1)
+		s[i], s[j] = s[j], s[i]
+	}
+	return s
+}
+
 // Should only be used if order doesn't matter, as it will change the order
 // Taken from https://stackoverflow.com/a/37335777
 func FastDelete[T any](s []T, index int) []T {

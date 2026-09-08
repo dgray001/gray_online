@@ -15,6 +15,11 @@ func Clamp[T cmp.Ordered](x T, min T, max T) T {
 	return x
 }
 
+func RoundTo(x float64, places int) float64 {
+	scale := math.Pow(10, float64(places))
+	return math.Round(x*scale) / scale
+}
+
 func AbsInt(x int) int {
 	return AbsDiffInt(x, 0)
 }

@@ -8,7 +8,7 @@
     "defense_piercing": 3,
     "population_support": 5,
     "cost": { "wood": 250, "stone": 100 },
-    "build_stamina": 50,
+    "build_stamina": 150,
     "turn_stamina": 10,
     "produces": [
       { "row": 1, "col": 0, "kind": "unit", "id": 1 },

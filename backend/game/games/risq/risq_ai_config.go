@@ -2,5 +2,5 @@ package risq
 
 import _ "embed"
 
-//go:embed config/default_ai.json
+//go:embed config/ai/default.json
 var DefaultAiConfigJSON []byte

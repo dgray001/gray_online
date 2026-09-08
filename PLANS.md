@@ -1,18 +1,20 @@
 v0.9: Risq beta version
- - Make summary report animated and can view it after close (bottom bar)
- - Bottom bar includes summary report, minimap, view buttons, etc
- - Finish "level 1" tech tree
- - Expanded "level 2" tech tree
- - Design customizable AI players
+ c: Garrison logic
+ d: Finish initial tech tree
+ e: Learnable AI pipeline
+ f: Bottom bar in UI (summary report, minimap, view buttons, tech tree)
+ g: Partial move pathfinding
+ h: Different terrains
+ i: Map scripting setup
+ j: Regions and mercenaries
+ k: Magic and color damage
+ l: Expanded level 2 tech tree
+ m: Settings setup (including alt win conditions)
+
+UI Improvements:
+ - Revamp summary report
  - Fully customizable hotkeys
- - Design basic building / unit / tech trees -> UX to show these (bottom bar)
- - Settings setup (including alt win conditions)
  - Drag multiselect
- - Color logic for attacks
- - Different maps / terrain / etc
- - Ownership edge cases and "regions"
- - Mercenaries
- - Partial move pathfinding
  - Message logic for top of screen (like for pop capped)
 
 Fiddlesticks Plans:

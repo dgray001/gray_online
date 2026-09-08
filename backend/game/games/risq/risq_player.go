@@ -2,6 +2,7 @@ package risq
 
 import (
 	"iter"
+	"math/rand"
 
 	"github.com/dgray001/gray_online/game"
 	"github.com/dgray001/gray_online/game/games/risq/ai"
@@ -28,6 +29,8 @@ type RisqPlayer struct {
 	razes                uint
 	units_lost           uint
 	buildings_lost       uint
+	// owned by this player only, so its own AI goroutine never races another player's
+	rng *rand.Rand
 }
 
 func (p *RisqPlayer) createAiModel(raw map[string]interface{}) {
@@ -40,7 +43,7 @@ type RisqPlannedFoundation struct {
 	cost        RisqResourceCost
 }
 
-func createRisqPlayer(player *game.Player, max_population_limit uint16, color string) *RisqPlayer {
+func createRisqPlayer(player *game.Player, max_population_limit uint16, color string, rng *rand.Rand) *RisqPlayer {
 	return &RisqPlayer{
 		player:               player,
 		resources:            createRisqPlayerResources(),
@@ -53,6 +56,7 @@ func createRisqPlayer(player *game.Player, max_population_limit uint16, color st
 		orders_submitted:     false,
 		planned_foundations:  make(map[uint]*RisqPlannedFoundation),
 		researched_techs:     make(map[uint32]bool),
+		rng:                  rng,
 	}
 }
 

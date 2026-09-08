@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.8a: Improve ui of units on map
+v0.8b: Customizable AI players
 
 ## Dev Use
 
@@ -93,5 +93,5 @@ fiddlesticks.live standard_benchmarks
 Outputs will be written to the outputs folder
 
 ## Model Training
-...coming soon
 
+TODO: document

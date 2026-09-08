@@ -3,6 +3,7 @@ package risq
 import (
 	"fmt"
 	"iter"
+	"math/rand"
 	"os"
 
 	"github.com/dgray001/gray_online/game"
@@ -39,6 +40,8 @@ type GameRisq struct {
 	giving_orders bool
 	// Recomputed each tick: contested resources are water-filled instead of first-come-first-served
 	gather_allotments map[*RisqUnit]float64
+	// owned by this game only, never the shared global source, so concurrent AI goroutines can't race it
+	rng *rand.Rand
 }
 
 func (r *GameRisq) nextResourceInternalId() uint64 {

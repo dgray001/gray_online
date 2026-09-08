@@ -1,6 +1,15 @@
 package risq
 
+import (
+	"math"
+	"sort"
+
+	"github.com/dgray001/gray_online/util"
+)
+
 const unitTickStaminaCost = 3
+
+const gatherRoundingPlaces = 4
 
 const gatherRateStaminaBase = 10.0
 
@@ -59,11 +68,51 @@ func computeGatherAllotments(orderables []Orderable) map[*RisqUnit]float64 {
 	}
 	allotments := make(map[*RisqUnit]float64)
 	for resource, demands := range by_resource {
-		for unit, amount := range waterFillGather(demands, resource.resources_left) {
+		for unit, amount := range quantizeAllotments(waterFillGather(demands, resource.resources_left)) {
 			allotments[unit] = amount
 		}
 	}
 	return allotments
+}
+
+// Rounds each gatherer's allotment to gatherRoundingPlaces while conserving their exact sum, so the total
+// deducted from a resource doesn't depend on which order gatherers happened to be processed in
+func quantizeAllotments(raw map[*RisqUnit]float64) map[*RisqUnit]float64 {
+	scale := math.Pow(10, gatherRoundingPlaces)
+	total := 0.0
+	for _, amount := range raw {
+		total += amount
+	}
+	target_units := int64(math.Round(util.RoundTo(total, gatherRoundingPlaces) * scale))
+	type floored struct {
+		unit      *RisqUnit
+		amount    float64
+		remainder float64
+	}
+	floors := make([]floored, 0, len(raw))
+	floor_units := int64(0)
+	for unit, amount := range raw {
+		scaled := amount * scale
+		floor := math.Floor(scaled)
+		floors = append(floors, floored{unit: unit, amount: floor / scale, remainder: scaled - floor})
+		floor_units += int64(floor)
+	}
+	sort.Slice(floors, func(i, j int) bool {
+		if floors[i].remainder != floors[j].remainder {
+			return floors[i].remainder > floors[j].remainder
+		}
+		return floors[i].unit.internal_id < floors[j].unit.internal_id
+	})
+	result := make(map[*RisqUnit]float64, len(floors))
+	leftover := target_units - floor_units
+	for i, f := range floors {
+		amount := f.amount
+		if int64(i) < leftover {
+			amount += 1 / scale
+		}
+		result[f.unit] = amount
+	}
+	return result
 }
 
 func waterFillGather(demands []gatherDemand, available float64) map[*RisqUnit]float64 {

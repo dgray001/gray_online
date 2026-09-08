@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
 )
 
@@ -370,6 +371,7 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 		if !ok {
 			amount = float64(u.intent.intent_cost) * (float64(detail.resource.base_gather_speed) / gatherRateStaminaBase)
 		}
+		amount = util.RoundTo(amount, 4)
 		if amount > detail.resource.resources_left {
 			amount = detail.resource.resources_left
 		}
