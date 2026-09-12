@@ -16,6 +16,37 @@ func eligibleUnits(view View, eligible []OrderKind) []UnitView {
 	return view.EligibleUnits(eligible...)
 }
 
+func homeLocation(view View) (ZoneRef, bool) {
+	buildings := view.Buildings()
+	for _, b := range buildings {
+		if b.BuildingID == 1 {
+			return b.Location, true
+		}
+	}
+	if len(buildings) > 0 {
+		return buildings[0].Location, true
+	}
+	return ZoneRef{}, false
+}
+
+// Picks the candidate closest to from, randomly breaking ties
+func nearestZone(view View, from ZoneRef, candidates []ZoneRef) (ZoneRef, bool) {
+	var tied []ZoneRef
+	best_distance := -1
+	for _, c := range candidates {
+		d := locationDistance(from, c)
+		if best_distance == -1 || d < best_distance {
+			tied, best_distance = []ZoneRef{c}, d
+		} else if d == best_distance {
+			tied = append(tied, c)
+		}
+	}
+	if len(tied) == 0 {
+		return ZoneRef{}, false
+	}
+	return tied[view.RandomIntn(len(tied))], true
+}
+
 // First affordable queued entry above threshold weight: queue order, or highest-weight first if prioritize.
 func selectFromQueue(view View, internals *Internals, threshold float64, prioritize bool, kinds ...QKind) (Q, bool) {
 	allowed := make(map[QKind]bool, len(kinds))
@@ -146,6 +177,52 @@ func nearestBuilding(view View, from ZoneRef, buildings []BuildingView) (Buildin
 	}
 	if len(tied) == 0 {
 		return BuildingView{}, false
+	}
+	return tied[view.RandomIntn(len(tied))], true
+}
+
+func nearestEnemySpace(view View, from ZoneRef, buildings []BuildingView) (Coordinate, bool) {
+	seen := make(map[Coordinate]bool)
+	var tied []Coordinate
+	best_distance := -1
+	for _, b := range buildings {
+		space := b.Location.Space
+		if seen[space] {
+			continue
+		}
+		seen[space] = true
+		d := axialDistance(from.Space, space)
+		if best_distance == -1 || d < best_distance {
+			tied, best_distance = []Coordinate{space}, d
+		} else if d == best_distance {
+			tied = append(tied, space)
+		}
+	}
+	if len(tied) == 0 {
+		return Coordinate{}, false
+	}
+	return tied[view.RandomIntn(len(tied))], true
+}
+
+func nearestEnemyZone(view View, from ZoneRef, units []UnitView, buildings []BuildingView) (ZoneRef, bool) {
+	var tied []ZoneRef
+	best_distance := -1
+	consider := func(loc ZoneRef) {
+		d := locationDistance(from, loc)
+		if best_distance == -1 || d < best_distance {
+			tied, best_distance = []ZoneRef{loc}, d
+		} else if d == best_distance {
+			tied = append(tied, loc)
+		}
+	}
+	for _, u := range units {
+		consider(u.Location)
+	}
+	for _, b := range buildings {
+		consider(b.Location)
+	}
+	if len(tied) == 0 {
+		return ZoneRef{}, false
 	}
 	return tied[view.RandomIntn(len(tied))], true
 }

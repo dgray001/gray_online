@@ -130,7 +130,9 @@ type View interface {
 
 	NearestResource(from ZoneRef, category ResourceCategory) (ZoneRef, bool)
 	NearestBuildSite(from ZoneRef, building_id uint32) (ZoneRef, bool)
-	NearestUnexplored(from ZoneRef) (ZoneRef, bool)
+	NearestUnexplored(from ZoneRef) ([]ZoneRef, bool)
+	TurnNumber() int
+	AllEnemiesFound() bool
 	BuildCost(building_id uint32) Cost
 	UnitCost(unit_id uint32) Cost
 	TechCost(tech_id uint32) Cost
@@ -142,6 +144,8 @@ type View interface {
 	RepairOrder(u UnitView, target_building_id uint64, clear_previous bool) Order
 	AttackUnitOrder(u UnitView, target_unit_id uint64, clear_previous bool) Order
 	AttackBuildingOrder(u UnitView, target_building_id uint64, clear_previous bool) Order
+	AttackSpaceOrder(u UnitView, target Coordinate, clear_previous bool) Order
+	AttackZoneOrder(u UnitView, target ZoneRef, clear_previous bool) Order
 	GarrisonOrder(u UnitView, target_building_id uint64, clear_previous bool) Order
 	UngarrisonOrder(u UnitView, clear_previous bool) Order
 	DeleteUnitOrder(u UnitView) Order

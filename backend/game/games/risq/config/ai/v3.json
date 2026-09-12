@@ -50,7 +50,7 @@
     { "when": {"all": [{"building_count_equals": {"building_id": 22, "count": 2}}, {"population_at_least": {"amount": 30, "unit_id": 1}}, {"population_at_most": {"amount": 35, "unit_id": 1}}]}, "then": [{"action": "add_q", "type": "building", "id": 22, "weight": 15}] },
     { "when": {"all": [{"building_count_equals": {"building_id": 22, "count": 2}}, {"population_at_least": {"amount": 36, "unit_id": 1}}]}, "then": [{"action": "add_q", "type": "building", "id": 22, "weight": 30}] },
     { "when": { "building_count_at_most": { "building_id": 11, "count": 1 } }, "then": [{ "action": "add_q", "type": "building", "id": 11, "weight": 2 }] },
-    { "when": { "building_count_at_most": { "building_id": 23, "count": 3 } }, "then": [{ "action": "add_q", "type": "building", "id": 23, "weight": 3 }] },
+    { "when": { "all": [{ "building_count_at_most": { "building_id": 23, "count": 3 } }, { "population_at_least": { "amount": 16, "unit_id": 1 } }] }, "then": [{ "action": "add_q", "type": "building", "id": 23, "weight": 8 }] },
     { "when": { "population_at_least": { "amount": 6, "unit_id": 1 } }, "then": [{ "action": "add_q", "type": "technology", "id": 1, "weight": 7 }] },
     { "when": { "population_at_least": { "amount": 4 } }, "then": [{ "action": "add_q", "type": "unit", "id": 11, "weight": 3 }] },
     { "when": { "population_at_least": { "amount": 4 } }, "then": [{ "action": "add_q", "type": "unit", "id": 12, "weight": 3 }] },
@@ -62,6 +62,6 @@
     { "when": { "population_at_least": { "amount": 4 } }, "then": [{ "action": "create", "unit_id": 11 }] },
     { "when": { "population_at_least": { "amount": 4 } }, "then": [{ "action": "create", "unit_id": 12 }] },
     { "when": { "population_at_least": { "amount": 6 } }, "then": [{ "action": "create", "unit_id": 13 }] },
-    { "when": { "always": {} }, "then": [{ "action": "attack" }, { "action": "explore" }] }
+    { "when": { "always": {} }, "then": [{ "action": "explore" }, { "action": "attack_space" }] }
   ]
 }

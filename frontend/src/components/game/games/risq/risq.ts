@@ -39,14 +39,7 @@ import {
 } from './risq_data';
 import { cantorPair, coordinateToIndex, getSpace, invertBuildKey, invertPair, invertZoneKey } from './risq_coordinates';
 import type { StartTurnData, SubmittedOrdersData, UnsubmittedOrdersData } from './risq_updates';
-import {
-  BUILD_CURSOR_SIZE,
-  buildOrderCursorKey,
-  cursorImageForOrderType,
-  DEFAULT_CURSOR_IMAGE,
-  drawBuildOrderCursor,
-} from './risq_cursor';
-import { buildingImage } from './risq_buildings';
+import { cursorImageForOrderType, DEFAULT_CURSOR_IMAGE, resolveBuildCursorUrl } from './risq_cursor';
 import { PLAYER_ICON_SIZE, RisqImageCache } from './risq_image_cache';
 import { RisqRightPanel } from './canvas_components/right_panel/right_panel';
 import type { DrawRisqSpaceConfig } from './risq_space';
@@ -83,6 +76,8 @@ import { createMessage } from '../../../lobby/data_models';
 const DEFAULT_HEXAGON_RADIUS = 60;
 
 const DRAW_CENTER_DOT = false;
+
+const DRAG_SELECT_THRESHOLD = 3;
 
 export declare interface LocalRisqFoundation {
   coordinate_key: number;
@@ -741,6 +736,14 @@ export class DwgRisq extends DwgElement {
     this.mouse_canvas = m;
     if (this.dragging_selection) {
       this.drag_current = m;
+      if (Math.hypot(this.drag_current.x - this.drag_start.x, this.drag_current.y - this.drag_start.y) > DRAG_SELECT_THRESHOLD) {
+        if (this.hovered_space) {
+          this.hovered_space.clicked = false;
+        }
+        if (this.hovered_zone) {
+          this.hovered_zone.clicked = false;
+        }
+      }
       return;
     }
     if (!!this.hovered_space) {
@@ -1381,22 +1384,13 @@ export class DwgRisq extends DwgElement {
 
   private updateCursor(ctrl_held: boolean) {
     if (this.getArmedOrder() === RisqOrderType.OrderType_UnitBuild && this.armed_building) {
-      const building_icon = this.getIcon(buildingImage(this.armed_building.id, false, true));
-      const build_icon = this.getIcon(cursorIconPath(RisqOrderType.OrderType_UnitBuild));
-      const valid = this.buildTargetValid();
-      const url = this.image_cache.getCursorUrl(
-        buildOrderCursorKey(this.armed_building.id, valid),
-        BUILD_CURSOR_SIZE,
-        [building_icon, build_icon],
-        (ctx) => drawBuildOrderCursor(ctx, build_icon, building_icon, valid)
-      );
+      const url = resolveBuildCursorUrl(this, this.armed_building, this.buildTargetValid());
       if (url) {
         this.board.setCursorUrl(url);
         return;
       }
     }
-    const active_order = this.resolveActiveOrderType(ctrl_held);
-    this.board.setCursor(cursorImageForOrderType(active_order));
+    this.board.setCursor(cursorImageForOrderType(this.resolveActiveOrderType(ctrl_held)));
   }
 
   private canGiveOrders(): boolean {
@@ -1745,8 +1739,12 @@ export class DwgRisq extends DwgElement {
     this.right_panel.mouseup(e);
     this.left_panel.mouseup(e);
     if (this.dragging_selection) {
-      this.finalizeSelectionDrag();
-      return;
+      const dragged = Math.hypot(this.drag_current.x - this.drag_start.x, this.drag_current.y - this.drag_start.y) > DRAG_SELECT_THRESHOLD;
+      this.dragging_selection = false;
+      if (dragged) {
+        this.finalizeSelectionDrag();
+        return;
+      }
     }
     const space = this.hovered_space;
     const zone = this.hovered_zone;

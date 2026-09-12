@@ -242,9 +242,26 @@ func parseAction(raw map[string]any) (Action, error) {
 		weight, prioritize := parseQueueParams(raw)
 		return &produceNextInQAction{weight: weight, prioritize: prioritize, max: parseMax(raw)}, nil
 	case "explore":
-		return &exploreAction{max: parseMax(raw)}, nil
+		action := &exploreAction{max: parseMax(raw)}
+		if a, ok := raw["anchor"].(string); ok {
+			switch a {
+			case "self":
+				action.anchor = exploreAnchorSelf
+			case "home":
+				action.anchor = exploreAnchorHome
+			case "center":
+				action.anchor = exploreAnchorCenter
+			default:
+				return nil, fmt.Errorf("unknown explore anchor %q", a)
+			}
+		}
+		return action, nil
 	case "attack":
-		action := &attackAction{target: attackTargetMilitary, max: parseMax(raw)}
+		eligible, err := parseEligible(raw["eligible"])
+		if err != nil {
+			return nil, err
+		}
+		action := &attackAction{target: attackTargetMilitary, max: parseMax(raw), eligible: eligible}
 		if t, ok := raw["target"].(string); ok {
 			switch t {
 			case "military":
@@ -258,6 +275,18 @@ func parseAction(raw map[string]any) (Action, error) {
 			}
 		}
 		return action, nil
+	case "attack_space":
+		eligible, err := parseEligible(raw["eligible"])
+		if err != nil {
+			return nil, err
+		}
+		return &attackSpaceAction{max: parseMax(raw), eligible: eligible}, nil
+	case "attack_zone":
+		eligible, err := parseEligible(raw["eligible"])
+		if err != nil {
+			return nil, err
+		}
+		return &attackZoneAction{max: parseMax(raw), eligible: eligible}, nil
 	case "garrison":
 		eligible, err := parseEligible(raw["eligible"])
 		if err != nil {

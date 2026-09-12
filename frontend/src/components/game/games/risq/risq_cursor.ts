@@ -1,3 +1,5 @@
+import type { DwgRisq } from './risq';
+import { buildingImage } from './risq_buildings';
 import { RisqOrderType } from './risq_data';
 
 export const DEFAULT_CURSOR_IMAGE = 'cursor';
@@ -27,6 +29,21 @@ export const BUILD_PREVIEW_ALPHA_VALID = 0.7;
 
 export function buildOrderCursorKey(building_id: number, valid: boolean): string {
   return `build_${building_id}${valid ? '_valid' : ''}`;
+}
+
+export function resolveBuildCursorUrl(
+  risq: DwgRisq,
+  armed_building: { id: number; display_name: string },
+  valid: boolean
+): string | undefined {
+  const building_icon = risq.getIcon(buildingImage(armed_building.id, false, true));
+  const build_icon = risq.getIcon(`cursors/${cursorImageForOrderType(RisqOrderType.OrderType_UnitBuild)}`);
+  return risq.getImageCache().getCursorUrl(
+    buildOrderCursorKey(armed_building.id, valid),
+    BUILD_CURSOR_SIZE,
+    [building_icon, build_icon],
+    (ctx) => drawBuildOrderCursor(ctx, build_icon, building_icon, valid)
+  );
 }
 
 export function drawBuildOrderCursor(

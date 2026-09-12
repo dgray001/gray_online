@@ -1516,16 +1516,23 @@ export class RisqLeftPanel implements CanvasComponent {
         if (!!this.hovered_zone && this.hovered_zone.clicked) {
           this.hovered_zone.clicked = false;
           if (this.hovered_zone.hovered) {
-            this.openPanel(
-              {
-                data_type: LeftPanelDataType.ZONE,
-                data: {
-                  space,
-                  zone: this.hovered_zone,
+            if (
+              this.data.data_type === LeftPanelDataType.ZONE &&
+              this.hovered_zone.coordinate_key === this.data.data.zone.coordinate_key
+            ) {
+              this.openPanel({ data_type: LeftPanelDataType.SPACE, data: space }, this.visibility ?? 0);
+            } else {
+              this.openPanel(
+                {
+                  data_type: LeftPanelDataType.ZONE,
+                  data: {
+                    space,
+                    zone: this.hovered_zone,
+                  },
                 },
-              },
-              this.visibility ?? 0
-            );
+                this.visibility ?? 0
+              );
+            }
           }
         } else if (!!this.hovered_object && this.hovered_object.hover_data.clicked) {
           this.hovered_object.hover_data.clicked = false;

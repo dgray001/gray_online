@@ -284,6 +284,40 @@ func (v *aiView) playerId() int {
 	return v.player.player.Player_id
 }
 
+func (v *aiView) TurnNumber() int {
+	return int(v.risq.turn_number)
+}
+
+// True once, for every other non-eliminated player, at least one of their buildings has ever been seen
+func (v *aiView) AllEnemiesFound() bool {
+	discovered := make(map[int]bool)
+	for _, row := range v.risq.spaces {
+		for _, space := range row {
+			for _, cache := range space.building_cache[v.playerId()] {
+				if cache.player_id != v.playerId() {
+					discovered[cache.player_id] = true
+				}
+			}
+			if space.getVisibility(v.playerId()) >= VisibilityPoor {
+				for _, b := range space.buildings {
+					if b != nil && !b.deleted && b.player_id != v.playerId() {
+						discovered[b.player_id] = true
+					}
+				}
+			}
+		}
+	}
+	for _, p := range v.risq.players {
+		if p == v.player || p.eliminated {
+			continue
+		}
+		if !discovered[p.player.Player_id] {
+			return false
+		}
+	}
+	return true
+}
+
 func (v *aiView) VisibleEnemyUnits() []ai.UnitView {
 	units := make([]ai.UnitView, 0)
 	for _, player := range v.risq.players {
@@ -371,10 +405,10 @@ func (v *aiView) TechCost(tech_id uint32) ai.Cost {
 	return toCost(techConfigs[tech_id].cost)
 }
 
-func (v *aiView) NearestUnexplored(from ai.ZoneRef) (ai.ZoneRef, bool) {
+func (v *aiView) NearestUnexplored(from ai.ZoneRef) ([]ai.ZoneRef, bool) {
 	from_space, _ := v.resolveZone(from)
 	if from_space == nil {
-		return ai.ZoneRef{}, false
+		return nil, false
 	}
 	var tied []*RisqSpace
 	best_distance := -1
@@ -392,9 +426,13 @@ func (v *aiView) NearestUnexplored(from ai.ZoneRef) (ai.ZoneRef, bool) {
 		}
 	}
 	if len(tied) == 0 {
-		return ai.ZoneRef{}, false
+		return nil, false
 	}
-	return toZoneRef(tied[v.player.rng.Intn(len(tied))].getCenterZone()), true
+	zones := make([]ai.ZoneRef, len(tied))
+	for i, space := range tied {
+		zones[i] = toZoneRef(space.getCenterZone())
+	}
+	return zones, true
 }
 
 func (v *aiView) NearestBuildSite(from ai.ZoneRef, building_id uint32) (ai.ZoneRef, bool) {
@@ -471,6 +509,18 @@ func (v *aiView) AttackUnitOrder(u ai.UnitView, target_unit_id uint64, clear_pre
 func (v *aiView) AttackBuildingOrder(u ai.UnitView, target_building_id uint64, clear_previous bool) ai.Order {
 	v.assignUnit(u.InternalID, &ai.CurrentOrder{Kind: ai.OrderKindAttackBuilding})
 	return ai.Order{Subjects: []uint64{u.InternalID}, OrderType: uint8(OrderType_UnitAttackBuilding), TargetID: int64(target_building_id), ClearPreviousOrders: clear_previous}
+}
+
+func (v *aiView) AttackSpaceOrder(u ai.UnitView, target ai.Coordinate, clear_previous bool) ai.Order {
+	v.assignUnit(u.InternalID, &ai.CurrentOrder{Kind: ai.OrderKindAttackSpace})
+	key := util.Pair(target.X, target.Y)
+	return ai.Order{Subjects: []uint64{u.InternalID}, OrderType: uint8(OrderType_UnitAttackSpace), TargetID: int64(key), ClearPreviousOrders: clear_previous}
+}
+
+func (v *aiView) AttackZoneOrder(u ai.UnitView, target ai.ZoneRef, clear_previous bool) ai.Order {
+	v.assignUnit(u.InternalID, &ai.CurrentOrder{Kind: ai.OrderKindAttackZone})
+	_, zone := v.resolveZone(target)
+	return ai.Order{Subjects: []uint64{u.InternalID}, OrderType: uint8(OrderType_UnitAttackZone), TargetID: int64(zone.coordinate_key), ClearPreviousOrders: clear_previous}
 }
 
 func (v *aiView) GarrisonOrder(u ai.UnitView, target_building_id uint64, clear_previous bool) ai.Order {

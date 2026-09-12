@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.8c: Backend garrison logic
+v0.8d: Update icons
 
 ## Dev Use
 

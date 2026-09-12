@@ -25,8 +25,17 @@ type buildAction struct {
 	max         int
 }
 
+type exploreAnchor uint8
+
+const (
+	exploreAnchorSelf exploreAnchor = iota
+	exploreAnchorHome
+	exploreAnchorCenter
+)
+
 type exploreAction struct {
-	max int
+	max    int
+	anchor exploreAnchor
 }
 
 type attackTarget uint8
@@ -38,8 +47,19 @@ const (
 )
 
 type attackAction struct {
-	target attackTarget
-	max    int
+	target   attackTarget
+	max      int
+	eligible []OrderKind
+}
+
+type attackSpaceAction struct {
+	max      int
+	eligible []OrderKind
+}
+
+type attackZoneAction struct {
+	max      int
+	eligible []OrderKind
 }
 
 type garrisonAction struct {
@@ -160,13 +180,32 @@ func (a *buildAction) ToOrders(view View, _ *Internals) []Order {
 
 func (a *exploreAction) ToOrders(view View, _ *Internals) []Order {
 	orders := make([]Order, 0)
+	var anchor ZoneRef
+	fixed := a.anchor != exploreAnchorSelf
+	if a.anchor == exploreAnchorHome {
+		home, ok := homeLocation(view)
+		if !ok {
+			return orders
+		}
+		anchor = home
+	}
 	for _, u := range view.IdleUnits() {
 		if a.max > 0 && len(orders) >= a.max {
 			break
 		}
-		if target, ok := view.NearestUnexplored(u.Location); ok {
-			orders = append(orders, view.MoveOrder(u, target, true))
+		from := u.Location
+		if fixed {
+			from = anchor
 		}
+		candidates, ok := view.NearestUnexplored(from)
+		if !ok {
+			continue
+		}
+		target, ok := nearestZone(view, u.Location, candidates)
+		if !ok {
+			continue
+		}
+		orders = append(orders, view.MoveOrder(u, target, true))
 	}
 	return orders
 }
@@ -175,7 +214,7 @@ func (a *attackAction) ToOrders(view View, _ *Internals) []Order {
 	orders := make([]Order, 0)
 	enemy_units := view.VisibleEnemyUnits()
 	enemy_buildings := view.VisibleEnemyBuildings()
-	for _, u := range view.IdleUnits() {
+	for _, u := range eligibleUnits(view, a.eligible) {
 		if u.Kind != UnitMilitary {
 			continue
 		}
@@ -186,6 +225,41 @@ func (a *attackAction) ToOrders(view View, _ *Internals) []Order {
 			orders = append(orders, view.AttackUnitOrder(u, target.InternalID, true))
 		} else if target, ok := nearestBuilding(view, u.Location, enemy_buildings); ok {
 			orders = append(orders, view.AttackBuildingOrder(u, target.InternalID, true))
+		}
+	}
+	return orders
+}
+
+func (a *attackSpaceAction) ToOrders(view View, _ *Internals) []Order {
+	orders := make([]Order, 0)
+	buildings := view.VisibleEnemyBuildings()
+	for _, u := range eligibleUnits(view, a.eligible) {
+		if u.Kind != UnitMilitary {
+			continue
+		}
+		if a.max > 0 && len(orders) >= a.max {
+			break
+		}
+		if target, ok := nearestEnemySpace(view, u.Location, buildings); ok {
+			orders = append(orders, view.AttackSpaceOrder(u, target, true))
+		}
+	}
+	return orders
+}
+
+func (a *attackZoneAction) ToOrders(view View, _ *Internals) []Order {
+	orders := make([]Order, 0)
+	units := view.VisibleEnemyUnits()
+	buildings := view.VisibleEnemyBuildings()
+	for _, u := range eligibleUnits(view, a.eligible) {
+		if u.Kind != UnitMilitary {
+			continue
+		}
+		if a.max > 0 && len(orders) >= a.max {
+			break
+		}
+		if target, ok := nearestEnemyZone(view, u.Location, units, buildings); ok {
+			orders = append(orders, view.AttackZoneOrder(u, target, true))
 		}
 	}
 	return orders
