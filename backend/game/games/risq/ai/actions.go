@@ -1,5 +1,7 @@
 package ai
 
+import "sort"
+
 type gatherAction struct {
 	category ResourceCategory
 	eligible []OrderKind
@@ -190,6 +192,11 @@ func (a *exploreAction) ToOrders(view View, _ *Internals) []Order {
 		anchor = home
 	}
 	claimed := make(map[ZoneRef]bool)
+	for _, u := range view.Units() {
+		if u.CurrentOrder != nil && u.CurrentOrder.Kind == OrderKindMove && u.CurrentOrder.TargetZone != nil {
+			claimed[*u.CurrentOrder.TargetZone] = true
+		}
+	}
 	for _, u := range view.IdleUnits() {
 		if a.max > 0 && len(orders) >= a.max {
 			break
@@ -474,6 +481,104 @@ func (a *produceNextInQAction) ToOrders(view View, internals *Internals) []Order
 			}
 		}
 		return orders
+	}
+	return nil
+}
+
+type setBucketAction struct {
+	bucket string
+	size   int
+	task   Action
+}
+
+func (a *setBucketAction) ToOrders(_ View, internals *Internals) []Order {
+	b := internals.bucket(a.bucket)
+	b.Desired = a.size
+	b.Task = a.task
+	return nil
+}
+
+type fillBucketAction struct {
+	bucket   string
+	eligible []OrderKind
+}
+
+func (a *fillBucketAction) ToOrders(view View, internals *Internals) []Order {
+	b := internals.bucket(a.bucket)
+	need := b.Desired - len(b.Members)
+	for _, u := range eligibleUnits(view, a.eligible) {
+		if need <= 0 {
+			break
+		}
+		if internals.isBucketed(u.InternalID) {
+			continue
+		}
+		b.Members[u.InternalID] = true
+		need--
+	}
+	return nil
+}
+
+type runBucketAction struct {
+	bucket string
+}
+
+func (a *runBucketAction) ToOrders(view View, internals *Internals) []Order {
+	b := internals.Buckets[a.bucket]
+	if b == nil || b.Task == nil || len(b.Members) == 0 {
+		return nil
+	}
+	return b.Task.ToOrders(&bucketView{View: view, members: b.Members}, internals)
+}
+
+type drainBucketAction struct {
+	to       string
+	from     []string
+	from_any bool
+	max      int
+}
+
+func (a *drainBucketAction) ToOrders(_ View, internals *Internals) []Order {
+	to := internals.bucket(a.to)
+	need := to.Desired - len(to.Members)
+	if need <= 0 {
+		return nil
+	}
+	source_names := a.from
+	if a.from_any {
+		source_names = make([]string, 0, len(internals.Buckets))
+		for name := range internals.Buckets {
+			if name != a.to {
+				source_names = append(source_names, name)
+			}
+		}
+		sort.Strings(source_names)
+	}
+	taken := 0
+	for _, name := range source_names {
+		from := internals.Buckets[name]
+		if from == nil {
+			continue
+		}
+		overflow := len(from.Members) - from.Desired
+		ids := make([]uint64, 0, len(from.Members))
+		for id := range from.Members {
+			ids = append(ids, id)
+		}
+		sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+		for _, id := range ids {
+			if need <= 0 || overflow <= 0 || (a.max > 0 && taken >= a.max) {
+				break
+			}
+			delete(from.Members, id)
+			to.Members[id] = true
+			need--
+			overflow--
+			taken++
+		}
+		if need <= 0 || (a.max > 0 && taken >= a.max) {
+			break
+		}
 	}
 	return nil
 }

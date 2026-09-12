@@ -47,10 +47,6 @@ func (v *aiView) resolveZone(ref ai.ZoneRef) (*RisqSpace, *RisqZone) {
 	return space, space.getZone(&game_utils.Coordinate2D{X: ref.Zone.X, Y: ref.Zone.Y})
 }
 
-func isEconomicUnit(unit_id uint32) bool {
-	return unit_id < 11
-}
-
 func toAiCategory(c RisqResourceCategory) ai.ResourceCategory {
 	switch c {
 	case RisqResourceCategory_FOOD:

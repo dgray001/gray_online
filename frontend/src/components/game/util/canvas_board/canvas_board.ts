@@ -53,6 +53,7 @@ export declare interface CanvasBoardSize {
 export declare interface BoardTransformData {
   scale: number;
   view: Point2D;
+  offset: Point2D;
 }
 
 /** Returns a default board transform data object */
@@ -60,6 +61,21 @@ export function defaultTransform(): BoardTransformData {
   return {
     scale: 1,
     view: { x: 0, y: 0 },
+    offset: { x: 0, y: 0 },
+  };
+}
+
+export function canvasToScreen(canvas: Point2D, transform: BoardTransformData): Point2D {
+  return {
+    x: canvas.x * transform.scale - transform.view.x + transform.offset.x,
+    y: canvas.y * transform.scale - transform.view.y + transform.offset.y,
+  };
+}
+
+export function screenToCanvas(screen: Point2D, transform: BoardTransformData): Point2D {
+  return {
+    x: (screen.x + transform.view.x - transform.offset.x) / transform.scale,
+    y: (screen.y + transform.view.y - transform.offset.y) / transform.scale,
   };
 }
 
@@ -145,7 +161,10 @@ export class DwgCanvasBoard extends DwgElement {
       this.ctx.resetTransform();
       this.ctx.fillStyle = 'black';
       this.ctx.fillRect(0, 0, this.data.board_size.x, this.data.board_size.y);
-      this.ctx.translate(-this.transform.view.x, -this.transform.view.y);
+      this.ctx.translate(
+        -this.transform.view.x + this.transform.offset.x,
+        -this.transform.view.y + this.transform.offset.y
+      );
       this.ctx.scale(this.transform.scale, this.transform.scale);
       this.data.draw(this.ctx, this.transform);
     }, 20);
@@ -207,6 +226,10 @@ export class DwgCanvasBoard extends DwgElement {
     this.canvas.height = data.board_size.y;
   }
 
+  private mouseCanvasPoint(): Point2D {
+    return screenToCanvas(this.mouse, this.transform);
+  }
+
   private addEventListeners() {
     this.addEventListener('wheel', (e: WheelEvent) => {
       if (this.data.scroll) {
@@ -221,15 +244,8 @@ export class DwgCanvasBoard extends DwgElement {
       if (!!this.zoom_config.min_zoom && this.zoom_config.min_zoom > zoom) {
         zoom = this.zoom_config.min_zoom;
       }
-      this.setScale(this.transform.scale / zoom);
-      this.data.mousemove(
-        {
-          x: (this.mouse.x + this.transform.view.x) / this.transform.scale,
-          y: (this.mouse.y + this.transform.view.y) / this.transform.scale,
-        },
-        this.transform,
-        modifiersFrom(e)
-      );
+      this.zoomTowardPoint(this.transform.scale / zoom, this.mouse);
+      this.data.mousemove(this.mouseCanvasPoint(), this.transform, modifiersFrom(e));
     });
     this.addEventListener('mousemove', (e: MouseEvent) => {
       this.hovered = true;
@@ -247,14 +263,7 @@ export class DwgCanvasBoard extends DwgElement {
         }
         this.dragged = true;
       } else {
-        this.data.mousemove(
-          {
-            x: (this.mouse.x + this.transform.view.x) / this.transform.scale,
-            y: (this.mouse.y + this.transform.view.y) / this.transform.scale,
-          },
-          this.transform,
-          modifiersFrom(e)
-        );
+        this.data.mousemove(this.mouseCanvasPoint(), this.transform, modifiersFrom(e));
       }
     });
     this.addEventListener('mousedown', (e: MouseEvent) => {
@@ -267,14 +276,7 @@ export class DwgCanvasBoard extends DwgElement {
       e.stopImmediatePropagation();
       this.dragging = false;
       if (this.dragged) {
-        this.data.mousemove(
-          {
-            x: (this.mouse.x + this.transform.view.x) / this.transform.scale,
-            y: (this.mouse.y + this.transform.view.y) / this.transform.scale,
-          },
-          this.transform,
-          modifiersFrom(e)
-        );
+        this.data.mousemove(this.mouseCanvasPoint(), this.transform, modifiersFrom(e));
         this.dragged = false;
       } else {
         this.data.mouseup(e);
@@ -404,14 +406,7 @@ export class DwgCanvasBoard extends DwgElement {
         x: this.transform.view.x + d_view.x,
         y: this.transform.view.y + d_view.y,
       });
-      this.data.mousemove(
-        {
-          x: (this.mouse.x + this.transform.view.x) / this.transform.scale,
-          y: (this.mouse.y + this.transform.view.y) / this.transform.scale,
-        },
-        this.transform,
-        { ctrl: false, shift: false, alt: false }
-      );
+      this.data.mousemove(this.mouseCanvasPoint(), this.transform, { ctrl: false, shift: false, alt: false });
     }
   }
 
@@ -428,6 +423,10 @@ export class DwgCanvasBoard extends DwgElement {
       x: this.transform.view.x * scale,
       y: this.transform.view.y * scale,
     });
+  }
+
+  setOffset(offset: Point2D) {
+    this.transform.offset = offset;
   }
 
   setView(view: Point2D) {
@@ -469,17 +468,39 @@ export class DwgCanvasBoard extends DwgElement {
   }
 
   setScale(scale: number): number {
+    scale = this.clampScale(scale);
     if (!scale) {
       return this.transform.scale;
-    }
-    if (scale < 1 / this.data.max_scale) {
-      scale = 1 / this.data.max_scale;
-    } else if (scale > this.data.max_scale) {
-      scale = this.data.max_scale;
     }
     this.transform.view.x *= scale / this.transform.scale;
     this.transform.view.y *= scale / this.transform.scale;
     this.transform.scale = scale;
+    return scale;
+  }
+
+  zoomTowardPoint(scale: number, anchor: Point2D): number {
+    scale = this.clampScale(scale);
+    if (!scale) {
+      return this.transform.scale;
+    }
+    const factor = scale / this.transform.scale;
+    this.transform.scale = scale;
+    this.setView({
+      x: factor * (this.transform.view.x - this.transform.offset.x + anchor.x) - anchor.x + this.transform.offset.x,
+      y: factor * (this.transform.view.y - this.transform.offset.y + anchor.y) - anchor.y + this.transform.offset.y,
+    });
+    return scale;
+  }
+
+  private clampScale(scale: number): number {
+    if (!scale) {
+      return 0;
+    }
+    if (scale < 1 / this.data.max_scale) {
+      return 1 / this.data.max_scale;
+    } else if (scale > this.data.max_scale) {
+      return this.data.max_scale;
+    }
     return scale;
   }
 }

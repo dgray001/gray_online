@@ -22,12 +22,57 @@ type Q struct {
 	Weight float64
 }
 
+type Bucket struct {
+	Desired int
+	Members map[uint64]bool
+	Task    Action
+}
+
 type Internals struct {
-	q []Q
+	q       []Q
+	Buckets map[string]*Bucket
 }
 
 func (i *Internals) Refresh() {
 	i.q = make([]Q, 0)
+}
+
+func (i *Internals) bucket(name string) *Bucket {
+	if i.Buckets == nil {
+		i.Buckets = make(map[string]*Bucket)
+	}
+	b, ok := i.Buckets[name]
+	if !ok {
+		b = &Bucket{Members: make(map[uint64]bool)}
+		i.Buckets[name] = b
+	}
+	return b
+}
+
+func (i *Internals) isBucketed(unit_id uint64) bool {
+	for _, b := range i.Buckets {
+		if b.Members[unit_id] {
+			return true
+		}
+	}
+	return false
+}
+
+func (i *Internals) pruneBuckets(view View) {
+	if len(i.Buckets) == 0 {
+		return
+	}
+	alive := make(map[uint64]bool)
+	for _, u := range view.Units() {
+		alive[u.InternalID] = true
+	}
+	for _, b := range i.Buckets {
+		for id := range b.Members {
+			if !alive[id] {
+				delete(b.Members, id)
+			}
+		}
+	}
 }
 
 type Rule struct {
@@ -62,6 +107,7 @@ func (m *RulesModel) ApplyUpdate(view View, update_kind string) {
 
 func (m *RulesModel) DecideOrders(view View) []Order {
 	m.internals.Refresh()
+	m.internals.pruneBuckets(view)
 	orders := make([]Order, 0)
 	for _, rule := range m.rules {
 		if !rule.when.Evaluate(view) {

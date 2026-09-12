@@ -91,6 +91,38 @@ func cacheRisqResource(r *RisqResource) RisqResourceCache {
 	return cache
 }
 
+// Resource info about a zone the player currently or previously has vision of
+func (z *RisqZone) resourceKnownTo(player_id int) (RisqResourceCache, bool) {
+	switch z.space.getVisibility(player_id) {
+	case VisibilityFog:
+		cache, ok := z.space.resource_cache[player_id][z.coordinate_key]
+		return cache, ok
+	case VisibilityUnexplored:
+		return RisqResourceCache{}, false
+	default:
+		if z.resource == nil {
+			return RisqResourceCache{}, false
+		}
+		return cacheRisqResource(z.resource), true
+	}
+}
+
+// Building info about a zone the player currently or previously has vision of
+func (z *RisqZone) buildingKnownTo(player_id int) (RisqBuildingCache, bool) {
+	switch z.space.getVisibility(player_id) {
+	case VisibilityFog:
+		cache, ok := z.space.building_cache[player_id][z.coordinate_key]
+		return cache, ok
+	case VisibilityUnexplored:
+		return RisqBuildingCache{}, false
+	default:
+		if z.building == nil || z.building.deleted {
+			return RisqBuildingCache{}, false
+		}
+		return cacheRisqBuilding(z.building), true
+	}
+}
+
 func (c RisqResourceCache) toFrontend() gin.H {
 	return gin.H{
 		"internal_id":       c.internal_id,

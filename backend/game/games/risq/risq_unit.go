@@ -23,6 +23,10 @@ type RisqUnit struct {
 	intent          *RisqIntent
 }
 
+func isEconomicUnit(unit_id uint32) bool {
+	return unit_id < 11
+}
+
 func createRisqUnit(internal_id uint64, unit_id uint32, player *RisqPlayer) *RisqUnit {
 	unit := RisqUnit{
 		deleted:         false,
@@ -154,6 +158,20 @@ func (u *RisqUnit) orderReceivable(o *RisqOrder, risq *GameRisq) bool {
 		}
 		foundation := risq.players[u.player_id].planned_foundations[zone.coordinate_key]
 		return foundation == nil || foundation.building_id == building_id
+	case OrderType_UnitGather:
+		_, zone := invertZoneKey(uint(o.target_id), risq)
+		if !isEconomicUnit(u.unit_id) || zone == nil {
+			return false
+		}
+		resource, ok := zone.resourceKnownTo(u.player_id)
+		return ok && resource.resources_left > 0
+	case OrderType_UnitRepair:
+		target := risq.buildings[uint64(o.target_id)]
+		if !isEconomicUnit(u.unit_id) || target == nil || target.isDeleted() {
+			return false
+		}
+		cache, ok := target.zone.buildingKnownTo(u.player_id)
+		return ok && cache.player_id == u.player_id && !cache.under_construction && cache.cs.health < float64(cache.cs.max_health)
 	case OrderType_UnitGarrison:
 		target := risq.buildings[uint64(o.target_id)]
 		return target != nil && risq.canAssist(u.player_id, target) && !target.underConstruction() && uint16(len(target.garrisoned_units)) < target.garrison_capacity && u.garrisoned_in != target
@@ -192,7 +210,7 @@ func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 		}
 	case OrderType_UnitGather:
 		_, zone := invertZoneKey(uint(o.target_id), risq)
-		if zone.resource != nil && zone.resource.resources_left > 0 {
+		if resource, ok := zone.resourceKnownTo(u.player_id); ok && resource.resources_left > 0 {
 			return OrderStatus_InProgress
 		}
 	case OrderType_UnitBuild:
@@ -225,7 +243,8 @@ func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 		if target == nil || target.isDeleted() {
 			return OrderStatus_Cancelled
 		}
-		if !target.underConstruction() && risq.canAssist(u.player_id, target) && target.cs.health < float64(target.cs.max_health) {
+		cache, known := target.zone.buildingKnownTo(u.player_id)
+		if known && !cache.under_construction && cache.player_id == u.player_id && cache.cs.health < float64(cache.cs.max_health) {
 			if _, cost, ok := repairHealAndCost(target, 1); !ok || risq.players[u.player_id].resources.affordFraction(cost) <= 0 {
 				return OrderStatus_Cancelled
 			}

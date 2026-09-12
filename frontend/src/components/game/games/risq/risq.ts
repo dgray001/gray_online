@@ -2,6 +2,7 @@ import { DwgElement } from '../../../dwg_element';
 import type { UpdateMessage } from '../../data_models';
 import { drawArrow, drawCircle, drawRect } from '../../util/canvas_util';
 import type { BoardTransformData, DwgCanvasBoard, ModifierKeys } from '../../util/canvas_board/canvas_board';
+import { screenToCanvas } from '../../util/canvas_board/canvas_board';
 import type { Point2D } from '../../util/objects2d';
 import {
   addPoint2D,
@@ -97,6 +98,7 @@ export class DwgRisq extends DwgElement {
   private canvas_center: Point2D = { x: 0, y: 0 };
   private last_transform: BoardTransformData = {
     view: { x: 0, y: 0 },
+    offset: { x: 0, y: 0 },
     scale: 1,
   };
   private canvas_size: DOMRect = DOMRect.fromRect();
@@ -350,8 +352,8 @@ export class DwgRisq extends DwgElement {
 
   goToCoordinate(coordinate: Point2D) {
     const scale = this.last_transform.scale ?? 1;
-    const view = this.coordinateToCanvas(coordinate, scale);
-    this.board.setView(subtractPoint2D(multiplyPoint2D(scale, view), this.canvas_center));
+    const view = this.coordinateToCanvas(coordinate);
+    this.board.setView(multiplyPoint2D(scale, view));
   }
 
   private board_resize_lock = createLock();
@@ -371,6 +373,7 @@ export class DwgRisq extends DwgElement {
       this.hex_a = 0.5 * 1.732 * this.hex_r;
       this.board.setMaxScale((0.45 * canvas_size.height) / this.hex_r);
       this.board.scaleView(canvas_ratio);
+      this.board.setOffset(this.canvas_center);
       // Update other dependencies
       for (const row of this.game?.spaces ?? []) {
         for (const space of row) {
@@ -389,6 +392,10 @@ export class DwgRisq extends DwgElement {
 
   canvasSize(): DOMRect {
     return this.canvas_size;
+  }
+
+  canvasCenter(): Point2D {
+    return this.canvas_center;
   }
 
   drawDetail(): DrawRisqSpaceDetail {
@@ -499,7 +506,7 @@ export class DwgRisq extends DwgElement {
     // draw spaces
     for (const row of this.game.spaces) {
       for (const space of row) {
-        space.center = this.coordinateToCanvas(space.coordinate, transform.scale);
+        space.center = this.coordinateToCanvas(space.coordinate);
         if (!this.isSpaceOnScreen(space)) {
           continue;
         }
@@ -522,7 +529,7 @@ export class DwgRisq extends DwgElement {
     if (DRAW_CENTER_DOT && DEV) {
       ctx.fillStyle = 'red';
       ctx.strokeStyle = 'transparent';
-      const vis_center = multiplyPoint2D(1 / transform.scale, addPoint2D(this.canvas_center, transform.view));
+      const vis_center = multiplyPoint2D(1 / transform.scale, transform.view);
       drawCircle(ctx, vis_center, 6 / transform.scale);
     }
   }
@@ -638,7 +645,7 @@ export class DwgRisq extends DwgElement {
 
   /** Space/zone-view-aware canvas point for an order endpoint; offset is ignored (space-to-space) outside zone view */
   private orderPoint(space: Point2D, offset: Point2D | undefined, zone_view: boolean): Point2D {
-    const p = this.coordinateToCanvas(space, this.last_transform.scale);
+    const p = this.coordinateToCanvas(space);
     return zone_view && offset ? addPoint2D(p, offset) : p;
   }
 
@@ -672,7 +679,7 @@ export class DwgRisq extends DwgElement {
       case RisqOrderType.OrderType_UnitAttackZone: {
         const decoded = invertZoneKey(order.target_id);
         target_space = decoded.space;
-        const space_canvas = this.coordinateToCanvas(target_space, this.last_transform.scale);
+        const space_canvas = this.coordinateToCanvas(target_space);
         target_offset = zoneApproachPoint(decoded.zone, this.hex_r, subtractPoint2D(from, space_canvas));
         break;
       }
@@ -772,13 +779,13 @@ export class DwgRisq extends DwgElement {
       return;
     }
     if (!!this.hovered_space) {
-      this.hovered_space.center = this.coordinateToCanvas(this.hovered_space.coordinate, transform.scale);
+      this.hovered_space.center = this.coordinateToCanvas(this.hovered_space.coordinate);
     }
     const hovered_other_component = [
       this.right_panel.mousemove(m, transform),
       this.left_panel.mousemove(m, transform),
     ].some((b) => !!b);
-    this.mouse_coordinate = this.canvasToCoordinate(m, transform.scale, this.game.board_size);
+    this.mouse_coordinate = this.canvasToCoordinate(m, this.game.board_size);
     const index = coordinateToIndex(this.game.board_size, roundAxialCoordinate(this.mouse_coordinate));
     const new_hovered_space = getSpace(this.game, index);
     if (hovered_other_component || !new_hovered_space) {
@@ -886,7 +893,6 @@ export class DwgRisq extends DwgElement {
       }
     }
     // only drag on left click
-    // TODO: implement rotate on right click
     if (e.button === 0 && !e.shiftKey) {
       this.dragging_selection = true;
       this.drag_additive = e.ctrlKey;
@@ -1046,10 +1052,10 @@ export class DwgRisq extends DwgElement {
     this.left_panel.openPanel({ data_type: LeftPanelDataType.UNIT, data: unit }, RisqVisibilityLevel.SPY);
     const scale = this.last_transform.scale;
     const view = addPoint2D(
-      this.coordinateToCanvas(unit.space_coordinate, scale),
+      this.coordinateToCanvas(unit.space_coordinate),
       zoneCenterOffset(unit.zone_coordinate, this.hex_r)
     );
-    this.board.setView(subtractPoint2D(multiplyPoint2D(scale, view), this.canvas_center));
+    this.board.setView(multiplyPoint2D(scale, view));
   }
 
   confirmSubmitOrders() {
@@ -1269,20 +1275,24 @@ export class DwgRisq extends DwgElement {
 
   private isSpaceOnScreen(space: RisqSpace): boolean {
     const transform = this.last_transform;
+    const min = screenToCanvas({ x: 0, y: 0 }, transform);
+    const max = screenToCanvas({ x: this.canvas_size.width, y: this.canvas_size.height }, transform);
     return !(
-      space.center.x + this.hex_a < transform.view.x / transform.scale ||
-      space.center.x - this.hex_a > (transform.view.x + this.canvas_size.width) / transform.scale ||
-      space.center.y + this.hex_r < transform.view.y / transform.scale ||
-      space.center.y - this.hex_r > (transform.view.y + this.canvas_size.height) / transform.scale
+      space.center.x + this.hex_a < min.x ||
+      space.center.x - this.hex_a > max.x ||
+      space.center.y + this.hex_r < min.y ||
+      space.center.y - this.hex_r > max.y
     );
   }
 
   private isCircleOnScreen(c: Point2D, radius: number): boolean {
     const transform = this.last_transform;
-    const x0 = transform.view.x / transform.scale;
-    const x1 = (transform.view.x + this.canvas_size.width) / transform.scale;
-    const y0 = transform.view.y / transform.scale;
-    const y1 = (transform.view.y + this.canvas_size.height) / transform.scale;
+    const min = screenToCanvas({ x: 0, y: 0 }, transform);
+    const max = screenToCanvas({ x: this.canvas_size.width, y: this.canvas_size.height }, transform);
+    const x0 = min.x;
+    const x1 = max.x;
+    const y0 = min.y;
+    const y1 = max.y;
     const closest_x = Math.min(Math.max(c.x, x0), x1);
     const closest_y = Math.min(Math.max(c.y, y0), y1);
     const dx = c.x - closest_x;
@@ -1623,8 +1633,6 @@ export class DwgRisq extends DwgElement {
     const units = data.data.units.flatMap((u) =>
       [...u.units].map((internal_id) => ({ unit_id: u.unit_id, internal_id }))
     );
-    // TODO: implement attack vs just move
-    // TODO: implement if holding the shift key
     switch (this.resolveActiveOrderType(ctrl_held)) {
       case RisqOrderType.OrderType_UnitMoveSpace: {
         const subjects = units
@@ -1956,26 +1964,21 @@ export class DwgRisq extends DwgElement {
     );
   }
 
-  canvasToCoordinate(canvas: Point2D, scale: number, board_size: number): Point2D {
-    const cy = (canvas.y - 0.25 * this.hex_r - this.canvas_center.y / scale) / (1.5 * this.hex_r) - board_size - 0.5;
+  canvasToCoordinate(canvas: Point2D, board_size: number): Point2D {
+    const cy = (canvas.y - 0.25 * this.hex_r) / (1.5 * this.hex_r) - board_size - 0.5;
     return {
-      x: (canvas.x - this.canvas_center.x / scale) / (1.732 * this.hex_r) - 0.5 * cy - board_size - 0.5,
+      x: canvas.x / (1.732 * this.hex_r) - 0.5 * cy - board_size - 0.5,
       y: cy,
     };
   }
 
-  private coordinateToCanvas(coordinate: Point2D, scale: number): Point2D {
+  private coordinateToCanvas(coordinate: Point2D): Point2D {
     if (!this.game) {
       return { x: 0, y: 0 };
     }
     return {
-      x:
-        1.732 * (coordinate.x + 0.5 * coordinate.y + this.game.board_size + 0.5) * this.hex_r +
-        this.canvas_center.x / scale,
-      y:
-        1.5 * (coordinate.y + this.game.board_size + 0.5) * this.hex_r +
-        0.25 * this.hex_r +
-        this.canvas_center.y / scale,
+      x: 1.732 * (coordinate.x + 0.5 * coordinate.y + this.game.board_size + 0.5) * this.hex_r,
+      y: 1.5 * (coordinate.y + this.game.board_size + 0.5) * this.hex_r + 0.25 * this.hex_r,
     };
   }
 

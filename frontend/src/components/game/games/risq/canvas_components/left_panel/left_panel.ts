@@ -1,4 +1,5 @@
 import type { BoardTransformData } from '../../../../util/canvas_board/canvas_board';
+import { canvasToScreen } from '../../../../util/canvas_board/canvas_board';
 import type { CanvasComponent } from '../../../../util/canvas_components/canvas_component';
 import { configDraw } from '../../../../util/canvas_components/canvas_component';
 import { drawHexagon, drawLine, drawRect, drawText } from '../../../../util/canvas_util';
@@ -568,7 +569,6 @@ export class RisqLeftPanel implements CanvasComponent {
         this.checkUnitsData(open_data.data);
         break;
       default:
-        // TODO: implement other validations
         break;
     }
     this.refreshActionButtons();
@@ -667,7 +667,6 @@ export class RisqLeftPanel implements CanvasComponent {
             this.drawZone(ctx, this.data.data);
             break;
           case LeftPanelDataType.MULTIPLE_PLAYERS_UNITS:
-            // TODO: implement
             break;
           case LeftPanelDataType.UNITS_BY_TYPE:
           case LeftPanelDataType.ECONOMIC_UNITS:
@@ -675,7 +674,7 @@ export class RisqLeftPanel implements CanvasComponent {
             this.drawUnits(ctx, this.data.data);
             break;
           case LeftPanelDataType.UNITS:
-            // TODO: implement error (since this should be changed in checkUnitsByTypeData)
+            console.error('LeftPanelDataType.UNITS should have been converted by checkUnitsData', this.data);
             break;
           case LeftPanelDataType.UNIT:
             this.drawUnit(ctx, this.data.data);
@@ -793,9 +792,7 @@ export class RisqLeftPanel implements CanvasComponent {
     }
     if (this.risq.getPlayer()?.player.player_id === data.units[0].player_id) {
       this.drawSeparator(ctx, this.yi() + 0.5 * this.size.y);
-      // TODO: draw action buttons => based on this.data_type
       this.drawSeparator(ctx, this.yi() + 0.75 * this.size.y);
-      // TODO: draw orders => only if they share orders
     }
   }
 
@@ -860,9 +857,7 @@ export class RisqLeftPanel implements CanvasComponent {
     this.drawCombatStats(ctx, yi, yi + 0.25 * this.size.y - 12, building.combat_stats, building.current_stamina);
     if (this.risq.getPlayer()?.player.player_id === building.player_id) {
       this.drawSeparator(ctx, this.yi() + 0.5 * this.size.y);
-      // TODO: draw action buttons
       this.drawSeparator(ctx, this.yi() + 0.75 * this.size.y);
-      // TODO: draw orders
     }
   }
 
@@ -1403,10 +1398,7 @@ export class RisqLeftPanel implements CanvasComponent {
       return true;
     }
     const raw_m = m;
-    m = {
-      x: m.x * transform.scale - transform.view.x,
-      y: m.y * transform.scale - transform.view.y,
-    };
+    m = canvasToScreen(m, transform);
     if (m.x > this.xi() && m.y > this.yi() && m.x < this.xf() && m.y < this.yf()) {
       this.hovering = true;
     } else {

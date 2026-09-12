@@ -14,7 +14,6 @@ export declare interface RisqTooltipData {
   stamina_cost?: number;
   // icon path, value; stats of the thing being made/researched (e.g. health, attack)
   stats?: [string, number][];
-  // TODO: optional hotkey row, shown below stats once buttons have assigned hotkeys
 }
 
 const PADDING = 4;

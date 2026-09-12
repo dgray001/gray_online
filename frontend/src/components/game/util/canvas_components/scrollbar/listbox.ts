@@ -230,6 +230,7 @@ export class DwgListbox<
       } else {
         el.mousemove(m, {
           view: { ...this.list_coordinates[i] },
+          offset: this.config.draw_config.fixed_position ? transform.offset : { x: 0, y: 0 },
           scale: this.config.draw_config.fixed_position ? transform.scale : 1,
         });
       }

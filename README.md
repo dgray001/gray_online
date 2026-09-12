@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.8e: Minimap
+v0.8f: Proper zoom relative to cursor
 
 ## Dev Use
 

@@ -242,8 +242,8 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend, player_id int)
 			return fmt.Errorf("No resource in target zone")
 		}
 		for _, subject_id := range order.Subjects {
-			if r.players[order.Player_id].units[subject_id].unit_id != 1 {
-				return fmt.Errorf("Only villagers can gather")
+			if !isEconomicUnit(r.players[order.Player_id].units[subject_id].unit_id) {
+				return fmt.Errorf("Only economic units can gather")
 			}
 		}
 	case OrderType_BuildingCreate:
@@ -300,8 +300,8 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend, player_id int)
 		}
 		for _, subject_id := range order.Subjects {
 			unit := r.players[order.Player_id].units[subject_id]
-			if unit.unit_id != 1 {
-				return fmt.Errorf("Only villagers can build")
+			if !isEconomicUnit(unit.unit_id) {
+				return fmt.Errorf("Only economic units can build")
 			}
 			if !unitConfigs[unit.unit_id].canBuild(building_id) {
 				return fmt.Errorf("Unit id %d cannot build building id %d", unit.unit_id, building_id)
@@ -316,8 +316,8 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend, player_id int)
 			return fmt.Errorf("Cannot repair a building under construction")
 		}
 		for _, subject_id := range order.Subjects {
-			if r.players[order.Player_id].units[subject_id].unit_id != 1 {
-				return fmt.Errorf("Only villagers can repair")
+			if !isEconomicUnit(r.players[order.Player_id].units[subject_id].unit_id) {
+				return fmt.Errorf("Only economic units can repair")
 			}
 		}
 	case OrderType_UnitAttackUnit:

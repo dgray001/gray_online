@@ -101,12 +101,12 @@ export function configDraw(
   }
   if (config.fixed_position) {
     ctx.scale(1 / transform.scale, 1 / transform.scale);
-    ctx.translate(transform.view.x, transform.view.y);
+    ctx.translate(transform.view.x - transform.offset.x, transform.view.y - transform.offset.y);
   }
   ctx.beginPath();
   draw();
   if (config.fixed_position) {
-    ctx.translate(-transform.view.x, -transform.view.y);
+    ctx.translate(transform.offset.x - transform.view.x, transform.offset.y - transform.view.y);
     ctx.scale(transform.scale, transform.scale);
   }
 }

@@ -16,6 +16,29 @@ func eligibleUnits(view View, eligible []OrderKind) []UnitView {
 	return view.EligibleUnits(eligible...)
 }
 
+type bucketView struct {
+	View
+	members map[uint64]bool
+}
+
+func (v *bucketView) filter(units []UnitView) []UnitView {
+	out := make([]UnitView, 0, len(units))
+	for _, u := range units {
+		if v.members[u.InternalID] {
+			out = append(out, u)
+		}
+	}
+	return out
+}
+
+func (v *bucketView) IdleUnits() []UnitView {
+	return v.filter(v.View.IdleUnits())
+}
+
+func (v *bucketView) EligibleUnits(kinds ...OrderKind) []UnitView {
+	return v.filter(v.View.EligibleUnits(kinds...))
+}
+
 func homeLocation(view View) (ZoneRef, bool) {
 	buildings := view.Buildings()
 	for _, b := range buildings {

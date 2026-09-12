@@ -1,4 +1,5 @@
 import type { BoardTransformData } from '../../../../util/canvas_board/canvas_board';
+import { canvasToScreen } from '../../../../util/canvas_board/canvas_board';
 import type { CanvasComponent } from '../../../../util/canvas_components/canvas_component';
 import { configDraw } from '../../../../util/canvas_components/canvas_component';
 import { drawLine, drawRect, drawText } from '../../../../util/canvas_util';
@@ -251,10 +252,7 @@ export class RisqOrderRow implements CanvasComponent {
   }
 
   mousemove(m: Point2D, transform: BoardTransformData): boolean {
-    m = {
-      x: m.x * transform.scale - transform.view.x,
-      y: m.y * transform.scale - transform.view.y,
-    };
+    m = canvasToScreen(m, transform);
     this.hovering = !(m.x < this.xi() || m.y < this.yi() || m.x > this.xf() || m.y > this.yf());
     this.cancel_button.mousemove(m, transform);
     if (this.cancel_button.isDisabled()) {

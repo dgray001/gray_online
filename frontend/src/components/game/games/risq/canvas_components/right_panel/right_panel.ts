@@ -1,5 +1,6 @@
 import type { ColorRGB } from '../../../../../../scripts/color_rgb';
 import type { BoardTransformData } from '../../../../util/canvas_board/canvas_board';
+import { canvasToScreen } from '../../../../util/canvas_board/canvas_board';
 import type { CanvasComponent, Rotation } from '../../../../util/canvas_components/canvas_component';
 import { configDraw } from '../../../../util/canvas_components/canvas_component';
 import { drawLine, drawRect, drawText } from '../../../../util/canvas_util';
@@ -256,7 +257,6 @@ export class RisqRightPanel implements CanvasComponent {
   private drawResource(ctx: CanvasRenderingContext2D, yi: number, rt: RisqResourceType, pr: RisqPlayerResource) {
     ctx.beginPath();
     ctx.drawImage(this.risq.getIcon(resourceTypeImage(rt)), this.xi() + 0.1 * this.w(), yi, 30, 30);
-    // TODO: show spent, gainnig, and workers for each resource
     drawText(ctx, (pr.amount - pr.spending).toFixed(1), {
       p: { x: this.xi() + 0.1 * this.w() + 36, y: yi + 15 },
       w: 0.9 * this.w() - 36,
@@ -302,10 +302,7 @@ export class RisqRightPanel implements CanvasComponent {
     } else {
       this.submit_button.mousemove(m, transform);
     }
-    m = {
-      x: m.x * transform.scale - transform.view.x,
-      y: m.y * transform.scale - transform.view.y,
-    };
+    m = canvasToScreen(m, transform);
     if (m.x > this.xi() && m.y > this.yi() && m.x < this.xf() && m.y < this.yf()) {
       this.hovering = true;
     } else {

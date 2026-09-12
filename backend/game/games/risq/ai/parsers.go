@@ -304,6 +304,65 @@ func parseAction(raw map[string]any) (Action, error) {
 			return nil, err
 		}
 		return &ungarrisonAction{eligible: eligible, max: parseMax(raw)}, nil
+	case "set_bucket":
+		bucket, ok := raw["bucket"].(string)
+		if !ok {
+			return nil, fmt.Errorf("set_bucket action requires a string \"bucket\"")
+		}
+		size, ok := raw["size"].(float64)
+		if !ok {
+			return nil, fmt.Errorf("set_bucket action requires a numeric \"size\"")
+		}
+		task_raw, ok := raw["task"].(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("set_bucket action requires an object \"task\"")
+		}
+		task, err := parseAction(task_raw)
+		if err != nil {
+			return nil, err
+		}
+		return &setBucketAction{bucket: bucket, size: int(size), task: task}, nil
+	case "fill_bucket":
+		bucket, ok := raw["bucket"].(string)
+		if !ok {
+			return nil, fmt.Errorf("fill_bucket action requires a string \"bucket\"")
+		}
+		eligible, err := parseEligible(raw["eligible"])
+		if err != nil {
+			return nil, err
+		}
+		return &fillBucketAction{bucket: bucket, eligible: eligible}, nil
+	case "run_bucket":
+		bucket, ok := raw["bucket"].(string)
+		if !ok {
+			return nil, fmt.Errorf("run_bucket action requires a string \"bucket\"")
+		}
+		return &runBucketAction{bucket: bucket}, nil
+	case "drain_bucket":
+		to, ok := raw["to"].(string)
+		if !ok {
+			return nil, fmt.Errorf("drain_bucket action requires a string \"to\"")
+		}
+		action := &drainBucketAction{to: to, max: parseMax(raw)}
+		switch from := raw["from"].(type) {
+		case string:
+			if from == "any" {
+				action.from_any = true
+			} else {
+				action.from = []string{from}
+			}
+		case []any:
+			for _, f := range from {
+				s, ok := f.(string)
+				if !ok {
+					return nil, fmt.Errorf("drain_bucket action's \"from\" array must contain strings")
+				}
+				action.from = append(action.from, s)
+			}
+		default:
+			return nil, fmt.Errorf("drain_bucket action requires a string or array \"from\"")
+		}
+		return action, nil
 	case "add_q":
 		type_str, ok := raw["type"].(string)
 		if !ok {
