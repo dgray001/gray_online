@@ -13,7 +13,6 @@ import (
 )
 
 // palette a player's color defaults to when the lobby doesn't request one; order = default assignment order
-// first 8 match AoE's classic player order; last 4 are extra slots picked for contrast, no AoE precedent
 var risqPlayerColors = []string{
 	"90, 90, 250",   // blue
 	"250, 60, 60",   // red
@@ -94,10 +93,10 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameR
 		risq.players = append(risq.players, createRisqPlayer(player, risq.population_limit, color, player_rng))
 		player_id++
 	}
-	ai_players, ai_players_ok := g.GameSpecificSettings["ai_players"].([]interface{})
+	ai_players, ai_players_ok := g.GameSpecificSettings["ai_players"].([]any)
 	if ai_players_ok {
 		for _, ai_player := range ai_players {
-			ai, ai_ok := ai_player.(map[string]interface{})
+			ai, ai_ok := ai_player.(map[string]any)
 			if !ai_ok {
 				continue
 			}
@@ -105,13 +104,17 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameR
 			if !nickname_ok {
 				continue
 			}
+			config, config_ok := ai["config"].(string)
+			if !config_ok {
+				config = "default"
+			}
 			player := game.CreateAiPlayer(nickname, g)
 			player.Player_id = player_id
 			color := nextAvailableRisqColor(used_colors)
 			used_colors[color] = true
 			player_rng := rand.New(rand.NewSource(int64(seed) + int64(player_id) + 1))
 			risq_player := createRisqPlayer(player, risq.population_limit, color, player_rng)
-			risq_player.createAiModel(ai)
+			risq_player.createAiModel(config)
 			go runAi(risq_player, &risq, action_channel)
 			risq.players = append(risq.players, risq_player)
 			player_id++
@@ -150,7 +153,7 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameR
 		starting_distance = int(risq.board_size)
 	}
 	starting_units := map[uint32]int{1: 3, 11: 1}
-	if raw, ok := g.GameSpecificSettings["starting_units"].(map[string]interface{}); ok {
+	if raw, ok := g.GameSpecificSettings["starting_units"].(map[string]any); ok {
 		starting_units = make(map[uint32]int, len(raw))
 		for id_str, count_raw := range raw {
 			id, err := strconv.ParseUint(id_str, 10, 32)
@@ -219,7 +222,30 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameR
 			}
 		}
 	}
+	risq.logBoard()
 	return &risq, nil
+}
+
+func (r *GameRisq) logBoard() {
+	for _, row := range r.spaces {
+		for _, space := range row {
+			util.DebugLog.Printf("board: space (%d,%d) terrain=%d", space.coordinate.X, space.coordinate.Y, space.terrain)
+			for _, zrow := range space.zones {
+				for _, zone := range zrow {
+					if zone.resource != nil {
+						util.DebugLog.Printf("board:   zone (%d,%d) key=%d resource_id=%d category=%d amount=%.0f",
+							zone.coordinate.X, zone.coordinate.Y, zone.coordinate_key,
+							zone.resource.resource_id, zone.resource.category(), zone.resource.resources_left)
+					}
+					if zone.building != nil {
+						util.DebugLog.Printf("board:   zone (%d,%d) key=%d building_id=%d player=%d",
+							zone.coordinate.X, zone.coordinate.Y, zone.coordinate_key,
+							zone.building.building_id, zone.building.player_id)
+					}
+				}
+			}
+		}
+	}
 }
 
 func (r *GameRisq) createPlayerStart(p *RisqPlayer, s *RisqSpace, starting_units map[uint32]int) {
@@ -259,7 +285,6 @@ var uniformFoodIds = []uint32{1, 2}
 var uniformWoodIds = []uint32{11, 12, 13, 14, 15, 16}
 var uniformStoneIds = []uint32{21}
 
-// Food/wood weighted equally and common, stone scarcer, since farms don't exist yet
 func (r *GameRisq) placeUniformResources(s *RisqSpace) {
 	for _, zone := range s.getZonesAsRandomArray(false, r.rng) {
 		if r.rng.Float64() >= uniformResourceChance {

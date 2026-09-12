@@ -6,7 +6,7 @@ type Model interface {
 }
 
 type Action interface {
-	ToOrders(view View) []Order
+	ToOrders(view View, internals *Internals) []Order
 }
 
 type Condition interface {
@@ -19,8 +19,8 @@ func (NoopModel) ApplyUpdate(View, string)  {}
 func (NoopModel) DecideOrders(View) []Order { return nil }
 
 // ParseModel parses an ai config blob into a Model, falling back to NoopModel on any error.
-func ParseModel(raw map[string]interface{}) Model {
-	rules_raw, ok := raw["rules"].([]interface{})
+func ParseModel(raw map[string]any) Model {
+	rules_raw, ok := raw["rules"].([]any)
 	if !ok {
 		return NoopModel{}
 	}

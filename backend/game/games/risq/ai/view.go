@@ -34,6 +34,7 @@ type UnitView struct {
 	CurrentStamina int
 	CurrentOrder   *CurrentOrder
 	Builds         []Producible
+	GarrisonedIn   *uint64
 }
 
 // Mirrors the unit-applicable subset of risq.OrderType, so config can filter eligible units by task
@@ -50,6 +51,7 @@ const (
 	OrderKindAttackBuilding
 	OrderKindDefend
 	OrderKindGarrison
+	OrderKindUngarrison
 	OrderKindDelete
 )
 
@@ -64,6 +66,7 @@ var orderKindNames = map[string]OrderKind{
 	"attack_building": OrderKindAttackBuilding,
 	"defend":          OrderKindDefend,
 	"garrison":        OrderKindGarrison,
+	"ungarrison":      OrderKindUngarrison,
 	"delete":          OrderKindDelete,
 }
 
@@ -93,12 +96,14 @@ type Producible struct {
 }
 
 type BuildingView struct {
-	InternalID        uint64
-	BuildingID        uint32
-	Location          ZoneRef
+	InternalID       uint64
+	BuildingID       uint32
+	Location         ZoneRef
 	UnderConstruction bool
-	Idle              bool
-	Producibles       []Producible
+	Idle             bool
+	Producibles      []Producible
+	GarrisonCount    int
+	GarrisonCapacity int
 }
 
 // Mirrors risq.OrderFromFrontend; Player_id is stamped on by risq.
@@ -127,6 +132,8 @@ type View interface {
 	NearestBuildSite(from ZoneRef, building_id uint32) (ZoneRef, bool)
 	NearestUnexplored(from ZoneRef) (ZoneRef, bool)
 	BuildCost(building_id uint32) Cost
+	UnitCost(unit_id uint32) Cost
+	TechCost(tech_id uint32) Cost
 	RandomIntn(n int) int
 
 	MoveOrder(u UnitView, target ZoneRef, clear_previous bool) Order
@@ -135,6 +142,8 @@ type View interface {
 	RepairOrder(u UnitView, target_building_id uint64, clear_previous bool) Order
 	AttackUnitOrder(u UnitView, target_unit_id uint64, clear_previous bool) Order
 	AttackBuildingOrder(u UnitView, target_building_id uint64, clear_previous bool) Order
+	GarrisonOrder(u UnitView, target_building_id uint64, clear_previous bool) Order
+	UngarrisonOrder(u UnitView, clear_previous bool) Order
 	DeleteUnitOrder(u UnitView) Order
 	CreateUnitOrder(b BuildingView, unit_id uint32) Order
 	ResearchOrder(b BuildingView, tech_id uint32) Order

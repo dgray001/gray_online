@@ -3,13 +3,15 @@ package ai
 type gatherAction struct {
 	category ResourceCategory
 	eligible []OrderKind
+	max      int
 }
 
 type balancedGatherAction struct {
 	eligible []OrderKind
+	weight   float64
 }
 
-type produceAction struct {
+type createAction struct {
 	unit_id uint32
 }
 
@@ -20,9 +22,12 @@ type researchAction struct {
 type buildAction struct {
 	building_id uint32
 	eligible    []OrderKind
+	max         int
 }
 
-type exploreAction struct{}
+type exploreAction struct {
+	max int
+}
 
 type attackTarget uint8
 
@@ -34,13 +39,35 @@ const (
 
 type attackAction struct {
 	target attackTarget
+	max    int
 }
 
-func (a *gatherAction) ToOrders(view View) []Order {
+type garrisonAction struct {
+	building_id *uint32
+	eligible    []OrderKind
+	max         int
+}
+
+type ungarrisonAction struct {
+	eligible []OrderKind
+	max      int
+}
+
+type addQAction struct {
+	q_type QKind
+	id     *uint32
+	cost   Cost
+	weight float64
+}
+
+func (a *gatherAction) ToOrders(view View, _ *Internals) []Order {
 	orders := make([]Order, 0)
 	for _, u := range eligibleUnits(view, a.eligible) {
 		if u.Kind != UnitEconomic {
 			continue
+		}
+		if a.max > 0 && len(orders) >= a.max {
+			break
 		}
 		if target, ok := view.NearestResource(u.Location, a.category); ok {
 			orders = append(orders, view.GatherOrder(u, target, true))
@@ -49,7 +76,7 @@ func (a *gatherAction) ToOrders(view View) []Order {
 	return orders
 }
 
-func (a *balancedGatherAction) ToOrders(view View) []Order {
+func (a *balancedGatherAction) ToOrders(view View, internals *Internals) []Order {
 	pool := make([]UnitView, 0)
 	for _, u := range eligibleUnits(view, a.eligible) {
 		if u.Kind == UnitEconomic {
@@ -59,7 +86,7 @@ func (a *balancedGatherAction) ToOrders(view View) []Order {
 	if len(pool) == 0 {
 		return nil
 	}
-	demand := gatherDemandWeights(view)
+	demand := gatherDemandWeights(view, internals, a.weight)
 	counts := currentGatherCounts(view)
 	orders := make([]Order, 0, len(pool))
 	for _, u := range pool {
@@ -79,7 +106,7 @@ func (a *balancedGatherAction) ToOrders(view View) []Order {
 	return orders
 }
 
-func (a *produceAction) ToOrders(view View) []Order {
+func (a *createAction) ToOrders(view View, _ *Internals) []Order {
 	orders := make([]Order, 0)
 	current, limit := view.Population()
 	for _, b := range view.IdleBuildings() {
@@ -98,7 +125,7 @@ func (a *produceAction) ToOrders(view View) []Order {
 	return orders
 }
 
-func (a *researchAction) ToOrders(view View) []Order {
+func (a *researchAction) ToOrders(view View, _ *Internals) []Order {
 	orders := make([]Order, 0)
 	for _, b := range view.IdleBuildings() {
 		for _, p := range b.Producibles {
@@ -112,7 +139,7 @@ func (a *researchAction) ToOrders(view View) []Order {
 	return orders
 }
 
-func (a *buildAction) ToOrders(view View) []Order {
+func (a *buildAction) ToOrders(view View, _ *Internals) []Order {
 	orders := make([]Order, 0)
 	if !canAfford(view, view.BuildCost(a.building_id)) {
 		return orders
@@ -121,6 +148,9 @@ func (a *buildAction) ToOrders(view View) []Order {
 		if u.Kind != UnitEconomic {
 			continue
 		}
+		if a.max > 0 && len(orders) >= a.max {
+			break
+		}
 		if target, ok := view.NearestBuildSite(u.Location, a.building_id); ok {
 			orders = append(orders, view.BuildOrder(u, a.building_id, target, true))
 		}
@@ -128,9 +158,12 @@ func (a *buildAction) ToOrders(view View) []Order {
 	return orders
 }
 
-func (a *exploreAction) ToOrders(view View) []Order {
+func (a *exploreAction) ToOrders(view View, _ *Internals) []Order {
 	orders := make([]Order, 0)
 	for _, u := range view.IdleUnits() {
+		if a.max > 0 && len(orders) >= a.max {
+			break
+		}
 		if target, ok := view.NearestUnexplored(u.Location); ok {
 			orders = append(orders, view.MoveOrder(u, target, true))
 		}
@@ -138,13 +171,16 @@ func (a *exploreAction) ToOrders(view View) []Order {
 	return orders
 }
 
-func (a *attackAction) ToOrders(view View) []Order {
+func (a *attackAction) ToOrders(view View, _ *Internals) []Order {
 	orders := make([]Order, 0)
 	enemy_units := view.VisibleEnemyUnits()
 	enemy_buildings := view.VisibleEnemyBuildings()
 	for _, u := range view.IdleUnits() {
 		if u.Kind != UnitMilitary {
 			continue
+		}
+		if a.max > 0 && len(orders) >= a.max {
+			break
 		}
 		if target, ok := a.pickTarget(view, u.Location, enemy_units); ok {
 			orders = append(orders, view.AttackUnitOrder(u, target.InternalID, true))
@@ -153,4 +189,206 @@ func (a *attackAction) ToOrders(view View) []Order {
 		}
 	}
 	return orders
+}
+
+func (a *garrisonAction) ToOrders(view View, _ *Internals) []Order {
+	orders := make([]Order, 0)
+	buildings := view.Buildings()
+	for _, u := range eligibleUnits(view, a.eligible) {
+		if u.GarrisonedIn != nil {
+			continue
+		}
+		if a.max > 0 && len(orders) >= a.max {
+			break
+		}
+		var best_b *BuildingView
+		best_dist := -1
+		for _, b := range buildings {
+			if b.UnderConstruction || b.GarrisonCount >= b.GarrisonCapacity {
+				continue
+			}
+			if a.building_id != nil && b.BuildingID != *a.building_id {
+				continue
+			}
+			d := locationDistance(u.Location, b.Location)
+			if best_dist == -1 || d < best_dist {
+				best_b, best_dist = &b, d
+			}
+		}
+		if best_b != nil {
+			orders = append(orders, view.GarrisonOrder(u, best_b.InternalID, true))
+			best_b.GarrisonCount++ // Optimistic update for other units in this turn
+		}
+	}
+	return orders
+}
+
+func (a *ungarrisonAction) ToOrders(view View, _ *Internals) []Order {
+	orders := make([]Order, 0)
+	for _, u := range eligibleUnits(view, a.eligible) {
+		if u.GarrisonedIn == nil {
+			continue
+		}
+		if a.max > 0 && len(orders) >= a.max {
+			break
+		}
+		orders = append(orders, view.UngarrisonOrder(u, true))
+	}
+	return orders
+}
+
+func (a *addQAction) ToOrders(view View, internals *Internals) []Order {
+	q := Q{Type: a.q_type, Weight: a.weight}
+	switch a.q_type {
+	case QResource:
+		q.Cost = a.cost
+	case QUnit:
+		q.ID = a.id
+		q.Cost = view.UnitCost(*a.id)
+	case QBuilding:
+		q.ID = a.id
+		q.Cost = view.BuildCost(*a.id)
+	case QTech:
+		q.ID = a.id
+		q.Cost = view.TechCost(*a.id)
+	}
+	internals.q = append(internals.q, q)
+	return nil
+}
+
+type buildNextInQAction struct {
+	eligible   []OrderKind
+	weight     float64
+	prioritize bool
+	max        int
+}
+
+type createNextInQAction struct {
+	weight     float64
+	prioritize bool
+}
+
+type researchNextInQAction struct {
+	weight     float64
+	prioritize bool
+}
+
+type produceNextInQAction struct {
+	weight     float64
+	prioritize bool
+	max        int
+}
+
+func (a *buildNextInQAction) ToOrders(view View, internals *Internals) []Order {
+	q, ok := selectFromQueue(view, internals, a.weight, a.prioritize, QBuilding)
+	if !ok {
+		return nil
+	}
+	orders := make([]Order, 0)
+	for _, u := range eligibleUnits(view, a.eligible) {
+		if u.Kind != UnitEconomic {
+			continue
+		}
+		if a.max > 0 && len(orders) >= a.max {
+			break
+		}
+		if target, ok := view.NearestBuildSite(u.Location, *q.ID); ok {
+			orders = append(orders, view.BuildOrder(u, *q.ID, target, true))
+		}
+	}
+	return orders
+}
+
+func (a *createNextInQAction) ToOrders(view View, internals *Internals) []Order {
+	q, ok := selectFromQueue(view, internals, a.weight, a.prioritize, QUnit)
+	if !ok {
+		return nil
+	}
+	orders := make([]Order, 0)
+	current, limit := view.Population()
+	for _, b := range view.IdleBuildings() {
+		if current >= limit {
+			break
+		}
+		for _, p := range b.Producibles {
+			if p.Kind != ProducibleUnit || p.ID != *q.ID || !canAfford(view, p.Cost) {
+				continue
+			}
+			orders = append(orders, view.CreateUnitOrder(b, p.ID))
+			current++
+			break
+		}
+	}
+	return orders
+}
+
+func (a *researchNextInQAction) ToOrders(view View, internals *Internals) []Order {
+	q, ok := selectFromQueue(view, internals, a.weight, a.prioritize, QTech)
+	if !ok {
+		return nil
+	}
+	orders := make([]Order, 0)
+	for _, b := range view.IdleBuildings() {
+		for _, p := range b.Producibles {
+			if p.Kind != ProducibleTech || p.ID != *q.ID || !canAfford(view, p.Cost) {
+				continue
+			}
+			orders = append(orders, view.ResearchOrder(b, p.ID))
+			break
+		}
+	}
+	return orders
+}
+
+func (a *produceNextInQAction) ToOrders(view View, internals *Internals) []Order {
+	q, ok := selectFromQueue(view, internals, a.weight, a.prioritize, QBuilding, QUnit, QTech)
+	if !ok {
+		return nil
+	}
+	switch q.Type {
+	case QBuilding:
+		orders := make([]Order, 0)
+		for _, u := range view.IdleUnits() {
+			if u.Kind != UnitEconomic {
+				continue
+			}
+			if a.max > 0 && len(orders) >= a.max {
+				break
+			}
+			if target, ok := view.NearestBuildSite(u.Location, *q.ID); ok {
+				orders = append(orders, view.BuildOrder(u, *q.ID, target, true))
+			}
+		}
+		return orders
+	case QUnit:
+		orders := make([]Order, 0)
+		current, limit := view.Population()
+		for _, b := range view.IdleBuildings() {
+			if current >= limit {
+				break
+			}
+			for _, p := range b.Producibles {
+				if p.Kind != ProducibleUnit || p.ID != *q.ID || !canAfford(view, p.Cost) {
+					continue
+				}
+				orders = append(orders, view.CreateUnitOrder(b, p.ID))
+				current++
+				break
+			}
+		}
+		return orders
+	case QTech:
+		orders := make([]Order, 0)
+		for _, b := range view.IdleBuildings() {
+			for _, p := range b.Producibles {
+				if p.Kind != ProducibleTech || p.ID != *q.ID || !canAfford(view, p.Cost) {
+					continue
+				}
+				orders = append(orders, view.ResearchOrder(b, p.ID))
+				break
+			}
+		}
+		return orders
+	}
+	return nil
 }

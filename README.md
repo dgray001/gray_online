@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.8b: Customizable AI players
+v0.8c: Backend garrison logic
 
 ## Dev Use
 

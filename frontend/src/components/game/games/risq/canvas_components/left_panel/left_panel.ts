@@ -44,10 +44,18 @@ import type { RisqActionButton } from './action_button/action_button';
 import { RisqBuildButton } from './action_button/build_button';
 import { RisqCreateButton } from './action_button/create_button';
 import { RisqDeleteButton } from './action_button/delete_button';
+import { RisqDeleteFoundationButton } from './action_button/delete_foundation_button';
+import { RisqGarrisonButton } from './action_button/garrison_button';
 import { RisqResearchButton } from './action_button/research_button';
 import { RisqStopButton } from './action_button/stop_button';
 import { RisqLeftPanelButton } from './left_panel_close';
-import type { LeftPanelConfig, LeftPanelData, PlayerUnitsDrawData, UnitsDrawData } from './left_panel_data';
+import type {
+  LeftPanelConfig,
+  LeftPanelData,
+  PlayerUnitsDrawData,
+  UnitsDrawData,
+  FoundationDrawData,
+} from './left_panel_data';
 import { HoverableObjectType, LeftPanelDataType } from './left_panel_data';
 import { RisqOrderButton } from './action_button/order_button';
 import { RisqSpaceUnitsRowButton } from './space_units_row_button';
@@ -92,6 +100,77 @@ export class RisqLeftPanel implements CanvasComponent {
     this.resolveSize();
   }
 
+  private pushUnitActionRow(unit_internal_ids: number[]) {
+    this.buttons.push(
+      new RisqOrderButton(
+        {
+          row: 0,
+          col: 0,
+          order_type: RisqOrderType.OrderType_UnitMoveSpace,
+          image_path: 'icons/move128',
+          description: 'Move',
+        },
+        this.risq,
+        0
+      ),
+      new RisqOrderButton(
+        {
+          row: 0,
+          col: 1,
+          order_type: RisqOrderType.OrderType_UnitAttackSpace,
+          image_path: 'icons/sword128',
+          description: 'Attack',
+        },
+        this.risq,
+        0
+      ),
+      new RisqGarrisonButton({ row: 0, col: 2, unit_internal_ids }, this.risq, 0),
+      new RisqStopButton(
+        { row: 0, col: 3, image_path: 'icons/hand_stop128', description: 'Stop', unit_internal_ids },
+        this.risq,
+        0
+      ),
+      new RisqDeleteButton(
+        {
+          row: 0,
+          col: RisqLeftPanel.ACTION_GRID_COLS - 1,
+          image_path: 'icons/skull128',
+          description: 'Delete',
+          unit_internal_ids,
+        },
+        this.risq,
+        0
+      )
+    );
+  }
+
+  private pushVillagerActionRow() {
+    this.buttons.push(
+      new RisqOrderButton(
+        {
+          row: 1,
+          col: 0,
+          order_type: RisqOrderType.OrderType_UnitGather,
+          image_path: 'icons/gather128',
+          description: 'Gather',
+        },
+        this.risq,
+        0
+      ),
+      new RisqOrderButton(
+        {
+          row: 1,
+          col: 1,
+          order_type: RisqOrderType.OrderType_UnitRepair,
+          image_path: 'icons/repair128',
+          description: 'Repair',
+        },
+        this.risq,
+        0
+      )
+    );
+  }
+
   private refreshActionButtons() {
     this.buttons = [];
     this.refreshOrderRows();
@@ -99,71 +178,29 @@ export class RisqLeftPanel implements CanvasComponent {
       this.resolveSize();
       return;
     }
+    const own_player_id = this.risq.getPlayer()?.player.player_id;
     switch (this.data?.data_type) {
       case LeftPanelDataType.UNIT:
-        this.buttons.push(
-          new RisqOrderButton(
-            {
-              row: 0,
-              col: 0,
-              order_type: RisqOrderType.OrderType_UnitMoveSpace,
-              image_path: 'icons/move128',
-              description: 'Move',
-            },
-            this.risq,
-            0
-          ),
-          new RisqStopButton(
-            {
-              row: 0,
-              col: 1,
-              image_path: 'icons/hand_stop128',
-              description: 'Stop',
-              unit_internal_id: this.data.data.internal_id,
-            },
-            this.risq,
-            0
-          ),
-          new RisqDeleteButton(
-            {
-              row: 0,
-              col: RisqLeftPanel.ACTION_GRID_COLS - 1,
-              image_path: 'icons/skull128',
-              description: 'Delete',
-              unit_internal_id: this.data.data.internal_id,
-            },
-            this.risq,
-            0
-          )
-        );
-        if (this.data.data.unit_id === 1) {
-          this.buttons.push(
-            new RisqOrderButton(
-              {
-                row: 1,
-                col: 0,
-                order_type: RisqOrderType.OrderType_UnitGather,
-                image_path: 'icons/gather128',
-                description: 'Gather',
-              },
-              this.risq,
-              0
-            ),
-            new RisqOrderButton(
-              {
-                row: 1,
-                col: 1,
-                order_type: RisqOrderType.OrderType_UnitRepair,
-                image_path: 'icons/repair128',
-                description: 'Repair',
-              },
-              this.risq,
-              0
-            )
-          );
+        this.pushUnitActionRow([this.data.data.internal_id]);
+        if (this.isOnlyVillagers()) {
+          this.pushVillagerActionRow();
+          for (const producible of this.data.data.builds) {
+            this.buttons.push(new RisqBuildButton({ producible }, this.risq, 0));
+          }
         }
-        for (const producible of this.data.data.builds) {
-          this.buttons.push(new RisqBuildButton({ producible }, this.risq, 0));
+        if (this.isOnlyMilitary()) {
+          // TODO: add military-only action buttons here once any exist
+        }
+        break;
+      case LeftPanelDataType.UNITS_BY_TYPE:
+      case LeftPanelDataType.ECONOMIC_UNITS:
+      case LeftPanelDataType.MILITARY_UNITS:
+        this.pushUnitActionRow(this.data.data.units.flatMap((u) => [...u.units]));
+        if (this.isOnlyVillagers()) {
+          this.pushVillagerActionRow();
+        }
+        if (this.isOnlyMilitary()) {
+          // TODO: add military-only action buttons here once any exist
         }
         break;
       case LeftPanelDataType.BUILDING:
@@ -197,6 +234,23 @@ export class RisqLeftPanel implements CanvasComponent {
               )
             );
           }
+        }
+        break;
+      case LeftPanelDataType.FOUNDATION:
+        if (this.data.data.player_id === own_player_id && this.risq.givingOrders()) {
+          this.buttons.push(
+            new RisqDeleteFoundationButton(
+              {
+                row: 0,
+                col: RisqLeftPanel.ACTION_GRID_COLS - 1,
+                image_path: 'icons/skull128',
+                description: 'Cancel Foundation',
+                foundation_data: this.data.data,
+              },
+              this.risq,
+              0
+            )
+          );
         }
         break;
       default:
@@ -333,6 +387,7 @@ export class RisqLeftPanel implements CanvasComponent {
     switch (this.data.data_type) {
       case LeftPanelDataType.BUILDING:
       case LeftPanelDataType.UNIT:
+      case LeftPanelDataType.FOUNDATION:
         return this.data.data.player_id === player_id;
       case LeftPanelDataType.UNITS_BY_TYPE:
       case LeftPanelDataType.ECONOMIC_UNITS:
@@ -364,8 +419,7 @@ export class RisqLeftPanel implements CanvasComponent {
     }
   }
 
-  // Returns whether the current selection is at least one villager
-  isVillager(): boolean {
+  hasVillager(): boolean {
     if (!this.isUnit() || !this.data) {
       return false;
     }
@@ -378,6 +432,80 @@ export class RisqLeftPanel implements CanvasComponent {
       case LeftPanelDataType.ECONOMIC_UNITS:
       case LeftPanelDataType.MILITARY_UNITS:
         return this.data.data.units.some((u) => u.unit_id === 1);
+      default:
+        return false;
+    }
+  }
+
+  hasMilitary(): boolean {
+    if (!this.isUnit() || !this.data) {
+      return false;
+    }
+    switch (this.data.data_type) {
+      case LeftPanelDataType.UNIT:
+        return this.data.data.unit_id > 10;
+      case LeftPanelDataType.MULTIPLE_PLAYERS_UNITS:
+        return this.data.data.units_by_player.some(([, units]) => units.some((u) => u.unit_id > 10));
+      case LeftPanelDataType.UNITS_BY_TYPE:
+      case LeftPanelDataType.ECONOMIC_UNITS:
+      case LeftPanelDataType.MILITARY_UNITS:
+        return this.data.data.units.some((u) => u.unit_id > 10);
+      default:
+        return false;
+    }
+  }
+
+  // Returns whether every currently selected unit is a villager
+  isOnlyVillagers(): boolean {
+    if (!this.isUnit() || !this.data) {
+      return false;
+    }
+    switch (this.data.data_type) {
+      case LeftPanelDataType.UNIT:
+        return this.data.data.unit_id === 1;
+      case LeftPanelDataType.UNITS_BY_TYPE:
+      case LeftPanelDataType.ECONOMIC_UNITS:
+      case LeftPanelDataType.MILITARY_UNITS:
+        return this.data.data.units.every((u) => u.unit_id === 1);
+      default:
+        return false;
+    }
+  }
+
+  // Returns whether every currently selected unit is military
+  isOnlyMilitary(): boolean {
+    if (!this.isUnit() || !this.data) {
+      return false;
+    }
+    switch (this.data.data_type) {
+      case LeftPanelDataType.UNIT:
+        return this.data.data.unit_id > 10;
+      case LeftPanelDataType.UNITS_BY_TYPE:
+      case LeftPanelDataType.ECONOMIC_UNITS:
+      case LeftPanelDataType.MILITARY_UNITS:
+        return this.data.data.units.every((u) => u.unit_id > 10);
+      default:
+        return false;
+    }
+  }
+
+  isOnlyGarrisoned(): boolean {
+    if (!this.isUnit() || !this.data) {
+      return false;
+    }
+    const all_garrisoned = (player_id: number, t: UnitByTypeData): boolean =>
+      [...t.units].every((id) => this.resolveUnit(player_id, id)?.garrisoned_in !== undefined);
+    switch (this.data.data_type) {
+      case LeftPanelDataType.UNIT:
+        return this.data.data.garrisoned_in !== undefined;
+      case LeftPanelDataType.MULTIPLE_PLAYERS_UNITS:
+        return this.data.data.units_by_player.every(([player_id, units]) =>
+          units.every((t) => all_garrisoned(player_id, t))
+        );
+      case LeftPanelDataType.UNITS_BY_TYPE:
+      case LeftPanelDataType.ECONOMIC_UNITS:
+      case LeftPanelDataType.MILITARY_UNITS:
+        return this.data.data.units.every((t) => all_garrisoned(t.player_id, t));
       default:
         return false;
     }
@@ -444,6 +572,7 @@ export class RisqLeftPanel implements CanvasComponent {
         break;
     }
     this.refreshActionButtons();
+    this.risq.recalculateHover();
   }
 
   private checkUnitsData(data: UnitsDrawData) {
@@ -550,6 +679,9 @@ export class RisqLeftPanel implements CanvasComponent {
             break;
           case LeftPanelDataType.UNIT:
             this.drawUnit(ctx, this.data.data);
+            break;
+          case LeftPanelDataType.FOUNDATION:
+            this.drawFoundation(ctx, this.data.data);
             break;
           default:
             console.error('Unknown data type for left panel', this.data);
@@ -732,6 +864,25 @@ export class RisqLeftPanel implements CanvasComponent {
       this.drawSeparator(ctx, this.yi() + 0.75 * this.size.y);
       // TODO: draw orders
     }
+  }
+
+  private drawFoundation(ctx: CanvasRenderingContext2D, foundation: FoundationDrawData) {
+    let yi = this.yi() + this.drawName(ctx, foundation.display_name);
+    yi += this.drawImage(
+      ctx,
+      yi,
+      'risq/buildings/construction',
+      this.risq.getGame()?.players[foundation.player_id]?.color
+    );
+    this.drawSeparator(ctx, yi);
+    yi += 12;
+    drawText(ctx, 'A planned foundation awaiting construction units', {
+      p: { x: this.xi() + 0.1 * this.w(), y: yi },
+      w: 0.9 * this.w(),
+      fill_style: 'black',
+      align: 'left',
+      font: `14px serif`,
+    });
   }
 
   private drawSpace(ctx: CanvasRenderingContext2D, space: RisqSpace) {

@@ -120,6 +120,10 @@ export class DwgCanvasBoard extends DwgElement {
     return this.bounding_rect;
   }
 
+  isInitialized(): boolean {
+    return this.initialized_successfully;
+  }
+
   async initialize(data: CanvasBoardInitializationData): Promise<CanvasBoardSize | undefined> {
     data.allow_side_move = data.allow_side_move ?? true;
     this.zoom_config = Object.assign({}, data.zoom_config);
@@ -131,7 +135,7 @@ export class DwgCanvasBoard extends DwgElement {
     if (!success) {
       return undefined;
     }
-    this.setCursor('cursors/cursor');
+    this.setCursor('cursor');
     this.addEventListeners();
     await until(() => !!this.canvas.getBoundingClientRect()?.width);
     this.resize_observer.observe(this);
@@ -412,7 +416,7 @@ export class DwgCanvasBoard extends DwgElement {
   }
 
   setCursor(image_path: string) {
-    this.setCursorUrl(`/images/${image_path}.png`);
+    this.setCursorUrl(`/images/cursors/${image_path}.png`);
   }
 
   setCursorUrl(url: string) {

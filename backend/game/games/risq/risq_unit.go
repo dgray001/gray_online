@@ -15,6 +15,7 @@ type RisqUnit struct {
 	unit_id         uint32
 	display_name    string
 	zone            *RisqZone
+	garrisoned_in   *RisqBuilding
 	turn_stamina    int
 	current_stamina int
 	cs              RisqCombatStats
@@ -153,6 +154,11 @@ func (u *RisqUnit) orderReceivable(o *RisqOrder, risq *GameRisq) bool {
 		}
 		foundation := risq.players[u.player_id].planned_foundations[zone.coordinate_key]
 		return foundation == nil || foundation.building_id == building_id
+	case OrderType_UnitGarrison:
+		target := risq.buildings[uint64(o.target_id)]
+		return target != nil && risq.canAssist(u.player_id, target) && !target.underConstruction() && uint16(len(target.garrisoned_units)) < target.garrison_capacity && u.garrisoned_in != target
+	case OrderType_UnitUngarrison:
+		return u.garrisoned_in != nil
 	case OrderType_UnitAttackUnit:
 		target := risq.units[uint64(o.target_id)]
 		return target != nil && canAttack(u.player_id, target.player_id)
@@ -200,11 +206,9 @@ func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 			}
 			owner := zone.space.computeOwnership()
 			if owner >= 0 && owner != u.player_id {
-				risq.players[u.player_id].cancelPlannedFoundation(zone)
 				return OrderStatus_Cancelled
 			}
-			if u.zone == zone && owner != u.player_id {
-				risq.players[u.player_id].cancelPlannedFoundation(zone)
+			if u.zone == zone && !zone.space.buildableBy(u.player_id) {
 				return OrderStatus_Cancelled
 			}
 			return OrderStatus_InProgress
@@ -229,6 +233,21 @@ func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 		}
 	case OrderType_UnitDelete:
 		if !u.deleted {
+			return OrderStatus_InProgress
+		}
+	case OrderType_UnitGarrison:
+		target := risq.buildings[uint64(o.target_id)]
+		if target == nil || target.isDeleted() || target.underConstruction() || !risq.canAssist(u.player_id, target) {
+			return OrderStatus_Cancelled
+		}
+		if u.garrisoned_in != target {
+			if uint16(len(target.garrisoned_units)) >= target.garrison_capacity {
+				return OrderStatus_Cancelled
+			}
+			return OrderStatus_InProgress
+		}
+	case OrderType_UnitUngarrison:
+		if u.garrisoned_in != nil {
 			return OrderStatus_InProgress
 		}
 	case OrderType_UnitAttackBuilding:
@@ -342,9 +361,39 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 		} else {
 			u.intent.setRepair(target)
 		}
+	case OrderType_UnitGarrison:
+		target := risq.buildings[uint64(order.target_id)]
+		if target == nil {
+			break
+		}
+		if u.garrisoned_in == target {
+			break
+		}
+		if u.zone != target.zone {
+			u.intent.setMove(u.findPath(target.zone))
+		} else {
+			u.intent.setGarrison(target)
+		}
+	case OrderType_UnitUngarrison:
+		if u.garrisoned_in == nil {
+			break
+		}
+		u.intent.setUngarrison(u.garrisoned_in.zone)
 	default:
 		fmt.Fprintln(os.Stderr, "Order type not implemented:", order.order_type)
 	}
+
+	// Automatic ungarrison if we have an intent that requires being on the map
+	if u.garrisoned_in != nil && u.intent.hasIntent() {
+		switch u.intent.detail.(type) {
+		case *GarrisonIntent, *UngarrisonIntent:
+			// These are fine
+		default:
+			// Need to ungarrison first
+			u.intent.setUngarrison(u.garrisoned_in.zone)
+		}
+	}
+
 	u.intent.resolveCost(u.current_stamina)
 	return u.intent.hasIntent()
 }
@@ -376,6 +425,7 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 			amount = detail.resource.resources_left
 		}
 		detail.resource.resources_left -= amount
+		detail.resource.resources_left = util.RoundTo(detail.resource.resources_left, 4)
 		risq.players[u.player_id].resources.addGathered(detail.resource.category(), amount)
 		if detail.resource.resources_left <= 0 && detail.resource.zone != nil {
 			if detail.resource.zone.space != nil {
@@ -392,7 +442,7 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 			if detail.zone.building != nil {
 				building = detail.zone.building
 			} else {
-				if owner := detail.zone.space.computeOwnership(); owner != u.player_id {
+				if !detail.zone.space.buildableBy(u.player_id) {
 					return
 				}
 				_, stamina_required := buildingProductionCost(detail.building_id)
@@ -440,9 +490,30 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 		}
 		building.cs.addHealth(heal * afford)
 		player.resources.spend(cost.scale(afford))
+	case *GarrisonIntent:
+		target := detail.target
+		if target.deleted || target.underConstruction() || !risq.canAssist(u.player_id, target) || uint16(len(target.garrisoned_units)) >= target.garrison_capacity {
+			return
+		}
+		if u.zone != target.zone {
+			return
+		}
+		// Garrisoning
+		target.garrisoned_units[u.internal_id] = u
+		u.garrisoned_in = target
+		u.zone.space.removeUnit(u)
+		u.zone = nil
+	case *UngarrisonIntent:
+		if u.garrisoned_in == nil {
+			return
+		}
+		// Ungarrisoning
+		building := u.garrisoned_in
+		delete(building.garrisoned_units, u.internal_id)
+		u.garrisoned_in = nil
+		building.zone.space.setUnit(&building.zone.coordinate, u)
 	}
 	u.current_stamina -= u.intent.intent_cost
-	fmt.Println("Unit in zone", u.zone.coordinate.ToString(), "of space", u.zone.space.coordinate.ToString())
 }
 
 func (u *RisqUnit) toFrontend(viewer_player_id int) gin.H {
@@ -455,6 +526,9 @@ func (u *RisqUnit) toFrontend(viewer_player_id int) gin.H {
 		"current_stamina": u.current_stamina,
 		"max_stamina":     maxStaminaFor(u.turn_stamina),
 		"combat_stats":    u.cs.toFrontend(),
+	}
+	if u.garrisoned_in != nil {
+		unit["garrisoned_in"] = u.garrisoned_in.internal_id
 	}
 	builds := make([]gin.H, 0)
 	for _, p := range unitConfigs[u.unit_id].builds {

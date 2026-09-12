@@ -15,6 +15,7 @@ type BuildingConfig struct {
 	description        string
 	max_health         int
 	population_support uint16
+	garrison_capacity  uint16
 	produces           []Producible
 	cost               RisqResourceCost
 	build_stamina      int
@@ -58,6 +59,7 @@ type buildingConfigJSON struct {
 	Description       string           `json:"description"`
 	MaxHealth         int              `json:"max_health"`
 	PopulationSupport uint16           `json:"population_support"`
+	GarrisonCapacity  uint16           `json:"garrison_capacity"`
 	Produces          []producibleJSON `json:"produces"`
 	Cost              costJSON         `json:"cost"`
 	BuildStamina      int              `json:"build_stamina"`
@@ -85,6 +87,7 @@ func init() {
 			description:        e.Description,
 			max_health:         e.MaxHealth,
 			population_support: e.PopulationSupport,
+			garrison_capacity:  e.GarrisonCapacity,
 			produces:           produces,
 			cost: RisqResourceCost{
 				food:  e.Cost.Food,

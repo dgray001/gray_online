@@ -16,27 +16,45 @@ func eligibleUnits(view View, eligible []OrderKind) []UnitView {
 	return view.EligibleUnits(eligible...)
 }
 
-// Sums resource costs of everything this player can currently build/produce/research, as a demand signal
-func gatherDemandWeights(view View) map[ResourceCategory]float64 {
-	weights := map[ResourceCategory]float64{ResourceFood: 0, ResourceWood: 0, ResourceStone: 0}
-	add := func(c Cost) {
-		weights[ResourceFood] += c.Food
-		weights[ResourceWood] += c.Wood
-		weights[ResourceStone] += c.Stone
+// First affordable queued entry above threshold weight: queue order, or highest-weight first if prioritize.
+func selectFromQueue(view View, internals *Internals, threshold float64, prioritize bool, kinds ...QKind) (Q, bool) {
+	allowed := make(map[QKind]bool, len(kinds))
+	for _, k := range kinds {
+		allowed[k] = true
 	}
-	for _, b := range view.Buildings() {
-		for _, p := range b.Producibles {
-			add(p.Cost)
+	candidates := make([]Q, 0, len(internals.q))
+	for _, q := range internals.q {
+		if allowed[q.Type] && q.Weight > threshold {
+			candidates = append(candidates, q)
 		}
 	}
-	seen := make(map[uint32]bool)
-	for _, u := range view.Units() {
-		for _, p := range u.Builds {
-			if seen[p.ID] {
-				continue
-			}
-			seen[p.ID] = true
-			add(p.Cost)
+	if prioritize {
+		sort.SliceStable(candidates, func(i, j int) bool { return candidates[i].Weight > candidates[j].Weight })
+	}
+	for _, q := range candidates {
+		if canAfford(view, q.Cost) {
+			return q, true
+		}
+	}
+	return Q{}, false
+}
+
+// Demand signal from weighted q minus current resources
+func gatherDemandWeights(view View, internals *Internals, threshold float64) map[ResourceCategory]float64 {
+	weights := map[ResourceCategory]float64{ResourceFood: 0, ResourceWood: 0, ResourceStone: 0}
+	for _, q := range internals.q {
+		w := q.Weight - threshold
+		if w <= 0 {
+			continue
+		}
+		weights[ResourceFood] += q.Cost.Food * w
+		weights[ResourceWood] += q.Cost.Wood * w
+		weights[ResourceStone] += q.Cost.Stone * w
+	}
+	for _, c := range []ResourceCategory{ResourceFood, ResourceWood, ResourceStone} {
+		weights[c] -= view.Resource(c)
+		if weights[c] < 0 {
+			weights[c] = 0
 		}
 	}
 	if weights[ResourceFood]+weights[ResourceWood]+weights[ResourceStone] <= 0 {

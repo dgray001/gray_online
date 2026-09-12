@@ -1,5 +1,4 @@
 v0.9: Risq beta version
- c: Garrison logic
  d: Finish initial tech tree
  e: Learnable AI pipeline
  f: Bottom bar in UI (summary report, minimap, view buttons, tech tree)
@@ -16,6 +15,10 @@ UI Improvements:
  - Fully customizable hotkeys
  - Drag multiselect
  - Message logic for top of screen (like for pop capped)
+ - Gather points
+ - Can attack when garrisoned (configurable per-unit multiplier where future archers would have more)
+
+UI Issues:
 
 Fiddlesticks Plans:
  - Revamp update dialog box

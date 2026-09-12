@@ -41,6 +41,7 @@ export enum LeftPanelDataType {
   ECONOMIC_UNITS,
   MILITARY_UNITS,
   UNIT,
+  FOUNDATION,
 }
 
 export interface ResourceData {
@@ -96,6 +97,20 @@ export interface UnitData {
   data: RisqUnit;
 }
 
+export interface FoundationDrawData {
+  coordinate_key: number;
+  building_id: number;
+  player_id: number;
+  is_local: boolean;
+  display_name: string;
+  zone: RisqZone;
+}
+
+export interface FoundationData {
+  data_type: LeftPanelDataType.FOUNDATION;
+  data: FoundationDrawData;
+}
+
 export type LeftPanelData =
   | ResourceData
   | BuildingData
@@ -106,4 +121,5 @@ export type LeftPanelData =
   | UnitsByTypeData
   | EconomicUnitsData
   | MilitaryUnitsData
-  | UnitData;
+  | UnitData
+  | FoundationData;

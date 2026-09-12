@@ -81,6 +81,7 @@ const (
 	OrderType_UnitAttackBuilding
 	OrderType_UnitDefend
 	OrderType_UnitGarrison
+	OrderType_UnitUngarrison
 	OrderType_UnitDelete
 	// Orders to control buildings
 	OrderType_BuildingCreate
@@ -340,6 +341,11 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend, player_id int)
 		if space == nil {
 			return fmt.Errorf("Invalid space target inverted from %d", order.Target_id)
 		}
+	case OrderType_UnitGarrison:
+		if r.buildings[uint64(order.Target_id)] == nil {
+			return fmt.Errorf("Invalid building target id %d", order.Target_id)
+		}
+	case OrderType_UnitUngarrison:
 	case OrderType_UnitDelete:
 	case OrderType_BuildingDelete:
 	case OrderType_CancelOrder:

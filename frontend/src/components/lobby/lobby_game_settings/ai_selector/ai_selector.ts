@@ -40,10 +40,21 @@ export class DwgAiSelector extends DwgElement {
           const el = document.createElement('div');
           const nickname = generateName();
           el.innerText = nickname;
-          this.data.ai_players.push({
-            nickname,
-          } satisfies AiPlayerFiddlesticks);
-          this.player_wrapper.appendChild(this.addPlayer(el));
+
+          let p: AiPlayerType;
+          if (this.data.game_type === GameType.RISQ) {
+            p = {
+              nickname,
+              config: 'default',
+            } satisfies AiPlayerRisq;
+          } else {
+            p = {
+              nickname,
+            } satisfies AiPlayerFiddlesticks;
+          }
+
+          this.data.ai_players.push(p);
+          this.player_wrapper.appendChild(this.addPlayer(el, p));
           break;
         default:
           throw new Error('Unknown game type in ai selector');
@@ -69,7 +80,7 @@ export class DwgAiSelector extends DwgElement {
         const player_els = players.map((p) => {
           const el = document.createElement('div');
           el.innerText = p.nickname;
-          return this.addPlayer(el);
+          return this.addPlayer(el, p);
         });
         this.player_wrapper.replaceChildren(...player_els);
         break;
@@ -78,7 +89,7 @@ export class DwgAiSelector extends DwgElement {
     }
   }
 
-  private addPlayer(el: HTMLElement): HTMLDivElement {
+  private addPlayer(el: HTMLElement, p: AiPlayerType): HTMLDivElement {
     const wrapper = document.createElement('div');
     wrapper.classList.add('player');
     wrapper.classList.add('set-h');
@@ -108,6 +119,27 @@ export class DwgAiSelector extends DwgElement {
       console.log(this.getPlayers().length);
     });
     wrapper.appendChild(el);
+
+    if (this.data.game_type === GameType.RISQ) {
+      const risq_player = p as AiPlayerRisq;
+      const select = document.createElement('select');
+      select.classList.add('ai-model-select');
+      const models = ['default', 'only_blunt', 'only_pierce'];
+      for (const m of models) {
+        const option = document.createElement('option');
+        option.value = m;
+        option.innerText = m;
+        if ((risq_player.config || 'default') === m) {
+          option.selected = true;
+        }
+        select.appendChild(option);
+      }
+      select.addEventListener('change', () => {
+        risq_player.config = select.value;
+      });
+      wrapper.appendChild(select);
+    }
+
     wrapper.appendChild(remove_button);
     return wrapper;
   }

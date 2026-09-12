@@ -1,13 +1,22 @@
 package risq
 
 import (
+	"embed"
+	"encoding/json"
 	"iter"
 	"math/rand"
+	"path"
 
 	"github.com/dgray001/gray_online/game"
 	"github.com/dgray001/gray_online/game/games/risq/ai"
 	"github.com/gin-gonic/gin"
 )
+
+//go:embed config/ai/*
+var aiConfigs embed.FS
+
+//go:embed config/ai/default.json
+var defaultAiConfig []byte
 
 type RisqPlayer struct {
 	player               *game.Player
@@ -33,7 +42,20 @@ type RisqPlayer struct {
 	rng *rand.Rand
 }
 
-func (p *RisqPlayer) createAiModel(raw map[string]interface{}) {
+func (p *RisqPlayer) createAiModel(config_path string) {
+	targetPath := path.Join("config/ai", config_path+".json")
+	data, read_err := aiConfigs.ReadFile(targetPath)
+	if read_err != nil {
+		// TODO: log error
+		data = defaultAiConfig
+	}
+	var raw map[string]any
+	unmarshal_err := json.Unmarshal(data, &raw)
+	if unmarshal_err != nil {
+		// TODO: log error
+		p.ai_model = ai.ParseModel(nil)
+		return
+	}
 	p.ai_model = ai.ParseModel(raw)
 }
 
@@ -153,6 +175,15 @@ func (p *RisqPlayer) toFrontend(viewer_player_id int) gin.H {
 	if p.resources != nil && p.player != nil && p.player.Player_id == viewer_player_id {
 		player["resources"] = p.resources.toFrontend()
 		player["turn_report"] = p.report.toFrontend()
+		foundations := make([]gin.H, 0)
+		for coordinate_key, f := range p.planned_foundations {
+			foundations = append(foundations, gin.H{
+				"coordinate_key": coordinate_key,
+				"building_id":    f.building_id,
+				"display_name":   buildingConfigs[f.building_id].display_name,
+			})
+		}
+		player["planned_foundations"] = foundations
 	}
 	is_owner := p.player != nil && p.player.Player_id == viewer_player_id
 	buildings := make([]gin.H, 0)

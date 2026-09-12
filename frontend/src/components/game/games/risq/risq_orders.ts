@@ -19,9 +19,6 @@ export function isPlayerOrder(order: RisqOrderType): boolean {
 /** Returns the arrow color used to draw the order on the map */
 export function orderArrowColor(order_type: RisqOrderType): string {
   switch (order_type) {
-    case RisqOrderType.OrderType_UnitMoveSpace:
-    case RisqOrderType.OrderType_UnitMoveZone:
-      return 'rgba(20, 20, 20, 0.9)';
     case RisqOrderType.OrderType_UnitGather:
       return 'rgba(255, 150, 0, 0.9)';
     case RisqOrderType.OrderType_UnitAttackSpace:
@@ -31,8 +28,14 @@ export function orderArrowColor(order_type: RisqOrderType): string {
       return 'rgba(220, 30, 30, 0.9)';
     case RisqOrderType.OrderType_UnitBuild:
       return 'rgba(40, 110, 230, 0.9)';
-    default:
+    case RisqOrderType.OrderType_UnitRepair:
+      return 'rgba(100, 170, 250, 0.9)';
+    case RisqOrderType.OrderType_UnitGarrison:
       return 'rgba(255, 225, 0, 0.9)';
+    case RisqOrderType.OrderType_UnitMoveSpace:
+    case RisqOrderType.OrderType_UnitMoveZone:
+    default:
+      return 'rgba(20, 20, 20, 0.9)';
   }
 }
 
@@ -89,6 +92,10 @@ export class RisqOrdersModel {
 
   constructor(on_change: () => void) {
     this.on_change = on_change;
+  }
+
+  triggerChange() {
+    this.on_change();
   }
 
   setSubmitted(orders: RisqOrder[]) {

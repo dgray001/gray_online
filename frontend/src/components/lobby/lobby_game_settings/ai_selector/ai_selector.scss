@@ -9,9 +9,29 @@ dwg-ai-selector {
       line-height: var(--size-h);
       padding: 0.2em;
       position: relative;
+      display: flex;
+      flex-flow: row nowrap;
+      align-items: center;
+      gap: 1em;
+      padding-right: 2.5em;
 
       &:hover {
         background-color: rgba(120, 120, 120, 0.1);
+      }
+
+      > .ai-model-select {
+        background-color: rgb(240, 240, 240);
+        border: 1px solid rgb(180, 180, 180);
+        border-radius: 4px;
+        font-size: 0.9em;
+        padding: 1px 4px;
+        cursor: pointer;
+        outline: none;
+        margin-left: auto;
+
+        &:hover {
+          background-color: rgb(255, 255, 255);
+        }
       }
 
       > .remove-button {

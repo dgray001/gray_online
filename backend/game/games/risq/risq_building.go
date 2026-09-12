@@ -16,6 +16,7 @@ type RisqBuilding struct {
 	display_name       string
 	zone               *RisqZone
 	population_support uint16
+	garrison_capacity  uint16
 	turn_stamina       int
 	current_stamina    int
 	cs                 RisqCombatStats
@@ -25,6 +26,8 @@ type RisqBuilding struct {
 	// build stamina still needed to finish a unit-constructed foundation; 0 means not under construction
 	stamina_remaining          int
 	construction_stamina_total int
+	garrisoned_units           map[uint64]*RisqUnit
+	gather_point               *RisqGatherPoint
 }
 
 func (b *RisqBuilding) underConstruction() bool {
@@ -48,12 +51,14 @@ func createRisqBuilding(internal_id uint64, building_id uint32, player_id int) *
 		player_id:          player_id,
 		building_id:        building_id,
 		population_support: 0,
+		garrison_capacity:  0,
 		turn_stamina:       10,
 		current_stamina:    0,
 		cs:                 createRisqCombatStats(),
 		order_queue:        createRisqOrderQueue(),
 		production_queue:   make(map[uint64]*RisqBuildingProductionItem),
 		intent:             createRisqIntent(),
+		garrisoned_units:   make(map[uint64]*RisqUnit),
 	}
 	config, ok := buildingConfigs[building_id]
 	if !ok {
@@ -63,6 +68,7 @@ func createRisqBuilding(internal_id uint64, building_id uint32, player_id int) *
 	building.display_name = config.display_name
 	building.cs.setMaxHealth(config.max_health)
 	building.population_support = config.population_support
+	building.garrison_capacity = config.garrison_capacity
 	building.turn_stamina = config.turn_stamina
 	building.cs.defense_blunt = config.defense_blunt
 	building.cs.defense_piercing = config.defense_piercing
@@ -94,6 +100,13 @@ func (b *RisqBuilding) cleanupDeleted(risq *GameRisq) {
 			delete(player.researched_techs, item.item_id)
 		}
 	}
+	for _, unit := range b.garrisoned_units {
+		unit.garrisoned_in = nil
+		if b.zone != nil && b.zone.space != nil {
+			b.zone.space.setUnit(&b.zone.coordinate, unit)
+		}
+	}
+	b.garrisoned_units = make(map[uint64]*RisqUnit)
 	resolveOrdersOnDeath(risq, &b.order_queue, b.internal_id, OrderType_BuildingDelete)
 	if b.zone != nil && b.zone.space != nil {
 		b.zone.space.removeBuilding(b)
@@ -253,6 +266,9 @@ func (b *RisqBuilding) tickExecute(risq *GameRisq) {
 				risq.players[b.player_id].units[unit.internal_id] = unit
 				risq.units[unit.internal_id] = unit
 				risq.players[b.player_id].report.recordUnitCreated(item.item_id)
+				if b.gather_point != nil {
+					unit.receiveOrder(b.gather_point.resolveOrder(risq, b, unit), risq)
+				}
 			case ProducibleKind_TECH:
 				risq.completeResearch(risq.players[b.player_id], item.item_id)
 			}
@@ -289,7 +305,13 @@ func (b *RisqBuilding) toFrontend(viewer_player_id int) gin.H {
 		"turn_stamina":               b.turn_stamina,
 		"current_stamina":            b.current_stamina,
 		"max_stamina":                maxStaminaFor(b.turn_stamina),
+		"garrison_capacity":          b.garrison_capacity,
 	}
+	garrisoned_units := make([]uint64, 0)
+	for id := range b.garrisoned_units {
+		garrisoned_units = append(garrisoned_units, id)
+	}
+	building["garrisoned_units"] = garrisoned_units
 	building["produces"] = buildingProducesToFrontend(b.building_id)
 	if b.zone != nil {
 		building["zone_coordinate"] = b.zone.coordinate.ToFrontend()

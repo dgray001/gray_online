@@ -37,6 +37,11 @@ export class RisqOrderButton extends RisqActionButton {
         return this.risq.drawDetail() === DrawRisqSpaceDetail.ZONE_DETAILS
           ? RisqOrderType.OrderType_UnitMoveZone
           : RisqOrderType.OrderType_UnitMoveSpace;
+      case RisqOrderType.OrderType_UnitAttackSpace:
+      case RisqOrderType.OrderType_UnitAttackZone:
+        return this.risq.drawDetail() === DrawRisqSpaceDetail.ZONE_DETAILS
+          ? RisqOrderType.OrderType_UnitAttackZone
+          : RisqOrderType.OrderType_UnitAttackSpace;
       default:
         return this.order_type;
     }

@@ -20,7 +20,7 @@ export class RisqRightPanelButton extends DwgSquareButton {
         fixed_position: true,
       },
       move_animation_speed: 200,
-      rotate_animation_speed: 400,
+      rotate_animation_speed: 200,
       image_path: 'icons/triangle_gray36',
       rotation: -0.5 * Math.PI,
     });

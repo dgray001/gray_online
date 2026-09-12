@@ -6,13 +6,38 @@ import (
 	"github.com/dgray001/gray_online/util"
 )
 
+type QKind uint8
+
+const (
+	QUnit QKind = iota
+	QBuilding
+	QTech
+	QResource
+)
+
+type Q struct {
+	Cost   Cost
+	ID     *uint32
+	Type   QKind
+	Weight float64
+}
+
+type Internals struct {
+	q []Q
+}
+
+func (i *Internals) Refresh() {
+	i.q = make([]Q, 0)
+}
+
 type Rule struct {
 	when Condition
 	then []Action
 }
 
 type RulesModel struct {
-	rules []Rule
+	rules     []Rule
+	internals Internals
 }
 
 func (m *RulesModel) ApplyUpdate(view View, update_kind string) {
@@ -36,13 +61,14 @@ func (m *RulesModel) ApplyUpdate(view View, update_kind string) {
 }
 
 func (m *RulesModel) DecideOrders(view View) []Order {
+	m.internals.Refresh()
 	orders := make([]Order, 0)
 	for _, rule := range m.rules {
 		if !rule.when.Evaluate(view) {
 			continue
 		}
 		for _, action := range rule.then {
-			orders = append(orders, action.ToOrders(view)...)
+			orders = append(orders, action.ToOrders(view, &m.internals)...)
 		}
 	}
 	util.DebugLog.Printf("ai %s: submitting orders %+v", view.Nickname(), orders)

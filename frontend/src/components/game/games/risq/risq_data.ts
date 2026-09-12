@@ -28,6 +28,12 @@ export declare interface GameRisqScoreEntry {
   eliminated: boolean;
 }
 
+export declare interface RisqPlannedFoundation {
+  coordinate_key: number;
+  building_id: number;
+  display_name: string;
+}
+
 /** Data describing a risq player */
 export declare interface RisqPlayer {
   player: GamePlayer;
@@ -42,6 +48,7 @@ export declare interface RisqPlayer {
   eliminated: boolean;
   researched_techs: Map<number, boolean>;
   turn_report?: RisqTurnReport;
+  planned_foundations: Map<number, RisqPlannedFoundation>;
 }
 
 /** Data describing frontend resource state */
@@ -153,6 +160,7 @@ export declare interface RisqUnit {
   combat_stats: RisqCombatStats;
   active_orders: RisqOrder[];
   builds: RisqProducible[];
+  garrisoned_in?: number;
   // purely frontend fields
   hover_data: RectHoverData;
 }
@@ -166,6 +174,8 @@ export declare interface RisqBuilding {
   space_coordinate: Point2D;
   zone_coordinate: Point2D;
   population_support: number;
+  garrison_capacity: number;
+  garrisoned_units: number[];
   turn_stamina: number;
   current_stamina: number;
   max_stamina: number;
@@ -285,6 +295,7 @@ export enum RisqOrderType {
   OrderType_UnitAttackBuilding,
   OrderType_UnitDefend,
   OrderType_UnitGarrison,
+  OrderType_UnitUngarrison,
   OrderType_UnitDelete,
   OrderType_BuildingCreate,
   OrderType_BuildingResearch,
@@ -341,6 +352,7 @@ export declare interface RisqPlayerFromServer {
   eliminated: boolean;
   researched_techs: Record<string, boolean>;
   turn_report?: RisqTurnReportFromServer;
+  planned_foundations?: RisqPlannedFoundation[];
 }
 
 /** Data describing a hexagonal space in risq */
@@ -383,6 +395,7 @@ export declare interface RisqUnitFromServer {
   combat_stats: RisqCombatStatsFromServer;
   active_orders: RisqOrderFromServer[];
   builds: RisqProducible[];
+  garrisoned_in?: number;
 }
 
 /** Data describing a risq building */
@@ -394,6 +407,8 @@ export declare interface RisqBuildingFromServer {
   space_coordinate: Point2D;
   zone_coordinate: Point2D;
   population_support: number;
+  garrison_capacity: number;
+  garrisoned_units: number[];
   turn_stamina: number;
   current_stamina: number;
   max_stamina: number;
@@ -557,6 +572,7 @@ export function serverToRisqPlayer(server_player: RisqPlayerFromServer): RisqPla
       Object.entries(server_player.researched_techs).map(([tech_id, researched]) => [Number(tech_id), researched])
     ),
     turn_report: server_player.turn_report ? serverToRisqTurnReport(server_player.turn_report) : undefined,
+    planned_foundations: new Map((server_player.planned_foundations ?? []).map((f) => [f.coordinate_key, f])),
   };
   return player;
 }

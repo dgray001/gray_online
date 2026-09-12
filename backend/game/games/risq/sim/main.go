@@ -30,11 +30,7 @@ func main() {
 
 	players := make([]PlayerConfig, len(scenario.Players))
 	for i, p := range scenario.Players {
-		config, err := resolveAiConfig("../config/ai", p.AiConfig)
-		if err != nil {
-			log.Fatalf("player %d ai config: %v", i, err)
-		}
-		players[i] = PlayerConfig{Nickname: fmt.Sprintf("ai-%d", i), AiConfig: config}
+		players[i] = PlayerConfig{Nickname: fmt.Sprintf("ai-%d", i), ConfigPath: p.AiConfig}
 	}
 
 	iterations := scenario.Iterations

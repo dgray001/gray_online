@@ -1,20 +1,21 @@
 import { RisqOrderType } from './risq_data';
 
-export const DEFAULT_CURSOR_IMAGE = 'cursors/cursor';
+export const DEFAULT_CURSOR_IMAGE = 'cursor';
 
 const ORDER_CURSOR_IMAGES: Partial<Record<RisqOrderType, string>> = {
-  [RisqOrderType.OrderType_UnitMoveSpace]: 'cursors/move',
-  [RisqOrderType.OrderType_UnitMoveZone]: 'cursors/move',
-  [RisqOrderType.OrderType_UnitGather]: 'cursors/gather',
-  [RisqOrderType.OrderType_UnitBuild]: 'cursors/build',
-  [RisqOrderType.OrderType_UnitRepair]: 'cursors/repair',
-  [RisqOrderType.OrderType_UnitAttackSpace]: 'cursors/attack',
-  [RisqOrderType.OrderType_UnitAttackZone]: 'cursors/attack',
-  [RisqOrderType.OrderType_UnitAttackUnit]: 'cursors/attack',
-  [RisqOrderType.OrderType_UnitAttackBuilding]: 'cursors/attack',
+  [RisqOrderType.OrderType_UnitMoveSpace]: 'move',
+  [RisqOrderType.OrderType_UnitMoveZone]: 'move',
+  [RisqOrderType.OrderType_UnitGather]: 'gather',
+  [RisqOrderType.OrderType_UnitBuild]: 'build',
+  [RisqOrderType.OrderType_UnitRepair]: 'repair',
+  [RisqOrderType.OrderType_UnitAttackSpace]: 'attack',
+  [RisqOrderType.OrderType_UnitAttackZone]: 'attack',
+  [RisqOrderType.OrderType_UnitAttackUnit]: 'attack',
+  [RisqOrderType.OrderType_UnitAttackBuilding]: 'attack',
+  [RisqOrderType.OrderType_UnitGarrison]: 'garrison',
 };
 
-/** Returns the cursor image path for the given order type, falling back to the default cursor */
+/** Returns the bare cursor name for the given order type (relative to the cursors/ folder), falling back to the default cursor */
 export function cursorImageForOrderType(order_type: RisqOrderType): string {
   return ORDER_CURSOR_IMAGES[order_type] ?? DEFAULT_CURSOR_IMAGE;
 }

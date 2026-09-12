@@ -77,6 +77,20 @@ export const AXIAL_DIRECTION_VECTORS: Point2D[] = [
   { x: 0, y: 1 },
 ];
 
+/** Returns the min/max corners of the rect defined by two arbitrary points */
+export function normalizeRect(a: Point2D, b: Point2D): { min: Point2D; max: Point2D } {
+  return {
+    min: { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y) },
+    max: { x: Math.max(a.x, b.x), y: Math.max(a.y, b.y) },
+  };
+}
+
+/** Returns whether the point is within the rect defined by two arbitrary corner points */
+export function pointInRect(p: Point2D, a: Point2D, b: Point2D): boolean {
+  const { min, max } = normalizeRect(a, b);
+  return p.x >= min.x && p.x <= max.x && p.y >= min.y && p.y <= max.y;
+}
+
 /** Returns whether the point is in the regular hexagon around the origin */
 export function pointInHexagon(p: Point2D, r: number): boolean {
   // largely stolen from http://www.playchilla.com/how-to-check-if-a-point-is-inside-a-hexagon

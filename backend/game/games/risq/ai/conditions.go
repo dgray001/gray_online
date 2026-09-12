@@ -24,11 +24,20 @@ type conditionBuildingCountAtMost struct {
 	count       int
 }
 
+type conditionBuildingCountEquals struct {
+	building_id *uint32
+	count       int
+}
+
 type conditionPopulationHeadroomAtLeast struct {
 	amount int
 }
 
 type conditionPopulationHeadroomAtMost struct {
+	amount int
+}
+
+type conditionPopulationHeadroomEquals struct {
 	amount int
 }
 
@@ -40,6 +49,38 @@ type conditionPopulationAtLeast struct {
 type conditionPopulationAtMost struct {
 	amount  int
 	unit_id *uint32
+}
+
+type conditionPopulationEquals struct {
+	amount  int
+	unit_id *uint32
+}
+
+func buildingCount(view View, building_id *uint32) int {
+	if building_id == nil {
+		return len(view.Buildings())
+	}
+	n := 0
+	for _, b := range view.Buildings() {
+		if b.BuildingID == *building_id {
+			n++
+		}
+	}
+	return n
+}
+
+func populationCount(view View, unit_id *uint32) int {
+	if unit_id == nil {
+		current, _ := view.Population()
+		return current
+	}
+	n := 0
+	for _, u := range view.Units() {
+		if u.UnitID == *unit_id {
+			n++
+		}
+	}
+	return n
 }
 
 func (c *conditionAll) Evaluate(view View) bool {
@@ -69,29 +110,15 @@ func (c *conditionAlways) Evaluate(View) bool {
 }
 
 func (c *conditionBuildingCountAtLeast) Evaluate(view View) bool {
-	if c.building_id == nil {
-		return len(view.Buildings()) >= c.count
-	}
-	n := 0
-	for _, b := range view.Buildings() {
-		if b.BuildingID == *c.building_id {
-			n++
-		}
-	}
-	return n >= c.count
+	return buildingCount(view, c.building_id) >= c.count
 }
 
 func (c *conditionBuildingCountAtMost) Evaluate(view View) bool {
-	if c.building_id == nil {
-		return len(view.Buildings()) <= c.count
-	}
-	n := 0
-	for _, b := range view.Buildings() {
-		if b.BuildingID == *c.building_id {
-			n++
-		}
-	}
-	return n <= c.count
+	return buildingCount(view, c.building_id) <= c.count
+}
+
+func (c *conditionBuildingCountEquals) Evaluate(view View) bool {
+	return buildingCount(view, c.building_id) == c.count
 }
 
 func (c *conditionPopulationHeadroomAtLeast) Evaluate(view View) bool {
@@ -104,30 +131,19 @@ func (c *conditionPopulationHeadroomAtMost) Evaluate(view View) bool {
 	return limit-current <= c.amount
 }
 
+func (c *conditionPopulationHeadroomEquals) Evaluate(view View) bool {
+	current, limit := view.Population()
+	return limit-current == c.amount
+}
+
 func (c *conditionPopulationAtLeast) Evaluate(view View) bool {
-	if c.unit_id == nil {
-		current, _ := view.Population()
-		return current >= c.amount
-	}
-	count := 0
-	for _, u := range view.Units() {
-		if u.UnitID == *c.unit_id {
-			count++
-		}
-	}
-	return count >= c.amount
+	return populationCount(view, c.unit_id) >= c.amount
 }
 
 func (c *conditionPopulationAtMost) Evaluate(view View) bool {
-	if c.unit_id == nil {
-		current, _ := view.Population()
-		return current <= c.amount
-	}
-	count := 0
-	for _, u := range view.Units() {
-		if u.UnitID == *c.unit_id {
-			count++
-		}
-	}
-	return count <= c.amount
+	return populationCount(view, c.unit_id) <= c.amount
+}
+
+func (c *conditionPopulationEquals) Evaluate(view View) bool {
+	return populationCount(view, c.unit_id) == c.amount
 }

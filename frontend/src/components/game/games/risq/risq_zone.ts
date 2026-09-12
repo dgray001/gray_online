@@ -501,8 +501,8 @@ export function drawRisqZone(
   for (const [i, part] of zone.hovered_data.entries()) {
     const selected =
       i === 0
-        ? (!!zone.resource && game.isBuildingOrResourceSelected(zone.resource.internal_id)) ||
-          (!!zone.building && game.isBuildingOrResourceSelected(zone.building.internal_id))
+        ? (!!zone.resource && game.isResourceSelected(zone.resource.internal_id)) ||
+          (!!zone.building && game.isBuildingSelected(zone.building.internal_id))
         : filled_slots[i - 1].some((t) => [...t.units].some((uid) => game.isUnitSelected(uid)));
     ctx.strokeStyle = 'transparent';
     if (part.hovered) {
@@ -521,8 +521,23 @@ export function drawRisqZone(
       if (!!zone.resource && view_mode !== RisqViewMode.MILITARY && view_mode !== RisqViewMode.OWNERSHIP) {
         ctx.drawImage(game.getIcon(resourceImage(zone.resource)), -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
       } else {
-        const building_image = buildingImage(zone.building?.building_id, zone.building?.under_construction);
-        const building_color = zone.building ? game.getGame()?.players[zone.building.player_id]?.color : undefined;
+        let building_image: string;
+        let building_color: ColorRGB | undefined;
+
+        const local_foundation = game.getLocalFoundation(zone.coordinate_key);
+        const server_foundation = game.getPlayer()?.planned_foundations?.get(zone.coordinate_key);
+
+        if (zone.building) {
+          building_image = buildingImage(zone.building.building_id, zone.building.under_construction);
+          building_color = game.getGame()?.players[zone.building.player_id]?.color;
+        } else if (local_foundation || server_foundation) {
+          building_image = 'risq/buildings/construction';
+          building_color = game.getPlayer()?.color;
+        } else {
+          building_image = buildingImage(undefined);
+          building_color = undefined;
+        }
+
         const building_icon = building_color
           ? game.getPlayerColoredIcon(building_image, building_color)
           : game.getIcon(building_image);
@@ -634,6 +649,36 @@ export function resolveHoveredZones(
     resolve_zone_dependencies(m, new_hovered_zone, -(Math.PI / 3) * (1 + 5 - index));
   }
   return new_hovered_zone;
+}
+
+export type HoveredZoneObject =
+  | { kind: 'building' }
+  | { kind: 'resource' }
+  | { kind: 'unit'; groups: UnitByTypeData[] };
+
+// TODO: hovered_data has no cached "currently hovered index" so this rescans the array on every call;
+// worth precomputing once per mousemove if this ends up being called from multiple places per frame.
+/** Returns whatever slot (building, resource, or unit group) is under the cursor in this zone, if any */
+export function hoveredZoneObject(zone: RisqZone): HoveredZoneObject | undefined {
+  for (const [i, part] of zone.hovered_data.entries()) {
+    if (!part.hovered) {
+      continue;
+    }
+    if (i === 0) {
+      if (zone.building) {
+        return { kind: 'building' };
+      }
+      if (zone.resource) {
+        return { kind: 'resource' };
+      }
+      return undefined;
+    }
+    const groups = zone.unit_slots?.[i - 1];
+    if (groups) {
+      return { kind: 'unit', groups };
+    }
+  }
+  return undefined;
 }
 
 /** Removes all hovered flags from the risq zone */

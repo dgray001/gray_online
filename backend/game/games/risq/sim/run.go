@@ -1,7 +1,6 @@
 package main
 
 import (
-	"maps"
 	"time"
 
 	"github.com/dgray001/gray_online/game"
@@ -9,8 +8,8 @@ import (
 )
 
 type PlayerConfig struct {
-	Nickname string
-	AiConfig map[string]any
+	Nickname   string
+	ConfigPath string
 }
 
 type Result struct {
@@ -22,9 +21,9 @@ type Result struct {
 func RunGame(seed int64, players []PlayerConfig, board_size int, starting_distance int, max_turns uint16, timeout time.Duration) Result {
 	ai_players := make([]any, len(players))
 	for i, p := range players {
-		config := make(map[string]any, len(p.AiConfig)+1)
-		maps.Copy(config, p.AiConfig)
+		config := make(map[string]any, 2)
 		config["nickname"] = p.Nickname
+		config["config"] = p.ConfigPath
 		ai_players[i] = config
 	}
 	settings := map[string]any{"ai_players": ai_players, "seed": float64(seed)}

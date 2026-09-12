@@ -215,3 +215,27 @@ func (i *RisqIntent) setBuild(building_under_construction *RisqBuilding, buildin
 	i.min_cost = 1
 	i.max_cost = unitTickStaminaCost
 }
+
+type GarrisonIntent struct {
+	target *RisqBuilding
+}
+
+func (*GarrisonIntent) isIntentKind() {}
+
+func (i *RisqIntent) setGarrison(target *RisqBuilding) {
+	i.detail = &GarrisonIntent{target: target}
+	i.min_cost = 1
+	i.max_cost = 1
+}
+
+type UngarrisonIntent struct {
+	next_step *RisqZone
+}
+
+func (*UngarrisonIntent) isIntentKind() {}
+
+func (i *RisqIntent) setUngarrison(next_step *RisqZone) {
+	i.detail = &UngarrisonIntent{next_step: next_step}
+	i.min_cost = 1
+	i.max_cost = 1
+}

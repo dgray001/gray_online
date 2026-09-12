@@ -62,7 +62,7 @@ export class RisqBuildButton extends RisqActionButton {
           () => {
             this.armed = false;
           },
-          this.producible.id
+          { id: this.producible.id, display_name: this.producible.display_name }
         );
       }
     }

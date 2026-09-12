@@ -104,16 +104,21 @@ export abstract class DwgRectButton extends DwgButton {
   }
 
   setRotation(rotation: Rotation, callback?: () => void, no_animation = false) {
-    const animation_speed = this.rect_config.move_animation_speed;
+    const animation_speed = this.rect_config.rotate_animation_speed ?? this.rect_config.move_animation_speed;
     if (
-      !!animation_speed &&
-      !!this.rect_config.rotation &&
+      animation_speed !== undefined &&
+      this.rect_config.rotation !== undefined &&
       animation_speed > 0 &&
       rotation.angle !== this.rect_config.rotation &&
       !no_animation
     ) {
       this.rotate_target = rotation;
-      const rotation_needed = (rotation.angle - this.rect_config.rotation) % (2 * Math.PI);
+      let rotation_needed = (rotation.angle - this.rect_config.rotation) % (2 * Math.PI);
+      if (rotation.direction && rotation_needed < 0) {
+        rotation_needed += 2 * Math.PI;
+      } else if (!rotation.direction && rotation_needed > 0) {
+        rotation_needed -= 2 * Math.PI;
+      }
       this.rotate_speed = rotation_needed / animation_speed;
       this.rotate_reached = false;
       this.rotate_callback = callback;
@@ -228,7 +233,11 @@ export abstract class DwgRectButton extends DwgButton {
       this.refreshPositionDependencies();
     }
     // rotate animation
-    if (!!this.rotate_target && !!this.rotate_speed && !!this.rect_config.rotation) {
+    if (
+      this.rotate_target !== undefined &&
+      this.rotate_speed !== undefined &&
+      this.rect_config.rotation !== undefined
+    ) {
       const da = this.rotate_speed * dt;
       if (this.rotate_reached || Math.abs(this.rect_config.rotation - this.rotate_target.angle) <= Math.abs(da)) {
         this.rect_config.rotation = this.rotate_target.angle;

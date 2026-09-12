@@ -86,6 +86,8 @@ func toOrderKind(order_type OrderType) (ai.OrderKind, bool) {
 		return ai.OrderKindDefend, true
 	case OrderType_UnitGarrison:
 		return ai.OrderKindGarrison, true
+	case OrderType_UnitUngarrison:
+		return ai.OrderKindUngarrison, true
 	case OrderType_UnitDelete:
 		return ai.OrderKindDelete, true
 	default:
@@ -129,7 +131,7 @@ func toUnitView(u *RisqUnit, risq *GameRisq) ai.UnitView {
 	if isEconomicUnit(u.unit_id) {
 		kind = ai.UnitEconomic
 	}
-	return ai.UnitView{
+	view := ai.UnitView{
 		InternalID:     u.internal_id,
 		UnitID:         u.unit_id,
 		Kind:           kind,
@@ -138,6 +140,12 @@ func toUnitView(u *RisqUnit, risq *GameRisq) ai.UnitView {
 		CurrentOrder:   currentOrder(u, risq),
 		Builds:         unitBuilds(u.unit_id),
 	}
+	if u.garrisoned_in != nil {
+		id := u.garrisoned_in.internal_id
+		view.GarrisonedIn = &id
+		view.Location = toZoneRef(u.garrisoned_in.zone)
+	}
+	return view
 }
 
 func buildingIdle(b *RisqBuilding) bool {
@@ -170,6 +178,8 @@ func toBuildingView(b *RisqBuilding, risq *GameRisq) ai.BuildingView {
 		UnderConstruction: b.underConstruction(),
 		Idle:              buildingIdle(b),
 		Producibles:       buildingProducibles(b, risq),
+		GarrisonCount:     len(b.garrisoned_units),
+		GarrisonCapacity:  int(b.garrison_capacity),
 	}
 }
 
@@ -352,6 +362,15 @@ func (v *aiView) BuildCost(building_id uint32) ai.Cost {
 	return toCost(cost)
 }
 
+func (v *aiView) UnitCost(unit_id uint32) ai.Cost {
+	cost, _ := unitProductionCost(unit_id)
+	return toCost(cost)
+}
+
+func (v *aiView) TechCost(tech_id uint32) ai.Cost {
+	return toCost(techConfigs[tech_id].cost)
+}
+
 func (v *aiView) NearestUnexplored(from ai.ZoneRef) (ai.ZoneRef, bool) {
 	from_space, _ := v.resolveZone(from)
 	if from_space == nil {
@@ -387,7 +406,7 @@ func (v *aiView) NearestBuildSite(from ai.ZoneRef, building_id uint32) (ai.ZoneR
 	best_distance := -1
 	for _, row := range v.risq.spaces {
 		for _, space := range row {
-			if space.ownership >= 0 && space.ownership != v.playerId() {
+			if !space.buildableBy(v.playerId()) {
 				continue
 			}
 			distance := int(game_utils.AxialDistance(from_space.coordinate, space.coordinate) * 6)
@@ -452,6 +471,16 @@ func (v *aiView) AttackUnitOrder(u ai.UnitView, target_unit_id uint64, clear_pre
 func (v *aiView) AttackBuildingOrder(u ai.UnitView, target_building_id uint64, clear_previous bool) ai.Order {
 	v.assignUnit(u.InternalID, &ai.CurrentOrder{Kind: ai.OrderKindAttackBuilding})
 	return ai.Order{Subjects: []uint64{u.InternalID}, OrderType: uint8(OrderType_UnitAttackBuilding), TargetID: int64(target_building_id), ClearPreviousOrders: clear_previous}
+}
+
+func (v *aiView) GarrisonOrder(u ai.UnitView, target_building_id uint64, clear_previous bool) ai.Order {
+	v.assignUnit(u.InternalID, &ai.CurrentOrder{Kind: ai.OrderKindGarrison})
+	return ai.Order{Subjects: []uint64{u.InternalID}, OrderType: uint8(OrderType_UnitGarrison), TargetID: int64(target_building_id), ClearPreviousOrders: clear_previous}
+}
+
+func (v *aiView) UngarrisonOrder(u ai.UnitView, clear_previous bool) ai.Order {
+	v.assignUnit(u.InternalID, &ai.CurrentOrder{Kind: ai.OrderKindUngarrison})
+	return ai.Order{Subjects: []uint64{u.InternalID}, OrderType: uint8(OrderType_UnitUngarrison), ClearPreviousOrders: clear_previous}
 }
 
 func (v *aiView) DeleteUnitOrder(u ai.UnitView) ai.Order {

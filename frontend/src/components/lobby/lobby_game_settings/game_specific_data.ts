@@ -74,6 +74,7 @@ export declare interface GameSettingsRisq {
 /** Data describing the settings for an ai player in risq */
 export declare interface AiPlayerRisq {
   nickname: string;
+  config?: string;
 }
 
 declare module '../../lobby/data_models' {

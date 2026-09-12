@@ -18,7 +18,18 @@ type PathNode struct {
 
 func (u *RisqUnit) findPath(target *RisqZone) *MoveIntent {
 	start := u.zone
+	is_garrisoned := false
+	if start == nil && u.garrisoned_in != nil {
+		start = u.garrisoned_in.zone
+		is_garrisoned = true
+	}
+	if start == nil || target == nil {
+		return nil
+	}
 	if start == target {
+		if is_garrisoned {
+			return &MoveIntent{path: []*RisqZone{start}, next_step: start, intra_step: true}
+		}
 		return nil
 	}
 	open_set := []*RisqZone{start}

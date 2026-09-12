@@ -199,14 +199,20 @@ export class DwgLobbyGameSettings extends DwgElement {
     } as GameSettings;
     switch (settings.game_type) {
       case GameType.FIDDLESTICKS:
-        const ai_players = this.game_specific_settings_els.get('ai-players') as DwgAiSelector;
+        const fiddlesticks_ai_players = this.game_specific_settings_els.get('ai-players') as DwgAiSelector;
         settings.game_specific_settings = {
           min_round: this.getNumberSetting('min-round')?.valueAsNumber || 0,
           max_round: this.getNumberSetting('max-round')?.valueAsNumber || 0,
           round_points: this.getNumberSetting('round-points')?.valueAsNumber || 0,
           trick_points: this.getNumberSetting('trick-points')?.valueAsNumber || 0,
-          ai_players: ai_players.getPlayers(),
+          ai_players: fiddlesticks_ai_players.getPlayers(),
         } satisfies GameSettingsFiddlesticks;
+        break;
+      case GameType.RISQ:
+        const risq_ai_players = this.game_specific_settings_els.get('ai-players') as DwgAiSelector;
+        settings.game_specific_settings = {
+          ai_players: risq_ai_players.getPlayers(),
+        } satisfies GameSettingsRisq;
         break;
       default:
         break;

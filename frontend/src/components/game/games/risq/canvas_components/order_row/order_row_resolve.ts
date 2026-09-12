@@ -42,7 +42,13 @@ export function shortLabel(order_type: RisqOrderType): string {
       return 'Research';
     case RisqOrderType.OrderType_UnitAttackUnit:
     case RisqOrderType.OrderType_UnitAttackBuilding:
+    case RisqOrderType.OrderType_UnitAttackZone:
+    case RisqOrderType.OrderType_UnitAttackSpace:
       return 'Attack';
+    case RisqOrderType.OrderType_UnitGarrison:
+      return 'Garrison';
+    case RisqOrderType.OrderType_UnitUngarrison:
+      return 'Ungarrison';
     case RisqOrderType.OrderType_UnitDelete:
       return 'Delete';
     default:
@@ -207,6 +213,32 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
         target: target_building ? distance_text(target_building.space_coordinate, target_building.zone_coordinate) : '',
         cost: [],
       };
+      break;
+    }
+    case RisqOrderType.OrderType_UnitAttackZone: {
+      const { space, zone } = invertZoneKey(order.target_id);
+      base = { icon: 'icons/sword32', name: 'Attack', target: distance_text(space, zone), cost: [] };
+      break;
+    }
+    case RisqOrderType.OrderType_UnitAttackSpace: {
+      const target_space = invertPair(order.target_id);
+      base = { icon: 'icons/sword32', name: 'Attack', target: distance_text(target_space), cost: [] };
+      break;
+    }
+    case RisqOrderType.OrderType_UnitGarrison: {
+      const building = game?.players
+        .flatMap((p) => [...p.buildings.values()])
+        .find((b) => b.internal_id === order.target_id);
+      base = {
+        icon: 'icons/garrison32',
+        name: `Garrison in ${building?.display_name ?? 'Building'}`,
+        target: building ? distance_text(building.space_coordinate, building.zone_coordinate) : '',
+        cost: [],
+      };
+      break;
+    }
+    case RisqOrderType.OrderType_UnitUngarrison: {
+      base = { icon: 'icons/ungarrison32', name: 'Ungarrison', target: '', cost: [] };
       break;
     }
     case RisqOrderType.OrderType_CancelOrder: {
