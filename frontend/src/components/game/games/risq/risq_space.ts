@@ -48,7 +48,7 @@ export function drawHexImage(ctx: CanvasRenderingContext2D, img: CanvasImageSour
   ctx.drawImage(img, c.x - 0.5 * w, c.y - 0.5 * h, w, h);
 }
 
-function fillHexOverlay(ctx: CanvasRenderingContext2D, c: Point2D, r: number, fill_style: string) {
+export function fillHexOverlay(ctx: CanvasRenderingContext2D, c: Point2D, r: number, fill_style: string) {
   const prev_stroke = ctx.strokeStyle;
   ctx.strokeStyle = 'transparent';
   ctx.fillStyle = fill_style;
@@ -93,7 +93,7 @@ export function drawRisqSpace(
     drawText(ctx, space.coordinate.x + ', ' + space.coordinate.y, {
       p: space.center,
       w: 1.5 * config.hex_r,
-      fill_style: 'rgba(0, 0, 0, 0.8)',
+      fill_style: 'rgba(255, 255, 255, 0.8)',
       align: 'center',
       baseline: 'middle',
       font: `${0.6 * config.inset_row}px serif`,
@@ -256,7 +256,7 @@ export function getSpaceFill(
 ): ColorRGB {
   const color = new ColorRGB(0, 0, 0, 0);
   if (!!space) {
-    color.setColor(90, 90, 90, 0.8);
+    color.setColor(50, 50, 50, 0.8);
     if (space.visibility > 0) {
       if (view_mode === RisqViewMode.OWNERSHIP) {
         if (owner_color) {

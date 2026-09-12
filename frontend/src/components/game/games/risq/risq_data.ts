@@ -487,7 +487,7 @@ export function serverToGameRisq(server_game: GameRisqFromServer): GameRisq | un
   return {
     game_base: server_game.game_base,
     players,
-    scores: scores.sort((a, b) => a.score - b.score),
+    scores: scores.sort((a, b) => b.score - a.score),
     board_size: server_game.board_size,
     population_limit: server_game.population_limit,
     turn_number: server_game.turn_number,

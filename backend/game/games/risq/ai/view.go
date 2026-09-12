@@ -71,9 +71,19 @@ var orderKindNames = map[string]OrderKind{
 }
 
 type CurrentOrder struct {
-	Kind OrderKind
-	// set only when Kind == OrderKindGather and the target resource is still known
-	GatherCategory *ResourceCategory
+	Kind           OrderKind
+	TargetZone     *ZoneRef
+	TargetSpace    *Coordinate
+	TargetResource *ResourceView
+	TargetUnit     *UnitView
+	TargetBuilding *BuildingView
+}
+
+type ResourceView struct {
+	InternalID uint64
+	Category   ResourceCategory
+	Location   ZoneRef
+	AmountLeft float64
 }
 
 type ProducibleKind uint8
@@ -128,7 +138,7 @@ type View interface {
 	VisibleEnemyUnits() []UnitView
 	VisibleEnemyBuildings() []BuildingView
 
-	NearestResource(from ZoneRef, category ResourceCategory) (ZoneRef, bool)
+	NearestResource(from ZoneRef, category ResourceCategory) (ResourceView, bool)
 	NearestBuildSite(from ZoneRef, building_id uint32) (ZoneRef, bool)
 	NearestUnexplored(from ZoneRef) ([]ZoneRef, bool)
 	TurnNumber() int
@@ -139,14 +149,14 @@ type View interface {
 	RandomIntn(n int) int
 
 	MoveOrder(u UnitView, target ZoneRef, clear_previous bool) Order
-	GatherOrder(u UnitView, target ZoneRef, clear_previous bool) Order
+	GatherOrder(u UnitView, target ResourceView, clear_previous bool) Order
 	BuildOrder(u UnitView, building_id uint32, target ZoneRef, clear_previous bool) Order
-	RepairOrder(u UnitView, target_building_id uint64, clear_previous bool) Order
-	AttackUnitOrder(u UnitView, target_unit_id uint64, clear_previous bool) Order
-	AttackBuildingOrder(u UnitView, target_building_id uint64, clear_previous bool) Order
+	RepairOrder(u UnitView, target BuildingView, clear_previous bool) Order
+	AttackUnitOrder(u UnitView, target UnitView, clear_previous bool) Order
+	AttackBuildingOrder(u UnitView, target BuildingView, clear_previous bool) Order
 	AttackSpaceOrder(u UnitView, target Coordinate, clear_previous bool) Order
 	AttackZoneOrder(u UnitView, target ZoneRef, clear_previous bool) Order
-	GarrisonOrder(u UnitView, target_building_id uint64, clear_previous bool) Order
+	GarrisonOrder(u UnitView, target BuildingView, clear_previous bool) Order
 	UngarrisonOrder(u UnitView, clear_previous bool) Order
 	DeleteUnitOrder(u UnitView) Order
 	CreateUnitOrder(b BuildingView, unit_id uint32) Order

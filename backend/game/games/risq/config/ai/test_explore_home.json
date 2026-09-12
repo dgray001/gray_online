@@ -1,0 +1,5 @@
+{
+  "rules": [
+    { "when": { "always": {} }, "then": [{ "action": "explore", "anchor": "home", "max": 1 }] }
+  ]
+}

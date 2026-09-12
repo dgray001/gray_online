@@ -1,7 +1,7 @@
 v0.9: Risq beta version
  d: Finish initial tech tree
  e: Learnable AI pipeline
- f: Bottom bar in UI (summary report, minimap, view buttons, tech tree)
+ f: Bottom bar in UI (summary report, view buttons, tech tree)
  g: Partial move pathfinding
  h: Different terrains
  i: Map scripting setup
@@ -13,12 +13,12 @@ v0.9: Risq beta version
 UI Improvements:
  - Revamp summary report
  - Fully customizable hotkeys
- - Drag multiselect
  - Message logic for top of screen (like for pop capped)
  - Gather points
  - Can attack when garrisoned (configurable per-unit multiplier where future archers would have more)
 
 UI Issues:
+ - Pan from mouse on edge of screen doesn't really work
 
 Fiddlesticks Plans:
  - Revamp update dialog box

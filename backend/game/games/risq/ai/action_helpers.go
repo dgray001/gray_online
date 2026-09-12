@@ -97,15 +97,15 @@ func gatherDemandWeights(view View, internals *Internals, threshold float64) map
 func currentGatherCounts(view View) map[ResourceCategory]int {
 	counts := map[ResourceCategory]int{ResourceFood: 0, ResourceWood: 0, ResourceStone: 0}
 	for _, u := range view.Units() {
-		if u.CurrentOrder != nil && u.CurrentOrder.GatherCategory != nil {
-			counts[*u.CurrentOrder.GatherCategory]++
+		if u.CurrentOrder != nil && u.CurrentOrder.TargetResource != nil {
+			counts[u.CurrentOrder.TargetResource.Category]++
 		}
 	}
 	return counts
 }
 
 // Ranks categories by how far below their demand-weighted target share they are, then picks
-func neediestGatherCategory(view View, from ZoneRef, demand map[ResourceCategory]float64, counts map[ResourceCategory]int) (ResourceCategory, ZoneRef, bool) {
+func neediestGatherCategory(view View, from ZoneRef, demand map[ResourceCategory]float64, counts map[ResourceCategory]int) (ResourceCategory, ResourceView, bool) {
 	total_demand := demand[ResourceFood] + demand[ResourceWood] + demand[ResourceStone]
 	total_workers := counts[ResourceFood] + counts[ResourceWood] + counts[ResourceStone] + 1
 	categories := []ResourceCategory{ResourceFood, ResourceWood, ResourceStone}
@@ -118,7 +118,7 @@ func neediestGatherCategory(view View, from ZoneRef, demand map[ResourceCategory
 			return c, target, true
 		}
 	}
-	return 0, ZoneRef{}, false
+	return 0, ResourceView{}, false
 }
 
 func (a *attackAction) pickTarget(view View, from ZoneRef, units []UnitView) (UnitView, bool) {

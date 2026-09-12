@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.8d: Update icons
+v0.8e: Minimap
 
 ## Dev Use
 

@@ -105,10 +105,36 @@ func currentOrder(u *RisqUnit, risq *GameRisq) *ai.CurrentOrder {
 		return nil
 	}
 	order := &ai.CurrentOrder{Kind: kind}
-	if kind == ai.OrderKindGather {
+	switch active.order_type {
+	case OrderType_UnitMoveZone, OrderType_UnitAttackZone:
+		if _, zone := invertZoneKey(uint(active.target_id), risq); zone != nil {
+			zone_ref := toZoneRef(zone)
+			order.TargetZone = &zone_ref
+		}
+	case OrderType_UnitGather:
 		if _, zone := invertZoneKey(uint(active.target_id), risq); zone != nil && zone.resource != nil {
-			category := toAiCategory(zone.resource.category())
-			order.GatherCategory = &category
+			resource_view := toResourceView(zone.resource)
+			order.TargetResource = &resource_view
+		}
+	case OrderType_UnitBuild:
+		if _, _, zone := invertBuildKey(uint(active.target_id), risq); zone != nil {
+			zone_ref := toZoneRef(zone)
+			order.TargetZone = &zone_ref
+		}
+	case OrderType_UnitAttackSpace:
+		if space := invertSpaceKey(uint(active.target_id), risq); space != nil {
+			coord := toCoordinate(space.coordinate)
+			order.TargetSpace = &coord
+		}
+	case OrderType_UnitAttackUnit:
+		if target := risq.units[uint64(active.target_id)]; target != nil {
+			unit_view := toUnitViewShallow(target)
+			order.TargetUnit = &unit_view
+		}
+	case OrderType_UnitAttackBuilding, OrderType_UnitGarrison, OrderType_UnitRepair:
+		if target := risq.buildings[uint64(active.target_id)]; target != nil {
+			building_view := toBuildingView(target, risq)
+			order.TargetBuilding = &building_view
 		}
 	}
 	return order
@@ -126,7 +152,9 @@ func unitBuilds(unit_id uint32) []ai.Producible {
 	return builds
 }
 
-func toUnitView(u *RisqUnit, risq *GameRisq) ai.UnitView {
+// Doesn't populate CurrentOrder; used for target references inside another unit's CurrentOrder,
+// where two units targeting each other would otherwise recurse forever.
+func toUnitViewShallow(u *RisqUnit) ai.UnitView {
 	kind := ai.UnitMilitary
 	if isEconomicUnit(u.unit_id) {
 		kind = ai.UnitEconomic
@@ -137,7 +165,6 @@ func toUnitView(u *RisqUnit, risq *GameRisq) ai.UnitView {
 		Kind:           kind,
 		Location:       toZoneRef(u.zone),
 		CurrentStamina: u.current_stamina,
-		CurrentOrder:   currentOrder(u, risq),
 		Builds:         unitBuilds(u.unit_id),
 	}
 	if u.garrisoned_in != nil {
@@ -146,6 +173,21 @@ func toUnitView(u *RisqUnit, risq *GameRisq) ai.UnitView {
 		view.Location = toZoneRef(u.garrisoned_in.zone)
 	}
 	return view
+}
+
+func toUnitView(u *RisqUnit, risq *GameRisq) ai.UnitView {
+	view := toUnitViewShallow(u)
+	view.CurrentOrder = currentOrder(u, risq)
+	return view
+}
+
+func toResourceView(r *RisqResource) ai.ResourceView {
+	return ai.ResourceView{
+		InternalID: r.internal_id,
+		Category:   toAiCategory(r.category()),
+		Location:   toZoneRef(r.zone),
+		AmountLeft: r.resources_left,
+	}
 }
 
 func buildingIdle(b *RisqBuilding) bool {
@@ -354,10 +396,10 @@ func (v *aiView) VisibleEnemyBuildings() []ai.BuildingView {
 	return sortBuildingViews(buildings)
 }
 
-func (v *aiView) NearestResource(from ai.ZoneRef, category ai.ResourceCategory) (ai.ZoneRef, bool) {
+func (v *aiView) NearestResource(from ai.ZoneRef, category ai.ResourceCategory) (ai.ResourceView, bool) {
 	from_space, from_zone := v.resolveZone(from)
 	if from_space == nil {
-		return ai.ZoneRef{}, false
+		return ai.ResourceView{}, false
 	}
 	var tied []*RisqZone
 	best_distance := -1
@@ -386,9 +428,9 @@ func (v *aiView) NearestResource(from ai.ZoneRef, category ai.ResourceCategory) 
 		}
 	}
 	if len(tied) == 0 {
-		return ai.ZoneRef{}, false
+		return ai.ResourceView{}, false
 	}
-	return toZoneRef(tied[v.player.rng.Intn(len(tied))]), true
+	return toResourceView(tied[v.player.rng.Intn(len(tied))].resource), true
 }
 
 func (v *aiView) BuildCost(building_id uint32) ai.Cost {
@@ -473,59 +515,54 @@ func (v *aiView) NearestBuildSite(from ai.ZoneRef, building_id uint32) (ai.ZoneR
 }
 
 func (v *aiView) MoveOrder(u ai.UnitView, target ai.ZoneRef, clear_previous bool) ai.Order {
-	v.assignUnit(u.InternalID, &ai.CurrentOrder{Kind: ai.OrderKindMove})
+	v.assignUnit(u.InternalID, &ai.CurrentOrder{Kind: ai.OrderKindMove, TargetZone: &target})
 	_, zone := v.resolveZone(target)
 	return ai.Order{Subjects: []uint64{u.InternalID}, OrderType: uint8(OrderType_UnitMoveZone), TargetID: int64(zone.coordinate_key), ClearPreviousOrders: clear_previous}
 }
 
-func (v *aiView) GatherOrder(u ai.UnitView, target ai.ZoneRef, clear_previous bool) ai.Order {
-	_, zone := v.resolveZone(target)
-	order := &ai.CurrentOrder{Kind: ai.OrderKindGather}
-	if zone != nil && zone.resource != nil {
-		category := toAiCategory(zone.resource.category())
-		order.GatherCategory = &category
-	}
-	v.assignUnit(u.InternalID, order)
+func (v *aiView) GatherOrder(u ai.UnitView, target ai.ResourceView, clear_previous bool) ai.Order {
+	v.assignUnit(u.InternalID, &ai.CurrentOrder{Kind: ai.OrderKindGather, TargetResource: &target})
+	_, zone := v.resolveZone(target.Location)
 	return ai.Order{Subjects: []uint64{u.InternalID}, OrderType: uint8(OrderType_UnitGather), TargetID: int64(zone.coordinate_key), ClearPreviousOrders: clear_previous}
 }
 
 func (v *aiView) BuildOrder(u ai.UnitView, building_id uint32, target ai.ZoneRef, clear_previous bool) ai.Order {
-	v.assignUnit(u.InternalID, &ai.CurrentOrder{Kind: ai.OrderKindBuild})
+	v.assignUnit(u.InternalID, &ai.CurrentOrder{Kind: ai.OrderKindBuild, TargetZone: &target})
 	_, zone := v.resolveZone(target)
 	target_id := util.Pair(int(building_id), int(zone.coordinate_key))
 	return ai.Order{Subjects: []uint64{u.InternalID}, OrderType: uint8(OrderType_UnitBuild), TargetID: int64(target_id), ClearPreviousOrders: clear_previous}
 }
 
-func (v *aiView) RepairOrder(u ai.UnitView, target_building_id uint64, clear_previous bool) ai.Order {
-	v.assignUnit(u.InternalID, &ai.CurrentOrder{Kind: ai.OrderKindRepair})
-	return ai.Order{Subjects: []uint64{u.InternalID}, OrderType: uint8(OrderType_UnitRepair), TargetID: int64(target_building_id), ClearPreviousOrders: clear_previous}
+func (v *aiView) RepairOrder(u ai.UnitView, target ai.BuildingView, clear_previous bool) ai.Order {
+	v.assignUnit(u.InternalID, &ai.CurrentOrder{Kind: ai.OrderKindRepair, TargetBuilding: &target})
+	return ai.Order{Subjects: []uint64{u.InternalID}, OrderType: uint8(OrderType_UnitRepair), TargetID: int64(target.InternalID), ClearPreviousOrders: clear_previous}
 }
 
-func (v *aiView) AttackUnitOrder(u ai.UnitView, target_unit_id uint64, clear_previous bool) ai.Order {
-	v.assignUnit(u.InternalID, &ai.CurrentOrder{Kind: ai.OrderKindAttackUnit})
-	return ai.Order{Subjects: []uint64{u.InternalID}, OrderType: uint8(OrderType_UnitAttackUnit), TargetID: int64(target_unit_id), ClearPreviousOrders: clear_previous}
+func (v *aiView) AttackUnitOrder(u ai.UnitView, target ai.UnitView, clear_previous bool) ai.Order {
+	v.assignUnit(u.InternalID, &ai.CurrentOrder{Kind: ai.OrderKindAttackUnit, TargetUnit: &target})
+	return ai.Order{Subjects: []uint64{u.InternalID}, OrderType: uint8(OrderType_UnitAttackUnit), TargetID: int64(target.InternalID), ClearPreviousOrders: clear_previous}
 }
 
-func (v *aiView) AttackBuildingOrder(u ai.UnitView, target_building_id uint64, clear_previous bool) ai.Order {
-	v.assignUnit(u.InternalID, &ai.CurrentOrder{Kind: ai.OrderKindAttackBuilding})
-	return ai.Order{Subjects: []uint64{u.InternalID}, OrderType: uint8(OrderType_UnitAttackBuilding), TargetID: int64(target_building_id), ClearPreviousOrders: clear_previous}
+func (v *aiView) AttackBuildingOrder(u ai.UnitView, target ai.BuildingView, clear_previous bool) ai.Order {
+	v.assignUnit(u.InternalID, &ai.CurrentOrder{Kind: ai.OrderKindAttackBuilding, TargetBuilding: &target})
+	return ai.Order{Subjects: []uint64{u.InternalID}, OrderType: uint8(OrderType_UnitAttackBuilding), TargetID: int64(target.InternalID), ClearPreviousOrders: clear_previous}
 }
 
 func (v *aiView) AttackSpaceOrder(u ai.UnitView, target ai.Coordinate, clear_previous bool) ai.Order {
-	v.assignUnit(u.InternalID, &ai.CurrentOrder{Kind: ai.OrderKindAttackSpace})
+	v.assignUnit(u.InternalID, &ai.CurrentOrder{Kind: ai.OrderKindAttackSpace, TargetSpace: &target})
 	key := util.Pair(target.X, target.Y)
 	return ai.Order{Subjects: []uint64{u.InternalID}, OrderType: uint8(OrderType_UnitAttackSpace), TargetID: int64(key), ClearPreviousOrders: clear_previous}
 }
 
 func (v *aiView) AttackZoneOrder(u ai.UnitView, target ai.ZoneRef, clear_previous bool) ai.Order {
-	v.assignUnit(u.InternalID, &ai.CurrentOrder{Kind: ai.OrderKindAttackZone})
+	v.assignUnit(u.InternalID, &ai.CurrentOrder{Kind: ai.OrderKindAttackZone, TargetZone: &target})
 	_, zone := v.resolveZone(target)
 	return ai.Order{Subjects: []uint64{u.InternalID}, OrderType: uint8(OrderType_UnitAttackZone), TargetID: int64(zone.coordinate_key), ClearPreviousOrders: clear_previous}
 }
 
-func (v *aiView) GarrisonOrder(u ai.UnitView, target_building_id uint64, clear_previous bool) ai.Order {
-	v.assignUnit(u.InternalID, &ai.CurrentOrder{Kind: ai.OrderKindGarrison})
-	return ai.Order{Subjects: []uint64{u.InternalID}, OrderType: uint8(OrderType_UnitGarrison), TargetID: int64(target_building_id), ClearPreviousOrders: clear_previous}
+func (v *aiView) GarrisonOrder(u ai.UnitView, target ai.BuildingView, clear_previous bool) ai.Order {
+	v.assignUnit(u.InternalID, &ai.CurrentOrder{Kind: ai.OrderKindGarrison, TargetBuilding: &target})
+	return ai.Order{Subjects: []uint64{u.InternalID}, OrderType: uint8(OrderType_UnitGarrison), TargetID: int64(target.InternalID), ClearPreviousOrders: clear_previous}
 }
 
 func (v *aiView) UngarrisonOrder(u ai.UnitView, clear_previous bool) ai.Order {

@@ -114,11 +114,11 @@ func (a *balancedGatherAction) ToOrders(view View, internals *Internals) []Order
 		if !ok {
 			continue
 		}
-		if u.CurrentOrder != nil && u.CurrentOrder.GatherCategory != nil {
-			if *u.CurrentOrder.GatherCategory == category {
+		if u.CurrentOrder != nil && u.CurrentOrder.TargetResource != nil {
+			if u.CurrentOrder.TargetResource.Category == category {
 				continue
 			}
-			counts[*u.CurrentOrder.GatherCategory]--
+			counts[u.CurrentOrder.TargetResource.Category]--
 		}
 		orders = append(orders, view.GatherOrder(u, target, true))
 		counts[category]++
@@ -189,6 +189,7 @@ func (a *exploreAction) ToOrders(view View, _ *Internals) []Order {
 		}
 		anchor = home
 	}
+	claimed := make(map[ZoneRef]bool)
 	for _, u := range view.IdleUnits() {
 		if a.max > 0 && len(orders) >= a.max {
 			break
@@ -201,10 +202,20 @@ func (a *exploreAction) ToOrders(view View, _ *Internals) []Order {
 		if !ok {
 			continue
 		}
-		target, ok := nearestZone(view, u.Location, candidates)
+		available := make([]ZoneRef, 0, len(candidates))
+		for _, c := range candidates {
+			if !claimed[c] {
+				available = append(available, c)
+			}
+		}
+		if len(available) == 0 {
+			available = candidates
+		}
+		target, ok := nearestZone(view, u.Location, available)
 		if !ok {
 			continue
 		}
+		claimed[target] = true
 		orders = append(orders, view.MoveOrder(u, target, true))
 	}
 	return orders
@@ -222,9 +233,9 @@ func (a *attackAction) ToOrders(view View, _ *Internals) []Order {
 			break
 		}
 		if target, ok := a.pickTarget(view, u.Location, enemy_units); ok {
-			orders = append(orders, view.AttackUnitOrder(u, target.InternalID, true))
+			orders = append(orders, view.AttackUnitOrder(u, target, true))
 		} else if target, ok := nearestBuilding(view, u.Location, enemy_buildings); ok {
-			orders = append(orders, view.AttackBuildingOrder(u, target.InternalID, true))
+			orders = append(orders, view.AttackBuildingOrder(u, target, true))
 		}
 	}
 	return orders
@@ -290,7 +301,7 @@ func (a *garrisonAction) ToOrders(view View, _ *Internals) []Order {
 			}
 		}
 		if best_b != nil {
-			orders = append(orders, view.GarrisonOrder(u, best_b.InternalID, true))
+			orders = append(orders, view.GarrisonOrder(u, *best_b, true))
 			best_b.GarrisonCount++ // Optimistic update for other units in this turn
 		}
 	}

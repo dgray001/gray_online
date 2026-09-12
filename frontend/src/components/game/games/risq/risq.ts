@@ -45,6 +45,7 @@ import { RisqRightPanel } from './canvas_components/right_panel/right_panel';
 import type { DrawRisqSpaceConfig } from './risq_space';
 import { DrawRisqSpaceDetail, drawRisqSpace } from './risq_space';
 import { RisqLeftPanel } from './canvas_components/left_panel/left_panel';
+import { RisqMinimap } from './canvas_components/minimap/risq_minimap';
 import { RisqOrdersModel, isBuildingOrder, isUnitOrder, orderArrowColor } from './risq_orders';
 import {
   UNIT_SLOT_CIRCLE_RADIUS_MULTIPLIER,
@@ -155,6 +156,10 @@ export class DwgRisq extends DwgElement {
     is_open: true,
     background: new ColorRGB(222, 184, 135),
   });
+  private minimap = new RisqMinimap(this, {
+    target_w: 150,
+    background: 'rgb(222,184,135)',
+  });
 
   constructor() {
     super();
@@ -253,6 +258,10 @@ export class DwgRisq extends DwgElement {
     return this.left_panel;
   }
 
+  getRightPanel(): RisqRightPanel {
+    return this.right_panel;
+  }
+
   getLocalFoundation(key: number): LocalRisqFoundation | undefined {
     return this.local_foundations.get(key);
   }
@@ -334,11 +343,15 @@ export class DwgRisq extends DwgElement {
       if (building.building_id !== 1) {
         continue;
       }
-      const scale = this.last_transform.scale ?? 1;
-      const view = this.coordinateToCanvas(building.space_coordinate, scale);
-      this.board.setView(subtractPoint2D(multiplyPoint2D(scale, view), this.canvas_center));
+      this.goToCoordinate(building.space_coordinate);
       return;
     }
+  }
+
+  goToCoordinate(coordinate: Point2D) {
+    const scale = this.last_transform.scale ?? 1;
+    const view = this.coordinateToCanvas(coordinate, scale);
+    this.board.setView(subtractPoint2D(multiplyPoint2D(scale, view), this.canvas_center));
   }
 
   private board_resize_lock = createLock();
@@ -369,6 +382,7 @@ export class DwgRisq extends DwgElement {
         }
       }
       this.left_panel.resolveSize();
+      this.minimap.resolveSize();
       this.toggleRightPanel(this.right_panel.isOpen());
     });
   }
@@ -379,6 +393,10 @@ export class DwgRisq extends DwgElement {
 
   drawDetail(): DrawRisqSpaceDetail {
     return this.draw_detail;
+  }
+
+  viewMode(): RisqViewMode {
+    return this.view_mode;
   }
 
   toggleRightPanel(open?: boolean) {
@@ -499,6 +517,7 @@ export class DwgRisq extends DwgElement {
     // draw panels
     this.right_panel.draw(ctx, transform, dt);
     this.left_panel.draw(ctx, transform, dt);
+    this.minimap.draw(ctx, transform, dt);
     // draw red dot
     if (DRAW_CENTER_DOT && DEV) {
       ctx.fillStyle = 'red';
@@ -715,6 +734,9 @@ export class DwgRisq extends DwgElement {
       this.right_panel.scroll(dy, mode);
       return true;
     }
+    if (this.minimap.isHovering()) {
+      return true;
+    }
     return false;
   }
 
@@ -736,7 +758,10 @@ export class DwgRisq extends DwgElement {
     this.mouse_canvas = m;
     if (this.dragging_selection) {
       this.drag_current = m;
-      if (Math.hypot(this.drag_current.x - this.drag_start.x, this.drag_current.y - this.drag_start.y) > DRAG_SELECT_THRESHOLD) {
+      if (
+        Math.hypot(this.drag_current.x - this.drag_start.x, this.drag_current.y - this.drag_start.y) >
+        DRAG_SELECT_THRESHOLD
+      ) {
         if (this.hovered_space) {
           this.hovered_space.clicked = false;
         }
@@ -1739,7 +1764,9 @@ export class DwgRisq extends DwgElement {
     this.right_panel.mouseup(e);
     this.left_panel.mouseup(e);
     if (this.dragging_selection) {
-      const dragged = Math.hypot(this.drag_current.x - this.drag_start.x, this.drag_current.y - this.drag_start.y) > DRAG_SELECT_THRESHOLD;
+      const dragged =
+        Math.hypot(this.drag_current.x - this.drag_start.x, this.drag_current.y - this.drag_start.y) >
+        DRAG_SELECT_THRESHOLD;
       this.dragging_selection = false;
       if (dragged) {
         this.finalizeSelectionDrag();
@@ -1929,7 +1956,7 @@ export class DwgRisq extends DwgElement {
     );
   }
 
-  private canvasToCoordinate(canvas: Point2D, scale: number, board_size: number): Point2D {
+  canvasToCoordinate(canvas: Point2D, scale: number, board_size: number): Point2D {
     const cy = (canvas.y - 0.25 * this.hex_r - this.canvas_center.y / scale) / (1.5 * this.hex_r) - board_size - 0.5;
     return {
       x: (canvas.x - this.canvas_center.x / scale) / (1.732 * this.hex_r) - 0.5 * cy - board_size - 0.5,
