@@ -40,6 +40,8 @@ type GameRisq struct {
 	giving_orders bool
 	// Recomputed each tick: contested resources are water-filled instead of first-come-first-served
 	gather_allotments map[*RisqUnit]float64
+	// Recomputed each tick: settles which simultaneous garrison attempts get a building's remaining slots
+	garrison_allotments map[*RisqUnit]bool
 	// owned by this game only, never the shared global source, so concurrent AI goroutines can't race it
 	rng *rand.Rand
 }
@@ -294,16 +296,15 @@ func (r *GameRisq) resolveActiveOrders() {
 				continue
 			}
 			accepted := false
-			for subject_id, subject := range order.subjects {
+			for _, subject := range order.subjects {
 				if !subject.orderReceivable(order, r) {
 					continue
 				}
 				if order.clear_previous_orders {
-					for _, other := range player.active_orders {
-						if other == order || other.executed || other.cancelled || !other.received {
-							continue
-						}
-						if _, ok := other.subjects[subject_id]; ok {
+					// cancelOrder mutates the subject's own active-orders slice in place, so range over a copy
+					previous := append([]*RisqOrder(nil), subject.activeOrders()...)
+					for _, other := range previous {
+						if !other.executed && !other.cancelled {
 							subject.cancelOrder(other, r)
 						}
 					}
@@ -332,6 +333,7 @@ func (r *GameRisq) resolveActiveOrders() {
 			break
 		}
 		r.gather_allotments = computeGatherAllotments(orderables)
+		r.garrison_allotments = computeGarrisonAllotments(orderables)
 		r.current_tick++
 		for _, o := range orderables {
 			o.tickExecute(r)

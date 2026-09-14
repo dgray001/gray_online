@@ -1,5 +1,4 @@
 import type { BoardTransformData } from '../../../../util/canvas_board/canvas_board';
-import { canvasToScreen } from '../../../../util/canvas_board/canvas_board';
 import type { CanvasComponent } from '../../../../util/canvas_components/canvas_component';
 import { configDraw } from '../../../../util/canvas_components/canvas_component';
 import { drawHexagon, drawLine, drawRect, drawText } from '../../../../util/canvas_util';
@@ -709,7 +708,7 @@ export class RisqLeftPanel implements CanvasComponent {
       button.draw(ctx, transform, dt);
       button.drawTooltip(ctx, transform, this.risq);
     }
-    if (this.data?.data_type === LeftPanelDataType.SPACE) {
+    if (this.data?.data_type === LeftPanelDataType.SPACE && (this.visibility ?? 0) > RisqVisibilityLevel.POOR) {
       this.space_villager_row_button?.draw(ctx, transform, dt);
       this.space_military_row_button?.draw(ctx, transform, dt);
     }
@@ -1387,18 +1386,17 @@ export class RisqLeftPanel implements CanvasComponent {
     return false;
   }
 
-  mousemove(m: Point2D, transform: BoardTransformData): boolean {
-    if (this.close_button.mousemove(m, transform)) {
+  mousemove(canvas: Point2D, screen: Point2D, transform: BoardTransformData): boolean {
+    if (this.close_button.mousemove(canvas, screen, transform)) {
       return true;
     }
     for (const button of this.buttons) {
-      button.mousemove(m, transform);
+      button.mousemove(canvas, screen, transform);
     }
-    if (this.showOrderRows() && this.order_rows_list.mousemove(m, transform)) {
+    if (this.showOrderRows() && this.order_rows_list.mousemove(canvas, screen, transform)) {
       return true;
     }
-    const raw_m = m;
-    m = canvasToScreen(m, transform);
+    const m = screen;
     if (m.x > this.xi() && m.y > this.yi() && m.x < this.xf() && m.y < this.yf()) {
       this.hovering = true;
     } else {
@@ -1416,8 +1414,8 @@ export class RisqLeftPanel implements CanvasComponent {
         }
         this.hovered_zone = new_hovered_zone;
         if (this.data.data_type === LeftPanelDataType.SPACE) {
-          this.space_villager_row_button?.mousemove(raw_m, transform);
-          this.space_military_row_button?.mousemove(raw_m, transform);
+          this.space_villager_row_button?.mousemove(canvas, screen, transform);
+          this.space_military_row_button?.mousemove(canvas, screen, transform);
         }
         if (this.data.data_type === LeftPanelDataType.ZONE) {
           const zone = this.data.data.zone;

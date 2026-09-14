@@ -485,6 +485,14 @@ func (a *produceNextInQAction) ToOrders(view View, internals *Internals) []Order
 	return nil
 }
 
+type unbucketedAction struct {
+	inner Action
+}
+
+func (a *unbucketedAction) ToOrders(view View, internals *Internals) []Order {
+	return a.inner.ToOrders(&unbucketedView{View: view, internals: internals}, internals)
+}
+
 type setBucketAction struct {
 	bucket string
 	size   int
@@ -501,6 +509,7 @@ func (a *setBucketAction) ToOrders(_ View, internals *Internals) []Order {
 type fillBucketAction struct {
 	bucket   string
 	eligible []OrderKind
+	kind     *UnitKind
 }
 
 func (a *fillBucketAction) ToOrders(view View, internals *Internals) []Order {
@@ -509,6 +518,9 @@ func (a *fillBucketAction) ToOrders(view View, internals *Internals) []Order {
 	for _, u := range eligibleUnits(view, a.eligible) {
 		if need <= 0 {
 			break
+		}
+		if a.kind != nil && u.Kind != *a.kind {
+			continue
 		}
 		if internals.isBucketed(u.InternalID) {
 			continue
@@ -520,12 +532,16 @@ func (a *fillBucketAction) ToOrders(view View, internals *Internals) []Order {
 }
 
 type runBucketAction struct {
-	bucket string
+	bucket    string
+	when_full bool
 }
 
 func (a *runBucketAction) ToOrders(view View, internals *Internals) []Order {
 	b := internals.Buckets[a.bucket]
 	if b == nil || b.Task == nil || len(b.Members) == 0 {
+		return nil
+	}
+	if a.when_full && len(b.Members) < b.Desired {
 		return nil
 	}
 	return b.Task.ToOrders(&bucketView{View: view, members: b.Members}, internals)

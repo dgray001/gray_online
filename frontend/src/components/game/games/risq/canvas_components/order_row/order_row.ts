@@ -1,5 +1,4 @@
 import type { BoardTransformData } from '../../../../util/canvas_board/canvas_board';
-import { canvasToScreen } from '../../../../util/canvas_board/canvas_board';
 import type { CanvasComponent } from '../../../../util/canvas_components/canvas_component';
 import { configDraw } from '../../../../util/canvas_components/canvas_component';
 import { drawLine, drawRect, drawText } from '../../../../util/canvas_util';
@@ -251,17 +250,16 @@ export class RisqOrderRow implements CanvasComponent {
     return false;
   }
 
-  mousemove(m: Point2D, transform: BoardTransformData): boolean {
-    m = canvasToScreen(m, transform);
-    this.hovering = !(m.x < this.xi() || m.y < this.yi() || m.x > this.xf() || m.y > this.yf());
-    this.cancel_button.mousemove(m, transform);
+  mousemove(_canvas: Point2D, screen: Point2D, transform: BoardTransformData): boolean {
+    this.hovering = !(screen.x < this.xi() || screen.y < this.yi() || screen.x > this.xf() || screen.y > this.yf());
+    this.cancel_button.mousemove(screen, screen, transform);
     if (this.cancel_button.isDisabled()) {
       this.cancel_all_hover = false;
       return this.hovering;
     }
     if (this.isCollapsed()) {
       const sy = this.yi() + ROW_H;
-      this.cancel_all_hover = this.hovering && m.y >= sy && m.y <= sy + COLLAPSED_STRIP_H;
+      this.cancel_all_hover = this.hovering && screen.y >= sy && screen.y <= sy + COLLAPSED_STRIP_H;
     } else {
       this.cancel_all_hover = false;
     }

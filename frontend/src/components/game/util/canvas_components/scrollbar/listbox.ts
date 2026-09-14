@@ -1,6 +1,7 @@
 import type { BoardTransformData } from '../../canvas_board/canvas_board';
 import { drawRect, drawText } from '../../canvas_util';
 import type { Point2D } from '../../objects2d';
+import { subtractPoint2D } from '../../objects2d';
 import { configDraw, xc, type CanvasComponent, type DrawConfig } from '../canvas_component';
 import type { DwgRectScrollbar } from './rect_scrollbar';
 
@@ -161,17 +162,7 @@ export class DwgListbox<
         }
         if (draw_el) {
           el.draw(ctx, transform, dt);
-          if (this.config.draw_config.fixed_position) {
-            this.list_coordinates[i] = {
-              x: transform.view.x + xi + padding,
-              y: transform.view.y + yi,
-            };
-          } else {
-            this.list_coordinates[i] = {
-              x: xi + padding,
-              y: yi,
-            };
-          }
+          this.list_coordinates[i] = { x: xi + padding, y: yi };
         }
         const yi_adjust = el.h() + (i + 1 < this.config.list.length ? this.getGap() : 0);
         yi += yi_adjust;
@@ -194,10 +185,11 @@ export class DwgListbox<
     });
     this.config.scrollbar.draw(ctx, transform, dt);
     if (this.check_mousemove_on_next_draw) {
-      const last_m = this.config.scrollbar.getLastMousemoveM();
+      const last_canvas = this.config.scrollbar.getLastMousemoveCanvas();
+      const last_screen = this.config.scrollbar.getLastMousemoveScreen();
       const last_transform = this.config.scrollbar.getLastMousemoveTransform();
-      if (!!last_m && !!last_transform) {
-        this.mousemove(last_m, last_transform);
+      if (!!last_canvas && !!last_screen && !!last_transform) {
+        this.mousemove(last_canvas, last_screen, last_transform);
       }
     }
     if (this.disabled) {
@@ -221,18 +213,16 @@ export class DwgListbox<
     return this.config.scrollbar.scroll(dy, mode, _dx);
   }
 
-  mousemove(m: Point2D, transform: BoardTransformData): boolean {
-    this.config.scrollbar.mousemove(m, transform);
+  mousemove(canvas: Point2D, screen: Point2D, transform: BoardTransformData): boolean {
+    this.config.scrollbar.mousemove(canvas, screen, transform);
     const is_hovering = this.isHovering();
+    const point = this.config.draw_config.fixed_position ? screen : canvas;
     for (const [i, el] of this.config.list.entries()) {
       if (this.disabled || !is_hovering || i < this.draw_start || i > this.draw_end) {
         el.setHovering(false);
       } else {
-        el.mousemove(m, {
-          view: { ...this.list_coordinates[i] },
-          offset: this.config.draw_config.fixed_position ? transform.offset : { x: 0, y: 0 },
-          scale: this.config.draw_config.fixed_position ? transform.scale : 1,
-        });
+        const local = subtractPoint2D(point, this.list_coordinates[i]);
+        el.mousemove(local, local, transform);
       }
     }
     return is_hovering;
@@ -261,8 +251,8 @@ export class DwgListbox<
     this.config.scrollbar.mouseup(e);
   }
 
-  mouseOver(m: Point2D, transform: BoardTransformData): boolean {
-    return this.config.scrollbar.mouseOver(m, transform);
+  mouseOver(canvas: Point2D, screen: Point2D): boolean {
+    return this.config.scrollbar.mouseOver(canvas, screen);
   }
 
   xi(): number {

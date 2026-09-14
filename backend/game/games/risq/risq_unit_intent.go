@@ -228,6 +228,34 @@ func (i *RisqIntent) setGarrison(target *RisqBuilding) {
 	i.max_cost = 1
 }
 
+// Deterministically settle same-tick garrison attempts
+func computeGarrisonAllotments(orderables []Orderable) map[*RisqUnit]bool {
+	by_building := make(map[*RisqBuilding][]*RisqUnit)
+	for _, o := range orderables {
+		u, ok := o.(*RisqUnit)
+		if !ok || !u.intent.hasIntent() {
+			continue
+		}
+		garrison, ok := u.intent.detail.(*GarrisonIntent)
+		if !ok {
+			continue
+		}
+		by_building[garrison.target] = append(by_building[garrison.target], u)
+	}
+	allotted := make(map[*RisqUnit]bool)
+	for building, units := range by_building {
+		sort.Slice(units, func(i, j int) bool { return units[i].internal_id < units[j].internal_id })
+		remaining := int(building.garrison_capacity) - len(building.garrisoned_units)
+		for i, u := range units {
+			if i >= remaining {
+				break
+			}
+			allotted[u] = true
+		}
+	}
+	return allotted
+}
+
 type UngarrisonIntent struct {
 	next_step *RisqZone
 }

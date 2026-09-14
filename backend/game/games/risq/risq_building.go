@@ -28,6 +28,7 @@ type RisqBuilding struct {
 	construction_stamina_total int
 	garrisoned_units           map[uint64]*RisqUnit
 	gather_point               *RisqGatherPoint
+	attacked_by                []RisqDamageEvent
 }
 
 func (b *RisqBuilding) underConstruction() bool {
@@ -92,6 +93,10 @@ func (b *RisqBuilding) internalId() uint64 {
 	return b.internal_id
 }
 
+func (b *RisqBuilding) activeOrders() []*RisqOrder {
+	return b.order_queue.active_orders
+}
+
 func (b *RisqBuilding) cleanupDeleted(risq *GameRisq) {
 	player := risq.players[b.player_id]
 	for _, item := range b.production_queue {
@@ -121,6 +126,7 @@ func (b *RisqBuilding) refreshStamina() {
 	if b.current_stamina > max_stamina {
 		b.current_stamina = max_stamina
 	}
+	b.attacked_by = nil
 }
 
 type RisqBuildingProductionItem struct {

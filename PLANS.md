@@ -9,7 +9,7 @@ v0.9: Risq beta version
  k: Magic and color damage
  l: Expanded level 2 tech tree
  m: Settings setup (including alt win conditions)
- n: Military unit stances
+ n: Military unit stances frontend
 
 UI Improvements:
  - Revamp summary report

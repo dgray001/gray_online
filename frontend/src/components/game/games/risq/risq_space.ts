@@ -33,6 +33,7 @@ export declare interface DrawRisqSpaceConfig {
   inset_row: number;
   draw_detail: DrawRisqSpaceDetail;
   view_mode: RisqViewMode;
+  rotation: number;
 }
 
 const space_line_width: Record<DrawRisqSpaceDetail, number> = {
@@ -46,6 +47,12 @@ export function drawHexImage(ctx: CanvasRenderingContext2D, img: CanvasImageSour
   const w = Math.sqrt(3) * r;
   const h = 2 * r;
   ctx.drawImage(img, c.x - 0.5 * w, c.y - 0.5 * h, w, h);
+}
+
+function borderStrokeStyle(owner_color: ColorRGB | undefined, alpha: number): string {
+  return owner_color
+    ? `rgba(${owner_color.getR()}, ${owner_color.getG()}, ${owner_color.getB()}, ${alpha})`
+    : `rgba(255, 255, 255, ${alpha})`;
 }
 
 export function fillHexOverlay(ctx: CanvasRenderingContext2D, c: Point2D, r: number, fill_style: string) {
@@ -64,7 +71,7 @@ export function drawRisqSpace(
   config: DrawRisqSpaceConfig
 ) {
   const owner_color = spaceOwnerColor(space, game.getGame()?.players ?? []);
-  ctx.strokeStyle = 'rgba(250, 250, 250, 0.9)';
+  ctx.strokeStyle = 'transparent';
   ctx.lineWidth = space_line_width[config.draw_detail];
   let black_text = false;
   if (config.view_mode === RisqViewMode.OWNERSHIP || space.visibility === RisqVisibilityLevel.UNEXPLORED) {
@@ -86,10 +93,17 @@ export function drawRisqSpace(
         space.clicked ? 'rgba(210, 210, 210, 0.4)' : 'rgba(190, 190, 190, 0.2)'
       );
     }
-    ctx.fillStyle = 'transparent';
-    drawHexagon(ctx, space.center, config.hex_r);
   }
+  // drawn as its own pass with additive blending so two adjacent spaces' borders combine the same way regardless of draw order
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.fillStyle = 'transparent';
+  ctx.strokeStyle = borderStrokeStyle(owner_color, 0.6);
+  drawHexagon(ctx, space.center, config.hex_r);
+  ctx.globalCompositeOperation = 'source-over';
   if (DEV) {
+    ctx.translate(space.center.x, space.center.y);
+    ctx.rotate(-config.rotation);
+    ctx.translate(-space.center.x, -space.center.y);
     drawText(ctx, space.coordinate.x + ', ' + space.coordinate.y, {
       p: space.center,
       w: 1.5 * config.hex_r,
@@ -98,9 +112,22 @@ export function drawRisqSpace(
       baseline: 'middle',
       font: `${0.6 * config.inset_row}px serif`,
     });
+    ctx.translate(space.center.x, space.center.y);
+    ctx.rotate(config.rotation);
+    ctx.translate(-space.center.x, -space.center.y);
   }
   ctx.textAlign = 'left';
   drawSpaceContent(ctx, game, space, config, black_text, owner_color);
+  if (config.draw_detail !== DrawRisqSpaceDetail.OWNERSHIP && space.visibility === RisqVisibilityLevel.SPY) {
+    const badge_size = 0.35 * config.hex_r;
+    ctx.drawImage(
+      game.getIcon(`icons/eye${black_text ? '' : '_white'}64`),
+      space.center.x - 0.5 * badge_size,
+      space.center.y - config.hex_r + 2,
+      badge_size,
+      badge_size
+    );
+  }
   if (space.visibility === RisqVisibilityLevel.FOG) {
     ctx.globalAlpha = 0.55;
     drawHexImage(ctx, game.getIcon(FOG_OVERLAY_IMAGE), space.center, config.hex_r);
@@ -122,69 +149,14 @@ function drawSpaceContent(
     if (space.visibility < RisqVisibilityLevel.FOG) {
       return;
     }
-    let building_img = game.getIcon('icons/building64');
-    let villager_img = game.getIcon('icons/villager64');
-    let unit_img = game.getIcon('icons/unit64');
-    const gold_img = game.getIcon(resourceTypeImage(RisqResourceType.GOLD));
-    if (black_text) {
-      ctx.fillStyle = 'black';
-    } else {
-      ctx.fillStyle = 'white';
-      building_img = game.getIcon('icons/building_white64');
-      villager_img = game.getIcon('icons/villager_white64');
-      unit_img = game.getIcon('icons/unit_white64');
-    }
-    ctx.textBaseline = 'top';
-    ctx.font = `bold ${config.inset_row}px serif`;
-    const xs = space.center.x - 0.5 * config.inset_w;
-    let y = space.center.y - 0.5 * config.inset_h;
-    const draw_count_row = (img: CanvasImageSource, count: string) => {
-      ctx.drawImage(img, xs, y, config.inset_row, config.inset_row);
-      ctx.fillText(`: ${count}`, xs + config.inset_row + 2, y, config.inset_w - config.inset_row - 2);
-      y += config.inset_row + 2;
-    };
-    if (config.view_mode === RisqViewMode.OWNERSHIP) {
-      draw_count_row(gold_img, space.gold_income?.toString() ?? '??');
-      return;
-    }
-    if (config.view_mode === RisqViewMode.ALL) {
-      draw_count_row(building_img, space.buildings?.size.toString() ?? '0');
-    }
-    if (config.view_mode !== RisqViewMode.MILITARY) {
-      const resources = [...(space.total_resources?.entries() ?? [])].filter(([, amount]) => amount > 0);
-      for (const [i, [resource_type]] of resources.entries()) {
-        ctx.drawImage(
-          game.getIcon(resourceTypeImage(resource_type)),
-          xs + i * (config.inset_row + 2),
-          y,
-          config.inset_row,
-          config.inset_row
-        );
-      }
-      if (resources.length > 0) {
-        y += config.inset_row + 2;
-      }
-    }
-    if (config.view_mode === RisqViewMode.RESOURCE) {
-      if (space.visibility >= RisqVisibilityLevel.GOOD) {
-        draw_count_row(villager_img, space.num_villager_units?.toString() ?? '0');
-      }
-      return;
-    }
-    if (space.visibility === RisqVisibilityLevel.POOR) {
-      const combo_icon = game
-        .getImageCache()
-        .getImage(comboUnitIconKey(!black_text), COMBO_UNIT_ICON_SIZE, [villager_img, unit_img], (combo_ctx) =>
-          drawComboUnitIcon(combo_ctx, villager_img, unit_img)
-        );
-      if (combo_icon) {
-        draw_count_row(combo_icon, space.unit_count?.toString() ?? '0');
-      }
-    } else if (space.visibility >= RisqVisibilityLevel.GOOD) {
-      if (config.view_mode === RisqViewMode.ALL) {
-        draw_count_row(villager_img, space.num_villager_units?.toString() ?? '0');
-      }
-      draw_count_row(unit_img, space.num_military_units?.toString() ?? '0');
+    ctx.save();
+    ctx.translate(space.center.x, space.center.y);
+    ctx.rotate(-config.rotation);
+    ctx.translate(-space.center.x, -space.center.y);
+    try {
+      drawSpaceDetailsContent(ctx, game, space, config, black_text);
+    } finally {
+      ctx.restore();
     }
   } else if (config.draw_detail === DrawRisqSpaceDetail.ZONE_DETAILS) {
     if (space.visibility < RisqVisibilityLevel.FOG || !space.zones) {
@@ -192,7 +164,7 @@ function drawSpaceContent(
     }
     ctx.translate(space.center.x, space.center.y);
     let zone = space.zones[1][1];
-    ctx.strokeStyle = 'rgba(250, 250, 250, 0.9)';
+    ctx.strokeStyle = borderStrokeStyle(owner_color, 0.9);
     ctx.lineWidth = 0.1;
     ctx.fillStyle = getZoneFill(zone, config.view_mode, owner_color).getString();
     const r = config.hex_r;
@@ -207,7 +179,7 @@ function drawSpaceContent(
       config.view_mode,
       black_text,
       r,
-      0,
+      config.rotation,
       zoneBuildingLocalOffset(zone.coordinate, r),
       zoneUnitSlotLocalOffsets(zone.coordinate, r),
       active_player_id
@@ -216,7 +188,7 @@ function drawSpaceContent(
     for (let i = 0; i < 6; i++) {
       const direction_vector = OUTER_ZONE_INDICES[i];
       zone = space.zones[direction_vector.x][direction_vector.y];
-      ctx.strokeStyle = 'rgba(250, 250, 250, 0.9)';
+      ctx.strokeStyle = borderStrokeStyle(owner_color, 0.9);
       ctx.fillStyle = getZoneFill(zone, config.view_mode, owner_color).getString();
       ctx.beginPath();
       ctx.lineTo(inner_r * Math.cos(a * i + Math.PI / 6), inner_r * Math.sin(a * i + Math.PI / 6));
@@ -236,7 +208,7 @@ function drawSpaceContent(
         config.view_mode,
         black_text,
         r,
-        rotation,
+        rotation + config.rotation,
         zoneBuildingLocalOffset(zone.coordinate, r),
         zoneUnitSlotLocalOffsets(zone.coordinate, r),
         active_player_id
@@ -244,6 +216,84 @@ function drawSpaceContent(
       ctx.rotate(-rotation);
     }
     ctx.translate(-space.center.x, -space.center.y);
+  }
+}
+
+function drawSpaceDetailsContent(
+  ctx: CanvasRenderingContext2D,
+  game: DwgRisq,
+  space: RisqSpace,
+  config: DrawRisqSpaceConfig,
+  black_text: boolean
+) {
+  let building_img = game.getIcon('icons/building64');
+  let villager_img = game.getIcon('icons/villager64');
+  let unit_img = game.getIcon('icons/unit64');
+  const gold_img = game.getIcon(resourceTypeImage(RisqResourceType.GOLD));
+  if (black_text) {
+    ctx.fillStyle = 'black';
+  } else {
+    ctx.fillStyle = 'white';
+    building_img = game.getIcon('icons/building_white64');
+    villager_img = game.getIcon('icons/villager_white64');
+    unit_img = game.getIcon('icons/unit_white64');
+  }
+  ctx.textBaseline = 'top';
+  ctx.font = `bold ${config.inset_row}px serif`;
+  const xs = space.center.x - 0.5 * config.inset_w;
+  let y = space.center.y - 0.5 * config.inset_h;
+  const draw_count_row = (img: CanvasImageSource, count: string) => {
+    ctx.drawImage(img, xs, y, config.inset_row, config.inset_row);
+    ctx.fillText(`: ${count}`, xs + config.inset_row + 2, y, config.inset_w - config.inset_row - 2);
+    y += config.inset_row + 2;
+  };
+  if (space.visibility === RisqVisibilityLevel.POOR) {
+    ctx.drawImage(
+      game.getIcon(`icons/no_eye${black_text ? '' : '_white'}64`),
+      space.center.x - 0.5 * config.inset_row,
+      y,
+      config.inset_row,
+      config.inset_row
+    );
+    y += config.inset_row + 2;
+  }
+  if (config.view_mode === RisqViewMode.OWNERSHIP) {
+    draw_count_row(gold_img, space.gold_income?.toString() ?? '??');
+    return;
+  }
+  if (config.view_mode === RisqViewMode.ALL) {
+    draw_count_row(building_img, space.buildings?.size.toString() ?? '0');
+  }
+  if (config.view_mode === RisqViewMode.RESOURCE) {
+    if (space.visibility >= RisqVisibilityLevel.GOOD) {
+      draw_count_row(villager_img, space.num_villager_units?.toString() ?? '0');
+    }
+  } else if (space.visibility === RisqVisibilityLevel.POOR) {
+    const combo_icon = game
+      .getImageCache()
+      .getImage(comboUnitIconKey(!black_text), COMBO_UNIT_ICON_SIZE, [villager_img, unit_img], (combo_ctx) =>
+        drawComboUnitIcon(combo_ctx, villager_img, unit_img)
+      );
+    if (combo_icon) {
+      draw_count_row(combo_icon, space.unit_count?.toString() ?? '0');
+    }
+  } else if (space.visibility >= RisqVisibilityLevel.GOOD) {
+    if (config.view_mode === RisqViewMode.ALL) {
+      draw_count_row(villager_img, space.num_villager_units?.toString() ?? '0');
+    }
+    draw_count_row(unit_img, space.num_military_units?.toString() ?? '0');
+  }
+  if (config.view_mode !== RisqViewMode.MILITARY) {
+    const resources = [...(space.total_resources?.entries() ?? [])].filter(([, amount]) => amount > 0);
+    for (const [i, [resource_type]] of resources.entries()) {
+      ctx.drawImage(
+        game.getIcon(resourceTypeImage(resource_type)),
+        xs + i * (config.inset_row + 2),
+        y,
+        config.inset_row,
+        config.inset_row
+      );
+    }
   }
 }
 
@@ -277,7 +327,7 @@ export function getSpaceFill(
           color.addColor(190, 190, 190, 0.2);
         }
       }
-    } else if (space.hovered) {
+    } else if (check_hover && space.hovered) {
       color.addColor(150, 150, 150, 0.1);
     }
   }

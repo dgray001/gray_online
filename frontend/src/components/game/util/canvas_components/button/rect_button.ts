@@ -1,5 +1,4 @@
 import type { BoardTransformData } from '../../canvas_board/canvas_board';
-import { canvasToScreen } from '../../canvas_board/canvas_board';
 import type { DrawTextConfig } from '../../canvas_util';
 import { drawRect, drawText } from '../../canvas_util';
 import type { Point2D } from '../../objects2d';
@@ -282,10 +281,8 @@ export abstract class DwgRectButton extends DwgButton {
     });
   }
 
-  override mouseOver(m: Point2D, transform: BoardTransformData): boolean {
-    if (this.rect_config.draw_config.fixed_position) {
-      m = canvasToScreen(m, transform);
-    }
+  override mouseOver(canvas: Point2D, screen: Point2D): boolean {
+    const m = this.rect_config.draw_config.fixed_position ? screen : canvas;
     if (m.x < this.xi() || m.y < this.yi() || m.x > this.xf() || m.y > this.yf()) {
       return false;
     }

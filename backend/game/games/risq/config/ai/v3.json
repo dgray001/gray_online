@@ -62,6 +62,11 @@
     { "when": { "population_at_least": { "amount": 4 } }, "then": [{ "action": "create", "unit_id": 11 }] },
     { "when": { "population_at_least": { "amount": 4 } }, "then": [{ "action": "create", "unit_id": 12 }] },
     { "when": { "population_at_least": { "amount": 6 } }, "then": [{ "action": "create", "unit_id": 13 }] },
-    { "when": { "always": {} }, "then": [{ "action": "explore" }, { "action": "attack_space" }] }
+    { "when": { "always": {} }, "then": [
+      { "action": "set_bucket", "bucket": "explorer", "size": 1, "task": { "action": "explore", "anchor": "home" } },
+      { "action": "fill_bucket", "bucket": "explorer", "kind": "military" },
+      { "action": "run_bucket", "bucket": "explorer" },
+      { "action": "attack_space", "exclude_buckets": true }
+    ] }
   ]
 }

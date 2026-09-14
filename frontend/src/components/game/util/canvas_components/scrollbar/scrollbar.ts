@@ -20,7 +20,8 @@ export abstract class DwgScrollbar<T extends DwgButton = DwgButton> implements C
   protected buttons: T[] = [];
   private hovering = false;
   private clicking = false;
-  protected last_mousemove_m?: Point2D;
+  protected last_mousemove_canvas?: Point2D;
+  protected last_mousemove_screen?: Point2D;
   protected last_mousemove_transform?: BoardTransformData;
   private scroll_pixel_constant = 80;
   private scroll_pages = 20;
@@ -120,8 +121,12 @@ export abstract class DwgScrollbar<T extends DwgButton = DwgButton> implements C
     this.clicking = clicking;
   }
 
-  getLastMousemoveM(): Point2D | undefined {
-    return this.last_mousemove_m;
+  getLastMousemoveCanvas(): Point2D | undefined {
+    return this.last_mousemove_canvas;
+  }
+
+  getLastMousemoveScreen(): Point2D | undefined {
+    return this.last_mousemove_screen;
   }
 
   getLastMousemoveTransform(): BoardTransformData | undefined {
@@ -163,14 +168,15 @@ export abstract class DwgScrollbar<T extends DwgButton = DwgButton> implements C
     return false;
   }
 
-  mousemove(m: Point2D, transform: BoardTransformData): boolean {
-    this.last_mousemove_m = m;
+  mousemove(canvas: Point2D, screen: Point2D, transform: BoardTransformData): boolean {
+    this.last_mousemove_canvas = canvas;
+    this.last_mousemove_screen = screen;
     this.last_mousemove_transform = transform;
     const button_hovering: boolean[] = [];
     for (const button of this.buttons) {
-      button_hovering.push(button.mousemove(m, transform));
+      button_hovering.push(button.mousemove(canvas, screen, transform));
     }
-    this.hovering = button_hovering.some((v) => !!v) || this.mouseOver(m, transform);
+    this.hovering = button_hovering.some((v) => !!v) || this.mouseOver(canvas, screen);
     return this.hovering;
   }
 
@@ -190,7 +196,7 @@ export abstract class DwgScrollbar<T extends DwgButton = DwgButton> implements C
   }
 
   protected abstract updateButtonPositions(): void;
-  abstract mouseOver(m: Point2D, transform: BoardTransformData): boolean;
+  abstract mouseOver(canvas: Point2D, screen: Point2D): boolean;
   abstract scrollCallback(value: number): void;
   abstract xi(): number;
   abstract xf(): number;

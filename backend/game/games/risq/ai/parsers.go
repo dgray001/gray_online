@@ -178,6 +178,17 @@ func parseConditionList(value any, build func([]Condition) Condition) (Condition
 }
 
 func parseAction(raw map[string]any) (Action, error) {
+	action, err := parseActionInner(raw)
+	if err != nil {
+		return nil, err
+	}
+	if exclude, _ := raw["exclude_buckets"].(bool); exclude {
+		action = &unbucketedAction{inner: action}
+	}
+	return action, nil
+}
+
+func parseActionInner(raw map[string]any) (Action, error) {
 	action_type, ok := raw["action"].(string)
 	if !ok {
 		return nil, fmt.Errorf("action must have a string \"action\" field")
@@ -331,13 +342,22 @@ func parseAction(raw map[string]any) (Action, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &fillBucketAction{bucket: bucket, eligible: eligible}, nil
+		action := &fillBucketAction{bucket: bucket, eligible: eligible}
+		if kind_str, ok := raw["kind"].(string); ok {
+			kind, err := parseUnitKind(kind_str)
+			if err != nil {
+				return nil, err
+			}
+			action.kind = &kind
+		}
+		return action, nil
 	case "run_bucket":
 		bucket, ok := raw["bucket"].(string)
 		if !ok {
 			return nil, fmt.Errorf("run_bucket action requires a string \"bucket\"")
 		}
-		return &runBucketAction{bucket: bucket}, nil
+		when_full, _ := raw["when_full"].(bool)
+		return &runBucketAction{bucket: bucket, when_full: when_full}, nil
 	case "drain_bucket":
 		to, ok := raw["to"].(string)
 		if !ok {
@@ -465,6 +485,17 @@ func parseEligible(raw any) ([]OrderKind, error) {
 		kinds = append(kinds, kind)
 	}
 	return kinds, nil
+}
+
+func parseUnitKind(s string) (UnitKind, error) {
+	switch s {
+	case "economic":
+		return UnitEconomic, nil
+	case "military":
+		return UnitMilitary, nil
+	default:
+		return 0, fmt.Errorf("unknown unit kind %q", s)
+	}
 }
 
 func parseResourceCategory(raw any) (ResourceCategory, error) {

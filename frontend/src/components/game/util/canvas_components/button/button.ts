@@ -9,7 +9,8 @@ export abstract class DwgButton implements CanvasComponent {
   private click_hold_timer = 0;
   private hold_clicks = 0;
   private disabled: boolean;
-  private last_m: Point2D = { x: 0, y: 0 };
+  private last_canvas: Point2D = { x: 0, y: 0 };
+  private last_screen: Point2D = { x: 0, y: 0 };
   private last_transform: BoardTransformData = defaultTransform();
 
   private config: ButtonConfig;
@@ -55,7 +56,7 @@ export abstract class DwgButton implements CanvasComponent {
 
   enable() {
     this.disabled = false;
-    this.mousemove(this.last_m, this.last_transform);
+    this.mousemove(this.last_canvas, this.last_screen, this.last_transform);
   }
 
   draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
@@ -71,14 +72,15 @@ export abstract class DwgButton implements CanvasComponent {
     this._draw(ctx, transform, dt);
   }
 
-  mousemove(m: Point2D, transform: BoardTransformData): boolean {
-    this.last_m = m;
+  mousemove(canvas: Point2D, screen: Point2D, _transform: BoardTransformData): boolean {
+    this.last_canvas = canvas;
+    this.last_screen = screen;
     if (this.disabled) {
       this.hovering = false;
       false;
     }
     const previous_hovered = this.hovering;
-    this.hovering = this.mouseOver(m, transform);
+    this.hovering = this.mouseOver(canvas, screen);
     if (!previous_hovered && this.hovering) {
       this.hovered();
     } else if (previous_hovered && !this.hovering) {
@@ -131,7 +133,7 @@ export abstract class DwgButton implements CanvasComponent {
   }
 
   protected abstract _draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, t: number): void;
-  abstract mouseOver(m: Point2D, transform: BoardTransformData): boolean;
+  abstract mouseOver(canvas: Point2D, screen: Point2D): boolean;
 
   protected abstract hovered(): void;
   protected abstract unhovered(): void;

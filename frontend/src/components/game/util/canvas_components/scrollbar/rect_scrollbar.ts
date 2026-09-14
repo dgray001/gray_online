@@ -1,6 +1,5 @@
 import type { PartialBy } from '../../../../../scripts/types';
 import type { BoardTransformData } from '../../canvas_board/canvas_board';
-import { canvasToScreen } from '../../canvas_board/canvas_board';
 import { drawRect } from '../../canvas_util';
 import type { Point2D } from '../../objects2d';
 import type { RectButtonConfig } from '../button/rect_button';
@@ -17,8 +16,8 @@ abstract class DwgRectScrollbarButton extends DwgRectButton {
     this.scrollbar = scrollbar;
   }
 
-  updateHovering(m: Point2D, transform: BoardTransformData) {
-    this.setHovering(this.mouseOver(m, transform));
+  updateHovering(canvas: Point2D, screen: Point2D) {
+    this.setHovering(this.mouseOver(canvas, screen));
   }
 
   protected hovered(): void {}
@@ -116,11 +115,9 @@ class DwgRectScrollbarBarButton extends DwgRectScrollbarButton {
     this.scrollbar_bar_config = config;
   }
 
-  override mousemove(m: Point2D, transform: BoardTransformData): boolean {
-    super.mousemove(m, transform);
-    if (this.scrollbar.isFixedPosition()) {
-      m = canvasToScreen(m, transform);
-    }
+  override mousemove(canvas: Point2D, screen: Point2D, transform: BoardTransformData): boolean {
+    super.mousemove(canvas, screen, transform);
+    const m = this.scrollbar.isFixedPosition() ? screen : canvas;
     if (this.isClicking() && this.click_m && this.scrollbar.getBarDifSize()) {
       const mp = this.scrollbar.isVertical() ? m.y : m.x;
       this.scrollbar.scrollTo(this.click_v + (mp - this.click_m) / this.scrollbar.getBarDifSize());
@@ -298,12 +295,12 @@ export abstract class DwgRectScrollbar extends DwgScrollbar<DwgRectScrollbarButt
   protected override setScroll(v: number): void {
     super.setScroll(v);
     this.updateButtonPositions();
-    if (!this.last_mousemove_m || !this.last_mousemove_transform) {
+    if (!this.last_mousemove_canvas || !this.last_mousemove_screen) {
       return;
     }
-    this.buttons[2].updateHovering(this.last_mousemove_m, this.last_mousemove_transform);
-    this.buttons[3].updateHovering(this.last_mousemove_m, this.last_mousemove_transform);
-    this.buttons[4].updateHovering(this.last_mousemove_m, this.last_mousemove_transform);
+    this.buttons[2].updateHovering(this.last_mousemove_canvas, this.last_mousemove_screen);
+    this.buttons[3].updateHovering(this.last_mousemove_canvas, this.last_mousemove_screen);
+    this.buttons[4].updateHovering(this.last_mousemove_canvas, this.last_mousemove_screen);
   }
 
   isFixedPosition(): boolean {
@@ -359,10 +356,8 @@ export abstract class DwgRectScrollbar extends DwgScrollbar<DwgRectScrollbarButt
     super.draw(ctx, transform, dt);
   }
 
-  mouseOver(m: Point2D, transform: BoardTransformData): boolean {
-    if (this.rect_config.draw_config.fixed_position) {
-      m = canvasToScreen(m, transform);
-    }
+  mouseOver(canvas: Point2D, screen: Point2D): boolean {
+    const m = this.rect_config.draw_config.fixed_position ? screen : canvas;
     if (m.x < this.xi() || m.y < this.yi() || m.x > this.xf() || m.y > this.yf()) {
       return false;
     }

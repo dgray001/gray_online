@@ -1,9 +1,10 @@
 import type { BoardTransformData } from '../../../../util/canvas_board/canvas_board';
-import { canvasToScreen } from '../../../../util/canvas_board/canvas_board';
+import { screenToCanvas } from '../../../../util/canvas_board/canvas_board';
 import type { CanvasComponent } from '../../../../util/canvas_components/canvas_component';
 import { configDraw } from '../../../../util/canvas_components/canvas_component';
 import { drawCircle, drawHexagon, drawRect } from '../../../../util/canvas_util';
 import type { Point2D } from '../../../../util/objects2d';
+import { rotatePoint } from '../../../../util/objects2d';
 import { RisqVisibilityLevel } from '../../risq_data';
 import type { DwgRisq } from '../../risq';
 import { drawHexImage, fillHexOverlay, getSpaceFill } from '../../risq_space';
@@ -14,6 +15,53 @@ export declare interface MinimapConfig {
   background: string;
 }
 
+/** Clips a convex polygon against an axis-aligned box (Sutherland-Hodgman) */
+function clipPolygonToBox(polygon: Point2D[], min: Point2D, max: Point2D): Point2D[] {
+  const lerp = (a: Point2D, b: Point2D, t: number): Point2D => ({ x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) });
+  const clipEdge = (
+    points: Point2D[],
+    inside: (p: Point2D) => boolean,
+    intersect: (a: Point2D, b: Point2D) => Point2D
+  ): Point2D[] => {
+    const out: Point2D[] = [];
+    for (let i = 0; i < points.length; i++) {
+      const curr = points[i];
+      const prev = points[(i + points.length - 1) % points.length];
+      if (inside(curr)) {
+        if (!inside(prev)) {
+          out.push(intersect(prev, curr));
+        }
+        out.push(curr);
+      } else if (inside(prev)) {
+        out.push(intersect(prev, curr));
+      }
+    }
+    return out;
+  };
+  let result = polygon;
+  result = clipEdge(
+    result,
+    (p) => p.x >= min.x,
+    (a, b) => lerp(a, b, (min.x - a.x) / (b.x - a.x))
+  );
+  result = clipEdge(
+    result,
+    (p) => p.x <= max.x,
+    (a, b) => lerp(a, b, (max.x - a.x) / (b.x - a.x))
+  );
+  result = clipEdge(
+    result,
+    (p) => p.y >= min.y,
+    (a, b) => lerp(a, b, (min.y - a.y) / (b.y - a.y))
+  );
+  result = clipEdge(
+    result,
+    (p) => p.y <= max.y,
+    (a, b) => lerp(a, b, (max.y - a.y) / (b.y - a.y))
+  );
+  return result;
+}
+
 export class RisqMinimap implements CanvasComponent {
   private static PADDING = 4;
 
@@ -21,6 +69,7 @@ export class RisqMinimap implements CanvasComponent {
   private config: MinimapConfig;
   private hex_r = 0;
   private content_size: Point2D = { x: 0, y: 0 };
+  private side = 0;
   private hovering = false;
   private clicking = false;
   private last_screen_m: Point2D = { x: 0, y: 0 };
@@ -39,6 +88,14 @@ export class RisqMinimap implements CanvasComponent {
     this.content_size = {
       x: 1.732 * this.hex_r * (2 * board_size + 1),
       y: 1.5 * this.hex_r * (2 * board_size + 1) + 0.5 * this.hex_r,
+    };
+    this.side = Math.max(this.content_size.x, this.content_size.y) + 2 * RisqMinimap.PADDING;
+  }
+
+  private contentOrigin(): Point2D {
+    return {
+      x: this.xi() + 0.5 * (this.side - this.content_size.x),
+      y: this.yi() + 0.5 * (this.side - this.content_size.y),
     };
   }
 
@@ -90,7 +147,11 @@ export class RisqMinimap implements CanvasComponent {
       false,
       () => {
         drawRect(ctx, { x: this.xi(), y: this.yi() }, this.w(), this.h());
-        ctx.translate(this.xi() + RisqMinimap.PADDING, this.yi() + RisqMinimap.PADDING);
+        const origin = this.contentOrigin();
+        const content_center = { x: 0.5 * this.content_size.x, y: 0.5 * this.content_size.y };
+        ctx.translate(origin.x + content_center.x, origin.y + content_center.y);
+        ctx.rotate(transform.rotation);
+        ctx.translate(-content_center.x, -content_center.y);
         const view_mode = this.risq.viewMode();
         const draw_r = this.hex_r + 1; // slight overlap so adjacent tiles' antialiasing doesn't leave seams
         ctx.strokeStyle = 'transparent';
@@ -125,27 +186,38 @@ export class RisqMinimap implements CanvasComponent {
             }
           }
         }
+        ctx.translate(content_center.x, content_center.y);
+        ctx.rotate(-transform.rotation);
+        ctx.translate(-(origin.x + content_center.x), -(origin.y + content_center.y));
         const left_panel = this.risq.getLeftPanel();
         const right_panel = this.risq.getRightPanel();
         const visible_x0 = left_panel.isShowing() ? left_panel.xf() : 0;
         const visible_x1 = right_panel.isOpen() ? right_panel.xi() : this.risq.canvasSize().width;
-        const offset = this.risq.canvasCenter();
-        const viewport_min = this.minimapCanvasFromCanvas({
-          x: (transform.view.x + visible_x0 - offset.x) / transform.scale,
-          y: (transform.view.y - offset.y) / transform.scale,
+        const canvas_h = this.risq.canvasSize().height;
+        const display_center = { x: origin.x + content_center.x, y: origin.y + content_center.y };
+        const corners = [
+          { x: visible_x0, y: 0 },
+          { x: visible_x1, y: 0 },
+          { x: visible_x1, y: canvas_h },
+          { x: visible_x0, y: canvas_h },
+        ].map((screen) => {
+          const local = this.minimapCanvasFromCanvas(screenToCanvas(screen, transform));
+          const rotated = rotatePoint(
+            { x: local.x - content_center.x, y: local.y - content_center.y },
+            transform.rotation
+          );
+          return { x: display_center.x + rotated.x, y: display_center.y + rotated.y };
         });
-        const viewport_max = this.minimapCanvasFromCanvas({
-          x: (transform.view.x + visible_x1 - offset.x) / transform.scale,
-          y: (transform.view.y + this.risq.canvasSize().height - offset.y) / transform.scale,
-        });
-        const clamp = (v: number, max: number) => Math.max(0, Math.min(max, v));
-        const clamped_min = { x: clamp(viewport_min.x, this.content_size.x), y: clamp(viewport_min.y, this.content_size.y) };
-        const clamped_max = { x: clamp(viewport_max.x, this.content_size.x), y: clamp(viewport_max.y, this.content_size.y) };
-        ctx.fillStyle = 'transparent';
-        ctx.strokeStyle = 'white';
-        ctx.lineWidth = 1;
-        drawRect(ctx, clamped_min, clamped_max.x - clamped_min.x, clamped_max.y - clamped_min.y);
-        ctx.translate(-(this.xi() + RisqMinimap.PADDING), -(this.yi() + RisqMinimap.PADDING));
+        const clipped = clipPolygonToBox(corners, { x: this.xi(), y: this.yi() }, { x: this.xf(), y: this.yf() });
+        if (clipped.length >= 3) {
+          ctx.fillStyle = 'transparent';
+          ctx.strokeStyle = 'white';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          clipped.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+          ctx.closePath();
+          ctx.stroke();
+        }
       }
     );
   }
@@ -159,8 +231,8 @@ export class RisqMinimap implements CanvasComponent {
     return false;
   }
 
-  mousemove(m: Point2D, transform: BoardTransformData): boolean {
-    this.last_screen_m = canvasToScreen(m, transform);
+  mousemove(_canvas: Point2D, screen: Point2D, _transform: BoardTransformData): boolean {
+    this.last_screen_m = screen;
     this.hovering =
       this.last_screen_m.x >= this.xi() &&
       this.last_screen_m.y >= this.yi() &&
@@ -186,9 +258,10 @@ export class RisqMinimap implements CanvasComponent {
   }
 
   private jumpTo(screen: Point2D) {
+    const origin = this.contentOrigin();
     const coordinate = this.minimapCanvasToCoordinate({
-      x: screen.x - this.xi() - RisqMinimap.PADDING,
-      y: screen.y - this.yi() - RisqMinimap.PADDING,
+      x: screen.x - origin.x,
+      y: screen.y - origin.y,
     });
     this.risq.goToCoordinate(coordinate);
   }
@@ -206,9 +279,9 @@ export class RisqMinimap implements CanvasComponent {
     return this.yi() + this.h();
   }
   w(): number {
-    return this.content_size.x + 2 * RisqMinimap.PADDING;
+    return this.side;
   }
   h(): number {
-    return this.content_size.y + 2 * RisqMinimap.PADDING;
+    return this.side;
   }
 }

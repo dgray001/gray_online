@@ -11,7 +11,7 @@ export declare interface CanvasComponent {
   // should return true if scroll had an effect on the component
   scroll?: (dy: number, mode: number, dx?: number) => boolean;
   // should return true if the component is hovered
-  mousemove: (m: Point2D, transform: BoardTransformData) => boolean;
+  mousemove: (canvas: Point2D, screen: Point2D, transform: BoardTransformData) => boolean;
   // should return true if mousedown had an effect on the component
   mousedown: (e: MouseEvent) => boolean;
   mouseup: (e: MouseEvent) => void;
@@ -101,12 +101,16 @@ export function configDraw(
   }
   if (config.fixed_position) {
     ctx.scale(1 / transform.scale, 1 / transform.scale);
-    ctx.translate(transform.view.x - transform.offset.x, transform.view.y - transform.offset.y);
+    ctx.translate(transform.view.x, transform.view.y);
+    ctx.rotate(-transform.rotation);
+    ctx.translate(-transform.offset.x, -transform.offset.y);
   }
   ctx.beginPath();
   draw();
   if (config.fixed_position) {
-    ctx.translate(transform.offset.x - transform.view.x, transform.offset.y - transform.view.y);
+    ctx.translate(transform.offset.x, transform.offset.y);
+    ctx.rotate(transform.rotation);
+    ctx.translate(-transform.view.x, -transform.view.y);
     ctx.scale(transform.scale, transform.scale);
   }
 }

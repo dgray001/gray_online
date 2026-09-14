@@ -293,6 +293,8 @@ export enum RisqOrderType {
   OrderType_UnitAttackZone,
   OrderType_UnitAttackUnit,
   OrderType_UnitAttackBuilding,
+  // Server synthesized; not submitted by player
+  OrderType_UnitAutoAttackUnit,
   OrderType_UnitDefend,
   OrderType_UnitGarrison,
   OrderType_UnitUngarrison,

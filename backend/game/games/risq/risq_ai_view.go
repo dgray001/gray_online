@@ -74,7 +74,7 @@ func toOrderKind(order_type OrderType) (ai.OrderKind, bool) {
 		return ai.OrderKindAttackSpace, true
 	case OrderType_UnitAttackZone:
 		return ai.OrderKindAttackZone, true
-	case OrderType_UnitAttackUnit:
+	case OrderType_UnitAttackUnit, OrderType_UnitAutoAttackUnit:
 		return ai.OrderKindAttackUnit, true
 	case OrderType_UnitAttackBuilding:
 		return ai.OrderKindAttackBuilding, true

@@ -1,7 +1,7 @@
 import { DwgElement } from '../../../dwg_element';
 import { isTypingInInput, until } from '../../../../scripts/util';
 import type { Point2D } from '../objects2d';
-import { subtractPoint2D } from '../objects2d';
+import { rotatePoint, subtractPoint2D } from '../objects2d';
 
 import html from './canvas_board.html';
 
@@ -34,7 +34,7 @@ export declare interface CanvasBoardInitializationData {
   draw: (ctx: CanvasRenderingContext2D, transform: BoardTransformData) => void;
   // returns whether something was scrolled
   scroll?: (dy: number, mode: number, dx?: number) => boolean;
-  mousemove: (m: Point2D, transform: BoardTransformData, modifiers: ModifierKeys) => void;
+  mousemove: (canvas: Point2D, screen: Point2D, transform: BoardTransformData, modifiers: ModifierKeys) => void;
   draggingCallback?: () => void;
   mouseleave: () => void;
   // returns whether something was clicked
@@ -54,6 +54,7 @@ export declare interface BoardTransformData {
   scale: number;
   view: Point2D;
   offset: Point2D;
+  rotation: number;
 }
 
 /** Returns a default board transform data object */
@@ -62,20 +63,35 @@ export function defaultTransform(): BoardTransformData {
     scale: 1,
     view: { x: 0, y: 0 },
     offset: { x: 0, y: 0 },
+    rotation: 0,
   };
 }
 
 export function canvasToScreen(canvas: Point2D, transform: BoardTransformData): Point2D {
+  const scaled = rotatePoint(
+    {
+      x: canvas.x * transform.scale - transform.view.x,
+      y: canvas.y * transform.scale - transform.view.y,
+    },
+    transform.rotation
+  );
   return {
-    x: canvas.x * transform.scale - transform.view.x + transform.offset.x,
-    y: canvas.y * transform.scale - transform.view.y + transform.offset.y,
+    x: scaled.x + transform.offset.x,
+    y: scaled.y + transform.offset.y,
   };
 }
 
 export function screenToCanvas(screen: Point2D, transform: BoardTransformData): Point2D {
+  const unrotated = rotatePoint(
+    {
+      x: screen.x - transform.offset.x,
+      y: screen.y - transform.offset.y,
+    },
+    -transform.rotation
+  );
   return {
-    x: (screen.x + transform.view.x - transform.offset.x) / transform.scale,
-    y: (screen.y + transform.view.y - transform.offset.y) / transform.scale,
+    x: (unrotated.x + transform.view.x) / transform.scale,
+    y: (unrotated.y + transform.view.y) / transform.scale,
   };
 }
 
@@ -106,6 +122,7 @@ export class DwgCanvasBoard extends DwgElement {
   private cursor_move_threshold = 5;
   private draw_interval?: ReturnType<typeof setInterval>;
   private dragging = false;
+  private drag_button = 0;
   private dragged = false;
   private mouse: Point2D = { x: 0, y: 0 };
   private cursor_in_range = false;
@@ -161,10 +178,9 @@ export class DwgCanvasBoard extends DwgElement {
       this.ctx.resetTransform();
       this.ctx.fillStyle = 'black';
       this.ctx.fillRect(0, 0, this.data.board_size.x, this.data.board_size.y);
-      this.ctx.translate(
-        -this.transform.view.x + this.transform.offset.x,
-        -this.transform.view.y + this.transform.offset.y
-      );
+      this.ctx.translate(this.transform.offset.x, this.transform.offset.y);
+      this.ctx.rotate(this.transform.rotation);
+      this.ctx.translate(-this.transform.view.x, -this.transform.view.y);
       this.ctx.scale(this.transform.scale, this.transform.scale);
       this.data.draw(this.ctx, this.transform);
     }, 20);
@@ -245,7 +261,7 @@ export class DwgCanvasBoard extends DwgElement {
         zoom = this.zoom_config.min_zoom;
       }
       this.zoomTowardPoint(this.transform.scale / zoom, this.mouse);
-      this.data.mousemove(this.mouseCanvasPoint(), this.transform, modifiersFrom(e));
+      this.data.mousemove(this.mouseCanvasPoint(), this.mouse, this.transform, modifiersFrom(e));
     });
     this.addEventListener('mousemove', (e: MouseEvent) => {
       this.hovered = true;
@@ -254,29 +270,42 @@ export class DwgCanvasBoard extends DwgElement {
         x: e.clientX - rect.left,
         y: e.clientY - rect.top,
       };
-      const dif_mouse = subtractPoint2D(new_mouse, this.mouse);
+      const old_mouse = this.mouse;
+      const dif_mouse = subtractPoint2D(new_mouse, old_mouse);
       this.mouse = new_mouse;
       if (this.dragging) {
-        this.setView(subtractPoint2D(this.transform.view, dif_mouse));
+        if (this.drag_button === 2) {
+          const pivot = this.transform.offset;
+          const prev_angle = Math.atan2(old_mouse.y - pivot.y, old_mouse.x - pivot.x);
+          const new_angle = Math.atan2(new_mouse.y - pivot.y, new_mouse.x - pivot.x);
+          this.setRotation(this.transform.rotation + (new_angle - prev_angle));
+        } else {
+          this.setView(subtractPoint2D(this.transform.view, rotatePoint(dif_mouse, -this.transform.rotation)));
+        }
         if (this.data.draggingCallback) {
           this.data.draggingCallback();
         }
         this.dragged = true;
       } else {
-        this.data.mousemove(this.mouseCanvasPoint(), this.transform, modifiersFrom(e));
+        this.data.mousemove(this.mouseCanvasPoint(), this.mouse, this.transform, modifiersFrom(e));
       }
     });
     this.addEventListener('mousedown', (e: MouseEvent) => {
       e.stopImmediatePropagation();
+      if (e.button === 2 && e.detail >= 2) {
+        this.setRotation(0);
+        return;
+      }
       if (!this.data.mousedown(e)) {
         this.dragging = true;
+        this.drag_button = e.button;
       }
     });
     this.addEventListener('mouseup', (e: MouseEvent) => {
       e.stopImmediatePropagation();
       this.dragging = false;
       if (this.dragged) {
-        this.data.mousemove(this.mouseCanvasPoint(), this.transform, modifiersFrom(e));
+        this.data.mousemove(this.mouseCanvasPoint(), this.mouse, this.transform, modifiersFrom(e));
         this.dragged = false;
       } else {
         this.data.mouseup(e);
@@ -402,11 +431,16 @@ export class DwgCanvasBoard extends DwgElement {
       }
     }
     if (moved) {
+      const rotated = rotatePoint(d_view, -this.transform.rotation);
       this.setView({
-        x: this.transform.view.x + d_view.x,
-        y: this.transform.view.y + d_view.y,
+        x: this.transform.view.x + rotated.x,
+        y: this.transform.view.y + rotated.y,
       });
-      this.data.mousemove(this.mouseCanvasPoint(), this.transform, { ctrl: false, shift: false, alt: false });
+      this.data.mousemove(this.mouseCanvasPoint(), this.mouse, this.transform, {
+        ctrl: false,
+        shift: false,
+        alt: false,
+      });
     }
   }
 
@@ -427,6 +461,10 @@ export class DwgCanvasBoard extends DwgElement {
 
   setOffset(offset: Point2D) {
     this.transform.offset = offset;
+  }
+
+  setRotation(rotation: number) {
+    this.transform.rotation = rotation;
   }
 
   setView(view: Point2D) {
@@ -485,9 +523,13 @@ export class DwgCanvasBoard extends DwgElement {
     }
     const factor = scale / this.transform.scale;
     this.transform.scale = scale;
+    const a = rotatePoint(
+      { x: anchor.x - this.transform.offset.x, y: anchor.y - this.transform.offset.y },
+      -this.transform.rotation
+    );
     this.setView({
-      x: factor * (this.transform.view.x - this.transform.offset.x + anchor.x) - anchor.x + this.transform.offset.x,
-      y: factor * (this.transform.view.y - this.transform.offset.y + anchor.y) - anchor.y + this.transform.offset.y,
+      x: factor * this.transform.view.x + (factor - 1) * a.x,
+      y: factor * this.transform.view.y + (factor - 1) * a.y,
     });
     return scale;
   }

@@ -12,6 +12,7 @@ type Orderable interface {
 	toFrontend(viewer_player_id int) gin.H
 	isDeleted() bool
 	internalId() uint64
+	activeOrders() []*RisqOrder
 	refreshStamina()
 	// Returns whether the order is receivable by this subject
 	orderReceivable(o *RisqOrder, risq *GameRisq) bool
@@ -79,6 +80,8 @@ const (
 	OrderType_UnitAttackZone
 	OrderType_UnitAttackUnit
 	OrderType_UnitAttackBuilding
+	// Server synthesized; not submitted by player
+	OrderType_UnitAutoAttackUnit
 	OrderType_UnitDefend
 	OrderType_UnitGarrison
 	OrderType_UnitUngarrison
@@ -184,7 +187,7 @@ func (r *GameRisq) getOrdersFromPlayerAction(action gin.H, player_id int) ([]Ord
 func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend, player_id int) error {
 	// Validate order type
 	order_type := OrderType(order.Order_type)
-	if order_type <= OrderType_None || order_type >= OrderType_END {
+	if order_type <= OrderType_None || order_type >= OrderType_END || order_type == OrderType_UnitAutoAttackUnit {
 		return fmt.Errorf("Invalid order type: %d", order_type)
 	}
 	// Order owner must be the submitting player

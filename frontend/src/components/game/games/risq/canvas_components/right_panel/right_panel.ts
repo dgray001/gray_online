@@ -1,6 +1,5 @@
 import type { ColorRGB } from '../../../../../../scripts/color_rgb';
 import type { BoardTransformData } from '../../../../util/canvas_board/canvas_board';
-import { canvasToScreen } from '../../../../util/canvas_board/canvas_board';
 import type { CanvasComponent, Rotation } from '../../../../util/canvas_components/canvas_component';
 import { configDraw } from '../../../../util/canvas_components/canvas_component';
 import { drawLine, drawRect, drawText } from '../../../../util/canvas_util';
@@ -291,19 +290,18 @@ export class RisqRightPanel implements CanvasComponent {
     return this.orders_list.scroll(dy, mode);
   }
 
-  mousemove(m: Point2D, transform: BoardTransformData): boolean {
-    if (this.open_button.mousemove(m, transform)) {
+  mousemove(canvas: Point2D, screen: Point2D, transform: BoardTransformData): boolean {
+    if (this.open_button.mousemove(canvas, screen, transform)) {
       return true;
     }
-    this.orders_list.mousemove(m, transform);
+    this.orders_list.mousemove(canvas, screen, transform);
     if (this.hasIdleUnits()) {
-      this.next_idle_button.mousemove(m, transform);
-      this.submit_icon_button.mousemove(m, transform);
+      this.next_idle_button.mousemove(canvas, screen, transform);
+      this.submit_icon_button.mousemove(canvas, screen, transform);
     } else {
-      this.submit_button.mousemove(m, transform);
+      this.submit_button.mousemove(canvas, screen, transform);
     }
-    m = canvasToScreen(m, transform);
-    if (m.x > this.xi() && m.y > this.yi() && m.x < this.xf() && m.y < this.yf()) {
+    if (screen.x > this.xi() && screen.y > this.yi() && screen.x < this.xf() && screen.y < this.yf()) {
       this.hovering = true;
     } else {
       this.hovering = false;

@@ -4,23 +4,38 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/dgray001/gray_online/game/game_utils"
 	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
 )
 
+type UnitStance uint8
+
+const (
+	StancePassive UnitStance = iota
+	StanceAggressive
+	StanceDefensive
+	StanceStandGround
+)
+
 type RisqUnit struct {
-	deleted         bool
-	internal_id     uint64
-	player_id       int
-	unit_id         uint32
-	display_name    string
-	zone            *RisqZone
-	garrisoned_in   *RisqBuilding
-	turn_stamina    int
-	current_stamina int
-	cs              RisqCombatStats
-	order_queue     RisqOrderQueue
-	intent          *RisqIntent
+	deleted           bool
+	internal_id       uint64
+	player_id         int
+	unit_id           uint32
+	display_name      string
+	zone              *RisqZone
+	garrisoned_in     *RisqBuilding
+	turn_stamina      int
+	current_stamina   int
+	cs                RisqCombatStats
+	order_queue       RisqOrderQueue
+	intent            *RisqIntent
+	attacked_by       []RisqDamageEvent
+	stance            UnitStance
+	interrupt_current bool
+	attack_back       bool
+	target_priority   []TargetCategory
 }
 
 func isEconomicUnit(unit_id uint32) bool {
@@ -38,6 +53,9 @@ func createRisqUnit(internal_id uint64, unit_id uint32, player *RisqPlayer) *Ris
 		cs:              createRisqCombatStats(),
 		order_queue:     createRisqOrderQueue(),
 		intent:          createRisqIntent(),
+	}
+	if !isEconomicUnit(unit_id) {
+		unit.stance = StanceDefensive
 	}
 	config, ok := unitConfigs[unit_id]
 	if !ok {
@@ -93,6 +111,10 @@ func (u *RisqUnit) internalId() uint64 {
 	return u.internal_id
 }
 
+func (u *RisqUnit) activeOrders() []*RisqOrder {
+	return u.order_queue.active_orders
+}
+
 func (u *RisqUnit) cleanupDeleted(risq *GameRisq) {
 	resolveOrdersOnDeath(risq, &u.order_queue, u.internal_id, OrderType_UnitDelete)
 	if u.zone != nil && u.zone.space != nil {
@@ -108,6 +130,7 @@ func (u *RisqUnit) refreshStamina() {
 	if u.current_stamina > max_stamina {
 		u.current_stamina = max_stamina
 	}
+	u.attacked_by = nil
 }
 
 func (u *RisqUnit) receiveOrder(o *RisqOrder, risq *GameRisq) {
@@ -174,15 +197,25 @@ func (u *RisqUnit) orderReceivable(o *RisqOrder, risq *GameRisq) bool {
 		return ok && cache.player_id == u.player_id && !cache.under_construction && cache.cs.health < float64(cache.cs.max_health)
 	case OrderType_UnitGarrison:
 		target := risq.buildings[uint64(o.target_id)]
-		return target != nil && risq.canAssist(u.player_id, target) && !target.underConstruction() && uint16(len(target.garrisoned_units)) < target.garrison_capacity && u.garrisoned_in != target
+		return u.garrisonTargetValid(risq, target) && uint16(len(target.garrisoned_units)) < target.garrison_capacity && u.garrisoned_in != target
 	case OrderType_UnitUngarrison:
 		return u.garrisoned_in != nil
-	case OrderType_UnitAttackUnit:
+	case OrderType_UnitAttackUnit, OrderType_UnitAutoAttackUnit:
 		target := risq.units[uint64(o.target_id)]
-		return target != nil && canAttack(u.player_id, target.player_id)
+		if target == nil || target.zone == nil || !canAttack(u.player_id, target.player_id) {
+			return false
+		}
+		if target.zone.space.getVisibility(u.player_id) < VisibilityGood {
+			return false
+		}
+		return o.order_type != OrderType_UnitAutoAttackUnit || u.stanceReachable(target)
 	case OrderType_UnitAttackBuilding:
 		target := risq.buildings[uint64(o.target_id)]
-		return target != nil && canAttack(u.player_id, target.player_id)
+		if target == nil || !canAttack(u.player_id, target.player_id) {
+			return false
+		}
+		_, ok := target.zone.buildingKnownTo(u.player_id)
+		return ok
 	default:
 	}
 	return true
@@ -194,6 +227,10 @@ func (r *GameRisq) canAssist(player_id int, b *RisqBuilding) bool {
 
 func canAttack(attacker_player_id int, target_player_id int) bool {
 	return attacker_player_id != target_player_id // TODO: not-ally once diplomacy exists
+}
+
+func (u *RisqUnit) garrisonTargetValid(risq *GameRisq, target *RisqBuilding) bool {
+	return target != nil && !target.isDeleted() && !target.underConstruction() && risq.canAssist(u.player_id, target)
 }
 
 func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
@@ -256,7 +293,7 @@ func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 		}
 	case OrderType_UnitGarrison:
 		target := risq.buildings[uint64(o.target_id)]
-		if target == nil || target.isDeleted() || target.underConstruction() || !risq.canAssist(u.player_id, target) {
+		if !u.garrisonTargetValid(risq, target) {
 			return OrderStatus_Cancelled
 		}
 		if u.garrisoned_in != target {
@@ -277,13 +314,22 @@ func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 		if !canAttack(u.player_id, target.player_id) {
 			return OrderStatus_Cancelled
 		}
+		if _, ok := target.zone.buildingKnownTo(u.player_id); !ok {
+			return OrderStatus_Cancelled
+		}
 		return OrderStatus_InProgress
-	case OrderType_UnitAttackUnit:
+	case OrderType_UnitAttackUnit, OrderType_UnitAutoAttackUnit:
 		target := risq.units[uint64(o.target_id)]
 		if target == nil || target.isDeleted() {
 			break
 		}
 		if !canAttack(u.player_id, target.player_id) {
+			return OrderStatus_Cancelled
+		}
+		if target.zone == nil || target.zone.space.getVisibility(u.player_id) < VisibilityGood {
+			return OrderStatus_Cancelled
+		}
+		if o.order_type == OrderType_UnitAutoAttackUnit && !u.stanceReachable(target) {
 			return OrderStatus_Cancelled
 		}
 		return OrderStatus_InProgress
@@ -301,8 +347,117 @@ func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 	return OrderStatus_Executed
 }
 
+const aggressiveSightRadius = 2
+
+func (u *RisqUnit) stanceReachable(attacker *RisqUnit) bool {
+	if attacker == nil || attacker.deleted || attacker.zone == nil || u.zone == nil {
+		return false
+	}
+	switch u.stance {
+	case StanceAggressive:
+		return true
+	case StanceDefensive:
+		return attacker.zone.space == u.zone.space
+	case StanceStandGround:
+		return attacker.zone == u.zone
+	default:
+		return false
+	}
+}
+
+func (u *RisqUnit) isAttacking() bool {
+	if len(u.order_queue.active_orders) == 0 {
+		return false
+	}
+	switch u.order_queue.active_orders[0].order_type {
+	case OrderType_UnitAttackUnit, OrderType_UnitAutoAttackUnit, OrderType_UnitAttackBuilding, OrderType_UnitAttackZone, OrderType_UnitAttackSpace:
+		return true
+	default:
+		return false
+	}
+}
+
+func attackBackDistance(u *RisqUnit, attacker *RisqUnit) int {
+	if attacker.zone.space == u.zone.space {
+		return zoneDistanceWithinSpace(u.zone, attacker.zone)
+	}
+	return int(game_utils.AxialDistance(u.zone.space.coordinate, attacker.zone.space.coordinate)) * 6
+}
+
+// Among attackers that hit this tick, applies target_priority then nearest/lowest-id as a tiebreak.
+func (u *RisqUnit) reactiveAttackBackTarget(risq *GameRisq) *RisqUnit {
+	if !u.attack_back || len(u.attacked_by) == 0 {
+		return nil
+	}
+	latest_tick := u.attacked_by[len(u.attacked_by)-1].tick
+	best := newCategoryBest()
+	for _, event := range u.attacked_by {
+		if event.tick != latest_tick || event.attacker_type != AttackedByUnit {
+			continue
+		}
+		attacker := risq.units[event.attacker_id]
+		if !u.stanceReachable(attacker) {
+			continue
+		}
+		best.considerUnit(attacker, attackBackDistance(u, attacker))
+	}
+	target, _ := best.pick(u.target_priority)
+	return target
+}
+
+// Bypasses player.active_orders bookkeeping, same as gather-point orders.
+func (u *RisqUnit) replaceOrder(risq *GameRisq, order_type OrderType, target_id int64) {
+	if len(u.order_queue.active_orders) > 0 {
+		current := u.order_queue.active_orders[0]
+		if current.order_type == order_type && current.target_id == target_id {
+			return
+		}
+	}
+	order := createRisqOrder(risq.nextOrderInternalId(), order_type, u.player_id, map[uint64]Orderable{u.internal_id: u}, target_id, false)
+	if !u.orderReceivable(order, risq) {
+		return
+	}
+	u.order_queue.active_orders = nil
+	u.receiveOrder(order, risq)
+}
+
+func (u *RisqUnit) resolveStance(risq *GameRisq) {
+	if isEconomicUnit(u.unit_id) || u.zone == nil {
+		return
+	}
+	if target := u.reactiveAttackBackTarget(risq); target != nil {
+		if u.interrupt_current || !u.isAttacking() {
+			u.replaceOrder(risq, OrderType_UnitAutoAttackUnit, int64(target.internal_id))
+		}
+		return
+	}
+	if u.stance == StancePassive {
+		return
+	}
+	if !u.interrupt_current && len(u.order_queue.active_orders) > 0 {
+		return
+	}
+	switch u.stance {
+	case StanceAggressive:
+		if target, target_building := nearbyAttackTarget(u, risq, aggressiveSightRadius); target != nil {
+			u.replaceOrder(risq, OrderType_UnitAutoAttackUnit, int64(target.internal_id))
+		} else if target_building != nil {
+			u.replaceOrder(risq, OrderType_UnitAttackBuilding, int64(target_building.internal_id))
+		}
+	case StanceDefensive:
+		if spaceHasEnemy(u.zone.space, u.player_id) {
+			u.replaceOrder(risq, OrderType_UnitAttackSpace, int64(u.zone.space.coordinate_key))
+		}
+	case StanceStandGround:
+		if zoneHasEnemy(u.zone, u.player_id) {
+			u.replaceOrder(risq, OrderType_UnitAttackZone, int64(u.zone.coordinate_key))
+		}
+	}
+}
+
 func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 	u.intent.resetIntent()
+	u.resolveStance(risq)
 	order := u.order_queue.nextOrder(u, risq)
 	if order == nil {
 		return false
@@ -337,7 +492,7 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 		} else {
 			u.intent.setAttackBuilding(target)
 		}
-	case OrderType_UnitAttackUnit:
+	case OrderType_UnitAttackUnit, OrderType_UnitAutoAttackUnit:
 		target := risq.units[uint64(order.target_id)]
 		if u.zone != target.zone {
 			u.intent.setMove(u.findPath(target.zone))
@@ -348,10 +503,10 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 		_, zone := invertZoneKey(uint(order.target_id), risq)
 		if u.zone != zone {
 			u.intent.setMove(u.findPath(zone))
-		} else if target := zoneEnemyUnit(zone, u.player_id); target != nil {
+		} else if target, target_building := zoneAttackTarget(zone, u.player_id, u.target_priority); target != nil {
 			u.intent.setAttackUnit(target)
-		} else if target := zoneEnemyBuilding(zone, u.player_id); target != nil {
-			u.intent.setAttackBuilding(target)
+		} else if target_building != nil {
+			u.intent.setAttackBuilding(target_building)
 		}
 	case OrderType_UnitAttackSpace:
 		space := invertSpaceKey(uint(order.target_id), risq)
@@ -475,15 +630,14 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 				delete(risq.players[u.player_id].planned_foundations, detail.zone.coordinate_key)
 			}
 		}
-		if building.deleted || !building.underConstruction() {
-			return
-		}
-		old_ratio := constructionHealthRatio(building.stamina_remaining, building.construction_stamina_total)
-		building.stamina_remaining -= u.intent.intent_cost
-		new_ratio := constructionHealthRatio(building.stamina_remaining, building.construction_stamina_total)
-		building.cs.addHealth(float64(building.cs.max_health) * (new_ratio - old_ratio))
-		if !building.underConstruction() {
-			risq.players[building.player_id].report.recordBuildingBuilt(building.building_id, building.zone.space.coordinate, building.zone.coordinate)
+		if !building.deleted && building.underConstruction() {
+			old_ratio := constructionHealthRatio(building.stamina_remaining, building.construction_stamina_total)
+			building.stamina_remaining -= u.intent.intent_cost
+			new_ratio := constructionHealthRatio(building.stamina_remaining, building.construction_stamina_total)
+			building.cs.addHealth(float64(building.cs.max_health) * (new_ratio - old_ratio))
+			if !building.underConstruction() {
+				risq.players[building.player_id].report.recordBuildingBuilt(building.building_id, building.zone.space.coordinate, building.zone.coordinate)
+			}
 		}
 	case *DeleteIntent:
 		u.deleted = true
@@ -511,17 +665,12 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 		player.resources.spend(cost.scale(afford))
 	case *GarrisonIntent:
 		target := detail.target
-		if target.deleted || target.underConstruction() || !risq.canAssist(u.player_id, target) || uint16(len(target.garrisoned_units)) >= target.garrison_capacity {
-			return
+		if u.garrisonTargetValid(risq, target) && u.zone == target.zone && risq.garrison_allotments[u] {
+			target.garrisoned_units[u.internal_id] = u
+			u.garrisoned_in = target
+			u.zone.space.removeUnit(u)
+			u.zone = nil
 		}
-		if u.zone != target.zone {
-			return
-		}
-		// Garrisoning
-		target.garrisoned_units[u.internal_id] = u
-		u.garrisoned_in = target
-		u.zone.space.removeUnit(u)
-		u.zone = nil
 	case *UngarrisonIntent:
 		if u.garrisoned_in == nil {
 			return

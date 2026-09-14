@@ -1,8 +1,10 @@
 import { DwgElement } from '../../../dwg_element';
 import type { UpdateMessage } from '../../data_models';
 import { drawArrow, drawCircle, drawRect } from '../../util/canvas_util';
+import type { CanvasComponent } from '../../util/canvas_components/canvas_component';
+import { configDraw } from '../../util/canvas_components/canvas_component';
 import type { BoardTransformData, DwgCanvasBoard, ModifierKeys } from '../../util/canvas_board/canvas_board';
-import { screenToCanvas } from '../../util/canvas_board/canvas_board';
+import { canvasToScreen, screenToCanvas } from '../../util/canvas_board/canvas_board';
 import type { Point2D } from '../../util/objects2d';
 import {
   addPoint2D,
@@ -99,10 +101,12 @@ export class DwgRisq extends DwgElement {
   private last_transform: BoardTransformData = {
     view: { x: 0, y: 0 },
     offset: { x: 0, y: 0 },
+    rotation: 0,
     scale: 1,
   };
   private canvas_size: DOMRect = DOMRect.fromRect();
   private mouse_canvas: Point2D = { x: 0, y: 0 };
+  private mouse_screen: Point2D = { x: 0, y: 0 };
   private mouse_coordinate: Point2D = { x: 0, y: 0 };
   private dragging_selection = false;
   private drag_additive = false;
@@ -162,6 +166,7 @@ export class DwgRisq extends DwgElement {
     target_w: 150,
     background: 'rgb(222,184,135)',
   });
+  private readonly canvas_components: CanvasComponent[] = [this.right_panel, this.left_panel, this.minimap];
 
   constructor() {
     super();
@@ -394,10 +399,6 @@ export class DwgRisq extends DwgElement {
     return this.canvas_size;
   }
 
-  canvasCenter(): Point2D {
-    return this.canvas_center;
-  }
-
   drawDetail(): DrawRisqSpaceDetail {
     return this.draw_detail;
   }
@@ -490,9 +491,10 @@ export class DwgRisq extends DwgElement {
     this.last_time = now;
     // set config
     this.last_transform = transform;
-    const inset_offset = 0.25; // this determines how the inset rect (for summaries) is constructed
-    const inset_w = 2 * this.hex_a * (1 - inset_offset);
-    const inset_h = this.hex_r * (1 + inset_offset);
+    // the inset rect must stay inside the hex's incircle (radius = hex_a) so it never pokes out as the map rotates
+    const inset_ratio = 1.0392;
+    const inset_h = (2 * this.hex_a) / Math.sqrt(inset_ratio * inset_ratio + 1);
+    const inset_w = inset_ratio * inset_h;
     const inset_row = inset_h / 4 - 4;
     this.draw_detail = this.getDrawDetail(transform.scale);
     const draw_config: DrawRisqSpaceConfig = {
@@ -502,6 +504,7 @@ export class DwgRisq extends DwgElement {
       inset_row,
       draw_detail: this.draw_detail,
       view_mode: this.view_mode,
+      rotation: transform.rotation,
     };
     // draw spaces
     for (const row of this.game.spaces) {
@@ -516,15 +519,19 @@ export class DwgRisq extends DwgElement {
     this.drawUnitOrders(ctx);
     if (this.dragging_selection) {
       const { min, max } = normalizeRect(this.drag_start, this.drag_current);
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-      ctx.strokeStyle = 'white';
-      ctx.lineWidth = 0.6;
-      drawRect(ctx, min, max.x - min.x, max.y - min.y);
+      configDraw(
+        ctx,
+        transform,
+        { fill_style: 'rgba(255, 255, 255, 0.15)', stroke_style: 'white', stroke_width: 1, fixed_position: true },
+        false,
+        false,
+        () => drawRect(ctx, min, max.x - min.x, max.y - min.y)
+      );
     }
     // draw panels
-    this.right_panel.draw(ctx, transform, dt);
-    this.left_panel.draw(ctx, transform, dt);
-    this.minimap.draw(ctx, transform, dt);
+    for (const component of this.canvas_components) {
+      component.draw(ctx, transform, dt);
+    }
     // draw red dot
     if (DRAW_CENTER_DOT && DEV) {
       ctx.fillStyle = 'red';
@@ -733,16 +740,11 @@ export class DwgRisq extends DwgElement {
 
   // scroll() signature already used by HTMLElement
   private scrollDwg(dy: number, mode: number): boolean {
-    if (this.left_panel.isHovering()) {
-      this.left_panel.scroll(dy, mode);
-      return true;
-    }
-    if (this.right_panel.isHovering()) {
-      this.right_panel.scroll(dy, mode);
-      return true;
-    }
-    if (this.minimap.isHovering()) {
-      return true;
+    for (const component of this.canvas_components) {
+      if (component.isHovering()) {
+        component.scroll?.(dy, mode);
+        return true;
+      }
     }
     return false;
   }
@@ -751,20 +753,22 @@ export class DwgRisq extends DwgElement {
     if (!this.board || !this.board.isInitialized()) {
       return;
     }
-    if (!this.left_panel.isHovering() && !this.right_panel.isHovering()) {
-      return;
-    }
-    this.mousemove(this.mouse_canvas, this.last_transform, { ctrl: false, shift: false, alt: false });
+    this.mousemove(this.mouse_canvas, this.mouse_screen, this.last_transform, {
+      ctrl: false,
+      shift: false,
+      alt: false,
+    });
   }
 
-  private mousemove(m: Point2D, transform: BoardTransformData, modifiers: ModifierKeys) {
+  private mousemove(m: Point2D, screen: Point2D, transform: BoardTransformData, modifiers: ModifierKeys) {
     if (!this.game) {
       return;
     }
     this.draw_detail = this.getDrawDetail(transform.scale);
     this.mouse_canvas = m;
+    this.mouse_screen = screen;
     if (this.dragging_selection) {
-      this.drag_current = m;
+      this.drag_current = screen;
       if (
         Math.hypot(this.drag_current.x - this.drag_start.x, this.drag_current.y - this.drag_start.y) >
         DRAG_SELECT_THRESHOLD
@@ -781,10 +785,9 @@ export class DwgRisq extends DwgElement {
     if (!!this.hovered_space) {
       this.hovered_space.center = this.coordinateToCanvas(this.hovered_space.coordinate);
     }
-    const hovered_other_component = [
-      this.right_panel.mousemove(m, transform),
-      this.left_panel.mousemove(m, transform),
-    ].some((b) => !!b);
+    const hovered_other_component = this.canvas_components
+      .map((c) => c.mousemove(m, screen, transform))
+      .some(Boolean);
     this.mouse_coordinate = this.canvasToCoordinate(m, this.game.board_size);
     const index = coordinateToIndex(this.game.board_size, roundAxialCoordinate(this.mouse_coordinate));
     const new_hovered_space = getSpace(this.game, index);
@@ -857,7 +860,7 @@ export class DwgRisq extends DwgElement {
 
   // returns false if mousedown event should initiate dragging
   private mousedown(e: MouseEvent): boolean {
-    if ([this.right_panel.mousedown(e), this.left_panel.mousedown(e)].some((b) => !!b)) {
+    if (this.canvas_components.map((c) => c.mousedown(e)).some(Boolean)) {
       return true;
     }
     // left click
@@ -891,16 +894,16 @@ export class DwgRisq extends DwgElement {
         default:
           break;
       }
+      return true;
     }
-    // only drag on left click
-    if (e.button === 0 && !e.shiftKey) {
+    if (this.draw_detail === DrawRisqSpaceDetail.ZONE_DETAILS && e.button === 0 && !e.shiftKey) {
       this.dragging_selection = true;
       this.drag_additive = e.ctrlKey;
-      this.drag_start = { ...this.mouse_canvas };
+      this.drag_start = { ...this.mouse_screen };
       this.drag_current = this.drag_start;
       return true;
     }
-    return e.button !== 0;
+    return e.button !== 0 && e.button !== 2;
   }
 
   armOrder(order_type: RisqOrderType, on_disarm: () => void, building?: { id: number; display_name: string }) {
@@ -1273,10 +1276,23 @@ export class DwgRisq extends DwgElement {
     return ids;
   }
 
-  private isSpaceOnScreen(space: RisqSpace): boolean {
+  private visibleCanvasBounds(): { min: Point2D; max: Point2D } {
     const transform = this.last_transform;
-    const min = screenToCanvas({ x: 0, y: 0 }, transform);
-    const max = screenToCanvas({ x: this.canvas_size.width, y: this.canvas_size.height }, transform);
+    const { width, height } = this.canvas_size;
+    const corners = [
+      screenToCanvas({ x: 0, y: 0 }, transform),
+      screenToCanvas({ x: width, y: 0 }, transform),
+      screenToCanvas({ x: 0, y: height }, transform),
+      screenToCanvas({ x: width, y: height }, transform),
+    ];
+    return {
+      min: { x: Math.min(...corners.map((c) => c.x)), y: Math.min(...corners.map((c) => c.y)) },
+      max: { x: Math.max(...corners.map((c) => c.x)), y: Math.max(...corners.map((c) => c.y)) },
+    };
+  }
+
+  private isSpaceOnScreen(space: RisqSpace): boolean {
+    const { min, max } = this.visibleCanvasBounds();
     return !(
       space.center.x + this.hex_a < min.x ||
       space.center.x - this.hex_a > max.x ||
@@ -1286,15 +1302,9 @@ export class DwgRisq extends DwgElement {
   }
 
   private isCircleOnScreen(c: Point2D, radius: number): boolean {
-    const transform = this.last_transform;
-    const min = screenToCanvas({ x: 0, y: 0 }, transform);
-    const max = screenToCanvas({ x: this.canvas_size.width, y: this.canvas_size.height }, transform);
-    const x0 = min.x;
-    const x1 = max.x;
-    const y0 = min.y;
-    const y1 = max.y;
-    const closest_x = Math.min(Math.max(c.x, x0), x1);
-    const closest_y = Math.min(Math.max(c.y, y0), y1);
+    const { min, max } = this.visibleCanvasBounds();
+    const closest_x = Math.min(Math.max(c.x, min.x), max.x);
+    const closest_y = Math.min(Math.max(c.y, min.y), max.y);
     const dx = c.x - closest_x;
     const dy = c.y - closest_y;
     return dx * dx + dy * dy <= radius * radius;
@@ -1769,8 +1779,9 @@ export class DwgRisq extends DwgElement {
   private mouseup(e: MouseEvent) {
     const armed_before = this.armed_order;
     const armed_callback_before = this.armed_button_callback;
-    this.right_panel.mouseup(e);
-    this.left_panel.mouseup(e);
+    for (const component of this.canvas_components) {
+      component.mouseup(e);
+    }
     if (this.dragging_selection) {
       const dragged =
         Math.hypot(this.drag_current.x - this.drag_start.x, this.drag_current.y - this.drag_start.y) >
@@ -1783,7 +1794,7 @@ export class DwgRisq extends DwgElement {
     }
     const space = this.hovered_space;
     const zone = this.hovered_zone;
-    if (!!space && armed_before === RisqOrderType.NONE) {
+    if (!!space && space.visibility > 0 && armed_before === RisqOrderType.NONE) {
       if (!!zone) {
         if (space.visibility > 0 && this.draw_detail === DrawRisqSpaceDetail.ZONE_DETAILS) {
           let open_zone = true;
@@ -1924,6 +1935,12 @@ export class DwgRisq extends DwgElement {
         this.left_panel.openPanel({ data_type: LeftPanelDataType.SPACE, data: space }, space.visibility);
       }
       space.clicked = false;
+    } else if (
+      armed_before === RisqOrderType.NONE &&
+      !this.left_panel.isHovering() &&
+      !this.right_panel.isHovering()
+    ) {
+      this.left_panel.close();
     }
     if (
       armed_before !== RisqOrderType.NONE &&
@@ -1943,7 +1960,10 @@ export class DwgRisq extends DwgElement {
     const zone_view = this.draw_detail === DrawRisqSpaceDetail.ZONE_DETAILS;
     const found_ids: number[] = [];
     for (const unit of player.units.values()) {
-      const anchor = this.orderPoint(unit.space_coordinate, this.unitAnchorOffset(unit), zone_view);
+      const anchor = canvasToScreen(
+        this.orderPoint(unit.space_coordinate, this.unitAnchorOffset(unit), zone_view),
+        this.last_transform
+      );
       if (pointInRect(anchor, this.drag_start, this.drag_current)) {
         found_ids.push(unit.internal_id);
       }
