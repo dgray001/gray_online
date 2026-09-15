@@ -3,17 +3,18 @@ package risq
 type RisqGatherPointLocationKind uint8
 
 const (
-	GatherLocation_Space RisqGatherPointLocationKind = iota
-	GatherLocation_Zone
+	RisqGatherPointLocationKind_NONE RisqGatherPointLocationKind = iota
+	RisqGatherPointLocationKind_SPACE
+	RisqGatherPointLocationKind_ZONE
 )
 
 type RisqGatherObjectType uint8
 
 const (
-	GatherObject_None RisqGatherObjectType = iota
-	GatherObject_Unit
-	GatherObject_Building
-	GatherObject_Resource
+	RisqGatherObjectType_NONE RisqGatherObjectType = iota
+	RisqGatherObjectType_UNIT
+	RisqGatherObjectType_BUILDING
+	RisqGatherObjectType_RESOURCE
 )
 
 type RisqGatherPoint struct {
@@ -30,16 +31,16 @@ type gatherPointCandidate struct {
 
 // Order types worth trying, in priority order; legality of each is left entirely to orderReceivable.
 func (gp *RisqGatherPoint) candidates() []gatherPointCandidate {
-	if gp.object_type == GatherObject_None || gp.location_kind != GatherLocation_Zone {
+	if gp.object_type == RisqGatherObjectType_NONE || gp.location_kind != RisqGatherPointLocationKind_ZONE {
 		return nil
 	}
 	switch gp.object_type {
-	case GatherObject_Resource:
+	case RisqGatherObjectType_RESOURCE:
 		return []gatherPointCandidate{{OrderType_UnitGather, int64(gp.location_id)}}
-	case GatherObject_Building:
+	case RisqGatherObjectType_BUILDING:
 		id := int64(gp.object_id)
 		return []gatherPointCandidate{{OrderType_UnitGarrison, id}, {OrderType_UnitRepair, id}, {OrderType_UnitAttackBuilding, id}}
-	case GatherObject_Unit:
+	case RisqGatherObjectType_UNIT:
 		return []gatherPointCandidate{{OrderType_UnitAttackUnit, int64(gp.object_id)}}
 	default:
 		return nil
@@ -48,7 +49,7 @@ func (gp *RisqGatherPoint) candidates() []gatherPointCandidate {
 
 func (gp *RisqGatherPoint) resolveOrder(risq *GameRisq, b *RisqBuilding, unit *RisqUnit) *RisqOrder {
 	order_type, target_id := OrderType_UnitMoveZone, int64(gp.location_id)
-	if gp.location_kind == GatherLocation_Space {
+	if gp.location_kind == RisqGatherPointLocationKind_SPACE {
 		order_type = OrderType_UnitMoveSpace
 	}
 	for _, c := range gp.candidates() {

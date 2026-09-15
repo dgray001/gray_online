@@ -1,5 +1,4 @@
 v0.9: Risq beta version
- d: Finish initial tech tree
  e: Learnable AI pipeline
  f: Bottom bar in UI (summary report, view buttons, tech tree)
  g: Partial move pathfinding
@@ -10,21 +9,15 @@ v0.9: Risq beta version
  l: Expanded level 2 tech tree
  m: Settings setup (including alt win conditions)
  n: Military unit stances frontend
+ - Gather points (frontend)
+ - Can attack when garrisoned (configurable per-unit multiplier where future archers would have more)
+ - Garrisoned frontend (can click units and show flag on building)
 
 UI Improvements:
  - Revamp summary report
  - Fully customizable hotkeys
  - Message logic for top of screen (like for pop capped)
- - Gather points (frontend)
- - Can attack when garrisoned (configurable per-unit multiplier where future archers would have more)
-
-UI Issues:
  - Pan from mouse on edge of screen doesn't really work
- - Missing info from left panel: garrisoned units, space ownership, ...
- - Left panel doesn't validate/handle opening on most data types before showing (openPanel default case)
- - Left panel doesn't draw anything for a space with units from multiple players (MULTIPLE_PLAYERS_UNITS)
- - Left/right panel content isn't clipped or scrollable if it overflows the panel rectangle
- - Left panel unit grid has no fallback (e.g. count only) when too many units to fit as icons
  - Right panel resource rows only show net amount, not spent/gaining/worker breakdown
 
 Fiddlesticks Plans:

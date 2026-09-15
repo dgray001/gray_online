@@ -15,6 +15,7 @@ export function buildingImage(building_id: number | undefined, under_constructio
       case 21:
         filename = 'outpost';
         break;
+      case 3: // farm
       case 11: // blacksmith
       case 22: // barracks
       case 23: // redoubt

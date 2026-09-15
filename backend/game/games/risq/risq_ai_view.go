@@ -152,7 +152,7 @@ func unitBuilds(unit_id uint32) []ai.Producible {
 // where two units targeting each other would otherwise recurse forever.
 func toUnitViewShallow(u *RisqUnit) ai.UnitView {
 	kind := ai.UnitMilitary
-	if isEconomicUnit(u.unit_id) {
+	if u.unitType() == UnitType_ECONOMIC {
 		kind = ai.UnitEconomic
 	}
 	view := ai.UnitView{

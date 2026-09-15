@@ -8,15 +8,25 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type OrderableType uint8
+
+const (
+	OrderableType_NONE OrderableType = iota
+	OrderableType_BUILDING
+	OrderableType_UNIT
+)
+
 type Orderable interface {
 	toFrontend(viewer_player_id int) gin.H
 	isDeleted() bool
 	internalId() uint64
+	OrderableType() OrderableType
 	activeOrders() []*RisqOrder
 	refreshStamina()
 	// Returns whether the order is receivable by this subject
 	orderReceivable(o *RisqOrder, risq *GameRisq) bool
-	receiveOrder(o *RisqOrder, risq *GameRisq)
+	// Returns failure reason if order was not received
+	receiveOrder(o *RisqOrder, risq *GameRisq) error
 	cancelOrder(o *RisqOrder, risq *GameRisq)
 	// Returns whether the order is in progress, executed, or cancelled (called by tickIntent)
 	orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus
@@ -52,7 +62,8 @@ type RisqOrderQueue struct {
 type OrderStatus uint8
 
 const (
-	OrderStatus_InProgress OrderStatus = iota
+	OrderStatus_NONE OrderStatus = iota
+	OrderStatus_InProgress
 	OrderStatus_Executed
 	OrderStatus_Cancelled
 )
@@ -165,6 +176,26 @@ func (ot OrderType) isPlayerOrder() bool {
 	return ot >= OrderType_CancelOrder && ot <= OrderType_CancelFoundation
 }
 
+type UnitBehaviorFromFrontend struct {
+	Internal_ids      []uint64 `json:"internal_ids"`
+	Stance            *uint8   `json:"stance"`
+	Interrupt_current *bool    `json:"interrupt_current"`
+	Attack_back       *bool    `json:"attack_back"`
+	Target_priority   *[]uint8 `json:"target_priority"`
+}
+
+func getUnitBehaviorFromPlayerAction(action gin.H) (UnitBehaviorFromFrontend, error) {
+	var behavior UnitBehaviorFromFrontend
+	bytes, err := json.Marshal(action)
+	if err != nil {
+		return behavior, err
+	}
+	if err := json.Unmarshal(bytes, &behavior); err != nil {
+		return behavior, err
+	}
+	return behavior, nil
+}
+
 func (r *GameRisq) getOrdersFromPlayerAction(action gin.H, player_id int) ([]OrderFromFrontend, error) {
 	orders := make([]OrderFromFrontend, 0)
 	bytes, err1 := json.Marshal(action["orders"])
@@ -241,18 +272,22 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend, player_id int)
 		if zone == nil {
 			return fmt.Errorf("Invalid zone target inverted from zone key %d", order.Target_id)
 		}
-		if zone.resource == nil {
+		if zone.resource == nil && (zone.building == nil || !buildingConfigs[zone.building.building_id].isGatherable()) {
 			return fmt.Errorf("No resource in target zone")
 		}
 		for _, subject_id := range order.Subjects {
-			if !isEconomicUnit(r.players[order.Player_id].units[subject_id].unit_id) {
+			if r.players[order.Player_id].units[subject_id].unitType() != UnitType_ECONOMIC {
 				return fmt.Errorf("Only economic units can gather")
 			}
 		}
 	case OrderType_BuildingCreate:
 		unit_id := uint32(order.Target_id)
-		if _, ok := unitConfigs[unit_id]; !ok {
+		unit_config, ok := unitConfigs[unit_id]
+		if !ok {
 			return fmt.Errorf("Invalid or unsupported unit id for production: %d", unit_id)
+		}
+		if !requiredTechMet(r.players[order.Player_id], unit_config.required_tech_id) {
+			return fmt.Errorf("Required tech id %d not researched for unit id %d", unit_config.required_tech_id, unit_id)
 		}
 		for _, subject_id := range order.Subjects {
 			building := r.players[order.Player_id].buildings[subject_id]
@@ -265,8 +300,12 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend, player_id int)
 		}
 	case OrderType_BuildingResearch:
 		tech_id := uint32(order.Target_id)
-		if _, ok := techConfigs[tech_id]; !ok {
+		tech_config, ok := techConfigs[tech_id]
+		if !ok {
 			return fmt.Errorf("Invalid or unsupported tech id: %d", tech_id)
+		}
+		if !requiredTechMet(r.players[order.Player_id], tech_config.required_tech_id) {
+			return fmt.Errorf("Required tech id %d not researched for tech id %d", tech_config.required_tech_id, tech_id)
 		}
 		if researched, exists := r.players[order.Player_id].researched_techs[tech_id]; exists {
 			if researched {
@@ -292,6 +331,9 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend, player_id int)
 		if stamina_required <= 0 {
 			return fmt.Errorf("Invalid or unbuildable building id: %d", building_id)
 		}
+		if !requiredTechMet(r.players[order.Player_id], buildingConfigs[building_id].required_tech_id) {
+			return fmt.Errorf("Required tech id %d not researched for building id %d", buildingConfigs[building_id].required_tech_id, building_id)
+		}
 		if zone.resource != nil {
 			return fmt.Errorf("Target zone is already occupied")
 		}
@@ -303,7 +345,7 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend, player_id int)
 		}
 		for _, subject_id := range order.Subjects {
 			unit := r.players[order.Player_id].units[subject_id]
-			if !isEconomicUnit(unit.unit_id) {
+			if unit.unitType() != UnitType_ECONOMIC {
 				return fmt.Errorf("Only economic units can build")
 			}
 			if !unitConfigs[unit.unit_id].canBuild(building_id) {
@@ -319,7 +361,7 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend, player_id int)
 			return fmt.Errorf("Cannot repair a building under construction")
 		}
 		for _, subject_id := range order.Subjects {
-			if !isEconomicUnit(r.players[order.Player_id].units[subject_id].unit_id) {
+			if r.players[order.Player_id].units[subject_id].unitType() != UnitType_ECONOMIC {
 				return fmt.Errorf("Only economic units can repair")
 			}
 		}

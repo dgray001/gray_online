@@ -40,7 +40,7 @@ type MoveIntent struct {
 func (*MoveIntent) isIntentKind() {}
 
 type GatherIntent struct {
-	resource *RisqResource
+	source Gatherable
 }
 
 func (*GatherIntent) isIntentKind() {}
@@ -53,7 +53,7 @@ type gatherDemand struct {
 // Computes each gatherer's actual allotment for a contested resource: whoever asks for less than an
 // equal share gets their full request, and only the leftover is split among those who asked for more
 func computeGatherAllotments(orderables []Orderable) map[*RisqUnit]float64 {
-	by_resource := make(map[*RisqResource][]gatherDemand)
+	by_source := make(map[Gatherable][]gatherDemand)
 	for _, o := range orderables {
 		u, ok := o.(*RisqUnit)
 		if !ok || !u.intent.hasIntent() {
@@ -63,12 +63,12 @@ func computeGatherAllotments(orderables []Orderable) map[*RisqUnit]float64 {
 		if !ok {
 			continue
 		}
-		amount := float64(u.intent.intent_cost) * (float64(gather.resource.base_gather_speed) / gatherRateStaminaBase)
-		by_resource[gather.resource] = append(by_resource[gather.resource], gatherDemand{unit: u, amount: amount})
+		amount := float64(u.intent.intent_cost) * (float64(gather.source.gatherSpeed()) / gatherRateStaminaBase)
+		by_source[gather.source] = append(by_source[gather.source], gatherDemand{unit: u, amount: amount})
 	}
 	allotments := make(map[*RisqUnit]float64)
-	for resource, demands := range by_resource {
-		for unit, amount := range quantizeAllotments(waterFillGather(demands, resource.resources_left)) {
+	for source, demands := range by_source {
+		for unit, amount := range quantizeAllotments(waterFillGather(demands, source.gatherResourcesLeft())) {
 			allotments[unit] = amount
 		}
 	}
@@ -160,8 +160,8 @@ func (i *RisqIntent) setMove(m *MoveIntent) {
 	}
 }
 
-func (i *RisqIntent) setGather(resource *RisqResource) {
-	i.detail = &GatherIntent{resource: resource}
+func (i *RisqIntent) setGather(source Gatherable) {
+	i.detail = &GatherIntent{source: source}
 	i.min_cost = 1
 	i.max_cost = unitTickStaminaCost
 }

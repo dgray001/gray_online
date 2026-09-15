@@ -1,7 +1,14 @@
 import type { BoardTransformData } from '../../../util/canvas_board/canvas_board';
-import { configDraw } from '../../../util/canvas_components/canvas_component';
-import type { Point2D } from '../../../util/objects2d';
 import { drawRect, drawText } from '../../../util/canvas_util';
+import type { Point2D } from '../../../util/objects2d';
+import { configDraw } from '../../../util/canvas_components/canvas_component';
+import {
+  anchorTooltipBox,
+  createTooltipState,
+  drawTooltip,
+  shouldShowTooltip,
+} from '../../../util/canvas_components/tooltip';
+import type { CanvasSize, TooltipState } from '../../../util/canvas_components/tooltip';
 import type { DwgRisq } from '../risq';
 import type { RisqCost } from '../risq_data';
 import { RisqResourceType } from '../risq_data';
@@ -15,6 +22,8 @@ export declare interface RisqTooltipData {
   // icon path, value; stats of the thing being made/researched (e.g. health, attack)
   stats?: [string, number][];
 }
+
+type RisqTooltipDrawData = RisqTooltipData & { risq: DwgRisq };
 
 const PADDING = 4;
 const ROW_HEIGHT = 16;
@@ -68,13 +77,12 @@ function drawStatsRow(ctx: CanvasRenderingContext2D, risq: DwgRisq, stats: [stri
   }
 }
 
-/** Draws a tooltip with its bottom-left corner anchored at p, given the input risq to fetch icons from */
-export function drawRisqTooltip(
+function risqTooltipDraw(
   ctx: CanvasRenderingContext2D,
   transform: BoardTransformData,
-  risq: DwgRisq,
+  canvas_size: CanvasSize,
   p: Point2D,
-  data: RisqTooltipData
+  data: RisqTooltipDrawData
 ) {
   configDraw(ctx, transform, { fill_style: 'transparent', stroke_width: 0, fixed_position: true }, false, false, () => {
     ctx.font = FONT;
@@ -87,11 +95,7 @@ export function drawRisqTooltip(
     const w = Math.max(row1_w, desc_w, stats_w) + 2 * PADDING;
     const num_rows = 1 + (data.description ? 1 : 0) + (stats.length ? 1 : 0);
     const h = num_rows * ROW_HEIGHT + 2 * PADDING;
-    const canvas_size = risq.canvasSize();
-    const box_p = {
-      x: Math.max(0, Math.min(p.x, canvas_size.width - w)),
-      y: Math.max(0, p.y - 2 - h),
-    };
+    const box_p = anchorTooltipBox(p, w, h, canvas_size);
     ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
     ctx.strokeStyle = 'rgba(250, 250, 250, 0.9)';
     ctx.lineWidth = 1;
@@ -107,7 +111,7 @@ export function drawRisqTooltip(
     });
     if (cost_stats.length) {
       const costs_w = measureStatsRow(ctx, cost_stats);
-      drawStatsRow(ctx, risq, cost_stats, box_p.x + w - PADDING - costs_w, row_y - 0.5 * ICON_SIZE);
+      drawStatsRow(ctx, data.risq, cost_stats, box_p.x + w - PADDING - costs_w, row_y - 0.5 * ICON_SIZE);
     }
     if (data.description) {
       row_y += ROW_HEIGHT;
@@ -122,7 +126,31 @@ export function drawRisqTooltip(
     }
     if (stats.length) {
       row_y += ROW_HEIGHT;
-      drawStatsRow(ctx, risq, stats, box_p.x + PADDING, row_y - 0.5 * ICON_SIZE);
+      drawStatsRow(ctx, data.risq, stats, box_p.x + PADDING, row_y - 0.5 * ICON_SIZE);
     }
   });
+}
+
+export function createRisqTooltipState(delay_ms?: number): TooltipState<RisqTooltipDrawData> {
+  return createTooltipState<RisqTooltipDrawData>({
+    draw: risqTooltipDraw,
+    ...(delay_ms !== undefined && { delay_ms }),
+  });
+}
+
+export function drawRisqTooltip(
+  ctx: CanvasRenderingContext2D,
+  transform: BoardTransformData,
+  risq: DwgRisq,
+  dt: number,
+  hovering: boolean,
+  clicked: boolean,
+  state: TooltipState<RisqTooltipDrawData>,
+  p: Point2D,
+  data: RisqTooltipData
+) {
+  if (!shouldShowTooltip(state, hovering, clicked, dt)) {
+    return;
+  }
+  drawTooltip(state, ctx, transform, risq.canvasSize(), p, { ...data, risq });
 }

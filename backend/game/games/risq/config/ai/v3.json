@@ -63,10 +63,24 @@
     { "when": { "population_at_least": { "amount": 4 } }, "then": [{ "action": "create", "unit_id": 12 }] },
     { "when": { "population_at_least": { "amount": 6 } }, "then": [{ "action": "create", "unit_id": 13 }] },
     { "when": { "always": {} }, "then": [
-      { "action": "set_bucket", "bucket": "explorer", "size": 1, "task": { "action": "explore", "anchor": "home" } },
-      { "action": "fill_bucket", "bucket": "explorer", "kind": "military" },
-      { "action": "run_bucket", "bucket": "explorer" },
-      { "action": "attack_space", "exclude_buckets": true }
+      { "action": "set_bucket", "bucket": "scout", "size": 1, "task": { "action": "explore", "anchor": "home" } },
+      { "action": "fill_bucket", "bucket": "scout", "kind": "military" },
+      { "action": "run_bucket", "bucket": "scout" }
+    ] },
+    { "when": { "always": {} }, "then": [
+      { "action": "set_bucket", "bucket": "homeguard", "size": 3, "task": { "action": "explore", "anchor": "home" } },
+      { "action": "fill_bucket", "bucket": "homeguard", "kind": "military" }
+    ] },
+    { "when": { "population_at_least": { "amount": 2 } }, "then": [{ "action": "set_bucket", "bucket": "army", "size": 2, "task": { "action": "attack" } }] },
+    { "when": { "population_at_least": { "amount": 4 } }, "then": [{ "action": "set_bucket", "bucket": "army", "size": 4, "task": { "action": "attack" } }] },
+    { "when": { "population_at_least": { "amount": 8 } }, "then": [{ "action": "set_bucket", "bucket": "army", "size": 8, "task": { "action": "attack" } }] },
+    { "when": { "population_at_least": { "amount": 14 } }, "then": [{ "action": "set_bucket", "bucket": "army", "size": 12, "task": { "action": "attack" } }] },
+    { "when": { "population_at_least": { "amount": 20 } }, "then": [{ "action": "set_bucket", "bucket": "army", "size": 18, "task": { "action": "attack" } }] },
+    { "when": { "population_at_least": { "amount": 28 } }, "then": [{ "action": "set_bucket", "bucket": "army", "size": 25, "task": { "action": "attack" } }] },
+    { "when": { "population_at_least": { "amount": 36 } }, "then": [{ "action": "set_bucket", "bucket": "army", "size": 32, "task": { "action": "attack" } }] },
+    { "when": { "always": {} }, "then": [
+      { "action": "fill_bucket", "bucket": "army", "kind": "military" },
+      { "action": "run_bucket", "bucket": "army", "when_full": true }
     ] }
   ]
 }

@@ -10,24 +10,50 @@ import (
 var techsConfigJSON []byte
 
 type TechConfig struct {
-	display_name       string
-	description        string
-	cost               RisqResourceCost
-	research_stamina   int
-	affects_unit_id    uint32
-	bonus_max_health   int
-	bonus_turn_stamina int
+	display_name               string
+	description                string
+	cost                       RisqResourceCost
+	research_stamina           int
+	affects_unit_ids           []uint32
+	affects_unit_types         []UnitType
+	target_unit_ids            []uint32
+	target_types               []TargetType
+	bonus_max_health           int
+	bonus_turn_stamina         int
+	bonus_attack_blunt         int
+	bonus_attack_piercing      int
+	bonus_attack_magic         int
+	bonus_defense_blunt        int
+	bonus_defense_piercing     int
+	bonus_defense_magic        int
+	bonus_penetration_blunt    int
+	bonus_penetration_piercing int
+	bonus_penetration_magic    int
+	required_tech_id           uint32
 }
 
 type techConfigJSON struct {
-	TechId           uint32   `json:"tech_id"`
-	DisplayName      string   `json:"display_name"`
-	Description      string   `json:"description"`
-	Cost             costJSON `json:"cost"`
-	ResearchStamina  int      `json:"research_stamina"`
-	AffectsUnitId    uint32   `json:"affects_unit_id"`
-	BonusMaxHealth   int      `json:"bonus_max_health"`
-	BonusTurnStamina int      `json:"bonus_turn_stamina"`
+	TechId                   uint32   `json:"tech_id"`
+	DisplayName              string   `json:"display_name"`
+	Description              string   `json:"description"`
+	Cost                     costJSON `json:"cost"`
+	ResearchStamina          int      `json:"research_stamina"`
+	AffectsUnitIds           []uint32 `json:"affects_unit_ids"`
+	AffectsUnitTypes         []string `json:"affects_unit_types"`
+	TargetUnitIds            []uint32 `json:"target_unit_ids"`
+	TargetTypes              []string `json:"target_types"`
+	BonusMaxHealth           int      `json:"bonus_max_health"`
+	BonusTurnStamina         int      `json:"bonus_turn_stamina"`
+	BonusAttackBlunt         int      `json:"bonus_attack_blunt"`
+	BonusAttackPiercing      int      `json:"bonus_attack_piercing"`
+	BonusAttackMagic         int      `json:"bonus_attack_magic"`
+	BonusDefenseBlunt        int      `json:"bonus_defense_blunt"`
+	BonusDefensePiercing     int      `json:"bonus_defense_piercing"`
+	BonusDefenseMagic        int      `json:"bonus_defense_magic"`
+	BonusPenetrationBlunt    int      `json:"bonus_penetration_blunt"`
+	BonusPenetrationPiercing int      `json:"bonus_penetration_piercing"`
+	BonusPenetrationMagic    int      `json:"bonus_penetration_magic"`
+	RequiredTechId           uint32   `json:"required_tech_id"`
 }
 
 var techConfigs map[uint32]TechConfig
@@ -39,26 +65,140 @@ func init() {
 	}
 	techConfigs = make(map[uint32]TechConfig, len(entries))
 	for _, e := range entries {
-		techConfigs[e.TechId] = TechConfig{
-			display_name: e.DisplayName,
-			description:  e.Description,
-			cost: RisqResourceCost{
-				food:  e.Cost.Food,
-				wood:  e.Cost.Wood,
-				stone: e.Cost.Stone,
-				gold:  e.Cost.Gold,
-			},
-			research_stamina:   e.ResearchStamina,
-			affects_unit_id:    e.AffectsUnitId,
-			bonus_max_health:   e.BonusMaxHealth,
-			bonus_turn_stamina: e.BonusTurnStamina,
+		techConfigs[e.TechId] = parseTechConfigEntry(e, "config/techs.json tech_id")
+	}
+}
+
+func parseTechConfigEntry(e techConfigJSON, source string) TechConfig {
+	if len(e.AffectsUnitIds) == 0 && len(e.AffectsUnitTypes) == 0 {
+		panic(fmt.Sprintf("%s %d: must specify affects_unit_ids or affects_unit_types", source, e.TechId))
+	}
+	affects_unit_types := make([]UnitType, len(e.AffectsUnitTypes))
+	for i, s := range e.AffectsUnitTypes {
+		unit_type, err := parseUnitType(s)
+		if err != nil {
+			panic(fmt.Sprintf("%s %d: %v", source, e.TechId, err))
+		}
+		affects_unit_types[i] = unit_type
+	}
+	target_types := make([]TargetType, len(e.TargetTypes))
+	for i, s := range e.TargetTypes {
+		target_type, err := parseTargetType(s)
+		if err != nil {
+			panic(fmt.Sprintf("%s %d: %v", source, e.TechId, err))
+		}
+		target_types[i] = target_type
+	}
+	return TechConfig{
+		display_name: e.DisplayName,
+		description:  e.Description,
+		cost: RisqResourceCost{
+			food:  e.Cost.Food,
+			wood:  e.Cost.Wood,
+			stone: e.Cost.Stone,
+			gold:  e.Cost.Gold,
+		},
+		research_stamina:           e.ResearchStamina,
+		affects_unit_ids:           e.AffectsUnitIds,
+		affects_unit_types:         affects_unit_types,
+		target_unit_ids:            e.TargetUnitIds,
+		target_types:               target_types,
+		bonus_max_health:           e.BonusMaxHealth,
+		bonus_turn_stamina:         e.BonusTurnStamina,
+		bonus_attack_blunt:         e.BonusAttackBlunt,
+		bonus_attack_piercing:      e.BonusAttackPiercing,
+		bonus_attack_magic:         e.BonusAttackMagic,
+		bonus_defense_blunt:        e.BonusDefenseBlunt,
+		bonus_defense_piercing:     e.BonusDefensePiercing,
+		bonus_defense_magic:        e.BonusDefenseMagic,
+		bonus_penetration_blunt:    e.BonusPenetrationBlunt,
+		bonus_penetration_piercing: e.BonusPenetrationPiercing,
+		bonus_penetration_magic:    e.BonusPenetrationMagic,
+		required_tech_id:           e.RequiredTechId,
+	}
+}
+
+func (tech TechConfig) appliesTo(unit_id uint32, unit_type UnitType) bool {
+	for _, id := range tech.affects_unit_ids {
+		if id == unit_id {
+			return true
 		}
 	}
+	for _, t := range tech.affects_unit_types {
+		if t == unit_type {
+			return true
+		}
+	}
+	return false
+}
+
+func (tech TechConfig) hasTargetFilter() bool {
+	return len(tech.target_unit_ids) > 0 || len(tech.target_types) > 0
+}
+
+func (tech TechConfig) matchesTarget(target_unit_id uint32, target_unit_type UnitType, target_orderable_type OrderableType) bool {
+	if target_orderable_type == OrderableType_UNIT {
+		for _, id := range tech.target_unit_ids {
+			if id == target_unit_id {
+				return true
+			}
+		}
+	}
+	actual := targetTypeOf(target_orderable_type, target_unit_type)
+	for _, tt := range tech.target_types {
+		if tt.matches(actual) {
+			return true
+		}
+	}
+	return false
 }
 
 func applyTechBonus(u *RisqUnit, tech TechConfig) {
 	u.turn_stamina += tech.bonus_turn_stamina
 	u.cs.setMaxHealth(u.cs.max_health + tech.bonus_max_health)
+	if tech.hasTargetFilter() {
+		return
+	}
+	u.cs.attack_blunt += tech.bonus_attack_blunt
+	u.cs.attack_piercing += tech.bonus_attack_piercing
+	u.cs.attack_magic += tech.bonus_attack_magic
+	u.cs.defense_blunt += tech.bonus_defense_blunt
+	u.cs.defense_piercing += tech.bonus_defense_piercing
+	u.cs.defense_magic += tech.bonus_defense_magic
+	u.cs.penetration_blunt += tech.bonus_penetration_blunt
+	u.cs.penetration_piercing += tech.bonus_penetration_piercing
+	u.cs.penetration_magic += tech.bonus_penetration_magic
+}
+
+func sumTargetedBonus(unit_id uint32, unit_type UnitType, tech_ids []uint32, target_unit_id uint32, target_unit_type UnitType, target_orderable_type OrderableType) TechConfig {
+	var sum TechConfig
+	add := func(tech TechConfig) {
+		if !tech.hasTargetFilter() || !tech.appliesTo(unit_id, unit_type) || !tech.matchesTarget(target_unit_id, target_unit_type, target_orderable_type) {
+			return
+		}
+		sum.bonus_attack_blunt += tech.bonus_attack_blunt
+		sum.bonus_attack_piercing += tech.bonus_attack_piercing
+		sum.bonus_attack_magic += tech.bonus_attack_magic
+		sum.bonus_defense_blunt += tech.bonus_defense_blunt
+		sum.bonus_defense_piercing += tech.bonus_defense_piercing
+		sum.bonus_defense_magic += tech.bonus_defense_magic
+		sum.bonus_penetration_blunt += tech.bonus_penetration_blunt
+		sum.bonus_penetration_piercing += tech.bonus_penetration_piercing
+		sum.bonus_penetration_magic += tech.bonus_penetration_magic
+	}
+	for _, bonus := range bonusConfigs {
+		add(bonus)
+	}
+	for _, id := range tech_ids {
+		if tech, ok := techConfigs[id]; ok {
+			add(tech)
+		}
+	}
+	return sum
+}
+
+func requiredTechMet(player *RisqPlayer, required_tech_id uint32) bool {
+	return required_tech_id == 0 || player.researched_techs[required_tech_id]
 }
 
 func (r *GameRisq) completeResearch(player *RisqPlayer, tech_id uint32) {
@@ -69,9 +209,8 @@ func (r *GameRisq) completeResearch(player *RisqPlayer, tech_id uint32) {
 		return
 	}
 	for _, unit := range player.units {
-		if unit.unit_id != tech.affects_unit_id {
-			continue
+		if tech.appliesTo(unit.unit_id, unit.unitType()) {
+			applyTechBonus(unit, tech)
 		}
-		applyTechBonus(unit, tech)
 	}
 }

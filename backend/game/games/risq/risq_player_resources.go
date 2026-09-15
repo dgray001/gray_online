@@ -63,16 +63,16 @@ func (r *RisqPlayerResources) addGathered(category RisqResourceCategory, amount 
 	case RisqResourceCategory_GOLD:
 		r.gold += amount
 	}
-	r.gathered[category] += amount
-	r.lifetime_gathered[category] += amount
+	r.gathered[category.index()] += amount
+	r.lifetime_gathered[category.index()] += amount
 }
 
 func (r *RisqPlayerResources) LifetimeGathered() RisqResourceCost {
 	return RisqResourceCost{
-		food:  r.lifetime_gathered[RisqResourceCategory_FOOD],
-		wood:  r.lifetime_gathered[RisqResourceCategory_WOOD],
-		stone: r.lifetime_gathered[RisqResourceCategory_STONE],
-		gold:  r.lifetime_gathered[RisqResourceCategory_GOLD],
+		food:  r.lifetime_gathered[RisqResourceCategory_FOOD.index()],
+		wood:  r.lifetime_gathered[RisqResourceCategory_WOOD.index()],
+		stone: r.lifetime_gathered[RisqResourceCategory_STONE.index()],
+		gold:  r.lifetime_gathered[RisqResourceCategory_GOLD.index()],
 	}
 }
 
@@ -103,10 +103,10 @@ func (r *RisqPlayerResources) spend(cost RisqResourceCost) {
 	r.wood -= cost.wood
 	r.stone -= cost.stone
 	r.gold -= cost.gold
-	r.spent[RisqResourceCategory_FOOD] += cost.food
-	r.spent[RisqResourceCategory_WOOD] += cost.wood
-	r.spent[RisqResourceCategory_STONE] += cost.stone
-	r.spent[RisqResourceCategory_GOLD] += cost.gold
+	r.spent[RisqResourceCategory_FOOD.index()] += cost.food
+	r.spent[RisqResourceCategory_WOOD.index()] += cost.wood
+	r.spent[RisqResourceCategory_STONE.index()] += cost.stone
+	r.spent[RisqResourceCategory_GOLD.index()] += cost.gold
 }
 
 func (r *RisqPlayerResources) refund(cost RisqResourceCost) {
@@ -114,10 +114,10 @@ func (r *RisqPlayerResources) refund(cost RisqResourceCost) {
 	r.wood += cost.wood
 	r.stone += cost.stone
 	r.gold += cost.gold
-	r.gathered[RisqResourceCategory_FOOD] += cost.food
-	r.gathered[RisqResourceCategory_WOOD] += cost.wood
-	r.gathered[RisqResourceCategory_STONE] += cost.stone
-	r.gathered[RisqResourceCategory_GOLD] += cost.gold
+	r.gathered[RisqResourceCategory_FOOD.index()] += cost.food
+	r.gathered[RisqResourceCategory_WOOD.index()] += cost.wood
+	r.gathered[RisqResourceCategory_STONE.index()] += cost.stone
+	r.gathered[RisqResourceCategory_GOLD.index()] += cost.gold
 }
 
 func (r *RisqPlayerResources) resetFlow() {

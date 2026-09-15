@@ -21,7 +21,7 @@ func (s *RisqSpace) computeOwnership() int {
 	}
 	unit_owner := -1
 	for _, unit := range s.units {
-		if unit == nil || unit.deleted || isEconomicUnit(unit.unit_id) {
+		if unit == nil || unit.deleted || unit.unitType() == UnitType_ECONOMIC {
 			continue
 		}
 		if unit_owner == -1 {

@@ -97,6 +97,16 @@ func (p *RisqPlayer) cancelPlannedFoundation(zone *RisqZone) {
 	delete(p.planned_foundations, zone.coordinate_key)
 }
 
+func (p *RisqPlayer) researchedTechIds() []uint32 {
+	ids := make([]uint32, 0, len(p.researched_techs))
+	for id, researched := range p.researched_techs {
+		if researched {
+			ids = append(ids, id)
+		}
+	}
+	return ids
+}
+
 func (p *RisqPlayer) populationLimit() uint16 {
 	limit := uint16(0)
 	for _, building := range p.buildings {

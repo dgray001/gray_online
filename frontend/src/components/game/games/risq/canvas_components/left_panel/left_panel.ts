@@ -16,11 +16,19 @@ import type {
   RisqZone,
   UnitByTypeData,
 } from '../../risq_data';
-import { RisqAttackType, RisqOrderType, RisqProducibleKind, RisqVisibilityLevel } from '../../risq_data';
+import {
+  RisqAttackType,
+  RisqOrderType,
+  RisqProducibleKind,
+  RisqResourceType,
+  RisqUnitStance,
+  RisqUnitType,
+  RisqVisibilityLevel,
+} from '../../risq_data';
 import { coordinateToIndex } from '../../risq_coordinates';
-import { drawRisqTooltip } from '../risq_tooltip';
+import { createTooltipState, drawTooltip, shouldShowTooltip } from '../../../../util/canvas_components/tooltip';
 import { resourceImage, resourceTypeImage } from '../../risq_resources';
-import { drawHexImage } from '../../risq_space';
+import { borderStrokeStyle, drawHexImage } from '../../risq_space';
 import {
   COMBO_UNIT_ICON_SIZE,
   UNIT_HEALTHBAR_COLOR_BACKGROUND,
@@ -37,7 +45,7 @@ import {
   unhoverRisqZone,
   unitsByPlayerFiltered,
 } from '../../risq_zone';
-import { RisqViewMode, risqTerrainName, terrainImage } from '../../risq_terrain';
+import { RisqViewMode, spaceOwnerColor, terrainImage } from '../../risq_terrain';
 import { ColorRGB } from '../../../../../../scripts/color_rgb';
 import { RisqOrdersList } from '../right_panel/orders_list';
 import type { RisqActionButton } from './action_button/action_button';
@@ -58,6 +66,7 @@ import type {
 } from './left_panel_data';
 import { HoverableObjectType, LeftPanelDataType } from './left_panel_data';
 import { RisqOrderButton } from './action_button/order_button';
+import { RisqStanceButton } from './action_button/stance_button';
 import { RisqSpaceUnitsRowButton } from './space_units_row_button';
 
 export class RisqLeftPanel implements CanvasComponent {
@@ -83,6 +92,9 @@ export class RisqLeftPanel implements CanvasComponent {
   private space_villager_row_button?: RisqSpaceUnitsRowButton;
   private space_military_row_button?: RisqSpaceUnitsRowButton;
   private healthbar_row: RectHoverData = { ps: { x: 0, y: 0 }, pe: { x: 0, y: 0 } };
+  private healthbar_tooltip = createTooltipState();
+  private eye_badge_hover: RectHoverData = { ps: { x: 0, y: 0 }, pe: { x: 0, y: 0 } };
+  private eye_badge_tooltip = createTooltipState();
 
   constructor(risq: DwgRisq, config: LeftPanelConfig) {
     this.risq = risq;
@@ -171,6 +183,52 @@ export class RisqLeftPanel implements CanvasComponent {
     );
   }
 
+  private pushMilitaryActionButtons(unit_internal_ids: number[]) {
+    this.buttons.push(
+      new RisqStanceButton(
+        {
+          row: 1,
+          col: 0,
+          unit_internal_ids,
+          stance: RisqUnitStance.AGGRESSIVE,
+          image_path: 'icons/swords32',
+          description: 'Aggressive',
+        },
+        this.risq,
+        0
+      ),
+      new RisqStanceButton(
+        {
+          row: 1,
+          col: 1,
+          unit_internal_ids,
+          stance: RisqUnitStance.DEFENSIVE,
+          image_path: 'icons/shield32',
+          description: 'Defensive',
+        },
+        this.risq,
+        0
+      ),
+      new RisqStanceButton(
+        {
+          row: 1,
+          col: 2,
+          unit_internal_ids,
+          stance: RisqUnitStance.STAND_GROUND,
+          image_path: '',
+          description: 'Stand Ground',
+        },
+        this.risq,
+        0
+      ),
+      new RisqStanceButton(
+        { row: 1, col: 3, unit_internal_ids, stance: RisqUnitStance.PASSIVE, image_path: '', description: 'Passive' },
+        this.risq,
+        0
+      )
+    );
+  }
+
   private refreshActionButtons() {
     this.buttons = [];
     this.refreshOrderRows();
@@ -189,7 +247,7 @@ export class RisqLeftPanel implements CanvasComponent {
           }
         }
         if (this.isOnlyMilitary()) {
-          // TODO: add military-only action buttons here once any exist
+          this.pushMilitaryActionButtons([this.data.data.internal_id]);
         }
         break;
       case LeftPanelDataType.UNITS_BY_TYPE:
@@ -200,7 +258,7 @@ export class RisqLeftPanel implements CanvasComponent {
           this.pushVillagerActionRow();
         }
         if (this.isOnlyMilitary()) {
-          // TODO: add military-only action buttons here once any exist
+          this.pushMilitaryActionButtons(this.data.data.units.flatMap((u) => [...u.units]));
         }
         break;
       case LeftPanelDataType.BUILDING:
@@ -652,6 +710,10 @@ export class RisqLeftPanel implements CanvasComponent {
       false,
       () => {
         drawRect(ctx, { x: this.xi(), y: this.yi() }, this.w(), this.h());
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(this.xi(), this.yi(), this.w(), this.h());
+        ctx.clip();
         switch (this.data?.data_type) {
           case LeftPanelDataType.RESOURCE:
             this.drawResource(ctx, this.data.data);
@@ -666,11 +728,12 @@ export class RisqLeftPanel implements CanvasComponent {
             this.drawZone(ctx, this.data.data);
             break;
           case LeftPanelDataType.MULTIPLE_PLAYERS_UNITS:
+            this.drawUnitsGeneric(ctx, this.data.data.units_by_player);
             break;
           case LeftPanelDataType.UNITS_BY_TYPE:
           case LeftPanelDataType.ECONOMIC_UNITS:
           case LeftPanelDataType.MILITARY_UNITS:
-            this.drawUnits(ctx, this.data.data);
+            this.drawUnitsGeneric(ctx, [[this.data.data.units[0].player_id, this.data.data.units]]);
             break;
           case LeftPanelDataType.UNITS:
             console.error('LeftPanelDataType.UNITS should have been converted by checkUnitsData', this.data);
@@ -685,28 +748,43 @@ export class RisqLeftPanel implements CanvasComponent {
             console.error('Unknown data type for left panel', this.data);
             break;
         }
-        // TODO: logic in case yi has gone off the rectangle
+        ctx.restore();
       }
     );
     if (
-      this.healthbar_row.hovered &&
-      (this.data?.data_type === LeftPanelDataType.UNIT || this.data?.data_type === LeftPanelDataType.BUILDING)
+      (this.data?.data_type === LeftPanelDataType.UNIT || this.data?.data_type === LeftPanelDataType.BUILDING) &&
+      shouldShowTooltip(this.healthbar_tooltip, !!this.healthbar_row.hovered, !!this.healthbar_row.clicked, dt)
     ) {
       const cs = this.data.data.combat_stats;
-      drawRisqTooltip(
+      drawTooltip(
+        this.healthbar_tooltip,
         ctx,
         transform,
-        this.risq,
+        this.risq.canvasSize(),
         { x: this.healthbar_row.pe.x, y: this.healthbar_row.pe.y },
-        {
-          title: `${cs.health.toFixed(1)} / ${cs.max_health}`,
-        }
+        `${cs.health.toFixed(1)} / ${cs.max_health}`
+      );
+    }
+    if (
+      (this.data?.data_type === LeftPanelDataType.SPACE || this.data?.data_type === LeftPanelDataType.ZONE) &&
+      shouldShowTooltip(this.eye_badge_tooltip, !!this.eye_badge_hover.hovered, !!this.eye_badge_hover.clicked, dt)
+    ) {
+      const space = this.data.data_type === LeftPanelDataType.SPACE ? this.data.data : this.data.data.space;
+      drawTooltip(
+        this.eye_badge_tooltip,
+        ctx,
+        transform,
+        this.risq.canvasSize(),
+        { x: this.eye_badge_hover.pe.x, y: this.eye_badge_hover.pe.y },
+        space.visibility === RisqVisibilityLevel.POOR
+          ? 'Poor visibility on this space; overall unit count seen but no specific units or zone-level unit information'
+          : ''
       );
     }
     ctx.beginPath();
     for (const button of this.buttons) {
       button.draw(ctx, transform, dt);
-      button.drawTooltip(ctx, transform, this.risq);
+      button.drawTooltip(ctx, transform, this.risq, dt);
     }
     if (this.data?.data_type === LeftPanelDataType.SPACE && (this.visibility ?? 0) > RisqVisibilityLevel.POOR) {
       this.space_villager_row_button?.draw(ctx, transform, dt);
@@ -751,48 +829,209 @@ export class RisqLeftPanel implements CanvasComponent {
     unit.hover_data.pe = { x: p.x + s, y: p.y + s };
   }
 
-  private drawUnits(ctx: CanvasRenderingContext2D, data: PlayerUnitsDrawData) {
-    const total_units = data.units.map((u) => u.units.size).reduce((a, b) => a + b);
-    let yi = this.yi() + this.drawName(ctx, `${total_units} Units`);
-    const separator_distance = 8;
-    const image_size = total_units < 40 ? 64 : 36;
-    const u_img_mult = 1.3;
-    const units_per_row = Math.floor((0.8 * this.w()) / (u_img_mult * image_size));
-    if (units_per_row < 1) {
-      return;
+  private drawUnitCountBadge(ctx: CanvasRenderingContext2D, count: number, p: Point2D, s: number) {
+    const text = `×${count}`;
+    const font_size = Math.max(10, 0.22 * s);
+    ctx.font = `bold ${font_size}px serif`;
+    const badge_w = ctx.measureText(text).width + 6;
+    const badge_h = font_size + 4;
+    const badge_p = { x: p.x + s - badge_w, y: p.y + s - badge_h };
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+    ctx.strokeStyle = 'transparent';
+    drawRect(ctx, badge_p, badge_w, badge_h, 3);
+    drawText(ctx, text, {
+      p: { x: badge_p.x + 0.5 * badge_w, y: badge_p.y + 0.5 * badge_h },
+      w: badge_w,
+      fill_style: 'white',
+      align: 'center',
+      baseline: 'middle',
+      font: `bold ${font_size}px serif`,
+    });
+  }
+
+  private drawUnitCountBlock(
+    ctx: CanvasRenderingContext2D,
+    icon: CanvasImageSource,
+    count: number,
+    p: Point2D,
+    s: number
+  ) {
+    ctx.drawImage(icon, p.x, p.y, s, s);
+    this.drawUnitCountBadge(ctx, count, p, s);
+  }
+
+  private chunkBlocks<T>(items: T[], size: number): T[][] {
+    const rows: T[][] = [];
+    for (let i = 0; i < items.length; i += size) {
+      rows.push(items.slice(i, i + size));
     }
-    const rows = data.units.map((u) => Math.ceil(u.units.size / units_per_row)).reduce((a, b) => a + b);
-    const max_height = this.yi() + 0.5 * this.size.y - separator_distance - yi;
-    const max_rows = Math.floor(max_height / (image_size + separator_distance));
-    if (rows > max_rows) {
-      // TODO: implement just number of each unit
-    } else {
-      yi = this.yi() + 0.5 * this.size.y - rows * (image_size + separator_distance);
-      for (const unit_data of data.units) {
-        if (unit_data.units.size < 1) {
-          continue;
-        }
-        let i = 0;
-        for (const unit_id of unit_data.units.values()) {
-          const unit = this.resolveUnit(unit_data.player_id, unit_id);
-          if (!unit) {
-            continue;
-          }
-          if (i >= units_per_row) {
-            i = 0;
-            yi += image_size + separator_distance;
-          }
-          const x = this.xi() + 0.1 * this.w() + i * (image_size + separator_distance);
-          this.drawUnitImage(ctx, unit, { x, y: yi }, image_size);
-          i++;
-        }
-        yi += image_size + separator_distance;
-      }
-    }
-    if (this.risq.getPlayer()?.player.player_id === data.units[0].player_id) {
+    return rows;
+  }
+
+  private drawUnitSeparators(ctx: CanvasRenderingContext2D, single_owner_player_id?: number) {
+    if (single_owner_player_id !== undefined && this.risq.getPlayer()?.player.player_id === single_owner_player_id) {
       this.drawSeparator(ctx, this.yi() + 0.5 * this.size.y);
       this.drawSeparator(ctx, this.yi() + 0.75 * this.size.y);
     }
+  }
+
+  // Selection can hold units from one or several players; renders a 4-blocks-per-row grid that
+  // collapses through individual units -> unit_id -> unit_type -> one block per player as it overflows.
+  private drawUnitsGeneric(ctx: CanvasRenderingContext2D, groups: [number, UnitByTypeData[]][]) {
+    const multi_player = groups.length > 1;
+    const single_owner_player_id = multi_player ? undefined : groups[0]?.[0];
+    const total_units = groups.reduce((sum, [, units]) => sum + units.reduce((s, u) => s + u.units.size, 0), 0);
+    const content_yi = this.yi() + this.drawName(ctx, `${total_units} Unit${total_units === 1 ? '' : 's'}`);
+    const gap = 8;
+    const per_row = 4;
+    const content_x = this.xi() + 0.1 * this.w();
+    const content_w = 0.8 * this.w();
+    const block_size = (content_w - (per_row - 1) * gap) / per_row;
+    const grid_bottom = this.yi() + 0.5 * this.size.y;
+    const max_rows = Math.floor((grid_bottom - gap - content_yi) / (block_size + gap));
+
+    const layout_rows = <T>(row_groups: T[][], draw_item: (item: T, p: Point2D) => void) => {
+      let by = grid_bottom - row_groups.length * (block_size + gap);
+      for (const row of row_groups) {
+        let bx = content_x;
+        for (const item of row) {
+          draw_item(item, { x: bx, y: by });
+          bx += block_size + gap;
+        }
+        by += block_size + gap;
+      }
+    };
+
+    interface UnitRef {
+      player_id: number;
+      internal_id: number;
+    }
+    const per_player_refs: [number, UnitRef[]][] = groups
+      .map(([player_id, units]): [number, UnitRef[]] => [
+        player_id,
+        units.flatMap((u) => [...u.units].map((internal_id) => ({ player_id, internal_id }))),
+      ])
+      .filter(([, refs]) => refs.length > 0);
+    const draw_unit_ref = (ref: UnitRef, p: Point2D) => {
+      const unit = this.resolveUnit(ref.player_id, ref.internal_id);
+      if (unit) {
+        this.drawUnitImage(ctx, unit, p, block_size);
+      }
+    };
+
+    // Tier 1: individual units, one row-run per player
+    const tier1_row_groups = per_player_refs.map(([, refs]) => this.chunkBlocks(refs, per_row));
+    const tier1_rows = tier1_row_groups.reduce((sum, rows) => sum + rows.length, 0);
+    if (tier1_rows > 0 && tier1_rows <= max_rows) {
+      let by = grid_bottom - tier1_rows * (block_size + gap);
+      for (const [i, [player_id]] of per_player_refs.entries()) {
+        const rows = tier1_row_groups[i];
+        if (multi_player) {
+          const color = this.risq.getGame()?.players[player_id]?.color;
+          ctx.fillStyle = color
+            ? `rgba(${color.getR()}, ${color.getG()}, ${color.getB()}, 0.12)`
+            : 'rgba(255, 255, 255, 0.06)';
+          ctx.strokeStyle = 'transparent';
+          drawRect(
+            ctx,
+            { x: content_x - 0.5 * gap, y: by - 0.5 * gap },
+            content_w + gap,
+            rows.length * (block_size + gap)
+          );
+        }
+        for (const row of rows) {
+          let bx = content_x;
+          for (const ref of row) {
+            draw_unit_ref(ref, { x: bx, y: by });
+            bx += block_size + gap;
+          }
+          by += block_size + gap;
+        }
+      }
+      this.drawUnitSeparators(ctx, single_owner_player_id);
+      return;
+    }
+
+    // Tier 2: individual units, player-row-boundary dropped
+    const all_refs = per_player_refs.flatMap(([, refs]) => refs);
+    const tier2_row_groups = this.chunkBlocks(all_refs, per_row);
+    if (tier2_row_groups.length > 0 && tier2_row_groups.length <= max_rows) {
+      layout_rows(tier2_row_groups, draw_unit_ref);
+      this.drawUnitSeparators(ctx, single_owner_player_id);
+      return;
+    }
+
+    // Tier 3: one block per unit_id
+    interface IdBlock {
+      player_id: number;
+      unit_id: number;
+      count: number;
+    }
+    const id_blocks: IdBlock[] = groups.flatMap(([player_id, units]) =>
+      units.filter((u) => u.units.size > 0).map((u) => ({ player_id, unit_id: u.unit_id, count: u.units.size }))
+    );
+    const tier3_row_groups = this.chunkBlocks(id_blocks, per_row);
+    if (tier3_row_groups.length > 0 && tier3_row_groups.length <= max_rows) {
+      layout_rows(tier3_row_groups, (block, p) => {
+        const color = this.risq.getGame()?.players[block.player_id]?.color;
+        const icon = color
+          ? this.risq.getPlayerColoredIcon(unitImage(block.unit_id), color)
+          : this.risq.getIcon(unitImage(block.unit_id));
+        this.drawUnitCountBlock(ctx, icon, block.count, p, block_size);
+      });
+      return;
+    }
+
+    // Tier 4: one block per unit_type (merges unit_ids sharing a type)
+    interface TypeBlock {
+      player_id: number;
+      unit_type: RisqUnitType;
+      representative_unit_id: number;
+      count: number;
+    }
+    const type_blocks_by_key = new Map<string, TypeBlock>();
+    for (const [player_id, units] of groups) {
+      for (const u of units) {
+        if (u.units.size < 1) {
+          continue;
+        }
+        const sample = this.resolveUnit(player_id, [...u.units][0]);
+        const unit_type = sample?.unit_type ?? RisqUnitType.NONE;
+        const key = `${player_id}:${unit_type}`;
+        const existing = type_blocks_by_key.get(key);
+        if (existing) {
+          existing.count += u.units.size;
+        } else {
+          type_blocks_by_key.set(key, { player_id, unit_type, representative_unit_id: u.unit_id, count: u.units.size });
+        }
+      }
+    }
+    const type_blocks = [...type_blocks_by_key.values()];
+    const tier4_row_groups = this.chunkBlocks(type_blocks, per_row);
+    if (type_blocks.length > 0 && (tier4_row_groups.length <= max_rows || !multi_player)) {
+      layout_rows(tier4_row_groups, (block, p) => {
+        const color = this.risq.getGame()?.players[block.player_id]?.color;
+        const icon = color
+          ? this.risq.getPlayerColoredIcon(unitImage(block.representative_unit_id), color)
+          : this.risq.getIcon(unitImage(block.representative_unit_id));
+        this.drawUnitCountBlock(ctx, icon, block.count, p, block_size);
+      });
+      return;
+    }
+
+    // Tier 5: one block per player (only reachable for a multi-player selection)
+    const player_blocks = groups
+      .map(([player_id, units]) => ({ player_id, count: units.reduce((s, u) => s + u.units.size, 0) }))
+      .filter((b) => b.count > 0);
+    const tier5_row_groups = this.chunkBlocks(player_blocks, per_row);
+    layout_rows(tier5_row_groups, (block, p) => {
+      const color = this.risq.getGame()?.players[block.player_id]?.color;
+      ctx.fillStyle = color ? color.getString() : 'rgba(255, 255, 255, 0.3)';
+      ctx.strokeStyle = 'black';
+      ctx.lineWidth = 1;
+      drawRect(ctx, p, block_size, block_size);
+      this.drawUnitCountBadge(ctx, block.count, p, block_size);
+    });
   }
 
   private drawUnit(ctx: CanvasRenderingContext2D, unit: RisqUnit) {
@@ -880,7 +1119,7 @@ export class RisqLeftPanel implements CanvasComponent {
   }
 
   private drawSpace(ctx: CanvasRenderingContext2D, space: RisqSpace) {
-    let yi = this.yi() + this.drawName(ctx, risqTerrainName(space.terrain));
+    let yi = this.yi() + this.drawName(ctx, space.display_name);
     drawText(ctx, 'space', {
       p: { x: this.xc(), y: yi },
       w: this.w(),
@@ -894,15 +1133,37 @@ export class RisqLeftPanel implements CanvasComponent {
     this.drawSeparator(ctx, yi);
     yi += separator_distance;
     if ((this.visibility ?? 0) >= RisqVisibilityLevel.POOR) {
-      const rows = 4;
+      const rows = 6;
       const image_size = Math.min(
         36,
         (1 / rows) * (0.6 * this.h() - separator_distance - (rows - 1) * separator_distance)
       );
       ctx.fillStyle = 'black';
+      const draw_row_text = (x: number, text: string, max_w: number) => {
+        const row_yc = yi + 0.5 * image_size;
+        const font = `bold ${image_size}px serif`;
+        ctx.font = font;
+        const colon_w = ctx.measureText(': ').width;
+        drawText(ctx, ': ', {
+          p: { x, y: row_yc },
+          w: colon_w,
+          fill_style: 'black',
+          align: 'left',
+          baseline: 'middle',
+          font,
+        });
+        drawText(ctx, text, {
+          p: { x: x + colon_w, y: row_yc },
+          w: max_w - colon_w,
+          fill_style: 'black',
+          align: 'left',
+          baseline: 'middle',
+          font,
+        });
+      };
       const draw_row = (img: CanvasImageSource, text: string, hover_data?: RectHoverData) => {
         const ps = { x: this.xi() + 0.1 * this.w(), y: yi };
-        const pe = { x: ps.x + 0.9 * this.w(), y: ps.y + image_size };
+        const pe = { x: ps.x + 0.8 * this.w(), y: ps.y + image_size };
         if (hover_data?.hovered) {
           ctx.strokeStyle = 'transparent';
           ctx.fillStyle = hover_data.clicked ? 'rgba(250, 250, 250, 0.4)' : 'rgba(210, 210, 210, 0.25)';
@@ -910,13 +1171,7 @@ export class RisqLeftPanel implements CanvasComponent {
           ctx.fillStyle = 'black';
         }
         ctx.drawImage(img, ps.x, yi, image_size, image_size);
-        drawText(ctx, `: ${text}`, {
-          p: { x: ps.x + image_size + 2, y: yi },
-          w: 0.9 * this.w() - image_size - 2,
-          fill_style: 'black',
-          align: 'left',
-          font: `bold ${image_size}px serif`,
-        });
+        draw_row_text(ps.x + image_size + 2, text, 0.8 * this.w() - image_size - 2);
         if (!!hover_data) {
           hover_data.ps = ps;
           hover_data.pe = pe;
@@ -924,6 +1179,21 @@ export class RisqLeftPanel implements CanvasComponent {
         yi += image_size + separator_distance;
       };
       draw_row(this.risq.getIcon('icons/building64'), space.buildings?.size.toString() ?? '??');
+      draw_row(
+        this.risq.getIcon(resourceTypeImage(RisqResourceType.GOLD)),
+        `${(space.gold_income ?? 0).toFixed(1)}/turn`
+      );
+      const owner_color = spaceOwnerColor(space, this.risq.getGame()?.players ?? []);
+      const owner_name = owner_color
+        ? (this.risq.getGame()?.players[space.ownership ?? -1]?.player.nickname ?? 'Unknown')
+        : '--Unclaimed--';
+      const owner_ps = { x: this.xi() + 0.1 * this.w(), y: yi };
+      ctx.fillStyle = owner_color ? owner_color.getString() : 'rgba(255, 255, 255, 0.3)';
+      ctx.strokeStyle = 'black';
+      ctx.lineWidth = 1;
+      drawRect(ctx, owner_ps, image_size, image_size);
+      draw_row_text(owner_ps.x + image_size + 2, owner_name, 0.8 * this.w() - image_size - 2);
+      yi += image_size + separator_distance;
       if (this.visibility === RisqVisibilityLevel.POOR) {
         const villager_img = this.risq.getIcon('icons/villager64');
         const unit_img = this.risq.getIcon('icons/unit64');
@@ -1011,7 +1281,7 @@ export class RisqLeftPanel implements CanvasComponent {
     separator_distance: number
   ): number {
     const p = { x: this.xi() + 0.1 * this.w(), y: yi };
-    const w = 0.9 * this.w();
+    const w = 0.8 * this.w();
     let button = kind === 'villager' ? this.space_villager_row_button : this.space_military_row_button;
     if (!button) {
       button = new RisqSpaceUnitsRowButton({
@@ -1044,18 +1314,53 @@ export class RisqLeftPanel implements CanvasComponent {
     curr_zone: Point2D = { x: -1, y: -1 }
   ): number {
     const hexagon_height = Math.min(this.w(), this.yi() + 0.4 * this.h() - yi - separator_distance);
-    ctx.strokeStyle = 'rgba(250, 250, 250, 1)';
+    const owner_color = spaceOwnerColor(space, this.risq.getGame()?.players ?? []);
+    ctx.strokeStyle = borderStrokeStyle(owner_color, 1);
     ctx.lineWidth = 2;
     const r = 0.5 * hexagon_height;
     this.hexagon_r = r;
     const inner_r = INNER_ZONE_MULTIPLIER * r;
     const c = { x: this.xc(), y: yi + r };
     this.hexagon_c = c;
-    drawHexImage(ctx, this.risq.getIcon(terrainImage(space.terrain)), c, r);
+    drawHexImage(ctx, this.risq.getIcon(terrainImage(space.terrain_id)), c, r);
     ctx.fillStyle = 'transparent';
     drawHexagon(ctx, c, r);
+    if (space.visibility === RisqVisibilityLevel.SPY || space.visibility === RisqVisibilityLevel.POOR) {
+      const badge_size = 0.15 * hexagon_height;
+      const badge_p =
+        space.visibility === RisqVisibilityLevel.POOR
+          ? { x: this.xi() + 0.05 * this.w(), y: yi }
+          : { x: this.xi() + 0.1 * this.w(), y: yi + 0.05 * hexagon_height };
+      ctx.drawImage(
+        this.risq.getIcon(`icons/${space.visibility === RisqVisibilityLevel.SPY ? 'eye' : 'no_eye'}64`),
+        badge_p.x,
+        badge_p.y,
+        badge_size,
+        badge_size
+      );
+      this.eye_badge_hover.ps = badge_p;
+      this.eye_badge_hover.pe = { x: badge_p.x + badge_size, y: badge_p.y + badge_size };
+    } else {
+      this.eye_badge_hover.hovered = false;
+    }
     if ((this.visibility ?? 0) >= RisqVisibilityLevel.FOG && space.zones) {
-      ctx.strokeStyle = 'rgba(250, 250, 250, 0.7)';
+      const draw_zone_icon = (zone: RisqZone, p: Point2D, icon_r: number) => {
+        let icon: HTMLImageElement | HTMLCanvasElement | undefined;
+        if (zone.resource) {
+          icon = this.risq.getIcon(resourceImage(zone.resource));
+        } else if (zone.building) {
+          const building_color = this.risq.getGame()?.players[zone.building.player_id]?.color;
+          const building_image = buildingImage(zone.building.building_id, zone.building.under_construction);
+          icon = building_color
+            ? this.risq.getPlayerColoredIcon(building_image, building_color)
+            : this.risq.getIcon(building_image);
+        }
+        if (!icon) {
+          return;
+        }
+        ctx.drawImage(icon, p.x - icon_r, p.y - icon_r, 2 * icon_r, 2 * icon_r);
+      };
+      ctx.strokeStyle = borderStrokeStyle(owner_color, 0.7);
       ctx.lineWidth = 0.5;
       let zone = space.zones[1][1];
       const zone_fill = getZoneFill(zone, RisqViewMode.ALL, undefined, true, 4);
@@ -1064,7 +1369,10 @@ export class RisqLeftPanel implements CanvasComponent {
       }
       ctx.fillStyle = zone_fill.getString();
       drawHexagon(ctx, c, inner_r);
+      draw_zone_icon(zone, c, 0.4 * inner_r);
       const a = Math.PI / 3;
+      const mid_r = 0.5 * (inner_r + r);
+      const icon_r = 0.32 * (r - inner_r);
       for (let i = 0; i < 6; i++) {
         const direction_vector = OUTER_ZONE_INDICES[i];
         zone = space.zones[direction_vector.x][direction_vector.y];
@@ -1081,13 +1389,15 @@ export class RisqLeftPanel implements CanvasComponent {
         ctx.closePath();
         ctx.stroke();
         ctx.fill();
+        const angle_mid = a * i + Math.PI / 3;
+        draw_zone_icon(zone, { x: c.x + mid_r * Math.cos(angle_mid), y: c.y + mid_r * Math.sin(angle_mid) }, icon_r);
       }
     }
     return hexagon_height + separator_distance;
   }
 
   private drawZone(ctx: CanvasRenderingContext2D, data: { space: RisqSpace; zone: RisqZone }) {
-    let yi = this.yi() + this.drawName(ctx, risqTerrainName(data.space.terrain));
+    let yi = this.yi() + this.drawName(ctx, data.space.display_name);
     drawText(ctx, 'zone', {
       p: { x: this.xc(), y: yi },
       w: this.w(),
@@ -1407,6 +1717,7 @@ export class RisqLeftPanel implements CanvasComponent {
       case LeftPanelDataType.ZONE:
         const space: RisqSpace =
           this.data?.data_type === LeftPanelDataType.SPACE ? this.data.data : this.data.data.space;
+        this.rowHovered(m, this.eye_badge_hover);
         const new_hovered_zone = resolveHoveredZones(m, space, this.hexagon_r, this.hexagon_c, true);
         if (!!this.hovered_zone && !equalsPoint2D(this.hovered_zone.coordinate, new_hovered_zone?.coordinate)) {
           this.hovered_zone.hovered = false;
@@ -1431,10 +1742,15 @@ export class RisqLeftPanel implements CanvasComponent {
           this.objectHoverLogic(m, zone.building, HoverableObjectType.BUILDING);
         }
         break;
+      case LeftPanelDataType.MULTIPLE_PLAYERS_UNITS:
       case LeftPanelDataType.UNITS_BY_TYPE:
       case LeftPanelDataType.ECONOMIC_UNITS:
-      case LeftPanelDataType.MILITARY_UNITS:
-        for (const unit_data of this.data.data.units) {
+      case LeftPanelDataType.MILITARY_UNITS: {
+        const unit_groups =
+          this.data.data_type === LeftPanelDataType.MULTIPLE_PLAYERS_UNITS
+            ? this.data.data.units_by_player.flatMap(([, units]) => units)
+            : this.data.data.units;
+        for (const unit_data of unit_groups) {
           if (unit_data.units.size < 1) {
             continue;
           }
@@ -1447,6 +1763,7 @@ export class RisqLeftPanel implements CanvasComponent {
           }
         }
         break;
+      }
       case LeftPanelDataType.UNIT:
       case LeftPanelDataType.BUILDING:
         this.rowHovered(m, this.healthbar_row);
@@ -1455,6 +1772,37 @@ export class RisqLeftPanel implements CanvasComponent {
         break;
     }
     return this.isHovering();
+  }
+
+  private handleUnitGridClick(
+    space: RisqSpace | undefined,
+    groups: [number, UnitByTypeData[]][],
+    hovered_unit: RisqUnit,
+    e: MouseEvent
+  ) {
+    if (!space) {
+      return;
+    }
+    if (e.shiftKey) {
+      const player_units = groups.find(([player_id]) => player_id === hovered_unit.player_id)?.[1] ?? [];
+      const units_by_player = new Map<number, UnitByTypeData[]>([
+        [hovered_unit.player_id, player_units.filter((u) => u.unit_id === hovered_unit.unit_id)],
+      ]);
+      this.openPanel({ data_type: LeftPanelDataType.UNITS, data: { space, units_by_player } }, this.visibility ?? 0);
+    } else if (e.ctrlKey) {
+      const units_by_player = new Map<number, UnitByTypeData[]>();
+      for (const [player_id, units] of groups) {
+        const new_units = units
+          .map((u) => ({ ...u, units: new Set([...u.units].filter((id) => id !== hovered_unit.internal_id)) }))
+          .filter((u) => u.units.size > 0);
+        if (new_units.length > 0) {
+          units_by_player.set(player_id, new_units);
+        }
+      }
+      this.openPanel({ data_type: LeftPanelDataType.UNITS, data: { space, units_by_player } }, this.visibility ?? 0);
+    } else {
+      this.openPanel({ data_type: LeftPanelDataType.UNIT, data: hovered_unit }, this.visibility ?? 0);
+    }
   }
 
   mousedown(e: MouseEvent): boolean {
@@ -1474,6 +1822,7 @@ export class RisqLeftPanel implements CanvasComponent {
         }
         break;
       case LeftPanelDataType.UNITS:
+      case LeftPanelDataType.MULTIPLE_PLAYERS_UNITS:
       case LeftPanelDataType.UNITS_BY_TYPE:
       case LeftPanelDataType.ECONOMIC_UNITS:
       case LeftPanelDataType.MILITARY_UNITS:
@@ -1569,52 +1918,32 @@ export class RisqLeftPanel implements CanvasComponent {
           this.space_military_row_button?.mouseup(e);
         }
         break;
+      case LeftPanelDataType.MULTIPLE_PLAYERS_UNITS:
+        if (!!this.hovered_object && this.hovered_object.hover_data.clicked) {
+          this.hovered_object.hover_data.clicked = false;
+          if (this.hovered_object.hover_data.hovered) {
+            this.handleUnitGridClick(
+              this.data.data.space,
+              this.data.data.units_by_player,
+              this.hovered_object as RisqUnit,
+              e
+            );
+          }
+        }
+        break;
       case LeftPanelDataType.UNITS_BY_TYPE:
       case LeftPanelDataType.ECONOMIC_UNITS:
       case LeftPanelDataType.MILITARY_UNITS:
         if (!!this.hovered_object && this.hovered_object.hover_data.clicked) {
           this.hovered_object.hover_data.clicked = false;
           if (this.hovered_object.hover_data.hovered) {
-            if (e.shiftKey) {
-              this.openPanel(
-                {
-                  data_type: LeftPanelDataType.UNITS_BY_TYPE,
-                  data: {
-                    space: this.data.data.space,
-                    units: this.data.data.units.filter(
-                      (u: UnitByTypeData) => u.unit_id === (this.hovered_object as RisqUnit).unit_id
-                    ),
-                  },
-                },
-                this.visibility ?? 0
-              );
-            } else if (e.ctrlKey) {
-              const new_units_by_type_data: UnitByTypeData[] = [];
-              for (const units_by_type of this.data.data.units) {
-                const new_units_by_type: UnitByTypeData = {
-                  ...units_by_type,
-                  units: new Set<number>(
-                    [...units_by_type.units.values()].filter((u) => u !== (this.hovered_object as RisqUnit).internal_id)
-                  ),
-                };
-                if (new_units_by_type.units.size > 0) {
-                  new_units_by_type_data.push(new_units_by_type);
-                }
-              }
-              this.openPanel(
-                {
-                  data_type: LeftPanelDataType.UNITS_BY_TYPE,
-                  data: {
-                    space: this.data.data.space,
-                    units: new_units_by_type_data,
-                  },
-                },
-                this.visibility ?? 0
-              );
-            } else {
-              // @ts-ignore
-              this.openPanel({ data_type: LeftPanelDataType.UNIT, data: this.hovered_object }, this.visibility);
-            }
+            const hovered_unit = this.hovered_object as RisqUnit;
+            this.handleUnitGridClick(
+              this.data.data.space,
+              [[hovered_unit.player_id, this.data.data.units]],
+              hovered_unit,
+              e
+            );
           }
         }
         break;

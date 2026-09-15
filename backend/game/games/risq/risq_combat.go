@@ -1,6 +1,7 @@
 package risq
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/dgray001/gray_online/game/game_utils"
@@ -25,17 +26,10 @@ const (
 	AttackType_BLUNT_PIERCING_MAGIC
 )
 
-type AttackedByObjectType uint8
-
-const (
-	AttackedByUnit AttackedByObjectType = iota
-	AttackedByBuilding
-)
-
 type RisqDamageEvent struct {
 	tick          uint16
 	attacker_id   uint64
-	attacker_type AttackedByObjectType
+	attacker_type OrderableType
 	damage        float64
 	damage_type   AttackType
 }
@@ -156,17 +150,18 @@ func combatDamage(attacker *RisqCombatStats, defender *RisqCombatStats, stamina_
 // Applies a unit's attack against a building, deleting it and logging the raze/loss if it dies
 func (r *GameRisq) unitAttackBuilding(attacker *RisqUnit, target *RisqBuilding) {
 	was_alive := target.cs.health > 0
-	damage := combatDamage(&attacker.cs, &target.cs, attacker.intent.intent_cost)
+	attacker_cs := r.effectiveCombatStats(attacker, target, true)
+	damage := combatDamage(&attacker_cs, &target.cs, attacker.intent.intent_cost)
 	target.cs.addHealth(-damage)
-	target.attacked_by = append(target.attacked_by, RisqDamageEvent{tick: r.current_tick, attacker_id: attacker.internal_id, attacker_type: AttackedByUnit, damage: damage, damage_type: attacker.cs.attack_type})
+	target.attacked_by = append(target.attacked_by, RisqDamageEvent{tick: r.current_tick, attacker_id: attacker.internal_id, attacker_type: OrderableType_UNIT, damage: damage, damage_type: attacker.cs.attack_type})
 	if !was_alive || target.cs.health > 0 {
 		return
 	}
 	space := target.zone.space.coordinate
 	zone := target.zone.coordinate
-	r.players[attacker.player_id].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: CombatEvent_BuildingRazed,
+	r.players[attacker.player_id].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: RisqCombatEventKind_BUILDING_RAZED,
 		self_player: attacker.player_id, other_player: target.player_id, target_id: uint64(target.building_id), space: space, zone: zone, damage: damage})
-	r.players[target.player_id].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: CombatEvent_BuildingLost,
+	r.players[target.player_id].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: RisqCombatEventKind_BUILDING_LOST,
 		self_player: target.player_id, other_player: attacker.player_id, target_id: uint64(target.building_id), space: space, zone: zone, damage: damage})
 	r.players[attacker.player_id].razes++
 	r.players[target.player_id].buildings_lost++
@@ -175,9 +170,11 @@ func (r *GameRisq) unitAttackBuilding(attacker *RisqUnit, target *RisqBuilding) 
 
 func (r *GameRisq) unitAttackUnit(attacker *RisqUnit, target *RisqUnit) {
 	was_alive := target.cs.health > 0
-	damage := combatDamage(&attacker.cs, &target.cs, attacker.intent.intent_cost)
+	attacker_cs := r.effectiveCombatStats(attacker, target, true)
+	target_cs := r.effectiveCombatStats(target, attacker, false)
+	damage := combatDamage(&attacker_cs, &target_cs, attacker.intent.intent_cost)
 	target.cs.addHealth(-damage)
-	target.attacked_by = append(target.attacked_by, RisqDamageEvent{tick: r.current_tick, attacker_id: attacker.internal_id, attacker_type: AttackedByUnit, damage: damage, damage_type: attacker.cs.attack_type})
+	target.attacked_by = append(target.attacked_by, RisqDamageEvent{tick: r.current_tick, attacker_id: attacker.internal_id, attacker_type: OrderableType_UNIT, damage: damage, damage_type: attacker.cs.attack_type})
 	util.DebugLog.Printf("combat tick=%d: unit %d (player %d, stamina %d) hits unit %d (player %d) for %.2f, health now %.2f/%d",
 		r.current_tick, attacker.internal_id, attacker.player_id, attacker.intent.intent_cost,
 		target.internal_id, target.player_id, damage, target.cs.health, target.cs.max_health)
@@ -186,9 +183,9 @@ func (r *GameRisq) unitAttackUnit(attacker *RisqUnit, target *RisqUnit) {
 	}
 	space := target.zone.space.coordinate
 	zone := target.zone.coordinate
-	r.players[attacker.player_id].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: CombatEvent_UnitKilled,
+	r.players[attacker.player_id].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: RisqCombatEventKind_UNIT_KILLED,
 		self_player: attacker.player_id, other_player: target.player_id, target_id: uint64(target.unit_id), space: space, zone: zone, damage: damage})
-	r.players[target.player_id].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: CombatEvent_UnitLost,
+	r.players[target.player_id].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: RisqCombatEventKind_UNIT_LOST,
 		self_player: target.player_id, other_player: attacker.player_id, target_id: uint64(target.unit_id), space: space, zone: zone, damage: damage})
 	r.players[attacker.player_id].kills++
 	r.players[target.player_id].units_lost++
@@ -262,16 +259,77 @@ type TargetCategory uint8
 
 const (
 	TargetCategory_NONE TargetCategory = iota
-	TargetEconomic
-	TargetMilitary
-	TargetBuilding
+	TargetCategory_ECONOMIC
+	TargetCategory_MILITARY
+	TargetCategory_BUILDING
+	TargetCategory_END
 )
 
 func targetCategoryOf(u *RisqUnit) TargetCategory {
-	if isEconomicUnit(u.unit_id) {
-		return TargetEconomic
+	if u.unitType() == UnitType_ECONOMIC {
+		return TargetCategory_ECONOMIC
 	}
-	return TargetMilitary
+	return TargetCategory_MILITARY
+}
+
+type TargetType struct {
+	orderable_type OrderableType
+	object_type    int // UnitType when orderable_type is OrderableType_UNIT; 0 means "any" within that orderable_type
+}
+
+func targetTypeOf(orderable_type OrderableType, unit_type UnitType) TargetType {
+	if orderable_type == OrderableType_UNIT {
+		return TargetType{orderable_type: OrderableType_UNIT, object_type: int(unit_type)}
+	}
+	return TargetType{orderable_type: orderable_type}
+}
+
+func (tt TargetType) matches(actual TargetType) bool {
+	if tt.orderable_type != actual.orderable_type {
+		return false
+	}
+	return tt.object_type == 0 || tt.object_type == actual.object_type
+}
+
+func parseTargetType(s string) (TargetType, error) {
+	switch s {
+	case "building":
+		return TargetType{orderable_type: OrderableType_BUILDING}, nil
+	case "unit":
+		return TargetType{orderable_type: OrderableType_UNIT}, nil
+	default:
+		unit_type, err := parseUnitType(s)
+		if err != nil {
+			return TargetType{}, fmt.Errorf("unknown target_type %q", s)
+		}
+		return TargetType{orderable_type: OrderableType_UNIT, object_type: int(unit_type)}, nil
+	}
+}
+
+func otherUnitIdentity(other Orderable) (uint32, UnitType) {
+	if unit, ok := other.(*RisqUnit); ok {
+		return unit.unit_id, unit.unitType()
+	}
+	return 0, UnitType_NONE
+}
+
+func (r *GameRisq) effectiveCombatStats(u *RisqUnit, other Orderable, attacking bool) RisqCombatStats {
+	cs := u.cs
+	other_unit_id, other_unit_type := otherUnitIdentity(other)
+	bonus := sumTargetedBonus(u.unit_id, u.unitType(), r.players[u.player_id].researchedTechIds(), other_unit_id, other_unit_type, other.OrderableType())
+	if attacking {
+		cs.attack_blunt += bonus.bonus_attack_blunt
+		cs.attack_piercing += bonus.bonus_attack_piercing
+		cs.attack_magic += bonus.bonus_attack_magic
+		cs.penetration_blunt += bonus.bonus_penetration_blunt
+		cs.penetration_piercing += bonus.bonus_penetration_piercing
+		cs.penetration_magic += bonus.bonus_penetration_magic
+	} else {
+		cs.defense_blunt += bonus.bonus_defense_blunt
+		cs.defense_piercing += bonus.bonus_defense_piercing
+		cs.defense_magic += bonus.bonus_defense_magic
+	}
+	return cs
 }
 
 type categoryBest struct {
@@ -307,7 +365,7 @@ func (c *categoryBest) pick(priority []TargetCategory) (*RisqUnit, *RisqBuilding
 			continue
 		}
 		ranked[cat] = true
-		if cat == TargetBuilding {
+		if cat == TargetCategory_BUILDING {
 			if c.building != nil {
 				return nil, c.building
 			}
@@ -325,7 +383,7 @@ func (c *categoryBest) pick(priority []TargetCategory) (*RisqUnit, *RisqBuilding
 			best_unit, best_dist = target, c.unit_dist[cat]
 		}
 	}
-	if !ranked[TargetBuilding] && c.building != nil && (best_unit == nil || c.building_dist < best_dist) {
+	if !ranked[TargetCategory_BUILDING] && c.building != nil && (best_unit == nil || c.building_dist < best_dist) {
 		return nil, c.building
 	}
 	return best_unit, nil

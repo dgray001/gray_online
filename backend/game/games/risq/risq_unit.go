@@ -1,6 +1,7 @@
 package risq
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -12,10 +13,22 @@ import (
 type UnitStance uint8
 
 const (
-	StancePassive UnitStance = iota
-	StanceAggressive
-	StanceDefensive
-	StanceStandGround
+	UnitStance_NONE UnitStance = iota
+	UnitStance_PASSIVE
+	UnitStance_AGGRESSIVE
+	UnitStance_DEFENSIVE
+	UnitStance_STAND_GROUND
+	UnitStance_END
+)
+
+type UnitType uint8
+
+const (
+	UnitType_NONE UnitType = iota
+	UnitType_ECONOMIC
+	UnitType_INFANTRY
+	UnitType_ARCHER
+	UnitType_CAVALRY
 )
 
 type RisqUnit struct {
@@ -38,29 +51,29 @@ type RisqUnit struct {
 	target_priority   []TargetCategory
 }
 
-func isEconomicUnit(unit_id uint32) bool {
-	return unit_id < 11
-}
-
 func createRisqUnit(internal_id uint64, unit_id uint32, player *RisqPlayer) *RisqUnit {
 	unit := RisqUnit{
-		deleted:         false,
-		internal_id:     internal_id,
-		player_id:       player.player.Player_id,
-		unit_id:         unit_id,
-		turn_stamina:    10,
-		current_stamina: 0,
-		cs:              createRisqCombatStats(),
-		order_queue:     createRisqOrderQueue(),
-		intent:          createRisqIntent(),
-	}
-	if !isEconomicUnit(unit_id) {
-		unit.stance = StanceDefensive
+		deleted:           false,
+		internal_id:       internal_id,
+		player_id:         player.player.Player_id,
+		unit_id:           unit_id,
+		turn_stamina:      10,
+		current_stamina:   0,
+		cs:                createRisqCombatStats(),
+		order_queue:       createRisqOrderQueue(),
+		intent:            createRisqIntent(),
+		stance:            UnitStance_PASSIVE,
+		interrupt_current: false,
+		attack_back:       true,
+		target_priority:   []TargetCategory{},
 	}
 	config, ok := unitConfigs[unit_id]
 	if !ok {
 		fmt.Fprintln(os.Stderr, "Creating unknown unit id: ", unit_id)
 		return &unit
+	}
+	if config.unit_type != UnitType_ECONOMIC {
+		unit.stance = UnitStance_DEFENSIVE
 	}
 	unit.display_name = config.display_name
 	unit.cs.setMaxHealth(config.max_health)
@@ -72,12 +85,17 @@ func createRisqUnit(internal_id uint64, unit_id uint32, player *RisqPlayer) *Ris
 	unit.cs.penetration_blunt = config.penetration_blunt
 	unit.cs.penetration_piercing = config.penetration_piercing
 	unit.turn_stamina = config.turn_stamina
+	for _, bonus := range bonusConfigs {
+		if bonus.appliesTo(unit_id, config.unit_type) {
+			applyTechBonus(&unit, bonus)
+		}
+	}
 	for tech_id, researched := range player.researched_techs {
 		if !researched {
 			continue
 		}
 		tech, ok := techConfigs[tech_id]
-		if !ok || tech.affects_unit_id != unit_id {
+		if !ok || !tech.appliesTo(unit_id, config.unit_type) {
 			continue
 		}
 		applyTechBonus(&unit, tech)
@@ -103,12 +121,20 @@ func (u *RisqUnit) score() uint {
 	return unitConfigs[u.unit_id].cost.points()
 }
 
+func (u *RisqUnit) unitType() UnitType {
+	return unitConfigs[u.unit_id].unit_type
+}
+
 func (u *RisqUnit) isDeleted() bool {
 	return u.deleted
 }
 
 func (u *RisqUnit) internalId() uint64 {
 	return u.internal_id
+}
+
+func (u *RisqUnit) OrderableType() OrderableType {
+	return OrderableType_UNIT
 }
 
 func (u *RisqUnit) activeOrders() []*RisqOrder {
@@ -133,22 +159,23 @@ func (u *RisqUnit) refreshStamina() {
 	u.attacked_by = nil
 }
 
-func (u *RisqUnit) receiveOrder(o *RisqOrder, risq *GameRisq) {
-	u.order_queue.receiveOrder(o)
+func (u *RisqUnit) receiveOrder(o *RisqOrder, risq *GameRisq) error {
 	switch o.order_type {
 	case OrderType_UnitBuild:
 		building_id, _, zone := invertBuildKey(uint(o.target_id), risq)
 		player := risq.players[u.player_id]
-		if zone.building != nil || player.planned_foundations[zone.coordinate_key] != nil {
-			return
+		if zone.building == nil && player.planned_foundations[zone.coordinate_key] == nil {
+			cost, _ := buildingProductionCost(building_id)
+			if !player.resources.canAfford(cost) {
+				return errors.New("cannot afford building")
+			}
+			player.planned_foundations[zone.coordinate_key] = createRisqPlannedFoundation(building_id, player)
 		}
-		cost, _ := buildingProductionCost(building_id)
-		if !player.resources.canAfford(cost) {
-			player.report.recordFailure(o.order_type, o.target_id, "cannot afford building")
-			return
-		}
-		player.planned_foundations[zone.coordinate_key] = createRisqPlannedFoundation(building_id, player)
+		u.order_queue.receiveOrder(o)
+	default:
+		u.order_queue.receiveOrder(o)
 	}
+	return nil
 }
 
 func (u *RisqUnit) cancelOrder(o *RisqOrder, risq *GameRisq) {
@@ -183,14 +210,29 @@ func (u *RisqUnit) orderReceivable(o *RisqOrder, risq *GameRisq) bool {
 		return foundation == nil || foundation.building_id == building_id
 	case OrderType_UnitGather:
 		_, zone := invertZoneKey(uint(o.target_id), risq)
-		if !isEconomicUnit(u.unit_id) || zone == nil {
+		if u.unitType() != UnitType_ECONOMIC || zone == nil {
 			return false
 		}
-		resource, ok := zone.resourceKnownTo(u.player_id)
-		return ok && resource.resources_left > 0
+		if zone.resource != nil {
+			resource, ok := zone.resourceKnownTo(u.player_id)
+			return ok && resource.resources_left > 0
+		}
+		if b := zone.building; b != nil {
+			config := buildingConfigs[b.building_id]
+			if !config.isGatherable() || b.player_id != u.player_id || b.underConstruction() || b.resources_left <= 0 {
+				return false
+			}
+			for _, ao := range u.order_queue.active_orders {
+				if ao.order_type == OrderType_UnitGather && ao.target_id == o.target_id {
+					return true
+				}
+			}
+			return b.gatheringUnitCount(risq) < config.gather.gather_capacity
+		}
+		return false
 	case OrderType_UnitRepair:
 		target := risq.buildings[uint64(o.target_id)]
-		if !isEconomicUnit(u.unit_id) || target == nil || target.isDeleted() {
+		if u.unitType() != UnitType_ECONOMIC || target == nil || target.isDeleted() {
 			return false
 		}
 		cache, ok := target.zone.buildingKnownTo(u.player_id)
@@ -248,6 +290,9 @@ func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 	case OrderType_UnitGather:
 		_, zone := invertZoneKey(uint(o.target_id), risq)
 		if resource, ok := zone.resourceKnownTo(u.player_id); ok && resource.resources_left > 0 {
+			return OrderStatus_InProgress
+		}
+		if b := zone.building; b != nil && buildingConfigs[b.building_id].isGatherable() && b.resources_left > 0 {
 			return OrderStatus_InProgress
 		}
 	case OrderType_UnitBuild:
@@ -354,11 +399,11 @@ func (u *RisqUnit) stanceReachable(attacker *RisqUnit) bool {
 		return false
 	}
 	switch u.stance {
-	case StanceAggressive:
+	case UnitStance_AGGRESSIVE:
 		return true
-	case StanceDefensive:
+	case UnitStance_DEFENSIVE:
 		return attacker.zone.space == u.zone.space
-	case StanceStandGround:
+	case UnitStance_PASSIVE, UnitStance_STAND_GROUND:
 		return attacker.zone == u.zone
 	default:
 		return false
@@ -392,7 +437,7 @@ func (u *RisqUnit) reactiveAttackBackTarget(risq *GameRisq) *RisqUnit {
 	latest_tick := u.attacked_by[len(u.attacked_by)-1].tick
 	best := newCategoryBest()
 	for _, event := range u.attacked_by {
-		if event.tick != latest_tick || event.attacker_type != AttackedByUnit {
+		if event.tick != latest_tick || event.attacker_type != OrderableType_UNIT {
 			continue
 		}
 		attacker := risq.units[event.attacker_id]
@@ -422,33 +467,41 @@ func (u *RisqUnit) replaceOrder(risq *GameRisq, order_type OrderType, target_id 
 }
 
 func (u *RisqUnit) resolveStance(risq *GameRisq) {
-	if isEconomicUnit(u.unit_id) || u.zone == nil {
+	if u.zone == nil {
 		return
 	}
 	if target := u.reactiveAttackBackTarget(risq); target != nil {
-		if u.interrupt_current || !u.isAttacking() {
+		idle_enough := u.interrupt_current
+		if !idle_enough {
+			if u.stance == UnitStance_PASSIVE {
+				idle_enough = len(u.order_queue.active_orders) == 0
+			} else {
+				idle_enough = !u.isAttacking()
+			}
+		}
+		if idle_enough {
 			u.replaceOrder(risq, OrderType_UnitAutoAttackUnit, int64(target.internal_id))
 		}
 		return
 	}
-	if u.stance == StancePassive {
+	if u.stance == UnitStance_PASSIVE {
 		return
 	}
 	if !u.interrupt_current && len(u.order_queue.active_orders) > 0 {
 		return
 	}
 	switch u.stance {
-	case StanceAggressive:
+	case UnitStance_AGGRESSIVE:
 		if target, target_building := nearbyAttackTarget(u, risq, aggressiveSightRadius); target != nil {
 			u.replaceOrder(risq, OrderType_UnitAutoAttackUnit, int64(target.internal_id))
 		} else if target_building != nil {
 			u.replaceOrder(risq, OrderType_UnitAttackBuilding, int64(target_building.internal_id))
 		}
-	case StanceDefensive:
+	case UnitStance_DEFENSIVE:
 		if spaceHasEnemy(u.zone.space, u.player_id) {
 			u.replaceOrder(risq, OrderType_UnitAttackSpace, int64(u.zone.space.coordinate_key))
 		}
-	case StanceStandGround:
+	case UnitStance_STAND_GROUND:
 		if zoneHasEnemy(u.zone, u.player_id) {
 			u.replaceOrder(risq, OrderType_UnitAttackZone, int64(u.zone.coordinate_key))
 		}
@@ -473,8 +526,10 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 		_, zone := invertZoneKey(uint(order.target_id), risq)
 		if u.zone != zone {
 			u.intent.setMove(u.findPath(zone))
-		} else {
+		} else if zone.resource != nil {
 			u.intent.setGather(zone.resource)
+		} else if zone.building != nil {
+			u.intent.setGather(zone.building)
 		}
 	case OrderType_UnitBuild:
 		building_id, _, zone := invertBuildKey(uint(order.target_id), risq)
@@ -592,21 +647,14 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 	case *GatherIntent:
 		amount, ok := risq.gather_allotments[u]
 		if !ok {
-			amount = float64(u.intent.intent_cost) * (float64(detail.resource.base_gather_speed) / gatherRateStaminaBase)
+			amount = float64(u.intent.intent_cost) * (float64(detail.source.gatherSpeed()) / gatherRateStaminaBase)
 		}
 		amount = util.RoundTo(amount, 4)
-		if amount > detail.resource.resources_left {
-			amount = detail.resource.resources_left
+		if amount > detail.source.gatherResourcesLeft() {
+			amount = detail.source.gatherResourcesLeft()
 		}
-		detail.resource.resources_left -= amount
-		detail.resource.resources_left = util.RoundTo(detail.resource.resources_left, 4)
-		risq.players[u.player_id].resources.addGathered(detail.resource.category(), amount)
-		if detail.resource.resources_left <= 0 && detail.resource.zone != nil {
-			if detail.resource.zone.space != nil {
-				delete(detail.resource.zone.space.resources, detail.resource.internal_id)
-			}
-			detail.resource.zone.resource = nil
-		}
+		detail.source.gatherDrain(amount)
+		risq.players[u.player_id].resources.addGathered(detail.source.gatherCategory(), amount)
 	case *ConstructionIntent:
 		if detail.zone.building != nil && detail.zone.building.player_id != u.player_id {
 			return
@@ -689,6 +737,7 @@ func (u *RisqUnit) toFrontend(viewer_player_id int) gin.H {
 		"internal_id":     u.internal_id,
 		"player_id":       u.player_id,
 		"unit_id":         u.unit_id,
+		"unit_type":       u.unitType(),
 		"display_name":    u.display_name,
 		"turn_stamina":    u.turn_stamina,
 		"current_stamina": u.current_stamina,
@@ -716,6 +765,14 @@ func (u *RisqUnit) toFrontend(viewer_player_id int) gin.H {
 				active_orders = append(active_orders, order.toFrontend())
 			}
 		}
+		target_priority := make([]int, len(u.target_priority))
+		for i, cat := range u.target_priority {
+			target_priority[i] = int(cat)
+		}
+		unit["stance"] = u.stance
+		unit["interrupt_current"] = u.interrupt_current
+		unit["attack_back"] = u.attack_back
+		unit["target_priority"] = target_priority
 	}
 	unit["active_orders"] = active_orders
 	return unit

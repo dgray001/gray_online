@@ -10,21 +10,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type TerrainType uint8
-
-const (
-	TerrainType_FLATLANDS TerrainType = iota
-	TerrainType_HILLY
-	TerrainType_MOUNTAINOUS
-	TerrainType_VALLEY
-	TerrainType_SWAMP
-	TerrainType_SHALLOWS
-	TerrainType_WATER
-	TerrainType_DEEP_WATER
-)
-
 type RisqSpace struct {
-	terrain         TerrainType
+	terrain_id      uint32
 	coordinate      game_utils.Coordinate2D
 	coordinate_key  uint
 	zones           [][]*RisqZone
@@ -40,9 +27,9 @@ type RisqSpace struct {
 	ownership_cache map[int]int
 }
 
-func createRisqSpace(q int, r int, terrain TerrainType) *RisqSpace {
+func createRisqSpace(q int, r int, terrain_id uint32) *RisqSpace {
 	space := RisqSpace{
-		terrain:         terrain,
+		terrain_id:      terrain_id,
 		coordinate:      game_utils.Coordinate2D{X: q, Y: r},
 		coordinate_key:  util.Pair(q, r),
 		resources:       make(map[uint64]*RisqResource),
@@ -286,7 +273,9 @@ func (s *RisqSpace) refreshCache(player_id int) {
 
 func (s *RisqSpace) toFrontend(player_id int, _is_viewer bool) gin.H {
 	space := gin.H{
-		"terrain":        s.terrain,
+		"terrain_id":     s.terrain_id,
+		"terrain_type":   terrainConfigs[s.terrain_id].terrain_type,
+		"display_name":   terrainConfigs[s.terrain_id].display_name,
 		"coordinate":     s.coordinate.ToFrontend(),
 		"coordinate_key": s.coordinate_key,
 	}

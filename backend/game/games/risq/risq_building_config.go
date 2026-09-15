@@ -23,6 +23,53 @@ type BuildingConfig struct {
 	defense_blunt      int
 	defense_piercing   int
 	vision             RisqVision
+	required_tech_id   uint32
+	gather             BuildingGatherable
+}
+
+func (c BuildingConfig) isGatherable() bool {
+	return c.gather.gather_capacity > 0
+}
+
+type BuildingGatherable struct {
+	resource_category  RisqResourceCategory
+	base_gather_speed  int
+	starting_resources float64
+	gather_capacity    int
+	renew_cost         RisqResourceCost
+	renew_stamina      int
+}
+
+type buildingGatherableJSON struct {
+	ResourceCategory  string   `json:"resource_category"`
+	BaseGatherSpeed   int      `json:"base_gather_speed"`
+	StartingResources float64  `json:"starting_resources"`
+	GatherCapacity    int      `json:"gather_capacity"`
+	RenewCost         costJSON `json:"renew_cost"`
+	RenewStamina      int      `json:"renew_stamina"`
+}
+
+func resolveGatherable(j *buildingGatherableJSON, source string) (BuildingGatherable, error) {
+	if j == nil {
+		return BuildingGatherable{}, nil
+	}
+	category, err := parseResourceCategory(j.ResourceCategory)
+	if err != nil {
+		return BuildingGatherable{}, fmt.Errorf("%s: %v", source, err)
+	}
+	return BuildingGatherable{
+		resource_category:  category,
+		base_gather_speed:  j.BaseGatherSpeed,
+		starting_resources: j.StartingResources,
+		gather_capacity:    j.GatherCapacity,
+		renew_cost: RisqResourceCost{
+			food:  j.RenewCost.Food,
+			wood:  j.RenewCost.Wood,
+			stone: j.RenewCost.Stone,
+			gold:  j.RenewCost.Gold,
+		},
+		renew_stamina: j.RenewStamina,
+	}, nil
 }
 
 func (c BuildingConfig) canProduce(unit_id uint32) bool {
@@ -54,19 +101,21 @@ func buildingProductionCost(building_id uint32) (RisqResourceCost, int) {
 }
 
 type buildingConfigJSON struct {
-	BuildingId        uint32           `json:"building_id"`
-	DisplayName       string           `json:"display_name"`
-	Description       string           `json:"description"`
-	MaxHealth         int              `json:"max_health"`
-	PopulationSupport uint16           `json:"population_support"`
-	GarrisonCapacity  uint16           `json:"garrison_capacity"`
-	Produces          []producibleJSON `json:"produces"`
-	Cost              costJSON         `json:"cost"`
-	BuildStamina      int              `json:"build_stamina"`
-	TurnStamina       int              `json:"turn_stamina"`
-	DefenseBlunt      int              `json:"defense_blunt"`
-	DefensePiercing   int              `json:"defense_piercing"`
-	Vision            *risqVisionJSON  `json:"vision"`
+	BuildingId        uint32                  `json:"building_id"`
+	DisplayName       string                  `json:"display_name"`
+	Description       string                  `json:"description"`
+	MaxHealth         int                     `json:"max_health"`
+	PopulationSupport uint16                  `json:"population_support"`
+	GarrisonCapacity  uint16                  `json:"garrison_capacity"`
+	Produces          []producibleJSON        `json:"produces"`
+	Cost              costJSON                `json:"cost"`
+	BuildStamina      int                     `json:"build_stamina"`
+	TurnStamina       int                     `json:"turn_stamina"`
+	DefenseBlunt      int                     `json:"defense_blunt"`
+	DefensePiercing   int                     `json:"defense_piercing"`
+	Vision            *risqVisionJSON         `json:"vision"`
+	RequiredTechId    uint32                  `json:"required_tech_id"`
+	Gatherable        *buildingGatherableJSON `json:"gatherable"`
 }
 
 var buildingConfigs map[uint32]BuildingConfig
@@ -81,6 +130,10 @@ func init() {
 		produces, err := parseProducibles(e.Produces, nil)
 		if err != nil {
 			panic(fmt.Sprintf("config/buildings.json building_id %d: %v", e.BuildingId, err))
+		}
+		gather, err := resolveGatherable(e.Gatherable, fmt.Sprintf("config/buildings.json building_id %d", e.BuildingId))
+		if err != nil {
+			panic(err)
 		}
 		buildingConfigs[e.BuildingId] = BuildingConfig{
 			display_name:       e.DisplayName,
@@ -100,6 +153,8 @@ func init() {
 			defense_blunt:    e.DefenseBlunt,
 			defense_piercing: e.DefensePiercing,
 			vision:           resolveVision(e.Vision),
+			required_tech_id: e.RequiredTechId,
+			gather:           gather,
 		}
 	}
 }

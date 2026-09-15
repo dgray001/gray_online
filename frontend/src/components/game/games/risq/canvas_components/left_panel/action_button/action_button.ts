@@ -1,8 +1,13 @@
 import type { BoardTransformData } from '../../../../../util/canvas_board/canvas_board';
 import { DwgSquareButton } from '../../../../../util/canvas_components/button/square_button';
+import {
+  createTooltipState,
+  drawTooltip as drawGenericTooltip,
+  shouldShowTooltip,
+} from '../../../../../util/canvas_components/tooltip';
 import type { DwgRisq } from '../../../risq';
 import type { RisqTooltipData } from '../../risq_tooltip';
-import { drawRisqTooltip } from '../../risq_tooltip';
+import { createRisqTooltipState, drawRisqTooltip } from '../../risq_tooltip';
 
 export declare interface RisqActionButtonConfig {
   row: number;
@@ -15,6 +20,7 @@ export abstract class RisqActionButton extends DwgSquareButton {
   readonly row: number;
   readonly col: number;
   readonly description: string;
+  protected tooltip_state = createTooltipState();
 
   constructor(config: RisqActionButtonConfig, s: number) {
     super({
@@ -51,10 +57,36 @@ export abstract class RisqActionButton extends DwgSquareButton {
     return { title: this.description };
   }
 
-  drawTooltip(ctx: CanvasRenderingContext2D, transform: BoardTransformData, risq: DwgRisq) {
-    if (!this.isHovering()) {
+  drawTooltip(ctx: CanvasRenderingContext2D, transform: BoardTransformData, risq: DwgRisq, dt: number) {
+    if (!shouldShowTooltip(this.tooltip_state, this.isHovering(), this.isClicking(), dt)) {
       return;
     }
-    drawRisqTooltip(ctx, transform, risq, { x: this.xi(), y: this.yi() }, this.getTooltipData());
+    drawGenericTooltip(
+      this.tooltip_state,
+      ctx,
+      transform,
+      risq.canvasSize(),
+      { x: this.xi(), y: this.yi() },
+      this.getTooltipData().title
+    );
+  }
+}
+
+/** Base for action buttons whose tooltip needs cost/stamina/description, not just a plain title */
+export abstract class RisqRichTooltipActionButton extends RisqActionButton {
+  private rich_tooltip_state = createRisqTooltipState();
+
+  override drawTooltip(ctx: CanvasRenderingContext2D, transform: BoardTransformData, risq: DwgRisq, dt: number) {
+    drawRisqTooltip(
+      ctx,
+      transform,
+      risq,
+      dt,
+      this.isHovering(),
+      this.isClicking(),
+      this.rich_tooltip_state,
+      { x: this.xi(), y: this.yi() },
+      this.getTooltipData()
+    );
   }
 }

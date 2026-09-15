@@ -165,7 +165,7 @@ export class RisqMinimap implements CanvasComponent {
               ctx.fillStyle = `rgb(${fill.getR()}, ${fill.getG()}, ${fill.getB()})`;
               drawHexagon(ctx, minimap_canvas, draw_r);
             } else {
-              drawHexImage(ctx, this.risq.getIcon(terrainImage(space.terrain)), minimap_canvas, draw_r);
+              drawHexImage(ctx, this.risq.getIcon(terrainImage(space.terrain_id)), minimap_canvas, draw_r);
               if (view_mode !== RisqViewMode.RESOURCE && !!owner_color) {
                 fillHexOverlay(
                   ctx,

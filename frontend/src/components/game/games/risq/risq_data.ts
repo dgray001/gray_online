@@ -80,7 +80,9 @@ export type SPACE_ZONES_TYPE = [[RisqZone, RisqZone], [RisqZone, RisqZone, RisqZ
 
 /** Data describing a hexagonal space in risq */
 export declare interface RisqSpace {
-  terrain: RisqTerrainType;
+  terrain_id: number;
+  terrain_type: RisqTerrainType;
+  display_name: string;
   coordinate: Point2D;
   coordinate_key: number;
   visibility: number; // See risq_vision.go for value meanings
@@ -151,6 +153,7 @@ export declare interface RisqUnit {
   internal_id: number;
   player_id: number;
   unit_id: number;
+  unit_type: RisqUnitType;
   display_name: string;
   space_coordinate: Point2D;
   zone_coordinate: Point2D;
@@ -161,6 +164,10 @@ export declare interface RisqUnit {
   active_orders: RisqOrder[];
   builds: RisqProducible[];
   garrisoned_in?: number;
+  stance?: RisqUnitStance;
+  interrupt_current?: boolean;
+  attack_back?: boolean;
+  target_priority?: RisqTargetCategory[];
   // purely frontend fields
   hover_data: RectHoverData;
 }
@@ -186,6 +193,9 @@ export declare interface RisqBuilding {
   active_orders: RisqOrder[];
   produces: RisqProducible[];
   production_queue: RisqProductionQueueItem[];
+  resources_left?: number;
+  gather_capacity?: number;
+  resource_category?: RisqResourceType;
   // purely frontend fields
   hover_data: RectHoverData;
 }
@@ -200,10 +210,10 @@ export declare interface RisqProductionQueueItem {
 
 /** All the kinds a producible entry can be */
 export enum RisqProducibleKind {
-  NONE,
-  UNIT,
-  TECH,
-  BUILDING,
+  NONE = 0,
+  UNIT = 1,
+  TECH = 2,
+  BUILDING = 3,
 }
 
 /** Data describing something a building can produce, with its cost already resolved for this player */
@@ -216,6 +226,7 @@ export declare interface RisqProducible {
   stamina_cost: number;
   display_name: string;
   description: string;
+  required_tech_id: number;
 }
 
 /** Data describing a resource cost */
@@ -240,6 +251,10 @@ export function canAffordCost(player: RisqPlayer, cost: RisqCost): boolean {
   );
 }
 
+export function meetsTechRequirement(player: RisqPlayer, required_tech_id: number): boolean {
+  return required_tech_id === 0 || !!player.researched_techs.get(required_tech_id);
+}
+
 /** Data describing combat stats */
 export declare interface RisqCombatStats {
   health: number;
@@ -254,6 +269,32 @@ export declare interface RisqCombatStats {
   penetration_blunt: number;
   penetration_piercing: number;
   penetration_magic: number;
+}
+
+/** All the unit types */
+export enum RisqUnitType {
+  NONE = 0,
+  ECONOMIC = 1,
+  INFANTRY = 2,
+  ARCHER = 3,
+  CAVALRY = 4,
+}
+
+/** All the unit stances */
+export enum RisqUnitStance {
+  NONE = 0,
+  PASSIVE = 1,
+  AGGRESSIVE = 2,
+  DEFENSIVE = 3,
+  STAND_GROUND = 4,
+}
+
+/** All the target categories */
+export enum RisqTargetCategory {
+  NONE = 0,
+  ECONOMIC = 1,
+  MILITARY = 2,
+  BUILDING = 3,
 }
 
 /** All the attack types */
@@ -359,7 +400,9 @@ export declare interface RisqPlayerFromServer {
 
 /** Data describing a hexagonal space in risq */
 export declare interface RisqSpaceFromServer {
-  terrain: RisqTerrainType;
+  terrain_id: number;
+  terrain_type: RisqTerrainType;
+  display_name: string;
   coordinate: Point2D;
   coordinate_key: number;
   visibility: number;
@@ -388,6 +431,7 @@ export declare interface RisqUnitFromServer {
   internal_id: number;
   player_id: number;
   unit_id: number;
+  unit_type: RisqUnitType;
   display_name: string;
   space_coordinate: Point2D;
   zone_coordinate: Point2D;
@@ -398,6 +442,10 @@ export declare interface RisqUnitFromServer {
   active_orders: RisqOrderFromServer[];
   builds: RisqProducible[];
   garrisoned_in?: number;
+  stance?: RisqUnitStance;
+  interrupt_current?: boolean;
+  attack_back?: boolean;
+  target_priority?: RisqTargetCategory[];
 }
 
 /** Data describing a risq building */
@@ -582,7 +630,9 @@ export function serverToRisqPlayer(server_player: RisqPlayerFromServer): RisqPla
 /** Converts a server response to a frontend risq space */
 export function serverToRisqSpace(server_space: RisqSpaceFromServer): RisqSpace {
   const space: RisqSpace = {
-    terrain: server_space.terrain,
+    terrain_id: server_space.terrain_id,
+    terrain_type: server_space.terrain_type,
+    display_name: server_space.display_name,
     coordinate: server_space.coordinate,
     coordinate_key: server_space.coordinate_key,
     visibility: server_space.visibility,

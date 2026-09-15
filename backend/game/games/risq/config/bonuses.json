@@ -1,0 +1,11 @@
+[
+  {
+    "tech_id": 1,
+    "display_name": "Infantry vs Buildings",
+    "description": "Infantry deal bonus damage against buildings.",
+    "affects_unit_types": ["infantry"],
+    "target_types": ["building"],
+    "bonus_attack_blunt": 4,
+    "bonus_attack_piercing": 4
+  }
+]

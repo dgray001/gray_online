@@ -40,13 +40,14 @@ import {
   RisqVisibilityLevel,
   serverToGameRisq,
 } from './risq_data';
+import type { RisqUnitStance } from './risq_data';
 import { cantorPair, coordinateToIndex, getSpace, invertBuildKey, invertPair, invertZoneKey } from './risq_coordinates';
-import type { StartTurnData, SubmittedOrdersData, UnsubmittedOrdersData } from './risq_updates';
+import type { StartTurnData, SubmittedOrdersData, UnitBehaviorSetData, UnsubmittedOrdersData } from './risq_updates';
 import { cursorImageForOrderType, DEFAULT_CURSOR_IMAGE, resolveBuildCursorUrl } from './risq_cursor';
 import { PLAYER_ICON_SIZE, RisqImageCache } from './risq_image_cache';
 import { RisqRightPanel } from './canvas_components/right_panel/right_panel';
 import type { DrawRisqSpaceConfig } from './risq_space';
-import { DrawRisqSpaceDetail, drawRisqSpace } from './risq_space';
+import { DrawRisqSpaceDetail, drawRisqSpace, drawRisqSpaceBorder } from './risq_space';
 import { RisqLeftPanel } from './canvas_components/left_panel/left_panel';
 import { RisqMinimap } from './canvas_components/minimap/risq_minimap';
 import { RisqOrdersModel, isBuildingOrder, isUnitOrder, orderArrowColor } from './risq_orders';
@@ -430,6 +431,10 @@ export class DwgRisq extends DwgElement {
           const unsubmitted_orders_data = update.content as UnsubmittedOrdersData;
           await this.applyUnsubmittedOrders(unsubmitted_orders_data);
           break;
+        case 'unit-behavior-set':
+          const unit_behavior_set_data = update.content as UnitBehaviorSetData;
+          this.applyUnitBehaviorSet(unit_behavior_set_data);
+          break;
         default:
           console.log(`Unknown game update type ${update.kind}`);
           break;
@@ -482,6 +487,30 @@ export class DwgRisq extends DwgElement {
     this.setNewGameData(data.game);
   }
 
+  private applyUnitBehaviorSet(data: UnitBehaviorSetData) {
+    for (const player of this.game?.players ?? []) {
+      for (const internal_id of data.internal_ids) {
+        const unit = player.units.get(internal_id);
+        if (!unit) {
+          continue;
+        }
+        if (data.stance !== undefined) {
+          unit.stance = data.stance;
+        }
+        if (data.interrupt_current !== undefined) {
+          unit.interrupt_current = data.interrupt_current;
+        }
+        if (data.attack_back !== undefined) {
+          unit.attack_back = data.attack_back;
+        }
+        if (data.target_priority !== undefined) {
+          unit.target_priority = data.target_priority;
+        }
+      }
+    }
+    this.refreshPanels();
+  }
+
   private draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData) {
     if (!this.game) {
       return;
@@ -507,14 +536,20 @@ export class DwgRisq extends DwgElement {
       rotation: transform.rotation,
     };
     // draw spaces
+    const on_screen_spaces: RisqSpace[] = [];
     for (const row of this.game.spaces) {
       for (const space of row) {
         space.center = this.coordinateToCanvas(space.coordinate);
         if (!this.isSpaceOnScreen(space)) {
           continue;
         }
+        on_screen_spaces.push(space);
         drawRisqSpace(ctx, this, space, draw_config);
       }
+    }
+    // borders are drawn in their own pass after every space's (opaque) fill, so a later space's fill can't paint over an earlier space's border
+    for (const space of on_screen_spaces) {
+      drawRisqSpaceBorder(ctx, this, space, draw_config);
     }
     this.drawUnitOrders(ctx);
     if (this.dragging_selection) {
@@ -561,6 +596,8 @@ export class DwgRisq extends DwgElement {
       case LeftPanelDataType.ECONOMIC_UNITS:
       case LeftPanelDataType.MILITARY_UNITS:
         return new Set(data.data.units.flatMap((u) => [...u.units]));
+      case LeftPanelDataType.MULTIPLE_PLAYERS_UNITS:
+        return new Set(data.data.units_by_player.flatMap(([, units]) => units.flatMap((u) => [...u.units])));
       default:
         return new Set();
     }
@@ -785,9 +822,7 @@ export class DwgRisq extends DwgElement {
     if (!!this.hovered_space) {
       this.hovered_space.center = this.coordinateToCanvas(this.hovered_space.coordinate);
     }
-    const hovered_other_component = this.canvas_components
-      .map((c) => c.mousemove(m, screen, transform))
-      .some(Boolean);
+    const hovered_other_component = this.canvas_components.map((c) => c.mousemove(m, screen, transform)).some(Boolean);
     this.mouse_coordinate = this.canvasToCoordinate(m, this.game.board_size);
     const index = coordinateToIndex(this.game.board_size, roundAxialCoordinate(this.mouse_coordinate));
     const new_hovered_space = getSpace(this.game, index);
@@ -1007,6 +1042,19 @@ export class DwgRisq extends DwgElement {
     });
   }
 
+  setUnitStance(internal_ids: number[], stance: RisqUnitStance) {
+    if (!this.canGiveOrders() || internal_ids.length === 0) {
+      return;
+    }
+    const game_update = createMessage(
+      `player-${this.player_id}`,
+      'game-update',
+      JSON.stringify({ internal_ids, stance }),
+      'set-unit-behavior'
+    );
+    this.dispatchEvent(new CustomEvent('game_update', { detail: game_update, bubbles: true }));
+  }
+
   selectOrderSubjects(order: RisqFrontendOrder) {
     const player = this.getPlayer();
     const game = this.game;
@@ -1061,25 +1109,38 @@ export class DwgRisq extends DwgElement {
     this.board.setView(multiplyPoint2D(scale, view));
   }
 
+  private hasNegativeResources(): boolean {
+    const player = this.getPlayer();
+    return !!player && [...player.resources.values()].some((pr) => pr.amount - pr.spending < 0);
+  }
+
   confirmSubmitOrders() {
     const n_units = this.idleUnitCount();
     const n_buildings = this.idleBuildingCount();
     const n = n_units + n_buildings;
-    if (n === 0) {
+    const over_budget = this.hasNegativeResources();
+    if (n === 0 && !over_budget) {
       this.toggleSubmitOrdersButton();
       return;
     }
-    let noun: string;
-    if (n_units > 0 && n_buildings > 0) {
-      noun = 'units and buildings';
-    } else if (n_buildings > 0) {
-      noun = n_buildings === 1 ? 'building' : 'buildings';
-    } else {
-      noun = n_units === 1 ? 'unit' : 'units';
+    const warnings: string[] = [];
+    if (n > 0) {
+      let noun: string;
+      if (n_units > 0 && n_buildings > 0) {
+        noun = 'units and buildings';
+      } else if (n_buildings > 0) {
+        noun = n_buildings === 1 ? 'building' : 'buildings';
+      } else {
+        noun = n_units === 1 ? 'unit' : 'units';
+      }
+      warnings.push(`You have ${n} idle ${noun}.`);
+    }
+    if (over_budget) {
+      warnings.push('One or more resources will go negative.');
     }
     const dialog = document.createElement('dwg-confirm-dialog');
     dialog.setData({
-      question: `Are you sure you want to submit orders? You have ${n} idle ${noun}.`,
+      question: `Are you sure you want to submit orders? ${warnings.join(' ')}`,
       size: DialogSize.SMALL,
     });
     dialog.addEventListener('confirmed', () => this.toggleSubmitOrdersButton());
@@ -1935,11 +1996,7 @@ export class DwgRisq extends DwgElement {
         this.left_panel.openPanel({ data_type: LeftPanelDataType.SPACE, data: space }, space.visibility);
       }
       space.clicked = false;
-    } else if (
-      armed_before === RisqOrderType.NONE &&
-      !this.left_panel.isHovering() &&
-      !this.right_panel.isHovering()
-    ) {
+    } else if (armed_before === RisqOrderType.NONE && !this.left_panel.isHovering() && !this.right_panel.isHovering()) {
       this.left_panel.close();
     }
     if (

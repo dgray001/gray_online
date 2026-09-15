@@ -171,7 +171,7 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameR
 		risq.spaces[j] = make([]*RisqSpace, l)
 		for i := range risq.spaces[j] {
 			q := max(-int(risq.board_size), -(int(risq.board_size)+r)) + i
-			risq.spaces[j][i] = createRisqSpace(q, r, TerrainType(TerrainType_FLATLANDS))
+			risq.spaces[j][i] = createRisqSpace(q, r, defaultTerrainId)
 		}
 	}
 	for _, row := range risq.spaces {
@@ -229,7 +229,7 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameR
 func (r *GameRisq) logBoard() {
 	for _, row := range r.spaces {
 		for _, space := range row {
-			util.DebugLog.Printf("board: space (%d,%d) terrain=%d", space.coordinate.X, space.coordinate.Y, space.terrain)
+			util.DebugLog.Printf("board: space (%d,%d) terrain_id=%d", space.coordinate.X, space.coordinate.Y, space.terrain_id)
 			for _, zrow := range space.zones {
 				for _, zone := range zrow {
 					if zone.resource != nil {

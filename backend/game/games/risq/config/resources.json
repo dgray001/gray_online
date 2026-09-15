@@ -1,0 +1,11 @@
+[
+  { "resource_id": 1, "display_name": "Forage Bushes", "category": "food", "starting_resources": 250, "base_gather_speed": 8 },
+  { "resource_id": 2, "display_name": "Deer", "category": "food", "starting_resources": 150, "base_gather_speed": 12 },
+  { "resource_id": 11, "display_name": "Cedar Grove", "category": "wood", "starting_resources": 650, "base_gather_speed": 9 },
+  { "resource_id": 12, "display_name": "Dead Grove", "category": "wood", "starting_resources": 350, "base_gather_speed": 11 },
+  { "resource_id": 13, "display_name": "Maple Grove", "category": "wood", "starting_resources": 500, "base_gather_speed": 10 },
+  { "resource_id": 14, "display_name": "Oak Grove", "category": "wood", "starting_resources": 650, "base_gather_speed": 9 },
+  { "resource_id": 15, "display_name": "Pine Grove", "category": "wood", "starting_resources": 450, "base_gather_speed": 11 },
+  { "resource_id": 16, "display_name": "Walnut Grove", "category": "wood", "starting_resources": 550, "base_gather_speed": 10 },
+  { "resource_id": 21, "display_name": "Stone Mine", "category": "stone", "starting_resources": 250, "base_gather_speed": 10 }
+]

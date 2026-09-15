@@ -1,16 +1,16 @@
 import type { DwgRisq } from '../../../risq';
 import { RisqOrderType } from '../../../risq_data';
 import type { RisqProducible } from '../../../risq_data';
-import { canAffordCost } from '../../../risq_data';
+import { canAffordCost, meetsTechRequirement } from '../../../risq_data';
 import { buildingImage } from '../../../risq_buildings';
-import { RisqActionButton } from './action_button';
+import { RisqRichTooltipActionButton } from './action_button';
 import type { RisqTooltipData } from '../../risq_tooltip';
 
 export declare interface BuildButtonConfig {
   producible: RisqProducible;
 }
 
-export class RisqBuildButton extends RisqActionButton {
+export class RisqBuildButton extends RisqRichTooltipActionButton {
   private risq: DwgRisq;
   private producible: RisqProducible;
   private armed = false;
@@ -42,7 +42,8 @@ export class RisqBuildButton extends RisqActionButton {
       !!player &&
       this.risq.givingOrders() &&
       !player.orders_submitted &&
-      canAffordCost(player, this.producible.cost)
+      canAffordCost(player, this.producible.cost) &&
+      meetsTechRequirement(player, this.producible.required_tech_id)
     ) {
       this.enable();
     } else {

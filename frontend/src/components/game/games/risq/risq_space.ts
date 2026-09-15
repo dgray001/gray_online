@@ -37,9 +37,9 @@ export declare interface DrawRisqSpaceConfig {
 }
 
 const space_line_width: Record<DrawRisqSpaceDetail, number> = {
-  [DrawRisqSpaceDetail.OWNERSHIP]: 3,
-  [DrawRisqSpaceDetail.SPACE_DETAILS]: 2,
-  [DrawRisqSpaceDetail.ZONE_DETAILS]: 1.2,
+  [DrawRisqSpaceDetail.OWNERSHIP]: 2,
+  [DrawRisqSpaceDetail.SPACE_DETAILS]: 1.2,
+  [DrawRisqSpaceDetail.ZONE_DETAILS]: 0.8,
 };
 
 /** Draws a hex-cut image (see scripts/cut_hex_texture.py) stretched to fill a hexagon of radius r */
@@ -49,7 +49,7 @@ export function drawHexImage(ctx: CanvasRenderingContext2D, img: CanvasImageSour
   ctx.drawImage(img, c.x - 0.5 * w, c.y - 0.5 * h, w, h);
 }
 
-function borderStrokeStyle(owner_color: ColorRGB | undefined, alpha: number): string {
+export function borderStrokeStyle(owner_color: ColorRGB | undefined, alpha: number): string {
   return owner_color
     ? `rgba(${owner_color.getR()}, ${owner_color.getG()}, ${owner_color.getB()}, ${alpha})`
     : `rgba(255, 255, 255, ${alpha})`;
@@ -80,7 +80,7 @@ export function drawRisqSpace(
     drawHexagon(ctx, space.center, config.hex_r);
     black_text = fill.getBrightness() > 0.5;
   } else {
-    drawHexImage(ctx, game.getIcon(terrainImage(space.terrain)), space.center, config.hex_r);
+    drawHexImage(ctx, game.getIcon(terrainImage(space.terrain_id)), space.center, config.hex_r);
     if (config.view_mode !== RisqViewMode.RESOURCE && !!owner_color) {
       const tint = `rgba(${owner_color.getR()}, ${owner_color.getG()}, ${owner_color.getB()}, 0.25)`;
       fillHexOverlay(ctx, space.center, config.hex_r, tint);
@@ -94,12 +94,6 @@ export function drawRisqSpace(
       );
     }
   }
-  // drawn as its own pass with additive blending so two adjacent spaces' borders combine the same way regardless of draw order
-  ctx.globalCompositeOperation = 'lighter';
-  ctx.fillStyle = 'transparent';
-  ctx.strokeStyle = borderStrokeStyle(owner_color, 0.6);
-  drawHexagon(ctx, space.center, config.hex_r);
-  ctx.globalCompositeOperation = 'source-over';
   if (DEV) {
     ctx.translate(space.center.x, space.center.y);
     ctx.rotate(-config.rotation);
@@ -133,6 +127,20 @@ export function drawRisqSpace(
     drawHexImage(ctx, game.getIcon(FOG_OVERLAY_IMAGE), space.center, config.hex_r);
     ctx.globalAlpha = 1;
   }
+}
+
+export function drawRisqSpaceBorder(
+  ctx: CanvasRenderingContext2D,
+  game: DwgRisq,
+  space: RisqSpace,
+  config: DrawRisqSpaceConfig
+) {
+  const owner_color = spaceOwnerColor(space, game.getGame()?.players ?? []);
+  const line_width = space_line_width[config.draw_detail];
+  ctx.fillStyle = 'transparent';
+  ctx.strokeStyle = borderStrokeStyle(owner_color, 1);
+  ctx.lineWidth = line_width;
+  drawHexagon(ctx, space.center, config.hex_r - 0.5 * line_width);
 }
 
 function drawSpaceContent(

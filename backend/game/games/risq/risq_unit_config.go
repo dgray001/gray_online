@@ -9,9 +9,25 @@ import (
 //go:embed config/units.json
 var unitsConfigJSON []byte
 
+func parseUnitType(s string) (UnitType, error) {
+	switch s {
+	case "economic":
+		return UnitType_ECONOMIC, nil
+	case "infantry":
+		return UnitType_INFANTRY, nil
+	case "archer":
+		return UnitType_ARCHER, nil
+	case "cavalry":
+		return UnitType_CAVALRY, nil
+	default:
+		return UnitType_NONE, fmt.Errorf("unknown unit_type %q", s)
+	}
+}
+
 type UnitConfig struct {
 	display_name         string
 	description          string
+	unit_type            UnitType
 	max_health           int
 	attack_type          AttackType
 	attack_blunt         int
@@ -25,6 +41,7 @@ type UnitConfig struct {
 	turn_stamina         int
 	builds               []Producible
 	vision               RisqVision
+	required_tech_id     uint32
 }
 
 func (c UnitConfig) canBuild(building_id uint32) bool {
@@ -40,6 +57,7 @@ type unitConfigJSON struct {
 	UnitId              uint32           `json:"unit_id"`
 	DisplayName         string           `json:"display_name"`
 	Description         string           `json:"description"`
+	UnitType            string           `json:"unit_type"`
 	MaxHealth           int              `json:"max_health"`
 	AttackType          string           `json:"attack_type"`
 	AttackBlunt         int              `json:"attack_blunt"`
@@ -53,6 +71,7 @@ type unitConfigJSON struct {
 	TurnStamina         int              `json:"turn_stamina"`
 	Builds              []producibleJSON `json:"builds"`
 	Vision              *risqVisionJSON  `json:"vision"`
+	RequiredTechId      uint32           `json:"required_tech_id"`
 }
 
 type costJSON struct {
@@ -64,21 +83,21 @@ type costJSON struct {
 
 func parseAttackType(s string) (AttackType, error) {
 	switch s {
-	case "", "NONE":
+	case "", "none":
 		return AttackType_NONE, nil
-	case "BLUNT":
+	case "blunt":
 		return AttackType_BLUNT, nil
-	case "PIERCING":
+	case "piercing":
 		return AttackType_PIERCING, nil
-	case "MAGIC":
+	case "magic":
 		return AttackType_MAGIC, nil
-	case "BLUNT_PIERCING":
+	case "blunt_piercing":
 		return AttackType_BLUNT_PIERCING, nil
-	case "PIERCING_MAGIC":
+	case "piercing_magic":
 		return AttackType_PIERCING_MAGIC, nil
-	case "MAGIC_BLUNT":
+	case "magic_blunt":
 		return AttackType_MAGIC_BLUNT, nil
-	case "BLUNT_PIERCING_MAGIC":
+	case "blunt_piercing_magic":
 		return AttackType_BLUNT_PIERCING_MAGIC, nil
 	default:
 		return AttackType_NONE, fmt.Errorf("unknown attack_type %q", s)
@@ -94,6 +113,10 @@ func init() {
 	}
 	unitConfigs = make(map[uint32]UnitConfig, len(entries))
 	for _, e := range entries {
+		unit_type, err := parseUnitType(e.UnitType)
+		if err != nil {
+			panic(fmt.Sprintf("config/units.json unit_id %d: %v", e.UnitId, err))
+		}
 		attack_type, err := parseAttackType(e.AttackType)
 		if err != nil {
 			panic(fmt.Sprintf("config/units.json unit_id %d: %v", e.UnitId, err))
@@ -106,6 +129,7 @@ func init() {
 		unitConfigs[e.UnitId] = UnitConfig{
 			display_name:         e.DisplayName,
 			description:          e.Description,
+			unit_type:            unit_type,
 			max_health:           e.MaxHealth,
 			attack_type:          attack_type,
 			attack_blunt:         e.AttackBlunt,
@@ -124,6 +148,7 @@ func init() {
 			turn_stamina:       e.TurnStamina,
 			builds:             builds,
 			vision:             resolveVision(e.Vision),
+			required_tech_id:   e.RequiredTechId,
 		}
 	}
 }

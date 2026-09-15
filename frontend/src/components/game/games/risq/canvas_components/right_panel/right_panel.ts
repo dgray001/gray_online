@@ -188,6 +188,10 @@ export class RisqRightPanel implements CanvasComponent {
           yi += 40;
           this.drawSeparator(ctx, yi);
           yi += RisqRightPanel.PADDING;
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(this.xi(), yi, this.w(), this.yf() - yi);
+          ctx.clip();
           if (!!player) {
             ctx.font = '24px serif';
             this.drawPopulation(ctx, yi, player.units.size, player.population_limit);
@@ -204,10 +208,10 @@ export class RisqRightPanel implements CanvasComponent {
             this.drawScore(ctx, yi, score);
             yi += 30;
           }
+          ctx.restore();
           yi += RisqRightPanel.PADDING;
           this.drawSeparator(ctx, yi);
           yi += RisqRightPanel.PADDING;
-          // TODO: logic in case yi has gone off the rectangle
           if (this.need_to_set_position) {
             const orders_list_height = this.yf() - yi - 2 * RisqRightPanel.PADDING - RisqRightPanel.SUBMIT_SIZE;
             this.orders_list.setAllSizes(
@@ -256,11 +260,14 @@ export class RisqRightPanel implements CanvasComponent {
   private drawResource(ctx: CanvasRenderingContext2D, yi: number, rt: RisqResourceType, pr: RisqPlayerResource) {
     ctx.beginPath();
     ctx.drawImage(this.risq.getIcon(resourceTypeImage(rt)), this.xi() + 0.1 * this.w(), yi, 30, 30);
-    drawText(ctx, (pr.amount - pr.spending).toFixed(1), {
+    const net = pr.amount - pr.spending;
+    const text = pr.spending > 0 ? `${net.toFixed(1)} (-${pr.spending.toFixed(1)})` : net.toFixed(1);
+    drawText(ctx, text, {
       p: { x: this.xi() + 0.1 * this.w() + 36, y: yi + 15 },
       w: 0.9 * this.w() - 36,
-      fill_style: 'black',
+      fill_style: net < 0 ? 'rgb(200, 30, 30)' : 'black',
       baseline: 'middle',
+      font: '18px serif',
     });
   }
 
@@ -273,6 +280,7 @@ export class RisqRightPanel implements CanvasComponent {
       fill_style: score.color.getString(),
       baseline: 'middle',
       align: 'right',
+      font: '18px serif',
     });
     if (score.eliminated) {
       const text_w = Math.min(ctx.measureText(text).width, 0.8 * this.w());

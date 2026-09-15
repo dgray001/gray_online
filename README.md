@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.8g: Stances backend
+v0.8h: UI improvements
 
 ## Dev Use
 

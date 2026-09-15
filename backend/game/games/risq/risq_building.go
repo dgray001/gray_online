@@ -1,6 +1,7 @@
 package risq
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -29,6 +30,8 @@ type RisqBuilding struct {
 	garrisoned_units           map[uint64]*RisqUnit
 	gather_point               *RisqGatherPoint
 	attacked_by                []RisqDamageEvent
+	// Building gathering fields
+	resources_left float64
 }
 
 func (b *RisqBuilding) underConstruction() bool {
@@ -73,6 +76,7 @@ func createRisqBuilding(internal_id uint64, building_id uint32, player_id int) *
 	building.turn_stamina = config.turn_stamina
 	building.cs.defense_blunt = config.defense_blunt
 	building.cs.defense_piercing = config.defense_piercing
+	building.resources_left = config.gather.starting_resources
 	return &building
 }
 
@@ -91,6 +95,10 @@ func (b *RisqBuilding) isDeleted() bool {
 
 func (b *RisqBuilding) internalId() uint64 {
 	return b.internal_id
+}
+
+func (b *RisqBuilding) OrderableType() OrderableType {
+	return OrderableType_BUILDING
 }
 
 func (b *RisqBuilding) activeOrders() []*RisqOrder {
@@ -157,18 +165,17 @@ func (b *RisqBuilding) orderReceivable(o *RisqOrder, risq *GameRisq) bool {
 	return !b.underConstruction()
 }
 
-func (b *RisqBuilding) receiveOrder(o *RisqOrder, risq *GameRisq) {
-	b.order_queue.receiveOrder(o)
+func (b *RisqBuilding) receiveOrder(o *RisqOrder, risq *GameRisq) error {
 	switch o.order_type {
 	case OrderType_BuildingCreate:
 		unit_id := uint32(o.target_id)
 		cost, stamina_required := unitProductionCost(unit_id)
 		resources := risq.players[b.player_id].resources
 		if !resources.canAfford(cost) {
-			risq.players[b.player_id].report.recordFailure(o.order_type, o.target_id, "cannot afford unit")
-			return
+			return errors.New("cannot afford unit")
 		}
 		resources.spend(cost)
+		b.order_queue.receiveOrder(o)
 		b.production_queue[o.internal_id] = &RisqBuildingProductionItem{
 			kind:              ProducibleKind_UNIT,
 			item_id:           unit_id,
@@ -180,10 +187,10 @@ func (b *RisqBuilding) receiveOrder(o *RisqOrder, risq *GameRisq) {
 		tech := techConfigs[tech_id]
 		resources := risq.players[b.player_id].resources
 		if !resources.canAfford(tech.cost) {
-			risq.players[b.player_id].report.recordFailure(o.order_type, o.target_id, "cannot afford research")
-			return
+			return errors.New("cannot afford research")
 		}
 		resources.spend(tech.cost)
+		b.order_queue.receiveOrder(o)
 		b.production_queue[o.internal_id] = &RisqBuildingProductionItem{
 			kind:              ProducibleKind_TECH,
 			item_id:           tech_id,
@@ -191,7 +198,10 @@ func (b *RisqBuilding) receiveOrder(o *RisqOrder, risq *GameRisq) {
 			cost:              tech.cost,
 		}
 		risq.players[b.player_id].researched_techs[tech_id] = false
+	default:
+		b.order_queue.receiveOrder(o)
 	}
+	return nil
 }
 
 func (b *RisqBuilding) cancelOrder(o *RisqOrder, risq *GameRisq) {
@@ -298,11 +308,16 @@ func buildingProducesToFrontend(building_id uint32) []gin.H {
 }
 
 func (b *RisqBuilding) toFrontend(viewer_player_id int) gin.H {
+	config := buildingConfigs[b.building_id]
+	display_name := b.display_name
+	if config.isGatherable() && b.resources_left <= 0 {
+		display_name += " (expired)"
+	}
 	building := gin.H{
 		"internal_id":                b.internal_id,
 		"player_id":                  b.player_id,
 		"building_id":                b.building_id,
-		"display_name":               b.display_name,
+		"display_name":               display_name,
 		"population_support":         b.population_support,
 		"combat_stats":               b.cs.toFrontend(),
 		"under_construction":         b.underConstruction(),
@@ -319,6 +334,11 @@ func (b *RisqBuilding) toFrontend(viewer_player_id int) gin.H {
 	}
 	building["garrisoned_units"] = garrisoned_units
 	building["produces"] = buildingProducesToFrontend(b.building_id)
+	if config.isGatherable() {
+		building["resources_left"] = b.resources_left
+		building["gather_capacity"] = config.gather.gather_capacity
+		building["resource_category"] = config.gather.resource_category
+	}
 	if b.zone != nil {
 		building["zone_coordinate"] = b.zone.coordinate.ToFrontend()
 		if b.zone.space != nil {

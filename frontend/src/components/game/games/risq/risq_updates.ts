@@ -1,4 +1,4 @@
-import type { GameRisqFromServer } from './risq_data';
+import type { GameRisqFromServer, RisqTargetCategory, RisqUnitStance } from './risq_data';
 
 /** Data describing a start-turn update */
 export declare interface StartTurnData {
@@ -15,4 +15,13 @@ export declare interface SubmittedOrdersData {
 export declare interface UnsubmittedOrdersData {
   game: GameRisqFromServer;
   player_id: number;
+}
+
+/** Data describing a unit-behavior-set update */
+export declare interface UnitBehaviorSetData {
+  internal_ids: number[];
+  stance?: RisqUnitStance;
+  interrupt_current?: boolean;
+  attack_back?: boolean;
+  target_priority?: RisqTargetCategory[];
 }

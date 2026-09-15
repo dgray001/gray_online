@@ -43,10 +43,11 @@ export declare interface RisqReportBuildingBuilt {
 
 /** All the kinds a combat event in a turn report can be, mirroring the backend's RisqCombatEventKind */
 export enum RisqCombatEventKind {
-  BUILDING_RAZED,
-  BUILDING_LOST,
-  UNIT_KILLED,
-  UNIT_LOST,
+  NONE = 0,
+  BUILDING_RAZED = 1,
+  BUILDING_LOST = 2,
+  UNIT_KILLED = 3,
+  UNIT_LOST = 4,
 }
 
 /** One combat event that occurred this turn, for the turn report */

@@ -1,6 +1,8 @@
 package risq
 
 import (
+	_ "embed"
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -14,27 +16,80 @@ type RisqResource struct {
 	zone              *RisqZone
 	resources_left    float64
 	base_gather_speed int
+	resource_category RisqResourceCategory
 }
 
 type RisqResourceCategory uint8
 
 const (
-	RisqResourceCategory_FOOD RisqResourceCategory = iota
+	RisqResourceCategory_NONE RisqResourceCategory = iota
+	RisqResourceCategory_FOOD
 	RisqResourceCategory_WOOD
 	RisqResourceCategory_STONE
 	RisqResourceCategory_GOLD
+	RisqResourceCategory_END
 )
 
-func (r *RisqResource) category() RisqResourceCategory {
-	switch {
-	case r.resource_id < 11:
-		return RisqResourceCategory_FOOD
-	case r.resource_id < 21:
-		return RisqResourceCategory_WOOD
-	case r.resource_id < 31:
-		return RisqResourceCategory_STONE
+func (c RisqResourceCategory) index() int {
+	return int(c) - 1
+}
+
+func parseResourceCategory(s string) (RisqResourceCategory, error) {
+	switch s {
+	case "food":
+		return RisqResourceCategory_FOOD, nil
+	case "wood":
+		return RisqResourceCategory_WOOD, nil
+	case "stone":
+		return RisqResourceCategory_STONE, nil
+	case "gold":
+		return RisqResourceCategory_GOLD, nil
 	default:
-		return RisqResourceCategory_GOLD
+		return RisqResourceCategory_NONE, fmt.Errorf("unknown category %q", s)
+	}
+}
+
+func (r *RisqResource) category() RisqResourceCategory {
+	return r.resource_category
+}
+
+//go:embed config/resources.json
+var resourcesConfigJSON []byte
+
+type ResourceConfig struct {
+	display_name       string
+	category           RisqResourceCategory
+	starting_resources float64
+	base_gather_speed  int
+}
+
+type resourceConfigJSON struct {
+	ResourceId        uint32  `json:"resource_id"`
+	DisplayName       string  `json:"display_name"`
+	Category          string  `json:"category"`
+	StartingResources float64 `json:"starting_resources"`
+	BaseGatherSpeed   int     `json:"base_gather_speed"`
+}
+
+var resourceConfigs map[uint32]ResourceConfig
+
+func init() {
+	var entries []resourceConfigJSON
+	if err := json.Unmarshal(resourcesConfigJSON, &entries); err != nil {
+		panic(fmt.Sprintf("failed to parse config/resources.json: %v", err))
+	}
+	resourceConfigs = make(map[uint32]ResourceConfig, len(entries))
+	for _, e := range entries {
+		category, err := parseResourceCategory(e.Category)
+		if err != nil {
+			panic(fmt.Sprintf("config/resources.json resource_id %d: %v", e.ResourceId, err))
+		}
+		resourceConfigs[e.ResourceId] = ResourceConfig{
+			display_name:       e.DisplayName,
+			category:           category,
+			starting_resources: e.StartingResources,
+			base_gather_speed:  e.BaseGatherSpeed,
+		}
 	}
 }
 
@@ -43,49 +98,15 @@ func createRisqResource(internal_id uint64, resource_id uint32) *RisqResource {
 		internal_id: internal_id,
 		resource_id: resource_id,
 	}
-	switch resource_id {
-	// food
-	case 1: // forage bush
-		resource.display_name = "Forage Bushes"
-		resource.resources_left = 250
-		resource.base_gather_speed = 8
-	case 2: // deer
-		resource.display_name = "Deer"
-		resource.resources_left = 150
-		resource.base_gather_speed = 12
-	// wood
-	case 11: // cedar grove
-		resource.display_name = "Cedar Grove"
-		resource.resources_left = 650
-		resource.base_gather_speed = 9
-	case 12: // dead grove
-		resource.display_name = "Dead Grove"
-		resource.resources_left = 350
-		resource.base_gather_speed = 11
-	case 13: // maple grove
-		resource.display_name = "Maple Grove"
-		resource.resources_left = 500
-		resource.base_gather_speed = 10
-	case 14: // oak grove
-		resource.display_name = "Oak Grove"
-		resource.resources_left = 650
-		resource.base_gather_speed = 9
-	case 15: // pine grove
-		resource.display_name = "Pine Grove"
-		resource.resources_left = 450
-		resource.base_gather_speed = 11
-	case 16: // walnut grove
-		resource.display_name = "Walnut Grove"
-		resource.resources_left = 550
-		resource.base_gather_speed = 10
-	// stone
-	case 21: // stonemine
-		resource.display_name = "Stone Mine"
-		resource.resources_left = 250
-		resource.base_gather_speed = 10
-	default:
+	config, ok := resourceConfigs[resource_id]
+	if !ok {
 		fmt.Fprintln(os.Stderr, "Invalid resource id: ", resource_id)
+		return &resource
 	}
+	resource.display_name = config.display_name
+	resource.resources_left = config.starting_resources
+	resource.base_gather_speed = config.base_gather_speed
+	resource.resource_category = config.category
 	return &resource
 }
 

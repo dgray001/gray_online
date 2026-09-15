@@ -70,10 +70,11 @@ type RisqOrderFailure struct {
 type RisqCombatEventKind uint8
 
 const (
-	CombatEvent_BuildingRazed RisqCombatEventKind = iota
-	CombatEvent_BuildingLost
-	CombatEvent_UnitKilled
-	CombatEvent_UnitLost
+	RisqCombatEventKind_NONE RisqCombatEventKind = iota
+	RisqCombatEventKind_BUILDING_RAZED
+	RisqCombatEventKind_BUILDING_LOST
+	RisqCombatEventKind_UNIT_KILLED
+	RisqCombatEventKind_UNIT_LOST
 )
 
 type RisqCombatEvent struct {
@@ -98,10 +99,10 @@ func createRisqTurnReport(turn uint16, p *RisqPlayer, owned map[uint]bool) *Risq
 	rep.land.start_keys = owned
 	rep.land.held_start = len(owned)
 	res := p.resources
-	rep.resources[RisqResourceCategory_FOOD].start = res.food
-	rep.resources[RisqResourceCategory_WOOD].start = res.wood
-	rep.resources[RisqResourceCategory_STONE].start = res.stone
-	rep.resources[RisqResourceCategory_GOLD].start = res.gold
+	rep.resources[RisqResourceCategory_FOOD.index()].start = res.food
+	rep.resources[RisqResourceCategory_WOOD.index()].start = res.wood
+	rep.resources[RisqResourceCategory_STONE.index()].start = res.stone
+	rep.resources[RisqResourceCategory_GOLD.index()].start = res.gold
 	return rep
 }
 
@@ -256,9 +257,9 @@ func (r *GameRisq) finalizeTurnReports() {
 			}
 		}
 		rep.land.newly_explored = r.exploredCount(pid) - rep.explored_start
-		for cat := 0; cat < 4; cat++ {
-			rep.resources[cat].gathered = p.resources.gathered[cat]
-			rep.resources[cat].spent = p.resources.spent[cat]
+		for cat := RisqResourceCategory(1); cat < RisqResourceCategory_END; cat++ {
+			rep.resources[cat.index()].gathered = p.resources.gathered[cat.index()]
+			rep.resources[cat.index()].spent = p.resources.spent[cat.index()]
 		}
 		rep.pop_end = uint16(len(p.units))
 		rep.cap_end = p.populationLimit()
@@ -288,8 +289,8 @@ func (rep *RisqTurnReport) toFrontend() gin.H {
 		scores = append(scores, gin.H{"player_id": s.player_id, "was": s.was, "now": s.now})
 	}
 	resources := make([]gin.H, 0, 4)
-	for cat := 0; cat < 4; cat++ {
-		line := rep.resources[cat]
+	for cat := RisqResourceCategory(1); cat < RisqResourceCategory_END; cat++ {
+		line := rep.resources[cat.index()]
 		resources = append(resources, gin.H{
 			"category": cat,
 			"start":    line.start,

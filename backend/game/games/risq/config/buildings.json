@@ -28,6 +28,25 @@
     "build_stamina": 14
   },
   {
+    "building_id": 3,
+    "display_name": "Farm",
+    "description": "TODO",
+    "max_health": 120,
+    "defense_blunt": 1,
+    "defense_piercing": 3,
+    "cost": { "wood": 60 },
+    "build_stamina": 14,
+    "required_tech_id": 1,
+    "gatherable": {
+      "resource_category": "food",
+      "base_gather_speed": 8,
+      "starting_resources": 200,
+      "gather_capacity": 1,
+      "renew_cost": { "wood": 20 },
+      "renew_stamina": 8
+    }
+  },
+  {
     "building_id": 11,
     "display_name": "Blacksmith",
     "description": "Researches military hardware upgrades.",
@@ -37,7 +56,10 @@
     "cost": { "wood": 100, "stone": 100 },
     "build_stamina": 30,
     "turn_stamina": 10,
-    "produces": []
+    "produces": [
+      { "row": 0, "col": 0, "kind": "tech", "id": 2 },
+      { "row": 1, "col": 0, "kind": "tech", "id": 3 }
+    ]
   },
   {
     "building_id": 21,
