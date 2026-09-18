@@ -120,12 +120,16 @@ export class DwgCanvasBoard extends DwgElement {
     arrow_right: false,
   };
   private cursor_move_threshold = 5;
+  // TODO: replace edge_arm_threshold/sticky_pan with document-level mouse tracking, so edge-pan is a
+  // speed-independent viewport-boundary check instead of a threshold the cursor can jump past
+  private edge_arm_threshold = 100;
+  private sticky_pan = { up: false, down: false, left: false, right: false };
+  private pan_suppressed = { x: false, y: false };
   private draw_interval?: ReturnType<typeof setInterval>;
   private dragging = false;
   private drag_button = 0;
   private dragged = false;
   private mouse: Point2D = { x: 0, y: 0 };
-  private cursor_in_range = false;
 
   private bounding_rect!: DOMRect;
   private resize_observer = new ResizeObserver(async (els) => {
@@ -313,11 +317,20 @@ export class DwgCanvasBoard extends DwgElement {
     });
     this.addEventListener('mouseenter', () => {
       this.hovered = true;
+      this.sticky_pan = { up: false, down: false, left: false, right: false };
     });
     this.addEventListener('mouseleave', () => {
       this.hovered = false;
       this.dragging = false;
       this.dragged = false;
+      if (this.data.allow_side_move) {
+        this.sticky_pan = {
+          up: this.mouse.y < this.edge_arm_threshold,
+          down: this.mouse.y > this.bounding_rect.height - this.edge_arm_threshold,
+          left: this.mouse.x < this.edge_arm_threshold,
+          right: this.mouse.x > this.bounding_rect.width - this.edge_arm_threshold,
+        };
+      }
       this.data.mouseleave();
     });
     this.addEventListener(
@@ -385,9 +398,9 @@ export class DwgCanvasBoard extends DwgElement {
 
   private tick() {
     const d_view = { x: 0, y: 0 };
-    const arrow_key_speed = 20 * this.transform.scale;
+    const arrow_key_speed = 20;
     let moved = false;
-    const rect = this.canvas.getBoundingClientRect();
+    const rect = this.bounding_rect;
     if (this.holding_keys.arrow_up) {
       d_view.y -= arrow_key_speed;
       moved = true;
@@ -404,30 +417,39 @@ export class DwgCanvasBoard extends DwgElement {
       d_view.x += arrow_key_speed;
       moved = true;
     }
-    if (!this.dragging && this.data.allow_side_move) {
-      const maybe_cursor_in_range = !this.cursor_in_range && !moved;
-      if (this.mouse.y < this.cursor_move_threshold) {
+    if (!this.dragging && this.data.allow_side_move && this.hovered) {
+      if (!this.pan_suppressed.y && this.mouse.y < this.cursor_move_threshold) {
         d_view.y -= arrow_key_speed;
         moved = true;
       }
-      if (this.mouse.y > rect.height - this.cursor_move_threshold) {
+      if (!this.pan_suppressed.y && this.mouse.y > rect.height - this.cursor_move_threshold) {
         d_view.y += arrow_key_speed;
         moved = true;
       }
-      if (this.mouse.x < this.cursor_move_threshold) {
+      if (!this.pan_suppressed.x && this.mouse.x < this.cursor_move_threshold) {
         d_view.x -= arrow_key_speed;
         moved = true;
       }
-      if (this.mouse.x > rect.width - this.cursor_move_threshold) {
+      if (!this.pan_suppressed.x && this.mouse.x > rect.width - this.cursor_move_threshold) {
         d_view.x += arrow_key_speed;
         moved = true;
       }
-      if (maybe_cursor_in_range) {
-        if (moved) {
-          moved = false;
-        } else {
-          this.cursor_in_range = true;
-        }
+    } else if (!this.dragging && this.data.allow_side_move && !this.hovered) {
+      if (this.sticky_pan.up) {
+        d_view.y -= arrow_key_speed;
+        moved = true;
+      }
+      if (this.sticky_pan.down) {
+        d_view.y += arrow_key_speed;
+        moved = true;
+      }
+      if (this.sticky_pan.left) {
+        d_view.x -= arrow_key_speed;
+        moved = true;
+      }
+      if (this.sticky_pan.right) {
+        d_view.x += arrow_key_speed;
+        moved = true;
       }
     }
     if (moved) {
@@ -461,6 +483,11 @@ export class DwgCanvasBoard extends DwgElement {
 
   setOffset(offset: Point2D) {
     this.transform.offset = offset;
+  }
+
+  /** Suppresses edge-of-screen panning along the given axes */
+  setPanSuppressed(x: boolean, y: boolean) {
+    this.pan_suppressed = { x, y };
   }
 
   setRotation(rotation: number) {

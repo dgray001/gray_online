@@ -26,6 +26,17 @@ const (
 	AttackType_BLUNT_PIERCING_MAGIC
 )
 
+func (u *RisqUnit) inAttackRange(target *RisqZone) bool {
+	if u.zone == nil || target == nil {
+		return false
+	}
+	space_range, ranged := u.attack_range.spaceRadius()
+	if !ranged {
+		return u.zone == target
+	}
+	return game_utils.AxialDistance(u.zone.space.coordinate, target.space.coordinate) <= space_range
+}
+
 type RisqDamageEvent struct {
 	tick          uint16
 	attacker_id   uint64

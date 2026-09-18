@@ -35,6 +35,7 @@ type MoveIntent struct {
 	path       []*RisqZone
 	next_step  *RisqZone
 	intra_step bool
+	cost       uint
 }
 
 func (*MoveIntent) isIntentKind() {}
@@ -151,13 +152,8 @@ func (i *RisqIntent) setMove(m *MoveIntent) {
 		return
 	}
 	i.detail = m
-	if m.intra_step {
-		i.min_cost = 1
-		i.max_cost = 1
-	} else {
-		i.min_cost = 6
-		i.max_cost = 6
-	}
+	i.min_cost = int(m.cost)
+	i.max_cost = int(m.cost)
 }
 
 func (i *RisqIntent) setGather(source Gatherable) {

@@ -105,6 +105,42 @@ export function terrainImage(terrain_id: number): string {
     case 23:
       filename = 'straw2';
       break;
+    case 51:
+      filename = 'grass_green1_hills';
+      break;
+    case 52:
+      filename = 'grass_green2_hills';
+      break;
+    case 53:
+      filename = 'grass_dead1_hills';
+      break;
+    case 54:
+      filename = 'grass_dead2_hills';
+      break;
+    case 55:
+      filename = 'grass_forest_hills';
+      break;
+    case 56:
+      filename = 'dirt1_hills';
+      break;
+    case 57:
+      filename = 'dirt2_hills';
+      break;
+    case 58:
+      filename = 'dirt3_hills';
+      break;
+    case 59:
+      filename = 'dirt4_hills';
+      break;
+    case 60:
+      filename = 'dirt5_hills';
+      break;
+    case 61:
+      filename = 'snow1_hills';
+      break;
+    case 62:
+      filename = 'snow2_hills';
+      break;
     default:
       console.error('Trying to get terrain image from unknown terrain_id', terrain_id);
       filename = 'grass_green1';

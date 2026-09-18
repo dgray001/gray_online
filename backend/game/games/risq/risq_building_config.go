@@ -11,24 +11,42 @@ import (
 var buildingsConfigJSON []byte
 
 type BuildingConfig struct {
-	display_name       string
-	description        string
-	max_health         int
-	population_support uint16
-	garrison_capacity  uint16
-	produces           []Producible
-	cost               RisqResourceCost
-	build_stamina      int
-	turn_stamina       int
-	defense_blunt      int
-	defense_piercing   int
-	vision             RisqVision
-	required_tech_id   uint32
-	gather             BuildingGatherable
+	display_name         string
+	description          string
+	max_health           int
+	population_support   uint16
+	garrison_capacity    uint16
+	produces             []Producible
+	cost                 RisqResourceCost
+	build_stamina        int
+	turn_stamina         int
+	attack_type          AttackType
+	attack_blunt         int
+	attack_piercing      int
+	attack_range         RisqRange
+	defense_blunt        int
+	defense_piercing     int
+	penetration_blunt    int
+	penetration_piercing int
+	vision               RisqVision
+	required_tech_id     uint32
+	gather               BuildingGatherable
 }
 
 func (c BuildingConfig) isGatherable() bool {
 	return c.gather.gather_capacity > 0
+}
+
+func (c BuildingConfig) canHaveGatherPoint() bool {
+	if c.garrison_capacity > 0 {
+		return true
+	}
+	for _, p := range c.produces {
+		if p.kind == ProducibleKind_UNIT {
+			return true
+		}
+	}
+	return false
 }
 
 type BuildingGatherable struct {
@@ -101,21 +119,27 @@ func buildingProductionCost(building_id uint32) (RisqResourceCost, int) {
 }
 
 type buildingConfigJSON struct {
-	BuildingId        uint32                  `json:"building_id"`
-	DisplayName       string                  `json:"display_name"`
-	Description       string                  `json:"description"`
-	MaxHealth         int                     `json:"max_health"`
-	PopulationSupport uint16                  `json:"population_support"`
-	GarrisonCapacity  uint16                  `json:"garrison_capacity"`
-	Produces          []producibleJSON        `json:"produces"`
-	Cost              costJSON                `json:"cost"`
-	BuildStamina      int                     `json:"build_stamina"`
-	TurnStamina       int                     `json:"turn_stamina"`
-	DefenseBlunt      int                     `json:"defense_blunt"`
-	DefensePiercing   int                     `json:"defense_piercing"`
-	Vision            *risqVisionJSON         `json:"vision"`
-	RequiredTechId    uint32                  `json:"required_tech_id"`
-	Gatherable        *buildingGatherableJSON `json:"gatherable"`
+	BuildingId          uint32                  `json:"building_id"`
+	DisplayName         string                  `json:"display_name"`
+	Description         string                  `json:"description"`
+	MaxHealth           int                     `json:"max_health"`
+	PopulationSupport   uint16                  `json:"population_support"`
+	GarrisonCapacity    uint16                  `json:"garrison_capacity"`
+	Produces            []producibleJSON        `json:"produces"`
+	Cost                costJSON                `json:"cost"`
+	BuildStamina        int                     `json:"build_stamina"`
+	TurnStamina         int                     `json:"turn_stamina"`
+	AttackType          string                  `json:"attack_type"`
+	AttackBlunt         int                     `json:"attack_blunt"`
+	AttackPiercing      int                     `json:"attack_piercing"`
+	Range               string                  `json:"range"`
+	DefenseBlunt        int                     `json:"defense_blunt"`
+	DefensePiercing     int                     `json:"defense_piercing"`
+	PenetrationBlunt    int                     `json:"penetration_blunt"`
+	PenetrationPiercing int                     `json:"penetration_piercing"`
+	Vision              *risqVisionJSON         `json:"vision"`
+	RequiredTechId      uint32                  `json:"required_tech_id"`
+	Gatherable          *buildingGatherableJSON `json:"gatherable"`
 }
 
 var buildingConfigs map[uint32]BuildingConfig
@@ -135,6 +159,14 @@ func init() {
 		if err != nil {
 			panic(err)
 		}
+		attack_type, err := parseAttackType(e.AttackType)
+		if err != nil {
+			panic(fmt.Sprintf("config/buildings.json building_id %d: %v", e.BuildingId, err))
+		}
+		attack_range, err := parseRange(e.Range)
+		if err != nil {
+			panic(fmt.Sprintf("config/buildings.json building_id %d: %v", e.BuildingId, err))
+		}
 		buildingConfigs[e.BuildingId] = BuildingConfig{
 			display_name:       e.DisplayName,
 			description:        e.Description,
@@ -148,13 +180,19 @@ func init() {
 				stone: e.Cost.Stone,
 				gold:  e.Cost.Gold,
 			},
-			build_stamina:    e.BuildStamina,
-			turn_stamina:     e.TurnStamina,
-			defense_blunt:    e.DefenseBlunt,
-			defense_piercing: e.DefensePiercing,
-			vision:           resolveVision(e.Vision),
-			required_tech_id: e.RequiredTechId,
-			gather:           gather,
+			build_stamina:        e.BuildStamina,
+			turn_stamina:         e.TurnStamina,
+			attack_type:          attack_type,
+			attack_blunt:         e.AttackBlunt,
+			attack_piercing:      e.AttackPiercing,
+			attack_range:         attack_range,
+			defense_blunt:        e.DefenseBlunt,
+			defense_piercing:     e.DefensePiercing,
+			penetration_blunt:    e.PenetrationBlunt,
+			penetration_piercing: e.PenetrationPiercing,
+			vision:               resolveVision(e.Vision),
+			required_tech_id:     e.RequiredTechId,
+			gather:               gather,
 		}
 	}
 }

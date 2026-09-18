@@ -1,11 +1,14 @@
 package risq
 
+import "github.com/gin-gonic/gin"
+
 type RisqGatherPointLocationKind uint8
 
 const (
 	RisqGatherPointLocationKind_NONE RisqGatherPointLocationKind = iota
 	RisqGatherPointLocationKind_SPACE
 	RisqGatherPointLocationKind_ZONE
+	RisqGatherPointLocationKind_END
 )
 
 type RisqGatherObjectType uint8
@@ -15,6 +18,7 @@ const (
 	RisqGatherObjectType_UNIT
 	RisqGatherObjectType_BUILDING
 	RisqGatherObjectType_RESOURCE
+	RisqGatherObjectType_END
 )
 
 type RisqGatherPoint struct {
@@ -22,6 +26,15 @@ type RisqGatherPoint struct {
 	location_id   uint64
 	object_type   RisqGatherObjectType
 	object_id     uint64
+}
+
+func (gp *RisqGatherPoint) toFrontend() gin.H {
+	return gin.H{
+		"location_kind": gp.location_kind,
+		"location_id":   gp.location_id,
+		"object_type":   gp.object_type,
+		"object_id":     gp.object_id,
+	}
 }
 
 type gatherPointCandidate struct {

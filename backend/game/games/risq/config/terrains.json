@@ -1,25 +1,79 @@
 [
-  { "terrain_id": 1, "display_name": "Grass", "terrain_type": "flatlands" },
-  { "terrain_id": 2, "display_name": "Grass", "terrain_type": "flatlands" },
-  { "terrain_id": 3, "display_name": "Dead Grass", "terrain_type": "flatlands" },
-  { "terrain_id": 4, "display_name": "Dead Grass", "terrain_type": "flatlands" },
-  { "terrain_id": 5, "display_name": "Dead Grass", "terrain_type": "flatlands" },
-  { "terrain_id": 6, "display_name": "Cobblestone", "terrain_type": "flatlands" },
-  { "terrain_id": 7, "display_name": "Cobblestone", "terrain_type": "flatlands" },
-  { "terrain_id": 8, "display_name": "Dirt", "terrain_type": "flatlands" },
-  { "terrain_id": 9, "display_name": "Dirt", "terrain_type": "flatlands" },
-  { "terrain_id": 10, "display_name": "Dirt", "terrain_type": "flatlands" },
-  { "terrain_id": 11, "display_name": "Dirt", "terrain_type": "flatlands" },
-  { "terrain_id": 12, "display_name": "Dirt", "terrain_type": "flatlands" },
-  { "terrain_id": 13, "display_name": "Gravel", "terrain_type": "flatlands" },
-  { "terrain_id": 14, "display_name": "Leaves", "terrain_type": "flatlands" },
-  { "terrain_id": 15, "display_name": "Sand", "terrain_type": "flatlands" },
-  { "terrain_id": 16, "display_name": "Sand", "terrain_type": "flatlands" },
-  { "terrain_id": 17, "display_name": "Sand", "terrain_type": "flatlands" },
-  { "terrain_id": 18, "display_name": "Sand", "terrain_type": "flatlands" },
-  { "terrain_id": 19, "display_name": "Sand", "terrain_type": "flatlands" },
-  { "terrain_id": 20, "display_name": "Snow", "terrain_type": "flatlands" },
-  { "terrain_id": 21, "display_name": "Snow", "terrain_type": "flatlands" },
-  { "terrain_id": 22, "display_name": "Straw", "terrain_type": "flatlands" },
-  { "terrain_id": 23, "display_name": "Straw", "terrain_type": "flatlands" }
+  {
+    "terrain_type": "flatlands",
+    "intra_cost": 1,
+    "inter_cost": 6,
+    "terrains": [
+      { "terrain_id": 1, "display_name": "Grass" },
+      { "terrain_id": 2, "display_name": "Grass" },
+      { "terrain_id": 3, "display_name": "Dead Grass" },
+      { "terrain_id": 4, "display_name": "Dead Grass" },
+      { "terrain_id": 5, "display_name": "Dead Grass" },
+      { "terrain_id": 6, "display_name": "Cobblestone" },
+      { "terrain_id": 7, "display_name": "Cobblestone" },
+      { "terrain_id": 8, "display_name": "Dirt" },
+      { "terrain_id": 9, "display_name": "Dirt" },
+      { "terrain_id": 10, "display_name": "Dirt" },
+      { "terrain_id": 11, "display_name": "Dirt" },
+      { "terrain_id": 12, "display_name": "Dirt" },
+      { "terrain_id": 13, "display_name": "Gravel" },
+      { "terrain_id": 14, "display_name": "Leaves" },
+      { "terrain_id": 15, "display_name": "Sand" },
+      { "terrain_id": 16, "display_name": "Sand" },
+      { "terrain_id": 17, "display_name": "Sand" },
+      { "terrain_id": 18, "display_name": "Sand" },
+      { "terrain_id": 19, "display_name": "Sand" },
+      { "terrain_id": 20, "display_name": "Snow" },
+      { "terrain_id": 21, "display_name": "Snow" },
+      { "terrain_id": 22, "display_name": "Straw" },
+      { "terrain_id": 23, "display_name": "Straw" }
+    ]
+  },
+  {
+    "terrain_type": "hilly",
+    "intra_cost": 2,
+    "inter_cost": 9,
+    "terrains": [
+      { "terrain_id": 51, "display_name": "Grass" },
+      { "terrain_id": 52, "display_name": "Grass" },
+      { "terrain_id": 53, "display_name": "Dead Grass" },
+      { "terrain_id": 54, "display_name": "Dead Grass" },
+      { "terrain_id": 55, "display_name": "Forest" },
+      { "terrain_id": 56, "display_name": "Dirt" },
+      { "terrain_id": 57, "display_name": "Dirt" },
+      { "terrain_id": 58, "display_name": "Dirt" },
+      { "terrain_id": 59, "display_name": "Dirt" },
+      { "terrain_id": 60, "display_name": "Dirt" },
+      { "terrain_id": 61, "display_name": "Snow" },
+      { "terrain_id": 62, "display_name": "Snow" }
+    ]
+  },
+  {
+    "terrain_type": "mountainous",
+    "intra_cost": 3,
+    "inter_cost": 12,
+    "terrains": []
+  },
+  {
+    "terrain_type": "swamp",
+    "intra_cost": 2,
+    "inter_cost": 9,
+    "terrains": []
+  },
+  {
+    "terrain_type": "shallows",
+    "intra_cost": 2,
+    "inter_cost": 9,
+    "terrains": []
+  },
+  {
+    "terrain_type": "water",
+    "impassable": true,
+    "terrains": []
+  },
+  {
+    "terrain_type": "deep_water",
+    "impassable": true,
+    "terrains": []
+  }
 ]

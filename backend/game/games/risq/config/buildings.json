@@ -93,6 +93,8 @@
     "display_name": "Redoubt",
     "description": "Trains heavy infantry.",
     "max_health": 250,
+    "attack_type": "piercing",
+    "attack_piercing": 8,
     "defense_blunt": 3,
     "defense_piercing": 5,
     "garrison_capacity": 5,

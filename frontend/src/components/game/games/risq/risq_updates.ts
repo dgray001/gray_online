@@ -1,4 +1,4 @@
-import type { GameRisqFromServer, RisqTargetCategory, RisqUnitStance } from './risq_data';
+import type { GameRisqFromServer, RisqGatherPoint, RisqTargetCategory, RisqUnitStance } from './risq_data';
 
 /** Data describing a start-turn update */
 export declare interface StartTurnData {
@@ -24,4 +24,10 @@ export declare interface UnitBehaviorSetData {
   interrupt_current?: boolean;
   attack_back?: boolean;
   target_priority?: RisqTargetCategory[];
+}
+
+/** Data describing a gather-point-set update */
+export declare interface GatherPointSetData {
+  building_id: number;
+  gather_point?: RisqGatherPoint;
 }

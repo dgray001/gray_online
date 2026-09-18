@@ -8,17 +8,14 @@ v0.9: Risq beta version
  k: Magic and color damage
  l: Expanded level 2 tech tree
  m: Settings setup (including alt win conditions)
- n: Military unit stances frontend
- - Gather points (frontend)
  - Can attack when garrisoned (configurable per-unit multiplier where future archers would have more)
- - Garrisoned frontend (can click units and show flag on building)
 
 UI Improvements:
  - Revamp summary report
  - Fully customizable hotkeys
  - Message logic for top of screen (like for pop capped)
- - Pan from mouse on edge of screen doesn't really work
  - Right panel resource rows only show net amount, not spent/gaining/worker breakdown
+ - Verify gather point arrow: adjacent-space edge zone targets sometimes resolved to the wrong point; confirmed fix for the center-zone case, need to test whether it also fixed this
 
 Fiddlesticks Plans:
  - Revamp update dialog box

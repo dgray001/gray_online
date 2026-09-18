@@ -172,6 +172,29 @@ export declare interface RisqUnit {
   hover_data: RectHoverData;
 }
 
+/** All the kinds a gather point's location can be, mirroring the backend's RisqGatherPointLocationKind */
+export enum RisqGatherPointLocationKind {
+  NONE = 0,
+  SPACE = 1,
+  ZONE = 2,
+}
+
+/** All the kinds a gather point's specific object can be, mirroring the backend's RisqGatherObjectType */
+export enum RisqGatherObjectType {
+  NONE = 0,
+  UNIT = 1,
+  BUILDING = 2,
+  RESOURCE = 3,
+}
+
+/** Data describing a building's gather point */
+export declare interface RisqGatherPoint {
+  location_kind: RisqGatherPointLocationKind;
+  location_id: number;
+  object_type: RisqGatherObjectType;
+  object_id: number;
+}
+
 /** Data describing a risq building */
 export declare interface RisqBuilding {
   internal_id: number;
@@ -182,7 +205,8 @@ export declare interface RisqBuilding {
   zone_coordinate: Point2D;
   population_support: number;
   garrison_capacity: number;
-  garrisoned_units: number[];
+  has_garrisoned_units: boolean;
+  garrisoned_units?: number[]; // only present to the owner or a viewer with spy-tier vision
   turn_stamina: number;
   current_stamina: number;
   max_stamina: number;
@@ -196,6 +220,7 @@ export declare interface RisqBuilding {
   resources_left?: number;
   gather_capacity?: number;
   resource_category?: RisqResourceType;
+  gather_point?: RisqGatherPoint; // only present to the owner or a viewer with spy-tier vision
   // purely frontend fields
   hover_data: RectHoverData;
 }
@@ -214,6 +239,10 @@ export enum RisqProducibleKind {
   UNIT = 1,
   TECH = 2,
   BUILDING = 3,
+}
+
+export function canHaveGatherPoint(building: RisqBuilding): boolean {
+  return building.garrison_capacity > 0 || building.produces.some((p) => p.kind === RisqProducibleKind.UNIT);
 }
 
 /** Data describing something a building can produce, with its cost already resolved for this player */
@@ -458,7 +487,8 @@ export declare interface RisqBuildingFromServer {
   zone_coordinate: Point2D;
   population_support: number;
   garrison_capacity: number;
-  garrisoned_units: number[];
+  has_garrisoned_units: boolean;
+  garrisoned_units?: number[]; // only present to the owner or a viewer with spy-tier vision
   turn_stamina: number;
   current_stamina: number;
   max_stamina: number;

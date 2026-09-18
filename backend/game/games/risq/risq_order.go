@@ -196,6 +196,27 @@ func getUnitBehaviorFromPlayerAction(action gin.H) (UnitBehaviorFromFrontend, er
 	return behavior, nil
 }
 
+type GatherPointFromFrontend struct {
+	Building_id   uint64 `json:"building_id"`
+	Clear         bool   `json:"clear"`
+	Location_kind uint8  `json:"location_kind"`
+	Location_id   uint64 `json:"location_id"`
+	Object_type   uint8  `json:"object_type"`
+	Object_id     uint64 `json:"object_id"`
+}
+
+func getGatherPointFromPlayerAction(action gin.H) (GatherPointFromFrontend, error) {
+	var request GatherPointFromFrontend
+	bytes, err := json.Marshal(action)
+	if err != nil {
+		return request, err
+	}
+	if err := json.Unmarshal(bytes, &request); err != nil {
+		return request, err
+	}
+	return request, nil
+}
+
 func (r *GameRisq) getOrdersFromPlayerAction(action gin.H, player_id int) ([]OrderFromFrontend, error) {
 	orders := make([]OrderFromFrontend, 0)
 	bytes, err1 := json.Marshal(action["orders"])

@@ -32,6 +32,7 @@ type UnitConfig struct {
 	attack_type          AttackType
 	attack_blunt         int
 	attack_piercing      int
+	attack_range         RisqRange
 	defense_blunt        int
 	defense_piercing     int
 	penetration_blunt    int
@@ -62,6 +63,7 @@ type unitConfigJSON struct {
 	AttackType          string           `json:"attack_type"`
 	AttackBlunt         int              `json:"attack_blunt"`
 	AttackPiercing      int              `json:"attack_piercing"`
+	Range               string           `json:"range"`
 	DefenseBlunt        int              `json:"defense_blunt"`
 	DefensePiercing     int              `json:"defense_piercing"`
 	PenetrationBlunt    int              `json:"penetration_blunt"`
@@ -121,6 +123,10 @@ func init() {
 		if err != nil {
 			panic(fmt.Sprintf("config/units.json unit_id %d: %v", e.UnitId, err))
 		}
+		attack_range, err := parseRange(e.Range)
+		if err != nil {
+			panic(fmt.Sprintf("config/units.json unit_id %d: %v", e.UnitId, err))
+		}
 		default_kind := ProducibleKind_BUILDING
 		builds, err := parseProducibles(e.Builds, &default_kind)
 		if err != nil {
@@ -134,6 +140,7 @@ func init() {
 			attack_type:          attack_type,
 			attack_blunt:         e.AttackBlunt,
 			attack_piercing:      e.AttackPiercing,
+			attack_range:         attack_range,
 			defense_blunt:        e.DefenseBlunt,
 			defense_piercing:     e.DefensePiercing,
 			penetration_blunt:    e.PenetrationBlunt,

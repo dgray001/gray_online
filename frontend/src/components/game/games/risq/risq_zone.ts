@@ -27,15 +27,19 @@ export const INNER_ZONE_MULTIPLIER = 0.4;
 
 /** Radius multiplier (of hex_r) for a zone's building/resource circle; same for center and edge zones */
 export const BUILDING_CIRCLE_RADIUS_MULTIPLIER = 0.13;
-/** Radius multiplier (of hex_r) for one unit-slot circle; same for center and edge zones */
-export const UNIT_SLOT_CIRCLE_RADIUS_MULTIPLIER = 0.07;
 
 /** Number of generic unit slots around the center zone's building circle (one ring) */
-export const CENTER_ZONE_UNIT_SLOTS = 8;
-const CENTER_UNIT_RING_RADIUS_MULTIPLIER = 0.22;
+export const CENTER_ZONE_UNIT_SLOTS = 12;
+// apothem of the center zone's own hexagon (not the whole space)
+const CENTER_ZONE_APOTHEM_MULTIPLIER = (Math.sqrt(3) / 2) * INNER_ZONE_MULTIPLIER;
+// midpoint between the building circle and the center zone's apothem, so both gaps match regardless of unit-circle size
+const CENTER_UNIT_RING_RADIUS_MULTIPLIER = (CENTER_ZONE_APOTHEM_MULTIPLIER + BUILDING_CIRCLE_RADIUS_MULTIPLIER) / 2;
+/** Radius multiplier (of hex_r) for one unit-slot circle; same for center and edge zones, sized to the center ring */
+export const UNIT_SLOT_CIRCLE_RADIUS_MULTIPLIER =
+  0.85 * CENTER_UNIT_RING_RADIUS_MULTIPLIER * Math.sin(Math.PI / CENTER_ZONE_UNIT_SLOTS);
 
 /** Number of generic unit slots orbiting an edge zone's building, on its inward side */
-export const EDGE_ZONE_UNIT_SLOTS = 6;
+export const EDGE_ZONE_UNIT_SLOTS = 8;
 const EDGE_BUILDING_RADIAL_MULTIPLIER = 0.7; // angle 0 hits an edge midpoint, so the boundary is the apothem (~0.866), not 1.0
 
 function findOuterZoneIndex(zone_coordinate: Point2D): number {
@@ -79,7 +83,7 @@ function distanceToEdgeZoneBoundary(building: Point2D, angle: number, hex_r: num
   return lo;
 }
 
-/** Fill order: center pair, middle pair, corner pair (each equidistant from building/boundary along its own angle) */
+/** Fill order: center-out interior pairs, then corners (each equidistant from building/boundary along its own angle) */
 function edgeUnitSlotLocalOffsets(hex_r: number): Point2D[] {
   const building = buildingLocalOffset(false, hex_r);
   const building_r = BUILDING_CIRCLE_RADIUS_MULTIPLIER * hex_r;
@@ -92,16 +96,22 @@ function edgeUnitSlotLocalOffsets(hex_r: number): Point2D[] {
     const r = (d + building_r) / 2;
     return { x: building.x + r * Math.cos(angle), y: building.y + r * Math.sin(angle) };
   };
-  const center_positions = [slot_at_angle(sweep_angle(2)), slot_at_angle(sweep_angle(3))];
-  const middle_positions = [slot_at_angle(sweep_angle(1)), slot_at_angle(sweep_angle(4))];
+  const last_index = EDGE_ZONE_UNIT_SLOTS - 1;
+  const center_low = (last_index - 1) / 2;
+  const center_high = (last_index + 1) / 2;
+  const interior_indices: number[] = [];
+  for (let k = 0; center_low - k >= 1; k++) {
+    interior_indices.push(center_low - k, center_high + k);
+  }
+  const interior_positions = interior_indices.map((i) => slot_at_angle(sweep_angle(i)));
   const spacing = Math.hypot(
-    center_positions[0].x - middle_positions[0].x,
-    center_positions[0].y - middle_positions[0].y
+    interior_positions[0].x - interior_positions[2].x,
+    interior_positions[0].y - interior_positions[2].y
   );
   // on the corner's interior angle bisector, at `spacing` from the adjacent middle slot
   const corner_slot = (mirror: boolean): Point2D => {
     const q = mirror ? { x: corner.x, y: -corner.y } : corner;
-    const m = mirror ? middle_positions[1] : middle_positions[0];
+    const m = interior_positions[mirror ? interior_positions.length - 1 : interior_positions.length - 2];
     const edge_a = { x: 0, y: mirror ? 1 : -1 }; // toward the other outer corner
     const edge_b = { x: -Math.cos(Math.PI / 6), y: (mirror ? 1 : -1) * Math.sin(Math.PI / 6) }; // toward the origin
     const bx = edge_a.x + edge_b.x;
@@ -117,14 +127,7 @@ function edgeUnitSlotLocalOffsets(hex_r: number): Point2D[] {
     const t = t1 >= 0 ? t1 : -v_dot_dir + sqrt_disc;
     return { x: q.x + t * dir.x, y: q.y + t * dir.y };
   };
-  return [
-    center_positions[0],
-    center_positions[1],
-    middle_positions[0],
-    middle_positions[1],
-    corner_slot(false),
-    corner_slot(true),
-  ];
+  return [...interior_positions, corner_slot(false), corner_slot(true)];
 }
 
 /** Local-frame (pre-space-rotation) offsets of a zone's unit-slot circles from its space's center */
@@ -542,6 +545,13 @@ export function drawRisqZone(
           ? game.getPlayerColoredIcon(building_image, building_color)
           : game.getIcon(building_image);
         ctx.drawImage(building_icon, -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
+        if (!!zone.building && zone.building.has_garrisoned_units) {
+          const flag_icon = building_color
+            ? game.getPlayerColoredIcon('risq/icons/garrison_flag', building_color)
+            : game.getIcon('risq/icons/garrison_flag');
+          const flag_size = 0.9 * part.r.x;
+          ctx.drawImage(flag_icon, 0.5 * part.r.x, -1.4 * part.r.y, flag_size, flag_size);
+        }
       }
     } else if (visibility === RisqVisibilityLevel.POOR) {
       if (i === 1 && !!zone.unit_count && view_mode !== RisqViewMode.OWNERSHIP) {
@@ -573,7 +583,7 @@ export function drawRisqZone(
     if (selected) {
       const prev_line_width = ctx.lineWidth;
       ctx.strokeStyle = 'white';
-      ctx.lineWidth = 0.6;
+      ctx.lineWidth = 0.4;
       drawEllipse(ctx, part.c, part.r);
       ctx.lineWidth = prev_line_width;
     } else {

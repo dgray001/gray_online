@@ -220,6 +220,21 @@ func (r *GameRisq) PlayerAction(action game.PlayerAction) {
 			return
 		}
 		r.executeSetUnitBehavior(player.Player_id, behavior)
+	case "set-gather-point":
+		if !r.giving_orders {
+			player.AddFailedUpdateShorthand("set-gather-point-failed", "Not currently giving orders")
+			return
+		}
+		if r.players[player.Player_id].orders_submitted {
+			player.AddFailedUpdateShorthand("set-gather-point-failed", "Orders already submitted")
+			return
+		}
+		request, err := getGatherPointFromPlayerAction(action.Action)
+		if err != nil {
+			player.AddFailedUpdateShorthand("set-gather-point-failed", err.Error())
+			return
+		}
+		r.executeSetGatherPoint(player.Player_id, request)
 	default:
 		fmt.Fprintln(os.Stderr, "Unknown game update type", action.Kind)
 	}
@@ -359,6 +374,37 @@ func (r *GameRisq) executeSetUnitBehavior(player_id int, behavior UnitBehaviorFr
 			other.player.AddUpdate(&game.UpdateMessage{Kind: "unit-behavior-set", Content: buildContent(visible_ids)})
 		}
 	}
+}
+
+func (r *GameRisq) executeSetGatherPoint(player_id int, request GatherPointFromFrontend) {
+	player := r.players[player_id]
+	building, ok := player.buildings[request.Building_id]
+	if !ok || !buildingConfigs[building.building_id].canHaveGatherPoint() {
+		return
+	}
+	if request.Clear {
+		building.gather_point = nil
+	} else {
+		location_kind := RisqGatherPointLocationKind(request.Location_kind)
+		if location_kind <= RisqGatherPointLocationKind_NONE || location_kind >= RisqGatherPointLocationKind_END {
+			return
+		}
+		object_type := RisqGatherObjectType(request.Object_type)
+		if object_type >= RisqGatherObjectType_END {
+			return
+		}
+		building.gather_point = &RisqGatherPoint{
+			location_kind: location_kind,
+			location_id:   request.Location_id,
+			object_type:   object_type,
+			object_id:     request.Object_id,
+		}
+	}
+	content := gin.H{"building_id": request.Building_id}
+	if building.gather_point != nil {
+		content["gather_point"] = building.gather_point.toFrontend()
+	}
+	player.player.AddUpdate(&game.UpdateMessage{Kind: "gather-point-set", Content: content})
 }
 
 func (r *GameRisq) resolveActiveOrders() {

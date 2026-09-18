@@ -1,9 +1,50 @@
 package risq
 
 import (
+	"fmt"
+
 	"github.com/dgray001/gray_online/game/game_utils"
 	"github.com/dgray001/gray_online/util"
 )
+
+type RisqRange uint8
+
+const (
+	RisqRange_NONE RisqRange = iota
+	RisqRange_ZONE
+	RisqRange_SPACE
+	RisqRange_ADJACENT
+	RisqRange_SECONDARY
+	RisqRange_END
+)
+
+func parseRange(s string) (RisqRange, error) {
+	switch s {
+	case "", "zone":
+		return RisqRange_ZONE, nil
+	case "space":
+		return RisqRange_SPACE, nil
+	case "adjacent":
+		return RisqRange_ADJACENT, nil
+	case "secondary":
+		return RisqRange_SECONDARY, nil
+	default:
+		return RisqRange_NONE, fmt.Errorf("unknown range %q", s)
+	}
+}
+
+func (r RisqRange) spaceRadius() (uint, bool) {
+	switch r {
+	case RisqRange_SPACE:
+		return 0, true
+	case RisqRange_ADJACENT:
+		return 1, true
+	case RisqRange_SECONDARY:
+		return 2, true
+	default:
+		return 0, false
+	}
+}
 
 type PathNode struct {
 	zone   *RisqZone
@@ -16,25 +57,61 @@ type PathNode struct {
 	f uint
 }
 
-func (u *RisqUnit) findPath(target *RisqZone) *MoveIntent {
-	start := u.zone
-	is_garrisoned := false
-	if start == nil && u.garrisoned_in != nil {
-		start = u.garrisoned_in.zone
-		is_garrisoned = true
-	}
+func (u *RisqUnit) findPath(target *RisqZone, attack_range RisqRange) *MoveIntent {
+	start, is_garrisoned := u.pathStart()
 	if start == nil || target == nil {
 		return nil
 	}
-	if start == target {
+	goal, remaining := pathGoal(target, attack_range)
+	if goal(start) {
 		if is_garrisoned {
-			return &MoveIntent{path: []*RisqZone{start}, next_step: start, intra_step: true}
+			return &MoveIntent{path: []*RisqZone{start}, next_step: start, intra_step: true, cost: start.space.terrainType().moveCost().intra_cost}
 		}
 		return nil
 	}
+	return aStarPath(start, remaining, goal)
+}
+
+func (u *RisqUnit) canReach(target *RisqZone) bool {
+	start, _ := u.pathStart()
+	return start == target || u.findPath(target, RisqRange_ZONE) != nil
+}
+
+func pathGoal(target *RisqZone, attack_range RisqRange) (func(*RisqZone) bool, func(*RisqZone) uint) {
+	space_range, ranged := attack_range.spaceRadius()
+	if !ranged {
+		return func(z *RisqZone) bool { return z == target },
+			func(z *RisqZone) uint {
+				return game_utils.AxialDistance(z.space.coordinate, target.space.coordinate) * lowestInterMoveCost
+			}
+	}
+	goal := func(z *RisqZone) bool {
+		return game_utils.AxialDistance(z.space.coordinate, target.space.coordinate) <= space_range
+	}
+	remaining := func(z *RisqZone) uint {
+		dist := game_utils.AxialDistance(z.space.coordinate, target.space.coordinate)
+		if dist <= space_range {
+			return 0
+		}
+		return (dist - space_range) * lowestInterMoveCost
+	}
+	return goal, remaining
+}
+
+func (u *RisqUnit) pathStart() (*RisqZone, bool) {
+	if u.zone != nil {
+		return u.zone, false
+	}
+	if u.garrisoned_in != nil {
+		return u.garrisoned_in.zone, true
+	}
+	return nil, false
+}
+
+func aStarPath(start *RisqZone, remaining func(*RisqZone) uint, goal func(*RisqZone) bool) *MoveIntent {
 	open_set := []*RisqZone{start}
 	tracker := make(map[*RisqZone]*PathNode)
-	h_score := game_utils.AxialDistance(start.space.coordinate, target.space.coordinate) * 6
+	h_score := remaining(start)
 	tracker[start] = &PathNode{
 		zone:   start,
 		parent: nil,
@@ -52,35 +129,37 @@ func (u *RisqUnit) findPath(target *RisqZone) *MoveIntent {
 		}
 		z := open_set[best_index]
 		n := tracker[z]
-		if z == target {
+		if goal(z) {
 			return n.constructMoveIntent()
 		}
 		open_set = util.FastDelete(open_set, best_index)
 		for _, neighbor := range z.adjacent_zones {
-			move_cost := uint(1)
+			if neighbor.space.impassable() {
+				continue
+			}
+			cost := neighbor.space.terrainType().moveCost()
+			move_cost := cost.intra_cost
 			if neighbor.space != z.space {
-				move_cost = 6
+				move_cost = cost.inter_cost
 			}
 			neighbor_g := n.g + move_cost
 			neighbor_n, visited := tracker[neighbor]
 			if visited && neighbor_g >= neighbor_n.g {
-				continue // shorter path to this node already found
+				continue
 			}
 			if !visited {
 				neighbor_n = &PathNode{zone: neighbor}
 				tracker[neighbor] = neighbor_n
 				open_set = append(open_set, neighbor)
-			} // TODO: doesn't reopen an already-expanded (no-longer-in-open_set) node if a cheaper path is found later; fine while move costs are fixed, breaks with variable terrain cost
+			}
 			neighbor_n.parent = n
 			neighbor_n.g = neighbor_g
-			h_score := game_utils.AxialDistance(neighbor.space.coordinate, target.space.coordinate) * 6
+			h_score := remaining(neighbor)
 			neighbor_n.h = h_score
 			neighbor_n.f = neighbor_g + h_score
 		}
 	}
 
-	// Never reached target zone
-	// TODO: move in direction of target if able
 	return nil
 }
 
@@ -94,9 +173,17 @@ func (n *PathNode) constructMoveIntent() *MoveIntent {
 	if len(path) < 2 {
 		return nil // If no move is needed
 	}
+	next_step := path[1]
+	intra_step := path[0].space == next_step.space
+	cost := next_step.space.terrainType().moveCost()
+	move_cost := cost.inter_cost
+	if intra_step {
+		move_cost = cost.intra_cost
+	}
 	return &MoveIntent{
 		path:       path,
-		next_step:  path[1],
-		intra_step: path[0].space == path[1].space,
+		next_step:  next_step,
+		intra_step: intra_step,
+		cost:       move_cost,
 	}
 }

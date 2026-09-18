@@ -50,6 +50,7 @@ export function shortLabel(order_type: RisqOrderType): string {
     case RisqOrderType.OrderType_UnitUngarrison:
       return 'Ungarrison';
     case RisqOrderType.OrderType_UnitDelete:
+    case RisqOrderType.OrderType_BuildingDelete:
       return 'Delete';
     default:
       return 'Order';
@@ -270,6 +271,15 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
     }
     case RisqOrderType.OrderType_UnitDelete: {
       base = { icon: 'icons/skull32', name: 'Delete', target: '', cost: [] };
+      break;
+    }
+    case RisqOrderType.OrderType_BuildingDelete: {
+      base = {
+        icon: 'icons/skull32',
+        name: `Delete ${subject_building?.display_name ?? 'Building'}`,
+        target: '',
+        cost: [],
+      };
       break;
     }
     default:

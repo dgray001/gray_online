@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.8h: UI improvements
+v0.8i: Gather points frontend
 
 ## Dev Use
 

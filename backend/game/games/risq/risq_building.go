@@ -30,6 +30,10 @@ type RisqBuilding struct {
 	garrisoned_units           map[uint64]*RisqUnit
 	gather_point               *RisqGatherPoint
 	attacked_by                []RisqDamageEvent
+	auto_attack                bool
+	interrupt_current          bool
+	target_priority            []TargetCategory
+	attack_range               RisqRange
 	// Building gathering fields
 	resources_left float64
 }
@@ -63,6 +67,9 @@ func createRisqBuilding(internal_id uint64, building_id uint32, player_id int) *
 		production_queue:   make(map[uint64]*RisqBuildingProductionItem),
 		intent:             createRisqIntent(),
 		garrisoned_units:   make(map[uint64]*RisqUnit),
+		auto_attack:        true,
+		interrupt_current:  false,
+		target_priority:    []TargetCategory{},
 	}
 	config, ok := buildingConfigs[building_id]
 	if !ok {
@@ -74,8 +81,14 @@ func createRisqBuilding(internal_id uint64, building_id uint32, player_id int) *
 	building.population_support = config.population_support
 	building.garrison_capacity = config.garrison_capacity
 	building.turn_stamina = config.turn_stamina
+	building.cs.attack_type = config.attack_type
+	building.cs.attack_blunt = config.attack_blunt
+	building.cs.attack_piercing = config.attack_piercing
 	building.cs.defense_blunt = config.defense_blunt
 	building.cs.defense_piercing = config.defense_piercing
+	building.cs.penetration_blunt = config.penetration_blunt
+	building.cs.penetration_piercing = config.penetration_piercing
+	building.attack_range = config.attack_range
 	building.resources_left = config.gather.starting_resources
 	return &building
 }
@@ -328,11 +341,17 @@ func (b *RisqBuilding) toFrontend(viewer_player_id int) gin.H {
 		"max_stamina":                maxStaminaFor(b.turn_stamina),
 		"garrison_capacity":          b.garrison_capacity,
 	}
-	garrisoned_units := make([]uint64, 0)
-	for id := range b.garrisoned_units {
-		garrisoned_units = append(garrisoned_units, id)
+	building["has_garrisoned_units"] = len(b.garrisoned_units) > 0
+	if showOrdersTo(b.player_id, b.zone, viewer_player_id) {
+		garrisoned_units := make([]uint64, 0)
+		for id := range b.garrisoned_units {
+			garrisoned_units = append(garrisoned_units, id)
+		}
+		building["garrisoned_units"] = garrisoned_units
 	}
-	building["garrisoned_units"] = garrisoned_units
+	if b.gather_point != nil && showOrdersTo(b.player_id, b.zone, viewer_player_id) {
+		building["gather_point"] = b.gather_point.toFrontend()
+	}
 	building["produces"] = buildingProducesToFrontend(b.building_id)
 	if config.isGatherable() {
 		building["resources_left"] = b.resources_left

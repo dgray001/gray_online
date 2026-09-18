@@ -18,7 +18,7 @@ export declare interface MinimapConfig {
 /** Clips a convex polygon against an axis-aligned box (Sutherland-Hodgman) */
 function clipPolygonToBox(polygon: Point2D[], min: Point2D, max: Point2D): Point2D[] {
   const lerp = (a: Point2D, b: Point2D, t: number): Point2D => ({ x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) });
-  const clipEdge = (
+  const clip_edge = (
     points: Point2D[],
     inside: (p: Point2D) => boolean,
     intersect: (a: Point2D, b: Point2D) => Point2D
@@ -39,22 +39,22 @@ function clipPolygonToBox(polygon: Point2D[], min: Point2D, max: Point2D): Point
     return out;
   };
   let result = polygon;
-  result = clipEdge(
+  result = clip_edge(
     result,
     (p) => p.x >= min.x,
     (a, b) => lerp(a, b, (min.x - a.x) / (b.x - a.x))
   );
-  result = clipEdge(
+  result = clip_edge(
     result,
     (p) => p.x <= max.x,
     (a, b) => lerp(a, b, (max.x - a.x) / (b.x - a.x))
   );
-  result = clipEdge(
+  result = clip_edge(
     result,
     (p) => p.y >= min.y,
     (a, b) => lerp(a, b, (min.y - a.y) / (b.y - a.y))
   );
-  result = clipEdge(
+  result = clip_edge(
     result,
     (p) => p.y <= max.y,
     (a, b) => lerp(a, b, (max.y - a.y) / (b.y - a.y))
@@ -181,7 +181,7 @@ export class RisqMinimap implements CanvasComponent {
         ctx.strokeStyle = 'transparent';
         for (const player of game.players) {
           for (const unit of player.units.values()) {
-            if (this.risq.isUnitSelected(unit.internal_id)) {
+            if (unit.garrisoned_in === undefined && this.risq.isUnitSelected(unit.internal_id)) {
               drawCircle(ctx, this.coordinateToMinimapCanvas(unit.space_coordinate), Math.max(1.5, 0.25 * this.hex_r));
             }
           }

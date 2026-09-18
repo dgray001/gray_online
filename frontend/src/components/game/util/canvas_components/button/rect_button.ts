@@ -44,7 +44,7 @@ export abstract class DwgRectButton extends DwgButton {
   private rotate_speed?: number;
   private rotate_reached?: boolean;
   private rotate_callback?: () => void;
-  private img?: HTMLImageElement;
+  private img?: CanvasImageSource;
   private text_align_p?: Point2D;
 
   constructor(config: RectButtonConfig) {
@@ -59,6 +59,10 @@ export abstract class DwgRectButton extends DwgButton {
     config.rotation = config.rotation ?? 0;
     this.rect_config = config;
     this.refreshPositionDependencies();
+  }
+
+  protected setImage(img: CanvasImageSource): void {
+    this.img = img;
   }
 
   setPosition(p: Point2D, callback?: () => void, no_animation = false) {
