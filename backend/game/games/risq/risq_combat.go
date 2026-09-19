@@ -26,15 +26,23 @@ const (
 	AttackType_BLUNT_PIERCING_MAGIC
 )
 
-func (u *RisqUnit) inAttackRange(target *RisqZone) bool {
-	if u.zone == nil || target == nil {
+func rangeCovers(from *RisqZone, target *RisqZone, attack_range RisqRange) bool {
+	if from == nil || target == nil {
 		return false
 	}
-	space_range, ranged := u.attack_range.spaceRadius()
+	space_range, ranged := attack_range.spaceRadius()
 	if !ranged {
-		return u.zone == target
+		return from == target
 	}
-	return game_utils.AxialDistance(u.zone.space.coordinate, target.space.coordinate) <= space_range
+	return game_utils.AxialDistance(from.space.coordinate, target.space.coordinate) <= space_range
+}
+
+func (u *RisqUnit) inAttackRange(target *RisqZone) bool {
+	return rangeCovers(u.zone, target, u.attack_range)
+}
+
+func (b *RisqBuilding) inAttackRange(target *RisqZone) bool {
+	return rangeCovers(b.zone, target, b.attack_range)
 }
 
 type RisqDamageEvent struct {
@@ -158,49 +166,44 @@ func combatDamage(attacker *RisqCombatStats, defender *RisqCombatStats, stamina_
 	return damage
 }
 
-// Applies a unit's attack against a building, deleting it and logging the raze/loss if it dies
-func (r *GameRisq) unitAttackBuilding(attacker *RisqUnit, target *RisqBuilding) {
-	was_alive := target.cs.health > 0
-	attacker_cs := r.effectiveCombatStats(attacker, target, true)
-	damage := combatDamage(&attacker_cs, &target.cs, attacker.intent.intent_cost)
-	target.cs.addHealth(-damage)
-	target.attacked_by = append(target.attacked_by, RisqDamageEvent{tick: r.current_tick, attacker_id: attacker.internal_id, attacker_type: OrderableType_UNIT, damage: damage, damage_type: attacker.cs.attack_type})
-	if !was_alive || target.cs.health > 0 {
+type Attackable interface {
+	Orderable
+	playerId() int
+	combatStats(r *GameRisq, other Orderable, attacking bool) RisqCombatStats
+	isAlive() bool
+	applyDamage(event RisqDamageEvent)
+	recordDeath(r *GameRisq, attacker Attackable, damage float64)
+}
+
+// Shared attack resolution for any unit/building attacker-target pair
+func (r *GameRisq) resolveAttack(attacker Attackable, target Attackable, stamina_cost int) {
+	was_alive := target.isAlive()
+	attacker_cs := attacker.combatStats(r, target, true)
+	target_cs := target.combatStats(r, attacker, false)
+	damage := combatDamage(&attacker_cs, &target_cs, stamina_cost)
+	target.applyDamage(RisqDamageEvent{tick: r.current_tick, attacker_id: attacker.internalId(), attacker_type: attacker.OrderableType(), damage: damage, damage_type: attacker_cs.attack_type})
+	util.DebugLog.Printf("combat tick=%d: %d (player %d, stamina %d) hits %d (player %d) for %.2f",
+		r.current_tick, attacker.internalId(), attacker.playerId(), stamina_cost, target.internalId(), target.playerId(), damage)
+	if !was_alive || target.isAlive() {
 		return
 	}
-	space := target.zone.space.coordinate
-	zone := target.zone.coordinate
-	r.players[attacker.player_id].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: RisqCombatEventKind_BUILDING_RAZED,
-		self_player: attacker.player_id, other_player: target.player_id, target_id: uint64(target.building_id), space: space, zone: zone, damage: damage})
-	r.players[target.player_id].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: RisqCombatEventKind_BUILDING_LOST,
-		self_player: target.player_id, other_player: attacker.player_id, target_id: uint64(target.building_id), space: space, zone: zone, damage: damage})
-	r.players[attacker.player_id].razes++
-	r.players[target.player_id].buildings_lost++
-	target.deleted = true
+	target.recordDeath(r, attacker, damage)
+}
+
+func (r *GameRisq) unitAttackBuilding(attacker *RisqUnit, target *RisqBuilding) {
+	r.resolveAttack(attacker, target, attacker.intent.intent_cost)
 }
 
 func (r *GameRisq) unitAttackUnit(attacker *RisqUnit, target *RisqUnit) {
-	was_alive := target.cs.health > 0
-	attacker_cs := r.effectiveCombatStats(attacker, target, true)
-	target_cs := r.effectiveCombatStats(target, attacker, false)
-	damage := combatDamage(&attacker_cs, &target_cs, attacker.intent.intent_cost)
-	target.cs.addHealth(-damage)
-	target.attacked_by = append(target.attacked_by, RisqDamageEvent{tick: r.current_tick, attacker_id: attacker.internal_id, attacker_type: OrderableType_UNIT, damage: damage, damage_type: attacker.cs.attack_type})
-	util.DebugLog.Printf("combat tick=%d: unit %d (player %d, stamina %d) hits unit %d (player %d) for %.2f, health now %.2f/%d",
-		r.current_tick, attacker.internal_id, attacker.player_id, attacker.intent.intent_cost,
-		target.internal_id, target.player_id, damage, target.cs.health, target.cs.max_health)
-	if !was_alive || target.cs.health > 0 {
-		return
-	}
-	space := target.zone.space.coordinate
-	zone := target.zone.coordinate
-	r.players[attacker.player_id].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: RisqCombatEventKind_UNIT_KILLED,
-		self_player: attacker.player_id, other_player: target.player_id, target_id: uint64(target.unit_id), space: space, zone: zone, damage: damage})
-	r.players[target.player_id].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: RisqCombatEventKind_UNIT_LOST,
-		self_player: target.player_id, other_player: attacker.player_id, target_id: uint64(target.unit_id), space: space, zone: zone, damage: damage})
-	r.players[attacker.player_id].kills++
-	r.players[target.player_id].units_lost++
-	target.deleted = true
+	r.resolveAttack(attacker, target, attacker.intent.intent_cost)
+}
+
+func (r *GameRisq) buildingAttackUnit(attacker *RisqBuilding, target *RisqUnit) {
+	r.resolveAttack(attacker, target, attacker.intent.intent_cost)
+}
+
+func (r *GameRisq) buildingAttackBuilding(attacker *RisqBuilding, target *RisqBuilding) {
+	r.resolveAttack(attacker, target, attacker.intent.intent_cost)
 }
 
 // Returns the lowest-internal_id enemy unit in the zone, or nil
@@ -415,51 +418,65 @@ func zoneAttackTarget(zone *RisqZone, player_id int, priority []TargetCategory) 
 }
 
 func spaceAttackTarget(u *RisqUnit, space *RisqSpace) (*RisqUnit, *RisqBuilding) {
-	best := newCategoryBest()
+	near, far := newCategoryBest(), newCategoryBest()
 	for _, row := range space.zones {
 		for _, zone := range row {
 			dist := zoneDistanceWithinSpace(u.zone, zone)
+			bucket := far
+			if u.inAttackRange(zone) {
+				bucket = near
+			}
 			for _, target := range zone.units {
 				if target.deleted || target.player_id == u.player_id {
 					continue
 				}
-				best.considerUnit(target, dist)
+				bucket.considerUnit(target, dist)
 			}
 			if target := zoneEnemyBuilding(zone, u.player_id); target != nil {
-				best.considerBuilding(target, dist)
+				bucket.considerBuilding(target, dist)
 			}
 		}
 	}
-	return best.pick(u.target_priority)
+	if target, building := near.pick(u.target_priority); target != nil || building != nil {
+		return target, building
+	}
+	return far.pick(u.target_priority)
 }
 
-func nearbyAttackTarget(u *RisqUnit, risq *GameRisq, space_radius uint) (*RisqUnit, *RisqBuilding) {
-	best := newCategoryBest()
-	own_space := u.zone.space
+func nearbyAttackTarget(own_zone *RisqZone, player_id int, target_priority []TargetCategory, in_range func(*RisqZone) bool, risq *GameRisq, space_radius uint) (*RisqUnit, *RisqBuilding) {
+	near, far := newCategoryBest(), newCategoryBest()
+	own_space := own_zone.space
 	for _, row := range risq.spaces {
 		for _, space := range row {
 			space_dist := game_utils.AxialDistance(own_space.coordinate, space.coordinate)
-			if space_dist > space_radius || space.getVisibility(u.player_id) < VisibilityGood {
+			if space_dist > space_radius || space.getVisibility(player_id) < VisibilityGood {
 				continue
 			}
 			for _, zone_row := range space.zones {
 				for _, zone := range zone_row {
 					dist := int(space_dist) * 6
 					if space == own_space {
-						dist = zoneDistanceWithinSpace(u.zone, zone)
+						dist = zoneDistanceWithinSpace(own_zone, zone)
+					}
+					bucket := far
+					if in_range(zone) {
+						bucket = near
 					}
 					for _, target := range zone.units {
-						if target.deleted || target.player_id == u.player_id {
+						if target.deleted || target.player_id == player_id {
 							continue
 						}
-						best.considerUnit(target, dist)
+						bucket.considerUnit(target, dist)
 					}
-					if target := zoneEnemyBuilding(zone, u.player_id); target != nil {
-						best.considerBuilding(target, dist)
+					if target := zoneEnemyBuilding(zone, player_id); target != nil {
+						bucket.considerBuilding(target, dist)
 					}
 				}
 			}
 		}
 	}
-	return best.pick(u.target_priority)
+	if target, building := near.pick(target_priority); target != nil || building != nil {
+		return target, building
+	}
+	return far.pick(target_priority)
 }

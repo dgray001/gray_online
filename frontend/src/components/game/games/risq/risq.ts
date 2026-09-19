@@ -137,6 +137,7 @@ export class DwgRisq extends DwgElement {
   private armed_building?: { id: number; display_name: string };
   private armed_button_callback?: () => void;
   private gather_point_armed = false;
+  private building_attack_armed = false;
   private local_foundations = new Map<number, LocalRisqFoundation>();
   // control groups 1-10 ('0' is group 10)
   private control_groups = new Map<number, { kind: 'unit' | 'building'; ids: number[] }>();
@@ -1747,17 +1748,18 @@ export class DwgRisq extends DwgElement {
         object_type: RisqGatherObjectType.NONE,
         object_id: 0,
       };
-      if (this.hovered_zone.resource) {
+      const hovered = hoveredZoneObject(this.hovered_zone);
+      if (hovered?.kind === 'resource' && this.hovered_zone.resource) {
         point.object_type = RisqGatherObjectType.RESOURCE;
         point.object_id = this.hovered_zone.resource.internal_id;
-      } else if (this.hovered_zone.building) {
+      } else if (hovered?.kind === 'building' && this.hovered_zone.building) {
         point.object_type = RisqGatherObjectType.BUILDING;
         point.object_id = this.hovered_zone.building.internal_id;
-      } else {
-        const enemy_unit_id = this.resolveHoveredEnemyUnitId();
-        if (enemy_unit_id !== undefined) {
+      } else if (hovered?.kind === 'unit') {
+        const unit_id = [...hovered.groups[0].units][0];
+        if (unit_id !== undefined) {
           point.object_type = RisqGatherObjectType.UNIT;
-          point.object_id = enemy_unit_id;
+          point.object_id = unit_id;
         }
       }
     } else if (this.hovered_space) {

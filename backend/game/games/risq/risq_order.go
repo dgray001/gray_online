@@ -91,8 +91,8 @@ const (
 	OrderType_UnitAttackZone
 	OrderType_UnitAttackUnit
 	OrderType_UnitAttackBuilding
-	// Server synthesized; not submitted by player
-	OrderType_UnitAutoAttackUnit
+	OrderType_UnitAutoAttackUnit     // Server synthesized; not submitted by player
+	OrderType_UnitAutoAttackBuilding // Server synthesized; not submitted by player
 	OrderType_UnitDefend
 	OrderType_UnitGarrison
 	OrderType_UnitUngarrison
@@ -101,6 +101,10 @@ const (
 	OrderType_BuildingCreate
 	OrderType_BuildingResearch
 	OrderType_BuildingDelete
+	OrderType_BuildingAttackUnit
+	OrderType_BuildingAttackBuilding
+	OrderType_BuildingAutoAttackUnit     // Server synthesized; not submitted by player
+	OrderType_BuildingAutoAttackBuilding // Server synthesized; not submitted by player
 	// Player-level orders with no subjects
 	OrderType_CancelOrder
 	OrderType_CancelFoundation
@@ -169,7 +173,17 @@ func (ot OrderType) isUnitOrder() bool {
 }
 
 func (ot OrderType) isBuildingOrder() bool {
-	return ot >= OrderType_BuildingCreate && ot <= OrderType_BuildingDelete
+	return ot >= OrderType_BuildingCreate && ot <= OrderType_BuildingAutoAttackBuilding
+}
+
+func (ot OrderType) isAutoSynthesized() bool {
+	switch ot {
+	case OrderType_UnitAutoAttackUnit, OrderType_UnitAutoAttackBuilding,
+		OrderType_BuildingAutoAttackUnit, OrderType_BuildingAutoAttackBuilding:
+		return true
+	default:
+		return false
+	}
 }
 
 func (ot OrderType) isPlayerOrder() bool {
@@ -186,6 +200,25 @@ type UnitBehaviorFromFrontend struct {
 
 func getUnitBehaviorFromPlayerAction(action gin.H) (UnitBehaviorFromFrontend, error) {
 	var behavior UnitBehaviorFromFrontend
+	bytes, err := json.Marshal(action)
+	if err != nil {
+		return behavior, err
+	}
+	if err := json.Unmarshal(bytes, &behavior); err != nil {
+		return behavior, err
+	}
+	return behavior, nil
+}
+
+type BuildingBehaviorFromFrontend struct {
+	Internal_ids      []uint64 `json:"internal_ids"`
+	Auto_attack       *bool    `json:"auto_attack"`
+	Interrupt_current *bool    `json:"interrupt_current"`
+	Target_priority   *[]uint8 `json:"target_priority"`
+}
+
+func getBuildingBehaviorFromPlayerAction(action gin.H) (BuildingBehaviorFromFrontend, error) {
+	var behavior BuildingBehaviorFromFrontend
 	bytes, err := json.Marshal(action)
 	if err != nil {
 		return behavior, err
@@ -239,7 +272,7 @@ func (r *GameRisq) getOrdersFromPlayerAction(action gin.H, player_id int) ([]Ord
 func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend, player_id int) error {
 	// Validate order type
 	order_type := OrderType(order.Order_type)
-	if order_type <= OrderType_None || order_type >= OrderType_END || order_type == OrderType_UnitAutoAttackUnit {
+	if order_type <= OrderType_None || order_type >= OrderType_END || order_type.isAutoSynthesized() {
 		return fmt.Errorf("Invalid order type: %d", order_type)
 	}
 	// Order owner must be the submitting player
@@ -391,6 +424,14 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend, player_id int)
 			return fmt.Errorf("Invalid unit target id %d", order.Target_id)
 		}
 	case OrderType_UnitAttackBuilding:
+		if r.buildings[uint64(order.Target_id)] == nil {
+			return fmt.Errorf("Invalid building target id %d", order.Target_id)
+		}
+	case OrderType_BuildingAttackUnit:
+		if r.units[uint64(order.Target_id)] == nil {
+			return fmt.Errorf("Invalid unit target id %d", order.Target_id)
+		}
+	case OrderType_BuildingAttackBuilding:
 		if r.buildings[uint64(order.Target_id)] == nil {
 			return fmt.Errorf("Invalid building target id %d", order.Target_id)
 		}

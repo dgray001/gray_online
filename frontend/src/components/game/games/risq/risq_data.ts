@@ -161,6 +161,7 @@ export declare interface RisqUnit {
   current_stamina: number;
   max_stamina: number;
   combat_stats: RisqCombatStats;
+  attack_range: RisqRange;
   active_orders: RisqOrder[];
   builds: RisqProducible[];
   garrisoned_in?: number;
@@ -214,6 +215,7 @@ export declare interface RisqBuilding {
   stamina_remaining: number;
   construction_stamina_total: number;
   combat_stats: RisqCombatStats;
+  attack_range: RisqRange;
   active_orders: RisqOrder[];
   produces: RisqProducible[];
   production_queue: RisqProductionQueueItem[];
@@ -338,6 +340,15 @@ export enum RisqAttackType {
   BLUNT_PIERCING_MAGIC = 7,
 }
 
+/** All the attack ranges, mirroring the backend's RisqRange */
+export enum RisqRange {
+  NONE = 0,
+  ZONE = 1,
+  SPACE = 2,
+  ADJACENT = 3,
+  SECONDARY = 4,
+}
+
 /** Data describing resources in a zone */
 export declare interface RisqResource {
   internal_id: number;
@@ -363,8 +374,8 @@ export enum RisqOrderType {
   OrderType_UnitAttackZone,
   OrderType_UnitAttackUnit,
   OrderType_UnitAttackBuilding,
-  // Server synthesized; not submitted by player
-  OrderType_UnitAutoAttackUnit,
+  OrderType_UnitAutoAttackUnit, // Server synthesized; not submitted by player
+  OrderType_UnitAutoAttackBuilding, // Server synthesized; not submitted by player
   OrderType_UnitDefend,
   OrderType_UnitGarrison,
   OrderType_UnitUngarrison,
@@ -372,6 +383,10 @@ export enum RisqOrderType {
   OrderType_BuildingCreate,
   OrderType_BuildingResearch,
   OrderType_BuildingDelete,
+  OrderType_BuildingAttackUnit,
+  OrderType_BuildingAttackBuilding,
+  OrderType_BuildingAutoAttackUnit, // Server synthesized; not submitted by player
+  OrderType_BuildingAutoAttackBuilding, // Server synthesized; not submitted by player
   OrderType_CancelOrder,
   OrderType_CancelFoundation,
 }
@@ -468,6 +483,7 @@ export declare interface RisqUnitFromServer {
   current_stamina: number;
   max_stamina: number;
   combat_stats: RisqCombatStatsFromServer;
+  attack_range: RisqRange;
   active_orders: RisqOrderFromServer[];
   builds: RisqProducible[];
   garrisoned_in?: number;
@@ -496,6 +512,7 @@ export declare interface RisqBuildingFromServer {
   stamina_remaining: number;
   construction_stamina_total: number;
   combat_stats: RisqCombatStatsFromServer;
+  attack_range: RisqRange;
   active_orders: RisqOrderFromServer[];
   produces: RisqProducible[];
   production_queue: RisqProductionQueueItem[];

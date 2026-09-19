@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.8i: Gather points frontend
+v0.8j: Building attacks
 
 ## Dev Use
 

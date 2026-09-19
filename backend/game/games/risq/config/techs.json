@@ -2,7 +2,7 @@
   {
     "tech_id": 1,
     "display_name": "Farming",
-    "description": "Villagers become more resilient and can work longer without rest.",
+    "description": "Villagers become more resilient and can work longer without rest. Also a prerequisite to building farms.",
     "cost": { "food": 50, "wood": 50 },
     "research_stamina": 15,
     "affects_unit_ids": [1],

@@ -1,21 +1,21 @@
 v0.9: Risq beta version
- e: Learnable AI pipeline
- f: Bottom bar in UI (summary report, view buttons, tech tree)
- g: Partial move pathfinding
- h: Different terrains
- i: Map scripting setup
- j: Regions and mercenaries
- k: Magic and color damage
- l: Expanded level 2 tech tree
- m: Settings setup (including alt win conditions)
- - Can attack when garrisoned (configurable per-unit multiplier where future archers would have more)
+ k: Farming
+ l: Bottom bar in UI (summary report, view buttons, tech tree)
+ m: Map scripting setup and initial map
+ n: Regions
+ o: Mercenaries
+ p: AI v3 working
+ q: Revamp summary report
+ r: Customizable hotkeys
+
+ - Expanded level 2 tech tree
+    => Magic and color damage
+    => Stables and Archery range
+    => Settings setup (including alt win conditions)
 
 UI Improvements:
- - Revamp summary report
- - Fully customizable hotkeys
  - Message logic for top of screen (like for pop capped)
- - Right panel resource rows only show net amount, not spent/gaining/worker breakdown
- - Verify gather point arrow: adjacent-space edge zone targets sometimes resolved to the wrong point; confirmed fix for the center-zone case, need to test whether it also fixed this
+ - Images for all buildings
 
 Fiddlesticks Plans:
  - Revamp update dialog box

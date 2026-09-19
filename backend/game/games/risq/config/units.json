@@ -12,8 +12,8 @@
     "turn_stamina": 8,
     "builds": [
       { "row": 2, "col": 0, "id": 2 },
-      { "row": 2, "col": 1, "id": 11 },
-      { "row": 2, "col": 2, "id": 3 },
+      { "row": 2, "col": 1, "id": 3 },
+      { "row": 2, "col": 2, "id": 11 },
       { "row": 3, "col": 0, "id": 21 },
       { "row": 3, "col": 1, "id": 22 },
       { "row": 3, "col": 2, "id": 23 }

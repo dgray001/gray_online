@@ -220,6 +220,21 @@ func (r *GameRisq) PlayerAction(action game.PlayerAction) {
 			return
 		}
 		r.executeSetUnitBehavior(player.Player_id, behavior)
+	case "set-building-behavior":
+		if !r.giving_orders {
+			player.AddFailedUpdateShorthand("set-building-behavior-failed", "Not currently giving orders")
+			return
+		}
+		if r.players[player.Player_id].orders_submitted {
+			player.AddFailedUpdateShorthand("set-building-behavior-failed", "Orders already submitted")
+			return
+		}
+		behavior, err := getBuildingBehaviorFromPlayerAction(action.Action)
+		if err != nil {
+			player.AddFailedUpdateShorthand("set-building-behavior-failed", err.Error())
+			return
+		}
+		r.executeSetBuildingBehavior(player.Player_id, behavior)
 	case "set-gather-point":
 		if !r.giving_orders {
 			player.AddFailedUpdateShorthand("set-gather-point-failed", "Not currently giving orders")
@@ -372,6 +387,66 @@ func (r *GameRisq) executeSetUnitBehavior(player_id int, behavior UnitBehaviorFr
 		}
 		if len(visible_ids) > 0 {
 			other.player.AddUpdate(&game.UpdateMessage{Kind: "unit-behavior-set", Content: buildContent(visible_ids)})
+		}
+	}
+}
+
+// Resolves immediately; independent of the order system.
+func (r *GameRisq) executeSetBuildingBehavior(player_id int, behavior BuildingBehaviorFromFrontend) {
+	player := r.players[player_id]
+	var target_priority []TargetCategory
+	if behavior.Target_priority != nil {
+		target_priority = make([]TargetCategory, 0, len(*behavior.Target_priority))
+		for _, raw := range *behavior.Target_priority {
+			cat := TargetCategory(raw)
+			if cat > TargetCategory_NONE && cat < TargetCategory_END {
+				target_priority = append(target_priority, cat)
+			}
+		}
+	}
+	affected := make([]uint64, 0, len(behavior.Internal_ids))
+	for _, internal_id := range behavior.Internal_ids {
+		building, ok := player.buildings[internal_id]
+		if !ok || buildingConfigs[building.building_id].attack_type == AttackType_NONE {
+			continue
+		}
+		if behavior.Auto_attack != nil {
+			building.auto_attack = *behavior.Auto_attack
+		}
+		if behavior.Interrupt_current != nil {
+			building.interrupt_current = *behavior.Interrupt_current
+		}
+		if behavior.Target_priority != nil {
+			building.target_priority = target_priority
+		}
+		affected = append(affected, internal_id)
+	}
+	buildContent := func(ids []uint64) gin.H {
+		content := gin.H{"internal_ids": ids}
+		if behavior.Auto_attack != nil {
+			content["auto_attack"] = *behavior.Auto_attack
+		}
+		if behavior.Interrupt_current != nil {
+			content["interrupt_current"] = *behavior.Interrupt_current
+		}
+		if behavior.Target_priority != nil {
+			content["target_priority"] = *behavior.Target_priority
+		}
+		return content
+	}
+	player.player.AddUpdate(&game.UpdateMessage{Kind: "building-behavior-set", Content: buildContent(affected)})
+	for _, other := range r.players {
+		if other.player.Player_id == player_id {
+			continue
+		}
+		visible_ids := make([]uint64, 0)
+		for _, internal_id := range affected {
+			if building := player.buildings[internal_id]; building != nil && showOrdersTo(player_id, building.zone, other.player.Player_id) {
+				visible_ids = append(visible_ids, internal_id)
+			}
+		}
+		if len(visible_ids) > 0 {
+			other.player.AddUpdate(&game.UpdateMessage{Kind: "building-behavior-set", Content: buildContent(visible_ids)})
 		}
 	}
 }

@@ -72,9 +72,9 @@ func (u *RisqUnit) findPath(target *RisqZone, attack_range RisqRange) *MoveInten
 	return aStarPath(start, remaining, goal)
 }
 
-func (u *RisqUnit) canReach(target *RisqZone) bool {
+func (u *RisqUnit) canReach(target *RisqZone, attack_range RisqRange) bool {
 	start, _ := u.pathStart()
-	return start == target || u.findPath(target, RisqRange_ZONE) != nil
+	return start == target || u.findPath(target, attack_range) != nil
 }
 
 func pathGoal(target *RisqZone, attack_range RisqRange) (func(*RisqZone) bool, func(*RisqZone) uint) {
