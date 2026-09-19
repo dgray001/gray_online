@@ -34,18 +34,18 @@
     "intra_cost": 2,
     "inter_cost": 9,
     "terrains": [
-      { "terrain_id": 51, "display_name": "Grass" },
-      { "terrain_id": 52, "display_name": "Grass" },
-      { "terrain_id": 53, "display_name": "Dead Grass" },
-      { "terrain_id": 54, "display_name": "Dead Grass" },
-      { "terrain_id": 55, "display_name": "Forest" },
-      { "terrain_id": 56, "display_name": "Dirt" },
-      { "terrain_id": 57, "display_name": "Dirt" },
-      { "terrain_id": 58, "display_name": "Dirt" },
-      { "terrain_id": 59, "display_name": "Dirt" },
-      { "terrain_id": 60, "display_name": "Dirt" },
-      { "terrain_id": 61, "display_name": "Snow" },
-      { "terrain_id": 62, "display_name": "Snow" }
+      { "terrain_id": 51, "display_name": "Grassy Hills" },
+      { "terrain_id": 52, "display_name": "Grassy Hills" },
+      { "terrain_id": 53, "display_name": "Dead Grassy Hills" },
+      { "terrain_id": 54, "display_name": "Dead Grassy Hills" },
+      { "terrain_id": 55, "display_name": "Forest Hills" },
+      { "terrain_id": 56, "display_name": "Dirt Hills" },
+      { "terrain_id": 57, "display_name": "Dirt Hills" },
+      { "terrain_id": 58, "display_name": "Dirt Hills" },
+      { "terrain_id": 59, "display_name": "Dirt Hills" },
+      { "terrain_id": 60, "display_name": "Dirt Hills" },
+      { "terrain_id": 61, "display_name": "Snowy Hills" },
+      { "terrain_id": 62, "display_name": "Snowy Hills" }
     ]
   },
   {

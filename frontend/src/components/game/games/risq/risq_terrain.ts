@@ -1,5 +1,5 @@
 import type { ColorRGB } from '../../../../scripts/color_rgb';
-import type { RisqPlayer, RisqSpace } from './risq_data';
+import type { RisqPlayer } from './risq_data';
 
 export enum RisqViewMode {
   ALL = 0,
@@ -12,8 +12,7 @@ export function nextViewMode(mode: RisqViewMode): RisqViewMode {
   return ((mode + 1) % 4) as RisqViewMode;
 }
 
-export function spaceOwnerColor(space: RisqSpace, players: RisqPlayer[]): ColorRGB | undefined {
-  const ownership = space.ownership;
+export function spaceOwnerColor(ownership: number | undefined, players: RisqPlayer[]): ColorRGB | undefined {
   if (ownership === undefined || ownership < 0 || ownership >= players.length) {
     return undefined;
   }
@@ -30,6 +29,10 @@ export enum RisqTerrainType {
   SHALLOWS = 5,
   WATER = 6,
   DEEP_WATER = 7,
+}
+
+export function terrainTypeLabel(terrain_type: RisqTerrainType): string {
+  return (RisqTerrainType[terrain_type] ?? '').toLowerCase().replace(/_/g, ' ');
 }
 
 /** Returns image path of the terrain */

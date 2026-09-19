@@ -36,6 +36,17 @@ type mapScriptContext struct {
 	starting_distance int
 	player_starts     []playerStartInfo
 	regions           map[string]map[uint]bool
+	vars              map[string]float64
+}
+
+func newMapScriptVars(num_players int, board_size uint16, starting_distance int, total_spaces int) map[string]float64 {
+	return map[string]float64{
+		"num_players":       float64(num_players),
+		"board_size":        float64(board_size),
+		"starting_distance": float64(starting_distance),
+		"total_spaces":      float64(total_spaces),
+		"total_zones":       float64(total_spaces * 7),
+	}
 }
 
 func loadMapScript(name string) []mapScriptStepJSON {
@@ -191,15 +202,20 @@ func stepMirror(ctx *mapScriptContext, raw json.RawMessage) error {
 	return nil
 }
 
-var mapStepRegistry = map[string]mapStepFunc{
-	"terrain_fill":         stepTerrainFill,
-	"terrain_blob":         stepTerrainBlob,
-	"terrain_line":         stepTerrainLine,
-	"terrain_border":       stepTerrainBorder,
-	"ensure_connectivity":  stepEnsureConnectivity,
-	"resource_scatter":     stepResourceScatter,
-	"resource_cluster":     stepResourceCluster,
-	"resource_min_spacing": stepResourceMinSpacing,
-	"mirror":               stepMirror,
-	"player_starts":        stepPlayerStarts,
+var mapStepRegistry map[string]mapStepFunc
+
+func init() {
+	mapStepRegistry = map[string]mapStepFunc{
+		"terrain_fill":         stepTerrainFill,
+		"terrain_blob":         stepTerrainBlob,
+		"terrain_line":         stepTerrainLine,
+		"terrain_border":       stepTerrainBorder,
+		"ensure_connectivity":  stepEnsureConnectivity,
+		"resource_scatter":     stepResourceScatter,
+		"resource_cluster":     stepResourceCluster,
+		"resource_min_spacing": stepResourceMinSpacing,
+		"mirror":               stepMirror,
+		"player_starts":        stepPlayerStarts,
+		"define":               stepDefine,
+	}
 }

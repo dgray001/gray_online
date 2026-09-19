@@ -172,10 +172,10 @@ func stepTerrainFill(ctx *mapScriptContext, raw json.RawMessage) error {
 
 type terrainBlobParams struct {
 	terrainPickJSON
-	SeedCount  int    `json:"seed_count"`
-	Size       int    `json:"size"`
-	MinSpacing int    `json:"min_spacing"`
-	Region     string `json:"region,omitempty"`
+	SeedCount  ScriptExpr `json:"seed_count"`
+	Size       ScriptExpr `json:"size"`
+	MinSpacing ScriptExpr `json:"min_spacing"`
+	Region     string     `json:"region,omitempty"`
 }
 
 func stepTerrainBlob(ctx *mapScriptContext, raw json.RawMessage) error {
@@ -183,16 +183,28 @@ func stepTerrainBlob(ctx *mapScriptContext, raw json.RawMessage) error {
 	if err := json.Unmarshal(raw, &p); err != nil {
 		panic(fmt.Sprintf("map script terrain_blob: %v", err))
 	}
+	seed_count, err := p.SeedCount.resolveInt(ctx.vars)
+	if err != nil {
+		return err
+	}
+	size, err := p.Size.resolveInt(ctx.vars)
+	if err != nil {
+		return err
+	}
+	min_spacing, err := p.MinSpacing.resolveInt(ctx.vars)
+	if err != nil {
+		return err
+	}
 	all := ctx.allSpaces()
 	if len(all) == 0 {
 		return nil
 	}
-	seeds := make([]*RisqSpace, 0, p.SeedCount)
-	for attempt := 0; attempt < p.SeedCount*20 && len(seeds) < p.SeedCount; attempt++ {
+	seeds := make([]*RisqSpace, 0, seed_count)
+	for attempt := 0; attempt < seed_count*20 && len(seeds) < seed_count; attempt++ {
 		candidate := all[ctx.rng.Intn(len(all))]
 		ok := true
 		for _, s := range seeds {
-			if int(game_utils.AxialDistance(candidate.coordinate, s.coordinate)) < p.MinSpacing {
+			if int(game_utils.AxialDistance(candidate.coordinate, s.coordinate)) < min_spacing {
 				ok = false
 				break
 			}
@@ -203,7 +215,7 @@ func stepTerrainBlob(ctx *mapScriptContext, raw json.RawMessage) error {
 	}
 	region := ctx.region(p.Region)
 	for _, seed := range seeds {
-		blob := growSpaceBlob(seed, p.Size, ctx.rng)
+		blob := growSpaceBlob(seed, size, ctx.rng)
 		for key, space := range blob {
 			terrain_id, err := p.resolve(ctx.rng)
 			if err != nil {
@@ -225,7 +237,7 @@ type axialParamJSON struct {
 
 type terrainLineParams struct {
 	terrainPickJSON
-	Width  int            `json:"width"`
+	Width  ScriptExpr     `json:"width"`
 	From   axialParamJSON `json:"from"`
 	To     axialParamJSON `json:"to"`
 	Region string         `json:"region,omitempty"`
@@ -236,6 +248,10 @@ func stepTerrainLine(ctx *mapScriptContext, raw json.RawMessage) error {
 	if err := json.Unmarshal(raw, &p); err != nil {
 		panic(fmt.Sprintf("map script terrain_line: %v", err))
 	}
+	width, err := p.Width.resolveInt(ctx.vars)
+	if err != nil {
+		return err
+	}
 	from := game_utils.Coordinate2D{X: p.From.X, Y: p.From.Y}
 	to := game_utils.Coordinate2D{X: p.To.X, Y: p.To.Y}
 	path := hexLine(from, to, ctx.risq)
@@ -244,7 +260,7 @@ func stepTerrainLine(ctx *mapScriptContext, raw json.RawMessage) error {
 	for _, cell := range path {
 		strip := map[uint]*RisqSpace{cell.coordinate_key: cell}
 		frontier := []*RisqSpace{cell}
-		for depth := 1; depth < p.Width; depth++ {
+		for depth := 1; depth < width; depth++ {
 			next := make([]*RisqSpace, 0)
 			for _, cur := range frontier {
 				for _, adj := range cur.adjacent_spaces {
@@ -276,8 +292,8 @@ func stepTerrainLine(ctx *mapScriptContext, raw json.RawMessage) error {
 
 type terrainBorderParams struct {
 	terrainPickJSON
-	Width  int    `json:"width"`
-	Region string `json:"region,omitempty"`
+	Width  ScriptExpr `json:"width"`
+	Region string     `json:"region,omitempty"`
 }
 
 func stepTerrainBorder(ctx *mapScriptContext, raw json.RawMessage) error {
@@ -285,9 +301,13 @@ func stepTerrainBorder(ctx *mapScriptContext, raw json.RawMessage) error {
 	if err := json.Unmarshal(raw, &p); err != nil {
 		panic(fmt.Sprintf("map script terrain_border: %v", err))
 	}
+	width, err := p.Width.resolveInt(ctx.vars)
+	if err != nil {
+		return err
+	}
 	region := ctx.region(p.Region)
 	center := game_utils.Coordinate2D{X: 0, Y: 0}
-	threshold := int(ctx.board_size) - p.Width
+	threshold := int(ctx.board_size) - width
 	for _, space := range ctx.allSpaces() {
 		if int(game_utils.AxialDistance(space.coordinate, center)) < threshold {
 			continue
@@ -401,7 +421,7 @@ func weightedResourceCategory(weights map[string]float64, rng *rand.Rand) []uint
 }
 
 type resourceScatterParams struct {
-	Chance          float64            `json:"chance"`
+	Chance          ScriptExpr         `json:"chance"`
 	CategoryWeights map[string]float64 `json:"category_weights"`
 }
 
@@ -410,12 +430,16 @@ func stepResourceScatter(ctx *mapScriptContext, raw json.RawMessage) error {
 	if err := json.Unmarshal(raw, &p); err != nil {
 		panic(fmt.Sprintf("map script resource_scatter: %v", err))
 	}
+	chance, err := p.Chance.resolve(ctx.vars)
+	if err != nil {
+		return err
+	}
 	for _, space := range ctx.allSpaces() {
 		for _, zone := range space.getZonesAsRandomArray(false, ctx.rng) {
 			if zone.resource != nil || zone.building != nil {
 				continue
 			}
-			if ctx.rng.Float64() >= p.Chance {
+			if ctx.rng.Float64() >= chance {
 				continue
 			}
 			ids := weightedResourceCategory(p.CategoryWeights, ctx.rng)
@@ -430,9 +454,9 @@ func stepResourceScatter(ctx *mapScriptContext, raw json.RawMessage) error {
 }
 
 type resourceClusterParams struct {
-	ResourceId uint32 `json:"resource_id"`
-	SeedCount  int    `json:"seed_count"`
-	Size       int    `json:"size"`
+	ResourceId uint32     `json:"resource_id"`
+	SeedCount  ScriptExpr `json:"seed_count"`
+	Size       ScriptExpr `json:"size"`
 }
 
 func stepResourceCluster(ctx *mapScriptContext, raw json.RawMessage) error {
@@ -440,15 +464,23 @@ func stepResourceCluster(ctx *mapScriptContext, raw json.RawMessage) error {
 	if err := json.Unmarshal(raw, &p); err != nil {
 		panic(fmt.Sprintf("map script resource_cluster: %v", err))
 	}
+	seed_count, err := p.SeedCount.resolveInt(ctx.vars)
+	if err != nil {
+		return err
+	}
+	size, err := p.Size.resolveInt(ctx.vars)
+	if err != nil {
+		return err
+	}
 	candidates := make([]*RisqZone, 0)
 	for _, z := range ctx.allZones() {
 		if !z.isCenter() && z.resource == nil && z.building == nil {
 			candidates = append(candidates, z)
 		}
 	}
-	for i := 0; i < p.SeedCount && len(candidates) > 0; i++ {
+	for i := 0; i < seed_count && len(candidates) > 0; i++ {
 		seed := candidates[ctx.rng.Intn(len(candidates))]
-		for _, z := range growZoneBlob(seed, p.Size, ctx.rng) {
+		for _, z := range growZoneBlob(seed, size, ctx.rng) {
 			if z.isCenter() || z.resource != nil || z.building != nil {
 				continue
 			}
@@ -459,13 +491,17 @@ func stepResourceCluster(ctx *mapScriptContext, raw json.RawMessage) error {
 }
 
 type resourceMinSpacingParams struct {
-	Distance int `json:"distance"`
+	Distance ScriptExpr `json:"distance"`
 }
 
 func stepResourceMinSpacing(ctx *mapScriptContext, raw json.RawMessage) error {
 	var p resourceMinSpacingParams
 	if err := json.Unmarshal(raw, &p); err != nil {
 		panic(fmt.Sprintf("map script resource_min_spacing: %v", err))
+	}
+	distance, err := p.Distance.resolveInt(ctx.vars)
+	if err != nil {
+		return err
 	}
 	resource_zones := make([]*RisqZone, 0)
 	for _, z := range ctx.allZones() {
@@ -477,7 +513,7 @@ func stepResourceMinSpacing(ctx *mapScriptContext, raw json.RawMessage) error {
 	for _, z := range util.ShuffleFrom(ctx.rng, resource_zones) {
 		too_close := false
 		for _, k := range kept {
-			if int(game_utils.AxialDistance(z.space.coordinate, k.space.coordinate)) < p.Distance {
+			if int(game_utils.AxialDistance(z.space.coordinate, k.space.coordinate)) < distance {
 				too_close = true
 				break
 			}
@@ -493,8 +529,8 @@ func stepResourceMinSpacing(ctx *mapScriptContext, raw json.RawMessage) error {
 }
 
 type playerStartResourceJSON struct {
-	ResourceId uint32 `json:"resource_id"`
-	Count      int    `json:"count"`
+	ResourceId uint32     `json:"resource_id"`
+	Count      ScriptExpr `json:"count"`
 }
 
 type playerStartBuildingJSON struct {
@@ -503,10 +539,10 @@ type playerStartBuildingJSON struct {
 
 type playerStartsParams struct {
 	terrainPickJSON
-	Pattern   string                     `json:"pattern"`
-	AreaSize  int                        `json:"area_size"`
-	Resources []playerStartResourceJSON  `json:"resources"`
-	Buildings []playerStartBuildingJSON  `json:"buildings"`
+	Pattern   string                    `json:"pattern"`
+	AreaSize  ScriptExpr                `json:"area_size"`
+	Resources []playerStartResourceJSON `json:"resources"`
+	Buildings []playerStartBuildingJSON `json:"buildings"`
 }
 
 var playerStartRingOffsets = map[int][]int{
@@ -530,6 +566,10 @@ func stepPlayerStarts(ctx *mapScriptContext, raw json.RawMessage) error {
 	if !ok {
 		return fmt.Errorf("unsupported player count %d", ctx.num_players)
 	}
+	area_size, err := p.AreaSize.resolveInt(ctx.vars)
+	if err != nil {
+		return err
+	}
 	directions := game_utils.AxialDirectionVectors()
 	starting_direction := util.RandomIntFrom(ctx.rng, 0, 5)
 	ctx.player_starts = make([]playerStartInfo, len(ctx.risq.players))
@@ -541,7 +581,7 @@ func stepPlayerStarts(ctx *mapScriptContext, raw json.RawMessage) error {
 		}
 		ctx.player_starts[i] = playerStartInfo{space: space, direction: direction}
 		player := ctx.risq.players[i]
-		footprint := growSpaceBlob(space, max(1, p.AreaSize), ctx.rng)
+		footprint := growSpaceBlob(space, max(1, area_size), ctx.rng)
 		for _, s := range footprint {
 			terrain_id, err := p.resolve(ctx.rng)
 			if err != nil {
@@ -579,7 +619,11 @@ func stepPlayerStarts(ctx *mapScriptContext, raw json.RawMessage) error {
 			ctx.risq.buildings[building.internal_id] = building
 		}
 		for _, r := range p.Resources {
-			for range r.Count {
+			count, err := r.Count.resolveInt(ctx.vars)
+			if err != nil {
+				return err
+			}
+			for range count {
 				target := nextFreeZone()
 				if target == nil {
 					break

@@ -159,7 +159,7 @@ export class RisqMinimap implements CanvasComponent {
         for (const row of game.spaces) {
           for (const space of row) {
             const minimap_canvas = this.coordinateToMinimapCanvas(space.coordinate);
-            const owner_color = spaceOwnerColor(space, game.players);
+            const owner_color = spaceOwnerColor(space.ownership, game.players);
             if (space.visibility === RisqVisibilityLevel.UNEXPLORED || view_mode === RisqViewMode.OWNERSHIP) {
               const fill = getSpaceFill(space, RisqViewMode.OWNERSHIP, owner_color, false);
               ctx.fillStyle = `rgb(${fill.getR()}, ${fill.getG()}, ${fill.getB()})`;

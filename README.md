@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.8k: Farming
+v0.8l: Initial map scripting
 
 ## Dev Use
 

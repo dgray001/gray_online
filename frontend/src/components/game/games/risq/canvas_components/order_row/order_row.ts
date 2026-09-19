@@ -11,7 +11,7 @@ import type { RisqOrderRowConfig } from './order_row_data';
 import type { ResolvedRow } from './order_row_resolve';
 import { resolveOrderRow } from './order_row_resolve';
 
-const ROW_H = 30;
+export const ROW_H = 30;
 const COLLAPSED_STRIP_H = 14;
 const ICON_S = 20;
 const PADDING = 5;

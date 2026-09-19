@@ -70,7 +70,7 @@ export function drawRisqSpace(
   space: RisqSpace,
   config: DrawRisqSpaceConfig
 ) {
-  const owner_color = spaceOwnerColor(space, game.getGame()?.players ?? []);
+  const owner_color = spaceOwnerColor(space.ownership, game.getGame()?.players ?? []);
   ctx.strokeStyle = 'transparent';
   ctx.lineWidth = space_line_width[config.draw_detail];
   let black_text = false;
@@ -135,7 +135,7 @@ export function drawRisqSpaceBorder(
   space: RisqSpace,
   config: DrawRisqSpaceConfig
 ) {
-  const owner_color = spaceOwnerColor(space, game.getGame()?.players ?? []);
+  const owner_color = spaceOwnerColor(space.ownership, game.getGame()?.players ?? []);
   const line_width = space_line_width[config.draw_detail];
   ctx.fillStyle = 'transparent';
   ctx.strokeStyle = borderStrokeStyle(owner_color, 1);

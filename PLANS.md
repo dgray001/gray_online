@@ -1,7 +1,5 @@
 v0.9: Risq beta version
- 
- l: Bottom bar in UI (summary report, view buttons, tech tree)
- m: Map scripting setup and initial map
+ m: Bottom bar in UI (summary report, view buttons, tech tree)
  n: Regions
  o: Mercenaries
  p: AI v3 working
@@ -14,8 +12,8 @@ v0.9: Risq beta version
     => Settings setup (including alt win conditions)
 
 UI Improvements:
- - Message logic for top of screen (like for pop capped)
  - Images for all buildings
+ - Right clicks shouldn't unselect anything
 
 Fiddlesticks Plans:
  - Revamp update dialog box

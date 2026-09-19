@@ -48,9 +48,10 @@ import {
   unhoverRisqZone,
   unitsByPlayerFiltered,
 } from '../../risq_zone';
-import { RisqViewMode, spaceOwnerColor, terrainImage } from '../../risq_terrain';
+import { RisqViewMode, spaceOwnerColor, terrainImage, terrainTypeLabel } from '../../risq_terrain';
 import { ColorRGB } from '../../../../../../scripts/color_rgb';
 import { RisqOrdersList } from '../right_panel/orders_list';
+import { ROW_H as ORDER_ROW_H } from '../order_row/order_row';
 import type { RisqActionButton } from './action_button/action_button';
 import { RisqBuildButton } from './action_button/build_button';
 import { RisqCreateButton } from './action_button/create_button';
@@ -82,9 +83,7 @@ export class RisqLeftPanel implements CanvasComponent {
   private static PADDING = 5;
   private static BUILDING_ACTION_GRID_ROWS = 3;
   private static ACTION_GRID_COLS = 5;
-  private static BUILDING_GARRISON_ROWS = 2;
   private static UNIT_ACTION_GRID_ROWS = 4;
-  private static UNIT_GARRISON_ROWS = 1;
   private static HEALTH_ROW_H = 14;
   private static STAT_ROW_H = 20;
 
@@ -106,6 +105,7 @@ export class RisqLeftPanel implements CanvasComponent {
   private space_military_row_button?: RisqSpaceUnitsRowButton;
   private healthbar_row: RectHoverData = { ps: { x: 0, y: 0 }, pe: { x: 0, y: 0 } };
   private separator_below_stats = 0;
+  private garrison_rows = 0;
   private garrison_separator = 0;
   private grid_bottom_separator = 0;
   private grid_s = 0;
@@ -507,16 +507,16 @@ export class RisqLeftPanel implements CanvasComponent {
     this.separator_below_stats = this.statsSectionEnd() + P;
     const region_top = this.separator_below_stats + P;
     const region_bottom = this.yi() + 0.75 * this.size.y - P;
-    const garrison_rows = this.isUnit() ? RisqLeftPanel.UNIT_GARRISON_ROWS : RisqLeftPanel.BUILDING_GARRISON_ROWS;
     const action_rows = this.isUnit() ? RisqLeftPanel.UNIT_ACTION_GRID_ROWS : RisqLeftPanel.BUILDING_ACTION_GRID_ROWS;
-    const total_rows = garrison_rows + action_rows;
+    const garrison_rows = this.isBuilding() ? this.buildingGarrisonRows() : 0;
+    this.garrison_rows = garrison_rows;
     const avail = region_bottom - region_top;
     const s = Math.min(
       (this.w() - (RisqLeftPanel.ACTION_GRID_COLS + 1) * P) / RisqLeftPanel.ACTION_GRID_COLS,
-      (avail - total_rows * P) / total_rows
+      (avail - action_rows * P) / action_rows
     );
     this.garrison_separator = region_top + garrison_rows * (s + P);
-    const y0 = this.garrison_separator + P;
+    const y0 = garrison_rows > 0 ? this.garrison_separator + P : region_top;
     const grid_w = RisqLeftPanel.ACTION_GRID_COLS * s + (RisqLeftPanel.ACTION_GRID_COLS - 1) * P;
     const x0 = this.xi() + 0.5 * (this.w() - grid_w);
     this.grid_s = s;
@@ -528,14 +528,20 @@ export class RisqLeftPanel implements CanvasComponent {
         y: y0 + button.row * (s + RisqLeftPanel.PADDING),
       });
     }
-    this.grid_bottom_separator = region_top + total_rows * (s + P) + P;
-    const orders_y0 = this.grid_bottom_separator + RisqLeftPanel.PADDING;
+    this.grid_bottom_separator = y0 + action_rows * (s + P);
+    const min_orders_height = 2 * this.order_rows_list.getPadding() + 2 * ORDER_ROW_H + this.order_rows_list.getGap();
+    const orders_y0 = Math.min(this.grid_bottom_separator + P, this.yi() + this.size.y - P - min_orders_height);
     this.order_rows_list.setAllSizes(
       Math.min(0.1 * this.w(), 16),
       { x: this.xi() + RisqLeftPanel.PADDING, y: orders_y0 },
       this.w() - 2 * RisqLeftPanel.PADDING,
       this.yi() + this.size.y - orders_y0 - RisqLeftPanel.PADDING
     );
+  }
+
+  private buildingGarrisonRows(): number {
+    const capacity = this.data?.data_type === LeftPanelDataType.BUILDING ? this.data.data.garrison_capacity : 0;
+    return capacity > 0 ? Math.ceil(capacity / RisqLeftPanel.ACTION_GRID_COLS) : 0;
   }
 
   isHovering(): boolean {
@@ -988,13 +994,18 @@ export class RisqLeftPanel implements CanvasComponent {
     const P = RisqLeftPanel.PADDING;
     const top = this.separator_below_stats + P;
     const units = this.garrisonedUnits(building);
+    const slot_p = (i: number): Point2D => ({
+      x: this.grid_x0 + (i % RisqLeftPanel.ACTION_GRID_COLS) * (s + P),
+      y: top + Math.floor(i / RisqLeftPanel.ACTION_GRID_COLS) * (s + P),
+    });
     for (const [i, unit] of units.entries()) {
-      if (i >= RisqLeftPanel.BUILDING_GARRISON_ROWS * RisqLeftPanel.ACTION_GRID_COLS) {
-        break;
-      }
-      const row = Math.floor(i / RisqLeftPanel.ACTION_GRID_COLS);
-      const col = i % RisqLeftPanel.ACTION_GRID_COLS;
-      this.drawUnitImage(ctx, unit, { x: this.grid_x0 + col * (s + P), y: top + row * (s + P) }, s);
+      this.drawUnitImage(ctx, unit, slot_p(i), s);
+    }
+    ctx.fillStyle = 'transparent';
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 1;
+    for (let i = units.length; i < building.garrison_capacity; i++) {
+      drawRect(ctx, slot_p(i), s, s);
     }
   }
 
@@ -1039,7 +1050,9 @@ export class RisqLeftPanel implements CanvasComponent {
 
   private drawUnitSeparators(ctx: CanvasRenderingContext2D, single_owner_player_id?: number) {
     if (single_owner_player_id !== undefined && this.risq.getPlayer()?.player.player_id === single_owner_player_id) {
-      this.drawSeparator(ctx, this.garrison_separator);
+      if (this.garrison_rows > 0) {
+        this.drawSeparator(ctx, this.garrison_separator);
+      }
       this.drawSeparator(ctx, this.grid_bottom_separator);
     }
   }
@@ -1212,7 +1225,9 @@ export class RisqLeftPanel implements CanvasComponent {
     this.drawStats(ctx, yi, unit.combat_stats, unit.current_stamina, unit.attack_range);
     if (this.risq.getPlayer()?.player.player_id === unit.player_id) {
       this.drawSeparator(ctx, this.separator_below_stats);
-      this.drawSeparator(ctx, this.garrison_separator);
+      if (this.garrison_rows > 0) {
+        this.drawSeparator(ctx, this.garrison_separator);
+      }
       this.drawSeparator(ctx, this.grid_bottom_separator);
     }
   }
@@ -1266,9 +1281,11 @@ export class RisqLeftPanel implements CanvasComponent {
     this.drawStats(ctx, yi, building.combat_stats, building.current_stamina, building.attack_range);
     if (this.risq.getPlayer()?.player.player_id === building.player_id) {
       this.drawSeparator(ctx, this.separator_below_stats);
-      this.drawSeparator(ctx, this.garrison_separator);
+      if (this.garrison_rows > 0) {
+        this.drawSeparator(ctx, this.garrison_separator);
+        this.drawGarrisonedUnits(ctx, building);
+      }
       this.drawSeparator(ctx, this.grid_bottom_separator);
-      this.drawGarrisonedUnits(ctx, building);
     }
   }
 
@@ -1293,7 +1310,7 @@ export class RisqLeftPanel implements CanvasComponent {
 
   private drawSpace(ctx: CanvasRenderingContext2D, space: RisqSpace) {
     let yi = this.yi() + this.drawName(ctx, space.display_name);
-    drawText(ctx, 'space', {
+    drawText(ctx, `${terrainTypeLabel(space.terrain_type)} space`, {
       p: { x: this.xc(), y: yi },
       w: this.w(),
       fill_style: 'black',
@@ -1356,7 +1373,7 @@ export class RisqLeftPanel implements CanvasComponent {
         this.risq.getIcon(resourceTypeImage(RisqResourceType.GOLD)),
         `${(space.gold_income ?? 0).toFixed(1)}/turn`
       );
-      const owner_color = spaceOwnerColor(space, this.risq.getGame()?.players ?? []);
+      const owner_color = spaceOwnerColor(space.ownership, this.risq.getGame()?.players ?? []);
       const owner_name = owner_color
         ? (this.risq.getGame()?.players[space.ownership ?? -1]?.player.nickname ?? 'Unknown')
         : '--Unclaimed--';
@@ -1487,7 +1504,7 @@ export class RisqLeftPanel implements CanvasComponent {
     curr_zone: Point2D = { x: -1, y: -1 }
   ): number {
     const hexagon_height = Math.min(this.w(), this.yi() + 0.4 * this.h() - yi - separator_distance);
-    const owner_color = spaceOwnerColor(space, this.risq.getGame()?.players ?? []);
+    const owner_color = spaceOwnerColor(space.ownership, this.risq.getGame()?.players ?? []);
     ctx.strokeStyle = borderStrokeStyle(owner_color, 1);
     ctx.lineWidth = 2;
     const r = 0.5 * hexagon_height;
@@ -1571,7 +1588,7 @@ export class RisqLeftPanel implements CanvasComponent {
 
   private drawZone(ctx: CanvasRenderingContext2D, data: { space: RisqSpace; zone: RisqZone }) {
     let yi = this.yi() + this.drawName(ctx, data.space.display_name);
-    drawText(ctx, 'zone', {
+    drawText(ctx, `${terrainTypeLabel(data.space.terrain_type)} zone`, {
       p: { x: this.xc(), y: yi },
       w: this.w(),
       fill_style: 'black',
@@ -1589,7 +1606,7 @@ export class RisqLeftPanel implements CanvasComponent {
     const economic_rows = Math.ceil(data.zone.economic_units.length / units_per_row);
     const military_rows = Math.ceil(data.zone.military_units.length / units_per_row);
     const unit_count_rows = this.visibility === RisqVisibilityLevel.POOR && !!data.zone.unit_count ? 1 : 0;
-    const rows = 1 + unit_count_rows + economic_rows + military_rows;
+    const rows = 2 + unit_count_rows + economic_rows + military_rows;
     const image_size = Math.min(
       max_image_size,
       (1 / rows) * (0.6 * this.h() - separator_distance - (rows - 1) * separator_distance)
@@ -1640,6 +1657,24 @@ export class RisqLeftPanel implements CanvasComponent {
         data.zone.building?.hover_data
       );
     }
+    yi += image_size + separator_distance;
+    const owner_color = spaceOwnerColor(data.zone.ownership, this.risq.getGame()?.players ?? []);
+    const owner_name = owner_color
+      ? (this.risq.getGame()?.players[data.zone.ownership]?.player.nickname ?? 'Unknown')
+      : '--Unclaimed--';
+    const owner_ps = { x: this.xi() + 0.1 * this.w(), y: yi };
+    ctx.fillStyle = owner_color ? owner_color.getString() : 'rgba(255, 255, 255, 0.3)';
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 1;
+    drawRect(ctx, owner_ps, image_size, image_size);
+    drawText(ctx, `: ${owner_name}`, {
+      p: { x: owner_ps.x + image_size + 2, y: yi + 0.5 * image_size },
+      w: 0.8 * this.w() - image_size - 2,
+      fill_style: 'black',
+      align: 'left',
+      baseline: 'middle',
+      font: `bold ${image_size}px serif`,
+    });
     yi += image_size + separator_distance;
     const xi = this.xi() + 0.1 * this.w() + 0.6 * image_size;
     if (unit_count_rows > 0) {

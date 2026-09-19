@@ -184,41 +184,42 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameR
 			}
 		}
 	}
-	starting_location := util.RandomIntFrom(risq.rng, 0, 5)
-	axial_unit_vectors := game_utils.AxialDirectionVectors()
-	direction_offsets := map[int][]int{
-		1: {0},
-		2: {0, 3},
-		3: {0, 2, 4},
-		4: {0, 1, 3, 4},
-		5: {0, 1, 2, 3, 4},
-		6: {0, 1, 2, 3, 4, 5},
+	map_name, ok := g.GameSpecificSettings["map"].(string)
+	if !ok || map_name == "" {
+		map_name = "default"
 	}
-	offsets, ok := direction_offsets[len(risq.players)]
-	if !ok {
-		return nil, errors.New("unknown number of players")
-	}
-	placed := make(map[uint]bool)
-	for i, offset := range offsets {
-		space := risq.getSpace(axial_unit_vectors[(starting_location+offset)%6].Multiply(starting_distance))
-		if space == nil {
-			return nil, errors.New("starting space is nil")
-		}
-		risq.createPlayerStart(risq.players[i], space, starting_units)
-		placed[space.coordinate_key] = true
-		for _, v := range axial_unit_vectors {
-			ring_space := risq.getSpace(space.coordinate.Add(&v))
-			if ring_space == nil || placed[ring_space.coordinate_key] {
-				continue
-			}
-			risq.placeFixedResourceSet(ring_space)
-			placed[ring_space.coordinate_key] = true
-		}
-	}
+	total_spaces := 0
 	for _, row := range risq.spaces {
-		for _, space := range row {
-			if !placed[space.coordinate_key] {
-				risq.placeUniformResources(space)
+		total_spaces += len(row)
+	}
+	ctx := &mapScriptContext{
+		risq:              &risq,
+		rng:               risq.rng,
+		num_players:       len(risq.players),
+		board_size:        risq.board_size,
+		starting_distance: starting_distance,
+		regions:           make(map[string]map[uint]bool),
+		vars:              newMapScriptVars(len(risq.players), risq.board_size, starting_distance, total_spaces),
+	}
+	if err := runMapScript(ctx, loadMapScript(map_name)); err != nil {
+		return nil, err
+	}
+	if len(ctx.player_starts) != len(risq.players) {
+		return nil, errors.New("map script did not place all player starts")
+	}
+	for i, start := range ctx.player_starts {
+		player := risq.players[i]
+		unit_ids := make([]uint32, 0, len(starting_units))
+		for unit_id := range starting_units {
+			unit_ids = append(unit_ids, unit_id)
+		}
+		sort.Slice(unit_ids, func(i, j int) bool { return unit_ids[i] < unit_ids[j] })
+		for _, unit_id := range unit_ids {
+			for range starting_units[unit_id] {
+				unit := createRisqUnit(risq.nextUnitInternalId(), unit_id, player)
+				start.space.setUnit(&game_utils.Coordinate2D{X: 0, Y: 0}, unit)
+				player.units[unit.internal_id] = unit
+				risq.units[unit.internal_id] = unit
 			}
 		}
 	}
@@ -248,58 +249,6 @@ func (r *GameRisq) logBoard() {
 	}
 }
 
-func (r *GameRisq) createPlayerStart(p *RisqPlayer, s *RisqSpace, starting_units map[uint32]int) {
-	village_center := createRisqBuilding(r.nextBuildingInternalId(), 1, p.player.Player_id)
-	s.setBuilding(&game_utils.Coordinate2D{X: 0, Y: 0}, village_center)
-	p.buildings[village_center.internal_id] = village_center
-	r.buildings[village_center.internal_id] = village_center
-	unit_ids := make([]uint32, 0, len(starting_units))
-	for unit_id := range starting_units {
-		unit_ids = append(unit_ids, unit_id)
-	}
-	sort.Slice(unit_ids, func(i, j int) bool { return unit_ids[i] < unit_ids[j] })
-	for _, unit_id := range unit_ids {
-		for range starting_units[unit_id] {
-			unit := createRisqUnit(r.nextUnitInternalId(), unit_id, p)
-			s.setUnit(&game_utils.Coordinate2D{X: 0, Y: 0}, unit)
-			p.units[unit.internal_id] = unit
-			r.units[unit.internal_id] = unit
-		}
-	}
-	r.placeFixedResourceSet(s)
-}
-
-// Fixed 5-node set (2 food, 2 wood, 1 stone) used for player starts and the ring around them
-func (r *GameRisq) placeFixedResourceSet(s *RisqSpace) {
-	zones := s.getZonesAsRandomArray(false, r.rng)
-	resource_ids := []uint32{1, 2, 11, 14, 21} // forage, deer, cedar, oak, stonemine
-	for i, resource_id := range resource_ids {
-		s.setResource(&zones[i].coordinate, createRisqResource(r.nextResourceInternalId(), resource_id))
-	}
-}
-
-// Probability an outer zone gets a resource node in the general (non-fixed) map
-const uniformResourceChance = 0.3
-
 var uniformFoodIds = []uint32{1, 2}
 var uniformWoodIds = []uint32{11, 12, 13, 14, 15, 16}
 var uniformStoneIds = []uint32{21}
-
-func (r *GameRisq) placeUniformResources(s *RisqSpace) {
-	for _, zone := range s.getZonesAsRandomArray(false, r.rng) {
-		if r.rng.Float64() >= uniformResourceChance {
-			continue
-		}
-		var ids []uint32
-		switch roll := r.rng.Float64(); {
-		case roll < 0.4:
-			ids = uniformFoodIds
-		case roll < 0.8:
-			ids = uniformWoodIds
-		default:
-			ids = uniformStoneIds
-		}
-		resource_id := ids[r.rng.Intn(len(ids))]
-		s.setResource(&zone.coordinate, createRisqResource(r.nextResourceInternalId(), resource_id))
-	}
-}
