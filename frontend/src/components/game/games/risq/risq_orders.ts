@@ -30,6 +30,8 @@ export function orderArrowColor(order_type: RisqOrderType): string {
       return 'rgba(40, 110, 230, 0.9)';
     case RisqOrderType.OrderType_UnitRepair:
       return 'rgba(100, 170, 250, 0.9)';
+    case RisqOrderType.OrderType_UnitRenew:
+      return 'rgba(190, 200, 40, 0.9)';
     case RisqOrderType.OrderType_UnitGarrison:
       return 'rgba(255, 225, 0, 0.9)';
     case RisqOrderType.OrderType_UnitMoveSpace:

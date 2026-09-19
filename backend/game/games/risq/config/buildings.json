@@ -19,7 +19,7 @@
   {
     "building_id": 2,
     "display_name": "Housing",
-    "description": "Used to expand max population",
+    "description": "Used to expand max population.",
     "max_health": 120,
     "defense_blunt": 1,
     "defense_piercing": 3,
@@ -30,19 +30,19 @@
   {
     "building_id": 3,
     "display_name": "Farm",
-    "description": "TODO",
+    "description": "Grows food that can be harvested by villagers.",
     "max_health": 120,
-    "defense_blunt": 1,
-    "defense_piercing": 3,
-    "cost": { "wood": 60 },
+    "defense_blunt": 0,
+    "defense_piercing": 2,
+    "cost": { "wood": 80 },
     "build_stamina": 14,
     "required_tech_id": 1,
     "gatherable": {
       "resource_category": "food",
       "base_gather_speed": 8,
       "starting_resources": 200,
-      "gather_capacity": 1,
-      "renew_cost": { "wood": 20 },
+      "gather_capacity": 2,
+      "renew_cost": { "wood": 60 },
       "renew_stamina": 8
     }
   },
@@ -64,7 +64,7 @@
   {
     "building_id": 21,
     "display_name": "Outpost",
-    "description": "Used to see longer distances",
+    "description": "Used to see longer distances.",
     "max_health": 90,
     "defense_blunt": 1,
     "defense_piercing": 3,

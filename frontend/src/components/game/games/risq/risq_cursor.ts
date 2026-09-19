@@ -10,6 +10,7 @@ const ORDER_CURSOR_IMAGES: Partial<Record<RisqOrderType, string>> = {
   [RisqOrderType.OrderType_UnitGather]: 'gather',
   [RisqOrderType.OrderType_UnitBuild]: 'build',
   [RisqOrderType.OrderType_UnitRepair]: 'repair',
+  [RisqOrderType.OrderType_UnitRenew]: 'renew',
   [RisqOrderType.OrderType_UnitAttackSpace]: 'attack',
   [RisqOrderType.OrderType_UnitAttackZone]: 'attack',
   [RisqOrderType.OrderType_UnitAttackUnit]: 'attack',

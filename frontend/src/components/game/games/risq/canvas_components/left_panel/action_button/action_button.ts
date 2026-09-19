@@ -1,5 +1,7 @@
 import type { BoardTransformData } from '../../../../../util/canvas_board/canvas_board';
 import { DwgSquareButton } from '../../../../../util/canvas_components/button/square_button';
+import { configDraw } from '../../../../../util/canvas_components/canvas_component';
+import { drawRect } from '../../../../../util/canvas_util';
 import {
   createTooltipState,
   drawTooltip as drawGenericTooltip,
@@ -21,6 +23,7 @@ export abstract class RisqActionButton extends DwgSquareButton {
   readonly col: number;
   readonly description: string;
   protected tooltip_state = createTooltipState();
+  protected dimmed = false;
 
   constructor(config: RisqActionButtonConfig, s: number) {
     super({
@@ -51,6 +54,16 @@ export abstract class RisqActionButton extends DwgSquareButton {
 
   override draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
     super.draw(ctx, transform, dt);
+    if (this.isDisabled() || this.dimmed) {
+      configDraw(
+        ctx,
+        transform,
+        { fill_style: 'rgba(40, 30, 20, 0.55)', stroke_width: 0, fixed_position: true },
+        false,
+        false,
+        () => drawRect(ctx, { x: this.xi(), y: this.yi() }, this.w(), this.h())
+      );
+    }
   }
 
   protected getTooltipData(): RisqTooltipData {

@@ -198,6 +198,18 @@ func (i *RisqIntent) setRepair(target *RisqBuilding) {
 	i.max_cost = unitTickStaminaCost
 }
 
+type RenewIntent struct {
+	target *RisqBuilding
+}
+
+func (*RenewIntent) isIntentKind() {}
+
+func (i *RisqIntent) setRenew(target *RisqBuilding) {
+	i.detail = &RenewIntent{target: target}
+	i.min_cost = 1
+	i.max_cost = unitTickStaminaCost
+}
+
 type ConstructionIntent struct {
 	building_under_construction *RisqBuilding
 	building_id                 uint32

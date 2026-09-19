@@ -32,6 +32,7 @@ const ICON_TEXT_GAP = 4;
 const STAT_GAP = 6;
 const TITLE_COST_GAP = 10;
 const FONT = '12px serif';
+const TITLE_FONT = 'bold 13px serif';
 
 function costStats(data: RisqTooltipData): [string, string][] {
   const entries: [string, number][] = [];
@@ -88,7 +89,9 @@ function risqTooltipDraw(
     ctx.font = FONT;
     const cost_stats = costStats(data);
     const stats = (data.stats ?? []).map(([icon, value]) => [icon, value.toString()] as [string, string]);
+    ctx.font = TITLE_FONT;
     const title_w = ctx.measureText(data.title).width;
+    ctx.font = FONT;
     const row1_w = title_w + (cost_stats.length ? TITLE_COST_GAP + measureStatsRow(ctx, cost_stats) : 0);
     const desc_w = data.description ? ctx.measureText(data.description).width : 0;
     const stats_w = measureStatsRow(ctx, stats);
@@ -107,7 +110,7 @@ function risqTooltipDraw(
       fill_style: 'white',
       align: 'left',
       baseline: 'middle',
-      font: FONT,
+      font: TITLE_FONT,
     });
     if (cost_stats.length) {
       const costs_w = measureStatsRow(ctx, cost_stats);

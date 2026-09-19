@@ -1,5 +1,5 @@
 v0.9: Risq beta version
- k: Farming
+ 
  l: Bottom bar in UI (summary report, view buttons, tech tree)
  m: Map scripting setup and initial map
  n: Regions
@@ -34,7 +34,7 @@ Bugs:
  - Player's cards can automatically resize => listener on game div resize
    - fullscreen mode need to recalc card horizontal line
 
-v0.9: Database
+v1.0s: Database
  - Setup db in prod and dev
  - Can create profile / login
  - Can save games (handle ai players, people not logged in, etc)

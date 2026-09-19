@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 )
 
 //go:embed config/terrains.json
@@ -71,6 +72,7 @@ type terrainTypeJSON struct {
 
 var terrainConfigs map[uint32]TerrainConfig
 var terrainMoveCosts map[TerrainType]TerrainMoveCost
+var terrainIdsByType map[TerrainType][]uint32
 
 var lowestIntraMoveCost uint = 1
 var lowestInterMoveCost uint = 1
@@ -82,6 +84,7 @@ func init() {
 	}
 	terrainConfigs = make(map[uint32]TerrainConfig)
 	terrainMoveCosts = make(map[TerrainType]TerrainMoveCost, len(types))
+	terrainIdsByType = make(map[TerrainType][]uint32, len(types))
 	for _, t := range types {
 		terrain_type, err := parseTerrainType(t.TerrainType)
 		if err != nil {
@@ -100,8 +103,17 @@ func init() {
 				display_name: e.DisplayName,
 				terrain_type: terrain_type,
 			}
+			terrainIdsByType[terrain_type] = append(terrainIdsByType[terrain_type], e.TerrainId)
 		}
 	}
+}
+
+func randomTerrainId(terrain_type TerrainType, rng *rand.Rand) uint32 {
+	ids := terrainIdsByType[terrain_type]
+	if len(ids) == 0 {
+		return defaultTerrainId
+	}
+	return ids[rng.Intn(len(ids))]
 }
 
 func (t TerrainType) moveCost() TerrainMoveCost {

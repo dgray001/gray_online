@@ -203,6 +203,18 @@ func (u *RisqUnit) receiveOrder(o *RisqOrder, risq *GameRisq) error {
 			player.planned_foundations[zone.coordinate_key] = createRisqPlannedFoundation(building_id, player)
 		}
 		u.order_queue.receiveOrder(o)
+	case OrderType_UnitRenew:
+		target := risq.buildings[uint64(o.target_id)]
+		if target.renewing == nil {
+			cost := buildingConfigs[target.building_id].gather.renew_cost
+			player := risq.players[u.player_id]
+			if !player.resources.canAfford(cost) {
+				return errors.New("cannot afford renew")
+			}
+			player.resources.spend(cost)
+			target.renewing = &cost
+		}
+		u.order_queue.receiveOrder(o)
 	default:
 		u.order_queue.receiveOrder(o)
 	}
@@ -268,6 +280,13 @@ func (u *RisqUnit) orderReceivable(o *RisqOrder, risq *GameRisq) bool {
 		}
 		cache, ok := target.zone.buildingKnownTo(u.player_id)
 		return ok && cache.player_id == u.player_id && !cache.under_construction && cache.cs.health < float64(cache.cs.max_health)
+	case OrderType_UnitRenew:
+		target := risq.buildings[uint64(o.target_id)]
+		if u.unitType() != UnitType_ECONOMIC || target == nil || target.isDeleted() || target.player_id != u.player_id || target.underConstruction() {
+			return false
+		}
+		config := buildingConfigs[target.building_id]
+		return config.isGatherable() && target.resources_left < config.gather.starting_resources
 	case OrderType_UnitGarrison:
 		target := risq.buildings[uint64(o.target_id)]
 		return u.garrisonTargetValid(risq, target) && uint16(len(target.garrisoned_units)) < target.garrison_capacity && u.garrisoned_in != target
@@ -382,6 +401,18 @@ func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 			if _, cost, ok := repairHealAndCost(target, 1); !ok || risq.players[u.player_id].resources.affordFraction(cost) <= 0 {
 				return OrderStatus_Cancelled
 			}
+			if u.zone != target.zone && !u.canReach(target.zone, RisqRange_ZONE) {
+				return OrderStatus_Cancelled
+			}
+			return OrderStatus_InProgress
+		}
+	case OrderType_UnitRenew:
+		target := risq.buildings[uint64(o.target_id)]
+		if target == nil || target.isDeleted() {
+			return OrderStatus_Cancelled
+		}
+		config := buildingConfigs[target.building_id]
+		if target.player_id == u.player_id && !target.underConstruction() && config.isGatherable() && target.resources_left < config.gather.starting_resources {
 			if u.zone != target.zone && !u.canReach(target.zone, RisqRange_ZONE) {
 				return OrderStatus_Cancelled
 			}
@@ -686,6 +717,16 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 		} else {
 			u.intent.setRepair(target)
 		}
+	case OrderType_UnitRenew:
+		target := risq.buildings[uint64(order.target_id)]
+		if target == nil {
+			break
+		}
+		if u.zone != target.zone {
+			u.intent.setMove(u.findPath(target.zone, RisqRange_ZONE))
+		} else {
+			u.intent.setRenew(target)
+		}
 	case OrderType_UnitGarrison:
 		target := risq.buildings[uint64(order.target_id)]
 		if target == nil {
@@ -807,6 +848,20 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 		}
 		building.cs.addHealth(heal * afford)
 		player.resources.spend(cost.scale(afford))
+	case *RenewIntent:
+		building := detail.target
+		if building.deleted || building.renewing == nil {
+			return
+		}
+		config := buildingConfigs[building.building_id]
+		if config.gather.renew_stamina <= 0 {
+			return
+		}
+		delta := config.gather.starting_resources * float64(u.intent.intent_cost) / float64(config.gather.renew_stamina)
+		building.resources_left = min(building.resources_left+delta, config.gather.starting_resources)
+		if building.resources_left >= config.gather.starting_resources {
+			building.renewing = nil
+		}
 	case *GarrisonIntent:
 		target := detail.target
 		if u.garrisonTargetValid(risq, target) && u.zone == target.zone && risq.garrison_allotments[u] {

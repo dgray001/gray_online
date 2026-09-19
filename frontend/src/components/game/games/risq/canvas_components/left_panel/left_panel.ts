@@ -25,6 +25,7 @@ import {
   RisqUnitStance,
   RisqUnitType,
   RisqVisibilityLevel,
+  meetsTechRequirement,
 } from '../../risq_data';
 import { coordinateToIndex } from '../../risq_coordinates';
 import { createTooltipState, drawTooltip, shouldShowTooltip } from '../../../../util/canvas_components/tooltip';
@@ -249,6 +250,17 @@ export class RisqLeftPanel implements CanvasComponent {
         },
         this.risq,
         0
+      ),
+      new RisqOrderButton(
+        {
+          row: 1,
+          col: 2,
+          order_type: RisqOrderType.OrderType_UnitRenew,
+          image_path: 'icons/wheat128',
+          description: 'Renew',
+        },
+        this.risq,
+        0
       )
     );
   }
@@ -261,7 +273,7 @@ export class RisqLeftPanel implements CanvasComponent {
           col: 0,
           unit_internal_ids,
           stance: RisqUnitStance.AGGRESSIVE,
-          image_path: 'icons/swords32',
+          image_path: 'icons/swords128',
           description: 'Aggressive',
         },
         this.risq,
@@ -273,7 +285,7 @@ export class RisqLeftPanel implements CanvasComponent {
           col: 1,
           unit_internal_ids,
           stance: RisqUnitStance.DEFENSIVE,
-          image_path: 'icons/shield32',
+          image_path: 'icons/shield128',
           description: 'Defensive',
         },
         this.risq,
@@ -285,14 +297,21 @@ export class RisqLeftPanel implements CanvasComponent {
           col: 2,
           unit_internal_ids,
           stance: RisqUnitStance.STAND_GROUND,
-          image_path: '',
+          image_path: 'icons/stand_ground128',
           description: 'Stand Ground',
         },
         this.risq,
         0
       ),
       new RisqStanceButton(
-        { row: 1, col: 3, unit_internal_ids, stance: RisqUnitStance.PASSIVE, image_path: '', description: 'Passive' },
+        {
+          row: 1,
+          col: 3,
+          unit_internal_ids,
+          stance: RisqUnitStance.PASSIVE,
+          image_path: 'icons/passive128',
+          description: 'Passive',
+        },
         this.risq,
         0
       ),
@@ -323,13 +342,17 @@ export class RisqLeftPanel implements CanvasComponent {
       this.resolveSize();
       return;
     }
-    const own_player_id = this.risq.getPlayer()?.player.player_id;
+    const player = this.risq.getPlayer();
+    const own_player_id = player?.player.player_id;
     switch (this.data?.data_type) {
       case LeftPanelDataType.UNIT:
         this.pushUnitActionRow([this.data.data.internal_id]);
         if (this.isOnlyVillagers()) {
           this.pushVillagerActionRow();
           for (const producible of this.data.data.builds) {
+            if (!player || !meetsTechRequirement(player, producible.required_tech_id)) {
+              continue;
+            }
             this.buttons.push(new RisqBuildButton({ producible }, this.risq, 0));
           }
         }
@@ -347,6 +370,9 @@ export class RisqLeftPanel implements CanvasComponent {
           const representative =
             representative_id === undefined ? undefined : this.resolveUnit(own_player_id ?? -1, representative_id);
           for (const producible of representative?.builds ?? []) {
+            if (!player || !meetsTechRequirement(player, producible.required_tech_id)) {
+              continue;
+            }
             this.buttons.push(new RisqBuildButton({ producible }, this.risq, 0));
           }
         }
@@ -360,6 +386,9 @@ export class RisqLeftPanel implements CanvasComponent {
           break;
         }
         for (const producible of this.data.data.produces) {
+          if (!player || !meetsTechRequirement(player, producible.required_tech_id)) {
+            continue;
+          }
           if (producible.kind === RisqProducibleKind.UNIT) {
             this.buttons.push(
               new RisqCreateButton(
@@ -372,7 +401,7 @@ export class RisqLeftPanel implements CanvasComponent {
               )
             );
           } else if (producible.kind === RisqProducibleKind.TECH) {
-            if (this.risq.getPlayer()?.researched_techs.get(producible.id)) {
+            if (player.researched_techs.get(producible.id)) {
               continue;
             }
             this.buttons.push(
@@ -1731,38 +1760,33 @@ export class RisqLeftPanel implements CanvasComponent {
     }
   }
 
-  // Each row has 4 fixed column slots (blunt/piercing/magic/range); null means that slot is left blank
   private combatStatsGroups(cs: RisqCombatStats, attack_range: RisqRange): ([string, number] | null)[][] {
-    const groups: ([string, number] | null)[][] = [];
-    if (cs.attack_type !== RisqAttackType.NONE) {
-      groups.push([
-        this.attackTypeIncludes(cs.attack_type, 0) ? ['risq/icons/attack_blunt', cs.attack_blunt] : null,
-        this.attackTypeIncludes(cs.attack_type, 1) ? ['risq/icons/attack_piercing', cs.attack_piercing] : null,
-        this.attackTypeIncludes(cs.attack_type, 2) ? ['risq/icons/attack_magic', cs.attack_magic] : null,
-        this.rangeDistance(attack_range) !== null
-          ? ['risq/icons/attack_range', this.rangeDistance(attack_range)!]
-          : null,
-      ]);
-      const penetration: ([string, number] | null)[] = [
-        cs.penetration_blunt ? ['risq/icons/penetration_blunt', cs.penetration_blunt] : null,
-        cs.penetration_piercing ? ['risq/icons/penetration_piercing', cs.penetration_piercing] : null,
-        cs.penetration_magic ? ['risq/icons/penetration_magic', cs.penetration_magic] : null,
-        null,
-      ];
-      if (penetration.some((e) => e !== null)) {
-        groups.push(penetration);
-      }
-    }
+    const has_attack = cs.attack_type !== RisqAttackType.NONE;
+    const attack: ([string, number] | null)[] = has_attack
+      ? [
+          this.attackTypeIncludes(cs.attack_type, 0) ? ['risq/icons/attack_blunt', cs.attack_blunt] : null,
+          this.attackTypeIncludes(cs.attack_type, 1) ? ['risq/icons/attack_piercing', cs.attack_piercing] : null,
+          this.attackTypeIncludes(cs.attack_type, 2) ? ['risq/icons/attack_magic', cs.attack_magic] : null,
+          this.rangeDistance(attack_range) !== null
+            ? ['risq/icons/attack_range', this.rangeDistance(attack_range)!]
+            : null,
+        ]
+      : [null, null, null, null];
+    const penetration: ([string, number] | null)[] = has_attack
+      ? [
+          cs.penetration_blunt ? ['risq/icons/penetration_blunt', cs.penetration_blunt] : null,
+          cs.penetration_piercing ? ['risq/icons/penetration_piercing', cs.penetration_piercing] : null,
+          cs.penetration_magic ? ['risq/icons/penetration_magic', cs.penetration_magic] : null,
+          null,
+        ]
+      : [null, null, null, null];
     const defense: ([string, number] | null)[] = [
       cs.defense_blunt ? ['risq/icons/defense_blunt', cs.defense_blunt] : null,
       cs.defense_piercing ? ['risq/icons/defense_piercing', cs.defense_piercing] : null,
       cs.defense_magic ? ['risq/icons/defense_magic', cs.defense_magic] : null,
       null,
     ];
-    if (defense.some((e) => e !== null)) {
-      groups.push(defense);
-    }
-    return groups;
+    return [attack, defense, penetration];
   }
 
   // Returns the attack's space radius (0/1/2), or null if this isn't a ranged attack (RisqRange_ZONE)

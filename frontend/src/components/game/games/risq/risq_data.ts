@@ -221,6 +221,7 @@ export declare interface RisqBuilding {
   production_queue: RisqProductionQueueItem[];
   resources_left?: number;
   gather_capacity?: number;
+  renew_cost?: RisqCost;
   resource_category?: RisqResourceType;
   gather_point?: RisqGatherPoint; // only present to the owner or a viewer with spy-tier vision
   // purely frontend fields
@@ -370,6 +371,7 @@ export enum RisqOrderType {
   OrderType_UnitGather,
   OrderType_UnitBuild,
   OrderType_UnitRepair,
+  OrderType_UnitRenew,
   OrderType_UnitAttackSpace,
   OrderType_UnitAttackZone,
   OrderType_UnitAttackUnit,

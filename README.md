@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.8j: Building attacks
+v0.8k: Farming
 
 ## Dev Use
 

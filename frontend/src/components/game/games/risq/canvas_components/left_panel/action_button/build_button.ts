@@ -1,8 +1,9 @@
 import type { DwgRisq } from '../../../risq';
 import { RisqOrderType } from '../../../risq_data';
 import type { RisqProducible } from '../../../risq_data';
-import { canAffordCost, meetsTechRequirement } from '../../../risq_data';
+import { canAffordCost } from '../../../risq_data';
 import { buildingImage } from '../../../risq_buildings';
+import { RISQ_MESSAGE_WARNING_COLOR } from '../../message_queue';
 import { RisqRichTooltipActionButton } from './action_button';
 import type { RisqTooltipData } from '../../risq_tooltip';
 
@@ -38,14 +39,9 @@ export class RisqBuildButton extends RisqRichTooltipActionButton {
       this.risq.getArmedOrder() === RisqOrderType.OrderType_UnitBuild &&
       this.risq.getArmedBuildingId() === this.producible.id;
     const player = this.risq.getPlayer();
-    if (
-      !!player &&
-      this.risq.givingOrders() &&
-      !player.orders_submitted &&
-      canAffordCost(player, this.producible.cost) &&
-      meetsTechRequirement(player, this.producible.required_tech_id)
-    ) {
+    if (!!player && this.risq.givingOrders() && !player.orders_submitted) {
       this.enable();
+      this.dimmed = !canAffordCost(player, this.producible.cost);
     } else {
       this.disable();
     }
@@ -53,7 +49,9 @@ export class RisqBuildButton extends RisqRichTooltipActionButton {
 
   protected released(): void {
     if (this.isHovering()) {
-      if (this.armed) {
+      if (this.dimmed) {
+        this.risq.showMessage('Not enough resources', RISQ_MESSAGE_WARNING_COLOR);
+      } else if (this.armed) {
         this.armed = false;
         this.risq.disarmOrder();
       } else {

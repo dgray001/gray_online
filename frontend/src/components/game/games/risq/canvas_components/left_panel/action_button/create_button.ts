@@ -1,8 +1,9 @@
 import type { DwgRisq } from '../../../risq';
 import { RisqRichTooltipActionButton } from './action_button';
 import type { RisqProducible } from '../../../risq_data';
-import { meetsTechRequirement } from '../../../risq_data';
+import { canAffordCost } from '../../../risq_data';
 import { unitImage } from '../../../risq_unit';
+import { RISQ_MESSAGE_WARNING_COLOR } from '../../message_queue';
 import type { RisqTooltipData } from '../../risq_tooltip';
 
 export declare interface CreateButtonConfig {
@@ -32,13 +33,9 @@ export class RisqCreateButton extends RisqRichTooltipActionButton {
 
   override dataRefreshed(): void {
     const player = this.risq.getPlayer();
-    if (
-      !!player &&
-      this.risq.givingOrders() &&
-      !player.orders_submitted &&
-      meetsTechRequirement(player, this.producible.required_tech_id)
-    ) {
+    if (!!player && this.risq.givingOrders() && !player.orders_submitted) {
       this.enable();
+      this.dimmed = !canAffordCost(player, this.producible.cost);
     } else {
       this.disable();
     }
@@ -46,6 +43,10 @@ export class RisqCreateButton extends RisqRichTooltipActionButton {
 
   protected released(): void {
     if (this.isHovering()) {
+      if (this.dimmed) {
+        this.risq.showMessage('Not enough resources', RISQ_MESSAGE_WARNING_COLOR);
+        return;
+      }
       this.risq.createUnit(this.building_id, this.producible.id);
     }
   }

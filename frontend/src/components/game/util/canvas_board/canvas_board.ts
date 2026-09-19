@@ -342,7 +342,16 @@ export class DwgCanvasBoard extends DwgElement {
     );
     document.body.addEventListener('keydown', this.handleKeydown);
     document.body.addEventListener('keyup', this.handleKeyup);
+    window.addEventListener('blur', this.handleBlur);
   }
+
+  private handleBlur = () => {
+    this.sticky_pan = { up: false, down: false, left: false, right: false };
+    this.holding_keys = { arrow_up: false, arrow_down: false, arrow_left: false, arrow_right: false };
+    this.dragging = false;
+    this.dragged = false;
+    this.hovered = false;
+  };
 
   private handleKeydown = (e: KeyboardEvent) => {
     if (!this.hovered || isTypingInInput()) {
@@ -394,6 +403,7 @@ export class DwgCanvasBoard extends DwgElement {
     this.resize_observer.disconnect();
     document.body.removeEventListener('keydown', this.handleKeydown);
     document.body.removeEventListener('keyup', this.handleKeyup);
+    window.removeEventListener('blur', this.handleBlur);
   }
 
   private tick() {
@@ -417,7 +427,7 @@ export class DwgCanvasBoard extends DwgElement {
       d_view.x += arrow_key_speed;
       moved = true;
     }
-    if (!this.dragging && this.data.allow_side_move && this.hovered) {
+    if (!this.dragging && this.data.allow_side_move && this.hovered && document.hasFocus()) {
       if (!this.pan_suppressed.y && this.mouse.y < this.cursor_move_threshold) {
         d_view.y -= arrow_key_speed;
         moved = true;
@@ -434,7 +444,7 @@ export class DwgCanvasBoard extends DwgElement {
         d_view.x += arrow_key_speed;
         moved = true;
       }
-    } else if (!this.dragging && this.data.allow_side_move && !this.hovered) {
+    } else if (!this.dragging && this.data.allow_side_move && !this.hovered && document.hasFocus()) {
       if (this.sticky_pan.up) {
         d_view.y -= arrow_key_speed;
         moved = true;

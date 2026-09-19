@@ -87,6 +87,7 @@ const (
 	OrderType_UnitGather
 	OrderType_UnitBuild
 	OrderType_UnitRepair
+	OrderType_UnitRenew
 	OrderType_UnitAttackSpace
 	OrderType_UnitAttackZone
 	OrderType_UnitAttackUnit
@@ -417,6 +418,19 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend, player_id int)
 		for _, subject_id := range order.Subjects {
 			if r.players[order.Player_id].units[subject_id].unitType() != UnitType_ECONOMIC {
 				return fmt.Errorf("Only economic units can repair")
+			}
+		}
+	case OrderType_UnitRenew:
+		building := r.buildings[uint64(order.Target_id)]
+		if building == nil {
+			return fmt.Errorf("Invalid building target id %d", order.Target_id)
+		}
+		if !buildingConfigs[building.building_id].isGatherable() {
+			return fmt.Errorf("Building id %d is not gatherable", building.building_id)
+		}
+		for _, subject_id := range order.Subjects {
+			if r.players[order.Player_id].units[subject_id].unitType() != UnitType_ECONOMIC {
+				return fmt.Errorf("Only economic units can renew")
 			}
 		}
 	case OrderType_UnitAttackUnit:

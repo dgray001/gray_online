@@ -15,6 +15,10 @@ export class RisqBuildingAttackButton extends RisqActionButton {
     this.building_id = config.building_id;
   }
 
+  override isClicking(): boolean {
+    return super.isClicking() || this.risq.isBuildingAttackArmed();
+  }
+
   protected released(): void {
     if (this.isHovering()) {
       this.risq.attackFromBuilding(this.building_id);

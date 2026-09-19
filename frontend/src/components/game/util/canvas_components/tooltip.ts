@@ -98,6 +98,10 @@ export function createTooltipState<T = string>(config?: Partial<TooltipConfig<T>
   return { hover_ms: 0, config: { ...(DEFAULT_TOOLTIP_CONFIG as unknown as TooltipConfig<T>), ...config } };
 }
 
+// Once any tooltip has shown, hovering a new target within this window skips its own delay
+const GLOBAL_TOOLTIP_COOLDOWN_MS = 100;
+let last_tooltip_shown_at = -Infinity;
+
 export function shouldShowTooltip(
   state: { hover_ms: number; config: { delay_ms: number } },
   hovering: boolean,
@@ -108,8 +112,16 @@ export function shouldShowTooltip(
     state.hover_ms = 0;
     return false;
   }
+  const now = performance.now();
+  if (state.hover_ms === 0 && !clicked && now - last_tooltip_shown_at <= GLOBAL_TOOLTIP_COOLDOWN_MS) {
+    state.hover_ms = state.config.delay_ms;
+  }
   state.hover_ms = clicked ? state.config.delay_ms : state.hover_ms + dt;
-  return state.hover_ms >= state.config.delay_ms;
+  const show = state.hover_ms >= state.config.delay_ms;
+  if (show) {
+    last_tooltip_shown_at = now;
+  }
+  return show;
 }
 
 export function drawTooltip<T>(

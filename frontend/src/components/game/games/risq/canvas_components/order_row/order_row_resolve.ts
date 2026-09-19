@@ -36,6 +36,8 @@ export function shortLabel(order_type: RisqOrderType): string {
       return 'Build';
     case RisqOrderType.OrderType_UnitRepair:
       return 'Repair';
+    case RisqOrderType.OrderType_UnitRenew:
+      return 'Renew';
     case RisqOrderType.OrderType_BuildingCreate:
       return 'Create';
     case RisqOrderType.OrderType_BuildingResearch:
@@ -264,6 +266,18 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
       base = {
         icon: 'icons/repair32',
         name: `Repair ${building?.display_name ?? 'Building'}`,
+        target: building ? distance_text(building.space_coordinate, building.zone_coordinate) : '',
+        cost: [],
+      };
+      break;
+    }
+    case RisqOrderType.OrderType_UnitRenew: {
+      const building = game?.players
+        .flatMap((p) => [...p.buildings.values()])
+        .find((b) => b.internal_id === order.target_id);
+      base = {
+        icon: 'icons/wheat32',
+        name: `Renew ${building?.display_name ?? 'Building'}`,
         target: building ? distance_text(building.space_coordinate, building.zone_coordinate) : '',
         cost: [],
       };

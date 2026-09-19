@@ -36,6 +36,7 @@ type RisqBuilding struct {
 	attack_range               RisqRange
 	// Building gathering fields
 	resources_left float64
+	renewing       *RisqResourceCost
 }
 
 func (b *RisqBuilding) underConstruction() bool {
@@ -480,6 +481,7 @@ func (b *RisqBuilding) toFrontend(viewer_player_id int) gin.H {
 	if config.isGatherable() {
 		building["resources_left"] = b.resources_left
 		building["gather_capacity"] = config.gather.gather_capacity
+		building["renew_cost"] = config.gather.renew_cost.toFrontend()
 		building["resource_category"] = config.gather.resource_category
 	}
 	if b.zone != nil {

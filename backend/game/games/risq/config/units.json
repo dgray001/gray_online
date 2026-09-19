@@ -22,7 +22,7 @@
   {
     "unit_id": 11,
     "display_name": "Blunt Infantry",
-    "description": "A standard blunt infantry unit",
+    "description": "A standard blunt infantry unit.",
     "unit_type": "infantry",
     "max_health": 12,
     "attack_type": "blunt",
@@ -34,7 +34,7 @@
   {
     "unit_id": 12,
     "display_name": "Piercing Infantry",
-    "description": "A standard piercing infantry unit",
+    "description": "A standard piercing infantry unit.",
     "unit_type": "infantry",
     "max_health": 12,
     "attack_type": "piercing",

@@ -34,12 +34,14 @@ import type {
   UnitByTypeData,
 } from './risq_data';
 import {
+  RisqAttackType,
   RisqGatherObjectType,
   RisqGatherPointLocationKind,
   RisqOrderType,
   RisqProducibleKind,
   RisqResourceType,
   RisqVisibilityLevel,
+  canAffordCost,
   canHaveGatherPoint,
   serverToGameRisq,
 } from './risq_data';
@@ -60,6 +62,7 @@ import { DrawRisqSpaceDetail, drawRisqSpace, drawRisqSpaceBorder } from './risq_
 import { RisqLeftPanel } from './canvas_components/left_panel/left_panel';
 import type { UnitToggleField } from './canvas_components/left_panel/action_button/unit_toggle_button';
 import { RisqMinimap } from './canvas_components/minimap/risq_minimap';
+import { RISQ_MESSAGE_WARNING_COLOR, RisqMessageQueue } from './canvas_components/message_queue';
 import { RisqOrdersModel, isBuildingOrder, isUnitOrder, orderArrowColor } from './risq_orders';
 import {
   UNIT_SLOT_CIRCLE_RADIUS_MULTIPLIER,
@@ -180,7 +183,13 @@ export class DwgRisq extends DwgElement {
     target_w: 150,
     background: 'rgb(222,184,135)',
   });
-  private readonly canvas_components: CanvasComponent[] = [this.right_panel, this.left_panel, this.minimap];
+  private message_queue = new RisqMessageQueue(this);
+  private readonly canvas_components: CanvasComponent[] = [
+    this.right_panel,
+    this.left_panel,
+    this.minimap,
+    this.message_queue,
+  ];
 
   constructor() {
     super();
@@ -769,6 +778,7 @@ export class DwgRisq extends DwgElement {
         break;
       }
       case RisqOrderType.OrderType_UnitRepair:
+      case RisqOrderType.OrderType_UnitRenew:
       case RisqOrderType.OrderType_UnitAttackBuilding:
       case RisqOrderType.OrderType_UnitGarrison: {
         const building = this.findBuildingById(order.target_id);
@@ -1021,10 +1031,7 @@ export class DwgRisq extends DwgElement {
           this.unitGroupOrder(left_panel_data, e.ctrlKey);
           break;
         case LeftPanelDataType.BUILDING:
-          if (this.gather_point_armed) {
-            this.buildingGatherPointOrder(left_panel_data);
-            this.disarmGatherPoint();
-          }
+          this.buildingOrder(left_panel_data);
           break;
         default:
           break;
@@ -1047,6 +1054,7 @@ export class DwgRisq extends DwgElement {
     this.armed_building = building;
     this.armed_button_callback = on_disarm;
     this.gather_point_armed = false;
+    this.building_attack_armed = false;
     this.updateCursor(false);
   }
 
@@ -1054,14 +1062,31 @@ export class DwgRisq extends DwgElement {
     return this.gather_point_armed;
   }
 
+  isBuildingAttackArmed(): boolean {
+    return this.building_attack_armed;
+  }
+
   private armGatherPoint() {
     this.disarmOrder();
+    this.building_attack_armed = false;
     this.gather_point_armed = true;
     this.updateCursor(false);
   }
 
   private disarmGatherPoint() {
     this.gather_point_armed = false;
+    this.updateCursor(false);
+  }
+
+  private armBuildingAttack() {
+    this.disarmOrder();
+    this.gather_point_armed = false;
+    this.building_attack_armed = true;
+    this.updateCursor(false);
+  }
+
+  private disarmBuildingAttack() {
+    this.building_attack_armed = false;
     this.updateCursor(false);
   }
 
@@ -1162,7 +1187,11 @@ export class DwgRisq extends DwgElement {
   }
 
   attackFromBuilding(_building_id: number) {
-    // TODO: buildings can't attack yet
+    if (this.building_attack_armed) {
+      this.disarmBuildingAttack();
+    } else {
+      this.armBuildingAttack();
+    }
   }
 
   toggleBuildingGatherPoint(_building_id: number) {
@@ -1278,6 +1307,10 @@ export class DwgRisq extends DwgElement {
       },
       RisqVisibilityLevel.SPY
     );
+  }
+
+  showMessage(text: string, color: ColorRGB) {
+    this.message_queue.enqueue(text, color);
   }
 
   selectNextIdleUnit() {
@@ -1475,6 +1508,18 @@ export class DwgRisq extends DwgElement {
     );
   }
 
+  private renewTargetValid(): boolean {
+    const b = this.hovered_zone?.building;
+    return (
+      this.isZoneValid() &&
+      !!b &&
+      b.player_id === this.player_id &&
+      !b.under_construction &&
+      b.gather_capacity !== undefined &&
+      (b.resources_left ?? 0) <= 0
+    );
+  }
+
   private findBuildingById(internal_id: number): RisqBuilding | undefined {
     for (const player of this.game?.players ?? []) {
       const building = player.buildings.get(internal_id);
@@ -1623,6 +1668,11 @@ export class DwgRisq extends DwgElement {
             return RisqOrderType.OrderType_UnitRepair;
           }
           return RisqOrderType.NONE;
+        case RisqOrderType.OrderType_UnitRenew:
+          if (has_villager && this.renewTargetValid()) {
+            return RisqOrderType.OrderType_UnitRenew;
+          }
+          return RisqOrderType.NONE;
         case RisqOrderType.OrderType_UnitGarrison: {
           const building = this.hovered_zone?.building;
           if (
@@ -1659,6 +1709,9 @@ export class DwgRisq extends DwgElement {
         (this.hovered_zone.building.garrisoned_units?.length ?? 0) < this.hovered_zone.building.garrison_capacity
       ) {
         return RisqOrderType.OrderType_UnitGarrison;
+      }
+      if (has_villager && this.hovered_zone?.hovered_data[0]?.hovered && this.renewTargetValid()) {
+        return RisqOrderType.OrderType_UnitRenew;
       }
       if (has_villager && this.hovered_zone?.hovered_data[0]?.hovered && this.repairTargetValid()) {
         return RisqOrderType.OrderType_UnitRepair;
@@ -1713,6 +1766,14 @@ export class DwgRisq extends DwgElement {
     if (subjects.length === 0) {
       return;
     }
+    if (order_type === RisqOrderType.OrderType_UnitRenew) {
+      const player = this.getPlayer();
+      const cost = this.findBuildingById(target_id)?.renew_cost;
+      if (player && cost && !canAffordCost(player, cost)) {
+        this.showMessage('Not enough resources', RISQ_MESSAGE_WARNING_COLOR);
+        return;
+      }
+    }
     this.orders_model.add({
       player_id: this.player_id,
       order_type,
@@ -1731,6 +1792,72 @@ export class DwgRisq extends DwgElement {
       }
       const enemy = slot.find((t) => t.player_id !== this.player_id);
       return enemy ? [...enemy.units][0] : undefined;
+    }
+    return undefined;
+  }
+
+  private buildingOrder(data: BuildingData) {
+    const target = this.resolveBuildingAttackTarget(data.data);
+    if (target) {
+      this.orders_model.add({
+        player_id: this.player_id,
+        order_type:
+          target.kind === 'unit'
+            ? RisqOrderType.OrderType_BuildingAttackUnit
+            : RisqOrderType.OrderType_BuildingAttackBuilding,
+        subjects: [data.data.internal_id],
+        target_id: target.internal_id,
+        clear_previous_orders: false,
+      });
+    } else {
+      this.buildingGatherPointOrder(data);
+    }
+    this.disarmGatherPoint();
+    this.disarmBuildingAttack();
+  }
+
+  private resolveBuildingAttackTarget(
+    building: RisqBuilding
+  ): { kind: 'unit' | 'building'; internal_id: number } | undefined {
+    if (building.combat_stats.attack_type === RisqAttackType.NONE) {
+      return undefined;
+    }
+    if (this.draw_detail === DrawRisqSpaceDetail.ZONE_DETAILS && this.hovered_zone) {
+      const zone = this.hovered_zone;
+      const hovered = hoveredZoneObject(zone);
+      if (hovered?.kind === 'building' && zone.building && zone.building.player_id !== this.player_id) {
+        return { kind: 'building', internal_id: zone.building.internal_id };
+      }
+      if (hovered?.kind === 'unit') {
+        const enemy = hovered.groups.find((t) => t.player_id !== this.player_id);
+        const unit_id = enemy ? [...enemy.units][0] : undefined;
+        if (unit_id !== undefined) {
+          return { kind: 'unit', internal_id: unit_id };
+        }
+      }
+      if (!this.building_attack_armed) {
+        return undefined;
+      }
+      if (zone.building && zone.building.player_id !== this.player_id) {
+        return { kind: 'building', internal_id: zone.building.internal_id };
+      }
+      const enemy_unit = [...zone.units.values()].find((u) => u.player_id !== this.player_id);
+      if (enemy_unit) {
+        return { kind: 'unit', internal_id: enemy_unit.internal_id };
+      }
+      return undefined;
+    }
+    if (this.building_attack_armed && this.hovered_space) {
+      const enemy_building = [...(this.hovered_space.buildings?.values() ?? [])].find(
+        (b) => b.player_id !== this.player_id
+      );
+      if (enemy_building) {
+        return { kind: 'building', internal_id: enemy_building.internal_id };
+      }
+      const enemy_unit = [...(this.hovered_space.units?.values() ?? [])].find((u) => u.player_id !== this.player_id);
+      if (enemy_unit) {
+        return { kind: 'unit', internal_id: enemy_unit.internal_id };
+      }
     }
     return undefined;
   }
@@ -1912,6 +2039,17 @@ export class DwgRisq extends DwgElement {
           ctrl_held
         );
         break;
+      case RisqOrderType.OrderType_UnitRenew:
+        if (!this.hovered_zone?.building) {
+          return;
+        }
+        this.addUnitOrder(
+          RisqOrderType.OrderType_UnitRenew,
+          [data.data.internal_id],
+          this.hovered_zone.building.internal_id,
+          ctrl_held
+        );
+        break;
       default:
         this.disarmOrder();
         return;
@@ -2060,6 +2198,17 @@ export class DwgRisq extends DwgElement {
         }
         this.addUnitOrder(
           RisqOrderType.OrderType_UnitRepair,
+          units.filter((u) => u.unit_id === 1).map((u) => u.internal_id),
+          this.hovered_zone.building.internal_id,
+          ctrl_held
+        );
+        break;
+      case RisqOrderType.OrderType_UnitRenew:
+        if (!this.hovered_zone?.building) {
+          return;
+        }
+        this.addUnitOrder(
+          RisqOrderType.OrderType_UnitRenew,
           units.filter((u) => u.unit_id === 1).map((u) => u.internal_id),
           this.hovered_zone.building.internal_id,
           ctrl_held
