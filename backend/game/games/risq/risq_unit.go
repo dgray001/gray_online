@@ -3,6 +3,7 @@ package risq
 import (
 	"errors"
 	"fmt"
+	"math"
 	"os"
 
 	"github.com/dgray001/gray_online/game/game_utils"
@@ -557,7 +558,18 @@ func (u *RisqUnit) reactiveAttackBackTarget(risq *GameRisq) (*RisqUnit, *RisqBui
 		switch event.attacker_type {
 		case OrderableType_UNIT:
 			attacker := risq.units[event.attacker_id]
-			if attacker == nil || attacker.deleted || attacker.zone == nil || !u.stanceReachable(attacker.zone) {
+			if attacker == nil || attacker.deleted {
+				continue
+			}
+			if attacker.garrisoned_in != nil {
+				building := attacker.garrisoned_in
+				if building.deleted || building.zone == nil || !u.stanceReachable(building.zone) {
+					continue
+				}
+				best.considerBuilding(building, attackBackDistance(u, building.zone))
+				continue
+			}
+			if attacker.zone == nil || !u.stanceReachable(attacker.zone) {
 				continue
 			}
 			best.considerUnit(attacker, attackBackDistance(u, attacker.zone))
@@ -589,7 +601,7 @@ func (u *RisqUnit) replaceOrder(risq *GameRisq, order_type OrderType, target_id 
 }
 
 func (u *RisqUnit) resolveStance(risq *GameRisq) {
-	if u.zone == nil {
+	if u.zone == nil || u.cs.attack_type == AttackType_NONE {
 		return
 	}
 	if target, target_building := u.reactiveAttackBackTarget(risq); target != nil || target_building != nil {
@@ -669,14 +681,14 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 	case OrderType_UnitAttackBuilding, OrderType_UnitAutoAttackBuilding:
 		target := risq.buildings[uint64(order.target_id)]
 		if u.inAttackRange(target.zone) {
-			u.intent.setAttackBuilding(target)
+			u.intent.setUnitAttack(target)
 		} else {
 			u.intent.setMove(u.findPath(target.zone, u.attack_range))
 		}
 	case OrderType_UnitAttackUnit, OrderType_UnitAutoAttackUnit:
 		target := risq.units[uint64(order.target_id)]
 		if u.inAttackRange(target.zone) {
-			u.intent.setAttackUnit(target)
+			u.intent.setUnitAttack(target)
 		} else {
 			u.intent.setMove(u.findPath(target.zone, u.attack_range))
 		}
@@ -685,9 +697,9 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 		if !u.inAttackRange(zone) {
 			u.intent.setMove(u.findPath(zone, u.attack_range))
 		} else if target, target_building := zoneAttackTarget(zone, u.player_id, u.target_priority); target != nil {
-			u.intent.setAttackUnit(target)
+			u.intent.setUnitAttack(target)
 		} else if target_building != nil {
-			u.intent.setAttackBuilding(target_building)
+			u.intent.setUnitAttack(target_building)
 		}
 	case OrderType_UnitAttackSpace:
 		space := invertSpaceKey(uint(order.target_id), risq)
@@ -696,13 +708,13 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 			u.intent.setMove(u.findPath(space.getCenterZone(), u.attack_range))
 		} else if target_unit, target_building := spaceAttackTarget(u, space); target_unit != nil {
 			if u.inAttackRange(target_unit.zone) {
-				u.intent.setAttackUnit(target_unit)
+				u.intent.setUnitAttack(target_unit)
 			} else {
 				u.intent.setMove(u.findPath(target_unit.zone, u.attack_range))
 			}
 		} else if target_building != nil {
 			if u.inAttackRange(target_building.zone) {
-				u.intent.setAttackBuilding(target_building)
+				u.intent.setUnitAttack(target_building)
 			} else {
 				u.intent.setMove(u.findPath(target_building.zone, u.attack_range))
 			}
@@ -813,25 +825,27 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 				risq.players[u.player_id].buildings[building.internal_id] = building
 				risq.buildings[building.internal_id] = building
 				delete(risq.players[u.player_id].planned_foundations, detail.zone.coordinate_key)
+				risq.cancelPendingTerrainClear(detail.zone)
+				detail.zone.terrain_override = 0
 			}
 		}
 		if !building.deleted && building.underConstruction() {
 			old_ratio := constructionHealthRatio(building.stamina_remaining, building.construction_stamina_total)
-			building.stamina_remaining -= u.intent.intent_cost
+			progress := max(1, int(math.Round(float64(u.intent.intent_cost)*building.zone.space.buildSpeedModifier())))
+			building.stamina_remaining -= progress
 			new_ratio := constructionHealthRatio(building.stamina_remaining, building.construction_stamina_total)
 			building.cs.addHealth(float64(building.cs.max_health) * (new_ratio - old_ratio))
 			if !building.underConstruction() {
 				risq.players[building.player_id].report.recordBuildingBuilt(building.building_id, building.zone.space.coordinate, building.zone.coordinate)
+				building.refreshTerrainOverride()
 			}
 		}
 	case *DeleteIntent:
 		u.deleted = true
 		risq.players[u.player_id].units_lost++
 		// TODO: check for recent damage to assign kill
-	case *AttackBuildingIntent:
-		risq.unitAttackBuilding(u, detail.target)
-	case *AttackUnitIntent:
-		risq.unitAttackUnit(u, detail.target)
+	case *UnitAttackIntent:
+		risq.unitAttack(u, detail.target)
 	case *RepairIntent:
 		building := detail.target
 		if building.deleted || building.underConstruction() || !risq.canAssist(u.player_id, building) {
@@ -862,6 +876,7 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 		if building.resources_left >= config.gather.starting_resources {
 			building.renewing = nil
 		}
+		building.refreshTerrainOverride()
 	case *GarrisonIntent:
 		target := detail.target
 		if u.garrisonTargetValid(risq, target) && u.zone == target.zone && risq.garrison_allotments[u] {

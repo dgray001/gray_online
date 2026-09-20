@@ -39,8 +39,8 @@ func markResearched(player *RisqPlayer, tech_ids []uint32) {
 	}
 }
 
-// Drives real per-turn stamina regen and calls attack (a real unitAttackUnit/unitAttackBuilding
-// call) once per tick, exactly like resolveActiveOrders' tick loop but for one attacker only.
+// Drives real per-turn stamina regen and calls attack (a real unitAttack call) once per tick,
+// exactly like resolveActiveOrders' tick loop but for one attacker only.
 func runTTKLoop(attacker *RisqUnit, healthOf func() float64, attack func(stamina_cost int)) TTKResult {
 	turns := 0
 	ticks := 0
@@ -85,7 +85,7 @@ func ComputeUnitVsUnitTTKWithTechs(attacker_unit_id uint32, target_unit_id uint3
 	space.setUnit(&game_utils.Coordinate2D{}, target)
 	return runTTKLoop(attacker, func() float64 { return target.cs.health }, func(cost int) {
 		attacker.intent.intent_cost = cost
-		r.unitAttackUnit(attacker, target)
+		r.unitAttack(attacker, target)
 	})
 }
 
@@ -110,7 +110,7 @@ func ComputeUnitVsBuildingTTKWithTechs(attacker_unit_id uint32, target_building_
 	target_player.buildings[target.internal_id] = target
 	return runTTKLoop(attacker, func() float64 { return target.cs.health }, func(cost int) {
 		attacker.intent.intent_cost = cost
-		r.unitAttackBuilding(attacker, target)
+		r.unitAttack(attacker, target)
 	})
 }
 

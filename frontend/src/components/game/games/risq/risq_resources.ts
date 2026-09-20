@@ -1,3 +1,4 @@
+import { err } from '../../../../scripts/log';
 import type { RisqResource } from './risq_data';
 import { RisqResourceType } from './risq_data';
 
@@ -41,7 +42,7 @@ export function resourceImage(resource: RisqResource): string {
         filename = 'goldmine';
         break;
       default:
-        console.error('Trying to get resource image from unknown resource id', resource.resource_id);
+        err('Trying to get resource image from unknown resource id', resource.resource_id);
         return ``;
     }
   }

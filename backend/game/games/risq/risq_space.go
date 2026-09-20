@@ -182,6 +182,13 @@ func (s *RisqSpace) removeBuilding(building *RisqBuilding) {
 	}
 }
 
+func (s *RisqSpace) removeResource(resource *RisqResource) {
+	delete(s.resources, resource.internal_id)
+	if resource.zone != nil && resource.zone.resource == resource {
+		resource.zone.resource = nil
+	}
+}
+
 func (s *RisqSpace) addVision(v *RisqVision, z *RisqZone, player_id int) {
 	checked := make(map[uint]bool)
 	elevate := func(space *RisqSpace, level uint8) {

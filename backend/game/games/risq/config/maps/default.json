@@ -65,15 +65,22 @@
     "step": "player_starts",
     "params": {
       "pattern": "ring",
-      "area_size": 2,
+      "area_size": 1,
       "terrain_id": 1,
-      "buildings": [{ "building_id": 1 }],
+      "buildings": [
+        { "building_id": 1, "terrain_override": 6, "target": { "zone": "center" } },
+        { "building_id": 21, "terrain_override": 8, "target": { "zone": "edge", "edge_index": 1 } }
+      ],
       "resources": [
         { "resource_id": 1, "count": 1 },
         { "resource_id": 2, "count": 1 },
         { "resource_id": 11, "count": 1 },
         { "resource_id": 14, "count": 1 },
         { "resource_id": 21, "count": 1 }
+      ],
+      "zone_terrain_overrides": [
+        { "terrain_id": 24, "target": { "zone": "edge", "edge_index": 3 } },
+        { "terrain_id": 25, "target": { "zone": "edge", "edge_index": 5 } }
       ]
     }
   },

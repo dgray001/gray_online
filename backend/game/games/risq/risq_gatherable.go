@@ -50,6 +50,22 @@ func (b *RisqBuilding) gatherDrain(amount float64) {
 	if b.resources_left < 0 {
 		b.resources_left = 0
 	}
+	b.refreshTerrainOverride()
+}
+
+func (b *RisqBuilding) refreshTerrainOverride() {
+	if b.zone == nil {
+		return
+	}
+	config := buildingConfigs[b.building_id]
+	terrain_type := b.zone.space.terrainType()
+	override := config.terrain_override[terrain_type]
+	if config.isGatherable() && b.resources_left <= 0 {
+		if dead, ok := config.gather.terrain_override_dead[terrain_type]; ok {
+			override = dead
+		}
+	}
+	b.zone.terrain_override = override
 }
 
 // Counts units currently gathering from this building, derived live from active orders

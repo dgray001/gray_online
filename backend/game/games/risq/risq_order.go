@@ -191,6 +191,18 @@ func (ot OrderType) isPlayerOrder() bool {
 	return ot >= OrderType_CancelOrder && ot <= OrderType_CancelFoundation
 }
 
+func (ot OrderType) isAttackOrder() bool {
+	switch ot {
+	case OrderType_UnitAttackSpace, OrderType_UnitAttackZone, OrderType_UnitAttackUnit, OrderType_UnitAttackBuilding,
+		OrderType_UnitAutoAttackUnit, OrderType_UnitAutoAttackBuilding,
+		OrderType_BuildingAttackUnit, OrderType_BuildingAttackBuilding,
+		OrderType_BuildingAutoAttackUnit, OrderType_BuildingAutoAttackBuilding:
+		return true
+	default:
+		return false
+	}
+}
+
 type UnitBehaviorFromFrontend struct {
 	Internal_ids      []uint64 `json:"internal_ids"`
 	Stance            *uint8   `json:"stance"`
@@ -286,8 +298,12 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend, player_id int)
 			return errors.New("Order must have at least one subject")
 		}
 		for _, subject_id := range order.Subjects {
-			if r.players[order.Player_id].units[subject_id] == nil {
+			unit := r.players[order.Player_id].units[subject_id]
+			if unit == nil {
 				return fmt.Errorf("Invalid unit subject id")
+			}
+			if order_type.isAttackOrder() && unit.cs.attack_type == AttackType_NONE {
+				return fmt.Errorf("Unit id %d cannot attack", subject_id)
 			}
 		}
 	} else if order_type.isBuildingOrder() {
@@ -295,8 +311,12 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend, player_id int)
 			return errors.New("Order must have at least one subject")
 		}
 		for _, subject_id := range order.Subjects {
-			if r.players[order.Player_id].buildings[subject_id] == nil {
+			building := r.players[order.Player_id].buildings[subject_id]
+			if building == nil {
 				return fmt.Errorf("Invalid building subject id")
+			}
+			if order_type.isAttackOrder() && building.cs.attack_type == AttackType_NONE {
+				return fmt.Errorf("Building id %d cannot attack", subject_id)
 			}
 		}
 	} else if order_type.isPlayerOrder() {

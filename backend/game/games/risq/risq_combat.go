@@ -123,26 +123,60 @@ func effectiveDefense(defense int, penetration int) float64 {
 	return float64(defense) * (1 - float64(penetration)/100)
 }
 
+func attackTypeHasBlunt(t AttackType) bool {
+	switch t {
+	case AttackType_BLUNT, AttackType_BLUNT_PIERCING, AttackType_MAGIC_BLUNT, AttackType_BLUNT_PIERCING_MAGIC:
+		return true
+	default:
+		return false
+	}
+}
+
+func attackTypeHasPiercing(t AttackType) bool {
+	switch t {
+	case AttackType_PIERCING, AttackType_BLUNT_PIERCING, AttackType_PIERCING_MAGIC, AttackType_BLUNT_PIERCING_MAGIC:
+		return true
+	default:
+		return false
+	}
+}
+
+func attackTypeHasMagic(t AttackType) bool {
+	switch t {
+	case AttackType_MAGIC, AttackType_PIERCING_MAGIC, AttackType_MAGIC_BLUNT, AttackType_BLUNT_PIERCING_MAGIC:
+		return true
+	default:
+		return false
+	}
+}
+
+func (cs *RisqCombatStats) totalAttack() int {
+	total := 0
+	if attackTypeHasBlunt(cs.attack_type) {
+		total += cs.attack_blunt
+	}
+	if attackTypeHasPiercing(cs.attack_type) {
+		total += cs.attack_piercing
+	}
+	if attackTypeHasMagic(cs.attack_type) {
+		total += cs.attack_magic
+	}
+	return total
+}
+
 // Returns the effective attack and defense of the attacker and defender
 func combatTotals(attacker *RisqCombatStats, defender *RisqCombatStats) (float64, float64) {
-	attack := 0.0
 	defense := 0.0
-	switch attacker.attack_type {
-	case AttackType_BLUNT, AttackType_BLUNT_PIERCING, AttackType_MAGIC_BLUNT, AttackType_BLUNT_PIERCING_MAGIC:
-		attack += float64(attacker.attack_blunt)
+	if attackTypeHasBlunt(attacker.attack_type) {
 		defense += effectiveDefense(defender.defense_blunt, attacker.penetration_blunt)
 	}
-	switch attacker.attack_type {
-	case AttackType_PIERCING, AttackType_BLUNT_PIERCING, AttackType_PIERCING_MAGIC, AttackType_BLUNT_PIERCING_MAGIC:
-		attack += float64(attacker.attack_piercing)
+	if attackTypeHasPiercing(attacker.attack_type) {
 		defense += effectiveDefense(defender.defense_piercing, attacker.penetration_piercing)
 	}
-	switch attacker.attack_type {
-	case AttackType_MAGIC, AttackType_PIERCING_MAGIC, AttackType_MAGIC_BLUNT, AttackType_BLUNT_PIERCING_MAGIC:
-		attack += float64(attacker.attack_magic)
+	if attackTypeHasMagic(attacker.attack_type) {
 		defense += effectiveDefense(defender.defense_magic, attacker.penetration_magic)
 	}
-	return attack, defense
+	return float64(attacker.totalAttack()), defense
 }
 
 // Calculate damage for one tick based on input stamina
@@ -190,19 +224,11 @@ func (r *GameRisq) resolveAttack(attacker Attackable, target Attackable, stamina
 	target.recordDeath(r, attacker, damage)
 }
 
-func (r *GameRisq) unitAttackBuilding(attacker *RisqUnit, target *RisqBuilding) {
+func (r *GameRisq) unitAttack(attacker *RisqUnit, target Attackable) {
 	r.resolveAttack(attacker, target, attacker.intent.intent_cost)
 }
 
-func (r *GameRisq) unitAttackUnit(attacker *RisqUnit, target *RisqUnit) {
-	r.resolveAttack(attacker, target, attacker.intent.intent_cost)
-}
-
-func (r *GameRisq) buildingAttackUnit(attacker *RisqBuilding, target *RisqUnit) {
-	r.resolveAttack(attacker, target, attacker.intent.intent_cost)
-}
-
-func (r *GameRisq) buildingAttackBuilding(attacker *RisqBuilding, target *RisqBuilding) {
+func (r *GameRisq) buildingAttack(attacker *RisqBuilding, target Attackable) {
 	r.resolveAttack(attacker, target, attacker.intent.intent_cost)
 }
 

@@ -1,5 +1,5 @@
 import type { BoardTransformData } from '../../../../util/canvas_board/canvas_board';
-import { screenToCanvas } from '../../../../util/canvas_board/canvas_board';
+import { defaultTransform, screenToCanvas } from '../../../../util/canvas_board/canvas_board';
 import type { CanvasComponent } from '../../../../util/canvas_components/canvas_component';
 import { configDraw } from '../../../../util/canvas_components/canvas_component';
 import { drawCircle, drawHexagon, drawRect } from '../../../../util/canvas_util';
@@ -73,6 +73,7 @@ export class RisqMinimap implements CanvasComponent {
   private hovering = false;
   private clicking = false;
   private last_screen_m: Point2D = { x: 0, y: 0 };
+  private last_transform: BoardTransformData = defaultTransform();
 
   constructor(risq: DwgRisq, config: MinimapConfig) {
     this.risq = risq;
@@ -134,6 +135,7 @@ export class RisqMinimap implements CanvasComponent {
     if (!game || this.hex_r <= 0) {
       return;
     }
+    this.last_transform = transform;
     configDraw(
       ctx,
       transform,
@@ -259,9 +261,15 @@ export class RisqMinimap implements CanvasComponent {
 
   private jumpTo(screen: Point2D) {
     const origin = this.contentOrigin();
+    const content_center = { x: 0.5 * this.content_size.x, y: 0.5 * this.content_size.y };
+    const display_center = { x: origin.x + content_center.x, y: origin.y + content_center.y };
+    const local = rotatePoint(
+      { x: screen.x - display_center.x, y: screen.y - display_center.y },
+      -this.last_transform.rotation
+    );
     const coordinate = this.minimapCanvasToCoordinate({
-      x: screen.x - origin.x,
-      y: screen.y - origin.y,
+      x: local.x + content_center.x,
+      y: local.y + content_center.y,
     });
     this.risq.goToCoordinate(coordinate);
   }

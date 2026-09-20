@@ -1,4 +1,5 @@
 import { ColorRGB } from '../../../../scripts/color_rgb';
+import { err } from '../../../../scripts/log';
 import { atangent } from '../../../../scripts/math';
 import { drawEllipse } from '../../util/canvas_util';
 import type { Point2D } from '../../util/objects2d';
@@ -6,10 +7,10 @@ import { equalsPoint2D, pointInHexagon, rotatePoint, subtractPoint2D } from '../
 import type { DwgRisq } from './risq';
 import { buildingImage } from './risq_buildings';
 import type { RisqSpace, RisqUnit, RisqZone, UnitByTypeData } from './risq_data';
-import { RisqVisibilityLevel } from './risq_data';
+import { RisqUnitType, RisqVisibilityLevel } from './risq_data';
 import { resourceImage } from './risq_resources';
 import { COMBO_UNIT_ICON_SIZE, comboUnitIconKey, drawComboUnitIcon, unitImage } from './risq_unit';
-import { RisqViewMode } from './risq_terrain';
+import { RisqViewMode, terrainImage } from './risq_terrain';
 import { coordinateToIndex } from './risq_coordinates';
 
 /** space.zones[][] array indices for the six outer zones, in draw-loop order (index i -> rotation (PI/3)*(i+1)) */
@@ -45,6 +46,59 @@ const EDGE_BUILDING_RADIAL_MULTIPLIER = 0.7; // angle 0 hits an edge midpoint, s
 function findOuterZoneIndex(zone_coordinate: Point2D): number {
   const index = coordinateToIndex(1, zone_coordinate);
   return OUTER_ZONE_INDICES.findIndex((dv) => equalsPoint2D(dv, index));
+}
+
+/** Clips ctx to one zone's shape (direction -1 for center), in the space's real on-screen frame (center c, radius r) */
+export function clipToZone(ctx: CanvasRenderingContext2D, c: Point2D, r: number, zone_coordinate: Point2D) {
+  const direction = findOuterZoneIndex(zone_coordinate);
+  const inner_r = INNER_ZONE_MULTIPLIER * r;
+  ctx.beginPath();
+  if (direction === -1) {
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI / 3) * i + Math.PI / 6;
+      ctx.lineTo(c.x + inner_r * Math.cos(angle), c.y + inner_r * Math.sin(angle));
+    }
+  } else {
+    const a = (Math.PI / 3) * direction;
+    ctx.lineTo(c.x + inner_r * Math.cos(a + Math.PI / 6), c.y + inner_r * Math.sin(a + Math.PI / 6));
+    ctx.lineTo(c.x + inner_r * Math.cos(a + Math.PI / 2), c.y + inner_r * Math.sin(a + Math.PI / 2));
+    ctx.lineTo(c.x + r * Math.cos(a + Math.PI / 2), c.y + r * Math.sin(a + Math.PI / 2));
+    ctx.lineTo(c.x + r * Math.cos(a + Math.PI / 6), c.y + r * Math.sin(a + Math.PI / 6));
+  }
+  ctx.closePath();
+  ctx.clip();
+}
+
+/** Returns the space's terrain image, or (cached, at the base terrain's own native resolution) a composite with any zone terrain overrides painted on top */
+export function getSpaceTerrainImage(
+  game: DwgRisq,
+  base_terrain_id: number,
+  space_zones: RisqZone[]
+): CanvasImageSource {
+  const base_icon = game.getIcon(terrainImage(base_terrain_id));
+  const overrides = space_zones.filter((z) => !!z.terrain_override);
+  if (overrides.length === 0) {
+    return base_icon;
+  }
+  const key = `space_terrain:${base_terrain_id}:${overrides
+    .map((z) => `${findOuterZoneIndex(z.coordinate)}=${z.terrain_override}`)
+    .sort()
+    .join(',')}`;
+  const w = base_icon.naturalWidth;
+  const h = base_icon.naturalHeight;
+  const c = { x: w / 2, y: h / 2 };
+  const r = h / 2;
+  const override_icons = overrides.map((z) => game.getIcon(terrainImage(z.terrain_override)));
+  const composite = game.getImageCache().getRectImage(key, w, h, [base_icon, ...override_icons], (ctx) => {
+    ctx.drawImage(base_icon, 0, 0, w, h);
+    overrides.forEach((zone, i) => {
+      ctx.save();
+      clipToZone(ctx, c, r, zone.coordinate);
+      ctx.drawImage(override_icons[i], 0, 0, w, h);
+      ctx.restore();
+    });
+  });
+  return composite ?? base_icon;
 }
 
 /** Local-frame (pre-space-rotation) offset of a zone's building/resource circle from its space's center */
@@ -130,18 +184,43 @@ function edgeUnitSlotLocalOffsets(hex_r: number): Point2D[] {
   return [...interior_positions, corner_slot(false), corner_slot(true)];
 }
 
+function centerUnitSlotLocalOffsets(hex_r: number): Point2D[] {
+  return Array.from({ length: CENTER_ZONE_UNIT_SLOTS }, (_, i) => {
+    const angle = -((2 * Math.PI * i) / CENTER_ZONE_UNIT_SLOTS); // start right, go counterclockwise on screen
+    return {
+      x: CENTER_UNIT_RING_RADIUS_MULTIPLIER * hex_r * Math.cos(angle),
+      y: CENTER_UNIT_RING_RADIUS_MULTIPLIER * hex_r * Math.sin(angle),
+    };
+  });
+}
+
+interface UnitSlotOffsetCache {
+  hex_r: number;
+  center: Point2D[];
+  edge: Point2D[];
+  rotated_edge: Point2D[][]; // by outer zone index
+}
+
+// single entry, since hex_r only changes on resize; callers must treat the returned points as read-only
+let unit_slot_offset_cache: UnitSlotOffsetCache | undefined;
+
+function unitSlotOffsets(hex_r: number): UnitSlotOffsetCache {
+  if (unit_slot_offset_cache?.hex_r !== hex_r) {
+    const edge = edgeUnitSlotLocalOffsets(hex_r);
+    unit_slot_offset_cache = {
+      hex_r,
+      center: centerUnitSlotLocalOffsets(hex_r),
+      edge,
+      rotated_edge: OUTER_ZONE_INDICES.map((_, i) => edge.map((p) => rotatePoint(p, (Math.PI / 3) * (i + 1)))),
+    };
+  }
+  return unit_slot_offset_cache;
+}
+
 /** Local-frame (pre-space-rotation) offsets of a zone's unit-slot circles from its space's center */
 function unitSlotLocalOffsets(is_center: boolean, hex_r: number): Point2D[] {
-  if (is_center) {
-    return Array.from({ length: CENTER_ZONE_UNIT_SLOTS }, (_, i) => {
-      const angle = -((2 * Math.PI * i) / CENTER_ZONE_UNIT_SLOTS); // start right, go counterclockwise on screen
-      return {
-        x: CENTER_UNIT_RING_RADIUS_MULTIPLIER * hex_r * Math.cos(angle),
-        y: CENTER_UNIT_RING_RADIUS_MULTIPLIER * hex_r * Math.sin(angle),
-      };
-    });
-  }
-  return edgeUnitSlotLocalOffsets(hex_r);
+  const cache = unitSlotOffsets(hex_r);
+  return is_center ? cache.center : cache.edge;
 }
 
 /** Pixel offset of a zone's building/resource circle from its space's center, matching how drawRisqSpace positions it */
@@ -169,8 +248,8 @@ export function zoneBuildingLocalOffset(zone_coordinate: Point2D, hex_r: number)
 /** Pixel offsets of all of a zone's unit-slot circles from its space's center */
 export function zoneUnitSlotOffsets(zone_coordinate: Point2D, hex_r: number): Point2D[] {
   const i = findOuterZoneIndex(zone_coordinate);
-  const local = unitSlotLocalOffsets(i === -1, hex_r);
-  return i === -1 ? local : local.map((p) => rotatePoint(p, (Math.PI / 3) * (i + 1)));
+  const cache = unitSlotOffsets(hex_r);
+  return i === -1 ? cache.center : cache.rotated_edge[i];
 }
 
 /** Finds the zone object at the given coordinate within a space */
@@ -245,6 +324,7 @@ export function organizeZoneUnits(units: Map<number, RisqUnit>): Map<number, Map
     } else {
       units_by_type.get(unit.player_id)!.set(unit.unit_id, {
         unit_id: unit.unit_id,
+        unit_type: unit.unit_type,
         player_id: unit.player_id,
         units: new Set<number>([unit.internal_id]),
       });
@@ -253,12 +333,12 @@ export function organizeZoneUnits(units: Map<number, RisqUnit>): Map<number, Map
   return units_by_type;
 }
 
-/** Groups the input units by player, keeping only economic (unit_id < 11) or military types */
+/** Groups the input units by player, keeping only economic or military types */
 export function unitsByPlayerFiltered(units: Map<number, RisqUnit>, economic: boolean): Map<number, UnitByTypeData[]> {
   const units_by_type = organizeZoneUnits(units);
   const result = new Map<number, UnitByTypeData[]>();
   for (const [player_id, player_units] of units_by_type.entries()) {
-    const filtered = [...player_units.values()].filter((u) => u.unit_id < 11 === economic);
+    const filtered = [...player_units.values()].filter((u) => (u.unit_type === RisqUnitType.ECONOMIC) === economic);
     if (filtered.length > 0) {
       result.set(player_id, filtered);
     }
@@ -278,7 +358,12 @@ export function groupUnitsByType(units: Map<number, RisqUnit>, ids: number[]): U
     if (existing) {
       existing.units.add(id);
     } else {
-      by_type.set(unit.unit_id, { player_id: unit.player_id, unit_id: unit.unit_id, units: new Set([id]) });
+      by_type.set(unit.unit_id, {
+        player_id: unit.player_id,
+        unit_id: unit.unit_id,
+        unit_type: unit.unit_type,
+        units: new Set([id]),
+      });
     }
   }
   return [...by_type.values()];
@@ -434,15 +519,15 @@ export function buildZoneUnitSlots(zone: RisqZone, active_player_id: number, num
   return slots;
 }
 
-function unitVisibleInViewMode(unit_id: number, view_mode: RisqViewMode): boolean {
+function unitVisibleInViewMode(unit_type: RisqUnitType, view_mode: RisqViewMode): boolean {
   if (view_mode === RisqViewMode.OWNERSHIP) {
     return false;
   }
   if (view_mode === RisqViewMode.MILITARY) {
-    return unit_id >= 11;
+    return unit_type !== RisqUnitType.ECONOMIC;
   }
   if (view_mode === RisqViewMode.RESOURCE) {
-    return unit_id < 11;
+    return unit_type === RisqUnitType.ECONOMIC;
   }
   return true;
 }
@@ -570,7 +655,7 @@ export function drawRisqZone(
         ctx.strokeStyle = secondary_color;
       }
     } else {
-      const slot = filled_slots[i - 1].filter((t) => unitVisibleInViewMode(t.unit_id, view_mode));
+      const slot = filled_slots[i - 1].filter((t) => unitVisibleInViewMode(t.unit_type, view_mode));
       if (slot.length === 0) {
         ctx.strokeStyle = secondary_color;
       } else {
@@ -652,7 +737,7 @@ export function resolveHoveredZones(
         direction_vector = { x: 2, y: 1 };
         break;
       default:
-        console.error('Unknown zone hovered', angle);
+        err('Unknown zone hovered', angle);
         return;
     }
     new_hovered_zone = space.zones[direction_vector.x][direction_vector.y];
@@ -666,8 +751,6 @@ export type HoveredZoneObject =
   | { kind: 'resource' }
   | { kind: 'unit'; groups: UnitByTypeData[] };
 
-// TODO: hovered_data has no cached "currently hovered index" so this rescans the array on every call;
-// worth precomputing once per mousemove if this ends up being called from multiple places per frame.
 /** Returns whatever slot (building, resource, or unit group) is under the cursor in this zone, if any */
 export function hoveredZoneObject(zone: RisqZone): HoveredZoneObject | undefined {
   for (const [i, part] of zone.hovered_data.entries()) {

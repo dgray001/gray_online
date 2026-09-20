@@ -328,9 +328,9 @@ func (rep *RisqTurnReport) toFrontend() gin.H {
 			"gold_from_land": rep.land.gold_from_land,
 		},
 		"resources":  resources,
-		"population":  gin.H{"start": rep.pop_start, "end": rep.pop_end, "cap_start": rep.cap_start, "cap_end": rep.cap_end},
-		"production":  gin.H{"units_created": units, "buildings_built": buildings, "techs_researched": rep.techs_researched},
-		"combat":      combat,
+		"population": gin.H{"start": rep.pop_start, "end": rep.pop_end, "cap_start": rep.cap_start, "cap_end": rep.cap_end},
+		"production": gin.H{"units_created": units, "buildings_built": buildings, "techs_researched": rep.techs_researched},
+		"combat":     combat,
 		"orders": gin.H{
 			"active":    rep.orders.active,
 			"added":     rep.orders.added,

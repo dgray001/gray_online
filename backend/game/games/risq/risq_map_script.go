@@ -49,6 +49,8 @@ func newMapScriptVars(num_players int, board_size uint16, starting_distance int,
 	}
 }
 
+// TODO: step param decode panics happen at game-launch time (unlike other config, which panics
+// at server init before any player connects); a malformed non-default map crashes the live server
 func loadMapScript(name string) []mapScriptStepJSON {
 	data, err := mapScripts.ReadFile(path.Join("config/maps", name+".json"))
 	if err != nil {

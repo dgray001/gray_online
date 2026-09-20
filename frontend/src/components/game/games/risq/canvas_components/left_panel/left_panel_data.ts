@@ -14,6 +14,12 @@ export enum HoverableObjectType {
   RESOURCE,
 }
 
+/** A hovered object paired with its type, so consumers narrow to the concrete type without casting */
+export type HoveredObject =
+  | { type: HoverableObjectType.UNIT; object: RisqUnit }
+  | { type: HoverableObjectType.BUILDING; object: RisqBuilding }
+  | { type: HoverableObjectType.RESOURCE; object: RisqResource };
+
 export interface UnitsDrawData {
   space: RisqSpace;
   units_by_player: Map<number, UnitByTypeData[]>;

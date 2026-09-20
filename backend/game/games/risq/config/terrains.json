@@ -26,13 +26,16 @@
       { "terrain_id": 20, "display_name": "Snow" },
       { "terrain_id": 21, "display_name": "Snow" },
       { "terrain_id": 22, "display_name": "Straw" },
-      { "terrain_id": 23, "display_name": "Straw" }
+      { "terrain_id": 23, "display_name": "Straw" },
+      { "terrain_id": 24, "display_name": "Farmland" },
+      { "terrain_id": 25, "display_name": "Farmland" }
     ]
   },
   {
     "terrain_type": "hilly",
     "intra_cost": 2,
     "inter_cost": 9,
+    "build_speed_modifier": 0.8,
     "terrains": [
       { "terrain_id": 51, "display_name": "Grassy Hills" },
       { "terrain_id": 52, "display_name": "Grassy Hills" },
@@ -45,34 +48,41 @@
       { "terrain_id": 59, "display_name": "Dirt Hills" },
       { "terrain_id": 60, "display_name": "Dirt Hills" },
       { "terrain_id": 61, "display_name": "Snowy Hills" },
-      { "terrain_id": 62, "display_name": "Snowy Hills" }
+      { "terrain_id": 62, "display_name": "Snowy Hills" },
+      { "terrain_id": 63, "display_name": "Farmland Hills" },
+      { "terrain_id": 64, "display_name": "Farmland Hills" }
     ]
   },
   {
     "terrain_type": "mountainous",
     "intra_cost": 3,
     "inter_cost": 12,
+    "build_speed_modifier": 0.4,
     "terrains": []
   },
   {
     "terrain_type": "swamp",
     "intra_cost": 2,
     "inter_cost": 9,
+    "build_speed_modifier": 0.6,
     "terrains": []
   },
   {
     "terrain_type": "shallows",
     "intra_cost": 2,
     "inter_cost": 9,
+    "build_speed_modifier": 0.6,
     "terrains": []
   },
   {
     "terrain_type": "water",
+    "build_speed_modifier": 0.4,
     "impassable": true,
     "terrains": []
   },
   {
     "terrain_type": "deep_water",
+    "build_speed_modifier": 0.2,
     "impassable": true,
     "terrains": []
   }

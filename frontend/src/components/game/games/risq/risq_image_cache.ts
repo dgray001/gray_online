@@ -11,7 +11,8 @@ export class RisqImageCache {
   private cursor_urls = new Map<string, string>();
 
   private buildImage(
-    size: number,
+    w: number,
+    h: number,
     images: HTMLImageElement[],
     draw: (ctx: CanvasRenderingContext2D) => void
   ): HTMLCanvasElement | undefined {
@@ -19,8 +20,8 @@ export class RisqImageCache {
       return undefined;
     }
     const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
+    canvas.width = w;
+    canvas.height = h;
     const ctx = canvas.getContext('2d');
     if (ctx) {
       draw(ctx);
@@ -34,11 +35,22 @@ export class RisqImageCache {
     images: HTMLImageElement[],
     draw: (ctx: CanvasRenderingContext2D) => void
   ): HTMLCanvasElement | undefined {
+    return this.getRectImage(key, size, size, images, draw);
+  }
+
+  /** Same as getImage but for a non-square canvas, sized to the aspect ratio the draw callback actually needs */
+  getRectImage(
+    key: string,
+    w: number,
+    h: number,
+    images: HTMLImageElement[],
+    draw: (ctx: CanvasRenderingContext2D) => void
+  ): HTMLCanvasElement | undefined {
     const cached = this.canvases.get(key);
     if (cached) {
       return cached;
     }
-    const canvas = this.buildImage(size, images, draw);
+    const canvas = this.buildImage(w, h, images, draw);
     if (canvas) {
       this.canvases.set(key, canvas);
     }
@@ -56,16 +68,20 @@ export class RisqImageCache {
       ctx.drawImage(img, 0, 0, size, size);
       const image_data = ctx.getImageData(0, 0, size, size);
       const data = image_data.data;
+      const { r: kr, g: kg, b: kb } = PLAYER_COLOR_KEY;
+      const TOLERANCE = 1;
       for (let i = 0; i < data.length; i += 4) {
-        if (
-          data[i] === PLAYER_COLOR_KEY.r &&
-          data[i + 1] === PLAYER_COLOR_KEY.g &&
-          data[i + 2] === PLAYER_COLOR_KEY.b
-        ) {
-          data[i] = color.getR();
-          data[i + 1] = color.getG();
-          data[i + 2] = color.getB();
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        // matches the key color scaled toward black, so shaded/shadowed marker pixels recolor too
+        const scale = r / kr;
+        if (scale > 1 || Math.abs(g - kg * scale) > TOLERANCE || Math.abs(b - kb * scale) > TOLERANCE) {
+          continue;
         }
+        data[i] = color.getR() * scale;
+        data[i + 1] = color.getG() * scale;
+        data[i + 2] = color.getB() * scale;
       }
       ctx.putImageData(image_data, 0, 0);
     });
@@ -81,7 +97,7 @@ export class RisqImageCache {
     if (cached) {
       return cached;
     }
-    const canvas = this.buildImage(size, images, draw);
+    const canvas = this.buildImage(size, size, images, draw);
     if (!canvas) {
       return undefined;
     }

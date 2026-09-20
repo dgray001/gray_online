@@ -1,3 +1,5 @@
+import { err } from '../../../../scripts/log';
+
 /** Fill style for healthbar background rect */
 export const UNIT_HEALTHBAR_COLOR_BACKGROUND = 'black';
 
@@ -17,7 +19,7 @@ export function unitImage(unit_id: number, plain = false): string {
       filename = 'swordsman';
       break;
     default:
-      console.error('Trying to get unit image from unknown unit id', unit_id);
+      err('Trying to get unit image from unknown unit id', unit_id);
       return '';
   }
   if (plain) {

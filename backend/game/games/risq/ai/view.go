@@ -106,14 +106,14 @@ type Producible struct {
 }
 
 type BuildingView struct {
-	InternalID       uint64
-	BuildingID       uint32
-	Location         ZoneRef
+	InternalID        uint64
+	BuildingID        uint32
+	Location          ZoneRef
 	UnderConstruction bool
-	Idle             bool
-	Producibles      []Producible
-	GarrisonCount    int
-	GarrisonCapacity int
+	Idle              bool
+	Producibles       []Producible
+	GarrisonCount     int
+	GarrisonCapacity  int
 }
 
 // Mirrors risq.OrderFromFrontend; Player_id is stamped on by risq.

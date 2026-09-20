@@ -7,11 +7,12 @@ import type { RisqSpace } from './risq_data';
 import { RisqResourceType, RisqVisibilityLevel } from './risq_data';
 import { resourceTypeImage } from './risq_resources';
 import { COMBO_UNIT_ICON_SIZE, comboUnitIconKey, drawComboUnitIcon } from './risq_unit';
-import { FOG_OVERLAY_IMAGE, RisqViewMode, spaceOwnerColor, terrainImage } from './risq_terrain';
+import { FOG_OVERLAY_IMAGE, RisqViewMode, spaceOwnerColor } from './risq_terrain';
 import {
   INNER_ZONE_MULTIPLIER,
   OUTER_ZONE_INDICES,
   drawRisqZone,
+  getSpaceTerrainImage,
   getZoneFill,
   zoneBuildingLocalOffset,
   zoneUnitSlotLocalOffsets,
@@ -80,7 +81,8 @@ export function drawRisqSpace(
     drawHexagon(ctx, space.center, config.hex_r);
     black_text = fill.getBrightness() > 0.5;
   } else {
-    drawHexImage(ctx, game.getIcon(terrainImage(space.terrain_id)), space.center, config.hex_r);
+    const override_zones = config.draw_detail === DrawRisqSpaceDetail.OWNERSHIP ? [] : (space.zones?.flat() ?? []);
+    drawHexImage(ctx, getSpaceTerrainImage(game, space.terrain_id, override_zones), space.center, config.hex_r);
     if (config.view_mode !== RisqViewMode.RESOURCE && !!owner_color) {
       const tint = `rgba(${owner_color.getR()}, ${owner_color.getG()}, ${owner_color.getB()}, 0.25)`;
       fillHexOverlay(ctx, space.center, config.hex_r, tint);

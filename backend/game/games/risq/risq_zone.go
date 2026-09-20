@@ -18,6 +18,8 @@ type RisqZone struct {
 	ownership      int
 	// index into game_utils.AxialDirectionVectors() this outer zone faces, or -1 for the center zone
 	direction int
+	// cosmetic-only terrain_id override; 0 means none
+	terrain_override uint32
 }
 
 // Returns the direction index this zone coordinate faces, or -1 for the center zone (0, 0)
@@ -73,9 +75,13 @@ func (z *RisqZone) isCenter() bool {
 
 func (z *RisqZone) toFrontend(player_id int, v VisibilityLevel, space *RisqSpace) gin.H {
 	zone := gin.H{
-		"coordinate":     z.coordinate.ToFrontend(),
-		"coordinate_key": z.coordinate_key,
-		"ownership":      z.ownership,
+		"coordinate":       z.coordinate.ToFrontend(),
+		"coordinate_key":   z.coordinate_key,
+		"ownership":        z.ownership,
+		"terrain_override": z.terrain_override,
+	}
+	if z.terrain_override != 0 {
+		zone["terrain_override_display_name"] = terrainConfigs[z.terrain_override].display_name
 	}
 	if v == VisibilityFog {
 		if cache, ok := space.resource_cache[player_id][z.coordinate_key]; ok {

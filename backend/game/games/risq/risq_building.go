@@ -164,6 +164,9 @@ func (b *RisqBuilding) cleanupDeleted(risq *GameRisq) {
 	}
 	b.garrisoned_units = make(map[uint64]*RisqUnit)
 	resolveOrdersOnDeath(risq, &b.order_queue, b.internal_id, OrderType_BuildingDelete)
+	if b.zone != nil {
+		risq.pending_terrain_clears = append(risq.pending_terrain_clears, b.zone)
+	}
 	if b.zone != nil && b.zone.space != nil {
 		b.zone.space.removeBuilding(b)
 	}
@@ -347,7 +350,7 @@ func (b *RisqBuilding) autoAttackOrder(risq *GameRisq, order_type OrderType, tar
 }
 
 func (b *RisqBuilding) resolveAutoAttack(risq *GameRisq) {
-	if !b.auto_attack || b.zone == nil || b.underConstruction() {
+	if !b.auto_attack || b.zone == nil || b.underConstruction() || b.cs.attack_type == AttackType_NONE {
 		return
 	}
 	if !b.interrupt_current && len(b.order_queue.active_orders) > 0 {
@@ -378,12 +381,12 @@ func (b *RisqBuilding) tickIntent(risq *GameRisq) bool {
 	case OrderType_BuildingAttackUnit, OrderType_BuildingAutoAttackUnit:
 		target := risq.units[uint64(order.target_id)]
 		if b.inAttackRange(target.zone) {
-			b.intent.setAttackUnit(target)
+			b.setBuildingAttackIntent(risq, target)
 		}
 	case OrderType_BuildingAttackBuilding, OrderType_BuildingAutoAttackBuilding:
 		target := risq.buildings[uint64(order.target_id)]
 		if b.inAttackRange(target.zone) {
-			b.intent.setAttackBuilding(target)
+			b.setBuildingAttackIntent(risq, target)
 		}
 	default:
 		fmt.Fprintln(os.Stderr, "Order type not implemented:", order.order_type)
@@ -393,6 +396,45 @@ func (b *RisqBuilding) tickIntent(risq *GameRisq) bool {
 		b.intent.resetIntent()
 	}
 	return b.intent.hasIntent()
+}
+
+func (b *RisqBuilding) setBuildingAttackIntent(risq *GameRisq, target Attackable) {
+	garrison_attacks := b.buildGarrisonAttacks(risq, target)
+	if b.cs.totalAttack() <= 0 && len(garrison_attacks) == 0 {
+		return
+	}
+	b.intent.setBuildingAttack(target, garrison_attacks)
+}
+
+func (b *RisqBuilding) buildGarrisonAttacks(risq *GameRisq, target Attackable) []GarrisonAttack {
+	config := buildingConfigs[b.building_id]
+	attacks := make([]GarrisonAttack, 0, len(b.garrisoned_units))
+	for _, unit := range b.garrisoned_units {
+		if unit.current_stamina <= 0 {
+			continue
+		}
+		stats := risq.effectiveCombatStats(unit, target, true)
+		stats.attack_blunt = cappedGarrisonAttack(stats.attack_blunt, attackTypeHasBlunt(b.cs.attack_type), b.cs.attack_blunt, config.max_garrison_attack_blunt)
+		stats.attack_piercing = cappedGarrisonAttack(stats.attack_piercing, attackTypeHasPiercing(b.cs.attack_type), b.cs.attack_piercing, config.max_garrison_attack_piercing)
+		stats.attack_magic = cappedGarrisonAttack(stats.attack_magic, attackTypeHasMagic(b.cs.attack_type), 0, config.max_garrison_attack_magic)
+		if stats.totalAttack() <= 0 {
+			continue
+		}
+		cost := min(unit.current_stamina, unitTickStaminaCost)
+		attacks = append(attacks, GarrisonAttack{unit: unit, stats: stats, cost: cost})
+	}
+	return attacks
+}
+
+func cappedGarrisonAttack(unit_attack int, building_has_type bool, building_attack int, override *int) int {
+	if !building_has_type {
+		unit_attack /= 2
+	}
+	max_allowed := building_attack
+	if override != nil {
+		max_allowed = *override
+	}
+	return min(unit_attack, max_allowed)
 }
 
 func (b *RisqBuilding) tickExecute(risq *GameRisq) {
@@ -427,11 +469,14 @@ func (b *RisqBuilding) tickExecute(risq *GameRisq) {
 		risq.players[b.player_id].buildings_lost++
 		// TODO: check for recent damage to assign raze
 	}
-	if detail, ok := b.intent.detail.(*AttackUnitIntent); ok {
-		risq.buildingAttackUnit(b, detail.target)
-	}
-	if detail, ok := b.intent.detail.(*AttackBuildingIntent); ok {
-		risq.buildingAttackBuilding(b, detail.target)
+	if detail, ok := b.intent.detail.(*BuildingAttackIntent); ok {
+		if b.cs.totalAttack() > 0 && b.intent.intent_cost > 0 {
+			risq.buildingAttack(b, detail.target)
+		}
+		for _, ga := range detail.garrison_attacks {
+			risq.resolveAttack(garrisonAttacker{RisqUnit: ga.unit, stats: ga.stats}, detail.target, ga.cost)
+			ga.unit.current_stamina -= ga.cost
+		}
 	}
 	b.current_stamina -= b.intent.intent_cost
 }

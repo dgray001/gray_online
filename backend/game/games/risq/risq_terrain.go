@@ -52,9 +52,10 @@ type TerrainConfig struct {
 }
 
 type TerrainMoveCost struct {
-	intra_cost uint
-	inter_cost uint
-	impassable bool
+	intra_cost           uint
+	inter_cost           uint
+	impassable           bool
+	build_speed_modifier float64
 }
 
 type terrainEntryJSON struct {
@@ -63,11 +64,12 @@ type terrainEntryJSON struct {
 }
 
 type terrainTypeJSON struct {
-	TerrainType string             `json:"terrain_type"`
-	IntraCost   uint               `json:"intra_cost"`
-	InterCost   uint               `json:"inter_cost"`
-	Impassable  bool               `json:"impassable"`
-	Terrains    []terrainEntryJSON `json:"terrains"`
+	TerrainType        string             `json:"terrain_type"`
+	IntraCost          uint               `json:"intra_cost"`
+	InterCost          uint               `json:"inter_cost"`
+	Impassable         bool               `json:"impassable"`
+	BuildSpeedModifier float64            `json:"build_speed_modifier,omitempty"`
+	Terrains           []terrainEntryJSON `json:"terrains"`
 }
 
 var terrainConfigs map[uint32]TerrainConfig
@@ -97,7 +99,16 @@ func init() {
 			lowestIntraMoveCost = min(lowestIntraMoveCost, t.IntraCost)
 			lowestInterMoveCost = min(lowestInterMoveCost, t.InterCost)
 		}
-		terrainMoveCosts[terrain_type] = TerrainMoveCost{intra_cost: t.IntraCost, inter_cost: t.InterCost, impassable: t.Impassable}
+		build_speed_modifier := t.BuildSpeedModifier
+		if build_speed_modifier <= 0 {
+			build_speed_modifier = 1
+		}
+		terrainMoveCosts[terrain_type] = TerrainMoveCost{
+			intra_cost:           t.IntraCost,
+			inter_cost:           t.InterCost,
+			impassable:           t.Impassable,
+			build_speed_modifier: build_speed_modifier,
+		}
 		for _, e := range t.Terrains {
 			terrainConfigs[e.TerrainId] = TerrainConfig{
 				display_name: e.DisplayName,
@@ -126,4 +137,8 @@ func (s *RisqSpace) terrainType() TerrainType {
 
 func (s *RisqSpace) impassable() bool {
 	return s.terrainType().moveCost().impassable
+}
+
+func (s *RisqSpace) buildSpeedModifier() float64 {
+	return s.terrainType().moveCost().build_speed_modifier
 }

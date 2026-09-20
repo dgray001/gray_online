@@ -19,6 +19,7 @@ import {
 } from '../../util/objects2d';
 import type { DwgGame } from '../../game';
 import { DEV, createLock, isTypingInInput } from '../../../../scripts/util';
+import { err, log } from '../../../../scripts/log';
 import { ColorRGB } from '../../../../scripts/color_rgb';
 
 import html from './risq.html';
@@ -26,6 +27,7 @@ import type {
   GameRisq,
   GameRisqFromServer,
   RisqBuilding,
+  RisqCost,
   RisqFrontendOrder,
   RisqPlayer,
   RisqSpace,
@@ -40,6 +42,7 @@ import {
   RisqOrderType,
   RisqProducibleKind,
   RisqResourceType,
+  RisqUnitType,
   RisqVisibilityLevel,
   canAffordCost,
   canHaveGatherPoint,
@@ -97,6 +100,11 @@ const DEFAULT_HEXAGON_RADIUS = 60;
 const DRAW_CENTER_DOT = false;
 
 const DRAG_SELECT_THRESHOLD = 3;
+
+declare interface CanvasBounds {
+  min: Point2D;
+  max: Point2D;
+}
 
 export declare interface LocalRisqFoundation {
   coordinate_key: number;
@@ -257,7 +265,7 @@ export class DwgRisq extends DwgElement {
       })
       .then((size_data) => {
         if (!size_data) {
-          console.error('Not able to initialize game board');
+          err('Not able to initialize game board');
           return;
         }
         this.boardResize(size_data.board_size, size_data.el_size);
@@ -462,11 +470,11 @@ export class DwgRisq extends DwgElement {
           this.applyGatherPointSet(gather_point_set_data);
           break;
         default:
-          console.log(`Unknown game update type ${update.kind}`);
+          log(`Unknown game update type ${update.kind}`);
           break;
       }
     } catch (e) {
-      console.log(`Error during game update ${JSON.stringify(update)}: ${e}`);
+      err(`Error during game update ${JSON.stringify(update)}: ${e}`);
     }
   }
 
@@ -573,11 +581,12 @@ export class DwgRisq extends DwgElement {
       rotation: transform.rotation,
     };
     // draw spaces
+    const bounds = this.visibleCanvasBounds();
     const on_screen_spaces: RisqSpace[] = [];
     for (const row of this.game.spaces) {
       for (const space of row) {
         space.center = this.coordinateToCanvas(space.coordinate);
-        if (!this.isSpaceOnScreen(space)) {
+        if (!this.isSpaceOnScreen(space, bounds)) {
           continue;
         }
         on_screen_spaces.push(space);
@@ -641,7 +650,6 @@ export class DwgRisq extends DwgElement {
     }
   }
 
-  // when the left panel's current selection is exactly one unit/building/resource/foundation, its kind and id; otherwise undefined
   private currentSingleSelection(): { kind: 'unit' | 'building' | 'resource' | 'foundation'; id: number } | undefined {
     const data = this.left_panel.getData();
     switch (data?.data_type) {
@@ -669,7 +677,12 @@ export class DwgRisq extends DwgElement {
     switch (data?.data_type) {
       case LeftPanelDataType.UNIT:
         return [
-          { player_id: data.data.player_id, unit_id: data.data.unit_id, units: new Set([data.data.internal_id]) },
+          {
+            player_id: data.data.player_id,
+            unit_id: data.data.unit_id,
+            unit_type: data.data.unit_type,
+            units: new Set([data.data.internal_id]),
+          },
         ];
       case LeftPanelDataType.UNITS_BY_TYPE:
       case LeftPanelDataType.ECONOMIC_UNITS:
@@ -848,9 +861,6 @@ export class DwgRisq extends DwgElement {
     }
     const zone_view = this.draw_detail === DrawRisqSpaceDetail.ZONE_DETAILS;
     const building_offset = zoneCenterOffset(building.zone_coordinate, this.hex_r);
-    if (building_offset.x === 0 && building_offset.y === 0) {
-      building_offset.x = 0.001;
-    }
     const from = this.orderPoint(building.space_coordinate, building_offset, zone_view);
     const to = this.gatherPointTargetPoint(gather_point, zone_view, from);
     if (!to || equalsPoint2D(from, to)) {
@@ -960,7 +970,7 @@ export class DwgRisq extends DwgElement {
 
     if (equalsPoint2D(new_hovered_space.coordinate, this.hovered_space?.coordinate)) {
       this.updateHoveredFlags();
-      resolve_zones.call(this);
+      resolve_zones();
       this.updateCursor(modifiers.ctrl);
       return;
     }
@@ -973,7 +983,7 @@ export class DwgRisq extends DwgElement {
       }
     }
     this.hovered_space = new_hovered_space;
-    resolve_zones.call(this);
+    resolve_zones();
     this.updateHoveredFlags();
     this.updateCursor(modifiers.ctrl);
   }
@@ -1438,18 +1448,44 @@ export class DwgRisq extends DwgElement {
         continue;
       }
       for (const subject_id of order.subjects) {
-        const cost = player.buildings
-          .get(subject_id)
-          ?.produces.find((p) => p.kind === kind && p.id === order.target_id)?.cost;
-        if (!cost) {
-          continue;
-        }
-        player.resources.get(RisqResourceType.FOOD)!.spending += cost.food;
-        player.resources.get(RisqResourceType.WOOD)!.spending += cost.wood;
-        player.resources.get(RisqResourceType.STONE)!.spending += cost.stone;
-        player.resources.get(RisqResourceType.GOLD)!.spending += cost.gold;
+        this.addSpending(
+          player,
+          player.buildings.get(subject_id)?.produces.find((p) => p.kind === kind && p.id === order.target_id)?.cost
+        );
       }
     }
+    for (const foundation of this.local_foundations.values()) {
+      this.addSpending(player, this.plannedFoundationCost(player, foundation));
+    }
+    const renew_targets = new Set(
+      this.orders_model
+        .pendingOrders()
+        .filter((o) => o.order_type === RisqOrderType.OrderType_UnitRenew)
+        .map((o) => o.target_id)
+    );
+    for (const target_id of renew_targets) {
+      this.addSpending(player, this.findBuildingById(target_id)?.renew_cost);
+    }
+  }
+
+  private plannedFoundationCost(player: RisqPlayer, foundation: LocalRisqFoundation): RisqCost | undefined {
+    for (const subject_id of foundation.order.subjects) {
+      const cost = player.units.get(subject_id)?.builds.find((p) => p.id === foundation.building_id)?.cost;
+      if (cost) {
+        return cost;
+      }
+    }
+    return undefined;
+  }
+
+  private addSpending(player: RisqPlayer, cost: RisqCost | undefined) {
+    if (!cost) {
+      return;
+    }
+    player.resources.get(RisqResourceType.FOOD)!.spending += cost.food;
+    player.resources.get(RisqResourceType.WOOD)!.spending += cost.wood;
+    player.resources.get(RisqResourceType.STONE)!.spending += cost.stone;
+    player.resources.get(RisqResourceType.GOLD)!.spending += cost.gold;
   }
 
   private atSelectedUnitPosition(zone_valid: boolean, ctrl_held: boolean): boolean {
@@ -1549,9 +1585,11 @@ export class DwgRisq extends DwgElement {
   // space-level bounding-box check first (cheap pre-filter), then whether the unit's own rendered circle overlaps the viewport
   private unitsOnScreenOfType(player_id: number, unit_id: number): number[] {
     const ids: number[] = [];
+    const bounds = this.visibleCanvasBounds();
+    const radius = UNIT_SLOT_CIRCLE_RADIUS_MULTIPLIER * this.hex_r;
     for (const row of this.game?.spaces ?? []) {
       for (const space of row) {
-        if (!this.isSpaceOnScreen(space)) {
+        if (!this.isSpaceOnScreen(space, bounds)) {
           continue;
         }
         for (const zone_row of space.zones ?? []) {
@@ -1561,8 +1599,7 @@ export class DwgRisq extends DwgElement {
                 continue;
               }
               const canvas_pos = this.orderPoint(unit.space_coordinate, this.unitAnchorOffset(unit), true);
-              const radius = UNIT_SLOT_CIRCLE_RADIUS_MULTIPLIER * this.hex_r;
-              if (this.isCircleOnScreen(canvas_pos, radius)) {
+              if (this.isCircleOnScreen(canvas_pos, radius, bounds)) {
                 ids.push(unit.internal_id);
               }
             }
@@ -1573,7 +1610,7 @@ export class DwgRisq extends DwgElement {
     return ids;
   }
 
-  private visibleCanvasBounds(): { min: Point2D; max: Point2D } {
+  private visibleCanvasBounds(): CanvasBounds {
     const transform = this.last_transform;
     const { width, height } = this.canvas_size;
     const corners = [
@@ -1588,8 +1625,8 @@ export class DwgRisq extends DwgElement {
     };
   }
 
-  private isSpaceOnScreen(space: RisqSpace): boolean {
-    const { min, max } = this.visibleCanvasBounds();
+  private isSpaceOnScreen(space: RisqSpace, bounds: CanvasBounds): boolean {
+    const { min, max } = bounds;
     return !(
       space.center.x + this.hex_a < min.x ||
       space.center.x - this.hex_a > max.x ||
@@ -1598,8 +1635,8 @@ export class DwgRisq extends DwgElement {
     );
   }
 
-  private isCircleOnScreen(c: Point2D, radius: number): boolean {
-    const { min, max } = this.visibleCanvasBounds();
+  private isCircleOnScreen(c: Point2D, radius: number, bounds: CanvasBounds): boolean {
+    const { min, max } = bounds;
     const closest_x = Math.min(Math.max(c.x, min.x), max.x);
     const closest_y = Math.min(Math.max(c.y, min.y), max.y);
     const dx = c.x - closest_x;
@@ -1907,8 +1944,6 @@ export class DwgRisq extends DwgElement {
       this.disarmOrder();
       return;
     }
-    // TODO: implement attack vs just move
-    // TODO: implement if holding the shift key
     switch (this.resolveActiveOrderType(ctrl_held)) {
       case RisqOrderType.OrderType_UnitMoveSpace:
         this.addUnitOrder(
@@ -2075,7 +2110,7 @@ export class DwgRisq extends DwgElement {
       return;
     }
     const units = data.data.units.flatMap((u) =>
-      [...u.units].map((internal_id) => ({ unit_id: u.unit_id, internal_id }))
+      [...u.units].map((internal_id) => ({ unit_type: u.unit_type, internal_id }))
     );
     switch (this.resolveActiveOrderType(ctrl_held)) {
       case RisqOrderType.OrderType_UnitMoveSpace: {
@@ -2105,7 +2140,10 @@ export class DwgRisq extends DwgElement {
         if (!target) {
           return;
         }
-        const attackers = this.getArmedOrder() === RisqOrderType.NONE ? units.filter((u) => u.unit_id > 10) : units;
+        const attackers =
+          this.getArmedOrder() === RisqOrderType.NONE
+            ? units.filter((u) => u.unit_type !== RisqUnitType.ECONOMIC)
+            : units;
         this.addUnitOrder(
           RisqOrderType.OrderType_UnitAttackBuilding,
           attackers.map((u) => u.internal_id),
@@ -2119,7 +2157,10 @@ export class DwgRisq extends DwgElement {
         if (target_id === undefined) {
           return;
         }
-        const attackers = this.getArmedOrder() === RisqOrderType.NONE ? units.filter((u) => u.unit_id > 10) : units;
+        const attackers =
+          this.getArmedOrder() === RisqOrderType.NONE
+            ? units.filter((u) => u.unit_type !== RisqUnitType.ECONOMIC)
+            : units;
         this.addUnitOrder(
           RisqOrderType.OrderType_UnitAttackUnit,
           attackers.map((u) => u.internal_id),
@@ -2168,7 +2209,7 @@ export class DwgRisq extends DwgElement {
         }
         this.addUnitOrder(
           RisqOrderType.OrderType_UnitGather,
-          units.filter((u) => u.unit_id === 1).map((u) => u.internal_id),
+          units.filter((u) => u.unit_type === RisqUnitType.ECONOMIC).map((u) => u.internal_id),
           this.hovered_zone.coordinate_key,
           ctrl_held
         );
@@ -2180,7 +2221,7 @@ export class DwgRisq extends DwgElement {
         const group_order: RisqFrontendOrder = {
           player_id: this.player_id,
           order_type: RisqOrderType.OrderType_UnitBuild,
-          subjects: units.filter((u) => u.unit_id === 1).map((u) => u.internal_id),
+          subjects: units.filter((u) => u.unit_type === RisqUnitType.ECONOMIC).map((u) => u.internal_id),
           target_id: cantorPair(this.armed_building.id, this.hovered_zone.coordinate_key),
           clear_previous_orders: !ctrl_held,
         };
@@ -2198,7 +2239,7 @@ export class DwgRisq extends DwgElement {
         }
         this.addUnitOrder(
           RisqOrderType.OrderType_UnitRepair,
-          units.filter((u) => u.unit_id === 1).map((u) => u.internal_id),
+          units.filter((u) => u.unit_type === RisqUnitType.ECONOMIC).map((u) => u.internal_id),
           this.hovered_zone.building.internal_id,
           ctrl_held
         );
@@ -2209,7 +2250,7 @@ export class DwgRisq extends DwgElement {
         }
         this.addUnitOrder(
           RisqOrderType.OrderType_UnitRenew,
-          units.filter((u) => u.unit_id === 1).map((u) => u.internal_id),
+          units.filter((u) => u.unit_type === RisqUnitType.ECONOMIC).map((u) => u.internal_id),
           this.hovered_zone.building.internal_id,
           ctrl_held
         );
@@ -2262,11 +2303,8 @@ export class DwgRisq extends DwgElement {
                     space.visibility
                   );
                 } else if (!!zone.building) {
-                  const canonical_building =
-                    this.game?.players[zone.building.player_id]?.buildings.get(zone.building.internal_id) ??
-                    zone.building;
                   this.left_panel.openPanel(
-                    { data_type: LeftPanelDataType.BUILDING, data: canonical_building },
+                    { data_type: LeftPanelDataType.BUILDING, data: zone.building },
                     space.visibility
                   );
                 } else {
@@ -2328,9 +2366,17 @@ export class DwgRisq extends DwgElement {
                     const key = `${g.player_id}:${g.unit_id}`;
                     const target = groups.get(key) ?? { ...g, units: new Set<number>() };
                     for (const id of g.units) {
-                      deselect ? target.units.delete(id) : target.units.add(id);
+                      if (deselect) {
+                        target.units.delete(id);
+                      } else {
+                        target.units.add(id);
+                      }
                     }
-                    target.units.size > 0 ? groups.set(key, target) : groups.delete(key);
+                    if (target.units.size > 0) {
+                      groups.set(key, target);
+                    } else {
+                      groups.delete(key);
+                    }
                   }
                   const units_by_player = new Map<number, UnitByTypeData[]>();
                   for (const g of groups.values()) {
@@ -2383,7 +2429,12 @@ export class DwgRisq extends DwgElement {
         this.left_panel.openPanel({ data_type: LeftPanelDataType.SPACE, data: space }, space.visibility);
       }
       space.clicked = false;
-    } else if (armed_before === RisqOrderType.NONE && !this.left_panel.isHovering() && !this.right_panel.isHovering()) {
+    } else if (
+      e.button === 0 &&
+      armed_before === RisqOrderType.NONE &&
+      !this.left_panel.isHovering() &&
+      !this.right_panel.isHovering()
+    ) {
       this.left_panel.close();
     }
     if (

@@ -52,57 +52,69 @@ func (p terrainPickJSON) resolve(rng *rand.Rand) (uint32, error) {
 	return 0, fmt.Errorf("must specify terrain_type, terrain_id, or terrain_ids")
 }
 
-func growSpaceBlob(start *RisqSpace, size int, rng *rand.Rand) map[uint]*RisqSpace {
-	blob := map[uint]*RisqSpace{start.coordinate_key: start}
-	frontier := []*RisqSpace{start}
-	for len(blob) < size && len(frontier) > 0 {
+func growBlob[T any](start T, size int, rng *rand.Rand, key func(T) uint, neighbors func(T) []T, excluded func(T) bool) []T {
+	seen := map[uint]bool{key(start): true}
+	result := []T{start}
+	frontier := []T{start}
+	for len(result) < size && len(frontier) > 0 {
 		idx := rng.Intn(len(frontier))
 		cur := frontier[idx]
 		frontier = append(frontier[:idx], frontier[idx+1:]...)
-		neighbors := make([]*RisqSpace, 0, len(cur.adjacent_spaces))
-		for _, adj := range cur.adjacent_spaces {
-			if _, in := blob[adj.coordinate_key]; !in {
-				neighbors = append(neighbors, adj)
-			}
-		}
-		for _, n := range util.ShuffleFrom(rng, neighbors) {
-			if len(blob) >= size {
+		for _, n := range util.ShuffleFrom(rng, neighbors(cur)) {
+			if len(result) >= size {
 				break
 			}
-			if _, in := blob[n.coordinate_key]; in {
+			if excluded(n) || seen[key(n)] {
 				continue
 			}
-			blob[n.coordinate_key] = n
+			seen[key(n)] = true
+			result = append(result, n)
 			frontier = append(frontier, n)
 		}
 	}
-	return blob
+	return result
+}
+
+// Returns every space within hex distance radius of start (radius 0 -> just start, radius 1 -> start + 6 neighbors, etc.)
+func hexRadiusSpaces(start *RisqSpace, radius int) []*RisqSpace {
+	seen := map[uint]bool{start.coordinate_key: true}
+	result := []*RisqSpace{start}
+	frontier := []*RisqSpace{start}
+	for len(frontier) > 0 {
+		cur := frontier[0]
+		frontier = frontier[1:]
+		for _, n := range cur.adjacent_spaces {
+			if seen[n.coordinate_key] || int(game_utils.AxialDistance(start.coordinate, n.coordinate)) > radius {
+				continue
+			}
+			seen[n.coordinate_key] = true
+			result = append(result, n)
+			frontier = append(frontier, n)
+		}
+	}
+	return result
+}
+
+func growSpaceBlob(start *RisqSpace, size int, rng *rand.Rand) []*RisqSpace {
+	return growBlob(start, size, rng,
+		func(s *RisqSpace) uint { return s.coordinate_key },
+		func(s *RisqSpace) []*RisqSpace {
+			neighbors := make([]*RisqSpace, 0, len(s.adjacent_spaces))
+			for _, adj := range s.adjacent_spaces {
+				neighbors = append(neighbors, adj)
+			}
+			return neighbors
+		},
+		func(*RisqSpace) bool { return false },
+	)
 }
 
 func growZoneBlob(start *RisqZone, size int, rng *rand.Rand) []*RisqZone {
-	blob := map[uint]*RisqZone{start.coordinate_key: start}
-	frontier := []*RisqZone{start}
-	for len(blob) < size && len(frontier) > 0 {
-		idx := rng.Intn(len(frontier))
-		cur := frontier[idx]
-		frontier = append(frontier[:idx], frontier[idx+1:]...)
-		neighbors := append([]*RisqZone{}, cur.adjacent_zones...)
-		for _, n := range util.ShuffleFrom(rng, neighbors) {
-			if len(blob) >= size || n.isCenter() {
-				continue
-			}
-			if _, in := blob[n.coordinate_key]; in {
-				continue
-			}
-			blob[n.coordinate_key] = n
-			frontier = append(frontier, n)
-		}
-	}
-	result := make([]*RisqZone, 0, len(blob))
-	for _, z := range blob {
-		result = append(result, z)
-	}
-	return result
+	return growBlob(start, size, rng,
+		func(z *RisqZone) uint { return z.coordinate_key },
+		func(z *RisqZone) []*RisqZone { return z.adjacent_zones },
+		func(z *RisqZone) bool { return z.isCenter() },
+	)
 }
 
 func cubeRound(x float64, y float64, z float64) (int, int, int) {
@@ -216,14 +228,14 @@ func stepTerrainBlob(ctx *mapScriptContext, raw json.RawMessage) error {
 	region := ctx.region(p.Region)
 	for _, seed := range seeds {
 		blob := growSpaceBlob(seed, size, ctx.rng)
-		for key, space := range blob {
+		for _, space := range blob {
 			terrain_id, err := p.resolve(ctx.rng)
 			if err != nil {
 				return err
 			}
 			space.terrain_id = terrain_id
 			if region != nil {
-				region[key] = true
+				region[space.coordinate_key] = true
 			}
 		}
 	}
@@ -533,16 +545,71 @@ type playerStartResourceJSON struct {
 	Count      ScriptExpr `json:"count"`
 }
 
+// Targets one zone relative to a player's start space, for deterministic map-script placement
+type zoneTargetJSON struct {
+	SpaceDistance int    `json:"space_distance,omitempty"` // hex distance from the start space; 0 = the start space itself
+	Zone          string `json:"zone"`                     // "center" or "edge"
+	EdgeIndex     int    `json:"edge_index,omitempty"`     // 1-6; 0 = a random free edge zone
+}
+
 type playerStartBuildingJSON struct {
-	BuildingId uint32 `json:"building_id"`
+	BuildingId      uint32         `json:"building_id"`
+	TerrainOverride uint32         `json:"terrain_override,omitempty"`
+	Target          zoneTargetJSON `json:"target"`
+}
+
+type zoneTerrainOverrideJSON struct {
+	TerrainId uint32         `json:"terrain_id"`
+	Target    zoneTargetJSON `json:"target"`
 }
 
 type playerStartsParams struct {
 	terrainPickJSON
-	Pattern   string                    `json:"pattern"`
-	AreaSize  ScriptExpr                `json:"area_size"`
-	Resources []playerStartResourceJSON `json:"resources"`
-	Buildings []playerStartBuildingJSON `json:"buildings"`
+	Pattern              string                    `json:"pattern"`
+	AreaSize             ScriptExpr                `json:"area_size"`
+	Resources            []playerStartResourceJSON `json:"resources"`
+	Buildings            []playerStartBuildingJSON `json:"buildings"`
+	ZoneTerrainOverrides []zoneTerrainOverrideJSON `json:"zone_terrain_overrides,omitempty"`
+}
+
+// Resolves a zoneTargetJSON to a concrete zone within the given footprint, relative to start
+func resolveZoneTarget(footprint []*RisqSpace, start *RisqSpace, target zoneTargetJSON, rng *rand.Rand) (*RisqZone, error) {
+	target_space := start
+	if target.SpaceDistance > 0 {
+		candidates := make([]*RisqSpace, 0)
+		for _, s := range footprint {
+			if int(game_utils.AxialDistance(start.coordinate, s.coordinate)) == target.SpaceDistance {
+				candidates = append(candidates, s)
+			}
+		}
+		if len(candidates) == 0 {
+			return nil, fmt.Errorf("no space at distance %d from player start", target.SpaceDistance)
+		}
+		target_space = candidates[rng.Intn(len(candidates))]
+	}
+	if target.Zone == "center" {
+		return target_space.getCenterZone(), nil
+	}
+	if target.Zone != "edge" {
+		return nil, fmt.Errorf("zone target must be \"center\" or \"edge\", got %q", target.Zone)
+	}
+	directions := game_utils.AxialDirectionVectors()
+	if target.EdgeIndex > 0 {
+		if target.EdgeIndex > len(directions) {
+			return nil, fmt.Errorf("edge_index %d out of range", target.EdgeIndex)
+		}
+		return target_space.getZone(&directions[target.EdgeIndex-1]), nil
+	}
+	free := make([]*RisqZone, 0, len(directions))
+	for _, d := range directions {
+		if z := target_space.getZone(&d); z != nil && z.resource == nil && z.building == nil {
+			free = append(free, z)
+		}
+	}
+	if len(free) == 0 {
+		return nil, fmt.Errorf("no free edge zone available")
+	}
+	return free[rng.Intn(len(free))], nil
 }
 
 var playerStartRingOffsets = map[int][]int{
@@ -552,6 +619,23 @@ var playerStartRingOffsets = map[int][]int{
 	4: {0, 1, 3, 4},
 	5: {0, 1, 2, 3, 4},
 	6: {0, 1, 2, 3, 4, 5},
+}
+
+func clearSpaceOccupants(r *GameRisq, s *RisqSpace) {
+	for _, row := range s.zones {
+		for _, zone := range row {
+			zone.terrain_override = 0
+			if zone.resource != nil {
+				s.removeResource(zone.resource)
+			}
+			if zone.building != nil {
+				building := zone.building
+				s.removeBuilding(building)
+				delete(r.buildings, building.internal_id)
+				delete(r.players[building.player_id].buildings, building.internal_id)
+			}
+		}
+	}
 }
 
 func stepPlayerStarts(ctx *mapScriptContext, raw json.RawMessage) error {
@@ -573,6 +657,16 @@ func stepPlayerStarts(ctx *mapScriptContext, raw json.RawMessage) error {
 	directions := game_utils.AxialDirectionVectors()
 	starting_direction := util.RandomIntFrom(ctx.rng, 0, 5)
 	ctx.player_starts = make([]playerStartInfo, len(ctx.risq.players))
+	// a player's own home space is reserved; other players' footprints (their non-home ring spaces) may still overlap it
+	home_space_keys := make(map[uint]bool, len(offsets))
+	for _, offset := range offsets {
+		direction := directions[(starting_direction+offset)%6]
+		home_space := ctx.risq.getSpace(direction.Multiply(ctx.starting_distance))
+		if home_space == nil {
+			return fmt.Errorf("player start space is nil")
+		}
+		home_space_keys[home_space.coordinate_key] = true
+	}
 	for i, offset := range offsets {
 		direction := directions[(starting_direction+offset)%6]
 		space := ctx.risq.getSpace(direction.Multiply(ctx.starting_distance))
@@ -581,8 +675,15 @@ func stepPlayerStarts(ctx *mapScriptContext, raw json.RawMessage) error {
 		}
 		ctx.player_starts[i] = playerStartInfo{space: space, direction: direction}
 		player := ctx.risq.players[i]
-		footprint := growSpaceBlob(space, max(1, area_size), ctx.rng)
+		footprint := make([]*RisqSpace, 0)
+		for _, s := range hexRadiusSpaces(space, area_size) {
+			if s != space && home_space_keys[s.coordinate_key] {
+				continue // never claim another player's home space
+			}
+			footprint = append(footprint, s)
+		}
 		for _, s := range footprint {
+			clearSpaceOccupants(ctx.risq, s)
 			terrain_id, err := p.resolve(ctx.rng)
 			if err != nil {
 				return err
@@ -605,18 +706,25 @@ func stepPlayerStarts(ctx *mapScriptContext, raw json.RawMessage) error {
 			}
 			return nil
 		}
-		for bi, b := range p.Buildings {
-			target := space.getCenterZone()
-			if bi > 0 {
-				target = nextFreeZone()
-				if target == nil {
-					break
-				}
+		for _, b := range p.Buildings {
+			target, err := resolveZoneTarget(footprint, space, b.Target, ctx.rng)
+			if err != nil {
+				return err
 			}
 			building := createRisqBuilding(ctx.risq.nextBuildingInternalId(), b.BuildingId, player.player.Player_id)
 			target.space.setBuilding(&target.coordinate, building)
 			player.buildings[building.internal_id] = building
 			ctx.risq.buildings[building.internal_id] = building
+			if b.TerrainOverride != 0 {
+				target.terrain_override = b.TerrainOverride
+			}
+		}
+		for _, o := range p.ZoneTerrainOverrides {
+			target, err := resolveZoneTarget(footprint, space, o.Target, ctx.rng)
+			if err != nil {
+				return err
+			}
+			target.terrain_override = o.TerrainId
 		}
 		for _, r := range p.Resources {
 			count, err := r.Count.resolveInt(ctx.vars)

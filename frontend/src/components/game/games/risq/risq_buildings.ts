@@ -1,3 +1,5 @@
+import { err } from '../../../../scripts/log';
+
 /** Returns image path of the building; pass plain to get the uncolored source (no player-color marker pixels) */
 export function buildingImage(building_id: number | undefined, under_construction?: boolean, plain = false): string {
   if (building_id !== undefined && under_construction) {
@@ -15,14 +17,20 @@ export function buildingImage(building_id: number | undefined, under_constructio
       case 21:
         filename = 'outpost';
         break;
+      case 23:
+        filename = 'redoubt';
+        break;
+      case 11:
+        filename = 'blacksmith';
+        break;
+      case 22:
+        filename = 'barracks';
+        break;
       case 3: // farm
-      case 11: // blacksmith
-      case 22: // barracks
-      case 23: // redoubt
         filename = 'empty_plot'; // no building image yet
         break;
       default:
-        console.error('Trying to get building image from unknown building id', building_id);
+        err('Trying to get building image from unknown building id', building_id);
         return '';
     }
     if (plain && filename !== 'empty_plot') {

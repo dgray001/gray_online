@@ -42,6 +42,9 @@ type GameRisq struct {
 	gather_allotments map[*RisqUnit]float64
 	// Recomputed each tick: settles which simultaneous garrison attempts get a building's remaining slots
 	garrison_allotments map[*RisqUnit]bool
+	// Zones whose cosmetic terrain_override should clear at the start of cleanupDeleted's NEXT call,
+	// so a destroyed building's override is still visible for the turn following its death
+	pending_terrain_clears []*RisqZone
 	// owned by this game only, never the shared global source, so concurrent AI goroutines can't race it
 	rng *rand.Rand
 }
@@ -162,6 +165,22 @@ func (r *GameRisq) Valid() bool {
 	return true
 }
 
+func (r *GameRisq) requireGivingOrders(player *game.Player, kind string) bool {
+	if !r.giving_orders {
+		player.AddFailedUpdateShorthand(kind+"-failed", "Not currently giving orders")
+		return false
+	}
+	return true
+}
+
+func (r *GameRisq) requireOrdersNotSubmitted(player *game.Player, kind string) bool {
+	if r.players[player.Player_id].orders_submitted {
+		player.AddFailedUpdateShorthand(kind+"-failed", "Orders already submitted")
+		return false
+	}
+	return true
+}
+
 func (r *GameRisq) PlayerAction(action game.PlayerAction) {
 	fmt.Println("player action:", action.Kind, action.Client_id, action.Ai_id, action.Action)
 	player := r.game.AiPlayers[uint32(action.Ai_id)]
@@ -177,16 +196,11 @@ func (r *GameRisq) PlayerAction(action game.PlayerAction) {
 	}
 	switch action.Kind {
 	case "submit-orders":
-		if !r.giving_orders {
-			player.AddFailedUpdateShorthand("submit-orders-failed", "Not currently giving orders")
+		if !r.requireGivingOrders(player, "submit-orders") || !r.requireOrdersNotSubmitted(player, "submit-orders") {
 			return
 		}
 		if !r.players[player.Player_id].canSubmitOrders() {
 			player.AddFailedUpdateShorthand("submit-orders-failed", "Eliminated players cannot submit orders")
-			return
-		}
-		if r.players[player.Player_id].orders_submitted {
-			player.AddFailedUpdateShorthand("submit-orders-failed", "Orders already submitted")
 			return
 		}
 		orders, err := r.getOrdersFromPlayerAction(action.Action, player.Player_id)
@@ -196,8 +210,7 @@ func (r *GameRisq) PlayerAction(action game.PlayerAction) {
 		}
 		r.executeSubmitOrders(player.Player_id, orders)
 	case "unsubmit-orders":
-		if !r.giving_orders {
-			player.AddFailedUpdateShorthand("unsubmit-orders-failed", "Not currently giving orders")
+		if !r.requireGivingOrders(player, "unsubmit-orders") {
 			return
 		}
 		if !r.players[player.Player_id].orders_submitted {
@@ -206,12 +219,7 @@ func (r *GameRisq) PlayerAction(action game.PlayerAction) {
 		}
 		r.executeUnsubmitOrders(player.Player_id)
 	case "set-unit-behavior":
-		if !r.giving_orders {
-			player.AddFailedUpdateShorthand("set-unit-behavior-failed", "Not currently giving orders")
-			return
-		}
-		if r.players[player.Player_id].orders_submitted {
-			player.AddFailedUpdateShorthand("set-unit-behavior-failed", "Orders already submitted")
+		if !r.requireGivingOrders(player, "set-unit-behavior") || !r.requireOrdersNotSubmitted(player, "set-unit-behavior") {
 			return
 		}
 		behavior, err := getUnitBehaviorFromPlayerAction(action.Action)
@@ -221,12 +229,7 @@ func (r *GameRisq) PlayerAction(action game.PlayerAction) {
 		}
 		r.executeSetUnitBehavior(player.Player_id, behavior)
 	case "set-building-behavior":
-		if !r.giving_orders {
-			player.AddFailedUpdateShorthand("set-building-behavior-failed", "Not currently giving orders")
-			return
-		}
-		if r.players[player.Player_id].orders_submitted {
-			player.AddFailedUpdateShorthand("set-building-behavior-failed", "Orders already submitted")
+		if !r.requireGivingOrders(player, "set-building-behavior") || !r.requireOrdersNotSubmitted(player, "set-building-behavior") {
 			return
 		}
 		behavior, err := getBuildingBehaviorFromPlayerAction(action.Action)
@@ -236,12 +239,7 @@ func (r *GameRisq) PlayerAction(action game.PlayerAction) {
 		}
 		r.executeSetBuildingBehavior(player.Player_id, behavior)
 	case "set-gather-point":
-		if !r.giving_orders {
-			player.AddFailedUpdateShorthand("set-gather-point-failed", "Not currently giving orders")
-			return
-		}
-		if r.players[player.Player_id].orders_submitted {
-			player.AddFailedUpdateShorthand("set-gather-point-failed", "Orders already submitted")
+		if !r.requireGivingOrders(player, "set-gather-point") || !r.requireOrdersNotSubmitted(player, "set-gather-point") {
 			return
 		}
 		request, err := getGatherPointFromPlayerAction(action.Action)
@@ -572,7 +570,20 @@ func (r *GameRisq) resolveActiveOrders() {
 	r.startNextTurn()
 }
 
+func (r *GameRisq) cancelPendingTerrainClear(zone *RisqZone) {
+	for i, z := range r.pending_terrain_clears {
+		if z == zone {
+			r.pending_terrain_clears = append(r.pending_terrain_clears[:i], r.pending_terrain_clears[i+1:]...)
+			return
+		}
+	}
+}
+
 func (r *GameRisq) cleanupDeleted() {
+	for _, zone := range r.pending_terrain_clears {
+		zone.terrain_override = 0
+	}
+	r.pending_terrain_clears = r.pending_terrain_clears[:0]
 	for _, player := range r.players {
 		orderables := make([]Orderable, 0, len(player.units)+len(player.buildings))
 		for _, u := range player.units {

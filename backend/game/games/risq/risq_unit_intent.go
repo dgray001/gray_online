@@ -8,6 +8,7 @@ import (
 )
 
 const unitTickStaminaCost = 3
+const buildTickStaminaCost = 5
 
 const gatherRoundingPlaces = 4
 
@@ -162,26 +163,14 @@ func (i *RisqIntent) setGather(source Gatherable) {
 	i.max_cost = unitTickStaminaCost
 }
 
-type AttackBuildingIntent struct {
-	target *RisqBuilding
+type UnitAttackIntent struct {
+	target Attackable
 }
 
-func (*AttackBuildingIntent) isIntentKind() {}
+func (*UnitAttackIntent) isIntentKind() {}
 
-func (i *RisqIntent) setAttackBuilding(target *RisqBuilding) {
-	i.detail = &AttackBuildingIntent{target: target}
-	i.min_cost = 1
-	i.max_cost = unitTickStaminaCost
-}
-
-type AttackUnitIntent struct {
-	target *RisqUnit
-}
-
-func (*AttackUnitIntent) isIntentKind() {}
-
-func (i *RisqIntent) setAttackUnit(target *RisqUnit) {
-	i.detail = &AttackUnitIntent{target: target}
+func (i *RisqIntent) setUnitAttack(target Attackable) {
+	i.detail = &UnitAttackIntent{target: target}
 	i.min_cost = 1
 	i.max_cost = unitTickStaminaCost
 }
@@ -195,7 +184,7 @@ func (*RepairIntent) isIntentKind() {}
 func (i *RisqIntent) setRepair(target *RisqBuilding) {
 	i.detail = &RepairIntent{target: target}
 	i.min_cost = 1
-	i.max_cost = unitTickStaminaCost
+	i.max_cost = buildTickStaminaCost
 }
 
 type RenewIntent struct {
@@ -207,7 +196,7 @@ func (*RenewIntent) isIntentKind() {}
 func (i *RisqIntent) setRenew(target *RisqBuilding) {
 	i.detail = &RenewIntent{target: target}
 	i.min_cost = 1
-	i.max_cost = unitTickStaminaCost
+	i.max_cost = buildTickStaminaCost
 }
 
 type ConstructionIntent struct {
@@ -221,7 +210,7 @@ func (*ConstructionIntent) isIntentKind() {}
 func (i *RisqIntent) setBuild(building_under_construction *RisqBuilding, building_id uint32, zone *RisqZone) {
 	i.detail = &ConstructionIntent{building_under_construction: building_under_construction, building_id: building_id, zone: zone}
 	i.min_cost = 1
-	i.max_cost = unitTickStaminaCost
+	i.max_cost = buildTickStaminaCost
 }
 
 type GarrisonIntent struct {

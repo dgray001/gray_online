@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.8l: Initial map scripting
+v0.8m: All building images
 
 ## Dev Use
 

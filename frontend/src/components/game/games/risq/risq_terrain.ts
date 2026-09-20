@@ -1,4 +1,5 @@
 import type { ColorRGB } from '../../../../scripts/color_rgb';
+import { err } from '../../../../scripts/log';
 import type { RisqPlayer } from './risq_data';
 
 export enum RisqViewMode {
@@ -108,6 +109,12 @@ export function terrainImage(terrain_id: number): string {
     case 23:
       filename = 'straw2';
       break;
+    case 24:
+      filename = 'farm_tilled';
+      break;
+    case 25:
+      filename = 'farm_tilled_dead';
+      break;
     case 51:
       filename = 'grass_green1_hills';
       break;
@@ -144,8 +151,14 @@ export function terrainImage(terrain_id: number): string {
     case 62:
       filename = 'snow2_hills';
       break;
+    case 63:
+      filename = 'farm_tilled_hills';
+      break;
+    case 64:
+      filename = 'farm_tilled_dead_hills';
+      break;
     default:
-      console.error('Trying to get terrain image from unknown terrain_id', terrain_id);
+      err('Trying to get terrain image from unknown terrain_id', terrain_id);
       filename = 'grass_green1';
   }
   return `risq/terrains/${filename}`;
