@@ -3,12 +3,10 @@ package risq
 import (
 	"errors"
 	"math/rand"
-	"sort"
 	"strconv"
 	"time"
 
 	"github.com/dgray001/gray_online/game"
-	"github.com/dgray001/gray_online/game/game_utils"
 	"github.com/dgray001/gray_online/util"
 )
 
@@ -94,6 +92,7 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameR
 		player_id++
 	}
 	ai_players, ai_players_ok := g.GameSpecificSettings["ai_players"].([]any)
+	ai_risq_players := make([]*RisqPlayer, 0)
 	if ai_players_ok {
 		for _, ai_player := range ai_players {
 			ai, ai_ok := ai_player.(map[string]any)
@@ -115,7 +114,7 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameR
 			player_rng := rand.New(rand.NewSource(int64(seed) + int64(player_id) + 1))
 			risq_player := createRisqPlayer(player, risq.population_limit, color, player_rng)
 			risq_player.createAiModel(config)
-			go runAi(risq_player, &risq, action_channel)
+			ai_risq_players = append(ai_risq_players, risq_player)
 			risq.players = append(risq.players, risq_player)
 			player_id++
 		}
@@ -125,124 +124,48 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameR
 	} else if len(risq.players) > 12 {
 		return nil, errors.New("Can have max of twelve players playing risq")
 	}
-	starting_distance := 0
-	switch len(risq.players) {
-	case 6:
-		risq.board_size = 6
-		starting_distance = util.RandomIntFrom(risq.rng, 4, 5)
-	case 5:
-		risq.board_size = 6
-		starting_distance = util.RandomIntFrom(risq.rng, 4, 5)
-	case 4:
-		risq.board_size = 5
-		starting_distance = util.RandomIntFrom(risq.rng, 3, 4)
-	case 3:
-		risq.board_size = 4
-		starting_distance = util.RandomIntFrom(risq.rng, 3, 3)
-	default:
-		risq.board_size = 4
-		starting_distance = util.RandomIntFrom(risq.rng, 4, 4)
-	}
-	if override, ok := g.GameSpecificSettings["board_size"].(float64); ok && override >= 2 {
-		risq.board_size = uint16(override)
-	}
-	if override, ok := g.GameSpecificSettings["starting_distance"].(float64); ok && override >= 0 {
-		starting_distance = int(override)
-	}
-	if starting_distance > int(risq.board_size) {
-		starting_distance = int(risq.board_size)
-	}
-	starting_units := map[uint32]int{1: 3, 11: 1}
-	if raw, ok := g.GameSpecificSettings["starting_units"].(map[string]any); ok {
-		starting_units = make(map[uint32]int, len(raw))
-		for id_str, count_raw := range raw {
-			id, err := strconv.ParseUint(id_str, 10, 32)
-			count, count_ok := count_raw.(float64)
-			if err != nil || !count_ok {
-				continue
-			}
-			starting_units[uint32(id)] = int(count)
-		}
-	}
-	risq.spaces = make([][]*RisqSpace, 2*int(risq.board_size)+1)
-	for j := range risq.spaces {
-		r := j - int(risq.board_size)
-		l := 2*int(risq.board_size) + 1 - util.AbsInt(r)
-		risq.spaces[j] = make([]*RisqSpace, l)
-		for i := range risq.spaces[j] {
-			q := max(-int(risq.board_size), -(int(risq.board_size)+r)) + i
-			risq.spaces[j][i] = createRisqSpace(q, r, defaultTerrainId)
-		}
-	}
-	for _, row := range risq.spaces {
-		for _, space := range row {
-			for _, v := range game_utils.AxialDirectionVectors() {
-				adjacent := risq.getSpace(space.coordinate.Add(&v))
-				if adjacent != nil {
-					space.setAdjacentSpace(adjacent, &v)
-				}
-			}
-		}
-	}
 	map_name, ok := g.GameSpecificSettings["map"].(string)
 	if !ok || map_name == "" {
-		map_name = "default"
+		map_name = "ring"
 	}
-	total_spaces := 0
-	for _, row := range risq.spaces {
-		total_spaces += len(row)
+	steps, err := loadMapScript(map_name)
+	if err != nil {
+		return nil, err
 	}
 	ctx := &mapScriptContext{
-		risq:              &risq,
-		rng:               risq.rng,
-		num_players:       len(risq.players),
-		board_size:        risq.board_size,
-		starting_distance: starting_distance,
-		regions:           make(map[string]map[uint]bool),
-		vars:              newMapScriptVars(len(risq.players), risq.board_size, starting_distance, total_spaces),
+		risq:        &risq,
+		rng:         risq.rng,
+		num_players: len(risq.players),
+		regions:     make(map[string]map[uint]bool),
+		vars:        newMapScriptVars(len(risq.players), 0, 0),
 	}
-	if err := runMapScript(ctx, loadMapScript(map_name)); err != nil {
+	if err := runMapScript(ctx, steps); err != nil {
 		return nil, err
 	}
 	if len(ctx.player_starts) != len(risq.players) {
 		return nil, errors.New("map script did not place all player starts")
 	}
-	for i, start := range ctx.player_starts {
-		player := risq.players[i]
-		unit_ids := make([]uint32, 0, len(starting_units))
-		for unit_id := range starting_units {
-			unit_ids = append(unit_ids, unit_id)
-		}
-		sort.Slice(unit_ids, func(i, j int) bool { return unit_ids[i] < unit_ids[j] })
-		for _, unit_id := range unit_ids {
-			for range starting_units[unit_id] {
-				unit := createRisqUnit(risq.nextUnitInternalId(), unit_id, player)
-				start.space.setUnit(&game_utils.Coordinate2D{X: 0, Y: 0}, unit)
-				player.units[unit.internal_id] = unit
-				risq.units[unit.internal_id] = unit
-			}
-		}
-	}
 	risq.logBoard()
+	for _, ai_player := range ai_risq_players {
+		go runAi(ai_player, &risq, action_channel)
+	}
 	return &risq, nil
 }
 
 func (r *GameRisq) logBoard() {
-	for _, row := range r.spaces {
-		for _, space := range row {
-			util.DebugLog.Printf("board: space (%d,%d) terrain_id=%d", space.coordinate.X, space.coordinate.Y, space.terrain_id)
-			for _, zrow := range space.zones {
-				for _, zone := range zrow {
-					if zone.resource != nil {
-						util.DebugLog.Printf("board:   zone (%d,%d) key=%d resource_id=%d category=%d amount=%.0f",
-							zone.coordinate.X, zone.coordinate.Y, zone.coordinate_key,
-							zone.resource.resource_id, zone.resource.category(), zone.resource.resources_left)
-					}
-					if zone.building != nil {
-						util.DebugLog.Printf("board:   zone (%d,%d) key=%d building_id=%d player=%d",
-							zone.coordinate.X, zone.coordinate.Y, zone.coordinate_key,
-							zone.building.building_id, zone.building.player_id)
-					}
+	for _, space := range r.allSpaces() {
+		util.DebugLog.Printf("board: space (%d,%d) terrain_id=%d", space.coordinate.X, space.coordinate.Y, space.terrain_id)
+		for _, zrow := range space.zones {
+			for _, zone := range zrow {
+				if zone.resource != nil {
+					util.DebugLog.Printf("board:   zone (%d,%d) key=%d resource_id=%d category=%d amount=%.0f",
+						zone.coordinate.X, zone.coordinate.Y, zone.coordinate_key,
+						zone.resource.resource_id, zone.resource.category(), zone.resource.resources_left)
+				}
+				if zone.building != nil {
+					util.DebugLog.Printf("board:   zone (%d,%d) key=%d building_id=%d player=%d",
+						zone.coordinate.X, zone.coordinate.Y, zone.coordinate_key,
+						zone.building.building_id, zone.building.player_id)
 				}
 			}
 		}

@@ -47,12 +47,15 @@ export function wrapText(ctx: CanvasRenderingContext2D, text: string, max_width:
   return lines;
 }
 
-// anchors the box on whichever side of p has more room, then clamps it fully on screen
+const TOOLTIP_GAP = 2;
+
+// anchors the box on whichever side of p has more room on both axes, then clamps it fully on screen
 export function anchorTooltipBox(p: Point2D, w: number, h: number, canvas_size: CanvasSize): Point2D {
   const x = p.x > canvas_size.width / 2 ? p.x - w : p.x;
+  const y = p.y > canvas_size.height / 2 ? p.y - TOOLTIP_GAP - h : p.y + TOOLTIP_GAP;
   return {
     x: Math.max(0, Math.min(x, canvas_size.width - w)),
-    y: Math.max(0, p.y - 2 - h),
+    y: Math.max(0, Math.min(y, canvas_size.height - h)),
   };
 }
 
@@ -112,16 +115,37 @@ export function shouldShowTooltip(
     state.hover_ms = 0;
     return false;
   }
+  const was_showing = state.hover_ms >= state.config.delay_ms;
   const now = performance.now();
   if (state.hover_ms === 0 && !clicked && now - last_tooltip_shown_at <= GLOBAL_TOOLTIP_COOLDOWN_MS) {
     state.hover_ms = state.config.delay_ms;
   }
   state.hover_ms = clicked ? state.config.delay_ms : state.hover_ms + dt;
   const show = state.hover_ms >= state.config.delay_ms;
-  if (show) {
+  if (show && !was_showing) {
     last_tooltip_shown_at = now;
   }
   return show;
+}
+
+let queued_tooltip_draws: Array<() => void> = [];
+
+export function queueTooltipDraw(draw: () => void) {
+  queued_tooltip_draws.push(draw);
+}
+
+export function flushTooltipQueue() {
+  const draws = queued_tooltip_draws;
+  queued_tooltip_draws = [];
+  for (const draw of draws) {
+    draw();
+  }
+}
+
+let cursor_screen: Point2D = { x: 0, y: 0 };
+
+export function setTooltipCursor(p: Point2D) {
+  cursor_screen = p;
 }
 
 export function drawTooltip<T>(
@@ -129,8 +153,7 @@ export function drawTooltip<T>(
   ctx: CanvasRenderingContext2D,
   transform: BoardTransformData,
   canvas_size: CanvasSize,
-  p: Point2D,
   data: T
 ) {
-  state.config.draw(ctx, transform, canvas_size, p, data);
+  queueTooltipDraw(() => state.config.draw(ctx, transform, canvas_size, cursor_screen, data));
 }

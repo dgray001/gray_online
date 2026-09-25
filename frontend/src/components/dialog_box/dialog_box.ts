@@ -10,6 +10,7 @@ export enum DialogSize {
   MEDIUM = 'medium',
   LARGE = 'large',
   XLARGE = 'xlarge',
+  XXLARGE = 'xxlarge',
 }
 
 export abstract class DwgDialogBox<T> extends DwgElement {

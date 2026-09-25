@@ -72,14 +72,14 @@ export class DwgEuchrePlayer extends DwgElement {
   async gameStarted(game: GameEuchre, current_turn: boolean, dealer: boolean) {
     await until(() => this.fully_parsed);
     this.setDealer(dealer);
-    if (game.bidding || game.bidding_choosing_trump || game.dealer_substituting_card) {
+    if (game.bidding || game.bidding_choose_trump || game.dealer_substituting_card) {
       this.tricks_container.innerText = '-';
       if (game.dealer_substituting_card) {
         if (dealer) {
           this.substitutingCard();
         }
       } else if (current_turn) {
-        this.bidding(game.bidding_choosing_trump, dealer, game.card_face_up?.suit);
+        this.bidding(game.bidding_choose_trump, dealer, game.card_face_up?.suit);
       }
     } else {
       this.tricks_container.innerText = this.team.tricks.toString();
@@ -128,7 +128,7 @@ export class DwgEuchrePlayer extends DwgElement {
       });
       this.diamonds_button.addEventListener('click', () => {
         this.disableButtons();
-        const update = { going_alone: this.going_alone.checked, trump_suit: 1 };
+        const update = { going_alone: this.going_alone.checked, trump_suit: 3 };
         const game_update = createMessage(
           `player-${this.player.player.player_id}`,
           'game-update',
@@ -160,7 +160,7 @@ export class DwgEuchrePlayer extends DwgElement {
       });
       this.hearts_button.addEventListener('click', () => {
         this.disableButtons();
-        const update = { going_alone: this.going_alone.checked, trump_suit: 3 };
+        const update = { going_alone: this.going_alone.checked, trump_suit: 1 };
         const game_update = createMessage(
           `player-${this.player.player.player_id}`,
           'game-update',
@@ -259,16 +259,16 @@ export class DwgEuchrePlayer extends DwgElement {
       this.hearts_button.classList.remove('disabled');
       switch (card_face_up_suit) {
         case 1:
-          this.diamonds_button.disabled = true;
-          this.diamonds_button.classList.add('disabled');
+          this.hearts_button.disabled = true;
+          this.hearts_button.classList.add('disabled');
           break;
         case 2:
           this.clubs_button.disabled = true;
           this.clubs_button.classList.add('disabled');
           break;
         case 3:
-          this.hearts_button.disabled = true;
-          this.hearts_button.classList.add('disabled');
+          this.diamonds_button.disabled = true;
+          this.diamonds_button.classList.add('disabled');
           break;
         case 4:
           this.spades_button.disabled = true;

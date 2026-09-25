@@ -44,6 +44,10 @@ export abstract class DwgButton implements CanvasComponent {
     this.clicking = clicking;
   }
 
+  isPressed() {
+    return this.clicking;
+  }
+
   isDisabled(): boolean {
     return this.disabled;
   }

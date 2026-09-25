@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
+
+	"github.com/gin-gonic/gin"
 )
 
 //go:embed config/buildings.json
@@ -102,16 +105,11 @@ func resolveGatherable(j *buildingGatherableJSON, source string) (BuildingGather
 		return BuildingGatherable{}, err
 	}
 	return BuildingGatherable{
-		resource_category:  category,
-		base_gather_speed:  j.BaseGatherSpeed,
-		starting_resources: j.StartingResources,
-		gather_capacity:    j.GatherCapacity,
-		renew_cost: RisqResourceCost{
-			food:  j.RenewCost.Food,
-			wood:  j.RenewCost.Wood,
-			stone: j.RenewCost.Stone,
-			gold:  j.RenewCost.Gold,
-		},
+		resource_category:     category,
+		base_gather_speed:     j.BaseGatherSpeed,
+		starting_resources:    j.StartingResources,
+		gather_capacity:       j.GatherCapacity,
+		renew_cost:            j.RenewCost.toCost(),
 		renew_stamina:         j.RenewStamina,
 		terrain_override_dead: terrain_override_dead,
 	}, nil
@@ -203,18 +201,13 @@ func init() {
 			panic(err)
 		}
 		buildingConfigs[e.BuildingId] = BuildingConfig{
-			display_name:       e.DisplayName,
-			description:        e.Description,
-			max_health:         e.MaxHealth,
-			population_support: e.PopulationSupport,
-			garrison_capacity:  e.GarrisonCapacity,
-			produces:           produces,
-			cost: RisqResourceCost{
-				food:  e.Cost.Food,
-				wood:  e.Cost.Wood,
-				stone: e.Cost.Stone,
-				gold:  e.Cost.Gold,
-			},
+			display_name:                 e.DisplayName,
+			description:                  e.Description,
+			max_health:                   e.MaxHealth,
+			population_support:           e.PopulationSupport,
+			garrison_capacity:            e.GarrisonCapacity,
+			produces:                     produces,
+			cost:                         e.Cost.toCost(),
 			build_stamina:                e.BuildStamina,
 			turn_stamina:                 e.TurnStamina,
 			attack_type:                  attack_type,
@@ -234,4 +227,41 @@ func init() {
 			terrain_override:             terrain_override,
 		}
 	}
+}
+
+func AllBuildingConfigsToFrontend() []gin.H {
+	ids := make([]uint32, 0, len(buildingConfigs))
+	for id := range buildingConfigs {
+		ids = append(ids, id)
+	}
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	buildings := make([]gin.H, len(ids))
+	for i, id := range ids {
+		config := buildingConfigs[id]
+		produces := make([]gin.H, len(config.produces))
+		for j, p := range config.produces {
+			produces[j] = p.toFrontend()
+		}
+		buildings[i] = gin.H{
+			"building_id":      id,
+			"display_name":     config.display_name,
+			"description":      config.description,
+			"required_tech_id": config.required_tech_id,
+			"produces":         produces,
+			"cost":             config.cost.toFrontend(),
+			"stamina_cost":     config.build_stamina,
+			"stats": gin.H{
+				"health":               config.max_health,
+				"attack_type":          config.attack_type,
+				"attack_blunt":         config.attack_blunt,
+				"attack_piercing":      config.attack_piercing,
+				"attack_range":         config.attack_range,
+				"defense_blunt":        config.defense_blunt,
+				"defense_piercing":     config.defense_piercing,
+				"penetration_blunt":    config.penetration_blunt,
+				"penetration_piercing": config.penetration_piercing,
+			},
+		}
+	}
+	return buildings
 }

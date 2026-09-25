@@ -44,6 +44,15 @@
     --dialog-min-w: 320px;
   }
 
+  &.size-xxlarge {
+    --dialog-h: 95vh;
+    --dialog-w: 95vw;
+    --dialog-max-h: none;
+    --dialog-max-w: none;
+    --dialog-min-h: 300px;
+    --dialog-min-w: 320px;
+  }
+
   #wrapper {
     background-color: rgb(80, 80, 80);
     box-shadow: 0px 0px 3px 3px rgba(200, 200, 200, 0.8);

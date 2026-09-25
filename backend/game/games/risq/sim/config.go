@@ -10,12 +10,12 @@ type ScenarioPlayer struct {
 }
 
 type Scenario struct {
-	Seed             int64            `json:"seed"`
-	Iterations       int              `json:"iterations"`
-	BoardSize        int              `json:"board_size"`
-	StartingDistance int              `json:"starting_distance"`
-	MaxTurns         int              `json:"max_turns"`
-	Players          []ScenarioPlayer `json:"players"`
+	Seed       int64            `json:"seed"`
+	FixedSeed  bool             `json:"fixed_seed"`
+	Iterations int              `json:"iterations"`
+	Map        string           `json:"map"`
+	MaxTurns   int              `json:"max_turns"`
+	Players    []ScenarioPlayer `json:"players"`
 }
 
 func loadScenario(path string) (Scenario, error) {

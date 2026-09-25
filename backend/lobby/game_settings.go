@@ -18,18 +18,22 @@ type GameSettings struct {
 }
 
 func (s *GameSettings) Launchable() (bool, string) {
-	if s.MaxPlayers < 1 || s.MaxPlayers > 8 {
-		return false, "Invalid max players"
-	}
-	if s.MaxViewers > 16 {
-		return false, "Invalid max viewers"
-	}
 	max_game_type := game.GameType_RISQ
 	if DEV {
 		max_game_type = game.GameType_TEST_GAME
 	}
 	if s.GameType < 1 || s.GameType > max_game_type {
 		return false, "Invalid game type: " + strconv.Itoa(int(s.GameType))
+	}
+	max_players := uint8(8)
+	if s.GameType == game.GameType_RISQ {
+		max_players = 12
+	}
+	if s.MaxPlayers < 1 || s.MaxPlayers > max_players {
+		return false, "Invalid max players"
+	}
+	if s.MaxViewers > 16 {
+		return false, "Invalid max viewers"
 	}
 	return true, ""
 }

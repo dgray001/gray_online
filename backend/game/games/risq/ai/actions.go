@@ -9,8 +9,9 @@ type gatherAction struct {
 }
 
 type balancedGatherAction struct {
-	eligible []OrderKind
-	weight   float64
+	eligible     []OrderKind
+	weight       float64
+	move_penalty float64
 }
 
 type createAction struct {
@@ -99,30 +100,36 @@ func (a *gatherAction) ToOrders(view View, _ *Internals) []Order {
 }
 
 func (a *balancedGatherAction) ToOrders(view View, internals *Internals) []Order {
-	pool := make([]UnitView, 0)
+	idle, gathering := make([]UnitView, 0), make([]UnitView, 0)
 	for _, u := range eligibleUnits(view, a.eligible) {
-		if u.Kind == UnitEconomic {
-			pool = append(pool, u)
-		}
-	}
-	if len(pool) == 0 {
-		return nil
-	}
-	demand := gatherDemandWeights(view, internals, a.weight)
-	counts := currentGatherCounts(view)
-	orders := make([]Order, 0, len(pool))
-	for _, u := range pool {
-		category, target, ok := neediestGatherCategory(view, u.Location, demand, counts)
-		if !ok {
+		if u.Kind != UnitEconomic {
 			continue
 		}
 		if u.CurrentOrder != nil && u.CurrentOrder.TargetResource != nil {
-			if u.CurrentOrder.TargetResource.Category == category {
-				continue
-			}
-			counts[u.CurrentOrder.TargetResource.Category]--
+			gathering = append(gathering, u)
+		} else {
+			idle = append(idle, u)
+		}
+	}
+	counts := currentGatherCounts(view)
+	targets := gatherTargets(gatherDemandWeights(view, internals, a.weight), counts, len(idle))
+	orders := make([]Order, 0)
+	for _, u := range idle {
+		category, target, ok := neediestGatherCategory(view, u.Location, targets, counts)
+		if ok {
+			orders = append(orders, view.GatherOrder(u, target, true))
+			counts[category]++
+		}
+	}
+	deficit := func(c ResourceCategory) float64 { return targets[c] - float64(counts[c]) }
+	for _, u := range gathering {
+		from := u.CurrentOrder.TargetResource.Category
+		category, target, ok := neediestGatherCategory(view, u.Location, targets, counts)
+		if !ok || category == from || deficit(category)-deficit(from) <= 2+a.move_penalty {
+			continue
 		}
 		orders = append(orders, view.GatherOrder(u, target, true))
+		counts[from]--
 		counts[category]++
 	}
 	return orders

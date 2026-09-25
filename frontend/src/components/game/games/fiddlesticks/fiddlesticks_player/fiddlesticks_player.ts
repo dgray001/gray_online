@@ -52,27 +52,21 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.score_container.innerText = this.player.score.toString();
     this.bet_container.innerText = '-';
     this.tricks_container.innerText = '-';
-    let dealer_timeout: NodeJS.Timeout | undefined = undefined;
-    this.dealer_wrapper.addEventListener('click', () => {
-      if (dealer_timeout) {
-        clearTimeout(dealer_timeout);
+    this.addTooltipToggle(this.dealer_wrapper);
+    this.addTooltipToggle(this.winner_wrapper);
+  }
+
+  /** Toggles wrapper's tooltip on click, auto-hiding it after 2s */
+  private addTooltipToggle(wrapper: HTMLDivElement) {
+    let hide_timeout: NodeJS.Timeout | undefined = undefined;
+    wrapper.addEventListener('click', () => {
+      if (hide_timeout) {
+        clearTimeout(hide_timeout);
       }
-      this.dealer_wrapper.classList.toggle('show-tooltip');
-      if (this.dealer_wrapper.classList.contains('show-tooltip')) {
-        dealer_timeout = setTimeout(() => {
-          this.dealer_wrapper.classList.remove('show-tooltip');
-        }, 2000);
-      }
-    });
-    let winner_timeout: NodeJS.Timeout | undefined = undefined;
-    this.winner_wrapper.addEventListener('click', () => {
-      if (winner_timeout) {
-        clearTimeout(winner_timeout);
-      }
-      this.winner_wrapper.classList.toggle('show-tooltip');
-      if (this.winner_wrapper.classList.contains('show-tooltip')) {
-        winner_timeout = setTimeout(() => {
-          this.winner_wrapper.classList.remove('show-tooltip');
+      wrapper.classList.toggle('show-tooltip');
+      if (wrapper.classList.contains('show-tooltip')) {
+        hide_timeout = setTimeout(() => {
+          wrapper.classList.remove('show-tooltip');
         }, 2000);
       }
     });
@@ -119,8 +113,8 @@ export class DwgFiddlesticksPlayer extends DwgElement {
   }
 
   sendBetEvent() {
-    const bet_value = parseInt(this.bet_input.value) ?? NaN;
-    if (isNaN(bet_value) || bet_value < 0 || bet_value > this.player.cards.length) {
+    const bet_value = Number(this.bet_input.value);
+    if (!Number.isInteger(bet_value) || bet_value < 0 || bet_value > this.player.cards.length) {
       messageDialog.call(this, {
         message: `Invalid bet value ${bet_value}; bet must be in the range of [0, ${this.player.cards.length}]`,
       });
@@ -131,7 +125,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     const game_update = createMessage(
       `player-${this.player.player.player_id}`,
       'game-update',
-      `{"amount":${this.bet_input.value}}`,
+      `{"amount":${bet_value}}`,
       'bet'
     );
     this.dispatchEvent(new CustomEvent('game_update', { detail: game_update, bubbles: true }));

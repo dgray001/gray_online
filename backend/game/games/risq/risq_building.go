@@ -10,30 +10,18 @@ import (
 )
 
 type RisqBuilding struct {
-	deleted            bool
-	internal_id        uint64
-	player_id          int
+	orderableBase
 	building_id        uint32
 	display_name       string
-	zone               *RisqZone
 	population_support uint16
 	garrison_capacity  uint16
-	turn_stamina       int
-	current_stamina    int
-	cs                 RisqCombatStats
-	order_queue        RisqOrderQueue
 	production_queue   map[uint64]*RisqBuildingProductionItem
-	intent             *RisqIntent
 	// build stamina still needed to finish a unit-constructed foundation; 0 means not under construction
 	stamina_remaining          int
 	construction_stamina_total int
 	garrisoned_units           map[uint64]*RisqUnit
 	gather_point               *RisqGatherPoint
-	attacked_by                []RisqDamageEvent
 	auto_attack                bool
-	interrupt_current          bool
-	target_priority            []TargetCategory
-	attack_range               RisqRange
 	// Building gathering fields
 	resources_left float64
 	renewing       *RisqResourceCost
@@ -55,22 +43,19 @@ func constructionHealthRatio(stamina_remaining int, construction_stamina_total i
 
 func createRisqBuilding(internal_id uint64, building_id uint32, player_id int) *RisqBuilding {
 	building := RisqBuilding{
-		deleted:            false,
-		internal_id:        internal_id,
-		player_id:          player_id,
-		building_id:        building_id,
-		population_support: 0,
-		garrison_capacity:  0,
-		turn_stamina:       10,
-		current_stamina:    0,
-		cs:                 createRisqCombatStats(),
-		order_queue:        createRisqOrderQueue(),
-		production_queue:   make(map[uint64]*RisqBuildingProductionItem),
-		intent:             createRisqIntent(),
-		garrisoned_units:   make(map[uint64]*RisqUnit),
-		auto_attack:        true,
-		interrupt_current:  false,
-		target_priority:    []TargetCategory{},
+		orderableBase: orderableBase{
+			internal_id:     internal_id,
+			player_id:       player_id,
+			turn_stamina:    10,
+			cs:              createRisqCombatStats(),
+			order_queue:     createRisqOrderQueue(),
+			intent:          createRisqIntent(),
+			target_priority: []TargetCategory{},
+		},
+		building_id:      building_id,
+		production_queue: make(map[uint64]*RisqBuildingProductionItem),
+		garrisoned_units: make(map[uint64]*RisqUnit),
+		auto_attack:      true,
 	}
 	config, ok := buildingConfigs[building_id]
 	if !ok {
@@ -103,33 +88,28 @@ func (b *RisqBuilding) score() uint {
 	return buildingConfigs[b.building_id].cost.points()
 }
 
-func (b *RisqBuilding) isDeleted() bool {
-	return b.deleted
-}
-
-func (b *RisqBuilding) internalId() uint64 {
-	return b.internal_id
-}
-
 func (b *RisqBuilding) OrderableType() OrderableType {
 	return OrderableType_BUILDING
-}
-
-func (b *RisqBuilding) playerId() int {
-	return b.player_id
 }
 
 func (b *RisqBuilding) combatStats(r *GameRisq, other Orderable, attacking bool) RisqCombatStats {
 	return b.cs
 }
 
-func (b *RisqBuilding) isAlive() bool {
-	return b.cs.health > 0
-}
-
-func (b *RisqBuilding) applyDamage(event RisqDamageEvent) {
-	b.cs.addHealth(-event.damage)
-	b.attacked_by = append(b.attacked_by, event)
+func (b *RisqBuilding) resolveHealthDelta(r *GameRisq) {
+	if b.cs.pending_health_delta == 0 {
+		return
+	}
+	was_alive := b.isAlive()
+	b.cs.addHealth(b.cs.pending_health_delta)
+	b.cs.pending_health_delta = 0
+	if was_alive && !b.isAlive() {
+		if event, ok := lowestIdAttackerEvent(b.attacked_by, r.current_tick); ok {
+			if attacker := r.resolveAttacker(event); attacker != nil {
+				b.recordDeath(r, attacker, event.damage)
+			}
+		}
+	}
 }
 
 func (b *RisqBuilding) recordDeath(r *GameRisq, attacker Attackable, damage float64) {
@@ -144,10 +124,6 @@ func (b *RisqBuilding) recordDeath(r *GameRisq, attacker Attackable, damage floa
 	b.deleted = true
 }
 
-func (b *RisqBuilding) activeOrders() []*RisqOrder {
-	return b.order_queue.active_orders
-}
-
 func (b *RisqBuilding) cleanupDeleted(risq *GameRisq) {
 	player := risq.players[b.player_id]
 	for _, item := range b.production_queue {
@@ -158,7 +134,7 @@ func (b *RisqBuilding) cleanupDeleted(risq *GameRisq) {
 	}
 	for _, unit := range b.garrisoned_units {
 		unit.garrisoned_in = nil
-		if b.zone != nil && b.zone.space != nil {
+		if !unit.deleted && b.zone != nil && b.zone.space != nil {
 			b.zone.space.setUnit(&b.zone.coordinate, unit)
 		}
 	}
@@ -172,15 +148,6 @@ func (b *RisqBuilding) cleanupDeleted(risq *GameRisq) {
 	}
 	delete(player.buildings, b.internal_id)
 	delete(risq.buildings, b.internal_id)
-}
-
-func (b *RisqBuilding) refreshStamina() {
-	b.current_stamina += b.turn_stamina
-	max_stamina := maxStaminaFor(b.turn_stamina)
-	if b.current_stamina > max_stamina {
-		b.current_stamina = max_stamina
-	}
-	b.attacked_by = nil
 }
 
 type RisqBuildingProductionItem struct {
@@ -309,6 +276,9 @@ func (b *RisqBuilding) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 		if target.zone == nil || target.zone.space.getVisibility(b.player_id) < VisibilityGood {
 			return OrderStatus_Cancelled
 		}
+		if !b.inAttackRange(target.zone) {
+			return OrderStatus_Cancelled
+		}
 		return OrderStatus_InProgress
 	case OrderType_BuildingAttackBuilding, OrderType_BuildingAutoAttackBuilding:
 		target := risq.buildings[uint64(o.target_id)]
@@ -321,12 +291,15 @@ func (b *RisqBuilding) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 		if _, ok := target.zone.buildingKnownTo(b.player_id); !ok {
 			return OrderStatus_Cancelled
 		}
+		if !b.inAttackRange(target.zone) {
+			return OrderStatus_Cancelled
+		}
 		return OrderStatus_InProgress
 	}
 	return OrderStatus_Executed
 }
 
-func (b *RisqBuilding) autoAttackTarget(risq *GameRisq) (*RisqUnit, *RisqBuilding) {
+func (b *RisqBuilding) autoAttackTarget(risq *GameRisq) Attackable {
 	if space_radius, ranged := b.attack_range.spaceRadius(); ranged {
 		return nearbyAttackTarget(b.zone, b.player_id, b.target_priority, b.inAttackRange, risq, space_radius)
 	}
@@ -356,12 +329,12 @@ func (b *RisqBuilding) resolveAutoAttack(risq *GameRisq) {
 	if !b.interrupt_current && len(b.order_queue.active_orders) > 0 {
 		return
 	}
-	target, target_building := b.autoAttackTarget(risq)
-	if target != nil {
-		b.autoAttackOrder(risq, OrderType_BuildingAutoAttackUnit, int64(target.internal_id))
-	} else if target_building != nil {
-		b.autoAttackOrder(risq, OrderType_BuildingAutoAttackBuilding, int64(target_building.internal_id))
+	target := b.autoAttackTarget(risq)
+	if target == nil {
+		return
 	}
+	order_type := attackOrderType(target, OrderType_BuildingAutoAttackUnit, OrderType_BuildingAutoAttackBuilding)
+	b.autoAttackOrder(risq, order_type, int64(target.internalId()))
 }
 
 func (b *RisqBuilding) tickIntent(risq *GameRisq) bool {
@@ -410,7 +383,7 @@ func (b *RisqBuilding) buildGarrisonAttacks(risq *GameRisq, target Attackable) [
 	config := buildingConfigs[b.building_id]
 	attacks := make([]GarrisonAttack, 0, len(b.garrisoned_units))
 	for _, unit := range b.garrisoned_units {
-		if unit.current_stamina <= 0 {
+		if unit.deleted || unit.current_stamina <= 0 {
 			continue
 		}
 		stats := risq.effectiveCombatStats(unit, target, true)
@@ -443,8 +416,14 @@ func (b *RisqBuilding) tickExecute(risq *GameRisq) {
 	}
 	if detail, ok := b.intent.detail.(*ProductionIntent); ok {
 		item := detail.item
-		if item.kind == ProducibleKind_UNIT && risq.players[b.player_id].populationCapped() {
-			return
+		if item.kind == ProducibleKind_UNIT {
+			completing_this_tick := item.stamina_remaining-b.intent.intent_cost <= 0
+			if completing_this_tick && !risq.population_slot_winners[b] {
+				return
+			}
+			if !completing_this_tick && risq.players[b.player_id].populationCapped() {
+				return
+			}
 		}
 		item.stamina_remaining -= b.intent.intent_cost
 		if item.stamina_remaining <= 0 {
@@ -459,7 +438,7 @@ func (b *RisqBuilding) tickExecute(risq *GameRisq) {
 					unit.receiveOrder(b.gather_point.resolveOrder(risq, b, unit), risq)
 				}
 			case ProducibleKind_TECH:
-				risq.completeResearch(risq.players[b.player_id], item.item_id)
+				risq.pending_tech_completions = append(risq.pending_tech_completions, techCompletion{player_id: b.player_id, tech_id: item.item_id})
 			}
 			delete(b.production_queue, detail.order_internal_id)
 		}
@@ -474,6 +453,11 @@ func (b *RisqBuilding) tickExecute(risq *GameRisq) {
 			risq.buildingAttack(b, detail.target)
 		}
 		for _, ga := range detail.garrison_attacks {
+			// Skip a unit that ended up needing its own stamina this tick (e.g. to ungarrison),
+			// so it isn't double-spent between its own intent and this garrison attack.
+			if ga.unit.intent.hasIntent() {
+				continue
+			}
 			risq.resolveAttack(garrisonAttacker{RisqUnit: ga.unit, stats: ga.stats}, detail.target, ga.cost)
 			ga.unit.current_stamina -= ga.cost
 		}

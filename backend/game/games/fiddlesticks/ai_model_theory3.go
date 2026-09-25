@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"strconv"
 
 	"github.com/dgray001/gray_online/game"
 	"github.com/dgray001/gray_online/game/game_utils"
@@ -210,16 +209,4 @@ func (m *FiddlesticksAiModelTheory3) CardWeights(p *FiddlesticksPlayer, f *GameF
 		}
 	}
 	return weights
-}
-
-func (m *FiddlesticksAiModelTheory3) print() {
-	for _, card := range m.cards {
-		fmt.Println(card.printString())
-	}
-	for _, card := range m.hand {
-		fmt.Println(strconv.FormatFloat(float64(len(card.beatable_cards))/float64(m.unknown_cards), 'f', 3, 64))
-	}
-	fmt.Println("Unknown cards:", m.unknown_cards)
-	fmt.Println("Prob kitty:", strconv.FormatFloat(m.base_prob_kitty, 'f', 3, 64))
-	fmt.Println("Prob hand:", strconv.FormatFloat(m.base_prob_hand, 'f', 3, 64))
 }

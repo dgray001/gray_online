@@ -2,6 +2,8 @@ import { DwgElement } from '../../../dwg_element';
 import { isTypingInInput, until } from '../../../../scripts/util';
 import type { Point2D } from '../objects2d';
 import { rotatePoint, subtractPoint2D } from '../objects2d';
+import { configDraw } from '../canvas_components/canvas_component';
+import { flushTooltipQueue, setTooltipCursor } from '../canvas_components/tooltip';
 
 import html from './canvas_board.html';
 
@@ -130,6 +132,8 @@ export class DwgCanvasBoard extends DwgElement {
   private drag_button = 0;
   private dragged = false;
   private mouse: Point2D = { x: 0, y: 0 };
+  private cursor_images = new Map<string, HTMLImageElement>();
+  private cursor_image?: HTMLImageElement;
 
   private bounding_rect!: DOMRect;
   private resize_observer = new ResizeObserver(async (els) => {
@@ -186,7 +190,10 @@ export class DwgCanvasBoard extends DwgElement {
       this.ctx.rotate(this.transform.rotation);
       this.ctx.translate(-this.transform.view.x, -this.transform.view.y);
       this.ctx.scale(this.transform.scale, this.transform.scale);
+      setTooltipCursor(this.mouse);
       this.data.draw(this.ctx, this.transform);
+      this.drawCursor();
+      flushTooltipQueue();
     }, 20);
     this.initialized_successfully = true;
     return {
@@ -481,7 +488,33 @@ export class DwgCanvasBoard extends DwgElement {
   }
 
   setCursorUrl(url: string) {
-    this.canvas.style.cursor = `url("${url}") 0 0, auto`;
+    let img = this.cursor_images.get(url);
+    if (!img) {
+      img = document.createElement('img');
+      img.src = url;
+      img.draggable = false;
+      this.cursor_images.set(url, img);
+    }
+    this.cursor_image = img;
+  }
+
+  private drawCursor() {
+    if (this.hovered && this.cursor_image?.complete) {
+      this.canvas.style.cursor = 'none';
+      configDraw(
+        this.ctx,
+        this.transform,
+        { fill_style: 'transparent', stroke_width: 0, fixed_position: true },
+        false,
+        false,
+        () => {
+          const img = this.cursor_image!;
+          this.ctx.drawImage(img, this.mouse.x, this.mouse.y, img.naturalWidth, img.naturalHeight);
+        }
+      );
+    } else {
+      this.canvas.style.cursor = 'auto';
+    }
   }
 
   scaleView(scale: number) {

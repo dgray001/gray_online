@@ -16,8 +16,17 @@ export declare interface GameRisq {
   board_size: number;
   population_limit: number;
   turn_number: number;
-  spaces: RisqSpace[][];
+  spaces: (RisqSpace | undefined)[][];
   giving_orders: boolean;
+  regions: RisqRegion[];
+}
+
+/** Data describing a region: only present for a player if they've explored at least one of its spaces */
+export declare interface RisqRegion {
+  name: string;
+  gold_bonus: number;
+  spaces: number[];
+  owner: number;
 }
 
 /** Data describing an entry in the scores array */
@@ -382,7 +391,6 @@ export enum RisqOrderType {
   OrderType_UnitAttackBuilding,
   OrderType_UnitAutoAttackUnit, // Server synthesized; not submitted by player
   OrderType_UnitAutoAttackBuilding, // Server synthesized; not submitted by player
-  OrderType_UnitDefend,
   OrderType_UnitGarrison,
   OrderType_UnitUngarrison,
   OrderType_UnitDelete,
@@ -419,8 +427,17 @@ export declare interface GameRisqFromServer {
   board_size: number;
   population_limit: number;
   turn_number: number;
-  spaces: RisqSpaceFromServer[][];
+  spaces: (RisqSpaceFromServer | undefined)[][];
   giving_orders: boolean;
+  regions: RisqRegionFromServer[];
+}
+
+/** Data describing a region, as returned by the server */
+export declare interface RisqRegionFromServer {
+  name: string;
+  gold_bonus: number;
+  spaces: number[];
+  owner: number;
 }
 
 /** Data describing risq player resources from server */
@@ -579,14 +596,11 @@ export function serverToGameRisq(server_game: GameRisqFromServer): GameRisq | un
     return undefined;
   }
   const registry = createEntityRegistry();
-  const spaces: RisqSpace[][] = [];
+  const spaces: (RisqSpace | undefined)[][] = [];
   for (const server_row of server_game.spaces) {
-    const row: RisqSpace[] = [];
+    const row: (RisqSpace | undefined)[] = [];
     for (const space of server_row) {
-      if (!space) {
-        continue;
-      }
-      row.push(serverToRisqSpace(space, registry));
+      row.push(space ? serverToRisqSpace(space, registry) : undefined);
     }
     spaces.push(row);
   }
@@ -610,6 +624,7 @@ export function serverToGameRisq(server_game: GameRisqFromServer): GameRisq | un
     turn_number: server_game.turn_number,
     spaces,
     giving_orders: server_game.giving_orders,
+    regions: server_game.regions,
   };
 }
 

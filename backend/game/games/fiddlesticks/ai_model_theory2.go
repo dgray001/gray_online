@@ -59,8 +59,7 @@ func (m *FiddlesticksAiModelTheory2) Bet(p *FiddlesticksPlayer, f *GameFiddlesti
 
 func (m *FiddlesticksAiModelTheory2) CardWeights(p *FiddlesticksPlayer, f *GameFiddlesticks, valid_cards []int) []float64 {
 	weights := make([]float64, len(valid_cards))
-	total_weight := float64(0)
-	tricks_needed := p.bet - p.tricks
+	tricks_needed := int(p.bet) - int(p.tricks)
 	tricks_left := len(p.cards) - len(p.cards_played)
 	// how much the model should prioritize winning a trick
 	tricks_needed_factor := float64(tricks_needed) / float64(tricks_left)
@@ -79,7 +78,6 @@ func (m *FiddlesticksAiModelTheory2) CardWeights(p *FiddlesticksPlayer, f *GameF
 			}
 			weights[i] = m.calculateWeight(tricks_needed_factor, prob_to_win)
 		}
-		total_weight += weights[i]
 	}
 	return weights
 }

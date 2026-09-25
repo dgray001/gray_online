@@ -49,7 +49,6 @@ const (
 	OrderKindAttackZone
 	OrderKindAttackUnit
 	OrderKindAttackBuilding
-	OrderKindDefend
 	OrderKindGarrison
 	OrderKindUngarrison
 	OrderKindDelete
@@ -64,7 +63,6 @@ var orderKindNames = map[string]OrderKind{
 	"attack_zone":     OrderKindAttackZone,
 	"attack_unit":     OrderKindAttackUnit,
 	"attack_building": OrderKindAttackBuilding,
-	"defend":          OrderKindDefend,
 	"garrison":        OrderKindGarrison,
 	"ungarrison":      OrderKindUngarrison,
 	"delete":          OrderKindDelete,

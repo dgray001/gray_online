@@ -13,6 +13,7 @@ import (
 
 func runAi(p *FiddlesticksPlayer, f *GameFiddlesticks, action_channel chan game.PlayerAction) {
 	fmt.Println("Starting ai for AI player", p.player.GetAiId())
+	last_applied_id := 0
 	for {
 		if p == nil || p.player == nil || p.player.GetBase() == nil || p.player.GetBase().GameEnded() {
 			break
@@ -25,19 +26,27 @@ func runAi(p *FiddlesticksPlayer, f *GameFiddlesticks, action_channel chan game.
 			p.createAiModel(nil)
 		}
 		select {
-		case update := <-p.player.AiUpdates:
-			fmt.Println("AI player", p.player.GetAiId(), "received update", update)
+		case <-p.player.AiUpdates:
 			if p.player == nil || p.player.GetBase() == nil || !p.player.GetBase().GameStarted() || p.player.GetBase().GameEnded() {
 				break
 			}
 			if f.GetBase() == nil || !f.GetBase().GameStarted() || f.GetBase().GameEnded() {
 				break
 			}
-			p.ai_model.ApplyUpdate(p, f, update)
+			f.mu.Lock()
+			// walk the player's own permanent update history instead of trusting this channel
+			// receive to mean exactly one new update happened (AddUpdate drops on a full buffer)
+			last_applied_id = p.player.ReplayUpdates(last_applied_id, func(update *game.UpdateMessage) {
+				fmt.Println("AI player", p.player.GetAiId(), "applying update", update)
+				p.ai_model.ApplyUpdate(p, f, update)
+			})
 			checkTurn(p, f, action_channel)
+			f.mu.Unlock()
 			fmt.Println("Finished checking for AI player", p.player.GetAiId())
 		case update := <-p.player.AiFailedUpdates:
 			fmt.Fprintln(os.Stderr, "AI player", p.player.GetAiId(), "received failed update", update)
+		case <-f.done:
+			break
 		}
 	}
 	fmt.Println("Ending ai for AI player", p.player.GetAiId())
@@ -56,7 +65,7 @@ func checkTurn(p *FiddlesticksPlayer, f *GameFiddlesticks, action_channel chan g
 		player_action := createPlayerAction(p.player, "bet", action)
 		if p.player.IsHumanPlayer() {
 			fmt.Println("Storing bet for human player", p.player.Player_id, ":", bid)
-			p.storeTurnAction(player_action, action_channel, 2*f.turn_duration)
+			p.storeTurnAction(player_action, action_channel, 2*f.turn_duration, &f.mu)
 			return
 		}
 		fmt.Println("Betting for ai player", p.player.Player_id, ":", bid)
@@ -69,7 +78,7 @@ func checkTurn(p *FiddlesticksPlayer, f *GameFiddlesticks, action_channel chan g
 		player_action := createPlayerAction(p.player, "play-card", action)
 		if p.player.IsHumanPlayer() {
 			fmt.Println("Storing play card for human player", p.player.Player_id, ":", p.cards[card_index].GetName())
-			p.storeTurnAction(player_action, action_channel, f.turn_duration)
+			p.storeTurnAction(player_action, action_channel, f.turn_duration, &f.mu)
 			return
 		}
 		fmt.Println("Playing card for ai player", p.player.Player_id, ":", p.cards[card_index].GetName())

@@ -72,11 +72,21 @@ export function drawRisqSpace(
   config: DrawRisqSpaceConfig
 ) {
   const owner_color = spaceOwnerColor(space.ownership, game.getGame()?.players ?? []);
+  const region = game.getRegionForSpace(space.coordinate_key);
+  const region_owned = (region?.owner ?? -1) >= 0;
   ctx.strokeStyle = 'transparent';
   ctx.lineWidth = space_line_width[config.draw_detail];
   let black_text = false;
-  if (config.view_mode === RisqViewMode.OWNERSHIP || space.visibility === RisqVisibilityLevel.UNEXPLORED) {
-    const fill = getSpaceFill(space, config.view_mode, owner_color);
+  if (
+    config.view_mode === RisqViewMode.OWNERSHIP ||
+    config.view_mode === RisqViewMode.REGION ||
+    space.visibility === RisqVisibilityLevel.UNEXPLORED
+  ) {
+    const region_hovered = !!region && region === game.hoveredRegion();
+    const fill = getSpaceFill(space, config.view_mode, owner_color, true, region_hovered);
+    if (region_owned) {
+      fill.dBrightness(-0.22);
+    }
     ctx.fillStyle = fill.getString();
     drawHexagon(ctx, space.center, config.hex_r);
     black_text = fill.getBrightness() > 0.5;
@@ -84,7 +94,7 @@ export function drawRisqSpace(
     const override_zones = config.draw_detail === DrawRisqSpaceDetail.OWNERSHIP ? [] : (space.zones?.flat() ?? []);
     drawHexImage(ctx, getSpaceTerrainImage(game, space.terrain_id, override_zones), space.center, config.hex_r);
     if (config.view_mode !== RisqViewMode.RESOURCE && !!owner_color) {
-      const tint = `rgba(${owner_color.getR()}, ${owner_color.getG()}, ${owner_color.getB()}, 0.25)`;
+      const tint = `rgba(${owner_color.getR()}, ${owner_color.getG()}, ${owner_color.getB()}, ${region_owned ? 0.45 : 0.25})`;
       fillHexOverlay(ctx, space.center, config.hex_r, tint);
     }
     if (space.hovered) {
@@ -153,8 +163,8 @@ function drawSpaceContent(
   black_text: boolean,
   owner_color: ColorRGB | undefined
 ) {
-  if (config.draw_detail === DrawRisqSpaceDetail.OWNERSHIP) {
-    return; // ownership and terrain indicated by space fill color
+  if (config.draw_detail === DrawRisqSpaceDetail.OWNERSHIP || config.view_mode === RisqViewMode.REGION) {
+    return; // ownership/region view: territory shown purely via space fill color
   } else if (config.draw_detail === DrawRisqSpaceDetail.SPACE_DETAILS) {
     if (space.visibility < RisqVisibilityLevel.FOG) {
       return;
@@ -312,13 +322,14 @@ export function getSpaceFill(
   space: RisqSpace,
   view_mode: RisqViewMode = RisqViewMode.ALL,
   owner_color: ColorRGB | undefined = undefined,
-  check_hover = true
+  check_hover = true,
+  force_hover = false
 ): ColorRGB {
   const color = new ColorRGB(0, 0, 0, 0);
   if (!!space) {
     color.setColor(50, 50, 50, 0.8);
     if (space.visibility > 0) {
-      if (view_mode === RisqViewMode.OWNERSHIP) {
+      if (view_mode === RisqViewMode.OWNERSHIP || view_mode === RisqViewMode.REGION) {
         if (owner_color) {
           color.setColor(owner_color.getR(), owner_color.getG(), owner_color.getB(), 0.85);
         } else {
@@ -330,7 +341,7 @@ export function getSpaceFill(
           color.addColor(owner_color.getR(), owner_color.getG(), owner_color.getB(), 0.25);
         }
       }
-      if (check_hover && space.hovered) {
+      if (check_hover && (space.hovered || force_hover)) {
         if (space.clicked) {
           color.addColor(210, 210, 210, 0.4);
         } else {

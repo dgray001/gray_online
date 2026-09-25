@@ -93,9 +93,12 @@ func main() {
 
 	results := make([]Result, 0, iterations)
 	for i := 0; i < iterations; i++ {
-		seed := base_seed + int64(i)
+		seed := base_seed
+		if !scenario.FixedSeed {
+			seed += int64(i)
+		}
 		start := time.Now()
-		result := RunGame(seed, players, scenario.BoardSize, scenario.StartingDistance, uint16(scenario.MaxTurns), 30*time.Second)
+		result := RunGame(seed, players, scenario.Map, uint16(scenario.MaxTurns), 30*time.Second)
 		sim_log.Printf("game %d seed=%d turns=%d duration=%s error=%q",
 			i+1, seed, result.Game.TurnNumber, time.Since(start), result.Error)
 		results = append(results, result)

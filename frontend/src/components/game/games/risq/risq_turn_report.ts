@@ -19,6 +19,14 @@ export declare interface RisqReportLand {
   gold_from_land: number;
 }
 
+/** One region's row in the turn report */
+export declare interface RisqReportRegion {
+  name: string;
+  held_start: boolean;
+  held_end: boolean;
+  gold_bonus: number;
+}
+
 /** One resource's row in the turn report's ledger */
 export declare interface RisqReportResourceLine {
   resource_type: RisqResourceType;
@@ -75,6 +83,7 @@ export declare interface RisqTurnReport {
   eliminated: boolean;
   scores: RisqReportScoreLine[];
   land: RisqReportLand;
+  regions: RisqReportRegion[];
   resources: RisqReportResourceLine[];
   population: { start: number; end: number; cap_start: number; cap_end: number };
   production: {
@@ -134,6 +143,7 @@ export declare interface RisqTurnReportFromServer {
   eliminated: boolean;
   scores: RisqReportScoreLine[];
   land: RisqReportLand;
+  regions: RisqReportRegion[];
   resources: RisqReportResourceLineFromServer[];
   population: { start: number; end: number; cap_start: number; cap_end: number };
   production: {

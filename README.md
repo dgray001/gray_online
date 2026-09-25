@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.8m: All building images
+v0.8n: Bottom bar
 
 ## Dev Use
 

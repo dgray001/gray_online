@@ -3,6 +3,7 @@ package game
 import (
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 )
@@ -38,6 +39,7 @@ type Player struct {
 	AiFailedUpdates  chan *UpdateMessage
 	FlushConnections chan bool
 	update_list      []*UpdateMessage
+	update_list_mu   sync.RWMutex
 	base_game        *GameBase
 }
 
@@ -100,6 +102,7 @@ func (p *Player) AddUpdate(update *UpdateMessage) {
 		fmt.Fprintln(os.Stderr, "Can't add update to game that is ended")
 		return
 	}
+	p.update_list_mu.Lock()
 	if !p.base_game.PersistantHistory() {
 		p.update_list = make([]*UpdateMessage, 0)
 	}
@@ -107,6 +110,7 @@ func (p *Player) AddUpdate(update *UpdateMessage) {
 	own_update := *update
 	own_update.Id = len(p.update_list) + 1 // start at 1
 	p.update_list = append(p.update_list, &own_update)
+	p.update_list_mu.Unlock()
 	if p.IsHumanPlayer() {
 		select {
 		case p.Updates <- &own_update:
@@ -123,12 +127,37 @@ func (p *Player) AddUpdate(update *UpdateMessage) {
 	}
 }
 
+// ReplayUpdates calls apply, in order, for every update after last_applied_id in this player's
+// permanent update history, returning the new last_applied_id. This is for games whose AI
+// decision loop wakes up on an AiUpdates channel receive but shouldn't trust that channel to
+// deliver every update exactly once (AddUpdate drops updates non-blocking when that channel's
+// buffer is full) — walking the permanent history instead makes a dropped wakeup harmless, the
+// same way the frontend replays from its own update history by id. Only meaningful for games with
+// GameBase.PersistantHistory() true; a non-persistent game's update_list is reset on every update.
+func (p *Player) ReplayUpdates(last_applied_id int, apply func(*UpdateMessage)) int {
+	p.update_list_mu.RLock()
+	defer p.update_list_mu.RUnlock()
+	for last_applied_id < len(p.update_list) {
+		apply(p.update_list[last_applied_id])
+		last_applied_id++
+	}
+	return last_applied_id
+}
+
 func (p *Player) AddFailedUpdate(update *UpdateMessage) {
 	if p.IsHumanPlayer() {
-		p.FailedUpdates <- update
+		select {
+		case p.FailedUpdates <- update:
+		default:
+			fmt.Fprintln(os.Stderr, "Dropped failed update to player", p.Player_id, "- buffer full:", update.Kind)
+		}
 	}
 	if p.ai_running {
-		p.AiFailedUpdates <- update
+		select {
+		case p.AiFailedUpdates <- update:
+		default:
+			fmt.Fprintln(os.Stderr, "Dropped failed update to AI player", p.Player_id, "- buffer full:", update.Kind)
+		}
 	}
 }
 

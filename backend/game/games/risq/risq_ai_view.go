@@ -60,6 +60,19 @@ func toAiCategory(c RisqResourceCategory) ai.ResourceCategory {
 	}
 }
 
+func fromAiCategory(c ai.ResourceCategory) RisqResourceCategory {
+	switch c {
+	case ai.ResourceFood:
+		return RisqResourceCategory_FOOD
+	case ai.ResourceWood:
+		return RisqResourceCategory_WOOD
+	case ai.ResourceStone:
+		return RisqResourceCategory_STONE
+	default:
+		return RisqResourceCategory_GOLD
+	}
+}
+
 func toOrderKind(order_type OrderType) (ai.OrderKind, bool) {
 	switch order_type {
 	case OrderType_UnitMoveSpace, OrderType_UnitMoveZone:
@@ -78,8 +91,6 @@ func toOrderKind(order_type OrderType) (ai.OrderKind, bool) {
 		return ai.OrderKindAttackUnit, true
 	case OrderType_UnitAttackBuilding:
 		return ai.OrderKindAttackBuilding, true
-	case OrderType_UnitDefend:
-		return ai.OrderKindDefend, true
 	case OrderType_UnitGarrison:
 		return ai.OrderKindGarrison, true
 	case OrderType_UnitUngarrison:
@@ -155,18 +166,21 @@ func toUnitViewShallow(u *RisqUnit) ai.UnitView {
 	if u.unitType() == UnitType_ECONOMIC {
 		kind = ai.UnitEconomic
 	}
+	location_zone := u.zone
+	if u.garrisoned_in != nil {
+		location_zone = u.garrisoned_in.zone
+	}
 	view := ai.UnitView{
 		InternalID:     u.internal_id,
 		UnitID:         u.unit_id,
 		Kind:           kind,
-		Location:       toZoneRef(u.zone),
+		Location:       toZoneRef(location_zone),
 		CurrentStamina: u.current_stamina,
 		Builds:         unitBuilds(u.unit_id),
 	}
 	if u.garrisoned_in != nil {
 		id := u.garrisoned_in.internal_id
 		view.GarrisonedIn = &id
-		view.Location = toZoneRef(u.garrisoned_in.zone)
 	}
 	return view
 }
@@ -300,7 +314,7 @@ func (v *aiView) IdleBuildings() []ai.BuildingView {
 }
 
 func (v *aiView) Resource(category ai.ResourceCategory) float64 {
-	switch RisqResourceCategory(category) {
+	switch fromAiCategory(category) {
 	case RisqResourceCategory_FOOD:
 		return v.player.resources.food
 	case RisqResourceCategory_WOOD:
@@ -329,18 +343,16 @@ func (v *aiView) TurnNumber() int {
 // True once, for every other non-eliminated player, at least one of their buildings has ever been seen
 func (v *aiView) AllEnemiesFound() bool {
 	discovered := make(map[int]bool)
-	for _, row := range v.risq.spaces {
-		for _, space := range row {
-			for _, cache := range space.building_cache[v.playerId()] {
-				if cache.player_id != v.playerId() {
-					discovered[cache.player_id] = true
-				}
+	for _, space := range v.risq.allSpaces() {
+		for _, cache := range space.building_cache[v.playerId()] {
+			if cache.player_id != v.playerId() {
+				discovered[cache.player_id] = true
 			}
-			if space.getVisibility(v.playerId()) >= VisibilityPoor {
-				for _, b := range space.buildings {
-					if b != nil && !b.deleted && b.player_id != v.playerId() {
-						discovered[b.player_id] = true
-					}
+		}
+		if space.getVisibility(v.playerId()) >= VisibilityPoor {
+			for _, b := range space.buildings {
+				if b != nil && !b.deleted && b.player_id != v.playerId() {
+					discovered[b.player_id] = true
 				}
 			}
 		}
@@ -399,26 +411,24 @@ func (v *aiView) NearestResource(from ai.ZoneRef, category ai.ResourceCategory) 
 	}
 	var tied []*RisqZone
 	best_distance := -1
-	for _, row := range v.risq.spaces {
-		for _, space := range row {
-			if space.getVisibility(v.playerId()) < VisibilityFog {
-				continue
-			}
-			distance := int(game_utils.AxialDistance(from_space.coordinate, space.coordinate) * 6)
-			for _, zone_row := range space.zones {
-				for _, zone := range zone_row {
-					if zone.resource == nil || zone.resource.resources_left <= 0 || zone.resource.category() != RisqResourceCategory(category) {
-						continue
-					}
-					d := distance
-					if space == from_space {
-						d = zoneDistanceWithinSpace(from_zone, zone)
-					}
-					if best_distance == -1 || d < best_distance {
-						tied, best_distance = []*RisqZone{zone}, d
-					} else if d == best_distance {
-						tied = append(tied, zone)
-					}
+	for _, space := range v.risq.allSpaces() {
+		if space.getVisibility(v.playerId()) < VisibilityFog {
+			continue
+		}
+		distance := int(game_utils.AxialDistance(from_space.coordinate, space.coordinate) * 6)
+		for _, zone_row := range space.zones {
+			for _, zone := range zone_row {
+				if zone.resource == nil || zone.resource.resources_left <= 0 || zone.resource.category() != fromAiCategory(category) {
+					continue
+				}
+				d := distance
+				if space == from_space {
+					d = zoneDistanceWithinSpace(from_zone, zone)
+				}
+				if best_distance == -1 || d < best_distance {
+					tied, best_distance = []*RisqZone{zone}, d
+				} else if d == best_distance {
+					tied = append(tied, zone)
 				}
 			}
 		}
@@ -450,17 +460,15 @@ func (v *aiView) NearestUnexplored(from ai.ZoneRef) ([]ai.ZoneRef, bool) {
 	}
 	var tied []*RisqSpace
 	best_distance := -1
-	for _, row := range v.risq.spaces {
-		for _, space := range row {
-			if space.getVisibility(v.playerId()) != VisibilityUnexplored {
-				continue
-			}
-			d := int(game_utils.AxialDistance(from_space.coordinate, space.coordinate))
-			if best_distance == -1 || d < best_distance {
-				tied, best_distance = []*RisqSpace{space}, d
-			} else if d == best_distance {
-				tied = append(tied, space)
-			}
+	for _, space := range v.risq.allSpaces() {
+		if space.getVisibility(v.playerId()) != VisibilityUnexplored {
+			continue
+		}
+		d := int(game_utils.AxialDistance(from_space.coordinate, space.coordinate))
+		if best_distance == -1 || d < best_distance {
+			tied, best_distance = []*RisqSpace{space}, d
+		} else if d == best_distance {
+			tied = append(tied, space)
 		}
 	}
 	if len(tied) == 0 {
@@ -480,26 +488,24 @@ func (v *aiView) NearestBuildSite(from ai.ZoneRef, building_id uint32) (ai.ZoneR
 	}
 	var tied []*RisqZone
 	best_distance := -1
-	for _, row := range v.risq.spaces {
-		for _, space := range row {
-			if !space.buildableBy(v.playerId()) {
-				continue
-			}
-			distance := int(game_utils.AxialDistance(from_space.coordinate, space.coordinate) * 6)
-			for _, zone_row := range space.zones {
-				for _, zone := range zone_row {
-					if zone.resource != nil || zone.building != nil {
-						continue
-					}
-					d := distance
-					if space == from_space {
-						d = zoneDistanceWithinSpace(from_zone, zone)
-					}
-					if best_distance == -1 || d < best_distance {
-						tied, best_distance = []*RisqZone{zone}, d
-					} else if d == best_distance {
-						tied = append(tied, zone)
-					}
+	for _, space := range v.risq.allSpaces() {
+		if !space.buildableBy(v.playerId()) {
+			continue
+		}
+		distance := int(game_utils.AxialDistance(from_space.coordinate, space.coordinate) * 6)
+		for _, zone_row := range space.zones {
+			for _, zone := range zone_row {
+				if zone.resource != nil || zone.building != nil {
+					continue
+				}
+				d := distance
+				if space == from_space {
+					d = zoneDistanceWithinSpace(from_zone, zone)
+				}
+				if best_distance == -1 || d < best_distance {
+					tied, best_distance = []*RisqZone{zone}, d
+				} else if d == best_distance {
+					tied = append(tied, zone)
 				}
 			}
 		}

@@ -47,14 +47,11 @@ func (r RisqRange) spaceRadius() (uint, bool) {
 }
 
 type PathNode struct {
-	zone   *RisqZone
-	parent *PathNode
-	// Cost from start
-	g uint
-	// Estimated cost to target (heuristic)
-	h uint
-	// Total cost (g + h)
-	f uint
+	zone            *RisqZone
+	parent          *PathNode
+	cost_from_start uint
+	heuristic       uint
+	total           uint
 }
 
 func (u *RisqUnit) findPath(target *RisqZone, attack_range RisqRange) *MoveIntent {
@@ -113,17 +110,16 @@ func aStarPath(start *RisqZone, remaining func(*RisqZone) uint, goal func(*RisqZ
 	tracker := make(map[*RisqZone]*PathNode)
 	h_score := remaining(start)
 	tracker[start] = &PathNode{
-		zone:   start,
-		parent: nil,
-		g:      0,
-		h:      h_score,
-		f:      h_score,
+		zone:            start,
+		cost_from_start: 0,
+		heuristic:       h_score,
+		total:           h_score,
 	}
 
 	for len(open_set) > 0 {
 		best_index := 0
 		for i := 1; i < len(open_set); i++ {
-			if tracker[open_set[i]].f < tracker[open_set[best_index]].f {
+			if tracker[open_set[i]].total < tracker[open_set[best_index]].total {
 				best_index = i
 			}
 		}
@@ -142,9 +138,9 @@ func aStarPath(start *RisqZone, remaining func(*RisqZone) uint, goal func(*RisqZ
 			if neighbor.space != z.space {
 				move_cost = cost.inter_cost
 			}
-			neighbor_g := n.g + move_cost
+			neighbor_g := n.cost_from_start + move_cost
 			neighbor_n, visited := tracker[neighbor]
-			if visited && neighbor_g >= neighbor_n.g {
+			if visited && neighbor_g >= neighbor_n.cost_from_start {
 				continue
 			}
 			if !visited {
@@ -153,10 +149,10 @@ func aStarPath(start *RisqZone, remaining func(*RisqZone) uint, goal func(*RisqZ
 				open_set = append(open_set, neighbor)
 			}
 			neighbor_n.parent = n
-			neighbor_n.g = neighbor_g
+			neighbor_n.cost_from_start = neighbor_g
 			h_score := remaining(neighbor)
-			neighbor_n.h = h_score
-			neighbor_n.f = neighbor_g + h_score
+			neighbor_n.heuristic = h_score
+			neighbor_n.total = neighbor_g + h_score
 		}
 	}
 
@@ -171,7 +167,7 @@ func (n *PathNode) constructMoveIntent() *MoveIntent {
 		curr = curr.parent
 	}
 	if len(path) < 2 {
-		return nil // If no move is needed
+		return nil
 	}
 	next_step := path[1]
 	intra_step := path[0].space == next_step.space

@@ -26,8 +26,8 @@ export function buildingImage(building_id: number | undefined, under_constructio
       case 22:
         filename = 'barracks';
         break;
-      case 3: // farm
-        filename = 'empty_plot'; // no building image yet
+      case 3:
+        filename = 'farm';
         break;
       default:
         err('Trying to get building image from unknown building id', building_id);

@@ -6,22 +6,24 @@ import (
 )
 
 type RisqTurnReport struct {
-	turn             uint16
-	score_start      uint
-	explored_start   int
-	scores           []RisqScoreLine
-	land             RisqLandReport
-	resources        [4]RisqResourceLine
-	pop_start        uint16
-	pop_end          uint16
-	cap_start        uint16
-	cap_end          uint16
-	units_created    map[uint32]int
-	buildings_built  []RisqBuiltEntry
-	techs_researched []uint32
-	combat           []RisqCombatEvent
-	orders           RisqOrdersReport
-	eliminated       bool
+	turn              uint16
+	score_start       uint
+	explored_start    int
+	scores            []RisqScoreLine
+	land              RisqLandReport
+	regions           []RisqRegionReport
+	region_held_start map[string]bool
+	resources         [4]RisqResourceLine
+	pop_start         uint16
+	pop_end           uint16
+	cap_start         uint16
+	cap_end           uint16
+	units_created     map[uint32]int
+	buildings_built   []RisqBuiltEntry
+	techs_researched  []uint32
+	combat            []RisqCombatEvent
+	orders            RisqOrdersReport
+	eliminated        bool
 }
 
 type RisqScoreLine struct {
@@ -44,6 +46,13 @@ type RisqResourceLine struct {
 	start    float64
 	gathered float64
 	spent    float64
+}
+
+type RisqRegionReport struct {
+	name       string
+	held_start bool
+	held_end   bool
+	gold_bonus float64
 }
 
 type RisqBuiltEntry struct {
@@ -88,13 +97,14 @@ type RisqCombatEvent struct {
 	damage       float64
 }
 
-func createRisqTurnReport(turn uint16, p *RisqPlayer, owned map[uint]bool) *RisqTurnReport {
+func createRisqTurnReport(turn uint16, p *RisqPlayer, owned map[uint]bool, held_regions map[string]bool) *RisqTurnReport {
 	rep := &RisqTurnReport{
-		turn:             turn,
-		pop_start:        uint16(len(p.units)),
-		cap_start:        p.populationLimit(),
-		units_created:    make(map[uint32]int),
-		techs_researched: make([]uint32, 0),
+		turn:              turn,
+		pop_start:         uint16(len(p.units)),
+		cap_start:         p.populationLimit(),
+		units_created:     make(map[uint32]int),
+		techs_researched:  make([]uint32, 0),
+		region_held_start: held_regions,
 	}
 	rep.land.start_keys = owned
 	rep.land.held_start = len(owned)
@@ -158,11 +168,9 @@ func (r *RisqTurnReport) recordFailure(order_type OrderType, target_id int64, re
 
 func (r *GameRisq) ownedSpaceKeys(player_id int) map[uint]bool {
 	owned := make(map[uint]bool)
-	for _, row := range r.spaces {
-		for _, s := range row {
-			if s.ownership == player_id {
-				owned[s.coordinate_key] = true
-			}
+	for _, s := range r.allSpaces() {
+		if s.ownership == player_id {
+			owned[s.coordinate_key] = true
 		}
 	}
 	return owned
@@ -170,26 +178,16 @@ func (r *GameRisq) ownedSpaceKeys(player_id int) map[uint]bool {
 
 func (r *GameRisq) exploredCount(player_id int) int {
 	count := 0
-	for _, row := range r.spaces {
-		for _, s := range row {
-			if s.getVisibility(player_id) >= VisibilityFog {
-				count++
-			}
+	for _, s := range r.allSpaces() {
+		if s.getVisibility(player_id) >= VisibilityFog {
+			count++
 		}
 	}
 	return count
 }
 
 func (r *GameRisq) ownedCount(player_id int) int {
-	count := 0
-	for _, row := range r.spaces {
-		for _, s := range row {
-			if s.ownership == player_id {
-				count++
-			}
-		}
-	}
-	return count
+	return len(r.ownedSpaceKeys(player_id))
 }
 
 func (r *GameRisq) computePlayerScore(p *RisqPlayer) uint {
@@ -223,7 +221,7 @@ func (r *GameRisq) refreshScores() {
 
 func (r *GameRisq) beginTurnReports() {
 	for _, p := range r.players {
-		p.report = createRisqTurnReport(r.turn_number, p, r.ownedSpaceKeys(p.player.Player_id))
+		p.report = createRisqTurnReport(r.turn_number, p, r.ownedSpaceKeys(p.player.Player_id), r.heldRegions(p.player.Player_id))
 		p.report.score_start = p.score
 		p.report.explored_start = r.exploredCount(p.player.Player_id)
 		p.resources.resetFlow()
@@ -257,6 +255,23 @@ func (r *GameRisq) finalizeTurnReports() {
 			}
 		}
 		rep.land.newly_explored = r.exploredCount(pid) - rep.explored_start
+		for _, region := range r.regions {
+			held_start := rep.region_held_start[region.name]
+			held_end := region.owner == pid
+			if !held_start && !held_end {
+				continue
+			}
+			gold_bonus := 0.0
+			if held_end {
+				gold_bonus = region.gold_bonus
+			}
+			rep.regions = append(rep.regions, RisqRegionReport{
+				name:       region.name,
+				held_start: held_start,
+				held_end:   held_end,
+				gold_bonus: gold_bonus,
+			})
+		}
 		for cat := RisqResourceCategory(1); cat < RisqResourceCategory_END; cat++ {
 			rep.resources[cat.index()].gathered = p.resources.gathered[cat.index()]
 			rep.resources[cat.index()].spent = p.resources.spent[cat.index()]
@@ -315,6 +330,15 @@ func (rep *RisqTurnReport) toFrontend() gin.H {
 	for _, f := range rep.orders.failures {
 		failures = append(failures, gin.H{"order_type": f.order_type, "target_id": f.target_id, "reason": f.reason})
 	}
+	regions := make([]gin.H, 0, len(rep.regions))
+	for _, reg := range rep.regions {
+		regions = append(regions, gin.H{
+			"name":       reg.name,
+			"held_start": reg.held_start,
+			"held_end":   reg.held_end,
+			"gold_bonus": reg.gold_bonus,
+		})
+	}
 	return gin.H{
 		"turn":       rep.turn,
 		"eliminated": rep.eliminated,
@@ -327,6 +351,7 @@ func (rep *RisqTurnReport) toFrontend() gin.H {
 			"newly_explored": rep.land.newly_explored,
 			"gold_from_land": rep.land.gold_from_land,
 		},
+		"regions":    regions,
 		"resources":  resources,
 		"population": gin.H{"start": rep.pop_start, "end": rep.pop_end, "cap_start": rep.cap_start, "cap_end": rep.cap_end},
 		"production": gin.H{"units_created": units, "buildings_built": buildings, "techs_researched": rep.techs_researched},

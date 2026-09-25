@@ -1,0 +1,107 @@
+dwg-risq-tech-tree-dialog {
+  --ink: rgb(48, 32, 16);
+  --ink-soft: rgb(120, 95, 60);
+  --rule: rgba(48, 32, 16, 0.22);
+
+  #wrapper {
+    background: rgb(222, 184, 135);
+    border: 3px solid rgb(70, 30, 5);
+    border-radius: 4px;
+    box-sizing: border-box;
+    color: var(--ink);
+    display: flex;
+    flex-flow: column nowrap;
+    font-family: Georgia, Cambria, 'Times New Roman', serif;
+    padding: 0;
+    position: relative;
+  }
+
+  #masthead {
+    border-bottom: 2px solid var(--rule);
+    flex: none;
+    padding: 16px 20px 12px;
+    text-align: center;
+  }
+
+  #title {
+    font-size: clamp(1.5rem, 5vw, 2rem);
+    font-variant: small-caps;
+    letter-spacing: 0.06em;
+    margin: 4px 0 0;
+  }
+
+  #canvas-scroll {
+    background: black;
+    flex: 1 1 0;
+    overflow: auto;
+    padding: 20px;
+  }
+
+  #canvas {
+    display: block;
+  }
+
+  .empty {
+    color: rgb(230, 220, 205);
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 40px 0 0;
+    text-align: center;
+  }
+
+  #hover-tooltip {
+    background: rgba(0, 0, 0, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    color: rgb(230, 220, 205);
+    font-size: 0.78rem;
+    max-width: 280px;
+    padding: 8px 10px;
+    pointer-events: none;
+    position: absolute;
+    z-index: 10;
+
+    .tooltip-title {
+      color: white;
+      display: block;
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin-bottom: 3px;
+    }
+
+    .tooltip-description {
+      color: rgb(200, 190, 175);
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .tooltip-line {
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .tooltip-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px 10px;
+      margin-top: 4px;
+
+      span {
+        align-items: center;
+        display: inline-flex;
+        gap: 3px;
+      }
+
+      img {
+        height: 13px;
+        width: 13px;
+      }
+    }
+  }
+
+  footer {
+    flex: none;
+    padding: 14px 20px 18px;
+    text-align: center;
+  }
+}

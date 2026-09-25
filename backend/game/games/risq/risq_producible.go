@@ -69,12 +69,24 @@ func (p Producible) toFrontend() gin.H {
 	}
 	switch p.kind {
 	case ProducibleKind_UNIT:
+		unit := unitConfigs[p.id]
 		cost, stamina_cost := unitProductionCost(p.id)
 		entry["cost"] = cost.toFrontend()
 		entry["stamina_cost"] = stamina_cost
-		entry["display_name"] = unitConfigs[p.id].display_name
-		entry["description"] = unitConfigs[p.id].description
-		entry["required_tech_id"] = unitConfigs[p.id].required_tech_id
+		entry["display_name"] = unit.display_name
+		entry["description"] = unit.description
+		entry["required_tech_id"] = unit.required_tech_id
+		entry["stats"] = gin.H{
+			"health":               unit.max_health,
+			"attack_type":          unit.attack_type,
+			"attack_blunt":         unit.attack_blunt,
+			"attack_piercing":      unit.attack_piercing,
+			"attack_range":         unit.attack_range,
+			"defense_blunt":        unit.defense_blunt,
+			"defense_piercing":     unit.defense_piercing,
+			"penetration_blunt":    unit.penetration_blunt,
+			"penetration_piercing": unit.penetration_piercing,
+		}
 	case ProducibleKind_BUILDING:
 		cost, stamina_cost := buildingProductionCost(p.id)
 		entry["cost"] = cost.toFrontend()
@@ -89,6 +101,16 @@ func (p Producible) toFrontend() gin.H {
 		entry["display_name"] = tech.display_name
 		entry["description"] = tech.description
 		entry["required_tech_id"] = tech.required_tech_id
+		affects_unit_types := make([]int, len(tech.affects_unit_types))
+		for i, unit_type := range tech.affects_unit_types {
+			affects_unit_types[i] = int(unit_type)
+		}
+		entry["affects_unit_ids"] = tech.affects_unit_ids
+		entry["affects_unit_types"] = affects_unit_types
+		bonus := tech.bonus.toFrontend()
+		bonus["max_health"] = tech.bonus_max_health
+		bonus["turn_stamina"] = tech.bonus_turn_stamina
+		entry["bonus"] = bonus
 	}
 	return entry
 }

@@ -40,6 +40,9 @@ type RisqPlayer struct {
 	buildings_lost       uint
 	// owned by this player only, so its own AI goroutine never races another player's
 	rng *rand.Rand
+	// closed to terminate this player's runAi goroutine once eliminated, so it stops reading
+	// live game state that the main goroutine may be concurrently mutating during resolution
+	ai_stop chan struct{}
 }
 
 func (p *RisqPlayer) createAiModel(config_path string) {
@@ -79,6 +82,7 @@ func createRisqPlayer(player *game.Player, max_population_limit uint16, color st
 		planned_foundations:  make(map[uint]*RisqPlannedFoundation),
 		researched_techs:     make(map[uint32]bool),
 		rng:                  rng,
+		ai_stop:              make(chan struct{}),
 	}
 }
 

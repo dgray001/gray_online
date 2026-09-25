@@ -71,17 +71,10 @@ export abstract class RisqActionButton extends DwgSquareButton {
   }
 
   drawTooltip(ctx: CanvasRenderingContext2D, transform: BoardTransformData, risq: DwgRisq, dt: number) {
-    if (!shouldShowTooltip(this.tooltip_state, this.isHovering(), this.isClicking(), dt)) {
+    if (!shouldShowTooltip(this.tooltip_state, this.isHovering(), this.isPressed(), dt)) {
       return;
     }
-    drawGenericTooltip(
-      this.tooltip_state,
-      ctx,
-      transform,
-      risq.canvasSize(),
-      { x: this.xi(), y: this.yi() },
-      this.getTooltipData().title
-    );
+    drawGenericTooltip(this.tooltip_state, ctx, transform, risq.canvasSize(), this.getTooltipData().title);
   }
 }
 
@@ -96,9 +89,8 @@ export abstract class RisqRichTooltipActionButton extends RisqActionButton {
       risq,
       dt,
       this.isHovering(),
-      this.isClicking(),
+      this.isPressed(),
       this.rich_tooltip_state,
-      { x: this.xi(), y: this.yi() },
       this.getTooltipData()
     );
   }

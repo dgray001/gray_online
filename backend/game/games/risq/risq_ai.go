@@ -10,11 +10,14 @@ import (
 
 func runAi(p *RisqPlayer, r *GameRisq, action_channel chan game.PlayerAction) {
 	fmt.Println("Starting ai for AI player", p.player.GetAiId())
+loop:
 	for {
 		if p.player.GetBase() == nil || p.player.GetBase().GameEnded() {
 			break
 		}
 		select {
+		case <-p.ai_stop:
+			break loop
 		case update := <-p.player.AiUpdates:
 			if !p.player.GetBase().GameStarted() || p.player.GetBase().GameEnded() {
 				break

@@ -83,6 +83,36 @@ type costJSON struct {
 	Gold  float64 `json:"gold"`
 }
 
+func (c costJSON) toCost() RisqResourceCost {
+	return RisqResourceCost{food: c.Food, wood: c.Wood, stone: c.Stone, gold: c.Gold}
+}
+
+type combatBonusJSON struct {
+	BonusAttackBlunt         int `json:"bonus_attack_blunt"`
+	BonusAttackPiercing      int `json:"bonus_attack_piercing"`
+	BonusAttackMagic         int `json:"bonus_attack_magic"`
+	BonusDefenseBlunt        int `json:"bonus_defense_blunt"`
+	BonusDefensePiercing     int `json:"bonus_defense_piercing"`
+	BonusDefenseMagic        int `json:"bonus_defense_magic"`
+	BonusPenetrationBlunt    int `json:"bonus_penetration_blunt"`
+	BonusPenetrationPiercing int `json:"bonus_penetration_piercing"`
+	BonusPenetrationMagic    int `json:"bonus_penetration_magic"`
+}
+
+func (j combatBonusJSON) toBonus() CombatBonus {
+	return CombatBonus{
+		attack_blunt:         j.BonusAttackBlunt,
+		attack_piercing:      j.BonusAttackPiercing,
+		attack_magic:         j.BonusAttackMagic,
+		defense_blunt:        j.BonusDefenseBlunt,
+		defense_piercing:     j.BonusDefensePiercing,
+		defense_magic:        j.BonusDefenseMagic,
+		penetration_blunt:    j.BonusPenetrationBlunt,
+		penetration_piercing: j.BonusPenetrationPiercing,
+		penetration_magic:    j.BonusPenetrationMagic,
+	}
+}
+
 func parseAttackType(s string) (AttackType, error) {
 	switch s {
 	case "", "none":
@@ -145,17 +175,12 @@ func init() {
 			defense_piercing:     e.DefensePiercing,
 			penetration_blunt:    e.PenetrationBlunt,
 			penetration_piercing: e.PenetrationPiercing,
-			cost: RisqResourceCost{
-				food:  e.Cost.Food,
-				wood:  e.Cost.Wood,
-				stone: e.Cost.Stone,
-				gold:  e.Cost.Gold,
-			},
-			production_stamina: e.ProductionStamina,
-			turn_stamina:       e.TurnStamina,
-			builds:             builds,
-			vision:             resolveVision(e.Vision),
-			required_tech_id:   e.RequiredTechId,
+			cost:                 e.Cost.toCost(),
+			production_stamina:   e.ProductionStamina,
+			turn_stamina:         e.TurnStamina,
+			builds:               builds,
+			vision:               resolveVision(e.Vision),
+			required_tech_id:     e.RequiredTechId,
 		}
 	}
 }

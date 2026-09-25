@@ -43,6 +43,15 @@ export class DwgCardHand extends DwgElement {
 
   private dragging_lock = createLock();
 
+  private resize_observer = new ResizeObserver(() => this.resizeCallback());
+
+  // bound so they can be removed again in disconnectedCallback
+  private on_mouse_up = this.handleMouseUp.bind(this);
+  private on_touch_end = this.handleTouchEnd.bind(this);
+  private on_mouse_move = this.handleMouseMove.bind(this);
+  private on_document_mouse_enter = this.handleDocumentMouseEnter.bind(this);
+  private on_touch_move = this.handleTouchMove.bind(this);
+
   constructor() {
     super();
     this.classList.add('hidden');
@@ -54,7 +63,18 @@ export class DwgCardHand extends DwgElement {
     await until(() => !!this.clientHeight);
     this.resizeCallback();
     this.setEventListeners();
+    this.resize_observer.observe(this);
     this.classList.remove('hidden');
+  }
+
+  override disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this.resize_observer.disconnect();
+    document.body.removeEventListener('mouseup', this.on_mouse_up);
+    document.body.removeEventListener('touchend', this.on_touch_end);
+    document.body.removeEventListener('mousemove', this.on_mouse_move);
+    document.documentElement.removeEventListener('mouseenter', this.on_document_mouse_enter);
+    document.body.removeEventListener('touchmove', this.on_touch_move);
   }
 
   private resizeCallback() {
@@ -66,88 +86,94 @@ export class DwgCardHand extends DwgElement {
   }
 
   private setEventListeners() {
-    document.body.addEventListener('mouseup', (e) => {
-      if (e.button !== 0) {
-        return;
-      }
-      if (!this.dragging_data.dragging) {
-        return;
-      }
-      const card = this.cards.get('i', this.dragging_data.index);
-      if (!card) {
-        this.stopDragging();
-        return;
-      }
-      e.stopImmediatePropagation();
-      card.el?.classList.remove('hovering');
+    document.body.addEventListener('mouseup', this.on_mouse_up);
+    document.body.addEventListener('touchend', this.on_touch_end);
+    document.body.addEventListener('mousemove', this.on_mouse_move);
+    document.documentElement.addEventListener('mouseenter', this.on_document_mouse_enter);
+    document.body.addEventListener('touchmove', this.on_touch_move);
+  }
+
+  private handleMouseUp(e: MouseEvent) {
+    if (e.button !== 0) {
+      return;
+    }
+    if (!this.dragging_data.dragging) {
+      return;
+    }
+    const card = this.cards.get('i', this.dragging_data.index);
+    if (!card) {
+      this.stopDragging();
+      return;
+    }
+    e.stopImmediatePropagation();
+    card.el?.classList.remove('hovering');
+    this.stopDraggingCard(card);
+  }
+
+  private handleTouchEnd(e: TouchEvent) {
+    if (!this.dragging_data.dragging) {
+      return;
+    }
+    e.stopImmediatePropagation();
+    const card = this.cards.get('i', this.dragging_data.index);
+    if (!card) {
+      this.stopDragging();
+      return;
+    }
+    if (e.touches.length === 0) {
       this.stopDraggingCard(card);
-    });
+      return;
+    }
+    const touch = e.touches[0];
+    if (touch.identifier !== this.dragging_data.touch_identifier) {
+      return;
+    }
+    this.stopDraggingCard(card);
+  }
 
-    document.body.addEventListener('touchend', (e) => {
-      e.stopImmediatePropagation();
-      if (!this.dragging_data.dragging) {
-        return;
-      }
-      const card = this.cards.get('i', this.dragging_data.index);
-      if (!card) {
-        this.stopDragging();
-        return;
-      }
-      if (e.touches.length === 0) {
-        this.stopDraggingCard(card);
-        return;
-      }
-      const touch = e.touches[0];
-      if (touch.identifier !== this.dragging_data.touch_identifier) {
-        return;
-      }
-      this.stopDraggingCard(card);
-    });
+  private handleMouseMove(e: MouseEvent) {
+    if (!this.dragging_data.dragging) {
+      return;
+    }
+    const card = this.cards.get('i', this.dragging_data.index);
+    if (!card) {
+      this.stopDragging();
+      return;
+    }
+    e.stopImmediatePropagation();
+    this.dragCard(e, card);
+  }
 
-    document.body.addEventListener('mousemove', (e) => {
-      if (!this.dragging_data.dragging) {
-        return;
-      }
-      const card = this.cards.get('i', this.dragging_data.index);
-      if (!card) {
-        this.stopDragging();
-        return;
-      }
-      e.stopImmediatePropagation();
-      this.dragCard(e, card);
-    });
+  private handleDocumentMouseEnter(e: MouseEvent) {
+    if (!this.dragging_data.dragging || e.buttons % 2 === 1) {
+      return;
+    }
+    const card = this.cards.get('i', this.dragging_data.index);
+    if (!card) {
+      this.stopDragging();
+      return;
+    }
+    this.stopDraggingCard(card, true);
+  }
 
-    document.documentElement.addEventListener('mouseenter', (e) => {
-      if (!this.dragging_data.dragging || e.buttons % 2 === 1) {
-        return;
-      }
-      const card = this.cards.get('i', this.dragging_data.index);
-      if (!card) {
-        this.stopDragging();
-        return;
-      }
-      this.stopDraggingCard(card, true);
-    });
-
-    document.body.addEventListener('touchmove', (e) => {
-      e.stopImmediatePropagation();
-      if (!this.dragging_data.dragging) {
-        return;
-      }
-      const card = this.cards.get('i', this.dragging_data.index);
-      if (!card) {
-        this.stopDragging();
-        return;
-      }
-      if (e.touches.length === 0) {
-        return;
-      }
-      const touch = e.touches[0];
-      if (touch.identifier !== this.dragging_data.touch_identifier) {
-        return;
-      }
-      this.dragCard({ x: touch.clientX, y: touch.clientY }, card);
-    });
+  private handleTouchMove(e: TouchEvent) {
+    if (!this.dragging_data.dragging) {
+      return;
+    }
+    e.stopImmediatePropagation();
+    const card = this.cards.get('i', this.dragging_data.index);
+    if (!card) {
+      this.stopDragging();
+      return;
+    }
+    if (e.touches.length === 0) {
+      return;
+    }
+    const touch = e.touches[0];
+    if (touch.identifier !== this.dragging_data.touch_identifier) {
+      return;
+    }
+    this.dragCard({ x: touch.clientX, y: touch.clientY }, card);
   }
 
   setCards(cards: StandardCard[], cards_played: number[] = [], animation_time = 0) {

@@ -7,10 +7,11 @@ export enum RisqViewMode {
   RESOURCE = 1,
   MILITARY = 2,
   OWNERSHIP = 3,
+  REGION = 4,
 }
 
 export function nextViewMode(mode: RisqViewMode): RisqViewMode {
-  return ((mode + 1) % 4) as RisqViewMode;
+  return ((mode + 1) % 5) as RisqViewMode;
 }
 
 export function spaceOwnerColor(ownership: number | undefined, players: RisqPlayer[]): ColorRGB | undefined {

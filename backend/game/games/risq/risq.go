@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/dgray001/gray_online/game"
-	"github.com/dgray001/gray_online/game/game_utils"
+	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
 )
 
@@ -17,9 +17,9 @@ import (
    ================
 
    Objective: Build your empire and conquer the world!
-   Description: Strategy board game with simultaneous turn resolution, hexgonal
+   Description: Strategy board game with simultaneous turn resolution, hexagonal
      map, complex deterministic mechanics (no randomness after map generation),
-  	 resource gathering, empire-building, complex combat, and medieval themes.
+     resource gathering, empire-building, complex combat, and medieval themes.
 */
 
 type GameRisq struct {
@@ -42,9 +42,20 @@ type GameRisq struct {
 	gather_allotments map[*RisqUnit]float64
 	// Recomputed each tick: settles which simultaneous garrison attempts get a building's remaining slots
 	garrison_allotments map[*RisqUnit]bool
+	// Recomputed each tick: settles which unit founds a new building when several race for the same empty zone
+	construction_winners map[*RisqZone]uint64
+	// Recomputed each tick: settles which building's unit production completes when several race for the last population slots
+	population_slot_winners map[*RisqBuilding]bool
+	// Recomputed each tick: a player's simultaneous repairs are water-filled per resource category
+	// instead of whichever executes first draining the shared balance
+	repair_allotments map[*RisqUnit]float64
 	// Zones whose cosmetic terrain_override should clear at the start of cleanupDeleted's NEXT call,
 	// so a destroyed building's override is still visible for the turn following its death
 	pending_terrain_clears []*RisqZone
+	// Techs finishing production this tick; applied after this tick's health deltas so a tech's
+	// combat bonus never affects the same tick's combat, only the next one
+	pending_tech_completions []techCompletion
+	regions                  []*RisqRegion
 	// owned by this game only, never the shared global source, so concurrent AI goroutines can't race it
 	rng *rand.Rand
 }
@@ -67,25 +78,6 @@ func (r *GameRisq) nextUnitInternalId() uint64 {
 func (r *GameRisq) nextOrderInternalId() uint64 {
 	r.next_order_internal_id++
 	return r.next_order_internal_id
-}
-
-func (r *GameRisq) coordinateToIndex(c *game_utils.Coordinate2D) *game_utils.Coordinate2D {
-	return &game_utils.Coordinate2D{
-		X: c.Y + int(r.board_size),
-		Y: c.X - max(-int(r.board_size), -(int(r.board_size)+c.Y)),
-	}
-}
-
-func (r *GameRisq) getSpace(c *game_utils.Coordinate2D) *RisqSpace {
-	index := r.coordinateToIndex(c)
-	if index.X < 0 || index.X >= len(r.spaces) {
-		return nil
-	}
-	row := r.spaces[index.X]
-	if index.Y < 0 || index.Y >= len(row) {
-		return nil
-	}
-	return row[index.Y]
 }
 
 func (r *GameRisq) GetBase() *game.GameBase {
@@ -129,6 +121,9 @@ func (r *GameRisq) updateEliminated() {
 		if len(player.units) == 0 && len(player.buildings) == 0 {
 			player.eliminated = true
 			player.report.recordEliminated()
+			if !player.player.IsHumanPlayer() {
+				close(player.ai_stop)
+			}
 		}
 	}
 }
@@ -182,7 +177,7 @@ func (r *GameRisq) requireOrdersNotSubmitted(player *game.Player, kind string) b
 }
 
 func (r *GameRisq) PlayerAction(action game.PlayerAction) {
-	fmt.Println("player action:", action.Kind, action.Client_id, action.Ai_id, action.Action)
+	util.DebugLog.Println("player action:", action.Kind, action.Client_id, action.Ai_id, action.Action)
 	player := r.game.AiPlayers[uint32(action.Ai_id)]
 	if player == nil {
 		player = r.game.Players[uint64(action.Client_id)]
@@ -254,7 +249,7 @@ func (r *GameRisq) PlayerAction(action game.PlayerAction) {
 }
 
 func (r *GameRisq) executeSubmitOrders(player_id int, orders []OrderFromFrontend) {
-	fmt.Println("Executing submit orders for:", player_id, orders)
+	util.DebugLog.Println("Executing submit orders for:", player_id, orders)
 	player := r.players[player_id]
 	new_orders := make([]*RisqOrder, 0, len(orders))
 	for _, o := range orders {
@@ -298,7 +293,7 @@ func (r *GameRisq) executeSubmitOrders(player_id int, orders []OrderFromFrontend
 }
 
 func (r *GameRisq) executeUnsubmitOrders(player_id int) {
-	fmt.Println("Executing unsubmit orders for:", player_id)
+	util.DebugLog.Println("Executing unsubmit orders for:", player_id)
 	player := r.players[player_id]
 	player.orders_submitted = false
 	kept := player.active_orders[:0]
@@ -462,6 +457,16 @@ func (r *GameRisq) executeSetGatherPoint(player_id int, request GatherPointFromF
 		if location_kind <= RisqGatherPointLocationKind_NONE || location_kind >= RisqGatherPointLocationKind_END {
 			return
 		}
+		switch location_kind {
+		case RisqGatherPointLocationKind_SPACE:
+			if invertSpaceKey(uint(request.Location_id), r) == nil {
+				return
+			}
+		case RisqGatherPointLocationKind_ZONE:
+			if _, zone := invertZoneKey(uint(request.Location_id), r); zone == nil {
+				return
+			}
+		}
 		object_type := RisqGatherObjectType(request.Object_type)
 		if object_type >= RisqGatherObjectType_END {
 			return
@@ -481,7 +486,7 @@ func (r *GameRisq) executeSetGatherPoint(player_id int, request GatherPointFromF
 }
 
 func (r *GameRisq) resolveActiveOrders() {
-	fmt.Println("Resolving active orders")
+	util.DebugLog.Println("Resolving active orders")
 	r.current_tick = 0
 	r.beginTurnReports()
 	for _, player := range r.players {
@@ -501,6 +506,10 @@ func (r *GameRisq) resolveActiveOrders() {
 			accepted := false
 			for _, subject := range order.subjects {
 				if !subject.orderReceivable(order, r) {
+					player.report.recordFailure(order.order_type, order.target_id, "not receivable")
+					if len(order.subjects) > 1 {
+						delete(order.subjects, subject.internalId())
+					}
 					continue
 				}
 				if order.clear_previous_orders {
@@ -516,9 +525,6 @@ func (r *GameRisq) resolveActiveOrders() {
 					player.report.recordFailure(order.order_type, order.target_id, err.Error())
 					if len(order.subjects) > 1 {
 						delete(order.subjects, subject.internalId())
-					} else {
-						order.executed = true
-						order.turn_resolved = r.turn_number
 					}
 					continue
 				}
@@ -546,10 +552,25 @@ func (r *GameRisq) resolveActiveOrders() {
 		}
 		r.gather_allotments = computeGatherAllotments(orderables)
 		r.garrison_allotments = computeGarrisonAllotments(orderables)
+		r.construction_winners = computeConstructionWinners(orderables)
+		r.population_slot_winners = computePopulationSlotWinners(r, orderables)
+		r.repair_allotments = computeRepairAllotments(r, orderables)
 		r.current_tick++
 		for _, o := range orderables {
 			o.tickExecute(r)
 		}
+		// Applied after every actor's tickExecute so same-tick damage and healing net out
+		// regardless of execution order, instead of racing on which lands first.
+		for _, o := range orderables {
+			if a, ok := o.(Attackable); ok {
+				a.resolveHealthDelta(r)
+			}
+		}
+		// Applied last so a tech's combat bonus never affects the tick that finished researching it.
+		for _, completion := range r.pending_tech_completions {
+			r.completeResearch(r.players[completion.player_id], completion.tech_id)
+		}
+		r.pending_tech_completions = r.pending_tech_completions[:0]
 	}
 	r.cleanupDeleted()
 	for _, player := range r.players {
@@ -602,17 +623,15 @@ func (r *GameRisq) cleanupDeleted() {
 
 func (r *GameRisq) recalculateVision() {
 	previously_visible := make(map[*RisqSpace]map[int]bool)
-	for _, row := range r.spaces {
-		for _, space := range row {
-			had_vision := make(map[int]bool, len(space.visibility))
-			for player_id, v := range space.visibility {
-				had_vision[player_id] = v >= VisibilityPoor
-				if v > VisibilityFog {
-					space.visibility[player_id] = VisibilityFog
-				}
+	for _, space := range r.allSpaces() {
+		had_vision := make(map[int]bool, len(space.visibility))
+		for player_id, v := range space.visibility {
+			had_vision[player_id] = v >= VisibilityPoor
+			if v > VisibilityFog {
+				space.visibility[player_id] = VisibilityFog
 			}
-			previously_visible[space] = had_vision
 		}
+		previously_visible[space] = had_vision
 	}
 	for _, player := range r.players {
 		for _, unit := range player.units {
@@ -633,13 +652,11 @@ func (r *GameRisq) recalculateVision() {
 
 // Refreshes a space's cache for a player if they had or now have vision of the space
 func (r *GameRisq) refreshVisionCaches(previously_visible map[*RisqSpace]map[int]bool) {
-	for _, row := range r.spaces {
-		for _, space := range row {
-			for _, player := range r.players {
-				player_id := player.player.Player_id
-				if previously_visible[space][player_id] || space.getVisibility(player_id) >= VisibilityPoor {
-					space.refreshCache(player_id)
-				}
+	for _, space := range r.allSpaces() {
+		for _, player := range r.players {
+			player_id := player.player.Player_id
+			if previously_visible[space][player_id] || space.getVisibility(player_id) >= VisibilityPoor {
+				space.refreshCache(player_id)
 			}
 		}
 	}
@@ -693,10 +710,21 @@ func (r *GameRisq) ToFrontend(client_id uint64, is_viewer bool) gin.H {
 	for _, row := range r.spaces {
 		spaces_row := []gin.H{}
 		for _, space := range row {
+			if space == nil {
+				spaces_row = append(spaces_row, nil)
+				continue
+			}
 			spaces_row = append(spaces_row, space.toFrontend(player_id, is_viewer))
 		}
 		spaces = append(spaces, spaces_row)
 	}
 	game["spaces"] = spaces
+	regions := []gin.H{}
+	for _, region := range r.regions {
+		if reg := region.toFrontend(r, player_id); reg != nil {
+			regions = append(regions, reg)
+		}
+	}
+	game["regions"] = regions
 	return game
 }

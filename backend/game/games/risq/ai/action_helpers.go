@@ -150,15 +150,20 @@ func currentGatherCounts(view View) map[ResourceCategory]int {
 	return counts
 }
 
-// Ranks categories by how far below their demand-weighted target share they are, then picks
-func neediestGatherCategory(view View, from ZoneRef, demand map[ResourceCategory]float64, counts map[ResourceCategory]int) (ResourceCategory, ResourceView, bool) {
+func gatherTargets(demand map[ResourceCategory]float64, counts map[ResourceCategory]int, new_workers int) map[ResourceCategory]float64 {
 	total_demand := demand[ResourceFood] + demand[ResourceWood] + demand[ResourceStone]
-	total_workers := counts[ResourceFood] + counts[ResourceWood] + counts[ResourceStone] + 1
-	categories := []ResourceCategory{ResourceFood, ResourceWood, ResourceStone}
-	deficit := func(c ResourceCategory) float64 {
-		return demand[c]/total_demand - float64(counts[c])/float64(total_workers)
+	total_workers := float64(counts[ResourceFood] + counts[ResourceWood] + counts[ResourceStone] + new_workers)
+	targets := make(map[ResourceCategory]float64, 3)
+	for c, d := range demand {
+		targets[c] = d / total_demand * total_workers
 	}
-	sort.Slice(categories, func(i, j int) bool { return deficit(categories[i]) > deficit(categories[j]) })
+	return targets
+}
+
+func neediestGatherCategory(view View, from ZoneRef, targets map[ResourceCategory]float64, counts map[ResourceCategory]int) (ResourceCategory, ResourceView, bool) {
+	categories := []ResourceCategory{ResourceFood, ResourceWood, ResourceStone}
+	deficit := func(c ResourceCategory) float64 { return targets[c] - float64(counts[c]) }
+	sort.SliceStable(categories, func(i, j int) bool { return deficit(categories[i]) > deficit(categories[j]) })
 	for _, c := range categories {
 		if target, ok := view.NearestResource(from, c); ok {
 			return c, target, true

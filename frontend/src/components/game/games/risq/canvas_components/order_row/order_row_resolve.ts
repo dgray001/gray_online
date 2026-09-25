@@ -113,7 +113,7 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
     }
     const found = getSpace(game, coordinateToIndex(board_size, space));
     const zone_data = found?.zones?.flat().find((z) => equalsPoint2D(z.coordinate, zone));
-    return zone_data?.resource?.display_name ?? 'a resource';
+    return zone_data?.resource?.display_name ?? zone_data?.building?.display_name ?? 'a resource';
   };
 
   let base: { icon: string; name: string; target: string; cost: CostChip[]; progress?: number };

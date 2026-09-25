@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/dgray001/gray_online/game"
@@ -46,10 +47,10 @@ type GameFiddlesticks struct {
 	iterations        uint32 // how many times to repeat each round
 	iteration         uint32
 	turn_duration     time.Duration
-}
-
-type FiddlesticksAiPlayerFromFrontend struct {
-	nickname string
+	// mu guards every field above against concurrent access from per-player runAi goroutines
+	mu sync.Mutex
+	// done is closed exactly once, when the game ends, so blocked runAi goroutines can exit
+	done chan struct{}
 }
 
 func InitializeGame(g *game.GameBase) *GameFiddlesticks {
@@ -71,6 +72,7 @@ func InitializeGame(g *game.GameBase) *GameFiddlesticks {
 		iterations:        1,
 		iteration:         1, // need to increment round on first deal
 		turn_duration:     35 * time.Second,
+		done:              make(chan struct{}),
 	}
 }
 
@@ -112,8 +114,8 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameF
 				score:        0,
 				ai_model_id:  2,
 			}
-			go runAi(fiddlesticks_player, fiddlesticks, action_channel)
 			player.Player_id = player_id
+			go runAi(fiddlesticks_player, fiddlesticks, action_channel)
 			fiddlesticks.players = append(fiddlesticks.players, fiddlesticks_player)
 			player_id++
 		}
@@ -207,6 +209,8 @@ func (f *GameFiddlesticks) GetBase() *game.GameBase {
 }
 
 func (f *GameFiddlesticks) StartGame() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.round = f.min_round - 1
 	f.dealer = util.RandomInt(0, len(f.players)-1)
 	f.dealNextRound(true)
@@ -258,7 +262,7 @@ func (f *GameFiddlesticks) ExecuteAiTurn(debug bool) bool {
 
 func (f *GameFiddlesticks) GetGameResults() (uint32, []uint32) {
 	total_rounds := 2*(f.max_round-f.min_round) + 1
-	total_cards := 2*uint16(0.5*float64(f.max_round*(f.max_round+1)-f.min_round*(f.min_round-1))) - uint16(f.max_round)
+	total_cards := 2*uint16(0.5*(float64(f.max_round)*float64(f.max_round+1)-float64(f.min_round)*float64(f.min_round-1))) - uint16(f.max_round)
 	max_score := f.iterations * uint32(f.round_points*uint16(total_rounds)+f.trick_points*total_cards)
 	scores := make([]uint32, len(f.players))
 	for i, p := range f.players {
@@ -275,6 +279,8 @@ func (f *GameFiddlesticks) Valid() bool {
 }
 
 func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	fmt.Println("Player action:", action.Kind, action.Client_id, action.Ai_id, action.Action)
 	player := f.game.AiPlayers[uint32(action.Ai_id)]
 	if player == nil {
@@ -282,6 +288,10 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 	}
 	if player == nil {
 		fmt.Fprintln(os.Stderr, "Invalid client or ai id", action.Client_id, action.Ai_id)
+		return
+	}
+	if !f.game.GameStarted() || f.game.GameEnded() {
+		player.AddFailedUpdateShorthand(action.Kind+"-failed", "Game not currently accepting actions")
 		return
 	}
 	player_id := player.Player_id
@@ -299,6 +309,10 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 		bet_value_float, ok := action.Action["amount"].(float64)
 		if !ok {
 			player.AddFailedUpdateShorthand("bet-failed", fmt.Sprintf("Bet value invalid: %.2f", bet_value_float))
+			return
+		}
+		if bet_value_float < 0 {
+			player.AddFailedUpdateShorthand("bet-failed", fmt.Sprintf("Bet value cannot be negative: %.2f", bet_value_float))
 			return
 		}
 		bet_value := uint8(bet_value_float)
@@ -529,6 +543,7 @@ func (f *GameFiddlesticks) dealNextRound(broadcast bool) *game.UpdateMessage {
 			fmt.Println(winner_message)
 		}
 		f.game.EndGame(winner_message)
+		close(f.done)
 		return nil
 	}
 	f.dealer++

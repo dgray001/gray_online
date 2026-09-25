@@ -23,14 +23,11 @@ type Orderable interface {
 	OrderableType() OrderableType
 	activeOrders() []*RisqOrder
 	refreshStamina()
-	// Returns whether the order is receivable by this subject
 	orderReceivable(o *RisqOrder, risq *GameRisq) bool
 	// Returns failure reason if order was not received
 	receiveOrder(o *RisqOrder, risq *GameRisq) error
 	cancelOrder(o *RisqOrder, risq *GameRisq)
-	// Returns whether the order is in progress, executed, or cancelled (called by tickIntent)
 	orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus
-	// Returns whether the orderable has an intent
 	tickIntent(risq *GameRisq) bool
 	tickExecute(risq *GameRisq)
 	// Removes this orderable from all maps/zones/orders once deleted; called once per player per turn
@@ -94,11 +91,9 @@ const (
 	OrderType_UnitAttackBuilding
 	OrderType_UnitAutoAttackUnit     // Server synthesized; not submitted by player
 	OrderType_UnitAutoAttackBuilding // Server synthesized; not submitted by player
-	OrderType_UnitDefend
 	OrderType_UnitGarrison
 	OrderType_UnitUngarrison
 	OrderType_UnitDelete
-	// Orders to control buildings
 	OrderType_BuildingCreate
 	OrderType_BuildingResearch
 	OrderType_BuildingDelete
@@ -109,33 +104,23 @@ const (
 	// Player-level orders with no subjects
 	OrderType_CancelOrder
 	OrderType_CancelFoundation
-	// Used to validate input from the frontend
 	OrderType_END
 )
 
 type RisqOrder struct {
-	// Internal id of the order object itself
 	internal_id uint64
-	// The player id of who is creating this order
-	player_id int
+	player_id   int
 	// The targets this order is effecting, keyed by subject internal id for O(1) removal
-	subjects map[uint64]Orderable
-	// What the order actually is
+	subjects   map[uint64]Orderable
 	order_type OrderType
 	// What the order is targeting (could be a space, a unit, or a technology)
-	target_id int64
-	// Whether receiving this order should cancel each subject's other active orders
+	target_id             int64
 	clear_previous_orders bool
-	// Whether this order has been received (used for one-time effects)
-	received bool
-	// Whether the order has been executed
-	executed bool
-	// Whether the order was canceled before completion
-	cancelled bool
-	// The turn that the order was received by the player
-	turn_received uint16
-	// The turn that the order was resolved (executed or cancelled)
-	turn_resolved uint16
+	received              bool
+	executed              bool
+	cancelled             bool
+	turn_received         uint16
+	turn_resolved         uint16
 }
 
 func createRisqOrder(internal_id uint64, order_type OrderType, player_id int, subjects map[uint64]Orderable, target_id int64, clear_previous_orders bool) *RisqOrder {
@@ -283,7 +268,6 @@ func (r *GameRisq) getOrdersFromPlayerAction(action gin.H, player_id int) ([]Ord
 }
 
 func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend, player_id int) error {
-	// Validate order type
 	order_type := OrderType(order.Order_type)
 	if order_type <= OrderType_None || order_type >= OrderType_END || order_type.isAutoSynthesized() {
 		return fmt.Errorf("Invalid order type: %d", order_type)
@@ -292,7 +276,6 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend, player_id int)
 	if order.Player_id != player_id {
 		return fmt.Errorf("Order player id %d does not match submitter %d", order.Player_id, player_id)
 	}
-	// Validate order type and subjects
 	if order_type.isUnitOrder() {
 		if len(order.Subjects) == 0 {
 			return errors.New("Order must have at least one subject")
@@ -324,7 +307,6 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend, player_id int)
 			return errors.New("Invalid subjects in player order")
 		}
 	}
-	// Validate target id
 	switch order_type {
 	case OrderType_UnitMoveSpace:
 		space := invertSpaceKey(uint(order.Target_id), r)
@@ -511,7 +493,6 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend, player_id int)
 	default:
 		return fmt.Errorf("Unimplemented order type: %d", order_type)
 	}
-	// Order is valid
 	return nil
 }
 
@@ -527,7 +508,7 @@ func (q *RisqOrderQueue) receiveOrder(o *RisqOrder) {
 	q.active_orders = append(q.active_orders, o)
 }
 
-// Finds, cancels, and removes the order with this internal id; returns it (or nil if not found)
+// Removes the order with this internal id from the queue; returns it, or nil if not found
 func (q *RisqOrderQueue) removeOrder(internal_id uint64) *RisqOrder {
 	for i, order := range q.active_orders {
 		if order.internal_id == internal_id {

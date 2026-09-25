@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/dgray001/gray_online/game/games/risq"
 	"github.com/dgray001/gray_online/lobby"
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
@@ -52,6 +53,10 @@ func main() {
 	{
 		api.GET("/ping", func(c *gin.Context) {
 			c.JSON(200, successResponse("pong"))
+		})
+
+		api.GET("/risq/tech-tree", func(c *gin.Context) {
+			c.JSON(200, successResponse(risq.AllBuildingConfigsToFrontend()))
 		})
 
 		api_lobby := api.Group("/lobby")

@@ -11,6 +11,7 @@ import type {
   RectHoverData,
   RisqBuilding,
   RisqCombatStats,
+  RisqRegion,
   RisqResource,
   RisqSpace,
   RisqUnit,
@@ -869,6 +870,9 @@ export class RisqLeftPanel implements CanvasComponent {
           case LeftPanelDataType.SPACE:
             this.drawSpace(ctx, this.data.data);
             break;
+          case LeftPanelDataType.REGION:
+            this.drawRegion(ctx, this.data.data);
+            break;
           case LeftPanelDataType.ZONE:
             this.drawZone(ctx, this.data.data);
             break;
@@ -908,7 +912,6 @@ export class RisqLeftPanel implements CanvasComponent {
         ctx,
         transform,
         this.risq.canvasSize(),
-        { x: this.healthbar_row.pe.x, y: this.healthbar_row.pe.y },
         `${cs.health.toFixed(1)} / ${cs.max_health}`
       );
     }
@@ -921,7 +924,6 @@ export class RisqLeftPanel implements CanvasComponent {
         ctx,
         transform,
         this.risq.canvasSize(),
-        { x: this.stamina_row.pe.x, y: this.stamina_row.pe.y },
         `+${this.data.data.turn_stamina} / turn`
       );
     }
@@ -935,7 +937,6 @@ export class RisqLeftPanel implements CanvasComponent {
         ctx,
         transform,
         this.risq.canvasSize(),
-        { x: this.eye_badge_hover.pe.x, y: this.eye_badge_hover.pe.y },
         space.visibility === RisqVisibilityLevel.POOR
           ? 'Poor visibility on this space; overall unit count seen but no specific units or zone-level unit information'
           : ''
@@ -1311,6 +1312,48 @@ export class RisqLeftPanel implements CanvasComponent {
       fill_style: 'black',
       align: 'left',
       font: `14px serif`,
+    });
+  }
+
+  private drawRegion(ctx: CanvasRenderingContext2D, region: RisqRegion) {
+    let yi = this.yi() + this.drawName(ctx, region.name);
+    yi += 12;
+    const image_size = 40;
+    const owner_color = region.owner >= 0 ? this.risq.getGame()?.players[region.owner]?.color : undefined;
+    const owner_name = owner_color
+      ? (this.risq.getGame()?.players[region.owner]?.player.nickname ?? 'Unknown')
+      : '--Unclaimed--';
+    ctx.fillStyle = owner_color ? owner_color.getString() : 'rgba(255, 255, 255, 0.3)';
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 1;
+    drawRect(ctx, { x: this.xi() + 0.1 * this.w(), y: yi }, image_size, image_size);
+    drawText(ctx, owner_name, {
+      p: { x: this.xi() + 0.1 * this.w() + image_size + 8, y: yi + 0.5 * image_size },
+      w: 0.8 * this.w() - image_size - 8,
+      fill_style: 'black',
+      align: 'left',
+      baseline: 'middle',
+      font: '20px serif',
+    });
+    yi += image_size + 12;
+    this.drawSeparator(ctx, yi);
+    yi += 12;
+    ctx.drawImage(this.risq.getIcon(resourceTypeImage(RisqResourceType.GOLD)), this.xi() + 0.1 * this.w(), yi, 32, 32);
+    drawText(ctx, `${region.gold_bonus} gold / turn`, {
+      p: { x: this.xi() + 0.1 * this.w() + 40, y: yi + 16 },
+      w: 0.8 * this.w() - 40,
+      fill_style: 'black',
+      align: 'left',
+      baseline: 'middle',
+      font: '20px serif',
+    });
+    yi += 40;
+    drawText(ctx, `${region.spaces.length} space${region.spaces.length === 1 ? '' : 's'} explored`, {
+      p: { x: this.xi() + 0.1 * this.w(), y: yi },
+      w: 0.8 * this.w(),
+      fill_style: 'black',
+      align: 'left',
+      font: '16px serif',
     });
   }
 

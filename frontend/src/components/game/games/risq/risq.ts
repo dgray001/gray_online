@@ -30,6 +30,7 @@ import type {
   RisqCost,
   RisqFrontendOrder,
   RisqPlayer,
+  RisqRegion,
   RisqSpace,
   RisqUnit,
   RisqZone,
@@ -62,9 +63,15 @@ import { PLAYER_ICON_SIZE, RisqImageCache } from './risq_image_cache';
 import { RisqRightPanel } from './canvas_components/right_panel/right_panel';
 import type { DrawRisqSpaceConfig } from './risq_space';
 import { DrawRisqSpaceDetail, drawRisqSpace, drawRisqSpaceBorder } from './risq_space';
+import { buildRegionLookup, drawRisqRegionBorders, drawRisqRegionLabels } from './risq_region';
 import { RisqLeftPanel } from './canvas_components/left_panel/left_panel';
 import type { UnitToggleField } from './canvas_components/left_panel/action_button/unit_toggle_button';
 import { RisqMinimap } from './canvas_components/minimap/risq_minimap';
+import { RisqBottomPanel } from './canvas_components/bottom_panel/bottom_panel';
+import { RisqSummaryReportButton } from './canvas_components/bottom_panel/summary_report_button';
+import { RisqViewModeButton } from './canvas_components/bottom_panel/view_mode_button';
+import { RisqTechTreeButton } from './canvas_components/bottom_panel/tech_tree_button';
+import type { RisqTurnReport } from './risq_turn_report';
 import { RISQ_MESSAGE_WARNING_COLOR, RisqMessageQueue } from './canvas_components/message_queue';
 import { RisqOrdersModel, isBuildingOrder, isUnitOrder, orderArrowColor } from './risq_orders';
 import {
@@ -92,6 +99,7 @@ import './risq.scss';
 import '../../util/canvas_board/canvas_board';
 import '../../../dialog_box/confirm_dialog/confirm_dialog';
 import './turn_report_dialog/turn_report_dialog';
+import './tech_tree_dialog/tech_tree_dialog';
 import { DialogSize } from '../../../dialog_box/dialog_box';
 import { createMessage } from '../../../lobby/data_models';
 
@@ -117,6 +125,7 @@ export class DwgRisq extends DwgElement {
   private board!: DwgCanvasBoard;
 
   private game?: GameRisq;
+  private region_by_space = new Map<number, RisqRegion>();
   private player_id: number = -1;
   private hex_r = DEFAULT_HEXAGON_RADIUS;
   private hex_a = 0.5 * 1.732 * DEFAULT_HEXAGON_RADIUS;
@@ -155,6 +164,7 @@ export class DwgRisq extends DwgElement {
   private orders_model = new RisqOrdersModel(() => this.ordersChanged());
   private idle_units: RisqUnit[] = [];
   private last_idle_selected?: number;
+  private last_turn_report?: RisqTurnReport;
 
   private handleKeydown = (e: KeyboardEvent) => {
     if (isTypingInInput()) {
@@ -171,7 +181,7 @@ export class DwgRisq extends DwgElement {
     }
     switch (e.key.toLowerCase()) {
       case 'v':
-        this.view_mode = nextViewMode(this.view_mode);
+        this.cycleViewMode();
         break;
       default:
         break;
@@ -189,13 +199,21 @@ export class DwgRisq extends DwgElement {
   });
   private minimap = new RisqMinimap(this, {
     target_w: 150,
-    background: 'rgb(222,184,135)',
+    background: 'black',
   });
+  private bottom_panel = new RisqBottomPanel(
+    this,
+    { background: 'rgb(222, 184, 135)', left_panel_w: 300, right_panel_w: 300 },
+    [
+      [new RisqSummaryReportButton(this, 32), new RisqViewModeButton(this, 32), new RisqTechTreeButton(this, 32)],
+      [this.minimap],
+    ]
+  );
   private message_queue = new RisqMessageQueue(this);
   private readonly canvas_components: CanvasComponent[] = [
     this.right_panel,
     this.left_panel,
-    this.minimap,
+    this.bottom_panel,
     this.message_queue,
   ];
 
@@ -373,6 +391,27 @@ export class DwgRisq extends DwgElement {
     return this.player_id > -1 ? this.game.players[this.player_id] : undefined;
   }
 
+  getLastTurnReport(): RisqTurnReport | undefined {
+    return this.last_turn_report;
+  }
+
+  reopenLastTurnReport() {
+    const player = this.getPlayer();
+    if (player && this.last_turn_report) {
+      this.openTurnReportDialog(player, this.last_turn_report);
+    }
+  }
+
+  private openTurnReportDialog(player: RisqPlayer, report: RisqTurnReport) {
+    const dialog = document.createElement('dwg-risq-turn-report-dialog');
+    dialog.setData({ risq: this, player, report });
+    this.appendChild(dialog);
+  }
+
+  cycleViewMode() {
+    this.view_mode = nextViewMode(this.view_mode);
+  }
+
   private goToVillageCenter(player_id: number) {
     if (player_id < 0 || !this.game) {
       return;
@@ -413,7 +452,7 @@ export class DwgRisq extends DwgElement {
       // Update other dependencies
       for (const row of this.game?.spaces ?? []) {
         for (const space of row) {
-          for (const zone_row of space.zones ?? []) {
+          for (const zone_row of space?.zones ?? []) {
             for (const zone of zone_row) {
               zone.reset_hovered_data = true;
             }
@@ -436,6 +475,47 @@ export class DwgRisq extends DwgElement {
 
   viewMode(): RisqViewMode {
     return this.view_mode;
+  }
+
+  getRegionForSpace(coordinate_key: number): RisqRegion | undefined {
+    return this.region_by_space.get(coordinate_key);
+  }
+
+  getRegionLookup(): Map<number, RisqRegion> {
+    return this.region_by_space;
+  }
+
+  // regions are hoverable/selectable in the dedicated REGION view mode (any zoom), or fully zoomed out in any other non-military view mode
+  regionInteractionEnabled(): boolean {
+    return (
+      this.view_mode === RisqViewMode.REGION ||
+      (this.draw_detail === DrawRisqSpaceDetail.OWNERSHIP && this.view_mode !== RisqViewMode.MILITARY)
+    );
+  }
+
+  hoveredRegion(): RisqRegion | undefined {
+    if (!this.regionInteractionEnabled() || !this.hovered_space) {
+      return undefined;
+    }
+    return this.getRegionForSpace(this.hovered_space.coordinate_key);
+  }
+
+  isRegionSelected(region: RisqRegion): boolean {
+    const data = this.left_panel.getData();
+    return data?.data_type === LeftPanelDataType.REGION && data.data.name === region.name;
+  }
+
+  /** Canvas position of a region's label: the centroid of its (explored) member spaces */
+  regionLabelPosition(region: RisqRegion): Point2D {
+    let sx = 0;
+    let sy = 0;
+    for (const key of region.spaces) {
+      const c = invertPair(key);
+      sx += c.x;
+      sy += c.y;
+    }
+    const n = region.spaces.length || 1;
+    return this.coordinateToCanvas({ x: sx / n, y: sy / n });
   }
 
   toggleRightPanel(open?: boolean) {
@@ -480,6 +560,7 @@ export class DwgRisq extends DwgElement {
 
   private setNewGameData(new_game: GameRisqFromServer) {
     this.game = serverToGameRisq(new_game);
+    this.region_by_space = buildRegionLookup(this.game?.regions ?? []);
     this.hovered_space = undefined;
     this.hovered_zone = undefined;
     this.orders_model.setSubmitted(this.getPlayer()?.active_orders ?? []);
@@ -493,10 +574,9 @@ export class DwgRisq extends DwgElement {
     this.clearSelection();
     this.setNewGameData(data.game);
     const player = this.getPlayer();
+    this.last_turn_report = player?.turn_report;
     if (this.player_id > -1 && player?.turn_report) {
-      const dialog = document.createElement('dwg-risq-turn-report-dialog');
-      dialog.setData({ risq: this, player, report: player.turn_report });
-      this.appendChild(dialog);
+      this.openTurnReportDialog(player, player.turn_report);
     }
   }
 
@@ -585,6 +665,9 @@ export class DwgRisq extends DwgElement {
     const on_screen_spaces: RisqSpace[] = [];
     for (const row of this.game.spaces) {
       for (const space of row) {
+        if (!space) {
+          continue;
+        }
         space.center = this.coordinateToCanvas(space.coordinate);
         if (!this.isSpaceOnScreen(space, bounds)) {
           continue;
@@ -596,6 +679,10 @@ export class DwgRisq extends DwgElement {
     // borders are drawn in their own pass after every space's (opaque) fill, so a later space's fill can't paint over an earlier space's border
     for (const space of on_screen_spaces) {
       drawRisqSpaceBorder(ctx, this, space, draw_config);
+    }
+    drawRisqRegionBorders(ctx, this, on_screen_spaces, this.hex_r);
+    if (this.view_mode === RisqViewMode.REGION) {
+      drawRisqRegionLabels(ctx, this);
     }
     this.drawUnitOrders(ctx);
     this.drawGatherPointOrder(ctx);
@@ -888,6 +975,10 @@ export class DwgRisq extends DwgElement {
     return DrawRisqSpaceDetail.SPACE_DETAILS;
   }
 
+  private panelsHovered(): boolean {
+    return this.left_panel.isHovering() || this.right_panel.isHovering() || this.bottom_panel.isHovering();
+  }
+
   // scroll() signature already used by HTMLElement
   private scrollDwg(dy: number, mode: number): boolean {
     for (const component of this.canvas_components) {
@@ -936,7 +1027,7 @@ export class DwgRisq extends DwgElement {
       this.hovered_space.center = this.coordinateToCanvas(this.hovered_space.coordinate);
     }
     const hovered_other_component = this.canvas_components.map((c) => c.mousemove(m, screen, transform)).some(Boolean);
-    this.board.setPanSuppressed(false, this.left_panel.isHovering() || this.right_panel.isHovering());
+    this.board.setPanSuppressed(false, this.panelsHovered());
     this.mouse_coordinate = this.canvasToCoordinate(m, this.game.board_size);
     const index = coordinateToIndex(this.game.board_size, roundAxialCoordinate(this.mouse_coordinate));
     const new_hovered_space = getSpace(this.game, index);
@@ -955,7 +1046,7 @@ export class DwgRisq extends DwgElement {
     }
 
     const resolve_zones = () => {
-      if (this.draw_detail === DrawRisqSpaceDetail.ZONE_DETAILS) {
+      if (this.draw_detail === DrawRisqSpaceDetail.ZONE_DETAILS && this.view_mode !== RisqViewMode.REGION) {
         const new_hovered_zone = resolveHoveredZones(m, this.hovered_space, this.hex_r);
         if (!!this.hovered_zone && !equalsPoint2D(new_hovered_zone?.coordinate, this.hovered_zone?.coordinate)) {
           unhoverRisqZone(this.hovered_zone);
@@ -1323,6 +1414,34 @@ export class DwgRisq extends DwgElement {
     this.message_queue.enqueue(text, color);
   }
 
+  predictedGathererCount(building: RisqBuilding): number {
+    const player = this.getPlayer();
+    if (!player) {
+      return 0;
+    }
+    const zone_key = cantorPair(
+      cantorPair(building.space_coordinate.x, building.space_coordinate.y),
+      cantorPair(building.zone_coordinate.x, building.zone_coordinate.y)
+    );
+    let count = 0;
+    for (const unit of player.units.values()) {
+      const effective = this.orders_model.effectiveForSubject(unit.internal_id, 'unit');
+      if (effective.some((o) => o.order_type === RisqOrderType.OrderType_UnitGather && o.target_id === zone_key)) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  private warnIfGatherOverCapacity(building: RisqBuilding | undefined) {
+    if (!building || building.gather_capacity === undefined) {
+      return;
+    }
+    if (this.predictedGathererCount(building) > building.gather_capacity) {
+      this.showMessage(`${building.display_name} is over its worker capacity`, RISQ_MESSAGE_WARNING_COLOR);
+    }
+  }
+
   selectNextIdleUnit() {
     if (!this.game || this.idle_units.length === 0) {
       return;
@@ -1544,6 +1663,23 @@ export class DwgRisq extends DwgElement {
     );
   }
 
+  private gatherTargetValid(): boolean {
+    if (!this.isZoneValid()) {
+      return false;
+    }
+    if (!!this.hovered_zone?.resource) {
+      return true;
+    }
+    const b = this.hovered_zone?.building;
+    return (
+      !!b &&
+      b.player_id === this.player_id &&
+      !b.under_construction &&
+      b.gather_capacity !== undefined &&
+      (b.resources_left ?? 0) > 0
+    );
+  }
+
   private renewTargetValid(): boolean {
     const b = this.hovered_zone?.building;
     return (
@@ -1589,7 +1725,7 @@ export class DwgRisq extends DwgElement {
     const radius = UNIT_SLOT_CIRCLE_RADIUS_MULTIPLIER * this.hex_r;
     for (const row of this.game?.spaces ?? []) {
       for (const space of row) {
-        if (!this.isSpaceOnScreen(space, bounds)) {
+        if (!space || !this.isSpaceOnScreen(space, bounds)) {
           continue;
         }
         for (const zone_row of space.zones ?? []) {
@@ -1691,7 +1827,7 @@ export class DwgRisq extends DwgElement {
           return zone_valid ? RisqOrderType.OrderType_UnitAttackZone : RisqOrderType.OrderType_UnitAttackSpace;
         }
         case RisqOrderType.OrderType_UnitGather:
-          if (has_villager && zone_valid && !!this.hovered_zone?.resource) {
+          if (has_villager && this.gatherTargetValid()) {
             return RisqOrderType.OrderType_UnitGather;
           }
           return RisqOrderType.NONE;
@@ -1750,13 +1886,13 @@ export class DwgRisq extends DwgElement {
       if (has_villager && this.hovered_zone?.hovered_data[0]?.hovered && this.renewTargetValid()) {
         return RisqOrderType.OrderType_UnitRenew;
       }
+      if (has_villager && this.hovered_zone?.hovered_data[0]?.hovered && this.gatherTargetValid()) {
+        return RisqOrderType.OrderType_UnitGather;
+      }
       if (has_villager && this.hovered_zone?.hovered_data[0]?.hovered && this.repairTargetValid()) {
         return RisqOrderType.OrderType_UnitRepair;
       }
       if (has_villager && zone_valid && this.hovered_zone?.hovered_data[0]?.hovered) {
-        if (!!this.hovered_zone.resource) {
-          return RisqOrderType.OrderType_UnitGather;
-        }
         if (this.hovered_zone.building?.under_construction || this.hasPlannedFoundation(this.hovered_zone)) {
           return RisqOrderType.OrderType_UnitBuild;
         }
@@ -2022,6 +2158,7 @@ export class DwgRisq extends DwgElement {
           this.hovered_zone.coordinate_key,
           ctrl_held
         );
+        this.warnIfGatherOverCapacity(this.hovered_zone.building);
         break;
       case RisqOrderType.OrderType_UnitBuild: {
         if (!this.hovered_zone) {
@@ -2213,6 +2350,7 @@ export class DwgRisq extends DwgElement {
           this.hovered_zone.coordinate_key,
           ctrl_held
         );
+        this.warnIfGatherOverCapacity(this.hovered_zone.building);
         break;
       case RisqOrderType.OrderType_UnitBuild:
         if (!this.hovered_zone || !this.armed_building) {
@@ -2425,16 +2563,20 @@ export class DwgRisq extends DwgElement {
         for (const part of zone.hovered_data) {
           part.clicked = false;
         }
-      } else if (space.clicked && space.visibility > 0 && this.draw_detail !== DrawRisqSpaceDetail.ZONE_DETAILS) {
-        this.left_panel.openPanel({ data_type: LeftPanelDataType.SPACE, data: space }, space.visibility);
+      } else if (
+        space.clicked &&
+        space.visibility > 0 &&
+        (this.draw_detail !== DrawRisqSpaceDetail.ZONE_DETAILS || this.view_mode === RisqViewMode.REGION)
+      ) {
+        const region = this.regionInteractionEnabled() ? this.getRegionForSpace(space.coordinate_key) : undefined;
+        if (region) {
+          this.left_panel.openPanel({ data_type: LeftPanelDataType.REGION, data: region }, space.visibility);
+        } else {
+          this.left_panel.openPanel({ data_type: LeftPanelDataType.SPACE, data: space }, space.visibility);
+        }
       }
       space.clicked = false;
-    } else if (
-      e.button === 0 &&
-      armed_before === RisqOrderType.NONE &&
-      !this.left_panel.isHovering() &&
-      !this.right_panel.isHovering()
-    ) {
+    } else if (e.button === 0 && armed_before === RisqOrderType.NONE && !this.panelsHovered()) {
       this.left_panel.close();
     }
     if (

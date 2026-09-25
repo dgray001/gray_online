@@ -2,6 +2,7 @@ package fiddlesticks
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/dgray001/gray_online/game"
@@ -46,6 +47,7 @@ func (p *FiddlesticksPlayer) instantiatedAiModel() bool {
 	return p.instantiated_ai_model
 }
 
+// clearTurnTimer assumes the caller already holds the game's mutex.
 func (p *FiddlesticksPlayer) clearTurnTimer() {
 	if p.turn_timer != nil {
 		p.turn_timer.Stop()
@@ -53,15 +55,23 @@ func (p *FiddlesticksPlayer) clearTurnTimer() {
 	}
 }
 
-func (p *FiddlesticksPlayer) storeTurnAction(action game.PlayerAction, action_channel chan game.PlayerAction, d time.Duration) {
-	turn_timer := time.NewTimer(d)
-	p.turn_timer = turn_timer
+// storeTurnAction assumes the caller already holds mu; the fired timer re-acquires it to
+// check p.turn_timer is still this timer, so a real action that beat the timer (and cleared it
+// under the same lock) prevents the stale action from being sent.
+func (p *FiddlesticksPlayer) storeTurnAction(action game.PlayerAction, action_channel chan game.PlayerAction, d time.Duration, mu *sync.Mutex) {
 	p.turn_start_time = time.Now()
-	go func() {
-		<-turn_timer.C
+	var timer *time.Timer
+	timer = time.AfterFunc(d, func() {
+		mu.Lock()
+		defer mu.Unlock()
+		if p.turn_timer != timer {
+			return
+		}
+		p.turn_timer = nil
 		fmt.Println("Turn timer up so AI playing turn for", p.player.Player_id)
 		action_channel <- action
-	}()
+	})
+	p.turn_timer = timer
 }
 
 func (p *FiddlesticksPlayer) toFrontend(show_updates bool) gin.H {

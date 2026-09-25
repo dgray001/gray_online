@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"sort"
 
 	"github.com/dgray001/gray_online/game/game_utils"
 	"github.com/dgray001/gray_online/util"
@@ -99,6 +100,18 @@ func (s *RisqSpace) setAdjacentSpace(adj *RisqSpace, v *game_utils.Coordinate2D)
 	s.adjacent_spaces[util.Pair(v.X, v.Y)] = adj
 	zone.adjacent_space = adj
 	zone.adjacent_zones = append(zone.adjacent_zones, adj_zone)
+}
+
+// adjacent_spaces in a stable order. Go's map iteration order is randomized per-process, and several
+// map-generation steps feed this order into RNG shuffles or BFS tie-breaks, which must be
+// reproducible from a seed; ranging over adjacent_spaces directly breaks that.
+func (s *RisqSpace) sortedAdjacentSpaces() []*RisqSpace {
+	spaces := make([]*RisqSpace, 0, len(s.adjacent_spaces))
+	for _, adj := range s.adjacent_spaces {
+		spaces = append(spaces, adj)
+	}
+	sort.Slice(spaces, func(i, j int) bool { return spaces[i].coordinate_key < spaces[j].coordinate_key })
+	return spaces
 }
 
 func (s *RisqSpace) coordinateToIndex(c *game_utils.Coordinate2D) *game_utils.Coordinate2D {

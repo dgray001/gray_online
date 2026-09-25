@@ -10,10 +10,10 @@ import (
 	"github.com/dgray001/gray_online/game/game_utils"
 )
 
-//go:embed config/maps/*
+//go:embed config/maps/scripted/*
 var mapScripts embed.FS
 
-//go:embed config/maps/default.json
+//go:embed config/maps/scripted/default.json
 var defaultMapScript []byte
 
 type mapScriptStepJSON struct {
@@ -29,48 +29,70 @@ type playerStartInfo struct {
 }
 
 type mapScriptContext struct {
-	risq              *GameRisq
-	rng               *rand.Rand
-	num_players       int
-	board_size        uint16
-	starting_distance int
-	player_starts     []playerStartInfo
-	regions           map[string]map[uint]bool
-	vars              map[string]float64
+	risq                *GameRisq
+	rng                 *rand.Rand
+	num_players         int
+	board_size          uint16
+	recommended_size    *uint16 // overrides the num_players-derived default when set
+	player_starts       []playerStartInfo
+	regions             map[string]map[uint]bool
+	vars                map[string]float64
+	shape               string
 }
 
-func newMapScriptVars(num_players int, board_size uint16, starting_distance int, total_spaces int) map[string]float64 {
-	return map[string]float64{
-		"num_players":       float64(num_players),
-		"board_size":        float64(board_size),
-		"starting_distance": float64(starting_distance),
-		"total_spaces":      float64(total_spaces),
-		"total_zones":       float64(total_spaces * 7),
+func recommendedBoardSize(num_players int) uint16 {
+	switch {
+	case num_players <= 3:
+		return 4
+	case num_players == 4:
+		return 5
+	case num_players <= 6:
+		return 6
+	default:
+		return uint16(6 + (num_players-5)/2)
 	}
 }
 
-// TODO: step param decode panics happen at game-launch time (unlike other config, which panics
-// at server init before any player connects); a malformed non-default map crashes the live server
-func loadMapScript(name string) []mapScriptStepJSON {
-	data, err := mapScripts.ReadFile(path.Join("config/maps", name+".json"))
+func newMapScriptVars(num_players int, board_size uint16, total_spaces int) map[string]float64 {
+	return map[string]float64{
+		"num_players":  float64(num_players),
+		"board_size":   float64(board_size),
+		"total_spaces": float64(total_spaces),
+		"total_zones":  float64(total_spaces * 7),
+	}
+}
+
+func loadMapScript(name string) ([]mapScriptStepJSON, error) {
+	data, err := mapScripts.ReadFile(path.Join("config/maps/scripted", name+".json"))
 	if err != nil {
 		data = defaultMapScript
 	}
 	var steps []mapScriptStepJSON
 	if err := json.Unmarshal(data, &steps); err != nil {
-		panic(fmt.Sprintf("failed to parse map script %q: %v", name, err))
+		return nil, fmt.Errorf("failed to parse map script %q: %v", name, err)
 	}
-	return steps
+	return steps, nil
 }
 
 func runMapScript(ctx *mapScriptContext, steps []mapScriptStepJSON) error {
-	for _, s := range steps {
+	if len(steps) == 0 || steps[0].Step != "shape" {
+		return fmt.Errorf("map script must start with a shape step")
+	}
+	for i, s := range steps {
+		if i > 0 && s.Step == "shape" {
+			return fmt.Errorf("shape step must be the first step in the script")
+		}
 		fn, ok := mapStepRegistry[s.Step]
 		if !ok {
 			return fmt.Errorf("unknown map script step %q", s.Step)
 		}
 		if err := fn(ctx, s.Params); err != nil {
 			return fmt.Errorf("map script step %q: %w", s.Step, err)
+		}
+		if s.Step == "shape" {
+			total_spaces := len(ctx.allSpaces())
+			ctx.vars["total_spaces"] = float64(total_spaces)
+			ctx.vars["total_zones"] = float64(total_spaces * 7)
 		}
 	}
 	return nil
@@ -92,7 +114,11 @@ func (c *mapScriptContext) region(name string) map[uint]bool {
 func (c *mapScriptContext) allSpaces() []*RisqSpace {
 	spaces := make([]*RisqSpace, 0)
 	for _, row := range c.risq.spaces {
-		spaces = append(spaces, row...)
+		for _, space := range row {
+			if space != nil {
+				spaces = append(spaces, space)
+			}
+		}
 	}
 	return spaces
 }
@@ -105,103 +131,6 @@ func (c *mapScriptContext) allZones() []*RisqZone {
 		}
 	}
 	return zones
-}
-
-// Rotates an axial coordinate by steps increments of sixty degrees
-func rotateAxial(c game_utils.Coordinate2D, steps int) game_utils.Coordinate2D {
-	x, z := c.X, c.Y
-	y := -x - z
-	n := ((steps % 6) + 6) % 6
-	for range n {
-		x, y, z = -y, -z, -x
-	}
-	return game_utils.Coordinate2D{X: x, Y: z}
-}
-
-// Replays a wrapped step's board changes rotated to every other player start direction
-func stepMirror(ctx *mapScriptContext, raw json.RawMessage) error {
-	var p struct {
-		Step mapScriptStepJSON `json:"step"`
-	}
-	if err := json.Unmarshal(raw, &p); err != nil {
-		panic(fmt.Sprintf("map script mirror: %v", err))
-	}
-	fn, ok := mapStepRegistry[p.Step.Step]
-	if !ok {
-		return fmt.Errorf("mirror: unknown step %q", p.Step.Step)
-	}
-	if len(ctx.player_starts) < 2 {
-		return fn(ctx, p.Step.Params)
-	}
-	terrain_before := make(map[uint]uint32)
-	for _, space := range ctx.allSpaces() {
-		terrain_before[space.coordinate_key] = space.terrain_id
-	}
-	resource_zones_before := make(map[uint]bool)
-	for _, zone := range ctx.allZones() {
-		if zone.resource != nil {
-			resource_zones_before[zone.coordinate_key] = true
-		}
-	}
-	if err := fn(ctx, p.Step.Params); err != nil {
-		return err
-	}
-	type terrainChange struct {
-		coordinate game_utils.Coordinate2D
-		terrain_id uint32
-	}
-	terrain_changes := make([]terrainChange, 0)
-	for _, space := range ctx.allSpaces() {
-		if before, ok := terrain_before[space.coordinate_key]; ok && before != space.terrain_id {
-			terrain_changes = append(terrain_changes, terrainChange{coordinate: space.coordinate, terrain_id: space.terrain_id})
-		}
-	}
-	type resourceChange struct {
-		space_coordinate game_utils.Coordinate2D
-		zone_coordinate  game_utils.Coordinate2D
-		resource_id      uint32
-	}
-	resource_changes := make([]resourceChange, 0)
-	for _, zone := range ctx.allZones() {
-		if zone.resource != nil && !resource_zones_before[zone.coordinate_key] {
-			resource_changes = append(resource_changes, resourceChange{
-				space_coordinate: zone.space.coordinate,
-				zone_coordinate:  zone.coordinate,
-				resource_id:      zone.resource.resource_id,
-			})
-		}
-	}
-	base_dir := zoneDirection(ctx.player_starts[0].direction.X, ctx.player_starts[0].direction.Y)
-	for i := 1; i < len(ctx.player_starts); i++ {
-		dir := zoneDirection(ctx.player_starts[i].direction.X, ctx.player_starts[i].direction.Y)
-		if base_dir < 0 || dir < 0 {
-			continue
-		}
-		k := dir - base_dir
-		for _, change := range terrain_changes {
-			rotated := rotateAxial(change.coordinate, k)
-			if space := ctx.risq.getSpace(&rotated); space != nil {
-				space.terrain_id = change.terrain_id
-			}
-		}
-		for _, change := range resource_changes {
-			rotated_space_c := rotateAxial(change.space_coordinate, k)
-			space := ctx.risq.getSpace(&rotated_space_c)
-			if space == nil {
-				continue
-			}
-			local := change.zone_coordinate
-			if local.X != 0 || local.Y != 0 {
-				local = rotateAxial(local, k)
-			}
-			zone := space.getZone(&local)
-			if zone == nil || zone.resource != nil || zone.building != nil {
-				continue
-			}
-			space.setResource(&local, createRisqResource(ctx.risq.nextResourceInternalId(), change.resource_id))
-		}
-	}
-	return nil
 }
 
 var mapStepRegistry map[string]mapStepFunc
@@ -219,5 +148,7 @@ func init() {
 		"mirror":               stepMirror,
 		"player_starts":        stepPlayerStarts,
 		"define":               stepDefine,
+		"regions_seven":        stepRegionsSeven,
+		"shape":                stepShape,
 	}
 }

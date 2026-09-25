@@ -204,7 +204,11 @@ func parseActionInner(raw map[string]any) (Action, error) {
 			if w, ok := raw["weight"].(float64); ok {
 				weight = w
 			}
-			return &balancedGatherAction{eligible: eligible, weight: weight}, nil
+			move_penalty := 0.0
+			if p, ok := raw["move_penalty"].(float64); ok {
+				move_penalty = p
+			}
+			return &balancedGatherAction{eligible: eligible, weight: weight, move_penalty: move_penalty}, nil
 		}
 		if _, has_weight := raw["weight"]; has_weight {
 			return nil, fmt.Errorf("gather action with a category must not specify \"weight\"")

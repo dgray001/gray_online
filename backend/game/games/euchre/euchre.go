@@ -3,6 +3,7 @@ package euchre
 import (
 	"errors"
 	"fmt"
+	"math"
 	"os"
 
 	"github.com/dgray001/gray_online/game"
@@ -132,6 +133,27 @@ func (g *GameEuchre) Valid() bool {
 	return true
 }
 
+// checkTurn reports whether it's player's turn, failing the action under action_kind if not
+func (g *GameEuchre) checkTurn(player *game.Player, action_kind string) bool {
+	if player.Player_id != g.turn {
+		player.AddFailedUpdateShorthand(action_kind+"-failed",
+			fmt.Sprintf("Not %d player's turn but %d player's turn", player.Player_id, g.turn))
+		return false
+	}
+	return true
+}
+
+// parseWholeFloat extracts a whole-number float from the action, failing under action_kind if
+// it's missing or fractional
+func parseWholeFloat(player *game.Player, action game.PlayerAction, key string, action_kind string) (float64, bool) {
+	value, ok := action.Action[key].(float64)
+	if !ok || value != math.Trunc(value) {
+		player.AddFailedUpdateShorthand(action_kind+"-failed", fmt.Sprintf("%s value invalid: %v", key, action.Action[key]))
+		return 0, false
+	}
+	return value, true
+}
+
 func (g *GameEuchre) PlayerAction(action game.PlayerAction) {
 	fmt.Println("player action:", action.Kind, action.Client_id, action.Action)
 	player := g.game.Players[uint64(action.Client_id)]
@@ -139,16 +161,17 @@ func (g *GameEuchre) PlayerAction(action game.PlayerAction) {
 		fmt.Fprintln(os.Stderr, "Invalid client id", action.Client_id)
 		return
 	}
-	player_id := player.Player_id
+	if !g.game.GameStarted() || g.game.GameEnded() {
+		player.AddFailedUpdateShorthand(action.Kind+"-failed", "Game not currently accepting actions")
+		return
+	}
 	switch action.Kind {
 	case "pass":
 		if !g.bidding && !g.bidding_choose_trump {
 			player.AddFailedUpdateShorthand("pass-failed", "Not currently bidding")
 			return
 		}
-		if player_id != g.turn {
-			player.AddFailedUpdateShorthand("bid-failed",
-				fmt.Sprintf("Not %d player's turn but %d player's turn", player_id, g.turn))
+		if !g.checkTurn(player, "pass") {
 			return
 		}
 		if g.bidding_choose_trump && g.turn == g.dealer {
@@ -161,9 +184,7 @@ func (g *GameEuchre) PlayerAction(action game.PlayerAction) {
 			player.AddFailedUpdateShorthand("bid-failed", "Not currently bidding")
 			return
 		}
-		if player_id != g.turn {
-			player.AddFailedUpdateShorthand("bid-failed",
-				fmt.Sprintf("Not %d player's turn but %d player's turn", player_id, g.turn))
+		if !g.checkTurn(player, "bid") {
 			return
 		}
 		going_alone, ok := action.Action["going_alone"].(bool)
@@ -178,9 +199,7 @@ func (g *GameEuchre) PlayerAction(action game.PlayerAction) {
 			player.AddFailedUpdateShorthand("bid-choose-trump-failed", "Not currently bidding and choosing trump")
 			return
 		}
-		if player_id != g.turn {
-			player.AddFailedUpdateShorthand("bid-choose-trump-failed",
-				fmt.Sprintf("Not %d player's turn but %d player's turn", player_id, g.turn))
+		if !g.checkTurn(player, "bid-choose-trump") {
 			return
 		}
 		going_alone, ok := action.Action["going_alone"].(bool)
@@ -189,16 +208,19 @@ func (g *GameEuchre) PlayerAction(action game.PlayerAction) {
 				fmt.Sprintf("Going alone invalid: %t", going_alone))
 			return
 		}
-		trump_suit_float, ok := action.Action["trump_suit"].(float64)
+		trump_suit_float, ok := parseWholeFloat(player, action, "trump_suit", "bid-choose-trump")
 		if !ok {
+			return
+		}
+		if trump_suit_float < 1 || trump_suit_float > 4 {
 			player.AddFailedUpdateShorthand("bid-choose-trump-failed",
-				fmt.Sprintf("Trump suit value invalid: %f.2", trump_suit_float))
+				fmt.Sprintf("Not a valid suit number: %.0f", trump_suit_float))
 			return
 		}
 		trump_suit := uint8(trump_suit_float)
-		if trump_suit < 1 || trump_suit > 4 {
+		if trump_suit == g.card_face_up.GetSuit() {
 			player.AddFailedUpdateShorthand("bid-choose-trump-failed",
-				fmt.Sprintf("Not a valid suit number: %d", trump_suit))
+				fmt.Sprintf("Cannot choose the turned-down suit: %d", trump_suit))
 			return
 		}
 		g.executeBidChooseTrump(player, going_alone, trump_suit)
@@ -207,14 +229,12 @@ func (g *GameEuchre) PlayerAction(action game.PlayerAction) {
 			player.AddFailedUpdateShorthand("dealer-substitutes-card-failed", "Dealer not currently substituting card")
 			return
 		}
-		if player_id != g.dealer {
+		if player.Player_id != g.dealer {
 			player.AddFailedUpdateShorthand("dealer-substitutes-card-failed", "Only dealer can substitute card")
 			return
 		}
-		card_index_float, ok := action.Action["index"].(float64)
+		card_index_float, ok := parseWholeFloat(player, action, "index", "dealer-substitutes-card")
 		if !ok {
-			player.AddFailedUpdateShorthand("dealer-substitutes-card-failed",
-				fmt.Sprintf("Card substituting index value invalid: %f", card_index_float))
 			return
 		}
 		card_index := int(card_index_float)
@@ -230,15 +250,11 @@ func (g *GameEuchre) PlayerAction(action game.PlayerAction) {
 			player.AddFailedUpdateShorthand("play-card-failed", "Not currently playing card")
 			return
 		}
-		if player_id != g.turn {
-			player.AddFailedUpdateShorthand("play-card-failed",
-				fmt.Sprintf("Not %d player's turn but %d player's turn", player_id, g.turn))
+		if !g.checkTurn(player, "play-card") {
 			return
 		}
-		card_index_float, ok := action.Action["index"].(float64)
+		card_index_float, ok := parseWholeFloat(player, action, "index", "play-card")
 		if !ok {
-			player.AddFailedUpdateShorthand("play-card-failed",
-				fmt.Sprintf("Card index invalid: %f", card_index_float))
 			return
 		}
 		card_index := int(card_index_float)
@@ -254,29 +270,28 @@ func (g *GameEuchre) PlayerAction(action game.PlayerAction) {
 			return
 		}
 		card := cards[card_index]
-		if len(g.trick) > 0 {
-			lead := g.trick[0]
-			if lead != nil {
-				suit := g.cardSuit(lead)
-				if g.cardSuit(card) != suit {
-					for i, other_card := range cards {
-						if util.Contains(g.players[g.turn].cards_played, i) {
-							continue
-						}
-						if g.cardSuit(other_card) == suit {
-							player.AddFailedUpdateShorthand("play-card-failed",
-								fmt.Sprintf("Must follow suit of lead card %s and tried to play %s but have card that follows: %s",
-									lead.GetName(), card.GetName(), other_card.GetName()))
-							return
-						}
-					}
-				}
+		if len(g.trick) > 0 && g.trick[0] != nil {
+			suit := g.cardSuit(g.trick[0])
+			if g.cardSuit(card) != suit && g.hasCardOfSuit(cards, g.players[g.turn].cards_played, suit) {
+				player.AddFailedUpdateShorthand("play-card-failed",
+					fmt.Sprintf("Must follow suit of lead card %s but tried to play %s", g.trick[0].GetName(), card.GetName()))
+				return
 			}
 		}
 		g.executePlayCard(player, card_index)
 	default:
 		fmt.Fprintln(os.Stderr, "Unknown game update type", action.Kind)
 	}
+}
+
+// hasCardOfSuit reports whether any not-yet-played card in cards matches suit
+func (g *GameEuchre) hasCardOfSuit(cards []*game_utils.StandardCard, played []int, suit uint8) bool {
+	for i, card := range cards {
+		if !util.Contains(played, i) && g.cardSuit(card) == suit {
+			return true
+		}
+	}
+	return false
 }
 
 func (g *GameEuchre) executePass(player *game.Player) {
@@ -290,20 +305,24 @@ func (g *GameEuchre) executePass(player *game.Player) {
 	}})
 }
 
-func (g *GameEuchre) executeBid(player *game.Player, going_alone bool) {
-	g.bidding = false
+// setBidder records who bid, assigns teams, and moves turn to the first player after the dealer
+func (g *GameEuchre) setBidder(player *game.Player, going_alone bool) {
 	g.makers_team = player.Player_id % 2
-	g.defenders_team = 0
-	if g.makers_team == 0 {
-		g.defenders_team = 1
-	}
+	g.defenders_team = 1 - g.makers_team
 	g.player_bid = player.Player_id
 	g.going_alone = going_alone
 	g.turn = g.dealer + 1
 	g.resolveTurn()
 	g.trick_leader = g.turn
+}
+
+func (g *GameEuchre) executeBid(player *game.Player, going_alone bool) {
+	g.bidding = false
+	g.setBidder(player, going_alone)
 	g.trump_suit = g.card_face_up.GetSuit()
-	g.dealer_substituting_card = !going_alone
+	// the dealer only has no card to pick up when their own partner is the one sitting out
+	dealer_sits_out := going_alone && (player.Player_id+2)%len(g.players) == g.dealer
+	g.dealer_substituting_card = !dealer_sits_out
 	game.Game_BroadcastUpdate(g, &game.UpdateMessage{Kind: "bid", Content: gin.H{
 		"player_id":   player.Player_id,
 		"going_alone": going_alone,
@@ -312,16 +331,7 @@ func (g *GameEuchre) executeBid(player *game.Player, going_alone bool) {
 
 func (g *GameEuchre) executeBidChooseTrump(player *game.Player, going_alone bool, trump_suit uint8) {
 	g.bidding_choose_trump = false
-	g.makers_team = player.Player_id % 2
-	g.defenders_team = 0
-	if g.makers_team == 0 {
-		g.defenders_team = 1
-	}
-	g.player_bid = player.Player_id
-	g.going_alone = going_alone
-	g.turn = g.dealer + 1
-	g.resolveTurn()
-	g.trick_leader = g.turn
+	g.setBidder(player, going_alone)
 	g.trump_suit = trump_suit
 	game.Game_BroadcastUpdate(g, &game.UpdateMessage{Kind: "bid-choose-trump", Content: gin.H{
 		"player_id":   player.Player_id,
@@ -382,7 +392,6 @@ func (g *GameEuchre) executePlayCard(player *game.Player, card_index int) {
 		return
 	}
 	// end of round
-	g.trick_number = 0
 	winning_team := 0
 	if g.teams[0].tricks < 3 {
 		winning_team = 1
@@ -412,7 +421,8 @@ func (g *GameEuchre) resolveTurn() bool {
 	if g.turn >= len(g.players) {
 		g.turn -= len(g.players)
 	}
-	if g.going_alone && util.AbsDiffInt(g.turn, g.player_bid) == 2 {
+	// skip the bidder's partner's seat when going alone
+	if g.going_alone && g.turn == (g.player_bid+2)%len(g.players) {
 		g.turn++
 		if g.turn >= len(g.players) {
 			g.turn -= len(g.players)
@@ -471,6 +481,7 @@ func (g *GameEuchre) ToFrontend(client_id uint64, is_viewer bool) gin.H {
 		"dealer_substituting_card": g.dealer_substituting_card,
 		"trump_suit":               g.trump_suit,
 		"trick_leader":             g.trick_leader,
+		"trick_number":             g.trick_number,
 	}
 	if g.game != nil {
 		game["game_base"] = g.game.ToFrontend(client_id, is_viewer)
@@ -508,6 +519,11 @@ func (g *GameEuchre) dealNextRound() {
 		g.dealer = 0
 	}
 	g.round++
+	g.player_bid = -1
+	g.makers_team = -1
+	g.defenders_team = -1
+	g.going_alone = false
+	g.trump_suit = 0
 	g.deck.Reset()
 	dealt_cards := g.deck.DealCards(uint8(len(g.players)), 5)
 	for i := 0; i < len(g.players); i++ {
@@ -523,23 +539,23 @@ func (g *GameEuchre) dealNextRound() {
 		g.teams[i].tricks = 0
 	}
 	g.card_face_up = g.deck.DrawCard()
+	deal_round_content := func() gin.H {
+		return gin.H{
+			"dealer":       g.dealer,
+			"round":        g.round,
+			"card_face_up": g.card_face_up.ToFrontend(),
+		}
+	}
 	for _, player := range g.players {
 		frontend_cards := []gin.H{}
 		for _, card := range player.cards {
 			frontend_cards = append(frontend_cards, card.ToFrontend())
 		}
-		player.player.AddUpdate(&game.UpdateMessage{Kind: "deal-round", Content: gin.H{
-			"dealer":       g.dealer,
-			"round":        g.round,
-			"card_face_up": g.card_face_up.ToFrontend(),
-			"cards":        frontend_cards,
-		}})
+		content := deal_round_content()
+		content["cards"] = frontend_cards
+		player.player.AddUpdate(&game.UpdateMessage{Kind: "deal-round", Content: content})
 	}
-	g.game.AddViewerUpdate(&game.UpdateMessage{Kind: "deal-round", Content: gin.H{
-		"dealer":       g.dealer,
-		"round":        g.round,
-		"card_face_up": g.card_face_up.ToFrontend(),
-	}})
+	g.game.AddViewerUpdate(&game.UpdateMessage{Kind: "deal-round", Content: deal_round_content()})
 	g.bidding = true
 	g.turn = g.dealer + 1
 	if g.turn >= len(g.players) {

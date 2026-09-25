@@ -54,7 +54,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
       'table_container',
       'trick_cards',
       'player_container',
-      'player_cards'
+      'players_cards'
     );
   }
 
@@ -117,18 +117,25 @@ export class DwgEuchre extends DwgElement implements GameComponent {
         );
         if (this.player_id === player_id && !game.game_base.game_ended) {
           this.players_cards.setCards(game.players[player_id].cards, game.players[player_id].cards_played);
-          if (!game.bidding && this.game.turn === this.player_id) {
+          if (game.dealer_substituting_card) {
+            if (this.player_id === game.dealer) {
+              this.players_cards.can_play = true;
+            }
+          } else if (!game.bidding && !game.bidding_choose_trump && this.game.turn === this.player_id) {
             this.players_cards.can_play = true;
           }
         }
       }
-      if (game.bidding || game.bidding_choosing_trump || game.dealer_substituting_card) {
+      if (game.makers_team >= 0) {
+        this.restoreBidIcons();
+      }
+      if (game.bidding || game.bidding_choose_trump || game.dealer_substituting_card) {
         this.current_trick = 0;
         this.trick_number.innerText = '-';
         this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Bidding`;
         if (game.bidding) {
           this.setCardFaceUpImage(game.card_face_up);
-        } else if (game.bidding_choosing_trump) {
+        } else if (game.bidding_choose_trump) {
           this.setBackOfCard();
         } else {
           this.setTrumpImage();
@@ -138,7 +145,44 @@ export class DwgEuchre extends DwgElement implements GameComponent {
         this.trick_number.innerText = this.current_trick.toString();
         this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
         this.setTrumpImage();
+        this.restoreTrickCards();
       }
+    }
+  }
+
+  /** Re-shows maker/defender/going-alone icons after a reload, once a bid has been resolved */
+  private restoreBidIcons() {
+    for (const player_id of this.game.teams[this.game.makers_team].player_ids) {
+      const going_alone_ally = this.game.player_bid !== player_id;
+      this.player_els[player_id].setBid(true, this.game.going_alone, going_alone_ally);
+    }
+    for (const player_id of this.game.teams[this.game.defenders_team].player_ids) {
+      this.player_els[player_id].setBid(false);
+    }
+  }
+
+  /** Rebuilds the trick-in-progress card elements after a reload */
+  private restoreTrickCards() {
+    this.trick_cards.replaceChildren();
+    this.trick_card_els = [];
+    for (const [i, card] of this.game.trick.entries()) {
+      if (card.suit === 0) {
+        continue; // blank placeholder for a sat-out going-alone partner
+      }
+      let player_id = this.game.trick_leader + i;
+      if (player_id >= this.game.players.length) {
+        player_id -= this.game.players.length;
+      }
+      const card_el = document.createElement('div');
+      const card_el_img = document.createElement('img');
+      card_el_img.src = cardToImagePath(card);
+      card_el_img.draggable = false;
+      card_el_img.alt = cardToIcon(card);
+      card_el.appendChild(card_el_img);
+      card_el.classList.add('card', 'played');
+      card_el.style.setProperty('--i', this.game.players[player_id].order.toString());
+      this.trick_cards.appendChild(card_el);
+      this.trick_card_els.push(card_el);
     }
   }
 
@@ -165,7 +209,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
             // TODO: try to sync data
             throw new Error('Player pass out of order');
           }
-          if (this.game.bidding_choosing_trump && this.game.turn === this.game.dealer) {
+          if (this.game.bidding_choose_trump && this.game.turn === this.game.dealer) {
             // TODO: try to sync data
             throw new Error('Dealer is stuck and must choose trump');
           }
@@ -256,12 +300,12 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     this.player_els[data.player_id].setPass();
     if (this.game.turn === this.game.dealer) {
       this.game.bidding = false;
-      this.game.bidding_choosing_trump = true;
+      this.game.bidding_choose_trump = true;
       this.setBackOfCard(); // TODO: animation to flip over
     }
     this.game.turn = (this.game.turn + 1) % this.game.players.length;
     this.player_els[this.game.turn].bidding(
-      this.game.bidding_choosing_trump,
+      this.game.bidding_choose_trump,
       this.game.turn === this.game.dealer,
       this.game.card_face_up.suit
     );
@@ -269,28 +313,36 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} ${bidding_text}`;
   }
 
-  private async applyPlayerBid(data: PlayerBid) {
-    await this.player_els[data.player_id].setBidAnimation(data.going_alone);
-    this.game.bidding = false;
-    this.game.makers_team = data.player_id % 2;
+  /** Assigns teams/turn for a resolved bid; shared by applyPlayerBid and applyBidChooseTrump */
+  private setBidder(player_id: number, going_alone: boolean) {
+    this.game.makers_team = player_id % 2;
     this.game.defenders_team = this.game.makers_team === 0 ? 1 : 0;
-    for (const player_id of this.game.teams[this.game.makers_team].player_ids) {
-      const going_alone_ally = data.player_id !== player_id;
-      this.player_els[player_id].setBid(true, data.going_alone, going_alone_ally);
-      if (data.going_alone && going_alone_ally && this.player_id === player_id) {
+    for (const pid of this.game.teams[this.game.makers_team].player_ids) {
+      const going_alone_ally = player_id !== pid;
+      this.player_els[pid].setBid(true, going_alone, going_alone_ally);
+      if (going_alone && going_alone_ally && this.player_id === pid) {
         this.players_cards.removeCards();
       }
     }
-    for (const player_id of this.game.teams[this.game.defenders_team].player_ids) {
-      this.player_els[player_id].setBid(false);
+    for (const pid of this.game.teams[this.game.defenders_team].player_ids) {
+      this.player_els[pid].setBid(false);
     }
-    this.game.player_bid = data.player_id;
-    this.game.going_alone = data.going_alone;
+    this.game.player_bid = player_id;
+    this.game.going_alone = going_alone;
     this.game.turn = this.game.dealer + 1;
     this.resolveTurn();
     this.game.trick_leader = this.game.turn;
     this.trick_number.innerText = '1';
     this.current_trick = 1;
+    for (const player_el of this.player_els) {
+      player_el.endBidding();
+    }
+  }
+
+  private async applyPlayerBid(data: PlayerBid) {
+    await this.player_els[data.player_id].setBidAnimation(data.going_alone);
+    this.game.bidding = false;
+    this.setBidder(data.player_id, data.going_alone);
     this.game.trump_suit = this.game.card_face_up.suit;
     if (data.going_alone) {
       this.setTrumpImage();
@@ -307,26 +359,8 @@ export class DwgEuchre extends DwgElement implements GameComponent {
 
   private async applyBidChooseTrump(data: BidChooseTrump) {
     await this.player_els[data.player_id].setBidAnimation(data.going_alone, cardSuitToName(data.trump_suit));
-    this.game.bidding_choosing_trump = false;
-    this.game.makers_team = data.player_id % 2;
-    this.game.defenders_team = this.game.makers_team === 0 ? 1 : 0;
-    for (const player_id of this.game.teams[this.game.makers_team].player_ids) {
-      const going_alone_ally = data.player_id !== player_id;
-      this.player_els[player_id].setBid(true, data.going_alone, going_alone_ally);
-      if (data.going_alone && going_alone_ally && this.player_id === player_id) {
-        this.players_cards.removeCards();
-      }
-    }
-    for (const player_id of this.game.teams[this.game.defenders_team].player_ids) {
-      this.player_els[player_id].setBid(false);
-    }
-    this.game.player_bid = data.player_id;
-    this.game.going_alone = data.going_alone;
-    this.game.turn = this.game.dealer + 1;
-    this.resolveTurn();
-    this.game.trick_leader = this.game.turn;
-    this.trick_number.innerText = '1';
-    this.current_trick = 1;
+    this.game.bidding_choose_trump = false;
+    this.setBidder(data.player_id, data.going_alone);
     this.game.trump_suit = data.trump_suit;
     this.setTrumpImage();
     this.setPlaying();
@@ -338,9 +372,6 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     this.setTrumpImage();
     if (this.player_id === this.game.dealer) {
       this.players_cards.substituteCard(data.card_index, this.game.card_face_up);
-    }
-    for (const player_el of this.player_els.values()) {
-      player_el.endBidding();
     }
     this.setPlaying();
   }
@@ -380,7 +411,10 @@ export class DwgEuchre extends DwgElement implements GameComponent {
       this.setPlaying();
       return;
     }
-    // end of trick
+    await this.resolveTrickWinner();
+  }
+
+  private async resolveTrickWinner() {
     await untilTimer(500);
     let winning_index = 0;
     let winning_card = this.game.trick[0];
@@ -431,7 +465,10 @@ export class DwgEuchre extends DwgElement implements GameComponent {
       this.setPlaying();
       return;
     }
-    // end of round
+    await this.scoreRound();
+  }
+
+  private async scoreRound() {
     await untilTimer(500);
     // TODO: score animations for a few seconds
     this.card_face_up_img.classList.remove('show');

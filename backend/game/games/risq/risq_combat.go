@@ -37,14 +37,6 @@ func rangeCovers(from *RisqZone, target *RisqZone, attack_range RisqRange) bool 
 	return game_utils.AxialDistance(from.space.coordinate, target.space.coordinate) <= space_range
 }
 
-func (u *RisqUnit) inAttackRange(target *RisqZone) bool {
-	return rangeCovers(u.zone, target, u.attack_range)
-}
-
-func (b *RisqBuilding) inAttackRange(target *RisqZone) bool {
-	return rangeCovers(b.zone, target, b.attack_range)
-}
-
 type RisqDamageEvent struct {
 	tick          uint16
 	attacker_id   uint64
@@ -55,6 +47,7 @@ type RisqDamageEvent struct {
 
 type RisqCombatStats struct {
 	health               float64
+	pending_health_delta float64
 	max_health           int
 	attack_type          AttackType
 	attack_blunt         int
@@ -66,6 +59,68 @@ type RisqCombatStats struct {
 	penetration_blunt    int
 	penetration_piercing int
 	penetration_magic    int
+}
+
+// The 9 attack/defense/penetration deltas a tech or bonus config can grant, as one unit so callers
+// stop copying all 9 fields by hand at every config-parsing, application, and summation site.
+type CombatBonus struct {
+	attack_blunt         int
+	attack_piercing      int
+	attack_magic         int
+	defense_blunt        int
+	defense_piercing     int
+	defense_magic        int
+	penetration_blunt    int
+	penetration_piercing int
+	penetration_magic    int
+}
+
+func (b CombatBonus) add(other CombatBonus) CombatBonus {
+	return CombatBonus{
+		attack_blunt:         b.attack_blunt + other.attack_blunt,
+		attack_piercing:      b.attack_piercing + other.attack_piercing,
+		attack_magic:         b.attack_magic + other.attack_magic,
+		defense_blunt:        b.defense_blunt + other.defense_blunt,
+		defense_piercing:     b.defense_piercing + other.defense_piercing,
+		defense_magic:        b.defense_magic + other.defense_magic,
+		penetration_blunt:    b.penetration_blunt + other.penetration_blunt,
+		penetration_piercing: b.penetration_piercing + other.penetration_piercing,
+		penetration_magic:    b.penetration_magic + other.penetration_magic,
+	}
+}
+
+func (b CombatBonus) applyAttack(cs *RisqCombatStats) {
+	cs.attack_blunt += b.attack_blunt
+	cs.attack_piercing += b.attack_piercing
+	cs.attack_magic += b.attack_magic
+	cs.penetration_blunt += b.penetration_blunt
+	cs.penetration_piercing += b.penetration_piercing
+	cs.penetration_magic += b.penetration_magic
+}
+
+func (b CombatBonus) applyDefense(cs *RisqCombatStats) {
+	cs.defense_blunt += b.defense_blunt
+	cs.defense_piercing += b.defense_piercing
+	cs.defense_magic += b.defense_magic
+}
+
+func (b CombatBonus) applyAll(cs *RisqCombatStats) {
+	b.applyAttack(cs)
+	b.applyDefense(cs)
+}
+
+func (b CombatBonus) toFrontend() gin.H {
+	return gin.H{
+		"attack_blunt":         b.attack_blunt,
+		"attack_piercing":      b.attack_piercing,
+		"attack_magic":         b.attack_magic,
+		"defense_blunt":        b.defense_blunt,
+		"defense_piercing":     b.defense_piercing,
+		"defense_magic":        b.defense_magic,
+		"penetration_blunt":    b.penetration_blunt,
+		"penetration_piercing": b.penetration_piercing,
+		"penetration_magic":    b.penetration_magic,
+	}
 }
 
 func createRisqCombatStats() RisqCombatStats {
@@ -91,6 +146,12 @@ func (c *RisqCombatStats) setHealthRatio(ratio float64) {
 
 func (c *RisqCombatStats) addHealth(amount float64) {
 	c.health = util.Clamp(c.health+amount, 0, float64(c.max_health))
+}
+
+// Accumulates a health change to be applied once at end-of-tick, so damage and
+// healing landing in the same tick net out instead of racing on execution order.
+func (c *RisqCombatStats) queueHealth(amount float64) {
+	c.pending_health_delta += amount
 }
 
 func (c *RisqCombatStats) setMaxHealth(max_health int) {
@@ -164,9 +225,7 @@ func (cs *RisqCombatStats) totalAttack() int {
 	return total
 }
 
-// Returns the effective attack and defense of the attacker and defender
-func combatTotals(attacker *RisqCombatStats, defender *RisqCombatStats) (float64, float64) {
-	defense := 0.0
+func combatTotals(attacker *RisqCombatStats, defender *RisqCombatStats) (attack float64, defense float64) {
 	if attackTypeHasBlunt(attacker.attack_type) {
 		defense += effectiveDefense(defender.defense_blunt, attacker.penetration_blunt)
 	}
@@ -179,7 +238,6 @@ func combatTotals(attacker *RisqCombatStats, defender *RisqCombatStats) (float64
 	return float64(attacker.totalAttack()), defense
 }
 
-// Calculate damage for one tick based on input stamina
 func combatDamage(attacker *RisqCombatStats, defender *RisqCombatStats, stamina_spent int) float64 {
 	attack, defense := combatTotals(attacker, defender)
 	if attack <= 0 {
@@ -207,21 +265,53 @@ type Attackable interface {
 	isAlive() bool
 	applyDamage(event RisqDamageEvent)
 	recordDeath(r *GameRisq, attacker Attackable, damage float64)
+	// Applies this tick's queued health changes (damage and healing) as one net
+	// amount, then records death if that net change was the cause.
+	resolveHealthDelta(r *GameRisq)
+	currentZone() *RisqZone
 }
 
-// Shared attack resolution for any unit/building attacker-target pair
+// Shared attack resolution for any unit/building attacker-target pair. Damage is
+// only queued here; resolveHealthDelta applies it (and any healing queued the same
+// tick) once resolution's execute phase finishes, so order within the tick can't matter.
 func (r *GameRisq) resolveAttack(attacker Attackable, target Attackable, stamina_cost int) {
-	was_alive := target.isAlive()
 	attacker_cs := attacker.combatStats(r, target, true)
 	target_cs := target.combatStats(r, attacker, false)
 	damage := combatDamage(&attacker_cs, &target_cs, stamina_cost)
 	target.applyDamage(RisqDamageEvent{tick: r.current_tick, attacker_id: attacker.internalId(), attacker_type: attacker.OrderableType(), damage: damage, damage_type: attacker_cs.attack_type})
 	util.DebugLog.Printf("combat tick=%d: %d (player %d, stamina %d) hits %d (player %d) for %.2f",
 		r.current_tick, attacker.internalId(), attacker.playerId(), stamina_cost, target.internalId(), target.playerId(), damage)
-	if !was_alive || target.isAlive() {
-		return
+}
+
+// Deterministically settles same-tick kill credit when several attackers hit one target: lowest internal_id wins.
+func lowestIdAttackerEvent(events []RisqDamageEvent, tick uint16) (RisqDamageEvent, bool) {
+	var best RisqDamageEvent
+	found := false
+	for _, event := range events {
+		if event.tick != tick {
+			continue
+		}
+		if !found || event.attacker_id < best.attacker_id {
+			best = event
+			found = true
+		}
 	}
-	target.recordDeath(r, attacker, damage)
+	return best, found
+}
+
+// Resolves a damage event's attacker back to the live actor that dealt it, for death credit.
+func (r *GameRisq) resolveAttacker(event RisqDamageEvent) Attackable {
+	switch event.attacker_type {
+	case OrderableType_UNIT:
+		if attacker, ok := r.units[event.attacker_id]; ok {
+			return attacker
+		}
+	case OrderableType_BUILDING:
+		if attacker, ok := r.buildings[event.attacker_id]; ok {
+			return attacker
+		}
+	}
+	return nil
 }
 
 func (r *GameRisq) unitAttack(attacker *RisqUnit, target Attackable) {
@@ -358,16 +448,9 @@ func (r *GameRisq) effectiveCombatStats(u *RisqUnit, other Orderable, attacking 
 	other_unit_id, other_unit_type := otherUnitIdentity(other)
 	bonus := sumTargetedBonus(u.unit_id, u.unitType(), r.players[u.player_id].researchedTechIds(), other_unit_id, other_unit_type, other.OrderableType())
 	if attacking {
-		cs.attack_blunt += bonus.bonus_attack_blunt
-		cs.attack_piercing += bonus.bonus_attack_piercing
-		cs.attack_magic += bonus.bonus_attack_magic
-		cs.penetration_blunt += bonus.bonus_penetration_blunt
-		cs.penetration_piercing += bonus.bonus_penetration_piercing
-		cs.penetration_magic += bonus.bonus_penetration_magic
+		bonus.applyAttack(&cs)
 	} else {
-		cs.defense_blunt += bonus.bonus_defense_blunt
-		cs.defense_piercing += bonus.bonus_defense_piercing
-		cs.defense_magic += bonus.bonus_defense_magic
+		bonus.applyDefense(&cs)
 	}
 	return cs
 }
@@ -398,7 +481,7 @@ func (c *categoryBest) considerBuilding(target *RisqBuilding, dist int) {
 	}
 }
 
-func (c *categoryBest) pick(priority []TargetCategory) (*RisqUnit, *RisqBuilding) {
+func (c *categoryBest) pick(priority []TargetCategory) Attackable {
 	ranked := make(map[TargetCategory]bool, len(priority))
 	for _, cat := range priority {
 		if cat == TargetCategory_NONE || ranked[cat] {
@@ -407,10 +490,10 @@ func (c *categoryBest) pick(priority []TargetCategory) (*RisqUnit, *RisqBuilding
 		ranked[cat] = true
 		if cat == TargetCategory_BUILDING {
 			if c.building != nil {
-				return nil, c.building
+				return c.building
 			}
 		} else if target, ok := c.units[cat]; ok {
-			return target, nil
+			return target
 		}
 	}
 	var best_unit *RisqUnit
@@ -424,12 +507,23 @@ func (c *categoryBest) pick(priority []TargetCategory) (*RisqUnit, *RisqBuilding
 		}
 	}
 	if !ranked[TargetCategory_BUILDING] && c.building != nil && (best_unit == nil || c.building_dist < best_dist) {
-		return nil, c.building
+		return c.building
 	}
-	return best_unit, nil
+	if best_unit != nil {
+		return best_unit
+	}
+	return nil
 }
 
-func zoneAttackTarget(zone *RisqZone, player_id int, priority []TargetCategory) (*RisqUnit, *RisqBuilding) {
+// attackOrderType picks the unit- or building-attack order type variant for target.
+func attackOrderType(target Attackable, unit_type OrderType, building_type OrderType) OrderType {
+	if target.OrderableType() == OrderableType_UNIT {
+		return unit_type
+	}
+	return building_type
+}
+
+func zoneAttackTarget(zone *RisqZone, player_id int, priority []TargetCategory) Attackable {
 	best := newCategoryBest()
 	for _, target := range zone.units {
 		if target.deleted || target.player_id == player_id {
@@ -443,7 +537,7 @@ func zoneAttackTarget(zone *RisqZone, player_id int, priority []TargetCategory) 
 	return best.pick(priority)
 }
 
-func spaceAttackTarget(u *RisqUnit, space *RisqSpace) (*RisqUnit, *RisqBuilding) {
+func spaceAttackTarget(u *RisqUnit, space *RisqSpace) Attackable {
 	near, far := newCategoryBest(), newCategoryBest()
 	for _, row := range space.zones {
 		for _, zone := range row {
@@ -463,46 +557,78 @@ func spaceAttackTarget(u *RisqUnit, space *RisqSpace) (*RisqUnit, *RisqBuilding)
 			}
 		}
 	}
-	if target, building := near.pick(u.target_priority); target != nil || building != nil {
-		return target, building
+	if target := near.pick(u.target_priority); target != nil {
+		return target
 	}
 	return far.pick(u.target_priority)
 }
 
-func nearbyAttackTarget(own_zone *RisqZone, player_id int, target_priority []TargetCategory, in_range func(*RisqZone) bool, risq *GameRisq, space_radius uint) (*RisqUnit, *RisqBuilding) {
+func nearbyAttackTarget(own_zone *RisqZone, player_id int, target_priority []TargetCategory, in_range func(*RisqZone) bool, risq *GameRisq, space_radius uint) Attackable {
 	near, far := newCategoryBest(), newCategoryBest()
 	own_space := own_zone.space
-	for _, row := range risq.spaces {
-		for _, space := range row {
-			space_dist := game_utils.AxialDistance(own_space.coordinate, space.coordinate)
-			if space_dist > space_radius || space.getVisibility(player_id) < VisibilityGood {
-				continue
-			}
-			for _, zone_row := range space.zones {
-				for _, zone := range zone_row {
-					dist := int(space_dist) * 6
-					if space == own_space {
-						dist = zoneDistanceWithinSpace(own_zone, zone)
+	for _, space := range risq.allSpaces() {
+		space_dist := game_utils.AxialDistance(own_space.coordinate, space.coordinate)
+		if space_dist > space_radius || space.getVisibility(player_id) < VisibilityGood {
+			continue
+		}
+		for _, zone_row := range space.zones {
+			for _, zone := range zone_row {
+				dist := int(space_dist) * 6
+				if space == own_space {
+					dist = zoneDistanceWithinSpace(own_zone, zone)
+				}
+				bucket := far
+				if in_range(zone) {
+					bucket = near
+				}
+				for _, target := range zone.units {
+					if target.deleted || target.player_id == player_id {
+						continue
 					}
-					bucket := far
-					if in_range(zone) {
-						bucket = near
-					}
-					for _, target := range zone.units {
-						if target.deleted || target.player_id == player_id {
-							continue
-						}
-						bucket.considerUnit(target, dist)
-					}
-					if target := zoneEnemyBuilding(zone, player_id); target != nil {
-						bucket.considerBuilding(target, dist)
-					}
+					bucket.considerUnit(target, dist)
+				}
+				if target := zoneEnemyBuilding(zone, player_id); target != nil {
+					bucket.considerBuilding(target, dist)
 				}
 			}
 		}
 	}
-	if target, building := near.pick(target_priority); target != nil || building != nil {
-		return target, building
+	if target := near.pick(target_priority); target != nil {
+		return target
 	}
 	return far.pick(target_priority)
+}
+
+// Like nearbyAttackTarget, but never falls back to something out of range -- for stances that hold
+// position instead of chasing.
+func nearbyInRangeTarget(own_zone *RisqZone, player_id int, target_priority []TargetCategory, in_range func(*RisqZone) bool, risq *GameRisq, space_radius uint) Attackable {
+	near := newCategoryBest()
+	own_space := own_zone.space
+	for _, space := range risq.allSpaces() {
+		space_dist := game_utils.AxialDistance(own_space.coordinate, space.coordinate)
+		if space_dist > space_radius || space.getVisibility(player_id) < VisibilityGood {
+			continue
+		}
+		for _, zone_row := range space.zones {
+			for _, zone := range zone_row {
+				if !in_range(zone) {
+					continue
+				}
+				dist := int(space_dist) * 6
+				if space == own_space {
+					dist = zoneDistanceWithinSpace(own_zone, zone)
+				}
+				for _, target := range zone.units {
+					if target.deleted || target.player_id == player_id {
+						continue
+					}
+					near.considerUnit(target, dist)
+				}
+				if target := zoneEnemyBuilding(zone, player_id); target != nil {
+					near.considerBuilding(target, dist)
+				}
+			}
+		}
+	}
+	return near.pick(target_priority)
 }

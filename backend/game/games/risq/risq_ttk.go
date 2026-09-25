@@ -86,6 +86,7 @@ func ComputeUnitVsUnitTTKWithTechs(attacker_unit_id uint32, target_unit_id uint3
 	return runTTKLoop(attacker, func() float64 { return target.cs.health }, func(cost int) {
 		attacker.intent.intent_cost = cost
 		r.unitAttack(attacker, target)
+		target.resolveHealthDelta(r)
 	})
 }
 
@@ -111,6 +112,7 @@ func ComputeUnitVsBuildingTTKWithTechs(attacker_unit_id uint32, target_building_
 	return runTTKLoop(attacker, func() float64 { return target.cs.health }, func(cost int) {
 		attacker.intent.intent_cost = cost
 		r.unitAttack(attacker, target)
+		target.resolveHealthDelta(r)
 	})
 }
 

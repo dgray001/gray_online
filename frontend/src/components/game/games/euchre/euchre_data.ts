@@ -7,7 +7,7 @@ export declare interface GameEuchre {
   players: EuchrePlayer[];
   teams: EuchreTeam[];
   bidding: boolean;
-  bidding_choosing_trump: boolean;
+  bidding_choose_trump: boolean;
   dealer_substituting_card: boolean;
   player_bid: number;
   makers_team: number;

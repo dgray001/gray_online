@@ -57,8 +57,7 @@ func (m *FiddlesticksAiModelTheory1) Bet(p *FiddlesticksPlayer, f *GameFiddlesti
 func (m FiddlesticksAiModelTheory1) CardWeights(p *FiddlesticksPlayer, f *GameFiddlesticks, valid_cards []int) []float64 {
 	// probability the model will play this card
 	weights := make([]float64, len(valid_cards))
-	total_weight := float64(0)
-	tricks_needed := p.bet - p.tricks
+	tricks_needed := int(p.bet) - int(p.tricks)
 	tricks_left := len(p.cards) - len(p.cards_played)
 	// how much the model should prioritize winning a trick
 	tricks_needed_factor := float64(tricks_needed) / float64(tricks_left)
@@ -73,7 +72,6 @@ func (m FiddlesticksAiModelTheory1) CardWeights(p *FiddlesticksPlayer, f *GameFi
 			probability_to_win := m.probabilityToWin(card, f.trump.GetSuit(), len(f.players)-1-len(f.trick))
 			weights[i] = m.calculateWeight(tricks_needed_factor, probability_to_win)
 		}
-		total_weight += weights[i]
 	}
 	return weights
 }
@@ -94,5 +92,7 @@ func (m *FiddlesticksAiModelTheory1) calculateWeight(tricks_needed_factor float6
 }
 
 func (m *FiddlesticksAiModelTheory1) sigmoid(x float64) float64 {
+	// (2/x - 1) raised to a fractional power is undefined outside x in (0, 2]
+	x = util.Clamp(x, 0.001, 2)
 	return 2 / (1 + math.Pow(2/x-1, m.aggressive_factor))
 }

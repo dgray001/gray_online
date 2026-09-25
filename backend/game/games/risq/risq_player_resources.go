@@ -30,15 +30,6 @@ func (c RisqResourceCost) toFrontend() gin.H {
 	}
 }
 
-func (c RisqResourceCost) times(n int) RisqResourceCost {
-	return RisqResourceCost{
-		food:  c.food * float64(n),
-		wood:  c.wood * float64(n),
-		stone: c.stone * float64(n),
-		gold:  c.gold * float64(n),
-	}
-}
-
 func (c RisqResourceCost) scale(f float64) RisqResourceCost {
 	return RisqResourceCost{
 		food:  c.food * f,

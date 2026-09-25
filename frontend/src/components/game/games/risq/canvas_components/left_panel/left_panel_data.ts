@@ -1,4 +1,12 @@
-import type { RisqBuilding, RisqResource, RisqSpace, RisqUnit, RisqZone, UnitByTypeData } from '../../risq_data';
+import type {
+  RisqBuilding,
+  RisqRegion,
+  RisqResource,
+  RisqSpace,
+  RisqUnit,
+  RisqZone,
+  UnitByTypeData,
+} from '../../risq_data';
 
 /** Config for the left panel */
 export declare interface LeftPanelConfig {
@@ -48,6 +56,7 @@ export enum LeftPanelDataType {
   MILITARY_UNITS,
   UNIT,
   FOUNDATION,
+  REGION,
 }
 
 export interface ResourceData {
@@ -117,6 +126,11 @@ export interface FoundationData {
   data: FoundationDrawData;
 }
 
+export interface RegionData {
+  data_type: LeftPanelDataType.REGION;
+  data: RisqRegion;
+}
+
 export type LeftPanelData =
   | ResourceData
   | BuildingData
@@ -128,4 +142,5 @@ export type LeftPanelData =
   | EconomicUnitsData
   | MilitaryUnitsData
   | UnitData
-  | FoundationData;
+  | FoundationData
+  | RegionData;

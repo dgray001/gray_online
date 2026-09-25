@@ -51,14 +51,25 @@ func (s *RisqSpace) buildableBy(player_id int) bool {
 }
 
 func (r *GameRisq) recalculateOwnership() {
-	for _, row := range r.spaces {
-		for _, space := range row {
-			owner := space.computeOwnership()
-			space.ownership = owner
-			if owner >= 0 && owner < len(r.players) {
-				r.players[owner].resources.addGathered(RisqResourceCategory_GOLD, spaceGoldIncome)
-				r.players[owner].report.recordGoldFromLand(spaceGoldIncome)
+	for _, space := range r.allSpaces() {
+		owner := space.computeOwnership()
+		space.ownership = owner
+		for _, zone_row := range space.zones {
+			for _, zone := range zone_row {
+				if zone != nil {
+					zone.ownership = owner
+				}
 			}
+		}
+		if owner >= 0 && owner < len(r.players) {
+			r.players[owner].resources.addGathered(RisqResourceCategory_GOLD, spaceGoldIncome)
+			r.players[owner].report.recordGoldFromLand(spaceGoldIncome)
+		}
+	}
+	for _, region := range r.regions {
+		region.owner = r.regionOwner(region)
+		if region.owner >= 0 && region.owner < len(r.players) {
+			r.players[region.owner].resources.addGathered(RisqResourceCategory_GOLD, region.gold_bonus)
 		}
 	}
 }

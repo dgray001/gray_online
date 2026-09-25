@@ -2,11 +2,13 @@ import type { BoardTransformData } from '../../../../util/canvas_board/canvas_bo
 import { defaultTransform, screenToCanvas } from '../../../../util/canvas_board/canvas_board';
 import type { CanvasComponent } from '../../../../util/canvas_components/canvas_component';
 import { configDraw } from '../../../../util/canvas_components/canvas_component';
-import { drawCircle, drawHexagon, drawRect } from '../../../../util/canvas_util';
+import { drawCircle, drawHexagon } from '../../../../util/canvas_util';
 import type { Point2D } from '../../../../util/objects2d';
 import { rotatePoint } from '../../../../util/objects2d';
+import type { RisqSpace } from '../../risq_data';
 import { RisqVisibilityLevel } from '../../risq_data';
 import type { DwgRisq } from '../../risq';
+import { drawRisqRegionBorders } from '../../risq_region';
 import { drawHexImage, fillHexOverlay, getSpaceFill } from '../../risq_space';
 import { RisqViewMode, spaceOwnerColor, terrainImage } from '../../risq_terrain';
 
@@ -70,6 +72,7 @@ export class RisqMinimap implements CanvasComponent {
   private hex_r = 0;
   private content_size: Point2D = { x: 0, y: 0 };
   private side = 0;
+  private p: Point2D = { x: 0, y: 0 };
   private hovering = false;
   private clicking = false;
   private last_screen_m: Point2D = { x: 0, y: 0 };
@@ -91,6 +94,10 @@ export class RisqMinimap implements CanvasComponent {
       y: 1.5 * this.hex_r * (2 * board_size + 1) + 0.5 * this.hex_r,
     };
     this.side = Math.max(this.content_size.x, this.content_size.y) + 2 * RisqMinimap.PADDING;
+  }
+
+  setPosition(p: Point2D): void {
+    this.p = p;
   }
 
   private contentOrigin(): Point2D {
@@ -141,14 +148,18 @@ export class RisqMinimap implements CanvasComponent {
       transform,
       {
         fill_style: this.config.background,
-        stroke_style: 'rgb(70, 30, 5)',
-        stroke_width: 2,
+        stroke_style: 'transparent',
+        stroke_width: 0,
         fixed_position: true,
       },
       false,
       false,
       () => {
-        drawRect(ctx, { x: this.xi(), y: this.yi() }, this.w(), this.h());
+        drawCircle(ctx, { x: this.xc(), y: this.yc() }, 0.5 * this.side);
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(this.xc(), this.yc(), 0.5 * this.side, 0, 2 * Math.PI);
+        ctx.clip();
         const origin = this.contentOrigin();
         const content_center = { x: 0.5 * this.content_size.x, y: 0.5 * this.content_size.y };
         ctx.translate(origin.x + content_center.x, origin.y + content_center.y);
@@ -160,10 +171,21 @@ export class RisqMinimap implements CanvasComponent {
         ctx.lineWidth = 0;
         for (const row of game.spaces) {
           for (const space of row) {
+            if (!space) {
+              continue;
+            }
             const minimap_canvas = this.coordinateToMinimapCanvas(space.coordinate);
             const owner_color = spaceOwnerColor(space.ownership, game.players);
-            if (space.visibility === RisqVisibilityLevel.UNEXPLORED || view_mode === RisqViewMode.OWNERSHIP) {
+            const region_owned = (this.risq.getRegionForSpace(space.coordinate_key)?.owner ?? -1) >= 0;
+            if (
+              space.visibility === RisqVisibilityLevel.UNEXPLORED ||
+              view_mode === RisqViewMode.OWNERSHIP ||
+              view_mode === RisqViewMode.REGION
+            ) {
               const fill = getSpaceFill(space, RisqViewMode.OWNERSHIP, owner_color, false);
+              if (region_owned) {
+                fill.dBrightness(-0.22);
+              }
               ctx.fillStyle = `rgb(${fill.getR()}, ${fill.getG()}, ${fill.getB()})`;
               drawHexagon(ctx, minimap_canvas, draw_r);
             } else {
@@ -173,12 +195,16 @@ export class RisqMinimap implements CanvasComponent {
                   ctx,
                   minimap_canvas,
                   this.hex_r,
-                  `rgba(${owner_color.getR()}, ${owner_color.getG()}, ${owner_color.getB()}, 0.25)`
+                  `rgba(${owner_color.getR()}, ${owner_color.getG()}, ${owner_color.getB()}, ${region_owned ? 0.45 : 0.25})`
                 );
               }
             }
           }
         }
+        const all_spaces = game.spaces.flat().filter((s): s is RisqSpace => !!s);
+        drawRisqRegionBorders(ctx, this.risq, all_spaces, this.hex_r, (s) =>
+          this.coordinateToMinimapCanvas(s.coordinate)
+        );
         ctx.fillStyle = 'white';
         ctx.strokeStyle = 'transparent';
         for (const player of game.players) {
@@ -220,6 +246,7 @@ export class RisqMinimap implements CanvasComponent {
           ctx.closePath();
           ctx.stroke();
         }
+        ctx.restore();
       }
     );
   }
@@ -235,11 +262,7 @@ export class RisqMinimap implements CanvasComponent {
 
   mousemove(_canvas: Point2D, screen: Point2D, _transform: BoardTransformData): boolean {
     this.last_screen_m = screen;
-    this.hovering =
-      this.last_screen_m.x >= this.xi() &&
-      this.last_screen_m.y >= this.yi() &&
-      this.last_screen_m.x <= this.xf() &&
-      this.last_screen_m.y <= this.yf();
+    this.hovering = Math.hypot(screen.x - this.xc(), screen.y - this.yc()) <= 0.5 * this.side;
     if (this.clicking && this.hovering) {
       this.jumpTo(this.last_screen_m);
     }
@@ -275,16 +298,22 @@ export class RisqMinimap implements CanvasComponent {
   }
 
   xi(): number {
-    return 0.5 * (this.risq.canvasSize().width - this.w());
+    return this.p.x;
   }
   yi(): number {
-    return this.risq.canvasSize().height - this.h() - 12;
+    return this.p.y;
   }
   xf(): number {
     return this.xi() + this.w();
   }
   yf(): number {
     return this.yi() + this.h();
+  }
+  xc(): number {
+    return this.xi() + 0.5 * this.side;
+  }
+  yc(): number {
+    return this.yi() + 0.5 * this.side;
   }
   w(): number {
     return this.side;

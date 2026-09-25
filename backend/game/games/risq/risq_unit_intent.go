@@ -117,6 +117,69 @@ func quantizeAllotments(raw map[*RisqUnit]float64) map[*RisqUnit]float64 {
 	return result
 }
 
+// Computes each repairer's actual afford fraction when several of one player's repairs contend for
+// the same limited resource balance in one tick. Water-fills each resource category independently
+// (reusing waterFillGather) and takes the most-constraining category per unit, mirroring how
+// affordFraction picks the worst category for a single spend.
+func computeRepairAllotments(risq *GameRisq, orderables []Orderable) map[*RisqUnit]float64 {
+	type repairDemand struct {
+		unit *RisqUnit
+		cost RisqResourceCost
+	}
+	by_player := make(map[int][]repairDemand)
+	for _, o := range orderables {
+		u, ok := o.(*RisqUnit)
+		if !ok || !u.intent.hasIntent() {
+			continue
+		}
+		repair, ok := u.intent.detail.(*RepairIntent)
+		if !ok {
+			continue
+		}
+		if _, cost, ok := repairHealAndCost(repair.target, u.intent.intent_cost); ok {
+			by_player[u.player_id] = append(by_player[u.player_id], repairDemand{unit: u, cost: cost})
+		}
+	}
+	allotments := make(map[*RisqUnit]float64)
+	for player_id, demands := range by_player {
+		fraction := make(map[*RisqUnit]float64, len(demands))
+		for _, d := range demands {
+			fraction[d.unit] = 1
+		}
+		balance := risq.players[player_id].resources
+		categories := []struct {
+			available float64
+			needed    func(RisqResourceCost) float64
+		}{
+			{balance.food, func(c RisqResourceCost) float64 { return c.food }},
+			{balance.wood, func(c RisqResourceCost) float64 { return c.wood }},
+			{balance.stone, func(c RisqResourceCost) float64 { return c.stone }},
+			{balance.gold, func(c RisqResourceCost) float64 { return c.gold }},
+		}
+		for _, category := range categories {
+			category_demands := make([]gatherDemand, 0, len(demands))
+			for _, d := range demands {
+				if needed := category.needed(d.cost); needed > 0 {
+					category_demands = append(category_demands, gatherDemand{unit: d.unit, amount: needed})
+				}
+			}
+			if len(category_demands) == 0 {
+				continue
+			}
+			allotted := waterFillGather(category_demands, category.available)
+			for _, cd := range category_demands {
+				if got_fraction := allotted[cd.unit] / cd.amount; got_fraction < fraction[cd.unit] {
+					fraction[cd.unit] = got_fraction
+				}
+			}
+		}
+		for unit, f := range fraction {
+			allotments[unit] = f
+		}
+	}
+	return allotments
+}
+
 func waterFillGather(demands []gatherDemand, available float64) map[*RisqUnit]float64 {
 	result := make(map[*RisqUnit]float64, len(demands))
 	remaining := demands
@@ -251,6 +314,33 @@ func computeGarrisonAllotments(orderables []Orderable) map[*RisqUnit]bool {
 		}
 	}
 	return allotted
+}
+
+// Deterministically settle same-tick foundation races: lowest internal_id founds the building.
+func computeConstructionWinners(orderables []Orderable) map[*RisqZone]uint64 {
+	by_zone := make(map[*RisqZone][]*RisqUnit)
+	for _, o := range orderables {
+		u, ok := o.(*RisqUnit)
+		if !ok || !u.intent.hasIntent() {
+			continue
+		}
+		build, ok := u.intent.detail.(*ConstructionIntent)
+		if !ok || build.building_under_construction != nil {
+			continue
+		}
+		by_zone[build.zone] = append(by_zone[build.zone], u)
+	}
+	winners := make(map[*RisqZone]uint64)
+	for zone, units := range by_zone {
+		winner := units[0]
+		for _, u := range units[1:] {
+			if u.internal_id < winner.internal_id {
+				winner = u
+			}
+		}
+		winners[zone] = winner.internal_id
+	}
+	return winners
 }
 
 type UngarrisonIntent struct {

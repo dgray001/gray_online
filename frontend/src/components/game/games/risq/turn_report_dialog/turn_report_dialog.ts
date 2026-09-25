@@ -73,6 +73,8 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
   private title_heading!: HTMLHeadingElement;
   private scores_body!: HTMLTableSectionElement;
   private land_tiles!: HTMLDivElement;
+  private region_lines!: HTMLUListElement;
+  private region_empty!: HTMLParagraphElement;
   private resources_body!: HTMLTableSectionElement;
   private pop_line!: HTMLDivElement;
   private production_lines!: HTMLUListElement;
@@ -91,6 +93,8 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
     this.configureElements(
       'scores_body',
       'land_tiles',
+      'region_lines',
+      'region_empty',
       'resources_body',
       'pop_line',
       'production_lines',
@@ -126,6 +130,7 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
 
     this.renderScores(risq, player, report);
     this.renderLand(report);
+    this.renderRegions(report);
     this.renderResources(report);
     this.renderProduction(player, report);
     this.renderCombat(player, report);
@@ -184,6 +189,22 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
       tile(signed(Math.round(land.gold_from_land)), 'Gold from land', 'gold-txt'),
       tile(signed(land.newly_explored), 'Newly explored', land.newly_explored > 0 ? 'up' : '')
     );
+  }
+
+  private renderRegions(report: RisqTurnReport) {
+    const lines = report.regions.map((r) => {
+      const li = document.createElement('li');
+      if (r.held_end) {
+        const verb = r.held_start ? 'held' : 'claimed';
+        li.innerHTML = `<span class="tick make">+</span><span>${r.name} ${verb} <span class="where">(+${Math.round(r.gold_bonus)} gold/turn)</span></span>`;
+      } else {
+        li.innerHTML = `<span class="tick bad">×</span><span>${r.name} lost</span>`;
+      }
+      return li;
+    });
+    this.region_lines.replaceChildren(...lines);
+    this.region_lines.hidden = lines.length === 0;
+    this.region_empty.hidden = lines.length > 0;
   }
 
   private renderResources(report: RisqTurnReport) {

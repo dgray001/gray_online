@@ -149,11 +149,10 @@ export function drawRisqTooltip(
   hovering: boolean,
   clicked: boolean,
   state: TooltipState<RisqTooltipDrawData>,
-  p: Point2D,
   data: RisqTooltipData
 ) {
   if (!shouldShowTooltip(state, hovering, clicked, dt)) {
     return;
   }
-  drawTooltip(state, ctx, transform, risq.canvasSize(), p, { ...data, risq });
+  drawTooltip(state, ctx, transform, risq.canvasSize(), { ...data, risq });
 }

@@ -43,6 +43,10 @@ func (e ScriptExpr) resolveInt(vars map[string]float64) (int, error) {
 	return int(math.Round(v)), nil
 }
 
+func (e ScriptExpr) provided() bool {
+	return len(e.raw) > 0
+}
+
 type exprTokenKind int
 
 const (
@@ -209,22 +213,4 @@ func evalExpr(s string, vars map[string]float64) (float64, error) {
 		return 0, fmt.Errorf("unexpected trailing input in expression %q", s)
 	}
 	return v, nil
-}
-
-type defineParams struct {
-	Name  string     `json:"name"`
-	Value ScriptExpr `json:"value"`
-}
-
-func stepDefine(ctx *mapScriptContext, raw json.RawMessage) error {
-	var p defineParams
-	if err := json.Unmarshal(raw, &p); err != nil {
-		panic(fmt.Sprintf("map script define: %v", err))
-	}
-	v, err := p.Value.resolve(ctx.vars)
-	if err != nil {
-		return err
-	}
-	ctx.vars[p.Name] = v
-	return nil
 }

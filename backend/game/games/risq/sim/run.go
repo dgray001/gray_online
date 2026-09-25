@@ -18,7 +18,7 @@ type Result struct {
 	Game  risq.GameResult
 }
 
-func RunGame(seed int64, players []PlayerConfig, board_size int, starting_distance int, max_turns uint16, timeout time.Duration) Result {
+func RunGame(seed int64, players []PlayerConfig, map_name string, max_turns uint16, timeout time.Duration) Result {
 	ai_players := make([]any, len(players))
 	for i, p := range players {
 		config := make(map[string]any, 2)
@@ -27,11 +27,8 @@ func RunGame(seed int64, players []PlayerConfig, board_size int, starting_distan
 		ai_players[i] = config
 	}
 	settings := map[string]any{"ai_players": ai_players, "seed": float64(seed)}
-	if board_size > 0 {
-		settings["board_size"] = float64(board_size)
-	}
-	if starting_distance > 0 {
-		settings["starting_distance"] = float64(starting_distance)
+	if map_name != "" {
+		settings["map"] = map_name
 	}
 	base := game.CreateBaseGame(uint64(seed), game.GameType_RISQ, settings)
 	action_channel := make(chan game.PlayerAction, 16)
