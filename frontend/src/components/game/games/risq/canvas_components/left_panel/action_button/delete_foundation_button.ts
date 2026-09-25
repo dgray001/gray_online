@@ -30,7 +30,6 @@ export class RisqDeleteFoundationButton extends RisqActionButton {
   protected released(): void {
     if (this.isHovering()) {
       if (this.foundation_data.is_local) {
-        // Find and cancel local pending build order
         const build_orders = this.risq
           .getOrdersModel()
           .all()
@@ -45,7 +44,6 @@ export class RisqDeleteFoundationButton extends RisqActionButton {
           this.risq.getOrdersModel().cancel(order);
         }
       } else {
-        // Queue player-level cancel foundation order
         this.risq.getOrdersModel().add({
           player_id: this.risq.getPlayerId(),
           order_type: RisqOrderType.OrderType_CancelFoundation,

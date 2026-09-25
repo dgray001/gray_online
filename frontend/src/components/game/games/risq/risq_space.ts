@@ -64,7 +64,6 @@ export function fillHexOverlay(ctx: CanvasRenderingContext2D, c: Point2D, r: num
   ctx.strokeStyle = prev_stroke;
 }
 
-/** Draws the input risq space */
 export function drawRisqSpace(
   ctx: CanvasRenderingContext2D,
   game: DwgRisq,

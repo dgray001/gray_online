@@ -26,15 +26,84 @@ const (
 	UnitMilitary
 )
 
+type UnitType uint8
+
+const (
+	UnitTypeNone UnitType = iota
+	UnitTypeEconomic
+	UnitTypeInfantry
+	UnitTypeArcher
+	UnitTypeCavalry
+)
+
+var unitTypeNames = map[string]UnitType{
+	"economic": UnitTypeEconomic,
+	"infantry": UnitTypeInfantry,
+	"archer":   UnitTypeArcher,
+	"cavalry":  UnitTypeCavalry,
+}
+
+type UnitStance uint8
+
+const (
+	UnitStanceNone UnitStance = iota
+	UnitStancePassive
+	UnitStanceAggressive
+	UnitStanceDefensive
+	UnitStanceStandGround
+)
+
+var unitStanceNames = map[string]UnitStance{
+	"passive":      UnitStancePassive,
+	"aggressive":   UnitStanceAggressive,
+	"defensive":    UnitStanceDefensive,
+	"stand_ground": UnitStanceStandGround,
+}
+
+type TargetCategory uint8
+
+const (
+	TargetCategoryNone TargetCategory = iota
+	TargetCategoryEconomic
+	TargetCategoryMilitary
+	TargetCategoryBuilding
+)
+
+var targetCategoryNames = map[string]TargetCategory{
+	"economic": TargetCategoryEconomic,
+	"military": TargetCategoryMilitary,
+	"building": TargetCategoryBuilding,
+}
+
 type UnitView struct {
-	InternalID     uint64
-	UnitID         uint32
-	Kind           UnitKind
-	Location       ZoneRef
-	CurrentStamina int
-	CurrentOrder   *CurrentOrder
-	Builds         []Producible
-	GarrisonedIn   *uint64
+	InternalID       uint64
+	UnitID           uint32
+	Type             UnitType
+	Kind             UnitKind
+	Location         ZoneRef
+	CurrentStamina   int
+	CurrentOrder     *CurrentOrder
+	Builds           []Producible
+	GarrisonedIn     *uint64
+	Stance           UnitStance
+	InterruptCurrent bool
+	AttackBack       bool
+	TargetPriority   []TargetCategory
+	ActiveOrders     []ActiveUnitOrder
+}
+
+type UnitBehavior struct {
+	Subjects         []uint64
+	Stance           *UnitStance
+	InterruptCurrent *bool
+	AttackBack       *bool
+	TargetPriority   []TargetCategory
+}
+
+type Decision struct {
+	Orders            []Order
+	Behaviors         []UnitBehavior
+	BuildingBehaviors []BuildingBehavior
 }
 
 // Mirrors the unit-applicable subset of risq.OrderType, so config can filter eligible units by task
@@ -52,6 +121,7 @@ const (
 	OrderKindGarrison
 	OrderKindUngarrison
 	OrderKindDelete
+	OrderKindRenew
 )
 
 var orderKindNames = map[string]OrderKind{
@@ -66,6 +136,7 @@ var orderKindNames = map[string]OrderKind{
 	"garrison":        OrderKindGarrison,
 	"ungarrison":      OrderKindUngarrison,
 	"delete":          OrderKindDelete,
+	"renew":           OrderKindRenew,
 }
 
 type CurrentOrder struct {
@@ -96,6 +167,19 @@ type Cost struct {
 	Food, Wood, Stone, Gold float64
 }
 
+func (c Cost) of(category ResourceCategory) float64 {
+	switch category {
+	case ResourceFood:
+		return c.Food
+	case ResourceWood:
+		return c.Wood
+	case ResourceStone:
+		return c.Stone
+	default:
+		return c.Gold
+	}
+}
+
 // Something a building can currently be ordered to make (already-researched techs excluded).
 type Producible struct {
 	Kind ProducibleKind
@@ -112,6 +196,60 @@ type BuildingView struct {
 	Producibles       []Producible
 	GarrisonCount     int
 	GarrisonCapacity  int
+	Gatherable        bool
+	ResourcesLeft     float64
+	Renewing          bool
+	RenewCost         Cost
+	Health            float64
+	MaxHealth         float64
+	CanAttack         bool
+	ActiveOrders      []ActiveBuildingOrder
+	AutoAttack        bool
+	InterruptCurrent  bool
+	TargetPriority    []TargetCategory
+}
+
+type BuildingBehavior struct {
+	Subjects         []uint64
+	AutoAttack       *bool
+	InterruptCurrent *bool
+	TargetPriority   []TargetCategory
+}
+
+type BuildingOrderKind uint8
+
+const (
+	BuildingOrderCreate BuildingOrderKind = iota
+	BuildingOrderResearch
+	BuildingOrderDelete
+	BuildingOrderAttackUnit
+	BuildingOrderAttackBuilding
+)
+
+var buildingOrderKindNames = map[string]BuildingOrderKind{
+	"create":          BuildingOrderCreate,
+	"research":        BuildingOrderResearch,
+	"delete":          BuildingOrderDelete,
+	"attack_unit":     BuildingOrderAttackUnit,
+	"attack_building": BuildingOrderAttackBuilding,
+}
+
+type ActiveBuildingOrder struct {
+	ID     uint64
+	Kind   BuildingOrderKind
+	ItemID uint32
+}
+
+type ActiveUnitOrder struct {
+	ID   uint64
+	Kind OrderKind
+}
+
+type FoundationView struct {
+	BuildingID uint32
+	Location   ZoneRef
+	Planned    bool
+	Builders   int
 }
 
 // Mirrors risq.OrderFromFrontend; Player_id is stamped on by risq.
@@ -132,6 +270,7 @@ type View interface {
 	IdleBuildings() []BuildingView
 	Resource(category ResourceCategory) float64
 	Population() (current, limit int)
+	Foundations() []FoundationView
 
 	VisibleEnemyUnits() []UnitView
 	VisibleEnemyBuildings() []BuildingView
@@ -140,7 +279,13 @@ type View interface {
 	NearestBuildSite(from ZoneRef, building_id uint32) (ZoneRef, bool)
 	NearestUnexplored(from ZoneRef) ([]ZoneRef, bool)
 	TurnNumber() int
-	AllEnemiesFound() bool
+	NumPlayers() int
+	EnemiesFound() int
+	OwnedSpaces() int
+	Score() int
+	BestEnemyScore() int
+	TechResearched(tech_id uint32) bool
+	InAttackRange(b BuildingView, target ZoneRef) bool
 	BuildCost(building_id uint32) Cost
 	UnitCost(unit_id uint32) Cost
 	TechCost(tech_id uint32) Cost
@@ -150,6 +295,7 @@ type View interface {
 	GatherOrder(u UnitView, target ResourceView, clear_previous bool) Order
 	BuildOrder(u UnitView, building_id uint32, target ZoneRef, clear_previous bool) Order
 	RepairOrder(u UnitView, target BuildingView, clear_previous bool) Order
+	RenewOrder(u UnitView, target BuildingView, clear_previous bool) Order
 	AttackUnitOrder(u UnitView, target UnitView, clear_previous bool) Order
 	AttackBuildingOrder(u UnitView, target BuildingView, clear_previous bool) Order
 	AttackSpaceOrder(u UnitView, target Coordinate, clear_previous bool) Order
@@ -159,4 +305,9 @@ type View interface {
 	DeleteUnitOrder(u UnitView) Order
 	CreateUnitOrder(b BuildingView, unit_id uint32) Order
 	ResearchOrder(b BuildingView, tech_id uint32) Order
+	DeleteBuildingOrder(b BuildingView) Order
+	BuildingAttackUnitOrder(b BuildingView, target UnitView) Order
+	BuildingAttackBuildingOrder(b BuildingView, target BuildingView) Order
+	CancelFoundationOrder(f FoundationView) Order
+	CancelOrder(order_id uint64) Order
 }

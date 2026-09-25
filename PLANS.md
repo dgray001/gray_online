@@ -1,10 +1,9 @@
 v0.9: Risq beta version
- o: Regions
- p: Mercenaries
- r: Revamp summary report
- s: Customizable hotkeys
+ p: Revamp summary report
+ q: Customizable hotkeys
 
 Small Risq Issues:
+ - Icons for interrupt current and attack back
  - Zone ownership should just follow space ownership
  - Left panel: show live "workers X/Y" indicator on a selected gatherable building (predictedGathererCount already exists in risq.ts, just needs left_panel.ts wiring)
  - Send a moving unit's planned path (backend MoveIntent.path) to the frontend so it can be drawn on the map
@@ -13,6 +12,36 @@ Small Risq Issues:
     => Magic and color damage
     => Stables and Archery range
     => Settings setup (including alt win conditions)
+
+
+## Refactoring
+
+1. **Order validation/status/intent logic is split across 5 parallel switch statements per order
+   type** (`validateFrontendOrder`, `receiveOrder`, `orderReceivable`, `orderStatus`, `tickIntent`),
+   each re-deriving the same checks. Proposed fix: a `map[OrderType]unitOrderHandler` strategy table
+   so each order type's full lifecycle lives in one place. **Not done, not attempted** — the riskiest
+   remaining item, touches order-resolution directly with the largest surface area (5 functions × ~15
+   order types); needs a dedicated go/no-go rather than folding into a batch pass.
+2. **Subpackage reorg proposal — recommendation: don't do a full split.** The root package is one
+   tangled object graph (units/buildings/orders/space/zone/player/vision) and three of its core
+   interfaces (`Orderable`, `Attackable`, `IntentKind`) use **unexported methods** — Go forbids
+   implementing an interface with unexported methods from another package, so splitting any of these
+   into a subpackage means exporting everything, which is pure churn with no real encapsulation
+   gained. Only one clean extraction candidate exists: `risq/mapgen` — turn the map-script DSL into a
+   function producing a plain-data `Blueprint` (spaces/terrain/placements/regions), then materialize
+   it back into `GameRisq` in root. Real risk to manage: RNG call order must stay byte-identical or
+   seeded maps stop matching the sim determinism baselines — map generation is now seed-reproducible
+   (fixed and confirmed), so this just needs to be preserved through the extraction, not fixed as
+   part of it. Recommendation: extract `mapgen`, skip every other package boundary. The other pure
+   file-move win (splitting `risq_map_steps.go`'s geometry/board-mutation code out) is already done
+   (`risq_hex.go`/`risq_board.go`). Still open: `risq.go` itself still mixes the action dispatcher,
+   behavior setters, gather points, turn resolution, cleanup, vision, and serialization — splitting
+   it into `risq_actions.go` (the `execute*` handlers) + `risq_tick.go` (`resolveActiveOrders`,
+   `cleanupDeleted`, `recalculateVision`) would be the same zero-risk, zero-rename kind of move.
+3. **There are no `_test.go` files anywhere in risq.** The only safety net today is
+   `go build`/`go vet` plus the sim determinism harness (`sim/inputs/determinism_check.json`). Worth
+   discussing independent of the reorg question.
+
 
 Fiddlesticks Plans:
  - Revamp update dialog box

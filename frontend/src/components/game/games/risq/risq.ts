@@ -49,7 +49,7 @@ import {
   canHaveGatherPoint,
   serverToGameRisq,
 } from './risq_data';
-import type { RisqGatherPoint, RisqUnitStance } from './risq_data';
+import type { RisqGatherPoint, RisqTargetCategory, RisqUnitStance } from './risq_data';
 import { cantorPair, coordinateToIndex, getSpace, invertBuildKey, invertPair, invertZoneKey } from './risq_coordinates';
 import type {
   GatherPointSetData,
@@ -437,7 +437,6 @@ export class DwgRisq extends DwgElement {
       if (!this.game) {
         return;
       }
-      // Update canvas dependencies
       const canvas_ratio = (0.5 * Math.min(board_size.x, canvas_size.width)) / this.canvas_center.x;
       this.canvas_center = {
         x: 0.5 * Math.min(board_size.x, canvas_size.width),
@@ -449,7 +448,6 @@ export class DwgRisq extends DwgElement {
       this.board.setMaxScale((0.45 * canvas_size.height) / this.hex_r);
       this.board.scaleView(canvas_ratio);
       this.board.setOffset(this.canvas_center);
-      // Update other dependencies
       for (const row of this.game?.spaces ?? []) {
         for (const space of row) {
           for (const zone_row of space?.zones ?? []) {
@@ -643,7 +641,6 @@ export class DwgRisq extends DwgElement {
     const now = Date.now();
     const dt = now - this.last_time;
     this.last_time = now;
-    // set config
     this.last_transform = transform;
     // the inset rect must stay inside the hex's incircle (radius = hex_a) so it never pokes out as the map rotates
     const inset_ratio = 1.0392;
@@ -660,7 +657,6 @@ export class DwgRisq extends DwgElement {
       view_mode: this.view_mode,
       rotation: transform.rotation,
     };
-    // draw spaces
     const bounds = this.visibleCanvasBounds();
     const on_screen_spaces: RisqSpace[] = [];
     for (const row of this.game.spaces) {
@@ -697,11 +693,9 @@ export class DwgRisq extends DwgElement {
         () => drawRect(ctx, min, max.x - min.x, max.y - min.y)
       );
     }
-    // draw panels
     for (const component of this.canvas_components) {
       component.draw(ctx, transform, dt);
     }
-    // draw red dot
     if (DRAW_CENTER_DOT && DEV) {
       ctx.fillStyle = 'red';
       ctx.strokeStyle = 'transparent';
@@ -1374,6 +1368,10 @@ export class DwgRisq extends DwgElement {
 
   setUnitToggle(internal_ids: number[], field: UnitToggleField, value: boolean) {
     this.sendUnitBehavior(internal_ids, { [field]: value });
+  }
+
+  setUnitTargetPriority(internal_ids: number[], target_priority: RisqTargetCategory[]) {
+    this.sendUnitBehavior(internal_ids, { target_priority });
   }
 
   selectOrderSubjects(order: RisqFrontendOrder) {

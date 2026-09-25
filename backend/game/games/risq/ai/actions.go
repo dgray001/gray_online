@@ -1,14 +1,19 @@
 package ai
 
-import "sort"
+import (
+	"slices"
+	"sort"
+)
 
 type gatherAction struct {
+	filtered
 	category ResourceCategory
 	eligible []OrderKind
 	max      int
 }
 
 type balancedGatherAction struct {
+	filtered
 	eligible     []OrderKind
 	weight       float64
 	move_penalty float64
@@ -23,6 +28,7 @@ type researchAction struct {
 }
 
 type buildAction struct {
+	filtered
 	building_id uint32
 	eligible    []OrderKind
 	max         int
@@ -37,6 +43,7 @@ const (
 )
 
 type exploreAction struct {
+	filtered
 	max    int
 	anchor exploreAnchor
 }
@@ -50,28 +57,33 @@ const (
 )
 
 type attackAction struct {
+	filtered
 	target   attackTarget
 	max      int
 	eligible []OrderKind
 }
 
 type attackSpaceAction struct {
+	filtered
 	max      int
 	eligible []OrderKind
 }
 
 type attackZoneAction struct {
+	filtered
 	max      int
 	eligible []OrderKind
 }
 
 type garrisonAction struct {
-	building_id *uint32
-	eligible    []OrderKind
-	max         int
+	filtered
+	buildingFiltered
+	eligible []OrderKind
+	max      int
 }
 
 type ungarrisonAction struct {
+	filtered
 	eligible []OrderKind
 	max      int
 }
@@ -85,10 +97,7 @@ type addQAction struct {
 
 func (a *gatherAction) ToOrders(view View, _ *Internals) []Order {
 	orders := make([]Order, 0)
-	for _, u := range eligibleUnits(view, a.eligible) {
-		if u.Kind != UnitEconomic {
-			continue
-		}
+	for _, u := range a.filter.apply(eligibleUnits(view, a.eligible), isEconomic) {
 		if a.max > 0 && len(orders) >= a.max {
 			break
 		}
@@ -101,10 +110,7 @@ func (a *gatherAction) ToOrders(view View, _ *Internals) []Order {
 
 func (a *balancedGatherAction) ToOrders(view View, internals *Internals) []Order {
 	idle, gathering := make([]UnitView, 0), make([]UnitView, 0)
-	for _, u := range eligibleUnits(view, a.eligible) {
-		if u.Kind != UnitEconomic {
-			continue
-		}
+	for _, u := range a.filter.apply(eligibleUnits(view, a.eligible), isEconomic) {
 		if u.CurrentOrder != nil && u.CurrentOrder.TargetResource != nil {
 			gathering = append(gathering, u)
 		} else {
@@ -135,56 +141,16 @@ func (a *balancedGatherAction) ToOrders(view View, internals *Internals) []Order
 	return orders
 }
 
-func (a *createAction) ToOrders(view View, _ *Internals) []Order {
-	orders := make([]Order, 0)
-	current, limit := view.Population()
-	for _, b := range view.IdleBuildings() {
-		if current >= limit {
-			break
-		}
-		for _, p := range b.Producibles {
-			if p.Kind != ProducibleUnit || p.ID != a.unit_id || !canAfford(view, p.Cost) {
-				continue
-			}
-			orders = append(orders, view.CreateUnitOrder(b, p.ID))
-			current++
-			break
-		}
-	}
-	return orders
+func (a *createAction) ToOrders(view View, internals *Internals) []Order {
+	return createUnits(view, internals, a.unit_id)
 }
 
-func (a *researchAction) ToOrders(view View, _ *Internals) []Order {
-	orders := make([]Order, 0)
-	for _, b := range view.IdleBuildings() {
-		for _, p := range b.Producibles {
-			if p.Kind != ProducibleTech || p.ID != a.tech_id || !canAfford(view, p.Cost) {
-				continue
-			}
-			orders = append(orders, view.ResearchOrder(b, p.ID))
-			break
-		}
-	}
-	return orders
+func (a *researchAction) ToOrders(view View, internals *Internals) []Order {
+	return researchTech(view, internals, a.tech_id)
 }
 
-func (a *buildAction) ToOrders(view View, _ *Internals) []Order {
-	orders := make([]Order, 0)
-	if !canAfford(view, view.BuildCost(a.building_id)) {
-		return orders
-	}
-	for _, u := range eligibleUnits(view, a.eligible) {
-		if u.Kind != UnitEconomic {
-			continue
-		}
-		if a.max > 0 && len(orders) >= a.max {
-			break
-		}
-		if target, ok := view.NearestBuildSite(u.Location, a.building_id); ok {
-			orders = append(orders, view.BuildOrder(u, a.building_id, target, true))
-		}
-	}
-	return orders
+func (a *buildAction) ToOrders(view View, internals *Internals) []Order {
+	return buildWith(view, internals, a.filter.apply(eligibleUnits(view, a.eligible), isEconomic), a.building_id, a.max)
 }
 
 func (a *exploreAction) ToOrders(view View, _ *Internals) []Order {
@@ -204,7 +170,7 @@ func (a *exploreAction) ToOrders(view View, _ *Internals) []Order {
 			claimed[*u.CurrentOrder.TargetZone] = true
 		}
 	}
-	for _, u := range view.IdleUnits() {
+	for _, u := range a.filter.apply(view.IdleUnits(), anyUnit) {
 		if a.max > 0 && len(orders) >= a.max {
 			break
 		}
@@ -239,14 +205,11 @@ func (a *attackAction) ToOrders(view View, _ *Internals) []Order {
 	orders := make([]Order, 0)
 	enemy_units := view.VisibleEnemyUnits()
 	enemy_buildings := view.VisibleEnemyBuildings()
-	for _, u := range eligibleUnits(view, a.eligible) {
-		if u.Kind != UnitMilitary {
-			continue
-		}
+	for _, u := range a.filter.apply(eligibleUnits(view, a.eligible), isMilitary) {
 		if a.max > 0 && len(orders) >= a.max {
 			break
 		}
-		if target, ok := a.pickTarget(view, u.Location, enemy_units); ok {
+		if target, ok := pickUnitTarget(view, a.target, u.Location, enemy_units); ok {
 			orders = append(orders, view.AttackUnitOrder(u, target, true))
 		} else if target, ok := nearestBuilding(view, u.Location, enemy_buildings); ok {
 			orders = append(orders, view.AttackBuildingOrder(u, target, true))
@@ -258,10 +221,7 @@ func (a *attackAction) ToOrders(view View, _ *Internals) []Order {
 func (a *attackSpaceAction) ToOrders(view View, _ *Internals) []Order {
 	orders := make([]Order, 0)
 	buildings := view.VisibleEnemyBuildings()
-	for _, u := range eligibleUnits(view, a.eligible) {
-		if u.Kind != UnitMilitary {
-			continue
-		}
+	for _, u := range a.filter.apply(eligibleUnits(view, a.eligible), isMilitary) {
 		if a.max > 0 && len(orders) >= a.max {
 			break
 		}
@@ -276,10 +236,7 @@ func (a *attackZoneAction) ToOrders(view View, _ *Internals) []Order {
 	orders := make([]Order, 0)
 	units := view.VisibleEnemyUnits()
 	buildings := view.VisibleEnemyBuildings()
-	for _, u := range eligibleUnits(view, a.eligible) {
-		if u.Kind != UnitMilitary {
-			continue
-		}
+	for _, u := range a.filter.apply(eligibleUnits(view, a.eligible), isMilitary) {
 		if a.max > 0 && len(orders) >= a.max {
 			break
 		}
@@ -292,8 +249,8 @@ func (a *attackZoneAction) ToOrders(view View, _ *Internals) []Order {
 
 func (a *garrisonAction) ToOrders(view View, _ *Internals) []Order {
 	orders := make([]Order, 0)
-	buildings := view.Buildings()
-	for _, u := range eligibleUnits(view, a.eligible) {
+	buildings := a.buildings.apply(view.Buildings())
+	for _, u := range a.filter.apply(eligibleUnits(view, a.eligible), anyUnit) {
 		if u.GarrisonedIn != nil {
 			continue
 		}
@@ -304,9 +261,6 @@ func (a *garrisonAction) ToOrders(view View, _ *Internals) []Order {
 		best_dist := -1
 		for _, b := range buildings {
 			if b.UnderConstruction || b.GarrisonCount >= b.GarrisonCapacity {
-				continue
-			}
-			if a.building_id != nil && b.BuildingID != *a.building_id {
 				continue
 			}
 			d := locationDistance(u.Location, b.Location)
@@ -324,7 +278,7 @@ func (a *garrisonAction) ToOrders(view View, _ *Internals) []Order {
 
 func (a *ungarrisonAction) ToOrders(view View, _ *Internals) []Order {
 	orders := make([]Order, 0)
-	for _, u := range eligibleUnits(view, a.eligible) {
+	for _, u := range a.filter.apply(eligibleUnits(view, a.eligible), anyUnit) {
 		if u.GarrisonedIn == nil {
 			continue
 		}
@@ -356,6 +310,7 @@ func (a *addQAction) ToOrders(view View, internals *Internals) []Order {
 }
 
 type buildNextInQAction struct {
+	filtered
 	eligible   []OrderKind
 	weight     float64
 	prioritize bool
@@ -373,6 +328,7 @@ type researchNextInQAction struct {
 }
 
 type produceNextInQAction struct {
+	filtered
 	weight     float64
 	prioritize bool
 	max        int
@@ -383,19 +339,7 @@ func (a *buildNextInQAction) ToOrders(view View, internals *Internals) []Order {
 	if !ok {
 		return nil
 	}
-	orders := make([]Order, 0)
-	for _, u := range eligibleUnits(view, a.eligible) {
-		if u.Kind != UnitEconomic {
-			continue
-		}
-		if a.max > 0 && len(orders) >= a.max {
-			break
-		}
-		if target, ok := view.NearestBuildSite(u.Location, *q.ID); ok {
-			orders = append(orders, view.BuildOrder(u, *q.ID, target, true))
-		}
-	}
-	return orders
+	return buildWith(view, internals, a.filter.apply(eligibleUnits(view, a.eligible), isEconomic), *q.ID, a.max)
 }
 
 func (a *createNextInQAction) ToOrders(view View, internals *Internals) []Order {
@@ -403,22 +347,7 @@ func (a *createNextInQAction) ToOrders(view View, internals *Internals) []Order 
 	if !ok {
 		return nil
 	}
-	orders := make([]Order, 0)
-	current, limit := view.Population()
-	for _, b := range view.IdleBuildings() {
-		if current >= limit {
-			break
-		}
-		for _, p := range b.Producibles {
-			if p.Kind != ProducibleUnit || p.ID != *q.ID || !canAfford(view, p.Cost) {
-				continue
-			}
-			orders = append(orders, view.CreateUnitOrder(b, p.ID))
-			current++
-			break
-		}
-	}
-	return orders
+	return createUnits(view, internals, *q.ID)
 }
 
 func (a *researchNextInQAction) ToOrders(view View, internals *Internals) []Order {
@@ -426,17 +355,7 @@ func (a *researchNextInQAction) ToOrders(view View, internals *Internals) []Orde
 	if !ok {
 		return nil
 	}
-	orders := make([]Order, 0)
-	for _, b := range view.IdleBuildings() {
-		for _, p := range b.Producibles {
-			if p.Kind != ProducibleTech || p.ID != *q.ID || !canAfford(view, p.Cost) {
-				continue
-			}
-			orders = append(orders, view.ResearchOrder(b, p.ID))
-			break
-		}
-	}
-	return orders
+	return researchTech(view, internals, *q.ID)
 }
 
 func (a *produceNextInQAction) ToOrders(view View, internals *Internals) []Order {
@@ -446,48 +365,11 @@ func (a *produceNextInQAction) ToOrders(view View, internals *Internals) []Order
 	}
 	switch q.Type {
 	case QBuilding:
-		orders := make([]Order, 0)
-		for _, u := range view.IdleUnits() {
-			if u.Kind != UnitEconomic {
-				continue
-			}
-			if a.max > 0 && len(orders) >= a.max {
-				break
-			}
-			if target, ok := view.NearestBuildSite(u.Location, *q.ID); ok {
-				orders = append(orders, view.BuildOrder(u, *q.ID, target, true))
-			}
-		}
-		return orders
+		return buildWith(view, internals, a.filter.apply(view.IdleUnits(), isEconomic), *q.ID, a.max)
 	case QUnit:
-		orders := make([]Order, 0)
-		current, limit := view.Population()
-		for _, b := range view.IdleBuildings() {
-			if current >= limit {
-				break
-			}
-			for _, p := range b.Producibles {
-				if p.Kind != ProducibleUnit || p.ID != *q.ID || !canAfford(view, p.Cost) {
-					continue
-				}
-				orders = append(orders, view.CreateUnitOrder(b, p.ID))
-				current++
-				break
-			}
-		}
-		return orders
+		return createUnits(view, internals, *q.ID)
 	case QTech:
-		orders := make([]Order, 0)
-		for _, b := range view.IdleBuildings() {
-			for _, p := range b.Producibles {
-				if p.Kind != ProducibleTech || p.ID != *q.ID || !canAfford(view, p.Cost) {
-					continue
-				}
-				orders = append(orders, view.ResearchOrder(b, p.ID))
-				break
-			}
-		}
-		return orders
+		return researchTech(view, internals, *q.ID)
 	}
 	return nil
 }
@@ -514,20 +396,17 @@ func (a *setBucketAction) ToOrders(_ View, internals *Internals) []Order {
 }
 
 type fillBucketAction struct {
+	filtered
 	bucket   string
 	eligible []OrderKind
-	kind     *UnitKind
 }
 
 func (a *fillBucketAction) ToOrders(view View, internals *Internals) []Order {
 	b := internals.bucket(a.bucket)
 	need := b.Desired - len(b.Members)
-	for _, u := range eligibleUnits(view, a.eligible) {
+	for _, u := range a.filter.apply(eligibleUnits(view, a.eligible), anyUnit) {
 		if need <= 0 {
 			break
-		}
-		if a.kind != nil && u.Kind != *a.kind {
-			continue
 		}
 		if internals.isBucketed(u.InternalID) {
 			continue
@@ -552,6 +431,17 @@ func (a *runBucketAction) ToOrders(view View, internals *Internals) []Order {
 		return nil
 	}
 	return b.Task.ToOrders(&bucketView{View: view, members: b.Members}, internals)
+}
+
+type emptyBucketAction struct {
+	bucket string
+}
+
+func (a *emptyBucketAction) ToOrders(_ View, internals *Internals) []Order {
+	if b := internals.Buckets[a.bucket]; b != nil {
+		b.Members = make(map[uint64]bool)
+	}
+	return nil
 }
 
 type drainBucketAction struct {
@@ -604,4 +494,266 @@ func (a *drainBucketAction) ToOrders(_ View, internals *Internals) []Order {
 		}
 	}
 	return nil
+}
+
+type buildFoundationsAction struct {
+	filtered
+	buildingFiltered
+	eligible []OrderKind
+	max      int
+}
+
+func (a *buildFoundationsAction) ToOrders(view View, _ *Internals) []Order {
+	units := a.filter.apply(eligibleUnits(view, a.eligible), isEconomic)
+	orders := make([]Order, 0)
+	for _, f := range view.Foundations() {
+		if f.Builders > 0 || !a.buildings.matches(f.BuildingID) {
+			continue
+		}
+		if a.max > 0 && len(orders) >= a.max {
+			break
+		}
+		if u, ok := nearestUnit(view, f.Location, units); ok {
+			orders = append(orders, view.BuildOrder(u, f.BuildingID, f.Location, true))
+			units = withoutUnit(units, u.InternalID)
+		}
+	}
+	return orders
+}
+
+type cancelFoundationsAction struct {
+	buildingFiltered
+}
+
+func (a *cancelFoundationsAction) ToOrders(view View, internals *Internals) []Order {
+	orders := make([]Order, 0)
+	for _, f := range view.Foundations() {
+		if !f.Planned || f.Builders > 0 || !a.buildings.matches(f.BuildingID) {
+			continue
+		}
+		cost := view.BuildCost(f.BuildingID)
+		internals.spend(Cost{Food: -cost.Food, Wood: -cost.Wood, Stone: -cost.Stone, Gold: -cost.Gold})
+		orders = append(orders, view.CancelFoundationOrder(f))
+	}
+	return orders
+}
+
+type renewAction struct {
+	filtered
+	buildingFiltered
+	eligible []OrderKind
+	max      int
+}
+
+func (a *renewAction) ToOrders(view View, internals *Internals) []Order {
+	units := a.filter.apply(eligibleUnits(view, a.eligible), isEconomic)
+	renewers := assignedBuildings(view, OrderKindRenew)
+	orders := make([]Order, 0)
+	for _, b := range a.buildings.apply(view.Buildings()) {
+		if !b.Gatherable || b.UnderConstruction || b.ResourcesLeft > 0 || renewers[b.InternalID] || (!b.Renewing && !canAfford(view, internals, b.RenewCost)) {
+			continue
+		}
+		if a.max > 0 && len(orders) >= a.max {
+			break
+		}
+		if u, ok := nearestUnit(view, b.Location, units); ok {
+			if !b.Renewing {
+				internals.spend(b.RenewCost)
+			}
+			orders = append(orders, view.RenewOrder(u, b, true))
+			units = withoutUnit(units, u.InternalID)
+		}
+	}
+	return orders
+}
+
+type setUnitBehaviorAction struct {
+	filtered
+	behavior UnitBehavior
+}
+
+func (a *setUnitBehaviorAction) differs(u UnitView) bool {
+	b := a.behavior
+	return (b.Stance != nil && *b.Stance != u.Stance) ||
+		(b.InterruptCurrent != nil && *b.InterruptCurrent != u.InterruptCurrent) ||
+		(b.AttackBack != nil && *b.AttackBack != u.AttackBack) ||
+		(b.TargetPriority != nil && !slices.Equal(b.TargetPriority, u.TargetPriority))
+}
+
+func (a *setUnitBehaviorAction) ToOrders(view View, internals *Internals) []Order {
+	behavior := a.behavior
+	for _, u := range a.filter.apply(view.Units(), isMilitary) {
+		if a.differs(u) {
+			behavior.Subjects = append(behavior.Subjects, u.InternalID)
+		}
+	}
+	if len(behavior.Subjects) > 0 {
+		internals.behaviors = append(internals.behaviors, behavior)
+	}
+	return nil
+}
+
+type repairAction struct {
+	filtered
+	buildingFiltered
+	eligible []OrderKind
+	max      int
+}
+
+func (a *repairAction) ToOrders(view View, _ *Internals) []Order {
+	units := a.filter.apply(eligibleUnits(view, a.eligible), isEconomic)
+	repairers := assignedBuildings(view, OrderKindRepair)
+	orders := make([]Order, 0)
+	for _, b := range a.buildings.apply(view.Buildings()) {
+		if b.UnderConstruction || b.Health >= b.MaxHealth || repairers[b.InternalID] {
+			continue
+		}
+		if a.max > 0 && len(orders) >= a.max {
+			break
+		}
+		if u, ok := nearestUnit(view, b.Location, units); ok {
+			orders = append(orders, view.RepairOrder(u, b, true))
+			units = withoutUnit(units, u.InternalID)
+		}
+	}
+	return orders
+}
+
+type deleteUnitAction struct {
+	filtered
+	eligible []OrderKind
+	max      int
+}
+
+func (a *deleteUnitAction) ToOrders(view View, _ *Internals) []Order {
+	orders := make([]Order, 0)
+	for _, u := range a.filter.apply(eligibleUnits(view, a.eligible), anyUnit) {
+		if a.max > 0 && len(orders) >= a.max {
+			break
+		}
+		orders = append(orders, view.DeleteUnitOrder(u))
+	}
+	return orders
+}
+
+type deleteBuildingAction struct {
+	buildingFiltered
+	max int
+}
+
+func (a *deleteBuildingAction) ToOrders(view View, _ *Internals) []Order {
+	orders := make([]Order, 0)
+	for _, b := range a.buildings.apply(view.Buildings()) {
+		if a.max > 0 && len(orders) >= a.max {
+			break
+		}
+		orders = append(orders, view.DeleteBuildingOrder(b))
+	}
+	return orders
+}
+
+type buildingAttackAction struct {
+	buildingFiltered
+	target attackTarget
+	max    int
+}
+
+func (a *buildingAttackAction) ToOrders(view View, _ *Internals) []Order {
+	enemy_units, enemy_buildings := view.VisibleEnemyUnits(), view.VisibleEnemyBuildings()
+	orders := make([]Order, 0)
+	for _, b := range a.buildings.apply(view.Buildings()) {
+		if !b.CanAttack || b.UnderConstruction || len(b.ActiveOrders) > 0 {
+			continue
+		}
+		if a.max > 0 && len(orders) >= a.max {
+			break
+		}
+		units, buildings := inAttackRange(view, b, enemy_units, enemy_buildings)
+		if target, ok := pickUnitTarget(view, a.target, b.Location, units); ok {
+			orders = append(orders, view.BuildingAttackUnitOrder(b, target))
+		} else if target, ok := nearestBuilding(view, b.Location, buildings); ok {
+			orders = append(orders, view.BuildingAttackBuildingOrder(b, target))
+		}
+	}
+	return orders
+}
+
+type setBuildingBehaviorAction struct {
+	buildingFiltered
+	behavior BuildingBehavior
+}
+
+func (a *setBuildingBehaviorAction) differs(b BuildingView) bool {
+	target := a.behavior
+	return (target.AutoAttack != nil && *target.AutoAttack != b.AutoAttack) ||
+		(target.InterruptCurrent != nil && *target.InterruptCurrent != b.InterruptCurrent) ||
+		(target.TargetPriority != nil && !slices.Equal(target.TargetPriority, b.TargetPriority))
+}
+
+func (a *setBuildingBehaviorAction) ToOrders(view View, internals *Internals) []Order {
+	behavior := a.behavior
+	for _, b := range a.buildings.apply(view.Buildings()) {
+		if b.CanAttack && a.differs(b) {
+			behavior.Subjects = append(behavior.Subjects, b.InternalID)
+		}
+	}
+	if len(behavior.Subjects) > 0 {
+		internals.building_behaviors = append(internals.building_behaviors, behavior)
+	}
+	return nil
+}
+
+type unitStopAction struct {
+	filtered
+	orders map[OrderKind]bool
+	max    int
+}
+
+func (a *unitStopAction) ToOrders(view View, _ *Internals) []Order {
+	cancelled := make(map[uint64]bool)
+	orders := make([]Order, 0)
+	stopped := 0
+	for _, u := range a.filter.apply(view.Units(), anyUnit) {
+		if a.max > 0 && stopped >= a.max {
+			break
+		}
+		before := len(orders)
+		for _, o := range u.ActiveOrders {
+			if (len(a.orders) == 0 || a.orders[o.Kind]) && !cancelled[o.ID] {
+				cancelled[o.ID] = true
+				orders = append(orders, view.CancelOrder(o.ID))
+			}
+		}
+		if len(orders) > before {
+			stopped++
+		}
+	}
+	return orders
+}
+
+type buildingStopAction struct {
+	buildingFiltered
+	orders   map[BuildingOrderKind]bool
+	item_ids map[uint32]bool
+	max      int
+}
+
+func (a *buildingStopAction) ToOrders(view View, _ *Internals) []Order {
+	orders := make([]Order, 0)
+	stopped := 0
+	for _, b := range a.buildings.apply(view.Buildings()) {
+		if a.max > 0 && stopped >= a.max {
+			break
+		}
+		before := len(orders)
+		for _, o := range b.ActiveOrders {
+			if (len(a.orders) == 0 || a.orders[o.Kind]) && (len(a.item_ids) == 0 || a.item_ids[o.ItemID]) {
+				orders = append(orders, view.CancelOrder(o.ID))
+			}
+		}
+		if len(orders) > before {
+			stopped++
+		}
+	}
+	return orders
 }

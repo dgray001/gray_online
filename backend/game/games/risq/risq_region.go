@@ -60,6 +60,15 @@ func (r *GameRisq) addRegion(name string, gold_bonus float64, coordinate_keys ma
 	return nil
 }
 
+func (r *GameRisq) regionContaining(space *RisqSpace) *RisqRegion {
+	for _, region := range r.regions {
+		if region.spaces[space.coordinate_key] {
+			return region
+		}
+	}
+	return nil
+}
+
 func (r *GameRisq) regionOwner(region *RisqRegion) int {
 	owner := -1
 	for key := range region.spaces {

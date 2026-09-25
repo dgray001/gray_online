@@ -1,6 +1,10 @@
 package risq
 
-import "github.com/dgray001/gray_online/util"
+import (
+	"sort"
+
+	"github.com/dgray001/gray_online/util"
+)
 
 type Gatherable interface {
 	gatherCategory() RisqResourceCategory
@@ -83,4 +87,24 @@ func (b *RisqBuilding) gatheringUnitCount(risq *GameRisq) int {
 		}
 	}
 	return count
+}
+
+func (r *GameRisq) autoGatherCompletedBuildings() {
+	for _, b := range r.completed_gatherables {
+		builders := make([]*RisqUnit, 0)
+		for _, u := range r.players[b.player_id].units {
+			construction, ok := u.intent.detail.(*ConstructionIntent)
+			if ok && !u.deleted && construction.zone == b.zone && len(u.order_queue.active_orders) == 1 {
+				builders = append(builders, u)
+			}
+		}
+		sort.Slice(builders, func(i, j int) bool { return builders[i].internal_id < builders[j].internal_id })
+		for _, u := range builders {
+			order := createRisqOrder(r.nextOrderInternalId(), OrderType_UnitGather, b.player_id, map[uint64]Orderable{u.internal_id: u}, int64(b.zone.coordinate_key), false)
+			if u.orderReceivable(order, r) {
+				u.receiveOrder(order, r)
+			}
+		}
+	}
+	r.completed_gatherables = r.completed_gatherables[:0]
 }

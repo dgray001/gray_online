@@ -437,7 +437,6 @@ export function drawUnitTypeCluster(
   }
 }
 
-/** Gets zone fill for the input zone */
 export function getZoneFill(
   zone: RisqZone,
   view_mode: RisqViewMode = RisqViewMode.ALL,
@@ -532,7 +531,6 @@ function unitVisibleInViewMode(unit_type: RisqUnitType, view_mode: RisqViewMode)
   return true;
 }
 
-/** Draws the input risq zone */
 export function drawRisqZone(
   ctx: CanvasRenderingContext2D,
   game: DwgRisq,
@@ -605,7 +603,6 @@ export function drawRisqZone(
     ctx.translate(part.c.x, part.c.y);
     ctx.rotate(-rotation);
     if (i === 0) {
-      // resources / building
       if (!!zone.resource && view_mode !== RisqViewMode.MILITARY && view_mode !== RisqViewMode.OWNERSHIP) {
         ctx.drawImage(game.getIcon(resourceImage(zone.resource)), -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
       } else {

@@ -104,6 +104,7 @@ const (
 	// Player-level orders with no subjects
 	OrderType_CancelOrder
 	OrderType_CancelFoundation
+	OrderType_BuyMercenary
 	OrderType_END
 )
 
@@ -173,7 +174,7 @@ func (ot OrderType) isAutoSynthesized() bool {
 }
 
 func (ot OrderType) isPlayerOrder() bool {
-	return ot >= OrderType_CancelOrder && ot <= OrderType_CancelFoundation
+	return ot >= OrderType_CancelOrder && ot <= OrderType_BuyMercenary
 }
 
 func (ot OrderType) isAttackOrder() bool {
@@ -272,7 +273,6 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend, player_id int)
 	if order_type <= OrderType_None || order_type >= OrderType_END || order_type.isAutoSynthesized() {
 		return fmt.Errorf("Invalid order type: %d", order_type)
 	}
-	// Order owner must be the submitting player
 	if order.Player_id != player_id {
 		return fmt.Errorf("Order player id %d does not match submitter %d", order.Player_id, player_id)
 	}
@@ -489,6 +489,17 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend, player_id int)
 		}
 		if r.players[order.Player_id].planned_foundations[zone.coordinate_key] == nil {
 			return fmt.Errorf("No planned foundation at this zone")
+		}
+	case OrderType_BuyMercenary:
+		unit_id, space, zone := invertMercenaryKey(uint(order.Target_id), r)
+		if space == nil || zone == nil {
+			return fmt.Errorf("Invalid space or zone target inverted from mercenary key %d", order.Target_id)
+		}
+		if _, ok := unitConfigs[unit_id]; !ok {
+			return fmt.Errorf("Invalid or unsupported unit id: %d", unit_id)
+		}
+		if !r.players[order.Player_id].available_mercenaries[unit_id] {
+			return fmt.Errorf("Unit id %d is not an available mercenary", unit_id)
 		}
 	default:
 		return fmt.Errorf("Unimplemented order type: %d", order_type)

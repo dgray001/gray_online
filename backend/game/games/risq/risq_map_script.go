@@ -29,15 +29,14 @@ type playerStartInfo struct {
 }
 
 type mapScriptContext struct {
-	risq                *GameRisq
-	rng                 *rand.Rand
-	num_players         int
-	board_size          uint16
-	recommended_size    *uint16 // overrides the num_players-derived default when set
-	player_starts       []playerStartInfo
-	regions             map[string]map[uint]bool
-	vars                map[string]float64
-	shape               string
+	risq          *GameRisq
+	rng           *rand.Rand
+	num_players   int
+	board_size    uint16
+	player_starts []playerStartInfo
+	regions       map[string]map[uint]bool
+	vars          map[string]float64
+	shape         string
 }
 
 func recommendedBoardSize(num_players int) uint16 {

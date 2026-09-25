@@ -29,12 +29,33 @@ type Bucket struct {
 }
 
 type Internals struct {
-	q       []Q
-	Buckets map[string]*Bucket
+	q                  []Q
+	Buckets            map[string]*Bucket
+	pending            Cost
+	pending_population int
+	behaviors          []UnitBehavior
+	building_behaviors []BuildingBehavior
 }
 
 func (i *Internals) Refresh() {
 	i.q = make([]Q, 0)
+	i.pending = Cost{}
+	i.pending_population = 0
+	i.behaviors = nil
+	i.building_behaviors = nil
+}
+
+func (i *Internals) spend(cost Cost) {
+	i.pending = Cost{Food: i.pending.Food + cost.Food, Wood: i.pending.Wood + cost.Wood, Stone: i.pending.Stone + cost.Stone, Gold: i.pending.Gold + cost.Gold}
+}
+
+func (i *Internals) available(view View, category ResourceCategory) float64 {
+	return view.Resource(category) - i.pending.of(category)
+}
+
+func (i *Internals) population(view View) (int, int) {
+	current, limit := view.Population()
+	return current + i.pending_population, limit
 }
 
 func (i *Internals) bucket(name string) *Bucket {
@@ -105,12 +126,12 @@ func (m *RulesModel) ApplyUpdate(view View, update_kind string) {
 	}
 }
 
-func (m *RulesModel) DecideOrders(view View) []Order {
+func (m *RulesModel) DecideOrders(view View) Decision {
 	m.internals.Refresh()
 	m.internals.pruneBuckets(view)
 	orders := make([]Order, 0)
 	for _, rule := range m.rules {
-		if !rule.when.Evaluate(view) {
+		if !rule.when.Evaluate(view, &m.internals) {
 			continue
 		}
 		for _, action := range rule.then {
@@ -118,5 +139,5 @@ func (m *RulesModel) DecideOrders(view View) []Order {
 		}
 	}
 	util.DebugLog.Printf("ai %s: submitting orders %+v", view.Nickname(), orders)
-	return orders
+	return Decision{Orders: orders, Behaviors: m.internals.behaviors, BuildingBehaviors: m.internals.building_behaviors}
 }

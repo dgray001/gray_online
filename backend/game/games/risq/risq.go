@@ -55,6 +55,7 @@ type GameRisq struct {
 	// Techs finishing production this tick; applied after this tick's health deltas so a tech's
 	// combat bonus never affects the same tick's combat, only the next one
 	pending_tech_completions []techCompletion
+	completed_gatherables    []*RisqBuilding
 	regions                  []*RisqRegion
 	// owned by this game only, never the shared global source, so concurrent AI goroutines can't race it
 	rng *rand.Rand
@@ -85,7 +86,20 @@ func (r *GameRisq) GetBase() *game.GameBase {
 }
 
 func (r *GameRisq) StartGame() {
-	r.startNextTurn()
+	r.endTurn()
+	r.checkWinCondition()
+	if !r.game.GameEnded() {
+		r.startNextTurn()
+	}
+}
+
+func (r *GameRisq) endTurn() {
+	r.recalculateOwnership()
+	r.resolvePendingMercenaries()
+	r.recalculateVision()
+	r.refreshScores()
+	r.updateEliminated()
+	r.finalizeTurnReports()
 }
 
 func (r *GameRisq) startNextTurn() {
@@ -96,11 +110,6 @@ func (r *GameRisq) startNextTurn() {
 	for o := range r.allOrderables() {
 		o.refreshStamina()
 	}
-	r.recalculateOwnership()
-	r.recalculateVision()
-	r.refreshScores()
-	r.updateEliminated()
-	r.finalizeTurnReports()
 	r.giving_orders = true
 	for _, player := range r.players {
 		player.player.AddUpdate(&game.UpdateMessage{Kind: "start-turn", Content: gin.H{
@@ -110,7 +119,6 @@ func (r *GameRisq) startNextTurn() {
 	r.game.AddViewerUpdate(&game.UpdateMessage{Kind: "start-turn", Content: gin.H{
 		"game": r.ToFrontend(0, true),
 	}})
-	r.checkWinCondition()
 }
 
 func (r *GameRisq) updateEliminated() {
@@ -363,7 +371,7 @@ func (r *GameRisq) executeSetUnitBehavior(player_id int, behavior UnitBehaviorFr
 			content["attack_back"] = *behavior.Attack_back
 		}
 		if behavior.Target_priority != nil {
-			content["target_priority"] = *behavior.Target_priority
+			content["target_priority"] = targetCategoriesToInts(target_priority)
 		}
 		return content
 	}
@@ -423,7 +431,7 @@ func (r *GameRisq) executeSetBuildingBehavior(player_id int, behavior BuildingBe
 			content["interrupt_current"] = *behavior.Interrupt_current
 		}
 		if behavior.Target_priority != nil {
-			content["target_priority"] = *behavior.Target_priority
+			content["target_priority"] = targetCategoriesToInts(target_priority)
 		}
 		return content
 	}
@@ -571,6 +579,7 @@ func (r *GameRisq) resolveActiveOrders() {
 			r.completeResearch(r.players[completion.player_id], completion.tech_id)
 		}
 		r.pending_tech_completions = r.pending_tech_completions[:0]
+		r.autoGatherCompletedBuildings()
 	}
 	r.cleanupDeleted()
 	for _, player := range r.players {
@@ -588,7 +597,11 @@ func (r *GameRisq) resolveActiveOrders() {
 		player.active_orders = kept
 		player.report.orders.active = len(kept)
 	}
-	r.startNextTurn()
+	r.endTurn()
+	r.checkWinCondition()
+	if !r.game.GameEnded() {
+		r.startNextTurn()
+	}
 }
 
 func (r *GameRisq) cancelPendingTerrainClear(zone *RisqZone) {

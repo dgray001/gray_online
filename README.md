@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.8n: Bottom bar
+v0.8o: Backend mercenaries
 
 ## Dev Use
 

@@ -13,7 +13,6 @@ import { RisqRightPanelButton } from './right_panel_button';
 import { RisqSubmitOrdersButton } from './submit_orders_button';
 import { RisqSubmitIconButton } from './submit_icon_button';
 
-/** Config for the right panel */
 export declare interface RightPanelConfig {
   w: number;
   is_open: boolean;
@@ -21,7 +20,6 @@ export declare interface RightPanelConfig {
 }
 
 export class RisqRightPanel implements CanvasComponent {
-  // For use in the draw function
   private static PADDING = 5;
   private static SUBMIT_SIZE = 30;
 

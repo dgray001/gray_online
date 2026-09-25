@@ -60,7 +60,7 @@
   },
   {
     "step": "resource_scatter",
-    "params": { "chance": 0.3, "category_weights": { "food": 0.4, "wood": 0.4, "stone": 0.2 } }
+    "params": { "chance": 0.3, "category_weights": { "food": 0.1, "wood": 0.8, "stone": 0.1 } }
   },
   {
     "step": "player_starts",
@@ -77,9 +77,10 @@
         { "building_id": 1, "terrain_override": 6, "target": { "zone": "center" } }
       ],
       "resources": [
-        { "resource_id": 1, "count": 2 },
-        { "resource_id": 2, "count": 2 },
+        { "resource_id": 1, "count": 4 },
+        { "resource_id": 2, "count": 4 },
         { "resource_id": 11, "count": 2 },
+        { "resource_id": 13, "count": 2 },
         { "resource_id": 14, "count": 2 },
         { "resource_id": 21, "count": 2 }
       ]

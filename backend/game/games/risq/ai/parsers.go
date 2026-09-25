@@ -32,128 +32,29 @@ func parseCondition(raw map[string]any) (Condition, error) {
 		return &conditionNot{condition: condition}, nil
 	case "always":
 		return &conditionAlways{}, nil
-	case "building_count_at_least":
-		obj, ok := value.(map[string]any)
+	case "tech_researched":
+		obj, _ := value.(map[string]any)
+		tech_id := parseOptionalID(obj, "tech_id")
+		if tech_id == nil {
+			return nil, fmt.Errorf("tech_researched requires a numeric \"tech_id\"")
+		}
+		return &conditionTechResearched{tech_id: *tech_id}, nil
+	case "bucket_full":
+		obj, _ := value.(map[string]any)
+		bucket, ok := obj["bucket"].(string)
 		if !ok {
-			return nil, fmt.Errorf("building_count_at_least must be an object")
+			return nil, fmt.Errorf("bucket_full requires a string \"bucket\"")
 		}
-		count, ok := obj["count"].(float64)
-		if !ok {
-			return nil, fmt.Errorf("building_count_at_least requires a numeric \"count\"")
+		return &conditionBucketFull{bucket: bucket}, nil
+	case "resource_available":
+		obj, _ := value.(map[string]any)
+		category, err := parseResourceCategory(obj["category"])
+		if err != nil {
+			return nil, err
 		}
-		condition := &conditionBuildingCountAtLeast{count: int(count)}
-		if id, ok := obj["building_id"].(float64); ok {
-			building_id := uint32(id)
-			condition.building_id = &building_id
-		}
-		return condition, nil
-	case "building_count_at_most":
-		obj, ok := value.(map[string]any)
-		if !ok {
-			return nil, fmt.Errorf("building_count_at_most must be an object")
-		}
-		count, ok := obj["count"].(float64)
-		if !ok {
-			return nil, fmt.Errorf("building_count_at_most requires a numeric \"count\"")
-		}
-		condition := &conditionBuildingCountAtMost{count: int(count)}
-		if id, ok := obj["building_id"].(float64); ok {
-			building_id := uint32(id)
-			condition.building_id = &building_id
-		}
-		return condition, nil
-	case "building_count_equals":
-		obj, ok := value.(map[string]any)
-		if !ok {
-			return nil, fmt.Errorf("building_count_equals must be an object")
-		}
-		count, ok := obj["count"].(float64)
-		if !ok {
-			return nil, fmt.Errorf("building_count_equals requires a numeric \"count\"")
-		}
-		condition := &conditionBuildingCountEquals{count: int(count)}
-		if id, ok := obj["building_id"].(float64); ok {
-			building_id := uint32(id)
-			condition.building_id = &building_id
-		}
-		return condition, nil
-	case "population_headroom_at_least":
-		obj, ok := value.(map[string]any)
-		if !ok {
-			return nil, fmt.Errorf("population_headroom_at_least must be an object")
-		}
-		amount, ok := obj["amount"].(float64)
-		if !ok {
-			return nil, fmt.Errorf("population_headroom_at_least requires a numeric \"amount\"")
-		}
-		return &conditionPopulationHeadroomAtLeast{amount: int(amount)}, nil
-	case "population_headroom_at_most":
-		obj, ok := value.(map[string]any)
-		if !ok {
-			return nil, fmt.Errorf("population_headroom_at_most must be an object")
-		}
-		amount, ok := obj["amount"].(float64)
-		if !ok {
-			return nil, fmt.Errorf("population_headroom_at_most requires a numeric \"amount\"")
-		}
-		return &conditionPopulationHeadroomAtMost{amount: int(amount)}, nil
-	case "population_headroom_equals":
-		obj, ok := value.(map[string]any)
-		if !ok {
-			return nil, fmt.Errorf("population_headroom_equals must be an object")
-		}
-		amount, ok := obj["amount"].(float64)
-		if !ok {
-			return nil, fmt.Errorf("population_headroom_equals requires a numeric \"amount\"")
-		}
-		return &conditionPopulationHeadroomEquals{amount: int(amount)}, nil
-	case "population_at_least":
-		obj, ok := value.(map[string]any)
-		if !ok {
-			return nil, fmt.Errorf("population_at_least must be an object")
-		}
-		amount, ok := obj["amount"].(float64)
-		if !ok {
-			return nil, fmt.Errorf("population_at_least requires a numeric \"amount\"")
-		}
-		condition := &conditionPopulationAtLeast{amount: int(amount)}
-		if id, ok := obj["unit_id"].(float64); ok {
-			unit_id := uint32(id)
-			condition.unit_id = &unit_id
-		}
-		return condition, nil
-	case "population_at_most":
-		obj, ok := value.(map[string]any)
-		if !ok {
-			return nil, fmt.Errorf("population_at_most must be an object")
-		}
-		amount, ok := obj["amount"].(float64)
-		if !ok {
-			return nil, fmt.Errorf("population_at_most requires a numeric \"amount\"")
-		}
-		condition := &conditionPopulationAtMost{amount: int(amount)}
-		if id, ok := obj["unit_id"].(float64); ok {
-			unit_id := uint32(id)
-			condition.unit_id = &unit_id
-		}
-		return condition, nil
-	case "population_equals":
-		obj, ok := value.(map[string]any)
-		if !ok {
-			return nil, fmt.Errorf("population_equals must be an object")
-		}
-		amount, ok := obj["amount"].(float64)
-		if !ok {
-			return nil, fmt.Errorf("population_equals requires a numeric \"amount\"")
-		}
-		condition := &conditionPopulationEquals{amount: int(amount)}
-		if id, ok := obj["unit_id"].(float64); ok {
-			unit_id := uint32(id)
-			condition.unit_id = &unit_id
-		}
-		return condition, nil
+		return &conditionResourceAvailable{category: category}, nil
 	default:
-		return nil, fmt.Errorf("unknown condition type %q", key)
+		return parseCountCondition(key, value)
 	}
 }
 
@@ -182,6 +83,24 @@ func parseAction(raw map[string]any) (Action, error) {
 	if err != nil {
 		return nil, err
 	}
+	filter, err := parseUnitFilter(raw)
+	if err != nil {
+		return nil, err
+	}
+	if f, ok := action.(interface{ setFilter(unitFilter) }); ok {
+		f.setFilter(filter)
+	} else if len(filter.unit_ids) > 0 || len(filter.unit_types) > 0 {
+		return nil, fmt.Errorf("action %q does not take unit filters", raw["action"])
+	}
+	building_ids, err := parseIDSet(raw, "building_ids")
+	if err != nil {
+		return nil, err
+	}
+	if f, ok := action.(interface{ setBuildingFilter(buildingFilter) }); ok {
+		f.setBuildingFilter(buildingFilter{ids: building_ids})
+	} else if len(building_ids) > 0 {
+		return nil, fmt.Errorf("action %q does not take building filters", raw["action"])
+	}
 	if exclude, _ := raw["exclude_buckets"].(bool); exclude {
 		action = &unbucketedAction{inner: action}
 	}
@@ -204,7 +123,7 @@ func parseActionInner(raw map[string]any) (Action, error) {
 			if w, ok := raw["weight"].(float64); ok {
 				weight = w
 			}
-			move_penalty := 0.0
+			move_penalty := 1.0
 			if p, ok := raw["move_penalty"].(float64); ok {
 				move_penalty = p
 			}
@@ -276,20 +195,11 @@ func parseActionInner(raw map[string]any) (Action, error) {
 		if err != nil {
 			return nil, err
 		}
-		action := &attackAction{target: attackTargetMilitary, max: parseMax(raw), eligible: eligible}
-		if t, ok := raw["target"].(string); ok {
-			switch t {
-			case "military":
-				action.target = attackTargetMilitary
-			case "economic":
-				action.target = attackTargetEconomic
-			case "any":
-				action.target = attackTargetAny
-			default:
-				return nil, fmt.Errorf("unknown attack target %q", t)
-			}
+		target, err := parseAttackTarget(raw)
+		if err != nil {
+			return nil, err
 		}
-		return action, nil
+		return &attackAction{target: target, max: parseMax(raw), eligible: eligible}, nil
 	case "attack_space":
 		eligible, err := parseEligible(raw["eligible"])
 		if err != nil {
@@ -307,12 +217,7 @@ func parseActionInner(raw map[string]any) (Action, error) {
 		if err != nil {
 			return nil, err
 		}
-		action := &garrisonAction{eligible: eligible, max: parseMax(raw)}
-		if id, ok := raw["building_id"].(float64); ok {
-			building_id := uint32(id)
-			action.building_id = &building_id
-		}
-		return action, nil
+		return &garrisonAction{eligible: eligible, max: parseMax(raw)}, nil
 	case "ungarrison":
 		eligible, err := parseEligible(raw["eligible"])
 		if err != nil {
@@ -346,15 +251,7 @@ func parseActionInner(raw map[string]any) (Action, error) {
 		if err != nil {
 			return nil, err
 		}
-		action := &fillBucketAction{bucket: bucket, eligible: eligible}
-		if kind_str, ok := raw["kind"].(string); ok {
-			kind, err := parseUnitKind(kind_str)
-			if err != nil {
-				return nil, err
-			}
-			action.kind = &kind
-		}
-		return action, nil
+		return &fillBucketAction{bucket: bucket, eligible: eligible}, nil
 	case "run_bucket":
 		bucket, ok := raw["bucket"].(string)
 		if !ok {
@@ -387,6 +284,42 @@ func parseActionInner(raw map[string]any) (Action, error) {
 			return nil, fmt.Errorf("drain_bucket action requires a string or array \"from\"")
 		}
 		return action, nil
+	case "build_foundations", "renew", "repair", "delete_unit":
+		eligible, err := parseEligible(raw["eligible"])
+		if err != nil {
+			return nil, err
+		}
+		switch action_type {
+		case "renew":
+			return &renewAction{eligible: eligible, max: parseMax(raw)}, nil
+		case "repair":
+			return &repairAction{eligible: eligible, max: parseMax(raw)}, nil
+		case "delete_unit":
+			return &deleteUnitAction{eligible: eligible, max: parseMax(raw)}, nil
+		}
+		return &buildFoundationsAction{eligible: eligible, max: parseMax(raw)}, nil
+	case "delete_building":
+		return &deleteBuildingAction{max: parseMax(raw)}, nil
+	case "building_attack":
+		target, err := parseAttackTarget(raw)
+		if err != nil {
+			return nil, err
+		}
+		return &buildingAttackAction{target: target, max: parseMax(raw)}, nil
+	case "set_unit_behavior":
+		return parseSetUnitBehavior(raw)
+	case "set_building_behavior":
+		return parseSetBuildingBehavior(raw)
+	case "unit_stop", "building_stop":
+		return parseStop(action_type, raw)
+	case "empty_bucket":
+		bucket, ok := raw["bucket"].(string)
+		if !ok {
+			return nil, fmt.Errorf("empty_bucket action requires a string \"bucket\"")
+		}
+		return &emptyBucketAction{bucket: bucket}, nil
+	case "cancel_foundations":
+		return &cancelFoundationsAction{}, nil
 	case "add_q":
 		type_str, ok := raw["type"].(string)
 		if !ok {
@@ -437,6 +370,31 @@ func parseQueueParams(raw map[string]any) (weight float64, prioritize bool) {
 	}
 	prioritize, _ = raw["prioritize"].(bool)
 	return weight, prioritize
+}
+
+func parseAttackTarget(raw map[string]any) (attackTarget, error) {
+	t, ok := raw["target"].(string)
+	if !ok {
+		return attackTargetMilitary, nil
+	}
+	switch t {
+	case "military":
+		return attackTargetMilitary, nil
+	case "economic":
+		return attackTargetEconomic, nil
+	case "any":
+		return attackTargetAny, nil
+	}
+	return 0, fmt.Errorf("unknown attack target %q", t)
+}
+
+func parseOptionalID(raw map[string]any, key string) *uint32 {
+	f, ok := raw[key].(float64)
+	if !ok {
+		return nil
+	}
+	id := uint32(f)
+	return &id
 }
 
 // 0 means unlimited
@@ -491,21 +449,43 @@ func parseEligible(raw any) ([]OrderKind, error) {
 	return kinds, nil
 }
 
-func parseUnitKind(s string) (UnitKind, error) {
-	switch s {
-	case "economic":
-		return UnitEconomic, nil
-	case "military":
-		return UnitMilitary, nil
-	default:
-		return 0, fmt.Errorf("unknown unit kind %q", s)
+func parseIDSet(raw map[string]any, key string) (map[uint32]bool, error) {
+	ids := map[uint32]bool{}
+	list, ok := raw[key].([]any)
+	if raw[key] != nil && !ok {
+		return nil, fmt.Errorf("%q must be an array of numbers", key)
 	}
+	for _, id := range list {
+		f, ok := id.(float64)
+		if !ok {
+			return nil, fmt.Errorf("%q entries must be numbers", key)
+		}
+		ids[uint32(f)] = true
+	}
+	return ids, nil
+}
+
+func parseUnitFilter(raw map[string]any) (unitFilter, error) {
+	unit_ids, err := parseIDSet(raw, "unit_ids")
+	if err != nil {
+		return unitFilter{}, err
+	}
+	filter := unitFilter{unit_ids: unit_ids, unit_types: map[UnitType]bool{}}
+	types, _ := raw["unit_types"].([]any)
+	for _, t := range types {
+		unit_type, ok := unitTypeNames[fmt.Sprint(t)]
+		if !ok {
+			return filter, fmt.Errorf("unknown unit type %v", t)
+		}
+		filter.unit_types[unit_type] = true
+	}
+	return filter, nil
 }
 
 func parseResourceCategory(raw any) (ResourceCategory, error) {
 	s, ok := raw.(string)
 	if !ok {
-		return 0, fmt.Errorf("gather action requires a string \"category\"")
+		return 0, fmt.Errorf("\"category\" must be a string")
 	}
 	switch s {
 	case "food":
@@ -555,4 +535,90 @@ func parseRules(raw []any) ([]Rule, error) {
 		rules = append(rules, Rule{when: when, then: then})
 	}
 	return rules, nil
+}
+
+func parseSetUnitBehavior(raw map[string]any) (Action, error) {
+	action := &setUnitBehaviorAction{}
+	if s, ok := raw["stance"].(string); ok {
+		stance, ok := unitStanceNames[s]
+		if !ok {
+			return nil, fmt.Errorf("unknown stance %q", s)
+		}
+		action.behavior.Stance = &stance
+	}
+	if b, ok := raw["interrupt_current"].(bool); ok {
+		action.behavior.InterruptCurrent = &b
+	}
+	if b, ok := raw["attack_back"].(bool); ok {
+		action.behavior.AttackBack = &b
+	}
+	priority, err := parseTargetPriority(raw)
+	if err != nil {
+		return nil, err
+	}
+	action.behavior.TargetPriority = priority
+	return action, nil
+}
+
+func parseTargetPriority(raw map[string]any) ([]TargetCategory, error) {
+	list, ok := raw["target_priority"].([]any)
+	if !ok {
+		return nil, nil
+	}
+	priority := make([]TargetCategory, 0, len(list))
+	for _, item := range list {
+		category, ok := targetCategoryNames[fmt.Sprint(item)]
+		if !ok {
+			return nil, fmt.Errorf("unknown target category %v", item)
+		}
+		priority = append(priority, category)
+	}
+	return priority, nil
+}
+
+func parseStop(action_type string, raw map[string]any) (Action, error) {
+	if action_type == "unit_stop" {
+		kinds, err := parseEligible(raw["orders"])
+		if err != nil {
+			return nil, err
+		}
+		orders := make(map[OrderKind]bool, len(kinds))
+		for _, k := range kinds {
+			orders[k] = true
+		}
+		return &unitStopAction{orders: orders, max: parseMax(raw)}, nil
+	}
+	names, ok := raw["orders"].([]any)
+	if raw["orders"] != nil && !ok {
+		return nil, fmt.Errorf("\"orders\" must be a list of strings")
+	}
+	orders := make(map[BuildingOrderKind]bool, len(names))
+	for _, name := range names {
+		kind, ok := buildingOrderKindNames[fmt.Sprint(name)]
+		if !ok {
+			return nil, fmt.Errorf("unknown building order kind %v", name)
+		}
+		orders[kind] = true
+	}
+	item_ids, err := parseIDSet(raw, "item_ids")
+	if err != nil {
+		return nil, err
+	}
+	return &buildingStopAction{orders: orders, item_ids: item_ids, max: parseMax(raw)}, nil
+}
+
+func parseSetBuildingBehavior(raw map[string]any) (Action, error) {
+	action := &setBuildingBehaviorAction{}
+	if b, ok := raw["auto_attack"].(bool); ok {
+		action.behavior.AutoAttack = &b
+	}
+	if b, ok := raw["interrupt_current"].(bool); ok {
+		action.behavior.InterruptCurrent = &b
+	}
+	priority, err := parseTargetPriority(raw)
+	if err != nil {
+		return nil, err
+	}
+	action.behavior.TargetPriority = priority
+	return action, nil
 }

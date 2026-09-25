@@ -2,11 +2,13 @@ package ai
 
 import "sort"
 
-func canAfford(view View, cost Cost) bool {
-	return view.Resource(ResourceFood) >= cost.Food &&
-		view.Resource(ResourceWood) >= cost.Wood &&
-		view.Resource(ResourceStone) >= cost.Stone &&
-		view.Resource(ResourceGold) >= cost.Gold
+func canAfford(view View, internals *Internals, cost Cost) bool {
+	for _, c := range []ResourceCategory{ResourceFood, ResourceWood, ResourceStone, ResourceGold} {
+		if internals.available(view, c) < cost.of(c) {
+			return false
+		}
+	}
+	return true
 }
 
 func eligibleUnits(view View, eligible []OrderKind) []UnitView {
@@ -109,7 +111,7 @@ func selectFromQueue(view View, internals *Internals, threshold float64, priorit
 		sort.SliceStable(candidates, func(i, j int) bool { return candidates[i].Weight > candidates[j].Weight })
 	}
 	for _, q := range candidates {
-		if canAfford(view, q.Cost) {
+		if canAfford(view, internals, q.Cost) {
 			return q, true
 		}
 	}
@@ -129,7 +131,7 @@ func gatherDemandWeights(view View, internals *Internals, threshold float64) map
 		weights[ResourceStone] += q.Cost.Stone * w
 	}
 	for _, c := range []ResourceCategory{ResourceFood, ResourceWood, ResourceStone} {
-		weights[c] -= view.Resource(c)
+		weights[c] -= internals.available(view, c)
 		if weights[c] < 0 {
 			weights[c] = 0
 		}
@@ -172,9 +174,9 @@ func neediestGatherCategory(view View, from ZoneRef, targets map[ResourceCategor
 	return 0, ResourceView{}, false
 }
 
-func (a *attackAction) pickTarget(view View, from ZoneRef, units []UnitView) (UnitView, bool) {
+func pickUnitTarget(view View, target attackTarget, from ZoneRef, units []UnitView) (UnitView, bool) {
 	var preferred UnitKind
-	switch a.target {
+	switch target {
 	case attackTargetEconomic:
 		preferred = UnitEconomic
 	case attackTargetAny:
@@ -276,4 +278,158 @@ func nearestEnemyZone(view View, from ZoneRef, units []UnitView, buildings []Bui
 		return ZoneRef{}, false
 	}
 	return tied[view.RandomIntn(len(tied))], true
+}
+
+func createUnits(view View, internals *Internals, unit_id uint32) []Order {
+	orders := make([]Order, 0)
+	for _, b := range view.IdleBuildings() {
+		if current, limit := internals.population(view); current >= limit {
+			break
+		}
+		for _, p := range b.Producibles {
+			if p.Kind == ProducibleUnit && p.ID == unit_id && canAfford(view, internals, p.Cost) {
+				orders = append(orders, view.CreateUnitOrder(b, p.ID))
+				internals.spend(p.Cost)
+				internals.pending_population++
+				break
+			}
+		}
+	}
+	return orders
+}
+
+func researchTech(view View, internals *Internals, tech_id uint32) []Order {
+	for _, b := range view.IdleBuildings() {
+		for _, p := range b.Producibles {
+			if p.Kind == ProducibleTech && p.ID == tech_id && canAfford(view, internals, p.Cost) {
+				internals.spend(p.Cost)
+				return []Order{view.ResearchOrder(b, p.ID)}
+			}
+		}
+	}
+	return nil
+}
+
+type unitFilter struct {
+	unit_ids   map[uint32]bool
+	unit_types map[UnitType]bool
+}
+
+func (f unitFilter) apply(units []UnitView, fallback func(UnitView) bool) []UnitView {
+	out := make([]UnitView, 0, len(units))
+	for _, u := range units {
+		if (len(f.unit_ids) == 0 && len(f.unit_types) == 0 && fallback(u)) || f.unit_ids[u.UnitID] || f.unit_types[u.Type] {
+			out = append(out, u)
+		}
+	}
+	return out
+}
+
+func isEconomic(u UnitView) bool { return u.Kind == UnitEconomic }
+func isMilitary(u UnitView) bool { return u.Kind == UnitMilitary }
+func anyUnit(UnitView) bool      { return true }
+
+type filtered struct {
+	filter unitFilter
+}
+
+func (f *filtered) setFilter(filter unitFilter) {
+	f.filter = filter
+}
+
+func buildWith(view View, internals *Internals, units []UnitView, building_id uint32, max_builders int) []Order {
+	if len(units) == 0 {
+		return nil
+	}
+	target, ok := unbuiltFoundation(view, units[0].Location, building_id)
+	if !ok {
+		cost := view.BuildCost(building_id)
+		if !canAfford(view, internals, cost) {
+			return nil
+		}
+		if target, ok = view.NearestBuildSite(units[0].Location, building_id); !ok {
+			return nil
+		}
+		internals.spend(cost)
+	}
+	orders := make([]Order, 0)
+	for _, u := range units {
+		if len(orders) >= max(1, max_builders) {
+			break
+		}
+		orders = append(orders, view.BuildOrder(u, building_id, target, true))
+	}
+	return orders
+}
+
+func unbuiltFoundation(view View, from ZoneRef, building_id uint32) (ZoneRef, bool) {
+	candidates := make([]ZoneRef, 0)
+	for _, f := range view.Foundations() {
+		if f.BuildingID == building_id && f.Builders == 0 {
+			candidates = append(candidates, f.Location)
+		}
+	}
+	return nearestZone(view, from, candidates)
+}
+
+func withoutUnit(units []UnitView, internal_id uint64) []UnitView {
+	out := make([]UnitView, 0, len(units))
+	for _, u := range units {
+		if u.InternalID != internal_id {
+			out = append(out, u)
+		}
+	}
+	return out
+}
+
+type buildingFilter struct {
+	ids map[uint32]bool
+}
+
+func (f buildingFilter) matches(building_id uint32) bool {
+	return len(f.ids) == 0 || f.ids[building_id]
+}
+
+func (f buildingFilter) apply(buildings []BuildingView) []BuildingView {
+	out := make([]BuildingView, 0, len(buildings))
+	for _, b := range buildings {
+		if f.matches(b.BuildingID) {
+			out = append(out, b)
+		}
+	}
+	return out
+}
+
+type buildingFiltered struct {
+	buildings buildingFilter
+}
+
+func (f *buildingFiltered) setBuildingFilter(filter buildingFilter) {
+	f.buildings = filter
+}
+
+func inAttackRange(view View, b BuildingView, units []UnitView, buildings []BuildingView) ([]UnitView, []BuildingView) {
+	units_in_range := make([]UnitView, 0)
+	for _, u := range units {
+		if view.InAttackRange(b, u.Location) {
+			units_in_range = append(units_in_range, u)
+		}
+	}
+	buildings_in_range := make([]BuildingView, 0)
+	for _, target := range buildings {
+		if view.InAttackRange(b, target.Location) {
+			buildings_in_range = append(buildings_in_range, target)
+		}
+	}
+	return units_in_range, buildings_in_range
+}
+
+func assignedBuildings(view View, kind OrderKind) map[uint64]bool {
+	assigned := make(map[uint64]bool)
+	for _, u := range view.Units() {
+		if u.CurrentOrder != nil && u.CurrentOrder.Kind == kind && u.CurrentOrder.TargetBuilding != nil {
+			assigned[u.CurrentOrder.TargetBuilding.InternalID] = true
+		}
+	}
+	return assigned
 }

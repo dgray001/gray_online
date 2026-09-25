@@ -80,9 +80,9 @@ import { RisqOrderButton } from './action_button/order_button';
 import { RisqStanceButton } from './action_button/stance_button';
 import { RisqUnitToggleButton } from './action_button/unit_toggle_button';
 import { RisqSpaceUnitsRowButton } from './space_units_row_button';
+import { RisqTargetPriorityControl } from './target_priority_control';
 
 export class RisqLeftPanel implements CanvasComponent {
-  // For use in the draw function
   private static PADDING = 5;
   private static BUILDING_ACTION_GRID_ROWS = 3;
   private static ACTION_GRID_COLS = 5;
@@ -105,6 +105,7 @@ export class RisqLeftPanel implements CanvasComponent {
   private hovered_object?: HoveredObject;
   private space_villager_row_button?: RisqSpaceUnitsRowButton;
   private space_military_row_button?: RisqSpaceUnitsRowButton;
+  private target_priority_control?: RisqTargetPriorityControl;
   private healthbar_row: RectHoverData = { ps: { x: 0, y: 0 }, pe: { x: 0, y: 0 } };
   private separator_below_stats = 0;
   private garrison_rows = 0;
@@ -335,10 +336,20 @@ export class RisqLeftPanel implements CanvasComponent {
         0
       )
     );
+    if (!this.target_priority_control) {
+      this.target_priority_control = new RisqTargetPriorityControl(this.risq, unit_internal_ids);
+    } else {
+      this.target_priority_control.setUnitIds(unit_internal_ids);
+    }
+  }
+
+  private clearTargetPriorityControl() {
+    this.target_priority_control = undefined;
   }
 
   private refreshActionButtons() {
     this.buttons = [];
+    this.clearTargetPriorityControl();
     this.refreshOrderRows();
     if (!this.isOrderable()) {
       this.resolveSize();
@@ -443,9 +454,9 @@ export class RisqLeftPanel implements CanvasComponent {
     for (const button of this.buttons) {
       button.dataRefreshed();
     }
+    this.target_priority_control?.dataRefreshed();
   }
 
-  // Whether the currently selected unit(s)/building's own order queue should be shown
   private showOrderRows(): boolean {
     if (!this.data) {
       return false;
@@ -531,6 +542,10 @@ export class RisqLeftPanel implements CanvasComponent {
       });
     }
     this.grid_bottom_separator = y0 + action_rows * (s + P);
+    if (this.target_priority_control) {
+      this.target_priority_control.setSize(3 * s + 2 * P, s);
+      this.target_priority_control.setPosition({ x: x0 + 2 * (s + P), y: y0 + 2 * (s + P) });
+    }
     const min_orders_height = 2 * this.order_rows_list.getPadding() + 2 * ORDER_ROW_H + this.order_rows_list.getGap();
     const orders_y0 = Math.min(this.grid_bottom_separator + P, this.yi() + this.size.y - P - min_orders_height);
     this.order_rows_list.setAllSizes(
@@ -572,7 +587,6 @@ export class RisqLeftPanel implements CanvasComponent {
     this.refreshActionButtons();
   }
 
-  // Returns whether the current selection in the left panel is orderable
   isOrderable(): boolean {
     const player_id = this.risq.getPlayer()?.player.player_id ?? -1;
     if (
@@ -601,7 +615,6 @@ export class RisqLeftPanel implements CanvasComponent {
     }
   }
 
-  // Returns whether the current selection is a unit or units
   isUnit(): boolean {
     if (!this.showing || !this.data) {
       return false;
@@ -659,7 +672,6 @@ export class RisqLeftPanel implements CanvasComponent {
     }
   }
 
-  // Returns whether every currently selected unit is a villager
   isOnlyVillagers(): boolean {
     if (!this.isUnit() || !this.data) {
       return false;
@@ -676,7 +688,6 @@ export class RisqLeftPanel implements CanvasComponent {
     }
   }
 
-  // Returns whether every currently selected unit is military
   isOnlyMilitary(): boolean {
     if (!this.isUnit() || !this.data) {
       return false;
@@ -715,7 +726,6 @@ export class RisqLeftPanel implements CanvasComponent {
     }
   }
 
-  // Returns whether the current selection is a building
   isBuilding(): boolean {
     if (!this.showing || !this.data) {
       return false;
@@ -813,7 +823,7 @@ export class RisqLeftPanel implements CanvasComponent {
     if (data.units.length === 1 && data.units[0].units.size === 1) {
       const unit = this.resolveUnit(data.units[0].player_id, [...data.units[0].units.values()][0]);
       if (!!unit) {
-        this.data = { data_type: LeftPanelDataType.UNIT, data: unit }; // set data as internal id
+        this.data = { data_type: LeftPanelDataType.UNIT, data: unit };
       } else {
         this.close();
       }
@@ -947,6 +957,7 @@ export class RisqLeftPanel implements CanvasComponent {
       button.draw(ctx, transform, dt);
       button.drawTooltip(ctx, transform, this.risq, dt);
     }
+    this.target_priority_control?.draw(ctx, transform);
     if (this.data?.data_type === LeftPanelDataType.SPACE && (this.visibility ?? 0) > RisqVisibilityLevel.POOR) {
       this.space_villager_row_button?.draw(ctx, transform, dt);
       this.space_military_row_button?.draw(ctx, transform, dt);
@@ -1650,7 +1661,7 @@ export class RisqLeftPanel implements CanvasComponent {
     yi += this.drawSpaceHexagon(ctx, data.space, separator_distance, yi, coordinateToIndex(1, data.zone.coordinate));
     this.drawSeparator(ctx, yi);
     yi += separator_distance;
-    const max_image_size = 36; // it should be this size
+    const max_image_size = 36;
     const u_img_mult = 1.3;
     const units_per_row = Math.floor((0.8 * this.w() - 1.6 * max_image_size) / (u_img_mult * max_image_size));
     const economic_rows = Math.ceil(data.zone.economic_units.length / units_per_row);
@@ -2020,6 +2031,7 @@ export class RisqLeftPanel implements CanvasComponent {
     for (const button of this.buttons) {
       button.mousemove(canvas, screen, transform);
     }
+    this.target_priority_control?.mousemove(screen);
     if (this.showOrderRows() && this.order_rows_list.mousemove(canvas, screen, transform)) {
       return true;
     }
@@ -2177,6 +2189,7 @@ export class RisqLeftPanel implements CanvasComponent {
     for (const button of this.buttons) {
       button.mousedown(e);
     }
+    this.target_priority_control?.mousedown(e);
     if (this.showOrderRows()) {
       this.order_rows_list.mousedown(e);
     }
@@ -2295,6 +2308,7 @@ export class RisqLeftPanel implements CanvasComponent {
     for (const button of this.buttons) {
       button.mouseup(e);
     }
+    this.target_priority_control?.mouseup(e);
   }
 
   xi(): number {

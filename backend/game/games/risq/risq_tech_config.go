@@ -10,18 +10,19 @@ import (
 var techsConfigJSON []byte
 
 type TechConfig struct {
-	display_name       string
-	description        string
-	cost               RisqResourceCost
-	research_stamina   int
-	affects_unit_ids   []uint32
-	affects_unit_types []UnitType
-	target_unit_ids    []uint32
-	target_types       []TargetType
-	bonus_max_health   int
-	bonus_turn_stamina int
-	bonus              CombatBonus
-	required_tech_id   uint32
+	display_name          string
+	description           string
+	cost                  RisqResourceCost
+	research_stamina      int
+	affects_unit_ids      []uint32
+	affects_unit_types    []UnitType
+	target_unit_ids       []uint32
+	target_types          []TargetType
+	bonus_max_health      int
+	bonus_turn_stamina    int
+	bonus                 CombatBonus
+	required_tech_id      uint32
+	unlocks_mercenary_ids []uint32
 }
 
 type techConfigJSON struct {
@@ -37,7 +38,8 @@ type techConfigJSON struct {
 	BonusMaxHealth   int      `json:"bonus_max_health"`
 	BonusTurnStamina int      `json:"bonus_turn_stamina"`
 	combatBonusJSON
-	RequiredTechId uint32 `json:"required_tech_id"`
+	RequiredTechId      uint32   `json:"required_tech_id"`
+	UnlocksMercenaryIds []uint32 `json:"unlocks_mercenary_ids"`
 }
 
 var techConfigs map[uint32]TechConfig
@@ -54,8 +56,8 @@ func init() {
 }
 
 func parseTechConfigEntry(e techConfigJSON, source string) TechConfig {
-	if len(e.AffectsUnitIds) == 0 && len(e.AffectsUnitTypes) == 0 {
-		panic(fmt.Sprintf("%s %d: must specify affects_unit_ids or affects_unit_types", source, e.TechId))
+	if len(e.AffectsUnitIds) == 0 && len(e.AffectsUnitTypes) == 0 && len(e.UnlocksMercenaryIds) == 0 {
+		panic(fmt.Sprintf("%s %d: must specify affects_unit_ids, affects_unit_types, or unlocks_mercenary_ids", source, e.TechId))
 	}
 	affects_unit_types := make([]UnitType, len(e.AffectsUnitTypes))
 	for i, s := range e.AffectsUnitTypes {
@@ -74,18 +76,19 @@ func parseTechConfigEntry(e techConfigJSON, source string) TechConfig {
 		target_types[i] = target_type
 	}
 	return TechConfig{
-		display_name:       e.DisplayName,
-		description:        e.Description,
-		cost:               e.Cost.toCost(),
-		research_stamina:   e.ResearchStamina,
-		affects_unit_ids:   e.AffectsUnitIds,
-		affects_unit_types: affects_unit_types,
-		target_unit_ids:    e.TargetUnitIds,
-		target_types:       target_types,
-		bonus_max_health:   e.BonusMaxHealth,
-		bonus_turn_stamina: e.BonusTurnStamina,
-		bonus:              e.combatBonusJSON.toBonus(),
-		required_tech_id:   e.RequiredTechId,
+		display_name:          e.DisplayName,
+		description:           e.Description,
+		cost:                  e.Cost.toCost(),
+		research_stamina:      e.ResearchStamina,
+		affects_unit_ids:      e.AffectsUnitIds,
+		affects_unit_types:    affects_unit_types,
+		target_unit_ids:       e.TargetUnitIds,
+		target_types:          target_types,
+		bonus_max_health:      e.BonusMaxHealth,
+		bonus_turn_stamina:    e.BonusTurnStamina,
+		bonus:                 e.combatBonusJSON.toBonus(),
+		required_tech_id:      e.RequiredTechId,
+		unlocks_mercenary_ids: e.UnlocksMercenaryIds,
 	}
 }
 
@@ -172,5 +175,8 @@ func (r *GameRisq) completeResearch(player *RisqPlayer, tech_id uint32) {
 		if tech.appliesTo(unit.unit_id, unit.unitType()) {
 			applyTechBonus(unit, tech)
 		}
+	}
+	for _, unit_id := range tech.unlocks_mercenary_ids {
+		player.available_mercenaries[unit_id] = true
 	}
 }

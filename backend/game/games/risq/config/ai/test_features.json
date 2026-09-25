@@ -32,11 +32,14 @@
     {"when": {"all": [{"building_count_equals": {"building_ids": [22], "amount": 2}}, {"population_at_least": {"amount": 30, "unit_ids": [1]}}, {"population_at_most": {"amount": 35, "unit_ids": [1]}}]}, "then": [{"action": "add_q", "type": "building", "id": 22, "weight": 15}]},
     {"when": {"all": [{"building_count_equals": {"building_ids": [22], "amount": 2}}, {"population_at_least": {"amount": 36, "unit_ids": [1]}}]}, "then": [{"action": "add_q", "type": "building", "id": 22, "weight": 30}]},
     {"when": {"population_at_least": {"amount": 6, "unit_ids": [1]}}, "then": [{"action": "add_q", "type": "technology", "id": 1, "weight": 7}]},
+    {"when": {"all": [{"population_at_least": {"amount": 8, "unit_ids": [1]}}, {"building_count_at_most": {"building_ids": [3], "amount": 5}}]}, "then": [{"action": "add_q", "type": "building", "id": 3, "weight": 9}]},
+    {"when": {"always": {}}, "then": [{"action": "set_unit_behavior", "stance": "aggressive", "unit_types": ["infantry"]}]},
+    {"when": {"always": {}}, "then": [{"action": "cancel_foundations"}, {"action": "renew"}, {"action": "build_foundations", "max": 2}]},
     {"when": {"always": {}}, "then": [{"action": "gather", "eligible": ["gather"]}]},
     {"when": {"always": {}}, "then": [{"action": "researchNextInQ"}]},
     {"when": {"always": {}}, "then": [{"action": "create", "unit_id": 11}]},
     {"when": {"always": {}}, "then": [{"action": "create", "unit_id": 1}]},
     {"when": {"always": {}}, "then": [{"action": "buildNextInQ", "eligible": ["gather"], "max": 1, "weight": 7, "prioritize": true}]},
-    {"when": {"always": {}}, "then": [{"action": "attack"}, {"action": "explore"}]}
+    {"when": {"always": {}}, "then": [{"action": "attack"}, {"action": "explore", "unit_types": ["infantry"]}]}
   ]
 }

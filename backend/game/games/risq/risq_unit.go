@@ -706,9 +706,7 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 	if u.garrisoned_in != nil && u.intent.hasIntent() {
 		switch u.intent.detail.(type) {
 		case *GarrisonIntent, *UngarrisonIntent:
-			// These are fine
 		default:
-			// Need to ungarrison first
 			u.intent.setUngarrison(u.garrisoned_in.zone)
 		}
 	}
@@ -782,6 +780,9 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 			if !building.underConstruction() {
 				risq.players[building.player_id].report.recordBuildingBuilt(building.building_id, building.zone.space.coordinate, building.zone.coordinate)
 				building.refreshTerrainOverride()
+				if buildingConfigs[building.building_id].isGatherable() {
+					risq.completed_gatherables = append(risq.completed_gatherables, building)
+				}
 			}
 		}
 	case *DeleteIntent:
@@ -832,7 +833,6 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 		if u.garrisoned_in == nil {
 			return
 		}
-		// Ungarrisoning
 		building := u.garrisoned_in
 		delete(building.garrisoned_units, u.internal_id)
 		u.garrisoned_in = nil

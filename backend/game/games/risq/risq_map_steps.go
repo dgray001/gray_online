@@ -752,7 +752,7 @@ func stepPlayerStarts(ctx *mapScriptContext, raw json.RawMessage) error {
 		footprint := make([]*RisqSpace, 0)
 		for _, s := range hexRadiusSpaces(space, area_size) {
 			if s != space && home_space_keys[s.coordinate_key] {
-				continue // never claim another player's home space
+				continue
 			}
 			footprint = append(footprint, s)
 		}

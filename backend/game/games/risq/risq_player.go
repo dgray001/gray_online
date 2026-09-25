@@ -19,25 +19,27 @@ var aiConfigs embed.FS
 var defaultAiConfig []byte
 
 type RisqPlayer struct {
-	player               *game.Player
-	resources            *RisqPlayerResources
-	buildings            map[uint64]*RisqBuilding
-	units                map[uint64]*RisqUnit
-	max_population_limit uint16
-	color                string
-	active_orders        []*RisqOrder
-	past_orders          []*RisqOrder
-	orders_submitted     bool
-	planned_foundations  map[uint]*RisqPlannedFoundation
-	researched_techs     map[uint32]bool
-	report               *RisqTurnReport
-	score                uint
-	ai_model             ai.Model
-	eliminated           bool
-	kills                uint
-	razes                uint
-	units_lost           uint
-	buildings_lost       uint
+	player                *game.Player
+	resources             *RisqPlayerResources
+	buildings             map[uint64]*RisqBuilding
+	units                 map[uint64]*RisqUnit
+	max_population_limit  uint16
+	color                 string
+	active_orders         []*RisqOrder
+	past_orders           []*RisqOrder
+	orders_submitted      bool
+	planned_foundations   map[uint]*RisqPlannedFoundation
+	researched_techs      map[uint32]bool
+	available_mercenaries map[uint32]bool
+	pending_mercenaries   []*RisqPendingMercenary
+	report                *RisqTurnReport
+	score                 uint
+	ai_model              ai.Model
+	eliminated            bool
+	kills                 uint
+	razes                 uint
+	units_lost            uint
+	buildings_lost        uint
 	// owned by this player only, so its own AI goroutine never races another player's
 	rng *rand.Rand
 	// closed to terminate this player's runAi goroutine once eliminated, so it stops reading
@@ -70,19 +72,20 @@ type RisqPlannedFoundation struct {
 
 func createRisqPlayer(player *game.Player, max_population_limit uint16, color string, rng *rand.Rand) *RisqPlayer {
 	return &RisqPlayer{
-		player:               player,
-		resources:            createRisqPlayerResources(),
-		buildings:            make(map[uint64]*RisqBuilding),
-		units:                make(map[uint64]*RisqUnit, 0),
-		max_population_limit: max_population_limit,
-		color:                color,
-		active_orders:        make([]*RisqOrder, 0),
-		past_orders:          make([]*RisqOrder, 0),
-		orders_submitted:     false,
-		planned_foundations:  make(map[uint]*RisqPlannedFoundation),
-		researched_techs:     make(map[uint32]bool),
-		rng:                  rng,
-		ai_stop:              make(chan struct{}),
+		player:                player,
+		resources:             createRisqPlayerResources(),
+		buildings:             make(map[uint64]*RisqBuilding),
+		units:                 make(map[uint64]*RisqUnit, 0),
+		max_population_limit:  max_population_limit,
+		color:                 color,
+		active_orders:         make([]*RisqOrder, 0),
+		past_orders:           make([]*RisqOrder, 0),
+		orders_submitted:      false,
+		planned_foundations:   make(map[uint]*RisqPlannedFoundation),
+		researched_techs:      make(map[uint32]bool),
+		available_mercenaries: make(map[uint32]bool),
+		rng:                   rng,
+		ai_stop:               make(chan struct{}),
 	}
 }
 
@@ -172,7 +175,38 @@ func (p *RisqPlayer) receivePlayerOrder(o *RisqOrder, risq *GameRisq) {
 	case OrderType_CancelFoundation:
 		_, zone := invertZoneKey(uint(o.target_id), risq)
 		p.cancelPlannedFoundation(zone)
+	case OrderType_BuyMercenary:
+		p.buyMercenary(o, risq)
 	}
+}
+
+func (p *RisqPlayer) buyMercenary(o *RisqOrder, risq *GameRisq) {
+	unit_id, space, zone := invertMercenaryKey(uint(o.target_id), risq)
+	if !p.available_mercenaries[unit_id] {
+		p.report.recordFailure(o.order_type, o.target_id, "mercenary not available")
+		return
+	}
+	if space.ownership != p.player.Player_id || zone.ownership != p.player.Player_id {
+		p.report.recordFailure(o.order_type, o.target_id, "space or zone not owned")
+		return
+	}
+	if region := risq.regionContaining(space); region != nil && region.owner != p.player.Player_id {
+		p.report.recordFailure(o.order_type, o.target_id, "region not owned")
+		return
+	}
+	if p.populationCapped() {
+		p.report.recordFailure(o.order_type, o.target_id, "population capped")
+		return
+	}
+	cost := RisqResourceCost{gold: mercenaryBaseCost(unit_id)}
+	if !p.resources.canAfford(cost) {
+		p.report.recordFailure(o.order_type, o.target_id, "cannot afford mercenary")
+		return
+	}
+	p.resources.spend(cost)
+	p.pending_mercenaries = append(p.pending_mercenaries, &RisqPendingMercenary{
+		unit_id: unit_id, zone: zone, cost: cost, target_id: o.target_id,
+	})
 }
 
 func (p *RisqPlayer) toFrontend(viewer_player_id int) gin.H {

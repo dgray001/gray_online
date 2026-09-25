@@ -395,6 +395,15 @@ const (
 	TargetCategory_END
 )
 
+// []TargetCategory is structurally []uint8, which encoding/json marshals as a base64 string; convert to []int first.
+func targetCategoriesToInts(categories []TargetCategory) []int {
+	ints := make([]int, len(categories))
+	for i, category := range categories {
+		ints[i] = int(category)
+	}
+	return ints
+}
+
 func targetCategoryOf(u *RisqUnit) TargetCategory {
 	if u.unitType() == UnitType_ECONOMIC {
 		return TargetCategory_ECONOMIC

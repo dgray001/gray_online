@@ -1,9 +1,6 @@
 import { err } from '../../../../scripts/log';
 
-/** Fill style for healthbar background rect */
 export const UNIT_HEALTHBAR_COLOR_BACKGROUND = 'black';
-
-/** Fill style for healthbar health rect */
 export const UNIT_HEALTHBAR_COLOR_HEALTH = 'rgb(100, 250, 100)';
 
 /** Returns image path of the unit; pass plain to get the uncolored source (no player-color marker pixels) */

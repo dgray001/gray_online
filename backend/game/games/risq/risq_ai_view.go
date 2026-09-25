@@ -9,14 +9,20 @@ import (
 )
 
 type aiView struct {
-	player            *RisqPlayer
-	risq              *GameRisq
-	assigned_units    map[uint64]*ai.CurrentOrder
-	claimed_buildings map[uint64]bool
+	player                *RisqPlayer
+	risq                  *GameRisq
+	assigned_units        map[uint64]*ai.CurrentOrder
+	claimed_buildings     map[uint64]bool
+	ordered_foundations   map[ai.ZoneRef]uint32
+	cancelled_foundations map[ai.ZoneRef]bool
+	order_ids             map[uint64]bool
 }
 
 func newAiView(p *RisqPlayer, r *GameRisq) ai.View {
-	return &aiView{player: p, risq: r, assigned_units: map[uint64]*ai.CurrentOrder{}, claimed_buildings: map[uint64]bool{}}
+	return &aiView{
+		player: p, risq: r, assigned_units: map[uint64]*ai.CurrentOrder{}, claimed_buildings: map[uint64]bool{},
+		ordered_foundations: map[ai.ZoneRef]uint32{}, cancelled_foundations: map[ai.ZoneRef]bool{},
+	}
 }
 
 func (v *aiView) Nickname() string {
@@ -97,6 +103,8 @@ func toOrderKind(order_type OrderType) (ai.OrderKind, bool) {
 		return ai.OrderKindUngarrison, true
 	case OrderType_UnitDelete:
 		return ai.OrderKindDelete, true
+	case OrderType_UnitRenew:
+		return ai.OrderKindRenew, true
 	default:
 		return 0, false
 	}
@@ -122,6 +130,9 @@ func currentOrder(u *RisqUnit, risq *GameRisq) *ai.CurrentOrder {
 		if _, zone := invertZoneKey(uint(active.target_id), risq); zone != nil && zone.resource != nil {
 			resource_view := toResourceView(zone.resource)
 			order.TargetResource = &resource_view
+		} else if zone != nil && zone.building != nil && buildingConfigs[zone.building.building_id].isGatherable() {
+			resource_view := toGatherableBuildingView(zone.building)
+			order.TargetResource = &resource_view
 		}
 	case OrderType_UnitBuild:
 		if _, _, zone := invertBuildKey(uint(active.target_id), risq); zone != nil {
@@ -138,7 +149,7 @@ func currentOrder(u *RisqUnit, risq *GameRisq) *ai.CurrentOrder {
 			unit_view := toUnitViewShallow(target)
 			order.TargetUnit = &unit_view
 		}
-	case OrderType_UnitAttackBuilding, OrderType_UnitGarrison, OrderType_UnitRepair:
+	case OrderType_UnitAttackBuilding, OrderType_UnitGarrison, OrderType_UnitRepair, OrderType_UnitRenew:
 		if target := risq.buildings[uint64(active.target_id)]; target != nil {
 			building_view := toBuildingView(target, risq)
 			order.TargetBuilding = &building_view
@@ -171,12 +182,17 @@ func toUnitViewShallow(u *RisqUnit) ai.UnitView {
 		location_zone = u.garrisoned_in.zone
 	}
 	view := ai.UnitView{
-		InternalID:     u.internal_id,
-		UnitID:         u.unit_id,
-		Kind:           kind,
-		Location:       toZoneRef(location_zone),
-		CurrentStamina: u.current_stamina,
-		Builds:         unitBuilds(u.unit_id),
+		InternalID:       u.internal_id,
+		UnitID:           u.unit_id,
+		Type:             ai.UnitType(u.unitType()),
+		Kind:             kind,
+		Location:         toZoneRef(location_zone),
+		CurrentStamina:   u.current_stamina,
+		Builds:           unitBuilds(u.unit_id),
+		Stance:           ai.UnitStance(u.stance),
+		InterruptCurrent: u.interrupt_current,
+		AttackBack:       u.attack_back,
+		TargetPriority:   toAiTargetCategories(u.target_priority),
 	}
 	if u.garrisoned_in != nil {
 		id := u.garrisoned_in.internal_id
@@ -197,6 +213,15 @@ func toResourceView(r *RisqResource) ai.ResourceView {
 		Category:   toAiCategory(r.category()),
 		Location:   toZoneRef(r.zone),
 		AmountLeft: r.resources_left,
+	}
+}
+
+func toGatherableBuildingView(b *RisqBuilding) ai.ResourceView {
+	return ai.ResourceView{
+		InternalID: b.internal_id,
+		Category:   toAiCategory(b.gatherCategory()),
+		Location:   toZoneRef(b.zone),
+		AmountLeft: b.resources_left,
 	}
 }
 
@@ -232,13 +257,74 @@ func toBuildingView(b *RisqBuilding, risq *GameRisq) ai.BuildingView {
 		Producibles:       buildingProducibles(b, risq),
 		GarrisonCount:     len(b.garrisoned_units),
 		GarrisonCapacity:  int(b.garrison_capacity),
+		Gatherable:        buildingConfigs[b.building_id].isGatherable(),
+		ResourcesLeft:     b.resources_left,
+		Renewing:          b.renewing != nil,
+		RenewCost:         toCost(buildingConfigs[b.building_id].gather.renew_cost),
+		Health:            b.cs.health,
+		MaxHealth:         float64(b.cs.max_health),
+		CanAttack:         buildingConfigs[b.building_id].attack_type != AttackType_NONE,
 	}
+}
+
+func toAiTargetCategories(priority []TargetCategory) []ai.TargetCategory {
+	categories := make([]ai.TargetCategory, len(priority))
+	for i, c := range priority {
+		categories[i] = ai.TargetCategory(c)
+	}
+	return categories
+}
+
+func (v *aiView) playerOrderIds() map[uint64]bool {
+	if v.order_ids == nil {
+		v.order_ids = make(map[uint64]bool, len(v.player.active_orders))
+		for _, o := range v.player.active_orders {
+			v.order_ids[o.internal_id] = true
+		}
+	}
+	return v.order_ids
+}
+
+func toBuildingOrderKind(order_type OrderType) (ai.BuildingOrderKind, bool) {
+	switch order_type {
+	case OrderType_BuildingCreate:
+		return ai.BuildingOrderCreate, true
+	case OrderType_BuildingResearch:
+		return ai.BuildingOrderResearch, true
+	case OrderType_BuildingDelete:
+		return ai.BuildingOrderDelete, true
+	case OrderType_BuildingAttackUnit:
+		return ai.BuildingOrderAttackUnit, true
+	case OrderType_BuildingAttackBuilding:
+		return ai.BuildingOrderAttackBuilding, true
+	}
+	return 0, false
+}
+
+func (v *aiView) ownBuildingView(b *RisqBuilding) ai.BuildingView {
+	view := toBuildingView(b, v.risq)
+	view.AutoAttack = b.auto_attack
+	view.InterruptCurrent = b.interrupt_current
+	view.TargetPriority = toAiTargetCategories(b.target_priority)
+	cancellable := v.playerOrderIds()
+	for _, o := range b.order_queue.active_orders {
+		if kind, ok := toBuildingOrderKind(o.order_type); ok && cancellable[o.internal_id] {
+			view.ActiveOrders = append(view.ActiveOrders, ai.ActiveBuildingOrder{ID: o.internal_id, Kind: kind, ItemID: uint32(o.target_id)})
+		}
+	}
+	return view
 }
 
 func (v *aiView) unitView(u *RisqUnit) ai.UnitView {
 	view := toUnitView(u, v.risq)
 	if override, touched := v.assigned_units[u.internal_id]; touched {
 		view.CurrentOrder = override
+	}
+	cancellable := v.playerOrderIds()
+	for _, o := range u.order_queue.active_orders {
+		if kind, ok := toOrderKind(o.order_type); ok && cancellable[o.internal_id] {
+			view.ActiveOrders = append(view.ActiveOrders, ai.ActiveUnitOrder{ID: o.internal_id, Kind: kind})
+		}
 	}
 	return view
 }
@@ -297,7 +383,7 @@ func (v *aiView) Buildings() []ai.BuildingView {
 	buildings := make([]ai.BuildingView, 0, len(v.player.buildings))
 	for _, b := range v.player.buildings {
 		if b != nil && !b.deleted {
-			buildings = append(buildings, toBuildingView(b, v.risq))
+			buildings = append(buildings, v.ownBuildingView(b))
 		}
 	}
 	return sortBuildingViews(buildings)
@@ -307,7 +393,7 @@ func (v *aiView) IdleBuildings() []ai.BuildingView {
 	buildings := make([]ai.BuildingView, 0)
 	for _, b := range v.player.buildings {
 		if b != nil && !b.deleted && buildingIdle(b) && !v.claimed_buildings[b.internal_id] {
-			buildings = append(buildings, toBuildingView(b, v.risq))
+			buildings = append(buildings, v.ownBuildingView(b))
 		}
 	}
 	return sortBuildingViews(buildings)
@@ -332,6 +418,55 @@ func (v *aiView) Population() (int, int) {
 	return nonDeletedUnitCount(v.player.units), int(v.player.populationLimit())
 }
 
+func (v *aiView) foundationsByLocation() map[ai.ZoneRef]*ai.FoundationView {
+	foundations := make(map[ai.ZoneRef]*ai.FoundationView)
+	for key, f := range v.player.planned_foundations {
+		if _, zone := invertZoneKey(key, v.risq); zone != nil {
+			foundations[toZoneRef(zone)] = &ai.FoundationView{BuildingID: f.building_id, Location: toZoneRef(zone), Planned: true}
+		}
+	}
+	for location, building_id := range v.ordered_foundations {
+		foundations[location] = &ai.FoundationView{BuildingID: building_id, Location: location, Planned: true}
+	}
+	for _, b := range v.player.buildings {
+		if !b.deleted && b.underConstruction() {
+			foundations[toZoneRef(b.zone)] = &ai.FoundationView{BuildingID: b.building_id, Location: toZoneRef(b.zone)}
+		}
+	}
+	for location := range v.cancelled_foundations {
+		delete(foundations, location)
+	}
+	return foundations
+}
+
+func (v *aiView) Foundations() []ai.FoundationView {
+	by_location := v.foundationsByLocation()
+	for _, u := range v.Units() {
+		if u.CurrentOrder != nil && u.CurrentOrder.Kind == ai.OrderKindBuild && u.CurrentOrder.TargetZone != nil {
+			if f, ok := by_location[*u.CurrentOrder.TargetZone]; ok {
+				f.Builders++
+			}
+		}
+	}
+	foundations := make([]ai.FoundationView, 0, len(by_location))
+	for _, f := range by_location {
+		foundations = append(foundations, *f)
+	}
+	sort.Slice(foundations, func(i, j int) bool { return zoneRefLess(foundations[i].Location, foundations[j].Location) })
+	return foundations
+}
+
+func zoneRefLess(a ai.ZoneRef, b ai.ZoneRef) bool {
+	ka := [4]int{a.Space.X, a.Space.Y, a.Zone.X, a.Zone.Y}
+	kb := [4]int{b.Space.X, b.Space.Y, b.Zone.X, b.Zone.Y}
+	for i := range ka {
+		if ka[i] != kb[i] {
+			return ka[i] < kb[i]
+		}
+	}
+	return false
+}
+
 func (v *aiView) playerId() int {
 	return v.player.player.Player_id
 }
@@ -340,8 +475,11 @@ func (v *aiView) TurnNumber() int {
 	return int(v.risq.turn_number)
 }
 
-// True once, for every other non-eliminated player, at least one of their buildings has ever been seen
-func (v *aiView) AllEnemiesFound() bool {
+func (v *aiView) NumPlayers() int {
+	return len(v.risq.players)
+}
+
+func (v *aiView) EnemiesFound() int {
 	discovered := make(map[int]bool)
 	for _, space := range v.risq.allSpaces() {
 		for _, cache := range space.building_cache[v.playerId()] {
@@ -357,15 +495,35 @@ func (v *aiView) AllEnemiesFound() bool {
 			}
 		}
 	}
+	return len(discovered)
+}
+
+func (v *aiView) OwnedSpaces() int {
+	return v.risq.ownedCount(v.playerId())
+}
+
+func (v *aiView) Score() int {
+	return int(v.player.score)
+}
+
+func (v *aiView) BestEnemyScore() int {
+	best := 0
 	for _, p := range v.risq.players {
-		if p == v.player || p.eliminated {
-			continue
-		}
-		if !discovered[p.player.Player_id] {
-			return false
+		if p != v.player && int(p.score) > best {
+			best = int(p.score)
 		}
 	}
-	return true
+	return best
+}
+
+func (v *aiView) TechResearched(tech_id uint32) bool {
+	return v.player.researched_techs[tech_id]
+}
+
+func (v *aiView) InAttackRange(b ai.BuildingView, target ai.ZoneRef) bool {
+	building := v.risq.buildings[b.InternalID]
+	_, zone := v.resolveZone(target)
+	return building != nil && zone != nil && building.inAttackRange(zone)
 }
 
 func (v *aiView) VisibleEnemyUnits() []ai.UnitView {
@@ -418,7 +576,7 @@ func (v *aiView) NearestResource(from ai.ZoneRef, category ai.ResourceCategory) 
 		distance := int(game_utils.AxialDistance(from_space.coordinate, space.coordinate) * 6)
 		for _, zone_row := range space.zones {
 			for _, zone := range zone_row {
-				if zone.resource == nil || zone.resource.resources_left <= 0 || zone.resource.category() != fromAiCategory(category) {
+				if _, ok := v.gatherableAt(zone, category); !ok {
 					continue
 				}
 				d := distance
@@ -436,7 +594,32 @@ func (v *aiView) NearestResource(from ai.ZoneRef, category ai.ResourceCategory) 
 	if len(tied) == 0 {
 		return ai.ResourceView{}, false
 	}
-	return toResourceView(tied[v.player.rng.Intn(len(tied))].resource), true
+	return v.gatherableAt(tied[v.player.rng.Intn(len(tied))], category)
+}
+
+func (v *aiView) gatherableAt(zone *RisqZone, category ai.ResourceCategory) (ai.ResourceView, bool) {
+	if r := zone.resource; r != nil {
+		return toResourceView(r), r.resources_left > 0 && r.category() == fromAiCategory(category)
+	}
+	b := zone.building
+	if b == nil || b.deleted || b.player_id != v.playerId() || b.underConstruction() || b.resources_left <= 0 {
+		return ai.ResourceView{}, false
+	}
+	config := buildingConfigs[b.building_id]
+	if !config.isGatherable() || b.gatherCategory() != fromAiCategory(category) {
+		return ai.ResourceView{}, false
+	}
+	return toGatherableBuildingView(b), v.gathererCount(toZoneRef(zone)) < config.gather.gather_capacity
+}
+
+func (v *aiView) gathererCount(location ai.ZoneRef) int {
+	count := 0
+	for _, u := range v.Units() {
+		if u.CurrentOrder != nil && u.CurrentOrder.TargetResource != nil && u.CurrentOrder.TargetResource.Location == location {
+			count++
+		}
+	}
+	return count
 }
 
 func (v *aiView) BuildCost(building_id uint32) ai.Cost {
@@ -486,6 +669,7 @@ func (v *aiView) NearestBuildSite(from ai.ZoneRef, building_id uint32) (ai.ZoneR
 	if from_space == nil {
 		return ai.ZoneRef{}, false
 	}
+	foundations := v.foundationsByLocation()
 	var tied []*RisqZone
 	best_distance := -1
 	for _, space := range v.risq.allSpaces() {
@@ -495,7 +679,7 @@ func (v *aiView) NearestBuildSite(from ai.ZoneRef, building_id uint32) (ai.ZoneR
 		distance := int(game_utils.AxialDistance(from_space.coordinate, space.coordinate) * 6)
 		for _, zone_row := range space.zones {
 			for _, zone := range zone_row {
-				if zone.resource != nil || zone.building != nil {
+				if zone.resource != nil || zone.building != nil || foundations[toZoneRef(zone)] != nil {
 					continue
 				}
 				d := distance
@@ -531,6 +715,9 @@ func (v *aiView) GatherOrder(u ai.UnitView, target ai.ResourceView, clear_previo
 func (v *aiView) BuildOrder(u ai.UnitView, building_id uint32, target ai.ZoneRef, clear_previous bool) ai.Order {
 	v.assignUnit(u.InternalID, &ai.CurrentOrder{Kind: ai.OrderKindBuild, TargetZone: &target})
 	_, zone := v.resolveZone(target)
+	if zone.building == nil && v.player.planned_foundations[zone.coordinate_key] == nil {
+		v.ordered_foundations[target] = building_id
+	}
 	target_id := util.Pair(int(building_id), int(zone.coordinate_key))
 	return ai.Order{Subjects: []uint64{u.InternalID}, OrderType: uint8(OrderType_UnitBuild), TargetID: int64(target_id), ClearPreviousOrders: clear_previous}
 }
@@ -538,6 +725,11 @@ func (v *aiView) BuildOrder(u ai.UnitView, building_id uint32, target ai.ZoneRef
 func (v *aiView) RepairOrder(u ai.UnitView, target ai.BuildingView, clear_previous bool) ai.Order {
 	v.assignUnit(u.InternalID, &ai.CurrentOrder{Kind: ai.OrderKindRepair, TargetBuilding: &target})
 	return ai.Order{Subjects: []uint64{u.InternalID}, OrderType: uint8(OrderType_UnitRepair), TargetID: int64(target.InternalID), ClearPreviousOrders: clear_previous}
+}
+
+func (v *aiView) RenewOrder(u ai.UnitView, target ai.BuildingView, clear_previous bool) ai.Order {
+	v.assignUnit(u.InternalID, &ai.CurrentOrder{Kind: ai.OrderKindRenew, TargetBuilding: &target})
+	return ai.Order{Subjects: []uint64{u.InternalID}, OrderType: uint8(OrderType_UnitRenew), TargetID: int64(target.InternalID), ClearPreviousOrders: clear_previous}
 }
 
 func (v *aiView) AttackUnitOrder(u ai.UnitView, target ai.UnitView, clear_previous bool) ai.Order {
@@ -585,4 +777,29 @@ func (v *aiView) CreateUnitOrder(b ai.BuildingView, unit_id uint32) ai.Order {
 func (v *aiView) ResearchOrder(b ai.BuildingView, tech_id uint32) ai.Order {
 	v.claimBuilding(b.InternalID)
 	return ai.Order{Subjects: []uint64{b.InternalID}, OrderType: uint8(OrderType_BuildingResearch), TargetID: int64(tech_id)}
+}
+
+func (v *aiView) DeleteBuildingOrder(b ai.BuildingView) ai.Order {
+	v.claimBuilding(b.InternalID)
+	return ai.Order{Subjects: []uint64{b.InternalID}, OrderType: uint8(OrderType_BuildingDelete)}
+}
+
+func (v *aiView) BuildingAttackUnitOrder(b ai.BuildingView, target ai.UnitView) ai.Order {
+	v.claimBuilding(b.InternalID)
+	return ai.Order{Subjects: []uint64{b.InternalID}, OrderType: uint8(OrderType_BuildingAttackUnit), TargetID: int64(target.InternalID)}
+}
+
+func (v *aiView) BuildingAttackBuildingOrder(b ai.BuildingView, target ai.BuildingView) ai.Order {
+	v.claimBuilding(b.InternalID)
+	return ai.Order{Subjects: []uint64{b.InternalID}, OrderType: uint8(OrderType_BuildingAttackBuilding), TargetID: int64(target.InternalID)}
+}
+
+func (v *aiView) CancelOrder(order_id uint64) ai.Order {
+	return ai.Order{OrderType: uint8(OrderType_CancelOrder), TargetID: int64(order_id)}
+}
+
+func (v *aiView) CancelFoundationOrder(f ai.FoundationView) ai.Order {
+	v.cancelled_foundations[f.Location] = true
+	_, zone := v.resolveZone(f.Location)
+	return ai.Order{OrderType: uint8(OrderType_CancelFoundation), TargetID: int64(zone.coordinate_key)}
 }

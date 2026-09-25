@@ -1,12 +1,12 @@
 {
   "rules": [
     { "when": { "always": {} }, "then": [{ "action": "gather", "eligible": ["gather"] }] },
-    { "when": { "population_at_least": { "amount": 6, "unit_id": 1 } }, "then": [{ "action": "research", "tech_id": 1 }] },
+    { "when": { "population_at_least": { "amount": 6, "unit_ids": [1] } }, "then": [{ "action": "research", "tech_id": 1 }] },
     { "when": { "always": {} }, "then": [{ "action": "create", "unit_id": 1 }] },
     { "when": { "population_headroom_at_most": { "amount": 2 } }, "then": [{ "action": "build", "building_id": 2, "eligible": ["gather"] }] },
-    { "when": { "building_count_at_most": { "building_id": 22, "count": 3 } }, "then": [{ "action": "build", "building_id": 22, "eligible": ["gather"] }] },
-    { "when": { "building_count_at_most": { "building_id": 11, "count": 1 } }, "then": [{ "action": "build", "building_id": 11, "eligible": ["gather"] }] },
-    { "when": { "building_count_at_most": { "building_id": 23, "count": 3 } }, "then": [{ "action": "build", "building_id": 23, "eligible": ["gather"] }] },
+    { "when": { "building_count_at_most": { "building_ids": [22], "amount": 3 } }, "then": [{ "action": "build", "building_id": 22, "eligible": ["gather"] }] },
+    { "when": { "building_count_at_most": { "building_ids": [11], "amount": 1 } }, "then": [{ "action": "build", "building_id": 11, "eligible": ["gather"] }] },
+    { "when": { "building_count_at_most": { "building_ids": [23], "amount": 3 } }, "then": [{ "action": "build", "building_id": 23, "eligible": ["gather"] }] },
     { "when": { "population_at_least": { "amount": 6 } }, "then": [{ "action": "create", "unit_id": 11 }] },
     { "when": { "population_at_least": { "amount": 6 } }, "then": [{ "action": "create", "unit_id": 12 }] },
     { "when": { "population_at_least": { "amount": 8 } }, "then": [{ "action": "create", "unit_id": 13 }] },

@@ -579,7 +579,6 @@ export declare interface RisqOrderFromServer {
   subjects: number[];
 }
 
-/** Converts a server response to a frontend risq game */
 /** One instance per internal_id per snapshot, so player, space and zone containers share the same objects */
 declare interface RisqEntityRegistry {
   units: Map<number, RisqUnit>;
@@ -811,7 +810,6 @@ export function serverToRisqZone(server_zone: RisqZoneFromServer, registry: Risq
   };
 }
 
-/** Converts a server response to a frontend risq zone */
 export function serverToRisqBuilding(
   server_building: RisqBuildingFromServer | undefined,
   registry: RisqEntityRegistry
@@ -858,7 +856,6 @@ export function serverToRisqResource(
   return resource;
 }
 
-/** Converts a server response to a frontend risq zone */
 export function serverToRisqUnit(
   server_unit: RisqUnitFromServer | undefined,
   registry: RisqEntityRegistry
