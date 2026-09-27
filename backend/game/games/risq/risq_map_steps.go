@@ -3,8 +3,10 @@ package risq
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"math"
 	"math/rand"
+	"slices"
 	"sort"
 
 	"github.com/dgray001/gray_online/game/game_utils"
@@ -359,16 +361,45 @@ func stepEnsureConnectivity(ctx *mapScriptContext, raw json.RawMessage) error {
 	return nil
 }
 
-func weightedResourceCategory(weights map[string]float64, rng *rand.Rand) []uint32 {
-	type entry struct {
-		ids    []uint32
-		weight float64
+type scatterEntry struct {
+	ids    []uint32
+	weight float64
+}
+
+// Fixed order keeps a seeded scatter reproducible regardless of json map ordering
+var scatterCategoryPools = []struct {
+	name string
+	ids  []uint32
+}{
+	{"food", uniformFoodIds}, {"wood", uniformWoodIds}, {"grove", uniformGroveIds}, {"forest", uniformForestIds}, {"stone", uniformStoneIds},
+}
+
+func scatterEntries(p resourceScatterParams) ([]scatterEntry, error) {
+	entries := make([]scatterEntry, 0)
+	known := make(map[string]bool, len(scatterCategoryPools))
+	for _, pool := range scatterCategoryPools {
+		known[pool.name] = true
+		if w := p.CategoryWeights[pool.name]; w > 0 {
+			entries = append(entries, scatterEntry{pool.ids, w})
+		}
 	}
-	entries := []entry{
-		{uniformFoodIds, weights["food"]},
-		{uniformWoodIds, weights["wood"]},
-		{uniformStoneIds, weights["stone"]},
+	for name := range p.CategoryWeights {
+		if !known[name] {
+			return nil, fmt.Errorf("unknown resource_scatter category %q", name)
+		}
 	}
+	for _, id := range slices.Sorted(maps.Keys(p.ResourceWeights)) {
+		if _, ok := resourceConfigs[id]; !ok {
+			return nil, fmt.Errorf("unknown resource_scatter resource id %d", id)
+		}
+		if w := p.ResourceWeights[id]; w > 0 {
+			entries = append(entries, scatterEntry{[]uint32{id}, w})
+		}
+	}
+	return entries, nil
+}
+
+func pickScatterIds(entries []scatterEntry, rng *rand.Rand) []uint32 {
 	total := 0.0
 	for _, e := range entries {
 		total += e.weight
@@ -387,8 +418,11 @@ func weightedResourceCategory(weights map[string]float64, rng *rand.Rand) []uint
 }
 
 type resourceScatterParams struct {
-	Chance          ScriptExpr         `json:"chance"`
-	CategoryWeights map[string]float64 `json:"category_weights"`
+	Chance ScriptExpr `json:"chance"`
+	// keys: food, wood (groves + forests), grove, forest, stone
+	CategoryWeights map[string]float64 `json:"category_weights,omitempty"`
+	// exact resource ids, weighted against the categories
+	ResourceWeights map[uint32]float64 `json:"resource_weights,omitempty"`
 }
 
 func stepResourceScatter(ctx *mapScriptContext, raw json.RawMessage) error {
@@ -400,6 +434,10 @@ func stepResourceScatter(ctx *mapScriptContext, raw json.RawMessage) error {
 	if err != nil {
 		return err
 	}
+	entries, err := scatterEntries(p)
+	if err != nil {
+		return err
+	}
 	for _, space := range ctx.allSpaces() {
 		for _, zone := range space.getZonesAsRandomArray(false, ctx.rng) {
 			if zone.resource != nil || zone.building != nil {
@@ -408,7 +446,7 @@ func stepResourceScatter(ctx *mapScriptContext, raw json.RawMessage) error {
 			if ctx.rng.Float64() >= chance {
 				continue
 			}
-			ids := weightedResourceCategory(p.CategoryWeights, ctx.rng)
+			ids := pickScatterIds(entries, ctx.rng)
 			if len(ids) == 0 {
 				continue
 			}
@@ -497,6 +535,17 @@ func stepResourceMinSpacing(ctx *mapScriptContext, raw json.RawMessage) error {
 type playerStartResourceJSON struct {
 	ResourceId uint32     `json:"resource_id"`
 	Count      ScriptExpr `json:"count"`
+	// optional [min, max] space distance from the start space: [0, 0] is the start space, [1, 1] the ring around it
+	Distance []int `json:"distance,omitempty"`
+}
+
+// One start resource relative to a player's start, laid out once and rotated to each player so starts are symmetric
+type startResourceSlot struct {
+	resource_id  uint32
+	min_distance int
+	max_distance int
+	space_offset game_utils.Coordinate2D
+	zone         game_utils.Coordinate2D
 }
 
 // Targets one zone relative to a player's start space, for deterministic map-script placement
@@ -712,6 +761,58 @@ func resolveRowsPlayerStarts(ctx *mapScriptContext, starting_distance int) ([]pl
 	return starts, nil
 }
 
+func planStartResources(ctx *mapScriptContext, resources []playerStartResourceJSON, area_size int) ([]startResourceSlot, error) {
+	used := make(map[[4]int]bool)
+	slots := make([]startResourceSlot, 0)
+	for _, r := range resources {
+		count, err := r.Count.resolveInt(ctx.vars)
+		if err != nil {
+			return nil, err
+		}
+		lo, hi := 0, area_size
+		if len(r.Distance) == 2 {
+			lo, hi = r.Distance[0], min(r.Distance[1], area_size)
+		} else if len(r.Distance) != 0 {
+			return nil, fmt.Errorf("resource %d distance must be [min, max]", r.ResourceId)
+		}
+		candidates := make([][4]int, 0)
+		for dq := -hi; dq <= hi; dq++ {
+			for dr := -hi; dr <= hi; dr++ {
+				if d := int(game_utils.AxialDistance(game_utils.Coordinate2D{}, game_utils.Coordinate2D{X: dq, Y: dr})); d < lo || d > hi {
+					continue
+				}
+				for _, z := range game_utils.AxialDirectionVectors() {
+					candidates = append(candidates, [4]int{dq, dr, z.X, z.Y})
+				}
+			}
+		}
+		candidates = util.ShuffleFrom(ctx.rng, candidates)
+		placed := 0
+		for _, c := range candidates {
+			if placed >= count {
+				break
+			}
+			if used[c] {
+				continue
+			}
+			used[c] = true
+			placed++
+			slots = append(slots, startResourceSlot{resource_id: r.ResourceId, min_distance: lo, max_distance: hi,
+				space_offset: game_utils.Coordinate2D{X: c[0], Y: c[1]}, zone: game_utils.Coordinate2D{X: c[2], Y: c[3]}})
+		}
+	}
+	return slots, nil
+}
+
+func directionIndex(d game_utils.Coordinate2D) int {
+	for i, v := range game_utils.AxialDirectionVectors() {
+		if v == d {
+			return i
+		}
+	}
+	return 0
+}
+
 func stepPlayerStarts(ctx *mapScriptContext, raw json.RawMessage) error {
 	p, err := decodeStepParams[playerStartsParams](raw, "player_starts")
 	if err != nil {
@@ -746,6 +847,10 @@ func stepPlayerStarts(ctx *mapScriptContext, raw json.RawMessage) error {
 	for _, start := range starts {
 		home_space_keys[start.space.coordinate_key] = true
 	}
+	slots, err := planStartResources(ctx, p.Resources, area_size)
+	if err != nil {
+		return err
+	}
 	for i, start := range starts {
 		space := start.space
 		player := ctx.risq.players[i]
@@ -769,12 +874,10 @@ func stepPlayerStarts(ctx *mapScriptContext, raw json.RawMessage) error {
 			footprint_zones = append(footprint_zones, s.getZonesAsRandomArray(false, ctx.rng)...)
 		}
 		footprint_zones = util.ShuffleFrom(ctx.rng, footprint_zones)
-		zone_idx := 0
-		nextFreeZone := func() *RisqZone {
-			for zone_idx < len(footprint_zones) {
-				z := footprint_zones[zone_idx]
-				zone_idx++
-				if z.resource == nil && z.building == nil {
+		freeZoneWithin := func(lo int, hi int) *RisqZone {
+			for _, z := range footprint_zones {
+				d := int(game_utils.AxialDistance(space.coordinate, z.space.coordinate))
+				if d >= lo && d <= hi && z.resource == nil && z.building == nil {
 					return z
 				}
 			}
@@ -819,17 +922,23 @@ func stepPlayerStarts(ctx *mapScriptContext, raw json.RawMessage) error {
 			}
 			target.terrain_override = o.TerrainId
 		}
-		for _, r := range p.Resources {
-			count, err := r.Count.resolveInt(ctx.vars)
-			if err != nil {
-				return err
+		in_footprint := make(map[uint]bool, len(footprint))
+		for _, s := range footprint {
+			in_footprint[s.coordinate_key] = true
+		}
+		rotation := directionIndex(start.direction) - directionIndex(starts[0].direction)
+		for _, slot := range slots {
+			offset := rotateAxial(slot.space_offset, rotation)
+			local := rotateAxial(slot.zone, rotation)
+			var target *RisqZone
+			if s := ctx.risq.getSpace(&game_utils.Coordinate2D{X: space.coordinate.X + offset.X, Y: space.coordinate.Y + offset.Y}); s != nil && in_footprint[s.coordinate_key] {
+				target = s.getZone(&local)
 			}
-			for range count {
-				target := nextFreeZone()
-				if target == nil {
-					break
-				}
-				target.space.setResource(&target.coordinate, createRisqResource(ctx.risq.nextResourceInternalId(), r.ResourceId))
+			if target == nil || target.resource != nil || target.building != nil {
+				target = freeZoneWithin(slot.min_distance, slot.max_distance)
+			}
+			if target != nil {
+				target.space.setResource(&target.coordinate, createRisqResource(ctx.risq.nextResourceInternalId(), slot.resource_id))
 			}
 		}
 	}

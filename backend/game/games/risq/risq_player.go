@@ -1,23 +1,17 @@
 package risq
 
 import (
-	"embed"
 	"encoding/json"
+	"fmt"
 	"iter"
 	"maps"
 	"math/rand"
-	"path"
+	"os"
 
 	"github.com/dgray001/gray_online/game"
 	"github.com/dgray001/gray_online/game/games/risq/ai"
 	"github.com/gin-gonic/gin"
 )
-
-//go:embed config/ai/*
-var aiConfigs embed.FS
-
-//go:embed config/ai/default.json
-var defaultAiConfig []byte
 
 type RisqPlayer struct {
 	player                *game.Player
@@ -59,11 +53,15 @@ func (p *RisqPlayer) stopAi() {
 }
 
 func (p *RisqPlayer) createAiModel(config_path string) {
-	targetPath := path.Join("config/ai", config_path+".json")
-	data, read_err := aiConfigs.ReadFile(targetPath)
+	data, read_err := readConfigFile("ai", config_path+".json")
 	if read_err != nil {
-		// TODO: log error
-		data = defaultAiConfig
+		fmt.Fprintln(os.Stderr, "ai config", config_path, "unreadable, using default:", read_err)
+		data, read_err = readConfigFile("ai", "default.json")
+	}
+	if read_err != nil {
+		fmt.Fprintln(os.Stderr, "default ai config unreadable:", read_err)
+		p.ai_model = ai.NoopModel{}
+		return
 	}
 	var raw map[string]any
 	unmarshal_err := json.Unmarshal(data, &raw)

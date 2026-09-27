@@ -173,5 +173,8 @@ func (r *GameRisq) logBoard() {
 }
 
 var uniformFoodIds = []uint32{1, 2}
-var uniformWoodIds = []uint32{11, 12, 13, 14, 15, 16}
-var uniformStoneIds = []uint32{21}
+var uniformGroveIds = []uint32{11, 12, 13, 14, 15, 16}
+var uniformForestIds = []uint32{21, 22, 23, 24, 25, 26}
+var uniformWoodIds = append(append([]uint32{}, uniformGroveIds...), uniformForestIds...)
+var uniformStoneIds = []uint32{41}
+var uniformGoldIds = []uint32{51}

@@ -1,13 +1,9 @@
 package risq
 
 import (
-	_ "embed"
 	"encoding/json"
 	"fmt"
 )
-
-//go:embed config/techs.json
-var techsConfigJSON []byte
 
 type TechConfig struct {
 	display_name          string
@@ -44,9 +40,9 @@ type techConfigJSON struct {
 
 var techConfigs map[uint32]TechConfig
 
-func init() {
+func loadTechConfig(data []byte) {
 	var entries []techConfigJSON
-	if err := json.Unmarshal(techsConfigJSON, &entries); err != nil {
+	if err := json.Unmarshal(data, &entries); err != nil {
 		panic(fmt.Sprintf("failed to parse config/techs.json: %v", err))
 	}
 	techConfigs = make(map[uint32]TechConfig, len(entries))

@@ -1,5 +1,5 @@
 import { DwgElement } from '../../../dwg_element';
-import { isTypingInInput, until } from '../../../../scripts/util';
+import { isDialogOpen, isTypingInInput, until } from '../../../../scripts/util';
 import type { Point2D } from '../objects2d';
 import { rotatePoint, subtractPoint2D } from '../objects2d';
 import { configDraw } from '../canvas_components/canvas_component';
@@ -284,7 +284,9 @@ export class DwgCanvasBoard extends DwgElement {
       const old_mouse = this.mouse;
       const dif_mouse = subtractPoint2D(new_mouse, old_mouse);
       this.mouse = new_mouse;
-      if (this.dragging) {
+      if (this.dragging && isDialogOpen()) {
+        this.dragging = false;
+      } else if (this.dragging) {
         if (this.drag_button === 2) {
           const pivot = this.transform.offset;
           const prev_angle = Math.atan2(old_mouse.y - pivot.y, old_mouse.x - pivot.x);
@@ -303,6 +305,9 @@ export class DwgCanvasBoard extends DwgElement {
     });
     this.addEventListener('mousedown', (e: MouseEvent) => {
       e.stopImmediatePropagation();
+      if (isDialogOpen()) {
+        return;
+      }
       if (e.button === 2 && e.detail >= 2) {
         this.setRotation(0);
         return;
@@ -349,8 +354,14 @@ export class DwgCanvasBoard extends DwgElement {
     );
     document.body.addEventListener('keydown', this.handleKeydown);
     document.body.addEventListener('keyup', this.handleKeyup);
+    document.addEventListener('mousemove', this.handleDocumentMouseMove);
     window.addEventListener('blur', this.handleBlur);
   }
+
+  private handleDocumentMouseMove = (e: MouseEvent) => {
+    const rect = this.canvas.getBoundingClientRect();
+    this.mouse = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  };
 
   private handleBlur = () => {
     this.sticky_pan = { up: false, down: false, left: false, right: false };
@@ -361,7 +372,7 @@ export class DwgCanvasBoard extends DwgElement {
   };
 
   private handleKeydown = (e: KeyboardEvent) => {
-    if (!this.hovered || isTypingInInput()) {
+    if (!this.hovered || isTypingInInput() || isDialogOpen()) {
       return;
     }
     switch (e.key) {
@@ -410,10 +421,14 @@ export class DwgCanvasBoard extends DwgElement {
     this.resize_observer.disconnect();
     document.body.removeEventListener('keydown', this.handleKeydown);
     document.body.removeEventListener('keyup', this.handleKeyup);
+    document.removeEventListener('mousemove', this.handleDocumentMouseMove);
     window.removeEventListener('blur', this.handleBlur);
   }
 
   private tick() {
+    if (isDialogOpen()) {
+      return;
+    }
     const d_view = { x: 0, y: 0 };
     const arrow_key_speed = 20;
     let moved = false;
@@ -499,7 +514,7 @@ export class DwgCanvasBoard extends DwgElement {
   }
 
   private drawCursor() {
-    if (this.hovered && this.cursor_image?.complete) {
+    if (this.hovered && !isDialogOpen() && this.cursor_image?.complete) {
       this.canvas.style.cursor = 'none';
       configDraw(
         this.ctx,

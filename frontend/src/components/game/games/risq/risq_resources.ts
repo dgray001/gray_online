@@ -33,12 +33,31 @@ export function resourceImage(resource: RisqResource): string {
       case 16:
         filename = 'tree_walnut';
         break;
-      // stone
+      // wood (forest variants, denser but same species)
       case 21:
+        filename = 'tree_cedar';
+        break;
+      case 22:
+        filename = 'tree_dead';
+        break;
+      case 23:
+        filename = 'tree_maple';
+        break;
+      case 24:
+        filename = 'tree_oak';
+        break;
+      case 25:
+        filename = 'tree_pine';
+        break;
+      case 26:
+        filename = 'tree_walnut';
+        break;
+      // stone
+      case 41:
         filename = 'stonemine';
         break;
       // gold
-      case 31:
+      case 51:
         filename = 'goldmine';
         break;
       default:
@@ -49,15 +68,24 @@ export function resourceImage(resource: RisqResource): string {
   return `risq/resources/${filename}`;
 }
 
+// resource_ids for dense "forest" resource variants (as opposed to sparse "grove" resources of the same
+// species), which get a scatter of tree icons drawn across their whole zone instead of just their own icon.
+// Add each forest resource_id here once it's added to config/resources.json.
+const FOREST_RESOURCE_IDS = new Set<number>([21, 22, 23, 24, 25, 26]);
+
+export function isForestResource(resource: RisqResource): boolean {
+  return FOREST_RESOURCE_IDS.has(resource.resource_id);
+}
+
 /** Returns the resource gathered from the resource type */
 export function resourceType(resource: RisqResource): RisqResourceType {
   if (resource.resource_id < 11) {
     return RisqResourceType.FOOD;
-  } else if (resource.resource_id < 21) {
-    return RisqResourceType.WOOD;
   } else if (resource.resource_id < 31) {
+    return RisqResourceType.WOOD;
+  } else if (resource.resource_id < 51) {
     return RisqResourceType.STONE;
-  } else if (resource.resource_id < 41) {
+  } else if (resource.resource_id < 61) {
     return RisqResourceType.GOLD;
   }
   return RisqResourceType.ERROR;

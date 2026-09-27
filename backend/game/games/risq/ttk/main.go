@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/dgray001/gray_online/game/games/risq"
@@ -49,6 +50,10 @@ func main() {
 	unitsOnly := flag.Bool("units", false, "Only show units in the target columns")
 	barracksTechs := flag.Bool("barracks-techs", false, "Show tech-combo TTK tables for villager and the two barracks units (1, 11, 12)")
 	flag.Parse()
+	if err := risq.LoadConfig("../config"); err != nil {
+		fmt.Fprintln(os.Stderr, "loading risq config:", err)
+		os.Exit(1)
+	}
 
 	if *barracksTechs {
 		ids := []uint32{1, 11, 12}

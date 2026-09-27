@@ -1,20 +1,12 @@
 package risq
 
 import (
-	"embed"
 	"encoding/json"
 	"fmt"
 	"math/rand"
-	"path"
 
 	"github.com/dgray001/gray_online/game/game_utils"
 )
-
-//go:embed config/maps/scripted/*
-var mapScripts embed.FS
-
-//go:embed config/maps/scripted/default.json
-var defaultMapScript []byte
 
 type mapScriptStepJSON struct {
 	Step   string          `json:"step"`
@@ -62,9 +54,11 @@ func newMapScriptVars(num_players int, board_size uint16, total_spaces int) map[
 }
 
 func loadMapScript(name string) ([]mapScriptStepJSON, error) {
-	data, err := mapScripts.ReadFile(path.Join("config/maps/scripted", name+".json"))
+	data, err := readConfigFile("maps", "scripted", name+".json")
 	if err != nil {
-		data = defaultMapScript
+		if data, err = readConfigFile("maps", "scripted", "default.json"); err != nil {
+			return nil, fmt.Errorf("no map script %q and no default: %v", name, err)
+		}
 	}
 	var steps []mapScriptStepJSON
 	if err := json.Unmarshal(data, &steps); err != nil {

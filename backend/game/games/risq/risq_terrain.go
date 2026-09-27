@@ -1,14 +1,10 @@
 package risq
 
 import (
-	_ "embed"
 	"encoding/json"
 	"fmt"
 	"math/rand"
 )
-
-//go:embed config/terrains.json
-var terrainsConfigJSON []byte
 
 const defaultTerrainId uint32 = 1
 
@@ -79,9 +75,9 @@ var terrainIdsByType map[TerrainType][]uint32
 var lowestIntraMoveCost uint = 1
 var lowestInterMoveCost uint = 1
 
-func init() {
+func loadTerrainConfig(data []byte) {
 	var types []terrainTypeJSON
-	if err := json.Unmarshal(terrainsConfigJSON, &types); err != nil {
+	if err := json.Unmarshal(data, &types); err != nil {
 		panic(fmt.Sprintf("failed to parse config/terrains.json: %v", err))
 	}
 	terrainConfigs = make(map[uint32]TerrainConfig)

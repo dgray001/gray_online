@@ -1,7 +1,6 @@
 package risq
 
 import (
-	_ "embed"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -9,9 +8,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
-
-//go:embed config/buildings.json
-var buildingsConfigJSON []byte
 
 type BuildingConfig struct {
 	display_name                 string
@@ -173,9 +169,9 @@ type buildingConfigJSON struct {
 
 var buildingConfigs map[uint32]BuildingConfig
 
-func init() {
+func loadBuildingConfig(data []byte) {
 	var entries []buildingConfigJSON
-	if err := json.Unmarshal(buildingsConfigJSON, &entries); err != nil {
+	if err := json.Unmarshal(data, &entries); err != nil {
 		panic(fmt.Sprintf("failed to parse config/buildings.json: %v", err))
 	}
 	buildingConfigs = make(map[uint32]BuildingConfig, len(entries))

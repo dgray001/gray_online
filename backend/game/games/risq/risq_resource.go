@@ -1,7 +1,6 @@
 package risq
 
 import (
-	_ "embed"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -54,9 +53,6 @@ func (r *RisqResource) category() RisqResourceCategory {
 	return r.resource_category
 }
 
-//go:embed config/resources.json
-var resourcesConfigJSON []byte
-
 type ResourceConfig struct {
 	display_name       string
 	category           RisqResourceCategory
@@ -76,9 +72,9 @@ type resourceConfigJSON struct {
 
 var resourceConfigs map[uint32]ResourceConfig
 
-func init() {
+func loadResourceConfig(data []byte) {
 	var entries []resourceConfigJSON
-	if err := json.Unmarshal(resourcesConfigJSON, &entries); err != nil {
+	if err := json.Unmarshal(data, &entries); err != nil {
 		panic(fmt.Sprintf("failed to parse config/resources.json: %v", err))
 	}
 	resourceConfigs = make(map[uint32]ResourceConfig, len(entries))

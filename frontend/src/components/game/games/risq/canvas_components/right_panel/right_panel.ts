@@ -230,9 +230,12 @@ export class RisqRightPanel implements CanvasComponent {
       this.layoutButtons();
       if (this.hasIdleUnits()) {
         this.next_idle_button.draw(ctx, transform, dt);
+        this.next_idle_button.drawTooltip(ctx, transform, this.risq, dt);
         this.submit_icon_button.draw(ctx, transform, dt);
+        this.submit_icon_button.drawTooltip(ctx, transform, this.risq, dt);
       } else {
         this.submit_button.draw(ctx, transform, dt);
+        this.submit_button.drawTooltip(ctx, transform, this.risq, dt);
       }
     }
     this.open_button.draw(ctx, transform, dt);

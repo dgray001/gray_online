@@ -1,19 +1,15 @@
 package risq
 
 import (
-	_ "embed"
 	"encoding/json"
 	"fmt"
 )
 
-//go:embed config/bonuses.json
-var bonusesConfigJSON []byte
-
 var bonusConfigs []TechConfig
 
-func init() {
+func loadBonusConfig(data []byte) {
 	var entries []techConfigJSON
-	if err := json.Unmarshal(bonusesConfigJSON, &entries); err != nil {
+	if err := json.Unmarshal(data, &entries); err != nil {
 		panic(fmt.Sprintf("failed to parse config/bonuses.json: %v", err))
 	}
 	bonusConfigs = make([]TechConfig, len(entries))

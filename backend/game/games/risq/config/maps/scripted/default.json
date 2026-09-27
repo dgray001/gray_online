@@ -60,7 +60,7 @@
   },
   {
     "step": "resource_scatter",
-    "params": { "chance": 0.3, "category_weights": { "food": 0.1, "wood": 0.8, "stone": 0.1 } }
+    "params": { "chance": 0.15, "category_weights": { "grove": 0.4, "forest": 0.35, "food": 0.15, "stone": 0.1 } }
   },
   {
     "step": "player_starts",
@@ -77,12 +77,19 @@
         { "building_id": 1, "terrain_override": 6, "target": { "zone": "center" } }
       ],
       "resources": [
-        { "resource_id": 1, "count": 4 },
-        { "resource_id": 2, "count": 4 },
-        { "resource_id": 11, "count": 2 },
-        { "resource_id": 13, "count": 2 },
-        { "resource_id": 14, "count": 2 },
-        { "resource_id": 21, "count": 2 }
+        { "resource_id": 11, "count": 1, "distance": [0, 0] },
+        { "resource_id": 13, "count": 1, "distance": [0, 0] },
+        { "resource_id": 2, "count": 1, "distance": [0, 0] },
+        { "resource_id": 1, "count": 1, "distance": [0, 0] },
+        { "resource_id": 14, "count": 1, "distance": [1, 1] },
+        { "resource_id": 15, "count": 1, "distance": [1, 1] },
+        { "resource_id": 16, "count": 1, "distance": [1, 1] },
+        { "resource_id": 21, "count": 1, "distance": [1, 1] },
+        { "resource_id": 23, "count": 1, "distance": [1, 1] },
+        { "resource_id": 24, "count": 1, "distance": [1, 1] },
+        { "resource_id": 2, "count": 2, "distance": [1, 1] },
+        { "resource_id": 1, "count": 2, "distance": [1, 1] },
+        { "resource_id": 41, "count": 2, "distance": [1, 1] }
       ]
     }
   },

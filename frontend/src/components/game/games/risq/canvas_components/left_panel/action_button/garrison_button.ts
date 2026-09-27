@@ -1,6 +1,8 @@
 import type { DwgRisq } from '../../../risq';
 import { RisqOrderType } from '../../../risq_data';
 import { RisqActionButton } from './action_button';
+import { getSettings } from '../../../../../../../scripts/settings_store';
+import { RisqHotkeyAction } from '../../../risq_hotkeys';
 
 export declare interface GarrisonButtonConfig {
   row: number;
@@ -36,6 +38,8 @@ export class RisqGarrisonButton extends RisqActionButton {
 
   override dataRefreshed(): void {
     this.armed = !this.ungarrison && this.risq.getArmedOrder() === RisqOrderType.OrderType_UnitGarrison;
+    const hotkey_action = this.ungarrison ? RisqHotkeyAction.UNGARRISON : RisqHotkeyAction.GARRISON;
+    this.setHotkeyCombo(getSettings().risq_hotkeys.actions[hotkey_action]);
   }
 
   protected released(): void {

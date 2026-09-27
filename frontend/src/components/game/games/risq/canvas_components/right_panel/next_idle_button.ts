@@ -1,8 +1,16 @@
+import type { BoardTransformData } from '../../../../util/canvas_board/canvas_board';
 import { DwgRectButton } from '../../../../util/canvas_components/button/rect_button';
 import type { DwgRisq } from '../../risq';
+import { RisqButtonTooltip } from '../risq_tooltip';
+import { getSettings } from '../../../../../../scripts/settings_store';
+import { RisqHotkeyAction, hotkeyDisplayString } from '../../risq_hotkeys';
 
 export class RisqNextIdleButton extends DwgRectButton {
   private risq: DwgRisq;
+  private tooltip = new RisqButtonTooltip(() => ({
+    title: 'Next Idle Unit',
+    hotkey: hotkeyDisplayString(getSettings().risq_hotkeys.actions[RisqHotkeyAction.NEXT_IDLE]),
+  }));
 
   constructor(risq: DwgRisq, h: number) {
     super({
@@ -42,5 +50,9 @@ export class RisqNextIdleButton extends DwgRectButton {
     if (this.isHovering()) {
       this.risq.selectNextIdleUnit();
     }
+  }
+
+  drawTooltip(ctx: CanvasRenderingContext2D, transform: BoardTransformData, risq: DwgRisq, dt: number) {
+    this.tooltip.draw(ctx, transform, risq, dt, this.isHovering(), this.isPressed());
   }
 }

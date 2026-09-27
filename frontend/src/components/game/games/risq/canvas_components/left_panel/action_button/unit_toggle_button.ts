@@ -1,7 +1,14 @@
 import type { DwgRisq } from '../../../risq';
 import { RisqActionButton, type RisqActionButtonConfig } from './action_button';
+import { getSettings } from '../../../../../../../scripts/settings_store';
+import { RisqHotkeyAction } from '../../../risq_hotkeys';
 
 export type UnitToggleField = 'interrupt_current' | 'attack_back';
+
+const TOGGLE_HOTKEY_ACTIONS: Record<UnitToggleField, RisqHotkeyAction> = {
+  interrupt_current: RisqHotkeyAction.TOGGLE_INTERRUPT_CURRENT,
+  attack_back: RisqHotkeyAction.TOGGLE_ATTACK_BACK,
+};
 
 export declare interface UnitToggleButtonConfig extends RisqActionButtonConfig {
   unit_internal_ids: number[];
@@ -29,6 +36,7 @@ export class RisqUnitToggleButton extends RisqActionButton {
     const player = this.risq.getPlayer();
     const values = this.unit_internal_ids.map((id) => player?.units.get(id)?.[this.field]);
     this.active = values.length > 0 && values.every((value) => value === true);
+    this.setHotkeyCombo(getSettings().risq_hotkeys.actions[TOGGLE_HOTKEY_ACTIONS[this.field]]);
   }
 
   protected released(): void {

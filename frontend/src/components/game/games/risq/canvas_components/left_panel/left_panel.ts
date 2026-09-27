@@ -324,14 +324,21 @@ export class RisqLeftPanel implements CanvasComponent {
           col: 0,
           unit_internal_ids,
           field: 'interrupt_current',
-          image_path: '',
+          image_path: 'icons/interrupt_current128',
           description: 'Interrupt Current',
         },
         this.risq,
         0
       ),
       new RisqUnitToggleButton(
-        { row: 2, col: 1, unit_internal_ids, field: 'attack_back', image_path: '', description: 'Attack Back' },
+        {
+          row: 2,
+          col: 1,
+          unit_internal_ids,
+          field: 'attack_back',
+          image_path: 'icons/attack_back128',
+          description: 'Attack Back',
+        },
         this.risq,
         0
       )

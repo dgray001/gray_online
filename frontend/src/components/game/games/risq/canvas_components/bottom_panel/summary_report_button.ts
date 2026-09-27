@@ -1,6 +1,8 @@
 import type { DwgRisq } from '../../risq';
 import { RisqActionButton } from '../left_panel/action_button/action_button';
 import { RISQ_MESSAGE_WARNING_COLOR } from '../message_queue';
+import { getSettings } from '../../../../../../scripts/settings_store';
+import { RisqHotkeyAction } from '../../risq_hotkeys';
 
 export class RisqSummaryReportButton extends RisqActionButton {
   private risq: DwgRisq;
@@ -12,6 +14,7 @@ export class RisqSummaryReportButton extends RisqActionButton {
 
   override dataRefreshed(): void {
     this.dimmed = !this.risq.getLastTurnReport();
+    this.setHotkeyCombo(getSettings().risq_hotkeys.actions[RisqHotkeyAction.SUMMARY_REPORT]);
   }
 
   protected released(): void {

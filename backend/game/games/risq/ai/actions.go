@@ -22,6 +22,7 @@ type balancedGatherAction struct {
 type createAction struct {
 	buildingFiltered
 	unit_id uint32
+	queue   int
 }
 
 type researchAction struct {
@@ -144,7 +145,7 @@ func (a *balancedGatherAction) ToOrders(view View, internals *Internals) []Order
 }
 
 func (a *createAction) ToOrders(view View, internals *Internals) []Order {
-	return createUnits(view, internals, a.unit_id, a.buildings)
+	return createUnits(view, internals, a.unit_id, a.buildings, a.queue)
 }
 
 func (a *researchAction) ToOrders(view View, internals *Internals) []Order {
@@ -352,7 +353,7 @@ func (a *buildNextInQAction) ToOrders(view View, internals *Internals) []Order {
 
 func (a *createNextInQAction) ToOrders(view View, internals *Internals) []Order {
 	for _, q := range selectFromQueue(view, internals, a.weight, a.prioritize, a.depth, QUnit) {
-		if orders := createUnits(view, internals, *q.ID, buildingFilter{}); len(orders) > 0 {
+		if orders := createUnits(view, internals, *q.ID, buildingFilter{}, 1); len(orders) > 0 {
 			return orders
 		}
 	}
@@ -376,7 +377,7 @@ func (a *produceNextInQAction) ToOrders(view View, internals *Internals) []Order
 		case QBuilding:
 			orders = buildWith(view, internals, units, *q.ID, a.max)
 		case QUnit:
-			orders = createUnits(view, internals, *q.ID, buildingFilter{})
+			orders = createUnits(view, internals, *q.ID, buildingFilter{}, 1)
 		case QTech:
 			orders = researchTech(view, internals, *q.ID, buildingFilter{})
 		}
@@ -431,7 +432,13 @@ type fillBucketAction struct {
 func (a *fillBucketAction) ToOrders(view View, internals *Internals) []Order {
 	b := internals.bucket(a.bucket)
 	need := b.Desired - len(b.Members)
-	for _, u := range a.filter.apply(eligibleUnits(view, a.eligible), anyUnit) {
+	candidates := a.filter.apply(eligibleUnits(view, a.eligible), anyUnit)
+	if gather, ok := b.Task.(*gatherAction); ok {
+		sort.SliceStable(candidates, func(i, j int) bool {
+			return fillRank(candidates[i], gather.category) < fillRank(candidates[j], gather.category)
+		})
+	}
+	for _, u := range candidates {
 		if need <= 0 {
 			break
 		}
@@ -442,6 +449,17 @@ func (a *fillBucketAction) ToOrders(view View, internals *Internals) []Order {
 		need--
 	}
 	return nil
+}
+
+// Prefers units already doing the bucket's gathering, then idle ones, so filling doesn't pull a unit off other work
+func fillRank(u UnitView, category ResourceCategory) int {
+	if u.CurrentOrder == nil {
+		return 1
+	}
+	if u.CurrentOrder.TargetResource != nil && u.CurrentOrder.TargetResource.Category == category {
+		return 0
+	}
+	return 2
 }
 
 type runBucketAction struct {

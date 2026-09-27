@@ -5,6 +5,8 @@ import { RisqOrderType, canAffordCost } from '../../../risq_data';
 import { techImage } from '../../../risq_techs';
 import { RISQ_MESSAGE_WARNING_COLOR } from '../../message_queue';
 import type { RisqTooltipData } from '../../risq_tooltip';
+import { getSettings } from '../../../../../../../scripts/settings_store';
+import { hotkeyDisplayString } from '../../../risq_hotkeys';
 
 export declare interface ResearchButtonConfig {
   building_id: number;
@@ -66,6 +68,7 @@ export class RisqResearchButton extends RisqRichTooltipActionButton {
       description: this.producible.description,
       cost: this.producible.cost,
       stamina_cost: this.producible.stamina_cost,
+      hotkey: hotkeyDisplayString(getSettings().risq_hotkeys.research_tech[this.producible.id]),
     };
   }
 }

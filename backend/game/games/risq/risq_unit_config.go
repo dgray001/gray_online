@@ -1,13 +1,9 @@
 package risq
 
 import (
-	_ "embed"
 	"encoding/json"
 	"fmt"
 )
-
-//go:embed config/units.json
-var unitsConfigJSON []byte
 
 func parseUnitType(s string) (UnitType, error) {
 	switch s {
@@ -138,9 +134,9 @@ func parseAttackType(s string) (AttackType, error) {
 
 var unitConfigs map[uint32]UnitConfig
 
-func init() {
+func loadUnitConfig(data []byte) {
 	var entries []unitConfigJSON
-	if err := json.Unmarshal(unitsConfigJSON, &entries); err != nil {
+	if err := json.Unmarshal(data, &entries); err != nil {
 		panic(fmt.Sprintf("failed to parse config/units.json: %v", err))
 	}
 	unitConfigs = make(map[uint32]UnitConfig, len(entries))

@@ -174,3 +174,20 @@ export function drawRisqTooltip(
   }
   drawTooltip(state, ctx, transform, risq.canvasSize(), { ...data, risq });
 }
+
+export class RisqButtonTooltip {
+  private state = createRisqTooltipState();
+
+  constructor(private getData: () => RisqTooltipData) {}
+
+  draw(
+    ctx: CanvasRenderingContext2D,
+    transform: BoardTransformData,
+    risq: DwgRisq,
+    dt: number,
+    hovering: boolean,
+    clicked: boolean
+  ) {
+    drawRisqTooltip(ctx, transform, risq, dt, hovering, clicked, this.state, this.getData());
+  }
+}

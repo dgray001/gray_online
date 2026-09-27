@@ -158,6 +158,9 @@ export function terrainImage(terrain_id: number): string {
     case 64:
       filename = 'farm_tilled_dead_hills';
       break;
+    case 65:
+      filename = 'forest_hills';
+      break;
     default:
       err('Trying to get terrain image from unknown terrain_id', terrain_id);
       filename = 'grass_green1';

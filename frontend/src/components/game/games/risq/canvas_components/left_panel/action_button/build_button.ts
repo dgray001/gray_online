@@ -6,6 +6,8 @@ import { buildingImage } from '../../../risq_buildings';
 import { RISQ_MESSAGE_WARNING_COLOR } from '../../message_queue';
 import { RisqRichTooltipActionButton } from './action_button';
 import type { RisqTooltipData } from '../../risq_tooltip';
+import { getSettings } from '../../../../../../../scripts/settings_store';
+import { hotkeyDisplayString } from '../../../risq_hotkeys';
 
 export declare interface BuildButtonConfig {
   producible: RisqProducible;
@@ -73,6 +75,7 @@ export class RisqBuildButton extends RisqRichTooltipActionButton {
       description: this.producible.description,
       cost: this.producible.cost,
       stamina_cost: this.producible.stamina_cost,
+      hotkey: hotkeyDisplayString(getSettings().risq_hotkeys.build_building[this.producible.id]),
     };
   }
 }

@@ -2,6 +2,18 @@ import type { DwgRisq } from '../../../risq';
 import { RisqOrderType } from '../../../risq_data';
 import { DrawRisqSpaceDetail } from '../../../risq_space';
 import { RisqActionButton } from './action_button';
+import { getSettings } from '../../../../../../../scripts/settings_store';
+import { RisqHotkeyAction } from '../../../risq_hotkeys';
+
+const ORDER_HOTKEY_ACTIONS: Partial<Record<RisqOrderType, RisqHotkeyAction>> = {
+  [RisqOrderType.OrderType_UnitMoveSpace]: RisqHotkeyAction.MOVE,
+  [RisqOrderType.OrderType_UnitMoveZone]: RisqHotkeyAction.MOVE,
+  [RisqOrderType.OrderType_UnitAttackSpace]: RisqHotkeyAction.ATTACK,
+  [RisqOrderType.OrderType_UnitAttackZone]: RisqHotkeyAction.ATTACK,
+  [RisqOrderType.OrderType_UnitGather]: RisqHotkeyAction.GATHER,
+  [RisqOrderType.OrderType_UnitRepair]: RisqHotkeyAction.REPAIR,
+  [RisqOrderType.OrderType_UnitRenew]: RisqHotkeyAction.RENEW,
+};
 
 export declare interface OrderButtonConfig {
   row: number;
@@ -28,6 +40,8 @@ export class RisqOrderButton extends RisqActionButton {
 
   override dataRefreshed(): void {
     this.armed = this.risq.getArmedOrder() === this.getOrderType();
+    const hotkey_action = ORDER_HOTKEY_ACTIONS[this.order_type];
+    this.setHotkeyCombo(hotkey_action !== undefined ? getSettings().risq_hotkeys.actions[hotkey_action] : undefined);
   }
 
   private getOrderType(): RisqOrderType {

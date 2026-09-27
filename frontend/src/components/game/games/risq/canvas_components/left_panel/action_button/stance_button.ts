@@ -1,6 +1,16 @@
 import type { DwgRisq } from '../../../risq';
-import type { RisqUnitStance } from '../../../risq_data';
+import { RisqUnitStance } from '../../../risq_data';
 import { RisqActionButton, type RisqActionButtonConfig } from './action_button';
+import { getSettings } from '../../../../../../../scripts/settings_store';
+import { RisqHotkeyAction } from '../../../risq_hotkeys';
+
+const STANCE_HOTKEY_ACTIONS: Record<RisqUnitStance, RisqHotkeyAction | undefined> = {
+  [RisqUnitStance.NONE]: undefined,
+  [RisqUnitStance.PASSIVE]: RisqHotkeyAction.STANCE_PASSIVE,
+  [RisqUnitStance.AGGRESSIVE]: RisqHotkeyAction.STANCE_AGGRESSIVE,
+  [RisqUnitStance.DEFENSIVE]: RisqHotkeyAction.STANCE_DEFENSIVE,
+  [RisqUnitStance.STAND_GROUND]: RisqHotkeyAction.STANCE_STAND_GROUND,
+};
 
 export declare interface StanceButtonConfig extends RisqActionButtonConfig {
   unit_internal_ids: number[];
@@ -28,6 +38,8 @@ export class RisqStanceButton extends RisqActionButton {
     const player = this.risq.getPlayer();
     const stances = this.unit_internal_ids.map((id) => player?.units.get(id)?.stance);
     this.active = stances.length > 0 && stances.every((stance) => stance === this.stance);
+    const hotkey_action = STANCE_HOTKEY_ACTIONS[this.stance];
+    this.setHotkeyCombo(hotkey_action !== undefined ? getSettings().risq_hotkeys.actions[hotkey_action] : undefined);
   }
 
   protected released(): void {

@@ -273,25 +273,51 @@ func nearestEnemyZone(_ View, from ZoneRef, units []UnitView, buildings []Buildi
 	return best, found
 }
 
-func createUnits(view View, internals *Internals, unit_id uint32, buildings buildingFilter) []Order {
+// queue > 1 tops each building up to that many production orders, so a unit finishing mid-turn
+// hands its leftover stamina to the next one instead of losing it
+func createUnits(view View, internals *Internals, unit_id uint32, buildings buildingFilter, queue int) []Order {
+	candidates := view.IdleBuildings()
+	if queue > 1 {
+		candidates = view.Buildings()
+	}
 	orders := make([]Order, 0)
-	for _, b := range view.IdleBuildings() {
-		if !buildings.matches(b.BuildingID) {
+	for _, b := range candidates {
+		if !buildings.matches(b.BuildingID) || b.UnderConstruction {
 			continue
 		}
-		if current, limit := internals.population(view); current >= limit {
-			break
-		}
-		for _, p := range b.Producibles {
-			if p.Kind == ProducibleUnit && p.ID == unit_id && canAfford(view, internals, p.Cost) {
-				orders = append(orders, view.CreateUnitOrder(b, p.ID))
-				internals.spend(p.Cost)
-				internals.pending_population++
+		for queued := productionOrderCount(b); queued < max(1, queue); queued++ {
+			if current, limit := internals.population(view); current >= limit {
+				return orders
+			}
+			p, ok := unitProducible(b, unit_id)
+			if !ok || !canAfford(view, internals, p.Cost) {
 				break
 			}
+			orders = append(orders, view.CreateUnitOrder(b, p.ID))
+			internals.spend(p.Cost)
+			internals.pending_population++
 		}
 	}
 	return orders
+}
+
+func unitProducible(b BuildingView, unit_id uint32) (Producible, bool) {
+	for _, p := range b.Producibles {
+		if p.Kind == ProducibleUnit && p.ID == unit_id {
+			return p, true
+		}
+	}
+	return Producible{}, false
+}
+
+func productionOrderCount(b BuildingView) int {
+	count := 0
+	for _, o := range b.ActiveOrders {
+		if o.Kind == BuildingOrderCreate || o.Kind == BuildingOrderResearch {
+			count++
+		}
+	}
+	return count
 }
 
 func researchTech(view View, internals *Internals, tech_id uint32, buildings buildingFilter) []Order {

@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dgray001/gray_online/game/games/risq"
 	"github.com/dgray001/gray_online/util"
 )
 
@@ -25,6 +26,9 @@ func main() {
 		os.Exit(1)
 	}
 	name := flag.Arg(0)
+	if err := risq.LoadConfig("../config"); err != nil {
+		log.Fatalf("loading risq config: %v", err)
+	}
 
 	scenario, err := loadScenario(filepath.Join("inputs", name+".json"))
 	if err != nil {

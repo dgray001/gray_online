@@ -145,7 +145,11 @@ func parseActionInner(raw map[string]any) (Action, error) {
 		if !ok {
 			return nil, fmt.Errorf("create action requires a numeric \"unit_id\"")
 		}
-		return &createAction{unit_id: uint32(id)}, nil
+		queue := 1
+		if q, ok := raw["queue"].(float64); ok {
+			queue = int(q)
+		}
+		return &createAction{unit_id: uint32(id), queue: queue}, nil
 	case "createNextInQ":
 		weight, prioritize, depth := parseQueueParams(raw)
 		return &createNextInQAction{weight: weight, prioritize: prioritize, depth: depth}, nil

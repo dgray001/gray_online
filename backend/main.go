@@ -22,6 +22,10 @@ var upgrader = websocket.Upgrader{
 var DEV = os.Getenv("GAE_SERVICE") == ""
 
 func main() {
+	if err := risq.LoadConfig("game/games/risq/config"); err != nil {
+		fmt.Fprintln(os.Stderr, "loading risq config:", err)
+		os.Exit(1)
+	}
 	// Set environment variables
 	if DEV {
 		for _, envvar := range environment_variables {

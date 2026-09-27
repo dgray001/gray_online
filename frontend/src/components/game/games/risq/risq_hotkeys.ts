@@ -43,6 +43,10 @@ export function comboFromKeyboardEvent(e: KeyboardEvent): HotkeyCombo {
   };
 }
 
+export function hotkeyDisplayString(combo: HotkeyCombo | undefined): string {
+  return !combo || isUnbound(combo) ? 'Unset' : comboToDisplayString(combo);
+}
+
 export function comboToDisplayString(combo: HotkeyCombo): string {
   const is_letter = combo.key !== undefined && /^[a-z]$/.test(combo.key);
   const parts: string[] = [];

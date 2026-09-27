@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.8p: Customizable hotkeys
+v0.8q: Forest resources
 
 ## Dev Use
 

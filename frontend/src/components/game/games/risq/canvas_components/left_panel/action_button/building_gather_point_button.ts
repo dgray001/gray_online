@@ -3,6 +3,8 @@ import type { BoardTransformData } from '../../../../../util/canvas_board/canvas
 import type { DwgRisq } from '../../../risq';
 import { PLAYER_ICON_SIZE } from '../../../risq_image_cache';
 import { RisqActionButton, type RisqActionButtonConfig } from './action_button';
+import { getSettings } from '../../../../../../../scripts/settings_store';
+import { RisqHotkeyAction } from '../../../risq_hotkeys';
 
 const GATHER_POINT_ICON = 'risq/icons/garrison_flag';
 const BLACK = new ColorRGB(0, 0, 0);
@@ -23,6 +25,10 @@ export class RisqBuildingGatherPointButton extends RisqActionButton {
 
   override isClicking(): boolean {
     return super.isClicking() || this.risq.isGatherPointArmed();
+  }
+
+  override dataRefreshed(): void {
+    this.setHotkeyCombo(getSettings().risq_hotkeys.actions[RisqHotkeyAction.BUILDING_GATHER_POINT]);
   }
 
   override draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {

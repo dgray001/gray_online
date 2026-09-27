@@ -196,6 +196,10 @@ export function isTypingInInput(): boolean {
   return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement;
 }
 
+export function isDialogOpen(): boolean {
+  return !!document.querySelector('.dwg-dialog-box');
+}
+
 /** Copies input text to clipboard */
 export async function copyToClipboard(text: string): Promise<boolean> {
   if (!navigator.clipboard) {

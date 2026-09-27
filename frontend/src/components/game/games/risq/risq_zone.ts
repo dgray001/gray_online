@@ -6,9 +6,9 @@ import type { Point2D } from '../../util/objects2d';
 import { equalsPoint2D, pointInHexagon, rotatePoint, subtractPoint2D } from '../../util/objects2d';
 import type { DwgRisq } from './risq';
 import { buildingImage } from './risq_buildings';
-import type { RisqSpace, RisqUnit, RisqZone, UnitByTypeData } from './risq_data';
+import type { RisqResource, RisqSpace, RisqUnit, RisqZone, UnitByTypeData } from './risq_data';
 import { RisqUnitType, RisqVisibilityLevel } from './risq_data';
-import { resourceImage } from './risq_resources';
+import { isForestResource, resourceImage } from './risq_resources';
 import { COMBO_UNIT_ICON_SIZE, comboUnitIconKey, drawComboUnitIcon, unitImage } from './risq_unit';
 import { RisqViewMode, terrainImage } from './risq_terrain';
 import { coordinateToIndex } from './risq_coordinates';
@@ -531,6 +531,24 @@ function unitVisibleInViewMode(unit_type: RisqUnitType, view_mode: RisqViewMode)
   return true;
 }
 
+const FOREST_SCATTER_ANGLES_DEG = [0, 60, 120, 180, 240, 300];
+const FOREST_TREE_ICON_MULTIPLIER = 0.16;
+const FOREST_SCATTER_RING_MULTIPLIER = 1.8 * BUILDING_CIRCLE_RADIUS_MULTIPLIER;
+
+// Draws a ring of the resource's own tree icon around its (already-drawn) main icon, so a "forest"
+// resource shows a cluster of trees over its zone's terrain rather than a single icon like a "grove" does
+function drawForestScatter(ctx: CanvasRenderingContext2D, game: DwgRisq, resource: RisqResource, hex_r: number) {
+  const icon = game.getIcon(resourceImage(resource));
+  const icon_r = 0.5 * FOREST_TREE_ICON_MULTIPLIER * hex_r;
+  const ring_r = FOREST_SCATTER_RING_MULTIPLIER * hex_r;
+  for (const deg of FOREST_SCATTER_ANGLES_DEG) {
+    const rad = (deg * Math.PI) / 180;
+    const x = ring_r * Math.cos(rad);
+    const y = ring_r * Math.sin(rad);
+    ctx.drawImage(icon, x - icon_r, y - icon_r, 2 * icon_r, 2 * icon_r);
+  }
+}
+
 export function drawRisqZone(
   ctx: CanvasRenderingContext2D,
   game: DwgRisq,
@@ -605,6 +623,9 @@ export function drawRisqZone(
     if (i === 0) {
       if (!!zone.resource && view_mode !== RisqViewMode.MILITARY && view_mode !== RisqViewMode.OWNERSHIP) {
         ctx.drawImage(game.getIcon(resourceImage(zone.resource)), -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
+        if (isForestResource(zone.resource)) {
+          drawForestScatter(ctx, game, zone.resource, hex_r);
+        }
       } else {
         let building_image: string;
         let building_color: ColorRGB | undefined;

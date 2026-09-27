@@ -1,19 +1,24 @@
 v0.9: Risq beta version
- q: Frontend mercenaries (bottom panel)
- r: Backend risq tests
- s: Revamp summary report (fix colors, can see "events" on map, can interact with events i.e. replay them or see what happened precisely)
+ r: Frontend mercenaries (bottom panel)
+ s: Small issues (see all small issues)
+ t: Backend risq tests
+ u: Revamp summary report (fix colors, can see "events" on map, can interact with events i.e. replay them or see what happened precisely)
+ v: Refactor backend code
+ w: Refactor frontend code
+ x: Make v1.0 ai (current ones should be rename to 0.4, etc...)
+ y: Settings setup (including alt win conditions, map selector, etc)
 
 Small Risq Issues:
- - Icons for attack back and interrupt current
- - Need to see hotkeys in ALL tooltips wher it's relevant
- - Icons for interrupt current and attack back
+ - Forest zone images need to be a ring of 8 when central zone and 6 not in ring on edge zone
+ - Forest zone images need to be cached if not already
+ - Forest images can be modified grove images so it's not just one tree
+ - Need to address pathing on frontend since images can be a bit silly
+ - Need to add mountain images
  - Left panel: show live "workers X/Y" indicator on a selected gatherable building (predictedGathererCount already exists in risq.ts, just needs left_panel.ts wiring)
- - Send a moving unit's planned path (backend MoveIntent.path) to the frontend so it can be drawn on the map (thought it was added but I don't see it on map)
 
  - Expanded level 2 tech tree
     => Magic and color damage
     => Stables and Archery range
-    => Settings setup (including alt win conditions)
 
 
 ## Refactoring

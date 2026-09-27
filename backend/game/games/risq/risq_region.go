@@ -1,7 +1,6 @@
 package risq
 
 import (
-	"embed"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -10,16 +9,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-//go:embed config/region_names.json
-var regionNamesFile embed.FS
-
 var regionNames []string
 
-func init() {
-	data, err := regionNamesFile.ReadFile("config/region_names.json")
-	if err != nil {
-		panic(fmt.Sprintf("failed to read region_names.json: %v", err))
-	}
+func loadRegionNames(data []byte) {
 	if err := json.Unmarshal(data, &regionNames); err != nil {
 		panic(fmt.Sprintf("failed to parse region_names.json: %v", err))
 	}

@@ -4,9 +4,9 @@ import { configDraw } from '../../../../../util/canvas_components/canvas_compone
 import { drawRect } from '../../../../../util/canvas_util';
 import type { DwgRisq } from '../../../risq';
 import type { RisqTooltipData } from '../../risq_tooltip';
-import { createRisqTooltipState, drawRisqTooltip } from '../../risq_tooltip';
+import { RisqButtonTooltip } from '../../risq_tooltip';
 import type { HotkeyCombo } from '../../../risq_hotkeys';
-import { comboToDisplayString, isUnbound } from '../../../risq_hotkeys';
+import { hotkeyDisplayString } from '../../../risq_hotkeys';
 
 export declare interface RisqActionButtonConfig {
   row: number;
@@ -19,7 +19,7 @@ export abstract class RisqActionButton extends DwgSquareButton {
   readonly row: number;
   readonly col: number;
   readonly description: string;
-  protected tooltip_state = createRisqTooltipState();
+  private tooltip = new RisqButtonTooltip(() => this.getTooltipData());
   protected dimmed = false;
   private hotkey_combo?: HotkeyCombo;
 
@@ -69,22 +69,11 @@ export abstract class RisqActionButton extends DwgSquareButton {
   }
 
   protected getTooltipData(): RisqTooltipData {
-    const hotkey =
-      this.hotkey_combo && !isUnbound(this.hotkey_combo) ? comboToDisplayString(this.hotkey_combo) : undefined;
-    return { title: this.description, hotkey };
+    return { title: this.description, hotkey: this.hotkey_combo ? hotkeyDisplayString(this.hotkey_combo) : undefined };
   }
 
   drawTooltip(ctx: CanvasRenderingContext2D, transform: BoardTransformData, risq: DwgRisq, dt: number) {
-    drawRisqTooltip(
-      ctx,
-      transform,
-      risq,
-      dt,
-      this.isHovering(),
-      this.isPressed(),
-      this.tooltip_state,
-      this.getTooltipData()
-    );
+    this.tooltip.draw(ctx, transform, risq, dt, this.isHovering(), this.isPressed());
   }
 }
 
