@@ -66,6 +66,6 @@ func (c *conditionResourceAvailable) Evaluate(view View, _ *Internals) bool {
 	if !ok {
 		return false
 	}
-	_, ok = view.NearestResource(home, c.category)
+	_, ok = view.NearestResource(home, c.category, 0)
 	return ok
 }

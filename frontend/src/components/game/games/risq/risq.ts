@@ -1,6 +1,6 @@
 import { DwgElement } from '../../../dwg_element';
 import type { UpdateMessage } from '../../data_models';
-import { drawArrow, drawCircle, drawRect } from '../../util/canvas_util';
+import { drawArrow, drawCircle, drawLine, drawRect } from '../../util/canvas_util';
 import type { CanvasComponent } from '../../util/canvas_components/canvas_component';
 import { configDraw } from '../../util/canvas_components/canvas_component';
 import type { BoardTransformData, DwgCanvasBoard, ModifierKeys } from '../../util/canvas_board/canvas_board';
@@ -21,6 +21,7 @@ import type { DwgGame } from '../../game';
 import { DEV, createLock, isTypingInInput } from '../../../../scripts/util';
 import { err, log } from '../../../../scripts/log';
 import { ColorRGB } from '../../../../scripts/color_rgb';
+import { getSettings } from '../../../../scripts/settings_store';
 
 import html from './risq.html';
 import type {
@@ -29,6 +30,7 @@ import type {
   RisqBuilding,
   RisqCost,
   RisqFrontendOrder,
+  RisqMovePathStep,
   RisqPlayer,
   RisqRegion,
   RisqSpace,
@@ -43,13 +45,14 @@ import {
   RisqOrderType,
   RisqProducibleKind,
   RisqResourceType,
+  RisqUnitStance,
   RisqUnitType,
   RisqVisibilityLevel,
   canAffordCost,
   canHaveGatherPoint,
   serverToGameRisq,
 } from './risq_data';
-import type { RisqGatherPoint, RisqTargetCategory, RisqUnitStance } from './risq_data';
+import type { RisqGatherPoint, RisqResource, RisqTargetCategory } from './risq_data';
 import { cantorPair, coordinateToIndex, getSpace, invertBuildKey, invertPair, invertZoneKey } from './risq_coordinates';
 import type {
   GatherPointSetData,
@@ -94,6 +97,8 @@ import type {
   UnitsByTypeData,
 } from './canvas_components/left_panel/left_panel_data';
 import { LeftPanelDataType } from './canvas_components/left_panel/left_panel_data';
+import type { RisqHotkeyLookupEntry } from './risq_hotkeys';
+import { RisqHotkeyAction, buildHotkeyLookup, comboFromKeyboardEvent, comboToString } from './risq_hotkeys';
 
 import './risq.scss';
 import '../../util/canvas_board/canvas_board';
@@ -179,14 +184,31 @@ export class DwgRisq extends DwgElement {
       }
       return;
     }
-    switch (e.key.toLowerCase()) {
-      case 'v':
-        this.cycleViewMode();
-        break;
-      default:
-        break;
+    const entry = this.resolveHotkeyEntry(e);
+    if (entry?.kind === 'cycle_building') {
+      this.cycleBuildingSelection(entry.id);
     }
   };
+
+  private handleKeyup = (e: KeyboardEvent) => {
+    if (isTypingInInput()) {
+      return;
+    }
+    const entry = this.resolveHotkeyEntry(e);
+    if (!entry) {
+      return;
+    }
+    if (entry.kind === 'action') {
+      this.handleHotkeyAction(entry.action);
+    } else if (entry.kind === 'create_unit' || entry.kind === 'research_tech' || entry.kind === 'build_building') {
+      this.handleHotkeyProducible(entry);
+    }
+  };
+
+  private resolveHotkeyEntry(e: KeyboardEvent): RisqHotkeyLookupEntry | undefined {
+    const lookup = buildHotkeyLookup(getSettings().risq_hotkeys);
+    return lookup.get(comboToString(comboFromKeyboardEvent(e)));
+  }
 
   private left_panel = new RisqLeftPanel(this, {
     w: 300,
@@ -226,6 +248,7 @@ export class DwgRisq extends DwgElement {
   override disconnectedCallback(): void {
     super.disconnectedCallback();
     document.body.removeEventListener('keydown', this.handleKeydown);
+    document.body.removeEventListener('keyup', this.handleKeyup);
   }
 
   /** This will replace an existing icon */
@@ -257,6 +280,7 @@ export class DwgRisq extends DwgElement {
     abstract_game.setPadding('0px');
     this.setNewGameData(game);
     document.body.addEventListener('keydown', this.handleKeydown);
+    document.body.addEventListener('keyup', this.handleKeyup);
     const board_size: Point2D = {
       x: 1.732 * this.hex_r * (2 * game.board_size + 1),
       y: 1.5 * this.hex_r * (2 * game.board_size + 1) + 0.5 * this.hex_r,
@@ -410,6 +434,254 @@ export class DwgRisq extends DwgElement {
 
   cycleViewMode() {
     this.view_mode = nextViewMode(this.view_mode);
+  }
+
+  private setViewMode(mode: RisqViewMode) {
+    this.view_mode = mode;
+  }
+
+  private hotkeySubjectUnitIds(): number[] {
+    const data = this.left_panel.getData();
+    switch (data?.data_type) {
+      case LeftPanelDataType.UNIT:
+        return [data.data.internal_id];
+      case LeftPanelDataType.UNITS_BY_TYPE:
+      case LeftPanelDataType.ECONOMIC_UNITS:
+      case LeftPanelDataType.MILITARY_UNITS:
+        return data.data.units.flatMap((u) => [...u.units]);
+      default:
+        return [];
+    }
+  }
+
+  private toggleArmedOrder(order_type: RisqOrderType) {
+    if (this.getArmedOrder() === order_type) {
+      this.disarmOrder();
+    } else {
+      this.armOrder(order_type, () => {});
+    }
+  }
+
+  private toggleUnitFlag(ids: number[], field: UnitToggleField) {
+    const player = this.getPlayer();
+    const values = ids.map((id) => player?.units.get(id)?.[field]);
+    const active = values.length > 0 && values.every((v) => v === true);
+    this.setUnitToggle(ids, field, !active);
+  }
+
+  private handleHotkeyAction(action: RisqHotkeyAction) {
+    const data = this.left_panel.getData();
+    const building = data?.data_type === LeftPanelDataType.BUILDING ? data.data : undefined;
+    const subject_ids = this.hotkeySubjectUnitIds();
+    const zone_view = this.drawDetail() === DrawRisqSpaceDetail.ZONE_DETAILS;
+    switch (action) {
+      case RisqHotkeyAction.CYCLE_VIEW_MODE:
+        this.cycleViewMode();
+        break;
+      case RisqHotkeyAction.VIEW_MODE_ALL:
+        this.setViewMode(RisqViewMode.ALL);
+        break;
+      case RisqHotkeyAction.VIEW_MODE_RESOURCE:
+        this.setViewMode(RisqViewMode.RESOURCE);
+        break;
+      case RisqHotkeyAction.VIEW_MODE_MILITARY:
+        this.setViewMode(RisqViewMode.MILITARY);
+        break;
+      case RisqHotkeyAction.VIEW_MODE_OWNERSHIP:
+        this.setViewMode(RisqViewMode.OWNERSHIP);
+        break;
+      case RisqHotkeyAction.VIEW_MODE_REGION:
+        this.setViewMode(RisqViewMode.REGION);
+        break;
+      case RisqHotkeyAction.SUMMARY_REPORT:
+        if (!this.getLastTurnReport()) {
+          this.showMessage('No previous turn report to review', RISQ_MESSAGE_WARNING_COLOR);
+        } else {
+          this.reopenLastTurnReport();
+        }
+        break;
+      case RisqHotkeyAction.TECH_TREE: {
+        const dialog = document.createElement('dwg-risq-tech-tree-dialog');
+        dialog.setData({ risq: this });
+        this.appendChild(dialog);
+        break;
+      }
+      case RisqHotkeyAction.NEXT_IDLE:
+        this.selectNextIdleUnit();
+        break;
+      case RisqHotkeyAction.SUBMIT_ORDERS:
+        this.confirmSubmitOrders();
+        break;
+      case RisqHotkeyAction.MOVE:
+        this.toggleArmedOrder(zone_view ? RisqOrderType.OrderType_UnitMoveZone : RisqOrderType.OrderType_UnitMoveSpace);
+        break;
+      case RisqHotkeyAction.ATTACK:
+        this.toggleArmedOrder(
+          zone_view ? RisqOrderType.OrderType_UnitAttackZone : RisqOrderType.OrderType_UnitAttackSpace
+        );
+        break;
+      case RisqHotkeyAction.STOP:
+        if (subject_ids.length) {
+          this.stopUnit(subject_ids);
+        }
+        break;
+      case RisqHotkeyAction.DELETE:
+        if (building) {
+          this.confirmDeleteBuilding(building.internal_id);
+        } else if (subject_ids.length) {
+          this.confirmDeleteUnit(subject_ids);
+        }
+        break;
+      case RisqHotkeyAction.GARRISON:
+        if (this.left_panel.isOnlyGarrisoned()) {
+          this.ungarrisonUnits(subject_ids);
+        } else {
+          this.toggleArmedOrder(RisqOrderType.OrderType_UnitGarrison);
+        }
+        break;
+      case RisqHotkeyAction.UNGARRISON:
+        if (subject_ids.length) {
+          this.ungarrisonUnits(subject_ids);
+        }
+        break;
+      case RisqHotkeyAction.GATHER:
+        if (this.left_panel.isOnlyVillagers()) {
+          this.toggleArmedOrder(RisqOrderType.OrderType_UnitGather);
+        }
+        break;
+      case RisqHotkeyAction.REPAIR:
+        if (this.left_panel.isOnlyVillagers()) {
+          this.toggleArmedOrder(RisqOrderType.OrderType_UnitRepair);
+        }
+        break;
+      case RisqHotkeyAction.RENEW:
+        if (this.left_panel.isOnlyVillagers()) {
+          this.toggleArmedOrder(RisqOrderType.OrderType_UnitRenew);
+        }
+        break;
+      case RisqHotkeyAction.STANCE_AGGRESSIVE:
+        if (this.left_panel.isOnlyMilitary()) {
+          this.setUnitStance(subject_ids, RisqUnitStance.AGGRESSIVE);
+        }
+        break;
+      case RisqHotkeyAction.STANCE_DEFENSIVE:
+        if (this.left_panel.isOnlyMilitary()) {
+          this.setUnitStance(subject_ids, RisqUnitStance.DEFENSIVE);
+        }
+        break;
+      case RisqHotkeyAction.STANCE_STAND_GROUND:
+        if (this.left_panel.isOnlyMilitary()) {
+          this.setUnitStance(subject_ids, RisqUnitStance.STAND_GROUND);
+        }
+        break;
+      case RisqHotkeyAction.STANCE_PASSIVE:
+        if (this.left_panel.isOnlyMilitary()) {
+          this.setUnitStance(subject_ids, RisqUnitStance.PASSIVE);
+        }
+        break;
+      case RisqHotkeyAction.TOGGLE_INTERRUPT_CURRENT:
+        if (this.left_panel.isOnlyMilitary()) {
+          this.toggleUnitFlag(subject_ids, 'interrupt_current');
+        }
+        break;
+      case RisqHotkeyAction.TOGGLE_ATTACK_BACK:
+        if (this.left_panel.isOnlyMilitary()) {
+          this.toggleUnitFlag(subject_ids, 'attack_back');
+        }
+        break;
+      case RisqHotkeyAction.BUILDING_ATTACK:
+        if (building) {
+          this.attackFromBuilding(building.internal_id);
+        }
+        break;
+      case RisqHotkeyAction.BUILDING_GATHER_POINT:
+        if (building) {
+          this.toggleBuildingGatherPoint(building.internal_id);
+        }
+        break;
+      case RisqHotkeyAction.BUILDING_DELETE:
+        if (building) {
+          this.confirmDeleteBuilding(building.internal_id);
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
+  private handleHotkeyProducible(
+    entry: Extract<RisqHotkeyLookupEntry, { kind: 'create_unit' | 'research_tech' | 'build_building' }>
+  ) {
+    const data = this.left_panel.getData();
+    const building = data?.data_type === LeftPanelDataType.BUILDING ? data.data : undefined;
+    const player = this.getPlayer();
+    if (!player) {
+      return;
+    }
+    if (entry.kind === 'create_unit') {
+      const producible = building?.produces.find((p) => p.kind === RisqProducibleKind.UNIT && p.id === entry.id);
+      if (!building || !producible) {
+        return;
+      }
+      if (!canAffordCost(player, producible.cost)) {
+        this.showMessage('Not enough resources', RISQ_MESSAGE_WARNING_COLOR);
+      } else {
+        this.createUnit(building.internal_id, entry.id);
+      }
+    } else if (entry.kind === 'research_tech') {
+      const producible = building?.produces.find((p) => p.kind === RisqProducibleKind.TECH && p.id === entry.id);
+      if (!building || !producible) {
+        return;
+      }
+      const already_queued = this.orders_model
+        .all()
+        .some((o) => o.order_type === RisqOrderType.OrderType_BuildingResearch && o.target_id === entry.id);
+      if (already_queued) {
+        this.showMessage('Already queued for research', RISQ_MESSAGE_WARNING_COLOR);
+      } else if (!canAffordCost(player, producible.cost)) {
+        this.showMessage('Not enough resources', RISQ_MESSAGE_WARNING_COLOR);
+      } else {
+        this.researchTech(building.internal_id, entry.id);
+      }
+    } else {
+      const producible = this.hotkeySubjectUnitIds()
+        .map((id) => player.units.get(id)?.builds.find((p) => p.id === entry.id))
+        .find((p) => !!p);
+      if (!producible) {
+        return;
+      }
+      if (this.getArmedOrder() === RisqOrderType.OrderType_UnitBuild && this.getArmedBuildingId() === entry.id) {
+        this.disarmOrder();
+      } else {
+        this.armOrder(RisqOrderType.OrderType_UnitBuild, () => {}, {
+          id: entry.id,
+          display_name: producible.display_name,
+        });
+      }
+    }
+  }
+
+  private ownedBuildingsOfType(building_id: number): RisqBuilding[] {
+    const player = this.getPlayer();
+    if (!player) {
+      return [];
+    }
+    return [...player.buildings.values()]
+      .filter((b) => b.building_id === building_id && !b.under_construction)
+      .sort((a, b) => a.internal_id - b.internal_id);
+  }
+
+  private cycleBuildingSelection(building_id: number) {
+    const buildings = this.ownedBuildingsOfType(building_id);
+    if (buildings.length === 0) {
+      return;
+    }
+    const current = this.left_panel.getData();
+    const current_id = current?.data_type === LeftPanelDataType.BUILDING ? current.data.internal_id : undefined;
+    const current_index = buildings.findIndex((b) => b.internal_id === current_id);
+    const next = buildings[(current_index + 1) % buildings.length];
+    this.left_panel.openPanel({ data_type: LeftPanelDataType.BUILDING, data: next }, RisqVisibilityLevel.SPY);
+    this.goToCoordinate(next.space_coordinate);
   }
 
   private goToVillageCenter(player_id: number) {
@@ -804,7 +1076,11 @@ export class DwgRisq extends DwgElement {
     ctx.lineWidth = selected ? 2 : 1;
     ctx.globalAlpha = selected ? 1 : 0.35;
     ctx.setLineDash([8, 5]);
-    for (const order of orders) {
+    for (const [i, order] of orders.entries()) {
+      if (i === 0 && unit.move_path?.length) {
+        from = this.drawMovePath(ctx, unit.move_path, from, zone_view, selected ? 10 : 6);
+        continue;
+      }
       const to = this.orderTargetPoint(order, zone_view, from);
       if (!to || equalsPoint2D(from, to)) {
         continue;
@@ -817,6 +1093,32 @@ export class DwgRisq extends DwgElement {
     }
     ctx.setLineDash([]);
     ctx.globalAlpha = 1;
+  }
+
+  private drawMovePath(
+    ctx: CanvasRenderingContext2D,
+    path: RisqMovePathStep[],
+    from: Point2D,
+    zone_view: boolean,
+    arrow_size: number
+  ): Point2D {
+    const color = orderArrowColor(RisqOrderType.OrderType_UnitMoveZone);
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    let current = from;
+    for (const [i, step] of path.entries()) {
+      const to = this.orderPoint(step.space, zoneCenterOffset(step.zone, this.hex_r), zone_view);
+      if (equalsPoint2D(current, to)) {
+        continue;
+      }
+      if (i === path.length - 1) {
+        drawArrow(ctx, current, to, arrow_size);
+      } else {
+        drawLine(ctx, current, to);
+      }
+      current = to;
+    }
+    return current;
   }
 
   /** Space/zone-view-aware canvas point for an order endpoint; offset is ignored (space-to-space) outside zone view */
@@ -1412,15 +1714,11 @@ export class DwgRisq extends DwgElement {
     this.message_queue.enqueue(text, color);
   }
 
-  predictedGathererCount(building: RisqBuilding): number {
+  predictedGathererCount(zone_key: number): number {
     const player = this.getPlayer();
     if (!player) {
       return 0;
     }
-    const zone_key = cantorPair(
-      cantorPair(building.space_coordinate.x, building.space_coordinate.y),
-      cantorPair(building.zone_coordinate.x, building.zone_coordinate.y)
-    );
     let count = 0;
     for (const unit of player.units.values()) {
       const effective = this.orders_model.effectiveForSubject(unit.internal_id, 'unit');
@@ -1431,12 +1729,16 @@ export class DwgRisq extends DwgElement {
     return count;
   }
 
-  private warnIfGatherOverCapacity(building: RisqBuilding | undefined) {
-    if (!building || building.gather_capacity === undefined) {
+  private warnIfGatherOverCapacity(target: RisqBuilding | RisqResource | undefined) {
+    if (!target || target.gather_capacity === undefined) {
       return;
     }
-    if (this.predictedGathererCount(building) > building.gather_capacity) {
-      this.showMessage(`${building.display_name} is over its worker capacity`, RISQ_MESSAGE_WARNING_COLOR);
+    const zone_key = cantorPair(
+      cantorPair(target.space_coordinate.x, target.space_coordinate.y),
+      cantorPair(target.zone_coordinate.x, target.zone_coordinate.y)
+    );
+    if (this.predictedGathererCount(zone_key) > target.gather_capacity) {
+      this.showMessage(`${target.display_name} is over its worker capacity`, RISQ_MESSAGE_WARNING_COLOR);
     }
   }
 
@@ -2156,7 +2458,7 @@ export class DwgRisq extends DwgElement {
           this.hovered_zone.coordinate_key,
           ctrl_held
         );
-        this.warnIfGatherOverCapacity(this.hovered_zone.building);
+        this.warnIfGatherOverCapacity(this.hovered_zone.building ?? this.hovered_zone.resource);
         break;
       case RisqOrderType.OrderType_UnitBuild: {
         if (!this.hovered_zone) {
@@ -2348,7 +2650,7 @@ export class DwgRisq extends DwgElement {
           this.hovered_zone.coordinate_key,
           ctrl_held
         );
-        this.warnIfGatherOverCapacity(this.hovered_zone.building);
+        this.warnIfGatherOverCapacity(this.hovered_zone.building ?? this.hovered_zone.resource);
         break;
       case RisqOrderType.OrderType_UnitBuild:
         if (!this.hovered_zone || !this.armed_building) {

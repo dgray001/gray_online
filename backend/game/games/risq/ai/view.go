@@ -5,6 +5,12 @@ type Coordinate struct {
 	X, Y int
 }
 
+type SpaceInfo struct {
+	Space  Coordinate
+	Vision uint8
+	Owner  int
+}
+
 type ZoneRef struct {
 	Space Coordinate
 	Zone  Coordinate
@@ -275,13 +281,16 @@ type View interface {
 	VisibleEnemyUnits() []UnitView
 	VisibleEnemyBuildings() []BuildingView
 
-	NearestResource(from ZoneRef, category ResourceCategory) (ResourceView, bool)
+	// gatherer_id (0 for none) is excluded from the load counts used to skip nodes about to deplete
+	NearestResource(from ZoneRef, category ResourceCategory, gatherer_id uint64) (ResourceView, bool)
+	KnownResources(category ResourceCategory) []ResourceView
 	NearestBuildSite(from ZoneRef, building_id uint32) (ZoneRef, bool)
 	NearestUnexplored(from ZoneRef) ([]ZoneRef, bool)
 	TurnNumber() int
 	NumPlayers() int
 	EnemiesFound() int
 	OwnedSpaces() int
+	AllSpaces() []SpaceInfo
 	Score() int
 	BestEnemyScore() int
 	TechResearched(tech_id uint32) bool
@@ -289,7 +298,6 @@ type View interface {
 	BuildCost(building_id uint32) Cost
 	UnitCost(unit_id uint32) Cost
 	TechCost(tech_id uint32) Cost
-	RandomIntn(n int) int
 
 	MoveOrder(u UnitView, target ZoneRef, clear_previous bool) Order
 	GatherOrder(u UnitView, target ResourceView, clear_previous bool) Order

@@ -9,8 +9,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func runAi(p *RisqPlayer, r *GameRisq, action_channel chan game.PlayerAction) {
+func runAi(p *RisqPlayer, action_channel chan game.PlayerAction) {
 	fmt.Println("Starting ai for AI player", p.player.GetAiId())
+	fallback_submitted := false
 loop:
 	for {
 		if p.player.GetBase() == nil || p.player.GetBase().GameEnded() {
@@ -20,27 +21,46 @@ loop:
 		case <-p.ai_stop:
 			break loop
 		case update := <-p.player.AiUpdates:
-			if !p.player.GetBase().GameStarted() || p.player.GetBase().GameEnded() {
+			if !p.player.GetBase().GameStarted() || p.player.GetBase().GameEnded() || update.Kind != "start-turn" {
 				break
 			}
-			p.ai_model.ApplyUpdate(newAiView(p, r), update.Kind)
-			if update.Kind == "start-turn" {
-				submitAiOrders(p, r, action_channel)
+			fallback_submitted = false
+			decideAndSubmit(p, update, action_channel)
+		case update := <-p.player.AiFailedUpdates:
+			fmt.Fprintln(os.Stderr, "AI player", p.player.GetAiId(), "received failed update", update.Kind, update.Content["message"])
+			// a rejected batch would otherwise leave the turn waiting on this AI forever
+			if update.Kind == "submit-orders-failed" && !fallback_submitted {
+				fallback_submitted = true
+				sendAiAction(p, action_channel, "submit-orders", gin.H{"orders": []OrderFromFrontend{}})
 			}
-		case <-p.player.AiFailedUpdates:
-			fmt.Fprintln(os.Stderr, "AI player", p.player.GetAiId(), "received failed update")
 		}
 	}
 	fmt.Println("Ending ai for AI player", p.player.GetAiId())
 }
 
-func submitAiOrders(p *RisqPlayer, r *GameRisq, action_channel chan game.PlayerAction) {
-	decision := p.ai_model.DecideOrders(newAiView(p, r))
+// Decides from the same start-turn payload a human client receives; a human's own submission wins over the ai's.
+func decideAndSubmit(p *RisqPlayer, update *game.UpdateMessage, action_channel chan game.PlayerAction) {
+	payload, _ := update.Content["game"].(gin.H)
+	snapshot, err := parseAiSnapshot(payload)
+	var view *aiView
+	if err == nil {
+		view, _ = newAiView(snapshot, p.player.Player_id)
+	}
+	if view == nil {
+		fmt.Fprintln(os.Stderr, "AI player", p.player.GetAiId(), "could not read start-turn payload:", err)
+		sendAiAction(p, action_channel, "submit-orders", gin.H{"orders": []OrderFromFrontend{}})
+		return
+	}
+	p.ai_model.ApplyUpdate(view, update.Kind)
+	decision := p.ai_model.DecideOrders(view)
+	if p.player.IsHumanPlayer() {
+		return
+	}
 	for _, b := range decision.Behaviors {
-		action_channel <- game.PlayerAction{Kind: "set-unit-behavior", Ai_id: int(p.player.GetAiId()), Action: behaviorAction(b)}
+		sendAiAction(p, action_channel, "set-unit-behavior", behaviorAction(b))
 	}
 	for _, b := range decision.BuildingBehaviors {
-		action_channel <- game.PlayerAction{Kind: "set-building-behavior", Ai_id: int(p.player.GetAiId()), Action: buildingBehaviorAction(b)}
+		sendAiAction(p, action_channel, "set-building-behavior", buildingBehaviorAction(b))
 	}
 	orders := make([]OrderFromFrontend, len(decision.Orders))
 	for i, o := range decision.Orders {
@@ -52,7 +72,15 @@ func submitAiOrders(p *RisqPlayer, r *GameRisq, action_channel chan game.PlayerA
 			Clear_previous_orders: o.ClearPreviousOrders,
 		}
 	}
-	action_channel <- game.PlayerAction{Kind: "submit-orders", Ai_id: int(p.player.GetAiId()), Action: gin.H{"orders": orders}}
+	sendAiAction(p, action_channel, "submit-orders", gin.H{"orders": orders})
+}
+
+// Gives up once the ai is stopped so a full channel nobody drains anymore can't strand this goroutine
+func sendAiAction(p *RisqPlayer, action_channel chan game.PlayerAction, kind string, action gin.H) {
+	select {
+	case action_channel <- game.PlayerAction{Kind: kind, Ai_id: int(p.player.GetAiId()), Action: action}:
+	case <-p.ai_stop:
+	}
 }
 
 func behaviorAction(b ai.UnitBehavior) gin.H {

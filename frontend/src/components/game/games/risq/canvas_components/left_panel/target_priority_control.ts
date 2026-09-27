@@ -98,7 +98,8 @@ export class RisqTargetPriorityControl {
     const pool_w = pool_categories.length > 0 ? pool_categories.length * (s + PADDING) - PADDING : 0;
     const container_x = this.p.x + pool_w + (pool_categories.length > 0 ? CONTAINER_GAP : 0);
     const chip_categories = this.dragging_category !== undefined && this.drag_order ? this.drag_order : this.priority;
-    const container_w = 2 * PADDING + (chip_categories.length > 0 ? chip_categories.length * (s + PADDING) - PADDING : 0);
+    const container_w =
+      2 * PADDING + (chip_categories.length > 0 ? chip_categories.length * (s + PADDING) - PADDING : 0);
     const chips: CategoryRect[] = chip_categories.map((category, i) => ({
       category,
       x: container_x + PADDING + i * (s + PADDING),
@@ -124,7 +125,10 @@ export class RisqTargetPriorityControl {
     const current_index = this.drag_order.indexOf(this.dragging_category);
     const own_center = slot_center(current_index);
     let new_index = current_index;
-    if (current_index < this.drag_order.length - 1 && dragged_center > (own_center + slot_center(current_index + 1)) / 2) {
+    if (
+      current_index < this.drag_order.length - 1 &&
+      dragged_center > (own_center + slot_center(current_index + 1)) / 2
+    ) {
       new_index = current_index + 1;
     } else if (current_index > 0 && dragged_center < (own_center + slot_center(current_index - 1)) / 2) {
       new_index = current_index - 1;
@@ -141,26 +145,33 @@ export class RisqTargetPriorityControl {
   }
 
   draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData) {
-    configDraw(ctx, transform, { fill_style: 'transparent', stroke_width: 0, fixed_position: true }, false, false, () => {
-      const layout = this.computeLayout();
-      for (const rect of layout.pool) {
-        this.drawSquare(ctx, rect);
+    configDraw(
+      ctx,
+      transform,
+      { fill_style: 'transparent', stroke_width: 0, fixed_position: true },
+      false,
+      false,
+      () => {
+        const layout = this.computeLayout();
+        for (const rect of layout.pool) {
+          this.drawSquare(ctx, rect);
+        }
+        ctx.fillStyle = 'transparent';
+        ctx.strokeStyle = 'rgba(60, 40, 20, 0.8)';
+        ctx.lineWidth = 1;
+        drawRect(
+          ctx,
+          { x: layout.container.x, y: layout.container.y },
+          layout.container.w,
+          layout.container.h,
+          0.3 * layout.container.h
+        );
+        for (const rect of layout.chips) {
+          const dragging_this = this.dragged && rect.category === this.dragging_category;
+          this.drawSquare(ctx, dragging_this ? { ...rect, x: this.clampedDragX(layout.container) } : rect);
+        }
       }
-      ctx.fillStyle = 'transparent';
-      ctx.strokeStyle = 'rgba(60, 40, 20, 0.8)';
-      ctx.lineWidth = 1;
-      drawRect(
-        ctx,
-        { x: layout.container.x, y: layout.container.y },
-        layout.container.w,
-        layout.container.h,
-        0.3 * layout.container.h
-      );
-      for (const rect of layout.chips) {
-        const dragging_this = this.dragged && rect.category === this.dragging_category;
-        this.drawSquare(ctx, dragging_this ? { ...rect, x: this.clampedDragX(layout.container) } : rect);
-      }
-    });
+    );
   }
 
   private clampedDragX(container: { x: number; w: number }): number {

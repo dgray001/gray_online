@@ -21,6 +21,16 @@ type PlayerResult struct {
 	TechsResearched int
 	Land            int
 	Gathered        GatheredResult
+	Economy         EconomyResult
+}
+
+// Idle percentages are the share of available stamina left unspent; Early covers the first earlyGameTurns turns
+type EconomyResult struct {
+	VillagersLost             uint
+	VillagerIdlePct           float64
+	VillagerIdlePctEarly      float64
+	VillageCenterIdlePct      float64
+	VillageCenterIdlePctEarly float64
 }
 
 type GameResult struct {
@@ -56,6 +66,13 @@ func (r *GameRisq) Results() GameResult {
 			TechsResearched: techs_researched,
 			Land:            r.ownedCount(p.player.Player_id),
 			Gathered:        GatheredResult{Food: gathered.food, Wood: gathered.wood, Stone: gathered.stone, Gold: gathered.gold},
+			Economy: EconomyResult{
+				VillagersLost:             p.economy.villagers_lost,
+				VillagerIdlePct:           p.economy.villagers.idlePct(),
+				VillagerIdlePctEarly:      p.economy.villagers_early.idlePct(),
+				VillageCenterIdlePct:      p.economy.village_center.idlePct(),
+				VillageCenterIdlePctEarly: p.economy.village_center_early.idlePct(),
+			},
 		})
 	}
 	return GameResult{TurnNumber: r.turn_number, Players: players}

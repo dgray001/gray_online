@@ -1720,9 +1720,10 @@ export class RisqLeftPanel implements CanvasComponent {
     }
     yi += image_size + separator_distance;
     const owner_color = spaceOwnerColor(data.zone.ownership, this.risq.getGame()?.players ?? []);
-    const owner_name = owner_color
-      ? (this.risq.getGame()?.players[data.zone.ownership]?.player.nickname ?? 'Unknown')
-      : '--Unclaimed--';
+    const owner_name =
+      owner_color && data.zone.ownership !== undefined
+        ? (this.risq.getGame()?.players[data.zone.ownership]?.player.nickname ?? 'Unknown')
+        : '--Unclaimed--';
     const owner_ps = { x: this.xi() + 0.1 * this.w(), y: yi };
     ctx.fillStyle = owner_color ? owner_color.getString() : 'rgba(255, 255, 255, 0.3)';
     ctx.strokeStyle = 'black';

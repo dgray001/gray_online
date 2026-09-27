@@ -1,12 +1,14 @@
 v0.9: Risq beta version
- p: Revamp summary report
- q: Customizable hotkeys
+ q: Frontend mercenaries (bottom panel)
+ r: Backend risq tests
+ s: Revamp summary report (fix colors, can see "events" on map, can interact with events i.e. replay them or see what happened precisely)
 
 Small Risq Issues:
+ - Icons for attack back and interrupt current
+ - Need to see hotkeys in ALL tooltips wher it's relevant
  - Icons for interrupt current and attack back
- - Zone ownership should just follow space ownership
  - Left panel: show live "workers X/Y" indicator on a selected gatherable building (predictedGathererCount already exists in risq.ts, just needs left_panel.ts wiring)
- - Send a moving unit's planned path (backend MoveIntent.path) to the frontend so it can be drawn on the map
+ - Send a moving unit's planned path (backend MoveIntent.path) to the frontend so it can be drawn on the map (thought it was added but I don't see it on map)
 
  - Expanded level 2 tech tree
     => Magic and color damage

@@ -147,7 +147,7 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameR
 	}
 	risq.logBoard()
 	for _, ai_player := range ai_risq_players {
-		go runAi(ai_player, &risq, action_channel)
+		risq.ai_goroutines.Go(func() { runAi(ai_player, action_channel) })
 	}
 	return &risq, nil
 }

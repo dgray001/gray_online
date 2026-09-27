@@ -122,7 +122,16 @@ func (p *Player) AddUpdate(update *UpdateMessage) {
 		select {
 		case p.AiUpdates <- &own_update:
 		default:
-			fmt.Fprintln(os.Stderr, "Dropped update to AI player", p.Player_id, "- update buffer full:", own_update.Kind)
+			// evict the oldest wakeup so the newest (e.g. a new turn) is never the one lost
+			select {
+			case <-p.AiUpdates:
+			default:
+			}
+			select {
+			case p.AiUpdates <- &own_update:
+			default:
+				fmt.Fprintln(os.Stderr, "Dropped update to AI player", p.Player_id, "- update buffer full:", own_update.Kind)
+			}
 		}
 	}
 }

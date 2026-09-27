@@ -1,0 +1,43 @@
+dwg-settings-dialog {
+  #wrapper {
+    --button-size: 36px;
+    border-radius: 8px;
+    display: flex;
+    flex-flow: column nowrap;
+
+    > #close-button {
+      background-color: transparent;
+      border: none;
+      border-radius: 0;
+      border-top-right-radius: 8px;
+      height: var(--button-size);
+      margin: 0;
+      padding: 0;
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: var(--button-size);
+
+      &:hover {
+        background-color: rgba(255, 100, 100, 0.6);
+      }
+
+      &:active {
+        background-color: rgba(255, 180, 180, 0.8);
+      }
+    }
+
+    > #title {
+      flex: none;
+      font-size: var(--font-size-medium);
+      margin: 0 var(--button-size) 0.5em 0;
+      text-align: center;
+    }
+
+    > #settings-body {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
+    }
+  }
+}

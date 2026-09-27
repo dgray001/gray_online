@@ -2,6 +2,7 @@ package ai
 
 import (
 	"encoding/json"
+	"io"
 
 	"github.com/dgray001/gray_online/util"
 )
@@ -106,27 +107,33 @@ type RulesModel struct {
 	internals Internals
 }
 
-func (m *RulesModel) ApplyUpdate(view View, update_kind string) {
-	if update_kind == "start-turn" {
-		current, limit := view.Population()
-		data, _ := json.Marshal(map[string]interface{}{
-			"population": map[string]int{"current": current, "limit": limit},
-			"resources": map[string]float64{
-				"food":  view.Resource(ResourceFood),
-				"wood":  view.Resource(ResourceWood),
-				"stone": view.Resource(ResourceStone),
-				"gold":  view.Resource(ResourceGold),
-			},
-			"units":           view.Units(),
-			"buildings":       view.Buildings(),
-			"enemy_units":     view.VisibleEnemyUnits(),
-			"enemy_buildings": view.VisibleEnemyBuildings(),
-		})
-		util.DebugLog.Printf("ai %s: new turn data %s", view.Nickname(), data)
+func (m *RulesModel) ApplyUpdate(View, string) {}
+
+func logTurnData(view View) {
+	if util.DebugLog.Writer() == io.Discard {
+		return
 	}
+	current, limit := view.Population()
+	data, _ := json.Marshal(map[string]interface{}{
+		"population": map[string]int{"current": current, "limit": limit},
+		"resources": map[string]float64{
+			"food":  view.Resource(ResourceFood),
+			"wood":  view.Resource(ResourceWood),
+			"stone": view.Resource(ResourceStone),
+			"gold":  view.Resource(ResourceGold),
+		},
+		"units":           view.Units(),
+		"buildings":       view.Buildings(),
+		"foundations":     view.Foundations(),
+		"enemy_units":     view.VisibleEnemyUnits(),
+		"enemy_buildings": view.VisibleEnemyBuildings(),
+		"spaces":          view.AllSpaces(),
+	})
+	util.DebugLog.Printf("ai %s: new turn data %s", view.Nickname(), data)
 }
 
 func (m *RulesModel) DecideOrders(view View) Decision {
+	logTurnData(view)
 	m.internals.Refresh()
 	m.internals.pruneBuckets(view)
 	orders := make([]Order, 0)

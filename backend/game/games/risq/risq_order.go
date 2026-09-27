@@ -329,7 +329,9 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend, player_id int)
 		if zone == nil {
 			return fmt.Errorf("Invalid zone target inverted from zone key %d", order.Target_id)
 		}
-		if zone.resource == nil && (zone.building == nil || !buildingConfigs[zone.building.building_id].isGatherable()) {
+		_, known_resource := zone.resourceKnownTo(order.Player_id)
+		known_building, has_building := zone.buildingKnownTo(order.Player_id)
+		if !known_resource && (!has_building || !buildingConfigs[known_building.building_id].isGatherable()) {
 			return fmt.Errorf("No resource in target zone")
 		}
 		for _, subject_id := range order.Subjects {
@@ -391,12 +393,11 @@ func (r *GameRisq) validateFrontendOrder(order OrderFromFrontend, player_id int)
 		if !requiredTechMet(r.players[order.Player_id], buildingConfigs[building_id].required_tech_id) {
 			return fmt.Errorf("Required tech id %d not researched for building id %d", buildingConfigs[building_id].required_tech_id, building_id)
 		}
-		if zone.resource != nil {
+		if _, known := zone.resourceKnownTo(order.Player_id); known {
 			return fmt.Errorf("Target zone is already occupied")
 		}
-		if zone.building != nil {
-			b := zone.building
-			if b.player_id != order.Player_id || !b.underConstruction() || b.building_id != building_id {
+		if b, known := zone.buildingKnownTo(order.Player_id); known {
+			if b.player_id != order.Player_id || !b.under_construction || b.building_id != building_id {
 				return fmt.Errorf("Target zone is already occupied")
 			}
 		}

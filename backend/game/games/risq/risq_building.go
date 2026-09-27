@@ -326,11 +326,14 @@ func (b *RisqBuilding) resolveAutoAttack(risq *GameRisq) {
 	if !b.auto_attack || b.zone == nil || b.underConstruction() || b.cs.attack_type == AttackType_NONE {
 		return
 	}
-	if !b.interrupt_current && len(b.order_queue.active_orders) > 0 {
+	target := b.autoAttackTarget(risq)
+	if target != nil && b.cs.totalAttack() <= 0 && len(b.buildGarrisonAttacks(risq, target)) == 0 {
+		if active := b.order_queue.active_orders; len(active) > 0 && active[0].order_type.isAutoSynthesized() {
+			b.order_queue.active_orders = active[1:]
+		}
 		return
 	}
-	target := b.autoAttackTarget(risq)
-	if target == nil {
+	if target == nil || (!b.interrupt_current && len(b.order_queue.active_orders) > 0) {
 		return
 	}
 	order_type := attackOrderType(target, OrderType_BuildingAutoAttackUnit, OrderType_BuildingAutoAttackBuilding)
@@ -421,7 +424,7 @@ func (b *RisqBuilding) tickExecute(risq *GameRisq) {
 			if completing_this_tick && !risq.population_slot_winners[b] {
 				return
 			}
-			if !completing_this_tick && risq.players[b.player_id].populationCapped() {
+			if !completing_this_tick && risq.population_capped[b.player_id] {
 				return
 			}
 		}
@@ -429,7 +432,9 @@ func (b *RisqBuilding) tickExecute(risq *GameRisq) {
 		if item.stamina_remaining <= 0 {
 			switch item.kind {
 			case ProducibleKind_UNIT:
-				unit := createRisqUnit(risq.nextUnitInternalId(), item.item_id, risq.players[b.player_id])
+				unit := createRisqUnit(risq.unit_creation_ids[b], item.item_id, risq.players[b.player_id])
+				util.DebugLog.Printf("Unit created: unit=%d unit_id=%d player=%d building=%d zone=%s space=%s tick=%d",
+					unit.internal_id, item.item_id, b.player_id, b.internal_id, b.zone.coordinate.ToString(), b.zone.space.coordinate.ToString(), risq.current_tick)
 				b.zone.space.setUnit(&b.zone.coordinate, unit)
 				risq.players[b.player_id].units[unit.internal_id] = unit
 				risq.units[unit.internal_id] = unit
@@ -502,6 +507,16 @@ func (b *RisqBuilding) toFrontend(viewer_player_id int) gin.H {
 			garrisoned_units = append(garrisoned_units, id)
 		}
 		building["garrisoned_units"] = garrisoned_units
+	}
+	if showOrdersTo(b.player_id, b.zone, viewer_player_id) {
+		building["renewing"] = b.renewing != nil
+		building["auto_attack"] = b.auto_attack
+		building["interrupt_current"] = b.interrupt_current
+		target_priority := make([]int, len(b.target_priority))
+		for i, cat := range b.target_priority {
+			target_priority[i] = int(cat)
+		}
+		building["target_priority"] = target_priority
 	}
 	if b.gather_point != nil && showOrdersTo(b.player_id, b.zone, viewer_player_id) {
 		building["gather_point"] = b.gather_point.toFrontend()

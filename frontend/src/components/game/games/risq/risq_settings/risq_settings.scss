@@ -1,0 +1,71 @@
+dwg-risq-settings {
+  background-color: rgb(80, 80, 80);
+  display: flex;
+  flex-flow: column nowrap;
+  height: 100%;
+
+  #tab-bar {
+    display: flex;
+    flex-flow: row nowrap;
+    gap: 0.5em;
+    margin-bottom: 1em;
+
+    .tab-button {
+      color: black;
+      padding: 0.3em 0.8em;
+
+      &.active {
+        font-weight: bold;
+      }
+    }
+  }
+
+  .tab-content {
+    display: none;
+    flex: 1 1 auto;
+    flex-flow: column nowrap;
+    overflow-y: auto;
+    padding-right: 1em;
+
+    &.active {
+      display: flex;
+    }
+  }
+
+  #status.hide {
+    display: none;
+  }
+
+  #rows {
+    display: flex;
+    flex-flow: column nowrap;
+    gap: 0.2em;
+  }
+
+  .hotkey-row {
+    align-items: center;
+    display: flex;
+    flex-flow: row nowrap;
+    gap: 0.5em;
+    padding: 0.15em 0.4em;
+
+    &:nth-child(odd) {
+      background-color: rgba(0, 0, 0, 0.15);
+    }
+
+    > .hotkey-label {
+      flex: 1 1 auto;
+    }
+
+    > .hotkey-value {
+      color: black;
+      min-width: 8em;
+      padding: 0.2em 0.5em;
+    }
+
+    > .hotkey-clear {
+      color: black;
+      padding: 0.2em 0.5em;
+    }
+  }
+}

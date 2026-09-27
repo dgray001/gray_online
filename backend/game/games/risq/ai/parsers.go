@@ -101,6 +101,9 @@ func parseAction(raw map[string]any) (Action, error) {
 	} else if len(building_ids) > 0 {
 		return nil, fmt.Errorf("action %q does not take building filters", raw["action"])
 	}
+	if bucket, ok := raw["in_bucket"].(string); ok {
+		action = &inBucketAction{bucket: bucket, inner: action}
+	}
 	if exclude, _ := raw["exclude_buckets"].(bool); exclude {
 		action = &unbucketedAction{inner: action}
 	}
@@ -144,8 +147,8 @@ func parseActionInner(raw map[string]any) (Action, error) {
 		}
 		return &createAction{unit_id: uint32(id)}, nil
 	case "createNextInQ":
-		weight, prioritize := parseQueueParams(raw)
-		return &createNextInQAction{weight: weight, prioritize: prioritize}, nil
+		weight, prioritize, depth := parseQueueParams(raw)
+		return &createNextInQAction{weight: weight, prioritize: prioritize, depth: depth}, nil
 	case "research":
 		id, ok := raw["tech_id"].(float64)
 		if !ok {
@@ -153,8 +156,8 @@ func parseActionInner(raw map[string]any) (Action, error) {
 		}
 		return &researchAction{tech_id: uint32(id)}, nil
 	case "researchNextInQ":
-		weight, prioritize := parseQueueParams(raw)
-		return &researchNextInQAction{weight: weight, prioritize: prioritize}, nil
+		weight, prioritize, depth := parseQueueParams(raw)
+		return &researchNextInQAction{weight: weight, prioritize: prioritize, depth: depth}, nil
 	case "build":
 		id, ok := raw["building_id"].(float64)
 		if !ok {
@@ -170,11 +173,11 @@ func parseActionInner(raw map[string]any) (Action, error) {
 		if err != nil {
 			return nil, err
 		}
-		weight, prioritize := parseQueueParams(raw)
-		return &buildNextInQAction{eligible: eligible, weight: weight, prioritize: prioritize, max: parseMax(raw)}, nil
+		weight, prioritize, depth := parseQueueParams(raw)
+		return &buildNextInQAction{eligible: eligible, weight: weight, prioritize: prioritize, depth: depth, max: parseMax(raw)}, nil
 	case "produce":
-		weight, prioritize := parseQueueParams(raw)
-		return &produceNextInQAction{weight: weight, prioritize: prioritize, max: parseMax(raw)}, nil
+		weight, prioritize, depth := parseQueueParams(raw)
+		return &produceNextInQAction{weight: weight, prioritize: prioritize, depth: depth, max: parseMax(raw)}, nil
 	case "explore":
 		action := &exploreAction{max: parseMax(raw)}
 		if a, ok := raw["anchor"].(string); ok {
@@ -364,12 +367,16 @@ func parseActionInner(raw map[string]any) (Action, error) {
 	}
 }
 
-func parseQueueParams(raw map[string]any) (weight float64, prioritize bool) {
+func parseQueueParams(raw map[string]any) (weight float64, prioritize bool, depth int) {
 	if w, ok := raw["weight"].(float64); ok {
 		weight = w
 	}
 	prioritize, _ = raw["prioritize"].(bool)
-	return weight, prioritize
+	depth = 1
+	if d, ok := raw["depth"].(float64); ok {
+		depth = int(d)
+	}
+	return weight, prioritize, depth
 }
 
 func parseAttackTarget(raw map[string]any) (attackTarget, error) {

@@ -36,6 +36,7 @@ func RunGame(seed int64, players []PlayerConfig, map_name string, max_turns uint
 	if err != nil {
 		return Result{Seed: seed, Error: err.Error()}
 	}
+	defer r.StopAi()
 	// mirrors LobbyRoom.gameBaseUpdates: nothing drains ViewerUpdates outside the real lobby
 	done := make(chan struct{})
 	defer close(done)

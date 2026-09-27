@@ -4,6 +4,7 @@ import { SERVER_CHAT_NAME } from '../../chatbox/chatbox';
 import type { ConnectionMetadata } from '../data_models';
 import { apiGet } from '../../../scripts/api';
 import { getUrlParam } from '../../../scripts/url';
+import { getSettings } from '../../../scripts/settings_store';
 
 import html from './lobby_connector.html';
 import './lobby_connector.scss';
@@ -51,6 +52,7 @@ export class DwgLobbyConnector extends DwgElement {
 
   protected override async parsedCallback(): Promise<void> {
     this.connect_button.disabled = true;
+    this.nickname.value = getSettings().last_nickname;
     let try_reconnect = false;
     // check url param
     const url_client_id = parseInt(getUrlParam('client_id'));
@@ -63,28 +65,24 @@ export class DwgLobbyConnector extends DwgElement {
       };
       try_reconnect = true;
     } else {
-      try {
-        const client_id_time = parseInt(localStorage.getItem('client_id_time') ?? '');
-        const client_id = parseInt(localStorage.getItem('client_id') ?? '');
-        const previous_nickname = localStorage.getItem('client_nickname');
-        if (!!previous_nickname) {
-          const previous_name_valid = this.validateName(previous_nickname);
-          if (
-            previous_name_valid &&
-            !!client_id &&
-            !!client_id_time &&
-            Date.now() - client_id_time < 1000 * 60 * 60 * 24
-          ) {
-            this.previous_nickname.innerText = previous_nickname;
-            this.reconnect_data = {
-              nickname: PREVIOUS_NICKNAME,
-              try_reconnect: true,
-              client_id,
-            };
-            try_reconnect = true;
-          }
+      const { client_id, client_id_time, last_nickname: previous_nickname } = getSettings();
+      if (!!previous_nickname) {
+        const previous_name_valid = this.validateName(previous_nickname);
+        if (
+          previous_name_valid &&
+          !!client_id &&
+          !!client_id_time &&
+          Date.now() - client_id_time < 1000 * 60 * 60 * 24
+        ) {
+          this.previous_nickname.innerText = previous_nickname;
+          this.reconnect_data = {
+            nickname: PREVIOUS_NICKNAME,
+            try_reconnect: true,
+            client_id,
+          };
+          try_reconnect = true;
         }
-      } catch (_e) {} // if local storage not accessible, TODO: implement
+      }
     }
     if (try_reconnect) {
       this.reconnect_wrapper.classList.add('show');

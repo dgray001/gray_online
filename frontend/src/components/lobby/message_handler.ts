@@ -1,4 +1,5 @@
 import { getUrlParam } from '../../scripts/url';
+import { updateSettings } from '../../scripts/settings_store';
 import { SERVER_CHAT_NAME } from '../chatbox/chatbox';
 import type { ServerMessage, LobbyRoom, LobbyRoomFromServer, GameSettingsFromServer } from './data_models';
 import { serverResponseToRoom, serverResponseToGameSettings } from './data_models';
@@ -46,11 +47,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
         nickname: lobby.getConnectionMetadata().nickname,
         ping: 0,
       });
-      try {
-        localStorage.setItem('client_id', message.data);
-        localStorage.setItem('client_nickname', message.content);
-        localStorage.setItem('client_id_time', Date.now().toString());
-      } catch (_e) {} // if localstorage isn't accessible TODO: implement error handling
+      updateSettings({ last_nickname: message.content, client_id: id, client_id_time: Date.now() });
       lobby.refreshLobbyRooms(true);
       lobby.getLobbyUsers().refreshUsers();
       break;

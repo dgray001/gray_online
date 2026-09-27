@@ -46,6 +46,39 @@ func computePopulationSlotWinners(risq *GameRisq, orderables []Orderable) map[*R
 	return winners
 }
 
+// Deterministically assigns new unit ids by producing building's own internal_id, not tickExecute order.
+func computeUnitCreationIds(risq *GameRisq, orderables []Orderable) map[*RisqBuilding]uint64 {
+	completing := make([]*RisqBuilding, 0)
+	for _, o := range orderables {
+		b, ok := o.(*RisqBuilding)
+		if !ok || !b.intent.hasIntent() {
+			continue
+		}
+		production, ok := b.intent.detail.(*ProductionIntent)
+		if !ok || production.item.kind != ProducibleKind_UNIT || production.item.stamina_remaining-b.intent.intent_cost > 0 {
+			continue
+		}
+		if !risq.population_slot_winners[b] {
+			continue
+		}
+		completing = append(completing, b)
+	}
+	sort.Slice(completing, func(i, j int) bool { return completing[i].internal_id < completing[j].internal_id })
+	ids := make(map[*RisqBuilding]uint64, len(completing))
+	for _, b := range completing {
+		ids[b] = risq.nextUnitInternalId()
+	}
+	return ids
+}
+
+func computePopulationCapped(risq *GameRisq) map[int]bool {
+	capped := make(map[int]bool, len(risq.players))
+	for i, player := range risq.players {
+		capped[i] = player.populationCapped()
+	}
+	return capped
+}
+
 // One garrisoned unit's own attack riding along with the building's attack this tick
 type GarrisonAttack struct {
 	unit  *RisqUnit

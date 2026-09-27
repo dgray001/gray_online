@@ -18,6 +18,7 @@ import './game_info_dialog/game_info_dialog';
 import './players_dialog/players_dialog';
 import '../dialog_box/message_dialog/message_dialog';
 import '../dialog_box/confirm_dialog/confirm_dialog';
+import '../dialog_box/settings_dialog/settings_dialog';
 
 const SERVER_PING_TIME = 350000; // time between game refreshes
 
@@ -42,6 +43,7 @@ export class DwgGame extends DwgElement {
   private button_game_info!: HTMLButtonElement;
   private button_game_history!: HTMLButtonElement;
   private button_room_players!: HTMLButtonElement;
+  private button_settings!: HTMLButtonElement;
   private button_fullscreen!: HTMLButtonElement;
   private maximize_img!: HTMLImageElement;
   private minimize_img!: HTMLImageElement;
@@ -78,6 +80,7 @@ export class DwgGame extends DwgElement {
       'button_game_info',
       'button_game_history',
       'button_room_players',
+      'button_settings',
       'button_fullscreen',
       'maximize_img',
       'minimize_img',
@@ -210,6 +213,14 @@ export class DwgGame extends DwgElement {
         room_id: this.lobby_room.room_id,
       });
       this.appendChild(players_dialog);
+    });
+    this.button_settings.addEventListener('click', () => {
+      if (!this.game) {
+        return;
+      }
+      const settings_dialog = document.createElement('dwg-settings-dialog');
+      settings_dialog.setData({ game_type: this.game.game_base.game_type });
+      this.appendChild(settings_dialog);
     });
     this.button_fullscreen.addEventListener('click', () => {
       if (!!document.fullscreenElement) {

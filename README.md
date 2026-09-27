@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.8o: Backend mercenaries
+v0.8p: Customizable hotkeys
 
 ## Dev Use
 

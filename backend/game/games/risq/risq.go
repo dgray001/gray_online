@@ -5,6 +5,7 @@ import (
 	"iter"
 	"math/rand"
 	"os"
+	"sync"
 
 	"github.com/dgray001/gray_online/game"
 	"github.com/dgray001/gray_online/util"
@@ -44,11 +45,16 @@ type GameRisq struct {
 	garrison_allotments map[*RisqUnit]bool
 	// Recomputed each tick: settles which unit founds a new building when several race for the same empty zone
 	construction_winners map[*RisqZone]uint64
+	// Recomputed each tick: building id each winning zone's new foundation takes
+	foundation_ids map[*RisqZone]uint64
 	// Recomputed each tick: settles which building's unit production completes when several race for the last population slots
 	population_slot_winners map[*RisqBuilding]bool
 	// Recomputed each tick: a player's simultaneous repairs are water-filled per resource category
-	// instead of whichever executes first draining the shared balance
 	repair_allotments map[*RisqUnit]float64
+	// Recomputed each tick: assigns new unit internal_ids by producing building's own internal_id
+	unit_creation_ids map[*RisqBuilding]uint64
+	// Recomputed each tick: snapshots population-capped status before any of this tick's completions
+	population_capped map[int]bool
 	// Zones whose cosmetic terrain_override should clear at the start of cleanupDeleted's NEXT call,
 	// so a destroyed building's override is still visible for the turn following its death
 	pending_terrain_clears []*RisqZone
@@ -58,7 +64,8 @@ type GameRisq struct {
 	completed_gatherables    []*RisqBuilding
 	regions                  []*RisqRegion
 	// owned by this game only, never the shared global source, so concurrent AI goroutines can't race it
-	rng *rand.Rand
+	rng           *rand.Rand
+	ai_goroutines sync.WaitGroup
 }
 
 func (r *GameRisq) nextResourceInternalId() uint64 {
@@ -100,9 +107,11 @@ func (r *GameRisq) endTurn() {
 	r.refreshScores()
 	r.updateEliminated()
 	r.finalizeTurnReports()
+	r.logStateHash("end")
 }
 
 func (r *GameRisq) startNextTurn() {
+	r.recordEconomyStamina()
 	r.turn_number++
 	for _, player := range r.players {
 		player.orders_submitted = false
@@ -113,7 +122,7 @@ func (r *GameRisq) startNextTurn() {
 	r.giving_orders = true
 	for _, player := range r.players {
 		player.player.AddUpdate(&game.UpdateMessage{Kind: "start-turn", Content: gin.H{
-			"game": r.ToFrontend(player.player.GetClientId(), false),
+			"game": r.toFrontendFor(player.player.Player_id, player.player.GetClientId(), false),
 		}})
 	}
 	r.game.AddViewerUpdate(&game.UpdateMessage{Kind: "start-turn", Content: gin.H{
@@ -129,11 +138,17 @@ func (r *GameRisq) updateEliminated() {
 		if len(player.units) == 0 && len(player.buildings) == 0 {
 			player.eliminated = true
 			player.report.recordEliminated()
-			if !player.player.IsHumanPlayer() {
-				close(player.ai_stop)
-			}
+			player.stopAi()
 		}
 	}
+}
+
+// Ends every ai goroutine and waits for them, so none outlive the game; call whenever turns stop resolving
+func (r *GameRisq) StopAi() {
+	for _, player := range r.players {
+		player.stopAi()
+	}
+	r.ai_goroutines.Wait()
 }
 
 func (r *GameRisq) checkWinCondition() {
@@ -149,6 +164,7 @@ func (r *GameRisq) checkWinCondition() {
 	if len(remaining) > 1 {
 		return
 	}
+	r.StopAi()
 	if len(remaining) == 1 {
 		r.game.EndGame(fmt.Sprintf("%s wins!", remaining[0].player.GetNickname()))
 	} else {
@@ -288,7 +304,7 @@ func (r *GameRisq) executeSubmitOrders(player_id int, orders []OrderFromFrontend
 	for _, player := range r.players {
 		player.player.AddUpdate(&game.UpdateMessage{Kind: "submitted-orders", Content: gin.H{
 			"player_id": player_id,
-			"game":      r.ToFrontend(player.player.GetClientId(), false),
+			"game":      r.toFrontendFor(player.player.Player_id, player.player.GetClientId(), false),
 		}})
 	}
 	r.game.AddViewerUpdate(&game.UpdateMessage{Kind: "submitted-orders", Content: gin.H{
@@ -314,7 +330,7 @@ func (r *GameRisq) executeUnsubmitOrders(player_id int) {
 	for _, player := range r.players {
 		player.player.AddUpdate(&game.UpdateMessage{Kind: "unsubmitted-orders", Content: gin.H{
 			"player_id": player_id,
-			"game":      r.ToFrontend(player.player.GetClientId(), false),
+			"game":      r.toFrontendFor(player.player.Player_id, player.player.GetClientId(), false),
 		}})
 	}
 	r.game.AddViewerUpdate(&game.UpdateMessage{Kind: "unsubmitted-orders", Content: gin.H{
@@ -561,8 +577,11 @@ func (r *GameRisq) resolveActiveOrders() {
 		r.gather_allotments = computeGatherAllotments(orderables)
 		r.garrison_allotments = computeGarrisonAllotments(orderables)
 		r.construction_winners = computeConstructionWinners(orderables)
+		r.foundation_ids = computeFoundationIds(r, r.construction_winners)
 		r.population_slot_winners = computePopulationSlotWinners(r, orderables)
 		r.repair_allotments = computeRepairAllotments(r, orderables)
+		r.unit_creation_ids = computeUnitCreationIds(r, orderables)
+		r.population_capped = computePopulationCapped(r)
 		r.current_tick++
 		for _, o := range orderables {
 			o.tickExecute(r)
@@ -580,6 +599,7 @@ func (r *GameRisq) resolveActiveOrders() {
 		}
 		r.pending_tech_completions = r.pending_tech_completions[:0]
 		r.autoGatherCompletedBuildings()
+		r.logStateHash(fmt.Sprint(r.current_tick))
 	}
 	r.cleanupDeleted()
 	for _, player := range r.players {
@@ -694,15 +714,6 @@ func (r *GameRisq) PlayerReconnected(client_id uint64) {
 }
 
 func (r *GameRisq) ToFrontend(client_id uint64, is_viewer bool) gin.H {
-	game := gin.H{
-		"board_size":       r.board_size,
-		"population_limit": r.population_limit,
-		"turn_number":      r.turn_number,
-		"giving_orders":    r.giving_orders,
-	}
-	if r.game != nil {
-		game["game_base"] = r.game.ToFrontend(client_id, is_viewer)
-	}
 	player_id := -1
 	if !is_viewer {
 		for id, player := range r.players {
@@ -711,6 +722,20 @@ func (r *GameRisq) ToFrontend(client_id uint64, is_viewer bool) gin.H {
 				break
 			}
 		}
+	}
+	return r.toFrontendFor(player_id, client_id, is_viewer)
+}
+
+// Keyed by player id since every AI player shares client id 0
+func (r *GameRisq) toFrontendFor(player_id int, client_id uint64, is_viewer bool) gin.H {
+	game := gin.H{
+		"board_size":       r.board_size,
+		"population_limit": r.population_limit,
+		"turn_number":      r.turn_number,
+		"giving_orders":    r.giving_orders,
+	}
+	if r.game != nil {
+		game["game_base"] = r.game.ToFrontend(client_id, is_viewer)
 	}
 	players := []gin.H{}
 	for _, player := range r.players {

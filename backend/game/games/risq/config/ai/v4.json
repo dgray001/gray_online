@@ -1,0 +1,73 @@
+{
+  "rules": [
+    {"when": {"population_at_most": {"unit_ids": [1], "amount": 3}}, "then": [{"action": "set_bucket", "bucket": "vil_production", "size": 1, "task": {"action": "gather", "category": "food", "eligible": ["gather"]}}]},
+    {"when": {"population_equals": {"unit_ids": [1], "amount": 4}}, "then": [{"action": "set_bucket", "bucket": "vil_production", "size": 3, "task": {"action": "gather", "category": "food", "eligible": ["gather"]}}]},
+    {"when": {"population_equals": {"unit_ids": [1], "amount": 5}}, "then": [{"action": "set_bucket", "bucket": "vil_production", "size": 4, "task": {"action": "gather", "category": "food", "eligible": ["gather"]}}]},
+    {"when": {"population_equals": {"unit_ids": [1], "amount": 6}}, "then": [{"action": "set_bucket", "bucket": "vil_production", "size": 5, "task": {"action": "gather", "category": "food", "eligible": ["gather"]}}]},
+    {"when": {"population_equals": {"unit_ids": [1], "amount": 7}}, "then": [{"action": "set_bucket", "bucket": "vil_production", "size": 6, "task": {"action": "gather", "category": "food", "eligible": ["gather"]}}]},
+    {"when": {"population_equals": {"unit_ids": [1], "amount": 8}}, "then": [{"action": "set_bucket", "bucket": "vil_production", "size": 7, "task": {"action": "gather", "category": "food", "eligible": ["gather"]}}]},
+    {"when": {"all": [{"population_at_least": {"unit_ids": [1], "amount": 9}}, {"not": {"all": [{"tech_researched": {"tech_id": 1}}, {"building_count_at_least": {"building_ids": [3], "state": "complete", "amount": 3}}]}}]}, "then": [{"action": "set_bucket", "bucket": "vil_production", "size": 8, "task": {"action": "gather", "category": "food", "eligible": ["gather"]}}]},
+    {"when": {"all": [{"tech_researched": {"tech_id": 1}}, {"building_count_at_least": {"building_ids": [3], "state": "complete", "amount": 3}}, {"bucket_size_at_least": {"bucket": "vil_production", "amount": 8}}]}, "then": [{"action": "empty_bucket", "bucket": "vil_production"}]},
+    {"when": {"all": [{"tech_researched": {"tech_id": 1}}, {"building_count_at_least": {"building_ids": [3], "state": "complete", "amount": 3}}]}, "then": [{"action": "set_bucket", "bucket": "vil_production", "size": 7, "task": {"action": "gather", "category": "food", "eligible": ["gather"]}}]},
+
+    {"when": {"always": {}}, "then": [{"action": "set_bucket", "bucket": "builders", "size": 2, "task": {"action": "gather", "category": "wood", "eligible": ["gather"]}}]},
+
+    {"when": {"building_count_at_least": {"building_ids": [22], "state": "complete", "amount": 1}}, "then": [{"action": "set_bucket", "bucket": "inf_food_1", "size": 6, "task": {"action": "gather", "category": "food", "eligible": ["gather"]}}, {"action": "set_bucket", "bucket": "inf_wood_1", "size": 2, "task": {"action": "gather", "category": "wood", "eligible": ["gather"]}}]},
+    {"when": {"building_count_at_least": {"building_ids": [22], "state": "complete", "amount": 2}}, "then": [{"action": "set_bucket", "bucket": "inf_food_2", "size": 6, "task": {"action": "gather", "category": "food", "eligible": ["gather"]}}, {"action": "set_bucket", "bucket": "inf_wood_2", "size": 2, "task": {"action": "gather", "category": "wood", "eligible": ["gather"]}}]},
+    {"when": {"building_count_at_least": {"building_ids": [22], "state": "complete", "amount": 3}}, "then": [{"action": "set_bucket", "bucket": "inf_food_3", "size": 6, "task": {"action": "gather", "category": "food", "eligible": ["gather"]}}, {"action": "set_bucket", "bucket": "inf_wood_3", "size": 2, "task": {"action": "gather", "category": "wood", "eligible": ["gather"]}}]},
+    {"when": {"building_count_at_least": {"building_ids": [22], "state": "complete", "amount": 4}}, "then": [{"action": "set_bucket", "bucket": "inf_food_4", "size": 6, "task": {"action": "gather", "category": "food", "eligible": ["gather"]}}, {"action": "set_bucket", "bucket": "inf_wood_4", "size": 2, "task": {"action": "gather", "category": "wood", "eligible": ["gather"]}}]},
+    {"when": {"all": [{"building_count_at_least": {"building_ids": [22], "amount": 1}}, {"resource_at_most": {"category": "stone", "amount": 250}}]}, "then": [{"action": "set_bucket", "bucket": "stone", "size": 2, "task": {"action": "gather", "category": "stone", "eligible": ["gather"]}}]},
+    {"when": {"resource_at_least": {"category": "stone", "amount": 300}}, "then": [{"action": "empty_bucket", "bucket": "stone"}, {"action": "set_bucket", "bucket": "stone", "size": 0, "task": {"action": "gather", "category": "stone", "eligible": ["gather"]}}]},
+
+    {"when": {"always": {}}, "then": [
+      {"action": "fill_bucket", "bucket": "vil_production", "eligible": ["gather"], "unit_types": ["economic"]},
+      {"action": "fill_bucket", "bucket": "builders", "eligible": ["gather"], "unit_types": ["economic"]},
+      {"action": "fill_bucket", "bucket": "inf_food_1", "eligible": ["gather"], "unit_types": ["economic"]},
+      {"action": "fill_bucket", "bucket": "inf_wood_1", "eligible": ["gather"], "unit_types": ["economic"]},
+      {"action": "fill_bucket", "bucket": "stone", "eligible": ["gather"], "unit_types": ["economic"]},
+      {"action": "fill_bucket", "bucket": "inf_food_2", "eligible": ["gather"], "unit_types": ["economic"]},
+      {"action": "fill_bucket", "bucket": "inf_wood_2", "eligible": ["gather"], "unit_types": ["economic"]},
+      {"action": "fill_bucket", "bucket": "inf_food_3", "eligible": ["gather"], "unit_types": ["economic"]},
+      {"action": "fill_bucket", "bucket": "inf_wood_3", "eligible": ["gather"], "unit_types": ["economic"]},
+      {"action": "fill_bucket", "bucket": "inf_food_4", "eligible": ["gather"], "unit_types": ["economic"]},
+      {"action": "fill_bucket", "bucket": "inf_wood_4", "eligible": ["gather"], "unit_types": ["economic"]}
+    ]},
+
+    {"when": {"all": [{"population_at_least": {"unit_ids": [1], "amount": 10}}, {"not": {"tech_researched": {"tech_id": 1}}}]}, "then": [{"action": "research", "tech_id": 1}]},
+    {"when": {"population_at_most": {"unit_ids": [1], "amount": 59}}, "then": [{"action": "create", "unit_id": 1}]},
+
+    {"when": {"all": [{"population_headroom_at_most": {"amount": 3}}, {"foundation_count_equals": {"building_ids": [2], "amount": 0}}]}, "then": [{"action": "build", "building_id": 2, "in_bucket": "builders", "eligible": ["gather"], "max": 2}]},
+    {"when": {"all": [{"population_headroom_at_most": {"amount": 1}}, {"foundation_count_at_most": {"building_ids": [2], "amount": 1}}]}, "then": [{"action": "build", "building_id": 2, "in_bucket": "builders", "eligible": ["gather"], "max": 1}]},
+    {"when": {"all": [{"population_at_least": {"unit_ids": [1], "amount": 5}}, {"building_count_equals": {"building_ids": [22], "amount": 0}}, {"foundation_count_equals": {"building_ids": [22], "amount": 0}}]}, "then": [{"action": "build", "building_id": 22, "in_bucket": "builders", "eligible": ["gather"], "max": 2}]},
+    {"when": {"all": [{"tech_researched": {"tech_id": 1}}, {"foundation_count_equals": {"building_ids": [3], "amount": 0}}, {"resource_remaining_at_most": {"category": "food", "within": 1, "amount": 400}}, {"any": [
+      {"all": [{"building_count_at_most": {"building_ids": [22], "amount": 1}}, {"building_count_at_most": {"building_ids": [3], "amount": 6}}]},
+      {"all": [{"building_count_equals": {"building_ids": [22], "amount": 2}}, {"building_count_at_most": {"building_ids": [3], "amount": 9}}]},
+      {"all": [{"building_count_equals": {"building_ids": [22], "amount": 3}}, {"building_count_at_most": {"building_ids": [3], "amount": 12}}]},
+      {"all": [{"building_count_at_least": {"building_ids": [22], "amount": 4}}, {"building_count_at_most": {"building_ids": [3], "amount": 15}}]}
+    ]}]}, "then": [{"action": "build", "building_id": 3, "in_bucket": "builders", "eligible": ["gather"], "max": 2}]},
+    {"when": {"all": [{"population_at_least": {"unit_ids": [1], "amount": 20}}, {"building_count_at_least": {"building_ids": [22], "amount": 1}}, {"building_count_equals": {"building_ids": [11], "amount": 0}}, {"foundation_count_equals": {"building_ids": [11], "amount": 0}}]}, "then": [{"action": "build", "building_id": 11, "in_bucket": "builders", "eligible": ["gather"], "max": 2}]},
+    {"when": {"all": [{"population_at_least": {"unit_ids": [1], "amount": 24}}, {"building_count_equals": {"building_ids": [22], "amount": 1}}, {"foundation_count_equals": {"building_ids": [22], "amount": 0}}]}, "then": [{"action": "build", "building_id": 22, "in_bucket": "builders", "eligible": ["gather"], "max": 2}]},
+    {"when": {"all": [{"population_at_least": {"unit_ids": [1], "amount": 32}}, {"building_count_equals": {"building_ids": [22], "amount": 2}}, {"foundation_count_equals": {"building_ids": [22], "amount": 0}}]}, "then": [{"action": "build", "building_id": 22, "in_bucket": "builders", "eligible": ["gather"], "max": 2}]},
+    {"when": {"all": [{"population_at_least": {"unit_ids": [1], "amount": 40}}, {"building_count_equals": {"building_ids": [22], "amount": 3}}, {"foundation_count_equals": {"building_ids": [22], "amount": 0}}]}, "then": [{"action": "build", "building_id": 22, "in_bucket": "builders", "eligible": ["gather"], "max": 2}]},
+    {"when": {"all": [{"population_at_least": {"unit_ids": [1], "amount": 44}}, {"building_count_equals": {"building_ids": [23], "amount": 0}}, {"foundation_count_equals": {"building_ids": [23], "amount": 0}}]}, "then": [{"action": "build", "building_id": 23, "in_bucket": "builders", "eligible": ["gather"], "max": 2}]},
+    {"when": {"always": {}}, "then": [{"action": "build_foundations", "in_bucket": "builders", "eligible": ["gather"]}, {"action": "renew", "in_bucket": "builders", "eligible": ["gather"]}]},
+
+    {"when": {"always": {}}, "then": [{"action": "research", "tech_id": 2}, {"action": "research", "tech_id": 3}]},
+    {"when": {"always": {}}, "then": [{"action": "create", "unit_id": 13}, {"action": "create", "unit_id": 11}]},
+
+    {"when": {"always": {}}, "then": [
+      {"action": "run_bucket", "bucket": "vil_production"}, {"action": "run_bucket", "bucket": "builders"}, {"action": "run_bucket", "bucket": "stone"},
+      {"action": "run_bucket", "bucket": "inf_food_1"}, {"action": "run_bucket", "bucket": "inf_wood_1"},
+      {"action": "run_bucket", "bucket": "inf_food_2"}, {"action": "run_bucket", "bucket": "inf_wood_2"},
+      {"action": "run_bucket", "bucket": "inf_food_3"}, {"action": "run_bucket", "bucket": "inf_wood_3"},
+      {"action": "run_bucket", "bucket": "inf_food_4"}, {"action": "run_bucket", "bucket": "inf_wood_4"}
+    ]},
+    {"when": {"resource_at_most": {"category": "wood", "amount": 300}}, "then": [{"action": "gather", "category": "wood", "eligible": ["gather"], "exclude_buckets": true}]},
+    {"when": {"resource_at_least": {"category": "wood", "amount": 301}}, "then": [{"action": "gather", "category": "food", "eligible": ["gather"], "exclude_buckets": true}]},
+
+    {"when": {"population_at_least": {"unit_types": ["infantry"], "amount": 3}}, "then": [{"action": "set_bucket", "bucket": "scout", "size": 1, "task": {"action": "explore"}}, {"action": "fill_bucket", "bucket": "scout", "unit_types": ["infantry"]}, {"action": "run_bucket", "bucket": "scout"}]},
+    {"when": {"enemy_units_visible_at_least": {"within": 2, "amount": 1}}, "then": [{"action": "attack", "target": "any", "exclude_buckets": true, "eligible": ["attack_unit", "attack_zone", "attack_space", "attack_building", "move"]}]},
+    {"when": {"population_at_least": {"unit_types": ["infantry"], "amount": 20}}, "then": [{"action": "attack", "target": "any", "exclude_buckets": true, "eligible": ["attack_unit", "attack_zone", "attack_space", "attack_building", "move"]}]},
+    {"when": {"always": {}}, "then": [{"action": "explore", "unit_types": ["infantry"], "exclude_buckets": true}]}
+  ]
+}

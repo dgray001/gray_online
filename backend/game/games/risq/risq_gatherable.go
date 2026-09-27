@@ -89,6 +89,24 @@ func (b *RisqBuilding) gatheringUnitCount(risq *GameRisq) int {
 	return count
 }
 
+func (z *RisqZone) resourceGatheringUnitCount(risq *GameRisq) int {
+	count := 0
+	for _, p := range risq.players {
+		for _, u := range p.units {
+			for _, o := range u.order_queue.active_orders {
+				if o.order_type != OrderType_UnitGather {
+					continue
+				}
+				if _, zone := invertZoneKey(uint(o.target_id), risq); zone == z {
+					count++
+					break
+				}
+			}
+		}
+	}
+	return count
+}
+
 func (r *GameRisq) autoGatherCompletedBuildings() {
 	for _, b := range r.completed_gatherables {
 		builders := make([]*RisqUnit, 0)

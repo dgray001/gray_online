@@ -77,26 +77,32 @@ func homeLocation(view View) (ZoneRef, bool) {
 	return ZoneRef{}, false
 }
 
-// Picks the candidate closest to from, randomly breaking ties
-func nearestZone(view View, from ZoneRef, candidates []ZoneRef) (ZoneRef, bool) {
-	var tied []ZoneRef
-	best_distance := -1
-	for _, c := range candidates {
-		d := locationDistance(from, c)
-		if best_distance == -1 || d < best_distance {
-			tied, best_distance = []ZoneRef{c}, d
-		} else if d == best_distance {
-			tied = append(tied, c)
-		}
+func zoneRefLess(a ZoneRef, b ZoneRef) bool {
+	if a.Space.X != b.Space.X {
+		return a.Space.X < b.Space.X
 	}
-	if len(tied) == 0 {
-		return ZoneRef{}, false
+	if a.Space.Y != b.Space.Y {
+		return a.Space.Y < b.Space.Y
 	}
-	return tied[view.RandomIntn(len(tied))], true
+	if a.Zone.X != b.Zone.X {
+		return a.Zone.X < b.Zone.X
+	}
+	return a.Zone.Y < b.Zone.Y
 }
 
-// First affordable queued entry above threshold weight: queue order, or highest-weight first if prioritize.
-func selectFromQueue(view View, internals *Internals, threshold float64, prioritize bool, kinds ...QKind) (Q, bool) {
+// Picks the candidate closest to from, breaking ties deterministically (lowest ZoneRef).
+func nearestZone(_ View, from ZoneRef, candidates []ZoneRef) (ZoneRef, bool) {
+	best, best_distance, found := ZoneRef{}, -1, false
+	for _, c := range candidates {
+		d := locationDistance(from, c)
+		if !found || d < best_distance || (d == best_distance && zoneRefLess(c, best)) {
+			best, best_distance, found = c, d, true
+		}
+	}
+	return best, found
+}
+
+func selectFromQueue(view View, internals *Internals, threshold float64, prioritize bool, depth int, kinds ...QKind) []Q {
 	allowed := make(map[QKind]bool, len(kinds))
 	for _, k := range kinds {
 		allowed[k] = true
@@ -110,25 +116,29 @@ func selectFromQueue(view View, internals *Internals, threshold float64, priorit
 	if prioritize {
 		sort.SliceStable(candidates, func(i, j int) bool { return candidates[i].Weight > candidates[j].Weight })
 	}
+	affordable := make([]Q, 0, len(candidates))
 	for _, q := range candidates {
 		if canAfford(view, internals, q.Cost) {
-			return q, true
+			affordable = append(affordable, q)
+			if depth > 0 && len(affordable) >= depth {
+				break
+			}
 		}
 	}
-	return Q{}, false
+	return affordable
 }
 
-// Demand signal from weighted q minus current resources
+// Unmet cost of every q entry above threshold; weight only selects entries, since scaling costs by it
+// would never let a stockpile satisfy the demand
 func gatherDemandWeights(view View, internals *Internals, threshold float64) map[ResourceCategory]float64 {
 	weights := map[ResourceCategory]float64{ResourceFood: 0, ResourceWood: 0, ResourceStone: 0}
 	for _, q := range internals.q {
-		w := q.Weight - threshold
-		if w <= 0 {
+		if q.Weight <= threshold {
 			continue
 		}
-		weights[ResourceFood] += q.Cost.Food * w
-		weights[ResourceWood] += q.Cost.Wood * w
-		weights[ResourceStone] += q.Cost.Stone * w
+		weights[ResourceFood] += q.Cost.Food
+		weights[ResourceWood] += q.Cost.Wood
+		weights[ResourceStone] += q.Cost.Stone
 	}
 	for _, c := range []ResourceCategory{ResourceFood, ResourceWood, ResourceStone} {
 		weights[c] -= internals.available(view, c)
@@ -162,12 +172,12 @@ func gatherTargets(demand map[ResourceCategory]float64, counts map[ResourceCateg
 	return targets
 }
 
-func neediestGatherCategory(view View, from ZoneRef, targets map[ResourceCategory]float64, counts map[ResourceCategory]int) (ResourceCategory, ResourceView, bool) {
+func neediestGatherCategory(view View, gatherer UnitView, targets map[ResourceCategory]float64, counts map[ResourceCategory]int) (ResourceCategory, ResourceView, bool) {
 	categories := []ResourceCategory{ResourceFood, ResourceWood, ResourceStone}
 	deficit := func(c ResourceCategory) float64 { return targets[c] - float64(counts[c]) }
 	sort.SliceStable(categories, func(i, j int) bool { return deficit(categories[i]) > deficit(categories[j]) })
 	for _, c := range categories {
-		if target, ok := view.NearestResource(from, c); ok {
+		if target, ok := view.NearestResource(gatherer.Location, c, gatherer.InternalID); ok {
 			return c, target, true
 		}
 	}
@@ -200,44 +210,38 @@ func nearestUnitOfKind(view View, from ZoneRef, units []UnitView, kind UnitKind)
 	return nearestUnit(view, from, filtered)
 }
 
-func nearestUnit(view View, from ZoneRef, units []UnitView) (UnitView, bool) {
-	var tied []UnitView
-	best_distance := -1
+func nearestUnit(_ View, from ZoneRef, units []UnitView) (UnitView, bool) {
+	best, best_distance, found := UnitView{}, -1, false
 	for _, u := range units {
 		d := locationDistance(from, u.Location)
-		if best_distance == -1 || d < best_distance {
-			tied, best_distance = []UnitView{u}, d
-		} else if d == best_distance {
-			tied = append(tied, u)
+		if !found || d < best_distance || (d == best_distance && u.InternalID < best.InternalID) {
+			best, best_distance, found = u, d, true
 		}
 	}
-	if len(tied) == 0 {
-		return UnitView{}, false
-	}
-	return tied[view.RandomIntn(len(tied))], true
+	return best, found
 }
 
-func nearestBuilding(view View, from ZoneRef, buildings []BuildingView) (BuildingView, bool) {
-	var tied []BuildingView
-	best_distance := -1
+func nearestBuilding(_ View, from ZoneRef, buildings []BuildingView) (BuildingView, bool) {
+	best, best_distance, found := BuildingView{}, -1, false
 	for _, b := range buildings {
 		d := locationDistance(from, b.Location)
-		if best_distance == -1 || d < best_distance {
-			tied, best_distance = []BuildingView{b}, d
-		} else if d == best_distance {
-			tied = append(tied, b)
+		if !found || d < best_distance || (d == best_distance && b.InternalID < best.InternalID) {
+			best, best_distance, found = b, d, true
 		}
 	}
-	if len(tied) == 0 {
-		return BuildingView{}, false
-	}
-	return tied[view.RandomIntn(len(tied))], true
+	return best, found
 }
 
-func nearestEnemySpace(view View, from ZoneRef, buildings []BuildingView) (Coordinate, bool) {
+func coordinateLess(a Coordinate, b Coordinate) bool {
+	if a.X != b.X {
+		return a.X < b.X
+	}
+	return a.Y < b.Y
+}
+
+func nearestEnemySpace(_ View, from ZoneRef, buildings []BuildingView) (Coordinate, bool) {
 	seen := make(map[Coordinate]bool)
-	var tied []Coordinate
-	best_distance := -1
+	best, best_distance, found := Coordinate{}, -1, false
 	for _, b := range buildings {
 		space := b.Location.Space
 		if seen[space] {
@@ -245,27 +249,19 @@ func nearestEnemySpace(view View, from ZoneRef, buildings []BuildingView) (Coord
 		}
 		seen[space] = true
 		d := axialDistance(from.Space, space)
-		if best_distance == -1 || d < best_distance {
-			tied, best_distance = []Coordinate{space}, d
-		} else if d == best_distance {
-			tied = append(tied, space)
+		if !found || d < best_distance || (d == best_distance && coordinateLess(space, best)) {
+			best, best_distance, found = space, d, true
 		}
 	}
-	if len(tied) == 0 {
-		return Coordinate{}, false
-	}
-	return tied[view.RandomIntn(len(tied))], true
+	return best, found
 }
 
-func nearestEnemyZone(view View, from ZoneRef, units []UnitView, buildings []BuildingView) (ZoneRef, bool) {
-	var tied []ZoneRef
-	best_distance := -1
+func nearestEnemyZone(_ View, from ZoneRef, units []UnitView, buildings []BuildingView) (ZoneRef, bool) {
+	best, best_distance, found := ZoneRef{}, -1, false
 	consider := func(loc ZoneRef) {
 		d := locationDistance(from, loc)
-		if best_distance == -1 || d < best_distance {
-			tied, best_distance = []ZoneRef{loc}, d
-		} else if d == best_distance {
-			tied = append(tied, loc)
+		if !found || d < best_distance || (d == best_distance && zoneRefLess(loc, best)) {
+			best, best_distance, found = loc, d, true
 		}
 	}
 	for _, u := range units {
@@ -274,15 +270,15 @@ func nearestEnemyZone(view View, from ZoneRef, units []UnitView, buildings []Bui
 	for _, b := range buildings {
 		consider(b.Location)
 	}
-	if len(tied) == 0 {
-		return ZoneRef{}, false
-	}
-	return tied[view.RandomIntn(len(tied))], true
+	return best, found
 }
 
-func createUnits(view View, internals *Internals, unit_id uint32) []Order {
+func createUnits(view View, internals *Internals, unit_id uint32, buildings buildingFilter) []Order {
 	orders := make([]Order, 0)
 	for _, b := range view.IdleBuildings() {
+		if !buildings.matches(b.BuildingID) {
+			continue
+		}
 		if current, limit := internals.population(view); current >= limit {
 			break
 		}
@@ -298,8 +294,11 @@ func createUnits(view View, internals *Internals, unit_id uint32) []Order {
 	return orders
 }
 
-func researchTech(view View, internals *Internals, tech_id uint32) []Order {
+func researchTech(view View, internals *Internals, tech_id uint32, buildings buildingFilter) []Order {
 	for _, b := range view.IdleBuildings() {
+		if !buildings.matches(b.BuildingID) {
+			continue
+		}
 		for _, p := range b.Producibles {
 			if p.Kind == ProducibleTech && p.ID == tech_id && canAfford(view, internals, p.Cost) {
 				internals.spend(p.Cost)

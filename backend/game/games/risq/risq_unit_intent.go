@@ -343,6 +343,21 @@ func computeConstructionWinners(orderables []Orderable) map[*RisqZone]uint64 {
 	return winners
 }
 
+func computeFoundationIds(risq *GameRisq, winners map[*RisqZone]uint64) map[*RisqZone]uint64 {
+	zones := make([]*RisqZone, 0, len(winners))
+	for zone, winner := range winners {
+		if zone.building == nil && zone.space.buildableBy(risq.units[winner].player_id) {
+			zones = append(zones, zone)
+		}
+	}
+	sort.Slice(zones, func(i, j int) bool { return winners[zones[i]] < winners[zones[j]] })
+	ids := make(map[*RisqZone]uint64, len(zones))
+	for _, zone := range zones {
+		ids[zone] = risq.nextBuildingInternalId()
+	}
+	return ids
+}
+
 type UngarrisonIntent struct {
 	next_step *RisqZone
 }

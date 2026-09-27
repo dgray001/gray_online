@@ -16,6 +16,7 @@ type RisqResource struct {
 	zone              *RisqZone
 	resources_left    float64
 	base_gather_speed int
+	gather_capacity   int
 	resource_category RisqResourceCategory
 }
 
@@ -61,6 +62,7 @@ type ResourceConfig struct {
 	category           RisqResourceCategory
 	starting_resources float64
 	base_gather_speed  int
+	gather_capacity    int
 }
 
 type resourceConfigJSON struct {
@@ -69,6 +71,7 @@ type resourceConfigJSON struct {
 	Category          string  `json:"category"`
 	StartingResources float64 `json:"starting_resources"`
 	BaseGatherSpeed   int     `json:"base_gather_speed"`
+	GatherCapacity    int     `json:"gather_capacity"`
 }
 
 var resourceConfigs map[uint32]ResourceConfig
@@ -89,6 +92,7 @@ func init() {
 			category:           category,
 			starting_resources: e.StartingResources,
 			base_gather_speed:  e.BaseGatherSpeed,
+			gather_capacity:    e.GatherCapacity,
 		}
 	}
 }
@@ -106,6 +110,7 @@ func createRisqResource(internal_id uint64, resource_id uint32) *RisqResource {
 	resource.display_name = config.display_name
 	resource.resources_left = config.starting_resources
 	resource.base_gather_speed = config.base_gather_speed
+	resource.gather_capacity = config.gather_capacity
 	resource.resource_category = config.category
 	return &resource
 }
@@ -117,6 +122,7 @@ func (r *RisqResource) toFrontend() gin.H {
 		"display_name":      r.display_name,
 		"resources_left":    r.resources_left,
 		"base_gather_speed": r.base_gather_speed,
+		"gather_capacity":   r.gather_capacity,
 	}
 	if r.zone != nil {
 		resource["zone_coordinate"] = r.zone.coordinate.ToFrontend()

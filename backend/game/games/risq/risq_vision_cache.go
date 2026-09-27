@@ -70,6 +70,7 @@ type RisqResourceCache struct {
 	display_name      string
 	resources_left    float64
 	base_gather_speed int
+	gather_capacity   int
 	zone_coordinate   game_utils.Coordinate2D
 	space_coordinate  game_utils.Coordinate2D
 }
@@ -81,6 +82,7 @@ func cacheRisqResource(r *RisqResource) RisqResourceCache {
 		display_name:      r.display_name,
 		resources_left:    r.resources_left,
 		base_gather_speed: r.base_gather_speed,
+		gather_capacity:   r.gather_capacity,
 	}
 	if r.zone != nil {
 		cache.zone_coordinate = r.zone.coordinate
@@ -130,6 +132,7 @@ func (c RisqResourceCache) toFrontend() gin.H {
 		"display_name":      c.display_name,
 		"resources_left":    c.resources_left,
 		"base_gather_speed": c.base_gather_speed,
+		"gather_capacity":   c.gather_capacity,
 		"zone_coordinate":   c.zone_coordinate.ToFrontend(),
 		"space_coordinate":  c.space_coordinate.ToFrontend(),
 	}

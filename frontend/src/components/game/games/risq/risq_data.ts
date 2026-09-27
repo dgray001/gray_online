@@ -138,7 +138,7 @@ export declare interface RisqZone {
   building?: RisqBuilding;
   units: Map<number, RisqUnit>; // <internal_ids, unit>
   unit_count?: number;
-  ownership: number;
+  ownership?: number;
   terrain_override: number;
   terrain_override_display_name?: string;
   // purely frontend fields
@@ -159,6 +159,12 @@ export declare interface UnitByTypeData {
   unit_type: RisqUnitType;
   units: Set<number>; // internal ids
   hover_data?: RectHoverData;
+}
+
+/** One waypoint in a moving unit's currently planned route */
+export declare interface RisqMovePathStep {
+  space: Point2D;
+  zone: Point2D;
 }
 
 /** Data describing a risq unit */
@@ -182,6 +188,7 @@ export declare interface RisqUnit {
   interrupt_current?: boolean;
   attack_back?: boolean;
   target_priority?: RisqTargetCategory[];
+  move_path?: RisqMovePathStep[];
   // purely frontend fields
   hover_data: RectHoverData;
 }
@@ -372,6 +379,7 @@ export declare interface RisqResource {
   zone_coordinate: Point2D;
   resources_left: number;
   base_gather_speed: number;
+  gather_capacity: number;
   // purely frontend fields
   hover_data: RectHoverData; // left panel
 }
@@ -490,7 +498,7 @@ export declare interface RisqZoneFromServer {
   resource?: RisqResourceFromServer;
   units?: RisqUnitFromServer[];
   unit_count?: number;
-  ownership: number;
+  ownership?: number;
   terrain_override: number;
   terrain_override_display_name?: string;
 }
@@ -516,6 +524,7 @@ export declare interface RisqUnitFromServer {
   interrupt_current?: boolean;
   attack_back?: boolean;
   target_priority?: RisqTargetCategory[];
+  move_path?: RisqMovePathStep[];
 }
 
 /** Data describing a risq building */
@@ -568,6 +577,7 @@ export declare interface RisqResourceFromServer {
   zone_coordinate: Point2D;
   resources_left: number;
   base_gather_speed: number;
+  gather_capacity: number;
 }
 
 /** Data describing an order as returned by the server */

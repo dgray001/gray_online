@@ -39,6 +39,8 @@ type RisqUnit struct {
 	garrisoned_in *RisqBuilding
 	stance        UnitStance
 	attack_back   bool
+	// this tick's full planned route, for frontend display only; cleared whenever the unit isn't actively moving
+	move_path []*RisqZone
 }
 
 func createRisqUnit(internal_id uint64, unit_id uint32, player *RisqPlayer) *RisqUnit {
@@ -140,14 +142,21 @@ func (u *RisqUnit) resolveHealthDelta(r *GameRisq) {
 }
 
 func (u *RisqUnit) recordDeath(r *GameRisq, attacker Attackable, damage float64) {
-	space := u.zone.space.coordinate
-	zone := u.zone.coordinate
+	death_zone := u.zone
+	if death_zone == nil && u.garrisoned_in != nil {
+		death_zone = u.garrisoned_in.zone
+	}
+	space := death_zone.space.coordinate
+	zone := death_zone.coordinate
 	r.players[attacker.playerId()].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: RisqCombatEventKind_UNIT_KILLED,
 		self_player: attacker.playerId(), other_player: u.player_id, target_id: uint64(u.unit_id), space: space, zone: zone, damage: damage})
 	r.players[u.player_id].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: RisqCombatEventKind_UNIT_LOST,
 		self_player: u.player_id, other_player: attacker.playerId(), target_id: uint64(u.unit_id), space: space, zone: zone, damage: damage})
 	r.players[attacker.playerId()].kills++
 	r.players[u.player_id].units_lost++
+	if u.unitType() == UnitType_ECONOMIC {
+		r.players[u.player_id].economy.villagers_lost++
+	}
 	u.deleted = true
 }
 
@@ -232,7 +241,15 @@ func (u *RisqUnit) orderReceivable(o *RisqOrder, risq *GameRisq) bool {
 		}
 		if zone.resource != nil {
 			resource, ok := zone.resourceKnownTo(u.player_id)
-			return ok && resource.resources_left > 0
+			if !ok || resource.resources_left <= 0 {
+				return false
+			}
+			for _, ao := range u.order_queue.active_orders {
+				if ao.order_type == OrderType_UnitGather && ao.target_id == o.target_id {
+					return true
+				}
+			}
+			return zone.resourceGatheringUnitCount(risq) < resource.gather_capacity
 		}
 		if b := zone.building; b != nil {
 			config := buildingConfigs[b.building_id]
@@ -711,6 +728,12 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 		}
 	}
 
+	if move, ok := u.intent.detail.(*MoveIntent); ok {
+		u.move_path = move.path
+	} else {
+		u.move_path = nil
+	}
+
 	u.intent.resolveCost(u.current_stamina)
 	return u.intent.hasIntent()
 }
@@ -721,7 +744,8 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 	}
 	switch detail := u.intent.detail.(type) {
 	case *MoveIntent:
-		util.DebugLog.Println("Moving unit", u.display_name, "to zone"+detail.next_step.coordinate.ToString(), "in space", detail.next_step.space.coordinate.ToString())
+		util.DebugLog.Printf("Moving unit %d %s to zone%s in space %s tick=%d",
+			u.internal_id, u.display_name, detail.next_step.coordinate.ToString(), detail.next_step.space.coordinate.ToString(), risq.current_tick)
 		old_zone := u.zone
 		new_zone := detail.next_step
 		if old_zone.space == new_zone.space {
@@ -749,17 +773,20 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 		}
 		building := detail.building_under_construction
 		if building == nil {
+			if winner, founding := risq.construction_winners[detail.zone]; founding && winner != u.internal_id {
+				return
+			}
 			if detail.zone.building != nil {
 				building = detail.zone.building
 			} else {
-				if !detail.zone.space.buildableBy(u.player_id) {
-					return
-				}
-				if winner, ok := risq.construction_winners[detail.zone]; ok && winner != u.internal_id {
+				foundation_id, buildable := risq.foundation_ids[detail.zone]
+				if !buildable {
 					return
 				}
 				_, stamina_required := buildingProductionCost(detail.building_id)
-				building = createRisqBuilding(risq.nextBuildingInternalId(), detail.building_id, u.player_id)
+				building = createRisqBuilding(foundation_id, detail.building_id, u.player_id)
+				util.DebugLog.Printf("Foundation started: building=%d building_id=%d player=%d builder=%d zone=%s space=%s tick=%d",
+					building.internal_id, detail.building_id, u.player_id, u.internal_id, detail.zone.coordinate.ToString(), detail.zone.space.coordinate.ToString(), risq.current_tick)
 				building.stamina_remaining = stamina_required
 				building.construction_stamina_total = stamina_required
 				building.cs.setHealthRatio(constructionHealthRatio(stamina_required, stamina_required))
@@ -774,10 +801,12 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 		if !building.deleted && building.underConstruction() {
 			old_ratio := constructionHealthRatio(building.stamina_remaining, building.construction_stamina_total)
 			progress := max(1, int(math.Round(float64(u.intent.intent_cost)*building.zone.space.buildSpeedModifier())))
-			building.stamina_remaining -= progress
+			building.stamina_remaining = max(0, building.stamina_remaining-progress)
 			new_ratio := constructionHealthRatio(building.stamina_remaining, building.construction_stamina_total)
 			building.cs.queueHealth(float64(building.cs.max_health) * (new_ratio - old_ratio))
 			if !building.underConstruction() {
+				util.DebugLog.Printf("Construction complete: building=%d building_id=%d player=%d zone=%s space=%s tick=%d",
+					building.internal_id, building.building_id, building.player_id, building.zone.coordinate.ToString(), building.zone.space.coordinate.ToString(), risq.current_tick)
 				risq.players[building.player_id].report.recordBuildingBuilt(building.building_id, building.zone.space.coordinate, building.zone.coordinate)
 				building.refreshTerrainOverride()
 				if buildingConfigs[building.building_id].isGatherable() {
@@ -883,6 +912,13 @@ func (u *RisqUnit) toFrontend(viewer_player_id int) gin.H {
 		unit["interrupt_current"] = u.interrupt_current
 		unit["attack_back"] = u.attack_back
 		unit["target_priority"] = target_priority
+		if len(u.move_path) > 0 {
+			move_path := make([]gin.H, len(u.move_path))
+			for i, zone := range u.move_path {
+				move_path[i] = gin.H{"space": zone.space.coordinate.ToFrontend(), "zone": zone.coordinate.ToFrontend()}
+			}
+			unit["move_path"] = move_path
+		}
 	}
 	unit["active_orders"] = active_orders
 	return unit

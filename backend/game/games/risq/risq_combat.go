@@ -145,13 +145,13 @@ func (c *RisqCombatStats) setHealthRatio(ratio float64) {
 }
 
 func (c *RisqCombatStats) addHealth(amount float64) {
-	c.health = util.Clamp(c.health+amount, 0, float64(c.max_health))
+	c.health = util.Clamp(util.RoundTo(c.health+amount, gatherRoundingPlaces), 0, float64(c.max_health))
 }
 
 // Accumulates a health change to be applied once at end-of-tick, so damage and
 // healing landing in the same tick net out instead of racing on execution order.
 func (c *RisqCombatStats) queueHealth(amount float64) {
-	c.pending_health_delta += amount
+	c.pending_health_delta += util.RoundTo(amount, gatherRoundingPlaces)
 }
 
 func (c *RisqCombatStats) setMaxHealth(max_health int) {

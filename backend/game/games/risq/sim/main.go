@@ -7,6 +7,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
+	"sync"
 	"time"
 
 	"github.com/dgray001/gray_online/util"
@@ -16,9 +18,10 @@ func main() {
 	debug := flag.Bool("debug", false, "run a single replay (implies iterations=1)")
 	quiet := flag.Bool("quiet", false, "discard engine stdout; keep only errors and the sim's own per-game log")
 	seed_override := flag.Int64("seed", 0, "override the scenario's base seed")
+	parallel := flag.Int("parallel", runtime.NumCPU(), "games to run concurrently (forced to 1 with -debug so its log stays in game order)")
 	flag.Parse()
 	if flag.NArg() < 1 {
-		fmt.Fprintln(os.Stderr, "usage: sim <scenario_name> [-seed N] [-debug] [-quiet]")
+		fmt.Fprintln(os.Stderr, "usage: sim [-seed N] [-debug] [-quiet] [-parallel N] <scenario_name>")
 		os.Exit(1)
 	}
 	name := flag.Arg(0)
@@ -35,9 +38,6 @@ func main() {
 
 	iterations := scenario.Iterations
 	base_seed := scenario.Seed
-	if *debug {
-		iterations = 1
-	}
 	if *seed_override != 0 {
 		base_seed = *seed_override
 	}
@@ -91,18 +91,32 @@ func main() {
 		util.DebugLog.SetOutput(debug_log_file)
 	}
 
-	results := make([]Result, 0, iterations)
-	for i := 0; i < iterations; i++ {
-		seed := base_seed
-		if !scenario.FixedSeed {
-			seed += int64(i)
-		}
-		start := time.Now()
-		result := RunGame(seed, players, scenario.Map, uint16(scenario.MaxTurns), 30*time.Second)
-		sim_log.Printf("game %d seed=%d turns=%d duration=%s error=%q",
-			i+1, seed, result.Game.TurnNumber, time.Since(start), result.Error)
-		results = append(results, result)
+	workers := max(1, *parallel)
+	if *debug {
+		workers = 1
 	}
+	results := make([]Result, iterations)
+	games := make(chan int)
+	var wg sync.WaitGroup
+	for range workers {
+		wg.Go(func() {
+			for i := range games {
+				seed := base_seed
+				if !scenario.FixedSeed {
+					seed += int64(i)
+				}
+				start := time.Now()
+				results[i] = RunGame(seed, players, scenario.Map, uint16(scenario.MaxTurns), 30*time.Second)
+				sim_log.Printf("game %d seed=%d turns=%d duration=%s error=%q",
+					i+1, seed, results[i].Game.TurnNumber, time.Since(start), results[i].Error)
+			}
+		})
+	}
+	for i := range iterations {
+		games <- i
+	}
+	close(games)
+	wg.Wait()
 
 	results_file, err := os.Create(filepath.Join(out_dir, "results.json"))
 	if err != nil {

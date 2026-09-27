@@ -2,14 +2,11 @@ import type { BoardTransformData } from '../../../../../util/canvas_board/canvas
 import { DwgSquareButton } from '../../../../../util/canvas_components/button/square_button';
 import { configDraw } from '../../../../../util/canvas_components/canvas_component';
 import { drawRect } from '../../../../../util/canvas_util';
-import {
-  createTooltipState,
-  drawTooltip as drawGenericTooltip,
-  shouldShowTooltip,
-} from '../../../../../util/canvas_components/tooltip';
 import type { DwgRisq } from '../../../risq';
 import type { RisqTooltipData } from '../../risq_tooltip';
 import { createRisqTooltipState, drawRisqTooltip } from '../../risq_tooltip';
+import type { HotkeyCombo } from '../../../risq_hotkeys';
+import { comboToDisplayString, isUnbound } from '../../../risq_hotkeys';
 
 export declare interface RisqActionButtonConfig {
   row: number;
@@ -22,8 +19,9 @@ export abstract class RisqActionButton extends DwgSquareButton {
   readonly row: number;
   readonly col: number;
   readonly description: string;
-  protected tooltip_state = createTooltipState();
+  protected tooltip_state = createRisqTooltipState();
   protected dimmed = false;
+  private hotkey_combo?: HotkeyCombo;
 
   constructor(config: RisqActionButtonConfig, s: number) {
     super({
@@ -66,23 +64,17 @@ export abstract class RisqActionButton extends DwgSquareButton {
     }
   }
 
+  setHotkeyCombo(combo: HotkeyCombo | undefined) {
+    this.hotkey_combo = combo;
+  }
+
   protected getTooltipData(): RisqTooltipData {
-    return { title: this.description };
+    const hotkey =
+      this.hotkey_combo && !isUnbound(this.hotkey_combo) ? comboToDisplayString(this.hotkey_combo) : undefined;
+    return { title: this.description, hotkey };
   }
 
   drawTooltip(ctx: CanvasRenderingContext2D, transform: BoardTransformData, risq: DwgRisq, dt: number) {
-    if (!shouldShowTooltip(this.tooltip_state, this.isHovering(), this.isPressed(), dt)) {
-      return;
-    }
-    drawGenericTooltip(this.tooltip_state, ctx, transform, risq.canvasSize(), this.getTooltipData().title);
-  }
-}
-
-/** Base for action buttons whose tooltip needs cost/stamina/description, not just a plain title */
-export abstract class RisqRichTooltipActionButton extends RisqActionButton {
-  private rich_tooltip_state = createRisqTooltipState();
-
-  override drawTooltip(ctx: CanvasRenderingContext2D, transform: BoardTransformData, risq: DwgRisq, dt: number) {
     drawRisqTooltip(
       ctx,
       transform,
@@ -90,8 +82,11 @@ export abstract class RisqRichTooltipActionButton extends RisqActionButton {
       dt,
       this.isHovering(),
       this.isPressed(),
-      this.rich_tooltip_state,
+      this.tooltip_state,
       this.getTooltipData()
     );
   }
 }
+
+/** @deprecated use RisqActionButton directly; every action button now renders the rich tooltip */
+export abstract class RisqRichTooltipActionButton extends RisqActionButton {}

@@ -21,6 +21,7 @@ export declare interface RisqTooltipData {
   stamina_cost?: number;
   // icon path, value; stats of the thing being made/researched (e.g. health, attack)
   stats?: [string, number][];
+  hotkey?: string; // always rendered as the bottom-most row
 }
 
 type RisqTooltipDrawData = RisqTooltipData & { risq: DwgRisq };
@@ -33,6 +34,8 @@ const STAT_GAP = 6;
 const TITLE_COST_GAP = 10;
 const FONT = '12px serif';
 const TITLE_FONT = 'bold 13px serif';
+const HOTKEY_FONT = 'italic 11px serif';
+const HOTKEY_COLOR = 'rgba(255, 255, 255, 0.6)';
 
 function costStats(data: RisqTooltipData): [string, string][] {
   const entries: [string, number][] = [];
@@ -95,8 +98,12 @@ function risqTooltipDraw(
     const row1_w = title_w + (cost_stats.length ? TITLE_COST_GAP + measureStatsRow(ctx, cost_stats) : 0);
     const desc_w = data.description ? ctx.measureText(data.description).width : 0;
     const stats_w = measureStatsRow(ctx, stats);
-    const w = Math.max(row1_w, desc_w, stats_w) + 2 * PADDING;
-    const num_rows = 1 + (data.description ? 1 : 0) + (stats.length ? 1 : 0);
+    ctx.font = HOTKEY_FONT;
+    const hotkey_text = data.hotkey ? `Hotkey: ${data.hotkey}` : undefined;
+    const hotkey_w = hotkey_text ? ctx.measureText(hotkey_text).width : 0;
+    ctx.font = FONT;
+    const w = Math.max(row1_w, desc_w, stats_w, hotkey_w) + 2 * PADDING;
+    const num_rows = 1 + (data.description ? 1 : 0) + (stats.length ? 1 : 0) + (hotkey_text ? 1 : 0);
     const h = num_rows * ROW_HEIGHT + 2 * PADDING;
     const box_p = anchorTooltipBox(p, w, h, canvas_size);
     ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
@@ -130,6 +137,17 @@ function risqTooltipDraw(
     if (stats.length) {
       row_y += ROW_HEIGHT;
       drawStatsRow(ctx, data.risq, stats, box_p.x + PADDING, row_y - 0.5 * ICON_SIZE);
+    }
+    if (hotkey_text) {
+      row_y += ROW_HEIGHT;
+      drawText(ctx, hotkey_text, {
+        p: { x: box_p.x + PADDING, y: row_y },
+        w: w - 2 * PADDING,
+        fill_style: HOTKEY_COLOR,
+        align: 'left',
+        baseline: 'middle',
+        font: HOTKEY_FONT,
+      });
     }
   });
 }

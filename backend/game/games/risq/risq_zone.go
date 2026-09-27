@@ -77,8 +77,12 @@ func (z *RisqZone) toFrontend(player_id int, v VisibilityLevel, space *RisqSpace
 	zone := gin.H{
 		"coordinate":       z.coordinate.ToFrontend(),
 		"coordinate_key":   z.coordinate_key,
-		"ownership":        z.ownership,
 		"terrain_override": z.terrain_override,
+	}
+	if v != VisibilityFog {
+		zone["ownership"] = z.ownership
+	} else if owner, ok := space.ownership_cache[player_id]; ok {
+		zone["ownership"] = owner
 	}
 	if z.terrain_override != 0 {
 		zone["terrain_override_display_name"] = terrainConfigs[z.terrain_override].display_name

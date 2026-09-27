@@ -20,10 +20,12 @@ type balancedGatherAction struct {
 }
 
 type createAction struct {
+	buildingFiltered
 	unit_id uint32
 }
 
 type researchAction struct {
+	buildingFiltered
 	tech_id uint32
 }
 
@@ -101,7 +103,7 @@ func (a *gatherAction) ToOrders(view View, _ *Internals) []Order {
 		if a.max > 0 && len(orders) >= a.max {
 			break
 		}
-		if target, ok := view.NearestResource(u.Location, a.category); ok {
+		if target, ok := view.NearestResource(u.Location, a.category, u.InternalID); ok {
 			orders = append(orders, view.GatherOrder(u, target, true))
 		}
 	}
@@ -121,7 +123,7 @@ func (a *balancedGatherAction) ToOrders(view View, internals *Internals) []Order
 	targets := gatherTargets(gatherDemandWeights(view, internals, a.weight), counts, len(idle))
 	orders := make([]Order, 0)
 	for _, u := range idle {
-		category, target, ok := neediestGatherCategory(view, u.Location, targets, counts)
+		category, target, ok := neediestGatherCategory(view, u, targets, counts)
 		if ok {
 			orders = append(orders, view.GatherOrder(u, target, true))
 			counts[category]++
@@ -130,7 +132,7 @@ func (a *balancedGatherAction) ToOrders(view View, internals *Internals) []Order
 	deficit := func(c ResourceCategory) float64 { return targets[c] - float64(counts[c]) }
 	for _, u := range gathering {
 		from := u.CurrentOrder.TargetResource.Category
-		category, target, ok := neediestGatherCategory(view, u.Location, targets, counts)
+		category, target, ok := neediestGatherCategory(view, u, targets, counts)
 		if !ok || category == from || deficit(category)-deficit(from) <= 2+a.move_penalty {
 			continue
 		}
@@ -142,11 +144,11 @@ func (a *balancedGatherAction) ToOrders(view View, internals *Internals) []Order
 }
 
 func (a *createAction) ToOrders(view View, internals *Internals) []Order {
-	return createUnits(view, internals, a.unit_id)
+	return createUnits(view, internals, a.unit_id, a.buildings)
 }
 
 func (a *researchAction) ToOrders(view View, internals *Internals) []Order {
-	return researchTech(view, internals, a.tech_id)
+	return researchTech(view, internals, a.tech_id, a.buildings)
 }
 
 func (a *buildAction) ToOrders(view View, internals *Internals) []Order {
@@ -314,62 +316,73 @@ type buildNextInQAction struct {
 	eligible   []OrderKind
 	weight     float64
 	prioritize bool
+	depth      int
 	max        int
 }
 
 type createNextInQAction struct {
 	weight     float64
 	prioritize bool
+	depth      int
 }
 
 type researchNextInQAction struct {
 	weight     float64
 	prioritize bool
+	depth      int
 }
 
 type produceNextInQAction struct {
 	filtered
 	weight     float64
 	prioritize bool
+	depth      int
 	max        int
 }
 
 func (a *buildNextInQAction) ToOrders(view View, internals *Internals) []Order {
-	q, ok := selectFromQueue(view, internals, a.weight, a.prioritize, QBuilding)
-	if !ok {
-		return nil
+	units := a.filter.apply(eligibleUnits(view, a.eligible), isEconomic)
+	for _, q := range selectFromQueue(view, internals, a.weight, a.prioritize, a.depth, QBuilding) {
+		if orders := buildWith(view, internals, units, *q.ID, a.max); len(orders) > 0 {
+			return orders
+		}
 	}
-	return buildWith(view, internals, a.filter.apply(eligibleUnits(view, a.eligible), isEconomic), *q.ID, a.max)
+	return nil
 }
 
 func (a *createNextInQAction) ToOrders(view View, internals *Internals) []Order {
-	q, ok := selectFromQueue(view, internals, a.weight, a.prioritize, QUnit)
-	if !ok {
-		return nil
+	for _, q := range selectFromQueue(view, internals, a.weight, a.prioritize, a.depth, QUnit) {
+		if orders := createUnits(view, internals, *q.ID, buildingFilter{}); len(orders) > 0 {
+			return orders
+		}
 	}
-	return createUnits(view, internals, *q.ID)
+	return nil
 }
 
 func (a *researchNextInQAction) ToOrders(view View, internals *Internals) []Order {
-	q, ok := selectFromQueue(view, internals, a.weight, a.prioritize, QTech)
-	if !ok {
-		return nil
+	for _, q := range selectFromQueue(view, internals, a.weight, a.prioritize, a.depth, QTech) {
+		if orders := researchTech(view, internals, *q.ID, buildingFilter{}); len(orders) > 0 {
+			return orders
+		}
 	}
-	return researchTech(view, internals, *q.ID)
+	return nil
 }
 
 func (a *produceNextInQAction) ToOrders(view View, internals *Internals) []Order {
-	q, ok := selectFromQueue(view, internals, a.weight, a.prioritize, QBuilding, QUnit, QTech)
-	if !ok {
-		return nil
-	}
-	switch q.Type {
-	case QBuilding:
-		return buildWith(view, internals, a.filter.apply(view.IdleUnits(), isEconomic), *q.ID, a.max)
-	case QUnit:
-		return createUnits(view, internals, *q.ID)
-	case QTech:
-		return researchTech(view, internals, *q.ID)
+	units := a.filter.apply(view.IdleUnits(), isEconomic)
+	for _, q := range selectFromQueue(view, internals, a.weight, a.prioritize, a.depth, QBuilding, QUnit, QTech) {
+		var orders []Order
+		switch q.Type {
+		case QBuilding:
+			orders = buildWith(view, internals, units, *q.ID, a.max)
+		case QUnit:
+			orders = createUnits(view, internals, *q.ID, buildingFilter{})
+		case QTech:
+			orders = researchTech(view, internals, *q.ID, buildingFilter{})
+		}
+		if len(orders) > 0 {
+			return orders
+		}
 	}
 	return nil
 }
@@ -380,6 +393,20 @@ type unbucketedAction struct {
 
 func (a *unbucketedAction) ToOrders(view View, internals *Internals) []Order {
 	return a.inner.ToOrders(&unbucketedView{View: view, internals: internals}, internals)
+}
+
+// Runs any action with only one bucket's members as eligible units
+type inBucketAction struct {
+	bucket string
+	inner  Action
+}
+
+func (a *inBucketAction) ToOrders(view View, internals *Internals) []Order {
+	b := internals.Buckets[a.bucket]
+	if b == nil || len(b.Members) == 0 {
+		return nil
+	}
+	return a.inner.ToOrders(&bucketView{View: view, members: b.Members}, internals)
 }
 
 type setBucketAction struct {

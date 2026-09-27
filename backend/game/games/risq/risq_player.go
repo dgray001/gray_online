@@ -4,6 +4,7 @@ import (
 	"embed"
 	"encoding/json"
 	"iter"
+	"maps"
 	"math/rand"
 	"path"
 
@@ -40,11 +41,21 @@ type RisqPlayer struct {
 	razes                 uint
 	units_lost            uint
 	buildings_lost        uint
+	economy               economyStats
 	// owned by this player only, so its own AI goroutine never races another player's
 	rng *rand.Rand
 	// closed to terminate this player's runAi goroutine once eliminated, so it stops reading
 	// live game state that the main goroutine may be concurrently mutating during resolution
 	ai_stop chan struct{}
+}
+
+// Idempotent; only ever called from the game's own goroutine
+func (p *RisqPlayer) stopAi() {
+	select {
+	case <-p.ai_stop:
+	default:
+		close(p.ai_stop)
+	}
 }
 
 func (p *RisqPlayer) createAiModel(config_path string) {
@@ -265,6 +276,6 @@ func (p *RisqPlayer) toFrontend(viewer_player_id int) gin.H {
 		}
 	}
 	player["active_orders"] = active_orders
-	player["researched_techs"] = p.researched_techs
+	player["researched_techs"] = maps.Clone(p.researched_techs)
 	return player
 }

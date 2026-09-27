@@ -135,6 +135,7 @@ var counterParsers = map[string]func(obj map[string]any) (counter, error){
 	"score_lead":          fixedCounter(func(v View, _ *Internals) float64 { return float64(v.Score() - v.BestEnemyScore()) }),
 	"population_headroom": fixedCounter(populationHeadroom),
 	"resource":            parseResourceCounter,
+	"resource_remaining":  parseResourceRemainingCounter,
 	"population":          parsePopulationCounter,
 	"idle_units":          parseIdleUnitsCounter,
 	"enemy_units_visible": parseEnemyUnitsCounter,
@@ -154,6 +155,24 @@ func parseResourceCounter(obj map[string]any) (counter, error) {
 		return nil, err
 	}
 	return func(v View, i *Internals) float64 { return i.available(v, category) }, nil
+}
+
+func parseResourceRemainingCounter(obj map[string]any) (counter, error) {
+	category, err := parseResourceCategory(obj["category"])
+	if err != nil {
+		return nil, err
+	}
+	within, has_within := obj["within"].(float64)
+	return func(v View, _ *Internals) float64 {
+		home, has_home := homeLocation(v)
+		total := 0.0
+		for _, r := range v.KnownResources(category) {
+			if !has_within || (has_home && axialDistance(home.Space, r.Location.Space) <= int(within)) {
+				total += r.AmountLeft
+			}
+		}
+		return total
+	}, nil
 }
 
 func parsePopulationCounter(obj map[string]any) (counter, error) {
