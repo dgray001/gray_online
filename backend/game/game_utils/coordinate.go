@@ -63,6 +63,16 @@ func AxialDirectionVectors() [6]Coordinate2D {
 	}
 }
 
+// Index of c in AxialDirectionVectors, or -1 when c isn't one of the six unit directions
+func AxialDirectionIndex(c Coordinate2D) int {
+	for i, d := range AxialDirectionVectors() {
+		if d == c {
+			return i
+		}
+	}
+	return -1
+}
+
 func AxialDistance(a Coordinate2D, b Coordinate2D) uint {
 	dq := util.AbsInt(a.X - b.X)
 	dr := util.AbsInt(a.Y - b.Y)

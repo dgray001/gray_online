@@ -77,16 +77,16 @@
         { "building_id": 1, "terrain_override": 6, "target": { "zone": "center" } }
       ],
       "resources": [
-        { "resource_id": 11, "count": 1, "distance": [0, 0] },
-        { "resource_id": 13, "count": 1, "distance": [0, 0] },
+        { "resource_id": 21, "count": 1, "distance": [0, 0] },
+        { "resource_id": 23, "count": 1, "distance": [0, 0] },
         { "resource_id": 2, "count": 1, "distance": [0, 0] },
         { "resource_id": 1, "count": 1, "distance": [0, 0] },
-        { "resource_id": 14, "count": 1, "distance": [1, 1] },
-        { "resource_id": 15, "count": 1, "distance": [1, 1] },
-        { "resource_id": 16, "count": 1, "distance": [1, 1] },
-        { "resource_id": 21, "count": 1, "distance": [1, 1] },
-        { "resource_id": 23, "count": 1, "distance": [1, 1] },
         { "resource_id": 24, "count": 1, "distance": [1, 1] },
+        { "resource_id": 25, "count": 1, "distance": [1, 1] },
+        { "resource_id": 26, "count": 1, "distance": [1, 1] },
+        { "resource_id": 31, "count": 1, "distance": [1, 1] },
+        { "resource_id": 33, "count": 1, "distance": [1, 1] },
+        { "resource_id": 34, "count": 1, "distance": [1, 1] },
         { "resource_id": 2, "count": 2, "distance": [1, 1] },
         { "resource_id": 1, "count": 2, "distance": [1, 1] },
         { "resource_id": 41, "count": 2, "distance": [1, 1] }

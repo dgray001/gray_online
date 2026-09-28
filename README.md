@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.8r: Frontend mercenaries
+v0.8s: Refactor backend
 
 ## Dev Use
 

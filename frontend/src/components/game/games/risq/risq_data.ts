@@ -242,6 +242,7 @@ export declare interface RisqBuilding {
   production_queue: RisqProductionQueueItem[];
   resources_left?: number;
   gather_capacity?: number;
+  base_gather_speed?: number;
   renew_cost?: RisqCost;
   resource_category?: RisqResourceType;
   gather_point?: RisqGatherPoint; // only present to the owner or a viewer with spy-tier vision

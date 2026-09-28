@@ -6,9 +6,9 @@ import type { Point2D } from '../../util/objects2d';
 import { equalsPoint2D, pointInHexagon, rotatePoint, subtractPoint2D } from '../../util/objects2d';
 import type { DwgRisq } from './risq';
 import { buildingImage } from './risq_buildings';
-import type { RisqResource, RisqSpace, RisqUnit, RisqZone, UnitByTypeData } from './risq_data';
+import type { RisqSpace, RisqUnit, RisqZone, UnitByTypeData } from './risq_data';
 import { RisqUnitType, RisqVisibilityLevel } from './risq_data';
-import { isForestResource, resourceImage } from './risq_resources';
+import { isForestResource, resourceIcon, resourceImage } from './risq_resources';
 import { COMBO_UNIT_ICON_SIZE, comboUnitIconKey, drawComboUnitIcon, unitImage } from './risq_unit';
 import { RisqViewMode, terrainImage } from './risq_terrain';
 import { coordinateToIndex } from './risq_coordinates';
@@ -137,19 +137,22 @@ function distanceToEdgeZoneBoundary(building: Point2D, angle: number, hex_r: num
   return lo;
 }
 
+/** Edge-zone point along an angle from the building, `fraction` of the way from the building circle to the zone boundary */
+function edgeSlotAtAngle(angle: number, hex_r: number, fraction = 0.5): Point2D {
+  const building = buildingLocalOffset(false, hex_r);
+  const d = distanceToEdgeZoneBoundary(building, angle, hex_r);
+  const building_r = BUILDING_CIRCLE_RADIUS_MULTIPLIER * hex_r;
+  const r = building_r + fraction * (d - building_r);
+  return { x: building.x + r * Math.cos(angle), y: building.y + r * Math.sin(angle) };
+}
+
 /** Fill order: center-out interior pairs, then corners (each equidistant from building/boundary along its own angle) */
 function edgeUnitSlotLocalOffsets(hex_r: number): Point2D[] {
   const building = buildingLocalOffset(false, hex_r);
-  const building_r = BUILDING_CIRCLE_RADIUS_MULTIPLIER * hex_r;
   const corner = { x: hex_r * Math.cos(Math.PI / 6), y: hex_r * Math.sin(Math.PI / 6) };
   const corner_angle = Math.atan2(corner.y - building.y, corner.x - building.x);
   const sweep_step = (2 * (Math.PI - corner_angle)) / (EDGE_ZONE_UNIT_SLOTS - 1);
   const sweep_angle = (i: number) => corner_angle + i * sweep_step;
-  const slot_at_angle = (angle: number): Point2D => {
-    const d = distanceToEdgeZoneBoundary(building, angle, hex_r);
-    const r = (d + building_r) / 2;
-    return { x: building.x + r * Math.cos(angle), y: building.y + r * Math.sin(angle) };
-  };
   const last_index = EDGE_ZONE_UNIT_SLOTS - 1;
   const center_low = (last_index - 1) / 2;
   const center_high = (last_index + 1) / 2;
@@ -157,7 +160,7 @@ function edgeUnitSlotLocalOffsets(hex_r: number): Point2D[] {
   for (let k = 0; center_low - k >= 1; k++) {
     interior_indices.push(center_low - k, center_high + k);
   }
-  const interior_positions = interior_indices.map((i) => slot_at_angle(sweep_angle(i)));
+  const interior_positions = interior_indices.map((i) => edgeSlotAtAngle(sweep_angle(i), hex_r));
   const spacing = Math.hypot(
     interior_positions[0].x - interior_positions[2].x,
     interior_positions[0].y - interior_positions[2].y
@@ -563,22 +566,61 @@ function unitVisibleInViewMode(unit_type: RisqUnitType, view_mode: RisqViewMode)
   return true;
 }
 
-const FOREST_SCATTER_ANGLES_DEG = [0, 60, 120, 180, 240, 300];
-const FOREST_TREE_ICON_MULTIPLIER = 0.16;
-const FOREST_SCATTER_RING_MULTIPLIER = 1.8 * BUILDING_CIRCLE_RADIUS_MULTIPLIER;
+const CENTER_FOREST_TREES = 8;
+const EDGE_FOREST_TREES = 6;
+const FOREST_TREE_RADIUS_MULTIPLIER = 0.11;
+const FOREST_TREE_RING_FRACTION = 0.4;
+const CENTER_INNER_FOREST_ANGLES = [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2];
+const EDGE_INNER_FOREST_ANGLES = CENTER_INNER_FOREST_ANGLES.slice(1);
 
-// Draws a ring of the resource's own tree icon around its (already-drawn) main icon, so a "forest"
-// resource shows a cluster of trees over its zone's terrain rather than a single icon like a "grove" does
-function drawForestScatter(ctx: CanvasRenderingContext2D, game: DwgRisq, resource: RisqResource, hex_r: number) {
-  const icon = game.getIcon(resourceImage(resource));
-  const icon_r = 0.5 * FOREST_TREE_ICON_MULTIPLIER * hex_r;
-  const ring_r = FOREST_SCATTER_RING_MULTIPLIER * hex_r;
-  for (const deg of FOREST_SCATTER_ANGLES_DEG) {
-    const rad = (deg * Math.PI) / 180;
-    const x = ring_r * Math.cos(rad);
-    const y = ring_r * Math.sin(rad);
-    ctx.drawImage(icon, x - icon_r, y - icon_r, 2 * icon_r, 2 * icon_r);
+/** Local-frame tree spots: a ring (center) or inward arc (edge), plus an inner square/right triangle at half that distance */
+function forestTreeLocalOffsets(is_center: boolean, hex_r: number): Point2D[] {
+  const building = buildingLocalOffset(is_center, hex_r);
+  const gap = CENTER_ZONE_APOTHEM_MULTIPLIER - BUILDING_CIRCLE_RADIUS_MULTIPLIER;
+  const center_ring_r = (BUILDING_CIRCLE_RADIUS_MULTIPLIER + FOREST_TREE_RING_FRACTION * gap) * hex_r;
+  const ring_at = (angle: number): Point2D =>
+    is_center
+      ? { x: center_ring_r * Math.cos(angle), y: center_ring_r * Math.sin(angle) }
+      : edgeSlotAtAngle(angle, hex_r, FOREST_TREE_RING_FRACTION);
+  const ring_angles = is_center
+    ? Array.from({ length: CENTER_FOREST_TREES }, (_, i) => (2 * Math.PI * i) / CENTER_FOREST_TREES)
+    : Array.from({ length: EDGE_FOREST_TREES }, (_, i) => Math.PI / 2 + (i * Math.PI) / (EDGE_FOREST_TREES - 1));
+  const inner = (is_center ? CENTER_INNER_FOREST_ANGLES : EDGE_INNER_FOREST_ANGLES).map((angle) => {
+    const p = ring_at(angle);
+    return { x: 0.5 * (building.x + p.x), y: 0.5 * (building.y + p.y) };
+  });
+  return [...inner, ...ring_angles.map(ring_at)];
+}
+
+/** Draws a forest zone's trees upright around its space's center (the current origin), clipped to the zone */
+export function drawForestTrees(
+  ctx: CanvasRenderingContext2D,
+  game: DwgRisq,
+  zone: RisqZone,
+  view_mode: RisqViewMode,
+  hex_r: number,
+  map_rotation: number
+) {
+  const resource = zone.resource;
+  const hidden_view = view_mode === RisqViewMode.MILITARY || view_mode === RisqViewMode.OWNERSHIP;
+  if (!resource || !isForestResource(resource) || hidden_view) {
+    return;
   }
+  const direction = findOuterZoneIndex(zone.coordinate);
+  const zone_rotation = direction === -1 ? 0 : (Math.PI / 3) * (direction + 1);
+  const icon = game.getIcon(resourceImage(resource));
+  const icon_r = FOREST_TREE_RADIUS_MULTIPLIER * hex_r;
+  ctx.save();
+  clipToZone(ctx, { x: 0, y: 0 }, hex_r, zone.coordinate);
+  for (const offset of forestTreeLocalOffsets(direction === -1, hex_r)) {
+    const p = rotatePoint(offset, zone_rotation);
+    ctx.translate(p.x, p.y);
+    ctx.rotate(-map_rotation);
+    ctx.drawImage(icon, -icon_r, -icon_r, 2 * icon_r, 2 * icon_r);
+    ctx.rotate(map_rotation);
+    ctx.translate(-p.x, -p.y);
+  }
+  ctx.restore();
 }
 
 export function drawRisqZone(
@@ -654,10 +696,7 @@ export function drawRisqZone(
     ctx.rotate(-rotation);
     if (i === 0) {
       if (!!zone.resource && view_mode !== RisqViewMode.MILITARY && view_mode !== RisqViewMode.OWNERSHIP) {
-        ctx.drawImage(game.getIcon(resourceImage(zone.resource)), -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
-        if (isForestResource(zone.resource)) {
-          drawForestScatter(ctx, game, zone.resource, hex_r);
-        }
+        ctx.drawImage(resourceIcon(game, zone.resource), -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
       } else {
         let building_image: string;
         let building_color: ColorRGB | undefined;

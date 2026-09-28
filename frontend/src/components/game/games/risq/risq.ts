@@ -107,8 +107,15 @@ import type {
   UnitsByTypeData,
 } from './canvas_components/left_panel/left_panel_data';
 import { LeftPanelDataType } from './canvas_components/left_panel/left_panel_data';
-import type { RisqHotkeyLookupEntry } from './risq_hotkeys';
-import { RisqHotkeyAction, buildHotkeyLookup, comboFromKeyboardEvent, comboToString } from './risq_hotkeys';
+import type { HotkeyCombo, HotkeySelection, RisqHotkeyLookupEntry } from './risq_hotkeys';
+import {
+  RisqHotkeyAction,
+  buildHotkeyLookup,
+  comboFromKeyboardEvent,
+  comboFromMouseEvent,
+  comboToString,
+  hotkeyApplies,
+} from './risq_hotkeys';
 
 import './risq.scss';
 import '../../util/canvas_board/canvas_board';
@@ -195,17 +202,23 @@ export class DwgRisq extends DwgElement {
       }
       return;
     }
-    const entry = this.resolveHotkeyEntry(e);
-    if (entry?.kind === 'cycle_building') {
-      this.cycleBuildingSelection(entry.id);
-    }
+    this.hotkeyPressed(this.resolveHotkeyEntry(comboFromKeyboardEvent(e)));
   };
 
   private handleKeyup = (e: KeyboardEvent) => {
     if (isTypingInInput() || isDialogOpen()) {
       return;
     }
-    const entry = this.resolveHotkeyEntry(e);
+    this.hotkeyReleased(this.resolveHotkeyEntry(comboFromKeyboardEvent(e)));
+  };
+
+  private hotkeyPressed(entry: RisqHotkeyLookupEntry | undefined) {
+    if (entry?.kind === 'cycle_building') {
+      this.cycleBuildingSelection(entry.id);
+    }
+  }
+
+  private hotkeyReleased(entry: RisqHotkeyLookupEntry | undefined) {
     if (!entry) {
       return;
     }
@@ -219,11 +232,41 @@ export class DwgRisq extends DwgElement {
         this.toggleMercenary(mercenary);
       }
     }
-  };
+  }
 
-  private resolveHotkeyEntry(e: KeyboardEvent): RisqHotkeyLookupEntry | undefined {
-    const lookup = buildHotkeyLookup(getSettings().risq_hotkeys);
-    return lookup.get(comboToString(comboFromKeyboardEvent(e)));
+  private extraMouseButton(e: MouseEvent) {
+    if (isTypingInInput() || isDialogOpen()) {
+      return;
+    }
+    const entry = this.resolveHotkeyEntry(comboFromMouseEvent(e));
+    if (e.type === 'mousedown') {
+      this.hotkeyPressed(entry);
+    } else {
+      this.hotkeyReleased(entry);
+    }
+  }
+
+  private resolveHotkeyEntry(combo: HotkeyCombo): RisqHotkeyLookupEntry | undefined {
+    const entries = buildHotkeyLookup(getSettings().risq_hotkeys).get(comboToString(combo)) ?? [];
+    if (entries.length <= 1) {
+      return entries[0];
+    }
+    const selection = this.hotkeySelection();
+    return selection ? entries.find((entry) => hotkeyApplies(entry, selection)) : undefined;
+  }
+
+  private hotkeySelection(): HotkeySelection | undefined {
+    const data = this.left_panel.getData();
+    if (data?.data_type === LeftPanelDataType.BUILDING) {
+      const ids = (kind: RisqProducibleKind) => data.data.produces.filter((p) => p.kind === kind).map((p) => p.id);
+      return { kind: 'building', unit_ids: ids(RisqProducibleKind.UNIT), tech_ids: ids(RisqProducibleKind.TECH) };
+    }
+    if (this.hotkeySubjectUnitIds().length === 0) {
+      return undefined;
+    }
+    const lp = this.left_panel;
+    const composition = lp.isOnlyVillagers() ? 'villagers' : lp.isOnlyMilitary() ? 'military' : 'mixed';
+    return { kind: 'units', composition, garrisoned: lp.isOnlyGarrisoned() };
   }
 
   private left_panel = new RisqLeftPanel(this, {
@@ -316,6 +359,8 @@ export class DwgRisq extends DwgElement {
         mouseleave: this.mouseleave.bind(this),
         mousedown: this.mousedown.bind(this),
         mouseup: this.mouseup.bind(this),
+        // eslint-disable-next-line @typescript-eslint/naming-convention
+        extraMouseButton: this.extraMouseButton.bind(this),
         zoom_config: {
           zoom_constant: 650,
           max_zoom: 1.3,
@@ -557,7 +602,9 @@ export class DwgRisq extends DwgElement {
         }
         break;
       case RisqHotkeyAction.UNGARRISON:
-        if (subject_ids.length) {
+        if (building) {
+          this.ungarrisonBuilding(building.internal_id);
+        } else if (subject_ids.length) {
           this.ungarrisonUnits(subject_ids);
         }
         break;
@@ -614,6 +661,12 @@ export class DwgRisq extends DwgElement {
       case RisqHotkeyAction.BUILDING_GATHER_POINT:
         if (building) {
           this.toggleBuildingGatherPoint(building.internal_id);
+        }
+        break;
+      case RisqHotkeyAction.BUILDING_CLEAR_GATHER_POINT:
+        if (building) {
+          this.disarmGatherPoint();
+          this.clearGatherPoint(building.internal_id);
         }
         break;
       case RisqHotkeyAction.BUILDING_DELETE:
@@ -1794,16 +1847,17 @@ export class DwgRisq extends DwgElement {
     }
   }
 
-  toggleBuildingGatherPoint(_building_id: number) {
+  toggleBuildingGatherPoint(building_id: number) {
     if (this.gather_point_armed) {
       this.disarmGatherPoint();
+      this.clearGatherPoint(building_id);
     } else {
       this.armGatherPoint();
     }
   }
 
-  ungarrisonBuilding(_building_id: number) {
-    // TODO: building-initiated ungarrison isn't implemented yet
+  ungarrisonBuilding(building_id: number) {
+    this.ungarrisonUnits(this.findBuildingById(building_id)?.garrisoned_units ?? []);
   }
 
   stopUnit(internal_ids: number[]) {
@@ -1842,7 +1896,7 @@ export class DwgRisq extends DwgElement {
   }
 
   clearGatherPoint(building_id: number) {
-    if (!this.canGiveOrders()) {
+    if (!this.canGiveOrders() || !this.findBuildingById(building_id)?.gather_point) {
       return;
     }
     const game_update = createMessage(
@@ -1918,32 +1972,36 @@ export class DwgRisq extends DwgElement {
     this.message_queue.enqueue(text, color);
   }
 
-  predictedGathererCount(zone_key: number): number {
-    const player = this.getPlayer();
-    if (!player) {
-      return 0;
-    }
-    let count = 0;
-    for (const unit of player.units.values()) {
-      const effective = this.orders_model.effectiveForSubject(unit.internal_id, 'unit');
-      if (effective.some((o) => o.order_type === RisqOrderType.OrderType_UnitGather && o.target_id === zone_key)) {
-        count++;
-      }
-    }
-    return count;
-  }
-
-  private warnIfGatherOverCapacity(target: RisqBuilding | RisqResource | undefined) {
-    if (!target || target.gather_capacity === undefined) {
-      return;
-    }
+  /** Own units gathering at the target per the server, and the set gathering there once pending orders apply */
+  gatherers(target: RisqBuilding | RisqResource): { current: number; predicted: Set<number> } {
     const zone_key = cantorPair(
       cantorPair(target.space_coordinate.x, target.space_coordinate.y),
       cantorPair(target.zone_coordinate.x, target.zone_coordinate.y)
     );
-    if (this.predictedGathererCount(zone_key) > target.gather_capacity) {
-      this.showMessage(`${target.display_name} is over its worker capacity`, RISQ_MESSAGE_WARNING_COLOR);
+    const gathers = (orders: RisqFrontendOrder[]) =>
+      orders.some((o) => o.order_type === RisqOrderType.OrderType_UnitGather && o.target_id === zone_key);
+    let current = 0;
+    const predicted = new Set<number>();
+    for (const unit of this.getPlayer()?.units.values() ?? []) {
+      current += gathers(unit.active_orders) ? 1 : 0;
+      if (gathers(this.orders_model.effectiveForSubject(unit.internal_id, 'unit'))) {
+        predicted.add(unit.internal_id);
+      }
     }
+    return { current, predicted };
+  }
+
+  private fitGatherCapacity(target: RisqBuilding | RisqResource | undefined, subjects: number[]): number[] {
+    if (!target || target.gather_capacity === undefined) {
+      return subjects;
+    }
+    const { predicted } = this.gatherers(target);
+    const joining = subjects.filter((id) => !predicted.has(id));
+    const free = Math.max(0, target.gather_capacity - predicted.size);
+    if (joining.length > free) {
+      this.showMessage(`${target.display_name} is at worker capacity`, RISQ_MESSAGE_WARNING_COLOR);
+    }
+    return [...subjects.filter((id) => predicted.has(id)), ...joining.slice(0, free)];
   }
 
   selectNextIdleUnit() {
@@ -2704,11 +2762,10 @@ export class DwgRisq extends DwgElement {
         }
         this.addUnitOrder(
           RisqOrderType.OrderType_UnitGather,
-          [data.data.internal_id],
+          this.fitGatherCapacity(this.hovered_zone.building ?? this.hovered_zone.resource, [data.data.internal_id]),
           this.hovered_zone.coordinate_key,
           ctrl_held
         );
-        this.warnIfGatherOverCapacity(this.hovered_zone.building ?? this.hovered_zone.resource);
         break;
       case RisqOrderType.OrderType_UnitBuild: {
         if (!this.hovered_zone) {
@@ -2896,11 +2953,13 @@ export class DwgRisq extends DwgElement {
         }
         this.addUnitOrder(
           RisqOrderType.OrderType_UnitGather,
-          units.filter((u) => u.unit_type === RisqUnitType.ECONOMIC).map((u) => u.internal_id),
+          this.fitGatherCapacity(
+            this.hovered_zone.building ?? this.hovered_zone.resource,
+            units.filter((u) => u.unit_type === RisqUnitType.ECONOMIC).map((u) => u.internal_id)
+          ),
           this.hovered_zone.coordinate_key,
           ctrl_held
         );
-        this.warnIfGatherOverCapacity(this.hovered_zone.building ?? this.hovered_zone.resource);
         break;
       case RisqOrderType.OrderType_UnitBuild:
         if (!this.hovered_zone || !this.armed_building) {

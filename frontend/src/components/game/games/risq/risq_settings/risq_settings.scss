@@ -42,6 +42,16 @@ dwg-risq-settings {
     gap: 0.2em;
   }
 
+  .hotkey-section-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+    font-weight: bold;
+    padding: 0.15em 0.4em;
+
+    &:not(:first-child) {
+      margin-top: 0.8em;
+    }
+  }
+
   .hotkey-row {
     align-items: center;
     display: flex;

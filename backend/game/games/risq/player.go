@@ -1,0 +1,286 @@
+package risq
+
+import (
+	"encoding/json"
+	"fmt"
+	"iter"
+	"maps"
+	"math/rand"
+	"os"
+
+	"github.com/dgray001/gray_online/game"
+	"github.com/dgray001/gray_online/game/games/risq/ai"
+	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
+	"github.com/gin-gonic/gin"
+)
+
+type RisqPlayer struct {
+	player                *game.Player
+	resources             *RisqPlayerResources
+	buildings             map[uint64]*RisqBuilding
+	units                 map[uint64]*RisqUnit
+	max_population_limit  uint16
+	color                 string
+	active_orders         []*RisqOrder
+	past_orders           []*RisqOrder
+	orders_submitted      bool
+	planned_foundations   map[uint]*RisqPlannedFoundation
+	researched_techs      map[uint32]bool
+	available_mercenaries map[uint32]bool
+	pending_mercenaries   []*RisqPendingMercenary
+	report                *RisqTurnReport
+	score                 uint
+	ai_model              ai.Model
+	eliminated            bool
+	kills                 uint
+	razes                 uint
+	units_lost            uint
+	buildings_lost        uint
+	economy               economyStats
+	// owned by this player only, so its own AI goroutine never races another player's
+	rng *rand.Rand
+	// closed to terminate this player's runAi goroutine once eliminated, so it stops reading
+	// live game state that the main goroutine may be concurrently mutating during resolution
+	ai_stop chan struct{}
+}
+
+// Idempotent; only ever called from the game's own goroutine
+func (p *RisqPlayer) stopAi() {
+	select {
+	case <-p.ai_stop:
+	default:
+		close(p.ai_stop)
+	}
+}
+
+func (p *RisqPlayer) createAiModel(config_path string) {
+	data, read_err := defs.ReadConfigFile("ai", config_path+".json")
+	if read_err != nil {
+		fmt.Fprintln(os.Stderr, "ai config", config_path, "unreadable, using default:", read_err)
+		data, read_err = defs.ReadConfigFile("ai", "default.json")
+	}
+	if read_err != nil {
+		fmt.Fprintln(os.Stderr, "default ai config unreadable:", read_err)
+		p.ai_model = ai.NoopModel{}
+		return
+	}
+	var raw map[string]any
+	unmarshal_err := json.Unmarshal(data, &raw)
+	if unmarshal_err != nil {
+		// TODO: log error
+		p.ai_model = ai.ParseModel(nil)
+		return
+	}
+	p.ai_model = ai.ParseModel(raw)
+}
+
+// Private commitment to build at a zone before any stamina makes it a real, objective RisqBuilding
+type RisqPlannedFoundation struct {
+	building_id uint32
+	cost        defs.RisqResourceCost
+}
+
+func createRisqPlayer(player *game.Player, max_population_limit uint16, color string, rng *rand.Rand) *RisqPlayer {
+	return &RisqPlayer{
+		player:                player,
+		resources:             createRisqPlayerResources(),
+		buildings:             make(map[uint64]*RisqBuilding),
+		units:                 make(map[uint64]*RisqUnit, 0),
+		max_population_limit:  max_population_limit,
+		color:                 color,
+		active_orders:         make([]*RisqOrder, 0),
+		past_orders:           make([]*RisqOrder, 0),
+		orders_submitted:      false,
+		planned_foundations:   make(map[uint]*RisqPlannedFoundation),
+		researched_techs:      make(map[uint32]bool),
+		available_mercenaries: make(map[uint32]bool),
+		rng:                   rng,
+		ai_stop:               make(chan struct{}),
+	}
+}
+
+func createRisqPlannedFoundation(building_id uint32, player *RisqPlayer) *RisqPlannedFoundation {
+	cost, _ := defs.BuildingProductionCost(building_id)
+	player.resources.spend(cost)
+	return &RisqPlannedFoundation{building_id: building_id, cost: cost}
+}
+
+func (p *RisqPlayer) cancelPlannedFoundation(zone *RisqZone) {
+	foundation, ok := p.planned_foundations[zone.coordinate_key]
+	if !ok {
+		return
+	}
+	p.resources.refund(foundation.cost)
+	delete(p.planned_foundations, zone.coordinate_key)
+}
+
+func (p *RisqPlayer) researchedTechIds() []uint32 {
+	ids := make([]uint32, 0, len(p.researched_techs))
+	for id, researched := range p.researched_techs {
+		if researched {
+			ids = append(ids, id)
+		}
+	}
+	return ids
+}
+
+func (p *RisqPlayer) populationLimit() uint16 {
+	limit := uint16(0)
+	for _, building := range p.buildings {
+		if building != nil && !building.deleted && !building.underConstruction() {
+			limit += building.population_support
+		}
+	}
+	if limit > p.max_population_limit {
+		limit = p.max_population_limit
+	}
+	return limit
+}
+
+// Pending mercenaries reserve their slots so a same-batch hire or same-turn production can't overflow the cap
+func (p *RisqPlayer) occupiedPopulation() int {
+	return nonDeletedUnitCount(p.units) + len(p.pending_mercenaries)
+}
+
+func (p *RisqPlayer) populationCapped() bool {
+	return uint16(p.occupiedPopulation()) >= p.populationLimit()
+}
+
+func (p *RisqPlayer) valid() bool {
+	return true
+}
+
+func (p *RisqPlayer) canSubmitOrders() bool {
+	return !p.eliminated
+}
+
+func (p *RisqPlayer) allOrderables() iter.Seq[Orderable] {
+	return func(yield func(Orderable) bool) {
+		for _, u := range p.units {
+			if u.isDeleted() {
+				continue
+			}
+			if !yield(u) {
+				return
+			}
+		}
+		for _, b := range p.buildings {
+			if b.isDeleted() {
+				continue
+			}
+			if !yield(b) {
+				return
+			}
+		}
+	}
+}
+
+func (p *RisqPlayer) receivePlayerOrder(o *RisqOrder, risq *GameRisq) {
+	switch o.order_type {
+	case defs.OrderType_CancelOrder:
+		for _, active_order := range p.active_orders {
+			if active_order.internal_id != uint64(o.target_id) {
+				continue
+			}
+			for _, subject := range active_order.subjects {
+				subject.cancelOrder(active_order, risq)
+			}
+			break
+		}
+	case defs.OrderType_CancelFoundation:
+		_, zone := invertZoneKey(uint(o.target_id), risq)
+		p.cancelPlannedFoundation(zone)
+	case defs.OrderType_BuyMercenary:
+		p.buyMercenary(o, risq)
+	}
+}
+
+func (p *RisqPlayer) buyMercenary(o *RisqOrder, risq *GameRisq) {
+	unit_id, space, zone := invertMercenaryKey(uint(o.target_id), risq)
+	if !p.available_mercenaries[unit_id] {
+		p.report.recordFailure(o.order_type, o.target_id, "mercenary not available")
+		return
+	}
+	if space.ownership != p.player.Player_id || zone.ownership != p.player.Player_id {
+		p.report.recordFailure(o.order_type, o.target_id, "space or zone not owned")
+		return
+	}
+	if region := risq.regionContaining(space); region != nil && region.owner != p.player.Player_id {
+		p.report.recordFailure(o.order_type, o.target_id, "region not owned")
+		return
+	}
+	if p.populationCapped() {
+		p.report.recordFailure(o.order_type, o.target_id, "population capped")
+		return
+	}
+	cost := mercenaryCost(unit_id)
+	if !p.resources.canAfford(cost) {
+		p.report.recordFailure(o.order_type, o.target_id, "cannot afford mercenary")
+		return
+	}
+	p.resources.spend(cost)
+	p.pending_mercenaries = append(p.pending_mercenaries, &RisqPendingMercenary{
+		unit_id: unit_id, zone: zone, cost: cost, target_id: o.target_id,
+	})
+}
+
+func (p *RisqPlayer) toFrontend(viewer_player_id int) gin.H {
+	player := gin.H{
+		"population_limit": p.populationLimit(),
+		"score":            p.score,
+		"color":            p.color,
+		"orders_submitted": p.orders_submitted,
+		"eliminated":       p.eliminated,
+	}
+	if p.player != nil {
+		player["player"] = p.player.ToFrontend(false)
+	}
+	if p.resources != nil && p.player != nil && p.player.Player_id == viewer_player_id {
+		player["resources"] = p.resources.toFrontend()
+		player["turn_report"] = p.report.toFrontend()
+		foundations := make([]gin.H, 0)
+		for coordinate_key, f := range p.planned_foundations {
+			foundations = append(foundations, gin.H{
+				"coordinate_key": coordinate_key,
+				"building_id":    f.building_id,
+				"display_name":   defs.BuildingConfigs[f.building_id].Display_name,
+			})
+		}
+		player["planned_foundations"] = foundations
+		player["available_mercenaries"] = p.availableMercenariesToFrontend()
+	}
+	is_owner := p.player != nil && p.player.Player_id == viewer_player_id
+	buildings := make([]gin.H, 0)
+	for _, building := range p.buildings {
+		if building == nil || building.deleted {
+			continue
+		}
+		if !is_owner && (building.zone == nil || building.zone.space == nil || building.zone.space.getVisibility(viewer_player_id) < defs.VisibilityPoor) {
+			continue
+		}
+		buildings = append(buildings, building.toFrontend(viewer_player_id))
+	}
+	player["buildings"] = buildings
+	units := make([]gin.H, 0)
+	for _, unit := range p.units {
+		if unit == nil || unit.deleted {
+			continue
+		}
+		if !is_owner && (unit.zone == nil || unit.zone.space == nil || unit.zone.space.getVisibility(viewer_player_id) < defs.VisibilityGood) {
+			continue
+		}
+		units = append(units, unit.toFrontend(viewer_player_id))
+	}
+	player["units"] = units
+	active_orders := make([]gin.H, 0)
+	if p.player != nil && p.player.Player_id == viewer_player_id {
+		for _, order := range p.active_orders {
+			if order != nil && !order.executed && !order.cancelled {
+				active_orders = append(active_orders, order.toFrontend())
+			}
+		}
+	}
+	player["active_orders"] = active_orders
+	player["researched_techs"] = maps.Clone(p.researched_techs)
+	return player
+}

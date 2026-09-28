@@ -1,0 +1,376 @@
+package risq
+
+import (
+	"fmt"
+	"math/rand"
+	"os"
+	"sort"
+
+	"github.com/dgray001/gray_online/game/game_utils"
+	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
+	"github.com/dgray001/gray_online/util"
+	"github.com/gin-gonic/gin"
+)
+
+type RisqSpace struct {
+	terrain_id      uint32
+	coordinate      game_utils.Coordinate2D
+	coordinate_key  uint
+	zones           [][]*RisqZone
+	resources       map[uint64]*RisqResource
+	buildings       map[uint64]*RisqBuilding
+	units           map[uint64]*RisqUnit
+	visibility      map[int]uint8
+	adjacent_spaces map[uint]*RisqSpace
+	ownership       int
+	// player_id -> zone coordinate_key -> last-known snapshot while that player's vision is at fog level
+	building_cache  map[int]map[uint]RisqBuildingCache
+	resource_cache  map[int]map[uint]RisqResourceCache
+	ownership_cache map[int]int
+}
+
+func createRisqSpace(q int, r int, terrain_id uint32) *RisqSpace {
+	space := RisqSpace{
+		terrain_id:      terrain_id,
+		coordinate:      game_utils.Coordinate2D{X: q, Y: r},
+		coordinate_key:  util.Pair(q, r),
+		resources:       make(map[uint64]*RisqResource),
+		buildings:       make(map[uint64]*RisqBuilding),
+		units:           make(map[uint64]*RisqUnit),
+		visibility:      make(map[int]uint8),
+		adjacent_spaces: make(map[uint]*RisqSpace),
+		ownership:       -1,
+		building_cache:  make(map[int]map[uint]RisqBuildingCache),
+		resource_cache:  make(map[int]map[uint]RisqResourceCache),
+		ownership_cache: make(map[int]int),
+	}
+	space.zones = make([][]*RisqZone, 3)
+	for j := range space.zones {
+		r_zone := j - 1
+		l := 3 - util.AbsInt(r_zone)
+		space.zones[j] = make([]*RisqZone, l)
+		for i := range space.zones[j] {
+			q_zone := max(-1, -(1+r_zone)) + i
+			space.zones[j][i] = createRisqZone(q_zone, r_zone, &space)
+		}
+	}
+	center := space.zones[1][1]
+	outers := []*RisqZone{
+		space.zones[0][0], space.zones[0][1],
+		space.zones[1][0], space.zones[1][2],
+		space.zones[2][0], space.zones[2][1],
+	}
+	for _, z := range outers {
+		center.adjacent_zones = append(center.adjacent_zones, z)
+		z.adjacent_zones = append(z.adjacent_zones, center)
+		for _, other := range outers {
+			if game_utils.AxialDistance(z.coordinate, other.coordinate) == 1 {
+				z.adjacent_zones = append(z.adjacent_zones, other)
+			}
+		}
+	}
+	return &space
+}
+
+func nonDeletedUnitCount(units map[uint64]*RisqUnit) int {
+	count := 0
+	for _, u := range units {
+		if u != nil && !u.deleted {
+			count++
+		}
+	}
+	return count
+}
+
+func invertSpaceKey(k uint, r *GameRisq) *RisqSpace {
+	x, y := util.InvertPair(k)
+	return r.getSpace(&game_utils.Coordinate2D{X: x, Y: y})
+}
+
+func (s *RisqSpace) setAdjacentSpace(adj *RisqSpace, v *game_utils.Coordinate2D) {
+	zone := s.getZone(v)
+	adj_zone := adj.getZone(v.Invert())
+	if zone == nil || adj_zone == nil {
+		fmt.Fprintln(os.Stderr, "Invalid zone coordinate: ", v.X, v.Y)
+		return
+	}
+	if zone.adjacent_space != nil {
+		fmt.Fprintln(os.Stderr, "Already set adjacent space for this zone: ", v.X, v.Y)
+		return
+	}
+	s.adjacent_spaces[util.Pair(v.X, v.Y)] = adj
+	zone.adjacent_space = adj
+	zone.adjacent_zones = append(zone.adjacent_zones, adj_zone)
+}
+
+// adjacent_spaces in a stable order. Go's map iteration order is randomized per-process, and several
+// map-generation steps feed this order into RNG shuffles or BFS tie-breaks, which must be
+// reproducible from a seed; ranging over adjacent_spaces directly breaks that.
+func (s *RisqSpace) sortedAdjacentSpaces() []*RisqSpace {
+	spaces := make([]*RisqSpace, 0, len(s.adjacent_spaces))
+	for _, adj := range s.adjacent_spaces {
+		spaces = append(spaces, adj)
+	}
+	sort.Slice(spaces, func(i, j int) bool { return spaces[i].coordinate_key < spaces[j].coordinate_key })
+	return spaces
+}
+
+func (s *RisqSpace) coordinateToIndex(c *game_utils.Coordinate2D) *game_utils.Coordinate2D {
+	return &game_utils.Coordinate2D{
+		X: c.Y + 1,
+		Y: c.X - max(-1, -(1+c.Y)),
+	}
+}
+
+func (s *RisqSpace) getZonesAsRandomArray(include_middle bool, rng *rand.Rand) []*RisqZone {
+	zones := make([]*RisqZone, 0)
+	for i, row := range s.zones {
+		for j, zone := range row {
+			if include_middle || i != 1 || j != 1 {
+				zones = append(zones, zone)
+			}
+		}
+	}
+	return util.ShuffleFrom(rng, zones)
+}
+
+func (s *RisqSpace) getZone(c *game_utils.Coordinate2D) *RisqZone {
+	index := s.coordinateToIndex(c)
+	if index.X < 0 || index.X >= len(s.zones) {
+		return nil
+	}
+	row := s.zones[index.X]
+	if index.Y < 0 || index.Y >= len(row) {
+		return nil
+	}
+	return row[index.Y]
+}
+
+func (s *RisqSpace) getCenterZone() *RisqZone {
+	return s.zones[1][1]
+}
+
+func (s *RisqSpace) setBuilding(c *game_utils.Coordinate2D, building *RisqBuilding) {
+	zone := s.getZone(c)
+	if zone == nil {
+		fmt.Fprintln(os.Stderr, "Invalid zone coordinate: ", c.X, c.Y)
+		return
+	}
+	if zone.resource != nil && zone.resource.resources_left > 0 {
+		fmt.Fprintln(os.Stderr, "Can't set building when resource already there")
+		return
+	}
+	if zone.building != nil && !zone.building.deleted {
+		fmt.Fprintln(os.Stderr, "Can't set building when building already there")
+		return
+	}
+	s.buildings[building.internal_id] = building
+	zone.building = building
+	building.zone = zone
+	s.addVision(building.vision(), zone, building.player_id)
+}
+
+func (s *RisqSpace) setUnit(c *game_utils.Coordinate2D, unit *RisqUnit) {
+	zone := s.getZone(c)
+	if zone == nil {
+		fmt.Fprintln(os.Stderr, "Invalid zone coordinate: ", c.X, c.Y)
+		return
+	}
+	s.units[unit.internal_id] = unit
+	zone.units[unit.internal_id] = unit
+	unit.zone = zone
+	s.addVision(unit.vision(), zone, unit.player_id)
+}
+
+func (s *RisqSpace) removeUnit(unit *RisqUnit) {
+	delete(s.units, unit.internal_id)
+	if unit.zone != nil {
+		delete(unit.zone.units, unit.internal_id)
+	}
+}
+
+func (s *RisqSpace) removeBuilding(building *RisqBuilding) {
+	delete(s.buildings, building.internal_id)
+	if building.zone != nil && building.zone.building == building {
+		building.zone.building = nil
+	}
+}
+
+func (s *RisqSpace) removeResource(resource *RisqResource) {
+	delete(s.resources, resource.internal_id)
+	if resource.zone != nil && resource.zone.resource == resource {
+		resource.zone.resource = nil
+	}
+}
+
+func (s *RisqSpace) addVision(v *defs.RisqVision, z *RisqZone, player_id int) {
+	checked := make(map[uint]bool)
+	elevate := func(space *RisqSpace, level uint8) {
+		if space == nil {
+			return
+		}
+		if space.getVisibility(player_id) < level {
+			space.visibility[player_id] = level
+		}
+		checked[space.coordinate_key] = true
+	}
+	elevate(s, v.Space)
+	if z.isCenter() {
+		for _, adj := range s.adjacent_spaces {
+			elevate(adj, v.Adjacent)
+		}
+	} else {
+		dirs := game_utils.AxialDirectionVectors()
+		spaceInDirection := func(offset int) *RisqSpace {
+			d := dirs[(z.direction+offset)%6]
+			return s.adjacent_spaces[util.Pair(d.X, d.Y)]
+		}
+		elevate(spaceInDirection(0), v.Edge_adjacent)
+		elevate(spaceInDirection(1), v.Adjacent)
+		elevate(spaceInDirection(5), v.Adjacent)
+		elevate(spaceInDirection(2), v.Edge_opposite)
+		elevate(spaceInDirection(3), v.Edge_opposite)
+		elevate(spaceInDirection(4), v.Edge_opposite)
+	}
+	for _, adj := range s.adjacent_spaces {
+		for _, sec := range adj.adjacent_spaces {
+			if util.MapContains(checked, sec.coordinate_key) {
+				continue
+			}
+			if sec.getVisibility(player_id) < v.Secondary {
+				sec.visibility[player_id] = v.Secondary
+			}
+			checked[sec.coordinate_key] = true
+		}
+	}
+}
+
+func (s *RisqSpace) setResource(c *game_utils.Coordinate2D, resource *RisqResource) {
+	zone := s.getZone(c)
+	if zone == nil {
+		fmt.Fprintln(os.Stderr, "Invalid zone coordinate: ", c.X, c.Y)
+		return
+	}
+	if zone.resource != nil && zone.resource.resources_left > 0 {
+		fmt.Fprintln(os.Stderr, "Can't set resource when resource already there")
+		return
+	}
+	if zone.building != nil && !zone.building.deleted {
+		fmt.Fprintln(os.Stderr, "Can't set resource when building already there")
+		return
+	}
+	s.resources[resource.internal_id] = resource
+	zone.resource = resource
+	resource.zone = zone
+}
+
+func (s *RisqSpace) getVisibility(player_id int) uint8 {
+	v, ok := s.visibility[player_id]
+	if ok {
+		return v
+	} else {
+		return 0
+	}
+}
+
+// snapshots this space's current buildings/resources for player_id, replacing its prior cache entirely
+func (s *RisqSpace) refreshCache(player_id int) {
+	buildings := make(map[uint]RisqBuildingCache)
+	resources := make(map[uint]RisqResourceCache)
+	for _, row := range s.zones {
+		for _, zone := range row {
+			if zone.building != nil && !zone.building.deleted {
+				buildings[zone.coordinate_key] = cacheRisqBuilding(zone.building)
+			}
+			if zone.resource != nil && zone.resource.resources_left > 0 {
+				resources[zone.coordinate_key] = cacheRisqResource(zone.resource)
+			}
+		}
+	}
+	s.building_cache[player_id] = buildings
+	s.resource_cache[player_id] = resources
+	s.ownership_cache[player_id] = s.ownership
+}
+
+func (s *RisqSpace) toFrontend(player_id int, _is_viewer bool) gin.H {
+	space := gin.H{
+		"terrain_id":     s.terrain_id,
+		"terrain_type":   defs.TerrainConfigs[s.terrain_id].Terrain_type,
+		"display_name":   defs.TerrainConfigs[s.terrain_id].Display_name,
+		"coordinate":     s.coordinate.ToFrontend(),
+		"coordinate_key": s.coordinate_key,
+	}
+	v := s.getVisibility(player_id)
+	space["visibility"] = v
+	if v == defs.VisibilityUnexplored {
+		return space
+	}
+	space["gold_income"] = spaceGoldIncome
+	if v == defs.VisibilityFog {
+		if owner, ok := s.ownership_cache[player_id]; ok {
+			space["ownership"] = owner
+		}
+	} else {
+		space["ownership"] = s.ownership
+	}
+	zones := [][]gin.H{}
+	for _, row := range s.zones {
+		zones_row := []gin.H{}
+		for _, zone := range row {
+			zones_row = append(zones_row, zone.toFrontend(player_id, v, s))
+		}
+		zones = append(zones, zones_row)
+	}
+	space["zones"] = zones
+	if v == defs.VisibilityFog {
+		resources := make([]gin.H, 0)
+		for _, cache := range s.resource_cache[player_id] {
+			resources = append(resources, cache.toFrontend())
+		}
+		space["resources"] = resources
+		buildings := make([]gin.H, 0)
+		for _, cache := range s.building_cache[player_id] {
+			buildings = append(buildings, cache.toFrontend())
+		}
+		space["buildings"] = buildings
+		return space
+	}
+	resources := make([]gin.H, 0)
+	for _, resource := range s.resources {
+		if resource != nil && resource.resources_left > 0 {
+			resources = append(resources, resource.toFrontend())
+		}
+	}
+	space["resources"] = resources
+	buildings := make([]gin.H, 0)
+	for _, building := range s.buildings {
+		if building != nil && !building.deleted {
+			buildings = append(buildings, building.toFrontend(player_id))
+		}
+	}
+	space["buildings"] = buildings
+	if v >= defs.VisibilityGood {
+		units := make([]gin.H, 0)
+		for _, unit := range s.units {
+			if unit != nil && !unit.deleted {
+				units = append(units, unit.toFrontend(player_id))
+			}
+		}
+		space["units"] = units
+	} else {
+		space["unit_count"] = nonDeletedUnitCount(s.units)
+	}
+	return space
+}
+
+func (s *RisqSpace) terrainType() defs.TerrainType {
+	return defs.TerrainConfigs[s.terrain_id].Terrain_type
+}
+
+func (s *RisqSpace) impassable() bool {
+	return s.terrainType().MoveCost().Impassable
+}
+
+func (s *RisqSpace) buildSpeedModifier() float64 {
+	return s.terrainType().MoveCost().Build_speed_modifier
+}

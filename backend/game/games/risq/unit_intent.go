@@ -1,0 +1,372 @@
+package risq
+
+import (
+	"math"
+	"sort"
+
+	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
+	"github.com/dgray001/gray_online/util"
+)
+
+const unitTickStaminaCost = 3
+const buildTickStaminaCost = 5
+
+const gatherRoundingPlaces = 4
+
+const gatherRateStaminaBase = 10.0
+
+const repairSpeedFactor = 0.6
+const repairCostFactor = 1.0
+
+// Returns the heal amount and resource cost for spending stamina repairing building; ok is false if unrepairable
+func repairHealAndCost(building *RisqBuilding, stamina int) (heal float64, cost defs.RisqResourceCost, ok bool) {
+	config := defs.BuildingConfigs[building.building_id]
+	if config.Build_stamina <= 0 {
+		return 0, defs.RisqResourceCost{}, false
+	}
+	max_health := float64(building.cs.max_health)
+	heal = repairSpeedFactor * max_health / float64(config.Build_stamina) * float64(stamina)
+	if remaining := max_health - building.cs.health; heal > remaining {
+		heal = remaining
+	}
+	cost = config.Cost.Scale(repairCostFactor * heal / max_health)
+	return heal, cost, true
+}
+
+type MoveIntent struct {
+	path       []*RisqZone
+	next_step  *RisqZone
+	intra_step bool
+	cost       uint
+}
+
+func (*MoveIntent) isIntentKind() {}
+
+type GatherIntent struct {
+	source Gatherable
+}
+
+func (*GatherIntent) isIntentKind() {}
+
+type gatherDemand struct {
+	unit   *RisqUnit
+	amount float64
+}
+
+// Computes each gatherer's actual allotment for a contested resource: whoever asks for less than an
+// equal share gets their full request, and only the leftover is split among those who asked for more
+func computeGatherAllotments(orderables []Orderable) map[*RisqUnit]float64 {
+	by_source := make(map[Gatherable][]gatherDemand)
+	for _, o := range orderables {
+		u, ok := o.(*RisqUnit)
+		if !ok || !u.intent.hasIntent() {
+			continue
+		}
+		gather, ok := u.intent.detail.(*GatherIntent)
+		if !ok {
+			continue
+		}
+		amount := float64(u.intent.intent_cost) * (float64(gather.source.gatherSpeed()) / gatherRateStaminaBase)
+		by_source[gather.source] = append(by_source[gather.source], gatherDemand{unit: u, amount: amount})
+	}
+	allotments := make(map[*RisqUnit]float64)
+	for source, demands := range by_source {
+		for unit, amount := range quantizeAllotments(waterFillGather(demands, source.gatherResourcesLeft())) {
+			allotments[unit] = amount
+		}
+	}
+	return allotments
+}
+
+// Rounds each gatherer's allotment to gatherRoundingPlaces while conserving their exact sum, so the total
+// deducted from a resource doesn't depend on which order gatherers happened to be processed in
+func quantizeAllotments(raw map[*RisqUnit]float64) map[*RisqUnit]float64 {
+	scale := math.Pow(10, gatherRoundingPlaces)
+	total := 0.0
+	for _, amount := range raw {
+		total += amount
+	}
+	target_units := int64(math.Round(util.RoundTo(total, gatherRoundingPlaces) * scale))
+	type floored struct {
+		unit      *RisqUnit
+		amount    float64
+		remainder float64
+	}
+	floors := make([]floored, 0, len(raw))
+	floor_units := int64(0)
+	for unit, amount := range raw {
+		scaled := amount * scale
+		floor := math.Floor(scaled)
+		floors = append(floors, floored{unit: unit, amount: floor / scale, remainder: scaled - floor})
+		floor_units += int64(floor)
+	}
+	sort.Slice(floors, func(i, j int) bool {
+		if floors[i].remainder != floors[j].remainder {
+			return floors[i].remainder > floors[j].remainder
+		}
+		return floors[i].unit.internal_id < floors[j].unit.internal_id
+	})
+	result := make(map[*RisqUnit]float64, len(floors))
+	leftover := target_units - floor_units
+	for i, f := range floors {
+		amount := f.amount
+		if int64(i) < leftover {
+			amount += 1 / scale
+		}
+		result[f.unit] = amount
+	}
+	return result
+}
+
+// Computes each repairer's actual afford fraction when several of one player's repairs contend for
+// the same limited resource balance in one tick. Water-fills each resource category independently
+// (reusing waterFillGather) and takes the most-constraining category per unit, mirroring how
+// affordFraction picks the worst category for a single spend.
+func computeRepairAllotments(risq *GameRisq, orderables []Orderable) map[*RisqUnit]float64 {
+	type repairDemand struct {
+		unit *RisqUnit
+		cost defs.RisqResourceCost
+	}
+	by_player := make(map[int][]repairDemand)
+	for _, o := range orderables {
+		u, ok := o.(*RisqUnit)
+		if !ok || !u.intent.hasIntent() {
+			continue
+		}
+		repair, ok := u.intent.detail.(*RepairIntent)
+		if !ok {
+			continue
+		}
+		if _, cost, ok := repairHealAndCost(repair.target, u.intent.intent_cost); ok {
+			by_player[u.player_id] = append(by_player[u.player_id], repairDemand{unit: u, cost: cost})
+		}
+	}
+	allotments := make(map[*RisqUnit]float64)
+	for player_id, demands := range by_player {
+		fraction := make(map[*RisqUnit]float64, len(demands))
+		for _, d := range demands {
+			fraction[d.unit] = 1
+		}
+		balance := risq.players[player_id].resources
+		categories := []struct {
+			available float64
+			needed    func(defs.RisqResourceCost) float64
+		}{
+			{balance.food, func(c defs.RisqResourceCost) float64 { return c.Food }},
+			{balance.wood, func(c defs.RisqResourceCost) float64 { return c.Wood }},
+			{balance.stone, func(c defs.RisqResourceCost) float64 { return c.Stone }},
+			{balance.gold, func(c defs.RisqResourceCost) float64 { return c.Gold }},
+		}
+		for _, category := range categories {
+			category_demands := make([]gatherDemand, 0, len(demands))
+			for _, d := range demands {
+				if needed := category.needed(d.cost); needed > 0 {
+					category_demands = append(category_demands, gatherDemand{unit: d.unit, amount: needed})
+				}
+			}
+			if len(category_demands) == 0 {
+				continue
+			}
+			allotted := waterFillGather(category_demands, category.available)
+			for _, cd := range category_demands {
+				if got_fraction := allotted[cd.unit] / cd.amount; got_fraction < fraction[cd.unit] {
+					fraction[cd.unit] = got_fraction
+				}
+			}
+		}
+		for unit, f := range fraction {
+			allotments[unit] = f
+		}
+	}
+	return allotments
+}
+
+func waterFillGather(demands []gatherDemand, available float64) map[*RisqUnit]float64 {
+	result := make(map[*RisqUnit]float64, len(demands))
+	remaining := demands
+	for len(remaining) > 0 {
+		fair_share := available / float64(len(remaining))
+		next := remaining[:0]
+		progressed := false
+		for _, d := range remaining {
+			if d.amount <= fair_share {
+				result[d.unit] = d.amount
+				available -= d.amount
+				progressed = true
+			} else {
+				next = append(next, d)
+			}
+		}
+		remaining = next
+		if !progressed {
+			fair_share = available / float64(len(remaining))
+			for _, d := range remaining {
+				result[d.unit] = fair_share
+			}
+			break
+		}
+	}
+	return result
+}
+
+func (i *RisqIntent) setMove(m *MoveIntent) {
+	if m == nil {
+		i.detail = nil
+		i.min_cost = 0
+		i.max_cost = 0
+		return
+	}
+	i.detail = m
+	i.min_cost = int(m.cost)
+	i.max_cost = int(m.cost)
+}
+
+func (i *RisqIntent) setGather(source Gatherable) {
+	i.detail = &GatherIntent{source: source}
+	i.min_cost = 1
+	i.max_cost = unitTickStaminaCost
+}
+
+type UnitAttackIntent struct {
+	target Attackable
+}
+
+func (*UnitAttackIntent) isIntentKind() {}
+
+func (i *RisqIntent) setUnitAttack(target Attackable) {
+	i.detail = &UnitAttackIntent{target: target}
+	i.min_cost = 1
+	i.max_cost = unitTickStaminaCost
+}
+
+type RepairIntent struct {
+	target *RisqBuilding
+}
+
+func (*RepairIntent) isIntentKind() {}
+
+func (i *RisqIntent) setRepair(target *RisqBuilding) {
+	i.detail = &RepairIntent{target: target}
+	i.min_cost = 1
+	i.max_cost = buildTickStaminaCost
+}
+
+type RenewIntent struct {
+	target *RisqBuilding
+}
+
+func (*RenewIntent) isIntentKind() {}
+
+func (i *RisqIntent) setRenew(target *RisqBuilding) {
+	i.detail = &RenewIntent{target: target}
+	i.min_cost = 1
+	i.max_cost = buildTickStaminaCost
+}
+
+type ConstructionIntent struct {
+	building_under_construction *RisqBuilding
+	building_id                 uint32
+	zone                        *RisqZone
+}
+
+func (*ConstructionIntent) isIntentKind() {}
+
+func (i *RisqIntent) setBuild(building_under_construction *RisqBuilding, building_id uint32, zone *RisqZone) {
+	i.detail = &ConstructionIntent{building_under_construction: building_under_construction, building_id: building_id, zone: zone}
+	i.min_cost = 1
+	i.max_cost = buildTickStaminaCost
+}
+
+type GarrisonIntent struct {
+	target *RisqBuilding
+}
+
+func (*GarrisonIntent) isIntentKind() {}
+
+func (i *RisqIntent) setGarrison(target *RisqBuilding) {
+	i.detail = &GarrisonIntent{target: target}
+	i.min_cost = 1
+	i.max_cost = 1
+}
+
+// Deterministically settle same-tick garrison attempts
+func computeGarrisonAllotments(orderables []Orderable) map[*RisqUnit]bool {
+	by_building := make(map[*RisqBuilding][]*RisqUnit)
+	for _, o := range orderables {
+		u, ok := o.(*RisqUnit)
+		if !ok || !u.intent.hasIntent() {
+			continue
+		}
+		garrison, ok := u.intent.detail.(*GarrisonIntent)
+		if !ok {
+			continue
+		}
+		by_building[garrison.target] = append(by_building[garrison.target], u)
+	}
+	allotted := make(map[*RisqUnit]bool)
+	for building, units := range by_building {
+		sort.Slice(units, func(i, j int) bool { return units[i].internal_id < units[j].internal_id })
+		remaining := int(building.garrison_capacity) - len(building.garrisoned_units)
+		for i, u := range units {
+			if i >= remaining {
+				break
+			}
+			allotted[u] = true
+		}
+	}
+	return allotted
+}
+
+// Deterministically settle same-tick foundation races: lowest internal_id founds the building.
+func computeConstructionWinners(orderables []Orderable) map[*RisqZone]uint64 {
+	by_zone := make(map[*RisqZone][]*RisqUnit)
+	for _, o := range orderables {
+		u, ok := o.(*RisqUnit)
+		if !ok || !u.intent.hasIntent() {
+			continue
+		}
+		build, ok := u.intent.detail.(*ConstructionIntent)
+		if !ok || build.building_under_construction != nil {
+			continue
+		}
+		by_zone[build.zone] = append(by_zone[build.zone], u)
+	}
+	winners := make(map[*RisqZone]uint64)
+	for zone, units := range by_zone {
+		winner := units[0]
+		for _, u := range units[1:] {
+			if u.internal_id < winner.internal_id {
+				winner = u
+			}
+		}
+		winners[zone] = winner.internal_id
+	}
+	return winners
+}
+
+func computeFoundationIds(risq *GameRisq, winners map[*RisqZone]uint64) map[*RisqZone]uint64 {
+	zones := make([]*RisqZone, 0, len(winners))
+	for zone, winner := range winners {
+		if zone.building == nil && zone.space.buildableBy(risq.units[winner].player_id) {
+			zones = append(zones, zone)
+		}
+	}
+	sort.Slice(zones, func(i, j int) bool { return winners[zones[i]] < winners[zones[j]] })
+	ids := make(map[*RisqZone]uint64, len(zones))
+	for _, zone := range zones {
+		ids[zone] = risq.nextBuildingInternalId()
+	}
+	return ids
+}
+
+type UngarrisonIntent struct {
+	next_step *RisqZone
+}
+
+func (*UngarrisonIntent) isIntentKind() {}
+
+func (i *RisqIntent) setUngarrison(next_step *RisqZone) {
+	i.detail = &UngarrisonIntent{next_step: next_step}
+	i.min_cost = 1
+	i.max_cost = 1
+}

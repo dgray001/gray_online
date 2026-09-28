@@ -1,0 +1,79 @@
+package risq
+
+import (
+	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
+	"github.com/gin-gonic/gin"
+)
+
+type RisqGatherPointLocationKind uint8
+
+const (
+	RisqGatherPointLocationKind_NONE RisqGatherPointLocationKind = iota
+	RisqGatherPointLocationKind_SPACE
+	RisqGatherPointLocationKind_ZONE
+	RisqGatherPointLocationKind_END
+)
+
+type RisqGatherObjectType uint8
+
+const (
+	RisqGatherObjectType_NONE RisqGatherObjectType = iota
+	RisqGatherObjectType_UNIT
+	RisqGatherObjectType_BUILDING
+	RisqGatherObjectType_RESOURCE
+	RisqGatherObjectType_END
+)
+
+type RisqGatherPoint struct {
+	location_kind RisqGatherPointLocationKind
+	location_id   uint64
+	object_type   RisqGatherObjectType
+	object_id     uint64
+}
+
+func (gp *RisqGatherPoint) toFrontend() gin.H {
+	return gin.H{
+		"location_kind": gp.location_kind,
+		"location_id":   gp.location_id,
+		"object_type":   gp.object_type,
+		"object_id":     gp.object_id,
+	}
+}
+
+type gatherPointCandidate struct {
+	order_type defs.OrderType
+	target_id  int64
+}
+
+// Order types worth trying, in priority order; legality of each is left entirely to orderReceivable.
+func (gp *RisqGatherPoint) candidates() []gatherPointCandidate {
+	if gp.object_type == RisqGatherObjectType_NONE || gp.location_kind != RisqGatherPointLocationKind_ZONE {
+		return nil
+	}
+	switch gp.object_type {
+	case RisqGatherObjectType_RESOURCE:
+		return []gatherPointCandidate{{defs.OrderType_UnitGather, int64(gp.location_id)}}
+	case RisqGatherObjectType_BUILDING:
+		id := int64(gp.object_id)
+		return []gatherPointCandidate{{defs.OrderType_UnitGarrison, id}, {defs.OrderType_UnitRepair, id}, {defs.OrderType_UnitAttackBuilding, id}}
+	case RisqGatherObjectType_UNIT:
+		return []gatherPointCandidate{{defs.OrderType_UnitAttackUnit, int64(gp.object_id)}}
+	default:
+		return nil
+	}
+}
+
+func (gp *RisqGatherPoint) resolveOrder(risq *GameRisq, b *RisqBuilding, unit *RisqUnit) *RisqOrder {
+	order_type, target_id := defs.OrderType_UnitMoveZone, int64(gp.location_id)
+	if gp.location_kind == RisqGatherPointLocationKind_SPACE {
+		order_type = defs.OrderType_UnitMoveSpace
+	}
+	for _, c := range gp.candidates() {
+		candidate := createRisqOrder(0, c.order_type, b.player_id, map[uint64]Orderable{unit.internal_id: unit}, c.target_id, false)
+		if unit.orderReceivable(candidate, risq) {
+			order_type, target_id = c.order_type, c.target_id
+			break
+		}
+	}
+	return createRisqOrder(risq.nextOrderInternalId(), order_type, b.player_id, map[uint64]Orderable{unit.internal_id: unit}, target_id, false)
+}

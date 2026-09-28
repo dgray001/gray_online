@@ -11,6 +11,7 @@ import { FOG_OVERLAY_IMAGE, RisqViewMode, spaceOwnerColor } from './risq_terrain
 import {
   INNER_ZONE_MULTIPLIER,
   OUTER_ZONE_INDICES,
+  drawForestTrees,
   drawRisqZone,
   getSpaceTerrainImage,
   getZoneFill,
@@ -168,6 +169,11 @@ function drawSpaceContent(
     if (space.visibility < RisqVisibilityLevel.FOG) {
       return;
     }
+    ctx.translate(space.center.x, space.center.y);
+    for (const zone of space.zones?.flat() ?? []) {
+      drawForestTrees(ctx, game, zone, config.view_mode, config.hex_r, config.rotation);
+    }
+    ctx.translate(-space.center.x, -space.center.y);
     ctx.save();
     ctx.translate(space.center.x, space.center.y);
     ctx.rotate(-config.rotation);
@@ -190,6 +196,7 @@ function drawSpaceContent(
     const inner_r = INNER_ZONE_MULTIPLIER * r;
     const active_player_id = game.getPlayerId();
     drawHexagon(ctx, { x: 0, y: 0 }, inner_r);
+    drawForestTrees(ctx, game, zone, config.view_mode, r, config.rotation);
     drawRisqZone(
       ctx,
       game,
@@ -217,6 +224,7 @@ function drawSpaceContent(
       ctx.closePath();
       ctx.stroke();
       ctx.fill();
+      drawForestTrees(ctx, game, zone, config.view_mode, r, config.rotation);
       const rotation = a * (1 + i);
       ctx.rotate(rotation);
       drawRisqZone(

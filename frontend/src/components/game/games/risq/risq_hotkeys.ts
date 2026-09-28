@@ -110,6 +110,7 @@ export enum RisqHotkeyAction {
   BUILDING_ATTACK,
   BUILDING_GATHER_POINT,
   BUILDING_DELETE,
+  BUILDING_CLEAR_GATHER_POINT,
 }
 
 export const RISQ_HOTKEY_ACTION_LABELS: Record<RisqHotkeyAction, string> = {
@@ -141,6 +142,7 @@ export const RISQ_HOTKEY_ACTION_LABELS: Record<RisqHotkeyAction, string> = {
   [RisqHotkeyAction.BUILDING_ATTACK]: 'Building: Attack',
   [RisqHotkeyAction.BUILDING_GATHER_POINT]: 'Building: Gather Point',
   [RisqHotkeyAction.BUILDING_DELETE]: 'Building: Delete',
+  [RisqHotkeyAction.BUILDING_CLEAR_GATHER_POINT]: 'Building: Clear Gather Point',
 };
 
 /** Fixed actions plus config-driven, id-keyed ones (units/techs/buildings are per-game-config, not enumerable statically) */
@@ -176,14 +178,15 @@ export type RisqHotkeyLookupEntry =
   | { kind: 'cycle_building'; id: number }
   | { kind: 'hire_mercenary'; id: number };
 
-/** Builds a combo-string -> entry lookup for dispatch; unbound combos are omitted */
-export function buildHotkeyLookup(bindings: RisqHotkeyBindings): Map<string, RisqHotkeyLookupEntry> {
-  const lookup = new Map<string, RisqHotkeyLookupEntry>();
+/** Builds a combo-string -> entries lookup for dispatch (non-conflicting entries can share a combo); unbound combos are omitted */
+export function buildHotkeyLookup(bindings: RisqHotkeyBindings): Map<string, RisqHotkeyLookupEntry[]> {
+  const lookup = new Map<string, RisqHotkeyLookupEntry[]>();
   const add = (combo: HotkeyCombo, entry: RisqHotkeyLookupEntry) => {
     if (isUnbound(combo)) {
       return;
     }
-    lookup.set(comboToString(combo), entry);
+    const key = comboToString(combo);
+    lookup.set(key, [...(lookup.get(key) ?? []), entry]);
   };
   for (const key of enumKeys(RisqHotkeyAction)) {
     const action = RisqHotkeyAction[key];
@@ -205,4 +208,108 @@ export function buildHotkeyLookup(bindings: RisqHotkeyBindings): Map<string, Ris
     add(combo, { kind: 'hire_mercenary', id: Number(id) });
   }
   return lookup;
+}
+
+/** A selection a hotkey can act on; a building carries the unit and tech ids it produces */
+export type HotkeySelection =
+  | { kind: 'units'; composition: 'villagers' | 'military' | 'mixed'; garrisoned: boolean }
+  | { kind: 'building'; unit_ids: number[]; tech_ids: number[] };
+
+export const UNIT_HOTKEY_SELECTIONS: HotkeySelection[] = (['villagers', 'military', 'mixed'] as const).flatMap(
+  (composition) => [true, false].map((garrisoned) => ({ kind: 'units' as const, composition, garrisoned }))
+);
+
+export enum RisqHotkeyScope {
+  GLOBAL,
+  UNITS,
+  UNGARRISONED_UNITS,
+  GARRISONED_UNITS_OR_BUILDINGS,
+  VILLAGERS,
+  MILITARY,
+  BUILDINGS,
+}
+
+export const RISQ_HOTKEY_SCOPE_LABELS: Record<RisqHotkeyScope, string> = {
+  [RisqHotkeyScope.GLOBAL]: 'Global',
+  [RisqHotkeyScope.UNITS]: 'Units',
+  [RisqHotkeyScope.UNGARRISONED_UNITS]: 'Ungarrisoned Units',
+  [RisqHotkeyScope.GARRISONED_UNITS_OR_BUILDINGS]: 'Garrisoned Units & Buildings',
+  [RisqHotkeyScope.VILLAGERS]: 'Villagers',
+  [RisqHotkeyScope.MILITARY]: 'Military',
+  [RisqHotkeyScope.BUILDINGS]: 'Buildings',
+};
+
+export function actionScope(action: RisqHotkeyAction): RisqHotkeyScope {
+  switch (action) {
+    case RisqHotkeyAction.MOVE:
+    case RisqHotkeyAction.ATTACK:
+    case RisqHotkeyAction.STOP:
+      return RisqHotkeyScope.UNITS;
+    case RisqHotkeyAction.GARRISON:
+      return RisqHotkeyScope.UNGARRISONED_UNITS;
+    case RisqHotkeyAction.UNGARRISON:
+      return RisqHotkeyScope.GARRISONED_UNITS_OR_BUILDINGS;
+    case RisqHotkeyAction.GATHER:
+    case RisqHotkeyAction.REPAIR:
+    case RisqHotkeyAction.RENEW:
+      return RisqHotkeyScope.VILLAGERS;
+    case RisqHotkeyAction.STANCE_AGGRESSIVE:
+    case RisqHotkeyAction.STANCE_DEFENSIVE:
+    case RisqHotkeyAction.STANCE_STAND_GROUND:
+    case RisqHotkeyAction.STANCE_PASSIVE:
+    case RisqHotkeyAction.TOGGLE_INTERRUPT_CURRENT:
+    case RisqHotkeyAction.TOGGLE_ATTACK_BACK:
+      return RisqHotkeyScope.MILITARY;
+    case RisqHotkeyAction.BUILDING_ATTACK:
+    case RisqHotkeyAction.BUILDING_GATHER_POINT:
+    case RisqHotkeyAction.BUILDING_CLEAR_GATHER_POINT:
+    case RisqHotkeyAction.BUILDING_DELETE:
+      return RisqHotkeyScope.BUILDINGS;
+    default:
+      return RisqHotkeyScope.GLOBAL;
+  }
+}
+
+function scopeApplies(scope: RisqHotkeyScope, s: HotkeySelection): boolean {
+  switch (scope) {
+    case RisqHotkeyScope.UNITS:
+      return s.kind === 'units';
+    case RisqHotkeyScope.UNGARRISONED_UNITS:
+      return s.kind === 'units' && !s.garrisoned;
+    case RisqHotkeyScope.GARRISONED_UNITS_OR_BUILDINGS:
+      return s.kind === 'building' || s.garrisoned;
+    case RisqHotkeyScope.VILLAGERS:
+      return s.kind === 'units' && s.composition === 'villagers';
+    case RisqHotkeyScope.MILITARY:
+      return s.kind === 'units' && s.composition === 'military';
+    case RisqHotkeyScope.BUILDINGS:
+      return s.kind === 'building';
+    case RisqHotkeyScope.GLOBAL:
+      return true;
+  }
+}
+
+/** Whether the hotkey acts on the given selection */
+export function hotkeyApplies(entry: RisqHotkeyLookupEntry, s: HotkeySelection): boolean {
+  switch (entry.kind) {
+    case 'action':
+      return scopeApplies(actionScope(entry.action), s);
+    case 'create_unit':
+      return s.kind === 'building' && s.unit_ids.includes(entry.id);
+    case 'research_tech':
+      return s.kind === 'building' && s.tech_ids.includes(entry.id);
+    case 'build_building':
+      return scopeApplies(RisqHotkeyScope.VILLAGERS, s);
+    default:
+      return true;
+  }
+}
+
+/** Two hotkeys conflict when any of the given selections makes both apply */
+export function hotkeysConflict(
+  a: RisqHotkeyLookupEntry,
+  b: RisqHotkeyLookupEntry,
+  selections: HotkeySelection[]
+): boolean {
+  return selections.some((s) => hotkeyApplies(a, s) && hotkeyApplies(b, s));
 }

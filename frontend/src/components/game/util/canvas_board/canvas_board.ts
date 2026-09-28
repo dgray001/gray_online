@@ -23,6 +23,8 @@ export declare interface ModifierKeys {
   alt: boolean;
 }
 
+const EXTRA_MOUSE_BUTTON_EVENTS = ['mousedown', 'mouseup', 'auxclick'] as const;
+
 function modifiersFrom(e: MouseEvent): ModifierKeys {
   return { ctrl: e.ctrlKey, shift: e.shiftKey, alt: e.altKey };
 }
@@ -42,6 +44,8 @@ export declare interface CanvasBoardInitializationData {
   // returns whether something was clicked
   mousedown: (e: MouseEvent) => boolean;
   mouseup: (e: MouseEvent) => void;
+  // press/release of a mouse button past left/right/middle (browser back/forward), anywhere on the page
+  extraMouseButton?: (e: MouseEvent) => void;
   zoom_config: ZoomConfig;
 }
 
@@ -306,7 +310,7 @@ export class DwgCanvasBoard extends DwgElement {
     });
     this.addEventListener('mousedown', (e: MouseEvent) => {
       e.stopImmediatePropagation();
-      if (isDialogOpen()) {
+      if (isDialogOpen() || e.button > 2) {
         return;
       }
       if (this.data.mousedown(e)) {
@@ -321,6 +325,9 @@ export class DwgCanvasBoard extends DwgElement {
     });
     this.addEventListener('mouseup', (e: MouseEvent) => {
       e.stopImmediatePropagation();
+      if (e.button > 2) {
+        return;
+      }
       this.dragging = false;
       if (this.dragged) {
         this.data.mousemove(this.mouseCanvasPoint(), this.mouse, this.transform, modifiersFrom(e));
@@ -358,7 +365,21 @@ export class DwgCanvasBoard extends DwgElement {
     document.body.addEventListener('keyup', this.handleKeyup);
     document.addEventListener('mousemove', this.handleDocumentMouseMove);
     window.addEventListener('blur', this.handleBlur);
+    for (const type of EXTRA_MOUSE_BUTTON_EVENTS) {
+      window.addEventListener(type, this.handleExtraMouseButton, true);
+    }
   }
+
+  // swallowed while the board is mounted so they never trigger browser back/forward navigation
+  private handleExtraMouseButton = (e: MouseEvent) => {
+    if (e.button <= 2) {
+      return;
+    }
+    e.preventDefault();
+    if (e.type !== 'auxclick') {
+      this.data.extraMouseButton?.(e);
+    }
+  };
 
   private handleDocumentMouseMove = (e: MouseEvent) => {
     const rect = this.canvas.getBoundingClientRect();
@@ -425,6 +446,9 @@ export class DwgCanvasBoard extends DwgElement {
     document.body.removeEventListener('keyup', this.handleKeyup);
     document.removeEventListener('mousemove', this.handleDocumentMouseMove);
     window.removeEventListener('blur', this.handleBlur);
+    for (const type of EXTRA_MOUSE_BUTTON_EVENTS) {
+      window.removeEventListener(type, this.handleExtraMouseButton, true);
+    }
   }
 
   private tick() {

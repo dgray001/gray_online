@@ -1,23 +1,14 @@
 v0.9: Risq beta version
- s: Small issues (see all small issues)
- t: Backend risq tests
- u: Revamp summary report (fix colors, can see "events" on map, can interact with events i.e. replay them or see what happened precisely)
- v: Refactor backend code
+ t: Small issues (see all small issues)
+ u: Backend risq tests
+ v: Revamp summary report (fix colors, can see "events" on map, can interact with events i.e. replay them or see what happened precisely)
  w: Refactor frontend code
  x: Make v1.0 ai (current ones should be rename to 0.4, etc...)
  y: Settings setup (including alt win conditions, map selector, etc)
 
 Small Risq Issues:
  - Need better unit images with color-coded stuff
- - Ungarrison doesn't do anything?
- - Need to show capacity of resource / gatherable building in left panel
- - Gatherable buildings need to show resources left
- - Not all hotkeys should be in contention (like garrison and ungarrison)
- - Make sure there is an "unset gather point" button similar to aoe
  - Gather points not working on frontend properly
- - Forest zone images need to be a ring of 8 when central zone and 6 not in ring on edge zone
- - Forest zone images need to be cached if not already
- - Forest images can be modified grove images so it's not just one tree
  - Need to add mountain images
  - Left panel: show live "workers X/Y" indicator on a selected gatherable building (predictedGathererCount already exists in risq.ts, just needs left_panel.ts wiring)
 
@@ -25,35 +16,10 @@ Small Risq Issues:
     => Magic and color damage
     => Stables and Archery range
 
-
-## Refactoring
-
-1. **Order validation/status/intent logic is split across 5 parallel switch statements per order
-   type** (`validateFrontendOrder`, `receiveOrder`, `orderReceivable`, `orderStatus`, `tickIntent`),
-   each re-deriving the same checks. Proposed fix: a `map[OrderType]unitOrderHandler` strategy table
-   so each order type's full lifecycle lives in one place. **Not done, not attempted** — the riskiest
-   remaining item, touches order-resolution directly with the largest surface area (5 functions × ~15
-   order types); needs a dedicated go/no-go rather than folding into a batch pass.
-2. **Subpackage reorg proposal — recommendation: don't do a full split.** The root package is one
-   tangled object graph (units/buildings/orders/space/zone/player/vision) and three of its core
-   interfaces (`Orderable`, `Attackable`, `IntentKind`) use **unexported methods** — Go forbids
-   implementing an interface with unexported methods from another package, so splitting any of these
-   into a subpackage means exporting everything, which is pure churn with no real encapsulation
-   gained. Only one clean extraction candidate exists: `risq/mapgen` — turn the map-script DSL into a
-   function producing a plain-data `Blueprint` (spaces/terrain/placements/regions), then materialize
-   it back into `GameRisq` in root. Real risk to manage: RNG call order must stay byte-identical or
-   seeded maps stop matching the sim determinism baselines — map generation is now seed-reproducible
-   (fixed and confirmed), so this just needs to be preserved through the extraction, not fixed as
-   part of it. Recommendation: extract `mapgen`, skip every other package boundary. The other pure
-   file-move win (splitting `risq_map_steps.go`'s geometry/board-mutation code out) is already done
-   (`risq_hex.go`/`risq_board.go`). Still open: `risq.go` itself still mixes the action dispatcher,
-   behavior setters, gather points, turn resolution, cleanup, vision, and serialization — splitting
-   it into `risq_actions.go` (the `execute*` handlers) + `risq_tick.go` (`resolveActiveOrders`,
-   `cleanupDeleted`, `recalculateVision`) would be the same zero-risk, zero-rename kind of move.
-3. **There are no `_test.go` files anywhere in risq.** The only safety net today is
-   `go build`/`go vet` plus the sim determinism harness (`sim/inputs/determinism_check.json`). Worth
-   discussing independent of the reorg question.
-
+Risq Refactor Plans:
+ - Decomposition pass over risq frontend and backend (long functions and files that have grown past what one unit should own)
+    => frontend: risq.ts mouseup() (~170 lines, 8 levels of nesting; zone-slot click body is the first extract, which also lets the ctrl-additive branch reuse handleUnitGridClick)
+    => frontend: left_panel.ts (~2280 lines, 73 methods)
 
 Fiddlesticks Plans:
  - Revamp update dialog box
@@ -72,12 +38,6 @@ Lobby Plans:
 Testing Plans:
  - Formalize the ad-hoc concurrency/reconnect repro scripts (currently one-off Node scripts written per-investigation) into a real backend test suite instead of relying on agents to improvise and run them each time
  - Unify backend logging (stdout fmt.Println vs util.DebugLog vs stderr are used inconsistently across lobby/room/risq code with no clear rule for which tier a given log belongs in)
-
-Refactor Plans:
- - Decomposition pass over risq frontend and backend (long functions and files that have grown past what one unit should own)
-    => frontend: risq.ts mouseup() (~170 lines, 8 levels of nesting; zone-slot click body is the first extract, which also lets the ctrl-additive branch reuse handleUnitGridClick)
-    => frontend: left_panel.ts (~2280 lines, 73 methods)
-    => backend: risq_unit.go (931), risq.go (686), risq_map_steps.go (628)
 
 v1.0: Database
  - Setup db in prod and dev

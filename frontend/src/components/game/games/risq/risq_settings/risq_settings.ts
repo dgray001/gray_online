@@ -2,14 +2,19 @@ import { DwgElement } from '../../../../dwg_element';
 import { apiGet } from '../../../../../scripts/api';
 import { getSettings, updateSettings } from '../../../../../scripts/settings_store';
 import { enumKeys } from '../../../../../scripts/util';
-import type { HotkeyCombo, RisqHotkeyBindings } from '../risq_hotkeys';
+import type { HotkeyCombo, HotkeySelection, RisqHotkeyBindings, RisqHotkeyLookupEntry } from '../risq_hotkeys';
 import {
   RISQ_HOTKEY_ACTION_LABELS,
+  RISQ_HOTKEY_SCOPE_LABELS,
   RisqHotkeyAction,
+  RisqHotkeyScope,
+  UNIT_HOTKEY_SELECTIONS,
+  actionScope,
   comboFromKeyboardEvent,
   comboFromMouseEvent,
   comboToDisplayString,
   comboToString,
+  hotkeysConflict,
   isUnbound,
 } from '../risq_hotkeys';
 import { RisqProducibleKind } from '../risq_data';
@@ -36,9 +41,12 @@ type IdBindingGroup = 'create_unit' | 'research_tech' | 'build_building' | 'cycl
 type BindingSlot = { group: 'actions'; key: RisqHotkeyAction } | { group: IdBindingGroup; key: number };
 
 interface HotkeyEntry {
+  section: string;
   label: string;
   slot: BindingSlot;
 }
+
+const GLOBAL_SECTION = RISQ_HOTKEY_SCOPE_LABELS[RisqHotkeyScope.GLOBAL];
 
 type RisqSettingsTab = 'animations' | 'hotkeys';
 
@@ -51,6 +59,8 @@ export class DwgRisqSettings extends DwgElement {
   private rows!: HTMLDivElement;
   private bindings: RisqHotkeyBindings = getSettings().risq_hotkeys;
   private entries: HotkeyEntry[] = [];
+  // generic building covers building-only actions before (or if) the tech tree loads
+  private selections: HotkeySelection[] = [...UNIT_HOTKEY_SELECTIONS, { kind: 'building', unit_ids: [], tech_ids: [] }];
   private listener_cleanup?: () => void;
 
   constructor() {
@@ -71,7 +81,11 @@ export class DwgRisqSettings extends DwgElement {
     this.tab_button_hotkeys.addEventListener('click', () => this.showTab('hotkeys'));
     for (const key of enumKeys(RisqHotkeyAction)) {
       const action = RisqHotkeyAction[key];
-      this.entries.push({ label: RISQ_HOTKEY_ACTION_LABELS[action], slot: { group: 'actions', key: action } });
+      this.entries.push({
+        section: RISQ_HOTKEY_SCOPE_LABELS[actionScope(action)],
+        label: RISQ_HOTKEY_ACTION_LABELS[action],
+        slot: { group: 'actions', key: action },
+      });
     }
     this.renderAll();
     const response = await apiGet<BuildingTreeEntry[]>('risq/tech-tree');
@@ -99,15 +113,29 @@ export class DwgRisqSettings extends DwgElement {
       if (building.produces.length === 0) {
         continue;
       }
+      const ids = (kind: RisqProducibleKind) => building.produces.filter((p) => p.kind === kind).map((p) => p.id);
+      this.selections.push({
+        kind: 'building',
+        unit_ids: ids(RisqProducibleKind.UNIT),
+        tech_ids: ids(RisqProducibleKind.TECH),
+      });
       this.entries.push({
+        section: GLOBAL_SECTION,
         label: `Select Building: ${building.display_name}`,
         slot: { group: 'cycle_building', key: building.building_id },
       });
       for (const producible of building.produces) {
         const [group, verb] = this.producibleGroup(producible.kind);
-        this.entries.push({ label: `${verb}: ${producible.display_name}`, slot: { group, key: producible.id } });
+        const section =
+          group === 'build_building' ? RISQ_HOTKEY_SCOPE_LABELS[RisqHotkeyScope.VILLAGERS] : building.display_name;
+        this.entries.push({
+          section,
+          label: `${verb}: ${producible.display_name}`,
+          slot: { group, key: producible.id },
+        });
         for (const mercenary of producible.unlocks_mercenaries ?? []) {
           this.entries.push({
+            section: GLOBAL_SECTION,
             label: `Hire: ${mercenary.display_name}`,
             slot: { group: 'hire_mercenary', key: mercenary.id },
           });
@@ -139,11 +167,17 @@ export class DwgRisqSettings extends DwgElement {
     }
   }
 
+  private slotEntry(slot: BindingSlot): RisqHotkeyLookupEntry {
+    return slot.group === 'actions' ? { kind: 'action', action: slot.key } : { kind: slot.group, id: slot.key };
+  }
+
   private setSlotCombo(slot: BindingSlot, combo: HotkeyCombo) {
     if (!isUnbound(combo)) {
       const target = comboToString(combo);
+      const new_entry = this.slotEntry(slot);
       for (const entry of this.entries) {
-        if (comboToString(this.slotCombo(entry.slot)) === target) {
+        const same_combo = comboToString(this.slotCombo(entry.slot)) === target;
+        if (same_combo && hotkeysConflict(this.slotEntry(entry.slot), new_entry, this.selections)) {
           this.assign(entry.slot, {});
         }
       }
@@ -153,7 +187,18 @@ export class DwgRisqSettings extends DwgElement {
   }
 
   private renderAll() {
-    this.rows.replaceChildren(...this.entries.map((entry) => this.buildRow(entry)));
+    const sections = new Map<string, HotkeyEntry[]>();
+    for (const entry of this.entries) {
+      sections.set(entry.section, [...(sections.get(entry.section) ?? []), entry]);
+    }
+    this.rows.replaceChildren(
+      ...[...sections.entries()].flatMap(([section, entries]) => {
+        const header = document.createElement('div');
+        header.classList.add('hotkey-section-header');
+        header.innerText = section;
+        return [header, ...entries.map((entry) => this.buildRow(entry))];
+      })
+    );
   }
 
   private buildRow(entry: HotkeyEntry): HTMLDivElement {
