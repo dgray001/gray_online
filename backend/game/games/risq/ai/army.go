@@ -17,8 +17,10 @@ type armyState struct {
 	peak      int
 	peak_turn int
 	assault   bool
-	members map[uint64]bool
-	focus   *ZoneRef
+	members   map[uint64]bool
+	focus     *ZoneRef
+	// last seen enemy buildings, kept until an assault unit stands there and finds them gone
+	known map[uint64]ZoneRef
 }
 
 func (a *armyAction) inAssaultGroup(u UnitView) bool {
@@ -139,9 +141,38 @@ func (a *armyAction) assaultOrders(view View, st *armyState, members []UnitView,
 		}
 	}
 	enemy_buildings := view.VisibleEnemyBuildings()
+	if st.known == nil {
+		st.known = make(map[uint64]ZoneRef)
+	}
+	visible := make(map[uint64]bool, len(enemy_buildings))
+	for _, b := range enemy_buildings {
+		visible[b.InternalID] = true
+		st.known[b.InternalID] = b.Location
+	}
+	for id, loc := range st.known {
+		if visible[id] {
+			continue
+		}
+		for _, u := range members {
+			if u.Location.Space == loc.Space {
+				delete(st.known, id)
+				break
+			}
+		}
+	}
 	if b, ok := nearestBuilding(view, anchor.Location, enemy_buildings); ok {
 		focus := b.Location
 		st.focus = &focus
+	} else if len(st.known) > 0 {
+		remembered := make([]ZoneRef, 0, len(st.known))
+		for _, loc := range st.known {
+			remembered = append(remembered, loc)
+		}
+		if loc, ok := nearestZone(view, anchor.Location, remembered); ok {
+			st.focus = &loc
+		}
+	} else {
+		st.focus = nil
 	}
 	soldiers := make([]UnitView, 0)
 	for _, e := range enemies {
@@ -171,7 +202,7 @@ func (a *armyAction) assaultOrders(view View, st *armyState, members []UnitView,
 			orders = append(orders, view.AttackBuildingOrder(u, b, true))
 		} else if t, ok := nearestUnit(view, u.Location, enemies); ok {
 			orders = append(orders, view.AttackUnitOrder(u, t, true))
-		} else if st.focus != nil && locationDistance(u.Location, *st.focus) > 0 {
+		} else if st.focus != nil && u.Location.Space != st.focus.Space {
 			orders = append(orders, view.MoveOrder(u, *st.focus, true))
 		} else {
 			st.focus = nil
