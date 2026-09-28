@@ -50,7 +50,11 @@ func parseActionInner(raw map[string]any) (Action, error) {
 		if !ok {
 			return nil, fmt.Errorf("research action requires a numeric \"tech_id\"")
 		}
-		return &researchAction{tech_id: uint32(id)}, nil
+		queue := 1
+		if q, ok := raw["queue"].(float64); ok {
+			queue = int(q)
+		}
+		return &researchAction{tech_id: uint32(id), queue: queue}, nil
 	case "researchNextInQ":
 		weight, prioritize, depth := parseQueueParams(raw)
 		return &researchNextInQAction{weight: weight, prioritize: prioritize, depth: depth}, nil

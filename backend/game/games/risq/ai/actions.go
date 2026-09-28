@@ -27,6 +27,7 @@ type createAction struct {
 type researchAction struct {
 	buildingFiltered
 	tech_id uint32
+	queue   int
 }
 
 type buildAction struct {
@@ -141,7 +142,7 @@ func (a *createAction) ToOrders(view View, internals *Internals) []Order {
 }
 
 func (a *researchAction) ToOrders(view View, internals *Internals) []Order {
-	return researchTech(view, internals, a.tech_id, a.buildings)
+	return researchTech(view, internals, a.tech_id, a.buildings, a.queue)
 }
 
 func (a *buildAction) ToOrders(view View, internals *Internals) []Order {

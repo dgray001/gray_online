@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"time"
 
 	"github.com/dgray001/gray_online/game"
@@ -62,7 +63,7 @@ func RunGame(seed int64, players []PlayerConfig, map_name string, max_turns uint
 			last_snap = t
 			cur := r.Snapshot()
 			timeline = append(timeline, cur)
-			if t > 40 && len(cur) == 2 {
+			if t > 40 && len(cur) == 2 && os.Getenv("SIM_NO_CRUSH_STOP") == "" {
 				inf := func(p risq.PlayerSnapshot) int { return p.Units[11] + p.Units[12] + p.Units[13] }
 				for i := 0; i < 2; i++ {
 					if inf(cur[1-i]) == 0 && inf(cur[i]) >= 20 && crush < 0 {

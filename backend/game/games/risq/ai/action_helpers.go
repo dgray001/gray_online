@@ -320,9 +320,13 @@ func productionOrderCount(b BuildingView) int {
 	return count
 }
 
-func researchTech(view View, internals *Internals, tech_id uint32, buildings buildingFilter) []Order {
-	for _, b := range view.IdleBuildings() {
-		if !buildings.matches(b.BuildingID) {
+func researchTech(view View, internals *Internals, tech_id uint32, buildings buildingFilter, queue int) []Order {
+	candidates := view.IdleBuildings()
+	if queue > 1 {
+		candidates = view.Buildings()
+	}
+	for _, b := range candidates {
+		if !buildings.matches(b.BuildingID) || b.UnderConstruction || productionOrderCount(b) >= max(1, queue) {
 			continue
 		}
 		for _, p := range b.Producibles {

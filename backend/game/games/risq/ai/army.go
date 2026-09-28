@@ -174,8 +174,18 @@ func (a *armyAction) assaultOrders(view View, st *armyState, members []UnitView,
 	} else {
 		st.focus = nil
 	}
+	// units standing on a building's zone can't be reached in melee, so they're only dealt with by razing the building
+	building_zones := make(map[ZoneRef]bool, len(enemy_buildings))
+	for _, b := range enemy_buildings {
+		building_zones[b.Location] = true
+	}
 	soldiers := make([]UnitView, 0)
+	reachable := make([]UnitView, 0, len(enemies))
 	for _, e := range enemies {
+		if building_zones[e.Location] && e.Kind == UnitMilitary {
+			continue
+		}
+		reachable = append(reachable, e)
 		if e.Kind == UnitMilitary {
 			soldiers = append(soldiers, e)
 		}
@@ -196,11 +206,11 @@ func (a *armyAction) assaultOrders(view View, st *armyState, members []UnitView,
 			orders = append(orders, view.AttackUnitOrder(u, t, true))
 		} else if b, ok := nearestBuilding(view, u.Location, production); ok {
 			orders = append(orders, view.AttackBuildingOrder(u, b, true))
-		} else if t, ok := nearestUnit(view, u.Location, enemies); ok && axialDistance(u.Location.Space, t.Location.Space) <= 3 {
+		} else if t, ok := nearestUnit(view, u.Location, reachable); ok && axialDistance(u.Location.Space, t.Location.Space) <= 3 {
 			orders = append(orders, view.AttackUnitOrder(u, t, true))
 		} else if b, ok := nearestBuilding(view, u.Location, enemy_buildings); ok {
 			orders = append(orders, view.AttackBuildingOrder(u, b, true))
-		} else if t, ok := nearestUnit(view, u.Location, enemies); ok {
+		} else if t, ok := nearestUnit(view, u.Location, reachable); ok {
 			orders = append(orders, view.AttackUnitOrder(u, t, true))
 		} else if st.focus != nil && u.Location.Space != st.focus.Space {
 			orders = append(orders, view.MoveOrder(u, *st.focus, true))
