@@ -29,6 +29,7 @@ function mergeRisqHotkeyBindings(parsed?: Partial<RisqHotkeyBindings>): RisqHotk
     research_tech: { ...parsed.research_tech },
     build_building: { ...parsed.build_building },
     cycle_building: { ...parsed.cycle_building },
+    hire_mercenary: { ...parsed.hire_mercenary },
   };
 }
 

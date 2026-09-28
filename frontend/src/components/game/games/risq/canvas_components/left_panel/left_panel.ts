@@ -40,7 +40,9 @@ import {
   comboUnitIconKey,
   drawComboUnitIcon,
   unitImage,
+  unitCountLabel,
 } from '../../risq_unit';
+import { capitalize } from '../../../../../../scripts/util';
 import {
   INNER_ZONE_MULTIPLIER,
   OUTER_ZONE_INDICES,
@@ -118,6 +120,8 @@ export class RisqLeftPanel implements CanvasComponent {
   private stamina_tooltip = createTooltipState();
   private eye_badge_hover: RectHoverData = { ps: { x: 0, y: 0 }, pe: { x: 0, y: 0 } };
   private eye_badge_tooltip = createTooltipState();
+  // hover rects are only laid out by draw, so a hover check right after openPanel uses stale rects
+  private hover_stale = false;
 
   constructor(risq: DwgRisq, config: LeftPanelConfig) {
     this.risq = risq;
@@ -775,7 +779,13 @@ export class RisqLeftPanel implements CanvasComponent {
     ) {
       return; // units not individually identifiable yet
     }
+    this.risq.disarmAll();
+    if (this.hovered_object) {
+      this.hovered_object.object.hover_data.hovered = false;
+      this.hovered_object.object.hover_data.clicked = false;
+    }
     this.hovered_object = undefined;
+    this.hover_stale = true;
     this.visibility = visibility;
     this.data = open_data;
     this.showing = true;
@@ -974,6 +984,10 @@ export class RisqLeftPanel implements CanvasComponent {
     }
     ctx.beginPath();
     this.close_button.draw(ctx, transform, dt);
+    if (this.hover_stale) {
+      this.hover_stale = false;
+      this.risq.recalculateHover();
+    }
   }
 
   private drawUnitImage(ctx: CanvasRenderingContext2D, unit: RisqUnit, p: Point2D, s: number) {
@@ -1075,6 +1089,7 @@ export class RisqLeftPanel implements CanvasComponent {
 
   private drawUnitSeparators(ctx: CanvasRenderingContext2D, single_owner_player_id?: number) {
     if (single_owner_player_id !== undefined && this.risq.getPlayer()?.player.player_id === single_owner_player_id) {
+      this.drawSeparator(ctx, this.separator_below_stats);
       if (this.garrison_rows > 0) {
         this.drawSeparator(ctx, this.garrison_separator);
       }
@@ -1082,22 +1097,51 @@ export class RisqLeftPanel implements CanvasComponent {
     }
   }
 
+  private unitGroupTitle(groups: [number, UnitByTypeData[]][], total: number): string {
+    const types = groups.flatMap(([, units]) => units).filter((t) => t.units.size > 0);
+    if (new Set(types.map((t) => t.unit_id)).size === 1) {
+      const sample = this.resolveUnit(types[0].player_id, [...types[0].units][0]);
+      return unitCountLabel(sample?.display_name ?? 'Unit', total);
+    }
+    const unit_types = new Set(types.map((t) => t.unit_type));
+    const units_word = total === 1 ? 'Unit' : 'Units';
+    if (unit_types.size === 1) {
+      return `${total} ${capitalize(RisqUnitType[types[0].unit_type].replace(/_/g, ' '))} ${units_word}`;
+    }
+    return unit_types.has(RisqUnitType.ECONOMIC) ? `${total} ${units_word}` : `${total} Military ${units_word}`;
+  }
+
+  private unitGroupSubtitle(groups: [number, UnitByTypeData[]][]): string | undefined {
+    const player_ids = groups.filter(([, units]) => units.some((u) => u.units.size > 0)).map(([id]) => id);
+    if (player_ids.length > 1) {
+      return `Units from ${player_ids.length} players`;
+    }
+    if (player_ids[0] === undefined || player_ids[0] === this.risq.getPlayer()?.player.player_id) {
+      return undefined;
+    }
+    return `Owned by ${this.risq.getGame()?.players[player_ids[0]]?.player.nickname ?? 'another player'}`;
+  }
+
   private drawUnitsGeneric(ctx: CanvasRenderingContext2D, groups: [number, UnitByTypeData[]][]) {
     const multi_player = groups.length > 1;
     const single_owner_player_id = multi_player ? undefined : groups[0]?.[0];
     const total_units = groups.reduce((sum, [, units]) => sum + units.reduce((s, u) => s + u.units.size, 0), 0);
-    const content_yi = this.yi() + this.drawName(ctx, `${total_units} Unit${total_units === 1 ? '' : 's'}`);
+    let content_yi = this.yi() + this.drawName(ctx, this.unitGroupTitle(groups, total_units));
+    const subtitle = this.unitGroupSubtitle(groups);
+    if (subtitle) {
+      content_yi += this.drawSubtitle(ctx, subtitle, content_yi);
+    }
     const gap = RisqLeftPanel.PADDING;
     const per_row = RisqLeftPanel.ACTION_GRID_COLS;
     const content_x = this.grid_x0;
     const content_w = per_row * this.grid_s + (per_row - 1) * gap;
     const block_size = this.grid_s;
-    const grid_bottom = this.garrison_separator;
+    const grid_bottom = this.separator_below_stats;
     const max_rows = Math.floor((grid_bottom - gap - content_yi) / (block_size + gap));
 
     const layout_rows = <T>(row_groups: T[][], draw_item: (item: T, p: Point2D) => void) => {
       let by = grid_bottom - row_groups.length * (block_size + gap);
-      for (const row of row_groups) {
+      for (const row of [...row_groups].reverse()) {
         let bx = content_x;
         for (const item of row) {
           draw_item(item, { x: bx, y: by });
@@ -1129,7 +1173,7 @@ export class RisqLeftPanel implements CanvasComponent {
     const tier1_rows = tier1_row_groups.reduce((sum, rows) => sum + rows.length, 0);
     if (tier1_rows > 0 && tier1_rows <= max_rows) {
       let by = grid_bottom - tier1_rows * (block_size + gap);
-      for (const [i, [player_id]] of per_player_refs.entries()) {
+      for (const [i, [player_id]] of [...per_player_refs.entries()].reverse()) {
         const rows = tier1_row_groups[i];
         if (multi_player) {
           const color = this.risq.getGame()?.players[player_id]?.color;
@@ -1144,7 +1188,7 @@ export class RisqLeftPanel implements CanvasComponent {
             rows.length * (block_size + gap)
           );
         }
-        for (const row of rows) {
+        for (const row of [...rows].reverse()) {
           let bx = content_x;
           for (const ref of row) {
             draw_unit_ref(ref, { x: bx, y: by });
@@ -1377,14 +1421,7 @@ export class RisqLeftPanel implements CanvasComponent {
 
   private drawSpace(ctx: CanvasRenderingContext2D, space: RisqSpace) {
     let yi = this.yi() + this.drawName(ctx, space.display_name);
-    drawText(ctx, `${terrainTypeLabel(space.terrain_type)} space`, {
-      p: { x: this.xc(), y: yi },
-      w: this.w(),
-      fill_style: 'black',
-      align: 'center',
-      font: '18px serif',
-    });
-    yi += 26;
+    yi += this.drawSubtitle(ctx, `${terrainTypeLabel(space.terrain_type)} space`, yi);
     const separator_distance = 8;
     yi += this.drawSpaceHexagon(ctx, space, separator_distance, yi);
     this.drawSeparator(ctx, yi);
@@ -1656,14 +1693,7 @@ export class RisqLeftPanel implements CanvasComponent {
   private drawZone(ctx: CanvasRenderingContext2D, data: { space: RisqSpace; zone: RisqZone }) {
     let yi = this.yi() + this.drawName(ctx, data.space.display_name);
     const zone_label = data.zone.terrain_override_display_name ?? terrainTypeLabel(data.space.terrain_type);
-    drawText(ctx, `${zone_label} zone`, {
-      p: { x: this.xc(), y: yi },
-      w: this.w(),
-      fill_style: 'black',
-      align: 'center',
-      font: '18px serif',
-    });
-    yi += 26;
+    yi += this.drawSubtitle(ctx, `${zone_label} zone`, yi);
     const separator_distance = 8;
     yi += this.drawSpaceHexagon(ctx, data.space, separator_distance, yi, coordinateToIndex(1, data.zone.coordinate));
     this.drawSeparator(ctx, yi);
@@ -1815,6 +1845,17 @@ export class RisqLeftPanel implements CanvasComponent {
       font: `bold ${0.85 * text_size}px serif`,
     });
     return text_size + 3;
+  }
+
+  private drawSubtitle(ctx: CanvasRenderingContext2D, text: string, yi: number): number {
+    drawText(ctx, text, {
+      p: { x: this.xc(), y: yi },
+      w: this.w(),
+      fill_style: 'black',
+      align: 'center',
+      font: '18px serif',
+    });
+    return 26;
   }
 
   private drawImage(ctx: CanvasRenderingContext2D, yi: number, img_name: string, color?: ColorRGB): number {
@@ -2140,15 +2181,12 @@ export class RisqLeftPanel implements CanvasComponent {
     hovered_unit: RisqUnit,
     e: MouseEvent
   ) {
-    if (!space) {
-      return;
-    }
     if (e.shiftKey) {
       const player_units = groups.find(([player_id]) => player_id === hovered_unit.player_id)?.[1] ?? [];
       const units_by_player = new Map<number, UnitByTypeData[]>([
         [hovered_unit.player_id, player_units.filter((u) => u.unit_id === hovered_unit.unit_id)],
       ]);
-      this.openPanel({ data_type: LeftPanelDataType.UNITS, data: { space, units_by_player } }, this.visibility ?? 0);
+      this.openUnitGroups(space, units_by_player);
     } else if (e.ctrlKey) {
       const units_by_player = new Map<number, UnitByTypeData[]>();
       for (const [player_id, units] of groups) {
@@ -2159,9 +2197,18 @@ export class RisqLeftPanel implements CanvasComponent {
           units_by_player.set(player_id, new_units);
         }
       }
-      this.openPanel({ data_type: LeftPanelDataType.UNITS, data: { space, units_by_player } }, this.visibility ?? 0);
+      this.openUnitGroups(space, units_by_player);
     } else {
       this.openPanel({ data_type: LeftPanelDataType.UNIT, data: hovered_unit }, this.visibility ?? 0);
+    }
+  }
+
+  private openUnitGroups(space: RisqSpace | undefined, units_by_player: Map<number, UnitByTypeData[]>) {
+    if (space) {
+      this.openPanel({ data_type: LeftPanelDataType.UNITS, data: { space, units_by_player } }, this.visibility ?? 0);
+    } else {
+      const units = [...units_by_player.values()].flat();
+      this.openPanel({ data_type: LeftPanelDataType.UNITS_BY_TYPE, data: { units } }, this.visibility ?? 0);
     }
   }
 

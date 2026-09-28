@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.8q: Forest resources
+v0.8r: Frontend mercenaries
 
 ## Dev Use
 

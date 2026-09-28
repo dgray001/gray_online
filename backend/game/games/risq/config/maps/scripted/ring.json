@@ -74,7 +74,8 @@
         { "unit_id": 11, "count": 1, "target": { "zone": "center" } }
       ],
       "buildings": [
-        { "building_id": 1, "terrain_override": 6, "target": { "zone": "center" } }
+        { "building_id": 1, "terrain_override": 6, "target": { "zone": "center" } },
+        { "building_id": 23, "target": { "zone": "edge" } }
       ],
       "resources": [
         { "resource_id": 11, "count": 1, "distance": [0, 0] },

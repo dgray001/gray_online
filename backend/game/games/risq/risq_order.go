@@ -138,12 +138,13 @@ func createRisqOrder(internal_id uint64, order_type OrderType, player_id int, su
 
 func (o *RisqOrder) toFrontend() gin.H {
 	order := gin.H{
-		"internal_id":   o.internal_id,
-		"player_id":     o.player_id,
-		"order_type":    o.order_type,
-		"target_id":     o.target_id,
-		"turn_received": o.turn_received,
-		"turn_resolved": o.turn_resolved,
+		"internal_id":           o.internal_id,
+		"player_id":             o.player_id,
+		"order_type":            o.order_type,
+		"target_id":             o.target_id,
+		"turn_received":         o.turn_received,
+		"turn_resolved":         o.turn_resolved,
+		"clear_previous_orders": o.clear_previous_orders,
 	}
 	subjects := make([]uint64, 0)
 	for _, subject := range o.subjects {
@@ -171,6 +172,27 @@ func (ot OrderType) isAutoSynthesized() bool {
 	default:
 		return false
 	}
+}
+
+func (ot OrderType) isRefundOrder() bool {
+	return ot == OrderType_CancelOrder || ot == OrderType_CancelFoundation
+}
+
+// Refund orders come first so a same-batch order can spend what they free up, regardless of submission order
+func receiptOrdered(orders []*RisqOrder) []*RisqOrder {
+	ordered := make([]*RisqOrder, 0, len(orders))
+	for _, refund_pass := range []bool{true, false} {
+		for _, o := range orders {
+			if o.order_type.isRefundOrder() == refund_pass {
+				ordered = append(ordered, o)
+			}
+		}
+	}
+	return ordered
+}
+
+func (ot OrderType) isClearImmune() bool {
+	return ot == OrderType_BuildingCreate || ot == OrderType_BuildingResearch
 }
 
 func (ot OrderType) isPlayerOrder() bool {

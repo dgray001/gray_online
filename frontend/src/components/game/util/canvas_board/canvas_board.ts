@@ -134,6 +134,7 @@ export class DwgCanvasBoard extends DwgElement {
   private mouse: Point2D = { x: 0, y: 0 };
   private cursor_images = new Map<string, HTMLImageElement>();
   private cursor_image?: HTMLImageElement;
+  private cursor_alpha = 1;
 
   private bounding_rect!: DOMRect;
   private resize_observer = new ResizeObserver(async (els) => {
@@ -308,14 +309,15 @@ export class DwgCanvasBoard extends DwgElement {
       if (isDialogOpen()) {
         return;
       }
+      if (this.data.mousedown(e)) {
+        return;
+      }
       if (e.button === 2 && e.detail >= 2) {
         this.setRotation(0);
         return;
       }
-      if (!this.data.mousedown(e)) {
-        this.dragging = true;
-        this.drag_button = e.button;
-      }
+      this.dragging = true;
+      this.drag_button = e.button;
     });
     this.addEventListener('mouseup', (e: MouseEvent) => {
       e.stopImmediatePropagation();
@@ -498,11 +500,12 @@ export class DwgCanvasBoard extends DwgElement {
     }
   }
 
-  setCursor(image_path: string) {
-    this.setCursorUrl(`/images/cursors/${image_path}.png`);
+  setCursor(image_path: string, alpha = 1) {
+    this.setCursorUrl(`/images/cursors/${image_path}.png`, alpha);
   }
 
-  setCursorUrl(url: string) {
+  setCursorUrl(url: string, alpha = 1) {
+    this.cursor_alpha = alpha;
     let img = this.cursor_images.get(url);
     if (!img) {
       img = document.createElement('img');
@@ -524,7 +527,9 @@ export class DwgCanvasBoard extends DwgElement {
         false,
         () => {
           const img = this.cursor_image!;
+          this.ctx.globalAlpha = this.cursor_alpha;
           this.ctx.drawImage(img, this.mouse.x, this.mouse.y, img.naturalWidth, img.naturalHeight);
+          this.ctx.globalAlpha = 1;
         }
       );
     } else {

@@ -18,6 +18,7 @@ export class RisqResearchButton extends RisqRichTooltipActionButton {
   private building_id: number;
   private producible: RisqProducible;
   private already_queued = false;
+  private ctrl_held = false;
 
   constructor(config: ResearchButtonConfig, risq: DwgRisq, s: number) {
     super(
@@ -48,6 +49,11 @@ export class RisqResearchButton extends RisqRichTooltipActionButton {
     }
   }
 
+  override mouseup(e: MouseEvent): void {
+    this.ctrl_held = e.ctrlKey;
+    super.mouseup(e);
+  }
+
   protected released(): void {
     if (this.isHovering()) {
       if (this.already_queued) {
@@ -58,7 +64,7 @@ export class RisqResearchButton extends RisqRichTooltipActionButton {
         this.risq.showMessage('Not enough resources', RISQ_MESSAGE_WARNING_COLOR);
         return;
       }
-      this.risq.researchTech(this.building_id, this.producible.id);
+      this.risq.researchTech(this.building_id, this.producible.id, this.ctrl_held);
     }
   }
 

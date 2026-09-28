@@ -103,10 +103,11 @@ export class RisqBottomPanel implements CanvasComponent {
   }
 
   private recomputeLayout() {
-    this.group_widths = this.groups.map((group) => Math.max(0, ...group.map((item) => item.w())));
-    this.content_h = Math.max(0, ...this.groups.map((group) => this.groupHeight(group)));
+    const groups = this.groups.filter((group) => group.some((item) => item.w() > 0));
+    this.group_widths = groups.map((group) => Math.max(0, ...group.map((item) => item.w())));
+    this.content_h = Math.max(0, ...groups.map((group) => this.groupHeight(group)));
     this.content_w =
-      this.group_widths.reduce((sum, w) => sum + w, 0) + RisqBottomPanel.GAP * Math.max(this.groups.length - 1, 0);
+      this.group_widths.reduce((sum, w) => sum + w, 0) + RisqBottomPanel.GAP * Math.max(groups.length - 1, 0);
     const canvas_w = this.risq.canvasSize().width;
     const max_side_panel_w = Math.max(this.config.left_panel_w, this.config.right_panel_w);
     const available_w = Math.max(canvas_w - 2 * (max_side_panel_w + RisqBottomPanel.PADDING), 0);
@@ -139,7 +140,7 @@ export class RisqBottomPanel implements CanvasComponent {
     }
     this.separator_xs = [];
     let x = this.xi() + RisqBottomPanel.PADDING - this.scrollbar.value();
-    for (const [i, group] of this.groups.entries()) {
+    for (const [i, group] of groups.entries()) {
       const group_w = this.group_widths[i];
       const group_h = this.groupHeight(group);
       let y = this.yi() + RisqBottomPanel.PADDING + 0.5 * (this.content_h - group_h);
@@ -148,7 +149,7 @@ export class RisqBottomPanel implements CanvasComponent {
         y += item.h() + RisqBottomPanel.GAP;
       }
       x += group_w + RisqBottomPanel.GAP;
-      if (i < this.groups.length - 1) {
+      if (i < groups.length - 1) {
         this.separator_xs.push(x - 0.5 * RisqBottomPanel.GAP);
       }
     }
@@ -195,11 +196,18 @@ export class RisqBottomPanel implements CanvasComponent {
     corners.forEach((corner, i) => (i === 0 ? ctx.moveTo(corner.x, corner.y) : ctx.lineTo(corner.x, corner.y)));
     ctx.closePath();
     ctx.clip();
-    ctx.strokeStyle = 'rgba(60, 60, 60, 0.7)';
-    ctx.lineWidth = 1;
-    for (const separator_x of this.separator_xs) {
-      drawLine(ctx, { x: separator_x, y: clip_rect.y }, { x: separator_x, y: clip_rect.y + clip_rect.h });
-    }
+    configDraw(
+      ctx,
+      transform,
+      { fill_style: 'transparent', stroke_style: 'rgba(60, 60, 60, 0.7)', stroke_width: 1, fixed_position: true },
+      false,
+      false,
+      () => {
+        for (const separator_x of this.separator_xs) {
+          drawLine(ctx, { x: separator_x, y: clip_rect.y }, { x: separator_x, y: clip_rect.y + clip_rect.h });
+        }
+      }
+    );
     for (const item of this.items) {
       item.draw(ctx, transform, dt);
     }

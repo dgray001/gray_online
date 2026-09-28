@@ -22,6 +22,7 @@ interface ProducibleEntry {
   kind: RisqProducibleKind;
   id: number;
   display_name: string;
+  unlocks_mercenaries?: { id: number; display_name: string }[];
 }
 
 interface BuildingTreeEntry {
@@ -30,7 +31,7 @@ interface BuildingTreeEntry {
   produces: ProducibleEntry[];
 }
 
-type IdBindingGroup = 'create_unit' | 'research_tech' | 'build_building' | 'cycle_building';
+type IdBindingGroup = 'create_unit' | 'research_tech' | 'build_building' | 'cycle_building' | 'hire_mercenary';
 
 type BindingSlot = { group: 'actions'; key: RisqHotkeyAction } | { group: IdBindingGroup; key: number };
 
@@ -105,6 +106,12 @@ export class DwgRisqSettings extends DwgElement {
       for (const producible of building.produces) {
         const [group, verb] = this.producibleGroup(producible.kind);
         this.entries.push({ label: `${verb}: ${producible.display_name}`, slot: { group, key: producible.id } });
+        for (const mercenary of producible.unlocks_mercenaries ?? []) {
+          this.entries.push({
+            label: `Hire: ${mercenary.display_name}`,
+            slot: { group: 'hire_mercenary', key: mercenary.id },
+          });
+        }
       }
     }
   }

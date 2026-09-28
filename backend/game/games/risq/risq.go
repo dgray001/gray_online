@@ -514,7 +514,7 @@ func (r *GameRisq) resolveActiveOrders() {
 	r.current_tick = 0
 	r.beginTurnReports()
 	for _, player := range r.players {
-		for _, order := range player.active_orders {
+		for _, order := range receiptOrdered(player.active_orders) {
 			if order.received {
 				continue
 			}
@@ -540,7 +540,7 @@ func (r *GameRisq) resolveActiveOrders() {
 					// cancelOrder mutates the subject's own active-orders slice in place, so range over a copy
 					previous := append([]*RisqOrder(nil), subject.activeOrders()...)
 					for _, other := range previous {
-						if !other.executed && !other.cancelled {
+						if !other.executed && !other.cancelled && !other.order_type.isClearImmune() {
 							subject.cancelOrder(other, r)
 						}
 					}

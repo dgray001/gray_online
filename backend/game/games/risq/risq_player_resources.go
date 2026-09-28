@@ -40,7 +40,7 @@ func (c RisqResourceCost) scale(f float64) RisqResourceCost {
 }
 
 func createRisqPlayerResources() *RisqPlayerResources {
-	return &RisqPlayerResources{food: 200, wood: 100, stone: 50}
+	return &RisqPlayerResources{food: 200, wood: 200, stone: 50, gold: 2000}
 }
 
 func (r *RisqPlayerResources) addGathered(category RisqResourceCategory, amount float64) {

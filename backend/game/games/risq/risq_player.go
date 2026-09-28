@@ -136,8 +136,13 @@ func (p *RisqPlayer) populationLimit() uint16 {
 	return limit
 }
 
+// Pending mercenaries reserve their slots so a same-batch hire or same-turn production can't overflow the cap
+func (p *RisqPlayer) occupiedPopulation() int {
+	return nonDeletedUnitCount(p.units) + len(p.pending_mercenaries)
+}
+
 func (p *RisqPlayer) populationCapped() bool {
-	return uint16(nonDeletedUnitCount(p.units)) >= p.populationLimit()
+	return uint16(p.occupiedPopulation()) >= p.populationLimit()
 }
 
 func (p *RisqPlayer) valid() bool {
@@ -207,7 +212,7 @@ func (p *RisqPlayer) buyMercenary(o *RisqOrder, risq *GameRisq) {
 		p.report.recordFailure(o.order_type, o.target_id, "population capped")
 		return
 	}
-	cost := RisqResourceCost{gold: mercenaryBaseCost(unit_id)}
+	cost := mercenaryCost(unit_id)
 	if !p.resources.canAfford(cost) {
 		p.report.recordFailure(o.order_type, o.target_id, "cannot afford mercenary")
 		return
@@ -241,6 +246,7 @@ func (p *RisqPlayer) toFrontend(viewer_player_id int) gin.H {
 			})
 		}
 		player["planned_foundations"] = foundations
+		player["available_mercenaries"] = p.availableMercenariesToFrontend()
 	}
 	is_owner := p.player != nil && p.player.Player_id == viewer_player_id
 	buildings := make([]gin.H, 0)

@@ -111,6 +111,11 @@ func (p Producible) toFrontend() gin.H {
 		bonus["max_health"] = tech.bonus_max_health
 		bonus["turn_stamina"] = tech.bonus_turn_stamina
 		entry["bonus"] = bonus
+		unlocks_mercenaries := make([]gin.H, len(tech.unlocks_mercenary_ids))
+		for i, unit_id := range tech.unlocks_mercenary_ids {
+			unlocks_mercenaries[i] = gin.H{"id": unit_id, "display_name": unitConfigs[unit_id].display_name}
+		}
+		entry["unlocks_mercenaries"] = unlocks_mercenaries
 	}
 	return entry
 }

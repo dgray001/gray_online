@@ -14,7 +14,6 @@ export class RisqGarrisonButton extends RisqActionButton {
   private risq: DwgRisq;
   private unit_internal_ids: number[];
   private ungarrison: boolean;
-  private armed = false;
 
   constructor(config: GarrisonButtonConfig, risq: DwgRisq, s: number) {
     const ungarrison = risq.getLeftPanel().isOnlyGarrisoned();
@@ -33,11 +32,14 @@ export class RisqGarrisonButton extends RisqActionButton {
   }
 
   override isClicking(): boolean {
-    return super.isClicking() || this.armed;
+    return super.isClicking() || this.isArmed();
+  }
+
+  private isArmed(): boolean {
+    return !this.ungarrison && this.risq.getArmedOrder() === RisqOrderType.OrderType_UnitGarrison;
   }
 
   override dataRefreshed(): void {
-    this.armed = !this.ungarrison && this.risq.getArmedOrder() === RisqOrderType.OrderType_UnitGarrison;
     const hotkey_action = this.ungarrison ? RisqHotkeyAction.UNGARRISON : RisqHotkeyAction.GARRISON;
     this.setHotkeyCombo(getSettings().risq_hotkeys.actions[hotkey_action]);
   }
@@ -50,14 +52,10 @@ export class RisqGarrisonButton extends RisqActionButton {
       this.risq.ungarrisonUnits(this.unit_internal_ids);
       return;
     }
-    if (this.armed) {
-      this.armed = false;
+    if (this.isArmed()) {
       this.risq.disarmOrder();
     } else {
-      this.armed = true;
-      this.risq.armOrder(RisqOrderType.OrderType_UnitGarrison, () => {
-        this.armed = false;
-      });
+      this.risq.armOrder(RisqOrderType.OrderType_UnitGarrison, () => {});
     }
   }
 }

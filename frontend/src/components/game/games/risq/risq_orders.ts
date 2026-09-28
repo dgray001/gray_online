@@ -8,12 +8,17 @@ export function isUnitOrder(order: RisqOrderType): boolean {
 
 /** Returns whether the order is for buildings */
 export function isBuildingOrder(order: RisqOrderType): boolean {
-  return order >= RisqOrderType.OrderType_BuildingCreate && order <= RisqOrderType.OrderType_BuildingDelete;
+  return order >= RisqOrderType.OrderType_BuildingCreate && order <= RisqOrderType.OrderType_BuildingAutoAttackBuilding;
+}
+
+/** Returns whether the order survives a clear_previous_orders order on the same subject, mirroring the backend */
+export function isClearImmune(order: RisqOrderType): boolean {
+  return order === RisqOrderType.OrderType_BuildingCreate || order === RisqOrderType.OrderType_BuildingResearch;
 }
 
 /** Returns whether the order is a subject-less, player-level order */
 export function isPlayerOrder(order: RisqOrderType): boolean {
-  return order >= RisqOrderType.OrderType_CancelOrder && order <= RisqOrderType.OrderType_CancelFoundation;
+  return order >= RisqOrderType.OrderType_CancelOrder && order <= RisqOrderType.OrderType_BuyMercenary;
 }
 
 /** Returns the arrow color used to draw the order on the map */
@@ -25,6 +30,12 @@ export function orderArrowColor(order_type: RisqOrderType): string {
     case RisqOrderType.OrderType_UnitAttackZone:
     case RisqOrderType.OrderType_UnitAttackUnit:
     case RisqOrderType.OrderType_UnitAttackBuilding:
+    case RisqOrderType.OrderType_UnitAutoAttackUnit:
+    case RisqOrderType.OrderType_UnitAutoAttackBuilding:
+    case RisqOrderType.OrderType_BuildingAttackUnit:
+    case RisqOrderType.OrderType_BuildingAttackBuilding:
+    case RisqOrderType.OrderType_BuildingAutoAttackUnit:
+    case RisqOrderType.OrderType_BuildingAutoAttackBuilding:
       return 'rgba(220, 30, 30, 0.9)';
     case RisqOrderType.OrderType_UnitBuild:
       return 'rgba(40, 110, 230, 0.9)';
@@ -137,6 +148,9 @@ export class RisqOrdersModel {
         ) {
           return true;
         }
+        if (isClearImmune(o.order_type)) {
+          return true;
+        }
         let has_subjects = true;
         for (const new_id of order.subjects) {
           has_subjects = this.stripPendingSubject(o, new_id);
@@ -219,7 +233,7 @@ export class RisqOrdersModel {
         continue;
       }
       if (order.clear_previous_orders) {
-        effective = [];
+        effective = effective.filter((o) => isClearImmune(o.order_type));
       }
       effective.push(order);
     }

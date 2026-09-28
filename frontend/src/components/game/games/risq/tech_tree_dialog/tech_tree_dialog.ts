@@ -51,6 +51,7 @@ interface RisqProducibleEntry {
   bonus?: RisqTechBonusEntry;
   affects_unit_ids?: number[];
   affects_unit_types?: RisqUnitType[];
+  unlocks_mercenaries?: { id: number; display_name: string }[];
 }
 
 interface RisqBuildingTreeEntry {
@@ -499,6 +500,9 @@ export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
     this.addCostRow(fragment, entry.cost);
     if (entry.stats) {
       this.addStatsRows(fragment, entry.stats);
+    }
+    if (entry.unlocks_mercenaries?.length) {
+      this.addLine(fragment, `Unlocks mercenaries: ${entry.unlocks_mercenaries.map((m) => m.display_name).join(', ')}`);
     }
 
     if (entry.bonus) {

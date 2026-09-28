@@ -35,7 +35,7 @@ func computePopulationSlotWinners(risq *GameRisq, orderables []Orderable) map[*R
 	for player_id, buildings := range by_player {
 		sort.Slice(buildings, func(i, j int) bool { return buildings[i].internal_id < buildings[j].internal_id })
 		player := risq.players[player_id]
-		remaining := int(player.populationLimit()) - nonDeletedUnitCount(player.units)
+		remaining := int(player.populationLimit()) - player.occupiedPopulation()
 		for i, b := range buildings {
 			if i >= remaining {
 				break

@@ -59,6 +59,7 @@ export declare interface RisqPlayer {
   researched_techs: Map<number, boolean>;
   turn_report?: RisqTurnReport;
   planned_foundations: Map<number, RisqPlannedFoundation>;
+  available_mercenaries: RisqProducible[];
 }
 
 /** Data describing frontend resource state */
@@ -411,6 +412,7 @@ export enum RisqOrderType {
   OrderType_BuildingAutoAttackBuilding, // Server synthesized; not submitted by player
   OrderType_CancelOrder,
   OrderType_CancelFoundation,
+  OrderType_BuyMercenary,
 }
 
 /** Data describing an order */
@@ -420,6 +422,7 @@ export declare interface RisqOrder {
   order_type: RisqOrderType;
   target_id: number;
   subjects: number[];
+  clear_previous_orders?: boolean;
 }
 
 /** Data describing a frontend order which may be previously submitted or may be unsubmitted */
@@ -471,6 +474,7 @@ export declare interface RisqPlayerFromServer {
   researched_techs: Record<string, boolean>;
   turn_report?: RisqTurnReportFromServer;
   planned_foundations?: RisqPlannedFoundation[];
+  available_mercenaries?: RisqProducible[];
 }
 
 /** Data describing a hexagonal space in risq */
@@ -587,6 +591,7 @@ export declare interface RisqOrderFromServer {
   order_type: number;
   target_id: number;
   subjects: number[];
+  clear_previous_orders: boolean;
 }
 
 /** One instance per internal_id per snapshot, so player, space and zone containers share the same objects */
@@ -714,6 +719,7 @@ export function serverToRisqPlayer(server_player: RisqPlayerFromServer, registry
     ),
     turn_report: server_player.turn_report ? serverToRisqTurnReport(server_player.turn_report) : undefined,
     planned_foundations: new Map((server_player.planned_foundations ?? []).map((f) => [f.coordinate_key, f])),
+    available_mercenaries: server_player.available_mercenaries ?? [],
   };
   return player;
 }

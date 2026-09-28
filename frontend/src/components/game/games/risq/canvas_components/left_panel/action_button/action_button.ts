@@ -25,7 +25,7 @@ export abstract class RisqActionButton extends DwgSquareButton {
 
   constructor(config: RisqActionButtonConfig, s: number) {
     super({
-      button_config: {},
+      button_config: { allow_nonleft_clicks: true },
       p: { x: 0, y: 0 },
       s,
       draw_config: {
@@ -42,6 +42,10 @@ export abstract class RisqActionButton extends DwgSquareButton {
     this.row = config.row;
     this.col = config.col;
     this.description = config.description;
+  }
+
+  override mousedown(e: MouseEvent): boolean {
+    return (e.button === 0 || e.button === 2) && super.mousedown(e);
   }
 
   protected hovered(): void {}

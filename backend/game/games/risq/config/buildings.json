@@ -109,13 +109,14 @@
     "attack_piercing": 5,
     "defense_blunt": 3,
     "defense_piercing": 5,
-    "population_support": 5,
+    "population_support": 50,
     "garrison_capacity": 10,
     "cost": { "wood": 250, "stone": 250 },
     "build_stamina": 50,
     "turn_stamina": 10,
     "produces": [
-      { "row": 1, "col": 0, "kind": "unit", "id": 13 }
+      { "row": 1, "col": 0, "kind": "unit", "id": 13 },
+      { "row": 2, "col": 0, "kind": "tech", "id": 4 }
     ],
     "vision": { "space": 3, "edge_adjacent": 3, "adjacent": 3, "edge_opposite": 3, "secondary": 2 }
   }

@@ -150,6 +150,7 @@ export declare interface RisqHotkeyBindings {
   research_tech: Record<number, HotkeyCombo>;
   build_building: Record<number, HotkeyCombo>;
   cycle_building: Record<number, HotkeyCombo>; // cycle selection through all of a building type
+  hire_mercenary: Record<number, HotkeyCombo>;
 }
 
 export function defaultRisqHotkeyBindings(): RisqHotkeyBindings {
@@ -163,6 +164,7 @@ export function defaultRisqHotkeyBindings(): RisqHotkeyBindings {
     research_tech: {},
     build_building: {},
     cycle_building: {},
+    hire_mercenary: {},
   };
 }
 
@@ -171,7 +173,8 @@ export type RisqHotkeyLookupEntry =
   | { kind: 'create_unit'; id: number }
   | { kind: 'research_tech'; id: number }
   | { kind: 'build_building'; id: number }
-  | { kind: 'cycle_building'; id: number };
+  | { kind: 'cycle_building'; id: number }
+  | { kind: 'hire_mercenary'; id: number };
 
 /** Builds a combo-string -> entry lookup for dispatch; unbound combos are omitted */
 export function buildHotkeyLookup(bindings: RisqHotkeyBindings): Map<string, RisqHotkeyLookupEntry> {
@@ -197,6 +200,9 @@ export function buildHotkeyLookup(bindings: RisqHotkeyBindings): Map<string, Ris
   }
   for (const [id, combo] of Object.entries(bindings.cycle_building)) {
     add(combo, { kind: 'cycle_building', id: Number(id) });
+  }
+  for (const [id, combo] of Object.entries(bindings.hire_mercenary)) {
+    add(combo, { kind: 'hire_mercenary', id: Number(id) });
   }
   return lookup;
 }

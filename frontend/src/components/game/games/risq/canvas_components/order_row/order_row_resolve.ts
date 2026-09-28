@@ -46,6 +46,8 @@ export function shortLabel(order_type: RisqOrderType): string {
     case RisqOrderType.OrderType_UnitAttackBuilding:
     case RisqOrderType.OrderType_UnitAttackZone:
     case RisqOrderType.OrderType_UnitAttackSpace:
+    case RisqOrderType.OrderType_BuildingAttackUnit:
+    case RisqOrderType.OrderType_BuildingAttackBuilding:
       return 'Attack';
     case RisqOrderType.OrderType_UnitGarrison:
       return 'Garrison';
@@ -54,6 +56,8 @@ export function shortLabel(order_type: RisqOrderType): string {
     case RisqOrderType.OrderType_UnitDelete:
     case RisqOrderType.OrderType_BuildingDelete:
       return 'Delete';
+    case RisqOrderType.OrderType_BuyMercenary:
+      return 'Hire';
     default:
       return 'Order';
   }
@@ -68,19 +72,20 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
   const subject_unit = isUnitOrder(order.order_type) ? player?.units.get(order.subjects[0]) : undefined;
   const subject_building = isBuildingOrder(order.order_type) ? player?.buildings.get(order.subjects[0]) : undefined;
   const board_size = game?.board_size ?? 0;
+  const subject_position = subject_unit ? config.game.unitLocation(subject_unit) : undefined;
 
   const distance_text = (target_space: Point2D, target_zone?: Point2D): string => {
-    if (!subject_unit) {
+    if (!subject_position) {
       return '';
     }
-    if (!equalsPoint2D(subject_unit.space_coordinate, target_space)) {
-      const d = axialDistance(subject_unit.space_coordinate, target_space);
+    if (!equalsPoint2D(subject_position.space_coordinate, target_space)) {
+      const d = axialDistance(subject_position.space_coordinate, target_space);
       return `${d} space${d === 1 ? '' : 's'} away`;
     }
     if (!target_zone) {
       return 'here';
     }
-    const d = axialDistance(subject_unit.zone_coordinate, target_zone);
+    const d = axialDistance(subject_position.zone_coordinate, target_zone);
     return d === 0 ? 'here' : `${d} zone${d === 1 ? '' : 's'} away`;
   };
 
@@ -194,19 +199,22 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
       };
       break;
     }
-    case RisqOrderType.OrderType_UnitAttackUnit: {
+    case RisqOrderType.OrderType_UnitAttackUnit:
+    case RisqOrderType.OrderType_BuildingAttackUnit: {
       const target_unit = game?.players
         .flatMap((p) => [...p.units.values()])
         .find((u) => u.internal_id === order.target_id);
+      const target_location = target_unit ? config.game.unitLocation(target_unit) : undefined;
       base = {
         icon: 'icons/sword32',
         name: `Attack ${target_unit?.display_name ?? 'Unit'}`,
-        target: target_unit ? distance_text(target_unit.space_coordinate, target_unit.zone_coordinate) : '',
+        target: target_location ? distance_text(target_location.space_coordinate, target_location.zone_coordinate) : '',
         cost: [],
       };
       break;
     }
-    case RisqOrderType.OrderType_UnitAttackBuilding: {
+    case RisqOrderType.OrderType_UnitAttackBuilding:
+    case RisqOrderType.OrderType_BuildingAttackBuilding: {
       const target_building = game?.players
         .flatMap((p) => [...p.buildings.values()])
         .find((b) => b.internal_id === order.target_id);
@@ -257,6 +265,18 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
     case RisqOrderType.OrderType_CancelFoundation: {
       const { space, zone } = invertZoneKey(order.target_id);
       base = { icon: 'icons/close_gray32', name: 'Cancel Foundation', target: distance_text(space, zone), cost: [] };
+      break;
+    }
+    case RisqOrderType.OrderType_BuyMercenary: {
+      const { x: unit_id, y: zone_key } = invertPair(order.target_id);
+      const { space } = invertZoneKey(zone_key);
+      const mercenary = player?.available_mercenaries.find((m) => m.id === unit_id);
+      base = {
+        icon: unitImage(unit_id, true),
+        name: `Hire ${mercenary?.display_name ?? 'Mercenary'}`,
+        target: `at (${space.x}, ${space.y})`,
+        cost: resource_cost(mercenary?.cost),
+      };
       break;
     }
     case RisqOrderType.OrderType_UnitRepair: {

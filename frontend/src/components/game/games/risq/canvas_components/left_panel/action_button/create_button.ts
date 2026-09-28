@@ -17,6 +17,7 @@ export class RisqCreateButton extends RisqRichTooltipActionButton {
   private risq: DwgRisq;
   private building_id: number;
   private producible: RisqProducible;
+  private ctrl_held = false;
 
   constructor(config: CreateButtonConfig, risq: DwgRisq, s: number) {
     super(
@@ -43,13 +44,18 @@ export class RisqCreateButton extends RisqRichTooltipActionButton {
     }
   }
 
+  override mouseup(e: MouseEvent): void {
+    this.ctrl_held = e.ctrlKey;
+    super.mouseup(e);
+  }
+
   protected released(): void {
     if (this.isHovering()) {
       if (this.dimmed) {
         this.risq.showMessage('Not enough resources', RISQ_MESSAGE_WARNING_COLOR);
         return;
       }
-      this.risq.createUnit(this.building_id, this.producible.id);
+      this.risq.createUnit(this.building_id, this.producible.id, this.ctrl_held);
     }
   }
 

@@ -25,6 +25,13 @@ export function unitImage(unit_id: number, plain = false): string {
   return `risq/units/${filename}`;
 }
 
+const COLLECTIVE_NAME_SUFFIXES = ['Infantry', 'Cavalry'];
+
+export function unitCountLabel(display_name: string, count: number): string {
+  const is_collective = COLLECTIVE_NAME_SUFFIXES.some((suffix) => display_name.endsWith(suffix));
+  return `${count} ${count === 1 || is_collective ? display_name : `${display_name}s`}`;
+}
+
 export const COMBO_UNIT_ICON_SIZE = 64;
 
 export function comboUnitIconKey(white: boolean): string {

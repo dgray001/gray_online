@@ -16,7 +16,6 @@ export declare interface BuildButtonConfig {
 export class RisqBuildButton extends RisqRichTooltipActionButton {
   private risq: DwgRisq;
   private producible: RisqProducible;
-  private armed = false;
 
   constructor(config: BuildButtonConfig, risq: DwgRisq, s: number) {
     super(
@@ -33,13 +32,17 @@ export class RisqBuildButton extends RisqRichTooltipActionButton {
   }
 
   override isClicking(): boolean {
-    return super.isClicking() || this.armed;
+    return super.isClicking() || this.isArmed();
+  }
+
+  private isArmed(): boolean {
+    return (
+      this.risq.getArmedOrder() === RisqOrderType.OrderType_UnitBuild &&
+      this.risq.getArmedBuildingId() === this.producible.id
+    );
   }
 
   override dataRefreshed(): void {
-    this.armed =
-      this.risq.getArmedOrder() === RisqOrderType.OrderType_UnitBuild &&
-      this.risq.getArmedBuildingId() === this.producible.id;
     const player = this.risq.getPlayer();
     if (!!player && this.risq.givingOrders() && !player.orders_submitted) {
       this.enable();
@@ -53,18 +56,13 @@ export class RisqBuildButton extends RisqRichTooltipActionButton {
     if (this.isHovering()) {
       if (this.dimmed) {
         this.risq.showMessage('Not enough resources', RISQ_MESSAGE_WARNING_COLOR);
-      } else if (this.armed) {
-        this.armed = false;
+      } else if (this.isArmed()) {
         this.risq.disarmOrder();
       } else {
-        this.armed = true;
-        this.risq.armOrder(
-          RisqOrderType.OrderType_UnitBuild,
-          () => {
-            this.armed = false;
-          },
-          { id: this.producible.id, display_name: this.producible.display_name }
-        );
+        this.risq.armOrder(RisqOrderType.OrderType_UnitBuild, () => {}, {
+          id: this.producible.id,
+          display_name: this.producible.display_name,
+        });
       }
     }
   }

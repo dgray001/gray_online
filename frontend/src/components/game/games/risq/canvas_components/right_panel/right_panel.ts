@@ -192,7 +192,7 @@ export class RisqRightPanel implements CanvasComponent {
           ctx.clip();
           if (!!player) {
             ctx.font = '24px serif';
-            this.drawPopulation(ctx, yi, player.units.size, player.population_limit);
+            this.drawPopulation(ctx, yi, player.units.size, this.risq.pendingMercenaryCount(), player.population_limit);
             yi += 30;
             for (const [rt, pr] of [...player.resources.entries()].sort((a, b) => a[0] - b[0])) {
               this.drawResource(ctx, yi, rt, pr);
@@ -247,13 +247,13 @@ export class RisqRightPanel implements CanvasComponent {
     drawLine(ctx, { x: this.xi() + 0.15 * this.w(), y: yi }, { x: this.xf() - 0.15 * this.w(), y: yi });
   }
 
-  private drawPopulation(ctx: CanvasRenderingContext2D, yi: number, pop: number, limit: number) {
+  private drawPopulation(ctx: CanvasRenderingContext2D, yi: number, pop: number, pending: number, limit: number) {
     ctx.beginPath();
     ctx.drawImage(this.risq.getIcon('icons/person64'), this.xi() + 0.1 * this.w(), yi, 30, 30);
-    drawText(ctx, `${pop}/${limit}`, {
+    drawText(ctx, pending > 0 ? `${pop}+${pending}/${limit}` : `${pop}/${limit}`, {
       p: { x: this.xi() + 0.1 * this.w() + 36, y: yi + 15 },
       w: 0.9 * this.w() - 36,
-      fill_style: pop >= limit ? 'rgb(200, 30, 30)' : 'black',
+      fill_style: pop + pending >= limit ? 'rgb(200, 30, 30)' : 'black',
       baseline: 'middle',
     });
   }
@@ -262,7 +262,8 @@ export class RisqRightPanel implements CanvasComponent {
     ctx.beginPath();
     ctx.drawImage(this.risq.getIcon(resourceTypeImage(rt)), this.xi() + 0.1 * this.w(), yi, 30, 30);
     const net = pr.amount - pr.spending;
-    const text = pr.spending > 0 ? `${net.toFixed(1)} (-${pr.spending.toFixed(1)})` : net.toFixed(1);
+    const sign = pr.spending > 0 ? '-' : '+';
+    const text = pr.spending !== 0 ? `${net.toFixed(1)} (${sign}${Math.abs(pr.spending).toFixed(1)})` : net.toFixed(1);
     drawText(ctx, text, {
       p: { x: this.xi() + 0.1 * this.w() + 36, y: yi + 15 },
       w: 0.9 * this.w() - 36,

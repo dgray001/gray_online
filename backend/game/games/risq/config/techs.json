@@ -30,5 +30,13 @@
     "affects_unit_types": ["infantry"],
     "bonus_defense_blunt": 1,
     "bonus_defense_piercing": 1
+  },
+  {
+    "tech_id": 4,
+    "display_name": "Mercenary Contracts",
+    "description": "Allows hiring infantry for gold directly into owned territory.",
+    "cost": { "wood": 150, "gold": 0 },
+    "research_stamina": 3,
+    "unlocks_mercenary_ids": [11, 12]
   }
 ]

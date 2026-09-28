@@ -252,6 +252,38 @@ export function zoneUnitSlotOffsets(zone_coordinate: Point2D, hex_r: number): Po
   return i === -1 ? cache.center : cache.rotated_edge[i];
 }
 
+export const CENTER_ZONE_MERCENARY_SLOTS = 8;
+export const EDGE_ZONE_MERCENARY_SLOTS = 6;
+const MERCENARY_RING_OFFSET_MULTIPLIER = 0.6;
+const MERCENARY_SLOT_SPACING_MULTIPLIER = 0.9;
+
+/** Pixel offsets from the space center of a zone's pending-mercenary slots, hugging its building circle */
+export function zoneMercenarySlotOffsets(zone_coordinate: Point2D, hex_r: number): Point2D[] {
+  const i = findOuterZoneIndex(zone_coordinate);
+  const building = buildingLocalOffset(i === -1, hex_r);
+  const unit_r = UNIT_SLOT_CIRCLE_RADIUS_MULTIPLIER * hex_r;
+  const ring_r = BUILDING_CIRCLE_RADIUS_MULTIPLIER * hex_r + MERCENARY_RING_OFFSET_MULTIPLIER * unit_r;
+  return mercenarySlotAngles(i === -1, ring_r, unit_r).map((angle) => {
+    const local = { x: building.x + ring_r * Math.cos(angle), y: building.y + ring_r * Math.sin(angle) };
+    return i === -1 ? local : rotatePoint(local, (Math.PI / 3) * (i + 1));
+  });
+}
+
+/** Angles around the building: a full ring for the center zone, a center-out inward arc for an edge zone */
+function mercenarySlotAngles(is_center: boolean, ring_r: number, unit_r: number): number[] {
+  if (is_center) {
+    return Array.from(
+      { length: CENTER_ZONE_MERCENARY_SLOTS },
+      (_, k) => (2 * Math.PI * k) / CENTER_ZONE_MERCENARY_SLOTS
+    );
+  }
+  const step = 2 * Math.asin((MERCENARY_SLOT_SPACING_MULTIPLIER * unit_r) / ring_r);
+  return Array.from(
+    { length: EDGE_ZONE_MERCENARY_SLOTS },
+    (_, k) => Math.PI + (k % 2 === 0 ? 1 : -1) * (Math.floor(k / 2) + 0.5) * step
+  );
+}
+
 /** Finds the zone object at the given coordinate within a space */
 export function getRisqZone(space: RisqSpace | undefined, zone_coordinate: Point2D): RisqZone | undefined {
   if (!space?.zones) {

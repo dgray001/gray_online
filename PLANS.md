@@ -1,5 +1,4 @@
 v0.9: Risq beta version
- r: Frontend mercenaries (bottom panel)
  s: Small issues (see all small issues)
  t: Backend risq tests
  u: Revamp summary report (fix colors, can see "events" on map, can interact with events i.e. replay them or see what happened precisely)
@@ -9,10 +8,16 @@ v0.9: Risq beta version
  y: Settings setup (including alt win conditions, map selector, etc)
 
 Small Risq Issues:
+ - Need better unit images with color-coded stuff
+ - Ungarrison doesn't do anything?
+ - Need to show capacity of resource / gatherable building in left panel
+ - Gatherable buildings need to show resources left
+ - Not all hotkeys should be in contention (like garrison and ungarrison)
+ - Make sure there is an "unset gather point" button similar to aoe
+ - Gather points not working on frontend properly
  - Forest zone images need to be a ring of 8 when central zone and 6 not in ring on edge zone
  - Forest zone images need to be cached if not already
  - Forest images can be modified grove images so it's not just one tree
- - Need to address pathing on frontend since images can be a bit silly
  - Need to add mountain images
  - Left panel: show live "workers X/Y" indicator on a selected gatherable building (predictedGathererCount already exists in risq.ts, just needs left_panel.ts wiring)
 

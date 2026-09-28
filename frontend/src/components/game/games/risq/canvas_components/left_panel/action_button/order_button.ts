@@ -26,7 +26,6 @@ export declare interface OrderButtonConfig {
 export class RisqOrderButton extends RisqActionButton {
   private risq: DwgRisq;
   private order_type: RisqOrderType;
-  private armed = false;
 
   constructor(config: OrderButtonConfig, risq: DwgRisq, s: 0) {
     super(config, s);
@@ -35,11 +34,15 @@ export class RisqOrderButton extends RisqActionButton {
   }
 
   override isClicking(): boolean {
-    return super.isClicking() || this.armed;
+    return super.isClicking() || this.isArmed();
+  }
+
+  private isArmed(): boolean {
+    const armed_action = ORDER_HOTKEY_ACTIONS[this.risq.getArmedOrder()];
+    return armed_action !== undefined && armed_action === ORDER_HOTKEY_ACTIONS[this.order_type];
   }
 
   override dataRefreshed(): void {
-    this.armed = this.risq.getArmedOrder() === this.getOrderType();
     const hotkey_action = ORDER_HOTKEY_ACTIONS[this.order_type];
     this.setHotkeyCombo(hotkey_action !== undefined ? getSettings().risq_hotkeys.actions[hotkey_action] : undefined);
   }
@@ -63,14 +66,10 @@ export class RisqOrderButton extends RisqActionButton {
 
   protected released(): void {
     if (this.isHovering()) {
-      if (this.armed) {
-        this.armed = false;
+      if (this.isArmed()) {
         this.risq.disarmOrder();
       } else {
-        this.armed = true;
-        this.risq.armOrder(this.getOrderType(), () => {
-          this.armed = false;
-        });
+        this.risq.armOrder(this.getOrderType(), () => {});
       }
     }
   }
