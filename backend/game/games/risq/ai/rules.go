@@ -36,6 +36,7 @@ type Internals struct {
 	pending_population int
 	behaviors          []UnitBehavior
 	building_behaviors []BuildingBehavior
+	army               armyState
 }
 
 func (i *Internals) Refresh() {

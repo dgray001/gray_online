@@ -110,3 +110,7 @@ func (v *aiView) CancelFoundationOrder(f ai.FoundationView) ai.Order {
 	v.cancelled_foundations[f.Location] = true
 	return ai.Order{OrderType: uint8(defs.OrderType_CancelFoundation), TargetID: int64(zoneKey(f.Location))}
 }
+
+func (v *aiView) HireMercenaryOrder(unit_id uint32, target ai.ZoneRef) ai.Order {
+	return ai.Order{OrderType: uint8(defs.OrderType_BuyMercenary), TargetID: int64(util.Pair(int(unit_id), int(zoneKey(target))))}
+}

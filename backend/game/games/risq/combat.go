@@ -1,6 +1,7 @@
 package risq
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/dgray001/gray_online/game/game_utils"
@@ -224,8 +225,8 @@ func (r *GameRisq) resolveAttack(attacker Attackable, target Attackable, stamina
 	target_cs := target.combatStats(r, attacker, false)
 	damage := combatDamage(&attacker_cs, &target_cs, stamina_cost)
 	target.applyDamage(RisqDamageEvent{tick: r.current_tick, attacker_id: attacker.internalId(), attacker_type: attacker.OrderableType(), damage: damage, damage_type: attacker_cs.attack_type})
-	util.DebugLog.Printf("combat tick=%d: %d (player %d, stamina %d) hits %d (player %d) for %.2f",
-		r.current_tick, attacker.internalId(), attacker.playerId(), stamina_cost, target.internalId(), target.playerId(), damage)
+	util.DebugLog.Printf("combat turn=%d tick=%d: %d %s (player %d, stamina %d) hits %d %s (player %d) for %.2f",
+		r.turn_number, r.current_tick, attacker.internalId(), attackableKind(attacker), attacker.playerId(), stamina_cost, target.internalId(), attackableKind(target), target.playerId(), damage)
 }
 
 // Deterministically settles same-tick kill credit when several attackers hit one target: lowest internal_id wins.
@@ -284,4 +285,14 @@ func (r *GameRisq) effectiveCombatStats(u *RisqUnit, other Orderable, attacking 
 		cs.applyDefenseBonus(bonus)
 	}
 	return cs
+}
+
+func attackableKind(a Attackable) string {
+	switch v := a.(type) {
+	case *RisqUnit:
+		return fmt.Sprintf("u%d", v.unit_id)
+	case *RisqBuilding:
+		return fmt.Sprintf("b%d", v.building_id)
+	}
+	return "?"
 }
