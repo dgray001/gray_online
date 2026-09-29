@@ -7,7 +7,7 @@
     {"when": {"always": {}}, "then": [{"action": "set_var", "name": "threat_home", "value": "var(enemy_units_visible_infantry_within_1)"}, {"action": "set_var", "name": "guard_home", "value": "var(population_infantry_within_1)"}]},
     {"when": {"all": [{"value_at_least": {"value": "var(threat_home)", "amount": 3}}, {"value_at_least": {"value": "var(threat_home) - var(guard_home)", "amount": 1}}]}, "then": [{"action": "garrison", "unit_types": ["economic"], "eligible": ["gather", "build", "move", "repair", "renew"]}]},
     {"when": {"value_at_most": {"value": "var(threat_home)", "amount": 0}}, "then": [{"action": "ungarrison", "unit_types": ["economic"]}]},
-    {"when": {"all": [{"value_at_least": {"value": "var(vils)", "amount": 6}}, {"value_at_most": {"value": "var(farming)", "amount": 0}}]}, "then": [{"action": "research", "tech_id": 1, "queue": 2}]},
+    {"when": {"all": [{"value_at_least": {"value": "var(vils)", "amount": 8}}, {"value_at_most": {"value": "var(farming)", "amount": 0}}]}, "then": [{"action": "research", "tech_id": 1, "queue": 2}]},
     {"when": {"value_at_least": {"value": "var(vil_want)", "amount": 1}}, "then": [{"action": "create", "unit_id": 1, "queue": 2}]},
     {"when": {"value_at_least": {"value": "var(house_want) - var(foundation_count_2)", "amount": 0.5}}, "then": [{"action": "build", "building_id": 2, "max": "var(house_builders)", "eligible": ["gather"], "exclude_buckets": true}]},
     {"when": {"all": [{"value_at_least": {"value": "var(vc_want)", "amount": 1}}, {"value_at_most": {"value": "var(foundation_count_1)", "amount": 0}}]}, "then": [{"action": "build", "building_id": 1, "max": 4, "eligible": ["gather"], "exclude_buckets": true}]},

@@ -201,8 +201,8 @@ rule(le("var(threat_home)", 0), {"action": "ungarrison", "unit_types": ["economi
 
 # ================= spending, in priority order =================
 # Farming first: the Village Center is otherwise always busy with villagers, and farms depend on it
-# (6 villagers is roughly when Farming's villager bonuses start paying for themselves)
-rule(all_(ge("var(vils)", 6), le("var(farming)", 0)), {"action": "research", "tech_id": FARMING, "queue": 2})
+# (8 villagers is roughly when Farming's villager bonuses start paying for themselves)
+rule(all_(ge("var(vils)", 8), le("var(farming)", 0)), {"action": "research", "tech_id": FARMING, "queue": 2})
 rule(ge("var(vil_want)", 1), {"action": "create", "unit_id": VIL, "queue": 2})
 rule(ge("var(house_want) - var(foundation_count_2)", 0.5), build(HOUSE, "var(house_builders)"))
 rule(all_(ge("var(vc_want)", 1), le("var(foundation_count_1)", 0)), build(VC, 4))
