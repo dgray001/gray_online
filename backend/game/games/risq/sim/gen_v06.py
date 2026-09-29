@@ -82,6 +82,9 @@ RES = ("food", "wood", "stone", "gold")
 def uc(r, i): return f"var(unit_cost_{r}_{i})"
 def bc(r, i): return f"var(building_cost_{r}_{i})"
 def tc(r, i): return f"var(tech_cost_{r}_{i})"
+TECH_GAIN = {ATTACK: 0.25, ARMOR: 0.15}  # rough share an army gains from each Blacksmith tech (hardcoded stats)
+def tcost(t): return " + ".join(tc(r, t) for r in RES)
+def bcost(b): return " + ".join(bc(r, b) for r in RES)
 def gatherable(i): return f"({uc('food', i)} + {uc('wood', i)} + {uc('stone', i)})"  # the part villagers must gather
 rule(ALWAYS,
      # how well each unit does against the remembered enemy mix (blunt > piercer > heavy > blunt; 1 = even)
@@ -135,7 +138,11 @@ rule(ALWAYS,
      setv("barracks_P", "var(barracks) * var(needP) / max(1, var(needB) + var(needP))"),
      setv("redoubt_H", f"var(redoubts) * {one('var(tH) - var(Hv)')}"),
      setv("vc_want", f"{one('1 - var(building_count_1)')} * {one('var(vils)')}"),
-     setv("smith_want", f"{one('var(redoubts)')} * {one('1 - var(building_count_11)')} * {one('var(vils)')}"),
+     # the army the Blacksmith techs would improve: what we have plus what our producers turn out over the sustain window
+     setv("army_value", f"var(B) * {gatherable(BLUNT)} + var(Pi) * {gatherable(PIERCE)} + var(Hv) * ({gatherable(HEAVY)} + {uc('gold', HEAVY)})"),
+     setv("proj_army", f"var(army_value) + (var(n_barracks) * var(barracks_spend) + var(n_redoubts) * var(redoubt_spend)) * {P['sustain']}"),
+     # a Blacksmith once its first tech (attack) repays both
+     setv("smith_want", f"{one('1 - var(building_count_11)')} * {one('var(vils)')} * {one(f'(var(proj_army) * {TECH_GAIN[ATTACK]} - ({tcost(ATTACK)}) - ({bcost(SMITH)})) / 50 + 1')}"),
      # houses: enough room for ~4 turns of production, more urgent the sooner we are capped
      setv("prod_rate", f"var(vil_rate) * {PR[VIL]} + var(barracks) * {PR[BLUNT]} + var(redoubts) * {PR[HEAVY]}"),
      setv("house_want", f"max(0, (var(prod_rate) * 4 + 1 - var(headroom)) / {HOUSE_POP}) * {one('var(population_max) - population_limit')} * {one('var(vils)')}"),
@@ -153,7 +160,7 @@ rule(ALWAYS,
      *(setv(f"{r}_rate", f"var(vil_rate) * {uc(r, VIL)} * {PR[VIL]} + var(barracks_B) * {uc(r, BLUNT)} * {PR[BLUNT]}"
                          f" + var(barracks_P) * {uc(r, PIERCE)} * {PR[PIERCE]} + var(redoubt_H) * {uc(r, HEAVY)} * {PR[HEAVY]}") for r in RES),
      # techs we intend: Farming, and the Blacksmith techs once one stands
-     *(setv(f"tech_{r}", f"(1 - var(farming)) * {tc(r, FARMING)} + {one('var(smiths)')} * ((1 - var(pikes)) * {tc(r, PIKES)}"
+     *(setv(f"tech_{r}", f"(1 - var(farming)) * {tc(r, FARMING)} + {one('var(smiths) + var(smith_want)')} * ((1 - var(pikes)) * {tc(r, PIKES)}"
                          f" + (1 - var(tech_researched_2)) * {tc(r, ATTACK)} + (1 - var(tech_researched_3)) * {tc(r, ARMOR)})") for r in RES),
      setv("outpost_want", f"max(0, (var(gold_rate) + var(tech_gold) / {H} - var(gold_income)) / {SPACE_GOLD})"),
      *(setv(f"lump_{r}", f"var(vc_want) * {bc(r, VC)} + var(barracks_save) * {bc(r, BARRACKS)} + var(redoubt_save) * {bc(r, REDOUBT)}"
@@ -217,9 +224,8 @@ rule(all_(ge("var(barracks)", 1), le("var(foundation_count_21)", 0), ge("var(out
 rule(ALWAYS, dict({"action": "build_foundations"}, **ECO), dict({"action": "renew"}, **ECO), dict({"action": "repair", "max": 1}, **ECO))
 rule(all_(ge("var(smiths)", 1), any_(ge("var(eH)", 2), ge("var(needP)", 4))), {"action": "research", "tech_id": PIKES})
 # attack/armor: worth it once the army they improve is worth several times their cost (each adds roughly 15%)
-rule(ALWAYS, setv("army_value", f"var(B) * {gatherable(BLUNT)} + var(Pi) * {gatherable(PIERCE)} + var(Hv) * ({gatherable(HEAVY)} + {uc('gold', HEAVY)})"))
 for t in (ATTACK, ARMOR):
-    rule(all_(ge("var(smiths)", 1), ge(f"var(army_value) * 0.15 - ({tc('food', t)} + {tc('wood', t)} + {tc('stone', t)} + {tc('gold', t)})", 0)),
+    rule(all_(ge("var(smiths)", 1), ge(f"var(proj_army) * {TECH_GAIN[t]} - ({tcost(t)})", 0)),
          {"action": "research", "tech_id": t})
 # mercenaries: once gold piles up beyond what heavies and techs will use; price mirrors the engine's markup
 MERC = "1.3 * ({f} + {w} + {s} + 1.5 * {g})"
