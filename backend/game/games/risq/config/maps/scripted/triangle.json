@@ -60,7 +60,7 @@
   },
   {
     "step": "resource_scatter",
-    "params": { "chance": 0.15, "category_weights": { "grove": 0.4, "forest": 0.35, "food": 0.15, "stone": 0.1 } }
+    "params": { "chance": 0.15, "category_weights": { "grove": 0.4, "forest": 0.35, "food": 0.15 } }
   },
   {
     "step": "player_starts",
@@ -95,5 +95,8 @@
       ]
     }
   },
-  { "step": "ensure_connectivity", "params": {} }
+  { "step": "ensure_connectivity", "params": {} },
+  { "step": "resource_place", "params": { "resource_id": 41, "count": "num_players", "outside_player_areas": true } },
+  { "step": "resource_place", "params": { "resource_id": 42, "count": "num_players", "outside_player_areas": true } },
+  { "step": "resource_place", "params": { "resource_id": 43, "count": "num_players / 2", "outside_player_areas": true } }
 ]

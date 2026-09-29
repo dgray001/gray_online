@@ -594,6 +594,7 @@ func stepPlayerStarts(ctx *mapScriptContext, raw json.RawMessage) error {
 		return err
 	}
 	ctx.player_starts = starts
+	ctx.player_area_size = area_size
 	footprints := startFootprints(starts, area_size)
 	if err := prepareStartTerrain(ctx, p.terrainPickJSON, footprints); err != nil {
 		return err
