@@ -18,7 +18,8 @@ P = dict(
     raid_min=3,        # blunts needed before raiding
     raid_odds=1.4,     # we must be this much stronger where we raid
     vil_worth=0.4,     # a villager is worth this many blunts in a fight
-    raid_frac=0.3, raid_max=8,  # the raid party: this share of our blunts, at most this many
+    raid_frac=0.3, raid_max=8,
+    raid_pause=20,     # turns raids stop after a party is caught, times the number of parties lost so far  # the raid party: this share of our blunts, at most this many
     # assault (heavies + piercers)
     assault_min=10, assault_odds=1.3,
     early_blunts=3,
@@ -291,18 +292,26 @@ RAID_ORDERS = ["move", "attack_space", "attack_unit", "attack_zone", "attack_bui
 def soldiers_near(anchor, within):
     return f"(var(enemy_units_visible_11_within_{within}_of_{anchor}) + 2 * var(enemy_units_visible_12_within_{within}_of_{anchor}) + 4 * var(enemy_units_visible_13_within_{within}_of_{anchor}))"
 rule(ALWAYS,
+     # a party that lost more than half its members since last turn was caught: raids pause, longer after each failure
+     setv("raid_lost", "max(0, var(raid_prev) - var(bucket_size_raid))"),
+     setv("raid_wiped", f"{one('var(raid_prev)')} * {one('(var(raid_lost) - var(raid_prev) / 2) * 100')}"),
+     setv("raid_fails", "var(raid_fails) + var(raid_wiped)", True),
+     setv("raid_pause", f"max(var(raid_pause) - 1, var(raid_wiped) * {P['raid_pause']} * var(raid_fails))", True),
      # a small party: a share of our blunts, never fewer than raid_min, and it all comes home if an army is at our door
      setv("raid_size", f"{one(f'var(B) - {rmin} + 1')} * min({P['raid_max']}, max({rmin}, var(B) * {P['raid_frac']}))"
-                       f" * {one('3 - var(threat_home) + var(guard_home)')}"),
+                       f" * {one('3 - var(threat_home) + var(guard_home)')} * {one('1 - var(raid_pause)')}"),
      {"action": "set_bucket", "bucket": "raid", "size": "var(raid_size)", "task": {"action": "explore"}},
      {"action": "fill_bucket", "bucket": "raid", "unit_ids": [BLUNT]},
      # any enemy soldier within reach of the party (two spaces: they close that in a turn): it is a raid, not a fight, so it leaves
      setv("raid_danger", soldiers_near('raid', 2)))
 rule(le("var(raid_size)", 0), {"action": "empty_bucket", "bucket": "raid"})
+rule(ALWAYS, setv("raid_prev", "var(bucket_size_raid)", True))
 rule(ge("var(bucket_size_raid)", 1), {"action": "set_unit_behavior", "in_bucket": "raid", "stance": "defensive"})
 rule(all_(ge("var(bucket_size_raid)", 1), ge("var(raid_danger)", 1)),
      {"action": "move", "in_bucket": "raid", "eligible": RAID_ORDERS, "targets": "home", "together": True})
-SAFE = f"100 * var(enemy_buildings_known_{DEFENSIVE}_within_0_of_target) + 100 * {soldiers_near('target', 2)}"
+# not under their guns, not near their soldiers, and not near where their army musters (barracks, Redoubts)
+SAFE = (f"100 * var(enemy_buildings_known_{DEFENSIVE}_within_0_of_target) + 100 * {soldiers_near('target', 2)}"
+        f" + 100 * var(enemy_buildings_known_{BARRACKS}_{REDOUBT}_within_2_of_target)")
 # hunt: resources among enemy buildings, where villagers work, away from their guns and soldiers; else explore
 hunt_score = (f"5 * min(1, var(enemy_buildings_known_within_2_of_target)) + 3 * var(enemy_buildings_known_within_1_of_target)"
               f" - {SAFE} - var(target_distance) / 2")
@@ -337,8 +346,8 @@ def pow_near(side, anchor, within):
         c = lambda uid: f"var(population_{uid}_within_{within}_of_{anchor})" if anchor != 'home' else f"var(population_{uid}_within_{within})"
     return f"({c(11)} + 2 * {c(12)} + 4 * {c(13)})"
 rule(ALWAYS,
-     # enemy power seen recently, fading ~5% a turn so a broken army stops scaring us
-     setv("ePowSeen", "max(var(ePowSeen) * 0.95, var(enemy_units_visible_11) + 2 * var(enemy_units_visible_12) + 4 * var(enemy_units_visible_13))", True),
+     # the strongest enemy army we have seen: an army we haven't beaten is still out there, so it fades only slowly
+     setv("ePowSeen", "max(var(ePowSeen) * 0.99, var(enemy_units_visible_11) + 2 * var(enemy_units_visible_12) + 4 * var(enemy_units_visible_13))", True),
      setv("homePow", pow_near('mine', 'home', 1)),
      # launch: the soldiers gathered at home beat what we have seen, and are a real army
      setv("go", one(f"var(homePow) - {ao} * var(ePowSeen) + 1") + " * " + one(f"var(homePow) - {P['assault_min']} + 1")),
