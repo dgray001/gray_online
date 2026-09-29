@@ -375,8 +375,11 @@ rule(all_(ge("var(bucket_size_army)", 1), ge("var(a_outnumbered)", 1)),
 
 # ================= home defence: soldiers not raiding or attacking hold the base and fight only there =================
 DEF = dict(exclude_buckets=True, eligible=["move", "attack_unit", "attack_building", "attack_space", "attack_zone"], unit_types=["infantry"])
+# every soldier fights back when hit, whatever it was doing (walking home, hitting a building)
+rule(ALWAYS, {"action": "set_unit_behavior", "unit_types": ["infantry"], "interrupt_current": True})
 rule({"building_count_at_least": {"amount": 1}},
-     dict({"action": "move", "targets": "home", "together": False}, exclude_buckets=True, unit_types=["infantry"]),
+     # soldiers that left the army or the raid come home, whatever they were still doing
+     dict({"action": "move", "targets": "home", "together": False, "eligible": DEF["eligible"]}, exclude_buckets=True, unit_types=["infantry"]),
      dict({"action": "attack", "targets": "enemy_units", "score": "10 - 10 * var(target_distance_home)", "min_score": 0}, **DEF))
 # no buildings at all (army-only starts): nothing to defend, so hunt with everything
 rule({"building_count_equals": {"amount": 0}},
