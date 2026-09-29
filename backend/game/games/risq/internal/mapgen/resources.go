@@ -17,7 +17,7 @@ var uniformTreeIds = []uint32{11, 12, 13, 14, 15, 16}
 var uniformGroveIds = []uint32{21, 22, 23, 24, 25, 26}
 var uniformForestIds = []uint32{31, 32, 33, 34, 35, 36}
 var uniformWoodIds = append(append(append([]uint32{}, uniformTreeIds...), uniformGroveIds...), uniformForestIds...)
-var uniformStoneIds = []uint32{41}
+var uniformStoneIds = []uint32{41, 42, 43}
 var uniformGoldIds = []uint32{51}
 
 type scatterEntry struct {

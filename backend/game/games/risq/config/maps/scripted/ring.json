@@ -90,7 +90,9 @@
         { "resource_id": 34, "count": 1, "distance": [1, 1] },
         { "resource_id": 2, "count": 2, "distance": [1, 1] },
         { "resource_id": 1, "count": 2, "distance": [1, 1] },
-        { "resource_id": 41, "count": 2, "distance": [1, 1] }
+        { "resource_id": 41, "count": 1, "distance": [0, 0] },
+        { "resource_id": 42, "count": 1, "distance": [1, 1] },
+        { "resource_id": 43, "count": 1, "distance": [1, 1] }
       ]
     }
   },

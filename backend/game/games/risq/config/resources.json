@@ -161,9 +161,25 @@
   },
   {
     "resource_id": 41,
+    "display_name": "Small Stone Mine",
+    "category": "stone",
+    "starting_resources": 100,
+    "base_gather_speed": 10,
+    "gather_capacity": 12
+  },
+  {
+    "resource_id": 42,
     "display_name": "Stone Mine",
     "category": "stone",
     "starting_resources": 250,
+    "base_gather_speed": 10,
+    "gather_capacity": 12
+  },
+  {
+    "resource_id": 43,
+    "display_name": "Large Stone Mine",
+    "category": "stone",
+    "starting_resources": 400,
     "base_gather_speed": 10,
     "gather_capacity": 12
   },
