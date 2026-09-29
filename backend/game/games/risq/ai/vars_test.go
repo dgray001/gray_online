@@ -177,8 +177,8 @@ func (f fakeView) KnownEnemyBuildings() []BuildingView   { return f.enemy_buildi
 func (f fakeView) Buildings() []BuildingView             { return f.buildings }
 func (f fakeView) IdleUnits() []UnitView                 { return f.units }
 func (f fakeView) EligibleUnits(...OrderKind) []UnitView { return f.units }
-func (f fakeView) AttackUnitOrder(u UnitView, t UnitView, _ bool) Order {
-	return Order{Subjects: []uint64{u.InternalID}, TargetID: int64(t.InternalID), OrderType: 1}
+func (f fakeView) AttackUnitOrder(u UnitView, t UnitView, clear bool) Order {
+	return Order{Subjects: []uint64{u.InternalID}, TargetID: int64(t.InternalID), OrderType: 1, ClearPreviousOrders: clear}
 }
 func (f fakeView) AttackSpaceOrder(u UnitView, c Coordinate, _ bool) Order {
 	return Order{Subjects: []uint64{u.InternalID}, TargetID: int64(c.X*100 + c.Y), OrderType: 3}
@@ -265,5 +265,41 @@ func TestEnemyBuildingsKnownFiltersByBuildingID(t *testing.T) {
 	}
 	if got := internals.lookupVar(view, "enemy_buildings_known"); got != 3 {
 		t.Errorf("enemy_buildings_known = %v, want all 3", got)
+	}
+}
+
+func TestDistributeSharesAttackersByHealth(t *testing.T) {
+	army := make([]UnitView, 7)
+	for i := range army {
+		army[i] = UnitView{InternalID: uint64(i + 1), UnitID: 11, Kind: UnitMilitary, Location: at(0, 0)}
+	}
+	// two wounded blunts (4 health: 2 hits each at 2 damage) and a fresh one (11: 6 hits)
+	enemies := []UnitView{
+		{InternalID: 20, UnitID: 11, Kind: UnitMilitary, Location: at(1, 0), Health: 4},
+		{InternalID: 21, UnitID: 11, Kind: UnitMilitary, Location: at(1, 0), Health: 11},
+		{InternalID: 22, UnitID: 11, Kind: UnitMilitary, Location: at(1, 0), Health: 4},
+	}
+	view := fakeView{units: army, enemies: enemies}
+	attack, err := parseAction(map[string]any{"action": "attack", "targets": "enemy_units",
+		"score": "20 - var(target_health)", "distribute": map[string]any{"damage": 2.0, "queue": 1.0}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	orders := attack.ToOrders(view, &Internals{})
+	primary := map[int64]int{}
+	queued := 0
+	for _, o := range orders {
+		if o.ClearPreviousOrders {
+			primary[o.TargetID]++
+		} else {
+			queued++
+		}
+	}
+	// wounded ones score best and need 2 each; the fresh one needs 6 but only 3 attackers are left
+	if primary[20] != 2 || primary[22] != 2 || primary[21] != 3 || queued != 7 {
+		t.Fatalf("expected 2/2/3 attackers and a follow-up each, got %v with %d queued (%+v)", primary, queued, orders)
+	}
+	if _, err := parseAction(map[string]any{"action": "attack", "targets": "enemy_units", "order": "space", "distribute": map[string]any{}}); err == nil {
+		t.Errorf("distribute with a space order should fail")
 	}
 }

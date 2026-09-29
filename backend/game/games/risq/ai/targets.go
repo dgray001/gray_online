@@ -2,6 +2,8 @@ package ai
 
 import (
 	"fmt"
+	"math"
+	"sort"
 	"strings"
 )
 
@@ -158,6 +160,18 @@ type targetPicker struct {
 	together     bool
 	// attack only: hit the chosen candidate itself (chasing it), or everything in its zone or space
 	order attackOrderKind
+	// attack only: share attackers out over the best candidates instead of all taking the best one
+	distribute *distribution
+}
+
+// How attackers are shared over targets: each gets about enough to kill it within a hit, best-scoring targets first
+type distribution struct {
+	// expected damage one attacker deals a candidate per hit (evaluated per candidate)
+	damage amount
+	// extra share of attackers allowed per target, so a few misses or late arrivals still kill it
+	overkill amount
+	// follow-up targets each attacker queues behind its own
+	queue int
 }
 
 type attackOrderKind uint8
@@ -208,6 +222,26 @@ func parseTargetPicker(raw map[string]any) (*targetPicker, error) {
 	default:
 		return nil, fmt.Errorf("\"order\" must be \"unit\", \"zone\" or \"space\"")
 	}
+	if raw["distribute"] != nil {
+		obj, ok := raw["distribute"].(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("\"distribute\" must be an object")
+		}
+		if p.order != attackOrderUnit {
+			return nil, fmt.Errorf("\"distribute\" assigns single targets, so it needs \"order\": \"unit\"")
+		}
+		d := &distribution{queue: 2}
+		if d.damage, err = parseNumber(obj, "damage", 1); err != nil {
+			return nil, err
+		}
+		if d.overkill, err = parseNumber(obj, "overkill", 0); err != nil {
+			return nil, err
+		}
+		if q, ok := obj["queue"].(float64); ok {
+			d.queue = int(q)
+		}
+		p.distribute = d
+	}
 	return p, nil
 }
 
@@ -250,14 +284,17 @@ func (p *targetPicker) candidates(view View, from ZoneRef) []candidate {
 
 // best scores the candidates seen from `from`; target_distance and the "target" anchor refer to each in turn
 func (p *targetPicker) best(view View, internals *Internals, from ZoneRef) (candidate, bool) {
-	saved_target, saved_from := internals.target, internals.target_from
-	defer func() { internals.target, internals.target_from = saved_target, saved_from }()
+	saved_target, saved_from, saved_h, saved_mh := internals.target, internals.target_from, internals.target_health, internals.target_max_health
+	defer func() {
+		internals.target, internals.target_from, internals.target_health, internals.target_max_health = saved_target, saved_from, saved_h, saved_mh
+	}()
 	min_score := p.min_score.float(view, internals)
 	var best candidate
 	best_score, found := 0.0, false
 	for _, c := range p.candidates(view, from) {
 		loc := c.loc
 		internals.target, internals.target_from = &loc, &from
+		internals.target_health, internals.target_max_health = c.health()
 		score := p.score.float(view, internals)
 		if p.has_min && score < min_score {
 			continue
@@ -271,12 +308,15 @@ func (p *targetPicker) best(view View, internals *Internals, from ZoneRef) (cand
 
 // pick runs the picker for a group: with "together" every unit takes the target chosen from the group's center
 // (units more than two spaces from it regroup first); otherwise each unit chooses from where it stands.
-func (p *targetPicker) pick(view View, internals *Internals, units []UnitView, act func(u UnitView, c candidate) Order) []Order {
+func (p *targetPicker) pick(view View, internals *Internals, units []UnitView, act func(u UnitView, c candidate, clear bool) Order) []Order {
+	if p.distribute != nil {
+		return p.distributed(view, internals, units, act)
+	}
 	orders := make([]Order, 0, len(units))
 	if !p.together {
 		for _, u := range units {
 			if c, ok := p.best(view, internals, u.Location); ok {
-				orders = append(orders, act(u, c))
+				orders = append(orders, act(u, c, true))
 			}
 		}
 		return orders
@@ -293,26 +333,119 @@ func (p *targetPicker) pick(view View, internals *Internals, units []UnitView, a
 		if axialDistance(u.Location.Space, center.Space) > 2 {
 			orders = append(orders, view.MoveOrder(u, center, true))
 		} else {
-			orders = append(orders, act(u, c))
+			orders = append(orders, act(u, c, true))
 		}
 	}
 	return orders
 }
 
-func attackCandidateOrder(view View, u UnitView, c candidate, order attackOrderKind) Order {
+func attackCandidateOrder(view View, u UnitView, c candidate, order attackOrderKind, clear bool) Order {
 	switch order {
 	case attackOrderZone:
-		return view.AttackZoneOrder(u, c.loc, true)
+		return view.AttackZoneOrder(u, c.loc, clear)
 	case attackOrderSpace:
-		return view.AttackSpaceOrder(u, c.loc.Space, true)
+		return view.AttackSpaceOrder(u, c.loc.Space, clear)
 	}
 	switch {
 	case c.unit != nil:
-		return view.AttackUnitOrder(u, *c.unit, true)
+		return view.AttackUnitOrder(u, *c.unit, clear)
 	case c.building != nil:
-		return view.AttackBuildingOrder(u, *c.building, true)
+		return view.AttackBuildingOrder(u, *c.building, clear)
 	}
-	return view.AttackZoneOrder(u, c.loc, true)
+	return view.AttackZoneOrder(u, c.loc, clear)
+}
+
+func (c candidate) health() (float64, float64) {
+	switch {
+	case c.unit != nil:
+		return c.unit.Health, c.unit.MaxHealth
+	case c.building != nil:
+		return c.building.Health, c.building.MaxHealth
+	}
+	return 0, 0
+}
+
+// distributed shares a group's attackers over the best candidates seen from its center: each candidate, best score
+// first, gets its nearest free attackers until they would kill it in one hit (plus the overkill allowance); attackers
+// left over go round the candidates again. Each attacker then queues the next candidates behind its own, so it moves on
+// to a fresh target instead of piling onto one when its own dies. Units more than two spaces out regroup first.
+func (p *targetPicker) distributed(view View, internals *Internals, units []UnitView, act func(u UnitView, c candidate, clear bool) Order) []Order {
+	orders := make([]Order, 0, len(units))
+	center, ok := groupCenter(units)
+	if !ok {
+		return orders
+	}
+	type target struct {
+		c        candidate
+		score    float64
+		need     int
+		assigned int
+	}
+	saved_target, saved_from, saved_h, saved_mh := internals.target, internals.target_from, internals.target_health, internals.target_max_health
+	min_score := p.min_score.float(view, internals)
+	targets := make([]*target, 0)
+	for _, c := range p.candidates(view, center) {
+		loc := c.loc
+		internals.target, internals.target_from = &loc, &center
+		internals.target_health, internals.target_max_health = c.health()
+		score := p.score.float(view, internals)
+		if p.has_min && score < min_score {
+			continue
+		}
+		damage := max(0.01, p.distribute.damage.float(view, internals))
+		overkill := max(0, p.distribute.overkill.float(view, internals))
+		need := max(1, int(math.Ceil(max(internals.target_health, 0.01)*(1+overkill)/damage)))
+		targets = append(targets, &target{c: c, score: score, need: need})
+	}
+	internals.target, internals.target_from, internals.target_health, internals.target_max_health = saved_target, saved_from, saved_h, saved_mh
+	if len(targets) == 0 {
+		return orders
+	}
+	sort.SliceStable(targets, func(i, j int) bool {
+		if targets[i].score != targets[j].score {
+			return targets[i].score > targets[j].score
+		}
+		return zoneRefLess(targets[i].c.loc, targets[j].c.loc)
+	})
+	free := make([]UnitView, 0, len(units))
+	for _, u := range units {
+		if axialDistance(u.Location.Space, center.Space) > 2 {
+			orders = append(orders, view.MoveOrder(u, center, true))
+		} else {
+			free = append(free, u)
+		}
+	}
+	assignment := make(map[uint64]int, len(free))
+	take := func(t int) {
+		best, best_d := -1, 0
+		for i, u := range free {
+			if d := locationDistance(u.Location, targets[t].c.loc); best < 0 || d < best_d {
+				best, best_d = i, d
+			}
+		}
+		assignment[free[best].InternalID] = t
+		targets[t].assigned++
+		free = append(free[:best], free[best+1:]...)
+	}
+	for t := range targets {
+		for targets[t].assigned < targets[t].need && len(free) > 0 {
+			take(t)
+		}
+	}
+	for t := 0; len(free) > 0; t = (t + 1) % len(targets) {
+		take(t)
+	}
+	for _, u := range units {
+		t, ok := assignment[u.InternalID]
+		if !ok {
+			continue
+		}
+		orders = append(orders, act(u, targets[t].c, true))
+		for k := 1; k <= p.distribute.queue && k < len(targets); k++ {
+			orders = append(orders, act(u, targets[(t+k)%len(targets)].c, false))
+		}
+	}
+	return orders
 }
 
 // moveAction sends units to the best-scoring target of a picker
@@ -328,8 +461,8 @@ func (a *moveAction) ToOrders(view View, internals *Internals) []Order {
 	if limit := a.max.int(view, internals); limit > 0 && len(units) > limit {
 		units = units[:limit]
 	}
-	return a.picker.pick(view, internals, units, func(u UnitView, c candidate) Order {
-		return view.MoveOrder(u, c.loc, true)
+	return a.picker.pick(view, internals, units, func(u UnitView, c candidate, clear bool) Order {
+		return view.MoveOrder(u, c.loc, clear)
 	})
 }
 
@@ -341,8 +474,8 @@ func parseMove(raw map[string]any) (Action, error) {
 	if picker == nil {
 		return nil, fmt.Errorf("move action requires \"targets\"")
 	}
-	if raw["order"] != nil {
-		return nil, fmt.Errorf("\"order\" only applies to attack")
+	if raw["order"] != nil || raw["distribute"] != nil {
+		return nil, fmt.Errorf("\"order\" and \"distribute\" only apply to attack")
 	}
 	eligible, err := parseEligible(raw["eligible"])
 	if err != nil {
@@ -361,6 +494,10 @@ func targetDistanceCounter(name string) (counter, bool) {
 			}
 			return float64(axialDistance(i.target_from.Space, i.target.Space))
 		}, true
+	case "target_health":
+		return func(_ View, i *Internals) float64 { return i.target_health }, true
+	case "target_max_health":
+		return func(_ View, i *Internals) float64 { return i.target_max_health }, true
 	case "target_distance_home":
 		return func(v View, i *Internals) float64 {
 			home, ok := homeLocation(v)

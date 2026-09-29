@@ -49,6 +49,8 @@ type Internals struct {
 	// the candidate a target picker is scoring, and where it is scored from
 	target      *ZoneRef
 	target_from *ZoneRef
+	// health of the candidate a picker is scoring (units and buildings)
+	target_health, target_max_health float64
 	// where the unit a "unit_when" condition is being checked for stands
 	unit *ZoneRef
 }

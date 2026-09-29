@@ -67,6 +67,10 @@ type snapUnit struct {
 	InterruptCurrent bool            `json:"interrupt_current"`
 	AttackBack       bool            `json:"attack_back"`
 	TargetPriority   []int           `json:"target_priority"`
+	CombatStats      struct {
+		Health    float64 `json:"health"`
+		MaxHealth int     `json:"max_health"`
+	} `json:"combat_stats"`
 }
 
 type snapBuilding struct {

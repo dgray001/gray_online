@@ -212,7 +212,9 @@ func (a *attackAction) ToOrders(view View, internals *Internals) []Order {
 		if limit > 0 && len(units) > limit {
 			units = units[:limit]
 		}
-		orders := a.picker.pick(view, internals, units, func(u UnitView, c candidate) Order { return attackCandidateOrder(view, u, c, a.picker.order) })
+		orders := a.picker.pick(view, internals, units, func(u UnitView, c candidate, clear bool) Order {
+			return attackCandidateOrder(view, u, c, a.picker.order, clear)
+		})
 		if a.resume {
 			orders = withResumedJobs(view, units, orders)
 		}

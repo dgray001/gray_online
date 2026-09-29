@@ -185,6 +185,8 @@ func (v *aiView) unitViewShallow(u *snapUnit) ai.UnitView {
 		InterruptCurrent: u.InterruptCurrent,
 		AttackBack:       u.AttackBack,
 		TargetPriority:   toAiTargetCategories(u.TargetPriority),
+		Health:           u.CombatStats.Health,
+		MaxHealth:        float64(u.CombatStats.MaxHealth),
 	}
 }
 

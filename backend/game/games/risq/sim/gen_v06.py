@@ -26,6 +26,8 @@ P = dict(
     invest_share=0.3,
     vil_crush_odds=2,  # villagers fight only with this much more strength than the enemy soldiers in their space
     sustain=15,
+    hit_damage=1.5,
+    engaged_odds=1.0,  # once in contact the army leaves only if the enemy there is stronger    # damage one soldier deals per hit, for sharing attackers over targets
     plan_turns=3,      # turns to gather for a building that has been judged worth it        # a production building is only worth it if we can keep it busy this many turns
     lead=5,            # turns ahead we project income when deciding to build  # share of gatherers guaranteed to one-off investments when there are any
 )
@@ -338,6 +340,9 @@ rule(all_({"enemies_found_at_least": {"amount": 1}}, ge("var(resource_available_
 
 # ================= the army: every other soldier; attacks only while locally stronger, else regroups at home =================
 ao = P['assault_odds']
+# share attackers over the enemies instead of all hitting one: about enough per target to kill it within a hit
+# (a blunt deals ~1.5 a hit to a blunt; hardcoded from unit stats), with a couple of follow-up targets queued
+SPREAD = {"damage": P['hit_damage'], "overkill": 0, "queue": 2}
 def pow_near(side, anchor, within):
     """fighting power (blunt-equivalents) of one side's soldiers near an anchor"""
     if side == 'enemy':
@@ -362,14 +367,19 @@ rule(ALWAYS,
      # the army's local fight: soldiers within a space of it, plus defensive buildings in its space
      setv("aPowLocal", f"{pow_near('mine', 'army', 1)} * var(myTech)"),
      setv("aThreat", f"{pow_near('enemy', 'army', 1)} * var(eTech) + 6 * var(enemy_buildings_known_{DEFENSIVE}_within_0_of_army) + {vw} * var(enemy_units_visible_1_within_0_of_army)"),
-     setv("a_outnumbered", f"{one(f'(var(aThreat) * {ao} - var(aPowLocal)) * 10')} * {one('var(bucket_size_army)')}"),
+     # before contact it needs the odds to go in; once enemy soldiers share its space, running only gets it cut down,
+     # so it stays and fights unless they are actually stronger there
+     setv("a_engaged", one(pow_near('enemy', 'army', 0))),
+     setv("a_odds", f"{ao} - ({ao} - {P['engaged_odds']}) * var(a_engaged)"),
+     setv("a_outnumbered", f"{one('(var(aThreat) * var(a_odds) - var(aPowLocal)) * 10')} * {one('var(bucket_size_army)')}"),
      # keep attacking until locally outnumbered (then everyone regroups at home) or too few are left
      setv("assault", f"min(1, max(var(assault) * (1 - var(a_outnumbered)) * {one('var(bucket_size_army) - 3')}, var(go)))", True),
      {"action": "set_bucket", "bucket": "army", "size": "var(assault) * var(mil)", "task": {"action": "explore"}},
      {"action": "fill_bucket", "bucket": "army", "unit_types": ["infantry"], "eligible": ["move", "gather", "attack_unit", "attack_building", "attack_space", "attack_zone"]})
 rule(le("var(assault)", 0), {"action": "empty_bucket", "bucket": "army"})
 ARMY = dict(in_bucket="army", eligible=["move", "attack_unit", "attack_building", "attack_space", "attack_zone"], together=True)
-rule(ge("var(bucket_size_army)", 1), {"action": "set_unit_behavior", "in_bucket": "army", "stance": "aggressive"})
+# the army works its assigned targets: being hit must not pull every soldier onto whoever hit them
+rule(ge("var(bucket_size_army)", 1), {"action": "set_unit_behavior", "in_bucket": "army", "stance": "aggressive", "interrupt_current": False})
 # lowest priority first; each later rule that finds a target overrides
 rule(ge("var(bucket_size_army)", 1),
      # nothing known: head for the far side of the map, where the enemy is
@@ -377,18 +387,20 @@ rule(ge("var(bucket_size_army)", 1),
      dict({"action": "attack", "targets": "enemy_units", "target_unit_ids": [VIL], "score": "20 - var(target_distance)"}, **ARMY),
      dict({"action": "attack", "targets": "enemy_buildings", "score": "25 - var(target_distance)"}, **ARMY),
      dict({"action": "attack", "targets": "enemy_buildings", "target_building_ids": [VC, BARRACKS, REDOUBT, OUTPOST], "score": "30 - var(target_distance)"}, **ARMY),
-     dict({"action": "attack", "targets": "enemy_units", "target_unit_types": ["infantry"], "score": "40 - 5 * var(target_distance)", "min_score": 30}, **ARMY))
+     dict({"action": "attack", "targets": "enemy_units", "target_unit_types": ["infantry"], "score": "40 - 5 * var(target_distance)", "min_score": 30,
+           "distribute": SPREAD}, **ARMY))
 rule(all_(ge("var(bucket_size_army)", 1), ge("var(a_outnumbered)", 1)),
      dict({"action": "move", "targets": "home"}, **ARMY))
 
 # ================= home defence: soldiers not raiding or attacking hold the base and fight only there =================
 DEF = dict(exclude_buckets=True, eligible=["move", "attack_unit", "attack_building", "attack_space", "attack_zone"], unit_types=["infantry"])
-# every soldier fights back when hit, whatever it was doing (walking home, hitting a building)
-rule(ALWAYS, {"action": "set_unit_behavior", "unit_types": ["infantry"], "interrupt_current": True})
+# every soldier outside the army fights back when hit, whatever it was doing (walking home, hitting a building)
+rule(ALWAYS, {"action": "set_unit_behavior", "unit_types": ["infantry"], "interrupt_current": True, "exclude_buckets": True})
+rule(ge("var(bucket_size_raid)", 1), {"action": "set_unit_behavior", "in_bucket": "raid", "interrupt_current": True})
 rule({"building_count_at_least": {"amount": 1}},
      # soldiers that left the army or the raid come home, whatever they were still doing
      dict({"action": "move", "targets": "home", "together": False, "eligible": DEF["eligible"]}, exclude_buckets=True, unit_types=["infantry"]),
-     dict({"action": "attack", "targets": "enemy_units", "score": "10 - 10 * var(target_distance_home)", "min_score": 0}, **DEF))
+     dict({"action": "attack", "targets": "enemy_units", "score": "10 - 10 * var(target_distance_home)", "min_score": 0, "distribute": SPREAD}, **DEF))
 # no buildings at all (army-only starts): nothing to defend, so hunt with everything
 rule({"building_count_equals": {"amount": 0}},
      {"action": "move", "unit_types": ["infantry"], "targets": "unexplored", "together": True},

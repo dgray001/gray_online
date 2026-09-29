@@ -96,6 +96,9 @@ type UnitView struct {
 	AttackBack       bool
 	TargetPriority   []TargetCategory
 	ActiveOrders     []ActiveUnitOrder
+	// 0 for units seen without detail
+	Health    float64
+	MaxHealth float64
 }
 
 type UnitBehavior struct {
