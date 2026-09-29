@@ -76,7 +76,7 @@ func (a *createNextInQAction) ToOrders(view View, internals *Internals) []Order 
 
 func (a *researchNextInQAction) ToOrders(view View, internals *Internals) []Order {
 	for _, q := range selectFromQueue(view, internals, a.weight, a.prioritize, a.depth, QTech) {
-		if orders := researchTech(view, internals, *q.ID, buildingFilter{}); len(orders) > 0 {
+		if orders := researchTech(view, internals, *q.ID, buildingFilter{}, 1); len(orders) > 0 {
 			return orders
 		}
 	}
@@ -93,7 +93,7 @@ func (a *produceNextInQAction) ToOrders(view View, internals *Internals) []Order
 		case QUnit:
 			orders = createUnits(view, internals, *q.ID, buildingFilter{}, 1)
 		case QTech:
-			orders = researchTech(view, internals, *q.ID, buildingFilter{})
+			orders = researchTech(view, internals, *q.ID, buildingFilter{}, 1)
 		}
 		if len(orders) > 0 {
 			return orders

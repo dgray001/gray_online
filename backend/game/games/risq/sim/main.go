@@ -110,7 +110,7 @@ func main() {
 					seed += int64(i)
 				}
 				start := time.Now()
-				results[i] = RunGame(seed, players, scenario.Map, uint16(scenario.MaxTurns), 30*time.Second)
+				results[i] = RunGame(seed, players, scenario.Map, uint16(scenario.MaxTurns), 15*time.Minute)
 				sim_log.Printf("game %d seed=%d turns=%d duration=%s error=%q",
 					i+1, seed, results[i].Game.TurnNumber, time.Since(start), results[i].Error)
 			}

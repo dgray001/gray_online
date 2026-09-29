@@ -582,7 +582,36 @@ func (v *aiView) buildable(space *snapSpace) bool {
 	return false
 }
 
-func (v *aiView) NearestBuildSite(from ai.ZoneRef, _ uint32) (ai.ZoneRef, bool) {
+const outpostBuildingID = 21
+
+// Outposts exist to claim land, so they only go in unowned spaces (no other foundation already there)
+func (v *aiView) nearestClaimSite(from ai.ZoneRef) (ai.ZoneRef, bool) {
+	foundations := v.foundationsByLocation()
+	claimed := make(map[ai.Coordinate]bool, len(foundations))
+	for location := range foundations {
+		claimed[location.Space] = true
+	}
+	var best ai.ZoneRef
+	found, best_distance := false, -1
+	for _, entry := range v.zones {
+		if owner, known := spaceOwner(entry.space); !known || owner != -1 {
+			continue
+		}
+		if entry.zone.Resource != nil || entry.zone.Building != nil || claimed[entry.ref.Space] || !v.buildable(entry.space) {
+			continue
+		}
+		d := zoneDistance(from, entry.ref)
+		if !found || d < best_distance || (d == best_distance && zoneKey(entry.ref) < zoneKey(best)) {
+			best, best_distance, found = entry.ref, d, true
+		}
+	}
+	return best, found
+}
+
+func (v *aiView) NearestBuildSite(from ai.ZoneRef, building_id uint32) (ai.ZoneRef, bool) {
+	if building_id == outpostBuildingID {
+		return v.nearestClaimSite(from)
+	}
 	foundations := v.foundationsByLocation()
 	var best ai.ZoneRef
 	found, best_distance := false, -1

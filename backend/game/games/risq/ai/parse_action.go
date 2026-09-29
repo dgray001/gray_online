@@ -50,7 +50,11 @@ func parseActionInner(raw map[string]any) (Action, error) {
 		if !ok {
 			return nil, fmt.Errorf("research action requires a numeric \"tech_id\"")
 		}
-		return &researchAction{tech_id: uint32(id)}, nil
+		queue := 1
+		if q, ok := raw["queue"].(float64); ok {
+			queue = int(q)
+		}
+		return &researchAction{tech_id: uint32(id), queue: queue}, nil
 	case "researchNextInQ":
 		weight, prioritize, depth := parseQueueParams(raw)
 		return &researchNextInQAction{weight: weight, prioritize: prioritize, depth: depth}, nil
@@ -99,6 +103,36 @@ func parseActionInner(raw map[string]any) (Action, error) {
 			return nil, err
 		}
 		return &attackAction{target: target, max: parseMax(raw), eligible: eligible}, nil
+	case "hire":
+		id, ok := raw["unit_id"].(float64)
+		if !ok {
+			return nil, fmt.Errorf("hire action requires a numeric \"unit_id\"")
+		}
+		reserve := 0.0
+		if v, ok := raw["reserve"].(float64); ok {
+			reserve = v
+		}
+		return &hireAction{unit_id: uint32(id), max: parseMax(raw), reserve: reserve}, nil
+	case "army":
+		ids, err := parseIDSet(raw, "assault_unit_ids")
+		if err != nil {
+			return nil, err
+		}
+		launch, retreat, radius := 30, 8, 2
+		if v, ok := raw["launch"].(float64); ok {
+			launch = int(v)
+		}
+		if v, ok := raw["retreat"].(float64); ok {
+			retreat = int(v)
+		}
+		if v, ok := raw["defend_radius"].(float64); ok {
+			radius = int(v)
+		}
+		strike := 0
+		if v, ok := raw["strike"].(float64); ok {
+			strike = int(v)
+		}
+		return &armyAction{assault_ids: ids, launch: launch, retreat: retreat, defend_radius: radius, strike: strike}, nil
 	case "attack_space":
 		eligible, err := parseEligible(raw["eligible"])
 		if err != nil {

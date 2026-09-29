@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"time"
 
 	"github.com/dgray001/gray_online/game"
@@ -13,9 +14,12 @@ type PlayerConfig struct {
 }
 
 type Result struct {
-	Seed  int64
-	Error string
-	Game  risq.GameResult
+	Seed     int64
+	Error    string
+	Game     risq.GameResult
+	Timeline [][]risq.PlayerSnapshot
+	// index of the player whose opponent's army was wiped out (-1 if none); the game is stopped there
+	Crush int
 }
 
 func RunGame(seed int64, players []PlayerConfig, map_name string, max_turns uint16, timeout time.Duration) Result {
@@ -51,15 +55,37 @@ func RunGame(seed int64, players []PlayerConfig, map_name string, max_turns uint
 	}()
 	game.Game_StartGame(r)
 	deadline := time.After(timeout)
+	var timeline [][]risq.PlayerSnapshot
+	last_snap := uint16(0)
+	crush := -1
+	snap := func() {
+		if t := r.TurnNumber(); t/5 > last_snap/5 {
+			last_snap = t
+			cur := r.Snapshot()
+			timeline = append(timeline, cur)
+			if t > 40 && len(cur) == 2 && os.Getenv("SIM_NO_CRUSH_STOP") == "" {
+				inf := func(p risq.PlayerSnapshot) int { return p.Units[11] + p.Units[12] + p.Units[13] }
+				for i := 0; i < 2; i++ {
+					if inf(cur[1-i]) == 0 && inf(cur[i]) >= 20 && crush < 0 {
+						crush = i
+					}
+				}
+			}
+		}
+	}
 	for r.TurnNumber() < max_turns {
 		select {
 		case action := <-action_channel:
 			r.PlayerAction(action)
+			snap()
+			if crush >= 0 {
+				return Result{Seed: seed, Game: r.Results(), Timeline: timeline, Crush: crush}
+			}
 		case <-base.GameEndedChannel:
-			return Result{Seed: seed, Game: r.Results()}
+			return Result{Seed: seed, Game: r.Results(), Timeline: timeline, Crush: -1}
 		case <-deadline:
 			return Result{Seed: seed, Error: "timed out", Game: r.Results()}
 		}
 	}
-	return Result{Seed: seed, Game: r.Results()}
+	return Result{Seed: seed, Game: r.Results(), Timeline: timeline, Crush: -1}
 }

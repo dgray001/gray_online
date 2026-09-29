@@ -317,5 +317,6 @@ type View interface {
 	BuildingAttackUnitOrder(b BuildingView, target UnitView) Order
 	BuildingAttackBuildingOrder(b BuildingView, target BuildingView) Order
 	CancelFoundationOrder(f FoundationView) Order
+	HireMercenaryOrder(unit_id uint32, target ZoneRef) Order
 	CancelOrder(order_id uint64) Order
 }

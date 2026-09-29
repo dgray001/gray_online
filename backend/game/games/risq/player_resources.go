@@ -19,7 +19,7 @@ type RisqPlayerResources struct {
 }
 
 func createRisqPlayerResources() *RisqPlayerResources {
-	return &RisqPlayerResources{food: 200, wood: 200, stone: 50, gold: 2000}
+	return &RisqPlayerResources{food: 200, wood: 200, stone: 100, gold: 0}
 }
 
 func (r *RisqPlayerResources) addGathered(category defs.RisqResourceCategory, amount float64) {
