@@ -22,7 +22,9 @@ P = dict(
     # assault (heavies + piercers)
     assault_min=10, assault_odds=1.3,
     early_blunts=3,
-    invest_share=0.3,  # share of gatherers guaranteed to one-off investments when there are any
+    invest_share=0.3,
+    sustain=15,        # a production building is only worth it if we can keep it busy this many turns
+    lead=5,            # turns ahead we project income when deciding to build  # share of gatherers guaranteed to one-off investments when there are any
 )
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config', 'ai', 'v0.6.json')
 for arg in sys.argv[1:]:
@@ -89,25 +91,36 @@ rule(ALWAYS,
      # what a busy producer eats per turn, in villager-gathered resources
      setv("barracks_spend", f"max({gatherable(BLUNT)} * {PR[BLUNT]}, {gatherable(PIERCE)} * {PR[PIERCE]})"),
      setv("redoubt_spend", f"{gatherable(HEAVY)} * {PR[HEAVY]}"),
-     setv("vil_spend", f"var(vcs) * {gatherable(VIL)} * {PR[VIL]} * {one('var(vil_goal_last) - var(vils)')}"),
-     setv("income", "var(vils) * var(rate)"),
-     # Redoubts: as many as gold income can keep making heavies, limited by the stone we have (always one once we have barracks)
+     # every producer we already have (built or being built) and what it eats per turn while busy
+     setv("n_barracks", "var(building_count_22)"), setv("n_redoubts", "var(building_count_23)"),
+     setv("committed", f"var(vcs) * {gatherable(VIL)} * {PR[VIL]} * {one('var(vil_want_last)')}"
+                       " + var(n_barracks) * var(barracks_spend) + var(n_redoubts) * var(redoubt_spend)"),
+     # spare capacity: current income plus the bank spread over the sustain window, less that
+     setv("income_proj", "var(vils) * var(rate)"),
+     setv("bank_rate", f"max(0, food + wood + stone - {uc('food', VIL)} - {bc('wood', HOUSE)}) / {P['sustain']}"),
+     setv("spare", "var(income_proj) + var(bank_rate) - var(committed)"),
+     # spare capacity split by how well heavies do against the enemy compared to the best barracks unit
+     setv("shareH", "var(vH) / (var(vH) + max(var(vB), var(vP)))"),
+     setv("u_barracks", "max(0, var(spare)) * (1 - var(shareH)) / max(1, var(barracks_spend))"),
+     setv("u_redoubt", "max(0, var(spare)) * var(shareH) / max(1, var(redoubt_spend))"),
+     # one more is worth it when keeping it that busy for the sustain window repays its cost
+     *(setv(f"bar_{n}", f"({bc('food', b)} + {bc('wood', b)} + {bc('stone', b)} + {bc('gold', b)}) / max(1, var({n}_spend) * {P['sustain']})")
+       for n, b in (("barracks", BARRACKS), ("redoubt", REDOUBT))),
      setv("gold_income", f"{SPACE_GOLD} * land"),
-     # (only once a barracks stands: no next tier before the current one works)
-     setv("redoubt_goal", f"{one('var(barracks)')} * max(1, min((var(gold_income) + max(0, gold) / {H}) / max(1, {uc('gold', HEAVY)} * {PR[HEAVY]}),"
-                          f" var(building_count_23) + stone / max(1, {bc('stone', REDOUBT)})))"),
-     setv("redoubt_want", f"max(0, var(redoubt_goal) - var(building_count_23)) * {one('var(vils)')}"),
-     # barracks: as many as income (plus a surplus bank) can keep busy, never more than can fill our army room within the horizon
-     setv("committed", "var(vil_spend) + var(redoubts) * var(redoubt_spend)"),
-     setv("surplus", f"max(0, food + wood - (var(committed) + var(barracks) * var(barracks_spend)) * {H}) / {H}"),
-     setv("barracks_goal", f"{one('var(vils)')} * max(1, min((var(income) + var(surplus) - var(committed)) / max(1, var(barracks_spend)),"
-                           f" (var(population_max) - var(vil_goal_last)) / {H}))"),
-     setv("barracks_want", "max(0, var(barracks_goal) - var(building_count_22))"),
-     # villagers: enough to feed the production we plan, with room for investments and builders, up to our share of the ceiling
-     setv("planned_spend", f"var(vcs) * {gatherable(VIL)} * {PR[VIL]} + var(barracks_goal) * var(barracks_spend) + var(redoubt_goal) * var(redoubt_spend)"),
-     setv("vil_goal", f"min(var(population_max) * {P['vil_share']}, var(planned_spend) / var(rate) / (1 - {P['invest_share']}) + 2)"),
-     setv("vil_goal_last", "var(vil_goal)", True),
+     # Redoubts also need the gold that keeps heavies coming and the stone to build them
+     setv("redoubt_gold_ok", f"{one(f'(var(gold_income) + max(0, gold) / ' + str(P['sustain']) + ') / max(1, ' + uc('gold', HEAVY) + ' * ' + str(PR[HEAVY]) + ') - var(n_redoubts)')}"),
+     setv("barracks_want", f"{one('var(vils)')} * {one('(var(u_barracks) - var(bar_barracks)) * 100')}"),
+     setv("redoubt_want", f"{one('var(vils)')} * var(redoubt_gold_ok) * {one('(var(u_redoubt) - var(bar_redoubt)) * 100')}"),
+     # start saving when most of the way there
+     setv("barracks_save", f"{one('var(vils)')} * {one('(var(u_barracks) / max(0.01, var(bar_barracks)) - 0.7) * 3.4')}"),
+     setv("redoubt_save", f"{one('var(vils)')} * var(redoubt_gold_ok) * {one('(var(u_redoubt) / max(0.01, var(bar_redoubt)) - 0.7) * 3.4')}"),
+     # villagers: enough income to fill our army room within the sustain window, less what the bank covers, up to our share of the ceiling
+     setv("army_target", f"var(population_max) * (1 - {P['vil_share']})"),
+     setv("unit_spend", f"max({gatherable(BLUNT)}, {gatherable(PIERCE)}, {gatherable(HEAVY)})"),
+     setv("target_spend", f"var(army_target) / {P['sustain']} * var(unit_spend) + var(vcs) * {gatherable(VIL)} * {PR[VIL]}"),
+     setv("vil_goal", f"min(var(population_max) * {P['vil_share']}, max(0, var(target_spend) - var(bank_rate)) / var(rate) + 2)"),
      setv("vil_want", f"max(0, var(vil_goal) - var(vils)) * {one('var(vcs)')}"),
+     setv("vil_want_last", "var(vil_want)", True),
      setv("vil_rate", f"{one('var(vil_want)')} * var(vcs)"),
      # the army fills the rest of the ceiling; barracks split between blunts and piercers by how well each does
      setv("free_room", "max(0, var(population_max) - var(vil_goal) - var(mil))"),
@@ -142,7 +155,7 @@ rule(ALWAYS,
      *(setv(f"tech_{r}", f"(1 - var(farming)) * {tc(r, FARMING)} + {one('var(smiths)')} * ((1 - var(pikes)) * {tc(r, PIKES)}"
                          f" + (1 - var(tech_researched_2)) * {tc(r, ATTACK)} + (1 - var(tech_researched_3)) * {tc(r, ARMOR)})") for r in RES),
      setv("outpost_want", f"max(0, (var(gold_rate) + var(tech_gold) / {H} - var(gold_income)) / {SPACE_GOLD})"),
-     *(setv(f"lump_{r}", f"var(vc_want) * {bc(r, VC)} + var(barracks_want) * {bc(r, BARRACKS)} + var(redoubt_want) * {bc(r, REDOUBT)}"
+     *(setv(f"lump_{r}", f"var(vc_want) * {bc(r, VC)} + var(barracks_save) * {bc(r, BARRACKS)} + var(redoubt_save) * {bc(r, REDOUBT)}"
                          f" + var(smith_want) * {bc(r, SMITH)} + var(farm_want) * {bc(r, FARM)} + min(1, var(outpost_want)) * {bc(r, OUTPOST)}"
                          f" + var(house_want) * {bc(r, HOUSE)} * (1 + ({H} - 1) * var(house_urgency))") for r in RES),
      # keep enough on hand to start the next unit
@@ -193,8 +206,8 @@ rule(all_(ge("var(vils)", 6), le("var(farming)", 0)), {"action": "research", "te
 rule(ge("var(vil_want)", 1), {"action": "create", "unit_id": VIL, "queue": 2})
 rule(ge("var(house_want) - var(foundation_count_2)", 0.5), build(HOUSE, "var(house_builders)"))
 rule(all_(ge("var(vc_want)", 1), le("var(foundation_count_1)", 0)), build(VC, 4))
-rule(ge("var(barracks_want) - var(foundation_count_22)", 0.5), build(BARRACKS, 3))
-rule(ge("var(redoubt_want) - var(foundation_count_23)", 0.5), build(REDOUBT, 4))
+rule(all_(ge("var(barracks_want)", 1), le("var(foundation_count_22)", 0)), build(BARRACKS, 3))
+rule(all_(ge("var(redoubt_want)", 1), le("var(foundation_count_23)", 0)), build(REDOUBT, 4))
 rule(all_(ge("var(smith_want)", 1), le("var(foundation_count_11)", 0)), build(SMITH, 2))
 rule(all_(ge("var(farm_want) - var(foundation_count_3)", 0.5), le("var(foundation_count_3)", 1)), build(FARM, 2))
 # land pays gold: claim a space for every 2 gold/turn we are short, once we can defend it
