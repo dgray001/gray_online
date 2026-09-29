@@ -1,0 +1,16 @@
+[
+  {"step": "shape", "params": {"kind": "hexagon", "size": "recommended"}},
+  {"step": "terrain_fill", "params": {"terrain_id": 1}},
+  {"step": "terrain_blob", "params": {"terrain_ids": [{"terrain_id": 2, "weight": 3}, {"terrain_id": 3, "weight": 1}, {"terrain_id": 4, "weight": 1}], "seed_count": "2 + board_size / 2", "size": 5, "min_spacing": 3}},
+  {"step": "terrain_blob", "params": {"terrain_ids": [{"terrain_id": 8, "weight": 1}, {"terrain_id": 10, "weight": 1}], "seed_count": "1 + board_size / 3", "size": 4, "min_spacing": 3}},
+  {"step": "terrain_blob", "params": {"terrain_ids": [{"terrain_id": 9, "weight": 1}, {"terrain_id": 11, "weight": 1}], "seed_count": "1 + board_size / 3", "size": 4, "min_spacing": 3}},
+  {"step": "terrain_blob", "params": {"terrain_ids": [{"terrain_id": 51, "weight": 1}, {"terrain_id": 52, "weight": 1}], "seed_count": "1 + board_size / 3", "size": 4, "min_spacing": 3}},
+  {"step": "terrain_blob", "params": {"terrain_ids": [{"terrain_id": 53, "weight": 1}, {"terrain_id": 54, "weight": 1}], "seed_count": "1 + board_size / 3", "size": 4, "min_spacing": 3}},
+  {"step": "resource_scatter", "params": {"chance": 0.15, "category_weights": {"grove": 0.4, "forest": 0.35, "food": 0.15}}},
+  {"step": "player_starts", "params": {"pattern": "ring", "area_size": 1, "starting_distance": "recommended - 1", "terrain_id": 1, "units": [{"unit_id": 1, "count": 3, "target": {"zone": "center"}}, {"unit_id": 11, "count": 1, "target": {"zone": "center"}}], "buildings": [{"building_id": 1, "terrain_override": 6, "target": {"zone": "center"}}], "resources": [{"resource_id": 21, "count": 1, "distance": [0, 0]}, {"resource_id": 23, "count": 1, "distance": [0, 0]}, {"resource_id": 2, "count": 1, "distance": [0, 0]}, {"resource_id": 1, "count": 1, "distance": [0, 0]}, {"resource_id": 24, "count": 1, "distance": [1, 1]}, {"resource_id": 25, "count": 1, "distance": [1, 1]}, {"resource_id": 26, "count": 1, "distance": [1, 1]}, {"resource_id": 31, "count": 1, "distance": [1, 1]}, {"resource_id": 33, "count": 1, "distance": [1, 1]}, {"resource_id": 34, "count": 1, "distance": [1, 1]}, {"resource_id": 2, "count": 2, "distance": [1, 1]}, {"resource_id": 1, "count": 2, "distance": [1, 1]}, {"resource_id": 41, "count": 1, "distance": [0, 0]}, {"resource_id": 42, "count": 1, "distance": [1, 1]}, {"resource_id": 43, "count": 1, "distance": [1, 1]}], "starting_bank": {"food": 1500, "wood": 1500, "stone": 800, "gold": 500}}},
+  {"step": "regions_seven", "params": {}},
+  {"step": "ensure_connectivity", "params": {}},
+  {"step": "resource_place", "params": {"resource_id": 41, "count": "num_players", "outside_player_areas": true}},
+  {"step": "resource_place", "params": {"resource_id": 42, "count": "num_players", "outside_player_areas": true}},
+  {"step": "resource_place", "params": {"resource_id": 43, "count": "num_players / 2", "outside_player_areas": true}}
+]

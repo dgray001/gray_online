@@ -1,0 +1,56 @@
+{
+  "seed": 100000,
+  "max_turns": 100,
+  "games_per_bucket": 30,
+  "swap_seats": true,
+  "players": [
+    {
+      "ai_config": "v0.6"
+    },
+    {
+      "ai_config": "v0.5"
+    }
+  ],
+  "buckets": [
+    {
+      "name": "ring",
+      "map": "ring"
+    },
+    {
+      "name": "default",
+      "map": "default"
+    },
+    {
+      "name": "rectangle",
+      "map": "rectangle"
+    },
+    {
+      "name": "triangle",
+      "map": "triangle"
+    },
+    {
+      "name": "sim_close",
+      "map": "sim_close"
+    },
+    {
+      "name": "sim_gold",
+      "map": "sim_gold"
+    },
+    {
+      "name": "sim_army",
+      "map": "sim_army"
+    },
+    {
+      "name": "sim_advanced",
+      "map": "sim_advanced"
+    },
+    {
+      "name": "sim_rich",
+      "map": "sim_rich"
+    },
+    {
+      "name": "sim_wide",
+      "map": "sim_wide"
+    }
+  ]
+}

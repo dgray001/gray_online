@@ -20,6 +20,15 @@ type Board interface {
 	// false when the zone refused the building (occupied)
 	PlaceBuilding(z Zone, building_id uint32, player_index int) bool
 	PlaceUnit(z Zone, unit_id uint32, player_index int)
+	// replaces a player's starting stockpile
+	SetStartingBank(player_index int, bank StartingBank)
+}
+
+type StartingBank struct {
+	Food  float64 `json:"food"`
+	Wood  float64 `json:"wood"`
+	Stone float64 `json:"stone"`
+	Gold  float64 `json:"gold"`
 }
 
 type Space interface {

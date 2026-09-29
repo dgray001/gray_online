@@ -19,6 +19,19 @@ type Scenario struct {
 	Map        string           `json:"map"`
 	MaxTurns   int              `json:"max_turns"`
 	Players    []ScenarioPlayer `json:"players"`
+	// A suite: every bucket runs games_per_bucket games of these players on its own map, and the run reports
+	// how each player's AI did overall and per bucket
+	Buckets        []SuiteBucket `json:"buckets,omitempty"`
+	GamesPerBucket int           `json:"games_per_bucket,omitempty"`
+	// alternate seats game by game so neither AI always moves first or starts in the same spot
+	SwapSeats bool `json:"swap_seats,omitempty"`
+}
+
+type SuiteBucket struct {
+	Name string `json:"name"`
+	Map  string `json:"map"`
+	// overrides the suite's max_turns for this bucket when set
+	MaxTurns int `json:"max_turns,omitempty"`
 }
 
 func loadScenario(path string) (Scenario, error) {
