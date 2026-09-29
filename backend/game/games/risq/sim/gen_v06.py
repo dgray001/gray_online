@@ -151,13 +151,28 @@ rule(ALWAYS,
      setv("house_urgency", f"min(1, max(0, (4 - var(turns_left)) / 4)) * {one('var(house_want) * 2')}"),
      # enough builders to finish before we're capped: the work over what villagers can do in the turns left (half a turn to walk)
      setv("vil_stamina", "8 + 2 * var(farming)"),
-     setv("house_builders", f"{one('var(house_want) * 2')} * max(1, {HOUSE_BUILD_STAMINA} / (var(vil_stamina) * max(0.5, var(turns_left) - 0.5)))"),
+     # enough builders to finish a turn before we're capped (walking there takes part of the first), rounded up
+     setv("house_builders", f"{one('var(house_want) * 2')} * (max(1, {HOUSE_BUILD_STAMINA} / (var(vil_stamina) * max(0.5, var(turns_left) - 1))) + 0.49)"),
      # farms for the food workers that nearby wild food can't carry (~300 food per worker, few gather slots)
      # wild food close enough to walk to (villagers carry nothing back, so distance is a one-time walk; farther is enemy-side risk),
      # in villagers it keeps busy over the horizon; farms cover the rest of the food workers
      setv("wild_workers", f"var(resource_remaining_food_within_{WILD_REACH}) / (var(rate) * {H})"),
      setv("farm_want", f"var(farming) * max(0, max(0, var(food_workers) - var(wild_workers)) / {FARM_WORKERS} + 1 - (var(building_count_3) - var(building_count_3_depleted)))"),
      )
+
+
+# ---- what gets built this turn, and the villagers each build takes ----
+def at_least_1(x): return one(f"({x} - 0.999) * 1000")
+BUILD_FIRES = {
+    "house":    (HOUSE,    at_least_1("(var(house_want) - var(foundation_count_2)) * 2"), "var(house_builders)"),
+    "vc":       (VC,       at_least_1("var(vc_want)") + " * " + at_least_1("1 - var(foundation_count_1)"), "4"),
+    "barracks": (BARRACKS, at_least_1("var(barracks_want)") + " * " + at_least_1("1 - var(foundation_count_22)"), "3"),
+    "redoubt":  (REDOUBT,  at_least_1("var(redoubt_want)") + " * " + at_least_1("1 - var(foundation_count_23)"), "4"),
+    "smith":    (SMITH,    at_least_1("var(smith_want)") + " * " + at_least_1("1 - var(foundation_count_11)"), "2"),
+    "farm":     (FARM,     at_least_1("(var(farm_want) - var(foundation_count_3)) * 2") + " * " + at_least_1("2 - var(foundation_count_3)"), "2"),
+    # land pays gold: claim a space for every 2 gold/turn we are short, once we can defend it
+    "outpost":  (OUTPOST,  at_least_1("var(barracks)") + " * " + at_least_1("1 - var(foundation_count_21)") + " * " + at_least_1("var(outpost_want)"), "1"),
+}
 
 # ================= resource rates and buckets =================
 rule(ALWAYS,
@@ -179,7 +194,10 @@ rule(ALWAYS,
      setv("stone_need", "var(stone_need) * var(resource_available_stone)"),
      # land already pays gold; mines only make up the rest
      setv("gold_need", "max(0, var(gold_need) - var(gold_income)) * var(resource_available_gold)"),
-     setv("builders", "min(var(vils), max(min(4, 1 + var(vils) / 8), var(house_builders)))"),
+     *(setv(f"fire_{n}", cond) for n, (_, cond, _) in BUILD_FIRES.items()),
+     # villagers are held back only for the builds that fire this turn, plus one for a foundation nobody is building
+     setv("builders", "min(var(vils), " + " + ".join(f"var(fire_{n}) * {k}" for n, (_, _, k) in BUILD_FIRES.items())
+                      + f" + {one('var(foundation_count_without_builders)')})"),
      setv("workers", "max(0, var(vils) - var(builders))"),
      # continuous production is fed first; one-off investments get a guaranteed share and whoever is left
      *(setv(f"rf_{r}", f"min(var({r}_need), var({r}_rate)) / var(rate)") for r in RES),
@@ -222,14 +240,10 @@ rule(le("var(threat_home)", 0), {"action": "ungarrison", "unit_types": ["economi
 # (8 villagers is roughly when Farming's villager bonuses start paying for themselves)
 rule(all_(ge("var(vils)", 8), le("var(farming)", 0)), {"action": "research", "tech_id": FARMING, "queue": 2})
 rule(ge("var(vil_want)", 1), {"action": "create", "unit_id": VIL, "queue": 2})
-rule(ge("var(house_want) - var(foundation_count_2)", 0.5), build(HOUSE, "var(house_builders)"))
-rule(all_(ge("var(vc_want)", 1), le("var(foundation_count_1)", 0)), build(VC, 4))
-rule(all_(ge("var(barracks_want)", 1), le("var(foundation_count_22)", 0)), build(BARRACKS, 3))
-rule(all_(ge("var(redoubt_want)", 1), le("var(foundation_count_23)", 0)), build(REDOUBT, 4))
-rule(all_(ge("var(smith_want)", 1), le("var(foundation_count_11)", 0)), build(SMITH, 2))
-rule(all_(ge("var(farm_want) - var(foundation_count_3)", 0.5), le("var(foundation_count_3)", 1)), build(FARM, 2))
-# land pays gold: claim a space for every 2 gold/turn we are short, once we can defend it
-rule(all_(ge("var(barracks)", 1), le("var(foundation_count_21)", 0), ge("var(outpost_want)", 1)), build(OUTPOST, 1))
+for n in ("house", "vc", "barracks", "redoubt", "smith", "farm"):
+    b, _, k = BUILD_FIRES[n]
+    rule(ge(f"var(fire_{n})", 1), build(b, k))
+rule(ge("var(fire_outpost)", 1), build(OUTPOST, 1))
 rule(ALWAYS, dict({"action": "build_foundations"}, **ECO), dict({"action": "renew"}, **ECO), dict({"action": "repair", "max": 1}, **ECO))
 rule(all_(ge("var(smiths)", 1), any_(ge("var(eH)", 2), ge("var(needP)", 4))), {"action": "research", "tech_id": PIKES})
 # attack/armor: worth it once the army they improve is worth several times their cost (each adds roughly 15%)

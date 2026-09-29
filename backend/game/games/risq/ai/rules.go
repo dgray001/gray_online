@@ -155,6 +155,22 @@ func logTurnData(view View) {
 	util.DebugLog.Printf("ai %s: new turn data %s", view.Nickname(), data)
 }
 
+// Debug log only: every script variable's value at the end of the turn, so a replay shows why rules fired
+func logVars(view View, internals *Internals) {
+	if util.DebugLog.Writer() == io.Discard {
+		return
+	}
+	vars := make(map[string]float64, len(internals.vars)+len(internals.turn_vars))
+	for k, v := range internals.vars {
+		vars[k] = v
+	}
+	for k, v := range internals.turn_vars {
+		vars[k] = v
+	}
+	data, _ := json.Marshal(vars)
+	util.DebugLog.Printf("ai %s: vars %s", view.Nickname(), data)
+}
+
 func (m *RulesModel) DecideOrders(view View) Decision {
 	logTurnData(view)
 	m.internals.Refresh()
@@ -169,5 +185,6 @@ func (m *RulesModel) DecideOrders(view View) Decision {
 		}
 	}
 	util.DebugLog.Printf("ai %s: submitting orders %+v", view.Nickname(), orders)
+	logVars(view, &m.internals)
 	return Decision{Orders: orders, Behaviors: m.internals.behaviors, BuildingBehaviors: m.internals.building_behaviors}
 }
