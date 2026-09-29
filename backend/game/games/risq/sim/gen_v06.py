@@ -152,7 +152,7 @@ rule(ALWAYS,
      setv("vil_stamina", "8 + 2 * var(farming)"),
      setv("house_builders", f"{one('var(house_want) * 2')} * max(1, {HOUSE_BUILD_STAMINA} / (var(vil_stamina) * max(0.5, var(turns_left) - 0.5)))"),
      # farms for the food workers that nearby wild food can't carry (~300 food per worker, few gather slots)
-     setv("farm_want", f"var(farming) * max(0, max(0, var(food_workers) - min(8, var(resource_remaining_food_within_1) / 300)) / {FARM_WORKERS} + 1 - var(building_count_3))"),
+     setv("farm_want", f"var(farming) * max(0, max(0, var(food_workers) - min(8, var(resource_remaining_food_within_1) / 300)) / {FARM_WORKERS} + 1 - (var(building_count_3) - var(building_count_3_depleted)))"),
      )
 
 # ================= resource rates and buckets =================

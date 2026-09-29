@@ -555,7 +555,7 @@ func (v *aiView) gatherTarget(unit_id uint64) (ai.ZoneRef, bool) {
 	return order.TargetResource.Location, true
 }
 
-// Prefers the nearest node that its current gatherers plus this one won't empty within a turn.
+// Prefers the nearest node its current gatherers won't already empty, so nearly empty nodes still get finished.
 func (v *aiView) NearestResource(from ai.ZoneRef, category ai.ResourceCategory, gatherer_id uint64) (ai.ResourceView, bool) {
 	own_target, has_own_target := v.gatherTarget(gatherer_id)
 	var best ai.ResourceView
@@ -572,7 +572,8 @@ func (v *aiView) NearestResource(from ai.ZoneRef, category ai.ResourceCategory, 
 		if count >= capacity {
 			continue
 		}
-		saturated := view.AmountLeft < float64((count+1)*speed)
+		// saturated only when the gatherers already on it will use up what is left, so a nearly empty node still gets finished
+		saturated := view.AmountLeft <= float64(count*speed)
 		d := zoneDistance(from, entry.ref)
 		closer := d < best_distance || (d == best_distance && zoneKey(entry.ref) < zoneKey(best.Location))
 		if !found || (!saturated && best_saturated) || (saturated == best_saturated && closer) {
