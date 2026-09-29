@@ -49,6 +49,8 @@ type Internals struct {
 	// the candidate a target picker is scoring, and where it is scored from
 	target      *ZoneRef
 	target_from *ZoneRef
+	// where the unit a "unit_when" condition is being checked for stands
+	unit *ZoneRef
 }
 
 const defaultMaxBucketDepth = 3

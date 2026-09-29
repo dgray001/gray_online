@@ -208,3 +208,51 @@ func TestCostAndCeilingVars(t *testing.T) {
 		}
 	}
 }
+
+func TestUnitWhenPicksUnitsByTheirOwnSurroundings(t *testing.T) {
+	// three villagers where one enemy blunt stands, one villager alone elsewhere
+	vils := []UnitView{
+		{InternalID: 1, UnitID: 1, Kind: UnitEconomic, Location: at(0, 0)}, {InternalID: 2, UnitID: 1, Kind: UnitEconomic, Location: at(0, 0)},
+		{InternalID: 3, UnitID: 1, Kind: UnitEconomic, Location: at(0, 0)}, {InternalID: 4, UnitID: 1, Kind: UnitEconomic, Location: at(3, 0)},
+	}
+	view := fakeView{units: vils, enemies: []UnitView{{InternalID: 20, UnitID: 11, Kind: UnitMilitary, Location: at(0, 0)}}}
+	internals := &Internals{}
+	fight, err := parseAction(map[string]any{"action": "attack", "unit_ids": []any{1.0}, "targets": "enemy_units", "score": "0 - var(target_distance)", "min_score": 0.0,
+		"unit_when": map[string]any{"value_at_least": map[string]any{"value": "var(population_1_within_0_of_unit) - 2 * var(enemy_units_visible_infantry_within_0_of_unit)", "amount": 1.0}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	orders := fight.ToOrders(view, internals)
+	if len(orders) != 3 {
+		t.Fatalf("the three villagers sharing a space with the blunt should fight it, got %+v", orders)
+	}
+	for _, o := range orders {
+		if o.Subjects[0] == 4 || o.TargetID != 20 {
+			t.Errorf("unexpected order %+v", o)
+		}
+	}
+	if internals.unit != nil {
+		t.Errorf("unit_when must restore the unit context")
+	}
+	if _, err := parseAction(map[string]any{"action": "attack", "unit_when": "yes"}); err == nil {
+		t.Errorf("a non-object unit_when should fail")
+	}
+}
+
+func (f fakeView) GatherOrder(u UnitView, r ResourceView, clear bool) Order {
+	return Order{Subjects: []uint64{u.InternalID}, TargetID: int64(r.InternalID), OrderType: 9, ClearPreviousOrders: clear}
+}
+
+func TestAttackResumeQueuesTheJobBehind(t *testing.T) {
+	bush := ResourceView{InternalID: 77, Location: at(0, 0)}
+	vil := UnitView{InternalID: 1, UnitID: 1, Kind: UnitEconomic, Location: at(0, 0), CurrentOrder: &CurrentOrder{Kind: OrderKindGather, TargetResource: &bush}}
+	view := fakeView{units: []UnitView{vil}, enemies: []UnitView{{InternalID: 20, UnitID: 11, Kind: UnitMilitary, Location: at(0, 0)}}}
+	fight, err := parseAction(map[string]any{"action": "attack", "unit_ids": []any{1.0}, "targets": "enemy_units", "order": "space", "resume": true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	orders := fight.ToOrders(view, &Internals{})
+	if len(orders) != 2 || orders[0].OrderType != 3 || orders[1].OrderType != 9 || orders[1].TargetID != 77 || orders[1].ClearPreviousOrders {
+		t.Fatalf("expected the space attack then the gather queued behind it, got %+v", orders)
+	}
+}

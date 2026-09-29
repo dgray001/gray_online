@@ -101,6 +101,17 @@ func parseAction(raw map[string]any) (Action, error) {
 	} else if len(building_ids) > 0 {
 		return nil, fmt.Errorf("action %q does not take building filters", raw["action"])
 	}
+	if raw["unit_when"] != nil {
+		obj, ok := raw["unit_when"].(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("\"unit_when\" must be a condition object")
+		}
+		when, err := parseCondition(obj)
+		if err != nil {
+			return nil, fmt.Errorf("\"unit_when\": %v", err)
+		}
+		action = &unitWhenAction{when: when, inner: action}
+	}
 	if bucket, ok := raw["in_bucket"].(string); ok {
 		action = &inBucketAction{bucket: bucket, inner: action}
 	}

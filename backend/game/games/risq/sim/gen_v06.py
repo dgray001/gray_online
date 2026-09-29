@@ -23,6 +23,7 @@ P = dict(
     assault_min=10, assault_odds=1.3,
     early_blunts=3,
     invest_share=0.3,
+    vil_crush_odds=2,  # villagers fight only with this much more strength than the enemy soldiers in their space
     sustain=15,        # a production building is only worth it if we can keep it busy this many turns
     lead=5,            # turns ahead we project income when deciding to build  # share of gatherers guaranteed to one-off investments when there are any
 )
@@ -227,13 +228,10 @@ rule(ALWAYS,
      *({"action": "fill_bucket", "bucket": c, "eligible": ["gather"], "unit_types": ["economic"]} for c in ("food", "stone", "gold", "wood")),
      )
 
-# ================= villagers hide from an army we can't meet at home
+# enemy soldiers at our door (the raid comes home for them)
 rule(ALWAYS,
      setv("threat_home", "var(enemy_units_visible_infantry_within_1)"),
      setv("guard_home", "var(population_infantry_within_1)"))
-rule(all_(ge("var(threat_home)", 3), ge("var(threat_home) - var(guard_home)", 1)),
-     {"action": "garrison", "unit_types": ["economic"], "eligible": ["gather", "build", "move", "repair", "renew"]})
-rule(le("var(threat_home)", 0), {"action": "ungarrison", "unit_types": ["economic"]})
 
 # ================= spending, in priority order =================
 # Farming first: the Village Center is otherwise always busy with villagers, and farms depend on it
@@ -371,6 +369,32 @@ rule({"building_count_equals": {"amount": 0}},
      {"action": "move", "unit_types": ["infantry"], "targets": "unexplored", "together": True},
      {"action": "attack", "unit_types": ["infantry"], "eligible": ["move", "attack_unit", "attack_space"], "targets": "enemy_units",
       "score": "0 - var(target_distance) - 2 * var(enemy_units_visible_infantry_within_1_of_target)", "together": True})
+
+
+# ================= villagers under attack: every villager sharing a space with enemy soldiers fights or runs =================
+# last, so it overrides whatever they were told this turn. They fight together only when they crush what is there:
+# villagers at their worth (hardcoded from unit stats: ~0.6 of a blunt, ~1 with Farming) plus our soldiers there,
+# against the enemy's soldiers within a space; otherwise all of them take cover, however few the enemy are.
+def power_at_unit(side, within):
+    c = (lambda uid: f"var(enemy_units_visible_{uid}_within_{within}_of_unit)") if side == 'enemy' else (lambda uid: f"var(population_{uid}_within_{within}_of_unit)")
+    return f"({c(11)} + 2 * {c(12)} + 4 * {c(13)})"
+VIL_ORDERS = ["gather", "build", "move", "repair", "renew", "attack_unit", "attack_space"]
+rule(ALWAYS, setv("vil_worth_now", "0.6 + 0.4 * var(farming)"))
+# soldiers a space away reach them within the turn, so they count; attacking their space also takes on the enemy villagers
+# there, who fight back (counted at a full villager's worth)
+threat_near = f"({power_at_unit('enemy', 1)} + var(enemy_units_visible_1_within_0_of_unit))"
+ours_here = f"(var(vil_worth_now) * var(population_1_within_0_of_unit) + {power_at_unit('mine', 0)})"
+crush_margin = f"{ours_here} - {P['vil_crush_odds']} * {threat_near}"
+soldiers_near = {"value_at_least": {"value": power_at_unit('enemy', 1), "amount": 1}}
+soldiers_here = {"value_at_least": {"value": power_at_unit('enemy', 0), "amount": 1}}
+rule(ALWAYS,
+     {"action": "attack", "unit_ids": [VIL], "eligible": VIL_ORDERS, "targets": "enemy_units", "target_unit_types": ["infantry"],
+      "score": "0 - var(target_distance)", "min_score": 0, "order": "space", "resume": True,
+      "unit_when": all_(soldiers_here, {"value_at_least": {"value": crush_margin, "amount": 0}})},
+     {"action": "garrison", "unit_ids": [VIL], "eligible": VIL_ORDERS,
+      "unit_when": all_(soldiers_near, {"value_at_most": {"value": crush_margin, "amount": -0.01}})},
+     # out again once no enemy soldier is within a space of them
+     {"action": "ungarrison", "unit_ids": [VIL], "unit_when": {"value_at_most": {"value": "var(enemy_units_visible_infantry_within_1_of_unit)", "amount": 0}}})
 
 with open(OUT, 'w') as f:
     f.write('{\n  "rules": [\n' + ',\n'.join('    ' + json.dumps(r) for r in rules) + '\n  ]\n}\n')

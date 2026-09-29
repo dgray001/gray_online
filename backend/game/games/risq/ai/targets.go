@@ -13,6 +13,8 @@ const (
 	anchorHome anchorKind = iota
 	anchorBucket
 	anchorTarget
+	// the unit a "unit_when" condition is being checked for
+	anchorUnit
 )
 
 type anchor struct {
@@ -26,13 +28,15 @@ func parseAnchor(raw any) (anchor, error) {
 	}
 	name, ok := raw.(string)
 	if !ok || name == "" {
-		return anchor{}, fmt.Errorf("\"from\" must be \"home\", \"target\" or a bucket name")
+		return anchor{}, fmt.Errorf("\"from\" must be \"home\", \"target\", \"unit\" or a bucket name")
 	}
 	switch name {
 	case "home":
 		return anchor{kind: anchorHome}, nil
 	case "target":
 		return anchor{kind: anchorTarget}, nil
+	case "unit":
+		return anchor{kind: anchorUnit}, nil
 	}
 	return anchor{kind: anchorBucket, bucket: name}, nil
 }
@@ -56,6 +60,11 @@ func (a anchor) location(view View, internals *Internals) (ZoneRef, bool) {
 			return ZoneRef{}, false
 		}
 		return *internals.target, true
+	case anchorUnit:
+		if internals.unit == nil {
+			return ZoneRef{}, false
+		}
+		return *internals.unit, true
 	}
 	return homeLocation(view)
 }

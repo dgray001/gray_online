@@ -102,7 +102,8 @@ func parseActionInner(raw map[string]any) (Action, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &attackAction{picker: picker, target: target, max: parseMax(raw), eligible: eligible}, nil
+		resume, _ := raw["resume"].(bool)
+		return &attackAction{picker: picker, target: target, max: parseMax(raw), eligible: eligible, resume: resume}, nil
 	case "hire":
 		id, ok := raw["unit_id"].(float64)
 		if !ok {

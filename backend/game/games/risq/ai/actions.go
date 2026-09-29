@@ -65,6 +65,8 @@ type attackAction struct {
 	target   attackTarget
 	max      amount
 	eligible []OrderKind
+	// queue each attacker's current job behind the attack, so it goes back to work once the fight is over
+	resume bool
 }
 
 type attackSpaceAction struct {
@@ -210,7 +212,11 @@ func (a *attackAction) ToOrders(view View, internals *Internals) []Order {
 		if limit > 0 && len(units) > limit {
 			units = units[:limit]
 		}
-		return a.picker.pick(view, internals, units, func(u UnitView, c candidate) Order { return attackCandidateOrder(view, u, c, a.picker.order) })
+		orders := a.picker.pick(view, internals, units, func(u UnitView, c candidate) Order { return attackCandidateOrder(view, u, c, a.picker.order) })
+		if a.resume {
+			orders = withResumedJobs(view, units, orders)
+		}
+		return orders
 	}
 	enemy_units := view.VisibleEnemyUnits()
 	enemy_buildings := view.VisibleEnemyBuildings()
@@ -572,4 +578,79 @@ func (a *buildingStopAction) ToOrders(view View, internals *Internals) []Order {
 		}
 	}
 	return orders
+}
+
+// After each attack order, the attacker's job from before it (gather, repair or renew) queued behind it
+func withResumedJobs(view View, units []UnitView, orders []Order) []Order {
+	before := make(map[uint64]*CurrentOrder, len(units))
+	for _, u := range units {
+		before[u.InternalID] = u.CurrentOrder
+	}
+	out := make([]Order, 0, 2*len(orders))
+	for _, o := range orders {
+		if len(o.Subjects) != 1 {
+			out = append(out, o)
+			continue
+		}
+		for _, u := range units {
+			if u.InternalID != o.Subjects[0] {
+				continue
+			}
+			// already fighting: leave it be, so the job queued behind its attack stays
+			if alreadyFighting(before[u.InternalID]) {
+				break
+			}
+			out = append(out, o)
+			if job, ok := resumeOrder(view, u, before[u.InternalID]); ok {
+				out = append(out, job)
+			}
+			break
+		}
+	}
+	return out
+}
+
+func alreadyFighting(current *CurrentOrder) bool {
+	if current == nil {
+		return false
+	}
+	switch current.Kind {
+	case OrderKindAttackSpace, OrderKindAttackUnit, OrderKindAttackZone, OrderKindAttackBuilding:
+		return true
+	}
+	return false
+}
+
+func resumeOrder(view View, u UnitView, job *CurrentOrder) (Order, bool) {
+	if job == nil {
+		return Order{}, false
+	}
+	switch {
+	case job.Kind == OrderKindGather && job.TargetResource != nil:
+		return view.GatherOrder(u, *job.TargetResource, false), true
+	case job.Kind == OrderKindRepair && job.TargetBuilding != nil:
+		return view.RepairOrder(u, *job.TargetBuilding, false), true
+	case job.Kind == OrderKindRenew && job.TargetBuilding != nil:
+		return view.RenewOrder(u, *job.TargetBuilding, false), true
+	case job.Kind == OrderKindBuild && job.TargetZone != nil:
+		if building_id, ok := buildingAt(view, *job.TargetZone); ok {
+			return view.BuildOrder(u, building_id, *job.TargetZone, false), true
+		}
+	}
+	return Order{}, false
+}
+
+// What is being built at a zone: a foundation, or one of our buildings still under construction
+func buildingAt(view View, zone ZoneRef) (uint32, bool) {
+	for _, f := range view.Foundations() {
+		if f.Location == zone {
+			return f.BuildingID, true
+		}
+	}
+	for _, b := range view.Buildings() {
+		if b.Location == zone && b.UnderConstruction {
+			return b.BuildingID, true
+		}
+	}
+	return 0, false
 }

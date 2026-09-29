@@ -75,6 +75,38 @@ func (v *unbucketedView) EligibleUnits(kinds ...OrderKind) []UnitView {
 	return v.filter(v.View.EligibleUnits(kinds...))
 }
 
+type unitWhenView struct {
+	View
+	internals *Internals
+	when      Condition
+}
+
+func (v *unitWhenView) filter(units []UnitView) []UnitView {
+	saved := v.internals.unit
+	defer func() { v.internals.unit = saved }()
+	out := make([]UnitView, 0, len(units))
+	for _, u := range units {
+		loc := u.Location
+		v.internals.unit = &loc
+		if v.when.Evaluate(v.View, v.internals) {
+			out = append(out, u)
+		}
+	}
+	return out
+}
+
+func (v *unitWhenView) ScopedUnits() []UnitView {
+	return v.filter(v.View.ScopedUnits())
+}
+
+func (v *unitWhenView) IdleUnits() []UnitView {
+	return v.filter(v.View.IdleUnits())
+}
+
+func (v *unitWhenView) EligibleUnits(kinds ...OrderKind) []UnitView {
+	return v.filter(v.View.EligibleUnits(kinds...))
+}
+
 func homeLocation(view View) (ZoneRef, bool) {
 	buildings := view.Buildings()
 	for _, b := range buildings {

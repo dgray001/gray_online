@@ -14,6 +14,17 @@ func (a *unbucketedAction) ToOrders(view View, internals *Internals) []Order {
 	return a.inner.ToOrders(&unbucketedView{View: view, internals: internals}, internals)
 }
 
+// Runs any action with only the units its "unit_when" condition holds for; counters inside it can anchor on
+// that unit ("from": "unit", or var(..._of_unit))
+type unitWhenAction struct {
+	when  Condition
+	inner Action
+}
+
+func (a *unitWhenAction) ToOrders(view View, internals *Internals) []Order {
+	return a.inner.ToOrders(&unitWhenView{View: view, internals: internals, when: a.when}, internals)
+}
+
 // Runs any action with only one bucket's members as eligible units
 type inBucketAction struct {
 	bucket string
