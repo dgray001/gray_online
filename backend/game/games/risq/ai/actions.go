@@ -61,6 +61,7 @@ const (
 
 type attackAction struct {
 	filtered
+	picker   *targetPicker
 	target   attackTarget
 	max      amount
 	eligible []OrderKind
@@ -204,6 +205,13 @@ func (a *exploreAction) ToOrders(view View, internals *Internals) []Order {
 func (a *attackAction) ToOrders(view View, internals *Internals) []Order {
 	limit := a.max.int(view, internals)
 	orders := make([]Order, 0)
+	if a.picker != nil {
+		units := a.filter.apply(eligibleUnits(view, a.eligible), isMilitary)
+		if limit > 0 && len(units) > limit {
+			units = units[:limit]
+		}
+		return a.picker.pick(view, internals, units, func(u UnitView, c candidate) Order { return attackCandidateOrder(view, u, c) })
+	}
 	enemy_units := view.VisibleEnemyUnits()
 	enemy_buildings := view.VisibleEnemyBuildings()
 	for _, u := range a.filter.apply(eligibleUnits(view, a.eligible), isMilitary) {

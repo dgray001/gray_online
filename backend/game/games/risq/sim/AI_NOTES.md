@@ -51,6 +51,14 @@ Debug logs (`-debug`) now tag each combat line with the turn and unit/building i
 - `var(name)` looks up this turn's variables, then globals, then built-in counters named after the count conditions with
   their filters after underscores: `population_13`, `population_infantry`, `idle_units_1`, `enemy_units_visible_13_within_2`,
   `building_count_23_complete`, `foundation_count_2_without_builders`, `resource_food`, `resource_remaining_food_within_1`,
-  `bucket_size_<bucket>`, `tech_researched_5` / `resource_available_gold` (1 or 0), `population_headroom`, `land`, ...
-  Unknown names are 0 (with a one-time warning if they aren't script variables).
+  `bucket_size_<bucket>`, `tech_researched_5` / `resource_available_gold` (1 or 0), `enemy_buildings_visible_1_23`, `land`, ...
+  Values a script can derive are left out (headroom is `population_limit - population`, `food` is `resource_food`).
+  A script variable read before it is set is 0; names that are neither built-in nor set anywhere are reported at load.
+- `within_N` counts around home by default, or around an anchor: `_within_N_of_<bucket>` (the unit nearest the rest of
+  the bucket) or `_within_N_of_target` (the candidate being scored, see below). In conditions: `"within": N, "from": "<bucket>"`.
+- Target picking on `attack` and `move`: `"targets"` is `enemy_units`, `enemy_buildings`, `known_resources` (with
+  `"category"`), `own_buildings`, `unexplored` or `home`, narrowed by `target_unit_ids` / `target_unit_types` /
+  `target_building_ids`. `"score"` is evaluated per candidate (it may use `var(target_distance)`, from the group's center,
+  `var(target_distance_home)`, and any `_of_target` counter); the highest wins, candidates under `"min_score"` are skipped.
+  `"together": true` sends the whole group to one target (units over two spaces from its center regroup first).
 - `{"value_at_least": {"value": "<expr>", "amount": <expr>}}` (and `_at_most` / `_equals`) branches on any expression.

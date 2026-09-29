@@ -5,10 +5,15 @@ import "testing"
 // Minimal View for expression tests: only the calls expressionVars and the population counter make
 type fakeView struct {
 	View
-	turn  int
-	food  float64
-	units []UnitView
+	turn            int
+	food            float64
+	units           []UnitView
+	enemies         []UnitView
+	enemy_buildings []BuildingView
+	buildings       []BuildingView
 }
+
+func at(x, y int) ZoneRef { return ZoneRef{Space: Coordinate{X: x, Y: y}} }
 
 func (f fakeView) NumPlayers() int        { return 2 }
 func (f fakeView) EnemiesFound() int      { return 1 }
@@ -54,15 +59,18 @@ func TestSetVarAndVarLookup(t *testing.T) {
 
 func TestBuiltinVarNames(t *testing.T) {
 	good := []string{"population_13", "population_infantry", "population_11_12", "idle_units_1", "enemy_units_visible_13_within_2",
-		"building_count_23_complete", "building_count_2_under_construction", "foundation_count_2_without_builders", "resource_food",
+		"building_count_23_complete", "building_count_2_under_construction", "foundation_count_2_without_builders",
 		"resource_remaining_wood_within_1", "bucket_size_vil_production", "tech_researched_5", "resource_available_gold",
-		"population_headroom", "land", "turn", "population_limit"}
+		"land", "turn", "population_limit", "enemy_units_visible_1_within_1_of_raid", "population_infantry_within_2_of_vil_production",
+		"enemy_buildings_visible_1_23_within_1_of_target", "enemy_buildings_visible", "resource_remaining_food_within_0_of_target",
+		"target_distance", "target_distance_home"}
 	for _, name := range good {
 		if c, err := builtinCounter(name); err != nil || c == nil {
 			t.Errorf("%s: %v", name, err)
 		}
 	}
-	for _, name := range []string{"populaton_13", "population_bogus", "enemy_units_visible_within", "tech_researched"} {
+	for _, name := range []string{"populaton_13", "population_bogus", "enemy_units_visible_within", "tech_researched",
+		"population_headroom", "score_lead", "resource_food", "enemy_units_visible_1_within_of_raid"} {
 		if _, err := builtinCounter(name); err == nil {
 			t.Errorf("%s should not resolve", name)
 		}
@@ -98,4 +106,68 @@ func TestExpressionInputs(t *testing.T) {
 	if !cond.Evaluate(fakeView{}, internals) {
 		t.Errorf("value_at_least should pass with x=2")
 	}
+}
+
+func TestAnchorsAndTargetPicker(t *testing.T) {
+	raiders := []UnitView{{InternalID: 1, UnitID: 11, Kind: UnitMilitary, Location: at(2, 0)}, {InternalID: 2, UnitID: 11, Kind: UnitMilitary, Location: at(2, 0)}}
+	view := fakeView{
+		units:     raiders,
+		buildings: []BuildingView{{BuildingID: 1, Location: at(-3, 0)}},
+		enemies: []UnitView{
+			// a lone villager, a defended one next to a Village Center, and five together
+			{InternalID: 10, UnitID: 1, Kind: UnitEconomic, Location: at(3, 0)},
+			{InternalID: 11, UnitID: 1, Kind: UnitEconomic, Location: at(5, 0)},
+			{InternalID: 12, UnitID: 1, Kind: UnitEconomic, Location: at(2, 2)}, {InternalID: 13, UnitID: 1, Kind: UnitEconomic, Location: at(2, 2)},
+			{InternalID: 14, UnitID: 1, Kind: UnitEconomic, Location: at(2, 2)}, {InternalID: 15, UnitID: 1, Kind: UnitEconomic, Location: at(2, 2)},
+			{InternalID: 16, UnitID: 1, Kind: UnitEconomic, Location: at(2, 2)},
+		},
+		enemy_buildings: []BuildingView{{BuildingID: 1, Location: at(5, 1)}},
+	}
+	internals := &Internals{Buckets: map[string]*Bucket{"raid": {Members: map[uint64]bool{1: true, 2: true}}}}
+	if got := internals.lookupVar(view, "enemy_units_visible_1_within_2_of_raid"); got != 6 {
+		t.Errorf("villagers within 2 of the raid = %v, want 6", got)
+	}
+	if got := internals.lookupVar(view, "population_11_within_0_of_raid"); got != 2 {
+		t.Errorf("raiders at the raid center = %v, want 2", got)
+	}
+	attack, err := parseAction(map[string]any{"action": "attack", "in_bucket": "raid", "targets": "enemy_units", "target_unit_ids": []any{1.0},
+		"score":     "10 - var(target_distance) - 20 * var(enemy_buildings_visible_1_within_1_of_target) - 3 * var(enemy_units_visible_1_within_0_of_target)",
+		"min_score": 0.0, "together": true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	orders := attack.ToOrders(view, internals)
+	if len(orders) != 2 || orders[0].TargetID != 10 || orders[1].TargetID != 10 {
+		t.Fatalf("raid should pick the lone villager 10 for both units, got %+v", orders)
+	}
+	// nothing clears min_score: no orders
+	strict, _ := parseAction(map[string]any{"action": "attack", "targets": "enemy_units", "score": "0 - var(target_distance)", "min_score": 0.0})
+	if orders := strict.ToOrders(view, internals); len(orders) != 0 {
+		t.Errorf("no candidate reaches min_score, got %+v", orders)
+	}
+	move, err := parseAction(map[string]any{"action": "move", "in_bucket": "raid", "targets": "home", "together": true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if orders := move.ToOrders(view, internals); len(orders) != 2 || orders[0].TargetID != -300 {
+		t.Errorf("retreat should move both raiders home, got %+v", orders)
+	}
+	if internals.target != nil {
+		t.Errorf("picker must restore the target context")
+	}
+	if _, err := parseAction(map[string]any{"action": "move"}); err == nil {
+		t.Errorf("move without targets should fail")
+	}
+}
+
+func (f fakeView) VisibleEnemyUnits() []UnitView         { return f.enemies }
+func (f fakeView) VisibleEnemyBuildings() []BuildingView { return f.enemy_buildings }
+func (f fakeView) Buildings() []BuildingView             { return f.buildings }
+func (f fakeView) IdleUnits() []UnitView                 { return f.units }
+func (f fakeView) EligibleUnits(...OrderKind) []UnitView { return f.units }
+func (f fakeView) AttackUnitOrder(u UnitView, t UnitView, _ bool) Order {
+	return Order{Subjects: []uint64{u.InternalID}, TargetID: int64(t.InternalID), OrderType: 1}
+}
+func (f fakeView) MoveOrder(u UnitView, z ZoneRef, _ bool) Order {
+	return Order{Subjects: []uint64{u.InternalID}, TargetID: int64(z.Space.X*100 + z.Space.Y), OrderType: 2}
 }

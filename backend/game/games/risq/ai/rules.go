@@ -46,6 +46,9 @@ type Internals struct {
 	vars         map[string]float64
 	builtin_vars map[string]counter
 	warned       map[string]bool
+	// the candidate a target picker is scoring, and where it is scored from
+	target      *ZoneRef
+	target_from *ZoneRef
 }
 
 const defaultMaxBucketDepth = 3

@@ -43,7 +43,7 @@ func parseAmount(raw any) (amount, error) {
 			vars[name] = 1
 		}
 		// syntax check only: every var() resolves to 1, and a zero divisor from those stand-ins is not an error
-		if _, err := util.EvalExprWithLookup(v, vars, func(string) (float64, error) { return 1, nil }); err != nil && err.Error() != "division by zero" {
+		if _, err := util.EvalExprWithLookup(v, vars, func(name string) (float64, error) { noteVarRead(name); return 1, nil }); err != nil && err.Error() != "division by zero" {
 			return amount{}, err
 		}
 		return amount{expr: v}, nil
@@ -159,20 +159,21 @@ func fixedCounter(c counter) func(map[string]any) (counter, error) {
 }
 
 var counterParsers = map[string]func(obj map[string]any) (counter, error){
-	"turn":                fixedCounter(func(v View, _ *Internals) float64 { return float64(v.TurnNumber()) }),
-	"num_players":         fixedCounter(func(v View, _ *Internals) float64 { return float64(v.NumPlayers()) }),
-	"enemies_found":       fixedCounter(func(v View, _ *Internals) float64 { return float64(v.EnemiesFound()) }),
-	"land":                fixedCounter(func(v View, _ *Internals) float64 { return float64(v.OwnedSpaces()) }),
-	"score_lead":          fixedCounter(func(v View, _ *Internals) float64 { return float64(v.Score() - v.BestEnemyScore()) }),
-	"population_headroom": fixedCounter(populationHeadroom),
-	"resource":            parseResourceCounter,
-	"resource_remaining":  parseResourceRemainingCounter,
-	"population":          parsePopulationCounter,
-	"idle_units":          parseIdleUnitsCounter,
-	"enemy_units_visible": parseEnemyUnitsCounter,
-	"building_count":      parseBuildingCounter,
-	"foundation_count":    parseFoundationCounter,
-	"bucket_size":         parseBucketSizeCounter,
+	"turn":                    fixedCounter(func(v View, _ *Internals) float64 { return float64(v.TurnNumber()) }),
+	"num_players":             fixedCounter(func(v View, _ *Internals) float64 { return float64(v.NumPlayers()) }),
+	"enemies_found":           fixedCounter(func(v View, _ *Internals) float64 { return float64(v.EnemiesFound()) }),
+	"land":                    fixedCounter(func(v View, _ *Internals) float64 { return float64(v.OwnedSpaces()) }),
+	"score_lead":              fixedCounter(func(v View, _ *Internals) float64 { return float64(v.Score() - v.BestEnemyScore()) }),
+	"population_headroom":     fixedCounter(populationHeadroom),
+	"resource":                parseResourceCounter,
+	"resource_remaining":      parseResourceRemainingCounter,
+	"population":              parsePopulationCounter,
+	"idle_units":              parseIdleUnitsCounter,
+	"enemy_units_visible":     parseEnemyUnitsCounter,
+	"enemy_buildings_visible": parseEnemyBuildingsCounter,
+	"building_count":          parseBuildingCounter,
+	"foundation_count":        parseFoundationCounter,
+	"bucket_size":             parseBucketSizeCounter,
 }
 
 func populationHeadroom(view View, internals *Internals) float64 {
@@ -193,12 +194,14 @@ func parseResourceRemainingCounter(obj map[string]any) (counter, error) {
 	if err != nil {
 		return nil, err
 	}
-	within, has_within := obj["within"].(float64)
-	return func(v View, _ *Internals) float64 {
-		home, has_home := homeLocation(v)
+	near, err := parseNearFilter(obj)
+	if err != nil {
+		return nil, err
+	}
+	return func(v View, i *Internals) float64 {
 		total := 0.0
 		for _, r := range v.KnownResources(category) {
-			if !has_within || (has_home && axialDistance(home.Space, r.Location.Space) <= int(within)) {
+			if near.contains(v, i, r.Location) {
 				total += r.AmountLeft
 			}
 		}
@@ -211,7 +214,19 @@ func parsePopulationCounter(obj map[string]any) (counter, error) {
 	if err != nil {
 		return nil, err
 	}
-	return func(v View, _ *Internals) float64 { return float64(len(filter.apply(v.Units(), anyUnit))) }, nil
+	near, err := parseNearFilter(obj)
+	if err != nil {
+		return nil, err
+	}
+	return func(v View, i *Internals) float64 {
+		n := 0
+		for _, u := range filter.apply(v.Units(), anyUnit) {
+			if near.contains(v, i, u.Location) {
+				n++
+			}
+		}
+		return float64(n)
+	}, nil
 }
 
 func parseIdleUnitsCounter(obj map[string]any) (counter, error) {
@@ -227,12 +242,34 @@ func parseEnemyUnitsCounter(obj map[string]any) (counter, error) {
 	if err != nil {
 		return nil, err
 	}
-	within, has_within := obj["within"].(float64)
-	return func(v View, _ *Internals) float64 {
-		home, has_home := homeLocation(v)
+	near, err := parseNearFilter(obj)
+	if err != nil {
+		return nil, err
+	}
+	return func(v View, i *Internals) float64 {
 		n := 0
 		for _, u := range filter.apply(v.VisibleEnemyUnits(), anyUnit) {
-			if !has_within || (has_home && axialDistance(home.Space, u.Location.Space) <= int(within)) {
+			if near.contains(v, i, u.Location) {
+				n++
+			}
+		}
+		return float64(n)
+	}, nil
+}
+
+func parseEnemyBuildingsCounter(obj map[string]any) (counter, error) {
+	ids, err := parseIDSet(obj, "building_ids")
+	if err != nil {
+		return nil, err
+	}
+	near, err := parseNearFilter(obj)
+	if err != nil {
+		return nil, err
+	}
+	return func(v View, i *Internals) float64 {
+		n := 0
+		for _, b := range v.VisibleEnemyBuildings() {
+			if (len(ids) == 0 || ids[b.BuildingID]) && near.contains(v, i, b.Location) {
 				n++
 			}
 		}

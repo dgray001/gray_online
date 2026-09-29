@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 // setVarAction stores a number for later rules to read with var(name): in the per-turn map (cleared
@@ -13,6 +14,49 @@ type setVarAction struct {
 	name    string
 	value   amount
 	persist bool
+}
+
+// Load-time bookkeeping for var() names: every name read and every name set_var writes
+var (
+	var_names_mu  sync.Mutex
+	var_names_log *varNameLog
+)
+
+type varNameLog struct {
+	read map[string]bool
+	set  map[string]bool
+}
+
+func noteVarRead(name string) {
+	if var_names_log != nil {
+		var_names_log.read[name] = true
+	}
+}
+
+func noteVarSet(name string) {
+	if var_names_log != nil {
+		var_names_log.set[name] = true
+	}
+}
+
+// Runs parse with var() bookkeeping on, then reports names that are neither built-in nor ever set
+func withVarNameCheck(parse func() error) error {
+	var_names_mu.Lock()
+	defer var_names_mu.Unlock()
+	var_names_log = &varNameLog{read: map[string]bool{}, set: map[string]bool{}}
+	defer func() { var_names_log = nil }()
+	if err := parse(); err != nil {
+		return err
+	}
+	for name := range var_names_log.read {
+		if var_names_log.set[name] {
+			continue
+		}
+		if _, err := builtinCounter(name); err != nil {
+			fmt.Fprintf(os.Stderr, "ai config: var(%s) is not a built-in and no set_var sets it; it will read 0\n", name)
+		}
+	}
+	return nil
 }
 
 func (a *setVarAction) ToOrders(view View, internals *Internals) []Order {
@@ -41,6 +85,7 @@ func parseSetVar(raw map[string]any) (Action, error) {
 		return nil, fmt.Errorf("set_var %q: \"value\" %v", name, err)
 	}
 	persist, _ := raw["persist"].(bool)
+	noteVarSet(name)
 	return &setVarAction{name: name, value: value, persist: persist}, nil
 }
 
@@ -67,11 +112,8 @@ func (i *Internals) lookupVar(view View, name string) float64 {
 	}
 	c, cached := i.builtin_vars[name]
 	if !cached {
-		var err error
-		c, err = builtinCounter(name)
-		if err != nil {
-			i.warnOnce("var:"+name, fmt.Sprintf("ai var(%s): %v; using 0", name, err))
-		}
+		// not a built-in: a script variable that hasn't been set yet (unknown names are reported at load)
+		c, _ = builtinCounter(name)
 		if i.builtin_vars == nil {
 			i.builtin_vars = make(map[string]counter)
 		}
@@ -93,11 +135,18 @@ func (i *Internals) warnOnce(key string, message string) {
 	}
 }
 
+// Left out of var() because a script can derive them: population_headroom is population_limit - population,
+// score_lead is score - best_enemy_score, resource_food is food; value only makes sense as a condition
+var derivableCounters = map[string]bool{"population_headroom": true, "score_lead": true, "resource": true, "value": true}
+
 // Built-in var() names mirror the count conditions, with their filters spelled out after underscores:
 // population_13, population_infantry, idle_units_1, enemy_units_visible_13_within_2, building_count_23_complete,
 // foundation_count_2_without_builders, resource_food, resource_remaining_food_within_1, bucket_size_<bucket>,
 // tech_researched_5, resource_available_gold, plus the plain expression variables (turn, food, population_limit, ...)
 func builtinCounter(name string) (counter, error) {
+	if c, ok := targetDistanceCounter(name); ok {
+		return c, nil
+	}
 	for _, v := range expressionVarNames {
 		if name == v {
 			return func(view View, internals *Internals) float64 { return expressionVars(view, internals)[v] }, nil
@@ -105,6 +154,9 @@ func builtinCounter(name string) (counter, error) {
 	}
 	base := ""
 	for candidate := range allCounterParsers() {
+		if derivableCounters[candidate] {
+			continue
+		}
 		if (name == candidate || strings.HasPrefix(name, candidate+"_")) && len(candidate) > len(base) {
 			base = candidate
 		}
@@ -154,6 +206,11 @@ func parseVarFilters(base string, rest string, obj map[string]any) error {
 			}
 			obj["within"] = float64(n)
 			i++
+			// within_N_of_<anchor> must come last: the anchor may itself contain underscores (bucket names)
+			if i+2 < len(tokens) && tokens[i+1] == "of" {
+				obj["from"] = strings.Join(tokens[i+2:], "_")
+				return finishVarFilters(base, ids, obj)
+			}
 			continue
 		case "complete", "damaged", "depleted":
 			obj["state"] = t
@@ -171,6 +228,10 @@ func parseVarFilters(base string, rest string, obj map[string]any) error {
 		}
 		return fmt.Errorf("unknown filter %q", t)
 	}
+	return finishVarFilters(base, ids, obj)
+}
+
+func finishVarFilters(base string, ids []any, obj map[string]any) error {
 	if len(ids) > 0 {
 		switch base {
 		case "building_count", "foundation_count":
