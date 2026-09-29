@@ -77,6 +77,7 @@ rule(ALWAYS, *(setv(n, f"max(var({n}) - {P['decay']}, var(enemy_units_visible_{s
 PR = {VIL: 1.0, BLUNT: 1.0, PIERCE: 0.71, HEAVY: 0.25}
 HOUSE_POP, SPACE_GOLD, FARM_WORKERS = 5, 2, 2
 HOUSE_BUILD_STAMINA = 14
+FARM_RENEW_WOOD = 60  # no renew-cost lookup yet
 RES = ("food", "wood", "stone", "gold")
 def uc(r, i): return f"var(unit_cost_{r}_{i})"
 def bc(r, i): return f"var(building_cost_{r}_{i})"
@@ -157,7 +158,8 @@ rule(ALWAYS,
      setv("outpost_want", f"max(0, (var(gold_rate) + var(tech_gold) / {H} - var(gold_income)) / {SPACE_GOLD})"),
      *(setv(f"lump_{r}", f"var(vc_want) * {bc(r, VC)} + var(barracks_save) * {bc(r, BARRACKS)} + var(redoubt_save) * {bc(r, REDOUBT)}"
                          f" + var(smith_want) * {bc(r, SMITH)} + var(farm_want) * {bc(r, FARM)} + min(1, var(outpost_want)) * {bc(r, OUTPOST)}"
-                         f" + var(house_want) * {bc(r, HOUSE)} * (1 + ({H} - 1) * var(house_urgency))") for r in RES),
+                         f" + var(house_want) * {bc(r, HOUSE)} * (1 + ({H} - 1) * var(house_urgency))"
+                         + (f" + var(building_count_3_depleted) * {FARM_RENEW_WOOD}" if r == 'wood' else "")) for r in RES),
      # keep enough on hand to start the next unit
      setv("buffer_food", f"max({uc('food', VIL)}, {uc('food', BLUNT)}, {uc('food', PIERCE)}, {uc('food', HEAVY)} * {one('var(redoubts)')})"),
      setv("buffer_wood", f"{bc('wood', HOUSE)} + max({uc('wood', BLUNT)}, {uc('wood', PIERCE)})"),
@@ -212,7 +214,7 @@ rule(all_(ge("var(smith_want)", 1), le("var(foundation_count_11)", 0)), build(SM
 rule(all_(ge("var(farm_want) - var(foundation_count_3)", 0.5), le("var(foundation_count_3)", 1)), build(FARM, 2))
 # land pays gold: claim a space for every 2 gold/turn we are short, once we can defend it
 rule(all_(ge("var(barracks)", 1), le("var(foundation_count_21)", 0), ge("var(outpost_want)", 1)), build(OUTPOST, 1))
-rule(ALWAYS, dict({"action": "build_foundations"}, **ECO), dict({"action": "renew", "max": 2}, **ECO), dict({"action": "repair", "max": 1}, **ECO))
+rule(ALWAYS, dict({"action": "build_foundations"}, **ECO), dict({"action": "renew"}, **ECO), dict({"action": "repair", "max": 1}, **ECO))
 rule(all_(ge("var(smiths)", 1), any_(ge("var(eH)", 2), ge("var(needP)", 4))), {"action": "research", "tech_id": PIKES})
 # attack/armor: worth it once the army they improve is worth several times their cost (each adds roughly 15%)
 rule(ALWAYS, setv("army_value", f"var(B) * {gatherable(BLUNT)} + var(Pi) * {gatherable(PIERCE)} + var(Hv) * ({gatherable(HEAVY)} + {uc('gold', HEAVY)})"))
@@ -233,29 +235,39 @@ rule(all_(ge("var(hire_B)", 1), ge("var(needB) - var(needP)", 0)), {"action": "h
 
 # ================= gathering =================
 rule(ALWAYS, *({"action": "run_bucket", "bucket": c} for c in ("food", "wood", "stone", "gold")))
+# renewing a farm is food work: food gatherers do it (renewers already on it are left alone)
+rule(ALWAYS, {"action": "renew", "in_bucket": "food", "eligible": ["gather"]})
 rule(ALWAYS, dict({"action": "gather", "move_penalty": 2}, **ECO))
 
 # ================= raiding: blunts hunt villagers away from defensive buildings =================
 vw, odds, rmin = P['vil_worth'], P['raid_odds'], P['raid_min']
-RAID_ORDERS = ["move", "attack_space", "attack_unit", "attack_zone"]
+RAID_ORDERS = ["move", "attack_space", "attack_unit", "attack_zone", "attack_building"]
 rule(ALWAYS,
      setv("guard", f"var(B) * {P['guard_frac']}"),
-     # no raid below raid_min blunts, and the whole party comes home if an army is at our door
-     setv("raid_size", f"max(0, var(B) - var(guard)) * {one(f'var(B) - {rmin} + 1')} * {one('3 - var(threat_home) + var(guard_home)')}"),
-     {"action": "set_bucket", "bucket": "raid", "size": "var(raid_size)", "task": {"action": "explore"}},
-     {"action": "fill_bucket", "bucket": "raid", "unit_ids": [BLUNT]},
      # strength around the raid party: soldiers plus villagers at their worth
      setv("raid_threat", f"var(enemy_units_visible_infantry_within_1_of_raid) + {vw} * var(enemy_units_visible_1_within_1_of_raid)"),
      setv("raid_power", "var(population_11_within_1_of_raid)"),
-     setv("raid_outnumbered", f"var(raid_threat) * {odds} - var(raid_power)"))
+     setv("raid_outnumbered", f"var(raid_threat) * {odds} - var(raid_power)"),
+     # a group leaves home only when it beats the enemy army we remember; it never trickles out one by one
+     setv("raid_group", f"max({rmin}, {odds} * var(ePow))"),
+     setv("home_B", "var(population_11_within_1) - var(guard)"),
+     setv("raid_batch", f"{one('var(home_B) - var(raid_group) + 1')}"),
+     # keep raiding until outnumbered locally or too few are left; start (or reinforce) with a batch from home;
+     # everyone comes home if an army is at our door
+     setv("raiding", f"min(1, max(var(raiding) * {one('0.01 - var(raid_outnumbered)')} * {one(f'var(bucket_size_raid) - {rmin} + 1')}, var(raid_batch)))"
+                     f" * {one('3 - var(threat_home) + var(guard_home)')}", True),
+     setv("raid_size", "var(raiding) * max(var(bucket_size_raid), var(raid_batch) * (var(B) - var(guard)))"),
+     {"action": "set_bucket", "bucket": "raid", "size": "var(raid_size)", "task": {"action": "explore"}},
+     {"action": "fill_bucket", "bucket": "raid", "unit_ids": [BLUNT]})
 rule(le("var(raid_size)", 0), {"action": "empty_bucket", "bucket": "raid"})
 rule(ge("var(bucket_size_raid)", 1), {"action": "set_unit_behavior", "in_bucket": "raid", "stance": "defensive"})
 # outnumbered: fall back home
 rule(all_(ge("var(bucket_size_raid)", 1), ge("var(raid_outnumbered)", 0.01)),
      {"action": "move", "in_bucket": "raid", "eligible": RAID_ORDERS, "targets": "home", "together": True})
-# hunt: resources near enemy buildings (but not under their guns), where villagers work; else explore
-hunt_score = (f"10 * min(1, var(enemy_buildings_known_within_2_of_target)) - 100 * var(enemy_buildings_known_{DEFENSIVE}_within_0_of_target)"
-              " - var(target_distance) / 2")
+# hunt: resources among enemy buildings (but not under their guns), where villagers work; the more buildings
+# around, the likelier villagers are there; else explore
+hunt_score = (f"5 * min(1, var(enemy_buildings_known_within_2_of_target)) + 3 * var(enemy_buildings_known_within_1_of_target)"
+              f" - 100 * var(enemy_buildings_known_{DEFENSIVE}_within_0_of_target) - var(target_distance) / 2")
 rule(all_(ge("var(bucket_size_raid)", 1), le("var(raid_outnumbered)", 0)), {"action": "run_bucket", "bucket": "raid"})
 for cat in ("food", "wood"):
     rule(all_(ge("var(bucket_size_raid)", 1), le("var(raid_outnumbered)", 0)),
@@ -264,6 +276,12 @@ for cat in ("food", "wood"):
 raid_score = (f"20 - var(target_distance) - 100 * var(enemy_buildings_known_{DEFENSIVE}_within_0_of_target)"
               f" - 100 * max(0, var(enemy_units_visible_infantry_within_1_of_target) + {vw} * var(enemy_units_visible_1_within_0_of_target)"
               f" - var(bucket_size_raid) / {odds})")
+# nothing better: raze buildings out of reach of defensive buildings and soldiers, nearest first
+raze_score = (f"20 - var(target_distance) - 100 * var(enemy_buildings_known_{DEFENSIVE}_within_0_of_target)"
+              f" - 100 * max(0, var(enemy_units_visible_infantry_within_1_of_target) - var(bucket_size_raid) / {odds})")
+rule(all_(ge("var(bucket_size_raid)", 1), le("var(raid_outnumbered)", 0)),
+     {"action": "attack", "in_bucket": "raid", "eligible": RAID_ORDERS, "targets": "enemy_buildings",
+      "score": raze_score, "min_score": 0, "together": True})
 rule(all_(ge("var(bucket_size_raid)", 1), le("var(raid_outnumbered)", 0)),
      {"action": "attack", "in_bucket": "raid", "eligible": RAID_ORDERS, "targets": "enemy_units", "target_unit_ids": [VIL],
       "score": raid_score, "min_score": 0, "together": True, "order": "space"})
