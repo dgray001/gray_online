@@ -64,7 +64,8 @@
     "turn_stamina": 10,
     "produces": [
       { "row": 1, "col": 0, "kind": "tech", "id": 2 },
-      { "row": 2, "col": 0, "kind": "tech", "id": 3 }
+      { "row": 2, "col": 0, "kind": "tech", "id": 3 },
+      { "row": 1, "col": 1, "kind": "tech", "id": 5 }
     ]
   },
   {
