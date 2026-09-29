@@ -1,0 +1,317 @@
+"""Generates config/ai/v0.6.json: a generalist driven only by game state.
+
+Each turn: read state -> remember the enemy -> decide wants -> turn wants into per-turn resource rates, minus the bank
+-> size one gather bucket per resource -> spend -> fight. Blunts raid villagers away from defensive buildings;
+heavies and piercers form the assault army; nothing keys off the turn number."""
+import json, os, sys
+
+VIL, BLUNT, PIERCE, HEAVY = 1, 11, 12, 13
+VC, HOUSE, FARM, SMITH, OUTPOST, BARRACKS, REDOUBT = 1, 2, 3, 11, 21, 22, 23
+FARMING, ATTACK, ARMOR, MERCS, PIKES = 1, 2, 3, 4, 5
+DEFENSIVE = "1_21_23"  # buildings that shoot at their whole space
+
+P = dict(
+    vil_share=0.5,     # most of the population ceiling the economy may take
+    horizon=10,
+    decay=0.3,
+    # raiding
+    raid_min=3,        # blunts needed before raiding
+    raid_odds=1.4,     # we must be this much stronger where we raid
+    vil_worth=0.4,     # a villager is worth this many blunts in a fight
+    guard_frac=0.25,   # share of blunts kept home
+    # assault (heavies + piercers)
+    assault_min=10, assault_odds=1.3,
+    early_blunts=3,
+    invest_share=0.3,  # share of gatherers guaranteed to one-off investments when there are any
+)
+OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config', 'ai', 'v0.6.json')
+for arg in sys.argv[1:]:
+    k, v = arg.split('=')
+    if k == 'out':
+        OUT = v
+    else:
+        P[k] = float(v)
+
+rules = []
+def rule(when, *then): rules.append({"when": when, "then": list(then)})
+ALWAYS = {"always": {}}
+def setv(name, value, persist=False):
+    a = {"action": "set_var", "name": name, "value": value}
+    if persist:
+        a["persist"] = True
+    return a
+def ge(expr, n): return {"value_at_least": {"value": expr, "amount": n}}
+def le(expr, n): return {"value_at_most": {"value": expr, "amount": n}}
+def all_(*c): return {"all": list(c)}
+def any_(*c): return {"any": list(c)}
+ECO = {"eligible": ["gather"], "exclude_buckets": True}
+def build(b, builders): return dict({"action": "build", "building_id": b, "max": builders}, **ECO)
+def one(x): return f"min(1, max(0, {x}))"  # 1 when x >= 1, 0 when x <= 0
+H = P['horizon']
+
+# ================= state =================
+rule(ALWAYS,
+     setv("vils", "var(population_1)"),
+     setv("B", "var(population_11)"), setv("Pi", "var(population_12)"), setv("Hv", "var(population_13)"),
+     setv("mil", "var(B) + var(Pi) + var(Hv)"),
+     setv("headroom", "population_limit - population"),
+     setv("vcs", "var(building_count_1_complete)"),
+     setv("barracks", "var(building_count_22_complete)"),
+     setv("redoubts", "var(building_count_23_complete)"),
+     setv("smiths", "var(building_count_11_complete)"),
+     setv("farming", "var(tech_researched_1)"),
+     setv("pikes", "var(tech_researched_5)"),
+     setv("rate", "6 + 1.5 * var(farming)"),  # what a villager brings in per turn, walking included
+     )
+# remembered enemy: the most seen recently, fading slowly
+rule(ALWAYS, *(setv(n, f"max(var({n}) - {P['decay']}, var(enemy_units_visible_{src}))", True)
+               for n, src in (("eB", 11), ("eP", 12), ("eH", 13), ("eV", 1))),
+     setv("eMil", "var(eB) + var(eP) + var(eH)"),
+     # fighting power in blunt-equivalents (a heavy ~4 blunts, a piercer ~2 against heavies)
+     setv("ePow", "var(eB) + 2 * var(eP) + 4 * var(eH)"))
+
+# ================= wants =================
+# unit stats the script can't look up yet (production per building per turn at the current stamina numbers)
+PR = {VIL: 1.0, BLUNT: 1.0, PIERCE: 0.71, HEAVY: 0.25}
+HOUSE_POP, SPACE_GOLD, FARM_WORKERS = 5, 2, 2
+HOUSE_BUILD_STAMINA = 14
+RES = ("food", "wood", "stone", "gold")
+def uc(r, i): return f"var(unit_cost_{r}_{i})"
+def bc(r, i): return f"var(building_cost_{r}_{i})"
+def tc(r, i): return f"var(tech_cost_{r}_{i})"
+def gatherable(i): return f"({uc('food', i)} + {uc('wood', i)} + {uc('stone', i)})"  # the part villagers must gather
+rule(ALWAYS,
+     # how well each unit does against the remembered enemy mix (blunt > piercer > heavy > blunt; 1 = even)
+     setv("es", "var(eB) + var(eP) + var(eH) + 1"),
+     setv("vB", f"(var(eB) + 1.3 * var(eP) + 0.4 * var(eH) + 1 + {P['early_blunts']} * {one('1 - var(redoubts)')}) / var(es)"),
+     setv("vP", "(0.75 * var(eB) + var(eP) + (0.8 + 0.5 * var(pikes)) * var(eH) + 0.5) / var(es)"),
+     setv("vH", "(1.3 * var(eB) + 0.8 * var(eP) + var(eH) + 1) / var(es)"),
+     # what a busy producer eats per turn, in villager-gathered resources
+     setv("barracks_spend", f"max({gatherable(BLUNT)} * {PR[BLUNT]}, {gatherable(PIERCE)} * {PR[PIERCE]})"),
+     setv("redoubt_spend", f"{gatherable(HEAVY)} * {PR[HEAVY]}"),
+     setv("vil_spend", f"var(vcs) * {gatherable(VIL)} * {PR[VIL]} * {one('var(vil_goal_last) - var(vils)')}"),
+     setv("income", "var(vils) * var(rate)"),
+     # Redoubts: as many as gold income can keep making heavies, limited by the stone we have (always one once we have barracks)
+     setv("gold_income", f"{SPACE_GOLD} * land"),
+     # (only once a barracks stands: no next tier before the current one works)
+     setv("redoubt_goal", f"{one('var(barracks)')} * max(1, min((var(gold_income) + max(0, gold) / {H}) / max(1, {uc('gold', HEAVY)} * {PR[HEAVY]}),"
+                          f" var(building_count_23) + stone / max(1, {bc('stone', REDOUBT)})))"),
+     setv("redoubt_want", f"max(0, var(redoubt_goal) - var(building_count_23)) * {one('var(vils)')}"),
+     # barracks: as many as income (plus a surplus bank) can keep busy, never more than can fill our army room within the horizon
+     setv("committed", "var(vil_spend) + var(redoubts) * var(redoubt_spend)"),
+     setv("surplus", f"max(0, food + wood - (var(committed) + var(barracks) * var(barracks_spend)) * {H}) / {H}"),
+     setv("barracks_goal", f"{one('var(vils)')} * max(1, min((var(income) + var(surplus) - var(committed)) / max(1, var(barracks_spend)),"
+                           f" (var(population_max) - var(vil_goal_last)) / {H}))"),
+     setv("barracks_want", "max(0, var(barracks_goal) - var(building_count_22))"),
+     # villagers: enough to feed the production we plan, with room for investments and builders, up to our share of the ceiling
+     setv("planned_spend", f"var(vcs) * {gatherable(VIL)} * {PR[VIL]} + var(barracks_goal) * var(barracks_spend) + var(redoubt_goal) * var(redoubt_spend)"),
+     setv("vil_goal", f"min(var(population_max) * {P['vil_share']}, var(planned_spend) / var(rate) / (1 - {P['invest_share']}) + 2)"),
+     setv("vil_goal_last", "var(vil_goal)", True),
+     setv("vil_want", f"max(0, var(vil_goal) - var(vils)) * {one('var(vcs)')}"),
+     setv("vil_rate", f"{one('var(vil_want)')} * var(vcs)"),
+     # the army fills the rest of the ceiling; barracks split between blunts and piercers by how well each does
+     setv("free_room", "max(0, var(population_max) - var(vil_goal) - var(mil))"),
+     setv("sB4", "var(vB) * var(vB) * var(vB) * var(vB)"),
+     setv("sP4", "var(vP) * var(vP) * var(vP) * var(vP)"),
+     setv("needB", "var(free_room) * var(sB4) / (var(sB4) + var(sP4))"),
+     setv("needP", "var(free_room) * var(sP4) / (var(sB4) + var(sP4))"),
+     # Redoubts add heavies on top unless piercers would do much better
+     setv("tH", f"(var(Hv) + var(free_room)) * {one('(var(vH) - 0.8 * var(vP)) * 10')}"),
+     setv("barracks_B", "var(barracks) * var(needB) / max(1, var(needB) + var(needP))"),
+     setv("barracks_P", "var(barracks) * var(needP) / max(1, var(needB) + var(needP))"),
+     setv("redoubt_H", f"var(redoubts) * {one('var(tH) - var(Hv)')}"),
+     setv("vc_want", f"{one('1 - var(building_count_1)')} * {one('var(vils)')}"),
+     setv("smith_want", f"{one('var(redoubts)')} * {one('1 - var(building_count_11)')} * {one('var(vils)')}"),
+     # houses: enough room for ~4 turns of production, more urgent the sooner we are capped
+     setv("prod_rate", f"var(vil_rate) * {PR[VIL]} + var(barracks) * {PR[BLUNT]} + var(redoubts) * {PR[HEAVY]}"),
+     setv("house_want", f"max(0, (var(prod_rate) * 4 + 1 - var(headroom)) / {HOUSE_POP}) * {one('var(population_max) - population_limit')} * {one('var(vils)')}"),
+     setv("turns_left", "var(headroom) / max(0.1, var(prod_rate))"),
+     setv("house_urgency", f"min(1, max(0, (4 - var(turns_left)) / 4)) * {one('var(house_want) * 2')}"),
+     # enough builders to finish before we're capped: the work over what villagers can do in the turns left (half a turn to walk)
+     setv("vil_stamina", "8 + 2 * var(farming)"),
+     setv("house_builders", f"{one('var(house_want) * 2')} * max(1, {HOUSE_BUILD_STAMINA} / (var(vil_stamina) * max(0.5, var(turns_left) - 0.5)))"),
+     # farms for the food workers that nearby wild food can't carry (~300 food per worker, few gather slots)
+     setv("farm_want", f"var(farming) * max(0, max(0, var(food_workers) - min(8, var(resource_remaining_food_within_1) / 300)) / {FARM_WORKERS} + 1 - var(building_count_3))"),
+     )
+
+# ================= resource rates and buckets =================
+rule(ALWAYS,
+     *(setv(f"{r}_rate", f"var(vil_rate) * {uc(r, VIL)} * {PR[VIL]} + var(barracks_B) * {uc(r, BLUNT)} * {PR[BLUNT]}"
+                         f" + var(barracks_P) * {uc(r, PIERCE)} * {PR[PIERCE]} + var(redoubt_H) * {uc(r, HEAVY)} * {PR[HEAVY]}") for r in RES),
+     # techs we intend: Farming, and the Blacksmith techs once one stands
+     *(setv(f"tech_{r}", f"(1 - var(farming)) * {tc(r, FARMING)} + {one('var(smiths)')} * ((1 - var(pikes)) * {tc(r, PIKES)}"
+                         f" + (1 - var(tech_researched_2)) * {tc(r, ATTACK)} + (1 - var(tech_researched_3)) * {tc(r, ARMOR)})") for r in RES),
+     setv("outpost_want", f"max(0, (var(gold_rate) + var(tech_gold) / {H} - var(gold_income)) / {SPACE_GOLD})"),
+     *(setv(f"lump_{r}", f"var(vc_want) * {bc(r, VC)} + var(barracks_want) * {bc(r, BARRACKS)} + var(redoubt_want) * {bc(r, REDOUBT)}"
+                         f" + var(smith_want) * {bc(r, SMITH)} + var(farm_want) * {bc(r, FARM)} + min(1, var(outpost_want)) * {bc(r, OUTPOST)}"
+                         f" + var(house_want) * {bc(r, HOUSE)} * (1 + ({H} - 1) * var(house_urgency))") for r in RES),
+     # keep enough on hand to start the next unit
+     setv("buffer_food", f"max({uc('food', VIL)}, {uc('food', BLUNT)}, {uc('food', PIERCE)}, {uc('food', HEAVY)} * {one('var(redoubts)')})"),
+     setv("buffer_wood", f"{bc('wood', HOUSE)} + max({uc('wood', BLUNT)}, {uc('wood', PIERCE)})"),
+     setv("buffer_stone", "0"), setv("buffer_gold", "0"),
+     *(setv(f"{r}_need", f"max(0, var({r}_rate) + (var(lump_{r}) + var(tech_{r}) + var(buffer_{r}) - {r}) / {H})") for r in RES),
+     setv("stone_need", "var(stone_need) * var(resource_available_stone)"),
+     # land already pays gold; mines only make up the rest
+     setv("gold_need", "max(0, var(gold_need) - var(gold_income)) * var(resource_available_gold)"),
+     setv("builders", "min(var(vils), max(min(4, 1 + var(vils) / 8), var(house_builders)))"),
+     setv("workers", "max(0, var(vils) - var(builders))"),
+     # continuous production is fed first; one-off investments get a guaranteed share and whoever is left
+     *(setv(f"rf_{r}", f"min(var({r}_need), var({r}_rate)) / var(rate)") for r in RES),
+     *(setv(f"lf_{c}", f"max(0, var({c}_need) / var(rate) - var(rf_{c}))") for c in RES),
+     # the guarantee grows with the economy: a young one puts nearly everyone on production
+     setv("maturity", "min(1, var(vils) / max(1, var(vil_goal)))"),
+     setv("guaranteed", f"min(var(lf_food) + var(lf_wood) + var(lf_stone) + var(lf_gold), {P['invest_share']} * var(workers) * var(maturity) * var(maturity))"),
+     setv("scale_r", "min(1, (var(workers) - var(guaranteed)) / max(0.01, var(rf_food) + var(rf_wood) + var(rf_stone) + var(rf_gold)))"),
+     setv("left", "max(0, var(workers) - (var(rf_food) + var(rf_wood) + var(rf_stone) + var(rf_gold)) * var(scale_r))"),
+     setv("scale_l", "min(1, var(left) / max(0.01, var(lf_food) + var(lf_wood) + var(lf_stone) + var(lf_gold)))"),
+     *(setv(f"w_{c}", f"var(rf_{c}) * var(scale_r) + var(lf_{c}) * var(scale_l)") for c in RES),
+     setv("food_workers", "var(w_food)", True),
+     # spare gatherers go to food and wood in proportion to how much each is needed
+     setv("spare", "max(0, var(workers) - (var(w_food) + var(w_wood) + var(w_stone) + var(w_gold)))"),
+     setv("spare_food", "(var(food_need) + 1) / (var(food_need) + var(wood_need) + 2)"),
+     setv("w_food", "var(w_food) + var(spare) * var(spare_food)"),
+     setv("w_wood", "var(w_wood) + var(spare) * (1 - var(spare_food))"),
+     *({"action": "empty_bucket", "bucket": c} for c in RES),
+     # sizes round down (food rounds to nearest), so together they never eat into the builders
+     *({"action": "set_bucket", "bucket": c, "size": f"max(0, var(w_{c}) - {0 if c == 'food' else 0.49})",
+        "task": {"action": "gather", "category": c, "eligible": ["gather"]}} for c in RES),
+     *({"action": "fill_bucket", "bucket": c, "eligible": ["gather"], "unit_types": ["economic"]} for c in ("food", "stone", "gold", "wood")),
+     )
+
+# ================= villagers hide from an army we can't meet at home
+rule(ALWAYS,
+     setv("threat_home", "var(enemy_units_visible_infantry_within_1)"),
+     setv("guard_home", "var(population_infantry_within_1)"))
+rule(all_(ge("var(threat_home)", 3), ge("var(threat_home) - var(guard_home)", 1)),
+     {"action": "garrison", "unit_types": ["economic"], "eligible": ["gather", "build", "move", "repair", "renew"]})
+rule(le("var(threat_home)", 0), {"action": "ungarrison", "unit_types": ["economic"]})
+
+# ================= spending, in priority order =================
+# Farming first: the Village Center is otherwise always busy with villagers, and farms depend on it
+# (6 villagers is roughly when Farming's villager bonuses start paying for themselves)
+rule(all_(ge("var(vils)", 6), le("var(farming)", 0)), {"action": "research", "tech_id": FARMING, "queue": 2})
+rule(ge("var(vil_want)", 1), {"action": "create", "unit_id": VIL, "queue": 2})
+rule(ge("var(house_want) - var(foundation_count_2)", 0.5), build(HOUSE, "var(house_builders)"))
+rule(all_(ge("var(vc_want)", 1), le("var(foundation_count_1)", 0)), build(VC, 4))
+rule(ge("var(barracks_want) - var(foundation_count_22)", 0.5), build(BARRACKS, 3))
+rule(ge("var(redoubt_want) - var(foundation_count_23)", 0.5), build(REDOUBT, 4))
+rule(all_(ge("var(smith_want)", 1), le("var(foundation_count_11)", 0)), build(SMITH, 2))
+rule(all_(ge("var(farm_want) - var(foundation_count_3)", 0.5), le("var(foundation_count_3)", 1)), build(FARM, 2))
+# land pays gold: claim a space for every 2 gold/turn we are short, once we can defend it
+rule(all_(ge("var(barracks)", 1), le("var(foundation_count_21)", 0), ge("var(outpost_want)", 1)), build(OUTPOST, 1))
+rule(ALWAYS, dict({"action": "build_foundations"}, **ECO), dict({"action": "renew", "max": 2}, **ECO), dict({"action": "repair", "max": 1}, **ECO))
+rule(all_(ge("var(smiths)", 1), any_(ge("var(eH)", 2), ge("var(needP)", 4))), {"action": "research", "tech_id": PIKES})
+# attack/armor: worth it once the army they improve is worth several times their cost (each adds roughly 15%)
+rule(ALWAYS, setv("army_value", f"var(B) * {gatherable(BLUNT)} + var(Pi) * {gatherable(PIERCE)} + var(Hv) * ({gatherable(HEAVY)} + {uc('gold', HEAVY)})"))
+for t in (ATTACK, ARMOR):
+    rule(all_(ge("var(smiths)", 1), ge(f"var(army_value) * 0.15 - ({tc('food', t)} + {tc('wood', t)} + {tc('stone', t)} + {tc('gold', t)})", 0)),
+         {"action": "research", "tech_id": t})
+# mercenaries: once gold piles up beyond what heavies and techs will use; price mirrors the engine's markup
+MERC = "1.3 * ({f} + {w} + {s} + 1.5 * {g})"
+def merc(i): return MERC.format(f=uc('food', i), w=uc('wood', i), s=uc('stone', i), g=uc('gold', i))
+rule(ALWAYS, setv("gold_surplus", f"gold - var(gold_rate) * {H} - var(tech_gold)"))
+rule(all_(ge("var(redoubts)", 1), ge(f"var(gold_surplus) - {merc(BLUNT)}", 0)), {"action": "research", "tech_id": MERCS, "queue": 2})
+rule(ALWAYS, setv("hire_B", f"var(gold_surplus) / {merc(BLUNT)}"), setv("hire_P", f"var(gold_surplus) / {merc(PIERCE)}"))
+rule(all_(ge("var(tH) - var(Hv)", 1), ge("var(headroom)", 1)), {"action": "create", "unit_id": HEAVY, "queue": 2})
+rule(all_(ge("var(needP)", 1), any_(ge("var(pikes)", 1), ge("var(eH)", 2))), {"action": "create", "unit_id": PIERCE, "queue": 2})
+rule(ge("var(needB)", 1), {"action": "create", "unit_id": BLUNT, "queue": 2})
+rule(all_(ge("var(hire_P)", 1), ge("var(needP) - var(needB)", 0.01)), {"action": "hire", "unit_id": PIERCE, "max": "var(hire_P)"})
+rule(all_(ge("var(hire_B)", 1), ge("var(needB) - var(needP)", 0)), {"action": "hire", "unit_id": BLUNT, "max": "var(hire_B)"})
+
+# ================= gathering =================
+rule(ALWAYS, *({"action": "run_bucket", "bucket": c} for c in ("food", "wood", "stone", "gold")))
+rule(ALWAYS, dict({"action": "gather", "move_penalty": 2}, **ECO))
+
+# ================= raiding: blunts hunt villagers away from defensive buildings =================
+vw, odds, rmin = P['vil_worth'], P['raid_odds'], P['raid_min']
+RAID_ORDERS = ["move", "attack_space", "attack_unit", "attack_zone"]
+rule(ALWAYS,
+     setv("guard", f"var(B) * {P['guard_frac']}"),
+     # no raid below raid_min blunts, and the whole party comes home if an army is at our door
+     setv("raid_size", f"max(0, var(B) - var(guard)) * {one(f'var(B) - {rmin} + 1')} * {one('3 - var(threat_home) + var(guard_home)')}"),
+     {"action": "set_bucket", "bucket": "raid", "size": "var(raid_size)", "task": {"action": "explore"}},
+     {"action": "fill_bucket", "bucket": "raid", "unit_ids": [BLUNT]},
+     # strength around the raid party: soldiers plus villagers at their worth
+     setv("raid_threat", f"var(enemy_units_visible_infantry_within_1_of_raid) + {vw} * var(enemy_units_visible_1_within_1_of_raid)"),
+     setv("raid_power", "var(population_11_within_1_of_raid)"),
+     setv("raid_outnumbered", f"var(raid_threat) * {odds} - var(raid_power)"))
+rule(le("var(raid_size)", 0), {"action": "empty_bucket", "bucket": "raid"})
+rule(ge("var(bucket_size_raid)", 1), {"action": "set_unit_behavior", "in_bucket": "raid", "stance": "defensive"})
+# outnumbered: fall back home
+rule(all_(ge("var(bucket_size_raid)", 1), ge("var(raid_outnumbered)", 0.01)),
+     {"action": "move", "in_bucket": "raid", "eligible": RAID_ORDERS, "targets": "home", "together": True})
+# hunt: resources near enemy buildings (but not under their guns), where villagers work; else explore
+hunt_score = (f"10 * min(1, var(enemy_buildings_known_within_2_of_target)) - 100 * var(enemy_buildings_known_{DEFENSIVE}_within_0_of_target)"
+              " - var(target_distance) / 2")
+rule(all_(ge("var(bucket_size_raid)", 1), le("var(raid_outnumbered)", 0)), {"action": "run_bucket", "bucket": "raid"})
+for cat in ("food", "wood"):
+    rule(all_(ge("var(bucket_size_raid)", 1), le("var(raid_outnumbered)", 0)),
+         {"action": "move", "in_bucket": "raid", "eligible": RAID_ORDERS, "targets": "known_resources", "category": cat, "score": hunt_score, "min_score": 5, "together": True})
+# a villager group we beat, not under a defensive building and not guarded by soldiers: attack its space
+raid_score = (f"20 - var(target_distance) - 100 * var(enemy_buildings_known_{DEFENSIVE}_within_0_of_target)"
+              f" - 100 * max(0, var(enemy_units_visible_infantry_within_1_of_target) + {vw} * var(enemy_units_visible_1_within_0_of_target)"
+              f" - var(bucket_size_raid) / {odds})")
+rule(all_(ge("var(bucket_size_raid)", 1), le("var(raid_outnumbered)", 0)),
+     {"action": "attack", "in_bucket": "raid", "eligible": RAID_ORDERS, "targets": "enemy_units", "target_unit_ids": [VIL],
+      "score": raid_score, "min_score": 0, "together": True, "order": "space"})
+
+# ================= scouting: one soldier finds the enemy and stone =================
+rule(all_(ge("var(mil)", 1), any_({"enemies_found_at_most": {"amount": 0}}, le("var(resource_available_stone)", 0))),
+     {"action": "set_bucket", "bucket": "scout", "size": 1, "task": {"action": "explore"}},
+     {"action": "fill_bucket", "bucket": "scout", "unit_types": ["infantry"]},
+     {"action": "run_bucket", "bucket": "scout"})
+rule(all_({"enemies_found_at_least": {"amount": 1}}, ge("var(resource_available_stone)", 1)), {"action": "empty_bucket", "bucket": "scout"})
+
+# ================= assault army: heavies and piercers, run from the script =================
+ao = P['assault_odds']
+def pow_near(side, anchor, within):
+    """fighting power (blunt-equivalents) of one side's soldiers near an anchor"""
+    if side == 'enemy':
+        c = lambda uid: f"var(enemy_units_visible_{uid}_within_{within}_of_{anchor})" if anchor != 'home' else f"var(enemy_units_visible_{uid}_within_{within})"
+    else:
+        c = lambda uid: f"var(population_{uid}_within_{within}_of_{anchor})" if anchor != 'home' else f"var(population_{uid}_within_{within})"
+    return f"({c(11)} + 2 * {c(12)} + 4 * {c(13)})"
+rule(ALWAYS,
+     # enemy power seen recently, fading ~5% a turn so a broken army stops scaring us
+     setv("ePowSeen", "max(var(ePowSeen) * 0.95, var(enemy_units_visible_11) + 2 * var(enemy_units_visible_12) + 4 * var(enemy_units_visible_13))", True),
+     setv("homePow", "2 * var(population_12_within_1) + 4 * var(population_13_within_1)"),
+     setv("army_room_left", "var(free_room)"),
+     setv("maxed", "min(1, max(0, 4 - var(free_room)))"),
+     # launch: enough heavies/piercers gathered at home beat what we've seen, or we're maxed out
+     setv("go", f"min(1, max(0, var(homePow) - {ao} * var(ePowSeen) - 4 * {P['assault_min']} / 2 + 1)) + var(maxed) * {one('var(homePow) - 20')}"),
+     # the assault's local fight: soldiers around it, plus defensive buildings in its space
+     setv("aPowLocal", pow_near('mine', 'army', 1)),
+     setv("aThreat", f"{pow_near('enemy', 'army', 1)} + 6 * var(enemy_buildings_known_{DEFENSIVE}_within_0_of_army) + 0.3 * var(enemy_units_visible_1_within_0_of_army)"),
+     setv("a_outnumbered", f"{one(f'(var(aThreat) * {ao} - var(aPowLocal)) * 10')} * {one('var(bucket_size_army)')}"),
+     # keep assaulting until outnumbered or too few are left; start when "go"
+     setv("assault", f"min(1, max(var(assault) * (1 - var(a_outnumbered)) * {one('var(bucket_size_army) - 3')}, var(go)))", True),
+     {"action": "set_bucket", "bucket": "army", "size": "var(assault) * (var(Hv) + var(Pi))", "task": {"action": "explore"}},
+     {"action": "fill_bucket", "bucket": "army", "unit_ids": [PIERCE, HEAVY], "eligible": ["move", "gather", "attack_unit", "attack_building", "attack_space", "attack_zone"]})
+rule(le("var(assault)", 0), {"action": "empty_bucket", "bucket": "army"})
+ARMY = dict(in_bucket="army", eligible=["move", "attack_unit", "attack_building", "attack_space", "attack_zone"], together=True)
+rule(ge("var(bucket_size_army)", 1), {"action": "set_unit_behavior", "in_bucket": "army", "stance": "aggressive"})
+# lowest priority first; each later rule that finds a target overrides
+rule(ge("var(bucket_size_army)", 1),
+     # nothing known: head for the far side of the map, where the enemy is
+     dict({"action": "move", "targets": "known_resources", "category": "wood", "score": "var(target_distance_home) - var(target_distance) / 2"}, **ARMY),
+     dict({"action": "attack", "targets": "enemy_units", "target_unit_ids": [VIL], "score": "20 - var(target_distance)"}, **ARMY),
+     dict({"action": "attack", "targets": "enemy_buildings", "score": "25 - var(target_distance)"}, **ARMY),
+     dict({"action": "attack", "targets": "enemy_buildings", "target_building_ids": [VC, BARRACKS, REDOUBT, OUTPOST], "score": "30 - var(target_distance)"}, **ARMY),
+     dict({"action": "attack", "targets": "enemy_units", "target_unit_types": ["infantry"], "score": "40 - 5 * var(target_distance)", "min_score": 30}, **ARMY))
+rule(all_(ge("var(bucket_size_army)", 1), ge("var(a_outnumbered)", 1)),
+     dict({"action": "move", "targets": "home"}, **ARMY))
+
+# ================= home defence: every soldier not raiding or assaulting =================
+DEF = dict(exclude_buckets=True, eligible=["move", "attack_unit", "attack_building", "attack_space", "attack_zone"], unit_types=["infantry"])
+rule({"building_count_at_least": {"amount": 1}},
+     dict({"action": "move", "targets": "home", "together": False}, exclude_buckets=True, unit_types=["infantry"]),
+     dict({"action": "attack", "targets": "enemy_units", "score": "20 - 5 * var(target_distance_home)", "min_score": 0}, **DEF))
+# no buildings at all (army-only starts): nothing to defend, so hunt with everything
+rule({"building_count_equals": {"amount": 0}},
+     {"action": "move", "unit_types": ["infantry"], "targets": "unexplored", "together": True},
+     {"action": "attack", "unit_types": ["infantry"], "eligible": ["move", "attack_unit", "attack_space"], "targets": "enemy_units",
+      "score": "0 - var(target_distance) - 2 * var(enemy_units_visible_infantry_within_1_of_target)", "together": True})
+
+with open(OUT, 'w') as f:
+    f.write('{\n  "rules": [\n' + ',\n'.join('    ' + json.dumps(r) for r in rules) + '\n  ]\n}\n')
+print(len(rules), 'rules ->', OUT)
