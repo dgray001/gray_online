@@ -212,7 +212,7 @@ func (p *targetPicker) candidates(view View, from ZoneRef) []candidate {
 			}
 		}
 	case targetsEnemyBuildings, targetsOwnBuildings:
-		buildings := view.VisibleEnemyBuildings()
+		buildings := view.KnownEnemyBuildings()
 		if p.set == targetsOwnBuildings {
 			buildings = view.Buildings()
 		}

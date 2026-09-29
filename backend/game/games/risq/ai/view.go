@@ -283,6 +283,8 @@ type View interface {
 
 	VisibleEnemyUnits() []UnitView
 	VisibleEnemyBuildings() []BuildingView
+	// visible enemy buildings plus the last-seen ones in fogged spaces
+	KnownEnemyBuildings() []BuildingView
 
 	// gatherer_id (0 for none) is excluded from the load counts used to skip nodes about to deplete
 	NearestResource(from ZoneRef, category ResourceCategory, gatherer_id uint64) (ResourceView, bool)

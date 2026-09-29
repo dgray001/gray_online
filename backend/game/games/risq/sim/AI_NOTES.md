@@ -51,7 +51,7 @@ Debug logs (`-debug`) now tag each combat line with the turn and unit/building i
 - `var(name)` looks up this turn's variables, then globals, then built-in counters named after the count conditions with
   their filters after underscores: `population_13`, `population_infantry`, `idle_units_1`, `enemy_units_visible_13_within_2`,
   `building_count_23_complete`, `foundation_count_2_without_builders`, `resource_food`, `resource_remaining_food_within_1`,
-  `bucket_size_<bucket>`, `tech_researched_5` / `resource_available_gold` (1 or 0), `enemy_buildings_visible_1_23`, `land`, ...
+  `bucket_size_<bucket>`, `tech_researched_5` / `resource_available_gold` (1 or 0), `enemy_buildings_known_1_23`, `land`, ...
   Values a script can derive are left out (headroom is `population_limit - population`, `food` is `resource_food`).
   A script variable read before it is set is 0; names that are neither built-in nor set anywhere are reported at load.
 - `within_N` counts around home by default, or around an anchor: `_within_N_of_<bucket>` (the unit nearest the rest of

@@ -62,7 +62,7 @@ func TestBuiltinVarNames(t *testing.T) {
 		"building_count_23_complete", "building_count_2_under_construction", "foundation_count_2_without_builders",
 		"resource_remaining_wood_within_1", "bucket_size_vil_production", "tech_researched_5", "resource_available_gold",
 		"land", "turn", "population_limit", "enemy_units_visible_1_within_1_of_raid", "population_infantry_within_2_of_vil_production",
-		"enemy_buildings_visible_1_23_within_1_of_target", "enemy_buildings_visible", "resource_remaining_food_within_0_of_target",
+		"enemy_buildings_known_1_23_within_1_of_target", "enemy_buildings_known", "resource_remaining_food_within_0_of_target",
 		"target_distance", "target_distance_home"}
 	for _, name := range good {
 		if c, err := builtinCounter(name); err != nil || c == nil {
@@ -131,7 +131,7 @@ func TestAnchorsAndTargetPicker(t *testing.T) {
 		t.Errorf("raiders at the raid center = %v, want 2", got)
 	}
 	attack, err := parseAction(map[string]any{"action": "attack", "in_bucket": "raid", "targets": "enemy_units", "target_unit_ids": []any{1.0},
-		"score":     "10 - var(target_distance) - 20 * var(enemy_buildings_visible_1_within_1_of_target) - 3 * var(enemy_units_visible_1_within_0_of_target)",
+		"score":     "10 - var(target_distance) - 20 * var(enemy_buildings_known_1_within_1_of_target) - 3 * var(enemy_units_visible_1_within_0_of_target)",
 		"min_score": 0.0, "together": true})
 	if err != nil {
 		t.Fatal(err)
@@ -173,6 +173,7 @@ func TestAnchorsAndTargetPicker(t *testing.T) {
 
 func (f fakeView) VisibleEnemyUnits() []UnitView         { return f.enemies }
 func (f fakeView) VisibleEnemyBuildings() []BuildingView { return f.enemy_buildings }
+func (f fakeView) KnownEnemyBuildings() []BuildingView   { return f.enemy_buildings }
 func (f fakeView) Buildings() []BuildingView             { return f.buildings }
 func (f fakeView) IdleUnits() []UnitView                 { return f.units }
 func (f fakeView) EligibleUnits(...OrderKind) []UnitView { return f.units }

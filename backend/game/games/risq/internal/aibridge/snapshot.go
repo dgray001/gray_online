@@ -111,6 +111,8 @@ type snapSpace struct {
 	Visibility    uint8          `json:"visibility"`
 	Ownership     *int           `json:"ownership"`
 	Zones         [][]snapZone   `json:"zones"`
+	// buildings in the space: live ones when visible, the last-seen ones when fogged
+	Buildings []snapBuilding `json:"buildings"`
 }
 
 func parseAiSnapshot(game gin.H) (*snapGame, error) {

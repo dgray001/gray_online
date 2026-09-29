@@ -489,6 +489,27 @@ func (v *aiView) VisibleEnemyBuildings() []ai.BuildingView {
 	return sortBuildingViews(buildings)
 }
 
+// Visible enemy buildings plus the ones last seen in spaces now under fog (they may since have been destroyed)
+func (v *aiView) KnownEnemyBuildings() []ai.BuildingView {
+	seen := make(map[uint64]bool)
+	buildings := make([]ai.BuildingView, 0)
+	for _, b := range v.VisibleEnemyBuildings() {
+		seen[b.InternalID] = true
+		buildings = append(buildings, b)
+	}
+	for _, space := range v.spaces {
+		for i := range space.Buildings {
+			b := &space.Buildings[i]
+			if b.PlayerId == v.playerId() || seen[b.InternalId] {
+				continue
+			}
+			seen[b.InternalId] = true
+			buildings = append(buildings, v.buildingView(b))
+		}
+	}
+	return sortBuildingViews(buildings)
+}
+
 // Returns the node's view, per-gatherer turn rate, and gatherer capacity
 func (v *aiView) gatherableAt(entry snapZoneEntry, category ai.ResourceCategory) (ai.ResourceView, int, int, bool) {
 	if r := entry.zone.Resource; r != nil {

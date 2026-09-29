@@ -159,21 +159,21 @@ func fixedCounter(c counter) func(map[string]any) (counter, error) {
 }
 
 var counterParsers = map[string]func(obj map[string]any) (counter, error){
-	"turn":                    fixedCounter(func(v View, _ *Internals) float64 { return float64(v.TurnNumber()) }),
-	"num_players":             fixedCounter(func(v View, _ *Internals) float64 { return float64(v.NumPlayers()) }),
-	"enemies_found":           fixedCounter(func(v View, _ *Internals) float64 { return float64(v.EnemiesFound()) }),
-	"land":                    fixedCounter(func(v View, _ *Internals) float64 { return float64(v.OwnedSpaces()) }),
-	"score_lead":              fixedCounter(func(v View, _ *Internals) float64 { return float64(v.Score() - v.BestEnemyScore()) }),
-	"population_headroom":     fixedCounter(populationHeadroom),
-	"resource":                parseResourceCounter,
-	"resource_remaining":      parseResourceRemainingCounter,
-	"population":              parsePopulationCounter,
-	"idle_units":              parseIdleUnitsCounter,
-	"enemy_units_visible":     parseEnemyUnitsCounter,
-	"enemy_buildings_visible": parseEnemyBuildingsCounter,
-	"building_count":          parseBuildingCounter,
-	"foundation_count":        parseFoundationCounter,
-	"bucket_size":             parseBucketSizeCounter,
+	"turn":                  fixedCounter(func(v View, _ *Internals) float64 { return float64(v.TurnNumber()) }),
+	"num_players":           fixedCounter(func(v View, _ *Internals) float64 { return float64(v.NumPlayers()) }),
+	"enemies_found":         fixedCounter(func(v View, _ *Internals) float64 { return float64(v.EnemiesFound()) }),
+	"land":                  fixedCounter(func(v View, _ *Internals) float64 { return float64(v.OwnedSpaces()) }),
+	"score_lead":            fixedCounter(func(v View, _ *Internals) float64 { return float64(v.Score() - v.BestEnemyScore()) }),
+	"population_headroom":   fixedCounter(populationHeadroom),
+	"resource":              parseResourceCounter,
+	"resource_remaining":    parseResourceRemainingCounter,
+	"population":            parsePopulationCounter,
+	"idle_units":            parseIdleUnitsCounter,
+	"enemy_units_visible":   parseEnemyUnitsCounter,
+	"enemy_buildings_known": parseEnemyBuildingsCounter,
+	"building_count":        parseBuildingCounter,
+	"foundation_count":      parseFoundationCounter,
+	"bucket_size":           parseBucketSizeCounter,
 }
 
 func populationHeadroom(view View, internals *Internals) float64 {
@@ -268,7 +268,7 @@ func parseEnemyBuildingsCounter(obj map[string]any) (counter, error) {
 	}
 	return func(v View, i *Internals) float64 {
 		n := 0
-		for _, b := range v.VisibleEnemyBuildings() {
+		for _, b := range v.KnownEnemyBuildings() {
 			if (len(ids) == 0 || ids[b.BuildingID]) && near.contains(v, i, b.Location) {
 				n++
 			}
