@@ -347,13 +347,21 @@ def pow_near(side, anchor, within):
     return f"({c(11)} + 2 * {c(12)} + 4 * {c(13)})"
 rule(ALWAYS,
      # the strongest enemy army we have seen: an army we haven't beaten is still out there, so it fades only slowly
-     setv("ePowSeen", "max(var(ePowSeen) * 0.99, var(enemy_units_visible_11) + 2 * var(enemy_units_visible_12) + 4 * var(enemy_units_visible_13))", True),
-     setv("homePow", pow_near('mine', 'home', 1)),
+     # the enemy army keeps growing after we last saw it (about 0.2 power a turn per known barracks or Redoubt, from
+     # watching v0.5) and loses some in fights (2% a turn), never more than their population room allows
+     setv("eGrowth", f"0.2 * (var(enemy_buildings_known_{BARRACKS}) + var(enemy_buildings_known_{REDOUBT}))"),
+     setv("ePowSeen", "min(2 * max(0, var(population_max) - var(eV)), max(var(ePowSeen) * 0.98 + var(eGrowth),"
+                      " var(enemy_units_visible_11) + 2 * var(enemy_units_visible_12) + 4 * var(enemy_units_visible_13)))", True),
+     # techs: theirs count once we know of a Blacksmith, ours by what we researched (~25% for attack + armor, hardcoded)
+     setv("eTech", f"1 + 0.25 * {one(f'var(enemy_buildings_known_{SMITH})')}"),
+     setv("myTech", "1 + 0.125 * (var(tech_researched_2) + var(tech_researched_3))"),
+     setv("ePowEst", "var(ePowSeen) * var(eTech)"),
+     setv("homePow", f"{pow_near('mine', 'home', 1)} * var(myTech)"),
      # launch: the soldiers gathered at home beat what we have seen, and are a real army
-     setv("go", one(f"var(homePow) - {ao} * var(ePowSeen) + 1") + " * " + one(f"var(homePow) - {P['assault_min']} + 1")),
+     setv("go", one(f"var(homePow) - {ao} * var(ePowEst) + 1") + " * " + one(f"var(homePow) - {P['assault_min']} + 1")),
      # the army's local fight: soldiers within a space of it, plus defensive buildings in its space
-     setv("aPowLocal", pow_near('mine', 'army', 1)),
-     setv("aThreat", f"{pow_near('enemy', 'army', 1)} + 6 * var(enemy_buildings_known_{DEFENSIVE}_within_0_of_army) + {vw} * var(enemy_units_visible_1_within_0_of_army)"),
+     setv("aPowLocal", f"{pow_near('mine', 'army', 1)} * var(myTech)"),
+     setv("aThreat", f"{pow_near('enemy', 'army', 1)} * var(eTech) + 6 * var(enemy_buildings_known_{DEFENSIVE}_within_0_of_army) + {vw} * var(enemy_units_visible_1_within_0_of_army)"),
      setv("a_outnumbered", f"{one(f'(var(aThreat) * {ao} - var(aPowLocal)) * 10')} * {one('var(bucket_size_army)')}"),
      # keep attacking until locally outnumbered (then everyone regroups at home) or too few are left
      setv("assault", f"min(1, max(var(assault) * (1 - var(a_outnumbered)) * {one('var(bucket_size_army) - 3')}, var(go)))", True),

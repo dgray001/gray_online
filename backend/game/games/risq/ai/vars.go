@@ -269,7 +269,7 @@ func parseVarFilters(base string, rest string, obj map[string]any) error {
 func finishVarFilters(base string, ids []any, obj map[string]any) error {
 	if len(ids) > 0 {
 		switch base {
-		case "building_count", "foundation_count":
+		case "building_count", "foundation_count", "enemy_buildings_known":
 			obj["building_ids"] = ids
 		case "tech_researched":
 			obj["tech_id"] = ids[0]

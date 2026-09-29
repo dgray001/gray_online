@@ -256,3 +256,14 @@ func TestAttackResumeQueuesTheJobBehind(t *testing.T) {
 		t.Fatalf("expected the space attack then the gather queued behind it, got %+v", orders)
 	}
 }
+
+func TestEnemyBuildingsKnownFiltersByBuildingID(t *testing.T) {
+	view := fakeView{enemy_buildings: []BuildingView{{BuildingID: 22, Location: at(1, 0)}, {BuildingID: 2, Location: at(1, 0)}, {BuildingID: 3, Location: at(2, 0)}}}
+	internals := &Internals{}
+	if got := internals.lookupVar(view, "enemy_buildings_known_22"); got != 1 {
+		t.Errorf("enemy_buildings_known_22 = %v, want only the barracks (1)", got)
+	}
+	if got := internals.lookupVar(view, "enemy_buildings_known"); got != 3 {
+		t.Errorf("enemy_buildings_known = %v, want all 3", got)
+	}
+}
