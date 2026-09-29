@@ -35,6 +35,7 @@ run both seat orders. Results carry a 5-turn `Timeline` (units, buildings, resou
 Debug logs (`-debug`) now tag each combat line with the turn and unit/building ids.
 
 ## Ideas for v0.6
+- Instead of deleting surplus blunts when pop-capped (to make room for heavies), send them on an attack and let them die.
 - Villagers still never garrison or flee.
 - Finish faster: a hunter squad for stragglers once the main army has won.
 - v0.4's remaining wins are games where its own heavies sit on its Redoubt zone; raze the Redoubt earlier.
