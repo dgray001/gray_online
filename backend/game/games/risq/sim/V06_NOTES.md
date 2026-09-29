@@ -10,15 +10,15 @@ The evaluator (`inputs/eval.json`, 10 maps x 30 games to turn 100, seats swapped
 
 | | v0.6 | v0.5 |
 |---|---|---|
-| wins (crush, or more units at turn 100) | 75.0% | ~24% |
-| crushes | 92 | 13 |
-| kills / lost per game | 80 / 62 | 62 / 80 |
-| villager idle | 0.9% | 8.9% |
-| Village Center idle, first 20 turns | 0.1% | 15.9% |
-| villagers / soldiers at the end | 39 / 37 | 21 / 13 |
+| wins (crush, or more units at turn 100) | 82.3% | ~17% |
+| crushes | 80 | 12 |
+| kills / lost per game | 87 / 55 | 55 / 87 |
+| villager idle | 0.8% | ~9% |
+| Village Center idle, first 20 turns | 0.1% | ~16% |
+| villagers / soldiers at the end | 41 / 40 | ~20 / ~13 |
 
-Wins per map (of 30): ring 30, triangle 30, sim_rich 30, rectangle 28, sim_gold 24, default 23, sim_close 20,
-sim_wide 20, sim_advanced 13, sim_army 7.
+Wins per map (of 30): ring 30, triangle 30, sim_rich 29, sim_gold 28, rectangle 27, default 26, sim_wide 26,
+sim_advanced 22, sim_close 21, sim_army 8.
 
 The economy is solved for now: nonstop villagers to ~50, no idle VC early, production buildings when income can keep
 them busy, techs well before turn 50. What is left is fighting (see "Open problems").
@@ -108,11 +108,11 @@ Analysis helpers in `sim/tools/`: `engagements.py` (fights, committed soldiers, 
 
 ## Open problems (in rough priority order)
 
-1. **Overkill inside a turn.** The AI can distribute targets only at the start of a turn, from what it sees. Big fights
-   usually start mid-turn when the enemy walks in; from then on targets come from the engine's aggressive-stance
-   auto-targeting (and `attack_space`/`attack_zone`), which sends everyone at the same lowest-id unit: 70-80% of our
-   damage is wasted in big fights. Proposed: a unit-group "spread" behaviour in the engine for auto-targeting and
-   space/zone attacks. To be discussed before implementing.
+1. **Overkill inside a turn.** Soldiers sharing a space with enemy soldiers now get script-distributed targets (with
+   staggered follow-ups) and don't drop them when hit, which took overkill from ~55-70% to ~35-45% in the replays and
+   the win rate from 75% to 82%. What's left: the first turn of a fight when the enemy walks in mid-turn (targets then
+   come from the engine's stance auto-targeting, all on the same lowest-id unit), and `attack_space`/`attack_zone`
+   picks. Proposed: a unit-group "spread" behaviour in the engine for those. To be discussed before implementing.
 2. **The army splits across spaces** and parts meet the enemy's main force alone.
 3. **sim_army (no buildings, 7/30)** and **sim_advanced (13/30)**: pure army fights and heavy-heavy compositions; both
    hinge on 1 and 2 plus unit matchups (blunts into heavies).
