@@ -30,9 +30,9 @@ type mapScriptContext struct {
 	player_starts []playerStartInfo
 	// radius (in spaces) of each player start area, set by the player_starts step
 	player_area_size int
-	regions       map[string]map[uint]bool
-	vars          map[string]float64
-	shape         string
+	regions          map[string]map[uint]bool
+	vars             map[string]float64
+	shape            string
 }
 
 func recommendedBoardSize(num_players int) uint16 {
