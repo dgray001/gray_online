@@ -53,11 +53,17 @@ func (p *RisqPlayer) stopAi() {
 	}
 }
 
+// ai config used for "default" and as the fallback when a requested config is unreadable
+const default_ai_config = "v0.5"
+
 func (p *RisqPlayer) createAiModel(config_path string) {
+	if config_path == "" || config_path == "default" {
+		config_path = default_ai_config
+	}
 	data, read_err := defs.ReadConfigFile("ai", config_path+".json")
 	if read_err != nil {
 		fmt.Fprintln(os.Stderr, "ai config", config_path, "unreadable, using default:", read_err)
-		data, read_err = defs.ReadConfigFile("ai", "default.json")
+		data, read_err = defs.ReadConfigFile("ai", default_ai_config+".json")
 	}
 	if read_err != nil {
 		fmt.Fprintln(os.Stderr, "default ai config unreadable:", read_err)
