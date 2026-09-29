@@ -71,11 +71,34 @@ func computeGatherAllotments(orderables []Orderable) map[*RisqUnit]float64 {
 	}
 	allotments := make(map[*RisqUnit]float64)
 	for source, demands := range by_source {
-		for unit, amount := range quantizeAllotments(waterFillGather(demands, source.gatherResourcesLeft())) {
+		granted, denied := grantGatherSlots(source, demands)
+		for unit, amount := range quantizeAllotments(waterFillGather(granted, source.gatherResourcesLeft())) {
 			allotments[unit] = amount
+		}
+		for _, d := range denied {
+			allotments[d.unit] = gatherDenied
 		}
 	}
 	return allotments
+}
+
+// Allotment marking a gatherer that found no free slot at its source this tick
+const gatherDenied = -1.0
+
+// Only a source's capacity worth of gatherers work it: units that held a slot last tick keep it, then the lowest ids
+func grantGatherSlots(source Gatherable, demands []gatherDemand) ([]gatherDemand, []gatherDemand) {
+	sort.Slice(demands, func(i, j int) bool {
+		hi, hj := demands[i].unit.gather_slot == source, demands[j].unit.gather_slot == source
+		if hi != hj {
+			return hi
+		}
+		return demands[i].unit.internal_id < demands[j].unit.internal_id
+	})
+	capacity := source.gatherCapacity()
+	if len(demands) <= capacity {
+		return demands, nil
+	}
+	return demands[:capacity], demands[capacity:]
 }
 
 // Rounds each gatherer's allotment to gatherRoundingPlaces while conserving their exact sum, so the total

@@ -53,6 +53,16 @@ func hashOrders(h io.Writer, orders []*RisqOrder) {
 	}
 }
 
+func hashGatherSlot(source Gatherable) string {
+	switch s := source.(type) {
+	case *RisqResource:
+		return fmt.Sprintf("r%d", s.internal_id)
+	case *RisqBuilding:
+		return fmt.Sprintf("b%d", s.internal_id)
+	}
+	return "-"
+}
+
 func hashGatherPoint(h io.Writer, gp *RisqGatherPoint) {
 	if gp != nil {
 		fmt.Fprintf(h, " gp%d:%d:%d:%d", gp.location_kind, gp.location_id, gp.object_type, gp.object_id)
@@ -68,7 +78,7 @@ func (r *GameRisq) stateHash(dump io.Writer) uint64 {
 		if u.garrisoned_in != nil {
 			garrison = u.garrisoned_in.internal_id
 		}
-		fmt.Fprintf(h, "u%d p%d t%d z%s h%s s%d g%d d%t sn%d bk%t", id, u.player_id, u.unit_id, hashZone(u.zone), hashFloat(u.cs.health), u.current_stamina, garrison, u.deleted, u.stance, u.attack_back)
+		fmt.Fprintf(h, "u%d p%d t%d z%s h%s s%d g%d d%t sn%d bk%t gs%s", id, u.player_id, u.unit_id, hashZone(u.zone), hashFloat(u.cs.health), u.current_stamina, garrison, u.deleted, u.stance, u.attack_back, hashGatherSlot(u.gather_slot))
 		hashBehavior(h, &u.orderableBase)
 		fmt.Fprint(h, ";")
 		hashOrders(h, u.order_queue.active_orders)

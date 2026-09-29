@@ -73,29 +73,13 @@ func (u *RisqUnit) orderReceivable(o *RisqOrder, risq *GameRisq) bool {
 		if u.unitType() != defs.UnitType_ECONOMIC || zone == nil {
 			return false
 		}
-		if zone.resource != nil {
-			resource, ok := zone.resourceKnownTo(u.player_id)
-			if !ok || resource.resources_left <= 0 {
-				return false
-			}
-			for _, ao := range u.order_queue.active_orders {
-				if ao.order_type == defs.OrderType_UnitGather && ao.target_id == o.target_id {
-					return true
-				}
-			}
-			return zone.resourceGatheringUnitCount(risq) < resource.gather_capacity
+		// judged on what the player knows: a resource it last saw in fog stays a valid target until it looks again
+		if resource, ok := zone.resourceKnownTo(u.player_id); ok {
+			return resource.resources_left > 0
 		}
 		if b := zone.building; b != nil {
 			config := defs.BuildingConfigs[b.building_id]
-			if !config.IsGatherable() || b.player_id != u.player_id || b.underConstruction() || b.resources_left <= 0 {
-				return false
-			}
-			for _, ao := range u.order_queue.active_orders {
-				if ao.order_type == defs.OrderType_UnitGather && ao.target_id == o.target_id {
-					return true
-				}
-			}
-			return b.gatheringUnitCount(risq) < config.Gather.Gather_capacity
+			return config.IsGatherable() && b.player_id == u.player_id && !b.underConstruction() && b.resources_left > 0
 		}
 		return false
 	case defs.OrderType_UnitRepair:
@@ -176,6 +160,9 @@ func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 		}
 	case defs.OrderType_UnitGather:
 		_, zone := invertZoneKey(uint(o.target_id), risq)
+		if u.gatherSlotsVisiblyFull(zone, risq) {
+			return OrderStatus_Cancelled
+		}
 		reachable := u.zone == zone || u.canReach(zone, defs.RisqRange_ZONE)
 		if resource, ok := zone.resourceKnownTo(u.player_id); ok && resource.resources_left > 0 {
 			return reachableStatus(reachable)
@@ -300,4 +287,13 @@ func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 		}
 	}
 	return OrderStatus_Executed
+}
+
+// True when u doesn't hold a slot at the zone's source and the holders its player can see already fill it
+func (u *RisqUnit) gatherSlotsVisiblyFull(zone *RisqZone, risq *GameRisq) bool {
+	source := zoneGatherSource(zone)
+	if source == nil || u.gather_slot == source {
+		return false
+	}
+	return gatherSlotHolders(source, zone, risq, u.player_id, u) >= source.gatherCapacity()
 }

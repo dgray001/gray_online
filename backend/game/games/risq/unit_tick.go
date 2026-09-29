@@ -142,6 +142,9 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 	if !u.intent.hasIntent() {
 		return
 	}
+	if _, gathering := u.intent.detail.(*GatherIntent); !gathering {
+		u.gather_slot = nil
+	}
 	switch detail := u.intent.detail.(type) {
 	case *MoveIntent:
 		util.DebugLog.Printf("Moving unit %d %s to zone%s in space %s tick=%d",
@@ -158,6 +161,11 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 		}
 	case *GatherIntent:
 		amount, ok := risq.gather_allotments[u]
+		if amount == gatherDenied {
+			u.gather_slot = nil
+			return
+		}
+		u.gather_slot = detail.source
 		if !ok {
 			amount = float64(u.intent.intent_cost) * (float64(detail.source.gatherSpeed()) / gatherRateStaminaBase)
 		}

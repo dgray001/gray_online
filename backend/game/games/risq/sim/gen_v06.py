@@ -77,7 +77,8 @@ rule(ALWAYS, *(setv(n, f"max(var({n}) - {P['decay']}, var(enemy_units_visible_{s
 PR = {VIL: 1.0, BLUNT: 1.0, PIERCE: 0.71, HEAVY: 0.25}
 HOUSE_POP, SPACE_GOLD, FARM_WORKERS = 5, 2, 2
 HOUSE_BUILD_STAMINA = 14
-FARM_RENEW_WOOD = 60  # no renew-cost lookup yet
+FARM_RENEW_WOOD = 60
+WILD_REACH = 2  # spaces from home villagers walk for wild food once farms are possible  # no renew-cost lookup yet
 RES = ("food", "wood", "stone", "gold")
 def uc(r, i): return f"var(unit_cost_{r}_{i})"
 def bc(r, i): return f"var(building_cost_{r}_{i})"
@@ -152,7 +153,10 @@ rule(ALWAYS,
      setv("vil_stamina", "8 + 2 * var(farming)"),
      setv("house_builders", f"{one('var(house_want) * 2')} * max(1, {HOUSE_BUILD_STAMINA} / (var(vil_stamina) * max(0.5, var(turns_left) - 0.5)))"),
      # farms for the food workers that nearby wild food can't carry (~300 food per worker, few gather slots)
-     setv("farm_want", f"var(farming) * max(0, max(0, var(food_workers) - min(8, var(resource_remaining_food_within_1) / 300)) / {FARM_WORKERS} + 1 - (var(building_count_3) - var(building_count_3_depleted)))"),
+     # wild food close enough to walk to (villagers carry nothing back, so distance is a one-time walk; farther is enemy-side risk),
+     # in villagers it keeps busy over the horizon; farms cover the rest of the food workers
+     setv("wild_workers", f"var(resource_remaining_food_within_{WILD_REACH}) / (var(rate) * {H})"),
+     setv("farm_want", f"var(farming) * max(0, max(0, var(food_workers) - var(wild_workers)) / {FARM_WORKERS} + 1 - (var(building_count_3) - var(building_count_3_depleted)))"),
      )
 
 # ================= resource rates and buckets =================
@@ -193,6 +197,11 @@ rule(ALWAYS,
      setv("spare_food", "(var(food_need) + 1) / (var(food_need) + var(wood_need) + 2)"),
      setv("w_food", "var(w_food) + var(spare) * var(spare_food)"),
      setv("w_wood", "var(w_wood) + var(spare) * (1 - var(spare_food))"),
+     # once farms are possible, food work is only where farms and nearby wild food have room; the rest cuts wood (which builds the farms)
+     setv("food_slots", f"var(farming) * ({FARM_WORKERS} * (var(building_count_3_complete) - var(building_count_3_depleted)) + var(wild_workers)) + (1 - var(farming)) * 1000"),
+     setv("food_over", "max(0, var(w_food) - var(food_slots))"),
+     setv("w_food", "var(w_food) - var(food_over)"),
+     setv("w_wood", "var(w_wood) + var(food_over)"),
      *({"action": "empty_bucket", "bucket": c} for c in RES),
      # sizes round down (food rounds to nearest), so together they never eat into the builders
      *({"action": "set_bucket", "bucket": c, "size": f"max(0, var(w_{c}) - {0 if c == 'food' else 0.49})",
