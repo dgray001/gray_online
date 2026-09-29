@@ -24,7 +24,8 @@ P = dict(
     early_blunts=3,
     invest_share=0.3,
     vil_crush_odds=2,  # villagers fight only with this much more strength than the enemy soldiers in their space
-    sustain=15,        # a production building is only worth it if we can keep it busy this many turns
+    sustain=15,
+    plan_turns=3,      # turns to gather for a building that has been judged worth it        # a production building is only worth it if we can keep it busy this many turns
     lead=5,            # turns ahead we project income when deciding to build  # share of gatherers guaranteed to one-off investments when there are any
 )
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config', 'ai', 'v0.6.json')
@@ -78,7 +79,8 @@ rule(ALWAYS, *(setv(n, f"max(var({n}) - {P['decay']}, var(enemy_units_visible_{s
 PR = {VIL: 1.0, BLUNT: 1.0, PIERCE: 0.71, HEAVY: 0.25}
 HOUSE_POP, SPACE_GOLD, FARM_WORKERS = 5, 2, 2
 HOUSE_BUILD_STAMINA = 14
-FARM_RENEW_WOOD = 60
+FARM_RENEW_WOOD, FARM_FOOD = 60, 200  # no renew-cost lookup yet; a farm holds 200 food
+MAX_NEW_FARMS = 3  # farm foundations started per turn
 WILD_REACH = 2  # spaces from home villagers walk for wild food once farms are possible  # no renew-cost lookup yet
 RES = ("food", "wood", "stone", "gold")
 def uc(r, i): return f"var(unit_cost_{r}_{i})"
@@ -164,21 +166,31 @@ rule(ALWAYS,
 
 # ---- what gets built this turn, and the villagers each build takes ----
 def at_least_1(x): return one(f"({x} - 0.999) * 1000")
-BUILD_FIRES = {
+def affordable(b):
+    """1 once the bank covers every part of the building's cost (a foundation can't start before)"""
+    return " * ".join(at_least_1(f"{r} - {bc(r, b)} + 1") for r in RES)
+_BUILD_FIRES = {
     "house":    (HOUSE,    at_least_1("(var(house_want) - var(foundation_count_2)) * 2"), "var(house_builders)"),
     "vc":       (VC,       at_least_1("var(vc_want)") + " * " + at_least_1("1 - var(foundation_count_1)"), "4"),
     "barracks": (BARRACKS, at_least_1("var(barracks_want)") + " * " + at_least_1("1 - var(foundation_count_22)"), "3"),
     "redoubt":  (REDOUBT,  at_least_1("var(redoubt_want)") + " * " + at_least_1("1 - var(foundation_count_23)"), "4"),
     "smith":    (SMITH,    at_least_1("var(smith_want)") + " * " + at_least_1("1 - var(foundation_count_11)"), "2"),
-    "farm":     (FARM,     at_least_1("(var(farm_want) - var(foundation_count_3)) * 2") + " * " + at_least_1("2 - var(foundation_count_3)"), "2"),
+    # farms go up in parallel, as many as are wanted (a few per turn)
+    **{f"farm{i}": (FARM, at_least_1(f"(var(farm_want) - var(foundation_count_3) - {i}) * 2"), "2") for i in range(MAX_NEW_FARMS)},
     # land pays gold: claim a space for every 2 gold/turn we are short, once we can defend it
     "outpost":  (OUTPOST,  at_least_1("var(barracks)") + " * " + at_least_1("1 - var(foundation_count_21)") + " * " + at_least_1("var(outpost_want)"), "1"),
 }
 
+# a build fires, and holds villagers back, only once it can be paid for; until then the plan gathers for it
+BUILD_FIRES = {n: (b, cond + " * " + affordable(b), k) for n, (b, cond, k) in _BUILD_FIRES.items()}
+
 # ================= resource rates and buckets =================
 rule(ALWAYS,
      *(setv(f"{r}_rate", f"var(vil_rate) * {uc(r, VIL)} * {PR[VIL]} + var(barracks_B) * {uc(r, BLUNT)} * {PR[BLUNT]}"
-                         f" + var(barracks_P) * {uc(r, PIERCE)} * {PR[PIERCE]} + var(redoubt_H) * {uc(r, HEAVY)} * {PR[HEAVY]}") for r in RES),
+                         f" + var(barracks_P) * {uc(r, PIERCE)} * {PR[PIERCE]} + var(redoubt_H) * {uc(r, HEAVY)} * {PR[HEAVY]}"
+                         # upkeep that runs as long as production does: housing for it, and renewing the farms that feed it
+                         f" + var(prod_rate) * {bc(r, HOUSE)} / {HOUSE_POP}"
+                         + (f" + min(var(food_workers), {FARM_WORKERS} * var(building_count_3_complete)) * var(rate) * {FARM_RENEW_WOOD} / {FARM_FOOD}" if r == 'wood' else "")) for r in RES),
      # techs we intend: Farming, and the Blacksmith techs once one stands
      *(setv(f"tech_{r}", f"(1 - var(farming)) * {tc(r, FARMING)} + {one('var(smiths) + var(smith_want)')} * ((1 - var(pikes)) * {tc(r, PIKES)}"
                          f" + (1 - var(tech_researched_2)) * {tc(r, ATTACK)} + (1 - var(tech_researched_3)) * {tc(r, ARMOR)})") for r in RES),
@@ -200,8 +212,11 @@ rule(ALWAYS,
      setv("builders", "min(var(vils), " + " + ".join(f"var(fire_{n}) * {k}" for n, (_, _, k) in BUILD_FIRES.items())
                       + f" + {one('var(foundation_count_without_builders)')})"),
      setv("workers", "max(0, var(vils) - var(builders))"),
-     # continuous production is fed first; one-off investments get a guaranteed share and whoever is left
-     *(setv(f"rf_{r}", f"min(var({r}_need), var({r}_rate)) / var(rate)") for r in RES),
+     # buildings already judged worth it are part of the plan: funded like continuous production, over a few turns
+     *(setv(f"planned_{r}", f"var(vc_want) * {bc(r, VC)} + var(barracks_want) * {bc(r, BARRACKS)} + var(redoubt_want) * {bc(r, REDOUBT)}"
+                            f" + var(smith_want) * {bc(r, SMITH)} + var(farm_want) * {bc(r, FARM)} + var(house_want) * {bc(r, HOUSE)}") for r in RES),
+     # continuous production and planned buildings are fed first; speculative saving gets a guaranteed share and whoever is left
+     *(setv(f"rf_{r}", f"min(var({r}_need), var({r}_rate) + max(0, var(planned_{r}) - {r}) / {P['plan_turns']}) / var(rate)") for r in RES),
      *(setv(f"lf_{c}", f"max(0, var({c}_need) / var(rate) - var(rf_{c}))") for c in RES),
      # the guarantee grows with the economy: a young one puts nearly everyone on production
      setv("maturity", "min(1, var(vils) / max(1, var(vil_goal)))"),
@@ -218,7 +233,9 @@ rule(ALWAYS,
      setv("w_wood", "var(w_wood) + var(spare) * (1 - var(spare_food))"),
      # once farms are possible, food work is only where farms and nearby wild food have room; the rest cuts wood (which builds the farms)
      setv("food_slots", f"var(farming) * ({FARM_WORKERS} * (var(building_count_3_complete) - var(building_count_3_depleted)) + var(wild_workers)) + (1 - var(farming)) * 1000"),
-     setv("food_over", "max(0, var(w_food) - var(food_slots))"),
+     # food workers without a slot cut wood only as far as the wanted farms are short of it; otherwise they keep on food
+     setv("farm_wood_short", f"max(0, var(farm_want) * {bc('wood', FARM)} + var(building_count_3_depleted) * {FARM_RENEW_WOOD} - wood)"),
+     setv("food_over", "min(max(0, var(w_food) - var(food_slots)), var(farm_wood_short) / (var(rate) * 2))"),
      setv("w_food", "var(w_food) - var(food_over)"),
      setv("w_wood", "var(w_wood) + var(food_over)"),
      *({"action": "empty_bucket", "bucket": c} for c in RES),
@@ -238,7 +255,7 @@ rule(ALWAYS,
 # (8 villagers is roughly when Farming's villager bonuses start paying for themselves)
 rule(all_(ge("var(vils)", 8), le("var(farming)", 0)), {"action": "research", "tech_id": FARMING, "queue": 2})
 rule(ge("var(vil_want)", 1), {"action": "create", "unit_id": VIL, "queue": 2})
-for n in ("house", "vc", "barracks", "redoubt", "smith", "farm"):
+for n in ("house", "vc", "barracks", "redoubt", "smith", *(f"farm{i}" for i in range(MAX_NEW_FARMS))):
     b, _, k = BUILD_FIRES[n]
     rule(ge(f"var(fire_{n})", 1), build(b, k))
 rule(ge("var(fire_outpost)", 1), build(OUTPOST, 1))
@@ -255,7 +272,9 @@ rule(ALWAYS, setv("gold_surplus", f"gold - var(gold_rate) * {H} - var(tech_gold)
 rule(all_(ge("var(redoubts)", 1), ge(f"var(gold_surplus) - {merc(BLUNT)}", 0)), {"action": "research", "tech_id": MERCS, "queue": 2})
 rule(ALWAYS, setv("hire_B", f"var(gold_surplus) / {merc(BLUNT)}"), setv("hire_P", f"var(gold_surplus) / {merc(PIERCE)}"))
 rule(all_(ge("var(tH) - var(Hv)", 1), ge("var(headroom)", 1)), {"action": "create", "unit_id": HEAVY, "queue": 2})
-rule(all_(ge("var(needP)", 1), any_(ge("var(pikes)", 1), ge("var(eH)", 2))), {"action": "create", "unit_id": PIERCE, "queue": 2})
+# each barracks queues piercers only for their share of what the barracks should make; blunts fill the rest
+rule(all_(ge("var(needP)", 1), ge("2 * var(needP) / max(1, var(needB) + var(needP))", 0.5), any_(ge("var(pikes)", 1), ge("var(eH)", 2))),
+     {"action": "create", "unit_id": PIERCE, "queue": "2 * var(needP) / max(1, var(needB) + var(needP))"})
 rule(ge("var(needB)", 1), {"action": "create", "unit_id": BLUNT, "queue": 2})
 rule(all_(ge("var(hire_P)", 1), ge("var(needP) - var(needB)", 0.01)), {"action": "hire", "unit_id": PIERCE, "max": "var(hire_P)"})
 rule(all_(ge("var(hire_B)", 1), ge("var(needB) - var(needP)", 0)), {"action": "hire", "unit_id": BLUNT, "max": "var(hire_B)"})
