@@ -1,7 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
+	"math"
 	"os"
 )
 
@@ -24,11 +27,16 @@ func loadScenario(path string) (Scenario, error) {
 		return Scenario{}, err
 	}
 	var s Scenario
-	if err := json.Unmarshal(data, &s); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&s); err != nil {
 		return Scenario{}, err
 	}
 	if s.Iterations < 1 {
 		s.Iterations = 1
+	}
+	if s.MaxTurns > math.MaxUint16 {
+		return Scenario{}, fmt.Errorf("max_turns %d exceeds %d", s.MaxTurns, math.MaxUint16)
 	}
 	if s.MaxTurns < 1 {
 		s.MaxTurns = 300

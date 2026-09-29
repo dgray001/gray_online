@@ -1,6 +1,8 @@
 package ai
 
 import (
+	"fmt"
+	"os"
 	"sort"
 )
 
@@ -91,6 +93,15 @@ func (a *runBucketAction) ToOrders(view View, internals *Internals) []Order {
 	if a.when_full && len(b.Members) < b.Desired {
 		return nil
 	}
+	if internals.bucket_depth >= internals.bucketDepthLimit() {
+		if !internals.bucket_depth_warn {
+			internals.bucket_depth_warn = true
+			fmt.Fprintln(os.Stderr, "ai: run_bucket", a.bucket, "skipped, nested past max_bucket_depth", internals.bucketDepthLimit())
+		}
+		return nil
+	}
+	internals.bucket_depth++
+	defer func() { internals.bucket_depth-- }()
 	return b.Task.ToOrders(&bucketView{View: view, members: b.Members}, internals)
 }
 

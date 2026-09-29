@@ -23,6 +23,9 @@ type aiView struct {
 	claimed_buildings     map[uint64]bool
 	ordered_foundations   map[ai.ZoneRef]uint32
 	cancelled_foundations map[ai.ZoneRef]bool
+	cancelled_orders      map[uint64]bool
+	planned_techs         map[uint32]bool
+	planned_production    map[uint64]int
 	// built on first use, then kept current by assignUnit
 	gather_counts map[ai.ZoneRef]int
 }
@@ -38,6 +41,7 @@ func newAiView(game *snapGame, player_id int) (*aiView, bool) {
 		game: game, spaces: map[ai.Coordinate]*snapSpace{}, units: map[uint64]*snapUnit{}, buildings: map[uint64]*snapBuilding{},
 		planned: map[ai.ZoneRef]bool{}, order_ids: map[uint64]bool{}, assigned_units: map[uint64]*ai.CurrentOrder{},
 		claimed_buildings: map[uint64]bool{}, ordered_foundations: map[ai.ZoneRef]uint32{}, cancelled_foundations: map[ai.ZoneRef]bool{},
+		cancelled_orders: map[uint64]bool{}, planned_techs: map[uint32]bool{}, planned_production: map[uint64]int{},
 	}
 	for i := range game.Players {
 		p := &game.Players[i]
@@ -184,13 +188,25 @@ func (v *aiView) unitViewShallow(u *snapUnit) ai.UnitView {
 	}
 }
 
+// Orders minus any this planning pass already emitted a cancel for
+func (v *aiView) liveOrders(orders []snapOrder) []snapOrder {
+	live := make([]snapOrder, 0, len(orders))
+	for _, o := range orders {
+		if !v.cancelled_orders[o.InternalId] {
+			live = append(live, o)
+		}
+	}
+	return live
+}
+
 func (v *aiView) unitView(u *snapUnit) ai.UnitView {
 	view := v.unitViewShallow(u)
-	view.CurrentOrder = v.currentOrder(u.ActiveOrders)
+	live := v.liveOrders(u.ActiveOrders)
+	view.CurrentOrder = v.currentOrder(live)
 	if override, touched := v.assigned_units[u.InternalId]; touched {
 		view.CurrentOrder = override
 	}
-	for _, o := range u.ActiveOrders {
+	for _, o := range live {
 		if kind, ok := toOrderKind(o.OrderType); ok && v.order_ids[o.InternalId] {
 			view.ActiveOrders = append(view.ActiveOrders, ai.ActiveUnitOrder{ID: o.InternalId, Kind: kind})
 		}
@@ -203,10 +219,13 @@ func (v *aiView) producibles(b *snapBuilding) []ai.Producible {
 	for _, p := range defs.BuildingConfigs[b.BuildingId].Produces {
 		switch p.Kind {
 		case defs.ProducibleKind_UNIT:
+			if !v.techMet(defs.UnitConfigs[p.Id].Required_tech_id) {
+				continue
+			}
 			cost, _ := defs.UnitProductionCost(p.Id)
 			producibles = append(producibles, ai.Producible{Kind: ai.ProducibleUnit, ID: p.Id, Cost: toCost(cost)})
 		case defs.ProducibleKind_TECH:
-			if _, researching_or_done := v.me.ResearchedTechs[p.Id]; researching_or_done {
+			if _, researching_or_done := v.me.ResearchedTechs[p.Id]; researching_or_done || v.planned_techs[p.Id] || !v.techMet(defs.TechConfigs[p.Id].Required_tech_id) {
 				continue
 			}
 			producibles = append(producibles, ai.Producible{Kind: ai.ProducibleTech, ID: p.Id, Cost: toCost(defs.TechConfigs[p.Id].Cost)})
@@ -241,11 +260,14 @@ func (v *aiView) ownBuildingView(b *snapBuilding) ai.BuildingView {
 	view.AutoAttack = b.AutoAttack
 	view.InterruptCurrent = b.InterruptCurrent
 	view.TargetPriority = toAiTargetCategories(b.TargetPriority)
-	for _, o := range b.ActiveOrders {
+	live := v.liveOrders(b.ActiveOrders)
+	for _, o := range live {
 		if kind, ok := toBuildingOrderKind(o.OrderType); ok && v.order_ids[o.InternalId] {
 			view.ActiveOrders = append(view.ActiveOrders, ai.ActiveBuildingOrder{ID: o.InternalId, Kind: kind, ItemID: uint32(o.TargetId)})
 		}
 	}
+	view.PlannedProduction = v.planned_production[b.InternalId]
+	view.Idle = !b.UnderConstruction && len(live) == 0 && view.PlannedProduction == 0 && len(defs.BuildingConfigs[b.BuildingId].Produces) > 0
 	return view
 }
 
@@ -413,6 +435,18 @@ func (v *aiView) TechResearched(tech_id uint32) bool {
 	return v.me.ResearchedTechs[tech_id]
 }
 
+func (v *aiView) techMet(required_tech_id uint32) bool {
+	return required_tech_id == 0 || v.me.ResearchedTechs[required_tech_id]
+}
+
+func (v *aiView) BuildingAvailable(building_id uint32) bool {
+	return v.techMet(defs.BuildingConfigs[building_id].Required_tech_id)
+}
+
+func (v *aiView) ScopedUnits() []ai.UnitView {
+	return v.Units()
+}
+
 func (v *aiView) InAttackRange(b ai.BuildingView, target ai.ZoneRef) bool {
 	building, ok := v.buildings[b.InternalID]
 	if !ok {
@@ -488,7 +522,7 @@ func (v *aiView) gathererCount(location ai.ZoneRef) int {
 func (v *aiView) gatherTarget(unit_id uint64) (ai.ZoneRef, bool) {
 	order, assigned := v.assigned_units[unit_id]
 	if u, ok := v.units[unit_id]; ok && !assigned {
-		order = v.currentOrder(u.ActiveOrders)
+		order = v.currentOrder(v.liveOrders(u.ActiveOrders))
 	}
 	if order == nil || order.TargetResource == nil {
 		return ai.ZoneRef{}, false

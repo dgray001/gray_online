@@ -63,18 +63,24 @@ func (z *RisqZone) isCenter() bool {
 }
 
 func (z *RisqZone) toFrontend(player_id int, v defs.VisibilityLevel, space *RisqSpace) gin.H {
+	terrainOverride := uint32(0)
+	if v == defs.VisibilityFog {
+		terrainOverride = space.terrain_cache[player_id][z.coordinate_key]
+	} else if v != defs.VisibilityUnexplored {
+		terrainOverride = z.terrain_override
+	}
 	zone := gin.H{
 		"coordinate":       z.coordinate.ToFrontend(),
 		"coordinate_key":   z.coordinate_key,
-		"terrain_override": z.terrain_override,
+		"terrain_override": terrainOverride,
 	}
 	if v != defs.VisibilityFog {
 		zone["ownership"] = z.ownership
 	} else if owner, ok := space.ownership_cache[player_id]; ok {
 		zone["ownership"] = owner
 	}
-	if z.terrain_override != 0 {
-		zone["terrain_override_display_name"] = defs.TerrainConfigs[z.terrain_override].Display_name
+	if terrainOverride != 0 {
+		zone["terrain_override_display_name"] = defs.TerrainConfigs[terrainOverride].Display_name
 	}
 	if v == defs.VisibilityFog {
 		if cache, ok := space.resource_cache[player_id][z.coordinate_key]; ok {

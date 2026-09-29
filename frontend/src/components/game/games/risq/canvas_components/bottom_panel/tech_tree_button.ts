@@ -1,7 +1,7 @@
 import type { DwgRisq } from '../../risq';
-import { RisqActionButton } from '../left_panel/action_button/action_button';
+import { RisqActionButton } from '../left_panel/actions/action_button';
 import { getSettings } from '../../../../../../scripts/settings_store';
-import { RisqHotkeyAction } from '../../risq_hotkeys';
+import { RisqHotkeyAction } from '../../application/input/hotkeys';
 
 export class RisqTechTreeButton extends RisqActionButton {
   private risq: DwgRisq;

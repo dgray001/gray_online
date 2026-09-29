@@ -79,11 +79,14 @@ func (v *aiView) DeleteUnitOrder(u ai.UnitView) ai.Order {
 
 func (v *aiView) CreateUnitOrder(b ai.BuildingView, unit_id uint32) ai.Order {
 	v.claimBuilding(b.InternalID)
+	v.planned_production[b.InternalID]++
 	return buildingOrder(b, defs.OrderType_BuildingCreate, int64(unit_id))
 }
 
 func (v *aiView) ResearchOrder(b ai.BuildingView, tech_id uint32) ai.Order {
 	v.claimBuilding(b.InternalID)
+	v.planned_production[b.InternalID]++
+	v.planned_techs[tech_id] = true
 	return buildingOrder(b, defs.OrderType_BuildingResearch, int64(tech_id))
 }
 
@@ -103,6 +106,8 @@ func (v *aiView) BuildingAttackBuildingOrder(b ai.BuildingView, target ai.Buildi
 }
 
 func (v *aiView) CancelOrder(order_id uint64) ai.Order {
+	v.cancelled_orders[order_id] = true
+	v.gather_counts = nil
 	return ai.Order{OrderType: uint8(defs.OrderType_CancelOrder), TargetID: int64(order_id)}
 }
 

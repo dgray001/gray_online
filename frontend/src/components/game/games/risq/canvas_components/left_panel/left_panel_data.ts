@@ -6,7 +6,7 @@ import type {
   RisqUnit,
   RisqZone,
   UnitByTypeData,
-} from '../../risq_data';
+} from '../../model/types';
 
 /** Config for the left panel */
 export declare interface LeftPanelConfig {

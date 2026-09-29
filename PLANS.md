@@ -1,25 +1,14 @@
 v0.9: Risq beta version
- t: Small issues (see all small issues)
- u: Backend risq tests
- v: Revamp summary report (fix colors, can see "events" on map, can interact with events i.e. replay them or see what happened precisely)
- w: Refactor frontend code
+ u: Small issues (see all small issues)
+ v: Backend risq tests
+ w: Revamp summary report (fix colors, can see "events" on map, can interact with events i.e. replay them or see what happened precisely)
  x: Make v1.0 ai (current ones should be rename to 0.4, etc...)
  y: Settings setup (including alt win conditions, map selector, etc)
-
-Small Risq Issues:
- - Need better unit images with color-coded stuff
- - Gather points not working on frontend properly
- - Need to add mountain images
- - Left panel: show live "workers X/Y" indicator on a selected gatherable building (predictedGathererCount already exists in risq.ts, just needs left_panel.ts wiring)
+ z: Alternate terrain images (mountains, swamps, shallows, water)
 
  - Expanded level 2 tech tree
     => Magic and color damage
     => Stables and Archery range
-
-Risq Refactor Plans:
- - Decomposition pass over risq frontend and backend (long functions and files that have grown past what one unit should own)
-    => frontend: risq.ts mouseup() (~170 lines, 8 levels of nesting; zone-slot click body is the first extract, which also lets the ctrl-additive branch reuse handleUnitGridClick)
-    => frontend: left_panel.ts (~2280 lines, 73 methods)
 
 Fiddlesticks Plans:
  - Revamp update dialog box

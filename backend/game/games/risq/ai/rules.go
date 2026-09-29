@@ -37,6 +37,19 @@ type Internals struct {
 	behaviors          []UnitBehavior
 	building_behaviors []BuildingBehavior
 	army               armyState
+	// how many run_bucket calls are currently nested, against the configured limit
+	bucket_depth      int
+	max_bucket_depth  int
+	bucket_depth_warn bool
+}
+
+const defaultMaxBucketDepth = 3
+
+func (i *Internals) bucketDepthLimit() int {
+	if i.max_bucket_depth <= 0 {
+		return defaultMaxBucketDepth
+	}
+	return i.max_bucket_depth
 }
 
 func (i *Internals) Refresh() {

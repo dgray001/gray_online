@@ -5,8 +5,8 @@ import { configDraw } from '../../../../util/canvas_components/canvas_component'
 import { drawLine, drawRect, drawText } from '../../../../util/canvas_util';
 import type { Point2D } from '../../../../util/objects2d';
 import type { DwgRisq } from '../../risq';
-import type { GameRisqScoreEntry, RisqPlayerResource, RisqResourceType } from '../../risq_data';
-import { resourceTypeImage } from '../../risq_resources';
+import type { GameRisqScoreEntry, RisqPlayerResource, RisqResourceType } from '../../model/types';
+import { resourceTypeImage } from '../../rendering/assets/resources';
 import { RisqOrdersList } from './orders_list';
 import { RisqNextIdleButton } from './next_idle_button';
 import { RisqRightPanelButton } from './right_panel_button';
@@ -61,14 +61,14 @@ export class RisqRightPanel implements CanvasComponent {
       this.next_idle_button.disable();
       return;
     }
-    if (this.risq.givingOrders() && !player.orders_submitted) {
+    if (this.risq.session.givingOrders() && !player.orders_submitted) {
       this.orders_list.enable();
-      this.submit_button.setText(this.risq.ordersSubmittedTimes() > 0 ? 'Resubmit Orders' : 'Submit Orders');
+      this.submit_button.setText(this.risq.submission.submittedTimes() > 0 ? 'Resubmit Orders' : 'Submit Orders');
     } else {
       this.orders_list.disable();
       this.submit_button.setText('Unsubmit Orders');
     }
-    this.next_idle_button.setText(`Next Idle (${this.risq.idleUnitCount()})`);
+    this.next_idle_button.setText(`Next Idle (${this.risq.planning.idleUnitCount()})`);
     if (this.hasIdleUnits()) {
       this.submit_icon_button.enable();
       this.next_idle_button.enable();
@@ -82,7 +82,9 @@ export class RisqRightPanel implements CanvasComponent {
 
   private hasIdleUnits(): boolean {
     const player = this.risq.getPlayer();
-    return !!player && this.risq.givingOrders() && !player.orders_submitted && this.risq.idleUnitCount() > 0;
+    return (
+      !!player && this.risq.session.givingOrders() && !player.orders_submitted && this.risq.planning.idleUnitCount() > 0
+    );
   }
 
   private layoutButtons() {
@@ -121,7 +123,7 @@ export class RisqRightPanel implements CanvasComponent {
   toggle(open?: boolean, initial?: boolean) {
     this.config.is_open = open ?? !this.config.is_open;
     const position: Point2D = {
-      x: this.risq.canvasSize().width - this.open_button.w(),
+      x: this.risq.viewport.canvasSize().width - this.open_button.w(),
       y: 0.5 * this.open_button.h(),
     };
     if (this.config.is_open) {
@@ -192,7 +194,13 @@ export class RisqRightPanel implements CanvasComponent {
           ctx.clip();
           if (!!player) {
             ctx.font = '24px serif';
-            this.drawPopulation(ctx, yi, player.units.size, this.risq.pendingMercenaryCount(), player.population_limit);
+            this.drawPopulation(
+              ctx,
+              yi,
+              player.units.size,
+              this.risq.planning.pendingMercenaryCount(),
+              player.population_limit
+            );
             yi += 30;
             for (const [rt, pr] of [...player.resources.entries()].sort((a, b) => a[0] - b[0])) {
               this.drawResource(ctx, yi, rt, pr);
@@ -351,10 +359,10 @@ export class RisqRightPanel implements CanvasComponent {
     return 0;
   }
   xf(): number {
-    return this.risq.canvasSize().width;
+    return this.risq.viewport.canvasSize().width;
   }
   yf(): number {
-    return this.risq.canvasSize().height;
+    return this.risq.viewport.canvasSize().height;
   }
   xc(): number {
     return this.xi() + 0.5 * this.w();

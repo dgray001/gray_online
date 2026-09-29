@@ -221,7 +221,10 @@ func parseUnitFilter(raw map[string]any) (unitFilter, error) {
 		return unitFilter{}, err
 	}
 	filter := unitFilter{unit_ids: unit_ids, unit_types: map[UnitType]bool{}}
-	types, _ := raw["unit_types"].([]any)
+	types, ok := raw["unit_types"].([]any)
+	if raw["unit_types"] != nil && !ok {
+		return filter, fmt.Errorf("\"unit_types\" must be an array of unit type names")
+	}
 	for _, t := range types {
 		unit_type, ok := unitTypeNames[fmt.Sprint(t)]
 		if !ok {

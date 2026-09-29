@@ -34,7 +34,7 @@ export class RisqRightPanelButton extends DwgSquareButton {
     if (!this.isHovering()) {
       return;
     }
-    this.risq.toggleRightPanel();
+    this.risq.right_panel.toggle();
     this.setHovering(false);
   }
 }

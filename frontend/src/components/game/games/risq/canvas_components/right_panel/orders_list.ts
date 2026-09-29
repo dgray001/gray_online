@@ -2,8 +2,8 @@ import type { ColorRGB } from '../../../../../../scripts/color_rgb';
 import { DwgListbox } from '../../../../util/canvas_components/scrollbar/listbox';
 import type { Point2D } from '../../../../util/objects2d';
 import type { DwgRisq } from '../../risq';
-import type { RisqOrdersModel, RisqOrderRowEntry } from '../../risq_orders';
-import { collapseBuildingCreateOrders, isBuildingOrder, isUnitOrder } from '../../risq_orders';
+import type { RisqOrdersModel, RisqOrderRowEntry } from '../../application/orders/orders_model';
+import { collapseBuildingCreateOrders, isBuildingOrder, isUnitOrder } from '../../application/orders/orders_model';
 import { RisqOrderRow } from '../order_row/order_row';
 import { RisqOrdersScrollbar } from './orders_scrollbar';
 
@@ -37,7 +37,7 @@ export class RisqOrdersList extends DwgListbox<RisqOrderRow, RisqOrdersScrollbar
         : undefined,
     });
     this.game = risq;
-    this.orders = risq.getOrdersModel();
+    this.orders = risq.orders_model;
   }
 
   setSubject(subject_internal_ids: number[] | undefined, subject_kind: 'unit' | 'building' | undefined) {
@@ -70,7 +70,7 @@ export class RisqOrdersList extends DwgListbox<RisqOrderRow, RisqOrdersScrollbar
       show_subject: this.subject_internal_ids === undefined || this.subject_internal_ids.length !== 1,
       onCancel: (order) => this.orders.cancel(order),
       onCancelAll: (orders) => orders.forEach((order) => this.orders.cancel(order)),
-      onSelect: (order) => this.game.selectOrderSubjects(order),
+      onSelect: (order) => this.game.selection.selectOrderSubjects(order),
     });
     if (this.cancel_disabled) {
       row.disableCancel();

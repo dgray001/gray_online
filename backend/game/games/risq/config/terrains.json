@@ -58,7 +58,20 @@
     "intra_cost": 3,
     "inter_cost": 12,
     "build_speed_modifier": 0.4,
-    "terrains": []
+    "terrains": [
+      { "terrain_id": 101, "display_name": "Grassy Mountains" },
+      { "terrain_id": 102, "display_name": "Grassy Mountains" },
+      { "terrain_id": 103, "display_name": "Dead Grassy Mountains" },
+      { "terrain_id": 104, "display_name": "Dead Grassy Mountains" },
+      { "terrain_id": 105, "display_name": "Dead Grassy Mountains" },
+      { "terrain_id": 106, "display_name": "Dirt Mountains" },
+      { "terrain_id": 107, "display_name": "Dirt Mountains" },
+      { "terrain_id": 108, "display_name": "Dirt Mountains" },
+      { "terrain_id": 109, "display_name": "Dirt Mountains" },
+      { "terrain_id": 110, "display_name": "Dirt Mountains" },
+      { "terrain_id": 111, "display_name": "Snowy Mountains" },
+      { "terrain_id": 112, "display_name": "Snowy Mountains" }
+    ]
   },
   {
     "terrain_type": "swamp",

@@ -10,9 +10,9 @@ import {
 } from '../../../util/canvas_components/tooltip';
 import type { CanvasSize, TooltipState } from '../../../util/canvas_components/tooltip';
 import type { DwgRisq } from '../risq';
-import type { RisqCost } from '../risq_data';
-import { RisqResourceType } from '../risq_data';
-import { resourceTypeImage } from '../risq_resources';
+import type { RisqCost } from '../model/types';
+import { RisqResourceType } from '../model/types';
+import { resourceTypeImage } from '../rendering/assets/resources';
 
 export declare interface RisqTooltipData {
   title: string;
@@ -172,7 +172,7 @@ export function drawRisqTooltip(
   if (!shouldShowTooltip(state, hovering, clicked, dt)) {
     return;
   }
-  drawTooltip(state, ctx, transform, risq.canvasSize(), { ...data, risq });
+  drawTooltip(state, ctx, transform, risq.viewport.canvasSize(), { ...data, risq });
 }
 
 export class RisqButtonTooltip {

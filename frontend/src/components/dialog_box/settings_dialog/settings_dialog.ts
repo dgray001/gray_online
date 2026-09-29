@@ -5,7 +5,7 @@ import html from './settings_dialog.html';
 
 import './settings_dialog.scss';
 import '../../game/games/fiddlesticks/fiddlesticks_settings/fiddlesticks_settings';
-import '../../game/games/risq/risq_settings/risq_settings';
+import '../../game/games/risq/dialogs/risq_settings/risq_settings';
 
 export declare interface SettingsDialogData {
   game_type: GameType;

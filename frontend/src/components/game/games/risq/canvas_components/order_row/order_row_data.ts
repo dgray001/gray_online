@@ -1,5 +1,5 @@
 import type { DwgRisq } from '../../risq';
-import type { RisqFrontendOrder } from '../../risq_data';
+import type { RisqFrontendOrder } from '../../model/types';
 
 export interface RisqOrderRowConfig {
   game: DwgRisq;

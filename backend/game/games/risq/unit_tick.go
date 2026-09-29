@@ -10,8 +10,7 @@ import (
 	"github.com/dgray001/gray_online/util"
 )
 
-// moveOrAct sets a move intent toward target unless arrived is true, in which case it runs act
-// instead. Shared shape behind most tickIntent branches: approach a target, then do something once there.
+// moveOrAct sets a move intent toward target unless arrived is true, in which case it runs act instead
 func (u *RisqUnit) moveOrAct(arrived bool, target *RisqZone, move_range defs.RisqRange, act func()) {
 	if !arrived {
 		u.intent.setMove(u.findPath(target, move_range))
@@ -69,6 +68,10 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 		})
 	case defs.OrderType_UnitAttackSpace:
 		space := invertSpaceKey(uint(order.target_id), risq)
+		if u.garrisoned_in != nil {
+			u.intent.setUngarrison(u.garrisoned_in.zone)
+			break
+		}
 		space_range, _ := u.attack_range.SpaceRadius()
 		start, _ := u.pathStart()
 		in_space_range := start != nil && game_utils.AxialDistance(start.space.coordinate, space.coordinate) <= space_range

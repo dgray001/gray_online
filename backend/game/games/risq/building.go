@@ -370,7 +370,7 @@ func (b *RisqBuilding) tickExecute(risq *GameRisq) {
 				risq.units[unit.internal_id] = unit
 				risq.players[b.player_id].report.recordUnitCreated(item.item_id)
 				if b.gather_point != nil {
-					unit.receiveOrder(b.gather_point.resolveOrder(risq, b, unit), risq)
+					risq.addSyntheticOrder(b.gather_point.resolveOrder(risq, b, unit), risq.players[b.player_id])
 				}
 			case defs.ProducibleKind_TECH:
 				risq.pending_tech_completions = append(risq.pending_tech_completions, techCompletion{player_id: b.player_id, tech_id: item.item_id})

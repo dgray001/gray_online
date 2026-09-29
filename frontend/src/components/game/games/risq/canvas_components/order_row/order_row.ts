@@ -3,9 +3,9 @@ import type { CanvasComponent } from '../../../../util/canvas_components/canvas_
 import { configDraw } from '../../../../util/canvas_components/canvas_component';
 import { drawLine, drawRect, drawText } from '../../../../util/canvas_util';
 import type { Point2D } from '../../../../util/objects2d';
-import type { RisqFrontendOrder } from '../../risq_data';
-import { UNIT_CLUSTER_ICON_SIZE, drawUnitTypeCluster, unitClusterIconKey } from '../../risq_zone';
-import { unitImage } from '../../risq_unit';
+import type { RisqFrontendOrder } from '../../model/types';
+import { UNIT_CLUSTER_ICON_SIZE, drawUnitTypeCluster, unitClusterIconKey } from '../../rendering/zones/draw';
+import { unitImage } from '../../rendering/assets/unit';
 import { RisqOrderCancelButton } from './order_cancel_button';
 import type { RisqOrderRowConfig } from './order_row_data';
 import type { ResolvedRow } from './order_row_resolve';

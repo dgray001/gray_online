@@ -5,12 +5,12 @@ import { configDraw } from '../../../../util/canvas_components/canvas_component'
 import { drawCircle, drawHexagon } from '../../../../util/canvas_util';
 import type { Point2D } from '../../../../util/objects2d';
 import { rotatePoint } from '../../../../util/objects2d';
-import type { RisqSpace } from '../../risq_data';
-import { RisqVisibilityLevel } from '../../risq_data';
+import type { RisqSpace } from '../../model/types';
+import { RisqVisibilityLevel } from '../../model/types';
 import type { DwgRisq } from '../../risq';
-import { drawRisqRegionBorders } from '../../risq_region';
-import { drawHexImage, fillHexOverlay, getSpaceFill } from '../../risq_space';
-import { RisqViewMode, spaceOwnerColor, terrainImage } from '../../risq_terrain';
+import { drawRisqRegionBorders } from '../../rendering/region';
+import { drawHexImage, fillHexOverlay, getSpaceFill } from '../../rendering/space';
+import { RisqViewMode, spaceOwnerColor, terrainImage } from '../../rendering/terrain';
 
 export declare interface MinimapConfig {
   target_w: number;
@@ -165,7 +165,7 @@ export class RisqMinimap implements CanvasComponent {
         ctx.translate(origin.x + content_center.x, origin.y + content_center.y);
         ctx.rotate(transform.rotation);
         ctx.translate(-content_center.x, -content_center.y);
-        const view_mode = this.risq.viewMode();
+        const view_mode = this.risq.viewport.viewMode();
         const draw_r = this.hex_r + 1; // slight overlap so adjacent tiles' antialiasing doesn't leave seams
         ctx.strokeStyle = 'transparent';
         ctx.lineWidth = 0;
@@ -176,7 +176,7 @@ export class RisqMinimap implements CanvasComponent {
             }
             const minimap_canvas = this.coordinateToMinimapCanvas(space.coordinate);
             const owner_color = spaceOwnerColor(space.ownership, game.players);
-            const region_owned = (this.risq.getRegionForSpace(space.coordinate_key)?.owner ?? -1) >= 0;
+            const region_owned = (this.risq.session.getRegionForSpace(space.coordinate_key)?.owner ?? -1) >= 0;
             if (
               space.visibility === RisqVisibilityLevel.UNEXPLORED ||
               view_mode === RisqViewMode.OWNERSHIP ||
@@ -209,7 +209,7 @@ export class RisqMinimap implements CanvasComponent {
         ctx.strokeStyle = 'transparent';
         for (const player of game.players) {
           for (const unit of player.units.values()) {
-            if (unit.garrisoned_in === undefined && this.risq.isUnitSelected(unit.internal_id)) {
+            if (unit.garrisoned_in === undefined && this.risq.selection.isUnitSelected(unit.internal_id)) {
               drawCircle(ctx, this.coordinateToMinimapCanvas(unit.space_coordinate), Math.max(1.5, 0.25 * this.hex_r));
             }
           }
@@ -217,11 +217,11 @@ export class RisqMinimap implements CanvasComponent {
         ctx.translate(content_center.x, content_center.y);
         ctx.rotate(-transform.rotation);
         ctx.translate(-(origin.x + content_center.x), -(origin.y + content_center.y));
-        const left_panel = this.risq.getLeftPanel();
-        const right_panel = this.risq.getRightPanel();
+        const left_panel = this.risq.left_panel;
+        const right_panel = this.risq.right_panel;
         const visible_x0 = left_panel.isShowing() ? left_panel.xf() : 0;
-        const visible_x1 = right_panel.isOpen() ? right_panel.xi() : this.risq.canvasSize().width;
-        const canvas_h = this.risq.canvasSize().height;
+        const visible_x1 = right_panel.isOpen() ? right_panel.xi() : this.risq.viewport.canvasSize().width;
+        const canvas_h = this.risq.viewport.canvasSize().height;
         const display_center = { x: origin.x + content_center.x, y: origin.y + content_center.y };
         const corners = [
           { x: visible_x0, y: 0 },
@@ -252,7 +252,7 @@ export class RisqMinimap implements CanvasComponent {
   }
 
   private minimapCanvasFromCanvas(canvas: Point2D): Point2D {
-    const coordinate = this.risq.canvasToCoordinate(canvas, this.risq.getGame()?.board_size ?? 0);
+    const coordinate = this.risq.viewport.canvasToCoordinate(canvas, this.risq.getGame()?.board_size ?? 0);
     return this.coordinateToMinimapCanvas(coordinate);
   }
 

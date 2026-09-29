@@ -199,6 +199,7 @@ type BuildingView struct {
 	Location          ZoneRef
 	UnderConstruction bool
 	Idle              bool
+	PlannedProduction int // create and research orders already emitted this turn
 	Producibles       []Producible
 	GarrisonCount     int
 	GarrisonCapacity  int
@@ -270,6 +271,8 @@ type Order struct {
 type View interface {
 	Nickname() string
 	Units() []UnitView
+	// Units within the current bucket scope; the same as Units() outside a bucket wrapper
+	ScopedUnits() []UnitView
 	IdleUnits() []UnitView
 	EligibleUnits(kinds ...OrderKind) []UnitView
 	Buildings() []BuildingView
@@ -294,6 +297,7 @@ type View interface {
 	Score() int
 	BestEnemyScore() int
 	TechResearched(tech_id uint32) bool
+	BuildingAvailable(building_id uint32) bool
 	InAttackRange(b BuildingView, target ZoneRef) bool
 	BuildCost(building_id uint32) Cost
 	UnitCost(unit_id uint32) Cost

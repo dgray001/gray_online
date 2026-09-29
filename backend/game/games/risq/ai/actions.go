@@ -255,13 +255,14 @@ func (a *garrisonAction) ToOrders(view View, _ *Internals) []Order {
 		}
 		var best_b *BuildingView
 		best_dist := -1
-		for _, b := range buildings {
+		for i := range buildings {
+			b := &buildings[i]
 			if b.UnderConstruction || b.GarrisonCount >= b.GarrisonCapacity {
 				continue
 			}
 			d := locationDistance(u.Location, b.Location)
 			if best_dist == -1 || d < best_dist {
-				best_b, best_dist = &b, d
+				best_b, best_dist = b, d
 			}
 		}
 		if best_b != nil {
@@ -372,7 +373,7 @@ func (a *setUnitBehaviorAction) differs(u UnitView) bool {
 
 func (a *setUnitBehaviorAction) ToOrders(view View, internals *Internals) []Order {
 	behavior := a.behavior
-	for _, u := range a.filter.apply(view.Units(), isMilitary) {
+	for _, u := range a.filter.apply(view.ScopedUnits(), isMilitary) {
 		if a.differs(u) {
 			behavior.Subjects = append(behavior.Subjects, u.InternalID)
 		}
@@ -503,7 +504,7 @@ func (a *unitStopAction) ToOrders(view View, _ *Internals) []Order {
 	cancelled := make(map[uint64]bool)
 	orders := make([]Order, 0)
 	stopped := 0
-	for _, u := range a.filter.apply(view.Units(), anyUnit) {
+	for _, u := range a.filter.apply(view.ScopedUnits(), anyUnit) {
 		if a.max > 0 && stopped >= a.max {
 			break
 		}

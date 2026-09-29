@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.8s: Refactor backend
+v0.8t: Refactor frontend
 
 ## Dev Use
 

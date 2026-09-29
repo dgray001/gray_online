@@ -41,6 +41,9 @@ func main() {
 	}
 
 	iterations := scenario.Iterations
+	if *debug {
+		iterations = 1
+	}
 	base_seed := scenario.Seed
 	if *seed_override != 0 {
 		base_seed = *seed_override

@@ -1,8 +1,8 @@
 import type { DwgRisq } from '../../risq';
-import { RisqActionButton } from '../left_panel/action_button/action_button';
+import { RisqActionButton } from '../left_panel/actions/action_button';
 import { RISQ_MESSAGE_WARNING_COLOR } from '../message_queue';
 import { getSettings } from '../../../../../../scripts/settings_store';
-import { RisqHotkeyAction } from '../../risq_hotkeys';
+import { RisqHotkeyAction } from '../../application/input/hotkeys';
 
 export class RisqSummaryReportButton extends RisqActionButton {
   private risq: DwgRisq;
@@ -13,7 +13,7 @@ export class RisqSummaryReportButton extends RisqActionButton {
   }
 
   override dataRefreshed(): void {
-    this.dimmed = !this.risq.getLastTurnReport();
+    this.dimmed = !this.risq.session.getLastTurnReport();
     this.setHotkeyCombo(getSettings().risq_hotkeys.actions[RisqHotkeyAction.SUMMARY_REPORT]);
   }
 
@@ -24,7 +24,7 @@ export class RisqSummaryReportButton extends RisqActionButton {
     if (this.dimmed) {
       this.risq.showMessage('No previous turn report to review', RISQ_MESSAGE_WARNING_COLOR);
     } else {
-      this.risq.reopenLastTurnReport();
+      this.risq.reviewLastTurnReport();
     }
   }
 }

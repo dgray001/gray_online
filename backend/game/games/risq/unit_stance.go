@@ -85,7 +85,6 @@ func (u *RisqUnit) reactiveAttackBackTarget(risq *GameRisq) Attackable {
 	return best.pick(u.target_priority)
 }
 
-// Bypasses player.active_orders bookkeeping, same as gather-point orders.
 func (u *RisqUnit) replaceOrder(risq *GameRisq, order_type defs.OrderType, target_id int64) {
 	if len(u.order_queue.active_orders) > 0 {
 		current := u.order_queue.active_orders[0]
@@ -93,14 +92,11 @@ func (u *RisqUnit) replaceOrder(risq *GameRisq, order_type defs.OrderType, targe
 			return
 		}
 	}
-	order := createRisqOrder(risq.nextOrderInternalId(), order_type, u.player_id, map[uint64]Orderable{u.internal_id: u}, target_id, false)
+	order := createRisqOrder(risq.nextOrderInternalId(), order_type, u.player_id, map[uint64]Orderable{u.internal_id: u}, target_id, true)
 	if !u.orderReceivable(order, risq) {
 		return
 	}
-	for _, ao := range append([]*RisqOrder(nil), u.order_queue.active_orders...) {
-		u.cancelOrder(ao, risq)
-	}
-	u.receiveOrder(order, risq)
+	risq.addSyntheticOrder(order, risq.players[u.player_id])
 }
 
 func (u *RisqUnit) resolveStance(risq *GameRisq) {

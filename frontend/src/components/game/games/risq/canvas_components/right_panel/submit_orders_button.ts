@@ -3,7 +3,7 @@ import { DwgRectButton } from '../../../../util/canvas_components/button/rect_bu
 import type { DwgRisq } from '../../risq';
 import { RisqButtonTooltip } from '../risq_tooltip';
 import { getSettings } from '../../../../../../scripts/settings_store';
-import { RisqHotkeyAction, hotkeyDisplayString } from '../../risq_hotkeys';
+import { RisqHotkeyAction, hotkeyDisplayString } from '../../application/input/hotkeys';
 
 export class RisqSubmitOrdersButton extends DwgRectButton {
   private risq: DwgRisq;
@@ -48,7 +48,7 @@ export class RisqSubmitOrdersButton extends DwgRectButton {
   protected clicked(): void {}
   protected released(): void {
     if (this.isHovering()) {
-      this.risq.toggleSubmitOrdersButton();
+      this.risq.submission.toggle();
     }
   }
 

@@ -36,6 +36,29 @@ func hashZone(z *RisqZone) string {
 	return fmt.Sprintf("%d/%d", z.space.coordinate_key, z.coordinate_key)
 }
 
+func hashBehavior(h io.Writer, o *orderableBase) {
+	fmt.Fprintf(h, " ic%t tp%v ts%d", o.interrupt_current, o.target_priority, o.turn_stamina)
+	attackers := make([]string, 0, len(o.attacked_by))
+	for _, event := range o.attacked_by {
+		attackers = append(attackers, fmt.Sprintf("%d:%d:%d", event.tick, event.attacker_type, event.attacker_id))
+	}
+	slices.Sort(attackers)
+	fmt.Fprintf(h, " ab%v", attackers)
+}
+
+// Order internal ids are left out: they depend on submission arrival order, not on game state
+func hashOrders(h io.Writer, orders []*RisqOrder) {
+	for _, o := range orders {
+		fmt.Fprintf(h, "o%d:%d:%t:%t:%t:%t:%d:%d:%v;", o.order_type, o.target_id, o.executed, o.cancelled, o.clear_previous_orders, o.received, o.turn_received, o.turn_resolved, slices.Sorted(maps.Keys(o.subjects)))
+	}
+}
+
+func hashGatherPoint(h io.Writer, gp *RisqGatherPoint) {
+	if gp != nil {
+		fmt.Fprintf(h, " gp%d:%d:%d:%d", gp.location_kind, gp.location_id, gp.object_type, gp.object_id)
+	}
+}
+
 func (r *GameRisq) stateHash(dump io.Writer) uint64 {
 	hasher := fnv.New64a()
 	h := io.MultiWriter(hasher, dump)
@@ -45,10 +68,10 @@ func (r *GameRisq) stateHash(dump io.Writer) uint64 {
 		if u.garrisoned_in != nil {
 			garrison = u.garrisoned_in.internal_id
 		}
-		fmt.Fprintf(h, "u%d p%d t%d z%s h%s s%d g%d d%t;", id, u.player_id, u.unit_id, hashZone(u.zone), hashFloat(u.cs.health), u.current_stamina, garrison, u.deleted)
-		for _, o := range u.order_queue.active_orders {
-			fmt.Fprintf(h, "o%d:%d:%t:%t;", o.order_type, o.target_id, o.executed, o.cancelled)
-		}
+		fmt.Fprintf(h, "u%d p%d t%d z%s h%s s%d g%d d%t sn%d bk%t", id, u.player_id, u.unit_id, hashZone(u.zone), hashFloat(u.cs.health), u.current_stamina, garrison, u.deleted, u.stance, u.attack_back)
+		hashBehavior(h, &u.orderableBase)
+		fmt.Fprint(h, ";")
+		hashOrders(h, u.order_queue.active_orders)
 	}
 	for _, id := range slices.Sorted(maps.Keys(r.buildings)) {
 		b := r.buildings[id]
@@ -57,10 +80,12 @@ func (r *GameRisq) stateHash(dump io.Writer) uint64 {
 			queue = append(queue, fmt.Sprintf("%d:%d:%d", item.kind, item.item_id, item.stamina_remaining))
 		}
 		slices.Sort(queue)
-		fmt.Fprintf(h, "b%d p%d t%d z%s h%s c%d r%s d%t q%v;", id, b.player_id, b.building_id, hashZone(b.zone), hashFloat(b.cs.health), b.stamina_remaining, hashFloat(b.resources_left), b.deleted, queue)
-		for _, o := range b.order_queue.active_orders {
-			fmt.Fprintf(h, "o%d:%d:%t:%t;", o.order_type, o.target_id, o.executed, o.cancelled)
-		}
+		fmt.Fprintf(h, "b%d p%d t%d z%s h%s c%d r%s d%t q%v", id, b.player_id, b.building_id, hashZone(b.zone), hashFloat(b.cs.health), b.stamina_remaining, hashFloat(b.resources_left), b.deleted, queue)
+		fmt.Fprintf(h, " cs%d hs%d ct%d aa%t gu%v rn%t pr%s", b.current_stamina, b.health_synced_stamina, b.construction_stamina_total, b.auto_attack, slices.Sorted(maps.Keys(b.garrisoned_units)), b.renewing != nil, hashFloat(b.pending_renew))
+		hashBehavior(h, &b.orderableBase)
+		hashGatherPoint(h, b.gather_point)
+		fmt.Fprint(h, ";")
+		hashOrders(h, b.order_queue.active_orders)
 	}
 	r.hashPlayersAndBoard(h)
 	return hasher.Sum64()
@@ -76,7 +101,7 @@ func (r *GameRisq) hashPlayersAndBoard(h io.Writer) {
 		for _, key := range slices.Sorted(maps.Keys(p.planned_foundations)) {
 			fmt.Fprintf(h, " pf%d:%d", key, p.planned_foundations[key].building_id)
 		}
-		fmt.Fprint(h, ";")
+		fmt.Fprintf(h, " el%t am%v;", p.eliminated, slices.Sorted(maps.Keys(p.available_mercenaries)))
 	}
 	for _, space := range r.allSpaces() {
 		fmt.Fprintf(h, "s%d o%d t%d", space.coordinate_key, space.ownership, space.terrain_id)

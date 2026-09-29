@@ -108,7 +108,7 @@ export class RisqBottomPanel implements CanvasComponent {
     this.content_h = Math.max(0, ...groups.map((group) => this.groupHeight(group)));
     this.content_w =
       this.group_widths.reduce((sum, w) => sum + w, 0) + RisqBottomPanel.GAP * Math.max(groups.length - 1, 0);
-    const canvas_w = this.risq.canvasSize().width;
+    const canvas_w = this.risq.viewport.canvasSize().width;
     const max_side_panel_w = Math.max(this.config.left_panel_w, this.config.right_panel_w);
     const available_w = Math.max(canvas_w - 2 * (max_side_panel_w + RisqBottomPanel.PADDING), 0);
     this.overflowing = this.content_w + 2 * RisqBottomPanel.PADDING > available_w;
@@ -119,7 +119,7 @@ export class RisqBottomPanel implements CanvasComponent {
       (this.overflowing ? RisqBottomPanel.SCROLLBAR_SIZE + RisqBottomPanel.PADDING : 0);
     this.p = {
       x: 0.5 * (canvas_w - this.panel_w),
-      y: this.risq.canvasSize().height - this.panel_h - RisqBottomPanel.BOTTOM_MARGIN,
+      y: this.risq.viewport.canvasSize().height - this.panel_h - RisqBottomPanel.BOTTOM_MARGIN,
     };
     const max_scroll = this.overflowing ? this.content_w - (this.panel_w - 2 * RisqBottomPanel.PADDING) : 0;
     this.scrollbar.setValue({

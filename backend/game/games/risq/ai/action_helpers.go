@@ -1,6 +1,9 @@
 package ai
 
-import "sort"
+import (
+	"slices"
+	"sort"
+)
 
 func canAfford(view View, internals *Internals, cost Cost) bool {
 	for _, c := range []ResourceCategory{ResourceFood, ResourceWood, ResourceStone, ResourceGold} {
@@ -33,6 +36,10 @@ func (v *bucketView) filter(units []UnitView) []UnitView {
 	return out
 }
 
+func (v *bucketView) ScopedUnits() []UnitView {
+	return v.filter(v.View.ScopedUnits())
+}
+
 func (v *bucketView) IdleUnits() []UnitView {
 	return v.filter(v.View.IdleUnits())
 }
@@ -54,6 +61,10 @@ func (v *unbucketedView) filter(units []UnitView) []UnitView {
 		}
 	}
 	return out
+}
+
+func (v *unbucketedView) ScopedUnits() []UnitView {
+	return v.filter(v.View.ScopedUnits())
 }
 
 func (v *unbucketedView) IdleUnits() []UnitView {
@@ -311,7 +322,7 @@ func unitProducible(b BuildingView, unit_id uint32) (Producible, bool) {
 }
 
 func productionOrderCount(b BuildingView) int {
-	count := 0
+	count := b.PlannedProduction
 	for _, o := range b.ActiveOrders {
 		if o.Kind == BuildingOrderCreate || o.Kind == BuildingOrderResearch {
 			count++
@@ -366,8 +377,13 @@ func (f *filtered) setFilter(filter unitFilter) {
 	f.filter = filter
 }
 
+func canBuild(u UnitView, building_id uint32) bool {
+	return slices.ContainsFunc(u.Builds, func(p Producible) bool { return p.ID == building_id })
+}
+
 func buildWith(view View, internals *Internals, units []UnitView, building_id uint32, max_builders int) []Order {
-	if len(units) == 0 {
+	units = slices.DeleteFunc(slices.Clone(units), func(u UnitView) bool { return !canBuild(u, building_id) })
+	if len(units) == 0 || !view.BuildingAvailable(building_id) {
 		return nil
 	}
 	target, ok := unbuiltFoundation(view, units[0].Location, building_id)

@@ -1,13 +1,13 @@
 import type { Point2D } from '../../../../util/objects2d';
 import { axialDistance, equalsPoint2D } from '../../../../util/objects2d';
-import { buildingImage } from '../../risq_buildings';
-import { coordinateToIndex, getSpace, invertBuildKey, invertPair, invertZoneKey } from '../../risq_coordinates';
-import { RisqOrderType, RisqProducibleKind, RisqResourceType } from '../../risq_data';
-import { isBuildingOrder, isPlayerOrder, isUnitOrder } from '../../risq_orders';
-import { resourceTypeImage } from '../../risq_resources';
-import { unitImage } from '../../risq_unit';
-import { groupUnitsByType } from '../../risq_zone';
-import type { UnitByTypeData } from '../../risq_data';
+import { buildingImage } from '../../rendering/assets/buildings';
+import { coordinateToIndex, getSpace, invertBuildKey, invertPair, invertZoneKey } from '../../model/coordinates';
+import { RisqOrderType, RisqProducibleKind, RisqResourceType } from '../../model/types';
+import { isBuildingOrder, isPlayerOrder, isUnitOrder } from '../../application/orders/orders_model';
+import { resourceTypeImage } from '../../rendering/assets/resources';
+import { unitImage } from '../../rendering/assets/unit';
+import { groupUnitsByType } from '../../model/unit_groups';
+import type { UnitByTypeData } from '../../model/types';
 import type { RisqOrderRowConfig } from './order_row_data';
 
 export interface CostChip {
@@ -72,7 +72,7 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
   const subject_unit = isUnitOrder(order.order_type) ? player?.units.get(order.subjects[0]) : undefined;
   const subject_building = isBuildingOrder(order.order_type) ? player?.buildings.get(order.subjects[0]) : undefined;
   const board_size = game?.board_size ?? 0;
-  const subject_position = subject_unit ? config.game.unitLocation(subject_unit) : undefined;
+  const subject_position = subject_unit ? config.game.session.unitLocation(subject_unit) : undefined;
 
   const distance_text = (target_space: Point2D, target_zone?: Point2D): string => {
     if (!subject_position) {
@@ -204,7 +204,7 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
       const target_unit = game?.players
         .flatMap((p) => [...p.units.values()])
         .find((u) => u.internal_id === order.target_id);
-      const target_location = target_unit ? config.game.unitLocation(target_unit) : undefined;
+      const target_location = target_unit ? config.game.session.unitLocation(target_unit) : undefined;
       base = {
         icon: 'icons/sword32',
         name: `Attack ${target_unit?.display_name ?? 'Unit'}`,

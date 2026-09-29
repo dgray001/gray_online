@@ -124,7 +124,8 @@ func (p *Player) AddUpdate(update *UpdateMessage) {
 		default:
 			// evict the oldest wakeup so the newest (e.g. a new turn) is never the one lost
 			select {
-			case <-p.AiUpdates:
+			case evicted := <-p.AiUpdates:
+				fmt.Fprintln(os.Stderr, "Evicted update for AI player", p.Player_id, "- buffer full:", evicted.Kind, evicted.Id, "for", own_update.Kind)
 			default:
 			}
 			select {

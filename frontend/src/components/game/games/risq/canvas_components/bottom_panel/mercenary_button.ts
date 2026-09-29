@@ -1,10 +1,10 @@
 import type { DwgRisq } from '../../risq';
-import type { RisqProducible } from '../../risq_data';
-import { unitImage } from '../../risq_unit';
-import { RisqActionButton } from '../left_panel/action_button/action_button';
+import type { RisqProducible } from '../../model/types';
+import { unitImage } from '../../rendering/assets/unit';
+import { RisqActionButton } from '../left_panel/actions/action_button';
 import type { RisqTooltipData } from '../risq_tooltip';
 import { getSettings } from '../../../../../../scripts/settings_store';
-import { hotkeyDisplayString } from '../../risq_hotkeys';
+import { hotkeyDisplayString } from '../../application/input/hotkeys';
 
 export class RisqMercenaryButton extends RisqActionButton {
   private risq: DwgRisq;
@@ -18,14 +18,14 @@ export class RisqMercenaryButton extends RisqActionButton {
   }
 
   override isClicking(): boolean {
-    return super.isClicking() || this.risq.getArmedMercenaryId() === this.mercenary.id;
+    return super.isClicking() || this.risq.armed.getArmedMercenaryId() === this.mercenary.id;
   }
 
   override dataRefreshed(): void {
     const player = this.risq.getPlayer();
-    if (!!player && this.risq.givingOrders() && !player.orders_submitted) {
+    if (!!player && this.risq.session.givingOrders() && !player.orders_submitted) {
       this.enable();
-      this.dimmed = !!this.risq.mercenaryUnavailableReason(this.mercenary);
+      this.dimmed = !!this.risq.planning.mercenaryUnavailableReason(this.mercenary);
     } else {
       this.disable();
     }
@@ -33,7 +33,7 @@ export class RisqMercenaryButton extends RisqActionButton {
 
   protected released(): void {
     if (this.isHovering()) {
-      this.risq.toggleMercenary(this.mercenary);
+      this.risq.commands.toggleMercenary(this.mercenary);
     }
   }
 

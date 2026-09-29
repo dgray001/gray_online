@@ -3,6 +3,8 @@ package risq
 import (
 	"fmt"
 	"iter"
+	"maps"
+	"slices"
 
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/util"
@@ -17,46 +19,7 @@ func (r *GameRisq) resolveActiveOrders() {
 			if order.received {
 				continue
 			}
-			player.report.orders.added++
-			order.received = true
-			order.turn_received = r.turn_number
-			if order.order_type.IsPlayerOrder() {
-				player.receivePlayerOrder(order, r)
-				order.executed = true
-				order.turn_resolved = r.turn_number
-				continue
-			}
-			accepted := false
-			for _, subject := range order.subjects {
-				if !subject.orderReceivable(order, r) {
-					player.report.recordFailure(order.order_type, order.target_id, "not receivable")
-					if len(order.subjects) > 1 {
-						delete(order.subjects, subject.internalId())
-					}
-					continue
-				}
-				if order.clear_previous_orders {
-					// cancelOrder mutates the subject's own active-orders slice in place, so range over a copy
-					previous := append([]*RisqOrder(nil), subject.activeOrders()...)
-					for _, other := range previous {
-						if !other.executed && !other.cancelled && !other.order_type.IsClearImmune() {
-							subject.cancelOrder(other, r)
-						}
-					}
-				}
-				if err := subject.receiveOrder(order, r); err != nil {
-					player.report.recordFailure(order.order_type, order.target_id, err.Error())
-					if len(order.subjects) > 1 {
-						delete(order.subjects, subject.internalId())
-					}
-					continue
-				}
-				accepted = true
-			}
-			if !accepted {
-				order.cancelled = true
-				order.turn_resolved = r.turn_number
-			}
+			r.deliverOrder(order, player)
 		}
 	}
 	for {
@@ -123,6 +86,63 @@ func (r *GameRisq) resolveActiveOrders() {
 	r.checkWinCondition()
 	if !r.game.GameEnded() {
 		r.startNextTurn()
+	}
+}
+
+func (r *GameRisq) deliverOrder(order *RisqOrder, player *RisqPlayer) {
+	player.report.orders.added++
+	order.received = true
+	order.turn_received = r.turn_number
+	if order.order_type.IsPlayerOrder() {
+		player.receivePlayerOrder(order, r)
+		order.executed = true
+		order.turn_resolved = r.turn_number
+		return
+	}
+	if !r.deliverToSubjects(order, player) {
+		order.cancelled = true
+		order.turn_resolved = r.turn_number
+	}
+}
+
+func (r *GameRisq) deliverToSubjects(order *RisqOrder, player *RisqPlayer) bool {
+	accepted := false
+	for _, subject_id := range slices.Sorted(maps.Keys(order.subjects)) {
+		subject := order.subjects[subject_id]
+		if !subject.orderReceivable(order, r) {
+			order.rejectSubject(subject, player, "not receivable")
+			continue
+		}
+		if order.clear_previous_orders {
+			r.cancelPreviousOrders(subject)
+		}
+		if err := subject.receiveOrder(order, r); err != nil {
+			order.rejectSubject(subject, player, err.Error())
+			continue
+		}
+		accepted = true
+	}
+	return accepted
+}
+
+func (r *GameRisq) addSyntheticOrder(order *RisqOrder, player *RisqPlayer) {
+	player.active_orders = append(player.active_orders, order)
+	r.deliverOrder(order, player)
+}
+
+func (o *RisqOrder) rejectSubject(subject Orderable, player *RisqPlayer, reason string) {
+	player.report.recordFailure(o.order_type, o.target_id, reason)
+	if len(o.subjects) > 1 {
+		delete(o.subjects, subject.internalId())
+	}
+}
+
+func (r *GameRisq) cancelPreviousOrders(subject Orderable) {
+	// cancelOrder mutates the subject's own active-orders slice in place, so range over a copy
+	for _, other := range append([]*RisqOrder(nil), subject.activeOrders()...) {
+		if !other.executed && !other.cancelled && !other.order_type.IsClearImmune() {
+			subject.cancelOrder(other, r)
+		}
 	}
 }
 

@@ -1,5 +1,5 @@
-import type { RisqHotkeyBindings } from '../components/game/games/risq/risq_hotkeys';
-import { defaultRisqHotkeyBindings } from '../components/game/games/risq/risq_hotkeys';
+import type { RisqHotkeyBindings } from '../components/game/games/risq/application/input/hotkeys';
+import { defaultRisqHotkeyBindings } from '../components/game/games/risq/application/input/hotkeys';
 
 const STORAGE_KEY = 'gray_online_settings';
 

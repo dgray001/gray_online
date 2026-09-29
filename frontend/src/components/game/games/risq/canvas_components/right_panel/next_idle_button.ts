@@ -3,7 +3,7 @@ import { DwgRectButton } from '../../../../util/canvas_components/button/rect_bu
 import type { DwgRisq } from '../../risq';
 import { RisqButtonTooltip } from '../risq_tooltip';
 import { getSettings } from '../../../../../../scripts/settings_store';
-import { RisqHotkeyAction, hotkeyDisplayString } from '../../risq_hotkeys';
+import { RisqHotkeyAction, hotkeyDisplayString } from '../../application/input/hotkeys';
 
 export class RisqNextIdleButton extends DwgRectButton {
   private risq: DwgRisq;

@@ -2,8 +2,11 @@ package mapgen
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math"
 	"math/rand"
+	"sort"
 
 	"github.com/dgray001/gray_online/game/game_utils"
 	"github.com/dgray001/gray_online/util"
@@ -23,6 +26,7 @@ type startResourceSlot struct {
 	max_distance int
 	space_offset game_utils.Coordinate2D
 	zone         game_utils.Coordinate2D
+	unplanned    bool // no distinct planned zone was left, so placement falls back to the nearest free zone
 }
 
 // Targets one zone relative to a player's start space, for deterministic map-script placement
@@ -60,6 +64,8 @@ type playerStartsParams struct {
 	ZoneTerrainOverrides []zoneTerrainOverrideJSON `json:"zone_terrain_overrides,omitempty"`
 }
 
+var errTargetUnavailable = errors.New("start target unavailable")
+
 // Resolves a zoneTargetJSON to a concrete zone within the given footprint, relative to start
 func resolveZoneTarget(footprint []Space, start Space, target zoneTargetJSON, rng *rand.Rand) (Zone, error) {
 	target_space := start
@@ -71,7 +77,7 @@ func resolveZoneTarget(footprint []Space, start Space, target zoneTargetJSON, rn
 			}
 		}
 		if len(candidates) == 0 {
-			return nil, fmt.Errorf("no space at distance %d from player start", target.SpaceDistance)
+			return nil, fmt.Errorf("%w: no space at distance %d from player start", errTargetUnavailable, target.SpaceDistance)
 		}
 		target_space = candidates[rng.Intn(len(candidates))]
 	}
@@ -95,50 +101,60 @@ func resolveZoneTarget(footprint []Space, start Space, target zoneTargetJSON, rn
 		}
 	}
 	if len(free) == 0 {
-		return nil, fmt.Errorf("no free edge zone available")
+		return nil, fmt.Errorf("%w: no free edge zone available", errTargetUnavailable)
 	}
 	return free[rng.Intn(len(free))], nil
 }
 
-var playerStartRingOffsets = map[int][]int{
-	1: {0},
-	2: {0, 3},
-	3: {0, 2, 4},
-	4: {0, 1, 3, 4},
-	5: {0, 1, 2, 3, 4},
-	6: {0, 1, 2, 3, 4, 5},
+// Places players on one perimeter ring. The six principal directions and the spaces between them
+// are treated uniformly, so two players are opposite and twelve players form an evenly spaced
+// approximation of a dodecagon while every start remains the same distance from the center.
+func ringStartDirection(c game_utils.Coordinate2D) game_utils.Coordinate2D {
+	directions := game_utils.AxialDirectionVectors()
+	best := directions[0]
+	bestDot := c.X*best.X + c.Y*best.Y
+	for _, direction := range directions[1:] {
+		dot := c.X*direction.X + c.Y*direction.Y
+		if dot > bestDot {
+			best, bestDot = direction, dot
+		}
+	}
+	return best
 }
 
-// Places up to 6 players evenly around a hex's 6 principal directions at one distance from center.
-// Player counts above 6 place the remainder (also <= 6) on a second, closer ring along the same
-// directions, since there are only 6 principal directions to place a single ring's players along.
 func resolveRingPlayerStarts(ctx *mapScriptContext, starting_distance int) ([]playerStartInfo, error) {
-	directions := game_utils.AxialDirectionVectors()
-	starting_direction := util.RandomIntFrom(ctx.rng, 0, 5)
+	if starting_distance < 1 {
+		return nil, fmt.Errorf("ring player starts require a positive starting distance")
+	}
+	candidates := make([]Space, 0)
+	origin := game_utils.Coordinate2D{}
+	for _, space := range ctx.allSpaces() {
+		if int(game_utils.AxialDistance(origin, space.Coordinate())) == starting_distance {
+			candidates = append(candidates, space)
+		}
+	}
+	if len(candidates) == 0 {
+		return nil, fmt.Errorf("ring has no spaces at distance %d", starting_distance)
+	}
+	sort.Slice(candidates, func(i, j int) bool {
+		a, b := candidates[i].Coordinate(), candidates[j].Coordinate()
+		angleA := math.Atan2(float64(a.Y), float64(a.X))
+		angleB := math.Atan2(float64(b.Y), float64(b.X))
+		if angleA != angleB {
+			return angleA < angleB
+		}
+		if a.X != b.X {
+			return a.X < b.X
+		}
+		return a.Y < b.Y
+	})
+	// Rotate the evenly spaced pattern by the seeded RNG so maps retain orientation variation.
+	offset := ctx.rng.Intn(len(candidates))
 	starts := make([]playerStartInfo, ctx.num_players)
-	place := func(count int, distance int, start_index int) error {
-		offsets, ok := playerStartRingOffsets[count]
-		if !ok {
-			return fmt.Errorf("unsupported player count %d", count)
-		}
-		for i, offset := range offsets {
-			direction := directions[(starting_direction+offset)%6]
-			space := ctx.board.Space(*direction.Multiply(distance))
-			if space == nil {
-				return fmt.Errorf("player start space is nil")
-			}
-			starts[start_index+i] = playerStartInfo{space: space, direction: direction}
-		}
-		return nil
-	}
-	outer := min(ctx.num_players, 6)
-	if err := place(outer, starting_distance, 0); err != nil {
-		return nil, err
-	}
-	if inner := ctx.num_players - outer; inner > 0 {
-		if err := place(inner, max(1, starting_distance-2), outer); err != nil {
-			return nil, err
-		}
+	for i := 0; i < ctx.num_players; i++ {
+		index := (offset + (i*len(candidates))/ctx.num_players) % len(candidates)
+		space := candidates[index]
+		starts[i] = playerStartInfo{space: space, direction: ringStartDirection(space.Coordinate())}
 	}
 	return starts, nil
 }
@@ -260,6 +276,9 @@ func planStartResources(ctx *mapScriptContext, resources []playerStartResourceJS
 			slots = append(slots, startResourceSlot{resource_id: r.ResourceId, min_distance: lo, max_distance: hi,
 				space_offset: game_utils.Coordinate2D{X: c[0], Y: c[1]}, zone: game_utils.Coordinate2D{X: c[2], Y: c[3]}})
 		}
+		for ; placed < count; placed++ {
+			slots = append(slots, startResourceSlot{resource_id: r.ResourceId, min_distance: lo, max_distance: hi, unplanned: true})
+		}
 	}
 	return slots, nil
 }
@@ -271,6 +290,276 @@ func directionIndex(d game_utils.Coordinate2D) int {
 		}
 	}
 	return 0
+}
+
+type startAreaRule int
+
+// Start placement rules from strictest to loosest; each is tried only after the previous finds no space
+const (
+	startRuleClearOfOthers   startAreaRule = iota // area fully on the board and overlapping no other start area
+	startRuleNotInsideOthers                      // area fully on the board, home not inside another start area
+	startRuleAllowClipped                         // home not inside another start area
+	startRuleDistinct                             // home space differs from every other home
+)
+
+func startAreaClipped(ctx *mapScriptContext, home game_utils.Coordinate2D, area_size int) bool {
+	for dq := -area_size; dq <= area_size; dq++ {
+		for dr := max(-area_size, -dq-area_size); dr <= min(area_size, -dq+area_size); dr++ {
+			if ctx.board.Space(game_utils.Coordinate2D{X: home.X + dq, Y: home.Y + dr}) == nil {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func startFits(ctx *mapScriptContext, rule startAreaRule, home game_utils.Coordinate2D, assigned []playerStartInfo, area_size int) bool {
+	if rule <= startRuleNotInsideOthers && startAreaClipped(ctx, home, area_size) {
+		return false
+	}
+	min_distance := 1
+	switch rule {
+	case startRuleClearOfOthers:
+		min_distance = 2*area_size + 1
+	case startRuleNotInsideOthers, startRuleAllowClipped:
+		min_distance = area_size + 1
+	}
+	for _, other := range assigned {
+		if int(game_utils.AxialDistance(home, other.space.Coordinate())) < min_distance {
+			return false
+		}
+	}
+	return true
+}
+
+// Every space tied for nearest to original among those satisfying rule, in key order
+func nearestFittingSpaces(ctx *mapScriptContext, rule startAreaRule, original Space, assigned []playerStartInfo, area_size int) []Space {
+	var nearest []Space
+	nearest_distance := -1
+	for _, s := range ctx.allSpaces() {
+		if !startFits(ctx, rule, s.Coordinate(), assigned, area_size) {
+			continue
+		}
+		d := int(game_utils.AxialDistance(original.Coordinate(), s.Coordinate()))
+		if nearest_distance == -1 || d < nearest_distance {
+			nearest, nearest_distance = nil, d
+		}
+		if d == nearest_distance {
+			nearest = append(nearest, s)
+		}
+	}
+	sort.Slice(nearest, func(i, j int) bool { return nearest[i].Key() < nearest[j].Key() })
+	return nearest
+}
+
+func nearestStartSpace(ctx *mapScriptContext, original Space, assigned []playerStartInfo, area_size int) (Space, error) {
+	for rule := startRuleClearOfOthers; rule <= startRuleDistinct; rule++ {
+		nearest := nearestFittingSpaces(ctx, rule, original, assigned, area_size)
+		if len(nearest) == 1 {
+			return nearest[0], nil
+		}
+		if len(nearest) > 1 {
+			return nearest[ctx.rng.Intn(len(nearest))], nil
+		}
+	}
+	return nil, fmt.Errorf("no unused space left for player start near %v", original.Coordinate())
+}
+
+// Moves each pattern-chosen start to the nearest space passing the strictest rule any space passes
+func assignStartSpaces(ctx *mapScriptContext, originals []playerStartInfo, area_size int) ([]playerStartInfo, error) {
+	if len(ctx.allSpaces()) < len(originals) {
+		return nil, fmt.Errorf("board has %d spaces, cannot place %d player starts", len(ctx.allSpaces()), len(originals))
+	}
+	assigned := make([]playerStartInfo, 0, len(originals))
+	for _, original := range originals {
+		space, err := nearestStartSpace(ctx, original.space, assigned, area_size)
+		if err != nil {
+			return nil, err
+		}
+		assigned = append(assigned, playerStartInfo{space: space, direction: original.direction})
+	}
+	return assigned, nil
+}
+
+// Each player's start area, excluding other players' home spaces
+func startFootprints(starts []playerStartInfo, area_size int) [][]Space {
+	home_keys := make(map[uint]bool, len(starts))
+	for _, start := range starts {
+		home_keys[start.space.Key()] = true
+	}
+	footprints := make([][]Space, len(starts))
+	for i, start := range starts {
+		for _, s := range hexRadiusSpaces(start.space, area_size) {
+			if s.Key() == start.space.Key() || !home_keys[s.Key()] {
+				footprints[i] = append(footprints[i], s)
+			}
+		}
+	}
+	return footprints
+}
+
+// Clears and re-terrains every start area space exactly once, before anything is placed
+func prepareStartTerrain(ctx *mapScriptContext, pick terrainPickJSON, footprints [][]Space) error {
+	prepared := make(map[uint]bool)
+	for _, footprint := range footprints {
+		for _, s := range footprint {
+			if prepared[s.Key()] {
+				continue
+			}
+			prepared[s.Key()] = true
+			terrain_id, err := pick.resolve(ctx.rng)
+			if err != nil {
+				return err
+			}
+			s.ClearOccupants()
+			s.SetTerrain(terrain_id)
+		}
+	}
+	return nil
+}
+
+// The free zone nearest from whose space is within [lo, hi] spaces of it; the first of any tie in zones' order
+func nearestFreeZone(zones []Zone, from game_utils.Coordinate2D, lo int, hi int) Zone {
+	var nearest Zone
+	nearest_distance := -1
+	for _, z := range zones {
+		d := int(game_utils.AxialDistance(from, z.Space().Coordinate()))
+		if z.Occupied() || d < lo || d > hi || (nearest_distance != -1 && d >= nearest_distance) {
+			continue
+		}
+		nearest, nearest_distance = z, d
+	}
+	return nearest
+}
+
+func edgeZones(zones []Zone) []Zone {
+	edges := make([]Zone, 0, len(zones))
+	for _, z := range zones {
+		if !z.IsCenter() {
+			edges = append(edges, z)
+		}
+	}
+	return edges
+}
+
+func plannedResourceZone(ctx *mapScriptContext, home game_utils.Coordinate2D, rotation int, slot startResourceSlot, in_area map[uint]bool) Zone {
+	offset := rotateAxial(slot.space_offset, rotation)
+	s := ctx.board.Space(game_utils.Coordinate2D{X: home.X + offset.X, Y: home.Y + offset.Y})
+	if slot.unplanned || s == nil || !in_area[s.Key()] {
+		return nil
+	}
+	if z := s.Zone(rotateAxial(slot.zone, rotation)); z != nil && !z.Occupied() {
+		return z
+	}
+	return nil
+}
+
+func startResourceZone(ctx *mapScriptContext, home game_utils.Coordinate2D, rotation int, slot startResourceSlot, in_area map[uint]bool, area_zones []Zone, board_zones []Zone) Zone {
+	if z := plannedResourceZone(ctx, home, rotation, slot, in_area); z != nil {
+		return z
+	}
+	if z := nearestFreeZone(area_zones, home, slot.min_distance, slot.max_distance); z != nil {
+		return z
+	}
+	if z := nearestFreeZone(area_zones, home, 0, math.MaxInt); z != nil {
+		return z
+	}
+	return nearestFreeZone(board_zones, home, 0, math.MaxInt)
+}
+
+// Places every start resource for every player, erroring only when the board has no free zone left
+func placeStartResources(ctx *mapScriptContext, starts []playerStartInfo, footprints [][]Space, slots []startResourceSlot) error {
+	board_zones := edgeZones(ctx.allZones())
+	for i, start := range starts {
+		in_area := make(map[uint]bool, len(footprints[i]))
+		area_zones := make([]Zone, 0)
+		for _, s := range footprints[i] {
+			in_area[s.Key()] = true
+			area_zones = append(area_zones, s.ShuffledEdgeZones(ctx.rng)...)
+		}
+		area_zones = util.ShuffleFrom(ctx.rng, area_zones)
+		rotation := directionIndex(start.direction) - directionIndex(starts[0].direction)
+		for _, slot := range slots {
+			zone := startResourceZone(ctx, start.space.Coordinate(), rotation, slot, in_area, area_zones, board_zones)
+			if zone == nil {
+				return fmt.Errorf("no free zone left for start resource %d", slot.resource_id)
+			}
+			ctx.board.PlaceResource(zone, slot.resource_id)
+		}
+	}
+	return nil
+}
+
+func startBuildingZone(ctx *mapScriptContext, home Space, footprint []Space, target zoneTargetJSON, area_zones []Zone, board_zones []Zone) (Zone, error) {
+	planned, err := resolveZoneTarget(footprint, home, target, ctx.rng)
+	if err != nil && !errors.Is(err, errTargetUnavailable) {
+		return nil, err
+	}
+	from := home.Coordinate()
+	if err == nil {
+		if !planned.Occupied() {
+			return planned, nil
+		}
+		from = planned.Space().Coordinate()
+	}
+	if z := nearestFreeZone(area_zones, from, 0, math.MaxInt); z != nil {
+		return z, nil
+	}
+	if z := nearestFreeZone(board_zones, from, 0, math.MaxInt); z != nil {
+		return z, nil
+	}
+	return nil, fmt.Errorf("no free zone left for start building")
+}
+
+func placeStartUnits(ctx *mapScriptContext, p playerStartsParams, player_index int, home Space, footprint []Space) error {
+	for _, u := range p.Units {
+		count, err := u.Count.resolveInt(ctx.vars)
+		if err != nil {
+			return err
+		}
+		for range count {
+			target, err := resolveZoneTarget(footprint, home, u.Target, ctx.rng)
+			if err != nil {
+				return err
+			}
+			ctx.board.PlaceUnit(target, u.UnitId, player_index)
+		}
+	}
+	for _, o := range p.ZoneTerrainOverrides {
+		target, err := resolveZoneTarget(footprint, home, o.Target, ctx.rng)
+		if err != nil {
+			return err
+		}
+		target.SetTerrainOverride(o.TerrainId)
+	}
+	return nil
+}
+
+func placeStartContents(ctx *mapScriptContext, p playerStartsParams, starts []playerStartInfo, footprints [][]Space) error {
+	board_zones := ctx.allZones()
+	for i, start := range starts {
+		area_zones := make([]Zone, 0)
+		for _, s := range footprints[i] {
+			area_zones = append(area_zones, s.Zones()...)
+		}
+		area_zones = util.ShuffleFrom(ctx.rng, area_zones)
+		for _, b := range p.Buildings {
+			target, err := startBuildingZone(ctx, start.space, footprints[i], b.Target, area_zones, board_zones)
+			if err != nil {
+				return err
+			}
+			if !ctx.board.PlaceBuilding(target, b.BuildingId, i) {
+				return fmt.Errorf("could not place start building %d", b.BuildingId)
+			}
+			if b.TerrainOverride != 0 {
+				target.SetTerrainOverride(b.TerrainOverride)
+			}
+		}
+		if err := placeStartUnits(ctx, p, i, start.space, footprints[i]); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func stepPlayerStarts(ctx *mapScriptContext, raw json.RawMessage) error {
@@ -301,98 +590,20 @@ func stepPlayerStarts(ctx *mapScriptContext, raw json.RawMessage) error {
 	if err != nil {
 		return err
 	}
+	if starts, err = assignStartSpaces(ctx, starts, area_size); err != nil {
+		return err
+	}
 	ctx.player_starts = starts
-	// a player's own home space is reserved; other players' footprints (their non-home spaces) may still overlap it
-	home_space_keys := make(map[uint]bool, len(starts))
-	for _, start := range starts {
-		home_space_keys[start.space.Key()] = true
+	footprints := startFootprints(starts, area_size)
+	if err := prepareStartTerrain(ctx, p.terrainPickJSON, footprints); err != nil {
+		return err
 	}
 	slots, err := planStartResources(ctx, p.Resources, area_size)
 	if err != nil {
 		return err
 	}
-	for i, start := range starts {
-		space := start.space
-		footprint := make([]Space, 0)
-		for _, s := range hexRadiusSpaces(space, area_size) {
-			if s.Key() != space.Key() && home_space_keys[s.Key()] {
-				continue
-			}
-			footprint = append(footprint, s)
-		}
-		for _, s := range footprint {
-			s.ClearOccupants()
-			terrain_id, err := p.resolve(ctx.rng)
-			if err != nil {
-				return err
-			}
-			s.SetTerrain(terrain_id)
-		}
-		footprint_zones := make([]Zone, 0)
-		for _, s := range footprint {
-			footprint_zones = append(footprint_zones, s.ShuffledEdgeZones(ctx.rng)...)
-		}
-		footprint_zones = util.ShuffleFrom(ctx.rng, footprint_zones)
-		freeZoneWithin := func(lo int, hi int) Zone {
-			for _, z := range footprint_zones {
-				d := int(game_utils.AxialDistance(space.Coordinate(), z.Space().Coordinate()))
-				if d >= lo && d <= hi && !z.Occupied() {
-					return z
-				}
-			}
-			return nil
-		}
-		for _, b := range p.Buildings {
-			target, err := resolveZoneTarget(footprint, space, b.Target, ctx.rng)
-			if err != nil {
-				return err
-			}
-			if !ctx.board.PlaceBuilding(target, b.BuildingId, i) {
-				continue
-			}
-			if b.TerrainOverride != 0 {
-				target.SetTerrainOverride(b.TerrainOverride)
-			}
-		}
-		for _, u := range p.Units {
-			count, err := u.Count.resolveInt(ctx.vars)
-			if err != nil {
-				return err
-			}
-			for range count {
-				target, err := resolveZoneTarget(footprint, space, u.Target, ctx.rng)
-				if err != nil {
-					return err
-				}
-				ctx.board.PlaceUnit(target, u.UnitId, i)
-			}
-		}
-		for _, o := range p.ZoneTerrainOverrides {
-			target, err := resolveZoneTarget(footprint, space, o.Target, ctx.rng)
-			if err != nil {
-				return err
-			}
-			target.SetTerrainOverride(o.TerrainId)
-		}
-		in_footprint := make(map[uint]bool, len(footprint))
-		for _, s := range footprint {
-			in_footprint[s.Key()] = true
-		}
-		rotation := directionIndex(start.direction) - directionIndex(starts[0].direction)
-		for _, slot := range slots {
-			offset := rotateAxial(slot.space_offset, rotation)
-			local := rotateAxial(slot.zone, rotation)
-			var target Zone
-			if s := ctx.board.Space(game_utils.Coordinate2D{X: space.Coordinate().X + offset.X, Y: space.Coordinate().Y + offset.Y}); s != nil && in_footprint[s.Key()] {
-				target = s.Zone(local)
-			}
-			if target == nil || target.Occupied() {
-				target = freeZoneWithin(slot.min_distance, slot.max_distance)
-			}
-			if target != nil {
-				ctx.board.PlaceResource(target, slot.resource_id)
-			}
-		}
+	if err := placeStartResources(ctx, starts, footprints, slots); err != nil {
+		return err
 	}
-	return nil
+	return placeStartContents(ctx, p, starts, footprints)
 }

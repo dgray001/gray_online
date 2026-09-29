@@ -69,25 +69,23 @@ func (r *RisqPlayerResources) affordFraction(cost defs.RisqResourceCost) float64
 }
 
 func (r *RisqPlayerResources) spend(cost defs.RisqResourceCost) {
-	r.food -= cost.Food
-	r.wood -= cost.Wood
-	r.stone -= cost.Stone
-	r.gold -= cost.Gold
-	r.spent[defs.RisqResourceCategory_FOOD.Index()] += cost.Food
-	r.spent[defs.RisqResourceCategory_WOOD.Index()] += cost.Wood
-	r.spent[defs.RisqResourceCategory_STONE.Index()] += cost.Stone
-	r.spent[defs.RisqResourceCategory_GOLD.Index()] += cost.Gold
+	r.food = util.RoundTo(r.food-cost.Food, gatherRoundingPlaces)
+	r.wood = util.RoundTo(r.wood-cost.Wood, gatherRoundingPlaces)
+	r.stone = util.RoundTo(r.stone-cost.Stone, gatherRoundingPlaces)
+	r.gold = util.RoundTo(r.gold-cost.Gold, gatherRoundingPlaces)
+	for i, amount := range [4]float64{cost.Food, cost.Wood, cost.Stone, cost.Gold} {
+		r.spent[i] = util.RoundTo(r.spent[i]+amount, gatherRoundingPlaces)
+	}
 }
 
 func (r *RisqPlayerResources) refund(cost defs.RisqResourceCost) {
-	r.food += cost.Food
-	r.wood += cost.Wood
-	r.stone += cost.Stone
-	r.gold += cost.Gold
-	r.gathered[defs.RisqResourceCategory_FOOD.Index()] += cost.Food
-	r.gathered[defs.RisqResourceCategory_WOOD.Index()] += cost.Wood
-	r.gathered[defs.RisqResourceCategory_STONE.Index()] += cost.Stone
-	r.gathered[defs.RisqResourceCategory_GOLD.Index()] += cost.Gold
+	r.food = util.RoundTo(r.food+cost.Food, gatherRoundingPlaces)
+	r.wood = util.RoundTo(r.wood+cost.Wood, gatherRoundingPlaces)
+	r.stone = util.RoundTo(r.stone+cost.Stone, gatherRoundingPlaces)
+	r.gold = util.RoundTo(r.gold+cost.Gold, gatherRoundingPlaces)
+	for i, amount := range [4]float64{cost.Food, cost.Wood, cost.Stone, cost.Gold} {
+		r.gathered[i] = util.RoundTo(r.gathered[i]+amount, gatherRoundingPlaces)
+	}
 }
 
 func (r *RisqPlayerResources) resetFlow() {
