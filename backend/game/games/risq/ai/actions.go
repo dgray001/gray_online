@@ -210,7 +210,7 @@ func (a *attackAction) ToOrders(view View, internals *Internals) []Order {
 		if limit > 0 && len(units) > limit {
 			units = units[:limit]
 		}
-		return a.picker.pick(view, internals, units, func(u UnitView, c candidate) Order { return attackCandidateOrder(view, u, c) })
+		return a.picker.pick(view, internals, units, func(u UnitView, c candidate) Order { return attackCandidateOrder(view, u, c, a.picker.order) })
 	}
 	enemy_units := view.VisibleEnemyUnits()
 	enemy_buildings := view.VisibleEnemyBuildings()

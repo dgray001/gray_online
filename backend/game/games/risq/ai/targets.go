@@ -147,7 +147,17 @@ type targetPicker struct {
 	min_score    amount
 	has_min      bool
 	together     bool
+	// attack only: hit the chosen candidate itself (chasing it), or everything in its zone or space
+	order attackOrderKind
 }
+
+type attackOrderKind uint8
+
+const (
+	attackOrderUnit attackOrderKind = iota
+	attackOrderZone
+	attackOrderSpace
+)
 
 func parseTargetPicker(raw map[string]any) (*targetPicker, error) {
 	name, ok := raw["targets"].(string)
@@ -179,6 +189,16 @@ func parseTargetPicker(raw map[string]any) (*targetPicker, error) {
 		return nil, err
 	}
 	p.together, _ = raw["together"].(bool)
+	switch raw["order"] {
+	case nil, "unit":
+		p.order = attackOrderUnit
+	case "zone":
+		p.order = attackOrderZone
+	case "space":
+		p.order = attackOrderSpace
+	default:
+		return nil, fmt.Errorf("\"order\" must be \"unit\", \"zone\" or \"space\"")
+	}
 	return p, nil
 }
 
@@ -270,7 +290,13 @@ func (p *targetPicker) pick(view View, internals *Internals, units []UnitView, a
 	return orders
 }
 
-func attackCandidateOrder(view View, u UnitView, c candidate) Order {
+func attackCandidateOrder(view View, u UnitView, c candidate, order attackOrderKind) Order {
+	switch order {
+	case attackOrderZone:
+		return view.AttackZoneOrder(u, c.loc, true)
+	case attackOrderSpace:
+		return view.AttackSpaceOrder(u, c.loc.Space, true)
+	}
 	switch {
 	case c.unit != nil:
 		return view.AttackUnitOrder(u, *c.unit, true)
@@ -305,6 +331,9 @@ func parseMove(raw map[string]any) (Action, error) {
 	}
 	if picker == nil {
 		return nil, fmt.Errorf("move action requires \"targets\"")
+	}
+	if raw["order"] != nil {
+		return nil, fmt.Errorf("\"order\" only applies to attack")
 	}
 	eligible, err := parseEligible(raw["eligible"])
 	if err != nil {

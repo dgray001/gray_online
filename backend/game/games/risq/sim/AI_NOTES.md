@@ -61,4 +61,6 @@ Debug logs (`-debug`) now tag each combat line with the turn and unit/building i
   `target_building_ids`. `"score"` is evaluated per candidate (it may use `var(target_distance)`, from the group's center,
   `var(target_distance_home)`, and any `_of_target` counter); the highest wins, candidates under `"min_score"` are skipped.
   `"together": true` sends the whole group to one target (units over two spaces from its center regroup first).
+  On `attack`, `"order": "zone"` or `"space"` attacks everything in the chosen candidate's zone/space instead of chasing it;
+  with a defensive stance the units then stay in that space.
 - `{"value_at_least": {"value": "<expr>", "amount": <expr>}}` (and `_at_most` / `_equals`) branches on any expression.

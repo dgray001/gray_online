@@ -140,6 +140,17 @@ func TestAnchorsAndTargetPicker(t *testing.T) {
 	if len(orders) != 2 || orders[0].TargetID != 10 || orders[1].TargetID != 10 {
 		t.Fatalf("raid should pick the lone villager 10 for both units, got %+v", orders)
 	}
+	space_attack, err := parseAction(map[string]any{"action": "attack", "in_bucket": "raid", "targets": "enemy_units", "target_unit_ids": []any{1.0},
+		"score": "10 - var(target_distance)", "together": true, "order": "space"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if orders := space_attack.ToOrders(view, internals); len(orders) != 2 || orders[0].OrderType != 3 || orders[0].TargetID != 300 {
+		t.Errorf("order space should attack the target's space (3,0), got %+v", orders)
+	}
+	if _, err := parseAction(map[string]any{"action": "attack", "targets": "enemy_units", "order": "sideways"}); err == nil {
+		t.Errorf("unknown order should fail")
+	}
 	// nothing clears min_score: no orders
 	strict, _ := parseAction(map[string]any{"action": "attack", "targets": "enemy_units", "score": "0 - var(target_distance)", "min_score": 0.0})
 	if orders := strict.ToOrders(view, internals); len(orders) != 0 {
@@ -167,6 +178,9 @@ func (f fakeView) IdleUnits() []UnitView                 { return f.units }
 func (f fakeView) EligibleUnits(...OrderKind) []UnitView { return f.units }
 func (f fakeView) AttackUnitOrder(u UnitView, t UnitView, _ bool) Order {
 	return Order{Subjects: []uint64{u.InternalID}, TargetID: int64(t.InternalID), OrderType: 1}
+}
+func (f fakeView) AttackSpaceOrder(u UnitView, c Coordinate, _ bool) Order {
+	return Order{Subjects: []uint64{u.InternalID}, TargetID: int64(c.X*100 + c.Y), OrderType: 3}
 }
 func (f fakeView) MoveOrder(u UnitView, z ZoneRef, _ bool) Order {
 	return Order{Subjects: []uint64{u.InternalID}, TargetID: int64(z.Space.X*100 + z.Space.Y), OrderType: 2}
