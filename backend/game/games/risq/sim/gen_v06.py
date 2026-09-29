@@ -27,6 +27,7 @@ P = dict(
     vil_crush_odds=2,  # villagers fight only with this much more strength than the enemy soldiers in their space
     sustain=15,
     hit_damage=1.5,
+    spread_queue=5,    # follow-up targets each soldier queues, so it keeps script-chosen targets longer within a turn
     engaged_odds=1.0,  # once in contact the army leaves only if the enemy there is stronger    # damage one soldier deals per hit, for sharing attackers over targets
     plan_turns=3,      # turns to gather for a building that has been judged worth it        # a production building is only worth it if we can keep it busy this many turns
     lead=5,            # turns ahead we project income when deciding to build  # share of gatherers guaranteed to one-off investments when there are any
@@ -341,8 +342,8 @@ rule(all_({"enemies_found_at_least": {"amount": 1}}, ge("var(resource_available_
 # ================= the army: every other soldier; attacks only while locally stronger, else regroups at home =================
 ao = P['assault_odds']
 # share attackers over the enemies instead of all hitting one: about enough per target to kill it within a hit
-# (a blunt deals ~1.5 a hit to a blunt; hardcoded from unit stats), with a couple of follow-up targets queued
-SPREAD = {"damage": P['hit_damage'], "overkill": 0, "queue": 2}
+# (a blunt deals ~1.5 a hit to a blunt, ~2.1 with Attack; hardcoded from unit stats), with a couple of follow-up targets queued
+SPREAD = {"damage": f"{P['hit_damage']} + 0.6 * var(tech_researched_{ATTACK})", "overkill": 0, "queue": P['spread_queue']}
 def pow_near(side, anchor, within):
     """fighting power (blunt-equivalents) of one side's soldiers near an anchor"""
     if side == 'enemy':
@@ -407,6 +408,17 @@ rule({"building_count_equals": {"amount": 0}},
      {"action": "attack", "unit_types": ["infantry"], "eligible": ["move", "attack_unit", "attack_space"], "targets": "enemy_units",
       "score": "0 - var(target_distance) - 2 * var(enemy_units_visible_infantry_within_1_of_target)", "together": True})
 
+
+# ================= local fights: every soldier sharing a space with enemy soldiers works script-assigned targets =================
+# last for soldiers, so it overrides whatever they were told (going home, a building, the engine's own auto-attack):
+# the enemy soldiers in spaces where we have soldiers are shared out among ours there
+SOLDIER_ORDERS = ["move", "attack_unit", "attack_building", "attack_space", "attack_zone"]
+IN_FIGHT = {"value_at_least": {"value": "var(enemy_units_visible_infantry_within_0_of_unit)", "amount": 1}}
+# they keep their assigned targets: being hit must not pull them all onto whoever hit them
+rule(ALWAYS, {"action": "set_unit_behavior", "unit_types": ["infantry"], "interrupt_current": False, "unit_when": IN_FIGHT})
+rule(ALWAYS, {"action": "attack", "unit_types": ["infantry"], "eligible": SOLDIER_ORDERS, "targets": "enemy_units", "target_unit_types": ["infantry"],
+              "score": "10 * min(1, var(population_infantry_within_0_of_target)) - var(target_distance) / 10", "min_score": 5, "distribute": SPREAD,
+              "unit_when": IN_FIGHT})
 
 # ================= villagers under attack: every villager sharing a space with enemy soldiers fights or runs =================
 # last, so it overrides whatever they were told this turn. They fight together only when they crush what is there:

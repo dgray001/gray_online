@@ -435,14 +435,22 @@ func (p *targetPicker) distributed(view View, internals *Internals, units []Unit
 	for t := 0; len(free) > 0; t = (t + 1) % len(targets) {
 		take(t)
 	}
+	// the attackers sharing a target queue different next targets, so they don't all pile onto one when it dies
+	nth := make(map[int]int, len(targets))
 	for _, u := range units {
 		t, ok := assignment[u.InternalID]
 		if !ok {
 			continue
 		}
 		orders = append(orders, act(u, targets[t].c, true))
+		offset := nth[t]
+		nth[t]++
 		for k := 1; k <= p.distribute.queue && k < len(targets); k++ {
-			orders = append(orders, act(u, targets[(t+k)%len(targets)].c, false))
+			next := (t + offset + k) % len(targets)
+			if next == t {
+				next = (next + 1) % len(targets)
+			}
+			orders = append(orders, act(u, targets[next].c, false))
 		}
 	}
 	return orders
