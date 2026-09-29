@@ -39,6 +39,7 @@ type snapPlayer struct {
 	} `json:"player"`
 	Score              uint             `json:"score"`
 	PopulationLimit    int              `json:"population_limit"`
+	MaxPopulationLimit int              `json:"max_population_limit"`
 	Resources          snapCost         `json:"resources"`
 	PlannedFoundations []snapFoundation `json:"planned_foundations"`
 	Buildings          []snapBuilding   `json:"buildings"`

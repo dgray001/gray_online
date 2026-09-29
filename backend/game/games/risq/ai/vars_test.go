@@ -186,3 +186,25 @@ func (f fakeView) AttackSpaceOrder(u UnitView, c Coordinate, _ bool) Order {
 func (f fakeView) MoveOrder(u UnitView, z ZoneRef, _ bool) Order {
 	return Order{Subjects: []uint64{u.InternalID}, TargetID: int64(z.Space.X*100 + z.Space.Y), OrderType: 2}
 }
+
+func (f fakeView) MaxPopulation() int       { return 100 }
+func (f fakeView) UnitCost(id uint32) Cost  { return map[uint32]Cost{13: {Food: 120, Gold: 60}}[id] }
+func (f fakeView) BuildCost(id uint32) Cost { return map[uint32]Cost{23: {Wood: 250, Stone: 250}}[id] }
+func (f fakeView) TechCost(id uint32) Cost  { return map[uint32]Cost{5: {Wood: 100, Gold: 100}}[id] }
+
+func TestCostAndCeilingVars(t *testing.T) {
+	view, internals := fakeView{}, &Internals{}
+	for name, want := range map[string]float64{
+		"unit_cost_food_13": 120, "unit_cost_gold_13": 60, "unit_cost_wood_13": 0,
+		"building_cost_stone_23": 250, "tech_cost_gold_5": 100, "population_max": 100,
+	} {
+		if got := internals.lookupVar(view, name); got != want {
+			t.Errorf("var(%s) = %v, want %v", name, got, want)
+		}
+	}
+	for _, bad := range []string{"unit_cost_13", "unit_cost_iron_13", "tech_cost_gold_x"} {
+		if _, err := builtinCounter(bad); err == nil {
+			t.Errorf("%s should not resolve", bad)
+		}
+	}
+}

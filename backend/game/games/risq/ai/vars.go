@@ -147,6 +147,12 @@ func builtinCounter(name string) (counter, error) {
 	if c, ok := targetDistanceCounter(name); ok {
 		return c, nil
 	}
+	if name == "population_max" {
+		return func(v View, _ *Internals) float64 { return float64(v.MaxPopulation()) }, nil
+	}
+	if c, ok, err := costCounter(name); ok {
+		return c, err
+	}
 	for _, v := range expressionVarNames {
 		if name == v {
 			return func(view View, internals *Internals) float64 { return expressionVars(view, internals)[v] }, nil
@@ -172,6 +178,35 @@ func builtinCounter(name string) (counter, error) {
 		return nil, err
 	}
 	return allCounterParsers()[base](obj)
+}
+
+// unit_cost_food_13, building_cost_stone_23, tech_cost_gold_5: one resource of what something costs
+func costCounter(name string) (counter, bool, error) {
+	kinds := map[string]func(View, uint32) Cost{
+		"unit_cost_":     func(v View, id uint32) Cost { return v.UnitCost(id) },
+		"building_cost_": func(v View, id uint32) Cost { return v.BuildCost(id) },
+		"tech_cost_":     func(v View, id uint32) Cost { return v.TechCost(id) },
+	}
+	for prefix, cost := range kinds {
+		rest, found := strings.CutPrefix(name, prefix)
+		if !found {
+			continue
+		}
+		parts := strings.Split(rest, "_")
+		if len(parts) != 2 {
+			return nil, true, fmt.Errorf("expected %s<resource>_<id>", prefix)
+		}
+		category, err := parseResourceCategory(parts[0])
+		if err != nil {
+			return nil, true, err
+		}
+		id, err := strconv.Atoi(parts[1])
+		if err != nil {
+			return nil, true, fmt.Errorf("expected %s<resource>_<id>", prefix)
+		}
+		return func(v View, _ *Internals) float64 { return cost(v, uint32(id)).of(category) }, true, nil
+	}
+	return nil, false, nil
 }
 
 func parseVarFilters(base string, rest string, obj map[string]any) error {

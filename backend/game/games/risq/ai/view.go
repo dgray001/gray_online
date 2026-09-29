@@ -279,6 +279,8 @@ type View interface {
 	IdleBuildings() []BuildingView
 	Resource(category ResourceCategory) float64
 	Population() (current, limit int)
+	// the game's population ceiling, which no amount of housing can raise
+	MaxPopulation() int
 	Foundations() []FoundationView
 
 	VisibleEnemyUnits() []UnitView

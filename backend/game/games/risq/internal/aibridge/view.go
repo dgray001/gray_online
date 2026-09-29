@@ -328,6 +328,10 @@ func (v *aiView) Resource(category ai.ResourceCategory) float64 {
 	}
 }
 
+func (v *aiView) MaxPopulation() int {
+	return v.me.MaxPopulationLimit
+}
+
 func (v *aiView) Population() (int, int) {
 	return len(v.me.Units), v.me.PopulationLimit
 }
