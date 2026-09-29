@@ -110,15 +110,10 @@ func parseAction(raw map[string]any) (Action, error) {
 	return action, nil
 }
 
-func parseQueueParams(raw map[string]any) (weight float64, prioritize bool, depth int) {
-	if w, ok := raw["weight"].(float64); ok {
-		weight = w
-	}
+func parseQueueParams(raw map[string]any) (weight amount, prioritize bool, depth amount) {
+	weight, _ = parseNumber(raw, "weight", 0)
 	prioritize, _ = raw["prioritize"].(bool)
-	depth = 1
-	if d, ok := raw["depth"].(float64); ok {
-		depth = int(d)
-	}
+	depth, _ = parseNumber(raw, "depth", 1)
 	return weight, prioritize, depth
 }
 
@@ -147,12 +142,10 @@ func parseOptionalID(raw map[string]any, key string) *uint32 {
 	return &id
 }
 
-// 0 means unlimited
-func parseMax(raw map[string]any) int {
-	if m, ok := raw["max"].(float64); ok {
-		return int(m)
-	}
-	return 0
+// 0 means unlimited; validated by parseActionInner
+func parseMax(raw map[string]any) amount {
+	m, _ := parseNumber(raw, "max", 0)
+	return m
 }
 
 func parseCost(raw any) (Cost, error) {

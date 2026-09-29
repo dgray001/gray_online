@@ -40,3 +40,17 @@ Debug logs (`-debug`) now tag each combat line with the turn and unit/building i
 - Finish faster: a hunter squad for stragglers once the main army has won.
 - v0.4's remaining wins are games where its own heavies sit on its Redoubt zone; raze the Redoubt earlier.
 - Land and banked gold decide close score games; the ai still almost never razes outside an assault.
+
+## Script variables and expressions
+- Any numeric action input (`max`, `queue`, `weight`, `depth`, `size`, `reserve`, `move_penalty`, army `launch`/`retreat`/
+  `defend_radius`/`strike`) takes a number or an expression string, like condition `amount`s already did.
+- Expressions support `+ - * /`, parentheses, `min(a, b, ...)`, `max(a, b, ...)`, the plain variables (`turn`, `food`,
+  `population_limit`, ...) and `var(name)`.
+- `{"action": "set_var", "name": "x", "value": "<expr>"}` sets a per-turn variable (cleared every turn);
+  add `"persist": true` for a global one that lasts the whole game. Rules run in order, so later rules see earlier sets.
+- `var(name)` looks up this turn's variables, then globals, then built-in counters named after the count conditions with
+  their filters after underscores: `population_13`, `population_infantry`, `idle_units_1`, `enemy_units_visible_13_within_2`,
+  `building_count_23_complete`, `foundation_count_2_without_builders`, `resource_food`, `resource_remaining_food_within_1`,
+  `bucket_size_<bucket>`, `tech_researched_5` / `resource_available_gold` (1 or 0), `population_headroom`, `land`, ...
+  Unknown names are 0 (with a one-time warning if they aren't script variables).
+- `{"value_at_least": {"value": "<expr>", "amount": <expr>}}` (and `_at_most` / `_equals`) branches on any expression.

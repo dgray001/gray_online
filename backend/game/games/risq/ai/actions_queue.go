@@ -4,11 +4,11 @@ type addQAction struct {
 	q_type QKind
 	id     *uint32
 	cost   Cost
-	weight float64
+	weight amount
 }
 
 func (a *addQAction) ToOrders(view View, internals *Internals) []Order {
-	q := Q{Type: a.q_type, Weight: a.weight}
+	q := Q{Type: a.q_type, Weight: a.weight.float(view, internals)}
 	switch a.q_type {
 	case QResource:
 		q.Cost = a.cost
@@ -29,36 +29,37 @@ func (a *addQAction) ToOrders(view View, internals *Internals) []Order {
 type buildNextInQAction struct {
 	filtered
 	eligible   []OrderKind
-	weight     float64
+	weight     amount
 	prioritize bool
-	depth      int
-	max        int
+	depth      amount
+	max        amount
 }
 
 type createNextInQAction struct {
-	weight     float64
+	weight     amount
 	prioritize bool
-	depth      int
+	depth      amount
 }
 
 type researchNextInQAction struct {
-	weight     float64
+	weight     amount
 	prioritize bool
-	depth      int
+	depth      amount
 }
 
 type produceNextInQAction struct {
 	filtered
-	weight     float64
+	weight     amount
 	prioritize bool
-	depth      int
-	max        int
+	depth      amount
+	max        amount
 }
 
 func (a *buildNextInQAction) ToOrders(view View, internals *Internals) []Order {
+	limit := a.max.int(view, internals)
 	units := a.filter.apply(eligibleUnits(view, a.eligible), isEconomic)
-	for _, q := range selectFromQueue(view, internals, a.weight, a.prioritize, a.depth, QBuilding) {
-		if orders := buildWith(view, internals, units, *q.ID, a.max); len(orders) > 0 {
+	for _, q := range selectFromQueue(view, internals, a.weight.float(view, internals), a.prioritize, a.depth.int(view, internals), QBuilding) {
+		if orders := buildWith(view, internals, units, *q.ID, limit); len(orders) > 0 {
 			return orders
 		}
 	}
@@ -66,7 +67,7 @@ func (a *buildNextInQAction) ToOrders(view View, internals *Internals) []Order {
 }
 
 func (a *createNextInQAction) ToOrders(view View, internals *Internals) []Order {
-	for _, q := range selectFromQueue(view, internals, a.weight, a.prioritize, a.depth, QUnit) {
+	for _, q := range selectFromQueue(view, internals, a.weight.float(view, internals), a.prioritize, a.depth.int(view, internals), QUnit) {
 		if orders := createUnits(view, internals, *q.ID, buildingFilter{}, 1); len(orders) > 0 {
 			return orders
 		}
@@ -75,7 +76,7 @@ func (a *createNextInQAction) ToOrders(view View, internals *Internals) []Order 
 }
 
 func (a *researchNextInQAction) ToOrders(view View, internals *Internals) []Order {
-	for _, q := range selectFromQueue(view, internals, a.weight, a.prioritize, a.depth, QTech) {
+	for _, q := range selectFromQueue(view, internals, a.weight.float(view, internals), a.prioritize, a.depth.int(view, internals), QTech) {
 		if orders := researchTech(view, internals, *q.ID, buildingFilter{}, 1); len(orders) > 0 {
 			return orders
 		}
@@ -84,12 +85,13 @@ func (a *researchNextInQAction) ToOrders(view View, internals *Internals) []Orde
 }
 
 func (a *produceNextInQAction) ToOrders(view View, internals *Internals) []Order {
+	limit := a.max.int(view, internals)
 	units := a.filter.apply(view.IdleUnits(), isEconomic)
-	for _, q := range selectFromQueue(view, internals, a.weight, a.prioritize, a.depth, QBuilding, QUnit, QTech) {
+	for _, q := range selectFromQueue(view, internals, a.weight.float(view, internals), a.prioritize, a.depth.int(view, internals), QBuilding, QUnit, QTech) {
 		var orders []Order
 		switch q.Type {
 		case QBuilding:
-			orders = buildWith(view, internals, units, *q.ID, a.max)
+			orders = buildWith(view, internals, units, *q.ID, limit)
 		case QUnit:
 			orders = createUnits(view, internals, *q.ID, buildingFilter{}, 1)
 		case QTech:

@@ -41,6 +41,11 @@ type Internals struct {
 	bucket_depth      int
 	max_bucket_depth  int
 	bucket_depth_warn bool
+	// set_var values: turn_vars are cleared every turn, vars persist for the whole game
+	turn_vars    map[string]float64
+	vars         map[string]float64
+	builtin_vars map[string]counter
+	warned       map[string]bool
 }
 
 const defaultMaxBucketDepth = 3
@@ -58,6 +63,7 @@ func (i *Internals) Refresh() {
 	i.pending_population = 0
 	i.behaviors = nil
 	i.building_behaviors = nil
+	i.turn_vars = nil
 }
 
 func (i *Internals) spend(cost Cost) {

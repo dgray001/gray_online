@@ -2,6 +2,7 @@ package ai
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"strings"
 
@@ -41,19 +42,49 @@ func parseAmount(raw any) (amount, error) {
 		for _, name := range expressionVarNames {
 			vars[name] = 1
 		}
-		if _, err := util.EvalExpr(v, vars); err != nil {
+		// syntax check only: every var() resolves to 1, and a zero divisor from those stand-ins is not an error
+		if _, err := util.EvalExprWithLookup(v, vars, func(string) (float64, error) { return 1, nil }); err != nil && err.Error() != "division by zero" {
 			return amount{}, err
 		}
 		return amount{expr: v}, nil
 	}
-	return amount{}, fmt.Errorf("\"amount\" must be a number or expression string")
+	return amount{}, fmt.Errorf("must be a number or expression string")
+}
+
+// Reads an optional number-or-expression field, falling back to def when absent
+func parseNumber(raw map[string]any, key string, def float64) (amount, error) {
+	v, present := raw[key]
+	if !present {
+		return amount{value: def}, nil
+	}
+	a, err := parseAmount(v)
+	if err != nil {
+		return amount{}, fmt.Errorf("%q %v", key, err)
+	}
+	return a, nil
 }
 
 func (a amount) resolve(view View, internals *Internals) (float64, error) {
 	if a.expr == "" {
 		return a.value, nil
 	}
-	return util.EvalExpr(a.expr, expressionVars(view, internals))
+	return util.EvalExprWithLookup(a.expr, expressionVars(view, internals), func(name string) (float64, error) {
+		return internals.lookupVar(view, name), nil
+	})
+}
+
+// Resolves to a number, or 0 (with a one-time warning) when the expression can't be evaluated
+func (a amount) float(view View, internals *Internals) float64 {
+	v, err := a.resolve(view, internals)
+	if err != nil {
+		internals.warnOnce("expr:"+a.expr, fmt.Sprintf("ai expression %q: %v", a.expr, err))
+		return 0
+	}
+	return v
+}
+
+func (a amount) int(view View, internals *Internals) int {
+	return int(math.Round(a.float(view, internals)))
 }
 
 func expressionVars(view View, internals *Internals) map[string]float64 {
