@@ -27,6 +27,7 @@
     "max_health": 11,
     "attack_type": "blunt",
     "attack_blunt": 6,
+    "defense_piercing": 1,
     "cost": { "food": 50, "wood": 20 },
     "production_stamina": 10,
     "turn_stamina": 15
@@ -39,8 +40,8 @@
     "max_health": 16,
     "attack_type": "piercing",
     "attack_piercing": 10,
-    "defense_blunt": 0,
-    "defense_piercing": 4,
+    "defense_blunt": 1,
+    "defense_piercing": 2,
     "cost": { "food": 70, "wood": 40 },
     "production_stamina": 14,
     "turn_stamina": 12
