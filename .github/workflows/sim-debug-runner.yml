@@ -1,0 +1,56 @@
+name: RISQ Debug Runner
+on:
+  push:
+    branches: [add-ci-workflow]
+    paths-ignore:
+      - 'backend/game/games/risq/sim/outputs/input/**'
+permissions:
+  contents: write
+jobs:
+  sim:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/game/games/risq/sim
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: add-ci-workflow
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache: true
+      - name: Build
+        run: go build -o sim-runner .
+      - name: Run batch
+        run: ./sim-runner -quiet input
+      - name: Run debug seeds
+        shell: bash
+        run: |
+          set -euo pipefail
+          base=$(python3 -c 'import json; print(json.load(open("inputs/input.json")).get("seed",1))')
+          n=$(python3 -c 'import json; print(json.load(open("inputs/input.json")).get("iterations",1))')
+          mkdir -p outputs/input/debug-runs
+          for ((i=0;i<n;i++)); do
+            seed=$((base+i))
+            ./sim-runner -debug -quiet -seed "$seed" input
+            cp outputs/input/debug.log "outputs/input/debug-runs/${seed}.log"
+            cp outputs/input/sim.log "outputs/input/debug-runs/${seed}-sim.log"
+          done
+      - name: Upload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: risq-sim-output
+          path: backend/game/games/risq/sim/outputs/input/
+      - name: Publish
+        if: always()
+        working-directory: .
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f backend/game/games/risq/sim/outputs/input
+          if ! git diff --cached --quiet; then
+            git commit -m "ci: publish RISQ simulation results"
+            git push origin HEAD:add-ci-workflow
+          fi
