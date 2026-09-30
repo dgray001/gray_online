@@ -1,0 +1,10 @@
+1 sim(s), 10 games each, up to 100 turns
+
+sim            ai       games  crush crushed  lead  trail crushT  kills   lost  vils   mil vIdle% vcIdle vcEarly  razes gathered
+overall        v0.6        10      0       0     5      5      0   17.0   20.3   0.0  12.6    0.0    0.0    0.0    0.0      399
+overall        v0.5        10      0       0     5      5      0   20.3   17.0   0.0  14.6    0.0    0.0    0.0    0.0      188
+
+input          v0.6        10      0       0     5      5      0   17.0   20.3   0.0  12.6    0.0    0.0    0.0    0.0      399
+input          v0.5        10      0       0     5      5      0   20.3   17.0   0.0  14.6    0.0    0.0    0.0    0.0      188
+
+verdict: v0.6 crushed v0.5 in 0/10 games (0%), was crushed in 0, led at the end of 5 more
