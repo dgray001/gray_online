@@ -1,0 +1,10 @@
+{
+  "seed": 100000,
+  "iterations": 10,
+  "max_turns": 100,
+  "map": "sim_army",
+  "players": [
+    { "ai_config": "v0.6" },
+    { "ai_config": "v0.5" }
+  ]
+}
