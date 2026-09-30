@@ -1,11 +1,2 @@
-2026/09/30 19:27:41 input game 2 seed=100001 seats=[0 1] turns=14 duration=594.654312ms error=""
-2026/09/30 19:27:41 input game 4 seed=100003 seats=[0 1] turns=17 duration=968.576975ms error=""
-2026/09/30 19:27:41 input game 3 seed=100002 seats=[0 1] turns=23 duration=1.128474326s error=""
-2026/09/30 19:27:45 input game 1 seed=100000 seats=[0 1] turns=100 duration=4.391740966s error=""
-2026/09/30 19:27:45 input game 5 seed=100004 seats=[0 1] turns=100 duration=3.866835761s error=""
-2026/09/30 19:27:45 input game 7 seed=100006 seats=[0 1] turns=100 duration=4.17757725s error=""
-2026/09/30 19:27:46 input game 9 seed=100008 seats=[0 1] turns=19 duration=982.605397ms error=""
-2026/09/30 19:27:46 input game 6 seed=100005 seats=[0 1] turns=100 duration=4.542949068s error=""
-2026/09/30 19:27:46 input game 8 seed=100007 seats=[0 1] turns=26 duration=1.227406848s error=""
-2026/09/30 19:27:46 input game 10 seed=100009 seats=[0 1] turns=18 duration=551.904304ms error=""
-2026/09/30 19:27:46 ran 10 game(s) over 1 sim(s), results in outputs/input
+2026/09/30 21:20:38 input game 1 seed=100009 seats=[0 1] turns=18 duration=244.766448ms error=""
+2026/09/30 21:20:38 ran 1 game(s) over 1 sim(s), results in outputs/input
