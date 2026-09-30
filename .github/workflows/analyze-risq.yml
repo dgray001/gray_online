@@ -24,10 +24,15 @@ jobs:
           set -euo pipefail
           out=outputs/input/analysis.txt
           : > "$out"
-          for f in outputs/input/debug-runs/[0-9]*0.log; do
-            seed=$(basename "$f" .log)
+          for f in outputs/input/debug-runs/[0-9]*-sim.log; do
+            seed=$(basename "$f" -sim.log)
+            debug="outputs/input/debug-runs/${seed}.log"
             echo "SEED @$seed" >> "$out"
-            python3 tools/engagements.py "$f" 0 1000 3 >> "$out"
+            if [[ -f "$debug" ]]; then
+              python3 tools/engagements.py "$debug" 0 1000 3 >> "$out"
+            else
+              echo "MISSING $debug" >> "$out"
+            fi
           done
       - name: Commit analysis
         working-directory: .
