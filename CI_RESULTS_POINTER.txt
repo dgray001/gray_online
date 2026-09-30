@@ -1,0 +1,1 @@
+RISQ simulation results are published by GitHub Actions.
