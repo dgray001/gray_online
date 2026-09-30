@@ -1,0 +1,63 @@
+name: RISQ Publisher
+
+on:
+  push:
+    branches: [add-ci-workflow]
+    paths-ignore:
+      - '.ci-results/**'
+
+concurrency:
+  group: risq-sim-add-ci-workflow
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  sim:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/game/games/risq/sim
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: add-ci-workflow
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+      - name: Run and stage results
+        shell: bash
+        run: |
+          set -euo pipefail
+          go build -o sim-runner .
+          rm -rf "$GITHUB_WORKSPACE/.ci-results/risq"
+          mkdir -p "$GITHUB_WORKSPACE/.ci-results/risq/debug-runs"
+          ./sim-runner -quiet input
+          cp outputs/input/sim.log "$GITHUB_WORKSPACE/.ci-results/risq/batch.log"
+          base=$(python3 -c 'import json; print(json.load(open("inputs/input.json")).get("seed",1))')
+          n=$(python3 -c 'import json; print(json.load(open("inputs/input.json")).get("iterations",1))')
+          for ((i=0;i<n;i++)); do
+            seed=$((base+i))
+            ./sim-runner -debug -quiet -seed "$seed" input
+            cp outputs/input/debug.log "$GITHUB_WORKSPACE/.ci-results/risq/debug-runs/${seed}.log"
+            cp outputs/input/sim.log "$GITHUB_WORKSPACE/.ci-results/risq/debug-runs/${seed}-sim.log"
+          done
+      - name: Publish results
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .ci-results/risq
+          if git diff --cached --quiet;  then exit 0; fi
+          git commit -m "ci: publish RISQ simulation results"
+          for attempt in 1 2 3; do
+            git fetch origin add-ci-workflow
+            git rebase origin/add-ci-workflow
+            if git push origin HEAD:add-ci-workflow; then exit 0; fi
+            sleep 2
+          done
+          exit 1
