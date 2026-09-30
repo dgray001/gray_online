@@ -1,0 +1,77 @@
+name: RISQ Matrix
+on:
+  push:
+    branches: [add-ci-workflow]
+    paths: ['.github/workflows/risq-matrix.yml']
+permissions:
+  contents: write
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {name: baseline, assault_min: 10, assault_odds: 1.3, engaged_odds: 1.0}
+          - {name: min15, assault_min: 15, assault_odds: 1.3, engaged_odds: 1.0}
+          - {name: min20, assault_min: 20, assault_odds: 1.3, engaged_odds: 1.0}
+          - {name: odds115, assault_min: 10, assault_odds: 1.15, engaged_odds: 1.0}
+          - {name: odds100, assault_min: 10, assault_odds: 1.0, engaged_odds: 1.0}
+          - {name: engaged80, assault_min: 10, assault_odds: 1.3, engaged_odds: 0.8}
+          - {name: engaged120, assault_min: 10, assault_odds: 1.3, engaged_odds: 1.2}
+          - {name: min15_odds115, assault_min: 15, assault_odds: 1.15, engaged_odds: 1.0}
+          - {name: min20_odds115, assault_min: 20, assault_odds: 1.15, engaged_odds: 1.0}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: add-ci-workflow
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+      - name: Generate and run
+        working-directory: backend/game/games/risq/sim
+        shell: bash
+        run: |
+          set -euo pipefail
+          n=${{ matrix.name }}
+          python3 gen_v06.py out=../config/ai/v0.6-$n.json assault_min=${{ matrix.assault_min }} assault_odds=${{ matrix.assault_odds }} engaged_ods=${{ matrix.engaged_odds }}
+          python3 - "$n" <<'PY'
+          import json,sys
+          n=sys.argv[1]
+          p=json.load(open('inputs/input.json'))
+          p['players'][0]['ai_config']='v0.6-'+n
+          json.dump(p,open('inputs/matrix-'+n+'.json','w'),indent=2)
+          PY
+          go build -o sim-runner .
+          ./sim-runner -quiet matrix-$n
+          mkdir -p "$GITHUB_WORKSPACE/result"
+          cp outputs/matrix-$n/sim.log "$GITHUB_WORKSPACE/result/$n.log"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: matrix-${{ matrix.name }}
+          path: result/*.log
+  publish:
+    needs: run
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: add-ci-workflow
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          path: matrix-artifacts
+          merge-multiple: true
+      - name: Publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .ci-results/risq/matrix
+          mkdir -p .ci-results/risq/matrix
+          cp matrix-artifacts/*.log .ci-results/risq/matrix/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f .ci-results/risq/matrix
+          git commit -m "ci: publish RISQ concentration matrix" || exit 0
+          git pull --rebase origin add-ci-workflow
+          git push origin HEAD:add-ci-workflow
