@@ -1,0 +1,43 @@
+name: RISQ Combat Analysis
+
+on:
+  push:
+    branches: [add-ci-workflow]
+    paths-ignore:
+      - 'backend/game/games/risq/sim/outputs/input/analysis.txt'
+
+permissions:
+  contents: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: add-ci-workflow
+          fetch-depth: 0
+      - name: Analyze all debug replays
+        working-directory: backend/game/games/risq/sim
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=outputs/input/analysis.txt
+          : > "$out"
+          for f in outputs/input/debug-runs/[0-9]*0.log; do
+            seed=$(basename "$f" .log)
+            echo "SEED @$seed" >> "$out"
+            python3 tools/engagements.py "$f" 0 1000 3 >> "$out"
+          done
+      - name: Commit analysis
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f backend/game/games/risq/sim/outputs/input/analysis.txt
+          git commit -m "ci: analyze RISQ CI combat" || exit 0
+          git fetch origin add-ci-workflow
+          git rebase origin/add-ci-workflow
+          git push origin HEAD:add-ci-workflow
