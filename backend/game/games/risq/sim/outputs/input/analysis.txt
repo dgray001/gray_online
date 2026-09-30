@@ -1,1 +1,74 @@
 SEED @100000
+SEED @100001
+  t 5 (-4, 1)   committed v0.6  6 (pow  6) vs v0.5 29 (pow 55) | lost v0.6  6 v0.5  0 | overkill v0.6   0% v0.5  77%
+  t 6 (-2, -1)  committed v0.6  6 (pow  6) vs v0.5 27 (pow 53) | lost v0.6  4 v0.5  1 | overkill v0.6  17% v0.5  81%
+  t 7 (-2, -1)  committed v0.6  7 (pow 25) vs v0.5 26 (pow 52) | lost v0.6  2 v0.5  3 | overkill v0.6  35% v0.5  52%
+  t 8 (-2, -1)  committed v0.6  7 (pow 22) vs v0.5 23 (pow 49) | lost v0.6  2 v0.5  5 | overkill v0.6  70% v0.5  30%
+  t 9 (-2, -1)  committed v0.6 12 (pow 29) vs v0.5 18 (pow 44) | lost v0.6  1 v0.5  5 | overkill v0.6  47% v0.5 100%
+  t 9 (-3, 0)   committed v0.6  3 (pow  6) vs v0.5 17 (pow 43) | lost v0.6  3 v0.5  0 | overkill v0.6   0% v0.5  57%
+  t10 (-2, -1)  committed v0.6  8 (pow 22) vs v0.5 13 (pow 38) | lost v0.6  3 v0.5  2 | overkill v0.6  23% v0.5  54%
+  t11 (-2, -1)  committed v0.6  5 (pow 16) vs v0.5 11 (pow 34) | lost v0.6  2 v0.5  1 | overkill v0.6  12% v0.5  53%
+  t12 (-2, -1)  committed v0.6  4 (pow 13) vs v0.5 10 (pow 32) | lost v0.6  1 v0.5  3 | overkill v0.6  38% v0.5  16%
+SEED @100002
+  t 9 (3, -2)   committed v0.6  3 (pow  3) vs v0.5 23 (pow 31) | lost v0.6  3 v0.5  0 | overkill v0.6   0% v0.5  70%
+  t10 (3, -1)   committed v0.6 17 (pow 25) vs v0.5 29 (pow 55) | lost v0.6  5 v0.5  4 | overkill v0.6  26% v0.5  81%
+  t11 (3, -1)   committed v0.6 12 (pow 20) vs v0.5 25 (pow 51) | lost v0.6  4 v0.5  7 | overkill v0.6  60% v0.5  78%
+  t12 (3, -1)   committed v0.6  8 (pow 16) vs v0.5 18 (pow 44) | lost v0.6  4 v0.5  4 | overkill v0.6  37% v0.5  65%
+  t13 (3, -1)   committed v0.6  8 (pow 12) vs v0.5 14 (pow 40) | lost v0.6  2 v0.5  2 | overkill v0.6   6% v0.5  66%
+  t14 (3, -1)   committed v0.6 10 (pow 30) vs v0.5 12 (pow 36) | lost v0.6  3 v0.5  2 | overkill v0.6  38% v0.5  64%
+  t15 (3, -1)   committed v0.6  7 (pow 26) vs v0.5 10 (pow 32) | lost v0.6  1 v0.5  2 | overkill v0.6  17% v0.5  39%
+  t16 (3, -1)   committed v0.6  6 (pow 24) vs v0.5  8 (pow 28) | lost v0.6  1 v0.5  2 | overkill v0.6  66% v0.5  35%
+  t17 (3, -1)   committed v0.6  5 (pow 20) vs v0.5  6 (pow 24) | lost v0.6  1 v0.5  1 | overkill v0.6   8% v0.5  13%
+  t18 (3, -1)   committed v0.6  4 (pow 16) vs v0.5  5 (pow 20) | lost v0.6  1 v0.5  0 | overkill v0.6   0% v0.5  35%
+  t19 (3, -1)   committed v0.6  3 (pow 12) vs v0.5  5 (pow 20) | lost v0.6  1 v0.5  1 | overkill v0.6  38% v0.5  10%
+SEED @100003
+  t 7 (-4, 1)   committed v0.6  5 (pow  5) vs v0.5 28 (pow 54) | lost v0.6  5 v0.5  0 | overkill v0.6   0% v0.5  77%
+  t 8 (-3, 2)   committed v0.6 17 (pow 25) vs v0.5 28 (pow 54) | lost v0.6  3 v0.5  4 | overkill v0.6  30% v0.5  81%
+  t 9 (-3, 2)   committed v0.6 12 (pow 20) vs v0.5 24 (pow 50) | lost v0.6  4 v0.5  7 | overkill v0.6  54% v0.5  78%
+  t10 (-3, 2)   committed v0.6  9 (pow 17) vs v0.5 17 (pow 43) | lost v0.6  4 v0.5  3 | overkill v0.6  39% v0.5  67%
+  t11 (-3, 2)   committed v0.6  5 (pow 10) vs v0.5 14 (pow 40) | lost v0.6  3 v0.5  2 | overkill v0.6  26% v0.5  55%
+  t12 (-3, 2)   committed v0.6  8 (pow 28) vs v0.5 12 (pow 36) | lost v0.6  2 v0.5  2 | overkill v0.6  48% v0.5  79%
+  t13 (-3, 2)   committed v0.6  6 (pow 24) vs v0.5 10 (pow 32) | lost v0.6  2 v0.5  1 | overkill v0.6  23% v0.5  23%
+  t14 (-3, 2)   committed v0.6  4 (pow 16) vs v0.5  9 (pow 30) | lost v0.6  1 v0.5  3 | overkill v0.6  28% v0.5   2%
+  t15 (-3, 2)   committed v0.6  3 (pow 12) vs v0.5  6 (pow 24) | lost v0.6  1 v0.5  0 | overkill v0.6   0% v0.5  12%
+SEED @100004
+  t 9 (3, -1)   committed v0.6 11 (pow 11) vs v0.5 29 (pow 55) | lost v0.6  4 v0.5  2 | overkill v0.6   6% v0.5  82%
+  t10 (3, -1)   committed v0.6  6 (pow  6) vs v0.5 27 (pow 53) | lost v0.6  5 v0.5  4 | overkill v0.6  53% v0.5  79%
+  t11 (3, -1)   committed v0.6  9 (pow 17) vs v0.5 23 (pow 49) | lost v0.6  1 v0.5  2 | overkill v0.6  48% v0.5  84%
+  t12 (3, -1)   committed v0.6  7 (pow 14) vs v0.5 21 (pow 47) | lost v0.6  4 v0.5  2 | overkill v0.6  25% v0.5  66%
+  t13 (3, -1)   committed v0.6  3 (pow  6) vs v0.5 19 (pow 45) | lost v0.6  3 v0.5  2 | overkill v0.6  64% v0.5  73%
+SEED @100005
+SEED @100006
+SEED @100007
+  t 9 (-1, 3)   committed v0.6  6 (pow  6) vs v0.5 26 (pow 52) | lost v0.6  5 v0.5  0 | overkill v0.6   0% v0.5  75%
+  t 9 (0, 3)    committed v0.6 20 (pow 28) vs v0.5  5 (pow  5) | lost v0.6  0 v0.5  5 | overkill v0.6  43% v0.5   0%
+  t10 (0, 3)    committed v0.6 14 (pow 21) vs v0.5 22 (pow 48) | lost v0.6  4 v0.5  7 | overkill v0.6  17% v0.5  83%
+  t11 (0, 3)    committed v0.6 10 (pow 17) vs v0.5 15 (pow 41) | lost v0.6  3 v0.5  4 | overkill v0.6  53% v0.5  72%
+  t12 (0, 3)    committed v0.6  7 (pow 14) vs v0.5 11 (pow 34) | lost v0.6  3 v0.5  1 | overkill v0.6   2% v0.5  62%
+  t13 (0, 3)    committed v0.6 12 (pow 34) vs v0.5 10 (pow 32) | lost v0.6  3 v0.5  4 | overkill v0.6  37% v0.5  61%
+  t14 (0, 3)    committed v0.6 10 (pow 29) vs v0.5  6 (pow 24) | lost v0.6  2 v0.5  1 | overkill v0.6   8% v0.5  73%
+  t15 (0, 3)    committed v0.6  8 (pow 27) vs v0.5  5 (pow 20) | lost v0.6  2 v0.5  1 | overkill v0.6  17% v0.5  47%
+  t16 (0, 3)    committed v0.6  6 (pow 24) vs v0.5  4 (pow 16) | lost v0.6  0 v0.5  1 | overkill v0.6  24% v0.5   0%
+  t17 (0, 3)    committed v0.6  6 (pow 24) vs v0.5  3 (pow 12) | lost v0.6  1 v0.5  1 | overkill v0.6   2% v0.5  22%
+SEED @100008
+  t10 (-4, 2)   committed v0.6  3 (pow 12) vs v0.5 28 (pow 54) | lost v0.6  3 v0.5  0 | overkill v0.6   0% v0.5  28%
+  t11 (-3, 2)   committed v0.6  3 (pow 12) vs v0.5 28 (pow 54) | lost v0.6  2 v0.5  1 | overkill v0.6  12% v0.5  35%
+  t12 (-2, 4)   committed v0.6  3 (pow  3) vs v0.5 27 (pow 53) | lost v0.6  3 v0.5  0 | overkill v0.6   0% v0.5  77%
+  t12 (-3, 2)   committed v0.6 16 (pow 19) vs v0.5 27 (pow 53) | lost v0.6  1 v0.5  1 | overkill v0.6  58% v0.5  12%
+  t13 (-3, 2)   committed v0.6 20 (pow 28) vs v0.5 26 (pow 52) | lost v0.6  4 v0.5 12 | overkill v0.6  31% v0.5  80%
+  t14 (-3, 2)   committed v0.6 16 (pow 24) vs v0.5 14 (pow 40) | lost v0.6  4 v0.5  4 | overkill v0.6  47% v0.5  72%
+  t15 (-3, 2)   committed v0.6 12 (pow 20) vs v0.5 10 (pow 32) | lost v0.6  3 v0.5  2 | overkill v0.6  13% v0.5  66%
+  t16 (-3, 2)   committed v0.6  9 (pow 17) vs v0.5  8 (pow 28) | lost v0.6  3 v0.5  2 | overkill v0.6  33% v0.5  55%
+  t17 (-3, 2)   committed v0.6  6 (pow 12) vs v0.5  6 (pow 24) | lost v0.6  2 v0.5  1 | overkill v0.6  19% v0.5  32%
+  t18 (-3, 2)   committed v0.6  4 (pow  8) vs v0.5  5 (pow 20) | lost v0.6  2 v0.5  0 | overkill v0.6   0% v0.5  47%
+SEED @100009
+  t 7 (1, -3)   committed v0.6  4 (pow  4) vs v0.5 28 (pow 54) | lost v0.6  4 v0.5  0 | overkill v0.6   0% v0.5  64%
+  t 7 (2, -3)   committed v0.6 20 (pow 28) vs v0.5  4 (pow  4) | lost v0.6  0 v0.5  4 | overkill v0.6  35% v0.5   0%
+  t 8 (2, -3)   committed v0.6 14 (pow 21) vs v0.5 25 (pow 51) | lost v0.6  4 v0.5  8 | overkill v0.6  19% v0.5  79%
+  t 9 (2, -3)   committed v0.6 10 (pow 17) vs v0.5 17 (pow 43) | lost v0.6  4 v0.5  4 | overkill v0.6  54% v0.5  76%
+  t10 (2, -3)   committed v0.6  7 (pow 13) vs v0.5 13 (pow 38) | lost v0.6  3 v0.5  1 | overkill v0.6  21% v0.5  54%
+  t11 (2, -3)   committed v0.6  4 (pow  7) vs v0.5 12 (pow 36) | lost v0.6  3 v0.5  1 | overkill v0.6   1% v0.5  68%
+  t12 (2, -3)   committed v0.6  7 (pow 26) vs v0.5 11 (pow 34) | lost v0.6  1 v0.5  3 | overkill v0.6  54% v0.5  90%
+  t13 (2, -3)   committed v0.6  5 (pow 20) vs v0.5  8 (pow 28) | lost v0.6  1 v0.5  1 | overkill v0.6  22% v0.5  20%
+  t14 (2, -3)   committed v0.6  4 (pow 16) vs v0.5  7 (pow 26) | lost v0.6  1 v0.5  1 | overkill v0.6  36% v0.5  15%
+  t15 (2, -3)   committed v0.6  3 (pow 12) vs v0.5  6 (pow 24) | lost v0.6  1 v0.5  1 | overkill v0.6   2% v0.5   4%
