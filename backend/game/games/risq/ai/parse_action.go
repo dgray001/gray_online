@@ -2,10 +2,18 @@ package ai
 
 import "fmt"
 
+// Inputs that take a number or an expression string
+var numericActionKeys = []string{"max", "queue", "weight", "move_penalty", "depth", "size", "reserve", "launch", "retreat", "defend_radius", "strike", "score", "min_score"}
+
 func parseActionInner(raw map[string]any) (Action, error) {
 	action_type, ok := raw["action"].(string)
 	if !ok {
 		return nil, fmt.Errorf("action must have a string \"action\" field")
+	}
+	for _, key := range numericActionKeys {
+		if _, err := parseNumber(raw, key, 0); err != nil {
+			return nil, fmt.Errorf("%s: %v", action_type, err)
+		}
 	}
 	switch action_type {
 	case "gather":
@@ -14,14 +22,8 @@ func parseActionInner(raw map[string]any) (Action, error) {
 			return nil, err
 		}
 		if raw["category"] == nil {
-			weight := 0.0
-			if w, ok := raw["weight"].(float64); ok {
-				weight = w
-			}
-			move_penalty := 1.0
-			if p, ok := raw["move_penalty"].(float64); ok {
-				move_penalty = p
-			}
+			weight, _ := parseNumber(raw, "weight", 0)
+			move_penalty, _ := parseNumber(raw, "move_penalty", 1)
 			return &balancedGatherAction{eligible: eligible, weight: weight, move_penalty: move_penalty}, nil
 		}
 		if _, has_weight := raw["weight"]; has_weight {
@@ -37,10 +39,7 @@ func parseActionInner(raw map[string]any) (Action, error) {
 		if !ok {
 			return nil, fmt.Errorf("create action requires a numeric \"unit_id\"")
 		}
-		queue := 1
-		if q, ok := raw["queue"].(float64); ok {
-			queue = int(q)
-		}
+		queue, _ := parseNumber(raw, "queue", 1)
 		return &createAction{unit_id: uint32(id), queue: queue}, nil
 	case "createNextInQ":
 		weight, prioritize, depth := parseQueueParams(raw)
@@ -50,10 +49,7 @@ func parseActionInner(raw map[string]any) (Action, error) {
 		if !ok {
 			return nil, fmt.Errorf("research action requires a numeric \"tech_id\"")
 		}
-		queue := 1
-		if q, ok := raw["queue"].(float64); ok {
-			queue = int(q)
-		}
+		queue, _ := parseNumber(raw, "queue", 1)
 		return &researchAction{tech_id: uint32(id), queue: queue}, nil
 	case "researchNextInQ":
 		weight, prioritize, depth := parseQueueParams(raw)
@@ -102,36 +98,28 @@ func parseActionInner(raw map[string]any) (Action, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &attackAction{target: target, max: parseMax(raw), eligible: eligible}, nil
+		picker, err := parseTargetPicker(raw)
+		if err != nil {
+			return nil, err
+		}
+		resume, _ := raw["resume"].(bool)
+		return &attackAction{picker: picker, target: target, max: parseMax(raw), eligible: eligible, resume: resume}, nil
 	case "hire":
 		id, ok := raw["unit_id"].(float64)
 		if !ok {
 			return nil, fmt.Errorf("hire action requires a numeric \"unit_id\"")
 		}
-		reserve := 0.0
-		if v, ok := raw["reserve"].(float64); ok {
-			reserve = v
-		}
+		reserve, _ := parseNumber(raw, "reserve", 0)
 		return &hireAction{unit_id: uint32(id), max: parseMax(raw), reserve: reserve}, nil
 	case "army":
 		ids, err := parseIDSet(raw, "assault_unit_ids")
 		if err != nil {
 			return nil, err
 		}
-		launch, retreat, radius := 30, 8, 2
-		if v, ok := raw["launch"].(float64); ok {
-			launch = int(v)
-		}
-		if v, ok := raw["retreat"].(float64); ok {
-			retreat = int(v)
-		}
-		if v, ok := raw["defend_radius"].(float64); ok {
-			radius = int(v)
-		}
-		strike := 0
-		if v, ok := raw["strike"].(float64); ok {
-			strike = int(v)
-		}
+		launch, _ := parseNumber(raw, "launch", 30)
+		retreat, _ := parseNumber(raw, "retreat", 8)
+		radius, _ := parseNumber(raw, "defend_radius", 2)
+		strike, _ := parseNumber(raw, "strike", 0)
 		return &armyAction{assault_ids: ids, launch: launch, retreat: retreat, defend_radius: radius, strike: strike}, nil
 	case "attack_space":
 		eligible, err := parseEligible(raw["eligible"])
@@ -162,10 +150,10 @@ func parseActionInner(raw map[string]any) (Action, error) {
 		if !ok {
 			return nil, fmt.Errorf("set_bucket action requires a string \"bucket\"")
 		}
-		size, ok := raw["size"].(float64)
-		if !ok {
-			return nil, fmt.Errorf("set_bucket action requires a numeric \"size\"")
+		if raw["size"] == nil {
+			return nil, fmt.Errorf("set_bucket action requires a \"size\"")
 		}
+		size, _ := parseNumber(raw, "size", 0)
 		task_raw, ok := raw["task"].(map[string]any)
 		if !ok {
 			return nil, fmt.Errorf("set_bucket action requires an object \"task\"")
@@ -174,7 +162,7 @@ func parseActionInner(raw map[string]any) (Action, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &setBucketAction{bucket: bucket, size: int(size), task: task}, nil
+		return &setBucketAction{bucket: bucket, size: size, task: task}, nil
 	case "fill_bucket":
 		bucket, ok := raw["bucket"].(string)
 		if !ok {
@@ -239,6 +227,10 @@ func parseActionInner(raw map[string]any) (Action, error) {
 			return nil, err
 		}
 		return &buildingAttackAction{target: target, max: parseMax(raw)}, nil
+	case "move":
+		return parseMove(raw)
+	case "set_var":
+		return parseSetVar(raw)
 	case "set_unit_behavior":
 		return parseSetUnitBehavior(raw)
 	case "set_building_behavior":
@@ -258,10 +250,7 @@ func parseActionInner(raw map[string]any) (Action, error) {
 		if !ok {
 			return nil, fmt.Errorf("add_q action requires a string \"type\"")
 		}
-		weight := 1.0
-		if w, ok := raw["weight"].(float64); ok {
-			weight = w
-		}
+		weight, _ := parseNumber(raw, "weight", 1)
 		if type_str == "resource" {
 			if _, has_id := raw["id"]; has_id {
 				return nil, fmt.Errorf("add_q action with type \"resource\" must not specify \"id\"")

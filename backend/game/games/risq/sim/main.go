@@ -1,15 +1,12 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 	"runtime"
-	"sync"
-	"time"
 
 	"github.com/dgray001/gray_online/game/games/risq"
 	"github.com/dgray001/gray_online/util"
@@ -26,6 +23,8 @@ func main() {
 		os.Exit(1)
 	}
 	name := flag.Arg(0)
+	// the summary goes to the terminal even when engine output is redirected
+	terminal := os.Stdout
 	if err := risq.LoadConfig("../config"); err != nil {
 		log.Fatalf("loading risq config: %v", err)
 	}
@@ -33,11 +32,6 @@ func main() {
 	scenario, err := loadScenario(filepath.Join("inputs", name+".json"))
 	if err != nil {
 		log.Fatalf("loading scenario: %v", err)
-	}
-
-	players := make([]PlayerConfig, len(scenario.Players))
-	for i, p := range scenario.Players {
-		players[i] = PlayerConfig{Nickname: fmt.Sprintf("ai-%d", i), ConfigPath: p.AiConfig}
 	}
 
 	iterations := scenario.Iterations
@@ -102,39 +96,14 @@ func main() {
 	if *debug {
 		workers = 1
 	}
-	results := make([]Result, iterations)
-	games := make(chan int)
-	var wg sync.WaitGroup
-	for range workers {
-		wg.Go(func() {
-			for i := range games {
-				seed := base_seed
-				if !scenario.FixedSeed {
-					seed += int64(i)
-				}
-				start := time.Now()
-				results[i] = RunGame(seed, players, scenario.Map, uint16(scenario.MaxTurns), 15*time.Minute)
-				sim_log.Printf("game %d seed=%d turns=%d duration=%s error=%q",
-					i+1, seed, results[i].Game.TurnNumber, time.Since(start), results[i].Error)
-			}
-		})
+	// a plain scenario is one sim on its map; a suite lists several, each on its own map
+	sims := scenario.Buckets
+	games_per_sim := scenario.GamesPerBucket
+	if len(sims) == 0 {
+		sims = []SuiteBucket{{Name: name, Map: scenario.Map}}
+		games_per_sim = iterations
+	} else if *debug {
+		log.Fatalf("-debug replays one game; run one of the suite's maps as a plain scenario instead")
 	}
-	for i := range iterations {
-		games <- i
-	}
-	close(games)
-	wg.Wait()
-
-	results_file, err := os.Create(filepath.Join(out_dir, "results.json"))
-	if err != nil {
-		log.Fatalf("creating results.json: %v", err)
-	}
-	defer results_file.Close()
-	encoder := json.NewEncoder(results_file)
-	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(results); err != nil {
-		log.Fatalf("writing results.json: %v", err)
-	}
-
-	sim_log.Printf("ran %d game(s), results in %s", iterations, out_dir)
+	runSims(scenario, sims, max(1, games_per_sim), out_dir, workers, base_seed, sim_log, terminal)
 }

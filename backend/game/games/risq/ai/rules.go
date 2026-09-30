@@ -41,6 +41,18 @@ type Internals struct {
 	bucket_depth      int
 	max_bucket_depth  int
 	bucket_depth_warn bool
+	// set_var values: turn_vars are cleared every turn, vars persist for the whole game
+	turn_vars    map[string]float64
+	vars         map[string]float64
+	builtin_vars map[string]counter
+	warned       map[string]bool
+	// the candidate a target picker is scoring, and where it is scored from
+	target      *ZoneRef
+	target_from *ZoneRef
+	// health of the candidate a picker is scoring (units and buildings)
+	target_health, target_max_health float64
+	// where the unit a "unit_when" condition is being checked for stands
+	unit *ZoneRef
 }
 
 const defaultMaxBucketDepth = 3
@@ -58,6 +70,7 @@ func (i *Internals) Refresh() {
 	i.pending_population = 0
 	i.behaviors = nil
 	i.building_behaviors = nil
+	i.turn_vars = nil
 }
 
 func (i *Internals) spend(cost Cost) {
@@ -146,6 +159,22 @@ func logTurnData(view View) {
 	util.DebugLog.Printf("ai %s: new turn data %s", view.Nickname(), data)
 }
 
+// Debug log only: every script variable's value at the end of the turn, so a replay shows why rules fired
+func logVars(view View, internals *Internals) {
+	if util.DebugLog.Writer() == io.Discard {
+		return
+	}
+	vars := make(map[string]float64, len(internals.vars)+len(internals.turn_vars))
+	for k, v := range internals.vars {
+		vars[k] = v
+	}
+	for k, v := range internals.turn_vars {
+		vars[k] = v
+	}
+	data, _ := json.Marshal(vars)
+	util.DebugLog.Printf("ai %s: vars %s", view.Nickname(), data)
+}
+
 func (m *RulesModel) DecideOrders(view View) Decision {
 	logTurnData(view)
 	m.internals.Refresh()
@@ -160,5 +189,6 @@ func (m *RulesModel) DecideOrders(view View) Decision {
 		}
 	}
 	util.DebugLog.Printf("ai %s: submitting orders %+v", view.Nickname(), orders)
+	logVars(view, &m.internals)
 	return Decision{Orders: orders, Behaviors: m.internals.behaviors, BuildingBehaviors: m.internals.building_behaviors}
 }

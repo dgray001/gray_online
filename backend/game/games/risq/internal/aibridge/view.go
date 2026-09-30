@@ -185,6 +185,8 @@ func (v *aiView) unitViewShallow(u *snapUnit) ai.UnitView {
 		InterruptCurrent: u.InterruptCurrent,
 		AttackBack:       u.AttackBack,
 		TargetPriority:   toAiTargetCategories(u.TargetPriority),
+		Health:           u.CombatStats.Health,
+		MaxHealth:        float64(u.CombatStats.MaxHealth),
 	}
 }
 
@@ -326,6 +328,10 @@ func (v *aiView) Resource(category ai.ResourceCategory) float64 {
 	default:
 		return v.me.Resources.Gold
 	}
+}
+
+func (v *aiView) MaxPopulation() int {
+	return v.me.MaxPopulationLimit
 }
 
 func (v *aiView) Population() (int, int) {
@@ -489,6 +495,27 @@ func (v *aiView) VisibleEnemyBuildings() []ai.BuildingView {
 	return sortBuildingViews(buildings)
 }
 
+// Visible enemy buildings plus the ones last seen in spaces now under fog (they may since have been destroyed)
+func (v *aiView) KnownEnemyBuildings() []ai.BuildingView {
+	seen := make(map[uint64]bool)
+	buildings := make([]ai.BuildingView, 0)
+	for _, b := range v.VisibleEnemyBuildings() {
+		seen[b.InternalID] = true
+		buildings = append(buildings, b)
+	}
+	for _, space := range v.spaces {
+		for i := range space.Buildings {
+			b := &space.Buildings[i]
+			if b.PlayerId == v.playerId() || seen[b.InternalId] {
+				continue
+			}
+			seen[b.InternalId] = true
+			buildings = append(buildings, v.buildingView(b))
+		}
+	}
+	return sortBuildingViews(buildings)
+}
+
 // Returns the node's view, per-gatherer turn rate, and gatherer capacity
 func (v *aiView) gatherableAt(entry snapZoneEntry, category ai.ResourceCategory) (ai.ResourceView, int, int, bool) {
 	if r := entry.zone.Resource; r != nil {
@@ -530,7 +557,7 @@ func (v *aiView) gatherTarget(unit_id uint64) (ai.ZoneRef, bool) {
 	return order.TargetResource.Location, true
 }
 
-// Prefers the nearest node that its current gatherers plus this one won't empty within a turn.
+// Prefers the nearest node its current gatherers won't already empty, so nearly empty nodes still get finished.
 func (v *aiView) NearestResource(from ai.ZoneRef, category ai.ResourceCategory, gatherer_id uint64) (ai.ResourceView, bool) {
 	own_target, has_own_target := v.gatherTarget(gatherer_id)
 	var best ai.ResourceView
@@ -547,7 +574,8 @@ func (v *aiView) NearestResource(from ai.ZoneRef, category ai.ResourceCategory, 
 		if count >= capacity {
 			continue
 		}
-		saturated := view.AmountLeft < float64((count+1)*speed)
+		// saturated only when the gatherers already on it will use up what is left, so a nearly empty node still gets finished
+		saturated := view.AmountLeft <= float64(count*speed)
 		d := zoneDistance(from, entry.ref)
 		closer := d < best_distance || (d == best_distance && zoneKey(entry.ref) < zoneKey(best.Location))
 		if !found || (!saturated && best_saturated) || (saturated == best_saturated && closer) {

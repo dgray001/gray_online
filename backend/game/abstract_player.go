@@ -43,7 +43,7 @@ type Player struct {
 	base_game        *GameBase
 }
 
-const UPDATE_CHANNEL_SIZE = 2
+const UPDATE_CHANNEL_SIZE = 8
 
 func CreatePlayer(client_id uint64, nickname string, base_game *GameBase) {
 	player := &Player{

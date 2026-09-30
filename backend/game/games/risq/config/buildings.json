@@ -2,6 +2,7 @@
   {
     "building_id": 1,
     "display_name": "Village Center",
+    "range": "space",
     "description": "Used to create villagers and research some core technologies.",
     "max_health": 350,
     "attack_type": "blunt",
@@ -64,12 +65,14 @@
     "turn_stamina": 10,
     "produces": [
       { "row": 1, "col": 0, "kind": "tech", "id": 2 },
-      { "row": 2, "col": 0, "kind": "tech", "id": 3 }
+      { "row": 2, "col": 0, "kind": "tech", "id": 3 },
+      { "row": 1, "col": 1, "kind": "tech", "id": 5 }
     ]
   },
   {
     "building_id": 21,
     "display_name": "Outpost",
+    "range": "space",
     "description": "Used to see longer distances.",
     "max_health": 90,
     "attack_type": "piercing",
@@ -102,6 +105,7 @@
   {
     "building_id": 23,
     "display_name": "Redoubt",
+    "range": "space",
     "description": "Trains heavy infantry.",
     "max_health": 250,
     "attack_type": "blunt_piercing",

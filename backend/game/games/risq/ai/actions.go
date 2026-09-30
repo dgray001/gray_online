@@ -8,33 +8,33 @@ type gatherAction struct {
 	filtered
 	category ResourceCategory
 	eligible []OrderKind
-	max      int
+	max      amount
 }
 
 type balancedGatherAction struct {
 	filtered
 	eligible     []OrderKind
-	weight       float64
-	move_penalty float64
+	weight       amount
+	move_penalty amount
 }
 
 type createAction struct {
 	buildingFiltered
 	unit_id uint32
-	queue   int
+	queue   amount
 }
 
 type researchAction struct {
 	buildingFiltered
 	tech_id uint32
-	queue   int
+	queue   amount
 }
 
 type buildAction struct {
 	filtered
 	building_id uint32
 	eligible    []OrderKind
-	max         int
+	max         amount
 }
 
 type exploreAnchor uint8
@@ -47,7 +47,7 @@ const (
 
 type exploreAction struct {
 	filtered
-	max    int
+	max    amount
 	anchor exploreAnchor
 }
 
@@ -61,20 +61,23 @@ const (
 
 type attackAction struct {
 	filtered
+	picker   *targetPicker
 	target   attackTarget
-	max      int
+	max      amount
 	eligible []OrderKind
+	// queue each attacker's current job behind the attack, so it goes back to work once the fight is over
+	resume bool
 }
 
 type attackSpaceAction struct {
 	filtered
-	max      int
+	max      amount
 	eligible []OrderKind
 }
 
 type attackZoneAction struct {
 	filtered
-	max      int
+	max      amount
 	eligible []OrderKind
 }
 
@@ -82,19 +85,20 @@ type garrisonAction struct {
 	filtered
 	buildingFiltered
 	eligible []OrderKind
-	max      int
+	max      amount
 }
 
 type ungarrisonAction struct {
 	filtered
 	eligible []OrderKind
-	max      int
+	max      amount
 }
 
-func (a *gatherAction) ToOrders(view View, _ *Internals) []Order {
+func (a *gatherAction) ToOrders(view View, internals *Internals) []Order {
+	limit := a.max.int(view, internals)
 	orders := make([]Order, 0)
 	for _, u := range a.filter.apply(eligibleUnits(view, a.eligible), isEconomic) {
-		if a.max > 0 && len(orders) >= a.max {
+		if limit > 0 && len(orders) >= limit {
 			break
 		}
 		if target, ok := view.NearestResource(u.Location, a.category, u.InternalID); ok {
@@ -105,6 +109,7 @@ func (a *gatherAction) ToOrders(view View, _ *Internals) []Order {
 }
 
 func (a *balancedGatherAction) ToOrders(view View, internals *Internals) []Order {
+	move_penalty := a.move_penalty.float(view, internals)
 	idle, gathering := make([]UnitView, 0), make([]UnitView, 0)
 	for _, u := range a.filter.apply(eligibleUnits(view, a.eligible), isEconomic) {
 		if u.CurrentOrder != nil && u.CurrentOrder.TargetResource != nil {
@@ -114,7 +119,7 @@ func (a *balancedGatherAction) ToOrders(view View, internals *Internals) []Order
 		}
 	}
 	counts := currentGatherCounts(view)
-	targets := gatherTargets(gatherDemandWeights(view, internals, a.weight), counts, len(idle))
+	targets := gatherTargets(gatherDemandWeights(view, internals, a.weight.float(view, internals)), counts, len(idle))
 	orders := make([]Order, 0)
 	for _, u := range idle {
 		category, target, ok := neediestGatherCategory(view, u, targets, counts)
@@ -127,7 +132,7 @@ func (a *balancedGatherAction) ToOrders(view View, internals *Internals) []Order
 	for _, u := range gathering {
 		from := u.CurrentOrder.TargetResource.Category
 		category, target, ok := neediestGatherCategory(view, u, targets, counts)
-		if !ok || category == from || deficit(category)-deficit(from) <= 2+a.move_penalty {
+		if !ok || category == from || deficit(category)-deficit(from) <= 2+move_penalty {
 			continue
 		}
 		orders = append(orders, view.GatherOrder(u, target, true))
@@ -138,18 +143,20 @@ func (a *balancedGatherAction) ToOrders(view View, internals *Internals) []Order
 }
 
 func (a *createAction) ToOrders(view View, internals *Internals) []Order {
-	return createUnits(view, internals, a.unit_id, a.buildings, a.queue)
+	return createUnits(view, internals, a.unit_id, a.buildings, a.queue.int(view, internals))
 }
 
 func (a *researchAction) ToOrders(view View, internals *Internals) []Order {
-	return researchTech(view, internals, a.tech_id, a.buildings, a.queue)
+	return researchTech(view, internals, a.tech_id, a.buildings, a.queue.int(view, internals))
 }
 
 func (a *buildAction) ToOrders(view View, internals *Internals) []Order {
-	return buildWith(view, internals, a.filter.apply(eligibleUnits(view, a.eligible), isEconomic), a.building_id, a.max)
+	limit := a.max.int(view, internals)
+	return buildWith(view, internals, a.filter.apply(eligibleUnits(view, a.eligible), isEconomic), a.building_id, limit)
 }
 
-func (a *exploreAction) ToOrders(view View, _ *Internals) []Order {
+func (a *exploreAction) ToOrders(view View, internals *Internals) []Order {
+	limit := a.max.int(view, internals)
 	orders := make([]Order, 0)
 	var anchor ZoneRef
 	fixed := a.anchor != exploreAnchorSelf
@@ -167,7 +174,7 @@ func (a *exploreAction) ToOrders(view View, _ *Internals) []Order {
 		}
 	}
 	for _, u := range a.filter.apply(view.IdleUnits(), anyUnit) {
-		if a.max > 0 && len(orders) >= a.max {
+		if limit > 0 && len(orders) >= limit {
 			break
 		}
 		from := u.Location
@@ -197,12 +204,26 @@ func (a *exploreAction) ToOrders(view View, _ *Internals) []Order {
 	return orders
 }
 
-func (a *attackAction) ToOrders(view View, _ *Internals) []Order {
+func (a *attackAction) ToOrders(view View, internals *Internals) []Order {
+	limit := a.max.int(view, internals)
 	orders := make([]Order, 0)
+	if a.picker != nil {
+		units := a.filter.apply(eligibleUnits(view, a.eligible), isMilitary)
+		if limit > 0 && len(units) > limit {
+			units = units[:limit]
+		}
+		orders := a.picker.pick(view, internals, units, func(u UnitView, c candidate, clear bool) Order {
+			return attackCandidateOrder(view, u, c, a.picker.order, clear)
+		})
+		if a.resume {
+			orders = withResumedJobs(view, units, orders)
+		}
+		return orders
+	}
 	enemy_units := view.VisibleEnemyUnits()
 	enemy_buildings := view.VisibleEnemyBuildings()
 	for _, u := range a.filter.apply(eligibleUnits(view, a.eligible), isMilitary) {
-		if a.max > 0 && len(orders) >= a.max {
+		if limit > 0 && len(orders) >= limit {
 			break
 		}
 		if target, ok := pickUnitTarget(view, a.target, u.Location, enemy_units); ok {
@@ -214,11 +235,12 @@ func (a *attackAction) ToOrders(view View, _ *Internals) []Order {
 	return orders
 }
 
-func (a *attackSpaceAction) ToOrders(view View, _ *Internals) []Order {
+func (a *attackSpaceAction) ToOrders(view View, internals *Internals) []Order {
+	limit := a.max.int(view, internals)
 	orders := make([]Order, 0)
 	buildings := view.VisibleEnemyBuildings()
 	for _, u := range a.filter.apply(eligibleUnits(view, a.eligible), isMilitary) {
-		if a.max > 0 && len(orders) >= a.max {
+		if limit > 0 && len(orders) >= limit {
 			break
 		}
 		if target, ok := nearestEnemySpace(view, u.Location, buildings); ok {
@@ -228,12 +250,13 @@ func (a *attackSpaceAction) ToOrders(view View, _ *Internals) []Order {
 	return orders
 }
 
-func (a *attackZoneAction) ToOrders(view View, _ *Internals) []Order {
+func (a *attackZoneAction) ToOrders(view View, internals *Internals) []Order {
+	limit := a.max.int(view, internals)
 	orders := make([]Order, 0)
 	units := view.VisibleEnemyUnits()
 	buildings := view.VisibleEnemyBuildings()
 	for _, u := range a.filter.apply(eligibleUnits(view, a.eligible), isMilitary) {
-		if a.max > 0 && len(orders) >= a.max {
+		if limit > 0 && len(orders) >= limit {
 			break
 		}
 		if target, ok := nearestEnemyZone(view, u.Location, units, buildings); ok {
@@ -243,14 +266,15 @@ func (a *attackZoneAction) ToOrders(view View, _ *Internals) []Order {
 	return orders
 }
 
-func (a *garrisonAction) ToOrders(view View, _ *Internals) []Order {
+func (a *garrisonAction) ToOrders(view View, internals *Internals) []Order {
+	limit := a.max.int(view, internals)
 	orders := make([]Order, 0)
 	buildings := a.buildings.apply(view.Buildings())
 	for _, u := range a.filter.apply(eligibleUnits(view, a.eligible), anyUnit) {
 		if u.GarrisonedIn != nil {
 			continue
 		}
-		if a.max > 0 && len(orders) >= a.max {
+		if limit > 0 && len(orders) >= limit {
 			break
 		}
 		var best_b *BuildingView
@@ -273,13 +297,14 @@ func (a *garrisonAction) ToOrders(view View, _ *Internals) []Order {
 	return orders
 }
 
-func (a *ungarrisonAction) ToOrders(view View, _ *Internals) []Order {
+func (a *ungarrisonAction) ToOrders(view View, internals *Internals) []Order {
+	limit := a.max.int(view, internals)
 	orders := make([]Order, 0)
 	for _, u := range a.filter.apply(eligibleUnits(view, a.eligible), anyUnit) {
 		if u.GarrisonedIn == nil {
 			continue
 		}
-		if a.max > 0 && len(orders) >= a.max {
+		if limit > 0 && len(orders) >= limit {
 			break
 		}
 		orders = append(orders, view.UngarrisonOrder(u, true))
@@ -291,17 +316,18 @@ type buildFoundationsAction struct {
 	filtered
 	buildingFiltered
 	eligible []OrderKind
-	max      int
+	max      amount
 }
 
-func (a *buildFoundationsAction) ToOrders(view View, _ *Internals) []Order {
+func (a *buildFoundationsAction) ToOrders(view View, internals *Internals) []Order {
+	limit := a.max.int(view, internals)
 	units := a.filter.apply(eligibleUnits(view, a.eligible), isEconomic)
 	orders := make([]Order, 0)
 	for _, f := range view.Foundations() {
 		if f.Builders > 0 || !a.buildings.matches(f.BuildingID) {
 			continue
 		}
-		if a.max > 0 && len(orders) >= a.max {
+		if limit > 0 && len(orders) >= limit {
 			break
 		}
 		if u, ok := nearestUnit(view, f.Location, units); ok {
@@ -333,10 +359,11 @@ type renewAction struct {
 	filtered
 	buildingFiltered
 	eligible []OrderKind
-	max      int
+	max      amount
 }
 
 func (a *renewAction) ToOrders(view View, internals *Internals) []Order {
+	limit := a.max.int(view, internals)
 	units := a.filter.apply(eligibleUnits(view, a.eligible), isEconomic)
 	renewers := assignedBuildings(view, OrderKindRenew)
 	orders := make([]Order, 0)
@@ -344,7 +371,7 @@ func (a *renewAction) ToOrders(view View, internals *Internals) []Order {
 		if !b.Gatherable || b.UnderConstruction || b.ResourcesLeft > 0 || renewers[b.InternalID] || (!b.Renewing && !canAfford(view, internals, b.RenewCost)) {
 			continue
 		}
-		if a.max > 0 && len(orders) >= a.max {
+		if limit > 0 && len(orders) >= limit {
 			break
 		}
 		if u, ok := nearestUnit(view, b.Location, units); ok {
@@ -388,10 +415,11 @@ type repairAction struct {
 	filtered
 	buildingFiltered
 	eligible []OrderKind
-	max      int
+	max      amount
 }
 
-func (a *repairAction) ToOrders(view View, _ *Internals) []Order {
+func (a *repairAction) ToOrders(view View, internals *Internals) []Order {
+	limit := a.max.int(view, internals)
 	units := a.filter.apply(eligibleUnits(view, a.eligible), isEconomic)
 	repairers := assignedBuildings(view, OrderKindRepair)
 	orders := make([]Order, 0)
@@ -399,7 +427,7 @@ func (a *repairAction) ToOrders(view View, _ *Internals) []Order {
 		if b.UnderConstruction || b.Health >= b.MaxHealth || repairers[b.InternalID] {
 			continue
 		}
-		if a.max > 0 && len(orders) >= a.max {
+		if limit > 0 && len(orders) >= limit {
 			break
 		}
 		if u, ok := nearestUnit(view, b.Location, units); ok {
@@ -413,13 +441,14 @@ func (a *repairAction) ToOrders(view View, _ *Internals) []Order {
 type deleteUnitAction struct {
 	filtered
 	eligible []OrderKind
-	max      int
+	max      amount
 }
 
-func (a *deleteUnitAction) ToOrders(view View, _ *Internals) []Order {
+func (a *deleteUnitAction) ToOrders(view View, internals *Internals) []Order {
+	limit := a.max.int(view, internals)
 	orders := make([]Order, 0)
 	for _, u := range a.filter.apply(eligibleUnits(view, a.eligible), anyUnit) {
-		if a.max > 0 && len(orders) >= a.max {
+		if limit > 0 && len(orders) >= limit {
 			break
 		}
 		orders = append(orders, view.DeleteUnitOrder(u))
@@ -429,13 +458,14 @@ func (a *deleteUnitAction) ToOrders(view View, _ *Internals) []Order {
 
 type deleteBuildingAction struct {
 	buildingFiltered
-	max int
+	max amount
 }
 
-func (a *deleteBuildingAction) ToOrders(view View, _ *Internals) []Order {
+func (a *deleteBuildingAction) ToOrders(view View, internals *Internals) []Order {
+	limit := a.max.int(view, internals)
 	orders := make([]Order, 0)
 	for _, b := range a.buildings.apply(view.Buildings()) {
-		if a.max > 0 && len(orders) >= a.max {
+		if limit > 0 && len(orders) >= limit {
 			break
 		}
 		orders = append(orders, view.DeleteBuildingOrder(b))
@@ -446,17 +476,18 @@ func (a *deleteBuildingAction) ToOrders(view View, _ *Internals) []Order {
 type buildingAttackAction struct {
 	buildingFiltered
 	target attackTarget
-	max    int
+	max    amount
 }
 
-func (a *buildingAttackAction) ToOrders(view View, _ *Internals) []Order {
+func (a *buildingAttackAction) ToOrders(view View, internals *Internals) []Order {
+	limit := a.max.int(view, internals)
 	enemy_units, enemy_buildings := view.VisibleEnemyUnits(), view.VisibleEnemyBuildings()
 	orders := make([]Order, 0)
 	for _, b := range a.buildings.apply(view.Buildings()) {
 		if !b.CanAttack || b.UnderConstruction || len(b.ActiveOrders) > 0 {
 			continue
 		}
-		if a.max > 0 && len(orders) >= a.max {
+		if limit > 0 && len(orders) >= limit {
 			break
 		}
 		units, buildings := inAttackRange(view, b, enemy_units, enemy_buildings)
@@ -497,15 +528,16 @@ func (a *setBuildingBehaviorAction) ToOrders(view View, internals *Internals) []
 type unitStopAction struct {
 	filtered
 	orders map[OrderKind]bool
-	max    int
+	max    amount
 }
 
-func (a *unitStopAction) ToOrders(view View, _ *Internals) []Order {
+func (a *unitStopAction) ToOrders(view View, internals *Internals) []Order {
+	limit := a.max.int(view, internals)
 	cancelled := make(map[uint64]bool)
 	orders := make([]Order, 0)
 	stopped := 0
 	for _, u := range a.filter.apply(view.ScopedUnits(), anyUnit) {
-		if a.max > 0 && stopped >= a.max {
+		if limit > 0 && stopped >= limit {
 			break
 		}
 		before := len(orders)
@@ -526,14 +558,15 @@ type buildingStopAction struct {
 	buildingFiltered
 	orders   map[BuildingOrderKind]bool
 	item_ids map[uint32]bool
-	max      int
+	max      amount
 }
 
-func (a *buildingStopAction) ToOrders(view View, _ *Internals) []Order {
+func (a *buildingStopAction) ToOrders(view View, internals *Internals) []Order {
+	limit := a.max.int(view, internals)
 	orders := make([]Order, 0)
 	stopped := 0
 	for _, b := range a.buildings.apply(view.Buildings()) {
-		if a.max > 0 && stopped >= a.max {
+		if limit > 0 && stopped >= limit {
 			break
 		}
 		before := len(orders)
@@ -547,4 +580,79 @@ func (a *buildingStopAction) ToOrders(view View, _ *Internals) []Order {
 		}
 	}
 	return orders
+}
+
+// After each attack order, the attacker's job from before it (gather, repair or renew) queued behind it
+func withResumedJobs(view View, units []UnitView, orders []Order) []Order {
+	before := make(map[uint64]*CurrentOrder, len(units))
+	for _, u := range units {
+		before[u.InternalID] = u.CurrentOrder
+	}
+	out := make([]Order, 0, 2*len(orders))
+	for _, o := range orders {
+		if len(o.Subjects) != 1 {
+			out = append(out, o)
+			continue
+		}
+		for _, u := range units {
+			if u.InternalID != o.Subjects[0] {
+				continue
+			}
+			// already fighting: leave it be, so the job queued behind its attack stays
+			if alreadyFighting(before[u.InternalID]) {
+				break
+			}
+			out = append(out, o)
+			if job, ok := resumeOrder(view, u, before[u.InternalID]); ok {
+				out = append(out, job)
+			}
+			break
+		}
+	}
+	return out
+}
+
+func alreadyFighting(current *CurrentOrder) bool {
+	if current == nil {
+		return false
+	}
+	switch current.Kind {
+	case OrderKindAttackSpace, OrderKindAttackUnit, OrderKindAttackZone, OrderKindAttackBuilding:
+		return true
+	}
+	return false
+}
+
+func resumeOrder(view View, u UnitView, job *CurrentOrder) (Order, bool) {
+	if job == nil {
+		return Order{}, false
+	}
+	switch {
+	case job.Kind == OrderKindGather && job.TargetResource != nil:
+		return view.GatherOrder(u, *job.TargetResource, false), true
+	case job.Kind == OrderKindRepair && job.TargetBuilding != nil:
+		return view.RepairOrder(u, *job.TargetBuilding, false), true
+	case job.Kind == OrderKindRenew && job.TargetBuilding != nil:
+		return view.RenewOrder(u, *job.TargetBuilding, false), true
+	case job.Kind == OrderKindBuild && job.TargetZone != nil:
+		if building_id, ok := buildingAt(view, *job.TargetZone); ok {
+			return view.BuildOrder(u, building_id, *job.TargetZone, false), true
+		}
+	}
+	return Order{}, false
+}
+
+// What is being built at a zone: a foundation, or one of our buildings still under construction
+func buildingAt(view View, zone ZoneRef) (uint32, bool) {
+	for _, f := range view.Foundations() {
+		if f.Location == zone {
+			return f.BuildingID, true
+		}
+	}
+	for _, b := range view.Buildings() {
+		if b.Location == zone && b.UnderConstruction {
+			return b.BuildingID, true
+		}
+	}
+	return 0, false
 }

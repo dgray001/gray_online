@@ -15,6 +15,7 @@ const (
 	exprTokOp
 	exprTokLParen
 	exprTokRParen
+	exprTokComma
 	exprTokEOF
 )
 
@@ -36,6 +37,9 @@ func tokenizeExpr(s string) ([]exprToken, error) {
 			i++
 		case c == ')':
 			toks = append(toks, exprToken{exprTokRParen, ")"})
+			i++
+		case c == ',':
+			toks = append(toks, exprToken{exprTokComma, ","})
 			i++
 		case strings.ContainsRune("+-*/", c):
 			toks = append(toks, exprToken{exprTokOp, string(c)})
@@ -66,6 +70,8 @@ type exprParser struct {
 	toks []exprToken
 	pos  int
 	vars map[string]float64
+	// resolves var(name); nil disables var()
+	lookup func(name string) (float64, error)
 }
 
 func (p *exprParser) peek() exprToken {
@@ -140,6 +146,9 @@ func (p *exprParser) parsePrimary() (float64, error) {
 	case exprTokNum:
 		return strconv.ParseFloat(t.text, 64)
 	case exprTokIdent:
+		if p.peek().kind == exprTokLParen {
+			return p.parseCall(t.text)
+		}
 		v, ok := p.vars[t.text]
 		if !ok {
 			return 0, fmt.Errorf("unknown variable %q", t.text)
@@ -159,12 +168,64 @@ func (p *exprParser) parsePrimary() (float64, error) {
 	}
 }
 
+// Supports min(a, b, ...) and max(a, b, ...); var(name) is left to EvalExprWithLookup
+func (p *exprParser) parseCall(name string) (float64, error) {
+	p.next() // (
+	if name == "var" {
+		arg := p.next()
+		if arg.kind != exprTokIdent {
+			return 0, fmt.Errorf("var() takes a bare name")
+		}
+		if p.next().kind != exprTokRParen {
+			return 0, fmt.Errorf("expected closing paren after var(%s", arg.text)
+		}
+		if p.lookup == nil {
+			return 0, fmt.Errorf("var() is not available here")
+		}
+		return p.lookup(arg.text)
+	}
+	args := make([]float64, 0, 2)
+	for {
+		v, err := p.parseExpr()
+		if err != nil {
+			return 0, err
+		}
+		args = append(args, v)
+		t := p.next()
+		if t.kind == exprTokRParen {
+			break
+		}
+		if t.kind != exprTokComma {
+			return 0, fmt.Errorf("expected ',' or ')' in %s()", name)
+		}
+	}
+	switch name {
+	case "min", "max":
+		if len(args) < 2 {
+			return 0, fmt.Errorf("%s() needs at least two arguments", name)
+		}
+		v := args[0]
+		for _, a := range args[1:] {
+			if (name == "min" && a < v) || (name == "max" && a > v) {
+				v = a
+			}
+		}
+		return v, nil
+	}
+	return 0, fmt.Errorf("unknown function %q", name)
+}
+
 func EvalExpr(s string, vars map[string]float64) (float64, error) {
+	return EvalExprWithLookup(s, vars, nil)
+}
+
+// Like EvalExpr, but var(name) is resolved through lookup
+func EvalExprWithLookup(s string, vars map[string]float64, lookup func(name string) (float64, error)) (float64, error) {
 	toks, err := tokenizeExpr(s)
 	if err != nil {
 		return 0, err
 	}
-	p := &exprParser{toks: toks, vars: vars}
+	p := &exprParser{toks: toks, vars: vars, lookup: lookup}
 	v, err := p.parseExpr()
 	if err != nil {
 		return 0, err

@@ -14,6 +14,17 @@ func (a *unbucketedAction) ToOrders(view View, internals *Internals) []Order {
 	return a.inner.ToOrders(&unbucketedView{View: view, internals: internals}, internals)
 }
 
+// Runs any action with only the units its "unit_when" condition holds for; counters inside it can anchor on
+// that unit ("from": "unit", or var(..._of_unit))
+type unitWhenAction struct {
+	when  Condition
+	inner Action
+}
+
+func (a *unitWhenAction) ToOrders(view View, internals *Internals) []Order {
+	return a.inner.ToOrders(&unitWhenView{View: view, internals: internals, when: a.when}, internals)
+}
+
 // Runs any action with only one bucket's members as eligible units
 type inBucketAction struct {
 	bucket string
@@ -30,13 +41,13 @@ func (a *inBucketAction) ToOrders(view View, internals *Internals) []Order {
 
 type setBucketAction struct {
 	bucket string
-	size   int
+	size   amount
 	task   Action
 }
 
-func (a *setBucketAction) ToOrders(_ View, internals *Internals) []Order {
+func (a *setBucketAction) ToOrders(view View, internals *Internals) []Order {
 	b := internals.bucket(a.bucket)
-	b.Desired = a.size
+	b.Desired = max(0, a.size.int(view, internals))
 	b.Task = a.task
 	return nil
 }
@@ -120,10 +131,11 @@ type drainBucketAction struct {
 	to       string
 	from     []string
 	from_any bool
-	max      int
+	max      amount
 }
 
-func (a *drainBucketAction) ToOrders(_ View, internals *Internals) []Order {
+func (a *drainBucketAction) ToOrders(view View, internals *Internals) []Order {
+	limit := a.max.int(view, internals)
 	to := internals.bucket(a.to)
 	need := to.Desired - len(to.Members)
 	if need <= 0 {
@@ -152,7 +164,7 @@ func (a *drainBucketAction) ToOrders(_ View, internals *Internals) []Order {
 		}
 		sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
 		for _, id := range ids {
-			if need <= 0 || overflow <= 0 || (a.max > 0 && taken >= a.max) {
+			if need <= 0 || overflow <= 0 || (limit > 0 && taken >= limit) {
 				break
 			}
 			delete(from.Members, id)
@@ -161,7 +173,7 @@ func (a *drainBucketAction) ToOrders(_ View, internals *Internals) []Order {
 			overflow--
 			taken++
 		}
-		if need <= 0 || (a.max > 0 && taken >= a.max) {
+		if need <= 0 || (limit > 0 && taken >= limit) {
 			break
 		}
 	}

@@ -94,6 +94,11 @@ func (b mapBoard) PlaceUnit(z mapgen.Zone, unit_id uint32, player_index int) {
 	b.r.units[unit.internal_id] = unit
 }
 
+func (b mapBoard) SetStartingBank(player_index int, bank mapgen.StartingBank) {
+	resources := b.r.players[player_index].resources
+	resources.food, resources.wood, resources.stone, resources.gold = bank.Food, bank.Wood, bank.Stone, bank.Gold
+}
+
 func (s mapSpace) Key() uint {
 	return s.s.coordinate_key
 }

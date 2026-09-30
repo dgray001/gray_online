@@ -38,5 +38,14 @@
     "cost": { "wood": 150, "gold": 0 },
     "research_stamina": 3,
     "unlocks_mercenary_ids": [11, 12]
+  },
+  {
+    "tech_id": 5,
+    "display_name": "Pikes",
+    "description": "Infantry pierce through armor.",
+    "cost": { "wood": 100, "gold": 100 },
+    "research_stamina": 25,
+    "affects_unit_types": ["infantry"],
+    "bonus_penetration_piercing": 40
   }
 ]

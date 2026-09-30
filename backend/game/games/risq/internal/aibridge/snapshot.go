@@ -39,6 +39,7 @@ type snapPlayer struct {
 	} `json:"player"`
 	Score              uint             `json:"score"`
 	PopulationLimit    int              `json:"population_limit"`
+	MaxPopulationLimit int              `json:"max_population_limit"`
 	Resources          snapCost         `json:"resources"`
 	PlannedFoundations []snapFoundation `json:"planned_foundations"`
 	Buildings          []snapBuilding   `json:"buildings"`
@@ -66,6 +67,10 @@ type snapUnit struct {
 	InterruptCurrent bool            `json:"interrupt_current"`
 	AttackBack       bool            `json:"attack_back"`
 	TargetPriority   []int           `json:"target_priority"`
+	CombatStats      struct {
+		Health    float64 `json:"health"`
+		MaxHealth int     `json:"max_health"`
+	} `json:"combat_stats"`
 }
 
 type snapBuilding struct {
@@ -111,6 +116,8 @@ type snapSpace struct {
 	Visibility    uint8          `json:"visibility"`
 	Ownership     *int           `json:"ownership"`
 	Zones         [][]snapZone   `json:"zones"`
+	// buildings in the space: live ones when visible, the last-seen ones when fogged
+	Buildings []snapBuilding `json:"buildings"`
 }
 
 func parseAiSnapshot(game gin.H) (*snapGame, error) {

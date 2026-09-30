@@ -18,7 +18,7 @@ type Result struct {
 	Error    string
 	Game     risq.GameResult
 	Timeline [][]risq.PlayerSnapshot
-	// index of the player whose opponent's army was wiped out (-1 if none); the game is stopped there
+	// index of the player who crushed their opponent (opponent has no units, or 20x fewer); the game is stopped there (-1 if none)
 	Crush int
 }
 
@@ -64,9 +64,16 @@ func RunGame(seed int64, players []PlayerConfig, map_name string, max_turns uint
 			cur := r.Snapshot()
 			timeline = append(timeline, cur)
 			if t > 40 && len(cur) == 2 && os.Getenv("SIM_NO_CRUSH_STOP") == "" {
-				inf := func(p risq.PlayerSnapshot) int { return p.Units[11] + p.Units[12] + p.Units[13] }
+				units := func(p risq.PlayerSnapshot) int {
+					total := 0
+					for _, n := range p.Units {
+						total += n
+					}
+					return total
+				}
 				for i := 0; i < 2; i++ {
-					if inf(cur[1-i]) == 0 && inf(cur[i]) >= 20 && crush < 0 {
+					// crushed: the loser has no units left, or the winner has at least 20x as many
+					if w, l := units(cur[i]), units(cur[1-i]); w > 0 && w >= 20*l && crush < 0 {
 						crush = i
 					}
 				}

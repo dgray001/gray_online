@@ -62,6 +62,8 @@ type playerStartsParams struct {
 	Resources            []playerStartResourceJSON `json:"resources"`
 	Buildings            []playerStartBuildingJSON `json:"buildings"`
 	ZoneTerrainOverrides []zoneTerrainOverrideJSON `json:"zone_terrain_overrides,omitempty"`
+	// every player's starting stockpile; the game default when omitted
+	StartingBank *StartingBank `json:"starting_bank,omitempty"`
 }
 
 var errTargetUnavailable = errors.New("start target unavailable")
@@ -594,6 +596,7 @@ func stepPlayerStarts(ctx *mapScriptContext, raw json.RawMessage) error {
 		return err
 	}
 	ctx.player_starts = starts
+	ctx.player_area_size = area_size
 	footprints := startFootprints(starts, area_size)
 	if err := prepareStartTerrain(ctx, p.terrainPickJSON, footprints); err != nil {
 		return err
@@ -605,5 +608,13 @@ func stepPlayerStarts(ctx *mapScriptContext, raw json.RawMessage) error {
 	if err := placeStartResources(ctx, starts, footprints, slots); err != nil {
 		return err
 	}
-	return placeStartContents(ctx, p, starts, footprints)
+	if err := placeStartContents(ctx, p, starts, footprints); err != nil {
+		return err
+	}
+	if p.StartingBank != nil {
+		for i := range starts {
+			ctx.board.SetStartingBank(i, *p.StartingBank)
+		}
+	}
+	return nil
 }

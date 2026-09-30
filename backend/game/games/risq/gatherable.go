@@ -12,6 +12,55 @@ type Gatherable interface {
 	gatherSpeed() int
 	gatherResourcesLeft() float64
 	gatherDrain(amount float64)
+	gatherCapacity() int
+}
+
+func (r *RisqResource) gatherCapacity() int {
+	return r.gather_capacity
+}
+
+func (b *RisqBuilding) gatherCapacity() int {
+	return defs.BuildingConfigs[b.building_id].Gather.Gather_capacity
+}
+
+// The live source in a zone: its resource, or its gatherable building
+func zoneGatherSource(zone *RisqZone) Gatherable {
+	if zone.resource != nil {
+		return zone.resource
+	}
+	if b := zone.building; b != nil && defs.BuildingConfigs[b.building_id].IsGatherable() {
+		return b
+	}
+	return nil
+}
+
+func (u *RisqUnit) hasGatherOrderAt(zone *RisqZone, risq *GameRisq) bool {
+	for _, o := range u.order_queue.active_orders {
+		if o.order_type != defs.OrderType_UnitGather {
+			continue
+		}
+		if _, z := invertZoneKey(uint(o.target_id), risq); z == zone {
+			return true
+		}
+	}
+	return false
+}
+
+// Units holding a gather slot at source (they gathered it last tick and still mean to), other than exclude.
+// With viewer >= 0 only the holders that player can see count: its own, plus others where it has good vision.
+func gatherSlotHolders(source Gatherable, zone *RisqZone, risq *GameRisq, viewer int, exclude *RisqUnit) int {
+	count := 0
+	for _, p := range risq.players {
+		if viewer >= 0 && p.player.Player_id != viewer && zone.space.getVisibility(viewer) < defs.VisibilityGood {
+			continue
+		}
+		for _, u := range p.units {
+			if u != exclude && !u.deleted && u.gather_slot == source && u.hasGatherOrderAt(zone, risq) {
+				count++
+			}
+		}
+	}
+	return count
 }
 
 func (r *RisqResource) gatherCategory() defs.RisqResourceCategory {
@@ -85,41 +134,6 @@ func (b *RisqBuilding) refreshTerrainOverride() {
 		}
 	}
 	b.zone.terrain_override = override
-}
-
-// Counts units currently gathering from this building, derived live from active orders
-func (b *RisqBuilding) gatheringUnitCount(risq *GameRisq) int {
-	count := 0
-	for _, u := range risq.players[b.player_id].units {
-		for _, o := range u.order_queue.active_orders {
-			if o.order_type != defs.OrderType_UnitGather {
-				continue
-			}
-			if _, zone := invertZoneKey(uint(o.target_id), risq); zone == b.zone {
-				count++
-				break
-			}
-		}
-	}
-	return count
-}
-
-func (z *RisqZone) resourceGatheringUnitCount(risq *GameRisq) int {
-	count := 0
-	for _, p := range risq.players {
-		for _, u := range p.units {
-			for _, o := range u.order_queue.active_orders {
-				if o.order_type != defs.OrderType_UnitGather {
-					continue
-				}
-				if _, zone := invertZoneKey(uint(o.target_id), risq); zone == z {
-					count++
-					break
-				}
-			}
-		}
-	}
-	return count
 }
 
 func (r *GameRisq) autoGatherCompletedBuildings() {

@@ -50,6 +50,8 @@ export function resourceImage(resource: RisqResource): string {
         break;
       // stone
       case 41:
+      case 42:
+      case 43:
         filename = 'stonemine';
         break;
       // gold

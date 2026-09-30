@@ -15,6 +15,8 @@ type RisqUnit struct {
 	garrisoned_in *RisqBuilding
 	stance        defs.UnitStance
 	attack_back   bool
+	// the source this unit gathered from last tick; holders keep their gather slot over newcomers
+	gather_slot Gatherable
 	// this tick's full planned route, for frontend display only; cleared whenever the unit isn't actively moving
 	move_path []*RisqZone
 }

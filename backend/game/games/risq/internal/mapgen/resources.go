@@ -17,7 +17,7 @@ var uniformTreeIds = []uint32{11, 12, 13, 14, 15, 16}
 var uniformGroveIds = []uint32{21, 22, 23, 24, 25, 26}
 var uniformForestIds = []uint32{31, 32, 33, 34, 35, 36}
 var uniformWoodIds = append(append(append([]uint32{}, uniformTreeIds...), uniformGroveIds...), uniformForestIds...)
-var uniformStoneIds = []uint32{41}
+var uniformStoneIds = []uint32{41, 42, 43}
 var uniformGoldIds = []uint32{51}
 
 type scatterEntry struct {
@@ -187,6 +187,53 @@ func stepResourceMinSpacing(ctx *mapScriptContext, raw json.RawMessage) error {
 			continue
 		}
 		kept = append(kept, z)
+	}
+	return nil
+}
+
+type resourcePlaceParams struct {
+	ResourceId uint32     `json:"resource_id"`
+	Count      ScriptExpr `json:"count"`
+	// keeps the resources out of every player start area (requires an earlier player_starts step)
+	OutsidePlayerAreas bool `json:"outside_player_areas"`
+}
+
+// Places exactly count of one resource on random free edge zones, so every seed gets the same amount
+func stepResourcePlace(ctx *mapScriptContext, raw json.RawMessage) error {
+	p, err := decodeStepParams[resourcePlaceParams](raw, "resource_place")
+	if err != nil {
+		return err
+	}
+	if _, ok := defs.ResourceConfigs[p.ResourceId]; !ok {
+		return fmt.Errorf("resource_place: unknown resource id %d", p.ResourceId)
+	}
+	count, err := p.Count.resolveInt(ctx.vars)
+	if err != nil {
+		return err
+	}
+	excluded := make(map[uint]bool)
+	if p.OutsidePlayerAreas {
+		if len(ctx.player_starts) == 0 {
+			return fmt.Errorf("resource_place: outside_player_areas needs an earlier player_starts step")
+		}
+		for _, start := range ctx.player_starts {
+			for _, s := range hexRadiusSpaces(start.space, ctx.player_area_size) {
+				excluded[s.Key()] = true
+			}
+		}
+	}
+	candidates := make([]Zone, 0)
+	for _, z := range ctx.allZones() {
+		if z.IsCenter() || z.Occupied() || z.Space().Impassable() || excluded[z.Space().Key()] {
+			continue
+		}
+		candidates = append(candidates, z)
+	}
+	if len(candidates) < count {
+		return fmt.Errorf("resource_place: only %d free zones for %d of resource %d", len(candidates), count, p.ResourceId)
+	}
+	for _, z := range util.ShuffleFrom(ctx.rng, candidates)[:count] {
+		ctx.board.PlaceResource(z, p.ResourceId)
 	}
 	return nil
 }

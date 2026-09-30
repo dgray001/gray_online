@@ -226,11 +226,12 @@ func (p *RisqPlayer) buyMercenary(o *RisqOrder, risq *GameRisq) {
 
 func (p *RisqPlayer) toFrontend(viewer_player_id int) gin.H {
 	player := gin.H{
-		"population_limit": p.populationLimit(),
-		"score":            p.score,
-		"color":            p.color,
-		"orders_submitted": p.orders_submitted,
-		"eliminated":       p.eliminated,
+		"population_limit":     p.populationLimit(),
+		"max_population_limit": p.max_population_limit,
+		"score":                p.score,
+		"color":                p.color,
+		"orders_submitted":     p.orders_submitted,
+		"eliminated":           p.eliminated,
 	}
 	if p.player != nil {
 		player["player"] = p.player.ToFrontend(false)

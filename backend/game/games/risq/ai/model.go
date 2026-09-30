@@ -30,7 +30,12 @@ func ParseModel(raw map[string]any) Model {
 		fmt.Fprintln(os.Stderr, "ai config missing \"rules\" list")
 		return NoopModel{}
 	}
-	rules, err := parseRules(rules_raw)
+	var rules []Rule
+	err := withVarNameCheck(func() error {
+		var err error
+		rules, err = parseRules(rules_raw)
+		return err
+	})
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "ai config:", err)
 		return NoopModel{}

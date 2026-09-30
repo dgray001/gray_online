@@ -5,11 +5,11 @@ package ai
 // enough of them are gathered at home, stays together, and falls back when too few survive.
 type armyAction struct {
 	assault_ids   map[uint32]bool
-	launch        int
-	retreat       int
-	defend_radius int
+	launch        amount
+	retreat       amount
+	defend_radius amount
 	// launches an all-units strike right after a big enemy army was broken, if we still have this many (0 disables)
-	strike int
+	strike amount
 }
 
 type armyState struct {
@@ -28,6 +28,8 @@ func (a *armyAction) inAssaultGroup(u UnitView) bool {
 }
 
 func (a *armyAction) ToOrders(view View, internals *Internals) []Order {
+	launch, retreat := a.launch.int(view, internals), a.retreat.int(view, internals)
+	defend_radius, strike := a.defend_radius.int(view, internals), a.strike.int(view, internals)
 	st := &internals.army
 	if st.members == nil {
 		st.members = make(map[uint64]bool)
@@ -55,7 +57,7 @@ func (a *armyAction) ToOrders(view View, internals *Internals) []Order {
 
 	enemy_army := 0
 	for _, e := range view.VisibleEnemyUnits() {
-		if e.Kind == UnitMilitary && axialDistance(home.Space, e.Location.Space) <= a.defend_radius+1 {
+		if e.Kind == UnitMilitary && axialDistance(home.Space, e.Location.Space) <= defend_radius+1 {
 			enemy_army++
 		}
 	}
@@ -63,10 +65,10 @@ func (a *armyAction) ToOrders(view View, internals *Internals) []Order {
 	if enemy_army >= st.peak || turn-st.peak_turn > 15 {
 		st.peak, st.peak_turn = enemy_army, turn
 	}
-	enemy_broken := a.strike > 0 && st.peak >= 15 && enemy_army <= st.peak/3
+	enemy_broken := strike > 0 && st.peak >= 15 && enemy_army <= st.peak/3
 
 	// launch / retreat decision
-	if !st.assault && enemy_broken && len(mil) >= a.strike {
+	if !st.assault && enemy_broken && len(mil) >= strike {
 		st.assault = true
 		st.members = make(map[uint64]bool, len(mil))
 		for _, u := range mil {
@@ -80,14 +82,14 @@ func (a *armyAction) ToOrders(view View, internals *Internals) []Order {
 				gathered = append(gathered, u)
 			}
 		}
-		if len(gathered) >= a.launch {
+		if len(gathered) >= launch {
 			st.assault = true
 			st.members = make(map[uint64]bool, len(gathered))
 			for _, u := range gathered {
 				st.members[u.InternalID] = true
 			}
 		}
-	} else if len(st.members) <= a.retreat {
+	} else if len(st.members) <= retreat {
 		st.assault = false
 		st.members = make(map[uint64]bool)
 		st.focus = nil
@@ -96,7 +98,7 @@ func (a *armyAction) ToOrders(view View, internals *Internals) []Order {
 	enemies := view.VisibleEnemyUnits()
 	threats := make([]UnitView, 0)
 	for _, e := range enemies {
-		if axialDistance(home.Space, e.Location.Space) <= a.defend_radius {
+		if axialDistance(home.Space, e.Location.Space) <= defend_radius {
 			threats = append(threats, e)
 		}
 	}
