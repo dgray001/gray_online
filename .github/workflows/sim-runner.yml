@@ -1,0 +1,38 @@
+name: RISQ Sim Runner
+
+on:
+  push:
+    branches:
+      - add-ci-workflow
+
+  workflow_dispatch:
+
+jobs:
+  sim:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/game/games/risq/sim
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache: true
+
+      - name: Build simulator
+        run: go build -o sim-runner .
+
+      - name: Run configured simulation
+        run: ./sim-runner -quiet input
+
+      - name: Upload simulation outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: risq-sim-output
+          path: backend/game/games/risq/sim/outputs/input/
+          if-no-files-found: warn
