@@ -1,0 +1,11 @@
+2026/09/30 22:09:01 matrix-engaged80 game 2 seed=100001 seats=[0 1] turns=14 duration=429.108499ms error=""
+2026/09/30 22:09:01 matrix-engaged80 game 4 seed=100003 seats=[0 1] turns=17 duration=640.352531ms error=""
+2026/09/30 22:09:01 matrix-engaged80 game 3 seed=100002 seats=[0 1] turns=23 duration=774.177355ms error=""
+2026/09/30 22:09:03 matrix-engaged80 game 1 seed=100000 seats=[0 1] turns=100 duration=3.017913663s error=""
+2026/09/30 22:09:04 matrix-engaged80 game 5 seed=100004 seats=[0 1] turns=100 duration=3.015066425s error=""
+2026/09/30 22:09:04 matrix-engaged80 game 7 seed=100006 seats=[0 1] turns=100 duration=3.204135892s error=""
+2026/09/30 22:09:04 matrix-engaged80 game 8 seed=100007 seats=[0 1] turns=26 duration=1.118444805s error=""
+2026/09/30 22:09:04 matrix-engaged80 game 6 seed=100005 seats=[0 1] turns=100 duration=3.532831933s error=""
+2026/09/30 22:09:04 matrix-engaged80 game 9 seed=100008 seats=[0 1] turns=19 duration=733.070202ms error=""
+2026/09/30 22:09:04 matrix-engaged80 game 10 seed=100009 seats=[0 1] turns=18 duration=361.213298ms error=""
+2026/09/30 22:09:04 ran 10 game(s) over 1 sim(s), results in outputs/matrix-engaged80

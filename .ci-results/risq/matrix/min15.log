@@ -1,0 +1,11 @@
+2026/09/30 22:09:00 matrix-min15 game 2 seed=100001 seats=[0 1] turns=14 duration=448.360999ms error=""
+2026/09/30 22:09:00 matrix-min15 game 4 seed=100003 seats=[0 1] turns=17 duration=622.657444ms error=""
+2026/09/30 22:09:01 matrix-min15 game 3 seed=100002 seats=[0 1] turns=23 duration=876.287064ms error=""
+2026/09/30 22:09:03 matrix-min15 game 5 seed=100004 seats=[0 1] turns=100 duration=2.757604876s error=""
+2026/09/30 22:09:03 matrix-min15 game 1 seed=100000 seats=[0 1] turns=100 duration=3.462308285s error=""
+2026/09/30 22:09:04 matrix-min15 game 9 seed=100008 seats=[0 1] turns=19 duration=689.864379ms error=""
+2026/09/30 22:09:04 matrix-min15 game 6 seed=100005 seats=[0 1] turns=100 duration=3.560934988s error=""
+2026/09/30 22:09:04 matrix-min15 game 8 seed=100007 seats=[0 1] turns=26 duration=987.179327ms error=""
+2026/09/30 22:09:04 matrix-min15 game 7 seed=100006 seats=[0 1] turns=100 duration=3.432869204s error=""
+2026/09/30 22:09:04 matrix-min15 game 10 seed=100009 seats=[0 1] turns=18 duration=358.560781ms error=""
+2026/09/30 22:09:04 ran 10 game(s) over 1 sim(s), results in outputs/matrix-min15

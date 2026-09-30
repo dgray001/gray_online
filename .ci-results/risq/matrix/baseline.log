@@ -1,0 +1,11 @@
+2026/09/30 22:09:10 matrix-baseline game 2 seed=100001 seats=[0 1] turns=14 duration=624.405598ms error=""
+2026/09/30 22:09:11 matrix-baseline game 4 seed=100003 seats=[0 1] turns=17 duration=992.864913ms error=""
+2026/09/30 22:09:11 matrix-baseline game 3 seed=100002 seats=[0 1] turns=23 duration=1.163861287s error=""
+2026/09/30 22:09:14 matrix-baseline game 1 seed=100000 seats=[0 1] turns=100 duration=4.314901663s error=""
+2026/09/30 22:09:14 matrix-baseline game 5 seed=100004 seats=[0 1] turns=100 duration=3.778752131s error=""
+2026/09/30 22:09:15 matrix-baseline game 9 seed=100008 seats=[0 1] turns=19 duration=931.181857ms error=""
+2026/09/30 22:09:15 matrix-baseline game 7 seed=100006 seats=[0 1] turns=100 duration=4.45985745s error=""
+2026/09/30 22:09:15 matrix-baseline game 8 seed=100007 seats=[0 1] turns=26 duration=1.380361415s error=""
+2026/09/30 22:09:16 matrix-baseline game 6 seed=100005 seats=[0 1] turns=100 duration=4.738282163s error=""
+2026/09/30 22:09:16 matrix-baseline game 10 seed=100009 seats=[0 1] turns=18 duration=606.220797ms error=""
+2026/09/30 22:09:16 ran 10 game(s) over 1 sim(s), results in outputs/matrix-baseline

@@ -1,0 +1,11 @@
+2026/09/30 22:09:10 matrix-odds100 game 2 seed=100001 seats=[0 1] turns=14 duration=552.063656ms error=""
+2026/09/30 22:09:10 matrix-odds100 game 4 seed=100003 seats=[0 1] turns=17 duration=882.09873ms error=""
+2026/09/30 22:09:10 matrix-odds100 game 3 seed=100002 seats=[0 1] turns=23 duration=1.119132043s error=""
+2026/09/30 22:09:13 matrix-odds100 game 5 seed=100004 seats=[0 1] turns=100 duration=3.60299806s error=""
+2026/09/30 22:09:14 matrix-odds100 game 1 seed=100000 seats=[0 1] turns=100 duration=4.279138044s error=""
+2026/09/30 22:09:14 matrix-odds100 game 9 seed=100008 seats=[0 1] turns=19 duration=858.776367ms error=""
+2026/09/30 22:09:15 matrix-odds100 game 6 seed=100005 seats=[0 1] turns=100 duration=4.410789518s error=""
+2026/09/30 22:09:15 matrix-odds100 game 8 seed=100007 seats=[0 1] turns=26 duration=1.230836697s error=""
+2026/09/30 22:09:15 matrix-odds100 game 7 seed=100006 seats=[0 1] turns=100 duration=4.366673467s error=""
+2026/09/30 22:09:15 matrix-odds100 game 10 seed=100009 seats=[0 1] turns=18 duration=562.201496ms error=""
+2026/09/30 22:09:15 ran 10 game(s) over 1 sim(s), results in outputs/matrix-odds100
