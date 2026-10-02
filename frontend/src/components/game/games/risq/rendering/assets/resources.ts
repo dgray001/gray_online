@@ -66,13 +66,9 @@ export function resourceImage(resource: RisqResource): string {
   return `risq/resources/${filename}`;
 }
 
-// resource_ids for dense "forest" resource variants (as opposed to "grove" or single "tree" resources of the same
-// species), which get a scatter of tree icons drawn across their whole zone instead of just their own icon.
-// Add each forest resource_id here once it's added to config/resources.json.
-const FOREST_RESOURCE_IDS = new Set<number>([31, 32, 33, 34, 35, 36]);
-
+// Forests get a scatter of tree icons drawn across their whole zone
 export function isForestResource(resource: RisqResource): boolean {
-  return FOREST_RESOURCE_IDS.has(resource.resource_id);
+  return [31, 32, 33, 34, 35, 36].includes(resource.resource_id);
 }
 
 const GROVE_RESOURCE_IDS = new Set<number>([21, 22, 23, 24, 25, 26]);

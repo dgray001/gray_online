@@ -111,6 +111,7 @@ type snapZone struct {
 }
 
 type snapSpace struct {
+	UnitCount     *int           `json:"unit_count"`
 	Coordinate    snapCoordinate `json:"coordinate"`
 	CoordinateKey uint           `json:"coordinate_key"`
 	Visibility    uint8          `json:"visibility"`

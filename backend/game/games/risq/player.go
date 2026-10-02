@@ -68,10 +68,10 @@ func (p *RisqPlayer) createAiModel(config_path string) {
 	unmarshal_err := json.Unmarshal(data, &raw)
 	if unmarshal_err != nil {
 		// TODO: log error
-		p.ai_model = ai.ParseModel(nil)
+		p.ai_model = ai.ParseModel(nil, p.rng)
 		return
 	}
-	p.ai_model = ai.ParseModel(raw)
+	p.ai_model = ai.ParseModel(raw, p.rng)
 }
 
 // Private commitment to build at a zone before any stamina makes it a real, objective RisqBuilding

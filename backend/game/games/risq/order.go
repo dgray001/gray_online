@@ -14,7 +14,7 @@ type Orderable interface {
 	refreshStamina()
 	orderReceivable(o *RisqOrder, risq *GameRisq) bool
 	// Returns failure reason if order was not received
-	receiveOrder(o *RisqOrder, risq *GameRisq) error
+	receiveOrder(o *RisqOrder, risq *GameRisq, prepend bool) error
 	cancelOrder(o *RisqOrder, risq *GameRisq)
 	orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus
 	tickIntent(risq *GameRisq) bool
@@ -122,9 +122,13 @@ func createRisqOrderQueue() RisqOrderQueue {
 	}
 }
 
-func (q *RisqOrderQueue) receiveOrder(o *RisqOrder) {
+func (q *RisqOrderQueue) receiveOrder(o *RisqOrder, prepend bool) {
 	q.past_orders = append(q.past_orders, o)
-	q.active_orders = append(q.active_orders, o)
+	if prepend {
+		q.active_orders = append([]*RisqOrder{o}, q.active_orders...)
+	} else {
+		q.active_orders = append(q.active_orders, o)
+	}
 }
 
 // Removes the order with this internal id from the queue; returns it, or nil if not found

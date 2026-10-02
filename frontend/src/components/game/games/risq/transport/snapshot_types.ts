@@ -1,6 +1,12 @@
 import type { GameBase, GamePlayer } from '../../../data_models';
 import type { RisqTurnReportFromServer } from './turn_report';
-import type { RisqPlannedFoundation, RisqProducible, RisqMovePathStep, RisqProductionQueueItem } from '../model/types';
+import type {
+  RisqGatherPoint,
+  RisqPlannedFoundation,
+  RisqProducible,
+  RisqMovePathStep,
+  RisqProductionQueueItem,
+} from '../model/types';
 import type { RisqTerrainType } from '../rendering/terrain';
 import type { Point2D } from '../../../util/objects2d';
 import type { RisqUnitType, RisqRange, RisqUnitStance, RisqTargetCategory, RisqAttackType } from '../model/types';
@@ -52,9 +58,9 @@ export declare interface RisqPlayerFromServer {
 
 /** Data describing a hexagonal space in risq */
 export declare interface RisqSpaceFromServer {
-  terrain_id: number;
-  terrain_type: RisqTerrainType;
-  display_name: string;
+  terrain_id?: number;
+  terrain_type?: RisqTerrainType;
+  display_name?: string;
   coordinate: Point2D;
   coordinate_key: number;
   visibility: number;
@@ -165,4 +171,31 @@ export declare interface RisqOrderFromServer {
   target_id: number;
   subjects: number[];
   clear_previous_orders: boolean;
+}
+
+export declare interface StartTurnData {
+  game: GameRisqFromServer;
+}
+
+export declare interface SubmittedOrdersData {
+  game: GameRisqFromServer;
+  player_id: number;
+}
+
+export declare interface UnsubmittedOrdersData {
+  game: GameRisqFromServer;
+  player_id: number;
+}
+
+export declare interface UnitBehaviorSetData {
+  internal_ids: number[];
+  stance?: RisqUnitStance;
+  interrupt_current?: boolean;
+  attack_back?: boolean;
+  target_priority?: RisqTargetCategory[];
+}
+
+export declare interface GatherPointSetData {
+  building_id: number;
+  gather_point?: RisqGatherPoint;
 }

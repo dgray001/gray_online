@@ -224,8 +224,9 @@ func (r *GameRisq) resolveAttack(attacker Attackable, target Attackable, stamina
 	attacker_cs := attacker.combatStats(r, target, true)
 	target_cs := target.combatStats(r, attacker, false)
 	damage := combatDamage(&attacker_cs, &target_cs, stamina_cost)
+	r.metrics.recordAttack(attacker, target, util.RoundTo(damage, gatherRoundingPlaces), stamina_cost)
 	target.applyDamage(RisqDamageEvent{tick: r.current_tick, attacker_id: attacker.internalId(), attacker_type: attacker.OrderableType(), damage: damage, damage_type: attacker_cs.attack_type})
-	util.DebugLog.Printf("combat turn=%d tick=%d: %d %s (player %d, stamina %d) hits %d %s (player %d) for %.2f",
+	util.DebugLog.Printf("combat turn=%d tick=%d: %d %s (player %d, stamina %d) hits %d %s (player %d) for %.4f",
 		r.turn_number, r.current_tick, attacker.internalId(), attackableKind(attacker), attacker.playerId(), stamina_cost, target.internalId(), attackableKind(target), target.playerId(), damage)
 }
 
@@ -246,6 +247,7 @@ func lowestIdAttackerEvent(events []RisqDamageEvent, tick uint16) (RisqDamageEve
 }
 
 // Resolves a damage event's attacker back to the live actor that dealt it, for death credit.
+// TODO: code smell
 func (r *GameRisq) resolveAttacker(event RisqDamageEvent) Attackable {
 	switch event.attacker_type {
 	case defs.OrderableType_UNIT:
@@ -269,6 +271,9 @@ func (r *GameRisq) buildingAttack(attacker *RisqBuilding, target Attackable) {
 }
 
 func otherUnitIdentity(other Orderable) (uint32, defs.UnitType) {
+	if attacker, ok := other.(garrisonAttacker); ok {
+		other = attacker.RisqUnit
+	}
 	if unit, ok := other.(*RisqUnit); ok {
 		return unit.unit_id, unit.unitType()
 	}

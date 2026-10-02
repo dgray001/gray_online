@@ -112,6 +112,14 @@ export class RisqSelection {
     return this.selectedBuilding()?.internal_id === internal_id;
   }
 
+  isOrderSubjectSelected(order: RisqFrontendOrder): boolean {
+    if (isUnitOrder(order.order_type)) {
+      return order.subjects.some((id) => this.selectedUnitIds().has(id));
+    }
+    const building = this.selectedBuilding();
+    return isBuildingOrder(order.order_type) && building !== undefined && order.subjects.includes(building.internal_id);
+  }
+
   isResourceSelected(internal_id: number): boolean {
     const data = this.left_panel.getData();
     return data?.data_type === LeftPanelDataType.RESOURCE && data.data.internal_id === internal_id;

@@ -47,8 +47,9 @@ const (
 
 type exploreAction struct {
 	filtered
-	max    amount
-	anchor exploreAnchor
+	max          amount
+	min_distance amount
+	anchor       exploreAnchor
 }
 
 type attackTarget uint8
@@ -157,6 +158,7 @@ func (a *buildAction) ToOrders(view View, internals *Internals) []Order {
 
 func (a *exploreAction) ToOrders(view View, internals *Internals) []Order {
 	limit := a.max.int(view, internals)
+	min_distance := max(0, a.min_distance.int(view, internals))
 	orders := make([]Order, 0)
 	var anchor ZoneRef
 	fixed := a.anchor != exploreAnchorSelf
@@ -181,7 +183,7 @@ func (a *exploreAction) ToOrders(view View, internals *Internals) []Order {
 		if fixed {
 			from = anchor
 		}
-		candidates, ok := view.NearestUnexplored(from)
+		candidates, ok := nearestUnexploredOutside(view, from, min_distance)
 		if !ok {
 			continue
 		}
@@ -194,7 +196,7 @@ func (a *exploreAction) ToOrders(view View, internals *Internals) []Order {
 		if len(available) == 0 {
 			available = candidates
 		}
-		target, ok := nearestZone(view, u.Location, available)
+		target, ok := randomNearestSpace(internals, u.Location.Space, available)
 		if !ok {
 			continue
 		}

@@ -1,4 +1,5 @@
-import { cantorPair, invertPair } from '../../model/coordinates';
+import { equalsPoint2D } from '../../../../util/objects2d';
+import { cantorPair, invertBuildKey, invertPair } from '../../model/coordinates';
 import type {
   RisqBuilding,
   RisqCost,
@@ -9,8 +10,7 @@ import type {
   RisqUnit,
   RisqZone,
 } from '../../model/types';
-import { RisqOrderType, RisqProducibleKind, RisqResourceType } from '../../model/types';
-import { canAffordCost } from '../../model/rules';
+import { RisqOrderType, RisqProducibleKind, RisqResourceType, canAffordCost } from '../../model/types';
 import type { RisqSession } from '../session';
 import type { RisqOrdersModel } from './orders_model';
 
@@ -56,11 +56,48 @@ export class RisqOrderPlanning {
     this.recomputeIdleUnits();
   }
 
+  private activeBuildOrders(): Map<number, RisqFrontendOrder> {
+    const map = new Map<number, RisqFrontendOrder>();
+    for (const order of this.orders_model.all()) {
+      if (order.order_type === RisqOrderType.OrderType_UnitBuild && !this.orders_model.isCancelling(order)) {
+        map.set(invertPair(order.target_id).y, order);
+      }
+    }
+    return map;
+  }
+
+  private registerLocalFoundation(player: RisqPlayer, key: number, order: RisqFrontendOrder) {
+    const { building_id, space, zone } = invertBuildKey(order.target_id);
+    const site = this.session
+      .spaceAt(space)
+      ?.zones?.flat()
+      .find((z) => equalsPoint2D(z.coordinate, zone));
+    if (site?.building) {
+      return;
+    }
+    const producible = this.findProducible(player, building_id, order.subjects);
+    this.local_foundations.set(key, {
+      coordinate_key: key,
+      building_id,
+      display_name: producible?.display_name ?? 'Building',
+      order,
+    });
+  }
+
   private syncLocalFoundations() {
-    const all_orders = new Set(this.orders_model.all());
+    const active = this.activeBuildOrders();
+    const player = this.session.getPlayer();
     for (const [key, f] of this.local_foundations.entries()) {
-      if (!all_orders.has(f.order)) {
+      const order = active.get(key);
+      if (!order || player?.planned_foundations?.has(key)) {
         this.local_foundations.delete(key);
+      } else {
+        f.order = order;
+      }
+    }
+    for (const [key, order] of active.entries()) {
+      if (!this.local_foundations.has(key) && !player?.planned_foundations?.has(key) && player) {
+        this.registerLocalFoundation(player, key, order);
       }
     }
   }
@@ -195,8 +232,25 @@ export class RisqOrderPlanning {
         );
       }
     }
-    for (const foundation of this.local_foundations.values()) {
-      this.addSpending(player, this.plannedFoundationCost(player, foundation));
+    const build_zones = new Set<number>();
+    for (const order of this.orders_model.pendingOrders()) {
+      if (order.order_type !== RisqOrderType.OrderType_UnitBuild) {
+        continue;
+      }
+      const zone_key = invertPair(order.target_id).y;
+      if (build_zones.has(zone_key) || player.planned_foundations?.has(zone_key)) {
+        continue;
+      }
+      build_zones.add(zone_key);
+      const { building_id, space, zone } = invertBuildKey(order.target_id);
+      const site = this.session
+        .spaceAt(space)
+        ?.zones?.flat()
+        .find((z) => equalsPoint2D(z.coordinate, zone));
+      if (site?.building) {
+        continue;
+      }
+      this.addSpending(player, this.findProducible(player, building_id, order.subjects)?.cost);
     }
     for (const order of this.orders_model.pendingOrders()) {
       if (order.order_type === RisqOrderType.OrderType_BuyMercenary) {
@@ -228,14 +282,24 @@ export class RisqOrderPlanning {
     return undefined;
   }
 
-  private plannedFoundationCost(player: RisqPlayer, foundation: LocalRisqFoundation): RisqCost | undefined {
-    for (const subject_id of foundation.order.subjects) {
-      const cost = player.units.get(subject_id)?.builds.find((p) => p.id === foundation.building_id)?.cost;
-      if (cost) {
-        return cost;
+  private findProducible(player: RisqPlayer, building_id: number, subjects: number[]): RisqProducible | undefined {
+    for (const subject_id of subjects) {
+      const p = player.units.get(subject_id)?.builds.find((b) => b.id === building_id);
+      if (p) {
+        return p;
+      }
+    }
+    for (const unit of player.units.values()) {
+      const p = unit.builds.find((b) => b.id === building_id);
+      if (p) {
+        return p;
       }
     }
     return undefined;
+  }
+
+  private plannedFoundationCost(player: RisqPlayer, foundation: LocalRisqFoundation): RisqCost | undefined {
+    return this.findProducible(player, foundation.building_id, foundation.order.subjects)?.cost;
   }
 
   private addSpending(player: RisqPlayer, cost: RisqCost | undefined, multiplier = 1) {

@@ -49,6 +49,16 @@ func (a *setBucketAction) ToOrders(view View, internals *Internals) []Order {
 	b := internals.bucket(a.bucket)
 	b.Desired = max(0, a.size.int(view, internals))
 	b.Task = a.task
+	if len(b.Members) > b.Desired {
+		ids := make([]uint64, 0, len(b.Members))
+		for id := range b.Members {
+			ids = append(ids, id)
+		}
+		sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+		for _, id := range ids[b.Desired:] {
+			delete(b.Members, id)
+		}
+	}
 	return nil
 }
 
@@ -128,10 +138,11 @@ func (a *emptyBucketAction) ToOrders(_ View, internals *Internals) []Order {
 }
 
 type drainBucketAction struct {
-	to       string
-	from     []string
-	from_any bool
-	max      amount
+	to             string
+	from           []string
+	from_any       bool
+	max            amount
+	allow_reserved bool
 }
 
 func (a *drainBucketAction) ToOrders(view View, internals *Internals) []Order {
@@ -164,7 +175,7 @@ func (a *drainBucketAction) ToOrders(view View, internals *Internals) []Order {
 		}
 		sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
 		for _, id := range ids {
-			if need <= 0 || overflow <= 0 || (limit > 0 && taken >= limit) {
+			if need <= 0 || (!a.allow_reserved && overflow <= 0) || (limit > 0 && taken >= limit) {
 				break
 			}
 			delete(from.Members, id)

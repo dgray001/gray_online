@@ -299,9 +299,6 @@ func (s *RisqSpace) refreshCache(player_id int) {
 
 func (s *RisqSpace) toFrontend(player_id int, _is_viewer bool) gin.H {
 	space := gin.H{
-		"terrain_id":     s.terrain_id,
-		"terrain_type":   defs.TerrainConfigs[s.terrain_id].Terrain_type,
-		"display_name":   defs.TerrainConfigs[s.terrain_id].Display_name,
 		"coordinate":     s.coordinate.ToFrontend(),
 		"coordinate_key": s.coordinate_key,
 	}
@@ -310,6 +307,9 @@ func (s *RisqSpace) toFrontend(player_id int, _is_viewer bool) gin.H {
 	if v == defs.VisibilityUnexplored {
 		return space
 	}
+	space["terrain_id"] = s.terrain_id
+	space["terrain_type"] = defs.TerrainConfigs[s.terrain_id].Terrain_type
+	space["display_name"] = defs.TerrainConfigs[s.terrain_id].Display_name
 	space["gold_income"] = spaceGoldIncome
 	if v == defs.VisibilityFog {
 		if owner, ok := s.ownership_cache[player_id]; ok {

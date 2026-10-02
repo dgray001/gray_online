@@ -29,7 +29,7 @@ func repairHealAndCost(building *RisqBuilding, stamina int) (heal float64, cost 
 	if remaining := max_health - building.cs.health; heal > remaining {
 		heal = remaining
 	}
-	cost = config.Cost.Scale(repairCostFactor * heal / max_health)
+	cost = building.repairCharge(int64(math.Round(heal * 10000)))
 	return heal, cost, true
 }
 

@@ -59,6 +59,7 @@ H = P['horizon']
 
 # ================= state =================
 rule(ALWAYS,
+     setv("has_eco", "min(1, var(population_economic) + var(economic_producers))"),
      setv("vils", "var(population_1)"),
      setv("B", "var(population_11)"), setv("Pi", "var(population_12)"), setv("Hv", "var(population_13)"),
      setv("mil", "var(B) + var(Pi) + var(Hv)"),
@@ -77,6 +78,16 @@ rule(ALWAYS, *(setv(n, f"max(var({n}) - {P['decay']}, var(enemy_units_visible_{s
      setv("eMil", "var(eB) + var(eP) + var(eH)"),
      # fighting power in blunt-equivalents (a heavy ~4 blunts, a piercer ~2 against heavies)
      setv("ePow", "var(eB) + 2 * var(eP) + 4 * var(eH)"))
+rule(ALWAYS,
+     setv("eMixB", "(var(eB) + 1) / (var(eMil) + 3)"),
+     setv("eMixP", "(var(eP) + 1) / (var(eMil) + 3)"),
+     setv("eMixH", "(var(eH) + 1) / (var(eMil) + 3)"),
+     setv("eUnknownPower", "1"),
+     setv("eUnidentified", "var(enemy_units_unidentified)"),
+     setv("ePow", "max(var(ePow), var(enemy_units_visible_11) + 2 * var(enemy_units_visible_12) + 4 * var(enemy_units_visible_13) + var(eUnidentified) * var(eUnknownPower))"))
+
+def unknown_power_near(anchor: str, within: int) -> str:
+    return f"var(enemy_units_unidentified_within_{within}_of_{anchor}) * var(eUnknownPower)"
 
 # ================= wants =================
 # unit stats the script can't look up yet (production per building per turn at the current stamina numbers)
@@ -251,7 +262,7 @@ rule(ALWAYS,
 
 # enemy soldiers at our door (the raid comes home for them)
 rule(ALWAYS,
-     setv("threat_home", "var(enemy_units_visible_infantry_within_1)"),
+     setv("threat_home", "var(enemy_units_visible_infantry_within_1) + var(enemy_units_unidentified_within_1)"),
      setv("guard_home", "var(population_infantry_within_1)"))
 
 # ================= spending, in priority order =================
@@ -259,9 +270,17 @@ rule(ALWAYS,
 # (8 villagers is roughly when Farming's villager bonuses start paying for themselves)
 rule(all_(ge("var(vils)", 8), le("var(farming)", 0)), {"action": "research", "tech_id": FARMING, "queue": 2})
 rule(ge("var(vil_want)", 1), {"action": "create", "unit_id": VIL, "queue": 2})
-for n in ("house", "vc", "barracks", "redoubt", "smith", *(f"farm{i}" for i in range(MAX_NEW_FARMS))):
+for n in ("house", "vc", *(f"farm{i}" for i in range(MAX_NEW_FARMS))):
     b, _, k = BUILD_FIRES[n]
     rule(ge(f"var(fire_{n})", 1), build(b, k))
+b_rax, _, k_rax = BUILD_FIRES["barracks"]
+rule(all_(le("var(barracks)", 0), ge("var(fire_barracks)", 1)), build(b_rax, k_rax))
+b_smith, _, k_smith = BUILD_FIRES["smith"]
+rule(all_(ge("var(mil)", 8), le("var(smiths)", 0), ge("var(fire_smith)", 1)), build(b_smith, k_smith))
+rule(all_(ge("var(tH) - var(Hv)", 1), ge("var(headroom)", 1)), {"action": "create", "unit_id": HEAVY, "queue": 2})
+rule(all_(ge("var(needP)", 1), ge("2 * var(needP) / max(1, var(needB) + var(needP))", 0.5), any_(ge("var(pikes)", 1), ge("var(eH)", 2))),
+     {"action": "create", "unit_id": PIERCE, "queue": "2 * var(needP) / max(1, var(needB) + var(needP))"})
+rule(ge("var(needB)", 1), {"action": "create", "unit_id": BLUNT, "queue": 2})
 rule(ge("var(fire_outpost)", 1), build(OUTPOST, 1))
 rule(ALWAYS, dict({"action": "build_foundations"}, **ECO), dict({"action": "renew"}, **ECO), dict({"action": "repair", "max": 1}, **ECO))
 rule(all_(ge("var(smiths)", 1), any_(ge("var(eH)", 2), ge("var(needP)", 4))), {"action": "research", "tech_id": PIKES})
@@ -275,11 +294,10 @@ def merc(i): return MERC.format(f=uc('food', i), w=uc('wood', i), s=uc('stone', 
 rule(ALWAYS, setv("gold_surplus", f"gold - var(gold_rate) * {H} - var(tech_gold)"))
 rule(all_(ge("var(redoubts)", 1), ge(f"var(gold_surplus) - {merc(BLUNT)}", 0)), {"action": "research", "tech_id": MERCS, "queue": 2})
 rule(ALWAYS, setv("hire_B", f"var(gold_surplus) / {merc(BLUNT)}"), setv("hire_P", f"var(gold_surplus) / {merc(PIERCE)}"))
-rule(all_(ge("var(tH) - var(Hv)", 1), ge("var(headroom)", 1)), {"action": "create", "unit_id": HEAVY, "queue": 2})
-# each barracks queues piercers only for their share of what the barracks should make; blunts fill the rest
-rule(all_(ge("var(needP)", 1), ge("2 * var(needP) / max(1, var(needB) + var(needP))", 0.5), any_(ge("var(pikes)", 1), ge("var(eH)", 2))),
-     {"action": "create", "unit_id": PIERCE, "queue": "2 * var(needP) / max(1, var(needB) + var(needP))"})
-rule(ge("var(needB)", 1), {"action": "create", "unit_id": BLUNT, "queue": 2})
+rule(all_(ge("var(barracks)", 1), ge("var(fire_barracks)", 1)), build(b_rax, k_rax))
+b_red, _, k_red = BUILD_FIRES["redoubt"]
+rule(ge("var(fire_redoubt)", 1), build(b_red, k_red))
+rule(all_(le("var(smiths)", 0), ge("var(fire_smith)", 1)), build(b_smith, k_smith))
 rule(all_(ge("var(hire_P)", 1), ge("var(needP) - var(needB)", 0.01)), {"action": "hire", "unit_id": PIERCE, "max": "var(hire_P)"})
 rule(all_(ge("var(hire_B)", 1), ge("var(needB) - var(needP)", 0)), {"action": "hire", "unit_id": BLUNT, "max": "var(hire_B)"})
 
@@ -289,17 +307,42 @@ rule(ALWAYS, *({"action": "run_bucket", "bucket": c} for c in ("food", "wood", "
 rule(ALWAYS, {"action": "renew", "in_bucket": "food", "eligible": ["gather"]})
 rule(ALWAYS, dict({"action": "gather", "move_penalty": 2}, **ECO))
 
+LOCAL_SCOUT_NEEDED = {"count_spaces_at_least": {"where": {"vision": 0}, "within": 4, "from": "home", "amount": 1}}
+ENEMY_SCOUT_NEEDED = {"enemies_found_at_most": {"amount": "num_players - 2"}}
+GENERAL_SCOUT_NEEDED = any_(all_(ge("var(has_eco)", 1), le("var(resource_available_stone)", 0)),
+                            all_(ge("var(mil)", 21), {"count_spaces_at_least": {"where": {"vision": 0}, "amount": 1}}))
+rule(ALWAYS, setv("scout_phase", 0))
+rule(all_(ge("var(mil)", 1), LOCAL_SCOUT_NEEDED),
+     setv("scout_phase", 1),
+     {"action": "set_bucket", "bucket": "scout", "size": 1, "task": {"action": "explore", "anchor": "home", "min_distance": 0}})
+
+rule(all_(ge("var(mil)", 1), {"not": LOCAL_SCOUT_NEEDED}, ENEMY_SCOUT_NEEDED),
+     setv("scout_phase", 2),
+     {"action": "set_bucket", "bucket": "scout", "size": f"1 + {one('var(mil) - 40')}",
+      "task": {"action": "explore", "anchor": "center", "min_distance": "max(0, map_size - 2)"}})
+rule(all_(ge("var(mil)", 1), {"not": LOCAL_SCOUT_NEEDED}, {"not": ENEMY_SCOUT_NEEDED}, GENERAL_SCOUT_NEEDED),
+     setv("scout_phase", 3),
+     {"action": "set_bucket", "bucket": "scout", "size": f"1 + {one('var(mil) - 40')}",
+      "task": {"action": "explore", "anchor": "self", "min_distance": 0}})
+rule(ge("var(scout_phase)", 1),
+     {"action": "fill_bucket", "bucket": "scout", "unit_types": ["infantry"]},
+     {"action": "drain_bucket", "to": "scout", "from": ["army", "raid"], "max": 2, "allow_reserved": True},
+     {"action": "run_bucket", "bucket": "scout"})
+rule(le("var(scout_phase)", 0), {"action": "empty_bucket", "bucket": "scout"})
+
 # ================= raiding: a few blunts harass the economy and never fight soldiers =================
 vw, odds, rmin = P['vil_worth'], P['raid_odds'], P['raid_min']
 RAID_ORDERS = ["move", "attack_space", "attack_unit", "attack_zone", "attack_building"]
-def soldiers_near(anchor, within):
-    return f"(var(enemy_units_visible_11_within_{within}_of_{anchor}) + 2 * var(enemy_units_visible_12_within_{within}_of_{anchor}) + 4 * var(enemy_units_visible_13_within_{within}_of_{anchor}))"
+def soldiers_near(anchor: str, within: int) -> str:
+    return f"(var(enemy_units_visible_11_within_{within}_of_{anchor}) + 2 * var(enemy_units_visible_12_within_{within}_of_{anchor}) + 4 * var(enemy_units_visible_13_within_{within}_of_{anchor}) + {unknown_power_near(anchor, within)})"
 rule(ALWAYS,
      # a party that lost more than half its members since last turn was caught: raids pause, longer after each failure
      setv("raid_lost", "max(0, var(raid_prev) - var(bucket_size_raid))"),
      setv("raid_wiped", f"{one('var(raid_prev)')} * {one('(var(raid_lost) - var(raid_prev) / 2) * 100')}"),
      setv("raid_fails", "var(raid_fails) + var(raid_wiped)", True),
-     setv("raid_pause", f"max(var(raid_pause) - 1, var(raid_wiped) * {P['raid_pause']} * var(raid_fails))", True),
+     setv("raid_pause", f"max(var(raid_pause) - 1, var(raid_wiped) * {P['raid_pause']} * var(raid_fails))", True))
+rule(le("var(has_eco)", 0), setv("raid_size", 0))
+rule(ge("var(has_eco)", 1),
      # a small party: a share of our blunts, never fewer than raid_min, and it all comes home if an army is at our door
      setv("raid_size", f"{one(f'var(B) - {rmin} + 1')} * min({P['raid_max']}, max({rmin}, var(B) * {P['raid_frac']}))"
                        f" * {one('3 - var(threat_home) + var(guard_home)')} * {one('1 - var(raid_pause)')}"),
@@ -309,9 +352,9 @@ rule(ALWAYS,
      setv("raid_danger", soldiers_near('raid', 2)))
 rule(le("var(raid_size)", 0), {"action": "empty_bucket", "bucket": "raid"})
 rule(ALWAYS, setv("raid_prev", "var(bucket_size_raid)", True))
-rule(ge("var(bucket_size_raid)", 1), {"action": "set_unit_behavior", "in_bucket": "raid", "stance": "defensive"})
+rule(all_(ge("var(bucket_size_raid)", 1), le("var(raid_danger)", 0)), {"action": "set_unit_behavior", "in_bucket": "raid", "stance": "defensive", "attack_back": True})
 rule(all_(ge("var(bucket_size_raid)", 1), ge("var(raid_danger)", 1)),
-     {"action": "move", "in_bucket": "raid", "eligible": RAID_ORDERS, "targets": "home", "together": True})
+     {"action": "move", "in_bucket": "raid", "eligible": RAID_ORDERS, "targets": "retreat", "together": True})
 # not under their guns, not near their soldiers, and not near where their army musters (barracks, Redoubts)
 SAFE = (f"100 * var(enemy_buildings_known_{DEFENSIVE}_within_0_of_target) + 100 * {soldiers_near('target', 2)}"
         f" + 100 * var(enemy_buildings_known_{BARRACKS}_{REDOUBT}_within_2_of_target)")
@@ -332,37 +375,32 @@ rule(RAIDING, {"action": "attack", "in_bucket": "raid", "eligible": RAID_ORDERS,
 rule(RAIDING, {"action": "attack", "in_bucket": "raid", "eligible": RAID_ORDERS, "targets": "enemy_units", "target_unit_ids": [VIL],
                "score": raid_score, "min_score": 0, "together": True, "order": "space"})
 
-# ================= scouting: one soldier finds the enemy and stone =================
-rule(all_(ge("var(mil)", 1), any_({"enemies_found_at_most": {"amount": 0}}, le("var(resource_available_stone)", 0))),
-     {"action": "set_bucket", "bucket": "scout", "size": 1, "task": {"action": "explore"}},
-     {"action": "fill_bucket", "bucket": "scout", "unit_types": ["infantry"]},
-     {"action": "run_bucket", "bucket": "scout"})
-rule(all_({"enemies_found_at_least": {"amount": 1}}, ge("var(resource_available_stone)", 1)), {"action": "empty_bucket", "bucket": "scout"})
-
 # ================= the army: every other soldier; attacks only while locally stronger, else regroups at home =================
-ao = P['assault_odds']
+ao = "var(ao)"
 # share attackers over the enemies instead of all hitting one: about enough per target to kill it within a hit
 # (a blunt deals ~1.5 a hit to a blunt, ~2.1 with Attack; hardcoded from unit stats), with a couple of follow-up targets queued
 SPREAD = {"damage": f"{P['hit_damage']} + 0.6 * var(tech_researched_{ATTACK})", "overkill": 0, "queue": P['spread_queue']}
-def pow_near(side, anchor, within):
+def pow_near(side: str, anchor: str, within: int) -> str:
     """fighting power (blunt-equivalents) of one side's soldiers near an anchor"""
     if side == 'enemy':
         c = lambda uid: f"var(enemy_units_visible_{uid}_within_{within}_of_{anchor})" if anchor != 'home' else f"var(enemy_units_visible_{uid}_within_{within})"
     else:
         c = lambda uid: f"var(population_{uid}_within_{within}_of_{anchor})" if anchor != 'home' else f"var(population_{uid}_within_{within})"
-    return f"({c(11)} + 2 * {c(12)} + 4 * {c(13)})"
+    unknown = f" + {unknown_power_near(anchor, within)}" if side == 'enemy' else ""
+    return f"({c(11)} + 2 * {c(12)} + 4 * {c(13)}{unknown})"
 rule(ALWAYS,
      # the strongest enemy army we have seen: an army we haven't beaten is still out there, so it fades only slowly
      # the enemy army keeps growing after we last saw it (about 0.2 power a turn per known barracks or Redoubt, from
      # watching v0.5) and loses some in fights (2% a turn), never more than their population room allows
      setv("eGrowth", f"0.2 * (var(enemy_buildings_known_{BARRACKS}) + var(enemy_buildings_known_{REDOUBT}))"),
      setv("ePowSeen", "min(2 * max(0, var(population_max) - var(eV)), max(var(ePowSeen) * 0.98 + var(eGrowth),"
-                      " var(enemy_units_visible_11) + 2 * var(enemy_units_visible_12) + 4 * var(enemy_units_visible_13)))", True),
+                      " var(enemy_units_visible_11) + 2 * var(enemy_units_visible_12) + 4 * var(enemy_units_visible_13) + var(eUnidentified) * var(eUnknownPower)))", True),
      # techs: theirs count once we know of a Blacksmith, ours by what we researched (~25% for attack + armor, hardcoded)
      setv("eTech", f"1 + 0.25 * {one(f'var(enemy_buildings_known_{SMITH})')}"),
      setv("myTech", "1 + 0.125 * (var(tech_researched_2) + var(tech_researched_3))"),
      setv("ePowEst", "var(ePowSeen) * var(eTech)"),
      setv("homePow", f"{pow_near('mine', 'home', 1)} * var(myTech)"),
+     setv("ao", f"1.3 - 0.1 * {one('(var(homePow) - 20) * 10')} - 0.1 * {one('(var(homePow) - 30) * 10')} - 0.1 * {one('(var(homePow) - 40) * 10')}"),
      # launch: the soldiers gathered at home beat what we have seen, and are a real army
      setv("go", one(f"var(homePow) - {ao} * var(ePowEst) + 1") + " * " + one(f"var(homePow) - {P['assault_min']} + 1")),
      # the army's local fight: soldiers within a space of it, plus defensive buildings in its space
@@ -375,42 +413,36 @@ rule(ALWAYS,
      setv("a_outnumbered", f"{one('(var(aThreat) * var(a_odds) - var(aPowLocal)) * 10')} * {one('var(bucket_size_army)')}"),
      # keep attacking until locally outnumbered (then everyone regroups at home) or too few are left
      setv("assault", f"min(1, max(var(assault) * (1 - var(a_outnumbered)) * {one('var(bucket_size_army) - 3')}, var(go)))", True),
-     {"action": "set_bucket", "bucket": "army", "size": "var(assault) * var(mil)", "task": {"action": "explore"}},
+     {"action": "set_bucket", "bucket": "army", "size": "max(var(assault), 1 - min(1, var(building_count))) * var(mil)", "task": {"action": "move", "targets": "retreat"}},
      {"action": "fill_bucket", "bucket": "army", "unit_types": ["infantry"], "eligible": ["move", "gather", "attack_unit", "attack_building", "attack_space", "attack_zone"]})
-rule(le("var(assault)", 0), {"action": "empty_bucket", "bucket": "army"})
+rule(all_(le("var(assault)", 0), le("var(a_outnumbered)", 0), {"building_count_at_least": {"amount": 1}}), {"action": "empty_bucket", "bucket": "army"})
 ARMY = dict(in_bucket="army", eligible=["move", "attack_unit", "attack_building", "attack_space", "attack_zone"], together=True)
 # the army works its assigned targets: being hit must not pull every soldier onto whoever hit them
-rule(ge("var(bucket_size_army)", 1), {"action": "set_unit_behavior", "in_bucket": "army", "stance": "aggressive", "interrupt_current": False})
+rule(all_(ge("var(bucket_size_army)", 1), le("var(a_outnumbered)", 0)), {"action": "set_unit_behavior", "in_bucket": "army", "stance": "aggressive", "attack_back": True, "interrupt_current": False})
 # lowest priority first; each later rule that finds a target overrides
-rule(ge("var(bucket_size_army)", 1),
-     # nothing known: head for the far side of the map, where the enemy is
-     dict({"action": "move", "targets": "known_resources", "category": "wood", "score": "var(target_distance_home) - var(target_distance) / 2"}, **ARMY),
+rule(all_({"building_count_at_least": {"amount": 1}}, ge("var(bucket_size_army)", 1), le("var(a_outnumbered)", 0)),
+     dict({"action": "move", "targets": "known_resources", "category": "wood", "score": "var(target_distance_home) - var(target_distance) / 2"}, **ARMY))
+rule(all_(ge("var(bucket_size_army)", 1), le("var(a_outnumbered)", 0)),
+     dict({"action": "move", "targets": "unidentified_units", "score": f"20 - var(target_distance) - 100 * max(0, {ao} * ({soldiers_near('target', 1)} + 6 * var(enemy_buildings_known_{DEFENSIVE}_within_0_of_target)) - var(aPowLocal))", "min_score": 0}, **ARMY),
      dict({"action": "attack", "targets": "enemy_units", "target_unit_ids": [VIL], "score": "20 - var(target_distance)"}, **ARMY),
      dict({"action": "attack", "targets": "enemy_buildings", "score": "25 - var(target_distance)"}, **ARMY),
      dict({"action": "attack", "targets": "enemy_buildings", "target_building_ids": [VC, BARRACKS, REDOUBT, OUTPOST], "score": "30 - var(target_distance)"}, **ARMY),
      dict({"action": "attack", "targets": "enemy_units", "target_unit_types": ["infantry"], "score": "40 - 5 * var(target_distance)", "min_score": 30,
            "distribute": SPREAD}, **ARMY))
-rule(all_(ge("var(bucket_size_army)", 1), ge("var(a_outnumbered)", 1)),
-     dict({"action": "move", "targets": "home"}, **ARMY))
 
 # ================= home defence: soldiers not raiding or attacking hold the base and fight only there =================
 DEF = dict(exclude_buckets=True, eligible=["move", "attack_unit", "attack_building", "attack_space", "attack_zone"], unit_types=["infantry"])
 # every soldier outside the army fights back when hit, whatever it was doing (walking home, hitting a building)
-rule(ALWAYS, {"action": "set_unit_behavior", "unit_types": ["infantry"], "interrupt_current": True, "exclude_buckets": True})
-rule(ge("var(bucket_size_raid)", 1), {"action": "set_unit_behavior", "in_bucket": "raid", "interrupt_current": True})
+rule(ALWAYS, {"action": "set_unit_behavior", "unit_types": ["infantry"], "stance": "defensive", "attack_back": True, "interrupt_current": True, "exclude_buckets": True})
+rule(all_(ge("var(bucket_size_raid)", 1), le("var(raid_danger)", 0)), {"action": "set_unit_behavior", "in_bucket": "raid", "interrupt_current": True})
 rule({"building_count_at_least": {"amount": 1}},
      # soldiers that left the army or the raid come home, whatever they were still doing
      dict({"action": "move", "targets": "home", "together": False, "eligible": DEF["eligible"]}, exclude_buckets=True, unit_types=["infantry"]),
      dict({"action": "attack", "targets": "enemy_units", "score": "10 - 10 * var(target_distance_home)", "min_score": 0, "distribute": SPREAD}, **DEF))
-# no buildings at all (army-only starts): nothing to defend, so hunt with everything
-rule({"building_count_equals": {"amount": 0}},
-     {"action": "move", "unit_types": ["infantry"], "targets": "unexplored", "together": True},
-     {"action": "attack", "unit_types": ["infantry"], "eligible": ["move", "attack_unit", "attack_space"], "targets": "enemy_units",
-      "score": "0 - var(target_distance) - 2 * var(enemy_units_visible_infantry_within_1_of_target)", "together": True})
 
 
 # ================= local fights: every soldier sharing a space with enemy soldiers works script-assigned targets =================
-# last for soldiers, so it overrides whatever they were told (going home, a building, the engine's own auto-attack):
+# overrides earlier military orders; retreat rules follow
 # the enemy soldiers in spaces where we have soldiers are shared out among ours there
 SOLDIER_ORDERS = ["move", "attack_unit", "attack_building", "attack_space", "attack_zone"]
 IN_FIGHT = {"value_at_least": {"value": "var(enemy_units_visible_infantry_within_0_of_unit)", "amount": 1}}
@@ -420,13 +452,19 @@ rule(ALWAYS, {"action": "attack", "unit_types": ["infantry"], "eligible": SOLDIE
               "score": "10 * min(1, var(population_infantry_within_0_of_target)) - var(target_distance) / 10", "min_score": 5, "distribute": SPREAD,
               "unit_when": IN_FIGHT})
 
+for bucket, danger in (("army", "a_outnumbered"), ("raid", "raid_danger")):
+    rule(all_(ge(f"var(bucket_size_{bucket})", 1), ge(f"var({danger})", 1)),
+         {"action": "set_unit_behavior", "in_bucket": bucket, "stance": "passive", "attack_back": False, "interrupt_current": False},
+         {"action": "move", "in_bucket": bucket, "eligible": SOLDIER_ORDERS, "targets": "retreat"})
+
 # ================= villagers under attack: every villager sharing a space with enemy soldiers fights or runs =================
 # last, so it overrides whatever they were told this turn. They fight together only when they crush what is there:
 # villagers at their worth (hardcoded from unit stats: ~0.6 of a blunt, ~1 with Farming) plus our soldiers there,
 # against the enemy's soldiers within a space; otherwise all of them take cover, however few the enemy are.
-def power_at_unit(side, within):
+def power_at_unit(side: str, within: int) -> str:
     c = (lambda uid: f"var(enemy_units_visible_{uid}_within_{within}_of_unit)") if side == 'enemy' else (lambda uid: f"var(population_{uid}_within_{within}_of_unit)")
-    return f"({c(11)} + 2 * {c(12)} + 4 * {c(13)})"
+    unknown = f" + {unknown_power_near('unit', within)}" if side == 'enemy' else ""
+    return f"({c(11)} + 2 * {c(12)} + 4 * {c(13)}{unknown})"
 VIL_ORDERS = ["gather", "build", "move", "repair", "renew", "attack_unit", "attack_space"]
 rule(ALWAYS, setv("vil_worth_now", "0.6 + 0.4 * var(farming)"))
 # soldiers a space away reach them within the turn, so they count; attacking their space also takes on the enemy villagers

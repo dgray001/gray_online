@@ -2,8 +2,7 @@ import { RisqRange, RisqProducibleKind } from '../../model/types';
 import type { RisqCost, RisqUnitType } from '../../model/types';
 import type { DwgRisq } from '../../risq';
 import { unitImage } from '../../rendering/assets/unit';
-import { buildingImage } from '../../rendering/assets/buildings';
-import { techImage } from '../../rendering/assets/techs';
+import { buildingImage, techImage } from '../../rendering/assets/buildings';
 export interface RisqUnitStatsEntry {
   health: number;
   attack_blunt: number;

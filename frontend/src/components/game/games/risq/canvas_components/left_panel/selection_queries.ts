@@ -143,7 +143,7 @@ export function normalizeSelection(data: LeftPanelData, resolve: UnitResolver): 
 }
 
 function normalizeUnits(data: UnitsDrawData, resolve: UnitResolver): LeftPanelData | undefined {
-  if (!data || !data.space || !data.space.units || !data.units_by_player || data.units_by_player.size < 1) {
+  if (!data || !data.space || !data.units_by_player || data.units_by_player.size < 1) {
     return undefined;
   }
   const new_data: [number, UnitByTypeData[]][] = [];

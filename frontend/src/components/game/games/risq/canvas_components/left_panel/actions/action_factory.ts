@@ -1,6 +1,11 @@
 import type { RisqBuilding, RisqPlayer, RisqProducible } from '../../../model/types';
-import { RisqAttackType, RisqOrderType, RisqProducibleKind, RisqUnitStance } from '../../../model/types';
-import { meetsTechRequirement } from '../../../model/rules';
+import {
+  RisqAttackType,
+  RisqOrderType,
+  RisqProducibleKind,
+  RisqUnitStance,
+  meetsTechRequirement,
+} from '../../../model/types';
 import type { DwgRisq } from '../../../risq';
 import { RisqTargetPriorityControl } from '../controls/target_priority_control';
 import { ACTION_GRID_COLS } from '../layout';
@@ -8,9 +13,8 @@ import type { LeftPanelData } from '../left_panel_data';
 import { LeftPanelDataType } from '../left_panel_data';
 import { isOnlyMilitary, isOnlyVillagers, unitResolver } from '../selection_queries';
 import type { RisqActionButton } from './action_button';
-import { RisqBuildingAttackButton } from './building/building_attack_button';
+import { RisqBuildingAttackButton, RisqBuildingGatherPointButton } from './building/building_armed_buttons';
 import { RisqBuildingDeleteButton } from './building/building_delete_button';
-import { RisqBuildingGatherPointButton } from './building/building_gather_point_button';
 import { RisqBuildingUngarrisonButton } from './building/building_ungarrison_button';
 import { RisqCreateButton } from './building/create_button';
 import { RisqResearchButton } from './building/research_button';

@@ -147,8 +147,8 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 	}
 	switch detail := u.intent.detail.(type) {
 	case *MoveIntent:
-		util.DebugLog.Printf("Moving unit %d %s to zone%s in space %s tick=%d",
-			u.internal_id, u.display_name, detail.next_step.coordinate.ToString(), detail.next_step.space.coordinate.ToString(), risq.current_tick)
+		util.DebugLog.Printf("Moving unit %d %s to zone%s in space %s tick=%d turn=%d stamina=%d from=%s",
+			u.internal_id, u.display_name, detail.next_step.coordinate.ToString(), detail.next_step.space.coordinate.ToString(), risq.current_tick, risq.turn_number, u.intent.intent_cost, u.zone.space.coordinate.ToString())
 		old_zone := u.zone
 		new_zone := detail.next_step
 		if old_zone.space == new_zone.space {
@@ -231,16 +231,10 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 		if building.deleted || building.underConstruction() || !risq.canAssist(u.player_id, building) {
 			return
 		}
-		heal, cost, ok := repairHealAndCost(building, u.intent.intent_cost)
-		if !ok {
-			return
-		}
 		afford := risq.repair_allotments[u]
 		if afford <= 0 {
 			return
 		}
-		building.cs.queueHealth(heal * afford)
-		risq.players[u.player_id].resources.spend(cost.Scale(afford))
 	case *RenewIntent:
 		building := detail.target
 		if building.deleted || building.renewing == nil {

@@ -149,7 +149,7 @@ func (r *GameRisq) autoGatherCompletedBuildings() {
 		for _, u := range builders {
 			order := createRisqOrder(r.nextOrderInternalId(), defs.OrderType_UnitGather, b.player_id, map[uint64]Orderable{u.internal_id: u}, int64(b.zone.coordinate_key), false)
 			if u.orderReceivable(order, r) {
-				u.receiveOrder(order, r)
+				r.addSyntheticOrder(order, r.players[b.player_id], false)
 			}
 		}
 	}

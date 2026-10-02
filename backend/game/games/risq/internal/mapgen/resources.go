@@ -20,6 +20,18 @@ var uniformWoodIds = append(append(append([]uint32{}, uniformTreeIds...), unifor
 var uniformStoneIds = []uint32{41, 42, 43}
 var uniformGoldIds = []uint32{51}
 
+func resourceZoneMatches(zone Zone, selector string) bool {
+	return selector == "" || selector == "all" || (selector == "center" && zone.IsCenter()) || (selector == "edge" && !zone.IsCenter())
+}
+
+func resourceLocalMatches(local game_utils.Coordinate2D, selector string) bool {
+	return selector == "" || selector == "all" || (selector == "center" && local.X == 0 && local.Y == 0) || (selector == "edge" && (local.X != 0 || local.Y != 0))
+}
+
+func validateResourceZone(selector string) bool {
+	return selector == "" || selector == "all" || selector == "center" || selector == "edge"
+}
+
 type scatterEntry struct {
 	ids    []uint32
 	weight float64
@@ -79,6 +91,7 @@ func pickScatterIds(entries []scatterEntry, rng *rand.Rand) []uint32 {
 
 type resourceScatterParams struct {
 	Chance ScriptExpr `json:"chance"`
+	Zone   string     `json:"zone,omitempty"`
 	// keys: food, wood (trees + groves + forests), tree, grove, forest, stone
 	CategoryWeights map[string]float64 `json:"category_weights,omitempty"`
 	// exact resource ids, weighted against the categories
@@ -90,6 +103,9 @@ func stepResourceScatter(ctx *mapScriptContext, raw json.RawMessage) error {
 	if err != nil {
 		return err
 	}
+	if !validateResourceZone(p.Zone) {
+		return fmt.Errorf("resource_scatter: invalid zone %q", p.Zone)
+	}
 	chance, err := p.Chance.resolve(ctx.vars)
 	if err != nil {
 		return err
@@ -99,8 +115,8 @@ func stepResourceScatter(ctx *mapScriptContext, raw json.RawMessage) error {
 		return err
 	}
 	for _, space := range ctx.allSpaces() {
-		for _, zone := range space.ShuffledEdgeZones(ctx.rng) {
-			if zone.Occupied() {
+		for _, zone := range util.ShuffleFrom(ctx.rng, space.Zones()) {
+			if zone.Occupied() || !resourceZoneMatches(zone, p.Zone) {
 				continue
 			}
 			if ctx.rng.Float64() >= chance {
@@ -121,12 +137,19 @@ type resourceClusterParams struct {
 	ResourceId uint32     `json:"resource_id"`
 	SeedCount  ScriptExpr `json:"seed_count"`
 	Size       ScriptExpr `json:"size"`
+	Zone       string     `json:"zone,omitempty"`
 }
 
 func stepResourceCluster(ctx *mapScriptContext, raw json.RawMessage) error {
 	p, err := decodeStepParams[resourceClusterParams](raw, "resource_cluster")
 	if err != nil {
 		return err
+	}
+	if !validateResourceZone(p.Zone) {
+		return fmt.Errorf("resource_cluster: invalid zone %q", p.Zone)
+	}
+	if _, ok := defs.ResourceConfigs[p.ResourceId]; !ok {
+		return fmt.Errorf("resource_cluster: unknown resource id %d", p.ResourceId)
 	}
 	seed_count, err := p.SeedCount.resolveInt(ctx.vars)
 	if err != nil {
@@ -138,14 +161,14 @@ func stepResourceCluster(ctx *mapScriptContext, raw json.RawMessage) error {
 	}
 	candidates := make([]Zone, 0)
 	for _, z := range ctx.allZones() {
-		if !z.IsCenter() && !z.Occupied() {
+		if !z.Occupied() && resourceZoneMatches(z, p.Zone) {
 			candidates = append(candidates, z)
 		}
 	}
 	for i := 0; i < seed_count && len(candidates) > 0; i++ {
 		seed := candidates[ctx.rng.Intn(len(candidates))]
 		for _, z := range growZoneBlob(seed, size, ctx.rng) {
-			if z.IsCenter() || z.Occupied() {
+			if z.Occupied() || !resourceZoneMatches(z, p.Zone) {
 				continue
 			}
 			ctx.board.PlaceResource(z, p.ResourceId)
@@ -194,15 +217,19 @@ func stepResourceMinSpacing(ctx *mapScriptContext, raw json.RawMessage) error {
 type resourcePlaceParams struct {
 	ResourceId uint32     `json:"resource_id"`
 	Count      ScriptExpr `json:"count"`
+	Zone       string     `json:"zone,omitempty"`
 	// keeps the resources out of every player start area (requires an earlier player_starts step)
 	OutsidePlayerAreas bool `json:"outside_player_areas"`
 }
 
-// Places exactly count of one resource on random free edge zones, so every seed gets the same amount
+// Places exactly count of one resource on random free zones, so every seed gets the same amount
 func stepResourcePlace(ctx *mapScriptContext, raw json.RawMessage) error {
 	p, err := decodeStepParams[resourcePlaceParams](raw, "resource_place")
 	if err != nil {
 		return err
+	}
+	if !validateResourceZone(p.Zone) {
+		return fmt.Errorf("resource_place: invalid zone %q", p.Zone)
 	}
 	if _, ok := defs.ResourceConfigs[p.ResourceId]; !ok {
 		return fmt.Errorf("resource_place: unknown resource id %d", p.ResourceId)
@@ -210,6 +237,9 @@ func stepResourcePlace(ctx *mapScriptContext, raw json.RawMessage) error {
 	count, err := p.Count.resolveInt(ctx.vars)
 	if err != nil {
 		return err
+	}
+	if count <= 0 {
+		return nil
 	}
 	excluded := make(map[uint]bool)
 	if p.OutsidePlayerAreas {
@@ -224,7 +254,7 @@ func stepResourcePlace(ctx *mapScriptContext, raw json.RawMessage) error {
 	}
 	candidates := make([]Zone, 0)
 	for _, z := range ctx.allZones() {
-		if z.IsCenter() || z.Occupied() || z.Space().Impassable() || excluded[z.Space().Key()] {
+		if z.Occupied() || z.Space().Impassable() || excluded[z.Space().Key()] || !resourceZoneMatches(z, p.Zone) {
 			continue
 		}
 		candidates = append(candidates, z)

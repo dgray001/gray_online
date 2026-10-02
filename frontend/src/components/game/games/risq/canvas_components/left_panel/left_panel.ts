@@ -384,14 +384,14 @@ export class RisqLeftPanel implements CanvasComponent {
     if (this.close_button.mousemove(canvas, screen, transform)) {
       return true;
     }
+    this.hovering = screen.x > this.xi() && screen.y > this.yi() && screen.x < this.xf() && screen.y < this.yf();
     for (const button of this.buttons) {
       button.mousemove(canvas, screen, transform);
     }
     this.target_priority_control?.mousemove(screen);
-    if (this.showOrderRows() && this.order_rows_list.mousemove(canvas, screen, transform)) {
-      return true;
+    if (this.showOrderRows()) {
+      this.order_rows_list.mousemove(canvas, screen, transform);
     }
-    this.hovering = screen.x > this.xi() && screen.y > this.yi() && screen.x < this.xf() && screen.y < this.yf();
     this.input.mousemove(this.data, canvas, screen, transform);
     return this.isHovering();
   }

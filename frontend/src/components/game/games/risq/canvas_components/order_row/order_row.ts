@@ -6,10 +6,26 @@ import type { Point2D } from '../../../../util/objects2d';
 import type { RisqFrontendOrder } from '../../model/types';
 import { UNIT_CLUSTER_ICON_SIZE, drawUnitTypeCluster, unitClusterIconKey } from '../../rendering/zones/draw';
 import { unitImage } from '../../rendering/assets/unit';
+import type { DwgRisq } from '../../risq';
 import { RisqOrderCancelButton } from './order_cancel_button';
-import type { RisqOrderRowConfig } from './order_row_data';
 import type { ResolvedRow } from './order_row_resolve';
 import { resolveOrderRow } from './order_row_resolve';
+
+export interface RisqOrderRowConfig {
+  game: DwgRisq;
+  w: number;
+  /** Whether to draw the subject icon/count badge; true in the right panel, false in the left panel */
+  show_subject: boolean;
+  order: RisqFrontendOrder;
+  /** Other same-producible BuildingCreate orders collapsed behind this one, not yet started */
+  collapsed_orders?: RisqFrontendOrder[];
+  /** Whether a cancel for this (already-submitted) order is pending, drawn as a strikethrough */
+  cancelling?: boolean;
+  explicit_cancel?: boolean;
+  onCancel: (order: RisqFrontendOrder) => void;
+  onCancelAll?: (orders: RisqFrontendOrder[]) => void;
+  onSelect?: (order: RisqFrontendOrder) => void;
+}
 
 export const ROW_H = 30;
 const COLLAPSED_STRIP_H = 14;
@@ -30,11 +46,18 @@ export class RisqOrderRow implements CanvasComponent {
   constructor(config: RisqOrderRowConfig) {
     this.config = config;
     this.resolved = resolveOrderRow(config);
-    this.cancel_button = new RisqOrderCancelButton(CANCEL_S, () => {
-      const collapsed = this.config.collapsed_orders;
-      this.config.onCancel(collapsed?.length ? collapsed[collapsed.length - 1] : this.config.order);
-    });
+    this.cancel_button = new RisqOrderCancelButton(
+      CANCEL_S,
+      () => {
+        const collapsed = this.config.collapsed_orders;
+        this.config.onCancel(collapsed?.length ? collapsed[collapsed.length - 1] : this.config.order);
+      },
+      config.explicit_cancel
+    );
     this.positionButtons();
+    if (config.cancelling && !config.explicit_cancel) {
+      this.disableCancel();
+    }
   }
 
   getOrder(): RisqFrontendOrder {
@@ -51,7 +74,9 @@ export class RisqOrderRow implements CanvasComponent {
   }
 
   enableCancel(): void {
-    this.cancel_button.enable();
+    if (!this.config.cancelling || this.config.explicit_cancel) {
+      this.cancel_button.enable();
+    }
   }
 
   private positionButtons(): void {
@@ -78,6 +103,10 @@ export class RisqOrderRow implements CanvasComponent {
 
   private isCollapsed(): boolean {
     return !!this.config.collapsed_orders?.length;
+  }
+
+  private isSelected(): boolean {
+    return this.config.show_subject && this.config.game.selection.isOrderSubjectSelected(this.config.order);
   }
 
   private drawSubject(ctx: CanvasRenderingContext2D, x: number, yc: number): void {
@@ -136,15 +165,16 @@ export class RisqOrderRow implements CanvasComponent {
   }
 
   draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
+    const selected = this.isSelected();
     configDraw(
       ctx,
       transform,
       {
-        fill_style: 'rgb(241, 226, 196)',
+        fill_style: selected ? 'rgb(218, 198, 160)' : 'rgb(241, 226, 196)',
         stroke_style: 'rgb(59, 36, 19)',
-        stroke_width: 0.6,
-        hover_fill_style: 'rgb(247, 236, 212)',
-        click_fill_style: 'rgb(252, 244, 224)',
+        stroke_width: selected ? 1.8 : 0.6,
+        hover_fill_style: selected ? 'rgb(226, 207, 172)' : 'rgb(247, 236, 212)',
+        click_fill_style: selected ? 'rgb(234, 217, 184)' : 'rgb(252, 244, 224)',
       },
       this.isHovering(),
       this.isClicking(),

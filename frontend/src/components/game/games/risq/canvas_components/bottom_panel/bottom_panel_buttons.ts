@@ -28,3 +28,41 @@ export class RisqSummaryReportButton extends RisqActionButton {
     }
   }
 }
+
+export class RisqViewModeButton extends RisqActionButton {
+  private risq: DwgRisq;
+
+  constructor(risq: DwgRisq, s: number) {
+    super({ row: 0, col: 0, image_path: 'icons/eye64', description: 'Toggle view mode' }, s);
+    this.risq = risq;
+  }
+
+  override dataRefreshed(): void {
+    this.setHotkeyCombo(getSettings().risq_hotkeys.actions[RisqHotkeyAction.CYCLE_VIEW_MODE]);
+  }
+
+  protected released(): void {
+    if (this.isHovering()) {
+      this.risq.viewport.cycleViewMode();
+    }
+  }
+}
+
+export class RisqTechTreeButton extends RisqActionButton {
+  private risq: DwgRisq;
+
+  constructor(risq: DwgRisq, s: number) {
+    super({ row: 0, col: 0, image_path: 'icons/research64', description: 'Open tech tree' }, s);
+    this.risq = risq;
+  }
+
+  override dataRefreshed(): void {
+    this.setHotkeyCombo(getSettings().risq_hotkeys.actions[RisqHotkeyAction.TECH_TREE]);
+  }
+
+  protected released(): void {
+    if (this.isHovering()) {
+      this.risq.openTechTree();
+    }
+  }
+}

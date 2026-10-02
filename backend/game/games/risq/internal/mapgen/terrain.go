@@ -26,6 +26,9 @@ func (p terrainPickJSON) resolve(rng *rand.Rand) (uint32, error) {
 	if len(p.TerrainIds) > 0 {
 		total := 0.0
 		for _, w := range p.TerrainIds {
+			if _, ok := defs.TerrainConfigs[w.TerrainId]; !ok {
+				return 0, fmt.Errorf("terrain_ids: unknown terrain id %d", w.TerrainId)
+			}
 			total += w.Weight
 		}
 		if total <= 0 {
@@ -41,6 +44,9 @@ func (p terrainPickJSON) resolve(rng *rand.Rand) (uint32, error) {
 		return p.TerrainIds[len(p.TerrainIds)-1].TerrainId, nil
 	}
 	if p.TerrainId != 0 {
+		if _, ok := defs.TerrainConfigs[p.TerrainId]; !ok {
+			return 0, fmt.Errorf("terrain_id: unknown terrain id %d", p.TerrainId)
+		}
 		return p.TerrainId, nil
 	}
 	if p.TerrainType != "" {
@@ -88,7 +94,7 @@ func growZoneBlob(start Zone, size int, rng *rand.Rand) []Zone {
 	return growBlob(start, size, rng,
 		func(z Zone) uint { return z.Key() },
 		func(z Zone) []Zone { return z.Adjacent() },
-		func(z Zone) bool { return z.IsCenter() },
+		func(Zone) bool { return false },
 	)
 }
 

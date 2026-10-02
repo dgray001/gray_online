@@ -96,7 +96,7 @@ func (u *RisqUnit) replaceOrder(risq *GameRisq, order_type defs.OrderType, targe
 	if !u.orderReceivable(order, risq) {
 		return
 	}
-	risq.addSyntheticOrder(order, risq.players[u.player_id])
+	risq.addSyntheticOrder(order, risq.players[u.player_id], false)
 }
 
 func (u *RisqUnit) resolveStance(risq *GameRisq) {

@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/dgray001/gray_online/game"
+	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
 )
 
@@ -21,6 +22,7 @@ import (
 */
 
 type GameRisq struct {
+	metrics                   gameMetrics
 	game                      *game.GameBase
 	players                   []*RisqPlayer
 	board_size                uint16
@@ -52,15 +54,12 @@ type GameRisq struct {
 	unit_creation_ids map[*RisqBuilding]uint64
 	// Recomputed each tick: snapshots population-capped status before any of this tick's completions
 	population_capped map[int]bool
-	// Zones whose cosmetic terrain_override should clear at the start of cleanupDeleted's NEXT call,
-	// so a destroyed building's override is still visible for the turn following its death
+	// Zones whose cosmetic terrain_override should clear at the start of cleanupDeleted's NEXT call
 	pending_terrain_clears []*RisqZone
-	// Techs finishing production this tick; applied after this tick's health deltas so a tech's
-	// combat bonus never affects the same tick's combat, only the next one
+	// Techs finishing production this tick; applied after this tick's health deltas
 	pending_tech_completions []techCompletion
 	completed_gatherables    []*RisqBuilding
 	regions                  []*RisqRegion
-	// owned by this game only, never the shared global source, so concurrent AI goroutines can't race it
 	rng           *rand.Rand
 	ai_goroutines sync.WaitGroup
 }
@@ -104,17 +103,29 @@ func (r *GameRisq) endTurn() {
 	r.refreshScores()
 	r.updateEliminated()
 	r.finalizeTurnReports()
+	r.metrics.recordTurn(r)
 	r.logStateHash("end")
 }
 
 func (r *GameRisq) startNextTurn() {
+	r.metrics.recordRefresh(r)
 	r.recordEconomyStamina()
 	r.turn_number++
 	for _, player := range r.players {
 		player.orders_submitted = false
 	}
 	for o := range r.allOrderables() {
+		var base *orderableBase
+		switch actor := o.(type) {
+		case *RisqUnit:
+			base = &actor.orderableBase
+		case *RisqBuilding:
+			base = &actor.orderableBase
+		}
+		before := base.current_stamina
 		o.refreshStamina()
+		util.DebugLog.Printf("stamina turn=%d actor=%d:%d player=%d before=%d grant=%d after=%d",
+			r.turn_number, o.OrderableType(), o.internalId(), base.player_id, before, base.turn_stamina, base.current_stamina)
 	}
 	r.giving_orders = true
 	for _, player := range r.players {

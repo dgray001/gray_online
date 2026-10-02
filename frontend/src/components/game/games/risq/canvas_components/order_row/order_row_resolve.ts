@@ -8,7 +8,7 @@ import { resourceTypeImage } from '../../rendering/assets/resources';
 import { unitImage } from '../../rendering/assets/unit';
 import { groupUnitsByType } from '../../model/unit_groups';
 import type { UnitByTypeData } from '../../model/types';
-import type { RisqOrderRowConfig } from './order_row_data';
+import type { RisqOrderRowConfig } from './order_row';
 
 export interface CostChip {
   icon: string;

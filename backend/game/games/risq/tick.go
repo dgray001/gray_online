@@ -1,6 +1,7 @@
 package risq
 
 import (
+	"cmp"
 	"fmt"
 	"iter"
 	"maps"
@@ -19,7 +20,7 @@ func (r *GameRisq) resolveActiveOrders() {
 			if order.received {
 				continue
 			}
-			r.deliverOrder(order, player)
+			r.deliverOrder(order, player, false)
 		}
 	}
 	for {
@@ -34,6 +35,8 @@ func (r *GameRisq) resolveActiveOrders() {
 			}
 		}
 		if intent_count == 0 {
+			r.metrics.beginTick(r, orderables)
+			r.metrics.recordTick(r, r.current_tick+1)
 			break
 		}
 		r.gather_allotments = computeGatherAllotments(orderables)
@@ -45,9 +48,12 @@ func (r *GameRisq) resolveActiveOrders() {
 		r.unit_creation_ids = computeUnitCreationIds(r, orderables)
 		r.population_capped = computePopulationCapped(r)
 		r.current_tick++
+		r.metrics.beginTick(r, orderables)
 		for _, o := range orderables {
 			o.tickExecute(r)
 		}
+		r.resolveRepairs(orderables)
+		r.metrics.recordTick(r, r.current_tick)
 		// Applied after every actor's tickExecute so same-tick damage and healing net out
 		// regardless of execution order, instead of racing on which lands first.
 		for _, o := range orderables {
@@ -58,12 +64,25 @@ func (r *GameRisq) resolveActiveOrders() {
 				b.resolveRenew()
 			}
 		}
+		for _, foundation_id := range r.foundation_ids {
+			if building := r.buildings[foundation_id]; building != nil {
+				building.resolveHealthDelta(r)
+			}
+		}
 		// Applied last so a tech's combat bonus never affects the tick that finished researching it.
 		for _, completion := range r.pending_tech_completions {
 			r.completeResearch(r.players[completion.player_id], completion.tech_id)
 		}
 		r.pending_tech_completions = r.pending_tech_completions[:0]
 		r.autoGatherCompletedBuildings()
+		for _, building := range slices.SortedFunc(maps.Keys(r.unit_creation_ids), func(a, b *RisqBuilding) int {
+			return cmp.Compare(r.unit_creation_ids[a], r.unit_creation_ids[b])
+		}) {
+			if building.gather_point != nil {
+				unit := r.units[r.unit_creation_ids[building]]
+				r.addSyntheticOrder(building.gather_point.resolveOrder(r, building, unit), r.players[building.player_id], false)
+			}
+		}
 		r.logStateHash(fmt.Sprint(r.current_tick))
 	}
 	r.cleanupDeleted()
@@ -89,7 +108,7 @@ func (r *GameRisq) resolveActiveOrders() {
 	}
 }
 
-func (r *GameRisq) deliverOrder(order *RisqOrder, player *RisqPlayer) {
+func (r *GameRisq) deliverOrder(order *RisqOrder, player *RisqPlayer, prepend bool) {
 	player.report.orders.added++
 	order.received = true
 	order.turn_received = r.turn_number
@@ -99,13 +118,13 @@ func (r *GameRisq) deliverOrder(order *RisqOrder, player *RisqPlayer) {
 		order.turn_resolved = r.turn_number
 		return
 	}
-	if !r.deliverToSubjects(order, player) {
+	if !r.deliverToSubjects(order, player, prepend) {
 		order.cancelled = true
 		order.turn_resolved = r.turn_number
 	}
 }
 
-func (r *GameRisq) deliverToSubjects(order *RisqOrder, player *RisqPlayer) bool {
+func (r *GameRisq) deliverToSubjects(order *RisqOrder, player *RisqPlayer, prepend bool) bool {
 	accepted := false
 	for _, subject_id := range slices.Sorted(maps.Keys(order.subjects)) {
 		subject := order.subjects[subject_id]
@@ -116,7 +135,7 @@ func (r *GameRisq) deliverToSubjects(order *RisqOrder, player *RisqPlayer) bool 
 		if order.clear_previous_orders {
 			r.cancelPreviousOrders(subject)
 		}
-		if err := subject.receiveOrder(order, r); err != nil {
+		if err := subject.receiveOrder(order, r, prepend); err != nil {
 			order.rejectSubject(subject, player, err.Error())
 			continue
 		}
@@ -125,9 +144,9 @@ func (r *GameRisq) deliverToSubjects(order *RisqOrder, player *RisqPlayer) bool 
 	return accepted
 }
 
-func (r *GameRisq) addSyntheticOrder(order *RisqOrder, player *RisqPlayer) {
+func (r *GameRisq) addSyntheticOrder(order *RisqOrder, player *RisqPlayer, prepend bool) {
 	player.active_orders = append(player.active_orders, order)
-	r.deliverOrder(order, player)
+	r.deliverOrder(order, player, prepend)
 }
 
 func (o *RisqOrder) rejectSubject(subject Orderable, player *RisqPlayer, reason string) {

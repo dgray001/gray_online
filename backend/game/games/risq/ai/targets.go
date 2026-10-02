@@ -17,20 +17,30 @@ const (
 	anchorTarget
 	// the unit a "unit_when" condition is being checked for
 	anchorUnit
+	anchorCoordinate
 )
 
 type anchor struct {
-	kind   anchorKind
-	bucket string
+	kind       anchorKind
+	bucket     string
+	coordinate Coordinate
 }
 
 func parseAnchor(raw any) (anchor, error) {
 	if raw == nil {
 		return anchor{kind: anchorHome}, nil
 	}
+	if obj, ok := raw.(map[string]any); ok {
+		x, x_ok := obj["x"].(float64)
+		y, y_ok := obj["y"].(float64)
+		if !x_ok || !y_ok || x != math.Trunc(x) || y != math.Trunc(y) {
+			return anchor{}, fmt.Errorf("coordinate reference requires integer x and y")
+		}
+		return anchor{kind: anchorCoordinate, coordinate: Coordinate{X: int(x), Y: int(y)}}, nil
+	}
 	name, ok := raw.(string)
 	if !ok || name == "" {
-		return anchor{}, fmt.Errorf("\"from\" must be \"home\", \"target\", \"unit\" or a bucket name")
+		return anchor{}, fmt.Errorf("\"from\" must be a coordinate object, \"home\", \"target\", \"unit\" or a bucket name")
 	}
 	switch name {
 	case "home":
@@ -45,6 +55,8 @@ func parseAnchor(raw any) (anchor, error) {
 
 func (a anchor) location(view View, internals *Internals) (ZoneRef, bool) {
 	switch a.kind {
+	case anchorCoordinate:
+		return ZoneRef{Space: a.coordinate}, true
 	case anchorBucket:
 		b := internals.Buckets[a.bucket]
 		if b == nil {
@@ -131,15 +143,21 @@ const (
 	targetsOwnBuildings
 	targetsUnexplored
 	targetsHome
+	targetsRetreat
+	targetsUnidentifiedUnits
+	targetsClosestSpaces
 )
 
 var targetSetNames = map[string]targetSet{
-	"enemy_units":     targetsEnemyUnits,
-	"enemy_buildings": targetsEnemyBuildings,
-	"known_resources": targetsKnownResources,
-	"own_buildings":   targetsOwnBuildings,
-	"unexplored":      targetsUnexplored,
-	"home":            targetsHome,
+	"enemy_units":        targetsEnemyUnits,
+	"enemy_buildings":    targetsEnemyBuildings,
+	"known_resources":    targetsKnownResources,
+	"own_buildings":      targetsOwnBuildings,
+	"unexplored":         targetsUnexplored,
+	"home":               targetsHome,
+	"retreat":            targetsRetreat,
+	"unidentified_units": targetsUnidentifiedUnits,
+	"closest_spaces":     targetsClosestSpaces,
 }
 
 type candidate struct {
@@ -151,6 +169,7 @@ type candidate struct {
 // Scores every candidate of one kind with an expression and picks the best; nil when none reaches min_score
 type targetPicker struct {
 	set          targetSet
+	spaces       *spaceQuery
 	unit_filter  unitFilter
 	building_ids map[uint32]bool
 	category     ResourceCategory
@@ -193,6 +212,11 @@ func parseTargetPicker(raw map[string]any) (*targetPicker, error) {
 	}
 	p := &targetPicker{set: set}
 	var err error
+	if set == targetsClosestSpaces {
+		if p.spaces, err = parseSpaceQuery(raw); err != nil {
+			return nil, err
+		}
+	}
 	if p.unit_filter, err = parseUnitFilter(map[string]any{"unit_ids": raw["target_unit_ids"], "unit_types": raw["target_unit_types"]}); err != nil {
 		return nil, err
 	}
@@ -245,9 +269,13 @@ func parseTargetPicker(raw map[string]any) (*targetPicker, error) {
 	return p, nil
 }
 
-func (p *targetPicker) candidates(view View, from ZoneRef) []candidate {
+func (p *targetPicker) candidates(view View, internals *Internals, from ZoneRef) []candidate {
 	out := make([]candidate, 0)
 	switch p.set {
+	case targetsClosestSpaces:
+		for _, space := range p.spaces.closest(view, internals, &from) {
+			out = append(out, candidate{loc: ZoneRef{Space: space}})
+		}
 	case targetsEnemyUnits:
 		for _, u := range view.VisibleEnemyUnits() {
 			if len(p.unit_filter.unit_ids) == 0 && len(p.unit_filter.unit_types) == 0 || p.unit_filter.unit_ids[u.UnitID] || p.unit_filter.unit_types[u.Type] {
@@ -274,9 +302,19 @@ func (p *targetPicker) candidates(view View, from ZoneRef) []candidate {
 				out = append(out, candidate{loc: z})
 			}
 		}
-	case targetsHome:
-		if home, ok := homeLocation(view); ok {
+	case targetsHome, targetsRetreat:
+		home, ok := homeLocation(view)
+		if !ok && p.set == targetsRetreat && internals.start != nil {
+			home, ok = *internals.start, true
+		}
+		if ok {
 			out = append(out, candidate{loc: home})
+		}
+	case targetsUnidentifiedUnits:
+		for _, space := range view.AllSpaces() {
+			if unidentifiedUnitCount(view, space) > 0 {
+				out = append(out, candidate{loc: ZoneRef{Space: space.Space}})
+			}
 		}
 	}
 	return out
@@ -291,7 +329,7 @@ func (p *targetPicker) best(view View, internals *Internals, from ZoneRef) (cand
 	min_score := p.min_score.float(view, internals)
 	var best candidate
 	best_score, found := 0.0, false
-	for _, c := range p.candidates(view, from) {
+	for _, c := range p.candidates(view, internals, from) {
 		loc := c.loc
 		internals.target, internals.target_from = &loc, &from
 		internals.target_health, internals.target_max_health = c.health()
@@ -384,7 +422,7 @@ func (p *targetPicker) distributed(view View, internals *Internals, units []Unit
 	saved_target, saved_from, saved_h, saved_mh := internals.target, internals.target_from, internals.target_health, internals.target_max_health
 	min_score := p.min_score.float(view, internals)
 	targets := make([]*target, 0)
-	for _, c := range p.candidates(view, center) {
+	for _, c := range p.candidates(view, internals, center) {
 		loc := c.loc
 		internals.target, internals.target_from = &loc, &center
 		internals.target_health, internals.target_max_health = c.health()

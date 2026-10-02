@@ -162,9 +162,35 @@ export class RisqOrdersModel {
     this.on_change();
   }
 
-  isCancelling(internal_id: number): boolean {
-    return this.pending.some(
-      (o) => o.order_type === RisqOrderType.OrderType_CancelOrder && o.target_id === internal_id
+  isExplicitlyCancelling(order: RisqFrontendOrder): boolean {
+    return (
+      order.internal_id !== undefined &&
+      this.pending.some(
+        (o) => o.order_type === RisqOrderType.OrderType_CancelOrder && o.target_id === order.internal_id
+      )
+    );
+  }
+
+  isCancelling(order: RisqFrontendOrder, subject_internal_ids?: number[]): boolean {
+    if (this.isExplicitlyCancelling(order)) {
+      return true;
+    }
+    if (order.internal_id === undefined || isClearImmune(order.order_type)) {
+      return false;
+    }
+    const subs = subject_internal_ids ? order.subjects.filter((s) => subject_internal_ids.includes(s)) : order.subjects;
+    const is_unit = isUnitOrder(order.order_type);
+    const is_bldg = isBuildingOrder(order.order_type);
+    return (
+      subs.length > 0 &&
+      subs.every((s) =>
+        this.pending.some(
+          (p) =>
+            p.clear_previous_orders &&
+            ((is_unit && isUnitOrder(p.order_type)) || (is_bldg && isBuildingOrder(p.order_type))) &&
+            p.subjects.includes(s)
+        )
+      )
     );
   }
 
@@ -174,7 +200,14 @@ export class RisqOrdersModel {
       this.on_change();
       return;
     }
-    if (this.isCancelling(order.internal_id)) {
+    if (this.isExplicitlyCancelling(order)) {
+      this.pending = this.pending.filter(
+        (o) => !(o.order_type === RisqOrderType.OrderType_CancelOrder && o.target_id === order.internal_id)
+      );
+      this.on_change();
+      return;
+    }
+    if (this.isCancelling(order)) {
       return;
     }
     this.add({

@@ -7,7 +7,7 @@ import (
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 )
 
-func (u *RisqUnit) receiveOrder(o *RisqOrder, risq *GameRisq) error {
+func (u *RisqUnit) receiveOrder(o *RisqOrder, risq *GameRisq, prepend bool) error {
 	switch o.order_type {
 	case defs.OrderType_UnitBuild:
 		building_id, _, zone := invertBuildKey(uint(o.target_id), risq)
@@ -19,7 +19,7 @@ func (u *RisqUnit) receiveOrder(o *RisqOrder, risq *GameRisq) error {
 			}
 			player.planned_foundations[zone.coordinate_key] = createRisqPlannedFoundation(building_id, player)
 		}
-		u.order_queue.receiveOrder(o)
+		u.order_queue.receiveOrder(o, prepend)
 	case defs.OrderType_UnitRenew:
 		target := risq.buildings[uint64(o.target_id)]
 		if target.renewing == nil {
@@ -31,9 +31,9 @@ func (u *RisqUnit) receiveOrder(o *RisqOrder, risq *GameRisq) error {
 			player.resources.spend(cost)
 			target.renewing = &cost
 		}
-		u.order_queue.receiveOrder(o)
+		u.order_queue.receiveOrder(o, prepend)
 	default:
-		u.order_queue.receiveOrder(o)
+		u.order_queue.receiveOrder(o, prepend)
 	}
 	return nil
 }
@@ -79,7 +79,7 @@ func (u *RisqUnit) orderReceivable(o *RisqOrder, risq *GameRisq) bool {
 		}
 		if b := zone.building; b != nil {
 			config := defs.BuildingConfigs[b.building_id]
-			return config.IsGatherable() && b.player_id == u.player_id && !b.underConstruction() && b.resources_left > 0
+			return config.IsGatherable() && !b.deleted && b.player_id == u.player_id && !b.underConstruction() && b.resources_left > 0
 		}
 		return false
 	case defs.OrderType_UnitRepair:
@@ -167,7 +167,7 @@ func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 		if resource, ok := zone.resourceKnownTo(u.player_id); ok && resource.resources_left > 0 {
 			return reachableStatus(reachable)
 		}
-		if b := zone.building; b != nil && defs.BuildingConfigs[b.building_id].IsGatherable() && b.resources_left > 0 {
+		if b := zone.building; b != nil && !b.deleted && b.player_id == u.player_id && !b.underConstruction() && defs.BuildingConfigs[b.building_id].IsGatherable() && b.resources_left > 0 {
 			return reachableStatus(reachable)
 		}
 	case defs.OrderType_UnitBuild:

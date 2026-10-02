@@ -107,6 +107,19 @@ func (v *unitWhenView) EligibleUnits(kinds ...OrderKind) []UnitView {
 	return v.filter(v.View.EligibleUnits(kinds...))
 }
 
+func unidentifiedUnitCount(view View, space SpaceInfo) int {
+	if space.UnitCount == nil {
+		return 0
+	}
+	count := *space.UnitCount
+	for _, unit := range view.Units() {
+		if unit.GarrisonedIn == nil && unit.Location.Space == space.Space {
+			count--
+		}
+	}
+	return max(0, count)
+}
+
 func homeLocation(view View) (ZoneRef, bool) {
 	buildings := view.Buildings()
 	for _, b := range buildings {
@@ -143,6 +156,54 @@ func nearestZone(_ View, from ZoneRef, candidates []ZoneRef) (ZoneRef, bool) {
 		}
 	}
 	return best, found
+}
+
+func nearestUnexploredOutside(view View, from ZoneRef, min_distance int) ([]ZoneRef, bool) {
+	if min_distance <= 0 {
+		return view.NearestUnexplored(from)
+	}
+	best_distance := -1
+	var candidates []ZoneRef
+	for _, space := range view.AllSpaces() {
+		if space.Vision != 0 {
+			continue
+		}
+		distance := axialDistance(from.Space, space.Space)
+		if distance < min_distance {
+			continue
+		}
+		candidate := ZoneRef{Space: space.Space}
+		if best_distance < 0 || distance < best_distance {
+			candidates, best_distance = []ZoneRef{candidate}, distance
+		} else if distance == best_distance {
+			candidates = append(candidates, candidate)
+		}
+	}
+	if len(candidates) > 0 {
+		return candidates, true
+	}
+	return view.NearestUnexplored(from)
+}
+
+func randomNearestSpace(internals *Internals, from Coordinate, candidates []ZoneRef) (ZoneRef, bool) {
+	var tied []ZoneRef
+	best_distance := -1
+	for _, candidate := range candidates {
+		distance := axialDistance(from, candidate.Space)
+		if best_distance < 0 || distance < best_distance {
+			tied, best_distance = []ZoneRef{candidate}, distance
+		} else if distance == best_distance {
+			tied = append(tied, candidate)
+		}
+	}
+	if len(tied) == 0 {
+		return ZoneRef{}, false
+	}
+	index := 0
+	if len(tied) > 1 {
+		index = internals.rng.Intn(len(tied))
+	}
+	return tied[index], true
 }
 
 func selectFromQueue(view View, internals *Internals, threshold float64, prioritize bool, depth int, kinds ...QKind) []Q {

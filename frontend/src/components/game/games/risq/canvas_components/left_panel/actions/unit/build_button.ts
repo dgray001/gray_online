@@ -1,7 +1,6 @@
 import type { DwgRisq } from '../../../../risq';
-import { RisqOrderType } from '../../../../model/types';
+import { RisqOrderType, canAffordCost } from '../../../../model/types';
 import type { RisqProducible } from '../../../../model/types';
-import { canAffordCost } from '../../../../model/rules';
 import { buildingImage } from '../../../../rendering/assets/buildings';
 import { RISQ_MESSAGE_WARNING_COLOR } from '../../../message_queue';
 import { RisqRichTooltipActionButton } from '../action_button';

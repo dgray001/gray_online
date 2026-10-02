@@ -225,7 +225,7 @@ func (v *aiView) producibles(b *snapBuilding) []ai.Producible {
 				continue
 			}
 			cost, _ := defs.UnitProductionCost(p.Id)
-			producibles = append(producibles, ai.Producible{Kind: ai.ProducibleUnit, ID: p.Id, Cost: toCost(cost)})
+			producibles = append(producibles, ai.Producible{Kind: ai.ProducibleUnit, ID: p.Id, Cost: toCost(cost), UnitType: ai.UnitType(defs.UnitConfigs[p.Id].Unit_type)})
 		case defs.ProducibleKind_TECH:
 			if _, researching_or_done := v.me.ResearchedTechs[p.Id]; researching_or_done || v.planned_techs[p.Id] || !v.techMet(defs.TechConfigs[p.Id].Required_tech_id) {
 				continue
@@ -386,6 +386,10 @@ func (v *aiView) TurnNumber() int {
 	return v.game.TurnNumber
 }
 
+func (v *aiView) MapSize() int {
+	return (len(v.game.Spaces) - 1) / 2
+}
+
 func (v *aiView) NumPlayers() int {
 	return len(v.game.Players)
 }
@@ -416,7 +420,7 @@ func (v *aiView) AllSpaces() []ai.SpaceInfo {
 		for _, space := range row {
 			if space != nil {
 				owner, _ := spaceOwner(space)
-				infos = append(infos, ai.SpaceInfo{Space: toCoordinate(space.Coordinate), Vision: space.Visibility, Owner: owner})
+				infos = append(infos, ai.SpaceInfo{Space: toCoordinate(space.Coordinate), Vision: space.Visibility, Owner: owner, UnitCount: space.UnitCount})
 			}
 		}
 	}
@@ -611,20 +615,9 @@ func (v *aiView) TechCost(tech_id uint32) ai.Cost {
 
 func (v *aiView) NearestUnexplored(from ai.ZoneRef) ([]ai.ZoneRef, bool) {
 	var tied []ai.ZoneRef
-	best_distance := -1
-	for _, row := range v.game.Spaces {
-		for _, space := range row {
-			if space == nil || space.Visibility != defs.VisibilityUnexplored {
-				continue
-			}
-			center := ai.ZoneRef{Space: toCoordinate(space.Coordinate)}
-			d := axialDistance(from.Space, center.Space)
-			if best_distance == -1 || d < best_distance {
-				tied, best_distance = []ai.ZoneRef{center}, d
-			} else if d == best_distance {
-				tied = append(tied, center)
-			}
-		}
+	vision := uint8(defs.VisibilityUnexplored)
+	for _, space := range v.ClosestSpaces(from.Space, ai.SpaceCondition{Vision: &vision}, false) {
+		tied = append(tied, ai.ZoneRef{Space: space})
 	}
 	return tied, len(tied) > 0
 }

@@ -10,6 +10,29 @@ import { RisqHotkeyAction } from '../../../../application/input/hotkeys';
 const GATHER_POINT_ICON = 'risq/icons/garrison_flag';
 const BLACK = new ColorRGB(0, 0, 0);
 
+export class RisqBuildingAttackButton extends RisqActionButton {
+  private risq: DwgRisq;
+
+  constructor(config: RisqActionButtonConfig, risq: DwgRisq, s: number) {
+    super(config, s);
+    this.risq = risq;
+  }
+
+  override dataRefreshed(): void {
+    this.setHotkeyCombo(getSettings().risq_hotkeys.actions[RisqHotkeyAction.BUILDING_ATTACK]);
+  }
+
+  override isClicking(): boolean {
+    return super.isClicking() || this.risq.armed.isBuildingAttackArmed();
+  }
+
+  protected released(): void {
+    if (this.isHovering()) {
+      this.risq.commands.toggleBuildingAttack();
+    }
+  }
+}
+
 export declare interface BuildingGatherPointButtonConfig extends RisqActionButtonConfig {
   building_id: number;
 }

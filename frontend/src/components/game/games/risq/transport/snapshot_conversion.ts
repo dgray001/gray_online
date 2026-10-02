@@ -28,6 +28,7 @@ import { ColorRGB } from '../../../../../scripts/color_rgb';
 import { serverToRisqTurnReport } from './turn_report';
 import { resourceType } from '../rendering/assets/resources';
 import { organizeZoneUnits } from '../model/unit_groups';
+import { RisqTerrainType } from '../rendering/terrain';
 /** One instance per internal_id per snapshot, so player, space and zone containers share the same objects */
 declare interface RisqEntityRegistry {
   units: Map<number, RisqUnit>;
@@ -161,9 +162,9 @@ export function serverToRisqPlayer(server_player: RisqPlayerFromServer, registry
 /** Converts a server response to a frontend risq space */
 export function serverToRisqSpace(server_space: RisqSpaceFromServer, registry: RisqEntityRegistry): RisqSpace {
   const space: RisqSpace = {
-    terrain_id: server_space.terrain_id,
-    terrain_type: server_space.terrain_type,
-    display_name: server_space.display_name,
+    terrain_id: server_space.terrain_id ?? 0,
+    terrain_type: server_space.terrain_type ?? RisqTerrainType.NONE,
+    display_name: server_space.display_name ?? '',
     coordinate: server_space.coordinate,
     coordinate_key: server_space.coordinate_key,
     visibility: server_space.visibility,

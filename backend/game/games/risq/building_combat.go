@@ -18,11 +18,7 @@ func (b *RisqBuilding) autoAttackOrder(risq *GameRisq, order_type defs.OrderType
 	if !b.orderReceivable(order, risq) {
 		return
 	}
-	if len(active) > 0 && active[0].order_type.IsAutoSynthesized() {
-		active = active[1:]
-	}
-	b.order_queue.past_orders = append(b.order_queue.past_orders, order)
-	b.order_queue.active_orders = append([]*RisqOrder{order}, active...)
+	risq.addSyntheticOrder(order, risq.players[b.player_id], true)
 }
 
 func (b *RisqBuilding) resolveAutoAttack(risq *GameRisq) {
@@ -32,7 +28,7 @@ func (b *RisqBuilding) resolveAutoAttack(risq *GameRisq) {
 	target := b.autoAttackTarget(risq)
 	if target != nil && b.cs.totalAttack() <= 0 && len(b.buildGarrisonAttacks(risq, target)) == 0 {
 		if active := b.order_queue.active_orders; len(active) > 0 && active[0].order_type.IsAutoSynthesized() {
-			b.order_queue.active_orders = active[1:]
+			b.cancelOrder(active[0], risq)
 		}
 		return
 	}

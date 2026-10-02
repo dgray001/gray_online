@@ -1,10 +1,9 @@
 import { DialogSize, DwgDialogBox } from '../../../../../dialog_box/dialog_box';
 import { shortLabel } from '../../canvas_components/order_row/order_row_resolve';
-import { buildingImage } from '../../rendering/assets/buildings';
+import { buildingImage, techImage } from '../../rendering/assets/buildings';
 import type { RisqPlayer, RisqProducible, RisqOrderType } from '../../model/types';
 import { RisqProducibleKind, RisqResourceType } from '../../model/types';
 import { resourceTypeImage } from '../../rendering/assets/resources';
-import { techImage } from '../../rendering/assets/techs';
 import { unitImage } from '../../rendering/assets/unit';
 import type { RisqReportCombatEvent, RisqTurnReport } from '../../transport/turn_report';
 import { RisqCombatEventKind } from '../../transport/turn_report';

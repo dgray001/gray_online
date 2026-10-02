@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.8t: Refactor frontend
+v0.8u: Various small issues and v0.6 ai
 
 ## Dev Use
 

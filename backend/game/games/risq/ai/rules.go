@@ -3,6 +3,7 @@ package ai
 import (
 	"encoding/json"
 	"io"
+	"math/rand"
 
 	"github.com/dgray001/gray_online/util"
 )
@@ -30,6 +31,7 @@ type Bucket struct {
 }
 
 type Internals struct {
+	rng                *rand.Rand
 	q                  []Q
 	Buckets            map[string]*Bucket
 	pending            Cost
@@ -52,7 +54,8 @@ type Internals struct {
 	// health of the candidate a picker is scoring (units and buildings)
 	target_health, target_max_health float64
 	// where the unit a "unit_when" condition is being checked for stands
-	unit *ZoneRef
+	unit  *ZoneRef
+	start *ZoneRef
 }
 
 const defaultMaxBucketDepth = 3
@@ -177,6 +180,11 @@ func logVars(view View, internals *Internals) {
 
 func (m *RulesModel) DecideOrders(view View) Decision {
 	logTurnData(view)
+	if m.internals.start == nil {
+		if start, ok := groupCenter(view.Units()); ok {
+			m.internals.start = &start
+		}
+	}
 	m.internals.Refresh()
 	m.internals.pruneBuckets(view)
 	orders := make([]Order, 0)

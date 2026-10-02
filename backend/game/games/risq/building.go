@@ -111,6 +111,7 @@ func (b *RisqBuilding) resolveHealthDelta(r *GameRisq) {
 		return
 	}
 	was_alive := b.isAlive()
+	util.DebugLog.Printf("health turn=%d tick=%d: %d b%d before=%.4f delta=%.4f", r.turn_number, r.current_tick, b.internal_id, b.building_id, b.cs.health, b.cs.pending_health_delta)
 	b.cs.addHealth(b.cs.pending_health_delta)
 	b.cs.pending_health_delta = 0
 	if was_alive && !b.isAlive() {
@@ -130,7 +131,9 @@ func (b *RisqBuilding) recordDeath(r *GameRisq, attacker Attackable, damage floa
 	r.players[b.player_id].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: RisqCombatEventKind_BUILDING_LOST,
 		self_player: b.player_id, other_player: attacker.playerId(), target_id: uint64(b.building_id), space: space, zone: zone, damage: damage})
 	r.players[attacker.playerId()].razes++
-	r.players[b.player_id].buildings_lost++
+	if !b.deleted {
+		r.players[b.player_id].buildings_lost++
+	}
 	b.deleted = true
 }
 
@@ -203,7 +206,10 @@ func (b *RisqBuilding) orderReceivable(o *RisqOrder, risq *GameRisq) bool {
 	return true
 }
 
-func (b *RisqBuilding) receiveOrder(o *RisqOrder, risq *GameRisq) error {
+func (b *RisqBuilding) receiveOrder(o *RisqOrder, risq *GameRisq, prepend bool) error {
+	if active := b.order_queue.active_orders; o.order_type.IsAutoSynthesized() && len(active) > 0 && active[0].order_type.IsAutoSynthesized() {
+		b.cancelOrder(active[0], risq)
+	}
 	switch o.order_type {
 	case defs.OrderType_BuildingCreate:
 		unit_id := uint32(o.target_id)
@@ -213,7 +219,7 @@ func (b *RisqBuilding) receiveOrder(o *RisqOrder, risq *GameRisq) error {
 			return errors.New("cannot afford unit")
 		}
 		resources.spend(cost)
-		b.order_queue.receiveOrder(o)
+		b.order_queue.receiveOrder(o, prepend)
 		b.production_queue[o.internal_id] = &RisqBuildingProductionItem{
 			kind:              defs.ProducibleKind_UNIT,
 			item_id:           unit_id,
@@ -228,7 +234,7 @@ func (b *RisqBuilding) receiveOrder(o *RisqOrder, risq *GameRisq) error {
 			return errors.New("cannot afford research")
 		}
 		resources.spend(tech.Cost)
-		b.order_queue.receiveOrder(o)
+		b.order_queue.receiveOrder(o, prepend)
 		b.production_queue[o.internal_id] = &RisqBuildingProductionItem{
 			kind:              defs.ProducibleKind_TECH,
 			item_id:           tech_id,
@@ -237,7 +243,7 @@ func (b *RisqBuilding) receiveOrder(o *RisqOrder, risq *GameRisq) error {
 		}
 		risq.players[b.player_id].researched_techs[tech_id] = false
 	default:
-		b.order_queue.receiveOrder(o)
+		b.order_queue.receiveOrder(o, prepend)
 	}
 	return nil
 }
@@ -262,6 +268,9 @@ func (b *RisqBuilding) cancelOrder(o *RisqOrder, risq *GameRisq) {
 }
 
 func (b *RisqBuilding) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
+	if o.order_type.IsAutoSynthesized() && !b.auto_attack {
+		return OrderStatus_Cancelled
+	}
 	switch o.order_type {
 	case defs.OrderType_BuildingCreate:
 		if item, ok := b.production_queue[o.internal_id]; ok && item.stamina_remaining > 0 {
@@ -363,15 +372,13 @@ func (b *RisqBuilding) tickExecute(risq *GameRisq) {
 			switch item.kind {
 			case defs.ProducibleKind_UNIT:
 				unit := createRisqUnit(risq.unit_creation_ids[b], item.item_id, risq.players[b.player_id])
+				unit.current_stamina = unit.turn_stamina / 2
 				util.DebugLog.Printf("Unit created: unit=%d unit_id=%d player=%d building=%d zone=%s space=%s tick=%d",
 					unit.internal_id, item.item_id, b.player_id, b.internal_id, b.zone.coordinate.ToString(), b.zone.space.coordinate.ToString(), risq.current_tick)
 				b.zone.space.setUnit(&b.zone.coordinate, unit)
 				risq.players[b.player_id].units[unit.internal_id] = unit
 				risq.units[unit.internal_id] = unit
 				risq.players[b.player_id].report.recordUnitCreated(item.item_id)
-				if b.gather_point != nil {
-					risq.addSyntheticOrder(b.gather_point.resolveOrder(risq, b, unit), risq.players[b.player_id])
-				}
 			case defs.ProducibleKind_TECH:
 				risq.pending_tech_completions = append(risq.pending_tech_completions, techCompletion{player_id: b.player_id, tech_id: item.item_id})
 			}

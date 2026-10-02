@@ -2,6 +2,7 @@ package ai
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 )
 
@@ -24,7 +25,7 @@ func (NoopModel) ApplyUpdate(View, string)   {}
 func (NoopModel) DecideOrders(View) Decision { return Decision{} }
 
 // ParseModel parses an ai config blob into a Model, falling back to NoopModel on any error.
-func ParseModel(raw map[string]any) Model {
+func ParseModel(raw map[string]any, rng *rand.Rand) Model {
 	rules_raw, ok := raw["rules"].([]any)
 	if !ok {
 		fmt.Fprintln(os.Stderr, "ai config missing \"rules\" list")
@@ -45,7 +46,7 @@ func ParseModel(raw map[string]any) Model {
 		fmt.Fprintln(os.Stderr, "ai config:", err)
 		return NoopModel{}
 	}
-	return &RulesModel{rules: rules, internals: Internals{max_bucket_depth: depth}}
+	return &RulesModel{rules: rules, internals: Internals{max_bucket_depth: depth, rng: rng}}
 }
 
 func parseMaxBucketDepth(raw map[string]any) (int, error) {

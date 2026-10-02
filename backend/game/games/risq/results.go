@@ -42,6 +42,7 @@ type EconomyResult struct {
 type GameResult struct {
 	TurnNumber uint16
 	Players    []PlayerResult
+	Metrics    GameMetrics
 }
 
 func (r *GameRisq) TurnNumber() uint16 {
@@ -81,7 +82,7 @@ func (r *GameRisq) Results() GameResult {
 			},
 		})
 	}
-	return GameResult{TurnNumber: r.turn_number, Players: players}
+	return GameResult{TurnNumber: r.turn_number, Players: players, Metrics: r.Metrics()}
 }
 
 // Compact per-player state used by the sim tool to print timelines

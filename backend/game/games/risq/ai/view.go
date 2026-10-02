@@ -6,9 +6,10 @@ type Coordinate struct {
 }
 
 type SpaceInfo struct {
-	Space  Coordinate
-	Vision uint8
-	Owner  int
+	UnitCount *int
+	Space     Coordinate
+	Vision    uint8
+	Owner     int
 }
 
 type ZoneRef struct {
@@ -191,9 +192,10 @@ func (c Cost) of(category ResourceCategory) float64 {
 
 // Something a building can currently be ordered to make (already-researched techs excluded).
 type Producible struct {
-	Kind ProducibleKind
-	ID   uint32
-	Cost Cost
+	UnitType UnitType
+	Kind     ProducibleKind
+	ID       uint32
+	Cost     Cost
 }
 
 type BuildingView struct {
@@ -297,10 +299,13 @@ type View interface {
 	NearestBuildSite(from ZoneRef, building_id uint32) (ZoneRef, bool)
 	NearestUnexplored(from ZoneRef) ([]ZoneRef, bool)
 	TurnNumber() int
+	MapSize() int
 	NumPlayers() int
 	EnemiesFound() int
 	OwnedSpaces() int
 	AllSpaces() []SpaceInfo
+	CountSpaces(condition SpaceCondition, include func(Coordinate) bool) int
+	ClosestSpaces(reference Coordinate, condition SpaceCondition, exclude_reference bool) []Coordinate
 	Score() int
 	BestEnemyScore() int
 	TechResearched(tech_id uint32) bool

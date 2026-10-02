@@ -1,14 +1,21 @@
 v0.9: Risq beta version
- u: Small issues (see all small issues)
  v: Backend risq tests
  w: Revamp summary report (fix colors, can see "events" on map, can interact with events i.e. replay them or see what happened precisely)
  x: Make v1.0 ai (current ones should be rename to 0.4, etc...)
- y: Settings setup (including alt win conditions, map selector, etc)
+ y: Settings setup (including alt win conditions, map selector, settings for maps like regions/resources/etc, etc)
  z: Alternate terrain images (mountains, swamps, shallows, water)
 
+ Small risq issues:
+  - Build orders aren't counting toward tmp predicted resource spend in frontend --- or like some are and some aren't idk why
+  - Trees (and stone) should change image as they are depleted (and deer and berries)
+  - Filters for right panel order list (analyze/design first)
+
+ - World risq map
  - Expanded level 2 tech tree
     => Magic and color damage
     => Stables and Archery range
+ - Send a final state/report update before EndGame when elimination ends a risq game (no final start-turn goes out, so clients keep a stale eliminated=false)
+ - AI config parse failures should return structured errors (config/action index) instead of falling back to NoopModel, which loses the real parse error
 
 Fiddlesticks Plans:
  - Revamp update dialog box

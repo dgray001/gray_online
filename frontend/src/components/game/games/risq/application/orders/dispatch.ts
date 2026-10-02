@@ -2,8 +2,14 @@ import type { ColorRGB } from '../../../../../../scripts/color_rgb';
 import { RISQ_MESSAGE_WARNING_COLOR } from '../../canvas_components/message_queue';
 import { cantorPair } from '../../model/coordinates';
 import type { RisqBuilding, RisqFrontendOrder, RisqGatherPoint } from '../../model/types';
-import { RisqGatherObjectType, RisqGatherPointLocationKind, RisqOrderType, RisqUnitType } from '../../model/types';
-import { canAffordCost, canHaveGatherPoint } from '../../model/rules';
+import {
+  RisqGatherObjectType,
+  RisqGatherPointLocationKind,
+  RisqOrderType,
+  RisqUnitType,
+  canAffordCost,
+  canHaveGatherPoint,
+} from '../../model/types';
 import type { RisqViewport } from '../../rendering/board/viewport';
 import { hoveredZoneObject } from '../../rendering/zones/hit_testing';
 import type { RisqCommands } from '../commands';

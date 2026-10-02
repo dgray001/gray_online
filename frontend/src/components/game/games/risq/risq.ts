@@ -11,14 +11,14 @@ import { ColorRGB } from '../../../../scripts/color_rgb';
 
 import html from './risq.html';
 import type { GameRisq, RisqPlayer } from './model/types';
-import type { GameRisqFromServer } from './transport/snapshot_types';
 import type {
+  GameRisqFromServer,
   GatherPointSetData,
   StartTurnData,
   SubmittedOrdersData,
   UnitBehaviorSetData,
   UnsubmittedOrdersData,
-} from './transport/update_types';
+} from './transport/snapshot_types';
 import type { RisqTurnReport } from './transport/turn_report';
 import { PLAYER_ICON_SIZE, RisqImageCache } from './rendering/assets/image_cache';
 import { RisqViewport } from './rendering/board/viewport';
@@ -45,9 +45,11 @@ import { RisqRightPanel } from './canvas_components/right_panel/right_panel';
 import { RisqLeftPanel } from './canvas_components/left_panel/left_panel';
 import { RisqMinimap } from './canvas_components/minimap/risq_minimap';
 import { RisqBottomPanel } from './canvas_components/bottom_panel/bottom_panel';
-import { RisqSummaryReportButton } from './canvas_components/bottom_panel/summary_report_button';
-import { RisqViewModeButton } from './canvas_components/bottom_panel/view_mode_button';
-import { RisqTechTreeButton } from './canvas_components/bottom_panel/tech_tree_button';
+import {
+  RisqSummaryReportButton,
+  RisqTechTreeButton,
+  RisqViewModeButton,
+} from './canvas_components/bottom_panel/bottom_panel_buttons';
 import { RisqMercenaryGrid } from './canvas_components/bottom_panel/mercenary_grid';
 import { RISQ_MESSAGE_WARNING_COLOR, RisqMessageQueue } from './canvas_components/message_queue';
 

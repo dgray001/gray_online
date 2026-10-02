@@ -3,7 +3,7 @@ package ai
 import "fmt"
 
 // Inputs that take a number or an expression string
-var numericActionKeys = []string{"max", "queue", "weight", "move_penalty", "depth", "size", "reserve", "launch", "retreat", "defend_radius", "strike", "score", "min_score"}
+var numericActionKeys = []string{"max", "queue", "weight", "move_penalty", "depth", "size", "reserve", "launch", "retreat", "defend_radius", "strike", "score", "min_score", "min_distance"}
 
 func parseActionInner(raw map[string]any) (Action, error) {
 	action_type, ok := raw["action"].(string)
@@ -76,6 +76,10 @@ func parseActionInner(raw map[string]any) (Action, error) {
 		return &produceNextInQAction{weight: weight, prioritize: prioritize, depth: depth, max: parseMax(raw)}, nil
 	case "explore":
 		action := &exploreAction{max: parseMax(raw)}
+		var err error
+		if action.min_distance, err = parseNumber(raw, "min_distance", 0); err != nil {
+			return nil, err
+		}
 		if a, ok := raw["anchor"].(string); ok {
 			switch a {
 			case "self":
@@ -186,6 +190,7 @@ func parseActionInner(raw map[string]any) (Action, error) {
 			return nil, fmt.Errorf("drain_bucket action requires a string \"to\"")
 		}
 		action := &drainBucketAction{to: to, max: parseMax(raw)}
+		action.allow_reserved, _ = raw["allow_reserved"].(bool)
 		switch from := raw["from"].(type) {
 		case string:
 			if from == "any" {

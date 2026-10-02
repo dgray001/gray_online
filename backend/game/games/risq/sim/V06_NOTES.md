@@ -6,19 +6,19 @@ and to beat v0.5 everywhere.
 
 ## Where it stands
 
-The evaluator (`inputs/eval.json`, 10 maps x 30 games to turn 100, seats swapped every other game) against v0.5:
+The latest evaluator (`inputs/eval.json`, 10 maps x 30 games to turn 100, seats swapped every other game) against v0.5:
 
 | | v0.6 | v0.5 |
 |---|---|---|
-| wins (crush, or more units at turn 100) | 82.3% | ~17% |
-| crushes | 80 | 12 |
-| kills / lost per game | 87 / 55 | 55 / 87 |
-| villager idle | 0.8% | ~9% |
-| Village Center idle, first 20 turns | 0.1% | ~16% |
-| villagers / soldiers at the end | 41 / 40 | ~20 / ~13 |
+| crushes / crushed | 3 / 50 | 50 / 3 |
+| report leads / trails at turn 100 | 199 / 48 | 37 / 210 |
+| kills / lost per game | 69 / 67 | 67 / 69 |
+| villager idle / VC idle | 1.9% / 28.5% | 6.0% / 38.7% |
+| overkill stamina | 50.1% | 27.7% |
 
-Wins per map (of 30): ring 30, triangle 30, sim_rich 29, sim_gold 28, rectangle 27, default 26, sim_wide 26,
-sim_advanced 22, sim_close 21, sim_army 8.
+The run completed all 300 games with zero errors. V6 is ahead most often on ring, default, triangle, gold and rich;
+it is weakest on rectangle (25 crushes by v0.5), sim_close (11), and sim_wide (13). `sim_army` had 15 v0.6 leads,
+11 ties and 4 trails; seed 106009 ran 100 turns with no fight.
 
 The economy is solved for now: nonstop villagers to ~50, no idle VC early, production buildings when income can keep
 them busy, techs well before turn 50. What is left is fighting (see "Open problems").
@@ -108,18 +108,12 @@ Analysis helpers in `sim/tools/`: `engagements.py` (fights, committed soldiers, 
 
 ## Open problems (in rough priority order)
 
-1. **Overkill inside a turn.** Soldiers sharing a space with enemy soldiers now get script-distributed targets (with
-   staggered follow-ups) and don't drop them when hit, which took overkill from ~55-70% to ~35-45% in the replays and
-   the win rate from 75% to 82%. What's left: the first turn of a fight when the enemy walks in mid-turn (targets then
-   come from the engine's stance auto-targeting, all on the same lowest-id unit), and `attack_space`/`attack_zone`
-   picks. Proposed: a unit-group "spread" behaviour in the engine for those. To be discussed before implementing.
-2. **The army splits across spaces** and parts meet the enemy's main force alone.
-3. **sim_army (no buildings, 7/30)** and **sim_advanced (13/30)**: pure army fights and heavy-heavy compositions; both
-   hinge on 1 and 2 plus unit matchups (blunts into heavies).
-4. **Finishing games.** Many wins are leads at turn 100, not crushes: the enemy's villagers hide in buildings the army
-   won't attack. Attack defended spaces once we clearly out-power everything there.
-5. **Blind spots.** The AI view drops Poor-visibility unit counts (the player sees "N units" in adjacent spaces); armies
-   still appear only on contact.
-6. **Early aggression losses** on close maps (sim_close, sim_wide, rectangle: v0.5 still crushes us a few times).
-7. Smaller: stone and gold over-banked late; barracks around turn 15/31/34 vs a napkin ideal of 17/28/39; the renew
-   cost is hardcoded (no `renew_cost_*` lookup).
+1. **Assault launch regression.** In representative rectangle, close and wide losses, `assault` stayed zero for the
+   whole replay, so the army never left home. `ePowSeen` stores poor-vision unit counts as unidentified power and can
+   exceed what the army can beat; `homePow` also collapses when units are no longer within one space of home.
+2. **Combat efficiency.** V6 overkill is 50.1% versus v0.5's 27.7%; army movement and target spreading still need work.
+3. **Army cohesion.** The army bucket can split across spaces and meet the enemy piecemeal.
+4. **Finishing games.** Many leads at turn 100 are not crushes; the army needs a safer way to attack defended spaces.
+5. **Scouting/raiding.** Scouting is three-phase (home, center, self); no-building starts skip home and can remain in
+   center phase because no enemy building can ever be found. Raiding is explicitly gated by `has_eco`.
+6. Smaller: stone and gold over-bank late; renew cost is hardcoded because there is no `renew_cost_*` lookup.

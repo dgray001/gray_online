@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
+	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
 )
 
@@ -99,6 +100,7 @@ func (u *RisqUnit) resolveHealthDelta(r *GameRisq) {
 		return
 	}
 	was_alive := u.isAlive()
+	util.DebugLog.Printf("health turn=%d tick=%d: %d u%d before=%.4f delta=%.4f", r.turn_number, r.current_tick, u.internal_id, u.unit_id, u.cs.health, u.cs.pending_health_delta)
 	u.cs.addHealth(u.cs.pending_health_delta)
 	u.cs.pending_health_delta = 0
 	if was_alive && !u.isAlive() {
@@ -122,7 +124,9 @@ func (u *RisqUnit) recordDeath(r *GameRisq, attacker Attackable, damage float64)
 	r.players[u.player_id].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: RisqCombatEventKind_UNIT_LOST,
 		self_player: u.player_id, other_player: attacker.playerId(), target_id: uint64(u.unit_id), space: space, zone: zone, damage: damage})
 	r.players[attacker.playerId()].kills++
-	r.players[u.player_id].units_lost++
+	if !u.deleted {
+		r.players[u.player_id].units_lost++
+	}
 	if u.unitType() == defs.UnitType_ECONOMIC {
 		r.players[u.player_id].economy.villagers_lost++
 	}

@@ -1,9 +1,8 @@
 import type { DwgRisq } from '../../../../risq';
 import { RisqRichTooltipActionButton } from '../action_button';
 import type { RisqProducible } from '../../../../model/types';
-import { RisqOrderType } from '../../../../model/types';
-import { canAffordCost } from '../../../../model/rules';
-import { techImage } from '../../../../rendering/assets/techs';
+import { RisqOrderType, canAffordCost } from '../../../../model/types';
+import { techImage } from '../../../../rendering/assets/buildings';
 import { RISQ_MESSAGE_WARNING_COLOR } from '../../../message_queue';
 import type { RisqTooltipData } from '../../../risq_tooltip';
 import { getSettings } from '../../../../../../../../scripts/settings_store';
