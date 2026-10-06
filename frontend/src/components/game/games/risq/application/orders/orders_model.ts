@@ -116,10 +116,7 @@ export class RisqOrdersModel {
   }
 
   revertSubmittedToPending() {
-    for (const order of this.submitted) {
-      order.internal_id = undefined;
-    }
-    this.pending.push(...this.submitted);
+    this.pending.push(...this.submitted.filter((order) => order.internal_id === undefined));
     this.submitted = [];
     this.on_change();
   }
@@ -162,17 +159,19 @@ export class RisqOrdersModel {
     this.on_change();
   }
 
-  isExplicitlyCancelling(order: RisqFrontendOrder): boolean {
-    return (
-      order.internal_id !== undefined &&
-      this.pending.some(
-        (o) => o.order_type === RisqOrderType.OrderType_CancelOrder && o.target_id === order.internal_id
-      )
+  isExplicitlyCancelling(order: RisqFrontendOrder, subject_internal_ids?: number[]): boolean {
+    if (order.internal_id === undefined) return false;
+    const explicit = this.pending.find(
+      (o) => o.order_type === RisqOrderType.OrderType_CancelOrder && o.target_id === order.internal_id
     );
+    if (!explicit) return false;
+    if (explicit.subjects.length === 0) return true;
+    const subs = subject_internal_ids ? order.subjects.filter((s) => subject_internal_ids.includes(s)) : order.subjects;
+    return subs.length > 0 && subs.every((s) => explicit.subjects.includes(s));
   }
 
   isCancelling(order: RisqFrontendOrder, subject_internal_ids?: number[]): boolean {
-    if (this.isExplicitlyCancelling(order)) {
+    if (this.isExplicitlyCancelling(order, subject_internal_ids)) {
       return true;
     }
     if (order.internal_id === undefined || isClearImmune(order.order_type)) {
@@ -219,13 +218,36 @@ export class RisqOrdersModel {
     });
   }
 
-  cancelForSubject(subject_internal_id: number) {
+  cancelSubject(order: RisqFrontendOrder, subject_internal_id: number) {
+    if (order.internal_id === undefined) return;
+    const existing = this.pending.find(
+      (o) => o.order_type === RisqOrderType.OrderType_CancelOrder && o.target_id === order.internal_id
+    );
+    if (existing) {
+      if (existing.subjects.length > 0 && !existing.subjects.includes(subject_internal_id)) {
+        existing.subjects.push(subject_internal_id);
+        this.on_change();
+      }
+      return;
+    }
+    this.add({
+      player_id: order.player_id,
+      order_type: RisqOrderType.OrderType_CancelOrder,
+      subjects: [subject_internal_id],
+      target_id: order.internal_id,
+      clear_previous_orders: false,
+    });
+  }
+
+  cancelForSubject(subject_internal_id: number, kind: 'unit' | 'building' = 'unit') {
     for (const order of this.all()) {
-      if (!order.subjects.includes(subject_internal_id)) {
+      if (kind === 'unit' && !isUnitOrder(order.order_type)) {
         continue;
       }
-      if (order.subjects.length === 1) {
-        this.cancel(order);
+      if (kind === 'building' && !isBuildingOrder(order.order_type)) {
+        continue;
+      }
+      if (!order.subjects.includes(subject_internal_id)) {
         continue;
       }
       if (order.internal_id === undefined) {
@@ -235,14 +257,7 @@ export class RisqOrdersModel {
         this.on_change();
         continue;
       }
-      this.cancel(order);
-      this.add({
-        player_id: order.player_id,
-        order_type: order.order_type,
-        subjects: order.subjects.filter((id) => id !== subject_internal_id),
-        target_id: order.target_id,
-        clear_previous_orders: false,
-      });
+      this.cancelSubject(order, subject_internal_id);
     }
   }
 
@@ -253,16 +268,20 @@ export class RisqOrdersModel {
 
   effectiveForSubject(subject_internal_id: number, kind: 'unit' | 'building'): RisqFrontendOrder[] {
     const all = this.all();
-    const cancelled = new Set(
-      all.filter((o) => o.order_type === RisqOrderType.OrderType_CancelOrder).map((o) => o.target_id)
-    );
+    const cancel_orders = all.filter((o) => o.order_type === RisqOrderType.OrderType_CancelOrder);
     const kind_matches = kind === 'unit' ? isUnitOrder : isBuildingOrder;
     let effective: RisqFrontendOrder[] = [];
     for (const order of all) {
       if (!kind_matches(order.order_type) || !order.subjects.includes(subject_internal_id)) {
         continue;
       }
-      if (order.internal_id !== undefined && cancelled.has(order.internal_id)) {
+      if (
+        order.internal_id !== undefined &&
+        cancel_orders.some(
+          (c) =>
+            c.target_id === order.internal_id && (c.subjects.length === 0 || c.subjects.includes(subject_internal_id))
+        )
+      ) {
         continue;
       }
       if (order.clear_previous_orders) {

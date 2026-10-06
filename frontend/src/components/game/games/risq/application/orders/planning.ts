@@ -8,6 +8,7 @@ import type {
   RisqProducible,
   RisqResource,
   RisqUnit,
+  RisqUnitType,
   RisqZone,
 } from '../../model/types';
 import { RisqOrderType, RisqProducibleKind, RisqResourceType, canAffordCost } from '../../model/types';
@@ -18,6 +19,7 @@ export declare interface LocalRisqFoundation {
   coordinate_key: number;
   building_id: number;
   display_name: string;
+  stamina_cost?: number;
   order: RisqFrontendOrder;
 }
 
@@ -40,12 +42,20 @@ export class RisqOrderPlanning {
     this.local_foundations.set(foundation.coordinate_key, foundation);
   }
 
+  unpaidRenewalCost(target_id: number): RisqCost | undefined {
+    const building = this.session.findBuildingById(target_id);
+    return building?.renewing ? undefined : building?.renew_cost;
+  }
+
   hasPlannedFoundation(zone: RisqZone | undefined): boolean {
     if (!zone) {
       return false;
     }
     const has_local = this.local_foundations.has(zone.coordinate_key);
-    const has_server = !!this.session.getPlayer()?.planned_foundations?.has(zone.coordinate_key);
+    const is_cancelled = this.orders_model
+      .pendingOrders()
+      .some((o) => o.order_type === RisqOrderType.OrderType_CancelFoundation && o.target_id === zone.coordinate_key);
+    const has_server = !is_cancelled && !!this.session.getPlayer()?.planned_foundations?.has(zone.coordinate_key);
     return has_local || has_server;
   }
 
@@ -80,6 +90,7 @@ export class RisqOrderPlanning {
       coordinate_key: key,
       building_id,
       display_name: producible?.display_name ?? 'Building',
+      stamina_cost: producible?.stamina_cost,
       order,
     });
   }
@@ -87,16 +98,21 @@ export class RisqOrderPlanning {
   private syncLocalFoundations() {
     const active = this.activeBuildOrders();
     const player = this.session.getPlayer();
+    const is_cancelled = (key: number) =>
+      this.orders_model
+        .pendingOrders()
+        .some((o) => o.order_type === RisqOrderType.OrderType_CancelFoundation && o.target_id === key);
     for (const [key, f] of this.local_foundations.entries()) {
       const order = active.get(key);
-      if (!order || player?.planned_foundations?.has(key)) {
+      if (!order || (!is_cancelled(key) && player?.planned_foundations?.has(key))) {
         this.local_foundations.delete(key);
       } else {
         f.order = order;
       }
     }
     for (const [key, order] of active.entries()) {
-      if (!this.local_foundations.has(key) && !player?.planned_foundations?.has(key) && player) {
+      const has_active_server = !is_cancelled(key) && !!player?.planned_foundations?.has(key);
+      if (!this.local_foundations.has(key) && !has_active_server && player) {
         this.registerLocalFoundation(player, key, order);
       }
     }
@@ -113,8 +129,10 @@ export class RisqOrderPlanning {
       .sort((a, b) => a.internal_id - b.internal_id);
   }
 
-  idleUnitCount(): number {
-    return this.idle_units.length;
+  idleUnitCount(unit_type?: RisqUnitType): number {
+    return unit_type === undefined
+      ? this.idle_units.length
+      : this.idle_units.filter((unit) => unit.unit_type === unit_type).length;
   }
 
   idleBuildingCount(): number {
@@ -238,7 +256,10 @@ export class RisqOrderPlanning {
         continue;
       }
       const zone_key = invertPair(order.target_id).y;
-      if (build_zones.has(zone_key) || player.planned_foundations?.has(zone_key)) {
+      const is_cancelled = this.orders_model
+        .pendingOrders()
+        .some((o) => o.order_type === RisqOrderType.OrderType_CancelFoundation && o.target_id === zone_key);
+      if (build_zones.has(zone_key) || (!is_cancelled && player.planned_foundations?.has(zone_key))) {
         continue;
       }
       build_zones.add(zone_key);
@@ -258,6 +279,10 @@ export class RisqOrderPlanning {
         this.addSpending(player, player.available_mercenaries.find((m) => m.id === unit_id)?.cost);
       } else if (order.order_type === RisqOrderType.OrderType_CancelOrder) {
         this.addSpending(player, this.paidProductionCost(player, order.target_id), -1);
+      } else if (order.order_type === RisqOrderType.OrderType_CancelFoundation) {
+        const foundation = player.planned_foundations?.get(order.target_id);
+        const cost = foundation?.cost ?? this.findProducible(player, foundation?.building_id ?? 0, [])?.cost;
+        this.addSpending(player, cost, -1);
       }
     }
     const renew_targets = new Set(
@@ -267,7 +292,7 @@ export class RisqOrderPlanning {
         .map((o) => o.target_id)
     );
     for (const target_id of renew_targets) {
-      this.addSpending(player, this.session.findBuildingById(target_id)?.renew_cost);
+      this.addSpending(player, this.unpaidRenewalCost(target_id));
     }
   }
 
@@ -296,10 +321,6 @@ export class RisqOrderPlanning {
       }
     }
     return undefined;
-  }
-
-  private plannedFoundationCost(player: RisqPlayer, foundation: LocalRisqFoundation): RisqCost | undefined {
-    return this.findProducible(player, foundation.building_id, foundation.order.subjects)?.cost;
   }
 
   private addSpending(player: RisqPlayer, cost: RisqCost | undefined, multiplier = 1) {

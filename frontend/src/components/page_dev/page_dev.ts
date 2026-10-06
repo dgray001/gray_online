@@ -35,12 +35,21 @@ export class DwgPageDev extends DwgElement {
         console.error(`Launch game parameter is an invalid game type: ${launch_game_param}`);
         return;
       }
-      this.launchGame(launch_game_param);
+      let custom_game_settings = undefined;
+      const settings_param = getUrlParam('game_settings');
+      if (settings_param) {
+        try {
+          custom_game_settings = JSON.parse(settings_param);
+        } catch (e) {
+          console.error(`Invalid JSON in game_settings parameter: ${settings_param}`, e);
+        }
+      }
+      this.launchGame(launch_game_param as GameTypeLowerKeys, custom_game_settings);
       return;
     }
   }
 
-  private launchGame(game: GameTypeLowerKeys) {
+  private launchGame(game: GameTypeLowerKeys, custom_settings?: Record<string, unknown>) {
     const nickname = 'dev_user';
     const socket = new WebSocket(`${websocketPath()}/connect/${nickname}`);
     socket.addEventListener('error', (e) => {
@@ -63,7 +72,7 @@ export class DwgPageDev extends DwgElement {
         return !!lobby_room;
       });
       const game_type = getGameTypeFromLowercaseString(game);
-      const game_settings = this.createGameSettings(game_type);
+      const game_settings = this.createGameSettings(game_type, custom_settings);
       socket.send(
         createMessage(
           `client-${connection_metadata.client_id}`,
@@ -85,11 +94,12 @@ export class DwgPageDev extends DwgElement {
     });
   }
 
-  private createGameSettings(game_type: GameType): GameSettings {
+  private createGameSettings(game_type: GameType, custom_settings?: Record<string, unknown>): GameSettings {
     const base = defaultBaseGameSettings();
+    let settings: GameSettings;
     switch (game_type) {
       case GameType.FIDDLESTICKS:
-        return {
+        settings = {
           ...base,
           game_type,
           game_specific_settings: {
@@ -98,28 +108,39 @@ export class DwgPageDev extends DwgElement {
             ai_players: [{ nickname: 'AI Player' }],
           },
         };
+        break;
       case GameType.EGYPTIAN_RAT_CRAP:
-        return {
+        settings = {
           ...base,
           game_type,
           game_specific_settings: {
             ai_players: [{ nickname: 'AI Player' }],
           },
         };
+        break;
       case GameType.RISQ:
-        return {
+        settings = {
           ...base,
           game_type,
           game_specific_settings: {
             ai_players: [{ nickname: 'AI Player 1' }, { nickname: 'AI Player 2' }],
           },
         };
+        break;
       default:
-        return {
+        settings = {
           ...base,
           game_type,
         };
+        break;
     }
+    if (custom_settings) {
+      settings.game_specific_settings = {
+        ...settings.game_specific_settings,
+        ...custom_settings,
+      } as GameSettings['game_specific_settings'];
+    }
+    return settings;
   }
 }
 

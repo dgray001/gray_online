@@ -82,8 +82,14 @@ export class DwgListbox<
     return this.config.scrollbar.isClicking();
   }
 
-  setClicking(clicking: boolean) {
+  setClicking(clicking: boolean): void {
     this.config.scrollbar.setClicking(clicking);
+    if (!clicking) {
+      for (const item of this.config.list) {
+        item.setClicking(false);
+        item.setHovering(false);
+      }
+    }
   }
 
   setAllSizes(size: number, p: Point2D, w: number, h: number) {

@@ -11,7 +11,7 @@ export function unitSlotWorldPosition(
 ): Point2D | undefined {
   const is_center = findOuterZoneIndex(zone_coordinate) === -1;
   const num_slots = is_center ? CENTER_ZONE_UNIT_SLOTS : EDGE_ZONE_UNIT_SLOTS;
-  const filled_slots = buildZoneUnitSlots(zone, active_player_id, num_slots);
+  const filled_slots = zone.unit_slots ?? (zone.unit_slots = buildZoneUnitSlots(zone, active_player_id, num_slots));
   const slot_index = filled_slots.findIndex((groups) => groups.some((g) => g.units.has(internal_id)));
   if (slot_index === -1) {
     return undefined;

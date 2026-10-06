@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/dgray001/gray_online/game"
+	"github.com/dgray001/gray_online/game/game_utils"
 	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
 )
@@ -27,6 +28,9 @@ type GameRisq struct {
 	players                   []*RisqPlayer
 	board_size                uint16
 	population_limit          uint16
+	background_image          string
+	background_top_left       game_utils.Coordinate2D
+	background_top_right      game_utils.Coordinate2D
 	spaces                    [][]*RisqSpace
 	units                     map[uint64]*RisqUnit
 	buildings                 map[uint64]*RisqBuilding
@@ -60,8 +64,11 @@ type GameRisq struct {
 	pending_tech_completions []techCompletion
 	completed_gatherables    []*RisqBuilding
 	regions                  []*RisqRegion
-	rng           *rand.Rand
-	ai_goroutines sync.WaitGroup
+	space_distances          *spaceDistances
+	space_links              []gin.H
+	mercenaries_need_region  bool
+	rng                      *rand.Rand
+	ai_goroutines            sync.WaitGroup
 }
 
 func (r *GameRisq) nextResourceInternalId() uint64 {
@@ -128,6 +135,10 @@ func (r *GameRisq) startNextTurn() {
 			r.turn_number, o.OrderableType(), o.internalId(), base.player_id, before, base.turn_stamina, base.current_stamina)
 	}
 	r.giving_orders = true
+	r.broadcastStartTurn()
+}
+
+func (r *GameRisq) broadcastStartTurn() {
 	for _, player := range r.players {
 		player.player.AddUpdate(&game.UpdateMessage{Kind: "start-turn", Content: gin.H{
 			"game": r.toFrontendFor(player.player.Player_id, player.player.GetClientId(), false),
@@ -173,6 +184,7 @@ func (r *GameRisq) checkWinCondition() {
 		return
 	}
 	r.StopAi()
+	r.broadcastStartTurn() // no further start-turn goes out, so clients need this final state
 	if len(remaining) == 1 {
 		r.game.EndGame(fmt.Sprintf("%s wins!", remaining[0].player.GetNickname()))
 	} else {
@@ -214,10 +226,13 @@ func (r *GameRisq) ToFrontend(client_id uint64, is_viewer bool) gin.H {
 // Keyed by player id since every AI player shares client id 0
 func (r *GameRisq) toFrontendFor(player_id int, client_id uint64, is_viewer bool) gin.H {
 	game := gin.H{
-		"board_size":       r.board_size,
-		"population_limit": r.population_limit,
-		"turn_number":      r.turn_number,
-		"giving_orders":    r.giving_orders,
+		"board_size":           r.board_size,
+		"population_limit":     r.population_limit,
+		"background_image":     r.background_image,
+		"background_top_left":  []int{r.background_top_left.X, r.background_top_left.Y},
+		"background_top_right": []int{r.background_top_right.X, r.background_top_right.Y},
+		"turn_number":          r.turn_number,
+		"giving_orders":        r.giving_orders,
 	}
 	if r.game != nil {
 		game["game_base"] = r.game.ToFrontend(client_id, is_viewer)
@@ -242,6 +257,7 @@ func (r *GameRisq) toFrontendFor(player_id int, client_id uint64, is_viewer bool
 		spaces = append(spaces, spaces_row)
 	}
 	game["spaces"] = spaces
+	game["space_links"] = r.space_links
 	regions := []gin.H{}
 	for _, region := range r.regions {
 		if reg := region.toFrontend(r, player_id); reg != nil {

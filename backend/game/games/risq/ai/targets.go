@@ -2,9 +2,9 @@ package ai
 
 import (
 	"fmt"
-	"math"
-	"sort"
 	"strings"
+
+	"github.com/dgray001/gray_online/util"
 )
 
 // Where a "within" distance is measured from: our home (default), the center of a bucket's units, or the
@@ -21,9 +21,9 @@ const (
 )
 
 type anchor struct {
-	kind       anchorKind
-	bucket     string
-	coordinate Coordinate
+	kind                       anchorKind
+	bucket                     string
+	coordinate_x, coordinate_y amount
 }
 
 func parseAnchor(raw any) (anchor, error) {
@@ -31,12 +31,12 @@ func parseAnchor(raw any) (anchor, error) {
 		return anchor{kind: anchorHome}, nil
 	}
 	if obj, ok := raw.(map[string]any); ok {
-		x, x_ok := obj["x"].(float64)
-		y, y_ok := obj["y"].(float64)
-		if !x_ok || !y_ok || x != math.Trunc(x) || y != math.Trunc(y) {
-			return anchor{}, fmt.Errorf("coordinate reference requires integer x and y")
+		x, x_err := parseAmount(obj["x"])
+		y, y_err := parseAmount(obj["y"])
+		if x_err != nil || y_err != nil {
+			return anchor{}, fmt.Errorf("coordinate reference requires x and y as numbers or expressions")
 		}
-		return anchor{kind: anchorCoordinate, coordinate: Coordinate{X: int(x), Y: int(y)}}, nil
+		return anchor{kind: anchorCoordinate, coordinate_x: x, coordinate_y: y}, nil
 	}
 	name, ok := raw.(string)
 	if !ok || name == "" {
@@ -56,7 +56,7 @@ func parseAnchor(raw any) (anchor, error) {
 func (a anchor) location(view View, internals *Internals) (ZoneRef, bool) {
 	switch a.kind {
 	case anchorCoordinate:
-		return ZoneRef{Space: a.coordinate}, true
+		return ZoneRef{Space: Coordinate{X: a.coordinate_x.int(view, internals), Y: a.coordinate_y.int(view, internals)}}, true
 	case anchorBucket:
 		b := internals.Buckets[a.bucket]
 		if b == nil {
@@ -68,7 +68,7 @@ func (a anchor) location(view View, internals *Internals) (ZoneRef, bool) {
 				members = append(members, u)
 			}
 		}
-		return groupCenter(members)
+		return groupCenter(view, members)
 	case anchorTarget:
 		if internals.target == nil {
 			return ZoneRef{}, false
@@ -84,7 +84,7 @@ func (a anchor) location(view View, internals *Internals) (ZoneRef, bool) {
 }
 
 // The unit closest to all the others, so a group's center is always a real, reachable zone
-func groupCenter(units []UnitView) (ZoneRef, bool) {
+func groupCenter(view View, units []UnitView) (ZoneRef, bool) {
 	if len(units) == 0 {
 		return ZoneRef{}, false
 	}
@@ -92,7 +92,7 @@ func groupCenter(units []UnitView) (ZoneRef, bool) {
 	for _, u := range units {
 		sum := 0
 		for _, other := range units {
-			sum += axialDistance(u.Location.Space, other.Location.Space)
+			sum += view.SpaceDistance(u.Location.Space, other.Location.Space)
 		}
 		if best_sum < 0 || sum < best_sum {
 			best, best_sum = u.Location, sum
@@ -129,7 +129,7 @@ func (f nearFilter) contains(view View, internals *Internals, loc ZoneRef) bool 
 		return true
 	}
 	center, ok := f.from.location(view, internals)
-	return ok && axialDistance(center.Space, loc.Space) <= f.within
+	return ok && view.SpaceDistance(center.Space, loc.Space) <= f.within
 }
 
 // ---------- target picking for attack / move ----------
@@ -146,6 +146,7 @@ const (
 	targetsRetreat
 	targetsUnidentifiedUnits
 	targetsClosestSpaces
+	targetsCoordinate
 )
 
 var targetSetNames = map[string]targetSet{
@@ -158,6 +159,7 @@ var targetSetNames = map[string]targetSet{
 	"retreat":            targetsRetreat,
 	"unidentified_units": targetsUnidentifiedUnits,
 	"closest_spaces":     targetsClosestSpaces,
+	"coordinate":         targetsCoordinate,
 }
 
 type candidate struct {
@@ -169,7 +171,9 @@ type candidate struct {
 // Scores every candidate of one kind with an expression and picks the best; nil when none reaches min_score
 type targetPicker struct {
 	set          targetSet
+	to           string
 	spaces       *spaceQuery
+	coord        anchor
 	unit_filter  unitFilter
 	building_ids map[uint32]bool
 	category     ResourceCategory
@@ -179,18 +183,10 @@ type targetPicker struct {
 	together     bool
 	// attack only: hit the chosen candidate itself (chasing it), or everything in its zone or space
 	order attackOrderKind
-	// attack only: share attackers out over the best candidates instead of all taking the best one
-	distribute *distribution
-}
-
-// How attackers are shared over targets: each gets about enough to kill it within a hit, best-scoring targets first
-type distribution struct {
-	// expected damage one attacker deals a candidate per hit (evaluated per candidate)
-	damage amount
-	// extra share of attackers allowed per target, so a few misses or late arrivals still kill it
-	overkill amount
-	// follow-up targets each attacker queues behind its own
-	queue int
+	// share units out over the candidates (each unit scores them itself) instead of every unit taking the best one
+	spread *spreadConfig
+	// closest_spaces only: stand on the edge zone facing this anchor when it is the neighboring space, which gives full sight of it
+	face *anchor
 }
 
 type attackOrderKind uint8
@@ -211,9 +207,24 @@ func parseTargetPicker(raw map[string]any) (*targetPicker, error) {
 		return nil, fmt.Errorf("unknown \"targets\" %q", name)
 	}
 	p := &targetPicker{set: set}
+	if to, ok := raw["to"].(string); ok {
+		p.to = to
+	}
 	var err error
 	if set == targetsClosestSpaces {
 		if p.spaces, err = parseSpaceQuery(raw); err != nil {
+			return nil, err
+		}
+		if raw["face"] != nil {
+			face, err := parseAnchor(raw["face"])
+			if err != nil {
+				return nil, err
+			}
+			p.face = &face
+		}
+	}
+	if set == targetsCoordinate {
+		if p.coord, err = parseAnchor(raw["coordinate"]); err != nil {
 			return nil, err
 		}
 	}
@@ -247,26 +258,70 @@ func parseTargetPicker(raw map[string]any) (*targetPicker, error) {
 		return nil, fmt.Errorf("\"order\" must be \"unit\", \"zone\" or \"space\"")
 	}
 	if raw["distribute"] != nil {
-		obj, ok := raw["distribute"].(map[string]any)
-		if !ok {
-			return nil, fmt.Errorf("\"distribute\" must be an object")
-		}
-		if p.order != attackOrderUnit {
-			return nil, fmt.Errorf("\"distribute\" assigns single targets, so it needs \"order\": \"unit\"")
-		}
-		d := &distribution{queue: 2}
-		if d.damage, err = parseNumber(obj, "damage", 1); err != nil {
+		return nil, fmt.Errorf("\"distribute\" was replaced by \"spread\" (capacity, unit_score, unit_order, queue, overflow)")
+	}
+	if raw["spread"] != nil {
+		if p.spread, err = parseSpread(raw["spread"]); err != nil {
 			return nil, err
 		}
-		if d.overkill, err = parseNumber(obj, "overkill", 0); err != nil {
-			return nil, err
-		}
-		if q, ok := obj["queue"].(float64); ok {
-			d.queue = int(q)
-		}
-		p.distribute = d
 	}
 	return p, nil
+}
+
+func retreatLocation(view View, internals *Internals, from ZoneRef, to string) (ZoneRef, bool) {
+	if to == "home" {
+		if h, ok := homeLocation(view); ok {
+			return h, true
+		}
+		if internals.start != nil {
+			return *internals.start, true
+		}
+		return ZoneRef{}, false
+	}
+	bases := baseSpaces(view)
+	for _, s := range bases {
+		if s == from.Space {
+			return ZoneRef{}, false
+		}
+	}
+	home, has_home := homeLocation(view)
+	best, bestD, best_home_distance := Coordinate{}, -1, 0
+	for _, s := range bases {
+		d, home_distance := view.SpaceDistance(from.Space, s), 0
+		if has_home {
+			home_distance = view.SpaceDistance(home.Space, s)
+		}
+		closer := d < bestD || (d == bestD && (home_distance < best_home_distance ||
+			(home_distance == best_home_distance && util.Pair(s.X, s.Y) < util.Pair(best.X, best.Y))))
+		if bestD == -1 || closer {
+			bestD, best, best_home_distance = d, s, home_distance
+		}
+	}
+	if bestD != -1 {
+		return ZoneRef{Space: best}, true
+	}
+	if h, ok := homeLocation(view); ok {
+		return h, true
+	}
+	if internals.start != nil {
+		return *internals.start, true
+	}
+	return ZoneRef{}, false
+}
+
+// The space's edge zone toward the face anchor (a zone's coordinate is the direction of the neighbor it borders), else its center
+func (p *targetPicker) edgeFacing(view View, internals *Internals, space Coordinate) ZoneRef {
+	loc := ZoneRef{Space: space}
+	if p.face == nil {
+		return loc
+	}
+	if target, ok := p.face.location(view, internals); ok && view.SpaceDistance(space, target.Space) == 1 {
+		direction := Coordinate{X: target.Space.X - space.X, Y: target.Space.Y - space.Y}
+		if util.AbsInt(direction.X) <= 1 && util.AbsInt(direction.Y) <= 1 && direction.X != direction.Y {
+			loc.Zone = direction
+		}
+	}
+	return loc
 }
 
 func (p *targetPicker) candidates(view View, internals *Internals, from ZoneRef) []candidate {
@@ -274,11 +329,11 @@ func (p *targetPicker) candidates(view View, internals *Internals, from ZoneRef)
 	switch p.set {
 	case targetsClosestSpaces:
 		for _, space := range p.spaces.closest(view, internals, &from) {
-			out = append(out, candidate{loc: ZoneRef{Space: space}})
+			out = append(out, candidate{loc: p.edgeFacing(view, internals, space)})
 		}
 	case targetsEnemyUnits:
 		for _, u := range view.VisibleEnemyUnits() {
-			if len(p.unit_filter.unit_ids) == 0 && len(p.unit_filter.unit_types) == 0 || p.unit_filter.unit_ids[u.UnitID] || p.unit_filter.unit_types[u.Type] {
+			if p.unit_filter.matches(u) {
 				out = append(out, candidate{loc: u.Location, unit: &u})
 			}
 		}
@@ -302,13 +357,13 @@ func (p *targetPicker) candidates(view View, internals *Internals, from ZoneRef)
 				out = append(out, candidate{loc: z})
 			}
 		}
-	case targetsHome, targetsRetreat:
-		home, ok := homeLocation(view)
-		if !ok && p.set == targetsRetreat && internals.start != nil {
-			home, ok = *internals.start, true
-		}
-		if ok {
+	case targetsHome:
+		if home, ok := homeLocation(view); ok {
 			out = append(out, candidate{loc: home})
+		}
+	case targetsRetreat:
+		if loc, ok := retreatLocation(view, internals, from, p.to); ok {
+			out = append(out, candidate{loc: loc})
 		}
 	case targetsUnidentifiedUnits:
 		for _, space := range view.AllSpaces() {
@@ -316,12 +371,16 @@ func (p *targetPicker) candidates(view View, internals *Internals, from ZoneRef)
 				out = append(out, candidate{loc: ZoneRef{Space: space.Space}})
 			}
 		}
+	case targetsCoordinate:
+		if loc, ok := p.coord.location(view, internals); ok {
+			out = append(out, candidate{loc: loc})
+		}
 	}
 	return out
 }
 
 // best scores the candidates seen from `from`; target_distance and the "target" anchor refer to each in turn
-func (p *targetPicker) best(view View, internals *Internals, from ZoneRef) (candidate, bool) {
+func (p *targetPicker) best(view View, internals *Internals, from ZoneRef) (candidate, float64, bool) {
 	saved_target, saved_from, saved_h, saved_mh := internals.target, internals.target_from, internals.target_health, internals.target_max_health
 	defer func() {
 		internals.target, internals.target_from, internals.target_health, internals.target_max_health = saved_target, saved_from, saved_h, saved_mh
@@ -341,34 +400,34 @@ func (p *targetPicker) best(view View, internals *Internals, from ZoneRef) (cand
 			best, best_score, found = c, score, true
 		}
 	}
-	return best, found
+	return best, best_score, found
 }
 
 // pick runs the picker for a group: with "together" every unit takes the target chosen from the group's center
 // (units more than two spaces from it regroup first); otherwise each unit chooses from where it stands.
 func (p *targetPicker) pick(view View, internals *Internals, units []UnitView, act func(u UnitView, c candidate, clear bool) Order) []Order {
-	if p.distribute != nil {
-		return p.distributed(view, internals, units, act)
+	if p.spread != nil {
+		return p.assign(view, internals, units, act)
 	}
 	orders := make([]Order, 0, len(units))
 	if !p.together {
 		for _, u := range units {
-			if c, ok := p.best(view, internals, u.Location); ok {
+			if c, _, ok := p.best(view, internals, u.Location); ok {
 				orders = append(orders, act(u, c, true))
 			}
 		}
 		return orders
 	}
-	center, ok := groupCenter(units)
+	center, ok := groupCenter(view, units)
 	if !ok {
 		return orders
 	}
-	c, ok := p.best(view, internals, center)
+	c, _, ok := p.best(view, internals, center)
 	if !ok {
 		return orders
 	}
 	for _, u := range units {
-		if axialDistance(u.Location.Space, center.Space) > 2 {
+		if view.SpaceDistance(u.Location.Space, center.Space) > 2 {
 			orders = append(orders, view.MoveOrder(u, center, true))
 		} else {
 			orders = append(orders, act(u, c, true))
@@ -403,97 +462,6 @@ func (c candidate) health() (float64, float64) {
 	return 0, 0
 }
 
-// distributed shares a group's attackers over the best candidates seen from its center: each candidate, best score
-// first, gets its nearest free attackers until they would kill it in one hit (plus the overkill allowance); attackers
-// left over go round the candidates again. Each attacker then queues the next candidates behind its own, so it moves on
-// to a fresh target instead of piling onto one when its own dies. Units more than two spaces out regroup first.
-func (p *targetPicker) distributed(view View, internals *Internals, units []UnitView, act func(u UnitView, c candidate, clear bool) Order) []Order {
-	orders := make([]Order, 0, len(units))
-	center, ok := groupCenter(units)
-	if !ok {
-		return orders
-	}
-	type target struct {
-		c        candidate
-		score    float64
-		need     int
-		assigned int
-	}
-	saved_target, saved_from, saved_h, saved_mh := internals.target, internals.target_from, internals.target_health, internals.target_max_health
-	min_score := p.min_score.float(view, internals)
-	targets := make([]*target, 0)
-	for _, c := range p.candidates(view, internals, center) {
-		loc := c.loc
-		internals.target, internals.target_from = &loc, &center
-		internals.target_health, internals.target_max_health = c.health()
-		score := p.score.float(view, internals)
-		if p.has_min && score < min_score {
-			continue
-		}
-		damage := max(0.01, p.distribute.damage.float(view, internals))
-		overkill := max(0, p.distribute.overkill.float(view, internals))
-		need := max(1, int(math.Ceil(max(internals.target_health, 0.01)*(1+overkill)/damage)))
-		targets = append(targets, &target{c: c, score: score, need: need})
-	}
-	internals.target, internals.target_from, internals.target_health, internals.target_max_health = saved_target, saved_from, saved_h, saved_mh
-	if len(targets) == 0 {
-		return orders
-	}
-	sort.SliceStable(targets, func(i, j int) bool {
-		if targets[i].score != targets[j].score {
-			return targets[i].score > targets[j].score
-		}
-		return zoneRefLess(targets[i].c.loc, targets[j].c.loc)
-	})
-	free := make([]UnitView, 0, len(units))
-	for _, u := range units {
-		if axialDistance(u.Location.Space, center.Space) > 2 {
-			orders = append(orders, view.MoveOrder(u, center, true))
-		} else {
-			free = append(free, u)
-		}
-	}
-	assignment := make(map[uint64]int, len(free))
-	take := func(t int) {
-		best, best_d := -1, 0
-		for i, u := range free {
-			if d := locationDistance(u.Location, targets[t].c.loc); best < 0 || d < best_d {
-				best, best_d = i, d
-			}
-		}
-		assignment[free[best].InternalID] = t
-		targets[t].assigned++
-		free = append(free[:best], free[best+1:]...)
-	}
-	for t := range targets {
-		for targets[t].assigned < targets[t].need && len(free) > 0 {
-			take(t)
-		}
-	}
-	for t := 0; len(free) > 0; t = (t + 1) % len(targets) {
-		take(t)
-	}
-	// the attackers sharing a target queue different next targets, so they don't all pile onto one when it dies
-	nth := make(map[int]int, len(targets))
-	for _, u := range units {
-		t, ok := assignment[u.InternalID]
-		if !ok {
-			continue
-		}
-		orders = append(orders, act(u, targets[t].c, true))
-		offset := nth[t]
-		nth[t]++
-		for k := 1; k <= p.distribute.queue && k < len(targets); k++ {
-			next := (t + offset + k) % len(targets)
-			if next == t {
-				next = (next + 1) % len(targets)
-			}
-			orders = append(orders, act(u, targets[next].c, false))
-		}
-	}
-	return orders
-}
-
 // moveAction sends units to the best-scoring target of a picker
 type moveAction struct {
 	filtered
@@ -520,8 +488,8 @@ func parseMove(raw map[string]any) (Action, error) {
 	if picker == nil {
 		return nil, fmt.Errorf("move action requires \"targets\"")
 	}
-	if raw["order"] != nil || raw["distribute"] != nil {
-		return nil, fmt.Errorf("\"order\" and \"distribute\" only apply to attack")
+	if raw["order"] != nil {
+		return nil, fmt.Errorf("\"order\" only applies to attack")
 	}
 	eligible, err := parseEligible(raw["eligible"])
 	if err != nil {
@@ -530,27 +498,201 @@ func parseMove(raw map[string]any) (Action, error) {
 	return &moveAction{picker: picker, eligible: eligible, max: parseMax(raw)}, nil
 }
 
+type selectSpaceOption struct {
+	picker *targetPicker
+}
+
+type selectSpaceAction struct {
+	options   []*selectSpaceOption
+	from      anchor
+	var_x     string
+	var_y     string
+	var_score string
+	min_score amount
+	has_min   bool
+	persist   bool
+}
+
+func (a *selectSpaceAction) ToOrders(view View, internals *Internals) []Order {
+	from, ok := a.from.location(view, internals)
+	if !ok {
+		return nil
+	}
+	var best candidate
+	best_score, found := 0.0, false
+	for _, opt := range a.options {
+		if opt.picker == nil {
+			continue
+		}
+		c, score, ok := opt.picker.best(view, internals, from)
+		if ok && (!found || score > best_score || (score == best_score && zoneRefLess(c.loc, best.loc))) {
+			best, best_score, found = c, score, true
+		}
+	}
+	if !found {
+		return nil
+	}
+	if a.has_min && best_score < a.min_score.float(view, internals) {
+		return nil
+	}
+	vars := internals.turn_vars
+	if a.persist {
+		if internals.vars == nil {
+			internals.vars = make(map[string]float64)
+		}
+		vars = internals.vars
+	} else if internals.turn_vars == nil {
+		internals.turn_vars = make(map[string]float64)
+		vars = internals.turn_vars
+	}
+	if a.var_x != "" {
+		vars[a.var_x] = float64(best.loc.Space.X)
+	}
+	if a.var_y != "" {
+		vars[a.var_y] = float64(best.loc.Space.Y)
+	}
+	if a.var_score != "" {
+		vars[a.var_score] = best_score
+	}
+	return nil
+}
+
+func parseSelectSpace(raw map[string]any) (Action, error) {
+	from, err := parseAnchor(raw["from"])
+	if err != nil {
+		return nil, err
+	}
+	persist, _ := raw["persist"].(bool)
+	var_x, _ := raw["var_x"].(string)
+	var_y, _ := raw["var_y"].(string)
+	var_score, _ := raw["var_score"].(string)
+	_, has_min := raw["min_score"]
+	min_score, err := parseNumber(raw, "min_score", 0)
+	if err != nil {
+		return nil, err
+	}
+	if name, ok := raw["var"].(string); ok && name != "" {
+		if var_x == "" {
+			var_x = name + "_x"
+		}
+		if var_y == "" {
+			var_y = name + "_y"
+		}
+	}
+	if var_x != "" {
+		noteVarSet(var_x)
+	}
+	if var_y != "" {
+		noteVarSet(var_y)
+	}
+	if var_score != "" {
+		noteVarSet(var_score)
+	}
+	var options []*selectSpaceOption
+	if rawOpts, ok := raw["options"].([]any); ok {
+		for _, o := range rawOpts {
+			optMap, ok := o.(map[string]any)
+			if !ok {
+				continue
+			}
+			picker, err := parseTargetPicker(optMap)
+			if err != nil {
+				return nil, err
+			}
+			if picker != nil {
+				options = append(options, &selectSpaceOption{picker: picker})
+			}
+		}
+	} else {
+		picker, err := parseTargetPicker(raw)
+		if err != nil {
+			return nil, err
+		}
+		if picker != nil {
+			options = append(options, &selectSpaceOption{picker: picker})
+		}
+	}
+	return &selectSpaceAction{
+		options:   options,
+		from:      from,
+		var_x:     var_x,
+		var_y:     var_y,
+		var_score: var_score,
+		min_score: min_score,
+		has_min:   has_min,
+		persist:   persist,
+	}, nil
+}
+
+func (i *Internals) targetSpace() Coordinate {
+	if i.target == nil {
+		return Coordinate{}
+	}
+	return i.target.Space
+}
+
+func spaceVision(view View, space Coordinate) uint8 {
+	for _, info := range view.AllSpaces() {
+		if info.Space == space {
+			return info.Vision
+		}
+	}
+	return 0
+}
+
 // target_distance / target_distance_home, only meaningful inside a picker's score
 func targetDistanceCounter(name string) (counter, bool) {
 	switch strings.TrimSpace(name) {
 	case "target_distance":
-		return func(_ View, i *Internals) float64 {
+		return func(v View, i *Internals) float64 {
 			if i.target == nil || i.target_from == nil {
 				return 0
 			}
-			return float64(axialDistance(i.target_from.Space, i.target.Space))
+			return float64(v.SpaceDistance(i.target_from.Space, i.target.Space))
 		}, true
+	case "unit_distance":
+		return func(v View, i *Internals) float64 {
+			if i.target == nil || i.unit == nil {
+				return 0
+			}
+			return float64(v.LocationDistance(*i.unit, *i.target))
+		}, true
+	case "unit_health":
+		return func(_ View, i *Internals) float64 { return i.unit_health }, true
+	case "unit_id":
+		return func(_ View, i *Internals) float64 { return i.unit_id }, true
+	case "unit_stamina":
+		return func(_ View, i *Internals) float64 { return i.unit_stamina }, true
+	case "target_assigned":
+		return func(_ View, i *Internals) float64 { return i.target_assigned }, true
+	case "assign_round":
+		return func(_ View, i *Internals) float64 { return i.assign_round }, true
+	case "target_id":
+		return func(_ View, i *Internals) float64 { return i.target_id }, true
 	case "target_health":
 		return func(_ View, i *Internals) float64 { return i.target_health }, true
 	case "target_max_health":
 		return func(_ View, i *Internals) float64 { return i.target_max_health }, true
+	case "target_own_buildings":
+		return func(v View, i *Internals) float64 { return float64(v.OwnBuildingsIn(i.targetSpace())) }, true
+	case "target_enemy_distance":
+		return func(v View, i *Internals) float64 { return float64(max(0, v.EnemyDistance(i.targetSpace()))) }, true
+	case "target_vision":
+		return func(v View, i *Internals) float64 { return float64(spaceVision(v, i.targetSpace())) }, true
+	case "target_region_progress":
+		return func(v View, i *Internals) float64 { return v.RegionProgress(i.targetSpace()) }, true
+	case "enemy_distance":
+		return func(v View, _ *Internals) float64 {
+			home, ok := homeLocation(v)
+			return float64(max(0, v.EnemyDistance(home.Space))) * boolNumber(ok)
+		}, true
 	case "target_distance_home":
 		return func(v View, i *Internals) float64 {
 			home, ok := homeLocation(v)
 			if i.target == nil || !ok {
 				return 0
 			}
-			return float64(axialDistance(home.Space, i.target.Space))
+			return float64(v.SpaceDistance(home.Space, i.target.Space))
 		}, true
 	}
 	return nil, false

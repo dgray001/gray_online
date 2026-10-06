@@ -17,6 +17,13 @@ type ZoneRef struct {
 	Zone  Coordinate
 }
 
+// What is known of one zone; BuildingPlayer is -1 with no building
+type ZoneInfo struct {
+	Location       ZoneRef
+	HasResource    bool
+	BuildingPlayer int
+}
+
 type ResourceCategory uint8
 
 const (
@@ -48,6 +55,17 @@ var unitTypeNames = map[string]UnitType{
 	"infantry": UnitTypeInfantry,
 	"archer":   UnitTypeArcher,
 	"cavalry":  UnitTypeCavalry,
+}
+
+// "military" stands for every non-economic unit type
+func unitTypesNamed(name string) []UnitType {
+	if name == "military" {
+		return []UnitType{UnitTypeInfantry, UnitTypeArcher, UnitTypeCavalry}
+	}
+	if unit_type, ok := unitTypeNames[name]; ok {
+		return []UnitType{unit_type}
+	}
+	return nil
 }
 
 type UnitStance uint8
@@ -84,6 +102,7 @@ var targetCategoryNames = map[string]TargetCategory{
 
 type UnitView struct {
 	InternalID       uint64
+	PlayerID         int
 	UnitID           uint32
 	Type             UnitType
 	Kind             UnitKind
@@ -132,6 +151,8 @@ const (
 	OrderKindUngarrison
 	OrderKindDelete
 	OrderKindRenew
+	OrderKindAutoAttackUnit
+	OrderKindAutoAttackBuilding
 )
 
 var orderKindNames = map[string]OrderKind{
@@ -147,6 +168,9 @@ var orderKindNames = map[string]OrderKind{
 	"ungarrison":      OrderKindUngarrison,
 	"delete":          OrderKindDelete,
 	"renew":           OrderKindRenew,
+
+	"auto_attack_unit":     OrderKindAutoAttackUnit,
+	"auto_attack_building": OrderKindAutoAttackBuilding,
 }
 
 type CurrentOrder struct {
@@ -200,6 +224,7 @@ type Producible struct {
 
 type BuildingView struct {
 	InternalID        uint64
+	PlayerID          int
 	BuildingID        uint32
 	Location          ZoneRef
 	UnderConstruction bool
@@ -296,7 +321,17 @@ type View interface {
 	// gatherer_id (0 for none) is excluded from the load counts used to skip nodes about to deplete
 	NearestResource(from ZoneRef, category ResourceCategory, gatherer_id uint64) (ResourceView, bool)
 	KnownResources(category ResourceCategory) []ResourceView
-	NearestBuildSite(from ZoneRef, building_id uint32) (ZoneRef, bool)
+	NearestBuildSite(from ZoneRef, building_id uint32, include func(Coordinate) bool) (ZoneRef, bool)
+	// every zone the building could be placed on, under the same rules as NearestBuildSite
+	BuildSites(building_id uint32, include func(Coordinate) bool) []ZoneRef
+	// own buildings (built, under construction or planned) in a space
+	OwnBuildingsIn(space Coordinate) int
+	// our units with an attack order (current, queued or emitted this turn) on the unit or building
+	AssignedTo(building bool, internal_id uint64, exclude map[uint64]bool) int
+	// space distance to the closest known enemy building, or -1 when none is known
+	EnemyDistance(from Coordinate) int
+	// share of the known spaces of the space's region we would own after claiming it; 0 if already ours or in no known region
+	RegionProgress(space Coordinate) float64
 	NearestUnexplored(from ZoneRef) ([]ZoneRef, bool)
 	TurnNumber() int
 	MapSize() int
@@ -304,8 +339,18 @@ type View interface {
 	EnemiesFound() int
 	OwnedSpaces() int
 	AllSpaces() []SpaceInfo
+	AllZones() []ZoneInfo
+	// every player in the game in id order, and the player this view belongs to
+	PlayerIDs() []int
+	PlayerID() int
+	PlayerScore(player_id int) int
+	MatchingSpaces(condition SpaceCondition) []Coordinate
 	CountSpaces(condition SpaceCondition, include func(Coordinate) bool) int
 	ClosestSpaces(reference Coordinate, condition SpaceCondition, exclude_reference bool) []Coordinate
+	// space-to-space steps over the board graph, so seams and links count as one step
+	SpaceDistance(a Coordinate, b Coordinate) int
+	// SpaceDistance scaled to zone steps across spaces; zone offset distance within one space
+	LocationDistance(a ZoneRef, b ZoneRef) int
 	Score() int
 	BestEnemyScore() int
 	TechResearched(tech_id uint32) bool

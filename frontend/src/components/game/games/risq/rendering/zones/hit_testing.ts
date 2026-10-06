@@ -4,6 +4,13 @@ import { rotatePoint, subtractPoint2D, pointInHexagon } from '../../../../util/o
 import { INNER_ZONE_MULTIPLIER } from './geometry';
 import { atangent } from '../../../../../../scripts/math';
 import { err } from '../../../../../../scripts/log';
+import type { RisqViewMode } from '../terrain';
+import { unitVisibleInViewMode } from './draw';
+
+export function visibleZoneUnitSlot(zone: RisqZone, index: number, view_mode: RisqViewMode): UnitByTypeData[] {
+  return (zone.unit_slots?.[index] ?? []).filter((group) => unitVisibleInViewMode(group.unit_type, view_mode));
+}
+
 /** Resolves hover logic for the zones of a risq space */
 export function resolveHoveredZones(
   p: Point2D,
@@ -79,7 +86,7 @@ export type HoveredZoneObject =
   | { kind: 'unit'; groups: UnitByTypeData[] };
 
 /** Returns whatever slot (building, resource, or unit group) is under the cursor in this zone, if any */
-export function hoveredZoneObject(zone: RisqZone): HoveredZoneObject | undefined {
+export function hoveredZoneObject(zone: RisqZone, view_mode: RisqViewMode): HoveredZoneObject | undefined {
   for (const [i, part] of zone.hovered_data.entries()) {
     if (!part.hovered) {
       continue;
@@ -93,8 +100,8 @@ export function hoveredZoneObject(zone: RisqZone): HoveredZoneObject | undefined
       }
       return undefined;
     }
-    const groups = zone.unit_slots?.[i - 1];
-    if (groups) {
+    const groups = visibleZoneUnitSlot(zone, i - 1, view_mode);
+    if (groups.length > 0) {
       return { kind: 'unit', groups };
     }
   }

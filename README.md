@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.8u: Various small issues and v0.6 ai
+v0.8v: Final v0.6 ai
 
 ## Dev Use
 

@@ -2,6 +2,7 @@ import { DwgDialogBox, DialogSize } from '../../../../../dialog_box/dialog_box';
 import type { TechTreeDialogData, TreeNode, RisqBuildingTreeEntry, HeaderNode, RisqUnitStatsEntry } from './tree_nodes';
 import html from './tech_tree_dialog.html';
 import { apiGet } from '../../../../../../scripts/api';
+import { createImage } from '../../../../../../scripts/image';
 import {
   COLUMN_W,
   NODE_GAP,
@@ -25,6 +26,7 @@ import type { RisqCost } from '../../model/types';
 import { resourceTypeImage } from '../../rendering/assets/resources';
 import './tech_tree_dialog.scss';
 export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
+  private wrapper!: HTMLDivElement;
   private title_heading!: HTMLHeadingElement;
   private canvas_scroll!: HTMLDivElement;
   private canvas!: HTMLCanvasElement;
@@ -40,7 +42,7 @@ export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
   constructor() {
     super();
     this.configureElement('title_heading', 'title');
-    this.configureElements('canvas_scroll', 'canvas', 'empty_message', 'hover_tooltip', 'close_button');
+    this.configureElements('wrapper', 'canvas_scroll', 'canvas', 'empty_message', 'hover_tooltip', 'close_button');
   }
 
   override getHTML(): string {
@@ -286,8 +288,7 @@ export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
 
   private addStatChip(container: HTMLElement, icon_path: string, value: number) {
     const chip = document.createElement('span');
-    const img = document.createElement('img');
-    img.src = `/images/${icon_path}.png`;
+    const img = createImage(`/images/${icon_path}.png`);
     img.alt = '';
     const text = document.createElement('span');
     text.innerText = value.toString();
@@ -417,17 +418,15 @@ export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
 
   // flips left/right and up/down based on which half of the visible viewport the cursor is in, so the tooltip is never behind it
   private positionTooltip(e: MouseEvent) {
-    const wrapper_rect = this.canvas_scroll.getBoundingClientRect();
+    const wrapper_rect = this.wrapper.getBoundingClientRect();
     const tooltip_rect = this.hover_tooltip.getBoundingClientRect();
     const gap = 16;
-    const cursor_x = e.clientX - wrapper_rect.left;
-    const cursor_y = e.clientY - wrapper_rect.top;
-    const local_x = cursor_x + this.canvas_scroll.scrollLeft;
-    const local_y = cursor_y + this.canvas_scroll.scrollTop;
-    const x = cursor_x > wrapper_rect.width / 2 ? local_x - tooltip_rect.width - gap : local_x + gap;
-    const y = cursor_y > wrapper_rect.height / 2 ? local_y - tooltip_rect.height - gap : local_y + gap;
-    this.hover_tooltip.style.left = `${Math.max(0, x)}px`;
-    this.hover_tooltip.style.top = `${Math.max(0, y)}px`;
+    const cursor_x = e.clientX - wrapper_rect.left - this.wrapper.clientLeft;
+    const cursor_y = e.clientY - wrapper_rect.top - this.wrapper.clientTop;
+    const x = cursor_x > this.wrapper.clientWidth / 2 ? cursor_x - tooltip_rect.width - gap : cursor_x + gap;
+    const y = cursor_y > this.wrapper.clientHeight / 2 ? cursor_y - tooltip_rect.height - gap : cursor_y + gap;
+    this.hover_tooltip.style.left = `${Math.max(0, Math.min(x, this.wrapper.clientWidth - tooltip_rect.width))}px`;
+    this.hover_tooltip.style.top = `${Math.max(0, Math.min(y, this.wrapper.clientHeight - tooltip_rect.height))}px`;
   }
 
   private hideTooltip() {

@@ -14,7 +14,9 @@ type RisqIntent struct {
 	intent_cost int
 	min_cost    int
 	max_cost    int
-	detail      IntentKind
+	// the part of intent_cost already paid on a half move that did not become an attack
+	sunk_cost int
+	detail    IntentKind
 }
 
 func createRisqIntent() *RisqIntent {
@@ -25,6 +27,7 @@ func (i *RisqIntent) resetIntent() {
 	i.intent_cost = 0
 	i.min_cost = 0
 	i.max_cost = 0
+	i.sunk_cost = 0
 	i.detail = nil
 }
 

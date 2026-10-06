@@ -25,12 +25,50 @@ var (
 type varNameLog struct {
 	read map[string]bool
 	set  map[string]bool
+	// the for_each loops enclosing the action being parsed, innermost last, and what is wrong with the item fields read so far
+	scopes []loopScope
+	errors []string
+}
+
+type loopScope struct {
+	name   string
+	source string
 }
 
 func noteVarRead(name string) {
-	if var_names_log != nil {
-		var_names_log.read[name] = true
+	if var_names_log == nil {
+		return
 	}
+	if strings.Contains(name, ".") {
+		var_names_log.noteItemRead(name)
+		return
+	}
+	var_names_log.read[name] = true
+}
+
+// A name.field read must sit inside a for_each named name, over a source whose items have that field
+func (l *varNameLog) noteItemRead(name string) {
+	prefix, field, _ := strings.Cut(name, ".")
+	for i := len(l.scopes) - 1; i >= 0; i-- {
+		if l.scopes[i].name != prefix {
+			continue
+		}
+		if !hasItemField(l.scopes[i].source, field) {
+			l.errors = append(l.errors, fmt.Sprintf("var(%s): %s items have no field %q", name, l.scopes[i].source, field))
+		}
+		return
+	}
+	l.errors = append(l.errors, fmt.Sprintf("var(%s) is read outside a for_each named %q", name, prefix))
+}
+
+// Parses a for_each body with its item name in scope; without a name log (a parse outside a model load) nothing is checked
+func withLoopScope(name string, source string, parse func() error) error {
+	if var_names_log == nil {
+		return parse()
+	}
+	var_names_log.scopes = append(var_names_log.scopes, loopScope{name: name, source: source})
+	defer func() { var_names_log.scopes = var_names_log.scopes[:len(var_names_log.scopes)-1] }()
+	return parse()
 }
 
 func noteVarSet(name string) {
@@ -47,6 +85,9 @@ func withVarNameCheck(parse func() error) error {
 	defer func() { var_names_log = nil }()
 	if err := parse(); err != nil {
 		return err
+	}
+	if len(var_names_log.errors) > 0 {
+		return fmt.Errorf("%s", strings.Join(var_names_log.errors, "; "))
 	}
 	for name := range var_names_log.read {
 		if var_names_log.set[name] {
@@ -104,6 +145,9 @@ func validVarName(name string) bool {
 
 // var(name) resolution: this turn's variables, then global ones, then the built-in counters; anything else is 0
 func (i *Internals) lookupVar(view View, name string) float64 {
+	if strings.Contains(name, ".") {
+		return i.itemField(name)
+	}
 	if v, ok := i.turn_vars[name]; ok {
 		return v
 	}
@@ -221,7 +265,7 @@ func parseVarFilters(base string, rest string, obj map[string]any) error {
 			ids = append(ids, float64(n))
 			continue
 		}
-		if _, ok := unitTypeNames[t]; ok {
+		if unitTypesNamed(t) != nil {
 			types, _ := obj["unit_types"].([]any)
 			obj["unit_types"] = append(types, t)
 			continue
@@ -231,6 +275,13 @@ func parseVarFilters(base string, rest string, obj map[string]any) error {
 			continue
 		}
 		switch t {
+		case "bucket":
+			if i+1 >= len(tokens) {
+				return fmt.Errorf("\"bucket\" needs a bucket name after it")
+			}
+			obj["in_bucket"] = tokens[i+1]
+			i++
+			continue
 		case "within":
 			if i+1 >= len(tokens) {
 				return fmt.Errorf("\"within\" needs a number after it")
@@ -269,7 +320,7 @@ func parseVarFilters(base string, rest string, obj map[string]any) error {
 func finishVarFilters(base string, ids []any, obj map[string]any) error {
 	if len(ids) > 0 {
 		switch base {
-		case "building_count", "foundation_count", "enemy_buildings_known":
+		case "building_count", "foundation_count", "foundation_space_x", "foundation_space_y", "enemy_buildings_known":
 			obj["building_ids"] = ids
 		case "tech_researched":
 			obj["tech_id"] = ids[0]

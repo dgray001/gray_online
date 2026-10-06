@@ -15,6 +15,7 @@ interface MyCustomEventMap {
   connection_lost: CustomEvent<string>;
   chat_sent: CustomEvent<ChatMessage>;
   game_update: CustomEvent<string>;
+  game_initialization_failed: CustomEvent<unknown>;
   join_room: CustomEvent<JoinRoomData>;
   rename_room: CustomEvent<string>;
   kick_player: CustomEvent<number>;

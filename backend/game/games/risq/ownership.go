@@ -2,7 +2,7 @@ package risq
 
 import "github.com/dgray001/gray_online/game/games/risq/internal/defs"
 
-const spaceGoldIncome = 2.0
+const defaultSpaceGoldIncome = 2.0
 
 // A space is owned by whoever is the sole building owner there; with no buildings at all,
 // ownership instead falls to whoever is the sole owner of military units there (economic units don't conquer).
@@ -64,8 +64,8 @@ func (r *GameRisq) recalculateOwnership() {
 			}
 		}
 		if owner >= 0 && owner < len(r.players) {
-			r.players[owner].resources.addGathered(defs.RisqResourceCategory_GOLD, spaceGoldIncome)
-			r.players[owner].report.recordGoldFromLand(spaceGoldIncome)
+			r.players[owner].resources.addGathered(defs.RisqResourceCategory_GOLD, space.gold_income)
+			r.players[owner].report.recordGoldFromLand(space.gold_income)
 		}
 	}
 	for _, region := range r.regions {

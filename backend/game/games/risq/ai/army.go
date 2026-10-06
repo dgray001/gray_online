@@ -13,14 +13,8 @@ type armyAction struct {
 }
 
 type armyState struct {
-	// biggest visible enemy army in the last ~15 turns, for spotting a broken enemy
-	peak      int
-	peak_turn int
-	assault   bool
-	members   map[uint64]bool
-	focus     *ZoneRef
-	// last seen enemy buildings, kept until an assault unit stands there and finds them gone
-	known map[uint64]ZoneRef
+	assault bool
+	members map[uint64]bool
 }
 
 func (a *armyAction) inAssaultGroup(u UnitView) bool {
@@ -29,7 +23,7 @@ func (a *armyAction) inAssaultGroup(u UnitView) bool {
 
 func (a *armyAction) ToOrders(view View, internals *Internals) []Order {
 	launch, retreat := a.launch.int(view, internals), a.retreat.int(view, internals)
-	defend_radius, strike := a.defend_radius.int(view, internals), a.strike.int(view, internals)
+	defend_radius := a.defend_radius.int(view, internals)
 	st := &internals.army
 	if st.members == nil {
 		st.members = make(map[uint64]bool)
@@ -55,30 +49,10 @@ func (a *armyAction) ToOrders(view View, internals *Internals) []Order {
 		return orders
 	}
 
-	enemy_army := 0
-	for _, e := range view.VisibleEnemyUnits() {
-		if e.Kind == UnitMilitary && axialDistance(home.Space, e.Location.Space) <= defend_radius+1 {
-			enemy_army++
-		}
-	}
-	turn := view.TurnNumber()
-	if enemy_army >= st.peak || turn-st.peak_turn > 15 {
-		st.peak, st.peak_turn = enemy_army, turn
-	}
-	enemy_broken := strike > 0 && st.peak >= 15 && enemy_army <= st.peak/3
-
-	// launch / retreat decision
-	if !st.assault && enemy_broken && len(mil) >= strike {
-		st.assault = true
-		st.members = make(map[uint64]bool, len(mil))
-		for _, u := range mil {
-			st.members[u.InternalID] = true
-		}
-		st.peak = 0
-	} else if !st.assault {
+	if !st.assault {
 		gathered := make([]UnitView, 0)
 		for _, u := range mil {
-			if a.inAssaultGroup(u) && axialDistance(u.Location.Space, home.Space) <= 2 {
+			if a.inAssaultGroup(u) && view.SpaceDistance(u.Location.Space, home.Space) <= 2 {
 				gathered = append(gathered, u)
 			}
 		}
@@ -92,13 +66,12 @@ func (a *armyAction) ToOrders(view View, internals *Internals) []Order {
 	} else if len(st.members) <= retreat {
 		st.assault = false
 		st.members = make(map[uint64]bool)
-		st.focus = nil
 	}
 
 	enemies := view.VisibleEnemyUnits()
 	threats := make([]UnitView, 0)
 	for _, e := range enemies {
-		if axialDistance(home.Space, e.Location.Space) <= defend_radius {
+		if view.SpaceDistance(home.Space, e.Location.Space) <= defend_radius {
 			threats = append(threats, e)
 		}
 	}
@@ -112,11 +85,11 @@ func (a *armyAction) ToOrders(view View, internals *Internals) []Order {
 			defenders = append(defenders, u)
 		}
 	}
-	defender_targets := spreadTargets(defenders, threats, 2)
+	defender_targets := spreadTargets(view, defenders, threats)
 	for _, u := range defenders {
 		if t, ok := defender_targets[u.InternalID]; ok {
 			orders = append(orders, view.AttackUnitOrder(u, t, true))
-		} else if len(threats) == 0 && u.CurrentOrder == nil && axialDistance(u.Location.Space, home.Space) >= 1 {
+		} else if len(threats) == 0 && u.CurrentOrder == nil && view.SpaceDistance(u.Location.Space, home.Space) >= 1 {
 			orders = append(orders, view.MoveOrder(u, home, true))
 		}
 	}
@@ -126,56 +99,12 @@ func (a *armyAction) ToOrders(view View, internals *Internals) []Order {
 	if !st.assault {
 		return orders
 	}
-	return append(orders, a.assaultOrders(view, st, members, enemies)...)
+	return append(orders, a.assaultOrders(view, members, enemies)...)
 }
 
-func (a *armyAction) assaultOrders(view View, st *armyState, members []UnitView, enemies []UnitView) []Order {
+func (a *armyAction) assaultOrders(view View, members []UnitView, enemies []UnitView) []Order {
 	orders := make([]Order, 0, len(members))
-	// the member closest to everyone else is the group's anchor
-	anchor, best := members[0], -1
-	for _, u := range members {
-		sum := 0
-		for _, v := range members {
-			sum += axialDistance(u.Location.Space, v.Location.Space)
-		}
-		if best < 0 || sum < best {
-			anchor, best = u, sum
-		}
-	}
 	enemy_buildings := view.VisibleEnemyBuildings()
-	if st.known == nil {
-		st.known = make(map[uint64]ZoneRef)
-	}
-	visible := make(map[uint64]bool, len(enemy_buildings))
-	for _, b := range enemy_buildings {
-		visible[b.InternalID] = true
-		st.known[b.InternalID] = b.Location
-	}
-	for id, loc := range st.known {
-		if visible[id] {
-			continue
-		}
-		for _, u := range members {
-			if u.Location.Space == loc.Space {
-				delete(st.known, id)
-				break
-			}
-		}
-	}
-	if b, ok := nearestBuilding(view, anchor.Location, enemy_buildings); ok {
-		focus := b.Location
-		st.focus = &focus
-	} else if len(st.known) > 0 {
-		remembered := make([]ZoneRef, 0, len(st.known))
-		for _, loc := range st.known {
-			remembered = append(remembered, loc)
-		}
-		if loc, ok := nearestZone(view, anchor.Location, remembered); ok {
-			st.focus = &loc
-		}
-	} else {
-		st.focus = nil
-	}
 	// units standing on a building's zone can't be reached in melee, so they're only dealt with by razing the building
 	building_zones := make(map[ZoneRef]bool, len(enemy_buildings))
 	for _, b := range enemy_buildings {
@@ -192,36 +121,17 @@ func (a *armyAction) assaultOrders(view View, st *armyState, members []UnitView,
 			soldiers = append(soldiers, e)
 		}
 	}
-	local_targets := spreadTargets(members, soldiers, 2)
-	production := make([]BuildingView, 0)
-	for _, b := range enemy_buildings {
-		if b.BuildingID == 1 || b.BuildingID == 22 || b.BuildingID == 23 {
-			production = append(production, b)
-		}
-	}
+	local_targets := spreadTargets(view, members, soldiers)
 	for _, u := range members {
-		if axialDistance(u.Location.Space, anchor.Location.Space) > 2 {
-			orders = append(orders, view.MoveOrder(u, anchor.Location, true))
-			continue
-		}
-		if t, ok := local_targets[u.InternalID]; ok && axialDistance(u.Location.Space, t.Location.Space) <= 0 {
+		if t, ok := local_targets[u.InternalID]; ok && view.SpaceDistance(u.Location.Space, t.Location.Space) <= 0 {
 			orders = append(orders, view.AttackUnitOrder(u, t, true))
-		} else if b, ok := nearestBuilding(view, u.Location, production); ok {
-			orders = append(orders, view.AttackBuildingOrder(u, b, true))
-		} else if t, ok := nearestUnit(view, u.Location, reachable); ok && axialDistance(u.Location.Space, t.Location.Space) <= 3 {
+		} else if t, ok := nearestUnit(view, u.Location, reachable); ok {
 			orders = append(orders, view.AttackUnitOrder(u, t, true))
 		} else if b, ok := nearestBuilding(view, u.Location, enemy_buildings); ok {
 			orders = append(orders, view.AttackBuildingOrder(u, b, true))
-		} else if t, ok := nearestUnit(view, u.Location, reachable); ok {
-			orders = append(orders, view.AttackUnitOrder(u, t, true))
-		} else if st.focus != nil && u.Location.Space != st.focus.Space {
-			orders = append(orders, view.MoveOrder(u, *st.focus, true))
-		} else {
-			st.focus = nil
-			if candidates, ok := view.NearestUnexplored(u.Location); ok {
-				if target, ok := nearestZone(view, anchor.Location, candidates); ok {
-					orders = append(orders, view.MoveOrder(u, target, true))
-				}
+		} else if candidates, ok := view.NearestUnexplored(u.Location); ok {
+			if target, ok := nearestZone(view, u.Location, candidates); ok {
+				orders = append(orders, view.MoveOrder(u, target, true))
 			}
 		}
 	}
@@ -230,27 +140,18 @@ func (a *armyAction) assaultOrders(view View, st *armyState, members []UnitView,
 
 // spreadTargets gives each unit its nearest enemy that still has fewer than `per` attackers, so a big group
 // doesn't overkill one target; once every enemy is covered the cap rises and assignment continues.
-func spreadTargets(units []UnitView, targets []UnitView, per int) map[uint64]UnitView {
+func spreadTargets(view View, units []UnitView, targets []UnitView) map[uint64]UnitView {
 	assigned := make(map[uint64]UnitView, len(units))
 	if len(targets) == 0 {
 		return assigned
 	}
 	load := make(map[uint64]int, len(targets))
-	cap := max(1, per)
 	for _, u := range units {
-		best, best_distance, found := UnitView{}, -1, false
-		for !found {
-			for _, t := range targets {
-				if load[t.InternalID] >= cap {
-					continue
-				}
-				d := locationDistance(u.Location, t.Location)
-				if !found || d < best_distance || (d == best_distance && t.InternalID < best.InternalID) {
-					best, best_distance, found = t, d, true
-				}
-			}
-			if !found {
-				cap++
+		best, best_dist, best_load := targets[0], view.LocationDistance(u.Location, targets[0].Location), load[targets[0].InternalID]
+		for _, t := range targets[1:] {
+			l, d := load[t.InternalID], view.LocationDistance(u.Location, t.Location)
+			if l < best_load || (l == best_load && (d < best_dist || (d == best_dist && t.InternalID < best.InternalID))) {
+				best, best_dist, best_load = t, d, l
 			}
 		}
 		load[best.InternalID]++

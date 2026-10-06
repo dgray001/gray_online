@@ -2,7 +2,7 @@ import { ColorRGB } from '../../../../../scripts/color_rgb';
 import { DEV } from '../../../../../scripts/util';
 import { drawHexagon, drawText } from '../../../util/canvas_util';
 import type { Point2D } from '../../../util/objects2d';
-import type { DwgRisq } from '../risq';
+import type { RisqDrawHost } from './draw_host';
 import type { RisqSpace } from '../model/types';
 import { RisqResourceType, RisqVisibilityLevel } from '../model/types';
 import { resourceTypeImage } from './assets/resources';
@@ -35,9 +35,10 @@ export declare interface DrawRisqSpaceConfig {
   rotation: number;
 }
 
+export const SPACE_BORDER_REFERENCE_RADIUS = 60;
 const space_line_width: Record<DrawRisqSpaceDetail, number> = {
   [DrawRisqSpaceDetail.OWNERSHIP]: 2,
-  [DrawRisqSpaceDetail.SPACE_DETAILS]: 1.2,
+  [DrawRisqSpaceDetail.SPACE_DETAILS]: 1.4,
   [DrawRisqSpaceDetail.ZONE_DETAILS]: 0.8,
 };
 
@@ -64,7 +65,7 @@ export function fillHexOverlay(ctx: CanvasRenderingContext2D, c: Point2D, r: num
 
 export function drawRisqSpace(
   ctx: CanvasRenderingContext2D,
-  game: DwgRisq,
+  game: RisqDrawHost,
   space: RisqSpace,
   config: DrawRisqSpaceConfig
 ) {
@@ -72,7 +73,7 @@ export function drawRisqSpace(
   const region = game.session.getRegionForSpace(space.coordinate_key);
   const region_owned = (region?.owner ?? -1) >= 0;
   ctx.strokeStyle = 'transparent';
-  ctx.lineWidth = space_line_width[config.draw_detail];
+  ctx.lineWidth = space_line_width[config.draw_detail] * (config.hex_r / SPACE_BORDER_REFERENCE_RADIUS);
   let black_text = false;
   if (
     config.view_mode === RisqViewMode.OWNERSHIP ||
@@ -80,7 +81,9 @@ export function drawRisqSpace(
     space.visibility === RisqVisibilityLevel.UNEXPLORED
   ) {
     const region_hovered = !!region && region === game.hover.hoveredRegion();
-    const fill = getSpaceFill(space, config.view_mode, owner_color, true, region_hovered);
+    const region_clicked =
+      !!region && (game.selection.isRegionSelected(region) || (region_hovered && !!game.hover.space()?.clicked));
+    const fill = getSpaceFill(space, config.view_mode, owner_color, true, region_hovered, region_clicked);
     if (region_owned) {
       fill.dBrightness(-0.22);
     }
@@ -89,7 +92,13 @@ export function drawRisqSpace(
     black_text = fill.getBrightness() > 0.5;
   } else {
     const override_zones = config.draw_detail === DrawRisqSpaceDetail.OWNERSHIP ? [] : (space.zones?.flat() ?? []);
+
+    if (game.getGame()?.background_image) {
+      ctx.globalAlpha = 0.5;
+    }
     drawHexImage(ctx, getSpaceTerrainImage(game, space.terrain_id, override_zones), space.center, config.hex_r);
+    ctx.globalAlpha = 1.0;
+
     if (config.view_mode !== RisqViewMode.RESOURCE && !!owner_color) {
       const tint = `rgba(${owner_color.getR()}, ${owner_color.getG()}, ${owner_color.getB()}, ${region_owned ? 0.45 : 0.25})`;
       fillHexOverlay(ctx, space.center, config.hex_r, tint);
@@ -138,23 +147,26 @@ export function drawRisqSpace(
   }
 }
 
-export function drawRisqSpaceBorder(
-  ctx: CanvasRenderingContext2D,
-  game: DwgRisq,
-  space: RisqSpace,
-  config: DrawRisqSpaceConfig
-) {
-  const owner_color = spaceOwnerColor(space.ownership, game.getGame()?.players ?? []);
-  const line_width = space_line_width[config.draw_detail];
-  ctx.fillStyle = 'transparent';
-  ctx.strokeStyle = borderStrokeStyle(owner_color, 1);
-  ctx.lineWidth = line_width;
-  drawHexagon(ctx, space.center, config.hex_r - 0.5 * line_width);
+export function isOverviewViewMode(view_mode?: RisqViewMode): boolean {
+  return view_mode === RisqViewMode.OWNERSHIP || view_mode === RisqViewMode.REGION;
+}
+
+const overview_space_line_width: Record<DrawRisqSpaceDetail, number> = {
+  [DrawRisqSpaceDetail.OWNERSHIP]: 1.6,
+  [DrawRisqSpaceDetail.SPACE_DETAILS]: 1.1,
+  [DrawRisqSpaceDetail.ZONE_DETAILS]: 0.6,
+};
+
+export function spaceBorderWidth(
+  config: Pick<DrawRisqSpaceConfig, 'hex_r' | 'draw_detail'> & { view_mode?: RisqViewMode }
+): number {
+  const widths = isOverviewViewMode(config.view_mode) ? overview_space_line_width : space_line_width;
+  return widths[config.draw_detail] * (config.hex_r / SPACE_BORDER_REFERENCE_RADIUS);
 }
 
 function drawSpaceContent(
   ctx: CanvasRenderingContext2D,
-  game: DwgRisq,
+  game: RisqDrawHost,
   space: RisqSpace,
   config: DrawRisqSpaceConfig,
   black_text: boolean,
@@ -259,7 +271,7 @@ function drawSpaceContent(
 
 function drawSpaceDetailsContent(
   ctx: CanvasRenderingContext2D,
-  game: DwgRisq,
+  game: RisqDrawHost,
   space: RisqSpace,
   config: DrawRisqSpaceConfig,
   black_text: boolean
@@ -341,7 +353,8 @@ export function getSpaceFill(
   view_mode: RisqViewMode = RisqViewMode.ALL,
   owner_color: ColorRGB | undefined = undefined,
   check_hover = true,
-  force_hover = false
+  force_hover = false,
+  force_clicked: boolean = false
 ): ColorRGB {
   const color = new ColorRGB(0, 0, 0, 0);
   if (!!space) {
@@ -359,8 +372,8 @@ export function getSpaceFill(
           color.addColor(owner_color.getR(), owner_color.getG(), owner_color.getB(), 0.25);
         }
       }
-      if (check_hover && (space.hovered || force_hover)) {
-        if (space.clicked) {
+      if (check_hover && (space.hovered || force_hover || force_clicked)) {
+        if (space.clicked || force_clicked) {
           color.addColor(210, 210, 210, 0.4);
         } else {
           color.addColor(190, 190, 190, 0.2);

@@ -230,6 +230,14 @@ export class RisqTargetPriorityControl {
     return false;
   }
 
+  cancelInput(): void {
+    this.hovering_category = undefined;
+    this.pressed_pool_category = undefined;
+    this.dragging_category = undefined;
+    this.drag_order = undefined;
+    this.dragged = false;
+  }
+
   mouseup(_e: MouseEvent): void {
     if (this.dragging_category !== undefined) {
       if (this.dragged && this.drag_order) {

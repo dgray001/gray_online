@@ -19,6 +19,8 @@ type Scenario struct {
 	Map        string           `json:"map"`
 	MaxTurns   int              `json:"max_turns"`
 	Players    []ScenarioPlayer `json:"players"`
+	// opt-in extra metrics beyond the core set, e.g. "production"
+	Metrics []string `json:"metrics,omitempty"`
 	// A suite: every bucket runs games_per_bucket games of these players on its own map, and the run reports
 	// how each player's AI did overall and per bucket
 	Buckets        []SuiteBucket `json:"buckets,omitempty"`
@@ -32,6 +34,9 @@ type SuiteBucket struct {
 	Map  string `json:"map"`
 	// overrides the suite's max_turns for this bucket when set
 	MaxTurns int `json:"max_turns,omitempty"`
+	// plays exactly this seed (with swap choosing the seat order) instead of the seed and seats derived from the bucket and game index
+	Seed int64 `json:"seed,omitempty"`
+	Swap bool  `json:"swap,omitempty"`
 }
 
 func loadScenario(path string) (Scenario, error) {

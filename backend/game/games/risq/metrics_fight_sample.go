@@ -69,10 +69,11 @@ func (m *gameMetrics) fillFight(frame *FightTickMetrics, spaces, adjacent map[*R
 		spent := float64(max(0, a.stamina-a.base.current_stamina))
 		p.AttackStamina += a.attackStamina
 		p.OverkillStamina += a.overkillStamina
+		p.MoveStamina += float64(a.sunkStamina)
 		if a.moving {
 			p.MoveStamina += spent
 		} else {
-			p.OtherStamina += max(0, spent-a.attackStamina)
+			p.OtherStamina += max(0, spent-a.attackStamina-float64(a.sunkStamina))
 		}
 	}
 	for id := range frame.Players {

@@ -81,4 +81,16 @@ export function drawFoundation(pc: PanelDrawContext, foundation: FoundationDrawD
     align: 'left',
     font: `14px serif`,
   });
+  const stamina =
+    risq.planning.getLocalFoundation(foundation.coordinate_key)?.stamina_cost ??
+    risq.getPlayer()?.planned_foundations.get(foundation.coordinate_key)?.stamina_cost;
+  if (stamina !== undefined) {
+    drawText(ctx, `Construction progress: 0 / ${stamina}`, {
+      p: { x: frame.xi() + 0.1 * frame.w(), y: yi + 36 },
+      w: 0.9 * frame.w(),
+      fill_style: 'black',
+      baseline: 'middle',
+      font: '18px serif',
+    });
+  }
 }

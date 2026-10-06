@@ -1,12 +1,25 @@
 import { err } from '../../../../../../scripts/log';
 import type { Point2D } from '../../../../util/objects2d';
-import type { DwgRisq } from '../../risq';
-import type { RisqResource } from '../../model/types';
+import type { RisqDrawHost } from '../draw_host';
+import type { RisqResource, RisqResourceConfig } from '../../model/types';
 import { RisqResourceType } from '../../model/types';
 import { PLAYER_ICON_SIZE } from './image_cache';
 
-/** Returns image path of the resource */
-export function resourceImage(resource: RisqResource): string {
+// ordered smallest first; a mine of resource_id N shows the stages with resource_id <= N as it depletes
+const STONE_MINE_STAGES: { resource_id: number; filename: string }[] = [
+  { resource_id: 41, filename: 'stonemine_small' },
+  { resource_id: 42, filename: 'stonemine_medium' },
+  { resource_id: 43, filename: 'stonemine_large' },
+];
+
+function stoneMineStageImage(resource: RisqResource, configs: ReadonlyMap<number, RisqResourceConfig>): string {
+  const stages = STONE_MINE_STAGES.filter((s) => s.resource_id <= resource.resource_id);
+  const stage = stages.find((s) => resource.resources_left <= (configs.get(s.resource_id)?.starting_resources ?? -1));
+  return (stage ?? stages[stages.length - 1]).filename;
+}
+
+/** Returns image path of the resource, which changes as the resource depletes */
+export function resourceImage(resource: RisqResource, configs: ReadonlyMap<number, RisqResourceConfig>): string {
   let filename = 'error';
   if (!!resource) {
     switch (resource.resource_id) {
@@ -52,7 +65,7 @@ export function resourceImage(resource: RisqResource): string {
       case 41:
       case 42:
       case 43:
-        filename = 'stonemine';
+        filename = stoneMineStageImage(resource, configs);
         break;
       // gold
       case 51:
@@ -91,6 +104,16 @@ const FOREST_CLUSTER: TreeClusterLayout = {
   })),
 };
 
+const FOREST_THREE_TREE_CLUSTER: TreeClusterLayout = {
+  name: 'forest_three',
+  front_size: FOREST_CLUSTER.front_size,
+  back_size: FOREST_CLUSTER.back_size,
+  back_centers: [(-5 * Math.PI) / 6, -Math.PI / 6].map((a) => ({
+    x: 0.5 + 0.17 * Math.cos(a),
+    y: 0.48 + 0.17 * Math.sin(a),
+  })),
+};
+
 const GROVE_CLUSTER: TreeClusterLayout = {
   name: 'grove',
   front_size: 0.85,
@@ -101,22 +124,62 @@ const GROVE_CLUSTER: TreeClusterLayout = {
   ],
 };
 
+const FOREST_THREE_TREES_BELOW_RESOURCES_LEFT = 800;
+
 function treeClusterLayout(resource: RisqResource): TreeClusterLayout | undefined {
   if (isForestResource(resource)) {
-    return FOREST_CLUSTER;
+    return resource.resources_left < FOREST_THREE_TREES_BELOW_RESOURCES_LEFT
+      ? FOREST_THREE_TREE_CLUSTER
+      : FOREST_CLUSTER;
   }
   return GROVE_RESOURCE_IDS.has(resource.resource_id) ? GROVE_CLUSTER : undefined;
 }
 
-/** Returns the resource's icon; forests and groves get a cached cluster of their tree in front of smaller copies */
-export function resourceIcon(game: DwgRisq, resource: RisqResource): HTMLImageElement | HTMLCanvasElement {
-  const icon = game.getIcon(resourceImage(resource));
+const DEER_RESOURCE_ID = 2;
+const DEER_PAIR_MIN_RESOURCES_LEFT = 100;
+
+const PAIR_FRONT_SIZE = 0.8;
+const PAIR_BACK_SIZE = 0.68;
+const TREE_PAIR_BELOW_RESOURCES_LEFT = 200;
+
+function drawPairedIcon(ctx: CanvasRenderingContext2D, icon: HTMLImageElement, s: number): void {
+  ctx.drawImage(icon, (1 - PAIR_BACK_SIZE) * s, 0.04 * s, PAIR_BACK_SIZE * s, PAIR_BACK_SIZE * s);
+  ctx.drawImage(icon, 0, (1 - PAIR_FRONT_SIZE) * s, PAIR_FRONT_SIZE * s, PAIR_FRONT_SIZE * s);
+}
+
+function drawSingleDeer(ctx: CanvasRenderingContext2D, deer: HTMLImageElement, s: number): void {
+  const offset = 0.5 * (1 - PAIR_FRONT_SIZE) * s;
+  ctx.drawImage(deer, offset, offset, PAIR_FRONT_SIZE * s, PAIR_FRONT_SIZE * s);
+}
+
+/** Returns the resource's icon; forests and groves get a cached cluster, and a full deer gets a cached pair */
+export function resourceIcon(game: RisqDrawHost, resource: RisqResource): HTMLImageElement | HTMLCanvasElement {
+  const configs = game.session.getResourceConfigs();
+  const image = resourceImage(resource, configs);
+  const icon = game.getIcon(image);
+  if (resource.resource_id === DEER_RESOURCE_ID) {
+    const pair = resource.resources_left > DEER_PAIR_MIN_RESOURCES_LEFT;
+    const draw = pair ? drawPairedIcon : drawSingleDeer;
+    const deer = game
+      .getImageCache()
+      .getImage(`deer_${pair ? 'pair' : 'single'}:${image}`, PLAYER_ICON_SIZE, [icon], (ctx) => {
+        draw(ctx, icon, PLAYER_ICON_SIZE);
+      });
+    return deer ?? icon;
+  }
+  const is_tree_cluster = GROVE_RESOURCE_IDS.has(resource.resource_id) || isForestResource(resource);
+  if (is_tree_cluster && resource.resources_left < TREE_PAIR_BELOW_RESOURCES_LEFT) {
+    const tree_pair = game.getImageCache().getImage(`tree_pair:${image}`, PLAYER_ICON_SIZE, [icon], (ctx) => {
+      drawPairedIcon(ctx, icon, PLAYER_ICON_SIZE);
+    });
+    return tree_pair ?? icon;
+  }
   const layout = treeClusterLayout(resource);
   if (!layout) {
     return icon;
   }
   const s = PLAYER_ICON_SIZE;
-  const key = `${layout.name}_cluster:${resourceImage(resource)}`;
+  const key = `${layout.name}_cluster:${image}`;
   const cluster = game.getImageCache().getImage(key, s, [icon], (ctx) => {
     const back = layout.back_size * s;
     for (const c of layout.back_centers) {

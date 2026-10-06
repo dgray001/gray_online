@@ -43,6 +43,7 @@ export class RisqBottomPanel implements CanvasComponent {
   private separator_xs: number[] = [];
   private scrollbar: RisqBottomPanelScrollbar;
   private hovering = false;
+  private mouse_screen: Point2D = { x: -1, y: -1 };
   private p: Point2D = { x: 0, y: 0 };
   private panel_w = 0;
   private panel_h = 0;
@@ -96,6 +97,13 @@ export class RisqBottomPanel implements CanvasComponent {
   }
   setClicking(clicking: boolean): void {
     this.scrollbar.setClicking(clicking);
+    if (!clicking) {
+      this.scrollbar.setHovering(false);
+      for (const item of this.items) {
+        item.setClicking(false);
+        item.setHovering(false);
+      }
+    }
   }
 
   private groupHeight(group: BottomPanelGroup): number {
@@ -209,6 +217,10 @@ export class RisqBottomPanel implements CanvasComponent {
       }
     );
     for (const item of this.items) {
+      if (!this.itemContains(item, this.mouse_screen)) {
+        item.setHovering(false);
+        item.setClicking(false);
+      }
       item.draw(ctx, transform, dt);
     }
     ctx.restore();
@@ -216,7 +228,9 @@ export class RisqBottomPanel implements CanvasComponent {
       this.scrollbar.draw(ctx, transform, dt);
     }
     for (const item of this.items) {
-      item.drawTooltip?.(ctx, transform, this.risq, dt);
+      if (this.itemContains(item, this.mouse_screen) && item.isHovering()) {
+        item.drawTooltip?.(ctx, transform, this.risq, dt);
+      }
     }
   }
 
@@ -227,9 +241,39 @@ export class RisqBottomPanel implements CanvasComponent {
     return this.scrollbar.scroll(dy, mode);
   }
 
+  private contentContains(screen: Point2D): boolean {
+    const padding = RisqBottomPanel.PADDING;
+    return (
+      screen.x >= this.xi() + padding &&
+      screen.x <= this.xf() - padding &&
+      screen.y >= this.yi() + padding &&
+      screen.y <= this.yi() + padding + this.content_h
+    );
+  }
+
+  private itemContains(item: BottomPanelItem, screen: Point2D): boolean {
+    return (
+      this.contentContains(screen) &&
+      screen.x >= item.xi() &&
+      screen.x <= item.xf() &&
+      screen.y >= item.yi() &&
+      screen.y <= item.yf()
+    );
+  }
+
   mousemove(canvas: Point2D, screen: Point2D, transform: BoardTransformData): boolean {
+    this.mouse_screen = screen;
     const scrollbar_hovering = this.overflowing && this.scrollbar.mousemove(canvas, screen, transform);
-    const item_hovering = this.items.map((item) => item.mousemove(canvas, screen, transform)).some(Boolean);
+    const item_hovering = this.items
+      .map((item) => {
+        if (this.itemContains(item, screen)) {
+          return item.mousemove(canvas, screen, transform);
+        }
+        item.setHovering(false);
+        item.setClicking(false);
+        return false;
+      })
+      .some(Boolean);
     this.hovering =
       scrollbar_hovering ||
       item_hovering ||
@@ -241,7 +285,7 @@ export class RisqBottomPanel implements CanvasComponent {
     if (this.overflowing && this.scrollbar.mousedown(e)) {
       return true;
     }
-    return this.items.map((item) => item.mousedown(e)).some(Boolean);
+    return this.items.map((item) => this.itemContains(item, this.mouse_screen) && item.mousedown(e)).some(Boolean);
   }
 
   mouseup(e: MouseEvent): void {

@@ -124,6 +124,7 @@ func (b *RisqBuilding) resolveHealthDelta(r *GameRisq) {
 }
 
 func (b *RisqBuilding) recordDeath(r *GameRisq, attacker Attackable, damage float64) {
+	b.zone.space.death_vision[b.player_id] = true
 	space := b.zone.space.coordinate
 	zone := b.zone.coordinate
 	r.players[attacker.playerId()].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: RisqCombatEventKind_BUILDING_RAZED,
@@ -250,12 +251,7 @@ func (b *RisqBuilding) receiveOrder(o *RisqOrder, risq *GameRisq, prepend bool) 
 
 func (b *RisqBuilding) cancelOrder(o *RisqOrder, risq *GameRisq) {
 	b.order_queue.removeOrder(o.internal_id)
-	if len(o.subjects) > 1 {
-		delete(o.subjects, b.internal_id)
-	} else {
-		o.cancelled = true
-		o.turn_resolved = risq.turn_number
-	}
+	o.resolveSubject(b.internal_id, false, risq.turn_number)
 	item, ok := b.production_queue[o.internal_id]
 	if !ok {
 		return
@@ -461,6 +457,8 @@ func (b *RisqBuilding) toFrontend(viewer_player_id int) gin.H {
 	building["produces"] = buildingProducesToFrontend(b.building_id)
 	if config.IsGatherable() {
 		building["resources_left"] = b.resources_left
+		building["resource_capacity"] = config.Gather.Starting_resources
+		building["renew_stamina"] = config.Gather.Renew_stamina
 		building["gather_capacity"] = config.Gather.Gather_capacity
 		building["base_gather_speed"] = config.Gather.Base_gather_speed
 		building["renew_cost"] = config.Gather.Renew_cost.ToFrontend()

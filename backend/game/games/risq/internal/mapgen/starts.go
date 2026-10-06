@@ -205,11 +205,13 @@ func rectangleSpaceBounds(spaces []Space) (row_min int, row_max int, col_min int
 	return
 }
 
-func rowPlayerStartColumn(slot int, count int, col_min int, col_max int) int {
-	if count <= 1 {
-		return (col_min + col_max) / 2
+// Player index of n spaced evenly around the loop of both long rows: the near row left to right, then the far row right to left
+func rowPlayerStartColumn(index int, n int, near bool, col_min int, col_max int) int {
+	span := col_max - col_min
+	if near {
+		return col_min + 2*index*span/n
 	}
-	return col_min + (slot*(col_max-col_min))/(count-1)
+	return col_max - (2*index-n)*span/n
 }
 
 // A row's own column range among the spaces the current shape actually kept -- e.g. a triangle's
@@ -248,7 +250,7 @@ func resolveRowsPlayerStarts(ctx *mapScriptContext, starting_distance int) ([]pl
 			return fmt.Errorf("no spaces at row %d for player starts", row)
 		}
 		for i := 0; i < count; i++ {
-			col := rowPlayerStartColumn(i, count, col_min, col_max)
+			col := rowPlayerStartColumn(start_index+i, n, start_index == 0, col_min, col_max)
 			q := col - floorDiv2(row)
 			space := ctx.board.Space(game_utils.Coordinate2D{X: q, Y: row})
 			if space == nil {
@@ -374,7 +376,7 @@ func startFits(ctx *mapScriptContext, rule startAreaRule, home game_utils.Coordi
 		min_distance = area_size + 1
 	}
 	for _, other := range assigned {
-		if int(game_utils.AxialDistance(home, other.space.Coordinate())) < min_distance {
+		if ctx.board.Distance(ctx.board.Space(home), other.space) < min_distance {
 			return false
 		}
 	}
@@ -514,6 +516,19 @@ func startResourceZone(ctx *mapScriptContext, home game_utils.Coordinate2D, rota
 	return nearestFreeZone(board_zones, home, 0, math.MaxInt, slot.zone_kind)
 }
 
+// The mirrored zone when it is free, else the free zone nearest it (in the player's area first)
+func mirroredResourceZone(ctx *mapScriptContext, mirrored game_utils.Coordinate2D, rotation int, slot startResourceSlot, area_zones []Zone, board_zones []Zone) Zone {
+	if s := ctx.board.Space(mirrored); s != nil {
+		if z := s.Zone(rotateAxial(slot.zone, rotation)); z != nil && !z.Occupied() {
+			return z
+		}
+	}
+	if z := nearestFreeZone(area_zones, mirrored, 0, math.MaxInt, slot.zone_kind); z != nil {
+		return z
+	}
+	return nearestFreeZone(board_zones, mirrored, 0, math.MaxInt, slot.zone_kind)
+}
+
 // Places every start resource for every player, erroring only when the board has no free zone left
 func placeStartResources(ctx *mapScriptContext, starts []playerStartInfo, footprints [][]Space, slots []startResourceSlot) error {
 	board_zones := ctx.allZones()
@@ -538,11 +553,10 @@ func placeStartResources(ctx *mapScriptContext, starts []playerStartInfo, footpr
 				slot.unplanned = false
 			} else {
 				rotated := rotateAxial(slot.space_offset, rotation)
-				space := ctx.board.Space(game_utils.Coordinate2D{X: start.space.Coordinate().X + rotated.X, Y: start.space.Coordinate().Y + rotated.Y})
-				if space == nil || space.Zone(rotateAxial(slot.zone, rotation)) == nil || space.Zone(rotateAxial(slot.zone, rotation)).Occupied() {
-					return fmt.Errorf("could not mirror start resource %d", slot.resource_id)
+				mirrored := game_utils.Coordinate2D{X: start.space.Coordinate().X + rotated.X, Y: start.space.Coordinate().Y + rotated.Y}
+				if zone = mirroredResourceZone(ctx, mirrored, rotation, *slot, area_zones, board_zones); zone == nil {
+					return fmt.Errorf("no free zone left for start resource %d", slot.resource_id)
 				}
-				zone = space.Zone(rotateAxial(slot.zone, rotation))
 			}
 			ctx.board.PlaceResource(zone, slot.resource_id)
 		}
@@ -579,6 +593,24 @@ func startPlacementZone(ctx *mapScriptContext, start playerStartInfo, placement 
 		return nil
 	}
 	return space.Zone(rotateAxial(placement.zone, rotation))
+}
+
+// The mirrored zone when it is free, else the free zone nearest its space (in the player's area first)
+func mirroredBuildingZone(ctx *mapScriptContext, start playerStartInfo, placement startPlacement, footprint []Space, board_zones []Zone) Zone {
+	if z := startPlacementZone(ctx, start, placement); z != nil && !z.Occupied() {
+		return z
+	}
+	rotation := directionIndex(start.direction) - directionIndex(ctx.player_starts[0].direction)
+	offset := rotateAxial(placement.offset, rotation)
+	from := game_utils.Coordinate2D{X: start.space.Coordinate().X + offset.X, Y: start.space.Coordinate().Y + offset.Y}
+	area_zones := make([]Zone, 0)
+	for _, s := range footprint {
+		area_zones = append(area_zones, s.Zones()...)
+	}
+	if z := nearestFreeZone(area_zones, from, 0, math.MaxInt, ""); z != nil {
+		return z
+	}
+	return nearestFreeZone(board_zones, from, 0, math.MaxInt, "")
 }
 
 func placeStartContents(ctx *mapScriptContext, p playerStartsParams, starts []playerStartInfo, footprints [][]Space) error {
@@ -624,8 +656,8 @@ func placeStartContents(ctx *mapScriptContext, p playerStartsParams, starts []pl
 	}
 	for i := 1; i < len(starts); i++ {
 		for _, placement := range layout.buildings {
-			target := startPlacementZone(ctx, starts[i], placement)
-			if target == nil || target.Occupied() || !ctx.board.PlaceBuilding(target, placement.building_id, i) {
+			target := mirroredBuildingZone(ctx, starts[i], placement, footprints[i], board_zones)
+			if target == nil || !ctx.board.PlaceBuilding(target, placement.building_id, i) {
 				return fmt.Errorf("could not mirror start building %d", placement.building_id)
 			}
 			if placement.terrain_id != 0 {

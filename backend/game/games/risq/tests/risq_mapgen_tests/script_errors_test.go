@@ -1,0 +1,45 @@
+package risq_mapgen_tests
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/dgray001/gray_online/game/games/risq/tests/harness/fakeboard"
+)
+
+func TestMalformedScriptsFail(t *testing.T) {
+	cases := map[string]struct{ script, want string }{
+		"empty":         {`[]`, "must start with a shape step"},
+		"not_shape":     {`[{"step":"terrain_fill","params":{"terrain_id":1}}]`, "must start with a shape step"},
+		"two_shapes":    {`[` + hexagon2 + `,` + hexagon2 + `]`, "first step"},
+		"unknown_step":  {`[` + hexagon2 + `,{"step":"nope","params":{}}]`, `unknown map script step "nope"`},
+		"bad_json":      {`{bad`, "failed to parse map script"},
+		"bad_kind":      {shapeScript(`{"kind":"blob","size":2}`), "unknown kind"},
+		"negative_size": {shapeScript(`{"kind":"hexagon","size":-1}`), "must be >= 0"},
+		"ring_inner":    {shapeScript(`{"kind":"ring","size":3,"inner_size":3}`), "inner_size < size"},
+		"rectangle_0":   {shapeScript(`{"kind":"rectangle","rows":0,"cols":2}`), "rows and cols must be >= 1"},
+		"bad_expr":      {shapeScript(`{"kind":"hexagon","size":"1 +"}`), "unexpected token"},
+		"unknown_var":   {shapeScript(`{"kind":"hexagon","size":"nope"}`), `unknown variable "nope"`},
+		"object_size":   {shapeScript(`{"kind":"hexagon","size":{"a":1}}`), "expected a number or expression"},
+		"regions_rect":  {`[{"step":"shape","params":{"kind":"rectangle","cols":3,"rows":3}},{"step":"regions_seven","params":{}}]`, "only valid on hexagon or ring shapes"},
+		"unknown_tech":  {`[` + hexagon2 + `,{"step":"rules","params":{"starting_techs":[999]}}]`, "unknown starting tech"},
+		"no_starts":     {shapeScript(`{"kind":"hexagon","size":2}`), startsMissing},
+		"bad_pattern": {`[{"step":"shape","params":{"kind":"hexagon","size":4}},
+			{"step":"player_starts","params":{"pattern":"zig","area_size":1,"starting_distance":2,"resources":[],"buildings":[]}}]`, "unsupported player_starts pattern"},
+	}
+	scripts := map[string]string{}
+	for name, c := range cases {
+		scripts[name] = c.script
+	}
+	useScripts(t, scripts)
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			if _, err := fakeboard.Generate("script:"+name, 2, 1); err == nil || !strings.Contains(err.Error(), c.want) {
+				t.Errorf("fake error %v, want it to contain %q", err, c.want)
+			}
+			if _, err := engineStarts("script:"+name, 2, 1); err == nil || !strings.Contains(err.Error(), c.want) {
+				t.Errorf("engine error %v, want it to contain %q", err, c.want)
+			}
+		})
+	}
+}

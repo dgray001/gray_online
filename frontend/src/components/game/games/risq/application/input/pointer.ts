@@ -58,11 +58,12 @@ export class RisqPointer {
     if (!board || !board.isInitialized()) {
       return;
     }
-    this.mousemove(this.hover.mouseCanvas(), this.hover.mouseScreen(), this.viewport.lastTransform(), {
-      ctrl: false,
-      shift: false,
-      alt: false,
-    });
+    this.mousemove(
+      this.hover.mouseCanvas(),
+      this.hover.mouseScreen(),
+      this.viewport.lastTransform(),
+      board.getModifiers()
+    );
   }
 
   // scroll() signature already used by HTMLElement
@@ -103,8 +104,19 @@ export class RisqPointer {
     this.hover.dragging();
   }
 
-  mouseleave() {
+  cancelInput(): void {
+    this.dragging_selection = false;
+    this.hover.clearClicks();
     this.hover.leave();
+    for (const component of this.components) {
+      component.setClicking(false);
+      component.setHovering(false);
+    }
+    this.cursor.setDefault();
+  }
+
+  mouseleave(): void {
+    this.cancelInput();
   }
 
   // returns false if mousedown event should initiate dragging
@@ -158,7 +170,7 @@ export class RisqPointer {
     const data = this.left_panel.getData();
     switch (data?.data_type) {
       case LeftPanelDataType.UNIT:
-        this.dispatch.unitOrder([data.data], true, ctrl_held);
+        this.dispatch.unitOrder([data.data], ctrl_held);
         break;
       case LeftPanelDataType.UNITS_BY_TYPE:
       case LeftPanelDataType.ECONOMIC_UNITS:
@@ -166,7 +178,7 @@ export class RisqPointer {
         const units: OrderSubject[] = data.data.units.flatMap((u) =>
           [...u.units].map((internal_id) => ({ unit_type: u.unit_type, internal_id }))
         );
-        this.dispatch.unitOrder(units, false, ctrl_held);
+        this.dispatch.unitOrder(units, ctrl_held);
         break;
       }
       case LeftPanelDataType.BUILDING:

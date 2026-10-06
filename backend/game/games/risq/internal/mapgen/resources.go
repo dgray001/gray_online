@@ -200,7 +200,7 @@ func stepResourceMinSpacing(ctx *mapScriptContext, raw json.RawMessage) error {
 	for _, z := range util.ShuffleFrom(ctx.rng, resource_zones) {
 		too_close := false
 		for _, k := range kept {
-			if int(game_utils.AxialDistance(z.Space().Coordinate(), k.Space().Coordinate())) < distance {
+			if ctx.board.Distance(z.Space(), k.Space()) < distance {
 				too_close = true
 				break
 			}

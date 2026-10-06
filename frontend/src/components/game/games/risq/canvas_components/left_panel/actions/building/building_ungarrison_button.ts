@@ -22,9 +22,11 @@ export class RisqBuildingUngarrisonButton extends RisqActionButton {
     this.setHotkeyCombo(getSettings().risq_hotkeys.actions[RisqHotkeyAction.UNGARRISON]);
   }
 
-  protected released(): void {
-    if (this.isHovering()) {
-      this.risq.commands.ungarrisonBuilding(this.building_id);
-    }
+  override matchesAction(action: RisqHotkeyAction): boolean {
+    return action === RisqHotkeyAction.UNGARRISON;
+  }
+
+  override execute(): void {
+    this.risq.commands.ungarrisonBuilding(this.building_id);
   }
 }

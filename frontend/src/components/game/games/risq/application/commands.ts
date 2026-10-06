@@ -4,7 +4,8 @@ import { createMessage } from '../../../../lobby/data_models';
 import { RISQ_MESSAGE_WARNING_COLOR } from '../canvas_components/message_queue';
 import type { UnitToggleField } from '../canvas_components/left_panel/actions/unit/unit_toggle_button';
 import type { RisqGatherPoint, RisqProducible, RisqTargetCategory, RisqUnitStance } from '../model/types';
-import { RisqOrderType } from '../model/types';
+import { RisqOrderType, RisqProducibleKind, canAffordCost } from '../model/types';
+import { buildingCanProduce, researchQueued } from './orders/eligibility';
 import type { RisqArmedState } from './input/armed_state';
 import type { RisqOrdersModel } from './orders/orders_model';
 import type { RisqOrderPlanning } from './orders/planning';
@@ -22,6 +23,33 @@ export class RisqCommands {
     private armed: RisqArmedState,
     private show_message: (text: string, color: ColorRGB) => void
   ) {}
+
+  private canCommandUnits(internal_ids: number[]): boolean {
+    const player = this.session.getPlayer();
+    return (
+      this.session.canGiveOrders() &&
+      internal_ids.length > 0 &&
+      internal_ids.every((id: number): boolean => !!player?.units.has(id))
+    );
+  }
+
+  private canCommandBuilding(internal_id: number): boolean {
+    return this.session.canGiveOrders() && !!this.session.getPlayer()?.buildings.has(internal_id);
+  }
+
+  private canQueueProduction(building_id: number, target_id: number, kind: RisqProducibleKind): boolean {
+    const player = this.session.getPlayer();
+    const building = player?.buildings.get(building_id);
+    const producible = building?.produces.find((p: RisqProducible): boolean => p.kind === kind && p.id === target_id);
+    if (!player || !building || !producible || !this.canCommandBuilding(building_id)) {
+      return false;
+    }
+    return (
+      buildingCanProduce(player, building, producible) &&
+      canAffordCost(player, producible.cost) &&
+      (kind !== RisqProducibleKind.TECH || !researchQueued(player, this.orders_model.all(), target_id))
+    );
+  }
 
   private sendGameUpdate(content: string, kind: string) {
     const game_update = createMessage(`player-${this.session.getPlayerId()}`, 'game-update', content, kind);
@@ -45,62 +73,78 @@ export class RisqCommands {
     });
   }
 
-  createUnit(building_id: number, unit_id: number, ctrl_held = false) {
-    if (!this.session.canGiveOrders()) {
+  createUnit(building_id: number, unit_id: number, ctrl_held: boolean = false): void {
+    if (!this.canQueueProduction(building_id, unit_id, RisqProducibleKind.UNIT)) {
       return;
     }
     this.addOrder(RisqOrderType.OrderType_BuildingCreate, [building_id], unit_id, !ctrl_held);
   }
 
-  researchTech(building_id: number, tech_id: number, ctrl_held = false) {
-    if (!this.session.canGiveOrders()) {
+  researchTech(building_id: number, tech_id: number, ctrl_held: boolean = false): void {
+    if (!this.canQueueProduction(building_id, tech_id, RisqProducibleKind.TECH)) {
       return;
     }
     this.addOrder(RisqOrderType.OrderType_BuildingResearch, [building_id], tech_id, !ctrl_held);
   }
 
-  confirmDeleteUnit(internal_ids: number[]) {
+  confirmDeleteUnit(internal_ids: number[]): void {
+    if (!this.canCommandUnits(internal_ids)) {
+      return;
+    }
     this.confirm(`Are you sure you want to delete ${internal_ids.length === 1 ? 'this unit' : 'these units'}?`, () =>
       this.deleteUnit(internal_ids)
     );
   }
 
-  private deleteUnit(internal_ids: number[]) {
-    if (!this.session.canGiveOrders() || internal_ids.length === 0) {
+  private deleteUnit(internal_ids: number[]): void {
+    if (!this.canCommandUnits(internal_ids)) {
       return;
     }
     this.addOrder(RisqOrderType.OrderType_UnitDelete, internal_ids, 0, true);
   }
 
-  confirmDeleteBuilding(internal_id: number) {
+  confirmDeleteBuilding(internal_id: number): void {
+    if (!this.canCommandBuilding(internal_id)) {
+      return;
+    }
     this.confirm('Are you sure you want to delete this building?', () => this.deleteBuilding(internal_id));
   }
 
-  private deleteBuilding(internal_id: number) {
-    if (!this.session.canGiveOrders()) {
+  private deleteBuilding(internal_id: number): void {
+    if (!this.canCommandBuilding(internal_id)) {
       return;
     }
     this.addOrder(RisqOrderType.OrderType_BuildingDelete, [internal_id], 0, true);
   }
 
-  stopUnit(internal_ids: number[]) {
-    if (!this.session.canGiveOrders()) {
+  stopUnit(internal_ids: number[]): void {
+    if (!this.canCommandUnits(internal_ids)) {
       return;
     }
     for (const internal_id of internal_ids) {
-      this.orders_model.cancelForSubject(internal_id);
+      this.orders_model.cancelForSubject(internal_id, 'unit');
     }
   }
 
-  ungarrisonUnits(internal_ids: number[]) {
-    if (!this.session.canGiveOrders() || internal_ids.length === 0) {
+  stopBuilding(internal_id: number): void {
+    if (!this.canCommandBuilding(internal_id)) {
+      return;
+    }
+    this.orders_model.cancelForSubject(internal_id, 'building');
+  }
+
+  ungarrisonUnits(internal_ids: number[]): void {
+    if (!this.canCommandUnits(internal_ids)) {
       return;
     }
     this.addOrder(RisqOrderType.OrderType_UnitUngarrison, internal_ids, 0, true);
   }
 
-  ungarrisonBuilding(building_id: number) {
-    this.ungarrisonUnits(this.session.findBuildingById(building_id)?.garrisoned_units ?? []);
+  ungarrisonBuilding(building_id: number): void {
+    if (!this.canCommandBuilding(building_id)) {
+      return;
+    }
+    this.ungarrisonUnits(this.session.getPlayer()?.buildings.get(building_id)?.garrisoned_units ?? []);
   }
 
   toggleBuildingAttack() {
@@ -111,7 +155,10 @@ export class RisqCommands {
     }
   }
 
-  toggleBuildingGatherPoint(building_id: number) {
+  toggleBuildingGatherPoint(building_id: number): void {
+    if (!this.canCommandBuilding(building_id)) {
+      return;
+    }
     if (this.armed.isGatherPointArmed()) {
       this.armed.disarmGatherPoint();
       this.clearGatherPoint(building_id);
@@ -133,22 +180,22 @@ export class RisqCommands {
     this.armed.armMercenary(mercenary);
   }
 
-  setGatherPoint(building_id: number, point: RisqGatherPoint) {
-    if (!this.session.canGiveOrders()) {
+  setGatherPoint(building_id: number, point: RisqGatherPoint): void {
+    if (!this.canCommandBuilding(building_id)) {
       return;
     }
     this.sendGameUpdate(JSON.stringify({ building_id, clear: false, ...point }), 'set-gather-point');
   }
 
-  clearGatherPoint(building_id: number) {
-    if (!this.session.canGiveOrders() || !this.session.findBuildingById(building_id)?.gather_point) {
+  clearGatherPoint(building_id: number): void {
+    if (!this.canCommandBuilding(building_id) || !this.session.getPlayer()?.buildings.get(building_id)?.gather_point) {
       return;
     }
     this.sendGameUpdate(JSON.stringify({ building_id, clear: true }), 'set-gather-point');
   }
 
-  private sendUnitBehavior(internal_ids: number[], fields: Record<string, unknown>) {
-    if (!this.session.canGiveOrders() || internal_ids.length === 0) {
+  private sendUnitBehavior(internal_ids: number[], fields: Record<string, unknown>): void {
+    if (!this.canCommandUnits(internal_ids)) {
       return;
     }
     this.sendGameUpdate(JSON.stringify({ internal_ids, ...fields }), 'set-unit-behavior');

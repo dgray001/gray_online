@@ -82,6 +82,7 @@ export class DwgRisqSettings extends DwgElement {
   }
 
   protected override async parsedCallback(): Promise<void> {
+    this.entries = [];
     this.tab_button_animations.addEventListener('click', () => this.showTab('animations'));
     this.tab_button_hotkeys.addEventListener('click', () => this.showTab('hotkeys'));
     for (const key of enumKeys(RisqHotkeyAction)) {

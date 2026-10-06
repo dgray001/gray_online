@@ -3,6 +3,7 @@ package game
 import (
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,15 +29,16 @@ type GameBase struct {
 	Players map[uint64]*Player
 	Viewers map[uint64]*Viewer
 	// the game base should maintain a separate ai id counter
-	next_ai_id           uint32
-	AiPlayers            map[uint32]*Player
-	game_started         bool
-	game_ended           bool
-	player_updates       []*PlayerAction
-	ViewerUpdates        chan *UpdateMessage
-	viewer_update_list   []*UpdateMessage
-	GameSpecificSettings map[string]interface{}
-	GameEndedChannel     chan string
+	next_ai_id            uint32
+	AiPlayers             map[uint32]*Player
+	game_started          bool
+	game_ended            bool
+	player_updates        []*PlayerAction
+	ViewerUpdates         chan *UpdateMessage
+	viewer_update_list    []*UpdateMessage
+	viewer_update_list_mu sync.RWMutex
+	GameSpecificSettings  map[string]interface{}
+	GameEndedChannel      chan string
 	// set by the owning room at launch; routes a state read onto its actor goroutine
 	RequestToFrontend func(client_id uint64, is_viewer bool) (gin.H, error)
 }
@@ -134,6 +136,7 @@ func (g *GameBase) AddViewerUpdate(update *UpdateMessage) {
 		fmt.Fprintln(os.Stderr, "Can't add update to game that is ended")
 		return
 	}
+	g.viewer_update_list_mu.Lock()
 	if !g.PersistantHistory() {
 		g.viewer_update_list = make([]*UpdateMessage, 0)
 	}
@@ -141,6 +144,7 @@ func (g *GameBase) AddViewerUpdate(update *UpdateMessage) {
 	own_update := *update
 	own_update.Id = len(g.viewer_update_list) + 1 // start at 1
 	g.viewer_update_list = append(g.viewer_update_list, &own_update)
+	g.viewer_update_list_mu.Unlock()
 	select {
 	case g.ViewerUpdates <- &own_update:
 	default:
@@ -160,37 +164,78 @@ func (g *GameBase) AddViewerUpdate(update *UpdateMessage) {
 
 func (g *GameBase) ResendPlayerUpdate(client_id uint64, update_id int) {
 	player := g.Players[client_id]
+	if player == nil {
+		return
+	}
 	if !g.PersistantHistory() {
 		update_id = 1
 	}
-	if player == nil || update_id < 1 || update_id > len(player.update_list) {
+	player.update_list_mu.RLock()
+	if update_id < 1 || update_id > len(player.update_list) {
+		player.update_list_mu.RUnlock()
 		return
 	}
-	player.Updates <- player.update_list[update_id-1]
+	update := player.update_list[update_id-1]
+	player.update_list_mu.RUnlock()
+	select {
+	case player.Updates <- update:
+	default:
+		fmt.Fprintln(os.Stderr, "Dropped resend update to player", player.Player_id, "- update buffer full")
+	}
 }
 
 func (g *GameBase) ResendViewerUpdate(client_id uint64, update_id int) {
 	viewer := g.Viewers[client_id]
+	if viewer == nil {
+		return
+	}
 	if !g.PersistantHistory() {
 		update_id = 1
 	}
-	if viewer == nil || update_id < 1 || update_id > len(g.viewer_update_list) {
+	g.viewer_update_list_mu.RLock()
+	if update_id < 1 || update_id > len(g.viewer_update_list) {
+		g.viewer_update_list_mu.RUnlock()
 		return
 	}
-	viewer.Updates <- g.viewer_update_list[update_id-1]
+	update := g.viewer_update_list[update_id-1]
+	g.viewer_update_list_mu.RUnlock()
+	select {
+	case viewer.Updates <- update:
+	default:
+		fmt.Fprintln(os.Stderr, "Dropped resend update to viewer", viewer.client_id, "- update buffer full")
+	}
 }
 
 func (g *GameBase) ResendLastUpdate(client_id uint64) {
 	fmt.Println("Resending last update for client", client_id)
-	player := g.Players[client_id]
-	if player == nil || len(player.update_list) < 1 {
-		viewer := g.Viewers[client_id]
-		if viewer != nil && len(g.viewer_update_list) > 0 {
-			viewer.Updates <- g.viewer_update_list[len(g.viewer_update_list)-1]
+	if player := g.Players[client_id]; player != nil {
+		player.update_list_mu.RLock()
+		if len(player.update_list) > 0 {
+			update := player.update_list[len(player.update_list)-1]
+			player.update_list_mu.RUnlock()
+			select {
+			case player.Updates <- update:
+			default:
+				fmt.Fprintln(os.Stderr, "Dropped resend update to player", player.Player_id, "- update buffer full")
+			}
+			return
 		}
-		return
+		player.update_list_mu.RUnlock()
 	}
-	player.Updates <- player.update_list[len(player.update_list)-1]
+	if viewer := g.Viewers[client_id]; viewer != nil {
+		g.viewer_update_list_mu.RLock()
+		if len(g.viewer_update_list) > 0 {
+			update := g.viewer_update_list[len(g.viewer_update_list)-1]
+			g.viewer_update_list_mu.RUnlock()
+			select {
+			case viewer.Updates <- update:
+			default:
+				fmt.Fprintln(os.Stderr, "Dropped resend update to viewer", viewer.client_id, "- update buffer full")
+			}
+		} else {
+			g.viewer_update_list_mu.RUnlock()
+		}
+	}
 }
 
 func (g *GameBase) GameEnded() bool {
@@ -242,11 +287,13 @@ func (g *GameBase) ToFrontend(client_id uint64, is_viewer bool) gin.H {
 		}
 		game_base["player_actions"] = player_actions
 		viewer_updates := []gin.H{}
+		g.viewer_update_list_mu.RLock()
 		for _, viewer_update := range g.viewer_update_list {
 			if viewer_update != nil {
 				viewer_updates = append(viewer_updates, viewer_update.toFrontend())
 			}
 		}
+		g.viewer_update_list_mu.RUnlock()
 		game_base["viewer_updates"] = viewer_updates
 	}
 	return game_base

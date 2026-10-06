@@ -19,6 +19,10 @@ func (v *aiView) matchingSpaces(condition ai.SpaceCondition) []ai.Coordinate {
 	return matches
 }
 
+func (v *aiView) MatchingSpaces(condition ai.SpaceCondition) []ai.Coordinate {
+	return v.matchingSpaces(condition)
+}
+
 func (v *aiView) CountSpaces(condition ai.SpaceCondition, include func(ai.Coordinate) bool) int {
 	count := 0
 	for _, space := range v.matchingSpaces(condition) {
@@ -36,7 +40,7 @@ func (v *aiView) ClosestSpaces(reference ai.Coordinate, condition ai.SpaceCondit
 		if exclude_reference && space == reference {
 			continue
 		}
-		distance := axialDistance(reference, space)
+		distance := v.SpaceDistance(reference, space)
 		if best_distance == -1 || distance < best_distance {
 			nearest, best_distance = []ai.Coordinate{space}, distance
 		} else if distance == best_distance {

@@ -9,20 +9,32 @@ import (
 )
 
 type regionsSevenParams struct {
-	Names []string `json:"names,omitempty"`
+	Names       []string `json:"names,omitempty"`
+	CenterBonus *float64 `json:"center_bonus,omitempty"`
+	OuterBonus  *float64 `json:"outer_bonus,omitempty"`
 }
 
 func stepRegionsSeven(ctx *mapScriptContext, raw json.RawMessage) error {
-	if ctx.shape != "hexagon" {
-		return fmt.Errorf("regions_seven: only valid on a hexagon shape, got %q", ctx.shape)
+	if ctx.shape != "hexagon" && ctx.shape != "ring" {
+		return fmt.Errorf("regions_seven: only valid on hexagon or ring shapes, got %q", ctx.shape)
 	}
-	var p regionsSevenParams
-	if err := json.Unmarshal(raw, &p); err != nil {
-		return fmt.Errorf("regions_seven: %v", err)
+	p, err := decodeStepParams[regionsSevenParams](raw, "regions_seven")
+	if err != nil {
+		return err
 	}
+
+	centerBonus := float64(50)
+	if p.CenterBonus != nil {
+		centerBonus = *p.CenterBonus
+	}
+	outerBonus := float64(30)
+	if p.OuterBonus != nil {
+		outerBonus = *p.OuterBonus
+	}
+
 	names := append([]string{}, p.Names...)
 	if len(names) < 7 {
-		names = append(names, defs.RandomRegionNames(ctx.rng, 7-len(names))...)
+		names = append(names, defs.RandomRegionNames(ctx.rng, 7-len(names), names)...)
 	}
 	if len(names) < 7 {
 		return fmt.Errorf("regions_seven: not enough region names available")
@@ -39,8 +51,10 @@ func stepRegionsSeven(ctx *mapScriptContext, raw json.RawMessage) error {
 			center_keys[space.Key()] = true
 		}
 	}
-	if err := ctx.board.AddRegion(names[0], center_keys); err != nil {
-		return err
+	if len(center_keys) > 0 {
+		if err := ctx.board.AddRegion(names[0], centerBonus, center_keys); err != nil {
+			return err
+		}
 	}
 	sector_keys := [6]map[uint]bool{}
 	for i := range sector_keys {
@@ -57,8 +71,10 @@ func stepRegionsSeven(ctx *mapScriptContext, raw json.RawMessage) error {
 		}
 	}
 	for i := 0; i < 6; i++ {
-		if err := ctx.board.AddRegion(names[i+1], sector_keys[i]); err != nil {
-			return err
+		if len(sector_keys[i]) > 0 {
+			if err := ctx.board.AddRegion(names[i+1], outerBonus, sector_keys[i]); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

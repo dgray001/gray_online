@@ -1,11 +1,6 @@
 import type { RisqBuilding, RisqPlayer, RisqProducible } from '../../../model/types';
-import {
-  RisqAttackType,
-  RisqOrderType,
-  RisqProducibleKind,
-  RisqUnitStance,
-  meetsTechRequirement,
-} from '../../../model/types';
+import { RisqAttackType, RisqOrderType, RisqProducibleKind, RisqUnitStance } from '../../../model/types';
+import { buildingCanProduce, producibleUnlocked } from '../../../application/orders/eligibility';
 import type { DwgRisq } from '../../../risq';
 import { RisqTargetPriorityControl } from '../controls/target_priority_control';
 import { ACTION_GRID_COLS } from '../layout';
@@ -149,7 +144,7 @@ function unitActions(risq: DwgRisq, data: LeftPanelData, player: RisqPlayer | un
       buttons.push(new RisqOrderButton({ row: 1, col, order_type, image_path, description }, risq, 0));
     }
     for (const producible of builds) {
-      if (!player || !meetsTechRequirement(player, producible.required_tech_id)) {
+      if (!player || !producibleUnlocked(player, producible)) {
         continue;
       }
       buttons.push(new RisqBuildButton({ producible }, risq, 0));
@@ -196,11 +191,7 @@ function buildingActions(risq: DwgRisq, building: RisqBuilding, player: RisqPlay
     );
   }
   buttons.push(
-    new RisqStopButton(
-      { row: 0, col: 3, image_path: 'icons/hand_stop128', description: 'Stop', unit_internal_ids: [building_id] },
-      risq,
-      0
-    ),
+    new RisqStopButton({ row: 0, col: 3, image_path: 'icons/hand_stop128', description: 'Stop', building_id }, risq, 0),
     new RisqBuildingDeleteButton(
       { row: 0, col: LAST_COL, image_path: 'icons/skull128', description: 'Delete', building_id },
       risq,
@@ -211,12 +202,12 @@ function buildingActions(risq: DwgRisq, building: RisqBuilding, player: RisqPlay
     return buttons;
   }
   for (const producible of building.produces) {
-    if (!player || !meetsTechRequirement(player, producible.required_tech_id)) {
+    if (!player || !buildingCanProduce(player, building, producible)) {
       continue;
     }
     if (producible.kind === RisqProducibleKind.UNIT) {
       buttons.push(new RisqCreateButton({ building_id, producible }, risq, 0));
-    } else if (producible.kind === RisqProducibleKind.TECH && !player.researched_techs.get(producible.id)) {
+    } else if (producible.kind === RisqProducibleKind.TECH) {
       buttons.push(new RisqResearchButton({ building_id, producible }, risq, 0));
     }
   }

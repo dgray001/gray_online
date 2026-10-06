@@ -9,6 +9,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/dgray001/gray_online/util"
 )
 
 // One game of a suite: which bucket, and which scenario player sat in each seat
@@ -24,7 +26,7 @@ type suiteJob struct {
 	index  int
 }
 
-func runSims(scenario Scenario, sims []SuiteBucket, n int, out_dir string, workers int, base_seed int64, sim_log *log.Logger, terminal *os.File) {
+func runSims(scenario Scenario, sims []SuiteBucket, n int, out_dir string, workers int, base_seed int64, debug_per_game bool, compact bool, sim_log *log.Logger, terminal *os.File) {
 	games := make([][]SuiteGame, len(sims))
 	for b := range games {
 		games[b] = make([]SuiteGame, n)
@@ -39,7 +41,11 @@ func runSims(scenario Scenario, sims []SuiteBucket, n int, out_dir string, worke
 				for s := range seats {
 					seats[s] = s
 				}
-				if scenario.SwapSeats && job.index%2 == 1 {
+				swapped := scenario.SwapSeats && job.index%2 == 1
+				if bucket.Seed != 0 {
+					swapped = bucket.Swap
+				}
+				if swapped {
 					for l, r := 0, len(seats)-1; l < r; l, r = l+1, r-1 {
 						seats[l], seats[r] = seats[r], seats[l]
 					}
@@ -50,7 +56,9 @@ func runSims(scenario Scenario, sims []SuiteBucket, n int, out_dir string, worke
 				}
 				// every game has its own seed, fixed by sim and game number, so any game can be replayed on its own
 				seed := base_seed
-				if !scenario.FixedSeed {
+				if bucket.Seed != 0 {
+					seed = bucket.Seed
+				} else if !scenario.FixedSeed {
 					seed += int64(job.bucket)*1000 + int64(job.index)
 				}
 				max_turns := scenario.MaxTurns
@@ -58,10 +66,21 @@ func runSims(scenario Scenario, sims []SuiteBucket, n int, out_dir string, worke
 					max_turns = bucket.MaxTurns
 				}
 				start := time.Now()
-				result := RunGame(seed, players, bucket.Map, uint16(max_turns), 15*time.Minute)
+				var debug_file *os.File
+				if debug_per_game {
+					var err error
+					if debug_file, err = os.Create(filepath.Join(out_dir, fmt.Sprintf("debug_%d.log", seed))); err != nil {
+						log.Fatalf("creating debug log for seed %d: %v", seed, err)
+					}
+					util.DebugLog.SetOutput(debug_file)
+				}
+				result := RunGame(seed, players, bucket.Map, scenario.Metrics, uint16(max_turns), 15*time.Minute)
+				if debug_file != nil {
+					debug_file.Close()
+				}
 				games[job.bucket][job.index] = SuiteGame{Bucket: bucket.Name, Result: result, Seats: seats}
-				sim_log.Printf("%s game %d seed=%d seats=%v turns=%d duration=%s error=%q",
-					bucket.Name, job.index+1, seed, seats, result.Game.TurnNumber, time.Since(start), result.Error)
+				sim_log.Printf("%s game %d seed=%d seats=%v turns=%d outcomes=%v duration=%s error=%q",
+					bucket.Name, job.index+1, seed, seats, result.Game.TurnNumber, result.Outcomes, time.Since(start), result.Error)
 			}
 		})
 	}
@@ -74,7 +93,11 @@ func runSims(scenario Scenario, sims []SuiteBucket, n int, out_dir string, worke
 	wg.Wait()
 
 	results := buildResults(scenario, sims, n, games)
-	writeJSON(filepath.Join(out_dir, "results.json"), results)
+	if compact {
+		writeCompact(filepath.Join(out_dir, "results.json"), scenario, results)
+	} else {
+		writeJSON(filepath.Join(out_dir, "results.json"), results)
+	}
 	text := results.String()
 	if err := os.WriteFile(filepath.Join(out_dir, "report.txt"), []byte(text), 0644); err != nil {
 		log.Fatalf("writing report.txt: %v", err)
@@ -103,11 +126,9 @@ func writeJSON(path string, v any) {
 type PlayerStats struct {
 	Name  string
 	Games int
-	// crushed the opponent / was crushed / neither, but ahead on units at the end / neither, behind
-	Crushes, Crushed, Leads, Trails int
-	// mean turn of this player's crushes
-	CrushTurn float64
-	Errors    int
+	// games ending each way from this player's own side
+	Outcomes map[Outcome]int
+	Errors   int
 	// per-game means
 	Kills, Lost, Razes, BuildingsLost     float64
 	Villagers, Military                   float64
@@ -151,8 +172,8 @@ func buildResults(scenario Scenario, sims []SuiteBucket, n int, games [][]SuiteG
 
 func section(name string, scenario Scenario, games []SuiteGame) SuiteSection {
 	stats := make([]PlayerStats, len(scenario.Players))
-	crush_turns := make([]int, len(scenario.Players))
 	for p := range stats {
+		stats[p].Outcomes = make(map[Outcome]int)
 		stats[p].Name = scenario.Players[p].AiConfig
 		if names := countNames(scenario.Players); names[stats[p].Name] > 1 {
 			stats[p].Name = fmt.Sprintf("%s#%d", stats[p].Name, p+1)
@@ -163,22 +184,12 @@ func section(name string, scenario Scenario, games []SuiteGame) SuiteSection {
 		for seat, p := range g.Seats {
 			s := &stats[p]
 			s.Games++
-			if r.Error != "" || seat >= len(r.Game.Players) {
+			if r.Error != "" || seat >= len(r.Game.Players) || seat >= len(r.Outcomes) {
 				s.Errors++
 				continue
 			}
 			pr := r.Game.Players[seat]
-			switch {
-			case r.Crush == seat:
-				s.Crushes++
-				crush_turns[p] += int(r.Game.TurnNumber)
-			case r.Crush >= 0:
-				s.Crushed++
-			case len(r.Timeline) > 0 && finalUnits(r, seat) > finalUnits(r, 1-seat):
-				s.Leads++
-			default:
-				s.Trails++
-			}
+			s.Outcomes[r.Outcomes[seat]]++
 			s.Kills += float64(pr.Kills)
 			s.Lost += float64(pr.UnitsLost)
 			s.Razes += float64(pr.Razes)
@@ -204,9 +215,6 @@ func section(name string, scenario Scenario, games []SuiteGame) SuiteSection {
 	for p := range stats {
 		s := &stats[p]
 		played := float64(max(1, s.Games-s.Errors))
-		if s.Crushes > 0 {
-			s.CrushTurn = float64(crush_turns[p]) / float64(s.Crushes)
-		}
 		for _, v := range []*float64{&s.Kills, &s.Lost, &s.Razes, &s.BuildingsLost, &s.Villagers, &s.Military,
 			&s.VillagerIdlePct, &s.VillagerIdlePctEarly, &s.VillageCenterIdlePct, &s.VCIdlePctEarly, &s.Gathered, &s.Techs} {
 			*v /= played
@@ -223,19 +231,6 @@ func countNames(players []ScenarioPlayer) map[string]int {
 	return names
 }
 
-// all units a seat has at the last snapshot
-func finalUnits(r Result, seat int) int {
-	last := r.Timeline[len(r.Timeline)-1]
-	if seat < 0 || seat >= len(last) {
-		return 0
-	}
-	total := 0
-	for _, n := range last[seat].Units {
-		total += n
-	}
-	return total
-}
-
 func (r Results) String() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "%d sim(s), %d games each, up to %d turns\n\n", len(r.Sims), r.GamesPerSim, r.MaxTurns)
@@ -243,12 +238,18 @@ func (r Results) String() string {
 	for _, sim := range r.Sims {
 		sections = append(sections, sim.Stats)
 	}
-	fmt.Fprintf(&b, "%-14s %-8s %5s %6s %7s %5s %6s %6s %6s %6s %5s %5s %6s %6s %6s %6s %8s\n",
-		"sim", "ai", "games", "crush", "crushed", "lead", "trail", "crushT", "kills", "lost", "vils", "mil", "vIdle%", "vcIdle", "vcEarly", "razes", "gathered")
+	fmt.Fprintf(&b, "%-14s %-8s %5s", "sim", "ai", "games")
+	for _, o := range outcomeOrder {
+		fmt.Fprintf(&b, " %8s", o)
+	}
+	fmt.Fprintf(&b, " %6s %6s %5s %5s %6s %6s %7s %6s %8s\n", "kills", "lost", "vils", "mil", "vIdle%", "vcIdle", "vcEarly", "razes", "gathered")
 	for _, s := range sections {
 		for _, p := range s.Players {
-			fmt.Fprintf(&b, "%-14s %-8s %5d %6d %7d %5d %6d %6.0f %6.1f %6.1f %5.1f %5.1f %6.1f %6.1f %6.1f %6.1f %8.0f\n",
-				s.Name, p.Name, p.Games, p.Crushes, p.Crushed, p.Leads, p.Trails, p.CrushTurn, p.Kills, p.Lost,
+			fmt.Fprintf(&b, "%-14s %-8s %5d", s.Name, p.Name, p.Games)
+			for _, o := range outcomeOrder {
+				fmt.Fprintf(&b, " %8d", p.Outcomes[o])
+			}
+			fmt.Fprintf(&b, " %6.1f %6.1f %5.1f %5.1f %6.1f %6.1f %7.1f %6.1f %8.0f\n", p.Kills, p.Lost,
 				p.Villagers, p.Military, p.VillagerIdlePct, p.VillageCenterIdlePct, p.VCIdlePctEarly, p.Razes, p.Gathered)
 		}
 		if s.Name == "overall" {
@@ -256,9 +257,12 @@ func (r Results) String() string {
 		}
 	}
 	if len(r.Overall.Players) == 2 {
-		a, o := r.Overall.Players[0], r.Overall.Players[1]
-		fmt.Fprintf(&b, "\nverdict: %s crushed %s in %d/%d games (%.0f%%), was crushed in %d, led at the end of %d more\n",
-			a.Name, o.Name, a.Crushes, a.Games, 100*float64(a.Crushes)/float64(max(1, a.Games)), a.Crushed, a.Leads)
+		a := r.Overall.Players[0]
+		fmt.Fprintf(&b, "\nverdict: %s over %d games:", a.Name, a.Games)
+		for _, o := range outcomeOrder {
+			fmt.Fprintf(&b, " %d %s,", a.Outcomes[o], o)
+		}
+		b.WriteString("\n")
 	}
 	return b.String()
 }

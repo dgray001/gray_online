@@ -1,7 +1,6 @@
 package risq
 
 import (
-	"github.com/dgray001/gray_online/game/game_utils"
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 )
 
@@ -16,7 +15,7 @@ func (u *RisqUnit) stanceReachable(target_zone *RisqZone) bool {
 	}
 	switch u.stance {
 	case defs.UnitStance_AGGRESSIVE:
-		return game_utils.AxialDistance(u.zone.space.coordinate, target_zone.space.coordinate) <= aggressiveSightRadius
+		return u.zone.space.distanceTo(target_zone.space) <= aggressiveSightRadius
 	case defs.UnitStance_DEFENSIVE:
 		return target_zone.space == u.zone.space
 	case defs.UnitStance_PASSIVE, defs.UnitStance_STAND_GROUND:
@@ -38,11 +37,20 @@ func (u *RisqUnit) isAttacking() bool {
 	}
 }
 
+// An explicit attack-unit or attack-building order; unlike the stance's own auto, space and zone attacks, the stance never replaces it
+func (u *RisqUnit) holdsAssignedAttack() bool {
+	if len(u.order_queue.active_orders) == 0 {
+		return false
+	}
+	order_type := u.order_queue.active_orders[0].order_type
+	return order_type == defs.OrderType_UnitAttackUnit || order_type == defs.OrderType_UnitAttackBuilding
+}
+
 func attackBackDistance(u *RisqUnit, attacker_zone *RisqZone) int {
 	if attacker_zone.space == u.zone.space {
 		return zoneDistanceWithinSpace(u.zone, attacker_zone)
 	}
-	return int(game_utils.AxialDistance(u.zone.space.coordinate, attacker_zone.space.coordinate)) * 6
+	return int(u.zone.space.distanceTo(attacker_zone.space)) * 6
 }
 
 // Among attackers that hit this tick, applies target_priority then nearest/lowest-id as a tiebreak.
@@ -121,7 +129,7 @@ func (u *RisqUnit) resolveStance(risq *GameRisq) {
 	if u.stance == defs.UnitStance_PASSIVE {
 		return
 	}
-	if !u.interrupt_current && len(u.order_queue.active_orders) > 0 {
+	if (!u.interrupt_current && len(u.order_queue.active_orders) > 0) || u.holdsAssignedAttack() {
 		return
 	}
 	switch u.stance {

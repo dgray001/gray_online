@@ -159,7 +159,7 @@ func stepTerrainBlob(ctx *mapScriptContext, raw json.RawMessage) error {
 		candidate := all[ctx.rng.Intn(len(all))]
 		ok := true
 		for _, s := range seeds {
-			if int(game_utils.AxialDistance(candidate.Coordinate(), s.Coordinate())) < min_spacing {
+			if ctx.board.Distance(candidate, s) < min_spacing {
 				ok = false
 				break
 			}
@@ -253,8 +253,32 @@ func stepTerrainLine(ctx *mapScriptContext, raw json.RawMessage) error {
 
 type terrainBorderParams struct {
 	terrainPickJSON
-	Width  ScriptExpr `json:"width"`
+	Edge   string     `json:"edge"`
+	Depth  ScriptExpr `json:"depth"`
 	Region string     `json:"region,omitempty"`
+}
+
+// Steps inward from the nearest space missing a neighbor, so the carved map boundary is 0
+func mapEdgeDistances(spaces []Space) map[uint]int {
+	distances := make(map[uint]int, len(spaces))
+	queue := make([]Space, 0, len(spaces))
+	for _, space := range spaces {
+		if len(space.SortedAdjacent()) < 6 {
+			distances[space.Key()] = 0
+			queue = append(queue, space)
+		}
+	}
+	for len(queue) > 0 {
+		space := queue[0]
+		queue = queue[1:]
+		for _, adj := range space.SortedAdjacent() {
+			if _, seen := distances[adj.Key()]; !seen {
+				distances[adj.Key()] = distances[space.Key()] + 1
+				queue = append(queue, adj)
+			}
+		}
+	}
+	return distances
 }
 
 func stepTerrainBorder(ctx *mapScriptContext, raw json.RawMessage) error {
@@ -262,15 +286,27 @@ func stepTerrainBorder(ctx *mapScriptContext, raw json.RawMessage) error {
 	if err != nil {
 		return err
 	}
-	width, err := p.Width.resolveInt(ctx.vars)
+	depth, err := p.Depth.resolveInt(ctx.vars)
 	if err != nil {
 		return err
 	}
+	spaces := ctx.allSpaces()
+	var distanceFromEdge func(Space) int
+	switch p.Edge {
+	case "hexagon_edge":
+		center := game_utils.Coordinate2D{X: 0, Y: 0}
+		distanceFromEdge = func(space Space) int {
+			return int(ctx.board_size) - int(game_utils.AxialDistance(space.Coordinate(), center))
+		}
+	case "map_edge":
+		map_edge_distances := mapEdgeDistances(spaces)
+		distanceFromEdge = func(space Space) int { return map_edge_distances[space.Key()] }
+	default:
+		return fmt.Errorf("terrain_border: edge must be \"hexagon_edge\" or \"map_edge\", got %q", p.Edge)
+	}
 	region := ctx.region(p.Region)
-	center := game_utils.Coordinate2D{X: 0, Y: 0}
-	threshold := int(ctx.board_size) - width
-	for _, space := range ctx.allSpaces() {
-		if int(game_utils.AxialDistance(space.Coordinate(), center)) < threshold {
+	for _, space := range spaces {
+		if distanceFromEdge(space) > depth {
 			continue
 		}
 		terrain_id, err := p.resolve(ctx.rng)

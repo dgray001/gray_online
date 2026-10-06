@@ -44,11 +44,13 @@ func (v *aiView) RenewOrder(u ai.UnitView, target ai.BuildingView, clear_previou
 
 func (v *aiView) AttackUnitOrder(u ai.UnitView, target ai.UnitView, clear_previous bool) ai.Order {
 	v.assignUnit(u.InternalID, &ai.CurrentOrder{Kind: ai.OrderKindAttackUnit, TargetUnit: &target})
+	v.recordAttacker(attackTarget{id: target.InternalID}, u.InternalID, clear_previous)
 	return unitOrder(u, defs.OrderType_UnitAttackUnit, int64(target.InternalID), clear_previous)
 }
 
 func (v *aiView) AttackBuildingOrder(u ai.UnitView, target ai.BuildingView, clear_previous bool) ai.Order {
 	v.assignUnit(u.InternalID, &ai.CurrentOrder{Kind: ai.OrderKindAttackBuilding, TargetBuilding: &target})
+	v.recordAttacker(attackTarget{building: true, id: target.InternalID}, u.InternalID, clear_previous)
 	return unitOrder(u, defs.OrderType_UnitAttackBuilding, int64(target.InternalID), clear_previous)
 }
 
@@ -107,6 +109,7 @@ func (v *aiView) BuildingAttackBuildingOrder(b ai.BuildingView, target ai.Buildi
 
 func (v *aiView) CancelOrder(order_id uint64) ai.Order {
 	v.cancelled_orders[order_id] = true
+	v.dropCancelledAttacker(order_id)
 	v.gather_counts = nil
 	return ai.Order{OrderType: uint8(defs.OrderType_CancelOrder), TargetID: int64(order_id)}
 }

@@ -5,7 +5,6 @@ import (
 	"math"
 	"os"
 
-	"github.com/dgray001/gray_online/game/game_utils"
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/util"
 )
@@ -19,8 +18,17 @@ func (u *RisqUnit) moveOrAct(arrived bool, target *RisqZone, move_range defs.Ris
 	act()
 }
 
+// Records the unit a move is closing on, so a melee approach can meet a unit crossing the same border
+func (u *RisqUnit) markChase(target Attackable) {
+	if move, ok := u.intent.detail.(*MoveIntent); ok {
+		move.chasing, _ = target.(*RisqUnit)
+	}
+}
+
 func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 	u.intent.resetIntent()
+	paid_half_move := u.half_move
+	u.half_move = nil
 	u.resolveStance(risq)
 	order := u.order_queue.nextOrder(u, risq)
 	if order == nil {
@@ -59,6 +67,7 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 		u.moveOrAct(u.inAttackRange(target.zone), target.zone, u.attack_range, func() {
 			u.intent.setUnitAttack(target)
 		})
+		u.markChase(target)
 	case defs.OrderType_UnitAttackZone:
 		_, zone := invertZoneKey(uint(order.target_id), risq)
 		u.moveOrAct(u.inAttackRange(zone), zone, u.attack_range, func() {
@@ -74,13 +83,14 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 		}
 		space_range, _ := u.attack_range.SpaceRadius()
 		start, _ := u.pathStart()
-		in_space_range := start != nil && game_utils.AxialDistance(start.space.coordinate, space.coordinate) <= space_range
+		in_space_range := start != nil && start.space.distanceTo(space) <= space_range
 		u.moveOrAct(in_space_range, space.getCenterZone(), u.attack_range, func() {
 			if target := spaceAttackTarget(u, space); target != nil {
 				target_zone := target.currentZone()
 				u.moveOrAct(u.inAttackRange(target_zone), target_zone, u.attack_range, func() {
 					u.intent.setUnitAttack(target)
 				})
+				u.markChase(target)
 			}
 		})
 	case defs.OrderType_UnitRepair:
@@ -134,7 +144,11 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 		u.move_path = nil
 	}
 
+	u.restoreHalfMove(paid_half_move)
 	u.intent.resolveCost(u.current_stamina)
+	if !u.intent.hasIntent() {
+		u.half_move = nil
+	}
 	return u.intent.hasIntent()
 }
 

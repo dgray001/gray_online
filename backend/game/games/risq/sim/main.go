@@ -14,7 +14,7 @@ import (
 
 func main() {
 	debug := flag.Bool("debug", false, "run a single replay (implies iterations=1)")
-	quiet := flag.Bool("quiet", false, "discard engine stdout; keep only errors and the sim's own per-game log")
+	quiet := flag.Bool("quiet", false, "discard engine stdout and write results.json as one compact line per game (no timelines or per-turn metrics); keep only errors and the sim's own per-game log")
 	seed_override := flag.Int64("seed", 0, "override the scenario's base seed")
 	parallel := flag.Int("parallel", runtime.NumCPU(), "games to run concurrently (forced to 1 with -debug so its log stays in game order)")
 	flag.Parse()
@@ -35,9 +35,6 @@ func main() {
 	}
 
 	iterations := scenario.Iterations
-	if *debug {
-		iterations = 1
-	}
 	base_seed := scenario.Seed
 	if *seed_override != 0 {
 		base_seed = *seed_override
@@ -82,7 +79,7 @@ func main() {
 	}
 	defer stderr_cleanup()
 
-	if *debug {
+	if *debug && iterations == 1 {
 		// debug.log: ai decision + combat tick logs, separate from game.log/sim.log.
 		debug_log_file, err := os.Create(filepath.Join(out_dir, "debug.log"))
 		if err != nil {
@@ -103,7 +100,7 @@ func main() {
 		sims = []SuiteBucket{{Name: name, Map: scenario.Map}}
 		games_per_sim = iterations
 	} else if *debug {
-		log.Fatalf("-debug replays one game; run one of the suite's maps as a plain scenario instead")
+		log.Fatalf("-debug does not accept suites; run one of the suite's maps as a plain scenario instead")
 	}
-	runSims(scenario, sims, max(1, games_per_sim), out_dir, workers, base_seed, sim_log, terminal)
+	runSims(scenario, sims, max(1, games_per_sim), out_dir, workers, base_seed, *debug && iterations > 1, *quiet, sim_log, terminal)
 }

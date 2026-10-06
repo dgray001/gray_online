@@ -1,5 +1,5 @@
 import type { DwgRisq } from '../../../../risq';
-import { RisqRichTooltipActionButton } from '../action_button';
+import { RisqActionButton } from '../action_button';
 import type { RisqProducible } from '../../../../model/types';
 import { canAffordCost } from '../../../../model/types';
 import { unitImage } from '../../../../rendering/assets/unit';
@@ -13,7 +13,7 @@ export declare interface CreateButtonConfig {
   producible: RisqProducible;
 }
 
-export class RisqCreateButton extends RisqRichTooltipActionButton {
+export class RisqCreateButton extends RisqActionButton {
   private risq: DwgRisq;
   private building_id: number;
   private producible: RisqProducible;
@@ -49,14 +49,16 @@ export class RisqCreateButton extends RisqRichTooltipActionButton {
     super.mouseup(e);
   }
 
-  protected released(): void {
-    if (this.isHovering()) {
-      if (this.dimmed) {
-        this.risq.showMessage('Not enough resources', RISQ_MESSAGE_WARNING_COLOR);
-        return;
-      }
-      this.risq.commands.createUnit(this.building_id, this.producible.id, this.ctrl_held);
+  override matchesProducible(kind: string, id: number): boolean {
+    return kind === 'create_unit' && this.producible.id === id;
+  }
+
+  override execute(ctrl_held = this.ctrl_held): void {
+    if (this.dimmed) {
+      this.risq.showMessage('Not enough resources', RISQ_MESSAGE_WARNING_COLOR);
+      return;
     }
+    this.risq.commands.createUnit(this.building_id, this.producible.id, ctrl_held);
   }
 
   protected override getTooltipData(): RisqTooltipData {

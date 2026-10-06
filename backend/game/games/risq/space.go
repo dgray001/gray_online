@@ -13,15 +13,20 @@ import (
 )
 
 type RisqSpace struct {
-	terrain_id      uint32
-	coordinate      game_utils.Coordinate2D
-	coordinate_key  uint
-	zones           [][]*RisqZone
-	resources       map[uint64]*RisqResource
-	buildings       map[uint64]*RisqBuilding
-	units           map[uint64]*RisqUnit
-	visibility      map[int]uint8
+	terrain_id     uint32
+	coordinate     game_utils.Coordinate2D
+	coordinate_key uint
+	zones          [][]*RisqZone
+	resources      map[uint64]*RisqResource
+	buildings      map[uint64]*RisqBuilding
+	units          map[uint64]*RisqUnit
+	visibility     map[int]uint8
+	// players who lost a unit or building here this turn; they keep poor vision of the space for the next turn
+	death_vision    map[int]bool
 	adjacent_spaces map[uint]*RisqSpace
+	distances       *spaceDistances
+	distance_index  int
+	gold_income     float64
 	ownership       int
 	// player_id -> zone coordinate_key -> last-known snapshot while that player's vision is at fog level
 	building_cache  map[int]map[uint]RisqBuildingCache
@@ -39,8 +44,10 @@ func createRisqSpace(q int, r int, terrain_id uint32) *RisqSpace {
 		buildings:       make(map[uint64]*RisqBuilding),
 		units:           make(map[uint64]*RisqUnit),
 		visibility:      make(map[int]uint8),
+		death_vision:    make(map[int]bool),
 		adjacent_spaces: make(map[uint]*RisqSpace),
 		ownership:       -1,
+		gold_income:     defaultSpaceGoldIncome,
 		building_cache:  make(map[int]map[uint]RisqBuildingCache),
 		resource_cache:  make(map[int]map[uint]RisqResourceCache),
 		terrain_cache:   make(map[int]map[uint]uint32),
@@ -310,7 +317,7 @@ func (s *RisqSpace) toFrontend(player_id int, _is_viewer bool) gin.H {
 	space["terrain_id"] = s.terrain_id
 	space["terrain_type"] = defs.TerrainConfigs[s.terrain_id].Terrain_type
 	space["display_name"] = defs.TerrainConfigs[s.terrain_id].Display_name
-	space["gold_income"] = spaceGoldIncome
+	space["gold_income"] = s.gold_income
 	if v == defs.VisibilityFog {
 		if owner, ok := s.ownership_cache[player_id]; ok {
 			space["ownership"] = owner

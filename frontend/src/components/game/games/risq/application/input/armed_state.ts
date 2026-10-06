@@ -4,6 +4,7 @@ import { RisqOrderType } from '../../model/types';
 export declare interface ArmedBuilding {
   id: number;
   display_name: string;
+  stamina_cost: number;
 }
 
 /** Identity of the armed order at one moment, so a later check can tell whether something re-armed in between */

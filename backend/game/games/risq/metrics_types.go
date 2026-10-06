@@ -5,7 +5,15 @@ type StaminaMetrics struct {
 	Wasted  int
 }
 
+// Opt-in ("production"): completed buildings of one type that produce units or techs, other than village centers
+type ProductionMetrics struct {
+	BuildingId uint32
+	Count      int
+	Stamina    StaminaMetrics
+}
+
 type PlayerTurnMetrics struct {
+	Production           []ProductionMetrics `json:",omitempty"`
 	PlayerId             int
 	Stockpile            [4]float64
 	Income               [4]float64

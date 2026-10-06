@@ -67,7 +67,6 @@ export class DwgChatbox extends DwgElement {
   private static adjust_scroll_limit = 5;
   private last_new_messages_button_timer?: number;
   private last_new_messages_button_count = 0;
-  private new_chat_elements: HTMLDivElement[] = [];
 
   addChat(message: ChatMessage, you_sent = false) {
     const scrolled_up = this.scrolledUp();
@@ -82,7 +81,7 @@ export class DwgChatbox extends DwgElement {
     new_element.appendChild(document.createTextNode(message.message));
     this.chat_container.appendChild(new_element);
     new_element.classList.add('new-message');
-    this.new_chat_elements.push(new_element);
+    window.setTimeout(() => new_element.classList.remove('new-message'), 1500);
     this.classList.add('new-message');
     if (this.last_new_messages_button_timer) {
       clearTimeout(this.last_new_messages_button_timer);
@@ -95,12 +94,10 @@ export class DwgChatbox extends DwgElement {
       this.last_new_messages_button_count++;
       this.new_messages_number.innerText = this.last_new_messages_button_count.toString();
     }
-    setTimeout(() => {
+    this.last_new_messages_button_timer = window.setTimeout(() => {
       this.new_messages_button.classList.remove('new-message');
-      this.new_chat_elements.forEach((element) => {
-        element.classList.remove('new-message');
-      });
       this.classList.remove('new-message');
+      this.last_new_messages_button_timer = undefined;
     }, 1500);
   }
 
@@ -126,9 +123,23 @@ export class DwgChatbox extends DwgElement {
     this.chat_input.focus();
   }
 
+  override disconnectedCallback(): void {
+    super.disconnectedCallback();
+    if (this.last_new_messages_button_timer) {
+      clearTimeout(this.last_new_messages_button_timer);
+      this.last_new_messages_button_timer = undefined;
+    }
+  }
+
   clear() {
+    if (this.last_new_messages_button_timer) {
+      clearTimeout(this.last_new_messages_button_timer);
+      this.last_new_messages_button_timer = undefined;
+    }
     this.chat_input.value = '';
     this.chat_container.innerHTML = '';
+    this.classList.remove('new-message');
+    this.new_messages_button.classList.remove('new-message');
   }
 
   private inputEmpty(): boolean {

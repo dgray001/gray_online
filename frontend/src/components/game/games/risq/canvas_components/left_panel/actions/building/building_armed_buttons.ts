@@ -26,10 +26,12 @@ export class RisqBuildingAttackButton extends RisqActionButton {
     return super.isClicking() || this.risq.armed.isBuildingAttackArmed();
   }
 
-  protected released(): void {
-    if (this.isHovering()) {
-      this.risq.commands.toggleBuildingAttack();
-    }
+  override matchesAction(action: RisqHotkeyAction): boolean {
+    return action === RisqHotkeyAction.BUILDING_ATTACK || action === RisqHotkeyAction.ATTACK;
+  }
+
+  override execute(): void {
+    this.risq.commands.toggleBuildingAttack();
   }
 }
 
@@ -65,9 +67,11 @@ export class RisqBuildingGatherPointButton extends RisqActionButton {
     super.draw(ctx, transform, dt);
   }
 
-  protected released(): void {
-    if (this.isHovering()) {
-      this.risq.commands.toggleBuildingGatherPoint(this.building_id);
-    }
+  override matchesAction(action: RisqHotkeyAction): boolean {
+    return action === RisqHotkeyAction.BUILDING_GATHER_POINT || action === RisqHotkeyAction.BUILDING_CLEAR_GATHER_POINT;
+  }
+
+  override execute(): void {
+    this.risq.commands.toggleBuildingGatherPoint(this.building_id);
   }
 }

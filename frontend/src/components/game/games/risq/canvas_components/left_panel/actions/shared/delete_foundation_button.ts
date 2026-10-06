@@ -2,6 +2,7 @@ import type { DwgRisq } from '../../../../risq';
 import { RisqActionButton } from '../action_button';
 import type { RisqActionButtonConfig } from '../action_button';
 import type { FoundationDrawData } from '../../left_panel_data';
+import { RisqHotkeyAction } from '../../../../application/input/hotkeys';
 import { RisqOrderType } from '../../../../model/types';
 import { invertPair } from '../../../../model/coordinates';
 
@@ -28,29 +29,31 @@ export class RisqDeleteFoundationButton extends RisqActionButton {
     }
   }
 
-  protected released(): void {
-    if (this.isHovering()) {
-      if (this.foundation_data.is_local) {
-        const build_orders = this.risq.orders_model.all().filter((o) => {
-          if (o.order_type !== RisqOrderType.OrderType_UnitBuild) {
-            return false;
-          }
-          const outer = invertPair(o.target_id);
-          return outer.y === this.foundation_data.coordinate_key;
-        });
-        for (const order of build_orders) {
-          this.risq.orders_model.cancel(order);
+  override matchesAction(action: RisqHotkeyAction): boolean {
+    return action === RisqHotkeyAction.DELETE;
+  }
+
+  override execute(): void {
+    if (this.foundation_data.is_local) {
+      const build_orders = this.risq.orders_model.all().filter((o) => {
+        if (o.order_type !== RisqOrderType.OrderType_UnitBuild) {
+          return false;
         }
-      } else {
-        this.risq.orders_model.add({
-          player_id: this.risq.getPlayerId(),
-          order_type: RisqOrderType.OrderType_CancelFoundation,
-          subjects: [],
-          target_id: this.foundation_data.coordinate_key,
-          clear_previous_orders: false,
-        });
+        const outer = invertPair(o.target_id);
+        return outer.y === this.foundation_data.coordinate_key;
+      });
+      for (const order of build_orders) {
+        this.risq.orders_model.cancel(order);
       }
-      this.risq.left_panel.close();
+    } else {
+      this.risq.orders_model.add({
+        player_id: this.risq.getPlayerId(),
+        order_type: RisqOrderType.OrderType_CancelFoundation,
+        subjects: [],
+        target_id: this.foundation_data.coordinate_key,
+        clear_previous_orders: false,
+      });
     }
+    this.risq.left_panel.close();
   }
 }

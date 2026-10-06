@@ -1,5 +1,9 @@
+import { equalsPoint2D } from '../../../../util/objects2d';
+import type { RisqSession } from '../../application/session';
+import { invertPair } from '../../model/coordinates';
 import type { RisqUnit, UnitByTypeData } from '../../model/types';
 import { RisqUnitType, RisqVisibilityLevel } from '../../model/types';
+import { groupUnitsByType } from '../../model/unit_groups';
 import type { DwgRisq } from '../../risq';
 import type { LeftPanelData, PlayerUnitsDrawData, UnitsDrawData } from './left_panel_data';
 import { LeftPanelDataType } from './left_panel_data';
@@ -182,4 +186,142 @@ function normalizePlayerUnits(data: PlayerUnitsDrawData, resolve: UnitResolver):
     return { data_type: LeftPanelDataType.MILITARY_UNITS, data: new_data };
   }
   return undefined;
+}
+
+export function resolveSelectionData(
+  data: LeftPanelData,
+  session: RisqSession
+): { data: LeftPanelData; visibility: number } | undefined {
+  switch (data.data_type) {
+    case LeftPanelDataType.UNIT: {
+      const unit = session.findUnitById(data.data.internal_id);
+      if (!unit) return undefined;
+      const loc = session.unitLocation(unit);
+      const space = loc ? session.spaceAt(loc.space_coordinate) : undefined;
+      const vis = unit.player_id === session.getPlayerId() ? RisqVisibilityLevel.GOOD : (space?.visibility ?? 0);
+      return vis >= RisqVisibilityLevel.GOOD
+        ? { data: { data_type: LeftPanelDataType.UNIT, data: unit }, visibility: vis }
+        : undefined;
+    }
+    case LeftPanelDataType.BUILDING: {
+      const building = session.findBuildingById(data.data.internal_id);
+      if (!building) return undefined;
+      const space = session.spaceAt(building.space_coordinate);
+      const vis = building.player_id === session.getPlayerId() ? RisqVisibilityLevel.GOOD : (space?.visibility ?? 0);
+      return vis >= RisqVisibilityLevel.GOOD
+        ? { data: { data_type: LeftPanelDataType.BUILDING, data: building }, visibility: vis }
+        : undefined;
+    }
+    case LeftPanelDataType.SPACE: {
+      const space = session.spaceAt(data.data.coordinate);
+      const vis = space?.visibility ?? 0;
+      return space && vis >= RisqVisibilityLevel.FOG
+        ? { data: { data_type: LeftPanelDataType.SPACE, data: space }, visibility: vis }
+        : undefined;
+    }
+    case LeftPanelDataType.ZONE: {
+      const space = session.spaceAt(data.data.space.coordinate);
+      const zone = space?.zones?.flat().find((z) => equalsPoint2D(z.coordinate, data.data.zone.coordinate));
+      const vis = space?.visibility ?? 0;
+      return space && zone && vis >= RisqVisibilityLevel.FOG
+        ? { data: { data_type: LeftPanelDataType.ZONE, data: { space, zone } }, visibility: vis }
+        : undefined;
+    }
+    case LeftPanelDataType.RESOURCE: {
+      const space = session.spaceAt(data.data.space_coordinate);
+      const zone = space?.zones?.flat().find((z) => equalsPoint2D(z.coordinate, data.data.zone_coordinate));
+      const vis = space?.visibility ?? 0;
+      return zone?.resource && vis >= RisqVisibilityLevel.FOG
+        ? { data: { data_type: LeftPanelDataType.RESOURCE, data: zone.resource }, visibility: vis }
+        : undefined;
+    }
+    case LeftPanelDataType.REGION: {
+      const region = session.getGame()?.regions.find((r) => r.name === data.data.name);
+      return region
+        ? { data: { data_type: LeftPanelDataType.REGION, data: region }, visibility: RisqVisibilityLevel.GOOD }
+        : undefined;
+    }
+    case LeftPanelDataType.FOUNDATION: {
+      const player = session.getPlayer();
+      const coord_key = data.data.coordinate_key;
+      const planned = player?.planned_foundations.get(coord_key);
+      const space_coord = invertPair(coord_key);
+      const space = session.spaceAt(space_coord);
+      const zone = space?.zones?.flat().find((z) => z.coordinate_key === coord_key);
+      if (planned && space && zone) {
+        return {
+          data: {
+            data_type: LeftPanelDataType.FOUNDATION,
+            data: {
+              coordinate_key: coord_key,
+              building_id: planned.building_id,
+              player_id: session.getPlayerId(),
+              is_local: data.data.is_local,
+              display_name: `Planned ${planned.display_name}`,
+              zone,
+            },
+          },
+          visibility: space.visibility,
+        };
+      }
+      if (zone?.building) {
+        return {
+          data: { data_type: LeftPanelDataType.BUILDING, data: zone.building },
+          visibility: space?.visibility ?? RisqVisibilityLevel.GOOD,
+        };
+      }
+      return undefined;
+    }
+    case LeftPanelDataType.UNITS_BY_TYPE:
+    case LeftPanelDataType.ECONOMIC_UNITS:
+    case LeftPanelDataType.MILITARY_UNITS: {
+      const all_ids = data.data.units.flatMap((u) => [...u.units.values()]);
+      const surviving = all_ids.map((id) => session.findUnitById(id)).filter((u): u is RisqUnit => !!u);
+      if (surviving.length === 0) return undefined;
+      const first = surviving[0];
+      const space = data.data.space ? session.spaceAt(data.data.space.coordinate) : undefined;
+      const owner = session.getGame()?.players.find((p) => p.player.player_id === first.player_id);
+      if (!owner) return undefined;
+      const grouped = groupUnitsByType(
+        owner.units,
+        surviving.map((u) => u.internal_id)
+      );
+      const normalized = normalizePlayerUnits({ space, units: grouped }, (p, id) =>
+        session.getGame()?.players[p]?.units.get(id)
+      );
+      if (!normalized) return undefined;
+      const vis = first.player_id === session.getPlayerId() ? RisqVisibilityLevel.GOOD : (space?.visibility ?? 0);
+      return vis >= RisqVisibilityLevel.GOOD ? { data: normalized, visibility: vis } : undefined;
+    }
+    case LeftPanelDataType.UNITS:
+    case LeftPanelDataType.MULTIPLE_PLAYERS_UNITS: {
+      const space = session.spaceAt(data.data.space.coordinate);
+      if (!space || space.visibility < RisqVisibilityLevel.GOOD) return undefined;
+      const surviving_map = new Map<number, UnitByTypeData[]>();
+      const raw_entries: [number, UnitByTypeData[]][] =
+        data.data_type === LeftPanelDataType.UNITS
+          ? [...data.data.units_by_player.entries()]
+          : data.data.units_by_player;
+      for (const [pid, types] of raw_entries) {
+        const ids = types.flatMap((t) => [...t.units.values()]);
+        const surviving = ids.map((id) => session.findUnitById(id)).filter((u): u is RisqUnit => !!u);
+        const owner = session.getGame()?.players.find((p) => p.player.player_id === pid);
+        if (owner && surviving.length > 0) {
+          surviving_map.set(
+            pid,
+            groupUnitsByType(
+              owner.units,
+              surviving.map((u) => u.internal_id)
+            )
+          );
+        }
+      }
+      const normalized = normalizeUnits({ space, units_by_player: surviving_map }, (p, id) =>
+        session.getGame()?.players[p]?.units.get(id)
+      );
+      return normalized ? { data: normalized, visibility: space.visibility } : undefined;
+    }
+    default:
+      return undefined;
+  }
 }

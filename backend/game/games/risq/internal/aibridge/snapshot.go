@@ -12,6 +12,19 @@ type snapGame struct {
 	TurnNumber int            `json:"turn_number"`
 	Players    []snapPlayer   `json:"players"`
 	Spaces     [][]*snapSpace `json:"spaces"`
+	Regions    []snapRegion   `json:"regions"`
+	// adjacencies other than the normal border between coordinate neighbors
+	SpaceLinks []snapSpaceLink `json:"space_links"`
+}
+
+type snapSpaceLink struct {
+	From snapCoordinate `json:"from"`
+	To   snapCoordinate `json:"to"`
+}
+
+// Only the explored spaces of a region are listed
+type snapRegion struct {
+	Spaces []uint `json:"spaces"`
 }
 
 type snapCoordinate struct {

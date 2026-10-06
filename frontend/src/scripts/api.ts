@@ -29,17 +29,20 @@ function apiToUrl(api: string) {
 }
 
 /** Calls and returns the input get api */
-export async function apiGet<T>(api: string): Promise<ApiResponse<T>> {
+export async function apiGet<T>(api: string, signal?: AbortSignal): Promise<ApiResponse<T>> {
   try {
     const response = await fetch(apiToUrl(api), {
       method: 'GET',
+      signal,
       headers: {
         'Content-Type': 'application/json',
       },
     });
     return (await response.json()) as ApiResponse<T>;
   } catch (error) {
-    console.log(error);
+    if (!signal?.aborted) {
+      console.log(error);
+    }
   }
   return {
     success: false,

@@ -53,9 +53,15 @@ type Internals struct {
 	target_from *ZoneRef
 	// health of the candidate a picker is scoring (units and buildings)
 	target_health, target_max_health float64
+	// set while a spread assigner scores one unit against one candidate
+	unit_health, unit_stamina, target_assigned, assign_round, target_id float64
+	unit_id                                                             float64
 	// where the unit a "unit_when" condition is being checked for stands
 	unit  *ZoneRef
 	start *ZoneRef
+	// the item each enclosing for_each is visiting by its "as" name, and the loop bodies run so far this decision
+	loop_items map[string]loopItem
+	loop_steps int
 }
 
 const defaultMaxBucketDepth = 3
@@ -74,6 +80,7 @@ func (i *Internals) Refresh() {
 	i.behaviors = nil
 	i.building_behaviors = nil
 	i.turn_vars = nil
+	i.loop_steps = 0
 }
 
 func (i *Internals) spend(cost Cost) {
@@ -99,6 +106,15 @@ func (i *Internals) bucket(name string) *Bucket {
 		i.Buckets[name] = b
 	}
 	return b
+}
+
+// "none" matches units that are in no bucket
+func (i *Internals) inBucket(name string, unit_id uint64) bool {
+	if name == "none" {
+		return !i.isBucketed(unit_id)
+	}
+	b := i.Buckets[name]
+	return b != nil && b.Members[unit_id]
 }
 
 func (i *Internals) isBucketed(unit_id uint64) bool {
@@ -181,7 +197,7 @@ func logVars(view View, internals *Internals) {
 func (m *RulesModel) DecideOrders(view View) Decision {
 	logTurnData(view)
 	if m.internals.start == nil {
-		if start, ok := groupCenter(view.Units()); ok {
+		if start, ok := groupCenter(view, view.Units()); ok {
 			m.internals.start = &start
 		}
 	}

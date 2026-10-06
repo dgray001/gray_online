@@ -36,3 +36,15 @@ func LoadConfig(dir string) error {
 func ReadConfigFile(parts ...string) ([]byte, error) {
 	return os.ReadFile(filepath.Join(append([]string{configDir}, parts...)...))
 }
+
+func WriteConfigFile(data []byte, parts ...string) error {
+	return os.WriteFile(filepath.Join(append([]string{configDir}, parts...)...), data, 0o644)
+}
+
+func RemoveConfigFile(parts ...string) error {
+	return os.Remove(filepath.Join(append([]string{configDir}, parts...)...))
+}
+
+func ListConfigDir(parts ...string) ([]os.DirEntry, error) {
+	return os.ReadDir(filepath.Join(append([]string{configDir}, parts...)...))
+}

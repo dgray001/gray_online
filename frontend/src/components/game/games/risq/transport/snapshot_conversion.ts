@@ -29,6 +29,7 @@ import { serverToRisqTurnReport } from './turn_report';
 import { resourceType } from '../rendering/assets/resources';
 import { organizeZoneUnits } from '../model/unit_groups';
 import { RisqTerrainType } from '../rendering/terrain';
+
 /** One instance per internal_id per snapshot, so player, space and zone containers share the same objects */
 declare interface RisqEntityRegistry {
   units: Map<number, RisqUnit>;
@@ -74,6 +75,9 @@ export function serverToGameRisq(server_game: GameRisqFromServer): GameRisq | un
     spaces,
     giving_orders: server_game.giving_orders,
     regions: server_game.regions,
+    background_image: server_game.background_image,
+    background_top_left: server_game.background_top_left,
+    background_top_right: server_game.background_top_right,
   };
 }
 
@@ -161,18 +165,19 @@ export function serverToRisqPlayer(server_player: RisqPlayerFromServer, registry
 
 /** Converts a server response to a frontend risq space */
 export function serverToRisqSpace(server_space: RisqSpaceFromServer, registry: RisqEntityRegistry): RisqSpace {
+  const is_explored = 'terrain_id' in server_space;
   const space: RisqSpace = {
-    terrain_id: server_space.terrain_id ?? 0,
-    terrain_type: server_space.terrain_type ?? RisqTerrainType.NONE,
-    display_name: server_space.display_name ?? '',
+    terrain_id: is_explored ? server_space.terrain_id : 0,
+    terrain_type: is_explored ? server_space.terrain_type : RisqTerrainType.NONE,
+    display_name: is_explored ? server_space.display_name : '',
     coordinate: server_space.coordinate,
     coordinate_key: server_space.coordinate_key,
     visibility: server_space.visibility,
     num_military_units: 0,
     num_villager_units: 0,
-    unit_count: server_space.unit_count,
-    ownership: server_space.ownership,
-    gold_income: server_space.gold_income,
+    unit_count: 'unit_count' in server_space ? server_space.unit_count : undefined,
+    ownership: is_explored ? server_space.ownership : undefined,
+    gold_income: is_explored ? server_space.gold_income : undefined,
     // purely frontend fields
     center: { x: 0, y: 0 },
     hovered: false,
@@ -180,7 +185,7 @@ export function serverToRisqSpace(server_space: RisqSpaceFromServer, registry: R
     hovered_row: false,
     clicked: false,
   };
-  if (!!server_space.zones) {
+  if (is_explored && server_space.zones) {
     const zones: RisqZone[][] = [];
     for (const server_row of server_space.zones) {
       const row: RisqZone[] = [];
@@ -191,7 +196,7 @@ export function serverToRisqSpace(server_space: RisqSpaceFromServer, registry: R
     }
     space.zones = zones as SPACE_ZONES_TYPE;
   }
-  if (!!server_space.resources) {
+  if (is_explored && server_space.resources) {
     space.resources = new Map(
       server_space.resources
         .map((r) => serverToRisqResource(r, registry))
@@ -205,7 +210,7 @@ export function serverToRisqSpace(server_space: RisqSpaceFromServer, registry: R
       space.total_resources.set(resource_type, existing_resources + resource.resources_left);
     }
   }
-  if (!!server_space.buildings) {
+  if (is_explored && server_space.buildings) {
     space.buildings = new Map(
       server_space.buildings
         .map((b) => serverToRisqBuilding(b, registry))
@@ -213,7 +218,7 @@ export function serverToRisqSpace(server_space: RisqSpaceFromServer, registry: R
         .map((b) => [b.internal_id, b])
     );
   }
-  if (!!server_space.units) {
+  if ('units' in server_space && server_space.units) {
     space.units = new Map(
       server_space.units
         .map((u) => serverToRisqUnit(u, registry))
@@ -337,6 +342,7 @@ export function serverToRisqOrder(server_order?: RisqOrderFromServer): RisqOrder
   }
   const order: RisqOrder = {
     ...server_order,
+    internal_id: server_order.internal_id ?? 0,
   };
   return order;
 }

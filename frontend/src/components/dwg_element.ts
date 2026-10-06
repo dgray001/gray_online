@@ -13,17 +13,25 @@ export abstract class DwgElement extends HTMLElement {
   protected html_string: string = '';
   fully_parsed = false;
   private els_metadata: ElementMetadata[] = [];
+  private parsing_controller?: AbortController;
 
-  async connectedCallback() {
+  async connectedCallback(): Promise<void> {
+    this.parsing_controller?.abort();
+    const controller = new AbortController();
+    this.parsing_controller = controller;
     this.classList.add('dwg-element');
     this.innerHTML = this.html_string;
-    await until(this.elementsParsed.bind(this));
+    await until(this.elementsParsed.bind(this), 50, controller.signal);
+    if (controller.signal.aborted) {
+      return;
+    }
     this.parsedCallback();
     this.classList.add('parsed');
     this.fully_parsed = true;
   }
 
   disconnectedCallback() {
+    this.parsing_controller?.abort();
     this.fully_parsed = false;
     for (const el_metadata of this.els_metadata) {
       el_metadata.found_element = false;

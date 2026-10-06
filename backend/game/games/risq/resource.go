@@ -3,6 +3,7 @@ package risq
 import (
 	"fmt"
 	"os"
+	"sort"
 
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/gin-gonic/gin"
@@ -39,6 +40,27 @@ func createRisqResource(internal_id uint64, resource_id uint32) *RisqResource {
 	resource.gather_capacity = config.Gather_capacity
 	resource.resource_category = config.Category
 	return &resource
+}
+
+func AllResourceConfigsToFrontend() []gin.H {
+	ids := make([]uint32, 0, len(defs.ResourceConfigs))
+	for id := range defs.ResourceConfigs {
+		ids = append(ids, id)
+	}
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	resources := make([]gin.H, len(ids))
+	for i, id := range ids {
+		config := defs.ResourceConfigs[id]
+		resources[i] = gin.H{
+			"resource_id":        id,
+			"display_name":       config.Display_name,
+			"category":           config.Category,
+			"starting_resources": config.Starting_resources,
+			"base_gather_speed":  config.Base_gather_speed,
+			"gather_capacity":    config.Gather_capacity,
+		}
+	}
+	return resources
 }
 
 func (r *RisqResource) toFrontend() gin.H {

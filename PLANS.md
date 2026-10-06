@@ -5,17 +5,66 @@ v0.9: Risq beta version
  y: Settings setup (including alt win conditions, map selector, settings for maps like regions/resources/etc, etc)
  z: Alternate terrain images (mountains, swamps, shallows, water)
 
- Small risq issues:
-  - Build orders aren't counting toward tmp predicted resource spend in frontend --- or like some are and some aren't idk why
-  - Trees (and stone) should change image as they are depleted (and deer and berries)
-  - Filters for right panel order list (analyze/design first)
+Small Risq Issues:
+ - Game ending and defeat
+  => Frontend didn't show game ended when I defeated all other players (investigate)
+  => Also defeated should happen when you lose all units + all unit-producing buildings
+ - Order behavior bugs
+  => Gather point to zone seems to be auto-doing building ... that is bad look into it
+  => Building attack unit orders need to go away when unit is out of range or dead
+  => Confirm that priority will be ahead of distance in target selection
+ - Selection, control groups, and navigation
+  => Need to be able to select multiple buildings
+  => Can double click control group to move to where it is
+  => Hotkey to move to current selection (default should be space)
+  => Units in control group(s) should show their number(s) when selected on map as little numbers on bottom right
+  => Should show ctrl groups in bottom panel somehow with a way to clear them
+  => If you have entire ctrl group selected exactly then assigning it a new number should clear previous number (but only if entire group exactly selected)
+ - Idle management and command shortcuts
+  => Buildings that can't build units shouldn't be counted as idle
+  => Next idle should also go to buildings
+  => Show idle units/buildings in bottom panel with ways to filter/turn off for certain groups
+  => If holding ctrl when right click to build building then it should stay armed (true of any armed anything)
+  => Hotkey to open window should also close it (tech tree, turn report)
+ - Order presentation and pointer feedback
+  => Orders list says "attack zone" / "attack space" (check what it says for attack unit/building)
+  => Auto attacks show as "order"
+  => Need to find a better way to show attack zone/space on map (consider options)
+  => Setting gather to foundation doesn't draw arrow to foundation (but it works for resource and unit and built building)
+  => Order arrows from a space in space view should originate from where the unit would be not just in the center of zone
+  => Unit/building range needs to be shown better (maybe on hover explain what it is?)
+  => Tooltips shouldn't be behind cursor they should ALWAYS be such that they don't overlap with where cursor is. Check logic on this
+  => Sword (and other) cursors need to point to cursor point
+ - Zoom, detail, and map modes
+  => I can zoom out more on zone view
+  => Should be able to zoom in more in general
+  => Zooming in more should allow for more unit circles
+  => When not in default view mode then draw detail threshholds can be a bit bigger imo
+  => Minimap shouldn't show terrain beyond terrain type on anything other than default view mode and it should be more explicit in showing mil / resources in appropriate modes
+  => Gold icon should be shown in region view mode
+ - Gathering and production automation
+  => After renewing a building the vils should auto-gather from it (similar to when they are done building)
+  => In farms (or any gatherable building) you should be able to q up "auto-renew" any number of them and they should automatically work for ANY building *of the same building id*
+  => Should be able to gather point inside building and shouldn't cost stamina (special case where unit is built directly inside building)
+ - Combat targeting and defaults
+  => If enemy has massive unit stack there is no way to specify which ones to attack
+  => Some way to set default stance for when units get built
+  => Units should heal when garrisoned
+ - Game pacing and economy
+  => Default map sizes might be a bit too large
+  => Wood gathering seems slow we need a way to speed it up (more techs!)
+ - Assets and combat aftermath
+  => Actually use the images for 3 blacksmith techs
+  => All buildings should have a "damaged" version when like 60% health and another when 20% health along with little fires on it to show damage
+  => Rubble should be shown on map for recently killed buildings and bodies for recently killed units
 
+Bigger Risq Issues/Ideas:
+ - Tests should have their own configs for units/techs/buildings optionally to test things independent of actual configs
  - World risq map
  - Expanded level 2 tech tree
     => Magic and color damage
+    => Walls
     => Stables and Archery range
- - Send a final state/report update before EndGame when elimination ends a risq game (no final start-turn goes out, so clients keep a stale eliminated=false)
- - AI config parse failures should return structured errors (config/action index) instead of falling back to NoopModel, which loses the real parse error
 
 Fiddlesticks Plans:
  - Revamp update dialog box

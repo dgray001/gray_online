@@ -12,7 +12,7 @@ type metricActor struct {
 	space                          *RisqSpace
 	attackTarget                   *RisqSpace
 	health                         float64
-	stamina                        int
+	stamina, sunkStamina           int
 	moving, military               bool
 	attackStamina, overkillStamina float64
 }
@@ -24,6 +24,9 @@ type metricHit struct {
 }
 
 func (m *gameMetrics) beginTick(r *GameRisq, orderables []Orderable) {
+	if !m.extras["fights"] {
+		return
+	}
 	m.actors = make(map[Attackable]*metricActor, len(orderables))
 	m.hits = m.hits[:0]
 	for _, o := range orderables {
@@ -48,6 +51,7 @@ func (m *gameMetrics) beginTick(r *GameRisq, orderables []Orderable) {
 		}
 		s.space, s.health, s.stamina = zone.space, s.base.cs.health, s.base.current_stamina
 		_, s.moving = s.base.intent.detail.(*MoveIntent)
+		s.sunkStamina = s.base.intent.sunk_cost
 		s.military = s.unit != nil && s.unit.unitType() != defs.UnitType_ECONOMIC && s.unit.unitType() != defs.UnitType_NONE
 		m.actors[s.actor] = s
 	}

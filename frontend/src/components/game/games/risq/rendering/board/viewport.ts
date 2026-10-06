@@ -11,6 +11,7 @@ import { getRisqZone, zoneCenterOffset } from '../zones/geometry';
 import { unitSlotWorldPosition } from '../zones/slots';
 
 const DEFAULT_HEXAGON_RADIUS = 60;
+const ZOOM_REFERENCE_BOARD_SIZE = 4;
 
 export declare interface CanvasBounds {
   min: Point2D;
@@ -27,7 +28,10 @@ export class RisqViewport {
   private draw_detail: DrawRisqSpaceDetail = DrawRisqSpaceDetail.SPACE_DETAILS;
   private view_mode: RisqViewMode = RisqViewMode.ALL;
 
-  constructor(private session: RisqSession) {}
+  constructor(
+    private session: RisqSession,
+    private on_view_mode_change?: () => void
+  ) {}
 
   hexR(): number {
     return this.hex_r;
@@ -61,12 +65,13 @@ export class RisqViewport {
     return this.view_mode;
   }
 
-  setViewMode(mode: RisqViewMode) {
+  setViewMode(mode: RisqViewMode): void {
     this.view_mode = mode;
+    this.on_view_mode_change?.();
   }
 
-  cycleViewMode() {
-    this.view_mode = nextViewMode(this.view_mode);
+  cycleViewMode(): void {
+    this.setViewMode(nextViewMode(this.view_mode));
   }
 
   /** Whether units, buildings, and their orders are drawn at the current detail and view mode */
@@ -82,7 +87,18 @@ export class RisqViewport {
     );
   }
 
+  zoomLimits(board_width: number): { min: number; max: number } {
+    const reference_radius = board_width / (1.732 * (2 * ZOOM_REFERENCE_BOARD_SIZE + 1));
+    const reference_max = (0.45 * this.canvas_size.height) / reference_radius;
+    const max = (0.45 * this.canvas_size.height) / this.hex_r;
+    return { min: max / reference_max ** 2, max };
+  }
+
   updateDrawDetail(scale: number, max_scale: number) {
+    const board_size = this.session.getGame()?.board_size ?? ZOOM_REFERENCE_BOARD_SIZE;
+    const reference_scale = (2 * ZOOM_REFERENCE_BOARD_SIZE + 1) / (2 * board_size + 1);
+    scale *= reference_scale;
+    max_scale *= reference_scale;
     if (scale > 0.6 * (max_scale - 1) + 1) {
       this.draw_detail = DrawRisqSpaceDetail.ZONE_DETAILS;
     } else if (scale < 1 / (0.2 * (max_scale - 1) + 1)) {
@@ -100,11 +116,11 @@ export class RisqViewport {
     };
   }
 
-  /** Refits the hex radius to a resized board; returns the view scale ratio and the new canvas center */
   resize(board_size: Point2D, canvas_size: DOMRect, game_board_size: number): { ratio: number; center: Point2D } {
-    const ratio = (0.5 * Math.min(board_size.x, canvas_size.width)) / this.canvas_center.x;
+    const new_center_x = 0.5 * Math.min(board_size.x, canvas_size.width);
+    const ratio = this.canvas_center.x === 0 ? 1 : new_center_x / this.canvas_center.x;
     this.canvas_center = {
-      x: 0.5 * Math.min(board_size.x, canvas_size.width),
+      x: new_center_x,
       y: 0.5 * Math.min(board_size.y, canvas_size.height),
     };
     this.canvas_size = canvas_size;

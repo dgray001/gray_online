@@ -3,7 +3,6 @@ package aibridge
 import (
 	"sort"
 
-	"github.com/dgray001/gray_online/game/game_utils"
 	"github.com/dgray001/gray_online/game/games/risq/ai"
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/util"
@@ -26,8 +25,21 @@ type aiView struct {
 	cancelled_orders      map[uint64]bool
 	planned_techs         map[uint32]bool
 	planned_production    map[uint64]int
+	// our units with an attack order on each target, from the snapshot and this turn's emitted orders
+	attackers map[attackTarget]map[uint64]bool
 	// built on first use, then kept current by assignUnit
 	gather_counts map[ai.ZoneRef]int
+	// built on first use
+	enemy_spaces       []ai.Coordinate
+	enemy_spaces_known bool
+	space_by_key       map[uint]*snapSpace
+	space_links        map[ai.Coordinate][]ai.Coordinate
+	space_distances    map[ai.Coordinate]map[ai.Coordinate]int
+}
+
+type attackTarget struct {
+	building bool
+	id       uint64
 }
 
 type snapZoneEntry struct {
@@ -42,7 +54,10 @@ func newAiView(game *snapGame, player_id int) (*aiView, bool) {
 		planned: map[ai.ZoneRef]bool{}, order_ids: map[uint64]bool{}, assigned_units: map[uint64]*ai.CurrentOrder{},
 		claimed_buildings: map[uint64]bool{}, ordered_foundations: map[ai.ZoneRef]uint32{}, cancelled_foundations: map[ai.ZoneRef]bool{},
 		cancelled_orders: map[uint64]bool{}, planned_techs: map[uint32]bool{}, planned_production: map[uint64]int{},
+		space_distances: map[ai.Coordinate]map[ai.Coordinate]int{},
+		attackers:       map[attackTarget]map[uint64]bool{},
 	}
+	v.indexSpaceLinks()
 	for i := range game.Players {
 		p := &game.Players[i]
 		if p.Player.PlayerId == player_id {
@@ -78,6 +93,7 @@ func newAiView(game *snapGame, player_id int) (*aiView, bool) {
 	for _, o := range v.me.ActiveOrders {
 		v.order_ids[o.InternalId] = true
 	}
+	v.loadAttackers()
 	return v, true
 }
 
@@ -174,6 +190,7 @@ func (v *aiView) unitViewShallow(u *snapUnit) ai.UnitView {
 	}
 	return ai.UnitView{
 		InternalID:       u.InternalId,
+		PlayerID:         u.PlayerId,
 		UnitID:           u.UnitId,
 		Type:             ai.UnitType(u.UnitType),
 		Kind:             kind,
@@ -240,6 +257,7 @@ func (v *aiView) buildingView(b *snapBuilding) ai.BuildingView {
 	config := defs.BuildingConfigs[b.BuildingId]
 	return ai.BuildingView{
 		InternalID:        b.InternalId,
+		PlayerID:          b.PlayerId,
 		BuildingID:        b.BuildingId,
 		Location:          zoneRefOf(b.Space, b.Zone),
 		UnderConstruction: b.UnderConstruction,
@@ -466,7 +484,7 @@ func (v *aiView) InAttackRange(b ai.BuildingView, target ai.ZoneRef) bool {
 	if !ranged {
 		return b.Location == target
 	}
-	return axialDistance(b.Location.Space, target.Space) <= int(radius)
+	return v.SpaceDistance(b.Location.Space, target.Space) <= int(radius)
 }
 
 func (v *aiView) VisibleEnemyUnits() []ai.UnitView {
@@ -580,7 +598,7 @@ func (v *aiView) NearestResource(from ai.ZoneRef, category ai.ResourceCategory, 
 		}
 		// saturated only when the gatherers already on it will use up what is left, so a nearly empty node still gets finished
 		saturated := view.AmountLeft <= float64(count*speed)
-		d := zoneDistance(from, entry.ref)
+		d := v.LocationDistance(from, entry.ref)
 		closer := d < best_distance || (d == best_distance && zoneKey(entry.ref) < zoneKey(best.Location))
 		if !found || (!saturated && best_saturated) || (saturated == best_saturated && closer) {
 			best, best_distance, best_saturated, found = view, d, saturated, true
@@ -628,9 +646,8 @@ func (v *aiView) buildable(space *snapSpace) bool {
 	if !known || owner != -1 {
 		return known && owner == v.playerId()
 	}
-	for _, direction := range game_utils.AxialDirectionVectors() {
-		adjacent := v.spaces[ai.Coordinate{X: space.Coordinate.X + direction.X, Y: space.Coordinate.Y + direction.Y}]
-		if adj_owner, adj_known := spaceOwner(adjacent); adj_known && adj_owner == v.playerId() {
+	for _, adjacent := range v.spaceNeighbors(toCoordinate(space.Coordinate)) {
+		if adj_owner, adj_known := spaceOwner(v.spaces[adjacent]); adj_known && adj_owner == v.playerId() {
 			return true
 		}
 	}
@@ -639,44 +656,36 @@ func (v *aiView) buildable(space *snapSpace) bool {
 
 const outpostBuildingID = 21
 
-// Outposts exist to claim land, so they only go in unowned spaces (no other foundation already there)
-func (v *aiView) nearestClaimSite(from ai.ZoneRef) (ai.ZoneRef, bool) {
+// Every zone the building can go on. Outposts exist to claim land, so they only go in unowned spaces with no other foundation
+func (v *aiView) BuildSites(building_id uint32, include func(ai.Coordinate) bool) []ai.ZoneRef {
 	foundations := v.foundationsByLocation()
 	claimed := make(map[ai.Coordinate]bool, len(foundations))
 	for location := range foundations {
 		claimed[location.Space] = true
 	}
-	var best ai.ZoneRef
-	found, best_distance := false, -1
+	sites := make([]ai.ZoneRef, 0)
 	for _, entry := range v.zones {
-		if owner, known := spaceOwner(entry.space); !known || owner != -1 {
+		if include != nil && !include(entry.ref.Space) {
 			continue
 		}
-		if entry.zone.Resource != nil || entry.zone.Building != nil || claimed[entry.ref.Space] || !v.buildable(entry.space) {
-			continue
-		}
-		d := zoneDistance(from, entry.ref)
-		if !found || d < best_distance || (d == best_distance && zoneKey(entry.ref) < zoneKey(best)) {
-			best, best_distance, found = entry.ref, d, true
-		}
-	}
-	return best, found
-}
-
-func (v *aiView) NearestBuildSite(from ai.ZoneRef, building_id uint32) (ai.ZoneRef, bool) {
-	if building_id == outpostBuildingID {
-		return v.nearestClaimSite(from)
-	}
-	foundations := v.foundationsByLocation()
-	var best ai.ZoneRef
-	found, best_distance := false, -1
-	for _, entry := range v.zones {
 		if entry.zone.Resource != nil || entry.zone.Building != nil || foundations[entry.ref] != nil || !v.buildable(entry.space) {
 			continue
 		}
-		d := zoneDistance(from, entry.ref)
-		if !found || d < best_distance || (d == best_distance && zoneKey(entry.ref) < zoneKey(best)) {
-			best, best_distance, found = entry.ref, d, true
+		if owner, known := spaceOwner(entry.space); building_id == outpostBuildingID && (!known || owner != -1 || claimed[entry.ref.Space]) {
+			continue
+		}
+		sites = append(sites, entry.ref)
+	}
+	return sites
+}
+
+func (v *aiView) NearestBuildSite(from ai.ZoneRef, building_id uint32, include func(ai.Coordinate) bool) (ai.ZoneRef, bool) {
+	var best ai.ZoneRef
+	found, best_distance := false, -1
+	for _, site := range v.BuildSites(building_id, include) {
+		d := v.LocationDistance(from, site)
+		if !found || d < best_distance || (d == best_distance && zoneKey(site) < zoneKey(best)) {
+			best, best_distance, found = site, d, true
 		}
 	}
 	return best, found
@@ -696,4 +705,65 @@ func (v *aiView) assignUnit(id uint64, order *ai.CurrentOrder) {
 
 func (v *aiView) claimBuilding(id uint64) {
 	v.claimed_buildings[id] = true
+}
+
+func (v *aiView) OwnBuildingsIn(space ai.Coordinate) int {
+	count := 0
+	for _, b := range v.me.Buildings {
+		if toCoordinate(b.Space) == space {
+			count++
+		}
+	}
+	for location, f := range v.foundationsByLocation() {
+		if f.Planned && location.Space == space {
+			count++
+		}
+	}
+	return count
+}
+
+func (v *aiView) EnemyDistance(from ai.Coordinate) int {
+	if !v.enemy_spaces_known {
+		seen := make(map[ai.Coordinate]bool)
+		for _, b := range v.KnownEnemyBuildings() {
+			if space := b.Location.Space; !seen[space] {
+				seen[space] = true
+				v.enemy_spaces = append(v.enemy_spaces, space)
+			}
+		}
+		v.enemy_spaces_known = true
+	}
+	best := -1
+	for _, space := range v.enemy_spaces {
+		if d := v.SpaceDistance(from, space); best == -1 || d < best {
+			best = d
+		}
+	}
+	return best
+}
+
+func (v *aiView) RegionProgress(space ai.Coordinate) float64 {
+	if owner, known := spaceOwner(v.spaces[space]); known && owner == v.playerId() {
+		return 0
+	}
+	if v.space_by_key == nil {
+		v.space_by_key = make(map[uint]*snapSpace, len(v.spaces))
+		for coordinate, s := range v.spaces {
+			v.space_by_key[spaceKey(coordinate)] = s
+		}
+	}
+	key := spaceKey(space)
+	for _, region := range v.game.Regions {
+		member, owned := false, 0
+		for _, k := range region.Spaces {
+			member = member || k == key
+			if owner, known := spaceOwner(v.space_by_key[k]); known && owner == v.playerId() {
+				owned++
+			}
+		}
+		if member {
+			return float64(owned+1) / float64(len(region.Spaces))
+		}
+	}
+	return 0
 }

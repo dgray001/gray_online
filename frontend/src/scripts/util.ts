@@ -18,10 +18,10 @@ export async function asyncLoop(times: number, callback: Function): Promise<void
   });
 }
 
-/** Returns promise that resolves when condition function becomes true */
-export function until(condition: () => boolean, poll_timer = 300): Promise<void> {
-  const poll = (resolve: () => void) => {
-    if (condition()) {
+/** Resolves when the condition becomes true or the signal is aborted */
+export function until(condition: () => boolean, poll_timer = 50, signal?: AbortSignal): Promise<void> {
+  const poll = (resolve: () => void): void => {
+    if (signal?.aborted || condition()) {
       resolve();
     } else {
       setTimeout(() => poll(resolve), poll_timer);
@@ -44,11 +44,6 @@ export function capitalize(str: string, word_split = ' '): string {
       return str.charAt(0).toUpperCase() + lower.slice(1);
     })
     .join(word_split);
-}
-
-/** Gets random element of array */
-export function getRandom<T>(a: T[]): T {
-  return a[Math.floor(Math.random() * a.length)];
 }
 
 /** Formats a multiline html string by removing extra whitespace */

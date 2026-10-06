@@ -85,18 +85,18 @@
     "intra_cost": 2,
     "inter_cost": 9,
     "build_speed_modifier": 0.6,
-    "terrains": []
+    "terrains": [{ "terrain_id": 151, "display_name": "Shallows" }]
   },
   {
     "terrain_type": "water",
     "build_speed_modifier": 0.4,
     "impassable": true,
-    "terrains": []
+    "terrains": [{ "terrain_id": 152, "display_name": "Water" }]
   },
   {
     "terrain_type": "deep_water",
     "build_speed_modifier": 0.2,
     "impassable": true,
-    "terrains": []
+    "terrains": [{ "terrain_id": 153, "display_name": "Deep Water" }]
   }
 ]

@@ -1,6 +1,6 @@
 import type { Point2D } from '../../../../util/objects2d';
 import { axialDistance, equalsPoint2D } from '../../../../util/objects2d';
-import { buildingImage } from '../../rendering/assets/buildings';
+import { buildingImage, techImage } from '../../rendering/assets/buildings';
 import { coordinateToIndex, getSpace, invertBuildKey, invertPair, invertZoneKey } from '../../model/coordinates';
 import { RisqOrderType, RisqProducibleKind, RisqResourceType } from '../../model/types';
 import { isBuildingOrder, isPlayerOrder, isUnitOrder } from '../../application/orders/orders_model';
@@ -23,6 +23,11 @@ export interface ResolvedRow {
   subject_icon?: string;
   subject_units?: UnitByTypeData[];
   progress?: number;
+  progress_text?: string;
+}
+
+function progressText(total: number | undefined, remaining: number | undefined): string | undefined {
+  return total === undefined ? undefined : `Progress: ${total - (remaining ?? total)} / ${total}`;
 }
 
 export function shortLabel(order_type: RisqOrderType): string {
@@ -121,7 +126,7 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
     return zone_data?.resource?.display_name ?? zone_data?.building?.display_name ?? 'a resource';
   };
 
-  let base: { icon: string; name: string; target: string; cost: CostChip[]; progress?: number };
+  let base: ResolvedRow;
   switch (order.order_type) {
     case RisqOrderType.OrderType_UnitMoveSpace: {
       const target_space = invertPair(order.target_id);
@@ -156,6 +161,10 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
         target: distance_text(space, zone),
         cost: resource_cost(producible?.cost),
         progress,
+        progress_text: progressText(
+          site?.construction_stamina_total || producible?.stamina_cost,
+          site?.stamina_remaining
+        ),
       };
       break;
     }
@@ -164,6 +173,16 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
         (p) => p.kind === RisqProducibleKind.UNIT && p.id === order.target_id
       );
       const qty = 1 + (config.collapsed_orders?.length ?? 0);
+      const total = producible ? producible.stamina_cost * qty : undefined;
+      const remaining = [order, ...(config.collapsed_orders ?? [])].reduce(
+        (sum: number, queued: typeof order): number =>
+          sum +
+          (subject_building?.production_queue.find((i) => i.order_internal_id === queued.internal_id)
+            ?.stamina_remaining ??
+            producible?.stamina_cost ??
+            0),
+        0
+      );
       const queue_item = subject_building?.production_queue.find((i) => i.order_internal_id === order.internal_id);
       const progress =
         queue_item && producible && producible.stamina_cost > 0
@@ -178,6 +197,7 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
         target: '',
         cost: resource_cost(producible?.cost, qty),
         progress,
+        progress_text: progressText(total, remaining),
       };
       break;
     }
@@ -191,11 +211,12 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
           ? 1 - queue_item.stamina_remaining / producible.stamina_cost
           : undefined;
       base = {
-        icon: 'icons/research32',
+        icon: techImage(order.target_id),
         name: `Research ${producible?.display_name ?? 'Tech'}`,
         target: '',
         cost: resource_cost(producible?.cost),
         progress,
+        progress_text: progressText(producible?.stamina_cost, queue_item?.stamina_remaining),
       };
       break;
     }
@@ -295,11 +316,18 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
       const building = game?.players
         .flatMap((p) => [...p.buildings.values()])
         .find((b) => b.internal_id === order.target_id);
+      const resources = building?.renewing ? (building.resources_left ?? 0) : 0;
+      const completed =
+        building?.renew_stamina && building.resource_capacity
+          ? (resources / building.resource_capacity) * building.renew_stamina
+          : undefined;
       base = {
         icon: 'icons/wheat32',
         name: `Renew ${building?.display_name ?? 'Building'}`,
         target: building ? distance_text(building.space_coordinate, building.zone_coordinate) : '',
         cost: [],
+        progress_text:
+          completed === undefined ? undefined : `Progress: ${completed.toFixed(1)} / ${building?.renew_stamina}`,
       };
       break;
     }

@@ -32,9 +32,12 @@ type researchAction struct {
 
 type buildAction struct {
 	filtered
-	building_id uint32
-	eligible    []OrderKind
-	max         amount
+	building_id              uint32
+	eligible                 []OrderKind
+	max                      amount
+	site                     *spaceQuery
+	picker                   *sitePicker
+	reuse_unbuilt_foundation bool
 }
 
 type exploreAnchor uint8
@@ -153,7 +156,8 @@ func (a *researchAction) ToOrders(view View, internals *Internals) []Order {
 
 func (a *buildAction) ToOrders(view View, internals *Internals) []Order {
 	limit := a.max.int(view, internals)
-	return buildWith(view, internals, a.filter.apply(eligibleUnits(view, a.eligible), isEconomic), a.building_id, limit)
+	units := a.filter.apply(eligibleUnits(view, a.eligible), isEconomic)
+	return buildWith(view, internals, units, a.building_id, limit, a.site, a.picker, a.reuse_unbuilt_foundation)
 }
 
 func (a *exploreAction) ToOrders(view View, internals *Internals) []Order {
@@ -196,7 +200,7 @@ func (a *exploreAction) ToOrders(view View, internals *Internals) []Order {
 		if len(available) == 0 {
 			available = candidates
 		}
-		target, ok := randomNearestSpace(internals, u.Location.Space, available)
+		target, ok := randomNearestSpace(view, internals, u.Location.Space, available)
 		if !ok {
 			continue
 		}
@@ -286,7 +290,7 @@ func (a *garrisonAction) ToOrders(view View, internals *Internals) []Order {
 			if b.UnderConstruction || b.GarrisonCount >= b.GarrisonCapacity {
 				continue
 			}
-			d := locationDistance(u.Location, b.Location)
+			d := view.LocationDistance(u.Location, b.Location)
 			if best_dist == -1 || d < best_dist {
 				best_b, best_dist = b, d
 			}

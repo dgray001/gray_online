@@ -9,7 +9,9 @@ import { RisqVisibilityLevel } from '../../model/types';
 import { unitsByPlayerFiltered } from '../../model/unit_groups';
 import type { DwgRisq } from '../../risq';
 import { ROW_H as ORDER_ROW_H } from '../order_row/order_row';
+import { ORDER_FILTER_BAR_H } from '../order_filter_bar/order_filter_bar';
 import { RisqOrdersList } from '../right_panel/orders_list';
+import type { RisqHotkeyAction } from '../../application/input/hotkeys';
 import type { RisqActionButton } from './actions/action_button';
 import { buildPanelActions } from './actions/action_factory';
 import { drawBuilding, drawFoundation, drawResource } from './content/entity_views';
@@ -43,6 +45,7 @@ import {
   isUnitSelection,
   normalizeSelection,
   orderListSubjects,
+  resolveSelectionData,
   unitResolver,
 } from './selection_queries';
 
@@ -88,6 +91,7 @@ export class RisqLeftPanel implements CanvasComponent {
       risq,
       config.w,
       new ColorRGB(222, 184, 135).addColor(255, 0, 0, 0.2),
+      false,
       false
     );
     this.input = new RisqLeftPanelInput(risq, this, this.hexagon, this.space_view, this.stats);
@@ -135,7 +139,7 @@ export class RisqLeftPanel implements CanvasComponent {
 
   private statsSectionEnd(): number {
     const building = this.data?.data_type === LeftPanelDataType.BUILDING ? this.data.data : undefined;
-    const has_stats = this.data?.data_type === LeftPanelDataType.UNIT || (!!building && !building.under_construction);
+    const has_stats = this.data?.data_type === LeftPanelDataType.UNIT || !!building;
     if (!has_stats && !this.isUnit()) {
       return this.yi() + 0.5 * this.size.y - PANEL_PADDING;
     }
@@ -149,7 +153,10 @@ export class RisqLeftPanel implements CanvasComponent {
     const action_rows = this.isUnit() ? UNIT_ACTION_GRID_ROWS : BUILDING_ACTION_GRID_ROWS;
     const garrison_capacity =
       this.isBuilding() && this.data?.data_type === LeftPanelDataType.BUILDING ? this.data.data.garrison_capacity : 0;
-    this.layout = computeLayout(this, this.statsSectionEnd(), action_rows, garrison_capacity);
+    const P = PANEL_PADDING;
+    const min_orders_height =
+      ORDER_FILTER_BAR_H + 2 * this.order_rows_list.getPadding() + 2 * ORDER_ROW_H + this.order_rows_list.getGap();
+    this.layout = computeLayout(this, this.statsSectionEnd(), action_rows, garrison_capacity, min_orders_height);
     const s = this.layout.grid_s;
     for (const button of this.buttons) {
       button.setSize(s, s);
@@ -157,14 +164,12 @@ export class RisqLeftPanel implements CanvasComponent {
     }
     this.target_priority_control?.setSize(3 * s + 2 * PANEL_PADDING, s);
     this.target_priority_control?.setPosition(gridCell(this.layout, 2, 2));
-    const P = PANEL_PADDING;
-    const min_orders_height = 2 * this.order_rows_list.getPadding() + 2 * ORDER_ROW_H + this.order_rows_list.getGap();
-    const orders_y0 = Math.min(this.layout.grid_bottom_separator + P, this.yi() + this.size.y - P - min_orders_height);
+    const orders_y0 = this.layout.grid_bottom_separator + P;
     this.order_rows_list.setAllSizes(
       Math.min(0.1 * this.w(), 16),
       { x: this.xi() + P, y: orders_y0 },
       this.w() - 2 * P,
-      this.yi() + this.size.y - orders_y0 - P
+      Math.max(min_orders_height, this.yi() + this.size.y - orders_y0 - P)
     );
   }
 
@@ -180,7 +185,16 @@ export class RisqLeftPanel implements CanvasComponent {
     return false;
   }
 
-  setClicking(_clicking: boolean): void {}
+  setClicking(clicking: boolean): void {
+    if (!clicking) {
+      for (const component of [this.close_button, this.order_rows_list, ...this.buttons]) {
+        component.setClicking(false);
+        component.setHovering(false);
+      }
+      this.target_priority_control?.cancelInput();
+      this.input.cancelInput();
+    }
+  }
 
   isShowing(): boolean {
     return this.showing;
@@ -190,8 +204,48 @@ export class RisqLeftPanel implements CanvasComponent {
     return this.data;
   }
 
-  dataRefreshed() {
+  refreshData() {
+    if (!this.showing || !this.data) {
+      this.refreshActionButtons();
+      return;
+    }
+    const resolved = resolveSelectionData(this.data, this.risq.session);
+    if (!resolved) {
+      this.close();
+      return;
+    }
+    this.data = resolved.data;
+    this.visibility = resolved.visibility;
     this.refreshActionButtons();
+    this.resolveSize();
+  }
+
+  dataRefreshed() {
+    this.refreshData();
+  }
+
+  triggerAction(action: RisqHotkeyAction): boolean {
+    if (!this.isShowing() || !this.isOrderable() || !this.risq.session.canGiveOrders()) {
+      return false;
+    }
+    const button = this.buttons.find((b) => b.matchesAction(action) && !b.isDisabled());
+    if (button) {
+      button.execute();
+      return true;
+    }
+    return false;
+  }
+
+  triggerProducible(kind: string, id: number, ctrl_held = false): boolean {
+    if (!this.isShowing() || !this.isOrderable() || !this.risq.session.canGiveOrders()) {
+      return false;
+    }
+    const button = this.buttons.find((b) => b.matchesProducible(kind, id) && !b.isDisabled());
+    if (button) {
+      button.execute(ctrl_held);
+      return true;
+    }
+    return false;
   }
 
   isOrderable(): boolean {

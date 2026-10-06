@@ -18,6 +18,7 @@ import type { RisqHover } from '../input/hover';
 import type { RisqSession } from '../session';
 import type { RisqOrdersModel } from './orders_model';
 import type { RisqOrderPlanning } from './planning';
+import { unitCanBuild } from './eligibility';
 import type { RisqOrderTargeting } from './targeting';
 
 /** A selected unit as order dispatch needs it */
@@ -40,8 +41,7 @@ export class RisqOrderDispatch {
     private show_message: (text: string, color: ColorRGB) => void
   ) {}
 
-  /** Right-click with units selected; a single selected unit may join or resume an existing foundation */
-  unitOrder(units: OrderSubject[], single: boolean, ctrl_held: boolean) {
+  unitOrder(units: OrderSubject[], ctrl_held: boolean): void {
     const space = this.hover.space();
     const zone = this.hover.zone();
     if (!space) {
@@ -114,12 +114,10 @@ export class RisqOrderDispatch {
         if (!zone) {
           return;
         }
-        if (single) {
-          this.singleBuildOrder(units[0].internal_id, zone.coordinate_key, ctrl_held);
-        } else if (this.armed.getArmedBuilding()) {
+        if (this.armed.getArmedBuilding()) {
           this.newFoundation(ids(economic), zone.coordinate_key, ctrl_held);
         } else {
-          return;
+          this.assistBuildOrder(units, zone.coordinate_key, ctrl_held);
         }
         break;
       case RisqOrderType.OrderType_UnitRepair:
@@ -136,14 +134,20 @@ export class RisqOrderDispatch {
     this.armed.disarmOrder();
   }
 
-  private addUnitOrder(order_type: RisqOrderType, subjects: number[], target_id: number, ctrl_held: boolean) {
+  private addUnitOrder(order_type: RisqOrderType, subjects: number[], target_id: number, ctrl_held: boolean): void {
     if (subjects.length === 0) {
       return;
     }
     if (order_type === RisqOrderType.OrderType_UnitRenew) {
       const player = this.session.getPlayer();
-      const cost = this.session.findBuildingById(target_id)?.renew_cost;
-      if (player && cost && !canAffordCost(player, cost)) {
+      const cost = this.planning.unpaidRenewalCost(target_id);
+      const reserved = this.orders_model
+        .pendingOrders()
+        .some(
+          (order: RisqFrontendOrder): boolean =>
+            order.order_type === RisqOrderType.OrderType_UnitRenew && order.target_id === target_id
+        );
+      if (player && cost && !reserved && !canAffordCost(player, cost)) {
         this.show_message('Not enough resources', RISQ_MESSAGE_WARNING_COLOR);
         return;
       }
@@ -157,28 +161,30 @@ export class RisqOrderDispatch {
     });
   }
 
-  /** Joins this zone's local foundation, or builds the armed building, the unfinished building, or the server foundation */
-  private singleBuildOrder(internal_id: number, zone_key: number, ctrl_held: boolean) {
-    const local_foundation = this.planning.getLocalFoundation(zone_key);
-    if (local_foundation) {
-      if (!local_foundation.order.subjects.includes(internal_id)) {
-        if (!ctrl_held) {
-          this.orders_model.cancelForSubject(internal_id);
-        }
-        local_foundation.order.subjects.push(internal_id);
-        this.orders_model.triggerChange();
-      }
+  private existingBuildTarget(zone_key: number): number | undefined {
+    const building = this.hover.zone()?.building;
+    const owned_unfinished = building?.player_id === this.session.getPlayerId() && building?.under_construction;
+    return (
+      this.planning.getLocalFoundation(zone_key)?.building_id ??
+      (owned_unfinished ? building?.building_id : undefined) ??
+      this.session.getPlayer()?.planned_foundations.get(zone_key)?.building_id
+    );
+  }
+
+  private assistBuildOrder(units: OrderSubject[], zone_key: number, ctrl_held: boolean): void {
+    const player = this.session.getPlayer();
+    const building_id = this.existingBuildTarget(zone_key);
+    if (!player || building_id === undefined) {
       return;
     }
-    if (this.armed.getArmedBuilding()) {
-      this.newFoundation([internal_id], zone_key, ctrl_held);
-      return;
-    }
-    const building_id =
-      this.hover.zone()?.building?.building_id ??
-      this.session.getPlayer()?.planned_foundations?.get(zone_key)?.building_id;
-    if (building_id !== undefined) {
-      this.orders_model.add(this.buildOrder(building_id, [internal_id], zone_key, ctrl_held));
+    const subjects = units
+      .filter((subject: OrderSubject): boolean => {
+        const unit = player.units.get(subject.internal_id);
+        return !!unit && unitCanBuild(player, unit, building_id);
+      })
+      .map((subject: OrderSubject): number => subject.internal_id);
+    if (subjects.length > 0) {
+      this.orders_model.add(this.buildOrder(building_id, subjects, zone_key, ctrl_held));
     }
   }
 
@@ -191,6 +197,7 @@ export class RisqOrderDispatch {
       coordinate_key: zone_key,
       building_id: building.id,
       display_name: building.display_name,
+      stamina_cost: building.stamina_cost,
       order,
     });
   }
@@ -240,7 +247,7 @@ export class RisqOrderDispatch {
         object_type: RisqGatherObjectType.NONE,
         object_id: 0,
       };
-      const hovered = hoveredZoneObject(zone);
+      const hovered = hoveredZoneObject(zone, this.viewport.viewMode());
       if (hovered?.kind === 'resource' && zone.resource) {
         point.object_type = RisqGatherObjectType.RESOURCE;
         point.object_id = zone.resource.internal_id;

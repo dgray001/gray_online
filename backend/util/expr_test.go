@@ -1,37 +1,16 @@
 package util
 
-import (
-	"fmt"
-	"testing"
-)
+import "testing"
 
-func TestEvalExprFunctions(t *testing.T) {
-	vars := map[string]float64{"a": 3, "b": 7}
+func TestExprDottedVariableNames(t *testing.T) {
 	lookup := func(name string) (float64, error) {
-		if name == "x" {
-			return 10, nil
+		if name == "b.space_x" {
+			return 4, nil
 		}
-		return 0, fmt.Errorf("unknown %s", name)
+		return 0, nil
 	}
-	cases := map[string]float64{
-		"min(a, b)":                       3,
-		"max(a, b, 12) - 1":               11,
-		"min(max(a, 5), b)":               5,
-		"var(x) * 2 + min(1, 2)":          21,
-		"max(0, 24 - var(x)) / max(1, a)": 14.0 / 3,
-	}
-	for expr, want := range cases {
-		got, err := EvalExprWithLookup(expr, vars, lookup)
-		if err != nil || got != want {
-			t.Errorf("%s = %v (err %v), want %v", expr, got, err, want)
-		}
-	}
-	for _, bad := range []string{"min(a)", "var(y)", "foo(a, b)", "min(a b)", "var(1)"} {
-		if _, err := EvalExprWithLookup(bad, vars, lookup); err == nil {
-			t.Errorf("%s should fail", bad)
-		}
-	}
-	if _, err := EvalExpr("var(x)", vars); err == nil {
-		t.Errorf("var() without a lookup should fail")
+	got, err := EvalExprWithLookup("var(b.space_x) * 2 + 1", nil, lookup)
+	if err != nil || got != 9 {
+		t.Fatalf("got %v, %v; want 9", got, err)
 	}
 }

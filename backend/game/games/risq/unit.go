@@ -20,6 +20,8 @@ type RisqUnit struct {
 	gather_slot Gatherable
 	// this tick's full planned route, for frontend display only; cleared whenever the unit isn't actively moving
 	move_path []*RisqZone
+	// the half move already paid toward an adjacent zone; kept only while each tick's intent keeps stepping there
+	half_move *halfMove
 }
 
 func createRisqUnit(internal_id uint64, unit_id uint32, player *RisqPlayer) *RisqUnit {
@@ -117,6 +119,7 @@ func (u *RisqUnit) recordDeath(r *GameRisq, attacker Attackable, damage float64)
 	if death_zone == nil && u.garrisoned_in != nil {
 		death_zone = u.garrisoned_in.zone
 	}
+	death_zone.space.death_vision[u.player_id] = true
 	space := death_zone.space.coordinate
 	zone := death_zone.coordinate
 	r.players[attacker.playerId()].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: RisqCombatEventKind_UNIT_KILLED,

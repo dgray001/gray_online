@@ -206,11 +206,13 @@ func (p *Player) ToFrontend(show_updates bool) gin.H {
 	}
 	if show_updates {
 		updates := []gin.H{}
+		p.update_list_mu.RLock()
 		for _, update := range p.update_list {
 			if update != nil {
 				updates = append(updates, update.toFrontend())
 			}
 		}
+		p.update_list_mu.RUnlock()
 		player["updates"] = updates
 	}
 	return player

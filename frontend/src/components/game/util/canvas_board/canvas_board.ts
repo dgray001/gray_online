@@ -1,5 +1,6 @@
 import { DwgElement } from '../../../dwg_element';
 import { isDialogOpen, isTypingInInput, until } from '../../../../scripts/util';
+import { createImage, isImageReady } from '../../../../scripts/image';
 import type { Point2D } from '../objects2d';
 import { rotatePoint, subtractPoint2D } from '../objects2d';
 import { configDraw } from '../canvas_components/canvas_component';
@@ -25,7 +26,7 @@ export declare interface ModifierKeys {
 
 const EXTRA_MOUSE_BUTTON_EVENTS = ['mousedown', 'mouseup', 'auxclick'] as const;
 
-function modifiersFrom(e: MouseEvent): ModifierKeys {
+function modifiersFrom(e: MouseEvent | KeyboardEvent): ModifierKeys {
   return { ctrl: e.ctrlKey, shift: e.shiftKey, alt: e.altKey };
 }
 
@@ -33,6 +34,7 @@ function modifiersFrom(e: MouseEvent): ModifierKeys {
 export declare interface CanvasBoardInitializationData {
   board_size: Point2D;
   max_scale: number;
+  min_scale?: number;
   fill_space?: boolean;
   allow_side_move?: boolean;
   draw: (ctx: CanvasRenderingContext2D, transform: BoardTransformData) => void;
@@ -41,6 +43,7 @@ export declare interface CanvasBoardInitializationData {
   mousemove: (canvas: Point2D, screen: Point2D, transform: BoardTransformData, modifiers: ModifierKeys) => void;
   draggingCallback?: () => void;
   mouseleave: () => void;
+  cancelInput?: () => void;
   // returns whether something was clicked
   mousedown: (e: MouseEvent) => boolean;
   mouseup: (e: MouseEvent) => void;
@@ -112,6 +115,7 @@ export class DwgCanvasBoard extends DwgElement {
   private canvas!: HTMLCanvasElement;
 
   private initialized_successfully = false;
+  private initialization_controller = new AbortController();
   private ctx!: CanvasRenderingContext2D;
   private data!: CanvasBoardInitializationData;
   private orig_size!: Point2D;
@@ -119,6 +123,7 @@ export class DwgCanvasBoard extends DwgElement {
   private zoom_config!: ZoomConfig;
 
   private hovered = false;
+  private modifiers: ModifierKeys = { ctrl: false, shift: false, alt: false };
   private holding_keys: HoldingKeysData = {
     arrow_up: false,
     arrow_down: false,
@@ -142,8 +147,11 @@ export class DwgCanvasBoard extends DwgElement {
 
   private bounding_rect!: DOMRect;
   private resize_observer = new ResizeObserver(async (els) => {
+    const signal = this.initialization_controller.signal;
     for (const el of els) {
-      await this.updateSize(this.data, el.contentRect);
+      if (!(await this.updateSize(this.data, el.contentRect, signal)) || signal.aborted) {
+        return;
+      }
       this.dispatchEvent(
         new CustomEvent<CanvasBoardSize>('canvas_resize', {
           detail: {
@@ -170,20 +178,30 @@ export class DwgCanvasBoard extends DwgElement {
     return this.initialized_successfully;
   }
 
+  getModifiers(): ModifierKeys {
+    return { ...this.modifiers };
+  }
+
   async initialize(data: CanvasBoardInitializationData): Promise<CanvasBoardSize | undefined> {
+    this.initialization_controller.abort();
+    this.initialization_controller = new AbortController();
+    const signal = this.initialization_controller.signal;
     data.allow_side_move = data.allow_side_move ?? true;
     this.zoom_config = Object.assign({}, data.zoom_config);
     this.orig_size = {
       x: data.board_size.x,
       y: data.board_size.y,
     };
-    const success = await this.updateSize(data);
-    if (!success) {
+    const success = await this.updateSize(data, undefined, signal);
+    if (!success || signal.aborted) {
+      return undefined;
+    }
+    await until(() => !!this.canvas.getBoundingClientRect()?.width, 50, signal);
+    if (signal.aborted) {
       return undefined;
     }
     this.setCursor('cursor');
     this.addEventListeners();
-    await until(() => !!this.canvas.getBoundingClientRect()?.width);
     this.resize_observer.observe(this);
     this.draw_interval = setInterval(() => {
       this.tick();
@@ -197,8 +215,8 @@ export class DwgCanvasBoard extends DwgElement {
       this.ctx.scale(this.transform.scale, this.transform.scale);
       setTooltipCursor(this.mouse);
       this.data.draw(this.ctx, this.transform);
-      this.drawCursor();
       flushTooltipQueue();
+      this.drawCursor();
     }, 20);
     this.initialized_successfully = true;
     return {
@@ -207,7 +225,11 @@ export class DwgCanvasBoard extends DwgElement {
     };
   }
 
-  async updateSize(data: CanvasBoardInitializationData, override_rect?: DOMRect): Promise<boolean> {
+  async updateSize(
+    data: CanvasBoardInitializationData,
+    override_rect?: DOMRect,
+    signal: AbortSignal = this.initialization_controller.signal
+  ): Promise<boolean> {
     if (!data || this.orig_size.x < 1 || this.orig_size.y < 1) {
       console.error('Size must be at least 1px in each direction');
       return false;
@@ -217,28 +239,38 @@ export class DwgCanvasBoard extends DwgElement {
       return false;
     }
     this.data = data;
-    await until(() => this.fully_parsed);
+    await until(() => this.fully_parsed, 50, signal);
+    if (signal.aborted) {
+      return false;
+    }
     if (!this.canvas.getContext) {
       console.error('Browser does not support canvas; cannot draw board');
       return false;
     }
-    await this.setSize(override_rect);
-    if (!this.ctx) {
+    await this.setSize(override_rect, signal);
+    if (signal.aborted || !this.ctx) {
       return false;
     }
     return true;
   }
 
-  private async setSize(rect?: DOMRect) {
+  private async setSize(rect?: DOMRect, signal: AbortSignal = this.initialization_controller.signal): Promise<void> {
     const data = this.data;
     if (!!rect) {
       this.bounding_rect = rect;
     } else {
-      await until(() => {
-        this.bounding_rect = this.getBoundingClientRect();
-        return !!this.bounding_rect?.width;
-      });
+      await until(
+        () => {
+          this.bounding_rect = this.getBoundingClientRect();
+          return !!this.bounding_rect?.width;
+        },
+        50,
+        signal
+      );
       rect = this.bounding_rect;
+    }
+    if (signal.aborted) {
+      return;
     }
     if (data.fill_space) {
       const aspect_ratio = this.orig_size.x / this.orig_size.y;
@@ -264,6 +296,7 @@ export class DwgCanvasBoard extends DwgElement {
 
   private addEventListeners() {
     this.addEventListener('wheel', (e: WheelEvent) => {
+      this.modifiers = modifiersFrom(e);
       if (this.data.scroll) {
         if (this.data.scroll(e.deltaY, e.deltaMode, e.deltaX)) {
           return;
@@ -280,6 +313,7 @@ export class DwgCanvasBoard extends DwgElement {
       this.data.mousemove(this.mouseCanvasPoint(), this.mouse, this.transform, modifiersFrom(e));
     });
     this.addEventListener('mousemove', (e: MouseEvent) => {
+      this.modifiers = modifiersFrom(e);
       this.hovered = true;
       const rect = this.canvas.getBoundingClientRect();
       const new_mouse = {
@@ -309,6 +343,7 @@ export class DwgCanvasBoard extends DwgElement {
       }
     });
     this.addEventListener('mousedown', (e: MouseEvent) => {
+      this.modifiers = modifiersFrom(e);
       e.stopImmediatePropagation();
       if (isDialogOpen() || e.button > 2) {
         return;
@@ -324,6 +359,7 @@ export class DwgCanvasBoard extends DwgElement {
       this.drag_button = e.button;
     });
     this.addEventListener('mouseup', (e: MouseEvent) => {
+      this.modifiers = modifiersFrom(e);
       e.stopImmediatePropagation();
       if (e.button > 2) {
         return;
@@ -342,9 +378,7 @@ export class DwgCanvasBoard extends DwgElement {
     });
     this.addEventListener('mouseleave', () => {
       this.hovered = false;
-      this.dragging = false;
-      this.dragged = false;
-      if (this.data.allow_side_move) {
+      if (this.data.allow_side_move && !this.dragging) {
         this.sticky_pan = {
           up: this.mouse.y < this.edge_arm_threshold,
           down: this.mouse.y > this.bounding_rect.height - this.edge_arm_threshold,
@@ -364,6 +398,7 @@ export class DwgCanvasBoard extends DwgElement {
     document.body.addEventListener('keydown', this.handleKeydown);
     document.body.addEventListener('keyup', this.handleKeyup);
     document.addEventListener('mousemove', this.handleDocumentMouseMove);
+    document.addEventListener('mouseup', this.handleDocumentMouseUp);
     window.addEventListener('blur', this.handleBlur);
     for (const type of EXTRA_MOUSE_BUTTON_EVENTS) {
       window.addEventListener(type, this.handleExtraMouseButton, true);
@@ -372,6 +407,7 @@ export class DwgCanvasBoard extends DwgElement {
 
   // swallowed while the board is mounted so they never trigger browser back/forward navigation
   private handleExtraMouseButton = (e: MouseEvent) => {
+    this.modifiers = modifiersFrom(e);
     if (e.button <= 2) {
       return;
     }
@@ -382,19 +418,30 @@ export class DwgCanvasBoard extends DwgElement {
   };
 
   private handleDocumentMouseMove = (e: MouseEvent) => {
+    this.modifiers = modifiersFrom(e);
     const rect = this.canvas.getBoundingClientRect();
     this.mouse = { x: e.clientX - rect.left, y: e.clientY - rect.top };
   };
 
-  private handleBlur = () => {
+  private handleDocumentMouseUp = (e: MouseEvent): void => {
+    if (e.button === this.drag_button) {
+      this.dragging = false;
+      this.dragged = false;
+    }
+  };
+
+  private handleBlur = (): void => {
+    this.modifiers = { ctrl: false, shift: false, alt: false };
     this.sticky_pan = { up: false, down: false, left: false, right: false };
     this.holding_keys = { arrow_up: false, arrow_down: false, arrow_left: false, arrow_right: false };
     this.dragging = false;
     this.dragged = false;
     this.hovered = false;
+    this.data?.cancelInput?.();
   };
 
   private handleKeydown = (e: KeyboardEvent) => {
+    this.modifiers = modifiersFrom(e);
     if (!this.hovered || isTypingInInput() || isDialogOpen()) {
       return;
     }
@@ -417,9 +464,7 @@ export class DwgCanvasBoard extends DwgElement {
   };
 
   private handleKeyup = (e: KeyboardEvent) => {
-    if (!this.hovered) {
-      return;
-    }
+    this.modifiers = modifiersFrom(e);
     switch (e.key) {
       case 'ArrowUp':
         this.holding_keys.arrow_up = false;
@@ -439,12 +484,16 @@ export class DwgCanvasBoard extends DwgElement {
   };
 
   override disconnectedCallback(): void {
+    this.initialization_controller.abort();
+    this.initialized_successfully = false;
     super.disconnectedCallback();
     clearInterval(this.draw_interval);
+    this.handleBlur();
     this.resize_observer.disconnect();
     document.body.removeEventListener('keydown', this.handleKeydown);
     document.body.removeEventListener('keyup', this.handleKeyup);
     document.removeEventListener('mousemove', this.handleDocumentMouseMove);
+    document.removeEventListener('mouseup', this.handleDocumentMouseUp);
     window.removeEventListener('blur', this.handleBlur);
     for (const type of EXTRA_MOUSE_BUTTON_EVENTS) {
       window.removeEventListener(type, this.handleExtraMouseButton, true);
@@ -516,11 +565,7 @@ export class DwgCanvasBoard extends DwgElement {
         x: this.transform.view.x + rotated.x,
         y: this.transform.view.y + rotated.y,
       });
-      this.data.mousemove(this.mouseCanvasPoint(), this.mouse, this.transform, {
-        ctrl: false,
-        shift: false,
-        alt: false,
-      });
+      this.data.mousemove(this.mouseCanvasPoint(), this.mouse, this.transform, this.getModifiers());
     }
   }
 
@@ -532,16 +577,14 @@ export class DwgCanvasBoard extends DwgElement {
     this.cursor_alpha = alpha;
     let img = this.cursor_images.get(url);
     if (!img) {
-      img = document.createElement('img');
-      img.src = url;
-      img.draggable = false;
+      img = createImage(url);
       this.cursor_images.set(url, img);
     }
     this.cursor_image = img;
   }
 
   private drawCursor() {
-    if (this.hovered && !isDialogOpen() && this.cursor_image?.complete) {
+    if (this.hovered && !isDialogOpen() && this.cursor_image && isImageReady(this.cursor_image)) {
       this.canvas.style.cursor = 'none';
       configDraw(
         this.ctx,
@@ -602,21 +645,17 @@ export class DwgCanvasBoard extends DwgElement {
     return this.data.max_scale;
   }
 
-  setMaxScale(max_scale: number) {
+  setMaxScale(max_scale: number, min_scale?: number): void {
     if (!max_scale || max_scale < 1) {
       return;
     }
     const scale_ratio = max_scale / this.data.max_scale;
+    const preserve_scale = min_scale !== undefined && this.data.min_scale !== undefined;
     this.data.max_scale = max_scale;
-    if (!!scale_ratio) {
-      if (this.transform.scale > 1) {
-        this.setScale(this.transform.scale * scale_ratio);
-      } else if (this.transform.scale < 1) {
-        this.setScale(this.transform.scale / scale_ratio);
-      }
-    } else {
-      this.setScale(this.transform.scale);
-    }
+    this.data.min_scale = min_scale;
+    const scale = this.transform.scale;
+    const next_scale = preserve_scale || scale > 1 ? scale * scale_ratio : scale < 1 ? scale / scale_ratio : scale;
+    this.setScale(next_scale);
   }
 
   setScale(scale: number): number {
@@ -652,8 +691,9 @@ export class DwgCanvasBoard extends DwgElement {
     if (!scale) {
       return 0;
     }
-    if (scale < 1 / this.data.max_scale) {
-      return 1 / this.data.max_scale;
+    const min_scale = this.data.min_scale ?? 1 / this.data.max_scale;
+    if (scale < min_scale) {
+      return min_scale;
     } else if (scale > this.data.max_scale) {
       return this.data.max_scale;
     }

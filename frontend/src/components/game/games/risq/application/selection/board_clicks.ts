@@ -7,6 +7,8 @@ import type { RisqSpace, RisqZone, UnitByTypeData } from '../../model/types';
 import type { RisqViewport } from '../../rendering/board/viewport';
 import { RisqViewMode } from '../../rendering/terrain';
 import { UNIT_SLOT_CIRCLE_RADIUS_MULTIPLIER } from '../../rendering/zones/geometry';
+import { unitVisibleInViewMode } from '../../rendering/zones/draw';
+import { visibleZoneUnitSlot } from '../../rendering/zones/hit_testing';
 import type { RisqOrderPlanning } from '../orders/planning';
 import type { RisqSession } from '../session';
 import type { RisqSelection } from './selection';
@@ -38,14 +40,17 @@ export class RisqBoardClicks {
       if (!part.clicked || !part.hovered) {
         continue;
       }
+      if (i > 0 && visibleZoneUnitSlot(zone, i - 1, this.viewport.viewMode()).length === 0) {
+        continue;
+      }
       if (i === 0) {
         this.buildingSlotClick(space, zone);
       } else if (e.detail >= 2) {
         this.unitSlotMultiClick(space, zone, i - 1, e.detail >= 3);
       } else if (e.ctrlKey) {
-        this.toggleUnitSlot(space, zone.unit_slots?.[i - 1] ?? []);
+        this.toggleUnitSlot(space, visibleZoneUnitSlot(zone, i - 1, this.viewport.viewMode()));
       } else {
-        this.unitSlotClick(space, zone.unit_slots?.[i - 1] ?? []);
+        this.unitSlotClick(space, visibleZoneUnitSlot(zone, i - 1, this.viewport.viewMode()));
       }
       return;
     }
@@ -103,7 +108,7 @@ export class RisqBoardClicks {
 
   /** Double click selects the slot's lead unit type within the zone; triple click, across the screen */
   private unitSlotMultiClick(space: RisqSpace, zone: RisqZone, slot_index: number, on_screen: boolean) {
-    const target = zone.unit_slots?.[slot_index]?.[0];
+    const target = visibleZoneUnitSlot(zone, slot_index, this.viewport.viewMode())[0];
     if (!target) {
       return;
     }
@@ -187,7 +192,7 @@ export class RisqBoardClicks {
     const zone_view = this.viewport.zoneView();
     const found_ids: number[] = [];
     for (const unit of player.units.values()) {
-      if (unit.garrisoned_in !== undefined) {
+      if (unit.garrisoned_in !== undefined || !unitVisibleInViewMode(unit.unit_type, this.viewport.viewMode())) {
         continue;
       }
       const anchor = canvasToScreen(

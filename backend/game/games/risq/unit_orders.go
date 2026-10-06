@@ -3,7 +3,6 @@ package risq
 import (
 	"errors"
 
-	"github.com/dgray001/gray_online/game/game_utils"
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 )
 
@@ -40,12 +39,7 @@ func (u *RisqUnit) receiveOrder(o *RisqOrder, risq *GameRisq, prepend bool) erro
 
 func (u *RisqUnit) cancelOrder(o *RisqOrder, risq *GameRisq) {
 	u.order_queue.removeOrder(o.internal_id)
-	if len(o.subjects) > 1 {
-		delete(o.subjects, u.internal_id)
-	} else {
-		o.cancelled = true
-		o.turn_resolved = risq.turn_number
-	}
+	o.resolveSubject(u.internal_id, false, risq.turn_number)
 	switch o.order_type {
 	case defs.OrderType_UnitBuild:
 		// the planned foundation is independent of the order that created it; cancelling the order doesn't touch it
@@ -279,7 +273,7 @@ func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 		space := invertSpaceKey(uint(o.target_id), risq)
 		space_range, _ := u.attack_range.SpaceRadius()
 		start, _ := u.pathStart()
-		if start == nil || game_utils.AxialDistance(start.space.coordinate, space.coordinate) > space_range {
+		if start == nil || start.space.distanceTo(space) > space_range {
 			return reachableStatus(u.canReach(space.getCenterZone(), u.attack_range))
 		}
 		if spaceHasEnemy(space, u.player_id) {

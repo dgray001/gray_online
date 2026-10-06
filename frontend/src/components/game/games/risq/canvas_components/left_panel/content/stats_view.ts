@@ -114,9 +114,10 @@ export class RisqStatsView {
   private stamina_tooltip = createTooltipState();
   private stat_tooltip = createTooltipState();
 
-  /** Height of the stats section, which grows by a row for gatherable buildings */
+  /** Height of the stats section, including gathering, construction, and renewal details */
   static height(risq: DwgRisq, building?: RisqBuilding): number {
-    const stat_rows = 3 + (building && gatherStatsRow(risq, building) ? 1 : 0);
+    let stat_rows = 3 + (building && (building.under_construction || gatherStatsRow(risq, building)) ? 1 : 0);
+    stat_rows += building?.renewing ? 1 : 0;
     const rows = 2 + stat_rows;
     return 2 * HEALTH_ROW_H + stat_rows * STAT_ROW_H + (rows - 1) * PANEL_PADDING;
   }
@@ -181,6 +182,27 @@ export class RisqStatsView {
     const gather_row = building ? gatherStatsRow(pc.risq, building) : undefined;
     if (gather_row) {
       this.drawStatRow(pc, gather_row, y, (0.8 * frame.w()) / gather_row.length);
+      y += STAT_ROW_H + gap;
+    }
+    if (building?.renewing && building.resource_capacity && building.renew_stamina !== undefined) {
+      const completed = ((building.resources_left ?? 0) / building.resource_capacity) * building.renew_stamina;
+      drawText(ctx, `Renewal progress: ${completed.toFixed(1)} / ${building.renew_stamina}`, {
+        p: { x: xi, y: y + 0.5 * STAT_ROW_H },
+        w: 0.9 * frame.w(),
+        fill_style: 'black',
+        baseline: 'middle',
+        font: '18px serif',
+      });
+    }
+    if (building?.under_construction) {
+      const completed = building.construction_stamina_total - building.stamina_remaining;
+      drawText(ctx, `Construction progress: ${completed} / ${building.construction_stamina_total}`, {
+        p: { x: xi, y: y + 0.5 * STAT_ROW_H },
+        w: 0.9 * frame.w(),
+        fill_style: 'black',
+        baseline: 'middle',
+        font: '18px serif',
+      });
     }
   }
 

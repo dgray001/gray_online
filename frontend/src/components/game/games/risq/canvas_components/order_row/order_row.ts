@@ -2,6 +2,7 @@ import type { BoardTransformData } from '../../../../util/canvas_board/canvas_bo
 import type { CanvasComponent } from '../../../../util/canvas_components/canvas_component';
 import { configDraw } from '../../../../util/canvas_components/canvas_component';
 import { drawLine, drawRect, drawText } from '../../../../util/canvas_util';
+import { createTooltipState, drawTooltip, shouldShowTooltip } from '../../../../util/canvas_components/tooltip';
 import type { Point2D } from '../../../../util/objects2d';
 import type { RisqFrontendOrder } from '../../model/types';
 import { UNIT_CLUSTER_ICON_SIZE, drawUnitTypeCluster, unitClusterIconKey } from '../../rendering/zones/draw';
@@ -42,6 +43,7 @@ export class RisqOrderRow implements CanvasComponent {
   private cancel_all_clicking = false;
   private resolved: ResolvedRow;
   private cancel_button: RisqOrderCancelButton;
+  private progress_tooltip = createTooltipState();
 
   constructor(config: RisqOrderRowConfig) {
     this.config = config;
@@ -88,12 +90,21 @@ export class RisqOrderRow implements CanvasComponent {
   }
   setHovering(hovering: boolean): void {
     this.hovering = hovering;
+    if (!hovering) {
+      this.progress_tooltip.hover_ms = 0;
+      this.cancel_all_hover = false;
+      this.cancel_button.setHovering(false);
+    }
   }
   isClicking(): boolean {
     return this.clicking;
   }
   setClicking(clicking: boolean): void {
     this.clicking = clicking;
+    if (!clicking) {
+      this.cancel_all_clicking = false;
+      this.cancel_button.setClicking(false);
+    }
   }
 
   setW(w: number): void {
@@ -225,6 +236,18 @@ export class RisqOrderRow implements CanvasComponent {
         }
       }
     );
+    const hovering =
+      !!this.resolved.progress_text && this.hovering && !this.cancel_button.isHovering() && !this.cancel_all_hover;
+    const show_tooltip = shouldShowTooltip(this.progress_tooltip, hovering, this.clicking, dt);
+    if (show_tooltip && this.resolved.progress_text) {
+      drawTooltip(
+        this.progress_tooltip,
+        ctx,
+        transform,
+        this.config.game.viewport.canvasSize(),
+        this.resolved.progress_text
+      );
+    }
   }
 
   private chipsWidth(): number {

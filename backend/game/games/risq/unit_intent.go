@@ -38,6 +38,8 @@ type MoveIntent struct {
 	next_step  *RisqZone
 	intra_step bool
 	cost       uint
+	// the unit an attack order is closing on with this move; nil for plain moves
+	chasing *RisqUnit
 }
 
 func (*MoveIntent) isIntentKind() {}

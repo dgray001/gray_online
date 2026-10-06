@@ -1,0 +1,10 @@
+dwg-page-risq-map-editor {
+  display: block;
+  height: 100vh;
+
+  > #board {
+    cursor: default;
+    height: 100%;
+    width: 100%;
+  }
+}

@@ -64,13 +64,15 @@ export class RisqOrderButton extends RisqActionButton {
     }
   }
 
-  protected released(): void {
-    if (this.isHovering()) {
-      if (this.isArmed()) {
-        this.risq.armed.disarmOrder();
-      } else {
-        this.risq.armed.armOrder(this.getOrderType(), () => {});
-      }
+  override matchesAction(action: RisqHotkeyAction): boolean {
+    return action === ORDER_HOTKEY_ACTIONS[this.order_type];
+  }
+
+  override execute(): void {
+    if (this.isArmed()) {
+      this.risq.armed.disarmOrder();
+    } else {
+      this.risq.armed.armOrder(this.getOrderType(), () => {});
     }
   }
 }

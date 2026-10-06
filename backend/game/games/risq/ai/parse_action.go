@@ -63,7 +63,40 @@ func parseActionInner(raw map[string]any) (Action, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &buildAction{building_id: uint32(id), eligible: eligible, max: parseMax(raw)}, nil
+		a := &buildAction{building_id: uint32(id), eligible: eligible, max: parseMax(raw), reuse_unbuilt_foundation: true}
+		if value, present := raw["reuse_unbuilt_foundation"]; present {
+			var ok bool
+			if a.reuse_unbuilt_foundation, ok = value.(bool); !ok {
+				return nil, fmt.Errorf("reuse_unbuilt_foundation must be a bool")
+			}
+		}
+		if value, present := raw["site"]; present {
+			obj, ok := value.(map[string]any)
+			if !ok {
+				return nil, fmt.Errorf("site must be a space query object")
+			}
+			if a.site, err = parseSpaceQuery(obj); err != nil {
+				return nil, err
+			}
+		}
+		if target, present := raw["targets"]; present {
+			if target != "closest_spaces" && target != "build_sites" {
+				return nil, fmt.Errorf("build targets must be \"closest_spaces\" or \"build_sites\"")
+			}
+			if a.site, err = parseSpaceQuery(raw); err != nil {
+				return nil, err
+			}
+			if target == "build_sites" {
+				if raw["score"] == nil {
+					return nil, fmt.Errorf("build_sites needs a \"score\" expression")
+				}
+				a.picker = &sitePicker{}
+				a.picker.score, _ = parseNumber(raw, "score", 0)
+				_, a.picker.has_min = raw["min_score"]
+				a.picker.min_score, _ = parseNumber(raw, "min_score", 0)
+			}
+		}
+		return a, nil
 	case "buildNextInQ":
 		eligible, err := parseEligible(raw["eligible"])
 		if err != nil {
@@ -234,8 +267,14 @@ func parseActionInner(raw map[string]any) (Action, error) {
 		return &buildingAttackAction{target: target, max: parseMax(raw)}, nil
 	case "move":
 		return parseMove(raw)
+	case "select_space":
+		return parseSelectSpace(raw)
 	case "set_var":
 		return parseSetVar(raw)
+	case "for_each":
+		return parseForEach(raw)
+	case "if":
+		return parseIf(raw)
 	case "set_unit_behavior":
 		return parseSetUnitBehavior(raw)
 	case "set_building_behavior":

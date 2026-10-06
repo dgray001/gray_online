@@ -3,7 +3,7 @@ import { RisqOrderType, canAffordCost } from '../../../../model/types';
 import type { RisqProducible } from '../../../../model/types';
 import { buildingImage } from '../../../../rendering/assets/buildings';
 import { RISQ_MESSAGE_WARNING_COLOR } from '../../../message_queue';
-import { RisqRichTooltipActionButton } from '../action_button';
+import { RisqActionButton } from '../action_button';
 import type { RisqTooltipData } from '../../../risq_tooltip';
 import { getSettings } from '../../../../../../../../scripts/settings_store';
 import { hotkeyDisplayString } from '../../../../application/input/hotkeys';
@@ -12,7 +12,7 @@ export declare interface BuildButtonConfig {
   producible: RisqProducible;
 }
 
-export class RisqBuildButton extends RisqRichTooltipActionButton {
+export class RisqBuildButton extends RisqActionButton {
   private risq: DwgRisq;
   private producible: RisqProducible;
 
@@ -51,18 +51,21 @@ export class RisqBuildButton extends RisqRichTooltipActionButton {
     }
   }
 
-  protected released(): void {
-    if (this.isHovering()) {
-      if (this.dimmed) {
-        this.risq.showMessage('Not enough resources', RISQ_MESSAGE_WARNING_COLOR);
-      } else if (this.isArmed()) {
-        this.risq.armed.disarmOrder();
-      } else {
-        this.risq.armed.armOrder(RisqOrderType.OrderType_UnitBuild, () => {}, {
-          id: this.producible.id,
-          display_name: this.producible.display_name,
-        });
-      }
+  override matchesProducible(kind: string, id: number): boolean {
+    return kind === 'build_building' && this.producible.id === id;
+  }
+
+  override execute(): void {
+    if (this.dimmed) {
+      this.risq.showMessage('Not enough resources', RISQ_MESSAGE_WARNING_COLOR);
+    } else if (this.isArmed()) {
+      this.risq.armed.disarmOrder();
+    } else {
+      this.risq.armed.armOrder(RisqOrderType.OrderType_UnitBuild, () => {}, {
+        id: this.producible.id,
+        display_name: this.producible.display_name,
+        stamina_cost: this.producible.stamina_cost,
+      });
     }
   }
 

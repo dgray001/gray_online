@@ -95,6 +95,7 @@
       ]
     }
   },
+  { "step": "regions_seven", "params": {} },
   { "step": "ensure_connectivity", "params": {} },
   { "step": "resource_place", "params": { "resource_id": 41, "count": "num_players", "outside_player_areas": true } },
   { "step": "resource_place", "params": { "resource_id": 42, "count": "num_players", "outside_player_areas": true } },

@@ -3,15 +3,15 @@
     "resource_id": 1,
     "display_name": "Forage Bushes",
     "category": "food",
-    "starting_resources": 250,
+    "starting_resources": 300,
     "base_gather_speed": 8,
-    "gather_capacity": 8
+    "gather_capacity": 6
   },
   {
     "resource_id": 2,
     "display_name": "Deer",
     "category": "food",
-    "starting_resources": 150,
+    "starting_resources": 250,
     "base_gather_speed": 12,
     "gather_capacity": 4
   },
@@ -117,7 +117,7 @@
     "category": "wood",
     "starting_resources": 2000,
     "base_gather_speed": 9,
-    "gather_capacity": 12
+    "gather_capacity": 8
   },
   {
     "resource_id": 32,
@@ -125,7 +125,7 @@
     "category": "wood",
     "starting_resources": 1200,
     "base_gather_speed": 11,
-    "gather_capacity": 12
+    "gather_capacity": 8
   },
   {
     "resource_id": 33,
@@ -133,7 +133,7 @@
     "category": "wood",
     "starting_resources": 1600,
     "base_gather_speed": 10,
-    "gather_capacity": 12
+    "gather_capacity": 8
   },
   {
     "resource_id": 34,
@@ -141,7 +141,7 @@
     "category": "wood",
     "starting_resources": 2000,
     "base_gather_speed": 9,
-    "gather_capacity": 12
+    "gather_capacity": 8
   },
   {
     "resource_id": 35,
@@ -149,7 +149,7 @@
     "category": "wood",
     "starting_resources": 1400,
     "base_gather_speed": 11,
-    "gather_capacity": 12
+    "gather_capacity": 8
   },
   {
     "resource_id": 36,
@@ -157,7 +157,7 @@
     "category": "wood",
     "starting_resources": 1800,
     "base_gather_speed": 10,
-    "gather_capacity": 12
+    "gather_capacity": 8
   },
   {
     "resource_id": 41,
@@ -165,7 +165,7 @@
     "category": "stone",
     "starting_resources": 100,
     "base_gather_speed": 10,
-    "gather_capacity": 12
+    "gather_capacity": 4
   },
   {
     "resource_id": 42,
@@ -173,7 +173,7 @@
     "category": "stone",
     "starting_resources": 250,
     "base_gather_speed": 10,
-    "gather_capacity": 12
+    "gather_capacity": 6
   },
   {
     "resource_id": 43,
@@ -181,7 +181,7 @@
     "category": "stone",
     "starting_resources": 400,
     "base_gather_speed": 10,
-    "gather_capacity": 12
+    "gather_capacity": 8
   },
   {
     "resource_id": 51,
@@ -189,6 +189,6 @@
     "category": "gold",
     "starting_resources": 250,
     "base_gather_speed": 10,
-    "gather_capacity": 12
+    "gather_capacity": 6
   }
 ]

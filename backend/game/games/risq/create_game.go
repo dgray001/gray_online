@@ -59,6 +59,19 @@ func nextAvailableRisqColor(used map[string]bool) string {
 }
 
 func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameRisq, error) {
+	generate := func(board mapgen.Board, rng *rand.Rand, num_players int) error {
+		map_name, ok := g.GameSpecificSettings["map"].(string)
+		if !ok || map_name == "" {
+			map_name = "script:default"
+		}
+		return mapgen.Generate(board, rng, num_players, map_name)
+	}
+	return createGame(g, action_channel, 2, generate)
+}
+
+type mapGenerator func(board mapgen.Board, rng *rand.Rand, num_players int) error
+
+func createGame(g *game.GameBase, action_channel chan game.PlayerAction, min_players int, generate mapGenerator) (*GameRisq, error) {
 	seed, ok := g.GameSpecificSettings["seed"].(float64)
 	if !ok {
 		seed = float64(time.Now().UnixNano())
@@ -74,7 +87,16 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameR
 		next_unit_internal_id:     0,
 		next_order_internal_id:    0,
 		turn_number:               0,
+		mercenaries_need_region:   true,
 		rng:                       rand.New(rand.NewSource(int64(seed))),
+	}
+	risq.metrics.extras = make(map[string]bool)
+	if extras, ok := g.GameSpecificSettings["metrics"].([]any); ok {
+		for _, extra := range extras {
+			if name, ok := extra.(string); ok {
+				risq.metrics.extras[name] = true
+			}
+		}
 	}
 	requested_colors := requestedRisqPlayerColors(g)
 	used_colors := make(map[string]bool)
@@ -121,18 +143,15 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameR
 			player_id++
 		}
 	}
-	if len(risq.players) < 2 {
+	if len(risq.players) < min_players {
 		return nil, errors.New("Need at least two players to play risq")
 	} else if len(risq.players) > 12 {
 		return nil, errors.New("Can have max of twelve players playing risq")
 	}
-	map_name, ok := g.GameSpecificSettings["map"].(string)
-	if !ok || map_name == "" {
-		map_name = "ring"
-	}
-	if err := mapgen.Generate(mapBoard{&risq}, risq.rng, len(risq.players), map_name); err != nil {
+	if err := generate(mapBoard{&risq}, risq.rng, len(risq.players)); err != nil {
 		return nil, err
 	}
+	risq.ensureSpaceDistances()
 	risq.logBoard()
 	for _, ai_player := range ai_risq_players {
 		runner := &aibridge.Runner{Player: ai_player.player, Model: ai_player.ai_model, Stop: ai_player.ai_stop, Actions: action_channel}

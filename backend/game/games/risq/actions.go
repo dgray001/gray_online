@@ -113,8 +113,16 @@ func (r *GameRisq) executeSubmitOrders(player_id int, orders []defs.OrderFromFro
 			for _, subject_id := range o.Subjects {
 				subjects[subject_id] = r.players[o.Player_id].buildings[subject_id]
 			}
+		} else if order_type == defs.OrderType_CancelOrder {
+			for _, subject_id := range o.Subjects {
+				if u := r.players[o.Player_id].units[subject_id]; u != nil {
+					subjects[subject_id] = u
+				} else if b := r.players[o.Player_id].buildings[subject_id]; b != nil {
+					subjects[subject_id] = b
+				}
+			}
 		}
-		new_orders = append(new_orders, createRisqOrder(r.nextOrderInternalId(), order_type, player_id, subjects, o.Target_id, o.Clear_previous_orders))
+		new_orders = append(new_orders, createRisqOrder(0, order_type, player_id, subjects, o.Target_id, o.Clear_previous_orders))
 	}
 	player.active_orders = append(player.active_orders, new_orders...)
 	player.orders_submitted = true
@@ -168,6 +176,9 @@ func (r *GameRisq) executeUnsubmitOrders(player_id int) {
 // Resolves immediately; independent of the order system.
 func (r *GameRisq) executeSetUnitBehavior(player_id int, behavior UnitBehaviorFromFrontend) {
 	player := r.players[player_id]
+	if behavior.Stance != nil && (*behavior.Stance <= uint8(defs.UnitStance_NONE) || *behavior.Stance >= uint8(defs.UnitStance_END)) {
+		behavior.Stance = nil
+	}
 	var target_priority []defs.TargetCategory
 	if behavior.Target_priority != nil {
 		target_priority = make([]defs.TargetCategory, 0, len(*behavior.Target_priority))
@@ -185,10 +196,7 @@ func (r *GameRisq) executeSetUnitBehavior(player_id int, behavior UnitBehaviorFr
 			continue
 		}
 		if behavior.Stance != nil {
-			stance := defs.UnitStance(*behavior.Stance)
-			if stance > defs.UnitStance_NONE && stance < defs.UnitStance_END {
-				unit.stance = stance
-			}
+			unit.stance = defs.UnitStance(*behavior.Stance)
 		}
 		if behavior.Interrupt_current != nil {
 			unit.interrupt_current = *behavior.Interrupt_current
@@ -217,7 +225,7 @@ func (r *GameRisq) executeSetUnitBehavior(player_id int, behavior UnitBehaviorFr
 		}
 		return content
 	}
-	player.player.AddUpdate(&game.UpdateMessage{Kind: "unit-behavior-set", Content: buildContent(affected)})
+	player.player.AddUpdate(r.playerSnapshotUpdate(player.player, "unit-behavior-set", buildContent(affected)))
 	for _, other := range r.players {
 		if other.player.Player_id == player_id {
 			continue
@@ -229,7 +237,7 @@ func (r *GameRisq) executeSetUnitBehavior(player_id int, behavior UnitBehaviorFr
 			}
 		}
 		if len(visible_ids) > 0 {
-			other.player.AddUpdate(&game.UpdateMessage{Kind: "unit-behavior-set", Content: buildContent(visible_ids)})
+			other.player.AddUpdate(r.playerSnapshotUpdate(other.player, "unit-behavior-set", buildContent(visible_ids)))
 		}
 	}
 }
@@ -277,7 +285,7 @@ func (r *GameRisq) executeSetBuildingBehavior(player_id int, behavior BuildingBe
 		}
 		return content
 	}
-	player.player.AddUpdate(&game.UpdateMessage{Kind: "building-behavior-set", Content: buildContent(affected)})
+	player.player.AddUpdate(r.playerSnapshotUpdate(player.player, "building-behavior-set", buildContent(affected)))
 	for _, other := range r.players {
 		if other.player.Player_id == player_id {
 			continue
@@ -289,7 +297,7 @@ func (r *GameRisq) executeSetBuildingBehavior(player_id int, behavior BuildingBe
 			}
 		}
 		if len(visible_ids) > 0 {
-			other.player.AddUpdate(&game.UpdateMessage{Kind: "building-behavior-set", Content: buildContent(visible_ids)})
+			other.player.AddUpdate(r.playerSnapshotUpdate(other.player, "building-behavior-set", buildContent(visible_ids)))
 		}
 	}
 }
@@ -332,5 +340,5 @@ func (r *GameRisq) executeSetGatherPoint(player_id int, request GatherPointFromF
 	if building.gather_point != nil {
 		content["gather_point"] = building.gather_point.toFrontend()
 	}
-	player.player.AddUpdate(&game.UpdateMessage{Kind: "gather-point-set", Content: content})
+	player.player.AddUpdate(r.playerSnapshotUpdate(player.player, "gather-point-set", content))
 }

@@ -36,14 +36,6 @@ func axialDistance(a ai.Coordinate, b ai.Coordinate) int {
 	return int(game_utils.AxialDistance(game_utils.Coordinate2D{X: a.X, Y: a.Y}, game_utils.Coordinate2D{X: b.X, Y: b.Y}))
 }
 
-// Zones within a space are one step apart unless opposite; crossing into another space costs more
-func zoneDistance(a ai.ZoneRef, b ai.ZoneRef) int {
-	if a.Space == b.Space {
-		return axialDistance(a.Zone, b.Zone)
-	}
-	return axialDistance(a.Space, b.Space) * 6
-}
-
 func spaceOwner(space *snapSpace) (int, bool) {
 	if space == nil || space.Ownership == nil {
 		return -1, false
@@ -82,8 +74,12 @@ func toOrderKind(order_type defs.OrderType) (ai.OrderKind, bool) {
 		return ai.OrderKindAttackSpace, true
 	case defs.OrderType_UnitAttackZone:
 		return ai.OrderKindAttackZone, true
-	case defs.OrderType_UnitAttackUnit, defs.OrderType_UnitAutoAttackUnit:
+	case defs.OrderType_UnitAttackUnit:
 		return ai.OrderKindAttackUnit, true
+	case defs.OrderType_UnitAutoAttackUnit:
+		return ai.OrderKindAutoAttackUnit, true
+	case defs.OrderType_UnitAutoAttackBuilding:
+		return ai.OrderKindAutoAttackBuilding, true
 	case defs.OrderType_UnitAttackBuilding:
 		return ai.OrderKindAttackBuilding, true
 	case defs.OrderType_UnitGarrison:

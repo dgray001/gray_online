@@ -1,6 +1,7 @@
 import type { GameBase, GamePlayer } from '../../../data_models';
 import type { RisqTurnReportFromServer } from './turn_report';
 import type {
+  RisqCost,
   RisqGatherPoint,
   RisqPlannedFoundation,
   RisqProducible,
@@ -9,7 +10,15 @@ import type {
 } from '../model/types';
 import type { RisqTerrainType } from '../rendering/terrain';
 import type { Point2D } from '../../../util/objects2d';
-import type { RisqUnitType, RisqRange, RisqUnitStance, RisqTargetCategory, RisqAttackType } from '../model/types';
+import type {
+  RisqUnitType,
+  RisqRange,
+  RisqUnitStance,
+  RisqTargetCategory,
+  RisqAttackType,
+  RisqResourceType,
+} from '../model/types';
+
 /** Data describing a game of risq as returned by server */
 export declare interface GameRisqFromServer {
   game_base: GameBase; // already been converted
@@ -18,8 +27,12 @@ export declare interface GameRisqFromServer {
   population_limit: number;
   turn_number: number;
   spaces: (RisqSpaceFromServer | undefined)[][];
+  space_links: { from: Point2D; to: Point2D; direction: number }[];
   giving_orders: boolean;
   regions: RisqRegionFromServer[];
+  background_image?: string;
+  background_top_left?: [number, number];
+  background_top_right?: [number, number];
 }
 
 /** Data describing a region, as returned by the server */
@@ -45,6 +58,7 @@ export declare interface RisqPlayerFromServer {
   units: RisqUnitFromServer[];
   resources?: RisqPlayerResourcesFromServer;
   population_limit: number;
+  max_population_limit: number;
   score: number;
   color: string;
   active_orders: RisqOrderFromServer[];
@@ -56,22 +70,45 @@ export declare interface RisqPlayerFromServer {
   available_mercenaries?: RisqProducible[];
 }
 
-/** Data describing a hexagonal space in risq */
-export declare interface RisqSpaceFromServer {
-  terrain_id?: number;
-  terrain_type?: RisqTerrainType;
-  display_name?: string;
+export declare interface RisqSpaceBaseFromServer {
   coordinate: Point2D;
   coordinate_key: number;
-  visibility: number;
-  zones?: RisqZoneFromServer[][];
-  resources?: RisqResourceFromServer[];
-  buildings?: RisqBuildingFromServer[];
-  units?: RisqUnitFromServer[];
-  unit_count?: number;
-  ownership?: number;
-  gold_income?: number;
 }
+
+export declare interface RisqSpaceUnexploredFromServer extends RisqSpaceBaseFromServer {
+  visibility: 0; // RisqVisibilityLevel.UNEXPLORED
+}
+
+export declare interface RisqSpaceExploredBaseFromServer extends RisqSpaceBaseFromServer {
+  terrain_id: number;
+  terrain_type: RisqTerrainType;
+  display_name: string;
+  gold_income: number;
+  ownership?: number;
+  zones: RisqZoneFromServer[][];
+  resources: RisqResourceFromServer[];
+  buildings: RisqBuildingFromServer[];
+}
+
+export declare interface RisqSpaceFogFromServer extends RisqSpaceExploredBaseFromServer {
+  visibility: 1; // RisqVisibilityLevel.FOG
+}
+
+export declare interface RisqSpacePoorFromServer extends RisqSpaceExploredBaseFromServer {
+  visibility: 2; // RisqVisibilityLevel.POOR
+  unit_count: number;
+}
+
+export declare interface RisqSpaceGoodFromServer extends RisqSpaceExploredBaseFromServer {
+  visibility: 3 | 4; // RisqVisibilityLevel.GOOD | SPY
+  units: RisqUnitFromServer[];
+}
+
+export type RisqSpaceFromServer =
+  | RisqSpaceUnexploredFromServer
+  | RisqSpaceFogFromServer
+  | RisqSpacePoorFromServer
+  | RisqSpaceGoodFromServer;
 
 /** Data describing zones inside a risq space */
 export declare interface RisqZoneFromServer {
@@ -133,6 +170,18 @@ export declare interface RisqBuildingFromServer {
   active_orders: RisqOrderFromServer[];
   produces: RisqProducible[];
   production_queue: RisqProductionQueueItem[];
+  resources_left?: number;
+  resource_capacity?: number;
+  renew_stamina?: number;
+  gather_capacity?: number;
+  base_gather_speed?: number;
+  renew_cost?: RisqCost;
+  renewing?: boolean;
+  resource_category?: RisqResourceType;
+  gather_point?: RisqGatherPoint;
+  auto_attack?: boolean;
+  interrupt_current?: boolean;
+  target_priority?: RisqTargetCategory[];
 }
 
 /** Data describing combat stats */
@@ -165,7 +214,7 @@ export declare interface RisqResourceFromServer {
 
 /** Data describing an order as returned by the server */
 export declare interface RisqOrderFromServer {
-  internal_id: number;
+  internal_id?: number;
   player_id: number;
   order_type: number;
   target_id: number;
@@ -188,6 +237,7 @@ export declare interface UnsubmittedOrdersData {
 }
 
 export declare interface UnitBehaviorSetData {
+  game: GameRisqFromServer;
   internal_ids: number[];
   stance?: RisqUnitStance;
   interrupt_current?: boolean;
@@ -196,6 +246,15 @@ export declare interface UnitBehaviorSetData {
 }
 
 export declare interface GatherPointSetData {
+  game: GameRisqFromServer;
   building_id: number;
   gather_point?: RisqGatherPoint;
+}
+
+export declare interface BuildingBehaviorSetData {
+  game: GameRisqFromServer;
+  internal_ids: number[];
+  auto_attack?: boolean;
+  interrupt_current?: boolean;
+  target_priority?: RisqTargetCategory[];
 }

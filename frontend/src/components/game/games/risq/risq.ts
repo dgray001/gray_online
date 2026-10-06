@@ -5,24 +5,24 @@ import type { DwgCanvasBoard } from '../../util/canvas_board/canvas_board';
 import type { Point2D } from '../../util/objects2d';
 import { addPoint2D, multiplyPoint2D } from '../../util/objects2d';
 import type { DwgGame } from '../../game';
+import { apiGet } from '../../../../scripts/api';
+import { createImage, resolveImage } from '../../../../scripts/image';
 import { createLock } from '../../../../scripts/util';
 import { err, log } from '../../../../scripts/log';
 import { ColorRGB } from '../../../../scripts/color_rgb';
 
 import html from './risq.html';
-import type { GameRisq, RisqPlayer } from './model/types';
+import type { GameRisq, RisqPlayer, RisqResourceConfig } from './model/types';
 import type {
   GameRisqFromServer,
-  GatherPointSetData,
   StartTurnData,
   SubmittedOrdersData,
-  UnitBehaviorSetData,
   UnsubmittedOrdersData,
 } from './transport/snapshot_types';
 import type { RisqTurnReport } from './transport/turn_report';
 import { PLAYER_ICON_SIZE, RisqImageCache } from './rendering/assets/image_cache';
 import { RisqViewport } from './rendering/board/viewport';
-import { RisqOrderPaths } from './rendering/board/order_paths';
+import { RisqOrderOverlays } from './rendering/board/order_overlays';
 import { RisqBoardRenderer } from './rendering/board/board_renderer';
 import { zoneCenterOffset } from './rendering/zones/geometry';
 import { RisqSession } from './application/session';
@@ -63,14 +63,15 @@ const PANEL_BACKGROUND = 'rgb(222, 184, 135)';
 /** Composition root: owns the collaborators, wires them to the canvas board, and applies server updates */
 export class DwgRisq extends DwgElement implements HotkeyHost {
   private board!: DwgCanvasBoard;
+  private initialization_controller = new AbortController();
   private icons = new Map<string, HTMLImageElement>();
   private image_cache = new RisqImageCache();
 
   readonly session = new RisqSession();
-  readonly viewport = new RisqViewport(this.session);
+  readonly viewport = new RisqViewport(this.session, () => this.pointer.recalculate());
   readonly orders_model = new RisqOrdersModel(() => this.refreshPanels());
   readonly planning = new RisqOrderPlanning(this.session, this.orders_model);
-  readonly armed = new RisqArmedState(() => this.cursor.update(false));
+  readonly armed = new RisqArmedState(() => this.cursor.update(this.board?.getModifiers().ctrl ?? false));
   readonly hover = new RisqHover(this.session, this.viewport);
 
   readonly left_panel = new RisqLeftPanel(this, { w: 300, background: PANEL_BACKGROUND });
@@ -137,11 +138,9 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
     this,
     this.session,
     this.viewport,
-    this.armed,
     this.left_panel,
     this.selection,
     this.control_groups,
-    this.orders_model,
     this.commands,
     this.submission
   );
@@ -149,7 +148,7 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
     this,
     this.session,
     this.viewport,
-    new RisqOrderPaths(this, this.session, this.viewport, this.orders_model, this.planning, this.selection),
+    new RisqOrderOverlays(this, this.session, this.viewport, this.orders_model, this.planning, this.selection),
     () => this.pointer.dragRect(),
     this.canvas_components
   );
@@ -161,22 +160,21 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
   }
 
   override disconnectedCallback(): void {
+    this.initialization_controller.abort();
     super.disconnectedCallback();
     this.hotkeys.detach();
   }
 
   /** This will replace an existing icon */
   private createIcon(name: string): HTMLImageElement {
-    const el = document.createElement('img');
-    el.src = `/images/${name}.png`;
-    el.draggable = false;
+    const el = createImage(`/images/${name}.png`);
     el.alt = name;
     this.icons.set(name, el);
     return el;
   }
 
   getIcon(name: string): HTMLImageElement {
-    return this.icons.get(name) ?? this.createIcon(name);
+    return resolveImage(this.icons.get(name) ?? this.createIcon(name));
   }
 
   /** Returns the unit/building icon at `name` with its color-key pixels swapped for the given player color */
@@ -206,10 +204,23 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
   }
 
   async initialize(abstract_game: DwgGame, game: GameRisqFromServer): Promise<void> {
+    this.initialization_controller.abort();
+    this.initialization_controller = new AbortController();
+    const signal = this.initialization_controller.signal;
     this.session.setPlayerId(abstract_game.isPlayer() ? abstract_game.playerId() : -1);
+    this.submission.turnStarted();
     abstract_game.setPadding('0px');
+    const resource_configs = await apiGet<RisqResourceConfig[]>('risq/resources', signal);
+    if (signal.aborted) {
+      return;
+    }
+    if (resource_configs.success) {
+      this.session.setResourceConfigs(resource_configs.result);
+    } else {
+      err('Unable to load resource configs', resource_configs.error_message);
+    }
     this.setNewGameData(game);
-    this.hotkeys.attach();
+    this.session.setLastTurnReport(this.getPlayer()?.turn_report);
     this.board
       .initialize({
         board_size: this.viewport.boardSize(game.board_size),
@@ -221,6 +232,7 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
         mousemove: (m, screen, transform, modifiers) => this.pointer.mousemove(m, screen, transform, modifiers),
         draggingCallback: () => this.pointer.draggingCallback(),
         mouseleave: () => this.pointer.mouseleave(),
+        cancelInput: () => this.pointer.cancelInput(),
         mousedown: (e) => this.pointer.mousedown(e),
         mouseup: (e) => this.pointer.mouseup(e),
         extraMouseButton: (e) => this.hotkeys.extraMouseButton(e),
@@ -230,16 +242,27 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
           min_zoom: 0.7,
         },
       })
-      .then((size_data) => {
-        if (!size_data) {
-          err('Not able to initialize game board');
+      .then(async (size_data): Promise<void> => {
+        if (signal.aborted) {
           return;
         }
-        this.boardResize(size_data.board_size, size_data.el_size);
+        if (!size_data) {
+          throw new Error('Unable to initialize the Risq board');
+        }
+        await this.boardResize(size_data.board_size, size_data.el_size);
+        if (signal.aborted) {
+          return;
+        }
         this.goToVillageCenter(abstract_game.isPlayer() ? this.session.getPlayerId() : 0);
-        this.board.addEventListener('canvas_resize', (e) => {
-          this.boardResize(e.detail.board_size, e.detail.el_size);
+        this.hotkeys.attach();
+        this.board.addEventListener('canvas_resize', (e) => this.boardResize(e.detail.board_size, e.detail.el_size), {
+          signal,
         });
+      })
+      .catch((error: unknown): void => {
+        if (!signal.aborted) {
+          this.dispatchEvent(new CustomEvent<unknown>('game_initialization_failed', { detail: error, bubbles: true }));
+        }
       });
   }
 
@@ -304,14 +327,15 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
   }
 
   private board_resize_lock = createLock();
-  private boardResize(board_size: Point2D, canvas_size: DOMRect) {
-    this.board_resize_lock(async () => {
+  private async boardResize(board_size: Point2D, canvas_size: DOMRect): Promise<void> {
+    await this.board_resize_lock(async () => {
       const game = this.getGame();
       if (!game) {
         return;
       }
       const { ratio, center } = this.viewport.resize(board_size, canvas_size, game.board_size);
-      this.board.setMaxScale((0.45 * canvas_size.height) / this.viewport.hexR());
+      const zoom = this.viewport.zoomLimits(board_size.x);
+      this.board.setMaxScale(zoom.max, zoom.min);
       this.board.scaleView(ratio);
       this.board.setOffset(center);
       for (const zone of game.spaces.flat().flatMap((space) => space?.zones?.flat() ?? [])) {
@@ -336,10 +360,9 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
           this.applyUnsubmittedOrders(update.content as UnsubmittedOrdersData);
           break;
         case 'unit-behavior-set':
-          this.applyUnitBehaviorSet(update.content as UnitBehaviorSetData);
-          break;
+        case 'building-behavior-set':
         case 'gather-point-set':
-          this.applyGatherPointSet(update.content as GatherPointSetData);
+          this.setNewGameData((update.content as StartTurnData).game);
           break;
         default:
           log(`Unknown game update type ${update.kind}`);
@@ -359,7 +382,6 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
 
   private applyStartTurn(data: StartTurnData) {
     this.submission.turnStarted();
-    this.left_panel.close();
     this.armed.disarmOrder();
     this.setNewGameData(data.game);
     const player = this.getPlayer();
@@ -369,53 +391,18 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
     }
   }
 
-  private applySubmittedOrders(data: SubmittedOrdersData) {
+  private applySubmittedOrders(data: SubmittedOrdersData): void {
     if (data.player_id === this.getPlayerId()) {
       this.submission.submitted();
     }
     this.setNewGameData(data.game);
   }
 
-  private applyUnsubmittedOrders(data: UnsubmittedOrdersData) {
+  private applyUnsubmittedOrders(data: UnsubmittedOrdersData): void {
     if (data.player_id === this.getPlayerId()) {
       this.submission.unsubmitted();
     }
     this.setNewGameData(data.game);
-  }
-
-  private applyUnitBehaviorSet(data: UnitBehaviorSetData) {
-    for (const player of this.getGame()?.players ?? []) {
-      for (const internal_id of data.internal_ids) {
-        const unit = player.units.get(internal_id);
-        if (!unit) {
-          continue;
-        }
-        if (data.stance !== undefined) {
-          unit.stance = data.stance;
-        }
-        if (data.interrupt_current !== undefined) {
-          unit.interrupt_current = data.interrupt_current;
-        }
-        if (data.attack_back !== undefined) {
-          unit.attack_back = data.attack_back;
-        }
-        if (data.target_priority !== undefined) {
-          unit.target_priority = data.target_priority;
-        }
-      }
-    }
-    this.refreshPanels();
-  }
-
-  private applyGatherPointSet(data: GatherPointSetData) {
-    for (const player of this.getGame()?.players ?? []) {
-      const building = player.buildings.get(data.building_id);
-      if (building) {
-        building.gather_point = data.gather_point;
-        break;
-      }
-    }
-    this.refreshPanels();
   }
 
   updateDialogComponent(update: UpdateMessage): HTMLElement {

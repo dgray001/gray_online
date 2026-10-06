@@ -5,7 +5,7 @@ import { drawRect } from '../../../../../util/canvas_util';
 import type { DwgRisq } from '../../../risq';
 import type { RisqTooltipData } from '../../risq_tooltip';
 import { RisqButtonTooltip } from '../../risq_tooltip';
-import type { HotkeyCombo } from '../../../application/input/hotkeys';
+import type { HotkeyCombo, RisqHotkeyAction } from '../../../application/input/hotkeys';
 import { hotkeyDisplayString } from '../../../application/input/hotkeys';
 
 export declare interface RisqActionButtonConfig {
@@ -52,6 +52,22 @@ export abstract class RisqActionButton extends DwgSquareButton {
   protected unhovered(): void {}
   protected clicked(): void {}
 
+  execute(_ctrl_held?: boolean): void {}
+
+  matchesAction(_action: RisqHotkeyAction): boolean {
+    return false;
+  }
+
+  matchesProducible(_kind: string, _id: number): boolean {
+    return false;
+  }
+
+  protected released(): void {
+    if (this.isHovering()) {
+      this.execute();
+    }
+  }
+
   dataRefreshed(): void {}
 
   override draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
@@ -80,6 +96,3 @@ export abstract class RisqActionButton extends DwgSquareButton {
     this.tooltip.draw(ctx, transform, risq, dt, this.isHovering(), this.isPressed());
   }
 }
-
-/** @deprecated use RisqActionButton directly; every action button now renders the rich tooltip */
-export abstract class RisqRichTooltipActionButton extends RisqActionButton {}

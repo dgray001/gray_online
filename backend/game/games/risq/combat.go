@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/dgray001/gray_online/game/game_utils"
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
@@ -22,7 +21,7 @@ func rangeCovers(from *RisqZone, target *RisqZone, attack_range defs.RisqRange) 
 	if !ranged {
 		return from == target
 	}
-	return game_utils.AxialDistance(from.space.coordinate, target.space.coordinate) <= space_range
+	return from.space.distanceTo(target.space) <= space_range
 }
 
 type RisqDamageEvent struct {
@@ -263,7 +262,9 @@ func (r *GameRisq) resolveAttacker(event RisqDamageEvent) Attackable {
 }
 
 func (r *GameRisq) unitAttack(attacker *RisqUnit, target Attackable) {
-	r.resolveAttack(attacker, target, attacker.intent.intent_cost)
+	if stamina := attacker.intent.intent_cost - attacker.intent.sunk_cost; stamina > 0 {
+		r.resolveAttack(attacker, target, stamina)
+	}
 }
 
 func (r *GameRisq) buildingAttack(attacker *RisqBuilding, target Attackable) {

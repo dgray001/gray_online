@@ -8,8 +8,8 @@ import { rotatePoint } from '../../../../util/objects2d';
 import type { RisqSpace } from '../../model/types';
 import { RisqVisibilityLevel } from '../../model/types';
 import type { DwgRisq } from '../../risq';
-import { drawRisqRegionBorders } from '../../rendering/region';
-import { drawHexImage, fillHexOverlay, getSpaceFill } from '../../rendering/space';
+import { drawRisqSpaceBorders } from '../../rendering/space_borders';
+import { DrawRisqSpaceDetail, drawHexImage, fillHexOverlay, getSpaceFill } from '../../rendering/space';
 import { RisqViewMode, spaceOwnerColor, terrainImage } from '../../rendering/terrain';
 
 export declare interface MinimapConfig {
@@ -202,8 +202,18 @@ export class RisqMinimap implements CanvasComponent {
           }
         }
         const all_spaces = game.spaces.flat().filter((s): s is RisqSpace => !!s);
-        drawRisqRegionBorders(ctx, this.risq, all_spaces, this.hex_r, (s) =>
-          this.coordinateToMinimapCanvas(s.coordinate)
+        drawRisqSpaceBorders(
+          ctx,
+          this.risq,
+          all_spaces,
+          {
+            hex_r: this.hex_r,
+            draw_detail: DrawRisqSpaceDetail.OWNERSHIP,
+            view_mode,
+            regions_only: true,
+            min_width: 1,
+          },
+          (s) => this.coordinateToMinimapCanvas(s.coordinate)
         );
         ctx.fillStyle = 'white';
         ctx.strokeStyle = 'transparent';

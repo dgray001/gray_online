@@ -85,6 +85,27 @@ func (r *GameRisq) Results() GameResult {
 	return GameResult{TurnNumber: r.turn_number, Players: players, Metrics: r.Metrics()}
 }
 
+// What decides how a game stands
+type PlayerStanding struct {
+	PlayerId   int
+	Units      int
+	Score      uint
+	Land       int
+	Eliminated bool
+}
+
+// The last finished turn and where each player stood when it ended, read from the turn reports already built; nil before the first turn finishes
+func (r *GameRisq) Standings() (uint16, []PlayerStanding) {
+	standings := make([]PlayerStanding, 0, len(r.players))
+	for _, p := range r.players {
+		if p.report == nil {
+			return 0, nil
+		}
+		standings = append(standings, PlayerStanding{PlayerId: p.player.Player_id, Units: int(p.report.pop_end), Score: p.score, Land: p.report.land.held_end, Eliminated: p.eliminated})
+	}
+	return r.players[0].report.turn, standings
+}
+
 // Compact per-player state used by the sim tool to print timelines
 type PlayerSnapshot struct {
 	Turn      uint16

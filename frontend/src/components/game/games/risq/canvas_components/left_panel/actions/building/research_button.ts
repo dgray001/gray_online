@@ -1,7 +1,8 @@
 import type { DwgRisq } from '../../../../risq';
-import { RisqRichTooltipActionButton } from '../action_button';
+import { RisqActionButton } from '../action_button';
 import type { RisqProducible } from '../../../../model/types';
-import { RisqOrderType, canAffordCost } from '../../../../model/types';
+import { canAffordCost } from '../../../../model/types';
+import { researchQueued } from '../../../../application/orders/eligibility';
 import { techImage } from '../../../../rendering/assets/buildings';
 import { RISQ_MESSAGE_WARNING_COLOR } from '../../../message_queue';
 import type { RisqTooltipData } from '../../../risq_tooltip';
@@ -13,7 +14,7 @@ export declare interface ResearchButtonConfig {
   producible: RisqProducible;
 }
 
-export class RisqResearchButton extends RisqRichTooltipActionButton {
+export class RisqResearchButton extends RisqActionButton {
   private risq: DwgRisq;
   private building_id: number;
   private producible: RisqProducible;
@@ -39,9 +40,7 @@ export class RisqResearchButton extends RisqRichTooltipActionButton {
     const player = this.risq.getPlayer();
     if (!!player && this.risq.session.givingOrders() && !player.orders_submitted) {
       this.enable();
-      this.already_queued = this.risq.orders_model
-        .all()
-        .some((o) => o.order_type === RisqOrderType.OrderType_BuildingResearch && o.target_id === this.producible.id);
+      this.already_queued = researchQueued(player, this.risq.orders_model.all(), this.producible.id);
       this.dimmed = this.already_queued || !canAffordCost(player, this.producible.cost);
     } else {
       this.disable();
@@ -53,18 +52,20 @@ export class RisqResearchButton extends RisqRichTooltipActionButton {
     super.mouseup(e);
   }
 
-  protected released(): void {
-    if (this.isHovering()) {
-      if (this.already_queued) {
-        this.risq.showMessage('Already queued for research', RISQ_MESSAGE_WARNING_COLOR);
-        return;
-      }
-      if (this.dimmed) {
-        this.risq.showMessage('Not enough resources', RISQ_MESSAGE_WARNING_COLOR);
-        return;
-      }
-      this.risq.commands.researchTech(this.building_id, this.producible.id, this.ctrl_held);
+  override matchesProducible(kind: string, id: number): boolean {
+    return kind === 'research_tech' && this.producible.id === id;
+  }
+
+  override execute(ctrl_held = this.ctrl_held): void {
+    if (this.already_queued) {
+      this.risq.showMessage('Already queued for research', RISQ_MESSAGE_WARNING_COLOR);
+      return;
     }
+    if (this.dimmed) {
+      this.risq.showMessage('Not enough resources', RISQ_MESSAGE_WARNING_COLOR);
+      return;
+    }
+    this.risq.commands.researchTech(this.building_id, this.producible.id, ctrl_held);
   }
 
   protected override getTooltipData(): RisqTooltipData {

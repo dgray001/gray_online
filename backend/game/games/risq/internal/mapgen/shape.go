@@ -22,9 +22,9 @@ func stepShape(ctx *mapScriptContext, raw json.RawMessage) error {
 	if ctx.shape != "" {
 		return fmt.Errorf("shape: already declared as %q", ctx.shape)
 	}
-	var p shapeParams
-	if err := json.Unmarshal(raw, &p); err != nil {
-		return fmt.Errorf("shape: %v", err)
+	p, err := decodeStepParams[shapeParams](raw, "shape")
+	if err != nil {
+		return err
 	}
 	ctx.vars["recommended"] = float64(recommendedShapeSize(p.Kind, ctx.num_players))
 	switch p.Kind {

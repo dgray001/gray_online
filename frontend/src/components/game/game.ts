@@ -36,7 +36,7 @@ export class DwgGame extends DwgElement {
   private players_waiting!: HTMLDivElement;
   private players_waiting_els = new Map<number, HTMLDivElement>();
   private game_container!: HTMLDivElement;
-  private game_el!: GameComponent;
+  private game_el!: GameComponent & HTMLElement;
   private chatbox_container!: HTMLDivElement;
   private chatbox!: DwgChatbox;
   private open_chatbox_button!: HTMLButtonElement;
@@ -61,7 +61,16 @@ export class DwgGame extends DwgElement {
   private lobby_room?: LobbyRoom;
   private ping_interval?: NodeJS.Timeout;
 
+  message_error_count = 0;
+  running_updates = false;
+
   private chatbox_lock = createLock();
+
+  private handleKeyup = (e: KeyboardEvent): void => {
+    if (e.key === 'Enter') {
+      this.toggleChatbox();
+    }
+  };
 
   constructor() {
     super();
@@ -130,11 +139,7 @@ export class DwgGame extends DwgElement {
 
   protected override parsedCallback(): void {
     this.minimize_img.classList.add('hide');
-    document.addEventListener('keyup', (e) => {
-      if (e.key === 'Enter') {
-        this.toggleChatbox();
-      }
-    });
+    document.addEventListener('keyup', this.handleKeyup);
     this.chatbox.style.setProperty('--gray-color', 'rgba(220, 220, 220, 0.9)');
     this.chatbox.addEventListener('chat_sent', (e) => {
       if (!this.socketActive()) {
@@ -241,6 +246,11 @@ export class DwgGame extends DwgElement {
       });
       this.appendChild(confirm_dialog);
     });
+  }
+
+  override disconnectedCallback(): void {
+    super.disconnectedCallback();
+    document.removeEventListener('keyup', this.handleKeyup);
   }
 
   toggleChatbox() {
@@ -374,6 +384,20 @@ export class DwgGame extends DwgElement {
     return this.connection_metadata?.client_id ? this.connection_metadata.client_id : -1;
   }
 
+  private handleStartupError(game_el: GameComponent & HTMLElement, error: unknown): void {
+    if (!this.isConnected || !this.game || !game_el.isConnected || this.game_el !== game_el) {
+      return;
+    }
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      return;
+    }
+    console.error('Game initialization failed:', error);
+    this.launched = false;
+    clearInterval(this.ping_interval);
+    game_el.remove();
+    messageDialog.call(this, { message: 'Unable to initialize the game. Refresh the page to try again.' });
+  }
+
   async refreshGame(): Promise<boolean> {
     const response = await apiPost<GameFromServer>(`lobby/games/get/${this.game_id}`, {
       client_id: this.clientId(),
@@ -418,13 +442,20 @@ export class DwgGame extends DwgElement {
           break;
         }
       }
-      this.game_el.initialize(this, new_game).then(() => {
+      game_el.addEventListener('game_initialization_failed', (e: CustomEvent<unknown>): void =>
+        this.handleStartupError(game_el, e.detail)
+      );
+      const initialization = this.game_el.initialize(this, new_game).then(() => {
+        if (!this.isConnected || this.game !== new_game || !game_el.isConnected || this.game_el !== game_el) {
+          return;
+        }
         game_initialized = true;
         if (waiting_room_initialized) {
           this.socketSend(createMessage(`client-${this.clientId()}`, 'game-connected', '', this.game_id.toString()));
           this.launched = true;
         }
       });
+      initialization.catch((error: unknown): void => this.handleStartupError(game_el, error));
       game_el.addEventListener('game_update', (e) => {
         if (new_game.game_base.game_ended) {
           console.log('Game already over');
@@ -480,7 +511,12 @@ export class DwgGame extends DwgElement {
     }
     this.classList.add('show');
     waiting_room_initialized = true;
-    if (game_initialized) {
+    if (
+      game_initialized &&
+      this.isConnected &&
+      this.game === new_game &&
+      this.game_el === this.game_container.firstElementChild
+    ) {
       this.socketSend(createMessage(`client-${this.clientId()}`, 'game-connected', '', this.game_id.toString()));
       clearInterval(this.ping_interval);
       this.ping_interval = setInterval(() => {
@@ -537,6 +573,8 @@ export class DwgGame extends DwgElement {
     this.lobby_room = undefined;
     this.game_id = 0;
     this.game = undefined;
+    this.message_error_count = 0;
+    this.running_updates = false;
     clearInterval(this.ping_interval);
   }
 

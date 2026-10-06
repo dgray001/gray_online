@@ -22,9 +22,11 @@ export class RisqBuildingDeleteButton extends RisqActionButton {
     this.setHotkeyCombo(getSettings().risq_hotkeys.actions[RisqHotkeyAction.BUILDING_DELETE]);
   }
 
-  protected released(): void {
-    if (this.isHovering()) {
-      this.risq.commands.confirmDeleteBuilding(this.building_id);
-    }
+  override matchesAction(action: RisqHotkeyAction): boolean {
+    return action === RisqHotkeyAction.BUILDING_DELETE || action === RisqHotkeyAction.DELETE;
+  }
+
+  override execute(): void {
+    this.risq.commands.confirmDeleteBuilding(this.building_id);
   }
 }

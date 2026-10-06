@@ -1,7 +1,6 @@
 package risq
 
 import (
-	"github.com/dgray001/gray_online/game/game_utils"
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/util"
 )
@@ -39,14 +38,14 @@ func pathGoal(target *RisqZone, attack_range defs.RisqRange) (func(*RisqZone) bo
 	if !ranged {
 		return func(z *RisqZone) bool { return z == target },
 			func(z *RisqZone) uint {
-				return game_utils.AxialDistance(z.space.coordinate, target.space.coordinate) * defs.LowestInterMoveCost
+				return z.space.distanceTo(target.space) * defs.LowestInterMoveCost
 			}
 	}
 	goal := func(z *RisqZone) bool {
-		return game_utils.AxialDistance(z.space.coordinate, target.space.coordinate) <= space_range
+		return z.space.distanceTo(target.space) <= space_range
 	}
 	remaining := func(z *RisqZone) uint {
-		dist := game_utils.AxialDistance(z.space.coordinate, target.space.coordinate)
+		dist := z.space.distanceTo(target.space)
 		if dist <= space_range {
 			return 0
 		}

@@ -26,16 +26,7 @@ type Orderable interface {
 // Resolves orders naming internal_id as a subject; shared by RisqUnit/RisqBuilding's cleanupDeleted
 func resolveOrdersOnDeath(risq *GameRisq, queue *RisqOrderQueue, internal_id uint64, self_delete_order_type defs.OrderType) {
 	for _, o := range queue.active_orders {
-		if len(o.subjects) > 1 {
-			delete(o.subjects, internal_id)
-			continue
-		}
-		if o.order_type == self_delete_order_type {
-			o.executed = true
-		} else {
-			o.cancelled = true
-		}
-		o.turn_resolved = risq.turn_number
+		o.resolveSubject(internal_id, o.order_type == self_delete_order_type, risq.turn_number)
 	}
 	queue.active_orders = nil
 }
@@ -64,6 +55,7 @@ type RisqOrder struct {
 	target_id             int64
 	clear_previous_orders bool
 	received              bool
+	subject_completed     bool
 	executed              bool
 	cancelled             bool
 	turn_received         uint16
@@ -82,15 +74,29 @@ func createRisqOrder(internal_id uint64, order_type defs.OrderType, player_id in
 	return &order
 }
 
+// Drops a resolved subject; the last one marks the order executed if any subject completed, else cancelled
+func (o *RisqOrder) resolveSubject(subject_id uint64, completed bool, turn uint16) {
+	o.subject_completed = o.subject_completed || completed
+	if len(o.subjects) > 1 {
+		delete(o.subjects, subject_id)
+		return
+	}
+	o.executed = o.subject_completed
+	o.cancelled = !o.subject_completed
+	o.turn_resolved = turn
+}
+
 func (o *RisqOrder) toFrontend() gin.H {
 	order := gin.H{
-		"internal_id":           o.internal_id,
 		"player_id":             o.player_id,
 		"order_type":            o.order_type,
 		"target_id":             o.target_id,
 		"turn_received":         o.turn_received,
 		"turn_resolved":         o.turn_resolved,
 		"clear_previous_orders": o.clear_previous_orders,
+	}
+	if o.internal_id != 0 {
+		order["internal_id"] = o.internal_id
 	}
 	subjects := make([]uint64, 0)
 	for _, subject := range o.subjects {
@@ -149,19 +155,9 @@ func (q *RisqOrderQueue) nextOrder(orderable Orderable, risq *GameRisq) *RisqOrd
 		case OrderStatus_InProgress:
 			return o
 		case OrderStatus_Cancelled:
-			if len(o.subjects) > 1 {
-				delete(o.subjects, orderable.internalId())
-			} else {
-				o.cancelled = true
-				o.turn_resolved = risq.turn_number
-			}
+			o.resolveSubject(orderable.internalId(), false, risq.turn_number)
 		default:
-			if len(o.subjects) > 1 {
-				delete(o.subjects, orderable.internalId())
-			} else {
-				o.executed = true
-				o.turn_resolved = risq.turn_number
-			}
+			o.resolveSubject(orderable.internalId(), true, risq.turn_number)
 		}
 		q.active_orders = q.active_orders[1:]
 	}

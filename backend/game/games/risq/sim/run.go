@@ -1,7 +1,6 @@
 package main
 
 import (
-	"os"
 	"time"
 
 	"github.com/dgray001/gray_online/game"
@@ -18,11 +17,19 @@ type Result struct {
 	Error    string
 	Game     risq.GameResult
 	Timeline [][]risq.PlayerSnapshot
-	// index of the player who crushed their opponent (opponent has no units, or 20x fewer); the game is stopped there (-1 if none)
-	Crush int
+	// each seat's outcome from its own side, judged when the engine ends the game or the turn limit is reached
+	Outcomes []Outcome
+	// where the game stood as each turn finished, and each seat's outcome then
+	Trajectory []TurnStanding
 }
 
-func RunGame(seed int64, players []PlayerConfig, map_name string, max_turns uint16, timeout time.Duration) Result {
+type TurnStanding struct {
+	Turn     uint16
+	Players  []risq.PlayerStanding
+	Outcomes []Outcome
+}
+
+func RunGame(seed int64, players []PlayerConfig, map_name string, metrics []string, max_turns uint16, timeout time.Duration) Result {
 	ai_players := make([]any, len(players))
 	for i, p := range players {
 		config := make(map[string]any, 2)
@@ -30,7 +37,11 @@ func RunGame(seed int64, players []PlayerConfig, map_name string, max_turns uint
 		config["config"] = p.ConfigPath
 		ai_players[i] = config
 	}
-	settings := map[string]any{"ai_players": ai_players, "seed": float64(seed)}
+	extras := make([]any, len(metrics))
+	for i, name := range metrics {
+		extras[i] = name
+	}
+	settings := map[string]any{"ai_players": ai_players, "seed": float64(seed), "metrics": extras}
 	if map_name != "" {
 		settings["map"] = map_name
 	}
@@ -57,27 +68,16 @@ func RunGame(seed int64, players []PlayerConfig, map_name string, max_turns uint
 	deadline := time.After(timeout)
 	var timeline [][]risq.PlayerSnapshot
 	last_snap := uint16(0)
-	crush := -1
+	var trajectory []TurnStanding
+	last_turn := uint16(0)
 	snap := func() {
 		if t := r.TurnNumber(); t/5 > last_snap/5 {
 			last_snap = t
-			cur := r.Snapshot()
-			timeline = append(timeline, cur)
-			if t > 40 && len(cur) == 2 && os.Getenv("SIM_NO_CRUSH_STOP") == "" {
-				units := func(p risq.PlayerSnapshot) int {
-					total := 0
-					for _, n := range p.Units {
-						total += n
-					}
-					return total
-				}
-				for i := 0; i < 2; i++ {
-					// crushed: the loser has no units left, or the winner has at least 20x as many
-					if w, l := units(cur[i]), units(cur[1-i]); w > 0 && w >= 20*l && crush < 0 {
-						crush = i
-					}
-				}
-			}
+			timeline = append(timeline, r.Snapshot())
+		}
+		if turn, standings := r.Standings(); standings != nil && turn > last_turn {
+			last_turn = turn
+			trajectory = append(trajectory, TurnStanding{Turn: turn, Players: standings, Outcomes: outcomes(standings)})
 		}
 	}
 	for r.TurnNumber() < max_turns {
@@ -85,14 +85,13 @@ func RunGame(seed int64, players []PlayerConfig, map_name string, max_turns uint
 		case action := <-action_channel:
 			r.PlayerAction(action)
 			snap()
-			if crush >= 0 {
-				return Result{Seed: seed, Game: r.Results(), Timeline: timeline, Crush: crush}
-			}
 		case <-base.GameEndedChannel:
-			return Result{Seed: seed, Game: r.Results(), Timeline: timeline, Crush: -1}
+			results := r.Results()
+			return Result{Seed: seed, Game: results, Timeline: timeline, Outcomes: finalOutcomes(results.Players), Trajectory: trajectory}
 		case <-deadline:
 			return Result{Seed: seed, Error: "timed out", Game: r.Results()}
 		}
 	}
-	return Result{Seed: seed, Game: r.Results(), Timeline: timeline, Crush: -1}
+	results := r.Results()
+	return Result{Seed: seed, Game: results, Timeline: timeline, Outcomes: finalOutcomes(results.Players), Trajectory: trajectory}
 }

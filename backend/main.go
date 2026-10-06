@@ -63,6 +63,14 @@ func main() {
 			c.JSON(200, successResponse(risq.AllBuildingConfigsToFrontend()))
 		})
 
+		api.GET("/risq/resources", func(c *gin.Context) {
+			c.JSON(200, successResponse(risq.AllResourceConfigsToFrontend()))
+		})
+
+		if DEV {
+			registerRisqDevRoutes(api)
+		}
+
 		api_lobby := api.Group("/lobby")
 		{
 			api_lobby.GET("/connect/:nickname", func(c *gin.Context) {

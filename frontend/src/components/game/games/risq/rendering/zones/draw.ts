@@ -1,5 +1,4 @@
-import type { DwgRisq } from '../../risq';
-import type { RisqOrderPlanning } from '../../application/orders/planning';
+import type { RisqDrawHost } from '../draw_host';
 import type { RisqZone, UnitByTypeData } from '../../model/types';
 import { terrainImage, RisqViewMode } from '../terrain';
 import {
@@ -14,6 +13,7 @@ import {
 import type { Point2D } from '../../../../util/objects2d';
 import { unitImage, comboUnitIconKey, COMBO_UNIT_ICON_SIZE, drawComboUnitIcon } from '../assets/unit';
 import { ColorRGB } from '../../../../../../scripts/color_rgb';
+import { clampNumber, seededRandom } from '../../../../../../scripts/math';
 import { RisqUnitType, RisqOrderType, RisqVisibilityLevel } from '../../model/types';
 import { isForestResource, resourceImage, resourceIcon } from '../assets/resources';
 import { rotatePoint } from '../../../../util/objects2d';
@@ -22,7 +22,7 @@ import { buildingImage } from '../assets/buildings';
 import { drawEllipse } from '../../../../util/canvas_util';
 /** Returns the space's terrain image, or (cached, at the base terrain's own native resolution) a composite with any zone terrain overrides painted on top */
 export function getSpaceTerrainImage(
-  game: DwgRisq,
+  game: RisqDrawHost,
   base_terrain_id: number,
   space_zones: RisqZone[]
 ): CanvasImageSource {
@@ -62,7 +62,7 @@ export function unitClusterIconKey(units_by_type: UnitByTypeData[], total: numbe
 /** Draws one player's unit types centered at the origin, arranging 1/2/3/4/many types each with its count */
 export function drawUnitTypeCluster(
   ctx: CanvasRenderingContext2D,
-  game: DwgRisq,
+  game: RisqDrawHost,
   units_by_type: UnitByTypeData[],
   r: Point2D,
   total: number,
@@ -166,11 +166,47 @@ const CENTER_FOREST_TREES = 8;
 const EDGE_FOREST_TREES = 6;
 const FOREST_TREE_RADIUS_MULTIPLIER = 0.11;
 const FOREST_TREE_RING_FRACTION = 0.4;
+const FOREST_MAX_PERTURBATION = 0.02;
+const FOREST_OUTER_RING_BELOW_RESOURCES_LEFT = 1000;
+const FOREST_INNER_RING_BELOW_RESOURCES_LEFT = 600;
 const CENTER_INNER_FOREST_ANGLES = [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2];
 const EDGE_INNER_FOREST_ANGLES = CENTER_INNER_FOREST_ANGLES.slice(1);
 
+const HEXAGON_EDGE_NORMALS: Point2D[] = Array.from({ length: 6 }, (_, k) => ({
+  x: Math.cos((k * Math.PI) / 3),
+  y: Math.sin((k * Math.PI) / 3),
+}));
+
+/** Scales the point toward the center zone's middle until a tree centered there fits fully inside the zone */
+function clampToCenterZone(p: Point2D, hex_r: number): Point2D {
+  const limit = (CENTER_ZONE_APOTHEM_MULTIPLIER - FOREST_TREE_RADIUS_MULTIPLIER) * hex_r;
+  const reach = Math.max(...HEXAGON_EDGE_NORMALS.map((n) => p.x * n.x + p.y * n.y));
+  const scale = reach > limit ? limit / reach : 1;
+  return { x: p.x * scale, y: p.y * scale };
+}
+
+/** Moves the point into the edge zone's trapezoid (local frame, zone toward +x) so a tree there fits fully inside */
+function clampToEdgeZone(p: Point2D, hex_r: number): Point2D {
+  const tree_r = FOREST_TREE_RADIUS_MULTIPLIER * hex_r;
+  const x = clampNumber(p.x, CENTER_ZONE_APOTHEM_MULTIPLIER * hex_r + tree_r, (Math.sqrt(3) / 2) * hex_r - tree_r);
+  const max_y = x * Math.tan(Math.PI / 6) - tree_r / Math.cos(Math.PI / 6);
+  return { x, y: clampNumber(p.y, -max_y, max_y) };
+}
+
+declare interface ForestTreeSpots {
+  inner: Point2D[];
+  outer: Point2D[];
+}
+
 /** Local-frame tree spots: a ring (center) or inward arc (edge), plus an inner square/right triangle at half that distance */
-function forestTreeLocalOffsets(is_center: boolean, hex_r: number): Point2D[] {
+function forestTreeLocalOffsets(is_center: boolean, hex_r: number, seed: number): ForestTreeSpots {
+  const random = seededRandom(seed);
+  const outer_step = is_center ? (2 * Math.PI) / CENTER_FOREST_TREES : Math.PI / (EDGE_FOREST_TREES - 1);
+  const inner_step = Math.PI / 2;
+  // rings rotate within one step; arcs slide by up to half a step either way so their ends stay near the zone
+  const jitter = (step: number): number => (is_center ? random() * step : (random() - 0.5) * step);
+  const outer_offset = jitter(outer_step);
+  const inner_offset = jitter(inner_step);
   const building = buildingLocalOffset(is_center, hex_r);
   const gap = CENTER_ZONE_APOTHEM_MULTIPLIER - BUILDING_CIRCLE_RADIUS_MULTIPLIER;
   const center_ring_r = (BUILDING_CIRCLE_RADIUS_MULTIPLIER + FOREST_TREE_RING_FRACTION * gap) * hex_r;
@@ -178,20 +214,25 @@ function forestTreeLocalOffsets(is_center: boolean, hex_r: number): Point2D[] {
     is_center
       ? { x: center_ring_r * Math.cos(angle), y: center_ring_r * Math.sin(angle) }
       : edgeSlotAtAngle(angle, hex_r, FOREST_TREE_RING_FRACTION);
-  const ring_angles = is_center
-    ? Array.from({ length: CENTER_FOREST_TREES }, (_, i) => (2 * Math.PI * i) / CENTER_FOREST_TREES)
-    : Array.from({ length: EDGE_FOREST_TREES }, (_, i) => Math.PI / 2 + (i * Math.PI) / (EDGE_FOREST_TREES - 1));
+  const ring_angles = (
+    is_center
+      ? Array.from({ length: CENTER_FOREST_TREES }, (_, i) => (2 * Math.PI * i) / CENTER_FOREST_TREES)
+      : Array.from({ length: EDGE_FOREST_TREES }, (_, i) => Math.PI / 2 + (i * Math.PI) / (EDGE_FOREST_TREES - 1))
+  ).map((angle) => angle + outer_offset);
   const inner = (is_center ? CENTER_INNER_FOREST_ANGLES : EDGE_INNER_FOREST_ANGLES).map((angle) => {
-    const p = ring_at(angle);
+    const p = ring_at(angle + inner_offset);
     return { x: 0.5 * (building.x + p.x), y: 0.5 * (building.y + p.y) };
   });
-  return [...inner, ...ring_angles.map(ring_at)];
+  const perturbation = (): number => (random() - 0.5) * 2 * FOREST_MAX_PERTURBATION * hex_r;
+  const clamp_to_zone = is_center ? clampToCenterZone : clampToEdgeZone;
+  const place = (p: Point2D): Point2D => clamp_to_zone({ x: p.x + perturbation(), y: p.y + perturbation() }, hex_r);
+  return { inner: inner.map(place), outer: ring_angles.map(ring_at).map(place) };
 }
 
 /** Draws a forest zone's trees upright around its space's center (the current origin), clipped to the zone */
 export function drawForestTrees(
   ctx: CanvasRenderingContext2D,
-  game: DwgRisq,
+  game: RisqDrawHost,
   zone: RisqZone,
   view_mode: RisqViewMode,
   hex_r: number,
@@ -204,11 +245,16 @@ export function drawForestTrees(
   }
   const direction = findOuterZoneIndex(zone.coordinate);
   const zone_rotation = direction === -1 ? 0 : (Math.PI / 3) * (direction + 1);
-  const icon = game.getIcon(resourceImage(resource));
+  const icon = game.getIcon(resourceImage(resource, game.session.getResourceConfigs()));
   const icon_r = FOREST_TREE_RADIUS_MULTIPLIER * hex_r;
   ctx.save();
   clipToZone(ctx, { x: 0, y: 0 }, hex_r, zone.coordinate);
-  for (const offset of forestTreeLocalOffsets(direction === -1, hex_r)) {
+  const spots = forestTreeLocalOffsets(direction === -1, hex_r, zone.coordinate_key);
+  const visible_spots = [
+    ...(resource.resources_left < FOREST_INNER_RING_BELOW_RESOURCES_LEFT ? [] : spots.inner),
+    ...(resource.resources_left < FOREST_OUTER_RING_BELOW_RESOURCES_LEFT ? [] : spots.outer),
+  ];
+  for (const offset of visible_spots) {
     const p = rotatePoint(offset, zone_rotation);
     ctx.translate(p.x, p.y);
     ctx.rotate(-map_rotation);
@@ -221,12 +267,12 @@ export function drawForestTrees(
 
 const BUILDING_GHOST_ALPHA = 0.5;
 
-export function isEmptyPlot(planning: RisqOrderPlanning, zone: RisqZone): boolean {
+export function isEmptyPlot(planning: RisqDrawHost['planning'], zone: RisqZone): boolean {
   return !zone.resource && !zone.building && !planning.hasPlannedFoundation(zone);
 }
 
 /** Building to preview in a hovered zone: its foundation's building, else the armed build if the zone is empty */
-function ghostBuildingId(game: DwgRisq, zone: RisqZone): number | undefined {
+function ghostBuildingId(game: RisqDrawHost, zone: RisqZone): number | undefined {
   if (!zone.hovered || zone.resource) {
     return undefined;
   }
@@ -244,7 +290,7 @@ function ghostBuildingId(game: DwgRisq, zone: RisqZone): number | undefined {
 
 export function drawRisqZone(
   ctx: CanvasRenderingContext2D,
-  game: DwgRisq,
+  game: RisqDrawHost,
   zone: RisqZone,
   visibility: number,
   view_mode: RisqViewMode,
@@ -279,8 +325,14 @@ export function drawRisqZone(
   ctx.textBaseline = 'top';
   const building_r = BUILDING_CIRCLE_RADIUS_MULTIPLIER * hex_r;
   const unit_r = UNIT_SLOT_CIRCLE_RADIUS_MULTIPLIER * hex_r;
-  const filled_slots = buildZoneUnitSlots(zone, active_player_id, unit_slot_positions.length);
-  zone.unit_slots = filled_slots;
+  const unit_slots =
+    zone.unit_slots ?? (zone.unit_slots = buildZoneUnitSlots(zone, active_player_id, unit_slot_positions.length));
+  const filled_slots =
+    visibility === RisqVisibilityLevel.POOR
+      ? zone.unit_count && view_mode !== RisqViewMode.OWNERSHIP
+        ? [[]]
+        : []
+      : unit_slots;
 
   const target_len = 1 + filled_slots.length;
   if (zone.hovered_data.length !== target_len || zone.reset_hovered_data) {

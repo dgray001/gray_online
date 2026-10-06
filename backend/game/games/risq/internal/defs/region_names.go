@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"slices"
 
 	"github.com/dgray001/gray_online/util"
 )
@@ -16,8 +17,15 @@ func loadRegionNames(data []byte) {
 	}
 }
 
-func RandomRegionNames(rng *rand.Rand, n int) []string {
-	pool := util.ShuffleFrom(rng, append([]string{}, regionNames...))
+// Up to n distinct names from the pool, never any in exclude
+func RandomRegionNames(rng *rand.Rand, n int, exclude []string) []string {
+	pool := make([]string, 0, len(regionNames))
+	for _, name := range regionNames {
+		if !slices.Contains(exclude, name) {
+			pool = append(pool, name)
+		}
+	}
+	util.ShuffleFrom(rng, pool)
 	if n > len(pool) {
 		n = len(pool)
 	}

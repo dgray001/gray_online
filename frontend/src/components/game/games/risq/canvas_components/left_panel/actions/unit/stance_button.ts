@@ -43,9 +43,11 @@ export class RisqStanceButton extends RisqActionButton {
     this.setHotkeyCombo(hotkey_action !== undefined ? getSettings().risq_hotkeys.actions[hotkey_action] : undefined);
   }
 
-  protected released(): void {
-    if (this.isHovering()) {
-      this.risq.commands.setUnitStance(this.unit_internal_ids, this.stance);
-    }
+  override matchesAction(action: RisqHotkeyAction): boolean {
+    return action === STANCE_HOTKEY_ACTIONS[this.stance];
+  }
+
+  override execute(): void {
+    this.risq.commands.setUnitStance(this.unit_internal_ids, this.stance);
   }
 }

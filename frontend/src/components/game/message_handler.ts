@@ -5,7 +5,6 @@ import type { DwgGame } from './game';
 
 /** After this many repeated errors the frontend should shutdown */
 const MAX_ERROR_COUNT = 3;
-let error_count = 0;
 
 function isGameMessage(kind: string): boolean {
   const lobby_prefixes = ['game', 'ping'];
@@ -81,8 +80,8 @@ export function handleMessage(game: DwgGame, message: ServerMessage) {
       break;
   }
   if (errored) {
-    error_count++;
-    if (error_count >= MAX_ERROR_COUNT) {
+    game.message_error_count++;
+    if (game.message_error_count >= MAX_ERROR_COUNT) {
       game.dispatchEvent(
         new CustomEvent<string>('connection_lost', {
           detail: 'An error was encountered; please refresh your connection.',
@@ -90,11 +89,10 @@ export function handleMessage(game: DwgGame, message: ServerMessage) {
       );
     }
   } else {
-    error_count = 0;
+    game.message_error_count = 0;
   }
 }
 
-let running_updates = false;
 async function handleGameUpdate(game: DwgGame, message: ServerMessage) {
   const game_ob = game.getGame();
   const game_el = game.getGameEl();
@@ -110,58 +108,62 @@ async function handleGameUpdate(game: DwgGame, message: ServerMessage) {
     return;
   }
   const game_base = game_ob.game_base;
-  async function runUpdate(update: UpdateMessage) {
-    running_updates = true;
-    if (!game_base.persistant_history) {
-      console.log('Applying state-snapshot update');
-      await game_el?.gameUpdate(update);
-      running_updates = false;
-      return;
-    }
-    let last_update_id = game_base?.last_applied_update_id ?? -2;
-    // running update for next update
-    if (update.update_id - 1 === last_update_id) {
-      game_base.last_applied_update_id = update.update_id;
-      console.log(`Applying update id ${update.update_id}`);
-      await game_el?.gameUpdate(update);
-      last_update_id = update.update_id;
-      while (true) {
-        const next_update = game_base.updates?.get(last_update_id + 1);
-        if (!next_update) {
-          break;
-        }
-        game_base.last_applied_update_id = next_update.update_id;
-        console.log(`Applying next update id ${next_update.update_id}`);
-        await game_el?.gameUpdate(next_update);
-        last_update_id = next_update.update_id;
+  async function runUpdate(update: UpdateMessage): Promise<void> {
+    game.running_updates = true;
+    try {
+      if (!game_base.persistant_history) {
+        console.log('Applying state-snapshot update');
+        await game_el?.gameUpdate(update);
+        return;
       }
-    } else if (update.update_id - 1 > last_update_id) {
-      game
-        .getSocket()
-        ?.send(
-          createMessage(
-            `client-${game.getConnectionMetadata()?.client_id}`,
-            'game-get-update',
-            '',
-            `${last_update_id + 1}`
-          )
-        );
-    } else {
-    } // ignore updates that are already applied
-    if ((game_base.highest_received_update_id ?? -2) > last_update_id) {
-      // check if received higher update while updating
-      game
-        .getSocket()
-        ?.send(
-          createMessage(
-            `client-${game.getConnectionMetadata()?.client_id}`,
-            'game-get-update',
-            '',
-            `${last_update_id + 1}`
-          )
-        );
+      let last_update_id = game_base?.last_applied_update_id ?? -2;
+      // running update for next update
+      if (update.update_id - 1 === last_update_id) {
+        game_base.last_applied_update_id = update.update_id;
+        console.log(`Applying update id ${update.update_id}`);
+        await game_el?.gameUpdate(update);
+        last_update_id = update.update_id;
+        while (true) {
+          const next_update = game_base.updates?.get(last_update_id + 1);
+          if (!next_update) {
+            break;
+          }
+          game_base.last_applied_update_id = next_update.update_id;
+          console.log(`Applying next update id ${next_update.update_id}`);
+          await game_el?.gameUpdate(next_update);
+          last_update_id = next_update.update_id;
+        }
+      } else if (update.update_id - 1 > last_update_id) {
+        game
+          .getSocket()
+          ?.send(
+            createMessage(
+              `client-${game.getConnectionMetadata()?.client_id}`,
+              'game-get-update',
+              '',
+              `${last_update_id + 1}`
+            )
+          );
+      } else {
+      } // ignore updates that are already applied
+      if ((game_base.highest_received_update_id ?? -2) > last_update_id) {
+        // check if received higher update while updating
+        game
+          .getSocket()
+          ?.send(
+            createMessage(
+              `client-${game.getConnectionMetadata()?.client_id}`,
+              'game-get-update',
+              '',
+              `${last_update_id + 1}`
+            )
+          );
+      }
+    } catch (e) {
+      console.error('Error applying game update:', e);
+    } finally {
+      game.running_updates = false;
     }
-    running_updates = false;
   }
   try {
     const update_message = {
@@ -172,7 +174,7 @@ async function handleGameUpdate(game: DwgGame, message: ServerMessage) {
     console.log(`Received game update ${game_update_id}: ${JSON.stringify(update_message)}`);
     game_base.updates?.set(game_update_id, update_message);
     game_base.highest_received_update_id = Math.max(game_base.highest_received_update_id ?? 0, game_update_id);
-    if (!running_updates && game_base.game_started && !game_base.game_ended && game.getLaunched()) {
+    if (!game.running_updates && game_base.game_started && !game_base.game_ended && game.getLaunched()) {
       runUpdate(update_message);
     }
   } catch (e) {

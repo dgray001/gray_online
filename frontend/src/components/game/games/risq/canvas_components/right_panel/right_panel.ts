@@ -114,7 +114,20 @@ export class RisqRightPanel implements CanvasComponent {
     return false;
   }
 
-  setClicking(_clicking: boolean) {}
+  setClicking(clicking: boolean): void {
+    if (!clicking) {
+      for (const component of [
+        this.open_button,
+        this.orders_list,
+        this.submit_button,
+        this.submit_icon_button,
+        this.next_idle_button,
+      ]) {
+        component.setClicking(false);
+        component.setHovering(false);
+      }
+    }
+  }
 
   isOpen(): boolean {
     return this.config.is_open;

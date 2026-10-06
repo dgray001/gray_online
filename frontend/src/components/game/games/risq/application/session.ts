@@ -1,7 +1,15 @@
 import type { Point2D } from '../../../util/objects2d';
 import { hexagonalBoardNeighbors, hexagonalBoardRows } from '../../../util/objects2d';
 import { coordinateToIndex, getSpace } from '../model/coordinates';
-import type { GameRisq, RisqBuilding, RisqPlayer, RisqRegion, RisqSpace, RisqUnit } from '../model/types';
+import type {
+  GameRisq,
+  RisqBuilding,
+  RisqPlayer,
+  RisqRegion,
+  RisqResourceConfig,
+  RisqSpace,
+  RisqUnit,
+} from '../model/types';
 import type { GameRisqFromServer } from '../transport/snapshot_types';
 import { serverToGameRisq } from '../transport/snapshot_conversion';
 import type { RisqTurnReport } from '../transport/turn_report';
@@ -23,6 +31,24 @@ export class RisqSession {
   private region_by_space = new Map<number, RisqRegion>();
   private player_id = -1;
   private last_turn_report?: RisqTurnReport;
+  private resource_configs = new Map<number, RisqResourceConfig>();
+  private toggling = false;
+
+  isToggling(): boolean {
+    return this.toggling;
+  }
+
+  setToggling(toggling: boolean): void {
+    this.toggling = toggling;
+  }
+
+  setResourceConfigs(configs: RisqResourceConfig[]): void {
+    this.resource_configs = new Map(configs.map((config) => [config.resource_id, config]));
+  }
+
+  getResourceConfigs(): ReadonlyMap<number, RisqResourceConfig> {
+    return this.resource_configs;
+  }
 
   setPlayerId(player_id: number) {
     this.player_id = player_id;
@@ -66,7 +92,7 @@ export class RisqSession {
     if (!player || !game) {
       return false;
     }
-    if (player.orders_submitted) {
+    if (this.toggling || player.orders_submitted) {
       return false;
     }
     if (!game.giving_orders) {

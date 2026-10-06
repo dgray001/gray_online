@@ -164,11 +164,10 @@ export declare interface RisqTurnReportFromServer {
 
 /** Converts a server response to a frontend turn report */
 export function serverToRisqTurnReport(server_report: RisqTurnReportFromServer): RisqTurnReport {
-  const resource_order = [RisqResourceType.FOOD, RisqResourceType.WOOD, RisqResourceType.STONE, RisqResourceType.GOLD];
   return {
     ...server_report,
-    resources: server_report.resources.map((line, i) => ({
-      resource_type: resource_order[i] ?? RisqResourceType.ERROR,
+    resources: server_report.resources.map((line) => ({
+      resource_type: (line.category in RisqResourceType ? line.category : RisqResourceType.ERROR) as RisqResourceType,
       start: line.start,
       gathered: line.gathered,
       spent: line.spent,

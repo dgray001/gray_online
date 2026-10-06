@@ -4,12 +4,18 @@ import type { RisqRightPanel } from '../../canvas_components/right_panel/right_p
 import type { RisqSession } from '../session';
 import type { RisqOrdersModel } from './orders_model';
 import type { RisqOrderPlanning } from './planning';
+import { RisqUnitType } from '../../model/types';
 
 import '../../../../../dialog_box/confirm_dialog/confirm_dialog';
 
 /** Submitting and unsubmitting this turn's pending orders, with one request in flight at a time */
 export class RisqOrderSubmission {
-  private toggling = false;
+  private get toggling(): boolean {
+    return this.session.isToggling();
+  }
+  private set toggling(value: boolean) {
+    this.session.setToggling(value);
+  }
   private submitted_times = 0;
 
   constructor(
@@ -24,7 +30,8 @@ export class RisqOrderSubmission {
     return this.submitted_times;
   }
 
-  turnStarted() {
+  turnStarted(): void {
+    this.toggling = false;
     if (this.session.getPlayerId() > -1) {
       this.submitted_times = 0;
     }
@@ -42,9 +49,10 @@ export class RisqOrderSubmission {
 
   /** Submits directly, or first confirms when units/buildings are idle or resources would go negative */
   confirmSubmit() {
-    const n_units = this.planning.idleUnitCount();
+    const n_villagers = this.planning.idleUnitCount(RisqUnitType.ECONOMIC);
+    const n_military = this.planning.idleUnitCount() - n_villagers;
     const n_buildings = this.planning.idleBuildingCount();
-    const n = n_units + n_buildings;
+    const n = n_villagers + n_military + n_buildings;
     const over_budget = this.planning.hasNegativeResources();
     if (n === 0 && !over_budget) {
       this.toggle();
@@ -52,15 +60,12 @@ export class RisqOrderSubmission {
     }
     const warnings: string[] = [];
     if (n > 0) {
-      let noun: string;
-      if (n_units > 0 && n_buildings > 0) {
-        noun = 'units and buildings';
-      } else if (n_buildings > 0) {
-        noun = n_buildings === 1 ? 'building' : 'buildings';
-      } else {
-        noun = n_units === 1 ? 'unit' : 'units';
-      }
-      warnings.push(`You have ${n} idle ${noun}.`);
+      const idle_counts = [
+        `${n_villagers} idle villager${n_villagers === 1 ? '' : 's'}`,
+        `${n_military} idle military unit${n_military === 1 ? '' : 's'}`,
+        `${n_buildings} idle building${n_buildings === 1 ? '' : 's'}`,
+      ];
+      warnings.push(`You have ${idle_counts.join(', ')}.`);
     }
     if (over_budget) {
       warnings.push('One or more resources will go negative.');
@@ -74,10 +79,9 @@ export class RisqOrderSubmission {
     this.host.appendChild(dialog);
   }
 
-  toggle() {
+  toggle(): void {
     const player = this.session.getPlayer();
     if (this.toggling || !this.session.givingOrders() || !player) {
-      this.toggling = false;
       return;
     }
     this.toggling = true;

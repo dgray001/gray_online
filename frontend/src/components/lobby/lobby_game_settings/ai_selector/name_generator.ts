@@ -1,4 +1,4 @@
-import { getRandom } from '../../../../scripts/util';
+import { getRandom } from '../../../../scripts/math';
 
 type NameGender = 'male' | 'female' | 'androgynous';
 

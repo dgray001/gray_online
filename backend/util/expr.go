@@ -53,7 +53,7 @@ func tokenizeExpr(s string) ([]exprToken, error) {
 			i = j
 		case unicode.IsLetter(c) || c == '_':
 			j := i
-			for j < len(s) && (unicode.IsLetter(rune(s[j])) || unicode.IsDigit(rune(s[j])) || s[j] == '_') {
+			for j < len(s) && (unicode.IsLetter(rune(s[j])) || unicode.IsDigit(rune(s[j])) || s[j] == '_' || s[j] == '.') {
 				j++
 			}
 			toks = append(toks, exprToken{exprTokIdent, s[i:j]})

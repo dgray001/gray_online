@@ -44,10 +44,11 @@ export class RisqGarrisonButton extends RisqActionButton {
     this.setHotkeyCombo(getSettings().risq_hotkeys.actions[hotkey_action]);
   }
 
-  protected released(): void {
-    if (!this.isHovering()) {
-      return;
-    }
+  override matchesAction(action: RisqHotkeyAction): boolean {
+    return this.ungarrison ? action === RisqHotkeyAction.UNGARRISON : action === RisqHotkeyAction.GARRISON;
+  }
+
+  override execute(): void {
     if (this.ungarrison) {
       this.risq.commands.ungarrisonUnits(this.unit_internal_ids);
       return;

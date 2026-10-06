@@ -5,6 +5,7 @@ import type { RisqBuilding, RisqZone } from '../../model/types';
 import { RisqAttackType, RisqOrderType, RisqVisibilityLevel } from '../../model/types';
 import type { RisqViewport } from '../../rendering/board/viewport';
 import { hoveredZoneObject } from '../../rendering/zones/hit_testing';
+import { unitVisibleInViewMode } from '../../rendering/zones/draw';
 import type { RisqArmedState } from '../input/armed_state';
 import type { RisqHover } from '../input/hover';
 import type { RisqSession } from '../session';
@@ -108,7 +109,7 @@ export class RisqOrderTargeting {
   /** Attack order implied by hovering an enemy building or unit slot in the hovered zone */
   private hoveredAttackOrder(): RisqOrderType | undefined {
     const zone = this.hover.zone();
-    const hovered = zone && hoveredZoneObject(zone);
+    const hovered = zone && hoveredZoneObject(zone, this.viewport.viewMode());
     const player_id = this.session.getPlayerId();
     if (hovered?.kind === 'building' && zone!.building!.player_id !== player_id) {
       return RisqOrderType.OrderType_UnitAttackBuilding;
@@ -197,7 +198,10 @@ export class RisqOrderTargeting {
       if (!zone?.hovered_data[i + 1]?.hovered) {
         continue;
       }
-      const enemy = slot.find((t) => t.player_id !== this.session.getPlayerId());
+      const enemy = slot.find(
+        (t) =>
+          t.player_id !== this.session.getPlayerId() && unitVisibleInViewMode(t.unit_type, this.viewport.viewMode())
+      );
       return enemy ? [...enemy.units][0] : undefined;
     }
     return undefined;
@@ -210,7 +214,7 @@ export class RisqOrderTargeting {
     const player_id = this.session.getPlayerId();
     const zone = this.hover.zone();
     if (this.viewport.zoneView() && zone) {
-      const hovered = hoveredZoneObject(zone);
+      const hovered = hoveredZoneObject(zone, this.viewport.viewMode());
       if (hovered?.kind === 'building' && zone.building && zone.building.player_id !== player_id) {
         return { kind: 'building', internal_id: zone.building.internal_id };
       }
@@ -227,7 +231,9 @@ export class RisqOrderTargeting {
       if (zone.building && zone.building.player_id !== player_id) {
         return { kind: 'building', internal_id: zone.building.internal_id };
       }
-      const enemy_unit = [...zone.units.values()].find((u) => u.player_id !== player_id);
+      const enemy_unit = [...zone.units.values()].find(
+        (u) => u.player_id !== player_id && unitVisibleInViewMode(u.unit_type, this.viewport.viewMode())
+      );
       return enemy_unit ? { kind: 'unit', internal_id: enemy_unit.internal_id } : undefined;
     }
     const space = this.hover.space();
@@ -236,7 +242,9 @@ export class RisqOrderTargeting {
       if (enemy_building) {
         return { kind: 'building', internal_id: enemy_building.internal_id };
       }
-      const enemy_unit = [...(space.units?.values() ?? [])].find((u) => u.player_id !== player_id);
+      const enemy_unit = [...(space.units?.values() ?? [])].find(
+        (u) => u.player_id !== player_id && unitVisibleInViewMode(u.unit_type, this.viewport.viewMode())
+      );
       if (enemy_unit) {
         return { kind: 'unit', internal_id: enemy_unit.internal_id };
       }

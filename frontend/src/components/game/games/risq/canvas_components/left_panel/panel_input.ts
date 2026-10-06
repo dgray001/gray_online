@@ -33,6 +33,12 @@ export class RisqLeftPanelInput {
     this.hovered_object = undefined;
   }
 
+  cancelInput(): void {
+    this.reset();
+    this.hexagon.clearHoveredZone();
+    this.space_view.cancelInput();
+  }
+
   private objectHoverLogic(m: Point2D, hovered: HoveredObject) {
     const object = hovered.object;
     if (

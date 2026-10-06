@@ -14,43 +14,43 @@
   "buckets": [
     {
       "name": "ring",
-      "map": "ring"
+      "map": "script:ring"
     },
     {
       "name": "default",
-      "map": "default"
+      "map": "script:default"
     },
     {
       "name": "rectangle",
-      "map": "rectangle"
+      "map": "script:rectangle"
     },
     {
       "name": "triangle",
-      "map": "triangle"
+      "map": "script:triangle"
     },
     {
       "name": "sim_close",
-      "map": "sim_close"
+      "map": "script:sim_close"
     },
     {
       "name": "sim_gold",
-      "map": "sim_gold"
+      "map": "script:sim_gold"
     },
     {
       "name": "sim_army",
-      "map": "sim_army"
+      "map": "script:sim_army"
     },
     {
       "name": "sim_advanced",
-      "map": "sim_advanced"
+      "map": "script:sim_advanced"
     },
     {
       "name": "sim_rich",
-      "map": "sim_rich"
+      "map": "script:sim_rich"
     },
     {
       "name": "sim_wide",
-      "map": "sim_wide"
+      "map": "script:sim_wide"
     }
   ]
 }

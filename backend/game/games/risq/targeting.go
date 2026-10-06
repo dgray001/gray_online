@@ -1,7 +1,6 @@
 package risq
 
 import (
-	"github.com/dgray001/gray_online/game/game_utils"
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 )
 
@@ -117,7 +116,7 @@ func nearbyAttackTarget(own_zone *RisqZone, player_id int, target_priority []def
 	near, far := newCategoryBest(), newCategoryBest()
 	own_space := own_zone.space
 	for _, space := range risq.allSpaces() {
-		space_dist := game_utils.AxialDistance(own_space.coordinate, space.coordinate)
+		space_dist := own_space.distanceTo(space)
 		if space_dist > space_radius || space.getVisibility(player_id) < defs.VisibilityGood {
 			continue
 		}
@@ -155,7 +154,7 @@ func nearbyInRangeTarget(own_zone *RisqZone, player_id int, target_priority []de
 	near := newCategoryBest()
 	own_space := own_zone.space
 	for _, space := range risq.allSpaces() {
-		space_dist := game_utils.AxialDistance(own_space.coordinate, space.coordinate)
+		space_dist := own_space.distanceTo(space)
 		if space_dist > space_radius || space.getVisibility(player_id) < defs.VisibilityGood {
 			continue
 		}

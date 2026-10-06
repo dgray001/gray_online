@@ -27,6 +27,9 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("--ai", action="append", dest="ais", help="Repeat to select AI names")
     parser.add_argument("--from-turn", type=int, default=0, help="First recorded turn, inclusive (default: 0)")
     parser.add_argument("--to-turn", type=int, default=65535, help="Last recorded turn, inclusive")
+    parser.add_argument("--seed", action="append", dest="seeds", type=int, help="Repeat to restrict --by-turn to these game seeds")
+    parser.add_argument("--at-turn", type=lambda s: [int(n) for n in s.split(",")], help="Print cumulative economy at these turns, e.g. 5,10,15,20,25")
+    parser.add_argument("--by-turn", type=int, help="Print a per-game table in blocks of this many turns (production columns need the scenario's \"metrics\": [\"production\"])")
     parser.add_argument("--strength-ratio", type=float, default=1.5, help="Good/bad strength threshold (default: 1.5)")
     args = parser.parse_args()
     if args.from_turn < 0 or args.to_turn < args.from_turn:
@@ -280,6 +283,70 @@ def print_summary(groups: list[dict[str, Any]]) -> None:
               f"{labels.get('bad', 0)}/{labels.get('neutral', 0)}/{labels.get('good', 0)}")
 
 
+def idle_pct(granted: int, wasted: int) -> str:
+    pct = percentage(wasted, granted)
+    return f"{pct:3.0f}%" if pct is not None else "  - "
+
+
+def completion_turns(records: list[tuple[int, dict[str, Any]]]) -> dict[int, list[int]]:
+    built: dict[int, list[int]] = {}
+    seen: dict[int, int] = {}
+    for turn, player in records:
+        for entry in player.get("Production") or []:
+            building = entry["BuildingId"]
+            built.setdefault(building, []).extend([turn] * (entry["Count"] - seen.get(building, 0)))
+            seen[building] = entry["Count"]
+    return built
+
+
+def print_by_turn(sim: dict[str, Any], suite: dict[str, Any], step: int, last: int) -> None:
+    result = suite["Result"]
+    turns = result["Game"]["Metrics"]["Turns"]
+    snapshots = {snapshot[0]["Turn"]: snapshot for snapshot in result["Timeline"]}
+    for seat, index in enumerate(suite["Seats"]):
+        name = sim["Stats"]["Players"][index]["Name"]
+        records = [(t["Turn"], t["Players"][seat]) for t in turns if t["Turn"] <= last]
+        print(f"\n{name} seat {seat} seed {result['Seed']}")
+        for building, built_turns in sorted(completion_turns(records).items()):
+            print(f"  building {building} completed at turns {built_turns}")
+        print("  turn | vil idle | vc idle | production idle (id:count idle) | food wood stone gold | income f/w/s/g | spent f/w/s/g | units mil")
+        for end in range(step, last + 1, step):
+            block = [p for t, p in records if end - step < t <= end]
+            if not block:
+                continue
+            vil = [sum(p[k][f] for p in block) for k in ("VillagerStamina", "VillageCenterStamina") for f in ("Granted", "Wasted")]
+            production = {}
+            for p in block:
+                for e in p.get("Production") or []:
+                    total = production.setdefault(e["BuildingId"], [0, 0, 0])
+                    total[0], total[1], total[2] = e["Count"], total[1] + e["Stamina"]["Granted"], total[2] + e["Stamina"]["Wasted"]
+            prod_text = " ".join(f"{b}:{c} {idle_pct(g, w).strip()}" for b, (c, g, w) in sorted(production.items()))
+            stock = " ".join(f"{v:5.0f}" for v in block[-1]["Stockpile"])
+            income = "/".join(f"{sum(p['Income'][i] for p in block):.0f}" for i in range(4))
+            spent = "/".join(f"{sum(p['Spent'][i] for p in block):.0f}" for i in range(4))
+            units = snapshots.get(end, [{}] * (seat + 1))[seat].get("Units", {})
+            total_units, military = sum(units.values()), sum(n for u, n in units.items() if u != "1")
+            print(f"  {end:4d} | {idle_pct(vil[0], vil[1])}    | {idle_pct(vil[2], vil[3])}   | {prod_text:32s} | {stock} | {income} | {spent} | {total_units} {military}")
+
+
+def print_at_turns(sim: dict[str, Any], suite: dict[str, Any], checkpoints: list[int]) -> None:
+    result = suite["Result"]
+    turns = result["Game"]["Metrics"]["Turns"]
+    for seat, index in enumerate(suite["Seats"]):
+        print(f"\n{sim['Stats']['Players'][index]['Name']} seat {seat} seed {result['Seed']}")
+        print("  turn | vils | vil idle | vc idle | gathered f/w/s/g (cumulative) | spent (cumulative)")
+        for checkpoint in checkpoints:
+            records = [t["Players"][seat] for t in turns if 0 < t["Turn"] <= checkpoint]
+            if not records:
+                continue
+            idle = lambda key, field: sum(p[key][field] for p in records)
+            gathered = [sum(p["Income"][i] for p in records) for i in range(4)]
+            spent = sum(sum(p["Spent"]) for p in records)
+            print(f"  {checkpoint:4d} | {records[-1]['Villagers']:4d} | {idle_pct(idle('VillagerStamina', 'Granted'), idle('VillagerStamina', 'Wasted'))}    | "
+                  f"{idle_pct(idle('VillageCenterStamina', 'Granted'), idle('VillageCenterStamina', 'Wasted'))}   | "
+                  f"{'/'.join(f'{c:.0f}' for c in gathered):30s} | {spent:.0f}")
+
+
 def main() -> None:
     args = arguments()
     source = args.results / "results.json" if args.results.is_dir() else args.results
@@ -287,6 +354,19 @@ def main() -> None:
     if source.resolve() == destination.resolve():
         raise ValueError("Analysis output must differ from input results")
     run = json.loads(source.read_text())
+    if args.at_turn:
+        for sim in run["Sims"]:
+            for suite in sim["Games"]:
+                if not args.seeds or suite["Result"]["Seed"] in args.seeds:
+                    print_at_turns(sim, suite, args.at_turn)
+        return
+    if args.by_turn:
+        for sim in run["Sims"]:
+            for suite in sim["Games"]:
+                if args.seeds and suite["Result"]["Seed"] not in args.seeds:
+                    continue
+                print_by_turn(sim, suite, args.by_turn, min(args.to_turn, suite["Result"]["Game"]["TurnNumber"]))
+        return
     definitions = json.loads((Path(__file__).resolve().parents[2] / "config/units.json").read_text())
     units = {str(unit["unit_id"]): unit for unit in definitions}
     reports: list[dict[str, Any]] = []

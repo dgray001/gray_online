@@ -1,4 +1,5 @@
 import type { ColorRGB } from '../../../../../../scripts/color_rgb';
+import { isImageReady } from '../../../../../../scripts/image';
 
 /** RGB value reserved in unit/building art to mark pixels swapped for the owning player's color */
 export const PLAYER_COLOR_KEY = { r: 254, g: 12, b: 203 };
@@ -16,7 +17,7 @@ export class RisqImageCache {
     images: HTMLImageElement[],
     draw: (ctx: CanvasRenderingContext2D) => void
   ): HTMLCanvasElement | undefined {
-    if (!images.every((img) => img.complete)) {
+    if (w <= 0 || h <= 0 || !images.every(isImageReady)) {
       return undefined;
     }
     const canvas = document.createElement('canvas');

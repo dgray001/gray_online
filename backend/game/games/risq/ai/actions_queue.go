@@ -59,7 +59,7 @@ func (a *buildNextInQAction) ToOrders(view View, internals *Internals) []Order {
 	limit := a.max.int(view, internals)
 	units := a.filter.apply(eligibleUnits(view, a.eligible), isEconomic)
 	for _, q := range selectFromQueue(view, internals, a.weight.float(view, internals), a.prioritize, a.depth.int(view, internals), QBuilding) {
-		if orders := buildWith(view, internals, units, *q.ID, limit); len(orders) > 0 {
+		if orders := buildWith(view, internals, units, *q.ID, limit, nil, nil, true); len(orders) > 0 {
 			return orders
 		}
 	}
@@ -91,7 +91,7 @@ func (a *produceNextInQAction) ToOrders(view View, internals *Internals) []Order
 		var orders []Order
 		switch q.Type {
 		case QBuilding:
-			orders = buildWith(view, internals, units, *q.ID, limit)
+			orders = buildWith(view, internals, units, *q.ID, limit, nil, nil, true)
 		case QUnit:
 			orders = createUnits(view, internals, *q.ID, buildingFilter{}, 1)
 		case QTech:

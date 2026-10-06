@@ -117,8 +117,14 @@ export abstract class DwgScrollbar<T extends DwgButton = DwgButton> implements C
     return this.clicking;
   }
 
-  setClicking(clicking: boolean) {
+  setClicking(clicking: boolean): void {
     this.clicking = clicking;
+    if (!clicking) {
+      for (const button of this.buttons) {
+        button.setClicking(false);
+        button.setHovering(false);
+      }
+    }
   }
 
   getLastMousemoveCanvas(): Point2D | undefined {

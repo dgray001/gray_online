@@ -123,7 +123,7 @@ func (r *GameRisq) validateFrontendOrder(order defs.OrderFromFrontend, player_id
 			}
 		}
 	} else if order_type.IsPlayerOrder() {
-		if len(order.Subjects) > 0 {
+		if order_type != defs.OrderType_CancelOrder && len(order.Subjects) > 0 {
 			return errors.New("Invalid subjects in player order")
 		}
 	}
@@ -293,15 +293,20 @@ func (r *GameRisq) validateFrontendOrder(order defs.OrderFromFrontend, player_id
 	case defs.OrderType_UnitDelete:
 	case defs.OrderType_BuildingDelete:
 	case defs.OrderType_CancelOrder:
-		found := false
+		var target_order *RisqOrder
 		for _, active_order := range r.players[order.Player_id].active_orders {
 			if active_order.internal_id == uint64(order.Target_id) {
-				found = true
+				target_order = active_order
 				break
 			}
 		}
-		if !found {
+		if target_order == nil {
 			return fmt.Errorf("No active order with id %d", order.Target_id)
+		}
+		for _, subject_id := range order.Subjects {
+			if _, ok := target_order.subjects[subject_id]; !ok {
+				return fmt.Errorf("Subject %d is not on order %d", subject_id, order.Target_id)
+			}
 		}
 	case defs.OrderType_CancelFoundation:
 		_, zone := invertZoneKey(uint(order.Target_id), r)

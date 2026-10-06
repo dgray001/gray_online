@@ -68,11 +68,15 @@ export class RisqMercenaryGrid implements BottomPanelItem {
   isHovering(): boolean {
     return this.buttons.some((button) => button.isHovering());
   }
-  setHovering(_hovering: boolean): void {}
+  setHovering(hovering: boolean): void {
+    this.buttons.forEach((button) => button.setHovering(hovering));
+  }
   isClicking(): boolean {
     return this.buttons.some((button) => button.isPressed());
   }
-  setClicking(_clicking: boolean): void {}
+  setClicking(clicking: boolean): void {
+    this.buttons.forEach((button) => button.setClicking(clicking));
+  }
 
   private cols(): number {
     return Math.ceil(this.buttons.length / ROWS);

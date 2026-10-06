@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"iter"
 	"maps"
+	"math"
 	"math/rand"
 	"os"
 
@@ -20,6 +21,7 @@ type RisqPlayer struct {
 	buildings             map[uint64]*RisqBuilding
 	units                 map[uint64]*RisqUnit
 	max_population_limit  uint16
+	unlimited_population  bool
 	color                 string
 	active_orders         []*RisqOrder
 	past_orders           []*RisqOrder
@@ -67,8 +69,8 @@ func (p *RisqPlayer) createAiModel(config_path string) {
 	var raw map[string]any
 	unmarshal_err := json.Unmarshal(data, &raw)
 	if unmarshal_err != nil {
-		// TODO: log error
-		p.ai_model = ai.ParseModel(nil, p.rng)
+		fmt.Fprintln(os.Stderr, "ai config", config_path, "is not valid JSON:", unmarshal_err)
+		p.ai_model = ai.NoopModel{}
 		return
 	}
 	p.ai_model = ai.ParseModel(raw, p.rng)
@@ -125,6 +127,9 @@ func (p *RisqPlayer) researchedTechIds() []uint32 {
 }
 
 func (p *RisqPlayer) populationLimit() uint16 {
+	if p.unlimited_population {
+		return math.MaxUint16
+	}
 	limit := uint16(0)
 	for _, building := range p.buildings {
 		if building != nil && !building.deleted && !building.underConstruction() {
@@ -182,8 +187,14 @@ func (p *RisqPlayer) receivePlayerOrder(o *RisqOrder, risq *GameRisq) {
 			if active_order.internal_id != uint64(o.target_id) {
 				continue
 			}
-			for _, subject := range active_order.subjects {
-				subject.cancelOrder(active_order, risq)
+			if len(o.subjects) > 0 {
+				for _, subject := range o.subjects {
+					subject.cancelOrder(active_order, risq)
+				}
+			} else {
+				for _, subject := range active_order.subjects {
+					subject.cancelOrder(active_order, risq)
+				}
 			}
 			break
 		}
@@ -205,7 +216,7 @@ func (p *RisqPlayer) buyMercenary(o *RisqOrder, risq *GameRisq) {
 		p.report.recordFailure(o.order_type, o.target_id, "space or zone not owned")
 		return
 	}
-	if region := risq.regionContaining(space); region != nil && region.owner != p.player.Player_id {
+	if region := risq.regionContaining(space); risq.mercenaries_need_region && region != nil && region.owner != p.player.Player_id {
 		p.report.recordFailure(o.order_type, o.target_id, "region not owned")
 		return
 	}
@@ -245,6 +256,8 @@ func (p *RisqPlayer) toFrontend(viewer_player_id int) gin.H {
 				"coordinate_key": coordinate_key,
 				"building_id":    f.building_id,
 				"display_name":   defs.BuildingConfigs[f.building_id].Display_name,
+				"stamina_cost":   defs.BuildingConfigs[f.building_id].Build_stamina,
+				"cost":           f.cost.ToFrontend(),
 			})
 		}
 		player["planned_foundations"] = foundations

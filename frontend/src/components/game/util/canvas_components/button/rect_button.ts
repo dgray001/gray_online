@@ -8,6 +8,7 @@ import { configDraw } from '../canvas_component';
 import type { ButtonConfig } from './button_config';
 import { DwgButton } from './button';
 import type { WithRequired } from '../../../../../scripts/types';
+import { createImage, resolveImage } from '../../../../../scripts/image';
 
 type RectButtonTextConfig = WithRequired<Omit<DrawTextConfig, 'p' | 'w'>, 'align' | 'baseline' | 'font'>;
 
@@ -52,9 +53,7 @@ export abstract class DwgRectButton extends DwgButton {
     config.move_animation_speed = config.move_animation_speed ?? 0;
     config.rotate_animation_speed = config.rotate_animation_speed ?? 0;
     if (!!config.image_path) {
-      this.img = document.createElement('img');
-      this.img.src = `/images/${config.image_path}.png`;
-      this.img.draggable = false;
+      this.img = createImage(`/images/${config.image_path}.png`);
     }
     config.rotation = config.rotation ?? 0;
     this.rect_config = config;
@@ -199,6 +198,9 @@ export abstract class DwgRectButton extends DwgButton {
   }
 
   protected override _draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
+    if (this.img instanceof HTMLImageElement) {
+      resolveImage(this.img);
+    }
     // translate animation
     if (!!this.target_p && !!this.speed_p) {
       if (this.reached_target.x && this.reached_target.y) {

@@ -3,6 +3,7 @@ import type { ColorRGB } from '../../../../../scripts/color_rgb';
 import type { RisqTurnReport } from '../transport/turn_report';
 import type { RisqTerrainType } from '../rendering/terrain';
 import type { Point2D } from '../../../util/objects2d';
+
 /** Data describing a game of risq */
 export declare interface GameRisq {
   game_base: GameBase;
@@ -14,6 +15,9 @@ export declare interface GameRisq {
   spaces: (RisqSpace | undefined)[][];
   giving_orders: boolean;
   regions: RisqRegion[];
+  background_image?: string;
+  background_top_left?: [number, number];
+  background_top_right?: [number, number];
 }
 
 /** Data describing a region: only present for a player if they've explored at least one of its spaces */
@@ -37,6 +41,8 @@ export declare interface RisqPlannedFoundation {
   coordinate_key: number;
   building_id: number;
   display_name: string;
+  stamina_cost: number;
+  cost?: RisqCost;
 }
 
 /** Data describing a risq player */
@@ -236,9 +242,12 @@ export declare interface RisqBuilding {
   produces: RisqProducible[];
   production_queue: RisqProductionQueueItem[];
   resources_left?: number;
+  resource_capacity?: number;
+  renew_stamina?: number;
   gather_capacity?: number;
   base_gather_speed?: number;
   renew_cost?: RisqCost;
+  renewing?: boolean;
   resource_category?: RisqResourceType;
   gather_point?: RisqGatherPoint; // only present to the owner or a viewer with spy-tier vision
   // purely frontend fields
@@ -343,6 +352,16 @@ export enum RisqRange {
   SPACE = 2,
   ADJACENT = 3,
   SECONDARY = 4,
+}
+
+/** Static per-resource-id config served by the backend */
+export declare interface RisqResourceConfig {
+  resource_id: number;
+  display_name: string;
+  category: RisqResourceType;
+  starting_resources: number;
+  base_gather_speed: number;
+  gather_capacity: number;
 }
 
 /** Data describing resources in a zone */

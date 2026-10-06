@@ -192,6 +192,13 @@ export class RisqSpaceView {
     }
   }
 
+  cancelInput(): void {
+    for (const button of this.rowButtons()) {
+      button.setClicking(false);
+      button.setHovering(false);
+    }
+  }
+
   mousedown(e: MouseEvent) {
     for (const button of this.rowButtons()) {
       button.mousedown(e);

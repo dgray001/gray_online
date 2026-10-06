@@ -40,9 +40,11 @@ export class RisqUnitToggleButton extends RisqActionButton {
     this.setHotkeyCombo(getSettings().risq_hotkeys.actions[TOGGLE_HOTKEY_ACTIONS[this.field]]);
   }
 
-  protected released(): void {
-    if (this.isHovering()) {
-      this.risq.commands.setUnitToggle(this.unit_internal_ids, this.field, !this.active);
-    }
+  override matchesAction(action: RisqHotkeyAction): boolean {
+    return action === TOGGLE_HOTKEY_ACTIONS[this.field];
+  }
+
+  override execute(): void {
+    this.risq.commands.setUnitToggle(this.unit_internal_ids, this.field, !this.active);
   }
 }

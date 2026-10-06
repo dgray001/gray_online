@@ -1,6 +1,11 @@
 package risq
 
-import "github.com/dgray001/gray_online/game/games/risq/internal/defs"
+import (
+	"cmp"
+	"slices"
+
+	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
+)
 
 type GameMetrics struct {
 	Turns  []TurnMetrics
@@ -17,6 +22,21 @@ type gameMetrics struct {
 	spaceTurns map[*RisqSpace]uint16
 	lastTurns  map[int]uint16
 	idleFrames map[uint64]int
+	extras     map[string]bool
+}
+
+func isProductionBuilding(b *RisqBuilding) bool {
+	return !b.deleted && b.building_id != villageCenterBuildingId && !b.underConstruction() && len(defs.BuildingConfigs[b.building_id].Produces) > 0
+}
+
+func (s *PlayerTurnMetrics) production(building_id uint32) *ProductionMetrics {
+	for i := range s.Production {
+		if s.Production[i].BuildingId == building_id {
+			return &s.Production[i]
+		}
+	}
+	s.Production = append(s.Production, ProductionMetrics{BuildingId: building_id})
+	return &s.Production[len(s.Production)-1]
 }
 
 func (m *gameMetrics) recordTurn(r *GameRisq) {
@@ -34,6 +54,14 @@ func (m *gameMetrics) recordTurn(r *GameRisq) {
 			if !u.deleted && u.unitType() == defs.UnitType_ECONOMIC {
 				s.Villagers++
 			}
+		}
+		if m.extras["production"] {
+			for _, b := range p.buildings {
+				if isProductionBuilding(b) {
+					s.production(b.building_id).Count++
+				}
+			}
+			slices.SortFunc(s.Production, func(a ProductionMetrics, b ProductionMetrics) int { return cmp.Compare(a.BuildingId, b.BuildingId) })
 		}
 		t.Players = append(t.Players, s)
 	}

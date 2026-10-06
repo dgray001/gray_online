@@ -1,6 +1,8 @@
 package risq
 
 import (
+	"fmt"
+
 	"github.com/dgray001/gray_online/game/game_utils"
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/util"
@@ -39,6 +41,7 @@ func (r *GameRisq) allSpaces() []*RisqSpace {
 
 func (r *GameRisq) allocateBoard(board_size uint16) {
 	r.board_size = board_size
+	r.space_distances = nil
 	r.spaces = make([][]*RisqSpace, 2*int(board_size)+1)
 	for j := range r.spaces {
 		row_r := j - int(board_size)
@@ -70,7 +73,24 @@ func removeZoneFromSlice(zones []*RisqZone, target *RisqZone) []*RisqZone {
 	return zones
 }
 
+// Joins first's edge in direction (an index into AxialDirectionVectors) to second's opposite edge like a normal border
+func connectSeam(first *RisqSpace, second *RisqSpace, direction int) error {
+	vectors := game_utils.AxialDirectionVectors()
+	if direction < 0 || direction >= len(vectors) {
+		return fmt.Errorf("seam direction %d is not 0 to 5", direction)
+	}
+	vector := vectors[direction]
+	inverted := vector.Invert()
+	if first.getZone(&vector).adjacent_space != nil || second.getZone(inverted).adjacent_space != nil {
+		return fmt.Errorf("seam edge between %s and %s is already connected", first.coordinate.ToString(), second.coordinate.ToString())
+	}
+	first.setAdjacentSpace(second, &vector)
+	second.setAdjacentSpace(first, inverted)
+	return nil
+}
+
 func (r *GameRisq) removeSpace(space *RisqSpace) {
+	r.space_distances = nil
 	for _, v := range game_utils.AxialDirectionVectors() {
 		zone := space.getZone(&v)
 		if zone == nil || zone.adjacent_space == nil {

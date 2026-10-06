@@ -171,27 +171,45 @@ func fixedCounter(c counter) func(map[string]any) (counter, error) {
 	return func(map[string]any) (counter, error) { return c, nil }
 }
 
-var counterParsers = map[string]func(obj map[string]any) (counter, error){
-	"turn":                     fixedCounter(func(v View, _ *Internals) float64 { return float64(v.TurnNumber()) }),
-	"map_size":                 fixedCounter(func(v View, _ *Internals) float64 { return float64(v.MapSize()) }),
-	"num_players":              fixedCounter(func(v View, _ *Internals) float64 { return float64(v.NumPlayers()) }),
-	"enemies_found":            fixedCounter(func(v View, _ *Internals) float64 { return float64(v.EnemiesFound()) }),
-	"land":                     fixedCounter(func(v View, _ *Internals) float64 { return float64(v.OwnedSpaces()) }),
-	"score_lead":               fixedCounter(func(v View, _ *Internals) float64 { return float64(v.Score() - v.BestEnemyScore()) }),
-	"population_headroom":      fixedCounter(populationHeadroom),
-	"resource":                 parseResourceCounter,
-	"resource_remaining":       parseResourceRemainingCounter,
-	"population":               parsePopulationCounter,
-	"idle_units":               parseIdleUnitsCounter,
-	"enemy_units_visible":      parseEnemyUnitsCounter,
-	"enemy_units_unidentified": parseUnidentifiedUnitsCounter,
-	"enemy_buildings_known":    parseEnemyBuildingsCounter,
-	"building_count":           parseBuildingCounter,
-	"foundation_count":         parseFoundationCounter,
-	"bucket_size":              parseBucketSizeCounter,
-	"economic_producers":       fixedCounter(economicProducers),
-	"count_spaces":             parseSpaceCounter,
-	"closest_spaces":           parseClosestSpaceCounter,
+var counterParsers map[string]func(obj map[string]any) (counter, error)
+
+// Filled in init: these parsers reach parseAmount, which reads counterParsers, so a literal would be an initialization cycle
+func init() {
+	counterParsers = map[string]func(obj map[string]any) (counter, error){
+		"turn":                fixedCounter(func(v View, _ *Internals) float64 { return float64(v.TurnNumber()) }),
+		"map_size":            fixedCounter(func(v View, _ *Internals) float64 { return float64(v.MapSize()) }),
+		"num_players":         fixedCounter(func(v View, _ *Internals) float64 { return float64(v.NumPlayers()) }),
+		"enemies_found":       fixedCounter(func(v View, _ *Internals) float64 { return float64(v.EnemiesFound()) }),
+		"land":                fixedCounter(func(v View, _ *Internals) float64 { return float64(v.OwnedSpaces()) }),
+		"score_lead":          fixedCounter(func(v View, _ *Internals) float64 { return float64(v.Score() - v.BestEnemyScore()) }),
+		"population_headroom": fixedCounter(populationHeadroom),
+		"resource":            parseResourceCounter,
+		"resource_remaining":  parseResourceRemainingCounter,
+		"population":          parsePopulationCounter,
+		"idle_units":          parseIdleUnitsCounter, "enemy_units_visible": parseEnemyUnitsCounter,
+		"enemy_units_unidentified": parseUnidentifiedUnitsCounter,
+		"enemy_buildings_known":    parseEnemyBuildingsCounter,
+		"building_count":           parseBuildingCounter,
+		"foundation_count":         parseFoundationCounter,
+		"foundation_space_x":       parseFoundationSpaceCounter(true),
+		"foundation_space_y":       parseFoundationSpaceCounter(false),
+		"bucket_size":              parseBucketSizeCounter,
+		"economic_producers":       fixedCounter(economicProducers),
+		"available_gatherers":      fixedCounter(availableGatherers),
+		"count_spaces":             parseSpaceCounter,
+		"closest_spaces":           parseClosestSpaceCounter,
+		"base_spaces":              parseBaseSpacesCounter,
+	}
+}
+
+func availableGatherers(view View, _ *Internals) float64 {
+	count := 0
+	for _, unit := range view.EligibleUnits(OrderKindGather) {
+		if unit.Kind == UnitEconomic && unit.GarrisonedIn == nil {
+			count++
+		}
+	}
+	return float64(count)
 }
 
 func economicProducers(view View, _ *Internals) float64 {
@@ -249,10 +267,11 @@ func parsePopulationCounter(obj map[string]any) (counter, error) {
 	if err != nil {
 		return nil, err
 	}
+	bucket, _ := obj["in_bucket"].(string)
 	return func(v View, i *Internals) float64 {
 		n := 0
 		for _, u := range filter.apply(v.Units(), anyUnit) {
-			if near.contains(v, i, u.Location) {
+			if (bucket == "" || i.inBucket(bucket, u.InternalID)) && near.contains(v, i, u.Location) {
 				n++
 			}
 		}
@@ -265,7 +284,16 @@ func parseIdleUnitsCounter(obj map[string]any) (counter, error) {
 	if err != nil {
 		return nil, err
 	}
-	return func(v View, _ *Internals) float64 { return float64(len(filter.apply(v.IdleUnits(), anyUnit))) }, nil
+	bucket, _ := obj["in_bucket"].(string)
+	return func(v View, i *Internals) float64 {
+		n := 0
+		for _, u := range filter.apply(v.IdleUnits(), anyUnit) {
+			if bucket == "" || i.inBucket(bucket, u.InternalID) {
+				n++
+			}
+		}
+		return float64(n)
+	}, nil
 }
 
 func parseEnemyUnitsCounter(obj map[string]any) (counter, error) {
@@ -370,6 +398,30 @@ func parseFoundationCounter(obj map[string]any) (counter, error) {
 	}, nil
 }
 
+// Space coordinate of the matching foundation with the lowest zone ref, or 0 when none matches
+func parseFoundationSpaceCounter(x_axis bool) func(map[string]any) (counter, error) {
+	return func(obj map[string]any) (counter, error) {
+		ids, err := parseIDSet(obj, "building_ids")
+		if err != nil {
+			return nil, err
+		}
+		without_builders, _ := obj["without_builders"].(bool)
+		return func(v View, _ *Internals) float64 {
+			var best ZoneRef
+			found := false
+			for _, f := range v.Foundations() {
+				if (len(ids) == 0 || ids[f.BuildingID]) && (!without_builders || f.Builders == 0) && (!found || zoneRefLess(f.Location, best)) {
+					best, found = f.Location, true
+				}
+			}
+			if x_axis {
+				return float64(best.Space.X)
+			}
+			return float64(best.Space.Y)
+		}, nil
+	}
+}
+
 func parseBucketSizeCounter(obj map[string]any) (counter, error) {
 	bucket, ok := obj["bucket"].(string)
 	if !ok {
@@ -380,5 +432,21 @@ func parseBucketSizeCounter(obj map[string]any) (counter, error) {
 			return float64(len(b.Members))
 		}
 		return 0
+	}, nil
+}
+
+func parseBaseSpacesCounter(obj map[string]any) (counter, error) {
+	near, err := parseNearFilter(obj)
+	if err != nil {
+		return nil, err
+	}
+	return func(v View, i *Internals) float64 {
+		count := 0
+		for _, s := range baseSpaces(v) {
+			if near.contains(v, i, ZoneRef{Space: s}) {
+				count++
+			}
+		}
+		return float64(count)
 	}, nil
 }

@@ -1,10 +1,13 @@
 package mapgen
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand"
+	"os"
+	"strings"
 
 	"github.com/dgray001/gray_online/game/game_utils"
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
@@ -60,9 +63,7 @@ func newMapScriptVars(num_players int, board_size uint16, total_spaces int) map[
 func loadMapScript(name string) ([]mapScriptStepJSON, error) {
 	data, err := defs.ReadConfigFile("maps", "scripted", name+".json")
 	if err != nil {
-		if data, err = defs.ReadConfigFile("maps", "scripted", "default.json"); err != nil {
-			return nil, fmt.Errorf("no map script %q and no default: %v", name, err)
-		}
+		return nil, fmt.Errorf("map script %q: %v", name, err)
 	}
 	var steps []mapScriptStepJSON
 	if err := json.Unmarshal(data, &steps); err != nil {
@@ -71,9 +72,38 @@ func loadMapScript(name string) ([]mapScriptStepJSON, error) {
 	return steps, nil
 }
 
-// Shapes the board by running the named map script (default.json if missing) and places every player start
+// Prints a map problem to stderr so it is visible even when generation carries on or the caller drops the error
+func logMapProblem(err error) {
+	fmt.Fprintln(os.Stderr, "map generation:", err)
+}
+
+// Rejects a player count no generator can place, instead of panicking inside one
+func checkPlayerCount(num_players int) error {
+	if num_players >= 1 {
+		return nil
+	}
+	err := fmt.Errorf("need at least 1 player, got %d", num_players)
+	logMapProblem(err)
+	return err
+}
+
+// Builds the board from "custom:<name>" (a fixed map file) or "script:<name>" (a generator script)
 func Generate(board Board, rng *rand.Rand, num_players int, map_name string) error {
-	steps, err := loadMapScript(map_name)
+	if err := checkPlayerCount(num_players); err != nil {
+		return err
+	}
+	kind, name, _ := strings.Cut(map_name, ":")
+	switch kind {
+	case "custom":
+		return generateCustom(board, num_players, name)
+	case "script":
+		return generateScripted(board, rng, num_players, name)
+	}
+	return fmt.Errorf("map %q must start with \"custom:\" or \"script:\"", map_name)
+}
+
+func generateScripted(board Board, rng *rand.Rand, num_players int, name string) error {
+	steps, err := loadMapScript(name)
 	if err != nil {
 		return err
 	}
@@ -155,12 +185,35 @@ func init() {
 		"resource_cluster":     stepResourceCluster,
 		"resource_min_spacing": stepResourceMinSpacing,
 		"resource_place":       stepResourcePlace,
-		"mirror":               stepMirror,
 		"player_starts":        stepPlayerStarts,
 		"define":               stepDefine,
+		"rules":                stepRules,
 		"regions_seven":        stepRegionsSeven,
 		"shape":                stepShape,
 	}
+}
+
+type rulesParams struct {
+	StartingTechs         []uint32    `json:"starting_techs,omitempty"`
+	UnlimitedPopulation   bool        `json:"unlimited_population,omitempty"`
+	SpaceGoldIncome       *ScriptExpr `json:"space_gold_income,omitempty"`
+	MercenariesNeedRegion *bool       `json:"mercenaries_need_region,omitempty"`
+}
+
+func stepRules(ctx *mapScriptContext, raw json.RawMessage) error {
+	p, err := decodeStepParams[rulesParams](raw, "rules")
+	if err != nil {
+		return err
+	}
+	rules := mapRules{StartingTechs: p.StartingTechs, UnlimitedPopulation: p.UnlimitedPopulation, MercenariesNeedRegion: p.MercenariesNeedRegion}
+	if p.SpaceGoldIncome != nil {
+		gold, err := p.SpaceGoldIncome.resolve(ctx.vars)
+		if err != nil {
+			return err
+		}
+		rules.SpaceGoldIncome = &gold
+	}
+	return applyMapRules(ctx.board, ctx.num_players, rules)
 }
 
 type defineParams struct {
@@ -186,7 +239,16 @@ func stepDefine(ctx *mapScriptContext, raw json.RawMessage) error {
 // time, so a decode failure here must not be able to crash a live server.
 func decodeStepParams[T any](raw json.RawMessage, step_name string) (T, error) {
 	var p T
-	if err := json.Unmarshal(raw, &p); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	err := decoder.Decode(&p)
+	if err != nil && strings.Contains(err.Error(), "unknown field") {
+		logMapProblem(fmt.Errorf("%s: %v, ignored", step_name, err))
+		var lenient T
+		err = json.Unmarshal(raw, &lenient)
+		p = lenient
+	}
+	if err != nil {
 		return p, fmt.Errorf("%s: %v", step_name, err)
 	}
 	return p, nil

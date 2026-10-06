@@ -6,6 +6,9 @@ module.exports = {
 		devmode: {
 			import: './src/pages/devmode.ts',
 		},
+		risq_map_editor: {
+			import: './src/pages/risq_map_editor.ts',
+		},
 		fiddlesticks: {
 			dependOn: 'index',
 			import: './src/components/game/games/fiddlesticks/fiddlesticks.ts',

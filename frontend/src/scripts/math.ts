@@ -84,3 +84,19 @@ export function setBoundedNumber(n: BoundedNumber, v: number): number {
   }
   return n.value;
 }
+
+/** Gets random element of array */
+export function getRandom<T>(a: T[]): T {
+  return a[Math.floor(Math.random() * a.length)];
+}
+
+/** Returns a deterministic generator of floats in [0, 1) for the input integer seed (mulberry32) */
+export function seededRandom(seed: number): () => number {
+  let state = ((seed >>> 0) ^ Math.imul(Math.floor(seed / 2 ** 32) >>> 0, 0x9e3779b1)) >>> 0;
+  return (): number => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(state ^ (state >>> 15), state | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}

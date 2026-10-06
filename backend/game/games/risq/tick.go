@@ -20,6 +20,7 @@ func (r *GameRisq) resolveActiveOrders() {
 			if order.received {
 				continue
 			}
+			order.internal_id = r.nextOrderInternalId()
 			r.deliverOrder(order, player, false)
 		}
 	}
@@ -34,6 +35,7 @@ func (r *GameRisq) resolveActiveOrders() {
 				intent_count++
 			}
 		}
+		intent_count -= r.resolveMeleeMeetings(orderables)
 		if intent_count == 0 {
 			r.metrics.beginTick(r, orderables)
 			r.metrics.recordTick(r, r.current_tick+1)
@@ -132,12 +134,12 @@ func (r *GameRisq) deliverToSubjects(order *RisqOrder, player *RisqPlayer, prepe
 			order.rejectSubject(subject, player, "not receivable")
 			continue
 		}
-		if order.clear_previous_orders {
-			r.cancelPreviousOrders(subject)
-		}
 		if err := subject.receiveOrder(order, r, prepend); err != nil {
 			order.rejectSubject(subject, player, err.Error())
 			continue
+		}
+		if order.clear_previous_orders {
+			r.cancelPreviousOrders(subject, order)
 		}
 		accepted = true
 	}
@@ -156,10 +158,10 @@ func (o *RisqOrder) rejectSubject(subject Orderable, player *RisqPlayer, reason 
 	}
 }
 
-func (r *GameRisq) cancelPreviousOrders(subject Orderable) {
+func (r *GameRisq) cancelPreviousOrders(subject Orderable, keep *RisqOrder) {
 	// cancelOrder mutates the subject's own active-orders slice in place, so range over a copy
 	for _, other := range append([]*RisqOrder(nil), subject.activeOrders()...) {
-		if !other.executed && !other.cancelled && !other.order_type.IsClearImmune() {
+		if other != keep && !other.executed && !other.cancelled && !other.order_type.IsClearImmune() {
 			subject.cancelOrder(other, r)
 		}
 	}
@@ -220,6 +222,14 @@ func (r *GameRisq) recalculateVision() {
 			}
 			building.zone.space.addVision(building.vision(), building.zone, building.player_id)
 		}
+	}
+	for _, space := range r.allSpaces() {
+		for player_id := range space.death_vision {
+			if space.getVisibility(player_id) < defs.VisibilityPoor {
+				space.visibility[player_id] = defs.VisibilityPoor
+			}
+		}
+		clear(space.death_vision)
 	}
 	r.refreshVisionCaches(previously_visible)
 }

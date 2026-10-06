@@ -1,9 +1,11 @@
 package risq
 
 import (
+	"fmt"
 	"math/rand"
 
 	"github.com/dgray001/gray_online/game/game_utils"
+	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/game/games/risq/internal/mapgen"
 )
 
@@ -63,8 +65,19 @@ func (b mapBoard) RemoveSpace(s mapgen.Space) {
 	b.r.removeSpace(s.(mapSpace).s)
 }
 
-func (b mapBoard) AddRegion(name string, coordinate_keys map[uint]bool) error {
-	return b.r.addRegion(name, 0, coordinate_keys)
+func (b mapBoard) AddRegion(name string, gold_bonus float64, coordinate_keys map[uint]bool) error {
+	return b.r.addRegion(name, gold_bonus, coordinate_keys)
+}
+
+func (b mapBoard) ConnectSpaces(a, c mapgen.Space, direction int) error {
+	first, second := a.(mapSpace).s, c.(mapSpace).s
+	b.r.space_distances = nil
+	return connectSeam(first, second, direction)
+}
+
+func (b mapBoard) Distance(a, c mapgen.Space) int {
+	b.r.ensureSpaceDistances()
+	return int(a.(mapSpace).s.distanceTo(c.(mapSpace).s))
 }
 
 func (b mapBoard) PlaceResource(z mapgen.Zone, resource_id uint32) {
@@ -92,6 +105,30 @@ func (b mapBoard) PlaceUnit(z mapgen.Zone, unit_id uint32, player_index int) {
 	zone.space.setUnit(&zone.coordinate, unit)
 	player.units[unit.internal_id] = unit
 	b.r.units[unit.internal_id] = unit
+}
+
+func (b mapBoard) GrantStartingTech(player_index int, tech_id uint32) error {
+	if _, ok := defs.TechConfigs[tech_id]; !ok {
+		return fmt.Errorf("unknown starting tech %d", tech_id)
+	}
+	b.r.completeResearch(b.r.players[player_index], tech_id)
+	return nil
+}
+
+func (b mapBoard) SetUnlimitedPopulation() {
+	for _, player := range b.r.players {
+		player.unlimited_population = true
+	}
+}
+
+func (b mapBoard) SetMercenariesNeedRegion(need bool) {
+	b.r.mercenaries_need_region = need
+}
+
+func (b mapBoard) SetSpaceGoldIncome(gold float64) {
+	for _, space := range b.r.allSpaces() {
+		space.gold_income = gold
+	}
 }
 
 func (b mapBoard) SetStartingBank(player_index int, bank mapgen.StartingBank) {
@@ -156,6 +193,11 @@ func (s mapSpace) ShuffledEdgeZones(rng *rand.Rand) []mapgen.Zone {
 }
 
 func (s mapSpace) ClearOccupants() {
+	for id, unit := range s.s.units {
+		s.s.removeUnit(unit)
+		delete(s.r.units, id)
+		delete(s.r.players[unit.player_id].units, id)
+	}
 	for _, row := range s.s.zones {
 		for _, zone := range row {
 			zone.terrain_override = 0
@@ -214,4 +256,10 @@ func (z mapZone) RemoveResource() {
 
 func (z mapZone) SetTerrainOverride(terrain_id uint32) {
 	z.z.terrain_override = terrain_id
+}
+
+func (b mapBoard) SetBackgroundImage(name string, tl [2]int, tr [2]int) {
+	b.r.background_image = name
+	b.r.background_top_left = game_utils.Coordinate2D{X: tl[0], Y: tl[1]}
+	b.r.background_top_right = game_utils.Coordinate2D{X: tr[0], Y: tr[1]}
 }

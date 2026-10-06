@@ -1,4 +1,5 @@
 import { DialogSize, DwgDialogBox } from '../../../../../dialog_box/dialog_box';
+import { configureImageFallback, resolveImage } from '../../../../../../scripts/image';
 import { shortLabel } from '../../canvas_components/order_row/order_row_resolve';
 import { buildingImage, techImage } from '../../rendering/assets/buildings';
 import type { RisqPlayer, RisqProducible, RisqOrderType } from '../../model/types';
@@ -134,6 +135,10 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
     this.renderProduction(player, report);
     this.renderCombat(player, report);
     this.renderOrders(report);
+    for (const image of this.querySelectorAll('img')) {
+      configureImageFallback(image);
+      resolveImage(image);
+    }
   }
 
   private renderScores(risq: DwgRisq, player: RisqPlayer, report: RisqTurnReport) {
@@ -162,12 +167,13 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
           rank_html = `<span class="rk same">&mdash;</span>`;
         }
         row.innerHTML = `
-        <td><span class="swatch" style="background:${color?.getString() ?? 'gray'}"></span>${nickname}</td>
+        <td><span class="swatch" style="background:${color?.getString() ?? 'gray'}"></span></td>
         <td>${line.was}</td>
         <td class="arr">&rarr;</td>
         <td class="now">${line.now}</td>
         <td>${rank_html}</td>
       `;
+        row.firstElementChild?.appendChild(document.createTextNode(nickname));
         return row;
       });
     this.scores_body.replaceChildren(...rows);
@@ -193,12 +199,12 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
   private renderRegions(report: RisqTurnReport) {
     const lines = report.regions.map((r) => {
       const li = document.createElement('li');
-      if (r.held_end) {
-        const verb = r.held_start ? 'held' : 'claimed';
-        li.innerHTML = `<span class="tick make">+</span><span>${r.name} ${verb} <span class="where">(+${Math.round(r.gold_bonus)} gold/turn)</span></span>`;
-      } else {
-        li.innerHTML = `<span class="tick bad">×</span><span>${r.name} lost</span>`;
-      }
+      const verb = r.held_start ? 'held' : 'claimed';
+      const suffix = r.held_end ? ` ${verb} (+${Math.round(r.gold_bonus)} gold/turn)` : ' lost';
+      li.innerHTML = r.held_end
+        ? '<span class="tick make">+</span><span></span>'
+        : '<span class="tick bad">×</span><span></span>';
+      li.lastElementChild?.appendChild(document.createTextNode(`${r.name}${suffix}`));
       return li;
     });
     this.region_lines.replaceChildren(...lines);
