@@ -49,6 +49,9 @@ export class RisqOrderSubmission {
 
   /** Submits directly, or first confirms when units/buildings are idle or resources would go negative */
   confirmSubmit() {
+    if (!this.session.canGiveOrders()) {
+      return;
+    }
     const n_villagers = this.planning.idleUnitCount(RisqUnitType.ECONOMIC);
     const n_military = this.planning.idleUnitCount() - n_villagers;
     const n_buildings = this.planning.idleBuildingCount();

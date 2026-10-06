@@ -87,33 +87,26 @@ func zoneAttackTarget(zone *RisqZone, player_id int, priority []defs.TargetCateg
 }
 
 func spaceAttackTarget(u *RisqUnit, space *RisqSpace) Attackable {
-	near, far := newCategoryBest(), newCategoryBest()
+	best := newCategoryBest()
 	for _, row := range space.zones {
 		for _, zone := range row {
 			dist := zoneDistanceWithinSpace(u.zone, zone)
-			bucket := far
-			if u.inAttackRange(zone) {
-				bucket = near
-			}
 			for _, target := range zone.units {
 				if target.deleted || target.player_id == u.player_id {
 					continue
 				}
-				bucket.considerUnit(target, dist)
+				best.considerUnit(target, dist)
 			}
 			if target := zoneEnemyBuilding(zone, u.player_id); target != nil {
-				bucket.considerBuilding(target, dist)
+				best.considerBuilding(target, dist)
 			}
 		}
 	}
-	if target := near.pick(u.target_priority); target != nil {
-		return target
-	}
-	return far.pick(u.target_priority)
+	return best.pick(u.target_priority)
 }
 
-func nearbyAttackTarget(own_zone *RisqZone, player_id int, target_priority []defs.TargetCategory, in_range func(*RisqZone) bool, risq *GameRisq, space_radius uint) Attackable {
-	near, far := newCategoryBest(), newCategoryBest()
+func nearbyAttackTarget(own_zone *RisqZone, player_id int, target_priority []defs.TargetCategory, risq *GameRisq, space_radius uint) Attackable {
+	best := newCategoryBest()
 	own_space := own_zone.space
 	for _, space := range risq.allSpaces() {
 		space_dist := own_space.distanceTo(space)
@@ -126,26 +119,19 @@ func nearbyAttackTarget(own_zone *RisqZone, player_id int, target_priority []def
 				if space == own_space {
 					dist = zoneDistanceWithinSpace(own_zone, zone)
 				}
-				bucket := far
-				if in_range(zone) {
-					bucket = near
-				}
 				for _, target := range zone.units {
 					if target.deleted || target.player_id == player_id {
 						continue
 					}
-					bucket.considerUnit(target, dist)
+					best.considerUnit(target, dist)
 				}
 				if target := zoneEnemyBuilding(zone, player_id); target != nil {
-					bucket.considerBuilding(target, dist)
+					best.considerBuilding(target, dist)
 				}
 			}
 		}
 	}
-	if target := near.pick(target_priority); target != nil {
-		return target
-	}
-	return far.pick(target_priority)
+	return best.pick(target_priority)
 }
 
 // Like nearbyAttackTarget, but never falls back to something out of range -- for stances that hold

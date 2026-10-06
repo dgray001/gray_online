@@ -1,6 +1,7 @@
 import type { GameBase, GamePlayer } from '../../../data_models';
 import type { RisqTurnReportFromServer } from './turn_report';
 import type {
+  RisqOutcome,
   RisqCost,
   RisqGatherPoint,
   RisqPlannedFoundation,
@@ -22,6 +23,7 @@ import type {
 /** Data describing a game of risq as returned by server */
 export declare interface GameRisqFromServer {
   game_base: GameBase; // already been converted
+  outcome?: RisqOutcome;
   players: RisqPlayerFromServer[];
   board_size: number;
   population_limit: number;

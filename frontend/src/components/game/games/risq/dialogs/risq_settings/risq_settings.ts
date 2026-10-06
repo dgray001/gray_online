@@ -47,6 +47,7 @@ type BindingSlot = { group: 'actions'; key: RisqHotkeyAction } | { group: IdBind
 
 interface HotkeyEntry {
   section: string;
+  subsection?: string;
   label: string;
   slot: BindingSlot;
 }
@@ -89,6 +90,7 @@ export class DwgRisqSettings extends DwgElement {
       const action = RisqHotkeyAction[key];
       this.entries.push({
         section: RISQ_HOTKEY_SCOPE_LABELS[actionScope(action)],
+        subsection: action === RisqHotkeyAction.GO_TO_SELECTION ? 'Selection' : undefined,
         label: RISQ_HOTKEY_ACTION_LABELS[action],
         slot: { group: 'actions', key: action },
       });
@@ -128,6 +130,7 @@ export class DwgRisqSettings extends DwgElement {
       this.entries.push({
         section: GLOBAL_SECTION,
         label: `Select Building: ${building.display_name}`,
+        subsection: 'Selection',
         slot: { group: 'cycle_building', key: building.building_id },
       });
       for (const producible of building.produces) {
@@ -202,9 +205,26 @@ export class DwgRisqSettings extends DwgElement {
         const header = document.createElement('div');
         header.classList.add('hotkey-section-header');
         header.innerText = section;
-        return [header, ...entries.map((entry) => this.buildRow(entry))];
+        return [header, ...this.buildSectionRows(entries)];
       })
     );
+  }
+
+  private buildSectionRows(entries: HotkeyEntry[]): HTMLDivElement[] {
+    const subsections = new Map<string, HotkeyEntry[]>();
+    const rows = entries.filter((entry) => !entry.subsection).map((entry) => this.buildRow(entry));
+    for (const entry of entries) {
+      if (entry.subsection) {
+        subsections.set(entry.subsection, [...(subsections.get(entry.subsection) ?? []), entry]);
+      }
+    }
+    for (const [subsection, subsection_entries] of subsections) {
+      const header = document.createElement('div');
+      header.classList.add('hotkey-subsection-header');
+      header.innerText = subsection;
+      rows.push(header, ...subsection_entries.map((entry) => this.buildRow(entry)));
+    }
+    return rows;
   }
 
   private buildRow(entry: HotkeyEntry): HTMLDivElement {

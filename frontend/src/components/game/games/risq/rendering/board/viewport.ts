@@ -12,6 +12,10 @@ import { unitSlotWorldPosition } from '../zones/slots';
 
 const DEFAULT_HEXAGON_RADIUS = 60;
 const ZOOM_REFERENCE_BOARD_SIZE = 4;
+const MAX_ZOOM_CANVAS_FRACTION = 0.65;
+const MIN_ZOOM_REFERENCE_POWER = 2.2;
+const ZONE_DETAIL_THRESHOLD = 0.45;
+const OWNERSHIP_DETAIL_THRESHOLD = 0.4;
 
 export declare interface CanvasBounds {
   min: Point2D;
@@ -79,7 +83,7 @@ export class RisqViewport {
     return this.view_mode !== RisqViewMode.REGION && this.draw_detail !== DrawRisqSpaceDetail.OWNERSHIP;
   }
 
-  // regions are hoverable/selectable in the dedicated REGION view mode (any zoom), or fully zoomed out in any other non-military view mode
+  // Regions are hoverable/selectable in the dedicated REGION view mode (any zoom), or fully zoomed out in any other non-military view mode
   regionInteractionEnabled(): boolean {
     return (
       this.view_mode === RisqViewMode.REGION ||
@@ -89,9 +93,9 @@ export class RisqViewport {
 
   zoomLimits(board_width: number): { min: number; max: number } {
     const reference_radius = board_width / (1.732 * (2 * ZOOM_REFERENCE_BOARD_SIZE + 1));
-    const reference_max = (0.45 * this.canvas_size.height) / reference_radius;
-    const max = (0.45 * this.canvas_size.height) / this.hex_r;
-    return { min: max / reference_max ** 2, max };
+    const reference_max = (MAX_ZOOM_CANVAS_FRACTION * this.canvas_size.height) / reference_radius;
+    const max = (MAX_ZOOM_CANVAS_FRACTION * this.canvas_size.height) / this.hex_r;
+    return { min: max / reference_max ** MIN_ZOOM_REFERENCE_POWER, max };
   }
 
   updateDrawDetail(scale: number, max_scale: number) {
@@ -99,9 +103,9 @@ export class RisqViewport {
     const reference_scale = (2 * ZOOM_REFERENCE_BOARD_SIZE + 1) / (2 * board_size + 1);
     scale *= reference_scale;
     max_scale *= reference_scale;
-    if (scale > 0.6 * (max_scale - 1) + 1) {
+    if (scale > ZONE_DETAIL_THRESHOLD * (max_scale - 1) + 1) {
       this.draw_detail = DrawRisqSpaceDetail.ZONE_DETAILS;
-    } else if (scale < 1 / (0.2 * (max_scale - 1) + 1)) {
+    } else if (scale < 1 / (OWNERSHIP_DETAIL_THRESHOLD * (max_scale - 1) + 1)) {
       this.draw_detail = DrawRisqSpaceDetail.OWNERSHIP;
     } else {
       this.draw_detail = DrawRisqSpaceDetail.SPACE_DETAILS;

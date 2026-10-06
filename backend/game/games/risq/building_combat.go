@@ -4,7 +4,7 @@ import "github.com/dgray001/gray_online/game/games/risq/internal/defs"
 
 func (b *RisqBuilding) autoAttackTarget(risq *GameRisq) Attackable {
 	if space_radius, ranged := b.attack_range.SpaceRadius(); ranged {
-		return nearbyAttackTarget(b.zone, b.player_id, b.target_priority, b.inAttackRange, risq, space_radius)
+		return nearbyInRangeTarget(b.zone, b.player_id, b.target_priority, b.inAttackRange, risq, space_radius)
 	}
 	return zoneAttackTarget(b.zone, b.player_id, b.target_priority)
 }

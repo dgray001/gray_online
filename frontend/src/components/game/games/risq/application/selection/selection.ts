@@ -1,4 +1,6 @@
 import type { RisqLeftPanel } from '../../canvas_components/left_panel/left_panel';
+import type { Point2D } from '../../../../util/objects2d';
+import { invertPair, invertZoneKey } from '../../model/coordinates';
 import { LeftPanelDataType } from '../../canvas_components/left_panel/left_panel_data';
 import type {
   RisqBuilding,
@@ -57,6 +59,43 @@ export class RisqSelection {
   selectedBuilding(): RisqBuilding | undefined {
     const data = this.left_panel.getData();
     return data?.data_type === LeftPanelDataType.BUILDING ? data.data : undefined;
+  }
+
+  coordinate(): Point2D | undefined {
+    const data = this.left_panel.getData();
+    if (!data) {
+      return;
+    }
+    if (data.data_type === LeftPanelDataType.UNIT) {
+      return this.session.unitLocation(data.data)?.space_coordinate;
+    }
+    if ('space_coordinate' in data.data) {
+      return data.data.space_coordinate;
+    }
+    if (data.data_type === LeftPanelDataType.SPACE) {
+      return data.data.coordinate;
+    }
+    if (data.data_type === LeftPanelDataType.FOUNDATION) {
+      return invertZoneKey(data.data.coordinate_key).space;
+    }
+    if ('space' in data.data && data.data.space) {
+      return data.data.space.coordinate;
+    }
+    const coordinates =
+      data.data_type === LeftPanelDataType.REGION
+        ? data.data.spaces.map(invertPair)
+        : [...this.selectedUnitIds()].flatMap((id) => {
+            const unit = this.session.findUnitById(id);
+            const location = unit ? this.session.unitLocation(unit) : undefined;
+            return location ? [location.space_coordinate] : [];
+          });
+    if (coordinates.length === 0) {
+      return;
+    }
+    return {
+      x: coordinates.reduce((sum, coordinate) => sum + coordinate.x, 0) / coordinates.length,
+      y: coordinates.reduce((sum, coordinate) => sum + coordinate.y, 0) / coordinates.length,
+    };
   }
 
   current(): { kind: SingleSelectionKind; id: number } | undefined {

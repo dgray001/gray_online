@@ -25,6 +25,7 @@ import (
 type GameRisq struct {
 	metrics                   gameMetrics
 	game                      *game.GameBase
+	outcome                   *risqOutcome
 	players                   []*RisqPlayer
 	board_size                uint16
 	population_limit          uint16
@@ -154,7 +155,7 @@ func (r *GameRisq) updateEliminated() {
 		if player.eliminated {
 			continue
 		}
-		if len(player.units) == 0 && len(player.buildings) == 0 {
+		if !player.canHaveUnits() {
 			player.eliminated = true
 			player.report.recordEliminated()
 			player.stopAi()
@@ -184,6 +185,12 @@ func (r *GameRisq) checkWinCondition() {
 		return
 	}
 	r.StopAi()
+	r.clearAllOrders()
+	r.outcome = &risqOutcome{winner_player_ids: make([]int, 0, len(remaining))}
+	for _, player := range remaining {
+		r.outcome.winner_player_ids = append(r.outcome.winner_player_ids, player.player.Player_id)
+	}
+	r.giving_orders = false
 	r.broadcastStartTurn() // no further start-turn goes out, so clients need this final state
 	if len(remaining) == 1 {
 		r.game.EndGame(fmt.Sprintf("%s wins!", remaining[0].player.GetNickname()))
@@ -236,6 +243,10 @@ func (r *GameRisq) toFrontendFor(player_id int, client_id uint64, is_viewer bool
 	}
 	if r.game != nil {
 		game["game_base"] = r.game.ToFrontend(client_id, is_viewer)
+	}
+	if r.outcome != nil {
+		game["outcome"] = r.outcome.toFrontend()
+		game["game_base"].(gin.H)["game_ended"] = true
 	}
 	players := []gin.H{}
 	for _, player := range r.players {

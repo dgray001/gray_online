@@ -578,6 +578,14 @@ func (a *buildingStopAction) ToOrders(view View, internals *Internals) []Order {
 		before := len(orders)
 		for _, o := range b.ActiveOrders {
 			if (len(a.orders) == 0 || a.orders[o.Kind]) && (len(a.item_ids) == 0 || a.item_ids[o.ItemID]) {
+				var cost Cost
+				switch o.Kind {
+				case BuildingOrderCreate:
+					cost = view.UnitCost(o.ItemID)
+				case BuildingOrderResearch:
+					cost = view.TechCost(o.ItemID)
+				}
+				internals.spend(Cost{Food: -cost.Food, Wood: -cost.Wood, Stone: -cost.Stone, Gold: -cost.Gold})
 				orders = append(orders, view.CancelOrder(o.ID))
 			}
 		}

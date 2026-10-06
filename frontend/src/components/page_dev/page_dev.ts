@@ -29,6 +29,11 @@ export class DwgPageDev extends DwgElement {
   }
 
   protected override parsedCallback(): void {
+    this.game.addEventListener('show_message_dialog', (e) => {
+      const dialog = document.createElement('dwg-message-dialog');
+      dialog.setData(e.detail);
+      this.appendChild(dialog);
+    });
     const launch_game_param = getUrlParam('launchgame')?.toLowerCase();
     if (launch_game_param) {
       if (!isValidGameTypeString(launch_game_param)) {

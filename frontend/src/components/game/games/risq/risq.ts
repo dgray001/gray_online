@@ -5,9 +5,11 @@ import type { DwgCanvasBoard } from '../../util/canvas_board/canvas_board';
 import type { Point2D } from '../../util/objects2d';
 import { addPoint2D, multiplyPoint2D } from '../../util/objects2d';
 import type { DwgGame } from '../../game';
+import { messageDialog } from '../../game';
 import { apiGet } from '../../../../scripts/api';
 import { createImage, resolveImage } from '../../../../scripts/image';
 import { createLock } from '../../../../scripts/util';
+import { getSettings } from '../../../../scripts/settings_store';
 import { err, log } from '../../../../scripts/log';
 import { ColorRGB } from '../../../../scripts/color_rgb';
 
@@ -40,6 +42,7 @@ import { RisqHover } from './application/input/hover';
 import { RisqCursorController } from './application/input/cursor_controller';
 import { RisqPointer } from './application/input/pointer';
 import type { HotkeyHost } from './application/input/hotkey_controller';
+import { RisqHotkeyAction } from './application/input/hotkeys';
 import { RisqHotkeyController } from './application/input/hotkey_controller';
 import { RisqRightPanel } from './canvas_components/right_panel/right_panel';
 import { RisqLeftPanel } from './canvas_components/left_panel/left_panel';
@@ -63,6 +66,8 @@ const PANEL_BACKGROUND = 'rgb(222, 184, 135)';
 /** Composition root: owns the collaborators, wires them to the canvas board, and applies server updates */
 export class DwgRisq extends DwgElement implements HotkeyHost {
   private board!: DwgCanvasBoard;
+  private abstract_game?: DwgGame;
+  private outcome_shown = false;
   private initialization_controller = new AbortController();
   private icons = new Map<string, HTMLImageElement>();
   private image_cache = new RisqImageCache();
@@ -204,6 +209,8 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
   }
 
   async initialize(abstract_game: DwgGame, game: GameRisqFromServer): Promise<void> {
+    this.abstract_game = abstract_game;
+    this.outcome_shown = false;
     this.initialization_controller.abort();
     this.initialization_controller = new AbortController();
     const signal = this.initialization_controller.signal;
@@ -285,13 +292,18 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
 
   private openTurnReportDialog(player: RisqPlayer, report: RisqTurnReport) {
     const dialog = document.createElement('dwg-risq-turn-report-dialog');
-    dialog.setData({ risq: this, player, report });
+    dialog.setData({
+      risq: this,
+      player,
+      report,
+      close_hotkey: getSettings().risq_hotkeys.actions[RisqHotkeyAction.SUMMARY_REPORT],
+    });
     this.appendChild(dialog);
   }
 
   openTechTree() {
     const dialog = document.createElement('dwg-risq-tech-tree-dialog');
-    dialog.setData({ risq: this });
+    dialog.setData({ risq: this, close_hotkey: getSettings().risq_hotkeys.actions[RisqHotkeyAction.TECH_TREE] });
     this.appendChild(dialog);
   }
 
@@ -309,7 +321,10 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
     this.board.setView(multiplyPoint2D(scale, this.viewport.coordinateToCanvas(coordinate)));
   }
 
-  selectNextIdleUnit() {
+  selectNextIdleUnit(): void {
+    if (!this.session.givingOrders()) {
+      return;
+    }
     const unit = this.planning.nextIdleUnit();
     if (!unit) {
       return;
@@ -375,9 +390,35 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
 
   private setNewGameData(new_game: GameRisqFromServer) {
     this.session.replaceSnapshot(new_game);
+    const shell_game = this.abstract_game?.getGame();
+    if (shell_game) {
+      shell_game.game_base.game_ended = new_game.game_base.game_ended;
+    }
+    if (new_game.game_base.game_ended) {
+      this.armed.disarmAll();
+      this.orders_model.clearPending();
+    }
     this.hover.forget();
     this.orders_model.setSubmitted(this.getPlayer()?.active_orders ?? []);
     this.refreshPanels();
+    this.showGameOutcome();
+  }
+
+  private showGameOutcome(): void {
+    const game = this.getGame();
+    if (!game?.game_base.game_ended || !game.outcome || this.outcome_shown) {
+      return;
+    }
+    this.outcome_shown = true;
+    const winners = game.outcome.winner_player_ids.map(
+      (id: number): string =>
+        game.players.find((player: RisqPlayer): boolean => player.player.player_id === id)!.player.nickname
+    );
+    const message =
+      winners.length === 0
+        ? 'No players remaining'
+        : `${winners.length > 1 ? 'The winners are: ' : 'The winner is: '}${winners.join(', ')}`;
+    messageDialog.call(this, { message });
   }
 
   private applyStartTurn(data: StartTurnData) {
@@ -386,7 +427,7 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
     this.setNewGameData(data.game);
     const player = this.getPlayer();
     this.session.setLastTurnReport(player?.turn_report);
-    if (this.getPlayerId() > -1 && player?.turn_report) {
+    if (!data.game.game_base.game_ended && this.getPlayerId() > -1 && player?.turn_report) {
       this.openTurnReportDialog(player, player.turn_report);
     }
   }

@@ -1,8 +1,8 @@
 import { enumKeys } from '../../../../../../scripts/util';
 
-/** A configurable hotkey: a letter key or an extra mouse button (index 3+), plus modifiers. Never a digit — those are reserved for control groups. */
+/** A configurable keyboard key or extra mouse button (index 3+), plus modifiers; digits are reserved for control groups. */
 export declare interface HotkeyCombo {
-  key?: string; // lowercase letter, e.g. 'q'
+  key?: string; // lowercase KeyboardEvent.key
   mouse_button?: number; // extra mouse button index (3+; 0/1/2 are reserved for game interaction)
   ctrl?: boolean;
   shift?: boolean;
@@ -63,6 +63,8 @@ export function comboToDisplayString(combo: HotkeyCombo): string {
     parts.push(`Mouse ${combo.mouse_button}`);
   } else if (is_letter) {
     parts.push(combo.shift ? combo.key.toUpperCase() : combo.key);
+  } else if (combo.key === ' ') {
+    parts.push('Space');
   } else {
     parts.push(combo.key.toUpperCase());
   }
@@ -111,6 +113,7 @@ export enum RisqHotkeyAction {
   BUILDING_GATHER_POINT,
   BUILDING_DELETE,
   BUILDING_CLEAR_GATHER_POINT,
+  GO_TO_SELECTION,
 }
 
 export const RISQ_HOTKEY_ACTION_LABELS: Record<RisqHotkeyAction, string> = {
@@ -123,6 +126,7 @@ export const RISQ_HOTKEY_ACTION_LABELS: Record<RisqHotkeyAction, string> = {
   [RisqHotkeyAction.SUMMARY_REPORT]: 'Summary Report',
   [RisqHotkeyAction.TECH_TREE]: 'Tech Tree',
   [RisqHotkeyAction.NEXT_IDLE]: 'Next Idle Unit',
+  [RisqHotkeyAction.GO_TO_SELECTION]: 'Go to Current Selection',
   [RisqHotkeyAction.SUBMIT_ORDERS]: 'Submit Orders',
   [RisqHotkeyAction.MOVE]: 'Move',
   [RisqHotkeyAction.ATTACK]: 'Attack',
@@ -160,6 +164,7 @@ export function defaultRisqHotkeyBindings(): RisqHotkeyBindings {
   for (const key of enumKeys(RisqHotkeyAction)) {
     actions[RisqHotkeyAction[key]] = { ...UNBOUND };
   }
+  actions[RisqHotkeyAction.GO_TO_SELECTION] = { key: ' ' };
   return {
     actions,
     create_unit: {},

@@ -17,7 +17,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   risq_hotkeys: defaultRisqHotkeyBindings(),
 };
 
-// re-fills any action added to the enum since the stored blob was saved, so new hotkeys default to unbound
+// Fills newly added actions with their defaults while preserving saved bindings.
 function mergeRisqHotkeyBindings(parsed?: Partial<RisqHotkeyBindings>): RisqHotkeyBindings {
   const base = defaultRisqHotkeyBindings();
   if (!parsed) {

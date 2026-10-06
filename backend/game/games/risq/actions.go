@@ -39,6 +39,10 @@ func (r *GameRisq) PlayerAction(action game.PlayerAction) {
 	if r.game.GameEnded() {
 		return
 	}
+	if r.players[player.Player_id].eliminated && action.Kind != "submit-orders" {
+		player.AddFailedUpdateShorthand(action.Kind+"-failed", "Eliminated players cannot act")
+		return
+	}
 	switch action.Kind {
 	case "submit-orders":
 		if !r.requireGivingOrders(player, "submit-orders") || !r.requireOrdersNotSubmitted(player, "submit-orders") {

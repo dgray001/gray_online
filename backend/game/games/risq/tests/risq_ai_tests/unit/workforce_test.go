@@ -1,12 +1,13 @@
-package ai
+package unit
 
 import (
+	. "github.com/dgray001/gray_online/game/games/risq/ai"
 	"slices"
 	"testing"
 )
 
 type workforceTestView struct {
-	View
+	loopTestView
 	units []UnitView
 }
 
@@ -31,7 +32,7 @@ func TestAvailableGatherers(t *testing.T) {
 	for _, kind := range []OrderKind{OrderKindBuild, OrderKindRepair, OrderKindRenew, OrderKindMove, OrderKindAttackSpace, OrderKindGarrison} {
 		view.units = append(view.units, UnitView{Kind: UnitEconomic, CurrentOrder: &CurrentOrder{Kind: kind}})
 	}
-	if got := availableGatherers(view, nil); got != 2 {
+	if got := decide(t, rule(`{"action":"set_var","name":"count","value":"var(available_gatherers)"}`), view, "count")["count"]; got != 2 {
 		t.Fatalf("available gatherers = %v, want idle villager and gatherer only", got)
 	}
 }

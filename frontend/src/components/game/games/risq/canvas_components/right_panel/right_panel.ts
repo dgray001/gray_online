@@ -52,9 +52,10 @@ export class RisqRightPanel implements CanvasComponent {
   }
 
   dataRefreshed() {
+    this.need_to_set_position = true;
     const player = this.risq.getPlayer();
     this.orders_list.refresh();
-    if (!player) {
+    if (!player || !this.risq.session.givingOrders()) {
       this.orders_list.disable();
       this.submit_button.disable();
       this.submit_icon_button.disable();
@@ -191,7 +192,7 @@ export class RisqRightPanel implements CanvasComponent {
           let yi = this.yi() + RisqRightPanel.PADDING;
           const player = this.risq.getPlayer();
           const game = this.risq.getGame();
-          drawText(ctx, `Turn ${game?.turn_number ?? '??'}`, {
+          drawText(ctx, game?.game_base.game_ended ? 'Game Over' : `Turn ${game?.turn_number ?? '??'}`, {
             p: { x: this.xc(), y: yi },
             w: this.paddedW(),
             fill_style: 'black',
@@ -232,7 +233,8 @@ export class RisqRightPanel implements CanvasComponent {
           this.drawSeparator(ctx, yi);
           yi += RisqRightPanel.PADDING;
           if (this.need_to_set_position) {
-            const orders_list_height = this.yf() - yi - 2 * RisqRightPanel.PADDING - RisqRightPanel.SUBMIT_SIZE;
+            const submit_height = game?.game_base.game_ended ? 0 : RisqRightPanel.SUBMIT_SIZE + RisqRightPanel.PADDING;
+            const orders_list_height = this.yf() - yi - RisqRightPanel.PADDING - submit_height;
             this.orders_list.setAllSizes(
               Math.min(0.1 * this.paddedW(), 20),
               { x: this.xi() + RisqRightPanel.PADDING, y: yi },
@@ -254,7 +256,7 @@ export class RisqRightPanel implements CanvasComponent {
         this.next_idle_button.drawTooltip(ctx, transform, this.risq, dt);
         this.submit_icon_button.draw(ctx, transform, dt);
         this.submit_icon_button.drawTooltip(ctx, transform, this.risq, dt);
-      } else {
+      } else if (!this.risq.getGame()?.game_base.game_ended) {
         this.submit_button.draw(ctx, transform, dt);
         this.submit_button.drawTooltip(ctx, transform, this.risq, dt);
       }
@@ -329,7 +331,7 @@ export class RisqRightPanel implements CanvasComponent {
     if (this.hasIdleUnits()) {
       this.next_idle_button.mousemove(canvas, screen, transform);
       this.submit_icon_button.mousemove(canvas, screen, transform);
-    } else {
+    } else if (!this.risq.getGame()?.game_base.game_ended) {
       this.submit_button.mousemove(canvas, screen, transform);
     }
     if (screen.x > this.xi() && screen.y > this.yi() && screen.x < this.xf() && screen.y < this.yf()) {
@@ -348,7 +350,7 @@ export class RisqRightPanel implements CanvasComponent {
     if (this.hasIdleUnits()) {
       this.next_idle_button.mousedown(e);
       this.submit_icon_button.mousedown(e);
-    } else {
+    } else if (!this.risq.getGame()?.game_base.game_ended) {
       this.submit_button.mousedown(e);
     }
     return this.isHovering();
@@ -360,7 +362,7 @@ export class RisqRightPanel implements CanvasComponent {
     if (this.hasIdleUnits()) {
       this.next_idle_button.mouseup(e);
       this.submit_icon_button.mouseup(e);
-    } else {
+    } else if (!this.risq.getGame()?.game_base.game_ended) {
       this.submit_button.mouseup(e);
     }
   }

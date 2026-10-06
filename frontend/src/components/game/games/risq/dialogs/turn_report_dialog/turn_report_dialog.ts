@@ -1,4 +1,5 @@
 import { DialogSize, DwgDialogBox } from '../../../../../dialog_box/dialog_box';
+import type { HotkeyCombo } from '../../application/input/hotkeys';
 import { configureImageFallback, resolveImage } from '../../../../../../scripts/image';
 import { shortLabel } from '../../canvas_components/order_row/order_row_resolve';
 import { buildingImage, techImage } from '../../rendering/assets/buildings';
@@ -26,6 +27,7 @@ interface TurnReportDialogData {
   risq: DwgRisq;
   player: RisqPlayer;
   report: RisqTurnReport;
+  close_hotkey: HotkeyCombo;
 }
 
 function signed(n: number): string {
@@ -117,6 +119,7 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
 
   setData(data: TurnReportDialogData, parsed?: boolean) {
     this.data = data;
+    this.close_hotkey = data.close_hotkey;
     this.classList.add(`size-${DialogSize.XLARGE}`);
     if (!parsed && !this.fully_parsed) {
       return;

@@ -36,6 +36,24 @@ type RisqOrderQueue struct {
 	past_orders   []*RisqOrder
 }
 
+func (r *GameRisq) clearAllOrders() {
+	for _, player := range r.players {
+		for entity := range player.allOrderables() {
+			for _, order := range append([]*RisqOrder(nil), entity.activeOrders()...) {
+				entity.cancelOrder(order, r)
+			}
+			if unit, ok := entity.(*RisqUnit); ok {
+				unit.move_path = nil
+				unit.half_move = nil
+			}
+		}
+		player.active_orders = nil
+		if player.report != nil {
+			player.report.orders.active = 0
+		}
+	}
+}
+
 type OrderStatus uint8
 
 const (

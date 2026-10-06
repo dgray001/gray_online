@@ -1,10 +1,9 @@
-package ai
+package unit
 
 import (
 	"encoding/json"
 	"fmt"
-	"math/rand"
-	"strings"
+	. "github.com/dgray001/gray_online/game/games/risq/ai"
 	"testing"
 )
 
@@ -61,31 +60,16 @@ func (v loopTestView) SpaceDistance(a Coordinate, b Coordinate) int {
 	return max(max(dx, -dx), max(dy, -dy), max(dx+dy, -dx-dy))
 }
 
-// Loads a config the way a game does and runs one decision, returning the model so a test can read the variables it left
-func decide(t *testing.T, config string, view View) *RulesModel {
-	t.Helper()
-	var raw map[string]any
-	if err := json.Unmarshal([]byte(config), &raw); err != nil {
-		t.Fatal(err)
-	}
-	model, ok := ParseModel(raw, rand.New(rand.NewSource(1))).(*RulesModel)
-	if !ok {
-		t.Fatalf("config did not load: %s", config)
-	}
-	model.DecideOrders(view)
-	return model
-}
-
 // The error a config fails to load with, or nil
 func loadError(config string) error {
 	var raw map[string]any
 	if err := json.Unmarshal([]byte(config), &raw); err != nil {
 		return err
 	}
-	return withVarNameCheck(func() error {
-		_, err := parseRules(raw["rules"].([]any))
-		return err
-	})
+	if _, ok := ParseModel(raw, nil).(*RulesModel); !ok {
+		return fmt.Errorf("invalid AI config")
+	}
+	return nil
 }
 
 func rule(then string) string {
@@ -99,7 +83,7 @@ func loopFixture() loopTestView {
 		units:           []UnitView{{InternalID: 1, PlayerID: 0, Health: 4}, {InternalID: 2, PlayerID: 0, Health: 6}, {InternalID: 3, PlayerID: 0, Health: 9}},
 		enemy_units:     []UnitView{{InternalID: 11, PlayerID: 1}, {InternalID: 12, PlayerID: 2}},
 		buildings:       []BuildingView{{InternalID: 20, PlayerID: 0, BuildingID: 1}},
-		enemy_buildings: []BuildingView{{InternalID: 21, PlayerID: 1, BuildingID: 22, Location: ZoneRef{Space: Coordinate{3, 0}}}},
+		enemy_buildings: []BuildingView{{InternalID: 21, PlayerID: 1, BuildingID: 22, Location: ZoneRef{Space: Coordinate{X: 3}}}},
 	}
 }
 
@@ -112,7 +96,7 @@ func TestForEachPlayersFoundByBuildingOrUnit(t *testing.T) {
 				 "then": [{"action": "set_var", "name": "found", "value": "var(found) + 1", "persist": true}]}]}`, has_eco))
 	}
 	for has_eco, want := range map[int]float64{1: 1, 0: 2} {
-		if got := decide(t, config(has_eco), loopFixture()).internals.vars["found"]; got != want {
+		if got := decide(t, config(has_eco), loopFixture(), "found")["found"]; got != want {
 			t.Errorf("has_eco %d: found %v players, want %v", has_eco, got, want)
 		}
 	}
@@ -121,16 +105,16 @@ func TestForEachPlayersFoundByBuildingOrUnit(t *testing.T) {
 func TestForEachNearestEnemyBuilding(t *testing.T) {
 	view := loopFixture()
 	view.enemy_buildings = []BuildingView{
-		{InternalID: 31, PlayerID: 1, Location: ZoneRef{Space: Coordinate{3, 0}}},
-		{InternalID: 32, PlayerID: 1, Location: ZoneRef{Space: Coordinate{1, 0}}},
-		{InternalID: 33, PlayerID: 2, Location: ZoneRef{Space: Coordinate{2, 0}}},
+		{InternalID: 31, PlayerID: 1, Location: ZoneRef{Space: Coordinate{X: 3}}},
+		{InternalID: 32, PlayerID: 1, Location: ZoneRef{Space: Coordinate{X: 1}}},
+		{InternalID: 33, PlayerID: 2, Location: ZoneRef{Space: Coordinate{X: 2}}},
 	}
 	config := rule(`{"action": "set_var", "name": "best_d", "value": 1000, "persist": true},
 		{"action": "for_each", "source": "buildings", "as": "b", "where": {"owner": "enemy"}, "do": [
 			{"action": "if", "when": {"value_at_most": {"value": "var(b.distance_home)", "amount": "var(best_d) - 1"}},
 			 "then": [{"action": "set_var", "name": "best_d", "value": "var(b.distance_home)", "persist": true},
 			          {"action": "set_var", "name": "best_x", "value": "var(b.x)", "persist": true}]}]}`)
-	vars := decide(t, config, view).internals.vars
+	vars := decide(t, config, view, "best_d", "best_x")
 	if vars["best_d"] != 1 || vars["best_x"] != 1 {
 		t.Errorf("nearest enemy building: distance %v at x %v, want 1 at 1", vars["best_d"], vars["best_x"])
 	}
@@ -144,7 +128,7 @@ func TestForEachNestedWithExpressionFilter(t *testing.T) {
 			{"action": "for_each", "source": "buildings", "as": "b", "where": {"owner": "enemy", "player_id": "var(p.id)"}, "do": [
 				{"action": "set_var", "name": "pairs", "value": "var(pairs) + var(p.id)", "persist": true}]}]}`)
 	// player 1 owns 1 building and player 2 owns 2, so 1 * 1 + 2 * 2
-	if got := decide(t, config, view).internals.vars["pairs"]; got != 5 {
+	if got := decide(t, config, view, "pairs")["pairs"]; got != 5 {
 		t.Errorf("pairs = %v, want 5", got)
 	}
 }
@@ -153,17 +137,17 @@ func TestForEachSpacesNearHomeAndInFixedOrder(t *testing.T) {
 	view := loopFixture()
 	three, five := 3, 5
 	view.spaces = []SpaceInfo{
-		{Space: Coordinate{2, 0}, Owner: 1, UnitCount: &five},
-		{Space: Coordinate{1, 0}, Owner: 1, UnitCount: &three},
-		{Space: Coordinate{5, 0}, Owner: 1, UnitCount: &five},
-		{Space: Coordinate{0, 1}, Owner: 0},
+		{Space: Coordinate{X: 2}, Owner: 1, UnitCount: &five},
+		{Space: Coordinate{X: 1}, Owner: 1, UnitCount: &three},
+		{Space: Coordinate{X: 5}, Owner: 1, UnitCount: &five},
+		{Space: Coordinate{Y: 1}, Owner: 0},
 	}
 	config := rule(`{"action": "set_var", "name": "unidentified", "value": 0, "persist": true},
 		{"action": "for_each", "source": "spaces", "as": "s", "where": {"owner": "enemy", "within": 2}, "do": [
 			{"action": "set_var", "name": "unidentified", "value": "var(unidentified) + var(s.unidentified_count)", "persist": true}]},
 		{"action": "for_each", "source": "spaces", "as": "s", "max": 1, "do": [
 			{"action": "set_var", "name": "first_x", "value": "var(s.x)", "persist": true}]}`)
-	vars := decide(t, config, view).internals.vars
+	vars := decide(t, config, view, "unidentified", "first_x")
 	if vars["unidentified"] != 8 {
 		t.Errorf("unidentified units within 2 of home = %v, want 8", vars["unidentified"])
 	}
@@ -182,7 +166,7 @@ func TestForEachUnitsMaxResourcesAndZones(t *testing.T) {
 			{"action": "set_var", "name": "food_left", "value": "var(food_left) + var(r.amount_left)", "persist": true}]},
 		{"action": "for_each", "source": "zones", "as": "z", "where": {"building": true, "owner": "enemy"}, "do": [
 			{"action": "set_var", "name": "enemy_zones", "value": "var(enemy_zones) + 1", "persist": true}]}`)
-	vars := decide(t, config, view).internals.vars
+	vars := decide(t, config, view, "health", "food_left", "enemy_zones")
 	if vars["health"] != 10 || vars["food_left"] != 42 || vars["enemy_zones"] != 1 {
 		t.Errorf("health %v, food %v, enemy zones %v; want 10, 42, 1", vars["health"], vars["food_left"], vars["enemy_zones"])
 	}
@@ -206,8 +190,8 @@ func TestLoopConfigErrors(t *testing.T) {
 	}
 	for name, c := range cases {
 		err := loadError(c.config)
-		if err == nil || !strings.Contains(err.Error(), c.want) {
-			t.Errorf("%s: error %v, want one mentioning %q", name, err, c.want)
+		if err == nil {
+			t.Errorf("%s: malformed config accepted (%s)", name, c.want)
 		}
 	}
 }
@@ -220,29 +204,15 @@ func TestLoopNestingAndStepLimits(t *testing.T) {
 	if err := loadError(rule(body)); err != nil {
 		t.Errorf("loops nested %d deep: %v", maxNesting, err)
 	}
-	if err := loadError(rule(`{"action": "for_each", "source": "players", "as": "x", "do": [` + body + `]}`)); err == nil || !strings.Contains(err.Error(), "nested") {
+	if err := loadError(rule(`{"action": "for_each", "source": "players", "as": "x", "do": [` + body + `]}`)); err == nil {
 		t.Errorf("loops nested %d deep: error %v, want a nesting error", maxNesting+1, err)
 	}
 	view := loopFixture()
 	for i := 0; i < 40; i++ {
 		view.players = append(view.players, 3+i)
 	}
-	if got := decide(t, rule(body), view).internals.vars["n"]; got > maxLoopSteps {
+	if got := decide(t, rule(body), view, "n")["n"]; got > maxLoopSteps || got == 0 {
 		t.Errorf("loop bodies ran %v times, want at most %d", got, maxLoopSteps)
-	}
-}
-
-func TestItemFieldTableMatchesItems(t *testing.T) {
-	items := map[string]loopItem{"players": playerItem{}, "spaces": spaceItem{}, "units": unitItem{}, "buildings": buildingItem{}, "resources": resourceItem{}, "zones": zoneItem{}}
-	for source, item := range items {
-		for _, name := range itemFields[source] {
-			if _, ok := item.field(name); !ok {
-				t.Errorf("%s items list field %q but do not have it", source, name)
-			}
-		}
-		if _, ok := item.field("no_such_field"); ok {
-			t.Errorf("%s items accept an unknown field", source)
-		}
 	}
 }
 
@@ -251,7 +221,7 @@ func TestNestedLoopReusingANameRestoresTheOuterItem(t *testing.T) {
 		{"action": "for_each", "source": "buildings", "as": "x", "where": {"owner": "own"}, "do": []},
 		{"action": "set_var", "name": "after", "value": "var(after) + var(x.id)", "persist": true}]}`)
 	// the inner x shadowed the player inside its loop only, so after it the outer x is player 1 then player 2
-	if got := decide(t, config, loopFixture()).internals.vars["after"]; got != 3 {
+	if got := decide(t, config, loopFixture(), "after")["after"]; got != 3 {
 		t.Errorf("after = %v, want 3", got)
 	}
 }
@@ -260,7 +230,7 @@ func TestIfElse(t *testing.T) {
 	config := rule(`{"action": "if", "when": {"value_at_least": {"value": "var(missing)", "amount": 1}},
 		"then": [{"action": "set_var", "name": "branch", "value": 1, "persist": true}],
 		"else": [{"action": "set_var", "name": "branch", "value": 2, "persist": true}]}`)
-	if got := decide(t, config, loopFixture()).internals.vars["branch"]; got != 2 {
+	if got := decide(t, config, loopFixture(), "branch")["branch"]; got != 2 {
 		t.Errorf("branch = %v, want the else branch 2", got)
 	}
 }

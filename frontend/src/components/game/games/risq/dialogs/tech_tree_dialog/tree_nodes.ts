@@ -1,6 +1,7 @@
 import { RisqRange, RisqProducibleKind } from '../../model/types';
 import type { RisqCost, RisqUnitType } from '../../model/types';
 import type { DwgRisq } from '../../risq';
+import type { HotkeyCombo } from '../../application/input/hotkeys';
 import { unitImage } from '../../rendering/assets/unit';
 import { buildingImage, techImage } from '../../rendering/assets/buildings';
 export interface RisqUnitStatsEntry {
@@ -58,6 +59,7 @@ export interface RisqBuildingTreeEntry {
 
 export interface TechTreeDialogData {
   risq: DwgRisq;
+  close_hotkey: HotkeyCombo;
 }
 
 type TreeStatus = 'researched' | 'available' | 'locked';

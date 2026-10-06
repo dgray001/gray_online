@@ -1,9 +1,10 @@
-package main
+package simoutcome_test
 
 import (
 	"testing"
 
 	"github.com/dgray001/gray_online/game/games/risq"
+	. "github.com/dgray001/gray_online/game/games/risq/internal/simoutcome"
 )
 
 func player(id int, units int, score uint, land int, eliminated bool) risq.PlayerStanding {
@@ -36,7 +37,7 @@ func TestClassifyEachOutcome(t *testing.T) {
 		"nobody has units":                {player(0, 0, 5, 1, false), player(1, 0, 4, 1, false), OutcomeAhead},
 	}
 	for name, c := range cases {
-		if got := classify(c.self, c.other); got != c.want {
+		if got := Classify(c.self, c.other); got != c.want {
 			t.Errorf("%s: %s, want %s", name, got, c.want)
 		}
 	}
@@ -51,7 +52,7 @@ func TestClassifyIsExhaustiveAndMirrored(t *testing.T) {
 				for flags := 0; flags < 4; flags++ {
 					a := player(0, units[0], score[0], land[0], flags&1 != 0)
 					b := player(1, units[1], score[1], land[1], flags&2 != 0)
-					got, other := classify(a, b), classify(b, a)
+					got, other := Classify(a, b), Classify(b, a)
 					if mirror[got] == "" || mirror[got] != other {
 						t.Fatalf("%+v vs %+v: %s and %s are not mirrors", a, b, got, other)
 					}
@@ -60,7 +61,7 @@ func TestClassifyIsExhaustiveAndMirrored(t *testing.T) {
 			}
 		}
 	}
-	for _, o := range outcomeOrder {
+	for _, o := range Order {
 		if !seen[o] {
 			t.Errorf("outcome %s never occurs in the grid", o)
 		}

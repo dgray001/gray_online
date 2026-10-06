@@ -44,6 +44,14 @@ export function techImage(tech_id: number): string {
   switch (tech_id) {
     case 1:
       return 'risq/techs/farm';
+    case 2:
+      return 'risq/techs/infantry_attack';
+    case 3:
+      return 'risq/techs/infantry_armor';
+    case 4:
+      return 'risq/techs/mercenary_contracts';
+    case 5:
+      return 'risq/techs/pikes';
     default:
       return 'icons/research64';
   }

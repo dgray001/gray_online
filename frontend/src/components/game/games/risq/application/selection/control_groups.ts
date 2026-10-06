@@ -1,4 +1,5 @@
 import type { RisqLeftPanel } from '../../canvas_components/left_panel/left_panel';
+import type { Point2D } from '../../../../util/objects2d';
 import { LeftPanelDataType } from '../../canvas_components/left_panel/left_panel_data';
 import type { RisqSession } from '../session';
 import type { RisqSelection } from './selection';
@@ -40,7 +41,7 @@ export class RisqControlGroups {
     }
   }
 
-  recall(group: number) {
+  recall(group: number): Point2D | undefined {
     const group_data = this.groups.get(group);
     const player = this.session.getPlayer();
     if (!group_data || !player) {
@@ -53,7 +54,7 @@ export class RisqControlGroups {
         return;
       }
       this.selection.selectBuilding(building);
-      return;
+      return building.space_coordinate;
     }
     const alive_ids = group_data.ids.filter((id) => player.units.has(id));
     if (alive_ids.length === 0) {
@@ -62,5 +63,16 @@ export class RisqControlGroups {
     }
     group_data.ids = alive_ids;
     this.selection.selectOwnUnits(alive_ids);
+    const coordinates = alive_ids.flatMap((id) => {
+      const location = this.session.unitLocation(player.units.get(id)!);
+      return location ? [location.space_coordinate] : [];
+    });
+    if (coordinates.length === 0) {
+      return;
+    }
+    return {
+      x: coordinates.reduce((sum, coordinate) => sum + coordinate.x, 0) / coordinates.length,
+      y: coordinates.reduce((sum, coordinate) => sum + coordinate.y, 0) / coordinates.length,
+    };
   }
 }

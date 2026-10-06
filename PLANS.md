@@ -1,22 +1,14 @@
 v0.9: Risq beta version
- v: Backend risq tests
- w: Revamp summary report (fix colors, can see "events" on map, can interact with events i.e. replay them or see what happened precisely)
- x: Make v1.0 ai (current ones should be rename to 0.4, etc...)
+ x: Revamp summary report (fix colors, can see "events" on map, can interact with events i.e. replay them or see what happened precisely)
  y: Settings setup (including alt win conditions, map selector, settings for maps like regions/resources/etc, etc)
  z: Alternate terrain images (mountains, swamps, shallows, water)
 
 Small Risq Issues:
- - Game ending and defeat
-  => Frontend didn't show game ended when I defeated all other players (investigate)
-  => Also defeated should happen when you lose all units + all unit-producing buildings
  - Order behavior bugs
   => Gather point to zone seems to be auto-doing building ... that is bad look into it
   => Building attack unit orders need to go away when unit is out of range or dead
-  => Confirm that priority will be ahead of distance in target selection
  - Selection, control groups, and navigation
   => Need to be able to select multiple buildings
-  => Can double click control group to move to where it is
-  => Hotkey to move to current selection (default should be space)
   => Units in control group(s) should show their number(s) when selected on map as little numbers on bottom right
   => Should show ctrl groups in bottom panel somehow with a way to clear them
   => If you have entire ctrl group selected exactly then assigning it a new number should clear previous number (but only if entire group exactly selected)
@@ -25,7 +17,6 @@ Small Risq Issues:
   => Next idle should also go to buildings
   => Show idle units/buildings in bottom panel with ways to filter/turn off for certain groups
   => If holding ctrl when right click to build building then it should stay armed (true of any armed anything)
-  => Hotkey to open window should also close it (tech tree, turn report)
  - Order presentation and pointer feedback
   => Orders list says "attack zone" / "attack space" (check what it says for attack unit/building)
   => Auto attacks show as "order"
@@ -36,8 +27,6 @@ Small Risq Issues:
   => Tooltips shouldn't be behind cursor they should ALWAYS be such that they don't overlap with where cursor is. Check logic on this
   => Sword (and other) cursors need to point to cursor point
  - Zoom, detail, and map modes
-  => I can zoom out more on zone view
-  => Should be able to zoom in more in general
   => Zooming in more should allow for more unit circles
   => When not in default view mode then draw detail threshholds can be a bit bigger imo
   => Minimap shouldn't show terrain beyond terrain type on anything other than default view mode and it should be more explicit in showing mil / resources in appropriate modes
@@ -54,7 +43,6 @@ Small Risq Issues:
   => Default map sizes might be a bit too large
   => Wood gathering seems slow we need a way to speed it up (more techs!)
  - Assets and combat aftermath
-  => Actually use the images for 3 blacksmith techs
   => All buildings should have a "damaged" version when like 60% health and another when 20% health along with little fires on it to show damage
   => Rubble should be shown on map for recently killed buildings and bodies for recently killed units
 

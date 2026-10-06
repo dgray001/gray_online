@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.8v: Final v0.6 ai
+v0.8w: Backend risq tests
 
 ## Dev Use
 

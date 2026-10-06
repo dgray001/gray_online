@@ -32,6 +32,7 @@ type Unit struct {
 }
 
 type Building struct {
+	CurrentStamina    int     `json:"current_stamina"`
 	InternalID        uint64  `json:"internal_id"`
 	PlayerID          int     `json:"player_id"`
 	BuildingID        uint32  `json:"building_id"`

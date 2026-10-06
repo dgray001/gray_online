@@ -7,6 +7,7 @@ import type { Point2D } from '../../../util/objects2d';
 /** Data describing a game of risq */
 export declare interface GameRisq {
   game_base: GameBase;
+  outcome?: RisqOutcome;
   players: RisqPlayer[];
   scores: GameRisqScoreEntry[];
   board_size: number;
@@ -18,6 +19,10 @@ export declare interface GameRisq {
   background_image?: string;
   background_top_left?: [number, number];
   background_top_right?: [number, number];
+}
+
+export declare interface RisqOutcome {
+  winner_player_ids: number[];
 }
 
 /** Data describing a region: only present for a player if they've explored at least one of its spaces */

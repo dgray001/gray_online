@@ -55,6 +55,7 @@ export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
 
   setData(data: TechTreeDialogData, parsed?: boolean) {
     this.data = data;
+    this.close_hotkey = data.close_hotkey;
     this.classList.add(`size-${DialogSize.XXLARGE}`);
     if (!parsed && !this.fully_parsed) {
       return;

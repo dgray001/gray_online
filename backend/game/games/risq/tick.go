@@ -16,6 +16,9 @@ func (r *GameRisq) resolveActiveOrders() {
 	r.current_tick = 0
 	r.beginTurnReports()
 	for _, player := range r.players {
+		if player.eliminated {
+			continue
+		}
 		for _, order := range receiptOrdered(player.active_orders) {
 			if order.received {
 				continue
@@ -69,6 +72,15 @@ func (r *GameRisq) resolveActiveOrders() {
 		for _, foundation_id := range r.foundation_ids {
 			if building := r.buildings[foundation_id]; building != nil {
 				building.resolveHealthDelta(r)
+			}
+		}
+		for _, player := range r.players {
+			if player.eliminated {
+				for o := range player.allOrderables() {
+					if target, ok := o.(Attackable); ok {
+						target.resolveHealthDelta(r)
+					}
+				}
 			}
 		}
 		// Applied last so a tech's combat bonus never affects the tick that finished researching it.
@@ -249,6 +261,9 @@ func (r *GameRisq) refreshVisionCaches(previously_visible map[*RisqSpace]map[int
 func (r *GameRisq) allOrderables() iter.Seq[Orderable] {
 	return func(yield func(Orderable) bool) {
 		for _, player := range r.players {
+			if player.eliminated {
+				continue
+			}
 			for o := range player.allOrderables() {
 				if !yield(o) {
 					return

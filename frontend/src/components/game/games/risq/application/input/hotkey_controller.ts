@@ -40,10 +40,12 @@ const VIEW_MODE_ACTIONS: Partial<Record<RisqHotkeyAction, RisqViewMode>> = {
 /** Keyboard and extra-mouse-button input: control groups plus configurable hotkeys, resolved against the selection */
 export class RisqHotkeyController {
   private pressed_keys = new Map<string, RisqHotkeyLookupEntry>();
+  private last_group_press: { group: number; time: number } | undefined;
   private input_observer = new MutationObserver(() => this.cancelBlockedInput());
 
   private clearPressed = (): void => {
     this.pressed_keys.clear();
+    this.last_group_press = undefined;
     this.input_observer.disconnect();
   };
 
@@ -86,14 +88,26 @@ export class RisqHotkeyController {
     }
     if (/^[0-9]$/.test(e.key)) {
       e.preventDefault();
+      if (e.repeat) {
+        return;
+      }
       const group = e.key === '0' ? 10 : parseInt(e.key, 10);
       if (e.ctrlKey) {
+        this.last_group_press = undefined;
         this.control_groups.assign(group);
       } else {
-        this.control_groups.recall(group);
+        const time = performance.now();
+        const previous = this.last_group_press;
+        const coordinate = this.control_groups.recall(group);
+        const double_press = previous?.group === group && time - previous.time <= 300;
+        this.last_group_press = double_press ? undefined : { group, time };
+        if (double_press && coordinate) {
+          this.host.goToCoordinate(coordinate);
+        }
       }
       return;
     }
+    this.last_group_press = undefined;
     const entry =
       this.pressed_keys.get(e.code) ?? (!e.repeat ? this.resolveEntry(comboFromKeyboardEvent(e)) : undefined);
     if (entry) {
@@ -206,6 +220,13 @@ export class RisqHotkeyController {
       case RisqHotkeyAction.NEXT_IDLE:
         this.host.selectNextIdleUnit();
         break;
+      case RisqHotkeyAction.GO_TO_SELECTION: {
+        const coordinate = this.selection.coordinate();
+        if (coordinate) {
+          this.host.goToCoordinate(coordinate);
+        }
+        break;
+      }
       case RisqHotkeyAction.SUBMIT_ORDERS:
         this.submission.confirmSubmit();
         break;

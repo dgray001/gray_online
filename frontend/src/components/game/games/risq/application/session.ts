@@ -83,7 +83,7 @@ export class RisqSession {
   }
 
   givingOrders(): boolean {
-    return this.game?.giving_orders ?? false;
+    return !!this.game?.giving_orders && !this.game.game_base.game_ended && !this.getPlayer()?.eliminated;
   }
 
   canGiveOrders(): boolean {
@@ -95,7 +95,7 @@ export class RisqSession {
     if (this.toggling || player.orders_submitted) {
       return false;
     }
-    if (!game.giving_orders) {
+    if (!this.givingOrders()) {
       return false;
     }
     return true;

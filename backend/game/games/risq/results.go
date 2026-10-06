@@ -4,7 +4,16 @@ import (
 	"fmt"
 
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
+	"github.com/gin-gonic/gin"
 )
+
+type risqOutcome struct {
+	winner_player_ids []int
+}
+
+func (o *risqOutcome) toFrontend() gin.H {
+	return gin.H{"winner_player_ids": o.winner_player_ids}
+}
 
 type GatheredResult struct {
 	Food  float64

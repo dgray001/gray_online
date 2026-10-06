@@ -159,6 +159,23 @@ func (p *RisqPlayer) canSubmitOrders() bool {
 	return !p.eliminated
 }
 
+func (p *RisqPlayer) canHaveUnits() bool {
+	if len(p.units) > 0 {
+		return true
+	}
+	for _, building := range p.buildings {
+		if building.deleted {
+			continue
+		}
+		for _, producible := range defs.BuildingConfigs[building.building_id].Produces {
+			if producible.Kind == defs.ProducibleKind_UNIT {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (p *RisqPlayer) allOrderables() iter.Seq[Orderable] {
 	return func(yield func(Orderable) bool) {
 		for _, u := range p.units {

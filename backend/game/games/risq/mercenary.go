@@ -45,6 +45,9 @@ type RisqPendingMercenary struct {
 
 func (r *GameRisq) resolvePendingMercenaries() {
 	for _, player := range r.players {
+		if player.eliminated {
+			continue
+		}
 		for _, pending := range player.pending_mercenaries {
 			zone := pending.zone
 			if zone.space.ownership != player.player.Player_id || zone.ownership != player.player.Player_id {

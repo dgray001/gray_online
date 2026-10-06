@@ -1,6 +1,6 @@
 # Step 4: AI unit test design
 
-Status: design only. This document plans category 4 of [DESIGN.md](DESIGN.md); it does not mark that category complete.
+Status: partially implemented. The existing loop and workforce tests are in `risq_ai_tests/unit`; the remaining coverage planned here is outstanding.
 
 ## Scope and test boundary
 
@@ -22,7 +22,7 @@ Engine receipt, real target encoding, fog construction, AI goroutines, `StopAi`,
 - Inspect captured query arguments, including gatherer exclusion IDs, range checks, `SpaceCondition`, and inclusion predicates. Test predicate inclusion and exclusion on named coordinates.
 - Assert ordered queues and behavior priority lists exactly. Normalize only collections whose order has no meaning; never sort away a scheduling or clear-flag failure.
 - Use a fresh seeded `rand.Rand` per model. For multi-turn cases retain the model but supply a fresh view with deliberate changes; also compare independent models for state isolation.
-- Use explicit numeric expectations, with a small stated tolerance only for fractional arithmetic. Preserve the existing `ai/workforce_test.go` coverage.
+- Use explicit numeric expectations, with a small stated tolerance only for fractional arithmetic. Preserve the existing `risq_ai_tests/unit/workforce_test.go` coverage.
 
 ## Diagnostic isolation
 

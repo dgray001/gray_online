@@ -112,10 +112,13 @@ export class RisqLeftPanel implements CanvasComponent {
     }
     const actions = buildPanelActions(this.risq, this.data);
     this.buttons = actions.buttons;
-    this.target_priority_control = actions.target_priority_control;
+    this.target_priority_control = this.risq.session.givingOrders() ? actions.target_priority_control : undefined;
     this.resolveSize();
     for (const button of this.buttons) {
       button.dataRefreshed();
+      if (!this.risq.session.givingOrders()) {
+        button.disable();
+      }
     }
     this.target_priority_control?.dataRefreshed();
   }

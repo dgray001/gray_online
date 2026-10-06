@@ -134,12 +134,17 @@ func (u *RisqUnit) resolveStance(risq *GameRisq) {
 	}
 	switch u.stance {
 	case defs.UnitStance_AGGRESSIVE:
-		if target := nearbyAttackTarget(u.zone, u.player_id, u.target_priority, u.inAttackRange, risq, aggressiveSightRadius); target != nil {
+		if target := nearbyAttackTarget(u.zone, u.player_id, u.target_priority, risq, aggressiveSightRadius); target != nil {
 			order_type := attackOrderType(target, defs.OrderType_UnitAutoAttackUnit, defs.OrderType_UnitAutoAttackBuilding)
 			u.replaceOrder(risq, order_type, int64(target.internalId()))
 		}
 	case defs.UnitStance_DEFENSIVE:
-		if spaceHasEnemy(u.zone.space, u.player_id) {
+		if space_range, ranged := u.attack_range.SpaceRadius(); ranged {
+			if target := nearbyInRangeTarget(u.zone, u.player_id, u.target_priority, u.inAttackRange, risq, space_range); target != nil {
+				order_type := attackOrderType(target, defs.OrderType_UnitAutoAttackUnit, defs.OrderType_UnitAutoAttackBuilding)
+				u.replaceOrder(risq, order_type, int64(target.internalId()))
+			}
+		} else if spaceHasEnemy(u.zone.space, u.player_id) {
 			u.replaceOrder(risq, defs.OrderType_UnitAttackSpace, int64(u.zone.space.coordinate_key))
 		}
 	case defs.UnitStance_STAND_GROUND:

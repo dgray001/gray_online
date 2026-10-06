@@ -11,7 +11,7 @@ import (
 var sharedConfigFiles = []string{"bonuses.json", "buildings.json", "region_names.json", "resources.json", "techs.json", "terrains.json", "units.json"}
 
 // Swaps the engine to a temp copy of the shipped config plus the given maps (name to JSON), restored on cleanup.
-func UseConfig(t *testing.T, shipped string, scripts map[string]string, customs map[string]string) {
+func UseConfig(t *testing.T, shipped string, scripts map[string]string, customs map[string]string) string {
 	t.Helper()
 	dir := t.TempDir()
 	for _, file := range append([]string{"ai/default.json"}, sharedConfigFiles...) {
@@ -35,6 +35,7 @@ func UseConfig(t *testing.T, shipped string, scripts map[string]string, customs 
 			t.Errorf("restoring the shipped config: %v", err)
 		}
 	})
+	return dir
 }
 
 func writeFile(t *testing.T, path string, data []byte) {
