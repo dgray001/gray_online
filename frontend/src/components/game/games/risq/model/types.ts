@@ -66,6 +66,7 @@ export declare interface RisqPlayer {
   turn_report?: RisqTurnReport;
   planned_foundations: Map<number, RisqPlannedFoundation>;
   available_mercenaries: RisqProducible[];
+  auto_renewals: Map<number, number>;
 }
 
 /** Data describing frontend resource state */
@@ -137,29 +138,40 @@ export declare interface EllipHoverData {
   clicked?: boolean;
 }
 
+export declare interface RisqCorpse {
+  internal_id: number;
+  player_id: number;
+  unit_id: number;
+  turns: number;
+}
+
 /** Data describing zones inside a risq space */
 export declare interface RisqZone {
   coordinate: Point2D;
   coordinate_key: number;
   resource?: RisqResource;
   building?: RisqBuilding;
+  corpses: RisqCorpse[];
   units: Map<number, RisqUnit>; // <internal_ids, unit>
   unit_count?: number;
   ownership?: number;
   terrain_override: number;
   terrain_override_display_name?: string;
+  destroyed_building?: number;
+  destroyed_building_turns?: number;
   // purely frontend fields
   hovered: boolean;
   clicked: boolean;
   hovered_data: EllipHoverData[];
   units_by_type: Map<number, Map<number, UnitByTypeData>>; // <player_id, <unit_id, internal_ids>>
-  unit_slots?: UnitByTypeData[][]; // index i corresponds to hovered_data[i + 1]; recomputed each draw
+  unit_slots?: UnitByTypeData[][];
   economic_units: number[]; // internal_id[]
   military_units: number[]; // internal_id[]
+  economic_hover_data?: RectHoverData;
+  military_hover_data?: RectHoverData;
   reset_hovered_data?: boolean;
 }
 
-/** Data describing units_by_type data */
 export declare interface UnitByTypeData {
   player_id: number;
   unit_id: number;
@@ -249,6 +261,7 @@ export declare interface RisqBuilding {
   resources_left?: number;
   resource_capacity?: number;
   renew_stamina?: number;
+  renew_stamina_remaining?: number;
   gather_capacity?: number;
   base_gather_speed?: number;
   renew_cost?: RisqCost;
@@ -435,7 +448,7 @@ export function canHaveGatherPoint(building: RisqBuilding): boolean {
 
 /** Returns whether the player can currently afford the input cost, accounting for already-queued spending */
 export function canAffordCost(player: RisqPlayer, cost: RisqCost): boolean {
-  const net = (type: RisqResourceType) => {
+  const net = (type: RisqResourceType): number => {
     const pr = player.resources.get(type);
     return pr ? pr.amount - pr.spending : 0;
   };

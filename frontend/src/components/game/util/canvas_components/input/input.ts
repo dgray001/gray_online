@@ -32,7 +32,7 @@ export abstract class DwgInput implements CanvasComponent {
     return this.text;
   }
 
-  setValue(value: string) {
+  setValue(value: string): void {
     this.text = this.sanitize(value);
     this.caret = this.text.length;
   }
@@ -49,7 +49,7 @@ export abstract class DwgInput implements CanvasComponent {
     return this.focused;
   }
 
-  focus() {
+  focus(): void {
     if (this.focused || this.disabled) {
       return;
     }
@@ -59,7 +59,7 @@ export abstract class DwgInput implements CanvasComponent {
     document.addEventListener('paste', this.handlePaste, true);
   }
 
-  blur() {
+  blur(): void {
     if (!this.focused) {
       return;
     }
@@ -68,19 +68,19 @@ export abstract class DwgInput implements CanvasComponent {
     document.removeEventListener('paste', this.handlePaste, true);
   }
 
-  isHovering() {
+  isHovering(): boolean {
     return this.hovering;
   }
 
-  setHovering(hovering: boolean) {
+  setHovering(hovering: boolean): void {
     this.hovering = hovering;
   }
 
-  isClicking() {
+  isClicking(): boolean {
     return this.clicking;
   }
 
-  setClicking(clicking: boolean) {
+  setClicking(clicking: boolean): void {
     this.clicking = clicking;
   }
 
@@ -88,14 +88,14 @@ export abstract class DwgInput implements CanvasComponent {
     return this.disabled;
   }
 
-  disable() {
+  disable(): void {
     this.disabled = true;
     this.hovering = false;
     this.clicking = false;
     this.blur();
   }
 
-  enable() {
+  enable(): void {
     this.disabled = false;
   }
 
@@ -120,7 +120,7 @@ export abstract class DwgInput implements CanvasComponent {
     return false;
   }
 
-  mouseup(_e: MouseEvent) {
+  mouseup(_e: MouseEvent): void {
     this.clicking = false;
   }
 
@@ -130,7 +130,7 @@ export abstract class DwgInput implements CanvasComponent {
     return filtered.slice(0, this.config.max_length ?? filtered.length);
   }
 
-  private insert(s: string) {
+  private insert(s: string): void {
     const room = (this.config.max_length ?? Infinity) - this.text.length;
     const added = this.sanitize(s).slice(0, Math.max(0, room));
     if (!added) {
@@ -141,7 +141,7 @@ export abstract class DwgInput implements CanvasComponent {
     this.changed(this.text);
   }
 
-  private removeAt(index: number) {
+  private removeAt(index: number): void {
     if (index < 0 || index >= this.text.length) {
       return;
     }
@@ -150,7 +150,7 @@ export abstract class DwgInput implements CanvasComponent {
     this.changed(this.text);
   }
 
-  private moveCaret(index: number) {
+  private moveCaret(index: number): void {
     this.caret = Math.min(Math.max(index, 0), this.text.length);
     this.caret_timer = 0;
   }

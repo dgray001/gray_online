@@ -6,6 +6,7 @@ import { configDraw } from '../../../../util/canvas_components/canvas_component'
 import { drawRect } from '../../../../util/canvas_util';
 import type { Point2D } from '../../../../util/objects2d';
 import { RisqVisibilityLevel } from '../../model/types';
+import type { UnitByTypeData } from '../../model/types';
 import { unitsByPlayerFiltered } from '../../model/unit_groups';
 import type { DwgRisq } from '../../risq';
 import { ROW_H as ORDER_ROW_H } from '../order_row/order_row';
@@ -102,7 +103,7 @@ export class RisqLeftPanel implements CanvasComponent {
     return this.showing ? this.data : undefined;
   }
 
-  private refreshActionButtons() {
+  private refreshActionButtons(): void {
     this.buttons = [];
     this.target_priority_control = undefined;
     this.refreshOrderRows();
@@ -127,7 +128,7 @@ export class RisqLeftPanel implements CanvasComponent {
     return orderListSubjects(this.data, this.risq.getPlayer()?.player.player_id).kind !== undefined;
   }
 
-  private refreshOrderRows() {
+  private refreshOrderRows(): void {
     // an empty list never matches a real internal_id, so an unowned/non-orderable selection just shows an empty list
     const subjects = orderListSubjects(this.data, this.risq.getPlayer()?.player.player_id);
     this.order_rows_list.setSubject(subjects.ids, subjects.kind);
@@ -149,7 +150,7 @@ export class RisqLeftPanel implements CanvasComponent {
     return this.yi() + 0.25 * this.size.y + 6 + RisqStatsView.height(this.risq, building);
   }
 
-  resolveSize() {
+  resolveSize(): void {
     const h = Math.min(4 * this.config.w, this.risq.viewport.canvasSize().height);
     this.size = { x: h / 3, y: h };
     this.close_button.setPosition({ x: this.size.x, y: this.yi() + 0.5 * this.close_button.h() });
@@ -207,7 +208,7 @@ export class RisqLeftPanel implements CanvasComponent {
     return this.data;
   }
 
-  refreshData() {
+  refreshData(): void {
     if (!this.showing || !this.data) {
       this.refreshActionButtons();
       return;
@@ -223,7 +224,7 @@ export class RisqLeftPanel implements CanvasComponent {
     this.resolveSize();
   }
 
-  dataRefreshed() {
+  dataRefreshed(): void {
     this.refreshData();
   }
 
@@ -283,7 +284,7 @@ export class RisqLeftPanel implements CanvasComponent {
     return this.shownData()?.data_type === LeftPanelDataType.BUILDING;
   }
 
-  close() {
+  close(): void {
     this.showing = false;
     this.visibility = undefined;
     this.data = undefined;
@@ -292,7 +293,7 @@ export class RisqLeftPanel implements CanvasComponent {
     this.buttons = [];
   }
 
-  openPanel(open_data: LeftPanelData, visibility: number) {
+  openPanel(open_data: LeftPanelData, visibility: number): void {
     if (visibility < RisqVisibilityLevel.FOG) {
       return; // not explored
     }
@@ -330,7 +331,7 @@ export class RisqLeftPanel implements CanvasComponent {
     );
   }
 
-  draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number) {
+  draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
     if (!this.isShowing()) {
       return;
     }
@@ -388,7 +389,9 @@ export class RisqLeftPanel implements CanvasComponent {
     }
   }
 
-  private drawContent(pc: PanelDrawContext) {
+  private drawContent(pc: PanelDrawContext): void {
+    this.input.beginGroupDraw();
+    pc.groupTile = (units: UnitByTypeData[], p: Point2D, s: number): string => this.input.groupTile(units, p, s);
     switch (this.data?.data_type) {
       case LeftPanelDataType.RESOURCE:
         drawResource(pc, this.data.data);
@@ -468,7 +471,7 @@ export class RisqLeftPanel implements CanvasComponent {
     return this.isHovering();
   }
 
-  mouseup(e: MouseEvent) {
+  mouseup(e: MouseEvent): void {
     this.close_button.mouseup(e);
     if (this.showOrderRows()) {
       this.order_rows_list.mouseup(e);

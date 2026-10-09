@@ -1,7 +1,13 @@
 import { err } from '../../../../../../scripts/log';
+import type { RisqCombatStats } from '../../model/types';
 
 /** Returns image path of the building; pass plain to get the uncolored source (no player-color marker pixels) */
-export function buildingImage(building_id: number | undefined, under_construction?: boolean, plain = false): string {
+export function buildingImage(
+  building_id: number | undefined,
+  under_construction?: boolean,
+  plain = false,
+  combat_stats?: RisqCombatStats
+): string {
   if (building_id !== undefined && under_construction) {
     return 'risq/buildings/construction';
   }
@@ -31,13 +37,21 @@ export function buildingImage(building_id: number | undefined, under_constructio
         break;
       default:
         err('Trying to get building image from unknown building id', building_id);
-        return '';
+        return 'default';
+    }
+    if (combat_stats) {
+      const health_ratio = combat_stats.health / combat_stats.max_health;
+      filename += health_ratio < 0.2 ? '_damaged2' : health_ratio < 0.6 ? '_damaged1' : '';
     }
     if (plain && filename !== 'empty_plot') {
       filename += '_plain';
     }
   }
   return `risq/buildings/${filename}`;
+}
+
+export function rubbleImage(building_id: number, turns: number): string {
+  return `${buildingImage(building_id)}_rubble${turns}`;
 }
 
 export function techImage(tech_id: number): string {

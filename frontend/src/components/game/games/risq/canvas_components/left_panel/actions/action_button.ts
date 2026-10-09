@@ -84,7 +84,7 @@ export abstract class RisqActionButton extends DwgSquareButton {
     }
   }
 
-  setHotkeyCombo(combo: HotkeyCombo | undefined) {
+  setHotkeyCombo(combo: HotkeyCombo | undefined): void {
     this.hotkey_combo = combo;
   }
 
@@ -92,7 +92,7 @@ export abstract class RisqActionButton extends DwgSquareButton {
     return { title: this.description, hotkey: this.hotkey_combo ? hotkeyDisplayString(this.hotkey_combo) : undefined };
   }
 
-  drawTooltip(ctx: CanvasRenderingContext2D, transform: BoardTransformData, risq: DwgRisq, dt: number) {
+  drawTooltip(ctx: CanvasRenderingContext2D, transform: BoardTransformData, risq: DwgRisq, dt: number): void {
     this.tooltip.draw(ctx, transform, risq, dt, this.isHovering(), this.isPressed());
   }
 }

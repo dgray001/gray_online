@@ -72,7 +72,7 @@ export function clickButton(
   button: HTMLButtonElement,
   fn: () => clickButtonReturn | Promise<clickButtonReturn>,
   input_options: ClickButtonOptions = {}
-) {
+): void {
   const options: ClickButtonOptions = {
     ...{
       loading_text: undefined,
@@ -87,7 +87,7 @@ export function clickButton(
     }
     let has_changed_text = false;
     const original_text = button.innerText;
-    function changeButtonText(text?: clickButtonReturn, enable_button?: boolean) {
+    function changeButtonText(text?: clickButtonReturn, enable_button?: boolean): void {
       if (typeof text === 'string') {
         button.innerText = text;
         has_changed_text = true;
@@ -146,7 +146,7 @@ export function createLock(throwaway_extras = false) {
       delayed_resolve = resolve;
       delayed_reject = reject;
     });
-    async function runFn() {
+    async function runFn(): Promise<void> {
       await fn().then(delayed_resolve, delayed_reject);
       const first = queue.shift();
       if (first) {
@@ -168,7 +168,7 @@ export function createLock(throwaway_extras = false) {
 }
 
 /** Downloads input string as file */
-export function download(content: string, file_name: string, content_type = 'text/plain') {
+export function download(content: string, file_name: string, content_type = 'text/plain'): void {
   const a = document.createElement('a');
   const file = new Blob([content], { type: content_type });
   a.href = URL.createObjectURL(file);
@@ -177,7 +177,7 @@ export function download(content: string, file_name: string, content_type = 'tex
 }
 
 /** Detects whether the current browser is a mobile browser */
-export function clientOnMobile() {
+export function clientOnMobile(): boolean {
   const regex1 =
     /(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i;
   const regex2 =

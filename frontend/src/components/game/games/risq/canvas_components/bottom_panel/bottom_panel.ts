@@ -110,7 +110,7 @@ export class RisqBottomPanel implements CanvasComponent {
     return group.reduce((sum, item) => sum + item.h(), 0) + RisqBottomPanel.GAP * Math.max(group.length - 1, 0);
   }
 
-  private recomputeLayout() {
+  private recomputeLayout(): void {
     const groups = this.groups.filter((group) => group.some((item) => item.w() > 0));
     this.group_widths = groups.map((group) => Math.max(0, ...group.map((item) => item.w())));
     this.content_h = Math.max(0, ...groups.map((group) => this.groupHeight(group)));

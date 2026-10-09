@@ -37,18 +37,18 @@ export class RisqOrderSubmission {
     }
   }
 
-  submitted() {
+  submitted(): void {
     this.toggling = false;
     this.orders_model.clearPending();
   }
 
-  unsubmitted() {
+  unsubmitted(): void {
     this.toggling = false;
     this.orders_model.revertSubmittedToPending();
   }
 
   /** Submits directly, or first confirms when units/buildings are idle or resources would go negative */
-  confirmSubmit() {
+  confirmSubmit(): void {
     if (!this.session.canGiveOrders()) {
       return;
     }
@@ -100,7 +100,7 @@ export class RisqOrderSubmission {
     }
   }
 
-  private dispatch(game_update: string) {
+  private dispatch(game_update: string): void {
     this.host.dispatchEvent(new CustomEvent('game_update', { detail: game_update, bubbles: true }));
   }
 }

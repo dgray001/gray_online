@@ -77,7 +77,7 @@ export class DwgCardHand extends DwgElement {
     document.body.removeEventListener('touchmove', this.on_touch_move);
   }
 
-  private resizeCallback() {
+  private resizeCallback(): void {
     const rect = this.getBoundingClientRect();
     this.style.setProperty('--height', `${rect.height.toString()}px`);
     this.style.setProperty('--width', `${rect.width.toString()}px`);
@@ -85,7 +85,7 @@ export class DwgCardHand extends DwgElement {
     this.style.setProperty('--play-drop-margin', `${play_drop_margin.toString()}px`);
   }
 
-  private setEventListeners() {
+  private setEventListeners(): void {
     document.body.addEventListener('mouseup', this.on_mouse_up);
     document.body.addEventListener('touchend', this.on_touch_end);
     document.body.addEventListener('mousemove', this.on_mouse_move);
@@ -93,7 +93,7 @@ export class DwgCardHand extends DwgElement {
     document.body.addEventListener('touchmove', this.on_touch_move);
   }
 
-  private handleMouseUp(e: MouseEvent) {
+  private handleMouseUp(e: MouseEvent): void {
     if (e.button !== 0) {
       return;
     }
@@ -110,7 +110,7 @@ export class DwgCardHand extends DwgElement {
     this.stopDraggingCard(card);
   }
 
-  private handleTouchEnd(e: TouchEvent) {
+  private handleTouchEnd(e: TouchEvent): void {
     if (!this.dragging_data.dragging) {
       return;
     }
@@ -131,7 +131,7 @@ export class DwgCardHand extends DwgElement {
     this.stopDraggingCard(card);
   }
 
-  private handleMouseMove(e: MouseEvent) {
+  private handleMouseMove(e: MouseEvent): void {
     if (!this.dragging_data.dragging) {
       return;
     }
@@ -144,7 +144,7 @@ export class DwgCardHand extends DwgElement {
     this.dragCard(e, card);
   }
 
-  private handleDocumentMouseEnter(e: MouseEvent) {
+  private handleDocumentMouseEnter(e: MouseEvent): void {
     if (!this.dragging_data.dragging || e.buttons % 2 === 1) {
       return;
     }
@@ -156,7 +156,7 @@ export class DwgCardHand extends DwgElement {
     this.stopDraggingCard(card, true);
   }
 
-  private handleTouchMove(e: TouchEvent) {
+  private handleTouchMove(e: TouchEvent): void {
     if (!this.dragging_data.dragging) {
       return;
     }
@@ -176,7 +176,7 @@ export class DwgCardHand extends DwgElement {
     this.dragCard({ x: touch.clientX, y: touch.clientY }, card);
   }
 
-  setCards(cards: StandardCard[], cards_played: number[] = [], animation_time = 0) {
+  setCards(cards: StandardCard[], cards_played: number[] = [], animation_time = 0): void {
     this.cards_container.replaceChildren();
     this.cards.clear();
     const card_data: CardData[] = cards
@@ -197,7 +197,7 @@ export class DwgCardHand extends DwgElement {
     }
   }
 
-  private createCardEl(data: CardData, animation_time = 0) {
+  private createCardEl(data: CardData, animation_time = 0): void {
     const el = document.createElement('div');
     const img = document.createElement('img');
     img.src = cardToImagePath(data.card);
@@ -254,7 +254,7 @@ export class DwgCardHand extends DwgElement {
     );
   }
 
-  private startDraggingCard(p: Point2D, card: CardData, touch_identifier = 0) {
+  private startDraggingCard(p: Point2D, card: CardData, touch_identifier = 0): void {
     this.dragging_lock(async () => {
       if (!card.el) {
         console.error('Cannot start dragging card without dom element');
@@ -284,7 +284,7 @@ export class DwgCardHand extends DwgElement {
     });
   }
 
-  private dragCard(p: Point2D, card: CardData) {
+  private dragCard(p: Point2D, card: CardData): void {
     this.dragging_lock(async () => {
       if (!this.dragging_data.dragging) {
         return;
@@ -337,13 +337,13 @@ export class DwgCardHand extends DwgElement {
     });
   }
 
-  private stopDragging() {
+  private stopDragging(): void {
     this.dragging_data.dragging = false;
     this.classList.remove('dragging');
     this.classList.remove('dragging-playing');
   }
 
-  private stopDraggingCard(card: CardData, returning_to_screen = false) {
+  private stopDraggingCard(card: CardData, returning_to_screen = false): void {
     this.dragging_lock(async () => {
       if (!card.el) {
         console.error('Cannot stop dragging card without dom element');
@@ -359,7 +359,7 @@ export class DwgCardHand extends DwgElement {
     });
   }
 
-  playCard(index: number) {
+  playCard(index: number): void {
     const card = this.cards.get('i', index);
     if (!card?.el) {
       console.error('Trying to play card that does not exist or does not have an element');
@@ -381,7 +381,7 @@ export class DwgCardHand extends DwgElement {
     });
   }
 
-  substituteCard(index: number, new_card: StandardCard) {
+  substituteCard(index: number, new_card: StandardCard): void {
     const card = this.cards.get('i', index);
     if (!card) {
       console.error('Trying to substitute card that does not exist');
@@ -393,7 +393,7 @@ export class DwgCardHand extends DwgElement {
     this.createCardEl(card);
   }
 
-  removeCards() {
+  removeCards(): void {
     this.cards.clear();
     this.cards_container.replaceChildren();
     this.can_play = false;

@@ -1,22 +1,33 @@
 import type { RisqZone, UnitByTypeData } from '../../model/types';
 import type { Point2D } from '../../../../util/objects2d';
-import { findOuterZoneIndex, CENTER_ZONE_UNIT_SLOTS, EDGE_ZONE_UNIT_SLOTS, zoneUnitSlotOffsets } from './geometry';
-/** Pixel offset of the specific unit-slot circle a given unit currently occupies, or undefined if not found */
+import { findOuterZoneIndex, zoneUnitSlotOffsets } from './geometry';
+
+export function getZoneUnitSlots(
+  zone: RisqZone,
+  active_player_id: number,
+  center_max_slots: number,
+  edge_max_slots: number
+): UnitByTypeData[][] {
+  const capacity = findOuterZoneIndex(zone.coordinate) === -1 ? center_max_slots : edge_max_slots;
+  return zone.unit_slots ?? (zone.unit_slots = buildZoneUnitSlots(zone, active_player_id, capacity));
+}
+
 export function unitSlotWorldPosition(
   zone: RisqZone,
   zone_coordinate: Point2D,
   hex_r: number,
   active_player_id: number,
-  internal_id: number
+  internal_id: number,
+  center_max_slots: number,
+  unit_r: number,
+  edge_max_slots: number
 ): Point2D | undefined {
-  const is_center = findOuterZoneIndex(zone_coordinate) === -1;
-  const num_slots = is_center ? CENTER_ZONE_UNIT_SLOTS : EDGE_ZONE_UNIT_SLOTS;
-  const filled_slots = zone.unit_slots ?? (zone.unit_slots = buildZoneUnitSlots(zone, active_player_id, num_slots));
+  const filled_slots = getZoneUnitSlots(zone, active_player_id, center_max_slots, edge_max_slots);
   const slot_index = filled_slots.findIndex((groups) => groups.some((g) => g.units.has(internal_id)));
   if (slot_index === -1) {
     return undefined;
   }
-  return zoneUnitSlotOffsets(zone_coordinate, hex_r)[slot_index];
+  return zoneUnitSlotOffsets(zone_coordinate, hex_r, filled_slots.length, unit_r)[slot_index];
 }
 
 function bandGroupsByUnitId(groups: UnitByTypeData[], band_size: number): UnitByTypeData[][] {
@@ -31,7 +42,6 @@ function bandGroupsByUnitId(groups: UnitByTypeData[], band_size: number): UnitBy
   return [...bands.entries()].sort(([a], [b]) => a - b).map(([, g]) => g);
 }
 
-/** Assigns a zone's units to at most `num_slots` slots, active player first by unit id, coarsening others then active until it fits */
 export function buildZoneUnitSlots(zone: RisqZone, active_player_id: number, num_slots: number): UnitByTypeData[][] {
   const active_groups = [...(zone.units_by_type.get(active_player_id)?.values() ?? [])].sort(
     (a, b) => a.unit_id - b.unit_id

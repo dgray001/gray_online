@@ -180,6 +180,8 @@ func init() {
 		"define":               stepDefine,
 		"rules":                stepRules,
 		"regions_seven":        stepRegionsSeven,
+		"regions_six":          stepRegionsSix,
+		"regions_four":         stepRegionsFour,
 		"shape":                stepShape,
 	}
 }

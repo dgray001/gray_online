@@ -173,7 +173,8 @@ export class RisqSelection {
   hotkeySelection(): HotkeySelection | undefined {
     const building = this.selectedBuilding();
     if (building) {
-      const ids = (kind: RisqProducibleKind) => building.produces.filter((p) => p.kind === kind).map((p) => p.id);
+      const ids = (kind: RisqProducibleKind): number[] =>
+        building.produces.filter((p) => p.kind === kind).map((p) => p.id);
       return { kind: 'building', unit_ids: ids(RisqProducibleKind.UNIT), tech_ids: ids(RisqProducibleKind.TECH) };
     }
     if (this.subjectUnitIds().length === 0) {
@@ -184,16 +185,16 @@ export class RisqSelection {
     return { kind: 'units', composition, garrisoned: lp.isOnlyGarrisoned() };
   }
 
-  selectBuilding(building: RisqBuilding) {
+  selectBuilding(building: RisqBuilding): void {
     this.left_panel.openPanel({ data_type: LeftPanelDataType.BUILDING, data: building }, RisqVisibilityLevel.SPY);
   }
 
-  selectUnit(unit: RisqUnit) {
+  selectUnit(unit: RisqUnit): void {
     this.left_panel.openPanel({ data_type: LeftPanelDataType.UNIT, data: unit }, RisqVisibilityLevel.SPY);
   }
 
   /** Selects the given units of the local player, grouped by type, regardless of where they are */
-  selectOwnUnits(internal_ids: number[]) {
+  selectOwnUnits(internal_ids: number[]): void {
     const player = this.session.getPlayer();
     if (!player) {
       return;
@@ -205,7 +206,12 @@ export class RisqSelection {
   }
 
   /** Selects one player's units of the given ids, optionally tied to the space they were picked from */
-  selectUnitsOfPlayer(player_id: number, internal_ids: number[], space: RisqSpace | undefined, visibility: number) {
+  selectUnitsOfPlayer(
+    player_id: number,
+    internal_ids: number[],
+    space: RisqSpace | undefined,
+    visibility: number
+  ): void {
     if (internal_ids.length === 0) {
       return;
     }
@@ -216,7 +222,7 @@ export class RisqSelection {
     this.left_panel.openPanel({ data_type: LeftPanelDataType.UNITS_BY_TYPE, data: { space, units } }, visibility);
   }
 
-  selectOrderSubjects(order: RisqFrontendOrder) {
+  selectOrderSubjects(order: RisqFrontendOrder): void {
     const player = this.session.getPlayer();
     if (!player || !this.session.getGame()) {
       return;

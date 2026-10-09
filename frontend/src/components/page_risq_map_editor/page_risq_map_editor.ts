@@ -467,7 +467,7 @@ export class DwgPageRisqMapEditor extends DwgElement {
       return;
     }
     const { ratio, center } = this.viewport.resize(board_size, canvas_size, game.board_size);
-    const zoom = this.viewport.zoomLimits(board_size.x);
+    const zoom = this.viewport.zoomLimits(board_size);
     this.board.setMaxScale(zoom.max, zoom.min);
     this.board.scaleView(ratio);
     this.board.setOffset(center);

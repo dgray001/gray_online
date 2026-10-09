@@ -62,7 +62,7 @@ export class DwgAiSelector extends DwgElement {
     });
   }
 
-  setData(data: AiSelectorData) {
+  setData(data: AiSelectorData): void {
     if (this.fully_parsed) {
       throw new Error('Cannot set data when already added to dom');
     }
@@ -70,7 +70,7 @@ export class DwgAiSelector extends DwgElement {
     this.els = [];
   }
 
-  setPlayers(ai_players: AiPlayerType[]) {
+  setPlayers(ai_players: AiPlayerType[]): void {
     this.data.ai_players = ai_players;
     this.els = [];
     switch (this.data.game_type) {

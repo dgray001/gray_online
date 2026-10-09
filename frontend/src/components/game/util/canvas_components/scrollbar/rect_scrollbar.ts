@@ -16,7 +16,7 @@ abstract class DwgRectScrollbarButton extends DwgRectButton {
     this.scrollbar = scrollbar;
   }
 
-  updateHovering(canvas: Point2D, screen: Point2D) {
+  updateHovering(canvas: Point2D, screen: Point2D): void {
     this.setHovering(this.mouseOver(canvas, screen));
   }
 
@@ -239,7 +239,7 @@ export abstract class DwgRectScrollbar extends DwgScrollbar<DwgRectScrollbarButt
     return this.bar_dif_size;
   }
 
-  protected updateButtonPositions() {
+  protected updateButtonPositions(): void {
     const size = this.rect_config.scrollbar_size;
     const vertical = this.rect_config.vertical;
     const p: Point2D = {
@@ -311,7 +311,7 @@ export abstract class DwgRectScrollbar extends DwgScrollbar<DwgRectScrollbarButt
     return this.rect_config.vertical;
   }
 
-  setScrollbarSize(size: number) {
+  setScrollbarSize(size: number): void {
     this.rect_config.scrollbar_size = size;
     this.updateButtonPositions();
   }
@@ -320,28 +320,28 @@ export abstract class DwgRectScrollbar extends DwgScrollbar<DwgRectScrollbarButt
     return this.rect_config.scrollbar_size;
   }
 
-  setPosition(p: Point2D) {
+  setPosition(p: Point2D): void {
     this.rect_config.p = { ...p };
     this.updateButtonPositions();
   }
 
-  setW(w: number) {
+  setW(w: number): void {
     this.rect_config.w = w;
     this.updateButtonPositions();
   }
 
-  setH(h: number) {
+  setH(h: number): void {
     this.rect_config.h = h;
     this.updateButtonPositions();
   }
 
-  setSize(w: number, h: number) {
+  setSize(w: number, h: number): void {
     this.rect_config.w = w;
     this.rect_config.h = h;
     this.updateButtonPositions();
   }
 
-  setAllSizes(size: number, p: Point2D, w: number, h: number) {
+  setAllSizes(size: number, p: Point2D, w: number, h: number): void {
     this.rect_config.scrollbar_size = size;
     this.rect_config.p = { ...p };
     this.rect_config.w = w;

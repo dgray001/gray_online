@@ -15,6 +15,8 @@ import {
   zoneUnitSlotLocalOffsets,
 } from './zones/geometry';
 import { drawForestTrees, drawRisqZone, getSpaceTerrainImage, getZoneFill, isEmptyPlot } from './zones/draw';
+import { getZoneUnitSlots } from './zones/slots';
+import { drawZoneCorpses } from './zones/corpses';
 
 /** How much detail to draw in a space */
 export enum DrawRisqSpaceDetail {
@@ -43,7 +45,7 @@ const space_line_width: Record<DrawRisqSpaceDetail, number> = {
 };
 
 /** Draws a hex-cut image (see scripts/cut_hex_texture.py) stretched to fill a hexagon of radius r */
-export function drawHexImage(ctx: CanvasRenderingContext2D, img: CanvasImageSource, c: Point2D, r: number) {
+export function drawHexImage(ctx: CanvasRenderingContext2D, img: CanvasImageSource, c: Point2D, r: number): void {
   const w = Math.sqrt(3) * r;
   const h = 2 * r;
   ctx.drawImage(img, c.x - 0.5 * w, c.y - 0.5 * h, w, h);
@@ -55,7 +57,7 @@ export function borderStrokeStyle(owner_color: ColorRGB | undefined, alpha: numb
     : `rgba(255, 255, 255, ${alpha})`;
 }
 
-export function fillHexOverlay(ctx: CanvasRenderingContext2D, c: Point2D, r: number, fill_style: string) {
+export function fillHexOverlay(ctx: CanvasRenderingContext2D, c: Point2D, r: number, fill_style: string): void {
   const prev_stroke = ctx.strokeStyle;
   ctx.strokeStyle = 'transparent';
   ctx.fillStyle = fill_style;
@@ -63,12 +65,12 @@ export function fillHexOverlay(ctx: CanvasRenderingContext2D, c: Point2D, r: num
   ctx.strokeStyle = prev_stroke;
 }
 
-export function drawRisqSpace(
+export function drawRisqSpaceBase(
   ctx: CanvasRenderingContext2D,
   game: RisqDrawHost,
   space: RisqSpace,
   config: DrawRisqSpaceConfig
-) {
+): boolean {
   const owner_color = spaceOwnerColor(space.ownership, game.getGame()?.players ?? []);
   const region = game.session.getRegionForSpace(space.coordinate_key);
   const region_owned = (region?.owner ?? -1) >= 0;
@@ -112,6 +114,31 @@ export function drawRisqSpace(
       );
     }
   }
+  if (
+    config.draw_detail !== DrawRisqSpaceDetail.OWNERSHIP &&
+    !isOverviewViewMode(config.view_mode) &&
+    space.visibility >= RisqVisibilityLevel.FOG
+  ) {
+    ctx.translate(space.center.x, space.center.y);
+    for (const zone of space.zones?.flat() ?? []) {
+      drawZoneCorpses(ctx, game, zone, space.visibility, config.hex_r, config.rotation);
+    }
+    for (const zone of space.zones?.flat() ?? []) {
+      drawForestTrees(ctx, game, zone, config.view_mode, config.hex_r, config.rotation);
+    }
+    ctx.translate(-space.center.x, -space.center.y);
+  }
+  return black_text;
+}
+
+export function drawRisqSpaceContent(
+  ctx: CanvasRenderingContext2D,
+  game: RisqDrawHost,
+  space: RisqSpace,
+  config: DrawRisqSpaceConfig,
+  black_text: boolean
+): void {
+  const owner_color = spaceOwnerColor(space.ownership, game.getGame()?.players ?? []);
   if (DEV) {
     ctx.translate(space.center.x, space.center.y);
     ctx.rotate(-config.rotation);
@@ -171,18 +198,13 @@ function drawSpaceContent(
   config: DrawRisqSpaceConfig,
   black_text: boolean,
   owner_color: ColorRGB | undefined
-) {
+): void {
   if (config.draw_detail === DrawRisqSpaceDetail.OWNERSHIP || config.view_mode === RisqViewMode.REGION) {
     return; // ownership/region view: territory shown purely via space fill color
   } else if (config.draw_detail === DrawRisqSpaceDetail.SPACE_DETAILS) {
     if (space.visibility < RisqVisibilityLevel.FOG) {
       return;
     }
-    ctx.translate(space.center.x, space.center.y);
-    for (const zone of space.zones?.flat() ?? []) {
-      drawForestTrees(ctx, game, zone, config.view_mode, config.hex_r, config.rotation);
-    }
-    ctx.translate(-space.center.x, -space.center.y);
     ctx.save();
     ctx.translate(space.center.x, space.center.y);
     ctx.rotate(-config.rotation);
@@ -211,8 +233,14 @@ function drawSpaceContent(
     const r = config.hex_r;
     const inner_r = INNER_ZONE_MULTIPLIER * r;
     const active_player_id = game.getPlayerId();
+    const center_slots = getZoneUnitSlots(
+      zone,
+      active_player_id,
+      game.viewport.centerMaxSlots(),
+      game.viewport.edgeMaxSlots()
+    );
+    const center_count = space.visibility === RisqVisibilityLevel.POOR ? 1 : center_slots.length;
     drawHexagon(ctx, { x: 0, y: 0 }, inner_r);
-    drawForestTrees(ctx, game, zone, config.view_mode, r, config.rotation);
     drawRisqZone(
       ctx,
       game,
@@ -223,7 +251,7 @@ function drawSpaceContent(
       r,
       config.rotation,
       zoneBuildingLocalOffset(zone.coordinate, r),
-      zoneUnitSlotLocalOffsets(zone.coordinate, r),
+      zoneUnitSlotLocalOffsets(zone.coordinate, r, center_count, game.viewport.unitRadius()),
       active_player_id
     );
     const a = Math.PI / 3;
@@ -247,9 +275,15 @@ function drawSpaceContent(
       ctx.closePath();
       ctx.stroke();
       ctx.fill();
-      drawForestTrees(ctx, game, zone, config.view_mode, r, config.rotation);
       const rotation = a * (1 + i);
       ctx.rotate(rotation);
+      const edge_slots = getZoneUnitSlots(
+        zone,
+        active_player_id,
+        game.viewport.centerMaxSlots(),
+        game.viewport.edgeMaxSlots()
+      );
+      const edge_count = space.visibility === RisqVisibilityLevel.POOR ? 1 : edge_slots.length;
       drawRisqZone(
         ctx,
         game,
@@ -260,7 +294,7 @@ function drawSpaceContent(
         r,
         rotation + config.rotation,
         zoneBuildingLocalOffset(zone.coordinate, r),
-        zoneUnitSlotLocalOffsets(zone.coordinate, r),
+        zoneUnitSlotLocalOffsets(zone.coordinate, r, edge_count, game.viewport.unitRadius()),
         active_player_id
       );
       ctx.rotate(-rotation);
@@ -275,7 +309,7 @@ function drawSpaceDetailsContent(
   space: RisqSpace,
   config: DrawRisqSpaceConfig,
   black_text: boolean
-) {
+): void {
   let building_img = game.getIcon('icons/building64');
   let villager_img = game.getIcon('icons/villager64');
   let unit_img = game.getIcon('icons/unit64');
@@ -292,7 +326,7 @@ function drawSpaceDetailsContent(
   ctx.font = `bold ${config.inset_row}px serif`;
   const xs = space.center.x - 0.5 * config.inset_w;
   let y = space.center.y - 0.5 * config.inset_h;
-  const draw_count_row = (img: CanvasImageSource, count: string) => {
+  const draw_count_row = (img: CanvasImageSource, count: string): void => {
     ctx.drawImage(img, xs, y, config.inset_row, config.inset_row);
     ctx.fillText(`: ${count}`, xs + config.inset_row + 2, y, config.inset_w - config.inset_row - 2);
     y += config.inset_row + 2;

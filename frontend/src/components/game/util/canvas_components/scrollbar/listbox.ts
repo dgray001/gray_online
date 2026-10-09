@@ -49,7 +49,7 @@ export class DwgListbox<
     this.setList(config.list);
   }
 
-  setList(list: T[]) {
+  setList(list: T[]): void {
     this.config.list = list;
     this.list_coordinates = [];
     for (const _ of this.config.list) {
@@ -64,18 +64,18 @@ export class DwgListbox<
     return this.config.list;
   }
 
-  isHovering() {
+  isHovering(): boolean {
     if (this.disabled) {
       return false;
     }
     return this.config.scrollbar.isHovering();
   }
 
-  setHovering(hovering: boolean) {
+  setHovering(hovering: boolean): void {
     this.config.scrollbar.setHovering(hovering);
   }
 
-  isClicking() {
+  isClicking(): boolean {
     if (this.disabled) {
       return false;
     }
@@ -92,7 +92,7 @@ export class DwgListbox<
     }
   }
 
-  setAllSizes(size: number, p: Point2D, w: number, h: number) {
+  setAllSizes(size: number, p: Point2D, w: number, h: number): void {
     const title_size = this.config.title?.size ?? 0;
     this.config.scrollbar.setAllSizes(size, { x: p.x, y: p.y + title_size }, w, h - title_size);
   }
@@ -105,12 +105,12 @@ export class DwgListbox<
     return this.config.gap ?? 0;
   }
 
-  disable() {
+  disable(): void {
     this.disabled = true;
     this.config.scrollbar.disable();
   }
 
-  enable() {
+  enable(): void {
     this.disabled = false;
     this.config.scrollbar.enable();
   }

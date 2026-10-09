@@ -109,19 +109,20 @@ export class DwgRisqSettings extends DwgElement {
     this.listener_cleanup?.();
   }
 
-  private showTab(tab: RisqSettingsTab) {
+  private showTab(tab: RisqSettingsTab): void {
     this.tab_button_animations.classList.toggle('active', tab === 'animations');
     this.tab_button_hotkeys.classList.toggle('active', tab === 'hotkeys');
     this.tab_content_animations.classList.toggle('active', tab === 'animations');
     this.tab_content_hotkeys.classList.toggle('active', tab === 'hotkeys');
   }
 
-  private addBuildingEntries(buildings: BuildingTreeEntry[]) {
+  private addBuildingEntries(buildings: BuildingTreeEntry[]): void {
     for (const building of buildings) {
       if (building.produces.length === 0) {
         continue;
       }
-      const ids = (kind: RisqProducibleKind) => building.produces.filter((p) => p.kind === kind).map((p) => p.id);
+      const ids = (kind: RisqProducibleKind): number[] =>
+        building.produces.filter((p) => p.kind === kind).map((p) => p.id);
       this.selections.push({
         kind: 'building',
         unit_ids: ids(RisqProducibleKind.UNIT),
@@ -168,7 +169,7 @@ export class DwgRisqSettings extends DwgElement {
     return slot.group === 'actions' ? this.bindings.actions[slot.key] : (this.bindings[slot.group][slot.key] ?? {});
   }
 
-  private assign(slot: BindingSlot, combo: HotkeyCombo) {
+  private assign(slot: BindingSlot, combo: HotkeyCombo): void {
     if (slot.group === 'actions') {
       this.bindings.actions[slot.key] = combo;
     } else {
@@ -180,7 +181,7 @@ export class DwgRisqSettings extends DwgElement {
     return slot.group === 'actions' ? { kind: 'action', action: slot.key } : { kind: slot.group, id: slot.key };
   }
 
-  private setSlotCombo(slot: BindingSlot, combo: HotkeyCombo) {
+  private setSlotCombo(slot: BindingSlot, combo: HotkeyCombo): void {
     if (!isUnbound(combo)) {
       const target = comboToString(combo);
       const new_entry = this.slotEntry(slot);
@@ -195,7 +196,7 @@ export class DwgRisqSettings extends DwgElement {
     updateSettings({ risq_hotkeys: this.bindings });
   }
 
-  private renderAll() {
+  private renderAll(): void {
     const sections = new Map<string, HotkeyEntry[]>();
     for (const entry of this.entries) {
       sections.set(entry.section, [...(sections.get(entry.section) ?? []), entry]);
@@ -253,10 +254,10 @@ export class DwgRisqSettings extends DwgElement {
     return isUnbound(combo) ? 'Unbound' : comboToDisplayString(combo);
   }
 
-  private beginListening(button: HTMLButtonElement, slot: BindingSlot) {
+  private beginListening(button: HTMLButtonElement, slot: BindingSlot): void {
     this.listener_cleanup?.();
     button.innerText = 'Press a key...';
-    const on_keydown = (e: KeyboardEvent) => {
+    const on_keydown = (e: KeyboardEvent): void => {
       e.preventDefault();
       if (e.key === 'Escape') {
         this.stopListening(button, slot);
@@ -270,7 +271,7 @@ export class DwgRisqSettings extends DwgElement {
       this.listener_cleanup?.();
       this.listener_cleanup = undefined;
     };
-    const on_mousedown = (e: MouseEvent) => {
+    const on_mousedown = (e: MouseEvent): void => {
       if (e.button < 3) {
         return; // 0/1/2 are reserved for game interaction
       }
@@ -288,7 +289,7 @@ export class DwgRisqSettings extends DwgElement {
     };
   }
 
-  private stopListening(button: HTMLButtonElement, slot: BindingSlot) {
+  private stopListening(button: HTMLButtonElement, slot: BindingSlot): void {
     this.listener_cleanup?.();
     this.listener_cleanup = undefined;
     button.innerText = this.valueText(slot);

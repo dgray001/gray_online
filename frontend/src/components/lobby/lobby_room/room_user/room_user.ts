@@ -50,7 +50,7 @@ export class DwgRoomUser extends DwgElement {
     }
   }
 
-  setConfig(user: LobbyUser, is_host: boolean, is_player: boolean, is_self: boolean, room_launched: boolean) {
+  setConfig(user: LobbyUser, is_host: boolean, is_player: boolean, is_self: boolean, room_launched: boolean): void {
     this.user = user;
     this.is_host = is_host;
     this.is_player = is_player;
@@ -58,7 +58,7 @@ export class DwgRoomUser extends DwgElement {
     this.room_launched = room_launched;
   }
 
-  updatePing(ping: number) {
+  updatePing(ping: number): void {
     this.user.ping = ping;
     this.ping_text.innerText = `${Math.round(ping)} ms`;
     if (ping < 100) {

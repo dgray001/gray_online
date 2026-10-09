@@ -73,7 +73,7 @@ export function drawBuildOrderCursor(
   build_icon: HTMLImageElement,
   building_icon: HTMLImageElement,
   valid: boolean
-) {
+): void {
   ctx.globalAlpha = valid ? BUILD_PREVIEW_ALPHA_VALID : BUILD_PREVIEW_ALPHA_DEFAULT;
   ctx.drawImage(building_icon, 0, 0, BUILD_CURSOR_SIZE, BUILD_CURSOR_SIZE);
   ctx.globalAlpha = 1;

@@ -5,7 +5,7 @@ import type { Point2D } from '../../../../../util/objects2d';
 import { equalsPoint2D } from '../../../../../util/objects2d';
 import type { RectHoverData, RisqSpace, RisqZone } from '../../../model/types';
 import { RisqVisibilityLevel } from '../../../model/types';
-import { buildingImage } from '../../../rendering/assets/buildings';
+import { buildingImage, rubbleImage } from '../../../rendering/assets/buildings';
 import { resourceIcon } from '../../../rendering/assets/resources';
 import { borderStrokeStyle, drawHexImage } from '../../../rendering/space';
 import { RisqViewMode, spaceOwnerColor, terrainImage } from '../../../rendering/terrain';
@@ -28,7 +28,7 @@ export class RisqSpaceHexagon {
     return this.hovered_zone;
   }
 
-  clearHoveredZone() {
+  clearHoveredZone(): void {
     if (!!this.hovered_zone) {
       unhoverRisqZone(this.hovered_zone);
       this.hovered_zone = undefined;
@@ -101,7 +101,7 @@ export class RisqSpaceHexagon {
     return hexagon_height + separator_distance;
   }
 
-  private drawEyeBadge(pc: PanelDrawContext, space: RisqSpace, yi: number, hexagon_height: number) {
+  private drawEyeBadge(pc: PanelDrawContext, space: RisqSpace, yi: number, hexagon_height: number): void {
     if (space.visibility !== RisqVisibilityLevel.SPY && space.visibility !== RisqVisibilityLevel.POOR) {
       this.eye_badge_hover.hovered = false;
       return;
@@ -123,14 +123,21 @@ export class RisqSpaceHexagon {
     this.eye_badge_hover.pe = { x: badge_p.x + badge_size, y: badge_p.y + badge_size };
   }
 
-  private drawZoneIcon(ctx: CanvasRenderingContext2D, risq: DwgRisq, zone: RisqZone, p: Point2D, icon_r: number) {
+  private drawZoneIcon(ctx: CanvasRenderingContext2D, risq: DwgRisq, zone: RisqZone, p: Point2D, icon_r: number): void {
     let icon: HTMLImageElement | HTMLCanvasElement | undefined;
     if (zone.resource) {
       icon = resourceIcon(risq, zone.resource);
     } else if (zone.building) {
       const building_color = risq.getGame()?.players[zone.building.player_id]?.color;
-      const building_image = buildingImage(zone.building.building_id, zone.building.under_construction);
+      const building_image = buildingImage(
+        zone.building.building_id,
+        zone.building.under_construction,
+        false,
+        zone.building.combat_stats
+      );
       icon = building_color ? risq.getPlayerColoredIcon(building_image, building_color) : risq.getIcon(building_image);
+    } else if (zone.destroyed_building) {
+      icon = risq.getIcon(rubbleImage(zone.destroyed_building, zone.destroyed_building_turns ?? 1));
     }
     if (icon) {
       ctx.drawImage(icon, p.x - icon_r, p.y - icon_r, 2 * icon_r, 2 * icon_r);
@@ -143,7 +150,7 @@ export class RisqSpaceHexagon {
     risq: DwgRisq,
     dt: number,
     space: RisqSpace
-  ) {
+  ): void {
     if (
       !shouldShowTooltip(this.eye_badge_tooltip, !!this.eye_badge_hover.hovered, !!this.eye_badge_hover.clicked, dt)
     ) {
@@ -160,7 +167,7 @@ export class RisqSpaceHexagon {
     );
   }
 
-  mousemove(m: Point2D, space: RisqSpace) {
+  mousemove(m: Point2D, space: RisqSpace): void {
     rectHovered(m, this.eye_badge_hover);
     const new_hovered_zone = resolveHoveredZones(m, space, this.r, this.c, true);
     if (!!this.hovered_zone && !equalsPoint2D(this.hovered_zone.coordinate, new_hovered_zone?.coordinate)) {

@@ -254,7 +254,7 @@ export class RisqOrderRow implements CanvasComponent {
     return this.resolved.cost.length * (CHIP_W + 3);
   }
 
-  private drawChips(ctx: CanvasRenderingContext2D, x: number, yc: number) {
+  private drawChips(ctx: CanvasRenderingContext2D, x: number, yc: number): void {
     for (const chip of this.resolved.cost) {
       ctx.drawImage(this.config.game.getIcon(chip.icon), x, yc - 7, 14, 14);
       drawText(ctx, chip.amount.toString(), {
@@ -269,7 +269,7 @@ export class RisqOrderRow implements CanvasComponent {
     }
   }
 
-  private drawProgress(ctx: CanvasRenderingContext2D, progress: number) {
+  private drawProgress(ctx: CanvasRenderingContext2D, progress: number): void {
     const y = this.yi() + ROW_H - 2;
     const clamped = Math.max(0, Math.min(1, progress));
     ctx.fillStyle = 'rgba(59, 36, 19, 0.12)';
@@ -279,7 +279,7 @@ export class RisqOrderRow implements CanvasComponent {
     drawRect(ctx, { x: this.xi(), y }, this.w() * clamped, 2);
   }
 
-  private drawCancelAllStrip(ctx: CanvasRenderingContext2D) {
+  private drawCancelAllStrip(ctx: CanvasRenderingContext2D): void {
     const y = this.yi() + ROW_H;
     ctx.fillStyle = this.cancel_all_clicking
       ? 'rgba(80, 40, 25, 0.85)'

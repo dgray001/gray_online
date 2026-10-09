@@ -1,12 +1,12 @@
 import type { Point2D } from './objects2d';
 
 /** Draws a hexagon on the canvas */
-export function drawHexagon(ctx: CanvasRenderingContext2D, c: Point2D, r: number, o = Math.PI / 6) {
+export function drawHexagon(ctx: CanvasRenderingContext2D, c: Point2D, r: number, o = Math.PI / 6): void {
   drawNgon(ctx, 6, c, r, o);
 }
 
 /** Draws a circle on the canvas */
-export function drawCircle(ctx: CanvasRenderingContext2D, c: Point2D, r: number) {
+export function drawCircle(ctx: CanvasRenderingContext2D, c: Point2D, r: number): void {
   ctx.beginPath();
   ctx.ellipse(c.x, c.y, r, r, 0, 0, 2 * Math.PI);
   ctx.closePath();
@@ -15,7 +15,7 @@ export function drawCircle(ctx: CanvasRenderingContext2D, c: Point2D, r: number)
 }
 
 /** Draws a ellipse on the canvas */
-export function drawEllipse(ctx: CanvasRenderingContext2D, c: Point2D, r: Point2D) {
+export function drawEllipse(ctx: CanvasRenderingContext2D, c: Point2D, r: Point2D): void {
   ctx.beginPath();
   ctx.ellipse(c.x, c.y, r.x, r.y, 0, 0, 2 * Math.PI);
   ctx.closePath();
@@ -24,7 +24,7 @@ export function drawEllipse(ctx: CanvasRenderingContext2D, c: Point2D, r: Point2
 }
 
 /** Draws a rectangle on the canvas */
-export function drawRect(ctx: CanvasRenderingContext2D, pi: Point2D, w: number, h: number, r = 0) {
+export function drawRect(ctx: CanvasRenderingContext2D, pi: Point2D, w: number, h: number, r = 0): void {
   ctx.beginPath();
   ctx.roundRect(pi.x, pi.y, w, h, r);
   ctx.closePath();
@@ -33,7 +33,7 @@ export function drawRect(ctx: CanvasRenderingContext2D, pi: Point2D, w: number, 
 }
 
 /** Draws a regular n-gon on the canvas */
-export function drawNgon(ctx: CanvasRenderingContext2D, n: number, c: Point2D, r: number, o = 0) {
+export function drawNgon(ctx: CanvasRenderingContext2D, n: number, c: Point2D, r: number, o = 0): void {
   if (n < 3) {
     console.error('n must be 3+');
   }
@@ -48,14 +48,14 @@ export function drawNgon(ctx: CanvasRenderingContext2D, n: number, c: Point2D, r
 }
 
 /** Draws a line */
-export function drawLine(ctx: CanvasRenderingContext2D, pi: Point2D, pf: Point2D) {
+export function drawLine(ctx: CanvasRenderingContext2D, pi: Point2D, pf: Point2D): void {
   ctx.beginPath();
   ctx.lineTo(pi.x, pi.y);
   ctx.lineTo(pf.x, pf.y);
   ctx.stroke();
 }
 
-export function drawArrow(ctx: CanvasRenderingContext2D, pi: Point2D, pf: Point2D, head_size: number) {
+export function drawArrow(ctx: CanvasRenderingContext2D, pi: Point2D, pf: Point2D, head_size: number): void {
   const angle = Math.atan2(pf.y - pi.y, pf.x - pi.x);
   const base = { x: pf.x - head_size * Math.cos(angle), y: pf.y - head_size * Math.sin(angle) };
   drawLine(ctx, pi, base);
@@ -82,7 +82,7 @@ export declare interface DrawTextConfig {
 }
 
 /** Draws text from config */
-export function drawText(ctx: CanvasRenderingContext2D, s: string, config: DrawTextConfig) {
+export function drawText(ctx: CanvasRenderingContext2D, s: string, config: DrawTextConfig): void {
   ctx.beginPath();
   if (!!config.font) {
     ctx.font = getFittedFont(ctx, s, config.font, config.w, config.min_font_size ?? 8);

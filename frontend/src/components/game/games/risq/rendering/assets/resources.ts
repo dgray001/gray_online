@@ -73,7 +73,7 @@ export function resourceImage(resource: RisqResource, configs: ReadonlyMap<numbe
         break;
       default:
         err('Trying to get resource image from unknown resource id', resource.resource_id);
-        return ``;
+        return 'default';
     }
   }
   return `risq/resources/${filename}`;

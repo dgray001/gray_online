@@ -46,7 +46,7 @@ export class DwgGameInfoDialog extends DwgDialogBox<GameInfoData> {
     return this.data;
   }
 
-  setData(data: GameInfoData, parsed?: boolean) {
+  setData(data: GameInfoData, parsed?: boolean): void {
     this.data = data;
     if (!parsed && !this.fully_parsed) {
       return;

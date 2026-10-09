@@ -57,7 +57,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
   }
 
   /** Toggles wrapper's tooltip on click, auto-hiding it after 2s */
-  private addTooltipToggle(wrapper: HTMLDivElement) {
+  private addTooltipToggle(wrapper: HTMLDivElement): void {
     let hide_timeout: NodeJS.Timeout | undefined = undefined;
     wrapper.addEventListener('click', () => {
       if (hide_timeout) {
@@ -72,12 +72,18 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     });
   }
 
-  initialize(player: FiddlesticksPlayer) {
+  initialize(player: FiddlesticksPlayer): void {
     this.player = player;
     this.initialized = true;
   }
 
-  async gameStarted(betting: boolean, current_turn: boolean, dealer: boolean, turn_start_time = 0, turn_duration = 0) {
+  async gameStarted(
+    betting: boolean,
+    current_turn: boolean,
+    dealer: boolean,
+    turn_start_time = 0,
+    turn_duration = 0
+  ): Promise<void> {
     await until(() => this.fully_parsed);
     if (betting) {
       this.bet_container.innerText = this.player.has_bet ? this.player.bet.toString() : '-';
@@ -95,7 +101,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.setDealer(dealer);
   }
 
-  setClientPlayer() {
+  setClientPlayer(): void {
     this.classList.add('client-player');
     this.client_player = true;
     // can be called before parsed
@@ -112,7 +118,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     });
   }
 
-  sendBetEvent() {
+  sendBetEvent(): void {
     const bet_value = Number(this.bet_input.value);
     if (!Number.isInteger(bet_value) || bet_value < 0 || bet_value > this.player.cards.length) {
       messageDialog.call(this, {
@@ -131,19 +137,19 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.dispatchEvent(new CustomEvent('game_update', { detail: game_update, bubbles: true }));
   }
 
-  async newRound(dealer: boolean) {
+  async newRound(dealer: boolean): Promise<void> {
     await this.endRound(); // in case it wasn't called
     this.setDealer(dealer);
   }
 
-  setDealer(dealer: boolean) {
+  setDealer(dealer: boolean): void {
     this.dealer_wrapper.classList.toggle('show', dealer);
     if (dealer) {
       this.status_container.innerText = 'Dealer';
     }
   }
 
-  async endRound() {
+  async endRound(): Promise<void> {
     await until(() => this.fully_parsed);
     this.player.bet = -1;
     this.player.tricks = 0;
@@ -153,7 +159,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.status_container.innerText = '';
   }
 
-  betting(turn_start_time: number, turn_duration: number) {
+  betting(turn_start_time: number, turn_duration: number): void {
     this.classList.add('turn');
     this.startTimer(turn_start_time, turn_duration);
     if (!this.client_player) {
@@ -167,7 +173,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.bet_input_wrapper.classList.add('show');
   }
 
-  async setBetAnimation(amount: number) {
+  async setBetAnimation(amount: number): Promise<void> {
     const animation_time = 500;
     this.bet_animation.innerText = amount.toString();
     this.bet_animation.style.transitionDuration = `${animation_time}ms`;
@@ -178,7 +184,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.setBet(amount);
   }
 
-  setBet(amount: number) {
+  setBet(amount: number): void {
     this.player.bet = amount;
     this.bet_container.innerText = amount.toString();
     this.classList.remove('turn');
@@ -187,14 +193,14 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     }
   }
 
-  endBetting() {
+  endBetting(): void {
     this.tricks_container.innerText = '0';
   }
 
   private timer_request?: number;
-  private startTimer(turn_start_time: number, turn_duration: number) {
+  private startTimer(turn_start_time: number, turn_duration: number): void {
     this.stopTimer();
-    const tick = () => {
+    const tick = (): void => {
       const elapsed = Date.now() - turn_start_time;
       const turn_percent_left = Math.max(0, 100 - (elapsed / turn_duration) * 100);
       this.style.setProperty('--turn-percent-left', turn_percent_left.toString());
@@ -205,14 +211,14 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.timer_request = requestAnimationFrame(tick);
   }
 
-  private stopTimer() {
+  private stopTimer(): void {
     if (this.timer_request) {
       cancelAnimationFrame(this.timer_request);
     }
     this.style.setProperty('--turn-percent-left', '0');
   }
 
-  playing(turn_start_time: number, turn_duration: number) {
+  playing(turn_start_time: number, turn_duration: number): void {
     this.classList.add('turn');
     this.startTimer(turn_start_time, turn_duration);
     if (!this.client_player) {
@@ -221,21 +227,21 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     Sounds.play('turn_notification');
   }
 
-  playCard() {
+  playCard(): void {
     this.classList.remove('turn');
   }
 
-  endTrick(tricks: number) {
+  endTrick(tricks: number): void {
     this.player.tricks = tricks;
     this.tricks_container.innerText = tricks.toString();
   }
 
-  setScore(score: number) {
+  setScore(score: number): void {
     this.player.score = score;
     this.score_container.innerText = score.toString();
   }
 
-  wonGame() {
+  wonGame(): void {
     this.winner_wrapper.classList.add('show');
   }
 }

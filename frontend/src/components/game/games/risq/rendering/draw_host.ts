@@ -7,6 +7,7 @@ import type { RisqSession } from '../application/session';
 import type { GameRisq, RisqPlayer } from '../model/types';
 import type { RisqImageCache } from './assets/image_cache';
 import type { RisqViewport } from './board/viewport';
+import type { RisqCorpseLayout } from './zones/corpses';
 
 export interface RisqDrawHost {
   readonly session: Pick<RisqSession, 'getRegionForSpace' | 'getRegionLookup' | 'getResourceConfigs'>;
@@ -17,7 +18,11 @@ export interface RisqDrawHost {
   >;
   readonly armed: Pick<RisqArmedState, 'getArmedOrder' | 'getArmedBuilding'>;
   readonly hover: Pick<RisqHover, 'hoveredRegion' | 'space'>;
-  readonly viewport: Pick<RisqViewport, 'regionLabelPosition'>;
+  readonly viewport: Pick<
+    RisqViewport,
+    'regionLabelPosition' | 'unitRadius' | 'corpseRadius' | 'centerMaxSlots' | 'edgeMaxSlots'
+  >;
+  readonly corpse_layout: RisqCorpseLayout;
   getIcon(name: string): HTMLImageElement;
   getPlayerColoredIcon(name: string, color: ColorRGB): HTMLImageElement | HTMLCanvasElement;
   getImageCache(): RisqImageCache;

@@ -6,10 +6,12 @@ import type { GameRisq, RisqPlayer } from '../game/games/risq/model/types';
 import { RisqOrderType } from '../game/games/risq/model/types';
 import { PLAYER_ICON_SIZE, RisqImageCache } from '../game/games/risq/rendering/assets/image_cache';
 import type { RisqViewport } from '../game/games/risq/rendering/board/viewport';
+import { RisqCorpseLayout } from '../game/games/risq/rendering/zones/corpses';
 import type { RisqDrawHost } from '../game/games/risq/rendering/draw_host';
 
 export class EditorDrawHost implements RisqDrawHost {
   readonly hover: RisqHover;
+  readonly corpse_layout = new RisqCorpseLayout();
   readonly planning = { getLocalFoundation: () => undefined, hasPlannedFoundation: () => false };
   readonly selection = {
     isUnitSelected: () => false,

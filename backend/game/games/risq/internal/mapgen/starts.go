@@ -78,6 +78,7 @@ type playerStartsParams struct {
 	AreaSize             ScriptExpr                `json:"area_size"`
 	StartingDistance     ScriptExpr                `json:"starting_distance"`
 	RowInset             *ScriptExpr               `json:"row_inset,omitempty"`
+	Inset                ScriptExpr                `json:"inset,omitempty"`
 	ShortEdgeStarts      ScriptExpr                `json:"short_edge_starts,omitempty"`
 	ShortEdgeBias        ScriptExpr                `json:"short_edge_bias,omitempty"`
 	Units                []playerStartUnitJSON     `json:"units,omitempty"`
@@ -699,6 +700,12 @@ func stepPlayerStarts(ctx *mapScriptContext, raw json.RawMessage) error {
 	switch p.Pattern {
 	case "ring":
 		starts, err = resolveRingPlayerStarts(ctx, starting_distance)
+	case "triangle":
+		inset, insetErr := p.Inset.resolveInt(ctx.vars)
+		if insetErr != nil {
+			return insetErr
+		}
+		starts, err = resolveTrianglePlayerStarts(ctx, inset)
 	case "rows":
 		inset := 1
 		if p.RowInset != nil {
@@ -728,7 +735,7 @@ func stepPlayerStarts(ctx *mapScriptContext, raw json.RawMessage) error {
 	if err != nil {
 		return err
 	}
-	if ctx.shape != "rectangle" || p.Pattern != "rows" {
+	if p.Pattern == "ring" || (p.Pattern == "rows" && ctx.shape != "rectangle") {
 		if starts, err = assignStartSpaces(ctx, starts, area_size); err != nil {
 			return err
 		}

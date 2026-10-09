@@ -83,7 +83,7 @@ export class DwgEgyptianRatCrap extends DwgElement implements GameComponent {
     }
   }
 
-  private setCentralPileImage() {
+  private setCentralPileImage(): void {
     const top = this.game.central_pile[this.game.central_pile.length - 1];
     this.central_pile.classList.toggle('slappable', isValidSlap(this.game.central_pile));
     if (!top) {
@@ -97,7 +97,7 @@ export class DwgEgyptianRatCrap extends DwgElement implements GameComponent {
     this.central_pile.replaceChildren(img);
   }
 
-  private sendSlapEvent() {
+  private sendSlapEvent(): void {
     if (this.player_id < 0 || this.game.players[this.player_id]?.slapped) {
       return;
     }
@@ -132,7 +132,7 @@ export class DwgEgyptianRatCrap extends DwgElement implements GameComponent {
     }
   }
 
-  private applyDeal(data: Deal) {
+  private applyDeal(data: Deal): void {
     this.game.central_pile = [];
     this.game.challenge_active = false;
     this.game.chances_left = 0;
@@ -147,7 +147,7 @@ export class DwgEgyptianRatCrap extends DwgElement implements GameComponent {
     this.status_container.innerText = `${this.game.players[data.turn].player.nickname} Playing`;
   }
 
-  private applyFlipCard(data: FlipCard) {
+  private applyFlipCard(data: FlipCard): void {
     this.game.players[data.player_id].pile_count--;
     this.player_els[data.player_id].setPileCount(this.game.players[data.player_id].pile_count);
     this.game.central_pile.push(data.card);
@@ -180,7 +180,7 @@ export class DwgEgyptianRatCrap extends DwgElement implements GameComponent {
     }
   }
 
-  private applyPileAwarded(data: PileAwarded) {
+  private applyPileAwarded(data: PileAwarded): void {
     this.game.players[data.pile_awarded_to].pile_count += data.pile_size;
     this.player_els[data.pile_awarded_to].setPileCount(this.game.players[data.pile_awarded_to].pile_count);
     this.game.central_pile = [];
@@ -193,7 +193,7 @@ export class DwgEgyptianRatCrap extends DwgElement implements GameComponent {
     }
   }
 
-  private applyTurnUpdate(data: TurnUpdate) {
+  private applyTurnUpdate(data: TurnUpdate): void {
     this.game.turn = data.turn;
     this.game.pile_pending = false;
     for (const [player_id, player_el] of this.player_els.entries()) {
@@ -202,7 +202,7 @@ export class DwgEgyptianRatCrap extends DwgElement implements GameComponent {
     this.status_container.innerText = `${this.game.players[data.turn].player.nickname} Playing`;
   }
 
-  private applySlapResult(data: SlapResult) {
+  private applySlapResult(data: SlapResult): void {
     if (data.valid && data.pile_size !== undefined) {
       this.game.players[data.player_id].pile_count += data.pile_size;
       this.player_els[data.player_id].setPileCount(this.game.players[data.player_id].pile_count);

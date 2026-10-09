@@ -11,7 +11,7 @@ function isLobbyMessage(kind: string): boolean {
 }
 
 /** Handles messages for the frontend lobby */
-export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
+export function handleMessage(lobby: DwgLobby, message: ServerMessage): void {
   if (!lobby.socketActive()) {
     return;
   }
@@ -115,7 +115,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage) {
       }
       break;
     case 'room-created':
-      const set_room = (room: LobbyRoom, host_id: number) => {
+      const set_room = (room: LobbyRoom, host_id: number): void => {
         lobby.getLobbyRooms().addRoom(room);
         if (lobby.getConnectionMetadata().client_id === host_id) {
           lobby.enterRoom(room, true);

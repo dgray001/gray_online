@@ -1,6 +1,8 @@
 import type { ColorRGB } from '../../../../../../../scripts/color_rgb';
 import { drawLine, drawText } from '../../../../../util/canvas_util';
 import type { DwgRisq } from '../../../risq';
+import type { UnitByTypeData } from '../../../model/types';
+import type { Point2D } from '../../../../../util/objects2d';
 import type { LeftPanelLayout, PanelFrame } from '../layout';
 import type { RisqStatsView } from './stats_view';
 
@@ -12,6 +14,7 @@ export declare interface PanelDrawContext {
   layout: LeftPanelLayout;
   visibility: number;
   stats: RisqStatsView;
+  groupTile?: (units: UnitByTypeData[], p: Point2D, s: number) => string;
 }
 
 /** Draws the centered title; returns its height */
@@ -54,7 +57,7 @@ export function drawHeaderImage(
   return max_img_height;
 }
 
-export function drawSeparator(pc: PanelDrawContext, yi: number) {
+export function drawSeparator(pc: PanelDrawContext, yi: number): void {
   pc.ctx.strokeStyle = 'rgba(60, 60, 60, 0.7)';
   pc.ctx.lineWidth = 2;
   drawLine(pc.ctx, { x: pc.frame.xi() + 0.1 * pc.frame.w(), y: yi }, { x: pc.frame.xf() - 0.1 * pc.frame.w(), y: yi });

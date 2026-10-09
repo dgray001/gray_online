@@ -21,12 +21,16 @@ export function unitImage(unit_id: number, plain = false): string {
       break;
     default:
       err('Trying to get unit image from unknown unit id', unit_id);
-      return '';
+      return 'default';
   }
   if (plain) {
     filename += '_plain';
   }
   return `risq/units/${filename}`;
+}
+
+export function unitCorpseImage(unit_id: number, turns: number): string {
+  return `${unitImage(unit_id)}_${turns === 1 ? 'corpse' : 'decayed'}`;
 }
 
 const COLLECTIVE_NAME_SUFFIXES = ['Infantry', 'Cavalry'];
@@ -46,7 +50,7 @@ export function drawComboUnitIcon(
   ctx: CanvasRenderingContext2D,
   villager_icon: HTMLImageElement,
   unit_icon: HTMLImageElement
-) {
+): void {
   const icon_size = 0.72 * COMBO_UNIT_ICON_SIZE;
   ctx.drawImage(villager_icon, 0, 0, icon_size, icon_size);
   ctx.drawImage(unit_icon, COMBO_UNIT_ICON_SIZE - icon_size, COMBO_UNIT_ICON_SIZE - icon_size, icon_size, icon_size);

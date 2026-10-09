@@ -1,10 +1,27 @@
 package risq_mapgen_tests
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness/fakeboard"
 )
+
+func TestTriangleStartingCornerAndDirectionVary(t *testing.T) {
+	useStartLayouts(t)
+	patterns := map[string]bool{}
+	for seed := int64(1); seed <= 64; seed++ {
+		board, err := fakeboard.Generate("script:triangle", 4, seed)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, indices := triangleStartIndices(t, board, 4, 1)
+		patterns[fmt.Sprint(indices)] = true
+	}
+	if len(patterns) != 6 {
+		t.Errorf("triangle only uses %d of 6 corner/direction patterns: %v", len(patterns), patterns)
+	}
+}
 
 func dumpOf(t *testing.T, name string, players int, seed int64) string {
 	t.Helper()

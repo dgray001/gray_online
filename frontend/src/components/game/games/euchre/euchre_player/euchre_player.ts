@@ -62,14 +62,14 @@ export class DwgEuchrePlayer extends DwgElement {
     this.tricks_container.innerText = '-';
   }
 
-  initialize(player: EuchrePlayer, team: EuchreTeam) {
+  initialize(player: EuchrePlayer, team: EuchreTeam): void {
     this.player = player;
     this.team = team;
     this.classList.add(`team${team.team_id}`);
     this.initialized = true;
   }
 
-  async gameStarted(game: GameEuchre, current_turn: boolean, dealer: boolean) {
+  async gameStarted(game: GameEuchre, current_turn: boolean, dealer: boolean): Promise<void> {
     await until(() => this.fully_parsed);
     this.setDealer(dealer);
     if (game.bidding || game.bidding_choose_trump || game.dealer_substituting_card) {
@@ -89,7 +89,7 @@ export class DwgEuchrePlayer extends DwgElement {
     }
   }
 
-  setClientPlayer() {
+  setClientPlayer(): void {
     this.classList.add('client-player');
     this.client_player = true;
     // can be called before parsed
@@ -187,7 +187,7 @@ export class DwgEuchrePlayer extends DwgElement {
     });
   }
 
-  private disableButtons() {
+  private disableButtons(): void {
     this.bid_button.disabled = true;
     this.spades_button.disabled = true;
     this.diamonds_button.disabled = true;
@@ -196,7 +196,7 @@ export class DwgEuchrePlayer extends DwgElement {
     this.pass_button.disabled = true;
   }
 
-  private toggleIcon(icon: string, src: string, tooltip: string, toggle: boolean) {
+  private toggleIcon(icon: string, src: string, tooltip: string, toggle: boolean): void {
     if (toggle) {
       const icon_wrapper = document.createElement('div');
       icon_wrapper.classList.add('icon-wrapper');
@@ -219,12 +219,12 @@ export class DwgEuchrePlayer extends DwgElement {
     }
   }
 
-  newRound(dealer: boolean) {
+  newRound(dealer: boolean): void {
     this.endRound(); // in case it wasn't called
     this.setDealer(dealer);
   }
 
-  endRound() {
+  endRound(): void {
     this.tricks_container.innerText = '-';
     this.status_container.innerText = '';
     this.toggleIcon('dealer', '', '', false);
@@ -234,12 +234,12 @@ export class DwgEuchrePlayer extends DwgElement {
     this.classList.remove('going-alone-ally');
   }
 
-  setDealer(dealer: boolean) {
+  setDealer(dealer: boolean): void {
     this.dealer = dealer;
     this.toggleIcon('dealer', 'cards', 'Dealt Round', dealer);
   }
 
-  bidding(bidding_choosing_trump: boolean, is_dealer: boolean, card_face_up_suit?: number) {
+  bidding(bidding_choosing_trump: boolean, is_dealer: boolean, card_face_up_suit?: number): void {
     this.classList.add('turn');
     if (!this.client_player) {
       return;
@@ -285,7 +285,7 @@ export class DwgEuchrePlayer extends DwgElement {
     }
   }
 
-  async setPassAnimation() {
+  async setPassAnimation(): Promise<void> {
     const animation_time = 500;
     this.bid_animation.innerText = 'Pass';
     this.bid_animation.style.transitionDuration = `${animation_time}ms`;
@@ -296,14 +296,14 @@ export class DwgEuchrePlayer extends DwgElement {
     this.setPass();
   }
 
-  setPass() {
+  setPass(): void {
     this.classList.remove('turn');
     if (this.client_player) {
       this.bid_input_wrapper.classList.remove('show');
     }
   }
 
-  async setBidAnimation(going_alone: boolean, trump_suit_name?: string) {
+  async setBidAnimation(going_alone: boolean, trump_suit_name?: string): Promise<void> {
     const animation_time = 500;
     if (going_alone) {
       this.bid_animation.innerText = 'Going alone!';
@@ -319,7 +319,7 @@ export class DwgEuchrePlayer extends DwgElement {
     await untilTimer(animation_time);
   }
 
-  setBid(makers: boolean, going_alone?: boolean, going_alone_ally?: boolean) {
+  setBid(makers: boolean, going_alone?: boolean, going_alone_ally?: boolean): void {
     if (makers) {
       this.toggleIcon('maker', 'sword', 'Maker Team', true);
     } else {
@@ -339,37 +339,37 @@ export class DwgEuchrePlayer extends DwgElement {
     }
   }
 
-  substitutingCard() {
+  substitutingCard(): void {
     this.classList.add('turn');
   }
 
-  substitutedCard() {
+  substitutedCard(): void {
     this.classList.remove('turn');
   }
 
-  endBidding() {
+  endBidding(): void {
     this.tricks_container.innerText = '0';
   }
 
-  playing() {
+  playing(): void {
     this.classList.add('turn');
   }
 
-  playCard() {
+  playCard(): void {
     this.classList.remove('turn');
   }
 
-  endTrick(tricks: number) {
+  endTrick(tricks: number): void {
     this.team.tricks = tricks;
     this.tricks_container.innerText = tricks.toString();
   }
 
-  setScore(score: number) {
+  setScore(score: number): void {
     this.team.score = score;
     this.score_container.innerText = score.toString();
   }
 
-  wonGame() {
+  wonGame(): void {
     this.toggleIcon('winner', 'crown', 'Won Game', true);
   }
 }

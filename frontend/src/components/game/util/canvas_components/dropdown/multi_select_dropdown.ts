@@ -48,7 +48,11 @@ const ICON = 14;
 const SCROLLBAR_W = 10;
 
 function popoverScrollbarConfig(value: number, max_scroll: number): RectScrollbarConfig {
-  const fill = (alpha: number) => ({ fill_style: `rgba(59, 36, 19, ${alpha})`, stroke_width: 0, fixed_position: true });
+  const fill = (alpha: number): { fill_style: string; stroke_width: number; fixed_position: boolean } => ({
+    fill_style: `rgba(59, 36, 19, ${alpha})`,
+    stroke_width: 0,
+    fixed_position: true,
+  });
   return {
     scrollbar_config: {
       value: { value, value_min: 0, value_max: max_scroll },

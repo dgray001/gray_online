@@ -26,6 +26,7 @@ interface MyCustomEventMap {
   join_lobby_room: CustomEvent<boolean>;
   play_card: CustomEvent<number>;
   canvas_resize: CustomEvent<CanvasBoardSize>;
+  canvas_zoom: CustomEvent<number>;
 }
 
 declare global {

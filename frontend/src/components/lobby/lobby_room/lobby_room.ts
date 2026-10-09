@@ -213,7 +213,7 @@ export class DwgLobbyRoom extends DwgElement {
     }, 1500);
   }
 
-  setLaunching(launching: boolean) {
+  setLaunching(launching: boolean): void {
     this.settings_launching = launching;
     if (launching) {
       this.settings_launch_button.innerText = 'Cancel';
@@ -228,11 +228,11 @@ export class DwgLobbyRoom extends DwgElement {
     }
   }
 
-  refreshRoom(room: LobbyRoom, is_host: boolean) {
+  refreshRoom(room: LobbyRoom, is_host: boolean): void {
     this.setRoom(room, is_host, this.client_id, true);
   }
 
-  setRoom(room: LobbyRoom, is_host: boolean, client_id: number, refresh_room = false) {
+  setRoom(room: LobbyRoom, is_host: boolean, client_id: number, refresh_room = false): void {
     const game_launched = !!room.game_id;
     this.is_host = is_host;
     this.client_id = client_id;
@@ -282,7 +282,7 @@ export class DwgLobbyRoom extends DwgElement {
     this.viewers_container.replaceChildren(...this.viewer_els.values());
   }
 
-  updateSettings(new_settings: GameSettings) {
+  updateSettings(new_settings: GameSettings): void {
     if (!this.room) {
       return;
     }
@@ -290,7 +290,7 @@ export class DwgLobbyRoom extends DwgElement {
     this.updateSettingsDependencies();
   }
 
-  updateSettingsDependencies() {
+  updateSettingsDependencies(): void {
     if (!this.room) {
       return;
     }
@@ -325,7 +325,7 @@ export class DwgLobbyRoom extends DwgElement {
     return el;
   }
 
-  clearRoom() {
+  clearRoom(): void {
     this.room = undefined;
     this.lobby_game_settings.clearSettings();
     this.chatbox.clear();
@@ -340,7 +340,7 @@ export class DwgLobbyRoom extends DwgElement {
     return this.room;
   }
 
-  renameRoom(new_name: string, renamer_id: number) {
+  renameRoom(new_name: string, renamer_id: number): void {
     if (!this.room) {
       return;
     }
@@ -364,7 +364,7 @@ export class DwgLobbyRoom extends DwgElement {
     }
   }
 
-  updateRoomDescription(new_description: string) {
+  updateRoomDescription(new_description: string): void {
     if (!!this.room) {
       this.room.room_description = new_description;
       this.settings_description.innerText = new_description;
@@ -402,7 +402,7 @@ export class DwgLobbyRoom extends DwgElement {
     return this.room.host;
   }
 
-  updatePing(client_id: number, ping: number) {
+  updatePing(client_id: number, ping: number): void {
     if (!this.room) {
       return;
     }
@@ -412,7 +412,7 @@ export class DwgLobbyRoom extends DwgElement {
     }
   }
 
-  private updatePings() {
+  private updatePings(): void {
     if (!this.room) {
       return;
     }
@@ -437,7 +437,7 @@ export class DwgLobbyRoom extends DwgElement {
     }
   }
 
-  joinRoom(joinee: LobbyUser, join_as_player: boolean) {
+  joinRoom(joinee: LobbyUser, join_as_player: boolean): void {
     if (!this.room) {
       return;
     }
@@ -465,7 +465,7 @@ export class DwgLobbyRoom extends DwgElement {
     });
   }
 
-  leaveRoom(client_id: number, left_text: string) {
+  leaveRoom(client_id: number, left_text: string): void {
     if (!this.room) {
       return;
     }
@@ -489,7 +489,7 @@ export class DwgLobbyRoom extends DwgElement {
     }
   }
 
-  promoteUser(client_id: number, is_host: boolean) {
+  promoteUser(client_id: number, is_host: boolean): void {
     if (!this.room) {
       return;
     }
@@ -505,7 +505,7 @@ export class DwgLobbyRoom extends DwgElement {
     });
   }
 
-  playerToViewer(client_id: number) {
+  playerToViewer(client_id: number): void {
     if (!this.room) {
       return;
     }
@@ -517,7 +517,7 @@ export class DwgLobbyRoom extends DwgElement {
     }
   }
 
-  viewerToPlayer(client_id: number) {
+  viewerToPlayer(client_id: number): void {
     if (!this.room) {
       return;
     }
@@ -529,7 +529,7 @@ export class DwgLobbyRoom extends DwgElement {
     }
   }
 
-  launchRoom(game_id: number) {
+  launchRoom(game_id: number): void {
     if (!this.room) {
       return;
     }
@@ -547,7 +547,7 @@ export class DwgLobbyRoom extends DwgElement {
     );
   }
 
-  launchFailed() {
+  launchFailed(): void {
     if (!this.room) {
       return;
     }
@@ -564,7 +564,7 @@ export class DwgLobbyRoom extends DwgElement {
     );
   }
 
-  gameOver(message: string) {
+  gameOver(message: string): void {
     if (!this.room) {
       return;
     }
@@ -589,7 +589,7 @@ export class DwgLobbyRoom extends DwgElement {
     );
   }
 
-  private openRename() {
+  private openRename(): void {
     if (!this.room) {
       return;
     }
@@ -601,7 +601,7 @@ export class DwgLobbyRoom extends DwgElement {
     this.cancel_rename.classList.add('show');
   }
 
-  private cancelRename() {
+  private cancelRename(): void {
     this.renaming_room = false;
     this.rename_room.classList.add('show');
     this.room_name.classList.add('show');
@@ -609,7 +609,7 @@ export class DwgLobbyRoom extends DwgElement {
     this.cancel_rename.classList.remove('show');
   }
 
-  private submitRename() {
+  private submitRename(): void {
     this.dispatchEvent(new CustomEvent('rename_room', { detail: this.rename_input.value }));
     this.cancelRename();
   }

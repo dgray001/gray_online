@@ -8,7 +8,6 @@ import {
   CENTER_ZONE_APOTHEM_MULTIPLIER,
   BUILDING_CIRCLE_RADIUS_MULTIPLIER,
   edgeSlotAtAngle,
-  UNIT_SLOT_CIRCLE_RADIUS_MULTIPLIER,
 } from './geometry';
 import type { Point2D } from '../../../../util/objects2d';
 import { unitImage, comboUnitIconKey, COMBO_UNIT_ICON_SIZE, drawComboUnitIcon } from '../assets/unit';
@@ -17,8 +16,8 @@ import { clampNumber, seededRandom } from '../../../../../../scripts/math';
 import { RisqUnitType, RisqOrderType, RisqVisibilityLevel } from '../../model/types';
 import { isForestResource, resourceImage, resourceIcon } from '../assets/resources';
 import { rotatePoint } from '../../../../util/objects2d';
-import { buildZoneUnitSlots } from './slots';
-import { buildingImage } from '../assets/buildings';
+import { getZoneUnitSlots } from './slots';
+import { buildingImage, rubbleImage } from '../assets/buildings';
 import { drawEllipse } from '../../../../util/canvas_util';
 /** Returns the space's terrain image, or (cached, at the base terrain's own native resolution) a composite with any zone terrain overrides painted on top */
 export function getSpaceTerrainImage(
@@ -54,12 +53,39 @@ export function getSpaceTerrainImage(
 
 export const UNIT_CLUSTER_ICON_SIZE = 64;
 
-/** Cache key for a multi-unit-type cluster icon, sensitive to the types, their counts, and the shown total */
+function drawUnitCount(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  size: number,
+  x: number,
+  y: number,
+  width: number,
+  color: string,
+  anchor_top_left = false
+): void {
+  const fill = ctx.fillStyle;
+  ctx.fillStyle = color;
+  ctx.font = `bold ${size}px serif`;
+  if (anchor_top_left) {
+    const align = ctx.textAlign;
+    const baseline = ctx.textBaseline;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    const bounds = ctx.measureText(text);
+    const scale = Math.min(1, width / bounds.width);
+    ctx.fillText(text, x + bounds.actualBoundingBoxLeft * scale, y + bounds.actualBoundingBoxAscent, width);
+    ctx.textAlign = align;
+    ctx.textBaseline = baseline;
+  } else {
+    ctx.fillText(text, x, y, width);
+  }
+  ctx.fillStyle = fill;
+}
+
 export function unitClusterIconKey(units_by_type: UnitByTypeData[], total: number): string {
   return 'unit_cluster:' + units_by_type.map((t) => `${t.unit_id}x${t.units.size}`).join(',') + `:${total}`;
 }
 
-/** Draws one player's unit types centered at the origin, arranging 1/2/3/4/many types each with its count */
 export function drawUnitTypeCluster(
   ctx: CanvasRenderingContext2D,
   game: RisqDrawHost,
@@ -67,16 +93,21 @@ export function drawUnitTypeCluster(
   r: Point2D,
   total: number,
   primary_color: string,
-  secondary_color: string
-) {
-  const draw_count = (s: string, ts: number, x: number, y: number, w: number, fill_primary = true) => {
-    const fs = ctx.fillStyle;
-    ctx.fillStyle = fill_primary ? primary_color : secondary_color;
-    ctx.font = `bold ${ts}px serif`;
-    ctx.fillText(s, x, y, w);
-    ctx.fillStyle = fs;
+  secondary_color: string,
+  count_at_center = false
+): void {
+  const draw_count = (s: string, ts: number, x: number, y: number, w: number, fill_primary = true): void => {
+    if (count_at_center && fill_primary) {
+      const whole_cluster = units_by_type.length === 1 || units_by_type.length > 4;
+      const icon_scale = units_by_type.length === 2 ? 1.5 : 1;
+      const center_x = whole_cluster ? 0 : x + (icon_scale * r.x) / 2;
+      const center_y = whole_cluster ? 0 : y + (icon_scale * r.y) / 2;
+      drawUnitCount(ctx, s, ts, center_x, center_y, w, primary_color, true);
+    } else {
+      drawUnitCount(ctx, s, ts, x, y, w, fill_primary ? primary_color : secondary_color);
+    }
   };
-  const icon = (t: UnitByTypeData) => {
+  const icon = (t: UnitByTypeData): HTMLImageElement | HTMLCanvasElement => {
     const color = game.getGame()?.players[t.player_id]?.color;
     return color ? game.getPlayerColoredIcon(unitImage(t.unit_id), color) : game.getIcon(unitImage(t.unit_id));
   };
@@ -90,25 +121,22 @@ export function drawUnitTypeCluster(
       ctx.drawImage(icon(t), (0.5 * j - 1) * r.x, (0.5 * j - 1) * r.y, 1.5 * r.x, 1.5 * r.y);
       draw_count(t.units.size.toString(), r.y, (0.5 * j - 1) * r.x, (0.5 * j - 1) * r.y, 2 * r.x);
     }
-  } else if (units_by_type.length === 3) {
+  } else if (units_by_type.length === 3 || units_by_type.length === 4) {
     for (let j = 0; j < 2; j++) {
       const t = units_by_type[j];
       ctx.drawImage(icon(t), (0.8 * j - 0.9) * r.x, -0.9 * r.y, r.x, r.y);
       draw_count(t.units.size.toString(), 0.75 * r.y, (0.8 * j - 0.9) * r.x, -0.9 * r.y, 1.5 * r.x);
     }
-    const t = units_by_type[2];
-    ctx.drawImage(icon(t), -0.5 * r.x, -0.1 * r.y, r.x, r.y);
-    draw_count(t.units.size.toString(), 0.75 * r.y, -0.5 * r.x, -0.1 * r.y, 1.5 * r.x);
-  } else if (units_by_type.length === 4) {
-    for (let j = 0; j < 2; j++) {
-      const t = units_by_type[j];
-      ctx.drawImage(icon(t), (0.8 * j - 0.9) * r.x, -0.9 * r.y, r.x, r.y);
-      draw_count(t.units.size.toString(), 0.75 * r.y, (0.8 * j - 0.9) * r.x, -0.9 * r.y, 1.5 * r.x);
-    }
-    for (let j = 0; j < 2; j++) {
-      const t = units_by_type[2 + j];
-      ctx.drawImage(icon(t), (0.8 * j - 0.9) * r.x, -0.1 * r.y, r.x, r.y);
-      draw_count(t.units.size.toString(), 0.75 * r.y, (0.8 * j - 0.9) * r.x, -0.1 * r.y, 1.5 * r.x);
+    if (units_by_type.length === 3) {
+      const t = units_by_type[2];
+      ctx.drawImage(icon(t), -0.5 * r.x, -0.1 * r.y, r.x, r.y);
+      draw_count(t.units.size.toString(), 0.75 * r.y, -0.5 * r.x, -0.1 * r.y, 1.5 * r.x);
+    } else {
+      for (let j = 0; j < 2; j++) {
+        const t = units_by_type[2 + j];
+        ctx.drawImage(icon(t), (0.8 * j - 0.9) * r.x, -0.1 * r.y, r.x, r.y);
+        draw_count(t.units.size.toString(), 0.75 * r.y, (0.8 * j - 0.9) * r.x, -0.1 * r.y, 1.5 * r.x);
+      }
     }
   } else {
     for (let j = 0; j < 2; j++) {
@@ -147,6 +175,10 @@ export function getZoneFill(
     }
   }
   return color;
+}
+
+export function visibleZoneUnitSlot(zone: RisqZone, index: number, view_mode: RisqViewMode): UnitByTypeData[] {
+  return (zone.unit_slots?.[index] ?? []).filter((group) => unitVisibleInViewMode(group.unit_type, view_mode));
 }
 
 export function unitVisibleInViewMode(unit_type: RisqUnitType, view_mode: RisqViewMode): boolean {
@@ -237,7 +269,7 @@ export function drawForestTrees(
   view_mode: RisqViewMode,
   hex_r: number,
   map_rotation: number
-) {
+): void {
   const resource = zone.resource;
   const hidden_view = view_mode === RisqViewMode.MILITARY || view_mode === RisqViewMode.OWNERSHIP;
   if (!resource || !isForestResource(resource) || hidden_view) {
@@ -300,33 +332,21 @@ export function drawRisqZone(
   building_pos: Point2D,
   unit_slot_positions: Point2D[],
   active_player_id: number
-) {
+): void {
   const primary_color = black_text ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
   const secondary_color = black_text ? 'rgba(40, 40, 40, 0.4)' : 'rgba(210, 210, 210, 0.4)';
   const tertiary_color = black_text ? 'rgb(60, 60, 60, 0.2)' : 'rgba(190, 190, 190, 0.2)';
 
-  function drawText(
-    ctx: CanvasRenderingContext2D,
-    s: string,
-    ts: number,
-    x: number,
-    y: number,
-    w: number,
-    fill_primary = true
-  ) {
-    const fs = ctx.fillStyle;
-    ctx.fillStyle = fill_primary ? primary_color : secondary_color;
-    ctx.font = `bold ${ts}px serif`;
-    ctx.fillText(s, x, y, w);
-    ctx.fillStyle = fs;
-  }
-
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
   const building_r = BUILDING_CIRCLE_RADIUS_MULTIPLIER * hex_r;
-  const unit_r = UNIT_SLOT_CIRCLE_RADIUS_MULTIPLIER * hex_r;
-  const unit_slots =
-    zone.unit_slots ?? (zone.unit_slots = buildZoneUnitSlots(zone, active_player_id, unit_slot_positions.length));
+  const unit_r = game.viewport.unitRadius();
+  const unit_slots = getZoneUnitSlots(
+    zone,
+    active_player_id,
+    game.viewport.centerMaxSlots(),
+    game.viewport.edgeMaxSlots()
+  );
   const filled_slots =
     visibility === RisqVisibilityLevel.POOR
       ? zone.unit_count && view_mode !== RisqViewMode.OWNERSHIP
@@ -345,6 +365,7 @@ export function drawRisqZone(
     zone.hovered_data[0].c = building_pos;
     for (let i = 0; i < filled_slots.length; i++) {
       zone.hovered_data[i + 1].c = unit_slot_positions[i];
+      zone.hovered_data[i + 1].r = { x: unit_r, y: unit_r };
     }
   }
   for (const [i, part] of zone.hovered_data.entries()) {
@@ -376,8 +397,16 @@ export function drawRisqZone(
         const server_foundation = game.getPlayer()?.planned_foundations?.get(zone.coordinate_key);
 
         if (zone.building) {
-          building_image = buildingImage(zone.building.building_id, zone.building.under_construction);
+          building_image = buildingImage(
+            zone.building.building_id,
+            zone.building.under_construction,
+            false,
+            zone.building.combat_stats
+          );
           building_color = game.getGame()?.players[zone.building.player_id]?.color;
+        } else if (zone.destroyed_building) {
+          building_image = rubbleImage(zone.destroyed_building, zone.destroyed_building_turns ?? 1);
+          building_color = undefined;
         } else if (local_foundation || server_foundation) {
           building_image = 'risq/buildings/construction';
           building_color = game.getPlayer()?.color;
@@ -389,7 +418,7 @@ export function drawRisqZone(
         const building_icon = building_color
           ? game.getPlayerColoredIcon(building_image, building_color)
           : game.getIcon(building_image);
-        if (zone.building || local_foundation || server_foundation) {
+        if (zone.building || zone.destroyed_building || local_foundation || server_foundation) {
           ctx.drawImage(building_icon, -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
         } else {
           ctx.strokeStyle = secondary_color;
@@ -430,17 +459,17 @@ export function drawRisqZone(
         if (combo_icon) {
           ctx.drawImage(combo_icon, -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
         }
-        drawText(ctx, zone.unit_count.toString(), 1.4 * part.r.y, -part.r.x, -0.7 * part.r.y, 2 * part.r.x);
+        drawUnitCount(ctx, zone.unit_count.toString(), 1.4 * part.r.y, 0, 0, 2 * part.r.x, primary_color, true);
       } else {
         ctx.strokeStyle = secondary_color;
       }
     } else {
-      const slot = filled_slots[i - 1].filter((t) => unitVisibleInViewMode(t.unit_type, view_mode));
+      const slot = visibleZoneUnitSlot(zone, i - 1, view_mode);
       if (slot.length === 0) {
         ctx.strokeStyle = secondary_color;
       } else {
         const slot_total = slot.reduce((sum, t) => sum + t.units.size, 0);
-        drawUnitTypeCluster(ctx, game, slot, part.r, slot_total, primary_color, secondary_color);
+        drawUnitTypeCluster(ctx, game, slot, part.r, slot_total, primary_color, secondary_color, true);
       }
     }
     ctx.rotate(rotation);

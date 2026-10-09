@@ -125,7 +125,7 @@ export class DwgLobbyConnector extends DwgElement {
     });
   }
 
-  tryReconnecting(message: string, connection_metadata: ConnectionMetadata) {
+  tryReconnecting(message: string, connection_metadata: ConnectionMetadata): void {
     this.status_message.innerText = message;
     this.reconnect_button.disabled = false;
     this.reconnect_button.innerText = 'Reconnect to Lobby';
@@ -143,7 +143,7 @@ export class DwgLobbyConnector extends DwgElement {
     this.classList.remove('hide');
   }
 
-  connect(connect_data: ConnectData) {
+  connect(connect_data: ConnectData): void {
     this.dispatchEvent(new CustomEvent<ConnectData>('connect', { detail: connect_data }));
   }
 

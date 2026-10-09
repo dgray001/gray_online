@@ -53,7 +53,7 @@ export class RisqPointer {
   }
 
   /** Re-resolves hover at the last mouse position, e.g. after panels or data change underneath it */
-  recalculate() {
+  recalculate(): void {
     const board = this.board();
     if (!board || !board.isInitialized()) {
       return;
@@ -77,7 +77,7 @@ export class RisqPointer {
     return false;
   }
 
-  mousemove(m: Point2D, screen: Point2D, transform: BoardTransformData, modifiers: ModifierKeys) {
+  mousemove(m: Point2D, screen: Point2D, transform: BoardTransformData, modifiers: ModifierKeys): void {
     const board = this.board();
     if (!this.session.getGame() || !board) {
       return;
@@ -100,7 +100,7 @@ export class RisqPointer {
     }
   }
 
-  draggingCallback() {
+  draggingCallback(): void {
     this.hover.dragging();
   }
 
@@ -145,7 +145,7 @@ export class RisqPointer {
   }
 
   /** Marks the pressed space, zone, or zone part as clicked so mouseup can act on it if still hovered */
-  private pressBoard() {
+  private pressBoard(): void {
     const space = this.hover.space();
     const zone = this.hover.zone();
     if (!space || space.visibility <= 0) {
@@ -166,7 +166,7 @@ export class RisqPointer {
     }
   }
 
-  private orderSelection(ctrl_held: boolean) {
+  private orderSelection(ctrl_held: boolean): void {
     const data = this.left_panel.getData();
     switch (data?.data_type) {
       case LeftPanelDataType.UNIT:
@@ -189,7 +189,7 @@ export class RisqPointer {
     }
   }
 
-  mouseup(e: MouseEvent) {
+  mouseup(e: MouseEvent): void {
     const armed_before = this.armed.snapshot();
     for (const component of this.components) {
       component.mouseup(e);
@@ -208,13 +208,12 @@ export class RisqPointer {
     } else if (e.button === 0 && armed_before.order === RisqOrderType.NONE && !this.panels_hovered()) {
       this.left_panel.close();
     }
-    const keep_mercenary_armed = e.ctrlKey && armed_before.order === RisqOrderType.OrderType_BuyMercenary;
-    if (armed_before.order !== RisqOrderType.NONE && this.armed.unchangedSince(armed_before) && !keep_mercenary_armed) {
+    if (armed_before.order !== RisqOrderType.NONE && this.armed.unchangedSince(armed_before) && !e.ctrlKey) {
       this.armed.disarmOrder();
     }
   }
 
-  private releaseBoard(space: RisqSpace, zone: RisqZone | undefined, e: MouseEvent) {
+  private releaseBoard(space: RisqSpace, zone: RisqZone | undefined, e: MouseEvent): void {
     if (!!zone) {
       if (this.viewport.zoneView()) {
         this.board_clicks.zoneClick(space, zone, e);

@@ -53,12 +53,12 @@ export class RisqMessageQueue implements CanvasComponent {
   }
   mouseup(_e: MouseEvent): void {}
 
-  enqueue(text: string, color: ColorRGB) {
+  enqueue(text: string, color: ColorRGB): void {
     this.queue.push({ text, color });
     this.promote();
   }
 
-  private promote() {
+  private promote(): void {
     while (this.active.length < MAX_VISIBLE && this.queue.length > 0) {
       const msg = this.queue.shift()!;
       msg.activated_at = this.clock;
@@ -86,7 +86,7 @@ export class RisqMessageQueue implements CanvasComponent {
     return Math.max(0, 1 - (age - FADE_MS - hold) / FADE_MS);
   }
 
-  draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number) {
+  draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
     this.clock += dt;
     this.active = this.active.filter((msg) => this.ageOf(msg) < 2 * FADE_MS + this.holdDuration(msg.text));
     this.promote();

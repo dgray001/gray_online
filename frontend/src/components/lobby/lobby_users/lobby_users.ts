@@ -45,7 +45,7 @@ export class DwgLobbyUsers extends DwgElement {
   }
 
   private first_load = true;
-  async refreshUsers(force_load_message = false) {
+  async refreshUsers(force_load_message = false): Promise<void> {
     if (this.classList.contains('loading')) {
       return;
     }
@@ -80,7 +80,7 @@ export class DwgLobbyUsers extends DwgElement {
     }
   }
 
-  addUser(user: LobbyUser) {
+  addUser(user: LobbyUser): void {
     const existing_user = this.users.get(user.client_id);
     if (existing_user) {
       existing_user.data = user;
@@ -95,7 +95,7 @@ export class DwgLobbyUsers extends DwgElement {
     }
   }
 
-  updatePing(client_id: number, ping: number) {
+  updatePing(client_id: number, ping: number): void {
     const user = this.users.get(client_id);
     if (!!user) {
       user.data.ping = ping;
@@ -103,13 +103,13 @@ export class DwgLobbyUsers extends DwgElement {
     }
   }
 
-  private updatePings() {
+  private updatePings(): void {
     for (const user of this.users.values()) {
       user.el.updatePing(user.data.ping);
     }
   }
 
-  removeUser(client_id: number) {
+  removeUser(client_id: number): void {
     if (!this.users.has(client_id)) {
       return;
     }
@@ -121,14 +121,14 @@ export class DwgLobbyUsers extends DwgElement {
     return this.users.get(user_id)?.data;
   }
 
-  joinRoom(user_id: number, room_id: number) {
+  joinRoom(user_id: number, room_id: number): void {
     const user = this.getUser(user_id);
     if (!!user) {
       user.room_id = room_id;
     }
   }
 
-  leaveRoom(user_id: number) {
+  leaveRoom(user_id: number): void {
     const user = this.getUser(user_id);
     if (!!user) {
       user.room_id = undefined;

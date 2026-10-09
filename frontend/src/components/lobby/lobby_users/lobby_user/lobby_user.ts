@@ -27,19 +27,19 @@ export class DwgLobbyUser extends DwgElement {
     this.setData();
   }
 
-  updateUser(user: LobbyUser) {
+  updateUser(user: LobbyUser): void {
     this.user = user;
     if (this.fully_parsed) {
       this.setData();
     }
   }
 
-  private setData() {
+  private setData(): void {
     this.user_name.innerText = this.user.nickname;
     this.updatePing(this.user.ping);
   }
 
-  updatePing(ping: number) {
+  updatePing(ping: number): void {
     this.user.ping = ping;
     this.ping_text.innerText = `${Math.round(ping)} ms`;
     if (ping < 100) {

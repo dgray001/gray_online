@@ -136,7 +136,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     }
   }
 
-  private updateBetsContainer() {
+  private updateBetsContainer(): void {
     let bets = 0;
     let t = this.game.dealer + 1;
     while (true) {
@@ -155,7 +155,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     this.bets_number.innerText = bets.toString();
   }
 
-  private setTrumpImage(trump: StandardCard) {
+  private setTrumpImage(trump: StandardCard): void {
     this.trump_card_img.src = cardToImagePath(trump);
     this.trump_card_img.classList.add('show');
   }
@@ -194,7 +194,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     }
   }
 
-  private async applyDealRound(data: DealRound) {
+  private async applyDealRound(data: DealRound): Promise<void> {
     const animation_time = !!data.cards ? Math.min(150 * data.cards.length, 4000) + 250 : 0;
     this.game.betting = true;
     this.game.dealer = data.dealer;
@@ -237,7 +237,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
   }
 
   /** Marks player_id as the active turn: updates their box, the status line, and can_play */
-  private startTurn(player_id: number, betting: boolean, turn_start_time: number, turn_duration: number) {
+  private startTurn(player_id: number, betting: boolean, turn_start_time: number, turn_duration: number): void {
     const nickname = this.game.players[player_id].player.nickname;
     if (betting) {
       this.player_els[player_id].betting(turn_start_time, turn_duration);
@@ -251,7 +251,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     }
   }
 
-  private async applyBet(data: PlayerBet) {
+  private async applyBet(data: PlayerBet): Promise<void> {
     this.game.players[data.player_id].bet = data.amount;
     await this.player_els[data.player_id].setBetAnimation(data.amount);
     this.game.betting = this.game.turn !== this.game.dealer;
@@ -271,7 +271,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     }
   }
 
-  private async applyPlayCard(data: PlayCard) {
+  private async applyPlayCard(data: PlayCard): Promise<void> {
     if (this.player_id === data.player_id) {
       this.game.players[data.player_id].cards.splice(data.index, 1);
     }
@@ -292,7 +292,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     await this.resolveTrick(data);
   }
 
-  private async resolveTrick(data: PlayCard) {
+  private async resolveTrick(data: PlayCard): Promise<void> {
     await untilTimer(500);
     let winning_index = 0;
     let winning_card = this.game.trick[0];
@@ -344,7 +344,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     await this.endRound();
   }
 
-  private async endRound() {
+  private async endRound(): Promise<void> {
     await untilTimer(500);
     console.log('Round over');
     // TODO: score animations for a few seconds
@@ -363,7 +363,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     }
   }
 
-  private endGame() {
+  private endGame(): void {
     console.log('Game over');
     this.game.game_base.game_ended = true;
     let winners = [0];
@@ -387,7 +387,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     this.status_container.innerText = 'game over';
   }
 
-  private async addPlayedCard(data: Omit<PlayCard, 'turn_start_time' | 'turn_duration'>) {
+  private async addPlayedCard(data: Omit<PlayCard, 'turn_start_time' | 'turn_duration'>): Promise<void> {
     const card_el = document.createElement('div');
     const card_el_img = document.createElement('img');
     card_el_img.src = cardToImagePath(data.card);
@@ -408,7 +408,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
   updateDialogComponent(update: UpdateMessage): HTMLElement {
     const el = document.createElement('div');
     const rows: HTMLDivElement[] = [];
-    const add_row = (...parts: (string | Node)[]) => {
+    const add_row = (...parts: (string | Node)[]): void => {
       const row = document.createElement('div');
       row.append(...parts);
       rows.push(row);

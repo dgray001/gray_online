@@ -22,11 +22,11 @@ export class RisqCursorController {
     private selection: RisqSelection
   ) {}
 
-  setDefault() {
+  setDefault(): void {
     this.board()?.setCursor(DEFAULT_CURSOR_IMAGE);
   }
 
-  update(ctrl_held: boolean) {
+  update(ctrl_held: boolean): void {
     const board = this.board();
     if (!board) {
       return;

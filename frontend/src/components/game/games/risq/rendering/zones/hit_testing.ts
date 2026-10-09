@@ -5,13 +5,10 @@ import { INNER_ZONE_MULTIPLIER } from './geometry';
 import { atangent } from '../../../../../../scripts/math';
 import { err } from '../../../../../../scripts/log';
 import type { RisqViewMode } from '../terrain';
-import { unitVisibleInViewMode } from './draw';
+import { visibleZoneUnitSlot } from './draw';
 
-export function visibleZoneUnitSlot(zone: RisqZone, index: number, view_mode: RisqViewMode): UnitByTypeData[] {
-  return (zone.unit_slots?.[index] ?? []).filter((group) => unitVisibleInViewMode(group.unit_type, view_mode));
-}
+export { visibleZoneUnitSlot } from './draw';
 
-/** Resolves hover logic for the zones of a risq space */
 export function resolveHoveredZones(
   p: Point2D,
   space: RisqSpace | undefined,
@@ -23,7 +20,7 @@ export function resolveHoveredZones(
     return undefined;
   }
 
-  const resolve_zone_dependencies = (m: Point2D, zone: RisqZone, rotate: number) => {
+  const resolve_zone_dependencies = (m: Point2D, zone: RisqZone, rotate: number): void => {
     zone.hovered = true;
     if (ignore_parts) {
       return;
@@ -85,7 +82,6 @@ export type HoveredZoneObject =
   | { kind: 'resource' }
   | { kind: 'unit'; groups: UnitByTypeData[] };
 
-/** Returns whatever slot (building, resource, or unit group) is under the cursor in this zone, if any */
 export function hoveredZoneObject(zone: RisqZone, view_mode: RisqViewMode): HoveredZoneObject | undefined {
   for (const [i, part] of zone.hovered_data.entries()) {
     if (!part.hovered) {
@@ -108,8 +104,7 @@ export function hoveredZoneObject(zone: RisqZone, view_mode: RisqViewMode): Hove
   return undefined;
 }
 
-/** Removes all hovered flags from the risq zone */
-export function unhoverRisqZone(zone: RisqZone) {
+export function unhoverRisqZone(zone: RisqZone): void {
   if (!zone) {
     return;
   }

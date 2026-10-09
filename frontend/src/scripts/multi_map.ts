@@ -43,7 +43,7 @@ export class MultiMap<K, V> {
     return deleted;
   }
 
-  public clear() {
+  public clear(): void {
     for (const [_, keyname] of this.keynames.entries()) {
       this.maps.get(keyname)?.clear(); // TODO: what if doesn't exist
     }

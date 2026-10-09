@@ -53,7 +53,7 @@ export class DwgLobbyGameSettings extends DwgElement {
     });
   }
 
-  private setGameChooserValue(value: string) {
+  private setGameChooserValue(value: string): void {
     this.game_chooser.value = value;
     const settings = this.getGameSpecificHTML(parseInt(value) ?? 0);
     this.game_specific_settings.replaceChildren(...settings);
@@ -139,7 +139,7 @@ export class DwgLobbyGameSettings extends DwgElement {
     return el;
   }
 
-  setSettings(settings: GameSettings, room_description: string) {
+  setSettings(settings: GameSettings, room_description: string): void {
     this.setGameChooserValue(settings.game_type.toString());
     this.max_players_input.value = settings.max_players.toString();
     this.max_viewers_input.value = settings.max_viewers.toString();
@@ -172,7 +172,7 @@ export class DwgLobbyGameSettings extends DwgElement {
     this.room_description.value = room_description;
   }
 
-  private setNumberSetting(el_id: string, setting?: number) {
+  private setNumberSetting(el_id: string, setting?: number): void {
     const el = this.game_specific_settings_els.get(el_id) as HTMLInputElement;
     if (!!el) {
       el.value = setting?.toString() ?? '0';
@@ -183,7 +183,7 @@ export class DwgLobbyGameSettings extends DwgElement {
     return this.game_specific_settings_els.get(el_id) as HTMLInputElement;
   }
 
-  clearSettings() {
+  clearSettings(): void {
     this.game_chooser.value = '';
     this.max_players_input.value = '';
     this.max_viewers_input.value = '';

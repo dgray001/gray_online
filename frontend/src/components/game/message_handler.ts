@@ -12,7 +12,7 @@ function isGameMessage(kind: string): boolean {
 }
 
 /** Handles messages for the frontend lobby */
-export function handleMessage(game: DwgGame, message: ServerMessage) {
+export function handleMessage(game: DwgGame, message: ServerMessage): void {
   if (!game.socketActive()) {
     return;
   }
@@ -58,7 +58,13 @@ export function handleMessage(game: DwgGame, message: ServerMessage) {
       handleGameUpdate(game, message);
       break;
     case 'game-failed-update': // player did something incorrect
-      // TODO: implement
+      if (message.data === 'set-auto-renew-failed') {
+        void game.getGameEl()?.gameUpdate({
+          update_id: 0,
+          kind: message.data,
+          content: JSON.parse(message.content),
+        });
+      }
       break;
     case 'game-connected-failed': // can be called at end of game before client realizes game is over
       break;
@@ -93,7 +99,7 @@ export function handleMessage(game: DwgGame, message: ServerMessage) {
   }
 }
 
-async function handleGameUpdate(game: DwgGame, message: ServerMessage) {
+async function handleGameUpdate(game: DwgGame, message: ServerMessage): Promise<void> {
   const game_ob = game.getGame();
   const game_el = game.getGameEl();
   if (!game_ob || !game_el) {

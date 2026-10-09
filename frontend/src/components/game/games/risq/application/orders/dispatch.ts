@@ -45,13 +45,16 @@ export class RisqOrderDispatch {
     const space = this.hover.space();
     const zone = this.hover.zone();
     if (!space) {
-      this.armed.disarmOrder();
+      if (!ctrl_held) {
+        this.armed.disarmOrder();
+      }
       return;
     }
-    const ids = (filter: (u: OrderSubject) => boolean = () => true) => units.filter(filter).map((u) => u.internal_id);
-    const economic = (u: OrderSubject) => u.unit_type === RisqUnitType.ECONOMIC;
-    const attackers = () => ids((u) => this.armed.getArmedOrder() !== RisqOrderType.NONE || !economic(u));
-    const add = (order_type: RisqOrderType, subjects: number[], target_id: number) =>
+    const ids = (filter: (u: OrderSubject) => boolean = () => true): number[] =>
+      units.filter(filter).map((u) => u.internal_id);
+    const economic = (u: OrderSubject): boolean => u.unit_type === RisqUnitType.ECONOMIC;
+    const attackers = (): number[] => ids((u) => this.armed.getArmedOrder() !== RisqOrderType.NONE || !economic(u));
+    const add = (order_type: RisqOrderType, subjects: number[], target_id: number): void =>
       this.addUnitOrder(order_type, subjects, target_id, ctrl_held);
     const order_type = this.targeting.resolveActiveOrderType(ctrl_held);
     switch (order_type) {
@@ -128,10 +131,14 @@ export class RisqOrderDispatch {
         add(order_type, ids(economic), zone.building.internal_id);
         break;
       default:
-        this.armed.disarmOrder();
+        if (!ctrl_held) {
+          this.armed.disarmOrder();
+        }
         return;
     }
-    this.armed.disarmOrder();
+    if (!ctrl_held) {
+      this.armed.disarmOrder();
+    }
   }
 
   private addUnitOrder(order_type: RisqOrderType, subjects: number[], target_id: number, ctrl_held: boolean): void {
@@ -189,7 +196,7 @@ export class RisqOrderDispatch {
   }
 
   /** Queues a build order for the armed building and records it as a local foundation */
-  private newFoundation(subjects: number[], zone_key: number, ctrl_held: boolean) {
+  private newFoundation(subjects: number[], zone_key: number, ctrl_held: boolean): void {
     const building = this.armed.getArmedBuilding()!;
     const order = this.buildOrder(building.id, subjects, zone_key, ctrl_held);
     this.orders_model.add(order);
@@ -213,7 +220,7 @@ export class RisqOrderDispatch {
   }
 
   /** Right-click with an owned building selected: attack the hovered enemy, else set the gather point there */
-  buildingOrder(building: RisqBuilding, ctrl_held: boolean) {
+  buildingOrder(building: RisqBuilding, ctrl_held: boolean): void {
     const target = this.targeting.buildingAttackTarget(building);
     if (target) {
       this.orders_model.add({
@@ -229,11 +236,13 @@ export class RisqOrderDispatch {
     } else {
       this.gatherPointOrder(building);
     }
-    this.armed.disarmGatherPoint();
-    this.armed.disarmBuildingAttack();
+    if (!ctrl_held) {
+      this.armed.disarmGatherPoint();
+      this.armed.disarmBuildingAttack();
+    }
   }
 
-  private gatherPointOrder(building: RisqBuilding) {
+  private gatherPointOrder(building: RisqBuilding): void {
     if (!canHaveGatherPoint(building)) {
       return;
     }
@@ -274,7 +283,7 @@ export class RisqOrderDispatch {
     this.commands.setGatherPoint(building.internal_id, point);
   }
 
-  placeMercenary(keep_armed: boolean) {
+  placeMercenary(keep_armed: boolean): void {
     const zone = this.targeting.mercenaryTargetZone();
     const invalid_reason = this.targeting.mercenaryPlacementInvalidReason(zone);
     const mercenary = this.armed.getArmedMercenary();

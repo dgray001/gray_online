@@ -35,6 +35,95 @@ func startColumn(home startHome) int {
 	return home.x + int(math.Floor(float64(home.y)/2))
 }
 
+func triangleStartIndices(t *testing.T, board *fakeboard.Board, players, inset int) (int, []int) {
+	t.Helper()
+	spaces := board.Inspect()
+	minX, minY, maxSum := spaces[0].Coord.X, spaces[0].Coord.Y, spaces[0].Coord.X+spaces[0].Coord.Y
+	for _, space := range spaces {
+		minX, minY = min(minX, space.Coord.X), min(minY, space.Coord.Y)
+		maxSum = max(maxSum, space.Coord.X+space.Coord.Y)
+	}
+	edge := maxSum - minX - minY - 3*inset
+	indices := make([]int, 0, players)
+	for _, home := range startHomes(t, board, players) {
+		x, y := home.x-minX-inset, home.y-minY-inset
+		if x < 0 || y < 0 || x+y > edge {
+			t.Fatalf("home %v violates triangle inset %d", home, inset)
+		}
+		switch {
+		case y == 0:
+			indices = append(indices, x)
+		case x+y == edge:
+			indices = append(indices, edge+y)
+		case x == 0:
+			indices = append(indices, 3*edge-y)
+		default:
+			t.Fatalf("home %v is not on the inset perimeter", home)
+		}
+	}
+	sort.Ints(indices)
+	return edge, indices
+}
+
+func TestTriangleFinalStartingSpacePositions(t *testing.T) {
+	script, err := os.ReadFile("../../config/maps/scripted/triangle.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var steps []map[string]any
+	if err := json.Unmarshal(script, &steps); err != nil {
+		t.Fatal(err)
+	}
+	for i, step := range steps {
+		if step["step"] == "player_starts" {
+			layout, err := json.Marshal(steps[:i+1])
+			if err != nil {
+				t.Fatal(err)
+			}
+			useScripts(t, map[string]string{"triangle": string(script), "start_layout": string(layout)})
+			break
+		}
+	}
+	for size := defs.MapSize_MINUSCULE; size <= defs.MapSize_GIGANTIC; size++ {
+		for players := 1; players <= 12; players++ {
+			for seed := int64(1); seed <= 16; seed++ {
+				mapName := "script:start_layout"
+				if size == defs.DefaultMapSize(players) {
+					mapName = "script:triangle"
+				}
+				board, err := fakeboard.GenerateWithSize(mapName, players, size, seed)
+				if err != nil {
+					t.Fatalf("size %d, %d players seed %d: %v", size, players, seed, err)
+				}
+				inset := 1
+				if size >= defs.MapSize_HUGE {
+					inset = 2
+				}
+				edge, indices := triangleStartIndices(t, board, players, inset)
+				if players == 1 && indices[0]%edge != 0 {
+					t.Fatalf("single player is not at a corner: %v", indices)
+				}
+				if players%3 == 0 {
+					for corner := 0; corner < 3; corner++ {
+						index := sort.SearchInts(indices, corner*edge)
+						if index == len(indices) || indices[index] != corner*edge {
+							t.Fatalf("%d players: corner %d is missing from %v", players, corner, indices)
+						}
+					}
+				}
+				minGap, maxGap := 3*edge, 0
+				for i, position := range indices {
+					gap := indices[(i+1)%players] + 3*edge*((i+1)/players) - position
+					minGap, maxGap = min(minGap, gap), max(maxGap, gap)
+				}
+				if minGap == 0 || maxGap-minGap > 1 {
+					t.Fatalf("size %d, %d players seed %d: uneven perimeter gaps %d/%d at %v", size, players, seed, minGap, maxGap, indices)
+				}
+			}
+		}
+	}
+}
+
 func rowStartDistances(homes []startHome) map[int][]uint {
 	sort.Slice(homes, func(i, j int) bool {
 		if homes[i].y != homes[j].y {
@@ -209,7 +298,7 @@ func startOrderKey(homes []startHome) string {
 
 func TestStartAssignmentsAreShuffled(t *testing.T) {
 	useStartLayouts(t)
-	for _, shape := range []string{"hexagon", "ring", "rectangle"} {
+	for _, shape := range []string{"hexagon", "ring", "rectangle", "triangle"} {
 		orders := map[string]bool{}
 		for seed := int64(1); seed <= 16; seed++ {
 			board, err := fakeboard.Generate("script:"+shape, 4, seed)
@@ -269,12 +358,15 @@ func TestRectangleStartsZigzagForEveryPlayerCount(t *testing.T) {
 }
 
 func useStartLayouts(t *testing.T) {
-	starts := step("player_starts", `{"pattern":"%s","area_size":0,"starting_distance":4,"terrain_id":1,"resources":[],"buildings":[{"building_id":1,"target":{"zone":"center"}}]}`)
+	starts := step("player_starts", `{"pattern":"%s","area_size":0,"starting_distance":4,"inset":1,"terrain_id":1,"resources":[],"buildings":[{"building_id":1,"target":{"zone":"center"}}]}`)
 	scripts := map[string]string{}
-	for name, params := range map[string]string{"hexagon": `{"kind":"hexagon","size":{"radius":5}}`, "ring": `{"kind":"ring","size":{"outer_radius":5,"inner_radius":2}}`, "rectangle": `{"kind":"rectangle","size":{"rows":12,"cols":23}}`} {
+	for name, params := range map[string]string{"hexagon": `{"kind":"hexagon","size":{"radius":5}}`, "ring": `{"kind":"ring","size":{"outer_radius":5,"inner_radius":2}}`, "rectangle": `{"kind":"rectangle","size":{"rows":12,"cols":23}}`, "triangle": `{"kind":"triangle","size":{"edge_length":9}}`} {
 		pattern := "ring"
 		if name == "rectangle" {
 			pattern = "rows"
+		}
+		if name == "triangle" {
+			pattern = "triangle"
 		}
 		scripts[name] = `[` + step("shape", params) + `,` + fmt.Sprintf(starts, pattern) + `]`
 	}

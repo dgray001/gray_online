@@ -50,7 +50,7 @@ export class RisqSession {
     return this.resource_configs;
   }
 
-  setPlayerId(player_id: number) {
+  setPlayerId(player_id: number): void {
     this.player_id = player_id;
   }
 
@@ -69,7 +69,7 @@ export class RisqSession {
     return this.player_id > -1 ? this.game.players[this.player_id] : undefined;
   }
 
-  replaceSnapshot(new_game: GameRisqFromServer) {
+  replaceSnapshot(new_game: GameRisqFromServer): void {
     this.game = serverToGameRisq(new_game);
     this.region_by_space = buildRegionLookup(this.game?.regions ?? []);
   }
@@ -78,7 +78,7 @@ export class RisqSession {
     return this.last_turn_report;
   }
 
-  setLastTurnReport(report: RisqTurnReport | undefined) {
+  setLastTurnReport(report: RisqTurnReport | undefined): void {
     this.last_turn_report = report;
   }
 

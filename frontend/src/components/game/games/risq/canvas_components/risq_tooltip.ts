@@ -63,7 +63,13 @@ function measureStatsRow(ctx: CanvasRenderingContext2D, stats: [string, string][
   );
 }
 
-function drawStatsRow(ctx: CanvasRenderingContext2D, risq: DwgRisq, stats: [string, string][], x: number, y: number) {
+function drawStatsRow(
+  ctx: CanvasRenderingContext2D,
+  risq: DwgRisq,
+  stats: [string, string][],
+  x: number,
+  y: number
+): void {
   let xi = x;
   for (const [icon, text] of stats) {
     ctx.drawImage(risq.getIcon(icon), xi, y, ICON_SIZE, ICON_SIZE);
@@ -87,7 +93,7 @@ function risqTooltipDraw(
   canvas_size: CanvasSize,
   p: Point2D,
   data: RisqTooltipDrawData
-) {
+): void {
   configDraw(ctx, transform, { fill_style: 'transparent', stroke_width: 0, fixed_position: true }, false, false, () => {
     ctx.font = FONT;
     const cost_stats = costStats(data);
@@ -168,7 +174,7 @@ export function drawRisqTooltip(
   clicked: boolean,
   state: TooltipState<RisqTooltipDrawData>,
   data: RisqTooltipData
-) {
+): void {
   if (!shouldShowTooltip(state, hovering, clicked, dt)) {
     return;
   }
@@ -187,7 +193,7 @@ export class RisqButtonTooltip {
     dt: number,
     hovering: boolean,
     clicked: boolean
-  ) {
+  ): void {
     drawRisqTooltip(ctx, transform, risq, dt, hovering, clicked, this.state, this.getData());
   }
 }

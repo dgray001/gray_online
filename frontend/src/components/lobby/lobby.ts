@@ -265,7 +265,7 @@ export class DwgLobby extends DwgElement {
     return this.connection_metadata;
   }
 
-  connect(nickname: string, new_socket: WebSocket) {
+  connect(nickname: string, new_socket: WebSocket): void {
     this.classList.remove('connector-open');
     this.setNickname(nickname);
     this.setPing(0);
@@ -273,7 +273,7 @@ export class DwgLobby extends DwgElement {
     this.classList.remove('hide');
   }
 
-  setSocket(new_socket: WebSocket) {
+  setSocket(new_socket: WebSocket): void {
     if (!!this.socket) {
       this.socket.close(3000, 'opening new connection');
     }
@@ -289,7 +289,7 @@ export class DwgLobby extends DwgElement {
     });
   }
 
-  userLeftRoom(room_id: number, client_id: number, left_text: string) {
+  userLeftRoom(room_id: number, client_id: number, left_text: string): void {
     if (room_id === this.connection_metadata.room_id) {
       this.lobby_room.leaveRoom(client_id, left_text);
       if (client_id === this.connection_metadata.client_id) {
@@ -300,28 +300,28 @@ export class DwgLobby extends DwgElement {
     this.lobby_rooms.clientLeavesRoom(room_id, client_id);
   }
 
-  socketActive() {
+  socketActive(): boolean {
     return !!this.socket && this.socket.readyState === WebSocket.OPEN;
   }
 
-  closeSocket(code: number, message: string) {
+  closeSocket(code: number, message: string): void {
     if (!!this.socket) {
       this.socket.close(code, message);
     }
     this.socket = undefined;
   }
 
-  setNickname(nickname: string) {
+  setNickname(nickname: string): void {
     this.connection_metadata.nickname = nickname;
     this.name_container.innerText = nickname;
   }
 
-  setPing(ping: number) {
+  setPing(ping: number): void {
     this.waiting_on_connection_times = DwgLobby.DEFAULT_CONNECTION_TIMES;
     this.connection_metadata.ping = ping;
   }
 
-  async refreshLobbyRooms(check_url = false, show_load_message = false) {
+  async refreshLobbyRooms(check_url = false, show_load_message = false): Promise<void> {
     const current_room = await this.lobby_rooms.refreshRooms(
       this.connection_metadata.client_id ?? -1,
       show_load_message
@@ -352,7 +352,7 @@ export class DwgLobby extends DwgElement {
     }
   }
 
-  enterRoom(room: LobbyRoom, is_host: boolean) {
+  enterRoom(room: LobbyRoom, is_host: boolean): void {
     if (!this.connection_metadata.client_id) {
       return;
     }
@@ -367,7 +367,7 @@ export class DwgLobby extends DwgElement {
     }
   }
 
-  leaveRoom() {
+  leaveRoom(): void {
     this.connection_metadata.room_id = undefined;
     this.lobby_room_wrapper.classList.remove('show');
     this.create_room_button.disabled = false;
@@ -378,7 +378,7 @@ export class DwgLobby extends DwgElement {
     }
   }
 
-  sendChatMessage(chatbox: DwgChatbox, message_kind: string, message: ChatMessage, display_sender: string) {
+  sendChatMessage(chatbox: DwgChatbox, message_kind: string, message: ChatMessage, display_sender: string): void {
     let message_sent = false;
     message.message = message.message.trim();
     try {
@@ -413,12 +413,12 @@ export class DwgLobby extends DwgElement {
     return !this.exited_game && !this.entered_game;
   }
 
-  enterGame() {
+  enterGame(): void {
     this.classList.add('hide');
     this.entered_game = true;
   }
 
-  exitGame() {
+  exitGame(): void {
     this.classList.remove('hide');
     this.exited_game = true;
   }
@@ -426,7 +426,7 @@ export class DwgLobby extends DwgElement {
   private static DEFAULT_CONNECTION_TIMES = 3;
   private waiting_on_connection_times = 0;
 
-  pingServer() {
+  pingServer(): void {
     if (this.classList.contains('connector-open') || this.classList.contains('hide')) {
       return;
     }

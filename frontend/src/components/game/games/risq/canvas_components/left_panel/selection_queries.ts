@@ -195,7 +195,9 @@ export function resolveSelectionData(
   switch (data.data_type) {
     case LeftPanelDataType.UNIT: {
       const unit = session.findUnitById(data.data.internal_id);
-      if (!unit) return undefined;
+      if (!unit) {
+        return undefined;
+      }
       const loc = session.unitLocation(unit);
       const space = loc ? session.spaceAt(loc.space_coordinate) : undefined;
       const vis = unit.player_id === session.getPlayerId() ? RisqVisibilityLevel.GOOD : (space?.visibility ?? 0);
@@ -205,7 +207,9 @@ export function resolveSelectionData(
     }
     case LeftPanelDataType.BUILDING: {
       const building = session.findBuildingById(data.data.internal_id);
-      if (!building) return undefined;
+      if (!building) {
+        return undefined;
+      }
       const space = session.spaceAt(building.space_coordinate);
       const vis = building.player_id === session.getPlayerId() ? RisqVisibilityLevel.GOOD : (space?.visibility ?? 0);
       return vis >= RisqVisibilityLevel.GOOD
@@ -277,11 +281,15 @@ export function resolveSelectionData(
     case LeftPanelDataType.MILITARY_UNITS: {
       const all_ids = data.data.units.flatMap((u) => [...u.units.values()]);
       const surviving = all_ids.map((id) => session.findUnitById(id)).filter((u): u is RisqUnit => !!u);
-      if (surviving.length === 0) return undefined;
+      if (surviving.length === 0) {
+        return undefined;
+      }
       const first = surviving[0];
       const space = data.data.space ? session.spaceAt(data.data.space.coordinate) : undefined;
       const owner = session.getGame()?.players.find((p) => p.player.player_id === first.player_id);
-      if (!owner) return undefined;
+      if (!owner) {
+        return undefined;
+      }
       const grouped = groupUnitsByType(
         owner.units,
         surviving.map((u) => u.internal_id)
@@ -289,14 +297,18 @@ export function resolveSelectionData(
       const normalized = normalizePlayerUnits({ space, units: grouped }, (p, id) =>
         session.getGame()?.players[p]?.units.get(id)
       );
-      if (!normalized) return undefined;
+      if (!normalized) {
+        return undefined;
+      }
       const vis = first.player_id === session.getPlayerId() ? RisqVisibilityLevel.GOOD : (space?.visibility ?? 0);
       return vis >= RisqVisibilityLevel.GOOD ? { data: normalized, visibility: vis } : undefined;
     }
     case LeftPanelDataType.UNITS:
     case LeftPanelDataType.MULTIPLE_PLAYERS_UNITS: {
       const space = session.spaceAt(data.data.space.coordinate);
-      if (!space || space.visibility < RisqVisibilityLevel.GOOD) return undefined;
+      if (!space || space.visibility < RisqVisibilityLevel.GOOD) {
+        return undefined;
+      }
       const surviving_map = new Map<number, UnitByTypeData[]>();
       const raw_entries: [number, UnitByTypeData[]][] =
         data.data_type === LeftPanelDataType.UNITS

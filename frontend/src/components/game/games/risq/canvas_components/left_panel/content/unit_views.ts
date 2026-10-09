@@ -16,7 +16,7 @@ import type { PanelDrawContext } from './primitives';
 import { drawHeaderImage, drawName, drawOwnerSeparators, drawSeparator, drawSubtitle } from './primitives';
 
 /** Draws a unit's icon and health bar, and records its rect as the unit's hover target */
-export function drawUnitImage(pc: PanelDrawContext, unit: RisqUnit, p: Point2D, s: number) {
+export function drawUnitImage(pc: PanelDrawContext, unit: RisqUnit, p: Point2D, s: number): void {
   const { ctx, risq } = pc;
   const color = risq.getGame()?.players[unit.player_id]?.color;
   const icon = color
@@ -48,7 +48,7 @@ export function garrisonedUnits(risq: DwgRisq, building: RisqBuilding): RisqUnit
 }
 
 /** Garrisoned units fill the garrison band's grid cells in order, with empty outlined cells for the rest */
-export function drawGarrisonedUnits(pc: PanelDrawContext, building: RisqBuilding) {
+export function drawGarrisonedUnits(pc: PanelDrawContext, building: RisqBuilding): void {
   const s = pc.layout.grid_s;
   const P = PANEL_PADDING;
   const top = pc.layout.separator_below_stats + P;
@@ -68,7 +68,7 @@ export function drawGarrisonedUnits(pc: PanelDrawContext, building: RisqBuilding
   }
 }
 
-function drawUnitCountBadge(ctx: CanvasRenderingContext2D, count: number, p: Point2D, s: number) {
+function drawUnitCountBadge(ctx: CanvasRenderingContext2D, count: number, p: Point2D, s: number): void {
   const text = `×${count}`;
   const font_size = Math.max(10, 0.22 * s);
   ctx.font = `bold ${font_size}px serif`;
@@ -94,12 +94,20 @@ function drawUnitCountBlock(
   unit_id: number,
   count: number,
   p: Point2D,
-  s: number
-) {
+  s: number,
+  units: UnitByTypeData[]
+): void {
   const color = pc.risq.getGame()?.players[player_id]?.color;
   const icon = color ? pc.risq.getPlayerColoredIcon(unitImage(unit_id), color) : pc.risq.getIcon(unitImage(unit_id));
   pc.ctx.drawImage(icon, p.x, p.y, s, s);
   drawUnitCountBadge(pc.ctx, count, p, s);
+  drawGroupHighlight(pc, units, p, s);
+}
+
+function drawGroupHighlight(pc: PanelDrawContext, units: UnitByTypeData[], p: Point2D, s: number): void {
+  pc.ctx.fillStyle = pc.groupTile?.(units, p, s) ?? 'transparent';
+  pc.ctx.strokeStyle = 'transparent';
+  drawRect(pc.ctx, p, s, s);
 }
 
 function chunkBlocks<T>(items: T[], size: number): T[][] {
@@ -141,7 +149,7 @@ interface UnitRef {
 }
 
 /** Draws a unit selection, coarsening from individual units to per-type, per-category, then per-player blocks until it fits */
-export function drawUnitsGeneric(pc: PanelDrawContext, groups: [number, UnitByTypeData[]][]) {
+export function drawUnitsGeneric(pc: PanelDrawContext, groups: [number, UnitByTypeData[]][]): void {
   const multi_player = groups.length > 1;
   const single_owner_player_id = multi_player ? undefined : groups[0]?.[0];
   const total_units = groups.reduce((sum, [, units]) => sum + units.reduce((s, u) => s + u.units.size, 0), 0);
@@ -154,7 +162,7 @@ export function drawUnitsGeneric(pc: PanelDrawContext, groups: [number, UnitByTy
   const block_size = pc.layout.grid_s;
   const grid_bottom = pc.layout.separator_below_stats;
   const max_rows = Math.floor((grid_bottom - gap - content_yi) / (block_size + gap));
-  const separators = () => drawOwnerSeparators(pc, single_owner_player_id);
+  const separators = (): boolean => drawOwnerSeparators(pc, single_owner_player_id);
   const per_player_refs: [number, UnitRef[]][] = groups
     .map(([player_id, units]): [number, UnitRef[]] => [
       player_id,
@@ -182,7 +190,17 @@ export function drawUnitsGeneric(pc: PanelDrawContext, groups: [number, UnitByTy
   );
   const tier3_row_groups = chunkBlocks(id_blocks, ACTION_GRID_COLS);
   if (tier3_row_groups.length > 0 && tier3_row_groups.length <= max_rows) {
-    layoutRows(pc, tier3_row_groups, (b, p) => drawUnitCountBlock(pc, b.player_id, b.unit_id, b.count, p, block_size));
+    layoutRows(pc, tier3_row_groups, (b, p) =>
+      drawUnitCountBlock(
+        pc,
+        b.player_id,
+        b.unit_id,
+        b.count,
+        p,
+        block_size,
+        groups.find(([id]) => id === b.player_id)![1].filter((u) => u.unit_id === b.unit_id)
+      )
+    );
     separators();
     return;
   }
@@ -190,7 +208,15 @@ export function drawUnitsGeneric(pc: PanelDrawContext, groups: [number, UnitByTy
   const tier4_row_groups = chunkBlocks(type_blocks, ACTION_GRID_COLS);
   if (type_blocks.length > 0 && (tier4_row_groups.length <= max_rows || !multi_player)) {
     layoutRows(pc, tier4_row_groups, (b, p) =>
-      drawUnitCountBlock(pc, b.player_id, b.representative_unit_id, b.count, p, block_size)
+      drawUnitCountBlock(
+        pc,
+        b.player_id,
+        b.representative_unit_id,
+        b.count,
+        p,
+        block_size,
+        groups.find(([id]) => id === b.player_id)![1].filter((u) => u.unit_type === b.unit_type)
+      )
     );
     separators();
     return;
@@ -206,12 +232,13 @@ export function drawUnitsGeneric(pc: PanelDrawContext, groups: [number, UnitByTy
     pc.ctx.lineWidth = 1;
     drawRect(pc.ctx, p, block_size, block_size);
     drawUnitCountBadge(pc.ctx, block.count, p, block_size);
+    drawGroupHighlight(pc, groups.find(([id]) => id === block.player_id)![1], p, block_size);
   });
   separators();
 }
 
 /** Rows are stacked upward from the stats separator, so the last row sits right above it */
-function layoutRows<T>(pc: PanelDrawContext, row_groups: T[][], draw_item: (item: T, p: Point2D) => void) {
+function layoutRows<T>(pc: PanelDrawContext, row_groups: T[][], draw_item: (item: T, p: Point2D) => void): void {
   const gap = PANEL_PADDING;
   const block_size = pc.layout.grid_s;
   let by = pc.layout.separator_below_stats - row_groups.length * (block_size + gap);
@@ -225,7 +252,7 @@ function layoutRows<T>(pc: PanelDrawContext, row_groups: T[][], draw_item: (item
   }
 }
 
-function drawUnitRef(pc: PanelDrawContext, ref: UnitRef, p: Point2D) {
+function drawUnitRef(pc: PanelDrawContext, ref: UnitRef, p: Point2D): void {
   const unit = unitResolver(pc.risq)(ref.player_id, ref.internal_id);
   if (unit) {
     drawUnitImage(pc, unit, p, pc.layout.grid_s);
@@ -239,7 +266,7 @@ function drawPerPlayerUnitRows(
   row_groups: UnitRef[][][],
   total_rows: number,
   multi_player: boolean
-) {
+): void {
   const gap = PANEL_PADDING;
   const block_size = pc.layout.grid_s;
   const content_w = ACTION_GRID_COLS * block_size + (ACTION_GRID_COLS - 1) * gap;
@@ -299,7 +326,7 @@ function unitTypeBlocks(risq: DwgRisq, groups: [number, UnitByTypeData[]][]): Ty
   return [...type_blocks_by_key.values()];
 }
 
-export function drawUnit(pc: PanelDrawContext, unit: RisqUnit) {
+export function drawUnit(pc: PanelDrawContext, unit: RisqUnit): void {
   let yi = pc.frame.yi() + drawName(pc, unit.display_name);
   yi += drawHeaderImage(pc, yi, unitImage(unit.unit_id), pc.risq.getGame()?.players[unit.player_id]?.color);
   drawSeparator(pc, yi);

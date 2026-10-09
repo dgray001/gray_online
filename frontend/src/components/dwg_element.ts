@@ -30,7 +30,7 @@ export abstract class DwgElement extends HTMLElement {
     this.fully_parsed = true;
   }
 
-  disconnectedCallback() {
+  disconnectedCallback(): void {
     this.parsing_controller?.abort();
     this.fully_parsed = false;
     for (const el_metadata of this.els_metadata) {
@@ -64,16 +64,16 @@ export abstract class DwgElement extends HTMLElement {
     return parsed;
   }
 
-  protected parsedCallback() {}
+  protected parsedCallback(): void {}
 
-  protected configureElement(name: string, element_id?: string) {
+  protected configureElement(name: string, element_id?: string): void {
     if (!element_id) {
       element_id = name.replace(/_/g, '-');
     }
     this.els_metadata.push({ element_id, name } as ElementMetadata);
   }
 
-  protected configureElements(...names: string[]) {
+  protected configureElements(...names: string[]): void {
     for (const name of names) {
       this.configureElement(name);
     }

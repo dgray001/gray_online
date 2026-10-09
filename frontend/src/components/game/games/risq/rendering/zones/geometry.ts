@@ -16,24 +16,17 @@ export const MERCENARY_RING_OFFSET_MULTIPLIER = 0.6;
 
 export const MERCENARY_SLOT_SPACING_MULTIPLIER = 0.9;
 
-/** Multiplier for inner zone relative to whole radius */
-export const INNER_ZONE_MULTIPLIER = 0.4;
+// Equalizes building-circle clearance to center-zone sides and the three unit-placement edges of edge zones.
+export const INNER_ZONE_MULTIPLIER = 0.7 / Math.sqrt(3);
 
-/** Radius multiplier (of hex_r) for a zone's building/resource circle; same for center and edge zones */
 export const BUILDING_CIRCLE_RADIUS_MULTIPLIER = 0.13;
 
-/** Number of generic unit slots around the center zone's building circle (one ring) */
-export const CENTER_ZONE_UNIT_SLOTS = 12;
-// apothem of the center zone's own hexagon (not the whole space)
 export const CENTER_ZONE_APOTHEM_MULTIPLIER = (Math.sqrt(3) / 2) * INNER_ZONE_MULTIPLIER;
 // midpoint between the building circle and the center zone's apothem, so both gaps match regardless of unit-circle size
-const CENTER_UNIT_RING_RADIUS_MULTIPLIER = (CENTER_ZONE_APOTHEM_MULTIPLIER + BUILDING_CIRCLE_RADIUS_MULTIPLIER) / 2;
-/** Radius multiplier (of hex_r) for one unit-slot circle; same for center and edge zones, sized to the center ring */
-export const UNIT_SLOT_CIRCLE_RADIUS_MULTIPLIER =
-  0.85 * CENTER_UNIT_RING_RADIUS_MULTIPLIER * Math.sin(Math.PI / CENTER_ZONE_UNIT_SLOTS);
+export const CENTER_UNIT_RING_RADIUS_MULTIPLIER =
+  (CENTER_ZONE_APOTHEM_MULTIPLIER + BUILDING_CIRCLE_RADIUS_MULTIPLIER) / 2;
+const MERCENARY_SLOT_RADIUS_MULTIPLIER = 0.85 * CENTER_UNIT_RING_RADIUS_MULTIPLIER * Math.sin(Math.PI / 12);
 
-/** Number of generic unit slots orbiting an edge zone's building, on its inward side */
-export const EDGE_ZONE_UNIT_SLOTS = 8;
 const EDGE_BUILDING_RADIAL_MULTIPLIER = 0.7; // angle 0 hits an edge midpoint, so the boundary is the apothem (~0.866), not 1.0
 
 export function findOuterZoneIndex(zone_coordinate: Point2D): number {
@@ -42,7 +35,7 @@ export function findOuterZoneIndex(zone_coordinate: Point2D): number {
 }
 
 /** Clips ctx to one zone's shape (direction -1 for center), in the space's real on-screen frame (center c, radius r) */
-export function clipToZone(ctx: CanvasRenderingContext2D, c: Point2D, r: number, zone_coordinate: Point2D) {
+export function clipToZone(ctx: CanvasRenderingContext2D, c: Point2D, r: number, zone_coordinate: Point2D): void {
   const direction = findOuterZoneIndex(zone_coordinate);
   const inner_r = INNER_ZONE_MULTIPLIER * r;
   ctx.beginPath();
@@ -67,7 +60,6 @@ export function buildingLocalOffset(is_center: boolean, hex_r: number): Point2D 
   return is_center ? { x: 0, y: 0 } : { x: EDGE_BUILDING_RADIAL_MULTIPLIER * hex_r, y: 0 };
 }
 
-/** Whether a space-center-relative point is within an edge zone's own footprint */
 function isInsideEdgeZoneFootprint(p: Point2D, hex_r: number): boolean {
   const radius = Math.hypot(p.x, p.y);
   if (radius < INNER_ZONE_MULTIPLIER * hex_r) {
@@ -81,7 +73,6 @@ function isInsideEdgeZoneFootprint(p: Point2D, hex_r: number): boolean {
   return radius <= boundary;
 }
 
-/** Binary-searches the distance from the building, along a given angle, to the zone's boundary */
 function distanceToEdgeZoneBoundary(building: Point2D, angle: number, hex_r: number): number {
   const dir = { x: Math.cos(angle), y: Math.sin(angle) };
   let lo = 0;
@@ -107,113 +98,396 @@ export function edgeSlotAtAngle(angle: number, hex_r: number, fraction = 0.5): P
   return { x: building.x + r * Math.cos(angle), y: building.y + r * Math.sin(angle) };
 }
 
-/** Fill order: center-out interior pairs, then corners (each equidistant from building/boundary along its own angle) */
-function edgeUnitSlotLocalOffsets(hex_r: number): Point2D[] {
-  const building = buildingLocalOffset(false, hex_r);
-  const corner = { x: hex_r * Math.cos(Math.PI / 6), y: hex_r * Math.sin(Math.PI / 6) };
-  const corner_angle = Math.atan2(corner.y - building.y, corner.x - building.x);
-  const sweep_step = (2 * (Math.PI - corner_angle)) / (EDGE_ZONE_UNIT_SLOTS - 1);
-  const sweep_angle = (i: number) => corner_angle + i * sweep_step;
-  const last_index = EDGE_ZONE_UNIT_SLOTS - 1;
-  const center_low = (last_index - 1) / 2;
-  const center_high = (last_index + 1) / 2;
-  const interior_indices: number[] = [];
-  for (let k = 0; center_low - k >= 1; k++) {
-    interior_indices.push(center_low - k, center_high + k);
-  }
-  const interior_positions = interior_indices.map((i) => edgeSlotAtAngle(sweep_angle(i), hex_r));
-  const spacing = Math.hypot(
-    interior_positions[0].x - interior_positions[2].x,
-    interior_positions[0].y - interior_positions[2].y
-  );
-  // on the corner's interior angle bisector, at `spacing` from the adjacent middle slot
-  const corner_slot = (mirror: boolean): Point2D => {
-    const q = mirror ? { x: corner.x, y: -corner.y } : corner;
-    const m = interior_positions[mirror ? interior_positions.length - 1 : interior_positions.length - 2];
-    const edge_a = { x: 0, y: mirror ? 1 : -1 }; // toward the other outer corner
-    const edge_b = { x: -Math.cos(Math.PI / 6), y: (mirror ? 1 : -1) * Math.sin(Math.PI / 6) }; // toward the origin
-    const bx = edge_a.x + edge_b.x;
-    const by = edge_a.y + edge_b.y;
-    const b_len = Math.hypot(bx, by);
-    const dir = { x: bx / b_len, y: by / b_len };
-    const vx = q.x - m.x;
-    const vy = q.y - m.y;
-    const v_dot_dir = vx * dir.x + vy * dir.y;
-    const disc = Math.max(0, v_dot_dir * v_dot_dir - (vx * vx + vy * vy - spacing * spacing));
-    const sqrt_disc = Math.sqrt(disc);
-    const t1 = -v_dot_dir - sqrt_disc;
-    const t = t1 >= 0 ? t1 : -v_dot_dir + sqrt_disc;
-    return { x: q.x + t * dir.x, y: q.y + t * dir.y };
-  };
-  return [...interior_positions, corner_slot(false), corner_slot(true)];
+export const MAX_UNIT_RINGS = 3;
+const UNIT_OVERLAP_FRACTION = 0.1;
+const UNIT_GAP_FRACTION = 0.1;
+const UNIT_SPACING_SEARCH_STEPS = 40;
+
+export function centerUnitMaxZoom(hex_r: number, unit_diameter: number): number {
+  const required_gap = unit_diameter * (MAX_UNIT_RINGS + (MAX_UNIT_RINGS + 1) * UNIT_GAP_FRACTION);
+  const gap = (CENTER_ZONE_APOTHEM_MULTIPLIER - BUILDING_CIRCLE_RADIUS_MULTIPLIER) * hex_r;
+  return required_gap / gap;
 }
 
-function centerUnitSlotLocalOffsets(hex_r: number): Point2D[] {
-  return Array.from({ length: CENTER_ZONE_UNIT_SLOTS }, (_, i) => {
-    const angle = -((2 * Math.PI * i) / CENTER_ZONE_UNIT_SLOTS); // start right, go counterclockwise on screen
-    return {
-      x: CENTER_UNIT_RING_RADIUS_MULTIPLIER * hex_r * Math.cos(angle),
-      y: CENTER_UNIT_RING_RADIUS_MULTIPLIER * hex_r * Math.sin(angle),
-    };
+export function corpseUnitRadius(hex_r: number): number {
+  return hex_r / (2 * centerUnitMaxZoom(1, 1));
+}
+
+function unitRingRadius(inner_radius: number, gap: number, unit_r: number, rings: number, ring: number): number {
+  const diameter = 2 * unit_r;
+  const clearance = (gap - rings * diameter) / (rings + 1);
+  return inner_radius + unit_r + clearance + ring * (diameter + clearance);
+}
+
+function unitRingLimit(gap: number, unit_r: number): number {
+  const diameter = 2 * unit_r;
+  const limit = Math.floor((gap + diameter * UNIT_OVERLAP_FRACTION) / (diameter * (1 - UNIT_OVERLAP_FRACTION)));
+  return Math.max(1, Math.min(MAX_UNIT_RINGS, limit));
+}
+
+interface CenterUnitRing {
+  radius: number;
+  capacity: number;
+}
+
+function centerUnitRings(
+  hex_r: number,
+  unit_r: number,
+  rings: number,
+  spacing_multiplier = 1 - UNIT_OVERLAP_FRACTION
+): CenterUnitRing[] {
+  const gap = (CENTER_ZONE_APOTHEM_MULTIPLIER - BUILDING_CIRCLE_RADIUS_MULTIPLIER) * hex_r;
+  return Array.from({ length: rings }, (_, ring) => {
+    const radius = unitRingRadius(BUILDING_CIRCLE_RADIUS_MULTIPLIER * hex_r, gap, unit_r, rings, ring);
+    const ratio = (unit_r * spacing_multiplier) / radius;
+    return { radius, capacity: ratio >= 1 ? 1 : Math.floor(Math.PI / Math.asin(ratio)) };
   });
+}
+
+function centerUnitRingLayout(hex_r: number, unit_r: number, count: number): CenterUnitRing[] {
+  const gap = (CENTER_ZONE_APOTHEM_MULTIPLIER - BUILDING_CIRCLE_RADIUS_MULTIPLIER) * hex_r;
+  const max_rings = unitRingLimit(gap, unit_r);
+  for (let rings = 1; rings <= max_rings; rings++) {
+    const layout = centerUnitRings(hex_r, unit_r, rings);
+    if (count <= layout.reduce((total, ring) => total + ring.capacity, 0) || rings === max_rings) {
+      return layout;
+    }
+  }
+  return centerUnitRings(hex_r, unit_r, 1);
+}
+
+export function centerUnitSlotCapacity(hex_r: number, unit_r: number): number {
+  return centerUnitRingLayout(hex_r, unit_r, Infinity).reduce((total, ring) => total + ring.capacity, 0);
+}
+
+function centerRingSlotOffsets(layout: CenterUnitRing[], count: number): Point2D[] {
+  let remaining = count;
+  return layout.flatMap(({ radius, capacity }, ring) => {
+    const occupied = Math.min(capacity, remaining);
+    remaining -= occupied;
+    const offset = (ring % 2) * (Math.PI / layout[0].capacity);
+    return Array.from({ length: occupied }, (_, i) => {
+      const angle = offset - (2 * Math.PI * i) / occupied;
+      return {
+        x: radius * Math.cos(angle),
+        y: radius * Math.sin(angle),
+      };
+    });
+  });
+}
+
+function centerUnitSlotLocalOffsets(hex_r: number, count: number, unit_r: number): Point2D[] {
+  return centerRingSlotOffsets(centerUnitRingLayout(hex_r, unit_r, count), count);
+}
+
+interface EdgeUnitPath {
+  corner: Point2D;
+  end: Point2D;
+  length: number;
+}
+
+function edgeUnitGap(hex_r: number): number {
+  const building = buildingLocalOffset(false, hex_r);
+  return (
+    Math.min(building.x - CENTER_ZONE_APOTHEM_MULTIPLIER * hex_r, building.x / 2) -
+    BUILDING_CIRCLE_RADIUS_MULTIPLIER * hex_r
+  );
+}
+
+function edgeUnitPath(hex_r: number, unit_r: number, rings: number, ring: number): EdgeUnitPath {
+  const inset = unitRingRadius(0, edgeUnitGap(hex_r), unit_r, rings, rings - ring - 1);
+  const slope_normal = Math.sqrt(3) / 2;
+  const inner_x = CENTER_ZONE_APOTHEM_MULTIPLIER * hex_r + inset;
+  const outer_x = Math.max(inner_x, slope_normal * hex_r - unit_r);
+  const corner = { x: inner_x, y: (inner_x / 2 - inset) / slope_normal };
+  const end = { x: outer_x, y: (outer_x / 2 - inset) / slope_normal };
+  return { corner, end, length: corner.y + Math.hypot(end.x - corner.x, end.y - corner.y) };
+}
+
+function edgePathPoint(path: EdgeUnitPath, distance: number): Point2D {
+  if (distance <= path.corner.y) {
+    return { x: path.corner.x, y: distance };
+  }
+  const fraction = (distance - path.corner.y) / (path.length - path.corner.y);
+  return {
+    x: path.corner.x + fraction * (path.end.x - path.corner.x),
+    y: path.corner.y + fraction * (path.end.y - path.corner.y),
+  };
+}
+
+function nextEdgePathDistance(path: EdgeUnitPath, distance: number, spacing: number): number {
+  if (distance + spacing <= path.corner.y) {
+    return distance + spacing;
+  }
+  let next = distance + spacing;
+  if (distance < path.corner.y) {
+    const vertical_remaining = path.corner.y - distance;
+    next =
+      path.corner.y -
+      vertical_remaining / 2 +
+      Math.sqrt(spacing * spacing - (3 * vertical_remaining * vertical_remaining) / 4);
+  }
+  return next <= path.length ? next : Infinity;
+}
+
+function packEdgeUnitPath(path: EdgeUnitPath, spacing: number, phase: number): Point2D[] {
+  const positions: Point2D[] = [];
+  let distance = phase * spacing;
+  while (distance <= path.length) {
+    const point = edgePathPoint(path, distance);
+    positions.push(point);
+    if (point.y !== 0) {
+      positions.push({ x: point.x, y: -point.y });
+    }
+    distance = nextEdgePathDistance(path, distance, spacing);
+  }
+  return positions;
+}
+
+function occupiedEdgeRowOffsets(path: EdgeUnitPath, unit_r: number, count: number): Point2D[] {
+  if (count === 0) {
+    return [];
+  }
+  const phase = count % 2 === 0 ? 0.5 : 0;
+  let low = 2 * unit_r * (1 - UNIT_OVERLAP_FRACTION);
+  let high = 2 * unit_r * (1 + UNIT_GAP_FRACTION);
+  const roomy = packEdgeUnitPath(path, high, phase);
+  if (roomy.length >= count) {
+    return roomy.slice(0, count);
+  }
+  for (let step = 0; step < UNIT_SPACING_SEARCH_STEPS; step++) {
+    const middle = (low + high) / 2;
+    if (packEdgeUnitPath(path, middle, phase).length >= count) {
+      low = middle;
+    } else {
+      high = middle;
+    }
+  }
+  return packEdgeUnitPath(path, low, phase).slice(0, count);
+}
+
+function edgeOuterApproachPoint(hex_r: number): Point2D {
+  const apothem = Math.sqrt(3) / 2;
+  const corner_x = apothem;
+  const corner_y = corner_x / Math.sqrt(3);
+  const direction = { x: -0.5, y: -apothem };
+  const clearance_ratio = 0.5;
+  const offset_x = corner_x - EDGE_BUILDING_RADIAL_MULTIPLIER;
+  const quadratic = 1 - clearance_ratio * clearance_ratio;
+  const linear = offset_x * direction.x + corner_y * direction.y - BUILDING_CIRCLE_RADIUS_MULTIPLIER * clearance_ratio;
+  const constant = offset_x * offset_x + corner_y * corner_y - BUILDING_CIRCLE_RADIUS_MULTIPLIER ** 2;
+  const distance = (-linear - Math.sqrt(linear * linear - quadratic * constant)) / quadratic;
+  return { x: (corner_x + distance * direction.x) * hex_r, y: (corner_y + distance * direction.y) * hex_r };
+}
+
+function edgeInnerApproachPoint(hex_r: number, from: Point2D): Point2D {
+  const building = buildingLocalOffset(false, hex_r);
+  const angle = Math.atan2(from.y, from.x - building.x);
+  const dx = Math.cos(angle);
+  const dy = Math.sin(angle);
+  const boundary_distance = Math.min(
+    (building.x - CENTER_ZONE_APOTHEM_MULTIPLIER * hex_r) / -dx,
+    building.x / 2 / (-dx / 2 + (Math.sqrt(3) / 2) * Math.abs(dy))
+  );
+  const distance = (boundary_distance + BUILDING_CIRCLE_RADIUS_MULTIPLIER * hex_r) / 2;
+  return { x: building.x + distance * dx, y: distance * dy };
+}
+
+function closestEdgeApproachPoint(points: Point2D[], point: Point2D): Point2D {
+  let closest = points[0];
+  let closest_distance = Infinity;
+  for (const candidate of points) {
+    const distance = Math.hypot(candidate.x - point.x, candidate.y - point.y);
+    if (distance < closest_distance) {
+      closest = candidate;
+      closest_distance = distance;
+    }
+  }
+  return closest;
+}
+
+function buildEdgeUnitRows(
+  hex_r: number,
+  unit_r: number,
+  rings: number,
+  spacing_multiplier = 1 - UNIT_OVERLAP_FRACTION
+): Point2D[][] {
+  const rows: Point2D[][] = [];
+  const spacing = 2 * unit_r * spacing_multiplier;
+  for (let ring = 0; ring < rings; ring++) {
+    const path = edgeUnitPath(hex_r, unit_r, rings, ring);
+    const phase = ring === 0 ? 0 : ((rows[0].length % 2 === 0 ? 0.5 : 0) + (ring % 2) * 0.5) % 1;
+    let positions = packEdgeUnitPath(path, spacing, phase);
+    if (ring === 0) {
+      const alternate = packEdgeUnitPath(path, spacing, 0.5);
+      if (alternate.length > positions.length) {
+        positions = alternate;
+      }
+    }
+
+    rows.push(positions);
+  }
+  return rows;
 }
 
 interface UnitSlotOffsetCache {
   hex_r: number;
-  center: Point2D[];
-  edge: Point2D[];
-  rotated_edge: Point2D[][]; // by outer zone index
+  unit_r?: number;
+  center: Map<number, Point2D[]>;
+  edge_rows: Map<number, Point2D[][]>;
+  edge: Map<number, Point2D[]>;
+  rotated_edge: Map<number, Point2D[][]>;
+
+  approach_outer: Point2D[];
 }
 
 // single entry, since hex_r only changes on resize; callers must treat the returned points as read-only
 let unit_slot_offset_cache: UnitSlotOffsetCache | undefined;
 
-function unitSlotOffsets(hex_r: number): UnitSlotOffsetCache {
+function unitSlotOffsets(hex_r: number, unit_r?: number): UnitSlotOffsetCache {
   if (unit_slot_offset_cache?.hex_r !== hex_r) {
-    const edge = edgeUnitSlotLocalOffsets(hex_r);
+    const outer = edgeOuterApproachPoint(hex_r);
     unit_slot_offset_cache = {
       hex_r,
-      center: centerUnitSlotLocalOffsets(hex_r),
-      edge,
-      rotated_edge: OUTER_ZONE_INDICES.map((_, i) => edge.map((p) => rotatePoint(p, (Math.PI / 3) * (i + 1)))),
+      center: new Map(),
+      edge_rows: new Map(),
+      edge: new Map(),
+      rotated_edge: new Map(),
+
+      approach_outer: [outer, { x: outer.x, y: -outer.y }],
     };
+  }
+  if (unit_r !== undefined && unit_slot_offset_cache.unit_r !== unit_r) {
+    unit_slot_offset_cache.center.clear();
+    unit_slot_offset_cache.edge_rows.clear();
+    unit_slot_offset_cache.edge.clear();
+    unit_slot_offset_cache.rotated_edge.clear();
+    unit_slot_offset_cache.unit_r = unit_r;
   }
   return unit_slot_offset_cache;
 }
 
-/** Local-frame (pre-space-rotation) offsets of a zone's unit-slot circles from its space's center */
-function unitSlotLocalOffsets(is_center: boolean, hex_r: number): Point2D[] {
-  const cache = unitSlotOffsets(hex_r);
-  return is_center ? cache.center : cache.edge;
+function edgeUnitRowLayout(hex_r: number, unit_r: number, count: number): Point2D[][] {
+  const cache = unitSlotOffsets(hex_r, unit_r);
+  const gap = edgeUnitGap(hex_r);
+  let best: Point2D[][] = [];
+  let best_capacity = 0;
+  for (let rings = 1; rings <= unitRingLimit(gap, unit_r); rings++) {
+    const rows = cache.edge_rows.get(rings) ?? buildEdgeUnitRows(hex_r, unit_r, rings);
+    cache.edge_rows.set(rings, rows);
+    const capacity = rows.reduce((total, row) => total + row.length, 0);
+    if (count <= capacity) {
+      return rows;
+    }
+    if (capacity > best_capacity) {
+      best = rows;
+      best_capacity = capacity;
+    }
+  }
+  return best;
 }
 
-/** Pixel offset of a zone's building/resource circle from its space's center, matching how drawRisqSpace positions it */
+export function edgeUnitSlotCapacity(hex_r: number, unit_r: number): number {
+  return edgeUnitRowLayout(hex_r, unit_r, Infinity).reduce((total, row) => total + row.length, 0);
+}
+
+function edgeOccupiedSlotOffsets(hex_r: number, count: number, unit_r: number): Point2D[] {
+  const rows = edgeUnitRowLayout(hex_r, unit_r, count);
+  let remaining = count;
+  return rows.flatMap((row, ring) => {
+    const occupied = Math.min(row.length, remaining);
+    remaining -= occupied;
+    return occupiedEdgeRowOffsets(edgeUnitPath(hex_r, unit_r, rows.length, ring), unit_r, occupied);
+  });
+}
+
+export function zoneCorpseSlots(zone_coordinate: Point2D): Point2D[] {
+  const radius = corpseUnitRadius(1);
+  if (findOuterZoneIndex(zone_coordinate) !== -1) {
+    return buildEdgeUnitRows(1, radius, MAX_UNIT_RINGS, 1).flat();
+  }
+  const rings = centerUnitRings(1, radius, MAX_UNIT_RINGS, 1);
+  return centerRingSlotOffsets(
+    rings,
+    rings.reduce((total, ring) => total + ring.capacity, 0)
+  );
+}
+
+export function zoneCorpsePoint(zone_coordinate: Point2D, ring: number, fraction: number): Point2D {
+  const unit_r = corpseUnitRadius(1);
+  if (findOuterZoneIndex(zone_coordinate) === -1) {
+    const radius = unitRingRadius(
+      BUILDING_CIRCLE_RADIUS_MULTIPLIER,
+      CENTER_ZONE_APOTHEM_MULTIPLIER - BUILDING_CIRCLE_RADIUS_MULTIPLIER,
+      unit_r,
+      MAX_UNIT_RINGS,
+      ring
+    );
+    const angle = 2 * Math.PI * fraction;
+    return { x: radius * Math.cos(angle), y: radius * Math.sin(angle) };
+  }
+  const path = edgeUnitPath(1, unit_r, MAX_UNIT_RINGS, ring);
+  const distance = (2 * fraction - 1) * path.length;
+  const point = edgePathPoint(path, Math.abs(distance));
+  return { x: point.x, y: Math.sign(distance) * point.y };
+}
+
+function unitSlotLocalOffsets(is_center: boolean, hex_r: number, count: number, unit_r: number): Point2D[] {
+  const cache = unitSlotOffsets(hex_r, unit_r);
+  const offsets = is_center ? cache.center : cache.edge;
+  let positions = offsets.get(count);
+  if (!positions) {
+    positions = is_center
+      ? centerUnitSlotLocalOffsets(hex_r, count, unit_r)
+      : edgeOccupiedSlotOffsets(hex_r, count, unit_r);
+    offsets.set(count, positions);
+  }
+  return positions;
+}
+
 export function zoneBuildingOffset(zone_coordinate: Point2D, hex_r: number): Point2D {
   const i = findOuterZoneIndex(zone_coordinate);
   const local = buildingLocalOffset(i === -1, hex_r);
   return i === -1 ? local : rotatePoint(local, (Math.PI / 3) * (i + 1));
 }
 
-/** Pixel offset of a zone's center from its space's center, matching how drawSpaceContent positions it */
 export function zoneCenterOffset(zone_coordinate: Point2D, hex_r: number): Point2D {
   return zoneBuildingOffset(zone_coordinate, hex_r);
 }
 
-/** Local-frame (pre-space-rotation) unit-slot offsets for a zone, for use by drawRisqSpace while already inside its own rotation */
-export function zoneUnitSlotLocalOffsets(zone_coordinate: Point2D, hex_r: number): Point2D[] {
-  return unitSlotLocalOffsets(findOuterZoneIndex(zone_coordinate) === -1, hex_r);
+export function zoneUnitSlotLocalOffsets(
+  zone_coordinate: Point2D,
+  hex_r: number,
+  center_count = 0,
+  unit_r = hex_r
+): Point2D[] {
+  return unitSlotLocalOffsets(findOuterZoneIndex(zone_coordinate) === -1, hex_r, center_count, unit_r);
 }
 
-/** Local-frame (pre-space-rotation) building/resource offset for a zone, for use by drawRisqSpace while already inside its own rotation */
 export function zoneBuildingLocalOffset(zone_coordinate: Point2D, hex_r: number): Point2D {
   return buildingLocalOffset(findOuterZoneIndex(zone_coordinate) === -1, hex_r);
 }
 
-/** Pixel offsets of all of a zone's unit-slot circles from its space's center */
-export function zoneUnitSlotOffsets(zone_coordinate: Point2D, hex_r: number): Point2D[] {
+export function zoneUnitSlotOffsets(
+  zone_coordinate: Point2D,
+  hex_r: number,
+  center_count = 0,
+  unit_r = hex_r
+): Point2D[] {
   const i = findOuterZoneIndex(zone_coordinate);
-  const cache = unitSlotOffsets(hex_r);
-  return i === -1 ? cache.center : cache.rotated_edge[i];
+  const positions = unitSlotLocalOffsets(i === -1, hex_r, center_count, unit_r);
+  if (i === -1) {
+    return positions;
+  }
+  const cache = unitSlotOffsets(hex_r, unit_r);
+  let rotated = cache.rotated_edge.get(center_count);
+  if (!rotated) {
+    rotated = OUTER_ZONE_INDICES.map((_, direction) =>
+      positions.map((p) => rotatePoint(p, (Math.PI / 3) * (direction + 1)))
+    );
+    cache.rotated_edge.set(center_count, rotated);
+  }
+  return rotated[i];
 }
 
 export const CENTER_ZONE_MERCENARY_SLOTS = 8;
@@ -223,7 +497,7 @@ export const EDGE_ZONE_MERCENARY_SLOTS = 6;
 export function zoneMercenarySlotOffsets(zone_coordinate: Point2D, hex_r: number): Point2D[] {
   const i = findOuterZoneIndex(zone_coordinate);
   const building = buildingLocalOffset(i === -1, hex_r);
-  const unit_r = UNIT_SLOT_CIRCLE_RADIUS_MULTIPLIER * hex_r;
+  const unit_r = MERCENARY_SLOT_RADIUS_MULTIPLIER * hex_r;
   const ring_r = BUILDING_CIRCLE_RADIUS_MULTIPLIER * hex_r + MERCENARY_RING_OFFSET_MULTIPLIER * unit_r;
   return mercenarySlotAngles(i === -1, ring_r, unit_r).map((angle) => {
     const local = { x: building.x + ring_r * Math.cos(angle), y: building.y + ring_r * Math.sin(angle) };
@@ -246,7 +520,6 @@ function mercenarySlotAngles(is_center: boolean, ring_r: number, unit_r: number)
   );
 }
 
-/** Finds the zone object at the given coordinate within a space */
 export function getRisqZone(space: RisqSpace | undefined, zone_coordinate: Point2D): RisqZone | undefined {
   if (!space?.zones) {
     return undefined;
@@ -271,18 +544,9 @@ export function zoneApproachPoint(zone_coordinate: Point2D, hex_r: number, from:
   }
   const rotation = (Math.PI / 3) * (i + 1);
   const local_from = rotatePoint(from, -rotation);
-  const local_building = buildingLocalOffset(false, hex_r);
-  const building_r = BUILDING_CIRCLE_RADIUS_MULTIPLIER * hex_r;
-  const angle = Math.atan2(local_from.y - local_building.y, local_from.x - local_building.x);
-  // shift so 0 deg sits perpendicular to the outward axis, making the inward-centered half exactly [0, 180)
-  const deg = ((angle * 180) / Math.PI - 90 + 360) % 360;
-  if (deg >= 180) {
-    const slots = zoneUnitSlotOffsets(zone_coordinate, hex_r);
-    return deg < 270 ? slots[5] : slots[4];
-  }
-  // short of the building itself, landing among the little circles instead
-  const d = distanceToEdgeZoneBoundary(local_building, angle, hex_r);
-  const r = (d + building_r) / 2;
-  const local_point = { x: local_building.x + r * Math.cos(angle), y: local_building.y + r * Math.sin(angle) };
+  const local_point =
+    local_from.x >= EDGE_BUILDING_RADIAL_MULTIPLIER * hex_r
+      ? closestEdgeApproachPoint(unitSlotOffsets(hex_r).approach_outer, local_from)
+      : edgeInnerApproachPoint(hex_r, local_from);
   return rotatePoint(local_point, rotation);
 }

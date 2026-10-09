@@ -161,9 +161,66 @@ export function terrainImage(terrain_id: number): string {
     case 65:
       filename = 'forest_hills';
       break;
+    case 151:
+      filename = 'swamp_dead';
+      break;
+    case 152:
+      filename = 'swamp_hybrid';
+      break;
+    case 153:
+      filename = 'swamp_mossy';
+      break;
+    case 201:
+      filename = 'shallows_boggy';
+      break;
+    case 202:
+      filename = 'shallows_gravel';
+      break;
+    case 203:
+      filename = 'shallows_icy';
+      break;
+    case 204:
+      filename = 'shallows_muddy';
+      break;
+    case 205:
+      filename = 'shallows_plant';
+      break;
+    case 206:
+      filename = 'shallows_sand';
+      break;
+    case 251:
+      filename = 'water_coastal';
+      break;
+    case 252:
+      filename = 'water_emerald';
+      break;
+    case 253:
+      filename = 'water_freshwater';
+      break;
+    case 254:
+      filename = 'water_glacial';
+      break;
+    case 301:
+      filename = 'water_abyssal';
+      break;
+    case 302:
+      filename = 'water_arctic';
+      break;
+    case 303:
+      filename = 'water_deep_ocean1';
+      break;
+    case 304:
+      filename = 'water_deep_ocean2';
+      break;
+    case 305:
+      filename = 'water_deep_ocean3';
+      break;
+    case 306:
+      filename = 'water_stormy';
+      break;
     default:
       err('Trying to get terrain image from unknown terrain_id', terrain_id);
-      filename = 'grass_green1';
+      return 'default';
   }
   return `risq/terrains/${filename}`;
 }

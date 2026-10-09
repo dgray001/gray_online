@@ -2,14 +2,12 @@ package mapgen
 
 import (
 	"fmt"
-	"math"
 
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 )
 
 func defaultShapeSize(kind string, map_size defs.MapSize) (map[string]int, error) {
 	radius := [...]int{4, 5, 6, 7, 7, 8, 8, 9, 10}[map_size-1]
-	area := float64(hexAreaForSize(radius))
 	switch kind {
 	case "hexagon":
 		return map[string]int{"radius": radius}, nil
@@ -20,7 +18,8 @@ func defaultShapeSize(kind string, map_size defs.MapSize) (map[string]int, error
 		dimensions := [...][2]int{{6, 9}, {8, 12}, {9, 14}, {10, 15}, {11, 16}, {12, 18}, {13, 19}, {14, 21}, {15, 23}}[map_size-1]
 		return map[string]int{"rows": dimensions[0], "cols": dimensions[1]}, nil
 	case "triangle":
-		return map[string]int{"edge_length": int(math.Round((-3 + math.Sqrt(1+8*area)) / 2))}, nil
+		edge_length := [...]int{9, 12, 14, 16, 17, 19, 20, 23, 25}[map_size-1]
+		return map[string]int{"edge_length": edge_length}, nil
 	default:
 		return nil, fmt.Errorf("shape: unknown kind %q", kind)
 	}

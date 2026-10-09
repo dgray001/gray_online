@@ -30,11 +30,11 @@ export abstract class DwgScrollbar<T extends DwgButton = DwgButton> implements C
     this.setConfig(config);
   }
 
-  protected addButton(button: T) {
+  protected addButton(button: T): void {
     this.buttons.push(button);
   }
 
-  setConfig(config: ScrollbarConfig) {
+  setConfig(config: ScrollbarConfig): void {
     config.value = validateBoundedNumber(config.value);
     if (config.step_size === 0) {
       config.step_size = 1;
@@ -64,7 +64,7 @@ export abstract class DwgScrollbar<T extends DwgButton = DwgButton> implements C
     return this.config.value.value_max;
   }
 
-  setValue(value: BoundedNumber) {
+  setValue(value: BoundedNumber): void {
     this.config.value = value;
     this.setConfig(this.config);
     this.updateButtonPositions();
@@ -100,20 +100,20 @@ export abstract class DwgScrollbar<T extends DwgButton = DwgButton> implements C
     return this.value() - prev;
   }
 
-  protected setScroll(v: number) {
+  protected setScroll(v: number): void {
     setBoundedNumber(this.config.value, v);
     this.scrollCallback(this.config.value.value);
   }
 
-  isHovering() {
+  isHovering(): boolean {
     return this.hovering;
   }
 
-  setHovering(hovering: boolean) {
+  setHovering(hovering: boolean): void {
     this.hovering = hovering;
   }
 
-  isClicking() {
+  isClicking(): boolean {
     return this.clicking;
   }
 
@@ -139,19 +139,19 @@ export abstract class DwgScrollbar<T extends DwgButton = DwgButton> implements C
     return this.last_mousemove_transform;
   }
 
-  disable() {
+  disable(): void {
     for (const button of this.buttons) {
       button.disable();
     }
   }
 
-  enable() {
+  enable(): void {
     for (const button of this.buttons) {
       button.enable();
     }
   }
 
-  draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number) {
+  draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
     for (const button of this.buttons) {
       button.draw(ctx, transform, dt);
     }

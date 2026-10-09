@@ -19,7 +19,7 @@ export class RisqControlGroups {
     private selection: RisqSelection
   ) {}
 
-  assign(group: number) {
+  assign(group: number): void {
     if (!this.left_panel.isOrderable()) {
       return;
     }

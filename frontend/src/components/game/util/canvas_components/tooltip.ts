@@ -47,15 +47,26 @@ export function wrapText(ctx: CanvasRenderingContext2D, text: string, max_width:
   return lines;
 }
 
-const TOOLTIP_GAP = 2;
+const TOOLTIP_GAP = 4;
+const CURSOR_SIZE = 32;
 
-// anchors the box on whichever side of p has more room on both axes, then clamps it fully on screen
+function tooltipAxis(position: number, size: number, screen_size: number): number {
+  const before = position - TOOLTIP_GAP - size;
+  const after = position + CURSOR_SIZE + TOOLTIP_GAP;
+  const prefer_before = position > screen_size / 2;
+  if (prefer_before && before >= 0) {
+    return before;
+  }
+  if (after + size <= screen_size) {
+    return after;
+  }
+  return before >= 0 ? before : Math.max(0, Math.min(after, screen_size - size));
+}
+
 export function anchorTooltipBox(p: Point2D, w: number, h: number, canvas_size: CanvasSize): Point2D {
-  const x = p.x > canvas_size.width / 2 ? p.x - w : p.x;
-  const y = p.y > canvas_size.height / 2 ? p.y - TOOLTIP_GAP - h : p.y + TOOLTIP_GAP;
   return {
-    x: Math.max(0, Math.min(x, canvas_size.width - w)),
-    y: Math.max(0, Math.min(y, canvas_size.height - h)),
+    x: tooltipAxis(p.x, w, canvas_size.width),
+    y: tooltipAxis(p.y, h, canvas_size.height),
   };
 }
 
@@ -65,7 +76,7 @@ export function defaultTooltipDraw(
   canvas_size: CanvasSize,
   p: Point2D,
   text: string
-) {
+): void {
   const padding = 4;
   const row_height = 16;
   configDraw(ctx, transform, { fill_style: 'transparent', stroke_width: 0, fixed_position: true }, false, false, () => {
@@ -130,11 +141,11 @@ export function shouldShowTooltip(
 
 let queued_tooltip_draws: Array<() => void> = [];
 
-export function queueTooltipDraw(draw: () => void) {
+export function queueTooltipDraw(draw: () => void): void {
   queued_tooltip_draws.push(draw);
 }
 
-export function flushTooltipQueue() {
+export function flushTooltipQueue(): void {
   const draws = queued_tooltip_draws;
   queued_tooltip_draws = [];
   for (const draw of draws) {
@@ -144,7 +155,7 @@ export function flushTooltipQueue() {
 
 let cursor_screen: Point2D = { x: 0, y: 0 };
 
-export function setTooltipCursor(p: Point2D) {
+export function setTooltipCursor(p: Point2D): void {
   cursor_screen = p;
 }
 
@@ -154,6 +165,6 @@ export function drawTooltip<T>(
   transform: BoardTransformData,
   canvas_size: CanvasSize,
   data: T
-) {
+): void {
   queueTooltipDraw(() => state.config.draw(ctx, transform, canvas_size, cursor_screen, data));
 }

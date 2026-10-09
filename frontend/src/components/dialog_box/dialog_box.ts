@@ -39,9 +39,9 @@ export abstract class DwgDialogBox<T> extends DwgElement {
     const hotkey = this.close_hotkey;
     const matches_close_hotkey =
       hotkey?.key === event.key.toLowerCase() &&
-      hotkey.ctrl === event.ctrlKey &&
-      hotkey.shift === event.shiftKey &&
-      hotkey.alt === event.altKey;
+      !!hotkey.ctrl === event.ctrlKey &&
+      !!hotkey.shift === event.shiftKey &&
+      !!hotkey.alt === event.altKey;
     if (!event.repeat && (event.key === 'Escape' || matches_close_hotkey)) {
       event.preventDefault();
       this.closeDialog();

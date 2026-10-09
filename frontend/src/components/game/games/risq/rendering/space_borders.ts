@@ -14,9 +14,9 @@ function regionBorderAddition(region: RisqRegion | undefined, game: RisqDrawHost
     return 0;
   }
   return (
-    (overview ? 1.2 : 0.8) +
-    (region === game.hover.hoveredRegion() ? 0.4 : 0) +
-    (game.selection.isRegionSelected(region) ? 0.4 : 0)
+    (overview ? 0.6 : 0.4) +
+    (region === game.hover.hoveredRegion() ? 0.2 : 0) +
+    (game.selection.isRegionSelected(region) ? 0.2 : 0)
   );
 }
 
@@ -56,6 +56,7 @@ export function drawRisqSpaceBorders(
   config: Pick<DrawRisqSpaceConfig, 'hex_r' | 'draw_detail'> & {
     view_mode?: RisqViewMode;
     regions_only?: boolean;
+    black_regions?: boolean;
     min_width?: number;
   },
   center_of: (space: RisqSpace) => Point2D = (space) => space.center
@@ -107,9 +108,11 @@ export function drawRisqSpaceBorders(
         : undefined;
       ctx.lineWidth = edge_width;
       ctx.strokeStyle =
-        neighbor_color && neighbor_color !== color
-          ? sharedEdgeStyle(ctx, center, normal, edge_width / 2, color, neighbor_color)
-          : color;
+        region_edge && addition > 0 && config.black_regions !== false
+          ? 'black'
+          : neighbor_color && neighbor_color !== color
+            ? sharedEdgeStyle(ctx, center, normal, edge_width / 2, color, neighbor_color)
+            : color;
       drawLine(ctx, start, end);
     }
   }

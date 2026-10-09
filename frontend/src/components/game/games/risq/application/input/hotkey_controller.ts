@@ -175,7 +175,7 @@ export class RisqHotkeyController {
     return hotkey_selection ? entries.find((entry) => hotkeyApplies(entry, hotkey_selection)) : undefined;
   }
 
-  private pressed(entry: RisqHotkeyLookupEntry | undefined) {
+  private pressed(entry: RisqHotkeyLookupEntry | undefined): void {
     if (entry?.kind !== 'cycle_building') {
       return;
     }
@@ -185,7 +185,7 @@ export class RisqHotkeyController {
     }
   }
 
-  private released(entry: RisqHotkeyLookupEntry | undefined) {
+  private released(entry: RisqHotkeyLookupEntry | undefined): void {
     if (!entry) {
       return;
     }
@@ -201,7 +201,7 @@ export class RisqHotkeyController {
     }
   }
 
-  private action(action: RisqHotkeyAction) {
+  private action(action: RisqHotkeyAction): void {
     const view_mode = VIEW_MODE_ACTIONS[action];
     if (view_mode !== undefined) {
       this.viewport.setViewMode(view_mode);

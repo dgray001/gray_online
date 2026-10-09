@@ -70,7 +70,7 @@ export class DwgPlayersDialogPlayer extends DwgElement {
     });
   }
 
-  setData(player: GamePlayer, lobby_player: LobbyUser | undefined, room_id: number) {
+  setData(player: GamePlayer, lobby_player: LobbyUser | undefined, room_id: number): void {
     this.player = player;
     this.lobby_player = lobby_player;
     this.room_id = room_id;

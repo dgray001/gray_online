@@ -40,12 +40,12 @@ export class DwgEgyptianRatCrapPlayer extends DwgElement {
     this.pile_count_container.innerText = this.player.pile_count.toString();
   }
 
-  initialize(player: EgyptianRatCrapPlayer) {
+  initialize(player: EgyptianRatCrapPlayer): void {
     this.player = player;
     this.initialized = true;
   }
 
-  setClientPlayer() {
+  setClientPlayer(): void {
     this.classList.add('client-player');
     this.client_player = true;
     this.action_wrapper.classList.add('show');
@@ -55,7 +55,7 @@ export class DwgEgyptianRatCrapPlayer extends DwgElement {
     });
   }
 
-  sendFlipEvent() {
+  sendFlipEvent(): void {
     if (this.flip_button.disabled) {
       return;
     }
@@ -63,7 +63,7 @@ export class DwgEgyptianRatCrapPlayer extends DwgElement {
     this.dispatchEvent(new CustomEvent('game_update', { detail: game_update, bubbles: true }));
   }
 
-  setTurn(active: boolean) {
+  setTurn(active: boolean): void {
     this.classList.toggle('turn', active);
     if (this.client_player) {
       this.flip_button.disabled = !active;
@@ -73,17 +73,17 @@ export class DwgEgyptianRatCrapPlayer extends DwgElement {
     }
   }
 
-  setPileCount(count: number) {
+  setPileCount(count: number): void {
     this.player.pile_count = count;
     this.pile_count_container.innerText = count.toString();
   }
 
-  setSlapped(slapped: boolean) {
+  setSlapped(slapped: boolean): void {
     this.player.slapped = slapped;
     this.classList.toggle('slapped', slapped);
   }
 
-  wonGame() {
+  wonGame(): void {
     this.winner_wrapper.classList.add('show');
   }
 }

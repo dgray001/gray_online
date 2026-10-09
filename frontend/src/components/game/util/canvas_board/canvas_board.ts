@@ -294,7 +294,7 @@ export class DwgCanvasBoard extends DwgElement {
     return screenToCanvas(this.mouse, this.transform);
   }
 
-  private addEventListeners() {
+  private addEventListeners(): void {
     this.addEventListener('wheel', (e: WheelEvent) => {
       this.modifiers = modifiersFrom(e);
       if (this.data.scroll) {
@@ -406,7 +406,7 @@ export class DwgCanvasBoard extends DwgElement {
   }
 
   // swallowed while the board is mounted so they never trigger browser back/forward navigation
-  private handleExtraMouseButton = (e: MouseEvent) => {
+  private handleExtraMouseButton = (e: MouseEvent): void => {
     this.modifiers = modifiersFrom(e);
     if (e.button <= 2) {
       return;
@@ -417,7 +417,7 @@ export class DwgCanvasBoard extends DwgElement {
     }
   };
 
-  private handleDocumentMouseMove = (e: MouseEvent) => {
+  private handleDocumentMouseMove = (e: MouseEvent): void => {
     this.modifiers = modifiersFrom(e);
     const rect = this.canvas.getBoundingClientRect();
     this.mouse = { x: e.clientX - rect.left, y: e.clientY - rect.top };
@@ -440,7 +440,7 @@ export class DwgCanvasBoard extends DwgElement {
     this.data?.cancelInput?.();
   };
 
-  private handleKeydown = (e: KeyboardEvent) => {
+  private handleKeydown = (e: KeyboardEvent): void => {
     this.modifiers = modifiersFrom(e);
     if (!this.hovered || isTypingInInput() || isDialogOpen()) {
       return;
@@ -463,7 +463,7 @@ export class DwgCanvasBoard extends DwgElement {
     }
   };
 
-  private handleKeyup = (e: KeyboardEvent) => {
+  private handleKeyup = (e: KeyboardEvent): void => {
     this.modifiers = modifiersFrom(e);
     switch (e.key) {
       case 'ArrowUp':
@@ -500,7 +500,7 @@ export class DwgCanvasBoard extends DwgElement {
     }
   }
 
-  private tick() {
+  private tick(): void {
     if (isDialogOpen()) {
       return;
     }
@@ -569,11 +569,11 @@ export class DwgCanvasBoard extends DwgElement {
     }
   }
 
-  setCursor(image_path: string, alpha = 1) {
+  setCursor(image_path: string, alpha = 1): void {
     this.setCursorUrl(`/images/cursors/${image_path}.png`, alpha);
   }
 
-  setCursorUrl(url: string, alpha = 1) {
+  setCursorUrl(url: string, alpha = 1): void {
     this.cursor_alpha = alpha;
     let img = this.cursor_images.get(url);
     if (!img) {
@@ -583,7 +583,7 @@ export class DwgCanvasBoard extends DwgElement {
     this.cursor_image = img;
   }
 
-  private drawCursor() {
+  private drawCursor(): void {
     if (this.hovered && !isDialogOpen() && this.cursor_image && isImageReady(this.cursor_image)) {
       this.canvas.style.cursor = 'none';
       configDraw(
@@ -604,27 +604,27 @@ export class DwgCanvasBoard extends DwgElement {
     }
   }
 
-  scaleView(scale: number) {
+  scaleView(scale: number): void {
     this.setView({
       x: this.transform.view.x * scale,
       y: this.transform.view.y * scale,
     });
   }
 
-  setOffset(offset: Point2D) {
+  setOffset(offset: Point2D): void {
     this.transform.offset = offset;
   }
 
   /** Suppresses edge-of-screen panning along the given axes */
-  setPanSuppressed(x: boolean, y: boolean) {
+  setPanSuppressed(x: boolean, y: boolean): void {
     this.pan_suppressed = { x, y };
   }
 
-  setRotation(rotation: number) {
+  setRotation(rotation: number): void {
     this.transform.rotation = rotation;
   }
 
-  setView(view: Point2D) {
+  setView(view: Point2D): void {
     if (isNaN(view.x) || isNaN(view.y)) {
       return;
     }
@@ -663,9 +663,13 @@ export class DwgCanvasBoard extends DwgElement {
     if (!scale) {
       return this.transform.scale;
     }
+    const changed = scale !== this.transform.scale;
     this.transform.view.x *= scale / this.transform.scale;
     this.transform.view.y *= scale / this.transform.scale;
     this.transform.scale = scale;
+    if (changed) {
+      this.dispatchEvent(new CustomEvent<number>('canvas_zoom', { detail: scale }));
+    }
     return scale;
   }
 
@@ -676,6 +680,9 @@ export class DwgCanvasBoard extends DwgElement {
     }
     const factor = scale / this.transform.scale;
     this.transform.scale = scale;
+    if (factor !== 1) {
+      this.dispatchEvent(new CustomEvent<number>('canvas_zoom', { detail: scale }));
+    }
     const a = rotatePoint(
       { x: anchor.x - this.transform.offset.x, y: anchor.y - this.transform.offset.y },
       -this.transform.rotation

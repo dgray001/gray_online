@@ -22,6 +22,7 @@ import type {
   UnsubmittedOrdersData,
 } from './transport/snapshot_types';
 import type { RisqTurnReport } from './transport/turn_report';
+import { RisqCorpseLayout } from './rendering/zones/corpses';
 import { PLAYER_ICON_SIZE, RisqImageCache } from './rendering/assets/image_cache';
 import { RisqViewport } from './rendering/board/viewport';
 import { RisqOrderOverlays } from './rendering/board/order_overlays';
@@ -71,6 +72,7 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
   private initialization_controller = new AbortController();
   private icons = new Map<string, HTMLImageElement>();
   private image_cache = new RisqImageCache();
+  readonly corpse_layout = new RisqCorpseLayout();
 
   readonly session = new RisqSession();
   readonly viewport = new RisqViewport(this.session, () => this.pointer.recalculate());
@@ -204,12 +206,13 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
     return this.session.getPlayerId();
   }
 
-  showMessage(text: string, color: ColorRGB) {
+  showMessage(text: string, color: ColorRGB): void {
     this.message_queue.enqueue(text, color);
   }
 
   async initialize(abstract_game: DwgGame, game: GameRisqFromServer): Promise<void> {
     this.abstract_game = abstract_game;
+    this.corpse_layout.reset();
     this.outcome_shown = false;
     this.initialization_controller.abort();
     this.initialization_controller = new AbortController();
@@ -256,6 +259,7 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
         if (!size_data) {
           throw new Error('Unable to initialize the Risq board');
         }
+        this.board.addEventListener('canvas_zoom', (e) => this.viewport.updateCenterSlots(e.detail), { signal });
         await this.boardResize(size_data.board_size, size_data.el_size);
         if (signal.aborted) {
           return;
@@ -273,14 +277,14 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
       });
   }
 
-  private refreshPanels() {
+  private refreshPanels(): void {
     this.planning.refresh();
     this.right_panel.dataRefreshed();
     this.left_panel.dataRefreshed();
     this.pointer.recalculate();
   }
 
-  reviewLastTurnReport() {
+  reviewLastTurnReport(): void {
     const player = this.getPlayer();
     const report = this.session.getLastTurnReport();
     if (!report) {
@@ -290,7 +294,7 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
     }
   }
 
-  private openTurnReportDialog(player: RisqPlayer, report: RisqTurnReport) {
+  private openTurnReportDialog(player: RisqPlayer, report: RisqTurnReport): void {
     const dialog = document.createElement('dwg-risq-turn-report-dialog');
     dialog.setData({
       risq: this,
@@ -301,13 +305,13 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
     this.appendChild(dialog);
   }
 
-  openTechTree() {
+  openTechTree(): void {
     const dialog = document.createElement('dwg-risq-tech-tree-dialog');
     dialog.setData({ risq: this, close_hotkey: getSettings().risq_hotkeys.actions[RisqHotkeyAction.TECH_TREE] });
     this.appendChild(dialog);
   }
 
-  private goToVillageCenter(player_id: number) {
+  private goToVillageCenter(player_id: number): void {
     const village_center = [...(this.getGame()?.players[player_id]?.buildings.values() ?? [])].find(
       (b) => b.building_id === 1
     );
@@ -316,7 +320,7 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
     }
   }
 
-  goToCoordinate(coordinate: Point2D) {
+  goToCoordinate(coordinate: Point2D): void {
     const scale = this.viewport.lastTransform().scale ?? 1;
     this.board.setView(multiplyPoint2D(scale, this.viewport.coordinateToCanvas(coordinate)));
   }
@@ -325,12 +329,16 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
     if (!this.session.givingOrders()) {
       return;
     }
-    const unit = this.planning.nextIdleUnit();
-    if (!unit) {
+    const entity = this.planning.nextIdleOrderable();
+    if (!entity) {
       return;
     }
-    this.selection.selectUnit(unit);
-    const location = this.session.unitLocation(unit);
+    if ('building_id' in entity) {
+      this.selection.selectBuilding(entity);
+    } else {
+      this.selection.selectUnit(entity);
+    }
+    const location = 'building_id' in entity ? entity : this.session.unitLocation(entity);
     if (!location) {
       return;
     }
@@ -349,7 +357,7 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
         return;
       }
       const { ratio, center } = this.viewport.resize(board_size, canvas_size, game.board_size);
-      const zoom = this.viewport.zoomLimits(board_size.x);
+      const zoom = this.viewport.zoomLimits(board_size);
       this.board.setMaxScale(zoom.max, zoom.min);
       this.board.scaleView(ratio);
       this.board.setOffset(center);
@@ -379,6 +387,15 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
         case 'gather-point-set':
           this.setNewGameData((update.content as StartTurnData).game);
           break;
+        case 'auto-renew-set':
+          this.commands.auto_renew_pending = false;
+          this.setNewGameData((update.content as StartTurnData).game);
+          break;
+        case 'set-auto-renew-failed':
+          this.commands.auto_renew_pending = false;
+          this.showMessage((update.content as { message: string }).message, RISQ_MESSAGE_WARNING_COLOR);
+          this.refreshPanels();
+          break;
         default:
           log(`Unknown game update type ${update.kind}`);
           break;
@@ -388,7 +405,7 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
     }
   }
 
-  private setNewGameData(new_game: GameRisqFromServer) {
+  private setNewGameData(new_game: GameRisqFromServer): void {
     this.session.replaceSnapshot(new_game);
     const shell_game = this.abstract_game?.getGame();
     if (shell_game) {
@@ -421,7 +438,7 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
     messageDialog.call(this, { message });
   }
 
-  private applyStartTurn(data: StartTurnData) {
+  private applyStartTurn(data: StartTurnData): void {
     this.submission.turnStarted();
     this.armed.disarmOrder();
     this.setNewGameData(data.game);

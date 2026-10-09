@@ -1,4 +1,5 @@
 import type {
+  RectHoverData,
   RisqBuilding,
   RisqRegion,
   RisqResource,
@@ -20,13 +21,22 @@ export enum HoverableObjectType {
   UNIT,
   BUILDING,
   RESOURCE,
+  ZONE_UNIT_HEADER,
+}
+
+export interface ZoneUnitHeaderHover {
+  internal_id: number;
+  unit_type: 'economic' | 'military';
+  zone: RisqZone;
+  hover_data: RectHoverData;
 }
 
 /** A hovered object paired with its type, so consumers narrow to the concrete type without casting */
 export type HoveredObject =
   | { type: HoverableObjectType.UNIT; object: RisqUnit }
   | { type: HoverableObjectType.BUILDING; object: RisqBuilding }
-  | { type: HoverableObjectType.RESOURCE; object: RisqResource };
+  | { type: HoverableObjectType.RESOURCE; object: RisqResource }
+  | { type: HoverableObjectType.ZONE_UNIT_HEADER; object: ZoneUnitHeaderHover };
 
 export interface UnitsDrawData {
   space: RisqSpace;

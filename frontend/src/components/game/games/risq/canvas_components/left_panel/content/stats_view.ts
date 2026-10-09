@@ -59,7 +59,7 @@ function rangeDistance(range: RisqRange): number | null {
 
 function combatStatsGroups(cs: RisqCombatStats, attack_range: RisqRange): (StatCell | null)[][] {
   const has_attack = cs.attack_type !== RisqAttackType.NONE;
-  const includes = (component: 0 | 1 | 2) => attackTypeIncludes(cs.attack_type, component);
+  const includes = (component: 0 | 1 | 2): boolean => attackTypeIncludes(cs.attack_type, component);
   const range = rangeDistance(attack_range);
   const attack: (StatCell | null)[] = has_attack
     ? [
@@ -88,8 +88,7 @@ function combatStatsGroups(cs: RisqCombatStats, attack_range: RisqRange): (StatC
   return [attack, defense, penetration];
 }
 
-/** Resources left / gather rate / workers for a completed gatherable building */
-function gatherStatsRow(risq: DwgRisq, building: RisqBuilding): StatCell[] | undefined {
+function gatherStatsRow(risq: DwgRisq, building: RisqBuilding): (StatCell | null)[] | undefined {
   if (building.under_construction || building.gather_capacity === undefined) {
     return undefined;
   }
@@ -101,6 +100,13 @@ function gatherStatsRow(risq: DwgRisq, building: RisqBuilding): StatCell[] | und
     ],
     ['icons/gather32', building.base_gather_speed ?? 0, 'Gather rate'],
     ['icons/villager64', workersText(risq, building, building.gather_capacity), 'Workers'],
+    building.renewing && building.renew_stamina !== undefined
+      ? [
+          'icons/wheat32',
+          `${building.renew_stamina - (building.renew_stamina_remaining ?? building.renew_stamina)}/${building.renew_stamina}`,
+          'Renewal progress',
+        ]
+      : null,
   ];
 }
 
@@ -116,18 +122,17 @@ export class RisqStatsView {
 
   /** Height of the stats section, including gathering, construction, and renewal details */
   static height(risq: DwgRisq, building?: RisqBuilding): number {
-    let stat_rows = 3 + (building && (building.under_construction || gatherStatsRow(risq, building)) ? 1 : 0);
-    stat_rows += building?.renewing ? 1 : 0;
+    const stat_rows = 3 + (building && (building.under_construction || gatherStatsRow(risq, building)) ? 1 : 0);
     const rows = 2 + stat_rows;
     return 2 * HEALTH_ROW_H + stat_rows * STAT_ROW_H + (rows - 1) * PANEL_PADDING;
   }
 
-  clearHover() {
+  clearHover(): void {
     this.healthbar_row.hovered = false;
     this.stamina_row.hovered = false;
   }
 
-  draw(pc: PanelDrawContext, start_yi: number, subject: RisqUnit | RisqBuilding, building?: RisqBuilding) {
+  draw(pc: PanelDrawContext, start_yi: number, subject: RisqUnit | RisqBuilding, building?: RisqBuilding): void {
     const { ctx, frame } = pc;
     const cs = subject.combat_stats;
     const health_h = HEALTH_ROW_H;
@@ -176,23 +181,13 @@ export class RisqStatsView {
 
     this.stat_cells = [];
     for (const group of combatStatsGroups(cs, subject.attack_range)) {
-      this.drawStatRow(pc, group, y, (0.8 * frame.w()) / 4);
+      this.drawStatRow(pc, group, y);
       y += STAT_ROW_H + gap;
     }
     const gather_row = building ? gatherStatsRow(pc.risq, building) : undefined;
     if (gather_row) {
-      this.drawStatRow(pc, gather_row, y, (0.8 * frame.w()) / gather_row.length);
+      this.drawStatRow(pc, gather_row, y);
       y += STAT_ROW_H + gap;
-    }
-    if (building?.renewing && building.resource_capacity && building.renew_stamina !== undefined) {
-      const completed = ((building.resources_left ?? 0) / building.resource_capacity) * building.renew_stamina;
-      drawText(ctx, `Renewal progress: ${completed.toFixed(1)} / ${building.renew_stamina}`, {
-        p: { x: xi, y: y + 0.5 * STAT_ROW_H },
-        w: 0.9 * frame.w(),
-        fill_style: 'black',
-        baseline: 'middle',
-        font: '18px serif',
-      });
     }
     if (building?.under_construction) {
       const completed = building.construction_stamina_total - building.stamina_remaining;
@@ -206,20 +201,21 @@ export class RisqStatsView {
     }
   }
 
-  private drawStatRow(pc: PanelDrawContext, row: (StatCell | null)[], y: number, dx: number) {
+  private drawStatRow(pc: PanelDrawContext, row: (StatCell | null)[], y: number): void {
+    const dx = (0.8 * pc.frame.w() - 3 * PANEL_PADDING) / 4;
     const image_size = STAT_ROW_H;
     for (const [col, entry] of row.entries()) {
       if (!entry) {
         continue;
       }
-      const sx = pc.frame.xi() + 0.1 * pc.frame.w() + col * dx;
+      const sx = pc.frame.xi() + 0.1 * pc.frame.w() + col * (dx + PANEL_PADDING);
       this.stat_cells.push({
         rect: { ps: { x: sx, y }, pe: { x: sx + dx, y: y + image_size } },
         text: `${entry[2]}: ${entry[1]}`,
       });
       pc.ctx.drawImage(pc.risq.getIcon(entry[0]), sx, y, image_size, image_size);
       drawText(pc.ctx, entry[1].toString(), {
-        p: { x: sx + image_size + 0.1 * dx, y: y + 0.5 * image_size },
+        p: { x: sx + image_size, y: y + 0.5 * image_size },
         w: dx - image_size,
         fill_style: 'black',
         align: 'left',
@@ -236,7 +232,7 @@ export class RisqStatsView {
     risq: DwgRisq,
     dt: number,
     subject: RisqUnit | RisqBuilding | undefined
-  ) {
+  ): void {
     const canvas_size = risq.viewport.canvasSize();
     if (
       subject &&
@@ -263,7 +259,7 @@ export class RisqStatsView {
     }
   }
 
-  mousemove(m: Point2D) {
+  mousemove(m: Point2D): void {
     rectHovered(m, this.healthbar_row);
     rectHovered(m, this.stamina_row);
     this.hovered_stat_cell = this.stat_cells.findIndex((cell) => rectHovered(m, cell.rect));

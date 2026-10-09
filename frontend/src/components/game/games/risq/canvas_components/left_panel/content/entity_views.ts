@@ -8,7 +8,7 @@ import { drawHeaderImage, drawName, drawOwnerSeparators, drawSeparator } from '.
 import { workersText } from './stats_view';
 import { drawGarrisonedUnits } from './unit_views';
 
-export function drawResource(pc: PanelDrawContext, resource: RisqResource) {
+export function drawResource(pc: PanelDrawContext, resource: RisqResource): void {
   const { ctx, frame, risq } = pc;
   let yi = frame.yi() + drawName(pc, resource.display_name);
   yi += drawHeaderImage(pc, yi, resourceIcon(risq, resource));
@@ -41,13 +41,13 @@ export function drawResource(pc: PanelDrawContext, resource: RisqResource) {
   });
 }
 
-export function drawBuilding(pc: PanelDrawContext, building: RisqBuilding) {
+export function drawBuilding(pc: PanelDrawContext, building: RisqBuilding): void {
   const { ctx, frame, risq } = pc;
   let yi = frame.yi() + drawName(pc, building?.display_name ?? 'Empty Plot');
   yi += drawHeaderImage(
     pc,
     yi,
-    buildingImage(building?.building_id, building?.under_construction),
+    buildingImage(building?.building_id, building?.under_construction, false, building?.combat_stats),
     building ? risq.getGame()?.players[building.player_id]?.color : undefined
   );
   drawSeparator(pc, yi);
@@ -68,7 +68,7 @@ export function drawBuilding(pc: PanelDrawContext, building: RisqBuilding) {
   }
 }
 
-export function drawFoundation(pc: PanelDrawContext, foundation: FoundationDrawData) {
+export function drawFoundation(pc: PanelDrawContext, foundation: FoundationDrawData): void {
   const { ctx, frame, risq } = pc;
   let yi = frame.yi() + drawName(pc, foundation.display_name);
   yi += drawHeaderImage(pc, yi, 'risq/buildings/construction', risq.getGame()?.players[foundation.player_id]?.color);

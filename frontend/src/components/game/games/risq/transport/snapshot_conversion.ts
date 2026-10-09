@@ -160,6 +160,9 @@ export function serverToRisqPlayer(server_player: RisqPlayerFromServer, registry
     turn_report: server_player.turn_report ? serverToRisqTurnReport(server_player.turn_report) : undefined,
     planned_foundations: new Map((server_player.planned_foundations ?? []).map((f) => [f.coordinate_key, f])),
     available_mercenaries: server_player.available_mercenaries ?? [],
+    auto_renewals: new Map(
+      (server_player.auto_renewals ?? []).map((queue): [number, number] => [queue.building_id, queue.count])
+    ),
   };
   return player;
 }
@@ -246,10 +249,13 @@ export function serverToRisqZone(server_zone: RisqZoneFromServer, registry: Risq
     coordinate_key: server_zone.coordinate_key,
     resource: serverToRisqResource(server_zone.resource, registry),
     building: serverToRisqBuilding(server_zone.building, registry),
+    corpses: server_zone.corpses ?? [],
     units,
     unit_count: server_zone.unit_count,
     terrain_override: server_zone.terrain_override,
     terrain_override_display_name: server_zone.terrain_override_display_name,
+    destroyed_building: server_zone.destroyed_building,
+    destroyed_building_turns: server_zone.destroyed_building_turns,
     // purely frontend fields
     hovered: false,
     clicked: false,

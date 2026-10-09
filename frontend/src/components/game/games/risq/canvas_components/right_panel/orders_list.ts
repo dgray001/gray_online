@@ -9,6 +9,7 @@ import { OrderSubjectClass } from '../../application/orders/order_filter';
 import type { RisqOrdersModel, RisqOrderRowEntry } from '../../application/orders/orders_model';
 import { collapseBuildingCreateOrders, isBuildingOrder, isUnitOrder } from '../../application/orders/orders_model';
 import { RisqUnitType } from '../../model/types';
+import type { RisqFrontendOrder } from '../../model/types';
 import { ORDER_FILTER_BAR_H, RisqOrderFilterBar } from '../order_filter_bar/order_filter_bar';
 import { RisqOrderRow } from '../order_row/order_row';
 import { RisqOrdersScrollbar } from './orders_scrollbar';
@@ -57,7 +58,7 @@ export class RisqOrdersList extends DwgListbox<RisqOrderRow, RisqOrdersScrollbar
     return { x: this.xi(), y: this.yi(), w: this.w(), h: this.h() };
   }
 
-  setSubject(subject_internal_ids: number[] | undefined, subject_kind: 'unit' | 'building' | undefined) {
+  setSubject(subject_internal_ids: number[] | undefined, subject_kind: 'unit' | 'building' | undefined): void {
     this.subject_internal_ids = subject_internal_ids;
     this.subject_kind = subject_kind;
   }
@@ -78,6 +79,8 @@ export class RisqOrdersList extends DwgListbox<RisqOrderRow, RisqOrdersScrollbar
   }
 
   private newOrderRow(entry: RisqOrderRowEntry): RisqOrderRow {
+    const subject_internal_ids = this.subject_internal_ids;
+    const cancel = (order: RisqFrontendOrder): void => this.orders.cancel(order, subject_internal_ids);
     const row = new RisqOrderRow({
       w: this.config.scrollbar.w() - this.config.scrollbar.getScrollbarSize() - 2 * this.getPadding(),
       order: entry.order,
@@ -86,8 +89,8 @@ export class RisqOrdersList extends DwgListbox<RisqOrderRow, RisqOrdersScrollbar
       explicit_cancel: this.orders.isExplicitlyCancelling(entry.order, this.subject_internal_ids),
       game: this.game,
       show_subject: this.subject_internal_ids === undefined || this.subject_internal_ids.length !== 1,
-      onCancel: (order) => this.orders.cancel(order),
-      onCancelAll: (orders) => orders.forEach((order) => this.orders.cancel(order)),
+      onCancel: (order) => cancel(order),
+      onCancelAll: (orders) => orders.forEach(cancel),
       onSelect: (order) => this.game.selection.selectOrderSubjects(order),
     });
     if (this.cancel_disabled) {
@@ -96,7 +99,7 @@ export class RisqOrdersList extends DwgListbox<RisqOrderRow, RisqOrdersScrollbar
     return row;
   }
 
-  refresh() {
+  refresh(): void {
     const subject_internal_ids = this.subject_internal_ids;
     const kind_matches = this.subject_kind === 'building' ? isBuildingOrder : isUnitOrder;
     const orders =

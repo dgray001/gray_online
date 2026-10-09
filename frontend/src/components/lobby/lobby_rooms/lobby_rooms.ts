@@ -77,7 +77,7 @@ export class DwgLobbyRooms extends DwgElement {
     return current_room;
   }
 
-  addRoom(room: LobbyRoom) {
+  addRoom(room: LobbyRoom): void {
     const existing_room = this.rooms.get(room.room_id);
     if (existing_room) {
       existing_room.data = room;
@@ -99,7 +99,7 @@ export class DwgLobbyRooms extends DwgElement {
     }
   }
 
-  removeRoom(room_id: number) {
+  removeRoom(room_id: number): void {
     const room_el = this.getRoom(room_id)?.el;
     if (!!room_el) {
       room_el.remove();
@@ -107,7 +107,7 @@ export class DwgLobbyRooms extends DwgElement {
     this.rooms.delete(room_id);
   }
 
-  userDisconnected(client_id: number) {
+  userDisconnected(client_id: number): void {
     const remove_ids = [];
     for (const room of this.rooms.values()) {
       if (client_id === room.data.host.client_id) {
@@ -124,11 +124,11 @@ export class DwgLobbyRooms extends DwgElement {
     return this.rooms.get(room_id);
   }
 
-  roomUpdated(room: RoomData) {
+  roomUpdated(room: RoomData): void {
     room.el.updateRoom(room.data);
   }
 
-  renameRoom(room_id: number, new_name: string) {
+  renameRoom(room_id: number, new_name: string): void {
     const room = this.getRoom(room_id);
     if (!room) {
       return;
@@ -137,7 +137,7 @@ export class DwgLobbyRooms extends DwgElement {
     this.roomUpdated(room);
   }
 
-  updateRoomDescription(room_id: number, new_description: string) {
+  updateRoomDescription(room_id: number, new_description: string): void {
     const room = this.getRoom(room_id);
     if (!room) {
       return;
@@ -146,7 +146,7 @@ export class DwgLobbyRooms extends DwgElement {
     this.roomUpdated(room);
   }
 
-  promoteUser(room_id: number, user_id: number) {
+  promoteUser(room_id: number, user_id: number): void {
     const room = this.getRoom(room_id);
     if (!room) {
       return;
@@ -158,7 +158,7 @@ export class DwgLobbyRooms extends DwgElement {
     }
   }
 
-  playerToViewer(room_id: number, user_id: number) {
+  playerToViewer(room_id: number, user_id: number): void {
     const room = this.getRoom(room_id);
     if (!room) {
       return;
@@ -171,7 +171,7 @@ export class DwgLobbyRooms extends DwgElement {
     }
   }
 
-  viewerToPlayer(room_id: number, user_id: number) {
+  viewerToPlayer(room_id: number, user_id: number): void {
     const room = this.getRoom(room_id);
     if (!room) {
       return;
@@ -184,7 +184,7 @@ export class DwgLobbyRooms extends DwgElement {
     }
   }
 
-  playerJoinsRoom(room_id: number, joinee: LobbyUser) {
+  playerJoinsRoom(room_id: number, joinee: LobbyUser): void {
     const curr_room = this.getRoom(joinee.room_id);
     if (room_id === joinee.room_id) {
       if (!!curr_room) {
@@ -208,7 +208,7 @@ export class DwgLobbyRooms extends DwgElement {
     }
   }
 
-  viewerJoinsRoom(room_id: number, joinee: LobbyUser) {
+  viewerJoinsRoom(room_id: number, joinee: LobbyUser): void {
     const curr_room = this.getRoom(joinee.room_id);
     if (room_id === joinee.room_id) {
       if (!!curr_room) {
@@ -232,7 +232,7 @@ export class DwgLobbyRooms extends DwgElement {
     }
   }
 
-  clientLeavesRoom(room_id: number, client_id: number) {
+  clientLeavesRoom(room_id: number, client_id: number): void {
     const room = this.getRoom(room_id);
     if (!room) {
       return;
@@ -246,7 +246,7 @@ export class DwgLobbyRooms extends DwgElement {
     this.roomUpdated(room);
   }
 
-  updateRoomSettings(room_id: number, new_settings: GameSettings) {
+  updateRoomSettings(room_id: number, new_settings: GameSettings): void {
     const room = this.getRoom(room_id);
     if (!room) {
       return;
@@ -255,7 +255,7 @@ export class DwgLobbyRooms extends DwgElement {
     this.roomUpdated(room);
   }
 
-  launchRoom(room_id: number, game_id: number) {
+  launchRoom(room_id: number, game_id: number): void {
     const room = this.getRoom(room_id);
     if (!room) {
       return;
@@ -264,7 +264,7 @@ export class DwgLobbyRooms extends DwgElement {
     this.roomUpdated(room);
   }
 
-  gameOver(room_id: number) {
+  gameOver(room_id: number): void {
     const room = this.getRoom(room_id);
     if (!room) {
       return;

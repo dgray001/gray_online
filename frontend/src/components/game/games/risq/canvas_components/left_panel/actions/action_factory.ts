@@ -10,6 +10,7 @@ import { isOnlyMilitary, isOnlyVillagers, unitResolver } from '../selection_quer
 import type { RisqActionButton } from './action_button';
 import { RisqBuildingAttackButton, RisqBuildingGatherPointButton } from './building/building_armed_buttons';
 import { RisqBuildingDeleteButton } from './building/building_delete_button';
+import { RisqAutoRenewButton } from './building/auto_renew_button';
 import { RisqBuildingUngarrisonButton } from './building/building_ungarrison_button';
 import { RisqCreateButton } from './building/create_button';
 import { RisqResearchButton } from './building/research_button';
@@ -200,6 +201,9 @@ function buildingActions(risq: DwgRisq, building: RisqBuilding, player: RisqPlay
   );
   if (building.under_construction) {
     return buttons;
+  }
+  if (building.gather_capacity !== undefined && building.renew_cost) {
+    buttons.push(new RisqAutoRenewButton(risq, building_id));
   }
   for (const producible of building.produces) {
     if (!player || !buildingCanProduce(player, building, producible)) {

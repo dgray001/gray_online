@@ -7,14 +7,24 @@ import { invertPair } from '../../model/coordinates';
 import type { RisqRegion, RisqSpace, RisqUnit } from '../../model/types';
 import { DrawRisqSpaceDetail } from '../space';
 import { RisqViewMode, nextViewMode } from '../terrain';
-import { getRisqZone, zoneCenterOffset } from '../zones/geometry';
+import {
+  BUILDING_CIRCLE_RADIUS_MULTIPLIER,
+  CENTER_ZONE_APOTHEM_MULTIPLIER,
+  centerUnitSlotCapacity,
+  centerUnitMaxZoom,
+  corpseUnitRadius,
+  edgeUnitSlotCapacity,
+  getRisqZone,
+  zoneCenterOffset,
+} from '../zones/geometry';
 import { unitSlotWorldPosition } from '../zones/slots';
 
 const DEFAULT_HEXAGON_RADIUS = 60;
 const ZOOM_REFERENCE_BOARD_SIZE = 4;
-const MAX_ZOOM_CANVAS_FRACTION = 0.65;
-const MIN_ZOOM_REFERENCE_POWER = 2.2;
-const ZONE_DETAIL_THRESHOLD = 0.45;
+
+const MIN_ZOOM_HEXAGON_SCALE = 0.8;
+const ZONE_DETAIL_THRESHOLD = 1;
+const DEFAULT_UNIT_CIRCLE_SCREEN_DIAMETER = 44;
 const OWNERSHIP_DETAIL_THRESHOLD = 0.4;
 
 export declare interface CanvasBounds {
@@ -24,6 +34,9 @@ export declare interface CanvasBounds {
 
 /** Owns the board's hex size, canvas size, last transform, and level of detail, and converts between their frames */
 export class RisqViewport {
+  private unit_circle_screen_diameter = DEFAULT_UNIT_CIRCLE_SCREEN_DIAMETER;
+  private center_max_slots = 1;
+  private edge_max_slots = 1;
   private hex_r = DEFAULT_HEXAGON_RADIUS;
   private hex_a = 0.5 * 1.732 * DEFAULT_HEXAGON_RADIUS;
   private canvas_center: Point2D = { x: 0, y: 0 };
@@ -41,6 +54,37 @@ export class RisqViewport {
     return this.hex_r;
   }
 
+  unitRadius(): number {
+    return this.unit_circle_screen_diameter / (2 * this.transform.scale);
+  }
+
+  corpseRadius(): number {
+    return corpseUnitRadius(this.hex_r);
+  }
+
+  centerMaxSlots(): number {
+    return this.center_max_slots;
+  }
+
+  edgeMaxSlots(): number {
+    return this.edge_max_slots;
+  }
+
+  updateCenterSlots(scale: number): void {
+    const capacity = centerUnitSlotCapacity(this.hex_r, this.unit_circle_screen_diameter / (2 * scale));
+    const edge_capacity = edgeUnitSlotCapacity(this.hex_r, this.unit_circle_screen_diameter / (2 * scale));
+    if (capacity === this.center_max_slots && edge_capacity === this.edge_max_slots) {
+      return;
+    }
+    this.center_max_slots = capacity;
+    this.edge_max_slots = edge_capacity;
+    for (const space of this.session.getGame()?.spaces.flat() ?? []) {
+      for (const zone of space?.zones?.flat() ?? []) {
+        zone.unit_slots = undefined;
+      }
+    }
+  }
+
   hexA(): number {
     return this.hex_a;
   }
@@ -53,7 +97,7 @@ export class RisqViewport {
     return this.transform;
   }
 
-  setTransform(transform: BoardTransformData) {
+  setTransform(transform: BoardTransformData): void {
     this.transform = transform;
   }
 
@@ -91,19 +135,21 @@ export class RisqViewport {
     );
   }
 
-  zoomLimits(board_width: number): { min: number; max: number } {
-    const reference_radius = board_width / (1.732 * (2 * ZOOM_REFERENCE_BOARD_SIZE + 1));
-    const reference_max = (MAX_ZOOM_CANVAS_FRACTION * this.canvas_size.height) / reference_radius;
-    const max = (MAX_ZOOM_CANVAS_FRACTION * this.canvas_size.height) / this.hex_r;
-    return { min: max / reference_max ** MIN_ZOOM_REFERENCE_POWER, max };
+  zoomLimits(board_size: Point2D): { min: number; max: number } {
+    const min =
+      MIN_ZOOM_HEXAGON_SCALE * Math.min(this.canvas_size.width / board_size.x, this.canvas_size.height / board_size.y);
+    const max = centerUnitMaxZoom(this.hex_r, this.unit_circle_screen_diameter);
+    return { min, max };
   }
 
-  updateDrawDetail(scale: number, max_scale: number) {
+  updateDrawDetail(scale: number, max_scale: number): void {
     const board_size = this.session.getGame()?.board_size ?? ZOOM_REFERENCE_BOARD_SIZE;
     const reference_scale = (2 * ZOOM_REFERENCE_BOARD_SIZE + 1) / (2 * board_size + 1);
+    const center_zone_gap = this.hex_r * (CENTER_ZONE_APOTHEM_MULTIPLIER - BUILDING_CIRCLE_RADIUS_MULTIPLIER);
+    const zone_detail_scale = (this.unit_circle_screen_diameter / center_zone_gap) * ZONE_DETAIL_THRESHOLD;
     scale *= reference_scale;
     max_scale *= reference_scale;
-    if (scale > ZONE_DETAIL_THRESHOLD * (max_scale - 1) + 1) {
+    if (scale >= zone_detail_scale * reference_scale) {
       this.draw_detail = DrawRisqSpaceDetail.ZONE_DETAILS;
     } else if (scale < 1 / (OWNERSHIP_DETAIL_THRESHOLD * (max_scale - 1) + 1)) {
       this.draw_detail = DrawRisqSpaceDetail.OWNERSHIP;
@@ -130,6 +176,7 @@ export class RisqViewport {
     this.canvas_size = canvas_size;
     this.hex_r = board_size.x / (1.732 * (2 * game_board_size + 1));
     this.hex_a = 0.5 * 1.732 * this.hex_r;
+    this.updateCenterSlots(this.transform.scale);
     return { ratio, center: this.canvas_center };
   }
 
@@ -167,13 +214,24 @@ export class RisqViewport {
       const building = this.session.findBuildingById(unit.garrisoned_in);
       return building ? zoneCenterOffset(building.zone_coordinate, this.hex_r) : undefined;
     }
+    if (this.draw_detail === DrawRisqSpaceDetail.OWNERSHIP) {
+      return zoneCenterOffset(unit.zone_coordinate, this.hex_r);
+    }
     const zone = getRisqZone(this.session.spaceAt(unit.space_coordinate), unit.zone_coordinate);
     if (!zone) {
       return zoneCenterOffset(unit.zone_coordinate, this.hex_r);
     }
     return (
-      unitSlotWorldPosition(zone, unit.zone_coordinate, this.hex_r, this.session.getPlayerId(), unit.internal_id) ??
-      zoneCenterOffset(unit.zone_coordinate, this.hex_r)
+      unitSlotWorldPosition(
+        zone,
+        unit.zone_coordinate,
+        this.hex_r,
+        this.session.getPlayerId(),
+        unit.internal_id,
+        this.center_max_slots,
+        this.unitRadius(),
+        this.edge_max_slots
+      ) ?? zoneCenterOffset(unit.zone_coordinate, this.hex_r)
     );
   }
 

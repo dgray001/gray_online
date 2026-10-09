@@ -51,19 +51,24 @@ export class RisqCommands {
     );
   }
 
-  private sendGameUpdate(content: string, kind: string) {
+  private sendGameUpdate(content: string, kind: string): void {
     const game_update = createMessage(`player-${this.session.getPlayerId()}`, 'game-update', content, kind);
     this.host.dispatchEvent(new CustomEvent('game_update', { detail: game_update, bubbles: true }));
   }
 
-  private confirm(question: string, on_confirmed: () => void) {
+  private confirm(question: string, on_confirmed: () => void): void {
     const dialog = document.createElement('dwg-confirm-dialog');
     dialog.setData({ question, size: DialogSize.SMALL });
     dialog.addEventListener('confirmed', on_confirmed);
     this.host.appendChild(dialog);
   }
 
-  private addOrder(order_type: RisqOrderType, subjects: number[], target_id: number, clear_previous_orders: boolean) {
+  private addOrder(
+    order_type: RisqOrderType,
+    subjects: number[],
+    target_id: number,
+    clear_previous_orders: boolean
+  ): void {
     this.orders_model.add({
       player_id: this.session.getPlayerId(),
       order_type,
@@ -147,7 +152,7 @@ export class RisqCommands {
     this.ungarrisonUnits(this.session.getPlayer()?.buildings.get(building_id)?.garrisoned_units ?? []);
   }
 
-  toggleBuildingAttack() {
+  toggleBuildingAttack(): void {
     if (this.armed.isBuildingAttackArmed()) {
       this.armed.disarmBuildingAttack();
     } else {
@@ -167,7 +172,7 @@ export class RisqCommands {
     }
   }
 
-  toggleMercenary(mercenary: RisqProducible) {
+  toggleMercenary(mercenary: RisqProducible): void {
     if (this.armed.getArmedMercenaryId() === mercenary.id) {
       this.armed.disarmOrder();
       return;
@@ -201,23 +206,49 @@ export class RisqCommands {
     this.sendGameUpdate(JSON.stringify({ internal_ids, ...fields }), 'set-unit-behavior');
   }
 
-  setUnitStance(internal_ids: number[], stance: RisqUnitStance) {
+  setUnitStance(internal_ids: number[], stance: RisqUnitStance): void {
     this.sendUnitBehavior(internal_ids, { stance });
   }
 
-  setUnitToggle(internal_ids: number[], field: UnitToggleField, value: boolean) {
+  setUnitToggle(internal_ids: number[], field: UnitToggleField, value: boolean): void {
     this.sendUnitBehavior(internal_ids, { [field]: value });
   }
 
   /** Turns the flag on for all the units unless every one of them already has it on */
-  toggleUnitFlag(internal_ids: number[], field: UnitToggleField) {
+  toggleUnitFlag(internal_ids: number[], field: UnitToggleField): void {
     const player = this.session.getPlayer();
     const values = internal_ids.map((id) => player?.units.get(id)?.[field]);
     const active = values.length > 0 && values.every((v) => v === true);
     this.setUnitToggle(internal_ids, field, !active);
   }
 
-  setUnitTargetPriority(internal_ids: number[], target_priority: RisqTargetCategory[]) {
+  setUnitTargetPriority(internal_ids: number[], target_priority: RisqTargetCategory[]): void {
     this.sendUnitBehavior(internal_ids, { target_priority });
+  }
+
+  auto_renew_pending = false;
+
+  changeAutoRenew(internal_id: number, change: number): void {
+    const player = this.session.getPlayer();
+    const building = player?.buildings.get(internal_id);
+    if (
+      !player ||
+      !building?.renew_cost ||
+      building.under_construction ||
+      !this.canCommandBuilding(internal_id) ||
+      this.auto_renew_pending
+    ) {
+      return;
+    }
+    const count = (player.auto_renewals.get(building.building_id) ?? 0) + change;
+    if (count < 0) {
+      return;
+    }
+    if (change > 0 && !canAffordCost(player, building.renew_cost)) {
+      this.show_message('Not enough resources', RISQ_MESSAGE_WARNING_COLOR);
+      return;
+    }
+    this.auto_renew_pending = true;
+    this.sendGameUpdate(JSON.stringify({ building_id: building.building_id, count }), 'set-auto-renew');
   }
 }

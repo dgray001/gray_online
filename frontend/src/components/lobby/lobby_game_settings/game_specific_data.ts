@@ -5,7 +5,7 @@ import { GameType } from '../data_models';
 export function getReadableGameSettings(settings: object, game_type: GameType): [string, string][] {
   const m: [string, string][] = [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const add = (s1: string, s2: any) => {
+  const add = (s1: string, s2: any): void => {
     // type depends on game type
     m.push([capitalize(s1.replace('_', ' ')), s2.toString()]);
   };

@@ -53,7 +53,7 @@ export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
     return this.data;
   }
 
-  setData(data: TechTreeDialogData, parsed?: boolean) {
+  setData(data: TechTreeDialogData, parsed?: boolean): void {
     this.data = data;
     this.close_hotkey = data.close_hotkey;
     this.classList.add(`size-${DialogSize.XXLARGE}`);
@@ -68,7 +68,7 @@ export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
     this.loadTree();
   }
 
-  private async loadTree() {
+  private async loadTree(): Promise<void> {
     const response = await apiGet<RisqBuildingTreeEntry[]>('risq/tech-tree');
     if (!response.success || response.result.length === 0) {
       this.canvas.hidden = true;
@@ -84,7 +84,7 @@ export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
     return Math.max(1, Math.floor((COLUMN_W + NODE_GAP) / (NODE_S + NODE_GAP)));
   }
 
-  private renderTree(buildings: RisqBuildingTreeEntry[]) {
+  private renderTree(buildings: RisqBuildingTreeEntry[]): void {
     const researched_techs = this.data.risq.getPlayer()?.researched_techs;
     const nodes_per_row = this.nodesPerRow();
     this.nodes = [];
@@ -127,7 +127,7 @@ export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
     this.drawCanvas(content_w, content_h);
   }
 
-  private drawCanvas(content_w: number, content_h: number) {
+  private drawCanvas(content_w: number, content_h: number): void {
     const dpr = window.devicePixelRatio || 1;
     this.canvas.style.width = `${content_w}px`;
     this.canvas.style.height = `${content_h}px`;
@@ -141,7 +141,7 @@ export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
     this.redraw(ctx, content_w, content_h);
   }
 
-  private redraw(ctx: CanvasRenderingContext2D, content_w: number, content_h: number) {
+  private redraw(ctx: CanvasRenderingContext2D, content_w: number, content_h: number): void {
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, content_w, content_h);
     for (const node of this.nodes) {
@@ -155,7 +155,7 @@ export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
   }
 
   /** Draws a branch line from the header to each of its own producible nodes, so every node is visibly connected */
-  private drawConnectors(ctx: CanvasRenderingContext2D, header: HeaderNode) {
+  private drawConnectors(ctx: CanvasRenderingContext2D, header: HeaderNode): void {
     const from = { x: header.x + 0.5 * header.w, y: header.y + header.h };
     ctx.strokeStyle = 'rgba(200, 190, 175, 0.35)';
     ctx.lineWidth = 1.5;
@@ -187,7 +187,7 @@ export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
     return icon;
   }
 
-  private drawNode(ctx: CanvasRenderingContext2D, node: TreeNode) {
+  private drawNode(ctx: CanvasRenderingContext2D, node: TreeNode): void {
     ctx.fillStyle = STATUS_FILL[node.status];
     ctx.strokeStyle = node === this.hovered_node ? 'white' : STATUS_STROKE[node.status];
     ctx.lineWidth = node === this.hovered_node ? 2.5 : 1.5;
@@ -205,7 +205,7 @@ export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
     }
   }
 
-  private drawHeaderContent(ctx: CanvasRenderingContext2D, node: HeaderNode) {
+  private drawHeaderContent(ctx: CanvasRenderingContext2D, node: HeaderNode): void {
     const icon = this.trackedIcon(buildingImage(node.building.building_id, false, true));
     ctx.drawImage(icon, node.x + 8, node.y + 0.5 * node.h - 0.5 * ICON_S_HEADER, ICON_S_HEADER, ICON_S_HEADER);
 
@@ -258,7 +258,7 @@ export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
     return lines;
   }
 
-  private handleMousemove(e: MouseEvent) {
+  private handleMousemove(e: MouseEvent): void {
     const rect = this.canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -280,14 +280,14 @@ export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
     }
   }
 
-  private addLine(container: DocumentFragment, text: string, cls = 'tooltip-line') {
+  private addLine(container: DocumentFragment, text: string, cls = 'tooltip-line'): void {
     const line = document.createElement('span');
     line.classList.add(cls);
     line.innerText = text;
     container.appendChild(line);
   }
 
-  private addStatChip(container: HTMLElement, icon_path: string, value: number) {
+  private addStatChip(container: HTMLElement, icon_path: string, value: number): void {
     const chip = document.createElement('span');
     const img = createImage(`/images/${icon_path}.png`);
     img.alt = '';
@@ -297,7 +297,7 @@ export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
     container.appendChild(chip);
   }
 
-  private addCostRow(fragment: DocumentFragment, cost: RisqCost) {
+  private addCostRow(fragment: DocumentFragment, cost: RisqCost): void {
     const cost_row = document.createElement('div');
     cost_row.classList.add('tooltip-stats');
     const costs: [RisqResourceType, number][] = [
@@ -316,7 +316,7 @@ export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
     }
   }
 
-  private addStatsRows(fragment: DocumentFragment, stats: RisqUnitStatsEntry) {
+  private addStatsRows(fragment: DocumentFragment, stats: RisqUnitStatsEntry): void {
     this.addLine(fragment, `Health: ${stats.health}`);
     const combat_row = document.createElement('div');
     combat_row.classList.add('tooltip-stats');
@@ -418,7 +418,7 @@ export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
   }
 
   // flips left/right and up/down based on which half of the visible viewport the cursor is in, so the tooltip is never behind it
-  private positionTooltip(e: MouseEvent) {
+  private positionTooltip(e: MouseEvent): void {
     const wrapper_rect = this.wrapper.getBoundingClientRect();
     const tooltip_rect = this.hover_tooltip.getBoundingClientRect();
     const gap = 16;
@@ -430,13 +430,13 @@ export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
     this.hover_tooltip.style.top = `${Math.max(0, Math.min(y, this.wrapper.clientHeight - tooltip_rect.height))}px`;
   }
 
-  private hideTooltip() {
+  private hideTooltip(): void {
     this.hovered_node = undefined;
     this.hover_tooltip.hidden = true;
     this.redrawFromCache();
   }
 
-  private redrawFromCache() {
+  private redrawFromCache(): void {
     const ctx = this.canvas.getContext('2d');
     if (!ctx) {
       return;

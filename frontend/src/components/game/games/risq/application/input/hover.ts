@@ -34,7 +34,7 @@ export class RisqHover {
     return this.mouse_screen;
   }
 
-  setMouse(canvas: Point2D, screen: Point2D) {
+  setMouse(canvas: Point2D, screen: Point2D): void {
     this.mouse_canvas = canvas;
     this.mouse_screen = screen;
   }
@@ -47,7 +47,7 @@ export class RisqHover {
   }
 
   /** Drops references into a snapshot that's about to be replaced */
-  forget() {
+  forget(): void {
     this.hovered_space = undefined;
     this.hovered_zone = undefined;
   }
@@ -88,7 +88,7 @@ export class RisqHover {
     return true;
   }
 
-  private resolveZone() {
+  private resolveZone(): void {
     if (this.viewport.zoneView() && this.viewport.viewMode() !== RisqViewMode.REGION) {
       const new_hovered_zone = resolveHoveredZones(this.mouse_canvas, this.hovered_space, this.viewport.hexR());
       if (!!this.hovered_zone && !equalsPoint2D(new_hovered_zone?.coordinate, this.hovered_zone?.coordinate)) {
@@ -100,7 +100,7 @@ export class RisqHover {
     }
   }
 
-  private unhoverZone() {
+  private unhoverZone(): void {
     if (!!this.hovered_zone) {
       unhoverRisqZone(this.hovered_zone);
       this.hovered_zone = undefined;
@@ -108,7 +108,7 @@ export class RisqHover {
   }
 
   /** Cancels any click pending on the hovered space/zone, e.g. once a press turns into a drag */
-  clearClicks() {
+  clearClicks(): void {
     if (!!this.hovered_space) {
       this.hovered_space.clicked = false;
     }
@@ -121,12 +121,12 @@ export class RisqHover {
   }
 
   /** Board pan has started: drop highlight flags and pending clicks */
-  dragging() {
+  dragging(): void {
     this.removeHoveredFlags();
     this.clearClicks();
   }
 
-  leave() {
+  leave(): void {
     this.unhoverZone();
     if (!!this.hovered_space) {
       this.hovered_space.hovered = false;
@@ -135,7 +135,7 @@ export class RisqHover {
     }
   }
 
-  private removeHoveredFlags() {
+  private removeHoveredFlags(): void {
     if (!this.hovered_space) {
       return;
     }
@@ -148,7 +148,7 @@ export class RisqHover {
     }
   }
 
-  private updateHoveredFlags() {
+  private updateHoveredFlags(): void {
     if (!this.hovered_space) {
       return;
     }

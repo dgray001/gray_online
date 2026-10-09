@@ -16,7 +16,7 @@ interface ApiErrorResponse {
 export type ApiResponse<T> = ApiSuccessResponse<T> | ApiErrorResponse;
 
 /** Returns websocket path */
-export function websocketPath() {
+export function websocketPath(): string {
   const scheme = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
   return DEV
     ? `ws://${location.hostname}:6807/api/lobby`
@@ -24,7 +24,7 @@ export function websocketPath() {
 }
 
 /** Converts string api to actual api url */
-function apiToUrl(api: string) {
+function apiToUrl(api: string): string {
   return `/api/${api}/`;
 }
 

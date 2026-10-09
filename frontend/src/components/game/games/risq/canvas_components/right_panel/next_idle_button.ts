@@ -8,7 +8,7 @@ import { RisqHotkeyAction, hotkeyDisplayString } from '../../application/input/h
 export class RisqNextIdleButton extends DwgRectButton {
   private risq: DwgRisq;
   private tooltip = new RisqButtonTooltip(() => ({
-    title: 'Next Idle Unit',
+    title: 'Next Idle Unit or Building',
     hotkey: hotkeyDisplayString(getSettings().risq_hotkeys.actions[RisqHotkeyAction.NEXT_IDLE]),
   }));
 
@@ -52,7 +52,7 @@ export class RisqNextIdleButton extends DwgRectButton {
     }
   }
 
-  drawTooltip(ctx: CanvasRenderingContext2D, transform: BoardTransformData, risq: DwgRisq, dt: number) {
+  drawTooltip(ctx: CanvasRenderingContext2D, transform: BoardTransformData, risq: DwgRisq, dt: number): void {
     this.tooltip.draw(ctx, transform, risq, dt, this.isHovering(), this.isPressed());
   }
 }

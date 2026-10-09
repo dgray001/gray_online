@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.8x: Initial map fixes
+v0.8y: Frontend fixes
 
 ## Dev Use
 

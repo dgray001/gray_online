@@ -106,6 +106,29 @@ func TestRectangleMapSizeDimensions(t *testing.T) {
 	}
 }
 
+func TestTriangleMapSizeDimensions(t *testing.T) {
+	script, err := os.ReadFile("../../config/maps/scripted/triangle.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	useScripts(t, map[string]string{"triangle": string(script)})
+	dimensions := [][2]int{{9, 55}, {12, 91}, {14, 120}, {16, 153}, {17, 171}, {19, 210}, {20, 231}, {23, 300}, {25, 351}}
+	for i, want := range dimensions {
+		board, err := fakeboard.GenerateWithSize("script:triangle", 2, defs.MapSize(i+1), 1)
+		if err != nil {
+			t.Fatalf("size %d: %v", i+1, err)
+		}
+		rows := map[int]bool{}
+		for _, space := range board.Inspect() {
+			rows[space.Coord.Y] = true
+		}
+		if len(rows) != want[0]+1 || len(board.Spaces()) != want[1] {
+			t.Errorf("size %d: %d rows and %d spaces, want %d and %d", i+1, len(rows), len(board.Spaces()), want[0]+1, want[1])
+		}
+		checkBoardInvariants(t, board, 2)
+	}
+}
+
 func TestScriptsGenerateForSweptPlayerCounts(t *testing.T) {
 	for _, name := range sweptScripts {
 		for _, players := range sweptPlayerCounts(name) {

@@ -88,10 +88,10 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
       return `${d} space${d === 1 ? '' : 's'} away`;
     }
     if (!target_zone) {
-      return 'here';
+      return '';
     }
     const d = axialDistance(subject_position.zone_coordinate, target_zone);
-    return d === 0 ? 'here' : `${d} zone${d === 1 ? '' : 's'} away`;
+    return d === 0 ? '' : `${d} zone${d === 1 ? '' : 's'} away`;
   };
 
   const resource_cost = (
@@ -249,12 +249,12 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
     }
     case RisqOrderType.OrderType_UnitAttackZone: {
       const { space, zone } = invertZoneKey(order.target_id);
-      base = { icon: 'icons/sword32', name: 'Attack', target: distance_text(space, zone), cost: [] };
+      base = { icon: 'icons/sword32', name: 'Attack Zone', target: distance_text(space, zone), cost: [] };
       break;
     }
     case RisqOrderType.OrderType_UnitAttackSpace: {
       const target_space = invertPair(order.target_id);
-      base = { icon: 'icons/sword32', name: 'Attack', target: distance_text(target_space), cost: [] };
+      base = { icon: 'icons/sword32', name: 'Attack Space', target: distance_text(target_space), cost: [] };
       break;
     }
     case RisqOrderType.OrderType_UnitGarrison: {

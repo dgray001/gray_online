@@ -13,6 +13,7 @@ import {
 import type { DwgLobby } from '../lobby/lobby';
 import { until } from '../../scripts/util';
 import '../lobby/lobby_game_settings/game_specific_data';
+import { generateName } from '../lobby/lobby_game_settings/ai_selector/name_generator';
 
 import html from './page_dev.html';
 
@@ -54,7 +55,7 @@ export class DwgPageDev extends DwgElement {
     }
   }
 
-  private launchGame(game: GameTypeLowerKeys, custom_settings?: Record<string, unknown>) {
+  private launchGame(game: GameTypeLowerKeys, custom_settings?: Record<string, unknown>): void {
     const nickname = 'dev_user';
     const socket = new WebSocket(`${websocketPath()}/connect/${nickname}`);
     socket.addEventListener('error', (e) => {
@@ -140,6 +141,14 @@ export class DwgPageDev extends DwgElement {
         break;
     }
     if (custom_settings) {
+      if (typeof custom_settings.ai_players === 'number') {
+        const count = custom_settings.ai_players;
+        const ai_players = [];
+        for (let i = 0; i < count; i++) {
+          ai_players.push({ nickname: generateName(), config: 'default' });
+        }
+        custom_settings.ai_players = ai_players;
+      }
       settings.game_specific_settings = {
         ...settings.game_specific_settings,
         ...custom_settings,

@@ -38,7 +38,7 @@ export class RisqOrderPlanning {
     return this.local_foundations.get(key);
   }
 
-  setLocalFoundation(foundation: LocalRisqFoundation) {
+  setLocalFoundation(foundation: LocalRisqFoundation): void {
     this.local_foundations.set(foundation.coordinate_key, foundation);
   }
 
@@ -60,7 +60,7 @@ export class RisqOrderPlanning {
   }
 
   /** Recomputes everything derived from the orders model; call after any order or snapshot change */
-  refresh() {
+  refresh(): void {
     this.syncLocalFoundations();
     this.updateResourceSpending();
     this.recomputeIdleUnits();
@@ -76,7 +76,7 @@ export class RisqOrderPlanning {
     return map;
   }
 
-  private registerLocalFoundation(player: RisqPlayer, key: number, order: RisqFrontendOrder) {
+  private registerLocalFoundation(player: RisqPlayer, key: number, order: RisqFrontendOrder): void {
     const { building_id, space, zone } = invertBuildKey(order.target_id);
     const site = this.session
       .spaceAt(space)
@@ -95,10 +95,10 @@ export class RisqOrderPlanning {
     });
   }
 
-  private syncLocalFoundations() {
+  private syncLocalFoundations(): void {
     const active = this.activeBuildOrders();
     const player = this.session.getPlayer();
-    const is_cancelled = (key: number) =>
+    const is_cancelled = (key: number): boolean =>
       this.orders_model
         .pendingOrders()
         .some((o) => o.order_type === RisqOrderType.OrderType_CancelFoundation && o.target_id === key);
@@ -118,7 +118,7 @@ export class RisqOrderPlanning {
     }
   }
 
-  private recomputeIdleUnits() {
+  private recomputeIdleUnits(): void {
     const player = this.session.getPlayer();
     if (!player) {
       this.idle_units = [];
@@ -136,30 +136,42 @@ export class RisqOrderPlanning {
   }
 
   idleBuildingCount(): number {
-    const player = this.session.getPlayer();
-    if (!player) {
-      return 0;
-    }
-    return [...player.buildings.values()].filter(
-      (b) =>
-        !b.under_construction &&
-        b.produces.length > 0 &&
-        this.orders_model.effectiveForSubject(b.internal_id, 'building').length === 0
-    ).length;
+    return this.idleBuildings().length;
   }
 
-  /** Cycles through idle units in internal-id order, continuing after the last one returned */
-  nextIdleUnit(): RisqUnit | undefined {
-    if (!this.session.getGame() || this.idle_units.length === 0) {
+  idleOrderableCount(): number {
+    return this.idleUnitCount() + this.idleBuildingCount();
+  }
+
+  private idleBuildings(): RisqBuilding[] {
+    const player = this.session.getPlayer();
+    if (!player) {
+      return [];
+    }
+    return [...player.buildings.values()]
+      .filter(
+        (b) =>
+          !b.under_construction &&
+          b.produces.length > 0 &&
+          this.orders_model.effectiveForSubject(b.internal_id, 'building').length === 0
+      )
+      .sort((a, b) => a.internal_id - b.internal_id);
+  }
+
+  nextIdleOrderable(): RisqUnit | RisqBuilding | undefined {
+    const candidates = [...this.idle_units, ...this.idleBuildings()];
+    const key = (entity: RisqUnit | RisqBuilding): number => entity.internal_id * 2 + ('building_id' in entity ? 1 : 0);
+    candidates.sort((a, b) => key(a) - key(b));
+    if (!this.session.getGame() || candidates.length === 0) {
       return undefined;
     }
     let idx = 0;
     if (this.last_idle_selected !== undefined) {
-      const found = this.idle_units.findIndex((u) => u.internal_id > this.last_idle_selected!);
+      const found = candidates.findIndex((entity) => key(entity) > this.last_idle_selected!);
       idx = found === -1 ? 0 : found;
     }
-    const unit = this.idle_units[idx];
-    this.last_idle_selected = unit.internal_id;
+    const unit = candidates[idx];
+    this.last_idle_selected = key(unit);
     return unit;
   }
 
@@ -196,7 +208,7 @@ export class RisqOrderPlanning {
       cantorPair(target.space_coordinate.x, target.space_coordinate.y),
       cantorPair(target.zone_coordinate.x, target.zone_coordinate.y)
     );
-    const gathers = (orders: RisqFrontendOrder[]) =>
+    const gathers = (orders: RisqFrontendOrder[]): boolean =>
       orders.some((o) => o.order_type === RisqOrderType.OrderType_UnitGather && o.target_id === zone_key);
     let current = 0;
     const predicted = new Set<number>();
@@ -226,7 +238,7 @@ export class RisqOrderPlanning {
     };
   }
 
-  private updateResourceSpending() {
+  private updateResourceSpending(): void {
     const player = this.session.getPlayer();
     if (!player) {
       return;
@@ -323,7 +335,7 @@ export class RisqOrderPlanning {
     return undefined;
   }
 
-  private addSpending(player: RisqPlayer, cost: RisqCost | undefined, multiplier = 1) {
+  private addSpending(player: RisqPlayer, cost: RisqCost | undefined, multiplier = 1): void {
     if (!cost) {
       return;
     }

@@ -71,7 +71,7 @@ export function configDraw(
   hovering: boolean,
   clicking: boolean,
   draw: () => void
-) {
+): void {
   if (clicking) {
     if (hovering) {
       ctx.fillStyle = config.click_fill_style ?? config.hover_fill_style ?? config.fill_style;

@@ -55,11 +55,11 @@ export abstract class DwgRectDropdown extends DwgDropdown {
     this.rect_config = config;
   }
 
-  setPosition(p: Point2D) {
+  setPosition(p: Point2D): void {
     this.rect_config.p = { ...p };
   }
 
-  setSize(w: number, h: number) {
+  setSize(w: number, h: number): void {
     this.rect_config.w = w;
     this.rect_config.h = h;
   }

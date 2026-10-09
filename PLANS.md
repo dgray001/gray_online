@@ -14,12 +14,9 @@ Small Risq Issues:
   => Unit/building range needs to be shown better (maybe on hover explain what it is?)
  - Minimap
   => Minimap shouldn't show terrain beyond terrain type on anything other than default view mode and it should be more explicit in showing mil / resources in appropriate modes
-  => Don't change unit dots based on zoom
-  => Show resources on minimap
  - Economy
   => Buildings that can't build units shouldn't be counted as idle
   => Show idle units/buildings in bottom panel with ways to filter/turn off for certain groups
-  => Default map sizes might be a bit too large
   => Wood gathering seems slow we need a way to speed it up (more techs!)
  - Combat
   => If enemy has massive unit stack there is no way to specify which ones to attack

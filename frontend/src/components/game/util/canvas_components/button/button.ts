@@ -28,23 +28,23 @@ export abstract class DwgButton implements CanvasComponent {
     this.config = config;
   }
 
-  isHovering() {
+  isHovering(): boolean {
     return this.hovering;
   }
 
-  setHovering(hovering: boolean) {
+  setHovering(hovering: boolean): void {
     this.hovering = hovering;
   }
 
-  isClicking() {
+  isClicking(): boolean {
     return this.clicking;
   }
 
-  setClicking(clicking: boolean) {
+  setClicking(clicking: boolean): void {
     this.clicking = clicking;
   }
 
-  isPressed() {
+  isPressed(): boolean {
     return this.clicking;
   }
 
@@ -52,13 +52,13 @@ export abstract class DwgButton implements CanvasComponent {
     return this.disabled;
   }
 
-  disable() {
+  disable(): void {
     this.disabled = true;
     this.hovering = false;
     this.clicking = false;
   }
 
-  enable() {
+  enable(): void {
     this.disabled = false;
     this.mousemove(this.last_canvas, this.last_screen, this.last_transform);
   }
@@ -122,7 +122,7 @@ export abstract class DwgButton implements CanvasComponent {
   }
 
   /** Returns whether this mouseup event triggered a release event on the button */
-  mouseup(e: MouseEvent) {
+  mouseup(e: MouseEvent): void {
     if (this.disabled) {
       return;
     }

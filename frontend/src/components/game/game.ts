@@ -23,7 +23,7 @@ import '../dialog_box/settings_dialog/settings_dialog';
 const SERVER_PING_TIME = 350000; // time between game refreshes
 
 /** Function to dispatch event that will show a dialog message */
-export function messageDialog(this: EventTarget, data: MessageDialogData) {
+export function messageDialog(this: EventTarget, data: MessageDialogData): void {
   this.dispatchEvent(new CustomEvent('show_message_dialog', { detail: data, bubbles: true }));
 }
 
@@ -113,7 +113,7 @@ export class DwgGame extends DwgElement {
     return this.game?.game_base?.viewers;
   }
 
-  addChat(message: ChatMessage, you_sent = false) {
+  addChat(message: ChatMessage, you_sent = false): void {
     this.chatbox.addChat(message, you_sent);
   }
 
@@ -253,7 +253,7 @@ export class DwgGame extends DwgElement {
     document.removeEventListener('keyup', this.handleKeyup);
   }
 
-  toggleChatbox() {
+  toggleChatbox(): void {
     this.chatbox_lock(async () => {
       this.chatbox_container.classList.toggle('showing');
       this.chatbox.classList.toggle('show');
@@ -263,11 +263,11 @@ export class DwgGame extends DwgElement {
     });
   }
 
-  setPadding(padding: string) {
+  setPadding(padding: string): void {
     this.game_container.style.setProperty('--padding', padding);
   }
 
-  private setSetting(s: string) {
+  private setSetting(s: string): void {
     switch (s) {
       case 'help':
         this.chatbox.addChat(
@@ -298,7 +298,7 @@ export class DwgGame extends DwgElement {
     }
   }
 
-  refreshRoom(room: LobbyRoom) {
+  refreshRoom(room: LobbyRoom): void {
     if (
       !room ||
       !room.game_id ||
@@ -369,11 +369,11 @@ export class DwgGame extends DwgElement {
     return false;
   }
 
-  socketActive() {
+  socketActive(): boolean {
     return !!this.socket && this.socket.readyState === WebSocket.OPEN;
   }
 
-  socketSend(message: string) {
+  socketSend(message: string): void {
     if (!this.socketActive()) {
       return;
     }
@@ -412,7 +412,7 @@ export class DwgGame extends DwgElement {
     this.game = new_game;
     let game_initialized = false;
     let waiting_room_initialized = false;
-    const set_game = async (component: GameHtmlTag) => {
+    const set_game = async (component: GameHtmlTag): Promise<void> => {
       if (!this.bundles_attached.has(component)) {
         const script = document.createElement('script');
         script.setAttribute(
@@ -531,7 +531,7 @@ export class DwgGame extends DwgElement {
     return false;
   }
 
-  playerDisconnected(player_id: number) {
+  playerDisconnected(player_id: number): void {
     const el = this.players_waiting_els.get(player_id);
     if (!!el) {
       el.innerText = 'Connecting ...';
@@ -543,7 +543,7 @@ export class DwgGame extends DwgElement {
     }
   }
 
-  playerConnected(player_id: number) {
+  playerConnected(player_id: number): void {
     const el = this.players_waiting_els.get(player_id);
     if (!!el) {
       el.innerText = 'Connected';
@@ -555,7 +555,7 @@ export class DwgGame extends DwgElement {
     }
   }
 
-  startGame() {
+  startGame(): void {
     if (!this.game) {
       return;
     }
@@ -564,7 +564,7 @@ export class DwgGame extends DwgElement {
     this.game_container.classList.add('show');
   }
 
-  exitGame() {
+  exitGame(): void {
     this.launched = false;
     this.classList.remove('show');
     this.socketSend(createMessage(`client-${this.clientId()}`, 'game-exit'));
@@ -578,7 +578,7 @@ export class DwgGame extends DwgElement {
     clearInterval(this.ping_interval);
   }
 
-  pingServer() {
+  pingServer(): void {
     if (!this.socketActive()) {
       this.dispatchEvent(
         new CustomEvent<string>('connection_lost', {

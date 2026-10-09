@@ -47,14 +47,14 @@ export class DwgRoomSelector extends DwgElement {
     });
   }
 
-  updateRoom(room: LobbyRoom) {
+  updateRoom(room: LobbyRoom): void {
     this.room = room;
     if (this.fully_parsed) {
       this.setRoomData();
     }
   }
 
-  private setRoomData() {
+  private setRoomData(): void {
     if (!this.room) {
       return;
     }

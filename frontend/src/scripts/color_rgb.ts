@@ -19,7 +19,7 @@ export class ColorRGB {
     return new ColorRGB(this.data.r, this.data.g, this.data.b, this.data.a);
   }
 
-  setColor(r: number, g: number, b: number, a?: number) {
+  setColor(r: number, g: number, b: number, a?: number): void {
     this.data = this.cleanInput(r, g, b, a);
   }
 
@@ -86,7 +86,7 @@ export class ColorRGB {
     return { r, g, b, a };
   }
 
-  private cleanData() {
+  private cleanData(): void {
     this.data = this.cleanInput(this.data.r, this.data.g, this.data.b, this.data.a);
   }
 }

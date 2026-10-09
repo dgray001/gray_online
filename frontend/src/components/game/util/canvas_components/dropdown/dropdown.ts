@@ -35,7 +35,7 @@ export abstract class DwgDropdown implements CanvasComponent {
     return this.option_list;
   }
 
-  setOptions(options: DropdownOption[]) {
+  setOptions(options: DropdownOption[]): void {
     this.option_list = options;
     if (!options.some((option) => option.value === this.selected)) {
       this.selected = undefined;
@@ -47,7 +47,7 @@ export abstract class DwgDropdown implements CanvasComponent {
     return this.selected;
   }
 
-  setValue(value: string | undefined) {
+  setValue(value: string | undefined): void {
     this.selected = this.option_list.some((option) => option.value === value) ? value : undefined;
   }
 
@@ -59,7 +59,7 @@ export abstract class DwgDropdown implements CanvasComponent {
     return this.open;
   }
 
-  close() {
+  close(): void {
     this.open = false;
     this.over_popover = false;
     this.hover_option = undefined;
@@ -74,11 +74,11 @@ export abstract class DwgDropdown implements CanvasComponent {
     return this.hovering;
   }
 
-  isHovering() {
+  isHovering(): boolean {
     return this.hovering || this.over_popover;
   }
 
-  setHovering(hovering: boolean) {
+  setHovering(hovering: boolean): void {
     if (!hovering) {
       this.hovering = false;
       this.over_popover = false;
@@ -86,11 +86,11 @@ export abstract class DwgDropdown implements CanvasComponent {
     }
   }
 
-  isClicking() {
+  isClicking(): boolean {
     return this.pressed !== undefined;
   }
 
-  setClicking(clicking: boolean) {
+  setClicking(clicking: boolean): void {
     if (!clicking) {
       this.pressed = undefined;
     }
@@ -100,13 +100,13 @@ export abstract class DwgDropdown implements CanvasComponent {
     return this.disabled;
   }
 
-  disable() {
+  disable(): void {
     this.disabled = true;
     this.setHovering(false);
     this.close();
   }
 
-  enable() {
+  enable(): void {
     this.disabled = false;
   }
 
@@ -149,7 +149,7 @@ export abstract class DwgDropdown implements CanvasComponent {
     return was_open;
   }
 
-  mouseup(e: MouseEvent) {
+  mouseup(e: MouseEvent): void {
     const target = this.pressed;
     this.pressed = undefined;
     if (e.button !== 0 || target === undefined) {
@@ -162,7 +162,7 @@ export abstract class DwgDropdown implements CanvasComponent {
     }
   }
 
-  private toggle() {
+  private toggle(): void {
     if (this.open) {
       this.close();
       return;
@@ -171,7 +171,7 @@ export abstract class DwgDropdown implements CanvasComponent {
     this.opened();
   }
 
-  private choose(index: number) {
+  private choose(index: number): void {
     const option = this.option_list[index];
     this.close();
     if (option.value !== this.selected) {

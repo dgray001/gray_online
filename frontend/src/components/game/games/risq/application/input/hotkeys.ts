@@ -186,7 +186,7 @@ export type RisqHotkeyLookupEntry =
 /** Builds a combo-string -> entries lookup for dispatch (non-conflicting entries can share a combo); unbound combos are omitted */
 export function buildHotkeyLookup(bindings: RisqHotkeyBindings): Map<string, RisqHotkeyLookupEntry[]> {
   const lookup = new Map<string, RisqHotkeyLookupEntry[]>();
-  const add = (combo: HotkeyCombo, entry: RisqHotkeyLookupEntry) => {
+  const add = (combo: HotkeyCombo, entry: RisqHotkeyLookupEntry): void => {
     if (isUnbound(combo)) {
       return;
     }

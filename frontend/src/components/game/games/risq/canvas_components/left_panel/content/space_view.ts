@@ -33,7 +33,7 @@ export class RisqSpaceView {
     return [this.villager_row_button, this.military_row_button].filter((b): b is RisqSpaceUnitsRowButton => !!b);
   }
 
-  draw(pc: PanelDrawContext, space: RisqSpace, hexagon: RisqSpaceHexagon) {
+  draw(pc: PanelDrawContext, space: RisqSpace, hexagon: RisqSpaceHexagon): void {
     const { ctx, frame, risq } = pc;
     let yi = frame.yi() + drawName(pc, space.display_name);
     yi += drawSubtitle(pc, `${terrainTypeLabel(space.terrain_type)} space`, yi);
@@ -52,7 +52,7 @@ export class RisqSpaceView {
     const row_x = frame.xi() + 0.1 * frame.w();
     const row_w = 0.8 * frame.w();
     ctx.fillStyle = 'black';
-    const draw_row_text = (x: number, text: string, max_w: number) => {
+    const draw_row_text = (x: number, text: string, max_w: number): void => {
       const row_yc = yi + 0.5 * image_size;
       const font = `bold ${image_size}px serif`;
       ctx.font = font;
@@ -74,7 +74,7 @@ export class RisqSpaceView {
         font,
       });
     };
-    const draw_row = (img: CanvasImageSource, text: string, hover_data?: RectHoverData) => {
+    const draw_row = (img: CanvasImageSource, text: string, hover_data?: RectHoverData): void => {
       const ps = { x: row_x, y: yi };
       const pe = { x: ps.x + row_w, y: ps.y + image_size };
       if (hover_data?.hovered) {
@@ -134,7 +134,7 @@ export class RisqSpaceView {
     this.drawResourceTypes(pc, space, yi, image_size);
   }
 
-  private drawResourceTypes(pc: PanelDrawContext, space: RisqSpace, yi: number, image_size: number) {
+  private drawResourceTypes(pc: PanelDrawContext, space: RisqSpace, yi: number, image_size: number): void {
     const { ctx, frame, risq } = pc;
     const resources = [...(space.total_resources?.entries() ?? [])]
       .filter((r) => r[1] > 0)
@@ -180,13 +180,13 @@ export class RisqSpaceView {
     return row_button;
   }
 
-  drawRowButtons(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number) {
+  drawRowButtons(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
     for (const button of this.rowButtons()) {
       button.draw(ctx, transform, dt);
     }
   }
 
-  mousemove(canvas: Point2D, screen: Point2D, transform: BoardTransformData) {
+  mousemove(canvas: Point2D, screen: Point2D, transform: BoardTransformData): void {
     for (const button of this.rowButtons()) {
       button.mousemove(canvas, screen, transform);
     }
@@ -199,20 +199,20 @@ export class RisqSpaceView {
     }
   }
 
-  mousedown(e: MouseEvent) {
+  mousedown(e: MouseEvent): void {
     for (const button of this.rowButtons()) {
       button.mousedown(e);
     }
   }
 
-  mouseup(e: MouseEvent) {
+  mouseup(e: MouseEvent): void {
     for (const button of this.rowButtons()) {
       button.mouseup(e);
     }
   }
 }
 
-export function drawRegion(pc: PanelDrawContext, region: RisqRegion) {
+export function drawRegion(pc: PanelDrawContext, region: RisqRegion): void {
   const { ctx, frame, risq } = pc;
   let yi = frame.yi() + drawName(pc, region.name);
   yi += 12;

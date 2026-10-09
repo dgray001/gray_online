@@ -70,6 +70,7 @@ export declare interface RisqPlayerFromServer {
   turn_report?: RisqTurnReportFromServer;
   planned_foundations?: RisqPlannedFoundation[];
   available_mercenaries?: RisqProducible[];
+  auto_renewals?: { building_id: number; count: number }[];
 }
 
 export declare interface RisqSpaceBaseFromServer {
@@ -112,17 +113,27 @@ export type RisqSpaceFromServer =
   | RisqSpacePoorFromServer
   | RisqSpaceGoodFromServer;
 
+export declare interface RisqCorpseFromServer {
+  internal_id: number;
+  player_id: number;
+  unit_id: number;
+  turns: number;
+}
+
 /** Data describing zones inside a risq space */
 export declare interface RisqZoneFromServer {
   coordinate: Point2D;
   coordinate_key: number;
   building?: RisqBuildingFromServer;
   resource?: RisqResourceFromServer;
+  corpses?: RisqCorpseFromServer[];
   units?: RisqUnitFromServer[];
   unit_count?: number;
   ownership?: number;
   terrain_override: number;
   terrain_override_display_name?: string;
+  destroyed_building?: number;
+  destroyed_building_turns?: number;
 }
 
 /** Data describing a risq unit */
@@ -175,6 +186,7 @@ export declare interface RisqBuildingFromServer {
   resources_left?: number;
   resource_capacity?: number;
   renew_stamina?: number;
+  renew_stamina_remaining?: number;
   gather_capacity?: number;
   base_gather_speed?: number;
   renew_cost?: RisqCost;

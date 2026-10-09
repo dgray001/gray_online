@@ -5,7 +5,7 @@ export class Sounds {
 
   private constructor() {}
 
-  public static async play(s: string) {
+  public static async play(s: string): Promise<void> {
     try {
       let sound = Sounds.instance.sounds.get(s);
       if (!sound) {

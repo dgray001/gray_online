@@ -59,20 +59,20 @@ export class RisqTargetPriorityControl {
     this.unit_internal_ids = unit_internal_ids;
   }
 
-  setUnitIds(unit_internal_ids: number[]) {
+  setUnitIds(unit_internal_ids: number[]): void {
     this.unit_internal_ids = unit_internal_ids;
   }
 
-  setPosition(p: Point2D) {
+  setPosition(p: Point2D): void {
     this.p = p;
   }
 
-  setSize(w: number, h: number) {
+  setSize(w: number, h: number): void {
     this.control_w = w;
     this.square_size = h - 2 * PADDING;
   }
 
-  dataRefreshed() {
+  dataRefreshed(): void {
     if (this.dragging_category !== undefined) {
       return;
     }
@@ -114,14 +114,14 @@ export class RisqTargetPriorityControl {
     return m.x >= r.x && m.x <= r.x + r.w && m.y >= r.y && m.y <= r.y + r.h;
   }
 
-  private updateDragOrder() {
+  private updateDragOrder(): void {
     if (this.dragging_category === undefined || !this.drag_order) {
       return;
     }
     const layout = this.computeLayout();
     const dragged_center = this.clampedDragX(layout.container) + this.square_size / 2;
     const step = this.square_size + PADDING;
-    const slot_center = (i: number) => layout.container.x + PADDING + i * step + this.square_size / 2;
+    const slot_center = (i: number): number => layout.container.x + PADDING + i * step + this.square_size / 2;
     const current_index = this.drag_order.indexOf(this.dragging_category);
     const own_center = slot_center(current_index);
     let new_index = current_index;
@@ -140,11 +140,11 @@ export class RisqTargetPriorityControl {
     }
   }
 
-  private sendPriority(priority: RisqTargetCategory[]) {
+  private sendPriority(priority: RisqTargetCategory[]): void {
     this.risq.commands.setUnitTargetPriority(this.unit_internal_ids, priority);
   }
 
-  draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData) {
+  draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData): void {
     configDraw(
       ctx,
       transform,
@@ -180,7 +180,7 @@ export class RisqTargetPriorityControl {
     return Math.max(min_x, Math.min(max_x, this.last_mouse.x - this.drag_offset_x));
   }
 
-  private drawSquare(ctx: CanvasRenderingContext2D, rect: CategoryRect) {
+  private drawSquare(ctx: CanvasRenderingContext2D, rect: CategoryRect): void {
     const dragging = rect.category === this.dragging_category && this.dragged;
     const hovered = rect.category === this.hovering_category;
     ctx.fillStyle = dragging

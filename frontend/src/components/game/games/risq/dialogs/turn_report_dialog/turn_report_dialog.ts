@@ -39,7 +39,8 @@ function signed(n: number): string {
 
 /** Looks up a producible's display name from the player's current buildings/units, falling back to a generic label */
 function producibleName(player: RisqPlayer, kind: RisqProducibleKind, id: number, fallback: string): string {
-  const find = (producibles: RisqProducible[]) => producibles.find((p) => p.kind === kind && p.id === id);
+  const find = (producibles: RisqProducible[]): RisqProducible | undefined =>
+    producibles.find((p) => p.kind === kind && p.id === id);
   for (const building of player.buildings.values()) {
     const match = find(building.produces);
     if (match) {
@@ -117,7 +118,7 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
     return this.data;
   }
 
-  setData(data: TurnReportDialogData, parsed?: boolean) {
+  setData(data: TurnReportDialogData, parsed?: boolean): void {
     this.data = data;
     this.close_hotkey = data.close_hotkey;
     this.classList.add(`size-${DialogSize.XLARGE}`);
@@ -144,7 +145,7 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
     }
   }
 
-  private renderScores(risq: DwgRisq, player: RisqPlayer, report: RisqTurnReport) {
+  private renderScores(risq: DwgRisq, player: RisqPlayer, report: RisqTurnReport): void {
     const rank_of = (key: 'was' | 'now', player_id: number): number => {
       const sorted = [...report.scores].sort((a, b) => b[key] - a[key]);
       return sorted.findIndex((s) => s.player_id === player_id) + 1;
@@ -182,7 +183,7 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
     this.scores_body.replaceChildren(...rows);
   }
 
-  private renderLand(report: RisqTurnReport) {
+  private renderLand(report: RisqTurnReport): void {
     const land = report.land;
     const tile = (num: string, cap: string, cls = ''): HTMLDivElement => {
       const el = document.createElement('div');
@@ -199,7 +200,7 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
     );
   }
 
-  private renderRegions(report: RisqTurnReport) {
+  private renderRegions(report: RisqTurnReport): void {
     const lines = report.regions.map((r) => {
       const li = document.createElement('li');
       const verb = r.held_start ? 'held' : 'claimed';
@@ -215,7 +216,7 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
     this.region_empty.hidden = lines.length > 0;
   }
 
-  private renderResources(report: RisqTurnReport) {
+  private renderResources(report: RisqTurnReport): void {
     const rows = report.resources.map((line) => {
       const row = document.createElement('tr');
       const label = RESOURCE_LABELS[line.resource_type];
@@ -233,10 +234,10 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
     this.resources_body.replaceChildren(...rows);
   }
 
-  private renderProduction(player: RisqPlayer, report: RisqTurnReport) {
+  private renderProduction(player: RisqPlayer, report: RisqTurnReport): void {
     this.pop_line.innerHTML = `Population <b>${report.population.start} &rarr; ${report.population.end}</b> &nbsp;&middot;&nbsp; cap <b>${report.population.cap_start} &rarr; ${report.population.cap_end}</b>`;
     const lines: HTMLLIElement[] = [];
-    const line = (tick_cls: string, tick: string, icon: string, text: string) => {
+    const line = (tick_cls: string, tick: string, icon: string, text: string): void => {
       const li = document.createElement('li');
       const img = icon ? `<img src="/images/${icon}.png" alt="" width="18" height="18" />` : '';
       li.innerHTML = `<span class="tick ${tick_cls}">${tick}</span>${img}<span>${text}</span>`;
@@ -259,7 +260,7 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
     this.production_empty.hidden = lines.length > 0;
   }
 
-  private renderCombat(player: RisqPlayer, report: RisqTurnReport) {
+  private renderCombat(player: RisqPlayer, report: RisqTurnReport): void {
     const lines = report.combat.map((e) => {
       const li = document.createElement('li');
       const mine = e.self_player === player.player.player_id;
@@ -271,7 +272,7 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
     this.combat_empty.hidden = lines.length > 0;
   }
 
-  private renderOrders(report: RisqTurnReport) {
+  private renderOrders(report: RisqTurnReport): void {
     const orders = report.orders;
     const chip = (n: number, label: string, warn = false): string =>
       `<span${warn && n > 0 ? ' class="warn"' : ''}><b>${n}</b>&nbsp;${label}</span>`;

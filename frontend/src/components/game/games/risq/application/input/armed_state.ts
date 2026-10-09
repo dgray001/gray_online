@@ -24,7 +24,7 @@ export class RisqArmedState {
 
   constructor(private on_change: () => void) {}
 
-  armOrder(order_type: RisqOrderType, on_disarm: () => void, building?: ArmedBuilding) {
+  armOrder(order_type: RisqOrderType, on_disarm: () => void, building?: ArmedBuilding): void {
     this.armed_button_callback?.();
     this.armed_order = order_type;
     this.armed_building = building;
@@ -35,7 +35,7 @@ export class RisqArmedState {
     this.on_change();
   }
 
-  disarmOrder() {
+  disarmOrder(): void {
     this.armed_button_callback?.();
     this.armed_order = RisqOrderType.NONE;
     this.armed_building = undefined;
@@ -44,13 +44,13 @@ export class RisqArmedState {
     this.on_change();
   }
 
-  disarmAll() {
+  disarmAll(): void {
     this.gather_point_armed = false;
     this.building_attack_armed = false;
     this.disarmOrder();
   }
 
-  toggleOrder(order_type: RisqOrderType) {
+  toggleOrder(order_type: RisqOrderType): void {
     if (this.armed_order === order_type) {
       this.disarmOrder();
     } else {
@@ -58,32 +58,32 @@ export class RisqArmedState {
     }
   }
 
-  armMercenary(mercenary: RisqProducible) {
+  armMercenary(mercenary: RisqProducible): void {
     this.armOrder(RisqOrderType.OrderType_BuyMercenary, () => {});
     this.armed_mercenary = mercenary;
     this.on_change();
   }
 
-  armGatherPoint() {
+  armGatherPoint(): void {
     this.disarmOrder();
     this.building_attack_armed = false;
     this.gather_point_armed = true;
     this.on_change();
   }
 
-  disarmGatherPoint() {
+  disarmGatherPoint(): void {
     this.gather_point_armed = false;
     this.on_change();
   }
 
-  armBuildingAttack() {
+  armBuildingAttack(): void {
     this.disarmOrder();
     this.gather_point_armed = false;
     this.building_attack_armed = true;
     this.on_change();
   }
 
-  disarmBuildingAttack() {
+  disarmBuildingAttack(): void {
     this.building_attack_armed = false;
     this.on_change();
   }

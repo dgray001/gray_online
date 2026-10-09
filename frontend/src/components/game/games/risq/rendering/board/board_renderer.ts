@@ -11,7 +11,7 @@ import type { GameRisq, RisqSpace } from '../../model/types';
 import type { RisqDrawHost } from '../draw_host';
 import { drawRisqRegionLabels } from '../region';
 import type { DrawRisqSpaceConfig } from '../space';
-import { drawRisqSpace } from '../space';
+import { drawRisqSpaceBase, drawRisqSpaceContent } from '../space';
 import { drawRisqSpaceBorders } from '../space_borders';
 import { RisqViewMode } from '../terrain';
 import type { RisqOrderOverlays } from './order_overlays';
@@ -61,7 +61,7 @@ export class RisqBoardRenderer {
     ctx.restore();
   }
 
-  draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, max_scale: number) {
+  draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, max_scale: number): void {
     const game = this.session.getGame();
     if (!game) {
       return;
@@ -85,6 +85,7 @@ export class RisqBoardRenderer {
     const bounds = this.viewport.visibleCanvasBounds();
     this.drawBackgroundImage(ctx, game);
     const on_screen_spaces: RisqSpace[] = [];
+    const space_text_colors: boolean[] = [];
     for (const row of game.spaces) {
       for (const space of row) {
         if (!space) {
@@ -95,10 +96,13 @@ export class RisqBoardRenderer {
           continue;
         }
         on_screen_spaces.push(space);
-        drawRisqSpace(ctx, this.risq, space, draw_config);
+        space_text_colors.push(drawRisqSpaceBase(ctx, this.risq, space, draw_config));
       }
     }
     drawRisqSpaceBorders(ctx, this.risq, on_screen_spaces, draw_config);
+    for (const [i, space] of on_screen_spaces.entries()) {
+      drawRisqSpaceContent(ctx, this.risq, space, draw_config, space_text_colors[i]);
+    }
     if (this.viewport.viewMode() === RisqViewMode.REGION) {
       drawRisqRegionLabels(ctx, this.risq);
     }
@@ -114,7 +118,7 @@ export class RisqBoardRenderer {
     }
   }
 
-  private drawDragRect(ctx: CanvasRenderingContext2D, transform: BoardTransformData) {
+  private drawDragRect(ctx: CanvasRenderingContext2D, transform: BoardTransformData): void {
     const rect = this.drag_rect();
     if (!rect) {
       return;

@@ -18,13 +18,10 @@ import type {
 } from '../../model/types';
 import { RisqGatherObjectType, RisqGatherPointLocationKind, RisqOrderType, RisqUnitType } from '../../model/types';
 import type { DwgRisq } from '../../risq';
+import { DrawRisqSpaceDetail } from '../space';
+import { RisqViewMode } from '../terrain';
 import { drawUnitTypeCluster, unitVisibleInViewMode } from '../zones/draw';
-import {
-  UNIT_SLOT_CIRCLE_RADIUS_MULTIPLIER,
-  zoneApproachPoint,
-  zoneCenterOffset,
-  zoneMercenarySlotOffsets,
-} from '../zones/geometry';
+import { zoneApproachPoint, zoneCenterOffset, zoneMercenarySlotOffsets } from '../zones/geometry';
 import type { RisqViewport } from './viewport';
 
 const GHOST_ALPHA = 0.6;
@@ -51,10 +48,9 @@ function drawMercenaryGhosts(
   risq: DwgRisq,
   slots: UnitByTypeData[][],
   positions: Point2D[],
-  hex_r: number,
+  unit_r: number,
   rotation: number
-) {
-  const unit_r = UNIT_SLOT_CIRCLE_RADIUS_MULTIPLIER * hex_r;
+): void {
   ctx.globalAlpha = GHOST_ALPHA;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
@@ -63,7 +59,7 @@ function drawMercenaryGhosts(
     ctx.translate(positions[i].x, positions[i].y);
     ctx.rotate(-rotation);
     const total = slot.reduce((sum, t) => sum + t.units.size, 0);
-    drawUnitTypeCluster(ctx, risq, slot, { x: unit_r, y: unit_r }, total, 'white', 'rgba(210, 210, 210, 0.4)');
+    drawUnitTypeCluster(ctx, risq, slot, { x: unit_r, y: unit_r }, total, 'white', 'rgba(210, 210, 210, 0.4)', true);
     ctx.restore();
   }
   ctx.globalAlpha = 1;
@@ -80,16 +76,16 @@ export class RisqOrderOverlays {
     private selection: RisqSelection
   ) {}
 
-  draw(ctx: CanvasRenderingContext2D) {
+  draw(ctx: CanvasRenderingContext2D): void {
     this.drawUnitOrders(ctx);
     this.drawBuildingOrders(ctx);
     this.drawGatherPointOrder(ctx);
     this.drawPendingMercenaries(ctx);
   }
 
-  private drawUnitOrders(ctx: CanvasRenderingContext2D) {
+  private drawUnitOrders(ctx: CanvasRenderingContext2D): void {
     const player = this.session.getPlayer();
-    if (!player || !this.viewport.contentDrawn()) {
+    if (!player || this.viewport.viewMode() === RisqViewMode.REGION) {
       return;
     }
     const selected = this.selection.selectedUnitIds();
@@ -101,9 +97,9 @@ export class RisqOrderOverlays {
     }
   }
 
-  private drawBuildingOrders(ctx: CanvasRenderingContext2D) {
+  private drawBuildingOrders(ctx: CanvasRenderingContext2D): void {
     const player = this.session.getPlayer();
-    if (!player || !this.viewport.contentDrawn()) {
+    if (!player || this.viewport.viewMode() === RisqViewMode.REGION) {
       return;
     }
     ctx.setLineDash([8, 5]);
@@ -114,10 +110,10 @@ export class RisqOrderOverlays {
     ctx.globalAlpha = 1;
   }
 
-  private drawOrdersForBuilding(ctx: CanvasRenderingContext2D, building: RisqBuilding, selected: boolean) {
-    const zone_view = this.viewport.zoneView();
+  private drawOrdersForBuilding(ctx: CanvasRenderingContext2D, building: RisqBuilding, selected: boolean): void {
+    const zone_view = this.viewport.drawDetail() !== DrawRisqSpaceDetail.OWNERSHIP;
     const building_offset = zoneCenterOffset(building.zone_coordinate, this.viewport.hexR());
-    const from = this.viewport.orderPoint(building.space_coordinate, building_offset, zone_view);
+    const from = this.viewport.orderPoint(building.space_coordinate, building_offset, true);
     ctx.lineWidth = selected ? 2 : 1;
     ctx.globalAlpha = selected ? 1 : 0.35;
     for (const order of this.orders_model.effectiveForSubject(building.internal_id, 'building')) {
@@ -142,14 +138,14 @@ export class RisqOrderOverlays {
     return path.slice(current_index + 1);
   }
 
-  private drawOrdersForUnit(ctx: CanvasRenderingContext2D, unit: RisqUnit, selected: boolean) {
+  private drawOrdersForUnit(ctx: CanvasRenderingContext2D, unit: RisqUnit, selected: boolean): void {
     const location = this.session.unitLocation(unit);
     const orders = this.orders_model.effectiveForSubject(unit.internal_id, 'unit');
     if (!location || !orders.length) {
       return;
     }
-    const zone_view = this.viewport.zoneView();
-    let from = this.viewport.orderPoint(location.space_coordinate, this.viewport.unitAnchorOffset(unit), zone_view);
+    const zone_view = this.viewport.drawDetail() !== DrawRisqSpaceDetail.OWNERSHIP;
+    let from = this.viewport.orderPoint(location.space_coordinate, this.viewport.unitAnchorOffset(unit), true);
     ctx.lineWidth = selected ? 2 : 1;
     ctx.globalAlpha = selected ? 1 : 0.35;
     ctx.setLineDash([8, 5]);
@@ -197,7 +193,18 @@ export class RisqOrderOverlays {
     ctx.fillStyle = color;
     let current = from;
     for (const [i, step] of path.entries()) {
-      const to = this.viewport.orderPoint(step.space, zoneCenterOffset(step.zone, this.viewport.hexR()), zone_view);
+      const final_zone_target =
+        zone_view &&
+        i === path.length - 1 &&
+        (order_type === RisqOrderType.OrderType_UnitMoveZone || order_type === RisqOrderType.OrderType_UnitAttackZone);
+      const offset = final_zone_target
+        ? zoneApproachPoint(
+            step.zone,
+            this.viewport.hexR(),
+            subtractPoint2D(current, this.viewport.coordinateToCanvas(step.space))
+          )
+        : zoneCenterOffset(step.zone, this.viewport.hexR());
+      const to = this.viewport.orderPoint(step.space, offset, true);
       if (equalsPoint2D(current, to)) {
         continue;
       }
@@ -228,7 +235,9 @@ export class RisqOrderOverlays {
         const decoded = invertZoneKey(order.target_id);
         target_space = decoded.space;
         const space_canvas = this.viewport.coordinateToCanvas(target_space);
-        target_offset = zoneApproachPoint(decoded.zone, hex_r, subtractPoint2D(from, space_canvas));
+        target_offset = zone_view
+          ? zoneApproachPoint(decoded.zone, hex_r, subtractPoint2D(from, space_canvas))
+          : zoneCenterOffset(decoded.zone, hex_r);
         break;
       }
       case RisqOrderType.OrderType_UnitGather: {
@@ -274,7 +283,7 @@ export class RisqOrderOverlays {
       default:
         return undefined;
     }
-    return this.viewport.orderPoint(target_space, target_offset, zone_view);
+    return this.viewport.orderPoint(target_space, target_offset, true);
   }
 
   /** Reuses orderTargetPoint's exact placement logic by building the equivalent synthetic order */
@@ -310,15 +319,15 @@ export class RisqOrderOverlays {
     return this.orderTargetPoint({ player_id, order_type, target_id, subjects: [] }, zone_view, from);
   }
 
-  private drawGatherPointOrder(ctx: CanvasRenderingContext2D) {
+  private drawGatherPointOrder(ctx: CanvasRenderingContext2D): void {
     const building = this.selection.selectedBuilding();
     const gather_point = building?.gather_point;
     if (!building || !gather_point) {
       return;
     }
-    const zone_view = this.viewport.zoneView();
+    const zone_view = this.viewport.drawDetail() !== DrawRisqSpaceDetail.OWNERSHIP;
     const building_offset = zoneCenterOffset(building.zone_coordinate, this.viewport.hexR());
-    const from = this.viewport.orderPoint(building.space_coordinate, building_offset, zone_view);
+    const from = this.viewport.orderPoint(building.space_coordinate, building_offset, true);
     const to = this.gatherPointTargetPoint(gather_point, zone_view, from);
     if (!to || equalsPoint2D(from, to)) {
       return;
@@ -335,7 +344,7 @@ export class RisqOrderOverlays {
     ctx.drawImage(flag_icon, to.x, to.y - flag_size, flag_size, flag_size);
   }
 
-  private drawPendingMercenaries(ctx: CanvasRenderingContext2D) {
+  private drawPendingMercenaries(ctx: CanvasRenderingContext2D): void {
     const zone_view = this.viewport.zoneView();
     const hex_r = this.viewport.hexR();
     const groups = new Map<number, { positions: Point2D[]; unit_ids: number[] }>();
@@ -356,7 +365,7 @@ export class RisqOrderOverlays {
     const rotation = this.viewport.lastTransform().rotation;
     for (const { positions, unit_ids } of groups.values()) {
       const slots = mercenaryGhostSlots(this.session.getPlayerId(), unit_ids, positions.length);
-      drawMercenaryGhosts(ctx, this.risq, slots, positions, hex_r, rotation);
+      drawMercenaryGhosts(ctx, this.risq, slots, positions, this.viewport.unitRadius(), rotation);
     }
   }
 }

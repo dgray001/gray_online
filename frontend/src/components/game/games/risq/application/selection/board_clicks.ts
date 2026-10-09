@@ -6,7 +6,7 @@ import { LeftPanelDataType } from '../../canvas_components/left_panel/left_panel
 import type { RisqSpace, RisqZone, UnitByTypeData } from '../../model/types';
 import type { RisqViewport } from '../../rendering/board/viewport';
 import { RisqViewMode } from '../../rendering/terrain';
-import { UNIT_SLOT_CIRCLE_RADIUS_MULTIPLIER } from '../../rendering/zones/geometry';
+
 import { unitVisibleInViewMode } from '../../rendering/zones/draw';
 import { visibleZoneUnitSlot } from '../../rendering/zones/hit_testing';
 import type { RisqOrderPlanning } from '../orders/planning';
@@ -35,7 +35,7 @@ export class RisqBoardClicks {
   ) {}
 
   /** A released click on the zone: acts on whichever pressed part is still hovered, else opens the zone itself */
-  zoneClick(space: RisqSpace, zone: RisqZone, e: MouseEvent) {
+  zoneClick(space: RisqSpace, zone: RisqZone, e: MouseEvent): void {
     for (const [i, part] of zone.hovered_data.entries()) {
       if (!part.clicked || !part.hovered) {
         continue;
@@ -60,7 +60,7 @@ export class RisqBoardClicks {
   }
 
   /** Toggles the resource/building/foundation in the zone's building slot */
-  private buildingSlotClick(space: RisqSpace, zone: RisqZone) {
+  private buildingSlotClick(space: RisqSpace, zone: RisqZone): void {
     const target_id = zone.resource?.internal_id ?? zone.building?.internal_id;
     const current = this.selection.current();
     if (
@@ -79,7 +79,7 @@ export class RisqBoardClicks {
     }
   }
 
-  private foundationClick(space: RisqSpace, zone: RisqZone) {
+  private foundationClick(space: RisqSpace, zone: RisqZone): void {
     const local_foundation = this.planning.getLocalFoundation(zone.coordinate_key);
     const foundation = local_foundation ?? this.session.getPlayer()?.planned_foundations?.get(zone.coordinate_key);
     if (!foundation) {
@@ -107,7 +107,7 @@ export class RisqBoardClicks {
   }
 
   /** Double click selects the slot's lead unit type within the zone; triple click, across the screen */
-  private unitSlotMultiClick(space: RisqSpace, zone: RisqZone, slot_index: number, on_screen: boolean) {
+  private unitSlotMultiClick(space: RisqSpace, zone: RisqZone, slot_index: number, on_screen: boolean): void {
     const target = visibleZoneUnitSlot(zone, slot_index, this.viewport.viewMode())[0];
     if (!target) {
       return;
@@ -121,7 +121,7 @@ export class RisqBoardClicks {
   }
 
   /** Ctrl-click adds the whole slot to the selection, or removes it if every unit in it is already selected */
-  private toggleUnitSlot(space: RisqSpace, slot_groups: UnitByTypeData[]) {
+  private toggleUnitSlot(space: RisqSpace, slot_groups: UnitByTypeData[]): void {
     const slot_unit_ids = slot_groups.flatMap((t) => [...t.units]);
     const selected = this.selection.selectedUnitIds();
     const deselect = slot_unit_ids.length > 0 && slot_unit_ids.every((id) => selected.has(id));
@@ -152,7 +152,7 @@ export class RisqBoardClicks {
   }
 
   /** Selects the slot's units, or deselects when the slot is exactly the one already-selected unit */
-  private unitSlotClick(space: RisqSpace, slot_groups: UnitByTypeData[]) {
+  private unitSlotClick(space: RisqSpace, slot_groups: UnitByTypeData[]): void {
     const slot_unit_ids = slot_groups.flatMap((t) => [...t.units]);
     const current = this.selection.current();
     if (slot_unit_ids.length === 1 && current?.kind === 'unit' && current.id === slot_unit_ids[0]) {
@@ -166,7 +166,7 @@ export class RisqBoardClicks {
   }
 
   /** A released click on a space when zones aren't interactive: opens its region if regions are, else the space */
-  spaceClick(space: RisqSpace) {
+  spaceClick(space: RisqSpace): void {
     if (!space.clicked || space.visibility <= 0) {
       return;
     }
@@ -184,7 +184,7 @@ export class RisqBoardClicks {
   }
 
   /** Selects own ungarrisoned units whose on-screen anchor lies in the dragged rectangle */
-  dragSelect(start: Point2D, end: Point2D, additive: boolean) {
+  dragSelect(start: Point2D, end: Point2D, additive: boolean): void {
     const player = this.session.getPlayer();
     if (!player) {
       return;
@@ -217,7 +217,7 @@ export class RisqBoardClicks {
   private unitsOnScreenOfType(player_id: number, unit_id: number): number[] {
     const ids: number[] = [];
     const bounds = this.viewport.visibleCanvasBounds();
-    const radius = UNIT_SLOT_CIRCLE_RADIUS_MULTIPLIER * this.viewport.hexR();
+    const radius = this.viewport.unitRadius();
     for (const row of this.session.getGame()?.spaces ?? []) {
       for (const space of row) {
         if (!space || !this.viewport.isSpaceOnScreen(space, bounds)) {

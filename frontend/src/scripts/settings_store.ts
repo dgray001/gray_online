@@ -49,7 +49,7 @@ export function getSettings(): AppSettings {
   return settings;
 }
 
-export function updateSettings(patch: Partial<AppSettings>) {
+export function updateSettings(patch: Partial<AppSettings>): void {
   settings = { ...settings, ...patch };
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));

@@ -151,7 +151,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
   }
 
   /** Re-shows maker/defender/going-alone icons after a reload, once a bid has been resolved */
-  private restoreBidIcons() {
+  private restoreBidIcons(): void {
     for (const player_id of this.game.teams[this.game.makers_team].player_ids) {
       const going_alone_ally = this.game.player_bid !== player_id;
       this.player_els[player_id].setBid(true, this.game.going_alone, going_alone_ally);
@@ -162,7 +162,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
   }
 
   /** Rebuilds the trick-in-progress card elements after a reload */
-  private restoreTrickCards() {
+  private restoreTrickCards(): void {
     this.trick_cards.replaceChildren();
     this.trick_card_els = [];
     for (const [i, card] of this.game.trick.entries()) {
@@ -186,12 +186,12 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     }
   }
 
-  private setBackOfCard() {
+  private setBackOfCard(): void {
     this.card_face_up_img.src = `/images/cards/card_back.png`;
     this.card_face_up_img.classList.add('show');
   }
 
-  private setTrumpImage() {
+  private setTrumpImage(): void {
     this.card_face_up_img.src = `/images/cards/suit_${cardSuitToName(this.game.trump_suit)}s.png`;
     this.card_face_up_img.classList.add('show');
   }
@@ -256,7 +256,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     }
   }
 
-  private async applyDealRound(data: DealRound) {
+  private async applyDealRound(data: DealRound): Promise<void> {
     const animation_time = !!data.cards ? Math.min(150 * data.cards.length, 4000) + 250 : 0;
     this.game.bidding = true;
     this.game.dealer = data.dealer;
@@ -295,7 +295,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Bidding`;
   }
 
-  private async applyPlayerPass(data: PlayerPass) {
+  private async applyPlayerPass(data: PlayerPass): Promise<void> {
     await this.player_els[data.player_id].setPassAnimation();
     this.player_els[data.player_id].setPass();
     if (this.game.turn === this.game.dealer) {
@@ -314,7 +314,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
   }
 
   /** Assigns teams/turn for a resolved bid; shared by applyPlayerBid and applyBidChooseTrump */
-  private setBidder(player_id: number, going_alone: boolean) {
+  private setBidder(player_id: number, going_alone: boolean): void {
     this.game.makers_team = player_id % 2;
     this.game.defenders_team = this.game.makers_team === 0 ? 1 : 0;
     for (const pid of this.game.teams[this.game.makers_team].player_ids) {
@@ -339,7 +339,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     }
   }
 
-  private async applyPlayerBid(data: PlayerBid) {
+  private async applyPlayerBid(data: PlayerBid): Promise<void> {
     await this.player_els[data.player_id].setBidAnimation(data.going_alone);
     this.game.bidding = false;
     this.setBidder(data.player_id, data.going_alone);
@@ -357,7 +357,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     }
   }
 
-  private async applyBidChooseTrump(data: BidChooseTrump) {
+  private async applyBidChooseTrump(data: BidChooseTrump): Promise<void> {
     await this.player_els[data.player_id].setBidAnimation(data.going_alone, cardSuitToName(data.trump_suit));
     this.game.bidding_choose_trump = false;
     this.setBidder(data.player_id, data.going_alone);
@@ -366,7 +366,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     this.setPlaying();
   }
 
-  private async applyDealerSubstitutesCard(data: DealerSubstitutesCard) {
+  private async applyDealerSubstitutesCard(data: DealerSubstitutesCard): Promise<void> {
     this.game.dealer_substituting_card = false;
     this.player_els[data.player_id].substitutedCard();
     this.setTrumpImage();
@@ -376,7 +376,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     this.setPlaying();
   }
 
-  private async applyPlayCard(data: PlayCard) {
+  private async applyPlayCard(data: PlayCard): Promise<void> {
     if (this.player_id === data.player_id) {
       this.game.players[data.player_id].cards.splice(data.index, 1);
     }
@@ -414,7 +414,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     await this.resolveTrickWinner();
   }
 
-  private async resolveTrickWinner() {
+  private async resolveTrickWinner(): Promise<void> {
     await untilTimer(500);
     let winning_index = 0;
     let winning_card = this.game.trick[0];
@@ -468,7 +468,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     await this.scoreRound();
   }
 
-  private async scoreRound() {
+  private async scoreRound(): Promise<void> {
     await untilTimer(500);
     // TODO: score animations for a few seconds
     this.card_face_up_img.classList.remove('show');
@@ -505,7 +505,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     }
   }
 
-  private setPlaying() {
+  private setPlaying(): void {
     this.player_els[this.game.turn].playing();
     this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
     if (this.game.turn === this.player_id) {
@@ -513,7 +513,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     }
   }
 
-  private setCardFaceUpImage(card: StandardCard) {
+  private setCardFaceUpImage(card: StandardCard): void {
     this.card_face_up_img.src = cardToImagePath(card);
     this.card_face_up_img.classList.add('show');
   }

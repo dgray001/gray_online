@@ -5,6 +5,7 @@
 frontend/tsout/**
 backend/static/dist/**
 .claude/**
+.agents/**
 backend/static/images/risq/wip/**
 backend/game/games/risq/sim/inputs/**
 backend/game/games/risq/sim/outputs/**

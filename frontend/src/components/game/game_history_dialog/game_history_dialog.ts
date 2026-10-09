@@ -30,7 +30,7 @@ export class DwgGameHistoryDialog extends DwgDialogBox<GameHistoryData> {
     return this.data;
   }
 
-  override setData(data: GameHistoryData, parsed?: boolean) {
+  override setData(data: GameHistoryData, parsed?: boolean): void {
     this.data = data;
     if (!parsed && !this.fully_parsed) {
       return;
