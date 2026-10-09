@@ -31,6 +31,7 @@ export default [
 			}
 		},
 		rules: {
+			"curly": ["error", "all"],
 			"eqeqeq": ["error", "always"],
 			"prefer-const": "error",
 			"block-scoped-var": "error",
@@ -38,6 +39,7 @@ export default [
 			"no-console": "off",
 			"no-alert": "off",
 			"@typescript-eslint/consistent-type-imports": ["error", { "prefer": "type-imports" }],
+			"@typescript-eslint/explicit-function-return-type": ["error", { "allowExpressions": true, "allowTypedFunctionExpressions": true }],
 			"@typescript-eslint/no-explicit-any": "error",
 			"camelcase": "off",
 			"@typescript-eslint/naming-convention": [

@@ -8,15 +8,18 @@ import (
 )
 
 type RisqZone struct {
-	coordinate     game_utils.Coordinate2D
-	coordinate_key uint
-	building       *RisqBuilding
-	resource       *RisqResource
-	units          map[uint64]*RisqUnit
-	space          *RisqSpace
-	adjacent_space *RisqSpace
-	adjacent_zones []*RisqZone
-	ownership      int
+	coordinate               game_utils.Coordinate2D
+	coordinate_key           uint
+	building                 *RisqBuilding
+	destroyed_building       uint32
+	destroyed_building_turns uint8
+	resource                 *RisqResource
+	units                    map[uint64]*RisqUnit
+	corpses                  map[uint64]RisqCorpse
+	space                    *RisqSpace
+	adjacent_space           *RisqSpace
+	adjacent_zones           []*RisqZone
+	ownership                int
 	// index into game_utils.AxialDirectionVectors() this outer zone faces, or -1 for the center zone
 	direction int
 	// cosmetic-only terrain_id override; 0 means none
@@ -31,6 +34,7 @@ func createRisqZone(i int, j int, space *RisqSpace) *RisqZone {
 		building:       nil,
 		resource:       nil,
 		units:          make(map[uint64]*RisqUnit, 0),
+		corpses:        make(map[uint64]RisqCorpse),
 		space:          space,
 		adjacent_space: nil,
 		adjacent_zones: make([]*RisqZone, 0, 6),
@@ -62,6 +66,23 @@ func (z *RisqZone) isCenter() bool {
 	return z.direction < 0
 }
 
+func (z *RisqZone) updateRubble(r *GameRisq, advance bool) {
+	if z.destroyed_building == 0 {
+		return
+	}
+	if advance {
+		z.destroyed_building_turns++
+	}
+	occupied := z.building != nil || z.resource != nil
+	for _, player := range r.players {
+		occupied = occupied || player.planned_foundations[z.coordinate_key] != nil
+	}
+	if occupied || z.destroyed_building_turns > 2 {
+		z.destroyed_building = 0
+		z.destroyed_building_turns = 0
+	}
+}
+
 func (z *RisqZone) toFrontend(player_id int, v defs.VisibilityLevel, space *RisqSpace) gin.H {
 	terrainOverride := uint32(0)
 	if v == defs.VisibilityFog {
@@ -83,6 +104,10 @@ func (z *RisqZone) toFrontend(player_id int, v defs.VisibilityLevel, space *Risq
 		zone["terrain_override_display_name"] = defs.TerrainConfigs[terrainOverride].Display_name
 	}
 	if v == defs.VisibilityFog {
+		if cache, ok := space.rubble_cache[player_id][z.coordinate_key]; ok {
+			zone["destroyed_building"] = cache.building_id
+			zone["destroyed_building_turns"] = cache.turns
+		}
 		if cache, ok := space.resource_cache[player_id][z.coordinate_key]; ok {
 			zone["resource"] = cache.toFrontend()
 		}
@@ -94,10 +119,17 @@ func (z *RisqZone) toFrontend(player_id int, v defs.VisibilityLevel, space *Risq
 	if z.resource != nil && z.resource.resources_left > 0 {
 		zone["resource"] = z.resource.toFrontend()
 	}
+	if v >= defs.VisibilityPoor && z.destroyed_building != 0 {
+		zone["destroyed_building"] = z.destroyed_building
+		zone["destroyed_building_turns"] = z.destroyed_building_turns
+	}
 	if z.building != nil && !z.building.deleted {
 		zone["building"] = z.building.toFrontend(player_id)
 	}
 	if v >= defs.VisibilityGood {
+		if len(z.corpses) > 0 {
+			zone["corpses"] = z.corpsesToFrontend()
+		}
 		units := make([]gin.H, 0)
 		for _, unit := range z.units {
 			if unit != nil && !unit.deleted {

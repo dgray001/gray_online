@@ -16,7 +16,7 @@ func gatherGame(t *testing.T, resource uint32, contested bool) *harness.Game {
 		enemy = ""
 	}
 	doc := fmt.Sprintf(`{"board_size":2,"players":2,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"resource":%d,"units":[{"id":1,"player":0,"count":1}%s]}]},{"x":2,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":1,"count":1}]}]}]}`, resource, enemy)
-	fakeboard.UseConfig(t, shippedConfig, nil, map[string]string{"gather": doc})
+	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"gather": doc})
 	return harness.NewGame(t, "custom:gather", 1, 2)
 }
 

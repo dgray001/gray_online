@@ -1,8 +1,37 @@
 package risq_mapgen_tests
 
-import "testing"
+import (
+	"testing"
 
-const hexagon2 = `{"step":"shape","params":{"kind":"hexagon","size":2}}`
+	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
+	"github.com/dgray001/gray_online/game/games/risq/tests/harness/fakeboard"
+)
+
+const hexagon2 = `{"step":"shape","params":{"kind":"hexagon","size":{"radius":2}}}`
+
+func TestScriptReceivesMapSize(t *testing.T) {
+	useScripts(t, map[string]string{"sized": `[` + hexagon2 + `,{"step":"rules","params":{"space_gold_income":"map_size"}}]`})
+	for _, size := range []defs.MapSize{defs.MapSize_MINUSCULE, defs.MapSize_GIGANTIC} {
+		board, err := fakeboard.GenerateWithSize("script:sized", 2, size, 1)
+		if err == nil || err.Error() != startsMissing {
+			t.Fatalf("size %d: error %v", size, err)
+		}
+		if got := goldIncome(t, board); got != float64(size) {
+			t.Errorf("size %d: script received %v", size, got)
+		}
+		if board.BoardSize() != 2 {
+			t.Errorf("size %d: fixed-size script changed dimensions", size)
+		}
+	}
+}
+
+func TestScriptCanSizeShapeFromMapSize(t *testing.T) {
+	useScripts(t, map[string]string{"sized": shapeScript(`{"kind":"hexagon","size":{"radius":"map_size + 1"}}`)})
+	board := generateStartless(t, "sized", 6)
+	if board.BoardSize() != 6 {
+		t.Errorf("board radius %d, want 6 for MEDIUM + 1", board.BoardSize())
+	}
+}
 
 func TestRulesStepAppliesToEveryPlayer(t *testing.T) {
 	useScripts(t, map[string]string{"rules": `[` + hexagon2 + `,

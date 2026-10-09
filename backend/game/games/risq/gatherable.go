@@ -107,15 +107,20 @@ func (b *RisqBuilding) gatherDrain(amount float64) {
 	b.refreshTerrainOverride()
 }
 
-// Applied after every gather drain in the tick, so a same-tick gather never sees this tick's refill
+func (b *RisqBuilding) startRenew(cost defs.RisqResourceCost) {
+	b.renewing = &cost
+	b.renew_stamina_remaining = defs.BuildingConfigs[b.building_id].Gather.Renew_stamina
+}
+
+// Applied after every actor executes, so this tick's gatherers cannot see the refill
 func (b *RisqBuilding) resolveRenew() {
-	if b.pending_renew == 0 {
+	if b.renewing == nil {
 		return
 	}
-	starting_resources := defs.BuildingConfigs[b.building_id].Gather.Starting_resources
-	b.resources_left = util.RoundTo(min(b.resources_left+b.pending_renew, starting_resources), 4)
-	b.pending_renew = 0
-	if b.resources_left >= starting_resources {
+	b.renew_stamina_remaining = max(0, b.renew_stamina_remaining-b.pending_renew_stamina)
+	b.pending_renew_stamina = 0
+	if b.renew_stamina_remaining == 0 {
+		b.resources_left = defs.BuildingConfigs[b.building_id].Gather.Starting_resources
 		b.renewing = nil
 	}
 	b.refreshTerrainOverride()
@@ -141,7 +146,10 @@ func (r *GameRisq) autoGatherCompletedBuildings() {
 		builders := make([]*RisqUnit, 0)
 		for _, u := range r.players[b.player_id].units {
 			construction, ok := u.intent.detail.(*ConstructionIntent)
-			if ok && !u.deleted && construction.zone == b.zone && len(u.order_queue.active_orders) == 1 {
+			active := u.order_queue.active_orders
+			renewing := len(active) == 1 && active[0].order_type == defs.OrderType_UnitRenew && uint64(active[0].target_id) == b.internal_id
+			worked := (ok && construction.zone == b.zone) || renewing
+			if worked && !u.deleted && len(u.order_queue.active_orders) == 1 {
 				builders = append(builders, u)
 			}
 		}

@@ -7,6 +7,7 @@ import (
 
 	"github.com/dgray001/gray_online/game"
 	"github.com/dgray001/gray_online/game/game_utils"
+	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
 )
@@ -28,6 +29,7 @@ type GameRisq struct {
 	outcome                   *risqOutcome
 	players                   []*RisqPlayer
 	board_size                uint16
+	visibility_mode           defs.VisibilityMode
 	population_limit          uint16
 	background_image          string
 	background_top_left       game_utils.Coordinate2D
@@ -46,7 +48,8 @@ type GameRisq struct {
 	// Recomputed each tick: contested resources are water-filled instead of first-come-first-served
 	gather_allotments map[*RisqUnit]float64
 	// Recomputed each tick: settles which simultaneous garrison attempts get a building's remaining slots
-	garrison_allotments map[*RisqUnit]bool
+	garrison_allotments  map[*RisqUnit]bool
+	production_garrisons map[*RisqBuilding]bool
 	// Recomputed each tick: settles which unit founds a new building when several race for the same empty zone
 	construction_winners map[*RisqZone]uint64
 	// Recomputed each tick: building id each winning zone's new foundation takes
@@ -135,6 +138,7 @@ func (r *GameRisq) startNextTurn() {
 		util.DebugLog.Printf("stamina turn=%d actor=%d:%d player=%d before=%d grant=%d after=%d",
 			r.turn_number, o.OrderableType(), o.internalId(), base.player_id, before, base.turn_stamina, base.current_stamina)
 	}
+	r.beginTurnReports()
 	r.giving_orders = true
 	r.broadcastStartTurn()
 }

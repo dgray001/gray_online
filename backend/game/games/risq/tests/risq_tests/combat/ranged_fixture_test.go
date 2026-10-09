@@ -28,7 +28,7 @@ func rangedGame(t *testing.T, distance int, nearbyVillager bool) *harness.Game {
 		spaces = append(spaces, fmt.Sprintf(`{"x":%d,"y":0,"terrain":1,"zones":[%s]}`, x, zones))
 	}
 	doc := fmt.Sprintf(`{"board_size":3,"players":2,"spaces":[%s]}`, strings.Join(spaces, ","))
-	fakeboard.UseConfig(t, shippedConfig, nil, map[string]string{"ranged": doc})
+	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"ranged": doc})
 	config := defs.UnitConfigs[11]
 	config.Attack_range = defs.RisqRange_ADJACENT
 	config.Vision.Adjacent, config.Vision.Edge_opposite, config.Vision.Secondary = defs.VisibilityGood, defs.VisibilityGood, defs.VisibilityGood

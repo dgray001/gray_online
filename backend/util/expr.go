@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"unicode"
@@ -200,6 +201,11 @@ func (p *exprParser) parseCall(name string) (float64, error) {
 		}
 	}
 	switch name {
+	case "round":
+		if len(args) != 1 {
+			return 0, fmt.Errorf("round() needs exactly one argument")
+		}
+		return math.Round(args[0]), nil
 	case "min", "max":
 		if len(args) < 2 {
 			return 0, fmt.Errorf("%s() needs at least two arguments", name)

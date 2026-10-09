@@ -144,8 +144,9 @@ func (u *RisqUnit) resolveStance(risq *GameRisq) {
 				order_type := attackOrderType(target, defs.OrderType_UnitAutoAttackUnit, defs.OrderType_UnitAutoAttackBuilding)
 				u.replaceOrder(risq, order_type, int64(target.internalId()))
 			}
-		} else if spaceHasEnemy(u.zone.space, u.player_id) {
-			u.replaceOrder(risq, defs.OrderType_UnitAttackSpace, int64(u.zone.space.coordinate_key))
+		} else if target := spaceAttackTarget(u, u.zone.space); target != nil {
+			order_type := attackOrderType(target, defs.OrderType_UnitAutoAttackUnit, defs.OrderType_UnitAutoAttackBuilding)
+			u.replaceOrder(risq, order_type, int64(target.internalId()))
 		}
 	case defs.UnitStance_STAND_GROUND:
 		if space_range, ranged := u.attack_range.SpaceRadius(); ranged {
@@ -153,8 +154,9 @@ func (u *RisqUnit) resolveStance(risq *GameRisq) {
 				order_type := attackOrderType(target, defs.OrderType_UnitAutoAttackUnit, defs.OrderType_UnitAutoAttackBuilding)
 				u.replaceOrder(risq, order_type, int64(target.internalId()))
 			}
-		} else if zoneHasEnemy(u.zone, u.player_id) {
-			u.replaceOrder(risq, defs.OrderType_UnitAttackZone, int64(u.zone.coordinate_key))
+		} else if target := zoneAttackTarget(u.zone, u.player_id, u.target_priority); target != nil {
+			order_type := attackOrderType(target, defs.OrderType_UnitAutoAttackUnit, defs.OrderType_UnitAutoAttackBuilding)
+			u.replaceOrder(risq, order_type, int64(target.internalId()))
 		}
 	}
 }

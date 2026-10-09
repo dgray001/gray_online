@@ -12,7 +12,7 @@ import (
 func buildGame(t *testing.T, workers int) *harness.Game {
 	t.Helper()
 	doc := fmt.Sprintf(`{"board_size":3,"players":2,"starting_bank":{"wood":120},"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":0,"count":%d},{"id":11,"player":0,"count":1}]}]},{"x":1,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":0,"count":1}]}]},{"x":2,"y":0,"terrain":1},{"x":-3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":1,"count":1}]}]}]}`, workers)
-	fakeboard.UseConfig(t, shippedConfig, nil, map[string]string{"build": doc})
+	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"build": doc})
 	return harness.NewGame(t, "custom:build", 1, 2)
 }
 

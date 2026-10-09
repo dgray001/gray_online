@@ -91,7 +91,7 @@ func (r *GameRisq) stateHash(dump io.Writer) uint64 {
 		}
 		slices.Sort(queue)
 		fmt.Fprintf(h, "b%d p%d t%d z%s h%s c%d r%s d%t q%v", id, b.player_id, b.building_id, hashZone(b.zone), hashFloat(b.cs.health), b.stamina_remaining, hashFloat(b.resources_left), b.deleted, queue)
-		fmt.Fprintf(h, " cs%d hs%d ct%d aa%t gu%v rn%t pr%s", b.current_stamina, b.health_synced_stamina, b.construction_stamina_total, b.auto_attack, slices.Sorted(maps.Keys(b.garrisoned_units)), b.renewing != nil, hashFloat(b.pending_renew))
+		fmt.Fprintf(h, " cs%d hs%d ct%d aa%t gu%v rn%t rs%d pr%d", b.current_stamina, b.health_synced_stamina, b.construction_stamina_total, b.auto_attack, slices.Sorted(maps.Keys(b.garrisoned_units)), b.renewing != nil, b.renew_stamina_remaining, b.pending_renew_stamina)
 		hashBehavior(h, &b.orderableBase)
 		hashGatherPoint(h, b.gather_point)
 		fmt.Fprint(h, ";")
@@ -111,6 +111,12 @@ func (r *GameRisq) hashPlayersAndBoard(h io.Writer) {
 		for _, key := range slices.Sorted(maps.Keys(p.planned_foundations)) {
 			fmt.Fprintf(h, " pf%d:%d", key, p.planned_foundations[key].building_id)
 		}
+		for _, id := range slices.Sorted(maps.Keys(p.auto_renewals)) {
+			fmt.Fprintf(h, " ar%d", id)
+			for _, cost := range p.auto_renewals[id].costs {
+				fmt.Fprintf(h, ":%s/%s/%s/%s", hashFloat(cost.Food), hashFloat(cost.Wood), hashFloat(cost.Stone), hashFloat(cost.Gold))
+			}
+		}
 		fmt.Fprintf(h, " el%t am%v;", p.eliminated, slices.Sorted(maps.Keys(p.available_mercenaries)))
 	}
 	for _, space := range r.allSpaces() {
@@ -121,6 +127,11 @@ func (r *GameRisq) hashPlayersAndBoard(h io.Writer) {
 		for _, row := range space.zones {
 			for _, zone := range row {
 				fmt.Fprintf(h, " z%d o%d t%d", zone.coordinate_key, zone.ownership, zone.terrain_override)
+				fmt.Fprintf(h, " rubble%d:%d", zone.destroyed_building, zone.destroyed_building_turns)
+				for _, id := range slices.Sorted(maps.Keys(zone.corpses)) {
+					corpse := zone.corpses[id]
+					fmt.Fprintf(h, " corpse%d:%d:%d:%d", id, corpse.unit_id, corpse.player_id, corpse.turns)
+				}
 				if zone.resource != nil {
 					fmt.Fprintf(h, " r%d:%d:%s", zone.resource.internal_id, zone.resource.resource_id, hashFloat(zone.resource.resources_left))
 				}

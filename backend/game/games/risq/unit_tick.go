@@ -29,6 +29,12 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 	u.intent.resetIntent()
 	paid_half_move := u.half_move
 	u.half_move = nil
+	if len(u.order_queue.active_orders) > 0 {
+		order_type := u.order_queue.active_orders[0].order_type
+		if order_type == defs.OrderType_UnitAutoAttackUnit || order_type == defs.OrderType_UnitAutoAttackBuilding {
+			u.order_queue.nextOrder(u, risq)
+		}
+	}
 	u.resolveStance(risq)
 	order := u.order_queue.nextOrder(u, risq)
 	if order == nil {
@@ -78,7 +84,7 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 	case defs.OrderType_UnitAttackSpace:
 		space := invertSpaceKey(uint(order.target_id), risq)
 		if u.garrisoned_in != nil {
-			u.intent.setUngarrison(u.garrisoned_in.zone)
+			u.intent.setUngarrison(u.garrisoned_in)
 			break
 		}
 		space_range, _ := u.attack_range.SpaceRadius()
@@ -124,7 +130,7 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 		if u.garrisoned_in == nil {
 			break
 		}
-		u.intent.setUngarrison(u.garrisoned_in.zone)
+		u.intent.setUngarrison(u.garrisoned_in)
 	default:
 		fmt.Fprintln(os.Stderr, "Order type not implemented:", order.order_type)
 	}
@@ -134,7 +140,7 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 		switch u.intent.detail.(type) {
 		case *GarrisonIntent, *UngarrisonIntent:
 		default:
-			u.intent.setUngarrison(u.garrisoned_in.zone)
+			u.intent.setUngarrison(u.garrisoned_in)
 		}
 	}
 
@@ -254,11 +260,7 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 		if building.deleted || building.renewing == nil {
 			return
 		}
-		config := defs.BuildingConfigs[building.building_id]
-		if config.Gather.Renew_stamina <= 0 {
-			return
-		}
-		building.pending_renew += config.Gather.Starting_resources * float64(u.intent.intent_cost) / float64(config.Gather.Renew_stamina)
+		building.pending_renew_stamina += u.intent.intent_cost
 	case *GarrisonIntent:
 		target := detail.target
 		if !u.deleted && u.garrisonTargetValid(risq, target) && u.zone == target.zone && risq.garrison_allotments[u] {

@@ -1,10 +1,67 @@
 package world
 
 import (
+	"github.com/dgray001/gray_online/game"
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness"
+	"github.com/dgray001/gray_online/game/games/risq/tests/harness/fakeboard"
 	"testing"
 )
+
+func visibilityGame(t *testing.T, setting any) *harness.Game {
+	t.Helper()
+	spaces := spaceWith(0, 0, grass, unit(villager, 0)) + `,{"x":4,"y":0,"terrain":1,"zones":[` +
+		`{"x":0,"y":0,"units":[` + unit(villager, 1) + `]},` +
+		`{"x":1,"y":0,"resource":21},{"x":0,"y":1,"building":{"id":2,"player":1}}]}`
+	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"visibility": mapDoc("", spaces)})
+	g := harness.NewUnstartedGameWithSettings(t, "custom:visibility", 1, 2, map[string]any{"visibility": setting})
+	game.Game_StartGame(g.Risq)
+	return g
+}
+
+func TestVisibilityModesPersistAcrossTurns(t *testing.T) {
+	for _, c := range []struct {
+		setting any
+		want    int
+	}{{nil, unexplored}, {float64(0), unexplored}, {float64(1), unexplored}, {float64(2), fog}, {float64(3), good}, {float64(4), unexplored}, {float64(-1), unexplored}} {
+		g := visibilityGame(t, c.setting)
+		for turn := 0; turn < 3; turn++ {
+			for slot := 0; slot < 2; slot++ {
+				space := g.State(g.Human(slot)).Space(4*(1-slot), 0)
+				if space.Visibility != c.want {
+					t.Errorf("setting %v, turn %d, player %d: vision %d, want %d", c.setting, turn, slot, space.Visibility, c.want)
+				}
+			}
+			g.EndTurn()
+		}
+	}
+}
+
+func TestExploredStartsWithFogCaches(t *testing.T) {
+	g := visibilityGame(t, float64(defs.VisibilityMode_EXPLORED))
+	west := g.Human(0)
+	space := g.State(west).Space(4, 0)
+	if space.TerrainID == nil || space.Ownership == nil || *space.Ownership != 1 || len(space.Resources) != 1 || len(space.Buildings) != 1 {
+		t.Fatalf("explored space is missing initial terrain, ownership, resource or building caches: %+v", space)
+	}
+	if len(space.Units) != 0 {
+		t.Fatal("explored space revealed enemy units")
+	}
+}
+
+func TestAllVisibleShowsEnemyUnitsWithoutOrders(t *testing.T) {
+	g := visibilityGame(t, float64(defs.VisibilityMode_ALL_VISIBLE))
+	west, east := g.Human(0), g.Human(1)
+	id := firstUnit(g, east).InternalID
+	g.Submit(east, harness.OrderGather([]uint64{id}, 4, 0, 1, 0))
+	g.EndTurn()
+	if own := g.State(east).Unit(id); own == nil || len(own.ActiveOrders) == 0 {
+		t.Fatal("enemy has no gathering order")
+	}
+	if enemy := g.State(west).Unit(id); enemy == nil || len(enemy.ActiveOrders) != 0 {
+		t.Fatalf("good visibility should reveal the unit without its orders: %+v", enemy)
+	}
+}
 
 const (
 	unexplored = 0

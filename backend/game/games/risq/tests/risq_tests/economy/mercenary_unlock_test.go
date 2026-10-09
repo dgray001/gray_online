@@ -10,7 +10,7 @@ import (
 
 func TestResearchUnlocksMercenaryContracts(t *testing.T) {
 	doc := `{"board_size":2,"players":2,"space_gold_income":0,"starting_bank":{"wood":300,"gold":500},"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":23,"player":0},"units":[{"id":1,"player":0,"count":1}]}]},{"x":-2,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":1,"count":1}]}]}]}`
-	fakeboard.UseConfig(t, shippedConfig, nil, map[string]string{"contracts": doc})
+	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"contracts": doc})
 	g := harness.NewGame(t, "custom:contracts", 1, 2)
 	p := g.Human(0)
 	if len(g.Self(p).AvailableMercenaries) != 0 {
@@ -19,6 +19,10 @@ func TestResearchUnlocksMercenaryContracts(t *testing.T) {
 	b := g.Self(p).Buildings[0]
 	g.Submit(p, harness.Order(defs.OrderType_BuildingResearch, []uint64{b.InternalID}, 4, false))
 	g.EndTurn()
+	turns := (defs.TechConfigs[4].Research_stamina + defs.BuildingConfigs[23].Turn_stamina - 1) / defs.BuildingConfigs[23].Turn_stamina
+	for turn := 0; turn < turns && !g.Self(p).ResearchedTechs[4]; turn++ {
+		g.EndTurn()
+	}
 	state := g.Self(p)
 	if !state.ResearchedTechs[4] || state.Resources.Wood != 150 || len(state.AvailableMercenaries) != 2 {
 		t.Fatalf("contracts research did not unlock both infantry with one payment: %+v", state)

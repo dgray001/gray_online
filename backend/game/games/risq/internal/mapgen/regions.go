@@ -9,9 +9,9 @@ import (
 )
 
 type regionsSevenParams struct {
-	Names       []string `json:"names,omitempty"`
-	CenterBonus *float64 `json:"center_bonus,omitempty"`
-	OuterBonus  *float64 `json:"outer_bonus,omitempty"`
+	Names       []string    `json:"names,omitempty"`
+	CenterBonus *ScriptExpr `json:"center_bonus,omitempty"`
+	OuterBonus  *ScriptExpr `json:"outer_bonus,omitempty"`
 }
 
 func stepRegionsSeven(ctx *mapScriptContext, raw json.RawMessage) error {
@@ -25,11 +25,17 @@ func stepRegionsSeven(ctx *mapScriptContext, raw json.RawMessage) error {
 
 	centerBonus := float64(50)
 	if p.CenterBonus != nil {
-		centerBonus = *p.CenterBonus
+		centerBonus, err = p.CenterBonus.resolve(ctx.vars)
+		if err != nil {
+			return err
+		}
 	}
 	outerBonus := float64(30)
 	if p.OuterBonus != nil {
-		outerBonus = *p.OuterBonus
+		outerBonus, err = p.OuterBonus.resolve(ctx.vars)
+		if err != nil {
+			return err
+		}
 	}
 
 	names := append([]string{}, p.Names...)

@@ -36,7 +36,7 @@ export class DwgConfirmDialog extends DwgDialogBox<ConfirmDialogData> {
     };
   }
 
-  setData(data: ConfirmDialogData, parsed?: boolean) {
+  setData(data: ConfirmDialogData, parsed?: boolean): void {
     this.setAttribute('question', data.question);
     this.setAttribute('size', data.size ?? DialogSize.MEDIUM);
     this.classList.add(`size-${data.size ?? DialogSize.MEDIUM}`);

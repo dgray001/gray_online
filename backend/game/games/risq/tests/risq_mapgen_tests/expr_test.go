@@ -26,6 +26,10 @@ func TestExprEvaluates(t *testing.T) {
 		{"min(3, 1, 2)", 1},
 		{"max(1, x, 2)", 4},
 		{"max(min(5, 2), 1) * 2", 4},
+		{"round(2.49)", 2},
+		{"round(2.5)", 3},
+		{"round(-2.5)", -3},
+		{"5 * round(14 / 5)", 15},
 		{"  7  ", 7},
 		{"8 - 3 - 2", 3},
 		{"8 / 4 / 2", 1},
@@ -41,7 +45,7 @@ func TestExprEvaluates(t *testing.T) {
 }
 
 func TestExprRejectsBadInput(t *testing.T) {
-	for _, expr := range []string{"1 / 0", "1 +", "foo", "1 2", "min(1)", "(1", "1 $ 2", "bar(1, 2)", "var(x)", "min(1,", "x +* 2", "", "   ", "()", "1 +* 2"} {
+	for _, expr := range []string{"1 / 0", "1 +", "foo", "1 2", "min(1)", "round()", "round(1, 2)", "(1", "1 $ 2", "bar(1, 2)", "var(x)", "min(1,", "x +* 2", "", "   ", "()", "1 +* 2"} {
 		if got, err := util.EvalExpr(expr, map[string]float64{"x": 1}); err == nil {
 			t.Errorf("%q should fail, got %v", expr, got)
 		}

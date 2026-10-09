@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	hexagon3 = `{"step":"shape","params":{"kind":"hexagon","size":3}}`
-	ring3    = `{"step":"shape","params":{"kind":"ring","size":3,"inner_size":1}}`
+	hexagon3 = `{"step":"shape","params":{"kind":"hexagon","size":{"radius":3}}}`
+	ring3    = `{"step":"shape","params":{"kind":"ring","size":{"outer_radius":3,"inner_radius":1}}}`
 	grass    = `{"step":"terrain_fill","params":{"terrain_id":1}}`
 )
 

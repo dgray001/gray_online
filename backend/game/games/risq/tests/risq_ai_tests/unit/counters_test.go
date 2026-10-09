@@ -1,9 +1,9 @@
 package unit
 
 import (
+	"github.com/dgray001/gray_online/game/games/risq/ai"
 	"math/rand"
 	"testing"
-	"github.com/dgray001/gray_online/game/games/risq/ai"
 )
 
 func runCounterCondition(t *testing.T, condition map[string]any, view ai.View) []ai.Order {

@@ -1,9 +1,9 @@
 package unit
 
 import (
+	"github.com/dgray001/gray_online/game/games/risq/ai"
 	"math/rand"
 	"testing"
-	"github.com/dgray001/gray_online/game/games/risq/ai"
 )
 
 func runCondition(t *testing.T, condition map[string]any, view ai.View) []ai.Order {
@@ -15,8 +15,8 @@ func runCondition(t *testing.T, condition map[string]any, view ai.View) []ai.Ord
 				"then": []any{
 					map[string]any{
 						"action": "set_var",
-						"name": "triggered",
-						"value": 1.0,
+						"name":   "triggered",
+						"value":  1.0,
 					},
 					map[string]any{
 						"action": "delete_unit", // produces a dummy order to verify execution
@@ -54,11 +54,11 @@ func TestConditionNot(t *testing.T) {
 
 func TestConditionTechResearched(t *testing.T) {
 	viewTrue := &fakeView{
-		units: []ai.UnitView{{InternalID: 1}},
+		units:          []ai.UnitView{{InternalID: 1}},
 		techResearched: map[uint32]bool{42: true},
 	}
 	viewFalse := &fakeView{
-		units: []ai.UnitView{{InternalID: 1}},
+		units:          []ai.UnitView{{InternalID: 1}},
 		techResearched: map[uint32]bool{42: false},
 	}
 
@@ -77,14 +77,14 @@ func TestConditionTechResearched(t *testing.T) {
 
 func TestConditionResourceAvailable(t *testing.T) {
 	viewTrue := &fakeView{
-		units: []ai.UnitView{{InternalID: 1}},
+		units:          []ai.UnitView{{InternalID: 1}},
 		knownResources: []ai.ResourceView{{Category: ai.ResourceWood}},
-		buildings: []ai.BuildingView{{BuildingID: 1, Location: ai.ZoneRef{}}}, // Needs home
+		buildings:      []ai.BuildingView{{BuildingID: 1, Location: ai.ZoneRef{}}}, // Needs home
 	}
 	viewFalse := &fakeView{
-		units: []ai.UnitView{{InternalID: 1}},
+		units:          []ai.UnitView{{InternalID: 1}},
 		knownResources: []ai.ResourceView{{Category: ai.ResourceGold}}, // Different category
-		buildings: []ai.BuildingView{{BuildingID: 1, Location: ai.ZoneRef{}}},
+		buildings:      []ai.BuildingView{{BuildingID: 1, Location: ai.ZoneRef{}}},
 	}
 
 	cond := map[string]any{"resource_available": map[string]any{"category": "wood"}}

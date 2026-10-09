@@ -10,8 +10,9 @@ import (
 )
 
 type customBuilding struct {
-	BuildingId uint32 `json:"id"`
-	Player     int    `json:"player"`
+	BuildingId    uint32   `json:"id"`
+	Player        int      `json:"player"`
+	ResourcesLeft *float64 `json:"resources_left,omitempty"`
 }
 
 type customUnit struct {
@@ -133,7 +134,15 @@ func placeCustomZone(board Board, space Space, cz customZone, num_players int) e
 
 func placeCustomOccupants(board Board, zone Zone, cz customZone, num_players int) error {
 	if b := cz.Building; b != nil && b.Player >= 0 && b.Player < num_players {
-		if _, ok := defs.BuildingConfigs[b.BuildingId]; !ok || zone.Occupied() || !board.PlaceBuilding(zone, b.BuildingId, b.Player) {
+		resources := []float64{}
+		if b.ResourcesLeft != nil {
+			config := defs.BuildingConfigs[b.BuildingId]
+			if !config.IsGatherable() || *b.ResourcesLeft < 0 || *b.ResourcesLeft > config.Gather.Starting_resources {
+				return fmt.Errorf("invalid resources_left for building %d", b.BuildingId)
+			}
+			resources = append(resources, *b.ResourcesLeft)
+		}
+		if _, ok := defs.BuildingConfigs[b.BuildingId]; !ok || zone.Occupied() || !board.PlaceBuilding(zone, b.BuildingId, b.Player, resources...) {
 			return fmt.Errorf("could not place building %d", b.BuildingId)
 		}
 	}

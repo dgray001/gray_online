@@ -36,7 +36,7 @@
     "display_name": "Mercenary Contracts",
     "description": "Allows hiring infantry for gold directly into owned territory.",
     "cost": { "wood": 150, "gold": 0 },
-    "research_stamina": 3,
+    "research_stamina": 45,
     "unlocks_mercenary_ids": [11, 12]
   },
   {

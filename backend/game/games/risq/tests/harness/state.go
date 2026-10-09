@@ -32,16 +32,17 @@ type Unit struct {
 }
 
 type Building struct {
-	CurrentStamina    int     `json:"current_stamina"`
-	InternalID        uint64  `json:"internal_id"`
-	PlayerID          int     `json:"player_id"`
-	BuildingID        uint32  `json:"building_id"`
-	Space             Coord   `json:"space_coordinate"`
-	Zone              Coord   `json:"zone_coordinate"`
-	UnderConstruction bool    `json:"under_construction"`
-	ResourcesLeft     float64 `json:"resources_left"`
-	StaminaRemaining  int     `json:"stamina_remaining"`
-	ProductionQueue   []struct {
+	CurrentStamina        int     `json:"current_stamina"`
+	InternalID            uint64  `json:"internal_id"`
+	PlayerID              int     `json:"player_id"`
+	BuildingID            uint32  `json:"building_id"`
+	Space                 Coord   `json:"space_coordinate"`
+	Zone                  Coord   `json:"zone_coordinate"`
+	UnderConstruction     bool    `json:"under_construction"`
+	ResourcesLeft         float64 `json:"resources_left"`
+	RenewStaminaRemaining int     `json:"renew_stamina_remaining"`
+	StaminaRemaining      int     `json:"stamina_remaining"`
+	ProductionQueue       []struct {
 		ItemID           uint32 `json:"item_id"`
 		StaminaRemaining int    `json:"stamina_remaining"`
 	} `json:"production_queue"`
@@ -59,6 +60,10 @@ type Resources struct {
 }
 
 type PlayerState struct {
+	AutoRenewals []struct {
+		BuildingID uint32 `json:"building_id"`
+		Count      int    `json:"count"`
+	} `json:"auto_renewals"`
 	Player struct {
 		PlayerID int `json:"player_id"`
 	} `json:"player"`
@@ -72,6 +77,7 @@ type PlayerState struct {
 	ActiveOrders    []struct {
 		InternalID uint64 `json:"internal_id"`
 		OrderType  uint8  `json:"order_type"`
+		TargetID   int64  `json:"target_id"`
 	} `json:"active_orders"`
 	PlannedFoundations []struct {
 		CoordinateKey uint   `json:"coordinate_key"`
@@ -101,11 +107,21 @@ func (p PlayerState) Refusals() []string {
 	return reasons
 }
 
+type CorpseState struct {
+	InternalID uint64 `json:"internal_id"`
+	UnitID     uint32 `json:"unit_id"`
+	PlayerID   int    `json:"player_id"`
+	Turns      uint8  `json:"turns"`
+}
+
 type ZoneState struct {
-	TerrainOverride uint32 `json:"terrain_override"`
-	Coordinate      Coord  `json:"coordinate"`
-	Ownership       *int   `json:"ownership"`
-	Resource        *struct {
+	Corpses                []CorpseState `json:"corpses"`
+	DestroyedBuilding      *uint32       `json:"destroyed_building"`
+	DestroyedBuildingTurns *uint8        `json:"destroyed_building_turns"`
+	TerrainOverride        uint32        `json:"terrain_override"`
+	Coordinate             Coord         `json:"coordinate"`
+	Ownership              *int          `json:"ownership"`
+	Resource               *struct {
 		ResourceID    uint32  `json:"resource_id"`
 		ResourcesLeft float64 `json:"resources_left"`
 	} `json:"resource"`

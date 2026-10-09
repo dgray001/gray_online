@@ -1,11 +1,10 @@
 package aibridge
 
 import (
-	"sort"
-
 	"github.com/dgray001/gray_online/game/games/risq/ai"
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/util"
+	"sort"
 )
 
 // Answers every ai query from the player's frontend snapshot only, so the ai knows exactly what a human would.
@@ -763,6 +762,28 @@ func (v *aiView) RegionProgress(space ai.Coordinate) float64 {
 		}
 		if member {
 			return float64(owned+1) / float64(len(region.Spaces))
+		}
+	}
+	return 0
+}
+
+func (v *aiView) PlayerIDs() []int {
+	ids := make([]int, 0, len(v.game.Players))
+	for _, p := range v.game.Players {
+		ids = append(ids, p.Player.PlayerId)
+	}
+	sort.Ints(ids)
+	return ids
+}
+
+func (v *aiView) PlayerID() int {
+	return v.playerId()
+}
+
+func (v *aiView) PlayerScore(player_id int) int {
+	for _, p := range v.game.Players {
+		if p.Player.PlayerId == player_id {
+			return int(p.Score)
 		}
 	}
 	return 0

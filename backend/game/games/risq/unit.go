@@ -120,6 +120,7 @@ func (u *RisqUnit) recordDeath(r *GameRisq, attacker Attackable, damage float64)
 		death_zone = u.garrisoned_in.zone
 	}
 	death_zone.space.death_vision[u.player_id] = true
+	death_zone.corpses[u.internal_id] = RisqCorpse{unit_id: u.unit_id, player_id: u.player_id, turns: 1}
 	space := death_zone.space.coordinate
 	zone := death_zone.coordinate
 	r.players[attacker.playerId()].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: RisqCombatEventKind_UNIT_KILLED,

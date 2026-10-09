@@ -280,6 +280,7 @@ func (r *GameRisq) finalizeTurnReports() {
 		rep.pop_end = uint16(len(p.units))
 		rep.cap_end = p.populationLimit()
 		rep.scores = scores
+		p.completed_report = rep
 	}
 }
 

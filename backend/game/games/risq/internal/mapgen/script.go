@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/dgray001/gray_online/game/game_utils"
+	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
+	"github.com/dgray001/gray_online/util"
+	"math"
 	"math/rand"
 	"os"
 	"strings"
-
-	"github.com/dgray001/gray_online/game/game_utils"
-	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 )
 
 type mapScriptStepJSON struct {
@@ -38,25 +39,15 @@ type mapScriptContext struct {
 	shape            string
 }
 
-func recommendedBoardSize(num_players int) uint16 {
-	switch {
-	case num_players <= 3:
-		return 4
-	case num_players == 4:
-		return 5
-	case num_players <= 6:
-		return 6
-	default:
-		return uint16(6 + (num_players-5)/2)
-	}
-}
-
-func newMapScriptVars(num_players int, board_size uint16, total_spaces int) map[string]float64 {
+func newMapScriptVars(num_players int, map_size defs.MapSize, board_size uint16, total_spaces int) map[string]float64 {
 	return map[string]float64{
-		"num_players":  float64(num_players),
-		"board_size":   float64(board_size),
-		"total_spaces": float64(total_spaces),
-		"total_zones":  float64(total_spaces * 7),
+		"map_size":       float64(map_size),
+		"map_size_large": float64(defs.MapSize_LARGE),
+		"map_size_huge":  float64(defs.MapSize_HUGE),
+		"num_players":    float64(num_players),
+		"board_size":     float64(board_size),
+		"total_spaces":   float64(total_spaces),
+		"total_zones":    float64(total_spaces * 7),
 	}
 }
 
@@ -88,7 +79,7 @@ func checkPlayerCount(num_players int) error {
 }
 
 // Builds the board from "custom:<name>" (a fixed map file) or "script:<name>" (a generator script)
-func Generate(board Board, rng *rand.Rand, num_players int, map_name string) error {
+func Generate(board Board, rng *rand.Rand, num_players int, map_size defs.MapSize, map_name string) error {
 	if err := checkPlayerCount(num_players); err != nil {
 		return err
 	}
@@ -97,12 +88,12 @@ func Generate(board Board, rng *rand.Rand, num_players int, map_name string) err
 	case "custom":
 		return generateCustom(board, num_players, name)
 	case "script":
-		return generateScripted(board, rng, num_players, name)
+		return generateScripted(board, rng, num_players, map_size, name)
 	}
 	return fmt.Errorf("map %q must start with \"custom:\" or \"script:\"", map_name)
 }
 
-func generateScripted(board Board, rng *rand.Rand, num_players int, name string) error {
+func generateScripted(board Board, rng *rand.Rand, num_players int, map_size defs.MapSize, name string) error {
 	steps, err := loadMapScript(name)
 	if err != nil {
 		return err
@@ -112,7 +103,7 @@ func generateScripted(board Board, rng *rand.Rand, num_players int, name string)
 		rng:         rng,
 		num_players: num_players,
 		regions:     make(map[string]map[uint]bool),
-		vars:        newMapScriptVars(num_players, 0, 0),
+		vars:        newMapScriptVars(num_players, map_size, 0, 0),
 	}
 	if err := runMapScript(ctx, steps); err != nil {
 		return err
@@ -252,4 +243,42 @@ func decodeStepParams[T any](raw json.RawMessage, step_name string) (T, error) {
 		return p, fmt.Errorf("%s: %v", step_name, err)
 	}
 	return p, nil
+}
+
+// A map script number that may be a plain JSON number or an arithmetic expression string
+// referencing script variables (e.g. "2 + 2 * board_size")
+type ScriptExpr struct {
+	raw json.RawMessage
+}
+
+func (e *ScriptExpr) UnmarshalJSON(data []byte) error {
+	e.raw = append(json.RawMessage(nil), data...)
+	return nil
+}
+
+func (e ScriptExpr) resolve(vars map[string]float64) (float64, error) {
+	if len(e.raw) == 0 {
+		return 0, nil
+	}
+	var num float64
+	if err := json.Unmarshal(e.raw, &num); err == nil {
+		return num, nil
+	}
+	var str string
+	if err := json.Unmarshal(e.raw, &str); err != nil {
+		return 0, fmt.Errorf("expected a number or expression string, got %s", string(e.raw))
+	}
+	return util.EvalExpr(str, vars)
+}
+
+func (e ScriptExpr) resolveInt(vars map[string]float64) (int, error) {
+	v, err := e.resolve(vars)
+	if err != nil {
+		return 0, err
+	}
+	return int(math.Round(v)), nil
+}
+
+func (e ScriptExpr) provided() bool {
+	return len(e.raw) > 0
 }

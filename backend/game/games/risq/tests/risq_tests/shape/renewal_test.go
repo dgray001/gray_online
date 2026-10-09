@@ -28,7 +28,7 @@ func TestRenewingFarmWireShape(t *testing.T) {
 	g.EndTurn()
 	for human := range 2 {
 		p := player(t, snapshot(g, human, false), 1)
-		farm := checkShape(t, entity(t, p, "buildings", farmID), buildingShape+" "+privateBuildingShape+" "+farmShape)
+		farm := checkShape(t, entity(t, p, "buildings", farmID), buildingShape+" "+privateBuildingShape+" "+farmShape+" renew_stamina_remaining:n")
 		checkShape(t, farm["renew_cost"], costShape)
 		equal(t, farm["resources_left"], float64(0))
 		equal(t, farm["renewing"], true)

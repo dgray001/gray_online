@@ -1,9 +1,9 @@
 package unit
 
 import (
+	"github.com/dgray001/gray_online/game/games/risq/ai"
 	"math/rand"
 	"testing"
-	"github.com/dgray001/gray_online/game/games/risq/ai"
 )
 
 func TestParseModelEmpty(t *testing.T) {

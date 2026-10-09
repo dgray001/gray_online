@@ -54,12 +54,12 @@ export class DwgChatbox extends DwgElement {
     return scroll_height - this.chat_container.scrollTop > DwgChatbox.adjust_scroll_limit;
   }
 
-  adjustScroll() {
+  adjustScroll(): void {
     this.chat_container.scrollTop = this.chat_container.scrollHeight - this.chat_container.offsetHeight;
     this.scrolledToBottom();
   }
 
-  scrolledToBottom() {
+  scrolledToBottom(): void {
     this.last_new_messages_button_count = 0;
     this.new_messages_button.classList.remove('show');
   }
@@ -68,7 +68,7 @@ export class DwgChatbox extends DwgElement {
   private last_new_messages_button_timer?: number;
   private last_new_messages_button_count = 0;
 
-  addChat(message: ChatMessage, you_sent = false) {
+  addChat(message: ChatMessage, you_sent = false): void {
     const scrolled_up = this.scrolledUp();
     const sender = !!message.sender && message.sender !== SERVER_CHAT_NAME ? `${message.sender}: ` : '';
     const new_element = document.createElement('div');
@@ -101,7 +101,7 @@ export class DwgChatbox extends DwgElement {
     }, 1500);
   }
 
-  sendChat() {
+  sendChat(): void {
     if (this.inputEmpty()) {
       return;
     }
@@ -115,11 +115,11 @@ export class DwgChatbox extends DwgElement {
     this.dispatchEvent(chat_event);
   }
 
-  setPlaceholder(placeholder: string) {
+  setPlaceholder(placeholder: string): void {
     this.chat_input.placeholder = placeholder;
   }
 
-  focus() {
+  focus(): void {
     this.chat_input.focus();
   }
 
@@ -131,7 +131,7 @@ export class DwgChatbox extends DwgElement {
     }
   }
 
-  clear() {
+  clear(): void {
     if (this.last_new_messages_button_timer) {
       clearTimeout(this.last_new_messages_button_timer);
       this.last_new_messages_button_timer = undefined;

@@ -1,10 +1,9 @@
 package aibridge
 
 import (
-	"slices"
-
 	"github.com/dgray001/gray_online/game/games/risq/ai"
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
+	"slices"
 )
 
 func (v *aiView) matchingSpaces(condition ai.SpaceCondition) []ai.Coordinate {
@@ -141,4 +140,16 @@ func (v *aiView) spaceUnitCount(space *snapSpace) (int, bool) {
 		}
 	}
 	return count, true
+}
+
+func (v *aiView) AllZones() []ai.ZoneInfo {
+	zones := make([]ai.ZoneInfo, 0, len(v.zones))
+	for _, entry := range v.zones {
+		info := ai.ZoneInfo{Location: entry.ref, HasResource: entry.zone.Resource != nil, BuildingPlayer: -1}
+		if b := entry.zone.Building; b != nil {
+			info.BuildingPlayer = b.PlayerId
+		}
+		zones = append(zones, info)
+	}
+	return zones
 }

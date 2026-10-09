@@ -1,0 +1,17 @@
+[
+  {"step":"shape","params":{"kind":"ring"}},
+  {"step":"terrain_fill","params":{"terrain_id":1}},
+  {"step":"terrain_blob","params":{"terrain_ids":[{"terrain_id":2,"weight":3},{"terrain_id":3,"weight":1},{"terrain_id":4,"weight":1}],"seed_count":"2 + board_size / 2","size":5,"min_spacing":3}},
+  {"step":"terrain_blob","params":{"terrain_ids":[{"terrain_id":8,"weight":1},{"terrain_id":10,"weight":1}],"seed_count":"1 + board_size / 3","size":4,"min_spacing":3}},
+  {"step":"terrain_blob","params":{"terrain_ids":[{"terrain_id":9,"weight":1},{"terrain_id":11,"weight":1}],"seed_count":"1 + board_size / 3","size":4,"min_spacing":3}},
+  {"step":"terrain_blob","params":{"terrain_ids":[{"terrain_id":51,"weight":1},{"terrain_id":52,"weight":1}],"seed_count":"1 + board_size / 3","size":4,"min_spacing":3}},
+  {"step":"terrain_blob","params":{"terrain_ids":[{"terrain_id":53,"weight":1},{"terrain_id":54,"weight":1}],"seed_count":"1 + board_size / 3","size":4,"min_spacing":3}},
+  {"step":"resource_scatter","params":{"chance":0.15,"category_weights":{"grove":0.4,"forest":0.35,"food":0.15}}},
+  {"step":"player_starts","params":{"pattern":"ring","area_size":1,"starting_distance":"outer_radius - 1 - min(1, max(0, outer_radius - inner_radius - 4))","terrain_id":1,"units":[{"unit_id":1,"count":3,"target":{"zone":"center"}},{"unit_id":11,"count":1,"target":{"zone":"center"}}],"buildings":[{"building_id":1,"terrain_override":6,"target":{"zone":"center"}}],"resources":[{"resource_ids":[21,22,23,24,25,26],"count":1,"distance":[0,0],"zone":"edge"},{"resource_ids":[11,12,13,14,15,16],"count":1,"distance":[0,0],"zone":"edge"},{"resource_id":2,"count":1,"distance":[0,0],"zone":"edge"},{"resource_id":1,"count":1,"distance":[0,0],"zone":"edge"},{"resource_ids":[21,22,23,24,25,26],"count":1,"distance":[1,1]},{"resource_ids":[21,22,23,24,25,26],"count":1,"distance":[1,1]},{"resource_ids":[21,22,23,24,25,26],"count":1,"distance":[1,1]},{"resource_ids":[31,32,33,34,35,36],"count":1,"distance":[1,1]},{"resource_ids":[31,32,33,34,35,36],"count":1,"distance":[1,1]},{"resource_ids":[31,32,33,34,35,36],"count":1,"distance":[1,1]},{"resource_id":2,"count":2,"distance":[1,1]},{"resource_id":1,"count":2,"distance":[1,1]},{"resource_id":41,"count":1,"distance":[0,0],"zone":"edge"},{"resource_id":42,"count":1,"distance":[1,1]},{"resource_id":43,"count":1,"distance":[1,1]}]}},
+  { "step": "define", "params": { "name": "region_outer_gold", "value": "5 * round(4 * (outer_radius * (outer_radius + 1) - inner_radius * (inner_radius + 1)) / 10)" } },
+  { "step": "regions_seven", "params": { "outer_bonus": "region_outer_gold", "center_bonus": "5 * round(1.65 * region_outer_gold / 5)" } },
+  {"step":"ensure_connectivity","params":{}},
+  {"step":"resource_place","params":{"resource_id":41,"count":"num_players","outside_player_areas":true}},
+  {"step":"resource_place","params":{"resource_id":42,"count":"num_players","outside_player_areas":true}},
+  {"step":"resource_place","params":{"resource_id":43,"count":"num_players / 2","outside_player_areas":true}}
+]

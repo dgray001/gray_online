@@ -22,7 +22,7 @@ type Board interface {
 	Distance(a, b Space) int
 	PlaceResource(z Zone, resource_id uint32)
 	// false when the zone refused the building (occupied)
-	PlaceBuilding(z Zone, building_id uint32, player_index int) bool
+	PlaceBuilding(z Zone, building_id uint32, player_index int, resources_left ...float64) bool
 	PlaceUnit(z Zone, unit_id uint32, player_index int)
 	// replaces a player's starting stockpile
 	SetStartingBank(player_index int, bank StartingBank)

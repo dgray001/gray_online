@@ -31,6 +31,7 @@ type RisqSpace struct {
 	// player_id -> zone coordinate_key -> last-known snapshot while that player's vision is at fog level
 	building_cache  map[int]map[uint]RisqBuildingCache
 	resource_cache  map[int]map[uint]RisqResourceCache
+	rubble_cache    map[int]map[uint]RisqRubbleCache
 	terrain_cache   map[int]map[uint]uint32
 	ownership_cache map[int]int
 }
@@ -50,6 +51,7 @@ func createRisqSpace(q int, r int, terrain_id uint32) *RisqSpace {
 		gold_income:     defaultSpaceGoldIncome,
 		building_cache:  make(map[int]map[uint]RisqBuildingCache),
 		resource_cache:  make(map[int]map[uint]RisqResourceCache),
+		rubble_cache:    make(map[int]map[uint]RisqRubbleCache),
 		terrain_cache:   make(map[int]map[uint]uint32),
 		ownership_cache: make(map[int]int),
 	}
@@ -286,10 +288,14 @@ func (s *RisqSpace) getVisibility(player_id int) uint8 {
 func (s *RisqSpace) refreshCache(player_id int) {
 	buildings := make(map[uint]RisqBuildingCache)
 	resources := make(map[uint]RisqResourceCache)
+	rubble := make(map[uint]RisqRubbleCache)
 	terrain := make(map[uint]uint32)
 	for _, row := range s.zones {
 		for _, zone := range row {
 			terrain[zone.coordinate_key] = zone.terrain_override
+			if zone.destroyed_building != 0 {
+				rubble[zone.coordinate_key] = RisqRubbleCache{building_id: zone.destroyed_building, turns: zone.destroyed_building_turns}
+			}
 			if zone.building != nil && !zone.building.deleted {
 				buildings[zone.coordinate_key] = cacheRisqBuilding(zone.building)
 			}
@@ -300,6 +306,7 @@ func (s *RisqSpace) refreshCache(player_id int) {
 	}
 	s.building_cache[player_id] = buildings
 	s.resource_cache[player_id] = resources
+	s.rubble_cache[player_id] = rubble
 	s.terrain_cache[player_id] = terrain
 	s.ownership_cache[player_id] = s.ownership
 }

@@ -4,13 +4,14 @@ import type { CanvasComponent } from '../../../../util/canvas_components/canvas_
 import { configDraw } from '../../../../util/canvas_components/canvas_component';
 import { drawCircle, drawHexagon } from '../../../../util/canvas_util';
 import type { Point2D } from '../../../../util/objects2d';
-import { rotatePoint } from '../../../../util/objects2d';
+import { addPoint2D, multiplyPoint2D, rotatePoint } from '../../../../util/objects2d';
 import type { RisqSpace } from '../../model/types';
 import { RisqVisibilityLevel } from '../../model/types';
 import type { DwgRisq } from '../../risq';
 import { drawRisqSpaceBorders } from '../../rendering/space_borders';
 import { DrawRisqSpaceDetail, drawHexImage, fillHexOverlay, getSpaceFill } from '../../rendering/space';
 import { RisqViewMode, spaceOwnerColor, terrainImage } from '../../rendering/terrain';
+import { zoneCenterOffset } from '../../rendering/zones/geometry';
 
 export declare interface MinimapConfig {
   target_w: number;
@@ -215,15 +216,57 @@ export class RisqMinimap implements CanvasComponent {
           },
           (s) => this.coordinateToMinimapCanvas(s.coordinate)
         );
-        ctx.fillStyle = 'white';
-        ctx.strokeStyle = 'transparent';
+        const scale = this.hex_r / this.risq.viewport.hexR();
+        const selected_points: Point2D[] = [];
+        const selected_units = this.risq.selection.selectedUnitIds();
+        
+        ctx.imageSmoothingEnabled = false;
         for (const player of game.players) {
-          for (const unit of player.units.values()) {
-            if (unit.garrisoned_in === undefined && this.risq.selection.isUnitSelected(unit.internal_id)) {
-              drawCircle(ctx, this.coordinateToMinimapCanvas(unit.space_coordinate), Math.max(1.5, 0.25 * this.hex_r));
+          const color_key = `minimap_dot_${player.color.getR()}_${player.color.getG()}_${player.color.getB()}`;
+          const dot_img = this.risq.getImageCache().getImage(color_key, 1, [], (c) => {
+            c.fillStyle = `rgb(${player.color.getR()}, ${player.color.getG()}, ${player.color.getB()})`;
+            c.fillRect(0, 0, 1, 1);
+          });
+          
+          for (const entity of [...player.units.values(), ...player.buildings.values()]) {
+            const is_unit = 'unit_id' in entity;
+            const location = is_unit ? this.risq.session.unitLocation(entity) : entity;
+            if (!location) {
+              continue;
+            }
+            const offset =
+              (is_unit ? this.risq.viewport.unitAnchorOffset(entity) : undefined) ??
+              zoneCenterOffset(location.zone_coordinate, this.risq.viewport.hexR());
+            const point = addPoint2D(
+              this.coordinateToMinimapCanvas(location.space_coordinate),
+              multiplyPoint2D(scale, offset)
+            );
+            
+            const radius = Math.max(1, 0.175 * this.hex_r);
+            if (dot_img) {
+              ctx.drawImage(dot_img, point.x - radius, point.y - radius, radius * 2, radius * 2);
+            }
+            
+            if (
+              is_unit ? selected_units.has(entity.internal_id) : this.risq.selection.isBuildingSelected(entity.internal_id)
+            ) {
+              selected_points.push(point);
             }
           }
         }
+
+        const white_dot = this.risq.getImageCache().getImage('minimap_dot_white', 1, [], (c) => {
+          c.fillStyle = 'white';
+          c.fillRect(0, 0, 1, 1);
+        });
+        
+        for (const point of selected_points) {
+          const radius = Math.max(1.5, 0.25 * this.hex_r);
+          if (white_dot) {
+            ctx.drawImage(white_dot, point.x - radius, point.y - radius, radius * 2, radius * 2);
+          }
+        }
+        ctx.imageSmoothingEnabled = true;
         ctx.translate(content_center.x, content_center.y);
         ctx.rotate(-transform.rotation);
         ctx.translate(-(origin.x + content_center.x), -(origin.y + content_center.y));

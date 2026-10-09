@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.8w: Backend risq tests
+v0.8x: Initial map fixes
 
 ## Dev Use
 

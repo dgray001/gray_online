@@ -2,11 +2,12 @@ package risq_defs_tests
 
 import (
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
+	"github.com/dgray001/gray_online/game/games/risq/tests/config"
 	"testing"
 )
 
 func TestSumTargetedBonus(t *testing.T) {
-	defs.LoadConfig("../../config")
+	testconfig.Load()
 	orig := defs.TechConfigs
 	defer func() { defs.TechConfigs = orig }()
 

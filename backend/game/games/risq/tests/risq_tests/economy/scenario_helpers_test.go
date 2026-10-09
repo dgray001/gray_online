@@ -10,7 +10,7 @@ import (
 func scenarioGame(t *testing.T, spaces string) *harness.Game {
 	t.Helper()
 	doc := `{"board_size":2,"players":2,"starting_bank":{"wood":120},"spaces":[` + spaces + `]}`
-	fakeboard.UseConfig(t, shippedConfig, nil, map[string]string{"scenario": doc})
+	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"scenario": doc})
 	return harness.NewGame(t, "custom:scenario", 1, 2)
 }
 

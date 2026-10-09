@@ -2,12 +2,11 @@ package risq
 
 import (
 	"fmt"
-	"os"
-
 	"github.com/dgray001/gray_online/game"
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
+	"os"
 )
 
 func (r *GameRisq) requireGivingOrders(player *game.Player, kind string) bool {
@@ -87,6 +86,11 @@ func (r *GameRisq) PlayerAction(action game.PlayerAction) {
 			return
 		}
 		r.executeSetBuildingBehavior(player.Player_id, behavior)
+	case "set-auto-renew":
+		if !r.requireGivingOrders(player, "set-auto-renew") || !r.requireOrdersNotSubmitted(player, "set-auto-renew") {
+			return
+		}
+		r.executeSetAutoRenew(player.Player_id, action.Action)
 	case "set-gather-point":
 		if !r.requireGivingOrders(player, "set-gather-point") || !r.requireOrdersNotSubmitted(player, "set-gather-point") {
 			return
@@ -345,4 +349,9 @@ func (r *GameRisq) executeSetGatherPoint(player_id int, request GatherPointFromF
 		content["gather_point"] = building.gather_point.toFrontend()
 	}
 	player.player.AddUpdate(r.playerSnapshotUpdate(player.player, "gather-point-set", content))
+}
+
+func (r *GameRisq) playerSnapshotUpdate(player *game.Player, kind string, content gin.H) *game.UpdateMessage {
+	content["game"] = r.toFrontendFor(player.Player_id, player.GetClientId(), false)
+	return &game.UpdateMessage{Kind: kind, Content: content}
 }

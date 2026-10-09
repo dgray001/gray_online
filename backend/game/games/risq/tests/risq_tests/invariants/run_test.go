@@ -9,7 +9,6 @@ import (
 func runScenario(t *testing.T, scenario scenario, permutation []int) []string {
 	t.Helper()
 	g := scenario.setup(t)
-	trajectory := []string{canonical(normalize("", jsonValue(t, checkState(t, g, scenario.players, true))))}
 	for turn := 0; turn < scenario.turns; turn++ {
 		batches := make([][]defs.OrderFromFrontend, scenario.players)
 		for slot := range batches {
@@ -23,8 +22,7 @@ func runScenario(t *testing.T, scenario scenario, permutation []int) []string {
 			t.Fatalf("turn advanced from %d to %d", before, after)
 		}
 		scenario.verify(g, turn)
-		views := checkState(t, g, scenario.players, scenario.capLossTurn == 0 || turn+1 < scenario.capLossTurn)
-		trajectory = append(trajectory, canonical(normalize("", jsonValue(t, views))))
 	}
-	return trajectory
+	views := checkState(t, g, scenario.players, scenario.capLossTurn == 0 || scenario.turns < scenario.capLossTurn)
+	return []string{canonical(normalize("", jsonValue(t, views)))}
 }

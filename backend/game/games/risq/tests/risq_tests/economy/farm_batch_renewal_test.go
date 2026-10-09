@@ -46,17 +46,19 @@ func TestRenewalBatchCannotOverspend(t *testing.T) {
 	g.Submit(p, renew...)
 	g.EndTurn()
 	state := g.Self(p)
-	if state.Resources.Wood != 30 || len(state.ActiveOrders) != 0 || len(state.Refusals()) != 1 || state.Refusals()[0] != "cannot afford renew" {
+	if state.Resources.Wood != 30 || len(state.ActiveOrders) != 1 || state.ActiveOrders[0].OrderType != uint8(defs.OrderType_UnitGather) || len(state.Refusals()) != 1 || state.Refusals()[0] != "cannot afford renew" {
 		t.Fatalf("renewal batch overspent or retained unpaid work: %+v, resources %+v", state, state.Resources)
 	}
 	for turn := 0; turn < 2; turn++ {
 		for _, b := range g.Self(p).Buildings {
-			want := 0.0
-			if int64(b.InternalID) == renew[0].Target_id {
-				want = 200
+			if int64(b.InternalID) == renew[0].Target_id && b.ResourcesLeft <= 0 {
+				t.Errorf("farm %d did not refill, wood %v", b.InternalID, g.Self(p).Resources.Wood)
 			}
-			if b.ResourcesLeft != want || g.Self(p).Resources.Wood != 30 {
-				t.Errorf("farm %d pool %v, wood %v; want pool %v and one charge", b.InternalID, b.ResourcesLeft, g.Self(p).Resources.Wood, want)
+			if int64(b.InternalID) != renew[0].Target_id && b.ResourcesLeft != 0 {
+				t.Errorf("unpaid farm %d refilled to %v", b.InternalID, b.ResourcesLeft)
+			}
+			if g.Self(p).Resources.Wood != 30 {
+				t.Errorf("farm %d changed wood balance to %v", b.InternalID, g.Self(p).Resources.Wood)
 			}
 		}
 		g.EndTurn()

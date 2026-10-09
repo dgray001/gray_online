@@ -32,7 +32,7 @@ export class DwgMessageDialog extends DwgDialogBox<MessageDialogData> {
     };
   }
 
-  setData(data: MessageDialogData, parsed?: boolean) {
+  setData(data: MessageDialogData, parsed?: boolean): void {
     this.setAttribute('message', data.message);
     this.setAttribute('size', data.size ?? DialogSize.MEDIUM);
     this.classList.add(`size-${data.size ?? DialogSize.MEDIUM}`);

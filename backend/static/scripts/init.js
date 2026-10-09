@@ -4,9 +4,14 @@ export { };
 
 // Get a new version each hour, so caching can still be effective
 const { version } = await import(`/scripts/version.js?v=${Math.floor(Date.now() / (1000 * 60 * 60))}`);
-const params = new URL(window.location.href).searchParams;
-params.set('v', version);
-window.history.replaceState(null, '', `?${params.toString()}`);
+const params = window.location.search.slice(1).split('&').filter((param) => param && param.split('=')[0] !== 'v');
+const settings_index = params.findIndex((param) => param.startsWith('game_settings='));
+if (settings_index >= 0) {
+	const settings = new URLSearchParams(params[settings_index]).get('game_settings') ?? '';
+	params[settings_index] = `game_settings=${encodeURIComponent(settings).replace(/%(7B|7D|22|3A|2C|5B|5D)/g, decodeURIComponent)}`;
+}
+params.push(`v=${encodeURIComponent(version)}`);
+window.history.replaceState(null, '', `?${params.join('&')}${window.location.hash}`);
 
 /**
  * Helper to inject scripts as Promises to ensure order

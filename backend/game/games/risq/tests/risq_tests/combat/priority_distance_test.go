@@ -12,7 +12,7 @@ import (
 func priorityDistanceGame(t *testing.T) *harness.Game {
 	t.Helper()
 	doc := `{"board_size":1,"players":2,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":1,"y":0,"building":{"id":2,"player":1},"units":[{"id":11,"player":0,"count":1},{"id":1,"player":1,"count":1}]},{"x":-1,"y":0,"units":[{"id":13,"player":1,"count":1}]}]}]}`
-	fakeboard.UseConfig(t, shippedConfig, nil, map[string]string{"priority-distance": doc})
+	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"priority-distance": doc})
 	return harness.NewGame(t, "custom:priority-distance", 1, 2)
 }
 

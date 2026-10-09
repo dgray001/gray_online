@@ -38,7 +38,7 @@ func stanceGame(t *testing.T, enemy enemyPlacement) *harness.Game {
 		spaces = fmt.Sprintf(`{"x":0,"y":0,"terrain":1,"zones":[%s]},{"x":%d,"y":%d,"terrain":1,"zones":[%s]}`, attacker, enemy.space.X, enemy.space.Y, defender)
 	}
 	doc := fmt.Sprintf(`{"board_size":1,"players":2,"spaces":[%s]}`, spaces)
-	fakeboard.UseConfig(t, shippedConfig, nil, map[string]string{"stance": doc})
+	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"stance": doc})
 	return harness.NewGame(t, "custom:stance", 1, 2)
 }
 
@@ -68,6 +68,12 @@ func TestStanceEngagement(t *testing.T) {
 			engaged := g.Self(p1).Units[0].CombatStats.Health < u1.CombatStats.Health
 			if engaged != c.engages {
 				t.Errorf("engaged=%v, want %v", engaged, c.engages)
+			}
+			if c.engages {
+				orders := g.Self(p0).Units[0].ActiveOrders
+				if len(orders) != 1 || defs.OrderType(orders[0].OrderType) != defs.OrderType_UnitAutoAttackUnit {
+					t.Fatalf("stance must create an auto-attack-unit order, got %+v", orders)
+				}
 			}
 		})
 	}

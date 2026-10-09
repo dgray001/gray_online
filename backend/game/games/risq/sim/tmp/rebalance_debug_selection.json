@@ -1,0 +1,97 @@
+[
+  {
+    "name": "rebalance_debug_ring_100012",
+    "map": "script:ring",
+    "seed": 100012
+  },
+  {
+    "name": "rebalance_debug_ring_100025",
+    "map": "script:ring",
+    "seed": 100025
+  },
+  {
+    "name": "rebalance_debug_default_101015",
+    "map": "script:default",
+    "seed": 101015
+  },
+  {
+    "name": "rebalance_debug_default_101016",
+    "map": "script:default",
+    "seed": 101016
+  },
+  {
+    "name": "rebalance_debug_rectangle_102022",
+    "map": "script:rectangle",
+    "seed": 102022
+  },
+  {
+    "name": "rebalance_debug_rectangle_102016",
+    "map": "script:rectangle",
+    "seed": 102016
+  },
+  {
+    "name": "rebalance_debug_triangle_103016",
+    "map": "script:triangle",
+    "seed": 103016
+  },
+  {
+    "name": "rebalance_debug_triangle_103022",
+    "map": "script:triangle",
+    "seed": 103022
+  },
+  {
+    "name": "rebalance_debug_sim_close_104004",
+    "map": "script:sim_close",
+    "seed": 104004
+  },
+  {
+    "name": "rebalance_debug_sim_close_104019",
+    "map": "script:sim_close",
+    "seed": 104019
+  },
+  {
+    "name": "rebalance_debug_sim_gold_105016",
+    "map": "script:sim_gold",
+    "seed": 105016
+  },
+  {
+    "name": "rebalance_debug_sim_gold_105008",
+    "map": "script:sim_gold",
+    "seed": 105008
+  },
+  {
+    "name": "rebalance_debug_sim_army_106004",
+    "map": "script:sim_army",
+    "seed": 106004
+  },
+  {
+    "name": "rebalance_debug_sim_advanced_107014",
+    "map": "script:sim_advanced",
+    "seed": 107014
+  },
+  {
+    "name": "rebalance_debug_sim_advanced_107004",
+    "map": "script:sim_advanced",
+    "seed": 107004
+  },
+  {
+    "name": "rebalance_debug_sim_rich_108007",
+    "map": "script:sim_rich",
+    "seed": 108007
+  },
+  {
+    "name": "rebalance_debug_sim_rich_108002",
+    "map": "script:sim_rich",
+    "seed": 108002
+  },
+  {
+    "name": "rebalance_debug_sim_wide_109011",
+    "map": "script:sim_wide",
+    "seed": 109011
+  },
+  {
+    "name": "rebalance_debug_sim_wide_109009",
+    "map": "script:sim_wide",
+    "seed": 109009
+  }
+]

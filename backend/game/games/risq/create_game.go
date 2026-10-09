@@ -2,14 +2,14 @@ package risq
 
 import (
 	"errors"
+	"github.com/dgray001/gray_online/game"
+	"github.com/dgray001/gray_online/game/games/risq/internal/aibridge"
+	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
+	"github.com/dgray001/gray_online/game/games/risq/internal/mapgen"
+	"github.com/dgray001/gray_online/util"
 	"math/rand"
 	"strconv"
 	"time"
-
-	"github.com/dgray001/gray_online/game"
-	"github.com/dgray001/gray_online/game/games/risq/internal/aibridge"
-	"github.com/dgray001/gray_online/game/games/risq/internal/mapgen"
-	"github.com/dgray001/gray_online/util"
 )
 
 // palette a player's color defaults to when the lobby doesn't request one; order = default assignment order
@@ -60,11 +60,12 @@ func nextAvailableRisqColor(used map[string]bool) string {
 
 func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameRisq, error) {
 	generate := func(board mapgen.Board, rng *rand.Rand, num_players int) error {
+		map_size := defs.ResolveMapSize(g.GameSpecificSettings["map_size"], num_players)
 		map_name, ok := g.GameSpecificSettings["map"].(string)
 		if !ok || map_name == "" {
 			map_name = "script:default"
 		}
-		return mapgen.Generate(board, rng, num_players, map_name)
+		return mapgen.Generate(board, rng, num_players, map_size, map_name)
 	}
 	return createGame(g, action_channel, 2, generate)
 }
@@ -82,6 +83,7 @@ func createGame(g *game.GameBase, action_channel chan game.PlayerAction, min_pla
 		units:                     make(map[uint64]*RisqUnit),
 		buildings:                 make(map[uint64]*RisqBuilding),
 		population_limit:          100,
+		visibility_mode:           defs.ResolveVisibilityMode(g.GameSpecificSettings["visibility"]),
 		next_resource_internal_id: 0,
 		next_building_internal_id: 0,
 		next_unit_internal_id:     0,
@@ -151,6 +153,7 @@ func createGame(g *game.GameBase, action_channel chan game.PlayerAction, min_pla
 	if err := generate(mapBoard{&risq}, risq.rng, len(risq.players)); err != nil {
 		return nil, err
 	}
+	risq.initializeVisibility()
 	risq.ensureSpaceDistances()
 	risq.logBoard()
 	for _, ai_player := range ai_risq_players {
@@ -178,4 +181,9 @@ func (r *GameRisq) logBoard() {
 			}
 		}
 	}
+}
+
+// Exposes defs.LoadConfig to binaries outside risq, which can't import internal packages
+func LoadConfig(dir string) error {
+	return defs.LoadConfig(dir)
 }

@@ -12,7 +12,7 @@ func TestDefeatWithRemainingBuildings(t *testing.T) {
 	for _, id := range []uint32{1, 2, 3, 11, 21, 22} {
 		t.Run(fmt.Sprint(id), func(t *testing.T) {
 			doc := fmt.Sprintf(`{"board_size":1,"players":2,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":%d,"player":0},"units":[{"id":1,"player":1,"count":1}]}]}]}`, id)
-			fakeboard.UseConfig(t, shippedConfig, nil, map[string]string{"defeat": doc})
+			fakeboard.UseConfig(t, testConfig, nil, map[string]string{"defeat": doc})
 			g := harness.NewGame(t, "custom:defeat", 1, 2)
 			p := g.Self(g.Human(0))
 			defeated := id != 1 && id != 22

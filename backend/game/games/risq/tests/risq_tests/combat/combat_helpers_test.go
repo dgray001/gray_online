@@ -25,7 +25,7 @@ func combatGame(t *testing.T, unit1, unit2 uint32) *harness.Game {
 		units = u1 + u2
 	}
 	doc := fmt.Sprintf(`{"board_size":1,"players":2,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[%s]}]}]}`, units)
-	fakeboard.UseConfig(t, shippedConfig, nil, map[string]string{"combat": doc})
+	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"combat": doc})
 	return harness.NewGame(t, "custom:combat", 1, 2)
 }
 
@@ -33,13 +33,13 @@ func garrisonCombatGame(t *testing.T) *harness.Game {
 	t.Helper()
 	// p0 gets an outpost (id 21) and a heavy infantry (id 13). p1 gets a unit 13.
 	doc := `{"board_size":1,"players":2,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":21,"player":0},"units":[{"id":13,"player":0,"count":1},{"id":13,"player":1,"count":1}]}]}]}`
-	fakeboard.UseConfig(t, shippedConfig, nil, map[string]string{"combat": doc})
+	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"combat": doc})
 	return harness.NewGame(t, "custom:combat", 1, 2)
 }
 
 func combatGameTwoAttackers(t *testing.T) *harness.Game {
 	t.Helper()
 	doc := `{"board_size":1,"players":2,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":0,"count":2},{"id":13,"player":1,"count":1}]}]}]}`
-	fakeboard.UseConfig(t, shippedConfig, nil, map[string]string{"combat": doc})
+	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"combat": doc})
 	return harness.NewGame(t, "custom:combat", 1, 2)
 }

@@ -16,7 +16,7 @@ func sourceGame(t *testing.T, farm bool) *harness.Game {
 		source, workers = `"building":{"id":3,"player":0}`, 1
 	}
 	doc := fmt.Sprintf(`{"board_size":2,"players":2,"starting_bank":{"wood":120},"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,%s,"units":[{"id":1,"player":0,"count":%d}]}]},{"x":2,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":1,"count":1}]}]}]}`, source, workers)
-	fakeboard.UseConfig(t, shippedConfig, nil, map[string]string{"source": doc})
+	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"source": doc})
 	return harness.NewGame(t, "custom:source", 1, 2)
 }
 

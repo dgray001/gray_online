@@ -12,9 +12,9 @@ import (
 )
 
 func (r *GameRisq) resolveActiveOrders() {
+	r.updateRemains(true)
 	util.DebugLog.Println("Resolving active orders")
 	r.current_tick = 0
-	r.beginTurnReports()
 	for _, player := range r.players {
 		if player.eliminated {
 			continue
@@ -28,6 +28,7 @@ func (r *GameRisq) resolveActiveOrders() {
 		}
 	}
 	for {
+		r.autoRenewBuildings()
 		orderables := make([]Orderable, 0)
 		for o := range r.allOrderables() {
 			orderables = append(orderables, o)
@@ -44,6 +45,7 @@ func (r *GameRisq) resolveActiveOrders() {
 			r.metrics.recordTick(r, r.current_tick+1)
 			break
 		}
+		allocateRenewStamina(orderables)
 		r.gather_allotments = computeGatherAllotments(orderables)
 		r.garrison_allotments = computeGarrisonAllotments(orderables)
 		r.construction_winners = computeConstructionWinners(orderables)
@@ -51,6 +53,7 @@ func (r *GameRisq) resolveActiveOrders() {
 		r.population_slot_winners = computePopulationSlotWinners(r, orderables)
 		r.repair_allotments = computeRepairAllotments(r, orderables)
 		r.unit_creation_ids = computeUnitCreationIds(r, orderables)
+		r.production_garrisons = r.computeProductionGarrisons()
 		r.population_capped = computePopulationCapped(r)
 		r.current_tick++
 		r.metrics.beginTick(r, orderables)
@@ -66,7 +69,11 @@ func (r *GameRisq) resolveActiveOrders() {
 				a.resolveHealthDelta(r)
 			}
 			if b, ok := o.(*RisqBuilding); ok {
+				renewing := b.renewing != nil
 				b.resolveRenew()
+				if renewing && b.renewing == nil {
+					r.completed_gatherables = append(r.completed_gatherables, b)
+				}
 			}
 		}
 		for _, foundation_id := range r.foundation_ids {
@@ -89,10 +96,11 @@ func (r *GameRisq) resolveActiveOrders() {
 		}
 		r.pending_tech_completions = r.pending_tech_completions[:0]
 		r.autoGatherCompletedBuildings()
+		r.applyUngarrisonGatherPoints(orderables)
 		for _, building := range slices.SortedFunc(maps.Keys(r.unit_creation_ids), func(a, b *RisqBuilding) int {
 			return cmp.Compare(r.unit_creation_ids[a], r.unit_creation_ids[b])
 		}) {
-			if building.gather_point != nil {
+			if building.gather_point != nil && !r.production_garrisons[building] {
 				unit := r.units[r.unit_creation_ids[building]]
 				r.addSyntheticOrder(building.gather_point.resolveOrder(r, building, unit), r.players[building.player_id], false)
 			}
@@ -100,6 +108,7 @@ func (r *GameRisq) resolveActiveOrders() {
 		r.logStateHash(fmt.Sprint(r.current_tick))
 	}
 	r.cleanupDeleted()
+	r.updateRemains(false)
 	for _, player := range r.players {
 		kept := player.active_orders[:0]
 		for _, order := range player.active_orders {
@@ -119,6 +128,19 @@ func (r *GameRisq) resolveActiveOrders() {
 	r.checkWinCondition()
 	if !r.game.GameEnded() {
 		r.startNextTurn()
+	}
+}
+
+func (r *GameRisq) updateRemains(advance bool) {
+	for _, space := range r.allSpaces() {
+		for _, row := range space.zones {
+			for _, zone := range row {
+				zone.updateRubble(r, advance)
+				if advance {
+					zone.advanceCorpses()
+				}
+			}
+		}
 	}
 }
 
@@ -214,9 +236,9 @@ func (r *GameRisq) recalculateVision() {
 	for _, space := range r.allSpaces() {
 		had_vision := make(map[int]bool, len(space.visibility))
 		for player_id, v := range space.visibility {
-			had_vision[player_id] = v >= defs.VisibilityPoor
+			had_vision[player_id] = v >= defs.VisibilityPoor || r.visibility_mode == defs.VisibilityMode_EXPLORED && r.turn_number == 0
 			if v > defs.VisibilityFog {
-				space.visibility[player_id] = defs.VisibilityFog
+				space.visibility[player_id] = max(defs.VisibilityFog, r.visibility_mode.MinimumVision())
 			}
 		}
 		previously_visible[space] = had_vision

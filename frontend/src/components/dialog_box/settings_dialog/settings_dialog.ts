@@ -30,7 +30,7 @@ export class DwgSettingsDialog extends DwgDialogBox<SettingsDialogData> {
     return this.data;
   }
 
-  setData(data: SettingsDialogData, parsed?: boolean) {
+  setData(data: SettingsDialogData, parsed?: boolean): void {
     this.data = data;
     const size = this.resolveSize(data);
     this.classList.add(`size-${size}`);

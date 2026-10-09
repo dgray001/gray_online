@@ -2,21 +2,19 @@ package unit
 
 import (
 	"encoding/json"
+	"github.com/dgray001/gray_online/game/games/risq/ai"
+	"github.com/dgray001/gray_online/game/games/risq/tests/config"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-	"github.com/dgray001/gray_online/game/games/risq/ai"
 )
 
-func TestParseShippedConfigs(t *testing.T) {
-	configsDir := "../../config/ai"
+func TestParseTestConfigs(t *testing.T) {
+	configsDir := filepath.Join(testconfig.Dir(), "ai")
 	entries, err := os.ReadDir(configsDir)
 	if err != nil {
-		if os.IsNotExist(err) {
-			t.Skipf("Config directory %s not found", configsDir)
-		}
 		t.Fatalf("failed to read config directory: %v", err)
 	}
 

@@ -39,7 +39,7 @@ func movementCost(t *testing.T, dir string, cost uint) {
 func meetingBoundaryGame(t *testing.T, cost uint, stamina, targetStamina int) *harness.Game {
 	t.Helper()
 	doc := fmt.Sprintf(meetingBoard, spaceOf(0, 0, flat, placed{blunt, 0, 0, 0}, placed{heavy, 1, 1, 0}))
-	dir := fakeboard.UseConfig(t, shippedConfig, nil, map[string]string{"meeting-boundary": doc})
+	dir := fakeboard.UseConfig(t, testConfig, nil, map[string]string{"meeting-boundary": doc})
 	movementCost(t, dir, cost)
 	for id, grant := range map[uint32]int{blunt: stamina, heavy: targetStamina} {
 		config := defs.UnitConfigs[id]

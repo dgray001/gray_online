@@ -6,14 +6,15 @@ import (
 	"testing"
 
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
+	"github.com/dgray001/gray_online/game/games/risq/tests/config"
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness"
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness/fakeboard"
 )
 
-const shippedConfig = "../../../config"
+var testConfig = testconfig.Dir()
 
 func TestMain(m *testing.M) {
-	if err := defs.LoadConfig(shippedConfig); err != nil {
+	if err := defs.LoadConfig(testConfig); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -49,6 +50,6 @@ const (
 // Starts a two-human game on the given map document, which exists only for this test
 func startGame(t *testing.T, doc string) *harness.Game {
 	t.Helper()
-	fakeboard.UseConfig(t, shippedConfig, nil, map[string]string{"world": doc})
+	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"world": doc})
 	return harness.NewGame(t, "custom:world", 1, 2)
 }

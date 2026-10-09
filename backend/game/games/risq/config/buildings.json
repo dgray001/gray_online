@@ -49,7 +49,7 @@
       "starting_resources": 200,
       "gather_capacity": 2,
       "renew_cost": { "wood": 60 },
-      "renew_stamina": 8,
+      "renew_stamina": 12,
       "terrain_override_dead": { "flatlands": 25, "hilly": 64 }
     }
   },

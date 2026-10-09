@@ -10,12 +10,12 @@ import (
 
 var sharedConfigFiles = []string{"bonuses.json", "buildings.json", "region_names.json", "resources.json", "techs.json", "terrains.json", "units.json"}
 
-// Swaps the engine to a temp copy of the shipped config plus the given maps (name to JSON), restored on cleanup.
-func UseConfig(t *testing.T, shipped string, scripts map[string]string, customs map[string]string) string {
+// Loads a temporary copy of the test config with fixture maps, restoring the source on cleanup.
+func UseConfig(t *testing.T, config_dir string, scripts map[string]string, customs map[string]string) string {
 	t.Helper()
 	dir := t.TempDir()
 	for _, file := range append([]string{"ai/default.json"}, sharedConfigFiles...) {
-		data, err := os.ReadFile(filepath.Join(shipped, file))
+		data, err := os.ReadFile(filepath.Join(config_dir, file))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -31,8 +31,8 @@ func UseConfig(t *testing.T, shipped string, scripts map[string]string, customs 
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		if err := defs.LoadConfig(shipped); err != nil {
-			t.Errorf("restoring the shipped config: %v", err)
+		if err := defs.LoadConfig(config_dir); err != nil {
+			t.Errorf("restoring the test config: %v", err)
 		}
 	})
 	return dir

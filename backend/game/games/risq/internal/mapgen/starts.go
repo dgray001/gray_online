@@ -77,6 +77,9 @@ type playerStartsParams struct {
 	Pattern              string                    `json:"pattern"`
 	AreaSize             ScriptExpr                `json:"area_size"`
 	StartingDistance     ScriptExpr                `json:"starting_distance"`
+	RowInset             *ScriptExpr               `json:"row_inset,omitempty"`
+	ShortEdgeStarts      ScriptExpr                `json:"short_edge_starts,omitempty"`
+	ShortEdgeBias        ScriptExpr                `json:"short_edge_bias,omitempty"`
 	Units                []playerStartUnitJSON     `json:"units,omitempty"`
 	Resources            []playerStartResourceJSON `json:"resources"`
 	Buildings            []playerStartBuildingJSON `json:"buildings"`
@@ -136,9 +139,7 @@ func resolveZoneTarget(footprint []Space, start Space, target zoneTargetJSON, rn
 	return free[rng.Intn(len(free))], nil
 }
 
-// Places players on one perimeter ring. The six principal directions and the spaces between them
-// are treated uniformly, so two players are opposite and twelve players form an evenly spaced
-// approximation of a dodecagon while every start remains the same distance from the center.
+// Places players on one perimeter ring
 func ringStartDirection(c game_utils.Coordinate2D) game_utils.Coordinate2D {
 	directions := game_utils.AxialDirectionVectors()
 	best := directions[0]
@@ -205,13 +206,9 @@ func rectangleSpaceBounds(spaces []Space) (row_min int, row_max int, col_min int
 	return
 }
 
-// Player index of n spaced evenly around the loop of both long rows: the near row left to right, then the far row right to left
-func rowPlayerStartColumn(index int, n int, near bool, col_min int, col_max int) int {
+func rowPlayerStartColumn(index int, n int, col_min int, col_max int) int {
 	span := col_max - col_min
-	if near {
-		return col_min + 2*index*span/n
-	}
-	return col_max - (2*index-n)*span/n
+	return col_min + int(math.Round(float64(index*span)/float64(max(1, n-1))))
 }
 
 // A row's own column range among the spaces the current shape actually kept -- e.g. a triangle's
@@ -232,39 +229,51 @@ func rowSpaceBounds(spaces []Space, row int) (col_min int, col_max int, ok bool)
 	return
 }
 
-// Places players in two facing rows, spread evenly across columns; the natural pattern for a rectangle shape
-func resolveRowsPlayerStarts(ctx *mapScriptContext, starting_distance int) ([]playerStartInfo, error) {
+// Places an evenly spaced zigzag with a random starting row and horizontal direction.
+func resolveRowsPlayerStarts(ctx *mapScriptContext, starting_distance, inset, short_edge_starts int, short_edge_bias float64) ([]playerStartInfo, error) {
 	spaces := ctx.allSpaces()
 	row_min, row_max, _, _ := rectangleSpaceBounds(spaces)
 	half := max((row_max-row_min)/2, 1)
 	dist := util.Clamp(starting_distance, 1, half)
-	row_near := util.Clamp(-dist, row_min, row_max)
-	row_far := util.Clamp(dist, row_min, row_max)
+	row_near := util.Clamp(-dist, row_min+inset, row_max-inset)
+	row_far := util.Clamp(dist, row_min+inset, row_max-inset)
 	n := ctx.num_players
-	group_near := (n + 1) / 2
-	group_far := n - group_near
+	long_count := n - min(short_edge_starts, n)
+	first_row := ctx.rng.Intn(2)
+	reverse := ctx.rng.Intn(2) == 1
 	starts := make([]playerStartInfo, n)
-	place := func(count int, row int, direction game_utils.Coordinate2D, start_index int) error {
+	for i := range starts {
+		row, direction := row_near, game_utils.Coordinate2D{X: 0, Y: 1}
+		if (i+first_row)%2 == 1 {
+			row, direction = row_far, game_utils.Coordinate2D{X: 0, Y: -1}
+		}
+		if i >= long_count {
+			row = int(math.Round(float64(row_near+row_far)/2 + short_edge_bias*float64((long_count%2)*(1-2*first_row))))
+		}
 		col_min, col_max, ok := rowSpaceBounds(spaces, row)
 		if !ok {
-			return fmt.Errorf("no spaces at row %d for player starts", row)
+			return nil, fmt.Errorf("no spaces at row %d for player starts", row)
 		}
-		for i := 0; i < count; i++ {
-			col := rowPlayerStartColumn(start_index+i, n, start_index == 0, col_min, col_max)
-			q := col - floorDiv2(row)
-			space := ctx.board.Space(game_utils.Coordinate2D{X: q, Y: row})
-			if space == nil {
-				return fmt.Errorf("player start space is nil")
+		col_min, col_max = col_min+inset, col_max-inset
+		col := rowPlayerStartColumn(i, long_count, col_min, col_max)
+		if i >= long_count {
+			col = rowPlayerStartColumn(i-long_count, n-long_count, col_min, col_max)
+		}
+		if reverse {
+			col = col_max - (col - col_min)
+		}
+		if i >= long_count {
+			direction = game_utils.Coordinate2D{X: 1}
+			if col == col_max {
+				direction.X = -1
 			}
-			starts[start_index+i] = playerStartInfo{space: space, direction: direction}
 		}
-		return nil
-	}
-	if err := place(group_near, row_near, game_utils.Coordinate2D{X: 0, Y: 1}, 0); err != nil {
-		return nil, err
-	}
-	if err := place(group_far, row_far, game_utils.Coordinate2D{X: 0, Y: -1}, group_near); err != nil {
-		return nil, err
+		q := col - floorDiv2(row)
+		space := ctx.board.Space(game_utils.Coordinate2D{X: q, Y: row})
+		if space == nil {
+			return nil, fmt.Errorf("player start space is nil")
+		}
+		starts[i] = playerStartInfo{space: space, direction: direction}
 	}
 	return starts, nil
 }
@@ -691,7 +700,24 @@ func stepPlayerStarts(ctx *mapScriptContext, raw json.RawMessage) error {
 	case "ring":
 		starts, err = resolveRingPlayerStarts(ctx, starting_distance)
 	case "rows":
-		starts, err = resolveRowsPlayerStarts(ctx, starting_distance)
+		inset := 1
+		if p.RowInset != nil {
+			inset, err = p.RowInset.resolveInt(ctx.vars)
+			if err != nil {
+				return err
+			}
+		}
+		short_edge_starts := 0
+		short_edge_starts, err = p.ShortEdgeStarts.resolveInt(ctx.vars)
+		if err != nil {
+			return err
+		}
+		short_edge_bias := 0.0
+		short_edge_bias, err = p.ShortEdgeBias.resolve(ctx.vars)
+		if err != nil {
+			return err
+		}
+		starts, err = resolveRowsPlayerStarts(ctx, starting_distance, inset, short_edge_starts, short_edge_bias)
 	default:
 		return fmt.Errorf("unsupported player_starts pattern %q", p.Pattern)
 	}
@@ -702,9 +728,12 @@ func stepPlayerStarts(ctx *mapScriptContext, raw json.RawMessage) error {
 	if err != nil {
 		return err
 	}
-	if starts, err = assignStartSpaces(ctx, starts, area_size); err != nil {
-		return err
+	if ctx.shape != "rectangle" || p.Pattern != "rows" {
+		if starts, err = assignStartSpaces(ctx, starts, area_size); err != nil {
+			return err
+		}
 	}
+	starts = util.ShuffleFrom(ctx.rng, starts)
 	ctx.player_starts = starts
 	ctx.player_area_size = area_size
 	footprints := startFootprints(starts, area_size)
@@ -715,10 +744,10 @@ func stepPlayerStarts(ctx *mapScriptContext, raw json.RawMessage) error {
 	if err != nil {
 		return err
 	}
-	if err := placeStartResources(ctx, starts, footprints, slots); err != nil {
+	if err := placeStartContents(ctx, p, starts, footprints); err != nil {
 		return err
 	}
-	if err := placeStartContents(ctx, p, starts, footprints); err != nil {
+	if err := placeStartResources(ctx, starts, footprints, slots); err != nil {
 		return err
 	}
 	if p.StartingBank != nil {

@@ -60,7 +60,7 @@
     "penetration_blunt": 5,
     "penetration_piercing": 5,
     "cost": { "food": 120, "gold": 60 },
-    "production_stamina": 40,
+    "production_stamina": 35,
     "turn_stamina": 8
   }
 ]

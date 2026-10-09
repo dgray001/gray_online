@@ -6,16 +6,11 @@ import (
 	"math"
 
 	"github.com/dgray001/gray_online/game/game_utils"
-	"github.com/dgray001/gray_online/util"
 )
 
 type shapeParams struct {
-	Kind      string     `json:"kind"`
-	Size      ScriptExpr `json:"size,omitempty"`
-	InnerSize ScriptExpr `json:"inner_size,omitempty"`
-	Thickness ScriptExpr `json:"thickness,omitempty"`
-	Rows      ScriptExpr `json:"rows,omitempty"`
-	Cols      ScriptExpr `json:"cols,omitempty"`
+	Kind string                `json:"kind"`
+	Size map[string]ScriptExpr `json:"size,omitempty"`
 }
 
 func stepShape(ctx *mapScriptContext, raw json.RawMessage) error {
@@ -26,34 +21,30 @@ func stepShape(ctx *mapScriptContext, raw json.RawMessage) error {
 	if err != nil {
 		return err
 	}
-	ctx.vars["recommended"] = float64(recommendedShapeSize(p.Kind, ctx.num_players))
+	sizes, err := resolveShapeSize(ctx, p)
+	if err != nil {
+		return err
+	}
+	for name, value := range sizes {
+		ctx.vars[name] = float64(value)
+	}
 	switch p.Kind {
 	case "hexagon":
-		size, err := p.Size.resolveInt(ctx.vars)
-		if err != nil {
-			return err
-		}
+		size := sizes["radius"]
 		if size < 0 {
 			return fmt.Errorf("shape: hexagon size must be >= 0")
 		}
 		ctx.board.Allocate(uint16(size))
 		ctx.shape = "hexagon"
 	case "rectangle":
-		rows, err := p.Rows.resolveInt(ctx.vars)
-		if err != nil {
-			return err
-		}
-		cols, err := p.Cols.resolveInt(ctx.vars)
-		if err != nil {
-			return err
-		}
+		rows, cols := sizes["rows"], sizes["cols"]
 		if rows < 1 || cols < 1 {
 			return fmt.Errorf("shape: rectangle rows and cols must be >= 1")
 		}
 		ctx.board.Allocate(rectangleRequiredBoardSize(rows, cols))
-		row_min := -((rows - 1) / 2)
+		row_min := -(rows / 2)
 		row_max := row_min + rows - 1
-		col_min := -((cols - 1) / 2)
+		col_min := -(cols / 2)
 		col_max := col_min + cols - 1
 		kept := 0
 		for _, space := range ctx.allSpaces() {
@@ -70,23 +61,7 @@ func stepShape(ctx *mapScriptContext, raw json.RawMessage) error {
 		}
 		ctx.shape = "rectangle"
 	case "ring":
-		size, err := p.Size.resolveInt(ctx.vars)
-		if err != nil {
-			return err
-		}
-		var inner_size int
-		if p.Thickness.provided() {
-			thickness, err := p.Thickness.resolveInt(ctx.vars)
-			if err != nil {
-				return err
-			}
-			inner_size = size - thickness
-		} else {
-			inner_size, err = p.InnerSize.resolveInt(ctx.vars)
-			if err != nil {
-				return err
-			}
-		}
+		size, inner_size := sizes["outer_radius"], sizes["inner_radius"]
 		if size < 0 || inner_size < 0 || inner_size >= size {
 			return fmt.Errorf("shape: ring requires 0 <= inner_size < size")
 		}
@@ -99,10 +74,7 @@ func stepShape(ctx *mapScriptContext, raw json.RawMessage) error {
 		}
 		ctx.shape = "ring"
 	case "triangle":
-		size, err := p.Size.resolveInt(ctx.vars)
-		if err != nil {
-			return err
-		}
+		size := sizes["edge_length"]
 		if size < 0 {
 			return fmt.Errorf("shape: triangle size must be >= 0")
 		}
@@ -123,33 +95,6 @@ func stepShape(ctx *mapScriptContext, raw json.RawMessage) error {
 	return nil
 }
 
-func ringArea(outer int) int {
-	inner := int(math.Round(float64(outer) / 2))
-	return hexAreaForSize(outer) - hexAreaForSize(inner)
-}
-
-func recommendedShapeSize(kind string, num_players int) int {
-	n := int(recommendedBoardSize(num_players))
-	hex_area := hexAreaForSize(n)
-	switch kind {
-	case "rectangle":
-		return int(math.Round(math.Sqrt(float64(hex_area))))
-	case "triangle":
-		return int(math.Round((-3 + math.Sqrt(1+8*float64(hex_area))) / 2))
-	case "ring":
-		outer := n
-		for ringArea(outer) < hex_area {
-			outer++
-		}
-		if outer > n && util.AbsInt(ringArea(outer-1)-hex_area) <= util.AbsInt(ringArea(outer)-hex_area) {
-			outer--
-		}
-		return outer
-	default:
-		return n
-	}
-}
-
 func triangleCenterOffset(size int) int {
 	return int(math.Round(float64(size) / 3))
 }
@@ -167,9 +112,9 @@ func triangleRequiredBoardSize(size int) uint16 {
 // distance of each row's two extreme columns rather than approximating with a closed-form formula
 // (which broke for asymmetric row/col spans, e.g. even cols) -- must match stepShape's own carving.
 func rectangleRequiredBoardSize(rows int, cols int) uint16 {
-	row_min := -((rows - 1) / 2)
+	row_min := -(rows / 2)
 	row_max := row_min + rows - 1
-	col_min := -((cols - 1) / 2)
+	col_min := -(cols / 2)
 	col_max := col_min + cols - 1
 	required := 0
 	for row := row_min; row <= row_max; row++ {

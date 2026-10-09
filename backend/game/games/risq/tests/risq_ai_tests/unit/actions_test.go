@@ -1,9 +1,9 @@
 package unit
 
 import (
+	"github.com/dgray001/gray_online/game/games/risq/ai"
 	"math/rand"
 	"testing"
-	"github.com/dgray001/gray_online/game/games/risq/ai"
 )
 
 func parseAndRun(t *testing.T, actionMap map[string]any, view ai.View) ai.Decision {
@@ -34,7 +34,7 @@ func TestGatherActionOrders(t *testing.T) {
 	}
 
 	action := map[string]any{
-		"action": "gather",
+		"action":   "gather",
 		"category": "wood",
 	}
 
@@ -50,7 +50,7 @@ func TestCreateActionOrders(t *testing.T) {
 		buildings: []ai.BuildingView{
 			{InternalID: 1, Idle: true, Producibles: []ai.Producible{{Kind: ai.ProducibleUnit, ID: 10}}},
 		},
-		popLimit: 10,
+		popLimit:   10,
 		popCurrent: 0,
 		resources: map[ai.ResourceCategory]float64{
 			ai.ResourceFood: 100, ai.ResourceWood: 100, ai.ResourceStone: 100, ai.ResourceGold: 100,
@@ -58,7 +58,7 @@ func TestCreateActionOrders(t *testing.T) {
 	}
 
 	action := map[string]any{
-		"action": "create",
+		"action":  "create",
 		"unit_id": 10.0,
 	}
 
@@ -80,7 +80,7 @@ func TestResearchActionOrders(t *testing.T) {
 	}
 
 	action := map[string]any{
-		"action": "research",
+		"action":  "research",
 		"tech_id": 10.0,
 	}
 
@@ -96,8 +96,8 @@ func TestBuildActionOrders(t *testing.T) {
 		units: []ai.UnitView{
 			{
 				InternalID: 1,
-				Type: ai.UnitTypeEconomic,
-				Kind: ai.UnitEconomic,
+				Type:       ai.UnitTypeEconomic,
+				Kind:       ai.UnitEconomic,
 				Builds: []ai.Producible{
 					{Kind: ai.ProducibleBuilding, ID: 20},
 				},
@@ -110,7 +110,7 @@ func TestBuildActionOrders(t *testing.T) {
 	}
 
 	action := map[string]any{
-		"action": "build",
+		"action":      "build",
 		"building_id": 20.0,
 	}
 
@@ -126,8 +126,8 @@ func TestAttackActionOrders(t *testing.T) {
 		units: []ai.UnitView{
 			{
 				InternalID: 1,
-				Type: ai.UnitTypeInfantry,
-				Kind: ai.UnitMilitary,
+				Type:       ai.UnitTypeInfantry,
+				Kind:       ai.UnitMilitary,
 			},
 		},
 		visibleEnemyUnits: []ai.UnitView{
@@ -136,7 +136,7 @@ func TestAttackActionOrders(t *testing.T) {
 	}
 
 	action := map[string]any{
-		"action": "attack",
+		"action":  "attack",
 		"targets": "enemy_units",
 	}
 

@@ -26,9 +26,10 @@ type RisqBuilding struct {
 	gather_point               *RisqGatherPoint
 	auto_attack                bool
 	// Building gathering fields
-	resources_left float64
-	renewing       *defs.RisqResourceCost
-	pending_renew  float64
+	resources_left          float64
+	renewing                *defs.RisqResourceCost
+	renew_stamina_remaining int
+	pending_renew_stamina   int
 }
 
 func (b *RisqBuilding) underConstruction() bool {
@@ -124,6 +125,8 @@ func (b *RisqBuilding) resolveHealthDelta(r *GameRisq) {
 }
 
 func (b *RisqBuilding) recordDeath(r *GameRisq, attacker Attackable, damage float64) {
+	b.zone.destroyed_building = b.building_id
+	b.zone.destroyed_building_turns = 1
 	b.zone.space.death_vision[b.player_id] = true
 	space := b.zone.space.coordinate
 	zone := b.zone.coordinate
@@ -316,6 +319,11 @@ func (b *RisqBuilding) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 
 func (b *RisqBuilding) tickIntent(risq *GameRisq) bool {
 	b.intent.resetIntent()
+	for _, order := range append([]*RisqOrder(nil), b.order_queue.active_orders...) {
+		if order.order_type.IsAttackOrder() && b.orderStatus(order, risq) != OrderStatus_InProgress {
+			b.cancelOrder(order, risq)
+		}
+	}
 	b.resolveAutoAttack(risq)
 	order := b.order_queue.nextOrder(b, risq)
 	if order == nil {
@@ -371,7 +379,12 @@ func (b *RisqBuilding) tickExecute(risq *GameRisq) {
 				unit.current_stamina = unit.turn_stamina / 2
 				util.DebugLog.Printf("Unit created: unit=%d unit_id=%d player=%d building=%d zone=%s space=%s tick=%d",
 					unit.internal_id, item.item_id, b.player_id, b.internal_id, b.zone.coordinate.ToString(), b.zone.space.coordinate.ToString(), risq.current_tick)
-				b.zone.space.setUnit(&b.zone.coordinate, unit)
+				if risq.production_garrisons[b] {
+					b.garrisoned_units[unit.internal_id] = unit
+					unit.garrisoned_in = b
+				} else {
+					b.zone.space.setUnit(&b.zone.coordinate, unit)
+				}
 				risq.players[b.player_id].units[unit.internal_id] = unit
 				risq.units[unit.internal_id] = unit
 				risq.players[b.player_id].report.recordUnitCreated(item.item_id)
@@ -443,6 +456,9 @@ func (b *RisqBuilding) toFrontend(viewer_player_id int) gin.H {
 	}
 	if showOrdersTo(b.player_id, b.zone, viewer_player_id) {
 		building["renewing"] = b.renewing != nil
+		if b.renewing != nil {
+			building["renew_stamina_remaining"] = b.renew_stamina_remaining
+		}
 		building["auto_attack"] = b.auto_attack
 		building["interrupt_current"] = b.interrupt_current
 		target_priority := make([]int, len(b.target_priority))

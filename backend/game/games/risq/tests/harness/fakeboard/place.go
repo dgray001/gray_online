@@ -16,7 +16,7 @@ func (b *Board) PlaceResource(z mapgen.Zone, resource_id uint32) {
 	zone.resource = resource_id
 }
 
-func (b *Board) PlaceBuilding(z mapgen.Zone, building_id uint32, player_index int) bool {
+func (b *Board) PlaceBuilding(z mapgen.Zone, building_id uint32, player_index int, resources_left ...float64) bool {
 	zone := z.(*zone)
 	if zone.Occupied() {
 		return false

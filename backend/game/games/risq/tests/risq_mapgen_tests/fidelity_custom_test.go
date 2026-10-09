@@ -45,10 +45,10 @@ func checkCustomBoardMatches(t *testing.T, doc string, board *fakeboard.Board, f
 }
 
 // Large maps cost the engine over a second to preview, so only small ones are compared; the tiny docs below cover the features
-func TestShippedCustomMapsGenerate(t *testing.T) {
+func TestFixtureCustomMapsGenerate(t *testing.T) {
 	entries, err := defs.ListConfigDir("maps", "custom")
 	if err != nil || len(entries) == 0 {
-		t.Fatalf("no shipped custom maps: %v", err)
+		t.Fatalf("no test custom maps: %v", err)
 	}
 	for _, entry := range entries {
 		name := strings.TrimSuffix(entry.Name(), ".json")

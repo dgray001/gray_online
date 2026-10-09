@@ -11,7 +11,7 @@ import (
 func notificationGame(t *testing.T, spy bool) *harness.Game {
 	t.Helper()
 	doc := `{"board_size":3,"players":2,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":23,"player":0},"units":[{"id":11,"player":0,"count":1},{"id":1,"player":1,"count":1}]}]},{"x":3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":21,"player":0},"units":[{"id":11,"player":0,"count":1}]}]}]}`
-	fakeboard.UseConfig(t, shippedConfig, nil, map[string]string{"notifications": doc})
+	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"notifications": doc})
 	config := defs.UnitConfigs[1]
 	config.Vision.Space = defs.VisibilityGood
 	if spy {

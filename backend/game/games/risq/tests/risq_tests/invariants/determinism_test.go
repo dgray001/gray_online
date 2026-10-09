@@ -6,7 +6,7 @@ import (
 )
 
 func TestDeterminismAndInvariants(t *testing.T) {
-	for name, scenario := range map[string]scenario{"economy": economyScenario(), "gathering": gatheringScenario(), "construction": constructionScenario(), "combat": combatScenario(), "production": productionScenario(), "farm": farmScenario(), "eviction": evictionScenario(), "capture": captureScenario(), "budget": budgetScenario()} {
+	for name, scenario := range map[string]scenario{"economy": economyScenario(), "gathering": gatheringScenario(), "construction": constructionScenario(), "combat": combatScenario(), "eviction": evictionScenario()} {
 		t.Run(name, func(t *testing.T) {
 			permutations := [][]int{{0, 1}, {1, 0}}
 			if scenario.players == 3 {

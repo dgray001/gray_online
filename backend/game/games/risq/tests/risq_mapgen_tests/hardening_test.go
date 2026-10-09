@@ -21,7 +21,7 @@ func TestGenerateReturnsAnErrorForNonPositivePlayerCounts(t *testing.T) {
 }
 
 func TestScriptStepsLogUnknownParamsAndCarryOn(t *testing.T) {
-	useScripts(t, map[string]string{"typo": `[` + step("shape", `{"kind":"hexagon","size":3,"sise":9}`) + `,` + step("terrain_fill", `{"terrain_id":51,"colour":"red"}`) + `]`})
+	useScripts(t, map[string]string{"typo": `[` + step("shape", `{"kind":"hexagon","size":{"radius":3},"sise":9}`) + `,` + step("terrain_fill", `{"terrain_id":51,"colour":"red"}`) + `]`})
 	board := generateStartless(t, "typo", 2)
 	if len(board.Inspect()) != 37 || len(withTerrain(board, 51)) != 37 {
 		t.Errorf("%d spaces, %d hilly; want the valid params applied to all 37", len(board.Inspect()), len(withTerrain(board, 51)))
@@ -29,7 +29,7 @@ func TestScriptStepsLogUnknownParamsAndCarryOn(t *testing.T) {
 }
 
 func TestRegionsSevenNeverReusesASuppliedName(t *testing.T) {
-	useScripts(t, map[string]string{"named": `[` + step("shape", `{"kind":"hexagon","size":4}`) + `,` + step("regions_seven", `{"names":["Ashenvale","Blackmoor","Cindergate"]}`) + `]`})
+	useScripts(t, map[string]string{"named": `[` + step("shape", `{"kind":"hexagon","size":{"radius":4}}`) + `,` + step("regions_seven", `{"names":["Ashenvale","Blackmoor","Cindergate"]}`) + `]`})
 	for seed := int64(1); seed <= 40; seed++ {
 		board, err := fakeboard.Generate("script:named", 2, seed)
 		if err == nil || err.Error() != startsMissing {

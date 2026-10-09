@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/dgray001/gray_online/game/games/risq/tests/config"
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness/aisim"
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness/fakeboard"
 )
@@ -18,7 +19,7 @@ func once(actions string) string {
 func fixture(t *testing.T, bank, spaces, extra string, models ...string) *aisim.Game {
 	t.Helper()
 	document := fmt.Sprintf(`{"board_size":4,"players":%d,"space_gold_income":0,"starting_bank":%s,"spaces":[%s]%s}`, len(models), bank, spaces, extra)
-	fakeboard.UseConfig(t, "../../../config", nil, map[string]string{"ai-test": document})
+	fakeboard.UseConfig(t, testconfig.Dir(), nil, map[string]string{"ai-test": document})
 	return aisim.New(t, "custom:ai-test", models...)
 }
 

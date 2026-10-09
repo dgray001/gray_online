@@ -14,6 +14,11 @@ func canonical(value any) string {
 	return string(data)
 }
 
+type canonicalItem struct {
+	value any
+	key   string
+}
+
 func unordered(key string, data []any) bool {
 	if key == "spaces" {
 		return len(data) > 0 && isNumber(data[0])
@@ -39,7 +44,14 @@ func normalize(key string, value any) any {
 			data[i] = normalize("", item)
 		}
 		if unordered(key, data) {
-			slices.SortFunc(data, func(a, b any) int { return strings.Compare(canonical(a), canonical(b)) })
+			items := make([]canonicalItem, len(data))
+			for i, item := range data {
+				items[i] = canonicalItem{value: item, key: canonical(item)}
+			}
+			slices.SortFunc(items, func(a, b canonicalItem) int { return strings.Compare(a.key, b.key) })
+			for i, item := range items {
+				data[i] = item.value
+			}
 		}
 	}
 	return value

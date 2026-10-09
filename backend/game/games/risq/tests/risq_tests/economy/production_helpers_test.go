@@ -17,7 +17,7 @@ func productionGame(t *testing.T, workers, centers int, extra string) *harness.G
 	}
 	spaces = append(spaces, `{"x":-2,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":1,"count":1}]}]}`)
 	doc := `{"board_size":3,"players":2,"starting_bank":{"food":300,"wood":300,"stone":100,"gold":500}` + extra + `,"spaces":[` + strings.Join(spaces, ",") + `]}`
-	fakeboard.UseConfig(t, shippedConfig, nil, map[string]string{"production": doc})
+	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"production": doc})
 	return harness.NewGame(t, "custom:production", 1, 2)
 }
 

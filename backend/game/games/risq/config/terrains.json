@@ -77,26 +77,49 @@
     "terrain_type": "swamp",
     "intra_cost": 2,
     "inter_cost": 9,
-    "build_speed_modifier": 0.6,
-    "terrains": []
+    "build_speed_modifier": 0.5,
+    "terrains": [
+      { "terrain_id": 151, "display_name": "Swamp" },
+      { "terrain_id": 152, "display_name": "Swamp" },
+      { "terrain_id": 153, "display_name": "Swamp" }
+    ]
   },
   {
     "terrain_type": "shallows",
     "intra_cost": 2,
     "inter_cost": 9,
     "build_speed_modifier": 0.6,
-    "terrains": [{ "terrain_id": 151, "display_name": "Shallows" }]
+    "terrains": [
+      { "terrain_id": 201, "display_name": "Shallows" },
+      { "terrain_id": 202, "display_name": "Shallows" },
+      { "terrain_id": 203, "display_name": "Shallows" },
+      { "terrain_id": 204, "display_name": "Shallows" },
+      { "terrain_id": 205, "display_name": "Shallows" },
+      { "terrain_id": 206, "display_name": "Shallows" }
+    ]
   },
   {
     "terrain_type": "water",
     "build_speed_modifier": 0.4,
     "impassable": true,
-    "terrains": [{ "terrain_id": 152, "display_name": "Water" }]
+    "terrains": [
+      { "terrain_id": 251, "display_name": "Water" },
+      { "terrain_id": 252, "display_name": "Water" },
+      { "terrain_id": 253, "display_name": "Water" },
+      { "terrain_id": 254, "display_name": "Water" }
+    ]
   },
   {
     "terrain_type": "deep_water",
     "build_speed_modifier": 0.2,
     "impassable": true,
-    "terrains": [{ "terrain_id": 153, "display_name": "Deep Water" }]
+    "terrains": [
+      { "terrain_id": 301, "display_name": "Deep Water" },
+      { "terrain_id": 302, "display_name": "Deep Water" },
+      { "terrain_id": 303, "display_name": "Deep Water" },
+      { "terrain_id": 304, "display_name": "Deep Water" },
+      { "terrain_id": 305, "display_name": "Deep Water" },
+      { "terrain_id": 306, "display_name": "Deep Water" }
+    ]
   }
 ]

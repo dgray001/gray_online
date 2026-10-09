@@ -3,16 +3,15 @@ package risq
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/dgray001/gray_online/game"
+	"github.com/dgray001/gray_online/game/games/risq/ai"
+	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
+	"github.com/gin-gonic/gin"
 	"iter"
 	"maps"
 	"math"
 	"math/rand"
 	"os"
-
-	"github.com/dgray001/gray_online/game"
-	"github.com/dgray001/gray_online/game/games/risq/ai"
-	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
-	"github.com/gin-gonic/gin"
 )
 
 type RisqPlayer struct {
@@ -27,10 +26,12 @@ type RisqPlayer struct {
 	past_orders           []*RisqOrder
 	orders_submitted      bool
 	planned_foundations   map[uint]*RisqPlannedFoundation
+	auto_renewals         map[uint32]*RisqRenewalQueue
 	researched_techs      map[uint32]bool
 	available_mercenaries map[uint32]bool
 	pending_mercenaries   []*RisqPendingMercenary
 	report                *RisqTurnReport
+	completed_report      *RisqTurnReport
 	score                 uint
 	ai_model              ai.Model
 	eliminated            bool
@@ -94,6 +95,7 @@ func createRisqPlayer(player *game.Player, max_population_limit uint16, color st
 		past_orders:           make([]*RisqOrder, 0),
 		orders_submitted:      false,
 		planned_foundations:   make(map[uint]*RisqPlannedFoundation),
+		auto_renewals:         make(map[uint32]*RisqRenewalQueue),
 		researched_techs:      make(map[uint32]bool),
 		available_mercenaries: make(map[uint32]bool),
 		rng:                   rng,
@@ -266,7 +268,7 @@ func (p *RisqPlayer) toFrontend(viewer_player_id int) gin.H {
 	}
 	if p.resources != nil && p.player != nil && p.player.Player_id == viewer_player_id {
 		player["resources"] = p.resources.toFrontend()
-		player["turn_report"] = p.report.toFrontend()
+		player["turn_report"] = p.completed_report.toFrontend()
 		foundations := make([]gin.H, 0)
 		for coordinate_key, f := range p.planned_foundations {
 			foundations = append(foundations, gin.H{
@@ -278,6 +280,7 @@ func (p *RisqPlayer) toFrontend(viewer_player_id int) gin.H {
 			})
 		}
 		player["planned_foundations"] = foundations
+		player["auto_renewals"] = p.autoRenewalsToFrontend()
 		player["available_mercenaries"] = p.availableMercenariesToFrontend()
 	}
 	is_owner := p.player != nil && p.player.Player_id == viewer_player_id
@@ -314,4 +317,39 @@ func (p *RisqPlayer) toFrontend(viewer_player_id int) gin.H {
 	player["active_orders"] = active_orders
 	player["researched_techs"] = maps.Clone(p.researched_techs)
 	return player
+}
+
+func applyTechBonus(u *RisqUnit, tech defs.TechConfig) {
+	u.turn_stamina += tech.Bonus_turn_stamina
+	u.cs.setMaxHealth(u.cs.max_health + tech.Bonus_max_health)
+	if tech.HasTargetFilter() {
+		return
+	}
+	u.cs.applyBonus(tech.Bonus)
+}
+
+func requiredTechMet(player *RisqPlayer, required_tech_id uint32) bool {
+	return required_tech_id == 0 || player.researched_techs[required_tech_id]
+}
+
+type techCompletion struct {
+	player_id int
+	tech_id   uint32
+}
+
+func (r *GameRisq) completeResearch(player *RisqPlayer, tech_id uint32) {
+	player.researched_techs[tech_id] = true
+	player.report.recordTech(tech_id)
+	tech, ok := defs.TechConfigs[tech_id]
+	if !ok {
+		return
+	}
+	for _, unit := range player.units {
+		if tech.AppliesTo(unit.unit_id, unit.unitType()) {
+			applyTechBonus(unit, tech)
+		}
+	}
+	for _, unit_id := range tech.Unlocks_mercenary_ids {
+		player.available_mercenaries[unit_id] = true
+	}
 }

@@ -28,7 +28,7 @@ func (u *RisqUnit) receiveOrder(o *RisqOrder, risq *GameRisq, prepend bool) erro
 				return errors.New("cannot afford renew")
 			}
 			player.resources.spend(cost)
-			target.renewing = &cost
+			target.startRenew(cost)
 		}
 		u.order_queue.receiveOrder(o, prepend)
 	default:

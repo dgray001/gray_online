@@ -21,8 +21,15 @@ type Game struct {
 }
 
 func NewUnstartedGame(t *testing.T, mapName string, seed int64, humans int) *Game {
+	return NewUnstartedGameWithSettings(t, mapName, seed, humans, nil)
+}
+
+func NewUnstartedGameWithSettings(t *testing.T, mapName string, seed int64, humans int, settings map[string]any) *Game {
 	t.Helper()
 	base := game.CreateBaseGame(1, game.GameType_RISQ, map[string]any{"map": mapName, "seed": float64(seed)})
+	for key, value := range settings {
+		base.GameSpecificSettings[key] = value
+	}
 	g := &Game{T: t, Base: base}
 	for i := 1; i <= humans; i++ {
 		game.CreatePlayer(uint64(i), fmt.Sprint("human", i), base)

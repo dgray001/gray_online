@@ -11,7 +11,7 @@ import (
 func TestContestedGatherSatisfiesSmallerDemandFirst(t *testing.T) {
 	for _, slots := range [][2]int{{0, 1}, {1, 0}} {
 		doc := `{"board_size":1,"players":2,"starting_bank":{},"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"resource":11,"units":[{"id":1,"player":0,"count":1},{"id":2,"player":1,"count":1}]}]}]}`
-		fakeboard.UseConfig(t, shippedConfig, nil, map[string]string{"unequal": doc})
+		fakeboard.UseConfig(t, testConfig, nil, map[string]string{"unequal": doc})
 		worker := defs.UnitConfigs[1]
 		worker.Turn_stamina = 1
 		defs.UnitConfigs[2] = worker

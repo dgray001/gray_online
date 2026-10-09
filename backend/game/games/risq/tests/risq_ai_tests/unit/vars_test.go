@@ -1,9 +1,9 @@
 package unit
 
 import (
+	"github.com/dgray001/gray_online/game/games/risq/ai"
 	"math/rand"
 	"testing"
-	"github.com/dgray001/gray_online/game/games/risq/ai"
 )
 
 func TestSetVarAction(t *testing.T) {
@@ -15,8 +15,8 @@ func TestSetVarAction(t *testing.T) {
 				"then": []any{
 					map[string]any{
 						"action": "set_var",
-						"name": "my_var",
-						"value": 1.0,
+						"name":   "my_var",
+						"value":  1.0,
 					},
 				},
 			},
@@ -37,8 +37,8 @@ func TestSetVarActionInvalidName(t *testing.T) {
 				"then": []any{
 					map[string]any{
 						"action": "set_var",
-						"name": "123invalid",
-						"value": 1.0,
+						"name":   "123invalid",
+						"value":  1.0,
 					},
 				},
 			},

@@ -2,7 +2,9 @@ package risq
 
 import (
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
+	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
+	"sort"
 )
 
 type RisqGatherPointLocationKind uint8
@@ -31,6 +33,30 @@ type RisqGatherPoint struct {
 	object_id     uint64
 }
 
+func (r *GameRisq) applyUngarrisonGatherPoints(orderables []Orderable) {
+	units := make([]*RisqUnit, 0)
+	for _, orderable := range orderables {
+		if u, ok := orderable.(*RisqUnit); ok {
+			if _, leaving := u.intent.detail.(*UngarrisonIntent); leaving {
+				units = append(units, u)
+			}
+		}
+	}
+	sort.Slice(units, func(i, j int) bool { return units[i].internal_id < units[j].internal_id })
+	for _, u := range units {
+		building := u.intent.detail.(*UngarrisonIntent).building
+		active := u.order_queue.active_orders
+		if u.deleted || u.garrisoned_in != nil || building.deleted || len(active) != 1 || active[0].order_type != defs.OrderType_UnitUngarrison {
+			continue
+		}
+		point := building.gather_point
+		if point == nil || (point.object_type == RisqGatherObjectType_BUILDING && point.object_id == building.internal_id) {
+			continue
+		}
+		r.addSyntheticOrder(point.resolveOrder(r, building, u), r.players[u.player_id], false)
+	}
+}
+
 func (gp *RisqGatherPoint) toFrontend() gin.H {
 	return gin.H{
 		"location_kind": gp.location_kind,
@@ -54,6 +80,9 @@ func (gp *RisqGatherPoint) candidates() []gatherPointCandidate {
 	case RisqGatherObjectType_RESOURCE:
 		return []gatherPointCandidate{{defs.OrderType_UnitGather, int64(gp.location_id)}}
 	case RisqGatherObjectType_BUILDING:
+		if gp.object_id == 0 {
+			return nil
+		}
 		id := int64(gp.object_id)
 		return []gatherPointCandidate{{defs.OrderType_UnitGarrison, id}, {defs.OrderType_UnitRepair, id}, {defs.OrderType_UnitAttackBuilding, id}}
 	case RisqGatherObjectType_UNIT:
@@ -63,10 +92,36 @@ func (gp *RisqGatherPoint) candidates() []gatherPointCandidate {
 	}
 }
 
+func (gp *RisqGatherPoint) foundationTarget(r *GameRisq, unit *RisqUnit) int64 {
+	if unit.unitType() != defs.UnitType_ECONOMIC || gp.location_kind != RisqGatherPointLocationKind_ZONE || gp.object_type != RisqGatherObjectType_BUILDING {
+		return 0
+	}
+	_, zone := invertZoneKey(uint(gp.location_id), r)
+	if zone == nil {
+		return 0
+	}
+	var id uint32
+	if b := zone.building; b != nil && (gp.object_id == 0 || b.internal_id == gp.object_id) && !b.deleted && b.player_id == unit.player_id && b.underConstruction() {
+		id = b.building_id
+	} else if f := r.players[unit.player_id].planned_foundations[zone.coordinate_key]; gp.object_id == 0 && f != nil {
+		id = f.building_id
+	}
+	if id == 0 {
+		return 0
+	}
+	return int64(util.Pair(int(id), int(zone.coordinate_key)))
+}
+
 func (gp *RisqGatherPoint) resolveOrder(risq *GameRisq, b *RisqBuilding, unit *RisqUnit) *RisqOrder {
 	order_type, target_id := defs.OrderType_UnitMoveZone, int64(gp.location_id)
 	if gp.location_kind == RisqGatherPointLocationKind_SPACE {
 		order_type = defs.OrderType_UnitMoveSpace
+	}
+	if target := gp.foundationTarget(risq, unit); target != 0 {
+		order := createRisqOrder(0, defs.OrderType_UnitBuild, b.player_id, map[uint64]Orderable{unit.internal_id: unit}, target, false)
+		if unit.orderReceivable(order, risq) {
+			return createRisqOrder(risq.nextOrderInternalId(), order.order_type, b.player_id, order.subjects, target, false)
+		}
 	}
 	for _, c := range gp.candidates() {
 		candidate := createRisqOrder(0, c.order_type, b.player_id, map[uint64]Orderable{unit.internal_id: unit}, c.target_id, false)

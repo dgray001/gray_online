@@ -1,0 +1,1 @@
+{"rules":[{"when":{"value_equals":{"value":"var(retreat_sent)","amount":0}},"then":[{"action":"set_unit_behavior","unit_ids":[13],"stance":"passive","attack_back":false,"interrupt_current":false},{"action":"move","unit_ids":[13],"targets":"coordinate","coordinate":{"x":1,"y":0}},{"action":"set_var","name":"retreat_sent","value":1,"persist":true}]}]}

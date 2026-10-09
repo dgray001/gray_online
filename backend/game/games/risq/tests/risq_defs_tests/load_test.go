@@ -2,15 +2,16 @@ package risq_defs_tests
 
 import (
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
+	"github.com/dgray001/gray_online/game/games/risq/tests/config"
 	"os"
 	"path/filepath"
 	"testing"
 )
 
-func TestShippedConfigLoads(t *testing.T) {
-	err := defs.LoadConfig("../../config")
+func TestSharedTestConfigLoads(t *testing.T) {
+	err := testconfig.Load()
 	if err != nil {
-		t.Fatalf("Failed to load shipped config: %v", err)
+		t.Fatalf("Failed to load shared test config: %v", err)
 	}
 	if len(defs.UnitConfigs) == 0 || len(defs.BuildingConfigs) == 0 {
 		t.Errorf("Configs loaded but maps are empty")

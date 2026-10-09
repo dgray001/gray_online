@@ -2,6 +2,7 @@ package bridge
 
 import (
 	"github.com/dgray001/gray_online/game"
+	"github.com/dgray001/gray_online/game/games/risq/tests/config"
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness"
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness/fakeboard"
 	"testing"
@@ -10,7 +11,7 @@ import (
 func bridgeGame(t *testing.T, spaces string, configure ...func()) (*harness.Game, *game.Player) {
 	t.Helper()
 	document := `{"board_size":4,"players":2,"spaces":[` + spaces + `]}`
-	fakeboard.UseConfig(t, "../../../config", nil, map[string]string{"bridge-test": document})
+	fakeboard.UseConfig(t, testconfig.Dir(), nil, map[string]string{"bridge-test": document})
 	for _, apply := range configure {
 		apply()
 	}

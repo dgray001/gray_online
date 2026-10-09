@@ -1,6 +1,7 @@
 {
   "board_size": 2,
-  "players": 1,
+  "players": 2,
+  "unlimited_population": true,
   "spaces": [
     {
       "x": -2,
@@ -25,7 +26,15 @@
     {
       "x": -1,
       "y": 0,
-      "terrain": 1
+      "terrain": 1,
+      "zones": [
+        {"x":0,"y":0,"building":{"id":23,"player":0},"units":[
+          {"id":1,"player":0,"count":10},
+          {"id":11,"player":0,"count":10},
+          {"id":12,"player":0,"count":10},
+          {"id":13,"player":0,"count":10}
+        ]}
+      ]
     },
     {
       "x": -1,
@@ -75,7 +84,13 @@
     {
       "x": 1,
       "y": 0,
-      "terrain": 1
+      "terrain": 1,
+      "zones": [{"x":0,"y":0,"units":[
+        {"id":1,"player":1,"count":3},
+        {"id":11,"player":1,"count":3},
+        {"id":12,"player":1,"count":3},
+        {"id":13,"player":1,"count":3}
+      ]}]
     },
     {
       "x": 1,

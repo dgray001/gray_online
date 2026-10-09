@@ -107,12 +107,12 @@ type PlayerStanding struct {
 func (r *GameRisq) Standings() (uint16, []PlayerStanding) {
 	standings := make([]PlayerStanding, 0, len(r.players))
 	for _, p := range r.players {
-		if p.report == nil {
+		if p.completed_report == nil {
 			return 0, nil
 		}
-		standings = append(standings, PlayerStanding{PlayerId: p.player.Player_id, Units: int(p.report.pop_end), Score: p.score, Land: p.report.land.held_end, Eliminated: p.eliminated})
+		standings = append(standings, PlayerStanding{PlayerId: p.player.Player_id, Units: int(p.completed_report.pop_end), Score: p.score, Land: p.completed_report.land.held_end, Eliminated: p.eliminated})
 	}
-	return r.players[0].report.turn, standings
+	return r.players[0].completed_report.turn, standings
 }
 
 // Compact per-player state used by the sim tool to print timelines

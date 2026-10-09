@@ -10,7 +10,7 @@ import (
 
 func TestEliminatedPlayersCannotSubmitAndDoNotBlockTurns(t *testing.T) {
 	doc := `{"board_size":3,"players":3,"spaces":[` + home + route + enemy + `,{"x":-2,"y":2,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":2,"count":1}]}]}]}`
-	fakeboard.UseConfig(t, shippedConfig, nil, map[string]string{"eliminated": doc})
+	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"eliminated": doc})
 	g := harness.NewGame(t, "custom:eliminated", 1, 3)
 	p := g.Human(0)
 	var orders []defs.OrderFromFrontend

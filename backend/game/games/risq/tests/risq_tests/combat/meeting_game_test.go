@@ -44,7 +44,7 @@ func spaceOf(x, y, terrain int, units ...placed) string {
 func meetingGame(t *testing.T, spaces ...string) *harness.Game {
 	t.Helper()
 	doc := fmt.Sprintf(meetingBoard, strings.Join(spaces, ","))
-	fakeboard.UseConfig(t, shippedConfig, nil, map[string]string{"meeting": doc})
+	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"meeting": doc})
 	return harness.NewGame(t, "custom:meeting", 1, 2)
 }
 

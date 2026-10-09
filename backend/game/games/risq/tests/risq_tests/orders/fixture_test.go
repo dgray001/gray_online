@@ -14,7 +14,7 @@ const enemy = `,{"x":-3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id"
 func useOrderConfig(t *testing.T, bank, extra string) {
 	t.Helper()
 	doc := `{"board_size":3,"players":2,"space_gold_income":0,"unlimited_population":true,"starting_bank":` + bank + `,"spaces":[` + home + route + enemy + `]` + extra + `}`
-	fakeboard.UseConfig(t, shippedConfig, nil, map[string]string{"orders": doc})
+	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"orders": doc})
 }
 
 func orderGame(t *testing.T, bank, extra string) *harness.Game {

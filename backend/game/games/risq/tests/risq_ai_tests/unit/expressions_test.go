@@ -1,9 +1,9 @@
 package unit
 
 import (
+	"github.com/dgray001/gray_online/game/games/risq/ai"
 	"math/rand"
 	"testing"
-	"github.com/dgray001/gray_online/game/games/risq/ai"
 )
 
 func TestParseAmount(t *testing.T) {
@@ -14,7 +14,7 @@ func TestParseAmount(t *testing.T) {
 				"when": map[string]any{
 					"resource_equals": map[string]any{
 						"category": "wood",
-						"amount": "1 + 2 * 3",
+						"amount":   "1 + 2 * 3",
 					},
 				},
 				"then": []any{},
@@ -35,7 +35,7 @@ func TestParseExpressionVariables(t *testing.T) {
 				"when": map[string]any{
 					"resource_equals": map[string]any{
 						"category": "wood",
-						"amount": "turn + population + var(my_var)",
+						"amount":   "turn + population + var(my_var)",
 					},
 				},
 				"then": []any{},

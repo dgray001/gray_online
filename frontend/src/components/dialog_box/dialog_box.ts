@@ -23,14 +23,14 @@ export interface DialogHotkey {
 export abstract class DwgDialogBox<T> extends DwgElement {
   protected close_hotkey?: DialogHotkey;
 
-  override async connectedCallback() {
+  override async connectedCallback(): Promise<void> {
     this.html_string = html.replace('id="content-container">', `id="content-container">${this.getHTML()}`);
     this.classList.add('dwg-dialog-box');
     await super.connectedCallback();
     window.addEventListener('keydown', this.handleCloseHotkey);
   }
 
-  override disconnectedCallback() {
+  override disconnectedCallback(): void {
     window.removeEventListener('keydown', this.handleCloseHotkey);
     super.disconnectedCallback();
   }
@@ -52,7 +52,7 @@ export abstract class DwgDialogBox<T> extends DwgElement {
     this.setData(this.getData(), true);
   }
 
-  closeDialog() {
+  closeDialog(): void {
     this.remove();
   }
 

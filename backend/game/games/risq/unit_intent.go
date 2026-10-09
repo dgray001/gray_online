@@ -276,6 +276,30 @@ func (i *RisqIntent) setRepair(target *RisqBuilding) {
 	i.max_cost = buildTickStaminaCost
 }
 
+func allocateRenewStamina(orderables []Orderable) {
+	workers := make([]*RisqUnit, 0)
+	for _, orderable := range orderables {
+		if u, ok := orderable.(*RisqUnit); ok {
+			if _, renewing := u.intent.detail.(*RenewIntent); renewing {
+				workers = append(workers, u)
+			}
+		}
+	}
+	sort.Slice(workers, func(i, j int) bool { return workers[i].internal_id < workers[j].internal_id })
+	remaining := make(map[*RisqBuilding]int)
+	for _, u := range workers {
+		target := u.intent.detail.(*RenewIntent).target
+		if _, known := remaining[target]; !known {
+			remaining[target] = target.renew_stamina_remaining
+		}
+		u.intent.intent_cost = min(u.intent.intent_cost, remaining[target])
+		remaining[target] -= u.intent.intent_cost
+		if u.intent.intent_cost == 0 {
+			u.intent.resetIntent()
+		}
+	}
+}
+
 type RenewIntent struct {
 	target *RisqBuilding
 }
@@ -285,7 +309,7 @@ func (*RenewIntent) isIntentKind() {}
 func (i *RisqIntent) setRenew(target *RisqBuilding) {
 	i.detail = &RenewIntent{target: target}
 	i.min_cost = 1
-	i.max_cost = buildTickStaminaCost
+	i.max_cost = min(buildTickStaminaCost, target.renew_stamina_remaining)
 }
 
 type ConstructionIntent struct {
@@ -385,13 +409,13 @@ func computeFoundationIds(risq *GameRisq, winners map[*RisqZone]uint64) map[*Ris
 }
 
 type UngarrisonIntent struct {
-	next_step *RisqZone
+	building *RisqBuilding
 }
 
 func (*UngarrisonIntent) isIntentKind() {}
 
-func (i *RisqIntent) setUngarrison(next_step *RisqZone) {
-	i.detail = &UngarrisonIntent{next_step: next_step}
+func (i *RisqIntent) setUngarrison(building *RisqBuilding) {
+	i.detail = &UngarrisonIntent{building: building}
 	i.min_cost = 1
 	i.max_cost = 1
 }

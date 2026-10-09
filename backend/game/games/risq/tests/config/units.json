@@ -1,0 +1,6 @@
+[
+  {"unit_id":1,"display_name":"Villager","description":"Gathers resources and constructs/repairs buildings.","unit_type":"economic","max_health":8,"attack_type":"blunt","attack_blunt":5,"cost":{"food":50},"production_stamina":10,"turn_stamina":8,"builds":[{"row":2,"col":0,"id":2},{"row":2,"col":1,"id":3},{"row":2,"col":2,"id":11},{"row":3,"col":0,"id":21},{"row":3,"col":1,"id":22},{"row":3,"col":2,"id":23}]},
+  {"unit_id":11,"display_name":"Blunt Infantry","description":"A standard blunt infantry unit.","unit_type":"infantry","max_health":11,"attack_type":"blunt","attack_blunt":6,"defense_piercing":1,"cost":{"food":50,"wood":20},"production_stamina":10,"turn_stamina":15},
+  {"unit_id":12,"display_name":"Piercing Infantry","description":"A standard piercing infantry unit.","unit_type":"infantry","max_health":16,"attack_type":"piercing","attack_piercing":10,"defense_blunt":1,"defense_piercing":2,"cost":{"food":70,"wood":40},"production_stamina":14,"turn_stamina":12},
+  {"unit_id":13,"display_name":"Heavy Infantry","description":"A standard heavy infantry unit.","unit_type":"infantry","max_health":50,"attack_type":"blunt_piercing","attack_blunt":9,"attack_piercing":9,"defense_blunt":4,"defense_piercing":3,"penetration_blunt":5,"penetration_piercing":5,"cost":{"food":120,"gold":60},"production_stamina":35,"turn_stamina":8}
+]

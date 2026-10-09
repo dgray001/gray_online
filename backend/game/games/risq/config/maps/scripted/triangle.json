@@ -1,5 +1,5 @@
 [
-  { "step": "shape", "params": { "kind": "triangle", "size": "recommended" } },
+  { "step": "shape", "params": { "kind": "triangle" } },
   { "step": "terrain_fill", "params": { "terrain_id": 1 } },
   {
     "step": "terrain_blob",
@@ -67,7 +67,7 @@
     "params": {
       "pattern": "rows",
       "area_size": 1,
-      "starting_distance": "recommended / 2",
+      "starting_distance": "edge_length / 2",
       "terrain_id": 1,
       "units": [
         { "unit_id": 1, "count": 3, "target": { "zone": "center" } },

@@ -1,9 +1,9 @@
 package unit
 
 import (
+	"github.com/dgray001/gray_online/game/games/risq/ai"
 	"math/rand"
 	"testing"
-	"github.com/dgray001/gray_online/game/games/risq/ai"
 )
 
 func TestDecideOrdersLifecycle(t *testing.T) {
@@ -14,15 +14,15 @@ func TestDecideOrdersLifecycle(t *testing.T) {
 				"when": map[string]any{"always": map[string]any{}},
 				"then": []any{
 					map[string]any{
-						"action": "set_var",
-						"name": "my_turn_var",
-						"value": 42.0,
+						"action":  "set_var",
+						"name":    "my_turn_var",
+						"value":   42.0,
 						"persist": false,
 					},
 					map[string]any{
-						"action": "set_var",
-						"name": "my_persist_var",
-						"value": 42.0,
+						"action":  "set_var",
+						"name":    "my_persist_var",
+						"value":   42.0,
 						"persist": true,
 					},
 				},

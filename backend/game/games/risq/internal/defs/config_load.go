@@ -1,8 +1,13 @@
 package defs
 
 import (
+	"encoding/json"
+	"fmt"
+	"github.com/dgray001/gray_online/util"
+	"math/rand"
 	"os"
 	"path/filepath"
+	"slices"
 )
 
 // Set once by LoadConfig; ai configs and map scripts are read from under it when a game is created
@@ -47,4 +52,27 @@ func RemoveConfigFile(parts ...string) error {
 
 func ListConfigDir(parts ...string) ([]os.DirEntry, error) {
 	return os.ReadDir(filepath.Join(append([]string{configDir}, parts...)...))
+}
+
+var regionNames []string
+
+func loadRegionNames(data []byte) {
+	if err := json.Unmarshal(data, &regionNames); err != nil {
+		panic(fmt.Sprintf("failed to parse region_names.json: %v", err))
+	}
+}
+
+// Up to n distinct names from the pool, never any in exclude
+func RandomRegionNames(rng *rand.Rand, n int, exclude []string) []string {
+	pool := make([]string, 0, len(regionNames))
+	for _, name := range regionNames {
+		if !slices.Contains(exclude, name) {
+			pool = append(pool, name)
+		}
+	}
+	util.ShuffleFrom(rng, pool)
+	if n > len(pool) {
+		n = len(pool)
+	}
+	return pool[:n]
 }
