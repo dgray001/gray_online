@@ -112,7 +112,8 @@ func (gp *RisqGatherPoint) foundationTarget(r *GameRisq, unit *RisqUnit) int64 {
 	return int64(util.Pair(int(id), int(zone.coordinate_key)))
 }
 
-func (gp *RisqGatherPoint) resolveOrder(risq *GameRisq, b *RisqBuilding, unit *RisqUnit) *RisqOrder {
+func (gp *RisqGatherPoint) resolveOrder(risq *GameRisq, b *RisqBuilding, unit *RisqUnit) (result *RisqOrder) {
+	defer func() { result.tick_source = "gather_point" }()
 	order_type, target_id := defs.OrderType_UnitMoveZone, int64(gp.location_id)
 	if gp.location_kind == RisqGatherPointLocationKind_SPACE {
 		order_type = defs.OrderType_UnitMoveSpace

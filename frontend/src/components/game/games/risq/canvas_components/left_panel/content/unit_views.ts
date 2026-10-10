@@ -1,8 +1,10 @@
 import { capitalize } from '../../../../../../../scripts/util';
-import { drawRect, drawText } from '../../../../../util/canvas_util';
+import { drawRect } from '../../../../../util/canvas_util';
 import type { Point2D } from '../../../../../util/objects2d';
 import type { RisqBuilding, RisqUnit, UnitByTypeData } from '../../../model/types';
 import { RisqUnitType } from '../../../model/types';
+import { unitDisplayBlocks } from '../../../model/unit_display';
+import { drawUnitCountBadge } from '../../../rendering/unit_count_badge';
 import {
   UNIT_HEALTHBAR_COLOR_BACKGROUND,
   UNIT_HEALTHBAR_COLOR_HEALTH,
@@ -66,26 +68,6 @@ export function drawGarrisonedUnits(pc: PanelDrawContext, building: RisqBuilding
   for (let i = units.length; i < building.garrison_capacity; i++) {
     drawRect(pc.ctx, slot_p(i), s, s);
   }
-}
-
-function drawUnitCountBadge(ctx: CanvasRenderingContext2D, count: number, p: Point2D, s: number): void {
-  const text = `×${count}`;
-  const font_size = Math.max(10, 0.22 * s);
-  ctx.font = `bold ${font_size}px serif`;
-  const badge_w = ctx.measureText(text).width + 6;
-  const badge_h = font_size + 4;
-  const badge_p = { x: p.x + s - badge_w, y: p.y + s - badge_h };
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-  ctx.strokeStyle = 'transparent';
-  drawRect(ctx, badge_p, badge_w, badge_h, 3);
-  drawText(ctx, text, {
-    p: { x: badge_p.x + 0.5 * badge_w, y: badge_p.y + 0.5 * badge_h },
-    w: badge_w,
-    fill_style: 'white',
-    align: 'center',
-    baseline: 'middle',
-    font: `bold ${font_size}px serif`,
-  });
 }
 
 function drawUnitCountBlock(
@@ -185,54 +167,24 @@ export function drawUnitsGeneric(pc: PanelDrawContext, groups: [number, UnitByTy
     separators();
     return;
   }
-  const id_blocks = groups.flatMap(([player_id, units]) =>
-    units.filter((u) => u.units.size > 0).map((u) => ({ player_id, unit_id: u.unit_id, count: u.units.size }))
-  );
-  const tier3_row_groups = chunkBlocks(id_blocks, ACTION_GRID_COLS);
-  if (tier3_row_groups.length > 0 && tier3_row_groups.length <= max_rows) {
-    layoutRows(pc, tier3_row_groups, (b, p) =>
-      drawUnitCountBlock(
-        pc,
-        b.player_id,
-        b.unit_id,
-        b.count,
-        p,
-        block_size,
-        groups.find(([id]) => id === b.player_id)![1].filter((u) => u.unit_id === b.unit_id)
-      )
-    );
-    separators();
-    return;
-  }
-  const type_blocks = unitTypeBlocks(pc.risq, groups);
-  const tier4_row_groups = chunkBlocks(type_blocks, ACTION_GRID_COLS);
-  if (type_blocks.length > 0 && (tier4_row_groups.length <= max_rows || !multi_player)) {
-    layoutRows(pc, tier4_row_groups, (b, p) =>
-      drawUnitCountBlock(
-        pc,
-        b.player_id,
-        b.representative_unit_id,
-        b.count,
-        p,
-        block_size,
-        groups.find(([id]) => id === b.player_id)![1].filter((u) => u.unit_type === b.unit_type)
-      )
+  const display_blocks = unitDisplayBlocks(groups, max_rows * ACTION_GRID_COLS);
+  const block_rows = chunkBlocks(display_blocks, ACTION_GRID_COLS);
+  if (display_blocks.every((b) => b.unit_id !== undefined)) {
+    layoutRows(pc, block_rows, (b, p) =>
+      drawUnitCountBlock(pc, b.player_id, b.unit_id!, b.count, p, block_size, b.units)
     );
     separators();
     return;
   }
   // only reachable for a multi-player selection
-  const player_blocks = groups
-    .map(([player_id, units]) => ({ player_id, count: units.reduce((s, u) => s + u.units.size, 0) }))
-    .filter((b) => b.count > 0);
-  layoutRows(pc, chunkBlocks(player_blocks, ACTION_GRID_COLS), (block, p) => {
+  layoutRows(pc, block_rows, (block, p) => {
     const color = pc.risq.getGame()?.players[block.player_id]?.color;
     pc.ctx.fillStyle = color ? color.getString() : 'rgba(255, 255, 255, 0.3)';
     pc.ctx.strokeStyle = 'black';
     pc.ctx.lineWidth = 1;
     drawRect(pc.ctx, p, block_size, block_size);
     drawUnitCountBadge(pc.ctx, block.count, p, block_size);
-    drawGroupHighlight(pc, groups.find(([id]) => id === block.player_id)![1], p, block_size);
+    drawGroupHighlight(pc, block.units, p, block_size);
   });
   separators();
 }
@@ -295,35 +247,6 @@ function drawPerPlayerUnitRows(
       by += block_size + gap;
     }
   }
-}
-
-interface TypeBlock {
-  player_id: number;
-  unit_type: RisqUnitType;
-  representative_unit_id: number;
-  count: number;
-}
-
-/** One block per (player, unit_type), merging unit_ids that share a type */
-function unitTypeBlocks(risq: DwgRisq, groups: [number, UnitByTypeData[]][]): TypeBlock[] {
-  const resolve = unitResolver(risq);
-  const type_blocks_by_key = new Map<string, TypeBlock>();
-  for (const [player_id, units] of groups) {
-    for (const u of units) {
-      if (u.units.size < 1) {
-        continue;
-      }
-      const unit_type = resolve(player_id, [...u.units][0])?.unit_type ?? RisqUnitType.NONE;
-      const key = `${player_id}:${unit_type}`;
-      const existing = type_blocks_by_key.get(key);
-      if (existing) {
-        existing.count += u.units.size;
-      } else {
-        type_blocks_by_key.set(key, { player_id, unit_type, representative_unit_id: u.unit_id, count: u.units.size });
-      }
-    }
-  }
-  return [...type_blocks_by_key.values()];
 }
 
 export function drawUnit(pc: PanelDrawContext, unit: RisqUnit): void {

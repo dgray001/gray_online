@@ -3,12 +3,13 @@ import type { Point2D } from '../../../../util/objects2d';
 import { pointInRect } from '../../../../util/objects2d';
 import type { RisqLeftPanel } from '../../canvas_components/left_panel/left_panel';
 import { LeftPanelDataType } from '../../canvas_components/left_panel/left_panel_data';
-import type { RisqSpace, RisqZone, UnitByTypeData } from '../../model/types';
+import type { RisqBuilding, RisqSpace, RisqZone, UnitByTypeData } from '../../model/types';
 import type { RisqViewport } from '../../rendering/board/viewport';
 import { RisqViewMode } from '../../rendering/terrain';
 
 import { unitVisibleInViewMode } from '../../rendering/zones/draw';
 import { visibleZoneUnitSlot } from '../../rendering/zones/hit_testing';
+import { zoneCenterOffset } from '../../rendering/zones/geometry';
 import type { RisqOrderPlanning } from '../orders/planning';
 import type { RisqSession } from '../session';
 import type { RisqSelection } from './selection';
@@ -44,7 +45,7 @@ export class RisqBoardClicks {
         continue;
       }
       if (i === 0) {
-        this.buildingSlotClick(space, zone);
+        this.buildingSlotClick(space, zone, e.ctrlKey);
       } else if (e.detail >= 2) {
         this.unitSlotMultiClick(space, zone, i - 1, e.detail >= 3);
       } else if (e.ctrlKey) {
@@ -60,7 +61,17 @@ export class RisqBoardClicks {
   }
 
   /** Toggles the resource/building/foundation in the zone's building slot */
-  private buildingSlotClick(space: RisqSpace, zone: RisqZone): void {
+  private buildingSlotClick(space: RisqSpace, zone: RisqZone, additive: boolean): void {
+    if (additive && !zone.resource && zone.building?.player_id === this.session.getPlayerId()) {
+      const ids = new Set(this.selection.selectedBuildings().map((b: RisqBuilding): number => b.internal_id));
+      if (ids.has(zone.building.internal_id)) {
+        ids.delete(zone.building.internal_id);
+      } else {
+        ids.add(zone.building.internal_id);
+      }
+      this.selection.selectOwnBuildings([...ids]);
+      return;
+    }
     const target_id = zone.resource?.internal_id ?? zone.building?.internal_id;
     const current = this.selection.current();
     if (
@@ -183,7 +194,7 @@ export class RisqBoardClicks {
     }
   }
 
-  /** Selects own ungarrisoned units whose on-screen anchor lies in the dragged rectangle */
+  /** Selects own ungarrisoned units in the rectangle, falling back to buildings when no units match */
   dragSelect(start: Point2D, end: Point2D, additive: boolean): void {
     const player = this.session.getPlayer();
     if (!player) {
@@ -204,7 +215,25 @@ export class RisqBoardClicks {
       }
     }
     if (found_ids.length === 0) {
-      if (!additive) {
+      const buildings = [...player.buildings.values()].filter((building: RisqBuilding): boolean => {
+        const anchor = canvasToScreen(
+          this.viewport.orderPoint(
+            building.space_coordinate,
+            zoneCenterOffset(building.zone_coordinate, this.viewport.hexR()),
+            zone_view
+          ),
+          this.viewport.lastTransform()
+        );
+        return pointInRect(anchor, start, end);
+      });
+      if (buildings.length > 0) {
+        this.selection.selectOwnBuildings([
+          ...new Set([
+            ...(additive ? this.selection.selectedBuildings().map((b: RisqBuilding): number => b.internal_id) : []),
+            ...buildings.map((b: RisqBuilding): number => b.internal_id),
+          ]),
+        ]);
+      } else if (!additive) {
         this.left_panel.close();
       }
       return;

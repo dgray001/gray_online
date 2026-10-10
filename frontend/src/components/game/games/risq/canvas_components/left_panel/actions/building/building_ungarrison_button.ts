@@ -10,12 +10,10 @@ export declare interface BuildingUngarrisonButtonConfig extends RisqActionButton
 
 export class RisqBuildingUngarrisonButton extends RisqActionButton {
   private risq: DwgRisq;
-  private building_id: number;
 
   constructor(config: BuildingUngarrisonButtonConfig, risq: DwgRisq, s: number) {
     super(config, s);
     this.risq = risq;
-    this.building_id = config.building_id;
   }
 
   override dataRefreshed(): void {
@@ -27,6 +25,8 @@ export class RisqBuildingUngarrisonButton extends RisqActionButton {
   }
 
   override execute(): void {
-    this.risq.commands.ungarrisonBuilding(this.building_id);
+    for (const id of this.risq.selection.selectedBuildingIds()) {
+      this.risq.commands.ungarrisonBuilding(id);
+    }
   }
 }

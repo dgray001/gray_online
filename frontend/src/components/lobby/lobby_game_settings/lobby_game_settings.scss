@@ -54,7 +54,7 @@ dwg-lobby-game-settings {
         font-size: 0.8rem;
       }
   
-      input {
+      input, select {
         font-size: var(--font-size-medium);
       }
   
@@ -67,7 +67,7 @@ dwg-lobby-game-settings {
           flex: 1 0 0;
           min-width: 0;
   
-          > input {
+          > input, > select {
             min-width: 0;
             width: 100%;
           }

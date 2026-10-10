@@ -1,5 +1,5 @@
 import type { DwgCanvasBoard } from '../../../../util/canvas_board/canvas_board';
-import { RisqOrderType } from '../../model/types';
+import { RisqOrderType, type RisqBuilding } from '../../model/types';
 import {
   DEFAULT_CURSOR_IMAGE,
   armedCursorAlpha,
@@ -54,8 +54,9 @@ export class RisqCursorController {
       }
     }
     if (this.armed.isBuildingAttackArmed()) {
-      const building = this.selection.selectedBuilding();
-      const valid = !!building && !!this.targeting.buildingAttackTarget(building);
+      const valid = this.selection
+        .selectedBuildings()
+        .some((building: RisqBuilding): boolean => !!this.targeting.buildingAttackTarget(building));
       board.setCursor(cursorImageForOrderType(RisqOrderType.OrderType_BuildingAttackUnit), armedCursorAlpha(valid));
       return;
     }

@@ -153,7 +153,7 @@ export function flushTooltipQueue(): void {
   }
 }
 
-let cursor_screen: Point2D = { x: 0, y: 0 };
+let cursor_screen: Point2D = { x: -1, y: -1 };
 
 export function setTooltipCursor(p: Point2D): void {
   cursor_screen = p;

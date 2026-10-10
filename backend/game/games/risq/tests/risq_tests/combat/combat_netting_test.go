@@ -9,6 +9,52 @@ import (
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness"
 )
 
+func TestTickHistoryIncomingDamageOnIdleUnit(t *testing.T) {
+	t.Run("simultaneous-deaths-and-final-turn", func(t *testing.T) {
+		g := combatGame(t, 1, 1)
+		p, enemy := g.Human(0), g.Human(1)
+		a, b := g.Self(p).Units[0], g.Self(enemy).Units[0]
+		g.Submit(p, harness.OrderAttackUnit([]uint64{a.InternalID}, b.InternalID))
+		g.Submit(enemy, harness.OrderAttackUnit([]uint64{b.InternalID}, a.InternalID))
+		g.EndTurn()
+		if !g.Base.GameEnded() || g.State(p).Unit(a.InternalID) != nil || g.State(enemy).Unit(b.InternalID) != nil {
+			t.Fatal("fixture did not end with simultaneous deaths")
+		}
+		for _, u := range []harness.Unit{a, b} {
+			replay := harness.RequireReplay(t, g.State(g.Human(u.PlayerID)))
+			archived := replay.Unit(u.InternalID)
+			if archived == nil || archived.UnitID != u.UnitID || archived.PlayerID != u.PlayerID {
+				t.Fatalf("deleted actor identity missing: %+v", archived)
+			}
+			action := harness.RequireTickAction(t, archived.TickActions, "attack")
+			if action.Execute.StaminaSpent <= 0 {
+				t.Errorf("dying unit's attack was lost: %+v", action)
+			}
+			settled := replay.UnitAt(u.InternalID, replay.TickCount)
+			if settled == nil || !settled.Deleted || settled.CombatStats.Health > 0 {
+				t.Errorf("death absent from recorded state: %+v", settled)
+			}
+		}
+	})
+	g := combatGame(t, 11, 13)
+	p, enemy := g.Human(0), g.Human(1)
+	a, target := g.Self(p).Units[0], g.Self(enemy).Units[0]
+	passive(g, enemy, target.InternalID)
+	g.Submit(p, harness.OrderAttackUnit([]uint64{a.InternalID}, target.InternalID))
+	g.EndTurn()
+	after := g.State(enemy).Unit(target.InternalID)
+	if after == nil || after.CombatStats.Health >= target.CombatStats.Health {
+		t.Fatal("fixture did not damage an idle survivor")
+	}
+	harness.AssertTickSpend(t, after.TickActions, 0)
+	harness.AssertTickEffect(t, after.TickActions, "damage", harness.TickTarget{Kind: "unit", InternalID: target.InternalID}, target.CombatStats.Health-after.CombatStats.Health)
+	replay := harness.RequireReplay(t, g.State(enemy))
+	settled := replay.UnitAt(target.InternalID, replay.TickCount)
+	if settled == nil || settled.CombatStats.Health != after.CombatStats.Health {
+		t.Errorf("settled idle unit health differs: %+v", settled)
+	}
+}
+
 func TestTwoPhaseDeath(t *testing.T) {
 	g := combatGame(t, 1, 1)
 	p0, p1 := g.Human(0), g.Human(1)

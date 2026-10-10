@@ -279,8 +279,8 @@ func (l *Lobby) removeClient(client *Client) {
 	}
 	delete_client := time.NewTimer(1 * time.Hour)
 	client.delete_timer = delete_client
-	l.mu.Unlock()
 	lobby_room := client.lobby_room
+	l.mu.Unlock()
 	go func() {
 		<-delete_client.C
 		l.mu.Lock()

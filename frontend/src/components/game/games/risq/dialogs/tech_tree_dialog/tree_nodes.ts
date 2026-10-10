@@ -1,19 +1,10 @@
 import { RisqRange, RisqProducibleKind } from '../../model/types';
-import type { RisqCost, RisqUnitType } from '../../model/types';
+import type { RisqCost, RisqUnitType, RisqUnitStatsEntry } from '../../model/types';
 import type { DwgRisq } from '../../risq';
 import type { HotkeyCombo } from '../../application/input/hotkeys';
 import { unitImage } from '../../rendering/assets/unit';
 import { buildingImage, techImage } from '../../rendering/assets/buildings';
-export interface RisqUnitStatsEntry {
-  health: number;
-  attack_blunt: number;
-  attack_piercing: number;
-  attack_range: RisqRange;
-  defense_blunt: number;
-  defense_piercing: number;
-  penetration_blunt: number;
-  penetration_piercing: number;
-}
+export type { RisqUnitStatsEntry } from '../../model/types';
 
 interface RisqTechBonusEntry {
   max_health: number;

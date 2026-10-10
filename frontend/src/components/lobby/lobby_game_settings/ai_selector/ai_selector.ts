@@ -1,4 +1,5 @@
 import { DwgElement } from '../../../dwg_element';
+import { apiGet } from '../../../../scripts/api';
 import { GameType } from '../../data_models';
 import type { AiPlayerFiddlesticks, AiPlayerRisq } from '../game_specific_data';
 import { generateName } from './name_generator';
@@ -124,16 +125,29 @@ export class DwgAiSelector extends DwgElement {
       const risq_player = p as AiPlayerRisq;
       const select = document.createElement('select');
       select.classList.add('ai-model-select');
-      const models = ['default', 'only_blunt', 'only_pierce'];
-      for (const m of models) {
-        const option = document.createElement('option');
-        option.value = m;
-        option.innerText = m;
-        if ((risq_player.config || 'default') === m) {
-          option.selected = true;
+
+      const populate_select = (models: string[]): void => {
+        select.replaceChildren();
+        for (const m of models) {
+          const option = document.createElement('option');
+          option.value = m;
+          option.innerText = m;
+          if ((risq_player.config || 'default') === m) {
+            option.selected = true;
+          }
+          select.appendChild(option);
         }
-        select.appendChild(option);
-      }
+      };
+
+      // Populate with a temporary placeholder or fallback
+      populate_select([risq_player.config || 'default']);
+
+      apiGet<string[]>('risq/ai-configs').then((res) => {
+        if (res.success && res.result.length > 0) {
+          populate_select(res.result);
+        }
+      });
+
       select.addEventListener('change', () => {
         risq_player.config = select.value;
       });

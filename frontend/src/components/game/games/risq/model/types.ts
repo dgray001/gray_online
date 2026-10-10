@@ -67,6 +67,10 @@ export declare interface RisqPlayer {
   planned_foundations: Map<number, RisqPlannedFoundation>;
   available_mercenaries: RisqProducible[];
   auto_renewals: Map<number, number>;
+  default_unit_stance: RisqUnitStance;
+  default_unit_attack_back: boolean;
+  default_unit_interrupt_current: boolean;
+  default_unit_target_priority: RisqTargetCategory[];
 }
 
 /** Data describing frontend resource state */
@@ -186,8 +190,21 @@ export declare interface RisqMovePathStep {
   zone: Point2D;
 }
 
+export declare interface RisqTickAction {
+  tick: number;
+  sequence: number;
+  order?: Pick<RisqFrontendOrder, 'internal_id' | 'order_type' | 'target_id'>;
+  execute: {
+    kind: string;
+    outcome: 'executed' | 'partial' | 'blocked' | 'skipped';
+    target?: { kind?: 'unit' | 'building' | 'resource'; internal_id?: number };
+    target_location?: RisqMovePathStep;
+  };
+}
+
 /** Data describing a risq unit */
 export declare interface RisqUnit {
+  tick_actions?: RisqTickAction[];
   internal_id: number;
   player_id: number;
   unit_id: number;
@@ -290,6 +307,7 @@ export enum RisqProducibleKind {
 
 /** Data describing something a building can produce, with its cost already resolved for this player */
 export declare interface RisqProducible {
+  stats?: RisqUnitStatsEntry;
   row: number;
   col: number;
   kind: RisqProducibleKind;
@@ -299,6 +317,17 @@ export declare interface RisqProducible {
   display_name: string;
   description: string;
   required_tech_id: number;
+}
+
+export interface RisqUnitStatsEntry {
+  health: number;
+  attack_blunt: number;
+  attack_piercing: number;
+  attack_range: RisqRange;
+  defense_blunt: number;
+  defense_piercing: number;
+  penetration_blunt: number;
+  penetration_piercing: number;
 }
 
 /** Data describing a resource cost */

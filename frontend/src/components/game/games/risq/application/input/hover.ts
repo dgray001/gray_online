@@ -8,8 +8,8 @@ import type { RisqSession } from '../session';
 
 /** The mouse's last board position and the space/zone under it, including their hover and click flags */
 export class RisqHover {
-  private mouse_canvas: Point2D = { x: 0, y: 0 };
-  private mouse_screen: Point2D = { x: 0, y: 0 };
+  private mouse_canvas: Point2D = { x: -1, y: -1 };
+  private mouse_screen: Point2D = { x: -1, y: -1 };
   private hovered_space?: RisqSpace;
   private hovered_zone?: RisqZone;
 

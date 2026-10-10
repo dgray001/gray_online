@@ -6,7 +6,7 @@ import { configDraw } from '../../../../util/canvas_components/canvas_component'
 import { drawRect } from '../../../../util/canvas_util';
 import type { Point2D } from '../../../../util/objects2d';
 import { RisqVisibilityLevel } from '../../model/types';
-import type { UnitByTypeData } from '../../model/types';
+import type { RisqBuilding, UnitByTypeData } from '../../model/types';
 import { unitsByPlayerFiltered } from '../../model/unit_groups';
 import type { DwgRisq } from '../../risq';
 import { ROW_H as ORDER_ROW_H } from '../order_row/order_row';
@@ -15,7 +15,7 @@ import { RisqOrdersList } from '../right_panel/orders_list';
 import type { RisqHotkeyAction } from '../../application/input/hotkeys';
 import type { RisqActionButton } from './actions/action_button';
 import { buildPanelActions } from './actions/action_factory';
-import { drawBuilding, drawFoundation, drawResource } from './content/entity_views';
+import { drawBuilding, drawBuildings, drawFoundation, drawResource } from './content/entity_views';
 import type { PanelDrawContext } from './content/primitives';
 import { RisqSpaceHexagon } from './content/space_hexagon';
 import { RisqSpaceView, drawRegion } from './content/space_view';
@@ -144,7 +144,7 @@ export class RisqLeftPanel implements CanvasComponent {
   private statsSectionEnd(): number {
     const building = this.data?.data_type === LeftPanelDataType.BUILDING ? this.data.data : undefined;
     const has_stats = this.data?.data_type === LeftPanelDataType.UNIT || !!building;
-    if (!has_stats && !this.isUnit()) {
+    if (!has_stats && !this.isUnit() && this.data?.data_type !== LeftPanelDataType.BUILDINGS) {
       return this.yi() + 0.5 * this.size.y - PANEL_PADDING;
     }
     return this.yi() + 0.25 * this.size.y + 6 + RisqStatsView.height(this.risq, building);
@@ -154,7 +154,9 @@ export class RisqLeftPanel implements CanvasComponent {
     const h = Math.min(4 * this.config.w, this.risq.viewport.canvasSize().height);
     this.size = { x: h / 3, y: h };
     this.close_button.setPosition({ x: this.size.x, y: this.yi() + 0.5 * this.close_button.h() });
-    const action_rows = this.isUnit() ? UNIT_ACTION_GRID_ROWS : BUILDING_ACTION_GRID_ROWS;
+    const buildings = this.data?.data_type === LeftPanelDataType.BUILDINGS ? this.data.data.buildings : [];
+    const mixed_buildings = buildings.some((b: RisqBuilding): boolean => b.building_id !== buildings[0].building_id);
+    const action_rows = this.isUnit() ? UNIT_ACTION_GRID_ROWS : mixed_buildings ? 1 : BUILDING_ACTION_GRID_ROWS;
     const garrison_capacity =
       this.isBuilding() && this.data?.data_type === LeftPanelDataType.BUILDING ? this.data.data.garrison_capacity : 0;
     const P = PANEL_PADDING;
@@ -281,7 +283,8 @@ export class RisqLeftPanel implements CanvasComponent {
   }
 
   isBuilding(): boolean {
-    return this.shownData()?.data_type === LeftPanelDataType.BUILDING;
+    const type = this.shownData()?.data_type;
+    return type === LeftPanelDataType.BUILDING || type === LeftPanelDataType.BUILDINGS;
   }
 
   close(): void {
@@ -392,12 +395,17 @@ export class RisqLeftPanel implements CanvasComponent {
   private drawContent(pc: PanelDrawContext): void {
     this.input.beginGroupDraw();
     pc.groupTile = (units: UnitByTypeData[], p: Point2D, s: number): string => this.input.groupTile(units, p, s);
+    pc.buildingTile = (buildings: RisqBuilding[], p: Point2D, s: number): string =>
+      this.input.buildingTile(buildings, p, s);
     switch (this.data?.data_type) {
       case LeftPanelDataType.RESOURCE:
         drawResource(pc, this.data.data);
         break;
       case LeftPanelDataType.BUILDING:
         drawBuilding(pc, this.data.data);
+        break;
+      case LeftPanelDataType.BUILDINGS:
+        drawBuildings(pc, this.data.data.buildings);
         break;
       case LeftPanelDataType.SPACE:
         this.space_view.draw(pc, this.data.data, this.hexagon);

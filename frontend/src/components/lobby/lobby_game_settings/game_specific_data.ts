@@ -29,6 +29,25 @@ export function getReadableGameSettings(settings: object, game_type: GameType): 
           for (const player of ai_players) {
             add('AI Player', player.nickname);
           }
+        } else if (setting_name === 'map_size') {
+          const map_sizes = [
+            'Recommended',
+            'Minuscule',
+            'Tiny',
+            'Smaller',
+            'Small',
+            'Medium',
+            'Large',
+            'Larger',
+            'Huge',
+            'Gigantic',
+          ];
+          const val = typeof setting === 'number' ? setting : 0;
+          add('Map Size', map_sizes[val] || val.toString());
+        } else if (setting_name === 'visibility') {
+          const vis_modes = ['None', 'Default', 'Explored', 'All Visible'];
+          const val = typeof setting === 'number' ? setting : 1;
+          add('Visibility', vis_modes[val] || val.toString());
         } else {
           add(setting_name, setting);
         }
@@ -69,6 +88,9 @@ export declare interface AiPlayerEgyptianRatCrap {
 /** Data describing risq-specific game settings */
 export declare interface GameSettingsRisq {
   ai_players: AiPlayerRisq[];
+  map_size?: number;
+  map?: string;
+  visibility?: number;
 }
 
 /** Data describing the settings for an ai player in risq */

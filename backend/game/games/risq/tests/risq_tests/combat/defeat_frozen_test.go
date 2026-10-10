@@ -29,6 +29,12 @@ func TestDefeatedBuildingsStayFrozenAndAttackable(t *testing.T) {
 	g.Submit(g.Human(1))
 	g.Submit(g.Human(2))
 	after := g.Self(owner)
+	for i := range before.Buildings {
+		before.Buildings[i].TickActions = nil
+	}
+	for i := range after.Buildings {
+		after.Buildings[i].TickActions = nil
+	}
 	if g.State(owner).TurnNumber != turn+1 || !reflect.DeepEqual(before.Buildings, after.Buildings) || !reflect.DeepEqual(before.ActiveOrders, after.ActiveOrders) || *before.Resources != *after.Resources {
 		t.Fatalf("defeated state changed: before=%+v after=%+v", before, after)
 	}

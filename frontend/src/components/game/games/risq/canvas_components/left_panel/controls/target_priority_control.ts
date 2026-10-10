@@ -54,7 +54,11 @@ export class RisqTargetPriorityControl {
   private drag_offset_x = 0;
   private dragged = false;
 
-  constructor(risq: DwgRisq, unit_internal_ids: number[]) {
+  constructor(
+    risq: DwgRisq,
+    unit_internal_ids: number[],
+    private defaults: boolean = false
+  ) {
     this.risq = risq;
     this.unit_internal_ids = unit_internal_ids;
   }
@@ -77,7 +81,10 @@ export class RisqTargetPriorityControl {
       return;
     }
     const player = this.risq.getPlayer();
-    this.priority = player?.units.get(this.unit_internal_ids[0])?.target_priority ?? [];
+    this.priority =
+      (this.defaults
+        ? player?.default_unit_target_priority
+        : player?.units.get(this.unit_internal_ids[0])?.target_priority) ?? [];
   }
 
   private poolCategories(): RisqTargetCategory[] {
@@ -141,6 +148,10 @@ export class RisqTargetPriorityControl {
   }
 
   private sendPriority(priority: RisqTargetCategory[]): void {
+    if (this.defaults) {
+      this.risq.commands.setDefaultUnitBehavior({ target_priority: priority });
+      return;
+    }
     this.risq.commands.setUnitTargetPriority(this.unit_internal_ids, priority);
   }
 
@@ -212,6 +223,9 @@ export class RisqTargetPriorityControl {
   }
 
   mousedown(_e: MouseEvent): boolean {
+    if (this.defaults && !this.risq.session.canGiveOrders()) {
+      return false;
+    }
     const layout = this.computeLayout();
     const chip = layout.chips.find((r) => this.pointIn(this.last_mouse, r));
     if (chip) {
@@ -236,6 +250,10 @@ export class RisqTargetPriorityControl {
     this.dragging_category = undefined;
     this.drag_order = undefined;
     this.dragged = false;
+  }
+
+  isClicking(): boolean {
+    return this.dragging_category !== undefined || this.pressed_pool_category !== undefined;
   }
 
   mouseup(_e: MouseEvent): void {

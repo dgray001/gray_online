@@ -66,6 +66,16 @@ func (r *GameRisq) PlayerAction(action game.PlayerAction) {
 			return
 		}
 		r.executeUnsubmitOrders(player.Player_id)
+	case "set-default-unit-stance", "set-default-unit-behavior":
+		if !r.requireGivingOrders(player, action.Kind) || !r.requireOrdersNotSubmitted(player, action.Kind) {
+			return
+		}
+		behavior, err := getUnitBehaviorFromPlayerAction(action.Action)
+		if err != nil || (action.Kind == "set-default-unit-stance" && behavior.Stance == nil) || (behavior.Stance != nil && (*behavior.Stance <= uint8(defs.UnitStance_NONE) || *behavior.Stance >= uint8(defs.UnitStance_END))) {
+			player.AddFailedUpdateShorthand(action.Kind+"-failed", "Invalid default unit behavior")
+			return
+		}
+		r.executeSetDefaultUnitBehavior(player.Player_id, behavior, action.Kind)
 	case "set-unit-behavior":
 		if !r.requireGivingOrders(player, "set-unit-behavior") || !r.requireOrdersNotSubmitted(player, "set-unit-behavior") {
 			return

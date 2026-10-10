@@ -10,12 +10,10 @@ export declare interface BuildingDeleteButtonConfig extends RisqActionButtonConf
 
 export class RisqBuildingDeleteButton extends RisqActionButton {
   private risq: DwgRisq;
-  private building_id: number;
 
   constructor(config: BuildingDeleteButtonConfig, risq: DwgRisq, s: number) {
     super(config, s);
     this.risq = risq;
-    this.building_id = config.building_id;
   }
 
   override dataRefreshed(): void {
@@ -27,6 +25,6 @@ export class RisqBuildingDeleteButton extends RisqActionButton {
   }
 
   override execute(): void {
-    this.risq.commands.confirmDeleteBuilding(this.building_id);
+    this.risq.commands.confirmDeleteBuilding(this.risq.selection.selectedBuildingIds());
   }
 }

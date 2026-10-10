@@ -14,6 +14,8 @@ import type {
 import { RisqOrderType, RisqProducibleKind, RisqResourceType, canAffordCost } from '../../model/types';
 import type { RisqSession } from '../session';
 import type { RisqOrdersModel } from './orders_model';
+import type { IdleCategory } from './idle_category';
+import { idleCategory } from './idle_category';
 
 export declare interface LocalRisqFoundation {
   coordinate_key: number;
@@ -28,6 +30,7 @@ export class RisqOrderPlanning {
   private local_foundations = new Map<number, LocalRisqFoundation>();
   private idle_units: RisqUnit[] = [];
   private last_idle_selected?: number;
+  private disabled_idle_categories = new Set<IdleCategory>();
 
   constructor(
     private session: RisqSession,
@@ -136,11 +139,21 @@ export class RisqOrderPlanning {
   }
 
   idleBuildingCount(): number {
-    return this.idleBuildings().length;
+    return this.idleBuildings().filter((building: RisqBuilding): boolean => building.produces.length > 0).length;
   }
 
   idleOrderableCount(): number {
-    return this.idleUnitCount() + this.idleBuildingCount();
+    return this.idleOrderables().length;
+  }
+
+  idleCategoryEnabled(category: IdleCategory): boolean {
+    return !this.disabled_idle_categories.has(category);
+  }
+
+  toggleIdleCategory(category: IdleCategory): void {
+    if (!this.disabled_idle_categories.delete(category)) {
+      this.disabled_idle_categories.add(category);
+    }
   }
 
   private idleBuildings(): RisqBuilding[] {
@@ -150,16 +163,13 @@ export class RisqOrderPlanning {
     }
     return [...player.buildings.values()]
       .filter(
-        (b) =>
-          !b.under_construction &&
-          b.produces.length > 0 &&
-          this.orders_model.effectiveForSubject(b.internal_id, 'building').length === 0
+        (b) => !b.under_construction && this.orders_model.effectiveForSubject(b.internal_id, 'building').length === 0
       )
       .sort((a, b) => a.internal_id - b.internal_id);
   }
 
   nextIdleOrderable(): RisqUnit | RisqBuilding | undefined {
-    const candidates = [...this.idle_units, ...this.idleBuildings()];
+    const candidates = this.idleOrderables();
     const key = (entity: RisqUnit | RisqBuilding): number => entity.internal_id * 2 + ('building_id' in entity ? 1 : 0);
     candidates.sort((a, b) => key(a) - key(b));
     if (!this.session.getGame() || candidates.length === 0) {
@@ -173,6 +183,12 @@ export class RisqOrderPlanning {
     const unit = candidates[idx];
     this.last_idle_selected = key(unit);
     return unit;
+  }
+
+  idleOrderables(): (RisqUnit | RisqBuilding)[] {
+    return [...this.idle_units, ...this.idleBuildings()]
+      .filter((entity: RisqUnit | RisqBuilding): boolean => this.idleCategoryEnabled(idleCategory(entity)))
+      .sort((a: RisqUnit | RisqBuilding, b: RisqUnit | RisqBuilding): number => a.internal_id - b.internal_id);
   }
 
   pendingMercenaryOrders(): RisqFrontendOrder[] {

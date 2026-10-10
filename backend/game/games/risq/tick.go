@@ -12,6 +12,7 @@ import (
 )
 
 func (r *GameRisq) resolveActiveOrders() {
+	r.beginTickHistory()
 	r.updateRemains(true)
 	util.DebugLog.Println("Resolving active orders")
 	r.current_tick = 0
@@ -27,7 +28,9 @@ func (r *GameRisq) resolveActiveOrders() {
 			r.deliverOrder(order, player, false)
 		}
 	}
+	r.captureTickBaseline()
 	for {
+		r.beginTickHistoryPass()
 		r.autoRenewBuildings()
 		orderables := make([]Orderable, 0)
 		for o := range r.allOrderables() {
@@ -41,6 +44,8 @@ func (r *GameRisq) resolveActiveOrders() {
 		}
 		intent_count -= r.resolveMeleeMeetings(orderables)
 		if intent_count == 0 {
+			r.prepareTickActions(orderables)
+			r.captureTickEnd(true)
 			r.metrics.beginTick(r, orderables)
 			r.metrics.recordTick(r, r.current_tick+1)
 			break
@@ -55,6 +60,7 @@ func (r *GameRisq) resolveActiveOrders() {
 		r.unit_creation_ids = computeUnitCreationIds(r, orderables)
 		r.production_garrisons = r.computeProductionGarrisons()
 		r.population_capped = computePopulationCapped(r)
+		r.prepareTickActions(orderables)
 		r.current_tick++
 		r.metrics.beginTick(r, orderables)
 		for _, o := range orderables {
@@ -106,6 +112,7 @@ func (r *GameRisq) resolveActiveOrders() {
 			}
 		}
 		r.logStateHash(fmt.Sprint(r.current_tick))
+		r.captureTickEnd(false)
 	}
 	r.cleanupDeleted()
 	r.updateRemains(false)
@@ -125,6 +132,8 @@ func (r *GameRisq) resolveActiveOrders() {
 		player.report.orders.active = len(kept)
 	}
 	r.endTurn()
+	r.captureTickBoundary("end-turn")
+	r.tick_history.recording = false
 	r.checkWinCondition()
 	if !r.game.GameEnded() {
 		r.startNextTurn()
@@ -165,22 +174,28 @@ func (r *GameRisq) deliverToSubjects(order *RisqOrder, player *RisqPlayer, prepe
 	for _, subject_id := range slices.Sorted(maps.Keys(order.subjects)) {
 		subject := order.subjects[subject_id]
 		if !subject.orderReceivable(order, r) {
+			r.recordTickReceipt(subject, order, "order_rejected", "not receivable")
 			order.rejectSubject(subject, player, "not receivable")
 			continue
 		}
 		if err := subject.receiveOrder(order, r, prepend); err != nil {
+			r.recordTickReceipt(subject, order, "order_rejected", err.Error())
 			order.rejectSubject(subject, player, err.Error())
 			continue
 		}
 		if order.clear_previous_orders {
 			r.cancelPreviousOrders(subject, order)
 		}
+		r.recordTickReceipt(subject, order, "order_received", "")
 		accepted = true
 	}
 	return accepted
 }
 
 func (r *GameRisq) addSyntheticOrder(order *RisqOrder, player *RisqPlayer, prepend bool) {
+	if order.tick_source == "" {
+		order.tick_source = "automatic"
+	}
 	player.active_orders = append(player.active_orders, order)
 	r.deliverOrder(order, player, prepend)
 }

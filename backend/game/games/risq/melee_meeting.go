@@ -69,7 +69,7 @@ func (u *RisqUnit) meetingTarget() (*RisqUnit, bool) {
 	if !ok || move.chasing == nil || u.zone == nil {
 		return nil, false
 	}
-	if _, ranged := u.attack_range.SpaceRadius(); ranged {
+	if radius, ranged := u.attack_range.SpaceRadius(); ranged && (radius > 0 || move.intra_step) {
 		return nil, false
 	}
 	target := move.chasing

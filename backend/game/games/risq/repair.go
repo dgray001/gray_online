@@ -60,7 +60,9 @@ func (r *GameRisq) resolveRepairs(orderables []Orderable) {
 		health_units := int64(math.Round(min(healing[b], float64(b.cs.max_health)-b.cs.health) * 10000))
 		resources := r.players[b.player_id].resources
 		health_units = b.affordableRepairHealth(resources, health_units)
-		resources.spend(b.repairCharge(health_units))
+		cost := b.repairCharge(health_units)
+		resources.spend(cost)
+		r.recordRepairTick(b, float64(health_units)/10000, cost)
 		b.cs.queueHealth(float64(health_units) / 10000)
 	}
 }

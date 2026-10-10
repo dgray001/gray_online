@@ -31,7 +31,9 @@ export class RisqStopButton extends RisqActionButton {
 
   override execute(): void {
     if (this.building_id !== undefined) {
-      this.risq.commands.stopBuilding(this.building_id);
+      for (const id of this.risq.selection.selectedBuildingIds()) {
+        this.risq.commands.stopBuilding(id);
+      }
     } else if (this.unit_internal_ids) {
       this.risq.commands.stopUnit(this.unit_internal_ids);
     }

@@ -67,6 +67,14 @@ func main() {
 			c.JSON(200, successResponse(risq.AllResourceConfigsToFrontend()))
 		})
 
+		api.GET("/risq/maps", func(c *gin.Context) {
+			c.JSON(200, successResponse(risq.AllMapNamesToFrontend()))
+		})
+
+		api.GET("/risq/ai-configs", func(c *gin.Context) {
+			c.JSON(200, successResponse(risq.AllAiNamesToFrontend()))
+		})
+
 		if DEV {
 			registerRisqDevRoutes(api)
 		}

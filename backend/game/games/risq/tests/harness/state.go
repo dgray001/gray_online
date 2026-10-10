@@ -6,6 +6,10 @@ type Coord struct {
 }
 
 type Unit struct {
+	Deleted bool `json:"deleted"`
+
+	TickActions []TickAction `json:"tick_actions"`
+
 	InternalID     uint64  `json:"internal_id"`
 	PlayerID       int     `json:"player_id"`
 	UnitID         uint32  `json:"unit_id"`
@@ -32,6 +36,8 @@ type Unit struct {
 }
 
 type Building struct {
+	TickActions []TickAction `json:"tick_actions"`
+
 	CurrentStamina        int     `json:"current_stamina"`
 	InternalID            uint64  `json:"internal_id"`
 	PlayerID              int     `json:"player_id"`
@@ -162,6 +168,8 @@ type SpaceLink struct {
 }
 
 type State struct {
+	LastTurnReplay *TurnReplay `json:"last_turn_replay"`
+
 	TurnNumber   int             `json:"turn_number"`
 	GivingOrders bool            `json:"giving_orders"`
 	Players      []PlayerState   `json:"players"`

@@ -14,6 +14,7 @@ const TOGGLE_HOTKEY_ACTIONS: Record<UnitToggleField, RisqHotkeyAction> = {
 export declare interface UnitToggleButtonConfig extends RisqActionButtonConfig {
   unit_internal_ids: number[];
   field: UnitToggleField;
+  defaults?: boolean;
 }
 
 export class RisqUnitToggleButton extends RisqActionButton {
@@ -21,12 +22,14 @@ export class RisqUnitToggleButton extends RisqActionButton {
   private unit_internal_ids: number[];
   private field: UnitToggleField;
   private active = false;
+  private defaults: boolean;
 
   constructor(config: UnitToggleButtonConfig, risq: DwgRisq, s: number) {
     super(config, s);
     this.risq = risq;
     this.unit_internal_ids = config.unit_internal_ids;
     this.field = config.field;
+    this.defaults = config.defaults ?? false;
   }
 
   override isClicking(): boolean {
@@ -35,9 +38,13 @@ export class RisqUnitToggleButton extends RisqActionButton {
 
   override dataRefreshed(): void {
     const player = this.risq.getPlayer();
-    const values = this.unit_internal_ids.map((id) => player?.units.get(id)?.[this.field]);
+    const values = this.defaults
+      ? [player?.[this.field === 'attack_back' ? 'default_unit_attack_back' : 'default_unit_interrupt_current']]
+      : this.unit_internal_ids.map((id) => player?.units.get(id)?.[this.field]);
     this.active = values.length > 0 && values.every((value) => value === true);
-    this.setHotkeyCombo(getSettings().risq_hotkeys.actions[TOGGLE_HOTKEY_ACTIONS[this.field]]);
+    this.setHotkeyCombo(
+      this.defaults ? undefined : getSettings().risq_hotkeys.actions[TOGGLE_HOTKEY_ACTIONS[this.field]]
+    );
   }
 
   override matchesAction(action: RisqHotkeyAction): boolean {
@@ -45,6 +52,10 @@ export class RisqUnitToggleButton extends RisqActionButton {
   }
 
   override execute(): void {
+    if (this.defaults) {
+      this.risq.commands.setDefaultUnitBehavior({ [this.field]: !this.active });
+      return;
+    }
     this.risq.commands.setUnitToggle(this.unit_internal_ids, this.field, !this.active);
   }
 }

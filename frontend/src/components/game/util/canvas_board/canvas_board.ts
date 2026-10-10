@@ -140,7 +140,7 @@ export class DwgCanvasBoard extends DwgElement {
   private dragging = false;
   private drag_button = 0;
   private dragged = false;
-  private mouse: Point2D = { x: 0, y: 0 };
+  private mouse: Point2D = { x: -1, y: -1 };
   private cursor_images = new Map<string, HTMLImageElement>();
   private cursor_image?: HTMLImageElement;
   private cursor_alpha = 1;

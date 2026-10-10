@@ -79,9 +79,13 @@ export abstract class RisqActionButton extends DwgSquareButton {
         { fill_style: 'rgba(40, 30, 20, 0.55)', stroke_width: 0, fixed_position: true },
         false,
         false,
-        () => drawRect(ctx, { x: this.xi(), y: this.yi() }, this.w(), this.h())
+        () => this.drawDimmedShape(ctx)
       );
     }
+  }
+
+  protected drawDimmedShape(ctx: CanvasRenderingContext2D): void {
+    drawRect(ctx, { x: this.xi(), y: this.yi() }, this.w(), this.h());
   }
 
   setHotkeyCombo(combo: HotkeyCombo | undefined): void {

@@ -1,17 +1,17 @@
 import type { BoardTransformData } from '../../../../util/canvas_board/canvas_board';
-import { screenToCanvas } from '../../../../util/canvas_board/canvas_board';
 import type { CanvasComponent } from '../../../../util/canvas_components/canvas_component';
 import { configDraw } from '../../../../util/canvas_components/canvas_component';
-import type { RectScrollbarConfig } from '../../../../util/canvas_components/scrollbar/rect_scrollbar';
-import { DwgRectScrollbar } from '../../../../util/canvas_components/scrollbar/rect_scrollbar';
 import { drawLine, drawRect } from '../../../../util/canvas_util';
 import type { Point2D } from '../../../../util/objects2d';
 import type { DwgRisq } from '../../risq';
 
 /** A bottom-panel item must be independently positionable so the panel can lay it out in a column */
 export declare interface BottomPanelItem extends CanvasComponent {
+  readonly overflow?: number;
   setPosition(p: Point2D): void;
   dataRefreshed?(): void;
+  setAvailableWidth?(width: number): void;
+  setAvailableHeight?(height: number): void;
   drawTooltip?(ctx: CanvasRenderingContext2D, transform: BoardTransformData, risq: DwgRisq, dt: number): void;
 }
 
@@ -22,18 +22,14 @@ export declare interface BottomPanelConfig {
   background: string;
   left_panel_w: number;
   right_panel_w: number;
+  center_item: BottomPanelItem;
 }
 
-class RisqBottomPanelScrollbar extends DwgRectScrollbar {
-  scrollCallback(_value: number): void {}
-}
-
-/** Centered, content-sized bottom bar that stays clear of the left/right panels, scrolling horizontally on overflow */
+/** Content-sized bottom bar anchored to the minimap's screen center */
 export class RisqBottomPanel implements CanvasComponent {
   private static PADDING = 8;
   private static GAP = 8;
   private static BOTTOM_MARGIN = 12;
-  private static SCROLLBAR_SIZE = 8;
 
   private risq: DwgRisq;
   private config: BottomPanelConfig;
@@ -41,7 +37,6 @@ export class RisqBottomPanel implements CanvasComponent {
   private items: BottomPanelItem[];
   private group_widths: number[] = [];
   private separator_xs: number[] = [];
-  private scrollbar: RisqBottomPanelScrollbar;
   private hovering = false;
   private mouse_screen: Point2D = { x: -1, y: -1 };
   private p: Point2D = { x: 0, y: 0 };
@@ -49,41 +44,13 @@ export class RisqBottomPanel implements CanvasComponent {
   private panel_h = 0;
   private content_w = 0;
   private content_h = 0;
-  private overflowing = false;
+  private layout_key = '';
 
   constructor(risq: DwgRisq, config: BottomPanelConfig, groups: BottomPanelGroup[]) {
     this.risq = risq;
     this.config = config;
     this.groups = groups;
     this.items = groups.flat();
-    this.scrollbar = new RisqBottomPanelScrollbar({
-      scrollbar_config: { value: { value: 0, value_min: 0, value_max: 0 }, step_size: 30, scroll_pixel_constant: 1 },
-      p: { x: 0, y: 0 },
-      w: 0,
-      h: 0,
-      scrollbar_size: RisqBottomPanel.SCROLLBAR_SIZE,
-      min_bar_size: 1.5 * RisqBottomPanel.SCROLLBAR_SIZE,
-      bar_dif_size: 1,
-      vertical: false,
-      draw_config: {
-        fill_style: 'rgba(255, 255, 255, 0.4)',
-        stroke_width: 0,
-        hover_fill_style: 'rgba(255, 255, 255, 0.6)',
-        click_fill_style: 'rgba(255, 255, 255, 0.8)',
-        fixed_position: true,
-      },
-      space_draw_config: {
-        fill_style: 'rgba(0, 0, 0, 0.15)',
-        stroke_width: 0,
-        hover_fill_style: 'rgba(0, 0, 0, 0.25)',
-        click_fill_style: 'rgba(0, 0, 0, 0.35)',
-        fixed_position: true,
-        stroke_matches_fill_style: true,
-      },
-      background_color: 'rgba(0, 0, 0, 0.1)',
-      arrow_scroll_amount: 30,
-      space_scroll_amount: 100,
-    } satisfies RectScrollbarConfig);
   }
 
   isHovering(): boolean {
@@ -93,12 +60,10 @@ export class RisqBottomPanel implements CanvasComponent {
     this.hovering = hovering;
   }
   isClicking(): boolean {
-    return this.scrollbar.isClicking();
+    return this.items.some((item) => item.isClicking());
   }
   setClicking(clicking: boolean): void {
-    this.scrollbar.setClicking(clicking);
     if (!clicking) {
-      this.scrollbar.setHovering(false);
       for (const item of this.items) {
         item.setClicking(false);
         item.setHovering(false);
@@ -111,43 +76,66 @@ export class RisqBottomPanel implements CanvasComponent {
   }
 
   private recomputeLayout(): void {
+    const canvas_size = this.risq.viewport.canvasSize();
+    const center = this.config.center_item;
+    const center_index = this.groups.findIndex((group) => group.includes(center));
+    const fixed_width = this.groups
+      .slice(0, center_index)
+      .filter((group) => !group.some((item) => item.setAvailableWidth))
+      .reduce(
+        (sum, group) =>
+          sum + Math.max(0, ...group.map((item) => item.w() + 2 * (item.overflow ?? 0))) + RisqBottomPanel.GAP,
+        0
+      );
+    const group_width =
+      canvas_size.width / 2 -
+      center.w() / 2 -
+      (center.overflow ?? 0) -
+      this.config.left_panel_w -
+      fixed_width -
+      2 * RisqBottomPanel.PADDING;
+    const right_width =
+      canvas_size.width / 2 -
+      center.w() / 2 -
+      (center.overflow ?? 0) -
+      this.config.right_panel_w -
+      2 * RisqBottomPanel.PADDING;
+    for (const [i, group] of this.groups.entries()) {
+      for (const item of group) {
+        item.setAvailableWidth?.(i < center_index ? group_width : right_width);
+      }
+    }
+    const available_height = Math.max(
+      0,
+      ...this.groups.map((group) => this.groupHeight(group.filter((item) => !item.setAvailableHeight)))
+    );
+    for (const item of this.items) {
+      item.setAvailableHeight?.(available_height);
+    }
+    const key = JSON.stringify([canvas_size, this.items.map((item) => [item.w(), item.h()])]);
+    if (key === this.layout_key) {
+      return;
+    }
+    this.layout_key = key;
     const groups = this.groups.filter((group) => group.some((item) => item.w() > 0));
-    this.group_widths = groups.map((group) => Math.max(0, ...group.map((item) => item.w())));
+    this.group_widths = groups.map((group) => Math.max(0, ...group.map((item) => item.w() + 2 * (item.overflow ?? 0))));
     this.content_h = Math.max(0, ...groups.map((group) => this.groupHeight(group)));
     this.content_w =
       this.group_widths.reduce((sum, w) => sum + w, 0) + RisqBottomPanel.GAP * Math.max(groups.length - 1, 0);
     const canvas_w = this.risq.viewport.canvasSize().width;
-    const max_side_panel_w = Math.max(this.config.left_panel_w, this.config.right_panel_w);
-    const available_w = Math.max(canvas_w - 2 * (max_side_panel_w + RisqBottomPanel.PADDING), 0);
-    this.overflowing = this.content_w + 2 * RisqBottomPanel.PADDING > available_w;
-    this.panel_w = Math.min(this.content_w + 2 * RisqBottomPanel.PADDING, available_w);
-    this.panel_h =
-      this.content_h +
-      2 * RisqBottomPanel.PADDING +
-      (this.overflowing ? RisqBottomPanel.SCROLLBAR_SIZE + RisqBottomPanel.PADDING : 0);
+    const center_group_index = groups.findIndex((group) => group.includes(center));
+    const center_group = center_group_index < 0 ? groups.length : center_group_index;
+    const center_offset =
+      this.group_widths.slice(0, center_group).reduce((sum, w) => sum + w + RisqBottomPanel.GAP, 0) +
+      0.5 * (this.group_widths[center_group] ?? 0);
+    this.panel_w = this.content_w + 2 * RisqBottomPanel.PADDING;
+    this.panel_h = this.content_h + 2 * RisqBottomPanel.PADDING;
     this.p = {
-      x: 0.5 * (canvas_w - this.panel_w),
+      x: canvas_w / 2 - center_offset - RisqBottomPanel.PADDING,
       y: this.risq.viewport.canvasSize().height - this.panel_h - RisqBottomPanel.BOTTOM_MARGIN,
     };
-    const max_scroll = this.overflowing ? this.content_w - (this.panel_w - 2 * RisqBottomPanel.PADDING) : 0;
-    this.scrollbar.setValue({
-      value: Math.min(this.scrollbar.value(), max_scroll),
-      value_min: 0,
-      value_max: max_scroll,
-    });
-    if (this.overflowing) {
-      this.scrollbar.setAllSizes(
-        RisqBottomPanel.SCROLLBAR_SIZE,
-        {
-          x: this.xi() + RisqBottomPanel.PADDING,
-          y: this.yi(),
-        },
-        this.panel_w - 2 * RisqBottomPanel.PADDING,
-        this.panel_h - RisqBottomPanel.PADDING
-      );
-    }
     this.separator_xs = [];
-    let x = this.xi() + RisqBottomPanel.PADDING - this.scrollbar.value();
+    let x = this.xi() + RisqBottomPanel.PADDING;
     for (const [i, group] of groups.entries()) {
       const group_w = this.group_widths[i];
       const group_h = this.groupHeight(group);
@@ -186,7 +174,6 @@ export class RisqBottomPanel implements CanvasComponent {
         drawRect(ctx, { x: this.xi(), y: this.yi() }, this.panel_w, this.panel_h, 0.5 * Math.min(this.panel_h, 32));
       }
     );
-    // clip in screen space (via screenToCanvas) since ctx is currently in world space, not inside a fixed_position block
     const clip_rect = {
       x: this.xi() + RisqBottomPanel.PADDING,
       y: this.yi() + RisqBottomPanel.PADDING,
@@ -194,16 +181,17 @@ export class RisqBottomPanel implements CanvasComponent {
       h: this.content_h,
     };
     ctx.save();
-    const corners = [
-      { x: clip_rect.x, y: clip_rect.y },
-      { x: clip_rect.x + clip_rect.w, y: clip_rect.y },
-      { x: clip_rect.x + clip_rect.w, y: clip_rect.y + clip_rect.h },
-      { x: clip_rect.x, y: clip_rect.y + clip_rect.h },
-    ].map((corner) => screenToCanvas(corner, transform));
-    ctx.beginPath();
-    corners.forEach((corner, i) => (i === 0 ? ctx.moveTo(corner.x, corner.y) : ctx.lineTo(corner.x, corner.y)));
-    ctx.closePath();
-    ctx.clip();
+    configDraw(
+      ctx,
+      transform,
+      { fill_style: 'transparent', stroke_width: 0, fixed_position: true },
+      false,
+      false,
+      () => {
+        ctx.roundRect(this.xi(), this.yi(), this.panel_w, this.panel_h, 0.5 * Math.min(this.panel_h, 32));
+        ctx.clip();
+      }
+    );
     configDraw(
       ctx,
       transform,
@@ -224,9 +212,6 @@ export class RisqBottomPanel implements CanvasComponent {
       item.draw(ctx, transform, dt);
     }
     ctx.restore();
-    if (this.overflowing) {
-      this.scrollbar.draw(ctx, transform, dt);
-    }
     for (const item of this.items) {
       if (this.itemContains(item, this.mouse_screen) && item.isHovering()) {
         item.drawTooltip?.(ctx, transform, this.risq, dt);
@@ -235,35 +220,39 @@ export class RisqBottomPanel implements CanvasComponent {
   }
 
   scroll(dy: number, mode: number): boolean {
-    if (!this.overflowing) {
-      return false;
+    for (const item of this.items) {
+      if (this.itemContains(item, this.mouse_screen) && item.scroll?.(dy, mode)) {
+        return true;
+      }
     }
-    return this.scrollbar.scroll(dy, mode);
+    return false;
   }
 
   private contentContains(screen: Point2D): boolean {
-    const padding = RisqBottomPanel.PADDING;
+    const radius = 0.5 * Math.min(this.panel_h, 32);
+    const x = Math.max(this.xi() + radius, Math.min(screen.x, this.xf() - radius));
+    const y = Math.max(this.yi() + radius, Math.min(screen.y, this.yf() - radius));
     return (
-      screen.x >= this.xi() + padding &&
-      screen.x <= this.xf() - padding &&
-      screen.y >= this.yi() + padding &&
-      screen.y <= this.yi() + padding + this.content_h
+      screen.x >= this.xi() &&
+      screen.x <= this.xf() &&
+      screen.y >= this.yi() &&
+      screen.y <= this.yf() &&
+      Math.hypot(screen.x - x, screen.y - y) <= radius
     );
   }
 
   private itemContains(item: BottomPanelItem, screen: Point2D): boolean {
     return (
       this.contentContains(screen) &&
-      screen.x >= item.xi() &&
-      screen.x <= item.xf() &&
-      screen.y >= item.yi() &&
-      screen.y <= item.yf()
+      screen.x >= item.xi() - (item.overflow ?? 0) &&
+      screen.x <= item.xf() + (item.overflow ?? 0) &&
+      screen.y >= item.yi() - (item.overflow ?? 0) &&
+      screen.y <= item.yf() + (item.overflow ?? 0)
     );
   }
 
   mousemove(canvas: Point2D, screen: Point2D, transform: BoardTransformData): boolean {
     this.mouse_screen = screen;
-    const scrollbar_hovering = this.overflowing && this.scrollbar.mousemove(canvas, screen, transform);
     const item_hovering = this.items
       .map((item) => {
         if (this.itemContains(item, screen)) {
@@ -275,21 +264,16 @@ export class RisqBottomPanel implements CanvasComponent {
       })
       .some(Boolean);
     this.hovering =
-      scrollbar_hovering ||
       item_hovering ||
       (screen.x >= this.xi() && screen.y >= this.yi() && screen.x <= this.xf() && screen.y <= this.yf());
     return this.hovering;
   }
 
   mousedown(e: MouseEvent): boolean {
-    if (this.overflowing && this.scrollbar.mousedown(e)) {
-      return true;
-    }
     return this.items.map((item) => this.itemContains(item, this.mouse_screen) && item.mousedown(e)).some(Boolean);
   }
 
   mouseup(e: MouseEvent): void {
-    this.scrollbar.mouseup(e);
     for (const item of this.items) {
       item.mouseup(e);
     }

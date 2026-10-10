@@ -5,8 +5,112 @@ import (
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness"
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness/fakeboard"
+	"github.com/gin-gonic/gin"
+	"reflect"
 	"testing"
 )
+
+func TestTickHistorySpyVisibility(t *testing.T) {
+	t.Run("garrisoned-and-deleted-actor", func(t *testing.T) {
+		g := spyGarrisonGame(t)
+		observer, owner := g.Human(0), g.Human(1)
+		id, building := firstUnit(g, owner).InternalID, g.Self(owner).Buildings[0].InternalID
+		g.Submit(owner, harness.OrderGarrison([]uint64{id}, building))
+		g.EndTurn()
+		if g.State(owner).Unit(id).GarrisonedIn == nil || g.State(observer).Space(1, 0).Visibility != 4 {
+			t.Fatal("fixture did not garrison under spy coverage")
+		}
+		archived := harness.RequireReplay(t, g.State(observer)).Unit(id)
+		if archived == nil {
+			t.Fatal("spy cannot inspect garrisoned actor history")
+		}
+		harness.RequireTickAction(t, archived.TickActions, "garrison")
+		g.Submit(owner, harness.Order(defs.OrderType_UnitDelete, []uint64{id}, 0, false))
+		g.EndTurn()
+		if g.State(owner).Unit(id) != nil {
+			t.Fatal("fixture did not delete garrisoned actor")
+		}
+		archived = harness.RequireReplay(t, g.State(observer)).Unit(id)
+		if archived == nil {
+			t.Fatal("spy lost deleted actor history")
+		}
+		harness.RequireTickAction(t, archived.TickActions, "delete")
+	})
+	t.Run("hidden-target", func(t *testing.T) {
+		g := spyHiddenTargetGame(t)
+		observer, owner, enemy := g.Human(0), g.Human(1), g.Human(2)
+		attacker, target := firstUnit(g, owner), firstUnit(g, enemy)
+		g.Action(enemy, "set-unit-behavior", gin.H{"internal_ids": []uint64{target.InternalID}, "stance": uint8(defs.UnitStance_PASSIVE), "attack_back": false})
+		if g.State(observer).Space(2, 0).Visibility >= good || g.State(observer).Unit(attacker.InternalID) == nil {
+			t.Fatal("fixture did not separate actor and target visibility")
+		}
+		g.Submit(owner, harness.OrderAttackUnit([]uint64{attacker.InternalID}, target.InternalID))
+		g.EndTurn()
+		if firstUnit(g, enemy).CombatStats.Health >= target.CombatStats.Health {
+			t.Fatal("fixture did not attack the hidden target")
+		}
+		actions := g.State(observer).Unit(attacker.InternalID).TickActions
+		harness.RequireTickAction(t, actions, "attack")
+		for _, a := range actions {
+			if a.Intent.TargetLocation.Space == target.Space || a.Execute.TargetLocation.Space == target.Space {
+				t.Errorf("spy leaked hidden target location: %+v", a)
+			}
+		}
+		replay := harness.RequireReplay(t, g.State(observer))
+		if replay.Unit(target.InternalID) != nil || replay.UnitAt(target.InternalID, replay.TickCount) != nil {
+			t.Fatal("hidden target stats leaked into archive or frames")
+		}
+	})
+	t.Run("hidden-travel", func(t *testing.T) {
+		g := spyTravelGame(t)
+		observer, owner := g.Human(0), g.Human(1)
+		id := firstUnit(g, owner).InternalID
+		if g.State(observer).Unit(id) != nil {
+			t.Fatal("fixture traveller already visible")
+		}
+		g.Submit(owner, harness.OrderMove([]uint64{id}, 0, 0))
+		g.EndTurn()
+		own, seen := g.State(owner).Unit(id), g.State(observer).Unit(id)
+		if own.Space != (harness.Coord{}) || seen == nil {
+			t.Fatal("fixture traveller did not enter spy coverage")
+		}
+		if len(seen.TickActions) == 0 || len(seen.TickActions) >= len(own.TickActions) {
+			t.Fatal("spy history does not preserve a hidden travel interval")
+		}
+		for _, a := range seen.TickActions {
+			if a.Intent.Location.Space.X > 1 {
+				t.Errorf("spy saw hidden movement: %+v", a)
+			}
+		}
+		replay := harness.RequireReplay(t, g.State(observer))
+		if replay.UnitAt(id, 0) != nil {
+			t.Fatal("hidden traveller leaked into baseline")
+		}
+	})
+	g := spyGame(t)
+	observer, owner := g.Human(0), g.Human(1)
+	id := firstUnit(g, owner).InternalID
+	g.Submit(owner, harness.OrderGather([]uint64{id}, 1, 0, 0, 0))
+	g.EndTurn()
+	own, seen := g.State(owner).Unit(id), g.State(observer).Unit(id)
+	if own == nil || seen == nil || g.State(observer).Space(1, 0).Visibility != 4 {
+		t.Fatal("fixture did not expose the enemy through spy vision")
+	}
+	if len(own.TickActions) == 0 || !reflect.DeepEqual(own.TickActions, seen.TickActions) {
+		t.Fatalf("spy history differs from owner history: own %+v, seen %+v", own.TickActions, seen.TickActions)
+	}
+	ordinary := visibilityGame(t, float64(defs.VisibilityMode_ALL_VISIBLE))
+	observer, owner = ordinary.Human(0), ordinary.Human(1)
+	id = firstUnit(ordinary, owner).InternalID
+	ordinary.Submit(owner, harness.OrderGather([]uint64{id}, 4, 0, 1, 0))
+	ordinary.EndTurn()
+	if len(ordinary.State(owner).Unit(id).TickActions) == 0 {
+		t.Fatal("owner history missing under ordinary vision")
+	}
+	if enemy := ordinary.State(observer).Unit(id); enemy == nil || len(enemy.TickActions) != 0 {
+		t.Fatalf("ordinary visibility leaked history: %+v", enemy)
+	}
+}
 
 func visibilityGame(t *testing.T, setting any) *harness.Game {
 	t.Helper()

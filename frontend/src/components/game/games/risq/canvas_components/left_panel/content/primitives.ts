@@ -1,7 +1,7 @@
 import type { ColorRGB } from '../../../../../../../scripts/color_rgb';
 import { drawLine, drawText } from '../../../../../util/canvas_util';
 import type { DwgRisq } from '../../../risq';
-import type { UnitByTypeData } from '../../../model/types';
+import type { RisqBuilding, UnitByTypeData } from '../../../model/types';
 import type { Point2D } from '../../../../../util/objects2d';
 import type { LeftPanelLayout, PanelFrame } from '../layout';
 import type { RisqStatsView } from './stats_view';
@@ -15,6 +15,7 @@ export declare interface PanelDrawContext {
   visibility: number;
   stats: RisqStatsView;
   groupTile?: (units: UnitByTypeData[], p: Point2D, s: number) => string;
+  buildingTile?: (buildings: RisqBuilding[], p: Point2D, s: number) => string;
 }
 
 /** Draws the centered title; returns its height */

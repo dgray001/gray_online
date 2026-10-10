@@ -34,6 +34,7 @@ func repairHealAndCost(building *RisqBuilding, stamina int) (heal float64, cost 
 }
 
 type MoveIntent struct {
+	target     Attackable
 	path       []*RisqZone
 	next_step  *RisqZone
 	intra_step bool

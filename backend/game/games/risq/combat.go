@@ -224,6 +224,7 @@ func (r *GameRisq) resolveAttack(attacker Attackable, target Attackable, stamina
 	target_cs := target.combatStats(r, attacker, false)
 	damage := combatDamage(&attacker_cs, &target_cs, stamina_cost)
 	r.metrics.recordAttack(attacker, target, util.RoundTo(damage, gatherRoundingPlaces), stamina_cost)
+	r.recordCombatTick(attacker, target, util.RoundTo(damage, gatherRoundingPlaces), attacker_cs.attack_type)
 	target.applyDamage(RisqDamageEvent{tick: r.current_tick, attacker_id: attacker.internalId(), attacker_type: attacker.OrderableType(), damage: damage, damage_type: attacker_cs.attack_type})
 	util.DebugLog.Printf("combat turn=%d tick=%d: %d %s (player %d, stamina %d) hits %d %s (player %d) for %.4f",
 		r.turn_number, r.current_tick, attacker.internalId(), attackableKind(attacker), attacker.playerId(), stamina_cost, target.internalId(), attackableKind(target), target.playerId(), damage)

@@ -17,15 +17,16 @@ func main() {
 	quiet := flag.Bool("quiet", false, "discard engine stdout and write results.json as one compact line per game (no timelines or per-turn metrics); keep only errors and the sim's own per-game log")
 	seed_override := flag.Int64("seed", 0, "override the scenario's base seed")
 	parallel := flag.Int("parallel", runtime.NumCPU(), "games to run concurrently (forced to 1 with -debug so its log stays in game order)")
+	config_dir := flag.String("config", "../config", "risq config directory")
 	flag.Parse()
 	if flag.NArg() < 1 {
-		fmt.Fprintln(os.Stderr, "usage: sim [-seed N] [-debug] [-quiet] [-parallel N] <scenario_name>")
+		fmt.Fprintln(os.Stderr, "usage: sim [-config DIR] [-seed N] [-debug] [-quiet] [-parallel N] <scenario_name>")
 		os.Exit(1)
 	}
 	name := flag.Arg(0)
 	// the summary goes to the terminal even when engine output is redirected
 	terminal := os.Stdout
-	if err := risq.LoadConfig("../config"); err != nil {
+	if err := risq.LoadConfig(*config_dir); err != nil {
 		log.Fatalf("loading risq config: %v", err)
 	}
 

@@ -5,6 +5,7 @@ import { LeftPanelDataType } from '../../canvas_components/left_panel/left_panel
 import type {
   RisqBuilding,
   RisqFrontendOrder,
+  RisqProducible,
   RisqRegion,
   RisqSpace,
   RisqUnit,
@@ -61,10 +62,49 @@ export class RisqSelection {
     return data?.data_type === LeftPanelDataType.BUILDING ? data.data : undefined;
   }
 
+  selectedBuildings(): RisqBuilding[] {
+    const data = this.left_panel.getData();
+    return data?.data_type === LeftPanelDataType.BUILDINGS
+      ? data.data.buildings
+      : data?.data_type === LeftPanelDataType.BUILDING
+        ? [data.data]
+        : [];
+  }
+
+  selectedBuildingIds(): number[] {
+    return this.selectedBuildings().map((b: RisqBuilding): number => b.internal_id);
+  }
+
+  selectOwnBuildings(ids: number[]): void {
+    const buildings = [...new Set(ids)]
+      .sort((a: number, b: number): number => a - b)
+      .flatMap((id: number): RisqBuilding[] => {
+        const building = this.session.getPlayer()?.buildings.get(id);
+        return building ? [building] : [];
+      });
+    if (buildings.length === 0) {
+      this.left_panel.close();
+    } else if (buildings.length === 1) {
+      this.selectBuilding(buildings[0]);
+    } else {
+      this.left_panel.openPanel(
+        { data_type: LeftPanelDataType.BUILDINGS, data: { buildings } },
+        RisqVisibilityLevel.SPY
+      );
+    }
+  }
+
   coordinate(): Point2D | undefined {
     const data = this.left_panel.getData();
     if (!data) {
       return;
+    }
+    if (data.data_type === LeftPanelDataType.BUILDINGS) {
+      const buildings = data.data.buildings;
+      return {
+        x: buildings.reduce((sum: number, b: RisqBuilding): number => sum + b.space_coordinate.x, 0) / buildings.length,
+        y: buildings.reduce((sum: number, b: RisqBuilding): number => sum + b.space_coordinate.y, 0) / buildings.length,
+      };
     }
     if (data.data_type === LeftPanelDataType.UNIT) {
       return this.session.unitLocation(data.data)?.space_coordinate;
@@ -148,15 +188,17 @@ export class RisqSelection {
   }
 
   isBuildingSelected(internal_id: number): boolean {
-    return this.selectedBuilding()?.internal_id === internal_id;
+    return this.selectedBuildings().some((b: RisqBuilding): boolean => b.internal_id === internal_id);
   }
 
   isOrderSubjectSelected(order: RisqFrontendOrder): boolean {
     if (isUnitOrder(order.order_type)) {
       return order.subjects.some((id) => this.selectedUnitIds().has(id));
     }
-    const building = this.selectedBuilding();
-    return isBuildingOrder(order.order_type) && building !== undefined && order.subjects.includes(building.internal_id);
+    return (
+      isBuildingOrder(order.order_type) &&
+      this.selectedBuildings().some((b: RisqBuilding): boolean => order.subjects.includes(b.internal_id))
+    );
   }
 
   isResourceSelected(internal_id: number): boolean {
@@ -171,10 +213,22 @@ export class RisqSelection {
 
   /** The selection's shape as hotkey scoping sees it, or undefined when nothing hotkey-relevant is selected */
   hotkeySelection(): HotkeySelection | undefined {
-    const building = this.selectedBuilding();
+    const buildings = this.selectedBuildings();
+    const building = buildings[0];
     if (building) {
+      const same_type = buildings.every((b: RisqBuilding): boolean => b.building_id === building.building_id);
       const ids = (kind: RisqProducibleKind): number[] =>
-        building.produces.filter((p) => p.kind === kind).map((p) => p.id);
+        same_type
+          ? [
+              ...new Set(
+                buildings.flatMap((b: RisqBuilding): number[] =>
+                  b.produces
+                    .filter((p: RisqProducible): boolean => p.kind === kind)
+                    .map((p: RisqProducible): number => p.id)
+                )
+              ),
+            ]
+          : [];
       return { kind: 'building', unit_ids: ids(RisqProducibleKind.UNIT), tech_ids: ids(RisqProducibleKind.TECH) };
     }
     if (this.subjectUnitIds().length === 0) {
@@ -228,10 +282,7 @@ export class RisqSelection {
       return;
     }
     if (isBuildingOrder(order.order_type)) {
-      const building = player.buildings.get(order.subjects[0]);
-      if (building) {
-        this.selectBuilding(building);
-      }
+      this.selectOwnBuildings(order.subjects);
       return;
     }
     if (!isUnitOrder(order.order_type)) {

@@ -3,6 +3,7 @@ package risq
 import (
 	"fmt"
 	"os"
+	"slices"
 
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/util"
@@ -45,7 +46,10 @@ func createRisqUnit(internal_id uint64, unit_id uint32, player *RisqPlayer) *Ris
 		return &unit
 	}
 	if config.Unit_type != defs.UnitType_ECONOMIC {
-		unit.stance = defs.UnitStance_DEFENSIVE
+		unit.stance = player.default_unit_stance
+		unit.attack_back = player.default_unit_attack_back
+		unit.interrupt_current = player.default_unit_interrupt_current
+		unit.target_priority = slices.Clone(player.default_unit_target_priority)
 	}
 	unit.display_name = config.Display_name
 	unit.cs.setMaxHealth(config.Max_health)
@@ -201,5 +205,6 @@ func (u *RisqUnit) toFrontend(viewer_player_id int) gin.H {
 		}
 	}
 	unit["active_orders"] = active_orders
+	unit["tick_actions"] = tickActionsToFrontend(u.tick_actions, viewer_player_id)
 	return unit
 }

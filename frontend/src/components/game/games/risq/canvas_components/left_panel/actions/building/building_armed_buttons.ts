@@ -41,12 +41,10 @@ export declare interface BuildingGatherPointButtonConfig extends RisqActionButto
 
 export class RisqBuildingGatherPointButton extends RisqActionButton {
   private risq: DwgRisq;
-  private building_id: number;
 
   constructor(config: BuildingGatherPointButtonConfig, risq: DwgRisq, s: number) {
     super(config, s);
     this.risq = risq;
-    this.building_id = config.building_id;
   }
 
   override isClicking(): boolean {
@@ -72,6 +70,6 @@ export class RisqBuildingGatherPointButton extends RisqActionButton {
   }
 
   override execute(): void {
-    this.risq.commands.toggleBuildingGatherPoint(this.building_id);
+    this.risq.commands.toggleBuildingGatherPoint(this.risq.selection.selectedBuildingIds());
   }
 }

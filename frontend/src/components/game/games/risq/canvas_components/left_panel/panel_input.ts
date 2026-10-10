@@ -17,11 +17,22 @@ import { unitResolver } from './selection_queries';
 export class RisqLeftPanelInput {
   private hovered_object?: HoveredObject;
   private group_tiles: { units: UnitByTypeData[]; p: Point2D; s: number }[] = [];
+  private building_tiles: { buildings: RisqBuilding[]; p: Point2D; s: number }[] = [];
   private hovered_group = -1;
   private pressed_group = -1;
 
   beginGroupDraw(): void {
     this.group_tiles = [];
+    this.building_tiles = [];
+  }
+
+  buildingTile(buildings: RisqBuilding[], p: Point2D, s: number): string {
+    const index = this.building_tiles.push({ buildings, p, s }) - 1;
+    return index === this.hovered_group
+      ? this.pressed_group === index
+        ? 'rgba(250, 250, 250, 0.4)'
+        : 'rgba(220, 220, 220, 0.2)'
+      : 'transparent';
   }
 
   groupTile(units: UnitByTypeData[], p: Point2D, s: number): string {
@@ -49,6 +60,7 @@ export class RisqLeftPanelInput {
     }
     this.hovered_object = undefined;
     this.group_tiles = [];
+    this.building_tiles = [];
     this.hovered_group = -1;
     this.pressed_group = -1;
   }
@@ -93,6 +105,12 @@ export class RisqLeftPanelInput {
 
   mousemove(data: LeftPanelData | undefined, canvas: Point2D, screen: Point2D, transform: BoardTransformData): void {
     const m = screen;
+    if (this.building_tiles.length > 0) {
+      this.hovered_group = this.building_tiles.findIndex(
+        ({ p, s }: { p: Point2D; s: number }): boolean => m.x >= p.x && m.x <= p.x + s && m.y >= p.y && m.y <= p.y + s
+      );
+      return;
+    }
     if (this.group_tiles.length > 0) {
       this.hovered_group = this.group_tiles.findIndex(
         ({ p, s }: { p: Point2D; s: number }): boolean => m.x >= p.x && m.x <= p.x + s && m.y >= p.y && m.y <= p.y + s
@@ -164,7 +182,7 @@ export class RisqLeftPanelInput {
   }
 
   mousedown(data: LeftPanelData | undefined, e: MouseEvent): void {
-    if (this.group_tiles.length > 0) {
+    if (this.group_tiles.length > 0 || this.building_tiles.length > 0) {
       this.pressed_group = e.button === 0 ? this.hovered_group : -1;
       return;
     }
@@ -196,12 +214,30 @@ export class RisqLeftPanelInput {
   }
 
   mouseup(data: LeftPanelData | undefined, visibility: number, e: MouseEvent): void {
+    if (this.building_tiles.length > 0) {
+      const tile = this.pressed_group === this.hovered_group ? this.building_tiles[this.pressed_group] : undefined;
+      this.pressed_group = -1;
+      if (tile && e.button === 0) {
+        const selected = this.risq.selection.selectedBuildings();
+        const buildings = e.shiftKey
+          ? selected.filter((b: RisqBuilding): boolean => b.building_id === tile.buildings[0].building_id)
+          : tile.buildings;
+        const ids = new Set(buildings.map((b: RisqBuilding): number => b.internal_id));
+        const remaining = e.ctrlKey
+          ? selected.filter((b: RisqBuilding): boolean => !ids.has(b.internal_id))
+          : buildings;
+        this.risq.selection.selectOwnBuildings(remaining.map((b: RisqBuilding): number => b.internal_id));
+      }
+      return;
+    }
     if (this.group_tiles.length > 0) {
       const tile = this.pressed_group === this.hovered_group ? this.group_tiles[this.pressed_group] : undefined;
       this.pressed_group = -1;
       if (tile && e.button === 0) {
         const space = data && 'space' in data.data ? data.data.space : undefined;
-        const units = e.ctrlKey ? this.removeGroup(data, tile.units) : new Map([[tile.units[0].player_id, tile.units]]);
+        const units = e.ctrlKey
+          ? this.removeGroup(data, tile.units, e.shiftKey ? tile.units[0].unit_id : undefined)
+          : new Map([[tile.units[0].player_id, tile.units]]);
         this.openUnitGroups(space, units, visibility);
       }
       return;
@@ -336,7 +372,7 @@ export class RisqLeftPanelInput {
     }
   }
 
-  /** Shift keeps only the clicked unit's type; Ctrl removes the clicked unit; a plain click selects just that unit */
+  /** Shift keeps one unit id; Ctrl removes one unit; Ctrl+Shift removes all selected units of that unit id */
   private unitGridClick(
     space: RisqSpace | undefined,
     groups: [number, UnitByTypeData[]][],
@@ -344,7 +380,7 @@ export class RisqLeftPanelInput {
     visibility: number,
     e: MouseEvent
   ): void {
-    if (e.shiftKey) {
+    if (e.shiftKey && !e.ctrlKey) {
       const player_units = groups.find(([player_id]) => player_id === hovered_unit.player_id)?.[1] ?? [];
       const units_by_player = new Map<number, UnitByTypeData[]>([
         [hovered_unit.player_id, player_units.filter((u) => u.unit_id === hovered_unit.unit_id)],
@@ -354,7 +390,14 @@ export class RisqLeftPanelInput {
       const units_by_player = new Map<number, UnitByTypeData[]>();
       for (const [player_id, units] of groups) {
         const new_units = units
-          .map((u) => ({ ...u, units: new Set([...u.units].filter((id) => id !== hovered_unit.internal_id)) }))
+          .map((u) => ({
+            ...u,
+            units: new Set(
+              [...u.units].filter((id) =>
+                e.shiftKey ? u.unit_id !== hovered_unit.unit_id : id !== hovered_unit.internal_id
+              )
+            ),
+          }))
           .filter((u) => u.units.size > 0);
         if (new_units.length > 0) {
           units_by_player.set(player_id, new_units);
@@ -366,7 +409,11 @@ export class RisqLeftPanelInput {
     }
   }
 
-  private removeGroup(data: LeftPanelData | undefined, removed: UnitByTypeData[]): Map<number, UnitByTypeData[]> {
+  private removeGroup(
+    data: LeftPanelData | undefined,
+    removed: UnitByTypeData[],
+    unit_id?: number
+  ): Map<number, UnitByTypeData[]> {
     const groups: [number, UnitByTypeData[]][] =
       data?.data_type === LeftPanelDataType.MULTIPLE_PLAYERS_UNITS
         ? data.data.units_by_player
@@ -378,9 +425,10 @@ export class RisqLeftPanelInput {
     const result = new Map<number, UnitByTypeData[]>();
     for (const [player_id, units] of groups) {
       const removed_ids = new Set(
-        removed
-          .filter((u: UnitByTypeData): boolean => u.player_id === player_id)
-          .flatMap((u: UnitByTypeData): number[] => [...u.units])
+        (unit_id === undefined
+          ? removed.filter((u) => u.player_id === player_id)
+          : units.filter((u) => u.unit_id === unit_id)
+        ).flatMap((u: UnitByTypeData): number[] => [...u.units])
       );
       const remaining = units
         .map(

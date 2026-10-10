@@ -6,6 +6,9 @@ import "github.com/dgray001/gray_online/game/games/risq/internal/defs"
 // rather than duplicated per type. Field/method promotion through the embed means every existing
 // call site (u.deleted, u.isDeleted(), etc.) keeps working unchanged.
 type orderableBase struct {
+	tick_actions                      []*TickAction
+	tick_action, garrison_tick_action *TickAction
+
 	deleted           bool
 	internal_id       uint64
 	player_id         int

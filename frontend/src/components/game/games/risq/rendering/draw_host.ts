@@ -3,6 +3,7 @@ import type { RisqArmedState } from '../application/input/armed_state';
 import type { RisqHover } from '../application/input/hover';
 import type { RisqOrderPlanning } from '../application/orders/planning';
 import type { RisqSelection } from '../application/selection/selection';
+import type { RisqControlGroups } from '../application/selection/control_groups';
 import type { RisqSession } from '../application/session';
 import type { GameRisq, RisqPlayer } from '../model/types';
 import type { RisqImageCache } from './assets/image_cache';
@@ -10,6 +11,7 @@ import type { RisqViewport } from './board/viewport';
 import type { RisqCorpseLayout } from './zones/corpses';
 
 export interface RisqDrawHost {
+  readonly control_groups?: Pick<RisqControlGroups, 'memberships'>;
   readonly session: Pick<RisqSession, 'getRegionForSpace' | 'getRegionLookup' | 'getResourceConfigs'>;
   readonly planning: Pick<RisqOrderPlanning, 'getLocalFoundation' | 'hasPlannedFoundation'>;
   readonly selection: Pick<

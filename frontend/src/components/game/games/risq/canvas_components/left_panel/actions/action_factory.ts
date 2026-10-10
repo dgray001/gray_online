@@ -31,14 +31,14 @@ export declare interface PanelActions {
 
 const LAST_COL = ACTION_GRID_COLS - 1;
 
-const STANCES: [RisqUnitStance, string, string][] = [
+export const STANCES: [RisqUnitStance, string, string][] = [
   [RisqUnitStance.AGGRESSIVE, 'icons/swords128', 'Aggressive'],
   [RisqUnitStance.DEFENSIVE, 'icons/shield128', 'Defensive'],
   [RisqUnitStance.STAND_GROUND, 'icons/stand_ground128', 'Stand Ground'],
   [RisqUnitStance.PASSIVE, 'icons/passive128', 'Passive'],
 ];
 
-const TOGGLES: [UnitToggleField, string, string][] = [
+export const TOGGLES: [UnitToggleField, string, string][] = [
   ['interrupt_current', 'icons/interrupt_current128', 'Interrupt Current'],
   ['attack_back', 'icons/attack_back128', 'Attack Back'],
 ];
@@ -60,6 +60,21 @@ export function buildPanelActions(risq: DwgRisq, data: LeftPanelData | undefined
       return unitActions(risq, data, player);
     case LeftPanelDataType.BUILDING:
       return { buttons: buildingActions(risq, data.data, player) };
+    case LeftPanelDataType.BUILDINGS: {
+      const buildings = data.data.buildings;
+      const representative = buildings.find((b: RisqBuilding): boolean => !b.under_construction) ?? buildings[0];
+      const same_type = buildings.every((b: RisqBuilding): boolean => b.building_id === representative.building_id);
+      const actions = buildings.map((b: RisqBuilding): RisqActionButton[] => buildingActions(risq, b, player));
+      return {
+        buttons: buildingActions(risq, representative, player).filter((button: RisqActionButton): boolean =>
+          button.row === 0
+            ? actions.every((buttons: RisqActionButton[]): boolean =>
+                buttons.some((other: RisqActionButton): boolean => other.row === 0 && other.col === button.col)
+              )
+            : same_type
+        ),
+      };
+    }
     case LeftPanelDataType.FOUNDATION:
       if (data.data.player_id !== player?.player.player_id || !risq.session.givingOrders()) {
         return { buttons: [] };

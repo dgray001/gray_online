@@ -67,6 +67,7 @@ export enum LeftPanelDataType {
   UNIT,
   FOUNDATION,
   REGION,
+  BUILDINGS,
 }
 
 export interface ResourceData {
@@ -142,6 +143,7 @@ export interface RegionData {
 }
 
 export type LeftPanelData =
+  | { data_type: LeftPanelDataType.BUILDINGS; data: { buildings: RisqBuilding[] } }
   | ResourceData
   | BuildingData
   | SpaceData

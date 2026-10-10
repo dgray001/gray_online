@@ -19,6 +19,7 @@ import { rotatePoint } from '../../../../util/objects2d';
 import { getZoneUnitSlots } from './slots';
 import { buildingImage, rubbleImage } from '../assets/buildings';
 import { drawEllipse } from '../../../../util/canvas_util';
+import { drawControlGroupLabel } from './control_group_label';
 /** Returns the space's terrain image, or (cached, at the base terrain's own native resolution) a composite with any zone terrain overrides painted on top */
 export function getSpaceTerrainImage(
   game: RisqDrawHost,
@@ -63,6 +64,9 @@ function drawUnitCount(
   color: string,
   anchor_top_left = false
 ): void {
+  if (text === '1') {
+    return;
+  }
   const fill = ctx.fillStyle;
   ctx.fillStyle = color;
   ctx.font = `bold ${size}px serif`;
@@ -480,6 +484,11 @@ export function drawRisqZone(
       ctx.lineWidth = 0.4;
       drawEllipse(ctx, part.c, part.r);
       ctx.lineWidth = prev_line_width;
+      ctx.save();
+      ctx.translate(part.c.x, part.c.y);
+      ctx.rotate(-rotation);
+      drawControlGroupLabel(ctx, game, zone, i === 0 ? undefined : visibleZoneUnitSlot(zone, i - 1, view_mode), part.r);
+      ctx.restore();
     } else {
       drawEllipse(ctx, part.c, part.r);
     }

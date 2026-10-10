@@ -15,6 +15,36 @@ func staminaOf(hits []hitLine) []int {
 	return out
 }
 
+func TestTickHistoryMeleeReplacement(t *testing.T) {
+	log := captureTicks(t)
+	g := meetingGame(t, spaceOf(0, 0, flat, placed{heavy, 0, 0, 0}, placed{heavy, 1, 1, 0}))
+	a, b := soleUnit(g, 0), soleUnit(g, 1)
+	g.Submit(g.Human(0), attackOrder(a, b))
+	g.Submit(g.Human(1), attackOrder(b, a))
+	if len(parseTicks(t, log).meetings) != 6 {
+		t.Fatal("fixture did not meet for three ticks")
+	}
+	for _, u := range []harness.Unit{a, b} {
+		actions := g.State(g.Human(u.PlayerID)).Unit(u.InternalID).TickActions
+		first := harness.RequireTickAction(t, actions, "move")
+		if first.Tick != 1 || first.Intent.Resolution.Kind != "attack" || first.Intent.Resolution.SunkCost != 1 || first.Execute.StaminaSpent != 3 {
+			t.Errorf("lost original move or melee replacement: %+v", first)
+		}
+		harness.AssertTickSpend(t, actions, u.CurrentStamina)
+		for _, hit := range parseTicks(t, log).hitsBy(int(u.InternalID)) {
+			matched := false
+			for _, action := range actions {
+				if action.Tick == hit.tick && action.Execute.Target.InternalID == uint64(hit.target) {
+					matched = true
+				}
+			}
+			if !matched {
+				t.Errorf("missing executed melee attack for %+v", hit)
+			}
+		}
+	}
+}
+
 // Both chase each other, so both meet at the border every tick and neither ever steps into the other's zone
 func TestMeetingMutualIntraSpaceClashesEveryTick(t *testing.T) {
 	log := captureTicks(t)

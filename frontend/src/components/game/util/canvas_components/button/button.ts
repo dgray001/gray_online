@@ -9,8 +9,8 @@ export abstract class DwgButton implements CanvasComponent {
   private click_hold_timer = 0;
   private hold_clicks = 0;
   private disabled: boolean;
-  private last_canvas: Point2D = { x: 0, y: 0 };
-  private last_screen: Point2D = { x: 0, y: 0 };
+  private last_canvas: Point2D = { x: -1, y: -1 };
+  private last_screen: Point2D = { x: -1, y: -1 };
   private last_transform: BoardTransformData = defaultTransform();
 
   private config: ButtonConfig;
@@ -81,7 +81,7 @@ export abstract class DwgButton implements CanvasComponent {
     this.last_screen = screen;
     if (this.disabled) {
       this.hovering = false;
-      false;
+      return false;
     }
     const previous_hovered = this.hovering;
     this.hovering = this.mouseOver(canvas, screen);

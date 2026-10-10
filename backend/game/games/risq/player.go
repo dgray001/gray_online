@@ -15,31 +15,35 @@ import (
 )
 
 type RisqPlayer struct {
-	player                *game.Player
-	resources             *RisqPlayerResources
-	buildings             map[uint64]*RisqBuilding
-	units                 map[uint64]*RisqUnit
-	max_population_limit  uint16
-	unlimited_population  bool
-	color                 string
-	active_orders         []*RisqOrder
-	past_orders           []*RisqOrder
-	orders_submitted      bool
-	planned_foundations   map[uint]*RisqPlannedFoundation
-	auto_renewals         map[uint32]*RisqRenewalQueue
-	researched_techs      map[uint32]bool
-	available_mercenaries map[uint32]bool
-	pending_mercenaries   []*RisqPendingMercenary
-	report                *RisqTurnReport
-	completed_report      *RisqTurnReport
-	score                 uint
-	ai_model              ai.Model
-	eliminated            bool
-	kills                 uint
-	razes                 uint
-	units_lost            uint
-	buildings_lost        uint
-	economy               economyStats
+	player                         *game.Player
+	resources                      *RisqPlayerResources
+	buildings                      map[uint64]*RisqBuilding
+	units                          map[uint64]*RisqUnit
+	max_population_limit           uint16
+	unlimited_population           bool
+	color                          string
+	active_orders                  []*RisqOrder
+	past_orders                    []*RisqOrder
+	orders_submitted               bool
+	default_unit_stance            defs.UnitStance
+	default_unit_attack_back       bool
+	default_unit_interrupt_current bool
+	default_unit_target_priority   []defs.TargetCategory
+	planned_foundations            map[uint]*RisqPlannedFoundation
+	auto_renewals                  map[uint32]*RisqRenewalQueue
+	researched_techs               map[uint32]bool
+	available_mercenaries          map[uint32]bool
+	pending_mercenaries            []*RisqPendingMercenary
+	report                         *RisqTurnReport
+	completed_report               *RisqTurnReport
+	score                          uint
+	ai_model                       ai.Model
+	eliminated                     bool
+	kills                          uint
+	razes                          uint
+	units_lost                     uint
+	buildings_lost                 uint
+	economy                        economyStats
 	// owned by this player only, so its own AI goroutine never races another player's
 	rng *rand.Rand
 	// closed to terminate this player's runAi goroutine once eliminated, so it stops reading
@@ -85,21 +89,24 @@ type RisqPlannedFoundation struct {
 
 func createRisqPlayer(player *game.Player, max_population_limit uint16, color string, rng *rand.Rand) *RisqPlayer {
 	return &RisqPlayer{
-		player:                player,
-		resources:             createRisqPlayerResources(),
-		buildings:             make(map[uint64]*RisqBuilding),
-		units:                 make(map[uint64]*RisqUnit, 0),
-		max_population_limit:  max_population_limit,
-		color:                 color,
-		active_orders:         make([]*RisqOrder, 0),
-		past_orders:           make([]*RisqOrder, 0),
-		orders_submitted:      false,
-		planned_foundations:   make(map[uint]*RisqPlannedFoundation),
-		auto_renewals:         make(map[uint32]*RisqRenewalQueue),
-		researched_techs:      make(map[uint32]bool),
-		available_mercenaries: make(map[uint32]bool),
-		rng:                   rng,
-		ai_stop:               make(chan struct{}),
+		player:                       player,
+		resources:                    createRisqPlayerResources(),
+		buildings:                    make(map[uint64]*RisqBuilding),
+		units:                        make(map[uint64]*RisqUnit, 0),
+		max_population_limit:         max_population_limit,
+		color:                        color,
+		active_orders:                make([]*RisqOrder, 0),
+		past_orders:                  make([]*RisqOrder, 0),
+		orders_submitted:             false,
+		default_unit_stance:          defs.UnitStance_DEFENSIVE,
+		default_unit_attack_back:     true,
+		default_unit_target_priority: []defs.TargetCategory{},
+		planned_foundations:          make(map[uint]*RisqPlannedFoundation),
+		auto_renewals:                make(map[uint32]*RisqRenewalQueue),
+		researched_techs:             make(map[uint32]bool),
+		available_mercenaries:        make(map[uint32]bool),
+		rng:                          rng,
+		ai_stop:                      make(chan struct{}),
 	}
 }
 
@@ -268,6 +275,10 @@ func (p *RisqPlayer) toFrontend(viewer_player_id int) gin.H {
 	}
 	if p.resources != nil && p.player != nil && p.player.Player_id == viewer_player_id {
 		player["resources"] = p.resources.toFrontend()
+		player["default_unit_stance"] = p.default_unit_stance
+		player["default_unit_attack_back"] = p.default_unit_attack_back
+		player["default_unit_interrupt_current"] = p.default_unit_interrupt_current
+		player["default_unit_target_priority"] = targetCategoriesToInts(p.default_unit_target_priority)
 		player["turn_report"] = p.completed_report.toFrontend()
 		foundations := make([]gin.H, 0)
 		for coordinate_key, f := range p.planned_foundations {

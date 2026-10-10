@@ -104,6 +104,7 @@ func (r *GameRisq) stateHash(dump io.Writer) uint64 {
 func (r *GameRisq) hashPlayersAndBoard(h io.Writer) {
 	for _, p := range r.players {
 		res := p.resources
+		fmt.Fprintf(h, "db%d:%t:%t:%v", p.default_unit_stance, p.default_unit_attack_back, p.default_unit_interrupt_current, p.default_unit_target_priority)
 		fmt.Fprintf(h, "p%d f%s w%s s%s g%s pop%d/%d", p.player.Player_id, hashFloat(res.food), hashFloat(res.wood), hashFloat(res.stone), hashFloat(res.gold), nonDeletedUnitCount(p.units), p.populationLimit())
 		for _, tech_id := range slices.Sorted(maps.Keys(p.researched_techs)) {
 			fmt.Fprintf(h, " t%d:%t", tech_id, p.researched_techs[tech_id])

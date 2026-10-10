@@ -24,6 +24,8 @@ import (
 */
 
 type GameRisq struct {
+	tick_history *turnJournal
+
 	metrics                   gameMetrics
 	game                      *game.GameBase
 	outcome                   *risqOutcome
@@ -140,6 +142,7 @@ func (r *GameRisq) startNextTurn() {
 	}
 	r.beginTurnReports()
 	r.giving_orders = true
+	r.captureTickBoundary("start-turn")
 	r.broadcastStartTurn()
 }
 
@@ -280,5 +283,9 @@ func (r *GameRisq) toFrontendFor(player_id int, client_id uint64, is_viewer bool
 		}
 	}
 	game["regions"] = regions
+	game["last_turn_replay"] = nil
+	if r.tick_history != nil && player_id >= 0 {
+		game["last_turn_replay"] = r.tick_history.toFrontend(player_id)
+	}
 	return game
 }

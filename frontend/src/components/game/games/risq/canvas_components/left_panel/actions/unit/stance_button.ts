@@ -16,6 +16,7 @@ const STANCE_HOTKEY_ACTIONS: Record<RisqUnitStance, RisqHotkeyAction | undefined
 export declare interface StanceButtonConfig extends RisqActionButtonConfig {
   unit_internal_ids: number[];
   stance: RisqUnitStance;
+  defaults?: boolean;
 }
 
 export class RisqStanceButton extends RisqActionButton {
@@ -23,12 +24,14 @@ export class RisqStanceButton extends RisqActionButton {
   private unit_internal_ids: number[];
   private stance: RisqUnitStance;
   private active = false;
+  private defaults: boolean;
 
   constructor(config: StanceButtonConfig, risq: DwgRisq, s: number) {
     super(config, s);
     this.risq = risq;
     this.unit_internal_ids = config.unit_internal_ids;
     this.stance = config.stance;
+    this.defaults = config.defaults ?? false;
   }
 
   override isClicking(): boolean {
@@ -37,10 +40,14 @@ export class RisqStanceButton extends RisqActionButton {
 
   override dataRefreshed(): void {
     const player = this.risq.getPlayer();
-    const stances = this.unit_internal_ids.map((id) => player?.units.get(id)?.stance);
+    const stances = this.defaults
+      ? [player?.default_unit_stance]
+      : this.unit_internal_ids.map((id) => player?.units.get(id)?.stance);
     this.active = stances.length > 0 && stances.every((stance) => stance === this.stance);
     const hotkey_action = STANCE_HOTKEY_ACTIONS[this.stance];
-    this.setHotkeyCombo(hotkey_action !== undefined ? getSettings().risq_hotkeys.actions[hotkey_action] : undefined);
+    this.setHotkeyCombo(
+      !this.defaults && hotkey_action !== undefined ? getSettings().risq_hotkeys.actions[hotkey_action] : undefined
+    );
   }
 
   override matchesAction(action: RisqHotkeyAction): boolean {
@@ -48,6 +55,10 @@ export class RisqStanceButton extends RisqActionButton {
   }
 
   override execute(): void {
+    if (this.defaults) {
+      this.risq.commands.setDefaultUnitBehavior({ stance: this.stance });
+      return;
+    }
     this.risq.commands.setUnitStance(this.unit_internal_ids, this.stance);
   }
 }

@@ -21,6 +21,7 @@ func (u *RisqUnit) moveOrAct(arrived bool, target *RisqZone, move_range defs.Ris
 // Records the unit a move is closing on, so a melee approach can meet a unit crossing the same border
 func (u *RisqUnit) markChase(target Attackable) {
 	if move, ok := u.intent.detail.(*MoveIntent); ok {
+		move.target = target
 		move.chasing, _ = target.(*RisqUnit)
 	}
 }
@@ -68,6 +69,7 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 		u.moveOrAct(u.inAttackRange(target.zone), target.zone, u.attack_range, func() {
 			u.intent.setUnitAttack(target)
 		})
+		u.markChase(target)
 	case defs.OrderType_UnitAttackUnit, defs.OrderType_UnitAutoAttackUnit:
 		target := risq.units[uint64(order.target_id)]
 		u.moveOrAct(u.inAttackRange(target.zone), target.zone, u.attack_range, func() {
@@ -81,6 +83,9 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 				u.intent.setUnitAttack(target)
 			}
 		})
+		if u.attack_range == defs.RisqRange_SPACE {
+			u.markChase(zoneAttackTarget(zone, u.player_id, u.target_priority))
+		}
 	case defs.OrderType_UnitAttackSpace:
 		space := invertSpaceKey(uint(order.target_id), risq)
 		if u.garrisoned_in != nil {
@@ -99,6 +104,9 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 				u.markChase(target)
 			}
 		})
+		if move, ok := u.intent.detail.(*MoveIntent); ok && u.attack_range == defs.RisqRange_SPACE && move.next_step.space == space {
+			u.markChase(zoneAttackTarget(move.next_step, u.player_id, u.target_priority))
+		}
 	case defs.OrderType_UnitRepair:
 		target := risq.buildings[uint64(order.target_id)]
 		if target == nil {
@@ -137,6 +145,7 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 
 	// Automatic ungarrison if we have an intent that requires being on the map
 	if u.garrisoned_in != nil && u.intent.hasIntent() {
+		risq.recordTickIntent(u, order)
 		switch u.intent.detail.(type) {
 		case *GarrisonIntent, *UngarrisonIntent:
 		default:
@@ -151,6 +160,9 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 	}
 
 	u.restoreHalfMove(paid_half_move)
+	if u.tick_action == nil {
+		risq.recordTickIntent(u, order)
+	}
 	u.intent.resolveCost(u.current_stamina)
 	if !u.intent.hasIntent() {
 		u.half_move = nil
@@ -162,6 +174,9 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 	if !u.intent.hasIntent() {
 		return
 	}
+	stamina_before := u.current_stamina
+	u.startTickExecution()
+	defer u.finishTickAction(stamina_before)
 	if _, gathering := u.intent.detail.(*GatherIntent); !gathering {
 		u.gather_slot = nil
 	}
@@ -182,6 +197,7 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 	case *GatherIntent:
 		amount, ok := risq.gather_allotments[u]
 		if amount == gatherDenied {
+			u.blockTickAction("gather_capacity")
 			u.gather_slot = nil
 			return
 		}
@@ -193,15 +209,20 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 		if amount > detail.source.gatherResourcesLeft() {
 			amount = detail.source.gatherResourcesLeft()
 		}
+		if u.tick_action != nil {
+			u.tick_action.execute.gathered = amount
+		}
 		detail.source.gatherDrain(amount)
 		risq.players[u.player_id].resources.addGathered(detail.source.gatherCategory(), amount)
 	case *ConstructionIntent:
 		if detail.zone.building != nil && detail.zone.building.player_id != u.player_id {
+			u.blockTickAction("foundation_lost")
 			return
 		}
 		building := detail.building_under_construction
 		if building == nil {
 			if winner, founding := risq.construction_winners[detail.zone]; founding && winner != u.internal_id {
+				u.blockTickAction("foundation_lost")
 				return
 			}
 			if detail.zone.building != nil {
@@ -209,6 +230,7 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 			} else {
 				foundation_id, buildable := risq.foundation_ids[detail.zone]
 				if !buildable {
+					u.blockTickAction("target_invalid")
 					return
 				}
 				_, stamina_required := defs.BuildingProductionCost(detail.building_id)
@@ -229,6 +251,12 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 		}
 		if !building.deleted && building.underConstruction() {
 			progress := max(1, int(math.Round(float64(u.intent.intent_cost)*building.zone.space.buildSpeedModifier())))
+			u.recordTickProgress(min(building.stamina_remaining, progress))
+			if u.tick_action != nil {
+				location := tickZoneLocation(building.zone)
+				u.tick_action.execute.target, u.tick_action.execute.target_location = tickActorTarget(building), &location
+				u.tick_action.execute_target_visibility = tickZoneVisibility(building.zone)
+			}
 			building.stamina_remaining = max(0, building.stamina_remaining-progress)
 			if !building.underConstruction() {
 				util.DebugLog.Printf("Construction complete: building=%d building_id=%d player=%d zone=%s space=%s tick=%d",
@@ -249,18 +277,22 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 	case *RepairIntent:
 		building := detail.target
 		if building.deleted || building.underConstruction() || !risq.canAssist(u.player_id, building) {
+			u.blockTickAction("target_invalid")
 			return
 		}
 		afford := risq.repair_allotments[u]
 		if afford <= 0 {
+			u.blockTickAction("cannot_afford_repair")
 			return
 		}
 	case *RenewIntent:
 		building := detail.target
 		if building.deleted || building.renewing == nil {
+			u.blockTickAction("target_invalid")
 			return
 		}
 		building.pending_renew_stamina += u.intent.intent_cost
+		u.recordTickProgress(u.intent.intent_cost)
 	case *GarrisonIntent:
 		target := detail.target
 		if !u.deleted && u.garrisonTargetValid(risq, target) && u.zone == target.zone && risq.garrison_allotments[u] {
@@ -268,9 +300,12 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 			u.garrisoned_in = target
 			u.zone.space.removeUnit(u)
 			u.zone = nil
+		} else {
+			u.blockTickAction("garrison_full")
 		}
 	case *UngarrisonIntent:
 		if u.garrisoned_in == nil {
+			u.blockTickAction("target_invalid")
 			return
 		}
 		building := u.garrisoned_in

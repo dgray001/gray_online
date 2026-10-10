@@ -12,6 +12,7 @@ import { RisqNextIdleButton } from './next_idle_button';
 import { RisqRightPanelButton } from './right_panel_button';
 import { RisqSubmitOrdersButton } from './submit_orders_button';
 import { RisqSubmitIconButton } from './submit_icon_button';
+import { RisqSummaryReportButton } from '../bottom_panel/bottom_panel_buttons';
 
 export declare interface RightPanelConfig {
   w: number;
@@ -28,6 +29,7 @@ export class RisqRightPanel implements CanvasComponent {
   private submit_button: RisqSubmitOrdersButton;
   private submit_icon_button: RisqSubmitIconButton;
   private next_idle_button: RisqNextIdleButton;
+  private report_button: RisqSummaryReportButton;
   private need_to_set_position = true;
   private submit_row_y = 0;
 
@@ -48,6 +50,7 @@ export class RisqRightPanel implements CanvasComponent {
     this.submit_button = new RisqSubmitOrdersButton(risq, RisqRightPanel.SUBMIT_SIZE);
     this.submit_icon_button = new RisqSubmitIconButton(risq, RisqRightPanel.SUBMIT_SIZE);
     this.next_idle_button = new RisqNextIdleButton(risq, RisqRightPanel.SUBMIT_SIZE);
+    this.report_button = new RisqSummaryReportButton(risq);
     this.toggle(config.is_open, true);
   }
 
@@ -126,6 +129,7 @@ export class RisqRightPanel implements CanvasComponent {
         this.submit_button,
         this.submit_icon_button,
         this.next_idle_button,
+        this.report_button,
       ]) {
         component.setClicking(false);
         component.setHovering(false);
@@ -138,6 +142,8 @@ export class RisqRightPanel implements CanvasComponent {
   }
 
   toggle(open?: boolean, initial?: boolean): void {
+    this.report_button.setClicking(false);
+    this.report_button.setHovering(false);
     this.config.is_open = open ?? !this.config.is_open;
     const position: Point2D = {
       x: this.risq.viewport.canvasSize().width - this.open_button.w(),
@@ -196,8 +202,8 @@ export class RisqRightPanel implements CanvasComponent {
           const player = this.risq.getPlayer();
           const game = this.risq.getGame();
           drawText(ctx, game?.game_base.game_ended ? 'Game Over' : `Turn ${game?.turn_number ?? '??'}`, {
-            p: { x: this.xc(), y: yi },
-            w: this.paddedW(),
+            p: { x: this.xc() - 20, y: yi },
+            w: this.paddedW() - 40,
             fill_style: 'black',
             align: 'center',
             font: 'bold 36px serif',
@@ -252,6 +258,13 @@ export class RisqRightPanel implements CanvasComponent {
       );
     }
     if (this.config.is_open && !this.opening) {
+      this.report_button.dataRefreshed();
+      this.report_button.setPosition({
+        x: this.xf() - RisqRightPanel.PADDING - 30,
+        y: this.yi() + RisqRightPanel.PADDING,
+      });
+      this.report_button.draw(ctx, transform, dt);
+      this.report_button.drawTooltip(ctx, transform, this.risq, dt);
       this.orders_list.draw(ctx, transform, dt);
       this.layoutButtons();
       if (this.hasIdleOrderables()) {
@@ -327,6 +340,9 @@ export class RisqRightPanel implements CanvasComponent {
   }
 
   mousemove(canvas: Point2D, screen: Point2D, transform: BoardTransformData): boolean {
+    if (this.config.is_open && !this.opening) {
+      this.report_button.mousemove(canvas, screen, transform);
+    }
     if (this.open_button.mousemove(canvas, screen, transform)) {
       return true;
     }
@@ -346,6 +362,9 @@ export class RisqRightPanel implements CanvasComponent {
   }
 
   mousedown(e: MouseEvent): boolean {
+    if (this.config.is_open && !this.opening && this.report_button.mousedown(e)) {
+      return true;
+    }
     if (this.open_button.mousedown(e)) {
       return true;
     }
@@ -360,6 +379,9 @@ export class RisqRightPanel implements CanvasComponent {
   }
 
   mouseup(e: MouseEvent): void {
+    if (this.config.is_open && !this.opening) {
+      this.report_button.mouseup(e);
+    }
     this.open_button.mouseup(e);
     this.orders_list.mouseup(e);
     if (this.hasIdleOrderables()) {

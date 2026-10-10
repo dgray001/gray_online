@@ -3,7 +3,8 @@ import { drawArrow, drawLine } from '../../../../util/canvas_util';
 import type { Point2D } from '../../../../util/objects2d';
 import { addPoint2D, equalsPoint2D, subtractPoint2D } from '../../../../util/objects2d';
 import type { RisqOrdersModel } from '../../application/orders/orders_model';
-import { orderArrowColor } from '../../application/orders/orders_model';
+import { isUnitOrder, orderArrowColor } from '../../application/orders/orders_model';
+import { lastAreaAttack } from '../../application/orders/attack_history';
 import type { RisqOrderPlanning } from '../../application/orders/planning';
 import type { RisqSelection } from '../../application/selection/selection';
 import type { RisqSession } from '../../application/session';
@@ -14,6 +15,7 @@ import type {
   RisqGatherPoint,
   RisqMovePathStep,
   RisqUnit,
+  RisqTickAction,
   UnitByTypeData,
 } from '../../model/types';
 import { RisqGatherObjectType, RisqGatherPointLocationKind, RisqOrderType, RisqUnitType } from '../../model/types';
@@ -21,7 +23,14 @@ import type { DwgRisq } from '../../risq';
 import { DrawRisqSpaceDetail } from '../space';
 import { RisqViewMode } from '../terrain';
 import { drawUnitTypeCluster, unitVisibleInViewMode } from '../zones/draw';
-import { zoneApproachPoint, zoneCenterOffset, zoneMercenarySlotOffsets } from '../zones/geometry';
+import {
+  hexagonVertices,
+  zoneVertices,
+  zoneApproachPoint,
+  zoneCenterOffset,
+  zoneMercenarySlotOffsets,
+} from '../zones/geometry';
+import { areaBoundary } from './area_boundary';
 import type { RisqViewport } from './viewport';
 
 const GHOST_ALPHA = 0.6;
@@ -67,6 +76,7 @@ function drawMercenaryGhosts(
 
 /** Board overlays for the local player's orders: arrows, move paths, gather point, and pending mercenary ghosts */
 export class RisqOrderOverlays {
+  private tinted_attack_areas = new Set<string>();
   constructor(
     private risq: DwgRisq,
     private session: RisqSession,
@@ -77,6 +87,7 @@ export class RisqOrderOverlays {
   ) {}
 
   draw(ctx: CanvasRenderingContext2D): void {
+    this.tinted_attack_areas.clear();
     this.drawUnitOrders(ctx);
     this.drawBuildingOrders(ctx);
     this.drawGatherPointOrder(ctx);
@@ -128,6 +139,52 @@ export class RisqOrderOverlays {
     }
   }
 
+  private drawAttackArea(
+    ctx: CanvasRenderingContext2D,
+    order: RisqFrontendOrder,
+    from: Point2D,
+    selected: boolean,
+    path: RisqMovePathStep[]
+  ): Point2D {
+    const zone =
+      order.order_type === RisqOrderType.OrderType_UnitAttackZone ? invertZoneKey(order.target_id) : undefined;
+    const center = this.viewport.coordinateToCanvas(zone?.space ?? invertPair(order.target_id));
+    const hex_r = this.viewport.hexR();
+    const vertices = (zone ? zoneVertices(zone.zone, hex_r) : hexagonVertices(hex_r)).map(
+      (point: Point2D): Point2D => addPoint2D(center, point)
+    );
+    ctx.save();
+    ctx.strokeStyle = orderArrowColor(order.order_type);
+    const key = `${order.order_type}:${order.target_id}`;
+    if (selected && !this.tinted_attack_areas.has(key)) {
+      ctx.beginPath();
+      for (const point of vertices) {
+        ctx.lineTo(point.x, point.y);
+      }
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(220, 30, 30, 0.18)';
+      ctx.fill();
+      this.tinted_attack_areas.add(key);
+    }
+    let current = from;
+    for (const step of path) {
+      const point = this.viewport.orderPoint(step.space, zoneCenterOffset(step.zone, hex_r), true);
+      if (areaBoundary(vertices, point).inside) {
+        break;
+      }
+      if (!equalsPoint2D(current, point)) {
+        drawLine(ctx, current, point);
+      }
+      current = point;
+    }
+    const to = areaBoundary(vertices, current).point;
+    if (!equalsPoint2D(current, to)) {
+      drawLine(ctx, current, to);
+    }
+    ctx.restore();
+    return to;
+  }
+
   private remainingMovePath(unit: RisqUnit): RisqMovePathStep[] {
     const path = unit.move_path ?? [];
     const location = this.session.unitLocation(unit);
@@ -138,9 +195,57 @@ export class RisqOrderOverlays {
     return path.slice(current_index + 1);
   }
 
+  private lastAttackPoint(action: RisqTickAction): Point2D | undefined {
+    const { target, target_location } = action.execute;
+    if (target?.internal_id === undefined || !target_location) {
+      return undefined;
+    }
+    const hex_r = this.viewport.hexR();
+    if (target.kind === 'unit') {
+      const unit = this.session.findUnitById(target.internal_id);
+      const location = unit ? this.session.unitLocation(unit) : undefined;
+      if (unit && location) {
+        return this.viewport.orderPoint(location.space_coordinate, this.viewport.unitAnchorOffset(unit), true);
+      }
+      const corpse = this.session.corpseLocation(target.internal_id);
+      if (corpse) {
+        return this.viewport.orderPoint(
+          corpse.space_coordinate,
+          this.risq.corpse_layout.worldOffset(corpse.zone, target.internal_id, hex_r),
+          true
+        );
+      }
+    } else if (target.kind === 'building') {
+      const building = this.session.findBuildingById(target.internal_id);
+      if (building) {
+        return this.viewport.orderPoint(
+          building.space_coordinate,
+          zoneCenterOffset(building.zone_coordinate, hex_r),
+          true
+        );
+      }
+    }
+    return this.viewport.orderPoint(target_location.space, zoneCenterOffset(target_location.zone, hex_r), true);
+  }
+
   private drawOrdersForUnit(ctx: CanvasRenderingContext2D, unit: RisqUnit, selected: boolean): void {
     const location = this.session.unitLocation(unit);
     const orders = this.orders_model.effectiveForSubject(unit.internal_id, 'unit');
+    if (
+      !orders.length &&
+      !unit.active_orders.length &&
+      !this.orders_model
+        .all()
+        .some(
+          (order: RisqFrontendOrder): boolean =>
+            isUnitOrder(order.order_type) && order.subjects.includes(unit.internal_id)
+        )
+    ) {
+      const attack = lastAreaAttack(unit);
+      if (attack?.order) {
+        orders.push({ ...attack.order, player_id: unit.player_id, subjects: [unit.internal_id] });
+      }
+    }
     if (!location || !orders.length) {
       return;
     }
@@ -150,7 +255,21 @@ export class RisqOrderOverlays {
     ctx.globalAlpha = selected ? 1 : 0.35;
     ctx.setLineDash([8, 5]);
     for (const [i, order] of orders.entries()) {
+      const attack = lastAreaAttack(unit, order);
       if (
+        !attack &&
+        (order.order_type === RisqOrderType.OrderType_UnitAttackSpace ||
+          order.order_type === RisqOrderType.OrderType_UnitAttackZone)
+      ) {
+        const path =
+          i === 0 && order.internal_id !== undefined && order.internal_id === unit.active_orders[0]?.internal_id
+            ? this.remainingMovePath(unit)
+            : [];
+        from = this.drawAttackArea(ctx, order, from, selected, path);
+        continue;
+      }
+      if (
+        !attack &&
         i === 0 &&
         order.internal_id !== undefined &&
         order.internal_id === unit.active_orders[0]?.internal_id &&
@@ -166,7 +285,7 @@ export class RisqOrderOverlays {
         );
         continue;
       }
-      const to = this.orderTargetPoint(order, zone_view, from);
+      const to = attack ? this.lastAttackPoint(attack) : this.orderTargetPoint(order, zone_view, from);
       if (!to || equalsPoint2D(from, to)) {
         continue;
       }
@@ -320,7 +439,12 @@ export class RisqOrderOverlays {
   }
 
   private drawGatherPointOrder(ctx: CanvasRenderingContext2D): void {
-    const building = this.selection.selectedBuilding();
+    for (const building of this.selection.selectedBuildings()) {
+      this.drawBuildingGatherPoint(ctx, building);
+    }
+  }
+
+  private drawBuildingGatherPoint(ctx: CanvasRenderingContext2D, building: RisqBuilding): void {
     const gather_point = building?.gather_point;
     if (!building || !gather_point) {
       return;

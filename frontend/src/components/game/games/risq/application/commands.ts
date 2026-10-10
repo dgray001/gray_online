@@ -85,11 +85,12 @@ export class RisqCommands {
     this.addOrder(RisqOrderType.OrderType_BuildingCreate, [building_id], unit_id, !ctrl_held);
   }
 
-  researchTech(building_id: number, tech_id: number, ctrl_held: boolean = false): void {
+  researchTech(building_id: number, tech_id: number, ctrl_held: boolean = false): boolean {
     if (!this.canQueueProduction(building_id, tech_id, RisqProducibleKind.TECH)) {
-      return;
+      return false;
     }
     this.addOrder(RisqOrderType.OrderType_BuildingResearch, [building_id], tech_id, !ctrl_held);
+    return true;
   }
 
   confirmDeleteUnit(internal_ids: number[]): void {
@@ -108,18 +109,21 @@ export class RisqCommands {
     this.addOrder(RisqOrderType.OrderType_UnitDelete, internal_ids, 0, true);
   }
 
-  confirmDeleteBuilding(internal_id: number): void {
-    if (!this.canCommandBuilding(internal_id)) {
+  confirmDeleteBuilding(internal_ids: number[]): void {
+    if (internal_ids.length === 0 || !internal_ids.every((id: number): boolean => this.canCommandBuilding(id))) {
       return;
     }
-    this.confirm('Are you sure you want to delete this building?', () => this.deleteBuilding(internal_id));
+    this.confirm(
+      `Are you sure you want to delete ${internal_ids.length === 1 ? 'this building' : 'these buildings'}?`,
+      (): void => this.deleteBuilding(internal_ids)
+    );
   }
 
-  private deleteBuilding(internal_id: number): void {
-    if (!this.canCommandBuilding(internal_id)) {
+  private deleteBuilding(internal_ids: number[]): void {
+    if (internal_ids.length === 0 || !internal_ids.every((id: number): boolean => this.canCommandBuilding(id))) {
       return;
     }
-    this.addOrder(RisqOrderType.OrderType_BuildingDelete, [internal_id], 0, true);
+    this.addOrder(RisqOrderType.OrderType_BuildingDelete, internal_ids, 0, true);
   }
 
   stopUnit(internal_ids: number[]): void {
@@ -160,13 +164,15 @@ export class RisqCommands {
     }
   }
 
-  toggleBuildingGatherPoint(building_id: number): void {
-    if (!this.canCommandBuilding(building_id)) {
+  toggleBuildingGatherPoint(building_ids: number[]): void {
+    if (!building_ids.length || !building_ids.every((id: number): boolean => this.canCommandBuilding(id))) {
       return;
     }
     if (this.armed.isGatherPointArmed()) {
       this.armed.disarmGatherPoint();
-      this.clearGatherPoint(building_id);
+      for (const id of building_ids) {
+        this.clearGatherPoint(id);
+      }
     } else {
       this.armed.armGatherPoint();
     }
@@ -208,6 +214,19 @@ export class RisqCommands {
 
   setUnitStance(internal_ids: number[], stance: RisqUnitStance): void {
     this.sendUnitBehavior(internal_ids, { stance });
+  }
+
+  setDefaultUnitBehavior(
+    fields: Partial<{
+      stance: RisqUnitStance;
+      attack_back: boolean;
+      interrupt_current: boolean;
+      target_priority: RisqTargetCategory[];
+    }>
+  ): void {
+    if (this.session.canGiveOrders()) {
+      this.sendGameUpdate(JSON.stringify(fields), 'set-default-unit-behavior');
+    }
   }
 
   setUnitToggle(internal_ids: number[], field: UnitToggleField, value: boolean): void {

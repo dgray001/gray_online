@@ -7,6 +7,7 @@ import type {
   RisqPlannedFoundation,
   RisqProducible,
   RisqMovePathStep,
+  RisqTickAction,
   RisqProductionQueueItem,
 } from '../model/types';
 import type { RisqTerrainType } from '../rendering/terrain';
@@ -71,6 +72,10 @@ export declare interface RisqPlayerFromServer {
   planned_foundations?: RisqPlannedFoundation[];
   available_mercenaries?: RisqProducible[];
   auto_renewals?: { building_id: number; count: number }[];
+  default_unit_stance?: RisqUnitStance;
+  default_unit_attack_back?: boolean;
+  default_unit_interrupt_current?: boolean;
+  default_unit_target_priority?: RisqTargetCategory[];
 }
 
 export declare interface RisqSpaceBaseFromServer {
@@ -138,6 +143,7 @@ export declare interface RisqZoneFromServer {
 
 /** Data describing a risq unit */
 export declare interface RisqUnitFromServer {
+  tick_actions?: RisqTickAction[];
   internal_id: number;
   player_id: number;
   unit_id: number;

@@ -101,6 +101,7 @@ func (u *RisqUnit) replaceOrder(risq *GameRisq, order_type defs.OrderType, targe
 		}
 	}
 	order := createRisqOrder(risq.nextOrderInternalId(), order_type, u.player_id, map[uint64]Orderable{u.internal_id: u}, target_id, true)
+	order.tick_source = "stance"
 	if !u.orderReceivable(order, risq) {
 		return
 	}

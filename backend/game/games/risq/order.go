@@ -64,6 +64,8 @@ const (
 )
 
 type RisqOrder struct {
+	tick_source string
+
 	internal_id uint64
 	player_id   int
 	// The targets this order is effecting, keyed by subject internal id for O(1) removal
@@ -169,7 +171,11 @@ func (q *RisqOrderQueue) removeOrder(internal_id uint64) *RisqOrder {
 func (q *RisqOrderQueue) nextOrder(orderable Orderable, risq *GameRisq) *RisqOrder {
 	for len(q.active_orders) > 0 {
 		o := q.active_orders[0]
-		switch orderable.orderStatus(o, risq) {
+		status := orderable.orderStatus(o, risq)
+		if status != OrderStatus_InProgress {
+			risq.recordOrderDecision(orderable, o, status)
+		}
+		switch status {
 		case OrderStatus_InProgress:
 			return o
 		case OrderStatus_Cancelled:

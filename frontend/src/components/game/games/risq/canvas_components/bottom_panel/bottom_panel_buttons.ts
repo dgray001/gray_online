@@ -1,14 +1,42 @@
 import type { DwgRisq } from '../../risq';
+import { RisqMinimapCornerButton } from '../minimap/corner_button';
 import { RisqActionButton } from '../left_panel/actions/action_button';
 import { RISQ_MESSAGE_WARNING_COLOR } from '../message_queue';
 import { getSettings } from '../../../../../../scripts/settings_store';
 import { RisqHotkeyAction } from '../../application/input/hotkeys';
+import { techImage } from '../../rendering/assets/buildings';
+
+export class RisqMercenaryPanelButton extends RisqMinimapCornerButton {
+  constructor(private risq: DwgRisq) {
+    super(risq, { row: 0, col: 0, image_path: techImage(4), description: 'Mercenaries' }, Math.PI);
+  }
+  protected released(): void {
+    if (this.isHovering()) {
+      this.risq.toggleMercenaryPanel();
+    }
+  }
+}
+
+export class RisqDefaultBehaviorButton extends RisqMinimapCornerButton {
+  constructor(private risq: DwgRisq) {
+    super(
+      risq,
+      { row: 0, col: 0, image_path: 'icons/unit64', description: 'New military unit behavior' },
+      -Math.PI / 2
+    );
+  }
+  protected released(): void {
+    if (this.isHovering()) {
+      this.risq.toggleDefaultBehaviorPanel();
+    }
+  }
+}
 
 export class RisqSummaryReportButton extends RisqActionButton {
   private risq: DwgRisq;
 
-  constructor(risq: DwgRisq, s: number) {
-    super({ row: 0, col: 0, image_path: 'icons/report64', description: 'Review last turn report' }, s);
+  constructor(risq: DwgRisq) {
+    super({ row: 0, col: 0, image_path: 'icons/report64', description: 'Review last turn report' }, 30);
     this.risq = risq;
   }
 
@@ -29,11 +57,11 @@ export class RisqSummaryReportButton extends RisqActionButton {
   }
 }
 
-export class RisqViewModeButton extends RisqActionButton {
+export class RisqViewModeButton extends RisqMinimapCornerButton {
   private risq: DwgRisq;
 
-  constructor(risq: DwgRisq, s: number) {
-    super({ row: 0, col: 0, image_path: 'icons/eye64', description: 'Toggle view mode' }, s);
+  constructor(risq: DwgRisq) {
+    super(risq, { row: 0, col: 0, image_path: 'icons/eye64', description: 'Toggle view mode' }, 0);
     this.risq = risq;
   }
 
@@ -48,11 +76,11 @@ export class RisqViewModeButton extends RisqActionButton {
   }
 }
 
-export class RisqTechTreeButton extends RisqActionButton {
+export class RisqTechTreeButton extends RisqMinimapCornerButton {
   private risq: DwgRisq;
 
-  constructor(risq: DwgRisq, s: number) {
-    super({ row: 0, col: 0, image_path: 'icons/research64', description: 'Open tech tree' }, s);
+  constructor(risq: DwgRisq) {
+    super(risq, { row: 0, col: 0, image_path: 'icons/research64', description: 'Open tech tree' }, Math.PI / 2);
     this.risq = risq;
   }
 

@@ -14,7 +14,7 @@ import { err, log } from '../../../../scripts/log';
 import { ColorRGB } from '../../../../scripts/color_rgb';
 
 import html from './risq.html';
-import type { GameRisq, RisqPlayer, RisqResourceConfig } from './model/types';
+import type { GameRisq, RisqPlayer, RisqResourceConfig, RisqUnit, RisqBuilding } from './model/types';
 import type {
   GameRisqFromServer,
   StartTurnData,
@@ -49,12 +49,11 @@ import { RisqRightPanel } from './canvas_components/right_panel/right_panel';
 import { RisqLeftPanel } from './canvas_components/left_panel/left_panel';
 import { RisqMinimap } from './canvas_components/minimap/risq_minimap';
 import { RisqBottomPanel } from './canvas_components/bottom_panel/bottom_panel';
-import {
-  RisqSummaryReportButton,
-  RisqTechTreeButton,
-  RisqViewModeButton,
-} from './canvas_components/bottom_panel/bottom_panel_buttons';
-import { RisqMercenaryGrid } from './canvas_components/bottom_panel/mercenary_grid';
+import { RisqMercenaryPanel } from './canvas_components/bottom_panel/mercenary_panel';
+import { RisqDefaultBehaviorGrid } from './canvas_components/bottom_panel/default_behavior_grid';
+import type { IdleCategory } from './application/orders/idle_category';
+import { RisqControlGroupGrid } from './canvas_components/bottom_panel/control_group_grid';
+import { RisqIdleGrid } from './canvas_components/bottom_panel/idle_grid';
 import { RISQ_MESSAGE_WARNING_COLOR, RisqMessageQueue } from './canvas_components/message_queue';
 
 import './risq.scss';
@@ -83,26 +82,26 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
 
   readonly left_panel = new RisqLeftPanel(this, { w: 300, background: PANEL_BACKGROUND });
   readonly right_panel = new RisqRightPanel(this, { w: 300, is_open: true, background: new ColorRGB(222, 184, 135) });
+  readonly selection = new RisqSelection(this.session, this.left_panel);
+  readonly control_groups = new RisqControlGroups(this.session, this.left_panel, this.selection);
   private minimap = new RisqMinimap(this, { target_w: 150, background: 'black' });
+  private mercenary_panel = new RisqMercenaryPanel(this, () => this.minimap);
+  private default_behavior_panel = new RisqMercenaryPanel(this, () => this.minimap, new RisqDefaultBehaviorGrid(this));
   private bottom_panel = new RisqBottomPanel(
     this,
-    { background: PANEL_BACKGROUND, left_panel_w: 300, right_panel_w: 300 },
-    [
-      [new RisqMercenaryGrid(this, 32)],
-      [new RisqSummaryReportButton(this, 32), new RisqViewModeButton(this, 32), new RisqTechTreeButton(this, 32)],
-      [this.minimap],
-    ]
+    { background: PANEL_BACKGROUND, left_panel_w: 300, right_panel_w: 300, center_item: this.minimap },
+    [[new RisqControlGroupGrid(this)], [this.minimap], [new RisqIdleGrid(this)]]
   );
   private message_queue = new RisqMessageQueue(this);
   private readonly canvas_components: CanvasComponent[] = [
     this.right_panel,
     this.left_panel,
     this.bottom_panel,
+    this.mercenary_panel,
+    this.default_behavior_panel,
     this.message_queue,
   ];
 
-  readonly selection = new RisqSelection(this.session, this.left_panel);
-  private control_groups = new RisqControlGroups(this.session, this.left_panel, this.selection);
   private targeting = new RisqOrderTargeting(
     this.session,
     this.viewport,
@@ -130,7 +129,12 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
   readonly pointer = new RisqPointer(
     () => this.board,
     this.canvas_components,
-    () => this.left_panel.isHovering() || this.right_panel.isHovering() || this.bottom_panel.isHovering(),
+    () =>
+      this.left_panel.isHovering() ||
+      this.right_panel.isHovering() ||
+      this.bottom_panel.isHovering() ||
+      this.mercenary_panel.isHovering() ||
+      this.default_behavior_panel.isHovering(),
     this.session,
     this.viewport,
     this.hover,
@@ -200,6 +204,16 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
 
   getPlayer(): RisqPlayer | undefined {
     return this.session.getPlayer();
+  }
+
+  toggleMercenaryPanel(): void {
+    this.default_behavior_panel.toggle(false);
+    this.mercenary_panel.toggle();
+  }
+
+  toggleDefaultBehaviorPanel(): void {
+    this.mercenary_panel.toggle(false);
+    this.default_behavior_panel.toggle();
   }
 
   getPlayerId(): number {
@@ -284,6 +298,11 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
     this.pointer.recalculate();
   }
 
+  toggleIdleCategory(category: IdleCategory): void {
+    this.planning.toggleIdleCategory(category);
+    this.refreshPanels();
+  }
+
   reviewLastTurnReport(): void {
     const player = this.getPlayer();
     const report = this.session.getLastTurnReport();
@@ -330,9 +349,12 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
       return;
     }
     const entity = this.planning.nextIdleOrderable();
-    if (!entity) {
-      return;
+    if (entity) {
+      this.selectIdleOrderable(entity);
     }
+  }
+
+  selectIdleOrderable(entity: RisqUnit | RisqBuilding): void {
     if ('building_id' in entity) {
       this.selection.selectBuilding(entity);
     } else {
@@ -383,6 +405,8 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
           this.applyUnsubmittedOrders(update.content as UnsubmittedOrdersData);
           break;
         case 'unit-behavior-set':
+        case 'default-unit-behavior-set':
+        case 'default-unit-stance-set':
         case 'building-behavior-set':
         case 'gather-point-set':
           this.setNewGameData((update.content as StartTurnData).game);
@@ -395,6 +419,9 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
           this.commands.auto_renew_pending = false;
           this.showMessage((update.content as { message: string }).message, RISQ_MESSAGE_WARNING_COLOR);
           this.refreshPanels();
+          break;
+        case 'set-default-unit-behavior-failed':
+          this.showMessage((update.content as { message: string }).message, RISQ_MESSAGE_WARNING_COLOR);
           break;
         default:
           log(`Unknown game update type ${update.kind}`);

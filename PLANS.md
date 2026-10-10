@@ -1,26 +1,7 @@
 v0.9: Risq beta version
- x: Revamp summary report (fix colors, can see "events" on map, can interact with events i.e. replay them or see what happened precisely)
- y: Settings setup (including alt win conditions, map selector, settings for maps like regions/resources/etc, etc)
- z: Alternate terrain images (mountains)
+ z: Revamp summary report (fix colors, can see "events" on map, can interact with events i.e. replay them or see what happened precisely)
 
 Small Risq Issues:
- - Controls
-  => Need to be able to select multiple buildings
-  => Units in control group(s) should show their number(s) when selected on map as little numbers on bottom right
-  => Should show ctrl groups in bottom panel somehow with a way to clear them
-  => If you have entire ctrl group selected exactly then assigning it a new number should clear previous number (but only if entire group exactly selected)
- - Orders
-  => Need to find a better way to show attack zone/space on map (consider options)
-  => Unit/building range needs to be shown better (maybe on hover explain what it is?)
- - Minimap
-  => Minimap shouldn't show terrain beyond terrain type on anything other than default view mode and it should be more explicit in showing mil / resources in appropriate modes
- - Economy
-  => Buildings that can't build units shouldn't be counted as idle
-  => Show idle units/buildings in bottom panel with ways to filter/turn off for certain groups
-  => Wood gathering seems slow we need a way to speed it up (more techs!)
- - Combat
-  => If enemy has massive unit stack there is no way to specify which ones to attack
-  => Some way to set default stance for when units get built
 
 Bigger Risq Issues/Ideas:
  - World risq map
@@ -28,6 +9,7 @@ Bigger Risq Issues/Ideas:
     => Magic and color damage
     => Walls
     => Stables and Archery range
+    => Wood gathering seems slow we need a way to speed it up (more techs!)
 
 Fiddlesticks Plans:
  - Revamp update dialog box

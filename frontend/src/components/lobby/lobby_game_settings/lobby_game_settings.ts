@@ -1,4 +1,5 @@
 import { clickButton, DEV, enumKeys } from '../../../scripts/util';
+import { apiGet } from '../../../scripts/api';
 import { DwgElement } from '../../dwg_element';
 import type { GameSettings } from '../data_models';
 import { GameType } from '../data_models';
@@ -81,6 +82,44 @@ export class DwgLobbyGameSettings extends DwgElement {
         children.push(ai_selector);
         break;
       case GameType.RISQ:
+        const map_size = this.createSelectElement('map-size', 'Map Size', [
+          { value: '', text: 'Recommended' },
+          { value: '1', text: 'Minuscule' },
+          { value: '2', text: 'Tiny' },
+          { value: '3', text: 'Smaller' },
+          { value: '4', text: 'Small' },
+          { value: '5', text: 'Medium' },
+          { value: '6', text: 'Large' },
+          { value: '7', text: 'Larger' },
+          { value: '8', text: 'Huge' },
+          { value: '9', text: 'Gigantic' },
+        ]);
+        const map_select = this.createSelectElement('map', 'Map', []);
+        const visibility = this.createSelectElement(
+          'visibility',
+          'Visibility',
+          [
+            { value: '1', text: 'Default' },
+            { value: '2', text: 'Explored' },
+            { value: '3', text: 'All Visible' },
+          ],
+          '1'
+        );
+
+        children.push(this.createRowElement([map_size, map_select, visibility]));
+
+        apiGet<string[]>('risq/maps').then((res) => {
+          if (res.success) {
+            const select = this.game_specific_settings_els.get('map') as HTMLSelectElement;
+            for (const map_name of res.result) {
+              const opt = document.createElement('option');
+              opt.value = map_name;
+              opt.innerText = map_name.replace(/^(script|custom):/, '');
+              select.appendChild(opt);
+            }
+          }
+        });
+
         children.push(this.createLabelElement('AI Players'));
         const risq_ai_selector = document.createElement('dwg-ai-selector');
         risq_ai_selector.setData({
@@ -132,6 +171,36 @@ export class DwgLobbyGameSettings extends DwgElement {
     return wrapper_el;
   }
 
+  private createSelectElement(
+    id: string,
+    label: string,
+    options: { value: string; text: string }[],
+    default_value?: string
+  ): HTMLSpanElement {
+    const el = document.createElement('select');
+    el.id = id;
+    for (const opt of options) {
+      const option = document.createElement('option');
+      option.value = opt.value;
+      option.innerText = opt.text;
+      el.appendChild(option);
+    }
+    if (default_value !== undefined) {
+      el.value = default_value;
+    }
+
+    const label_el = document.createElement('label');
+    label_el.setAttribute('for', id);
+    label_el.innerText = label;
+    this.game_specific_settings_els.set(id, el);
+
+    const wrapper_el = document.createElement('span');
+    wrapper_el.classList.add('input-wrapper');
+    wrapper_el.appendChild(label_el);
+    wrapper_el.appendChild(el);
+    return wrapper_el;
+  }
+
   private createRowElement(els: HTMLElement[]): HTMLDivElement {
     const el = document.createElement('div');
     el.classList.add('row-wrapper');
@@ -162,6 +231,24 @@ export class DwgLobbyGameSettings extends DwgElement {
           if (!!risq_ai_players) {
             risq_ai_players.setPlayers(risq_settings.ai_players);
           }
+          if (risq_settings.map_size !== undefined) {
+            const el = this.game_specific_settings_els.get('map-size') as HTMLSelectElement;
+            if (el) {
+              el.value = risq_settings.map_size.toString();
+            }
+          }
+          if (risq_settings.map !== undefined) {
+            const el = this.game_specific_settings_els.get('map') as HTMLSelectElement;
+            if (el) {
+              el.value = risq_settings.map;
+            }
+          }
+          if (risq_settings.visibility !== undefined) {
+            const el = this.game_specific_settings_els.get('visibility') as HTMLSelectElement;
+            if (el) {
+              el.value = risq_settings.visibility.toString();
+            }
+          }
           break;
         default:
           break;
@@ -181,6 +268,11 @@ export class DwgLobbyGameSettings extends DwgElement {
 
   private getNumberSetting(el_id: string): HTMLInputElement {
     return this.game_specific_settings_els.get(el_id) as HTMLInputElement;
+  }
+
+  private getSelectSetting(el_id: string): string | undefined {
+    const el = this.game_specific_settings_els.get(el_id) as HTMLSelectElement;
+    return el?.value;
   }
 
   clearSettings(): void {
@@ -210,8 +302,12 @@ export class DwgLobbyGameSettings extends DwgElement {
         break;
       case GameType.RISQ:
         const risq_ai_players = this.game_specific_settings_els.get('ai-players') as DwgAiSelector;
+        const map_size_val = this.getSelectSetting('map-size');
         settings.game_specific_settings = {
           ai_players: risq_ai_players.getPlayers(),
+          map_size: map_size_val ? parseInt(map_size_val) : undefined,
+          map: this.getSelectSetting('map'),
+          visibility: parseInt(this.getSelectSetting('visibility') || '1'),
         } satisfies GameSettingsRisq;
         break;
       default:

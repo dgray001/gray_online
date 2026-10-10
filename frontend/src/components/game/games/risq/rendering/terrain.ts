@@ -161,6 +161,42 @@ export function terrainImage(terrain_id: number): string {
     case 65:
       filename = 'forest_hills';
       break;
+    case 101:
+      filename = 'grass_green1_mountains';
+      break;
+    case 102:
+      filename = 'grass_green2_mountains';
+      break;
+    case 103:
+      filename = 'grass_dead1_mountains';
+      break;
+    case 104:
+      filename = 'grass_dead2_mountains';
+      break;
+    case 105:
+      filename = 'grass_forest_mountains';
+      break;
+    case 106:
+      filename = 'dirt1_mountains';
+      break;
+    case 107:
+      filename = 'dirt2_mountains';
+      break;
+    case 108:
+      filename = 'dirt3_mountains';
+      break;
+    case 109:
+      filename = 'dirt4_mountains';
+      break;
+    case 110:
+      filename = 'dirt5_mountains';
+      break;
+    case 111:
+      filename = 'snow1_mountains';
+      break;
+    case 112:
+      filename = 'snow2_mountains';
+      break;
     case 151:
       filename = 'swamp_dead';
       break;

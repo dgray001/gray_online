@@ -22,7 +22,7 @@ import type {
   RisqUnitFromServer,
   RisqOrderFromServer,
 } from './snapshot_types';
-import { RisqResourceType, RisqUnitType } from '../model/types';
+import { RisqResourceType, RisqUnitType, RisqUnitStance } from '../model/types';
 import { err } from '../../../../../scripts/log';
 import { ColorRGB } from '../../../../../scripts/color_rgb';
 import { serverToRisqTurnReport } from './turn_report';
@@ -163,6 +163,10 @@ export function serverToRisqPlayer(server_player: RisqPlayerFromServer, registry
     auto_renewals: new Map(
       (server_player.auto_renewals ?? []).map((queue): [number, number] => [queue.building_id, queue.count])
     ),
+    default_unit_stance: server_player.default_unit_stance ?? RisqUnitStance.DEFENSIVE,
+    default_unit_attack_back: server_player.default_unit_attack_back ?? true,
+    default_unit_interrupt_current: server_player.default_unit_interrupt_current ?? false,
+    default_unit_target_priority: server_player.default_unit_target_priority ?? [],
   };
   return player;
 }

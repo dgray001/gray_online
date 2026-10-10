@@ -9,6 +9,7 @@ import type {
   RisqResourceConfig,
   RisqSpace,
   RisqUnit,
+  RisqZone,
 } from '../model/types';
 import type { GameRisqFromServer } from '../transport/snapshot_types';
 import { serverToGameRisq } from '../transport/snapshot_conversion';
@@ -27,6 +28,7 @@ function buildRegionLookup(regions: RisqRegion[]): Map<number, RisqRegion> {
 
 /** Owns the current game snapshot and the local player's identity within it */
 export class RisqSession {
+  private corpse_locations = new Map<number, { space_coordinate: Point2D; zone: RisqZone }>();
   private game?: GameRisq;
   private region_by_space = new Map<number, RisqRegion>();
   private player_id = -1;
@@ -72,6 +74,17 @@ export class RisqSession {
   replaceSnapshot(new_game: GameRisqFromServer): void {
     this.game = serverToGameRisq(new_game);
     this.region_by_space = buildRegionLookup(this.game?.regions ?? []);
+    this.corpse_locations.clear();
+    for (const space of this.game?.spaces.flat() ?? []) {
+      if (!space?.zones) {
+        continue;
+      }
+      for (const zone of space.zones.flat()) {
+        for (const corpse of zone.corpses) {
+          this.corpse_locations.set(corpse.internal_id, { space_coordinate: space.coordinate, zone });
+        }
+      }
+    }
   }
 
   getLastTurnReport(): RisqTurnReport | undefined {
@@ -127,6 +140,10 @@ export class RisqSession {
       }
     }
     return undefined;
+  }
+
+  corpseLocation(internal_id: number): { space_coordinate: Point2D; zone: RisqZone } | undefined {
+    return this.corpse_locations.get(internal_id);
   }
 
   /** A garrisoned unit has no coordinates of its own, so it's located at its building */

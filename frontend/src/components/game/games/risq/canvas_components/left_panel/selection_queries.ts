@@ -1,7 +1,7 @@
 import { equalsPoint2D } from '../../../../util/objects2d';
 import type { RisqSession } from '../../application/session';
 import { invertPair } from '../../model/coordinates';
-import type { RisqUnit, UnitByTypeData } from '../../model/types';
+import type { RisqBuilding, RisqUnit, UnitByTypeData } from '../../model/types';
 import { RisqUnitType, RisqVisibilityLevel } from '../../model/types';
 import { groupUnitsByType } from '../../model/unit_groups';
 import type { DwgRisq } from '../../risq';
@@ -24,6 +24,11 @@ export function isOrderable(
     return false;
   }
   switch (data.data_type) {
+    case LeftPanelDataType.BUILDINGS:
+      return (
+        data.data.buildings.length > 0 &&
+        data.data.buildings.every((b: RisqBuilding): boolean => b.player_id === player_id)
+      );
     case LeftPanelDataType.BUILDING:
     case LeftPanelDataType.UNIT:
     case LeftPanelDataType.FOUNDATION:
@@ -114,6 +119,13 @@ export function orderListSubjects(
   own_player_id: number | undefined
 ): { ids: number[]; kind?: 'unit' | 'building' } {
   switch (data?.data_type) {
+    case LeftPanelDataType.BUILDINGS:
+      return {
+        ids: data.data.buildings
+          .filter((b: RisqBuilding): boolean => b.player_id === own_player_id)
+          .map((b: RisqBuilding): number => b.internal_id),
+        kind: 'building',
+      };
     case LeftPanelDataType.UNIT:
     case LeftPanelDataType.BUILDING:
       if (data.data.player_id !== own_player_id) {
@@ -193,6 +205,22 @@ export function resolveSelectionData(
   session: RisqSession
 ): { data: LeftPanelData; visibility: number } | undefined {
   switch (data.data_type) {
+    case LeftPanelDataType.BUILDINGS: {
+      const buildings = data.data.buildings.flatMap((b: RisqBuilding): RisqBuilding[] => {
+        const current = session.getPlayer()?.buildings.get(b.internal_id);
+        return current ? [current] : [];
+      });
+      if (buildings.length === 0) {
+        return undefined;
+      }
+      return {
+        data:
+          buildings.length === 1
+            ? { data_type: LeftPanelDataType.BUILDING, data: buildings[0] }
+            : { data_type: LeftPanelDataType.BUILDINGS, data: { buildings } },
+        visibility: RisqVisibilityLevel.GOOD,
+      };
+    }
     case LeftPanelDataType.UNIT: {
       const unit = session.findUnitById(data.data.internal_id);
       if (!unit) {

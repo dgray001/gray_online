@@ -8,6 +8,54 @@ import (
 
 var origin = harness.Coord{}
 
+func TestTickHistoryInsufficientStamina(t *testing.T) {
+	t.Run("cancelled-and-completed-orders", func(t *testing.T) {
+		g, p := moverGame(t, spaceWith(2, 2, grass, ""), spaceWith(1, 0, grass, ""))
+		u := firstUnit(g, p)
+		g.Submit(p, harness.OrderMove([]uint64{u.InternalID}, 2, 2), harness.OrderMove([]uint64{u.InternalID}, 1, 0))
+		g.EndTurn()
+		after := g.State(p).Unit(u.InternalID)
+		if after.Space != (harness.Coord{X: 1}) || len(after.ActiveOrders) != 0 {
+			t.Fatal("fixture did not cancel and complete its queue")
+		}
+		rejected := harness.RequireTickBlocked(t, after.TickActions, "no_reachable_target")
+		if rejected.Order.TargetID != harness.SpaceKey(2, 2) {
+			t.Errorf("cancelled order target lost: %+v", rejected)
+		}
+		harness.AssertTickSpend(t, after.TickActions, 7)
+		completed := false
+		for _, a := range after.TickActions {
+			if a.Intent.Kind == "move" && a.Order.TargetID == harness.SpaceKey(1, 0) && a.Execute.Outcome == "executed" {
+				completed = true
+			}
+		}
+		if !completed {
+			t.Fatal("completed movement disappeared with its order")
+		}
+	})
+	g, p := moverGame(t, spaceWith(1, 0, hills, ""))
+	u := firstUnit(g, p)
+	g.Submit(p, harness.OrderMove([]uint64{u.InternalID}, 1, 0))
+	g.EndTurn()
+	after := g.State(p).Unit(u.InternalID)
+	if after.Space != origin || len(after.ActiveOrders) != 1 {
+		t.Fatal("fixture did not retain an unaffordable crossing")
+	}
+	blocked := harness.RequireTickBlocked(t, after.TickActions, "insufficient_stamina")
+	if blocked.Intent.Kind != "move" || blocked.Intent.MinCost <= blocked.Intent.AvailableStamina || blocked.Tick < 1 {
+		t.Errorf("discarded movement proposal missing: %+v", blocked)
+	}
+	harness.AssertTickSpend(t, after.TickActions, 1)
+	replay := harness.RequireReplay(t, g.State(p))
+	settled := replay.UnitAt(u.InternalID, replay.TickCount)
+	if settled == nil || settled.CurrentStamina != u.CurrentStamina-1 || after.CurrentStamina != 12 {
+		t.Fatal("movement history lost capped regeneration boundary")
+	}
+	if frame := replay.Frame(t, blocked.Tick); !frame.Terminal {
+		t.Errorf("last rejected attempt is not terminal: %+v", frame)
+	}
+}
+
 // P0's lone villager at (0,0) and P1's lone bystander at (3,-3), with the given space entries between
 func moverGame(t *testing.T, spaces ...string) (*harness.Game, int) {
 	t.Helper()

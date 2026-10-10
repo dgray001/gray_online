@@ -127,8 +127,8 @@ func (r *LobbyRoom) runOnce() {
 		}
 	case action := <-r.PlayerAction:
 		fmt.Println("Received player action: ", action)
-		if !r.gameNil() {
-			r.game.PlayerAction(r.game.GetBase().AddAction(action))
+		if current_game := r.GetGame(); current_game != nil {
+			current_game.PlayerAction(current_game.GetBase().AddAction(action))
 		}
 	case message := <-r.GameEnded:
 		room_id_string := strconv.Itoa(int(r.room_id))
@@ -144,10 +144,11 @@ func (r *LobbyRoom) runOnce() {
 			r.evictEndedGame(ended_game_id)
 		}()
 	case req := <-r.GameStateRequest:
-		if r.game == nil {
+		current_game := r.GetGame()
+		if current_game == nil {
 			req.Reply <- gin.H{}
 		} else {
-			req.Reply <- r.game.ToFrontend(req.ClientId, req.IsViewer)
+			req.Reply <- current_game.ToFrontend(req.ClientId, req.IsViewer)
 		}
 	}
 }
@@ -617,7 +618,7 @@ func (r *LobbyRoom) launchGame(game_id uint64) (game.Game, error) {
 }
 
 func (r *LobbyRoom) GetGame() game.Game {
-	return r.game
+	return r.getGame()
 }
 
 func (r *LobbyRoom) RequestToFrontend(client_id uint64, is_viewer bool) (gin.H, error) {

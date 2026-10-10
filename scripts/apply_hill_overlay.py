@@ -33,7 +33,7 @@ def apply_hill_overlay(
 
     relief = Image.open(relief_path).convert('L')
     if relief.size != flat.size:
-        relief = relief.resize(flat.size, Image.LANCZOS)
+        relief = relief.resize(flat.size, Image.Resampling.NEAREST)
     relief_v = np.asarray(relief, dtype=np.float64)
 
     target_mean = level * flat_v.mean()

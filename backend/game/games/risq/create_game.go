@@ -8,7 +8,9 @@ import (
 	"github.com/dgray001/gray_online/game/games/risq/internal/mapgen"
 	"github.com/dgray001/gray_online/util"
 	"math/rand"
+	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -186,4 +188,35 @@ func (r *GameRisq) logBoard() {
 // Exposes defs.LoadConfig to binaries outside risq, which can't import internal packages
 func LoadConfig(dir string) error {
 	return defs.LoadConfig(dir)
+}
+
+func AllMapNamesToFrontend() []string {
+	var maps []string
+	if entries, err := os.ReadDir("game/games/risq/config/maps/scripted"); err == nil {
+		for _, e := range entries {
+			if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") {
+				maps = append(maps, "script:"+strings.TrimSuffix(e.Name(), ".json"))
+			}
+		}
+	}
+	if entries, err := os.ReadDir("game/games/risq/config/maps/custom"); err == nil {
+		for _, e := range entries {
+			if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") {
+				maps = append(maps, "custom:"+strings.TrimSuffix(e.Name(), ".json"))
+			}
+		}
+	}
+	return maps
+}
+
+func AllAiNamesToFrontend() []string {
+	var configs []string
+	if entries, err := os.ReadDir("game/games/risq/config/ai"); err == nil {
+		for _, e := range entries {
+			if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") {
+				configs = append(configs, strings.TrimSuffix(e.Name(), ".json"))
+			}
+		}
+	}
+	return configs
 }

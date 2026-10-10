@@ -27,6 +27,16 @@ export class RisqCorpseLayout {
   private zones = new Map<number, CorpseZoneLayout>();
   private base_slots = new Map<boolean, Point2D[]>();
 
+  worldOffset(zone: RisqZone, internal_id: number, hex_r: number): Point2D | undefined {
+    const point = this.positions(zone).get(internal_id);
+    if (!point) {
+      return undefined;
+    }
+    const direction = findOuterZoneIndex(zone.coordinate);
+    const rotation = direction === -1 ? 0 : (Math.PI / 3) * (direction + 1);
+    return rotatePoint({ x: point.x * hex_r, y: point.y * hex_r }, rotation);
+  }
+
   positions(zone: RisqZone): ReadonlyMap<number, Point2D> {
     let layout = this.zones.get(zone.coordinate_key);
     if (!layout) {
@@ -95,15 +105,11 @@ export function drawZoneCorpses(
   if (visibility < RisqVisibilityLevel.GOOD || zone.corpses.length === 0) {
     return;
   }
-  const direction = findOuterZoneIndex(zone.coordinate);
-  const zone_rotation = direction === -1 ? 0 : (Math.PI / 3) * (direction + 1);
   const radius = game.viewport.corpseRadius();
-  const positions = game.corpse_layout.positions(zone);
   ctx.save();
   clipToZone(ctx, { x: 0, y: 0 }, hex_r, zone.coordinate);
   for (const corpse of zone.corpses) {
-    const point = positions.get(corpse.internal_id)!;
-    const p = rotatePoint({ x: point.x * hex_r, y: point.y * hex_r }, zone_rotation);
+    const p = game.corpse_layout.worldOffset(zone, corpse.internal_id, hex_r)!;
     const image = unitCorpseImage(corpse.unit_id, corpse.turns);
     const color = game.getGame()?.players[corpse.player_id]?.color;
     const icon = color ? game.getPlayerColoredIcon(image, color) : game.getIcon(image);

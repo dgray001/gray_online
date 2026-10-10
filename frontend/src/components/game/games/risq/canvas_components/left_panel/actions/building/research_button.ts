@@ -16,7 +16,6 @@ export declare interface ResearchButtonConfig {
 
 export class RisqResearchButton extends RisqActionButton {
   private risq: DwgRisq;
-  private building_id: number;
   private producible: RisqProducible;
   private already_queued = false;
   private ctrl_held = false;
@@ -32,7 +31,6 @@ export class RisqResearchButton extends RisqActionButton {
       s
     );
     this.risq = risq;
-    this.building_id = config.building_id;
     this.producible = config.producible;
   }
 
@@ -65,7 +63,11 @@ export class RisqResearchButton extends RisqActionButton {
       this.risq.showMessage('Not enough resources', RISQ_MESSAGE_WARNING_COLOR);
       return;
     }
-    this.risq.commands.researchTech(this.building_id, this.producible.id, ctrl_held);
+    for (const id of this.risq.selection.selectedBuildingIds()) {
+      if (this.risq.commands.researchTech(id, this.producible.id, ctrl_held)) {
+        break;
+      }
+    }
   }
 
   protected override getTooltipData(): RisqTooltipData {

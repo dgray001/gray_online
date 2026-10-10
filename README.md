@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.8y: Frontend fixes
+v0.8z: Frontend settings setup
 
 ## Dev Use
 

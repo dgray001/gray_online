@@ -182,7 +182,10 @@ export class RisqPointer {
         break;
       }
       case LeftPanelDataType.BUILDING:
-        this.dispatch.buildingOrder(data.data, ctrl_held);
+        this.dispatch.buildingOrder([data.data], ctrl_held);
+        break;
+      case LeftPanelDataType.BUILDINGS:
+        this.dispatch.buildingOrder(data.data.buildings, ctrl_held);
         break;
       default:
         break;

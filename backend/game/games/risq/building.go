@@ -321,6 +321,7 @@ func (b *RisqBuilding) tickIntent(risq *GameRisq) bool {
 	b.intent.resetIntent()
 	for _, order := range append([]*RisqOrder(nil), b.order_queue.active_orders...) {
 		if order.order_type.IsAttackOrder() && b.orderStatus(order, risq) != OrderStatus_InProgress {
+			risq.recordOrderDecision(b, order, OrderStatus_Cancelled)
 			b.cancelOrder(order, risq)
 		}
 	}
@@ -349,8 +350,10 @@ func (b *RisqBuilding) tickIntent(risq *GameRisq) bool {
 	default:
 		fmt.Fprintln(os.Stderr, "Order type not implemented:", order.order_type)
 	}
+	risq.recordTickIntent(b, order)
 	b.intent.resolveCost(b.current_stamina)
 	if production, ok := b.intent.detail.(*ProductionIntent); ok && production.item.kind == defs.ProducibleKind_UNIT && risq.players[b.player_id].populationCapped() {
+		b.blockTickAction("population_cap")
 		b.intent.resetIntent()
 	}
 	return b.intent.hasIntent()
@@ -360,18 +363,24 @@ func (b *RisqBuilding) tickExecute(risq *GameRisq) {
 	if !b.intent.hasIntent() {
 		return
 	}
+	stamina_before := b.current_stamina
+	b.startTickExecution()
+	defer b.finishTickAction(stamina_before)
 	if detail, ok := b.intent.detail.(*ProductionIntent); ok {
 		item := detail.item
 		if item.kind == defs.ProducibleKind_UNIT {
 			completing_this_tick := item.stamina_remaining-b.intent.intent_cost <= 0
 			if completing_this_tick && !risq.population_slot_winners[b] {
+				b.blockTickAction("population_cap")
 				return
 			}
 			if !completing_this_tick && risq.population_capped[b.player_id] {
+				b.blockTickAction("population_cap")
 				return
 			}
 		}
 		item.stamina_remaining -= b.intent.intent_cost
+		b.recordTickProgress(min(b.intent.intent_cost, item.stamina_remaining+b.intent.intent_cost))
 		if item.stamina_remaining <= 0 {
 			switch item.kind {
 			case defs.ProducibleKind_UNIT:
@@ -407,9 +416,11 @@ func (b *RisqBuilding) tickExecute(risq *GameRisq) {
 			// Skip a unit that ended up needing its own stamina this tick (e.g. to ungarrison),
 			// so it isn't double-spent between its own intent and this garrison attack.
 			if ga.unit.intent.hasIntent() {
+				ga.unit.recordGarrisonExecution(0, true)
 				continue
 			}
 			risq.resolveAttack(garrisonAttacker{RisqUnit: ga.unit, stats: ga.stats}, detail.target, ga.cost)
+			ga.unit.recordGarrisonExecution(ga.cost, false)
 			ga.unit.current_stamina -= ga.cost
 		}
 	}
@@ -447,6 +458,7 @@ func (b *RisqBuilding) toFrontend(viewer_player_id int) gin.H {
 		"attack_range":               b.attack_range,
 	}
 	building["has_garrisoned_units"] = len(b.garrisoned_units) > 0
+	building["tick_actions"] = tickActionsToFrontend(b.tick_actions, viewer_player_id)
 	if showOrdersTo(b.player_id, b.zone, viewer_player_id) {
 		garrisoned_units := make([]uint64, 0)
 		for id := range b.garrisoned_units {

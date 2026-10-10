@@ -1,8 +1,10 @@
-import { drawText } from '../../../../../util/canvas_util';
+import { drawRect, drawText } from '../../../../../util/canvas_util';
+import { drawUnitCountBadge } from '../../../rendering/unit_count_badge';
 import type { RisqBuilding, RisqResource } from '../../../model/types';
 import { buildingImage } from '../../../rendering/assets/buildings';
 import { resourceIcon, resourceTypeImage } from '../../../rendering/assets/resources';
 import type { FoundationDrawData } from '../left_panel_data';
+import { ACTION_GRID_COLS, PANEL_PADDING } from '../layout';
 import type { PanelDrawContext } from './primitives';
 import { drawHeaderImage, drawName, drawOwnerSeparators, drawSeparator } from './primitives';
 import { workersText } from './stats_view';
@@ -39,6 +41,45 @@ export function drawResource(pc: PanelDrawContext, resource: RisqResource): void
     baseline: 'middle',
     font: '18px serif',
   });
+}
+
+export function drawBuildings(pc: PanelDrawContext, buildings: RisqBuilding[]): void {
+  const groups = new Map<number, RisqBuilding[]>();
+  for (const building of buildings) {
+    groups.set(building.building_id, [...(groups.get(building.building_id) ?? []), building]);
+  }
+  const content_y = pc.frame.yi() + drawName(pc, `${buildings.length} Buildings`);
+  const s = pc.layout.grid_s;
+  const capacity =
+    Math.floor((pc.layout.separator_below_stats - PANEL_PADDING - content_y) / (s + PANEL_PADDING)) * ACTION_GRID_COLS;
+  const blocks =
+    buildings.length <= capacity
+      ? buildings.map((building: RisqBuilding): RisqBuilding[] => [building])
+      : groups.size <= capacity
+        ? [...groups.values()]
+        : [buildings];
+  for (const [i, group] of blocks.entries()) {
+    const building = group[0];
+    const p = {
+      x: pc.layout.grid_x0 + (i % ACTION_GRID_COLS) * (s + PANEL_PADDING),
+      y: pc.layout.separator_below_stats - (Math.floor(i / ACTION_GRID_COLS) + 1) * (s + PANEL_PADDING),
+    };
+    const image = buildingImage(building.building_id, building.under_construction, false, building.combat_stats);
+    pc.ctx.drawImage(
+      pc.risq.getPlayerColoredIcon(image, pc.risq.getGame()!.players[building.player_id].color),
+      p.x,
+      p.y,
+      s,
+      s
+    );
+    if (group.length > 1) {
+      drawUnitCountBadge(pc.ctx, group.length, p, s);
+    }
+    pc.ctx.fillStyle = pc.buildingTile?.(group, p, s) ?? 'transparent';
+    pc.ctx.strokeStyle = 'transparent';
+    drawRect(pc.ctx, p, s, s);
+  }
+  drawOwnerSeparators(pc, buildings[0].player_id);
 }
 
 export function drawBuilding(pc: PanelDrawContext, building: RisqBuilding): void {

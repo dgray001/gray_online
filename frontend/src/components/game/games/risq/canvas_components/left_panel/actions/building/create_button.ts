@@ -1,6 +1,7 @@
 import type { DwgRisq } from '../../../../risq';
 import { RisqActionButton } from '../action_button';
-import type { RisqProducible } from '../../../../model/types';
+import type { RisqBuilding, RisqCost, RisqProducible } from '../../../../model/types';
+import { buildingCanProduce } from '../../../../application/orders/eligibility';
 import { canAffordCost } from '../../../../model/types';
 import { unitImage } from '../../../../rendering/assets/unit';
 import { RISQ_MESSAGE_WARNING_COLOR } from '../../../message_queue';
@@ -15,7 +16,6 @@ export declare interface CreateButtonConfig {
 
 export class RisqCreateButton extends RisqActionButton {
   private risq: DwgRisq;
-  private building_id: number;
   private producible: RisqProducible;
   private ctrl_held = false;
 
@@ -30,15 +30,28 @@ export class RisqCreateButton extends RisqActionButton {
       s
     );
     this.risq = risq;
-    this.building_id = config.building_id;
     this.producible = config.producible;
+  }
+
+  private producerIds(): number[] {
+    const player = this.risq.getPlayer();
+    return this.risq.selection
+      .selectedBuildings()
+      .filter((building: RisqBuilding): boolean => !!player && buildingCanProduce(player, building, this.producible))
+      .map((building: RisqBuilding): number => building.internal_id);
+  }
+
+  private productionCost(): RisqCost {
+    const count = this.producerIds().length;
+    const cost = this.producible.cost;
+    return { food: count * cost.food, wood: count * cost.wood, stone: count * cost.stone, gold: count * cost.gold };
   }
 
   override dataRefreshed(): void {
     const player = this.risq.getPlayer();
     if (!!player && this.risq.session.givingOrders() && !player.orders_submitted) {
       this.enable();
-      this.dimmed = !canAffordCost(player, this.producible.cost);
+      this.dimmed = !canAffordCost(player, this.productionCost());
     } else {
       this.disable();
     }
@@ -58,14 +71,16 @@ export class RisqCreateButton extends RisqActionButton {
       this.risq.showMessage('Not enough resources', RISQ_MESSAGE_WARNING_COLOR);
       return;
     }
-    this.risq.commands.createUnit(this.building_id, this.producible.id, ctrl_held);
+    for (const id of this.producerIds()) {
+      this.risq.commands.createUnit(id, this.producible.id, ctrl_held);
+    }
   }
 
   protected override getTooltipData(): RisqTooltipData {
     return {
       title: this.description,
       description: this.producible.description,
-      cost: this.producible.cost,
+      cost: this.productionCost(),
       stamina_cost: this.producible.stamina_cost,
       hotkey: hotkeyDisplayString(getSettings().risq_hotkeys.create_unit[this.producible.id]),
     };

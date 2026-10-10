@@ -10,7 +10,15 @@ import type { DwgRisq } from '../../../risq';
 import { PANEL_PADDING } from '../layout';
 import type { PanelDrawContext } from './primitives';
 
-type StatCell = [icon: string, value: number | string, label: string];
+type StatCell = [icon: string, value: number | string, label: string, tooltip?: string];
+
+const RANGE_LABELS: Record<RisqRange, string> = {
+  [RisqRange.NONE]: 'none',
+  [RisqRange.ZONE]: 'zone (melee)',
+  [RisqRange.SPACE]: 'space',
+  [RisqRange.ADJACENT]: '1 space',
+  [RisqRange.SECONDARY]: '2 spaces',
+};
 
 const HEALTH_ROW_H = 14;
 const STAT_ROW_H = 20;
@@ -66,7 +74,9 @@ function combatStatsGroups(cs: RisqCombatStats, attack_range: RisqRange): (StatC
         includes(0) ? ['risq/icons/attack_blunt', cs.attack_blunt, 'Blunt attack'] : null,
         includes(1) ? ['risq/icons/attack_piercing', cs.attack_piercing, 'Piercing attack'] : null,
         includes(2) ? ['risq/icons/attack_magic', cs.attack_magic, 'Magic attack'] : null,
-        range !== null ? ['risq/icons/attack_range', range, 'Attack range'] : null,
+        range !== null
+          ? ['risq/icons/attack_range', range, 'Attack range', `Attack range: ${RANGE_LABELS[attack_range]}`]
+          : null,
       ]
     : [null, null, null, null];
   const penetration: (StatCell | null)[] = has_attack
@@ -211,7 +221,7 @@ export class RisqStatsView {
       const sx = pc.frame.xi() + 0.1 * pc.frame.w() + col * (dx + PANEL_PADDING);
       this.stat_cells.push({
         rect: { ps: { x: sx, y }, pe: { x: sx + dx, y: y + image_size } },
-        text: `${entry[2]}: ${entry[1]}`,
+        text: entry[3] ?? `${entry[2]}: ${entry[1]}`,
       });
       pc.ctx.drawImage(pc.risq.getIcon(entry[0]), sx, y, image_size, image_size);
       drawText(pc.ctx, entry[1].toString(), {

@@ -15,7 +15,7 @@ func TestGameAndPlayerWireShapes(t *testing.T) {
 			checkShape(t, p["player"], identityShape)
 			contract := playerShape
 			if object(t, p["player"])["player_id"] == float64(g.PlayerID(human)) {
-				contract += " " + privatePlayerShape
+				contract += " " + privatePlayerShape + " default_unit_stance:n default_unit_attack_back:b default_unit_interrupt_current:b default_unit_target_priority:a"
 				checkShape(t, p["resources"], costShape)
 				mercenaries := array(t, p["available_mercenaries"])
 				equal(t, len(mercenaries), 2)

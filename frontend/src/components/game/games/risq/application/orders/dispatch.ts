@@ -220,21 +220,23 @@ export class RisqOrderDispatch {
   }
 
   /** Right-click with an owned building selected: attack the hovered enemy, else set the gather point there */
-  buildingOrder(building: RisqBuilding, ctrl_held: boolean): void {
-    const target = this.targeting.buildingAttackTarget(building);
-    if (target) {
-      this.orders_model.add({
-        player_id: this.session.getPlayerId(),
-        order_type:
-          target.kind === 'unit'
-            ? RisqOrderType.OrderType_BuildingAttackUnit
-            : RisqOrderType.OrderType_BuildingAttackBuilding,
-        subjects: [building.internal_id],
-        target_id: target.internal_id,
-        clear_previous_orders: !ctrl_held,
-      });
-    } else {
-      this.gatherPointOrder(building);
+  buildingOrder(buildings: RisqBuilding[], ctrl_held: boolean): void {
+    for (const building of buildings) {
+      const target = this.armed.isGatherPointArmed() ? undefined : this.targeting.buildingAttackTarget(building);
+      if (target) {
+        this.orders_model.add({
+          player_id: this.session.getPlayerId(),
+          order_type:
+            target.kind === 'unit'
+              ? RisqOrderType.OrderType_BuildingAttackUnit
+              : RisqOrderType.OrderType_BuildingAttackBuilding,
+          subjects: [building.internal_id],
+          target_id: target.internal_id,
+          clear_previous_orders: !ctrl_held,
+        });
+      } else if (!this.armed.isBuildingAttackArmed()) {
+        this.gatherPointOrder(building);
+      }
     }
     if (!ctrl_held) {
       this.armed.disarmGatherPoint();

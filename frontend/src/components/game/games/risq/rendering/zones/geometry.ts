@@ -34,22 +34,33 @@ export function findOuterZoneIndex(zone_coordinate: Point2D): number {
   return OUTER_ZONE_INDICES.findIndex((dv) => equalsPoint2D(dv, index));
 }
 
+export function hexagonVertices(hex_r: number): Point2D[] {
+  return Array.from({ length: 6 }, (_: unknown, i: number): Point2D => {
+    const angle = (Math.PI / 3) * i + Math.PI / 6;
+    return { x: hex_r * Math.cos(angle), y: hex_r * Math.sin(angle) };
+  });
+}
+
+export function zoneVertices(zone_coordinate: Point2D, hex_r: number): Point2D[] {
+  const direction = findOuterZoneIndex(zone_coordinate);
+  const inner_r = INNER_ZONE_MULTIPLIER * hex_r;
+  if (direction === -1) {
+    return hexagonVertices(inner_r);
+  }
+  const angle = (Math.PI / 3) * direction;
+  return [
+    [inner_r, angle + Math.PI / 6],
+    [inner_r, angle + Math.PI / 2],
+    [hex_r, angle + Math.PI / 2],
+    [hex_r, angle + Math.PI / 6],
+  ].map(([radius, a]: number[]): Point2D => ({ x: radius * Math.cos(a), y: radius * Math.sin(a) }));
+}
+
 /** Clips ctx to one zone's shape (direction -1 for center), in the space's real on-screen frame (center c, radius r) */
 export function clipToZone(ctx: CanvasRenderingContext2D, c: Point2D, r: number, zone_coordinate: Point2D): void {
-  const direction = findOuterZoneIndex(zone_coordinate);
-  const inner_r = INNER_ZONE_MULTIPLIER * r;
   ctx.beginPath();
-  if (direction === -1) {
-    for (let i = 0; i < 6; i++) {
-      const angle = (Math.PI / 3) * i + Math.PI / 6;
-      ctx.lineTo(c.x + inner_r * Math.cos(angle), c.y + inner_r * Math.sin(angle));
-    }
-  } else {
-    const a = (Math.PI / 3) * direction;
-    ctx.lineTo(c.x + inner_r * Math.cos(a + Math.PI / 6), c.y + inner_r * Math.sin(a + Math.PI / 6));
-    ctx.lineTo(c.x + inner_r * Math.cos(a + Math.PI / 2), c.y + inner_r * Math.sin(a + Math.PI / 2));
-    ctx.lineTo(c.x + r * Math.cos(a + Math.PI / 2), c.y + r * Math.sin(a + Math.PI / 2));
-    ctx.lineTo(c.x + r * Math.cos(a + Math.PI / 6), c.y + r * Math.sin(a + Math.PI / 6));
+  for (const point of zoneVertices(zone_coordinate, r)) {
+    ctx.lineTo(c.x + point.x, c.y + point.y);
   }
   ctx.closePath();
   ctx.clip();
