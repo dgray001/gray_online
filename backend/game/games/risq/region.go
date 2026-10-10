@@ -71,10 +71,11 @@ func (region *RisqRegion) toFrontend(r *GameRisq, player_id int) gin.H {
 		return nil
 	}
 	return gin.H{
-		"name":       region.name,
-		"gold_bonus": region.gold_bonus,
-		"spaces":     explored_keys,
-		"owner":      region.owner,
+		"name":              region.name,
+		"gold_bonus":        region.gold_bonus,
+		"spaces":            explored_keys,
+		"unexplored_spaces": len(region.spaces) - len(explored_keys),
+		"owner":             region.owner,
 	}
 }
 

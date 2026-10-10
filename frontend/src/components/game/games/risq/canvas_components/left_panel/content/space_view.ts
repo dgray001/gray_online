@@ -9,6 +9,7 @@ import { spaceOwnerColor, terrainTypeLabel } from '../../../rendering/terrain';
 import { RisqSpaceUnitsRowButton } from '../controls/space_units_row_button';
 import type { PanelDrawContext } from './primitives';
 import { drawName, drawSeparator, drawSubtitle } from './primitives';
+import { drawRegionOwnership } from './region_ownership';
 import type { RisqSpaceHexagon } from './space_hexagon';
 
 /** Draws a combo villager+military icon, used where only a total unit count is visible */
@@ -212,10 +213,8 @@ export class RisqSpaceView {
   }
 }
 
-export function drawRegion(pc: PanelDrawContext, region: RisqRegion): void {
+function drawRegionOwner(pc: PanelDrawContext, region: RisqRegion, yi: number): number {
   const { ctx, frame, risq } = pc;
-  let yi = frame.yi() + drawName(pc, region.name);
-  yi += 12;
   const image_size = 40;
   const owner_color = region.owner >= 0 ? risq.getGame()?.players[region.owner]?.color : undefined;
   const owner_name = owner_color
@@ -233,7 +232,13 @@ export function drawRegion(pc: PanelDrawContext, region: RisqRegion): void {
     baseline: 'middle',
     font: '20px serif',
   });
-  yi += image_size + 12;
+  return yi + image_size + 12;
+}
+
+export function drawRegion(pc: PanelDrawContext, region: RisqRegion): void {
+  const { ctx, frame, risq } = pc;
+  let yi = frame.yi() + drawName(pc, region.name);
+  yi += drawSubtitle(pc, 'Region', yi) + 12;
   drawSeparator(pc, yi);
   yi += 12;
   ctx.drawImage(risq.getIcon(resourceTypeImage(RisqResourceType.GOLD)), frame.xi() + 0.1 * frame.w(), yi, 32, 32);
@@ -246,11 +251,19 @@ export function drawRegion(pc: PanelDrawContext, region: RisqRegion): void {
     font: '20px serif',
   });
   yi += 40;
-  drawText(ctx, `${region.spaces.length} space${region.spaces.length === 1 ? '' : 's'} explored`, {
+  const space_count =
+    region.unexplored_spaces > 0
+      ? `${region.spaces.length}/? spaces explored`
+      : `${region.spaces.length} space${region.spaces.length === 1 ? '' : 's'}`;
+  drawText(ctx, space_count, {
     p: { x: frame.xi() + 0.1 * frame.w(), y: yi },
     w: 0.8 * frame.w(),
     fill_style: 'black',
     align: 'left',
     font: '16px serif',
   });
+  yi += 32;
+  drawSeparator(pc, yi);
+  yi = drawRegionOwner(pc, region, yi + 12);
+  drawRegionOwnership(pc, region, yi);
 }

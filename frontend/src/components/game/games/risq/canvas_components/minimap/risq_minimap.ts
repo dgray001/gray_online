@@ -447,7 +447,11 @@ export class RisqMinimap implements CanvasComponent {
         const selected_units = this.risq.selection.selectedUnitIds();
 
         ctx.imageSmoothingEnabled = true;
-        if (view_mode !== RisqViewMode.MILITARY) {
+        if (
+          view_mode !== RisqViewMode.MILITARY &&
+          view_mode !== RisqViewMode.OWNERSHIP &&
+          view_mode !== RisqViewMode.REGION
+        ) {
           for (const space of all_spaces) {
             this.drawResourceDots(ctx, space, selected_resource_points);
           }

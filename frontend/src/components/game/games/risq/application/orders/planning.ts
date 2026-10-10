@@ -16,6 +16,7 @@ import type { RisqSession } from '../session';
 import type { RisqOrdersModel } from './orders_model';
 import type { IdleCategory } from './idle_category';
 import { idleCategory } from './idle_category';
+import { buildingCanProduce, researchQueued } from './eligibility';
 
 export declare interface LocalRisqFoundation {
   coordinate_key: number;
@@ -139,7 +140,8 @@ export class RisqOrderPlanning {
   }
 
   idleBuildingCount(): number {
-    return this.idleBuildings().filter((building: RisqBuilding): boolean => building.produces.length > 0).length;
+    return this.idleBuildings().filter((building: RisqBuilding): boolean => this.hasAvailableProduction(building))
+      .length;
   }
 
   idleOrderableCount(): number {
@@ -156,6 +158,19 @@ export class RisqOrderPlanning {
     }
   }
 
+  private hasAvailableProduction(building: RisqBuilding): boolean {
+    const player = this.session.getPlayer();
+    return (
+      !!player &&
+      building.produces.some(
+        (producible: RisqProducible): boolean =>
+          buildingCanProduce(player, building, producible) &&
+          (producible.kind !== RisqProducibleKind.TECH ||
+            !researchQueued(player, this.orders_model.all(), producible.id))
+      )
+    );
+  }
+
   private idleBuildings(): RisqBuilding[] {
     const player = this.session.getPlayer();
     if (!player) {
@@ -163,7 +178,14 @@ export class RisqOrderPlanning {
     }
     return [...player.buildings.values()]
       .filter(
-        (b) => !b.under_construction && this.orders_model.effectiveForSubject(b.internal_id, 'building').length === 0
+        (b: RisqBuilding): boolean =>
+          !b.under_construction &&
+          (b.combat_stats.attack_blunt > 0 ||
+            b.combat_stats.attack_piercing > 0 ||
+            b.combat_stats.attack_magic > 0 ||
+            b.garrison_capacity > 0 ||
+            this.hasAvailableProduction(b)) &&
+          this.orders_model.effectiveForSubject(b.internal_id, 'building').length === 0
       )
       .sort((a, b) => a.internal_id - b.internal_id);
   }

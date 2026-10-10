@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.8z: Frontend settings setup
+v0.8za: Fix hilly images
 
 ## Dev Use
 

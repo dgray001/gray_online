@@ -11,10 +11,14 @@ func TestRegionsOnlyIncludeExploredKeys(t *testing.T) {
 	state := snapshot(g, g.Human(0), false)
 	regions := array(t, state["regions"])
 	equal(t, len(regions), 1)
-	region := checkShape(t, regions[0], "name:s gold_bonus:n spaces:a owner:n")
+	region := checkShape(t, regions[0], "name:s gold_bonus:n spaces:a owner:n unexplored_spaces:n")
 	equal(t, region["name"], "Border")
 	equal(t, region["gold_bonus"], float64(7))
 	equal(t, region["spaces"], []any{float64(harness.SpaceKey(0, 0))})
+	equal(t, region["unexplored_spaces"], float64(1))
 	ownerRegions := array(t, snapshot(g, g.Human(1), false)["regions"])
 	equal(t, len(ownerRegions), 2)
+	for _, value := range ownerRegions {
+		equal(t, object(t, value)["unexplored_spaces"], float64(0))
+	}
 }

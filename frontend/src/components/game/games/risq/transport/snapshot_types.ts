@@ -44,6 +44,7 @@ export declare interface RisqRegionFromServer {
   gold_bonus: number;
   spaces: number[];
   owner: number;
+  unexplored_spaces: number;
 }
 
 /** Data describing risq player resources from server */

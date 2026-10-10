@@ -20,6 +20,7 @@ from PIL import Image, ImageFilter
 
 DEFAULT_RELIEF = 'backend/static/images/risq/terrains/hill_relief_base.png'
 DEFAULT_LEVEL = 0.78  # hills-mean-V / flat-mean-V, matching the grass/dirt originals
+DEFAULT_DETAIL_STRENGTH = 1.5
 DETAIL_BLUR_RADIUS = 10
 
 
@@ -62,6 +63,6 @@ if __name__ == '__main__':
     parser.add_argument('output_image')
     parser.add_argument('--relief', default=DEFAULT_RELIEF)
     parser.add_argument('--level', type=float, default=DEFAULT_LEVEL)
-    parser.add_argument('--detail-strength', type=float, default=0.0)
+    parser.add_argument('--detail-strength', type=float, default=DEFAULT_DETAIL_STRENGTH)
     args = parser.parse_args()
     apply_hill_overlay(args.flat_texture, args.output_image, args.relief, args.level, args.detail_strength)

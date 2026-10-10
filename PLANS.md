@@ -1,10 +1,9 @@
 v0.9: Risq beta version
- z: Revamp summary report (fix colors, can see "events" on map, can interact with events i.e. replay them or see what happened precisely)
-
-Small Risq Issues:
+ - World risq map
+ - Fix tech tree and turn report colors
 
 Bigger Risq Issues/Ideas:
- - World risq map
+ - Utilize events on map
  - Expanded level 2 tech tree
     => Magic and color damage
     => Walls

@@ -31,6 +31,7 @@ export declare interface RisqRegion {
   gold_bonus: number;
   spaces: number[];
   owner: number;
+  unexplored_spaces: number;
 }
 
 /** Data describing an entry in the scores array */

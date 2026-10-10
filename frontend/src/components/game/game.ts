@@ -411,7 +411,6 @@ export class DwgGame extends DwgElement {
     const new_game = serverResponseToGame(response.result, this.clientId());
     this.game = new_game;
     let game_initialized = false;
-    let waiting_room_initialized = false;
     const set_game = async (component: GameHtmlTag): Promise<void> => {
       if (!this.bundles_attached.has(component)) {
         const script = document.createElement('script');
@@ -445,17 +444,15 @@ export class DwgGame extends DwgElement {
       game_el.addEventListener('game_initialization_failed', (e: CustomEvent<unknown>): void =>
         this.handleStartupError(game_el, e.detail)
       );
-      const initialization = this.game_el.initialize(this, new_game).then(() => {
+      try {
+        await this.game_el.initialize(this, new_game);
         if (!this.isConnected || this.game !== new_game || !game_el.isConnected || this.game_el !== game_el) {
           return;
         }
         game_initialized = true;
-        if (waiting_room_initialized) {
-          this.socketSend(createMessage(`client-${this.clientId()}`, 'game-connected', '', this.game_id.toString()));
-          this.launched = true;
-        }
-      });
-      initialization.catch((error: unknown): void => this.handleStartupError(game_el, error));
+      } catch (error) {
+        this.handleStartupError(game_el, error);
+      }
       game_el.addEventListener('game_update', (e) => {
         if (new_game.game_base.game_ended) {
           console.log('Game already over');
@@ -510,7 +507,6 @@ export class DwgGame extends DwgElement {
       }
     }
     this.classList.add('show');
-    waiting_room_initialized = true;
     if (
       game_initialized &&
       this.isConnected &&
