@@ -125,6 +125,26 @@ func (p *RisqPlayer) cancelPlannedFoundation(zone *RisqZone) {
 	delete(p.planned_foundations, zone.coordinate_key)
 }
 
+// Whether starting a new building of this id at zone would exceed its per-player cap; the zone's own building or foundation never counts
+func (p *RisqPlayer) atBuildingLimit(building_id uint32, zone *RisqZone) bool {
+	limit := defs.BuildingConfigs[building_id].Max_per_player
+	if limit <= 0 {
+		return false
+	}
+	owned := 0
+	for _, b := range p.buildings {
+		if !b.deleted && b.building_id == building_id && b.zone != zone {
+			owned++
+		}
+	}
+	for key, f := range p.planned_foundations {
+		if f.building_id == building_id && key != zone.coordinate_key {
+			owned++
+		}
+	}
+	return owned >= limit
+}
+
 func (p *RisqPlayer) researchedTechIds() []uint32 {
 	ids := make([]uint32, 0, len(p.researched_techs))
 	for id, researched := range p.researched_techs {

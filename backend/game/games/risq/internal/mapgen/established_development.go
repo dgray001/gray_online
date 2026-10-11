@@ -1,0 +1,22 @@
+package mapgen
+
+import "encoding/json"
+
+func applyEstablishedDefaults(p *playerStartsParams) {
+	if p.Units == nil {
+		p.Units = []playerStartUnitJSON{
+			{UnitId: 1, Count: ScriptExpr{raw: json.RawMessage("6")}, Target: zoneTargetJSON{Zone: "center"}},
+			{UnitId: 11, Count: ScriptExpr{raw: json.RawMessage("2")}, Target: zoneTargetJSON{Zone: "center"}},
+			{UnitId: 12, Count: ScriptExpr{raw: json.RawMessage("1")}, Target: zoneTargetJSON{Zone: "center"}},
+		}
+	}
+	if p.Buildings == nil {
+		p.Buildings = []playerStartBuildingJSON{
+			{BuildingId: 1, TerrainOverride: 6, Target: zoneTargetJSON{Zone: "center"}},
+			{BuildingId: 3, TerrainOverride: 24, Target: zoneTargetJSON{Zone: "edge"}},
+			{BuildingId: 21, Target: zoneTargetJSON{SpaceDistance: 1, Zone: "center"}},
+			{BuildingId: 2, Target: zoneTargetJSON{SpaceDistance: 1, Zone: "center"}},
+			{BuildingId: 2, Target: zoneTargetJSON{SpaceDistance: 1, Zone: "center"}},
+		}
+	}
+}

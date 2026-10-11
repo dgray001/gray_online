@@ -35,7 +35,7 @@ func TestMalformedScriptsFail(t *testing.T) {
 		"removed_recommended": {shapeScript(`{"kind":"hexagon","size":{"radius":"recommended"}}`), `unknown variable "recommended"`},
 		"no_starts":           {shapeScript(`{"kind":"hexagon","size":{"radius":2}}`), startsMissing},
 		"bad_pattern": {`[{"step":"shape","params":{"kind":"hexagon","size":{"radius":4}}},
-			{"step":"player_starts","params":{"pattern":"zig","area_size":1,"starting_distance":2,"resources":[],"buildings":[]}}]`, "unsupported player_starts pattern"},
+			{"step":"player_starts","params":{"pattern":"zig","area_size":1,"starting_distance":2,"resources":[],"assets":{}}}]`, "unsupported player_starts pattern"},
 	}
 	scripts := map[string]string{}
 	for name, c := range cases {

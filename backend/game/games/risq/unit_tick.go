@@ -221,6 +221,10 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 		}
 		building := detail.building_under_construction
 		if building == nil {
+			if risq.players[u.player_id].atBuildingLimit(detail.building_id, detail.zone) {
+				u.blockTickAction("building_limit")
+				return
+			}
 			if winner, founding := risq.construction_winners[detail.zone]; founding && winner != u.internal_id {
 				u.blockTickAction("foundation_lost")
 				return

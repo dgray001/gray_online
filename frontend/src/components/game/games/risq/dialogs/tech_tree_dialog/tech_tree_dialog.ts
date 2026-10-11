@@ -14,6 +14,7 @@ import {
   COLUMN_GAP,
   STATUS_FILL,
   STATUS_STROKE,
+  STATUS_HOVER_STROKE,
   nodeIcon,
   ICON_PADDING_NODE,
   ICON_S_HEADER,
@@ -157,7 +158,7 @@ export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
   /** Draws a branch line from the header to each of its own producible nodes, so every node is visibly connected */
   private drawConnectors(ctx: CanvasRenderingContext2D, header: HeaderNode): void {
     const from = { x: header.x + 0.5 * header.w, y: header.y + header.h };
-    ctx.strokeStyle = 'rgba(200, 190, 175, 0.35)';
+    ctx.strokeStyle = '#484848';
     ctx.lineWidth = 1.5;
     for (const node of this.nodes) {
       if (node.kind !== 'producible' || node.x < header.x || node.x >= header.x + header.w) {
@@ -189,7 +190,7 @@ export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
 
   private drawNode(ctx: CanvasRenderingContext2D, node: TreeNode): void {
     ctx.fillStyle = STATUS_FILL[node.status];
-    ctx.strokeStyle = node === this.hovered_node ? 'white' : STATUS_STROKE[node.status];
+    ctx.strokeStyle = node === this.hovered_node ? STATUS_HOVER_STROKE[node.status] : STATUS_STROKE[node.status];
     ctx.lineWidth = node === this.hovered_node ? 2.5 : 1.5;
     ctx.beginPath();
     ctx.roundRect(node.x, node.y, node.w, node.h, 6);
@@ -217,7 +218,7 @@ export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
     ctx.fillText(this.truncateText(ctx, node.building.display_name, text_w), text_x, node.y + 10, text_w);
 
     ctx.font = '11px serif';
-    ctx.fillStyle = 'rgba(200, 190, 175, 0.85)';
+    ctx.fillStyle = '#a0a0a0';
     const lines = this.wrapText(ctx, node.building.description, text_w, 2);
     lines.forEach((line, i) => ctx.fillText(line, text_x, node.y + 30 + i * 13, text_w));
   }
@@ -347,6 +348,18 @@ export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
     }
   }
 
+  private addBuildingSlots(
+    fragment: DocumentFragment,
+    building: { population_support: number; garrison_capacity: number }
+  ): void {
+    if (building.population_support) {
+      this.addLine(fragment, `Population slots: ${building.population_support}`);
+    }
+    if (building.garrison_capacity) {
+      this.addLine(fragment, `Garrison slots: ${building.garrison_capacity}`);
+    }
+  }
+
   private buildTooltipContent(node: TreeNode): DocumentFragment {
     const fragment = document.createDocumentFragment();
     if (node.kind === 'header') {
@@ -358,6 +371,7 @@ export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
       description.innerText = node.building.description;
       fragment.append(title, description);
       this.addCostRow(fragment, node.building.cost);
+      this.addBuildingSlots(fragment, node.building);
       if (node.building.stats) {
         this.addStatsRows(fragment, node.building.stats);
       }
@@ -372,6 +386,12 @@ export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
     description.innerText = entry.description;
     fragment.append(title, description);
     this.addCostRow(fragment, entry.cost);
+    if (entry.kind === RisqProducibleKind.BUILDING) {
+      this.addBuildingSlots(fragment, {
+        population_support: entry.population_support!,
+        garrison_capacity: entry.garrison_capacity!,
+      });
+    }
     if (entry.stats) {
       this.addStatsRows(fragment, entry.stats);
     }

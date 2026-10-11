@@ -32,6 +32,7 @@ type mapScriptContext struct {
 	num_players   int
 	board_size    uint16
 	player_starts []playerStartInfo
+	nomad_starts  bool
 	// radius (in spaces) of each player start area, set by the player_starts step
 	player_area_size int
 	regions          map[string]map[uint]bool
@@ -39,15 +40,19 @@ type mapScriptContext struct {
 	shape            string
 }
 
-func newMapScriptVars(num_players int, map_size defs.MapSize, board_size uint16, total_spaces int) map[string]float64 {
+func newMapScriptVars(num_players int, settings Settings, board_size uint16, total_spaces int) map[string]float64 {
 	return map[string]float64{
-		"map_size":       float64(map_size),
-		"map_size_large": float64(defs.MapSize_LARGE),
-		"map_size_huge":  float64(defs.MapSize_HUGE),
-		"num_players":    float64(num_players),
-		"board_size":     float64(board_size),
-		"total_spaces":   float64(total_spaces),
-		"total_zones":    float64(total_spaces * 7),
+		"map_size":             float64(settings.MapSize),
+		"starting_stockpile":   float64(settings.StartingStockpile),
+		"map_resources":        float64(settings.MapResources),
+		"starting_development": float64(settings.StartingDevelopment),
+		"start_balance":        float64(settings.StartBalance),
+		"map_size_large":       float64(defs.MapSize_LARGE),
+		"map_size_huge":        float64(defs.MapSize_HUGE),
+		"num_players":          float64(num_players),
+		"board_size":           float64(board_size),
+		"total_spaces":         float64(total_spaces),
+		"total_zones":          float64(total_spaces * 7),
 	}
 }
 
@@ -79,21 +84,24 @@ func checkPlayerCount(num_players int) error {
 }
 
 // Builds the board from "custom:<name>" (a fixed map file) or "script:<name>" (a generator script)
-func Generate(board Board, rng *rand.Rand, num_players int, map_size defs.MapSize, map_name string) error {
+func Generate(board Board, rng *rand.Rand, num_players int, settings Settings, map_name string) error {
 	if err := checkPlayerCount(num_players); err != nil {
 		return err
+	}
+	for player := 0; player < num_players; player++ {
+		board.SetStartingBank(player, DefaultStartingBank(settings.StartingStockpile))
 	}
 	kind, name, _ := strings.Cut(map_name, ":")
 	switch kind {
 	case "custom":
 		return generateCustom(board, num_players, name)
 	case "script":
-		return generateScripted(board, rng, num_players, map_size, name)
+		return generateScripted(board, rng, num_players, settings, name)
 	}
 	return fmt.Errorf("map %q must start with \"custom:\" or \"script:\"", map_name)
 }
 
-func generateScripted(board Board, rng *rand.Rand, num_players int, map_size defs.MapSize, name string) error {
+func generateScripted(board Board, rng *rand.Rand, num_players int, settings Settings, name string) error {
 	steps, err := loadMapScript(name)
 	if err != nil {
 		return err
@@ -103,12 +111,12 @@ func generateScripted(board Board, rng *rand.Rand, num_players int, map_size def
 		rng:         rng,
 		num_players: num_players,
 		regions:     make(map[string]map[uint]bool),
-		vars:        newMapScriptVars(num_players, map_size, 0, 0),
+		vars:        newMapScriptVars(num_players, settings, 0, 0),
 	}
 	if err := runMapScript(ctx, steps); err != nil {
 		return err
 	}
-	if len(ctx.player_starts) != num_players {
+	if !ctx.nomad_starts && len(ctx.player_starts) != num_players {
 		return errors.New("map script did not place all player starts")
 	}
 	return nil

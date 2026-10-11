@@ -1,11 +1,11 @@
 dwg-risq-tech-tree-dialog {
-  --ink: rgb(48, 32, 16);
-  --ink-soft: rgb(120, 95, 60);
-  --rule: rgba(48, 32, 16, 0.22);
+  --ink: #e0e0e0;
+  --ink-soft: #a0a0a0;
+  --rule: #484848;
 
   #wrapper {
-    background: rgb(222, 184, 135);
-    border: 3px solid rgb(70, 30, 5);
+    background: #292929;
+    border: 3px solid #484848;
     border-radius: 4px;
     box-sizing: border-box;
     color: var(--ink);
@@ -42,7 +42,7 @@ dwg-risq-tech-tree-dialog {
   }
 
   .empty {
-    color: rgb(230, 220, 205);
+    color: var(--ink);
     font-size: 1.1rem;
     font-weight: 600;
     margin: 40px 0 0;
@@ -53,7 +53,7 @@ dwg-risq-tech-tree-dialog {
     background: rgba(0, 0, 0, 0.92);
     border: 1px solid rgba(255, 255, 255, 0.3);
     border-radius: 4px;
-    color: rgb(230, 220, 205);
+    color: var(--ink);
     font-size: 0.78rem;
     max-width: 280px;
     padding: 8px 10px;
@@ -62,7 +62,7 @@ dwg-risq-tech-tree-dialog {
     z-index: 10;
 
     .tooltip-title {
-      color: white;
+      color: var(--ink);
       display: block;
       font-size: 0.9rem;
       font-weight: 700;
@@ -70,7 +70,7 @@ dwg-risq-tech-tree-dialog {
     }
 
     .tooltip-description {
-      color: rgb(200, 190, 175);
+      color: var(--ink-soft);
       display: block;
       margin-bottom: 6px;
     }

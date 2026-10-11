@@ -2,6 +2,7 @@ package ai
 
 import (
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/dgray001/gray_online/util"
@@ -110,8 +111,15 @@ type nearFilter struct {
 
 func parseNearFilter(obj map[string]any) (nearFilter, error) {
 	f := nearFilter{}
-	if w, ok := obj["within"].(float64); ok {
+	if value, present := obj["within"]; present {
+		w, ok := value.(float64)
+		if !ok || w < 0 || w != math.Trunc(w) || math.IsInf(w, 0) {
+			return f, fmt.Errorf("within must be a finite nonnegative whole number")
+		}
 		f.within, f.has_within = int(w), true
+	}
+	if value, present := obj["from"]; present && value == nil {
+		return f, fmt.Errorf("from must not be null")
 	}
 	from, err := parseAnchor(obj["from"])
 	if err != nil {
@@ -168,6 +176,25 @@ type candidate struct {
 	building *BuildingView
 }
 
+func (c candidate) identity() (uint8, uint64) {
+	if c.unit != nil {
+		return 0, c.unit.InternalID
+	}
+	if c.building != nil {
+		return 1, c.building.InternalID
+	}
+	return 2, 0
+}
+
+func candidateLess(a candidate, b candidate) bool {
+	if a.loc != b.loc {
+		return zoneRefLess(a.loc, b.loc)
+	}
+	ak, aid := a.identity()
+	bk, bid := b.identity()
+	return ak < bk || ak == bk && aid < bid
+}
+
 // Scores every candidate of one kind with an expression and picks the best; nil when none reaches min_score
 type targetPicker struct {
 	set          targetSet
@@ -198,6 +225,23 @@ const (
 )
 
 func parseTargetPicker(raw map[string]any) (*targetPicker, error) {
+	for _, key := range []string{"targets", "to", "order"} {
+		if value, present := raw[key]; present {
+			if name, ok := value.(string); !ok || name == "" {
+				return nil, fmt.Errorf("%q must be a nonempty string", key)
+			}
+		}
+	}
+	if value, present := raw["together"]; present {
+		if _, ok := value.(bool); !ok {
+			return nil, fmt.Errorf("together must be a boolean")
+		}
+	}
+	for _, key := range []string{"face", "coordinate"} {
+		if value, present := raw[key]; present && value == nil {
+			return nil, fmt.Errorf("%q must not be null", key)
+		}
+	}
 	name, ok := raw["targets"].(string)
 	if !ok {
 		return nil, nil
@@ -228,7 +272,13 @@ func parseTargetPicker(raw map[string]any) (*targetPicker, error) {
 			return nil, err
 		}
 	}
-	if p.unit_filter, err = parseUnitFilter(map[string]any{"unit_ids": raw["target_unit_ids"], "unit_types": raw["target_unit_types"]}); err != nil {
+	unit_options := map[string]any{}
+	for _, key := range []string{"unit_ids", "unit_types"} {
+		if value, present := raw["target_"+key]; present {
+			unit_options[key] = value
+		}
+	}
+	if p.unit_filter, err = parseUnitFilter(unit_options); err != nil {
 		return nil, err
 	}
 	if p.building_ids, err = parseIDSet(raw, "target_building_ids"); err != nil {
@@ -260,7 +310,7 @@ func parseTargetPicker(raw map[string]any) (*targetPicker, error) {
 	if raw["distribute"] != nil {
 		return nil, fmt.Errorf("\"distribute\" was replaced by \"spread\" (capacity, unit_score, unit_order, queue, overflow)")
 	}
-	if raw["spread"] != nil {
+	if _, present := raw["spread"]; present {
 		if p.spread, err = parseSpread(raw["spread"]); err != nil {
 			return nil, err
 		}
@@ -338,9 +388,11 @@ func (p *targetPicker) candidates(view View, internals *Internals, from ZoneRef)
 			}
 		}
 	case targetsEnemyBuildings, targetsOwnBuildings:
-		buildings := view.KnownEnemyBuildings()
+		var buildings []BuildingView
 		if p.set == targetsOwnBuildings {
 			buildings = view.Buildings()
+		} else {
+			buildings = view.KnownEnemyBuildings()
 		}
 		for _, b := range buildings {
 			if len(p.building_ids) == 0 || p.building_ids[b.BuildingID] {
@@ -396,7 +448,7 @@ func (p *targetPicker) best(view View, internals *Internals, from ZoneRef) (cand
 		if p.has_min && score < min_score {
 			continue
 		}
-		if !found || score > best_score || (score == best_score && zoneRefLess(c.loc, best.loc)) {
+		if !found || score > best_score || (score == best_score && candidateLess(c, best)) {
 			best, best_score, found = c, score, true
 		}
 	}
@@ -525,7 +577,7 @@ func (a *selectSpaceAction) ToOrders(view View, internals *Internals) []Order {
 			continue
 		}
 		c, score, ok := opt.picker.best(view, internals, from)
-		if ok && (!found || score > best_score || (score == best_score && zoneRefLess(c.loc, best.loc))) {
+		if ok && (!found || score > best_score || (score == best_score && candidateLess(c, best))) {
 			best, best_score, found = c, score, true
 		}
 	}
@@ -558,6 +610,13 @@ func (a *selectSpaceAction) ToOrders(view View, internals *Internals) []Order {
 }
 
 func parseSelectSpace(raw map[string]any) (Action, error) {
+	for _, key := range []string{"var", "var_x", "var_y", "var_score"} {
+		if value, present := raw[key]; present {
+			if name, ok := value.(string); !ok || !validVarName(name) {
+				return nil, fmt.Errorf("%q must be a variable name", key)
+			}
+		}
+	}
 	from, err := parseAnchor(raw["from"])
 	if err != nil {
 		return nil, err
@@ -589,19 +648,27 @@ func parseSelectSpace(raw map[string]any) (Action, error) {
 		noteVarSet(var_score)
 	}
 	var options []*selectSpaceOption
-	if rawOpts, ok := raw["options"].([]any); ok {
+	if value, present := raw["options"]; present {
+		rawOpts, ok := value.([]any)
+		if !ok || len(rawOpts) == 0 {
+			return nil, fmt.Errorf("options must be a nonempty array of pickers")
+		}
+		if _, has_targets := raw["targets"]; has_targets {
+			return nil, fmt.Errorf("options and targets are mutually exclusive")
+		}
 		for _, o := range rawOpts {
 			optMap, ok := o.(map[string]any)
 			if !ok {
-				continue
+				return nil, fmt.Errorf("options entries must be picker objects")
 			}
 			picker, err := parseTargetPicker(optMap)
 			if err != nil {
 				return nil, err
 			}
-			if picker != nil {
-				options = append(options, &selectSpaceOption{picker: picker})
+			if picker == nil {
+				return nil, fmt.Errorf("options entries require targets")
 			}
+			options = append(options, &selectSpaceOption{picker: picker})
 		}
 	} else {
 		picker, err := parseTargetPicker(raw)

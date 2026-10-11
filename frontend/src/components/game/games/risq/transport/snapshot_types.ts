@@ -2,6 +2,7 @@ import type { GameBase, GamePlayer } from '../../../data_models';
 import type { RisqTurnReportFromServer } from './turn_report';
 import type {
   RisqOutcome,
+  RisqTerrainStats,
   RisqCost,
   RisqGatherPoint,
   RisqPlannedFoundation,
@@ -89,6 +90,7 @@ export declare interface RisqSpaceUnexploredFromServer extends RisqSpaceBaseFrom
 }
 
 export declare interface RisqSpaceExploredBaseFromServer extends RisqSpaceBaseFromServer {
+  terrain_stats: RisqTerrainStats;
   terrain_id: number;
   terrain_type: RisqTerrainType;
   display_name: string;

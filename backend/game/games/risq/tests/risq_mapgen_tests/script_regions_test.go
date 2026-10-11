@@ -105,7 +105,7 @@ func TestRegionsFourPartitionsTriangle(t *testing.T) {
 }
 
 func TestTriangleRegionBonusesFollowMapSize(t *testing.T) {
-	script, err := os.ReadFile("../../config/maps/scripted/triangle.json")
+	script, err := os.ReadFile(testConfig + "/maps/scripted/triangle.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +147,7 @@ func TestTriangleRegionBonusesFollowMapSize(t *testing.T) {
 }
 
 func TestRectangleRegionBonusesFollowMapSize(t *testing.T) {
-	script, err := os.ReadFile("../../config/maps/scripted/rectangle.json")
+	script, err := os.ReadFile(testConfig + "/maps/scripted/rectangle.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,8 +177,8 @@ func TestRectangleRegionBonusesFollowMapSize(t *testing.T) {
 
 func TestRegionOuterBonusesFollowMapSize(t *testing.T) {
 	scripts := map[string]string{}
-	for shape, name := range map[string]string{"hexagon": "default", "ring": "ring"} {
-		script, err := os.ReadFile("../../config/maps/scripted/" + name + ".json")
+	for shape, name := range map[string]string{"hexagon": "hexagon", "ring": "ring"} {
+		script, err := os.ReadFile(testConfig + "/maps/scripted/" + name + ".json")
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -69,7 +69,7 @@ func (p *targetPicker) spreadSlots(view View, internals *Internals, center ZoneR
 	slots := make([]spreadSlot, 0)
 	candidates := p.candidates(view, internals, center)
 	if p.spread.by_space {
-		sort.SliceStable(candidates, func(a, b int) bool { return zoneRefLess(candidates[a].loc, candidates[b].loc) })
+		sort.SliceStable(candidates, func(a, b int) bool { return candidateLess(candidates[a], candidates[b]) })
 	}
 	seen := make(map[Coordinate]bool)
 	for _, c := range candidates {
@@ -114,12 +114,12 @@ func (p *targetPicker) spreadPick(view View, internals *Internals, u UnitView, s
 			continue
 		}
 		if slot.full() {
-			if crowded < 0 || slot.assigned < slots[crowded].assigned || (slot.assigned == slots[crowded].assigned && score > crowded_score) {
+			if crowded < 0 || slot.assigned < slots[crowded].assigned || (slot.assigned == slots[crowded].assigned && (score > crowded_score || score == crowded_score && candidateLess(slot.c, slots[crowded].c))) {
 				crowded, crowded_score = i, score
 			}
 			continue
 		}
-		if best < 0 || score > best_score || (score == best_score && zoneRefLess(at, slots[best].c.loc)) {
+		if best < 0 || score > best_score || (score == best_score && candidateLess(slot.c, slots[best].c)) {
 			best, best_score = i, score
 		}
 	}

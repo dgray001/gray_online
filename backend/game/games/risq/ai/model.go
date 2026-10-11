@@ -2,6 +2,7 @@ package ai
 
 import (
 	"fmt"
+	"io"
 	"math/rand"
 	"os"
 )
@@ -26,27 +27,34 @@ func (NoopModel) DecideOrders(View) Decision { return Decision{} }
 
 // ParseModel parses an ai config blob into a Model, falling back to NoopModel on any error.
 func ParseModel(raw map[string]any, rng *rand.Rand) Model {
+	return ParseModelWithDiagnostics(raw, rng, os.Stderr)
+}
+
+func ParseModelWithDiagnostics(raw map[string]any, rng *rand.Rand, diagnostics io.Writer) Model {
+	if diagnostics == nil {
+		panic("ai diagnostics writer must not be nil")
+	}
 	rules_raw, ok := raw["rules"].([]any)
 	if !ok {
-		fmt.Fprintln(os.Stderr, "ai config missing \"rules\" list")
+		fmt.Fprintln(diagnostics, "ai config missing \"rules\" list")
 		return NoopModel{}
 	}
 	var rules []Rule
-	err := withVarNameCheck(func() error {
+	err := withVarNameCheck(diagnostics, func() error {
 		var err error
 		rules, err = parseRules(rules_raw)
 		return err
 	})
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "ai config:", err)
+		fmt.Fprintln(diagnostics, "ai config:", err)
 		return NoopModel{}
 	}
 	depth, err := parseMaxBucketDepth(raw)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "ai config:", err)
+		fmt.Fprintln(diagnostics, "ai config:", err)
 		return NoopModel{}
 	}
-	return &RulesModel{rules: rules, internals: Internals{max_bucket_depth: depth, rng: rng}}
+	return &RulesModel{rules: rules, internals: Internals{max_bucket_depth: depth, rng: rng, diagnostics: diagnostics}}
 }
 
 func parseMaxBucketDepth(raw map[string]any) (int, error) {

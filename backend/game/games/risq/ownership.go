@@ -63,13 +63,21 @@ func (r *GameRisq) recalculateOwnership() {
 				}
 			}
 		}
+	}
+	for _, region := range r.regions {
+		region.owner = r.regionOwner(region)
+	}
+}
+
+func (r *GameRisq) payGoldIncome() {
+	for _, space := range r.allSpaces() {
+		owner := space.ownership
 		if owner >= 0 && owner < len(r.players) {
 			r.players[owner].resources.addGathered(defs.RisqResourceCategory_GOLD, space.gold_income)
 			r.players[owner].report.recordGoldFromLand(space.gold_income)
 		}
 	}
 	for _, region := range r.regions {
-		region.owner = r.regionOwner(region)
 		if region.owner >= 0 && region.owner < len(r.players) {
 			r.players[region.owner].resources.addGathered(defs.RisqResourceCategory_GOLD, region.gold_bonus)
 		}

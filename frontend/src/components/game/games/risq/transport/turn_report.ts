@@ -5,6 +5,8 @@ import { RisqResourceType } from '../model/types';
 /** One row of the turn report's scoreboard */
 export declare interface RisqReportScoreLine {
   player_id: number;
+  eliminated: boolean;
+  eliminated_this_turn: boolean;
   was: number;
   now: number;
 }
@@ -30,6 +32,7 @@ export declare interface RisqReportRegion {
 /** One resource's row in the turn report's ledger */
 export declare interface RisqReportResourceLine {
   resource_type: RisqResourceType;
+  income: number;
   start: number;
   gathered: number;
   spent: number;
@@ -105,6 +108,7 @@ export declare interface RisqTurnReport {
 /** One resource's row in the turn report's ledger, as returned by the server */
 export declare interface RisqReportResourceLineFromServer {
   category: number;
+  income: number;
   start: number;
   gathered: number;
   spent: number;
@@ -170,6 +174,7 @@ export function serverToRisqTurnReport(server_report: RisqTurnReportFromServer):
       resource_type: (line.category in RisqResourceType ? line.category : RisqResourceType.ERROR) as RisqResourceType,
       start: line.start,
       gathered: line.gathered,
+      income: line.income,
       spent: line.spent,
       final: line.final,
     })),

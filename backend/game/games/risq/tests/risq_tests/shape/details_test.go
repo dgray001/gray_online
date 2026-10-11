@@ -27,6 +27,7 @@ func checkProducible(t *testing.T, value any) {
 			checkShape(t, unlocked, "id:n display_name:s")
 		}
 	case float64(3):
+		contract += " population_support:n garrison_capacity:n max_per_player:n"
 	default:
 		t.Fatalf("unknown producible kind %v", item["kind"])
 	}

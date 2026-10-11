@@ -2,7 +2,7 @@ package ai
 
 import (
 	"fmt"
-	"os"
+	"io"
 	"strconv"
 	"strings"
 	"sync"
@@ -78,7 +78,7 @@ func noteVarSet(name string) {
 }
 
 // Runs parse with var() bookkeeping on, then reports names that are neither built-in nor ever set
-func withVarNameCheck(parse func() error) error {
+func withVarNameCheck(diagnostics io.Writer, parse func() error) error {
 	var_names_mu.Lock()
 	defer var_names_mu.Unlock()
 	var_names_log = &varNameLog{read: map[string]bool{}, set: map[string]bool{}}
@@ -94,7 +94,7 @@ func withVarNameCheck(parse func() error) error {
 			continue
 		}
 		if _, err := builtinCounter(name); err != nil {
-			fmt.Fprintf(os.Stderr, "ai config: var(%s) is not a built-in and no set_var sets it; it will read 0\n", name)
+			fmt.Fprintf(diagnostics, "ai config: var(%s) is not a built-in and no set_var sets it; it will read 0\n", name)
 		}
 	}
 	return nil
@@ -175,13 +175,13 @@ func (i *Internals) warnOnce(key string, message string) {
 	}
 	if !i.warned[key] {
 		i.warned[key] = true
-		fmt.Fprintln(os.Stderr, message)
+		fmt.Fprintln(i.diagnostics, message)
 	}
 }
 
 // Left out of var() because a script can derive them: population_headroom is population_limit - population,
-// score_lead is score - best_enemy_score, resource_food is food; value only makes sense as a condition
-var derivableCounters = map[string]bool{"population_headroom": true, "score_lead": true, "resource": true, "value": true}
+// score_lead is score - best_enemy_score; value only makes sense as a condition
+var derivableCounters = map[string]bool{"population_headroom": true, "score_lead": true, "value": true}
 
 // Built-in var() names mirror the count conditions, with their filters spelled out after underscores:
 // population_13, population_infantry, idle_units_1, enemy_units_visible_13_within_2, building_count_23_complete,

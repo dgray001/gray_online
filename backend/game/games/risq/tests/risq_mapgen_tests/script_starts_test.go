@@ -66,7 +66,7 @@ func triangleStartIndices(t *testing.T, board *fakeboard.Board, players, inset i
 }
 
 func TestTriangleFinalStartingSpacePositions(t *testing.T) {
-	script, err := os.ReadFile("../../config/maps/scripted/triangle.json")
+	script, err := os.ReadFile(testConfig + "/maps/scripted/triangle.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +143,7 @@ func rowStartDistances(homes []startHome) map[int][]uint {
 }
 
 func TestRectangleFinalStartingSpaceDistances(t *testing.T) {
-	script, err := os.ReadFile("../../config/maps/scripted/rectangle.json")
+	script, err := os.ReadFile(testConfig + "/maps/scripted/rectangle.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -358,7 +358,7 @@ func TestRectangleStartsZigzagForEveryPlayerCount(t *testing.T) {
 }
 
 func useStartLayouts(t *testing.T) {
-	starts := step("player_starts", `{"pattern":"%s","area_size":0,"starting_distance":4,"inset":1,"terrain_id":1,"resources":[],"buildings":[{"building_id":1,"target":{"zone":"center"}}]}`)
+	starts := step("player_starts", `{"pattern":"%s","area_size":0,"starting_distance":4,"inset":1,"terrain_id":1,"resources":[],"assets":{"buildings":[{"building_id":1,"target":{"zone":"center"}}]}}`)
 	scripts := map[string]string{}
 	for name, params := range map[string]string{"hexagon": `{"kind":"hexagon","size":{"radius":5}}`, "ring": `{"kind":"ring","size":{"outer_radius":5,"inner_radius":2}}`, "rectangle": `{"kind":"rectangle","size":{"rows":12,"cols":23}}`, "triangle": `{"kind":"triangle","size":{"edge_length":9}}`} {
 		pattern := "ring"
@@ -375,7 +375,7 @@ func useStartLayouts(t *testing.T) {
 
 func TestRectangleRowInsetComesFromScript(t *testing.T) {
 	script := `[` + step("shape", `{"kind":"rectangle","size":{"rows":12,"cols":23}}`) + `,` +
-		step("player_starts", `{"pattern":"rows","area_size":0,"starting_distance":5,"row_inset":"map_size + 2","terrain_id":1,"resources":[],"buildings":[{"building_id":1,"target":{"zone":"center"}}]}`) + `]`
+		step("player_starts", `{"pattern":"rows","area_size":0,"starting_distance":5,"row_inset":"map_size + 2","terrain_id":1,"resources":[],"assets":{"buildings":[{"building_id":1,"target":{"zone":"center"}}]}}`) + `]`
 	useScripts(t, map[string]string{"inset": script})
 	board, err := fakeboard.Generate("script:inset", 2, 1)
 	if err != nil {
@@ -400,7 +400,7 @@ func overlappingStarts() string {
 	}
 	return `[` + step("shape", `{"kind":"hexagon","size":{"radius":4}}`) + `,` + grass + `,` + step("player_starts",
 		`{"pattern":"ring","area_size":2,"starting_distance":2,"terrain_id":1,"resources":[],`+
-			`"units":[{"unit_id":1,"count":1,"target":{"zone":"center"}}],"buildings":[`+strings.Join(buildings, ",")+`]}`) + `]`
+			`"assets":{"units":[{"unit_id":1,"count":1,"target":{"zone":"center"}}],"buildings":[`+strings.Join(buildings, ",")+`]}}`) + `]`
 }
 
 func TestStartBuildingsFallBackWhenTheMirroredZoneIsTaken(t *testing.T) {

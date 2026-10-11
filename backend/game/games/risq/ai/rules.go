@@ -31,11 +31,13 @@ type Bucket struct {
 }
 
 type Internals struct {
+	diagnostics        io.Writer
 	rng                *rand.Rand
 	q                  []Q
 	Buckets            map[string]*Bucket
 	pending            Cost
 	pending_population int
+	garrisons          map[uint64]int
 	behaviors          []UnitBehavior
 	building_behaviors []BuildingBehavior
 	army               armyState
@@ -77,6 +79,7 @@ func (i *Internals) Refresh() {
 	i.q = make([]Q, 0)
 	i.pending = Cost{}
 	i.pending_population = 0
+	i.garrisons = make(map[uint64]int)
 	i.behaviors = nil
 	i.building_behaviors = nil
 	i.turn_vars = nil

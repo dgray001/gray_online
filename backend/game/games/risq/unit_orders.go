@@ -11,6 +11,9 @@ func (u *RisqUnit) receiveOrder(o *RisqOrder, risq *GameRisq, prepend bool) erro
 	case defs.OrderType_UnitBuild:
 		building_id, _, zone := invertBuildKey(uint(o.target_id), risq)
 		player := risq.players[u.player_id]
+		if player.atBuildingLimit(building_id, zone) {
+			return errors.New("building limit reached")
+		}
 		if zone.building == nil && player.planned_foundations[zone.coordinate_key] == nil {
 			cost, _ := defs.BuildingProductionCost(building_id)
 			if !player.resources.canAfford(cost) {
@@ -51,6 +54,9 @@ func (u *RisqUnit) orderReceivable(o *RisqOrder, risq *GameRisq) bool {
 	case defs.OrderType_UnitBuild:
 		building_id, _, zone := invertBuildKey(uint(o.target_id), risq)
 		if owner := zone.space.ownership; owner >= 0 && owner != u.player_id {
+			return false
+		}
+		if risq.players[u.player_id].atBuildingLimit(building_id, zone) {
 			return false
 		}
 		if zone.resource != nil {
@@ -167,6 +173,10 @@ func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 	case defs.OrderType_UnitBuild:
 		building_id, _, zone := invertBuildKey(uint(o.target_id), risq)
 		if zone.building != nil && zone.building.deleted {
+			return OrderStatus_Cancelled
+		}
+		if risq.players[u.player_id].atBuildingLimit(building_id, zone) {
+			risq.players[u.player_id].cancelPlannedFoundation(zone)
 			return OrderStatus_Cancelled
 		}
 		if zone.building == nil {

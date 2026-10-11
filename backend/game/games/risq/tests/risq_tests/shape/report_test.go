@@ -20,11 +20,11 @@ func TestTurnReportWireShape(t *testing.T) {
 	resources := array(t, report["resources"])
 	equal(t, len(resources), 4)
 	for i, value := range resources {
-		line := checkShape(t, value, "category:n start:n gathered:n spent:n final:n")
+		line := checkShape(t, value, "category:n start:n gathered:n income:n spent:n final:n")
 		equal(t, line["category"], float64(i+1))
 	}
 	for _, value := range array(t, report["scores"]) {
-		checkShape(t, value, "player_id:n was:n now:n")
+		checkShape(t, value, "player_id:n was:n now:n eliminated:b eliminated_this_turn:b")
 	}
 	for _, value := range array(t, report["regions"]) {
 		checkShape(t, value, "name:s held_start:b held_end:b gold_bonus:n")

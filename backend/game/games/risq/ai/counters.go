@@ -3,7 +3,6 @@ package ai
 import (
 	"fmt"
 	"math"
-	"os"
 	"strings"
 
 	"github.com/dgray001/gray_online/util"
@@ -45,6 +44,9 @@ func parseAmount(raw any) (amount, error) {
 		}
 		return amount{}, fmt.Errorf("numeric query must be a count_spaces or closest_spaces object")
 	case float64:
+		if math.IsNaN(v) || math.IsInf(v, 0) {
+			return amount{}, fmt.Errorf("must be finite")
+		}
 		return amount{value: v}, nil
 	case string:
 		vars := make(map[string]float64, len(expressionVarNames))
@@ -127,7 +129,7 @@ type countCondition struct {
 func (c *countCondition) Evaluate(view View, internals *Internals) bool {
 	target, err := c.amount.resolve(view, internals)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "ai condition amount:", err)
+		fmt.Fprintln(internals.diagnostics, "ai condition amount:", err)
 		return false
 	}
 	n := c.count(view, internals)
@@ -151,6 +153,18 @@ func parseCountCondition(key string, value any) (Condition, error) {
 		obj, ok := value.(map[string]any)
 		if !ok {
 			return nil, fmt.Errorf("%s must be an object", key)
+		}
+		for _, field := range []string{"bucket", "in_bucket", "state"} {
+			if value, present := obj[field]; present {
+				if name, ok := value.(string); !ok || name == "" {
+					return nil, fmt.Errorf("%s must be a nonempty string", field)
+				}
+			}
+		}
+		if value, present := obj["without_builders"]; present {
+			if _, ok := value.(bool); !ok {
+				return nil, fmt.Errorf("without_builders must be a bool")
+			}
 		}
 		count, err := parse(obj)
 		if err != nil {

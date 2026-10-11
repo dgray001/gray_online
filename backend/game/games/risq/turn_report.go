@@ -28,9 +28,11 @@ type RisqTurnReport struct {
 }
 
 type RisqScoreLine struct {
-	player_id int
-	was       uint
-	now       uint
+	player_id            int
+	eliminated           bool
+	eliminated_this_turn bool
+	was                  uint
+	now                  uint
 }
 
 type RisqLandReport struct {
@@ -45,6 +47,7 @@ type RisqLandReport struct {
 
 type RisqResourceLine struct {
 	start    float64
+	income   float64
 	gathered float64
 	spent    float64
 }
@@ -235,7 +238,7 @@ func (r *GameRisq) finalizeTurnReports() {
 		if p.report == nil {
 			continue
 		}
-		scores = append(scores, RisqScoreLine{player_id: p.player.Player_id, was: p.report.score_start, now: p.score})
+		scores = append(scores, RisqScoreLine{player_id: p.player.Player_id, was: p.report.score_start, now: p.score, eliminated: p.eliminated, eliminated_this_turn: p.report.eliminated})
 	}
 	for _, p := range r.players {
 		rep := p.report
@@ -275,6 +278,7 @@ func (r *GameRisq) finalizeTurnReports() {
 		}
 		for cat := defs.RisqResourceCategory(1); cat < defs.RisqResourceCategory_END; cat++ {
 			rep.resources[cat.Index()].gathered = p.resources.gathered[cat.Index()]
+			rep.resources[cat.Index()].income = p.resources.income[cat.Index()]
 			rep.resources[cat.Index()].spent = p.resources.spent[cat.Index()]
 		}
 		rep.pop_end = uint16(len(p.units))
@@ -303,7 +307,7 @@ func (rep *RisqTurnReport) toFrontend() gin.H {
 	}
 	scores := make([]gin.H, 0, len(rep.scores))
 	for _, s := range rep.scores {
-		scores = append(scores, gin.H{"player_id": s.player_id, "was": s.was, "now": s.now})
+		scores = append(scores, gin.H{"player_id": s.player_id, "was": s.was, "now": s.now, "eliminated": s.eliminated, "eliminated_this_turn": s.eliminated_this_turn})
 	}
 	resources := make([]gin.H, 0, 4)
 	for cat := defs.RisqResourceCategory(1); cat < defs.RisqResourceCategory_END; cat++ {
@@ -312,8 +316,9 @@ func (rep *RisqTurnReport) toFrontend() gin.H {
 			"category": cat,
 			"start":    line.start,
 			"gathered": line.gathered,
+			"income":   line.income,
 			"spent":    line.spent,
-			"final":    line.start + line.gathered - line.spent,
+			"final":    line.start + line.gathered + line.income - line.spent,
 		})
 	}
 	units := make([]gin.H, 0, len(rep.units_created))

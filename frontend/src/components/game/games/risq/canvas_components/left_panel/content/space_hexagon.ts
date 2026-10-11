@@ -15,6 +15,7 @@ import { resolveHoveredZones, unhoverRisqZone } from '../../../rendering/zones/h
 import type { DwgRisq } from '../../../risq';
 import { rectHovered } from './stats_view';
 import type { PanelDrawContext } from './primitives';
+import { RisqTerrainStatsView } from './terrain_stats_view';
 
 /** The zoomed hex preview shown for a space or zone, with its hoverable zones and visibility badge */
 export class RisqSpaceHexagon {
@@ -23,12 +24,14 @@ export class RisqSpaceHexagon {
   private eye_badge_hover: RectHoverData = { ps: { x: 0, y: 0 }, pe: { x: 0, y: 0 } };
   private eye_badge_tooltip = createTooltipState();
   private hovered_zone?: RisqZone;
+  private terrain_stats = new RisqTerrainStatsView();
 
   hoveredZone(): RisqZone | undefined {
     return this.hovered_zone;
   }
 
   clearHoveredZone(): void {
+    this.terrain_stats.clearHover();
     if (!!this.hovered_zone) {
       unhoverRisqZone(this.hovered_zone);
       this.hovered_zone = undefined;
@@ -44,7 +47,9 @@ export class RisqSpaceHexagon {
     curr_zone: Point2D = { x: -1, y: -1 }
   ): number {
     const { ctx, frame, risq } = pc;
-    const hexagon_height = Math.min(frame.w(), frame.yi() + 0.4 * frame.h() - yi - separator_distance);
+    const stats_height = this.terrain_stats.height(space);
+    const hexagon_height = Math.min(frame.w(), frame.yi() + 0.4 * frame.h() - yi - separator_distance - stats_height);
+    this.terrain_stats.draw(pc, space, yi + hexagon_height + separator_distance);
     const owner_color = spaceOwnerColor(space.ownership, risq.getGame()?.players ?? []);
     ctx.strokeStyle = borderStrokeStyle(owner_color, 1);
     ctx.lineWidth = 2;
@@ -58,7 +63,7 @@ export class RisqSpaceHexagon {
     drawHexagon(ctx, c, r);
     this.drawEyeBadge(pc, space, yi, hexagon_height);
     if (pc.visibility < RisqVisibilityLevel.FOG || !space.zones) {
-      return hexagon_height + separator_distance;
+      return hexagon_height + separator_distance + stats_height;
     }
     ctx.strokeStyle = borderStrokeStyle(owner_color, 0.7);
     ctx.lineWidth = 0.5;
@@ -98,7 +103,7 @@ export class RisqSpaceHexagon {
         icon_r
       );
     }
-    return hexagon_height + separator_distance;
+    return hexagon_height + separator_distance + stats_height;
   }
 
   private drawEyeBadge(pc: PanelDrawContext, space: RisqSpace, yi: number, hexagon_height: number): void {
@@ -151,6 +156,7 @@ export class RisqSpaceHexagon {
     dt: number,
     space: RisqSpace
   ): void {
+    this.terrain_stats.drawTooltip(ctx, transform, risq, dt);
     if (
       !shouldShowTooltip(this.eye_badge_tooltip, !!this.eye_badge_hover.hovered, !!this.eye_badge_hover.clicked, dt)
     ) {
@@ -168,6 +174,7 @@ export class RisqSpaceHexagon {
   }
 
   mousemove(m: Point2D, space: RisqSpace): void {
+    this.terrain_stats.mousemove(m);
     rectHovered(m, this.eye_badge_hover);
     const new_hovered_zone = resolveHoveredZones(m, space, this.r, this.c, true);
     if (!!this.hovered_zone && !equalsPoint2D(this.hovered_zone.coordinate, new_hovered_zone?.coordinate)) {

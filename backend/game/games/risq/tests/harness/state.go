@@ -73,14 +73,15 @@ type PlayerState struct {
 	Player struct {
 		PlayerID int `json:"player_id"`
 	} `json:"player"`
-	Resources       *Resources      `json:"resources"`
-	Units           []Unit          `json:"units"`
-	Buildings       []Building      `json:"buildings"`
-	OrdersSubmitted bool            `json:"orders_submitted"`
-	Eliminated      bool            `json:"eliminated"`
-	PopulationLimit int             `json:"population_limit"`
-	ResearchedTechs map[uint32]bool `json:"researched_techs"`
-	ActiveOrders    []struct {
+	Resources          *Resources      `json:"resources"`
+	Units              []Unit          `json:"units"`
+	Buildings          []Building      `json:"buildings"`
+	OrdersSubmitted    bool            `json:"orders_submitted"`
+	Eliminated         bool            `json:"eliminated"`
+	PopulationLimit    int             `json:"population_limit"`
+	MaxPopulationLimit int             `json:"max_population_limit"`
+	ResearchedTechs    map[uint32]bool `json:"researched_techs"`
+	ActiveOrders       []struct {
 		InternalID uint64 `json:"internal_id"`
 		OrderType  uint8  `json:"order_type"`
 		TargetID   int64  `json:"target_id"`

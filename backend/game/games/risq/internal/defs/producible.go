@@ -94,6 +94,9 @@ func (p Producible) ToFrontend() gin.H {
 		entry["display_name"] = BuildingConfigs[p.Id].Display_name
 		entry["description"] = BuildingConfigs[p.Id].Description
 		entry["required_tech_id"] = BuildingConfigs[p.Id].Required_tech_id
+		entry["population_support"] = BuildingConfigs[p.Id].Population_support
+		entry["garrison_capacity"] = BuildingConfigs[p.Id].Garrison_capacity
+		entry["max_per_player"] = BuildingConfigs[p.Id].Max_per_player
 	case ProducibleKind_TECH:
 		tech := TechConfigs[p.Id]
 		entry["cost"] = tech.Cost.ToFrontend()

@@ -75,18 +75,26 @@ type zoneTerrainOverrideJSON struct {
 type playerStartsParams struct {
 	terrainPickJSON
 	Pattern              string                    `json:"pattern"`
+	StartBalance         *ScriptExpr               `json:"start_balance,omitempty"`
+	Nomad                *bool                     `json:"nomad,omitempty"`
 	AreaSize             ScriptExpr                `json:"area_size"`
 	StartingDistance     ScriptExpr                `json:"starting_distance"`
 	RowInset             *ScriptExpr               `json:"row_inset,omitempty"`
 	Inset                ScriptExpr                `json:"inset,omitempty"`
 	ShortEdgeStarts      ScriptExpr                `json:"short_edge_starts,omitempty"`
 	ShortEdgeBias        ScriptExpr                `json:"short_edge_bias,omitempty"`
-	Units                []playerStartUnitJSON     `json:"units,omitempty"`
+	Assets               *playerStartAssets        `json:"assets,omitempty"`
+	Units                []playerStartUnitJSON     `json:"-"`
 	Resources            []playerStartResourceJSON `json:"resources"`
-	Buildings            []playerStartBuildingJSON `json:"buildings"`
+	Buildings            []playerStartBuildingJSON `json:"-"`
 	ZoneTerrainOverrides []zoneTerrainOverrideJSON `json:"zone_terrain_overrides,omitempty"`
 	// every player's starting stockpile; the game default when omitted
 	StartingBank *StartingBank `json:"starting_bank,omitempty"`
+}
+
+type playerStartAssets struct {
+	Units     []playerStartUnitJSON     `json:"units,omitempty"`
+	Buildings []playerStartBuildingJSON `json:"buildings,omitempty"`
 }
 
 type startPlacement struct {
@@ -487,8 +495,16 @@ func prepareStartTerrain(ctx *mapScriptContext, pick terrainPickJSON, starts []p
 	return terrain, nil
 }
 
-// The free zone nearest from whose space is within [lo, hi] spaces of it; the first of any tie in zones' order
+// The free zone nearest from whose space is within [lo, hi] spaces of it, relaxing the selector before giving up
 func nearestFreeZone(zones []Zone, from game_utils.Coordinate2D, lo int, hi int, selector string) Zone {
+	if z := nearestSelectedFreeZone(zones, from, lo, hi, selector); z != nil || selector == "" {
+		return z
+	}
+	return nearestSelectedFreeZone(zones, from, lo, hi, "")
+}
+
+// The first of any distance tie in zones' order wins
+func nearestSelectedFreeZone(zones []Zone, from game_utils.Coordinate2D, lo int, hi int, selector string) Zone {
 	var nearest Zone
 	nearest_distance := -1
 	for _, z := range zones {
@@ -539,7 +555,7 @@ func mirroredResourceZone(ctx *mapScriptContext, mirrored game_utils.Coordinate2
 	return nearestFreeZone(board_zones, mirrored, 0, math.MaxInt, slot.zone_kind)
 }
 
-// Places every start resource for every player, erroring only when the board has no free zone left
+// Places every start resource for every player, skipping any that find no free zone left
 func placeStartResources(ctx *mapScriptContext, starts []playerStartInfo, footprints [][]Space, slots []startResourceSlot) error {
 	board_zones := ctx.allZones()
 	for i, start := range starts {
@@ -555,7 +571,7 @@ func placeStartResources(ctx *mapScriptContext, starts []playerStartInfo, footpr
 			slot := &slots[slot_index]
 			zone := startResourceZone(ctx, start.space.Coordinate(), rotation, *slot, in_area, area_zones, board_zones)
 			if zone == nil {
-				return fmt.Errorf("no free zone left for start resource %d", slot.resource_id)
+				continue
 			}
 			if i == 0 {
 				slot.space_offset = game_utils.Coordinate2D{X: zone.Space().Coordinate().X - start.space.Coordinate().X, Y: zone.Space().Coordinate().Y - start.space.Coordinate().Y}
@@ -565,7 +581,7 @@ func placeStartResources(ctx *mapScriptContext, starts []playerStartInfo, footpr
 				rotated := rotateAxial(slot.space_offset, rotation)
 				mirrored := game_utils.Coordinate2D{X: start.space.Coordinate().X + rotated.X, Y: start.space.Coordinate().Y + rotated.Y}
 				if zone = mirroredResourceZone(ctx, mirrored, rotation, *slot, area_zones, board_zones); zone == nil {
-					return fmt.Errorf("no free zone left for start resource %d", slot.resource_id)
+					continue
 				}
 			}
 			ctx.board.PlaceResource(zone, slot.resource_id)
@@ -623,7 +639,7 @@ func mirroredBuildingZone(ctx *mapScriptContext, start playerStartInfo, placemen
 	return nearestFreeZone(board_zones, from, 0, math.MaxInt, "")
 }
 
-func placeStartContents(ctx *mapScriptContext, p playerStartsParams, starts []playerStartInfo, footprints [][]Space) error {
+func placeStartContents(ctx *mapScriptContext, p playerStartsParams, starts []playerStartInfo, footprints [][]Space, first_player int) error {
 	board_zones := ctx.allZones()
 	layout := startLayout{}
 	area_zones := make([]Zone, 0)
@@ -633,7 +649,7 @@ func placeStartContents(ctx *mapScriptContext, p playerStartsParams, starts []pl
 	area_zones = util.ShuffleFrom(ctx.rng, area_zones)
 	for _, b := range p.Buildings {
 		target, err := startBuildingZone(ctx, starts[0].space, footprints[0], b.Target, area_zones, board_zones)
-		if err != nil || !ctx.board.PlaceBuilding(target, b.BuildingId, 0) {
+		if err != nil || !ctx.board.PlaceBuilding(target, b.BuildingId, first_player) {
 			return fmt.Errorf("could not place start building %d", b.BuildingId)
 		}
 		placement := startPlacement{building_id: b.BuildingId, offset: game_utils.Coordinate2D{X: target.Space().Coordinate().X - starts[0].space.Coordinate().X, Y: target.Space().Coordinate().Y - starts[0].space.Coordinate().Y}, zone: target.Local(), terrain_id: b.TerrainOverride}
@@ -653,7 +669,7 @@ func placeStartContents(ctx *mapScriptContext, p playerStartsParams, starts []pl
 				return err
 			}
 			layout.units = append(layout.units, startPlacement{unit_id: u.UnitId, offset: game_utils.Coordinate2D{X: target.Space().Coordinate().X - starts[0].space.Coordinate().X, Y: target.Space().Coordinate().Y - starts[0].space.Coordinate().Y}, zone: target.Local()})
-			ctx.board.PlaceUnit(target, u.UnitId, 0)
+			ctx.board.PlaceUnit(target, u.UnitId, first_player)
 		}
 	}
 	for _, o := range p.ZoneTerrainOverrides {
@@ -667,7 +683,7 @@ func placeStartContents(ctx *mapScriptContext, p playerStartsParams, starts []pl
 	for i := 1; i < len(starts); i++ {
 		for _, placement := range layout.buildings {
 			target := mirroredBuildingZone(ctx, starts[i], placement, footprints[i], board_zones)
-			if target == nil || !ctx.board.PlaceBuilding(target, placement.building_id, i) {
+			if target == nil || !ctx.board.PlaceBuilding(target, placement.building_id, first_player+i) {
 				return fmt.Errorf("could not mirror start building %d", placement.building_id)
 			}
 			if placement.terrain_id != 0 {
@@ -675,7 +691,7 @@ func placeStartContents(ctx *mapScriptContext, p playerStartsParams, starts []pl
 			}
 		}
 		for _, placement := range layout.units {
-			ctx.board.PlaceUnit(startPlacementZone(ctx, starts[i], placement), placement.unit_id, i)
+			ctx.board.PlaceUnit(startPlacementZone(ctx, starts[i], placement), placement.unit_id, first_player+i)
 		}
 		for _, placement := range layout.overrides {
 			startPlacementZone(ctx, starts[i], placement).SetTerrainOverride(placement.terrain_id)
@@ -688,6 +704,13 @@ func stepPlayerStarts(ctx *mapScriptContext, raw json.RawMessage) error {
 	p, err := decodeStepParams[playerStartsParams](raw, "player_starts")
 	if err != nil {
 		return err
+	}
+	applyStartingDevelopmentDefaults(ctx, &p)
+	if p.Resources == nil {
+		p.Resources = defaultStartingResources(defs.MapResourceLevel(ctx.vars["map_resources"]))
+	}
+	if (p.Nomad == nil && ctx.vars["starting_development"] == float64(defs.StartingDevelopment_NOMAD)) || (p.Nomad != nil && *p.Nomad) {
+		return placeNomadStarts(ctx, p)
 	}
 	starting_distance, err := p.StartingDistance.resolveInt(ctx.vars)
 	if err != nil {
@@ -747,14 +770,7 @@ func stepPlayerStarts(ctx *mapScriptContext, raw json.RawMessage) error {
 	if _, err := prepareStartTerrain(ctx, p.terrainPickJSON, starts, footprints); err != nil {
 		return err
 	}
-	slots, err := planStartResources(ctx, p.Resources, area_size)
-	if err != nil {
-		return err
-	}
-	if err := placeStartContents(ctx, p, starts, footprints); err != nil {
-		return err
-	}
-	if err := placeStartResources(ctx, starts, footprints, slots); err != nil {
+	if err := placeBalancedStarts(ctx, p, starts, footprints, area_size); err != nil {
 		return err
 	}
 	if p.StartingBank != nil {

@@ -101,10 +101,18 @@ export enum RisqVisibilityLevel {
 
 export type SPACE_ZONES_TYPE = [[RisqZone, RisqZone], [RisqZone, RisqZone, RisqZone], [RisqZone, RisqZone]];
 
+export interface RisqTerrainStats {
+  intra_cost: number;
+  inter_cost: number;
+  impassable: boolean;
+  build_speed_modifier: number;
+}
+
 /** Data describing a hexagonal space in risq */
 export declare interface RisqSpace {
   terrain_id: number;
   terrain_type: RisqTerrainType;
+  terrain_stats?: RisqTerrainStats;
   display_name: string;
   coordinate: Point2D;
   coordinate_key: number;
@@ -318,6 +326,7 @@ export declare interface RisqProducible {
   display_name: string;
   description: string;
   required_tech_id: number;
+  max_per_player?: number; // buildings only; 0 or absent means unlimited
 }
 
 export interface RisqUnitStatsEntry {

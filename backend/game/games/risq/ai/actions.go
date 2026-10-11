@@ -215,6 +215,9 @@ func (a *attackAction) ToOrders(view View, internals *Internals) []Order {
 	orders := make([]Order, 0)
 	if a.picker != nil {
 		units := a.filter.apply(eligibleUnits(view, a.eligible), isMilitary)
+		if a.resume {
+			units = slices.DeleteFunc(units, func(u UnitView) bool { return alreadyFighting(u.CurrentOrder) })
+		}
 		if limit > 0 && len(units) > limit {
 			units = units[:limit]
 		}
@@ -287,7 +290,7 @@ func (a *garrisonAction) ToOrders(view View, internals *Internals) []Order {
 		best_dist := -1
 		for i := range buildings {
 			b := &buildings[i]
-			if b.UnderConstruction || b.GarrisonCount >= b.GarrisonCapacity {
+			if b.UnderConstruction || b.GarrisonCount+internals.garrisons[b.InternalID] >= b.GarrisonCapacity {
 				continue
 			}
 			d := view.LocationDistance(u.Location, b.Location)
@@ -297,7 +300,7 @@ func (a *garrisonAction) ToOrders(view View, internals *Internals) []Order {
 		}
 		if best_b != nil {
 			orders = append(orders, view.GarrisonOrder(u, *best_b, true))
-			best_b.GarrisonCount++ // Optimistic update for other units in this turn
+			internals.garrisons[best_b.InternalID]++
 		}
 	}
 	return orders
@@ -407,6 +410,9 @@ func (a *setUnitBehaviorAction) differs(u UnitView) bool {
 func (a *setUnitBehaviorAction) ToOrders(view View, internals *Internals) []Order {
 	behavior := a.behavior
 	for _, u := range a.filter.apply(view.ScopedUnits(), isMilitary) {
+		if !isMilitary(u) {
+			continue
+		}
 		if a.differs(u) {
 			behavior.Subjects = append(behavior.Subjects, u.InternalID)
 		}

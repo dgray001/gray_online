@@ -51,6 +51,39 @@ export class RisqOrderPlanning {
     return building?.renewing ? undefined : building?.renew_cost;
   }
 
+  /** Whether another building of this id would exceed its per-player cap, ignoring whatever already sits at zone_key */
+  atBuildingLimit(building_id: number, zone_key = -1): boolean {
+    const player = this.session.getPlayer();
+    const limit = (player && this.findProducible(player, building_id, []))?.max_per_player ?? 0;
+    if (!player || limit <= 0) {
+      return false;
+    }
+    const cancelled = new Set(
+      this.orders_model
+        .pendingOrders()
+        .filter((o) => o.order_type === RisqOrderType.OrderType_CancelFoundation)
+        .map((o) => o.target_id)
+    );
+    const key_of = (b: RisqBuilding): number =>
+      cantorPair(
+        cantorPair(b.space_coordinate.x, b.space_coordinate.y),
+        cantorPair(b.zone_coordinate.x, b.zone_coordinate.y)
+      );
+    const claimed = new Set<number>();
+    for (const b of player.buildings.values()) {
+      if (b.building_id === building_id) {
+        claimed.add(key_of(b));
+      }
+    }
+    for (const f of [...player.planned_foundations.values(), ...this.local_foundations.values()]) {
+      if (f.building_id === building_id && !cancelled.has(f.coordinate_key)) {
+        claimed.add(f.coordinate_key);
+      }
+    }
+    claimed.delete(zone_key);
+    return claimed.size >= limit;
+  }
+
   hasPlannedFoundation(zone: RisqZone | undefined): boolean {
     if (!zone) {
       return false;

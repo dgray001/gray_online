@@ -62,12 +62,12 @@ func nextAvailableRisqColor(used map[string]bool) string {
 
 func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameRisq, error) {
 	generate := func(board mapgen.Board, rng *rand.Rand, num_players int) error {
-		map_size := defs.ResolveMapSize(g.GameSpecificSettings["map_size"], num_players)
+		settings := mapgen.ResolveSettings(g.GameSpecificSettings, num_players)
 		map_name, ok := g.GameSpecificSettings["map"].(string)
 		if !ok || map_name == "" {
-			map_name = "script:default"
+			map_name = "script:hexagon"
 		}
-		return mapgen.Generate(board, rng, num_players, map_size, map_name)
+		return mapgen.Generate(board, rng, num_players, settings, map_name)
 	}
 	return createGame(g, action_channel, 2, generate)
 }
@@ -75,6 +75,10 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameR
 type mapGenerator func(board mapgen.Board, rng *rand.Rand, num_players int) error
 
 func createGame(g *game.GameBase, action_channel chan game.PlayerAction, min_players int, generate mapGenerator) (*GameRisq, error) {
+	population_limit, err := resolvePopulationLimit(g.GameSpecificSettings["population_limit"])
+	if err != nil {
+		return nil, err
+	}
 	seed, ok := g.GameSpecificSettings["seed"].(float64)
 	if !ok {
 		seed = float64(time.Now().UnixNano())
@@ -84,7 +88,7 @@ func createGame(g *game.GameBase, action_channel chan game.PlayerAction, min_pla
 		players:                   []*RisqPlayer{},
 		units:                     make(map[uint64]*RisqUnit),
 		buildings:                 make(map[uint64]*RisqBuilding),
-		population_limit:          100,
+		population_limit:          population_limit,
 		visibility_mode:           defs.ResolveVisibilityMode(g.GameSpecificSettings["visibility"]),
 		next_resource_internal_id: 0,
 		next_building_internal_id: 0,

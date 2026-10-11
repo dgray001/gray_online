@@ -23,13 +23,62 @@ type SpaceCondition struct {
 	UnitCountAtMost  *int             `json:"unit_count_at_most,omitempty"`
 }
 
+func parseWhere(raw map[string]any) (SpaceCondition, error) {
+	value, present := raw["where"]
+	if !present {
+		return SpaceCondition{}, nil
+	}
+	if value == nil {
+		return SpaceCondition{}, fmt.Errorf("where must be an object")
+	}
+	return parseSpaceCondition(value)
+}
+
 func parseSpaceCondition(raw any) (SpaceCondition, error) {
 	var condition SpaceCondition
 	if raw == nil {
 		return condition, nil
 	}
-	if _, ok := raw.(map[string]any); !ok {
+	obj, ok := raw.(map[string]any)
+	if !ok {
 		return condition, fmt.Errorf("space condition must be an object")
+	}
+	for key, value := range obj {
+		if value == nil {
+			return condition, fmt.Errorf("space condition %q must not be null", key)
+		}
+		if key == "resource_ids" || key == "building_ids" {
+			if _, err := parseIDSet(obj, key); err != nil {
+				return condition, err
+			}
+		}
+		if key == "owner" || key == "building_owner" {
+			if owner, ok := value.(string); !ok || owner == "" {
+				return condition, fmt.Errorf("%q must be an owner name", key)
+			}
+		}
+		if key == "all" || key == "any" {
+			children, ok := value.([]any)
+			if !ok {
+				return condition, fmt.Errorf("%q must be an array", key)
+			}
+			for _, child := range children {
+				if _, ok := child.(map[string]any); !ok {
+					return condition, fmt.Errorf("%q children must be objects", key)
+				}
+				if _, err := parseSpaceCondition(child); err != nil {
+					return condition, err
+				}
+			}
+		}
+		if key == "not" {
+			if _, ok := value.(map[string]any); !ok {
+				return condition, fmt.Errorf("not must be an object")
+			}
+			if _, err := parseSpaceCondition(value); err != nil {
+				return condition, err
+			}
+		}
 	}
 	data, err := json.Marshal(raw)
 	if err != nil {
@@ -79,7 +128,7 @@ type spaceQuery struct {
 func parseSpaceQuery(obj map[string]any) (*spaceQuery, error) {
 	q := &spaceQuery{has_from: obj["from"] != nil}
 	var err error
-	if q.condition, err = parseSpaceCondition(obj["where"]); err != nil {
+	if q.condition, err = parseWhere(obj); err != nil {
 		return nil, err
 	}
 	if q.from, err = parseAnchor(obj["from"]); err != nil {
@@ -116,9 +165,12 @@ func parseSpaceQuery(obj map[string]any) (*spaceQuery, error) {
 }
 
 func (q *spaceQuery) resolve(view View, internals *Internals, from *ZoneRef) (ZoneRef, func(Coordinate) bool, bool) {
-	reference, ok := q.from.location(view, internals)
+	var reference ZoneRef
+	var ok bool
 	if from != nil && (!q.has_from || q.from.kind == anchorUnit) {
 		reference, ok = *from, true
+	} else {
+		reference, ok = q.from.location(view, internals)
 	}
 	if !ok {
 		return ZoneRef{}, nil, false
@@ -199,7 +251,7 @@ func parseClosestSpaceCounter(obj map[string]any) (counter, error) {
 }
 
 func parseSpaceCounter(obj map[string]any) (counter, error) {
-	condition, err := parseSpaceCondition(obj["where"])
+	condition, err := parseWhere(obj)
 	if err != nil {
 		return nil, err
 	}

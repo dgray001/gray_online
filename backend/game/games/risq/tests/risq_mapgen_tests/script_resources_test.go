@@ -74,11 +74,21 @@ func TestResourceMinSpacingThinsCloseResources(t *testing.T) {
 	}
 }
 
+func TestResourcePlaceUsesAvailableZones(t *testing.T) {
+	useScripts(t, map[string]string{"limited": `[` + hexagon3 + `,` + step("resource_place", `{"resource_id":41,"count":9999,"zone":"center"}`) + `,` + step("resource_place", `{"resource_id":43,"count":9999,"zone":"center"}`) + `]`})
+	board := generateStartless(t, "limited", 2)
+	if got := len(resourceZones(board, 41)); got != len(board.Spaces()) {
+		t.Errorf("placed %d small mines, want %d available centers", got, len(board.Spaces()))
+	}
+	if got := len(resourceZones(board, 43)); got != 0 {
+		t.Errorf("placed %d large mines with no centers left", got)
+	}
+}
+
 func TestResourceStepsRejectBadParams(t *testing.T) {
 	cases := map[string]struct{ step, want string }{
 		"unknown_id":   {step("resource_place", `{"resource_id":9999,"count":1}`), "unknown resource id"},
 		"bad_zone":     {step("resource_place", `{"resource_id":41,"count":1,"zone":"corner"}`), "invalid zone"},
-		"too_many":     {step("resource_place", `{"resource_id":41,"count":9999,"zone":"center"}`), "free zones"},
 		"needs_starts": {step("resource_place", `{"resource_id":41,"count":1,"outside_player_areas":true}`), "needs an earlier player_starts"},
 		"cluster_id":   {step("resource_cluster", `{"resource_id":9999,"seed_count":1,"size":1}`), "unknown resource id"},
 		"cluster_zone": {step("resource_cluster", `{"resource_id":41,"seed_count":1,"size":1,"zone":"corner"}`), "invalid zone"},

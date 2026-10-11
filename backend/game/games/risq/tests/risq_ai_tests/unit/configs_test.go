@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/dgray001/gray_online/game/games/risq/ai"
 	"github.com/dgray001/gray_online/game/games/risq/tests/config"
+	"io"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -17,11 +18,13 @@ func TestParseTestConfigs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to read config directory: %v", err)
 	}
+	loaded := 0
 
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
 			continue
 		}
+		loaded++
 
 		t.Run(entry.Name(), func(t *testing.T) {
 			path := filepath.Join(configsDir, entry.Name())
@@ -36,14 +39,19 @@ func TestParseTestConfigs(t *testing.T) {
 			}
 
 			rng := rand.New(rand.NewSource(1))
-			model := ai.ParseModel(raw, rng)
+			model := ai.ParseModelWithDiagnostics(raw, rng, io.Discard)
 			if _, ok := model.(*ai.RulesModel); !ok {
 				t.Fatalf("config %s parsed to %T, expected *ai.RulesModel", entry.Name(), model)
 			}
 
-			// Optional: test DecideOrders on empty view to make sure it doesn't panic
-			view := &fakeView{}
-			model.DecideOrders(view)
+			for _, view := range []*fakeView{{}, {units: []ai.UnitView{{InternalID: 73, UnitID: 13, Kind: ai.UnitMilitary, Type: ai.UnitTypeInfantry}}}} {
+				for turn := 0; turn < 2; turn++ {
+					model.DecideOrders(view)
+				}
+			}
 		})
+	}
+	if loaded == 0 {
+		t.Fatal("no test-owned AI configs")
 	}
 }

@@ -40,6 +40,10 @@ func TestGoldIncomeAfterTheFirstTurn(t *testing.T) {
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
 			g, p0, p1 := incomeGame(t, c.extra, 0)
+			if g.Self(p0).Resources.Gold != 0 || g.Self(p1).Resources.Gold != 0 {
+				t.Fatal("ownership income paid before the first turn ended")
+			}
+			g.EndTurn()
 			if got := g.Self(p0).Resources.Gold; got != c.p0 {
 				t.Errorf("P0 gold %v, want %v: %s", got, c.p0, c.why)
 			}
@@ -63,8 +67,8 @@ func TestIncomeIsPaidEveryTurn(t *testing.T) {
 	g, p0, _ := incomeGame(t, spaceIncome, 0)
 	g.EndTurn()
 	g.EndTurn()
-	if got := g.Self(p0).Resources.Gold; got != 18 {
-		t.Errorf("P0 gold %v after two more turns, want 18 (3 payments of 6)", got)
+	if got := g.Self(p0).Resources.Gold; got != 12 {
+		t.Errorf("P0 gold %v after two turns, want 12 (2 payments of 6)", got)
 	}
 }
 

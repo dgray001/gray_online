@@ -2,7 +2,6 @@ package ai
 
 import (
 	"fmt"
-	"os"
 	"sort"
 )
 
@@ -117,7 +116,7 @@ func (a *runBucketAction) ToOrders(view View, internals *Internals) []Order {
 	if internals.bucket_depth >= internals.bucketDepthLimit() {
 		if !internals.bucket_depth_warn {
 			internals.bucket_depth_warn = true
-			fmt.Fprintln(os.Stderr, "ai: run_bucket", a.bucket, "skipped, nested past max_bucket_depth", internals.bucketDepthLimit())
+			fmt.Fprintln(internals.diagnostics, "ai: run_bucket", a.bucket, "skipped, nested past max_bucket_depth", internals.bucketDepthLimit())
 		}
 		return nil
 	}

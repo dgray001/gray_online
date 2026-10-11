@@ -45,10 +45,14 @@ export class RisqBuildButton extends RisqActionButton {
     const player = this.risq.getPlayer();
     if (!!player && this.risq.session.givingOrders() && !player.orders_submitted) {
       this.enable();
-      this.dimmed = !canAffordCost(player, this.producible.cost);
+      this.dimmed = !canAffordCost(player, this.producible.cost) || this.atLimit();
     } else {
       this.disable();
     }
+  }
+
+  private atLimit(): boolean {
+    return this.risq.planning.atBuildingLimit(this.producible.id);
   }
 
   override matchesProducible(kind: string, id: number): boolean {
@@ -56,7 +60,12 @@ export class RisqBuildButton extends RisqActionButton {
   }
 
   override execute(): void {
-    if (this.dimmed) {
+    if (this.atLimit()) {
+      this.risq.showMessage(
+        `You can only own ${this.producible.max_per_player} ${this.producible.display_name}`,
+        RISQ_MESSAGE_WARNING_COLOR
+      );
+    } else if (this.dimmed) {
       this.risq.showMessage('Not enough resources', RISQ_MESSAGE_WARNING_COLOR);
     } else if (this.isArmed()) {
       this.risq.armed.disarmOrder();

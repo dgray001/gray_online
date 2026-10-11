@@ -59,6 +59,9 @@ dwg-lobby-game-settings {
       }
   
       .row-wrapper {
+        &[hidden] {
+          display: none;
+        }
         display: flex;
         flex-flow: row nowrap;
         gap: 8px;

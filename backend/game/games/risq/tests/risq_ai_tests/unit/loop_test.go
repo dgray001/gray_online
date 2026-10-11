@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	. "github.com/dgray001/gray_online/game/games/risq/ai"
+	"io"
 	"testing"
 )
 
@@ -66,7 +67,7 @@ func loadError(config string) error {
 	if err := json.Unmarshal([]byte(config), &raw); err != nil {
 		return err
 	}
-	if _, ok := ParseModel(raw, nil).(*RulesModel); !ok {
+	if _, ok := ParseModelWithDiagnostics(raw, nil, io.Discard).(*RulesModel); !ok {
 		return fmt.Errorf("invalid AI config")
 	}
 	return nil

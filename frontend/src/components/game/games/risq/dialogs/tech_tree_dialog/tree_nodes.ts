@@ -21,6 +21,8 @@ interface RisqTechBonusEntry {
 }
 
 interface RisqProducibleEntry {
+  population_support?: number;
+  garrison_capacity?: number;
   row: number;
   col: number;
   kind: RisqProducibleKind;
@@ -38,6 +40,8 @@ interface RisqProducibleEntry {
 }
 
 export interface RisqBuildingTreeEntry {
+  population_support: number;
+  garrison_capacity: number;
   building_id: number;
   display_name: string;
   description: string;
@@ -115,19 +119,24 @@ export function nodeIcon(entry: RisqProducibleEntry): string {
 }
 
 export const STATUS_FILL: Record<TreeStatus, string> = {
-  researched: 'rgba(80, 200, 80, 0.2)',
-  available: 'rgba(255, 255, 255, 0.08)',
-  locked: 'rgba(255, 255, 255, 0.03)',
+  researched: '#183820',
+  available: '#292929',
+  locked: '#141414',
 };
 export const STATUS_STROKE: Record<TreeStatus, string> = {
-  researched: 'rgb(80, 200, 80)',
-  available: 'rgb(200, 190, 175)',
-  locked: 'rgb(90, 90, 90)',
+  researched: '#64a874',
+  available: '#b0b0b0',
+  locked: '#484848',
+};
+export const STATUS_HOVER_STROKE: Record<TreeStatus, string> = {
+  researched: '#8bcc9b',
+  available: '#e0e0e0',
+  locked: '#707070',
 };
 export const STATUS_TEXT: Record<TreeStatus, string> = {
-  researched: 'rgb(230, 230, 230)',
-  available: 'rgb(230, 230, 230)',
-  locked: 'rgb(110, 110, 110)',
+  researched: '#e0e0e0',
+  available: '#e0e0e0',
+  locked: '#707070',
 };
 
 export const RANGE_DISTANCE: Partial<Record<RisqRange, number>> = {

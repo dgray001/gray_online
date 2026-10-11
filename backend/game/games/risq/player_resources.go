@@ -2,6 +2,7 @@ package risq
 
 import (
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
+	"github.com/dgray001/gray_online/game/games/risq/internal/mapgen"
 	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
 )
@@ -13,13 +14,15 @@ type RisqPlayerResources struct {
 	gold  float64
 	// per-turn flow by category, reset each turn
 	gathered [4]float64
+	income   [4]float64
 	spent    [4]float64
 	// cumulative gathered (not refunds) across the whole game, never reset
 	lifetime_gathered [4]float64
 }
 
 func createRisqPlayerResources() *RisqPlayerResources {
-	return &RisqPlayerResources{food: 200, wood: 200, stone: 100, gold: 0}
+	bank := mapgen.DefaultStartingBank(defs.StartingStockpile_STANDARD)
+	return &RisqPlayerResources{food: bank.Food, wood: bank.Wood, stone: bank.Stone, gold: bank.Gold}
 }
 
 func (r *RisqPlayerResources) addGathered(category defs.RisqResourceCategory, amount float64) {
@@ -33,7 +36,11 @@ func (r *RisqPlayerResources) addGathered(category defs.RisqResourceCategory, am
 	case defs.RisqResourceCategory_GOLD:
 		r.gold = util.RoundTo(r.gold+amount, gatherRoundingPlaces)
 	}
-	r.gathered[category.Index()] = util.RoundTo(r.gathered[category.Index()]+amount, gatherRoundingPlaces)
+	if category == defs.RisqResourceCategory_GOLD {
+		r.income[category.Index()] = util.RoundTo(r.income[category.Index()]+amount, gatherRoundingPlaces)
+	} else {
+		r.gathered[category.Index()] = util.RoundTo(r.gathered[category.Index()]+amount, gatherRoundingPlaces)
+	}
 	r.lifetime_gathered[category.Index()] = util.RoundTo(r.lifetime_gathered[category.Index()]+amount, gatherRoundingPlaces)
 }
 
@@ -84,12 +91,13 @@ func (r *RisqPlayerResources) refund(cost defs.RisqResourceCost) {
 	r.stone = util.RoundTo(r.stone+cost.Stone, gatherRoundingPlaces)
 	r.gold = util.RoundTo(r.gold+cost.Gold, gatherRoundingPlaces)
 	for i, amount := range [4]float64{cost.Food, cost.Wood, cost.Stone, cost.Gold} {
-		r.gathered[i] = util.RoundTo(r.gathered[i]+amount, gatherRoundingPlaces)
+		r.income[i] = util.RoundTo(r.income[i]+amount, gatherRoundingPlaces)
 	}
 }
 
 func (r *RisqPlayerResources) resetFlow() {
 	r.gathered = [4]float64{}
+	r.income = [4]float64{}
 	r.spent = [4]float64{}
 }
 

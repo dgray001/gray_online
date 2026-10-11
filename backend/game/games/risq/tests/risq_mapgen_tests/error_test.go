@@ -16,7 +16,7 @@ func TestBadMapNamesFail(t *testing.T) {
 		"custom:missing":  `custom map "missing"`,
 		"script:../ring":  "no such file",
 		"custom:":         "no such file",
-		"script:default ": "no such file",
+		"script:hexagon ": "no such file",
 	}
 	for name, want := range cases {
 		_, err := fakeboard.Generate(name, 2, 1)

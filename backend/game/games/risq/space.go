@@ -324,6 +324,13 @@ func (s *RisqSpace) toFrontend(player_id int, _is_viewer bool) gin.H {
 	space["terrain_id"] = s.terrain_id
 	space["terrain_type"] = defs.TerrainConfigs[s.terrain_id].Terrain_type
 	space["display_name"] = defs.TerrainConfigs[s.terrain_id].Display_name
+	terrain_stats := s.terrainType().MoveCost()
+	space["terrain_stats"] = gin.H{
+		"intra_cost":           terrain_stats.Intra_cost,
+		"inter_cost":           terrain_stats.Inter_cost,
+		"impassable":           terrain_stats.Impassable,
+		"build_speed_modifier": terrain_stats.Build_speed_modifier,
+	}
 	space["gold_income"] = s.gold_income
 	if v == defs.VisibilityFog {
 		if owner, ok := s.ownership_cache[player_id]; ok {

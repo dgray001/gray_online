@@ -3,6 +3,7 @@ package unit
 import (
 	"encoding/json"
 	. "github.com/dgray001/gray_online/game/games/risq/ai"
+	"io"
 	"math/rand"
 	"testing"
 )
@@ -27,7 +28,7 @@ func decide(t *testing.T, config string, view View, names ...string) map[string]
 		probes = append(probes, map[string]any{"action": "move", "targets": "coordinate", "coordinate": map[string]any{"x": "var(" + name + ")", "y": float64(0)}})
 	}
 	raw["rules"] = append(raw["rules"].([]any), map[string]any{"when": map[string]any{"always": map[string]any{}}, "then": probes})
-	model, ok := ParseModel(raw, rand.New(rand.NewSource(1))).(*RulesModel)
+	model, ok := ParseModelWithDiagnostics(raw, rand.New(rand.NewSource(1)), io.Discard).(*RulesModel)
 	if !ok {
 		t.Fatalf("config did not load: %s", config)
 	}

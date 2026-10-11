@@ -1,5 +1,12 @@
 import { capitalize } from '../../../scripts/util';
 import { GameType } from '../data_models';
+import {
+  StartingStockpile,
+  MapResourceLevel,
+  STARTING_STOCKPILE_LABELS,
+  MAP_RESOURCE_LABELS,
+} from './resource_settings';
+import { StartingDevelopment, StartBalance, STARTING_DEVELOPMENT_LABELS, START_BALANCE_LABELS } from './setup_settings';
 
 /** Returns a map of readable game settings */
 export function getReadableGameSettings(settings: object, game_type: GameType): [string, string][] {
@@ -44,6 +51,18 @@ export function getReadableGameSettings(settings: object, game_type: GameType): 
           ];
           const val = typeof setting === 'number' ? setting : 0;
           add('Map Size', map_sizes[val] || val.toString());
+        } else if (setting_name === 'starting_stockpile') {
+          const value = typeof setting === 'number' ? setting : StartingStockpile.STANDARD;
+          add('Starting Stockpile', STARTING_STOCKPILE_LABELS[value as StartingStockpile] || value.toString());
+        } else if (setting_name === 'map_resources') {
+          const value = typeof setting === 'number' ? setting : MapResourceLevel.STANDARD;
+          add('Map Resources', MAP_RESOURCE_LABELS[value as MapResourceLevel] || value.toString());
+        } else if (setting_name === 'starting_development') {
+          const value = typeof setting === 'number' ? setting : StartingDevelopment.STANDARD;
+          add('Starting Development', STARTING_DEVELOPMENT_LABELS[value as StartingDevelopment] || value.toString());
+        } else if (setting_name === 'start_balance') {
+          const value = typeof setting === 'number' ? setting : StartBalance.MIRRORED;
+          add('Start Balance', START_BALANCE_LABELS[value as StartBalance] || value.toString());
         } else if (setting_name === 'visibility') {
           const vis_modes = ['None', 'Default', 'Explored', 'All Visible'];
           const val = typeof setting === 'number' ? setting : 1;
@@ -91,6 +110,11 @@ export declare interface GameSettingsRisq {
   map_size?: number;
   map?: string;
   visibility?: number;
+  starting_stockpile?: StartingStockpile;
+  map_resources?: MapResourceLevel;
+  starting_development?: StartingDevelopment;
+  population_limit?: number;
+  start_balance?: StartBalance;
 }
 
 /** Data describing the settings for an ai player in risq */

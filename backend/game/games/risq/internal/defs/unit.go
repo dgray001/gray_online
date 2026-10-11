@@ -72,6 +72,15 @@ func (c UnitConfig) CanBuild(building_id uint32) bool {
 	return false
 }
 
+func AnyUnitCanBuild(building_id uint32) bool {
+	for _, config := range UnitConfigs {
+		if config.CanBuild(building_id) {
+			return true
+		}
+	}
+	return false
+}
+
 func UnitProductionCost(unit_id uint32) (RisqResourceCost, int) {
 	config, ok := UnitConfigs[unit_id]
 	if !ok {

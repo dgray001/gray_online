@@ -14,7 +14,8 @@ func Generate(map_name string, num_players int, seed int64) (*Board, error) {
 
 func GenerateWithSize(map_name string, num_players int, map_size defs.MapSize, seed int64) (*Board, error) {
 	board := New()
-	err := mapgen.Generate(board, rand.New(rand.NewSource(seed)), num_players, map_size, map_name)
+	settings := mapgen.ResolveSettings(map[string]any{"map_size": float64(map_size)}, num_players)
+	err := mapgen.Generate(board, rand.New(rand.NewSource(seed)), num_players, settings, map_name)
 	return board, err
 }
 

@@ -9,15 +9,15 @@ import (
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness/fakeboard"
 )
 
-func TestDefaultMapSizeRadii(t *testing.T) {
-	script, err := os.ReadFile("../../config/maps/scripted/default.json")
+func TestHexagonMapSizeRadii(t *testing.T) {
+	script, err := os.ReadFile(testConfig + "/maps/scripted/hexagon.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	useScripts(t, map[string]string{"default": string(script)})
+	useScripts(t, map[string]string{"hexagon": string(script)})
 	for i, radius := range []uint16{4, 5, 6, 7, 7, 8, 8, 9, 10} {
 		size := defs.MapSize(i + 1)
-		board, err := fakeboard.GenerateWithSize("script:default", 2, size, 1)
+		board, err := fakeboard.GenerateWithSize("script:hexagon", 2, size, 1)
 		if err != nil {
 			t.Fatalf("size %d: %v", size, err)
 		}
@@ -44,7 +44,7 @@ func TestDefaultMapSizeRadii(t *testing.T) {
 }
 
 func TestRingMapSizeRadii(t *testing.T) {
-	script, err := os.ReadFile("../../config/maps/scripted/ring.json")
+	script, err := os.ReadFile(testConfig + "/maps/scripted/ring.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +79,7 @@ func TestRingMapSizeRadii(t *testing.T) {
 }
 
 func TestRectangleMapSizeDimensions(t *testing.T) {
-	script, err := os.ReadFile("../../config/maps/scripted/rectangle.json")
+	script, err := os.ReadFile(testConfig + "/maps/scripted/rectangle.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +107,7 @@ func TestRectangleMapSizeDimensions(t *testing.T) {
 }
 
 func TestTriangleMapSizeDimensions(t *testing.T) {
-	script, err := os.ReadFile("../../config/maps/scripted/triangle.json")
+	script, err := os.ReadFile(testConfig + "/maps/scripted/triangle.json")
 	if err != nil {
 		t.Fatal(err)
 	}

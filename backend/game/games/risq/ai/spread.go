@@ -27,6 +27,13 @@ func parseSpread(raw any) (*spreadConfig, error) {
 	if !ok {
 		return nil, fmt.Errorf("\"spread\" must be an object")
 	}
+	for _, key := range []string{"group_by", "overflow"} {
+		if value, present := obj[key]; present {
+			if name, ok := value.(string); !ok || name == "" {
+				return nil, fmt.Errorf("spread %q must be a nonempty string", key)
+			}
+		}
+	}
 	for key := range obj {
 		if !spreadKeys[key] {
 			return nil, fmt.Errorf("unknown spread option %q", key)

@@ -5,6 +5,19 @@ import type { GameSettings } from '../data_models';
 import { GameType } from '../data_models';
 import type { GameSettingsFiddlesticks, GameSettingsRisq } from './game_specific_data';
 import type { AiSelectorData, DwgAiSelector } from './ai_selector/ai_selector';
+import {
+  StartingStockpile,
+  MapResourceLevel,
+  STARTING_STOCKPILE_LABELS,
+  MAP_RESOURCE_LABELS,
+} from './resource_settings';
+import {
+  MapType,
+  StartingDevelopment,
+  StartBalance,
+  STARTING_DEVELOPMENT_LABELS,
+  START_BALANCE_LABELS,
+} from './setup_settings';
 
 import html from './lobby_game_settings.html';
 import './lobby_game_settings.scss';
@@ -19,6 +32,8 @@ export class DwgLobbyGameSettings extends DwgElement {
   private save_button!: HTMLButtonElement;
 
   private game_specific_settings_els = new Map<string, HTMLElement>();
+  private risq_maps: string[] = [];
+  private risq_map = 'script:hexagon';
 
   constructor() {
     super();
@@ -47,6 +62,12 @@ export class DwgLobbyGameSettings extends DwgElement {
       this.game_chooser.appendChild(option);
     }
     clickButton(this.save_button, () => {
+      if (
+        parseInt(this.game_chooser.value) === GameType.RISQ &&
+        !this.getNumberSetting('population-limit')!.reportValidity()
+      ) {
+        return;
+      }
       this.dispatchEvent(new Event('saved'));
     });
     this.game_chooser.addEventListener('change', () => {
@@ -56,7 +77,13 @@ export class DwgLobbyGameSettings extends DwgElement {
 
   private setGameChooserValue(value: string): void {
     this.game_chooser.value = value;
-    const settings = this.getGameSpecificHTML(parseInt(value) ?? 0);
+    const game_type = parseInt(value) || 0;
+    const max_players = game_type === GameType.RISQ ? 12 : 8;
+    this.max_players_input.max = max_players.toString();
+    if (this.max_players_input.valueAsNumber > max_players) {
+      this.max_players_input.value = max_players.toString();
+    }
+    const settings = this.getGameSpecificHTML(game_type);
     this.game_specific_settings.replaceChildren(...settings);
   }
 
@@ -82,6 +109,16 @@ export class DwgLobbyGameSettings extends DwgElement {
         children.push(ai_selector);
         break;
       case GameType.RISQ:
+        this.risq_map = 'script:hexagon';
+        const map_type = this.createSelectElement(
+          'map-type',
+          'Map Type',
+          [
+            { value: MapType.SCRIPT, text: 'Script' },
+            { value: MapType.CUSTOM, text: 'Custom' },
+          ],
+          MapType.SCRIPT
+        );
         const map_size = this.createSelectElement('map-size', 'Map Size', [
           { value: '', text: 'Recommended' },
           { value: '1', text: 'Minuscule' },
@@ -106,17 +143,61 @@ export class DwgLobbyGameSettings extends DwgElement {
           '1'
         );
 
-        children.push(this.createRowElement([map_size, map_select, visibility]));
+        children.push(this.createRowElement([map_type, map_select, visibility]));
+        const starting_stockpile = this.createSelectElement(
+          'starting-stockpile',
+          'Starting Stockpile',
+          Object.entries(STARTING_STOCKPILE_LABELS)
+            .filter(([value]): boolean => Number(value) !== StartingStockpile.NONE)
+            .map(([value, text]): { value: string; text: string } => ({ value, text })),
+          StartingStockpile.STANDARD.toString()
+        );
+        const map_resources = this.createSelectElement(
+          'map-resources',
+          'Map Resources',
+          Object.entries(MAP_RESOURCE_LABELS)
+            .filter(([value]): boolean => Number(value) !== MapResourceLevel.NONE)
+            .map(([value, text]): { value: string; text: string } => ({ value, text })),
+          MapResourceLevel.STANDARD.toString()
+        );
+        const starting_development = this.createSelectElement(
+          'starting-development',
+          'Starting Development',
+          Object.entries(STARTING_DEVELOPMENT_LABELS)
+            .filter(([value]): boolean => Number(value) !== StartingDevelopment.NONE)
+            .map(([value, text]): { value: string; text: string } => ({ value, text })),
+          StartingDevelopment.STANDARD.toString()
+        );
+        children.push(this.createRowElement([starting_stockpile, map_resources, starting_development]));
+        children.push(
+          this.createRowElement([this.createNumberElement('population-limit', 'Population Limit', 25, 200, 100)])
+        );
+        this.getNumberSetting('population-limit')!.required = true;
+        const start_balance = this.createSelectElement(
+          'start-balance',
+          'Start Balance',
+          Object.entries(START_BALANCE_LABELS)
+            .filter(([value]): boolean => Number(value) !== StartBalance.NONE)
+            .map(([value, text]): { value: string; text: string } => ({ value, text })),
+          StartBalance.MIRRORED.toString()
+        );
+        const script_settings = this.createRowElement([map_size, start_balance]);
+        this.game_specific_settings_els.set('script-settings', script_settings);
+        children.push(script_settings);
 
+        const map_element = this.game_specific_settings_els.get('map') as HTMLSelectElement;
+        this.game_specific_settings_els.get('map-type')!.addEventListener('change', (): void => {
+          this.risq_map = '';
+          this.updateRisqMapOptions();
+        });
+        map_element.addEventListener('change', (): void => {
+          this.risq_map = map_element.value;
+        });
+        this.updateRisqMapOptions();
         apiGet<string[]>('risq/maps').then((res) => {
-          if (res.success) {
-            const select = this.game_specific_settings_els.get('map') as HTMLSelectElement;
-            for (const map_name of res.result) {
-              const opt = document.createElement('option');
-              opt.value = map_name;
-              opt.innerText = map_name.replace(/^(script|custom):/, '');
-              select.appendChild(opt);
-            }
+          if (res.success && this.game_specific_settings_els.get('map') === map_element) {
+            this.risq_maps = res.result;
+            this.updateRisqMapOptions();
           }
         });
 
@@ -134,6 +215,24 @@ export class DwgLobbyGameSettings extends DwgElement {
         break;
     }
     return children;
+  }
+
+  private updateRisqMapOptions(): void {
+    const type = this.getSelectSetting('map-type');
+    const select = this.game_specific_settings_els.get('map') as HTMLSelectElement;
+    this.game_specific_settings_els.get('script-settings')!.hidden = type !== MapType.SCRIPT;
+    const names = this.risq_maps.filter((name: string): boolean => name.startsWith(`${type}:`));
+    select.replaceChildren();
+    for (const name of names) {
+      const option = document.createElement('option');
+      option.value = name;
+      option.innerText = name.slice(name.indexOf(':') + 1);
+      select.appendChild(option);
+    }
+    select.value = names.includes(this.risq_map) ? this.risq_map : (names[0] ?? '');
+    if (select.value) {
+      this.risq_map = select.value;
+    }
   }
 
   private createLabelElement(label: string): HTMLSpanElement {
@@ -227,7 +326,19 @@ export class DwgLobbyGameSettings extends DwgElement {
           break;
         case GameType.RISQ:
           const risq_settings = settings.game_specific_settings as GameSettingsRisq;
+          for (const [id, value] of [
+            ['starting-stockpile', risq_settings.starting_stockpile || StartingStockpile.STANDARD],
+            ['map-resources', risq_settings.map_resources || MapResourceLevel.STANDARD],
+            ['starting-development', risq_settings.starting_development || StartingDevelopment.STANDARD],
+            ['start-balance', risq_settings.start_balance || StartBalance.MIRRORED],
+          ] as const) {
+            const el = this.game_specific_settings_els.get(id) as HTMLSelectElement;
+            if (el) {
+              el.value = value.toString();
+            }
+          }
           const risq_ai_players = this.game_specific_settings_els.get('ai-players') as DwgAiSelector;
+          this.setNumberSetting('population-limit', risq_settings.population_limit ?? 100);
           if (!!risq_ai_players) {
             risq_ai_players.setPlayers(risq_settings.ai_players);
           }
@@ -238,10 +349,10 @@ export class DwgLobbyGameSettings extends DwgElement {
             }
           }
           if (risq_settings.map !== undefined) {
-            const el = this.game_specific_settings_els.get('map') as HTMLSelectElement;
-            if (el) {
-              el.value = risq_settings.map;
-            }
+            this.risq_map = risq_settings.map;
+            const el = this.game_specific_settings_els.get('map-type') as HTMLSelectElement;
+            el.value = risq_settings.map.startsWith(`${MapType.CUSTOM}:`) ? MapType.CUSTOM : MapType.SCRIPT;
+            this.updateRisqMapOptions();
           }
           if (risq_settings.visibility !== undefined) {
             const el = this.game_specific_settings_els.get('visibility') as HTMLSelectElement;
@@ -278,6 +389,7 @@ export class DwgLobbyGameSettings extends DwgElement {
   clearSettings(): void {
     this.game_chooser.value = '';
     this.max_players_input.value = '';
+    this.max_players_input.max = '8';
     this.max_viewers_input.value = '';
     this.game_specific_settings.replaceChildren();
     this.game_specific_settings_els.clear();
@@ -303,11 +415,23 @@ export class DwgLobbyGameSettings extends DwgElement {
       case GameType.RISQ:
         const risq_ai_players = this.game_specific_settings_els.get('ai-players') as DwgAiSelector;
         const map_size_val = this.getSelectSetting('map-size');
+        const scripted = this.getSelectSetting('map-type') === MapType.SCRIPT;
         settings.game_specific_settings = {
           ai_players: risq_ai_players.getPlayers(),
-          map_size: map_size_val ? parseInt(map_size_val) : undefined,
-          map: this.getSelectSetting('map'),
+          map_size: scripted && map_size_val ? parseInt(map_size_val) : undefined,
+          map: this.getSelectSetting('map') || this.risq_map || undefined,
           visibility: parseInt(this.getSelectSetting('visibility') || '1'),
+          starting_stockpile: parseInt(
+            this.getSelectSetting('starting-stockpile') || StartingStockpile.STANDARD.toString()
+          ),
+          map_resources: parseInt(this.getSelectSetting('map-resources') || MapResourceLevel.STANDARD.toString()),
+          starting_development: parseInt(
+            this.getSelectSetting('starting-development') || StartingDevelopment.STANDARD.toString()
+          ),
+          population_limit: this.getNumberSetting('population-limit')?.valueAsNumber || 100,
+          start_balance: scripted
+            ? parseInt(this.getSelectSetting('start-balance') || StartBalance.MIRRORED.toString())
+            : undefined,
         } satisfies GameSettingsRisq;
         break;
       default:

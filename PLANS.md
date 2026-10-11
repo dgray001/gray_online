@@ -1,6 +1,8 @@
 v0.9: Risq beta version
  - World risq map
- - Fix tech tree and turn report colors
+ - In space view the per-space stuff on map seems sized base on total map size not zoom level and hex size on screen which is way wrong
+ - Rebalance maps, incorporate mountains, add map(s) with swamp/shallows/water
+ - In map gen the forests should cluster a bit
 
 Bigger Risq Issues/Ideas:
  - Utilize events on map

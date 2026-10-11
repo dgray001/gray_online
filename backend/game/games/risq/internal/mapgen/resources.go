@@ -222,7 +222,7 @@ type resourcePlaceParams struct {
 	OutsidePlayerAreas bool `json:"outside_player_areas"`
 }
 
-// Places exactly count of one resource on random free zones, so every seed gets the same amount
+// Places up to count of one resource on random free zones.
 func stepResourcePlace(ctx *mapScriptContext, raw json.RawMessage) error {
 	p, err := decodeStepParams[resourcePlaceParams](raw, "resource_place")
 	if err != nil {
@@ -243,7 +243,7 @@ func stepResourcePlace(ctx *mapScriptContext, raw json.RawMessage) error {
 	}
 	excluded := make(map[uint]bool)
 	if p.OutsidePlayerAreas {
-		if len(ctx.player_starts) == 0 {
+		if len(ctx.player_starts) == 0 && !ctx.nomad_starts {
 			return fmt.Errorf("resource_place: outside_player_areas needs an earlier player_starts step")
 		}
 		for _, start := range ctx.player_starts {
@@ -259,9 +259,7 @@ func stepResourcePlace(ctx *mapScriptContext, raw json.RawMessage) error {
 		}
 		candidates = append(candidates, z)
 	}
-	if len(candidates) < count {
-		return fmt.Errorf("resource_place: only %d free zones for %d of resource %d", len(candidates), count, p.ResourceId)
-	}
+	count = min(count, len(candidates))
 	for _, z := range util.ShuffleFrom(ctx.rng, candidates)[:count] {
 		ctx.board.PlaceResource(z, p.ResourceId)
 	}

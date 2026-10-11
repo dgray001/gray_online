@@ -177,7 +177,15 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
         <td class="now">${line.now}</td>
         <td>${rank_html}</td>
       `;
-        row.firstElementChild?.appendChild(document.createTextNode(nickname));
+        const name = document.createElement(line.eliminated ? 's' : 'span');
+        name.innerText = nickname;
+        row.firstElementChild?.appendChild(name);
+        if (line.eliminated_this_turn) {
+          const status = document.createElement('span');
+          status.className = 'reason';
+          status.innerText = ' (eliminated this turn)';
+          row.firstElementChild?.appendChild(status);
+        }
         return row;
       });
     this.scores_body.replaceChildren(...rows);
@@ -190,10 +198,10 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
       el.innerHTML = `<span class="num ${cls}">${num}</span><span class="cap">${cap}</span>`;
       return el;
     };
-    const net = land.gained - land.lost;
     this.land_tiles.replaceChildren(
       tile(land.held_start.toString(), 'Held at start'),
-      tile(signed(net), net > 0 ? 'Gained' : net < 0 ? 'Lost' : 'Net change', net > 0 ? 'up' : net < 0 ? 'down' : ''),
+      tile(signed(land.gained), 'Gained', land.gained > 0 ? 'up' : ''),
+      tile(signed(-land.lost), 'Lost', land.lost > 0 ? 'down' : ''),
       tile(land.held_end.toString(), 'Held now'),
       tile(signed(Math.round(land.gold_from_land)), 'Gold from land', 'gold-txt'),
       tile(signed(land.newly_explored), 'Newly explored', land.newly_explored > 0 ? 'up' : '')
@@ -226,6 +234,7 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
         <td><img src="/images/${icon}.png" alt="" width="16" height="16" />${label}</td>
         <td>${Math.round(line.start)}</td>
         <td class="${line.gathered > 0 ? 'plus' : 'zero'}">${line.gathered > 0 ? '+' : ''}${Math.round(line.gathered)}</td>
+        <td class="${line.income > 0 ? 'plus' : 'zero'}">${line.income > 0 ? '+' : ''}${Math.round(line.income)}</td>
         <td class="${line.spent > 0 ? 'minus' : 'zero'}">${spent_html}</td>
         <td class="final">${Math.round(line.final)}</td>
       `;

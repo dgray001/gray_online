@@ -102,8 +102,12 @@ func (r *GameRisq) GetBase() *game.GameBase {
 }
 
 func (r *GameRisq) StartGame() {
-	r.endTurn()
+	r.recalculateOwnership()
+	r.recalculateVision()
+	r.refreshScores()
+	r.updateEliminated()
 	r.checkWinCondition()
+	r.metrics.recordTurn(r)
 	if !r.game.GameEnded() {
 		r.startNextTurn()
 	}
@@ -111,6 +115,7 @@ func (r *GameRisq) StartGame() {
 
 func (r *GameRisq) endTurn() {
 	r.recalculateOwnership()
+	r.payGoldIncome()
 	r.resolvePendingMercenaries()
 	r.recalculateVision()
 	r.refreshScores()

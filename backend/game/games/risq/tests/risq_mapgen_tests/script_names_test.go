@@ -6,7 +6,7 @@ import (
 )
 
 // The scripts one per board shape: hexagon, ring, rectangle, triangle
-var sweptScripts = []string{"default", "ring", "rectangle", "triangle"}
+var sweptScripts = []string{"hexagon", "ring", "rectangle", "triangle"}
 
 // 2 and 12 players plus two others from 3 to 11, drawn from a per-script fixed seed so every run tests the same counts
 func sweptPlayerCounts(script string) []int {

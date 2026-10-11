@@ -1,6 +1,9 @@
 package ai
 
-import "fmt"
+import (
+	"fmt"
+	"math"
+)
 
 func parseCondition(raw map[string]any) (Condition, error) {
 	if len(raw) != 1 {
@@ -42,7 +45,7 @@ func parseCondition(raw map[string]any) (Condition, error) {
 	case "bucket_full":
 		obj, _ := value.(map[string]any)
 		bucket, ok := obj["bucket"].(string)
-		if !ok {
+		if !ok || bucket == "" {
 			return nil, fmt.Errorf("bucket_full requires a string \"bucket\"")
 		}
 		return &conditionBucketFull{bucket: bucket}, nil
@@ -146,7 +149,7 @@ func parseAttackTarget(raw map[string]any) (attackTarget, error) {
 
 func parseOptionalID(raw map[string]any, key string) *uint32 {
 	f, ok := raw[key].(float64)
-	if !ok {
+	if !ok || f < 1 || f > math.MaxUint32 || f != math.Trunc(f) {
 		return nil
 	}
 	id := uint32(f)
@@ -163,6 +166,15 @@ func parseCost(raw any) (Cost, error) {
 	obj, ok := raw.(map[string]any)
 	if !ok {
 		return Cost{}, fmt.Errorf("\"cost\" must be an object")
+	}
+	for key, value := range obj {
+		if key != "food" && key != "wood" && key != "stone" && key != "gold" {
+			return Cost{}, fmt.Errorf("unknown cost resource %q", key)
+		}
+		amount, ok := value.(float64)
+		if !ok || amount < 0 || math.IsNaN(amount) || math.IsInf(amount, 0) {
+			return Cost{}, fmt.Errorf("cost %q must be a finite nonnegative number", key)
+		}
 	}
 	cost := Cost{}
 	if v, ok := obj["food"].(float64); ok {
@@ -206,13 +218,13 @@ func parseEligible(raw any) ([]OrderKind, error) {
 func parseIDSet(raw map[string]any, key string) (map[uint32]bool, error) {
 	ids := map[uint32]bool{}
 	list, ok := raw[key].([]any)
-	if raw[key] != nil && !ok {
+	if _, present := raw[key]; present && !ok {
 		return nil, fmt.Errorf("%q must be an array of numbers", key)
 	}
 	for _, id := range list {
 		f, ok := id.(float64)
-		if !ok {
-			return nil, fmt.Errorf("%q entries must be numbers", key)
+		if !ok || f < 1 || f > math.MaxUint32 || f != math.Trunc(f) {
+			return nil, fmt.Errorf("%q entries must be whole numbers in 1..4294967295", key)
 		}
 		ids[uint32(f)] = true
 	}
@@ -226,7 +238,7 @@ func parseUnitFilter(raw map[string]any) (unitFilter, error) {
 	}
 	filter := unitFilter{unit_ids: unit_ids, unit_types: map[UnitType]bool{}}
 	types, ok := raw["unit_types"].([]any)
-	if raw["unit_types"] != nil && !ok {
+	if _, present := raw["unit_types"]; present && !ok {
 		return filter, fmt.Errorf("\"unit_types\" must be an array of unit type names")
 	}
 	for _, t := range types {

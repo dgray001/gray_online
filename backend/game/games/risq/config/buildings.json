@@ -13,7 +13,8 @@
     "defense_piercing": 3,
     "population_support": 5,
     "garrison_capacity": 5,
-    "cost": { "wood": 250, "stone": 100 },
+    "cost": { "wood": 300, "stone": 100 },
+    "max_per_player": 1,
     "build_stamina": 90,
     "turn_stamina": 10,
     "produces": [

@@ -1,14 +1,15 @@
-dwg-risq-turn-report-dialog {
-  --ink: rgb(48, 32, 16);
-  --ink-soft: rgb(120, 95, 60);
-  --rule: rgba(48, 32, 16, 0.22);
-  --gain: rgb(40, 140, 40);
-  --loss: rgb(220, 30, 30);
-  --gold: rgb(154, 117, 20);
+dwg-risq-turn-report-dialog.dwg-dialog-box {
+  --ink: black;
+  --ink-soft: rgb(65, 55, 45);
+  --rule: rgba(60, 60, 60, 0.6);
+  --gain: rgb(20, 95, 30);
+  --loss: rgb(160, 20, 20);
+  --gold: rgb(100, 70, 0);
 
   #wrapper {
     background: rgb(222, 184, 135);
     border: 3px solid rgb(70, 30, 5);
+    box-shadow: none;
     border-radius: 4px;
     box-sizing: border-box;
     color: var(--ink);
@@ -48,7 +49,7 @@ dwg-risq-turn-report-dialog {
   }
 
   .eyebrow {
-    color: var(--loss);
+    color: var(--ink);
     font-size: 0.74rem;
     font-weight: 700;
     letter-spacing: 0.2em;
@@ -102,11 +103,11 @@ dwg-risq-turn-report-dialog {
   }
 
   table.board tr.you td {
-    background: rgba(120, 90, 40, 0.16);
+    background: rgb(204, 162, 108);
   }
 
   table.board tr.you td:first-child {
-    box-shadow: inset 3px 0 0 var(--loss);
+    box-shadow: inset 3px 0 0 var(--ink);
   }
 
   .swatch {
@@ -149,7 +150,7 @@ dwg-risq-turn-report-dialog {
 
     > div {
       align-items: center;
-      background: rgba(120, 90, 40, 0.1);
+      background: rgb(235, 202, 158);
       border: 1px solid var(--rule);
       border-radius: 3px;
       display: flex;
@@ -203,7 +204,7 @@ dwg-risq-turn-report-dialog {
   }
 
   .pop {
-    background: rgba(120, 90, 40, 0.1);
+    background: rgb(235, 202, 158);
     border: 1px solid var(--rule);
     border-radius: 3px;
     color: var(--ink-soft);
@@ -271,7 +272,7 @@ dwg-risq-turn-report-dialog {
     margin-bottom: 10px;
 
     span {
-      background: rgba(120, 90, 40, 0.1);
+      background: rgb(235, 202, 158);
       border: 1px solid var(--rule);
       border-radius: 999px;
       color: var(--ink-soft);
@@ -284,7 +285,7 @@ dwg-risq-turn-report-dialog {
       }
 
       &.warn {
-        border-color: rgba(220, 30, 30, 0.5);
+        border-color: var(--loss);
 
         b {
           color: var(--loss);

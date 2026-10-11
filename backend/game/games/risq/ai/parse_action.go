@@ -6,6 +6,50 @@ import "fmt"
 var numericActionKeys = []string{"max", "queue", "weight", "move_penalty", "depth", "size", "reserve", "launch", "retreat", "defend_radius", "strike", "score", "min_score", "min_distance"}
 
 func parseActionInner(raw map[string]any) (Action, error) {
+	for _, key := range []string{"bucket", "in_bucket", "held_by_bucket", "to", "target", "targets", "stance", "anchor", "order", "direction"} {
+		if value, present := raw[key]; present {
+			if name, ok := value.(string); !ok || name == "" {
+				return nil, fmt.Errorf("%q must be a nonempty string", key)
+			}
+		}
+	}
+	for _, key := range []string{"unit_when", "site", "spread", "where"} {
+		if value, present := raw[key]; present {
+			if _, ok := value.(map[string]any); !ok {
+				return nil, fmt.Errorf("%q must be an object", key)
+			}
+		}
+	}
+	for _, key := range []string{"from", "face", "coordinate", "direction_from", "direction_away_from"} {
+		if value, present := raw[key]; present && value == nil {
+			return nil, fmt.Errorf("%q must not be null", key)
+		}
+	}
+	for _, key := range []string{"eligible", "orders", "unit_types", "target_unit_types", "target_priority"} {
+		if value, present := raw[key]; present {
+			list, ok := value.([]any)
+			if !ok {
+				return nil, fmt.Errorf("%q must be an array of strings", key)
+			}
+			for _, item := range list {
+				if _, ok := item.(string); !ok {
+					return nil, fmt.Errorf("%q entries must be strings", key)
+				}
+			}
+		}
+	}
+	for _, key := range []string{"id", "unit_id", "tech_id", "building_id"} {
+		if _, present := raw[key]; present && parseOptionalID(raw, key) == nil {
+			return nil, fmt.Errorf("%q must be a whole number in 1..4294967295", key)
+		}
+	}
+	for _, key := range []string{"persist", "prioritize", "resume", "together", "when_full", "allow_reserved", "exclude_buckets", "reuse_unbuilt_foundation", "exclude_reference", "interrupt_current", "attack_back", "auto_attack"} {
+		if value, present := raw[key]; present {
+			if _, ok := value.(bool); !ok {
+				return nil, fmt.Errorf("%q must be a boolean", key)
+			}
+		}
+	}
 	action_type, ok := raw["action"].(string)
 	if !ok {
 		return nil, fmt.Errorf("action must have a string \"action\" field")
@@ -226,6 +270,9 @@ func parseActionInner(raw map[string]any) (Action, error) {
 		action.allow_reserved, _ = raw["allow_reserved"].(bool)
 		switch from := raw["from"].(type) {
 		case string:
+			if from == "" {
+				return nil, fmt.Errorf("drain source must not be empty")
+			}
 			if from == "any" {
 				action.from_any = true
 			} else {
@@ -234,7 +281,7 @@ func parseActionInner(raw map[string]any) (Action, error) {
 		case []any:
 			for _, f := range from {
 				s, ok := f.(string)
-				if !ok {
+				if !ok || s == "" {
 					return nil, fmt.Errorf("drain_bucket action's \"from\" array must contain strings")
 				}
 				action.from = append(action.from, s)

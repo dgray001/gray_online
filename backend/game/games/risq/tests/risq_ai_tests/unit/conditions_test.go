@@ -1,10 +1,55 @@
 package unit
 
 import (
+	"fmt"
 	"github.com/dgray001/gray_online/game/games/risq/ai"
+	"io"
 	"math/rand"
 	"testing"
 )
+
+func TestBooleanConditionShortCircuit(t *testing.T) {
+	for _, c := range []struct {
+		condition string
+		runs      bool
+		queries   int
+	}{
+		{`{"all":[]}`, true, 0}, {`{"any":[]}`, false, 0}, {`{"not":{"not":{"always":null}}}`, true, 0},
+		{`{"all":[{"not":{"always":null}},{"tech_researched":{"tech_id":1}}]}`, false, 0},
+		{`{"any":[{"always":null},{"tech_researched":{"tech_id":1}}]}`, true, 0},
+		{`{"all":[{"always":null},{"tech_researched":{"tech_id":1}}]}`, true, 1},
+		{`{"any":[{"not":{"always":null}},{"tech_researched":{"tech_id":1}}]}`, true, 1},
+	} {
+		model := requireModel(t, fmt.Sprintf(`{"rules":[{"when":%s,"then":[{"action":"delete_unit"}]}]}`, c.condition))
+		view := &fakeView{units: []ai.UnitView{{InternalID: 73}}, techResearched: map[uint32]bool{1: true}}
+		var calls []orderCall
+		if c.runs {
+			calls = append(calls, orderCall{Kind: 12, Subject: 73, Clear: true})
+		}
+		assertCalls(t, model.DecideOrders(view), view, calls...)
+		if view.techQueries != c.queries {
+			t.Fatalf("%s: queries %d, want %d", c.condition, view.techQueries, c.queries)
+		}
+	}
+}
+
+func TestAlwaysPayloads(t *testing.T) {
+	for _, payload := range []string{`{}`, `null`, `false`, `7`, `"ignored"`, `[]`} {
+		for _, negated := range []bool{false, true} {
+			condition := `{"always":` + payload + `}`
+			if negated {
+				condition = `{"not":` + condition + `}`
+			}
+			model := requireModel(t, fmt.Sprintf(`{"rules":[{"when":%s,"then":[{"action":"delete_unit"}]}]}`, condition))
+			view := &fakeView{units: []ai.UnitView{{InternalID: 73}}}
+			if negated {
+				assertCalls(t, model.DecideOrders(view), view)
+			} else {
+				assertCalls(t, model.DecideOrders(view), view, orderCall{Kind: 12, Subject: 73, Clear: true})
+			}
+		}
+	}
+}
 
 func runCondition(t *testing.T, condition map[string]any, view ai.View) []ai.Order {
 	rng := rand.New(rand.NewSource(1))
@@ -25,7 +70,7 @@ func runCondition(t *testing.T, condition map[string]any, view ai.View) []ai.Ord
 			},
 		},
 	}
-	model := ai.ParseModel(raw, rng)
+	model := ai.ParseModelWithDiagnostics(raw, rng, io.Discard)
 	if _, ok := model.(*ai.RulesModel); !ok {
 		t.Fatalf("expected RulesModel, got %T", model)
 	}

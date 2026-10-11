@@ -156,6 +156,7 @@ export class RisqOrderTargeting {
       !zone?.resource &&
       !zone?.building &&
       !this.planning.hasPlannedFoundation(zone) &&
+      !this.planning.atBuildingLimit(this.armed.getArmedBuildingId(), zone?.coordinate_key) &&
       (ownership === undefined || ownership < 0 || ownership === this.session.getPlayerId())
     );
   }

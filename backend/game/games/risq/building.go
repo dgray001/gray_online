@@ -532,13 +532,16 @@ func AllBuildingConfigsToFrontend() []gin.H {
 			produces[j] = p.ToFrontend()
 		}
 		buildings[i] = gin.H{
-			"building_id":      id,
-			"display_name":     config.Display_name,
-			"description":      config.Description,
-			"required_tech_id": config.Required_tech_id,
-			"produces":         produces,
-			"cost":             config.Cost.ToFrontend(),
-			"stamina_cost":     config.Build_stamina,
+			"building_id":        id,
+			"display_name":       config.Display_name,
+			"description":        config.Description,
+			"required_tech_id":   config.Required_tech_id,
+			"buildable":          defs.AnyUnitCanBuild(id),
+			"produces":           produces,
+			"cost":               config.Cost.ToFrontend(),
+			"stamina_cost":       config.Build_stamina,
+			"population_support": config.Population_support,
+			"garrison_capacity":  config.Garrison_capacity,
 			"stats": gin.H{
 				"health":               config.Max_health,
 				"attack_type":          config.Attack_type,

@@ -38,6 +38,7 @@ interface ProducibleEntry {
 interface BuildingTreeEntry {
   building_id: number;
   display_name: string;
+  buildable: boolean;
   produces: ProducibleEntry[];
 }
 
@@ -118,6 +119,13 @@ export class DwgRisqSettings extends DwgElement {
 
   private addBuildingEntries(buildings: BuildingTreeEntry[]): void {
     for (const building of buildings) {
+      if (building.buildable) {
+        this.entries.push({
+          section: RISQ_HOTKEY_SCOPE_LABELS[RisqHotkeyScope.VILLAGERS],
+          label: `Build: ${building.display_name}`,
+          slot: { group: 'build_building', key: building.building_id },
+        });
+      }
       if (building.produces.length === 0) {
         continue;
       }

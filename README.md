@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.8za: Fix hilly images
+v0.8zb: Wire in risq map settings
 
 ## Dev Use
 
