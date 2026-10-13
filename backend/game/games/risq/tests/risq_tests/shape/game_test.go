@@ -6,7 +6,7 @@ func TestGameAndPlayerWireShapes(t *testing.T) {
 	g := shapeGame(t, 3)
 	for human := range 2 {
 		state := checkShape(t, snapshot(g, human, false), gameShape)
-		base := checkShape(t, state["game_base"], "game_id:n game_type:n game_started:b game_ended:b persistant_history:b players:a viewers:a")
+		base := checkShape(t, state["game_base"], "game_id:n game_type:n game_started:b game_ended:b persistant_history:b latest_update_id:n players:a viewers:a")
 		for _, value := range array(t, base["players"]) {
 			checkShape(t, value, identityShape)
 		}

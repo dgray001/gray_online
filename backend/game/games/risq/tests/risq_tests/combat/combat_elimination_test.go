@@ -2,12 +2,15 @@ package combat
 
 import (
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness"
+	"github.com/dgray001/gray_online/game/games/risq/tests/harness/fakeboard"
 	"github.com/gin-gonic/gin"
 	"testing"
 )
 
 func TestEliminationAndWinCondition(t *testing.T) {
-	g := combatGame(t, 13, 1) // 13 is Heavy Infantry (50hp, 9att), 1 is Villager (8hp, 5att)
+	doc := `{"board_size":1,"players":2,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":13,"player":0,"count":1},{"id":1,"player":1,"count":1}]}]}]}`
+	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"combat": doc})
+	g := harness.NewConnectedGame(t, "custom:combat", 1, 2, 90) // 13 is Heavy Infantry (50hp, 9att), 1 is Villager (8hp, 5att)
 	p0, p1 := g.Human(0), g.Human(1)
 	if _, exists := g.Risq.ToFrontend(0, true)["outcome"]; exists {
 		t.Fatal("ongoing game has an outcome")
@@ -36,7 +39,8 @@ func TestEliminationAndWinCondition(t *testing.T) {
 }
 
 func TestNoSurvivorsOutcome(t *testing.T) {
-	g := combatGame(t, 0, 0)
+	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"combat": `{"board_size":1,"players":2,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[]}]}]}`})
+	g := harness.NewConnectedGame(t, "custom:combat", 1, 2, 90)
 	if !g.Base.GameEnded() {
 		t.Fatal("game with no survivors did not end")
 	}

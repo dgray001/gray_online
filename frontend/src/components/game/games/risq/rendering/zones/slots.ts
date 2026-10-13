@@ -1,15 +1,18 @@
 import type { RisqZone, UnitByTypeData } from '../../model/types';
 import type { Point2D } from '../../../../util/objects2d';
 import { findOuterZoneIndex, zoneUnitSlotOffsets } from './geometry';
+import type { RisqViewMode } from '../terrain';
+import { unitVisibleInViewMode } from '../terrain';
 
 export function getZoneUnitSlots(
   zone: RisqZone,
   active_player_id: number,
   center_max_slots: number,
-  edge_max_slots: number
+  edge_max_slots: number,
+  view_mode: RisqViewMode
 ): UnitByTypeData[][] {
   const capacity = findOuterZoneIndex(zone.coordinate) === -1 ? center_max_slots : edge_max_slots;
-  return zone.unit_slots ?? (zone.unit_slots = buildZoneUnitSlots(zone, active_player_id, capacity));
+  return zone.unit_slots ?? (zone.unit_slots = buildZoneUnitSlots(zone, active_player_id, capacity, view_mode));
 }
 
 export function unitSlotWorldPosition(
@@ -20,9 +23,10 @@ export function unitSlotWorldPosition(
   internal_id: number,
   center_max_slots: number,
   unit_r: number,
-  edge_max_slots: number
+  edge_max_slots: number,
+  view_mode: RisqViewMode
 ): Point2D | undefined {
-  const filled_slots = getZoneUnitSlots(zone, active_player_id, center_max_slots, edge_max_slots);
+  const filled_slots = getZoneUnitSlots(zone, active_player_id, center_max_slots, edge_max_slots, view_mode);
   const slot_index = filled_slots.findIndex((groups) => groups.some((g) => g.units.has(internal_id)));
   if (slot_index === -1) {
     return undefined;
@@ -42,12 +46,23 @@ function bandGroupsByUnitId(groups: UnitByTypeData[], band_size: number): UnitBy
   return [...bands.entries()].sort(([a], [b]) => a - b).map(([, g]) => g);
 }
 
-export function buildZoneUnitSlots(zone: RisqZone, active_player_id: number, num_slots: number): UnitByTypeData[][] {
-  const active_groups = [...(zone.units_by_type.get(active_player_id)?.values() ?? [])].sort(
-    (a, b) => a.unit_id - b.unit_id
+export function buildZoneUnitSlots(
+  zone: RisqZone,
+  active_player_id: number,
+  num_slots: number,
+  view_mode: RisqViewMode
+): UnitByTypeData[][] {
+  const visible_by_type = new Map(
+    [...zone.units_by_type]
+      .map(([player_id, groups]): [number, UnitByTypeData[]] => [
+        player_id,
+        [...groups.values()].filter((g) => unitVisibleInViewMode(g.unit_type, view_mode)),
+      ])
+      .filter(([, groups]) => groups.length > 0)
   );
+  const active_groups = [...(visible_by_type.get(active_player_id) ?? [])].sort((a, b) => a.unit_id - b.unit_id);
   const other_by_player = new Map(
-    [...zone.units_by_type.entries()].filter(([player_id]) => player_id !== active_player_id)
+    [...visible_by_type.entries()].filter(([player_id]) => player_id !== active_player_id)
   );
   const other_flat = [...other_by_player.values()]
     .flatMap((m) => [...m.values()])

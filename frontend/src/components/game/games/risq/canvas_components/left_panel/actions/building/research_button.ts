@@ -38,7 +38,7 @@ export class RisqResearchButton extends RisqActionButton {
     const player = this.risq.getPlayer();
     if (!!player && this.risq.session.givingOrders() && !player.orders_submitted) {
       this.enable();
-      this.already_queued = researchQueued(player, this.risq.orders_model.all(), this.producible.id);
+      this.already_queued = researchQueued(player, this.risq.orders_model.uncancelledOrders(), this.producible.id);
       this.dimmed = this.already_queued || !canAffordCost(player, this.producible.cost);
     } else {
       this.disable();

@@ -2,11 +2,15 @@ package game
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"sync"
 
 	"github.com/gin-gonic/gin"
 )
+
+// Content key holding a full game-state snapshot in updates of games with non-persistent history
+const snapshotContentKey = "game"
 
 type PlayerAction struct {
 	action_id int
@@ -35,11 +39,14 @@ type Player struct {
 	connected        bool
 	Updates          chan *UpdateMessage
 	FailedUpdates    chan *UpdateMessage
+	SettingUpdates   chan *UpdateMessage
 	AiUpdates        chan *UpdateMessage
 	AiFailedUpdates  chan *UpdateMessage
 	FlushConnections chan bool
+	next_update_id   int
 	update_list      []*UpdateMessage
 	update_list_mu   sync.RWMutex
+	snapshot_stale   bool
 	base_game        *GameBase
 }
 
@@ -56,8 +63,10 @@ func CreatePlayer(client_id uint64, nickname string, base_game *GameBase) {
 		Updates:          make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
 		AiUpdates:        make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
 		FailedUpdates:    make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
+		SettingUpdates:   make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
 		AiFailedUpdates:  make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
 		FlushConnections: make(chan bool, 2),
+		next_update_id:   1,
 		update_list:      []*UpdateMessage{},
 		base_game:        base_game,
 	}
@@ -76,13 +85,61 @@ func CreateAiPlayer(nickname string, base_game *GameBase) *Player {
 		Updates:          make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
 		AiUpdates:        make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
 		FailedUpdates:    make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
+		SettingUpdates:   make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
 		AiFailedUpdates:  make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
 		FlushConnections: make(chan bool, 2),
+		next_update_id:   1,
 		update_list:      []*UpdateMessage{},
 		base_game:        base_game,
 	}
 	base_game.AiPlayers[ai_id] = player
 	return player
+}
+
+// Whether an update sent now could be read: AIs always read, humans only while connected
+func (p *Player) HasRecipient() bool {
+	return p.ai_running || p.connected
+}
+
+// Forgets the stored history so a resend can't replay a snapshot older than the current state
+func (p *Player) DropUpdateHistory() {
+	p.update_list_mu.Lock()
+	p.update_list = make([]*UpdateMessage, 0)
+	p.update_list_mu.Unlock()
+}
+
+// Marks the newest stored snapshot as outdated, to be regenerated lazily on its next replay
+func (p *Player) MarkSnapshotStale() {
+	p.update_list_mu.Lock()
+	p.snapshot_stale = true
+	p.update_list_mu.Unlock()
+}
+
+func (p *Player) snapshotIsStale() bool {
+	p.update_list_mu.RLock()
+	defer p.update_list_mu.RUnlock()
+	return p.snapshot_stale && len(p.update_list) > 0
+}
+
+// The id of the newest update sent to this player and whether its stored snapshot is stale
+func (p *Player) latestUpdate() (int, bool) {
+	p.update_list_mu.RLock()
+	defer p.update_list_mu.RUnlock()
+	return p.next_update_id - 1, p.snapshot_stale && len(p.update_list) > 0
+}
+
+// Swaps in current state for a stale newest snapshot; a newer update that already replaced it needs nothing
+func (p *Player) refreshStaleSnapshot(state gin.H) {
+	p.update_list_mu.Lock()
+	defer p.update_list_mu.Unlock()
+	if !p.snapshot_stale || len(p.update_list) == 0 {
+		return
+	}
+	last := *p.update_list[len(p.update_list)-1]
+	last.Content = maps.Clone(last.Content)
+	last.Content[snapshotContentKey] = state
+	p.update_list[len(p.update_list)-1] = &last
+	p.snapshot_stale = false
 }
 
 func (p *Player) IsHumanPlayer() bool {
@@ -108,8 +165,10 @@ func (p *Player) AddUpdate(update *UpdateMessage) {
 	}
 	// copy so this recipient's Id assignment can't race other recipients' AddUpdate/AddViewerUpdate calls on the shared update
 	own_update := *update
-	own_update.Id = len(p.update_list) + 1 // start at 1
+	own_update.Id = p.next_update_id
+	p.next_update_id++
 	p.update_list = append(p.update_list, &own_update)
+	p.snapshot_stale = false
 	p.update_list_mu.Unlock()
 	if p.IsHumanPlayer() {
 		select {
@@ -152,6 +211,18 @@ func (p *Player) ReplayUpdates(last_applied_id int, apply func(*UpdateMessage)) 
 		last_applied_id++
 	}
 	return last_applied_id
+}
+
+// Delivers a small per-player settings acknowledgement outside the sequenced, replayable update history
+func (p *Player) AddSettingUpdate(update *UpdateMessage) {
+	if !p.IsHumanPlayer() || !p.connected {
+		return
+	}
+	select {
+	case p.SettingUpdates <- update:
+	default:
+		fmt.Fprintln(os.Stderr, "Dropped setting update to player", p.Player_id, "- buffer full:", update.Kind)
+	}
 }
 
 func (p *Player) AddFailedUpdate(update *UpdateMessage) {

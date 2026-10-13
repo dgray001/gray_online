@@ -1,4 +1,5 @@
 import { drawHexagon } from '../../game/util/canvas_util';
+import type { Point2D } from '../../game/util/objects2d';
 import type { EditCommand } from '../edit_history';
 import type { EditorConfigPanel, EditorTarget, EditorToolContext } from '../editor_tool';
 import { EditorTool } from '../editor_tool';
@@ -13,24 +14,78 @@ const REGION_COLORS = [
   'rgba(200, 120, 255, 0.25)',
   'rgba(255, 160, 200, 0.25)',
 ];
-class RegionEditCommand implements EditCommand {
+class RegionListCommand implements EditCommand {
   constructor(
-    private before: MapDocRegion[],
-    private after: MapDocRegion[]
+    private index: number,
+    private region: MapDocRegion,
+    private adding: boolean
   ) {}
 
-  isEmpty(): boolean {
-    return JSON.stringify(this.before) === JSON.stringify(this.after);
-  }
-
   apply(doc: MapDoc): void {
-    doc.regions = JSON.parse(JSON.stringify(this.after));
+    this.adding ? this.insert(doc) : this.remove(doc);
   }
 
   revert(doc: MapDoc): void {
-    doc.regions = JSON.parse(JSON.stringify(this.before));
+    this.adding ? this.remove(doc) : this.insert(doc);
+  }
+
+  private insert(doc: MapDoc): void {
+    doc.regions = doc.regions ?? [];
+    doc.regions.splice(this.index, 0, structuredClone(this.region));
+  }
+
+  private remove(doc: MapDoc): void {
+    doc.regions?.splice(this.index, 1);
   }
 }
+class RegionBonusCommand implements EditCommand {
+  constructor(
+    private index: number,
+    private before: number | undefined,
+    private after: number | undefined
+  ) {}
+
+  apply(doc: MapDoc): void {
+    this.set(doc, this.after);
+  }
+
+  revert(doc: MapDoc): void {
+    this.set(doc, this.before);
+  }
+
+  private set(doc: MapDoc, bonus: number | undefined): void {
+    const region = doc.regions?.[this.index];
+    if (region) {
+      region.gold_bonus = bonus;
+    }
+  }
+}
+
+class RegionMembershipCommand implements EditCommand {
+  constructor(
+    private coord: Point2D,
+    private from: number | undefined,
+    private to: number | undefined
+  ) {}
+
+  apply(doc: MapDoc): void {
+    this.move(doc, this.from, this.to);
+  }
+
+  revert(doc: MapDoc): void {
+    this.move(doc, this.to, this.from);
+  }
+
+  private move(doc: MapDoc, source: number | undefined, target: number | undefined): void {
+    const left = source === undefined ? undefined : doc.regions?.[source];
+    if (left) {
+      left.spaces = left.spaces.filter(([x, y]) => x !== this.coord.x || y !== this.coord.y);
+    }
+    const joined = target === undefined ? undefined : doc.regions?.[target];
+    joined?.spaces.push([this.coord.x, this.coord.y]);
+  }
+}
+
 export class RegionTool extends EditorTool {
   readonly id = 'region';
   readonly label = 'Regions';
@@ -58,16 +113,22 @@ export class RegionTool extends EditorTool {
     if (!doc) {
       return;
     }
-    const before = JSON.parse(JSON.stringify(doc.regions ?? []));
-    doc.regions = doc.regions ?? [];
+    const regions = doc.regions ?? [];
     let number = 1;
-    while (doc.regions.some((region) => region.name === `Region ${number}`)) {
+    while (regions.some((region) => region.name === `Region ${number}`)) {
       number++;
     }
-    doc.regions.push({ name: `Region ${number}`, gold_bonus: 3, spaces: [] });
-    const after = JSON.parse(JSON.stringify(doc.regions));
-    this.context.history.record(new RegionEditCommand(before, after));
-    this.context.edited();
+    const region = { name: `Region ${number}`, gold_bonus: 3, spaces: [] };
+    this.commit(new RegionListCommand(regions.length, region, true));
+  }
+
+  private commit(command: EditCommand): void {
+    const doc = this.context.doc();
+    if (doc) {
+      command.apply(doc);
+      this.context.history.record(command);
+      this.context.edited();
+    }
   }
 
   private deleteRegion(index: number): void {
@@ -75,23 +136,18 @@ export class RegionTool extends EditorTool {
     if (!doc || !doc.regions || index < 0 || index >= doc.regions.length) {
       return;
     }
-    const before = JSON.parse(JSON.stringify(doc.regions));
-    doc.regions.splice(index, 1);
-    const after = JSON.parse(JSON.stringify(doc.regions));
-    this.context.history.record(new RegionEditCommand(before, after));
-    this.context.edited();
+    this.commit(new RegionListCommand(index, doc.regions[index], false));
   }
   private changeBonus(index: number, delta: number): void {
     const doc = this.context.doc();
     if (!doc || !doc.regions || index < 0 || index >= doc.regions.length) {
       return;
     }
-    const before = JSON.parse(JSON.stringify(doc.regions));
-    const region = doc.regions[index];
-    region.gold_bonus = Math.max(0, (region.gold_bonus ?? 0) + delta);
-    const after = JSON.parse(JSON.stringify(doc.regions));
-    this.context.history.record(new RegionEditCommand(before, after));
-    this.context.edited();
+    const before = doc.regions[index].gold_bonus;
+    const after = Math.max(0, (before ?? 0) + delta);
+    if (after !== before) {
+      this.commit(new RegionBonusCommand(index, before, after));
+    }
   }
 
   private toggleSpace(target: EditorTarget): void {
@@ -109,18 +165,14 @@ export class RegionTool extends EditorTool {
     if (!region) {
       return;
     }
-    const before = JSON.parse(JSON.stringify(doc.regions));
-    const coord: [number, number] = [target.space.x, target.space.y];
-    const exists_in_active = region.spaces.some(([x, y]) => x === coord[0] && y === coord[1]);
-    for (const r of doc.regions) {
-      r.spaces = r.spaces.filter(([x, y]) => !(x === coord[0] && y === coord[1]));
-    }
-    if (!exists_in_active) {
-      region.spaces.push(coord);
-    }
-    const after = JSON.parse(JSON.stringify(doc.regions));
-    this.context.history.record(new RegionEditCommand(before, after));
-    this.context.edited();
+    const owner = doc.regions.findIndex((r) => r.spaces.some(([x, y]) => x === target.space.x && y === target.space.y));
+    this.commit(
+      new RegionMembershipCommand(
+        target.space,
+        owner < 0 ? undefined : owner,
+        owner === active_idx ? undefined : active_idx
+      )
+    );
   }
   mousedown(target: EditorTarget | undefined, e: MouseEvent): boolean {
     if (e.button !== 0 || !target) {

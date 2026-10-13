@@ -61,6 +61,41 @@ export function resourceImage(resource: RisqResource, configs: ReadonlyMap<numbe
       case 36:
         filename = 'tree_walnut';
         break;
+      case 111:
+      case 121:
+      case 131:
+        filename = 'tree_palm';
+        break;
+      case 112:
+      case 122:
+      case 132:
+        filename = 'tree_acacia';
+        break;
+      case 113:
+      case 123:
+      case 133:
+        filename = 'tree_baobab';
+        break;
+      case 114:
+      case 124:
+      case 134:
+        filename = 'tree_birch';
+        break;
+      case 115:
+      case 125:
+      case 135:
+        filename = 'tree_juniper';
+        break;
+      case 116:
+      case 126:
+      case 136:
+        filename = 'tree_spruce';
+        break;
+      case 117:
+      case 127:
+      case 137:
+        filename = 'tree_willow';
+        break;
       // stone
       case 41:
       case 42:
@@ -81,10 +116,10 @@ export function resourceImage(resource: RisqResource, configs: ReadonlyMap<numbe
 
 // Forests get a scatter of tree icons drawn across their whole zone
 export function isForestResource(resource: RisqResource): boolean {
-  return [31, 32, 33, 34, 35, 36].includes(resource.resource_id);
+  return [31, 32, 33, 34, 35, 36, 131, 132, 133, 134, 135, 136, 137].includes(resource.resource_id);
 }
 
-const GROVE_RESOURCE_IDS = new Set<number>([21, 22, 23, 24, 25, 26]);
+const GROVE_RESOURCE_IDS = new Set<number>([21, 22, 23, 24, 25, 26, 121, 122, 123, 124, 125, 126, 127]);
 
 /** Sizes and back-tree centers as fractions of the icon box */
 interface TreeClusterLayout {
@@ -195,7 +230,7 @@ export function resourceIcon(game: RisqDrawHost, resource: RisqResource): HTMLIm
 export function resourceType(resource: RisqResource): RisqResourceType {
   if (resource.resource_id < 11) {
     return RisqResourceType.FOOD;
-  } else if (resource.resource_id < 41) {
+  } else if (resource.resource_id < 41 || (resource.resource_id > 110 && resource.resource_id < 140)) {
     return RisqResourceType.WOOD;
   } else if (resource.resource_id < 51) {
     return RisqResourceType.STONE;

@@ -20,6 +20,7 @@ type RisqTurnReport struct {
 	cap_start         uint16
 	cap_end           uint16
 	units_created     map[uint32]int
+	units_hired       map[uint32]int
 	buildings_built   []RisqBuiltEntry
 	techs_researched  []uint32
 	combat            []RisqCombatEvent
@@ -107,6 +108,7 @@ func createRisqTurnReport(turn uint16, p *RisqPlayer, owned map[uint]bool, held_
 		pop_start:         uint16(len(p.units)),
 		cap_start:         p.populationLimit(),
 		units_created:     make(map[uint32]int),
+		units_hired:       make(map[uint32]int),
 		techs_researched:  make([]uint32, 0),
 		region_held_start: held_regions,
 	}
@@ -125,6 +127,12 @@ func (r *RisqTurnReport) recordUnitCreated(unit_id uint32) {
 		return
 	}
 	r.units_created[unit_id]++
+}
+
+func (r *RisqTurnReport) recordUnitHired(unit_id uint32) {
+	if r != nil {
+		r.units_hired[unit_id]++
+	}
 }
 
 func (r *RisqTurnReport) recordBuildingBuilt(building_id uint32, space game_utils.Coordinate2D, zone game_utils.Coordinate2D) {
@@ -321,9 +329,12 @@ func (rep *RisqTurnReport) toFrontend() gin.H {
 			"final":    line.start + line.gathered + line.income - line.spent,
 		})
 	}
-	units := make([]gin.H, 0, len(rep.units_created))
-	for uid, count := range rep.units_created {
-		units = append(units, gin.H{"unit_id": uid, "count": count})
+	unit_counts := func(counts map[uint32]int) []gin.H {
+		units := make([]gin.H, 0, len(counts))
+		for uid, count := range counts {
+			units = append(units, gin.H{"unit_id": uid, "count": count})
+		}
+		return units
 	}
 	buildings := make([]gin.H, 0, len(rep.buildings_built))
 	for _, b := range rep.buildings_built {
@@ -361,7 +372,7 @@ func (rep *RisqTurnReport) toFrontend() gin.H {
 		"regions":    regions,
 		"resources":  resources,
 		"population": gin.H{"start": rep.pop_start, "end": rep.pop_end, "cap_start": rep.cap_start, "cap_end": rep.cap_end},
-		"production": gin.H{"units_created": units, "buildings_built": buildings, "techs_researched": rep.techs_researched},
+		"production": gin.H{"units_created": unit_counts(rep.units_created), "units_hired": unit_counts(rep.units_hired), "buildings_built": buildings, "techs_researched": rep.techs_researched},
 		"combat":     combat,
 		"orders": gin.H{
 			"active":    rep.orders.active,

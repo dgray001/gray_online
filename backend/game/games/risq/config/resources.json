@@ -190,5 +190,173 @@
     "starting_resources": 250,
     "base_gather_speed": 10,
     "gather_capacity": 6
+  },
+  {
+    "resource_id": 111,
+    "display_name": "Palm Tree",
+    "category": "wood",
+    "starting_resources": 125,
+    "base_gather_speed": 10,
+    "gather_capacity": 2
+  },
+  {
+    "resource_id": 112,
+    "display_name": "Acacia Tree",
+    "category": "wood",
+    "starting_resources": 125,
+    "base_gather_speed": 10,
+    "gather_capacity": 2
+  },
+  {
+    "resource_id": 113,
+    "display_name": "Baobab Tree",
+    "category": "wood",
+    "starting_resources": 200,
+    "base_gather_speed": 8,
+    "gather_capacity": 2
+  },
+  {
+    "resource_id": 114,
+    "display_name": "Birch Tree",
+    "category": "wood",
+    "starting_resources": 100,
+    "base_gather_speed": 11,
+    "gather_capacity": 2
+  },
+  {
+    "resource_id": 115,
+    "display_name": "Juniper Tree",
+    "category": "wood",
+    "starting_resources": 100,
+    "base_gather_speed": 11,
+    "gather_capacity": 2
+  },
+  {
+    "resource_id": 116,
+    "display_name": "Spruce Tree",
+    "category": "wood",
+    "starting_resources": 150,
+    "base_gather_speed": 10,
+    "gather_capacity": 2
+  },
+  {
+    "resource_id": 117,
+    "display_name": "Willow Tree",
+    "category": "wood",
+    "starting_resources": 150,
+    "base_gather_speed": 10,
+    "gather_capacity": 2
+  },
+  {
+    "resource_id": 121,
+    "display_name": "Palm Grove",
+    "category": "wood",
+    "starting_resources": 375,
+    "base_gather_speed": 10,
+    "gather_capacity": 4
+  },
+  {
+    "resource_id": 122,
+    "display_name": "Acacia Grove",
+    "category": "wood",
+    "starting_resources": 375,
+    "base_gather_speed": 10,
+    "gather_capacity": 4
+  },
+  {
+    "resource_id": 123,
+    "display_name": "Baobab Grove",
+    "category": "wood",
+    "starting_resources": 600,
+    "base_gather_speed": 8,
+    "gather_capacity": 4
+  },
+  {
+    "resource_id": 124,
+    "display_name": "Birch Grove",
+    "category": "wood",
+    "starting_resources": 300,
+    "base_gather_speed": 11,
+    "gather_capacity": 4
+  },
+  {
+    "resource_id": 125,
+    "display_name": "Juniper Grove",
+    "category": "wood",
+    "starting_resources": 300,
+    "base_gather_speed": 11,
+    "gather_capacity": 4
+  },
+  {
+    "resource_id": 126,
+    "display_name": "Spruce Grove",
+    "category": "wood",
+    "starting_resources": 450,
+    "base_gather_speed": 10,
+    "gather_capacity": 4
+  },
+  {
+    "resource_id": 127,
+    "display_name": "Willow Grove",
+    "category": "wood",
+    "starting_resources": 450,
+    "base_gather_speed": 10,
+    "gather_capacity": 4
+  },
+  {
+    "resource_id": 131,
+    "display_name": "Palm Forest",
+    "category": "wood",
+    "starting_resources": 1500,
+    "base_gather_speed": 10,
+    "gather_capacity": 8
+  },
+  {
+    "resource_id": 132,
+    "display_name": "Acacia Forest",
+    "category": "wood",
+    "starting_resources": 1500,
+    "base_gather_speed": 10,
+    "gather_capacity": 8
+  },
+  {
+    "resource_id": 133,
+    "display_name": "Baobab Forest",
+    "category": "wood",
+    "starting_resources": 2400,
+    "base_gather_speed": 8,
+    "gather_capacity": 8
+  },
+  {
+    "resource_id": 134,
+    "display_name": "Birch Forest",
+    "category": "wood",
+    "starting_resources": 1200,
+    "base_gather_speed": 11,
+    "gather_capacity": 8
+  },
+  {
+    "resource_id": 135,
+    "display_name": "Juniper Forest",
+    "category": "wood",
+    "starting_resources": 1200,
+    "base_gather_speed": 11,
+    "gather_capacity": 8
+  },
+  {
+    "resource_id": 136,
+    "display_name": "Spruce Forest",
+    "category": "wood",
+    "starting_resources": 1800,
+    "base_gather_speed": 10,
+    "gather_capacity": 8
+  },
+  {
+    "resource_id": 137,
+    "display_name": "Willow Forest",
+    "category": "wood",
+    "starting_resources": 1800,
+    "base_gather_speed": 10,
+    "gather_capacity": 8
   }
 ]

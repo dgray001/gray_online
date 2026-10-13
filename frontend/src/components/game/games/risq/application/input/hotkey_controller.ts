@@ -34,7 +34,6 @@ const VIEW_MODE_ACTIONS: Partial<Record<RisqHotkeyAction, RisqViewMode>> = {
   [RisqHotkeyAction.VIEW_MODE_RESOURCE]: RisqViewMode.RESOURCE,
   [RisqHotkeyAction.VIEW_MODE_MILITARY]: RisqViewMode.MILITARY,
   [RisqHotkeyAction.VIEW_MODE_OWNERSHIP]: RisqViewMode.OWNERSHIP,
-  [RisqHotkeyAction.VIEW_MODE_REGION]: RisqViewMode.REGION,
 };
 
 /** Keyboard and extra-mouse-button input: control groups plus configurable hotkeys, resolved against the selection */
@@ -229,6 +228,9 @@ export class RisqHotkeyController {
       }
       case RisqHotkeyAction.SUBMIT_ORDERS:
         this.submission.confirmSubmit();
+        break;
+      case RisqHotkeyAction.BUILDING_CLEAR_GATHER_POINT:
+        this.selection.selectedBuildingIds().forEach((id: number): void => this.commands.clearGatherPoint(id));
         break;
       default:
         this.left_panel.triggerAction(action);

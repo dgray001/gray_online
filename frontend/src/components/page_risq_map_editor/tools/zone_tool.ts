@@ -109,6 +109,9 @@ export class ZoneTool extends EditorTool {
     this.applyPaletteToZone(zone);
     this.cleanEmptyZone(space, zone);
     const after: MapDocZone | undefined = space.zones.find((z) => z.x === zone_pos.x && z.y === zone_pos.y);
+    if (JSON.stringify(before) === JSON.stringify(after)) {
+      return;
+    }
     const command = new ZoneEditCommand();
     command.record({
       space: space_pos,
@@ -128,7 +131,7 @@ export class ZoneTool extends EditorTool {
       delete zone.resource;
       zone.building = { id: this.palette.buildingId(), player: this.palette.playerSlot() };
     } else if (mode === 'unit') {
-      zone.units = [{ id: this.palette.unitId(), player: this.palette.playerSlot(), count: this.palette.unitCount() }];
+      this.placeUnits(zone);
     } else if (mode === 'terrain') {
       zone.terrain_override = this.palette.terrainId();
     } else if (mode === 'clear') {
@@ -137,6 +140,20 @@ export class ZoneTool extends EditorTool {
       delete zone.units;
       delete zone.terrain_override;
     }
+  }
+
+  private placeUnits(zone: MapDocZone): void {
+    const id = this.palette.unitId();
+    const player = this.palette.playerSlot();
+    const count = this.palette.unitCount();
+    const units = zone.units ?? [];
+    const existing = units.find((unit) => unit.id === id && unit.player === player);
+    if (existing) {
+      existing.count = count;
+    } else {
+      units.push({ id, player, count });
+    }
+    zone.units = units;
   }
 
   private cleanEmptyZone(space: MapDocSpace, zone: MapDocZone): void {

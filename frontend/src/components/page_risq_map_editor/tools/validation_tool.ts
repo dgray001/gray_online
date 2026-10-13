@@ -30,6 +30,10 @@ export class ValidationTool extends EditorTool {
 
   private selectIssue(issue: ValidationIssue): void {
     this.highlighted_space = issue.space;
+    if (issue.space) {
+      this.context.panTo(issue.space);
+      this.context.select({ space: issue.space });
+    }
   }
   mousedown(_target: EditorTarget | undefined, _e: MouseEvent): boolean {
     return false;

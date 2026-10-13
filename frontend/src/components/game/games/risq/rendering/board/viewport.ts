@@ -78,6 +78,10 @@ export class RisqViewport {
     }
     this.center_max_slots = capacity;
     this.edge_max_slots = edge_capacity;
+    this.clearUnitSlots();
+  }
+
+  private clearUnitSlots(): void {
     for (const space of this.session.getGame()?.spaces.flat() ?? []) {
       for (const zone of space?.zones?.flat() ?? []) {
         zone.unit_slots = undefined;
@@ -115,6 +119,7 @@ export class RisqViewport {
 
   setViewMode(mode: RisqViewMode): void {
     this.view_mode = mode;
+    this.clearUnitSlots();
     this.on_view_mode_change?.();
   }
 
@@ -124,15 +129,14 @@ export class RisqViewport {
 
   /** Whether units, buildings, and their orders are drawn at the current detail and view mode */
   contentDrawn(): boolean {
-    return this.view_mode !== RisqViewMode.REGION && this.draw_detail !== DrawRisqSpaceDetail.OWNERSHIP;
+    return this.draw_detail !== DrawRisqSpaceDetail.OWNERSHIP;
   }
 
-  // Regions are hoverable/selectable in the dedicated REGION view mode (any zoom), or fully zoomed out in any other non-military view mode
+  // Regions are hoverable/selectable in ownership mode below zone zoom, or fully zoomed out in any non-military view mode
   regionInteractionEnabled(): boolean {
-    return (
-      this.view_mode === RisqViewMode.REGION ||
-      (this.draw_detail === DrawRisqSpaceDetail.OWNERSHIP && this.view_mode !== RisqViewMode.MILITARY)
-    );
+    const fully_zoomed_out = this.draw_detail === DrawRisqSpaceDetail.OWNERSHIP;
+    const ownership_mode = this.view_mode === RisqViewMode.OWNERSHIP;
+    return (ownership_mode && !this.zoneView()) || (fully_zoomed_out && this.view_mode !== RisqViewMode.MILITARY);
   }
 
   zoomLimits(board_size: Point2D): { min: number; max: number } {
@@ -230,7 +234,8 @@ export class RisqViewport {
         unit.internal_id,
         this.center_max_slots,
         this.unitRadius(),
-        this.edge_max_slots
+        this.edge_max_slots,
+        this.view_mode
       ) ?? zoneCenterOffset(unit.zone_coordinate, this.hex_r)
     );
   }

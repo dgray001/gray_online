@@ -87,6 +87,23 @@ func AllTerrainConfigsToFrontend() []gin.H {
 	return terrains
 }
 
+func sortedEntities[V any](configs map[uint32]V, display_name func(V) string) []gin.H {
+	entities := make([]gin.H, 0, len(configs))
+	for id, config := range configs {
+		entities = append(entities, gin.H{"id": id, "display_name": display_name(config)})
+	}
+	sort.Slice(entities, func(i, j int) bool { return entities[i]["id"].(uint32) < entities[j]["id"].(uint32) })
+	return entities
+}
+
+func AllEntityConfigsToFrontend() gin.H {
+	return gin.H{
+		"buildings": sortedEntities(defs.BuildingConfigs, func(c defs.BuildingConfig) string { return c.Display_name }),
+		"units":     sortedEntities(defs.UnitConfigs, func(c defs.UnitConfig) string { return c.Display_name }),
+		"resources": sortedEntities(defs.ResourceConfigs, func(c defs.ResourceConfig) string { return c.Display_name }),
+	}
+}
+
 func DeleteCustomMap(name string) error {
 	if !customMapNamePattern.MatchString(name) {
 		return errors.New("map names are lowercase letters, digits and underscores")

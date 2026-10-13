@@ -14,6 +14,21 @@ export function listTerrains(): Promise<ApiResponse<TerrainEntry[]>> {
   return apiGet<TerrainEntry[]>('dev/risq/terrains');
 }
 
+export interface EntityEntry {
+  id: number;
+  display_name: string;
+}
+
+export interface EntityCatalog {
+  buildings: EntityEntry[];
+  units: EntityEntry[];
+  resources: EntityEntry[];
+}
+
+export function listEntities(): Promise<ApiResponse<EntityCatalog>> {
+  return apiGet<EntityCatalog>('dev/risq/entities');
+}
+
 export function listMaps(): Promise<ApiResponse<string[]>> {
   return apiGet<string[]>('dev/risq/maps');
 }

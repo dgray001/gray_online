@@ -10,13 +10,14 @@ import (
 
 func TestAutoRenewCreditsRestoreRepeatedGathering(t *testing.T) {
 	g := sourceGame(t, true)
+	speedUpGathering(t)
 	p := g.Human(0)
 	g.Action(p, "set-auto-renew", gin.H{"building_id": 3, "count": 2})
 	if g.Self(p).Resources.Wood != 0 || g.Self(p).AutoRenewals[0].Count != 2 {
 		t.Fatal("renewal credits were not prepaid")
 	}
 	submitGather(g, p)
-	for range 120 {
+	for range 5 {
 		g.EndTurn()
 	}
 	if g.Self(p).Resources.Food != 600 || g.Self(p).Resources.Wood != 0 || len(g.Self(p).AutoRenewals) != 0 {
@@ -28,9 +29,12 @@ func TestAutoRenewQueueRefundsStoredPrices(t *testing.T) {
 	g := sourceGame(t, true)
 	p := g.Human(0)
 	g.Action(p, "set-auto-renew", gin.H{"building_id": 3, "count": 1})
-	config := defs.BuildingConfigs[3]
+	original := defs.BuildingConfigs[3]
+	config := original
 	config.Gather.Renew_cost.Wood = 30
 	defs.BuildingConfigs[3] = config
+	t.Cleanup(func() { defs.BuildingConfigs[3] = original })
+	g.Invalidate()
 	g.Risq.PlayerAction(game.PlayerAction{Kind: "set-auto-renew", Client_id: p + 1, Action: gin.H{"building_id": 3, "count": 4}})
 	if len(g.Failed(p)) != 1 || g.Self(p).Resources.Wood != 60 || g.Self(p).AutoRenewals[0].Count != 1 {
 		t.Fatal("unaffordable increase partially changed the queue")

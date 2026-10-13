@@ -1,17 +1,52 @@
 import type { ColorRGB } from '../../../../../scripts/color_rgb';
 import { err } from '../../../../../scripts/log';
-import type { RisqPlayer } from '../model/types';
+import type { RisqBuilding, RisqPlayer } from '../model/types';
+import { RisqAttackType, RisqProducibleKind, RisqUnitType } from '../model/types';
 
 export enum RisqViewMode {
   ALL = 0,
   RESOURCE = 1,
   MILITARY = 2,
   OWNERSHIP = 3,
-  REGION = 4,
 }
 
 export function nextViewMode(mode: RisqViewMode): RisqViewMode {
-  return ((mode + 1) % 5) as RisqViewMode;
+  return ((mode + 1) % 4) as RisqViewMode;
+}
+
+export function unitVisibleInViewMode(unit_type: RisqUnitType, view_mode: RisqViewMode): boolean {
+  if (view_mode === RisqViewMode.OWNERSHIP) {
+    return false;
+  }
+  if (view_mode === RisqViewMode.MILITARY) {
+    return unit_type !== RisqUnitType.ECONOMIC;
+  }
+  if (view_mode === RisqViewMode.RESOURCE) {
+    return unit_type === RisqUnitType.ECONOMIC;
+  }
+  return true;
+}
+
+export function buildingVisibleInViewMode(building: RisqBuilding, view_mode: RisqViewMode): boolean {
+  const produces_visible_unit = building.produces.some(
+    (p) =>
+      p.kind === RisqProducibleKind.UNIT && p.unit_type !== undefined && unitVisibleInViewMode(p.unit_type, view_mode)
+  );
+  if (view_mode === RisqViewMode.RESOURCE) {
+    return produces_visible_unit || building.gather_capacity !== undefined;
+  }
+  if (view_mode === RisqViewMode.MILITARY) {
+    return (
+      produces_visible_unit ||
+      building.combat_stats.attack_type !== RisqAttackType.NONE ||
+      building.garrison_capacity > 0
+    );
+  }
+  return true;
+}
+
+export function buildingOrdersVisibleInViewMode(building: RisqBuilding, view_mode: RisqViewMode): boolean {
+  return view_mode !== RisqViewMode.RESOURCE && buildingVisibleInViewMode(building, view_mode);
 }
 
 export function spaceOwnerColor(ownership: number | undefined, players: RisqPlayer[]): ColorRGB | undefined {
@@ -48,72 +83,75 @@ export function terrainImage(terrain_id: number): string {
       filename = 'grass_green2';
       break;
     case 3:
-      filename = 'grass_dead1';
+      filename = 'grass_patchy';
       break;
     case 4:
-      filename = 'grass_dead2';
+      filename = 'grass_dead1';
       break;
     case 5:
-      filename = 'grass_forest';
+      filename = 'grass_dead2';
       break;
     case 6:
-      filename = 'cobblestone_irregular';
+      filename = 'grass_forest';
       break;
     case 7:
-      filename = 'cobblestone_regular';
+      filename = 'cobblestone_irregular';
       break;
     case 8:
-      filename = 'dirt1';
+      filename = 'cobblestone_regular';
       break;
     case 9:
-      filename = 'dirt2';
+      filename = 'dirt1';
       break;
     case 10:
-      filename = 'dirt3';
+      filename = 'dirt2';
       break;
     case 11:
-      filename = 'dirt4';
+      filename = 'dirt3';
       break;
     case 12:
-      filename = 'dirt5';
+      filename = 'dirt4';
       break;
     case 13:
-      filename = 'gravel_compact';
+      filename = 'dirt5';
       break;
     case 14:
-      filename = 'leaves1';
+      filename = 'gravel_compact';
       break;
     case 15:
-      filename = 'sand1';
+      filename = 'leaves';
       break;
     case 16:
-      filename = 'sand2';
+      filename = 'sand1';
       break;
     case 17:
-      filename = 'sand3';
+      filename = 'sand2';
       break;
     case 18:
-      filename = 'sand4';
+      filename = 'sand3';
       break;
     case 19:
-      filename = 'sand5';
+      filename = 'sand4';
       break;
     case 20:
-      filename = 'snow1';
+      filename = 'sand5';
       break;
     case 21:
-      filename = 'snow2';
+      filename = 'snow1';
       break;
     case 22:
-      filename = 'straw1';
+      filename = 'snow2';
       break;
     case 23:
-      filename = 'straw2';
+      filename = 'straw1';
       break;
     case 24:
-      filename = 'farm_tilled';
+      filename = 'straw2';
       break;
     case 25:
+      filename = 'farm_tilled';
+      break;
+    case 26:
       filename = 'farm_tilled_dead';
       break;
     case 51:
@@ -123,43 +161,58 @@ export function terrainImage(terrain_id: number): string {
       filename = 'grass_green2_hills';
       break;
     case 53:
-      filename = 'grass_dead1_hills';
+      filename = 'grass_patchy_hills';
       break;
     case 54:
-      filename = 'grass_dead2_hills';
+      filename = 'grass_dead1_hills';
       break;
     case 55:
-      filename = 'grass_forest_hills';
+      filename = 'grass_dead2_hills';
       break;
     case 56:
-      filename = 'dirt1_hills';
-      break;
-    case 57:
-      filename = 'dirt2_hills';
-      break;
-    case 58:
-      filename = 'dirt3_hills';
+      filename = 'grass_forest_hills';
       break;
     case 59:
-      filename = 'dirt4_hills';
+      filename = 'dirt1_hills';
       break;
     case 60:
-      filename = 'dirt5_hills';
+      filename = 'dirt2_hills';
       break;
     case 61:
-      filename = 'snow1_hills';
+      filename = 'dirt3_hills';
       break;
     case 62:
-      filename = 'snow2_hills';
+      filename = 'dirt4_hills';
       break;
     case 63:
+      filename = 'dirt5_hills';
+      break;
+    case 66:
+      filename = 'sand1_hills';
+      break;
+    case 67:
+      filename = 'sand2_hills';
+      break;
+    case 68:
+      filename = 'sand3_hills';
+      break;
+    case 69:
+      filename = 'sand4_hills';
+      break;
+    case 70:
+      filename = 'sand5_hills';
+      break;
+    case 71:
+      filename = 'snow1_hills';
+      break;
+    case 72:
+      filename = 'snow2_hills';
+      break;
+    case 75:
       filename = 'farm_tilled_hills';
       break;
-    case 64:
+    case 76:
       filename = 'farm_tilled_dead_hills';
-      break;
-    case 65:
-      filename = 'forest_hills';
       break;
     case 101:
       filename = 'grass_green1_mountains';
@@ -168,33 +221,36 @@ export function terrainImage(terrain_id: number): string {
       filename = 'grass_green2_mountains';
       break;
     case 103:
-      filename = 'grass_dead1_mountains';
+      filename = 'grass_patchy_mountains';
       break;
     case 104:
-      filename = 'grass_dead2_mountains';
+      filename = 'grass_dead1_mountains';
       break;
     case 105:
-      filename = 'grass_forest_mountains';
+      filename = 'grass_dead2_mountains';
       break;
     case 106:
-      filename = 'dirt1_mountains';
-      break;
-    case 107:
-      filename = 'dirt2_mountains';
-      break;
-    case 108:
-      filename = 'dirt3_mountains';
+      filename = 'grass_forest_mountains';
       break;
     case 109:
-      filename = 'dirt4_mountains';
+      filename = 'dirt1_mountains';
       break;
     case 110:
-      filename = 'dirt5_mountains';
+      filename = 'dirt2_mountains';
       break;
     case 111:
-      filename = 'snow1_mountains';
+      filename = 'dirt3_mountains';
       break;
     case 112:
+      filename = 'dirt4_mountains';
+      break;
+    case 113:
+      filename = 'dirt5_mountains';
+      break;
+    case 121:
+      filename = 'snow1_mountains';
+      break;
+    case 122:
       filename = 'snow2_mountains';
       break;
     case 151:

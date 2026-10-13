@@ -77,6 +77,7 @@ func main() {
 
 		if DEV {
 			registerRisqDevRoutes(api)
+			registerPerfRoutes(api)
 		}
 
 		api_lobby := api.Group("/lobby")

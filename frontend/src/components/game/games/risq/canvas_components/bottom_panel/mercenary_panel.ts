@@ -39,7 +39,7 @@ export class RisqMercenaryPanel extends DwgRectButton {
     });
     this.grid = grid ?? new RisqMercenaryGrid(risq, 48);
   }
-  private updateLayout(): void {
+  dataRefreshed(): void {
     this.grid.dataRefreshed();
     const side_width = Math.max(this.risq.left_panel.w(), this.risq.right_panel.w());
     const available_width = Math.max(0, this.risq.viewport.canvasSize().width - 2 * side_width - 32);
@@ -62,7 +62,7 @@ export class RisqMercenaryPanel extends DwgRectButton {
     this.setHovering(false);
     this.setClicking(false);
     if (this.open) {
-      this.updateLayout();
+      this.dataRefreshed();
     }
     this.risq.pointer.recalculate();
   }
@@ -70,25 +70,25 @@ export class RisqMercenaryPanel extends DwgRectButton {
     if (!this.open) {
       return;
     }
-    this.updateLayout();
     super.draw(ctx, transform, dt);
     this.grid.draw(ctx, transform, dt);
     this.grid.drawTooltip(ctx, transform, this.risq, dt);
   }
   override mousemove(canvas: Point2D, screen: Point2D, transform: BoardTransformData): boolean {
-    if (!this.open) {
-      return false;
-    }
-    const hovering = super.mousemove(canvas, screen, transform);
-    if (hovering) {
-      this.grid.mousemove(canvas, screen, transform);
-    } else {
+    const hovering = super.mousemove(canvas, screen, transform) && this.open;
+    this.grid.mousemove(canvas, screen, transform);
+    if (!hovering) {
+      super.setHovering(false);
       this.grid.setHovering(false);
     }
     return hovering;
   }
   override mousedown(e: MouseEvent): boolean {
-    return this.open && (this.grid.mousedown(e) || this.isHovering());
+    if (!this.open || !this.isHovering()) {
+      return false;
+    }
+    this.grid.mousedown(e);
+    return true;
   }
   override mouseup(e: MouseEvent): void {
     if (this.open) {

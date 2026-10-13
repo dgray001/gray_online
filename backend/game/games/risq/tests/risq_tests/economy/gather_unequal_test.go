@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
-	"github.com/dgray001/gray_online/game/games/risq/tests/harness"
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness/fakeboard"
 )
 
@@ -18,7 +17,7 @@ func TestContestedGatherSatisfiesSmallerDemandFirst(t *testing.T) {
 		resource := defs.ResourceConfigs[11]
 		resource.Starting_resources, resource.Base_gather_speed = 4, 10
 		defs.ResourceConfigs[11] = resource
-		g := harness.NewGame(t, "custom:unequal", 1, 2)
+		g := startGame(t, "custom:unequal", 1, 2)
 		for _, slot := range slots {
 			submitGather(g, g.Human(slot))
 		}

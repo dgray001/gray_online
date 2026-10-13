@@ -7,7 +7,7 @@ packages=$(go list -f '{{if or .TestGoFiles .XTestGoFiles}}{{.ImportPath}}{{end}
 output=$(mktemp)
 trap 'rm -f "$output"' EXIT
 set +e
-go test -json -count=1 $packages >"$output"
+GOGC=400 go test -json -count=1 $packages >"$output"
 status=$?
 set -e
 risq_prefix=$(printf '%s\n' "$packages" | sed "s#^$module/##; s#/tests/.*#/#" | head -n 1)

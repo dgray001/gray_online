@@ -4,50 +4,65 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
-	"sort"
 
-	"github.com/dgray001/gray_online/game/game_utils"
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
-	"github.com/dgray001/gray_online/util"
 )
 
 type weightedTerrainIdJSON struct {
-	TerrainId uint32  `json:"terrain_id"`
-	Weight    float64 `json:"weight"`
+	TerrainId ScriptExpr `json:"terrain_id"`
+	Weight    ScriptExpr `json:"weight"`
 }
 
 type terrainPickJSON struct {
 	TerrainType string                  `json:"terrain_type,omitempty"`
-	TerrainId   uint32                  `json:"terrain_id,omitempty"`
+	TerrainId   ScriptExpr              `json:"terrain_id,omitempty"`
 	TerrainIds  []weightedTerrainIdJSON `json:"terrain_ids,omitempty"`
 }
 
-func (p terrainPickJSON) resolve(rng *rand.Rand) (uint32, error) {
+func resolveTerrainId(expr ScriptExpr, ctx *mapScriptContext) (uint32, error) {
+	value, err := expr.resolveInt(ctx.vars)
+	if err != nil {
+		return 0, err
+	}
+	if _, ok := defs.TerrainConfigs[uint32(value)]; !ok {
+		return 0, fmt.Errorf("unknown terrain id %d", value)
+	}
+	return uint32(value), nil
+}
+
+func (p terrainPickJSON) resolve(ctx *mapScriptContext) (uint32, error) {
+	rng := ctx.rng
 	if len(p.TerrainIds) > 0 {
-		total := 0.0
-		for _, w := range p.TerrainIds {
-			if _, ok := defs.TerrainConfigs[w.TerrainId]; !ok {
-				return 0, fmt.Errorf("terrain_ids: unknown terrain id %d", w.TerrainId)
+		ids, weights, total := make([]uint32, len(p.TerrainIds)), make([]float64, len(p.TerrainIds)), 0.0
+		for i, w := range p.TerrainIds {
+			id, err := resolveTerrainId(w.TerrainId, ctx)
+			if err != nil {
+				return 0, fmt.Errorf("terrain_ids: %w", err)
 			}
-			total += w.Weight
+			weight, err := w.Weight.resolve(ctx.vars)
+			if err != nil {
+				return 0, err
+			}
+			ids[i], weights[i], total = id, weight, total+weight
 		}
 		if total <= 0 {
 			return 0, fmt.Errorf("terrain_ids weights must sum to more than 0")
 		}
 		roll := rng.Float64() * total
-		for _, w := range p.TerrainIds {
-			if roll < w.Weight {
-				return w.TerrainId, nil
+		for i, weight := range weights {
+			if roll < weight {
+				return ids[i], nil
 			}
-			roll -= w.Weight
+			roll -= weight
 		}
-		return p.TerrainIds[len(p.TerrainIds)-1].TerrainId, nil
+		return ids[len(ids)-1], nil
 	}
-	if p.TerrainId != 0 {
-		if _, ok := defs.TerrainConfigs[p.TerrainId]; !ok {
-			return 0, fmt.Errorf("terrain_id: unknown terrain id %d", p.TerrainId)
+	if p.TerrainId.provided() {
+		id, err := resolveTerrainId(p.TerrainId, ctx)
+		if err != nil {
+			return 0, fmt.Errorf("terrain_id: %w", err)
 		}
-		return p.TerrainId, nil
+		return id, nil
 	}
 	if p.TerrainType != "" {
 		terrain_type, err := defs.ParseTerrainType(p.TerrainType)
@@ -59,39 +74,102 @@ func (p terrainPickJSON) resolve(rng *rand.Rand) (uint32, error) {
 	return 0, fmt.Errorf("must specify terrain_type, terrain_id, or terrain_ids")
 }
 
-func growBlob[T any](start T, size int, rng *rand.Rand, key func(T) uint, neighbors func(T) []T, excluded func(T) bool) []T {
-	seen := map[uint]bool{key(start): true}
-	result := []T{start}
-	frontier := []T{start}
-	for len(result) < size && len(frontier) > 0 {
-		idx := rng.Intn(len(frontier))
-		cur := frontier[idx]
-		frontier = append(frontier[:idx], frontier[idx+1:]...)
-		for _, n := range util.ShuffleFrom(rng, neighbors(cur)) {
-			if len(result) >= size {
-				break
-			}
-			if excluded(n) || seen[key(n)] {
-				continue
-			}
-			seen[key(n)] = true
-			result = append(result, n)
-			frontier = append(frontier, n)
+const defaultBlobRoundness = 0.6
+
+// With probability roundness picks among the candidates nearest the seed, preferring those touching the most blob cells; else uniformly among all
+func pickCandidateIndex[T any](candidates []T, distance func(T) int, touching func(T) int, roundness float64, rng *rand.Rand) int {
+	if rng.Float64() >= roundness {
+		return rng.Intn(len(candidates))
+	}
+	nearest := distance(candidates[0])
+	for _, c := range candidates[1:] {
+		nearest = min(nearest, distance(c))
+	}
+	pool, most := make([]int, 0, len(candidates)), 0
+	for i, c := range candidates {
+		if distance(c) != nearest {
+			continue
 		}
+		if t := touching(c); t > most {
+			pool, most = pool[:0], t
+		}
+		if touching(c) == most {
+			pool = append(pool, i)
+		}
+	}
+	return pool[rng.Intn(len(pool))]
+}
+
+func bfsDistances[T any](start T, limit int, key func(T) uint, neighbors func(T) []T) map[uint]int {
+	dist := map[uint]int{key(start): 0}
+	queue := []T{start}
+	for len(queue) > 0 {
+		cur := queue[0]
+		queue = queue[1:]
+		if dist[key(cur)] >= limit {
+			continue
+		}
+		for _, n := range neighbors(cur) {
+			if _, seen := dist[key(n)]; !seen {
+				dist[key(n)] = dist[key(cur)] + 1
+				queue = append(queue, n)
+			}
+		}
+	}
+	return dist
+}
+
+func growBlob[T any](start T, size int, roundness float64, rng *rand.Rand, key func(T) uint, neighbors func(T) []T, excluded func(T) bool) []T {
+	dist := bfsDistances(start, size, key, neighbors)
+	distance := func(c T) int {
+		if d, ok := dist[key(c)]; ok {
+			return d
+		}
+		return size + 1
+	}
+	seen := map[uint]bool{key(start): true}
+	members := map[uint]bool{key(start): true}
+	touching := func(c T) int {
+		count := 0
+		for _, n := range neighbors(c) {
+			if members[key(n)] {
+				count++
+			}
+		}
+		return count
+	}
+	result := []T{start}
+	candidates := []T{}
+	addCandidates := func(cell T) {
+		for _, n := range neighbors(cell) {
+			if !excluded(n) && !seen[key(n)] {
+				seen[key(n)] = true
+				candidates = append(candidates, n)
+			}
+		}
+	}
+	addCandidates(start)
+	for len(result) < size && len(candidates) > 0 {
+		idx := pickCandidateIndex(candidates, distance, touching, roundness, rng)
+		cell := candidates[idx]
+		candidates = append(candidates[:idx], candidates[idx+1:]...)
+		result = append(result, cell)
+		members[key(cell)] = true
+		addCandidates(cell)
 	}
 	return result
 }
 
-func growSpaceBlob(start Space, size int, rng *rand.Rand) []Space {
-	return growBlob(start, size, rng,
+func growSpaceBlob(start Space, size int, roundness float64, excluded func(Space) bool, rng *rand.Rand) []Space {
+	return growBlob(start, size, roundness, rng,
 		func(s Space) uint { return s.Key() },
 		func(s Space) []Space { return s.SortedAdjacent() },
-		func(Space) bool { return false },
+		excluded,
 	)
 }
 
 func growZoneBlob(start Zone, size int, rng *rand.Rand) []Zone {
-	return growBlob(start, size, rng,
+	return growBlob(start, size, defaultBlobRoundness, rng,
 		func(z Zone) uint { return z.Key() },
 		func(z Zone) []Zone { return z.Adjacent() },
 		func(Zone) bool { return false },
@@ -100,7 +178,8 @@ func growZoneBlob(start Zone, size int, rng *rand.Rand) []Zone {
 
 type terrainFillParams struct {
 	terrainPickJSON
-	Region string `json:"region,omitempty"`
+	On     terrainFilterJSON `json:"on"`
+	Region string            `json:"region,omitempty"`
 }
 
 func stepTerrainFill(ctx *mapScriptContext, raw json.RawMessage) error {
@@ -109,8 +188,15 @@ func stepTerrainFill(ctx *mapScriptContext, raw json.RawMessage) error {
 		return err
 	}
 	region := ctx.region(p.Region)
+	matches, err := p.On.matcher(ctx)
+	if err != nil {
+		return err
+	}
 	for _, space := range ctx.allSpaces() {
-		terrain_id, err := p.resolve(ctx.rng)
+		if !matches(space) {
+			continue
+		}
+		terrain_id, err := p.resolve(ctx)
 		if err != nil {
 			return err
 		}
@@ -124,10 +210,32 @@ func stepTerrainFill(ctx *mapScriptContext, raw json.RawMessage) error {
 
 type terrainBlobParams struct {
 	terrainPickJSON
-	SeedCount  ScriptExpr `json:"seed_count"`
-	Size       ScriptExpr `json:"size"`
-	MinSpacing ScriptExpr `json:"min_spacing"`
-	Region     string     `json:"region,omitempty"`
+	On         terrainFilterJSON `json:"on"`
+	SeedCount  ScriptExpr        `json:"seed_count"`
+	Size       BlobSize          `json:"size"`
+	MinSpacing ScriptExpr        `json:"min_spacing"`
+	Roundness  ScriptExpr        `json:"roundness"`
+	// seeds first try this spacing, then relax down to min_spacing (the hard floor)
+	PreferredSpacing ScriptExpr        `json:"preferred_spacing"`
+	Placement        blobPlacementJSON `json:"placement"`
+	Region           string            `json:"region,omitempty"`
+	// "hilly" or "mountainous": converts each space to that version of its terrain, skipping terrain without one
+	Variant string `json:"variant,omitempty"`
+}
+
+// The terrain type a variant blob converts spaces to, or NONE when the blob paints terrain_id or terrain_ids instead
+func (p terrainBlobParams) variantKind() (defs.TerrainType, error) {
+	if p.Variant == "" {
+		return defs.TerrainType_NONE, nil
+	}
+	if p.TerrainId.provided() || len(p.TerrainIds) > 0 || p.TerrainType != "" {
+		return defs.TerrainType_NONE, fmt.Errorf("terrain_blob: variant can't be combined with terrain_id, terrain_ids or terrain_type")
+	}
+	kind, err := defs.ParseTerrainType(p.Variant)
+	if err != nil || (kind != defs.TerrainType_HILLY && kind != defs.TerrainType_MOUNTAINOUS) {
+		return defs.TerrainType_NONE, fmt.Errorf("terrain_blob: variant must be \"hilly\" or \"mountainous\", got %q", p.Variant)
+	}
+	return kind, nil
 }
 
 func stepTerrainBlob(ctx *mapScriptContext, raw json.RawMessage) error {
@@ -135,45 +243,63 @@ func stepTerrainBlob(ctx *mapScriptContext, raw json.RawMessage) error {
 	if err != nil {
 		return err
 	}
+	variant, err := p.variantKind()
+	if err != nil {
+		return err
+	}
 	seed_count, err := p.SeedCount.resolveInt(ctx.vars)
 	if err != nil {
 		return err
 	}
-	size, err := p.Size.resolveInt(ctx.vars)
+	min_size, max_size, err := p.Size.resolve(ctx.vars)
 	if err != nil {
 		return err
 	}
-	min_spacing, err := p.MinSpacing.resolveInt(ctx.vars)
+	min_spacing, preferred_spacing, err := resolveBlobSpacing(ctx, p.MinSpacing, p.PreferredSpacing)
 	if err != nil {
 		return err
 	}
 	if seed_count < 0 {
 		return fmt.Errorf("map script terrain_blob: seed_count must be non-negative, got %d", seed_count)
 	}
-	all := ctx.allSpaces()
-	if len(all) == 0 {
-		return nil
-	}
-	seeds := make([]Space, 0, seed_count)
-	for attempt := 0; attempt < seed_count*20 && len(seeds) < seed_count; attempt++ {
-		candidate := all[ctx.rng.Intn(len(all))]
-		ok := true
-		for _, s := range seeds {
-			if ctx.board.Distance(candidate, s) < min_spacing {
-				ok = false
-				break
-			}
+	roundness := defaultBlobRoundness
+	if p.Roundness.provided() {
+		if roundness, err = p.Roundness.resolve(ctx.vars); err != nil {
+			return err
 		}
-		if ok {
-			seeds = append(seeds, candidate)
+		if roundness < 0 || roundness > 1 {
+			return fmt.Errorf("map script terrain_blob: roundness must be in [0, 1], got %v", roundness)
 		}
 	}
+	candidates, err := blobSeedCandidates(ctx, p.Placement)
+	if err != nil {
+		return err
+	}
+	matches, err := p.On.matcher(ctx)
+	if err != nil {
+		return err
+	}
+	if variant != defs.TerrainType_NONE {
+		filter := matches
+		matches = func(space Space) bool {
+			_, convertible := defs.TerrainVariant(space.Terrain(), variant)
+			return convertible && filter(space)
+		}
+	}
+	seeds, err := blobSeeds(ctx, p.Placement, filterSpaces(candidates, matches), seed_count, min_spacing, preferred_spacing)
+	if err != nil {
+		return err
+	}
+	inside := blobGrowthLimit(candidates, p.Placement.KeepInside)
+	excluded := func(space Space) bool { return !matches(space) || inside(space) }
 	region := ctx.region(p.Region)
 	for _, seed := range seeds {
-		blob := growSpaceBlob(seed, size, ctx.rng)
+		blob := growSpaceBlob(seed, pickBlobSize(ctx.rng, min_size, max_size), roundness, excluded, ctx.rng)
 		for _, space := range blob {
-			terrain_id, err := p.resolve(ctx.rng)
-			if err != nil {
+			var terrain_id uint32
+			if variant != defs.TerrainType_NONE {
+				terrain_id, _ = defs.TerrainVariant(space.Terrain(), variant)
+			} else if terrain_id, err = p.resolve(ctx); err != nil {
 				return err
 			}
 			space.SetTerrain(terrain_id)
@@ -188,137 +314,6 @@ func stepTerrainBlob(ctx *mapScriptContext, raw json.RawMessage) error {
 type axialParamJSON struct {
 	X int `json:"x"`
 	Y int `json:"y"`
-}
-
-type terrainLineParams struct {
-	terrainPickJSON
-	Width  ScriptExpr     `json:"width"`
-	From   axialParamJSON `json:"from"`
-	To     axialParamJSON `json:"to"`
-	Region string         `json:"region,omitempty"`
-}
-
-func stepTerrainLine(ctx *mapScriptContext, raw json.RawMessage) error {
-	p, err := decodeStepParams[terrainLineParams](raw, "terrain_line")
-	if err != nil {
-		return err
-	}
-	width, err := p.Width.resolveInt(ctx.vars)
-	if err != nil {
-		return err
-	}
-	from := game_utils.Coordinate2D{X: p.From.X, Y: p.From.Y}
-	to := game_utils.Coordinate2D{X: p.To.X, Y: p.To.Y}
-	path := hexLine(from, to, ctx.board)
-	region := ctx.region(p.Region)
-	seen := make(map[uint]bool)
-	for _, cell := range path {
-		strip := map[uint]Space{cell.Key(): cell}
-		frontier := []Space{cell}
-		for depth := 1; depth < width; depth++ {
-			next := make([]Space, 0)
-			for _, cur := range frontier {
-				for _, adj := range cur.SortedAdjacent() {
-					if _, in := strip[adj.Key()]; !in {
-						strip[adj.Key()] = adj
-						next = append(next, adj)
-					}
-				}
-			}
-			frontier = next
-		}
-		// Sorted so which space consumes which rng draw below doesn't depend on map iteration order
-		strip_keys := make([]uint, 0, len(strip))
-		for key := range strip {
-			strip_keys = append(strip_keys, key)
-		}
-		sort.Slice(strip_keys, func(i, j int) bool { return strip_keys[i] < strip_keys[j] })
-		for _, key := range strip_keys {
-			if seen[key] {
-				continue
-			}
-			seen[key] = true
-			terrain_id, err := p.resolve(ctx.rng)
-			if err != nil {
-				return err
-			}
-			strip[key].SetTerrain(terrain_id)
-			if region != nil {
-				region[key] = true
-			}
-		}
-	}
-	return nil
-}
-
-type terrainBorderParams struct {
-	terrainPickJSON
-	Edge   string     `json:"edge"`
-	Depth  ScriptExpr `json:"depth"`
-	Region string     `json:"region,omitempty"`
-}
-
-// Steps inward from the nearest space missing a neighbor, so the carved map boundary is 0
-func mapEdgeDistances(spaces []Space) map[uint]int {
-	distances := make(map[uint]int, len(spaces))
-	queue := make([]Space, 0, len(spaces))
-	for _, space := range spaces {
-		if len(space.SortedAdjacent()) < 6 {
-			distances[space.Key()] = 0
-			queue = append(queue, space)
-		}
-	}
-	for len(queue) > 0 {
-		space := queue[0]
-		queue = queue[1:]
-		for _, adj := range space.SortedAdjacent() {
-			if _, seen := distances[adj.Key()]; !seen {
-				distances[adj.Key()] = distances[space.Key()] + 1
-				queue = append(queue, adj)
-			}
-		}
-	}
-	return distances
-}
-
-func stepTerrainBorder(ctx *mapScriptContext, raw json.RawMessage) error {
-	p, err := decodeStepParams[terrainBorderParams](raw, "terrain_border")
-	if err != nil {
-		return err
-	}
-	depth, err := p.Depth.resolveInt(ctx.vars)
-	if err != nil {
-		return err
-	}
-	spaces := ctx.allSpaces()
-	var distanceFromEdge func(Space) int
-	switch p.Edge {
-	case "hexagon_edge":
-		center := game_utils.Coordinate2D{X: 0, Y: 0}
-		distanceFromEdge = func(space Space) int {
-			return int(ctx.board_size) - int(game_utils.AxialDistance(space.Coordinate(), center))
-		}
-	case "map_edge":
-		map_edge_distances := mapEdgeDistances(spaces)
-		distanceFromEdge = func(space Space) int { return map_edge_distances[space.Key()] }
-	default:
-		return fmt.Errorf("terrain_border: edge must be \"hexagon_edge\" or \"map_edge\", got %q", p.Edge)
-	}
-	region := ctx.region(p.Region)
-	for _, space := range spaces {
-		if distanceFromEdge(space) > depth {
-			continue
-		}
-		terrain_id, err := p.resolve(ctx.rng)
-		if err != nil {
-			return err
-		}
-		space.SetTerrain(terrain_id)
-		if region != nil {
-			region[space.Key()] = true
-		}
-	}
-	return nil
 }
 
 func shortestPathToSet(from Space, target map[uint]bool) []Space {
@@ -350,7 +345,15 @@ func shortestPathToSet(from Space, target map[uint]bool) []Space {
 	return path
 }
 
+type ensureConnectivityParams struct {
+	terrainPickJSON
+}
+
 func stepEnsureConnectivity(ctx *mapScriptContext, raw json.RawMessage) error {
+	p, err := decodeStepParams[ensureConnectivityParams](raw, "ensure_connectivity")
+	if err != nil {
+		return err
+	}
 	all := ctx.allSpaces()
 	var start Space
 	for _, s := range all {
@@ -383,7 +386,11 @@ func stepEnsureConnectivity(ctx *mapScriptContext, raw json.RawMessage) error {
 			if reached[cell.Key()] {
 				continue
 			}
-			cell.SetTerrain(defs.DefaultTerrainId)
+			terrain_id, err := p.resolve(ctx)
+			if err != nil {
+				return err
+			}
+			cell.SetTerrain(terrain_id)
 			reached[cell.Key()] = true
 		}
 	}

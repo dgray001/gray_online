@@ -110,7 +110,7 @@ export class RisqOrdersList extends DwgListbox<RisqOrderRow, RisqOrdersScrollbar
             .filter((o) => kind_matches(o.order_type) && o.subjects.some((s) => subject_internal_ids.includes(s)));
     const context = this.filterContext();
     const shown = orders.filter((o) => this.filter_bar.filter.matches(o, context));
-    this.setList(collapseBuildingCreateOrders(shown).map((entry) => this.newOrderRow(entry)));
+    this.setList(collapseBuildingCreateOrders(shown, context.isCancelled).map((entry) => this.newOrderRow(entry)));
   }
 
   private filterContext(): OrderFilterContext {

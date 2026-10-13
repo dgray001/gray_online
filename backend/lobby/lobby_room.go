@@ -48,6 +48,7 @@ type LobbyRoom struct {
 	PlayerAction       chan game.PlayerAction
 	GameEnded          chan string
 	GameStateRequest   chan *GameStateRequest
+	GameTasks          chan func()
 }
 
 func CreateLobbyRoom(host *Client, room_id uint64, lobby *Lobby) *LobbyRoom {
@@ -74,6 +75,7 @@ func CreateLobbyRoom(host *Client, room_id uint64, lobby *Lobby) *LobbyRoom {
 		PlayerAction:       make(chan game.PlayerAction, 12),
 		GameEnded:          make(chan string, 4),
 		GameStateRequest:   make(chan *GameStateRequest, 4),
+		GameTasks:          make(chan func(), 4),
 	}
 	room.players[host.client_id] = host
 	host.lobby_room = &room
@@ -143,6 +145,8 @@ func (r *LobbyRoom) runOnce() {
 			<-r.game_delete_timer.C
 			r.evictEndedGame(ended_game_id)
 		}()
+	case task := <-r.GameTasks:
+		task()
 	case req := <-r.GameStateRequest:
 		current_game := r.GetGame()
 		if current_game == nil {
@@ -195,6 +199,18 @@ updates_loop:
 					Kind: "game-failed-update", Data: message.Kind, Content: string(encoded_message)}
 			} else {
 				fmt.Fprintln(os.Stderr, "Room failed to send failed update message to player", c.client_id)
+			}
+		case message := <-player.SettingUpdates:
+			encoded_message, err := json.Marshal(message.Content)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err.Error())
+				break
+			}
+			if c.validDebug(true) {
+				c.send_message <- lobbyMessage{Sender: "room-" + room_id_string, Kind: "game-setting",
+					Data: message.Kind, Content: string(encoded_message)}
+			} else {
+				fmt.Fprintln(os.Stderr, "Room failed to send setting message to player", c.client_id)
 			}
 		case game_over := <-player.FlushConnections:
 			if game_over {
@@ -579,6 +595,8 @@ func (r *LobbyRoom) launchGame(game_id uint64) (game.Game, error) {
 	}
 	base_game := game.CreateBaseGame(game_id, r.game_settings.GameType, r.game_settings.GameSpecificSettings)
 	base_game.RequestToFrontend = r.RequestToFrontend
+	base_game.RunInRoom = r.runInRoom
+	base_game.CurrentState = r.currentGameState
 	for _, player := range r.players {
 		game.CreatePlayer(player.client_id, player.nickname, base_game)
 	}
@@ -619,6 +637,23 @@ func (r *LobbyRoom) launchGame(game_id uint64) (game.Game, error) {
 
 func (r *LobbyRoom) GetGame() game.Game {
 	return r.getGame()
+}
+
+// Queues a task for the room goroutine; a full queue drops it, since replays are retried by the next ping
+func (r *LobbyRoom) runInRoom(task func()) {
+	select {
+	case r.GameTasks <- task:
+	default:
+		fmt.Fprintln(os.Stderr, "Dropped game task for room", r.room_id, "- task queue full")
+	}
+}
+
+// Must only be called from the room goroutine
+func (r *LobbyRoom) currentGameState(client_id uint64, is_viewer bool) gin.H {
+	if current_game := r.GetGame(); current_game != nil {
+		return current_game.ToFrontend(client_id, is_viewer)
+	}
+	return nil
 }
 
 func (r *LobbyRoom) RequestToFrontend(client_id uint64, is_viewer bool) (gin.H, error) {

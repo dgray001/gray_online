@@ -260,7 +260,6 @@ export declare interface UnsubmittedOrdersData {
 }
 
 export declare interface UnitBehaviorSetData {
-  game: GameRisqFromServer;
   internal_ids: number[];
   stance?: RisqUnitStance;
   interrupt_current?: boolean;
@@ -269,15 +268,26 @@ export declare interface UnitBehaviorSetData {
 }
 
 export declare interface GatherPointSetData {
-  game: GameRisqFromServer;
   building_id: number;
   gather_point?: RisqGatherPoint;
 }
 
 export declare interface BuildingBehaviorSetData {
-  game: GameRisqFromServer;
   internal_ids: number[];
   auto_attack?: boolean;
   interrupt_current?: boolean;
   target_priority?: RisqTargetCategory[];
+}
+
+export declare interface DefaultUnitBehaviorSetData {
+  stance: RisqUnitStance;
+  attack_back: boolean;
+  interrupt_current: boolean;
+  target_priority: RisqTargetCategory[];
+}
+
+export declare interface AutoRenewSetData {
+  building_id: number;
+  count: number;
+  resources: RisqPlayerResourcesFromServer;
 }

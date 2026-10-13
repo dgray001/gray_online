@@ -1,6 +1,7 @@
 import type { RisqLeftPanel } from '../../canvas_components/left_panel/left_panel';
 import type { Point2D } from '../../../../util/objects2d';
 import { invertPair, invertZoneKey } from '../../model/coordinates';
+import type { LeftPanelData } from '../../canvas_components/left_panel/left_panel_data';
 import { LeftPanelDataType } from '../../canvas_components/left_panel/left_panel_data';
 import type {
   RisqBuilding,
@@ -26,8 +27,17 @@ export class RisqSelection {
     private left_panel: RisqLeftPanel
   ) {}
 
-  selectedUnitIds(): Set<number> {
+  private unit_ids_cache?: { data: LeftPanelData | undefined; ids: ReadonlySet<number> };
+
+  selectedUnitIds(): ReadonlySet<number> {
     const data = this.left_panel.getData();
+    if (this.unit_ids_cache?.data !== data || !this.unit_ids_cache) {
+      this.unit_ids_cache = { data, ids: this.collectUnitIds(data) };
+    }
+    return this.unit_ids_cache.ids;
+  }
+
+  private collectUnitIds(data: LeftPanelData | undefined): Set<number> {
     switch (data?.data_type) {
       case LeftPanelDataType.UNIT:
         return new Set([data.data.internal_id]);

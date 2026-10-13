@@ -74,7 +74,7 @@ func runSims(scenario Scenario, sims []SuiteBucket, n int, out_dir string, worke
 					}
 					util.DebugLog.SetOutput(debug_file)
 				}
-				result := RunGame(seed, players, bucket.Map, scenario.Metrics, uint16(max_turns), 15*time.Minute)
+				result := RunGame(seed, players, bucket.Map, bucket.Settings, scenario.Metrics, uint16(max_turns), 15*time.Minute)
 				if debug_file != nil {
 					debug_file.Close()
 				}

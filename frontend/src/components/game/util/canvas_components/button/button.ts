@@ -59,6 +59,9 @@ export abstract class DwgButton implements CanvasComponent {
   }
 
   enable(): void {
+    if (!this.disabled) {
+      return;
+    }
     this.disabled = false;
     this.mousemove(this.last_canvas, this.last_screen, this.last_transform);
   }
@@ -76,9 +79,10 @@ export abstract class DwgButton implements CanvasComponent {
     this._draw(ctx, transform, dt);
   }
 
-  mousemove(canvas: Point2D, screen: Point2D, _transform: BoardTransformData): boolean {
+  mousemove(canvas: Point2D, screen: Point2D, transform: BoardTransformData): boolean {
     this.last_canvas = canvas;
     this.last_screen = screen;
+    this.last_transform = transform;
     if (this.disabled) {
       this.hovering = false;
       return false;

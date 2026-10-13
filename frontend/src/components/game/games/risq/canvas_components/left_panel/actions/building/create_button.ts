@@ -18,6 +18,7 @@ export class RisqCreateButton extends RisqActionButton {
   private risq: DwgRisq;
   private producible: RisqProducible;
   private ctrl_held = false;
+  private batch_size = 1;
 
   constructor(config: CreateButtonConfig, risq: DwgRisq, s: number) {
     super(
@@ -51,7 +52,7 @@ export class RisqCreateButton extends RisqActionButton {
     const player = this.risq.getPlayer();
     if (!!player && this.risq.session.givingOrders() && !player.orders_submitted) {
       this.enable();
-      this.dimmed = !canAffordCost(player, this.productionCost());
+      this.dimmed = !canAffordCost(player, this.producible.cost);
     } else {
       this.disable();
     }
@@ -59,27 +60,34 @@ export class RisqCreateButton extends RisqActionButton {
 
   override mouseup(e: MouseEvent): void {
     this.ctrl_held = e.ctrlKey;
+    this.batch_size = e.shiftKey ? 5 : 1;
     super.mouseup(e);
+    this.batch_size = 1;
   }
 
   override matchesProducible(kind: string, id: number): boolean {
     return kind === 'create_unit' && this.producible.id === id;
   }
 
-  override execute(ctrl_held = this.ctrl_held): void {
+  override execute(ctrl_held: boolean = this.ctrl_held): void {
     if (this.dimmed) {
       this.risq.showMessage('Not enough resources', RISQ_MESSAGE_WARNING_COLOR);
       return;
     }
-    for (const id of this.producerIds()) {
-      this.risq.commands.createUnit(id, this.producible.id, ctrl_held);
+    const producer_ids = this.producerIds();
+    for (let i = 0; i < this.batch_size; i++) {
+      for (const id of producer_ids) {
+        if (!this.risq.commands.createUnit(id, this.producible.id, ctrl_held)) {
+          return;
+        }
+      }
     }
   }
 
   protected override getTooltipData(): RisqTooltipData {
     return {
       title: this.description,
-      description: this.producible.description,
+      description: `${this.producible.description} Shift-click to queue five per selected building.`,
       cost: this.productionCost(),
       stamina_cost: this.producible.stamina_cost,
       hotkey: hotkeyDisplayString(getSettings().risq_hotkeys.create_unit[this.producible.id]),

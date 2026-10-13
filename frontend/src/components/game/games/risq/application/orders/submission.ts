@@ -4,7 +4,9 @@ import type { RisqRightPanel } from '../../canvas_components/right_panel/right_p
 import type { RisqSession } from '../session';
 import type { RisqOrdersModel } from './orders_model';
 import type { RisqOrderPlanning } from './planning';
-import { RisqUnitType } from '../../model/types';
+import { idleCategory } from './idle_category';
+import type { RisqAutoRenewQueue } from '../auto_renew_queue';
+import type { RisqGatherPointQueue } from '../gather_point_queue';
 
 import '../../../../../dialog_box/confirm_dialog/confirm_dialog';
 
@@ -23,7 +25,9 @@ export class RisqOrderSubmission {
     private session: RisqSession,
     private orders_model: RisqOrdersModel,
     private planning: RisqOrderPlanning,
-    private right_panel: RisqRightPanel
+    private right_panel: RisqRightPanel,
+    private auto_renew: RisqAutoRenewQueue,
+    private gather_points: RisqGatherPointQueue
   ) {}
 
   submittedTimes(): number {
@@ -49,13 +53,16 @@ export class RisqOrderSubmission {
 
   /** Submits directly, or first confirms when units/buildings are idle or resources would go negative */
   confirmSubmit(): void {
-    if (!this.session.canGiveOrders()) {
+    const player = this.session.getPlayer();
+    if (this.toggling || !this.session.givingOrders() || !player) {
       return;
     }
-    const n_villagers = this.planning.idleUnitCount(RisqUnitType.ECONOMIC);
-    const n_military = this.planning.idleUnitCount() - n_villagers;
-    const n_buildings = this.planning.idleBuildingCount();
-    const n = n_villagers + n_military + n_buildings;
+    if (player.orders_submitted) {
+      this.toggle();
+      return;
+    }
+    const idle_orderables = this.planning.idleOrderables();
+    const n = idle_orderables.length;
     const over_budget = this.planning.hasNegativeResources();
     if (n === 0 && !over_budget) {
       this.toggle();
@@ -63,11 +70,39 @@ export class RisqOrderSubmission {
     }
     const warnings: string[] = [];
     if (n > 0) {
-      const idle_counts = [
-        `${n_villagers} idle villager${n_villagers === 1 ? '' : 's'}`,
-        `${n_military} idle military unit${n_military === 1 ? '' : 's'}`,
-        `${n_buildings} idle building${n_buildings === 1 ? '' : 's'}`,
-      ];
+      let n_villagers = 0;
+      let n_military = 0;
+      let n_production = 0;
+      let n_other_buildings = 0;
+      for (const entity of idle_orderables) {
+        switch (idleCategory(entity)) {
+          case 'economic':
+            n_villagers++;
+            break;
+          case 'military':
+            n_military++;
+            break;
+          case 'unit_production':
+            n_production++;
+            break;
+          case 'other_buildings':
+            n_other_buildings++;
+            break;
+        }
+      }
+      const idle_counts: string[] = [];
+      if (n_villagers > 0) {
+        idle_counts.push(`${n_villagers} idle villager${n_villagers === 1 ? '' : 's'}`);
+      }
+      if (n_military > 0) {
+        idle_counts.push(`${n_military} idle military unit${n_military === 1 ? '' : 's'}`);
+      }
+      if (n_production > 0) {
+        idle_counts.push(`${n_production} idle unit-producing building${n_production === 1 ? '' : 's'}`);
+      }
+      if (n_other_buildings > 0) {
+        idle_counts.push(`${n_other_buildings} idle non-unit-producing building${n_other_buildings === 1 ? '' : 's'}`);
+      }
       warnings.push(`You have ${idle_counts.join(', ')}.`);
     }
     if (over_budget) {
@@ -82,18 +117,31 @@ export class RisqOrderSubmission {
     this.host.appendChild(dialog);
   }
 
-  toggle(): void {
+  async toggle(): Promise<void> {
     const player = this.session.getPlayer();
     if (this.toggling || !this.session.givingOrders() || !player) {
       return;
     }
     this.toggling = true;
+    if (!player.orders_submitted) {
+      this.right_panel.submittingOrders();
+      if (
+        !(await Promise.all([this.auto_renew.drain(), this.gather_points.drain()])).every(
+          (success: boolean): boolean => success
+        ) ||
+        !this.session.givingOrders() ||
+        this.session.getPlayer()?.orders_submitted
+      ) {
+        this.toggling = false;
+        this.orders_model.triggerChange();
+        return;
+      }
+    }
     const sender = `player-${this.session.getPlayerId()}`;
     if (player.orders_submitted) {
       this.right_panel.unsubmittingOrders();
       this.dispatch(createMessage(sender, 'game-update', '', 'unsubmit-orders'));
     } else {
-      this.right_panel.submittingOrders();
       const content = JSON.stringify({ orders: this.orders_model.pendingOrders() });
       this.dispatch(createMessage(sender, 'game-update', content, 'submit-orders'));
       this.submitted_times++;

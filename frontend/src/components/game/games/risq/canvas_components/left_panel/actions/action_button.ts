@@ -1,7 +1,7 @@
 import type { BoardTransformData } from '../../../../../util/canvas_board/canvas_board';
 import { DwgSquareButton } from '../../../../../util/canvas_components/button/square_button';
 import { configDraw } from '../../../../../util/canvas_components/canvas_component';
-import { drawRect } from '../../../../../util/canvas_util';
+import { drawLine, drawRect } from '../../../../../util/canvas_util';
 import type { DwgRisq } from '../../../risq';
 import type { RisqTooltipData } from '../../risq_tooltip';
 import { RisqButtonTooltip } from '../../risq_tooltip';
@@ -21,6 +21,7 @@ export abstract class RisqActionButton extends DwgSquareButton {
   readonly description: string;
   private tooltip = new RisqButtonTooltip(() => this.getTooltipData());
   protected dimmed = false;
+  protected mixed = false;
   private hotkey_combo?: HotkeyCombo;
 
   constructor(config: RisqActionButtonConfig, s: number) {
@@ -72,6 +73,16 @@ export abstract class RisqActionButton extends DwgSquareButton {
 
   override draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
     super.draw(ctx, transform, dt);
+    if (this.mixed) {
+      configDraw(
+        ctx,
+        transform,
+        { fixed_position: true, fill_style: 'transparent', stroke_style: 'rgba(235, 210, 165, 0.7)', stroke_width: 4 },
+        false,
+        false,
+        (): void => this.drawMixedShape(ctx)
+      );
+    }
     if (this.isDisabled() || this.dimmed) {
       configDraw(
         ctx,
@@ -82,6 +93,17 @@ export abstract class RisqActionButton extends DwgSquareButton {
         () => this.drawDimmedShape(ctx)
       );
     }
+  }
+
+  protected drawMixedShape(ctx: CanvasRenderingContext2D): void {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(this.xi(), this.yi(), this.w(), this.h());
+    ctx.clip();
+    for (let x = this.xi() - this.h(); x < this.xf(); x += 8) {
+      drawLine(ctx, { x, y: this.yf() }, { x: x + this.h(), y: this.yi() });
+    }
+    ctx.restore();
   }
 
   protected drawDimmedShape(ctx: CanvasRenderingContext2D): void {

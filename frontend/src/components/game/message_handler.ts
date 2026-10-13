@@ -1,5 +1,6 @@
 import type { ServerMessage } from '../lobby/data_models';
 import { createMessage } from '../lobby/data_models';
+import { perfEvent } from '../../scripts/perf';
 import type { UpdateMessage } from './data_models';
 import type { DwgGame } from './game';
 
@@ -20,7 +21,9 @@ export function handleMessage(game: DwgGame, message: ServerMessage): void {
     return;
   }
   let errored = false;
-  if (message.kind !== 'ping-update') {
+  if (message.kind === 'game-update' && game.getGame()?.game_base.persistant_history === false) {
+    console.log(`Game message: ${message.data} id=${message.sender.split('-')[2]} bytes=${message.content.length}`);
+  } else if (message.kind !== 'ping-update') {
     console.log('Game message:', message);
   }
   switch (message.kind) {
@@ -57,8 +60,17 @@ export function handleMessage(game: DwgGame, message: ServerMessage): void {
     case 'game-update':
       handleGameUpdate(game, message);
       break;
+    case 'game-setting': // small private acknowledgement outside the sequenced update history
+      void game.getGameEl()?.gameUpdate({
+        update_id: 0,
+        kind: message.data,
+        content: JSON.parse(message.content),
+      });
+      break;
     case 'game-failed-update': // player did something incorrect
-      if (message.data === 'set-auto-renew-failed') {
+      if (
+        ['set-auto-renew-failed', 'set-gather-point-failed', 'set-default-unit-behavior-failed'].includes(message.data)
+      ) {
         void game.getGameEl()?.gameUpdate({
           update_id: 0,
           kind: message.data,
@@ -66,6 +78,13 @@ export function handleMessage(game: DwgGame, message: ServerMessage): void {
         });
       }
       break;
+    case 'game-last-update-id': {
+      const behind = parseInt(message.data) > (game.getGame()?.game_base.highest_received_update_id ?? 0);
+      if (behind || message.content === 'true') {
+        game.socketSend(createMessage(`client-${game.getConnectionMetadata()?.client_id}`, 'game-resend-last-update'));
+      }
+      break;
+    }
     case 'game-connected-failed': // can be called at end of game before client realizes game is over
       break;
     case 'game-get-update-failed':
@@ -114,56 +133,66 @@ async function handleGameUpdate(game: DwgGame, message: ServerMessage): Promise<
     return;
   }
   const game_base = game_ob.game_base;
-  async function runUpdate(update: UpdateMessage): Promise<void> {
+  async function runUpdate(): Promise<void> {
+    if (game.running_updates) {
+      return;
+    }
     game.running_updates = true;
     try {
-      if (!game_base.persistant_history) {
-        console.log('Applying state-snapshot update');
-        await game_el?.gameUpdate(update);
-        return;
-      }
-      let last_update_id = game_base?.last_applied_update_id ?? -2;
-      // running update for next update
-      if (update.update_id - 1 === last_update_id) {
-        game_base.last_applied_update_id = update.update_id;
-        console.log(`Applying update id ${update.update_id}`);
-        await game_el?.gameUpdate(update);
-        last_update_id = update.update_id;
-        while (true) {
-          const next_update = game_base.updates?.get(last_update_id + 1);
-          if (!next_update) {
-            break;
+      while (game.update_queue.length > 0) {
+        const update = game.update_queue.shift()!;
+        if (!game_base.persistant_history) {
+          if (update.update_id <= (game_base.last_applied_update_id ?? 0)) {
+            continue;
           }
-          game_base.last_applied_update_id = next_update.update_id;
-          console.log(`Applying next update id ${next_update.update_id}`);
-          await game_el?.gameUpdate(next_update);
-          last_update_id = next_update.update_id;
+          game_base.last_applied_update_id = update.update_id;
+          console.log(`Applying state-snapshot update id ${update.update_id}`);
+          await game_el?.gameUpdate(update);
+          continue;
         }
-      } else if (update.update_id - 1 > last_update_id) {
-        game
-          .getSocket()
-          ?.send(
-            createMessage(
-              `client-${game.getConnectionMetadata()?.client_id}`,
-              'game-get-update',
-              '',
-              `${last_update_id + 1}`
-            )
-          );
-      } else {
-      } // ignore updates that are already applied
-      if ((game_base.highest_received_update_id ?? -2) > last_update_id) {
-        // check if received higher update while updating
-        game
-          .getSocket()
-          ?.send(
-            createMessage(
-              `client-${game.getConnectionMetadata()?.client_id}`,
-              'game-get-update',
-              '',
-              `${last_update_id + 1}`
-            )
-          );
+        let last_update_id = game_base?.last_applied_update_id ?? -2;
+        // running update for next update
+        if (update.update_id - 1 === last_update_id) {
+          game_base.last_applied_update_id = update.update_id;
+          console.log(`Applying update id ${update.update_id}`);
+          await game_el?.gameUpdate(update);
+          last_update_id = update.update_id;
+          while (true) {
+            const next_update = game_base.updates?.get(last_update_id + 1);
+            if (!next_update) {
+              break;
+            }
+            game_base.last_applied_update_id = next_update.update_id;
+            console.log(`Applying next update id ${next_update.update_id}`);
+            await game_el?.gameUpdate(next_update);
+            last_update_id = next_update.update_id;
+          }
+        } else if (update.update_id - 1 > last_update_id) {
+          game
+            .getSocket()
+            ?.send(
+              createMessage(
+                `client-${game.getConnectionMetadata()?.client_id}`,
+                'game-get-update',
+                '',
+                `${last_update_id + 1}`
+              )
+            );
+        } else {
+        } // ignore updates that are already applied
+        if ((game_base.highest_received_update_id ?? -2) > last_update_id) {
+          // check if received higher update while updating
+          game
+            .getSocket()
+            ?.send(
+              createMessage(
+                `client-${game.getConnectionMetadata()?.client_id}`,
+                'game-get-update',
+                '',
+                `${last_update_id + 1}`
+              )
+            );
+        }
       }
     } catch (e) {
       console.error('Error applying game update:', e);
@@ -172,23 +201,44 @@ async function handleGameUpdate(game: DwgGame, message: ServerMessage): Promise<
     }
   }
   try {
-    const update_message = {
+    const parse_start = performance.now();
+    const update_message: UpdateMessage = {
       update_id: game_update_id,
       kind: message.data,
       content: JSON.parse(message.content),
     };
-    console.log(`Received game update ${game_update_id}: ${JSON.stringify(update_message)}`);
-    game_base.updates?.set(game_update_id, update_message);
+    perfEvent('game_update', {
+      update_id: game_update_id,
+      update_kind: message.data,
+      bytes: message.content.length,
+      parse_ms: performance.now() - parse_start,
+    });
+    console.log(
+      `Received game update ${game_update_id}${game_base.persistant_history ? `: ${JSON.stringify(update_message)}` : ''}`
+    );
+    if (game_base.persistant_history) {
+      game_base.updates?.set(game_update_id, update_message);
+    } else if (game_update_id > (game_base.highest_received_update_id ?? 0)) {
+      // state snapshots replace each other, so only the newest is kept
+      game_base.updates?.clear();
+      game_base.updates?.set(game_update_id, update_message);
+    }
     game_base.highest_received_update_id = Math.max(game_base.highest_received_update_id ?? 0, game_update_id);
-    if (!game.running_updates && game_base.game_started && !game_base.game_ended && game.getLaunched()) {
-      runUpdate(update_message);
+    if (!game_base.persistant_history && game_update_id <= (game_base.last_applied_update_id ?? 0)) {
+      return;
+    }
+    game.update_queue.push(update_message);
+    if (game_base.game_started && !game_base.game_ended && game.getLaunched()) {
+      runUpdate();
     }
   } catch (e) {
     console.log(e);
-    game
-      .getSocket()
-      ?.send(
-        createMessage(`client-${game.getConnectionMetadata()?.client_id}`, 'game-get-update', '', `${game_update_id}`)
-      );
+    if (game_base.persistant_history) {
+      game
+        .getSocket()
+        ?.send(
+          createMessage(`client-${game.getConnectionMetadata()?.client_id}`, 'game-get-update', '', `${game_update_id}`)
+        );
+    }
   }
 }

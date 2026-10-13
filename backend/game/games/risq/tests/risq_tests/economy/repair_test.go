@@ -12,6 +12,7 @@ import (
 func TestTickHistoryRepairSettlement(t *testing.T) {
 	t.Run("unaffordable-repair", func(t *testing.T) {
 		g, p := damagedRepairGame(t, `{"wood":0}`, 1)
+		g.Lite = false
 		b, u := centerHousing(g, p), g.Self(p).Units[0]
 		g.Submit(p, harness.Order(defs.OrderType_UnitRepair, []uint64{u.InternalID}, int64(b.InternalID), false))
 		g.EndTurn()
@@ -24,6 +25,7 @@ func TestTickHistoryRepairSettlement(t *testing.T) {
 	})
 	t.Run("damage-and-repair-settlement", func(t *testing.T) {
 		g, p := damagedHousingGame(t)
+		g.Lite = false
 		enemy := g.Human(1)
 		b, u := centerHousing(g, p), g.Self(p).Units[0]
 		ids := []uint64{}
@@ -78,6 +80,7 @@ func TestTickHistoryRepairSettlement(t *testing.T) {
 	})
 	t.Run("newborn-gather-point-order", func(t *testing.T) {
 		g := productionGame(t, 1, 2, "")
+		g.Lite = false
 		p := g.Human(0)
 		original, producer := g.Self(p).Units[0].InternalID, centers(g, p)[0].InternalID
 		g.Action(p, "set-gather-point", gin.H{"building_id": producer, "location_kind": 1, "location_id": harness.SpaceKey(1, 0)})
@@ -102,6 +105,7 @@ func TestTickHistoryRepairSettlement(t *testing.T) {
 	})
 	t.Run("research-and-spawn", func(t *testing.T) {
 		g := productionGame(t, 1, 2, "")
+		g.Lite = false
 		p := g.Human(0)
 		original := g.Self(p).Units[0].InternalID
 		config := defs.TechConfigs[1]
@@ -136,6 +140,7 @@ func TestTickHistoryRepairSettlement(t *testing.T) {
 	})
 	t.Run("population-contention", func(t *testing.T) {
 		g := productionGame(t, 9, 2, "")
+		g.Lite = false
 		p := g.Human(0)
 		b := centers(g, p)
 		g.Submit(p, harness.OrderProduce([]uint64{b[0].InternalID}, 1), harness.OrderProduce([]uint64{b[1].InternalID}, 1))
@@ -161,6 +166,7 @@ func TestTickHistoryRepairSettlement(t *testing.T) {
 	})
 	t.Run("foundation-race", func(t *testing.T) {
 		g := scenarioGame(t, `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":0,"count":1},{"id":1,"player":1,"count":1}]}]},{"x":-1,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":2,"player":0}}]},{"x":1,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":2,"player":1}}]}`)
+		g.Lite = false
 		for slot := range 2 {
 			p := g.Human(slot)
 			g.Submit(p, housingOrders(g, p, 0)...)
@@ -184,6 +190,7 @@ func TestTickHistoryRepairSettlement(t *testing.T) {
 		}
 	})
 	g, p := damagedHousingGame(t)
+	g.Lite = false
 	b, u := centerHousing(g, p), g.Self(p).Units[0]
 	wood := g.Self(p).Resources.Wood
 	g.Submit(p, harness.Order(defs.OrderType_UnitRepair, []uint64{u.InternalID}, int64(b.InternalID), false))

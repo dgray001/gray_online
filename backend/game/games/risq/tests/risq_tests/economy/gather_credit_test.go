@@ -10,7 +10,7 @@ import (
 func TestGatherCreditsTheCorrectCategory(t *testing.T) {
 	for name, id := range map[string]uint32{"food": 1, "wood": 11, "stone": 41} {
 		t.Run(name, func(t *testing.T) {
-			g := gatherGame(t, id, false)
+			g := gatherGame(t, id, false, false)
 			p := g.Human(0)
 			config := defs.ResourceConfigs[id]
 			before := *g.Self(p).Resources

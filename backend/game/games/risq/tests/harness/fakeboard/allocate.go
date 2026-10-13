@@ -32,7 +32,7 @@ func (b *Board) RemoveSpace(removed mapgen.Space) {
 	b.distances = nil
 	for d, neighbor := range s.borders {
 		if neighbor != nil {
-			neighbor.borders[(d+3)%6] = nil
+			neighbor.borders[(d+3)%6], neighbor.sorted = nil, nil
 		}
 	}
 	delete(b.byCoord, s.coord)

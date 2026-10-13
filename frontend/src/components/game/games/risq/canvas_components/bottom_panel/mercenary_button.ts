@@ -2,7 +2,7 @@ import type { DwgRisq } from '../../risq';
 import type { BoardTransformData } from '../../../../util/canvas_board/canvas_board';
 import { configDraw } from '../../../../util/canvas_components/canvas_component';
 import { drawText } from '../../../../util/canvas_util';
-import { RisqRange, RisqResourceType } from '../../model/types';
+import { RisqResourceType, rangeDistance } from '../../model/types';
 import { resourceTypeImage } from '../../rendering/assets/resources';
 import type { RisqProducible } from '../../model/types';
 import { unitImage } from '../../rendering/assets/unit';
@@ -70,8 +70,9 @@ export class RisqMercenaryButton extends RisqActionButton {
       ['risq/icons/penetration_blunt', stats.penetration_blunt],
       ['risq/icons/penetration_piercing', stats.penetration_piercing],
     ];
-    if (stats.attack_range >= RisqRange.SPACE) {
-      values.push(['risq/icons/attack_range', stats.attack_range - RisqRange.SPACE]);
+    const range = rangeDistance(stats.attack_range);
+    if (range !== null) {
+      values.push(['risq/icons/attack_range', range]);
     }
     return values.filter(([icon, value]) => value !== 0 || icon === 'risq/icons/attack_range');
   }

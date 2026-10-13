@@ -35,6 +35,9 @@ func (b *RisqBuilding) resolveAutoAttack(risq *GameRisq) {
 	if target == nil || (!b.interrupt_current && len(b.order_queue.active_orders) > 0) {
 		return
 	}
+	if len(b.order_queue.active_orders) > 0 && !targetInPriority(target, b.target_priority) {
+		return
+	}
 	order_type := attackOrderType(target, defs.OrderType_BuildingAutoAttackUnit, defs.OrderType_BuildingAutoAttackBuilding)
 	b.autoAttackOrder(risq, order_type, int64(target.internalId()))
 }

@@ -22,7 +22,13 @@ export interface RisqDrawHost {
   readonly hover: Pick<RisqHover, 'hoveredRegion' | 'space'>;
   readonly viewport: Pick<
     RisqViewport,
-    'regionLabelPosition' | 'unitRadius' | 'corpseRadius' | 'centerMaxSlots' | 'edgeMaxSlots'
+    | 'regionLabelPosition'
+    | 'coordinateToCanvas'
+    | 'lastTransform'
+    | 'unitRadius'
+    | 'corpseRadius'
+    | 'centerMaxSlots'
+    | 'edgeMaxSlots'
   >;
   readonly corpse_layout: RisqCorpseLayout;
   getIcon(name: string): HTMLImageElement;

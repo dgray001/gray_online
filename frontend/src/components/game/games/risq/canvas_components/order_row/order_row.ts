@@ -39,6 +39,7 @@ export class RisqOrderRow implements CanvasComponent {
   private config: RisqOrderRowConfig;
   private hovering = false;
   private clicking = false;
+  private click_button?: number;
   private cancel_all_hover = false;
   private cancel_all_clicking = false;
   private resolved: ResolvedRow;
@@ -48,18 +49,16 @@ export class RisqOrderRow implements CanvasComponent {
   constructor(config: RisqOrderRowConfig) {
     this.config = config;
     this.resolved = resolveOrderRow(config);
-    this.cancel_button = new RisqOrderCancelButton(
-      CANCEL_S,
-      () => {
-        const collapsed = this.config.collapsed_orders;
-        this.config.onCancel(collapsed?.length ? collapsed[collapsed.length - 1] : this.config.order);
-      },
-      config.explicit_cancel
-    );
+    this.cancel_button = new RisqOrderCancelButton(CANCEL_S, () => this.cancelOneOrder(), config.explicit_cancel);
     this.positionButtons();
     if (config.cancelling && !config.explicit_cancel) {
       this.disableCancel();
     }
+  }
+
+  private cancelOneOrder(): void {
+    const collapsed = this.config.collapsed_orders;
+    this.config.onCancel(collapsed?.length ? collapsed[collapsed.length - 1] : this.config.order);
   }
 
   getOrder(): RisqFrontendOrder {
@@ -102,6 +101,7 @@ export class RisqOrderRow implements CanvasComponent {
   setClicking(clicking: boolean): void {
     this.clicking = clicking;
     if (!clicking) {
+      this.click_button = undefined;
       this.cancel_all_clicking = false;
       this.cancel_button.setClicking(false);
     }
@@ -320,15 +320,19 @@ export class RisqOrderRow implements CanvasComponent {
   }
 
   mousedown(e: MouseEvent): boolean {
+    if (e.button !== 0 && e.button !== 2) {
+      return false;
+    }
     if (this.cancel_button.mousedown(e)) {
       return true;
     }
-    if (!this.cancel_button.isDisabled() && this.cancel_all_hover) {
+    if (e.button === 0 && !this.cancel_button.isDisabled() && this.cancel_all_hover) {
       this.cancel_all_clicking = true;
       return true;
     }
     if (this.hovering) {
       this.clicking = true;
+      this.click_button = e.button;
       return true;
     }
     return false;
@@ -337,17 +341,25 @@ export class RisqOrderRow implements CanvasComponent {
   mouseup(e: MouseEvent): void {
     this.cancel_button.mouseup(e);
     if (
+      e.button === 0 &&
       !this.cancel_button.isDisabled() &&
       this.cancel_all_clicking &&
       this.cancel_all_hover &&
       this.config.collapsed_orders
     ) {
       this.config.onCancelAll?.([this.config.order, ...this.config.collapsed_orders]);
-    } else if (this.clicking && this.hovering) {
-      this.config.onSelect?.(this.config.order);
+    } else if (this.clicking && this.hovering && e.button === this.click_button) {
+      if (e.button === 2) {
+        if (!this.cancel_button.isDisabled()) {
+          this.cancelOneOrder();
+        }
+      } else {
+        this.config.onSelect?.(this.config.order);
+      }
     }
     this.cancel_all_clicking = false;
     this.clicking = false;
+    this.click_button = undefined;
   }
 
   xi(): number {

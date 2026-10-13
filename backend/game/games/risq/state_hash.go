@@ -69,6 +69,10 @@ func hashGatherPoint(h io.Writer, gp *RisqGatherPoint) {
 	}
 }
 
+func (r *GameRisq) StateHash() uint64 {
+	return r.stateHash(io.Discard)
+}
+
 func (r *GameRisq) stateHash(dump io.Writer) uint64 {
 	hasher := fnv.New64a()
 	h := io.MultiWriter(hasher, dump)
@@ -118,7 +122,8 @@ func (r *GameRisq) hashPlayersAndBoard(h io.Writer) {
 				fmt.Fprintf(h, ":%s/%s/%s/%s", hashFloat(cost.Food), hashFloat(cost.Wood), hashFloat(cost.Stone), hashFloat(cost.Gold))
 			}
 		}
-		fmt.Fprintf(h, " el%t am%v;", p.eliminated, slices.Sorted(maps.Keys(p.available_mercenaries)))
+		fmt.Fprintf(h, " el%t am%v os%t;", p.eliminated, slices.Sorted(maps.Keys(p.available_mercenaries)), p.orders_submitted)
+		hashOrders(h, p.active_orders)
 	}
 	for _, space := range r.allSpaces() {
 		fmt.Fprintf(h, "s%d o%d t%d", space.coordinate_key, space.ownership, space.terrain_id)

@@ -246,3 +246,23 @@ func targetCategoryOf(u *RisqUnit) defs.TargetCategory {
 	}
 	return defs.TargetCategory_MILITARY
 }
+
+func targetCategory(target Attackable) defs.TargetCategory {
+	if u, ok := target.(*RisqUnit); ok {
+		return targetCategoryOf(u)
+	}
+	return defs.TargetCategory_BUILDING
+}
+
+func targetInPriority(target Attackable, priority []defs.TargetCategory) bool {
+	if target == nil {
+		return false
+	}
+	cat := targetCategory(target)
+	for _, p := range priority {
+		if p == cat {
+			return true
+		}
+	}
+	return false
+}

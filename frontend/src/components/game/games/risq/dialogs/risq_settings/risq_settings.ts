@@ -115,6 +115,7 @@ export class DwgRisqSettings extends DwgElement {
     this.tab_button_hotkeys.classList.toggle('active', tab === 'hotkeys');
     this.tab_content_animations.classList.toggle('active', tab === 'animations');
     this.tab_content_hotkeys.classList.toggle('active', tab === 'hotkeys');
+    this.renderAll();
   }
 
   private addBuildingEntries(buildings: BuildingTreeEntry[]): void {
@@ -205,6 +206,7 @@ export class DwgRisqSettings extends DwgElement {
   }
 
   private renderAll(): void {
+    this.cancelListening();
     const sections = new Map<string, HotkeyEntry[]>();
     for (const entry of this.entries) {
       sections.set(entry.section, [...(sections.get(entry.section) ?? []), entry]);
@@ -276,8 +278,6 @@ export class DwgRisqSettings extends DwgElement {
       }
       this.setSlotCombo(slot, comboFromKeyboardEvent(e));
       this.renderAll();
-      this.listener_cleanup?.();
-      this.listener_cleanup = undefined;
     };
     const on_mousedown = (e: MouseEvent): void => {
       if (e.button < 3) {
@@ -286,8 +286,6 @@ export class DwgRisqSettings extends DwgElement {
       e.preventDefault();
       this.setSlotCombo(slot, comboFromMouseEvent(e));
       this.renderAll();
-      this.listener_cleanup?.();
-      this.listener_cleanup = undefined;
     };
     window.addEventListener('keydown', on_keydown, true);
     window.addEventListener('mousedown', on_mousedown, true);
@@ -297,9 +295,13 @@ export class DwgRisqSettings extends DwgElement {
     };
   }
 
-  private stopListening(button: HTMLButtonElement, slot: BindingSlot): void {
+  private cancelListening(): void {
     this.listener_cleanup?.();
     this.listener_cleanup = undefined;
+  }
+
+  private stopListening(button: HTMLButtonElement, slot: BindingSlot): void {
+    this.cancelListening();
     button.innerText = this.valueText(slot);
   }
 }

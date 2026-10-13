@@ -20,7 +20,7 @@ export class RisqAutoRenewButton extends RisqActionButton {
     const player = this.risq.getPlayer();
     const cost = player?.buildings.get(this.internal_id)?.renew_cost;
     this.dimmed = !!player && !!cost && !canAffordCost(player, cost);
-    if (this.risq.session.canGiveOrders() && !this.risq.commands.auto_renew_pending) {
+    if (this.risq.session.canGiveOrders()) {
       this.enable();
     } else {
       this.disable();
@@ -28,7 +28,7 @@ export class RisqAutoRenewButton extends RisqActionButton {
   }
 
   override mouseup(e: MouseEvent): void {
-    this.change = e.button === 2 ? -1 : 1;
+    this.change = (e.button === 2 ? -1 : 1) * (e.shiftKey ? 5 : 1);
     super.mouseup(e);
   }
 
@@ -41,7 +41,7 @@ export class RisqAutoRenewButton extends RisqActionButton {
     super.draw(ctx, transform, dt);
     const player = this.risq.getPlayer();
     const building = player?.buildings.get(this.internal_id);
-    const count = building ? (player?.auto_renewals.get(building.building_id) ?? 0) : 0;
+    const count = building ? this.risq.commands.auto_renew.count(building.building_id) : 0;
     configDraw(ctx, transform, { fixed_position: true, fill_style: 'black', stroke_width: 0 }, false, false, () => {
       const size = Math.max(10, this.h() * 0.25);
       ctx.fillRect(this.xf() - size * 2, this.yf() - size - 4, size * 2, size + 4);
@@ -60,7 +60,7 @@ export class RisqAutoRenewButton extends RisqActionButton {
     const building = this.risq.getPlayer()?.buildings.get(this.internal_id);
     return {
       title: this.description,
-      description: `Left-click to queue; right-click to cancel. Shared by all your ${building?.display_name} buildings.`,
+      description: `Left-click to queue; right-click to cancel. Hold Shift for five. Shared by all your ${building?.display_name} buildings.`,
       cost: building?.renew_cost,
     };
   }

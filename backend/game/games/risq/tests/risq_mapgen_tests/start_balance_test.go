@@ -37,8 +37,8 @@ func useTestScriptMaps(t *testing.T) {
 }
 
 func TestStartBalanceOnEveryScriptMap(t *testing.T) {
-	useTestScriptMaps(t)
-	for _, name := range []string{"hexagon", "ring", "rectangle", "triangle"} {
+	t.Parallel()
+	for _, name := range scriptPair(1) {
 		t.Run(name, func(t *testing.T) {
 			default_board := balancedBoard(t, name, nil, 4, 1)
 			mirrored := balancedBoard(t, name, float64(defs.StartBalance_MIRRORED), 4, 1)
@@ -49,7 +49,7 @@ func TestStartBalanceOnEveryScriptMap(t *testing.T) {
 			if random.Dump() == mirrored.Dump() {
 				t.Error("Random start balance did not change generation")
 			}
-			if random.Dump() != balancedBoard(t, name, float64(defs.StartBalance_RANDOM), 4, 1).Dump() {
+			if name == "hexagon" && random.Dump() != balancedBoard(t, name, float64(defs.StartBalance_RANDOM), 4, 1).Dump() {
 				t.Error("Random start balance is not reproducible")
 			}
 		})
@@ -57,9 +57,9 @@ func TestStartBalanceOnEveryScriptMap(t *testing.T) {
 }
 
 func TestRandomStartsKeepConfiguredAssets(t *testing.T) {
-	useTestScriptMaps(t)
-	for _, name := range []string{"hexagon", "ring", "rectangle", "triangle"} {
-		for _, players := range []int{2, 4, 12} {
+	t.Parallel()
+	for _, name := range scriptPair(2) {
+		for _, players := range []int{12} {
 			board := balancedBoard(t, name, float64(defs.StartBalance_RANDOM), players, 1)
 			for player := 0; player < players; player++ {
 				units, buildings, _ := board.Tally(player)

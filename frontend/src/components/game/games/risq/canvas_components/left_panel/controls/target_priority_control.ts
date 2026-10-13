@@ -1,6 +1,6 @@
 import type { BoardTransformData } from '../../../../../util/canvas_board/canvas_board';
 import { configDraw } from '../../../../../util/canvas_components/canvas_component';
-import { drawRect } from '../../../../../util/canvas_util';
+import { drawLine, drawRect, drawText } from '../../../../../util/canvas_util';
 import type { Point2D } from '../../../../../util/objects2d';
 import type { DwgRisq } from '../../../risq';
 import { RisqTargetCategory } from '../../../model/types';
@@ -45,6 +45,7 @@ export class RisqTargetPriorityControl {
   private control_w = 0;
   private square_size = 0;
   private priority: RisqTargetCategory[] = [];
+  private mixed = false;
   private last_mouse: Point2D = { x: 0, y: 0 };
   private hovering_category?: RisqTargetCategory;
   private pressed_pool_category?: RisqTargetCategory;
@@ -81,10 +82,16 @@ export class RisqTargetPriorityControl {
       return;
     }
     const player = this.risq.getPlayer();
-    this.priority =
-      (this.defaults
-        ? player?.default_unit_target_priority
-        : player?.units.get(this.unit_internal_ids[0])?.target_priority) ?? [];
+    const priorities = this.defaults
+      ? [player?.default_unit_target_priority ?? []]
+      : this.unit_internal_ids.map((id: number): RisqTargetCategory[] => player?.units.get(id)?.target_priority ?? []);
+    const priority = priorities[0] ?? [];
+    this.mixed = priorities.some(
+      (value: RisqTargetCategory[]): boolean =>
+        value.length !== priority.length ||
+        value.some((category: RisqTargetCategory, i: number): boolean => category !== priority[i])
+    );
+    this.priority = this.mixed ? [] : [...priority];
   }
 
   private poolCategories(): RisqTargetCategory[] {
@@ -92,8 +99,11 @@ export class RisqTargetPriorityControl {
   }
 
   private computeLayout(): ControlLayout {
-    const s = this.square_size;
-    const chip_y = this.p.y + PADDING;
+    const mixed_width = Math.min(56, this.control_w / 3);
+    const s = this.mixed
+      ? Math.min(this.square_size, (this.control_w - mixed_width - CONTAINER_GAP - 2 * PADDING) / 3)
+      : this.square_size;
+    const chip_y = this.p.y + PADDING + (this.square_size - s) / 2;
     const pool_categories = this.poolCategories();
     const pool: CategoryRect[] = pool_categories.map((category, i) => ({
       category,
@@ -105,8 +115,9 @@ export class RisqTargetPriorityControl {
     const pool_w = pool_categories.length > 0 ? pool_categories.length * (s + PADDING) - PADDING : 0;
     const container_x = this.p.x + pool_w + (pool_categories.length > 0 ? CONTAINER_GAP : 0);
     const chip_categories = this.dragging_category !== undefined && this.drag_order ? this.drag_order : this.priority;
-    const container_w =
-      2 * PADDING + (chip_categories.length > 0 ? chip_categories.length * (s + PADDING) - PADDING : 0);
+    const container_w = this.mixed
+      ? mixed_width
+      : 2 * PADDING + (chip_categories.length > 0 ? chip_categories.length * (s + PADDING) - PADDING : 0);
     const chips: CategoryRect[] = chip_categories.map((category, i) => ({
       category,
       x: container_x + PADDING + i * (s + PADDING),
@@ -114,7 +125,11 @@ export class RisqTargetPriorityControl {
       w: s,
       h: s,
     }));
-    return { pool, container: { x: container_x, y: this.p.y, w: container_w, h: s + 2 * PADDING }, chips };
+    return {
+      pool,
+      container: { x: container_x, y: this.p.y, w: container_w, h: this.square_size + 2 * PADDING },
+      chips,
+    };
   }
 
   private pointIn(m: Point2D, r: CategoryRect): boolean {
@@ -148,6 +163,8 @@ export class RisqTargetPriorityControl {
   }
 
   private sendPriority(priority: RisqTargetCategory[]): void {
+    this.mixed = false;
+    this.priority = [...priority];
     if (this.defaults) {
       this.risq.commands.setDefaultUnitBehavior({ target_priority: priority });
       return;
@@ -177,12 +194,36 @@ export class RisqTargetPriorityControl {
           layout.container.h,
           0.3 * layout.container.h
         );
+        if (this.mixed) {
+          this.drawMixedPriority(ctx, layout.container);
+        }
         for (const rect of layout.chips) {
           const dragging_this = this.dragged && rect.category === this.dragging_category;
           this.drawSquare(ctx, dragging_this ? { ...rect, x: this.clampedDragX(layout.container) } : rect);
         }
       }
     );
+  }
+
+  private drawMixedPriority(ctx: CanvasRenderingContext2D, container: ControlLayout['container']): void {
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(container.x, container.y, container.w, container.h, 0.3 * container.h);
+    ctx.clip();
+    ctx.strokeStyle = 'rgba(235, 210, 165, 0.7)';
+    ctx.lineWidth = 4;
+    for (let x = container.x - container.h; x < container.x + container.w; x += 8) {
+      drawLine(ctx, { x, y: container.y + container.h }, { x: x + container.h, y: container.y });
+    }
+    ctx.restore();
+    drawText(ctx, 'Mixed', {
+      p: { x: container.x + container.w / 2, y: container.y + container.h / 2 },
+      w: container.w - 2 * PADDING,
+      align: 'center',
+      baseline: 'middle',
+      font: 'bold 12px serif',
+      fill_style: 'rgb(60, 40, 20)',
+    });
   }
 
   private clampedDragX(container: { x: number; w: number }): number {

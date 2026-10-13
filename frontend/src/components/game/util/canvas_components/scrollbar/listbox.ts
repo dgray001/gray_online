@@ -28,12 +28,8 @@ export class DwgListbox<
   private draw_start = 0;
   // Index of the last list item shown
   private draw_end = 0;
-  // Time between scrollbar adjustments
-  static SCROLLBAR_ADJUST_TIME = 100;
-  private scrollbar_adjust_time = DwgListbox.SCROLLBAR_ADJUST_TIME;
   // Maintain a list of coordinates for mouse move events
   private list_coordinates: Point2D[] = [];
-  private check_mousemove_on_next_draw = false;
   private disabled = false;
 
   constructor(config: ListboxConfig<T, R>) {
@@ -43,7 +39,8 @@ export class DwgListbox<
       if (scroll_callback) {
         scroll_callback(value);
       }
-      this.check_mousemove_on_next_draw = true;
+      this.layoutRows();
+      this.refreshMouse();
     };
     this.config = config;
     this.setList(config.list);
@@ -51,13 +48,8 @@ export class DwgListbox<
 
   setList(list: T[]): void {
     this.config.list = list;
-    this.list_coordinates = [];
-    for (const _ of this.config.list) {
-      this.list_coordinates.push({
-        x: 0,
-        y: 0,
-      });
-    }
+    this.layoutRows();
+    this.refreshMouse();
   }
 
   protected getList(): T[] {
@@ -73,6 +65,11 @@ export class DwgListbox<
 
   setHovering(hovering: boolean): void {
     this.config.scrollbar.setHovering(hovering);
+    if (!hovering) {
+      for (const item of this.config.list) {
+        item.setHovering(false);
+      }
+    }
   }
 
   isClicking(): boolean {
@@ -95,6 +92,8 @@ export class DwgListbox<
   setAllSizes(size: number, p: Point2D, w: number, h: number): void {
     const title_size = this.config.title?.size ?? 0;
     this.config.scrollbar.setAllSizes(size, { x: p.x, y: p.y + title_size }, w, h - title_size);
+    this.layoutRows();
+    this.refreshMouse();
   }
 
   getPadding(): number {
@@ -115,6 +114,40 @@ export class DwgListbox<
     this.config.scrollbar.enable();
   }
 
+  private layoutRows(): void {
+    const scrollbar = this.config.scrollbar;
+    const padding = this.getPadding();
+    const total =
+      this.config.list.reduce((sum: number, el: T): number => sum + el.h(), 0) +
+      Math.max(0, this.config.list.length - 1) * this.getGap();
+    scrollbar.setValue({
+      value: scrollbar.value(),
+      value_min: 0,
+      value_max: Math.max(0, total - scrollbar.h() + 2 * padding),
+    });
+    this.draw_start = this.config.list.length;
+    this.draw_end = -1;
+    let y = scrollbar.yi() + padding - scrollbar.value();
+    this.list_coordinates = this.config.list.map((el: T, i: number): Point2D => {
+      const p = { x: this.xi() + padding, y };
+      if (y + el.h() >= scrollbar.yi() + padding && y <= scrollbar.yf() - padding) {
+        this.draw_start = Math.min(this.draw_start, i);
+        this.draw_end = i;
+      }
+      y += el.h() + this.getGap();
+      return p;
+    });
+  }
+
+  private refreshMouse(): void {
+    const canvas = this.config.scrollbar.getLastMousemoveCanvas();
+    const screen = this.config.scrollbar.getLastMousemoveScreen();
+    const transform = this.config.scrollbar.getLastMousemoveTransform();
+    if (canvas && screen && transform) {
+      this.mousemove(canvas, screen, transform);
+    }
+  }
+
   draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
     configDraw(ctx, transform, this.config.draw_config, this.isHovering(), this.isClicking(), () => {
       drawRect(ctx, { x: this.xi(), y: this.yi() }, this.w(), this.h());
@@ -129,12 +162,7 @@ export class DwgListbox<
           baseline: 'ideographic',
         });
       }
-      let [xi, yi, value, padding] = [
-        this.xi(),
-        this.config.scrollbar.yi(),
-        this.config.scrollbar.value(),
-        this.getPadding(),
-      ];
+      const padding = this.getPadding();
       ctx.save();
       ctx.beginPath();
       ctx.rect(
@@ -144,60 +172,17 @@ export class DwgListbox<
         this.config.scrollbar.h() - padding * 2
       );
       ctx.clip();
-      yi += padding - value;
-      ctx.translate(xi + padding, yi);
-      let found_start = false;
-      let found_end = false;
-      const initial_yi = yi;
-      for (const [i, el] of this.config.list.entries()) {
-        let draw_el = true;
-        if (!found_start) {
-          if (yi + el.h() >= this.config.scrollbar.yi() + padding) {
-            this.draw_start = i;
-            found_start = true;
-          } else {
-            draw_el = false;
-          }
-        } else if (!found_end) {
-          if (yi + el.h() >= this.config.scrollbar.yf() - padding) {
-            this.draw_end = i;
-            found_end = true;
-          }
-        } else {
-          draw_el = false;
-        }
-        if (draw_el) {
-          el.draw(ctx, transform, dt);
-          this.list_coordinates[i] = { x: xi + padding, y: yi };
-        }
-        const yi_adjust = el.h() + (i + 1 < this.config.list.length ? this.getGap() : 0);
-        yi += yi_adjust;
-        ctx.translate(0, yi_adjust);
+      for (let i = this.draw_start; i <= this.draw_end; i++) {
+        const el = this.config.list[i];
+        const p = this.list_coordinates[i];
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        el.draw(ctx, transform, dt);
+        ctx.restore();
       }
-      if (!found_end) {
-        this.draw_end = this.config.list.length - 1;
-      }
-      ctx.translate(-xi - padding, -yi);
       ctx.restore();
-      this.scrollbar_adjust_time -= dt;
-      if (this.scrollbar_adjust_time < 0) {
-        this.scrollbar_adjust_time = DwgListbox.SCROLLBAR_ADJUST_TIME;
-        this.config.scrollbar.setValue({
-          value,
-          value_min: 0,
-          value_max: yi >= this.yf() - padding ? yi - initial_yi - this.config.scrollbar.h() + 2 * padding : 0,
-        });
-      }
     });
     this.config.scrollbar.draw(ctx, transform, dt);
-    if (this.check_mousemove_on_next_draw) {
-      const last_canvas = this.config.scrollbar.getLastMousemoveCanvas();
-      const last_screen = this.config.scrollbar.getLastMousemoveScreen();
-      const last_transform = this.config.scrollbar.getLastMousemoveTransform();
-      if (!!last_canvas && !!last_screen && !!last_transform) {
-        this.mousemove(last_canvas, last_screen, last_transform);
-      }
-    }
     if (this.disabled) {
       configDraw(
         ctx,

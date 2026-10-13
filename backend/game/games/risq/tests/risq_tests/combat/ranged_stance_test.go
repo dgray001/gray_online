@@ -8,19 +8,24 @@ import (
 
 func TestRangedStancesHoldPosition(t *testing.T) {
 	for _, c := range []struct {
-		name     string
-		stance   defs.UnitStance
-		distance int
-		attacks  bool
+		name        string
+		stance      defs.UnitStance
+		distance    int
+		attacks     bool
+		attackRange defs.RisqRange
 	}{
-		{"defensive-adjacent", defs.UnitStance_DEFENSIVE, 1, true},
-		{"stand-ground-adjacent", defs.UnitStance_STAND_GROUND, 1, true},
-		{"passive-adjacent", defs.UnitStance_PASSIVE, 1, false},
-		{"defensive-out-of-range", defs.UnitStance_DEFENSIVE, 2, false},
-		{"stand-ground-out-of-range", defs.UnitStance_STAND_GROUND, 2, false},
+		{"defensive-adjacent", defs.UnitStance_DEFENSIVE, 1, true, defs.RisqRange_ADJACENT},
+		{"stand-ground-adjacent", defs.UnitStance_STAND_GROUND, 1, true, defs.RisqRange_ADJACENT},
+		{"passive-adjacent", defs.UnitStance_PASSIVE, 1, false, defs.RisqRange_ADJACENT},
+		{"defensive-out-of-range", defs.UnitStance_DEFENSIVE, 2, false, defs.RisqRange_ADJACENT},
+		{"stand-ground-out-of-range", defs.UnitStance_STAND_GROUND, 2, false, defs.RisqRange_ADJACENT},
+		{"aggressive-out-of-range", defs.UnitStance_AGGRESSIVE, 2, false, defs.RisqRange_ADJACENT},
+		{"aggressive-range-two", defs.UnitStance_AGGRESSIVE, 2, true, defs.RisqRange_SECONDARY},
+		{"defensive-range-two", defs.UnitStance_DEFENSIVE, 2, true, defs.RisqRange_SECONDARY},
+		{"stand-ground-range-two", defs.UnitStance_STAND_GROUND, 2, true, defs.RisqRange_SECONDARY},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			g := rangedGame(t, c.distance, false)
+			g := rangedGameWithRange(t, c.distance, false, c.attackRange)
 			owner, enemy := g.Human(0), g.Human(1)
 			attacker, target := g.Self(owner).Units[0], g.Self(enemy).Units[0]
 			g.Action(owner, "set-unit-behavior", gin.H{"internal_ids": []uint64{attacker.InternalID}, "stance": uint8(c.stance), "attack_back": false})

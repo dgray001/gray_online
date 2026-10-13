@@ -35,6 +35,6 @@ func (r *GameRisq) executeSetAutoRenew(player_id int, action gin.H) {
 		p.player.AddFailedUpdateShorthand("set-auto-renew-failed", err.Error())
 		return
 	}
-	content := gin.H{"building_id": request.Building_id, "count": *request.Count}
-	p.player.AddUpdate(r.playerSnapshotUpdate(p.player, "auto-renew-set", content))
+	content := gin.H{"building_id": request.Building_id, "count": *request.Count, "resources": p.resources.toFrontend()}
+	r.sendSetting(p.player, "auto-renew-set", content)
 }

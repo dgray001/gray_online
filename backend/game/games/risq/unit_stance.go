@@ -4,7 +4,7 @@ import (
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 )
 
-const aggressiveSightRadius = 2
+const aggressivePursuitRadius = 1
 
 func (u *RisqUnit) stanceReachable(target_zone *RisqZone) bool {
 	if target_zone == nil || u.zone == nil {
@@ -15,7 +15,7 @@ func (u *RisqUnit) stanceReachable(target_zone *RisqZone) bool {
 	}
 	switch u.stance {
 	case defs.UnitStance_AGGRESSIVE:
-		return u.zone.space.distanceTo(target_zone.space) <= aggressiveSightRadius
+		return u.zone.space.distanceTo(target_zone.space) <= aggressivePursuitRadius
 	case defs.UnitStance_DEFENSIVE:
 		return target_zone.space == u.zone.space
 	case defs.UnitStance_PASSIVE, defs.UnitStance_STAND_GROUND:
@@ -121,6 +121,9 @@ func (u *RisqUnit) resolveStance(risq *GameRisq) {
 				idle_enough = !u.isAttacking()
 			}
 		}
+		if len(u.order_queue.active_orders) > 0 && !targetInPriority(target, u.target_priority) {
+			idle_enough = false
+		}
 		if idle_enough {
 			order_type := attackOrderType(target, defs.OrderType_UnitAutoAttackUnit, defs.OrderType_UnitAutoAttackBuilding)
 			u.replaceOrder(risq, order_type, int64(target.internalId()))
@@ -133,31 +136,26 @@ func (u *RisqUnit) resolveStance(risq *GameRisq) {
 	if (!u.interrupt_current && len(u.order_queue.active_orders) > 0) || u.holdsAssignedAttack() {
 		return
 	}
+	var target Attackable
 	switch u.stance {
 	case defs.UnitStance_AGGRESSIVE:
-		if target := nearbyAttackTarget(u.zone, u.player_id, u.target_priority, risq, aggressiveSightRadius); target != nil {
-			order_type := attackOrderType(target, defs.OrderType_UnitAutoAttackUnit, defs.OrderType_UnitAutoAttackBuilding)
-			u.replaceOrder(risq, order_type, int64(target.internalId()))
-		}
+		space_range, _ := u.attack_range.SpaceRadius()
+		target = nearbyAttackTarget(u.zone, u.player_id, u.target_priority, risq, max(aggressivePursuitRadius, space_range))
 	case defs.UnitStance_DEFENSIVE:
 		if space_range, ranged := u.attack_range.SpaceRadius(); ranged {
-			if target := nearbyInRangeTarget(u.zone, u.player_id, u.target_priority, u.inAttackRange, risq, space_range); target != nil {
-				order_type := attackOrderType(target, defs.OrderType_UnitAutoAttackUnit, defs.OrderType_UnitAutoAttackBuilding)
-				u.replaceOrder(risq, order_type, int64(target.internalId()))
-			}
-		} else if target := spaceAttackTarget(u, u.zone.space); target != nil {
-			order_type := attackOrderType(target, defs.OrderType_UnitAutoAttackUnit, defs.OrderType_UnitAutoAttackBuilding)
-			u.replaceOrder(risq, order_type, int64(target.internalId()))
+			target = nearbyInRangeTarget(u.zone, u.player_id, u.target_priority, u.inAttackRange, risq, space_range)
+		} else {
+			target = spaceAttackTarget(u, u.zone.space)
 		}
 	case defs.UnitStance_STAND_GROUND:
 		if space_range, ranged := u.attack_range.SpaceRadius(); ranged {
-			if target := nearbyInRangeTarget(u.zone, u.player_id, u.target_priority, u.inAttackRange, risq, space_range); target != nil {
-				order_type := attackOrderType(target, defs.OrderType_UnitAutoAttackUnit, defs.OrderType_UnitAutoAttackBuilding)
-				u.replaceOrder(risq, order_type, int64(target.internalId()))
-			}
-		} else if target := zoneAttackTarget(u.zone, u.player_id, u.target_priority); target != nil {
-			order_type := attackOrderType(target, defs.OrderType_UnitAutoAttackUnit, defs.OrderType_UnitAutoAttackBuilding)
-			u.replaceOrder(risq, order_type, int64(target.internalId()))
+			target = nearbyInRangeTarget(u.zone, u.player_id, u.target_priority, u.inAttackRange, risq, space_range)
+		} else {
+			target = zoneAttackTarget(u.zone, u.player_id, u.target_priority)
 		}
+	}
+	if target != nil && (len(u.order_queue.active_orders) == 0 || targetInPriority(target, u.target_priority)) {
+		order_type := attackOrderType(target, defs.OrderType_UnitAutoAttackUnit, defs.OrderType_UnitAutoAttackBuilding)
+		u.replaceOrder(risq, order_type, int64(target.internalId()))
 	}
 }

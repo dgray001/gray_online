@@ -1,10 +1,6 @@
 package mapgen
 
-import (
-	"math"
-
-	"github.com/dgray001/gray_online/game/game_utils"
-)
+import "github.com/dgray001/gray_online/game/game_utils"
 
 func floorDiv2(x int) int {
 	if x >= 0 || x%2 == 0 {
@@ -15,47 +11,6 @@ func floorDiv2(x int) int {
 
 func hexAreaForSize(size int) int {
 	return 3*size*size + 3*size + 1
-}
-
-func cubeRound(x float64, y float64, z float64) (int, int, int) {
-	rx, ry, rz := math.Round(x), math.Round(y), math.Round(z)
-	dx, dy, dz := math.Abs(rx-x), math.Abs(ry-y), math.Abs(rz-z)
-	if dx > dy && dx > dz {
-		rx = -ry - rz
-	} else if dy > dz {
-		ry = -rx - rz
-	} else {
-		rz = -rx - ry
-	}
-	return int(rx), int(ry), int(rz)
-}
-
-func hexLine(from game_utils.Coordinate2D, to game_utils.Coordinate2D, board Board) []Space {
-	dist := int(game_utils.AxialDistance(from, to))
-	if dist == 0 {
-		if space := board.Space(from); space != nil {
-			return []Space{space}
-		}
-		return nil
-	}
-	x1, z1 := float64(from.X), float64(from.Y)
-	y1 := -x1 - z1
-	x2, z2 := float64(to.X), float64(to.Y)
-	y2 := -x2 - z2
-	spaces := make([]Space, 0, dist+1)
-	seen := make(map[uint]bool)
-	for i := 0; i <= dist; i++ {
-		t := float64(i) / float64(dist)
-		rx, _, rz := cubeRound(x1+(x2-x1)*t, y1+(y2-y1)*t, z1+(z2-z1)*t)
-		c := game_utils.Coordinate2D{X: rx, Y: rz}
-		space := board.Space(c)
-		if space == nil || seen[space.Key()] {
-			continue
-		}
-		seen[space.Key()] = true
-		spaces = append(spaces, space)
-	}
-	return spaces
 }
 
 // Returns every space within hex distance radius of start (radius 0 -> just start, radius 1 -> start + 6 neighbors, etc.)

@@ -1,5 +1,6 @@
 import { equalsPoint2D } from '../../../../util/objects2d';
-import { cantorPair, invertBuildKey, invertPair } from '../../model/coordinates';
+import { cantorPair, invertBuildKey, invertPair, invertZoneKey } from '../../model/coordinates';
+import { resourceType } from '../../rendering/assets/resources';
 import type {
   RisqBuilding,
   RisqCost,
@@ -30,12 +31,14 @@ export declare interface LocalRisqFoundation {
 export class RisqOrderPlanning {
   private local_foundations = new Map<number, LocalRisqFoundation>();
   private idle_units: RisqUnit[] = [];
+  private idle_orderables_cache?: (RisqUnit | RisqBuilding)[];
   private last_idle_selected?: number;
   private disabled_idle_categories = new Set<IdleCategory>();
 
   constructor(
     private session: RisqSession,
-    private orders_model: RisqOrdersModel
+    private orders_model: RisqOrdersModel,
+    private renewal_reservations: () => RisqCost[] = (): RisqCost[] => []
   ) {}
 
   getLocalFoundation(key: number): LocalRisqFoundation | undefined {
@@ -100,7 +103,48 @@ export class RisqOrderPlanning {
   refresh(): void {
     this.syncLocalFoundations();
     this.updateResourceSpending();
+    this.updateWorkers();
     this.recomputeIdleUnits();
+  }
+
+  /** Resource type a gather order on this zone key yields, from the zone's resource or gatherable building */
+  private gatherCategory(zone_key: number): RisqResourceType | undefined {
+    const { space, zone } = invertZoneKey(zone_key);
+    const target = this.session
+      .spaceAt(space)
+      ?.zones?.flat()
+      .find((z) => equalsPoint2D(z.coordinate, zone));
+    return target?.resource ? resourceType(target.resource) : target?.building?.resource_category;
+  }
+
+  private countWorker(
+    player: RisqPlayer,
+    order: Pick<RisqFrontendOrder, 'order_type' | 'target_id'> | undefined,
+    field: 'workers' | 'predicted_workers'
+  ): void {
+    if (order?.order_type !== RisqOrderType.OrderType_UnitGather) {
+      return;
+    }
+    const category = this.gatherCategory(order.target_id);
+    const resource = category === undefined ? undefined : player.resources.get(category);
+    if (resource) {
+      resource[field]++;
+    }
+  }
+
+  private updateWorkers(): void {
+    const player = this.session.getPlayer();
+    if (!player) {
+      return;
+    }
+    for (const resource of player.resources.values()) {
+      resource.workers = 0;
+      resource.predicted_workers = 0;
+    }
+    for (const unit of player.units.values()) {
+      this.countWorker(player, unit.active_orders[0], 'workers');
+      this.countWorker(player, this.orders_model.effectiveForSubject(unit.internal_id, 'unit')[0], 'predicted_workers');
+    }
   }
 
   private activeBuildOrders(): Map<number, RisqFrontendOrder> {
@@ -156,6 +200,7 @@ export class RisqOrderPlanning {
   }
 
   private recomputeIdleUnits(): void {
+    this.idle_orderables_cache = undefined;
     const player = this.session.getPlayer();
     if (!player) {
       this.idle_units = [];
@@ -173,8 +218,7 @@ export class RisqOrderPlanning {
   }
 
   idleBuildingCount(): number {
-    return this.idleBuildings().filter((building: RisqBuilding): boolean => this.hasAvailableProduction(building))
-      .length;
+    return this.idleBuildings().length;
   }
 
   idleOrderableCount(): number {
@@ -189,17 +233,17 @@ export class RisqOrderPlanning {
     if (!this.disabled_idle_categories.delete(category)) {
       this.disabled_idle_categories.add(category);
     }
+    this.idle_orderables_cache = undefined;
   }
 
-  private hasAvailableProduction(building: RisqBuilding): boolean {
+  private hasAvailableProduction(building: RisqBuilding, orders: RisqFrontendOrder[]): boolean {
     const player = this.session.getPlayer();
     return (
       !!player &&
       building.produces.some(
         (producible: RisqProducible): boolean =>
           buildingCanProduce(player, building, producible) &&
-          (producible.kind !== RisqProducibleKind.TECH ||
-            !researchQueued(player, this.orders_model.all(), producible.id))
+          (producible.kind !== RisqProducibleKind.TECH || !researchQueued(player, orders, producible.id))
       )
     );
   }
@@ -209,22 +253,19 @@ export class RisqOrderPlanning {
     if (!player) {
       return [];
     }
+    const orders = this.orders_model.uncancelledOrders();
     return [...player.buildings.values()]
       .filter(
         (b: RisqBuilding): boolean =>
           !b.under_construction &&
-          (b.combat_stats.attack_blunt > 0 ||
-            b.combat_stats.attack_piercing > 0 ||
-            b.combat_stats.attack_magic > 0 ||
-            b.garrison_capacity > 0 ||
-            this.hasAvailableProduction(b)) &&
+          this.hasAvailableProduction(b, orders) &&
           this.orders_model.effectiveForSubject(b.internal_id, 'building').length === 0
       )
       .sort((a, b) => a.internal_id - b.internal_id);
   }
 
   nextIdleOrderable(): RisqUnit | RisqBuilding | undefined {
-    const candidates = this.idleOrderables();
+    const candidates = [...this.idleOrderables()];
     const key = (entity: RisqUnit | RisqBuilding): number => entity.internal_id * 2 + ('building_id' in entity ? 1 : 0);
     candidates.sort((a, b) => key(a) - key(b));
     if (!this.session.getGame() || candidates.length === 0) {
@@ -240,10 +281,27 @@ export class RisqOrderPlanning {
     return unit;
   }
 
-  idleOrderables(): (RisqUnit | RisqBuilding)[] {
-    return [...this.idle_units, ...this.idleBuildings()]
+  idleOrderables(): readonly (RisqUnit | RisqBuilding)[] {
+    this.idle_orderables_cache ??= [...this.idle_units, ...this.idleBuildings()]
       .filter((entity: RisqUnit | RisqBuilding): boolean => this.idleCategoryEnabled(idleCategory(entity)))
       .sort((a: RisqUnit | RisqBuilding, b: RisqUnit | RisqBuilding): number => a.internal_id - b.internal_id);
+    return this.idle_orderables_cache;
+  }
+
+  /** Units on the way by unit id: queued creates (submitted or pending) and mercenary hires, minus cancelled ones */
+  queuedUnitCounts(): Map<number, number> {
+    const counts = new Map<number, number>();
+    for (const order of this.orders_model.all()) {
+      const is_hire = order.order_type === RisqOrderType.OrderType_BuyMercenary;
+      if (!is_hire && order.order_type !== RisqOrderType.OrderType_BuildingCreate) {
+        continue;
+      }
+      if (!this.orders_model.isCancelling(order)) {
+        const unit_id = is_hire ? invertPair(order.target_id).x : order.target_id;
+        counts.set(unit_id, (counts.get(unit_id) ?? 0) + 1);
+      }
+    }
+    return counts;
   }
 
   pendingMercenaryOrders(): RisqFrontendOrder[] {
@@ -279,7 +337,7 @@ export class RisqOrderPlanning {
       cantorPair(target.space_coordinate.x, target.space_coordinate.y),
       cantorPair(target.zone_coordinate.x, target.zone_coordinate.y)
     );
-    const gathers = (orders: RisqFrontendOrder[]): boolean =>
+    const gathers = (orders: readonly RisqFrontendOrder[]): boolean =>
       orders.some((o) => o.order_type === RisqOrderType.OrderType_UnitGather && o.target_id === zone_key);
     let current = 0;
     const predicted = new Set<number>();
@@ -376,6 +434,9 @@ export class RisqOrderPlanning {
     );
     for (const target_id of renew_targets) {
       this.addSpending(player, this.unpaidRenewalCost(target_id));
+    }
+    for (const cost of this.renewal_reservations()) {
+      this.addSpending(player, cost);
     }
   }
 

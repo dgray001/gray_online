@@ -89,24 +89,28 @@ type RisqPlannedFoundation struct {
 
 func createRisqPlayer(player *game.Player, max_population_limit uint16, color string, rng *rand.Rand) *RisqPlayer {
 	return &RisqPlayer{
-		player:                       player,
-		resources:                    createRisqPlayerResources(),
-		buildings:                    make(map[uint64]*RisqBuilding),
-		units:                        make(map[uint64]*RisqUnit, 0),
-		max_population_limit:         max_population_limit,
-		color:                        color,
-		active_orders:                make([]*RisqOrder, 0),
-		past_orders:                  make([]*RisqOrder, 0),
-		orders_submitted:             false,
-		default_unit_stance:          defs.UnitStance_DEFENSIVE,
-		default_unit_attack_back:     true,
-		default_unit_target_priority: []defs.TargetCategory{},
-		planned_foundations:          make(map[uint]*RisqPlannedFoundation),
-		auto_renewals:                make(map[uint32]*RisqRenewalQueue),
-		researched_techs:             make(map[uint32]bool),
-		available_mercenaries:        make(map[uint32]bool),
-		rng:                          rng,
-		ai_stop:                      make(chan struct{}),
+		player:                   player,
+		resources:                createRisqPlayerResources(),
+		buildings:                make(map[uint64]*RisqBuilding),
+		units:                    make(map[uint64]*RisqUnit, 0),
+		max_population_limit:     max_population_limit,
+		color:                    color,
+		active_orders:            make([]*RisqOrder, 0),
+		past_orders:              make([]*RisqOrder, 0),
+		orders_submitted:         false,
+		default_unit_stance:      defs.UnitStance_DEFENSIVE,
+		default_unit_attack_back: true,
+		default_unit_target_priority: []defs.TargetCategory{
+			defs.TargetCategory_MILITARY,
+			defs.TargetCategory_ECONOMIC,
+			defs.TargetCategory_BUILDING,
+		},
+		planned_foundations:   make(map[uint]*RisqPlannedFoundation),
+		auto_renewals:         make(map[uint32]*RisqRenewalQueue),
+		researched_techs:      make(map[uint32]bool),
+		available_mercenaries: make(map[uint32]bool),
+		rng:                   rng,
+		ai_stop:               make(chan struct{}),
 	}
 }
 
@@ -193,7 +197,7 @@ func (p *RisqPlayer) canHaveUnits() bool {
 		return true
 	}
 	for _, building := range p.buildings {
-		if building.deleted {
+		if building.deleted || building.underConstruction() {
 			continue
 		}
 		for _, producible := range defs.BuildingConfigs[building.building_id].Produces {

@@ -2,7 +2,6 @@ import type { Point2D } from '../../../../util/objects2d';
 import { equalsPoint2D, roundAxialCoordinate } from '../../../../util/objects2d';
 import type { RisqRegion, RisqSpace, RisqZone } from '../../model/types';
 import type { RisqViewport } from '../../rendering/board/viewport';
-import { RisqViewMode } from '../../rendering/terrain';
 import { resolveHoveredZones, unhoverRisqZone } from '../../rendering/zones/hit_testing';
 import type { RisqSession } from '../session';
 
@@ -89,7 +88,7 @@ export class RisqHover {
   }
 
   private resolveZone(): void {
-    if (this.viewport.zoneView() && this.viewport.viewMode() !== RisqViewMode.REGION) {
+    if (this.viewport.zoneView()) {
       const new_hovered_zone = resolveHoveredZones(this.mouse_canvas, this.hovered_space, this.viewport.hexR());
       if (!!this.hovered_zone && !equalsPoint2D(new_hovered_zone?.coordinate, this.hovered_zone?.coordinate)) {
         this.unhoverZone();

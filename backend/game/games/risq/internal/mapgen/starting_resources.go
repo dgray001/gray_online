@@ -2,9 +2,44 @@ package mapgen
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
+	"slices"
 	"strconv"
 )
+
+// Swaps the default tree, grove (+10) and forest (+20) pools for the given species ids
+func withTreeSpecies(ctx *mapScriptContext, resources []playerStartResourceJSON, species []ScriptExpr) ([]playerStartResourceJSON, error) {
+	trees := make([]uint32, len(species))
+	for i, expr := range species {
+		id, err := expr.resolveInt(ctx.vars)
+		if err != nil {
+			return nil, err
+		}
+		if _, ok := defs.ResourceConfigs[uint32(id)]; !ok {
+			return nil, fmt.Errorf("player_starts tree_ids: unknown resource id %d", id)
+		}
+		trees[i] = uint32(id)
+	}
+	shifted := func(offset uint32) []uint32 {
+		ids := make([]uint32, len(trees))
+		for i, id := range trees {
+			ids[i] = id + offset
+		}
+		return ids
+	}
+	for i, r := range resources {
+		switch {
+		case slices.Equal(r.ResourceIds, uniformTreeIds):
+			resources[i].ResourceIds = trees
+		case slices.Equal(r.ResourceIds, uniformGroveIds):
+			resources[i].ResourceIds = shifted(10)
+		case slices.Equal(r.ResourceIds, uniformForestIds):
+			resources[i].ResourceIds = shifted(20)
+		}
+	}
+	return resources, nil
+}
 
 func defaultStartingResources(level defs.MapResourceLevel) []playerStartResourceJSON {
 	var home []playerStartResourceJSON

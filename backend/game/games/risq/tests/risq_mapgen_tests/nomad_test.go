@@ -96,8 +96,8 @@ func nomadBoard(t *testing.T, name string, development defs.StartingDevelopment,
 }
 
 func TestNomadOnEveryScriptMap(t *testing.T) {
-	useTestScriptMaps(t)
-	for _, name := range []string{"hexagon", "ring", "rectangle", "triangle"} {
+	t.Parallel()
+	for _, name := range scriptPair(1) {
 		board := nomadBoard(t, name, defs.StartingDevelopment_NOMAD, 1)
 		for player := 0; player < 4; player++ {
 			units, buildings, _ := board.Tally(player)

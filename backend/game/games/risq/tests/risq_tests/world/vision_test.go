@@ -4,7 +4,6 @@ import (
 	"github.com/dgray001/gray_online/game"
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness"
-	"github.com/dgray001/gray_online/game/games/risq/tests/harness/fakeboard"
 	"github.com/gin-gonic/gin"
 	"reflect"
 	"testing"
@@ -117,7 +116,7 @@ func visibilityGame(t *testing.T, setting any) *harness.Game {
 	spaces := spaceWith(0, 0, grass, unit(villager, 0)) + `,{"x":4,"y":0,"terrain":1,"zones":[` +
 		`{"x":0,"y":0,"units":[` + unit(villager, 1) + `]},` +
 		`{"x":1,"y":0,"resource":21},{"x":0,"y":1,"building":{"id":2,"player":1}}]}`
-	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"visibility": mapDoc("", spaces)})
+	writeCustomMap("visibility", mapDoc("", spaces))
 	g := harness.NewUnstartedGameWithSettings(t, "custom:visibility", 1, 2, map[string]any{"visibility": setting})
 	game.Game_StartGame(g.Risq)
 	return g

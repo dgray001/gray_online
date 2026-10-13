@@ -32,6 +32,8 @@ type mapScriptContext struct {
 	num_players   int
 	board_size    uint16
 	player_starts []playerStartInfo
+	insets        map[uint]int
+	zones         []Zone
 	nomad_starts  bool
 	// radius (in spaces) of each player start area, set by the player_starts step
 	player_area_size int
@@ -163,34 +165,42 @@ func (c *mapScriptContext) allSpaces() []Space {
 	return c.board.Spaces()
 }
 
-func (c *mapScriptContext) allZones() []Zone {
-	zones := make([]Zone, 0)
-	for _, space := range c.allSpaces() {
-		zones = append(zones, space.Zones()...)
+// Cached until the shape step next changes the space graph
+func (c *mapScriptContext) edgeInsets() map[uint]int {
+	if c.insets == nil {
+		c.insets = edgeInsets(c.allSpaces())
 	}
-	return zones
+	return c.insets
+}
+
+// Cached until the shape step next changes the space graph; callers must not modify the slice
+func (c *mapScriptContext) allZones() []Zone {
+	if c.zones == nil {
+		c.zones = make([]Zone, 0)
+		for _, space := range c.allSpaces() {
+			c.zones = append(c.zones, space.Zones()...)
+		}
+	}
+	return c.zones
 }
 
 var mapStepRegistry map[string]mapStepFunc
 
 func init() {
 	mapStepRegistry = map[string]mapStepFunc{
-		"terrain_fill":         stepTerrainFill,
-		"terrain_blob":         stepTerrainBlob,
-		"terrain_line":         stepTerrainLine,
-		"terrain_border":       stepTerrainBorder,
-		"ensure_connectivity":  stepEnsureConnectivity,
-		"resource_scatter":     stepResourceScatter,
-		"resource_cluster":     stepResourceCluster,
-		"resource_min_spacing": stepResourceMinSpacing,
-		"resource_place":       stepResourcePlace,
-		"player_starts":        stepPlayerStarts,
-		"define":               stepDefine,
-		"rules":                stepRules,
-		"regions_seven":        stepRegionsSeven,
-		"regions_six":          stepRegionsSix,
-		"regions_four":         stepRegionsFour,
-		"shape":                stepShape,
+		"terrain_fill":        stepTerrainFill,
+		"terrain_blob":        stepTerrainBlob,
+		"ensure_connectivity": stepEnsureConnectivity,
+		"resource_blob":       stepResourceBlob,
+		"resource_place":      stepResourcePlace,
+		"player_starts":       stepPlayerStarts,
+		"define":              stepDefine,
+		"if":                  stepIf,
+		"rules":               stepRules,
+		"regions_seven":       stepRegionsSeven,
+		"regions_six":         stepRegionsSix,
+		"regions_four":        stepRegionsFour,
+		"shape":               stepShape,
 	}
 }
 
@@ -227,7 +237,7 @@ func stepDefine(ctx *mapScriptContext, raw json.RawMessage) error {
 	if err != nil {
 		return err
 	}
-	v, err := p.Value.resolve(ctx.vars)
+	v, err := p.Value.resolveWithRng(ctx.vars, ctx.rng)
 	if err != nil {
 		return err
 	}
@@ -259,16 +269,44 @@ func decodeStepParams[T any](raw json.RawMessage, step_name string) (T, error) {
 // referencing script variables (e.g. "2 + 2 * board_size")
 type ScriptExpr struct {
 	raw json.RawMessage
+	// decoded from raw once when read from a script; a zero kind means raw is decoded on each resolve
+	kind   scriptExprKind
+	number float64
+	text   string
 }
+
+type scriptExprKind uint8
+
+const (
+	scriptExprUndecoded scriptExprKind = iota
+	scriptExprNumber
+	scriptExprText
+)
 
 func (e *ScriptExpr) UnmarshalJSON(data []byte) error {
 	e.raw = append(json.RawMessage(nil), data...)
+	if json.Unmarshal(e.raw, &e.number) == nil {
+		e.kind = scriptExprNumber
+	} else if json.Unmarshal(e.raw, &e.text) == nil {
+		e.kind = scriptExprText
+	}
 	return nil
 }
 
 func (e ScriptExpr) resolve(vars map[string]float64) (float64, error) {
+	return e.resolveWithRng(vars, nil)
+}
+
+// Like resolve, but random(n) in an expression string draws from rng
+func (e ScriptExpr) resolveWithRng(vars map[string]float64, rng *rand.Rand) (float64, error) {
 	if len(e.raw) == 0 {
 		return 0, nil
+	}
+	switch e.kind {
+	case scriptExprNumber:
+		return e.number, nil
+	case scriptExprText:
+		return util.EvalExprWithRng(e.text, vars, rng)
 	}
 	var num float64
 	if err := json.Unmarshal(e.raw, &num); err == nil {
@@ -278,7 +316,7 @@ func (e ScriptExpr) resolve(vars map[string]float64) (float64, error) {
 	if err := json.Unmarshal(e.raw, &str); err != nil {
 		return 0, fmt.Errorf("expected a number or expression string, got %s", string(e.raw))
 	}
-	return util.EvalExpr(str, vars)
+	return util.EvalExprWithRng(str, vars, rng)
 }
 
 func (e ScriptExpr) resolveInt(vars map[string]float64) (int, error) {

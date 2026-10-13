@@ -1,5 +1,11 @@
 import type { RisqBuilding, RisqPlayer, RisqProducible } from '../../../model/types';
-import { RisqAttackType, RisqOrderType, RisqProducibleKind, RisqUnitStance } from '../../../model/types';
+import {
+  RisqAttackType,
+  RisqOrderType,
+  RisqProducibleKind,
+  RisqUnitStance,
+  canHaveGatherPoint,
+} from '../../../model/types';
 import { buildingCanProduce, producibleUnlocked } from '../../../application/orders/eligibility';
 import type { DwgRisq } from '../../../risq';
 import { RisqTargetPriorityControl } from '../controls/target_priority_control';
@@ -21,6 +27,7 @@ import { RisqBuildButton } from './unit/build_button';
 import { RisqDeleteButton } from './unit/delete_button';
 import { RisqGarrisonButton } from './unit/garrison_button';
 import { RisqStanceButton } from './unit/stance_button';
+import { RisqMilitaryHelpButton } from './unit/military_help_button';
 import { RisqUnitToggleButton } from './unit/unit_toggle_button';
 import type { UnitToggleField } from './unit/unit_toggle_button';
 
@@ -172,6 +179,7 @@ function unitActions(risq: DwgRisq, data: LeftPanelData, player: RisqPlayer | un
   for (const [col, [stance, image_path, description]] of STANCES.entries()) {
     buttons.push(new RisqStanceButton({ row: 1, col, unit_internal_ids, stance, image_path, description }, risq, 0));
   }
+  buttons.push(new RisqMilitaryHelpButton(risq, LAST_COL));
   for (const [col, [field, image_path, description]] of TOGGLES.entries()) {
     buttons.push(new RisqUnitToggleButton({ row: 2, col, unit_internal_ids, field, image_path, description }, risq, 0));
   }
@@ -186,9 +194,7 @@ function buildingActions(risq: DwgRisq, building: RisqBuilding, player: RisqPlay
       new RisqBuildingAttackButton({ row: 0, col: 0, image_path: 'icons/sword128', description: 'Attack' }, risq, 0)
     );
   }
-  const can_have_gather_point =
-    building.produces.some((p) => p.kind === RisqProducibleKind.UNIT) || building.garrison_capacity > 0;
-  if (can_have_gather_point) {
+  if (canHaveGatherPoint(building)) {
     buttons.push(
       new RisqBuildingGatherPointButton(
         { row: 0, col: 1, image_path: '', description: 'Set/Unset Gather Point', building_id },

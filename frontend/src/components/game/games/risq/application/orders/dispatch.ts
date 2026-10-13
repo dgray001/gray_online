@@ -1,7 +1,8 @@
 import type { ColorRGB } from '../../../../../../scripts/color_rgb';
 import { RISQ_MESSAGE_WARNING_COLOR } from '../../canvas_components/message_queue';
 import { cantorPair } from '../../model/coordinates';
-import type { RisqBuilding, RisqFrontendOrder, RisqGatherPoint } from '../../model/types';
+import type { RisqBuilding, RisqFrontendOrder, RisqGatherPoint, RisqSpace } from '../../model/types';
+import { equalsPoint2D } from '../../../../util/objects2d';
 import {
   RisqGatherObjectType,
   RisqGatherPointLocationKind,
@@ -41,6 +42,27 @@ export class RisqOrderDispatch {
     private show_message: (text: string, color: ColorRGB) => void
   ) {}
 
+  spaceOrder(space: RisqSpace, units: number[], buildings: RisqBuilding[], ctrl_held: boolean): void {
+    if (!this.session.canGiveOrders()) {
+      return;
+    }
+    const armed = this.armed.getArmedOrder();
+    if (
+      units.length > 0 &&
+      [RisqOrderType.NONE, RisqOrderType.OrderType_UnitMoveSpace, RisqOrderType.OrderType_UnitMoveZone].includes(armed)
+    ) {
+      this.moveSpaceOrder(units, space, ctrl_held);
+      if (!ctrl_held) {
+        this.armed.disarmOrder();
+      }
+    } else if (armed === RisqOrderType.NONE && !this.armed.isBuildingAttackArmed()) {
+      this.spaceGatherPoint(buildings, space);
+      if (!ctrl_held) {
+        this.armed.disarmGatherPoint();
+      }
+    }
+  }
+
   unitOrder(units: OrderSubject[], ctrl_held: boolean): void {
     const space = this.hover.space();
     const zone = this.hover.zone();
@@ -59,11 +81,7 @@ export class RisqOrderDispatch {
     const order_type = this.targeting.resolveActiveOrderType(ctrl_held);
     switch (order_type) {
       case RisqOrderType.OrderType_UnitMoveSpace:
-        add(
-          order_type,
-          ids((u) => !this.targeting.isUnitAtHoverTarget(u.internal_id, false, ctrl_held)),
-          space.coordinate_key
-        );
+        this.moveSpaceOrder(ids(), space, ctrl_held);
         break;
       case RisqOrderType.OrderType_UnitMoveZone:
         if (!zone) {
@@ -141,6 +159,15 @@ export class RisqOrderDispatch {
     }
   }
 
+  private moveSpaceOrder(internal_ids: number[], space: RisqSpace, ctrl_held: boolean): void {
+    const player = this.session.getPlayer();
+    const subjects = internal_ids.filter((id: number): boolean => {
+      const unit = player?.units.get(id);
+      return !!unit && (ctrl_held || !equalsPoint2D(unit.space_coordinate, space.coordinate));
+    });
+    this.addUnitOrder(RisqOrderType.OrderType_UnitMoveSpace, subjects, space.coordinate_key, ctrl_held);
+  }
+
   private addUnitOrder(order_type: RisqOrderType, subjects: number[], target_id: number, ctrl_held: boolean): void {
     if (subjects.length === 0) {
       return;
@@ -198,6 +225,12 @@ export class RisqOrderDispatch {
   /** Queues a build order for the armed building and records it as a local foundation */
   private newFoundation(subjects: number[], zone_key: number, ctrl_held: boolean): void {
     const building = this.armed.getArmedBuilding()!;
+    const player = this.session.getPlayer();
+    if (player && !canAffordCost(player, building.cost)) {
+      this.show_message('Not enough resources', RISQ_MESSAGE_WARNING_COLOR);
+      this.armed.disarmOrder();
+      return;
+    }
     const order = this.buildOrder(building.id, subjects, zone_key, ctrl_held);
     this.orders_model.add(order);
     this.planning.setLocalFoundation({
@@ -244,6 +277,20 @@ export class RisqOrderDispatch {
     }
   }
 
+  private spaceGatherPoint(buildings: RisqBuilding[], space: RisqSpace): void {
+    const point: RisqGatherPoint = {
+      location_kind: RisqGatherPointLocationKind.SPACE,
+      location_id: space.coordinate_key,
+      object_type: RisqGatherObjectType.NONE,
+      object_id: 0,
+    };
+    for (const building of buildings) {
+      if (canHaveGatherPoint(building)) {
+        this.commands.setGatherPoint(building.internal_id, point);
+      }
+    }
+  }
+
   private gatherPointOrder(building: RisqBuilding): void {
     if (!canHaveGatherPoint(building)) {
       return;
@@ -265,6 +312,8 @@ export class RisqOrderDispatch {
       } else if (hovered?.kind === 'building' && zone.building) {
         point.object_type = RisqGatherObjectType.BUILDING;
         point.object_id = zone.building.internal_id;
+      } else if (zone.hovered_data[0].hovered && this.planning.hasPlannedFoundation(zone)) {
+        point.object_type = RisqGatherObjectType.BUILDING;
       } else if (hovered?.kind === 'unit') {
         const unit_id = [...hovered.groups[0].units][0];
         if (unit_id !== undefined) {
@@ -273,12 +322,8 @@ export class RisqOrderDispatch {
         }
       }
     } else if (space) {
-      point = {
-        location_kind: RisqGatherPointLocationKind.SPACE,
-        location_id: space.coordinate_key,
-        object_type: RisqGatherObjectType.NONE,
-        object_id: 0,
-      };
+      this.spaceGatherPoint([building], space);
+      return;
     } else {
       return;
     }

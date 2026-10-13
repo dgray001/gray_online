@@ -153,16 +153,7 @@ func (r *GameRisq) executeSubmitOrders(player_id int, orders []defs.OrderFromFro
 	if all_orders_submitted {
 		r.giving_orders = false
 	}
-	for _, player := range r.players {
-		player.player.AddUpdate(&game.UpdateMessage{Kind: "submitted-orders", Content: gin.H{
-			"player_id": player_id,
-			"game":      r.toFrontendFor(player.player.Player_id, player.player.GetClientId(), false),
-		}})
-	}
-	r.game.AddViewerUpdate(&game.UpdateMessage{Kind: "submitted-orders", Content: gin.H{
-		"player_id": player_id,
-		"game":      r.ToFrontend(0, true),
-	}})
+	r.broadcastSnapshot("submitted-orders", gin.H{"player_id": player_id})
 	if all_orders_submitted {
 		r.resolveActiveOrders()
 	}
@@ -179,16 +170,7 @@ func (r *GameRisq) executeUnsubmitOrders(player_id int) {
 		}
 	}
 	player.active_orders = kept
-	for _, player := range r.players {
-		player.player.AddUpdate(&game.UpdateMessage{Kind: "unsubmitted-orders", Content: gin.H{
-			"player_id": player_id,
-			"game":      r.toFrontendFor(player.player.Player_id, player.player.GetClientId(), false),
-		}})
-	}
-	r.game.AddViewerUpdate(&game.UpdateMessage{Kind: "unsubmitted-orders", Content: gin.H{
-		"player_id": player_id,
-		"game":      r.ToFrontend(0, true),
-	}})
+	r.broadcastSnapshot("unsubmitted-orders", gin.H{"player_id": player_id})
 }
 
 // Resolves immediately; independent of the order system.
@@ -243,7 +225,7 @@ func (r *GameRisq) executeSetUnitBehavior(player_id int, behavior UnitBehaviorFr
 		}
 		return content
 	}
-	player.player.AddUpdate(r.playerSnapshotUpdate(player.player, "unit-behavior-set", buildContent(affected)))
+	r.sendSetting(player.player, "unit-behavior-set", buildContent(affected))
 	for _, other := range r.players {
 		if other.player.Player_id == player_id {
 			continue
@@ -255,7 +237,7 @@ func (r *GameRisq) executeSetUnitBehavior(player_id int, behavior UnitBehaviorFr
 			}
 		}
 		if len(visible_ids) > 0 {
-			other.player.AddUpdate(r.playerSnapshotUpdate(other.player, "unit-behavior-set", buildContent(visible_ids)))
+			r.sendSetting(other.player, "unit-behavior-set", buildContent(visible_ids))
 		}
 	}
 }
@@ -303,7 +285,7 @@ func (r *GameRisq) executeSetBuildingBehavior(player_id int, behavior BuildingBe
 		}
 		return content
 	}
-	player.player.AddUpdate(r.playerSnapshotUpdate(player.player, "building-behavior-set", buildContent(affected)))
+	r.sendSetting(player.player, "building-behavior-set", buildContent(affected))
 	for _, other := range r.players {
 		if other.player.Player_id == player_id {
 			continue
@@ -315,7 +297,7 @@ func (r *GameRisq) executeSetBuildingBehavior(player_id int, behavior BuildingBe
 			}
 		}
 		if len(visible_ids) > 0 {
-			other.player.AddUpdate(r.playerSnapshotUpdate(other.player, "building-behavior-set", buildContent(visible_ids)))
+			r.sendSetting(other.player, "building-behavior-set", buildContent(visible_ids))
 		}
 	}
 }
@@ -324,6 +306,7 @@ func (r *GameRisq) executeSetGatherPoint(player_id int, request GatherPointFromF
 	player := r.players[player_id]
 	building, ok := player.buildings[request.Building_id]
 	if !ok || !defs.BuildingConfigs[building.building_id].CanHaveGatherPoint() {
+		player.player.AddFailedUpdateShorthand("set-gather-point-failed", "Building cannot have a gather point")
 		return
 	}
 	if request.Clear {
@@ -331,20 +314,24 @@ func (r *GameRisq) executeSetGatherPoint(player_id int, request GatherPointFromF
 	} else {
 		location_kind := RisqGatherPointLocationKind(request.Location_kind)
 		if location_kind <= RisqGatherPointLocationKind_NONE || location_kind >= RisqGatherPointLocationKind_END {
+			player.player.AddFailedUpdateShorthand("set-gather-point-failed", "Invalid gather point location kind")
 			return
 		}
 		switch location_kind {
 		case RisqGatherPointLocationKind_SPACE:
 			if invertSpaceKey(uint(request.Location_id), r) == nil {
+				player.player.AddFailedUpdateShorthand("set-gather-point-failed", "Invalid gather point space")
 				return
 			}
 		case RisqGatherPointLocationKind_ZONE:
 			if _, zone := invertZoneKey(uint(request.Location_id), r); zone == nil {
+				player.player.AddFailedUpdateShorthand("set-gather-point-failed", "Invalid gather point zone")
 				return
 			}
 		}
 		object_type := RisqGatherObjectType(request.Object_type)
 		if object_type >= RisqGatherObjectType_END {
+			player.player.AddFailedUpdateShorthand("set-gather-point-failed", "Invalid gather point object type")
 			return
 		}
 		building.gather_point = &RisqGatherPoint{
@@ -358,10 +345,5 @@ func (r *GameRisq) executeSetGatherPoint(player_id int, request GatherPointFromF
 	if building.gather_point != nil {
 		content["gather_point"] = building.gather_point.toFrontend()
 	}
-	player.player.AddUpdate(r.playerSnapshotUpdate(player.player, "gather-point-set", content))
-}
-
-func (r *GameRisq) playerSnapshotUpdate(player *game.Player, kind string, content gin.H) *game.UpdateMessage {
-	content["game"] = r.toFrontendFor(player.Player_id, player.GetClientId(), false)
-	return &game.UpdateMessage{Kind: kind, Content: content}
+	r.sendSetting(player.player, "gather-point-set", content)
 }

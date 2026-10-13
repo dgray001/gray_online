@@ -47,14 +47,13 @@ func checkAdvancedPlayer(t *testing.T, player harness.PlayerState) {
 }
 
 func TestAdvancedStartsOnEveryScriptMap(t *testing.T) {
-	useTestScriptMaps(t)
-	for _, name := range []string{"hexagon", "ring", "rectangle", "triangle"} {
-		for _, balance := range []defs.StartBalance{defs.StartBalance_MIRRORED, defs.StartBalance_RANDOM} {
-			g := harness.NewUnstartedGameWithSettings(t, "script:"+name, 1, 2, map[string]any{"starting_development": float64(defs.StartingDevelopment_ADVANCED), "start_balance": float64(balance)})
-			g.Risq.StartGame()
-			for player := 0; player < 2; player++ {
-				checkAdvancedPlayer(t, g.Self(player))
-			}
+	t.Parallel()
+	for i, name := range []string{"hexagon", "ring", "rectangle", "triangle"} {
+		balance := defs.StartBalance(i%2 + 1)
+		g := harness.NewUnstartedGameWithSettings(t, "script:"+name, 1, 2, map[string]any{"starting_development": float64(defs.StartingDevelopment_ADVANCED), "start_balance": float64(balance)})
+		g.Risq.StartGame()
+		for player := 0; player < 2; player++ {
+			checkAdvancedPlayer(t, g.Self(player))
 		}
 	}
 }

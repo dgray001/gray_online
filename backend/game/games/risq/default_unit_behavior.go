@@ -27,10 +27,10 @@ func (r *GameRisq) executeSetDefaultUnitBehavior(player_id int, behavior UnitBeh
 			}
 		}
 	}
-	player.player.AddUpdate(r.playerSnapshotUpdate(player.player, strings.TrimPrefix(kind, "set-")+"-set", gin.H{
+	r.sendSetting(player.player, strings.TrimPrefix(kind, "set-")+"-set", gin.H{
 		"stance":            player.default_unit_stance,
 		"attack_back":       player.default_unit_attack_back,
 		"interrupt_current": player.default_unit_interrupt_current,
 		"target_priority":   targetCategoriesToInts(player.default_unit_target_priority),
-	}))
+	})
 }

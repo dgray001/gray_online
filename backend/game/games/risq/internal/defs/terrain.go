@@ -123,6 +123,36 @@ func RandomTerrainId(terrain_type TerrainType, rng *rand.Rand) uint32 {
 	return ids[rng.Intn(len(ids))]
 }
 
+// Hilly and mountainous ids are the flat id plus 50 and 100; terrain above id 150 (swamp, water) has no variants
+const maxVariantId uint32 = 150
+
+// The version of terrain id with the given type (flat, hilly or mountainous), when it is defined
+func TerrainVariant(id uint32, kind TerrainType) (uint32, bool) {
+	if id == 0 || id > maxVariantId {
+		return 0, false
+	}
+	root := (id-1)%50 + 1
+	offset := map[TerrainType]uint32{TerrainType_FLATLANDS: 0, TerrainType_HILLY: 50, TerrainType_MOUNTAINOUS: 100}
+	shift, known := offset[kind]
+	variant := root + shift
+	config, defined := TerrainConfigs[variant]
+	return variant, known && defined && config.Terrain_type == kind
+}
+
+// Every defined flat, hilly and mountainous version of terrain id, or just id for terrain without variants
+func TerrainFamily(id uint32) []uint32 {
+	family := []uint32{}
+	for _, kind := range []TerrainType{TerrainType_FLATLANDS, TerrainType_HILLY, TerrainType_MOUNTAINOUS} {
+		if variant, ok := TerrainVariant(id, kind); ok {
+			family = append(family, variant)
+		}
+	}
+	if len(family) == 0 {
+		family = append(family, id)
+	}
+	return family
+}
+
 func (t TerrainType) MoveCost() TerrainMoveCost {
 	return terrainMoveCosts[t]
 }

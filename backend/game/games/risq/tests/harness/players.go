@@ -4,7 +4,7 @@ import "encoding/json"
 
 func (g *Game) playerStates(i int) []PlayerState {
 	g.T.Helper()
-	data, err := json.Marshal(g.Risq.ToFrontend(g.clients[i], false)["players"])
+	data, err := json.Marshal(g.Risq.PlayersToFrontend(g.clients[i]))
 	if err != nil {
 		g.T.Fatal(err)
 	}

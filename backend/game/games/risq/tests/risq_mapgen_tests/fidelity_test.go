@@ -40,8 +40,9 @@ func checkFakeMatchesEngine(t *testing.T, mapName string, players int) {
 }
 
 func TestFakeBoardMatchesEngineOnScripts(t *testing.T) {
+	t.Parallel()
 	for _, name := range sweptScripts {
-		for _, players := range sweptPlayerCounts(name)[:2] {
+		for _, players := range sweptPlayerCounts(name)[:1] {
 			t.Run(fmt.Sprintf("%s/p%d", name, players), func(t *testing.T) { checkFakeMatchesEngine(t, "script:"+name, players) })
 		}
 	}

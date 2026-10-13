@@ -7,7 +7,6 @@ import (
 
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness"
-	"github.com/dgray001/gray_online/game/games/risq/tests/harness/fakeboard"
 	"github.com/gin-gonic/gin"
 )
 
@@ -15,13 +14,12 @@ func corpseGame(t *testing.T, visibility defs.VisibilityLevel) *harness.Game {
 	t.Helper()
 	spaces := spaceWith(0, 0, grass, unit(villager, 0)+","+unit(villager, 0)+","+unit(infantry, 1)) + "," +
 		spaceWith(-3, 0, grass, unit(villager, 0)) + "," + spaceWith(3, 0, grass, unit(villager, 1))
-	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"world": mapDoc("", spaces)})
 	config := defs.UnitConfigs[infantry]
 	config.Attack_blunt = 200
 	config.Vision.Space = visibility
 	config.Vision.Adjacent, config.Vision.Secondary = defs.VisibilityUnexplored, defs.VisibilityUnexplored
 	defs.UnitConfigs[infantry] = config
-	g := harness.NewGame(t, "custom:world", 1, 2)
+	g := startGame(t, mapDoc("", spaces))
 	attacker := unitAt(g, g.Human(1), infantry, 0, 0)
 	g.Action(g.Human(1), "set-unit-behavior", gin.H{"internal_ids": []uint64{attacker}, "stance": uint8(defs.UnitStance_PASSIVE), "attack_back": false})
 	return g

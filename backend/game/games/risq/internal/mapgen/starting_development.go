@@ -26,6 +26,6 @@ func applyStartingDevelopmentDefaults(ctx *mapScriptContext, p *playerStartsPara
 		}
 	}
 	if p.Buildings == nil && !nomad {
-		p.Buildings = []playerStartBuildingJSON{{BuildingId: 1, TerrainOverride: 6, Target: zoneTargetJSON{Zone: "center"}}}
+		p.Buildings = []playerStartBuildingJSON{{BuildingId: 1, TerrainOverride: 7, Target: zoneTargetJSON{Zone: "center"}}}
 	}
 }

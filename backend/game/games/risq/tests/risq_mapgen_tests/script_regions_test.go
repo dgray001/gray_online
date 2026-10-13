@@ -110,7 +110,8 @@ func TestTriangleRegionBonusesFollowMapSize(t *testing.T) {
 		t.Fatal(err)
 	}
 	useScripts(t, map[string]string{"triangle": string(script)})
-	for i, corner := range []float64{55, 90, 120, 155, 170, 210, 230, 300, 350} {
+	for _, i := range []int{0, 4, 8} {
+		corner := 10.0
 		board, err := fakeboard.GenerateWithSize("script:triangle", 2, defs.MapSize(i+1), 1)
 		if err != nil {
 			t.Fatal(err)
@@ -152,7 +153,8 @@ func TestRectangleRegionBonusesFollowMapSize(t *testing.T) {
 		t.Fatal(err)
 	}
 	useScripts(t, map[string]string{"rectangle": string(script)})
-	for i, outer := range []float64{35, 65, 85, 100, 115, 145, 165, 195, 230} {
+	for _, i := range []int{0, 4, 8} {
+		outer := 10.0
 		board, err := fakeboard.GenerateWithSize("script:rectangle", 2, defs.MapSize(i+1), 1)
 		if err != nil {
 			t.Fatal(err)
@@ -165,8 +167,8 @@ func TestRectangleRegionBonusesFollowMapSize(t *testing.T) {
 				t.Errorf("size %d: bonus %v is not divisible by 5", i+1, region.GoldBonus)
 			}
 			if j%3 == 1 {
-				if region.GoldBonus < 1.3*outer || region.GoldBonus > 1.5*outer {
-					t.Errorf("size %d: middle-column bonus %v outside 30-50%% premium over %v", i+1, region.GoldBonus, outer)
+				if region.GoldBonus != 2*outer {
+					t.Errorf("size %d: middle-column bonus %v, want the center bonus %v", i+1, region.GoldBonus, 2*outer)
 				}
 			} else if region.GoldBonus != outer {
 				t.Errorf("size %d: outer bonus %v, want %v", i+1, region.GoldBonus, outer)
@@ -185,9 +187,9 @@ func TestRegionOuterBonusesFollowMapSize(t *testing.T) {
 		scripts[shape] = string(script)
 	}
 	useScripts(t, scripts)
-	bonuses := map[string][]float64{"hexagon": {30, 50, 70, 90, 90, 120, 120, 140, 180}, "ring": {30, 50, 50, 60, 90, 90, 105, 140, 160}}
-	for shape, values := range bonuses {
-		for i, want := range values {
+	for _, shape := range []string{"hexagon", "ring"} {
+		for _, i := range []int{0, 4, 8} {
+			want := 10.0
 			board, err := fakeboard.GenerateWithSize("script:"+shape, 2, defs.MapSize(i+1), 1)
 			if err != nil {
 				t.Fatalf("%s size %d: %v", shape, i+1, err)
@@ -197,8 +199,8 @@ func TestRegionOuterBonusesFollowMapSize(t *testing.T) {
 					t.Errorf("%s size %d: bonus %v is not divisible by 5", shape, i+1, region.GoldBonus)
 				}
 				if shape == "hexagon" && j == 0 {
-					if region.GoldBonus < 1.5*want || region.GoldBonus > 1.8*want {
-						t.Errorf("size %d: center bonus %v outside 50-80%% premium over %v", i+1, region.GoldBonus, want)
+					if region.GoldBonus != 2*want {
+						t.Errorf("size %d: center bonus %v, want %v", i+1, region.GoldBonus, 2*want)
 					}
 					continue
 				}

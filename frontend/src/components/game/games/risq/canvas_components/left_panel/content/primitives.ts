@@ -14,6 +14,7 @@ export declare interface PanelDrawContext {
   layout: LeftPanelLayout;
   visibility: number;
   stats: RisqStatsView;
+  layout_pass: boolean;
   groupTile?: (units: UnitByTypeData[], p: Point2D, s: number) => string;
   buildingTile?: (buildings: RisqBuilding[], p: Point2D, s: number) => string;
 }

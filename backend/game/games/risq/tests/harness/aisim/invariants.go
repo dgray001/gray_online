@@ -3,13 +3,17 @@ package aisim
 import (
 	"math"
 	"testing"
+
+	"github.com/dgray001/gray_online/game/games/risq/tests/harness"
 )
 
 func (g *Game) Check(t *testing.T) {
 	t.Helper()
 	locations := make(map[uint64]int)
+	states := make([]harness.State, len(g.Base.AiPlayers))
 	for slot := range len(g.Base.AiPlayers) {
-		for _, row := range Decode(t, Payload(t, g.Player(t, slot))).Spaces {
+		states[slot] = Decode(t, Payload(t, g.Player(t, slot)))
+		for _, row := range states[slot].Spaces {
 			for _, space := range row {
 				if space == nil {
 					continue
@@ -27,7 +31,7 @@ func (g *Game) Check(t *testing.T) {
 		}
 	}
 	for slot := range len(g.Base.AiPlayers) {
-		own := g.Own(t, slot)
+		own := *states[slot].Player(slot)
 		for _, value := range []float64{own.Resources.Food, own.Resources.Wood, own.Resources.Stone, own.Resources.Gold} {
 			if math.IsNaN(value) || math.IsInf(value, 0) || value < 0 {
 				t.Fatalf("slot %d balance=%+v", slot, own.Resources)

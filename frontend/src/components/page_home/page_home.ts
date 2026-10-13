@@ -71,11 +71,6 @@ export class DwgPageHome extends DwgElement {
       this.game.exitGame();
       this.lobby.exitGame();
     });
-    this.game.addEventListener('show_message_dialog', (e) => {
-      const dialog = document.createElement('dwg-message-dialog');
-      dialog.setData(e.detail);
-      this.appendChild(dialog);
-    });
     this.game.addEventListener('connection_lost', (e) => {
       this.tryConnectionAgain(e.detail);
     });

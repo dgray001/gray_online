@@ -12,16 +12,17 @@ func TestDeterminismAndInvariants(t *testing.T) {
 			if scenario.players == 3 {
 				permutations = [][]int{{0, 1, 2}, {0, 2, 1}, {1, 0, 2}, {1, 2, 0}, {2, 0, 1}, {2, 1, 0}}
 			}
-			var baseline []string
+			baseline := runScenario(t, scenario, permutations[0], true)
+			configShared.Store(true)
+			t.Cleanup(func() { configShared.Store(false) })
 			for repeat := range 3 {
-				for _, permutation := range permutations {
+				for i, permutation := range permutations {
+					if repeat == 0 && i == 0 {
+						continue
+					}
 					t.Run(fmt.Sprintf("run%d/%v", repeat, permutation), func(t *testing.T) {
-						got := runScenario(t, scenario, permutation)
-						if baseline == nil {
-							baseline = got
-						} else {
-							compareTrajectory(t, baseline, got)
-						}
+						t.Parallel()
+						compareTrajectory(t, baseline, runScenario(t, scenario, permutation, false))
 					})
 				}
 			}

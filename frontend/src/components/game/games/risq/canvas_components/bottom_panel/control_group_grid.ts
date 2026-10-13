@@ -5,8 +5,7 @@ import { drawRect, drawText } from '../../../../util/canvas_util';
 import type { Point2D } from '../../../../util/objects2d';
 import type { DwgRisq } from '../../risq';
 import { unitImage } from '../../rendering/assets/unit';
-import { buildingImage } from '../../rendering/assets/buildings';
-import { controlGroupTiles } from './control_group_tiles';
+import { buildingControlGroupTiles, controlGroupTiles } from './control_group_tiles';
 import { RisqControlGroupIcon } from './control_group_icon';
 import { RisqControlGroupCloseButton } from './control_group_close_button';
 import { controlGroupLayout, CONTROL_ICON_SIZE, CONTROL_GAP, CONTROL_LABEL } from './control_group_layout';
@@ -81,10 +80,7 @@ export class RisqControlGroupGrid extends DwgRectButton {
       }
       const building = group.kind === 'building' ? player.buildings.get(group.ids[0]) : undefined;
       const tiles = building
-        ? group.ids.map((id: number): { image: string; count: number; ids: number[] } => {
-            const member = player.buildings.get(id)!;
-            return { image: buildingImage(member.building_id, member.under_construction), count: 1, ids: [id] };
-          })
+        ? buildingControlGroupTiles(player.buildings, group.ids, box.cols * box.rows)
         : controlGroupTiles(player.units, group.ids, box.cols * box.rows).map(({ unit, count, ids }) => ({
             image: unitImage(unit.unit_id),
             count,
@@ -111,7 +107,7 @@ export class RisqControlGroupGrid extends DwgRectButton {
       for (const [j, tile] of tiles.entries()) {
         this.buttons.push(
           new RisqControlGroupIcon(
-            this.risq.getPlayerColoredIcon(tile.image, color),
+            (): CanvasImageSource => this.risq.getPlayerColoredIcon(tile.image, color),
             {
               x: this.xi() + box.x + CONTROL_GAP + (j % box.cols) * (CONTROL_ICON_SIZE + CONTROL_GAP) - this.scroll_x,
               y: this.yi() + box.y + CONTROL_LABEL + Math.floor(j / box.cols) * (CONTROL_ICON_SIZE + CONTROL_GAP),
@@ -144,7 +140,7 @@ export class RisqControlGroupGrid extends DwgRectButton {
     const player = this.risq.getPlayer();
     const unit = subject.kind === 'unit' ? player?.units.get(id) : undefined;
     if (e.button === 2) {
-      const ids = e.shiftKey && unit ? this.risq.control_groups.unitIds(number, unit.unit_id) : [id];
+      const ids = e.shiftKey && unit ? this.risq.control_groups.unitIds(number, unit.unit_id) : subject.ids;
       this.risq.control_groups.removeMembers(number, ids);
       this.dataRefreshed();
       return;
@@ -159,7 +155,7 @@ export class RisqControlGroupGrid extends DwgRectButton {
             ).filter(
               (candidate: number): boolean => player?.buildings.get(candidate)?.building_id === building.building_id
             )
-          : [id];
+          : subject.ids;
         const selected = new Set(this.risq.selection.selectedBuildingIds());
         if (e.ctrlKey) {
           const remove = ids.every((candidate: number): boolean => selected.has(candidate));
@@ -178,19 +174,17 @@ export class RisqControlGroupGrid extends DwgRectButton {
     if (!unit) {
       return;
     }
-    const ids = e.shiftKey ? this.risq.control_groups.unitIds(number, unit.unit_id) : [id];
+    const ids = e.shiftKey ? this.risq.control_groups.unitIds(number, unit.unit_id) : subject.ids;
     if (e.ctrlKey) {
-      const selected = this.risq.selection.selectedUnitIds();
-      if (selected.has(id)) {
+      const selected = new Set(this.risq.selection.selectedUnitIds());
+      if (ids.every((internal_id) => selected.has(internal_id))) {
         ids.forEach((internal_id) => selected.delete(internal_id));
       } else {
         ids.forEach((internal_id) => selected.add(internal_id));
       }
       this.risq.selection.selectOwnUnits([...selected]);
-    } else if (e.shiftKey) {
-      this.risq.selection.selectOwnUnits(ids);
     } else {
-      this.risq.selection.selectUnit(unit);
+      this.risq.selection.selectOwnUnits(ids);
     }
   }
 

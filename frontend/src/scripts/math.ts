@@ -3,6 +3,11 @@ export function modulus(n: number, m: number): number {
   return ((n % m) + m) % m;
 }
 
+/** Rounds to one decimal place and drops a trailing ".0" */
+export function formatOneDecimal(n: number): string {
+  return (Math.round(n * 10) / 10).toString();
+}
+
 /** Calculates 'correct' atan in [0, 2pi) with the jump at 0 */
 export function atangent(y: number, x: number): number {
   const atan = Math.atan2(y, x);

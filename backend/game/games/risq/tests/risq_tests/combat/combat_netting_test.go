@@ -47,10 +47,14 @@ func TestTickHistoryIncomingDamageOnIdleUnit(t *testing.T) {
 		t.Fatal("fixture did not damage an idle survivor")
 	}
 	harness.AssertTickSpend(t, after.TickActions, 0)
-	harness.AssertTickEffect(t, after.TickActions, "damage", harness.TickTarget{Kind: "unit", InternalID: target.InternalID}, target.CombatStats.Health-after.CombatStats.Health)
 	replay := harness.RequireReplay(t, g.State(enemy))
 	settled := replay.UnitAt(target.InternalID, replay.TickCount)
-	if settled == nil || settled.CombatStats.Health != after.CombatStats.Health {
+	if settled == nil {
+		t.Fatal("settled idle unit missing")
+	}
+	harness.AssertTickEffect(t, after.TickActions, "damage", harness.TickTarget{Kind: "unit", InternalID: target.InternalID}, target.CombatStats.Health-settled.CombatStats.Health)
+	healing := float64(max(0, settled.CurrentStamina+settled.TurnStamina-int(math.Ceil(float64(settled.TurnStamina)*1.5)))) * float64(settled.CombatStats.MaxHealth) * 0.002
+	if math.Abs(settled.CombatStats.Health+healing-after.CombatStats.Health) > 0.0001 {
 		t.Errorf("settled idle unit health differs: %+v", settled)
 	}
 }
@@ -75,7 +79,8 @@ func TestSameTickDamageSums(t *testing.T) {
 	passive(single, s1, su1.InternalID)
 	single.Submit(s0, harness.OrderAttackUnit([]uint64{su0.InternalID}, su1.InternalID))
 	single.Submit(s1)
-	one := su1.CombatStats.Health - single.Self(s1).Units[0].CombatStats.Health
+	singleReplay := harness.RequireReplay(t, single.State(s1))
+	one := su1.CombatStats.Health - singleReplay.UnitAt(su1.InternalID, singleReplay.TickCount).CombatStats.Health
 
 	pair := combatGameTwoAttackers(t)
 	p0, p1 := pair.Human(0), pair.Human(1)
@@ -84,7 +89,8 @@ func TestSameTickDamageSums(t *testing.T) {
 	passive(pair, p1, target.InternalID)
 	pair.Submit(p0, harness.OrderAttackUnit([]uint64{attackers[0].InternalID, attackers[1].InternalID}, target.InternalID))
 	pair.Submit(p1)
-	two := target.CombatStats.Health - pair.Self(p1).Units[0].CombatStats.Health
+	pairReplay := harness.RequireReplay(t, pair.State(p1))
+	two := target.CombatStats.Health - pairReplay.UnitAt(target.InternalID, pairReplay.TickCount).CombatStats.Health
 
 	if math.Abs(two-2*one) > 1e-6 {
 		t.Errorf("two attackers dealt %v, want twice a single attacker's %v", two, one)

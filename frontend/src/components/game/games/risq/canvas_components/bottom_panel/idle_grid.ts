@@ -3,6 +3,8 @@ import { DwgRectButton } from '../../../../util/canvas_components/button/rect_bu
 import type { Point2D } from '../../../../util/objects2d';
 import type { DwgRisq } from '../../risq';
 import type { RisqBuilding, RisqUnit } from '../../model/types';
+import { displayGroups } from '../../model/display_groups';
+import { idleCategory } from '../../application/orders/idle_category';
 import { buildingImage } from '../../rendering/assets/buildings';
 import { unitImage } from '../../rendering/assets/unit';
 import { RisqControlGroupIcon } from './control_group_icon';
@@ -72,8 +74,17 @@ export class RisqIdleGrid extends DwgRectButton {
     }
     this.layout_key = key;
     this.snapshot = game;
-    const cols = Math.ceil(entries.length / 5);
     const step = this.iconSize(5) + CONTROL_GAP;
+    const capacity = 5 * Math.max(0, Math.floor((this.available_width - this.listOffset() + CONTROL_GAP) / step));
+    const groups = displayGroups(
+      entries,
+      capacity,
+      (entity: RisqUnit | RisqBuilding): string =>
+        'unit_id' in entity ? `u${entity.unit_id}` : `b${entity.building_id}`,
+      (entity: RisqUnit | RisqBuilding): string =>
+        'unit_id' in entity ? `u${entity.unit_type}` : `b${idleCategory(entity)}`
+    );
+    const cols = Math.ceil(groups.length / 5);
     this.content_width = Math.max(0, cols * step - CONTROL_GAP);
     this.setSize(
       this.risq.getPlayer() ? Math.min(this.available_width, this.listOffset() + this.content_width) : 0,
@@ -84,7 +95,7 @@ export class RisqIdleGrid extends DwgRectButton {
       Math.max(0, this.content_width - Math.max(0, this.w() - this.listOffset()))
     );
     this.layoutFilters();
-    this.rebuildIcons(entries);
+    this.rebuildIcons(groups);
   }
   private layoutFilters(): void {
     const size = this.iconSize(4);
@@ -93,12 +104,14 @@ export class RisqIdleGrid extends DwgRectButton {
       filter.setPosition({ x: this.xi(), y: this.yi() + i * (size + CONTROL_GAP) });
     }
   }
-  private rebuildIcons(entries: (RisqUnit | RisqBuilding)[]): void {
+  private rebuildIcons(groups: (RisqUnit | RisqBuilding)[][]): void {
     const player = this.risq.getPlayer();
     const size = this.iconSize(5);
     const step = size + CONTROL_GAP;
     this.buttons = player
-      ? entries.map((entity: RisqUnit | RisqBuilding, i: number): RisqControlGroupIcon => {
+      ? groups.map((group: (RisqUnit | RisqBuilding)[], i: number): RisqControlGroupIcon => {
+          const entity = group[0];
+          const ids = group.map((member: RisqUnit | RisqBuilding): number => member.internal_id);
           const kind = 'unit_id' in entity ? 'unit' : 'building';
           const image = 'unit_id' in entity ? unitImage(entity.unit_id) : buildingImage(entity.building_id, false);
           return new RisqControlGroupIcon(
@@ -108,11 +121,18 @@ export class RisqIdleGrid extends DwgRectButton {
               y: this.yi() + (i % 5) * step,
             },
             size,
-            1,
-            { kind, ids: [entity.internal_id] },
+            group.length,
+            { kind, ids },
             (event: MouseEvent): void => {
               if (event.button === 0) {
                 this.risq.selectIdleOrderable(entity);
+                if (ids.length > 1) {
+                  if (kind === 'unit') {
+                    this.risq.selection.selectOwnUnits(ids);
+                  } else {
+                    this.risq.selection.selectOwnBuildings(ids);
+                  }
+                }
               }
             }
           );

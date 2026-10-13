@@ -30,8 +30,9 @@ type Scenario struct {
 }
 
 type SuiteBucket struct {
-	Name string `json:"name"`
-	Map  string `json:"map"`
+	Name     string         `json:"name"`
+	Map      string         `json:"map"`
+	Settings map[string]any `json:"settings,omitempty"`
 	// overrides the suite's max_turns for this bucket when set
 	MaxTurns int `json:"max_turns,omitempty"`
 	// plays exactly this seed (with swap choosing the seat order) instead of the seed and seats derived from the bucket and game index

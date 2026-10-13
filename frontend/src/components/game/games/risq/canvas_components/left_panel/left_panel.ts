@@ -78,8 +78,8 @@ export class RisqLeftPanel implements CanvasComponent {
   private hexagon = new RisqSpaceHexagon();
   private space_view = new RisqSpaceView((economic) => this.openSpaceUnitsRow(economic));
   private input: RisqLeftPanelInput;
-  // hover rects are only laid out by draw, so a hover check right after openPanel uses stale rects
-  private hover_stale = false;
+  private layout_dirty = true;
+  private layout_ctx = document.createElement('canvas').getContext('2d')!;
 
   constructor(risq: DwgRisq, config: LeftPanelConfig) {
     this.risq = risq;
@@ -151,6 +151,7 @@ export class RisqLeftPanel implements CanvasComponent {
   }
 
   resolveSize(): void {
+    this.invalidateLayout();
     const h = Math.min(4 * this.config.w, this.risq.viewport.canvasSize().height);
     this.size = { x: h / 3, y: h };
     this.close_button.setPosition({ x: this.size.x, y: this.yi() + 0.5 * this.close_button.h() });
@@ -224,6 +225,7 @@ export class RisqLeftPanel implements CanvasComponent {
     this.visibility = resolved.visibility;
     this.refreshActionButtons();
     this.resolveSize();
+    this.prepareLayout();
   }
 
   dataRefreshed(): void {
@@ -305,7 +307,7 @@ export class RisqLeftPanel implements CanvasComponent {
     }
     this.risq.armed.disarmAll();
     this.input.reset();
-    this.hover_stale = true;
+    this.invalidateLayout();
     this.visibility = visibility;
     this.data = open_data;
     this.showing = true;
@@ -316,6 +318,7 @@ export class RisqLeftPanel implements CanvasComponent {
       this.close();
     }
     this.refreshActionButtons();
+    this.prepareLayout();
     this.risq.pointer.recalculate();
   }
 
@@ -334,18 +337,37 @@ export class RisqLeftPanel implements CanvasComponent {
     );
   }
 
-  draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
-    if (!this.isShowing()) {
-      return;
-    }
-    const pc: PanelDrawContext = {
+  invalidateLayout(): void {
+    this.layout_dirty = true;
+  }
+
+  private drawContext(ctx: CanvasRenderingContext2D, layout_pass: boolean): PanelDrawContext {
+    return {
       ctx,
+      layout_pass,
       risq: this.risq,
       frame: this,
       layout: this.layout,
       visibility: this.visibility ?? 0,
       stats: this.stats,
     };
+  }
+
+  prepareLayout(): boolean {
+    if (!this.layout_dirty || !this.isShowing()) {
+      return false;
+    }
+    this.layout_dirty = false;
+    this.layout_ctx.resetTransform();
+    this.drawContent(this.drawContext(this.layout_ctx, true));
+    return true;
+  }
+
+  draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
+    if (!this.isShowing()) {
+      return;
+    }
+    const pc = this.drawContext(ctx, false);
     configDraw(
       ctx,
       transform,
@@ -386,14 +408,10 @@ export class RisqLeftPanel implements CanvasComponent {
     }
     ctx.beginPath();
     this.close_button.draw(ctx, transform, dt);
-    if (this.hover_stale) {
-      this.hover_stale = false;
-      this.risq.pointer.recalculate();
-    }
   }
 
   private drawContent(pc: PanelDrawContext): void {
-    this.input.beginGroupDraw();
+    this.input.beginGroupDraw(pc.layout_pass);
     pc.groupTile = (units: UnitByTypeData[], p: Point2D, s: number): string => this.input.groupTile(units, p, s);
     pc.buildingTile = (buildings: RisqBuilding[], p: Point2D, s: number): string =>
       this.input.buildingTile(buildings, p, s);

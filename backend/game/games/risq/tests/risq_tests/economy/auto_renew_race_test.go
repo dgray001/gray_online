@@ -11,9 +11,11 @@ import (
 func TestAutoRenewAllocatesSharedCreditByBuildingID(t *testing.T) {
 	g := economyGame(t, `{"wood":90}`, `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":3,"player":0},"units":[{"id":1,"player":0,"count":1}]},{"x":1,"y":0,"building":{"id":3,"player":0},"units":[{"id":1,"player":0,"count":1}]}]},`+remoteVillager, "")
 	p := g.Human(0)
-	config := defs.BuildingConfigs[3]
+	original := defs.BuildingConfigs[3]
+	config := original
 	config.Gather.Base_gather_speed = 250
 	defs.BuildingConfigs[3] = config
+	t.Cleanup(func() { defs.BuildingConfigs[3] = original })
 	g.Action(p, "set-auto-renew", gin.H{"building_id": 3, "count": 1})
 	orders := make([]defs.OrderFromFrontend, 0)
 	winner := ^uint64(0)

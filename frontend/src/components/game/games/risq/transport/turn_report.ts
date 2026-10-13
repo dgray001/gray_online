@@ -39,7 +39,6 @@ export declare interface RisqReportResourceLine {
   final: number;
 }
 
-/** A unit type trained this turn, for the turn report */
 export declare interface RisqReportUnitCreated {
   unit_id: number;
   count: number;
@@ -91,6 +90,7 @@ export declare interface RisqTurnReport {
   population: { start: number; end: number; cap_start: number; cap_end: number };
   production: {
     units_created: RisqReportUnitCreated[];
+    units_hired: RisqReportUnitCreated[];
     buildings_built: RisqReportBuildingBuilt[];
     techs_researched: number[];
   };
@@ -152,6 +152,7 @@ export declare interface RisqTurnReportFromServer {
   population: { start: number; end: number; cap_start: number; cap_end: number };
   production: {
     units_created: RisqReportUnitCreated[];
+    units_hired: RisqReportUnitCreated[];
     buildings_built: RisqReportBuildingBuiltFromServer[];
     techs_researched: number[];
   };

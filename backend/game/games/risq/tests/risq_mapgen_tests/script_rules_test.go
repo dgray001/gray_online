@@ -68,3 +68,24 @@ func TestDefineChainsVariables(t *testing.T) {
 		t.Errorf("b = %v, want 37 (40 - 2 - 1)", got)
 	}
 }
+
+func TestIfStepRunsTheBranchMatchingItsCondition(t *testing.T) {
+	branch := func(condition string) string {
+		return `[` + hexagon2 + `,{"step":"if","params":{"condition":"` + condition + `","then":[{"step":"rules","params":{"space_gold_income":1}}],"else":[{"step":"rules","params":{"space_gold_income":2}}]}}]`
+	}
+	useScripts(t, map[string]string{"positive": branch("num_players - 1"), "zero": branch("num_players - 2"), "negative": branch("num_players - 3")})
+	for name, want := range map[string]float64{"positive": 1, "zero": 2, "negative": 2} {
+		if got := goldIncome(t, generateStartless(t, name, 2)); got != want {
+			t.Errorf("%s condition ran branch with gold %v, want %v", name, got, want)
+		}
+	}
+}
+
+func TestIfStepDefinesPersistAfterTheBranch(t *testing.T) {
+	useScripts(t, map[string]string{"scoped": `[` + hexagon2 + `,
+		{"step":"if","params":{"condition":1,"then":[{"step":"define","params":{"name":"x","value":9}}]}},
+		{"step":"rules","params":{"space_gold_income":"x"}}]`})
+	if got := goldIncome(t, generateStartless(t, "scoped", 2)); got != 9 {
+		t.Errorf("gold %v, want 9 from a variable defined inside the taken branch", got)
+	}
+}

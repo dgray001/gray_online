@@ -44,6 +44,9 @@ func registerRisqDevRoutes(api *gin.RouterGroup) {
 	dev.GET("/terrains", func(c *gin.Context) {
 		c.JSON(200, successResponse(risq.AllTerrainConfigsToFrontend()))
 	})
+	dev.GET("/entities", func(c *gin.Context) {
+		c.JSON(200, successResponse(risq.AllEntityConfigsToFrontend()))
+	})
 	dev.POST("/preview", func(c *gin.Context) {
 		doc, _ := io.ReadAll(c.Request.Body)
 		snapshot, err := risq.PreviewCustomMap(doc)

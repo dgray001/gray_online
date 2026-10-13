@@ -12,6 +12,12 @@ import (
 )
 
 func (r *GameRisq) resolveActiveOrders() {
+	perf_fields := map[string]any{"turn": r.turn_number}
+	stop_perf := util.PerfTimer("resolve_turn", perf_fields)
+	defer func() {
+		perf_fields["ticks"] = r.current_tick
+		stop_perf()
+	}()
 	r.beginTickHistory()
 	r.updateRemains(true)
 	util.DebugLog.Println("Resolving active orders")

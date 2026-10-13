@@ -20,14 +20,25 @@ export class RisqLeftPanelInput {
   private building_tiles: { buildings: RisqBuilding[]; p: Point2D; s: number }[] = [];
   private hovered_group = -1;
   private pressed_group = -1;
+  private layout_pass = false;
+  private group_index = 0;
+  private building_index = 0;
 
-  beginGroupDraw(): void {
-    this.group_tiles = [];
-    this.building_tiles = [];
+  beginGroupDraw(layout_pass: boolean): void {
+    this.layout_pass = layout_pass;
+    this.group_index = 0;
+    this.building_index = 0;
+    if (layout_pass) {
+      this.group_tiles = [];
+      this.building_tiles = [];
+    }
   }
 
   buildingTile(buildings: RisqBuilding[], p: Point2D, s: number): string {
-    const index = this.building_tiles.push({ buildings, p, s }) - 1;
+    const index = this.building_index++;
+    if (this.layout_pass) {
+      this.building_tiles[index] = { buildings, p, s };
+    }
     return index === this.hovered_group
       ? this.pressed_group === index
         ? 'rgba(250, 250, 250, 0.4)'
@@ -36,7 +47,10 @@ export class RisqLeftPanelInput {
   }
 
   groupTile(units: UnitByTypeData[], p: Point2D, s: number): string {
-    const index = this.group_tiles.push({ units, p, s }) - 1;
+    const index = this.group_index++;
+    if (this.layout_pass) {
+      this.group_tiles[index] = { units, p, s };
+    }
     return index === this.hovered_group
       ? this.pressed_group === index
         ? 'rgba(250, 250, 250, 0.4)'
@@ -54,19 +68,23 @@ export class RisqLeftPanelInput {
 
   /** Clears the hovered object's flags; the next draw lays out fresh hover rects */
   reset(): void {
+    this.clearInteraction();
+    this.group_tiles = [];
+    this.building_tiles = [];
+  }
+
+  private clearInteraction(): void {
     if (this.hovered_object) {
       this.hovered_object.object.hover_data.hovered = false;
       this.hovered_object.object.hover_data.clicked = false;
     }
     this.hovered_object = undefined;
-    this.group_tiles = [];
-    this.building_tiles = [];
     this.hovered_group = -1;
     this.pressed_group = -1;
   }
 
   cancelInput(): void {
-    this.reset();
+    this.clearInteraction();
     this.hexagon.clearHoveredZone();
     this.space_view.cancelInput();
   }

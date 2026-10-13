@@ -44,6 +44,7 @@ export class RisqStanceButton extends RisqActionButton {
       ? [player?.default_unit_stance]
       : this.unit_internal_ids.map((id) => player?.units.get(id)?.stance);
     this.active = stances.length > 0 && stances.every((stance) => stance === this.stance);
+    this.mixed = stances.includes(this.stance) && !this.active;
     const hotkey_action = STANCE_HOTKEY_ACTIONS[this.stance];
     this.setHotkeyCombo(
       !this.defaults && hotkey_action !== undefined ? getSettings().risq_hotkeys.actions[hotkey_action] : undefined

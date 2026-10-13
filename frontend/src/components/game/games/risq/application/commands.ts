@@ -10,11 +10,15 @@ import type { RisqArmedState } from './input/armed_state';
 import type { RisqOrdersModel } from './orders/orders_model';
 import type { RisqOrderPlanning } from './orders/planning';
 import type { RisqSession } from './session';
+import { RisqAutoRenewQueue } from './auto_renew_queue';
+import { RisqGatherPointQueue } from './gather_point_queue';
 
 import '../../../../dialog_box/confirm_dialog/confirm_dialog';
 
 /** Commands issued by buttons and hotkeys: queued single orders plus immediate (non-turn) server messages */
 export class RisqCommands {
+  readonly auto_renew: RisqAutoRenewQueue;
+  readonly gather_points: RisqGatherPointQueue;
   constructor(
     private host: HTMLElement,
     private session: RisqSession,
@@ -22,7 +26,20 @@ export class RisqCommands {
     private planning: RisqOrderPlanning,
     private armed: RisqArmedState,
     private show_message: (text: string, color: ColorRGB) => void
-  ) {}
+  ) {
+    this.auto_renew = new RisqAutoRenewQueue(
+      this.session,
+      (building_id: number, count: number): void =>
+        this.sendGameUpdate(JSON.stringify({ building_id, count }), 'set-auto-renew'),
+      (): void => this.orders_model.triggerChange()
+    );
+    this.gather_points = new RisqGatherPointQueue(
+      this.session,
+      (building_id: number, point?: RisqGatherPoint): void =>
+        this.sendGameUpdate(JSON.stringify({ building_id, clear: point === undefined, ...point }), 'set-gather-point'),
+      (): void => this.orders_model.triggerChange()
+    );
+  }
 
   private canCommandUnits(internal_ids: number[]): boolean {
     const player = this.session.getPlayer();
@@ -47,7 +64,7 @@ export class RisqCommands {
     return (
       buildingCanProduce(player, building, producible) &&
       canAffordCost(player, producible.cost) &&
-      (kind !== RisqProducibleKind.TECH || !researchQueued(player, this.orders_model.all(), target_id))
+      (kind !== RisqProducibleKind.TECH || !researchQueued(player, this.orders_model.uncancelledOrders(), target_id))
     );
   }
 
@@ -78,11 +95,12 @@ export class RisqCommands {
     });
   }
 
-  createUnit(building_id: number, unit_id: number, ctrl_held: boolean = false): void {
+  createUnit(building_id: number, unit_id: number, ctrl_held: boolean = false): boolean {
     if (!this.canQueueProduction(building_id, unit_id, RisqProducibleKind.UNIT)) {
-      return;
+      return false;
     }
     this.addOrder(RisqOrderType.OrderType_BuildingCreate, [building_id], unit_id, !ctrl_held);
+    return true;
   }
 
   researchTech(building_id: number, tech_id: number, ctrl_held: boolean = false): boolean {
@@ -130,9 +148,11 @@ export class RisqCommands {
     if (!this.canCommandUnits(internal_ids)) {
       return;
     }
-    for (const internal_id of internal_ids) {
-      this.orders_model.cancelForSubject(internal_id, 'unit');
-    }
+    this.orders_model.batch((): void => {
+      for (const internal_id of internal_ids) {
+        this.orders_model.cancelForSubject(internal_id, 'unit');
+      }
+    });
   }
 
   stopBuilding(internal_id: number): void {
@@ -195,14 +215,15 @@ export class RisqCommands {
     if (!this.canCommandBuilding(building_id)) {
       return;
     }
-    this.sendGameUpdate(JSON.stringify({ building_id, clear: false, ...point }), 'set-gather-point');
+    this.gather_points.change(building_id, point);
   }
 
   clearGatherPoint(building_id: number): void {
-    if (!this.canCommandBuilding(building_id) || !this.session.getPlayer()?.buildings.get(building_id)?.gather_point) {
+    const building = this.session.getPlayer()?.buildings.get(building_id);
+    if (!this.canCommandBuilding(building_id) || !building || !this.gather_points.point(building)) {
       return;
     }
-    this.sendGameUpdate(JSON.stringify({ building_id, clear: true }), 'set-gather-point');
+    this.gather_points.change(building_id);
   }
 
   private sendUnitBehavior(internal_ids: number[], fields: Record<string, unknown>): void {
@@ -245,29 +266,15 @@ export class RisqCommands {
     this.sendUnitBehavior(internal_ids, { target_priority });
   }
 
-  auto_renew_pending = false;
-
   changeAutoRenew(internal_id: number, change: number): void {
     const player = this.session.getPlayer();
     const building = player?.buildings.get(internal_id);
-    if (
-      !player ||
-      !building?.renew_cost ||
-      building.under_construction ||
-      !this.canCommandBuilding(internal_id) ||
-      this.auto_renew_pending
-    ) {
+    if (!player || !building?.renew_cost || building.under_construction || !this.canCommandBuilding(internal_id)) {
       return;
     }
-    const count = (player.auto_renewals.get(building.building_id) ?? 0) + change;
-    if (count < 0) {
-      return;
-    }
-    if (change > 0 && !canAffordCost(player, building.renew_cost)) {
+    if (!this.auto_renew.change(building.building_id, change, building.renew_cost)) {
       this.show_message('Not enough resources', RISQ_MESSAGE_WARNING_COLOR);
       return;
     }
-    this.auto_renew_pending = true;
-    this.sendGameUpdate(JSON.stringify({ building_id: building.building_id, count }), 'set-auto-renew');
   }
 }

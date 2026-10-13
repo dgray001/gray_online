@@ -1,10 +1,9 @@
 import type { BoardTransformData } from '../../game/util/canvas_board/canvas_board';
-import { RisqTerrainType } from '../../game/games/risq/rendering/terrain';
 import { configDraw } from '../../game/util/canvas_components/canvas_component';
 import { drawRect, drawText } from '../../game/util/canvas_util';
 import type { Point2D } from '../../game/util/objects2d';
 import type { EditorConfigPanel, EditorToolContext, PanelBounds } from '../editor_tool';
-import { DEFAULT_TERRAIN_ID } from '../map_doc';
+import type { EntityEntry } from '../map_api';
 
 export interface ValidationIssue {
   severity: 'error' | 'warning' | 'info';
@@ -27,6 +26,7 @@ export class ValidationPanel implements EditorConfigPanel {
   private mouse: Point2D = { x: 0, y: 0 };
   private scroll_offset = 0;
   private issues: ValidationIssue[] = [];
+  private last_revision = -1;
 
   constructor(
     private context: EditorToolContext,
@@ -35,11 +35,17 @@ export class ValidationPanel implements EditorConfigPanel {
 
   setBounds(bounds: PanelBounds): void {
     this.bounds = bounds;
-    this.refresh();
   }
 
   refresh(): void {
+    this.last_revision = this.context.history.revision();
     this.issues = this.runValidation();
+    this.scroll_offset = Math.min(this.scroll_offset, this.maxScroll());
+  }
+
+  private maxScroll(): number {
+    const content_h = this.issues.length * (ROW_H + GAP);
+    return Math.max(0, content_h - (this.bounds.h - PADDING - ROW_H - GAP));
   }
   mousemove(_canvas: Point2D, screen: Point2D, _transform: BoardTransformData): boolean {
     this.mouse = screen;
@@ -59,7 +65,7 @@ export class ValidationPanel implements EditorConfigPanel {
     if (!contains(this.bounds, this.mouse)) {
       return false;
     }
-    this.scroll_offset = Math.max(0, this.scroll_offset + dy);
+    this.scroll_offset = Math.min(Math.max(0, this.scroll_offset + dy), this.maxScroll());
     return true;
   }
 
@@ -133,93 +139,31 @@ export class ValidationPanel implements EditorConfigPanel {
     }
   }
 
-  private validateConnectivity(issues: ValidationIssue[]): void {
-    const doc = this.context.doc();
-    if (!doc || doc.spaces.length === 0) {
-      return;
-    }
-    const blocked = new Set(
-      this.context
-        .terrains()
-        .filter(
-          (terrain) =>
-            terrain.terrain_type === RisqTerrainType.WATER || terrain.terrain_type === RisqTerrainType.DEEP_WATER
-        )
-        .map((terrain) => terrain.terrain_id)
-    );
-    const spaces = doc.spaces.filter((space) => !blocked.has(space.terrain ?? DEFAULT_TERRAIN_ID));
-    if (spaces.length === 0) {
-      return;
-    }
-    const space_map = new Map<string, Point2D>();
-    spaces.forEach((s) => space_map.set(`${s.x},${s.y}`, { x: s.x, y: s.y }));
-    const visited = new Set<string>();
-    const queue: Point2D[] = [{ x: spaces[0].x, y: spaces[0].y }];
-    visited.add(`${spaces[0].x},${spaces[0].y}`);
-    while (queue.length > 0) {
-      const curr = queue.shift()!;
-      for (const [dx, dy] of [
-        [1, 0],
-        [1, -1],
-        [0, -1],
-        [-1, 0],
-        [-1, 1],
-        [0, 1],
-      ]) {
-        const nx = curr.x + dx;
-        const ny = curr.y + dy;
-        const key = `${nx},${ny}`;
-        if (space_map.has(key) && !visited.has(key)) {
-          visited.add(key);
-          queue.push({ x: nx, y: ny });
-        }
-      }
-      for (const connection of doc.connections ?? []) {
-        const key = `${curr.x},${curr.y}`;
-        const target =
-          connection.from.join(',') === key
-            ? connection.to
-            : connection.to.join(',') === key
-              ? connection.from
-              : undefined;
-        if (target && space_map.has(target.join(',')) && !visited.has(target.join(','))) {
-          visited.add(target.join(','));
-          queue.push({ x: target[0], y: target[1] });
-        }
-      }
-    }
-    if (visited.size < spaces.length) {
-      issues.push({
-        severity: 'info',
-        message: `${spaces.length - visited.size} playable spaces are outside the first land component`,
-      });
-    }
-  }
-  private validateFairnessAndIds(issues: ValidationIssue[]): void {
+  private validateIds(issues: ValidationIssue[]): void {
     const doc = this.context.doc();
     if (!doc) {
       return;
     }
-    const known_buildings = new Set([1, 2, 3, 11, 21, 22, 23]);
-    const known_units = new Set([1, 11, 12, 13]);
+    const catalog = this.context.entities();
+    if (catalog.buildings.length === 0) {
+      return;
+    }
+    const ids = (entries: EntityEntry[]): Set<number> => new Set(entries.map((entry) => entry.id));
+    const buildings = ids(catalog.buildings);
+    const units = ids(catalog.units);
+    const resources = ids(catalog.resources);
     for (const space of [...doc.spaces, ...(doc.player_start?.spaces ?? [])]) {
+      const at = { x: space.x, y: space.y };
+      const unknown = (kind: string, id: number): void =>
+        void issues.push({ severity: 'warning', message: `Unknown ${kind} ID: ${id}`, space: at });
       for (const zone of space.zones ?? []) {
-        if (zone.building && !known_buildings.has(zone.building.id)) {
-          issues.push({
-            severity: 'warning',
-            message: `Unknown building ID: ${zone.building.id}`,
-            space: { x: space.x, y: space.y },
-          });
+        if (zone.building && !buildings.has(zone.building.id)) {
+          unknown('building', zone.building.id);
         }
-        for (const u of zone.units ?? []) {
-          if (!known_units.has(u.id)) {
-            issues.push({
-              severity: 'warning',
-              message: `Unknown unit ID: ${u.id}`,
-              space: { x: space.x, y: space.y },
-            });
-          }
+        if (zone.resource !== undefined && !resources.has(zone.resource)) {
+          unknown('resource', zone.resource);
         }
+        zone.units?.filter((unit) => !units.has(unit.id)).forEach((unit) => unknown('unit', unit.id));
       }
     }
   }
@@ -230,8 +174,7 @@ export class ValidationPanel implements EditorConfigPanel {
       return issues;
     }
     this.validateStarts(issues);
-    this.validateConnectivity(issues);
-    this.validateFairnessAndIds(issues);
+    this.validateIds(issues);
     if (issues.length === 0) {
       issues.push({ severity: 'info', message: 'Map passed all validation checks!' });
     }
@@ -240,6 +183,9 @@ export class ValidationPanel implements EditorConfigPanel {
   draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, _dt: number): void {
     if (this.bounds.w <= 0 || this.bounds.h <= 0) {
       return;
+    }
+    if (this.last_revision !== this.context.history.revision()) {
+      this.refresh();
     }
     const draw_config = { fill_style: 'transparent', stroke_width: 1, fixed_position: true };
     configDraw(ctx, transform, draw_config, false, false, () => {

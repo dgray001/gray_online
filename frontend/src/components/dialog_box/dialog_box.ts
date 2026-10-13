@@ -26,6 +26,7 @@ export abstract class DwgDialogBox<T> extends DwgElement {
   override async connectedCallback(): Promise<void> {
     this.html_string = html.replace('id="content-container">', `id="content-container">${this.getHTML()}`);
     this.classList.add('dwg-dialog-box');
+    this.dispatchEvent(new CustomEvent<void>('dialog_opened', { bubbles: true }));
     await super.connectedCallback();
     window.addEventListener('keydown', this.handleCloseHotkey);
   }

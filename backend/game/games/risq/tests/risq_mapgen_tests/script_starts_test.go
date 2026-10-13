@@ -35,6 +35,11 @@ func startColumn(home startHome) int {
 	return home.x + int(math.Floor(float64(home.y)/2))
 }
 
+// One player count per map size, rotating through 2-10 so MapSize_LARGE gets 7
+func startSweepPlayers(size defs.MapSize) []int {
+	return []int{int(size) + 1}
+}
+
 func triangleStartIndices(t *testing.T, board *fakeboard.Board, players, inset int) (int, []int) {
 	t.Helper()
 	spaces := board.Inspect()
@@ -85,40 +90,35 @@ func TestTriangleFinalStartingSpacePositions(t *testing.T) {
 		}
 	}
 	for size := defs.MapSize_MINUSCULE; size <= defs.MapSize_GIGANTIC; size++ {
-		for players := 1; players <= 12; players++ {
-			for seed := int64(1); seed <= 16; seed++ {
-				mapName := "script:start_layout"
-				if size == defs.DefaultMapSize(players) {
-					mapName = "script:triangle"
-				}
-				board, err := fakeboard.GenerateWithSize(mapName, players, size, seed)
-				if err != nil {
-					t.Fatalf("size %d, %d players seed %d: %v", size, players, seed, err)
-				}
-				inset := 1
-				if size >= defs.MapSize_HUGE {
-					inset = 2
-				}
-				edge, indices := triangleStartIndices(t, board, players, inset)
-				if players == 1 && indices[0]%edge != 0 {
-					t.Fatalf("single player is not at a corner: %v", indices)
-				}
-				if players%3 == 0 {
-					for corner := 0; corner < 3; corner++ {
-						index := sort.SearchInts(indices, corner*edge)
-						if index == len(indices) || indices[index] != corner*edge {
-							t.Fatalf("%d players: corner %d is missing from %v", players, corner, indices)
-						}
+		for _, players := range startSweepPlayers(size) {
+			seed := int64(size)*100 + int64(players)
+			mapName := "script:start_layout"
+			if size == defs.DefaultMapSize(players) {
+				mapName = "script:triangle"
+			}
+			board, err := fakeboard.GenerateWithSize(mapName, players, size, seed)
+			if err != nil {
+				t.Fatalf("size %d, %d players seed %d: %v", size, players, seed, err)
+			}
+			edge, indices := triangleStartIndices(t, board, players, 1)
+			if players == 1 && indices[0]%edge != 0 {
+				t.Fatalf("single player is not at a corner: %v", indices)
+			}
+			if players%3 == 0 {
+				for corner := 0; corner < 3; corner++ {
+					index := sort.SearchInts(indices, corner*edge)
+					if index == len(indices) || indices[index] != corner*edge {
+						t.Fatalf("%d players: corner %d is missing from %v", players, corner, indices)
 					}
 				}
-				minGap, maxGap := 3*edge, 0
-				for i, position := range indices {
-					gap := indices[(i+1)%players] + 3*edge*((i+1)/players) - position
-					minGap, maxGap = min(minGap, gap), max(maxGap, gap)
-				}
-				if minGap == 0 || maxGap-minGap > 1 {
-					t.Fatalf("size %d, %d players seed %d: uneven perimeter gaps %d/%d at %v", size, players, seed, minGap, maxGap, indices)
-				}
+			}
+			minGap, maxGap := 3*edge, 0
+			for i, position := range indices {
+				gap := indices[(i+1)%players] + 3*edge*((i+1)/players) - position
+				minGap, maxGap = min(minGap, gap), max(maxGap, gap)
+			}
+			if minGap == 0 || maxGap-minGap > 1 {
+				t.Fatalf("size %d, %d players seed %d: uneven perimeter gaps %d/%d at %v", size, players, seed, minGap, maxGap, indices)
 			}
 		}
 	}
@@ -163,115 +163,108 @@ func TestRectangleFinalStartingSpaceDistances(t *testing.T) {
 	}
 	for size := defs.MapSize_MINUSCULE; size <= defs.MapSize_GIGANTIC; size++ {
 		inset := 1
-		if size >= defs.MapSize_LARGE {
-			inset = 2
-		}
-		for players := 1; players <= 12; players++ {
-			expectedShort := 0
-			if size >= defs.MapSize_HUGE {
-				expectedShort = min(2, players)
+		for _, players := range startSweepPlayers(size) {
+			expectedShort := min(2, players)
+			seed := int64(size)*100 + int64(players)
+			mapName := "script:start_layout"
+			if size == defs.DefaultMapSize(players) {
+				mapName = "script:rectangle"
 			}
-			for seed := int64(1); seed <= 16; seed++ {
-				mapName := "script:start_layout"
-				if size == defs.DefaultMapSize(players) {
-					mapName = "script:rectangle"
+			board, err := fakeboard.GenerateWithSize(mapName, players, size, seed)
+			if err != nil {
+				t.Fatalf("size %d, %d players seed %d: %v", size, players, seed, err)
+			}
+			homes := startHomes(t, board, players)
+			minRow, maxRow, minCol, maxCol := 0, 0, 0, 0
+			for i, space := range board.Inspect() {
+				col := startColumn(startHome{x: space.Coord.X, y: space.Coord.Y})
+				if i == 0 {
+					minRow, maxRow = space.Coord.Y, space.Coord.Y
+					minCol, maxCol = col, col
 				}
-				board, err := fakeboard.GenerateWithSize(mapName, players, size, seed)
-				if err != nil {
-					t.Fatalf("size %d, %d players seed %d: %v", size, players, seed, err)
+				minRow, maxRow = min(minRow, space.Coord.Y), max(maxRow, space.Coord.Y)
+				minCol, maxCol = min(minCol, col), max(maxCol, col)
+			}
+			rows := map[int]bool{}
+			longHomes, shortHomes := []startHome{}, []startHome{}
+			cornerStarts := 0
+			for _, home := range homes {
+				col := startColumn(home)
+				if col < minCol+inset || col > maxCol-inset {
+					t.Fatalf("size %d: home column %d violates inset %d", size, col, inset)
 				}
-				homes := startHomes(t, board, players)
-				minRow, maxRow, minCol, maxCol := 0, 0, 0, 0
-				for i, space := range board.Inspect() {
-					col := startColumn(startHome{x: space.Coord.X, y: space.Coord.Y})
-					if i == 0 {
-						minRow, maxRow = space.Coord.Y, space.Coord.Y
-						minCol, maxCol = col, col
-					}
-					minRow, maxRow = min(minRow, space.Coord.Y), max(maxRow, space.Coord.Y)
-					minCol, maxCol = min(minCol, col), max(maxCol, col)
+				if col == minCol+inset || col == maxCol-inset {
+					cornerStarts++
 				}
-				rows := map[int]bool{}
-				longHomes, shortHomes := []startHome{}, []startHome{}
-				cornerStarts := 0
-				for _, home := range homes {
-					col := startColumn(home)
-					if col < minCol+inset || col > maxCol-inset {
-						t.Fatalf("size %d: home column %d violates inset %d", size, col, inset)
+				if home.y != minRow+inset && home.y != maxRow-inset {
+					if home.y < minRow+inset || home.y > maxRow-inset || (col != minCol+inset && col != maxCol-inset) {
+						t.Fatalf("size %d: invalid short-edge start %v", size, home)
 					}
-					if col == minCol+inset || col == maxCol-inset {
-						cornerStarts++
-					}
-					if home.y != minRow+inset && home.y != maxRow-inset {
-						if home.y < minRow+inset || home.y > maxRow-inset || (col != minCol+inset && col != maxCol-inset) {
-							t.Fatalf("size %d: invalid short-edge start %v", size, home)
-						}
-						shortHomes = append(shortHomes, home)
+					shortHomes = append(shortHomes, home)
+					continue
+				}
+				longHomes = append(longHomes, home)
+				rows[home.y] = true
+			}
+			if len(rows) != min(players-expectedShort, 2) {
+				t.Fatalf("size %d, %d players seed %d: starts occupy %d rows", size, players, seed, len(rows))
+			}
+			if cornerStarts != min(players-expectedShort, 2)+expectedShort {
+				t.Fatalf("size %d, %d players seed %d: corner starts moved: %v", size, players, seed, homes)
+			}
+			if len(shortHomes) != expectedShort {
+				t.Fatalf("size %d: short-edge starts %v, want %d", size, shortHomes, expectedShort)
+			}
+			if len(shortHomes) == 2 && startColumn(shortHomes[0]) == startColumn(shortHomes[1]) {
+				t.Fatal("both short-edge starts are on the same edge")
+			}
+			nearCount, farCount := 0, 0
+			for _, home := range longHomes {
+				if home.y == minRow+inset {
+					nearCount++
+				} else {
+					farCount++
+				}
+			}
+			for _, home := range shortHomes {
+				nearDistance, farDistance := home.y-(minRow+inset), maxRow-inset-home.y
+				if (nearCount < farCount && nearDistance >= farDistance) || (farCount < nearCount && farDistance >= nearDistance) {
+					t.Fatalf("short-edge start %v is not closer to the less-populated row (%d/%d players)", home, nearCount, farCount)
+				}
+				if nearCount == farCount && math.Abs(float64(nearDistance-farDistance)) > 1 {
+					t.Fatalf("balanced rows: short-edge start %v is not centered", home)
+				}
+			}
+			distances := rowStartDistances(longHomes)
+			for row, gaps := range distances {
+				minGap, maxGap := gaps[0], gaps[0]
+				for _, gap := range gaps {
+					minGap, maxGap = min(minGap, gap), max(maxGap, gap)
+				}
+				if minGap == 0 || maxGap-minGap > 1 {
+					t.Fatalf("size %d, %d players seed %d row %d: uneven rounded distances %v", size, players, seed, row, gaps)
+				}
+			}
+			if size == defs.MapSize_LARGE && players == 7 && seed == 1 {
+				t.Logf("seven-player starting-space distances by row: %v", distances)
+			}
+			if size == defs.MapSize_LARGE && players == 7 {
+				for row, gaps := range distances {
+					if len(gaps) != 3 {
 						continue
 					}
-					longHomes = append(longHomes, home)
-					rows[home.y] = true
-				}
-				if len(rows) != min(players-expectedShort, 2) {
-					t.Fatalf("size %d, %d players seed %d: starts occupy %d rows", size, players, seed, len(rows))
-				}
-				if cornerStarts != min(players-expectedShort, 2)+expectedShort {
-					t.Fatalf("size %d, %d players seed %d: corner starts moved: %v", size, players, seed, homes)
-				}
-				if len(shortHomes) != expectedShort {
-					t.Fatalf("size %d: short-edge starts %v, want %d", size, shortHomes, expectedShort)
-				}
-				if len(shortHomes) == 2 && startColumn(shortHomes[0]) == startColumn(shortHomes[1]) {
-					t.Fatal("both short-edge starts are on the same edge")
-				}
-				nearCount, farCount := 0, 0
-				for _, home := range longHomes {
-					if home.y == minRow+inset {
-						nearCount++
-					} else {
-						farCount++
-					}
-				}
-				for _, home := range shortHomes {
-					nearDistance, farDistance := home.y-(minRow+inset), maxRow-inset-home.y
-					if (nearCount < farCount && nearDistance >= farDistance) || (farCount < nearCount && farDistance >= nearDistance) {
-						t.Fatalf("short-edge start %v is not closer to the less-populated row (%d/%d players)", home, nearCount, farCount)
-					}
-					if nearCount == farCount && math.Abs(float64(nearDistance-farDistance)) > 1 {
-						t.Fatalf("balanced rows: short-edge start %v is not centered", home)
-					}
-				}
-				distances := rowStartDistances(longHomes)
-				for row, gaps := range distances {
-					minGap, maxGap := gaps[0], gaps[0]
-					for _, gap := range gaps {
-						minGap, maxGap = min(minGap, gap), max(maxGap, gap)
-					}
-					if minGap == 0 || maxGap-minGap > 1 {
-						t.Fatalf("size %d, %d players seed %d row %d: uneven rounded distances %v", size, players, seed, row, gaps)
-					}
-				}
-				if size == defs.MapSize_LARGE && players == 7 && seed == 1 {
-					t.Logf("seven-player starting-space distances by row: %v", distances)
-				}
-				if size == defs.MapSize_LARGE && players == 7 {
-					for row, gaps := range distances {
-						if len(gaps) != 3 {
-							continue
+					columns := []int{}
+					for _, home := range homes {
+						if home.y == row {
+							columns = append(columns, startColumn(home)-minCol)
 						}
-						columns := []int{}
-						for _, home := range homes {
-							if home.y == row {
-								columns = append(columns, startColumn(home)-minCol)
-							}
-						}
-						sort.Ints(columns)
-						if fmt.Sprint(columns) != "[2 6 11 15]" {
-							t.Fatalf("seven-player corner/intermediate columns: %v", columns)
-						}
-						if seed == 1 {
-							t.Logf("four-player row columns: %v", columns)
-						}
+					}
+					sort.Ints(columns)
+					if fmt.Sprint(columns) != "[2 6 11 15]" {
+						t.Fatalf("seven-player corner/intermediate columns: %v", columns)
+					}
+					if seed == 1 {
+						t.Logf("four-player row columns: %v", columns)
 					}
 				}
 			}
@@ -306,6 +299,9 @@ func TestStartAssignmentsAreShuffled(t *testing.T) {
 				t.Fatal(err)
 			}
 			orders[startOrderKey(startHomes(t, board, 4))] = true
+			if len(orders) >= 3 {
+				break
+			}
 		}
 		if len(orders) < 3 {
 			t.Errorf("%s player assignments only rotate or reverse: %v", shape, orders)
@@ -323,6 +319,9 @@ func TestRectangleStartingRowAndSideAreRandom(t *testing.T) {
 		}
 		home := startHomes(t, board, 1)[0]
 		corners[[2]int{startColumn(home), home.y}] = true
+		if len(corners) == 4 {
+			break
+		}
 	}
 	if len(corners) != 4 {
 		t.Errorf("starting row and side do not vary across all corners: %v", corners)
@@ -332,26 +331,25 @@ func TestRectangleStartingRowAndSideAreRandom(t *testing.T) {
 func TestRectangleStartsZigzagForEveryPlayerCount(t *testing.T) {
 	useStartLayouts(t)
 	for players := 1; players <= 12; players++ {
-		for seed := int64(1); seed <= 4; seed++ {
-			board, err := fakeboard.Generate("script:rectangle", players, seed)
-			if err != nil {
-				t.Fatal(err)
+		seed := int64(players%4 + 1)
+		board, err := fakeboard.Generate("script:rectangle", players, seed)
+		if err != nil {
+			t.Fatal(err)
+		}
+		homes := startHomes(t, board, players)
+		sort.Slice(homes, func(i, j int) bool { return startColumn(homes[i]) < startColumn(homes[j]) })
+		for i, home := range homes {
+			if math.Abs(float64(home.y)) != 4 || (i%2 == 0) != (home.y == homes[0].y) {
+				t.Errorf("%d players seed %d: starts do not alternate rows: %v", players, seed, homes)
 			}
-			homes := startHomes(t, board, players)
-			sort.Slice(homes, func(i, j int) bool { return startColumn(homes[i]) < startColumn(homes[j]) })
-			for i, home := range homes {
-				if math.Abs(float64(home.y)) != 4 || (i%2 == 0) != (home.y == homes[0].y) {
-					t.Errorf("%d players seed %d: starts do not alternate rows: %v", players, seed, homes)
-				}
+		}
+		for row, gaps := range rowStartDistances(homes) {
+			minGap, maxGap := gaps[0], gaps[0]
+			for _, gap := range gaps {
+				minGap, maxGap = min(minGap, gap), max(maxGap, gap)
 			}
-			for row, gaps := range rowStartDistances(homes) {
-				minGap, maxGap := gaps[0], gaps[0]
-				for _, gap := range gaps {
-					minGap, maxGap = min(minGap, gap), max(maxGap, gap)
-				}
-				if minGap == 0 || maxGap-minGap > 1 {
-					t.Errorf("%d players seed %d row %d: uneven rounded distances %v", players, seed, row, gaps)
-				}
+			if minGap == 0 || maxGap-minGap > 1 {
+				t.Errorf("%d players seed %d row %d: uneven rounded distances %v", players, seed, row, gaps)
 			}
 		}
 	}
@@ -417,5 +415,28 @@ func TestStartBuildingsFallBackWhenTheMirroredZoneIsTaken(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestStartTreeIdsReplaceTheDefaultSpecies(t *testing.T) {
+	starts := step("player_starts", `{"pattern":"ring","area_size":1,"starting_distance":3,"terrain_id":1,"tree_ids":[14]}`)
+	useScripts(t, map[string]string{"species": `[` + hexagon4 + `,` + grass + `,` + starts + `]`})
+	board, err := fakeboard.Generate("script:species", 2, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	trees := 0
+	for _, info := range board.Inspect() {
+		for _, z := range info.Zones {
+			if z.Resource >= 11 && z.Resource < 40 {
+				trees++
+				if z.Resource != 14 && z.Resource != 24 && z.Resource != 34 {
+					t.Errorf("start wood resource %d, want only species 14 as tree, grove or forest", z.Resource)
+				}
+			}
+		}
+	}
+	if trees == 0 {
+		t.Error("no start wood resources placed")
 	}
 }

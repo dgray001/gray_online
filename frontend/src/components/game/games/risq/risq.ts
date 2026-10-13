@@ -8,17 +8,31 @@ import type { DwgGame } from '../../game';
 import { messageDialog } from '../../game';
 import { apiGet } from '../../../../scripts/api';
 import { createImage, resolveImage } from '../../../../scripts/image';
+import { flushPerf, perfEvent, perfRecord, startPerf } from '../../../../scripts/perf';
 import { createLock } from '../../../../scripts/util';
 import { getSettings } from '../../../../scripts/settings_store';
 import { err, log } from '../../../../scripts/log';
 import { ColorRGB } from '../../../../scripts/color_rgb';
 
 import html from './risq.html';
-import type { GameRisq, RisqPlayer, RisqResourceConfig, RisqUnit, RisqBuilding } from './model/types';
 import type {
+  GameRisq,
+  RisqPlayer,
+  RisqResourceConfig,
+  RisqUnit,
+  RisqBuilding,
+  RisqSpace,
+  RisqCost,
+} from './model/types';
+import type {
+  AutoRenewSetData,
+  BuildingBehaviorSetData,
+  DefaultUnitBehaviorSetData,
   GameRisqFromServer,
+  GatherPointSetData,
   StartTurnData,
   SubmittedOrdersData,
+  UnitBehaviorSetData,
   UnsubmittedOrdersData,
 } from './transport/snapshot_types';
 import type { RisqTurnReport } from './transport/turn_report';
@@ -29,6 +43,13 @@ import { RisqOrderOverlays } from './rendering/board/order_overlays';
 import { RisqBoardRenderer } from './rendering/board/board_renderer';
 import { zoneCenterOffset } from './rendering/zones/geometry';
 import { RisqSession } from './application/session';
+import {
+  patchAutoRenew,
+  patchBuildingBehavior,
+  patchDefaultUnitBehavior,
+  patchGatherPoint,
+  patchUnitBehavior,
+} from './application/setting_patches';
 import { RisqCommands } from './application/commands';
 import { RisqOrdersModel } from './application/orders/orders_model';
 import { RisqOrderPlanning } from './application/orders/planning';
@@ -68,6 +89,7 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
   private board!: DwgCanvasBoard;
   private abstract_game?: DwgGame;
   private outcome_shown = false;
+  private last_frame_time = Date.now();
   private initialization_controller = new AbortController();
   private icons = new Map<string, HTMLImageElement>();
   private image_cache = new RisqImageCache();
@@ -76,22 +98,32 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
   readonly session = new RisqSession();
   readonly viewport = new RisqViewport(this.session, () => this.pointer.recalculate());
   readonly orders_model = new RisqOrdersModel(() => this.refreshPanels());
-  readonly planning = new RisqOrderPlanning(this.session, this.orders_model);
+  readonly planning = new RisqOrderPlanning(this.session, this.orders_model, (): RisqCost[] =>
+    this.commands.auto_renew.reservations()
+  );
   readonly armed = new RisqArmedState(() => this.cursor.update(this.board?.getModifiers().ctrl ?? false));
   readonly hover = new RisqHover(this.session, this.viewport);
 
   readonly left_panel = new RisqLeftPanel(this, { w: 300, background: PANEL_BACKGROUND });
   readonly right_panel = new RisqRightPanel(this, { w: 300, is_open: true, background: new ColorRGB(222, 184, 135) });
   readonly selection = new RisqSelection(this.session, this.left_panel);
-  readonly control_groups = new RisqControlGroups(this.session, this.left_panel, this.selection);
-  private minimap = new RisqMinimap(this, { target_w: 150, background: 'black' });
+  readonly control_groups = new RisqControlGroups(this.session, this.left_panel, this.selection, () =>
+    this.refreshPanels()
+  );
+  private minimap = new RisqMinimap(
+    this,
+    { target_w: 150, background: 'black' },
+    (space: RisqSpace, ctrl_held: boolean): void => {
+      this.dispatch.spaceOrder(space, this.selection.subjectUnitIds(), this.selection.selectedBuildings(), ctrl_held);
+    }
+  );
   private mercenary_panel = new RisqMercenaryPanel(this, () => this.minimap);
   private default_behavior_panel = new RisqMercenaryPanel(this, () => this.minimap, new RisqDefaultBehaviorGrid(this));
-  private bottom_panel = new RisqBottomPanel(
-    this,
-    { background: PANEL_BACKGROUND, left_panel_w: 300, right_panel_w: 300, center_item: this.minimap },
-    [[new RisqControlGroupGrid(this)], [this.minimap], [new RisqIdleGrid(this)]]
-  );
+  private bottom_panel = new RisqBottomPanel(this, { background: PANEL_BACKGROUND, center_item: this.minimap }, [
+    [new RisqControlGroupGrid(this)],
+    [this.minimap],
+    [new RisqIdleGrid(this)],
+  ]);
   private message_queue = new RisqMessageQueue(this);
   private readonly canvas_components: CanvasComponent[] = [
     this.right_panel,
@@ -114,7 +146,15 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
   readonly commands = new RisqCommands(this, this.session, this.orders_model, this.planning, this.armed, (t, c) =>
     this.showMessage(t, c)
   );
-  readonly submission = new RisqOrderSubmission(this, this.session, this.orders_model, this.planning, this.right_panel);
+  readonly submission = new RisqOrderSubmission(
+    this,
+    this.session,
+    this.orders_model,
+    this.planning,
+    this.right_panel,
+    this.commands.auto_renew,
+    this.commands.gather_points
+  );
   private dispatch = new RisqOrderDispatch(
     this.session,
     this.viewport,
@@ -155,11 +195,19 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
     this.commands,
     this.submission
   );
+  readonly order_overlays = new RisqOrderOverlays(
+    this,
+    this.session,
+    this.viewport,
+    this.orders_model,
+    this.planning,
+    this.selection
+  );
   private renderer = new RisqBoardRenderer(
     this,
     this.session,
     this.viewport,
-    new RisqOrderOverlays(this, this.session, this.viewport, this.orders_model, this.planning, this.selection),
+    this.order_overlays,
     () => this.pointer.dragRect(),
     this.canvas_components
   );
@@ -170,10 +218,23 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
     this.configureElement('board');
   }
 
+  private handleDialogOpened = (): void => {
+    this.armed.disarmAll();
+  };
+
+  override async connectedCallback(): Promise<void> {
+    document.addEventListener('dialog_opened', this.handleDialogOpened);
+    await super.connectedCallback();
+  }
+
   override disconnectedCallback(): void {
+    document.removeEventListener('dialog_opened', this.handleDialogOpened);
+    this.commands.auto_renew.reset();
+    this.commands.gather_points.reset();
     this.initialization_controller.abort();
     super.disconnectedCallback();
     this.hotkeys.detach();
+    flushPerf();
   }
 
   /** This will replace an existing icon */
@@ -225,6 +286,8 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
   }
 
   async initialize(abstract_game: DwgGame, game: GameRisqFromServer): Promise<void> {
+    this.commands.auto_renew.reset();
+    this.commands.gather_points.reset();
     this.abstract_game = abstract_game;
     this.corpse_layout.reset();
     this.outcome_shown = false;
@@ -243,15 +306,20 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
     } else {
       err('Unable to load resource configs', resource_configs.error_message);
     }
+    startPerf();
     this.setNewGameData(game);
-    this.session.setLastTurnReport(this.getPlayer()?.turn_report);
     this.board
       .initialize({
         board_size: this.viewport.boardSize(game.board_size),
         max_scale: 1,
         fill_space: true,
         allow_side_move: true,
-        draw: (ctx, transform) => this.renderer.draw(ctx, transform, this.board.getMaxScale()),
+        draw: (ctx, transform) => {
+          const draw_start = performance.now();
+          this.prepareFrame();
+          this.renderer.draw(ctx, transform, this.board.getMaxScale());
+          perfRecord('draw', performance.now() - draw_start);
+        },
         scroll: (dy, mode) => this.pointer.scroll(dy, mode),
         mousemove: (m, screen, transform, modifiers) => this.pointer.mousemove(m, screen, transform, modifiers),
         draggingCallback: () => this.pointer.draggingCallback(),
@@ -291,10 +359,29 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
       });
   }
 
+  private prepareFrame(): void {
+    const now = Date.now();
+    const dt = now - this.last_frame_time;
+    this.last_frame_time = now;
+    perfRecord('frame_gap', dt, 40);
+    if (this.right_panel.prepareFrame(dt)) {
+      this.pointer.recalculate();
+    }
+  }
+
   private refreshPanels(): void {
+    const refresh_start = performance.now();
+    this.refreshPanelsUntimed();
+    perfRecord('refresh_panels', performance.now() - refresh_start);
+  }
+
+  private refreshPanelsUntimed(): void {
     this.planning.refresh();
     this.right_panel.dataRefreshed();
     this.left_panel.dataRefreshed();
+    this.bottom_panel.dataRefreshed();
+    this.mercenary_panel.dataRefreshed();
+    this.default_behavior_panel.dataRefreshed();
     this.pointer.recalculate();
   }
 
@@ -331,11 +418,18 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
   }
 
   private goToVillageCenter(player_id: number): void {
-    const village_center = [...(this.getGame()?.players[player_id]?.buildings.values() ?? [])].find(
-      (b) => b.building_id === 1
-    );
-    if (player_id >= 0 && village_center) {
-      this.goToCoordinate(village_center.space_coordinate);
+    if (player_id < 0) {
+      return;
+    }
+    const player = this.getGame()?.players[player_id];
+    const buildings = [...(player?.buildings.values() ?? [])];
+    const target = buildings.find((b) => b.building_id === 1) ?? buildings[0] ?? [...(player?.units.values() ?? [])][0];
+    if (!target) {
+      return;
+    }
+    const location = 'building_id' in target ? target : this.session.unitLocation(target);
+    if (location) {
+      this.goToCoordinate(location.space_coordinate);
     }
   }
 
@@ -387,8 +481,13 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
         zone.reset_hovered_data = true;
       }
       this.left_panel.resolveSize();
+      this.left_panel.prepareLayout();
       this.minimap.resolveSize();
       this.right_panel.toggle(this.right_panel.isOpen());
+      this.bottom_panel.dataRefreshed();
+      this.mercenary_panel.dataRefreshed();
+      this.default_behavior_panel.dataRefreshed();
+      this.pointer.recalculate();
     });
   }
 
@@ -396,6 +495,8 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
     try {
       switch (update.kind) {
         case 'start-turn':
+          this.commands.auto_renew.reset();
+          this.commands.gather_points.reset();
           this.applyStartTurn(update.content as StartTurnData);
           break;
         case 'submitted-orders':
@@ -405,18 +506,29 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
           this.applyUnsubmittedOrders(update.content as UnsubmittedOrdersData);
           break;
         case 'unit-behavior-set':
+          this.applySetting(() => patchUnitBehavior(this.session, update.content as UnitBehaviorSetData));
+          break;
+        case 'building-behavior-set':
+          this.applySetting(() => patchBuildingBehavior(this.session, update.content as BuildingBehaviorSetData));
+          break;
         case 'default-unit-behavior-set':
         case 'default-unit-stance-set':
-        case 'building-behavior-set':
+          this.applySetting(() => patchDefaultUnitBehavior(this.session, update.content as DefaultUnitBehaviorSetData));
+          break;
         case 'gather-point-set':
-          this.setNewGameData((update.content as StartTurnData).game);
+          this.applySetting(() => patchGatherPoint(this.session, update.content as GatherPointSetData));
+          this.commands.gather_points.acknowledge((update.content as GatherPointSetData).building_id);
+          break;
+        case 'set-gather-point-failed':
+          this.commands.gather_points.acknowledge(undefined, false);
+          this.showMessage((update.content as { message: string }).message, RISQ_MESSAGE_WARNING_COLOR);
           break;
         case 'auto-renew-set':
-          this.commands.auto_renew_pending = false;
-          this.setNewGameData((update.content as StartTurnData).game);
+          this.applySetting(() => patchAutoRenew(this.session, update.content as AutoRenewSetData));
+          this.commands.auto_renew.acknowledge();
           break;
         case 'set-auto-renew-failed':
-          this.commands.auto_renew_pending = false;
+          this.commands.auto_renew.acknowledge(false);
           this.showMessage((update.content as { message: string }).message, RISQ_MESSAGE_WARNING_COLOR);
           this.refreshPanels();
           break;
@@ -432,20 +544,38 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
     }
   }
 
+  private applySetting(patch: () => void): void {
+    patch();
+    this.refreshPanels();
+  }
+
   private setNewGameData(new_game: GameRisqFromServer): void {
+    const apply_start = performance.now();
     this.session.replaceSnapshot(new_game);
+    const convert_ms = performance.now() - apply_start;
+    if (!this.session.givingOrders() || this.getPlayer()?.orders_submitted) {
+      this.commands.gather_points.reset();
+    }
     const shell_game = this.abstract_game?.getGame();
     if (shell_game) {
       shell_game.game_base.game_ended = new_game.game_base.game_ended;
     }
     if (new_game.game_base.game_ended) {
+      this.commands.auto_renew.reset();
       this.armed.disarmAll();
       this.orders_model.clearPending();
     }
     this.hover.forget();
     this.orders_model.setSubmitted(this.getPlayer()?.active_orders ?? []);
+    this.session.setLastTurnReport(this.getPlayer()?.turn_report ?? this.session.getLastTurnReport());
     this.refreshPanels();
     this.showGameOutcome();
+    this.commands.gather_points.reconcile();
+    perfEvent('snapshot_apply', {
+      turn: new_game.turn_number,
+      convert_ms,
+      total_ms: performance.now() - apply_start,
+    });
   }
 
   private showGameOutcome(): void {
@@ -467,10 +597,9 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
 
   private applyStartTurn(data: StartTurnData): void {
     this.submission.turnStarted();
-    this.armed.disarmOrder();
+    this.armed.disarmAll();
     this.setNewGameData(data.game);
     const player = this.getPlayer();
-    this.session.setLastTurnReport(player?.turn_report);
     if (!data.game.game_base.game_ended && this.getPlayerId() > -1 && player?.turn_report) {
       this.openTurnReportDialog(player, player.turn_report);
     }

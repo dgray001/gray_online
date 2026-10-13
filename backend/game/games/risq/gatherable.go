@@ -141,6 +141,37 @@ func (b *RisqBuilding) refreshTerrainOverride() {
 	b.zone.terrain_override = override
 }
 
+func unitDistanceToZone(u *RisqUnit, target *RisqZone) int {
+	if u.zone == nil || target == nil {
+		return 1 << 30
+	}
+	if u.zone.space == target.space {
+		return zoneDistanceWithinSpace(u.zone, target)
+	}
+	return int(u.zone.space.distanceTo(target.space)) * 6
+}
+
+func (r *GameRisq) enrouteBuilders(b *RisqBuilding, needed int) []*RisqUnit {
+	units := make([]*RisqUnit, 0)
+	for _, u := range r.players[b.player_id].units {
+		if !u.deleted && len(u.order_queue.active_orders) == 1 && u.order_queue.active_orders[0].order_type == defs.OrderType_UnitBuild {
+			if c, ok := u.intent.detail.(*ConstructionIntent); !ok || c.zone != b.zone {
+				if bid, _, z := invertBuildKey(uint(u.order_queue.active_orders[0].target_id), r); z == b.zone && bid == b.building_id {
+					units = append(units, u)
+				}
+			}
+		}
+	}
+	sort.Slice(units, func(i, j int) bool {
+		d1, d2 := unitDistanceToZone(units[i], b.zone), unitDistanceToZone(units[j], b.zone)
+		if d1 != d2 {
+			return d1 < d2
+		}
+		return units[i].internal_id < units[j].internal_id
+	})
+	return units[:min(len(units), needed)]
+}
+
 func (r *GameRisq) autoGatherCompletedBuildings() {
 	for _, b := range r.completed_gatherables {
 		builders := make([]*RisqUnit, 0)
@@ -154,6 +185,10 @@ func (r *GameRisq) autoGatherCompletedBuildings() {
 			}
 		}
 		sort.Slice(builders, func(i, j int) bool { return builders[i].internal_id < builders[j].internal_id })
+		builders = builders[:min(len(builders), b.gatherCapacity())]
+		if rem := b.gatherCapacity() - len(builders); rem > 0 {
+			builders = append(builders, r.enrouteBuilders(b, rem)...)
+		}
 		for _, u := range builders {
 			order := createRisqOrder(r.nextOrderInternalId(), defs.OrderType_UnitGather, b.player_id, map[uint64]Orderable{u.internal_id: u}, int64(b.zone.coordinate_key), false)
 			if u.orderReceivable(order, r) {

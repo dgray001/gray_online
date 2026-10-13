@@ -14,10 +14,15 @@ import (
 
 // A started game of human players; the last submission of a turn resolves it synchronously on the caller's thread
 type Game struct {
-	T       *testing.T
-	Risq    *risq.GameRisq
-	Base    *game.GameBase
-	clients []uint64
+	T    *testing.T
+	Risq *risq.GameRisq
+	// Lite drops per-tick action histories and static config lists from Self and reuses a read until a harness call or Invalidate may have changed state
+	Lite       bool
+	cache      map[int]cachedSelf
+	stateCache map[int]cachedState
+	version    uint64
+	Base       *game.GameBase
+	clients    []uint64
 }
 
 func NewUnstartedGame(t *testing.T, mapName string, seed int64, humans int) *Game {
@@ -61,6 +66,7 @@ func (g *Game) Human(slot int) int {
 // Fails the test if the engine rejects the submission itself; orders it later refuses show up in Refusals instead
 func (g *Game) Submit(i int, orders ...defs.OrderFromFrontend) {
 	g.T.Helper()
+	g.Invalidate()
 	for k := range orders {
 		orders[k].Player_id = g.PlayerID(i)
 	}
@@ -73,6 +79,7 @@ func (g *Game) Submit(i int, orders ...defs.OrderFromFrontend) {
 
 func (g *Game) Action(i int, kind string, action gin.H) {
 	g.T.Helper()
+	g.Invalidate()
 	g.Risq.PlayerAction(game.PlayerAction{Kind: kind, Client_id: int(g.clients[i]), Action: action})
 	if failed := g.Failed(i); len(failed) > 0 {
 		g.T.Fatalf("human %d's action %s was rejected: %v", i, kind, failed)
@@ -83,8 +90,10 @@ func (g *Game) Action(i int, kind string, action gin.H) {
 // Empties the update channels nobody reads, so the engine does not log dropped updates
 func (g *Game) drain() {
 	for _, client := range g.clients {
-		for updates := g.Base.Players[client].Updates; len(updates) > 0; {
-			<-updates
+		for _, updates := range []chan *game.UpdateMessage{g.Base.Players[client].Updates, g.Base.Players[client].SettingUpdates} {
+			for len(updates) > 0 {
+				<-updates
+			}
 		}
 	}
 	for len(g.Base.ViewerUpdates) > 0 {
@@ -92,15 +101,23 @@ func (g *Game) drain() {
 	}
 }
 
-// Everyone who has not yet submitted submits nothing, which resolves the turn; stops as soon as it has
+// Everyone who has not yet submitted submits nothing, which resolves the turn
 func (g *Game) EndTurn() {
 	g.T.Helper()
-	state := State{Players: g.playerStates(0)}
-	for i := range g.clients {
-		if !state.Player(g.PlayerID(i)).OrdersSubmitted {
-			g.Submit(i)
+	g.Invalidate()
+	turn := g.Risq.TurnNumber()
+	for i, client := range g.clients {
+		if g.Risq.TurnNumber() != turn {
+			break
+		}
+		g.Risq.PlayerAction(game.PlayerAction{Kind: "submit-orders", Client_id: int(client), Action: gin.H{"orders": []defs.OrderFromFrontend{}}})
+		for _, message := range g.Failed(i) {
+			if message != "Orders already submitted" && message != "Eliminated players cannot submit orders" {
+				g.T.Fatalf("human %d's empty submission was rejected: %s", i, message)
+			}
 		}
 	}
+	g.drain()
 }
 
 // Messages of the failed updates queued for the i-th human since the last call
@@ -119,7 +136,16 @@ func (g *Game) Failed(i int) []string {
 // What the i-th human's client would see right now
 func (g *Game) State(i int) State {
 	g.T.Helper()
-	data, err := json.Marshal(g.Risq.ToFrontend(g.clients[i], false))
+	if g.Lite {
+		if cached, ok := g.stateCache[i]; ok && cached.turn == g.Risq.TurnNumber() && cached.version == g.version {
+			return cached.state
+		}
+	}
+	payload := g.Risq.ToFrontend(g.clients[i], false)
+	if g.Lite {
+		dropHeavyKeys(payload)
+	}
+	data, err := json.Marshal(payload)
 	if err != nil {
 		g.T.Fatal(err)
 	}
@@ -127,15 +153,101 @@ func (g *Game) State(i int) State {
 	if err := json.Unmarshal(data, &state); err != nil {
 		g.T.Fatal(err)
 	}
+	if g.Lite {
+		if g.stateCache == nil {
+			g.stateCache = map[int]cachedState{}
+		}
+		g.stateCache[i] = cachedState{turn: g.Risq.TurnNumber(), version: g.version, state: state}
+	}
 	return state
+}
+
+type cachedState struct {
+	turn    uint16
+	version uint64
+	state   State
+}
+
+// Per-tick histories and static config lists that Lite readers never look at
+var heavyKeys = []string{"tick_actions", "builds", "move_path", "produces", "last_turn_replay", "space_links"}
+
+func dropHeavyKeys(value any) {
+	switch v := value.(type) {
+	case gin.H:
+		for _, key := range heavyKeys {
+			delete(v, key)
+		}
+		for _, item := range v {
+			dropHeavyKeys(item)
+		}
+	case []gin.H:
+		for _, item := range v {
+			dropHeavyKeys(item)
+		}
+	case [][]gin.H:
+		for _, row := range v {
+			dropHeavyKeys(row)
+		}
+	}
+}
+
+type cachedSelf struct {
+	turn    uint16
+	version uint64
+	state   PlayerState
 }
 
 func (g *Game) Self(i int) PlayerState {
 	g.T.Helper()
-	state := State{Players: g.playerStates(i)}
-	self := state.Player(g.PlayerID(i))
-	if self == nil {
-		g.T.Fatalf("player %d missing from its own state", i)
+	if g.Lite {
+		if cached, ok := g.cache[i]; ok && cached.turn == g.Risq.TurnNumber() && cached.version == g.version {
+			return cached.state
+		}
 	}
-	return *self
+	state := g.readSelf(i)
+	if g.Lite {
+		if g.cache == nil {
+			g.cache = map[int]cachedSelf{}
+		}
+		g.cache[i] = cachedSelf{turn: g.Risq.TurnNumber(), version: g.version, state: state}
+	}
+	return state
+}
+
+func (g *Game) readSelf(i int) PlayerState {
+	g.T.Helper()
+	payload := g.Risq.PlayerToFrontend(g.clients[i], g.PlayerID(i))
+	if g.Lite {
+		dropHeavyKeys(payload)
+	}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		g.T.Fatal(err)
+	}
+	var self PlayerState
+	if err := json.Unmarshal(data, &self); err != nil {
+		g.T.Fatal(err)
+	}
+	return self
+}
+
+// Attaches the i-th human as a recipient, so the engine builds the updates they would read
+func (g *Game) Connect(i int) {
+	g.Base.PlayerConnected(g.clients[i])
+}
+
+// Attaches a viewer as a recipient of viewer updates
+func (g *Game) AddViewer(client_id uint64) {
+	g.Base.Viewers[client_id] = game.CreateViewer(client_id, fmt.Sprint("viewer", client_id))
+}
+
+func (g *Game) ConnectAll() {
+	for i := range g.clients {
+		g.Connect(i)
+	}
+}
+
+// Marks cached reads stale; harness methods call it, and tests must after acting on the engine directly
+func (g *Game) Invalidate() {
+	g.version++
 }

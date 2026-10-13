@@ -11,7 +11,7 @@ import (
 func TestResearchUnlocksMercenaryContracts(t *testing.T) {
 	doc := `{"board_size":2,"players":2,"space_gold_income":0,"starting_bank":{"wood":300,"gold":500},"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":23,"player":0},"units":[{"id":1,"player":0,"count":1}]}]},{"x":-2,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":1,"count":1}]}]}]}`
 	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"contracts": doc})
-	g := harness.NewGame(t, "custom:contracts", 1, 2)
+	g := startGame(t, "custom:contracts", 1, 2)
 	p := g.Human(0)
 	if len(g.Self(p).AvailableMercenaries) != 0 {
 		t.Fatal("mercenaries available before contracts research")

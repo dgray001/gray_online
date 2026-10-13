@@ -28,7 +28,7 @@ export interface MapEditorHeaderActions {
   remove: (name: string) => void;
 }
 
-class HeaderInput extends DwgRectInput {
+export class HeaderInput extends DwgRectInput {
   constructor(
     p: Point2D,
     w: number,
@@ -93,6 +93,7 @@ export class MapEditorHeader implements CanvasComponent {
   private save_shown = false;
   private delete_shown = false;
   private over_bar = false;
+  private dirty = false;
 
   constructor(actions: MapEditorHeaderActions) {
     let x = GAP;
@@ -129,6 +130,14 @@ export class MapEditorHeader implements CanvasComponent {
 
   isTyping(): boolean {
     return this.name_input.isFocused() || this.size_input.isFocused();
+  }
+
+  isBusy(): boolean {
+    return this.isTyping() || this.maps.isOpen();
+  }
+
+  setDirty(dirty: boolean): void {
+    this.dirty = dirty;
   }
 
   setName(name: string): void {
@@ -184,7 +193,7 @@ export class MapEditorHeader implements CanvasComponent {
       drawRect(ctx, { x: 0, y: 0 }, ctx.canvas.width, HEADER_H);
       const text = { font: FONT, baseline: 'middle' as const, w: 600 };
       drawText(ctx, 'Size', { ...text, p: { x: this.size_label_x, y: HEADER_H / 2 }, fill_style: LABEL_FILL, w: 30 });
-      drawText(ctx, this.status, {
+      drawText(ctx, `${this.dirty ? '* ' : ''}${this.status}`, {
         ...text,
         p: { x: this.status_x, y: HEADER_H / 2 },
         fill_style: this.status_is_error ? ERROR_FILL : LABEL_FILL,

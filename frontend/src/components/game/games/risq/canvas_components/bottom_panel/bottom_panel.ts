@@ -20,8 +20,6 @@ export type BottomPanelGroup = BottomPanelItem[];
 
 export declare interface BottomPanelConfig {
   background: string;
-  left_panel_w: number;
-  right_panel_w: number;
   center_item: BottomPanelItem;
 }
 
@@ -29,7 +27,7 @@ export declare interface BottomPanelConfig {
 export class RisqBottomPanel implements CanvasComponent {
   private static PADDING = 8;
   private static GAP = 8;
-  private static BOTTOM_MARGIN = 12;
+  private static MARGIN = 12;
 
   private risq: DwgRisq;
   private config: BottomPanelConfig;
@@ -77,6 +75,8 @@ export class RisqBottomPanel implements CanvasComponent {
 
   private recomputeLayout(): void {
     const canvas_size = this.risq.viewport.canvasSize();
+    const left_edge = this.risq.left_panel.w() + RisqBottomPanel.MARGIN;
+    const right_edge = canvas_size.width - this.risq.right_panel.fullWidth() - RisqBottomPanel.MARGIN;
     const center = this.config.center_item;
     const center_index = this.groups.findIndex((group) => group.includes(center));
     const fixed_width = this.groups
@@ -91,15 +91,11 @@ export class RisqBottomPanel implements CanvasComponent {
       canvas_size.width / 2 -
       center.w() / 2 -
       (center.overflow ?? 0) -
-      this.config.left_panel_w -
+      left_edge -
       fixed_width -
       2 * RisqBottomPanel.PADDING;
     const right_width =
-      canvas_size.width / 2 -
-      center.w() / 2 -
-      (center.overflow ?? 0) -
-      this.config.right_panel_w -
-      2 * RisqBottomPanel.PADDING;
+      right_edge - canvas_size.width / 2 - center.w() / 2 - (center.overflow ?? 0) - 2 * RisqBottomPanel.PADDING;
     for (const [i, group] of this.groups.entries()) {
       for (const item of group) {
         item.setAvailableWidth?.(i < center_index ? group_width : right_width);
@@ -112,7 +108,7 @@ export class RisqBottomPanel implements CanvasComponent {
     for (const item of this.items) {
       item.setAvailableHeight?.(available_height);
     }
-    const key = JSON.stringify([canvas_size, this.items.map((item) => [item.w(), item.h()])]);
+    const key = JSON.stringify([canvas_size, left_edge, right_edge, this.items.map((item) => [item.w(), item.h()])]);
     if (key === this.layout_key) {
       return;
     }
@@ -128,14 +124,16 @@ export class RisqBottomPanel implements CanvasComponent {
     const center_offset =
       this.group_widths.slice(0, center_group).reduce((sum, w) => sum + w + RisqBottomPanel.GAP, 0) +
       0.5 * (this.group_widths[center_group] ?? 0);
-    this.panel_w = this.content_w + 2 * RisqBottomPanel.PADDING;
+    const content_right = canvas_w / 2 - center_offset + this.content_w + RisqBottomPanel.PADDING;
+    const panel_left = Math.max(left_edge, canvas_w / 2 - center_offset - RisqBottomPanel.PADDING);
+    this.panel_w = Math.min(right_edge, content_right) - panel_left;
     this.panel_h = this.content_h + 2 * RisqBottomPanel.PADDING;
     this.p = {
-      x: canvas_w / 2 - center_offset - RisqBottomPanel.PADDING,
-      y: this.risq.viewport.canvasSize().height - this.panel_h - RisqBottomPanel.BOTTOM_MARGIN,
+      x: panel_left,
+      y: this.risq.viewport.canvasSize().height - this.panel_h - RisqBottomPanel.MARGIN,
     };
     this.separator_xs = [];
-    let x = this.xi() + RisqBottomPanel.PADDING;
+    let x = canvas_w / 2 - center_offset;
     for (const [i, group] of groups.entries()) {
       const group_w = this.group_widths[i];
       const group_h = this.groupHeight(group);
@@ -151,11 +149,14 @@ export class RisqBottomPanel implements CanvasComponent {
     }
   }
 
-  draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
+  dataRefreshed(): void {
     for (const item of this.items) {
       item.dataRefreshed?.();
     }
     this.recomputeLayout();
+  }
+
+  draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
     if (this.panel_w <= 0 || this.panel_h <= 0) {
       return;
     }
@@ -205,10 +206,6 @@ export class RisqBottomPanel implements CanvasComponent {
       }
     );
     for (const item of this.items) {
-      if (!this.itemContains(item, this.mouse_screen)) {
-        item.setHovering(false);
-        item.setClicking(false);
-      }
       item.draw(ctx, transform, dt);
     }
     ctx.restore();
@@ -255,8 +252,9 @@ export class RisqBottomPanel implements CanvasComponent {
     this.mouse_screen = screen;
     const item_hovering = this.items
       .map((item) => {
+        const hovering = item.mousemove(canvas, screen, transform);
         if (this.itemContains(item, screen)) {
-          return item.mousemove(canvas, screen, transform);
+          return hovering;
         }
         item.setHovering(false);
         item.setClicking(false);

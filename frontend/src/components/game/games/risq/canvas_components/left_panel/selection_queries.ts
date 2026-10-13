@@ -1,6 +1,6 @@
 import { equalsPoint2D } from '../../../../util/objects2d';
 import type { RisqSession } from '../../application/session';
-import { invertPair } from '../../model/coordinates';
+import { invertZoneKey } from '../../model/coordinates';
 import type { RisqBuilding, RisqUnit, UnitByTypeData } from '../../model/types';
 import { RisqUnitType, RisqVisibilityLevel } from '../../model/types';
 import { groupUnitsByType } from '../../model/unit_groups';
@@ -200,6 +200,14 @@ function normalizePlayerUnits(data: PlayerUnitsDrawData, resolve: UnitResolver):
   return undefined;
 }
 
+function unitVisibility(session: RisqSession, unit: RisqUnit): number {
+  if (unit.player_id === session.getPlayerId()) {
+    return RisqVisibilityLevel.GOOD;
+  }
+  const location = session.unitLocation(unit);
+  return (location ? session.spaceAt(location.space_coordinate)?.visibility : undefined) ?? 0;
+}
+
 export function resolveSelectionData(
   data: LeftPanelData,
   session: RisqSession
@@ -277,7 +285,7 @@ export function resolveSelectionData(
       const player = session.getPlayer();
       const coord_key = data.data.coordinate_key;
       const planned = player?.planned_foundations.get(coord_key);
-      const space_coord = invertPair(coord_key);
+      const space_coord = invertZoneKey(coord_key).space;
       const space = session.spaceAt(space_coord);
       const zone = space?.zones?.flat().find((z) => z.coordinate_key === coord_key);
       if (planned && space && zone) {
@@ -308,7 +316,9 @@ export function resolveSelectionData(
     case LeftPanelDataType.ECONOMIC_UNITS:
     case LeftPanelDataType.MILITARY_UNITS: {
       const all_ids = data.data.units.flatMap((u) => [...u.units.values()]);
-      const surviving = all_ids.map((id) => session.findUnitById(id)).filter((u): u is RisqUnit => !!u);
+      const surviving = all_ids
+        .map((id) => session.findUnitById(id))
+        .filter((u): u is RisqUnit => !!u && unitVisibility(session, u) >= RisqVisibilityLevel.GOOD);
       if (surviving.length === 0) {
         return undefined;
       }
@@ -328,8 +338,8 @@ export function resolveSelectionData(
       if (!normalized) {
         return undefined;
       }
-      const vis = first.player_id === session.getPlayerId() ? RisqVisibilityLevel.GOOD : (space?.visibility ?? 0);
-      return vis >= RisqVisibilityLevel.GOOD ? { data: normalized, visibility: vis } : undefined;
+      const vis = Math.min(...surviving.map((u) => unitVisibility(session, u)));
+      return { data: normalized, visibility: vis };
     }
     case LeftPanelDataType.UNITS:
     case LeftPanelDataType.MULTIPLE_PLAYERS_UNITS: {

@@ -43,7 +43,7 @@
     "cost": { "wood": 80 },
     "build_stamina": 14,
     "required_tech_id": 1,
-    "terrain_override": { "flatlands": 24, "hilly": 63 },
+    "terrain_override": { "flatlands": 25, "hilly": 75 },
     "gatherable": {
       "resource_category": "food",
       "base_gather_speed": 8,
@@ -51,7 +51,7 @@
       "gather_capacity": 2,
       "renew_cost": { "wood": 60 },
       "renew_stamina": 12,
-      "terrain_override_dead": { "flatlands": 25, "hilly": 64 }
+      "terrain_override_dead": { "flatlands": 26, "hilly": 76 }
     }
   },
   {

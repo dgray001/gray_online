@@ -18,6 +18,8 @@ func TestTickHistoryGatherCapacity(t *testing.T) {
 			g := farmGame(t, 120, 2)
 			p := g.Human(0)
 			id := fastExhaustFarm(g, p)
+			g.Lite = false
+			g.Invalidate()
 			config := defs.BuildingConfigs[3]
 			config.Gather.Renew_stamina = required
 			defs.BuildingConfigs[3] = config
@@ -49,7 +51,7 @@ func TestTickHistoryGatherCapacity(t *testing.T) {
 		})
 	}
 	t.Run("depleted-resource", func(t *testing.T) {
-		g := gatherGame(t, 11, false)
+		g := gatherGame(t, 11, false, false)
 		p := g.Human(0)
 		submitGather(g, p)
 		left, gained := 0.0, 0.0
@@ -62,6 +64,8 @@ func TestTickHistoryGatherCapacity(t *testing.T) {
 		if len(g.State(p).Space(0, 0).Resources) != 0 || math.Abs(gained-left) > 0.0001 {
 			t.Fatal("fixture did not exhaust the resource")
 		}
+		g.Lite = false
+		g.Invalidate()
 		actions := g.Self(p).Units[0].TickActions
 		harness.RequireTickAction(t, actions, "gather")
 		recorded := 0.0
@@ -76,6 +80,7 @@ func TestTickHistoryGatherCapacity(t *testing.T) {
 		}
 	})
 	g := sourceGame(t, false)
+	g.Lite = false
 	p := g.Human(0)
 	units := g.Self(p).Units
 	subjects := make([]uint64, len(units))
@@ -113,7 +118,9 @@ func TestTickHistoryGatherCapacity(t *testing.T) {
 func TestTickHistorySurvivesReadsAndResets(t *testing.T) {
 	t.Run("reconnect-and-turn-boundaries", func(t *testing.T) {
 		g := sourceGame(t, false)
+		g.Lite = false
 		p := g.Human(0)
+		g.Base.PlayerConnected(uint64(p + 1))
 		u, turn := g.Self(p).Units[0], g.State(p).TurnNumber
 		if g.State(p).LastTurnReplay != nil {
 			t.Fatal("first turn has history before resolution")
@@ -144,6 +151,7 @@ func TestTickHistorySurvivesReadsAndResets(t *testing.T) {
 		}
 	})
 	g := sourceGame(t, false)
+	g.Lite = false
 	p := g.Human(0)
 	u := g.Self(p).Units[0]
 	g.Submit(p, harness.OrderGather([]uint64{u.InternalID}, 0, 0, 0, 0))

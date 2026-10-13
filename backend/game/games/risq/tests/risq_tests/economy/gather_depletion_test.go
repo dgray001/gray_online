@@ -7,7 +7,7 @@ import (
 )
 
 func TestDepletionConservesResources(t *testing.T) {
-	g := gatherGame(t, 11, false)
+	g := gatherGame(t, 11, false, true)
 	p := g.Human(0)
 	config := defs.ResourceConfigs[11]
 	before := balance(g, p, config.Category)

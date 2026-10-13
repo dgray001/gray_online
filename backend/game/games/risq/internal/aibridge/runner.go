@@ -18,7 +18,7 @@ type Runner struct {
 }
 
 func (a *Runner) Run() {
-	fmt.Println("Starting ai for AI player", a.Player.GetAiId())
+	// fmt.Println("Starting ai for AI player", a.Player.GetAiId()) // suppressed for performance
 	fallback_submitted := false
 loop:
 	for {
@@ -43,7 +43,7 @@ loop:
 			}
 		}
 	}
-	fmt.Println("Ending ai for AI player", a.Player.GetAiId())
+	// fmt.Println("Ending ai for AI player", a.Player.GetAiId()) // suppressed for performance
 }
 
 // Decides from the same start-turn payload a human client receives; a human's own submission wins over the ai's.

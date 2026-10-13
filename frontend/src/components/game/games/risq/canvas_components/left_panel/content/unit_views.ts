@@ -38,8 +38,10 @@ export function drawUnitImage(pc: PanelDrawContext, unit: RisqUnit, p: Point2D, 
     ctx.strokeStyle = 'transparent';
     drawRect(ctx, p, s, s);
   }
-  unit.hover_data.ps = p;
-  unit.hover_data.pe = { x: p.x + s, y: p.y + s };
+  if (pc.layout_pass) {
+    unit.hover_data.ps = p;
+    unit.hover_data.pe = { x: p.x + s, y: p.y + s };
+  }
 }
 
 export function garrisonedUnits(risq: DwgRisq, building: RisqBuilding): RisqUnit[] {

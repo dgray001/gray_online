@@ -17,18 +17,19 @@ type space struct {
 	distanceIndex int
 	terrain       uint32
 	zones         []*zone
-	byLocal       map[game_utils.Coordinate2D]*zone
+	byLocal       [3][3]*zone
 	borders       [6]*space
 	links         []*space
+	sorted        []mapgen.Space
 }
 
 func newSpace(b *Board, c game_utils.Coordinate2D) *space {
-	s := &space{board: b, coord: c, key: util.Pair(c.X, c.Y), terrain: defs.DefaultTerrainId, byLocal: map[game_utils.Coordinate2D]*zone{}}
+	s := &space{board: b, coord: c, key: util.Pair(c.X, c.Y), terrain: defs.DefaultTerrainId}
 	for r := -1; r <= 1; r++ {
 		for q := max(-1, -1-r); q <= min(1, 1-r); q++ {
 			z := newZone(s, game_utils.Coordinate2D{X: q, Y: r})
 			s.zones = append(s.zones, z)
-			s.byLocal[z.local] = z
+			s.byLocal[q+1][r+1] = z
 		}
 	}
 	return s
@@ -52,14 +53,17 @@ func (s *space) Zones() []mapgen.Zone {
 }
 
 func (s *space) Zone(local game_utils.Coordinate2D) mapgen.Zone {
-	if z, ok := s.byLocal[local]; ok {
+	if local.X < -1 || local.X > 1 || local.Y < -1 || local.Y > 1 {
+		return nil
+	}
+	if z := s.byLocal[local.X+1][local.Y+1]; z != nil {
 		return z
 	}
 	return nil
 }
 
 func (s *space) CenterZone() mapgen.Zone {
-	return s.byLocal[game_utils.Coordinate2D{}]
+	return s.byLocal[1][1]
 }
 
 func (s *space) ShuffledEdgeZones(rng *rand.Rand) []mapgen.Zone {
@@ -89,13 +93,16 @@ func (s *space) neighbors() []*space {
 	return spaces
 }
 
+// Cached until a border changes; callers must not modify the slice
 func (s *space) SortedAdjacent() []mapgen.Space {
-	neighbors := s.neighbors()
-	spaces := make([]mapgen.Space, len(neighbors))
-	for i, n := range neighbors {
-		spaces[i] = n
+	if s.sorted == nil {
+		neighbors := s.neighbors()
+		s.sorted = make([]mapgen.Space, len(neighbors))
+		for i, n := range neighbors {
+			s.sorted[i] = n
+		}
 	}
-	return spaces
+	return s.sorted
 }
 
 func (s *space) ClearOccupants() {

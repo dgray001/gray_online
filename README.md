@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.8zb: Wire in risq map settings
+v0.8zd: Small risq UI updates
 
 ## Dev Use
 

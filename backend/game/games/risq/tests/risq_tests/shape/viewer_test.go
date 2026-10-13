@@ -8,7 +8,7 @@ func TestViewerDoesNotInheritClientPrivateData(t *testing.T) {
 	for human := range 2 {
 		state := checkShape(t, snapshot(g, human, true), gameShape)
 		equal(t, state["last_turn_replay"], nil)
-		checkShape(t, state["game_base"], "game_id:n game_type:n game_started:b game_ended:b persistant_history:b players:a viewers:a player_actions:a viewer_updates:a")
+		checkShape(t, state["game_base"], "game_id:n game_type:n game_started:b game_ended:b persistant_history:b latest_update_id:n players:a viewers:a player_actions:a viewer_updates:a")
 		for _, value := range array(t, state["players"]) {
 			p := checkShape(t, value, playerShape)
 			for _, key := range []string{"units", "buildings", "active_orders"} {

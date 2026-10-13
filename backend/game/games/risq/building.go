@@ -49,13 +49,17 @@ func constructionHealthRatio(stamina_remaining int, construction_stamina_total i
 func createRisqBuilding(internal_id uint64, building_id uint32, player_id int) *RisqBuilding {
 	building := RisqBuilding{
 		orderableBase: orderableBase{
-			internal_id:     internal_id,
-			player_id:       player_id,
-			turn_stamina:    10,
-			cs:              createRisqCombatStats(),
-			order_queue:     createRisqOrderQueue(),
-			intent:          createRisqIntent(),
-			target_priority: []defs.TargetCategory{},
+			internal_id:  internal_id,
+			player_id:    player_id,
+			turn_stamina: 10,
+			cs:           createRisqCombatStats(),
+			order_queue:  createRisqOrderQueue(),
+			intent:       createRisqIntent(),
+			target_priority: []defs.TargetCategory{
+				defs.TargetCategory_MILITARY,
+				defs.TargetCategory_ECONOMIC,
+				defs.TargetCategory_BUILDING,
+			},
 		},
 		building_id:      building_id,
 		production_queue: make(map[uint64]*RisqBuildingProductionItem),

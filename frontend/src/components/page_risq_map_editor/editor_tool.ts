@@ -1,7 +1,7 @@
 import type { CanvasComponent } from '../game/util/canvas_components/canvas_component';
 import type { Point2D } from '../game/util/objects2d';
 import type { EditHistory } from './edit_history';
-import type { TerrainEntry } from './map_api';
+import type { EntityCatalog, TerrainEntry } from './map_api';
 import type { MapDoc } from './map_doc';
 
 export interface EditorTarget {
@@ -18,6 +18,7 @@ export interface PanelBounds {
 
 export interface EditorConfigPanel extends CanvasComponent {
   setBounds: (bounds: PanelBounds) => void;
+  isTyping?: () => boolean;
 }
 
 export interface EditorToolContext {
@@ -28,6 +29,8 @@ export interface EditorToolContext {
   select: (target?: EditorTarget) => void;
   dragged: () => boolean;
   terrains: () => TerrainEntry[];
+  entities: () => EntityCatalog;
+  panTo: (coordinate: Point2D) => void;
   getIcon: (name: string) => HTMLImageElement;
   toCanvas: (coordinate: Point2D) => Point2D;
   hexR: () => number;

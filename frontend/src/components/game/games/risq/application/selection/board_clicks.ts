@@ -3,11 +3,11 @@ import type { Point2D } from '../../../../util/objects2d';
 import { pointInRect } from '../../../../util/objects2d';
 import type { RisqLeftPanel } from '../../canvas_components/left_panel/left_panel';
 import { LeftPanelDataType } from '../../canvas_components/left_panel/left_panel_data';
-import type { RisqBuilding, RisqSpace, RisqZone, UnitByTypeData } from '../../model/types';
+import type { RisqBuilding, RisqPlayer, RisqSpace, RisqZone, UnitByTypeData } from '../../model/types';
+import { groupUnitsByType } from '../../model/unit_groups';
 import type { RisqViewport } from '../../rendering/board/viewport';
-import { RisqViewMode } from '../../rendering/terrain';
+import { unitVisibleInViewMode } from '../../rendering/terrain';
 
-import { unitVisibleInViewMode } from '../../rendering/zones/draw';
 import { visibleZoneUnitSlot } from '../../rendering/zones/hit_testing';
 import { zoneCenterOffset } from '../../rendering/zones/geometry';
 import type { RisqOrderPlanning } from '../orders/planning';
@@ -27,6 +27,7 @@ function groupByPlayer(groups: Iterable<UnitByTypeData>): Map<number, UnitByType
 
 /** Selection changes from clicking or drag-selecting on the board itself (the left panel has its own gestures) */
 export class RisqBoardClicks {
+  private click_selection: UnitByTypeData[] = [];
   constructor(
     private session: RisqSession,
     private viewport: RisqViewport,
@@ -37,6 +38,9 @@ export class RisqBoardClicks {
 
   /** A released click on the zone: acts on whichever pressed part is still hovered, else opens the zone itself */
   zoneClick(space: RisqSpace, zone: RisqZone, e: MouseEvent): void {
+    if (e.detail === 1) {
+      this.click_selection = this.selection.unitTypeGroups();
+    }
     for (const [i, part] of zone.hovered_data.entries()) {
       if (!part.clicked || !part.hovered) {
         continue;
@@ -47,7 +51,7 @@ export class RisqBoardClicks {
       if (i === 0) {
         this.buildingSlotClick(space, zone, e.ctrlKey);
       } else if (e.detail >= 2) {
-        this.unitSlotMultiClick(space, zone, i - 1, e.detail >= 3);
+        this.unitSlotMultiClick(space, zone, i - 1, e.detail >= 3, e.ctrlKey);
       } else if (e.ctrlKey) {
         this.toggleUnitSlot(space, visibleZoneUnitSlot(zone, i - 1, this.viewport.viewMode()));
       } else {
@@ -118,7 +122,13 @@ export class RisqBoardClicks {
   }
 
   /** Double click selects the slot's lead unit type within the zone; triple click, across the screen */
-  private unitSlotMultiClick(space: RisqSpace, zone: RisqZone, slot_index: number, on_screen: boolean): void {
+  private unitSlotMultiClick(
+    space: RisqSpace,
+    zone: RisqZone,
+    slot_index: number,
+    on_screen: boolean,
+    additive: boolean
+  ): void {
     const target = visibleZoneUnitSlot(zone, slot_index, this.viewport.viewMode())[0];
     if (!target) {
       return;
@@ -128,14 +138,21 @@ export class RisqBoardClicks {
       : [...zone.units.values()]
           .filter((u) => u.player_id === target.player_id && u.unit_id === target.unit_id)
           .map((u) => u.internal_id);
+    if (additive) {
+      const units = this.session
+        .getGame()!
+        .players.find((player: RisqPlayer): boolean => player.player.player_id === target.player_id)!.units;
+      this.toggleUnitSlot(space, [...this.click_selection, ...groupUnitsByType(units, ids)], false);
+      return;
+    }
     this.selection.selectUnitsOfPlayer(target.player_id, ids, on_screen ? undefined : space, space.visibility);
   }
 
   /** Ctrl-click adds the whole slot to the selection, or removes it if every unit in it is already selected */
-  private toggleUnitSlot(space: RisqSpace, slot_groups: UnitByTypeData[]): void {
+  private toggleUnitSlot(space: RisqSpace, slot_groups: UnitByTypeData[], toggle: boolean = true): void {
     const slot_unit_ids = slot_groups.flatMap((t) => [...t.units]);
     const selected = this.selection.selectedUnitIds();
-    const deselect = slot_unit_ids.length > 0 && slot_unit_ids.every((id) => selected.has(id));
+    const deselect = toggle && slot_unit_ids.length > 0 && slot_unit_ids.every((id) => selected.has(id));
     const groups = new Map<string, UnitByTypeData>();
     for (const g of this.selection.unitTypeGroups()) {
       groups.set(`${g.player_id}:${g.unit_id}`, { ...g, units: new Set(g.units) });
@@ -181,7 +198,7 @@ export class RisqBoardClicks {
     if (!space.clicked || space.visibility <= 0) {
       return;
     }
-    if (this.viewport.zoneView() && this.viewport.viewMode() !== RisqViewMode.REGION) {
+    if (this.viewport.zoneView()) {
       return;
     }
     const region = this.viewport.regionInteractionEnabled()

@@ -3,6 +3,7 @@ package util
 import (
 	"fmt"
 	"math"
+	"math/rand"
 	"strconv"
 	"strings"
 	"unicode"
@@ -73,6 +74,8 @@ type exprParser struct {
 	vars map[string]float64
 	// resolves var(name); nil disables var()
 	lookup func(name string) (float64, error)
+	// draws for random(n); nil disables random()
+	rng *rand.Rand
 }
 
 func (p *exprParser) peek() exprToken {
@@ -186,7 +189,11 @@ func (p *exprParser) parseCall(name string) (float64, error) {
 		return p.lookup(arg.text)
 	}
 	args := make([]float64, 0, 2)
-	for {
+	empty_call := p.peek().kind == exprTokRParen
+	if empty_call {
+		p.next()
+	}
+	for !empty_call {
 		v, err := p.parseExpr()
 		if err != nil {
 			return 0, err
@@ -206,6 +213,20 @@ func (p *exprParser) parseCall(name string) (float64, error) {
 			return 0, fmt.Errorf("round() needs exactly one argument")
 		}
 		return math.Round(args[0]), nil
+	case "random", "randomInt":
+		if p.rng == nil {
+			return 0, fmt.Errorf("%s() is not available here", name)
+		}
+		if name == "random" {
+			if len(args) != 0 {
+				return 0, fmt.Errorf("random() takes no arguments")
+			}
+			return p.rng.Float64(), nil
+		}
+		if len(args) != 2 {
+			return 0, fmt.Errorf("randomInt() needs a min and a max")
+		}
+		return float64(RandomIntFrom(p.rng, int(math.Round(args[0])), int(math.Round(args[1])))), nil
 	case "min", "max":
 		if len(args) < 2 {
 			return 0, fmt.Errorf("%s() needs at least two arguments", name)
@@ -227,11 +248,20 @@ func EvalExpr(s string, vars map[string]float64) (float64, error) {
 
 // Like EvalExpr, but var(name) is resolved through lookup
 func EvalExprWithLookup(s string, vars map[string]float64, lookup func(name string) (float64, error)) (float64, error) {
+	return evalExpr(s, &exprParser{vars: vars, lookup: lookup})
+}
+
+// Like EvalExpr, but random(n) draws from rng
+func EvalExprWithRng(s string, vars map[string]float64, rng *rand.Rand) (float64, error) {
+	return evalExpr(s, &exprParser{vars: vars, rng: rng})
+}
+
+func evalExpr(s string, p *exprParser) (float64, error) {
 	toks, err := tokenizeExpr(s)
 	if err != nil {
 		return 0, err
 	}
-	p := &exprParser{toks: toks, vars: vars, lookup: lookup}
+	p.toks = toks
 	v, err := p.parseExpr()
 	if err != nil {
 		return 0, err

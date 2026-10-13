@@ -70,7 +70,9 @@ export class RisqPointer {
   scroll(dy: number, mode: number): boolean {
     for (const component of this.components) {
       if (component.isHovering()) {
-        component.scroll?.(dy, mode);
+        if (component.scroll?.(dy, mode)) {
+          this.recalculate();
+        }
         return true;
       }
     }

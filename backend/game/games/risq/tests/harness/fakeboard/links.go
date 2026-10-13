@@ -16,6 +16,7 @@ func (b *Board) ConnectSpaces(a, c mapgen.Space, direction int) error {
 		return fmt.Errorf("seam edge between %v and %v is already connected", first.coord, second.coord)
 	}
 	first.borders[direction], second.borders[(direction+3)%6] = second, first
+	first.sorted, second.sorted = nil, nil
 	return nil
 }
 

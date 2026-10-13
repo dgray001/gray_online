@@ -17,6 +17,7 @@ import { resourceTypeImage } from '../rendering/assets/resources';
 export declare interface RisqTooltipData {
   title: string;
   description?: string;
+  lines?: string[]; // extra detail rows below the description
   cost?: RisqCost;
   stamina_cost?: number;
   // icon path, value; stats of the thing being made/researched (e.g. health, attack)
@@ -103,13 +104,15 @@ function risqTooltipDraw(
     ctx.font = FONT;
     const row1_w = title_w + (cost_stats.length ? TITLE_COST_GAP + measureStatsRow(ctx, cost_stats) : 0);
     const desc_w = data.description ? ctx.measureText(data.description).width : 0;
+    const lines = data.lines ?? [];
+    const lines_w = Math.max(0, ...lines.map((line) => ctx.measureText(line).width));
     const stats_w = measureStatsRow(ctx, stats);
     ctx.font = HOTKEY_FONT;
     const hotkey_text = data.hotkey ? `Hotkey: ${data.hotkey}` : undefined;
     const hotkey_w = hotkey_text ? ctx.measureText(hotkey_text).width : 0;
     ctx.font = FONT;
-    const w = Math.max(row1_w, desc_w, stats_w, hotkey_w) + 2 * PADDING;
-    const num_rows = 1 + (data.description ? 1 : 0) + (stats.length ? 1 : 0) + (hotkey_text ? 1 : 0);
+    const w = Math.max(row1_w, desc_w, lines_w, stats_w, hotkey_w) + 2 * PADDING;
+    const num_rows = 1 + (data.description ? 1 : 0) + lines.length + (stats.length ? 1 : 0) + (hotkey_text ? 1 : 0);
     const h = num_rows * ROW_HEIGHT + 2 * PADDING;
     const box_p = anchorTooltipBox(p, w, h, canvas_size);
     ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
@@ -132,6 +135,17 @@ function risqTooltipDraw(
     if (data.description) {
       row_y += ROW_HEIGHT;
       drawText(ctx, data.description, {
+        p: { x: box_p.x + PADDING, y: row_y },
+        w: w - 2 * PADDING,
+        fill_style: 'white',
+        align: 'left',
+        baseline: 'middle',
+        font: FONT,
+      });
+    }
+    for (const line of lines) {
+      row_y += ROW_HEIGHT;
+      drawText(ctx, line, {
         p: { x: box_p.x + PADDING, y: row_y },
         w: w - 2 * PADDING,
         fill_style: 'white',

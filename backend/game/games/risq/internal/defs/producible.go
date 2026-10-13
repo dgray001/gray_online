@@ -75,6 +75,7 @@ func (p Producible) ToFrontend() gin.H {
 		entry["stamina_cost"] = stamina_cost
 		entry["display_name"] = unit.Display_name
 		entry["description"] = unit.Description
+		entry["unit_type"] = unit.Unit_type
 		entry["required_tech_id"] = unit.Required_tech_id
 		entry["stats"] = gin.H{
 			"health":               unit.Max_health,

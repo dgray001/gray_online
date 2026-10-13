@@ -23,7 +23,7 @@ func unordered(key string, data []any) bool {
 	if key == "spaces" {
 		return len(data) > 0 && isNumber(data[0])
 	}
-	return slices.Contains([]string{"players", "units", "buildings", "resources", "subjects", "garrisoned_units", "planned_foundations", "available_mercenaries", "regions", "scores", "units_created", "buildings_built", "techs_researched", "combat", "failures"}, key)
+	return slices.Contains([]string{"players", "units", "buildings", "resources", "subjects", "garrisoned_units", "planned_foundations", "available_mercenaries", "regions", "scores", "units_created", "units_hired", "buildings_built", "techs_researched", "combat", "failures"}, key)
 }
 
 func isNumber(value any) bool { _, ok := value.(float64); return ok }

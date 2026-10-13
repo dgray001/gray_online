@@ -79,7 +79,8 @@ export declare interface RisqPlayerResource {
   amount: number;
   spending: number;
   gaining: number;
-  workers: number;
+  workers: number; // units whose current order gathers this resource
+  predicted_workers: number; // same, after pending unsubmitted orders
 }
 
 /** All the resource types */
@@ -126,6 +127,7 @@ export declare interface RisqSpace {
   gold_income?: number;
   // purely frontend fields
   center: Point2D;
+  range_spaces?: Map<number, Map<number, Point2D>>; // attack radius -> in-range spaces by coordinate key
   hovered: boolean;
   hovered_neighbor: boolean;
   hovered_row: boolean;
@@ -294,6 +296,9 @@ export declare interface RisqBuilding {
   renewing?: boolean;
   resource_category?: RisqResourceType;
   gather_point?: RisqGatherPoint; // only present to the owner or a viewer with spy-tier vision
+  auto_attack?: boolean;
+  interrupt_current?: boolean;
+  target_priority?: RisqTargetCategory[];
   // purely frontend fields
   hover_data: RectHoverData;
 }
@@ -317,6 +322,7 @@ export enum RisqProducibleKind {
 /** Data describing something a building can produce, with its cost already resolved for this player */
 export declare interface RisqProducible {
   stats?: RisqUnitStatsEntry;
+  unit_type?: RisqUnitType; // unit producibles only
   row: number;
   col: number;
   kind: RisqProducibleKind;
@@ -487,18 +493,35 @@ export function canHaveGatherPoint(building: RisqBuilding): boolean {
 
 /** Returns whether the player can currently afford the input cost, accounting for already-queued spending */
 export function canAffordCost(player: RisqPlayer, cost: RisqCost): boolean {
-  const net = (type: RisqResourceType): number => {
+  const affords = (type: RisqResourceType, amount: number): boolean => {
+    if (amount <= 0) {
+      return true;
+    }
     const pr = player.resources.get(type);
-    return pr ? pr.amount - pr.spending : 0;
+    return (pr ? pr.amount - pr.spending : 0) >= amount;
   };
   return (
-    net(RisqResourceType.FOOD) >= cost.food &&
-    net(RisqResourceType.WOOD) >= cost.wood &&
-    net(RisqResourceType.STONE) >= cost.stone &&
-    net(RisqResourceType.GOLD) >= cost.gold
+    affords(RisqResourceType.FOOD, cost.food) &&
+    affords(RisqResourceType.WOOD, cost.wood) &&
+    affords(RisqResourceType.STONE, cost.stone) &&
+    affords(RisqResourceType.GOLD, cost.gold)
   );
 }
 
 export function meetsTechRequirement(player: RisqPlayer, required_tech_id: number): boolean {
   return required_tech_id === 0 || !!player.researched_techs.get(required_tech_id);
+}
+
+/** Space radius (0/1/2) of a ranged attack, or null if the range is none or zone-only (melee) */
+export function rangeDistance(range: RisqRange): number | null {
+  switch (range) {
+    case RisqRange.SPACE:
+      return 0;
+    case RisqRange.ADJACENT:
+      return 1;
+    case RisqRange.SECONDARY:
+      return 2;
+    default:
+      return null;
+  }
 }

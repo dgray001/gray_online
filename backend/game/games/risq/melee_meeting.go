@@ -1,6 +1,9 @@
 package risq
 
-import "github.com/dgray001/gray_online/util"
+import (
+	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
+	"github.com/dgray001/gray_online/util"
+)
 
 // The half move a unit already paid toward the adjacent zone it keeps stepping into
 type halfMove struct {
@@ -63,21 +66,43 @@ func (r *GameRisq) resolveMeleeMeetings(orderables []Orderable) int {
 	return removed
 }
 
-// The unit u is closing on, when that unit is in the adjacent zone u steps into and is itself stepping into u's zone
+// A chased or interrupt-eligible enemy stepping across the same border in the opposite direction
 func (u *RisqUnit) meetingTarget() (*RisqUnit, bool) {
 	move, ok := u.intent.detail.(*MoveIntent)
-	if !ok || move.chasing == nil || u.zone == nil {
+	if !ok || u.zone == nil {
 		return nil, false
 	}
 	if radius, ranged := u.attack_range.SpaceRadius(); ranged && (radius > 0 || move.intra_step) {
 		return nil, false
 	}
 	target := move.chasing
-	if !target.isAlive() || target.zone == nil || move.next_step != target.zone {
+	if target == nil {
+		target = u.crossingAttackTarget(move)
+	}
+	if target == nil || !target.isAlive() || target.zone == nil || move.next_step != target.zone {
 		return nil, false
 	}
 	target_move, ok := target.intent.detail.(*MoveIntent)
 	return target, ok && target_move.next_step == u.zone
+}
+
+func (u *RisqUnit) crossingAttackTarget(move *MoveIntent) *RisqUnit {
+	if !u.interrupt_current || u.stance == defs.UnitStance_PASSIVE || u.unitType() == defs.UnitType_ECONOMIC || u.cs.attack_type == defs.AttackType_NONE || u.holdsAssignedAttack() {
+		return nil
+	}
+	if move.next_step.space.getVisibility(u.player_id) < defs.VisibilityGood {
+		return nil
+	}
+	best := newCategoryBest()
+	for _, target := range move.next_step.units {
+		target_move, moving := target.intent.detail.(*MoveIntent)
+		if !moving || target_move.next_step != u.zone || target.deleted || !target.isAlive() || !canAttack(u.player_id, target.player_id) || !targetInPriority(target, u.target_priority) {
+			continue
+		}
+		best.considerUnit(target, 0)
+	}
+	target, _ := best.pick(u.target_priority).(*RisqUnit)
+	return target
 }
 
 // Stamina a melee unit pays to walk half a step to the border before meeting a unit crossing it

@@ -19,9 +19,8 @@ import {
   ICON_PADDING_NODE,
   ICON_S_HEADER,
   STATUS_TEXT,
-  RANGE_DISTANCE,
 } from './tree_nodes';
-import { RisqProducibleKind, RisqResourceType, RisqUnitType } from '../../model/types';
+import { RisqProducibleKind, RisqResourceType, RisqUnitType, rangeDistance } from '../../model/types';
 import { buildingImage } from '../../rendering/assets/buildings';
 import type { RisqCost } from '../../model/types';
 import { resourceTypeImage } from '../../rendering/assets/resources';
@@ -240,21 +239,18 @@ export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
     let current = '';
     for (const word of words) {
       const attempt = current ? `${current} ${word}` : word;
-      if (current && ctx.measureText(attempt).width > max_w) {
+      if (current && lines.length < max_lines - 1 && ctx.measureText(attempt).width > max_w) {
         lines.push(current);
         current = word;
-        if (lines.length === max_lines - 1) {
-          break;
-        }
       } else {
         current = attempt;
       }
     }
-    if (current && lines.length < max_lines) {
+    if (current) {
       lines.push(current);
     }
-    if (lines.length === max_lines && ctx.measureText(lines[max_lines - 1]).width > max_w) {
-      lines[max_lines - 1] = this.truncateText(ctx, lines[max_lines - 1], max_w);
+    if (lines.length && ctx.measureText(lines[lines.length - 1]).width > max_w) {
+      lines[lines.length - 1] = this.truncateText(ctx, lines[lines.length - 1], max_w);
     }
     return lines;
   }
@@ -327,8 +323,8 @@ export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
     if (stats.attack_piercing) {
       this.addStatChip(combat_row, 'risq/icons/attack_piercing', stats.attack_piercing);
     }
-    const range_distance = RANGE_DISTANCE[stats.attack_range];
-    if (range_distance !== undefined) {
+    const range_distance = rangeDistance(stats.attack_range);
+    if (range_distance !== null) {
       this.addStatChip(combat_row, 'risq/icons/attack_range', range_distance);
     }
     if (stats.defense_blunt) {

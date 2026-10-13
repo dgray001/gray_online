@@ -67,3 +67,17 @@ func TestClassifyIsExhaustiveAndMirrored(t *testing.T) {
 		}
 	}
 }
+
+func TestOutcomesAndFinalOutcomes(t *testing.T) {
+	if Outcomes([]risq.PlayerStanding{player(0, 5, 1, 1, false)}) != nil {
+		t.Error("expected nil outcomes for non-2-player standings")
+	}
+	standings := []risq.PlayerStanding{player(0, 20, 5, 5, false), player(1, 10, 4, 4, false)}
+	if got := Outcomes(standings); len(got) != 2 || got[0] != OutcomeWinning || got[1] != OutcomeLosing {
+		t.Errorf("unexpected Outcomes result: %v", got)
+	}
+	results := []risq.PlayerResult{{PlayerId: 0, Units: 20, Score: 5, Land: 5}, {PlayerId: 1, Units: 10, Score: 4, Land: 4}}
+	if got := FinalOutcomes(results); len(got) != 2 || got[0] != OutcomeWinning || got[1] != OutcomeLosing {
+		t.Errorf("unexpected FinalOutcomes result: %v", got)
+	}
+}

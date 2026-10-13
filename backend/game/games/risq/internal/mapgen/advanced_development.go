@@ -13,11 +13,11 @@ func applyAdvancedDefaults(p *playerStartsParams) {
 	}
 	if p.Buildings == nil {
 		p.Buildings = []playerStartBuildingJSON{
-			{BuildingId: 1, TerrainOverride: 6, Target: zoneTargetJSON{Zone: "center"}},
-			{BuildingId: 3, TerrainOverride: 24, Target: zoneTargetJSON{Zone: "edge"}},
-			{BuildingId: 3, TerrainOverride: 24, Target: zoneTargetJSON{Zone: "edge"}},
-			{BuildingId: 3, TerrainOverride: 24, Target: zoneTargetJSON{Zone: "edge"}},
-			{BuildingId: 3, TerrainOverride: 24, Target: zoneTargetJSON{Zone: "edge"}},
+			{BuildingId: 1, TerrainOverride: 7, Target: zoneTargetJSON{Zone: "center"}},
+			{BuildingId: 3, TerrainOverride: 25, Target: zoneTargetJSON{Zone: "edge"}},
+			{BuildingId: 3, TerrainOverride: 25, Target: zoneTargetJSON{Zone: "edge"}},
+			{BuildingId: 3, TerrainOverride: 25, Target: zoneTargetJSON{Zone: "edge"}},
+			{BuildingId: 3, TerrainOverride: 25, Target: zoneTargetJSON{Zone: "edge"}},
 			{BuildingId: 2, Target: zoneTargetJSON{Zone: "edge"}},
 			{BuildingId: 2, Target: zoneTargetJSON{Zone: "edge"}},
 			{BuildingId: 2, Target: zoneTargetJSON{SpaceDistance: 1, Zone: "center"}},

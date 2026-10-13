@@ -2,11 +2,20 @@ import type { BoardTransformData } from '../../../../util/canvas_board/canvas_bo
 import { defaultTransform, screenToCanvas } from '../../../../util/canvas_board/canvas_board';
 import type { CanvasComponent } from '../../../../util/canvas_components/canvas_component';
 import { configDraw } from '../../../../util/canvas_components/canvas_component';
-import { drawCircle, drawHexagon } from '../../../../util/canvas_util';
+import { drawArrow, drawCircle, drawHexagon } from '../../../../util/canvas_util';
 import type { Point2D } from '../../../../util/objects2d';
-import { addPoint2D, multiplyPoint2D, rotatePoint } from '../../../../util/objects2d';
-import type { RisqSpace, RisqUnit, RisqZone } from '../../model/types';
-import { RisqResourceType, RisqVisibilityLevel } from '../../model/types';
+import {
+  addPoint2D,
+  equalsPoint2D,
+  multiplyPoint2D,
+  rotatePoint,
+  roundAxialCoordinate,
+} from '../../../../util/objects2d';
+import type { RisqBuilding, RisqSpace, RisqUnit } from '../../model/types';
+import type { RisqOrderProjection } from '../../rendering/board/order_overlays';
+import { orderArrowColor } from '../../application/orders/orders_model';
+import { ColorRGB } from '../../../../../../scripts/color_rgb';
+import { RisqVisibilityLevel } from '../../model/types';
 import type { DwgRisq } from '../../risq';
 import { MINIMAP_BUTTON_OVERFLOW } from './corner_button';
 import type { RisqMinimapCornerButton } from './corner_button';
@@ -18,95 +27,95 @@ import {
 } from '../bottom_panel/bottom_panel_buttons';
 import { drawRisqSpaceBorders } from '../../rendering/space_borders';
 import { DrawRisqSpaceDetail, drawHexImage, fillHexOverlay, getSpaceFill } from '../../rendering/space';
-import { RisqViewMode, spaceOwnerColor, terrainImage } from '../../rendering/terrain';
 import {
-  centerUnitMaxZoom,
-  centerUnitSlotCapacity,
-  edgeUnitSlotCapacity,
-  findOuterZoneIndex,
-  getRisqZone,
-  zoneCenterOffset,
-  zoneUnitSlotOffsets,
-  zoneVertices,
-} from '../../rendering/zones/geometry';
-import { buildZoneUnitSlots } from '../../rendering/zones/slots';
-import { isForestResource, resourceType } from '../../rendering/assets/resources';
-
-const RESOURCE_DOT_COLORS: Record<RisqResourceType | 'selected', string> = {
-  [RisqResourceType.ERROR]: 'black',
-  [RisqResourceType.FOOD]: '#a0c692',
-  [RisqResourceType.WOOD]: 'rgb(25, 85, 35)',
-  [RisqResourceType.STONE]: 'rgb(160, 160, 160)',
-  [RisqResourceType.GOLD]: 'rgb(220, 180, 35)',
-  selected: 'white',
-};
+  RisqViewMode,
+  buildingOrdersVisibleInViewMode,
+  buildingVisibleInViewMode,
+  spaceOwnerColor,
+  terrainImage,
+  unitVisibleInViewMode,
+} from '../../rendering/terrain';
+import { getRisqZone, zoneCenterOffset } from '../../rendering/zones/geometry';
+import { drawZoneResourceDot, resourceDot, unitDotOffsets } from '../../rendering/overview_dots';
 
 function minimapTerrainImage(terrain_id: number): string {
   switch (terrain_id) {
     case 1:
     case 2:
     case 3:
+    case 6:
+      return 'risq/terrains/minimap/grass';
     case 4:
     case 5:
-      return 'risq/terrains/minimap/grass';
-    case 6:
+      return 'risq/terrains/minimap/grass_dead';
     case 7:
-    case 13:
-      return 'risq/terrains/minimap/cobblestone';
     case 8:
+    case 14:
+      return 'risq/terrains/minimap/cobblestone';
     case 9:
     case 10:
     case 11:
     case 12:
+    case 13:
       return 'risq/terrains/minimap/dirt';
-    case 14:
-    case 22:
-    case 23:
-      return 'risq/terrains/minimap/straw';
     case 15:
+    case 23:
+    case 24:
+      return 'risq/terrains/minimap/straw';
     case 16:
     case 17:
     case 18:
     case 19:
-      return 'risq/terrains/minimap/sand';
     case 20:
+      return 'risq/terrains/minimap/sand';
     case 21:
+    case 22:
       return 'risq/terrains/minimap/snow';
-    case 24:
     case 25:
+    case 26:
       return 'risq/terrains/minimap/farmland';
     case 51:
     case 52:
     case 53:
+    case 56:
+      return 'risq/terrains/minimap/grass_hills';
     case 54:
     case 55:
-      return 'risq/terrains/minimap/grass_hills';
-    case 56:
-    case 57:
-    case 58:
+      return 'risq/terrains/minimap/grass_dead_hills';
     case 59:
     case 60:
-      return 'risq/terrains/minimap/dirt_hills';
     case 61:
     case 62:
-      return 'risq/terrains/minimap/snow_hills';
     case 63:
-    case 64:
+      return 'risq/terrains/minimap/dirt_hills';
+    case 66:
+    case 67:
+    case 68:
+    case 69:
+    case 70:
+      return 'risq/terrains/minimap/sand_hills';
+    case 71:
+    case 72:
+      return 'risq/terrains/minimap/snow_hills';
+    case 75:
+    case 76:
       return 'risq/terrains/minimap/farmland_hills';
     case 101:
     case 102:
     case 103:
+    case 106:
+      return 'risq/terrains/minimap/grass_mountains';
     case 104:
     case 105:
-      return 'risq/terrains/minimap/grass_mountains';
-    case 106:
-    case 107:
-    case 108:
+      return 'risq/terrains/minimap/grass_dead_mountains';
     case 109:
     case 110:
-      return 'risq/terrains/minimap/dirt_mountains';
     case 111:
     case 112:
+    case 113:
+      return 'risq/terrains/minimap/dirt_mountains';
+    case 121:
+    case 122:
       return 'risq/terrains/minimap/snow_mountains';
     case 151:
     case 152:
@@ -202,10 +211,13 @@ export class RisqMinimap implements CanvasComponent {
   private clicking = false;
   private last_screen_m: Point2D = { x: 0, y: 0 };
   private last_transform: BoardTransformData = defaultTransform();
-  private unit_offsets = new WeakMap<RisqZone, Map<number, Point2D>>();
   private corner_buttons: RisqMinimapCornerButton[];
 
-  constructor(risq: DwgRisq, config: MinimapConfig) {
+  constructor(
+    risq: DwgRisq,
+    config: MinimapConfig,
+    private order_space: (space: RisqSpace, ctrl_held: boolean) => void
+  ) {
     this.risq = risq;
     this.config = config;
     this.corner_buttons = [
@@ -282,29 +294,6 @@ export class RisqMinimap implements CanvasComponent {
     };
   }
 
-  private resourceDot(type: RisqResourceType | 'selected'): HTMLCanvasElement | undefined {
-    const size = 16;
-    return this.risq
-      .getImageCache()
-      .getImage(`minimap_resource_${type}`, size, [], (ctx: CanvasRenderingContext2D): void => {
-        ctx.fillStyle = RESOURCE_DOT_COLORS[type];
-        ctx.strokeStyle = 'transparent';
-        drawCircle(ctx, { x: size / 2, y: size / 2 }, size / 2);
-      });
-  }
-
-  private drawForestZone(ctx: CanvasRenderingContext2D, zone: RisqZone, center: Point2D): void {
-    ctx.save();
-    ctx.fillStyle = RESOURCE_DOT_COLORS[RisqResourceType.WOOD];
-    ctx.beginPath();
-    for (const point of zoneVertices(zone.coordinate, this.hex_r)) {
-      ctx.lineTo(center.x + point.x, center.y + point.y);
-    }
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-  }
-
   private drawResourceDots(ctx: CanvasRenderingContext2D, space: RisqSpace, selected_points: Point2D[]): void {
     if (space.visibility < RisqVisibilityLevel.FOG) {
       return;
@@ -313,46 +302,14 @@ export class RisqMinimap implements CanvasComponent {
       if (!zone.resource) {
         continue;
       }
-      const forest = isForestResource(zone.resource);
-      const image = forest ? undefined : this.resourceDot(resourceType(zone.resource));
-      if (!forest && !image) {
-        continue;
-      }
       const center = this.coordinateToMinimapCanvas(space.coordinate);
       const point = addPoint2D(center, zoneCenterOffset(zone.coordinate, this.hex_r));
       const scale = this.risq.viewport.viewMode() === RisqViewMode.RESOURCE ? 1.4 : 1;
-      const radius = scale * Math.max(1, 0.175 * this.hex_r);
-      if (forest) {
-        this.drawForestZone(ctx, zone, center);
-      } else if (image) {
-        ctx.drawImage(image, point.x - radius, point.y - radius, radius * 2, radius * 2);
-      }
+      drawZoneResourceDot(ctx, this.risq.getImageCache(), zone, center, this.hex_r, scale);
       if (this.risq.selection.isResourceSelected(zone.resource.internal_id)) {
         selected_points.push(point);
       }
     }
-  }
-
-  private zoneUnitOffsets(zone: RisqZone): Map<number, Point2D> {
-    const cached = this.unit_offsets.get(zone);
-    if (cached) {
-      return cached;
-    }
-    const unit_r = 1 / (2 * centerUnitMaxZoom(1, 1));
-    const capacity =
-      findOuterZoneIndex(zone.coordinate) === -1 ? centerUnitSlotCapacity(1, unit_r) : edgeUnitSlotCapacity(1, unit_r);
-    const slots = buildZoneUnitSlots(zone, this.risq.getPlayerId(), capacity);
-    const offsets = zoneUnitSlotOffsets(zone.coordinate, 1, slots.length, unit_r);
-    const positions = new Map<number, Point2D>();
-    for (const [i, slot] of slots.entries()) {
-      for (const group of slot) {
-        for (const id of group.units) {
-          positions.set(id, offsets[i]);
-        }
-      }
-    }
-    this.unit_offsets.set(zone, positions);
-    return positions;
   }
 
   private unitOffset(unit: RisqUnit): Point2D | undefined {
@@ -360,7 +317,102 @@ export class RisqMinimap implements CanvasComponent {
       return undefined;
     }
     const zone = getRisqZone(this.risq.session.spaceAt(unit.space_coordinate), unit.zone_coordinate);
-    return zone ? this.zoneUnitOffsets(zone).get(unit.internal_id) : undefined;
+    return zone
+      ? unitDotOffsets(zone, this.risq.getPlayerId(), this.risq.viewport.viewMode()).get(unit.internal_id)
+      : undefined;
+  }
+
+  private drawSelectedOrders(ctx: CanvasRenderingContext2D): void {
+    const projection = this.orderProjection();
+    ctx.save();
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 2]);
+    const view_mode = this.risq.viewport.viewMode();
+    for (const id of this.risq.selection.selectedUnitIds()) {
+      const unit = this.risq.session.findUnitById(id);
+      if (unit && unitVisibleInViewMode(unit.unit_type, view_mode)) {
+        this.drawEntityOrders(ctx, unit, projection);
+      }
+    }
+    for (const building of this.risq.selection.selectedBuildings()) {
+      if (buildingOrdersVisibleInViewMode(building, view_mode)) {
+        this.drawEntityOrders(ctx, building, projection);
+      }
+      this.drawGatherPoint(ctx, building, projection);
+    }
+    ctx.restore();
+  }
+
+  private drawEntityOrders(
+    ctx: CanvasRenderingContext2D,
+    entity: RisqUnit | RisqBuilding,
+    projection: RisqOrderProjection
+  ): void {
+    let from = this.entityPoint(entity);
+    if (!from) {
+      return;
+    }
+    for (const order of this.risq.orders_model.effectiveForSubject(
+      entity.internal_id,
+      'unit_id' in entity ? 'unit' : 'building'
+    )) {
+      const to = this.risq.order_overlays.orderTargetPoint(order, false, from, projection);
+      if (!to || equalsPoint2D(from, to)) {
+        continue;
+      }
+      ctx.strokeStyle = orderArrowColor(order.order_type);
+      ctx.fillStyle = ctx.strokeStyle;
+      drawArrow(ctx, from, to, 3);
+      from = to;
+    }
+  }
+
+  private drawGatherPoint(
+    ctx: CanvasRenderingContext2D,
+    building: RisqBuilding,
+    projection: RisqOrderProjection
+  ): void {
+    const from = this.entityPoint(building);
+    const gather_point = this.risq.commands.gather_points.point(building);
+    const to =
+      from && gather_point && this.risq.order_overlays.gatherPointTargetPoint(gather_point, false, from, projection);
+    if (!from || !to || equalsPoint2D(from, to)) {
+      return;
+    }
+    ctx.strokeStyle = 'white';
+    ctx.fillStyle = 'white';
+    drawArrow(ctx, from, to, 3);
+    ctx.save();
+    ctx.translate(to.x, to.y);
+    ctx.rotate(-this.last_transform.rotation);
+    const flag = this.risq.getPlayerColoredIcon('risq/icons/garrison_flag', new ColorRGB(255, 255, 255));
+    ctx.drawImage(flag, 0, -7, 7, 7);
+    ctx.restore();
+  }
+
+  private orderProjection(): RisqOrderProjection {
+    return {
+      hexR: (): number => this.hex_r,
+      coordinateToCanvas: (space: Point2D): Point2D => this.coordinateToMinimapCanvas(space),
+      orderPoint: (space: Point2D, offset: Point2D | undefined, zone_view: boolean): Point2D =>
+        addPoint2D(this.coordinateToMinimapCanvas(space), zone_view && offset ? offset : { x: 0, y: 0 }),
+      unitAnchorOffset: (unit: RisqUnit): Point2D | undefined => {
+        const point = this.entityPoint(unit);
+        const location = this.risq.session.unitLocation(unit);
+        const center = location && this.coordinateToMinimapCanvas(location.space_coordinate);
+        return point && center ? { x: point.x - center.x, y: point.y - center.y } : undefined;
+      },
+    };
+  }
+
+  private entityPoint(entity: RisqUnit | RisqBuilding): Point2D | undefined {
+    const location = 'unit_id' in entity ? this.risq.session.unitLocation(entity) : entity;
+    if (!location) {
+      return undefined;
+    }
+    const offset =
+      ('unit_id' in entity ? this.unitOffset(entity) : undefined) ?? zoneCenterOffset(location.zone_coordinate, 1);
+    return addPoint2D(this.coordinateToMinimapCanvas(location.space_coordinate), multiplyPoint2D(this.hex_r, offset));
   }
 
   draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
@@ -403,11 +455,7 @@ export class RisqMinimap implements CanvasComponent {
             const minimap_canvas = this.coordinateToMinimapCanvas(space.coordinate);
             const owner_color = spaceOwnerColor(space.ownership, game.players);
             const region_owned = (this.risq.session.getRegionForSpace(space.coordinate_key)?.owner ?? -1) >= 0;
-            if (
-              space.visibility === RisqVisibilityLevel.UNEXPLORED ||
-              view_mode === RisqViewMode.OWNERSHIP ||
-              view_mode === RisqViewMode.REGION
-            ) {
+            if (space.visibility === RisqVisibilityLevel.UNEXPLORED || view_mode === RisqViewMode.OWNERSHIP) {
               const fill = getSpaceFill(space, RisqViewMode.OWNERSHIP, owner_color, false);
               if (region_owned) {
                 fill.dBrightness(-0.22);
@@ -447,15 +495,12 @@ export class RisqMinimap implements CanvasComponent {
         const selected_units = this.risq.selection.selectedUnitIds();
 
         ctx.imageSmoothingEnabled = true;
-        if (
-          view_mode !== RisqViewMode.MILITARY &&
-          view_mode !== RisqViewMode.OWNERSHIP &&
-          view_mode !== RisqViewMode.REGION
-        ) {
+        if (view_mode !== RisqViewMode.MILITARY && view_mode !== RisqViewMode.OWNERSHIP) {
           for (const space of all_spaces) {
             this.drawResourceDots(ctx, space, selected_resource_points);
           }
         }
+        this.drawSelectedOrders(ctx);
         ctx.imageSmoothingEnabled = false;
         for (const player of game.players) {
           const color_key = `minimap_dot_${player.color.getR()}_${player.color.getG()}_${player.color.getB()}`;
@@ -466,16 +511,13 @@ export class RisqMinimap implements CanvasComponent {
 
           for (const entity of [...player.units.values(), ...player.buildings.values()]) {
             const is_unit = 'unit_id' in entity;
-            const location = is_unit ? this.risq.session.unitLocation(entity) : entity;
-            if (!location) {
+            const point = this.entityPoint(entity);
+            const shown = is_unit
+              ? unitVisibleInViewMode(entity.unit_type, view_mode)
+              : buildingVisibleInViewMode(entity, view_mode);
+            if (!point || !shown) {
               continue;
             }
-            const offset =
-              (is_unit ? this.unitOffset(entity) : undefined) ?? zoneCenterOffset(location.zone_coordinate, 1);
-            const point = addPoint2D(
-              this.coordinateToMinimapCanvas(location.space_coordinate),
-              multiplyPoint2D(this.hex_r, offset)
-            );
 
             const radius = Math.max(1, 0.175 * this.hex_r);
             if (dot_img) {
@@ -505,7 +547,7 @@ export class RisqMinimap implements CanvasComponent {
         }
         ctx.imageSmoothingEnabled = true;
         for (const point of selected_resource_points) {
-          const image = this.resourceDot('selected');
+          const image = resourceDot(this.risq.getImageCache(), 'selected');
           const scale = view_mode === RisqViewMode.RESOURCE ? 1.4 : 1;
           const radius = scale * Math.max(1.5, 0.25 * this.hex_r);
           if (image) {
@@ -548,8 +590,13 @@ export class RisqMinimap implements CanvasComponent {
       }
     );
     for (const button of this.corner_buttons) {
-      button.dataRefreshed();
       button.draw(ctx, transform, dt);
+    }
+  }
+
+  dataRefreshed(): void {
+    for (const button of this.corner_buttons) {
+      button.dataRefreshed();
     }
   }
 
@@ -583,7 +630,18 @@ export class RisqMinimap implements CanvasComponent {
     if (this.corner_buttons.map((button) => button.mousedown(e)).some(Boolean)) {
       return true;
     }
-    if (!this.hovering || this.corner_buttons.some((button) => button.isHovering()) || e.button !== 0) {
+    if (!this.hovering || this.corner_buttons.some((button) => button.isHovering())) {
+      return false;
+    }
+    if (e.button === 2) {
+      const coordinate = roundAxialCoordinate(this.coordinateAtScreen(this.last_screen_m));
+      const space = this.risq.session.spaceAt(coordinate);
+      if (space) {
+        this.order_space(space, e.ctrlKey);
+      }
+      return true;
+    }
+    if (e.button !== 0) {
       return false;
     }
     this.clicking = true;
@@ -596,7 +654,7 @@ export class RisqMinimap implements CanvasComponent {
     this.clicking = false;
   }
 
-  private jumpTo(screen: Point2D): void {
+  private coordinateAtScreen(screen: Point2D): Point2D {
     const origin = this.contentOrigin();
     const content_center = { x: 0.5 * this.content_size.x, y: 0.5 * this.content_size.y };
     const display_center = { x: origin.x + content_center.x, y: origin.y + content_center.y };
@@ -604,11 +662,14 @@ export class RisqMinimap implements CanvasComponent {
       { x: screen.x - display_center.x, y: screen.y - display_center.y },
       -this.last_transform.rotation
     );
-    const coordinate = this.minimapCanvasToCoordinate({
+    return this.minimapCanvasToCoordinate({
       x: local.x + content_center.x,
       y: local.y + content_center.y,
     });
-    this.risq.goToCoordinate(coordinate);
+  }
+
+  private jumpTo(screen: Point2D): void {
+    this.risq.goToCoordinate(this.coordinateAtScreen(screen));
   }
 
   xi(): number {

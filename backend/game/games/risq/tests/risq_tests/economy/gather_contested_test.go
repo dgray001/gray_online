@@ -9,7 +9,7 @@ import (
 func TestContestedDepletionSplitsFairly(t *testing.T) {
 	var results [][2]float64
 	for _, slots := range [][2]int{{0, 1}, {1, 0}} {
-		g := gatherGame(t, 11, true)
+		g := gatherGame(t, 11, true, true)
 		p0, p1 := g.Human(0), g.Human(1)
 		category := defs.ResourceConfigs[11].Category
 		before := [2]float64{balance(g, p0, category), balance(g, p1, category)}

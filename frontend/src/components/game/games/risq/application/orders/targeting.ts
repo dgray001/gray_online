@@ -5,7 +5,7 @@ import type { RisqBuilding, RisqZone } from '../../model/types';
 import { RisqAttackType, RisqOrderType, RisqVisibilityLevel } from '../../model/types';
 import type { RisqViewport } from '../../rendering/board/viewport';
 import { hoveredZoneObject } from '../../rendering/zones/hit_testing';
-import { unitVisibleInViewMode } from '../../rendering/zones/draw';
+import { unitVisibleInViewMode } from '../../rendering/terrain';
 import type { RisqArmedState } from '../input/armed_state';
 import type { RisqHover } from '../input/hover';
 import type { RisqSession } from '../session';

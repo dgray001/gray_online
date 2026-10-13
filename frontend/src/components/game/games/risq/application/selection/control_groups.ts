@@ -35,6 +35,7 @@ export class RisqControlGroups {
   removeGroup(number: number): void {
     if (this.groups.delete(number)) {
       this.group_revision++;
+      this.on_change();
     }
   }
 
@@ -50,6 +51,7 @@ export class RisqControlGroups {
       this.groups.delete(number);
     }
     this.group_revision++;
+    this.on_change();
   }
 
   entries(): [number, ControlGroup][] {
@@ -67,7 +69,8 @@ export class RisqControlGroups {
   constructor(
     private session: RisqSession,
     private left_panel: RisqLeftPanel,
-    private selection: RisqSelection
+    private selection: RisqSelection,
+    private on_change: () => void
   ) {}
 
   assign(group: number): void {
@@ -109,6 +112,7 @@ export class RisqControlGroups {
     }
     this.groups.set(number, assigned);
     this.group_revision++;
+    this.on_change();
   }
 
   recall(group: number): Point2D | undefined {

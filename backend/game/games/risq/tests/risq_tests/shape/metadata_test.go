@@ -5,12 +5,11 @@ import (
 
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness"
-	"github.com/dgray001/gray_online/game/games/risq/tests/harness/fakeboard"
 )
 
 func TestBackgroundAndSpaceLinksWireShapes(t *testing.T) {
-	doc := `{"board_size":4,"players":2,"spaces":[` + targetSpace + scoutSpaces + hiddenSpaces + `],"background_image":{"name":"map.png","top_left":[-4,-2],"top_right":[4,2]},"connections":[{"from":[-4,0],"to":[4,0],"direction":3}]}`
-	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"metadata": doc})
+	saved15 := defs.UnitConfigs[15]
+	t.Cleanup(func() { defs.UnitConfigs[15] = saved15 })
 	defs.UnitConfigs[15] = defs.UnitConfigs[1]
 	g := harness.NewGame(t, "custom:metadata", 1, 2)
 	for _, viewer := range []bool{false, true} {

@@ -84,7 +84,7 @@ func (gp *RisqGatherPoint) candidates() []gatherPointCandidate {
 			return nil
 		}
 		id := int64(gp.object_id)
-		return []gatherPointCandidate{{defs.OrderType_UnitGarrison, id}, {defs.OrderType_UnitRepair, id}, {defs.OrderType_UnitAttackBuilding, id}}
+		return []gatherPointCandidate{{defs.OrderType_UnitGather, int64(gp.location_id)}, {defs.OrderType_UnitGarrison, id}, {defs.OrderType_UnitRepair, id}, {defs.OrderType_UnitAttackBuilding, id}}
 	case RisqGatherObjectType_UNIT:
 		return []gatherPointCandidate{{defs.OrderType_UnitAttackUnit, int64(gp.object_id)}}
 	default:

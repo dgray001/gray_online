@@ -7,6 +7,7 @@ module.exports = {
 			import: './src/pages/devmode.ts',
 		},
 		risq_map_editor: {
+			dependOn: 'index',
 			import: './src/pages/risq_map_editor.ts',
 		},
 		fiddlesticks: {

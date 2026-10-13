@@ -13,6 +13,11 @@ import (
 
 func rangedGame(t *testing.T, distance int, nearbyVillager bool) *harness.Game {
 	t.Helper()
+	return rangedGameWithRange(t, distance, nearbyVillager, defs.RisqRange_ADJACENT)
+}
+
+func rangedGameWithRange(t *testing.T, distance int, nearbyVillager bool, attack_range defs.RisqRange) *harness.Game {
+	t.Helper()
 	var spaces []string
 	for x := 0; x <= distance; x++ {
 		zones := ""
@@ -30,7 +35,7 @@ func rangedGame(t *testing.T, distance int, nearbyVillager bool) *harness.Game {
 	doc := fmt.Sprintf(`{"board_size":3,"players":2,"spaces":[%s]}`, strings.Join(spaces, ","))
 	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"ranged": doc})
 	config := defs.UnitConfigs[11]
-	config.Attack_range = defs.RisqRange_ADJACENT
+	config.Attack_range = attack_range
 	config.Vision.Adjacent, config.Vision.Edge_opposite, config.Vision.Secondary = defs.VisibilityGood, defs.VisibilityGood, defs.VisibilityGood
 	defs.UnitConfigs[11] = config
 	g := harness.NewGame(t, "custom:ranged", 1, 2)

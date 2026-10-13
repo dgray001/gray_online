@@ -9,26 +9,45 @@ import (
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness/fakeboard"
 )
 
+// The board a script of only the shape step makes, so dimensions are checked without generating a whole map
+func shapeOnlyBoard(t *testing.T, name string, size defs.MapSize) *fakeboard.Board {
+	t.Helper()
+	board, err := fakeboard.GenerateWithSize("script:"+name, 2, size, 1)
+	if err == nil || err.Error() != startsMissing {
+		t.Fatalf("size %d: error %v, want %q", size, err, startsMissing)
+	}
+	return board
+}
+
+// Sizes also generated with the full script, since terrain, resources and starts cost far more than the shape
+func fullyGenerated(size defs.MapSize) bool {
+	return size == defs.MapSize_MINUSCULE || size == defs.MapSize_MEDIUM || size == defs.MapSize_GIGANTIC
+}
+
+func shapeScriptNamed(kind string) string {
+	return shapeScript(`{"kind":"` + kind + `"}`)
+}
+
 func TestHexagonMapSizeRadii(t *testing.T) {
 	script, err := os.ReadFile(testConfig + "/maps/scripted/hexagon.json")
 	if err != nil {
 		t.Fatal(err)
 	}
-	useScripts(t, map[string]string{"hexagon": string(script)})
+	useScripts(t, map[string]string{"hexagon": string(script), "hexagon_shape": shapeScriptNamed("hexagon")})
 	for i, radius := range []uint16{4, 5, 6, 7, 7, 8, 8, 9, 10} {
 		size := defs.MapSize(i + 1)
+		spaces := 1 + 3*int(radius)*(int(radius)+1)
+		if shape := shapeOnlyBoard(t, "hexagon_shape", size); shape.BoardSize() != radius || len(shape.Spaces()) != spaces {
+			t.Errorf("size %d: radius %d, spaces %d; want %d, %d", size, shape.BoardSize(), len(shape.Spaces()), radius, spaces)
+		}
+		if !fullyGenerated(size) {
+			continue
+		}
 		board, err := fakeboard.GenerateWithSize("script:hexagon", 2, size, 1)
 		if err != nil {
 			t.Fatalf("size %d: %v", size, err)
 		}
-		spaces := 1 + 3*int(radius)*(int(radius)+1)
-		if board.BoardSize() != radius || len(board.Spaces()) != spaces {
-			t.Errorf("size %d: radius %d, spaces %d; want %d, %d", size, board.BoardSize(), len(board.Spaces()), radius, spaces)
-		}
 		wantDistance := int(radius) - 1
-		if radius >= 8 {
-			wantDistance--
-		}
 		for player := 0; player < 2; player++ {
 			_, _, home := board.Tally(player)
 			var x, y int
@@ -48,23 +67,23 @@ func TestRingMapSizeRadii(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	useScripts(t, map[string]string{"ring": string(script)})
+	useScripts(t, map[string]string{"ring": string(script), "ring_shape": shapeScriptNamed("ring")})
 	radii := [][2]uint16{{4, 2}, {5, 2}, {5, 2}, {6, 3}, {7, 3}, {7, 3}, {8, 4}, {9, 4}, {10, 5}}
 	for i, pair := range radii {
+		outer, inner := int(pair[0]), int(pair[1])
+		spaces := 3 * (outer*(outer+1) - inner*(inner+1))
+		if shape := shapeOnlyBoard(t, "ring_shape", defs.MapSize(i+1)); shape.BoardSize() != pair[0] || len(shape.Spaces()) != spaces {
+			t.Errorf("size %d: radius %d, spaces %d; want %d, %d", i+1, shape.BoardSize(), len(shape.Spaces()), outer, spaces)
+		}
+		if !fullyGenerated(defs.MapSize(i + 1)) {
+			continue
+		}
 		board, err := fakeboard.GenerateWithSize("script:ring", 2, defs.MapSize(i+1), 1)
 		if err != nil {
 			t.Fatalf("size %d: %v", i+1, err)
 		}
 		checkBoardInvariants(t, board, 2)
-		outer, inner := int(pair[0]), int(pair[1])
-		spaces := 3 * (outer*(outer+1) - inner*(inner+1))
-		if board.BoardSize() != pair[0] || len(board.Spaces()) != spaces {
-			t.Errorf("size %d: radius %d, spaces %d; want %d, %d", i+1, board.BoardSize(), len(board.Spaces()), outer, spaces)
-		}
 		wantDistance := outer - 1
-		if outer-inner >= 5 {
-			wantDistance--
-		}
 		for player := 0; player < 2; player++ {
 			_, _, home := board.Tally(player)
 			var x, y int
@@ -83,14 +102,17 @@ func TestRectangleMapSizeDimensions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	useScripts(t, map[string]string{"rectangle": string(script)})
+	useScripts(t, map[string]string{"rectangle": string(script), "rectangle_shape": shapeScriptNamed("rectangle")})
 	dimensions := [][2]int{{6, 9}, {8, 12}, {9, 14}, {10, 15}, {11, 16}, {12, 18}, {13, 19}, {14, 21}, {15, 23}}
 	for i, want := range dimensions {
-		board, err := fakeboard.GenerateWithSize("script:rectangle", 2, defs.MapSize(i+1), 1)
-		if err != nil {
-			t.Fatalf("size %d: %v", i+1, err)
+		if fullyGenerated(defs.MapSize(i + 1)) {
+			board, err := fakeboard.GenerateWithSize("script:rectangle", 2, defs.MapSize(i+1), 1)
+			if err != nil {
+				t.Fatalf("size %d: %v", i+1, err)
+			}
+			checkBoardInvariants(t, board, 2)
 		}
-		checkBoardInvariants(t, board, 2)
+		board := shapeOnlyBoard(t, "rectangle_shape", defs.MapSize(i+1))
 		rowCounts := map[int]int{}
 		for _, space := range board.Inspect() {
 			rowCounts[space.Coord.Y]++
@@ -111,13 +133,17 @@ func TestTriangleMapSizeDimensions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	useScripts(t, map[string]string{"triangle": string(script)})
+	useScripts(t, map[string]string{"triangle": string(script), "triangle_shape": shapeScriptNamed("triangle")})
 	dimensions := [][2]int{{9, 55}, {12, 91}, {14, 120}, {16, 153}, {17, 171}, {19, 210}, {20, 231}, {23, 300}, {25, 351}}
 	for i, want := range dimensions {
-		board, err := fakeboard.GenerateWithSize("script:triangle", 2, defs.MapSize(i+1), 1)
-		if err != nil {
-			t.Fatalf("size %d: %v", i+1, err)
+		if fullyGenerated(defs.MapSize(i + 1)) {
+			board, err := fakeboard.GenerateWithSize("script:triangle", 2, defs.MapSize(i+1), 1)
+			if err != nil {
+				t.Fatalf("size %d: %v", i+1, err)
+			}
+			checkBoardInvariants(t, board, 2)
 		}
+		board := shapeOnlyBoard(t, "triangle_shape", defs.MapSize(i+1))
 		rows := map[int]bool{}
 		for _, space := range board.Inspect() {
 			rows[space.Coord.Y] = true
@@ -125,11 +151,11 @@ func TestTriangleMapSizeDimensions(t *testing.T) {
 		if len(rows) != want[0]+1 || len(board.Spaces()) != want[1] {
 			t.Errorf("size %d: %d rows and %d spaces, want %d and %d", i+1, len(rows), len(board.Spaces()), want[0]+1, want[1])
 		}
-		checkBoardInvariants(t, board, 2)
 	}
 }
 
 func TestScriptsGenerateForSweptPlayerCounts(t *testing.T) {
+	t.Parallel()
 	for _, name := range sweptScripts {
 		for _, players := range sweptPlayerCounts(name) {
 			t.Run(fmt.Sprintf("%s/p%d", name, players), func(t *testing.T) {

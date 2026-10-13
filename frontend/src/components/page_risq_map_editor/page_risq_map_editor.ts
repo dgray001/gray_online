@@ -1,5 +1,7 @@
 import { DwgElement } from '../dwg_element';
 import { apiGet } from '../../scripts/api';
+import { isDialogOpen } from '../../scripts/util';
+import { DialogSize } from '../dialog_box/dialog_box';
 import type { DwgCanvasBoard } from '../game/util/canvas_board/canvas_board';
 import type { CanvasComponent } from '../game/util/canvas_components/canvas_component';
 import { drawHexagon } from '../game/util/canvas_util';
@@ -18,10 +20,11 @@ import type { EditorTarget, EditorToolContext } from './editor_tool';
 import type { EditorTool } from './editor_tool';
 import { EditorDrawHost } from './editor_host';
 import { MapEditorHeader } from './map_editor_header';
-import type { TerrainEntry } from './map_api';
-import { deleteMap, listMaps, listTerrains, loadMap, previewMap, saveMap } from './map_api';
+import type { EntityCatalog, TerrainEntry } from './map_api';
+import { deleteMap, listEntities, listMaps, listTerrains, loadMap, previewMap, saveMap } from './map_api';
 import type { MapDoc } from './map_doc';
 import { newMapDoc } from './map_doc';
+import { BackgroundTool } from './tools/background_tool';
 import { ConnectionsTool } from './tools/connections_tool';
 import { RegionTool } from './tools/region_tool';
 import { SelectTool } from './tools/select_tool';
@@ -35,6 +38,7 @@ import html from './page_risq_map_editor.html';
 
 import './page_risq_map_editor.scss';
 import '../game/util/canvas_board/canvas_board';
+import '../dialog_box/confirm_dialog/confirm_dialog';
 
 const MAP_NAME_PATTERN = /^[a-z0-9_]{1,40}$/;
 const MAX_BOARD_SIZE = 10;
@@ -48,6 +52,7 @@ export class DwgPageRisqMapEditor extends DwgElement {
   private host = new EditorDrawHost(this.session, this.viewport);
   private history = new EditHistory();
   private terrains: TerrainEntry[] = [];
+  private entities: EntityCatalog = { buildings: [], units: [], resources: [] };
   private selection?: EditorTarget;
   private dragged = false;
   private context: EditorToolContext = {
@@ -58,6 +63,8 @@ export class DwgPageRisqMapEditor extends DwgElement {
     select: (target) => this.select(target),
     dragged: () => this.dragged,
     terrains: () => this.terrains,
+    entities: () => this.entities,
+    panTo: (coordinate) => this.panTo(coordinate),
     getIcon: (name) => this.host.getIcon(name),
     toCanvas: (coordinate) => this.viewport.coordinateToCanvas(coordinate),
     hexR: () => this.viewport.hexR(),
@@ -70,6 +77,7 @@ export class DwgPageRisqMapEditor extends DwgElement {
     new SlotsTool(this.context),
     new RegionTool(this.context),
     new ConnectionsTool(this.context),
+    new BackgroundTool(this.context),
     new ValidationTool(this.context),
   ];
   private active_tool = 0;
@@ -92,12 +100,11 @@ export class DwgPageRisqMapEditor extends DwgElement {
     this.host,
     this.session,
     this.viewport,
-    { draw: () => {} },
+    { draw: () => {}, drawRanges: (): void => {} },
     () => undefined,
     []
   );
   private doc?: MapDoc;
-  private armed_delete?: string;
   private board_pixels: Point2D = { x: 0, y: 0 };
   private fitted_board_size = -1;
   private last_frame = Date.now();
@@ -105,6 +112,9 @@ export class DwgPageRisqMapEditor extends DwgElement {
   private preview_dirty = false;
   private preview_revision = 0;
   private load_revision = 0;
+  private saved_name?: string;
+  private unsaved_new = false;
+  private revert_notice?: string;
 
   constructor() {
     super();
@@ -114,24 +124,45 @@ export class DwgPageRisqMapEditor extends DwgElement {
 
   protected override parsedCallback(): void {
     document.addEventListener('keydown', this.handleKeydown);
+    window.addEventListener('beforeunload', this.handleBeforeUnload);
     this.start();
   }
 
   override disconnectedCallback(): void {
     super.disconnectedCallback();
     document.removeEventListener('keydown', this.handleKeydown);
+    window.removeEventListener('beforeunload', this.handleBeforeUnload);
+  }
+
+  private handleBeforeUnload = (e: BeforeUnloadEvent): void => {
+    if (this.isDirty()) {
+      e.preventDefault();
+    }
+  };
+
+  private isTyping(): boolean {
+    return this.header.isBusy() || isDialogOpen() || !!this.tool().config()?.isTyping?.();
   }
 
   private handleKeydown = (e: KeyboardEvent): void => {
-    if (this.header.isTyping() || !this.doc) {
+    const key = e.key.toLowerCase();
+    const modifier = e.ctrlKey || e.metaKey;
+    if (modifier && key === 's') {
+      e.preventDefault();
+      this.save(this.header.name());
       return;
     }
-    const key = e.key.toLowerCase();
-    if (e.ctrlKey || e.metaKey) {
+    if (this.isTyping() || !this.doc) {
+      return;
+    }
+    if (modifier) {
       if (key === 'z' || key === 'y') {
         e.preventDefault();
         this.undoRedo(key === 'y' || e.shiftKey);
       }
+      return;
+    }
+    if (e.altKey || e.repeat) {
       return;
     }
     if (key === 'escape') {
@@ -153,9 +184,37 @@ export class DwgPageRisqMapEditor extends DwgElement {
     if (terrains.success) {
       this.terrains = terrains.result;
     }
+    const entities = await listEntities();
+    if (entities.success) {
+      this.entities = entities.result;
+    }
     await this.startBoard();
     await this.refreshMapList();
     this.header.setStatus('Select a map or create a new one');
+  }
+
+  private isDirty(): boolean {
+    return !!this.doc && (this.unsaved_new || this.history.isDirty());
+  }
+
+  private confirm(question: string, on_confirmed: () => void): void {
+    const dialog = document.createElement('dwg-confirm-dialog');
+    dialog.setData({ question, size: DialogSize.SMALL });
+    dialog.addEventListener('confirmed', on_confirmed);
+    this.appendChild(dialog);
+  }
+
+  private discardThen(action: () => void): void {
+    if (this.isDirty()) {
+      this.confirm('Discard unsaved changes?', action);
+    } else {
+      action();
+    }
+  }
+
+  private panTo(coordinate: Point2D): void {
+    const scale = this.viewport.lastTransform().scale ?? 1;
+    this.board.setView(multiplyPoint2D(scale, this.viewport.coordinateToCanvas(coordinate)));
   }
 
   private components(): CanvasComponent[] {
@@ -252,6 +311,7 @@ export class DwgPageRisqMapEditor extends DwgElement {
     }
     this.left_panel.draw(ctx, transform, dt);
     this.right_panel.draw(ctx, transform, dt);
+    this.header.setDirty(this.isDirty());
     this.header.draw(ctx, transform, dt);
   }
 
@@ -351,13 +411,18 @@ export class DwgPageRisqMapEditor extends DwgElement {
     this.header.setMaps(response.result);
   }
 
-  private async createNew(name: string, size: number): Promise<void> {
+  private createNew(name: string, size: number): void {
     const error = this.newMapError(name, size);
     if (error) {
       this.header.setStatus(error, true);
       return;
     }
+    this.discardThen(() => this.startNewMap(name, size));
+  }
+
+  private async startNewMap(name: string, size: number): Promise<void> {
     await this.setDoc(newMapDoc(size, 1), name);
+    this.unsaved_new = true;
   }
 
   private newMapError(name: string, size: number): string | undefined {
@@ -373,7 +438,14 @@ export class DwgPageRisqMapEditor extends DwgElement {
     return undefined;
   }
 
-  private async openMap(name: string): Promise<void> {
+  private openMap(name: string): void {
+    if (this.isDirty()) {
+      this.header.setSelected(this.saved_name);
+    }
+    this.discardThen(() => this.loadSavedMap(name));
+  }
+
+  private async loadSavedMap(name: string): Promise<void> {
     const revision = ++this.load_revision;
     const response = await loadMap(name);
     if (revision !== this.load_revision) {
@@ -398,25 +470,27 @@ export class DwgPageRisqMapEditor extends DwgElement {
     const response = await saveMap(name, this.doc);
     this.header.setStatus(response.success ? `Saved ${name}` : response.error_message, !response.success);
     if (response.success) {
+      this.history.markSaved();
+      this.unsaved_new = false;
+      this.saved_name = name;
       await this.refreshMapList();
       this.header.setSelected(name);
       this.header.showDelete(true);
     }
   }
 
-  private async deleteSaved(name: string): Promise<void> {
-    if (this.armed_delete !== name) {
-      this.armed_delete = name;
-      this.header.setStatus(`Press Delete again to permanently delete ${name}`, true);
-      return;
-    }
-    this.armed_delete = undefined;
+  private deleteSaved(name: string): void {
+    this.confirm(`Permanently delete ${name}?`, () => this.deleteConfirmed(name));
+  }
+
+  private async deleteConfirmed(name: string): Promise<void> {
     const response = await deleteMap(name);
     if (!response.success) {
       this.header.setStatus(response.error_message, true);
       return;
     }
     this.doc = undefined;
+    this.saved_name = undefined;
     this.history.clear();
     this.select(undefined);
     this.host.hover.forget();
@@ -436,7 +510,8 @@ export class DwgPageRisqMapEditor extends DwgElement {
     this.header.setSelected(this.header.mapNames().includes(name) ? name : undefined);
     this.header.showSave(true);
     this.header.showDelete(this.header.mapNames().includes(name));
-    this.armed_delete = undefined;
+    this.unsaved_new = false;
+    this.saved_name = this.header.mapNames().includes(name) ? name : undefined;
     await this.refreshPreview();
   }
 
@@ -451,13 +526,19 @@ export class DwgPageRisqMapEditor extends DwgElement {
       return;
     }
     if (!response.success) {
-      this.header.setStatus(response.error_message, true);
+      const reverted = this.history.undo(doc);
+      this.revert_notice = reverted ? `Edit reverted: ${response.error_message}` : undefined;
+      this.header.setStatus(this.revert_notice ?? response.error_message, true);
+      if (reverted) {
+        this.requestPreview();
+      }
       return;
     }
     this.session.replaceSnapshot(response.result);
     this.host.hover.forget();
     this.refreshSelection();
-    this.header.setStatus(`${doc.spaces.length} spaces`);
+    this.header.setStatus(this.revert_notice ?? `${doc.spaces.length} spaces`, !!this.revert_notice);
+    this.revert_notice = undefined;
     this.fitBoard(this.board_pixels, this.board.getBoundingRect());
   }
 

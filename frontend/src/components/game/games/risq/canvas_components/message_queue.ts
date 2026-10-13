@@ -11,6 +11,7 @@ const BASE_HOLD_MS = 1200;
 const HOLD_MS_PER_CHAR = 20;
 const MAX_HOLD_EXTRA_MS = 4000;
 const MAX_VISIBLE = 3;
+const DUPLICATE_DROP_BACKLOG = 20;
 const ROW_H = 30;
 const ROW_GAP = 8;
 const ROW_PADDING_X = 14;
@@ -54,6 +55,9 @@ export class RisqMessageQueue implements CanvasComponent {
   mouseup(_e: MouseEvent): void {}
 
   enqueue(text: string, color: ColorRGB): void {
+    if (this.queue.length >= DUPLICATE_DROP_BACKLOG && this.queue.some((msg) => msg.text === text)) {
+      return;
+    }
     this.queue.push({ text, color });
     this.promote();
   }

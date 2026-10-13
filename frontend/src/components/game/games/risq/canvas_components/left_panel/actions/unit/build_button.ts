@@ -74,6 +74,7 @@ export class RisqBuildButton extends RisqActionButton {
         id: this.producible.id,
         display_name: this.producible.display_name,
         stamina_cost: this.producible.stamina_cost,
+        cost: this.producible.cost,
       });
     }
   }

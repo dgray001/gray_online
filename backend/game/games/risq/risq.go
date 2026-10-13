@@ -1,7 +1,9 @@
 package risq
 
 import (
+	"encoding/json"
 	"fmt"
+	"maps"
 	"math/rand"
 	"sync"
 
@@ -114,6 +116,7 @@ func (r *GameRisq) StartGame() {
 }
 
 func (r *GameRisq) endTurn() {
+	defer util.PerfTimer("end_turn", map[string]any{"turn": r.turn_number})()
 	r.recalculateOwnership()
 	r.payGoldIncome()
 	r.resolvePendingMercenaries()
@@ -126,6 +129,7 @@ func (r *GameRisq) endTurn() {
 }
 
 func (r *GameRisq) startNextTurn() {
+	defer util.PerfTimer("start_next_turn", map[string]any{"turn": r.turn_number + 1})()
 	r.metrics.recordRefresh(r)
 	r.recordEconomyStamina()
 	r.turn_number++
@@ -152,14 +156,46 @@ func (r *GameRisq) startNextTurn() {
 }
 
 func (r *GameRisq) broadcastStartTurn() {
-	for _, player := range r.players {
-		player.player.AddUpdate(&game.UpdateMessage{Kind: "start-turn", Content: gin.H{
-			"game": r.toFrontendFor(player.player.Player_id, player.player.GetClientId(), false),
-		}})
+	r.broadcastSnapshot("start-turn", gin.H{})
+}
+
+// Builds a player's full-state update only if someone can read it; otherwise drops the stale history
+func (r *GameRisq) sendSnapshot(player *game.Player, kind string, content gin.H) {
+	if !player.HasRecipient() {
+		player.DropUpdateHistory()
+		return
 	}
-	r.game.AddViewerUpdate(&game.UpdateMessage{Kind: "start-turn", Content: gin.H{
-		"game": r.ToFrontend(0, true),
-	}})
+	perf_fields := map[string]any{"turn": r.turn_number, "player": player.Player_id, "update_kind": kind}
+	stop_perf := util.PerfTimer("snapshot_build", perf_fields)
+	content["game"] = r.toFrontendFor(player.Player_id, player.GetClientId(), false)
+	if util.PerfEnabled() {
+		encoded, _ := json.Marshal(content)
+		perf_fields["bytes"] = len(encoded)
+	}
+	stop_perf()
+	player.AddUpdate(&game.UpdateMessage{Kind: kind, Content: content})
+}
+
+// Sends a small private settings acknowledgement; the stored snapshot is now outdated and regenerates on its next replay
+func (r *GameRisq) sendSetting(player *game.Player, kind string, content gin.H) {
+	player.MarkSnapshotStale()
+	player.AddSettingUpdate(&game.UpdateMessage{Kind: kind, Content: content})
+}
+
+func (r *GameRisq) sendViewerSnapshot(kind string, content gin.H) {
+	if !r.game.HasViewers() {
+		r.game.DropViewerUpdateHistory()
+		return
+	}
+	content["game"] = r.ToFrontend(0, true)
+	r.game.AddViewerUpdate(&game.UpdateMessage{Kind: kind, Content: content})
+}
+
+func (r *GameRisq) broadcastSnapshot(kind string, extra gin.H) {
+	for _, player := range r.players {
+		r.sendSnapshot(player.player, kind, maps.Clone(extra))
+	}
+	r.sendViewerSnapshot(kind, maps.Clone(extra))
 }
 
 func (r *GameRisq) updateEliminated() {
@@ -240,6 +276,32 @@ func (r *GameRisq) ToFrontend(client_id uint64, is_viewer bool) gin.H {
 		}
 	}
 	return r.toFrontendFor(player_id, client_id, is_viewer)
+}
+
+func (r *GameRisq) viewerPlayerId(client_id uint64) int {
+	for id, player := range r.players {
+		if player != nil && player.player.GetClientId() == client_id {
+			return id
+		}
+	}
+	return -1
+}
+
+// Just the players section of ToFrontend, for callers that skip building the board
+func (r *GameRisq) PlayersToFrontend(client_id uint64) []gin.H {
+	viewer := r.viewerPlayerId(client_id)
+	players := []gin.H{}
+	for _, player := range r.players {
+		if player != nil {
+			players = append(players, player.toFrontend(viewer))
+		}
+	}
+	return players
+}
+
+// One player's entry of PlayersToFrontend as seen by client_id
+func (r *GameRisq) PlayerToFrontend(client_id uint64, player_id int) gin.H {
+	return r.players[player_id].toFrontend(r.viewerPlayerId(client_id))
 }
 
 // Keyed by player id since every AI player shares client id 0

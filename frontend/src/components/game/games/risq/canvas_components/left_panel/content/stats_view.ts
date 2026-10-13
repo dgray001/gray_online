@@ -3,7 +3,7 @@ import { createTooltipState, drawTooltip, shouldShowTooltip } from '../../../../
 import { drawRect, drawText } from '../../../../../util/canvas_util';
 import type { Point2D } from '../../../../../util/objects2d';
 import type { RectHoverData, RisqBuilding, RisqCombatStats, RisqResource, RisqUnit } from '../../../model/types';
-import { RisqAttackType, RisqRange, RisqResourceType } from '../../../model/types';
+import { RisqAttackType, RisqRange, RisqResourceType, rangeDistance } from '../../../model/types';
 import { resourceTypeImage } from '../../../rendering/assets/resources';
 import { UNIT_HEALTHBAR_COLOR_BACKGROUND, UNIT_HEALTHBAR_COLOR_HEALTH } from '../../../rendering/assets/unit';
 import type { DwgRisq } from '../../../risq';
@@ -48,20 +48,6 @@ function attackTypeIncludes(attack_type: RisqAttackType, component: 0 | 1 | 2): 
       return true;
     default:
       return false;
-  }
-}
-
-// Returns the attack's space radius (0/1/2), or null if this isn't a ranged attack (RisqRange_ZONE)
-function rangeDistance(range: RisqRange): number | null {
-  switch (range) {
-    case RisqRange.SPACE:
-      return 0;
-    case RisqRange.ADJACENT:
-      return 1;
-    case RisqRange.SECONDARY:
-      return 2;
-    default:
-      return null;
   }
 }
 
@@ -158,8 +144,10 @@ export class RisqStatsView {
       ctx.fillStyle = UNIT_HEALTHBAR_COLOR_HEALTH;
       drawRect(ctx, { x: xi, y }, (cs.health / cs.max_health) * 0.8 * frame.w(), health_h);
     }
-    this.healthbar_row.ps = { x: xi, y };
-    this.healthbar_row.pe = { x: xi + 0.8 * frame.w(), y: y + health_h };
+    if (pc.layout_pass) {
+      this.healthbar_row.ps = { x: xi, y };
+      this.healthbar_row.pe = { x: xi + 0.8 * frame.w(), y: y + health_h };
+    }
     y += health_h + gap;
 
     const text_y = y + 0.5 * health_h;
@@ -177,8 +165,10 @@ export class RisqStatsView {
     const stamina_text_width = ctx.measureText(stamina_text).width;
     const stamina_icon_x = row_right - stamina_text_width - health_h - 4;
     ctx.drawImage(pc.risq.getIcon('risq/icons/stamina'), stamina_icon_x, y, health_h, health_h);
-    this.stamina_row.ps = { x: stamina_icon_x, y };
-    this.stamina_row.pe = { x: row_right, y: y + health_h };
+    if (pc.layout_pass) {
+      this.stamina_row.ps = { x: stamina_icon_x, y };
+      this.stamina_row.pe = { x: row_right, y: y + health_h };
+    }
     drawText(ctx, stamina_text, {
       p: { x: row_right, y: text_y },
       w: stamina_text_width,
@@ -189,7 +179,9 @@ export class RisqStatsView {
     });
     y += health_h + gap;
 
-    this.stat_cells = [];
+    if (pc.layout_pass) {
+      this.stat_cells = [];
+    }
     for (const group of combatStatsGroups(cs, subject.attack_range)) {
       this.drawStatRow(pc, group, y);
       y += STAT_ROW_H + gap;
@@ -219,10 +211,12 @@ export class RisqStatsView {
         continue;
       }
       const sx = pc.frame.xi() + 0.1 * pc.frame.w() + col * (dx + PANEL_PADDING);
-      this.stat_cells.push({
-        rect: { ps: { x: sx, y }, pe: { x: sx + dx, y: y + image_size } },
-        text: entry[3] ?? `${entry[2]}: ${entry[1]}`,
-      });
+      if (pc.layout_pass) {
+        this.stat_cells.push({
+          rect: { ps: { x: sx, y }, pe: { x: sx + dx, y: y + image_size } },
+          text: entry[3] ?? `${entry[2]}: ${entry[1]}`,
+        });
+      }
       pc.ctx.drawImage(pc.risq.getIcon(entry[0]), sx, y, image_size, image_size);
       drawText(pc.ctx, entry[1].toString(), {
         p: { x: sx + image_size, y: y + 0.5 * image_size },

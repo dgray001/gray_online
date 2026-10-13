@@ -1,3 +1,4 @@
+import { invertPair } from '../../model/coordinates';
 import type { RisqFrontendOrder, RisqOrder } from '../../model/types';
 import { RisqOrderType } from '../../model/types';
 
@@ -58,40 +59,27 @@ export declare interface RisqOrderRowEntry {
   collapsed_orders?: RisqFrontendOrder[];
 }
 
-/** Groups same-subject, same-target BuildingCreate orders together, keeping the first behind */
-export function collapseBuildingCreateOrders(orders: RisqFrontendOrder[]): RisqOrderRowEntry[] {
-  const clusters = new Map<string, RisqFrontendOrder[]>();
-  for (const order of orders) {
-    if (order.order_type !== RisqOrderType.OrderType_BuildingCreate) {
-      continue;
-    }
-    const key = `${order.subjects[0]}:${order.target_id}`;
-    const cluster = clusters.get(key);
-    if (cluster) {
-      cluster.push(order);
-    } else {
-      clusters.set(key, [order]);
-    }
-  }
-  const consumed = new Set<RisqFrontendOrder>();
+export function collapseBuildingCreateOrders(
+  orders: RisqFrontendOrder[],
+  is_cancelled: (order: RisqFrontendOrder) => boolean
+): RisqOrderRowEntry[] {
+  let run_length = 0;
   const entries: RisqOrderRowEntry[] = [];
   for (const order of orders) {
-    if (consumed.has(order)) {
-      continue;
-    }
-    if (order.order_type !== RisqOrderType.OrderType_BuildingCreate) {
-      consumed.add(order);
+    const previous = entries.at(-1);
+    const same_run =
+      previous &&
+      order.order_type === RisqOrderType.OrderType_BuildingCreate &&
+      previous.order.order_type === order.order_type &&
+      previous.order.target_id === order.target_id &&
+      previous.order.subjects.length === order.subjects.length &&
+      previous.order.subjects.every((id: number, i: number): boolean => id === order.subjects[i]) &&
+      is_cancelled(previous.order) === is_cancelled(order);
+    run_length = same_run ? run_length + 1 : 1;
+    if (previous && run_length > 2) {
+      (previous.collapsed_orders ??= []).push(order);
+    } else {
       entries.push({ order });
-      continue;
-    }
-    const cluster = clusters.get(`${order.subjects[0]}:${order.target_id}`)!;
-    consumed.add(cluster[0]);
-    entries.push({ order: cluster[0] });
-    if (cluster.length > 1) {
-      for (const queued of cluster.slice(1)) {
-        consumed.add(queued);
-      }
-      entries.push({ order: cluster[1], collapsed_orders: cluster.slice(2) });
     }
   }
   return entries;
@@ -102,9 +90,35 @@ export class RisqOrdersModel {
   private submitted: RisqFrontendOrder[] = [];
   private pending: RisqFrontendOrder[] = [];
   private on_change: () => void;
+  private notify: () => void;
+  private effective_cache = new Map<string, RisqFrontendOrder[]>();
+
+  private batch_depth = 0;
+  private batch_dirty = false;
 
   constructor(on_change: () => void) {
-    this.on_change = on_change;
+    this.on_change = (): void => {
+      this.effective_cache.clear();
+      if (this.batch_depth > 0) {
+        this.batch_dirty = true;
+      } else {
+        on_change();
+      }
+    };
+    this.notify = on_change;
+  }
+
+  batch(fn: () => void): void {
+    this.batch_depth++;
+    try {
+      fn();
+    } finally {
+      this.batch_depth--;
+    }
+    if (this.batch_depth === 0 && this.batch_dirty) {
+      this.batch_dirty = false;
+      this.notify();
+    }
   }
 
   triggerChange(): void {
@@ -113,6 +127,7 @@ export class RisqOrdersModel {
 
   setSubmitted(orders: RisqOrder[]): void {
     this.submitted = [...orders];
+    this.effective_cache.clear();
   }
 
   revertSubmittedToPending(): void {
@@ -123,6 +138,10 @@ export class RisqOrdersModel {
 
   all(): RisqFrontendOrder[] {
     return [...this.submitted, ...this.pending];
+  }
+
+  uncancelledOrders(): RisqFrontendOrder[] {
+    return this.all().filter((order: RisqFrontendOrder): boolean => !this.isCancelling(order));
   }
 
   pendingOrders(): RisqFrontendOrder[] {
@@ -180,6 +199,21 @@ export class RisqOrdersModel {
     if (this.isExplicitlyCancelling(order, subject_internal_ids)) {
       return true;
     }
+    if (order.order_type === RisqOrderType.OrderType_UnitBuild) {
+      const subs = subject_internal_ids
+        ? order.subjects.filter((s) => subject_internal_ids.includes(s))
+        : order.subjects;
+      if (subs.length > 0 || order.subjects.length === 0) {
+        const zone_key = invertPair(order.target_id).y;
+        if (
+          this.pending.some(
+            (p) => p.order_type === RisqOrderType.OrderType_CancelFoundation && p.target_id === zone_key
+          )
+        ) {
+          return true;
+        }
+      }
+    }
     if (order.internal_id === undefined || isClearImmune(order.order_type)) {
       return false;
     }
@@ -223,6 +257,11 @@ export class RisqOrdersModel {
     if (behavior === 'toggle' && !restoring && this.isCancelling(order, subject_internal_ids)) {
       return;
     }
+    if (restoring && order.order_type === RisqOrderType.OrderType_BuildingResearch) {
+      this.pending = this.pending.filter(
+        (o) => o.order_type !== RisqOrderType.OrderType_BuildingResearch || o.target_id !== order.target_id
+      );
+    }
     const cancelled = new Set(existing?.subjects.length === 0 ? order.subjects : existing?.subjects);
     for (const id of selected) {
       if (restoring) {
@@ -265,9 +304,20 @@ export class RisqOrdersModel {
     this.on_change();
   }
 
-  effectiveForSubject(subject_internal_id: number, kind: 'unit' | 'building'): RisqFrontendOrder[] {
+  effectiveForSubject(subject_internal_id: number, kind: 'unit' | 'building'): readonly RisqFrontendOrder[] {
+    const key = `${kind}:${subject_internal_id}`;
+    let effective = this.effective_cache.get(key);
+    if (!effective) {
+      effective = this.computeEffective(subject_internal_id, kind);
+      this.effective_cache.set(key, effective);
+    }
+    return effective;
+  }
+
+  private computeEffective(subject_internal_id: number, kind: 'unit' | 'building'): RisqFrontendOrder[] {
     const all = this.all();
     const cancel_orders = all.filter((o) => o.order_type === RisqOrderType.OrderType_CancelOrder);
+    const cancel_foundations = all.filter((o) => o.order_type === RisqOrderType.OrderType_CancelFoundation);
     const kind_matches = kind === 'unit' ? isUnitOrder : isBuildingOrder;
     let effective: RisqFrontendOrder[] = [];
     for (const order of all) {
@@ -280,6 +330,12 @@ export class RisqOrdersModel {
           (c) =>
             c.target_id === order.internal_id && (c.subjects.length === 0 || c.subjects.includes(subject_internal_id))
         )
+      ) {
+        continue;
+      }
+      if (
+        order.order_type === RisqOrderType.OrderType_UnitBuild &&
+        cancel_foundations.some((c) => c.target_id === invertPair(order.target_id).y)
       ) {
         continue;
       }

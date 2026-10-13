@@ -1,19 +1,9 @@
-import type { BoardTransformData } from '../../../../util/canvas_board/canvas_board';
-import { DwgRectButton } from '../../../../util/canvas_components/button/rect_button';
 import type { DwgRisq } from '../../risq';
-import { RisqButtonTooltip } from '../risq_tooltip';
-import { getSettings } from '../../../../../../scripts/settings_store';
-import { RisqHotkeyAction, hotkeyDisplayString } from '../../application/input/hotkeys';
+import { RisqSubmitButton } from './submit_button';
 
-export class RisqSubmitIconButton extends DwgRectButton {
-  private risq: DwgRisq;
-  private tooltip = new RisqButtonTooltip(() => ({
-    title: 'Submit Orders',
-    hotkey: hotkeyDisplayString(getSettings().risq_hotkeys.actions[RisqHotkeyAction.SUBMIT_ORDERS]),
-  }));
-
+export class RisqSubmitIconButton extends RisqSubmitButton {
   constructor(risq: DwgRisq, h: number) {
-    super({
+    super(risq, {
       button_config: {
         allow_nonleft_clicks: false,
       },
@@ -32,19 +22,5 @@ export class RisqSubmitIconButton extends DwgRectButton {
       image_path: 'icons/submit128',
       image_on_top: true,
     });
-    this.risq = risq;
-  }
-
-  protected hovered(): void {}
-  protected unhovered(): void {}
-  protected clicked(): void {}
-  protected released(): void {
-    if (this.isHovering()) {
-      this.risq.submission.confirmSubmit();
-    }
-  }
-
-  drawTooltip(ctx: CanvasRenderingContext2D, transform: BoardTransformData, risq: DwgRisq, dt: number): void {
-    this.tooltip.draw(ctx, transform, risq, dt, this.isHovering(), this.isPressed());
   }
 }

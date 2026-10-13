@@ -80,6 +80,24 @@ func createRisqUnit(internal_id uint64, unit_id uint32, player *RisqPlayer) *Ris
 	return &unit
 }
 
+const (
+	unitHealingRateOutsideOwnedSpace = 0.002
+	unitHealingRateOwnedSpace        = 0.004
+	unitHealingRateGarrisoned        = 0.008
+)
+
+func (u *RisqUnit) refreshStamina() {
+	excess := max(0, u.current_stamina+u.turn_stamina-maxStaminaFor(u.turn_stamina))
+	rate := unitHealingRateOutsideOwnedSpace
+	if u.garrisoned_in != nil {
+		rate = unitHealingRateGarrisoned
+	} else if u.zone != nil && u.zone.space.ownership == u.player_id {
+		rate = unitHealingRateOwnedSpace
+	}
+	u.orderableBase.refreshStamina()
+	u.cs.addHealth(float64(excess) * float64(u.cs.max_health) * rate)
+}
+
 func (u *RisqUnit) vision() *defs.RisqVision {
 	v := defs.UnitConfigs[u.unit_id].Vision
 	return &v

@@ -58,6 +58,7 @@ export function serverResponseToGame(game_from_server: GameFromServer, client_id
       game_started: game_from_server.game_base.game_started,
       game_ended: game_from_server.game_base.game_ended,
       persistant_history: game_from_server.game_base.persistant_history,
+      latest_update_id: game_from_server.game_base.latest_update_id,
       players,
       viewers,
       player_actions: game_from_server.game_base.player_actions
@@ -68,11 +69,12 @@ export function serverResponseToGame(game_from_server: GameFromServer, client_id
   const updates = players.get(client_id)?.updates ?? game_from_server.game_base.viewer_updates;
   if (updates !== undefined) {
     game.game_base.updates = new Map(updates.map((update) => [update.update_id, update]));
-    game.game_base.last_applied_update_id = updates.length;
-    game.game_base.highest_received_update_id = updates.length
-      ? Math.max(...updates.map((update) => update.update_id))
-      : undefined;
   }
+  const latest_id =
+    game_from_server.game_base.latest_update_id ??
+    (updates?.length ? Math.max(...updates.map((update) => update.update_id)) : 0);
+  game.game_base.last_applied_update_id = latest_id;
+  game.game_base.highest_received_update_id = latest_id;
   return game;
 }
 
@@ -83,6 +85,7 @@ export declare interface GameBaseFromServer {
   game_started: boolean;
   game_ended: boolean;
   persistant_history: boolean;
+  latest_update_id?: number;
   players: GamePlayer[];
   viewers: GameViewer[];
   // These fields should only return to viewers
@@ -97,6 +100,7 @@ export declare interface GameBase {
   game_started: boolean;
   game_ended: boolean;
   persistant_history: boolean;
+  latest_update_id?: number;
   players: Map<number, GamePlayer>;
   viewers: Map<number, GameViewer>;
   player_actions?: Map<number, PlayerAction>; // client -> server updates for viewers

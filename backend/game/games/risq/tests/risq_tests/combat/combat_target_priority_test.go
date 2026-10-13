@@ -56,3 +56,108 @@ func TestTargetPriority(t *testing.T) {
 		t.Errorf("infantry incorrectly took damage, health %v", infantry.CombatStats.Health)
 	}
 }
+
+func TestInterruptCurrentTargetPriorityGate(t *testing.T) {
+	// Active order is NOT interrupted by a category not in target_priority
+	t.Run("unprioritized target does not interrupt active order", func(t *testing.T) {
+		g := priorityDistanceGame(t)
+		owner, enemy := g.Human(0), g.Human(1)
+		attacker := g.Self(owner).Units[0]
+
+		for _, unit := range g.Self(enemy).Units {
+			g.Action(enemy, "set-unit-behavior", gin.H{"internal_ids": []uint64{unit.InternalID}, "stance": uint8(defs.UnitStance_PASSIVE), "attack_back": false})
+		}
+
+		// Attacker has interrupt_current = true, but empty target_priority.
+		// None of the categories (MILITARY, ECONOMIC, BUILDING) are in priority.
+		g.Action(owner, "set-unit-behavior", gin.H{
+			"internal_ids":      []uint64{attacker.InternalID},
+			"stance":            uint8(defs.UnitStance_AGGRESSIVE),
+			"attack_back":       false,
+			"interrupt_current": true,
+			"target_priority":   []uint8{},
+		})
+
+		g.Submit(owner, harness.OrderMoveZone([]uint64{attacker.InternalID}, 0, 0, -1, 0))
+		g.Submit(enemy)
+
+		orders := g.Self(owner).Units[0].ActiveOrders
+		for _, o := range orders {
+			if defs.OrderType(o.OrderType).IsAttackOrder() {
+				t.Fatalf("expected attacker NOT to interrupt move order for unprioritized target, but got order %+v", o)
+			}
+		}
+	})
+
+	// Active order IS interrupted when target category IS in target_priority
+	t.Run("prioritized target does interrupt active order", func(t *testing.T) {
+		g := priorityDistanceGame(t)
+		owner, enemy := g.Human(0), g.Human(1)
+		attacker := g.Self(owner).Units[0]
+
+		for _, unit := range g.Self(enemy).Units {
+			g.Action(enemy, "set-unit-behavior", gin.H{"internal_ids": []uint64{unit.InternalID}, "stance": uint8(defs.UnitStance_PASSIVE), "attack_back": false})
+		}
+
+		g.Action(owner, "set-unit-behavior", gin.H{
+			"internal_ids":      []uint64{attacker.InternalID},
+			"stance":            uint8(defs.UnitStance_AGGRESSIVE),
+			"attack_back":       false,
+			"interrupt_current": true,
+			"target_priority":   []uint8{uint8(defs.TargetCategory_BUILDING)},
+		})
+
+		g.Submit(owner, harness.OrderMoveZone([]uint64{attacker.InternalID}, 0, 0, -1, 0))
+		g.Submit(enemy)
+
+		u := g.Self(owner).Units[0]
+		hasAttackOrder := false
+		for _, o := range u.ActiveOrders {
+			if defs.OrderType(o.OrderType) == defs.OrderType_UnitAutoAttackBuilding {
+				hasAttackOrder = true
+				break
+			}
+		}
+		b := g.Self(enemy).Buildings[0]
+		if !hasAttackOrder && b.CombatStats.Health >= float64(b.CombatStats.MaxHealth) {
+			t.Fatalf("expected attacker to interrupt move order and attack building, building health=%v, orders=%+v", b.CombatStats.Health, u.ActiveOrders)
+		}
+	})
+
+	// Idle unit (len(active_orders) == 0) CAN attack unprioritized target via proximity fallback
+	t.Run("idle unit attacks unprioritized target via fallback", func(t *testing.T) {
+		g := priorityDistanceGame(t)
+		owner, enemy := g.Human(0), g.Human(1)
+		attacker := g.Self(owner).Units[0]
+
+		for _, unit := range g.Self(enemy).Units {
+			g.Action(enemy, "set-unit-behavior", gin.H{"internal_ids": []uint64{unit.InternalID}, "stance": uint8(defs.UnitStance_PASSIVE), "attack_back": false})
+		}
+
+		g.Action(owner, "set-unit-behavior", gin.H{
+			"internal_ids":      []uint64{attacker.InternalID},
+			"stance":            uint8(defs.UnitStance_AGGRESSIVE),
+			"attack_back":       false,
+			"interrupt_current": false,
+			"target_priority":   []uint8{uint8(defs.TargetCategory_MILITARY)},
+		})
+
+		g.Submit(owner)
+		g.Submit(enemy)
+
+		u := g.Self(owner).Units[0]
+		hasAutoAttack := false
+		for _, o := range u.ActiveOrders {
+			if defs.OrderType(o.OrderType).IsAttackOrder() {
+				hasAutoAttack = true
+				break
+			}
+		}
+		villager := g.Self(enemy).Units[0]
+		building := g.Self(enemy).Buildings[0]
+		damageDealt := villager.CombatStats.Health < float64(villager.CombatStats.MaxHealth) || building.CombatStats.Health < float64(building.CombatStats.MaxHealth)
+		if !hasAutoAttack && !damageDealt {
+			t.Fatalf("expected idle attacker to acquire unprioritized target via fallback, got orders: %+v", u.ActiveOrders)
+		}
+	})
+}

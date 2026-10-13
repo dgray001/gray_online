@@ -94,6 +94,7 @@ export function serverToRisqResources(
         spending: 0,
         gaining: 0,
         workers: 0,
+        predicted_workers: 0,
       },
     ],
     [
@@ -103,6 +104,7 @@ export function serverToRisqResources(
         spending: 0,
         gaining: 0,
         workers: 0,
+        predicted_workers: 0,
       },
     ],
     [
@@ -112,6 +114,7 @@ export function serverToRisqResources(
         spending: 0,
         gaining: 0,
         workers: 0,
+        predicted_workers: 0,
       },
     ],
     [
@@ -121,6 +124,7 @@ export function serverToRisqResources(
         spending: 0,
         gaining: 0,
         workers: 0,
+        predicted_workers: 0,
       },
     ],
   ]);

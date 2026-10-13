@@ -50,6 +50,11 @@ export class RisqCorpseLayout {
           layout.slots.delete(slot);
         }
       }
+      for (const id of layout.placements.keys()) {
+        if (!active.has(id)) {
+          layout.placements.delete(id);
+        }
+      }
       for (const corpse of zone.corpses) {
         if (!layout.placements.has(corpse.internal_id)) {
           this.assign(zone, layout, corpse);

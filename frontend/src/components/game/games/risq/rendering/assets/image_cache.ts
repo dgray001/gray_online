@@ -58,6 +58,16 @@ export class RisqImageCache {
     return canvas;
   }
 
+  /** Returns img's shape filled with color, cached per (key, color) */
+  getTintedIcon(key: string, img: HTMLImageElement, size: number, color: ColorRGB): HTMLCanvasElement | undefined {
+    return this.getImage(`tint:${key}|${color.getR()},${color.getG()},${color.getB()}`, size, [img], (ctx) => {
+      ctx.drawImage(img, 0, 0, size, size);
+      ctx.globalCompositeOperation = 'source-in';
+      ctx.fillStyle = color.getString();
+      ctx.fillRect(0, 0, size, size);
+    });
+  }
+
   /** Returns img with every PLAYER_COLOR_KEY pixel swapped for color, cached per (key, color) */
   getPlayerColoredIcon(
     key: string,

@@ -18,7 +18,7 @@ func checkProducible(t *testing.T, value any) {
 	contract := producibleShape
 	switch item["kind"] {
 	case float64(1):
-		contract += " stats:o"
+		contract += " unit_type:n stats:o"
 		checkShape(t, item["stats"], "health:n attack_type:n attack_blunt:n attack_piercing:n attack_range:n defense_blunt:n defense_piercing:n penetration_blunt:n penetration_piercing:n")
 	case float64(2):
 		contract += " affects_unit_ids:a affects_unit_types:a bonus:o unlocks_mercenaries:a"

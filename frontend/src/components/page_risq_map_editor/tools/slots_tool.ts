@@ -1,38 +1,49 @@
 import type { EditCommand } from '../edit_history';
 import type { EditorConfigPanel, EditorTarget, EditorToolContext } from '../editor_tool';
 import { EditorTool } from '../editor_tool';
-import type { MapDoc, MapDocBank } from '../map_doc';
+import type { MapDoc, MapDocBank, MapDocSpace } from '../map_doc';
+import { findSpace } from '../map_doc';
 import { SlotsPanel } from './slots_panel';
+
+type SlotFields = Pick<MapDocSpace, 'zones' | 'player_slot'>;
 
 interface SlotsSnapshot {
   players: number;
   starting_bank?: MapDocBank;
-  spaces_json: string;
 }
+
+interface SpaceChange {
+  x: number;
+  y: number;
+  before: SlotFields;
+  after: SlotFields;
+}
+
 class SlotsEditCommand implements EditCommand {
   constructor(
     private before: SlotsSnapshot,
-    private after: SlotsSnapshot
+    private after: SlotsSnapshot,
+    private spaces: SpaceChange[]
   ) {}
 
-  isEmpty(): boolean {
-    return (
-      this.before.players === this.after.players &&
-      JSON.stringify(this.before.starting_bank) === JSON.stringify(this.after.starting_bank) &&
-      this.before.spaces_json === this.after.spaces_json
-    );
-  }
-
   apply(doc: MapDoc): void {
-    doc.players = this.after.players;
-    doc.starting_bank = this.after.starting_bank ? JSON.parse(JSON.stringify(this.after.starting_bank)) : undefined;
-    doc.spaces = JSON.parse(this.after.spaces_json);
+    this.restore(doc, this.after, (change) => change.after);
   }
 
   revert(doc: MapDoc): void {
-    doc.players = this.before.players;
-    doc.starting_bank = this.before.starting_bank ? JSON.parse(JSON.stringify(this.before.starting_bank)) : undefined;
-    doc.spaces = JSON.parse(this.before.spaces_json);
+    this.restore(doc, this.before, (change) => change.before);
+  }
+
+  private restore(doc: MapDoc, snapshot: SlotsSnapshot, fields: (change: SpaceChange) => SlotFields): void {
+    doc.players = snapshot.players;
+    doc.starting_bank = structuredClone(snapshot.starting_bank);
+    for (const change of this.spaces) {
+      const space = findSpace(doc, change.x, change.y);
+      if (space) {
+        const { zones, player_slot } = structuredClone(fields(change));
+        Object.assign(space, { zones, player_slot });
+      }
+    }
   }
 }
 export class SlotsTool extends EditorTool {
@@ -59,8 +70,7 @@ export class SlotsTool extends EditorTool {
   private snapshot(doc: MapDoc): SlotsSnapshot {
     return {
       players: doc.players,
-      starting_bank: doc.starting_bank ? JSON.parse(JSON.stringify(doc.starting_bank)) : undefined,
-      spaces_json: JSON.stringify(doc.spaces),
+      starting_bank: structuredClone(doc.starting_bank),
     };
   }
 
@@ -75,11 +85,8 @@ export class SlotsTool extends EditorTool {
     }
     const before = this.snapshot(doc);
     doc.players = next_players;
-    if (delta < 0) {
-      this.stripPlayerEntities(doc, next_players);
-    }
-    const after = this.snapshot(doc);
-    this.context.history.record(new SlotsEditCommand(before, after));
+    const changes = delta < 0 ? this.stripPlayerEntities(doc, next_players) : [];
+    this.context.history.record(new SlotsEditCommand(before, this.snapshot(doc), changes));
     this.context.edited();
   }
   private changeBank(resource: 'food' | 'wood' | 'stone' | 'gold', delta: number): void {
@@ -90,30 +97,43 @@ export class SlotsTool extends EditorTool {
     const before = this.snapshot(doc);
     doc.starting_bank = doc.starting_bank ?? { food: 0, wood: 0, stone: 0, gold: 0 };
     doc.starting_bank[resource] = Math.max(0, doc.starting_bank[resource] + delta);
-    const after = this.snapshot(doc);
-    this.context.history.record(new SlotsEditCommand(before, after));
+    if (JSON.stringify(before.starting_bank) === JSON.stringify(doc.starting_bank)) {
+      doc.starting_bank = before.starting_bank;
+      return;
+    }
+    this.context.history.record(new SlotsEditCommand(before, this.snapshot(doc), []));
     this.context.edited();
   }
 
-  private stripPlayerEntities(doc: MapDoc, max_players: number): void {
+  private stripPlayerEntities(doc: MapDoc, max_players: number): SpaceChange[] {
+    const changes: SpaceChange[] = [];
     for (const space of doc.spaces) {
-      if (space.player_slot !== undefined && space.player_slot >= max_players) {
-        delete space.player_slot;
+      const before = structuredClone({ zones: space.zones, player_slot: space.player_slot });
+      this.stripSpace(space, max_players);
+      const after = structuredClone({ zones: space.zones, player_slot: space.player_slot });
+      if (JSON.stringify(before) !== JSON.stringify(after)) {
+        changes.push({ x: space.x, y: space.y, before, after });
       }
-      if (!space.zones) {
-        continue;
+    }
+    return changes;
+  }
+
+  private stripSpace(space: MapDocSpace, max_players: number): void {
+    if (space.player_slot !== undefined && space.player_slot >= max_players) {
+      delete space.player_slot;
+    }
+    for (const zone of space.zones ?? []) {
+      if (zone.building && zone.building.player >= max_players) {
+        delete zone.building;
       }
-      for (const zone of space.zones) {
-        if (zone.building && zone.building.player >= max_players) {
-          delete zone.building;
+      if (zone.units) {
+        zone.units = zone.units.filter((u) => u.player < max_players);
+        if (zone.units.length === 0) {
+          delete zone.units;
         }
-        if (zone.units) {
-          zone.units = zone.units.filter((u) => u.player < max_players);
-          if (zone.units.length === 0) {
-            delete zone.units;
-          }
-        }
       }
+    }
+    if (space.zones) {
       space.zones = space.zones.filter((z) => z.resource || z.building || z.units?.length || z.terrain_override);
     }
   }

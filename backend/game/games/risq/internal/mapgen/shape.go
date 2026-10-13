@@ -28,6 +28,7 @@ func stepShape(ctx *mapScriptContext, raw json.RawMessage) error {
 	for name, value := range sizes {
 		ctx.vars[name] = float64(value)
 	}
+	ctx.insets, ctx.zones = nil, nil
 	switch p.Kind {
 	case "hexagon":
 		size := sizes["radius"]

@@ -64,7 +64,7 @@ func (r *GameRisq) resolvePendingMercenaries() {
 			zone.space.setUnit(&zone.coordinate, unit)
 			player.units[unit.internal_id] = unit
 			r.units[unit.internal_id] = unit
-			player.report.recordUnitCreated(pending.unit_id)
+			player.report.recordUnitHired(pending.unit_id)
 		}
 		player.pending_mercenaries = player.pending_mercenaries[:0]
 	}

@@ -197,10 +197,12 @@ export abstract class DwgRectButton extends DwgButton {
     return this.rect_config.h;
   }
 
-  protected override _draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
-    if (this.img instanceof HTMLImageElement) {
-      resolveImage(this.img);
+  advanceAnimation(dt: number): boolean {
+    if (dt === 0 || (!this.target_p && this.rotate_target === undefined)) {
+      return false;
     }
+    const previous = { ...this.rect_config.p };
+    const rotation = this.rect_config.rotation;
     // translate animation
     if (!!this.target_p && !!this.speed_p) {
       if (this.reached_target.x && this.reached_target.y) {
@@ -259,7 +261,13 @@ export abstract class DwgRectButton extends DwgButton {
         }
       }
     }
-    // actual draw
+    return !equalsPoint2D(previous, this.rect_config.p) || rotation !== this.rect_config.rotation;
+  }
+
+  protected override _draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, _dt: number): void {
+    if (this.img instanceof HTMLImageElement) {
+      resolveImage(this.img);
+    }
     configDraw(ctx, transform, this.rect_config.draw_config, this.isHovering(), this.isClicking(), () => {
       ctx.beginPath();
       ctx.translate(this.center_p.x, this.center_p.y);

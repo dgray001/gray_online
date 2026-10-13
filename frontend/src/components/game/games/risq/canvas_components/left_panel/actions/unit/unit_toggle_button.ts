@@ -22,6 +22,7 @@ export class RisqUnitToggleButton extends RisqActionButton {
   private unit_internal_ids: number[];
   private field: UnitToggleField;
   private active = false;
+  private right_clicked = false;
   private defaults: boolean;
 
   constructor(config: UnitToggleButtonConfig, risq: DwgRisq, s: number) {
@@ -42,6 +43,7 @@ export class RisqUnitToggleButton extends RisqActionButton {
       ? [player?.[this.field === 'attack_back' ? 'default_unit_attack_back' : 'default_unit_interrupt_current']]
       : this.unit_internal_ids.map((id) => player?.units.get(id)?.[this.field]);
     this.active = values.length > 0 && values.every((value) => value === true);
+    this.mixed = values.includes(true) && values.includes(false);
     this.setHotkeyCombo(
       this.defaults ? undefined : getSettings().risq_hotkeys.actions[TOGGLE_HOTKEY_ACTIONS[this.field]]
     );
@@ -51,11 +53,21 @@ export class RisqUnitToggleButton extends RisqActionButton {
     return action === TOGGLE_HOTKEY_ACTIONS[this.field];
   }
 
+  override mouseup(e: MouseEvent): void {
+    this.right_clicked = e.button === 2;
+    super.mouseup(e);
+    this.right_clicked = false;
+  }
+
   override execute(): void {
     if (this.defaults) {
       this.risq.commands.setDefaultUnitBehavior({ [this.field]: !this.active });
       return;
     }
-    this.risq.commands.setUnitToggle(this.unit_internal_ids, this.field, !this.active);
+    this.risq.commands.setUnitToggle(
+      this.unit_internal_ids,
+      this.field,
+      !(this.active || (this.mixed && this.right_clicked))
+    );
   }
 }

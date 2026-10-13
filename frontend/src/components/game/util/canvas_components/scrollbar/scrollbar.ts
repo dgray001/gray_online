@@ -111,6 +111,11 @@ export abstract class DwgScrollbar<T extends DwgButton = DwgButton> implements C
 
   setHovering(hovering: boolean): void {
     this.hovering = hovering;
+    if (!hovering) {
+      for (const button of this.buttons) {
+        button.setHovering(false);
+      }
+    }
   }
 
   isClicking(): boolean {

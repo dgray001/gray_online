@@ -66,7 +66,7 @@ export class RisqBuildingGatherPointButton extends RisqActionButton {
   }
 
   override matchesAction(action: RisqHotkeyAction): boolean {
-    return action === RisqHotkeyAction.BUILDING_GATHER_POINT || action === RisqHotkeyAction.BUILDING_CLEAR_GATHER_POINT;
+    return action === RisqHotkeyAction.BUILDING_GATHER_POINT;
   }
 
   override execute(): void {

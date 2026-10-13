@@ -29,7 +29,7 @@ type TurnStanding struct {
 	Outcomes []Outcome
 }
 
-func RunGame(seed int64, players []PlayerConfig, map_name string, metrics []string, max_turns uint16, timeout time.Duration) Result {
+func RunGame(seed int64, players []PlayerConfig, map_name string, custom_settings map[string]any, metrics []string, max_turns uint16, timeout time.Duration) Result {
 	ai_players := make([]any, len(players))
 	for i, p := range players {
 		config := make(map[string]any, 2)
@@ -42,6 +42,9 @@ func RunGame(seed int64, players []PlayerConfig, map_name string, metrics []stri
 		extras[i] = name
 	}
 	settings := map[string]any{"ai_players": ai_players, "seed": float64(seed), "metrics": extras}
+	for k, v := range custom_settings {
+		settings[k] = v
+	}
 	if map_name != "" {
 		settings["map"] = map_name
 	}

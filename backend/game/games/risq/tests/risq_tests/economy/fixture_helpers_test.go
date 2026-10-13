@@ -14,7 +14,7 @@ func economyGame(t *testing.T, bank, spaces, rules string) *harness.Game {
 	t.Helper()
 	doc := `{"board_size":3,"players":2,"space_gold_income":0,"starting_bank":` + bank + `,"spaces":[` + spaces + `]` + rules + `}`
 	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"economy": doc})
-	return harness.NewGame(t, "custom:economy", 1, 2)
+	return startGame(t, "custom:economy", 1, 2)
 }
 
 func farmGame(t *testing.T, wood, workers int) *harness.Game {
@@ -22,4 +22,12 @@ func farmGame(t *testing.T, wood, workers int) *harness.Game {
 	bank := fmt.Sprintf(`{"wood":%d}`, wood)
 	space := fmt.Sprintf(`{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":3,"player":0},"units":[{"id":1,"player":0,"count":%d}]}]}`, workers)
 	return economyGame(t, bank, space+","+remoteVillager, "")
+}
+
+// Economy games read plain state, so they skip per-tick histories and reuse reads within a turn
+func startGame(t *testing.T, mapName string, seed int64, humans int) *harness.Game {
+	t.Helper()
+	g := harness.NewGame(t, mapName, seed, humans)
+	g.Lite = true
+	return g
 }

@@ -49,7 +49,7 @@ func (z *zone) RemoveResource() {
 func (z *zone) Adjacent() []mapgen.Zone {
 	var zones []*zone
 	if !z.IsCenter() {
-		zones = append(zones, z.space.byLocal[game_utils.Coordinate2D{}])
+		zones = append(zones, z.space.byLocal[1][1])
 	}
 	for _, other := range z.space.zones {
 		if other != z && !other.IsCenter() && (z.IsCenter() || game_utils.AxialDistance(z.local, other.local) == 1) {
@@ -58,7 +58,7 @@ func (z *zone) Adjacent() []mapgen.Zone {
 	}
 	if z.IsCenter() {
 		for _, linked := range z.space.links {
-			zones = append(zones, linked.byLocal[game_utils.Coordinate2D{}])
+			zones = append(zones, linked.byLocal[1][1])
 		}
 	} else if across := z.across(); across != nil {
 		zones = append(zones, across)
@@ -74,7 +74,8 @@ func (z *zone) Adjacent() []mapgen.Zone {
 func (z *zone) across() *zone {
 	direction := game_utils.AxialDirectionIndex(z.local)
 	if neighbor := z.space.borders[direction]; neighbor != nil {
-		return neighbor.byLocal[*z.local.Invert()]
+		inv := z.local.Invert()
+		return neighbor.byLocal[inv.X+1][inv.Y+1]
 	}
 	return nil
 }

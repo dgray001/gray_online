@@ -8,7 +8,7 @@
       "ai_config": "v0.6"
     },
     {
-      "ai_config": "v0.5"
+      "ai_config": "v0.6"
     }
   ],
   "buckets": [
@@ -17,7 +17,7 @@
       "map": "script:ring"
     },
     {
-      "name": "default",
+      "name": "hexagon",
       "map": "script:hexagon"
     },
     {
@@ -29,28 +29,34 @@
       "map": "script:triangle"
     },
     {
-      "name": "sim_close",
-      "map": "script:sim_close"
+      "name": "ring_tiny_rich",
+      "map": "script:ring",
+      "settings": {"map_size": 2, "map_resources": 3}
     },
     {
-      "name": "sim_gold",
-      "map": "script:sim_gold"
+      "name": "hexagon_medium_high",
+      "map": "script:hexagon",
+      "settings": {"map_size": 5, "starting_stockpile": 3}
     },
     {
-      "name": "sim_army",
-      "map": "script:sim_army"
+      "name": "rectangle_sparse_low",
+      "map": "script:rectangle",
+      "settings": {"map_size": 3, "map_resources": 1, "starting_stockpile": 1}
     },
     {
-      "name": "sim_advanced",
-      "map": "script:sim_advanced"
+      "name": "triangle_nomad_abundant",
+      "map": "script:triangle",
+      "settings": {"starting_development": 1, "map_resources": 4}
     },
     {
-      "name": "sim_rich",
-      "map": "script:sim_rich"
+      "name": "hexagon_large_advanced",
+      "map": "script:hexagon",
+      "settings": {"map_size": 6, "starting_development": 4}
     },
     {
-      "name": "sim_wide",
-      "map": "script:sim_wide"
+      "name": "ring_explored_deathmatch",
+      "map": "script:ring",
+      "settings": {"visibility": 2, "starting_stockpile": 4}
     }
   ]
 }

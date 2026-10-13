@@ -1,4 +1,4 @@
-import { RisqRange, RisqProducibleKind } from '../../model/types';
+import { RisqProducibleKind } from '../../model/types';
 import type { RisqCost, RisqUnitType, RisqUnitStatsEntry } from '../../model/types';
 import type { DwgRisq } from '../../risq';
 import type { HotkeyCombo } from '../../application/input/hotkeys';
@@ -137,10 +137,4 @@ export const STATUS_TEXT: Record<TreeStatus, string> = {
   researched: '#e0e0e0',
   available: '#e0e0e0',
   locked: '#707070',
-};
-
-export const RANGE_DISTANCE: Partial<Record<RisqRange, number>> = {
-  [RisqRange.SPACE]: 0,
-  [RisqRange.ADJACENT]: 1,
-  [RisqRange.SECONDARY]: 2,
 };

@@ -16,7 +16,7 @@ func limitGame(t *testing.T, villagers int, extra_spaces string) *harness.Game {
 	t.Helper()
 	doc := fmt.Sprintf(`{"board_size":3,"players":2,"starting_bank":{"wood":1000,"stone":1000},"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":0,"count":%d},{"id":11,"player":0,"count":1}]}]},{"x":-3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":1,"count":1}]}]}%s]}`, villagers, extra_spaces)
 	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"limit": doc})
-	return harness.NewGame(t, "custom:limit", 1, 2)
+	return startGame(t, "custom:limit", 1, 2)
 }
 
 func villagerIds(g *harness.Game, human int) []uint64 {

@@ -1,6 +1,6 @@
 import type { RisqDrawHost } from '../draw_host';
 import type { RisqZone, UnitByTypeData } from '../../model/types';
-import { terrainImage, RisqViewMode } from '../terrain';
+import { terrainImage, RisqViewMode, buildingVisibleInViewMode, unitVisibleInViewMode } from '../terrain';
 import {
   findOuterZoneIndex,
   clipToZone,
@@ -13,7 +13,7 @@ import type { Point2D } from '../../../../util/objects2d';
 import { unitImage, comboUnitIconKey, COMBO_UNIT_ICON_SIZE, drawComboUnitIcon } from '../assets/unit';
 import { ColorRGB } from '../../../../../../scripts/color_rgb';
 import { clampNumber, seededRandom } from '../../../../../../scripts/math';
-import { RisqUnitType, RisqOrderType, RisqVisibilityLevel } from '../../model/types';
+import { RisqOrderType, RisqVisibilityLevel } from '../../model/types';
 import { isForestResource, resourceImage, resourceIcon } from '../assets/resources';
 import { rotatePoint } from '../../../../util/objects2d';
 import { getZoneUnitSlots } from './slots';
@@ -185,19 +185,6 @@ export function visibleZoneUnitSlot(zone: RisqZone, index: number, view_mode: Ri
   return (zone.unit_slots?.[index] ?? []).filter((group) => unitVisibleInViewMode(group.unit_type, view_mode));
 }
 
-export function unitVisibleInViewMode(unit_type: RisqUnitType, view_mode: RisqViewMode): boolean {
-  if (view_mode === RisqViewMode.OWNERSHIP) {
-    return false;
-  }
-  if (view_mode === RisqViewMode.MILITARY) {
-    return unit_type !== RisqUnitType.ECONOMIC;
-  }
-  if (view_mode === RisqViewMode.RESOURCE) {
-    return unit_type === RisqUnitType.ECONOMIC;
-  }
-  return true;
-}
-
 const CENTER_FOREST_TREES = 8;
 const EDGE_FOREST_TREES = 6;
 const FOREST_TREE_RADIUS_MULTIPLIER = 0.11;
@@ -324,6 +311,8 @@ function ghostBuildingId(game: RisqDrawHost, zone: RisqZone): number | undefined
   return zone.building ? undefined : armed?.id;
 }
 
+export type RisqEntityPass = 'terrain' | 'unselected' | 'selected';
+
 export function drawRisqZone(
   ctx: CanvasRenderingContext2D,
   game: RisqDrawHost,
@@ -335,7 +324,8 @@ export function drawRisqZone(
   rotation: number,
   building_pos: Point2D,
   unit_slot_positions: Point2D[],
-  active_player_id: number
+  active_player_id: number,
+  entity_pass?: RisqEntityPass
 ): void {
   const primary_color = black_text ? 'rgb(0, 0, 0)' : 'rgb(255, 255, 255)';
   const secondary_color = black_text ? 'rgba(40, 40, 40, 0.4)' : 'rgba(210, 210, 210, 0.4)';
@@ -349,7 +339,8 @@ export function drawRisqZone(
     zone,
     active_player_id,
     game.viewport.centerMaxSlots(),
-    game.viewport.edgeMaxSlots()
+    game.viewport.edgeMaxSlots(),
+    view_mode
   );
   const filled_slots =
     visibility === RisqVisibilityLevel.POOR
@@ -372,12 +363,18 @@ export function drawRisqZone(
       zone.hovered_data[i + 1].r = { x: unit_r, y: unit_r };
     }
   }
+  if (entity_pass === 'terrain') {
+    return;
+  }
   for (const [i, part] of zone.hovered_data.entries()) {
     const selected =
       i === 0
         ? (!!zone.resource && game.selection.isResourceSelected(zone.resource.internal_id)) ||
           (!!zone.building && game.selection.isBuildingSelected(zone.building.internal_id))
         : filled_slots[i - 1].some((t) => [...t.units].some((uid) => game.selection.isUnitSelected(uid)));
+    if (entity_pass && selected !== (entity_pass === 'selected')) {
+      continue;
+    }
     ctx.strokeStyle = 'transparent';
     if (part.hovered && !(i === 0 && isEmptyPlot(game.planning, zone))) {
       if (part.clicked) {
@@ -393,7 +390,7 @@ export function drawRisqZone(
     if (i === 0) {
       if (!!zone.resource && view_mode !== RisqViewMode.MILITARY && view_mode !== RisqViewMode.OWNERSHIP) {
         ctx.drawImage(resourceIcon(game, zone.resource), -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
-      } else {
+      } else if (!zone.building || buildingVisibleInViewMode(zone.building, view_mode)) {
         let building_image: string;
         let building_color: ColorRGB | undefined;
 

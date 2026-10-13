@@ -54,6 +54,11 @@ export function shortLabel(order_type: RisqOrderType): string {
     case RisqOrderType.OrderType_BuildingAttackUnit:
     case RisqOrderType.OrderType_BuildingAttackBuilding:
       return 'Attack';
+    case RisqOrderType.OrderType_UnitAutoAttackUnit:
+    case RisqOrderType.OrderType_UnitAutoAttackBuilding:
+    case RisqOrderType.OrderType_BuildingAutoAttackUnit:
+    case RisqOrderType.OrderType_BuildingAutoAttackBuilding:
+      return 'Auto-Attack';
     case RisqOrderType.OrderType_UnitGarrison:
       return 'Garrison';
     case RisqOrderType.OrderType_UnitUngarrison:
@@ -63,6 +68,10 @@ export function shortLabel(order_type: RisqOrderType): string {
       return 'Delete';
     case RisqOrderType.OrderType_BuyMercenary:
       return 'Hire';
+    case RisqOrderType.OrderType_CancelOrder:
+      return 'Cancel';
+    case RisqOrderType.OrderType_CancelFoundation:
+      return 'Cancel Foundation';
     default:
       return 'Order';
   }
@@ -221,27 +230,27 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
       break;
     }
     case RisqOrderType.OrderType_UnitAttackUnit:
-    case RisqOrderType.OrderType_BuildingAttackUnit: {
-      const target_unit = game?.players
-        .flatMap((p) => [...p.units.values()])
-        .find((u) => u.internal_id === order.target_id);
+    case RisqOrderType.OrderType_BuildingAttackUnit:
+    case RisqOrderType.OrderType_UnitAutoAttackUnit:
+    case RisqOrderType.OrderType_BuildingAutoAttackUnit: {
+      const target_unit = config.game.session.findUnitById(order.target_id);
       const target_location = target_unit ? config.game.session.unitLocation(target_unit) : undefined;
       base = {
         icon: 'icons/sword32',
-        name: `Attack ${target_unit?.display_name ?? 'Unit'}`,
+        name: `${shortLabel(order.order_type)} ${target_unit?.display_name ?? 'Unit'}`,
         target: target_location ? distance_text(target_location.space_coordinate, target_location.zone_coordinate) : '',
         cost: [],
       };
       break;
     }
     case RisqOrderType.OrderType_UnitAttackBuilding:
-    case RisqOrderType.OrderType_BuildingAttackBuilding: {
-      const target_building = game?.players
-        .flatMap((p) => [...p.buildings.values()])
-        .find((b) => b.internal_id === order.target_id);
+    case RisqOrderType.OrderType_BuildingAttackBuilding:
+    case RisqOrderType.OrderType_UnitAutoAttackBuilding:
+    case RisqOrderType.OrderType_BuildingAutoAttackBuilding: {
+      const target_building = config.game.session.findBuildingById(order.target_id);
       base = {
         icon: 'icons/sword32',
-        name: `Attack ${target_building?.display_name ?? 'Building'}`,
+        name: `${shortLabel(order.order_type)} ${target_building?.display_name ?? 'Building'}`,
         target: target_building ? distance_text(target_building.space_coordinate, target_building.zone_coordinate) : '',
         cost: [],
       };
@@ -316,11 +325,10 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
       const building = game?.players
         .flatMap((p) => [...p.buildings.values()])
         .find((b) => b.internal_id === order.target_id);
-      const resources = building?.renewing ? (building.resources_left ?? 0) : 0;
       const completed =
-        building?.renew_stamina && building.resource_capacity
-          ? (resources / building.resource_capacity) * building.renew_stamina
-          : undefined;
+        building?.renew_stamina === undefined
+          ? undefined
+          : building.renew_stamina - (building.renew_stamina_remaining ?? building.renew_stamina);
       base = {
         icon: 'icons/wheat32',
         name: `Renew ${building?.display_name ?? 'Building'}`,

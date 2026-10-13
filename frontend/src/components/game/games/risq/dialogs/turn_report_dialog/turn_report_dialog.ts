@@ -60,7 +60,7 @@ function combatEventText(e: RisqReportCombatEvent, viewer_player_id: number): st
   const mine = e.self_player === viewer_player_id;
   switch (e.kind) {
     case RisqCombatEventKind.UNIT_KILLED:
-      return mine ? 'Destroyed an enemy unit' : 'Lost a unit in combat';
+      return mine ? 'Killed an enemy unit' : 'Lost a unit in combat';
     case RisqCombatEventKind.UNIT_LOST:
       return 'Lost a unit in combat';
     case RisqCombatEventKind.BUILDING_RAZED:
@@ -252,9 +252,14 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
       li.innerHTML = `<span class="tick ${tick_cls}">${tick}</span>${img}<span>${text}</span>`;
       lines.push(li);
     };
-    for (const u of report.production.units_created) {
-      const name = producibleName(player, RisqProducibleKind.UNIT, u.unit_id, 'Unit');
-      line('make', '+', unitImage(u.unit_id, true), `${u.count > 1 ? `${u.count}× ` : ''}${name} trained`);
+    for (const [units, verb] of [
+      [report.production.units_created, 'trained'],
+      [report.production.units_hired, 'hired'],
+    ] as const) {
+      for (const u of units) {
+        const name = producibleName(player, RisqProducibleKind.UNIT, u.unit_id, 'Unit');
+        line('make', '+', unitImage(u.unit_id, true), `${u.count > 1 ? `${u.count}× ` : ''}${name} ${verb}`);
+      }
     }
     for (const b of report.production.buildings_built) {
       const name = producibleName(player, RisqProducibleKind.BUILDING, b.building_id, 'Building');
@@ -272,8 +277,8 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
   private renderCombat(player: RisqPlayer, report: RisqTurnReport): void {
     const lines = report.combat.map((e) => {
       const li = document.createElement('li');
-      const mine = e.self_player === player.player.player_id;
-      li.innerHTML = `<span class="tick ${mine ? 'make' : 'bad'}">${mine ? '+' : '×'}</span><span>${combatEventText(e, player.player.player_id)} <span class="where">at (${e.space.x}, ${e.space.y})</span></span>`;
+      const gain = e.kind === RisqCombatEventKind.UNIT_KILLED || e.kind === RisqCombatEventKind.BUILDING_RAZED;
+      li.innerHTML = `<span class="tick ${gain ? 'make' : 'bad'}">${gain ? '+' : '×'}</span><span>${combatEventText(e, player.player.player_id)} <span class="where">at (${e.space.x}, ${e.space.y})</span></span>`;
       return li;
     });
     this.combat_lines.replaceChildren(...lines);

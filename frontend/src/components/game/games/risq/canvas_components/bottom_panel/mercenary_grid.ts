@@ -73,11 +73,16 @@ export class RisqMercenaryGrid implements BottomPanelItem {
   }
 
   mousemove(canvas: Point2D, screen: Point2D, transform: BoardTransformData): boolean {
-    if (screen.x < this.xi() || screen.x > this.xf() || screen.y < this.yi() || screen.y > this.yf()) {
-      this.setHovering(false);
-      return false;
-    }
-    return this.buttons.map((button) => button.mousemove(canvas, screen, transform)).some(Boolean);
+    const inside = screen.x >= this.xi() && screen.x <= this.xf() && screen.y >= this.yi() && screen.y <= this.yf();
+    return this.buttons
+      .map((button: RisqMercenaryButton): boolean => {
+        const hovering = button.mousemove(canvas, screen, transform);
+        if (!inside) {
+          button.setHovering(false);
+        }
+        return inside && hovering;
+      })
+      .some(Boolean);
   }
   scroll(dy: number, mode: number): boolean {
     const next = Math.max(0, Math.min(this.contentWidth() - this.w(), this.scroll_x + dy * (mode ? 16 : 1)));
@@ -91,7 +96,7 @@ export class RisqMercenaryGrid implements BottomPanelItem {
   }
 
   mousedown(e: MouseEvent): boolean {
-    return this.buttons.map((button) => button.mousedown(e)).some(Boolean);
+    return this.isHovering() && this.buttons.map((button) => button.mousedown(e)).some(Boolean);
   }
 
   mouseup(e: MouseEvent): void {

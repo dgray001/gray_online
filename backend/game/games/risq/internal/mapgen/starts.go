@@ -74,6 +74,10 @@ type zoneTerrainOverrideJSON struct {
 
 type playerStartsParams struct {
 	terrainPickJSON
+	// overrides the terrain of each start space itself; the rest of the area uses the pick above
+	HomeTerrainId ScriptExpr `json:"home_terrain_id"`
+	// limits the default starting trees, groves (+10) and forests (+20) to these species
+	TreeIds              []ScriptExpr              `json:"tree_ids"`
 	Pattern              string                    `json:"pattern"`
 	StartBalance         *ScriptExpr               `json:"start_balance,omitempty"`
 	Nomad                *bool                     `json:"nomad,omitempty"`
@@ -468,11 +472,14 @@ func startFootprints(starts []playerStartInfo, area_size int) [][]Space {
 }
 
 // Clears and re-terrains every start area space exactly once, before anything is placed
-func prepareStartTerrain(ctx *mapScriptContext, pick terrainPickJSON, starts []playerStartInfo, footprints [][]Space) (map[game_utils.Coordinate2D]uint32, error) {
+func prepareStartTerrain(ctx *mapScriptContext, pick terrainPickJSON, home ScriptExpr, starts []playerStartInfo, footprints [][]Space) (map[game_utils.Coordinate2D]uint32, error) {
 	terrain := make(map[game_utils.Coordinate2D]uint32)
 	for _, s := range footprints[0] {
 		offset := game_utils.Coordinate2D{X: s.Coordinate().X - starts[0].space.Coordinate().X, Y: s.Coordinate().Y - starts[0].space.Coordinate().Y}
-		terrain_id, err := pick.resolve(ctx.rng)
+		terrain_id, err := pick.resolve(ctx)
+		if home.provided() && offset == (game_utils.Coordinate2D{}) {
+			terrain_id, err = resolveTerrainId(home, ctx)
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -708,6 +715,11 @@ func stepPlayerStarts(ctx *mapScriptContext, raw json.RawMessage) error {
 	applyStartingDevelopmentDefaults(ctx, &p)
 	if p.Resources == nil {
 		p.Resources = defaultStartingResources(defs.MapResourceLevel(ctx.vars["map_resources"]))
+		if len(p.TreeIds) > 0 {
+			if p.Resources, err = withTreeSpecies(ctx, p.Resources, p.TreeIds); err != nil {
+				return err
+			}
+		}
 	}
 	if (p.Nomad == nil && ctx.vars["starting_development"] == float64(defs.StartingDevelopment_NOMAD)) || (p.Nomad != nil && *p.Nomad) {
 		return placeNomadStarts(ctx, p)
@@ -767,7 +779,7 @@ func stepPlayerStarts(ctx *mapScriptContext, raw json.RawMessage) error {
 	ctx.player_starts = starts
 	ctx.player_area_size = area_size
 	footprints := startFootprints(starts, area_size)
-	if _, err := prepareStartTerrain(ctx, p.terrainPickJSON, starts, footprints); err != nil {
+	if _, err := prepareStartTerrain(ctx, p.terrainPickJSON, p.HomeTerrainId, starts, footprints); err != nil {
 		return err
 	}
 	if err := placeBalancedStarts(ctx, p, starts, footprints, area_size); err != nil {

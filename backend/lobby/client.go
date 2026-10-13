@@ -539,6 +539,20 @@ func (c *Client) handleMessage(message lobbyMessage) {
 			break
 		}
 		room_game.GetBase().ResendPlayerUpdate(c.client_id, update_id)
+	case "game-lookup-last-update":
+		var room_game game.Game
+		if lobby_room := c.getLobbyRoom(); lobby_room != nil {
+			room_game = lobby_room.getGame()
+		}
+		if room_game == nil {
+			if client_game := c.getGame(); client_game == nil || !client_game.GetBase().GameEnded() {
+				c.send(lobbyMessage{Sender: "server", Kind: "game-resend-last-update-failed", Content: "Not in game"})
+			}
+			break
+		}
+		if id, stale, ok := room_game.GetBase().LatestUpdate(c.client_id); ok {
+			c.send(lobbyMessage{Sender: "server", Kind: "game-last-update-id", Data: strconv.Itoa(id), Content: strconv.FormatBool(stale)})
+		}
 	case "game-resend-last-update":
 		lobby_room := c.getLobbyRoom()
 		if lobby_room == nil {

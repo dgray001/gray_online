@@ -29,7 +29,7 @@ export class RisqBoardRenderer {
     private risq: RisqDrawHost,
     private session: RisqSession,
     private viewport: RisqViewport,
-    private order_overlays: Pick<RisqOrderOverlays, 'draw'>,
+    private order_overlays: Pick<RisqOrderOverlays, 'draw' | 'drawRanges'>,
     private drag_rect: () => { min: Point2D; max: Point2D } | undefined,
     private components: CanvasComponent[]
   ) {}
@@ -73,14 +73,17 @@ export class RisqBoardRenderer {
     this.viewport.updateDrawDetail(transform.scale, max_scale);
     const hex_r = this.viewport.hexR();
     const inset_h = (2 * this.viewport.hexA()) / Math.sqrt(INSET_RATIO * INSET_RATIO + 1);
+    const inset_gap = 2 / transform.scale;
     const draw_config: DrawRisqSpaceConfig = {
       hex_r,
       inset_w: INSET_RATIO * inset_h,
       inset_h,
-      inset_row: inset_h / 4 - 4,
+      inset_row: (inset_h - 3 * inset_gap) / 4,
+      inset_gap,
       draw_detail: this.viewport.drawDetail(),
       view_mode: this.viewport.viewMode(),
       rotation: transform.rotation,
+      entity_pass: 'terrain',
     };
     const bounds = this.viewport.visibleCanvasBounds();
     this.drawBackgroundImage(ctx, game);
@@ -103,10 +106,17 @@ export class RisqBoardRenderer {
     for (const [i, space] of on_screen_spaces.entries()) {
       drawRisqSpaceContent(ctx, this.risq, space, draw_config, space_text_colors[i]);
     }
-    if (this.viewport.viewMode() === RisqViewMode.REGION) {
-      drawRisqRegionLabels(ctx, this.risq);
+    this.order_overlays.drawRanges(ctx);
+    for (const selected of [false, true]) {
+      this.order_overlays.draw(ctx, selected);
+      const pass_config: DrawRisqSpaceConfig = { ...draw_config, entity_pass: selected ? 'selected' : 'unselected' };
+      for (const [i, space] of on_screen_spaces.entries()) {
+        drawRisqSpaceContent(ctx, this.risq, space, pass_config, space_text_colors[i]);
+      }
     }
-    this.order_overlays.draw(ctx);
+    if (this.viewport.viewMode() === RisqViewMode.OWNERSHIP && !this.viewport.zoneView()) {
+      drawRisqRegionLabels(ctx, this.risq, draw_config);
+    }
     this.drawDragRect(ctx, transform);
     for (const component of this.components) {
       component.draw(ctx, transform, dt);

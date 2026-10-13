@@ -12,6 +12,7 @@ interface MyCustomEventMap {
   rejoin_game: CustomEvent<LobbyRoom>;
   refresh_game_lobby: CustomEvent<LobbyRoom>;
   show_message_dialog: CustomEvent<MessageDialogData>;
+  dialog_opened: CustomEvent<void>;
   connection_lost: CustomEvent<string>;
   chat_sent: CustomEvent<ChatMessage>;
   game_update: CustomEvent<string>;
