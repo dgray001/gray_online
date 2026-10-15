@@ -20,6 +20,7 @@ const DRAG_SELECT_THRESHOLD = 3;
 
 /** Routes board mouse events between the overlay components, hover, order dispatch, and click/drag selection */
 export class RisqPointer {
+  private dispatching_mousemove = false;
   private dragging_selection = false;
   private drag_additive = false;
   private drag_start: Point2D = { x: 0, y: 0 };
@@ -55,6 +56,9 @@ export class RisqPointer {
 
   /** Re-resolves hover at the last mouse position, e.g. after panels or data change underneath it */
   recalculate(): void {
+    if (this.dispatching_mousemove) {
+      return;
+    }
     const board = this.board();
     if (!board || !board.isInitialized()) {
       return;
@@ -95,7 +99,13 @@ export class RisqPointer {
       return;
     }
     const hud_screen = { x: screen.x / this.hud_scale(), y: screen.y / this.hud_scale() };
-    const hovered_other_component = this.components.map((c) => c.mousemove(m, hud_screen, transform)).some(Boolean);
+    let hovered_other_component: boolean;
+    this.dispatching_mousemove = true;
+    try {
+      hovered_other_component = this.components.map((c) => c.mousemove(m, hud_screen, transform)).some(Boolean);
+    } finally {
+      this.dispatching_mousemove = false;
+    }
     board.setPanSuppressed(false, this.panels_hovered());
     if (this.hover.update(hovered_other_component)) {
       this.cursor.update(modifiers.ctrl);

@@ -1,13 +1,13 @@
 import { getSettings } from '../../../../../../scripts/settings_store';
 import { ColorRGB } from '../../../../../../scripts/color_rgb';
 import type { Point2D } from '../../../../util/objects2d';
-import { addPoint2D, equalsPoint2D, subtractPoint2D } from '../../../../util/objects2d';
+import { equalsPoint2D, subtractPoint2D } from '../../../../util/objects2d';
 import type { RisqOrdersModel } from '../../application/orders/orders_model';
 import { isUnitOrder, lastAreaAttack, orderArrowColor } from '../../application/orders/orders_model';
 import type { RisqOrderPlanning } from '../../application/orders/planning';
 import type { RisqSelection } from '../../application/selection/selection';
 import type { RisqSession } from '../../application/session';
-import { cantorPair, invertBuildKey, invertPair, invertZoneKey } from '../../model/coordinates';
+import { invertBuildKey, invertPair, invertZoneKey } from '../../model/coordinates';
 import type {
   RisqBuilding,
   RisqFrontendOrder,
@@ -16,11 +16,11 @@ import type {
   RisqUnit,
   RisqTickAction,
 } from '../../model/types';
-import { RisqGatherObjectType, RisqGatherPointLocationKind, RisqOrderType, RisqUnitType } from '../../model/types';
+import { RisqGatherObjectType, RisqGatherPointLocationKind, RisqOrderType } from '../../model/types';
 import type { DwgRisq } from '../../risq';
 import { DrawRisqSpaceDetail } from '../space';
 import { buildingOrdersVisibleInViewMode, unitVisibleInViewMode } from '../terrain';
-import { hexagonVertices, zoneVertices, zoneApproachPoint, zoneCenterOffset } from '../zones/geometry';
+import { zoneApproachPoint, zoneCenterOffset } from '../zones/geometry';
 import { drawAttackArea, drawPendingMercenaries, drawSelectionAttackRanges } from './attack_ranges';
 import { RisqLinks } from '../links';
 import { RisqReplayIntents } from './replay_intents';

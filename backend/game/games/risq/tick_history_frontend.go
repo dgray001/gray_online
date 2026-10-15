@@ -1,6 +1,7 @@
 package risq
 
 import (
+	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/gin-gonic/gin"
 	"maps"
 )
@@ -39,11 +40,16 @@ func (s tickResourceState) toFrontend() gin.H {
 	}
 }
 
-func (f tickFrame) toFrontend(player_id int) gin.H {
+func (f tickFrame) toFrontend(player_id int, visible_units map[uint64]bool) gin.H {
 	units, buildings, resources, players, spaces, effects := []gin.H{}, []gin.H{}, []gin.H{}, []gin.H{}, []gin.H{}, []gin.H{}
+	hidden_units := []uint64{}
 	for _, state := range f.units {
 		if state.visibility.see(player_id, state.target.player_id) {
 			units = append(units, state.toFrontend())
+			visible_units[state.target.internal_id] = true
+		} else if visible_units[state.target.internal_id] {
+			hidden_units = append(hidden_units, state.target.internal_id)
+			delete(visible_units, state.target.internal_id)
 		}
 	}
 	for _, state := range f.buildings {
@@ -64,6 +70,9 @@ func (f tickFrame) toFrontend(player_id int) gin.H {
 	for _, state := range f.spaces {
 		if state.visibility[player_id] > 0 {
 			value := gin.H{"coordinate_key": state.key, "terrain_id": state.terrain_id, "visibility": state.visibility[player_id]}
+			if state.visibility[player_id] == defs.VisibilityPoor {
+				value["unit_counts"] = state.unit_counts
+			}
 			if state.visibility.see(player_id, state.owner) {
 				value["ownership"] = state.owner
 			}
@@ -78,12 +87,15 @@ func (f tickFrame) toFrontend(player_id int) gin.H {
 	return gin.H{
 		"tick": f.tick, "terminal": f.terminal, "phase": f.phase,
 		"units": units, "buildings": buildings, "resources": resources,
-		"players": players, "spaces": spaces, "effects": effects,
+		"hidden_units": hidden_units,
+		"players":      players, "spaces": spaces, "effects": effects,
 	}
 }
 
 func (j *turnJournal) toFrontend(player_id int) gin.H {
 	frames, boundaries := []gin.H{}, []gin.H{}
+	visible_units := map[uint64]bool{}
+	baseline := j.baseline.toFrontend(player_id, visible_units)
 	units := map[uint64]tickUnitState{}
 	buildings := map[uint64]tickBuildingState{}
 	for _, frame := range append([]tickFrame{j.baseline}, j.frames...) {
@@ -110,14 +122,14 @@ func (j *turnJournal) toFrontend(player_id int) gin.H {
 		building_catalog = append(building_catalog, value)
 	}
 	for _, frame := range j.frames {
-		frames = append(frames, frame.toFrontend(player_id))
+		frames = append(frames, frame.toFrontend(player_id, visible_units))
 	}
 	for _, frame := range j.boundaries {
-		boundaries = append(boundaries, frame.toFrontend(player_id))
+		boundaries = append(boundaries, frame.toFrontend(player_id, visible_units))
 	}
 	return gin.H{
 		"schema_version": 1, "turn_number": j.turn, "tick_count": j.tick_count,
-		"baseline": j.baseline.toFrontend(player_id), "frames": frames,
+		"baseline": baseline, "frames": frames,
 		"units": catalog, "buildings": building_catalog, "boundary_events": boundaries,
 	}
 }

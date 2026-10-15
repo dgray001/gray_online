@@ -160,7 +160,7 @@ export class RisqStatsView {
       font: `${health_h}px serif`,
     });
     const row_right = xi + 0.8 * frame.w();
-    const stamina_text = `${subject.current_stamina}`;
+    const stamina_text = `${subject.current_stamina}/${subject.max_stamina}`;
     ctx.font = `${health_h}px serif`;
     const stamina_text_width = ctx.measureText(stamina_text).width;
     const stamina_icon_x = row_right - stamina_text_width - health_h - 4;

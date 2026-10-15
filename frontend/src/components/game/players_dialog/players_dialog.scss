@@ -1,4 +1,13 @@
 dwg-players-dialog {
+  &[class*='size-'] #wrapper {
+    height: var(--dialog-h);
+    width: var(--dialog-w);
+    max-height: var(--dialog-max-h);
+    max-width: var(--dialog-max-w);
+    min-height: var(--dialog-min-h);
+    min-width: var(--dialog-min-w);
+  }
+
   #wrapper {
     --button-size: 36px;
     align-items: center;
@@ -50,7 +59,7 @@ dwg-players-dialog {
 }
 
 body.mobile {
-  dwg-players-dialog {
+  dwg-players-dialog:not([class*='size-']) {
     #wrapper {
       height: 80svh;
     }

@@ -121,9 +121,9 @@ export function cardToName(card: StandardCard): string {
 export function cardToIcon(card: StandardCard, render_html = true): string {
   if (render_html) {
     return formatMultilineHtmlString(`
-    <span style="margin-right: 0.9em">
+    <span style="display: inline-flex; align-items: baseline; gap: 0.05em; white-space: nowrap;">
       ${cardNumberToIconName(card.number)}
-      <span style="color:${cardSuitToRGB(card.suit)}; font-size: 1.3em; margin-left: 0.05em; margin-top: -0.15em; position: absolute;">
+      <span style="color:${cardSuitToRGB(card.suit)}; font-size: 1.3em;">
         ${cardSuitToIcon(card.suit)}
       </span>
     </span>`);

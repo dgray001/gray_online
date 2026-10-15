@@ -3,10 +3,50 @@ package world
 import (
 	"testing"
 
+	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness"
 )
 
 var origin = harness.Coord{}
+
+func TestReplayEnemyLeavesGoodVision(t *testing.T) {
+	observer := defs.UnitConfigs[villager]
+	observer.Vision.Adjacent, observer.Vision.Secondary = defs.VisibilityGood, defs.VisibilityPoor
+	defs.UnitConfigs[15] = observer
+	worker := defs.UnitConfigs[villager]
+	worker.Turn_stamina = 30
+	defs.UnitConfigs[villager] = worker
+	spaces := spaceWith(0, 0, grass, unit(15, 0)) + "," + spaceWith(1, 0, grass, unit(villager, 1)) + "," + spaceWith(2, 0, grass, "")
+	g := startGame(t, mapDoc("", spaces))
+	owner, viewer := g.Human(1), g.Human(0)
+	id := firstUnit(g, owner).InternalID
+	g.Submit(owner, harness.OrderMove([]uint64{id}, 2, 0))
+	g.EndTurn()
+	replay := harness.RequireReplay(t, g.State(viewer))
+	zone := firstUnit(g, owner).Zone
+	if replay.UnitAt(id, 0) == nil || replay.UnitAt(id, replay.TickCount) != nil {
+		t.Fatal("enemy should be visible initially and hidden after leaving good vision")
+	}
+	counted := false
+	for _, frame := range replay.Frames {
+		for _, space := range frame.Spaces {
+			if space.CoordinateKey == harness.SpaceKey(2, 0) && space.Visibility == poor && space.UnitCounts != nil {
+				row := zone.Y + 1
+				column := zone.X + min(1, zone.Y+1)
+				counted = counted || space.UnitCounts[row][column] == 1
+			}
+		}
+	}
+	if !counted {
+		t.Fatal("replay never records the enemy as an anonymous count in its destination zone")
+	}
+	g.Submit(owner, harness.OrderMove([]uint64{id}, 1, 0))
+	g.EndTurn()
+	replay = harness.RequireReplay(t, g.State(viewer))
+	if replay.UnitAt(id, 0) != nil || replay.UnitAt(id, replay.TickCount) == nil {
+		t.Fatal("enemy should regain individual visibility when returning from poor vision")
+	}
+}
 
 func TestTickHistoryInsufficientStamina(t *testing.T) {
 	t.Run("cancelled-and-completed-orders", func(t *testing.T) {

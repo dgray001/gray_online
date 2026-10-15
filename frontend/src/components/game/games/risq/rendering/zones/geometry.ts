@@ -317,3 +317,50 @@ export function zoneApproachPoint(zone_coordinate: Point2D, hex_r: number, from:
       : edgeInnerApproachPoint(hex_r, local_from);
   return rotatePoint(local_point, rotation);
 }
+
+/** Clips a convex polygon against an axis-aligned box (Sutherland-Hodgman) */
+export function clipPolygonToBox(polygon: Point2D[], min: Point2D, max: Point2D): Point2D[] {
+  const lerp = (a: Point2D, b: Point2D, t: number): Point2D => ({ x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) });
+  const clip_edge = (
+    points: Point2D[],
+    inside: (p: Point2D) => boolean,
+    intersect: (a: Point2D, b: Point2D) => Point2D
+  ): Point2D[] => {
+    const out: Point2D[] = [];
+    for (let i = 0; i < points.length; i++) {
+      const curr = points[i];
+      const prev = points[(i + points.length - 1) % points.length];
+      if (inside(curr)) {
+        if (!inside(prev)) {
+          out.push(intersect(prev, curr));
+        }
+        out.push(curr);
+      } else if (inside(prev)) {
+        out.push(intersect(prev, curr));
+      }
+    }
+    return out;
+  };
+  let result = polygon;
+  result = clip_edge(
+    result,
+    (p) => p.x >= min.x,
+    (a, b) => lerp(a, b, (min.x - a.x) / (b.x - a.x))
+  );
+  result = clip_edge(
+    result,
+    (p) => p.x <= max.x,
+    (a, b) => lerp(a, b, (max.x - a.x) / (b.x - a.x))
+  );
+  result = clip_edge(
+    result,
+    (p) => p.y >= min.y,
+    (a, b) => lerp(a, b, (min.y - a.y) / (b.y - a.y))
+  );
+  result = clip_edge(
+    result,
+    (p) => p.y <= max.y,
+    (a, b) => lerp(a, b, (max.y - a.y) / (b.y - a.y))
+  );
+  return result;
+}

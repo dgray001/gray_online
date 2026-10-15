@@ -102,12 +102,18 @@ function buildContext(base: GameRisqFromServer, journal: RisqTurnJournal, frame:
   };
 }
 
-function replayZone(space: Point2D, zone: RisqZoneFromServer, ctx: ReplayContext): RisqZoneFromServer {
+function replayZone(
+  space: Point2D,
+  zone: RisqZoneFromServer,
+  ctx: ReplayContext,
+  unit_count?: number
+): RisqZoneFromServer {
   const key = zoneKey(space, zone.coordinate);
   const unseen_building = zone.building && !ctx.journal.buildings.has(zone.building.internal_id);
   return {
     ...zone,
     units: ctx.zone_units.get(key) ?? [],
+    unit_count,
     building: ctx.zone_buildings.get(key) ?? (unseen_building ? zone.building : undefined),
     resource: ctx.zone_resources.get(key) ?? zone.resource,
     corpses: [],
@@ -118,12 +124,16 @@ function replaySpace(space: RisqSpaceFromServer, ctx: ReplayContext): RisqSpaceF
   if (!('zones' in space)) {
     return space;
   }
-  const zones = space.zones.map((row) => row.map((zone) => replayZone(space.coordinate, zone, ctx)));
+  const state = ctx.frame.spaces.get(space.coordinate_key);
+  const zones = space.zones.map((row, y) =>
+    row.map((zone, x) => replayZone(space.coordinate, zone, ctx, state?.unit_counts?.[y][x]))
+  );
   const flat = zones.flat();
   const units = flat.flatMap((zone) => zone.units ?? []);
   return {
     ...space,
-    visibility: Math.max(space.visibility, ctx.frame.spaces.get(space.coordinate_key)?.visibility ?? 0),
+    visibility: state?.visibility ?? space.visibility,
+    unit_count: state?.unit_counts?.flat().reduce((total: number, count: number): number => total + count, 0),
     ownership: ctx.frame.spaces.get(space.coordinate_key)?.ownership ?? space.ownership,
     zones,
     units,
@@ -161,6 +171,7 @@ function stateAt(journal: RisqTurnJournal, tick: number): RisqTickFrame {
   };
   for (const frame of journal.frames.filter((f) => !f.terminal && f.tick <= tick)) {
     mergeInto(merged.units, frame.units);
+    frame.hidden_units.forEach((id: number): void => void merged.units.delete(id));
     mergeInto(merged.buildings, frame.buildings);
     mergeInto(merged.resources, frame.resources);
     mergeInto(merged.players, frame.players);

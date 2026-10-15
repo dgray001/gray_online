@@ -3,7 +3,6 @@ import type { DwgLobby } from '../lobby/lobby';
 import type { DwgLobbyConnector } from '../lobby/lobby_connector/lobby_connector';
 import type { DwgGame } from '../game/game';
 import { websocketPath } from '../../scripts/api';
-import { clientOnMobile } from '../../scripts/util';
 
 import html from './page_home.html';
 
@@ -17,8 +16,6 @@ export class DwgPageHome extends DwgElement {
   private game!: DwgGame;
   private lobby_connector!: DwgLobbyConnector;
 
-  private client_on_mobile = false;
-
   constructor() {
     super();
     this.html_string = html;
@@ -26,10 +23,6 @@ export class DwgPageHome extends DwgElement {
   }
 
   protected override parsedCallback(): void {
-    this.client_on_mobile = clientOnMobile();
-    if (this.client_on_mobile) {
-      document.body.classList.add('mobile');
-    }
     this.lobby_connector.addEventListener('connect', (e) => {
       const socket = e.detail.try_reconnect
         ? new WebSocket(`${websocketPath()}/reconnect/${e.detail.nickname}/${e.detail.client_id}`)

@@ -69,7 +69,13 @@ export function handleMessage(game: DwgGame, message: ServerMessage): void {
       break;
     case 'game-failed-update': // player did something incorrect
       if (
-        ['set-auto-renew-failed', 'set-gather-point-failed', 'set-default-unit-behavior-failed'].includes(message.data)
+        [
+          'set-auto-renew-failed',
+          'set-gather-point-failed',
+          'set-default-unit-behavior-failed',
+          'bet-failed',
+          'play-card-failed',
+        ].includes(message.data)
       ) {
         void game.getGameEl()?.gameUpdate({
           update_id: 0,
@@ -94,7 +100,7 @@ export function handleMessage(game: DwgGame, message: ServerMessage): void {
       errored = true;
       console.log(message.content);
       try {
-        game.refreshGame();
+        void game.recoverGame();
       } catch (e) {
         console.log(e);
       }
@@ -119,6 +125,7 @@ export function handleMessage(game: DwgGame, message: ServerMessage): void {
 }
 
 async function handleGameUpdate(game: DwgGame, message: ServerMessage): Promise<void> {
+  await game.refreshing;
   const game_ob = game.getGame();
   const game_el = game.getGameEl();
   if (!game_ob || !game_el) {
@@ -133,38 +140,48 @@ async function handleGameUpdate(game: DwgGame, message: ServerMessage): Promise<
     return;
   }
   const game_base = game_ob.game_base;
+  const current = (): boolean => game.getGame() === game_ob && game.getGameEl() === game_el && !game.refreshing;
   async function runUpdate(): Promise<void> {
-    if (game.running_updates) {
+    if (game.running_updates || !current()) {
       return;
     }
     game.running_updates = true;
     try {
-      while (game.update_queue.length > 0) {
+      while (game.update_queue.length > 0 && current()) {
         const update = game.update_queue.shift()!;
         if (!game_base.persistant_history) {
           if (update.update_id <= (game_base.last_applied_update_id ?? 0)) {
             continue;
           }
-          game_base.last_applied_update_id = update.update_id;
           console.log(`Applying state-snapshot update id ${update.update_id}`);
           await game_el?.gameUpdate(update);
+          if (!current()) {
+            return;
+          }
+          game_base.last_applied_update_id = update.update_id;
           continue;
         }
         let last_update_id = game_base?.last_applied_update_id ?? -2;
         // running update for next update
         if (update.update_id - 1 === last_update_id) {
-          game_base.last_applied_update_id = update.update_id;
           console.log(`Applying update id ${update.update_id}`);
           await game_el?.gameUpdate(update);
+          if (!current()) {
+            return;
+          }
+          game_base.last_applied_update_id = update.update_id;
           last_update_id = update.update_id;
           while (true) {
             const next_update = game_base.updates?.get(last_update_id + 1);
             if (!next_update) {
               break;
             }
-            game_base.last_applied_update_id = next_update.update_id;
             console.log(`Applying next update id ${next_update.update_id}`);
             await game_el?.gameUpdate(next_update);
+            if (!current()) {
+              return;
+            }
+            game_base.last_applied_update_id = next_update.update_id;
             last_update_id = next_update.update_id;
           }
         } else if (update.update_id - 1 > last_update_id) {
@@ -196,8 +213,13 @@ async function handleGameUpdate(game: DwgGame, message: ServerMessage): Promise<
       }
     } catch (e) {
       console.error('Error applying game update:', e);
+      if (current()) {
+        await game.recoverGame();
+      }
     } finally {
-      game.running_updates = false;
+      if (game.getGame() === game_ob && game.getGameEl() === game_el) {
+        game.running_updates = false;
+      }
     }
   }
   try {

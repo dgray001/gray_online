@@ -1,5 +1,5 @@
 dwg-fiddlesticks {
-  --height-players-cards: 182px; // cards are 125x182 here with a 6px top margin
+  --height-players-cards: calc(182px * var(--card-size-scale, 1));
   --width-messages: 180px; // width of messages and trump card
   --size-player: 130px; // size of player box around table
   --table-diameter: min(
@@ -169,7 +169,7 @@ dwg-fiddlesticks {
 
 body.mobile {
   dwg-fiddlesticks {
-    --height-players-cards: min(120px, 18svh); // cards are 125x182 here with a 6px top margin
+    --height-players-cards: calc(min(120px, 18svh) * var(--card-size-scale, 1));
     --width-messages: calc(0.5 * var(--game-width)); // width of messages and trump card
     --height-messages: calc(5 * 1.7em + 0.6em); // height of header messages
     --size-player: min(90px, 13svh); // size of player box around table

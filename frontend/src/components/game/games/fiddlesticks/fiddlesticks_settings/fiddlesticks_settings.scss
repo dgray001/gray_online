@@ -1,3 +1,74 @@
 dwg-fiddlesticks-settings {
-  display: block;
+  background-color: rgb(80, 80, 80);
+  display: flex;
+  flex-flow: column nowrap;
+  height: 100%;
+  min-height: 0;
+  #display-rows {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .display-row {
+    align-items: center;
+    background: rgba(0, 0, 0, 0.15);
+    display: grid;
+    gap: 1em;
+    grid-template-columns: minmax(0, 1fr) minmax(100px, 160px) 4em;
+    padding: 0.4em 0.5em;
+  }
+  input[type='range'] {
+    cursor: pointer;
+    margin: 0;
+    width: 100%;
+  }
+  output {
+    text-align: right;
+    color: rgba(255, 255, 255, 0.85);
+  }
+  .display-help {
+    font-size: 0.85em;
+    padding: 0 0.5em;
+  }
+  .checkbox-row {
+    grid-template-columns: minmax(0, 1fr) 4em;
+  }
+  input[type='checkbox'] {
+    cursor: pointer;
+    height: 18px;
+    width: 18px;
+    justify-self: end;
+  }
+  #settings-footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    gap: 0.6em;
+    justify-content: flex-end;
+    margin-top: 0.8em;
+    padding-top: 0.8em;
+  }
+  .footer-button {
+    color: black;
+    cursor: pointer;
+    padding: 0.35em 0.8em;
+  }
+  #save-changes-button {
+    font-weight: bold;
+  }
+  @media (max-width: 600px) {
+    .display-row {
+      grid-template-columns: minmax(0, 1fr) 4em;
+    }
+    label {
+      grid-column: 1 / -1;
+    }
+    .checkbox-row label {
+      grid-column: auto;
+    }
+    .footer-button {
+      min-height: 44px;
+    }
+  }
 }

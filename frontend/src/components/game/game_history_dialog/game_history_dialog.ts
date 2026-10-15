@@ -1,3 +1,4 @@
+import type { DialogSize } from '../../dialog_box/dialog_box';
 import { DwgDialogBox } from '../../dialog_box/dialog_box';
 import type { GameComponent, UpdateMessage } from '../data_models';
 
@@ -7,6 +8,7 @@ import './game_history_dialog.scss';
 
 /** Input data for a game history dialog box */
 interface GameHistoryData {
+  size?: DialogSize;
   updates: Map<number, UpdateMessage>;
   game: GameComponent;
 }
@@ -32,14 +34,23 @@ export class DwgGameHistoryDialog extends DwgDialogBox<GameHistoryData> {
 
   override setData(data: GameHistoryData, parsed?: boolean): void {
     this.data = data;
+    if (data.size) {
+      this.classList.add(`size-${data.size}`);
+    }
     if (!parsed && !this.fully_parsed) {
       return;
     }
     const sorted_updates = [...data.updates.values()].sort((a, b) => b.update_id - a.update_id);
-    for (const update of sorted_updates) {
-      const el = data.game.updateDialogComponent(update);
-      el.classList.add('update');
-      this.updates_container.appendChild(el);
+    this.updates_container.replaceChildren();
+    this.classList.toggle('grouped-history', !!data.game.historyDialogComponent);
+    if (data.game.historyDialogComponent) {
+      this.updates_container.appendChild(data.game.historyDialogComponent(sorted_updates));
+    } else {
+      for (const update of sorted_updates) {
+        const el = data.game.updateDialogComponent(update);
+        el.classList.add('update');
+        this.updates_container.appendChild(el);
+      }
     }
     this.close_button.addEventListener('click', () => {
       this.closeDialog();

@@ -56,6 +56,7 @@ export class DwgSettingsDialog extends DwgDialogBox<SettingsDialogData> {
   private resolveSize(data: SettingsDialogData): DialogSize {
     switch (data.game_type) {
       case GameType.FIDDLESTICKS:
+        return DialogSize.LARGE;
       case GameType.RISQ:
         return DialogSize.XLARGE;
       default:

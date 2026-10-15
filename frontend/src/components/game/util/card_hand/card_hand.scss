@@ -37,6 +37,10 @@ dwg-card-hand {
       user-select: none;
       width: var(--card-width);
 
+      &.unplayable {
+        filter: brightness(0.55) grayscale(0.65);
+      }
+
       &.hovering {
         transform: translate(calc(var(--i) * var(--card-overlap)), calc(-0.1 * var(--height))) rotate(-1deg);
         z-index: 3;
@@ -88,7 +92,7 @@ dwg-card-hand {
     > #play-drop {
       display: none;
     }
-  
+
     > #cancel-drop {
       display: none;
     }

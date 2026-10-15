@@ -1,9 +1,20 @@
 import { err } from '../../../../../../scripts/log';
+import { clampNumber, seededRandom } from '../../../../../../scripts/math';
 import type { Point2D } from '../../../../util/objects2d';
+import { rotatePoint } from '../../../../util/objects2d';
 import type { RisqDrawHost } from '../board/board_renderer';
-import type { RisqResource, RisqResourceConfig } from '../../model/types';
+import type { RisqResource, RisqResourceConfig, RisqZone } from '../../model/types';
 import { RisqResourceType } from '../../model/types';
-import { PLAYER_ICON_SIZE } from './image_cache';
+import { RisqViewMode } from '../terrain';
+import {
+  BUILDING_CIRCLE_RADIUS_MULTIPLIER,
+  CENTER_ZONE_APOTHEM_MULTIPLIER,
+  buildingLocalOffset,
+  clipToZone,
+  edgeSlotAtAngle,
+  findOuterZoneIndex,
+} from '../zones/geometry';
+import { PLAYER_ICON_SIZE, transformScale } from './image_cache';
 
 // ordered smallest first; a mine of resource_id N shows the stages with resource_id <= N as it depletes
 const STONE_MINE_STAGES: { resource_id: number; filename: string }[] = [
@@ -259,4 +270,112 @@ export function resourceTypeImage(resource: RisqResource | RisqResourceType): st
       break;
   }
   return `risq/resources/${filename}`;
+}
+
+const CENTER_FOREST_TREES = 8;
+const EDGE_FOREST_TREES = 6;
+const FOREST_TREE_RADIUS_MULTIPLIER = 0.11;
+const FOREST_TREE_RING_FRACTION = 0.4;
+const FOREST_MAX_PERTURBATION = 0.02;
+const FOREST_OUTER_RING_BELOW_RESOURCES_LEFT = 1000;
+const FOREST_INNER_RING_BELOW_RESOURCES_LEFT = 600;
+const CENTER_INNER_FOREST_ANGLES = [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2];
+const EDGE_INNER_FOREST_ANGLES = CENTER_INNER_FOREST_ANGLES.slice(1);
+
+const HEXAGON_EDGE_NORMALS: Point2D[] = Array.from({ length: 6 }, (_, k) => ({
+  x: Math.cos((k * Math.PI) / 3),
+  y: Math.sin((k * Math.PI) / 3),
+}));
+
+/** Scales the point toward the center zone's middle until a tree centered there fits fully inside the zone */
+function clampToCenterZone(p: Point2D, hex_r: number): Point2D {
+  const limit = (CENTER_ZONE_APOTHEM_MULTIPLIER - FOREST_TREE_RADIUS_MULTIPLIER) * hex_r;
+  const reach = Math.max(...HEXAGON_EDGE_NORMALS.map((n) => p.x * n.x + p.y * n.y));
+  const scale = reach > limit ? limit / reach : 1;
+  return { x: p.x * scale, y: p.y * scale };
+}
+
+/** Moves the point into the edge zone's trapezoid (local frame, zone toward +x) so a tree there fits fully inside */
+function clampToEdgeZone(p: Point2D, hex_r: number): Point2D {
+  const tree_r = FOREST_TREE_RADIUS_MULTIPLIER * hex_r;
+  const x = clampNumber(p.x, CENTER_ZONE_APOTHEM_MULTIPLIER * hex_r + tree_r, (Math.sqrt(3) / 2) * hex_r - tree_r);
+  const max_y = x * Math.tan(Math.PI / 6) - tree_r / Math.cos(Math.PI / 6);
+  return { x, y: clampNumber(p.y, -max_y, max_y) };
+}
+
+declare interface ForestTreeSpots {
+  inner: Point2D[];
+  outer: Point2D[];
+}
+
+/** Local-frame tree spots: a ring (center) or inward arc (edge), plus an inner square/right triangle at half that distance */
+function forestTreeLocalOffsets(is_center: boolean, hex_r: number, seed: number): ForestTreeSpots {
+  const random = seededRandom(seed);
+  const outer_step = is_center ? (2 * Math.PI) / CENTER_FOREST_TREES : Math.PI / (EDGE_FOREST_TREES - 1);
+  const inner_step = Math.PI / 2;
+  // rings rotate within one step; arcs slide by up to half a step either way so their ends stay near the zone
+  const jitter = (step: number): number => (is_center ? random() * step : (random() - 0.5) * step);
+  const outer_offset = jitter(outer_step);
+  const inner_offset = jitter(inner_step);
+  const building = buildingLocalOffset(is_center, hex_r);
+  const gap = CENTER_ZONE_APOTHEM_MULTIPLIER - BUILDING_CIRCLE_RADIUS_MULTIPLIER;
+  const center_ring_r = (BUILDING_CIRCLE_RADIUS_MULTIPLIER + FOREST_TREE_RING_FRACTION * gap) * hex_r;
+  const ring_at = (angle: number): Point2D =>
+    is_center
+      ? { x: center_ring_r * Math.cos(angle), y: center_ring_r * Math.sin(angle) }
+      : edgeSlotAtAngle(angle, hex_r, FOREST_TREE_RING_FRACTION);
+  const ring_angles = (
+    is_center
+      ? Array.from({ length: CENTER_FOREST_TREES }, (_, i) => (2 * Math.PI * i) / CENTER_FOREST_TREES)
+      : Array.from({ length: EDGE_FOREST_TREES }, (_, i) => Math.PI / 2 + (i * Math.PI) / (EDGE_FOREST_TREES - 1))
+  ).map((angle) => angle + outer_offset);
+  const inner = (is_center ? CENTER_INNER_FOREST_ANGLES : EDGE_INNER_FOREST_ANGLES).map((angle) => {
+    const p = ring_at(angle + inner_offset);
+    return { x: 0.5 * (building.x + p.x), y: 0.5 * (building.y + p.y) };
+  });
+  const perturbation = (): number => (random() - 0.5) * 2 * FOREST_MAX_PERTURBATION * hex_r;
+  const clamp_to_zone = is_center ? clampToCenterZone : clampToEdgeZone;
+  const place = (p: Point2D): Point2D => clamp_to_zone({ x: p.x + perturbation(), y: p.y + perturbation() }, hex_r);
+  return { inner: inner.map(place), outer: ring_angles.map(ring_at).map(place) };
+}
+
+/** Draws a forest zone's trees upright around its space's center (the current origin), clipped to the zone */
+export function drawForestTrees(
+  ctx: CanvasRenderingContext2D,
+  game: RisqDrawHost,
+  zone: RisqZone,
+  view_mode: RisqViewMode,
+  hex_r: number,
+  map_rotation: number
+): void {
+  const resource = zone.resource;
+  const hidden_view = view_mode === RisqViewMode.MILITARY || view_mode === RisqViewMode.OWNERSHIP;
+  if (!resource || !isForestResource(resource) || hidden_view) {
+    return;
+  }
+  const direction = findOuterZoneIndex(zone.coordinate);
+  const zone_rotation = direction === -1 ? 0 : (Math.PI / 3) * (direction + 1);
+  const icon_r = FOREST_TREE_RADIUS_MULTIPLIER * hex_r;
+  const icon = game
+    .getImageCache()
+    .getScaledSprite(
+      game.getIcon(resourceImage(resource, game.session.getResourceConfigs())),
+      2 * icon_r * transformScale(ctx)
+    );
+  ctx.save();
+  clipToZone(ctx, { x: 0, y: 0 }, hex_r, zone.coordinate);
+  const spots = forestTreeLocalOffsets(direction === -1, hex_r, zone.coordinate_key);
+  const visible_spots = [
+    ...(resource.resources_left < FOREST_INNER_RING_BELOW_RESOURCES_LEFT ? [] : spots.inner),
+    ...(resource.resources_left < FOREST_OUTER_RING_BELOW_RESOURCES_LEFT ? [] : spots.outer),
+  ];
+  for (const offset of visible_spots) {
+    const p = rotatePoint(offset, zone_rotation);
+    ctx.translate(p.x, p.y);
+    ctx.rotate(-map_rotation);
+    ctx.drawImage(icon, -icon_r, -icon_r, 2 * icon_r, 2 * icon_r);
+    ctx.rotate(map_rotation);
+    ctx.translate(-p.x, -p.y);
+  }
+  ctx.restore();
 }

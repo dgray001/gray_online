@@ -1,1 +1,71 @@
-<div id="wrapper">Fiddlesticks settings coming soon</div>
+<div id="display-rows">
+  <div class="display-row">
+    <label for="animation-speed">Animation speed</label>
+    <input
+      id="animation-speed"
+      type="range"
+      min="0"
+      max="1.5"
+      step="0.5"
+      list="animation-speed-ticks"
+      aria-describedby="animation-speed-help"
+    />
+    <output id="animation-speed-value" for="animation-speed"></output>
+    <datalist id="animation-speed-ticks">
+      <option value="0"></option>
+      <option value="0.5"></option>
+      <option value="1"></option>
+      <option value="1.5"></option>
+    </datalist>
+  </div>
+  <p id="animation-speed-help" class="display-help">Multiplies animation durations. 0 is instant; 1 is the default.</p>
+  <div class="display-row">
+    <label for="card-size">Card size</label>
+    <input
+      id="card-size"
+      type="range"
+      min="0"
+      max="2"
+      step="1"
+      list="card-size-ticks"
+      aria-describedby="card-size-help"
+    />
+    <output id="card-size-value" for="card-size"></output>
+    <datalist id="card-size-ticks">
+      <option value="0"></option>
+      <option value="1"></option>
+      <option value="2"></option>
+    </datalist>
+  </div>
+  <p id="card-size-help" class="display-help">Adjusts the size of cards in your hand.</p>
+  <div class="display-row">
+    <label for="trick-result-pause">Trick result pause</label>
+    <input
+      id="trick-result-pause"
+      type="range"
+      min="0"
+      max="2"
+      step="0.5"
+      list="trick-pause-ticks"
+      aria-describedby="trick-pause-help"
+    />
+    <output id="trick-result-pause-value" for="trick-result-pause"></output>
+    <datalist id="trick-pause-ticks">
+      <option value="0"></option>
+      <option value="0.5"></option>
+      <option value="1"></option>
+      <option value="1.5"></option>
+      <option value="2"></option>
+    </datalist>
+  </div>
+  <p id="trick-pause-help" class="display-help">Time to view the winning card before the trick is collected.</p>
+  <div class="display-row checkbox-row">
+    <label for="highlight-playable-cards">Highlight playable cards</label>
+    <input id="highlight-playable-cards" type="checkbox" />
+  </div>
+</div>
+<div id="settings-footer">
+  <button id="restore-defaults-button" class="footer-button">Restore Defaults</button>
+  <button id="cancel-changes-button" class="footer-button">Cancel Changes</button>
+  <button id="save-changes-button" class="footer-button">Save Changes</button>
+</div>

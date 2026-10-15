@@ -148,18 +148,24 @@ export class RisqOrderTargeting {
   }
 
   buildTargetValid(): boolean {
+    return this.buildPlacementInvalidReason() === undefined;
+  }
+
+  buildPlacementInvalidReason(): string | undefined {
     const zone = this.hover.zone();
     const space = this.hover.space();
-    return (
-      this.left_panel.hasVillager() &&
-      this.isZoneValid() &&
-      !!space &&
-      !zone?.resource &&
-      !zone?.building &&
-      !this.planning.hasPlannedFoundation(zone) &&
-      !this.planning.atBuildingLimit(this.armed.getArmedBuildingId(), zone?.coordinate_key) &&
-      this.isSpaceBuildable(space, this.session.getPlayerId())
-    );
+    if (!this.left_panel.hasVillager() || !this.isZoneValid() || !space) {
+      return 'Select villagers and a visible zone to build';
+    }
+    if (zone?.resource || zone?.building || this.planning.hasPlannedFoundation(zone)) {
+      return 'Building plot is occupied';
+    }
+    if (this.planning.atBuildingLimit(this.armed.getArmedBuildingId(), zone?.coordinate_key)) {
+      return 'Building limit reached';
+    }
+    return this.isSpaceBuildable(space, this.session.getPlayerId())
+      ? undefined
+      : 'Must build in owned or adjacent unowned territory';
   }
 
   private isSpaceBuildable(space: RisqSpace, player_id: number): boolean {

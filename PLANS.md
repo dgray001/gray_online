@@ -1,4 +1,3 @@
-v0.9: Risq beta version
 
 Bigger Risq Issues/Ideas:
  - Utilize events on map
@@ -9,10 +8,8 @@ Bigger Risq Issues/Ideas:
     => Wood gathering seems slow we need a way to speed it up (more techs!)
 
 Fiddlesticks Plans:
- - Revamp update dialog box
  - Update turn timer UX
  - Host can pause game and if host leaves then someone else takes over as host
- - User settings (including trick-resolution animation durations) instead of hardcoded timings in fiddlesticks.ts
 
 Game Frontend Plans:
  - Sync/refresh game state on in-game frontend errors thrown (the "TODO: try to sync data" scattered across message_handler.ts and each game's gameUpdate catch blocks). Updates are applied in guaranteed order by message_handler.ts, so if a game's gameUpdate throws while applying one, that's a real bug, not a transient network issue — the frontend should treat it as a signal to auto-refresh/resync game state (e.g. game.refreshGame()) instead of just logging and leaving the client silently desynced.

@@ -14,7 +14,8 @@ import {
   zoneBuildingLocalOffset,
   zoneUnitSlotLocalOffsets,
 } from './zones/geometry';
-import { drawForestTrees, drawRisqZone, getSpaceTerrainImage, getZoneFill, isEmptyPlot } from './zones/draw';
+import { drawForestTrees } from './assets/resources';
+import { drawRisqZone, getSpaceTerrainImage, getZoneFill, isEmptyPlot } from './zones/draw';
 import type { RisqEntityPass } from './zones/draw';
 import { getZoneUnitSlots } from './zones/slots';
 import { drawZoneCorpses } from './zones/corpses';
@@ -36,6 +37,7 @@ export declare interface DrawRisqSpaceConfig {
   view_mode: RisqViewMode;
   rotation: number;
   entity_pass?: RisqEntityPass;
+  zone_borders_only?: boolean;
 }
 
 export const SPACE_BORDER_REFERENCE_RADIUS = 60;
@@ -154,7 +156,7 @@ export function drawRisqSpaceContent(
   }
   ctx.textAlign = 'left';
   drawSpaceContent(ctx, game, space, config, black_text, owner_color);
-  if (config.entity_pass === 'terrain' || config.entity_pass === 'selected') {
+  if (config.zone_borders_only || config.entity_pass === 'terrain' || config.entity_pass === 'selected') {
     return;
   }
   if (config.draw_detail !== DrawRisqSpaceDetail.OWNERSHIP && space.visibility === RisqVisibilityLevel.SPY) {
@@ -204,6 +206,9 @@ function drawSpaceContent(
   black_text: boolean,
   owner_color: ColorRGB | undefined
 ): void {
+  if (config.zone_borders_only && config.draw_detail !== DrawRisqSpaceDetail.ZONE_DETAILS) {
+    return;
+  }
   if (config.draw_detail === DrawRisqSpaceDetail.OWNERSHIP) {
     drawSpaceOverviewDots(ctx, game, space, config);
     return;
@@ -250,23 +255,25 @@ function drawSpaceContent(
       config.view_mode
     );
     const center_count = space.visibility === RisqVisibilityLevel.POOR ? 1 : center_slots.length;
-    if (!config.entity_pass || config.entity_pass === 'terrain') {
+    if (!config.entity_pass || (config.entity_pass === 'terrain' && config.zone_borders_only !== false)) {
       drawHexagon(ctx, { x: 0, y: 0 }, inner_r);
     }
-    drawRisqZone(
-      ctx,
-      game,
-      zone,
-      space.visibility,
-      config.view_mode,
-      black_text,
-      r,
-      config.rotation,
-      zoneBuildingLocalOffset(zone.coordinate, r),
-      zoneUnitSlotLocalOffsets(zone.coordinate, r, center_count, game.viewport.unitRadius()),
-      active_player_id,
-      config.entity_pass
-    );
+    if (!config.zone_borders_only) {
+      drawRisqZone(
+        ctx,
+        game,
+        zone,
+        space.visibility,
+        config.view_mode,
+        black_text,
+        r,
+        config.rotation,
+        zoneBuildingLocalOffset(zone.coordinate, r),
+        zoneUnitSlotLocalOffsets(zone.coordinate, r, center_count, game.viewport.unitRadius()),
+        active_player_id,
+        config.entity_pass
+      );
+    }
     const a = Math.PI / 3;
     for (let i = 0; i < 6; i++) {
       const direction_vector = OUTER_ZONE_INDICES[i];
@@ -286,7 +293,7 @@ function drawSpaceContent(
       ctx.lineTo(r * Math.cos(a * i + Math.PI / 2), r * Math.sin(a * i + Math.PI / 2));
       ctx.lineTo(r * Math.cos(a * i + Math.PI / 6), r * Math.sin(a * i + Math.PI / 6));
       ctx.closePath();
-      if (!config.entity_pass || config.entity_pass === 'terrain') {
+      if (!config.entity_pass || (config.entity_pass === 'terrain' && config.zone_borders_only !== false)) {
         ctx.stroke();
         ctx.fill();
       }
@@ -300,20 +307,22 @@ function drawSpaceContent(
         config.view_mode
       );
       const edge_count = space.visibility === RisqVisibilityLevel.POOR ? 1 : edge_slots.length;
-      drawRisqZone(
-        ctx,
-        game,
-        zone,
-        space.visibility,
-        config.view_mode,
-        black_text,
-        r,
-        rotation + config.rotation,
-        zoneBuildingLocalOffset(zone.coordinate, r),
-        zoneUnitSlotLocalOffsets(zone.coordinate, r, edge_count, game.viewport.unitRadius()),
-        active_player_id,
-        config.entity_pass
-      );
+      if (!config.zone_borders_only) {
+        drawRisqZone(
+          ctx,
+          game,
+          zone,
+          space.visibility,
+          config.view_mode,
+          black_text,
+          r,
+          rotation + config.rotation,
+          zoneBuildingLocalOffset(zone.coordinate, r),
+          zoneUnitSlotLocalOffsets(zone.coordinate, r, edge_count, game.viewport.unitRadius()),
+          active_player_id,
+          config.entity_pass
+        );
+      }
       ctx.rotate(-rotation);
     }
     ctx.translate(-space.center.x, -space.center.y);

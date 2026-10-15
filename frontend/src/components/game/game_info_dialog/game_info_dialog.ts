@@ -1,4 +1,5 @@
 import { capitalize } from '../../../scripts/util';
+import type { DialogSize } from '../../dialog_box/dialog_box';
 import { DwgDialogBox } from '../../dialog_box/dialog_box';
 import type { LobbyRoom } from '../../lobby/data_models';
 import { GameType } from '../../lobby/data_models';
@@ -10,6 +11,7 @@ import './game_info_dialog.scss';
 
 /** Input data for a game info dialog box */
 interface GameInfoData {
+  size?: DialogSize;
   room: LobbyRoom;
   game: Game;
 }
@@ -48,6 +50,9 @@ export class DwgGameInfoDialog extends DwgDialogBox<GameInfoData> {
 
   setData(data: GameInfoData, parsed?: boolean): void {
     this.data = data;
+    if (data.size) {
+      this.classList.add(`size-${data.size}`);
+    }
     if (!parsed && !this.fully_parsed) {
       return;
     }

@@ -279,5 +279,3 @@ func TestViewerDoesNotInheritClientPrivateData(t *testing.T) {
 		equal(t, len(array(t, state["regions"])), 0)
 	}
 }
-
-

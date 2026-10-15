@@ -1,7 +1,8 @@
 import { DwgElement } from '../../../../dwg_element';
 import { createMessage } from '../../../../lobby/data_models';
 import type { FiddlesticksPlayer } from '../fiddlesticks_data';
-import { DEV, until, untilTimer } from '../../../../../scripts/util';
+import { DEV } from '../../../../../scripts/util';
+import { animationDuration, waitFor, waitForAnimation } from '../fiddlesticks_async';
 import { messageDialog } from '../../../game';
 import { Sounds } from '../../../../../sounds/Sounds';
 
@@ -25,6 +26,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
   private initialized = false;
   private player!: FiddlesticksPlayer;
   private client_player = false;
+  private lifecycle = new AbortController();
 
   constructor() {
     super();
@@ -44,6 +46,17 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     );
   }
 
+  override connectedCallback(): Promise<void> {
+    this.lifecycle = new AbortController();
+    return super.connectedCallback();
+  }
+
+  override disconnectedCallback(): void {
+    this.lifecycle.abort();
+    this.stopTimer();
+    super.disconnectedCallback();
+  }
+
   protected override parsedCallback(): void {
     if (!this.initialized) {
       throw new Error('Should initialize fiddlesticks player before attaching to dom');
@@ -54,11 +67,29 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.tricks_container.innerText = '-';
     this.addTooltipToggle(this.dealer_wrapper);
     this.addTooltipToggle(this.winner_wrapper);
+    if (this.client_player) {
+      this.bet_input.addEventListener('keyup', (e: KeyboardEvent): void => {
+        e.stopImmediatePropagation();
+        if (e.key === 'Enter') {
+          this.sendBetEvent();
+        }
+      });
+      this.bet_button.addEventListener('click', (): void => this.sendBetEvent());
+    }
   }
 
   /** Toggles wrapper's tooltip on click, auto-hiding it after 2s */
   private addTooltipToggle(wrapper: HTMLDivElement): void {
     let hide_timeout: NodeJS.Timeout | undefined = undefined;
+    this.lifecycle.signal.addEventListener(
+      'abort',
+      (): void => {
+        if (hide_timeout) {
+          clearTimeout(hide_timeout);
+        }
+      },
+      { once: true }
+    );
     wrapper.addEventListener('click', () => {
       if (hide_timeout) {
         clearTimeout(hide_timeout);
@@ -81,10 +112,10 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     betting: boolean,
     current_turn: boolean,
     dealer: boolean,
-    turn_start_time = 0,
-    turn_duration = 0
+    turn_start_time: number = 0,
+    turn_duration: number = 0
   ): Promise<void> {
-    await until(() => this.fully_parsed);
+    await waitFor(() => this.fully_parsed, this.lifecycle.signal);
     if (betting) {
       this.bet_container.innerText = this.player.has_bet ? this.player.bet.toString() : '-';
       this.tricks_container.innerText = '-';
@@ -102,20 +133,9 @@ export class DwgFiddlesticksPlayer extends DwgElement {
   }
 
   setClientPlayer(): void {
+    void Sounds.preload('turn_notification').catch((error: unknown): void => console.error(error));
     this.classList.add('client-player');
     this.client_player = true;
-    // can be called before parsed
-    until(() => this.fully_parsed).then(() => {
-      this.bet_input.addEventListener('keyup', (e) => {
-        e.stopImmediatePropagation();
-        if (e.key === 'Enter') {
-          this.sendBetEvent();
-        }
-      });
-      this.bet_button.addEventListener('click', () => {
-        this.sendBetEvent();
-      });
-    });
   }
 
   sendBetEvent(): void {
@@ -150,7 +170,10 @@ export class DwgFiddlesticksPlayer extends DwgElement {
   }
 
   async endRound(): Promise<void> {
-    await until(() => this.fully_parsed);
+    await waitFor(() => this.fully_parsed, this.lifecycle.signal);
+    this.stopTimer();
+    this.classList.remove('turn');
+    this.bet_input_wrapper.classList.remove('show');
     this.player.bet = -1;
     this.player.tricks = 0;
     this.bet_container.innerText = '-';
@@ -176,11 +199,11 @@ export class DwgFiddlesticksPlayer extends DwgElement {
   async setBetAnimation(amount: number): Promise<void> {
     const animation_time = 500;
     this.bet_animation.innerText = amount.toString();
-    this.bet_animation.style.transitionDuration = `${animation_time}ms`;
+    this.bet_animation.style.transitionDuration = `${animationDuration(animation_time)}ms`;
     this.bet_animation.classList.add('transition');
-    await untilTimer(2 * animation_time);
+    await waitForAnimation(2 * animation_time, this.lifecycle.signal);
     this.bet_animation.classList.remove('transition');
-    await untilTimer(animation_time);
+    await waitForAnimation(animation_time, this.lifecycle.signal);
     this.setBet(amount);
   }
 
@@ -214,6 +237,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
   private stopTimer(): void {
     if (this.timer_request) {
       cancelAnimationFrame(this.timer_request);
+      this.timer_request = undefined;
     }
     this.style.setProperty('--turn-percent-left', '0');
   }

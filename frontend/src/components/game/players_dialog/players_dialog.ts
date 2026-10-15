@@ -1,3 +1,4 @@
+import type { DialogSize } from '../../dialog_box/dialog_box';
 import { DwgDialogBox } from '../../dialog_box/dialog_box';
 import type { LobbyUser } from '../../lobby/data_models';
 import type { GamePlayer } from '../data_models';
@@ -9,6 +10,7 @@ import './players_dialog_player/players_dialog_player';
 
 /** Input data for a players dialog box */
 interface PlayersData {
+  size?: DialogSize;
   room_id: number;
   players: GamePlayer[];
   lobby_players: Map<number, LobbyUser>;
@@ -35,6 +37,9 @@ export class DwgPlayersDialog extends DwgDialogBox<PlayersData> {
 
   setData(data: PlayersData, parsed?: boolean): void {
     this.data = data;
+    if (data.size) {
+      this.classList.add(`size-${data.size}`);
+    }
     if (!parsed && !this.fully_parsed) {
       return;
     }

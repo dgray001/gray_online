@@ -1,4 +1,5 @@
 import { DwgElement } from '../dwg_element';
+import { DialogSize } from '../dialog_box/dialog_box';
 import type { ServerMessage, LobbyRoom, ConnectionMetadata } from '../lobby/data_models';
 import { GameType, createMessage } from '../lobby/data_models';
 import { apiPost } from '../../scripts/api';
@@ -71,6 +72,7 @@ export class DwgGame extends DwgElement {
 
   message_error_count = 0;
   running_updates = false;
+  refreshing?: Promise<boolean>;
   update_queue: UpdateMessage[] = [];
 
   private chatbox_lock = createLock();
@@ -90,7 +92,12 @@ export class DwgGame extends DwgElement {
     this.addEventListener('show_message_dialog', (event) => {
       event.stopPropagation();
       const dialog = document.createElement('dwg-message-dialog');
-      dialog.setData(event.detail);
+      dialog.setData({
+        ...event.detail,
+        size:
+          event.detail.size ??
+          (this.game?.game_base.game_type === GameType.FIDDLESTICKS ? DialogSize.SMALL : undefined),
+      });
       this.appendChild(dialog);
     });
     this.configureElements(
@@ -215,7 +222,11 @@ export class DwgGame extends DwgElement {
         return;
       }
       const game_info = document.createElement('dwg-game-info-dialog');
-      game_info.setData({ game: this.game, room: this.lobby_room });
+      game_info.setData({
+        game: this.game,
+        room: this.lobby_room,
+        size: this.game.game_base.game_type === GameType.FIDDLESTICKS ? DialogSize.LARGE : undefined,
+      });
       this.appendChild(game_info);
     });
     this.button_game_history.addEventListener('click', () => {
@@ -224,6 +235,7 @@ export class DwgGame extends DwgElement {
       }
       const game_history = document.createElement('dwg-game-history-dialog');
       game_history.setData({
+        size: this.game.game_base.game_type === GameType.FIDDLESTICKS ? DialogSize.XLARGE : undefined,
         game: this.game_el,
         updates: this.game.game_base.updates ?? new Map(),
       });
@@ -235,6 +247,7 @@ export class DwgGame extends DwgElement {
       }
       const players_dialog = document.createElement('dwg-players-dialog');
       players_dialog.setData({
+        size: this.game.game_base.game_type === GameType.FIDDLESTICKS ? DialogSize.XLARGE : undefined,
         players: [...this.game.game_base.players.values()].sort((a, b) => a.player_id - b.player_id),
         lobby_players: this.lobby_room.players,
         room_id: this.lobby_room.room_id,
@@ -262,7 +275,10 @@ export class DwgGame extends DwgElement {
     });
     this.button_exit.addEventListener('click', () => {
       const confirm_dialog = document.createElement('dwg-confirm-dialog');
-      confirm_dialog.setData({ question: 'Are you sure you want to exit?' });
+      confirm_dialog.setData({
+        question: 'Are you sure you want to exit?',
+        size: this.game?.game_base.game_type === GameType.FIDDLESTICKS ? DialogSize.SMALL : undefined,
+      });
       confirm_dialog.addEventListener('confirmed', () => {
         this.dispatchEvent(new Event('exit_game'));
       });
@@ -430,18 +446,49 @@ export class DwgGame extends DwgElement {
     messageDialog.call(this, { message: 'Unable to initialize the game. Refresh the page to try again.' });
   }
 
-  async refreshGame(): Promise<boolean> {
+  refreshGame(): Promise<boolean> {
+    return (this.refreshing ??= this.refreshGameSnapshot()
+      .catch((error: unknown): boolean => {
+        console.error('Error refreshing game:', error);
+        return false;
+      })
+      .finally((): void => {
+        this.refreshing = undefined;
+      }));
+  }
+
+  async recoverGame(): Promise<boolean> {
+    if (this.refreshing) {
+      return this.refreshing;
+    }
+    const game_id = this.game_id;
+    const socket = this.socket;
+    this.game_el?.remove();
+    const refreshed = await this.refreshGame();
+    if (!refreshed && this.isConnected && this.game_id === game_id && this.socket === socket) {
+      messageDialog.call(this, { message: 'Unable to refresh game state. Refresh the page to reconnect.' });
+    }
+    return refreshed;
+  }
+
+  private async refreshGameSnapshot(): Promise<boolean> {
+    const game_id = this.game_id;
+    const socket = this.socket;
     const response = await apiPost<GameFromServer>(`lobby/games/get/${this.game_id}`, {
       client_id: this.clientId(),
       token: this.connection_metadata?.token,
       viewer: this.is_player ? 'false' : 'true',
     });
+    if (!this.isConnected || this.game_id !== game_id || this.socket !== socket) {
+      return false;
+    }
     if (!response.success) {
       console.error(response.error_message);
       return false;
     }
     const new_game = serverResponseToGame(response.result, this.clientId());
     this.game = new_game;
+    this.running_updates = false;
     this.update_queue = [];
     let game_initialized = false;
     const set_game = async (component: GameHtmlTag): Promise<void> => {

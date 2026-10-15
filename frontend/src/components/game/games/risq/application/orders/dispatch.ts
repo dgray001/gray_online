@@ -63,6 +63,13 @@ export class RisqOrderDispatch {
   }
 
   unitOrder(units: OrderSubject[], ctrl_held: boolean): void {
+    if (this.armed.getArmedOrder() === RisqOrderType.OrderType_UnitBuild) {
+      const invalid_reason = this.targeting.buildPlacementInvalidReason();
+      if (invalid_reason) {
+        this.show_message(invalid_reason, RISQ_MESSAGE_WARNING_COLOR);
+        return;
+      }
+    }
     const space = this.hover.space();
     const zone = this.hover.zone();
     if (!space) {

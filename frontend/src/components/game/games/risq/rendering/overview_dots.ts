@@ -149,7 +149,7 @@ function drawEntityDots(
 const INSET_ROWS = 4;
 const OVERVIEW_DOT_VIEW_MODES = [RisqViewMode.ALL, RisqViewMode.RESOURCE, RisqViewMode.MILITARY];
 
-/** Zoomed-out replacement for zone detail: resource dots with the terrain, entity dots in the entity passes */
+/** Zoomed-out replacement for zone detail: entity dots in the entity passes (resource dots are minimap only) */
 export function drawSpaceOverviewDots(
   ctx: CanvasRenderingContext2D,
   game: RisqDrawHost,
@@ -159,12 +159,7 @@ export function drawSpaceOverviewDots(
   if (space.visibility < RisqVisibilityLevel.FOG || !OVERVIEW_DOT_VIEW_MODES.includes(config.view_mode)) {
     return;
   }
-  if (config.entity_pass === 'terrain') {
-    const scale = config.view_mode === RisqViewMode.RESOURCE ? 1.4 : 1;
-    for (const zone of config.view_mode === RisqViewMode.MILITARY ? [] : (space.zones?.flat() ?? [])) {
-      drawZoneResourceDot(ctx, game.getImageCache(), zone, space.center, config.hex_r, scale);
-    }
-  } else {
+  if (config.entity_pass !== 'terrain') {
     drawEntityDots(ctx, game, space, config);
   }
 }

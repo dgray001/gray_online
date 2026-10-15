@@ -136,4 +136,3 @@ func verifyCapture(g *harness.Game, turn int) {
 		g.T.Fatal("soldier did not enter enemy building's space")
 	}
 }
-

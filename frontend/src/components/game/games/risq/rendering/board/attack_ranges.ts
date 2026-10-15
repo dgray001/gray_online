@@ -24,7 +24,7 @@ import {
   type UnitByTypeData,
 } from '../../model/types';
 import { hexEdgeForDirectionIndex } from '../space_borders';
-import { drawUnitTypeCluster } from '../zones/draw';
+import { drawUnitTypeCluster } from '../assets/unit';
 import { hexagonVertices, zoneCenterOffset, zoneMercenarySlotOffsets, zoneVertices } from '../zones/geometry';
 import type { RisqViewport } from './viewport';
 
@@ -153,7 +153,7 @@ export function drawAttackArea(
   path: RisqMovePathStep[],
   viewport: RisqViewport,
   tinted_attack_areas: Set<string>,
-  strokeSegment: (ctx: CanvasRenderingContext2D, from: Point2D, to: Point2D) => void
+  stroke_segment: (ctx: CanvasRenderingContext2D, from: Point2D, to: Point2D) => void
 ): Point2D {
   const zone = order.order_type === RisqOrderType.OrderType_UnitAttackZone ? invertZoneKey(order.target_id) : undefined;
   const center = viewport.coordinateToCanvas(zone?.space ?? invertPair(order.target_id));
@@ -181,13 +181,13 @@ export function drawAttackArea(
       break;
     }
     if (!equalsPoint2D(current, point)) {
-      strokeSegment(ctx, current, point);
+      stroke_segment(ctx, current, point);
     }
     current = point;
   }
   const to = areaBoundary(vertices, current).point;
   if (!equalsPoint2D(current, to)) {
-    strokeSegment(ctx, current, to);
+    stroke_segment(ctx, current, to);
   }
   ctx.restore();
   return to;

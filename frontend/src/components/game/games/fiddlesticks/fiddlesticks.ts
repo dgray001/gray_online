@@ -5,7 +5,10 @@ import { cardToIcon, cardToImagePath, cardToName } from '../../util/card_util';
 import type { DwgFiddlesticksPlayer } from './fiddlesticks_player/fiddlesticks_player';
 import type { DwgCardHand } from '../../util/card_hand/card_hand';
 import { createMessage } from '../../../lobby/data_models';
-import { clientOnMobile, until, untilTimer } from '../../../../scripts/util';
+import { clientOnMobile } from '../../../../scripts/util';
+import { getSettings, onSettingsChanged } from '../../../../scripts/settings_store';
+import { animationDuration, waitFor, waitForAnimation, waitForDelay } from './fiddlesticks_async';
+import { renderFiddlesticksHistory, renderFiddlesticksUpdate } from './history/view';
 import { modulus } from '../../../../scripts/math';
 import type { DwgGame } from '../../game';
 import { messageDialog } from '../../game';
@@ -30,6 +33,9 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
   private players_cards!: DwgCardHand;
 
   private game!: GameFiddlesticks;
+  private abstract_game?: DwgGame;
+  private lifecycle = new AbortController();
+  private unsubscribe_settings?: () => void;
   private current_trick = 0;
   private player_els: DwgFiddlesticksPlayer[] = [];
   private player_id: number = -1;
@@ -78,19 +84,41 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     }
   }
 
+  override disconnectedCallback(): void {
+    this.unsubscribe_settings?.();
+    this.lifecycle.abort();
+    if (this.players_cards) {
+      this.players_cards.can_play = false;
+    }
+    super.disconnectedCallback();
+  }
+
   async initialize(abstract_game: DwgGame, game: GameFiddlesticks): Promise<void> {
+    this.lifecycle.abort();
+    this.lifecycle = new AbortController();
+    this.abstract_game = abstract_game;
     this.player_id = abstract_game.playerId();
     this.game = game;
+    this.unsubscribe_settings?.();
+    this.unsubscribe_settings = onSettingsChanged((): void => this.applyDisplaySettings());
+    this.applyDisplaySettings();
     this.player_els = [];
+    this.player_container.replaceChildren();
+    this.trick_cards.replaceChildren();
+    this.trick_card_els = [];
     for (const [player_id, player] of game.players.entries()) {
       const player_el = document.createElement('dwg-fiddlesticks-player');
       player_el.initialize(player);
-      this.player_container.appendChild(player_el);
-      this.player_els.push(player_el);
       if (this.player_id === player_id) {
         player_el.setClientPlayer();
       }
+      this.player_container.appendChild(player_el);
+      this.player_els.push(player_el);
     }
+    await waitFor(
+      () => this.player_els.every((el: DwgFiddlesticksPlayer): boolean => el.fully_parsed),
+      this.lifecycle.signal
+    );
     for (let i = 0; i < this.player_els.length; i++) {
       const id = modulus(this.player_id + i, this.game.players.length);
       const order = abstract_game.isPlayer() ? i : i + 0.5;
@@ -100,7 +128,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     }
     this.trick_cards.style.setProperty('--num-players', this.player_els.length.toString());
     if (game.game_base.game_ended) {
-      // TODO: show ended game state
+      this.endGame(false);
     } else if (game.game_base.game_started && game.dealer >= 0) {
       this.round_number.innerText = game.round.toString();
       this.updateBetsContainer();
@@ -108,7 +136,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
       for (const [player_id, player_el] of this.player_els.entries()) {
         const turn = player_id === game.turn;
         const dealer = player_id === game.dealer;
-        player_el.gameStarted(game.betting, turn, dealer, game.players[game.turn].turn_start_time, turn_duration);
+        await player_el.gameStarted(game.betting, turn, dealer, game.players[game.turn].turn_start_time, turn_duration);
         if (this.player_id === player_id && !game.game_base.game_ended) {
           this.players_cards.setCards(game.players[player_id].cards, game.players[player_id].cards_played);
           if (!game.betting && this.game.turn === this.player_id) {
@@ -128,12 +156,19 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           if (player_id >= game.players.length) {
             player_id -= game.players.length;
           }
-          this.addPlayedCard({ card, index: i, player_id });
+          await this.addPlayedCard({ card, index: i, player_id });
         }
         this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
       }
       this.setTrumpImage(game.trump);
     }
+    this.applyDisplaySettings();
+  }
+
+  private applyDisplaySettings(): void {
+    const settings = getSettings().fiddlesticks;
+    this.style.setProperty('--card-size-scale', settings.card_size.toString());
+    this.players_cards.highlightPlayableCards(settings.highlight_playable_cards ? this.game.trick[0]?.suit : undefined);
   }
 
   private updateBetsContainer(): void {
@@ -163,6 +198,11 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
   async gameUpdate(update: UpdateMessage): Promise<void> {
     try {
       switch (update.kind) {
+        case 'bet-failed':
+        case 'play-card-failed':
+          messageDialog.call(this, { message: (update.content as { message: string }).message });
+          await this.abstract_game?.recoverGame();
+          break;
         case 'deal-round':
           const deal_round_data = update.content as DealRound;
           await this.applyDealRound(deal_round_data);
@@ -170,7 +210,6 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
         case 'bet':
           const bet_data = update.content as PlayerBet;
           if (this.game.turn !== bet_data.player_id) {
-            // TODO: try to sync data
             throw new Error('Player bet out of order');
           }
           await this.applyBet(bet_data);
@@ -178,7 +217,6 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
         case 'play-card':
           const play_card_data = update.content as PlayCard;
           if (this.game.turn !== play_card_data.player_id) {
-            // TODO: try to sync data
             throw new Error('Player played out of order');
           }
           await this.applyPlayCard(play_card_data);
@@ -188,9 +226,16 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           break;
       }
     } catch (e) {
+      if (this.lifecycle.signal.aborted) {
+        return;
+      }
       console.log(`Error during game update ${JSON.stringify(update)}: ${e}`);
       console.trace();
-      // TODO: try to sync data
+      throw e;
+    } finally {
+      if (!this.lifecycle.signal.aborted) {
+        this.applyDisplaySettings();
+      }
     }
   }
 
@@ -212,10 +257,10 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
       }
       if (player_id === this.player_id) {
         const card_animation_time = Math.min(150, animation_time / (data as PlayerDealRound).cards.length);
-        this.players_cards.setCards((data as PlayerDealRound).cards, [], card_animation_time);
+        this.players_cards.setCards((data as PlayerDealRound).cards, [], animationDuration(card_animation_time));
       }
     }
-    await untilTimer(animation_time);
+    await waitForAnimation(animation_time, this.lifecycle.signal);
     this.trick_number.innerText = '-';
     this.current_trick = 0;
     if (this.game.round === this.game.max_round) {
@@ -282,7 +327,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
       this.players_cards.can_play = false;
     }
     await this.addPlayedCard(data);
-    await untilTimer(1000);
+    await waitForAnimation(1000, this.lifecycle.signal);
     this.status_container.innerText = '';
     this.game.turn = (this.game.turn + 1) % this.game.players.length;
     if (this.game.turn !== this.game.trick_leader) {
@@ -293,7 +338,6 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
   }
 
   private async resolveTrick(data: PlayCard): Promise<void> {
-    await untilTimer(500);
     let winning_index = 0;
     let winning_card = this.game.trick[0];
     for (let i = 1; i < this.game.trick.length; i++) {
@@ -317,13 +361,14 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
       trick_card_el.classList.remove('played');
       trick_card_el.classList.add('center');
     }
-    await untilTimer(1000);
+    await waitForAnimation(1000, this.lifecycle.signal);
+    await waitForDelay(getSettings().fiddlesticks.trick_result_pause * 1000, this.lifecycle.signal);
     this.trick_cards.style.setProperty('--winner', this.game.players[this.game.turn].order.toString());
     for (const trick_card_el of this.trick_card_els) {
       trick_card_el.classList.remove('center');
       trick_card_el.classList.add('winner');
     }
-    await untilTimer(1000);
+    await waitForAnimation(1000, this.lifecycle.signal);
     this.game.players[this.game.turn].tricks++;
     for (const [i, player_el] of this.player_els.entries()) {
       player_el.endTrick(this.game.players[i].tricks);
@@ -345,9 +390,8 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
   }
 
   private async endRound(): Promise<void> {
-    await untilTimer(500);
+    await waitForAnimation(500, this.lifecycle.signal);
     console.log('Round over');
-    // TODO: score animations for a few seconds
     this.bets_number.innerText = '-';
     this.trump_card_img.classList.remove('show');
     for (const [i, player] of this.game.players.entries()) {
@@ -355,7 +399,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
         player.score += this.game.round_points + this.game.trick_points * player.bet;
         this.player_els[i].setScore(player.score);
       }
-      this.player_els[i].endRound();
+      await this.player_els[i].endRound();
     }
     this.round_number.innerText = '-';
     if (!this.game.rounds_increasing && this.game.round === this.game.min_round) {
@@ -363,7 +407,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     }
   }
 
-  private endGame(): void {
+  private endGame(show_dialog: boolean = true): void {
     console.log('Game over');
     this.game.game_base.game_ended = true;
     let winners = [0];
@@ -383,7 +427,9 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     let winner_text = winners.length > 1 ? 'The winners are: ' : 'The winner is: ';
     winner_text += winners.map((winner) => this.game.players[winner].player.nickname).join(', ');
     winner_text += `\nWith ${winning_score} points`;
-    messageDialog.call(this, { message: winner_text });
+    if (show_dialog) {
+      messageDialog.call(this, { message: winner_text });
+    }
     this.status_container.innerText = 'game over';
   }
 
@@ -398,68 +444,19 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     card_el.style.setProperty('--i', this.game.players[data.player_id].order.toString());
     this.trick_cards.appendChild(card_el);
     this.trick_card_els.push(card_el);
-    card_el.style.transitionDuration = '1s';
-    await until(() => {
+    card_el.style.transitionDuration = `${animationDuration(1000)}ms`;
+    await waitFor(() => {
       return !!getComputedStyle(card_el).left;
-    }, 20);
+    }, this.lifecycle.signal);
     card_el.classList.add('played');
   }
 
   updateDialogComponent(update: UpdateMessage): HTMLElement {
-    const el = document.createElement('div');
-    const rows: HTMLDivElement[] = [];
-    const add_row = (...parts: (string | Node)[]): void => {
-      const row = document.createElement('div');
-      row.append(...parts);
-      rows.push(row);
-    };
-    // card icons are trusted markup (no user input); nicknames are not, so they go through
-    // Node.append() as plain text rather than innerHTML
-    const icon_node = (card: StandardCard): HTMLElement => {
-      const span = document.createElement('span');
-      span.innerHTML = cardToIcon(card);
-      return span;
-    };
-    switch (update.kind) {
-      case 'deal-round': {
-        const deal_data = update.content as DealRound;
-        const dealer = this.game.players[deal_data.dealer].player.nickname;
-        add_row(`Round ${deal_data.round} dealt by ${dealer}`);
-        add_row('Card flipped over as trump was ', icon_node(deal_data.trump));
-        if (!!deal_data.cards) {
-          const parts: (string | Node)[] = ['Cards dealt to you: '];
-          deal_data.cards.forEach((c, i) => {
-            if (i > 0) {
-              parts.push(', ');
-            }
-            parts.push(icon_node(c));
-          });
-          add_row(...parts);
-        }
-        break;
-      }
-      case 'bet': {
-        const bet_data = update.content as PlayerBet;
-        const better = this.game.players[bet_data.player_id].player.nickname;
-        add_row(`${better} bet ${bet_data.amount} points`);
-        break;
-      }
-      case 'play-card': {
-        const play_data = update.content as PlayCard;
-        const player = this.game.players[play_data.player_id].player.nickname;
-        add_row(`${player} played `, icon_node(play_data.card));
-        break;
-      }
-      default:
-        add_row(`Unknown update type for fiddlesticks: ${update.kind}`);
-        break;
-    }
-    if (rows.length === 1) {
-      el.append(...Array.from(rows[0].childNodes));
-    } else {
-      el.append(...rows);
-    }
-    return el;
+    return renderFiddlesticksUpdate(update, this.game);
+  }
+
+  historyDialogComponent(updates: readonly UpdateMessage[]): HTMLElement {
+    return renderFiddlesticksHistory(updates, this.game, this.player_id);
   }
 }
 

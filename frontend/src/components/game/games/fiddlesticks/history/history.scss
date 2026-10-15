@@ -1,0 +1,193 @@
+dwg-game-history-dialog.grouped-history {
+  #wrapper {
+    box-sizing: border-box;
+  }
+  #updates-container {
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+
+  .fiddlesticks-history {
+    --history-rule: rgba(255, 255, 255, 0.2);
+    line-height: 1.5;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    width: 100%;
+
+    h2 {
+      font-size: var(--font-size-large);
+      margin: 0 0 0.5em;
+    }
+    .history-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5em;
+      margin-bottom: 0.8em;
+    }
+    .history-caption {
+      margin: 0.5em 0;
+      opacity: 0.85;
+    }
+    details {
+      border: 1px solid var(--history-rule);
+      border-radius: 5px;
+    }
+    .history-round {
+      background: rgba(0, 0, 0, 0.12);
+      margin-bottom: 0.7em;
+    }
+    .history-round-body {
+      padding: 0 0.7em 0.7em;
+    }
+    .history-trick {
+      margin-top: 0.6em;
+    }
+    summary {
+      cursor: pointer;
+      min-height: 44px;
+      padding: 0.65em;
+      box-sizing: border-box;
+    }
+    summary::marker {
+      color: rgb(230, 205, 160);
+    }
+    summary:hover {
+      background: rgba(255, 255, 255, 0.07);
+    }
+    summary:focus-visible {
+      outline: 2px solid rgb(210, 190, 245);
+      outline-offset: -2px;
+    }
+    .history-summary {
+      display: inline-flex;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 0.3em 0.8em;
+      width: calc(100% - 1.5em);
+    }
+    .history-summary strong {
+      margin-right: auto;
+    }
+    .history-summary > span {
+      font-size: 0.9em;
+    }
+    .history-trump {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 0.3em;
+    }
+    .history-card {
+      background: rgb(245, 240, 230);
+      border-radius: 3px;
+      color: black;
+      display: inline-flex;
+      flex: none;
+      padding: 0 0.35em;
+    }
+    .history-results-scroll {
+      overflow-x: auto;
+      max-width: 100%;
+      overscroll-behavior-x: contain;
+    }
+    .history-results-scroll:focus-visible {
+      outline: 2px solid rgb(210, 190, 245);
+    }
+    .history-scroll-hint {
+      display: none;
+    }
+    .history-results {
+      border-collapse: separate;
+      border-spacing: 0;
+      min-width: 30rem;
+      font-variant-numeric: tabular-nums;
+      table-layout: fixed;
+      width: 100%;
+    }
+    .history-results-title {
+      text-align: left;
+      font-weight: bold;
+      font-size: 1em;
+      margin: 0.4em 0;
+    }
+    .history-results th,
+    .history-results td {
+      border-bottom: 1px solid var(--history-rule);
+      padding: 0.4em 0.25em;
+      text-align: right;
+    }
+    .history-results th:first-child {
+      text-align: left;
+      width: 12rem;
+    }
+    .history-results tbody th {
+      font-weight: normal;
+    }
+    .history-results thead th {
+      font-size: 0.85em;
+      white-space: nowrap;
+    }
+    .history-you {
+      background: rgba(185, 155, 240, 0.15);
+    }
+    .history-results td:last-child {
+      font-weight: bold;
+    }
+    .history-exact td:nth-child(4) {
+      color: rgb(180, 235, 165);
+      font-weight: bold;
+    }
+    .history-plays {
+      list-style: none;
+      margin: 0;
+      padding: 0 0.65em 0.65em;
+    }
+    .history-plays li {
+      display: flex;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 0.3em 0.6em;
+      border-top: 1px solid var(--history-rule);
+      padding: 0.6em 0.3em;
+    }
+    .history-plays li > span:first-child {
+      flex: 1 1 8em;
+    }
+    .history-tag {
+      font-size: 0.8em;
+      padding: 0 0.35em;
+      border: 1px solid var(--history-rule);
+      border-radius: 3px;
+    }
+    .history-winner {
+      color: rgb(245, 215, 150);
+      border-color: currentColor;
+    }
+    @media (max-width: 600px) {
+      .history-round-body {
+        padding: 0 0.4em 0.4em;
+      }
+      summary {
+        padding: 0.6em 0.4em;
+      }
+      .history-summary {
+        gap: 0.3em 0.5em;
+      }
+      .history-controls button {
+        min-height: 44px;
+      }
+      .history-results th:first-child {
+        width: 9rem;
+      }
+      .history-scroll-hint {
+        display: block;
+        font-size: 0.8em;
+        opacity: 0.8;
+        margin: 0.3em 0;
+      }
+      .history-results th,
+      .history-results td {
+        padding: 0.4em 0.15em;
+      }
+    }
+  }
+}

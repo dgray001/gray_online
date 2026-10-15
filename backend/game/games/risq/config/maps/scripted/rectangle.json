@@ -232,10 +232,6 @@
       "row_inset": "1 + min(1, max(0, map_size - map_size_large + 1))",
       "short_edge_starts": "2 * min(1, max(0, map_size - map_size_huge + 1))",
       "short_edge_bias": 0.5,
-      "assets": {
-        "units": [{ "unit_id": 1, "count": 200, "target": { "zone": "center" } }],
-        "buildings": [{ "building_id": 1, "terrain_override": 7, "target": { "zone": "center" } }]
-      },
       "tree_ids": ["tree_a", "tree_b"],
       "terrain_id": "base"
     }

@@ -19,17 +19,19 @@ func DecodeSnapshot(t *testing.T, value any) State {
 }
 
 type ReplaySpace struct {
-	CoordinateKey int64 `json:"coordinate_key"`
-	Visibility    int   `json:"visibility"`
+	CoordinateKey int64      `json:"coordinate_key"`
+	Visibility    int        `json:"visibility"`
+	UnitCounts    *[3][3]int `json:"unit_counts"`
 }
 
 type ReplayFrame struct {
-	Spaces    []ReplaySpace `json:"spaces"`
-	Tick      int           `json:"tick"`
-	Terminal  bool          `json:"terminal"`
-	Units     []Unit        `json:"units"`
-	Buildings []Building    `json:"buildings"`
-	Effects   []TickEffect  `json:"effects"`
+	HiddenUnits []uint64      `json:"hidden_units"`
+	Spaces      []ReplaySpace `json:"spaces"`
+	Tick        int           `json:"tick"`
+	Terminal    bool          `json:"terminal"`
+	Units       []Unit        `json:"units"`
+	Buildings   []Building    `json:"buildings"`
+	Effects     []TickEffect  `json:"effects"`
 }
 
 type TurnReplay struct {
@@ -69,6 +71,11 @@ func (r *TurnReplay) UnitAt(id uint64, tick int) *Unit {
 		for i := range frame.Units {
 			if frame.Units[i].InternalID == id {
 				found = &frame.Units[i]
+			}
+		}
+		for _, hidden := range frame.HiddenUnits {
+			if hidden == id {
+				found = nil
 			}
 		}
 	}

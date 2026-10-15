@@ -1,6 +1,4 @@
 dwg-fiddlesticks-player {
-  // --diameter: 0; // set by component
-  // --size: 0; // set by component
   --order: 0; // set by component
   --num-players: 0; // set by component
   --turn-percent-left: 0; // set by component
@@ -18,7 +16,6 @@ dwg-fiddlesticks-player {
   top: var(--y);
   
   &.turn {
-    background: conic-gradient(var(--background-color) var(--turn-left), (--turn-color));
     box-shadow: 0 0 8px 2px var(--turn-color);
     > #wrapper {
       --turn-color-translucent: color-mix(in srgb, var(--turn-color), transparent 60%);

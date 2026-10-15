@@ -106,4 +106,3 @@ func TestSpreadQueuedRounds(t *testing.T) {
 		t.Fatal("queued attacks did not retain both assignments")
 	}
 }
-

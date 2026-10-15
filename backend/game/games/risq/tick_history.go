@@ -55,10 +55,11 @@ type tickPlayerState struct {
 }
 
 type tickSpaceState struct {
-	key        uint
-	terrain_id uint32
-	owner      int
-	visibility tickVisibility
+	key         uint
+	terrain_id  uint32
+	owner       int
+	visibility  tickVisibility
+	unit_counts [3][3]int
 }
 
 type tickFrame struct {
@@ -155,7 +156,12 @@ func (r *GameRisq) captureTickFrame(tick uint16, terminal bool, phase string) ti
 	}
 	seen := map[uint64]bool{}
 	for _, space := range r.allSpaces() {
-		state := tickSpaceState{space.coordinate_key, space.terrain_id, space.ownership, tickZoneVisibility(space.getCenterZone())}
+		state := tickSpaceState{key: space.coordinate_key, terrain_id: space.terrain_id, owner: space.ownership, visibility: tickZoneVisibility(space.getCenterZone())}
+		for y, row := range space.zones {
+			for x, zone := range row {
+				state.unit_counts[y][x] = nonDeletedUnitCount(zone.units)
+			}
+		}
 		if previous, ok := journal.spaces[state.key]; !ok || !reflect.DeepEqual(previous, state) {
 			frame.spaces = append(frame.spaces, state)
 		}

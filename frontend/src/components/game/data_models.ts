@@ -9,6 +9,7 @@ export declare interface GameComponent {
   initialize(abstract_game: DwgGame, game: Game): Promise<void>;
   gameUpdate(update: UpdateMessage): Promise<void>;
   updateDialogComponent(update: UpdateMessage): HTMLElement;
+  historyDialogComponent?(updates: readonly UpdateMessage[]): HTMLElement;
 }
 
 /** Data describing a game */

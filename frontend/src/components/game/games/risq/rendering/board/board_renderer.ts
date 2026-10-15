@@ -125,6 +125,7 @@ export class RisqBoardRenderer {
       view_mode: this.viewport.viewMode(),
       rotation: transform.rotation,
       entity_pass: 'terrain',
+      zone_borders_only: false,
     };
     const bounds = this.viewport.visibleCanvasBounds();
     this.drawBackgroundImage(ctx, game);
@@ -142,6 +143,10 @@ export class RisqBoardRenderer {
         on_screen_spaces.push(space);
         space_text_colors.push(drawRisqSpaceBase(ctx, this.risq, space, draw_config));
       }
+    }
+    const zone_border_config: DrawRisqSpaceConfig = { ...draw_config, zone_borders_only: true };
+    for (const [i, space] of on_screen_spaces.entries()) {
+      drawRisqSpaceContent(ctx, this.risq, space, zone_border_config, space_text_colors[i]);
     }
     drawRisqSpaceBorders(ctx, this.risq, on_screen_spaces, draw_config);
     this.links.draw(ctx, transform.scale);

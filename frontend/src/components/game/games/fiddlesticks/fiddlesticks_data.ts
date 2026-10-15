@@ -1,7 +1,6 @@
 import type { GameBase, GamePlayer } from '../../data_models';
 import type { StandardCard } from '../../util/card_util';
 
-/** Data describing a game of fiddlesticks */
 export declare interface GameFiddlesticks {
   game_base: GameBase;
   players: FiddlesticksPlayer[];
@@ -20,7 +19,6 @@ export declare interface GameFiddlesticks {
   turn_duration: number;
 }
 
-/** Data describing a fiddlesticks player */
 export declare interface FiddlesticksPlayer {
   player: GamePlayer;
   cards: StandardCard[];
@@ -57,7 +55,7 @@ export declare interface PlayerBet {
   turn_start_time: number;
 }
 
-/** Data describing a bet game-update */
+/** Data describing a play-card game-update */
 export declare interface PlayCard {
   index: number;
   card: StandardCard;

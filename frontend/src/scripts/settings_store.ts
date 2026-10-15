@@ -43,12 +43,28 @@ export function defaultRisqDisplaySettings(): RisqDisplaySettings {
   };
 }
 
+export interface FiddlesticksSettings {
+  animation_speed: number;
+  card_size: number;
+  trick_result_pause: number;
+  highlight_playable_cards: boolean;
+}
+
+export const FIDDLESTICKS_ANIMATION_SPEEDS: readonly number[] = [0, 0.5, 1, 1.5];
+export const FIDDLESTICKS_CARD_SIZES: readonly number[] = [0.8, 1, 1.2];
+export const FIDDLESTICKS_TRICK_PAUSES: readonly number[] = [0, 0.5, 1, 1.5, 2];
+
+export function defaultFiddlesticksSettings(): FiddlesticksSettings {
+  return { animation_speed: 1, card_size: 1, trick_result_pause: 0.5, highlight_playable_cards: true };
+}
+
 export declare interface AppSettings {
   last_nickname: string;
   client_id: number;
   client_id_time: number;
   risq_hotkeys: RisqHotkeyBindings;
   risq_display: RisqDisplaySettings;
+  fiddlesticks: FiddlesticksSettings;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -57,6 +73,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   client_id_time: 0,
   risq_hotkeys: defaultRisqHotkeyBindings(),
   risq_display: defaultRisqDisplaySettings(),
+  fiddlesticks: defaultFiddlesticksSettings(),
 };
 
 function migrateRisqHotkeyActions(
@@ -99,6 +116,27 @@ function sanitizeRisqDisplay(saved: Partial<Record<keyof RisqDisplaySettings, un
   return display;
 }
 
+function sanitizeFiddlesticksSettings(
+  saved?: Partial<Record<keyof FiddlesticksSettings, unknown>>
+): FiddlesticksSettings {
+  const settings = defaultFiddlesticksSettings();
+  const numeric_options = [
+    ['animation_speed', FIDDLESTICKS_ANIMATION_SPEEDS],
+    ['card_size', FIDDLESTICKS_CARD_SIZES],
+    ['trick_result_pause', FIDDLESTICKS_TRICK_PAUSES],
+  ] as const;
+  for (const [key, options] of numeric_options) {
+    const value = saved?.[key];
+    if (typeof value === 'number' && options.includes(value)) {
+      settings[key] = value;
+    }
+  }
+  if (typeof saved?.highlight_playable_cards === 'boolean') {
+    settings.highlight_playable_cards = saved.highlight_playable_cards;
+  }
+  return settings;
+}
+
 function load(): AppSettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -108,6 +146,7 @@ function load(): AppSettings {
       ...parsed,
       risq_hotkeys: mergeRisqHotkeyBindings(parsed?.risq_hotkeys),
       risq_display: sanitizeRisqDisplay(parsed?.risq_display),
+      fiddlesticks: sanitizeFiddlesticksSettings(parsed?.fiddlesticks),
     };
   } catch (_e) {
     return { ...DEFAULT_SETTINGS };

@@ -5,7 +5,7 @@ import { drawLine, drawRect, drawText } from '../../../../util/canvas_util';
 import { createTooltipState, drawTooltip, shouldShowTooltip } from '../../../../util/canvas_components/tooltip';
 import type { Point2D } from '../../../../util/objects2d';
 import type { RisqFrontendOrder } from '../../model/types';
-import { UNIT_CLUSTER_ICON_SIZE, drawUnitTypeCluster, unitClusterIconKey } from '../../rendering/zones/draw';
+import { UNIT_CLUSTER_ICON_SIZE, drawUnitTypeCluster, unitClusterIconKey } from '../../rendering/assets/unit';
 import { unitImage } from '../../rendering/assets/unit';
 import type { DwgRisq } from '../../risq';
 import { RisqOrderCancelButton } from './order_cancel_button';

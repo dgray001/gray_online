@@ -138,7 +138,7 @@ export class RisqIdleGrid extends DwgRectButton {
             { kind, ids },
             (event: MouseEvent): void => {
               if (event.button === 0) {
-                this.risq.selectIdleOrderable(entity);
+                this.risq.navigation.selectIdleOrderable(entity);
                 if (ids.length > 1) {
                   if (kind === 'unit') {
                     this.risq.selection.selectOwnUnits(ids);

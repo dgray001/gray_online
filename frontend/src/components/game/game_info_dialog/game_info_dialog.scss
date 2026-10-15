@@ -1,4 +1,13 @@
 dwg-game-info-dialog {
+  &[class*='size-'] #wrapper {
+    height: var(--dialog-h);
+    width: var(--dialog-w);
+    max-height: var(--dialog-max-h);
+    max-width: var(--dialog-max-w);
+    min-height: var(--dialog-min-h);
+    min-width: var(--dialog-min-w);
+  }
+
   #wrapper {
     --button-size: 36px;
     align-items: center;
@@ -76,7 +85,7 @@ dwg-game-info-dialog {
 }
 
 body.mobile {
-  dwg-game-history-dialog {
+  dwg-game-info-dialog:not([class*='size-']) {
     #wrapper {
       height: 80svh;
     }

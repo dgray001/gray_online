@@ -2,22 +2,13 @@ import type { BoardTransformData } from '../../../../util/canvas_board/canvas_bo
 import { defaultTransform, screenToCanvas } from '../../../../util/canvas_board/canvas_board';
 import type { CanvasComponent } from '../../../../util/canvas_components/canvas_component';
 import { configDraw } from '../../../../util/canvas_components/canvas_component';
-import { drawArrow, drawCircle, drawHexagon } from '../../../../util/canvas_util';
+import { drawCircle, drawHexagon } from '../../../../util/canvas_util';
 import type { Point2D } from '../../../../util/objects2d';
-import {
-  addPoint2D,
-  equalsPoint2D,
-  multiplyPoint2D,
-  rotatePoint,
-  roundAxialCoordinate,
-} from '../../../../util/objects2d';
-import type { RisqBuilding, RisqSpace, RisqUnit } from '../../model/types';
-import type { RisqOrderProjection } from '../../rendering/board/order_overlays';
-import { orderLinesVisible } from '../../rendering/board/order_overlays';
-import { orderArrowColor } from '../../application/orders/orders_model';
-import { ColorRGB } from '../../../../../../scripts/color_rgb';
+import { addPoint2D, rotatePoint, roundAxialCoordinate } from '../../../../util/objects2d';
+import type { RisqSpace } from '../../model/types';
 import { RisqVisibilityLevel } from '../../model/types';
 import type { DwgRisq } from '../../risq';
+import { RisqMinimapOrders } from './minimap_orders';
 import { MINIMAP_BUTTON_OVERFLOW } from './corner_button';
 import type { RisqMinimapCornerButton } from './corner_button';
 import {
@@ -31,172 +22,17 @@ import { drawRisqSpaceBorders } from '../../rendering/space_borders';
 import { DrawRisqSpaceDetail, drawHexImage, fillHexOverlay, getSpaceFill } from '../../rendering/space';
 import {
   RisqViewMode,
-  buildingOrdersVisibleInViewMode,
   buildingVisibleInViewMode,
+  minimapTerrainImage,
   spaceOwnerColor,
-  terrainImage,
   unitVisibleInViewMode,
 } from '../../rendering/terrain';
-import { getRisqZone, zoneCenterOffset } from '../../rendering/zones/geometry';
-import { drawZoneResourceDot, resourceDot, unitDotOffsets } from '../../rendering/overview_dots';
-
-function minimapTerrainImage(terrain_id: number): string {
-  switch (terrain_id) {
-    case 1:
-    case 2:
-    case 3:
-    case 6:
-      return 'risq/terrains/minimap/grass';
-    case 4:
-    case 5:
-      return 'risq/terrains/minimap/grass_dead';
-    case 7:
-    case 8:
-    case 14:
-      return 'risq/terrains/minimap/cobblestone';
-    case 9:
-    case 10:
-    case 11:
-    case 12:
-    case 13:
-      return 'risq/terrains/minimap/dirt';
-    case 15:
-    case 23:
-    case 24:
-      return 'risq/terrains/minimap/straw';
-    case 16:
-    case 17:
-    case 18:
-    case 19:
-    case 20:
-      return 'risq/terrains/minimap/sand';
-    case 21:
-    case 22:
-      return 'risq/terrains/minimap/snow';
-    case 25:
-    case 26:
-      return 'risq/terrains/minimap/farmland';
-    case 51:
-    case 52:
-    case 53:
-    case 56:
-      return 'risq/terrains/minimap/grass_hills';
-    case 54:
-    case 55:
-      return 'risq/terrains/minimap/grass_dead_hills';
-    case 59:
-    case 60:
-    case 61:
-    case 62:
-    case 63:
-      return 'risq/terrains/minimap/dirt_hills';
-    case 66:
-    case 67:
-    case 68:
-    case 69:
-    case 70:
-      return 'risq/terrains/minimap/sand_hills';
-    case 71:
-    case 72:
-      return 'risq/terrains/minimap/snow_hills';
-    case 75:
-    case 76:
-      return 'risq/terrains/minimap/farmland_hills';
-    case 101:
-    case 102:
-    case 103:
-    case 106:
-      return 'risq/terrains/minimap/grass_mountains';
-    case 104:
-    case 105:
-      return 'risq/terrains/minimap/grass_dead_mountains';
-    case 109:
-    case 110:
-    case 111:
-    case 112:
-    case 113:
-      return 'risq/terrains/minimap/dirt_mountains';
-    case 121:
-    case 122:
-      return 'risq/terrains/minimap/snow_mountains';
-    case 151:
-    case 152:
-    case 153:
-      return 'risq/terrains/minimap/swamp';
-    case 201:
-    case 202:
-    case 203:
-    case 204:
-    case 205:
-    case 206:
-      return 'risq/terrains/minimap/shallows';
-    case 251:
-    case 252:
-    case 253:
-    case 254:
-      return 'risq/terrains/minimap/water';
-    case 301:
-    case 302:
-    case 303:
-    case 304:
-    case 305:
-    case 306:
-      return 'risq/terrains/minimap/deep_water';
-    default:
-      return terrainImage(terrain_id);
-  }
-}
+import { clipPolygonToBox, zoneCenterOffset } from '../../rendering/zones/geometry';
+import { drawZoneResourceDot, resourceDot } from '../../rendering/overview_dots';
 
 export declare interface MinimapConfig {
   target_w: number;
   background: string;
-}
-
-/** Clips a convex polygon against an axis-aligned box (Sutherland-Hodgman) */
-function clipPolygonToBox(polygon: Point2D[], min: Point2D, max: Point2D): Point2D[] {
-  const lerp = (a: Point2D, b: Point2D, t: number): Point2D => ({ x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) });
-  const clip_edge = (
-    points: Point2D[],
-    inside: (p: Point2D) => boolean,
-    intersect: (a: Point2D, b: Point2D) => Point2D
-  ): Point2D[] => {
-    const out: Point2D[] = [];
-    for (let i = 0; i < points.length; i++) {
-      const curr = points[i];
-      const prev = points[(i + points.length - 1) % points.length];
-      if (inside(curr)) {
-        if (!inside(prev)) {
-          out.push(intersect(prev, curr));
-        }
-        out.push(curr);
-      } else if (inside(prev)) {
-        out.push(intersect(prev, curr));
-      }
-    }
-    return out;
-  };
-  let result = polygon;
-  result = clip_edge(
-    result,
-    (p) => p.x >= min.x,
-    (a, b) => lerp(a, b, (min.x - a.x) / (b.x - a.x))
-  );
-  result = clip_edge(
-    result,
-    (p) => p.x <= max.x,
-    (a, b) => lerp(a, b, (max.x - a.x) / (b.x - a.x))
-  );
-  result = clip_edge(
-    result,
-    (p) => p.y >= min.y,
-    (a, b) => lerp(a, b, (min.y - a.y) / (b.y - a.y))
-  );
-  result = clip_edge(
-    result,
-    (p) => p.y <= max.y,
-    (a, b) => lerp(a, b, (max.y - a.y) / (b.y - a.y))
-  );
-  return result;
 }
 
 /** Link lines are sized for the main board, so the minimap scales them down to hairlines */
@@ -218,6 +54,7 @@ export class RisqMinimap implements CanvasComponent {
   private last_transform: BoardTransformData = defaultTransform();
   private corner_buttons: RisqMinimapCornerButton[];
   private links: RisqLinks;
+  private orders: RisqMinimapOrders;
 
   constructor(
     risq: DwgRisq,
@@ -230,6 +67,11 @@ export class RisqMinimap implements CanvasComponent {
       hexR: (): number => this.hex_r,
       hexA: (): number => 0.5 * 1.732 * this.hex_r,
       coordinateToCanvas: (space: Point2D): Point2D => this.coordinateToMinimapCanvas(space),
+    });
+    this.orders = new RisqMinimapOrders(risq, {
+      hexR: (): number => this.hex_r,
+      toCanvas: (coordinate: Point2D): Point2D => this.coordinateToMinimapCanvas(coordinate),
+      rotation: (): number => this.last_transform.rotation,
     });
     this.corner_buttons = [
       new RisqViewModeButton(risq),
@@ -323,112 +165,6 @@ export class RisqMinimap implements CanvasComponent {
     }
   }
 
-  private unitOffset(unit: RisqUnit): Point2D | undefined {
-    if (unit.garrisoned_in !== undefined) {
-      return undefined;
-    }
-    const zone = getRisqZone(this.risq.session.spaceAt(unit.space_coordinate), unit.zone_coordinate);
-    return zone
-      ? unitDotOffsets(zone, this.risq.getPlayerId(), this.risq.viewport.viewMode()).get(unit.internal_id)
-      : undefined;
-  }
-
-  private drawSelectedOrders(ctx: CanvasRenderingContext2D): void {
-    if (!orderLinesVisible(true) || this.risq.session.isReplaying()) {
-      return;
-    }
-    const projection = this.orderProjection();
-    ctx.save();
-    ctx.lineWidth = 1;
-    ctx.setLineDash([3, 2]);
-    const view_mode = this.risq.viewport.viewMode();
-    for (const id of this.risq.selection.selectedUnitIds()) {
-      const unit = this.risq.session.findUnitById(id);
-      if (unit && unitVisibleInViewMode(unit.unit_type, view_mode)) {
-        this.drawEntityOrders(ctx, unit, projection);
-      }
-    }
-    for (const building of this.risq.selection.selectedBuildings()) {
-      if (buildingOrdersVisibleInViewMode(building, view_mode)) {
-        this.drawEntityOrders(ctx, building, projection);
-      }
-      this.drawGatherPoint(ctx, building, projection);
-    }
-    ctx.restore();
-  }
-
-  private drawEntityOrders(
-    ctx: CanvasRenderingContext2D,
-    entity: RisqUnit | RisqBuilding,
-    projection: RisqOrderProjection
-  ): void {
-    let from = this.entityPoint(entity);
-    if (!from) {
-      return;
-    }
-    for (const order of this.risq.orders_model.effectiveForSubject(
-      entity.internal_id,
-      'unit_id' in entity ? 'unit' : 'building'
-    )) {
-      const to = this.risq.order_overlays.orderTargetPoint(order, false, from, projection);
-      if (!to || equalsPoint2D(from, to)) {
-        continue;
-      }
-      ctx.strokeStyle = orderArrowColor(order.order_type);
-      ctx.fillStyle = ctx.strokeStyle;
-      drawArrow(ctx, from, to, 3);
-      from = to;
-    }
-  }
-
-  private drawGatherPoint(
-    ctx: CanvasRenderingContext2D,
-    building: RisqBuilding,
-    projection: RisqOrderProjection
-  ): void {
-    const from = this.entityPoint(building);
-    const gather_point = this.risq.commands.gather_points.point(building);
-    const to =
-      from && gather_point && this.risq.order_overlays.gatherPointTargetPoint(gather_point, false, from, projection);
-    if (!from || !to || equalsPoint2D(from, to)) {
-      return;
-    }
-    ctx.strokeStyle = 'white';
-    ctx.fillStyle = 'white';
-    drawArrow(ctx, from, to, 3);
-    ctx.save();
-    ctx.translate(to.x, to.y);
-    ctx.rotate(-this.last_transform.rotation);
-    const flag = this.risq.getPlayerColoredIcon('risq/icons/garrison_flag', new ColorRGB(255, 255, 255));
-    ctx.drawImage(flag, 0, -7, 7, 7);
-    ctx.restore();
-  }
-
-  private orderProjection(): RisqOrderProjection {
-    return {
-      hexR: (): number => this.hex_r,
-      coordinateToCanvas: (space: Point2D): Point2D => this.coordinateToMinimapCanvas(space),
-      orderPoint: (space: Point2D, offset: Point2D | undefined, zone_view: boolean): Point2D =>
-        addPoint2D(this.coordinateToMinimapCanvas(space), zone_view && offset ? offset : { x: 0, y: 0 }),
-      unitAnchorOffset: (unit: RisqUnit): Point2D | undefined => {
-        const point = this.entityPoint(unit);
-        const location = this.risq.session.unitLocation(unit);
-        const center = location && this.coordinateToMinimapCanvas(location.space_coordinate);
-        return point && center ? { x: point.x - center.x, y: point.y - center.y } : undefined;
-      },
-    };
-  }
-
-  private entityPoint(entity: RisqUnit | RisqBuilding): Point2D | undefined {
-    const location = 'unit_id' in entity ? this.risq.session.unitLocation(entity) : entity;
-    if (!location) {
-      return undefined;
-    }
-    const offset =
-      ('unit_id' in entity ? this.unitOffset(entity) : undefined) ?? zoneCenterOffset(location.zone_coordinate, 1);
-    return addPoint2D(this.coordinateToMinimapCanvas(location.space_coordinate), multiplyPoint2D(this.hex_r, offset));
-  }
-
   draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
     const game = this.risq.getGame();
     if (!game || this.hex_r <= 0) {
@@ -516,7 +252,7 @@ export class RisqMinimap implements CanvasComponent {
             this.drawResourceDots(ctx, space, selected_resource_points);
           }
         }
-        this.drawSelectedOrders(ctx);
+        this.orders.drawSelectedOrders(ctx);
         ctx.imageSmoothingEnabled = false;
         for (const player of game.players) {
           const color_key = `minimap_dot_${player.color.getR()}_${player.color.getG()}_${player.color.getB()}`;
@@ -527,7 +263,7 @@ export class RisqMinimap implements CanvasComponent {
 
           for (const entity of [...player.units.values(), ...player.buildings.values()]) {
             const is_unit = 'unit_id' in entity;
-            const point = this.entityPoint(entity);
+            const point = this.orders.entityPoint(entity);
             const shown = is_unit
               ? unitVisibleInViewMode(entity.unit_type, view_mode)
               : buildingVisibleInViewMode(entity, view_mode);

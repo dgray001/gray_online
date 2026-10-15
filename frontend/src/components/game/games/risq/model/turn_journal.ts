@@ -58,6 +58,7 @@ export declare interface RisqTickSpaceState {
   terrain_id: number;
   visibility: RisqVisibilityLevel;
   ownership?: number;
+  unit_counts?: number[][];
 }
 
 export declare interface RisqTickFrame {
@@ -65,6 +66,7 @@ export declare interface RisqTickFrame {
   terminal: boolean;
   phase: string;
   units: Map<number, RisqTickUnitState>;
+  hidden_units: number[];
   buildings: Map<number, RisqTickBuildingState>;
   resources: Map<number, RisqTickResourceState>;
   players: Map<number, RisqTickPlayerState>;

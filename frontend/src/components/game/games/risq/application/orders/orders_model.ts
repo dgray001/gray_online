@@ -190,7 +190,10 @@ export class RisqOrdersModel {
   private batch_depth = 0;
   private batch_dirty = false;
 
-  constructor(on_change: () => void) {
+  constructor(
+    on_change: () => void,
+    private on_duplicate: () => void
+  ) {
     this.on_change = (): void => {
       this.effective_cache.clear();
       if (this.batch_depth > 0) {
@@ -248,6 +251,26 @@ export class RisqOrdersModel {
   }
 
   add(order: RisqFrontendOrder): void {
+    if (!isClearImmune(order.order_type) && (isUnitOrder(order.order_type) || isBuildingOrder(order.order_type))) {
+      const kind = isUnitOrder(order.order_type) ? 'unit' : 'building';
+      const subject_count = order.subjects.length;
+      order.subjects = order.subjects.filter((id: number): boolean => {
+        const effective = this.effectiveForSubject(id, kind).filter(
+          (existing: RisqFrontendOrder): boolean => !order.clear_previous_orders || !isClearImmune(existing.order_type)
+        );
+        if (order.clear_previous_orders && effective.length !== 1) {
+          return true;
+        }
+        const last = effective.at(-1);
+        return last?.order_type !== order.order_type || last.target_id !== order.target_id;
+      });
+      if (order.subjects.length < subject_count) {
+        this.on_duplicate();
+      }
+      if (order.subjects.length === 0) {
+        return;
+      }
+    }
     if (order.clear_previous_orders) {
       this.pending = this.pending.filter((o) => {
         if (

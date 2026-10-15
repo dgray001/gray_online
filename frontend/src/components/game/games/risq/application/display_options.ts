@@ -29,16 +29,16 @@ const ENABLED_OPTIONS: DisplayOption<boolean>[] = [
 export const RISQ_DISPLAY_SPECS: { [K in keyof RisqDisplaySettings]: DisplaySpec<RisqDisplaySettings[K]> } = {
   unit_circle_size: slider('Unit circle size', px(28, 36, 44, 52, 60)),
   healthbars: slider('Healthbars', [
-    { value: 'always', label: 'Always' },
-    { value: 'damaged_only', label: 'Damaged only' },
-    { value: 'selected_only', label: 'Selected only' },
     { value: 'never', label: 'Never' },
+    { value: 'selected_only', label: 'Selected only' },
+    { value: 'damaged_only', label: 'Damaged only' },
+    { value: 'always', label: 'Always' },
   ]),
   secondary_bars: slider('Secondary progress / resources', [
-    { value: 'always', label: 'Always' },
-    { value: 'active_only', label: 'Active only' },
-    { value: 'selected_only', label: 'Selected only' },
     { value: 'never', label: 'Never' },
+    { value: 'selected_only', label: 'Selected only' },
+    { value: 'active_only', label: 'Active only' },
+    { value: 'always', label: 'Always' },
   ]),
   healthbar_size: slider('Healthbar size', px(2, 4, 6, 8)),
   hud_size: slider('HUD size', percent(0.85, 1, 1.15)),

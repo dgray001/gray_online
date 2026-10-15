@@ -30,7 +30,37 @@ export class DwgCardHand extends DwgElement {
   private play_drop!: HTMLDivElement;
   private cancel_drop!: HTMLDivElement;
 
-  can_play = false; // flag to specify whether a card can be played
+  private playable = false;
+  private drag_position: Point2D = { x: 0, y: 0 };
+
+  get can_play(): boolean {
+    return this.playable;
+  }
+
+  set can_play(value: boolean) {
+    this.playable = value;
+    this.classList.toggle('dragging-playing', value && this.dragging_data.dragging);
+    if (value && this.dragging_data.dragging) {
+      this.updateDropTarget(this.drag_position);
+    }
+    this.refreshHighlights();
+  }
+  private highlighted_suit?: number;
+
+  highlightPlayableCards(suit: number | undefined): void {
+    this.highlighted_suit = suit;
+    this.refreshHighlights();
+  }
+
+  private refreshHighlights(): void {
+    const follow_suit =
+      this.can_play &&
+      this.highlighted_suit !== undefined &&
+      [...this.cards.values()].some((data: CardData): boolean => data.card.suit === this.highlighted_suit);
+    for (const data of this.cards.values()) {
+      data.el?.classList.toggle('unplayable', follow_suit && data.card.suit !== this.highlighted_suit);
+    }
+  }
   private cards = new MultiMap<number, CardData>(['i', 'i_dom']);
   private dragging_data: CardDraggingData = {
     dragging: false,
@@ -42,6 +72,8 @@ export class DwgCardHand extends DwgElement {
   };
 
   private dragging_lock = createLock();
+  private lifecycle = new AbortController();
+  private deal_timeouts = new Set<ReturnType<typeof setTimeout>>();
 
   private resize_observer = new ResizeObserver(() => this.resizeCallback());
 
@@ -59,8 +91,17 @@ export class DwgCardHand extends DwgElement {
     this.configureElements('cards_container', 'play_drop', 'cancel_drop');
   }
 
+  override connectedCallback(): Promise<void> {
+    this.lifecycle = new AbortController();
+    return super.connectedCallback();
+  }
+
   protected override async parsedCallback(): Promise<void> {
-    await until(() => !!this.clientHeight);
+    const signal = this.lifecycle.signal;
+    await until(() => !!this.clientHeight, 50, signal);
+    if (signal.aborted) {
+      return;
+    }
     this.resizeCallback();
     this.setEventListeners();
     this.resize_observer.observe(this);
@@ -68,6 +109,9 @@ export class DwgCardHand extends DwgElement {
   }
 
   override disconnectedCallback(): void {
+    this.lifecycle.abort();
+    this.clearDealTimers();
+    this.stopDragging();
     super.disconnectedCallback();
     this.resize_observer.disconnect();
     document.body.removeEventListener('mouseup', this.on_mouse_up);
@@ -177,6 +221,8 @@ export class DwgCardHand extends DwgElement {
   }
 
   setCards(cards: StandardCard[], cards_played: number[] = [], animation_time = 0): void {
+    this.clearDealTimers();
+    this.stopDragging();
     this.cards_container.replaceChildren();
     this.cards.clear();
     const card_data: CardData[] = cards
@@ -207,12 +253,14 @@ export class DwgCardHand extends DwgElement {
     el.classList.add('card');
     el.style.setProperty('--i', data.i_dom.toString());
     data.el = el;
-    setTimeout(
+    const timeout = setTimeout(
       () => {
+        this.deal_timeouts.delete(timeout);
         // TODO: add card dealt sound effect
         this.cards.set([data.i, data.i_dom], data);
         this.cards_container.style.setProperty('--num-cards', this.cards.size().toString());
         this.cards_container.appendChild(el);
+        this.refreshHighlights();
 
         el.addEventListener('dblclick', () => {
           if (this.can_play) {
@@ -252,6 +300,7 @@ export class DwgCardHand extends DwgElement {
       },
       (1 + data.i_dom) * animation_time
     );
+    this.deal_timeouts.add(timeout);
   }
 
   private startDraggingCard(p: Point2D, card: CardData, touch_identifier = 0): void {
@@ -270,6 +319,7 @@ export class DwgCardHand extends DwgElement {
       this.dragging_data.index = card.i;
       this.dragging_data.touch_identifier = touch_identifier;
       this.dragging_data.start = p;
+      this.drag_position = p;
       this.dragging_data.start_rect = card.el.getBoundingClientRect();
       card.el.style.setProperty('--x', '0px');
       card.el.style.setProperty('--y', '0px');
@@ -325,16 +375,16 @@ export class DwgCardHand extends DwgElement {
       }
       card.el.style.setProperty('--x', `${(p.x - this.dragging_data.start.x).toString()}px`);
       card.el.style.setProperty('--y', `${(p.y - this.dragging_data.start.y).toString()}px`);
-      if (p.y < this.cancel_drop.getBoundingClientRect()?.top) {
-        this.play_drop.classList.add('hovering');
-        this.cancel_drop.classList.remove('hovering');
-        this.dragging_data.hovering_play_drop = true;
-      } else {
-        this.play_drop.classList.remove('hovering');
-        this.cancel_drop.classList.add('hovering');
-        this.dragging_data.hovering_play_drop = false;
-      }
+      this.drag_position = p;
+      this.updateDropTarget(p);
     });
+  }
+
+  private updateDropTarget(p: Point2D): void {
+    const playing = p.y < this.cancel_drop.getBoundingClientRect().top;
+    this.play_drop.classList.toggle('hovering', playing);
+    this.cancel_drop.classList.toggle('hovering', !playing);
+    this.dragging_data.hovering_play_drop = playing;
   }
 
   private stopDragging(): void {
@@ -393,7 +443,14 @@ export class DwgCardHand extends DwgElement {
     this.createCardEl(card);
   }
 
+  private clearDealTimers(): void {
+    this.deal_timeouts.forEach((timeout: ReturnType<typeof setTimeout>): void => clearTimeout(timeout));
+    this.deal_timeouts.clear();
+  }
+
   removeCards(): void {
+    this.clearDealTimers();
+    this.stopDragging();
     this.cards.clear();
     this.cards_container.replaceChildren();
     this.can_play = false;

@@ -260,4 +260,3 @@ func verifyBudget(g *harness.Game, turn int) {
 		}
 	}
 }
-

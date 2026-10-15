@@ -50,6 +50,7 @@ export declare interface RisqTickFrameFromServer {
   terminal: boolean;
   phase: string;
   units: RisqTickUnitState[];
+  hidden_units: number[];
   buildings: RisqTickBuildingState[];
   resources: RisqTickResourceState[];
   players: RisqTickPlayerStateFromServer[];

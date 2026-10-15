@@ -1,5 +1,5 @@
 import type { ColorRGB } from '../../../../../../scripts/color_rgb';
-import { isImageReady } from '../../../../../../scripts/image';
+import { createImage, isImageReady, resolveImage } from '../../../../../../scripts/image';
 import type { RisqDrawHost } from '../board/board_renderer';
 
 /** RGB value reserved in unit/building art to mark pixels swapped for the owning player's color */
@@ -20,6 +20,17 @@ export class RisqImageCache {
   private canvases = new Map<string, HTMLCanvasElement>();
   private cursor_urls = new Map<string, string>();
   private scaled_sprites = new WeakMap<object, Map<number, HTMLCanvasElement>>();
+  private icons = new Map<string, HTMLImageElement>();
+
+  getIcon(name: string): HTMLImageElement {
+    let icon = this.icons.get(name);
+    if (!icon) {
+      icon = createImage(`/images/${name}.png`);
+      icon.alt = name;
+      this.icons.set(name, icon);
+    }
+    return resolveImage(icon);
+  }
 
   private buildImage(
     w: number,

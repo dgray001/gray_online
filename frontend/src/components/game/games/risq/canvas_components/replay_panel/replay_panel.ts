@@ -105,7 +105,8 @@ export class RisqReplayPanel implements CanvasComponent {
       this.slider.setValue(this.stops[this.stops.indexOf(this.slider.value()) + 1] ?? this.slider.maxValue());
     }
     if (this.slider.value() >= this.slider.maxValue()) {
-      this.togglePlaying();
+      this.playing = false;
+      this.risq.showMessage('Replay ended', RISQ_MESSAGE_WARNING_COLOR);
     }
   }
 

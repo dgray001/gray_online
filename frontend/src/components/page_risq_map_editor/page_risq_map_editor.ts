@@ -21,7 +21,7 @@ import { MapEditorHeader } from './map_editor_header';
 import type { EntityCatalog, TerrainEntry } from './map_api';
 import { deleteMap, listEntities, listMaps, listTerrains, loadMap, previewMap, saveMap } from './map_api';
 import type { MapDoc } from './map_doc';
-import { MAP_NAME_PATTERN, MAX_BOARD_SIZE, newMapDoc, newMapError } from './map_doc';
+import { MAP_NAME_PATTERN, newMapDoc, newMapError } from './map_doc';
 
 import html from './page_risq_map_editor.html';
 
@@ -47,8 +47,7 @@ export class DwgPageRisqMapEditor extends DwgElement {
     history: this.history,
     doc: () => this.doc,
     edited: () => this.requestPreview(),
-    patchTerrain: (coordinates, terrain_id) =>
-      patchTerrainSpaces(this.session, this.terrains, coordinates, terrain_id),
+    patchTerrain: (coordinates, terrain_id) => patchTerrainSpaces(this.session, this.terrains, coordinates, terrain_id),
     select: (target) => this.select(target),
     dragged: () => this.dragged,
     terrains: () => this.terrains,
