@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"math"
 )
 
 type SpaceCondition struct {
@@ -264,4 +265,136 @@ func parseSpaceCounter(obj map[string]any) (counter, error) {
 			return near.contains(view, internals, ZoneRef{Space: space})
 		}))
 	}, nil
+}
+
+// Where a "within" distance is measured from: our home (default), the center of a bucket's units, or the
+// candidate currently being scored by a target picker.
+type anchorKind uint8
+
+const (
+	anchorHome anchorKind = iota
+	anchorBucket
+	anchorTarget
+	// the unit a "unit_when" condition is being checked for
+	anchorUnit
+	anchorCoordinate
+)
+
+type anchor struct {
+	kind                       anchorKind
+	bucket                     string
+	coordinate_x, coordinate_y amount
+}
+
+func parseAnchor(raw any) (anchor, error) {
+	if raw == nil {
+		return anchor{kind: anchorHome}, nil
+	}
+	if obj, ok := raw.(map[string]any); ok {
+		x, x_err := parseAmount(obj["x"])
+		y, y_err := parseAmount(obj["y"])
+		if x_err != nil || y_err != nil {
+			return anchor{}, fmt.Errorf("coordinate reference requires x and y as numbers or expressions")
+		}
+		return anchor{kind: anchorCoordinate, coordinate_x: x, coordinate_y: y}, nil
+	}
+	name, ok := raw.(string)
+	if !ok || name == "" {
+		return anchor{}, fmt.Errorf("\"from\" must be a coordinate object, \"home\", \"target\", \"unit\" or a bucket name")
+	}
+	switch name {
+	case "home":
+		return anchor{kind: anchorHome}, nil
+	case "target":
+		return anchor{kind: anchorTarget}, nil
+	case "unit":
+		return anchor{kind: anchorUnit}, nil
+	}
+	return anchor{kind: anchorBucket, bucket: name}, nil
+}
+
+func (a anchor) location(view View, internals *Internals) (ZoneRef, bool) {
+	switch a.kind {
+	case anchorCoordinate:
+		return ZoneRef{Space: Coordinate{X: a.coordinate_x.int(view, internals), Y: a.coordinate_y.int(view, internals)}}, true
+	case anchorBucket:
+		b := internals.Buckets[a.bucket]
+		if b == nil {
+			return ZoneRef{}, false
+		}
+		members := make([]UnitView, 0, len(b.Members))
+		for _, u := range view.Units() {
+			if b.Members[u.InternalID] {
+				members = append(members, u)
+			}
+		}
+		return groupCenter(view, members)
+	case anchorTarget:
+		if internals.target == nil {
+			return ZoneRef{}, false
+		}
+		return *internals.target, true
+	case anchorUnit:
+		if internals.unit == nil {
+			return ZoneRef{}, false
+		}
+		return *internals.unit, true
+	}
+	return homeLocation(view)
+}
+
+// The unit closest to all the others, so a group's center is always a real, reachable zone
+func groupCenter(view View, units []UnitView) (ZoneRef, bool) {
+	if len(units) == 0 {
+		return ZoneRef{}, false
+	}
+	best, best_sum := units[0].Location, -1
+	for _, u := range units {
+		sum := 0
+		for _, other := range units {
+			sum += view.SpaceDistance(u.Location.Space, other.Location.Space)
+		}
+		if best_sum < 0 || sum < best_sum {
+			best, best_sum = u.Location, sum
+		}
+	}
+	return best, true
+}
+
+// Optional "within" (spaces) around an anchor; without "within" everything counts
+type nearFilter struct {
+	within     int
+	has_within bool
+	from       anchor
+}
+
+func parseNearFilter(obj map[string]any) (nearFilter, error) {
+	f := nearFilter{}
+	if value, present := obj["within"]; present {
+		w, ok := value.(float64)
+		if !ok || w < 0 || w != math.Trunc(w) || math.IsInf(w, 0) {
+			return f, fmt.Errorf("within must be a finite nonnegative whole number")
+		}
+		f.within, f.has_within = int(w), true
+	}
+	if value, present := obj["from"]; present && value == nil {
+		return f, fmt.Errorf("from must not be null")
+	}
+	from, err := parseAnchor(obj["from"])
+	if err != nil {
+		return f, err
+	}
+	if obj["from"] != nil && !f.has_within {
+		return f, fmt.Errorf("\"from\" needs a \"within\" distance")
+	}
+	f.from = from
+	return f, nil
+}
+
+func (f nearFilter) contains(view View, internals *Internals, loc ZoneRef) bool {
+	if !f.has_within {
+		return true
+	}
+	center, ok := f.from.location(view, internals)
+	return ok && view.SpaceDistance(center.Space, loc.Space) <= f.within
 }

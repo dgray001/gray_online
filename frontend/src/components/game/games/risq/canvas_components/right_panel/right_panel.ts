@@ -1,23 +1,27 @@
 import type { ColorRGB } from '../../../../../../scripts/color_rgb';
-import { formatOneDecimal } from '../../../../../../scripts/math';
 import type { BoardTransformData } from '../../../../util/canvas_board/canvas_board';
 import type { CanvasComponent, Rotation } from '../../../../util/canvas_components/canvas_component';
 import { configDraw } from '../../../../util/canvas_components/canvas_component';
-import { drawLine, drawRect, drawText } from '../../../../util/canvas_util';
+import { drawRect, drawText } from '../../../../util/canvas_util';
 import type { Point2D } from '../../../../util/objects2d';
 import type { DwgRisq } from '../../risq';
-import type { GameRisqScoreEntry, RisqPlayerResource, RisqResourceType } from '../../model/types';
-import { resourceTypeImage } from '../../rendering/assets/resources';
+import type { RisqResourceType } from '../../model/types';
 import { RisqOrdersList } from './orders_list';
 import { RisqNextIdleButton } from './next_idle_button';
-import { RisqRightPanelButton } from './right_panel_button';
-import { RisqSubmitOrdersButton } from './submit_orders_button';
-import { RisqSubmitIconButton } from './submit_icon_button';
-import { RisqReplayButton } from './replay_button';
+import { RisqReplayButton, RisqRightPanelButton } from './right_panel_button';
+import { RisqSubmitIconButton, RisqSubmitOrdersButton } from './submit_button';
 import { RisqSummaryReportButton } from '../bottom_panel/bottom_panel_buttons';
 import { RisqButtonTooltip } from '../risq_tooltip';
-import { populationTooltipData } from './population_tooltip';
-import { resourceTooltipData } from './resource_tooltip';
+import type { RightPanelGeometry } from './resource_tooltip';
+import {
+  drawPopulationRow,
+  drawResourceRow,
+  drawScoreRow,
+  drawSeparator,
+  populationTooltipData,
+  resourceRowAt,
+  resourceTooltipData,
+} from './resource_tooltip';
 
 export declare interface RightPanelConfig {
   w: number;
@@ -261,7 +265,7 @@ export class RisqRightPanel implements CanvasComponent {
             font: 'bold 36px serif',
           });
           yi += 40;
-          this.drawSeparator(ctx, yi);
+          drawSeparator(ctx, this.geom(), yi);
           yi += RisqRightPanel.PADDING;
           ctx.save();
           ctx.beginPath();
@@ -270,8 +274,10 @@ export class RisqRightPanel implements CanvasComponent {
           if (!!player) {
             ctx.font = '24px serif';
             this.population_row_y = yi;
-            this.drawPopulation(
+            drawPopulationRow(
               ctx,
+              this.risq,
+              this.geom(),
               yi,
               player.units.size,
               this.risq.planning.pendingMercenaryCount(),
@@ -281,20 +287,29 @@ export class RisqRightPanel implements CanvasComponent {
             this.resource_row_ys.clear();
             for (const [rt, pr] of [...player.resources.entries()].sort((a, b) => a[0] - b[0])) {
               this.resource_row_ys.set(rt, yi);
-              this.drawResource(ctx, yi, rt, pr);
+              drawResourceRow(
+                ctx,
+                this.risq,
+                this.geom(),
+                yi,
+                rt,
+                pr,
+                RisqRightPanel.WORKERS_W,
+                RisqRightPanel.PADDING
+              );
               yi += 30;
             }
             yi += RisqRightPanel.PADDING;
-            this.drawSeparator(ctx, yi);
+            drawSeparator(ctx, this.geom(), yi);
             yi += RisqRightPanel.PADDING;
           }
           for (const score of game?.scores ?? []) {
-            this.drawScore(ctx, yi, score);
+            drawScoreRow(ctx, this.geom(), yi, score);
             yi += 30;
           }
           ctx.restore();
           yi += RisqRightPanel.PADDING;
-          this.drawSeparator(ctx, yi);
+          drawSeparator(ctx, this.geom(), yi);
           yi += RisqRightPanel.PADDING;
         }
       );
@@ -322,30 +337,6 @@ export class RisqRightPanel implements CanvasComponent {
     this.open_button.draw(ctx, transform, dt);
   }
 
-  private drawSeparator(ctx: CanvasRenderingContext2D, yi: number): void {
-    ctx.strokeStyle = 'rgba(60, 60, 60, 0.6)';
-    ctx.lineWidth = 2;
-    drawLine(ctx, { x: this.xi() + 0.15 * this.w(), y: yi }, { x: this.xf() - 0.15 * this.w(), y: yi });
-  }
-
-  private drawPopulation(
-    ctx: CanvasRenderingContext2D,
-    yi: number,
-    pop: number,
-    pending: number,
-    limit: number | undefined
-  ): void {
-    ctx.beginPath();
-    ctx.drawImage(this.risq.getIcon('icons/person64'), this.xi() + 0.1 * this.w(), yi, 30, 30);
-    const count = pending > 0 ? `${pop}+${pending}` : `${pop}`;
-    drawText(ctx, limit === undefined ? count : `${count}/${limit}`, {
-      p: { x: this.xi() + 0.1 * this.w() + 36, y: yi + 15 },
-      w: 0.9 * this.w() - 36,
-      fill_style: limit !== undefined && pop + pending >= limit ? 'rgb(200, 30, 30)' : 'black',
-      baseline: 'middle',
-    });
-  }
-
   private resourceTooltip(rt: RisqResourceType): RisqButtonTooltip {
     let tooltip = this.resource_tooltips.get(rt);
     if (!tooltip) {
@@ -353,64 +344,6 @@ export class RisqRightPanel implements CanvasComponent {
       this.resource_tooltips.set(rt, tooltip);
     }
     return tooltip;
-  }
-
-  private resourceRowAt(screen: Point2D): RisqResourceType | undefined {
-    return [...this.resource_row_ys].find(([, yi]) => screen.y >= yi && screen.y < yi + 30)?.[0];
-  }
-
-  private drawResource(ctx: CanvasRenderingContext2D, yi: number, rt: RisqResourceType, pr: RisqPlayerResource): void {
-    ctx.beginPath();
-    ctx.drawImage(this.risq.getIcon(resourceTypeImage(rt)), this.xi() + 0.1 * this.w(), yi, 30, 30);
-    const net = pr.amount - pr.spending;
-    const sign = pr.spending > 0 ? '-' : '+';
-    const spending = formatOneDecimal(Math.abs(pr.spending));
-    const text = pr.spending !== 0 ? `${formatOneDecimal(net)} (${sign}${spending})` : formatOneDecimal(net);
-    drawText(ctx, text, {
-      p: { x: this.xi() + 0.1 * this.w() + 36, y: yi + 15 },
-      w: 0.9 * this.w() - 36 - RisqRightPanel.WORKERS_W,
-      fill_style: net < 0 ? 'rgb(200, 30, 30)' : 'black',
-      baseline: 'middle',
-      font: '18px serif',
-    });
-    if (this.risq.getGame()?.has_economy === false) {
-      return;
-    }
-    const delta = pr.predicted_workers - pr.workers;
-    const workers = `${pr.workers}${delta > 0 ? `+${delta}` : delta < 0 ? delta : ''}`;
-    const workers_x = this.xf() - RisqRightPanel.PADDING - RisqRightPanel.WORKERS_W;
-    ctx.drawImage(this.risq.getIcon('icons/villager64'), workers_x, yi + 5, 20, 20);
-    drawText(ctx, workers, {
-      p: { x: workers_x + 24, y: yi + 15 },
-      w: RisqRightPanel.WORKERS_W - 24,
-      fill_style: 'black',
-      align: 'left',
-      baseline: 'middle',
-      font: '16px serif',
-    });
-  }
-
-  private drawScore(ctx: CanvasRenderingContext2D, yi: number, score: GameRisqScoreEntry): void {
-    ctx.beginPath();
-    const text = `${score.nickname}: ${score.score}`;
-    drawText(ctx, text, {
-      p: { x: this.xi() + 0.9 * this.w(), y: yi + 15 },
-      w: 0.8 * this.w(),
-      fill_style: score.color.getString(),
-      baseline: 'middle',
-      align: 'right',
-      font: '18px serif',
-    });
-    if (score.eliminated) {
-      const text_w = Math.min(ctx.measureText(text).width, 0.8 * this.w());
-      ctx.strokeStyle = score.color.getString();
-      ctx.lineWidth = 2;
-      drawLine(
-        ctx,
-        { x: this.xi() + 0.9 * this.w() - text_w, y: yi + 15 },
-        { x: this.xi() + 0.9 * this.w(), y: yi + 15 }
-      );
-    }
   }
 
   scroll(dy: number, mode: number): boolean {
@@ -434,7 +367,7 @@ export class RisqRightPanel implements CanvasComponent {
       }
     }
     const rows_hoverable = inside && this.config.is_open && !this.opening;
-    this.hovered_resource = rows_hoverable ? this.resourceRowAt(screen) : undefined;
+    this.hovered_resource = rows_hoverable ? resourceRowAt(this.resource_row_ys, screen.y) : undefined;
     const population_y = this.population_row_y;
     this.hovered_population =
       rows_hoverable && population_y !== undefined && screen.y >= population_y && screen.y < population_y + 30;
@@ -509,5 +442,8 @@ export class RisqRightPanel implements CanvasComponent {
   }
   h(): number {
     return this.yf() - this.yi();
+  }
+  private geom(): RightPanelGeometry {
+    return { xi: this.xi(), xf: this.xf(), w: this.w() };
   }
 }

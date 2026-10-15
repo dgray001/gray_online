@@ -1,10 +1,10 @@
 package aibridge
 
 import (
+	"sort"
+
 	"github.com/dgray001/gray_online/game/games/risq/ai"
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
-	"github.com/dgray001/gray_online/util"
-	"sort"
 )
 
 // Answers every ai query from the player's frontend snapshot only, so the ai knows exactly what a human would.
@@ -132,163 +132,6 @@ func (v *aiView) gatherTargetAt(ref ai.ZoneRef) (ai.ResourceView, bool) {
 		return ai.ResourceView{InternalID: b.InternalId, Category: toAiCategory(v.config.Buildings[b.BuildingId].Gather.Resource_category), Location: ref, AmountLeft: b.ResourcesLeft}, true
 	}
 	return ai.ResourceView{}, false
-}
-
-func (v *aiView) currentOrder(orders []snapOrder) *ai.CurrentOrder {
-	if len(orders) == 0 {
-		return nil
-	}
-	active := orders[0]
-	kind, ok := toOrderKind(active.OrderType)
-	if !ok {
-		return nil
-	}
-	order := &ai.CurrentOrder{Kind: kind}
-	switch active.OrderType {
-	case defs.OrderType_UnitMoveZone, defs.OrderType_UnitAttackZone:
-		ref := zoneRefFromKey(uint(active.TargetId))
-		order.TargetZone = &ref
-	case defs.OrderType_UnitGather:
-		if resource, ok := v.gatherTargetAt(zoneRefFromKey(uint(active.TargetId))); ok {
-			order.TargetResource = &resource
-		}
-	case defs.OrderType_UnitBuild:
-		_, zone_key := util.InvertPair(uint(active.TargetId))
-		ref := zoneRefFromKey(uint(zone_key))
-		order.TargetZone = &ref
-	case defs.OrderType_UnitAttackSpace:
-		x, y := util.InvertPair(uint(active.TargetId))
-		order.TargetSpace = &ai.Coordinate{X: x, Y: y}
-	case defs.OrderType_UnitAttackUnit:
-		if target, ok := v.units[uint64(active.TargetId)]; ok {
-			view := v.unitViewShallow(target)
-			order.TargetUnit = &view
-		}
-	case defs.OrderType_UnitAttackBuilding, defs.OrderType_UnitGarrison, defs.OrderType_UnitRepair, defs.OrderType_UnitRenew:
-		if target, ok := v.buildings[uint64(active.TargetId)]; ok {
-			view := v.buildingView(target)
-			order.TargetBuilding = &view
-		}
-	}
-	return order
-}
-
-func (v *aiView) unitLocation(u *snapUnit) ai.ZoneRef {
-	if u.GarrisonedIn != nil {
-		if b, ok := v.buildings[*u.GarrisonedIn]; ok {
-			return zoneRefOf(b.Space, b.Zone)
-		}
-	}
-	return zoneRefOf(u.Space, u.Zone)
-}
-
-// Doesn't populate CurrentOrder, so two units targeting each other can't recurse forever
-func (v *aiView) unitViewShallow(u *snapUnit) ai.UnitView {
-	kind := ai.UnitMilitary
-	if u.UnitType == defs.UnitType_ECONOMIC {
-		kind = ai.UnitEconomic
-	}
-	return ai.UnitView{
-		InternalID:       u.InternalId,
-		PlayerID:         u.PlayerId,
-		UnitID:           u.UnitId,
-		Type:             ai.UnitType(u.UnitType),
-		Kind:             kind,
-		Location:         v.unitLocation(u),
-		CurrentStamina:   u.CurrentStamina,
-		Builds:           v.unitBuilds(u.UnitId),
-		GarrisonedIn:     u.GarrisonedIn,
-		Stance:           ai.UnitStance(u.Stance),
-		InterruptCurrent: u.InterruptCurrent,
-		AttackBack:       u.AttackBack,
-		TargetPriority:   toAiTargetCategories(u.TargetPriority),
-		Health:           u.CombatStats.Health,
-		MaxHealth:        float64(u.CombatStats.MaxHealth),
-	}
-}
-
-// Orders minus any this planning pass already emitted a cancel for
-func (v *aiView) liveOrders(orders []snapOrder) []snapOrder {
-	live := make([]snapOrder, 0, len(orders))
-	for _, o := range orders {
-		if !v.cancelled_orders[o.InternalId] {
-			live = append(live, o)
-		}
-	}
-	return live
-}
-
-func (v *aiView) unitView(u *snapUnit) ai.UnitView {
-	view := v.unitViewShallow(u)
-	live := v.liveOrders(u.ActiveOrders)
-	view.CurrentOrder = v.currentOrder(live)
-	if override, touched := v.assigned_units[u.InternalId]; touched {
-		view.CurrentOrder = override
-	}
-	for _, o := range live {
-		if kind, ok := toOrderKind(o.OrderType); ok && v.order_ids[o.InternalId] {
-			view.ActiveOrders = append(view.ActiveOrders, ai.ActiveUnitOrder{ID: o.InternalId, Kind: kind})
-		}
-	}
-	return view
-}
-
-func (v *aiView) producibles(b *snapBuilding) []ai.Producible {
-	producibles := make([]ai.Producible, 0)
-	for _, p := range v.config.Buildings[b.BuildingId].Produces {
-		switch p.Kind {
-		case defs.ProducibleKind_UNIT:
-			if !v.techMet(v.config.Units[p.Id].Required_tech_id) {
-				continue
-			}
-			cost, _ := v.config.UnitProductionCost(p.Id)
-			producibles = append(producibles, ai.Producible{Kind: ai.ProducibleUnit, ID: p.Id, Cost: toCost(cost), UnitType: ai.UnitType(v.config.Units[p.Id].Unit_type)})
-		case defs.ProducibleKind_TECH:
-			if _, researching_or_done := v.me.ResearchedTechs[p.Id]; researching_or_done || v.planned_techs[p.Id] || !v.techMet(v.config.Techs[p.Id].Required_tech_id) {
-				continue
-			}
-			producibles = append(producibles, ai.Producible{Kind: ai.ProducibleTech, ID: p.Id, Cost: toCost(v.config.Techs[p.Id].Cost)})
-		}
-	}
-	return producibles
-}
-
-func (v *aiView) buildingView(b *snapBuilding) ai.BuildingView {
-	config := v.config.Buildings[b.BuildingId]
-	return ai.BuildingView{
-		InternalID:        b.InternalId,
-		PlayerID:          b.PlayerId,
-		BuildingID:        b.BuildingId,
-		Location:          zoneRefOf(b.Space, b.Zone),
-		UnderConstruction: b.UnderConstruction,
-		Idle:              !b.UnderConstruction && len(b.ActiveOrders) == 0 && len(config.Produces) > 0,
-		Producibles:       v.producibles(b),
-		GarrisonCount:     len(b.GarrisonedUnits),
-		GarrisonCapacity:  b.GarrisonCapacity,
-		Gatherable:        config.IsGatherable(),
-		ResourcesLeft:     b.ResourcesLeft,
-		Renewing:          b.Renewing,
-		RenewCost:         toCost(config.Gather.Renew_cost),
-		Health:            b.CombatStats.Health,
-		MaxHealth:         float64(b.CombatStats.MaxHealth),
-		CanAttack:         config.Attack_type != defs.AttackType_NONE,
-	}
-}
-
-func (v *aiView) ownBuildingView(b *snapBuilding) ai.BuildingView {
-	view := v.buildingView(b)
-	view.AutoAttack = b.AutoAttack
-	view.InterruptCurrent = b.InterruptCurrent
-	view.TargetPriority = toAiTargetCategories(b.TargetPriority)
-	live := v.liveOrders(b.ActiveOrders)
-	for _, o := range live {
-		if kind, ok := toBuildingOrderKind(o.OrderType); ok && v.order_ids[o.InternalId] {
-			view.ActiveOrders = append(view.ActiveOrders, ai.ActiveBuildingOrder{ID: o.InternalId, Kind: kind, ItemID: uint32(o.TargetId)})
-		}
-	}
-	view.PlannedProduction = v.planned_production[b.InternalId]
-	view.Idle = !b.UnderConstruction && len(live) == 0 && view.PlannedProduction == 0 && len(v.config.Buildings[b.BuildingId].Produces) > 0
-	return view
 }
 
 func (v *aiView) Units() []ai.UnitView {
@@ -420,29 +263,6 @@ func (v *aiView) EnemiesFound() int {
 		}
 	}
 	return len(discovered)
-}
-
-func (v *aiView) OwnedSpaces() int {
-	owned := 0
-	for _, space := range v.spaces {
-		if owner, known := spaceOwner(space); known && owner == v.playerId() {
-			owned++
-		}
-	}
-	return owned
-}
-
-func (v *aiView) AllSpaces() []ai.SpaceInfo {
-	infos := make([]ai.SpaceInfo, 0, len(v.spaces))
-	for _, row := range v.game.Spaces {
-		for _, space := range row {
-			if space != nil {
-				owner, _ := spaceOwner(space)
-				infos = append(infos, ai.SpaceInfo{Space: toCoordinate(space.Coordinate), Vision: space.Visibility, Owner: owner, UnitCount: space.UnitCount})
-			}
-		}
-	}
-	return infos
 }
 
 func (v *aiView) Score() int {
@@ -631,79 +451,6 @@ func (v *aiView) TechCost(tech_id uint32) ai.Cost {
 	return toCost(v.config.Techs[tech_id].Cost)
 }
 
-func (v *aiView) NearestUnexplored(from ai.ZoneRef) ([]ai.ZoneRef, bool) {
-	var tied []ai.ZoneRef
-	vision := uint8(defs.VisibilityUnexplored)
-	for _, space := range v.ClosestSpaces(from.Space, ai.SpaceCondition{Vision: &vision}, false) {
-		tied = append(tied, ai.ZoneRef{Space: space})
-	}
-	return tied, len(tied) > 0
-}
-
-func (v *aiView) ownSpaceCount() int {
-	count := 0
-	for _, s := range v.spaces {
-		if owner, known := spaceOwner(s); known && owner == v.playerId() {
-			count++
-		}
-	}
-	return count
-}
-
-// Mirrors the build rule against snapshot ownership: a space I own, an unowned one bordering one I own, or any unowned space if owning 0
-func (v *aiView) buildable(space *snapSpace) bool {
-	owner, known := spaceOwner(space)
-	if !known || owner != -1 {
-		return known && owner == v.playerId()
-	}
-	if v.ownSpaceCount() == 0 {
-		return true
-	}
-	for _, adjacent := range v.spaceNeighbors(toCoordinate(space.Coordinate)) {
-		if adj_owner, adj_known := spaceOwner(v.spaces[adjacent]); adj_known && adj_owner == v.playerId() {
-			return true
-		}
-	}
-	return false
-}
-
-const outpostBuildingID = 21
-
-// Every zone the building can go on. Outposts exist to claim land, so they only go in unowned spaces with no other foundation
-func (v *aiView) BuildSites(building_id uint32, include func(ai.Coordinate) bool) []ai.ZoneRef {
-	foundations := v.foundationsByLocation()
-	claimed := make(map[ai.Coordinate]bool, len(foundations))
-	for location := range foundations {
-		claimed[location.Space] = true
-	}
-	sites := make([]ai.ZoneRef, 0)
-	for _, entry := range v.zones {
-		if include != nil && !include(entry.ref.Space) {
-			continue
-		}
-		if entry.zone.Resource != nil || entry.zone.Building != nil || foundations[entry.ref] != nil || !v.buildable(entry.space) {
-			continue
-		}
-		if owner, known := spaceOwner(entry.space); building_id == outpostBuildingID && (!known || owner != -1 || claimed[entry.ref.Space]) {
-			continue
-		}
-		sites = append(sites, entry.ref)
-	}
-	return sites
-}
-
-func (v *aiView) NearestBuildSite(from ai.ZoneRef, building_id uint32, include func(ai.Coordinate) bool) (ai.ZoneRef, bool) {
-	var best ai.ZoneRef
-	found, best_distance := false, -1
-	for _, site := range v.BuildSites(building_id, include) {
-		d := v.LocationDistance(from, site)
-		if !found || d < best_distance || (d == best_distance && zoneKey(site) < zoneKey(best)) {
-			best, best_distance, found = site, d, true
-		}
-	}
-	return best, found
-}
-
 func (v *aiView) assignUnit(id uint64, order *ai.CurrentOrder) {
 	if v.gather_counts != nil {
 		if previous, ok := v.gatherTarget(id); ok {
@@ -718,67 +465,6 @@ func (v *aiView) assignUnit(id uint64, order *ai.CurrentOrder) {
 
 func (v *aiView) claimBuilding(id uint64) {
 	v.claimed_buildings[id] = true
-}
-
-func (v *aiView) OwnBuildingsIn(space ai.Coordinate) int {
-	count := 0
-	for _, b := range v.me.Buildings {
-		if toCoordinate(b.Space) == space {
-			count++
-		}
-	}
-	for location, f := range v.foundationsByLocation() {
-		if f.Planned && location.Space == space {
-			count++
-		}
-	}
-	return count
-}
-
-func (v *aiView) EnemyDistance(from ai.Coordinate) int {
-	if !v.enemy_spaces_known {
-		seen := make(map[ai.Coordinate]bool)
-		for _, b := range v.KnownEnemyBuildings() {
-			if space := b.Location.Space; !seen[space] {
-				seen[space] = true
-				v.enemy_spaces = append(v.enemy_spaces, space)
-			}
-		}
-		v.enemy_spaces_known = true
-	}
-	best := -1
-	for _, space := range v.enemy_spaces {
-		if d := v.SpaceDistance(from, space); best == -1 || d < best {
-			best = d
-		}
-	}
-	return best
-}
-
-func (v *aiView) RegionProgress(space ai.Coordinate) float64 {
-	if owner, known := spaceOwner(v.spaces[space]); known && owner == v.playerId() {
-		return 0
-	}
-	if v.space_by_key == nil {
-		v.space_by_key = make(map[uint]*snapSpace, len(v.spaces))
-		for coordinate, s := range v.spaces {
-			v.space_by_key[spaceKey(coordinate)] = s
-		}
-	}
-	key := spaceKey(space)
-	for _, region := range v.game.Regions {
-		member, owned := false, 0
-		for _, k := range region.Spaces {
-			member = member || k == key
-			if owner, known := spaceOwner(v.space_by_key[k]); known && owner == v.playerId() {
-				owned++
-			}
-		}
-		if member {
-			return float64(owned+1) / float64(len(region.Spaces))
-		}
-	}
-	return 0
 }
 
 func (v *aiView) PlayerIDs() []int {

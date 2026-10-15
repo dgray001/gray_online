@@ -2,7 +2,7 @@ import type { DwgRisq } from '../../../../risq';
 import { RisqActionButton } from '../action_button';
 import type { RisqProducible } from '../../../../model/types';
 import { canAffordCost } from '../../../../model/types';
-import { researchQueued } from '../../../../application/orders/eligibility';
+import { researchQueued } from '../../../../application/orders/orders_model';
 import { techImage } from '../../../../rendering/assets/buildings';
 import { RISQ_MESSAGE_WARNING_COLOR } from '../../../message_queue';
 import type { RisqTooltipData } from '../../../risq_tooltip';

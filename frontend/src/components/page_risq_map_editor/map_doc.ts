@@ -102,3 +102,19 @@ export function newMapDoc(board_size: number, players: number): MapDoc {
   }
   return { board_size, players, spaces };
 }
+
+export const MAP_NAME_PATTERN = /^[a-z0-9_]{1,40}$/;
+export const MAX_BOARD_SIZE = 10;
+
+export function newMapError(name: string, size: number, existing_names: string[]): string | undefined {
+  if (!MAP_NAME_PATTERN.test(name)) {
+    return 'Enter a map name: lowercase letters, digits and underscores';
+  }
+  if (existing_names.includes(name)) {
+    return `A map named ${name} already exists`;
+  }
+  if (!(size >= 0 && size <= MAX_BOARD_SIZE)) {
+    return `Size must be 0 to ${MAX_BOARD_SIZE}`;
+  }
+  return undefined;
+}

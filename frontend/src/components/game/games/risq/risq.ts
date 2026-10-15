@@ -71,7 +71,7 @@ import { RisqMinimap } from './canvas_components/minimap/risq_minimap';
 import { RisqBottomPanel } from './canvas_components/bottom_panel/bottom_panel';
 import { RisqMercenaryPanel } from './canvas_components/bottom_panel/mercenary_panel';
 import { RisqDefaultBehaviorGrid } from './canvas_components/bottom_panel/default_behavior_grid';
-import type { IdleCategory } from './application/orders/idle_category';
+import type { IdleCategory } from './application/orders/orders_model';
 import { RisqControlGroupGrid } from './canvas_components/bottom_panel/control_group_grid';
 import { RisqIdleGrid } from './canvas_components/bottom_panel/idle_grid';
 import { RISQ_MESSAGE_WARNING_COLOR, RisqMessageQueue } from './canvas_components/message_queue';

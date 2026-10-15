@@ -151,3 +151,160 @@ func zoneRefLess(a ai.ZoneRef, b ai.ZoneRef) bool {
 	}
 	return false
 }
+
+func (v *aiView) currentOrder(orders []snapOrder) *ai.CurrentOrder {
+	if len(orders) == 0 {
+		return nil
+	}
+	active := orders[0]
+	kind, ok := toOrderKind(active.OrderType)
+	if !ok {
+		return nil
+	}
+	order := &ai.CurrentOrder{Kind: kind}
+	switch active.OrderType {
+	case defs.OrderType_UnitMoveZone, defs.OrderType_UnitAttackZone:
+		ref := zoneRefFromKey(uint(active.TargetId))
+		order.TargetZone = &ref
+	case defs.OrderType_UnitGather:
+		if resource, ok := v.gatherTargetAt(zoneRefFromKey(uint(active.TargetId))); ok {
+			order.TargetResource = &resource
+		}
+	case defs.OrderType_UnitBuild:
+		_, zone_key := util.InvertPair(uint(active.TargetId))
+		ref := zoneRefFromKey(uint(zone_key))
+		order.TargetZone = &ref
+	case defs.OrderType_UnitAttackSpace:
+		x, y := util.InvertPair(uint(active.TargetId))
+		order.TargetSpace = &ai.Coordinate{X: x, Y: y}
+	case defs.OrderType_UnitAttackUnit:
+		if target, ok := v.units[uint64(active.TargetId)]; ok {
+			view := v.unitViewShallow(target)
+			order.TargetUnit = &view
+		}
+	case defs.OrderType_UnitAttackBuilding, defs.OrderType_UnitGarrison, defs.OrderType_UnitRepair, defs.OrderType_UnitRenew:
+		if target, ok := v.buildings[uint64(active.TargetId)]; ok {
+			view := v.buildingView(target)
+			order.TargetBuilding = &view
+		}
+	}
+	return order
+}
+
+func (v *aiView) unitLocation(u *snapUnit) ai.ZoneRef {
+	if u.GarrisonedIn != nil {
+		if b, ok := v.buildings[*u.GarrisonedIn]; ok {
+			return zoneRefOf(b.Space, b.Zone)
+		}
+	}
+	return zoneRefOf(u.Space, u.Zone)
+}
+
+// Doesn't populate CurrentOrder, so two units targeting each other can't recurse forever
+func (v *aiView) unitViewShallow(u *snapUnit) ai.UnitView {
+	kind := ai.UnitMilitary
+	if u.UnitType == defs.UnitType_ECONOMIC {
+		kind = ai.UnitEconomic
+	}
+	return ai.UnitView{
+		InternalID:       u.InternalId,
+		PlayerID:         u.PlayerId,
+		UnitID:           u.UnitId,
+		Type:             ai.UnitType(u.UnitType),
+		Kind:             kind,
+		Location:         v.unitLocation(u),
+		CurrentStamina:   u.CurrentStamina,
+		Builds:           v.unitBuilds(u.UnitId),
+		GarrisonedIn:     u.GarrisonedIn,
+		Stance:           ai.UnitStance(u.Stance),
+		InterruptCurrent: u.InterruptCurrent,
+		AttackBack:       u.AttackBack,
+		TargetPriority:   toAiTargetCategories(u.TargetPriority),
+		Health:           u.CombatStats.Health,
+		MaxHealth:        float64(u.CombatStats.MaxHealth),
+	}
+}
+
+// Orders minus any this planning pass already emitted a cancel for
+func (v *aiView) liveOrders(orders []snapOrder) []snapOrder {
+	live := make([]snapOrder, 0, len(orders))
+	for _, o := range orders {
+		if !v.cancelled_orders[o.InternalId] {
+			live = append(live, o)
+		}
+	}
+	return live
+}
+
+func (v *aiView) unitView(u *snapUnit) ai.UnitView {
+	view := v.unitViewShallow(u)
+	live := v.liveOrders(u.ActiveOrders)
+	view.CurrentOrder = v.currentOrder(live)
+	if override, touched := v.assigned_units[u.InternalId]; touched {
+		view.CurrentOrder = override
+	}
+	for _, o := range live {
+		if kind, ok := toOrderKind(o.OrderType); ok && v.order_ids[o.InternalId] {
+			view.ActiveOrders = append(view.ActiveOrders, ai.ActiveUnitOrder{ID: o.InternalId, Kind: kind})
+		}
+	}
+	return view
+}
+
+func (v *aiView) producibles(b *snapBuilding) []ai.Producible {
+	producibles := make([]ai.Producible, 0)
+	for _, p := range v.config.Buildings[b.BuildingId].Produces {
+		switch p.Kind {
+		case defs.ProducibleKind_UNIT:
+			if !v.techMet(v.config.Units[p.Id].Required_tech_id) {
+				continue
+			}
+			cost, _ := v.config.UnitProductionCost(p.Id)
+			producibles = append(producibles, ai.Producible{Kind: ai.ProducibleUnit, ID: p.Id, Cost: toCost(cost), UnitType: ai.UnitType(v.config.Units[p.Id].Unit_type)})
+		case defs.ProducibleKind_TECH:
+			if _, researching_or_done := v.me.ResearchedTechs[p.Id]; researching_or_done || v.planned_techs[p.Id] || !v.techMet(v.config.Techs[p.Id].Required_tech_id) {
+				continue
+			}
+			producibles = append(producibles, ai.Producible{Kind: ai.ProducibleTech, ID: p.Id, Cost: toCost(v.config.Techs[p.Id].Cost)})
+		}
+	}
+	return producibles
+}
+
+func (v *aiView) buildingView(b *snapBuilding) ai.BuildingView {
+	config := v.config.Buildings[b.BuildingId]
+	return ai.BuildingView{
+		InternalID:        b.InternalId,
+		PlayerID:          b.PlayerId,
+		BuildingID:        b.BuildingId,
+		Location:          zoneRefOf(b.Space, b.Zone),
+		UnderConstruction: b.UnderConstruction,
+		Idle:              !b.UnderConstruction && len(b.ActiveOrders) == 0 && len(config.Produces) > 0,
+		Producibles:       v.producibles(b),
+		GarrisonCount:     len(b.GarrisonedUnits),
+		GarrisonCapacity:  b.GarrisonCapacity,
+		Gatherable:        config.IsGatherable(),
+		ResourcesLeft:     b.ResourcesLeft,
+		Renewing:          b.Renewing,
+		RenewCost:         toCost(config.Gather.Renew_cost),
+		Health:            b.CombatStats.Health,
+		MaxHealth:         float64(b.CombatStats.MaxHealth),
+		CanAttack:         config.Attack_type != defs.AttackType_NONE,
+	}
+}
+
+func (v *aiView) ownBuildingView(b *snapBuilding) ai.BuildingView {
+	view := v.buildingView(b)
+	view.AutoAttack = b.AutoAttack
+	view.InterruptCurrent = b.InterruptCurrent
+	view.TargetPriority = toAiTargetCategories(b.TargetPriority)
+	live := v.liveOrders(b.ActiveOrders)
+	for _, o := range live {
+		if kind, ok := toBuildingOrderKind(o.OrderType); ok && v.order_ids[o.InternalId] {
+			view.ActiveOrders = append(view.ActiveOrders, ai.ActiveBuildingOrder{ID: o.InternalId, Kind: kind, ItemID: uint32(o.TargetId)})
+		}
+	}
+	view.PlannedProduction = v.planned_production[b.InternalId]
+	view.Idle = !b.UnderConstruction && len(live) == 0 && view.PlannedProduction == 0 && len(v.config.Buildings[b.BuildingId].Produces) > 0
+	return view
+}

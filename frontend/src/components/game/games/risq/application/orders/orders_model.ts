@@ -1,6 +1,100 @@
 import { invertPair } from '../../model/coordinates';
-import type { RisqFrontendOrder, RisqOrder } from '../../model/types';
-import { RisqOrderType } from '../../model/types';
+import type {
+  RisqBuilding,
+  RisqFrontendOrder,
+  RisqOrder,
+  RisqPlayer,
+  RisqProducible,
+  RisqTickAction,
+  RisqUnit,
+} from '../../model/types';
+import { RisqOrderType, RisqProducibleKind, RisqUnitType, meetsTechRequirement } from '../../model/types';
+
+export type IdleCategory = 'economic' | 'military' | 'unit_production' | 'other_buildings';
+
+export function idleCategory(entity: RisqUnit | RisqBuilding): IdleCategory {
+  if ('unit_id' in entity) {
+    return entity.unit_type === RisqUnitType.ECONOMIC ? 'economic' : 'military';
+  }
+  return entity.produces.some((item: { kind: RisqProducibleKind }): boolean => item.kind === RisqProducibleKind.UNIT)
+    ? 'unit_production'
+    : 'other_buildings';
+}
+
+export function producibleUnlocked(player: RisqPlayer, producible: RisqProducible): boolean {
+  return (
+    meetsTechRequirement(player, producible.required_tech_id) &&
+    (producible.kind !== RisqProducibleKind.TECH || !player.researched_techs.get(producible.id))
+  );
+}
+
+export function buildingCanProduce(player: RisqPlayer, building: RisqBuilding, producible: RisqProducible): boolean {
+  return (
+    building.player_id === player.player.player_id &&
+    !building.under_construction &&
+    building.produces.some((p: RisqProducible): boolean => p.kind === producible.kind && p.id === producible.id) &&
+    producibleUnlocked(player, producible)
+  );
+}
+
+export function unitCanBuild(player: RisqPlayer, unit: RisqUnit, building_id: number): boolean {
+  return (
+    unit.player_id === player.player.player_id &&
+    unit.unit_type === RisqUnitType.ECONOMIC &&
+    unit.builds.some((p: RisqProducible): boolean => p.id === building_id && producibleUnlocked(player, p))
+  );
+}
+
+export function researchQueued(player: RisqPlayer, orders: RisqFrontendOrder[], tech_id: number): boolean {
+  return (
+    player.researched_techs.has(tech_id) ||
+    orders.some(
+      (o: RisqFrontendOrder): boolean =>
+        o.order_type === RisqOrderType.OrderType_BuildingResearch && o.target_id === tech_id
+    )
+  );
+}
+
+export function lastAreaAttack(
+  unit: RisqUnit,
+  order?: Pick<RisqFrontendOrder, 'internal_id' | 'order_type' | 'target_id'>
+): RisqTickAction | undefined {
+  const actions = unit.tick_actions ?? [];
+  const area =
+    order ??
+    actions
+      .slice()
+      .reverse()
+      .find((action: RisqTickAction): boolean => !!action.order)?.order;
+  if (
+    !area ||
+    area.internal_id === undefined ||
+    (area.order_type !== RisqOrderType.OrderType_UnitAttackSpace &&
+      area.order_type !== RisqOrderType.OrderType_UnitAttackZone)
+  ) {
+    return undefined;
+  }
+  for (let i = actions.length - 1; i >= 0; i--) {
+    const action = actions[i];
+    if (action.order?.internal_id !== area.internal_id) {
+      continue;
+    }
+    if (action.execute.kind === 'order_cancelled') {
+      return undefined;
+    }
+    const target = action.execute.target;
+    if (
+      action.execute.kind === 'attack' &&
+      action.execute.outcome === 'executed' &&
+      (target?.kind === 'unit' || target?.kind === 'building') &&
+      target.internal_id !== undefined &&
+      action.execute.target_location
+    ) {
+      return action;
+    }
+  }
+  return undefined;
+}
 
 /** Returns whether the order is for units */
 export function isUnitOrder(order: RisqOrderType): boolean {

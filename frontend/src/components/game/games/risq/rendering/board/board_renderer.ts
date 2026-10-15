@@ -7,8 +7,15 @@ import { drawCircle, drawRect } from '../../../../util/canvas_util';
 import type { Point2D } from '../../../../util/objects2d';
 import { multiplyPoint2D } from '../../../../util/objects2d';
 import type { RisqSession } from '../../application/session';
-import type { GameRisq, RisqSpace } from '../../model/types';
-import type { RisqDrawHost } from '../draw_host';
+import type { GameRisq, RisqPlayer, RisqSpace } from '../../model/types';
+import type { ColorRGB } from '../../../../../../scripts/color_rgb';
+import type { RisqArmedState } from '../../application/input/armed_state';
+import type { RisqHover } from '../../application/input/hover';
+import type { RisqOrderPlanning } from '../../application/orders/planning';
+import type { RisqSelection } from '../../application/selection/selection';
+import type { RisqControlGroups } from '../../application/selection/control_groups';
+import type { RisqImageCache } from '../assets/image_cache';
+import type { RisqCorpseLayout } from '../zones/corpses';
 import { drawRisqRegionLabels } from '../region';
 import { RisqLinks } from '../links';
 import type { DrawRisqSpaceConfig } from '../space';
@@ -22,6 +29,35 @@ const DRAW_CENTER_DOT = false;
 
 // the inset rect must stay inside the hex's incircle (radius = hex_a) so it never pokes out as the map rotates
 const INSET_RATIO = 1.0392;
+
+export interface RisqDrawHost {
+  readonly control_groups?: Pick<RisqControlGroups, 'memberships'>;
+  readonly session: Pick<RisqSession, 'getRegionForSpace' | 'getRegionLookup' | 'getResourceConfigs' | 'isReplaying'>;
+  readonly planning: Pick<RisqOrderPlanning, 'getLocalFoundation' | 'hasPlannedFoundation' | 'idleIds'>;
+  readonly selection: Pick<
+    RisqSelection,
+    'isUnitSelected' | 'isBuildingSelected' | 'isResourceSelected' | 'isRegionSelected'
+  >;
+  readonly armed: Pick<RisqArmedState, 'getArmedOrder' | 'getArmedBuilding'>;
+  readonly hover: Pick<RisqHover, 'hoveredRegion' | 'space'>;
+  readonly viewport: Pick<
+    RisqViewport,
+    | 'regionLabelPosition'
+    | 'coordinateToCanvas'
+    | 'lastTransform'
+    | 'unitRadius'
+    | 'corpseRadius'
+    | 'centerMaxSlots'
+    | 'edgeMaxSlots'
+  >;
+  readonly corpse_layout: RisqCorpseLayout;
+  getIcon(name: string): HTMLImageElement;
+  getPlayerColoredIcon(name: string, color: ColorRGB): HTMLImageElement | HTMLCanvasElement;
+  getImageCache(): RisqImageCache;
+  getGame(): GameRisq | undefined;
+  getPlayer(): RisqPlayer | undefined;
+  getPlayerId(): number;
+}
 
 export class RisqBoardRenderer {
   private last_time = Date.now();

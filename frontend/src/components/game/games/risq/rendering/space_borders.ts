@@ -3,7 +3,7 @@ import type { Point2D } from '../../../util/objects2d';
 import { AXIAL_DIRECTION_VECTORS, addPoint2D, equalsPoint2D } from '../../../util/objects2d';
 import { coordinateToIndex, getSpace } from '../model/coordinates';
 import type { RisqRegion, RisqSpace } from '../model/types';
-import type { RisqDrawHost } from './draw_host';
+import type { RisqDrawHost } from './board/board_renderer';
 import type { DrawRisqSpaceConfig } from './space';
 import {
   SPACE_BORDER_REFERENCE_RADIUS,

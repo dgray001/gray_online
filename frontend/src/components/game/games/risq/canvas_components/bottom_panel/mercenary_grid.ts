@@ -2,8 +2,8 @@ import type { BoardTransformData } from '../../../../util/canvas_board/canvas_bo
 import type { Point2D } from '../../../../util/objects2d';
 import type { DwgRisq } from '../../risq';
 import type { BottomPanelItem } from './bottom_panel';
+import { clipBottomPanelItem } from './bottom_panel';
 import { RisqMercenaryButton } from './mercenary_button';
-import { clipBottomPanelItem } from './clip_item';
 
 const ROWS = 1;
 const GAP = 8;

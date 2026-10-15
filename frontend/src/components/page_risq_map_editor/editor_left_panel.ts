@@ -3,9 +3,13 @@ import type { CanvasComponent } from '../game/util/canvas_components/canvas_comp
 import { configDraw } from '../game/util/canvas_components/canvas_component';
 import { drawRect, drawText } from '../game/util/canvas_util';
 import type { Point2D } from '../game/util/objects2d';
+import type { RisqSession } from '../game/games/risq/application/session';
+import { terrainTypeLabel } from '../game/games/risq/rendering/terrain';
+import { getRisqZone } from '../game/games/risq/rendering/zones/geometry';
 import { EditorButton } from './editor_button';
 import { HEADER_H, INK, PANEL_BACKGROUND } from './editor_style';
 import type { CanvasSize } from './editor_right_panel';
+import type { EditorTarget } from './editor_tool';
 
 const PANEL_W = 260;
 const PADDING = 8;
@@ -144,4 +148,37 @@ export class EditorLeftPanel implements CanvasComponent {
   h(): number {
     return this.canvas_size().h - HEADER_H;
   }
+}
+
+export function describeTarget(
+  session: RisqSession,
+  target: EditorTarget
+): { title: string; lines: string[] } | undefined {
+  const space = session.spaceAt(target.space);
+  if (!space) {
+    return undefined;
+  }
+  const lines = [
+    `Terrain: ${space.display_name} (#${space.terrain_id})`,
+    `Type: ${terrainTypeLabel(space.terrain_type)}`,
+  ];
+  const zone = target.zone ? getRisqZone(space, target.zone) : undefined;
+  if (!zone) {
+    lines.push(`Resources: ${space.resources?.size ?? 0}`, `Buildings: ${space.buildings?.size ?? 0}`);
+    lines.push(`Units: ${space.units?.size ?? 0}`);
+    return { title: `Space (${space.coordinate.x}, ${space.coordinate.y})`, lines };
+  }
+  if (zone.terrain_override) {
+    lines.push(`Zone terrain: ${zone.terrain_override_display_name ?? zone.terrain_override}`);
+  }
+  if (zone.resource) {
+    lines.push(`Resource: ${zone.resource.display_name} (${Math.round(zone.resource.resources_left)})`);
+  }
+  if (zone.building) {
+    lines.push(`Building: ${zone.building.display_name} (slot ${zone.building.player_id + 1})`);
+  }
+  for (const unit of zone.units.values()) {
+    lines.push(`Unit: ${unit.display_name} (slot ${unit.player_id + 1})`);
+  }
+  return { title: `Zone (${zone.coordinate.x}, ${zone.coordinate.y})`, lines };
 }

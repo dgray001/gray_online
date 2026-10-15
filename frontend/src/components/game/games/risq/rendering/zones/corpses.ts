@@ -2,7 +2,8 @@ import type { Point2D } from '../../../../util/objects2d';
 import { rotatePoint } from '../../../../util/objects2d';
 import type { RisqCorpse, RisqZone } from '../../model/types';
 import { RisqVisibilityLevel } from '../../model/types';
-import type { RisqDrawHost } from '../draw_host';
+import type { RisqDrawHost } from '../board/board_renderer';
+import { scaledIcon, transformScale } from '../assets/image_cache';
 import { unitCorpseImage } from '../assets/unit';
 import { seededRandom } from '../../../../../../scripts/math';
 import {
@@ -111,13 +112,14 @@ export function drawZoneCorpses(
     return;
   }
   const radius = game.viewport.corpseRadius();
+  const scale = transformScale(ctx);
   ctx.save();
   clipToZone(ctx, { x: 0, y: 0 }, hex_r, zone.coordinate);
   for (const corpse of zone.corpses) {
     const p = game.corpse_layout.worldOffset(zone, corpse.internal_id, hex_r)!;
     const image = unitCorpseImage(corpse.unit_id, corpse.turns);
     const color = game.getGame()?.players[corpse.player_id]?.color;
-    const icon = color ? game.getPlayerColoredIcon(image, color) : game.getIcon(image);
+    const icon = scaledIcon(game, image, color, 2 * radius * scale);
     ctx.translate(p.x, p.y);
     ctx.rotate(-map_rotation);
     ctx.drawImage(icon, -radius, -radius, 2 * radius, 2 * radius);

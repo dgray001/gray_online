@@ -251,3 +251,50 @@ func (g *Game) ConnectAll() {
 func (g *Game) Invalidate() {
 	g.version++
 }
+
+func (g *Game) playerStates(i int) []PlayerState {
+	g.T.Helper()
+	data, err := json.Marshal(g.Risq.PlayersToFrontend(g.clients[i]))
+	if err != nil {
+		g.T.Fatal(err)
+	}
+	var players []PlayerState
+	if err := json.Unmarshal(data, &players); err != nil {
+		g.T.Fatal(err)
+	}
+	return players
+}
+
+func (g *Game) SubmitRejected(i int, order defs.OrderFromFrontend, message string) {
+	g.T.Helper()
+	g.Invalidate()
+	order.Player_id = g.PlayerID(i)
+	before := g.Risq.StateHash()
+	g.Risq.PlayerAction(game.PlayerAction{Kind: "submit-orders", Client_id: int(g.clients[i]), Action: gin.H{"orders": []defs.OrderFromFrontend{order}}})
+	if failed := g.Failed(i); len(failed) != 1 || failed[0] != message {
+		g.T.Fatalf("submission failures %v, want %q", failed, message)
+	}
+	if g.Risq.StateHash() != before {
+		g.T.Fatal("rejected submission changed game state")
+	}
+	g.drain()
+}
+
+func NewGame(t *testing.T, mapName string, seed int64, humans int) *Game {
+	t.Helper()
+	g := NewUnstartedGame(t, mapName, seed, humans)
+	game.Game_StartGame(g.Risq)
+	return g
+}
+
+// Like NewGame, but every human and the given viewers are attached before the game starts, as in a real lobby
+func NewConnectedGame(t *testing.T, mapName string, seed int64, humans int, viewers ...uint64) *Game {
+	t.Helper()
+	g := NewUnstartedGame(t, mapName, seed, humans)
+	g.ConnectAll()
+	for _, viewer := range viewers {
+		g.AddViewer(viewer)
+	}
+	game.Game_StartGame(g.Risq)
+	return g
+}

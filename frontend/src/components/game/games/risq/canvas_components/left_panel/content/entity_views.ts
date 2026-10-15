@@ -1,14 +1,19 @@
+import { err } from '../../../../../../../scripts/log';
 import { drawRect, drawText } from '../../../../../util/canvas_util';
-import { drawUnitCountBadge } from '../../../rendering/unit_count_badge';
+import { drawUnitCountBadge } from '../../../rendering/overview_dots';
 import type { RisqBuilding, RisqResource } from '../../../model/types';
 import { buildingImage } from '../../../rendering/assets/buildings';
 import { resourceIcon, resourceTypeImage } from '../../../rendering/assets/resources';
-import type { FoundationDrawData } from '../left_panel_data';
+import type { FoundationDrawData, LeftPanelData } from '../left_panel_data';
+import { LeftPanelDataType } from '../left_panel_data';
 import { ACTION_GRID_COLS, PANEL_PADDING } from '../layout';
 import type { PanelDrawContext } from './primitives';
 import { drawHeaderImage, drawName, drawOwnerSeparators, drawSeparator } from './primitives';
 import { workersText } from './stats_view';
-import { drawGarrisonedUnits } from './unit_views';
+import { drawGarrisonedUnits, drawUnit, drawUnitsGeneric } from './unit_views';
+import type { RisqSpaceHexagon } from './space_hexagon';
+import { type RisqSpaceView, drawRegion } from './space_view';
+import { drawZone } from './zone_view';
 
 export function drawResource(pc: PanelDrawContext, resource: RisqResource): void {
   const { ctx, frame, risq } = pc;
@@ -133,5 +138,55 @@ export function drawFoundation(pc: PanelDrawContext, foundation: FoundationDrawD
       baseline: 'middle',
       font: '18px serif',
     });
+  }
+}
+
+export function drawPanelContent(
+  pc: PanelDrawContext,
+  data: LeftPanelData | undefined,
+  space_view: RisqSpaceView,
+  hexagon: RisqSpaceHexagon
+): void {
+  switch (data?.data_type) {
+    case LeftPanelDataType.RESOURCE:
+      drawResource(pc, data.data);
+      break;
+    case LeftPanelDataType.BUILDING:
+      drawBuilding(pc, data.data);
+      break;
+    case LeftPanelDataType.BUILDINGS:
+      drawBuildings(pc, data.data.buildings);
+      break;
+    case LeftPanelDataType.SPACE:
+      space_view.draw(pc, data.data, hexagon);
+      break;
+    case LeftPanelDataType.REGION:
+      drawRegion(pc, data.data);
+      break;
+    case LeftPanelDataType.ZONE:
+      drawZone(pc, data.data, hexagon);
+      break;
+    case LeftPanelDataType.MULTIPLE_PLAYERS_UNITS:
+      drawUnitsGeneric(pc, data.data.units_by_player);
+      break;
+    case LeftPanelDataType.UNITS_BY_TYPE:
+    case LeftPanelDataType.ECONOMIC_UNITS:
+    case LeftPanelDataType.MILITARY_UNITS:
+      if (data.data.units.length > 0) {
+        drawUnitsGeneric(pc, [[data.data.units[0].player_id, data.data.units]]);
+      }
+      break;
+    case LeftPanelDataType.UNITS:
+      err('LeftPanelDataType.UNITS should have been converted by normalizeSelection', data);
+      break;
+    case LeftPanelDataType.UNIT:
+      drawUnit(pc, data.data);
+      break;
+    case LeftPanelDataType.FOUNDATION:
+      drawFoundation(pc, data.data);
+      break;
+    default:
+      err('Unknown data type for left panel', data);
+      break;
   }
 }

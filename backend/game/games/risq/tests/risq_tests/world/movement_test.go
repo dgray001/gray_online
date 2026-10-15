@@ -160,3 +160,18 @@ func TestEnemyReplayActionsAreRedacted(t *testing.T) {
 		}
 	}
 }
+
+func TestReplayBaselineCarriesStartOfTurnVisibility(t *testing.T) {
+	g, p := moverGame(t, spaceWith(1, 0, grass, ""))
+	g.EndTurn()
+	baseline := harness.RequireReplay(t, g.State(p)).Baseline
+	found := false
+	for _, s := range baseline.Spaces {
+		if s.CoordinateKey == harness.SpaceKey(0, 0) {
+			found = s.Visibility >= 3
+		}
+	}
+	if !found {
+		t.Errorf("baseline lacks good visibility for the player's own space: %+v", baseline.Spaces)
+	}
+}

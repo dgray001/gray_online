@@ -3,7 +3,7 @@ import type { Point2D } from '../../../util/objects2d';
 import type { RisqRegion } from '../model/types';
 import { RisqResourceType } from '../model/types';
 import { resourceTypeImage } from './assets/resources';
-import type { RisqDrawHost } from './draw_host';
+import type { RisqDrawHost } from './board/board_renderer';
 import { regionLabelAnchor } from './region_label_anchor';
 import type { DrawRisqSpaceConfig } from './space';
 import { DrawRisqSpaceDetail } from './space';

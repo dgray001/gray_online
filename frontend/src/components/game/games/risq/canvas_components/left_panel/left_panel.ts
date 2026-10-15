@@ -1,4 +1,3 @@
-import { err } from '../../../../../../scripts/log';
 import { ColorRGB } from '../../../../../../scripts/color_rgb';
 import type { BoardTransformData } from '../../../../util/canvas_board/canvas_board';
 import type { CanvasComponent } from '../../../../util/canvas_components/canvas_component';
@@ -15,13 +14,11 @@ import { RisqOrdersList } from '../right_panel/orders_list';
 import type { RisqHotkeyAction } from '../../application/input/hotkeys';
 import type { RisqActionButton } from './actions/action_button';
 import { buildPanelActions } from './actions/action_factory';
-import { drawBuilding, drawBuildings, drawFoundation, drawResource } from './content/entity_views';
+import { drawPanelContent } from './content/entity_views';
 import type { PanelDrawContext } from './content/primitives';
 import { RisqSpaceHexagon } from './content/space_hexagon';
-import { RisqSpaceView, drawRegion } from './content/space_view';
+import { RisqSpaceView } from './content/space_view';
 import { RisqStatsView } from './content/stats_view';
-import { drawUnit, drawUnitsGeneric } from './content/unit_views';
-import { drawZone } from './content/zone_view';
 import { RisqLeftPanelButton } from './controls/left_panel_close';
 import type { RisqTargetPriorityControl } from './controls/target_priority_control';
 import type { LeftPanelLayout } from './layout';
@@ -34,7 +31,7 @@ import {
   gridCell,
 } from './layout';
 import type { LeftPanelConfig, LeftPanelData } from './left_panel_data';
-import { LeftPanelDataType } from './left_panel_data';
+import { LeftPanelDataType, isBuildingSelection } from './left_panel_data';
 import { RisqLeftPanelInput } from './panel_input';
 import {
   hasMilitary,
@@ -285,8 +282,7 @@ export class RisqLeftPanel implements CanvasComponent {
   }
 
   isBuilding(): boolean {
-    const type = this.shownData()?.data_type;
-    return type === LeftPanelDataType.BUILDING || type === LeftPanelDataType.BUILDINGS;
+    return isBuildingSelection(this.shownData());
   }
 
   close(): void {
@@ -415,48 +411,7 @@ export class RisqLeftPanel implements CanvasComponent {
     pc.groupTile = (units: UnitByTypeData[], p: Point2D, s: number): string => this.input.groupTile(units, p, s);
     pc.buildingTile = (buildings: RisqBuilding[], p: Point2D, s: number): string =>
       this.input.buildingTile(buildings, p, s);
-    switch (this.data?.data_type) {
-      case LeftPanelDataType.RESOURCE:
-        drawResource(pc, this.data.data);
-        break;
-      case LeftPanelDataType.BUILDING:
-        drawBuilding(pc, this.data.data);
-        break;
-      case LeftPanelDataType.BUILDINGS:
-        drawBuildings(pc, this.data.data.buildings);
-        break;
-      case LeftPanelDataType.SPACE:
-        this.space_view.draw(pc, this.data.data, this.hexagon);
-        break;
-      case LeftPanelDataType.REGION:
-        drawRegion(pc, this.data.data);
-        break;
-      case LeftPanelDataType.ZONE:
-        drawZone(pc, this.data.data, this.hexagon);
-        break;
-      case LeftPanelDataType.MULTIPLE_PLAYERS_UNITS:
-        drawUnitsGeneric(pc, this.data.data.units_by_player);
-        break;
-      case LeftPanelDataType.UNITS_BY_TYPE:
-      case LeftPanelDataType.ECONOMIC_UNITS:
-      case LeftPanelDataType.MILITARY_UNITS:
-        if (this.data.data.units.length > 0) {
-          drawUnitsGeneric(pc, [[this.data.data.units[0].player_id, this.data.data.units]]);
-        }
-        break;
-      case LeftPanelDataType.UNITS:
-        err('LeftPanelDataType.UNITS should have been converted by normalizeSelection', this.data);
-        break;
-      case LeftPanelDataType.UNIT:
-        drawUnit(pc, this.data.data);
-        break;
-      case LeftPanelDataType.FOUNDATION:
-        drawFoundation(pc, this.data.data);
-        break;
-      default:
-        err('Unknown data type for left panel', this.data);
-        break;
-    }
+    drawPanelContent(pc, this.data, this.space_view, this.hexagon);
   }
 
   scroll(dy: number, mode: number): boolean {

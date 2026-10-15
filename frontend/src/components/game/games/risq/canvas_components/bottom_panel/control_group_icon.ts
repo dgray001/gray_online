@@ -2,7 +2,7 @@ import { DwgRectButton } from '../../../../util/canvas_components/button/rect_bu
 import type { Point2D } from '../../../../util/objects2d';
 import type { BoardTransformData } from '../../../../util/canvas_board/canvas_board';
 import { configDraw } from '../../../../util/canvas_components/canvas_component';
-import { drawUnitCountBadge } from '../../rendering/unit_count_badge';
+import { drawUnitCountBadge } from '../../rendering/overview_dots';
 import { drawCircle } from '../../../../util/canvas_util';
 import type { ControlGroup } from '../../application/selection/control_groups';
 

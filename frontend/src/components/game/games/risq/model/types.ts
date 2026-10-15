@@ -6,7 +6,6 @@ import type { RisqTurnJournal } from './turn_journal';
 import type { RisqTerrainType } from '../rendering/terrain';
 import type { Point2D } from '../../../util/objects2d';
 
-/** Data describing a game of risq */
 export declare interface GameRisq {
   game_base: GameBase;
   outcome?: RisqOutcome;
@@ -55,7 +54,6 @@ export declare interface RisqRegion {
   unexplored_spaces: number;
 }
 
-/** Data describing an entry in the scores array */
 export declare interface GameRisqScoreEntry {
   player_id: number;
   nickname: string;
@@ -72,7 +70,6 @@ export declare interface RisqPlannedFoundation {
   cost?: RisqCost;
 }
 
-/** Data describing a risq player */
 export declare interface RisqPlayer {
   player: GamePlayer;
   buildings: Map<number, RisqBuilding>; // key is internal_id
@@ -96,7 +93,6 @@ export declare interface RisqPlayer {
   default_unit_target_priority: RisqTargetCategory[];
 }
 
-/** Data describing frontend resource state */
 export declare interface RisqPlayerResource {
   amount: number;
   spending: number;
@@ -105,7 +101,6 @@ export declare interface RisqPlayerResource {
   predicted_workers: number; // same, after pending unsubmitted orders
 }
 
-/** All the resource types */
 export enum RisqResourceType {
   ERROR,
   FOOD,
@@ -131,7 +126,6 @@ export interface RisqTerrainStats {
   build_speed_modifier: number;
 }
 
-/** Data describing a hexagonal space in risq */
 export declare interface RisqSpace {
   terrain_id: number;
   terrain_type: RisqTerrainType;
@@ -501,41 +495,4 @@ export type RisqFrontendOrder = Omit<RisqOrder, 'internal_id'> & {
   clear_previous_orders?: boolean;
 };
 
-export function canHaveGatherPoint(building: RisqBuilding): boolean {
-  return building.garrison_capacity > 0 || building.produces.some((p) => p.kind === RisqProducibleKind.UNIT);
-}
-
-/** Returns whether the player can currently afford the input cost, accounting for already-queued spending */
-export function canAffordCost(player: RisqPlayer, cost: RisqCost): boolean {
-  const affords = (type: RisqResourceType, amount: number): boolean => {
-    if (amount <= 0) {
-      return true;
-    }
-    const pr = player.resources.get(type);
-    return (pr ? pr.amount - pr.spending : 0) >= amount;
-  };
-  return (
-    affords(RisqResourceType.FOOD, cost.food) &&
-    affords(RisqResourceType.WOOD, cost.wood) &&
-    affords(RisqResourceType.STONE, cost.stone) &&
-    affords(RisqResourceType.GOLD, cost.gold)
-  );
-}
-
-export function meetsTechRequirement(player: RisqPlayer, required_tech_id: number): boolean {
-  return required_tech_id === 0 || !!player.researched_techs.get(required_tech_id);
-}
-
-/** Space radius (0/1/2) of a ranged attack, or null if the range is none or zone-only (melee) */
-export function rangeDistance(range: RisqRange): number | null {
-  switch (range) {
-    case RisqRange.SPACE:
-      return 0;
-    case RisqRange.ADJACENT:
-      return 1;
-    case RisqRange.SECONDARY:
-      return 2;
-    default:
-      return null;
-  }
-}
+export { canHaveGatherPoint, canAffordCost, meetsTechRequirement, rangeDistance } from './unit_display';

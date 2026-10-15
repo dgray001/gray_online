@@ -2156,9 +2156,19 @@
               "amount": 0,
               "value": "var(vc_abandoned)"
             }
+          },
+          {
+            "value_at_most": {
+              "amount": 0,
+              "value": "var(vcs)"
+            }
           }
         ]
       }
+    },
+    {
+      "when": {"all": [{"value_at_least": {"value": "var(fire_vc)", "amount": 1}}, {"value_at_least": {"value": "var(vcs)", "amount": 1}}, {"value_at_most": {"value": "var(vc_ban)", "amount": 0}}, {"value_at_most": {"value": "var(vc_abandoned)", "amount": 0}}]},
+      "then": [{"action": "build", "building_id": 1, "max": "4", "eligible": ["gather"], "exclude_buckets": true, "targets": "build_sites", "from": "home", "score": "var(site_dist_vc) * (0 - var(target_distance)) + var(site_expand_vc) * (1 - min(1, var(target_own_buildings))) + var(site_aggr_vc) * (var(enemy_distance) - var(target_enemy_distance)) + var(site_safe_vc) * (0 - (var(enemy_units_visible_11_within_1_of_target) + 2 * var(enemy_units_visible_12_within_1_of_target) + 4 * var(enemy_units_visible_13_within_1_of_target) + var(enemy_units_unidentified_within_1_of_target) * var(eUnknownPower) + 3 * var(enemy_buildings_known_1_21_23_within_1_of_target))) + var(site_spread_vc) * (0 - var(target_own_buildings)) + var(site_vision_vc) * (4 - var(target_vision)) + var(site_region_vc) * var(target_region_progress)"}]
     },
     {
       "then": [
@@ -5659,7 +5669,7 @@
       "when": {
         "all": [
           {
-            "value_at_least": {"amount": 0.01, "value": "var(armyPow) - 1.2 * var(ePowEst)"}
+            "value_at_least": {"amount": 0.01, "value": "var(armyPow) - 1.5 * var(ePowEst)"}
           },
           {
             "value_at_least": {"amount": 1, "value": "var(ePowEst)"}

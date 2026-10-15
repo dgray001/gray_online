@@ -2,14 +2,15 @@ package economy
 
 import (
 	"fmt"
-	"github.com/dgray001/gray_online/game"
-	"github.com/gin-gonic/gin"
 	"math"
 	"reflect"
 	"testing"
 
+	"github.com/dgray001/gray_online/game"
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness"
+	"github.com/dgray001/gray_online/game/games/risq/tests/harness/fakeboard"
+	"github.com/gin-gonic/gin"
 )
 
 func TestTickHistoryGatherCapacity(t *testing.T) {
@@ -213,5 +214,102 @@ func TestGatherCapacityLimitsHarvest(t *testing.T) {
 	}
 	if idle != 1 {
 		t.Errorf("%d workers retained unused stamina, want one", idle)
+	}
+}
+
+func TestContestedDepletionSplitsFairly(t *testing.T) {
+	var results [][2]float64
+	for _, slots := range [][2]int{{0, 1}, {1, 0}} {
+		g := gatherGame(t, 11, true, true)
+		p0, p1 := g.Human(0), g.Human(1)
+		category := defs.ResourceConfigs[11].Category
+		before := [2]float64{balance(g, p0, category), balance(g, p1, category)}
+		for _, slot := range slots {
+			submitGather(g, g.Human(slot))
+		}
+		deplete(g, p0)
+		gains := [2]float64{balance(g, p0, category) - before[0], balance(g, p1, category) - before[1]}
+		if gains[0] != gains[1] {
+			t.Errorf("submission order %v: unequal shares %v", slots, gains)
+		}
+		if total := gains[0] + gains[1]; total != defs.ResourceConfigs[11].Starting_resources {
+			t.Errorf("submission order %v: total gathered %v, want %v", slots, total, defs.ResourceConfigs[11].Starting_resources)
+		}
+		results = append(results, gains)
+	}
+	if results[0] != results[1] {
+		t.Errorf("submission order changed gains: %v", results)
+	}
+}
+
+func TestGatherCreditsTheCorrectCategory(t *testing.T) {
+	for name, id := range map[string]uint32{"food": 1, "wood": 11, "stone": 41} {
+		t.Run(name, func(t *testing.T) {
+			g := gatherGame(t, id, false, false)
+			p := g.Human(0)
+			config := defs.ResourceConfigs[id]
+			before := *g.Self(p).Resources
+			want := float64(g.Self(p).Units[0].CurrentStamina) * float64(config.Base_gather_speed) / 10
+			submitGather(g, p)
+			g.EndTurn()
+			initial := []float64{before.Food, before.Wood, before.Stone}
+			for i, category := range []defs.RisqResourceCategory{defs.RisqResourceCategory_FOOD, defs.RisqResourceCategory_WOOD, defs.RisqResourceCategory_STONE} {
+				expected := 0.0
+				if category == config.Category {
+					expected = want
+				}
+				if got := balance(g, p, category) - initial[i]; math.Abs(got-expected) > 0.00001 {
+					t.Errorf("category %d gained %v, want %v", category, got, expected)
+				}
+			}
+			resources := g.State(p).Space(0, 0).Resources
+			if len(resources) != 1 || math.Abs(resources[0].ResourcesLeft-(config.Starting_resources-want)) > 0.00001 {
+				t.Errorf("remaining resources %+v, want %v", resources, config.Starting_resources-want)
+			}
+		})
+	}
+}
+
+func TestDepletionConservesResources(t *testing.T) {
+	g := gatherGame(t, 11, false, true)
+	p := g.Human(0)
+	config := defs.ResourceConfigs[11]
+	before := balance(g, p, config.Category)
+	submitGather(g, p)
+	deplete(g, p)
+	after := balance(g, p, config.Category)
+	if got := after - before; got != config.Starting_resources {
+		t.Errorf("gained %v wood, want the entire pool of %v", got, config.Starting_resources)
+	}
+	g.EndTurn()
+	if got := balance(g, p, config.Category); got != after {
+		t.Errorf("wood changed after depletion: %v to %v", after, got)
+	}
+}
+
+func TestContestedGatherSatisfiesSmallerDemandFirst(t *testing.T) {
+	for _, slots := range [][2]int{{0, 1}, {1, 0}} {
+		doc := `{"board_size":1,"players":2,"starting_bank":{},"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"resource":11,"units":[{"id":1,"player":0,"count":1},{"id":2,"player":1,"count":1}]}]}]}`
+		fakeboard.UseConfig(t, testConfig, nil, map[string]string{"unequal": doc})
+		worker := defs.UnitConfigs[1]
+		worker.Turn_stamina = 1
+		defs.UnitConfigs[2] = worker
+		resource := defs.ResourceConfigs[11]
+		resource.Starting_resources, resource.Base_gather_speed = 4, 10
+		defs.ResourceConfigs[11] = resource
+		g := startGame(t, "custom:unequal", 1, 2)
+		for _, slot := range slots {
+			submitGather(g, g.Human(slot))
+		}
+		for slot, want := range []float64{3, 1} {
+			state := g.Self(g.Human(slot))
+			if state.Resources.Wood != want || len(state.Refusals()) != 0 {
+				t.Errorf("submission order %v, slot %d: wood %v, refusals %v; want %v wood", slots, slot, state.Resources.Wood, state.Refusals(), want)
+			}
+		}
+		space := g.State(g.Human(0)).Space(0, 0)
+		if len(space.Resources) != 0 {
+			t.Error("fully gathered resource remains on the board")
+		}
 	}
 }

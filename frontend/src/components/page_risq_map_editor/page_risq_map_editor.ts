@@ -11,28 +11,17 @@ import { RisqSession } from '../game/games/risq/application/session';
 import type { RisqResourceConfig } from '../game/games/risq/model/types';
 import { RisqViewport } from '../game/games/risq/rendering/board/viewport';
 import { RisqBoardRenderer } from '../game/games/risq/rendering/board/board_renderer';
-import { terrainTypeLabel } from '../game/games/risq/rendering/terrain';
-import { getRisqZone } from '../game/games/risq/rendering/zones/geometry';
 import { EditHistory } from './edit_history';
-import { EditorLeftPanel } from './editor_left_panel';
+import { describeTarget, EditorLeftPanel } from './editor_left_panel';
 import { EditorRightPanel } from './editor_right_panel';
 import type { EditorTarget, EditorToolContext } from './editor_tool';
-import type { EditorTool } from './editor_tool';
-import { EditorDrawHost } from './editor_host';
+import { createEditorTools, type EditorTool } from './editor_tool';
+import { EditorDrawHost, fitBoardView, patchTerrainSpaces } from './editor_host';
 import { MapEditorHeader } from './map_editor_header';
 import type { EntityCatalog, TerrainEntry } from './map_api';
 import { deleteMap, listEntities, listMaps, listTerrains, loadMap, previewMap, saveMap } from './map_api';
 import type { MapDoc } from './map_doc';
-import { newMapDoc } from './map_doc';
-import { BackgroundTool } from './tools/background_tool';
-import { ConnectionsTool } from './tools/connections_tool';
-import { RegionTool } from './tools/region_tool';
-import { SelectTool } from './tools/select_tool';
-import { SlotsTool } from './tools/slots_tool';
-import { SpacesTool } from './tools/spaces_tool';
-import { TerrainTool } from './tools/terrain_tool';
-import { ValidationTool } from './tools/validation_tool';
-import { ZoneTool } from './tools/zone_tool';
+import { MAP_NAME_PATTERN, MAX_BOARD_SIZE, newMapDoc, newMapError } from './map_doc';
 
 import html from './page_risq_map_editor.html';
 
@@ -40,8 +29,6 @@ import './page_risq_map_editor.scss';
 import '../game/util/canvas_board/canvas_board';
 import '../dialog_box/confirm_dialog/confirm_dialog';
 
-const MAP_NAME_PATTERN = /^[a-z0-9_]{1,40}$/;
-const MAX_BOARD_SIZE = 10;
 const INITIAL_BOARD_SIZE = 2;
 
 export class DwgPageRisqMapEditor extends DwgElement {
@@ -60,7 +47,8 @@ export class DwgPageRisqMapEditor extends DwgElement {
     history: this.history,
     doc: () => this.doc,
     edited: () => this.requestPreview(),
-    patchTerrain: (coordinates, terrain_id) => this.patchTerrain(coordinates, terrain_id),
+    patchTerrain: (coordinates, terrain_id) =>
+      patchTerrainSpaces(this.session, this.terrains, coordinates, terrain_id),
     select: (target) => this.select(target),
     dragged: () => this.dragged,
     terrains: () => this.terrains,
@@ -70,17 +58,7 @@ export class DwgPageRisqMapEditor extends DwgElement {
     toCanvas: (coordinate) => this.viewport.coordinateToCanvas(coordinate),
     hexR: () => this.viewport.hexR(),
   };
-  private tools: EditorTool[] = [
-    new SelectTool(this.context),
-    new TerrainTool(this.context),
-    new SpacesTool(this.context),
-    new ZoneTool(this.context),
-    new SlotsTool(this.context),
-    new RegionTool(this.context),
-    new ConnectionsTool(this.context),
-    new BackgroundTool(this.context),
-    new ValidationTool(this.context),
-  ];
+  private tools: EditorTool[] = createEditorTools(this.context);
   private active_tool = 0;
   private header = new MapEditorHeader({
     load: (name) => this.openMap(name),
@@ -337,54 +315,12 @@ export class DwgPageRisqMapEditor extends DwgElement {
   }
 
   private refreshSelection(): void {
-    const description = this.selection && this.describe(this.selection);
+    const description = this.selection && describeTarget(this.session, this.selection);
     if (description) {
       this.left_panel.show(description.title, description.lines);
     } else {
       this.selection = undefined;
       this.left_panel.hide();
-    }
-  }
-
-  private describe(target: EditorTarget): { title: string; lines: string[] } | undefined {
-    const space = this.session.spaceAt(target.space);
-    if (!space) {
-      return undefined;
-    }
-    const lines = [
-      `Terrain: ${space.display_name} (#${space.terrain_id})`,
-      `Type: ${terrainTypeLabel(space.terrain_type)}`,
-    ];
-    const zone = target.zone ? getRisqZone(space, target.zone) : undefined;
-    if (!zone) {
-      lines.push(`Resources: ${space.resources?.size ?? 0}`, `Buildings: ${space.buildings?.size ?? 0}`);
-      lines.push(`Units: ${space.units?.size ?? 0}`);
-      return { title: `Space (${space.coordinate.x}, ${space.coordinate.y})`, lines };
-    }
-    if (zone.terrain_override) {
-      lines.push(`Zone terrain: ${zone.terrain_override_display_name ?? zone.terrain_override}`);
-    }
-    if (zone.resource) {
-      lines.push(`Resource: ${zone.resource.display_name} (${Math.round(zone.resource.resources_left)})`);
-    }
-    if (zone.building) {
-      lines.push(`Building: ${zone.building.display_name} (slot ${zone.building.player_id + 1})`);
-    }
-    for (const unit of zone.units.values()) {
-      lines.push(`Unit: ${unit.display_name} (slot ${unit.player_id + 1})`);
-    }
-    return { title: `Zone (${zone.coordinate.x}, ${zone.coordinate.y})`, lines };
-  }
-
-  private patchTerrain(coordinates: Point2D[], terrain_id: number): void {
-    const terrain = this.terrains.find((entry) => entry.terrain_id === terrain_id);
-    for (const coordinate of coordinates) {
-      const space = this.session.spaceAt(coordinate);
-      if (space && terrain) {
-        space.terrain_id = terrain_id;
-        space.terrain_type = terrain.terrain_type;
-        space.display_name = terrain.display_name;
-      }
     }
   }
 
@@ -418,7 +354,7 @@ export class DwgPageRisqMapEditor extends DwgElement {
   }
 
   private createNew(name: string, size: number): void {
-    const error = this.newMapError(name, size);
+    const error = newMapError(name, size, this.header.mapNames());
     if (error) {
       this.header.setStatus(error, true);
       return;
@@ -429,19 +365,6 @@ export class DwgPageRisqMapEditor extends DwgElement {
   private async startNewMap(name: string, size: number): Promise<void> {
     await this.setDoc(newMapDoc(size, 1), name);
     this.unsaved_new = true;
-  }
-
-  private newMapError(name: string, size: number): string | undefined {
-    if (!MAP_NAME_PATTERN.test(name)) {
-      return 'Enter a map name: lowercase letters, digits and underscores';
-    }
-    if (this.header.mapNames().includes(name)) {
-      return `A map named ${name} already exists`;
-    }
-    if (!(size >= 0 && size <= MAX_BOARD_SIZE)) {
-      return `Size must be 0 to ${MAX_BOARD_SIZE}`;
-    }
-    return undefined;
   }
 
   private openMap(name: string): void {
@@ -553,23 +476,14 @@ export class DwgPageRisqMapEditor extends DwgElement {
   }
 
   private fitBoard(board_size: Point2D, canvas_size: DOMRect): void {
-    const game = this.session.getGame();
-    if (!game) {
-      return;
-    }
-    const { ratio, center } = this.viewport.resize(board_size, canvas_size, game.board_size);
-    const zoom = this.viewport.zoomLimits(board_size);
-    this.board.setMaxScale(zoom.max, zoom.min);
-    this.board.scaleView(ratio);
-    this.board.setOffset(center);
-    for (const zone of game.spaces.flat().flatMap((space) => space?.zones?.flat() ?? [])) {
-      zone.reset_hovered_data = true;
-    }
-    if (this.fitted_board_size !== game.board_size) {
-      this.fitted_board_size = game.board_size;
-      const scale = this.viewport.lastTransform().scale ?? 1;
-      this.board.setView(multiplyPoint2D(scale, this.viewport.coordinateToCanvas({ x: 0, y: 0 })));
-    }
+    this.fitted_board_size = fitBoardView(
+      this.session,
+      this.viewport,
+      this.board,
+      board_size,
+      canvas_size,
+      this.fitted_board_size
+    );
   }
 }
 

@@ -2,8 +2,12 @@ package economy
 
 import (
 	"fmt"
+	"os"
+	"runtime/debug"
 	"testing"
 
+	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
+	testconfig "github.com/dgray001/gray_online/game/games/risq/tests/config"
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness"
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness/fakeboard"
 )
@@ -30,4 +34,33 @@ func startGame(t *testing.T, mapName string, seed int64, humans int) *harness.Ga
 	g := harness.NewGame(t, mapName, seed, humans)
 	g.Lite = true
 	return g
+}
+
+func scenarioGame(t *testing.T, spaces string) *harness.Game {
+	t.Helper()
+	doc := `{"board_size":2,"players":2,"starting_bank":{"wood":120},"spaces":[` + spaces + `]}`
+	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"scenario": doc})
+	return startGame(t, "custom:scenario", 1, 2)
+}
+
+func centerHousing(g *harness.Game, human int) harness.Building {
+	g.T.Helper()
+	for _, b := range g.Self(human).Buildings {
+		if b.Space == (harness.Coord{}) && b.Zone == (harness.Coord{}) && b.BuildingID == 2 {
+			return b
+		}
+	}
+	g.T.Fatal("housing missing from center zone")
+	return harness.Building{}
+}
+
+var testConfig = testconfig.Dir()
+
+func TestMain(m *testing.M) {
+	debug.SetGCPercent(800)
+	if err := defs.LoadConfig(testConfig); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	os.Exit(m.Run())
 }

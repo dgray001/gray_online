@@ -1,10 +1,11 @@
 package combat
 
 import (
-	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
-	"github.com/gin-gonic/gin"
 	"math"
 	"testing"
+
+	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
+	"github.com/gin-gonic/gin"
 
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness"
 )

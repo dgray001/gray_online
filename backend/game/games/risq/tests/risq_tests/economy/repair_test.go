@@ -1,6 +1,7 @@
 package economy
 
 import (
+	"fmt"
 	"math"
 	"testing"
 
@@ -254,5 +255,88 @@ func TestRepairHealsProportionallyAndStopsAtFullHealth(t *testing.T) {
 	g.EndTurn()
 	if g.Self(p).Resources.Wood != wood-paid || centerHousing(g, p).CombatStats.Health != finished.CombatStats.Health {
 		t.Error("completed repair kept charging or changed full health")
+	}
+}
+
+func TestRepairWorkersShareLimitedMixedResources(t *testing.T) {
+	g, p := damagedRepairGame(t, `{"wood":0.2,"stone":0.1}`, 3)
+	b := centerHousing(g, p)
+	original := defs.BuildingConfigs[2]
+	config := original
+	config.Cost.Stone = 15
+	defs.BuildingConfigs[2] = config
+	t.Cleanup(func() { defs.BuildingConfigs[2] = original })
+	ids := []uint64{}
+	for _, u := range g.Self(p).Units {
+		ids = append(ids, u.InternalID)
+	}
+	g.Submit(p, harness.Order(defs.OrderType_UnitRepair, ids, int64(b.InternalID), false))
+	g.EndTurn()
+	after := centerHousing(g, p)
+	if gain := after.CombatStats.Health - b.CombatStats.Health; math.Abs(gain-0.8) > 0.001 || g.Self(p).Resources.Wood != 0 || g.Self(p).Resources.Stone != 0 {
+		t.Fatalf("limited repair healed %v, resources %+v; want 0.8 health and exhausted funds", gain, g.Self(p).Resources)
+	}
+	g.EndTurn()
+	if centerHousing(g, p).CombatStats.Health != after.CombatStats.Health || g.Self(p).Resources.Wood != 0 || g.Self(p).Resources.Stone != 0 || len(g.Self(p).ActiveOrders) != 0 {
+		t.Error("repair continued after exhausting resources")
+	}
+}
+
+func damagedHousingGame(t *testing.T) (*harness.Game, int) {
+	t.Helper()
+	return damagedRepairGame(t, `{"wood":120}`, 1)
+}
+
+func damagedRepairGame(t *testing.T, bank string, workers int) (*harness.Game, int) {
+	t.Helper()
+	space := fmt.Sprintf(`{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":2,"player":0},"units":[{"id":1,"player":0,"count":%d},{"id":1,"player":1,"count":8}]}]}`, workers)
+	g := economyGame(t, bank, space, "")
+	p, enemy := g.Human(0), g.Human(1)
+	id := centerHousing(g, p).InternalID
+	attackers := []uint64{}
+	for _, u := range g.Self(enemy).Units {
+		attackers = append(attackers, u.InternalID)
+	}
+	g.Submit(enemy, harness.Order(defs.OrderType_UnitAttackBuilding, attackers, int64(id), false))
+	for turn := 0; centerHousing(g, p).CombatStats.Health >= 50 && turn < 40; turn++ {
+		g.EndTurn()
+	}
+	health := centerHousing(g, p).CombatStats.Health
+	orders := g.Self(enemy).ActiveOrders
+	if health >= 50 || health <= 0 || len(orders) != 1 {
+		t.Fatalf("damage setup: health %v, enemy orders %v", health, orders)
+	}
+	g.Submit(enemy, harness.Order(defs.OrderType_CancelOrder, nil, int64(orders[0].InternalID), false))
+	g.EndTurn()
+	if got := centerHousing(g, p).CombatStats.Health; got != health {
+		t.Fatalf("cancelled attacker changed health from %v to %v", health, got)
+	}
+	return g, p
+}
+
+func TestRepairWorkersClampSharedHealingAtFullHealth(t *testing.T) {
+	g, p := damagedRepairGame(t, `{"wood":120}`, 3)
+	b := centerHousing(g, p)
+	ids := []uint64{}
+	for _, u := range g.Self(p).Units {
+		ids = append(ids, u.InternalID)
+	}
+	wood := g.Self(p).Resources.Wood
+	g.Submit(p, harness.Order(defs.OrderType_UnitRepair, ids, int64(b.InternalID), false))
+	for turn := 0; centerHousing(g, p).CombatStats.Health < float64(b.CombatStats.MaxHealth) && turn < 4; turn++ {
+		g.EndTurn()
+	}
+	finished := centerHousing(g, p)
+	if finished.CombatStats.Health != float64(b.CombatStats.MaxHealth) {
+		t.Errorf("health = %v, want max %v", finished.CombatStats.Health, b.CombatStats.MaxHealth)
+	}
+	wantTotal := (math.Round(float64(b.CombatStats.MaxHealth)*2500) - math.Round(b.CombatStats.Health*2500)) / 10000
+	paid := wood - g.Self(p).Resources.Wood
+	if math.Abs(paid-wantTotal) > 0.00001 {
+		t.Errorf("total repair charge %v, want %v", paid, wantTotal)
+	}
+	g.EndTurn()
+	if g.Self(p).Resources.Wood != wood-paid {
+		t.Error("completed repair kept charging")
 	}
 }

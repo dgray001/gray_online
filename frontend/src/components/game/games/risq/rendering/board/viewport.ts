@@ -2,12 +2,11 @@ import type { BoardTransformData } from '../../../../util/canvas_board/canvas_bo
 import { defaultTransform, screenToCanvas } from '../../../../util/canvas_board/canvas_board';
 import type { Point2D } from '../../../../util/objects2d';
 import { addPoint2D } from '../../../../util/objects2d';
-import type { RisqSession } from '../../application/session';
+import { type RisqSession, hasEconomy, isMilitaryOnly } from '../../application/session';
 import { invertPair } from '../../model/coordinates';
 import type { RisqRegion, RisqSpace, RisqUnit } from '../../model/types';
 import { DrawRisqSpaceDetail } from '../space';
 import { RisqViewMode, nextViewMode, viewModeAllowed } from '../terrain';
-import { hasEconomy, isMilitaryOnly } from '../../model/economy';
 import {
   BUILDING_CIRCLE_RADIUS_MULTIPLIER,
   CENTER_ZONE_APOTHEM_MULTIPLIER,

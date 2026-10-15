@@ -2,10 +2,23 @@ package risq_mapgen_tests
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
+	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
+	"github.com/dgray001/gray_online/game/games/risq/tests/config"
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness/fakeboard"
 )
+
+var testConfig = testconfig.Dir()
+
+func TestMain(m *testing.M) {
+	if err := defs.LoadConfig(testConfig); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	os.Exit(m.Run())
+}
 
 const startsMissing = "map script did not place all player starts"
 

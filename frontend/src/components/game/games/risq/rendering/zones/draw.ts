@@ -1,6 +1,6 @@
 import type { RisqDisplaySettings } from '../../../../../../scripts/settings_store';
 import { getSettings } from '../../../../../../scripts/settings_store';
-import type { RisqDrawHost } from '../draw_host';
+import type { RisqDrawHost } from '../board/board_renderer';
 import type { RisqBuilding, RisqResource, RisqZone, UnitByTypeData } from '../../model/types';
 import { RESOURCE_DOT_COLORS } from '../overview_dots';
 import { terrainImage, RisqViewMode, buildingVisibleInViewMode, unitVisibleInViewMode } from '../terrain';
@@ -19,10 +19,10 @@ import { clampNumber, seededRandom } from '../../../../../../scripts/math';
 import { RisqOrderType, RisqResourceType, RisqVisibilityLevel } from '../../model/types';
 import { isForestResource, resourceImage, resourceIcon, resourceType } from '../assets/resources';
 import { rotatePoint } from '../../../../util/objects2d';
-import { getZoneUnitSlots } from './slots';
+import { drawControlGroupLabel, getZoneUnitSlots } from './slots';
 import { buildingImage, rubbleImage } from '../assets/buildings';
+import { scaledIcon, transformScale } from '../assets/image_cache';
 import { drawEllipse } from '../../../../util/canvas_util';
-import { drawControlGroupLabel } from './control_group_label';
 /** Returns the space's terrain image, or (cached, at the base terrain's own native resolution) a composite with any zone terrain overrides painted on top */
 export function getSpaceTerrainImage(
   game: RisqDrawHost,
@@ -114,42 +114,41 @@ export function drawUnitTypeCluster(
       drawUnitCount(ctx, s, ts, x, y, w, fill_primary ? primary_color : secondary_color);
     }
   };
-  const icon = (t: UnitByTypeData): HTMLImageElement | HTMLCanvasElement => {
-    const color = game.getGame()?.players[t.player_id]?.color;
-    return color ? game.getPlayerColoredIcon(unitImage(t.unit_id), color) : game.getIcon(unitImage(t.unit_id));
-  };
+  const scale = transformScale(ctx);
+  const icon = (t: UnitByTypeData, size: number): CanvasImageSource =>
+    scaledIcon(game, unitImage(t.unit_id), game.getGame()?.players[t.player_id]?.color, size * scale);
   if (units_by_type.length === 1) {
     const t = units_by_type[0];
-    ctx.drawImage(icon(t), -r.x, -r.y, 2 * r.x, 2 * r.y);
+    ctx.drawImage(icon(t, 2 * r.x), -r.x, -r.y, 2 * r.x, 2 * r.y);
     draw_count(t.units.size.toString(), 1.4 * r.y, -r.x, -0.7 * r.y, 2 * r.x);
   } else if (units_by_type.length === 2) {
     for (let j = 0; j < 2; j++) {
       const t = units_by_type[j];
-      ctx.drawImage(icon(t), (0.5 * j - 1) * r.x, (0.5 * j - 1) * r.y, 1.5 * r.x, 1.5 * r.y);
+      ctx.drawImage(icon(t, 1.5 * r.x), (0.5 * j - 1) * r.x, (0.5 * j - 1) * r.y, 1.5 * r.x, 1.5 * r.y);
       draw_count(t.units.size.toString(), r.y, (0.5 * j - 1) * r.x, (0.5 * j - 1) * r.y, 2 * r.x);
     }
   } else if (units_by_type.length === 3 || units_by_type.length === 4) {
     for (let j = 0; j < 2; j++) {
       const t = units_by_type[j];
-      ctx.drawImage(icon(t), (0.8 * j - 0.9) * r.x, -0.9 * r.y, r.x, r.y);
+      ctx.drawImage(icon(t, r.x), (0.8 * j - 0.9) * r.x, -0.9 * r.y, r.x, r.y);
       draw_count(t.units.size.toString(), 0.75 * r.y, (0.8 * j - 0.9) * r.x, -0.9 * r.y, 1.5 * r.x);
     }
     if (units_by_type.length === 3) {
       const t = units_by_type[2];
-      ctx.drawImage(icon(t), -0.5 * r.x, -0.1 * r.y, r.x, r.y);
+      ctx.drawImage(icon(t, r.x), -0.5 * r.x, -0.1 * r.y, r.x, r.y);
       draw_count(t.units.size.toString(), 0.75 * r.y, -0.5 * r.x, -0.1 * r.y, 1.5 * r.x);
     } else {
       for (let j = 0; j < 2; j++) {
         const t = units_by_type[2 + j];
-        ctx.drawImage(icon(t), (0.8 * j - 0.9) * r.x, -0.1 * r.y, r.x, r.y);
+        ctx.drawImage(icon(t, r.x), (0.8 * j - 0.9) * r.x, -0.1 * r.y, r.x, r.y);
         draw_count(t.units.size.toString(), 0.75 * r.y, (0.8 * j - 0.9) * r.x, -0.1 * r.y, 1.5 * r.x);
       }
     }
   } else {
     for (let j = 0; j < 2; j++) {
-      ctx.drawImage(icon(units_by_type[j]), (0.8 * j - 0.9) * r.x, -0.9 * r.y, r.x, r.y);
+      ctx.drawImage(icon(units_by_type[j], r.x), (0.8 * j - 0.9) * r.x, -0.9 * r.y, r.x, r.y);
     }
-    ctx.drawImage(icon(units_by_type[2]), -0.9 * r.x, -0.1 * r.y, r.x, r.y);
+    ctx.drawImage(icon(units_by_type[2], r.x), -0.9 * r.x, -0.1 * r.y, r.x, r.y);
     draw_count('...', 0.8 * r.y, 0.1 * r.x, -0.1 * r.y, r.x, false);
     draw_count(total.toString(), 1.4 * r.y, -r.x, -0.7 * r.y, 2 * r.x);
   }
@@ -271,8 +270,13 @@ export function drawForestTrees(
   }
   const direction = findOuterZoneIndex(zone.coordinate);
   const zone_rotation = direction === -1 ? 0 : (Math.PI / 3) * (direction + 1);
-  const icon = game.getIcon(resourceImage(resource, game.session.getResourceConfigs()));
   const icon_r = FOREST_TREE_RADIUS_MULTIPLIER * hex_r;
+  const icon = game
+    .getImageCache()
+    .getScaledSprite(
+      game.getIcon(resourceImage(resource, game.session.getResourceConfigs())),
+      2 * icon_r * transformScale(ctx)
+    );
   ctx.save();
   clipToZone(ctx, { x: 0, y: 0 }, hex_r, zone.coordinate);
   const spots = forestTreeLocalOffsets(direction === -1, hex_r, zone.coordinate_key);
@@ -524,6 +528,7 @@ export function drawRisqZone(
   const display = getSettings().risq_display;
   const show_idle = display.idle_indicator_size > 0 && !game.session.isReplaying();
   const idle_ids = show_idle ? game.planning.idleIds() : undefined;
+  const scale = transformScale(ctx);
   for (const [i, part] of zone.hovered_data.entries()) {
     const selected =
       i === 0
@@ -547,7 +552,10 @@ export function drawRisqZone(
     ctx.rotate(-rotation);
     if (i === 0) {
       if (!!zone.resource && view_mode !== RisqViewMode.MILITARY && view_mode !== RisqViewMode.OWNERSHIP) {
-        ctx.drawImage(resourceIcon(game, zone.resource), -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
+        const resource_icon = game
+          .getImageCache()
+          .getScaledSprite(resourceIcon(game, zone.resource), 2 * part.r.x * scale);
+        ctx.drawImage(resource_icon, -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
         drawOverheadBars(ctx, part.r, undefined, resourceDepletion(zone.resource), selected, display);
       } else if (!zone.building || buildingVisibleInViewMode(zone.building, view_mode)) {
         let building_image: string;
@@ -575,9 +583,7 @@ export function drawRisqZone(
           building_color = undefined;
         }
 
-        const building_icon = building_color
-          ? game.getPlayerColoredIcon(building_image, building_color)
-          : game.getIcon(building_image);
+        const building_icon = scaledIcon(game, building_image, building_color, 2 * part.r.x * scale);
         if (zone.building || zone.destroyed_building || local_foundation || server_foundation) {
           ctx.drawImage(building_icon, -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
         } else {
@@ -588,22 +594,15 @@ export function drawRisqZone(
           const ghost_image = buildingImage(ghost_id, false);
           const ghost_color = building_color ?? game.getPlayer()?.color;
           ctx.globalAlpha = BUILDING_GHOST_ALPHA;
-          ctx.drawImage(
-            ghost_color
-              ? game.getPlayerColoredIcon(ghost_image, ghost_color)
-              : game.getIcon(buildingImage(ghost_id, false, true)),
-            -part.r.x,
-            -part.r.y,
-            2 * part.r.x,
-            2 * part.r.y
-          );
+          const ghost_icon = ghost_color
+            ? scaledIcon(game, ghost_image, ghost_color, 2 * part.r.x * scale)
+            : scaledIcon(game, buildingImage(ghost_id, false, true), undefined, 2 * part.r.x * scale);
+          ctx.drawImage(ghost_icon, -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
           ctx.globalAlpha = 1;
         }
         if (!!zone.building && zone.building.has_garrisoned_units) {
-          const flag_icon = building_color
-            ? game.getPlayerColoredIcon('risq/icons/garrison_flag', building_color)
-            : game.getIcon('risq/icons/garrison_flag');
           const flag_size = 0.9 * part.r.x;
+          const flag_icon = scaledIcon(game, 'risq/icons/garrison_flag', building_color, flag_size * scale);
           ctx.drawImage(flag_icon, 0.5 * part.r.x, -1.4 * part.r.y, flag_size, flag_size);
         }
         if (zone.building && zone.building.player_id === game.getPlayerId()) {

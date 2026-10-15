@@ -1,6 +1,6 @@
 import { err } from '../../../../../../scripts/log';
 import type { Point2D } from '../../../../util/objects2d';
-import type { RisqDrawHost } from '../draw_host';
+import type { RisqDrawHost } from '../board/board_renderer';
 import type { RisqResource, RisqResourceConfig } from '../../model/types';
 import { RisqResourceType } from '../../model/types';
 import { PLAYER_ICON_SIZE } from './image_cache';

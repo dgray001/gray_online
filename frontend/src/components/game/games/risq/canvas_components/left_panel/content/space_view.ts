@@ -1,16 +1,16 @@
 import type { BoardTransformData } from '../../../../../util/canvas_board/canvas_board';
 import { drawRect, drawText } from '../../../../../util/canvas_util';
 import type { Point2D } from '../../../../../util/objects2d';
-import { hasBuildings, hasEconomy } from '../../../model/economy';
+import { hasBuildings, hasEconomy } from '../../../application/session';
 import type { RectHoverData, RisqRegion, RisqSpace } from '../../../model/types';
 import { RisqResourceType, RisqVisibilityLevel } from '../../../model/types';
 import { resourceTypeImage } from '../../../rendering/assets/resources';
 import { COMBO_UNIT_ICON_SIZE, comboUnitIconKey, drawComboUnitIcon } from '../../../rendering/assets/unit';
 import { spaceOwnerColor, terrainTypeLabel } from '../../../rendering/terrain';
 import { RisqSpaceUnitsRowButton } from '../controls/space_units_row_button';
+import { invertPair } from '../../../model/coordinates';
 import type { PanelDrawContext } from './primitives';
 import { drawName, drawSeparator, drawSubtitle } from './primitives';
-import { drawRegionOwnership } from './region_ownership';
 import type { RisqSpaceHexagon } from './space_hexagon';
 
 /** Draws a combo villager+military icon (just the military icon without an economy), used where only a total unit count is visible */
@@ -274,4 +274,32 @@ export function drawRegion(pc: PanelDrawContext, region: RisqRegion): void {
   drawSeparator(pc, yi);
   yi = drawRegionOwner(pc, region, yi + 12);
   drawRegionOwnership(pc, region, yi);
+}
+
+export function drawRegionOwnership(pc: PanelDrawContext, region: RisqRegion, yi: number): void {
+  const counts = new Map<number, number>();
+  for (const key of region.spaces) {
+    const owner = pc.risq.session.spaceAt(invertPair(key))?.ownership ?? -1;
+    counts.set(owner, (counts.get(owner) ?? 0) + 1);
+  }
+  const draw_count = (name: string, count: number, color: string = 'black'): void => {
+    drawText(pc.ctx, `${name}: ${count} space${count === 1 ? '' : 's'}`, {
+      p: { x: pc.frame.xi() + 0.1 * pc.frame.w(), y: yi },
+      w: 0.8 * pc.frame.w(),
+      fill_style: color,
+      align: 'left',
+      font: '18px serif',
+    });
+    yi += 28;
+  };
+  for (const player of pc.risq.getGame()?.players ?? []) {
+    const count = counts.get(player.player.player_id) ?? 0;
+    if (count > 0) {
+      draw_count(player.player.nickname, count, player.color.getString());
+    }
+  }
+  if (region.unexplored_spaces > 0) {
+    draw_count('Unexplored', region.unexplored_spaces);
+  }
+  draw_count('Unowned', counts.get(-1) ?? 0);
 }

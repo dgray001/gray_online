@@ -4,14 +4,25 @@ import { configDraw } from '../../../../util/canvas_components/canvas_component'
 import { drawRect, drawText } from '../../../../util/canvas_util';
 import type { Point2D } from '../../../../util/objects2d';
 import type { DwgRisq } from '../../risq';
+import type { RisqBuilding, RisqUnit } from '../../model/types';
 import { unitImage } from '../../rendering/assets/unit';
-import { buildingControlGroupTiles, controlGroupTiles } from './control_group_tiles';
+import { buildingImage } from '../../rendering/assets/buildings';
+import { displayGroups, groupUnitsByType } from '../../model/unit_groups';
+import { unitDisplayBlocks } from '../../model/unit_display';
 import { RisqControlGroupIcon } from './control_group_icon';
-import { RisqControlGroupCloseButton } from './control_group_close_button';
-import { controlGroupLayout, CONTROL_ICON_SIZE, CONTROL_GAP, CONTROL_LABEL } from './control_group_layout';
-import type { ControlGroupBoxLayout } from './control_group_layout';
+import { RisqControlGroupCloseButton } from './bottom_panel_buttons';
+export interface ControlGroupBoxLayout {
+  x: number;
+  y: number;
+  cols: number;
+  rows: number;
+  width: number;
+}
+export const CONTROL_ICON_SIZE = 28;
+export const CONTROL_GAP = 4;
+export const CONTROL_LABEL = 14;
 import type { ControlGroup } from '../../application/selection/control_groups';
-import { clipBottomPanelItem } from './clip_item';
+import { clipBottomPanelItem } from './bottom_panel';
 
 export class RisqControlGroupGrid extends DwgRectButton {
   private buttons: RisqControlGroupIcon[] = [];
@@ -276,4 +287,73 @@ export class RisqControlGroupGrid extends DwgRectButton {
   protected unhovered(): void {}
   protected clicked(): void {}
   protected released(): void {}
+}
+
+export interface ControlGroupTile {
+  unit: RisqUnit;
+  count: number;
+  ids: number[];
+}
+
+export function buildingControlGroupTiles(
+  buildings: Map<number, RisqBuilding>,
+  ids: number[],
+  capacity: number
+): { image: string; count: number; ids: number[] }[] {
+  return displayGroups(
+    ids.map((id: number): RisqBuilding => buildings.get(id)!),
+    capacity,
+    (building: RisqBuilding): string => String(building.building_id)
+  ).map((group: RisqBuilding[]): { image: string; count: number; ids: number[] } => ({
+    image: buildingImage(group[0].building_id, group[0].under_construction),
+    count: group.length,
+    ids: group.map((building: RisqBuilding): number => building.internal_id),
+  }));
+}
+
+export function controlGroupTiles(units: Map<number, RisqUnit>, ids: number[], capacity: number): ControlGroupTile[] {
+  const groups = groupUnitsByType(units, ids);
+  return unitDisplayBlocks(groups.length ? [[groups[0].player_id, groups]] : [], capacity).map((block) => ({
+    unit: units.get([...block.units[0].units][0])!,
+    count: block.count,
+    ids: block.units.flatMap((group) => [...group.units]),
+  }));
+}
+
+function rowWidth(widths: number[]): number {
+  return widths.reduce((sum, width) => sum + width, 0) + Math.max(0, widths.length - 1) * CONTROL_GAP;
+}
+
+function balancedSplit(widths: number[]): number {
+  let split = 1;
+  let best = Infinity;
+  for (let i = 1; i < widths.length; i++) {
+    const required = Math.max(rowWidth(widths.slice(0, i)), rowWidth(widths.slice(i)));
+    if (required < best) {
+      best = required;
+      split = i;
+    }
+  }
+  return split;
+}
+
+function layoutRow(widths: number[], available: number, rows: number, y: number): ControlGroupBoxLayout[] {
+  const scale = Math.min(1, available / Math.max(1, rowWidth(widths)));
+  let x = 0;
+  return widths.map((natural) => {
+    const cols = Math.max(1, Math.floor((natural * scale - CONTROL_GAP) / (CONTROL_ICON_SIZE + CONTROL_GAP)));
+    const width = cols * (CONTROL_ICON_SIZE + CONTROL_GAP) + CONTROL_GAP;
+    const box = { x, y, cols, rows, width };
+    x += width + CONTROL_GAP;
+    return box;
+  });
+}
+
+export function controlGroupLayout(counts: number[], width: number): ControlGroupBoxLayout[] {
+  const rows = counts.length > 5 ? 2 : 4;
+  const widths = counts.map((count) => Math.ceil(count / rows) * (CONTROL_ICON_SIZE + CONTROL_GAP) + CONTROL_GAP);
+  const split = counts.length > 5 ? balancedSplit(widths) : counts.length;
+  return layoutRow(widths.slice(0, split), width, rows, 0).concat(
+    layoutRow(widths.slice(split), width, rows, 2 * (CONTROL_ICON_SIZE + CONTROL_GAP) + CONTROL_LABEL + CONTROL_GAP)
+  );
 }

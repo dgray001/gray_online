@@ -1,6 +1,8 @@
 package risq_mapgen_tests
 
 import (
+	"hash/fnv"
+	"math/rand"
 	"strings"
 	"testing"
 
@@ -52,4 +54,43 @@ func TestMalformedScriptsFail(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestBadMapNamesFail(t *testing.T) {
+	cases := map[string]string{
+		"":                `must start with "custom:" or "script:"`,
+		"ring":            `must start with "custom:" or "script:"`,
+		"wat:ring":        `must start with "custom:" or "script:"`,
+		"script:missing":  `map script "missing"`,
+		"custom:missing":  `custom map "missing"`,
+		"script:../ring":  "no such file",
+		"custom:":         "no such file",
+		"script:hexagon ": "no such file",
+	}
+	for name, want := range cases {
+		_, err := fakeboard.Generate(name, 2, 1)
+		if err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%q: error %v, want it to contain %q", name, err, want)
+		}
+	}
+}
+
+func TestMalformedCustomMapFails(t *testing.T) {
+	useCustoms(t, map[string]string{"badjson": `{nope`})
+	if _, err := fakeboard.Generate("custom:badjson", 2, 1); err == nil || !strings.Contains(err.Error(), `custom map "badjson": invalid character`) {
+		t.Errorf("error %v, want a JSON syntax error naming the custom map", err)
+	}
+}
+
+var sweptScripts = []string{"hexagon", "ring", "rectangle", "triangle"}
+
+func sweptPlayerCounts(script string) []int {
+	hash := fnv.New64a()
+	hash.Write([]byte(script))
+	others := rand.New(rand.NewSource(int64(hash.Sum64()))).Perm(9)
+	return []int{3 + others[0], 12}
+}
+
+func scriptPair(n int) []string {
+	return []string{sweptScripts[n%4], sweptScripts[(n+1)%4]}
 }

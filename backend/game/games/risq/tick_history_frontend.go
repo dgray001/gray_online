@@ -63,7 +63,7 @@ func (f tickFrame) toFrontend(player_id int) gin.H {
 	}
 	for _, state := range f.spaces {
 		if state.visibility[player_id] > 0 {
-			value := gin.H{"coordinate_key": state.key, "terrain_id": state.terrain_id}
+			value := gin.H{"coordinate_key": state.key, "terrain_id": state.terrain_id, "visibility": state.visibility[player_id]}
 			if state.visibility.see(player_id, state.owner) {
 				value["ownership"] = state.owner
 			}

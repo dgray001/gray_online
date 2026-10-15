@@ -18,12 +18,18 @@ func DecodeSnapshot(t *testing.T, value any) State {
 	return state
 }
 
+type ReplaySpace struct {
+	CoordinateKey int64 `json:"coordinate_key"`
+	Visibility    int   `json:"visibility"`
+}
+
 type ReplayFrame struct {
-	Tick      int          `json:"tick"`
-	Terminal  bool         `json:"terminal"`
-	Units     []Unit       `json:"units"`
-	Buildings []Building   `json:"buildings"`
-	Effects   []TickEffect `json:"effects"`
+	Spaces    []ReplaySpace `json:"spaces"`
+	Tick      int           `json:"tick"`
+	Terminal  bool          `json:"terminal"`
+	Units     []Unit        `json:"units"`
+	Buildings []Building    `json:"buildings"`
+	Effects   []TickEffect  `json:"effects"`
 }
 
 type TurnReplay struct {

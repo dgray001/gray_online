@@ -3,7 +3,7 @@ import type { HotkeyCombo } from '../../application/input/hotkeys';
 import { configureImageFallback, resolveImage } from '../../../../../../scripts/image';
 import { shortLabel } from '../../canvas_components/order_row/order_row_resolve';
 import { buildingImage, techImage } from '../../rendering/assets/buildings';
-import { hasBuildings, hasEconomy } from '../../model/economy';
+import { hasBuildings, hasEconomy } from '../../application/session';
 import type { RisqPlayer, RisqProducible, RisqOrderType } from '../../model/types';
 import { RisqProducibleKind, RisqResourceType } from '../../model/types';
 import { resourceTypeImage } from '../../rendering/assets/resources';

@@ -340,3 +340,38 @@ func (e ScriptExpr) resolveInt(vars map[string]float64) (int, error) {
 func (e ScriptExpr) provided() bool {
 	return len(e.raw) > 0
 }
+
+type ifParams struct {
+	Condition ScriptExpr          `json:"condition"`
+	Then      []mapScriptStepJSON `json:"then"`
+	Else      []mapScriptStepJSON `json:"else"`
+}
+
+func stepIf(ctx *mapScriptContext, raw json.RawMessage) error {
+	p, err := decodeStepParams[ifParams](raw, "if")
+	if err != nil {
+		return err
+	}
+	value, err := p.Condition.resolve(ctx.vars)
+	if err != nil {
+		return err
+	}
+	branch := p.Else
+	if value > 0 {
+		branch = p.Then
+	}
+	return runBranch(ctx, branch)
+}
+
+func runBranch(ctx *mapScriptContext, steps []mapScriptStepJSON) error {
+	for _, s := range steps {
+		fn, ok := mapStepRegistry[s.Step]
+		if !ok {
+			return fmt.Errorf("unknown map script step %q", s.Step)
+		}
+		if err := fn(ctx, s.Params); err != nil {
+			return fmt.Errorf("map script step %q: %w", s.Step, err)
+		}
+	}
+	return nil
+}

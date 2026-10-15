@@ -1,4 +1,5 @@
-import type { UnitByTypeData } from './types';
+import type { RisqBuilding, RisqCost, RisqPlayer, UnitByTypeData } from './types';
+import { RisqProducibleKind, RisqRange, RisqResourceType } from './types';
 
 export interface UnitDisplayBlock {
   player_id: number;
@@ -57,4 +58,41 @@ function categoryBlocks(groups: [number, UnitByTypeData[]][], capacity: number):
           count: units.reduce((sum, u) => sum + u.units.size, 0),
         }))
         .filter((block) => block.count > 0);
+}
+
+export function canHaveGatherPoint(building: RisqBuilding): boolean {
+  return building.garrison_capacity > 0 || building.produces.some((p) => p.kind === RisqProducibleKind.UNIT);
+}
+
+export function canAffordCost(player: RisqPlayer, cost: RisqCost): boolean {
+  const affords = (type: RisqResourceType, amount: number): boolean => {
+    if (amount <= 0) {
+      return true;
+    }
+    const pr = player.resources.get(type);
+    return (pr ? pr.amount - pr.spending : 0) >= amount;
+  };
+  return (
+    affords(RisqResourceType.FOOD, cost.food) &&
+    affords(RisqResourceType.WOOD, cost.wood) &&
+    affords(RisqResourceType.STONE, cost.stone) &&
+    affords(RisqResourceType.GOLD, cost.gold)
+  );
+}
+
+export function meetsTechRequirement(player: RisqPlayer, required_tech_id: number): boolean {
+  return required_tech_id === 0 || !!player.researched_techs.get(required_tech_id);
+}
+
+export function rangeDistance(range: RisqRange): number | null {
+  switch (range) {
+    case RisqRange.SPACE:
+      return 0;
+    case RisqRange.ADJACENT:
+      return 1;
+    case RisqRange.SECONDARY:
+      return 2;
+    default:
+      return null;
+  }
 }

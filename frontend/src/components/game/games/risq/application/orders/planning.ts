@@ -14,10 +14,8 @@ import type {
 } from '../../model/types';
 import { RisqOrderType, RisqProducibleKind, RisqResourceType, canAffordCost } from '../../model/types';
 import type { RisqSession } from '../session';
-import type { RisqOrdersModel } from './orders_model';
-import type { IdleCategory } from './idle_category';
-import { idleCategory } from './idle_category';
-import { buildingCanProduce, researchQueued } from './eligibility';
+import type { RisqOrdersModel, IdleCategory } from './orders_model';
+import { buildingCanProduce, idleCategory, researchQueued } from './orders_model';
 
 export declare interface LocalRisqFoundation {
   coordinate_key: number;

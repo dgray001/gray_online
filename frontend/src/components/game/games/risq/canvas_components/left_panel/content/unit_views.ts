@@ -4,7 +4,7 @@ import type { Point2D } from '../../../../../util/objects2d';
 import type { RisqBuilding, RisqUnit, UnitByTypeData } from '../../../model/types';
 import { RisqUnitType } from '../../../model/types';
 import { unitDisplayBlocks } from '../../../model/unit_display';
-import { drawUnitCountBadge } from '../../../rendering/unit_count_badge';
+import { drawUnitCountBadge } from '../../../rendering/overview_dots';
 import {
   UNIT_HEALTHBAR_COLOR_BACKGROUND,
   UNIT_HEALTHBAR_COLOR_HEALTH,

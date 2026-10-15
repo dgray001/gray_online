@@ -1,6 +1,6 @@
 import type { Point2D } from '../../../util/objects2d';
 import type { RisqTickAction, RisqTickEffect } from './tick_actions';
-import type { RisqCombatStats, RisqCost, RisqUnitType } from './types';
+import type { RisqCombatStats, RisqCost, RisqUnitType, RisqVisibilityLevel } from './types';
 
 export declare interface RisqTickUnitState {
   internal_id: number;
@@ -56,6 +56,7 @@ export declare interface RisqTickPlayerState {
 export declare interface RisqTickSpaceState {
   coordinate_key: number;
   terrain_id: number;
+  visibility: RisqVisibilityLevel;
   ownership?: number;
 }
 

@@ -3,8 +3,8 @@ import { createMessage } from '../../../../../lobby/data_models';
 import type { RisqRightPanel } from '../../canvas_components/right_panel/right_panel';
 import type { RisqSession } from '../session';
 import type { RisqOrdersModel } from './orders_model';
+import { idleCategory } from './orders_model';
 import type { RisqOrderPlanning } from './planning';
-import { idleCategory } from './idle_category';
 import type { RisqAutoRenewQueue } from '../auto_renew_queue';
 import type { RisqGatherPointQueue } from '../gather_point_queue';
 

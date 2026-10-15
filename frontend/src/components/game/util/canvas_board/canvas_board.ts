@@ -25,6 +25,9 @@ export declare interface ModifierKeys {
 }
 
 const EXTRA_MOUSE_BUTTON_EVENTS = ['mousedown', 'mouseup', 'auxclick'] as const;
+const MIN_FRAME_MS = 15;
+const REFERENCE_TICK_MS = 20;
+const MAX_TICK_MS = 50;
 
 function modifiersFrom(e: MouseEvent | KeyboardEvent): ModifierKeys {
   return { ctrl: e.ctrlKey, shift: e.shiftKey, alt: e.altKey };
@@ -137,7 +140,8 @@ export class DwgCanvasBoard extends DwgElement {
   private edge_arm_threshold = 100;
   private sticky_pan = { up: false, down: false, left: false, right: false };
   private pan_suppressed = { x: false, y: false };
-  private draw_interval?: ReturnType<typeof setInterval>;
+  private frame_handle = 0;
+  private last_frame_time = 0;
   private dragging = false;
   private drag_button = 0;
   private dragged = false;
@@ -204,21 +208,16 @@ export class DwgCanvasBoard extends DwgElement {
     this.setCursor('cursor');
     this.addEventListeners();
     this.resize_observer.observe(this);
-    this.draw_interval = setInterval(() => {
-      this.tick();
-      // If ever made async everything after tick() needs to run at same time (just skip until last finished)
-      this.ctx.resetTransform();
-      this.ctx.fillStyle = 'black';
-      this.ctx.fillRect(0, 0, this.data.board_size.x, this.data.board_size.y);
-      this.ctx.translate(this.transform.offset.x, this.transform.offset.y);
-      this.ctx.rotate(this.transform.rotation);
-      this.ctx.translate(-this.transform.view.x, -this.transform.view.y);
-      this.ctx.scale(this.transform.scale, this.transform.scale);
-      setTooltipCursor(this.mouse);
-      this.data.draw(this.ctx, this.transform);
-      flushTooltipQueue();
-      this.drawCursor();
-    }, 20);
+    cancelAnimationFrame(this.frame_handle);
+    const frame = (now: number): void => {
+      this.frame_handle = requestAnimationFrame(frame);
+      const dt = now - this.last_frame_time;
+      if (dt >= MIN_FRAME_MS) {
+        this.last_frame_time = now;
+        this.drawFrame(dt);
+      }
+    };
+    this.frame_handle = requestAnimationFrame(frame);
     this.initialized_successfully = true;
     return {
       board_size: this.data.board_size,
@@ -488,7 +487,7 @@ export class DwgCanvasBoard extends DwgElement {
     this.initialization_controller.abort();
     this.initialized_successfully = false;
     super.disconnectedCallback();
-    clearInterval(this.draw_interval);
+    cancelAnimationFrame(this.frame_handle);
     this.handleBlur();
     this.resize_observer.disconnect();
     document.body.removeEventListener('keydown', this.handleKeydown);
@@ -501,12 +500,27 @@ export class DwgCanvasBoard extends DwgElement {
     }
   }
 
-  private tick(): void {
+  private drawFrame(dt: number): void {
+    this.tick(dt);
+    this.ctx.resetTransform();
+    this.ctx.fillStyle = 'black';
+    this.ctx.fillRect(0, 0, this.data.board_size.x, this.data.board_size.y);
+    this.ctx.translate(this.transform.offset.x, this.transform.offset.y);
+    this.ctx.rotate(this.transform.rotation);
+    this.ctx.translate(-this.transform.view.x, -this.transform.view.y);
+    this.ctx.scale(this.transform.scale, this.transform.scale);
+    setTooltipCursor(this.mouse);
+    this.data.draw(this.ctx, this.transform);
+    flushTooltipQueue();
+    this.drawCursor();
+  }
+
+  private tick(dt: number): void {
     if (isDialogOpen()) {
       return;
     }
     const d_view = { x: 0, y: 0 };
-    const arrow_key_speed = 20;
+    const arrow_key_speed = (20 * Math.min(dt, MAX_TICK_MS)) / REFERENCE_TICK_MS;
     let moved = false;
     const rect = this.bounding_rect;
     if (this.holding_keys.arrow_up) {

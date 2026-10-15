@@ -1,8 +1,17 @@
 import type { ColorRGB } from '../../../../../../scripts/color_rgb';
 import { isImageReady } from '../../../../../../scripts/image';
+import type { RisqDrawHost } from '../board/board_renderer';
 
 /** RGB value reserved in unit/building art to mark pixels swapped for the owning player's color */
 export const PLAYER_COLOR_KEY = { r: 254, g: 12, b: 203 };
+
+const SPRITE_BUCKETS = [32, 48, 64, 96, 128, 192];
+
+/** Uniform scale a context's current transform applies to drawn sizes */
+export function transformScale(ctx: CanvasRenderingContext2D): number {
+  const transform = ctx.getTransform();
+  return Math.hypot(transform.a, transform.b);
+}
 
 /** Standard native resolution for unit/building art */
 export const PLAYER_ICON_SIZE = 256;
@@ -10,6 +19,7 @@ export const PLAYER_ICON_SIZE = 256;
 export class RisqImageCache {
   private canvases = new Map<string, HTMLCanvasElement>();
   private cursor_urls = new Map<string, string>();
+  private scaled_sprites = new WeakMap<object, Map<number, HTMLCanvasElement>>();
 
   private buildImage(
     w: number,
@@ -98,6 +108,27 @@ export class RisqImageCache {
     });
   }
 
+  getScaledSprite(source: HTMLImageElement | HTMLCanvasElement, screen_size: number): CanvasImageSource {
+    const bucket = SPRITE_BUCKETS.find((size: number): boolean => size >= screen_size);
+    const native = source instanceof HTMLImageElement ? source.naturalWidth : source.width;
+    if (bucket === undefined || bucket >= native) {
+      return source;
+    }
+    const buckets = this.scaled_sprites.get(source) ?? new Map<number, HTMLCanvasElement>();
+    this.scaled_sprites.set(source, buckets);
+    let scaled = buckets.get(bucket);
+    if (!scaled) {
+      scaled = this.buildImage(bucket, bucket, source instanceof HTMLImageElement ? [source] : [], (ctx): void => {
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(source, 0, 0, bucket, bucket);
+      });
+      if (scaled) {
+        buckets.set(bucket, scaled);
+      }
+    }
+    return scaled ?? source;
+  }
+
   getCursorUrl(
     key: string,
     size: number,
@@ -116,4 +147,14 @@ export class RisqImageCache {
     this.cursor_urls.set(key, url);
     return url;
   }
+}
+
+export function scaledIcon(
+  game: RisqDrawHost,
+  name: string,
+  color: ColorRGB | undefined,
+  screen_size: number
+): CanvasImageSource {
+  const source = color ? game.getPlayerColoredIcon(name, color) : game.getIcon(name);
+  return game.getImageCache().getScaledSprite(source, screen_size);
 }

@@ -1,5 +1,5 @@
 import type { Point2D } from '../../../../util/objects2d';
-import { RisqRange, RisqVisibilityLevel } from '../../model/types';
+import { RisqRange } from '../../model/types';
 import type {
   RisqTickBuildingState,
   RisqTickFrame,
@@ -123,7 +123,7 @@ function replaySpace(space: RisqSpaceFromServer, ctx: ReplayContext): RisqSpaceF
   const units = flat.flatMap((zone) => zone.units ?? []);
   return {
     ...space,
-    visibility: units.length > 0 ? Math.max(space.visibility, RisqVisibilityLevel.GOOD) : space.visibility,
+    visibility: Math.max(space.visibility, ctx.frame.spaces.get(space.coordinate_key)?.visibility ?? 0),
     ownership: ctx.frame.spaces.get(space.coordinate_key)?.ownership ?? space.ownership,
     zones,
     units,

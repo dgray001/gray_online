@@ -2,11 +2,12 @@ package combat
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness"
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness/fakeboard"
 	"github.com/gin-gonic/gin"
-	"testing"
 )
 
 func TestStancesCreateAutoAttackBuilding(t *testing.T) {

@@ -28,3 +28,30 @@ export class RisqBuildingDeleteButton extends RisqActionButton {
     this.risq.commands.confirmDeleteBuilding(this.risq.selection.selectedBuildingIds());
   }
 }
+
+export declare interface BuildingUngarrisonButtonConfig extends RisqActionButtonConfig {
+  building_id: number;
+}
+
+export class RisqBuildingUngarrisonButton extends RisqActionButton {
+  private risq: DwgRisq;
+
+  constructor(config: BuildingUngarrisonButtonConfig, risq: DwgRisq, s: number) {
+    super(config, s);
+    this.risq = risq;
+  }
+
+  override dataRefreshed(): void {
+    this.setHotkeyCombo(getSettings().risq_hotkeys.actions[RisqHotkeyAction.UNGARRISON]);
+  }
+
+  override matchesAction(action: RisqHotkeyAction): boolean {
+    return action === RisqHotkeyAction.UNGARRISON;
+  }
+
+  override execute(): void {
+    for (const id of this.risq.selection.selectedBuildingIds()) {
+      this.risq.commands.ungarrisonBuilding(id);
+    }
+  }
+}

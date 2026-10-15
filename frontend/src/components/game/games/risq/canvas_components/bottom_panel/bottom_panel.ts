@@ -1,4 +1,4 @@
-import type { BoardTransformData } from '../../../../util/canvas_board/canvas_board';
+import { screenToCanvas, type BoardTransformData } from '../../../../util/canvas_board/canvas_board';
 import type { CanvasComponent } from '../../../../util/canvas_components/canvas_component';
 import { configDraw } from '../../../../util/canvas_components/canvas_component';
 import { drawLine, drawRect } from '../../../../util/canvas_util';
@@ -295,4 +295,21 @@ export class RisqBottomPanel implements CanvasComponent {
   h(): number {
     return this.panel_h;
   }
+}
+
+export function clipBottomPanelItem(
+  ctx: CanvasRenderingContext2D,
+  transform: BoardTransformData,
+  item: Pick<BottomPanelItem, 'xi' | 'xf' | 'yi' | 'yf'>
+): void {
+  const corners = [
+    { x: item.xi(), y: item.yi() },
+    { x: item.xf(), y: item.yi() },
+    { x: item.xf(), y: item.yf() },
+    { x: item.xi(), y: item.yf() },
+  ].map((p) => screenToCanvas(p, transform));
+  ctx.beginPath();
+  corners.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
+  ctx.closePath();
+  ctx.clip();
 }

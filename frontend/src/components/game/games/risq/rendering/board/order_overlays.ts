@@ -3,8 +3,7 @@ import { ColorRGB } from '../../../../../../scripts/color_rgb';
 import type { Point2D } from '../../../../util/objects2d';
 import { addPoint2D, equalsPoint2D, subtractPoint2D } from '../../../../util/objects2d';
 import type { RisqOrdersModel } from '../../application/orders/orders_model';
-import { isUnitOrder, orderArrowColor } from '../../application/orders/orders_model';
-import { lastAreaAttack } from '../../application/orders/attack_history';
+import { isUnitOrder, lastAreaAttack, orderArrowColor } from '../../application/orders/orders_model';
 import type { RisqOrderPlanning } from '../../application/orders/planning';
 import type { RisqSelection } from '../../application/selection/selection';
 import type { RisqSession } from '../../application/session';
@@ -16,22 +15,13 @@ import type {
   RisqMovePathStep,
   RisqUnit,
   RisqTickAction,
-  UnitByTypeData,
 } from '../../model/types';
 import { RisqGatherObjectType, RisqGatherPointLocationKind, RisqOrderType, RisqUnitType } from '../../model/types';
 import type { DwgRisq } from '../../risq';
 import { DrawRisqSpaceDetail } from '../space';
 import { buildingOrdersVisibleInViewMode, unitVisibleInViewMode } from '../terrain';
-import { drawUnitTypeCluster } from '../zones/draw';
-import {
-  hexagonVertices,
-  zoneVertices,
-  zoneApproachPoint,
-  zoneCenterOffset,
-  zoneMercenarySlotOffsets,
-} from '../zones/geometry';
-import { areaBoundary } from './area_boundary';
-import { drawSelectionAttackRanges } from './attack_ranges';
+import { hexagonVertices, zoneVertices, zoneApproachPoint, zoneCenterOffset } from '../zones/geometry';
+import { drawAttackArea, drawPendingMercenaries, drawSelectionAttackRanges } from './attack_ranges';
 import { RisqLinks } from '../links';
 import { RisqReplayIntents } from './replay_intents';
 import type { RisqViewport } from './viewport';
@@ -43,47 +33,6 @@ export function orderLinesVisible(selected_pass: boolean): boolean {
 }
 
 export type RisqOrderProjection = Pick<RisqViewport, 'hexR' | 'coordinateToCanvas' | 'orderPoint' | 'unitAnchorOffset'>;
-
-const GHOST_ALPHA = 0.6;
-
-/** Collapses pending hires into at most `capacity` slots: one per hire, then one per unit type, then one for all */
-function mercenaryGhostSlots(player_id: number, unit_ids: number[], capacity: number): UnitByTypeData[][] {
-  const group = (unit_id: number, indices: number[]): UnitByTypeData => ({
-    player_id,
-    unit_id,
-    unit_type: RisqUnitType.NONE,
-    units: new Set(indices),
-  });
-  if (unit_ids.length <= capacity) {
-    return unit_ids.map((unit_id, i) => [group(unit_id, [i])]);
-  }
-  const indices_by_type = new Map<number, number[]>();
-  unit_ids.forEach((unit_id, i) => indices_by_type.set(unit_id, [...(indices_by_type.get(unit_id) ?? []), i]));
-  const by_type = [...indices_by_type.entries()].map(([unit_id, indices]) => group(unit_id, indices));
-  return by_type.length <= capacity ? by_type.map((g) => [g]) : [by_type];
-}
-
-function drawMercenaryGhosts(
-  ctx: CanvasRenderingContext2D,
-  risq: DwgRisq,
-  slots: UnitByTypeData[][],
-  positions: Point2D[],
-  unit_r: number,
-  rotation: number
-): void {
-  ctx.globalAlpha = GHOST_ALPHA;
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'top';
-  for (const [i, slot] of slots.entries()) {
-    ctx.save();
-    ctx.translate(positions[i].x, positions[i].y);
-    ctx.rotate(-rotation);
-    const total = slot.reduce((sum, t) => sum + t.units.size, 0);
-    drawUnitTypeCluster(ctx, risq, slot, { x: unit_r, y: unit_r }, total, 'white', 'rgba(210, 210, 210, 0.4)', true);
-    ctx.restore();
-  }
-  ctx.globalAlpha = 1;
-}
 
 export class RisqOrderOverlays {
   private tinted_attack_areas = new Set<string>();
@@ -125,7 +74,7 @@ export class RisqOrderOverlays {
       return;
     }
     if (selected) {
-      this.drawPendingMercenaries(ctx);
+      drawPendingMercenaries(ctx, this.risq, this.session, this.viewport, this.planning);
     }
     if (!orderLinesVisible(selected)) {
       return;
@@ -201,43 +150,9 @@ export class RisqOrderOverlays {
     selected: boolean,
     path: RisqMovePathStep[]
   ): Point2D {
-    const zone =
-      order.order_type === RisqOrderType.OrderType_UnitAttackZone ? invertZoneKey(order.target_id) : undefined;
-    const center = this.viewport.coordinateToCanvas(zone?.space ?? invertPair(order.target_id));
-    const hex_r = this.viewport.hexR();
-    const vertices = (zone ? zoneVertices(zone.zone, hex_r) : hexagonVertices(hex_r)).map(
-      (point: Point2D): Point2D => addPoint2D(center, point)
+    return drawAttackArea(ctx, order, from, selected, path, this.viewport, this.tinted_attack_areas, (c, f, t) =>
+      this.strokeSegment(c, f, t)
     );
-    ctx.save();
-    ctx.strokeStyle = orderArrowColor(order.order_type);
-    const key = `${order.order_type}:${order.target_id}`;
-    if (selected && !this.tinted_attack_areas.has(key)) {
-      ctx.beginPath();
-      for (const point of vertices) {
-        ctx.lineTo(point.x, point.y);
-      }
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(220, 30, 30, 0.18)';
-      ctx.fill();
-      this.tinted_attack_areas.add(key);
-    }
-    let current = from;
-    for (const step of path) {
-      const point = this.viewport.orderPoint(step.space, zoneCenterOffset(step.zone, hex_r), true);
-      if (areaBoundary(vertices, point).inside) {
-        break;
-      }
-      if (!equalsPoint2D(current, point)) {
-        this.strokeSegment(ctx, current, point);
-      }
-      current = point;
-    }
-    const to = areaBoundary(vertices, current).point;
-    if (!equalsPoint2D(current, to)) {
-      this.strokeSegment(ctx, current, to);
-    }
-    ctx.restore();
-    return to;
   }
 
   private remainingMovePath(unit: RisqUnit): RisqMovePathStep[] {
@@ -540,30 +455,5 @@ export class RisqOrderOverlays {
     const flag_icon = this.risq.getPlayerColoredIcon('risq/icons/garrison_flag', new ColorRGB(255, 255, 255));
     const flag_size = this.cappedSize(Math.max(16, 0.15 * this.viewport.hexR()), 48);
     ctx.drawImage(flag_icon, to.x, to.y - flag_size, flag_size, flag_size);
-  }
-
-  private drawPendingMercenaries(ctx: CanvasRenderingContext2D): void {
-    const zone_view = this.viewport.zoneView();
-    const hex_r = this.viewport.hexR();
-    const groups = new Map<number, { positions: Point2D[]; unit_ids: number[] }>();
-    for (const order of this.planning.pendingMercenaryOrders()) {
-      const { x: unit_id, y: zone_key } = invertPair(order.target_id);
-      const { space, zone } = invertZoneKey(zone_key);
-      const key = zone_view ? zone_key : cantorPair(space.x, space.y);
-      const space_center = this.viewport.coordinateToCanvas(space);
-      const group = groups.get(key) ?? {
-        positions: zoneMercenarySlotOffsets(zone_view ? zone : { x: 0, y: 0 }, hex_r).map((offset) =>
-          addPoint2D(space_center, offset)
-        ),
-        unit_ids: [],
-      };
-      group.unit_ids.push(unit_id);
-      groups.set(key, group);
-    }
-    const rotation = this.viewport.lastTransform().rotation;
-    for (const { positions, unit_ids } of groups.values()) {
-      const slots = mercenaryGhostSlots(this.session.getPlayerId(), unit_ids, positions.length);
-      drawMercenaryGhosts(ctx, this.risq, slots, positions, this.viewport.unitRadius(), rotation);
-    }
   }
 }

@@ -5,7 +5,7 @@ import { RISQ_MESSAGE_WARNING_COLOR } from '../canvas_components/message_queue';
 import type { UnitToggleField } from '../canvas_components/left_panel/actions/unit/unit_toggle_button';
 import type { RisqGatherPoint, RisqProducible, RisqTargetCategory, RisqUnitStance } from '../model/types';
 import { RisqOrderType, RisqProducibleKind, canAffordCost } from '../model/types';
-import { buildingCanProduce, researchQueued } from './orders/eligibility';
+import { buildingCanProduce, researchQueued } from './orders/orders_model';
 import type { RisqArmedState } from './input/armed_state';
 import type { RisqOrdersModel } from './orders/orders_model';
 import type { RisqOrderPlanning } from './orders/planning';

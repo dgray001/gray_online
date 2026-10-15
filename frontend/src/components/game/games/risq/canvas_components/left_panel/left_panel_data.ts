@@ -156,3 +156,7 @@ export type LeftPanelData =
   | UnitData
   | FoundationData
   | RegionData;
+
+export function isBuildingSelection(data?: LeftPanelData): boolean {
+  return data?.data_type === LeftPanelDataType.BUILDING || data?.data_type === LeftPanelDataType.BUILDINGS;
+}

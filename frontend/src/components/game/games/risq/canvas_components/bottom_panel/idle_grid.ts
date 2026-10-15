@@ -3,16 +3,16 @@ import { DwgRectButton } from '../../../../util/canvas_components/button/rect_bu
 import type { Point2D } from '../../../../util/objects2d';
 import type { DwgRisq } from '../../risq';
 import type { RisqBuilding, RisqUnit } from '../../model/types';
-import { displayGroups } from '../../model/display_groups';
-import { hasBuildings, hasEconomy } from '../../model/economy';
-import type { IdleCategory } from '../../application/orders/idle_category';
-import { idleCategory } from '../../application/orders/idle_category';
+import { displayGroups } from '../../model/unit_groups';
+import { hasBuildings, hasEconomy } from '../../application/session';
+import type { IdleCategory } from '../../application/orders/orders_model';
+import { idleCategory } from '../../application/orders/orders_model';
 import { buildingImage } from '../../rendering/assets/buildings';
 import { unitImage } from '../../rendering/assets/unit';
 import { RisqControlGroupIcon } from './control_group_icon';
-import { CONTROL_GAP } from './control_group_layout';
-import { IDLE_FILTERS, RisqIdleFilterButton } from './idle_filter_button';
-import { clipBottomPanelItem } from './clip_item';
+import { CONTROL_GAP } from './control_group_grid';
+import { IDLE_FILTERS, RisqIdleFilterButton } from './bottom_panel_buttons';
+import { clipBottomPanelItem } from './bottom_panel';
 
 const BUILDING_CATEGORIES: IdleCategory[] = ['unit_production', 'other_buildings'];
 

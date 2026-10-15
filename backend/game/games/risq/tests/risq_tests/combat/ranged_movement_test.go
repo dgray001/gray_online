@@ -1,10 +1,11 @@
 package combat
 
 import (
+	"testing"
+
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness"
 	"github.com/gin-gonic/gin"
-	"testing"
 )
 
 func TestTickHistoryAreaAttackTargets(t *testing.T) {

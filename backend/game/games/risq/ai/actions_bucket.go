@@ -189,3 +189,89 @@ func (a *drainBucketAction) ToOrders(view View, internals *Internals) []Order {
 	}
 	return nil
 }
+
+type bucketView struct {
+	View
+	members map[uint64]bool
+}
+
+func (v *bucketView) filter(units []UnitView) []UnitView {
+	out := make([]UnitView, 0, len(units))
+	for _, u := range units {
+		if v.members[u.InternalID] {
+			out = append(out, u)
+		}
+	}
+	return out
+}
+
+func (v *bucketView) ScopedUnits() []UnitView {
+	return v.filter(v.View.ScopedUnits())
+}
+
+func (v *bucketView) IdleUnits() []UnitView {
+	return v.filter(v.View.IdleUnits())
+}
+
+func (v *bucketView) EligibleUnits(kinds ...OrderKind) []UnitView {
+	return v.filter(v.View.EligibleUnits(kinds...))
+}
+
+type unbucketedView struct {
+	View
+	internals *Internals
+}
+
+func (v *unbucketedView) filter(units []UnitView) []UnitView {
+	out := make([]UnitView, 0, len(units))
+	for _, u := range units {
+		if !v.internals.isBucketed(u.InternalID) {
+			out = append(out, u)
+		}
+	}
+	return out
+}
+
+func (v *unbucketedView) ScopedUnits() []UnitView {
+	return v.filter(v.View.ScopedUnits())
+}
+
+func (v *unbucketedView) IdleUnits() []UnitView {
+	return v.filter(v.View.IdleUnits())
+}
+
+func (v *unbucketedView) EligibleUnits(kinds ...OrderKind) []UnitView {
+	return v.filter(v.View.EligibleUnits(kinds...))
+}
+
+type unitWhenView struct {
+	View
+	internals *Internals
+	when      Condition
+}
+
+func (v *unitWhenView) filter(units []UnitView) []UnitView {
+	saved := v.internals.unit
+	defer func() { v.internals.unit = saved }()
+	out := make([]UnitView, 0, len(units))
+	for _, u := range units {
+		loc := u.Location
+		v.internals.unit = &loc
+		if v.when.Evaluate(v.View, v.internals) {
+			out = append(out, u)
+		}
+	}
+	return out
+}
+
+func (v *unitWhenView) ScopedUnits() []UnitView {
+	return v.filter(v.View.ScopedUnits())
+}
+
+func (v *unitWhenView) IdleUnits() []UnitView {
+	return v.filter(v.View.IdleUnits())
+}
+
+func (v *unitWhenView) EligibleUnits(kinds ...OrderKind) []UnitView {
+	return v.filter(v.View.EligibleUnits(kinds...))
+}

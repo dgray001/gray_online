@@ -17,9 +17,8 @@ import type { RisqCommands } from '../commands';
 import type { RisqArmedState } from '../input/armed_state';
 import type { RisqHover } from '../input/hover';
 import type { RisqSession } from '../session';
-import type { RisqOrdersModel } from './orders_model';
+import { unitCanBuild, type RisqOrdersModel } from './orders_model';
 import type { RisqOrderPlanning } from './planning';
-import { unitCanBuild } from './eligibility';
 import type { RisqOrderTargeting } from './targeting';
 
 /** A selected unit as order dispatch needs it */
