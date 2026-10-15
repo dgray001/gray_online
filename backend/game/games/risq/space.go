@@ -13,7 +13,10 @@ import (
 )
 
 type RisqSpace struct {
-	terrain_id     uint32
+	config     *defs.Config
+	terrain_id uint32
+	// optional map-given name shown instead of the terrain's
+	name           string
 	coordinate     game_utils.Coordinate2D
 	coordinate_key uint
 	zones          [][]*RisqZone
@@ -36,8 +39,9 @@ type RisqSpace struct {
 	ownership_cache map[int]int
 }
 
-func createRisqSpace(q int, r int, terrain_id uint32) *RisqSpace {
+func createRisqSpace(config *defs.Config, q int, r int, terrain_id uint32) *RisqSpace {
 	space := RisqSpace{
+		config:          config,
 		terrain_id:      terrain_id,
 		coordinate:      game_utils.Coordinate2D{X: q, Y: r},
 		coordinate_key:  util.Pair(q, r),
@@ -98,9 +102,10 @@ func invertSpaceKey(k uint, r *GameRisq) *RisqSpace {
 	return r.getSpace(&game_utils.Coordinate2D{X: x, Y: y})
 }
 
-func (s *RisqSpace) setAdjacentSpace(adj *RisqSpace, v *game_utils.Coordinate2D) {
+// Joins s's edge in direction v to adj's edge in direction adj_v
+func (s *RisqSpace) setAdjacentSpace(adj *RisqSpace, v *game_utils.Coordinate2D, adj_v *game_utils.Coordinate2D) {
 	zone := s.getZone(v)
-	adj_zone := adj.getZone(v.Invert())
+	adj_zone := adj.getZone(adj_v)
 	if zone == nil || adj_zone == nil {
 		fmt.Fprintln(os.Stderr, "Invalid zone coordinate: ", v.X, v.Y)
 		return
@@ -322,9 +327,9 @@ func (s *RisqSpace) toFrontend(player_id int, _is_viewer bool) gin.H {
 		return space
 	}
 	space["terrain_id"] = s.terrain_id
-	space["terrain_type"] = defs.TerrainConfigs[s.terrain_id].Terrain_type
-	space["display_name"] = defs.TerrainConfigs[s.terrain_id].Display_name
-	terrain_stats := s.terrainType().MoveCost()
+	space["terrain_type"] = s.config.Terrains[s.terrain_id].Terrain_type
+	space["display_name"] = s.displayName()
+	terrain_stats := s.config.MoveCost(s.terrainType())
 	space["terrain_stats"] = gin.H{
 		"intra_cost":           terrain_stats.Intra_cost,
 		"inter_cost":           terrain_stats.Inter_cost,
@@ -389,14 +394,25 @@ func (s *RisqSpace) toFrontend(player_id int, _is_viewer bool) gin.H {
 	return space
 }
 
+func (s *RisqSpace) displayName() string {
+	if s.name != "" {
+		return s.name
+	}
+	return s.config.Terrains[s.terrain_id].Display_name
+}
+
 func (s *RisqSpace) terrainType() defs.TerrainType {
-	return defs.TerrainConfigs[s.terrain_id].Terrain_type
+	return s.config.Terrains[s.terrain_id].Terrain_type
+}
+
+func (s *RisqSpace) moveCost() defs.TerrainMoveCost {
+	return s.config.MoveCost(s.terrainType())
 }
 
 func (s *RisqSpace) impassable() bool {
-	return s.terrainType().MoveCost().Impassable
+	return s.moveCost().Impassable
 }
 
 func (s *RisqSpace) buildSpeedModifier() float64 {
-	return s.terrainType().MoveCost().Build_speed_modifier
+	return s.moveCost().Build_speed_modifier
 }

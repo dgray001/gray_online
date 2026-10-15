@@ -1,5 +1,5 @@
+import { getSettings } from '../../../../../../scripts/settings_store';
 import { ColorRGB } from '../../../../../../scripts/color_rgb';
-import { drawArrow, drawLine } from '../../../../util/canvas_util';
 import type { Point2D } from '../../../../util/objects2d';
 import { addPoint2D, equalsPoint2D, subtractPoint2D } from '../../../../util/objects2d';
 import type { RisqOrdersModel } from '../../application/orders/orders_model';
@@ -32,7 +32,15 @@ import {
 } from '../zones/geometry';
 import { areaBoundary } from './area_boundary';
 import { drawSelectionAttackRanges } from './attack_ranges';
+import { RisqLinks } from '../links';
+import { RisqReplayIntents } from './replay_intents';
 import type { RisqViewport } from './viewport';
+
+/** Whether order lines and arrows draw in the given selection pass under the display setting */
+export function orderLinesVisible(selected_pass: boolean): boolean {
+  const visibility = getSettings().risq_display.order_visibility;
+  return visibility === 'all' || (visibility === 'selected_only' && selected_pass);
+}
 
 export type RisqOrderProjection = Pick<RisqViewport, 'hexR' | 'coordinateToCanvas' | 'orderPoint' | 'unitAnchorOffset'>;
 
@@ -79,6 +87,8 @@ function drawMercenaryGhosts(
 
 export class RisqOrderOverlays {
   private tinted_attack_areas = new Set<string>();
+  private links: RisqLinks;
+  private replay_intents: RisqReplayIntents;
   constructor(
     private risq: DwgRisq,
     private session: RisqSession,
@@ -86,20 +96,44 @@ export class RisqOrderOverlays {
     private orders_model: RisqOrdersModel,
     private planning: RisqOrderPlanning,
     private selection: RisqSelection
-  ) {}
+  ) {
+    this.links = new RisqLinks(session, viewport);
+    this.replay_intents = new RisqReplayIntents(
+      session,
+      viewport,
+      (ctx, from, to, arrow_size) => this.strokeSegment(ctx, from, to, arrow_size),
+      (size) => this.cappedSize(size)
+    );
+  }
+
+  /** Strokes a straight order segment, crossing a link instead when that is the shortest way across the map */
+  private strokeSegment(ctx: CanvasRenderingContext2D, from: Point2D, to: Point2D, arrow_size?: number): void {
+    this.links.drawLegs(ctx, this.links.legs(from, to), arrow_size);
+  }
 
   private cappedSize(size: number, max_screen_size: number = 3 * size): number {
-    return Math.min(size, max_screen_size / this.viewport.lastTransform().scale);
+    const scale = getSettings().risq_display.order_size;
+    const scaled_size = size * scale;
+    return Math.min(scaled_size, (max_screen_size * scale) / this.viewport.lastTransform().scale);
   }
 
   draw(ctx: CanvasRenderingContext2D, selected: boolean): void {
+    if (this.session.isReplaying()) {
+      if (!selected) {
+        this.replay_intents.draw(ctx);
+      }
+      return;
+    }
+    if (selected) {
+      this.drawPendingMercenaries(ctx);
+    }
+    if (!orderLinesVisible(selected)) {
+      return;
+    }
     this.tinted_attack_areas.clear();
     this.drawUnitOrders(ctx, selected);
     this.drawBuildingOrders(ctx, selected);
-    if (selected) {
-      this.drawGatherPointOrder(ctx);
-      this.drawPendingMercenaries(ctx);
-    }
+    this.drawGatherPointOrder(ctx, selected);
   }
 
   drawRanges(ctx: CanvasRenderingContext2D): void {
@@ -156,7 +190,7 @@ export class RisqOrderOverlays {
       const color = orderArrowColor(order.order_type);
       ctx.strokeStyle = color;
       ctx.fillStyle = color;
-      drawArrow(ctx, from, to, this.cappedSize(selected ? 10 : 6));
+      this.strokeSegment(ctx, from, to, this.cappedSize(selected ? 10 : 6));
     }
   }
 
@@ -194,13 +228,13 @@ export class RisqOrderOverlays {
         break;
       }
       if (!equalsPoint2D(current, point)) {
-        drawLine(ctx, current, point);
+        this.strokeSegment(ctx, current, point);
       }
       current = point;
     }
     const to = areaBoundary(vertices, current).point;
     if (!equalsPoint2D(current, to)) {
-      drawLine(ctx, current, to);
+      this.strokeSegment(ctx, current, to);
     }
     ctx.restore();
     return to;
@@ -313,7 +347,7 @@ export class RisqOrderOverlays {
       const color = orderArrowColor(order.order_type);
       ctx.strokeStyle = color;
       ctx.fillStyle = color;
-      drawArrow(ctx, from, to, this.cappedSize(selected ? 10 : 6));
+      this.strokeSegment(ctx, from, to, this.cappedSize(selected ? 10 : 6));
       from = to;
     }
     ctx.setLineDash([]);
@@ -348,11 +382,7 @@ export class RisqOrderOverlays {
       if (equalsPoint2D(current, to)) {
         continue;
       }
-      if (i === path.length - 1) {
-        drawArrow(ctx, current, to, this.cappedSize(arrow_size));
-      } else {
-        drawLine(ctx, current, to);
-      }
+      this.strokeSegment(ctx, current, to, i === path.length - 1 ? this.cappedSize(arrow_size) : undefined);
       current = to;
     }
     return current;
@@ -468,9 +498,23 @@ export class RisqOrderOverlays {
     return this.orderTargetPoint({ player_id, order_type, target_id, subjects: [] }, zone_view, from, projection);
   }
 
-  private drawGatherPointOrder(ctx: CanvasRenderingContext2D): void {
-    for (const building of this.selection.selectedBuildings()) {
-      this.drawBuildingGatherPoint(ctx, building);
+  private drawGatherPointOrder(ctx: CanvasRenderingContext2D, selected_pass: boolean): void {
+    const visibility = getSettings().risq_display.order_visibility;
+    if (visibility === 'all') {
+      const player = this.session.getPlayer();
+      if (!player) {
+        return;
+      }
+      const selected = new Set(this.selection.selectedBuildings().map((b) => b.internal_id));
+      for (const building of player.buildings.values()) {
+        if (selected.has(building.internal_id) === selected_pass) {
+          this.drawBuildingGatherPoint(ctx, building);
+        }
+      }
+    } else if (selected_pass) {
+      for (const building of this.selection.selectedBuildings()) {
+        this.drawBuildingGatherPoint(ctx, building);
+      }
     }
   }
 
@@ -491,7 +535,7 @@ export class RisqOrderOverlays {
     ctx.setLineDash([8, 5]);
     ctx.strokeStyle = 'white';
     ctx.fillStyle = 'white';
-    drawArrow(ctx, from, to, this.cappedSize(10));
+    this.strokeSegment(ctx, from, to, this.cappedSize(10));
     ctx.setLineDash([]);
     const flag_icon = this.risq.getPlayerColoredIcon('risq/icons/garrison_flag', new ColorRGB(255, 255, 255));
     const flag_size = this.cappedSize(Math.max(16, 0.15 * this.viewport.hexR()), 48);

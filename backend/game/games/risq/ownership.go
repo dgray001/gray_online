@@ -35,8 +35,8 @@ func (s *RisqSpace) computeOwnership() int {
 	return unit_owner
 }
 
-// A player may build in a space they hold, or an unclaimed space bordering one they hold
-func (s *RisqSpace) buildableBy(player_id int) bool {
+// A player may build in a space they hold, an unclaimed space bordering one they hold, or any unclaimed space if they hold 0 spaces
+func (s *RisqSpace) buildableBy(player_id int, risq *GameRisq) bool {
 	owner := s.computeOwnership()
 	if owner == player_id {
 		return true
@@ -44,8 +44,20 @@ func (s *RisqSpace) buildableBy(player_id int) bool {
 	if owner != -1 {
 		return false
 	}
+	if risq != nil && !risq.holdsAnySpace(player_id) {
+		return true
+	}
 	for _, adj := range s.adjacent_spaces {
 		if adj.computeOwnership() == player_id {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *GameRisq) holdsAnySpace(player_id int) bool {
+	for _, space := range r.allSpaces() {
+		if space.computeOwnership() == player_id {
 			return true
 		}
 	}

@@ -16,7 +16,7 @@ func withTreeSpecies(ctx *mapScriptContext, resources []playerStartResourceJSON,
 		if err != nil {
 			return nil, err
 		}
-		if _, ok := defs.ResourceConfigs[uint32(id)]; !ok {
+		if _, ok := ctx.config().Resources[uint32(id)]; !ok {
 			return nil, fmt.Errorf("player_starts tree_ids: unknown resource id %d", id)
 		}
 		trees[i] = uint32(id)

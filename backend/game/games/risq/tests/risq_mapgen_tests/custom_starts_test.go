@@ -1,6 +1,8 @@
 package risq_mapgen_tests
 
-import "testing"
+import (
+	"testing"
+)
 
 const startTemplate = `"player_start":{"size":0,"terrain":1,"spaces":[{"x":0,"y":0,"zones":[` +
 	`{"x":0,"y":0,"building":{"id":1,"player":0},"units":[{"id":1,"player":0,"count":3}]}]}]}`
@@ -37,6 +39,69 @@ func TestPlayerStartResetsHomeTerrainAndOccupants(t *testing.T) {
 	home := board.Inspect()[0]
 	if home.Terrain != 1 || zoneAt(t, board, -2, 0, 1, 0).Resource != 0 {
 		t.Errorf("home terrain %d and edge resource %d, want terrain 1 and the resource cleared", home.Terrain, zoneAt(t, board, -2, 0, 1, 0).Resource)
+	}
+}
+
+var fourSlots = map[[2]int]int{{1, 0}: 0, {-1, 0}: 1, {0, 1}: 2, {0, -1}: 3}
+
+// Which slot coordinate each of the first two players got, read from the buildings the template stamped
+func playerHomes(t *testing.T, doc string, seed int64) [2][2]int {
+	t.Helper()
+	board := seededBoard(t, doc, 2, seed, nil)
+	var homes [2][2]int
+	for coordinate := range fourSlots {
+		if center := zoneAt(t, board, coordinate[0], coordinate[1], 0, 0); center.Building.ID == 1 {
+			homes[center.Building.Player] = coordinate
+		}
+	}
+	return homes
+}
+
+func TestSeededStartsPickSlotsReproducibly(t *testing.T) {
+	doc := `{"board_size":1,"players":4,` + startTemplate + `,"spaces":[` + hexSpaces(1, fourSlots) + `]}`
+	distinct := map[[2][2]int]bool{}
+	for seed := int64(0); seed < 40; seed++ {
+		homes := playerHomes(t, doc, seed)
+		if homes[0] == homes[1] || homes[0] == ([2]int{}) || homes[1] == ([2]int{}) {
+			t.Fatalf("seed %d gave players %v; want two different slots", seed, homes)
+		}
+		if again := playerHomes(t, doc, seed); again != homes {
+			t.Fatalf("seed %d is not reproducible: %v then %v", seed, homes, again)
+		}
+		distinct[homes] = true
+	}
+	if len(distinct) < 4 {
+		t.Errorf("40 seeds produced only %d distinct slot choices", len(distinct))
+	}
+}
+
+func TestStartTemplateWithoutAssetsUsesDevelopmentDefaults(t *testing.T) {
+	doc := startsDoc(`"player_start":{"size":0,"terrain":1,"spaces":[]}`, twoSlots)
+	for name, tc := range map[string]struct {
+		development float64
+		building    uint32
+		units       int
+	}{"standard": {2, 1, 4}, "nomad": {1, 0, 3}} {
+		t.Run(name, func(t *testing.T) {
+			board := seededBoard(t, doc, 2, 1, map[string]any{"starting_development": tc.development})
+			for _, x := range []int{-2, 2} {
+				home := zoneAt(t, board, x, 0, 0, 0)
+				if home.Building.ID != tc.building || len(home.Units) != tc.units {
+					t.Errorf("home at x=%d: building %d and %d units, want %d and %d", x, home.Building.ID, len(home.Units), tc.building, tc.units)
+				}
+			}
+		})
+	}
+}
+
+func TestStartTemplateWithUnitsReplacesDevelopmentDefaults(t *testing.T) {
+	template := `"player_start":{"size":0,"terrain":1,"spaces":[{"x":0,"y":0,"zones":[{"x":0,"y":0,"units":[{"id":11,"count":"starting_development"}]}]}]}`
+	board := seededBoard(t, startsDoc(template, twoSlots), 2, 1, map[string]any{"starting_development": float64(3)})
+	for _, x := range []int{-2, 2} {
+		home := zoneAt(t, board, x, 0, 0, 0)
+		if home.Building.ID != 0 || len(home.Units) != 3 || home.Units[0].ID != 11 {
+			t.Errorf("home at x=%d: %+v, want only three of unit 11 with no default building", x, home)
+		}
 	}
 }
 

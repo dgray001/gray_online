@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.8zd: Small risq UI updates
+v0.8zd: Risq UI updates
 
 ## Dev Use
 

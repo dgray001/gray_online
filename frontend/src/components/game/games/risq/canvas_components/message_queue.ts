@@ -98,7 +98,7 @@ export class RisqMessageQueue implements CanvasComponent {
       this.bounds = { w: 0, h: 0 };
       return;
     }
-    const cx = 0.5 * this.risq.viewport.canvasSize().width;
+    const cx = 0.5 * this.risq.hudCanvasSize().width;
     ctx.font = FONT;
     let max_w = 0;
     for (const [i, msg] of this.active.entries()) {
@@ -140,7 +140,7 @@ export class RisqMessageQueue implements CanvasComponent {
   }
 
   xi(): number {
-    return 0.5 * (this.risq.viewport.canvasSize().width - this.bounds.w);
+    return 0.5 * (this.risq.hudCanvasSize().width - this.bounds.w);
   }
   xf(): number {
     return this.xi() + this.bounds.w;

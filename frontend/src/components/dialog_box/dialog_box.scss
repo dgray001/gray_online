@@ -42,6 +42,10 @@
     --dialog-max-w: 1100px;
     --dialog-min-h: 300px;
     --dialog-min-w: 320px;
+
+    @media (max-width: 1200px) {
+      --dialog-w: 85vw;
+    }
   }
 
   &.size-xxlarge {

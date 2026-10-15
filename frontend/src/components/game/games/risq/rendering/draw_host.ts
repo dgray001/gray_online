@@ -12,8 +12,8 @@ import type { RisqCorpseLayout } from './zones/corpses';
 
 export interface RisqDrawHost {
   readonly control_groups?: Pick<RisqControlGroups, 'memberships'>;
-  readonly session: Pick<RisqSession, 'getRegionForSpace' | 'getRegionLookup' | 'getResourceConfigs'>;
-  readonly planning: Pick<RisqOrderPlanning, 'getLocalFoundation' | 'hasPlannedFoundation'>;
+  readonly session: Pick<RisqSession, 'getRegionForSpace' | 'getRegionLookup' | 'getResourceConfigs' | 'isReplaying'>;
+  readonly planning: Pick<RisqOrderPlanning, 'getLocalFoundation' | 'hasPlannedFoundation' | 'idleIds'>;
   readonly selection: Pick<
     RisqSelection,
     'isUnitSelected' | 'isBuildingSelected' | 'isResourceSelected' | 'isRegionSelected'

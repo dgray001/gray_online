@@ -8,6 +8,7 @@ type Settings struct {
 	MapResources        defs.MapResourceLevel
 	StartingDevelopment defs.StartingDevelopment
 	StartBalance        defs.StartBalance
+	Visibility          defs.VisibilityMode
 }
 
 func DefaultStartingBank(stockpile defs.StartingStockpile) StartingBank {
@@ -30,5 +31,6 @@ func ResolveSettings(raw map[string]any, num_players int) Settings {
 		MapResources:        defs.ResolveSetupSetting(raw["map_resources"], defs.MapResourceLevel_STANDARD, defs.MapResourceLevel_ABUNDANT),
 		StartingDevelopment: defs.ResolveSetupSetting(raw["starting_development"], defs.StartingDevelopment_STANDARD, defs.StartingDevelopment_ADVANCED),
 		StartBalance:        defs.ResolveSetupSetting(raw["start_balance"], defs.StartBalance_MIRRORED, defs.StartBalance_MIRRORED),
+		Visibility:          defs.ResolveVisibilityMode(raw["visibility"]),
 	}
 }

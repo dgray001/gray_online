@@ -12,18 +12,22 @@ import (
 const mercenaryCostMarkup = 1.3
 const mercenaryGoldMarkup = 1.5
 
-func mercenaryCost(unit_id uint32) defs.RisqResourceCost {
-	cost, _ := defs.UnitProductionCost(unit_id)
+func (p *RisqPlayer) mercenaryCost(unit_id uint32) defs.RisqResourceCost {
+	cost, _ := p.config.UnitProductionCost(unit_id)
 	total := cost.Food + cost.Wood + cost.Stone + cost.Gold*mercenaryGoldMarkup
-	return defs.RisqResourceCost{Gold: total * mercenaryCostMarkup}
+	markup := mercenaryCostMarkup + p.config.MercenaryCostMarkupDelta(p.researchedTechIds())
+	return defs.RisqResourceCost{Gold: total * markup}
 }
 
 // Sorted by unit id so the frontend's button grid order is stable across updates
 func (p *RisqPlayer) availableMercenariesToFrontend() []gin.H {
 	mercenaries := make([]gin.H, 0, len(p.available_mercenaries))
 	for _, unit_id := range slices.Sorted(maps.Keys(p.available_mercenaries)) {
-		entry := defs.Producible{Kind: defs.ProducibleKind_UNIT, Id: unit_id}.ToFrontend()
-		entry["cost"] = mercenaryCost(unit_id).ToFrontend()
+		if _, exists := p.config.Units[unit_id]; !exists {
+			continue
+		}
+		entry := defs.Producible{Kind: defs.ProducibleKind_UNIT, Id: unit_id}.ToFrontend(p.config)
+		entry["cost"] = p.mercenaryCost(unit_id).ToFrontend()
 		entry["stamina_cost"] = 0
 		mercenaries = append(mercenaries, entry)
 	}

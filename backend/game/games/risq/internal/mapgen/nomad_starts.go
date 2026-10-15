@@ -97,7 +97,7 @@ func nomadStartingBank(ctx *mapScriptContext, p playerStartsParams) StartingBank
 			return bank
 		}
 	}
-	cost := defs.BuildingConfigs[villageCenterId].Cost
+	cost := ctx.config().Buildings[villageCenterId].Cost
 	bank.Food, bank.Wood, bank.Stone, bank.Gold = bank.Food+cost.Food, bank.Wood+cost.Wood, bank.Stone+cost.Stone, bank.Gold+cost.Gold
 	return bank
 }

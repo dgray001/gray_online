@@ -15,6 +15,7 @@ import (
 )
 
 type RisqPlayer struct {
+	config                         *defs.Config
 	player                         *game.Player
 	resources                      *RisqPlayerResources
 	buildings                      map[uint64]*RisqBuilding
@@ -87,8 +88,9 @@ type RisqPlannedFoundation struct {
 	cost        defs.RisqResourceCost
 }
 
-func createRisqPlayer(player *game.Player, max_population_limit uint16, color string, rng *rand.Rand) *RisqPlayer {
+func createRisqPlayer(config *defs.Config, player *game.Player, max_population_limit uint16, color string, rng *rand.Rand) *RisqPlayer {
 	return &RisqPlayer{
+		config:                   config,
 		player:                   player,
 		resources:                createRisqPlayerResources(),
 		buildings:                make(map[uint64]*RisqBuilding),
@@ -115,7 +117,7 @@ func createRisqPlayer(player *game.Player, max_population_limit uint16, color st
 }
 
 func createRisqPlannedFoundation(building_id uint32, player *RisqPlayer) *RisqPlannedFoundation {
-	cost, _ := defs.BuildingProductionCost(building_id)
+	cost, _ := player.config.BuildingProductionCost(building_id)
 	player.resources.spend(cost)
 	return &RisqPlannedFoundation{building_id: building_id, cost: cost}
 }
@@ -131,7 +133,7 @@ func (p *RisqPlayer) cancelPlannedFoundation(zone *RisqZone) {
 
 // Whether starting a new building of this id at zone would exceed its per-player cap; the zone's own building or foundation never counts
 func (p *RisqPlayer) atBuildingLimit(building_id uint32, zone *RisqZone) bool {
-	limit := defs.BuildingConfigs[building_id].Max_per_player
+	limit := p.config.Buildings[building_id].Max_per_player
 	if limit <= 0 {
 		return false
 	}
@@ -200,7 +202,7 @@ func (p *RisqPlayer) canHaveUnits() bool {
 		if building.deleted || building.underConstruction() {
 			continue
 		}
-		for _, producible := range defs.BuildingConfigs[building.building_id].Produces {
+		for _, producible := range p.config.Buildings[building.building_id].Produces {
 			if producible.Kind == defs.ProducibleKind_UNIT {
 				return true
 			}
@@ -274,7 +276,7 @@ func (p *RisqPlayer) buyMercenary(o *RisqOrder, risq *GameRisq) {
 		p.report.recordFailure(o.order_type, o.target_id, "population capped")
 		return
 	}
-	cost := mercenaryCost(unit_id)
+	cost := p.mercenaryCost(unit_id)
 	if !p.resources.canAfford(cost) {
 		p.report.recordFailure(o.order_type, o.target_id, "cannot afford mercenary")
 		return
@@ -285,10 +287,21 @@ func (p *RisqPlayer) buyMercenary(o *RisqOrder, risq *GameRisq) {
 	})
 }
 
+func (p *RisqPlayer) activeOrdersToFrontend() []gin.H {
+	orders := make([]gin.H, 0, len(p.active_orders))
+	for _, order := range p.active_orders {
+		if order != nil && !order.executed && !order.cancelled {
+			orders = append(orders, order.toFrontend())
+		}
+	}
+	return orders
+}
+
 func (p *RisqPlayer) toFrontend(viewer_player_id int) gin.H {
 	player := gin.H{
 		"population_limit":     p.populationLimit(),
 		"max_population_limit": p.max_population_limit,
+		"unlimited_population": p.unlimited_population,
 		"score":                p.score,
 		"color":                p.color,
 		"orders_submitted":     p.orders_submitted,
@@ -309,8 +322,8 @@ func (p *RisqPlayer) toFrontend(viewer_player_id int) gin.H {
 			foundations = append(foundations, gin.H{
 				"coordinate_key": coordinate_key,
 				"building_id":    f.building_id,
-				"display_name":   defs.BuildingConfigs[f.building_id].Display_name,
-				"stamina_cost":   defs.BuildingConfigs[f.building_id].Build_stamina,
+				"display_name":   p.config.Buildings[f.building_id].Display_name,
+				"stamina_cost":   p.config.Buildings[f.building_id].Build_stamina,
 				"cost":           f.cost.ToFrontend(),
 			})
 		}
@@ -343,11 +356,7 @@ func (p *RisqPlayer) toFrontend(viewer_player_id int) gin.H {
 	player["units"] = units
 	active_orders := make([]gin.H, 0)
 	if p.player != nil && p.player.Player_id == viewer_player_id {
-		for _, order := range p.active_orders {
-			if order != nil && !order.executed && !order.cancelled {
-				active_orders = append(active_orders, order.toFrontend())
-			}
-		}
+		active_orders = p.activeOrdersToFrontend()
 	}
 	player["active_orders"] = active_orders
 	player["researched_techs"] = maps.Clone(p.researched_techs)
@@ -375,7 +384,7 @@ type techCompletion struct {
 func (r *GameRisq) completeResearch(player *RisqPlayer, tech_id uint32) {
 	player.researched_techs[tech_id] = true
 	player.report.recordTech(tech_id)
-	tech, ok := defs.TechConfigs[tech_id]
+	tech, ok := player.config.Techs[tech_id]
 	if !ok {
 		return
 	}
@@ -385,6 +394,8 @@ func (r *GameRisq) completeResearch(player *RisqPlayer, tech_id uint32) {
 		}
 	}
 	for _, unit_id := range tech.Unlocks_mercenary_ids {
-		player.available_mercenaries[unit_id] = true
+		if _, exists := player.config.Units[unit_id]; exists {
+			player.available_mercenaries[unit_id] = true
+		}
 	}
 }

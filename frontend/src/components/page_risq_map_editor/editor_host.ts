@@ -12,7 +12,11 @@ import type { RisqDrawHost } from '../game/games/risq/rendering/draw_host';
 export class EditorDrawHost implements RisqDrawHost {
   readonly hover: RisqHover;
   readonly corpse_layout = new RisqCorpseLayout();
-  readonly planning = { getLocalFoundation: () => undefined, hasPlannedFoundation: () => false };
+  readonly planning = {
+    getLocalFoundation: () => undefined,
+    hasPlannedFoundation: () => false,
+    idleIds: () => ({ units: new Set<number>(), buildings: new Set<number>() }),
+  };
   readonly selection = {
     isUnitSelected: () => false,
     isBuildingSelected: () => false,

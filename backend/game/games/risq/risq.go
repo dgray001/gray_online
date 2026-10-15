@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"github.com/dgray001/gray_online/game"
-	"github.com/dgray001/gray_online/game/game_utils"
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
@@ -28,6 +27,9 @@ import (
 type GameRisq struct {
 	tick_history *turnJournal
 
+	// fully resolved when the game is created and never changed after
+	config *defs.Config
+
 	metrics                   gameMetrics
 	game                      *game.GameBase
 	outcome                   *risqOutcome
@@ -36,8 +38,9 @@ type GameRisq struct {
 	visibility_mode           defs.VisibilityMode
 	population_limit          uint16
 	background_image          string
-	background_top_left       game_utils.Coordinate2D
-	background_top_right      game_utils.Coordinate2D
+	background_top_left       [2]float64
+	background_top_right      [2]float64
+	rotation                  float64
 	spaces                    [][]*RisqSpace
 	units                     map[uint64]*RisqUnit
 	buildings                 map[uint64]*RisqBuilding
@@ -73,10 +76,13 @@ type GameRisq struct {
 	completed_gatherables    []*RisqBuilding
 	regions                  []*RisqRegion
 	space_distances          *spaceDistances
-	space_links              []gin.H
+	space_links              []spaceLink
 	mercenaries_need_region  bool
-	rng                      *rand.Rand
-	ai_goroutines            sync.WaitGroup
+	// fixed once the board is generated; false hides the economy from the interface
+	has_economy   bool
+	has_buildings bool
+	rng           *rand.Rand
+	ai_goroutines sync.WaitGroup
 }
 
 func (r *GameRisq) nextResourceInternalId() uint64 {
@@ -101,6 +107,15 @@ func (r *GameRisq) nextOrderInternalId() uint64 {
 
 func (r *GameRisq) GetBase() *game.GameBase {
 	return r.game
+}
+
+// The config never changes after the game is created, so any goroutine may read it
+func (r *GameRisq) TechTreeToFrontend() []gin.H {
+	return AllBuildingConfigsToFrontend(r.config)
+}
+
+func (r *GameRisq) ResourceConfigsToFrontend() []gin.H {
+	return AllResourceConfigsToFrontend(r.config)
 }
 
 func (r *GameRisq) StartGame() {
@@ -307,13 +322,17 @@ func (r *GameRisq) PlayerToFrontend(client_id uint64, player_id int) gin.H {
 // Keyed by player id since every AI player shares client id 0
 func (r *GameRisq) toFrontendFor(player_id int, client_id uint64, is_viewer bool) gin.H {
 	game := gin.H{
-		"board_size":           r.board_size,
-		"population_limit":     r.population_limit,
-		"background_image":     r.background_image,
-		"background_top_left":  []int{r.background_top_left.X, r.background_top_left.Y},
-		"background_top_right": []int{r.background_top_right.X, r.background_top_right.Y},
-		"turn_number":          r.turn_number,
-		"giving_orders":        r.giving_orders,
+		"board_size":              r.board_size,
+		"population_limit":        r.population_limit,
+		"background_image":        r.background_image,
+		"background_top_left":     r.background_top_left,
+		"background_top_right":    r.background_top_right,
+		"rotation":                r.rotation,
+		"has_economy":             r.has_economy,
+		"has_buildings":           r.has_buildings,
+		"mercenaries_need_region": r.mercenaries_need_region,
+		"turn_number":             r.turn_number,
+		"giving_orders":           r.giving_orders,
 	}
 	if r.game != nil {
 		game["game_base"] = r.game.ToFrontend(client_id, is_viewer)
@@ -342,7 +361,7 @@ func (r *GameRisq) toFrontendFor(player_id int, client_id uint64, is_viewer bool
 		spaces = append(spaces, spaces_row)
 	}
 	game["spaces"] = spaces
-	game["space_links"] = r.space_links
+	game["space_links"] = r.spaceLinksToFrontend(player_id)
 	regions := []gin.H{}
 	for _, region := range r.regions {
 		if reg := region.toFrontend(r, player_id); reg != nil {

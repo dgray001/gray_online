@@ -35,7 +35,7 @@ func (s tickResourceState) toFrontend() gin.H {
 	return gin.H{
 		"internal_id": s.target.internal_id, "resource_id": s.resource_id,
 		"space_coordinate": s.location.space.ToFrontend(), "zone_coordinate": s.location.zone.ToFrontend(),
-		"resources_left": s.remaining, "deleted": s.deleted,
+		"resources_left": s.remaining, "max_resources": s.max_resources, "deleted": s.deleted,
 	}
 }
 
@@ -88,12 +88,12 @@ func (j *turnJournal) toFrontend(player_id int) gin.H {
 	buildings := map[uint64]tickBuildingState{}
 	for _, frame := range append([]tickFrame{j.baseline}, j.frames...) {
 		for _, state := range frame.units {
-			if state.visibility.inspect(player_id, state.target.player_id) {
+			if state.visibility.see(player_id, state.target.player_id) {
 				units[state.target.internal_id] = state
 			}
 		}
 		for _, state := range frame.buildings {
-			if state.visibility.inspect(player_id, state.target.player_id) {
+			if state.visibility.see(player_id, state.target.player_id) {
 				buildings[state.target.internal_id] = state
 			}
 		}

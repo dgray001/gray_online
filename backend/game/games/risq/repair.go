@@ -11,7 +11,7 @@ import (
 )
 
 func (b *RisqBuilding) repairHealthValue(health_units int64) defs.RisqResourceCost {
-	cost := defs.BuildingConfigs[b.building_id].Cost.Scale(repairCostFactor * float64(health_units) / (10000 * float64(b.cs.max_health)))
+	cost := b.config.Buildings[b.building_id].Cost.Scale(repairCostFactor * float64(health_units) / (10000 * float64(b.cs.max_health)))
 	return defs.RisqResourceCost{
 		Food: util.RoundTo(cost.Food, gatherRoundingPlaces), Wood: util.RoundTo(cost.Wood, gatherRoundingPlaces),
 		Stone: util.RoundTo(cost.Stone, gatherRoundingPlaces), Gold: util.RoundTo(cost.Gold, gatherRoundingPlaces),

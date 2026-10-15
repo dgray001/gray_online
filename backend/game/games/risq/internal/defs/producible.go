@@ -60,7 +60,7 @@ func parseProducibles(raw []producibleJSON, default_kind *ProducibleKind) ([]Pro
 	return producibles, nil
 }
 
-func (p Producible) ToFrontend() gin.H {
+func (p Producible) ToFrontend(c *Config) gin.H {
 	entry := gin.H{
 		"row":  p.Row,
 		"col":  p.Col,
@@ -69,8 +69,8 @@ func (p Producible) ToFrontend() gin.H {
 	}
 	switch p.Kind {
 	case ProducibleKind_UNIT:
-		unit := UnitConfigs[p.Id]
-		cost, stamina_cost := UnitProductionCost(p.Id)
+		unit := c.Units[p.Id]
+		cost, stamina_cost := c.UnitProductionCost(p.Id)
 		entry["cost"] = cost.ToFrontend()
 		entry["stamina_cost"] = stamina_cost
 		entry["display_name"] = unit.Display_name
@@ -89,17 +89,18 @@ func (p Producible) ToFrontend() gin.H {
 			"penetration_piercing": unit.Penetration_piercing,
 		}
 	case ProducibleKind_BUILDING:
-		cost, stamina_cost := BuildingProductionCost(p.Id)
+		building := c.Buildings[p.Id]
+		cost, stamina_cost := c.BuildingProductionCost(p.Id)
 		entry["cost"] = cost.ToFrontend()
 		entry["stamina_cost"] = stamina_cost
-		entry["display_name"] = BuildingConfigs[p.Id].Display_name
-		entry["description"] = BuildingConfigs[p.Id].Description
-		entry["required_tech_id"] = BuildingConfigs[p.Id].Required_tech_id
-		entry["population_support"] = BuildingConfigs[p.Id].Population_support
-		entry["garrison_capacity"] = BuildingConfigs[p.Id].Garrison_capacity
-		entry["max_per_player"] = BuildingConfigs[p.Id].Max_per_player
+		entry["display_name"] = building.Display_name
+		entry["description"] = building.Description
+		entry["required_tech_id"] = building.Required_tech_id
+		entry["population_support"] = building.Population_support
+		entry["garrison_capacity"] = building.Garrison_capacity
+		entry["max_per_player"] = building.Max_per_player
 	case ProducibleKind_TECH:
-		tech := TechConfigs[p.Id]
+		tech := c.Techs[p.Id]
 		entry["cost"] = tech.Cost.ToFrontend()
 		entry["stamina_cost"] = tech.Research_stamina
 		entry["display_name"] = tech.Display_name
@@ -117,7 +118,7 @@ func (p Producible) ToFrontend() gin.H {
 		entry["bonus"] = bonus
 		unlocks_mercenaries := make([]gin.H, len(tech.Unlocks_mercenary_ids))
 		for i, unit_id := range tech.Unlocks_mercenary_ids {
-			unlocks_mercenaries[i] = gin.H{"id": unit_id, "display_name": UnitConfigs[unit_id].Display_name}
+			unlocks_mercenaries[i] = gin.H{"id": unit_id, "display_name": c.Units[unit_id].Display_name}
 		}
 		entry["unlocks_mercenaries"] = unlocks_mercenaries
 	}

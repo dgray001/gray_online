@@ -59,12 +59,39 @@ func main() {
 			c.JSON(200, successResponse("pong"))
 		})
 
+		risqGame := func(c *gin.Context) *risq.GameRisq {
+			game_id, err := strconv.ParseUint(c.Param("game_id"), 10, 64)
+			if err != nil {
+				c.JSON(200, failureResponse("Invalid game id"))
+				return nil
+			}
+			game, ok := lobby_object.GetGame(game_id).(*risq.GameRisq)
+			if !ok {
+				c.JSON(200, failureResponse("Risq game doesn't exist"))
+			}
+			return game
+		}
+
 		api.GET("/risq/tech-tree", func(c *gin.Context) {
-			c.JSON(200, successResponse(risq.AllBuildingConfigsToFrontend()))
+			config, _ := risq.ConfigFromDir("")
+			c.JSON(200, successResponse(risq.AllBuildingConfigsToFrontend(config)))
 		})
 
 		api.GET("/risq/resources", func(c *gin.Context) {
-			c.JSON(200, successResponse(risq.AllResourceConfigsToFrontend()))
+			config, _ := risq.ConfigFromDir("")
+			c.JSON(200, successResponse(risq.AllResourceConfigsToFrontend(config)))
+		})
+
+		api.GET("/risq/tech-tree/:game_id", func(c *gin.Context) {
+			if game := risqGame(c); game != nil {
+				c.JSON(200, successResponse(game.TechTreeToFrontend()))
+			}
+		})
+
+		api.GET("/risq/resources/:game_id", func(c *gin.Context) {
+			if game := risqGame(c); game != nil {
+				c.JSON(200, successResponse(game.ResourceConfigsToFrontend()))
+			}
 		})
 
 		api.GET("/risq/maps", func(c *gin.Context) {

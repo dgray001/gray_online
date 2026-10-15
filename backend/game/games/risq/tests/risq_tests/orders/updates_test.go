@@ -195,7 +195,7 @@ func TestUpdateDelivery(t *testing.T) {
 		}
 		g.Base.ResendLastUpdate(uint64(p + 1))
 		replayed := nextUpdate(t, player.Updates)
-		if replayed.Kind != "submitted-orders" || snapshotJSON(t, playersOf(replayed)) != snapshotJSON(t, g.Risq.PlayersToFrontend(uint64(p+1))) {
+		if replayed.Kind != "start-turn" || snapshotJSON(t, playersOf(replayed)) != snapshotJSON(t, g.Risq.PlayersToFrontend(uint64(p+1))) {
 			t.Fatalf("%s: replay returned a snapshot older than the setting change", last)
 		}
 		before := rebuilds
@@ -213,53 +213,76 @@ func TestUpdateDelivery(t *testing.T) {
 	if failures := g.Failed(p); len(failures) != 1 {
 		t.Fatal("setup did not reject submitted action")
 	}
+	drain(player.Updates)
 	g.Base.ResendLastUpdate(uint64(p + 1))
-	if before := nextUpdate(t, player.Updates); before.Kind != "submitted-orders" {
-		t.Fatalf("failed action replaced replay: %+v", before)
+	if before := nextUpdate(t, player.Updates); before.Kind != "start-turn" || snapshotJSON(t, playersOf(before)) != snapshotJSON(t, g.Risq.PlayersToFrontend(uint64(p+1))) {
+		t.Fatalf("failed action replaced replay or replay missed the submission: %+v", before)
 	}
 	g.Action(p, "unsubmit-orders", nil)
+
+	// a submission is a small notice to everyone, not a snapshot: the submitter also gets their order list and a stale replay
+	drain(player.SettingUpdates)
+	drain(rival.SettingUpdates)
+	g.Base.ResendLastUpdate(uint64(other + 1))
+	drain(player.Updates)
+	drain(rival.Updates)
 	rawAction(g, p, "submit-orders", nil)
-	first := nextUpdate(t, player.Updates)
+	first := nextUpdate(t, player.SettingUpdates)
+	seen := nextUpdate(t, rival.SettingUpdates)
 	rawAction(g, p, "unsubmit-orders", nil)
-	last := nextUpdate(t, player.Updates)
-	if last.Id <= first.Id || last.Kind != "unsubmitted-orders" || reflect.DeepEqual(first.Content, last.Content) {
-		t.Fatal("snapshot updates have wrong IDs or content")
+	last := nextUpdate(t, player.SettingUpdates)
+	if first.Kind != "submitted-orders" || last.Kind != "unsubmitted-orders" || first.Content["orders_submitted"] != true || last.Content["orders_submitted"] != false {
+		t.Fatalf("submission notices have wrong kind or flag: %+v %+v", first, last)
+	}
+	if first.Content["game"] != nil || first.Content["active_orders"] == nil || first.Content["turn_number"] != g.Risq.TurnNumber() || first.Content["giving_orders"] != true {
+		t.Fatalf("owner notice is not a small notice with their orders: %+v", first)
+	}
+	if seen.Content["player_id"] != g.PlayerID(p) || seen.Content["orders_submitted"] != true || seen.Content["active_orders"] != nil || seen.Content["game"] != nil {
+		t.Fatalf("other players learned more than the submission: %+v", seen)
+	}
+	if len(player.Updates) != 0 || len(rival.Updates) != 0 || len(g.Base.ViewerUpdates) != 0 {
+		t.Fatal("a submission built a snapshot")
+	}
+	if _, stale, _ := g.Base.LatestUpdate(uint64(p + 1)); !stale {
+		t.Fatal("the submitter's stored snapshot is not marked stale")
+	}
+	if _, stale, _ := g.Base.LatestUpdate(uint64(other + 1)); stale {
+		t.Fatal("another player's snapshot was invalidated by a submission")
 	}
 	for _, requested := range []int{-9, 1, 99} {
 		g.Base.ResendPlayerUpdate(uint64(p+1), requested)
-		if got := nextUpdate(t, player.Updates); !reflect.DeepEqual(got, last) {
-			t.Fatalf("replay %d returned %+v, want %+v", requested, got, last)
+		if got := nextUpdate(t, player.Updates); got.Kind != "start-turn" || snapshotJSON(t, playersOf(got)) != snapshotJSON(t, g.Risq.PlayersToFrontend(uint64(p+1))) {
+			t.Fatalf("replay %d did not return the current snapshot: %+v", requested, got)
 		}
 	}
-	drain(rival.Updates)
 	g.Base.ResendLastUpdate(uint64(other + 1))
-	if got := nextUpdate(t, rival.Updates); got.Kind != "unsubmitted-orders" {
+	if got := nextUpdate(t, rival.Updates); got.Kind != "start-turn" {
 		t.Fatal("recipient histories were mixed")
 	}
 
 	// viewers replay the latest turn snapshot too, and a new turn replaces the history
 	viewer := g.Base.Viewers[90]
 	drain(g.Base.ViewerUpdates)
+	g.Base.ResendLastUpdate(90)
+	turnViewer := nextUpdate(t, viewer.Updates)
 	rawAction(g, p, "submit-orders", nil)
-	firstViewer := nextUpdate(t, g.Base.ViewerUpdates)
 	rawAction(g, p, "unsubmit-orders", nil)
-	lastViewer := nextUpdate(t, g.Base.ViewerUpdates)
-	if lastViewer.Id <= firstViewer.Id || firstViewer.Kind != "submitted-orders" || lastViewer.Kind != "unsubmitted-orders" {
-		t.Fatal("incorrect viewer updates")
+	if len(g.Base.ViewerUpdates) != 0 || len(viewer.Updates) != 0 {
+		t.Fatal("viewers were sent submission updates")
 	}
 	for _, requested := range []int{-9, 1, 99} {
 		g.Base.ResendViewerUpdate(90, requested)
-		if got := nextUpdate(t, viewer.Updates); !reflect.DeepEqual(got, lastViewer) {
-			t.Fatal("viewer replay did not return latest snapshot")
+		if got := nextUpdate(t, viewer.Updates); !reflect.DeepEqual(got, turnViewer) {
+			t.Fatal("viewer replay did not return the turn snapshot")
 		}
 	}
 	g.Base.ResendLastUpdate(90)
-	if got := nextUpdate(t, viewer.Updates); !reflect.DeepEqual(got, lastViewer) {
+	if got := nextUpdate(t, viewer.Updates); !reflect.DeepEqual(got, turnViewer) {
 		t.Fatal("last viewer replay differs")
 	}
 	g.EndTurn()
 	g.Base.ResendViewerUpdate(90, 1)
-	if got := nextUpdate(t, viewer.Updates); got.Id <= lastViewer.Id || got.Kind != "start-turn" {
+	if got := nextUpdate(t, viewer.Updates); got.Id <= turnViewer.Id || got.Kind != "start-turn" {
 		t.Fatal("new turn did not replace viewer history")
 	}
 	g.Base.ResendPlayerUpdate(999999, 1)
@@ -286,15 +309,35 @@ func TestLatestUpdateLookup(t *testing.T) {
 	drain(player.Updates)
 	drain(g.Base.ViewerUpdates)
 	rawAction(g, p, "submit-orders", nil)
-	submitted := nextUpdate(t, player.Updates)
-	if id, stale, _ := g.Base.LatestUpdate(client); id != submitted.Id || id <= start || stale {
-		t.Fatalf("new update gave id %d stale %v, want %d fresh", id, stale, submitted.Id)
+	if id, stale, _ := g.Base.LatestUpdate(client); id != start || !stale || len(player.Updates) != 0 {
+		t.Fatalf("a submission gave id %d stale %v, want the same id %d stale and no snapshot", id, stale, start)
 	}
-	viewed := nextUpdate(t, g.Base.ViewerUpdates)
-	if id, stale, ok := g.Base.LatestUpdate(90); !ok || stale || id != viewed.Id {
-		t.Fatalf("viewer lookup gave id %d stale %v ok %v, want %d", id, stale, ok, viewed.Id)
+	g.EndTurn()
+	if id, stale, _ := g.Base.LatestUpdate(client); id <= start || stale {
+		t.Fatalf("new turn gave id %d stale %v, want an id above %d and fresh", id, stale, start)
+	}
+	if id, stale, ok := g.Base.LatestUpdate(90); !ok || stale || id < 2 {
+		t.Fatalf("viewer lookup gave id %d stale %v ok %v, want a fresh id from the new turn", id, stale, ok)
 	}
 	if _, _, ok := g.Base.LatestUpdate(999999); ok {
 		t.Fatal("unknown client was found")
+	}
+}
+
+// The last submission resolves the turn at once, so its notice must name the turn it was sent in for clients to discard it late
+func TestLastSubmissionNoticeIsStampedWithItsOwnTurn(t *testing.T) {
+	g := newGame(t, layout{connected: true})
+	p, other := g.Human(0), g.Human(1)
+	player := g.Base.Players[uint64(p+1)]
+	turn := g.Risq.TurnNumber()
+	drain(player.SettingUpdates)
+	rawAction(g, other, "submit-orders", nil)
+	rawAction(g, p, "submit-orders", nil)
+	if g.Risq.TurnNumber() == turn {
+		t.Fatal("the last submission did not resolve the turn")
+	}
+	own := latestUpdate(t, player.SettingUpdates)
+	if own.Kind != "submitted-orders" || own.Content["turn_number"] != turn || own.Content["giving_orders"] != false {
+		t.Fatalf("last notice %+v, want turn %d with orders no longer being given", own.Content, turn)
 	}
 }

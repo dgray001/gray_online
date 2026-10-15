@@ -1,0 +1,332 @@
+{
+  "board_size": 9,
+  "players": 12,
+  "rotation": -2.554,
+  "space_gold_income": 1,
+  "config_dir": "risk",
+  "starting_techs": [4],
+  "mercenaries_need_region": false,
+  "unlimited_population": true,
+  "starting_bank": {
+    "gold": "5 * max(0, min(1, map_resources - 1)) + 25 * max(0, min(1, map_resources - 2)) + 90 * max(0, min(1, map_resources - 3))"
+  },
+  "player_start": {
+    "size": 0,
+    "spaces": [{ "x": 0, "y": 0, "zones": [{ "x": 0, "y": 0, "units": [{ "id": 11, "count": "1 + 2 * min(1, starting_development - 1) + 3 * max(0, min(1, starting_development - 2)) + 4 * max(0, starting_development - 3)" }] }] }]
+  },
+  "spaces": [
+    {
+      "x": -3,
+      "y": -3,
+      "terrain": 1,
+      "name": "Alaska",
+      "player_slot": 1
+    },
+    {
+      "x": -2,
+      "y": -3,
+      "terrain": 1,
+      "name": "Northwest Territory"
+    },
+    {
+      "x": 0,
+      "y": -3,
+      "terrain": 1,
+      "name": "Greenland",
+      "player_slot": 4
+    },
+    {
+      "x": 5,
+      "y": -3,
+      "terrain": 1,
+      "name": "Yakutsk"
+    },
+    {
+      "x": 6,
+      "y": -3,
+      "terrain": 1,
+      "name": "Kamchatka",
+      "player_slot": 11
+    },
+    {
+      "x": -3,
+      "y": -2,
+      "terrain": 1,
+      "name": "Alberta"
+    },
+    {
+      "x": -2,
+      "y": -2,
+      "terrain": 1,
+      "name": "Ontario"
+    },
+    {
+      "x": -1,
+      "y": -2,
+      "terrain": 1,
+      "name": "Quebec"
+    },
+    {
+      "x": 1,
+      "y": -2,
+      "terrain": 1,
+      "name": "Scandinavia"
+    },
+    {
+      "x": 2,
+      "y": -2,
+      "terrain": 1,
+      "name": "Finland"
+    },
+    {
+      "x": 3,
+      "y": -2,
+      "terrain": 1,
+      "name": "Ukraine",
+      "player_slot": 9
+    },
+    {
+      "x": 4,
+      "y": -2,
+      "terrain": 1,
+      "name": "Siberia"
+    },
+    {
+      "x": 5,
+      "y": -2,
+      "terrain": 1,
+      "name": "Irkutsk"
+    },
+    {
+      "x": -3,
+      "y": -1,
+      "terrain": 1,
+      "name": "Western United States"
+    },
+    {
+      "x": -2,
+      "y": -1,
+      "terrain": 1,
+      "name": "Eastern United States",
+      "player_slot": 2
+    },
+    {
+      "x": 0,
+      "y": -1,
+      "terrain": 1,
+      "name": "Great Britain",
+      "player_slot": 5
+    },
+    {
+      "x": 1,
+      "y": -1,
+      "terrain": 1,
+      "name": "Northern Europe"
+    },
+    {
+      "x": 2,
+      "y": -1,
+      "terrain": 1,
+      "name": "Southern Europe"
+    },
+    {
+      "x": 3,
+      "y": -1,
+      "terrain": 1,
+      "name": "Ural"
+    },
+    {
+      "x": 4,
+      "y": -1,
+      "terrain": 1,
+      "name": "Mongolia"
+    },
+    {
+      "x": 5,
+      "y": -1,
+      "terrain": 1,
+      "name": "Japan",
+      "player_slot": 10
+    },
+    {
+      "x": -3,
+      "y": 0,
+      "terrain": 1,
+      "name": "Central America"
+    },
+    {
+      "x": -1,
+      "y": 0,
+      "terrain": 1,
+      "name": "Western Europe"
+    },
+    {
+      "x": 2,
+      "y": 0,
+      "terrain": 1,
+      "name": "Afghanistan"
+    },
+    {
+      "x": 3,
+      "y": 0,
+      "terrain": 1,
+      "name": "China"
+    },
+    {
+      "x": -3,
+      "y": 1,
+      "terrain": 1,
+      "name": "Venezuela"
+    },
+    {
+      "x": -1,
+      "y": 1,
+      "terrain": 1,
+      "name": "North Africa"
+    },
+    {
+      "x": 0,
+      "y": 1,
+      "terrain": 1,
+      "name": "Egypt",
+      "player_slot": 6
+    },
+    {
+      "x": 1,
+      "y": 1,
+      "terrain": 1,
+      "name": "Middle East"
+    },
+    {
+      "x": 2,
+      "y": 1,
+      "terrain": 1,
+      "name": "India",
+      "player_slot": 7
+    },
+    {
+      "x": 3,
+      "y": 1,
+      "terrain": 1,
+      "name": "Siam"
+    },
+    {
+      "x": -4,
+      "y": 2,
+      "terrain": 1,
+      "name": "Peru",
+      "player_slot": 0
+    },
+    {
+      "x": -3,
+      "y": 2,
+      "terrain": 1,
+      "name": "Brazil"
+    },
+    {
+      "x": -1,
+      "y": 2,
+      "terrain": 1,
+      "name": "Congo"
+    },
+    {
+      "x": 0,
+      "y": 2,
+      "terrain": 1,
+      "name": "East Africa"
+    },
+    {
+      "x": -4,
+      "y": 3,
+      "terrain": 1,
+      "name": "Argentina"
+    },
+    {
+      "x": -1,
+      "y": 3,
+      "terrain": 1,
+      "name": "South Africa",
+      "player_slot": 3
+    },
+    {
+      "x": 2,
+      "y": 3,
+      "terrain": 1,
+      "name": "Indonesia"
+    },
+    {
+      "x": 3,
+      "y": 3,
+      "terrain": 1,
+      "name": "New Guinea"
+    },
+    {
+      "x": -1,
+      "y": 4,
+      "terrain": 1,
+      "name": "Madagascar"
+    },
+    {
+      "x": 2,
+      "y": 4,
+      "terrain": 1,
+      "name": "Western Australia",
+      "player_slot": 8
+    },
+    {
+      "x": 3,
+      "y": 4,
+      "terrain": 1,
+      "name": "Eastern Australia"
+    }
+  ],
+  "connections": [
+    { "from": [6, -3], "to": [-3, -3], "direction": 0 },
+    { "from": [0, -3], "to": [1, -2], "direction": 0, "to_direction": 2 },
+    { "from": [-3, 2], "to": [-1, 1], "direction": 1, "to_direction": 3 },
+    { "from": [3, 1], "to": [2, 3], "direction": 5, "to_direction": 1 }
+  ],
+  "regions": [
+    {
+      "name": "North America",
+      "gold_bonus": 15,
+      "spaces": [[-3, -3], [-2, -3], [0, -3], [-3, -2], [-2, -2], [-1, -2], [-3, -1], [-2, -1], [-3, 0]]
+    },
+    {
+      "name": "South America",
+      "gold_bonus": 6,
+      "spaces": [[-3, 1], [-4, 2], [-3, 2], [-4, 3]]
+    },
+    {
+      "name": "Europe",
+      "gold_bonus": 15,
+      "spaces": [[1, -2], [2, -2], [3, -2], [0, -1], [1, -1], [2, -1], [-1, 0]]
+    },
+    {
+      "name": "Africa",
+      "gold_bonus": 9,
+      "spaces": [[-1, 1], [0, 1], [-1, 2], [0, 2], [-1, 3], [-1, 4]]
+    },
+    {
+      "name": "Asia",
+      "gold_bonus": 21,
+      "spaces": [[5, -3], [6, -3], [4, -2], [5, -2], [3, -1], [4, -1], [5, -1], [2, 0], [3, 0], [1, 1], [2, 1], [3, 1]]
+    },
+    {
+      "name": "Australia",
+      "gold_bonus": 6,
+      "spaces": [[2, 3], [3, 3], [2, 4], [3, 4]]
+    }
+  ],
+  "background_image": {
+    "name": "blank_risk_map",
+    "top_left": [
+      -3.152,
+      -4.387
+    ],
+    "top_right": [
+      7.837,
+      -3.806
+    ]
+  }
+}

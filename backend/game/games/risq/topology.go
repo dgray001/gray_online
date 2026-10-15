@@ -2,6 +2,7 @@ package risq
 
 import (
 	"github.com/dgray001/gray_online/game/game_utils"
+	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/gin-gonic/gin"
 )
 
@@ -51,19 +52,53 @@ func (r *GameRisq) ensureSpaceDistances() {
 	r.space_links = spaceLinks(spaces)
 }
 
-// Every adjacency that isn't the normal border between coordinate neighbors, once per pair: seams carry the
-// direction (index into AxialDirectionVectors) leaving "from".
-func spaceLinks(spaces []*RisqSpace) []gin.H {
-	links := []gin.H{}
-	link := func(from *RisqSpace, to *RisqSpace, direction int) {
-		links = append(links, gin.H{"from": from.coordinate.ToFrontend(), "to": to.coordinate.ToFrontend(), "direction": direction})
-	}
+// Every adjacency that isn't the normal border between coordinate neighbors, once per pair: links carry the
+// direction (index into AxialDirectionVectors) leaving "from" and the one arriving at "to".
+func spaceLinks(spaces []*RisqSpace) []spaceLink {
+	links := []spaceLink{}
 	for _, space := range spaces {
 		for direction, vector := range game_utils.AxialDirectionVectors() {
-			adjacent := space.getZone(&vector).adjacent_space
-			if adjacent != nil && adjacent.coordinate != *space.coordinate.Add(&vector) && space.coordinate_key < adjacent.coordinate_key {
-				link(space, adjacent, direction)
+			zone := space.getZone(&vector)
+			adjacent := zone.adjacent_space
+			if adjacent == nil || space.coordinate_key >= adjacent.coordinate_key {
+				continue
 			}
+			to_direction := arrivalDirection(zone, adjacent)
+			if adjacent.coordinate != *space.coordinate.Add(&vector) || to_direction != (direction+3)%6 {
+				links = append(links, spaceLink{from: space, to: adjacent, direction: direction, to_direction: to_direction})
+			}
+		}
+	}
+	return links
+}
+
+// The edge of adjacent that zone's border joins
+func arrivalDirection(zone *RisqZone, adjacent *RisqSpace) int {
+	for _, other := range zone.adjacent_zones {
+		if other.space == adjacent && !other.isCenter() {
+			return other.direction
+		}
+	}
+	return -1
+}
+
+// A link joining from's edge in direction to the edge of to in to_direction
+type spaceLink struct {
+	from, to     *RisqSpace
+	direction    int
+	to_direction int
+}
+
+func (l spaceLink) toFrontend() gin.H {
+	return gin.H{"from": l.from.coordinate.ToFrontend(), "to": l.to.coordinate.ToFrontend(), "direction": l.direction, "to_direction": l.to_direction}
+}
+
+// Only the links a player has explored: at least one end is a space they know
+func (r *GameRisq) spaceLinksToFrontend(player_id int) []gin.H {
+	links := []gin.H{}
+	for _, link := range r.space_links {
+		if link.from.getVisibility(player_id) >= defs.VisibilityFog || link.to.getVisibility(player_id) >= defs.VisibilityFog {
+			links = append(links, link.toFrontend())
 		}
 	}
 	return links

@@ -66,6 +66,11 @@ dwg-risq-turn-report-dialog.dwg-dialog-box {
     border-collapse: collapse;
     font-variant-numeric: tabular-nums;
     width: 100%;
+
+    &.no-gathered th:nth-child(3),
+    &.no-gathered td:nth-child(3) {
+      display: none;
+    }
   }
 
   table.board th,

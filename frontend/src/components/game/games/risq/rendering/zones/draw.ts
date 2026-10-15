@@ -1,5 +1,8 @@
+import type { RisqDisplaySettings } from '../../../../../../scripts/settings_store';
+import { getSettings } from '../../../../../../scripts/settings_store';
 import type { RisqDrawHost } from '../draw_host';
-import type { RisqZone, UnitByTypeData } from '../../model/types';
+import type { RisqBuilding, RisqResource, RisqZone, UnitByTypeData } from '../../model/types';
+import { RESOURCE_DOT_COLORS } from '../overview_dots';
 import { terrainImage, RisqViewMode, buildingVisibleInViewMode, unitVisibleInViewMode } from '../terrain';
 import {
   findOuterZoneIndex,
@@ -13,8 +16,8 @@ import type { Point2D } from '../../../../util/objects2d';
 import { unitImage, comboUnitIconKey, COMBO_UNIT_ICON_SIZE, drawComboUnitIcon } from '../assets/unit';
 import { ColorRGB } from '../../../../../../scripts/color_rgb';
 import { clampNumber, seededRandom } from '../../../../../../scripts/math';
-import { RisqOrderType, RisqVisibilityLevel } from '../../model/types';
-import { isForestResource, resourceImage, resourceIcon } from '../assets/resources';
+import { RisqOrderType, RisqResourceType, RisqVisibilityLevel } from '../../model/types';
+import { isForestResource, resourceImage, resourceIcon, resourceType } from '../assets/resources';
 import { rotatePoint } from '../../../../util/objects2d';
 import { getZoneUnitSlots } from './slots';
 import { buildingImage, rubbleImage } from '../assets/buildings';
@@ -311,6 +314,158 @@ function ghostBuildingId(game: RisqDrawHost, zone: RisqZone): number | undefined
   return zone.building ? undefined : armed?.id;
 }
 
+function drawIdleMarker(ctx: CanvasRenderingContext2D, r: Point2D, size_px: number, pulse: boolean): void {
+  if (size_px <= 0) {
+    return;
+  }
+  const scale = Math.hypot(ctx.getTransform().a, ctx.getTransform().b);
+  const pulse_mult = pulse ? 1 + 0.25 * Math.sin(Date.now() / 150) : 1;
+  const s = (size_px * pulse_mult) / scale;
+  const x = Math.SQRT1_2 * r.x;
+  const y = -Math.SQRT1_2 * r.y;
+  ctx.save();
+  ctx.fillStyle = 'rgb(240, 200, 40)';
+  ctx.strokeStyle = 'rgb(40, 30, 0)';
+  ctx.lineWidth = 1.5 / scale;
+  ctx.beginPath();
+  ctx.arc(x, y, s / 2, 0, 2 * Math.PI);
+  ctx.fill();
+  ctx.stroke();
+  if (size_px >= 10) {
+    ctx.fillStyle = 'black';
+    ctx.font = `bold ${Math.round(s * 0.7)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Z', x, y);
+  }
+  ctx.restore();
+}
+
+function renderOverheadBars(
+  ctx: CanvasRenderingContext2D,
+  r: Point2D,
+  hp: { current: number; max: number } | undefined,
+  sec: { current: number; max: number; color?: string } | undefined,
+  show_hp: boolean,
+  show_sec: boolean,
+  size: number
+): void {
+  ctx.save();
+  const scale = Math.hypot(ctx.getTransform().a, ctx.getTransform().b);
+  const h = size / scale;
+  const inset = Math.min(1 / scale, h / 4);
+  const w = 1.4 * r.x;
+  let y = -r.y - h - 2 / scale;
+  if (show_sec && sec) {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(-w / 2, y, w, h);
+    ctx.fillStyle = sec.color ?? 'rgb(80, 180, 240)';
+    const ratio = Math.max(0, Math.min(1, sec.current / sec.max));
+    ctx.fillRect(-w / 2 + inset, y + inset, (w - 2 * inset) * ratio, h - 2 * inset);
+    y -= h + 1.5 / scale;
+  }
+  if (show_hp && hp) {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(-w / 2, y, w, h);
+    const ratio = Math.max(0, Math.min(1, hp.current / hp.max));
+    ctx.fillStyle = ratio > 0.5 ? 'rgb(60, 200, 60)' : ratio > 0.25 ? 'rgb(230, 190, 40)' : 'rgb(220, 50, 40)';
+    ctx.fillRect(-w / 2 + inset, y + inset, (w - 2 * inset) * ratio, h - 2 * inset);
+  }
+  ctx.restore();
+}
+
+function drawOverheadBars(
+  ctx: CanvasRenderingContext2D,
+  r: Point2D,
+  hp: { current: number; max: number } | undefined,
+  sec: { current: number; max: number; color?: string } | undefined,
+  selected: boolean,
+  display: RisqDisplaySettings = getSettings().risq_display
+): void {
+  const show_hp =
+    !!hp &&
+    hp.max > 0 &&
+    display.healthbars !== 'never' &&
+    (display.healthbars === 'always' ||
+      (display.healthbars === 'damaged_only' && hp.current < hp.max) ||
+      (display.healthbars === 'selected_only' && selected));
+  const show_sec =
+    !!sec &&
+    sec.max > 0 &&
+    display.secondary_bars !== 'never' &&
+    (display.secondary_bars === 'always' ||
+      (display.secondary_bars === 'active_only' && sec.current < sec.max) ||
+      (display.secondary_bars === 'selected_only' && selected));
+  if (!show_hp && !show_sec) {
+    return;
+  }
+  renderOverheadBars(ctx, r, hp, sec, show_hp, show_sec, display.healthbar_size);
+}
+
+function resourceDepletion(resource: RisqResource): { current: number; max: number; color: string } {
+  return {
+    current: resource.resources_left,
+    max: resource.max_resources,
+    color: RESOURCE_DOT_COLORS[resourceType(resource)],
+  };
+}
+
+function buildingSecondaryBar(
+  b: RisqBuilding,
+  display: RisqDisplaySettings
+): { current: number; max: number; color: string } | undefined {
+  const progress_color = 'rgb(80, 150, 240)';
+  if (b.under_construction) {
+    const total = b.construction_stamina_total ?? 0;
+    return { current: total - (b.stamina_remaining ?? 0), max: total, color: progress_color };
+  }
+  if (b.renewing && b.renew_stamina) {
+    return { current: b.renew_stamina - (b.renew_stamina_remaining ?? 0), max: b.renew_stamina, color: progress_color };
+  }
+  if (b.resource_capacity) {
+    const color = RESOURCE_DOT_COLORS[b.resource_category ?? RisqResourceType.ERROR];
+    return { current: b.resources_left ?? 0, max: b.resource_capacity, color };
+  }
+  const stamina_hidden = display.secondary_bars === 'active_only';
+  return !stamina_hidden && (b.current_stamina ?? 0) < (b.max_stamina ?? 0)
+    ? { current: b.current_stamina, max: b.max_stamina, color: progress_color }
+    : undefined;
+}
+
+function drawSlotOverheadBars(
+  ctx: CanvasRenderingContext2D,
+  game: RisqDrawHost,
+  slot: UnitByTypeData[],
+  r: Point2D,
+  selected: boolean,
+  display?: RisqDisplaySettings
+): void {
+  let hp = 0;
+  let max_hp = 0;
+  let stamina = 0;
+  let max_stamina = 0;
+  for (const t of slot) {
+    const units = game.getGame()?.players[t.player_id]?.units;
+    if (!units) {
+      continue;
+    }
+    for (const uid of t.units) {
+      const u = units.get(uid);
+      if (u?.combat_stats) {
+        hp += u.combat_stats.health;
+        max_hp += u.combat_stats.max_health;
+        stamina += u.current_stamina ?? 0;
+        max_stamina += u.max_stamina ?? 0;
+      }
+    }
+  }
+  if (max_hp > 0) {
+    const show_stamina = (display ?? getSettings().risq_display).secondary_bars !== 'active_only';
+    const sec = show_stamina && max_stamina > 0 ? { current: stamina, max: max_stamina } : undefined;
+    drawOverheadBars(ctx, r, { current: hp, max: max_hp }, sec, selected, display);
+  }
+}
+
 export type RisqEntityPass = 'terrain' | 'unselected' | 'selected';
 
 export function drawRisqZone(
@@ -366,6 +521,9 @@ export function drawRisqZone(
   if (entity_pass === 'terrain') {
     return;
   }
+  const display = getSettings().risq_display;
+  const show_idle = display.idle_indicator_size > 0 && !game.session.isReplaying();
+  const idle_ids = show_idle ? game.planning.idleIds() : undefined;
   for (const [i, part] of zone.hovered_data.entries()) {
     const selected =
       i === 0
@@ -390,6 +548,7 @@ export function drawRisqZone(
     if (i === 0) {
       if (!!zone.resource && view_mode !== RisqViewMode.MILITARY && view_mode !== RisqViewMode.OWNERSHIP) {
         ctx.drawImage(resourceIcon(game, zone.resource), -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
+        drawOverheadBars(ctx, part.r, undefined, resourceDepletion(zone.resource), selected, display);
       } else if (!zone.building || buildingVisibleInViewMode(zone.building, view_mode)) {
         let building_image: string;
         let building_color: ColorRGB | undefined;
@@ -447,6 +606,16 @@ export function drawRisqZone(
           const flag_size = 0.9 * part.r.x;
           ctx.drawImage(flag_icon, 0.5 * part.r.x, -1.4 * part.r.y, flag_size, flag_size);
         }
+        if (zone.building && zone.building.player_id === game.getPlayerId()) {
+          if (idle_ids?.buildings.has(zone.building.internal_id)) {
+            drawIdleMarker(ctx, part.r, display.idle_indicator_size, display.idle_indicator_pulse);
+          }
+        }
+        if (zone.building) {
+          const b = zone.building;
+          const hp = b.combat_stats ? { current: b.combat_stats.health, max: b.combat_stats.max_health } : undefined;
+          drawOverheadBars(ctx, part.r, hp, buildingSecondaryBar(b, display), selected, display);
+        }
       }
     } else if (visibility === RisqVisibilityLevel.POOR) {
       if (i === 1 && !!zone.unit_count && view_mode !== RisqViewMode.OWNERSHIP) {
@@ -471,6 +640,13 @@ export function drawRisqZone(
       } else {
         const slot_total = slot.reduce((sum, t) => sum + t.units.size, 0);
         drawUnitTypeCluster(ctx, game, slot, part.r, slot_total, primary_color, secondary_color, true);
+        if (
+          idle_ids &&
+          slot.some((t) => t.player_id === game.getPlayerId() && [...t.units].some((uid) => idle_ids.units.has(uid)))
+        ) {
+          drawIdleMarker(ctx, part.r, display.idle_indicator_size, display.idle_indicator_pulse);
+        }
+        drawSlotOverheadBars(ctx, game, slot, part.r, selected, display);
       }
     }
     ctx.rotate(rotation);
@@ -478,7 +654,7 @@ export function drawRisqZone(
     if (selected) {
       const prev_line_width = ctx.lineWidth;
       ctx.strokeStyle = 'white';
-      ctx.lineWidth = 0.4;
+      ctx.lineWidth = display.selection_outline_thickness / Math.hypot(ctx.getTransform().a, ctx.getTransform().b);
       drawEllipse(ctx, part.c, part.r);
       ctx.lineWidth = prev_line_width;
       ctx.save();

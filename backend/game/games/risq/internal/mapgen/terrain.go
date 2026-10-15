@@ -24,7 +24,7 @@ func resolveTerrainId(expr ScriptExpr, ctx *mapScriptContext) (uint32, error) {
 	if err != nil {
 		return 0, err
 	}
-	if _, ok := defs.TerrainConfigs[uint32(value)]; !ok {
+	if _, ok := ctx.config().Terrains[uint32(value)]; !ok {
 		return 0, fmt.Errorf("unknown terrain id %d", value)
 	}
 	return uint32(value), nil
@@ -69,7 +69,7 @@ func (p terrainPickJSON) resolve(ctx *mapScriptContext) (uint32, error) {
 		if err != nil {
 			return 0, err
 		}
-		return defs.RandomTerrainId(terrain_type, rng), nil
+		return ctx.config().RandomTerrainId(terrain_type, rng), nil
 	}
 	return 0, fmt.Errorf("must specify terrain_type, terrain_id, or terrain_ids")
 }
@@ -282,7 +282,7 @@ func stepTerrainBlob(ctx *mapScriptContext, raw json.RawMessage) error {
 	if variant != defs.TerrainType_NONE {
 		filter := matches
 		matches = func(space Space) bool {
-			_, convertible := defs.TerrainVariant(space.Terrain(), variant)
+			_, convertible := ctx.config().TerrainVariant(space.Terrain(), variant)
 			return convertible && filter(space)
 		}
 	}
@@ -298,7 +298,7 @@ func stepTerrainBlob(ctx *mapScriptContext, raw json.RawMessage) error {
 		for _, space := range blob {
 			var terrain_id uint32
 			if variant != defs.TerrainType_NONE {
-				terrain_id, _ = defs.TerrainVariant(space.Terrain(), variant)
+				terrain_id, _ = ctx.config().TerrainVariant(space.Terrain(), variant)
 			} else if terrain_id, err = p.resolve(ctx); err != nil {
 				return err
 			}

@@ -1,0 +1,4 @@
+[
+  { "tech_id": 1, "mercenary_cost_markup_delta": -0.2 },
+  { "tech_id": 2, "mercenary_cost_markup_delta": -0.1 }
+]

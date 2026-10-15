@@ -11,9 +11,10 @@ import type {
   RisqUnit,
   RisqZone,
 } from '../model/types';
-import type { GameRisqFromServer } from '../transport/snapshot_types';
-import { serverToGameRisq } from '../transport/snapshot_conversion';
+import type { GameRisqFromServer, SubmissionNoticeData } from '../transport/snapshot_types';
+import { serverToGameRisq, serverToRisqOrder } from '../transport/snapshot_conversion';
 import type { RisqTurnReport } from '../transport/turn_report';
+import { replaySnapshot } from './replay/replay_snapshot';
 
 /** Maps each explored space's coordinate key to the region it belongs to */
 function buildRegionLookup(regions: RisqRegion[]): Map<number, RisqRegion> {
@@ -35,6 +36,19 @@ export class RisqSession {
   private last_turn_report?: RisqTurnReport;
   private resource_configs = new Map<number, RisqResourceConfig>();
   private toggling = false;
+  private replaying = false;
+  private replay_tick = 0;
+  private replay_stop = 0;
+  private server_game?: GameRisqFromServer;
+  private live_game?: GameRisq;
+
+  isReplaying(): boolean {
+    return this.replaying;
+  }
+
+  setReplaying(replaying: boolean): void {
+    this.replaying = replaying;
+  }
 
   isToggling(): boolean {
     return this.toggling;
@@ -72,7 +86,66 @@ export class RisqSession {
   }
 
   replaceSnapshot(new_game: GameRisqFromServer): void {
-    this.game = serverToGameRisq(new_game);
+    this.server_game = new_game;
+    this.live_game = serverToGameRisq(new_game);
+    this.adoptGame(this.live_game);
+    if (this.replaying) {
+      this.applyReplayTick(this.replay_tick);
+    }
+  }
+
+  /** Applies a submission notice to the live game and its raw snapshot; false when it is from another turn or the game ended */
+  applySubmission(notice: SubmissionNoticeData): boolean {
+    const live = this.live_game;
+    const raw = this.server_game;
+    if (!live || !raw || notice.turn_number !== live.turn_number || live.game_base.game_ended) {
+      return false;
+    }
+    const orders = notice.active_orders;
+    for (const game of new Set([live, this.game])) {
+      const player = game?.players[notice.player_id];
+      if (game && player) {
+        game.giving_orders = notice.giving_orders;
+        player.orders_submitted = notice.orders_submitted;
+        player.active_orders = orders ? orders.map(serverToRisqOrder).filter((o) => !!o) : player.active_orders;
+      }
+    }
+    raw.giving_orders = notice.giving_orders;
+    const raw_player = raw.players[notice.player_id];
+    if (raw_player) {
+      raw_player.orders_submitted = notice.orders_submitted;
+      raw_player.active_orders = orders ?? raw_player.active_orders;
+    }
+    return true;
+  }
+
+  /** The tick whose intents are shown at a half stop, or undefined at a whole stop */
+  replayIntentTick(): number | undefined {
+    return this.replaying && !Number.isInteger(this.replay_stop) ? Math.ceil(this.replay_stop) : undefined;
+  }
+
+  showReplayTick(stop: number): void {
+    this.replay_stop = stop;
+    const tick = Math.floor(stop);
+    if (tick !== this.replay_tick || this.game === this.live_game) {
+      this.applyReplayTick(tick);
+    }
+  }
+
+  endReplay(): void {
+    this.adoptGame(this.live_game);
+  }
+
+  private applyReplayTick(tick: number): void {
+    const journal = this.live_game?.last_turn_journal;
+    if (this.server_game && journal) {
+      this.replay_tick = tick;
+      this.adoptGame(serverToGameRisq(replaySnapshot(this.server_game, journal, tick)));
+    }
+  }
+
+  private adoptGame(game: GameRisq | undefined): void {
+    this.game = game;
     this.region_by_space = buildRegionLookup(this.game?.regions ?? []);
     this.corpse_locations.clear();
     for (const space of this.game?.spaces.flat() ?? []) {
@@ -96,7 +169,9 @@ export class RisqSession {
   }
 
   givingOrders(): boolean {
-    return !!this.game?.giving_orders && !this.game.game_base.game_ended && !this.getPlayer()?.eliminated;
+    return (
+      !!this.game?.giving_orders && !this.game.game_base.game_ended && !this.getPlayer()?.eliminated && !this.replaying
+    );
   }
 
   canGiveOrders(): boolean {
@@ -174,5 +249,12 @@ export class RisqSession {
     return hexagonalBoardRows(space.coordinate, this.game.board_size)
       .map((c) => this.spaceAt(c))
       .filter((s): s is RisqSpace => !!s);
+  }
+
+  ownedSpacesCount(player_id: number): number {
+    if (!this.game) {
+      return 0;
+    }
+    return this.game.spaces.flat().filter((s) => s?.ownership === player_id).length;
   }
 }

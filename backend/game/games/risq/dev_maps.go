@@ -33,7 +33,15 @@ func PreviewCustomMap(doc []byte) (gin.H, error) {
 	generate := func(board mapgen.Board, _ *rand.Rand, num_players int) error {
 		return mapgen.GenerateCustomDocument(board, num_players, doc)
 	}
-	r, err := createGame(base, make(chan game.PlayerAction, 16), 1, generate)
+	config_dir, err := mapgen.CustomDocumentConfigDir(doc)
+	if err != nil {
+		return nil, err
+	}
+	config, err := gameConfig(config_dir)
+	if err != nil {
+		return nil, err
+	}
+	r, err := createGame(base, make(chan game.PlayerAction, 16), 1, config, generate)
 	if err != nil {
 		return nil, err
 	}
@@ -78,9 +86,9 @@ func SaveCustomMap(name string, doc []byte) error {
 	return defs.WriteConfigFile(append(pretty.Bytes(), '\n'), "maps", "custom", name+".json")
 }
 
-func AllTerrainConfigsToFrontend() []gin.H {
-	terrains := make([]gin.H, 0, len(defs.TerrainConfigs))
-	for id, config := range defs.TerrainConfigs {
+func AllTerrainConfigsToFrontend(game_config *defs.Config) []gin.H {
+	terrains := make([]gin.H, 0, len(game_config.Terrains))
+	for id, config := range game_config.Terrains {
 		terrains = append(terrains, gin.H{"terrain_id": id, "display_name": config.Display_name, "terrain_type": config.Terrain_type})
 	}
 	sort.Slice(terrains, func(i, j int) bool { return terrains[i]["terrain_id"].(uint32) < terrains[j]["terrain_id"].(uint32) })
@@ -96,12 +104,17 @@ func sortedEntities[V any](configs map[uint32]V, display_name func(V) string) []
 	return entities
 }
 
-func AllEntityConfigsToFrontend() gin.H {
+func AllEntityConfigsToFrontend(config *defs.Config) gin.H {
 	return gin.H{
-		"buildings": sortedEntities(defs.BuildingConfigs, func(c defs.BuildingConfig) string { return c.Display_name }),
-		"units":     sortedEntities(defs.UnitConfigs, func(c defs.UnitConfig) string { return c.Display_name }),
-		"resources": sortedEntities(defs.ResourceConfigs, func(c defs.ResourceConfig) string { return c.Display_name }),
+		"buildings": sortedEntities(config.Buildings, func(c defs.BuildingConfig) string { return c.Display_name }),
+		"units":     sortedEntities(config.Units, func(c defs.UnitConfig) string { return c.Display_name }),
+		"resources": sortedEntities(config.Resources, func(c defs.ResourceConfig) string { return c.Display_name }),
 	}
+}
+
+// The tables a map's config folder resolves to, "" being the default tables
+func ConfigFromDir(config_dir string) (*defs.Config, error) {
+	return gameConfig(config_dir)
 }
 
 func DeleteCustomMap(name string) error {

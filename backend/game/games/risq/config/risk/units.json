@@ -1,0 +1,15 @@
+[
+  {
+    "unit_id": 11,
+    "display_name": "Unit",
+    "description": "The only unit; hired as a mercenary.",
+    "unit_type": "infantry",
+    "max_health": 11,
+    "attack_type": "blunt",
+    "attack_blunt": 6,
+    "defense_piercing": 1,
+    "cost": { "gold": 2 },
+    "production_stamina": 10,
+    "turn_stamina": 15
+  }
+]

@@ -10,8 +10,20 @@ export enum RisqViewMode {
   OWNERSHIP = 3,
 }
 
-export function nextViewMode(mode: RisqViewMode): RisqViewMode {
-  return ((mode + 1) % 4) as RisqViewMode;
+/** The resource view needs an economy and the all view needs more than military units to show */
+export function viewModeAllowed(mode: RisqViewMode, has_economy: boolean, military_only: boolean): boolean {
+  if (mode === RisqViewMode.RESOURCE) {
+    return has_economy;
+  }
+  return mode !== RisqViewMode.ALL || !military_only;
+}
+
+export function nextViewMode(mode: RisqViewMode, has_economy = true, military_only = false): RisqViewMode {
+  let next = ((mode + 1) % 4) as RisqViewMode;
+  while (!viewModeAllowed(next, has_economy, military_only)) {
+    next = ((next + 1) % 4) as RisqViewMode;
+  }
+  return next;
 }
 
 export function unitVisibleInViewMode(unit_type: RisqUnitType, view_mode: RisqViewMode): boolean {

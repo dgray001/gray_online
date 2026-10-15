@@ -4,7 +4,7 @@ import type { Point2D } from '../../game/util/objects2d';
 import type { EditorTarget, EditorToolContext } from '../editor_tool';
 import { EditorTool } from '../editor_tool';
 import type { MapDoc, MapDocConnection, MapDocSpace } from '../map_doc';
-import { DEFAULT_TERRAIN_ID, findSpace } from '../map_doc';
+import { DEFAULT_TERRAIN_ID, arrivalDirection, findSpace } from '../map_doc';
 import { ConnectionsPanel } from './connections_panel';
 
 const DIRECTIONS: Point2D[] = [
@@ -20,7 +20,8 @@ export class ConnectionsTool extends EditorTool {
   readonly id = 'connections';
   readonly label = 'Links';
   readonly hotkey = 'c';
-  private direction?: number;
+  private direction = 0;
+  private to_direction = 3;
   private pending?: MapDocSpace;
   private message = 'Choose the first space.';
   private panel: ConnectionsPanel;
@@ -28,17 +29,18 @@ export class ConnectionsTool extends EditorTool {
   constructor(context: EditorToolContext) {
     super(context);
     this.panel = new ConnectionsPanel(
-      () =>
-        this.direction === undefined
-          ? 'Center link'
-          : `Edge ${this.direction} (${DIRECTIONS[this.direction].x}, ${DIRECTIONS[this.direction].y})`,
+      () => (this.pending ? `Arrive at edge ${this.to_direction}` : `Leave by edge ${this.direction}`),
       () => {
         this.syncPending();
         return this.message;
       },
       () => {
-        this.direction = this.direction === 5 ? undefined : (this.direction ?? -1) + 1;
-        this.deactivated();
+        if (this.pending) {
+          this.to_direction = (this.to_direction + 1) % 6;
+        } else {
+          this.direction = (this.direction + 1) % 6;
+          this.to_direction = (this.direction + 3) % 6;
+        }
       }
     );
   }
@@ -50,6 +52,7 @@ export class ConnectionsTool extends EditorTool {
   }
   deactivated(): void {
     this.pending = undefined;
+    this.to_direction = (this.direction + 3) % 6;
     this.message = 'Choose the first space.';
   }
   private syncPending(): void {
@@ -76,7 +79,7 @@ export class ConnectionsTool extends EditorTool {
       this.deactivated();
     } else if (!this.pending) {
       this.pending = space;
-      this.message = `From (${space.x}, ${space.y}); choose destination.`;
+      this.message = `From (${space.x}, ${space.y}); pick arrival edge, choose destination.`;
     } else {
       this.toggleConnection(doc, this.pending, space);
     }
@@ -91,18 +94,16 @@ export class ConnectionsTool extends EditorTool {
           link.from[1] === from.y &&
           link.to[0] === to.x &&
           link.to[1] === to.y &&
-          link.direction === this.direction) ||
+          link.direction === this.direction &&
+          arrivalDirection(link) === this.to_direction) ||
         (link.from[0] === to.x &&
           link.from[1] === to.y &&
           link.to[0] === from.x &&
           link.to[1] === from.y &&
-          (this.direction === undefined ? link.direction === undefined : link.direction === (this.direction + 3) % 6))
+          link.direction === this.to_direction &&
+          arrivalDirection(link) === this.direction)
     );
-    if (
-      index < 0 &&
-      this.direction !== undefined &&
-      (this.edgeOccupied(doc, from, this.direction) || this.edgeOccupied(doc, to, (this.direction + 3) % 6))
-    ) {
+    if (index < 0 && (this.edgeOccupied(doc, from, this.direction) || this.edgeOccupied(doc, to, this.to_direction))) {
       this.message = 'That edge is already connected.';
       return;
     }
@@ -110,11 +111,11 @@ export class ConnectionsTool extends EditorTool {
     if (index >= 0) {
       after.splice(index, 1);
     } else {
-      after.push({
-        from: [from.x, from.y],
-        to: [to.x, to.y],
-        ...(this.direction === undefined ? {} : { direction: this.direction }),
-      });
+      const link: MapDocConnection = { from: [from.x, from.y], to: [to.x, to.y], direction: this.direction };
+      if (this.to_direction !== (this.direction + 3) % 6) {
+        link.to_direction = this.to_direction;
+      }
+      after.push(link);
     }
     this.commit(doc, after);
     this.deactivated();
@@ -139,21 +140,26 @@ export class ConnectionsTool extends EditorTool {
       !!findSpace(doc, space.x + vector.x, space.y + vector.y) ||
       (doc.connections ?? []).some(
         (link) =>
-          link.direction !== undefined &&
-          ((link.from[0] === space.x && link.from[1] === space.y && link.direction === direction) ||
-            (link.to[0] === space.x && link.to[1] === space.y && (link.direction + 3) % 6 === direction))
+          (link.from[0] === space.x && link.from[1] === space.y && link.direction === direction) ||
+          (link.to[0] === space.x && link.to[1] === space.y && arrivalDirection(link) === direction)
       )
     );
   }
-  private drawConnection(ctx: CanvasRenderingContext2D, from: Point2D, to: Point2D, direction?: number): void {
+  private drawConnection(
+    ctx: CanvasRenderingContext2D,
+    from: Point2D,
+    to: Point2D,
+    direction: number,
+    to_direction: number
+  ): void {
     ctx.save();
     const start = this.connectionPoint(from, direction);
-    const end = this.connectionPoint(to, direction === undefined ? undefined : (direction + 3) % 6);
+    const end = this.connectionPoint(to, to_direction);
     drawLine(ctx, start, end);
     for (const point of [start, end]) {
       drawHexagon(ctx, point, this.context.hexR() * 0.3);
     }
-    drawText(ctx, direction === undefined ? 'Center' : `Edge ${direction}`, {
+    drawText(ctx, `${direction} > ${to_direction}`, {
       p: { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 },
       w: 90,
       fill_style: ctx.strokeStyle as string,
@@ -162,11 +168,8 @@ export class ConnectionsTool extends EditorTool {
     });
     ctx.restore();
   }
-  private connectionPoint(space: Point2D, direction?: number): Point2D {
+  private connectionPoint(space: Point2D, direction: number): Point2D {
     const center = this.context.toCanvas(space);
-    if (direction === undefined) {
-      return center;
-    }
     const vector = DIRECTIONS[direction];
     const neighbor = this.context.toCanvas({ x: space.x + vector.x, y: space.y + vector.y });
     return { x: center.x + (neighbor.x - center.x) * 0.4, y: center.y + (neighbor.y - center.y) * 0.4 };
@@ -178,7 +181,13 @@ export class ConnectionsTool extends EditorTool {
     ctx.strokeStyle = 'rgb(90, 220, 255)';
     ctx.lineWidth = 2;
     for (const link of this.context.doc()?.connections ?? []) {
-      this.drawConnection(ctx, { x: link.from[0], y: link.from[1] }, { x: link.to[0], y: link.to[1] }, link.direction);
+      this.drawConnection(
+        ctx,
+        { x: link.from[0], y: link.from[1] },
+        { x: link.to[0], y: link.to[1] },
+        link.direction,
+        arrivalDirection(link)
+      );
     }
     if (this.pending) {
       ctx.strokeStyle = 'rgb(255, 220, 80)';
@@ -186,7 +195,7 @@ export class ConnectionsTool extends EditorTool {
       drawHexagon(ctx, this.context.toCanvas(this.pending), this.context.hexR());
       if (target) {
         ctx.setLineDash([8, 5]);
-        this.drawConnection(ctx, this.pending, target.space, this.direction);
+        this.drawConnection(ctx, this.pending, target.space, this.direction, this.to_direction);
       }
     }
     ctx.restore();

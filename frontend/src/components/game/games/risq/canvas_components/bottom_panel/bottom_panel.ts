@@ -74,7 +74,7 @@ export class RisqBottomPanel implements CanvasComponent {
   }
 
   private recomputeLayout(): void {
-    const canvas_size = this.risq.viewport.canvasSize();
+    const canvas_size = this.risq.hudCanvasSize();
     const left_edge = this.risq.left_panel.w() + RisqBottomPanel.MARGIN;
     const right_edge = canvas_size.width - this.risq.right_panel.fullWidth() - RisqBottomPanel.MARGIN;
     const center = this.config.center_item;
@@ -118,7 +118,7 @@ export class RisqBottomPanel implements CanvasComponent {
     this.content_h = Math.max(0, ...groups.map((group) => this.groupHeight(group)));
     this.content_w =
       this.group_widths.reduce((sum, w) => sum + w, 0) + RisqBottomPanel.GAP * Math.max(groups.length - 1, 0);
-    const canvas_w = this.risq.viewport.canvasSize().width;
+    const canvas_w = this.risq.hudCanvasSize().width;
     const center_group_index = groups.findIndex((group) => group.includes(center));
     const center_group = center_group_index < 0 ? groups.length : center_group_index;
     const center_offset =
@@ -130,7 +130,7 @@ export class RisqBottomPanel implements CanvasComponent {
     this.panel_h = this.content_h + 2 * RisqBottomPanel.PADDING;
     this.p = {
       x: panel_left,
-      y: this.risq.viewport.canvasSize().height - this.panel_h - RisqBottomPanel.MARGIN,
+      y: this.risq.hudCanvasSize().height - this.panel_h - RisqBottomPanel.MARGIN,
     };
     this.separator_xs = [];
     let x = canvas_w / 2 - center_offset;

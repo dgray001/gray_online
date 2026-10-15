@@ -9,6 +9,7 @@ import (
 
 // Answers every ai query from the player's frontend snapshot only, so the ai knows exactly what a human would.
 type aiView struct {
+	config                *defs.Config
 	game                  *snapGame
 	me                    *snapPlayer
 	spaces                map[ai.Coordinate]*snapSpace
@@ -47,9 +48,9 @@ type snapZoneEntry struct {
 	zone  *snapZone
 }
 
-func newAiView(game *snapGame, player_id int) (*aiView, bool) {
+func newAiView(config *defs.Config, game *snapGame, player_id int) (*aiView, bool) {
 	v := &aiView{
-		game: game, spaces: map[ai.Coordinate]*snapSpace{}, units: map[uint64]*snapUnit{}, buildings: map[uint64]*snapBuilding{},
+		config: config, game: game, spaces: map[ai.Coordinate]*snapSpace{}, units: map[uint64]*snapUnit{}, buildings: map[uint64]*snapBuilding{},
 		planned: map[ai.ZoneRef]bool{}, order_ids: map[uint64]bool{}, assigned_units: map[uint64]*ai.CurrentOrder{},
 		claimed_buildings: map[uint64]bool{}, ordered_foundations: map[ai.ZoneRef]uint32{}, cancelled_foundations: map[ai.ZoneRef]bool{},
 		cancelled_orders: map[uint64]bool{}, planned_techs: map[uint32]bool{}, planned_production: map[uint64]int{},
@@ -125,10 +126,10 @@ func (v *aiView) gatherTargetAt(ref ai.ZoneRef) (ai.ResourceView, bool) {
 		return ai.ResourceView{}, false
 	}
 	if r := zone.Resource; r != nil {
-		return ai.ResourceView{InternalID: r.InternalId, Category: toAiCategory(defs.ResourceConfigs[r.ResourceId].Category), Location: ref, AmountLeft: r.ResourcesLeft}, true
+		return ai.ResourceView{InternalID: r.InternalId, Category: toAiCategory(v.config.Resources[r.ResourceId].Category), Location: ref, AmountLeft: r.ResourcesLeft}, true
 	}
-	if b := zone.Building; b != nil && defs.BuildingConfigs[b.BuildingId].IsGatherable() {
-		return ai.ResourceView{InternalID: b.InternalId, Category: toAiCategory(defs.BuildingConfigs[b.BuildingId].Gather.Resource_category), Location: ref, AmountLeft: b.ResourcesLeft}, true
+	if b := zone.Building; b != nil && v.config.Buildings[b.BuildingId].IsGatherable() {
+		return ai.ResourceView{InternalID: b.InternalId, Category: toAiCategory(v.config.Buildings[b.BuildingId].Gather.Resource_category), Location: ref, AmountLeft: b.ResourcesLeft}, true
 	}
 	return ai.ResourceView{}, false
 }
@@ -195,7 +196,7 @@ func (v *aiView) unitViewShallow(u *snapUnit) ai.UnitView {
 		Kind:             kind,
 		Location:         v.unitLocation(u),
 		CurrentStamina:   u.CurrentStamina,
-		Builds:           unitBuilds(u.UnitId),
+		Builds:           v.unitBuilds(u.UnitId),
 		GarrisonedIn:     u.GarrisonedIn,
 		Stance:           ai.UnitStance(u.Stance),
 		InterruptCurrent: u.InterruptCurrent,
@@ -234,26 +235,26 @@ func (v *aiView) unitView(u *snapUnit) ai.UnitView {
 
 func (v *aiView) producibles(b *snapBuilding) []ai.Producible {
 	producibles := make([]ai.Producible, 0)
-	for _, p := range defs.BuildingConfigs[b.BuildingId].Produces {
+	for _, p := range v.config.Buildings[b.BuildingId].Produces {
 		switch p.Kind {
 		case defs.ProducibleKind_UNIT:
-			if !v.techMet(defs.UnitConfigs[p.Id].Required_tech_id) {
+			if !v.techMet(v.config.Units[p.Id].Required_tech_id) {
 				continue
 			}
-			cost, _ := defs.UnitProductionCost(p.Id)
-			producibles = append(producibles, ai.Producible{Kind: ai.ProducibleUnit, ID: p.Id, Cost: toCost(cost), UnitType: ai.UnitType(defs.UnitConfigs[p.Id].Unit_type)})
+			cost, _ := v.config.UnitProductionCost(p.Id)
+			producibles = append(producibles, ai.Producible{Kind: ai.ProducibleUnit, ID: p.Id, Cost: toCost(cost), UnitType: ai.UnitType(v.config.Units[p.Id].Unit_type)})
 		case defs.ProducibleKind_TECH:
-			if _, researching_or_done := v.me.ResearchedTechs[p.Id]; researching_or_done || v.planned_techs[p.Id] || !v.techMet(defs.TechConfigs[p.Id].Required_tech_id) {
+			if _, researching_or_done := v.me.ResearchedTechs[p.Id]; researching_or_done || v.planned_techs[p.Id] || !v.techMet(v.config.Techs[p.Id].Required_tech_id) {
 				continue
 			}
-			producibles = append(producibles, ai.Producible{Kind: ai.ProducibleTech, ID: p.Id, Cost: toCost(defs.TechConfigs[p.Id].Cost)})
+			producibles = append(producibles, ai.Producible{Kind: ai.ProducibleTech, ID: p.Id, Cost: toCost(v.config.Techs[p.Id].Cost)})
 		}
 	}
 	return producibles
 }
 
 func (v *aiView) buildingView(b *snapBuilding) ai.BuildingView {
-	config := defs.BuildingConfigs[b.BuildingId]
+	config := v.config.Buildings[b.BuildingId]
 	return ai.BuildingView{
 		InternalID:        b.InternalId,
 		PlayerID:          b.PlayerId,
@@ -286,7 +287,7 @@ func (v *aiView) ownBuildingView(b *snapBuilding) ai.BuildingView {
 		}
 	}
 	view.PlannedProduction = v.planned_production[b.InternalId]
-	view.Idle = !b.UnderConstruction && len(live) == 0 && view.PlannedProduction == 0 && len(defs.BuildingConfigs[b.BuildingId].Produces) > 0
+	view.Idle = !b.UnderConstruction && len(live) == 0 && view.PlannedProduction == 0 && len(v.config.Buildings[b.BuildingId].Produces) > 0
 	return view
 }
 
@@ -467,7 +468,7 @@ func (v *aiView) techMet(required_tech_id uint32) bool {
 }
 
 func (v *aiView) BuildingAvailable(building_id uint32) bool {
-	return v.techMet(defs.BuildingConfigs[building_id].Required_tech_id)
+	return v.techMet(v.config.Buildings[building_id].Required_tech_id)
 }
 
 func (v *aiView) ScopedUnits() []ai.UnitView {
@@ -540,14 +541,14 @@ func (v *aiView) KnownEnemyBuildings() []ai.BuildingView {
 // Returns the node's view, per-gatherer turn rate, and gatherer capacity
 func (v *aiView) gatherableAt(entry snapZoneEntry, category ai.ResourceCategory) (ai.ResourceView, int, int, bool) {
 	if r := entry.zone.Resource; r != nil {
-		view := ai.ResourceView{InternalID: r.InternalId, Category: toAiCategory(defs.ResourceConfigs[r.ResourceId].Category), Location: entry.ref, AmountLeft: r.ResourcesLeft}
+		view := ai.ResourceView{InternalID: r.InternalId, Category: toAiCategory(v.config.Resources[r.ResourceId].Category), Location: entry.ref, AmountLeft: r.ResourcesLeft}
 		return view, r.BaseGatherSpeed, r.GatherCapacity, r.ResourcesLeft > 0 && view.Category == category
 	}
 	b := entry.zone.Building
 	if b == nil || b.PlayerId != v.playerId() || b.UnderConstruction || b.ResourcesLeft <= 0 {
 		return ai.ResourceView{}, 0, 0, false
 	}
-	config := defs.BuildingConfigs[b.BuildingId]
+	config := v.config.Buildings[b.BuildingId]
 	if !config.IsGatherable() || toAiCategory(config.Gather.Resource_category) != category {
 		return ai.ResourceView{}, 0, 0, false
 	}
@@ -609,7 +610,7 @@ func (v *aiView) NearestResource(from ai.ZoneRef, category ai.ResourceCategory, 
 func (v *aiView) KnownResources(category ai.ResourceCategory) []ai.ResourceView {
 	resources := make([]ai.ResourceView, 0)
 	for _, entry := range v.zones {
-		if r := entry.zone.Resource; r != nil && r.ResourcesLeft > 0 && toAiCategory(defs.ResourceConfigs[r.ResourceId].Category) == category {
+		if r := entry.zone.Resource; r != nil && r.ResourcesLeft > 0 && toAiCategory(v.config.Resources[r.ResourceId].Category) == category {
 			resources = append(resources, ai.ResourceView{InternalID: r.InternalId, Category: category, Location: entry.ref, AmountLeft: r.ResourcesLeft})
 		}
 	}
@@ -617,17 +618,17 @@ func (v *aiView) KnownResources(category ai.ResourceCategory) []ai.ResourceView 
 }
 
 func (v *aiView) BuildCost(building_id uint32) ai.Cost {
-	cost, _ := defs.BuildingProductionCost(building_id)
+	cost, _ := v.config.BuildingProductionCost(building_id)
 	return toCost(cost)
 }
 
 func (v *aiView) UnitCost(unit_id uint32) ai.Cost {
-	cost, _ := defs.UnitProductionCost(unit_id)
+	cost, _ := v.config.UnitProductionCost(unit_id)
 	return toCost(cost)
 }
 
 func (v *aiView) TechCost(tech_id uint32) ai.Cost {
-	return toCost(defs.TechConfigs[tech_id].Cost)
+	return toCost(v.config.Techs[tech_id].Cost)
 }
 
 func (v *aiView) NearestUnexplored(from ai.ZoneRef) ([]ai.ZoneRef, bool) {
@@ -639,11 +640,24 @@ func (v *aiView) NearestUnexplored(from ai.ZoneRef) ([]ai.ZoneRef, bool) {
 	return tied, len(tied) > 0
 }
 
-// Mirrors the build rule against snapshot ownership: a space I own, or an unowned one bordering one I own
+func (v *aiView) ownSpaceCount() int {
+	count := 0
+	for _, s := range v.spaces {
+		if owner, known := spaceOwner(s); known && owner == v.playerId() {
+			count++
+		}
+	}
+	return count
+}
+
+// Mirrors the build rule against snapshot ownership: a space I own, an unowned one bordering one I own, or any unowned space if owning 0
 func (v *aiView) buildable(space *snapSpace) bool {
 	owner, known := spaceOwner(space)
 	if !known || owner != -1 {
 		return known && owner == v.playerId()
+	}
+	if v.ownSpaceCount() == 0 {
+		return true
 	}
 	for _, adjacent := range v.spaceNeighbors(toCoordinate(space.Coordinate)) {
 		if adj_owner, adj_known := spaceOwner(v.spaces[adjacent]); adj_known && adj_owner == v.playerId() {

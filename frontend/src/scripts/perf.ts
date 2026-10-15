@@ -4,6 +4,7 @@ import { DEV } from './util';
 
 const FLUSH_MS = 5000;
 const OVER_BUDGET_MS = 20;
+const PRESENT_BUDGET_MS = 25;
 
 declare interface PerfAggregate {
   n: number;
@@ -35,6 +36,16 @@ export function perfRecord(kind: string, ms: number, budget_ms: number = OVER_BU
   agg.max_ms = Math.max(agg.max_ms, ms);
   agg.over_budget += ms > budget_ms ? 1 : 0;
   aggregates.set(kind, agg);
+}
+
+/** Runs fn and aggregates its duration under kind */
+export function perfMeasure<T>(kind: string, fn: () => T): T {
+  const start = performance.now();
+  try {
+    return fn();
+  } finally {
+    perfRecord(kind, performance.now() - start);
+  }
 }
 
 /** Logs one discrete entry, such as a snapshot apply with its size and turn */
@@ -78,6 +89,15 @@ export function startPerf(): void {
   started = true;
   void apiPost('dev/perf/enable', {});
   setInterval(flushPerf, FLUSH_MS);
+  let last_present = performance.now();
+  const record_presented_frame = (now: number): void => {
+    if (!document.hidden) {
+      perfRecord('present_gap', now - last_present, PRESENT_BUDGET_MS);
+    }
+    last_present = now;
+    requestAnimationFrame(record_presented_frame);
+  };
+  requestAnimationFrame(record_presented_frame);
   window.addEventListener('pagehide', (): void => {
     navigator.sendBeacon('/api/dev/perf/log', new Blob([JSON.stringify(drainEntries())], { type: 'application/json' }));
   });

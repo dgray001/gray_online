@@ -1,4 +1,5 @@
 import type { HotkeyCombo, RisqHotkeyBindings } from '../components/game/games/risq/application/input/hotkeys';
+import { RISQ_DISPLAY_KEYS, RISQ_DISPLAY_SPECS } from '../components/game/games/risq/application/display_options';
 import { defaultRisqHotkeyBindings, RisqHotkeyAction } from '../components/game/games/risq/application/input/hotkeys';
 
 const STORAGE_KEY = 'gray_online_settings';
@@ -10,11 +11,44 @@ const LEGACY_HOTKEY_ACTIONS = (
   'BUILDING_ATTACK BUILDING_GATHER_POINT BUILDING_DELETE BUILDING_CLEAR_GATHER_POINT GO_TO_SELECTION'
 ).split(' ');
 
+export declare interface RisqDisplaySettings {
+  unit_circle_size: number;
+  healthbars: 'always' | 'damaged_only' | 'selected_only' | 'never';
+  secondary_bars: 'always' | 'active_only' | 'selected_only' | 'never';
+  healthbar_size: number;
+  hud_size: number;
+  auto_open_turn_report: boolean;
+  order_visibility: 'none' | 'selected_only' | 'all';
+  order_size: number;
+  territory_border_width: number;
+  selection_outline_thickness: number;
+  idle_indicator_size: number;
+  idle_indicator_pulse: boolean;
+}
+
+export function defaultRisqDisplaySettings(): RisqDisplaySettings {
+  return {
+    unit_circle_size: 44,
+    healthbars: 'damaged_only',
+    secondary_bars: 'active_only',
+    healthbar_size: 4,
+    hud_size: 1.0,
+    auto_open_turn_report: true,
+    order_visibility: 'all',
+    order_size: 1.0,
+    territory_border_width: 1.0,
+    selection_outline_thickness: 2,
+    idle_indicator_size: 0,
+    idle_indicator_pulse: false,
+  };
+}
+
 export declare interface AppSettings {
   last_nickname: string;
   client_id: number;
   client_id_time: number;
   risq_hotkeys: RisqHotkeyBindings;
+  risq_display: RisqDisplaySettings;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -22,6 +56,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   client_id: 0,
   client_id_time: 0,
   risq_hotkeys: defaultRisqHotkeyBindings(),
+  risq_display: defaultRisqDisplaySettings(),
 };
 
 function migrateRisqHotkeyActions(
@@ -53,11 +88,27 @@ function mergeRisqHotkeyBindings(parsed?: Partial<RisqHotkeyBindings>): RisqHotk
   };
 }
 
+/** Keeps each saved display value only if the dialog offers it, so stale or corrupted values fall back to the default */
+function sanitizeRisqDisplay(saved: Partial<Record<keyof RisqDisplaySettings, unknown>> = {}): RisqDisplaySettings {
+  const display = defaultRisqDisplaySettings();
+  for (const key of RISQ_DISPLAY_KEYS) {
+    if (RISQ_DISPLAY_SPECS[key].options.some((option) => option.value === saved[key])) {
+      Object.assign(display, { [key]: saved[key] });
+    }
+  }
+  return display;
+}
+
 function load(): AppSettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     const parsed = raw ? JSON.parse(raw) : undefined;
-    return { ...DEFAULT_SETTINGS, ...parsed, risq_hotkeys: mergeRisqHotkeyBindings(parsed?.risq_hotkeys) };
+    return {
+      ...DEFAULT_SETTINGS,
+      ...parsed,
+      risq_hotkeys: mergeRisqHotkeyBindings(parsed?.risq_hotkeys),
+      risq_display: sanitizeRisqDisplay(parsed?.risq_display),
+    };
   } catch (_e) {
     return { ...DEFAULT_SETTINGS };
   }
@@ -69,9 +120,18 @@ export function getSettings(): AppSettings {
   return settings;
 }
 
+const change_listeners = new Set<() => void>();
+
+/** Calls the listener after every settings update; returns the unsubscribe function */
+export function onSettingsChanged(listener: () => void): () => void {
+  change_listeners.add(listener);
+  return (): void => void change_listeners.delete(listener);
+}
+
 export function updateSettings(patch: Partial<AppSettings>): void {
   settings = { ...settings, ...patch };
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
   } catch (_e) {}
+  change_listeners.forEach((listener) => listener());
 }

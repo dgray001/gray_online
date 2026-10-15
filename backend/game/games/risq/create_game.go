@@ -61,20 +61,36 @@ func nextAvailableRisqColor(used map[string]bool) string {
 }
 
 func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameRisq, error) {
+	map_name, ok := g.GameSpecificSettings["map"].(string)
+	if !ok || map_name == "" {
+		map_name = "script:hexagon"
+	}
+	config_dir, err := mapgen.MapConfigDir(map_name)
+	if err != nil {
+		return nil, err
+	}
+	config, err := gameConfig(config_dir)
+	if err != nil {
+		return nil, err
+	}
 	generate := func(board mapgen.Board, rng *rand.Rand, num_players int) error {
 		settings := mapgen.ResolveSettings(g.GameSpecificSettings, num_players)
-		map_name, ok := g.GameSpecificSettings["map"].(string)
-		if !ok || map_name == "" {
-			map_name = "script:hexagon"
-		}
 		return mapgen.Generate(board, rng, num_players, settings, map_name)
 	}
-	return createGame(g, action_channel, 2, generate)
+	return createGame(g, action_channel, 2, config, generate)
+}
+
+// A map's own stat tables when it names a config folder, else the default tables
+func gameConfig(config_dir string) (*defs.Config, error) {
+	if config_dir == "" {
+		return defs.DefaultConfig(), nil
+	}
+	return defs.LoadConfigDir(config_dir)
 }
 
 type mapGenerator func(board mapgen.Board, rng *rand.Rand, num_players int) error
 
-func createGame(g *game.GameBase, action_channel chan game.PlayerAction, min_players int, generate mapGenerator) (*GameRisq, error) {
+func createGame(g *game.GameBase, action_channel chan game.PlayerAction, min_players int, game_config *defs.Config, generate mapGenerator) (*GameRisq, error) {
 	population_limit, err := resolvePopulationLimit(g.GameSpecificSettings["population_limit"])
 	if err != nil {
 		return nil, err
@@ -85,6 +101,7 @@ func createGame(g *game.GameBase, action_channel chan game.PlayerAction, min_pla
 	}
 	risq := GameRisq{
 		game:                      g,
+		config:                    game_config,
 		players:                   []*RisqPlayer{},
 		units:                     make(map[uint64]*RisqUnit),
 		buildings:                 make(map[uint64]*RisqBuilding),
@@ -120,7 +137,7 @@ func createGame(g *game.GameBase, action_channel chan game.PlayerAction, min_pla
 			used_colors[color] = true
 		}
 		player_rng := rand.New(rand.NewSource(int64(seed) + int64(player_id) + 1))
-		risq.players = append(risq.players, createRisqPlayer(player, risq.population_limit, color, player_rng))
+		risq.players = append(risq.players, createRisqPlayer(game_config, player, risq.population_limit, color, player_rng))
 		player_id++
 	}
 	ai_players, ai_players_ok := g.GameSpecificSettings["ai_players"].([]any)
@@ -144,7 +161,7 @@ func createGame(g *game.GameBase, action_channel chan game.PlayerAction, min_pla
 			color := nextAvailableRisqColor(used_colors)
 			used_colors[color] = true
 			player_rng := rand.New(rand.NewSource(int64(seed) + int64(player_id) + 1))
-			risq_player := createRisqPlayer(player, risq.population_limit, color, player_rng)
+			risq_player := createRisqPlayer(game_config, player, risq.population_limit, color, player_rng)
 			risq_player.createAiModel(config)
 			ai_risq_players = append(ai_risq_players, risq_player)
 			risq.players = append(risq.players, risq_player)
@@ -159,11 +176,13 @@ func createGame(g *game.GameBase, action_channel chan game.PlayerAction, min_pla
 	if err := generate(mapBoard{&risq}, risq.rng, len(risq.players)); err != nil {
 		return nil, err
 	}
+	risq.has_economy = risq.computeHasEconomy()
+	risq.has_buildings = risq.computeHasBuildings()
 	risq.initializeVisibility()
 	risq.ensureSpaceDistances()
 	risq.logBoard()
 	for _, ai_player := range ai_risq_players {
-		runner := &aibridge.Runner{Player: ai_player.player, Model: ai_player.ai_model, Stop: ai_player.ai_stop, Actions: action_channel}
+		runner := &aibridge.Runner{Player: ai_player.player, Model: ai_player.ai_model, Stop: ai_player.ai_stop, Actions: action_channel, Config: game_config}
 		risq.ai_goroutines.Go(runner.Run)
 	}
 	return &risq, nil

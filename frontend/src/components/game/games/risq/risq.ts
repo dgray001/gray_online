@@ -8,9 +8,9 @@ import type { DwgGame } from '../../game';
 import { messageDialog } from '../../game';
 import { apiGet } from '../../../../scripts/api';
 import { createImage, resolveImage } from '../../../../scripts/image';
-import { flushPerf, perfEvent, perfRecord, startPerf } from '../../../../scripts/perf';
+import { flushPerf, perfEvent, perfMeasure, perfRecord, startPerf } from '../../../../scripts/perf';
 import { createLock } from '../../../../scripts/util';
-import { getSettings } from '../../../../scripts/settings_store';
+import { getSettings, onSettingsChanged } from '../../../../scripts/settings_store';
 import { err, log } from '../../../../scripts/log';
 import { ColorRGB } from '../../../../scripts/color_rgb';
 
@@ -31,9 +31,8 @@ import type {
   GameRisqFromServer,
   GatherPointSetData,
   StartTurnData,
-  SubmittedOrdersData,
+  SubmissionNoticeData,
   UnitBehaviorSetData,
-  UnsubmittedOrdersData,
 } from './transport/snapshot_types';
 import type { RisqTurnReport } from './transport/turn_report';
 import { RisqCorpseLayout } from './rendering/zones/corpses';
@@ -76,6 +75,7 @@ import type { IdleCategory } from './application/orders/idle_category';
 import { RisqControlGroupGrid } from './canvas_components/bottom_panel/control_group_grid';
 import { RisqIdleGrid } from './canvas_components/bottom_panel/idle_grid';
 import { RISQ_MESSAGE_WARNING_COLOR, RisqMessageQueue } from './canvas_components/message_queue';
+import { RisqReplayPanel } from './canvas_components/replay_panel/replay_panel';
 
 import './risq.scss';
 import '../../util/canvas_board/canvas_board';
@@ -90,6 +90,9 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
   private abstract_game?: DwgGame;
   private outcome_shown = false;
   private last_frame_time = Date.now();
+  private hud_scale = getSettings().risq_display.hud_size;
+  private last_board_size?: Point2D;
+  private unsubscribe_settings?: () => void;
   private initialization_controller = new AbortController();
   private icons = new Map<string, HTMLImageElement>();
   private image_cache = new RisqImageCache();
@@ -124,11 +127,13 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
     [this.minimap],
     [new RisqIdleGrid(this)],
   ]);
+  private replay_panel = new RisqReplayPanel(this, () => this.bottom_panel);
   private message_queue = new RisqMessageQueue(this);
   private readonly canvas_components: CanvasComponent[] = [
     this.right_panel,
     this.left_panel,
     this.bottom_panel,
+    this.replay_panel,
     this.mercenary_panel,
     this.default_behavior_panel,
     this.message_queue,
@@ -173,6 +178,7 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
       this.left_panel.isHovering() ||
       this.right_panel.isHovering() ||
       this.bottom_panel.isHovering() ||
+      this.replay_panel.isHovering() ||
       this.mercenary_panel.isHovering() ||
       this.default_behavior_panel.isHovering(),
     this.session,
@@ -183,7 +189,8 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
     this.left_panel,
     this.planning,
     this.dispatch,
-    new RisqBoardClicks(this.session, this.viewport, this.selection, this.left_panel, this.planning)
+    new RisqBoardClicks(this.session, this.viewport, this.selection, this.left_panel, this.planning),
+    () => this.hud_scale
   );
   private hotkeys = new RisqHotkeyController(
     this,
@@ -209,7 +216,8 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
     this.viewport,
     this.order_overlays,
     () => this.pointer.dragRect(),
-    this.canvas_components
+    this.canvas_components,
+    () => this.hud_scale
   );
 
   constructor() {
@@ -232,6 +240,7 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
     this.commands.auto_renew.reset();
     this.commands.gather_points.reset();
     this.initialization_controller.abort();
+    this.unsubscribe_settings?.();
     super.disconnectedCallback();
     this.hotkeys.detach();
     flushPerf();
@@ -294,10 +303,13 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
     this.initialization_controller.abort();
     this.initialization_controller = new AbortController();
     const signal = this.initialization_controller.signal;
+    this.unsubscribe_settings?.();
+    this.unsubscribe_settings = onSettingsChanged((): void => this.settingsChanged());
+    this.hud_scale = getSettings().risq_display.hud_size;
     this.session.setPlayerId(abstract_game.isPlayer() ? abstract_game.playerId() : -1);
     this.submission.turnStarted();
     abstract_game.setPadding('0px');
-    const resource_configs = await apiGet<RisqResourceConfig[]>('risq/resources', signal);
+    const resource_configs = await apiGet<RisqResourceConfig[]>(`risq/resources/${game.game_base.game_id}`, signal);
     if (signal.aborted) {
       return;
     }
@@ -321,12 +333,13 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
           perfRecord('draw', performance.now() - draw_start);
         },
         scroll: (dy, mode) => this.pointer.scroll(dy, mode),
-        mousemove: (m, screen, transform, modifiers) => this.pointer.mousemove(m, screen, transform, modifiers),
+        mousemove: (m, screen, transform, modifiers) =>
+          perfMeasure('mousemove', () => this.pointer.mousemove(m, screen, transform, modifiers)),
         draggingCallback: () => this.pointer.draggingCallback(),
         mouseleave: () => this.pointer.mouseleave(),
         cancelInput: () => this.pointer.cancelInput(),
-        mousedown: (e) => this.pointer.mousedown(e),
-        mouseup: (e) => this.pointer.mouseup(e),
+        mousedown: (e) => perfMeasure('mousedown', () => this.pointer.mousedown(e)),
+        mouseup: (e) => perfMeasure('mouseup', () => this.pointer.mouseup(e)),
         extraMouseButton: (e) => this.hotkeys.extraMouseButton(e),
         zoom_config: {
           zoom_constant: 650,
@@ -359,6 +372,29 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
       });
   }
 
+  hudScale(): number {
+    return this.hud_scale;
+  }
+
+  /** Canvas size as the HUD sees it: the HUD is drawn scaled, so it lays out against the real size divided by that */
+  hudCanvasSize(): { width: number; height: number } {
+    const size = this.viewport.canvasSize();
+    return { width: size.width / this.hud_scale, height: size.height / this.hud_scale };
+  }
+
+  private settingsChanged(): void {
+    this.hud_scale = getSettings().risq_display.hud_size;
+    let scale = this.viewport.lastTransform().scale;
+    if (this.board.isInitialized() && this.last_board_size) {
+      const zoom = this.viewport.zoomLimits(this.last_board_size);
+      this.board.setMaxScale(zoom.max, zoom.min); // rescales the zoom with the limit, so put it back (clamped)
+      scale = this.board.setScale(scale);
+    }
+    this.viewport.updateCenterSlots(scale);
+    this.relayoutHud();
+    this.refreshPanels();
+  }
+
   private prepareFrame(): void {
     const now = Date.now();
     const dt = now - this.last_frame_time;
@@ -385,6 +421,30 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
     this.pointer.recalculate();
   }
 
+  toggleReplay(): void {
+    const journal = this.getGame()?.last_turn_journal;
+    const replaying = !this.session.isReplaying() && !!journal;
+    this.session.setReplaying(replaying);
+    this.armed.disarmAll();
+    this.hover.forget();
+    if (replaying) {
+      this.replay_panel.open(journal.tick_count);
+      this.showReplayTick(0);
+    } else {
+      this.replay_panel.close();
+      this.session.endReplay();
+      this.hover.forget();
+      this.refreshPanels();
+    }
+    this.showMessage(replaying ? 'Replay mode started' : 'Replay mode exited', RISQ_MESSAGE_WARNING_COLOR);
+  }
+
+  showReplayTick(value: number): void {
+    this.session.showReplayTick(value);
+    this.hover.forget();
+    this.refreshPanels();
+  }
+
   toggleIdleCategory(category: IdleCategory): void {
     this.planning.toggleIdleCategory(category);
     this.refreshPanels();
@@ -409,6 +469,10 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
       close_hotkey: getSettings().risq_hotkeys.actions[RisqHotkeyAction.SUMMARY_REPORT],
     });
     this.appendChild(dialog);
+  }
+
+  getGameId(): number {
+    return this.abstract_game?.getGame()?.game_base.game_id ?? 0;
   }
 
   openTechTree(): void {
@@ -480,15 +544,20 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
       for (const zone of game.spaces.flat().flatMap((space) => space?.zones?.flat() ?? [])) {
         zone.reset_hovered_data = true;
       }
-      this.left_panel.resolveSize();
-      this.left_panel.prepareLayout();
-      this.minimap.resolveSize();
-      this.right_panel.toggle(this.right_panel.isOpen());
-      this.bottom_panel.dataRefreshed();
-      this.mercenary_panel.dataRefreshed();
-      this.default_behavior_panel.dataRefreshed();
-      this.pointer.recalculate();
+      this.last_board_size = board_size;
+      this.relayoutHud();
     });
+  }
+
+  private relayoutHud(): void {
+    this.left_panel.resolveSize();
+    this.left_panel.prepareLayout();
+    this.minimap.resolveSize();
+    this.right_panel.toggle(this.right_panel.isOpen());
+    this.bottom_panel.dataRefreshed();
+    this.mercenary_panel.dataRefreshed();
+    this.default_behavior_panel.dataRefreshed();
+    this.pointer.recalculate();
   }
 
   async gameUpdate(update: UpdateMessage): Promise<void> {
@@ -500,10 +569,8 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
           this.applyStartTurn(update.content as StartTurnData);
           break;
         case 'submitted-orders':
-          this.applySubmittedOrders(update.content as SubmittedOrdersData);
-          break;
         case 'unsubmitted-orders':
-          this.applyUnsubmittedOrders(update.content as UnsubmittedOrdersData);
+          this.applySubmission(update.content as SubmissionNoticeData);
           break;
         case 'unit-behavior-set':
           this.applySetting(() => patchUnitBehavior(this.session, update.content as UnitBehaviorSetData));
@@ -552,6 +619,7 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
   private setNewGameData(new_game: GameRisqFromServer): void {
     const apply_start = performance.now();
     this.session.replaceSnapshot(new_game);
+    this.board.setDefaultRotation(this.session.getGame()?.rotation ?? 0);
     const convert_ms = performance.now() - apply_start;
     if (!this.session.givingOrders() || this.getPlayer()?.orders_submitted) {
       this.commands.gather_points.reset();
@@ -596,27 +664,42 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
   }
 
   private applyStartTurn(data: StartTurnData): void {
+    if (this.session.isReplaying()) {
+      this.session.setReplaying(false);
+      this.replay_panel.close();
+      this.showMessage('Replay mode exited: new turn started', RISQ_MESSAGE_WARNING_COLOR);
+    }
     this.submission.turnStarted();
     this.armed.disarmAll();
     this.setNewGameData(data.game);
     const player = this.getPlayer();
-    if (!data.game.game_base.game_ended && this.getPlayerId() > -1 && player?.turn_report) {
+    if (
+      !data.game.game_base.game_ended &&
+      this.getPlayerId() > -1 &&
+      player?.turn_report &&
+      getSettings().risq_display.auto_open_turn_report
+    ) {
       this.openTurnReportDialog(player, player.turn_report);
     }
   }
 
-  private applySubmittedOrders(data: SubmittedOrdersData): void {
-    if (data.player_id === this.getPlayerId()) {
-      this.submission.submitted();
+  private applySubmission(data: SubmissionNoticeData): void {
+    if (!this.session.applySubmission(data)) {
+      return;
     }
-    this.setNewGameData(data.game);
-  }
-
-  private applyUnsubmittedOrders(data: UnsubmittedOrdersData): void {
     if (data.player_id === this.getPlayerId()) {
-      this.submission.unsubmitted();
+      if (data.orders_submitted) {
+        this.submission.submitted();
+      } else {
+        this.submission.unsubmitted();
+      }
+      this.orders_model.setSubmitted(this.getPlayer()?.active_orders ?? []);
+      this.hover.forget();
     }
-    this.setNewGameData(data.game);
+    if (!this.session.givingOrders() || this.getPlayer()?.orders_submitted) {
+      this.commands.gather_points.reset();
+    }
+    this.refreshPanels();
   }
 
   updateDialogComponent(update: UpdateMessage): HTMLElement {

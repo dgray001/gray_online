@@ -1,10 +1,4 @@
 v0.9: Risq beta version
- - Long games end up being laggy on frontend (idk if laggy on backend) and need to fix
-
-Maps and views:
- - World risq map
- - Rebalance maps, incorporate mountains, add map(s) with swamp/shallows/water
- - In map gen the forests should cluster a bit
 
 Bigger Risq Issues/Ideas:
  - Utilize events on map

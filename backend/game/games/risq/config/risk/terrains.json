@@ -1,0 +1,10 @@
+[
+  {
+    "terrain_type": "flatlands",
+    "intra_cost": 1,
+    "inter_cost": 6,
+    "terrains": [
+      { "terrain_id": 1, "display_name": "Grass" }
+    ]
+  }
+]

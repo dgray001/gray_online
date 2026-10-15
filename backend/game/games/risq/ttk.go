@@ -16,20 +16,21 @@ type TTKResult struct {
 }
 
 // One space with two units/a building placed in its center zone, for isolated 1v1 combat sims.
-func newTTKGame() (*GameRisq, *RisqPlayer, *RisqPlayer) {
+func newTTKGame(config *defs.Config) (*GameRisq, *RisqPlayer, *RisqPlayer) {
 	base := game.CreateBaseGame(0, game.GameType_RISQ, nil)
 	game.CreatePlayer(1, "attacker", base)
 	game.CreatePlayer(2, "target", base)
 	base.Players[1].Player_id = 0
 	base.Players[2].Player_id = 1
 	rng := rand.New(rand.NewSource(0))
-	attacker_player := createRisqPlayer(base.Players[1], 100, "red", rng)
-	target_player := createRisqPlayer(base.Players[2], 100, "blue", rng)
+	attacker_player := createRisqPlayer(config, base.Players[1], 100, "red", rng)
+	target_player := createRisqPlayer(config, base.Players[2], 100, "blue", rng)
 	r := &GameRisq{
+		config:    config,
 		players:   []*RisqPlayer{attacker_player, target_player},
 		units:     make(map[uint64]*RisqUnit),
 		buildings: make(map[uint64]*RisqBuilding),
-		spaces:    [][]*RisqSpace{{createRisqSpace(0, 0, defs.DefaultTerrainId)}},
+		spaces:    [][]*RisqSpace{{createRisqSpace(config, 0, 0, defs.DefaultTerrainId)}},
 	}
 	return r, attacker_player, target_player
 }
@@ -70,13 +71,14 @@ func ComputeUnitVsUnitTTK(attacker_unit_id uint32, target_unit_id uint32) TTKRes
 }
 
 func ComputeUnitVsUnitTTKWithTechs(attacker_unit_id uint32, target_unit_id uint32, attacker_tech_ids []uint32, target_tech_ids []uint32) TTKResult {
-	if _, ok := defs.UnitConfigs[attacker_unit_id]; !ok {
+	config := defs.DefaultConfig()
+	if _, ok := config.Units[attacker_unit_id]; !ok {
 		return TTKResult{}
 	}
-	if _, ok := defs.UnitConfigs[target_unit_id]; !ok {
+	if _, ok := config.Units[target_unit_id]; !ok {
 		return TTKResult{}
 	}
-	r, attacker_player, target_player := newTTKGame()
+	r, attacker_player, target_player := newTTKGame(config)
 	markResearched(attacker_player, attacker_tech_ids)
 	markResearched(target_player, target_tech_ids)
 	attacker := createRisqUnit(1, attacker_unit_id, attacker_player)
@@ -96,16 +98,17 @@ func ComputeUnitVsBuildingTTK(attacker_unit_id uint32, target_building_id uint32
 }
 
 func ComputeUnitVsBuildingTTKWithTechs(attacker_unit_id uint32, target_building_id uint32, attacker_tech_ids []uint32) TTKResult {
-	if _, ok := defs.UnitConfigs[attacker_unit_id]; !ok {
+	config := defs.DefaultConfig()
+	if _, ok := config.Units[attacker_unit_id]; !ok {
 		return TTKResult{}
 	}
-	if _, ok := defs.BuildingConfigs[target_building_id]; !ok {
+	if _, ok := config.Buildings[target_building_id]; !ok {
 		return TTKResult{}
 	}
-	r, attacker_player, target_player := newTTKGame()
+	r, attacker_player, target_player := newTTKGame(config)
 	markResearched(attacker_player, attacker_tech_ids)
 	attacker := createRisqUnit(1, attacker_unit_id, attacker_player)
-	target := createRisqBuilding(1, target_building_id, target_player.player.Player_id)
+	target := createRisqBuilding(config, 1, target_building_id, target_player.player.Player_id)
 	space := r.spaces[0][0]
 	space.setUnit(&game_utils.Coordinate2D{}, attacker)
 	space.setBuilding(&game_utils.Coordinate2D{}, target)
@@ -118,8 +121,9 @@ func ComputeUnitVsBuildingTTKWithTechs(attacker_unit_id uint32, target_building_
 }
 
 func AllUnitIDs() []uint32 {
-	ids := make([]uint32, 0, len(defs.UnitConfigs))
-	for id := range defs.UnitConfigs {
+	units := defs.DefaultConfig().Units
+	ids := make([]uint32, 0, len(units))
+	for id := range units {
 		ids = append(ids, id)
 	}
 	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
@@ -127,8 +131,9 @@ func AllUnitIDs() []uint32 {
 }
 
 func AllBuildingIDs() []uint32 {
-	ids := make([]uint32, 0, len(defs.BuildingConfigs))
-	for id := range defs.BuildingConfigs {
+	buildings := defs.DefaultConfig().Buildings
+	ids := make([]uint32, 0, len(buildings))
+	for id := range buildings {
 		ids = append(ids, id)
 	}
 	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
@@ -136,9 +141,9 @@ func AllBuildingIDs() []uint32 {
 }
 
 func UnitName(id uint32) string {
-	return defs.UnitConfigs[id].Display_name
+	return defs.DefaultConfig().Units[id].Display_name
 }
 
 func BuildingName(id uint32) string {
-	return defs.BuildingConfigs[id].Display_name
+	return defs.DefaultConfig().Buildings[id].Display_name
 }

@@ -38,12 +38,13 @@ type tickBuildingState struct {
 }
 
 type tickResourceState struct {
-	target      tickTarget
-	resource_id uint32
-	location    tickLocation
-	remaining   float64
-	deleted     bool
-	visibility  tickVisibility
+	target        tickTarget
+	resource_id   uint32
+	location      tickLocation
+	remaining     float64
+	max_resources float64
+	deleted       bool
+	visibility    tickVisibility
 }
 
 type tickPlayerState struct {
@@ -163,7 +164,7 @@ func (r *GameRisq) captureTickFrame(tick uint16, terminal bool, phase string) ti
 			state := tickResourceState{
 				target: tickTarget{"resource", id, -1}, resource_id: resource.resource_id,
 				location: tickZoneLocation(resource.zone), remaining: resource.resources_left,
-				visibility: tickZoneVisibility(resource.zone),
+				max_resources: resource.max_resources, visibility: tickZoneVisibility(resource.zone),
 			}
 			if previous, ok := journal.resources[id]; !ok || !reflect.DeepEqual(previous, state) {
 				frame.resources = append(frame.resources, state)

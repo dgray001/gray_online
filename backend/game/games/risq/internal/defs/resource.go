@@ -40,18 +40,18 @@ type resourceConfigJSON struct {
 
 var ResourceConfigs map[uint32]ResourceConfig
 
-func loadResourceConfig(data []byte) {
+func (c *Config) loadResources(data []byte) {
 	var entries []resourceConfigJSON
 	if err := json.Unmarshal(data, &entries); err != nil {
 		panic(fmt.Sprintf("failed to parse config/resources.json: %v", err))
 	}
-	ResourceConfigs = make(map[uint32]ResourceConfig, len(entries))
+	c.Resources = make(map[uint32]ResourceConfig, len(entries))
 	for _, e := range entries {
 		category, err := parseResourceCategory(e.Category)
 		if err != nil {
 			panic(fmt.Sprintf("config/resources.json resource_id %d: %v", e.ResourceId, err))
 		}
-		ResourceConfigs[e.ResourceId] = ResourceConfig{
+		c.Resources[e.ResourceId] = ResourceConfig{
 			Display_name:       e.DisplayName,
 			Category:           category,
 			Starting_resources: e.StartingResources,

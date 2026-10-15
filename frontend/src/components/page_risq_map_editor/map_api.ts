@@ -10,8 +10,8 @@ export interface TerrainEntry {
   terrain_type: RisqTerrainType;
 }
 
-export function listTerrains(): Promise<ApiResponse<TerrainEntry[]>> {
-  return apiGet<TerrainEntry[]>('dev/risq/terrains');
+export function listTerrains(config_dir?: string): Promise<ApiResponse<TerrainEntry[]>> {
+  return apiGet<TerrainEntry[]>(config_dir ? `dev/risq/terrains/${config_dir}` : 'dev/risq/terrains');
 }
 
 export interface EntityEntry {
@@ -25,8 +25,8 @@ export interface EntityCatalog {
   resources: EntityEntry[];
 }
 
-export function listEntities(): Promise<ApiResponse<EntityCatalog>> {
-  return apiGet<EntityCatalog>('dev/risq/entities');
+export function listEntities(config_dir?: string): Promise<ApiResponse<EntityCatalog>> {
+  return apiGet<EntityCatalog>(config_dir ? `dev/risq/entities/${config_dir}` : 'dev/risq/entities');
 }
 
 export function listMaps(): Promise<ApiResponse<string[]>> {

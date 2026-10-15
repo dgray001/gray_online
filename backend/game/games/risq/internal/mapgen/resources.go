@@ -44,7 +44,7 @@ var scatterCategoryPools = []struct {
 	{"tree", uniformTreeIds},
 }
 
-func scatterEntries(category_weights map[string]float64, resource_weights map[uint32]float64) ([]scatterEntry, error) {
+func scatterEntries(config *defs.Config, category_weights map[string]float64, resource_weights map[uint32]float64) ([]scatterEntry, error) {
 	entries := make([]scatterEntry, 0)
 	known := make(map[string]bool, len(scatterCategoryPools))
 	for _, pool := range scatterCategoryPools {
@@ -59,7 +59,7 @@ func scatterEntries(category_weights map[string]float64, resource_weights map[ui
 		}
 	}
 	for _, id := range slices.Sorted(maps.Keys(resource_weights)) {
-		if _, ok := defs.ResourceConfigs[id]; !ok {
+		if _, ok := config.Resources[id]; !ok {
 			return nil, fmt.Errorf("unknown resource id %d", id)
 		}
 		if w := resource_weights[id]; w > 0 {

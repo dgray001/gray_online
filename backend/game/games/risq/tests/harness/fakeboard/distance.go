@@ -19,9 +19,6 @@ func (b *Board) hopDistances(from *space) []uint16 {
 		for _, next := range current.borders {
 			visit(next)
 		}
-		for _, next := range current.links {
-			visit(next)
-		}
 	}
 	return row
 }

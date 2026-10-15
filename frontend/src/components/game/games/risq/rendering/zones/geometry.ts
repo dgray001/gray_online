@@ -110,12 +110,21 @@ export function edgeSlotAtAngle(angle: number, hex_r: number, fraction = 0.5): P
 }
 
 export const MAX_UNIT_RINGS = 3;
+const MAX_LAYOUT_RINGS = 8;
+const REFERENCE_UNIT_DIAMETER = 44;
 const UNIT_OVERLAP_FRACTION = 0.1;
 const UNIT_GAP_FRACTION = 0.1;
 const UNIT_SPACING_SEARCH_STEPS = 40;
 
-export function centerUnitMaxZoom(hex_r: number, unit_diameter: number): number {
-  const required_gap = unit_diameter * (MAX_UNIT_RINGS + (MAX_UNIT_RINGS + 1) * UNIT_GAP_FRACTION);
+/** Rings needed at max zoom so circles smaller than the reference size don't shrink the zoom range */
+export function maxZoomRings(unit_diameter: number): number {
+  const reference_gap = REFERENCE_UNIT_DIAMETER * (MAX_UNIT_RINGS + (MAX_UNIT_RINGS + 1) * UNIT_GAP_FRACTION);
+  const rings = Math.ceil((reference_gap / unit_diameter - UNIT_GAP_FRACTION) / (1 + UNIT_GAP_FRACTION));
+  return Math.min(MAX_LAYOUT_RINGS, Math.max(MAX_UNIT_RINGS, rings));
+}
+
+export function centerUnitMaxZoom(hex_r: number, unit_diameter: number, rings = MAX_UNIT_RINGS): number {
+  const required_gap = unit_diameter * (rings + (rings + 1) * UNIT_GAP_FRACTION);
   const gap = (CENTER_ZONE_APOTHEM_MULTIPLIER - BUILDING_CIRCLE_RADIUS_MULTIPLIER) * hex_r;
   return required_gap / gap;
 }
@@ -133,7 +142,7 @@ function unitRingRadius(inner_radius: number, gap: number, unit_r: number, rings
 function unitRingLimit(gap: number, unit_r: number): number {
   const diameter = 2 * unit_r;
   const limit = Math.floor((gap + diameter * UNIT_OVERLAP_FRACTION) / (diameter * (1 - UNIT_OVERLAP_FRACTION)));
-  return Math.max(1, Math.min(MAX_UNIT_RINGS, limit));
+  return Math.max(1, Math.min(MAX_LAYOUT_RINGS, limit));
 }
 
 interface CenterUnitRing {

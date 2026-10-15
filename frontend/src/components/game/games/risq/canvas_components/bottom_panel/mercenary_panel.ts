@@ -42,7 +42,7 @@ export class RisqMercenaryPanel extends DwgRectButton {
   dataRefreshed(): void {
     this.grid.dataRefreshed();
     const side_width = Math.max(this.risq.left_panel.w(), this.risq.right_panel.w());
-    const available_width = Math.max(0, this.risq.viewport.canvasSize().width - 2 * side_width - 32);
+    const available_width = Math.max(0, this.risq.hudCanvasSize().width - 2 * side_width - 32);
     this.grid.setAvailableWidth(available_width);
     const width = Math.min(available_width + 16, Math.max(160, this.grid.w() + 16));
     const height = (this.grid.h() || 32) + 16;

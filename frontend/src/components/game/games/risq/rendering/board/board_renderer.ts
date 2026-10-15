@@ -10,6 +10,7 @@ import type { RisqSession } from '../../application/session';
 import type { GameRisq, RisqSpace } from '../../model/types';
 import type { RisqDrawHost } from '../draw_host';
 import { drawRisqRegionLabels } from '../region';
+import { RisqLinks } from '../links';
 import type { DrawRisqSpaceConfig } from '../space';
 import { drawRisqSpaceBase, drawRisqSpaceContent } from '../space';
 import { drawRisqSpaceBorders } from '../space_borders';
@@ -24,6 +25,7 @@ const INSET_RATIO = 1.0392;
 
 export class RisqBoardRenderer {
   private last_time = Date.now();
+  private links: RisqLinks;
 
   constructor(
     private risq: RisqDrawHost,
@@ -31,8 +33,11 @@ export class RisqBoardRenderer {
     private viewport: RisqViewport,
     private order_overlays: Pick<RisqOrderOverlays, 'draw' | 'drawRanges'>,
     private drag_rect: () => { min: Point2D; max: Point2D } | undefined,
-    private components: CanvasComponent[]
-  ) {}
+    private components: CanvasComponent[],
+    private hud_scale: () => number = (): number => 1
+  ) {
+    this.links = new RisqLinks(session, viewport);
+  }
 
   private drawBackgroundImage(ctx: CanvasRenderingContext2D, game: GameRisq): void {
     if (!game.background_image || !game.background_top_left || !game.background_top_right) {
@@ -103,6 +108,7 @@ export class RisqBoardRenderer {
       }
     }
     drawRisqSpaceBorders(ctx, this.risq, on_screen_spaces, draw_config);
+    this.links.draw(ctx, transform.scale);
     for (const [i, space] of on_screen_spaces.entries()) {
       drawRisqSpaceContent(ctx, this.risq, space, draw_config, space_text_colors[i]);
     }
@@ -118,14 +124,25 @@ export class RisqBoardRenderer {
       drawRisqRegionLabels(ctx, this.risq, draw_config);
     }
     this.drawDragRect(ctx, transform);
-    for (const component of this.components) {
-      component.draw(ctx, transform, dt);
-    }
+    this.drawHud(ctx, transform, dt);
     if (DRAW_CENTER_DOT && DEV) {
       ctx.fillStyle = 'red';
       ctx.strokeStyle = 'transparent';
       drawCircle(ctx, multiplyPoint2D(1 / transform.scale, transform.view), 6 / transform.scale);
     }
+  }
+
+  /** Components cancel the board matrix themselves, so scaling it first scales the whole HUD uniformly */
+  private drawHud(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
+    const board = ctx.getTransform();
+    const scale = this.hud_scale();
+    ctx.save();
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    ctx.transform(board.a, board.b, board.c, board.d, board.e, board.f);
+    for (const component of this.components) {
+      component.draw(ctx, transform, dt);
+    }
+    ctx.restore();
   }
 
   private drawDragRect(ctx: CanvasRenderingContext2D, transform: BoardTransformData): void {

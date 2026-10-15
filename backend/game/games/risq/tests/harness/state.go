@@ -139,16 +139,17 @@ type ZoneState struct {
 
 // Visibility is 0 unexplored, 1 fog, 2 poor, 3 good, 4 spy; hidden fields are absent, so their pointers stay nil
 type SpaceState struct {
-	Coordinate Coord         `json:"coordinate"`
-	Visibility int           `json:"visibility"`
-	TerrainID  *uint32       `json:"terrain_id"`
-	Ownership  *int          `json:"ownership"`
-	GoldIncome float64       `json:"gold_income"`
-	UnitCount  *int          `json:"unit_count"`
-	Zones      [][]ZoneState `json:"zones"`
-	Units      []Unit        `json:"units"`
-	Buildings  []Building    `json:"buildings"`
-	Resources  []struct {
+	Coordinate  Coord         `json:"coordinate"`
+	Visibility  int           `json:"visibility"`
+	DisplayName string        `json:"display_name"`
+	TerrainID   *uint32       `json:"terrain_id"`
+	Ownership   *int          `json:"ownership"`
+	GoldIncome  float64       `json:"gold_income"`
+	UnitCount   *int          `json:"unit_count"`
+	Zones       [][]ZoneState `json:"zones"`
+	Units       []Unit        `json:"units"`
+	Buildings   []Building    `json:"buildings"`
+	Resources   []struct {
 		ResourceID    uint32  `json:"resource_id"`
 		ResourcesLeft float64 `json:"resources_left"`
 	} `json:"resources"`
@@ -161,7 +162,7 @@ type Region struct {
 	Owner     int     `json:"owner"`
 }
 
-// A seam or link between spaces that are not normal coordinate neighbors; a nil direction is a center link
+// A seam between spaces that are not normal coordinate neighbors; direction is the edge leaving From
 type SpaceLink struct {
 	From      Coord `json:"from"`
 	To        Coord `json:"to"`
@@ -171,12 +172,15 @@ type SpaceLink struct {
 type State struct {
 	LastTurnReplay *TurnReplay `json:"last_turn_replay"`
 
-	TurnNumber   int             `json:"turn_number"`
-	GivingOrders bool            `json:"giving_orders"`
-	Players      []PlayerState   `json:"players"`
-	Spaces       [][]*SpaceState `json:"spaces"`
-	Regions      []Region        `json:"regions"`
-	SpaceLinks   []SpaceLink     `json:"space_links"`
+	HasEconomy            bool            `json:"has_economy"`
+	HasBuildings          bool            `json:"has_buildings"`
+	MercenariesNeedRegion bool            `json:"mercenaries_need_region"`
+	TurnNumber            int             `json:"turn_number"`
+	GivingOrders          bool            `json:"giving_orders"`
+	Players               []PlayerState   `json:"players"`
+	Spaces                [][]*SpaceState `json:"spaces"`
+	Regions               []Region        `json:"regions"`
+	SpaceLinks            []SpaceLink     `json:"space_links"`
 }
 
 func (s State) Player(playerID int) *PlayerState {

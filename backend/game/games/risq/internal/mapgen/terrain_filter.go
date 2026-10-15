@@ -24,13 +24,13 @@ func (f terrainFilterJSON) allowedIds(ctx *mapScriptContext) (map[uint32]bool, e
 		if err != nil {
 			return nil, fmt.Errorf("terrain filter: %w", err)
 		}
-		for _, member := range defs.TerrainFamily(id) {
+		for _, member := range ctx.config().TerrainFamily(id) {
 			allowed[member] = true
 		}
 	}
 	for _, name := range f.TerrainNames {
 		found := false
-		for id, config := range defs.TerrainConfigs {
+		for id, config := range ctx.config().Terrains {
 			if config.Display_name == name {
 				allowed[id], found = true, true
 			}
@@ -39,17 +39,17 @@ func (f terrainFilterJSON) allowedIds(ctx *mapScriptContext) (map[uint32]bool, e
 			return nil, fmt.Errorf("terrain filter: unknown terrain name %q", name)
 		}
 	}
-	return allowed, f.addTypes(allowed)
+	return allowed, f.addTypes(ctx.config(), allowed)
 }
 
-func (f terrainFilterJSON) addTypes(allowed map[uint32]bool) error {
+func (f terrainFilterJSON) addTypes(config *defs.Config, allowed map[uint32]bool) error {
 	for _, name := range f.TerrainTypes {
 		terrain_type, err := defs.ParseTerrainType(name)
 		if err != nil {
 			return err
 		}
-		for id, config := range defs.TerrainConfigs {
-			if config.Terrain_type == terrain_type {
+		for id, terrain := range config.Terrains {
+			if terrain.Terrain_type == terrain_type {
 				allowed[id] = true
 			}
 		}

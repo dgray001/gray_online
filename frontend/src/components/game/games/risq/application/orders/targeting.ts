@@ -1,7 +1,7 @@
 import { equalsPoint2D } from '../../../../util/objects2d';
 import type { RisqLeftPanel } from '../../canvas_components/left_panel/left_panel';
 import { LeftPanelDataType } from '../../canvas_components/left_panel/left_panel_data';
-import type { RisqBuilding, RisqZone } from '../../model/types';
+import type { RisqBuilding, RisqSpace, RisqZone } from '../../model/types';
 import { RisqAttackType, RisqOrderType, RisqVisibilityLevel } from '../../model/types';
 import type { RisqViewport } from '../../rendering/board/viewport';
 import { hoveredZoneObject } from '../../rendering/zones/hit_testing';
@@ -149,16 +149,31 @@ export class RisqOrderTargeting {
 
   buildTargetValid(): boolean {
     const zone = this.hover.zone();
-    const ownership = this.hover.space()?.ownership;
+    const space = this.hover.space();
     return (
       this.left_panel.hasVillager() &&
       this.isZoneValid() &&
+      !!space &&
       !zone?.resource &&
       !zone?.building &&
       !this.planning.hasPlannedFoundation(zone) &&
       !this.planning.atBuildingLimit(this.armed.getArmedBuildingId(), zone?.coordinate_key) &&
-      (ownership === undefined || ownership < 0 || ownership === this.session.getPlayerId())
+      this.isSpaceBuildable(space, this.session.getPlayerId())
     );
+  }
+
+  private isSpaceBuildable(space: RisqSpace, player_id: number): boolean {
+    const ownership = space.ownership;
+    if (ownership === player_id) {
+      return true;
+    }
+    if (ownership !== undefined && ownership >= 0) {
+      return false;
+    }
+    if (this.session.ownedSpacesCount(player_id) === 0) {
+      return true;
+    }
+    return this.session.boardNeighbors(space).some((neighbor) => neighbor.ownership === player_id);
   }
 
   private ownCompletedBuilding(): RisqBuilding | undefined {
@@ -268,7 +283,7 @@ export class RisqOrderTargeting {
       return 'Must hire in owned territory';
     }
     const region = this.session.getRegionForSpace(space.coordinate_key);
-    if (region && region.owner !== player_id) {
+    if (this.session.getGame()?.mercenaries_need_region !== false && region && region.owner !== player_id) {
       return 'Region not fully owned';
     }
     return this.planning.mercenaryUnavailableReason(mercenary);

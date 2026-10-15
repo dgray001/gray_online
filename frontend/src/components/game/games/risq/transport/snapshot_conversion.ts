@@ -26,6 +26,7 @@ import { RisqResourceType, RisqUnitType, RisqUnitStance } from '../model/types';
 import { err } from '../../../../../scripts/log';
 import { ColorRGB } from '../../../../../scripts/color_rgb';
 import { serverToRisqTurnReport } from './turn_report';
+import { serverToTickAction, serverToTurnJournal } from './turn_journal_conversion';
 import { resourceType } from '../rendering/assets/resources';
 import { organizeZoneUnits } from '../model/unit_groups';
 import { RisqTerrainType } from '../rendering/terrain';
@@ -74,11 +75,17 @@ export function serverToGameRisq(server_game: GameRisqFromServer): GameRisq | un
     population_limit: server_game.population_limit,
     turn_number: server_game.turn_number,
     spaces,
+    space_links: server_game.space_links ?? [],
     giving_orders: server_game.giving_orders,
     regions: server_game.regions,
+    last_turn_journal: serverToTurnJournal(server_game.last_turn_replay),
     background_image: server_game.background_image,
     background_top_left: server_game.background_top_left,
     background_top_right: server_game.background_top_right,
+    rotation: (server_game.rotation * Math.PI) / 180,
+    has_economy: server_game.has_economy ?? true,
+    has_buildings: server_game.has_buildings ?? true,
+    mercenaries_need_region: server_game.mercenaries_need_region ?? true,
   };
 }
 
@@ -153,6 +160,7 @@ export function serverToRisqPlayer(server_player: RisqPlayerFromServer, registry
         .map((u) => [u.internal_id, u])
     ),
     population_limit: server_player.population_limit,
+    unlimited_population: server_player.unlimited_population ?? false,
     score: server_player.score,
     color: new ColorRGB(color_split[0], color_split[1], color_split[2]),
     active_orders: server_player.active_orders.map((o) => serverToRisqOrder(o)).filter((o) => !!o),
@@ -295,6 +303,7 @@ export function serverToRisqBuilding(
   }
   const building: RisqBuilding = {
     ...server_building,
+    tick_actions: server_building.tick_actions?.map(serverToTickAction),
     active_orders: server_building.active_orders.map((o) => serverToRisqOrder(o)).filter((o) => !!o),
     hover_data: {
       ps: { x: 0, y: 0 },
@@ -341,6 +350,7 @@ export function serverToRisqUnit(
   }
   const unit: RisqUnit = {
     ...server_unit,
+    tick_actions: server_unit.tick_actions?.map(serverToTickAction),
     active_orders: server_unit.active_orders.map((o) => serverToRisqOrder(o)).filter((o) => !!o),
     hover_data: {
       ps: { x: 0, y: 0 },

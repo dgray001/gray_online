@@ -28,6 +28,7 @@ type RisqUnit struct {
 func createRisqUnit(internal_id uint64, unit_id uint32, player *RisqPlayer) *RisqUnit {
 	unit := RisqUnit{
 		orderableBase: orderableBase{
+			config:          player.config,
 			internal_id:     internal_id,
 			player_id:       player.player.Player_id,
 			turn_stamina:    10,
@@ -40,7 +41,7 @@ func createRisqUnit(internal_id uint64, unit_id uint32, player *RisqPlayer) *Ris
 		stance:      defs.UnitStance_PASSIVE,
 		attack_back: true,
 	}
-	config, ok := defs.UnitConfigs[unit_id]
+	config, ok := player.config.Units[unit_id]
 	if !ok {
 		fmt.Fprintln(os.Stderr, "Creating unknown unit id: ", unit_id)
 		return &unit
@@ -62,7 +63,7 @@ func createRisqUnit(internal_id uint64, unit_id uint32, player *RisqPlayer) *Ris
 	unit.cs.penetration_piercing = config.Penetration_piercing
 	unit.attack_range = config.Attack_range
 	unit.turn_stamina = config.Turn_stamina
-	for _, bonus := range defs.BonusConfigs {
+	for _, bonus := range player.config.Bonuses() {
 		if bonus.AppliesTo(unit_id, config.Unit_type) {
 			applyTechBonus(&unit, bonus)
 		}
@@ -71,7 +72,7 @@ func createRisqUnit(internal_id uint64, unit_id uint32, player *RisqPlayer) *Ris
 		if !researched {
 			continue
 		}
-		tech, ok := defs.TechConfigs[tech_id]
+		tech, ok := player.config.Techs[tech_id]
 		if !ok || !tech.AppliesTo(unit_id, config.Unit_type) {
 			continue
 		}
@@ -99,16 +100,16 @@ func (u *RisqUnit) refreshStamina() {
 }
 
 func (u *RisqUnit) vision() *defs.RisqVision {
-	v := defs.UnitConfigs[u.unit_id].Vision
+	v := u.config.Units[u.unit_id].Vision
 	return &v
 }
 
 func (u *RisqUnit) score() uint {
-	return defs.UnitConfigs[u.unit_id].Cost.Points()
+	return u.config.Units[u.unit_id].Cost.Points()
 }
 
 func (u *RisqUnit) unitType() defs.UnitType {
-	return defs.UnitConfigs[u.unit_id].Unit_type
+	return u.config.Units[u.unit_id].Unit_type
 }
 
 func (u *RisqUnit) OrderableType() defs.OrderableType {
@@ -189,8 +190,8 @@ func (u *RisqUnit) toFrontend(viewer_player_id int) gin.H {
 		unit["garrisoned_in"] = u.garrisoned_in.internal_id
 	}
 	builds := make([]gin.H, 0)
-	for _, p := range defs.UnitConfigs[u.unit_id].Builds {
-		builds = append(builds, p.ToFrontend())
+	for _, p := range u.config.Units[u.unit_id].Builds {
+		builds = append(builds, p.ToFrontend(u.config))
 	}
 	unit["builds"] = builds
 	if u.zone != nil {

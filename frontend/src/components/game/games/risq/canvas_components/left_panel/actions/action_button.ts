@@ -13,6 +13,7 @@ export declare interface RisqActionButtonConfig {
   col: number;
   image_path: string;
   description: string;
+  image_on_top?: boolean;
 }
 
 export abstract class RisqActionButton extends DwgSquareButton {
@@ -39,6 +40,7 @@ export abstract class RisqActionButton extends DwgSquareButton {
         fixed_position: true,
       },
       image_path: config.image_path,
+      image_on_top: config.image_on_top,
     });
     this.row = config.row;
     this.col = config.col;

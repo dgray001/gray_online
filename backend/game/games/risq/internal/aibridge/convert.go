@@ -119,13 +119,13 @@ func toAiTargetCategories(priority []int) []ai.TargetCategory {
 	return categories
 }
 
-func unitBuilds(unit_id uint32) []ai.Producible {
+func (v *aiView) unitBuilds(unit_id uint32) []ai.Producible {
 	builds := make([]ai.Producible, 0)
-	for _, p := range defs.UnitConfigs[unit_id].Builds {
+	for _, p := range v.config.Units[unit_id].Builds {
 		if p.Kind != defs.ProducibleKind_BUILDING {
 			continue
 		}
-		cost, _ := defs.BuildingProductionCost(p.Id)
+		cost, _ := v.config.BuildingProductionCost(p.Id)
 		builds = append(builds, ai.Producible{Kind: ai.ProducibleBuilding, ID: p.Id, Cost: toCost(cost)})
 	}
 	return builds

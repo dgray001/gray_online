@@ -1,6 +1,8 @@
 import type { GameBase, GamePlayer } from '../../../data_models';
 import type { ColorRGB } from '../../../../../scripts/color_rgb';
 import type { RisqTurnReport } from '../transport/turn_report';
+import type { RisqTickAction } from './tick_actions';
+import type { RisqTurnJournal } from './turn_journal';
 import type { RisqTerrainType } from '../rendering/terrain';
 import type { Point2D } from '../../../util/objects2d';
 
@@ -14,11 +16,30 @@ export declare interface GameRisq {
   population_limit: number;
   turn_number: number;
   spaces: (RisqSpace | undefined)[][];
+  /** Only the links the player has explored an end of */
+  space_links: RisqSpaceLink[];
   giving_orders: boolean;
   regions: RisqRegion[];
+  last_turn_journal?: RisqTurnJournal;
   background_image?: string;
   background_top_left?: [number, number];
   background_top_right?: [number, number];
+  /** Radians the default view turns the hex grid */
+  rotation: number;
+  /** False when no economic unit can exist, so economy views and displays are hidden */
+  has_economy: boolean;
+  /** False when no building exists and no unit can build one, so building displays are hidden */
+  has_buildings: boolean;
+  /** Whether hiring a mercenary needs the space's whole region to be yours as well as the space */
+  mercenaries_need_region: boolean;
+}
+
+/** A border between two spaces that are not coordinate neighbors, leaving `from` by edge `direction` and entering `to` by edge `to_direction` */
+export declare interface RisqSpaceLink {
+  from: Point2D;
+  to: Point2D;
+  direction: number;
+  to_direction: number;
 }
 
 export declare interface RisqOutcome {
@@ -58,6 +79,7 @@ export declare interface RisqPlayer {
   units: Map<number, RisqUnit>; // key is internal_id
   resources: Map<RisqResourceType, RisqPlayerResource>;
   population_limit: number;
+  unlimited_population: boolean;
   score: number;
   color: ColorRGB;
   active_orders: RisqOrder[];
@@ -201,17 +223,7 @@ export declare interface RisqMovePathStep {
   zone: Point2D;
 }
 
-export declare interface RisqTickAction {
-  tick: number;
-  sequence: number;
-  order?: Pick<RisqFrontendOrder, 'internal_id' | 'order_type' | 'target_id'>;
-  execute: {
-    kind: string;
-    outcome: 'executed' | 'partial' | 'blocked' | 'skipped';
-    target?: { kind?: 'unit' | 'building' | 'resource'; internal_id?: number };
-    target_location?: RisqMovePathStep;
-  };
-}
+export type { RisqTickAction };
 
 /** Data describing a risq unit */
 export declare interface RisqUnit {
@@ -265,6 +277,7 @@ export declare interface RisqGatherPoint {
 
 /** Data describing a risq building */
 export declare interface RisqBuilding {
+  tick_actions?: RisqTickAction[];
   internal_id: number;
   player_id: number;
   building_id: number;
@@ -435,6 +448,7 @@ export declare interface RisqResource {
   space_coordinate: Point2D;
   zone_coordinate: Point2D;
   resources_left: number;
+  max_resources: number;
   base_gather_speed: number;
   gather_capacity: number;
   // purely frontend fields

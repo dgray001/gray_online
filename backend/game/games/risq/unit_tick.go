@@ -237,8 +237,8 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 					u.blockTickAction("target_invalid")
 					return
 				}
-				_, stamina_required := defs.BuildingProductionCost(detail.building_id)
-				building = createRisqBuilding(foundation_id, detail.building_id, u.player_id)
+				_, stamina_required := u.config.BuildingProductionCost(detail.building_id)
+				building = createRisqBuilding(u.config, foundation_id, detail.building_id, u.player_id)
 				util.DebugLog.Printf("Foundation started: building=%d building_id=%d player=%d builder=%d zone=%s space=%s tick=%d",
 					building.internal_id, detail.building_id, u.player_id, u.internal_id, detail.zone.coordinate.ToString(), detail.zone.space.coordinate.ToString(), risq.current_tick)
 				building.stamina_remaining = stamina_required
@@ -267,7 +267,7 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 					building.internal_id, building.building_id, building.player_id, building.zone.coordinate.ToString(), building.zone.space.coordinate.ToString(), risq.current_tick)
 				risq.players[building.player_id].report.recordBuildingBuilt(building.building_id, building.zone.space.coordinate, building.zone.coordinate)
 				building.refreshTerrainOverride()
-				if defs.BuildingConfigs[building.building_id].IsGatherable() {
+				if u.config.Buildings[building.building_id].IsGatherable() {
 					risq.completed_gatherables = append(risq.completed_gatherables, building)
 				}
 			}

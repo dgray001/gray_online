@@ -37,7 +37,8 @@ export class RisqPointer {
     private left_panel: RisqLeftPanel,
     private planning: RisqOrderPlanning,
     private dispatch: RisqOrderDispatch,
-    private board_clicks: RisqBoardClicks
+    private board_clicks: RisqBoardClicks,
+    private hud_scale: () => number
   ) {}
 
   /** Screen-space rectangle of an in-progress drag selection */
@@ -93,7 +94,8 @@ export class RisqPointer {
       }
       return;
     }
-    const hovered_other_component = this.components.map((c) => c.mousemove(m, screen, transform)).some(Boolean);
+    const hud_screen = { x: screen.x / this.hud_scale(), y: screen.y / this.hud_scale() };
+    const hovered_other_component = this.components.map((c) => c.mousemove(m, hud_screen, transform)).some(Boolean);
     board.setPanSuppressed(false, this.panels_hovered());
     if (this.hover.update(hovered_other_component)) {
       this.cursor.update(modifiers.ctrl);

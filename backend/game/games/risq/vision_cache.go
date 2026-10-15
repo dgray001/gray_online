@@ -13,6 +13,7 @@ type RisqRubbleCache struct {
 
 // frozen snapshot from the last turn with >= poor vision; omits order/production data (spy-tier only)
 type RisqBuildingCache struct {
+	config                     *defs.Config
 	internal_id                uint64
 	player_id                  int
 	building_id                uint32
@@ -28,6 +29,7 @@ type RisqBuildingCache struct {
 
 func cacheRisqBuilding(b *RisqBuilding) RisqBuildingCache {
 	cache := RisqBuildingCache{
+		config:                     b.config,
 		internal_id:                b.internal_id,
 		player_id:                  b.player_id,
 		building_id:                b.building_id,
@@ -61,7 +63,7 @@ func (c RisqBuildingCache) toFrontend() gin.H {
 		"turn_stamina":               0,
 		"current_stamina":            0,
 		"max_stamina":                0,
-		"produces":                   buildingProducesToFrontend(c.building_id),
+		"produces":                   buildingProducesToFrontend(c.config, c.building_id),
 		"active_orders":              []gin.H{},
 		"production_queue":           []gin.H{},
 		"zone_coordinate":            c.zone_coordinate.ToFrontend(),
@@ -75,6 +77,7 @@ type RisqResourceCache struct {
 	resource_id       uint32
 	display_name      string
 	resources_left    float64
+	max_resources     float64
 	base_gather_speed int
 	gather_capacity   int
 	zone_coordinate   game_utils.Coordinate2D
@@ -87,6 +90,7 @@ func cacheRisqResource(r *RisqResource) RisqResourceCache {
 		resource_id:       r.resource_id,
 		display_name:      r.display_name,
 		resources_left:    r.resources_left,
+		max_resources:     r.max_resources,
 		base_gather_speed: r.base_gather_speed,
 		gather_capacity:   r.gather_capacity,
 	}
@@ -137,6 +141,7 @@ func (c RisqResourceCache) toFrontend() gin.H {
 		"resource_id":       c.resource_id,
 		"display_name":      c.display_name,
 		"resources_left":    c.resources_left,
+		"max_resources":     c.max_resources,
 		"base_gather_speed": c.base_gather_speed,
 		"gather_capacity":   c.gather_capacity,
 		"zone_coordinate":   c.zone_coordinate.ToFrontend(),

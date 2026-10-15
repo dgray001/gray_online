@@ -18,10 +18,10 @@ func (u *RisqUnit) findPath(target *RisqZone, attack_range defs.RisqRange) *Move
 	if start == nil || target == nil {
 		return nil
 	}
-	goal, remaining := pathGoal(target, attack_range)
+	goal, remaining := pathGoal(u.config, target, attack_range)
 	if goal(start) {
 		if is_garrisoned {
-			return &MoveIntent{path: []*RisqZone{start}, next_step: start, intra_step: true, cost: start.space.terrainType().MoveCost().Intra_cost}
+			return &MoveIntent{path: []*RisqZone{start}, next_step: start, intra_step: true, cost: start.space.moveCost().Intra_cost}
 		}
 		return nil
 	}
@@ -33,12 +33,12 @@ func (u *RisqUnit) canReach(target *RisqZone, attack_range defs.RisqRange) bool 
 	return start == target || u.findPath(target, attack_range) != nil
 }
 
-func pathGoal(target *RisqZone, attack_range defs.RisqRange) (func(*RisqZone) bool, func(*RisqZone) uint) {
+func pathGoal(config *defs.Config, target *RisqZone, attack_range defs.RisqRange) (func(*RisqZone) bool, func(*RisqZone) uint) {
 	space_range, ranged := attack_range.SpaceRadius()
 	if !ranged {
 		return func(z *RisqZone) bool { return z == target },
 			func(z *RisqZone) uint {
-				return z.space.distanceTo(target.space) * defs.LowestInterMoveCost
+				return z.space.distanceTo(target.space) * config.LowestInterMoveCost
 			}
 	}
 	goal := func(z *RisqZone) bool {
@@ -49,7 +49,7 @@ func pathGoal(target *RisqZone, attack_range defs.RisqRange) (func(*RisqZone) bo
 		if dist <= space_range {
 			return 0
 		}
-		return (dist - space_range) * defs.LowestInterMoveCost
+		return (dist - space_range) * config.LowestInterMoveCost
 	}
 	return goal, remaining
 }
@@ -92,7 +92,7 @@ func aStarPath(start *RisqZone, remaining func(*RisqZone) uint, goal func(*RisqZ
 			if neighbor.space.impassable() {
 				continue
 			}
-			cost := neighbor.space.terrainType().MoveCost()
+			cost := neighbor.space.moveCost()
 			move_cost := cost.Intra_cost
 			if neighbor.space != z.space {
 				move_cost = cost.Inter_cost
@@ -130,7 +130,7 @@ func (n *PathNode) constructMoveIntent() *MoveIntent {
 	}
 	next_step := path[1]
 	intra_step := path[0].space == next_step.space
-	cost := next_step.space.terrainType().MoveCost()
+	cost := next_step.space.moveCost()
 	move_cost := cost.Inter_cost
 	if intra_step {
 		move_cost = cost.Intra_cost

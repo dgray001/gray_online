@@ -2,9 +2,11 @@ package mapgen
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/dgray001/gray_online/game/game_utils"
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
+	"github.com/dgray001/gray_online/util"
 )
 
 type customPlayerStart struct {
@@ -32,12 +34,13 @@ func customStartCoordinate(home game_utils.Coordinate2D, x, y int) game_utils.Co
 	return game_utils.Coordinate2D{X: home.X + x, Y: home.Y + y}
 }
 
-func setCustomStartTerrain(space Space, terrain uint32) error {
+func setCustomStartTerrain(board Board, space Space, terrain uint32) error {
 	if terrain == 0 {
 		terrain = defs.DefaultTerrainId
 	}
-	config, ok := defs.TerrainConfigs[terrain]
-	if !ok || config.Terrain_type.MoveCost().Impassable {
+	config := configOf(board)
+	terrain_config, ok := config.Terrains[terrain]
+	if !ok || config.MoveCost(terrain_config.Terrain_type).Impassable {
 		return fmt.Errorf("invalid player start terrain %d", terrain)
 	}
 	space.SetTerrain(terrain)
@@ -72,16 +75,16 @@ func customStartSlots(board Board, m customMap) ([]Space, error) {
 	return starts, nil
 }
 
-func placeCustomStartContents(board Board, home Space, start customPlayerStart, player, numPlayers int) error {
+func placeCustomStartContents(ctx *mapScriptContext, home Space, start customPlayerStart, player int) error {
 	for _, template := range start.Spaces {
-		space := board.Space(customStartCoordinate(home.Coordinate(), template.X, template.Y))
+		space := ctx.board.Space(customStartCoordinate(home.Coordinate(), template.X, template.Y))
 		if template.Terrain != 0 {
-			if err := setCustomStartTerrain(space, template.Terrain); err != nil {
+			if err := setCustomStartTerrain(ctx.board, space, template.Terrain); err != nil {
 				return err
 			}
 		}
 		for _, zone := range template.Zones {
-			if err := placeCustomZone(board, space, customStartZone(zone, player), numPlayers); err != nil {
+			if err := placeCustomZone(ctx, space, customStartZone(zone, player)); err != nil {
 				return err
 			}
 		}
@@ -140,7 +143,7 @@ func prepareCustomStartTerrain(board Board, home Space, start customPlayerStart)
 		return err
 	}
 	for _, space := range footprint {
-		if err := setCustomStartTerrain(space, start.Terrain); err != nil {
+		if err := setCustomStartTerrain(board, space, start.Terrain); err != nil {
 			return err
 		}
 		space.ClearOccupants()
@@ -148,21 +151,59 @@ func prepareCustomStartTerrain(board Board, home Space, start customPlayerStart)
 	return nil
 }
 
-func placeCustomPlayerStarts(board Board, m customMap, numPlayers int) error {
+func placeCustomPlayerStarts(ctx *mapScriptContext, m customMap, random_slots bool) error {
 	if m.PlayerStart == nil {
 		return nil
 	}
-	starts, err := prepareCustomStartSlots(board, m)
+	slots, err := prepareCustomStartSlots(ctx.board, m)
 	if err != nil {
 		return err
 	}
-	for player, home := range starts[:numPlayers] {
-		if err := prepareCustomStartTerrain(board, home, *m.PlayerStart); err != nil {
+	homes := slices.Clone(slots)
+	if random_slots {
+		util.ShuffleFrom(ctx.rng, homes)
+	}
+	homes = homes[:ctx.num_players]
+	for player, home := range homes {
+		if err := prepareCustomStartTerrain(ctx.board, home, *m.PlayerStart); err != nil {
 			return err
 		}
-		if err := placeCustomStartContents(board, home, *m.PlayerStart, player, numPlayers); err != nil {
+		if err := placeCustomStartContents(ctx, home, *m.PlayerStart, player); err != nil {
 			return err
 		}
 	}
-	return nil
+	if m.PlayerStart.specifiesAssets() {
+		return nil
+	}
+	return placeDevelopmentStarts(ctx, homes, m.PlayerStart.Size)
+}
+
+// Whether the template names any unit or building, which then replaces the development setting's defaults
+func (s customPlayerStart) specifiesAssets() bool {
+	for _, space := range s.Spaces {
+		for _, zone := range space.Zones {
+			if zone.Building != nil || len(zone.Units) > 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// The development setting's default units and buildings at each home, placed the way a map script places them
+func placeDevelopmentStarts(ctx *mapScriptContext, homes []Space, area_size int) error {
+	var p playerStartsParams
+	applyStartingDevelopmentDefaults(ctx, &p)
+	config := ctx.config()
+	p.Units = slices.DeleteFunc(p.Units, func(u playerStartUnitJSON) bool { _, exists := config.Units[u.UnitId]; return !exists })
+	p.Buildings = slices.DeleteFunc(p.Buildings, func(b playerStartBuildingJSON) bool {
+		_, exists := config.Buildings[b.BuildingId]
+		return !exists
+	})
+	starts := make([]playerStartInfo, len(homes))
+	for i, home := range homes {
+		starts[i] = playerStartInfo{space: home}
+	}
+	ctx.player_starts, ctx.player_area_size = starts, area_size
+	return placeStartContents(ctx, p, starts, startFootprints(starts, area_size), 0)
 }

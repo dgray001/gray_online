@@ -8,9 +8,10 @@ import type {
   RisqPlannedFoundation,
   RisqProducible,
   RisqMovePathStep,
-  RisqTickAction,
   RisqProductionQueueItem,
+  RisqSpaceLink,
 } from '../model/types';
+import type { RisqTickActionFromServer, RisqTurnJournalFromServer } from './turn_journal_types';
 import type { RisqTerrainType } from '../rendering/terrain';
 import type { Point2D } from '../../../util/objects2d';
 import type {
@@ -31,12 +32,17 @@ export declare interface GameRisqFromServer {
   population_limit: number;
   turn_number: number;
   spaces: (RisqSpaceFromServer | undefined)[][];
-  space_links: { from: Point2D; to: Point2D; direction: number }[];
+  space_links: RisqSpaceLink[];
   giving_orders: boolean;
   regions: RisqRegionFromServer[];
+  last_turn_replay?: RisqTurnJournalFromServer | null;
   background_image?: string;
   background_top_left?: [number, number];
   background_top_right?: [number, number];
+  rotation: number;
+  has_economy: boolean;
+  has_buildings: boolean;
+  mercenaries_need_region: boolean;
 }
 
 /** Data describing a region, as returned by the server */
@@ -64,6 +70,7 @@ export declare interface RisqPlayerFromServer {
   resources?: RisqPlayerResourcesFromServer;
   population_limit: number;
   max_population_limit: number;
+  unlimited_population: boolean;
   score: number;
   color: string;
   active_orders: RisqOrderFromServer[];
@@ -146,7 +153,7 @@ export declare interface RisqZoneFromServer {
 
 /** Data describing a risq unit */
 export declare interface RisqUnitFromServer {
-  tick_actions?: RisqTickAction[];
+  tick_actions?: RisqTickActionFromServer[];
   internal_id: number;
   player_id: number;
   unit_id: number;
@@ -171,6 +178,7 @@ export declare interface RisqUnitFromServer {
 
 /** Data describing a risq building */
 export declare interface RisqBuildingFromServer {
+  tick_actions?: RisqTickActionFromServer[];
   internal_id: number;
   player_id: number;
   building_id: number;
@@ -231,6 +239,7 @@ export declare interface RisqResourceFromServer {
   space_coordinate: Point2D;
   zone_coordinate: Point2D;
   resources_left: number;
+  max_resources: number;
   base_gather_speed: number;
   gather_capacity: number;
 }
@@ -249,14 +258,13 @@ export declare interface StartTurnData {
   game: GameRisqFromServer;
 }
 
-export declare interface SubmittedOrdersData {
-  game: GameRisqFromServer;
+/** A small notice that a player submitted or unsubmitted; only the submitter's carries their order list */
+export declare interface SubmissionNoticeData {
   player_id: number;
-}
-
-export declare interface UnsubmittedOrdersData {
-  game: GameRisqFromServer;
-  player_id: number;
+  orders_submitted: boolean;
+  giving_orders: boolean;
+  turn_number: number;
+  active_orders?: RisqOrderFromServer[];
 }
 
 export declare interface UnitBehaviorSetData {

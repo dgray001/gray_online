@@ -15,7 +15,7 @@ func (u *RisqUnit) receiveOrder(o *RisqOrder, risq *GameRisq, prepend bool) erro
 			return errors.New("building limit reached")
 		}
 		if zone.building == nil && player.planned_foundations[zone.coordinate_key] == nil {
-			cost, _ := defs.BuildingProductionCost(building_id)
+			cost, _ := u.config.BuildingProductionCost(building_id)
 			if !player.resources.canAfford(cost) {
 				return errors.New("cannot afford building")
 			}
@@ -25,7 +25,7 @@ func (u *RisqUnit) receiveOrder(o *RisqOrder, risq *GameRisq, prepend bool) erro
 	case defs.OrderType_UnitRenew:
 		target := risq.buildings[uint64(o.target_id)]
 		if target.renewing == nil {
-			cost := defs.BuildingConfigs[target.building_id].Gather.Renew_cost
+			cost := u.config.Buildings[target.building_id].Gather.Renew_cost
 			player := risq.players[u.player_id]
 			if !player.resources.canAfford(cost) {
 				return errors.New("cannot afford renew")
@@ -78,7 +78,7 @@ func (u *RisqUnit) orderReceivable(o *RisqOrder, risq *GameRisq) bool {
 			return resource.resources_left > 0
 		}
 		if b := zone.building; b != nil {
-			config := defs.BuildingConfigs[b.building_id]
+			config := u.config.Buildings[b.building_id]
 			return config.IsGatherable() && !b.deleted && b.player_id == u.player_id && !b.underConstruction() && b.resources_left > 0
 		}
 		return false
@@ -94,7 +94,7 @@ func (u *RisqUnit) orderReceivable(o *RisqOrder, risq *GameRisq) bool {
 		if u.unitType() != defs.UnitType_ECONOMIC || target == nil || target.isDeleted() || target.player_id != u.player_id || target.underConstruction() {
 			return false
 		}
-		config := defs.BuildingConfigs[target.building_id]
+		config := u.config.Buildings[target.building_id]
 		return config.IsGatherable() && target.resources_left <= 0
 	case defs.OrderType_UnitGarrison:
 		target := risq.buildings[uint64(o.target_id)]
@@ -167,7 +167,7 @@ func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 		if resource, ok := zone.resourceKnownTo(u.player_id); ok && resource.resources_left > 0 {
 			return reachableStatus(reachable)
 		}
-		if b := zone.building; b != nil && !b.deleted && b.player_id == u.player_id && !b.underConstruction() && defs.BuildingConfigs[b.building_id].IsGatherable() && b.resources_left > 0 {
+		if b := zone.building; b != nil && !b.deleted && b.player_id == u.player_id && !b.underConstruction() && u.config.Buildings[b.building_id].IsGatherable() && b.resources_left > 0 {
 			return reachableStatus(reachable)
 		}
 	case defs.OrderType_UnitBuild:
@@ -187,7 +187,7 @@ func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 			if owner >= 0 && owner != u.player_id {
 				return OrderStatus_Cancelled
 			}
-			if u.zone == zone && !zone.space.buildableBy(u.player_id) {
+			if u.zone == zone && !zone.space.buildableBy(u.player_id, risq) {
 				return OrderStatus_Cancelled
 			}
 			if u.zone != zone && !u.canReach(zone, defs.RisqRange_ZONE) {

@@ -94,9 +94,13 @@ export class SlotsTool extends EditorTool {
     if (!doc) {
       return;
     }
+    const current = doc.starting_bank?.[resource] ?? 0;
+    if (typeof current !== 'number') {
+      return; // an expression over the setup settings; edit it in the map file
+    }
     const before = this.snapshot(doc);
     doc.starting_bank = doc.starting_bank ?? { food: 0, wood: 0, stone: 0, gold: 0 };
-    doc.starting_bank[resource] = Math.max(0, doc.starting_bank[resource] + delta);
+    doc.starting_bank[resource] = Math.max(0, current + delta);
     if (JSON.stringify(before.starting_bank) === JSON.stringify(doc.starting_bank)) {
       doc.starting_bank = before.starting_bank;
       return;

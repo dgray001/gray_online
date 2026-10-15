@@ -46,9 +46,10 @@ func constructionHealthRatio(stamina_remaining int, construction_stamina_total i
 	return constructionMinHealthRatio + (1-constructionMinHealthRatio)*progress
 }
 
-func createRisqBuilding(internal_id uint64, building_id uint32, player_id int) *RisqBuilding {
+func createRisqBuilding(game_config *defs.Config, internal_id uint64, building_id uint32, player_id int) *RisqBuilding {
 	building := RisqBuilding{
 		orderableBase: orderableBase{
+			config:       game_config,
 			internal_id:  internal_id,
 			player_id:    player_id,
 			turn_stamina: 10,
@@ -66,7 +67,7 @@ func createRisqBuilding(internal_id uint64, building_id uint32, player_id int) *
 		garrisoned_units: make(map[uint64]*RisqUnit),
 		auto_attack:      true,
 	}
-	config, ok := defs.BuildingConfigs[building_id]
+	config, ok := game_config.Buildings[building_id]
 	if !ok {
 		fmt.Fprintln(os.Stderr, "Creating unknown building id: ", building_id)
 		return &building
@@ -89,12 +90,12 @@ func createRisqBuilding(internal_id uint64, building_id uint32, player_id int) *
 }
 
 func (b *RisqBuilding) vision() *defs.RisqVision {
-	v := defs.BuildingConfigs[b.building_id].Vision
+	v := b.config.Buildings[b.building_id].Vision
 	return &v
 }
 
 func (b *RisqBuilding) score() uint {
-	return defs.BuildingConfigs[b.building_id].Cost.Points()
+	return b.config.Buildings[b.building_id].Cost.Points()
 }
 
 func (b *RisqBuilding) OrderableType() defs.OrderableType {
@@ -221,7 +222,7 @@ func (b *RisqBuilding) receiveOrder(o *RisqOrder, risq *GameRisq, prepend bool) 
 	switch o.order_type {
 	case defs.OrderType_BuildingCreate:
 		unit_id := uint32(o.target_id)
-		cost, stamina_required := defs.UnitProductionCost(unit_id)
+		cost, stamina_required := b.config.UnitProductionCost(unit_id)
 		resources := risq.players[b.player_id].resources
 		if !resources.canAfford(cost) {
 			return errors.New("cannot afford unit")
@@ -236,7 +237,7 @@ func (b *RisqBuilding) receiveOrder(o *RisqOrder, risq *GameRisq, prepend bool) 
 		}
 	case defs.OrderType_BuildingResearch:
 		tech_id := uint32(o.target_id)
-		tech := defs.TechConfigs[tech_id]
+		tech := b.config.Techs[tech_id]
 		resources := risq.players[b.player_id].resources
 		if !resources.canAfford(tech.Cost) {
 			return errors.New("cannot afford research")
@@ -431,16 +432,16 @@ func (b *RisqBuilding) tickExecute(risq *GameRisq) {
 	b.current_stamina -= b.intent.intent_cost
 }
 
-func buildingProducesToFrontend(building_id uint32) []gin.H {
+func buildingProducesToFrontend(config *defs.Config, building_id uint32) []gin.H {
 	produces := make([]gin.H, 0)
-	for _, p := range defs.BuildingConfigs[building_id].Produces {
-		produces = append(produces, p.ToFrontend())
+	for _, p := range config.Buildings[building_id].Produces {
+		produces = append(produces, p.ToFrontend(config))
 	}
 	return produces
 }
 
 func (b *RisqBuilding) toFrontend(viewer_player_id int) gin.H {
-	config := defs.BuildingConfigs[b.building_id]
+	config := b.config.Buildings[b.building_id]
 	display_name := b.display_name
 	if config.IsGatherable() && b.resources_left <= 0 {
 		display_name += " (expired)"
@@ -486,7 +487,7 @@ func (b *RisqBuilding) toFrontend(viewer_player_id int) gin.H {
 	if b.gather_point != nil && showOrdersTo(b.player_id, b.zone, viewer_player_id) {
 		building["gather_point"] = b.gather_point.toFrontend()
 	}
-	building["produces"] = buildingProducesToFrontend(b.building_id)
+	building["produces"] = buildingProducesToFrontend(b.config, b.building_id)
 	if config.IsGatherable() {
 		building["resources_left"] = b.resources_left
 		building["resource_capacity"] = config.Gather.Starting_resources
@@ -522,25 +523,25 @@ func (b *RisqBuilding) toFrontend(viewer_player_id int) gin.H {
 	return building
 }
 
-func AllBuildingConfigsToFrontend() []gin.H {
-	ids := make([]uint32, 0, len(defs.BuildingConfigs))
-	for id := range defs.BuildingConfigs {
+func AllBuildingConfigsToFrontend(game_config *defs.Config) []gin.H {
+	ids := make([]uint32, 0, len(game_config.Buildings))
+	for id := range game_config.Buildings {
 		ids = append(ids, id)
 	}
 	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
 	buildings := make([]gin.H, len(ids))
 	for i, id := range ids {
-		config := defs.BuildingConfigs[id]
+		config := game_config.Buildings[id]
 		produces := make([]gin.H, len(config.Produces))
 		for j, p := range config.Produces {
-			produces[j] = p.ToFrontend()
+			produces[j] = p.ToFrontend(game_config)
 		}
 		buildings[i] = gin.H{
 			"building_id":        id,
 			"display_name":       config.Display_name,
 			"description":        config.Description,
 			"required_tech_id":   config.Required_tech_id,
-			"buildable":          defs.AnyUnitCanBuild(id),
+			"buildable":          game_config.AnyUnitCanBuild(id),
 			"produces":           produces,
 			"cost":               config.Cost.ToFrontend(),
 			"stamina_cost":       config.Build_stamina,

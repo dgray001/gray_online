@@ -20,7 +20,7 @@ func (r *RisqResource) gatherCapacity() int {
 }
 
 func (b *RisqBuilding) gatherCapacity() int {
-	return defs.BuildingConfigs[b.building_id].Gather.Gather_capacity
+	return b.config.Buildings[b.building_id].Gather.Gather_capacity
 }
 
 // The live source in a zone: its resource, or its gatherable building
@@ -28,7 +28,7 @@ func zoneGatherSource(zone *RisqZone) Gatherable {
 	if zone.resource != nil {
 		return zone.resource
 	}
-	if b := zone.building; b != nil && defs.BuildingConfigs[b.building_id].IsGatherable() {
+	if b := zone.building; b != nil && b.config.Buildings[b.building_id].IsGatherable() {
 		return b
 	}
 	return nil
@@ -87,11 +87,11 @@ func (r *RisqResource) gatherDrain(amount float64) {
 }
 
 func (b *RisqBuilding) gatherCategory() defs.RisqResourceCategory {
-	return defs.BuildingConfigs[b.building_id].Gather.Resource_category
+	return b.config.Buildings[b.building_id].Gather.Resource_category
 }
 
 func (b *RisqBuilding) gatherSpeed() int {
-	return defs.BuildingConfigs[b.building_id].Gather.Base_gather_speed
+	return b.config.Buildings[b.building_id].Gather.Base_gather_speed
 }
 
 func (b *RisqBuilding) gatherResourcesLeft() float64 {
@@ -109,7 +109,7 @@ func (b *RisqBuilding) gatherDrain(amount float64) {
 
 func (b *RisqBuilding) startRenew(cost defs.RisqResourceCost) {
 	b.renewing = &cost
-	b.renew_stamina_remaining = defs.BuildingConfigs[b.building_id].Gather.Renew_stamina
+	b.renew_stamina_remaining = b.config.Buildings[b.building_id].Gather.Renew_stamina
 }
 
 // Applied after every actor executes, so this tick's gatherers cannot see the refill
@@ -120,7 +120,7 @@ func (b *RisqBuilding) resolveRenew() {
 	b.renew_stamina_remaining = max(0, b.renew_stamina_remaining-b.pending_renew_stamina)
 	b.pending_renew_stamina = 0
 	if b.renew_stamina_remaining == 0 {
-		b.resources_left = defs.BuildingConfigs[b.building_id].Gather.Starting_resources
+		b.resources_left = b.config.Buildings[b.building_id].Gather.Starting_resources
 		b.renewing = nil
 	}
 	b.refreshTerrainOverride()
@@ -130,7 +130,7 @@ func (b *RisqBuilding) refreshTerrainOverride() {
 	if b.zone == nil {
 		return
 	}
-	config := defs.BuildingConfigs[b.building_id]
+	config := b.config.Buildings[b.building_id]
 	terrain_type := b.zone.space.terrainType()
 	override := config.Terrain_override[terrain_type]
 	if config.IsGatherable() && b.resources_left <= 0 {

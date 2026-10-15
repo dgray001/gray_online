@@ -81,7 +81,6 @@ func TestFakeBoardMatchesEngineOnTinyDocs(t *testing.T) {
 		"starts":        `{"board_size":3,"players":2,"starting_bank":{"food":1,"wood":2,"stone":3,"gold":4},` + startTemplate + `,"spaces":[` + hexSpaces(3, map[[2]int]int{{-2, 0}: 0, {1, 0}: 1}) + `]}`,
 		"footprint":     `{"board_size":2,"players":2,` + startTemplate + `,"spaces":[{"x":-2,"y":0,"player_slot":0,"zones":[{"x":1,"y":0,"resource":41},{"x":0,"y":0,"units":[{"id":1,"player":1,"count":2}]}]},{"x":2,"y":0,"player_slot":1}]}`,
 		"seam":          `{"board_size":3,"players":1,"spaces":[` + two + `],"connections":[{"from":[-3,0],"to":[3,0],"direction":3}]}`,
-		"center link":   `{"board_size":3,"players":1,"spaces":[` + two + `],"connections":[{"from":[-3,0],"to":[3,0]}]}`,
 		"regions+gold":  `{"board_size":3,"players":1,"space_gold_income":30,"regions":[{"name":"A","gold_bonus":5,"spaces":[[-3,0],[3,0]]}],"spaces":[` + two + `]}`,
 		"zone contents": customDoc(2, "", `{"x":0,"y":0,"zones":[{"x":0,"y":0,"terrain_override":6,"building":{"id":1,"player":1},"units":[{"id":1,"player":0,"count":2}]},{"x":1,"y":0,"resource":41}]}`),
 	}

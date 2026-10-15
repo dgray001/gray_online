@@ -30,6 +30,50 @@ func TestLinksAndSeamsAreExportedToClients(t *testing.T) {
 	}
 }
 
+func TestEconomyIsReportedOnlyWhenSomeoneCanHaveEconomicUnits(t *testing.T) {
+	military := mapDoc("", spaceWith(0, 0, grass, unit(infantry, 0))+","+spaceWith(1, 0, grass, unit(infantry, 1)))
+	if startGame(t, military).State(0).HasEconomy {
+		t.Error("an infantry-only game reports an economy")
+	}
+	mixed := mapDoc("", spaceWith(0, 0, grass, unit(villager, 0))+","+spaceWith(1, 0, grass, unit(infantry, 1)))
+	if !startGame(t, mixed).State(0).HasEconomy {
+		t.Error("a game with a villager reports no economy")
+	}
+}
+
+func TestBuildingsAreReportedOnlyWhenSomeoneCanHaveThem(t *testing.T) {
+	military := mapDoc("", spaceWith(0, 0, grass, unit(infantry, 0))+","+spaceWith(1, 0, grass, unit(infantry, 1)))
+	if startGame(t, military).State(0).HasBuildings {
+		t.Error("an infantry-only game reports buildings")
+	}
+	mixed := mapDoc("", spaceWith(0, 0, grass, unit(villager, 0))+","+spaceWith(1, 0, grass, unit(infantry, 1)))
+	if !startGame(t, mixed).State(0).HasBuildings {
+		t.Error("a game with a villager, who can build, reports no buildings")
+	}
+}
+
+func TestSpaceNameReplacesOnlyTheTerrainNameInTheSnapshot(t *testing.T) {
+	named := `{"x":0,"y":0,"terrain":1,"name":"Brazil","zones":[{"x":0,"y":0,"units":[` + unit(villager, 0) + `]}]}`
+	state := startGame(t, mapDoc("", named+","+spaceWith(1, 0, grass, unit(villager, 1)))).State(0)
+	brazil, other := state.Space(0, 0), state.Space(1, 0)
+	if brazil.DisplayName != "Brazil" {
+		t.Errorf("named space shows %q, want Brazil", brazil.DisplayName)
+	}
+	if other.DisplayName == "" || other.DisplayName == "Brazil" || *brazil.TerrainID != *other.TerrainID {
+		t.Errorf("unnamed space shows %q on terrain %v, want its terrain's name", other.DisplayName, other.TerrainID)
+	}
+}
+
+func TestMercenaryRegionRuleIsExportedAndMapsCanTurnItOff(t *testing.T) {
+	spaces := spaceWith(0, 0, grass, unit(villager, 0)) + "," + spaceWith(1, 0, grass, unit(villager, 1))
+	if !startGame(t, mapDoc("", spaces)).State(0).MercenariesNeedRegion {
+		t.Error("the default rule, which needs the whole region, was not exported")
+	}
+	if startGame(t, mapDoc(`,"mercenaries_need_region":false`, spaces)).State(0).MercenariesNeedRegion {
+		t.Error("a map that turns the rule off still exports it as on")
+	}
+}
+
 func TestOrdinaryBoardsExportNoLinks(t *testing.T) {
 	state := startGame(t, mapDoc("", spaceWith(0, 0, grass, unit(villager, 0))+","+spaceWith(1, 0, grass, unit(villager, 1)))).State(0)
 	if len(state.SpaceLinks) != 0 {

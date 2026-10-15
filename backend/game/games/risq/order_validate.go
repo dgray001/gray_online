@@ -151,7 +151,7 @@ func (r *GameRisq) validateFrontendOrder(order defs.OrderFromFrontend, player_id
 		}
 		_, known_resource := zone.resourceKnownTo(order.Player_id)
 		known_building, has_building := zone.buildingKnownTo(order.Player_id)
-		if !known_resource && (!has_building || !defs.BuildingConfigs[known_building.building_id].IsGatherable()) {
+		if !known_resource && (!has_building || !r.config.Buildings[known_building.building_id].IsGatherable()) {
 			return fmt.Errorf("No resource in target zone")
 		}
 		for _, subject_id := range order.Subjects {
@@ -161,7 +161,7 @@ func (r *GameRisq) validateFrontendOrder(order defs.OrderFromFrontend, player_id
 		}
 	case defs.OrderType_BuildingCreate:
 		unit_id := uint32(order.Target_id)
-		unit_config, ok := defs.UnitConfigs[unit_id]
+		unit_config, ok := r.config.Units[unit_id]
 		if !ok {
 			return fmt.Errorf("Invalid or unsupported unit id for production: %d", unit_id)
 		}
@@ -173,13 +173,13 @@ func (r *GameRisq) validateFrontendOrder(order defs.OrderFromFrontend, player_id
 			if building.underConstruction() {
 				return fmt.Errorf("Building id %d is still under construction", subject_id)
 			}
-			if !defs.BuildingConfigs[building.building_id].CanProduce(unit_id) {
+			if !r.config.Buildings[building.building_id].CanProduce(unit_id) {
 				return fmt.Errorf("Building id %d cannot produce unit id %d", building.building_id, unit_id)
 			}
 		}
 	case defs.OrderType_BuildingResearch:
 		tech_id := uint32(order.Target_id)
-		tech_config, ok := defs.TechConfigs[tech_id]
+		tech_config, ok := r.config.Techs[tech_id]
 		if !ok {
 			return fmt.Errorf("Invalid or unsupported tech id: %d", tech_id)
 		}
@@ -197,7 +197,7 @@ func (r *GameRisq) validateFrontendOrder(order defs.OrderFromFrontend, player_id
 			if building.underConstruction() {
 				return fmt.Errorf("Building id %d is still under construction", subject_id)
 			}
-			if !defs.BuildingConfigs[building.building_id].CanResearch(tech_id) {
+			if !r.config.Buildings[building.building_id].CanResearch(tech_id) {
 				return fmt.Errorf("Building id %d cannot research tech id %d", building.building_id, tech_id)
 			}
 		}
@@ -206,12 +206,12 @@ func (r *GameRisq) validateFrontendOrder(order defs.OrderFromFrontend, player_id
 		if space == nil || zone == nil {
 			return fmt.Errorf("Invalid space or zone target inverted from build key %d", order.Target_id)
 		}
-		_, stamina_required := defs.BuildingProductionCost(building_id)
+		_, stamina_required := r.config.BuildingProductionCost(building_id)
 		if stamina_required <= 0 {
 			return fmt.Errorf("Invalid or unbuildable building id: %d", building_id)
 		}
-		if !requiredTechMet(r.players[order.Player_id], defs.BuildingConfigs[building_id].Required_tech_id) {
-			return fmt.Errorf("Required tech id %d not researched for building id %d", defs.BuildingConfigs[building_id].Required_tech_id, building_id)
+		if !requiredTechMet(r.players[order.Player_id], r.config.Buildings[building_id].Required_tech_id) {
+			return fmt.Errorf("Required tech id %d not researched for building id %d", r.config.Buildings[building_id].Required_tech_id, building_id)
 		}
 		if _, known := zone.resourceKnownTo(order.Player_id); known {
 			return fmt.Errorf("Target zone is already occupied")
@@ -226,7 +226,7 @@ func (r *GameRisq) validateFrontendOrder(order defs.OrderFromFrontend, player_id
 			if unit.unitType() != defs.UnitType_ECONOMIC {
 				return fmt.Errorf("Only economic units can build")
 			}
-			if !defs.UnitConfigs[unit.unit_id].CanBuild(building_id) {
+			if !r.config.Units[unit.unit_id].CanBuild(building_id) {
 				return fmt.Errorf("Unit id %d cannot build building id %d", unit.unit_id, building_id)
 			}
 		}
@@ -248,7 +248,7 @@ func (r *GameRisq) validateFrontendOrder(order defs.OrderFromFrontend, player_id
 		if building == nil {
 			return fmt.Errorf("Invalid building target id %d", order.Target_id)
 		}
-		if !defs.BuildingConfigs[building.building_id].IsGatherable() {
+		if !r.config.Buildings[building.building_id].IsGatherable() {
 			return fmt.Errorf("Building id %d is not gatherable", building.building_id)
 		}
 		for _, subject_id := range order.Subjects {
@@ -321,7 +321,7 @@ func (r *GameRisq) validateFrontendOrder(order defs.OrderFromFrontend, player_id
 		if space == nil || zone == nil {
 			return fmt.Errorf("Invalid space or zone target inverted from mercenary key %d", order.Target_id)
 		}
-		if _, ok := defs.UnitConfigs[unit_id]; !ok {
+		if _, ok := r.config.Units[unit_id]; !ok {
 			return fmt.Errorf("Invalid or unsupported unit id: %d", unit_id)
 		}
 		if !r.players[order.Player_id].available_mercenaries[unit_id] {

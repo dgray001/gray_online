@@ -23,6 +23,10 @@ type mapZone struct {
 	z *RisqZone
 }
 
+func (b mapBoard) Config() *defs.Config {
+	return b.r.config
+}
+
 func (b mapBoard) wrapSpace(s *RisqSpace) mapgen.Space {
 	if s == nil {
 		return nil
@@ -69,10 +73,10 @@ func (b mapBoard) AddRegion(name string, gold_bonus float64, coordinate_keys map
 	return b.r.addRegion(name, gold_bonus, coordinate_keys)
 }
 
-func (b mapBoard) ConnectSpaces(a, c mapgen.Space, direction int) error {
+func (b mapBoard) ConnectSpaces(a, c mapgen.Space, direction int, to_direction int) error {
 	first, second := a.(mapSpace).s, c.(mapSpace).s
 	b.r.space_distances = nil
-	return connectSeam(first, second, direction)
+	return connectSeam(first, second, direction, to_direction)
 }
 
 func (b mapBoard) Distance(a, c mapgen.Space) int {
@@ -82,13 +86,13 @@ func (b mapBoard) Distance(a, c mapgen.Space) int {
 
 func (b mapBoard) PlaceResource(z mapgen.Zone, resource_id uint32) {
 	zone := z.(mapZone).z
-	zone.space.setResource(&zone.coordinate, createRisqResource(b.r.nextResourceInternalId(), resource_id))
+	zone.space.setResource(&zone.coordinate, createRisqResource(b.r.config, b.r.nextResourceInternalId(), resource_id))
 }
 
 func (b mapBoard) PlaceBuilding(z mapgen.Zone, building_id uint32, player_index int, resources_left ...float64) bool {
 	zone := z.(mapZone).z
 	player := b.r.players[player_index]
-	building := createRisqBuilding(b.r.nextBuildingInternalId(), building_id, player.player.Player_id)
+	building := createRisqBuilding(b.r.config, b.r.nextBuildingInternalId(), building_id, player.player.Player_id)
 	if len(resources_left) > 0 {
 		building.resources_left = resources_left[0]
 	}
@@ -111,7 +115,7 @@ func (b mapBoard) PlaceUnit(z mapgen.Zone, unit_id uint32, player_index int) {
 }
 
 func (b mapBoard) GrantStartingTech(player_index int, tech_id uint32) error {
-	if _, ok := defs.TechConfigs[tech_id]; !ok {
+	if _, ok := b.r.config.Techs[tech_id]; !ok {
 		return fmt.Errorf("unknown starting tech %d", tech_id)
 	}
 	b.r.completeResearch(b.r.players[player_index], tech_id)
@@ -153,6 +157,10 @@ func (s mapSpace) Terrain() uint32 {
 
 func (s mapSpace) SetTerrain(terrain_id uint32) {
 	s.s.terrain_id = terrain_id
+}
+
+func (s mapSpace) SetName(name string) {
+	s.s.name = name
 }
 
 func (s mapSpace) Impassable() bool {
@@ -261,8 +269,12 @@ func (z mapZone) SetTerrainOverride(terrain_id uint32) {
 	z.z.terrain_override = terrain_id
 }
 
-func (b mapBoard) SetBackgroundImage(name string, tl [2]int, tr [2]int) {
+func (b mapBoard) SetRotation(degrees float64) {
+	b.r.rotation = degrees
+}
+
+func (b mapBoard) SetBackgroundImage(name string, tl [2]float64, tr [2]float64) {
 	b.r.background_image = name
-	b.r.background_top_left = game_utils.Coordinate2D{X: tl[0], Y: tl[1]}
-	b.r.background_top_right = game_utils.Coordinate2D{X: tr[0], Y: tr[1]}
+	b.r.background_top_left = tl
+	b.r.background_top_right = tr
 }

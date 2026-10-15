@@ -41,12 +41,25 @@ func registerRisqDevRoutes(api *gin.RouterGroup) {
 		}
 		c.JSON(200, successResponse(true))
 	})
-	dev.GET("/terrains", func(c *gin.Context) {
-		c.JSON(200, successResponse(risq.AllTerrainConfigsToFrontend()))
-	})
-	dev.GET("/entities", func(c *gin.Context) {
-		c.JSON(200, successResponse(risq.AllEntityConfigsToFrontend()))
-	})
+	// The optional config_dir segment picks a map's own config folder; without it the default tables are used
+	for _, config_dir_segment := range []string{"", "/:config_dir"} {
+		dev.GET("/terrains"+config_dir_segment, func(c *gin.Context) {
+			config, err := risq.ConfigFromDir(c.Param("config_dir"))
+			if err != nil {
+				c.JSON(200, failureResponse(err.Error()))
+				return
+			}
+			c.JSON(200, successResponse(risq.AllTerrainConfigsToFrontend(config)))
+		})
+		dev.GET("/entities"+config_dir_segment, func(c *gin.Context) {
+			config, err := risq.ConfigFromDir(c.Param("config_dir"))
+			if err != nil {
+				c.JSON(200, failureResponse(err.Error()))
+				return
+			}
+			c.JSON(200, successResponse(risq.AllEntityConfigsToFrontend(config)))
+		})
+	}
 	dev.POST("/preview", func(c *gin.Context) {
 		doc, _ := io.ReadAll(c.Request.Body)
 		snapshot, err := risq.PreviewCustomMap(doc)

@@ -28,7 +28,7 @@ type gameMetrics struct {
 }
 
 func isProductionBuilding(b *RisqBuilding) bool {
-	return !b.deleted && b.building_id != villageCenterBuildingId && !b.underConstruction() && len(defs.BuildingConfigs[b.building_id].Produces) > 0
+	return !b.deleted && b.building_id != villageCenterBuildingId && !b.underConstruction() && len(b.config.Buildings[b.building_id].Produces) > 0
 }
 
 func (s *PlayerTurnMetrics) production(building_id uint32) *ProductionMetrics {

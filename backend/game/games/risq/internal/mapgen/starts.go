@@ -22,7 +22,7 @@ type playerStartResourceJSON struct {
 	Distance []int `json:"distance,omitempty"`
 }
 
-func (r playerStartResourceJSON) resourceIds() ([]uint32, error) {
+func (r playerStartResourceJSON) resourceIds(config *defs.Config) ([]uint32, error) {
 	ids := r.ResourceIds
 	if ids == nil {
 		ids = []uint32{r.ResourceId}
@@ -30,7 +30,7 @@ func (r playerStartResourceJSON) resourceIds() ([]uint32, error) {
 		return nil, fmt.Errorf("start resource requires resource_id or a nonempty resource_ids list")
 	}
 	for _, id := range ids {
-		if _, ok := defs.ResourceConfigs[id]; !ok {
+		if _, ok := config.Resources[id]; !ok {
 			return nil, fmt.Errorf("unknown start resource id %d", id)
 		}
 	}
@@ -295,7 +295,7 @@ func planStartResources(ctx *mapScriptContext, resources []playerStartResourceJS
 	used := make(map[[4]int]bool)
 	slots := make([]startResourceSlot, 0)
 	for _, r := range resources {
-		ids, err := r.resourceIds()
+		ids, err := r.resourceIds(ctx.config())
 		if err != nil {
 			return nil, err
 		}

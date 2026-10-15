@@ -152,7 +152,7 @@ export class RisqLeftPanel implements CanvasComponent {
 
   resolveSize(): void {
     this.invalidateLayout();
-    const h = Math.min(4 * this.config.w, this.risq.viewport.canvasSize().height);
+    const h = Math.min(4 * this.config.w, this.risq.hudCanvasSize().height);
     this.size = { x: h / 3, y: h };
     this.close_button.setPosition({ x: this.size.x, y: this.yi() + 0.5 * this.close_button.h() });
     const buildings = this.data?.data_type === LeftPanelDataType.BUILDINGS ? this.data.data.buildings : [];
@@ -513,7 +513,7 @@ export class RisqLeftPanel implements CanvasComponent {
     return 0;
   }
   yi(): number {
-    return 0.5 * (this.risq.viewport.canvasSize().height - this.size.y);
+    return 0.5 * (this.risq.hudCanvasSize().height - this.size.y);
   }
   xf(): number {
     return this.showing ? this.xi() + this.w() : 0;

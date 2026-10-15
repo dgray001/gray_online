@@ -49,6 +49,7 @@ func newMapScriptVars(num_players int, settings Settings, board_size uint16, tot
 		"map_resources":        float64(settings.MapResources),
 		"starting_development": float64(settings.StartingDevelopment),
 		"start_balance":        float64(settings.StartBalance),
+		"visibility":           float64(settings.Visibility),
 		"map_size_large":       float64(defs.MapSize_LARGE),
 		"map_size_huge":        float64(defs.MapSize_HUGE),
 		"num_players":          float64(num_players),
@@ -96,7 +97,7 @@ func Generate(board Board, rng *rand.Rand, num_players int, settings Settings, m
 	kind, name, _ := strings.Cut(map_name, ":")
 	switch kind {
 	case "custom":
-		return generateCustom(board, num_players, name)
+		return generateCustom(board, rng, settings, num_players, name)
 	case "script":
 		return generateScripted(board, rng, num_players, settings, name)
 	}
@@ -204,6 +205,7 @@ func init() {
 	}
 }
 
+// The rules both map formats accept, with expressions over the setup variables
 type rulesParams struct {
 	StartingTechs         []uint32    `json:"starting_techs,omitempty"`
 	UnlimitedPopulation   bool        `json:"unlimited_population,omitempty"`
@@ -211,18 +213,26 @@ type rulesParams struct {
 	MercenariesNeedRegion *bool       `json:"mercenaries_need_region,omitempty"`
 }
 
+func (p rulesParams) resolve(vars map[string]float64) (mapRules, error) {
+	rules := mapRules{StartingTechs: p.StartingTechs, UnlimitedPopulation: p.UnlimitedPopulation, MercenariesNeedRegion: p.MercenariesNeedRegion}
+	if p.SpaceGoldIncome != nil {
+		gold, err := p.SpaceGoldIncome.resolve(vars)
+		if err != nil {
+			return rules, err
+		}
+		rules.SpaceGoldIncome = &gold
+	}
+	return rules, nil
+}
+
 func stepRules(ctx *mapScriptContext, raw json.RawMessage) error {
 	p, err := decodeStepParams[rulesParams](raw, "rules")
 	if err != nil {
 		return err
 	}
-	rules := mapRules{StartingTechs: p.StartingTechs, UnlimitedPopulation: p.UnlimitedPopulation, MercenariesNeedRegion: p.MercenariesNeedRegion}
-	if p.SpaceGoldIncome != nil {
-		gold, err := p.SpaceGoldIncome.resolve(ctx.vars)
-		if err != nil {
-			return err
-		}
-		rules.SpaceGoldIncome = &gold
+	rules, err := p.resolve(ctx.vars)
+	if err != nil {
+		return err
 	}
 	return applyMapRules(ctx.board, ctx.num_players, rules)
 }

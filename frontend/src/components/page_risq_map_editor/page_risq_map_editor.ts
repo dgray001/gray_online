@@ -51,6 +51,7 @@ export class DwgPageRisqMapEditor extends DwgElement {
   private viewport = new RisqViewport(this.session);
   private host = new EditorDrawHost(this.session, this.viewport);
   private history = new EditHistory();
+  private catalog_config_dir?: string;
   private terrains: TerrainEntry[] = [];
   private entities: EntityCatalog = { buildings: [], units: [], resources: [] };
   private selection?: EditorTarget;
@@ -180,17 +181,22 @@ export class DwgPageRisqMapEditor extends DwgElement {
     if (resource_configs.success) {
       this.session.setResourceConfigs(resource_configs.result);
     }
-    const terrains = await listTerrains();
-    if (terrains.success) {
-      this.terrains = terrains.result;
-    }
-    const entities = await listEntities();
-    if (entities.success) {
-      this.entities = entities.result;
-    }
+    await this.loadCatalogs(undefined);
     await this.startBoard();
     await this.refreshMapList();
     this.header.setStatus('Select a map or create a new one');
+  }
+
+  private async loadCatalogs(config_dir: string | undefined): Promise<void> {
+    this.catalog_config_dir = config_dir;
+    const terrains = await listTerrains(config_dir);
+    if (terrains.success) {
+      this.terrains = terrains.result;
+    }
+    const entities = await listEntities(config_dir);
+    if (entities.success) {
+      this.entities = entities.result;
+    }
   }
 
   private isDirty(): boolean {
@@ -504,6 +510,9 @@ export class DwgPageRisqMapEditor extends DwgElement {
   private async setDoc(doc: MapDoc, name: string): Promise<void> {
     this.load_revision++;
     this.doc = doc;
+    if (doc.config_dir !== this.catalog_config_dir) {
+      await this.loadCatalogs(doc.config_dir);
+    }
     this.history.clear();
     this.select(undefined);
     this.header.setName(name);
@@ -535,6 +544,7 @@ export class DwgPageRisqMapEditor extends DwgElement {
       return;
     }
     this.session.replaceSnapshot(response.result);
+    this.board.setDefaultRotation(this.session.getGame()?.rotation ?? 0);
     this.host.hover.forget();
     this.refreshSelection();
     this.header.setStatus(this.revert_notice ?? `${doc.spaces.length} spaces`, !!this.revert_notice);

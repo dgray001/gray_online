@@ -1,8 +1,10 @@
+import { getSettings } from '../../../../../scripts/settings_store';
 import { ColorRGB } from '../../../../../scripts/color_rgb';
 import { DEV } from '../../../../../scripts/util';
 import { drawHexagon, drawText } from '../../../util/canvas_util';
 import type { Point2D } from '../../../util/objects2d';
 import type { RisqDrawHost } from './draw_host';
+import { hasBuildings, hasEconomy } from '../model/economy';
 import type { RisqSpace } from '../model/types';
 import { RisqResourceType, RisqUnitType, RisqVisibilityLevel } from '../model/types';
 import { resourceTypeImage } from './assets/resources';
@@ -185,11 +187,16 @@ const overview_space_line_width: Record<DrawRisqSpaceDetail, number> = {
   [DrawRisqSpaceDetail.ZONE_DETAILS]: 0.6,
 };
 
+/** The territory border multiplier: the display setting unless the caller pins its own */
+export function borderScale(config: { border_scale?: number }): number {
+  return config.border_scale ?? getSettings().risq_display.territory_border_width;
+}
+
 export function spaceBorderWidth(
-  config: Pick<DrawRisqSpaceConfig, 'hex_r' | 'draw_detail'> & { view_mode?: RisqViewMode }
+  config: Pick<DrawRisqSpaceConfig, 'hex_r' | 'draw_detail'> & { view_mode?: RisqViewMode; border_scale?: number }
 ): number {
   const widths = isOverviewViewMode(config.view_mode) ? overview_space_line_width : space_line_width;
-  return widths[config.draw_detail] * (config.hex_r / SPACE_BORDER_REFERENCE_RADIUS);
+  return widths[config.draw_detail] * (config.hex_r / SPACE_BORDER_REFERENCE_RADIUS) * borderScale(config);
 }
 
 function drawSpaceContent(
@@ -423,6 +430,7 @@ function drawSpaceDetailsContent(
   config: DrawRisqSpaceConfig,
   black_text: boolean
 ): void {
+  const economy = hasEconomy(game.getGame());
   let building_img = game.getIcon('icons/building64');
   let villager_img = game.getIcon('icons/villager64');
   let unit_img = game.getIcon('icons/unit64');
@@ -460,7 +468,7 @@ function drawSpaceDetailsContent(
     draw_count_row(gold_img, space.gold_income?.toString() ?? '??');
     return;
   }
-  if (config.view_mode === RisqViewMode.ALL) {
+  if (config.view_mode === RisqViewMode.ALL && hasBuildings(game.getGame())) {
     draw_count_row(building_img, space.buildings?.size.toString() ?? '0');
   }
   if (config.view_mode === RisqViewMode.RESOURCE) {
@@ -468,16 +476,18 @@ function drawSpaceDetailsContent(
       draw_count_row(villager_img, space.num_villager_units?.toString() ?? '0');
     }
   } else if (space.visibility === RisqVisibilityLevel.POOR) {
-    const combo_icon = game
-      .getImageCache()
-      .getImage(comboUnitIconKey(!black_text), COMBO_UNIT_ICON_SIZE, [villager_img, unit_img], (combo_ctx) =>
-        drawComboUnitIcon(combo_ctx, villager_img, unit_img)
-      );
+    const combo_icon = economy
+      ? game
+          .getImageCache()
+          .getImage(comboUnitIconKey(!black_text), COMBO_UNIT_ICON_SIZE, [villager_img, unit_img], (combo_ctx) =>
+            drawComboUnitIcon(combo_ctx, villager_img, unit_img)
+          )
+      : unit_img;
     if (combo_icon) {
       draw_count_row(combo_icon, space.unit_count?.toString() ?? '0');
     }
   } else if (space.visibility >= RisqVisibilityLevel.GOOD) {
-    if (config.view_mode === RisqViewMode.ALL) {
+    if (config.view_mode === RisqViewMode.ALL && economy) {
       draw_count_row(villager_img, space.num_villager_units?.toString() ?? '0');
     }
     if (config.view_mode === RisqViewMode.MILITARY && space.num_military_units) {

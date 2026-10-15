@@ -106,8 +106,14 @@ func TestTickHistorySpyVisibility(t *testing.T) {
 	if len(ordinary.State(owner).Unit(id).TickActions) == 0 {
 		t.Fatal("owner history missing under ordinary vision")
 	}
-	if enemy := ordinary.State(observer).Unit(id); enemy == nil || len(enemy.TickActions) != 0 {
-		t.Fatalf("ordinary visibility leaked history: %+v", enemy)
+	enemy := ordinary.State(observer).Unit(id)
+	if enemy == nil || len(enemy.TickActions) == 0 {
+		t.Fatalf("ordinary visibility lost the redacted history: %+v", enemy)
+	}
+	for _, a := range enemy.TickActions {
+		if a.Order.Source != "" || a.Intent.MinCost != 0 || a.Intent.AvailableStamina != 0 || a.Execute.Gathered != 0 {
+			t.Fatalf("ordinary visibility leaked history: %+v", a)
+		}
 	}
 }
 

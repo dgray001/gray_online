@@ -56,12 +56,10 @@ func (z *zone) Adjacent() []mapgen.Zone {
 			zones = append(zones, other)
 		}
 	}
-	if z.IsCenter() {
-		for _, linked := range z.space.links {
-			zones = append(zones, linked.byLocal[1][1])
+	if !z.IsCenter() {
+		if across := z.across(); across != nil {
+			zones = append(zones, across)
 		}
-	} else if across := z.across(); across != nil {
-		zones = append(zones, across)
 	}
 	adjacent := make([]mapgen.Zone, len(zones))
 	for i, other := range zones {
@@ -74,8 +72,8 @@ func (z *zone) Adjacent() []mapgen.Zone {
 func (z *zone) across() *zone {
 	direction := game_utils.AxialDirectionIndex(z.local)
 	if neighbor := z.space.borders[direction]; neighbor != nil {
-		inv := z.local.Invert()
-		return neighbor.byLocal[inv.X+1][inv.Y+1]
+		arrival := game_utils.AxialDirectionVectors()[z.space.arrivals[direction]]
+		return neighbor.byLocal[arrival.X+1][arrival.Y+1]
 	}
 	return nil
 }

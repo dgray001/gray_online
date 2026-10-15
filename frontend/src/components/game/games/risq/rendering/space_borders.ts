@@ -1,11 +1,17 @@
 import { drawLine } from '../../../util/canvas_util';
 import type { Point2D } from '../../../util/objects2d';
-import { AXIAL_DIRECTION_VECTORS, addPoint2D } from '../../../util/objects2d';
+import { AXIAL_DIRECTION_VECTORS, addPoint2D, equalsPoint2D } from '../../../util/objects2d';
 import { coordinateToIndex, getSpace } from '../model/coordinates';
 import type { RisqRegion, RisqSpace } from '../model/types';
 import type { RisqDrawHost } from './draw_host';
 import type { DrawRisqSpaceConfig } from './space';
-import { SPACE_BORDER_REFERENCE_RADIUS, borderStrokeStyle, isOverviewViewMode, spaceBorderWidth } from './space';
+import {
+  SPACE_BORDER_REFERENCE_RADIUS,
+  borderScale,
+  borderStrokeStyle,
+  isOverviewViewMode,
+  spaceBorderWidth,
+} from './space';
 import type { RisqViewMode } from './terrain';
 import { spaceOwnerColor } from './terrain';
 
@@ -58,6 +64,7 @@ export function drawRisqSpaceBorders(
     regions_only?: boolean;
     black_regions?: boolean;
     min_width?: number;
+    border_scale?: number;
   },
   center_of: (space: RisqSpace) => Point2D = (space) => space.center
 ): void {
@@ -68,18 +75,29 @@ export function drawRisqSpaceBorders(
   const visible_keys = new Set(spaces.map((space) => space.coordinate_key));
   const width = spaceBorderWidth(config);
   const overview = isOverviewViewMode(config.view_mode);
+  const space_at = (coordinate: Point2D): RisqSpace | undefined =>
+    getSpace(game_data, coordinateToIndex(game_data.board_size, coordinate));
+  const linked_at = (space: RisqSpace, direction: number): RisqSpace | undefined => {
+    for (const link of game_data.space_links) {
+      if (equalsPoint2D(link.from, space.coordinate) && link.direction === direction) {
+        return space_at(link.to);
+      }
+      if (equalsPoint2D(link.to, space.coordinate) && link.to_direction === direction) {
+        return space_at(link.from);
+      }
+    }
+    return undefined;
+  };
   const neighbor_at = (space: RisqSpace, direction: number): RisqSpace | undefined =>
-    getSpace(
-      game_data,
-      coordinateToIndex(game_data.board_size, addPoint2D(space.coordinate, AXIAL_DIRECTION_VECTORS[direction]))
-    );
+    linked_at(space, direction) ?? space_at(addPoint2D(space.coordinate, AXIAL_DIRECTION_VECTORS[direction]));
   ctx.save();
   ctx.lineCap = 'butt';
   for (const space of spaces) {
     const color = borderStrokeStyle(spaceOwnerColor(space.ownership, game_data.players), 1);
     for (const direction of AXIAL_DIRECTION_VECTORS.keys()) {
       const neighbor = neighbor_at(space, direction);
-      if (neighbor && visible_keys.has(neighbor.coordinate_key) && space.coordinate_key > neighbor.coordinate_key) {
+      const shares_edge = !!neighbor && !linked_at(space, direction);
+      if (shares_edge && visible_keys.has(neighbor.coordinate_key) && space.coordinate_key > neighbor.coordinate_key) {
         continue;
       }
       const region = game.session.getRegionForSpace(space.coordinate_key);
@@ -91,7 +109,7 @@ export function drawRisqSpaceBorders(
       const addition = region_edge
         ? Math.max(regionBorderAddition(region, game, overview), regionBorderAddition(neighbor_region, game, overview))
         : 0;
-      const scaled_width = width + addition * (config.hex_r / SPACE_BORDER_REFERENCE_RADIUS);
+      const scaled_width = width + addition * (config.hex_r / SPACE_BORDER_REFERENCE_RADIUS) * borderScale(config);
       const edge_width = Math.max(scaled_width, config.min_width ?? 0);
       const [hex_start, hex_end] = hexEdgeForDirectionIndex(center_of(space), config.hex_r, direction);
       const along = { x: (hex_end.x - hex_start.x) / config.hex_r, y: (hex_end.y - hex_start.y) / config.hex_r };

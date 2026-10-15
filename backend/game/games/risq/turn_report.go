@@ -216,7 +216,7 @@ func (r *GameRisq) computePlayerScore(p *RisqPlayer) uint {
 	}
 	for tech_id, done := range p.researched_techs {
 		if done {
-			score += defs.TechConfigs[tech_id].Cost.Points()
+			score += p.config.Techs[tech_id].Cost.Points()
 		}
 	}
 	pid := p.player.Player_id

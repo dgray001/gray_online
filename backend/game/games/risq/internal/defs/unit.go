@@ -72,8 +72,8 @@ func (c UnitConfig) CanBuild(building_id uint32) bool {
 	return false
 }
 
-func AnyUnitCanBuild(building_id uint32) bool {
-	for _, config := range UnitConfigs {
+func (c *Config) AnyUnitCanBuild(building_id uint32) bool {
+	for _, config := range c.Units {
 		if config.CanBuild(building_id) {
 			return true
 		}
@@ -81,8 +81,8 @@ func AnyUnitCanBuild(building_id uint32) bool {
 	return false
 }
 
-func UnitProductionCost(unit_id uint32) (RisqResourceCost, int) {
-	config, ok := UnitConfigs[unit_id]
+func (c *Config) UnitProductionCost(unit_id uint32) (RisqResourceCost, int) {
+	config, ok := c.Units[unit_id]
 	if !ok {
 		fmt.Fprintln(os.Stderr, "Unknown unit id for production cost: ", unit_id)
 		return RisqResourceCost{}, 0
@@ -174,12 +174,12 @@ func parseAttackType(s string) (AttackType, error) {
 
 var UnitConfigs map[uint32]UnitConfig
 
-func loadUnitConfig(data []byte) {
+func (c *Config) loadUnits(data []byte) {
 	var entries []unitConfigJSON
 	if err := json.Unmarshal(data, &entries); err != nil {
 		panic(fmt.Sprintf("failed to parse config/units.json: %v", err))
 	}
-	UnitConfigs = make(map[uint32]UnitConfig, len(entries))
+	c.Units = make(map[uint32]UnitConfig, len(entries))
 	for _, e := range entries {
 		unit_type, err := parseUnitType(e.UnitType)
 		if err != nil {
@@ -198,7 +198,7 @@ func loadUnitConfig(data []byte) {
 		if err != nil {
 			panic(fmt.Sprintf("config/units.json unit_id %d: %v", e.UnitId, err))
 		}
-		UnitConfigs[e.UnitId] = UnitConfig{
+		c.Units[e.UnitId] = UnitConfig{
 			Display_name:         e.DisplayName,
 			Description:          e.Description,
 			Unit_type:            unit_type,

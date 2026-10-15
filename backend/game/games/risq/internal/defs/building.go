@@ -128,8 +128,8 @@ func (c BuildingConfig) CanResearch(tech_id uint32) bool {
 }
 
 // Returns the resource cost and total build stamina required for a unit to construct this building type
-func BuildingProductionCost(building_id uint32) (RisqResourceCost, int) {
-	config, ok := BuildingConfigs[building_id]
+func (c *Config) BuildingProductionCost(building_id uint32) (RisqResourceCost, int) {
+	config, ok := c.Buildings[building_id]
 	if !ok || config.Build_stamina <= 0 {
 		fmt.Fprintln(os.Stderr, "Unknown or unbuildable building id: ", building_id)
 		return RisqResourceCost{}, 0
@@ -168,12 +168,12 @@ type buildingConfigJSON struct {
 
 var BuildingConfigs map[uint32]BuildingConfig
 
-func loadBuildingConfig(data []byte) {
+func (c *Config) loadBuildings(data []byte) {
 	var entries []buildingConfigJSON
 	if err := json.Unmarshal(data, &entries); err != nil {
 		panic(fmt.Sprintf("failed to parse config/buildings.json: %v", err))
 	}
-	BuildingConfigs = make(map[uint32]BuildingConfig, len(entries))
+	c.Buildings = make(map[uint32]BuildingConfig, len(entries))
 	for _, e := range entries {
 		produces, err := parseProducibles(e.Produces, nil)
 		if err != nil {
@@ -195,7 +195,7 @@ func loadBuildingConfig(data []byte) {
 		if err != nil {
 			panic(err)
 		}
-		BuildingConfigs[e.BuildingId] = BuildingConfig{
+		c.Buildings[e.BuildingId] = BuildingConfig{
 			Display_name:                 e.DisplayName,
 			Description:                  e.Description,
 			Max_health:                   e.MaxHealth,

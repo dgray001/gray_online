@@ -3,8 +3,6 @@ package mapgen
 import (
 	"encoding/json"
 	"fmt"
-
-	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 )
 
 type regionsBonusParams struct {
@@ -33,7 +31,7 @@ func stepRegionsSix(ctx *mapScriptContext, raw json.RawMessage) error {
 	}
 	names := append([]string{}, p.Names...)
 	if len(names) < 6 {
-		names = append(names, defs.RandomRegionNames(ctx.rng, 6-len(names), names)...)
+		names = append(names, ctx.config().RandomRegionNames(ctx.rng, 6-len(names), names)...)
 	}
 	if len(names) < 6 {
 		return fmt.Errorf("regions_six: not enough region names available")

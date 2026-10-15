@@ -49,7 +49,7 @@ func (r *GameRisq) allocateBoard(board_size uint16) {
 		r.spaces[j] = make([]*RisqSpace, l)
 		for i := range r.spaces[j] {
 			q := max(-int(board_size), -(int(board_size)+row_r)) + i
-			r.spaces[j][i] = createRisqSpace(q, row_r, defs.DefaultTerrainId)
+			r.spaces[j][i] = createRisqSpace(r.config, q, row_r, defs.DefaultTerrainId)
 		}
 	}
 	for _, row := range r.spaces {
@@ -57,7 +57,7 @@ func (r *GameRisq) allocateBoard(board_size uint16) {
 			for _, v := range game_utils.AxialDirectionVectors() {
 				adjacent := r.getSpace(space.coordinate.Add(&v))
 				if adjacent != nil {
-					space.setAdjacentSpace(adjacent, &v)
+					space.setAdjacentSpace(adjacent, &v, v.Invert())
 				}
 			}
 		}
@@ -73,19 +73,18 @@ func removeZoneFromSlice(zones []*RisqZone, target *RisqZone) []*RisqZone {
 	return zones
 }
 
-// Joins first's edge in direction (an index into AxialDirectionVectors) to second's opposite edge like a normal border
-func connectSeam(first *RisqSpace, second *RisqSpace, direction int) error {
+// Joins first's edge in direction to second's edge in to_direction (indexes into AxialDirectionVectors)
+func connectSeam(first *RisqSpace, second *RisqSpace, direction int, to_direction int) error {
 	vectors := game_utils.AxialDirectionVectors()
-	if direction < 0 || direction >= len(vectors) {
-		return fmt.Errorf("seam direction %d is not 0 to 5", direction)
+	if direction < 0 || direction >= len(vectors) || to_direction < 0 || to_direction >= len(vectors) {
+		return fmt.Errorf("seam directions %d and %d are not 0 to 5", direction, to_direction)
 	}
-	vector := vectors[direction]
-	inverted := vector.Invert()
-	if first.getZone(&vector).adjacent_space != nil || second.getZone(inverted).adjacent_space != nil {
+	vector, to_vector := vectors[direction], vectors[to_direction]
+	if first.getZone(&vector).adjacent_space != nil || second.getZone(&to_vector).adjacent_space != nil {
 		return fmt.Errorf("seam edge between %s and %s is already connected", first.coordinate.ToString(), second.coordinate.ToString())
 	}
-	first.setAdjacentSpace(second, &vector)
-	second.setAdjacentSpace(first, inverted)
+	first.setAdjacentSpace(second, &vector, &to_vector)
+	second.setAdjacentSpace(first, &to_vector, &vector)
 	return nil
 }
 

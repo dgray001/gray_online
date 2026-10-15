@@ -1,6 +1,8 @@
 import { DwgElement } from '../../../../../dwg_element';
+import type { DwgDialogBox } from '../../../../../dialog_box/dialog_box';
 import { apiGet } from '../../../../../../scripts/api';
-import { getSettings, updateSettings } from '../../../../../../scripts/settings_store';
+import type { RisqDisplaySettings } from '../../../../../../scripts/settings_store';
+import { defaultRisqDisplaySettings, getSettings, updateSettings } from '../../../../../../scripts/settings_store';
 import { enumKeys } from '../../../../../../scripts/util';
 import type {
   HotkeyCombo,
@@ -19,10 +21,13 @@ import {
   comboFromMouseEvent,
   comboToDisplayString,
   comboToString,
+  defaultRisqHotkeyBindings,
   hotkeysConflict,
   isUnbound,
 } from '../../application/input/hotkeys';
 import { RisqProducibleKind } from '../../model/types';
+import type { DisplayOption, DisplaySpec } from '../../application/display_options';
+import { RISQ_DISPLAY_KEYS, RISQ_DISPLAY_SPECS } from '../../application/display_options';
 
 import html from './risq_settings.html';
 
@@ -55,18 +60,22 @@ interface HotkeyEntry {
 
 const GLOBAL_SECTION = RISQ_HOTKEY_SCOPE_LABELS[RisqHotkeyScope.GLOBAL];
 
-type RisqSettingsTab = 'animations' | 'hotkeys';
+type RisqSettingsTab = 'display' | 'hotkeys';
 
 export class DwgRisqSettings extends DwgElement {
-  private tab_button_animations!: HTMLButtonElement;
+  private tab_button_display!: HTMLButtonElement;
   private tab_button_hotkeys!: HTMLButtonElement;
-  private tab_content_animations!: HTMLDivElement;
+  private tab_content_display!: HTMLDivElement;
   private tab_content_hotkeys!: HTMLDivElement;
   private status!: HTMLDivElement;
   private rows!: HTMLDivElement;
-  private bindings: RisqHotkeyBindings = getSettings().risq_hotkeys;
+  private display_rows!: HTMLDivElement;
+  private restore_defaults_button!: HTMLButtonElement;
+  private cancel_changes_button!: HTMLButtonElement;
+  private save_changes_button!: HTMLButtonElement;
+  private bindings: RisqHotkeyBindings = structuredClone(getSettings().risq_hotkeys);
+  private display_settings: RisqDisplaySettings = structuredClone(getSettings().risq_display);
   private entries: HotkeyEntry[] = [];
-  // generic building covers building-only actions before (or if) the tech tree loads
   private selections: HotkeySelection[] = [...UNIT_HOTKEY_SELECTIONS, { kind: 'building', unit_ids: [], tech_ids: [] }];
   private listener_cleanup?: () => void;
 
@@ -74,10 +83,14 @@ export class DwgRisqSettings extends DwgElement {
     super();
     this.html_string = html;
     this.configureElements(
-      'tab_button_animations',
+      'tab_button_display',
       'tab_button_hotkeys',
-      'tab_content_animations',
+      'tab_content_display',
       'tab_content_hotkeys',
+      'display_rows',
+      'restore_defaults_button',
+      'cancel_changes_button',
+      'save_changes_button',
       'status',
       'rows'
     );
@@ -85,8 +98,11 @@ export class DwgRisqSettings extends DwgElement {
 
   protected override async parsedCallback(): Promise<void> {
     this.entries = [];
-    this.tab_button_animations.addEventListener('click', () => this.showTab('animations'));
+    this.tab_button_display.addEventListener('click', () => this.showTab('display'));
     this.tab_button_hotkeys.addEventListener('click', () => this.showTab('hotkeys'));
+    this.restore_defaults_button.addEventListener('click', () => this.restoreDefaults());
+    this.cancel_changes_button.addEventListener('click', () => this.cancelChanges());
+    this.save_changes_button.addEventListener('click', () => this.saveChanges());
     for (const key of enumKeys(RisqHotkeyAction)) {
       const action = RisqHotkeyAction[key];
       this.entries.push({
@@ -96,6 +112,7 @@ export class DwgRisqSettings extends DwgElement {
         slot: { group: 'actions', key: action },
       });
     }
+    this.renderDisplay();
     this.renderAll();
     const response = await apiGet<BuildingTreeEntry[]>('risq/tech-tree');
     this.status.classList.add('hide');
@@ -111,11 +128,15 @@ export class DwgRisqSettings extends DwgElement {
   }
 
   private showTab(tab: RisqSettingsTab): void {
-    this.tab_button_animations.classList.toggle('active', tab === 'animations');
+    this.tab_button_display.classList.toggle('active', tab === 'display');
     this.tab_button_hotkeys.classList.toggle('active', tab === 'hotkeys');
-    this.tab_content_animations.classList.toggle('active', tab === 'animations');
+    this.tab_content_display.classList.toggle('active', tab === 'display');
     this.tab_content_hotkeys.classList.toggle('active', tab === 'hotkeys');
-    this.renderAll();
+    if (tab === 'display') {
+      this.renderDisplay();
+    } else {
+      this.renderAll();
+    }
   }
 
   private addBuildingEntries(buildings: BuildingTreeEntry[]): void {
@@ -202,7 +223,6 @@ export class DwgRisqSettings extends DwgElement {
       }
     }
     this.assign(slot, combo);
-    updateSettings({ risq_hotkeys: this.bindings });
   }
 
   private renderAll(): void {
@@ -298,6 +318,135 @@ export class DwgRisqSettings extends DwgElement {
   private cancelListening(): void {
     this.listener_cleanup?.();
     this.listener_cleanup = undefined;
+  }
+
+  private updateDisplaySetting(key: keyof RisqDisplaySettings, value: unknown): void {
+    this.display_settings = { ...this.display_settings, [key]: value };
+  }
+
+  /** A native range input stepping through the option indices, with a datalist for tick marks */
+  private createSlider<T>(
+    label: string,
+    options: DisplayOption<T>[],
+    index: number,
+    on_select: (opt: DisplayOption<T>) => void
+  ): [HTMLInputElement, HTMLDataListElement] {
+    const slider = document.createElement('input');
+    slider.type = 'range';
+    slider.min = '0';
+    slider.max = (options.length - 1).toString();
+    slider.step = '1';
+    slider.value = index.toString();
+    slider.classList.add('display-slider');
+    slider.addEventListener('input', () => on_select(options[Number(slider.value)]));
+    const ticks = document.createElement('datalist');
+    ticks.id = `ticks-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+    ticks.append(
+      ...options.map((_, i): HTMLOptionElement => {
+        const tick = document.createElement('option');
+        tick.value = i.toString();
+        return tick;
+      })
+    );
+    slider.setAttribute('list', ticks.id);
+    return [slider, ticks];
+  }
+
+  private buildSliderRow<T>(
+    label: string,
+    options: DisplayOption<T>[],
+    current_value: T,
+    on_change: (value: T) => void
+  ): HTMLDivElement {
+    const row = document.createElement('div');
+    row.classList.add('display-row');
+    const label_el = document.createElement('span');
+    label_el.classList.add('display-label');
+    label_el.innerText = label;
+    const value_el = document.createElement('span');
+    value_el.classList.add('display-value');
+    const index = Math.max(
+      0,
+      options.findIndex((opt) => opt.value === current_value)
+    );
+    value_el.innerText = options[index]?.label ?? '';
+    const [slider, ticks] = this.createSlider(label, options, index, (opt) => {
+      value_el.innerText = opt.label;
+      on_change(opt.value);
+    });
+    row.append(label_el, slider, value_el, ticks);
+    return row;
+  }
+
+  private buildCheckboxRow(
+    spec: DisplaySpec<unknown>,
+    current: unknown,
+    on_change: (value: unknown) => void
+  ): HTMLDivElement {
+    const row = document.createElement('div');
+    row.classList.add('display-row');
+    const label_el = document.createElement('span');
+    label_el.classList.add('display-label');
+    label_el.innerText = spec.label;
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.classList.add('display-checkbox');
+    input.checked = current === true;
+    const val_el = document.createElement('span');
+    val_el.classList.add('display-value');
+    const label_for = (checked: boolean): string =>
+      spec.options.find((option) => option.value === checked)?.label ?? '';
+    val_el.innerText = label_for(input.checked);
+    input.addEventListener('change', () => {
+      val_el.innerText = label_for(input.checked);
+      on_change(input.checked);
+    });
+    row.append(label_el, input, val_el);
+    return row;
+  }
+
+  private displayRow(key: keyof RisqDisplaySettings): HTMLDivElement {
+    const spec: DisplaySpec<unknown> = RISQ_DISPLAY_SPECS[key];
+    const current = this.display_settings[key];
+    const on_change = (value: unknown): void => this.updateDisplaySetting(key, value);
+    return spec.control === 'checkbox'
+      ? this.buildCheckboxRow(spec, current, on_change)
+      : this.buildSliderRow(spec.label, spec.options, current, on_change);
+  }
+
+  private renderDisplay(): void {
+    this.display_rows.replaceChildren(...RISQ_DISPLAY_KEYS.map((key) => this.displayRow(key)));
+  }
+
+  private restoreDefaults(): void {
+    this.cancelListening();
+    this.display_settings = defaultRisqDisplaySettings();
+    this.bindings = defaultRisqHotkeyBindings();
+    this.renderDisplay();
+    this.renderAll();
+  }
+
+  private saveChanges(): void {
+    this.cancelListening();
+    updateSettings({
+      risq_display: this.display_settings,
+      risq_hotkeys: this.bindings,
+    });
+    this.closeDialog();
+  }
+
+  private cancelChanges(): void {
+    this.closeDialog();
+  }
+
+  private closeDialog(): void {
+    this.cancelListening();
+    const dialog = this.closest<DwgDialogBox<unknown>>('.dwg-dialog-box');
+    if (dialog) {
+      dialog.closeDialog();
+    } else {
+      this.remove();
+    }
   }
 
   private stopListening(button: HTMLButtonElement, slot: BindingSlot): void {

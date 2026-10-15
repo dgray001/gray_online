@@ -4,6 +4,7 @@ import { drawRect, drawText } from '../../game/util/canvas_util';
 import type { Point2D } from '../../game/util/objects2d';
 import type { EditorConfigPanel, EditorToolContext, PanelBounds } from '../editor_tool';
 import type { EntityEntry } from '../map_api';
+import type { MapDocUnit } from '../map_doc';
 
 export interface ValidationIssue {
   severity: 'error' | 'warning' | 'info';
@@ -17,6 +18,12 @@ const ROW_H = 26;
 const INK = 'rgb(59, 36, 19)';
 const FONT = '12px "Fira Sans", sans-serif';
 const BOLD_FONT = 'bold 12px "Fira Sans", sans-serif';
+
+/** An expression over the setup settings can't be evaluated here, so it counts as placing units */
+function placesUnits(unit: Pick<MapDocUnit, 'count'>): boolean {
+  return typeof unit.count === 'string' || unit.count > 0;
+}
+
 function contains(rect: PanelBounds, p: Point2D): boolean {
   return p.x >= rect.x && p.x <= rect.x + rect.w && p.y >= rect.y && p.y <= rect.y + rect.h;
 }
@@ -105,7 +112,7 @@ export class ValidationPanel implements EditorConfigPanel {
           owners.add(zone.building.player);
         }
         for (const unit of zone.units ?? []) {
-          if (unit.count > 0) {
+          if (placesUnits(unit)) {
             owners.add(unit.player);
           }
         }
@@ -132,7 +139,7 @@ export class ValidationPanel implements EditorConfigPanel {
     }
     if (
       !doc.player_start!.spaces.some((space) =>
-        space.zones?.some((zone) => zone.building || zone.units?.some((unit) => unit.count > 0))
+        space.zones?.some((zone) => zone.building || zone.units?.some(placesUnits))
       )
     ) {
       issues.push({ severity: 'error', message: 'Start template has no starting units or buildings' });

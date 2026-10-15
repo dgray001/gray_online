@@ -153,7 +153,7 @@ func (r *GameRisq) executeSubmitOrders(player_id int, orders []defs.OrderFromFro
 	if all_orders_submitted {
 		r.giving_orders = false
 	}
-	r.broadcastSnapshot("submitted-orders", gin.H{"player_id": player_id})
+	r.broadcastSubmission("submitted-orders", player_id)
 	if all_orders_submitted {
 		r.resolveActiveOrders()
 	}
@@ -170,7 +170,7 @@ func (r *GameRisq) executeUnsubmitOrders(player_id int) {
 		}
 	}
 	player.active_orders = kept
-	r.broadcastSnapshot("unsubmitted-orders", gin.H{"player_id": player_id})
+	r.broadcastSubmission("unsubmitted-orders", player_id)
 }
 
 // Resolves immediately; independent of the order system.
@@ -258,7 +258,7 @@ func (r *GameRisq) executeSetBuildingBehavior(player_id int, behavior BuildingBe
 	affected := make([]uint64, 0, len(behavior.Internal_ids))
 	for _, internal_id := range behavior.Internal_ids {
 		building, ok := player.buildings[internal_id]
-		if !ok || defs.BuildingConfigs[building.building_id].Attack_type == defs.AttackType_NONE {
+		if !ok || r.config.Buildings[building.building_id].Attack_type == defs.AttackType_NONE {
 			continue
 		}
 		if behavior.Auto_attack != nil {
@@ -305,7 +305,7 @@ func (r *GameRisq) executeSetBuildingBehavior(player_id int, behavior BuildingBe
 func (r *GameRisq) executeSetGatherPoint(player_id int, request GatherPointFromFrontend) {
 	player := r.players[player_id]
 	building, ok := player.buildings[request.Building_id]
-	if !ok || !defs.BuildingConfigs[building.building_id].CanHaveGatherPoint() {
+	if !ok || !r.config.Buildings[building.building_id].CanHaveGatherPoint() {
 		player.player.AddFailedUpdateShorthand("set-gather-point-failed", "Building cannot have a gather point")
 		return
 	}

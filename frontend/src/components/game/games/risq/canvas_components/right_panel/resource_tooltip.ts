@@ -44,7 +44,7 @@ export function resourceTooltipData(risq: DwgRisq, type: RisqResourceType): Risq
   const lines = [
     `Stockpile: ${formatOneDecimal(amount)}`,
     `Pending orders: ${signed(-spending)}`,
-    `Workers gathering: ${worker_text}`,
+    risq.getGame()?.has_economy === false ? undefined : `Workers gathering: ${worker_text}`,
     lastTurnLine(risq, type),
     `Known on map: ${Math.round(knownOnMap(risq, type))}`,
     ...(type === RisqResourceType.GOLD ? goldIncomeLines(risq) : []),

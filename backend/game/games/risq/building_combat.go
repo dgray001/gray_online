@@ -51,7 +51,7 @@ func (b *RisqBuilding) setBuildingAttackIntent(risq *GameRisq, target Attackable
 }
 
 func (b *RisqBuilding) buildGarrisonAttacks(risq *GameRisq, target Attackable) []GarrisonAttack {
-	config := defs.BuildingConfigs[b.building_id]
+	config := b.config.Buildings[b.building_id]
 	attacks := make([]GarrisonAttack, 0, len(b.garrisoned_units))
 	for _, unit := range b.garrisoned_units {
 		if unit.deleted || unit.current_stamina <= 0 {

@@ -13,6 +13,7 @@ import {
 } from '../../../../util/objects2d';
 import type { RisqBuilding, RisqSpace, RisqUnit } from '../../model/types';
 import type { RisqOrderProjection } from '../../rendering/board/order_overlays';
+import { orderLinesVisible } from '../../rendering/board/order_overlays';
 import { orderArrowColor } from '../../application/orders/orders_model';
 import { ColorRGB } from '../../../../../../scripts/color_rgb';
 import { RisqVisibilityLevel } from '../../model/types';
@@ -25,6 +26,7 @@ import {
   RisqTechTreeButton,
   RisqViewModeButton,
 } from '../bottom_panel/bottom_panel_buttons';
+import { RisqLinks } from '../../rendering/links';
 import { drawRisqSpaceBorders } from '../../rendering/space_borders';
 import { DrawRisqSpaceDetail, drawHexImage, fillHexOverlay, getSpaceFill } from '../../rendering/space';
 import {
@@ -197,6 +199,9 @@ function clipPolygonToBox(polygon: Point2D[], min: Point2D, max: Point2D): Point
   return result;
 }
 
+/** Link lines are sized for the main board, so the minimap scales them down to hairlines */
+const MINIMAP_LINK_SCALE = 3;
+
 export class RisqMinimap implements CanvasComponent {
   readonly overflow = MINIMAP_BUTTON_OVERFLOW;
   private static PADDING = 4;
@@ -212,6 +217,7 @@ export class RisqMinimap implements CanvasComponent {
   private last_screen_m: Point2D = { x: 0, y: 0 };
   private last_transform: BoardTransformData = defaultTransform();
   private corner_buttons: RisqMinimapCornerButton[];
+  private links: RisqLinks;
 
   constructor(
     risq: DwgRisq,
@@ -220,6 +226,11 @@ export class RisqMinimap implements CanvasComponent {
   ) {
     this.risq = risq;
     this.config = config;
+    this.links = new RisqLinks(risq.session, {
+      hexR: (): number => this.hex_r,
+      hexA: (): number => 0.5 * 1.732 * this.hex_r,
+      coordinateToCanvas: (space: Point2D): Point2D => this.coordinateToMinimapCanvas(space),
+    });
     this.corner_buttons = [
       new RisqViewModeButton(risq),
       new RisqTechTreeButton(risq),
@@ -323,6 +334,9 @@ export class RisqMinimap implements CanvasComponent {
   }
 
   private drawSelectedOrders(ctx: CanvasRenderingContext2D): void {
+    if (!orderLinesVisible(true) || this.risq.session.isReplaying()) {
+      return;
+    }
     const projection = this.orderProjection();
     ctx.save();
     ctx.lineWidth = 1;
@@ -487,9 +501,11 @@ export class RisqMinimap implements CanvasComponent {
             regions_only: true,
             black_regions: false,
             min_width: 1,
+            border_scale: 1,
           },
           (s) => this.coordinateToMinimapCanvas(s.coordinate)
         );
+        this.links.draw(ctx, MINIMAP_LINK_SCALE);
         const selected_points: Point2D[] = [];
         const selected_resource_points: Point2D[] = [];
         const selected_units = this.risq.selection.selectedUnitIds();
@@ -559,8 +575,9 @@ export class RisqMinimap implements CanvasComponent {
         ctx.translate(-(origin.x + content_center.x), -(origin.y + content_center.y));
         const left_panel = this.risq.left_panel;
         const right_panel = this.risq.right_panel;
-        const visible_x0 = left_panel.isShowing() ? left_panel.xf() : 0;
-        const visible_x1 = right_panel.isOpen() ? right_panel.xi() : this.risq.viewport.canvasSize().width;
+        const hud = this.risq.hudScale();
+        const visible_x0 = left_panel.isShowing() ? left_panel.xf() * hud : 0;
+        const visible_x1 = right_panel.isOpen() ? right_panel.xi() * hud : this.risq.viewport.canvasSize().width;
         const canvas_h = this.risq.viewport.canvasSize().height;
         const display_center = { x: origin.x + content_center.x, y: origin.y + content_center.y };
         const corners = [

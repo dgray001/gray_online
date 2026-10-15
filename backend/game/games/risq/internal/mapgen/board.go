@@ -4,6 +4,7 @@ import (
 	"math/rand"
 
 	"github.com/dgray001/gray_online/game/game_utils"
+	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 )
 
 // The live board a map script shapes; every mutation applies immediately, so rng draws and internal id
@@ -16,8 +17,8 @@ type Board interface {
 	Space(c game_utils.Coordinate2D) Space
 	RemoveSpace(s Space)
 	AddRegion(name string, gold_bonus float64, coordinate_keys map[uint]bool) error
-	// 0 to 5 joins a's edge in that direction to b's opposite edge like a normal border
-	ConnectSpaces(a, b Space, direction int) error
+	// joins a's edge in direction to b's edge in to_direction, both 0 to 5
+	ConnectSpaces(a, b Space, direction int, to_direction int) error
 	// space-to-space steps over the live space graph, so seams and links count as one step
 	Distance(a, b Space) int
 	PlaceResource(z Zone, resource_id uint32)
@@ -34,7 +35,24 @@ type Board interface {
 	SetSpaceGoldIncome(gold float64)
 	// whether hiring a mercenary into a space needs the player to hold that space's whole region; true by default
 	SetMercenariesNeedRegion(need bool)
-	SetBackgroundImage(name string, tl [2]int, tr [2]int)
+	SetBackgroundImage(name string, tl [2]float64, tr [2]float64)
+	SetRotation(degrees float64)
+}
+
+// Implemented by boards whose game has its own stat tables
+type configuredBoard interface {
+	Config() *defs.Config
+}
+
+func configOf(board Board) *defs.Config {
+	if configured, ok := board.(configuredBoard); ok {
+		return configured.Config()
+	}
+	return defs.DefaultConfig()
+}
+
+func (ctx *mapScriptContext) config() *defs.Config {
+	return configOf(ctx.board)
 }
 
 type StartingBank struct {
@@ -49,6 +67,8 @@ type Space interface {
 	Coordinate() game_utils.Coordinate2D
 	Terrain() uint32
 	SetTerrain(terrain_id uint32)
+	// a name shown in place of the terrain's
+	SetName(name string)
 	Impassable() bool
 	SortedAdjacent() []Space
 	Zones() []Zone

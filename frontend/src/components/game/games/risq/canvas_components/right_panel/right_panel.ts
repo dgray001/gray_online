@@ -13,6 +13,7 @@ import { RisqNextIdleButton } from './next_idle_button';
 import { RisqRightPanelButton } from './right_panel_button';
 import { RisqSubmitOrdersButton } from './submit_orders_button';
 import { RisqSubmitIconButton } from './submit_icon_button';
+import { RisqReplayButton } from './replay_button';
 import { RisqSummaryReportButton } from '../bottom_panel/bottom_panel_buttons';
 import { RisqButtonTooltip } from '../risq_tooltip';
 import { populationTooltipData } from './population_tooltip';
@@ -35,6 +36,7 @@ export class RisqRightPanel implements CanvasComponent {
   private submit_icon_button: RisqSubmitIconButton;
   private next_idle_button: RisqNextIdleButton;
   private report_button: RisqSummaryReportButton;
+  private replay_button: RisqReplayButton;
   private submit_row_y = 0;
 
   private risq: DwgRisq;
@@ -62,6 +64,7 @@ export class RisqRightPanel implements CanvasComponent {
     this.submit_icon_button = new RisqSubmitIconButton(risq, RisqRightPanel.SUBMIT_SIZE);
     this.next_idle_button = new RisqNextIdleButton(risq, RisqRightPanel.SUBMIT_SIZE);
     this.report_button = new RisqSummaryReportButton(risq);
+    this.replay_button = new RisqReplayButton(risq);
     this.toggle(config.is_open, true);
   }
 
@@ -73,6 +76,7 @@ export class RisqRightPanel implements CanvasComponent {
       !player.orders_submitted &&
       this.risq.planning.idleOrderableCount() > 0;
     this.report_button.dataRefreshed();
+    this.replay_button.dataRefreshed();
     this.orders_list.refresh();
     this.resolveSize();
     if (!player || !this.risq.session.givingOrders()) {
@@ -125,6 +129,7 @@ export class RisqRightPanel implements CanvasComponent {
     );
     this.submit_row_y = yi + orders_height + padding;
     this.report_button.setPosition({ x: this.xf() - padding - 30, y: this.yi() + padding });
+    this.replay_button.setPosition({ x: this.report_button.xi() - padding - 30, y: this.yi() + padding });
     this.layoutButtons();
   }
 
@@ -168,6 +173,7 @@ export class RisqRightPanel implements CanvasComponent {
         this.submit_icon_button,
         this.next_idle_button,
         this.report_button,
+        this.replay_button,
       ]) {
         component.setClicking(false);
         component.setHovering(false);
@@ -182,9 +188,11 @@ export class RisqRightPanel implements CanvasComponent {
   toggle(open?: boolean, initial?: boolean): void {
     this.report_button.setClicking(false);
     this.report_button.setHovering(false);
+    this.replay_button.setClicking(false);
+    this.replay_button.setHovering(false);
     this.config.is_open = open ?? !this.config.is_open;
     const position: Point2D = {
-      x: this.risq.viewport.canvasSize().width - this.open_button.w(),
+      x: this.risq.hudCanvasSize().width - this.open_button.w(),
       y: 0.5 * this.open_button.h(),
     };
     if (this.config.is_open) {
@@ -246,10 +254,10 @@ export class RisqRightPanel implements CanvasComponent {
           const player = this.risq.getPlayer();
           const game = this.risq.getGame();
           drawText(ctx, game?.game_base.game_ended ? 'Game Over' : `Turn ${game?.turn_number ?? '??'}`, {
-            p: { x: this.xc() - 20, y: yi },
-            w: this.paddedW() - 40,
+            p: { x: this.xi() + 0.15 * this.w(), y: yi },
+            w: this.replay_button.xi() - RisqRightPanel.PADDING - (this.xi() + 0.15 * this.w()),
             fill_style: 'black',
-            align: 'center',
+            align: 'left',
             font: 'bold 36px serif',
           });
           yi += 40;
@@ -267,7 +275,7 @@ export class RisqRightPanel implements CanvasComponent {
               yi,
               player.units.size,
               this.risq.planning.pendingMercenaryCount(),
-              player.population_limit
+              player.unlimited_population ? undefined : player.population_limit
             );
             yi += 30;
             this.resource_row_ys.clear();
@@ -294,6 +302,8 @@ export class RisqRightPanel implements CanvasComponent {
     if (this.config.is_open && !this.opening) {
       this.report_button.draw(ctx, transform, dt);
       this.report_button.drawTooltip(ctx, transform, this.risq, dt);
+      this.replay_button.draw(ctx, transform, dt);
+      this.replay_button.drawTooltip(ctx, transform, this.risq, dt);
       this.population_tooltip.draw(ctx, transform, this.risq, dt, this.hovered_population, false);
       for (const rt of this.resource_row_ys.keys()) {
         this.resourceTooltip(rt).draw(ctx, transform, this.risq, dt, this.hovered_resource === rt, false);
@@ -318,13 +328,20 @@ export class RisqRightPanel implements CanvasComponent {
     drawLine(ctx, { x: this.xi() + 0.15 * this.w(), y: yi }, { x: this.xf() - 0.15 * this.w(), y: yi });
   }
 
-  private drawPopulation(ctx: CanvasRenderingContext2D, yi: number, pop: number, pending: number, limit: number): void {
+  private drawPopulation(
+    ctx: CanvasRenderingContext2D,
+    yi: number,
+    pop: number,
+    pending: number,
+    limit: number | undefined
+  ): void {
     ctx.beginPath();
     ctx.drawImage(this.risq.getIcon('icons/person64'), this.xi() + 0.1 * this.w(), yi, 30, 30);
-    drawText(ctx, pending > 0 ? `${pop}+${pending}/${limit}` : `${pop}/${limit}`, {
+    const count = pending > 0 ? `${pop}+${pending}` : `${pop}`;
+    drawText(ctx, limit === undefined ? count : `${count}/${limit}`, {
       p: { x: this.xi() + 0.1 * this.w() + 36, y: yi + 15 },
       w: 0.9 * this.w() - 36,
-      fill_style: pop + pending >= limit ? 'rgb(200, 30, 30)' : 'black',
+      fill_style: limit !== undefined && pop + pending >= limit ? 'rgb(200, 30, 30)' : 'black',
       baseline: 'middle',
     });
   }
@@ -356,6 +373,9 @@ export class RisqRightPanel implements CanvasComponent {
       baseline: 'middle',
       font: '18px serif',
     });
+    if (this.risq.getGame()?.has_economy === false) {
+      return;
+    }
     const delta = pr.predicted_workers - pr.workers;
     const workers = `${pr.workers}${delta > 0 ? `+${delta}` : delta < 0 ? delta : ''}`;
     const workers_x = this.xf() - RisqRightPanel.PADDING - RisqRightPanel.WORKERS_W;
@@ -402,6 +422,7 @@ export class RisqRightPanel implements CanvasComponent {
     const inside = screen.x > this.xi() && screen.x < this.xf() && screen.y > this.yi() && screen.y < this.yf();
     for (const [component, visible] of [
       [this.report_button, true],
+      [this.replay_button, true],
       [this.orders_list, true],
       [this.next_idle_button, this.has_idle],
       [this.submit_icon_button, this.has_idle],
@@ -425,6 +446,9 @@ export class RisqRightPanel implements CanvasComponent {
     if (this.config.is_open && !this.opening && this.report_button.mousedown(e)) {
       return true;
     }
+    if (this.config.is_open && !this.opening && this.replay_button.mousedown(e)) {
+      return true;
+    }
     if (this.open_button.mousedown(e)) {
       return true;
     }
@@ -444,6 +468,7 @@ export class RisqRightPanel implements CanvasComponent {
   mouseup(e: MouseEvent): void {
     if (this.config.is_open && !this.opening) {
       this.report_button.mouseup(e);
+      this.replay_button.mouseup(e);
     }
     this.open_button.mouseup(e);
     this.orders_list.mouseup(e);
@@ -462,10 +487,10 @@ export class RisqRightPanel implements CanvasComponent {
     return 0;
   }
   xf(): number {
-    return this.risq.viewport.canvasSize().width;
+    return this.risq.hudCanvasSize().width;
   }
   yf(): number {
-    return this.risq.viewport.canvasSize().height;
+    return this.risq.hudCanvasSize().height;
   }
   xc(): number {
     return this.xi() + 0.5 * this.w();

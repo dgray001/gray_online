@@ -15,7 +15,7 @@ export const IDLE_FILTERS: [IdleCategory, string, string][] = [
 export class RisqIdleFilterButton extends RisqActionButton {
   constructor(
     private risq: DwgRisq,
-    private category: IdleCategory,
+    readonly category: IdleCategory,
     image_path: string,
     description: string,
     col: number

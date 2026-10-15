@@ -69,7 +69,7 @@ export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
   }
 
   private async loadTree(): Promise<void> {
-    const response = await apiGet<RisqBuildingTreeEntry[]>('risq/tech-tree');
+    const response = await apiGet<RisqBuildingTreeEntry[]>(`risq/tech-tree/${this.data.risq.getGameId()}`);
     if (!response.success || response.result.length === 0) {
       this.canvas.hidden = true;
       this.empty_message.hidden = false;

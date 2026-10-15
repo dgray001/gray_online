@@ -6,16 +6,17 @@ import (
 	"github.com/dgray001/gray_online/game/games/risq/internal/mapgen"
 )
 
-func (b *Board) ConnectSpaces(a, c mapgen.Space, direction int) error {
+func (b *Board) ConnectSpaces(a, c mapgen.Space, direction int, to_direction int) error {
 	first, second := a.(*space), c.(*space)
 	b.distances = nil
-	if direction < 0 || direction > 5 {
-		return fmt.Errorf("seam direction %d is not 0 to 5", direction)
+	if direction < 0 || direction > 5 || to_direction < 0 || to_direction > 5 {
+		return fmt.Errorf("seam directions %d and %d are not 0 to 5", direction, to_direction)
 	}
-	if first.borders[direction] != nil || second.borders[(direction+3)%6] != nil {
+	if first.borders[direction] != nil || second.borders[to_direction] != nil {
 		return fmt.Errorf("seam edge between %v and %v is already connected", first.coord, second.coord)
 	}
-	first.borders[direction], second.borders[(direction+3)%6] = second, first
+	first.borders[direction], second.borders[to_direction] = second, first
+	first.arrivals[direction], second.arrivals[to_direction] = to_direction, direction
 	first.sorted, second.sorted = nil, nil
 	return nil
 }

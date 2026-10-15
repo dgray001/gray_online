@@ -19,6 +19,8 @@ type TechConfig struct {
 	Bonus                 CombatBonus
 	Required_tech_id      uint32
 	Unlocks_mercenary_ids []uint32
+	// added to the 1.3 mercenary markup; deltas from every bonus and researched tech stack
+	Mercenary_cost_markup_delta float64
 }
 
 type techConfigJSON struct {
@@ -34,26 +36,27 @@ type techConfigJSON struct {
 	BonusMaxHealth   int      `json:"bonus_max_health"`
 	BonusTurnStamina int      `json:"bonus_turn_stamina"`
 	combatBonusJSON
-	RequiredTechId      uint32   `json:"required_tech_id"`
-	UnlocksMercenaryIds []uint32 `json:"unlocks_mercenary_ids"`
+	RequiredTechId           uint32   `json:"required_tech_id"`
+	UnlocksMercenaryIds      []uint32 `json:"unlocks_mercenary_ids"`
+	MercenaryCostMarkupDelta float64  `json:"mercenary_cost_markup_delta"`
 }
 
 var TechConfigs map[uint32]TechConfig
 
-func loadTechConfig(data []byte) {
+func (c *Config) loadTechs(data []byte) {
 	var entries []techConfigJSON
 	if err := json.Unmarshal(data, &entries); err != nil {
 		panic(fmt.Sprintf("failed to parse config/techs.json: %v", err))
 	}
-	TechConfigs = make(map[uint32]TechConfig, len(entries))
+	c.Techs = make(map[uint32]TechConfig, len(entries))
 	for _, e := range entries {
-		TechConfigs[e.TechId] = parseTechConfigEntry(e, "config/techs.json tech_id")
+		c.Techs[e.TechId] = parseTechConfigEntry(e, "config/techs.json tech_id")
 	}
 }
 
 func parseTechConfigEntry(e techConfigJSON, source string) TechConfig {
-	if len(e.AffectsUnitIds) == 0 && len(e.AffectsUnitTypes) == 0 && len(e.UnlocksMercenaryIds) == 0 {
-		panic(fmt.Sprintf("%s %d: must specify affects_unit_ids, affects_unit_types, or unlocks_mercenary_ids", source, e.TechId))
+	if len(e.AffectsUnitIds) == 0 && len(e.AffectsUnitTypes) == 0 && len(e.UnlocksMercenaryIds) == 0 && e.MercenaryCostMarkupDelta == 0 {
+		panic(fmt.Sprintf("%s %d: must specify affects_unit_ids, affects_unit_types, unlocks_mercenary_ids, or mercenary_cost_markup_delta", source, e.TechId))
 	}
 	affects_unit_types := make([]UnitType, len(e.AffectsUnitTypes))
 	for i, s := range e.AffectsUnitTypes {
@@ -85,6 +88,8 @@ func parseTechConfigEntry(e techConfigJSON, source string) TechConfig {
 		Bonus:                 e.combatBonusJSON.toBonus(),
 		Required_tech_id:      e.RequiredTechId,
 		Unlocks_mercenary_ids: e.UnlocksMercenaryIds,
+
+		Mercenary_cost_markup_delta: e.MercenaryCostMarkupDelta,
 	}
 }
 
@@ -123,7 +128,12 @@ func (tech TechConfig) MatchesTarget(target_unit_id uint32, target_unit_type Uni
 	return false
 }
 
+// Uses the default config, for callers without a game config
 func SumTargetedBonus(unit_id uint32, unit_type UnitType, tech_ids []uint32, target_unit_id uint32, target_unit_type UnitType, target_orderable_type OrderableType) CombatBonus {
+	return DefaultConfig().SumTargetedBonus(unit_id, unit_type, tech_ids, target_unit_id, target_unit_type, target_orderable_type)
+}
+
+func (c *Config) SumTargetedBonus(unit_id uint32, unit_type UnitType, tech_ids []uint32, target_unit_id uint32, target_unit_type UnitType, target_orderable_type OrderableType) CombatBonus {
 	var sum CombatBonus
 	add := func(tech TechConfig) {
 		if !tech.HasTargetFilter() || !tech.AppliesTo(unit_id, unit_type) || !tech.MatchesTarget(target_unit_id, target_unit_type, target_orderable_type) {
@@ -131,26 +141,39 @@ func SumTargetedBonus(unit_id uint32, unit_type UnitType, tech_ids []uint32, tar
 		}
 		sum = sum.Add(tech.Bonus)
 	}
-	for _, bonus := range BonusConfigs {
+	for _, bonus := range c.Bonuses() {
 		add(bonus)
 	}
 	for _, id := range tech_ids {
-		if tech, ok := TechConfigs[id]; ok {
+		if tech, ok := c.Techs[id]; ok {
 			add(tech)
 		}
 	}
 	return sum
 }
 
+// Every bonus and each researched tech adds its markup delta, so the total never depends on order
+func (c *Config) MercenaryCostMarkupDelta(tech_ids []uint32) float64 {
+	delta := 0.0
+	for _, bonus := range c.Bonuses() {
+		delta += bonus.Mercenary_cost_markup_delta
+	}
+	for _, id := range tech_ids {
+		delta += c.Techs[id].Mercenary_cost_markup_delta
+	}
+	return delta
+}
+
 var BonusConfigs []TechConfig
 
-func loadBonusConfig(data []byte) {
+func (c *Config) loadBonuses(data []byte) {
 	var entries []techConfigJSON
 	if err := json.Unmarshal(data, &entries); err != nil {
 		panic(fmt.Sprintf("failed to parse config/bonuses.json: %v", err))
 	}
-	BonusConfigs = make([]TechConfig, len(entries))
+	bonuses := make([]TechConfig, len(entries))
 	for i, e := range entries {
-		BonusConfigs[i] = parseTechConfigEntry(e, "config/bonuses.json tech_id")
+		bonuses[i] = parseTechConfigEntry(e, "config/bonuses.json tech_id")
 	}
+	*c.bonuses = bonuses
 }

@@ -16,15 +16,20 @@ type space struct {
 	key           uint
 	distanceIndex int
 	terrain       uint32
+	name          string
 	zones         []*zone
 	byLocal       [3][3]*zone
 	borders       [6]*space
-	links         []*space
-	sorted        []mapgen.Space
+	// the edge of borders[d] that edge d joins; the opposite edge unless a link says otherwise
+	arrivals [6]int
+	sorted   []mapgen.Space
 }
 
 func newSpace(b *Board, c game_utils.Coordinate2D) *space {
 	s := &space{board: b, coord: c, key: util.Pair(c.X, c.Y), terrain: defs.DefaultTerrainId}
+	for d := range s.arrivals {
+		s.arrivals[d] = (d + 3) % 6
+	}
 	for r := -1; r <= 1; r++ {
 		for q := max(-1, -1-r); q <= min(1, 1-r); q++ {
 			z := newZone(s, game_utils.Coordinate2D{X: q, Y: r})
@@ -39,6 +44,8 @@ func (s *space) Key() uint                           { return s.key }
 func (s *space) Coordinate() game_utils.Coordinate2D { return s.coord }
 func (s *space) Terrain() uint32                     { return s.terrain }
 func (s *space) SetTerrain(terrain_id uint32)        { s.terrain = terrain_id }
+func (s *space) SetName(name string)                 { s.name = name }
+func (s *space) Name() string                        { return s.name }
 
 func (s *space) Impassable() bool {
 	return defs.TerrainConfigs[s.terrain].Terrain_type.MoveCost().Impassable
@@ -88,7 +95,6 @@ func (s *space) neighbors() []*space {
 			spaces = append(spaces, border)
 		}
 	}
-	spaces = append(spaces, s.links...)
 	sort.Slice(spaces, func(i, j int) bool { return spaces[i].key < spaces[j].key })
 	return spaces
 }

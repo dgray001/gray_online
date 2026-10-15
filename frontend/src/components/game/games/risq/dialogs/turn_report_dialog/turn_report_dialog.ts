@@ -3,6 +3,7 @@ import type { HotkeyCombo } from '../../application/input/hotkeys';
 import { configureImageFallback, resolveImage } from '../../../../../../scripts/image';
 import { shortLabel } from '../../canvas_components/order_row/order_row_resolve';
 import { buildingImage, techImage } from '../../rendering/assets/buildings';
+import { hasBuildings, hasEconomy } from '../../model/economy';
 import type { RisqPlayer, RisqProducible, RisqOrderType } from '../../model/types';
 import { RisqProducibleKind, RisqResourceType } from '../../model/types';
 import { resourceTypeImage } from '../../rendering/assets/resources';
@@ -135,8 +136,8 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
     this.renderScores(risq, player, report);
     this.renderLand(report);
     this.renderRegions(report);
-    this.renderResources(report);
-    this.renderProduction(player, report);
+    this.renderResources(report, hasEconomy(risq.getGame()));
+    this.renderProduction(player, report, hasBuildings(risq.getGame()));
     this.renderCombat(player, report);
     this.renderOrders(report);
     for (const image of this.querySelectorAll('img')) {
@@ -224,7 +225,9 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
     this.region_empty.hidden = lines.length > 0;
   }
 
-  private renderResources(report: RisqTurnReport): void {
+  /** Every resource is listed; without an economy nothing can be gathered, so that column is hidden */
+  private renderResources(report: RisqTurnReport, economy: boolean): void {
+    this.resources_body.closest('table')?.classList.toggle('no-gathered', !economy);
     const rows = report.resources.map((line) => {
       const row = document.createElement('tr');
       const label = RESOURCE_LABELS[line.resource_type];
@@ -243,8 +246,10 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
     this.resources_body.replaceChildren(...rows);
   }
 
-  private renderProduction(player: RisqPlayer, report: RisqTurnReport): void {
-    this.pop_line.innerHTML = `Population <b>${report.population.start} &rarr; ${report.population.end}</b> &nbsp;&middot;&nbsp; cap <b>${report.population.cap_start} &rarr; ${report.population.cap_end}</b>`;
+  private renderProduction(player: RisqPlayer, report: RisqTurnReport, buildings: boolean): void {
+    const population = `Population <b>${report.population.start} &rarr; ${report.population.end}</b>`;
+    const cap = `&nbsp;&middot;&nbsp; cap <b>${report.population.cap_start} &rarr; ${report.population.cap_end}</b>`;
+    this.pop_line.innerHTML = player.unlimited_population ? population : population + cap;
     const lines: HTMLLIElement[] = [];
     const line = (tick_cls: string, tick: string, icon: string, text: string): void => {
       const li = document.createElement('li');
@@ -261,7 +266,7 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
         line('make', '+', unitImage(u.unit_id, true), `${u.count > 1 ? `${u.count}× ` : ''}${name} ${verb}`);
       }
     }
-    for (const b of report.production.buildings_built) {
+    for (const b of buildings ? report.production.buildings_built : []) {
       const name = producibleName(player, RisqProducibleKind.BUILDING, b.building_id, 'Building');
       line('make', '+', buildingImage(b.building_id, false, true), `${name} built at (${b.space.x}, ${b.space.y})`);
     }

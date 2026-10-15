@@ -6,25 +6,27 @@ import type { RisqSession } from '../../application/session';
 import { invertPair } from '../../model/coordinates';
 import type { RisqRegion, RisqSpace, RisqUnit } from '../../model/types';
 import { DrawRisqSpaceDetail } from '../space';
-import { RisqViewMode, nextViewMode } from '../terrain';
+import { RisqViewMode, nextViewMode, viewModeAllowed } from '../terrain';
+import { hasEconomy, isMilitaryOnly } from '../../model/economy';
 import {
   BUILDING_CIRCLE_RADIUS_MULTIPLIER,
   CENTER_ZONE_APOTHEM_MULTIPLIER,
   centerUnitSlotCapacity,
   centerUnitMaxZoom,
+  maxZoomRings,
   corpseUnitRadius,
   edgeUnitSlotCapacity,
   getRisqZone,
   zoneCenterOffset,
 } from '../zones/geometry';
 import { unitSlotWorldPosition } from '../zones/slots';
+import { getSettings } from '../../../../../../scripts/settings_store';
 
 const DEFAULT_HEXAGON_RADIUS = 60;
 const ZOOM_REFERENCE_BOARD_SIZE = 4;
 
 const MIN_ZOOM_HEXAGON_SCALE = 0.8;
 const ZONE_DETAIL_THRESHOLD = 1;
-const DEFAULT_UNIT_CIRCLE_SCREEN_DIAMETER = 44;
 const OWNERSHIP_DETAIL_THRESHOLD = 0.4;
 
 export declare interface CanvasBounds {
@@ -34,7 +36,10 @@ export declare interface CanvasBounds {
 
 /** Owns the board's hex size, canvas size, last transform, and level of detail, and converts between their frames */
 export class RisqViewport {
-  private unit_circle_screen_diameter = DEFAULT_UNIT_CIRCLE_SCREEN_DIAMETER;
+  get unit_circle_screen_diameter(): number {
+    return getSettings().risq_display.unit_circle_size;
+  }
+  private last_unit_circle_diameter = this.unit_circle_screen_diameter;
   private center_max_slots = 1;
   private edge_max_slots = 1;
   private hex_r = DEFAULT_HEXAGON_RADIUS;
@@ -71,17 +76,23 @@ export class RisqViewport {
   }
 
   updateCenterSlots(scale: number): void {
-    const capacity = centerUnitSlotCapacity(this.hex_r, this.unit_circle_screen_diameter / (2 * scale));
-    const edge_capacity = edgeUnitSlotCapacity(this.hex_r, this.unit_circle_screen_diameter / (2 * scale));
-    if (capacity === this.center_max_slots && edge_capacity === this.edge_max_slots) {
+    const diameter = this.unit_circle_screen_diameter;
+    const capacity = centerUnitSlotCapacity(this.hex_r, diameter / (2 * scale));
+    const edge_capacity = edgeUnitSlotCapacity(this.hex_r, diameter / (2 * scale));
+    if (
+      capacity === this.center_max_slots &&
+      edge_capacity === this.edge_max_slots &&
+      diameter === this.last_unit_circle_diameter
+    ) {
       return;
     }
+    this.last_unit_circle_diameter = diameter;
     this.center_max_slots = capacity;
     this.edge_max_slots = edge_capacity;
     this.clearUnitSlots();
   }
 
-  private clearUnitSlots(): void {
+  clearUnitSlots(): void {
     for (const space of this.session.getGame()?.spaces.flat() ?? []) {
       for (const zone of space?.zones?.flat() ?? []) {
         zone.unit_slots = undefined;
@@ -113,18 +124,28 @@ export class RisqViewport {
     return this.draw_detail === DrawRisqSpaceDetail.ZONE_DETAILS;
   }
 
+  /** The current mode, moved on to the next one this game allows when it is not available (so military-only games default to military) */
   viewMode(): RisqViewMode {
-    return this.view_mode;
+    const game = this.session.getGame();
+    const [economy, military_only] = [hasEconomy(game), isMilitaryOnly(game)];
+    return viewModeAllowed(this.view_mode, economy, military_only)
+      ? this.view_mode
+      : nextViewMode(this.view_mode, economy, military_only);
   }
 
   setViewMode(mode: RisqViewMode): void {
+    const game = this.session.getGame();
+    if (!viewModeAllowed(mode, hasEconomy(game), isMilitaryOnly(game))) {
+      return;
+    }
     this.view_mode = mode;
     this.clearUnitSlots();
     this.on_view_mode_change?.();
   }
 
   cycleViewMode(): void {
-    this.setViewMode(nextViewMode(this.view_mode));
+    const game = this.session.getGame();
+    this.setViewMode(nextViewMode(this.viewMode(), hasEconomy(game), isMilitaryOnly(game)));
   }
 
   /** Whether units, buildings, and their orders are drawn at the current detail and view mode */
@@ -135,14 +156,15 @@ export class RisqViewport {
   // Regions are hoverable/selectable in ownership mode below zone zoom, or fully zoomed out in any non-military view mode
   regionInteractionEnabled(): boolean {
     const fully_zoomed_out = this.draw_detail === DrawRisqSpaceDetail.OWNERSHIP;
-    const ownership_mode = this.view_mode === RisqViewMode.OWNERSHIP;
-    return (ownership_mode && !this.zoneView()) || (fully_zoomed_out && this.view_mode !== RisqViewMode.MILITARY);
+    const ownership_mode = this.viewMode() === RisqViewMode.OWNERSHIP;
+    return (ownership_mode && !this.zoneView()) || (fully_zoomed_out && this.viewMode() !== RisqViewMode.MILITARY);
   }
 
   zoomLimits(board_size: Point2D): { min: number; max: number } {
     const min =
       MIN_ZOOM_HEXAGON_SCALE * Math.min(this.canvas_size.width / board_size.x, this.canvas_size.height / board_size.y);
-    const max = centerUnitMaxZoom(this.hex_r, this.unit_circle_screen_diameter);
+    const diameter = this.unit_circle_screen_diameter;
+    const max = centerUnitMaxZoom(this.hex_r, diameter, maxZoomRings(diameter));
     return { min, max };
   }
 
@@ -235,7 +257,7 @@ export class RisqViewport {
         this.center_max_slots,
         this.unitRadius(),
         this.edge_max_slots,
-        this.view_mode
+        this.viewMode()
       ) ?? zoneCenterOffset(unit.zone_coordinate, this.hex_r)
     );
   }

@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/dgray001/gray_online/game/game_utils"
-	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 )
 
 type regionsSevenParams struct {
@@ -40,7 +39,7 @@ func stepRegionsSeven(ctx *mapScriptContext, raw json.RawMessage) error {
 
 	names := append([]string{}, p.Names...)
 	if len(names) < 7 {
-		names = append(names, defs.RandomRegionNames(ctx.rng, 7-len(names), names)...)
+		names = append(names, ctx.config().RandomRegionNames(ctx.rng, 7-len(names), names)...)
 	}
 	if len(names) < 7 {
 		return fmt.Errorf("regions_seven: not enough region names available")

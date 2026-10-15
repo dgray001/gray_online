@@ -56,4 +56,6 @@ func (b *Board) Dump() string {
 	return dump.String()
 }
 
-func (b *Board) SetBackgroundImage(name string, tl [2]int, tr [2]int) {}
+func (b *Board) SetRotation(degrees float64) {}
+
+func (b *Board) SetBackgroundImage(name string, tl [2]float64, tr [2]float64) {}

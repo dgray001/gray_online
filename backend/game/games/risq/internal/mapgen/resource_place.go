@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/util"
 )
 
@@ -144,7 +143,7 @@ func resolveResourceWeights(ctx *mapScriptContext, weights map[string]float64) (
 
 func placeEntries(ctx *mapScriptContext, resource_id uint32, category_weights map[string]float64, resource_weights map[string]float64) ([]scatterEntry, error) {
 	if resource_id != 0 {
-		if _, ok := defs.ResourceConfigs[resource_id]; !ok {
+		if _, ok := ctx.config().Resources[resource_id]; !ok {
 			return nil, fmt.Errorf("unknown resource id %d", resource_id)
 		}
 		return []scatterEntry{{[]uint32{resource_id}, 1}}, nil
@@ -153,7 +152,7 @@ func placeEntries(ctx *mapScriptContext, resource_id uint32, category_weights ma
 	if err != nil {
 		return nil, err
 	}
-	entries, err := scatterEntries(category_weights, ids)
+	entries, err := scatterEntries(ctx.config(), category_weights, ids)
 	if err == nil && len(entries) == 0 {
 		err = fmt.Errorf("needs a resource_id or positive weights")
 	}

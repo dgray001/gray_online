@@ -1,6 +1,7 @@
 import type { BoardTransformData } from '../../../../../util/canvas_board/canvas_board';
 import { drawRect, drawText } from '../../../../../util/canvas_util';
 import type { Point2D } from '../../../../../util/objects2d';
+import { hasBuildings, hasEconomy } from '../../../model/economy';
 import type { RectHoverData, RisqRegion, RisqSpace } from '../../../model/types';
 import { RisqResourceType, RisqVisibilityLevel } from '../../../model/types';
 import { resourceTypeImage } from '../../../rendering/assets/resources';
@@ -12,10 +13,13 @@ import { drawName, drawSeparator, drawSubtitle } from './primitives';
 import { drawRegionOwnership } from './region_ownership';
 import type { RisqSpaceHexagon } from './space_hexagon';
 
-/** Draws a combo villager+military icon, used where only a total unit count is visible */
-export function comboUnitIcon(pc: PanelDrawContext): HTMLCanvasElement | undefined {
+/** Draws a combo villager+military icon (just the military icon without an economy), used where only a total unit count is visible */
+export function comboUnitIcon(pc: PanelDrawContext): CanvasImageSource | undefined {
   const villager_img = pc.risq.getIcon('icons/villager64');
   const unit_img = pc.risq.getIcon('icons/unit64');
+  if (!hasEconomy(pc.risq.getGame())) {
+    return unit_img;
+  }
   return pc.risq
     .getImageCache()
     .getImage(comboUnitIconKey(false), COMBO_UNIT_ICON_SIZE, [villager_img, unit_img], (combo_ctx) =>
@@ -92,7 +96,9 @@ export class RisqSpaceView {
       }
       yi += image_size + separator_distance;
     };
-    draw_row(risq.getIcon('icons/building64'), space.buildings?.size.toString() ?? '??');
+    if (hasBuildings(risq.getGame())) {
+      draw_row(risq.getIcon('icons/building64'), space.buildings?.size.toString() ?? '??');
+    }
     draw_row(risq.getIcon(resourceTypeImage(RisqResourceType.GOLD)), `${(space.gold_income ?? 0).toFixed(1)}/turn`);
     const owner_color = spaceOwnerColor(space.ownership, risq.getGame()?.players ?? []);
     const owner_name = owner_color
@@ -111,16 +117,18 @@ export class RisqSpaceView {
       }
     } else {
       const row_step = image_size + separator_distance;
-      this.villager_row_button = this.layoutRowButton(
-        this.villager_row_button,
-        pc.risq.getIcon('icons/villager64'),
-        space.num_villager_units?.toString() ?? '??',
-        true,
-        { x: row_x, y: yi },
-        row_w,
-        image_size
-      );
-      yi += row_step;
+      if (hasEconomy(risq.getGame())) {
+        this.villager_row_button = this.layoutRowButton(
+          this.villager_row_button,
+          pc.risq.getIcon('icons/villager64'),
+          space.num_villager_units?.toString() ?? '??',
+          true,
+          { x: row_x, y: yi },
+          row_w,
+          image_size
+        );
+        yi += row_step;
+      }
       this.military_row_button = this.layoutRowButton(
         this.military_row_button,
         pc.risq.getIcon('icons/unit64'),

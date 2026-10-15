@@ -120,6 +120,7 @@ export class DwgCanvasBoard extends DwgElement {
   private data!: CanvasBoardInitializationData;
   private orig_size!: Point2D;
   private transform: BoardTransformData = defaultTransform();
+  private default_rotation = 0;
   private zoom_config!: ZoomConfig;
 
   private hovered = false;
@@ -352,7 +353,7 @@ export class DwgCanvasBoard extends DwgElement {
         return;
       }
       if (e.button === 2 && e.detail >= 2) {
-        this.setRotation(0);
+        this.setRotation(this.default_rotation);
         return;
       }
       this.dragging = true;
@@ -622,6 +623,12 @@ export class DwgCanvasBoard extends DwgElement {
 
   setRotation(rotation: number): void {
     this.transform.rotation = rotation;
+  }
+
+  /** Rotation the board starts at and resets to; shifts the current rotation only when the default changes */
+  setDefaultRotation(rotation: number): void {
+    this.transform.rotation += rotation - this.default_rotation;
+    this.default_rotation = rotation;
   }
 
   setView(view: Point2D): void {

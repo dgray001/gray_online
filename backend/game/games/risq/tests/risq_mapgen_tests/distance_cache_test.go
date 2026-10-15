@@ -38,7 +38,7 @@ func TestDistanceCacheInvalidatesAfterConnectingSpaces(t *testing.T) {
 	if board.Distance(left, right) != fakeboard.Unreachable || board.Distance(right, left) != fakeboard.Unreachable {
 		t.Fatal("initial spaces are connected")
 	}
-	if err := board.ConnectSpaces(left, right, 3); err != nil {
+	if err := board.ConnectSpaces(left, right, 3, 0); err != nil {
 		t.Fatal(err)
 	}
 	if board.Distance(left, right) != 1 || board.Distance(right, left) != 1 {

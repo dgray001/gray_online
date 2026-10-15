@@ -20,9 +20,9 @@ func between(board *fakeboard.Board) int {
 
 func TestCustomConnectionsJoinDistantSpaces(t *testing.T) {
 	cases := map[string]string{
-		"center link":       `{"from":[-3,0],"to":[3,0]}`,
 		"seam west to east": `{"from":[-3,0],"to":[3,0],"direction":3}`,
 		"seam east to west": `{"from":[3,0],"to":[-3,0],"direction":0}`,
+		"seam NE to NW":     `{"from":[-3,0],"to":[3,0],"direction":1,"to_direction":2}`,
 	}
 	for name, connections := range cases {
 		if got := between(linkedBoard(t, connections)); got != 1 {
@@ -42,6 +42,8 @@ func TestCustomConnectionsRejectBadEnds(t *testing.T) {
 	mustFail(t, connect(two, `{"from":[-3,0],"to":[-3,0]}`), 1, "invalid connection")
 	mustFail(t, connect(two, `{"from":[-3,0],"to":[9,9]}`), 1, "invalid connection")
 	mustFail(t, connect(two, `{"from":[-3,0],"to":[3,0],"direction":6}`), 1, "not 0 to 5")
+	mustFail(t, connect(two, `{"from":[-3,0],"to":[3,0],"direction":3,"to_direction":6}`), 1, "not 0 to 5")
+	mustFail(t, connect(two, `{"from":[-3,0],"to":[3,0]}`), 1, "needs a direction")
 	mustFail(t, connect(`{"x":-3,"y":0},{"x":3,"y":0,"terrain":152}`, `{"from":[-3,0],"to":[3,0]}`), 1, "invalid connection")
 	mustFail(t, connect(`{"x":0,"y":0},{"x":1,"y":0}`, `{"from":[0,0],"to":[1,0],"direction":0}`), 1, "already connected")
 }

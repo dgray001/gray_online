@@ -142,3 +142,21 @@ func TestMovesTheEngineCannotMakeAreDropped(t *testing.T) {
 		})
 	}
 }
+
+func TestEnemyReplayActionsAreRedacted(t *testing.T) {
+	all := spaceWith(0, 0, grass, unit(villager, 0)+","+unit(villager, 1)) + "," + spaceWith(1, 0, grass, "")
+	g := startGame(t, mapDoc("", all))
+	p, enemy := g.Human(0), g.Human(1)
+	mover := firstUnit(g, enemy)
+	g.Submit(enemy, harness.OrderMove([]uint64{mover.InternalID}, 1, 0))
+	g.EndTurn()
+	seen := harness.RequireReplay(t, g.State(p)).Unit(mover.InternalID)
+	if seen == nil || len(seen.TickActions) == 0 {
+		t.Fatal("visible enemy actions missing from the replay")
+	}
+	for _, a := range seen.TickActions {
+		if a.Order.Source != "" || a.Order.TargetID != 0 || a.Intent.MinCost != 0 || a.Intent.MaxCost != 0 || a.Intent.AvailableStamina != 0 || a.Execute.StaminaSpent != 0 {
+			t.Errorf("enemy action leaks private data: %+v", a)
+		}
+	}
+}

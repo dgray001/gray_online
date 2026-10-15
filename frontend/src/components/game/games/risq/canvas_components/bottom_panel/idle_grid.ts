@@ -4,6 +4,8 @@ import type { Point2D } from '../../../../util/objects2d';
 import type { DwgRisq } from '../../risq';
 import type { RisqBuilding, RisqUnit } from '../../model/types';
 import { displayGroups } from '../../model/display_groups';
+import { hasBuildings, hasEconomy } from '../../model/economy';
+import type { IdleCategory } from '../../application/orders/idle_category';
 import { idleCategory } from '../../application/orders/idle_category';
 import { buildingImage } from '../../rendering/assets/buildings';
 import { unitImage } from '../../rendering/assets/unit';
@@ -12,8 +14,10 @@ import { CONTROL_GAP } from './control_group_layout';
 import { IDLE_FILTERS, RisqIdleFilterButton } from './idle_filter_button';
 import { clipBottomPanelItem } from './clip_item';
 
+const BUILDING_CATEGORIES: IdleCategory[] = ['unit_production', 'other_buildings'];
+
 export class RisqIdleGrid extends DwgRectButton {
-  private filters: RisqIdleFilterButton[];
+  private all_filters: RisqIdleFilterButton[];
   private buttons: RisqControlGroupIcon[] = [];
   private available_width = 0;
   private available_height = 0;
@@ -29,9 +33,18 @@ export class RisqIdleGrid extends DwgRectButton {
       h: 0,
       draw_config: { fill_style: 'transparent', stroke_width: 0, fixed_position: true },
     });
-    this.filters = IDLE_FILTERS.map(
+    this.all_filters = IDLE_FILTERS.map(
       ([category, image, description], col): RisqIdleFilterButton =>
         new RisqIdleFilterButton(risq, category, image, description, col)
+    );
+  }
+  /** The category filters in order, without the ones for units or buildings the game cannot have */
+  private get filters(): RisqIdleFilterButton[] {
+    const game = this.risq.getGame();
+    return this.all_filters.filter(
+      (filter): boolean =>
+        (filter.category !== 'economic' || hasEconomy(game)) &&
+        (!BUILDING_CATEGORIES.includes(filter.category) || hasBuildings(game))
     );
   }
   setAvailableWidth(width: number): void {
@@ -46,7 +59,7 @@ export class RisqIdleGrid extends DwgRectButton {
     return Math.max(0, (this.available_height - (rows - 1) * CONTROL_GAP) / rows);
   }
   private listOffset(): number {
-    return this.iconSize(4) + CONTROL_GAP;
+    return this.iconSize(IDLE_FILTERS.length) + CONTROL_GAP;
   }
   override setPosition(p: Point2D): void {
     if (p.x === this.xi() && p.y === this.yi()) {
@@ -98,7 +111,7 @@ export class RisqIdleGrid extends DwgRectButton {
     this.rebuildIcons(groups);
   }
   private layoutFilters(): void {
-    const size = this.iconSize(4);
+    const size = this.iconSize(IDLE_FILTERS.length);
     for (const [i, filter] of this.filters.entries()) {
       filter.setSize(size, size);
       filter.setPosition({ x: this.xi(), y: this.yi() + i * (size + CONTROL_GAP) });

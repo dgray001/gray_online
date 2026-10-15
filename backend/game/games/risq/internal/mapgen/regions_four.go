@@ -3,8 +3,6 @@ package mapgen
 import (
 	"encoding/json"
 	"fmt"
-
-	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 )
 
 func stepRegionsFour(ctx *mapScriptContext, raw json.RawMessage) error {
@@ -25,7 +23,7 @@ func stepRegionsFour(ctx *mapScriptContext, raw json.RawMessage) error {
 	}
 	names := append([]string{}, p.Names...)
 	if len(names) < 4 {
-		names = append(names, defs.RandomRegionNames(ctx.rng, 4-len(names), names)...)
+		names = append(names, ctx.config().RandomRegionNames(ctx.rng, 4-len(names), names)...)
 	}
 	if len(names) < 4 {
 		return fmt.Errorf("regions_four: not enough region names available")

@@ -101,7 +101,7 @@ func (z *RisqZone) toFrontend(player_id int, v defs.VisibilityLevel, space *Risq
 		zone["ownership"] = owner
 	}
 	if terrainOverride != 0 {
-		zone["terrain_override_display_name"] = defs.TerrainConfigs[terrainOverride].Display_name
+		zone["terrain_override_display_name"] = space.config.Terrains[terrainOverride].Display_name
 	}
 	if v == defs.VisibilityFog {
 		if cache, ok := space.rubble_cache[player_id][z.coordinate_key]; ok {

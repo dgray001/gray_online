@@ -20,7 +20,7 @@ const repairCostFactor = 1.0
 
 // Returns the heal amount and resource cost for spending stamina repairing building; ok is false if unrepairable
 func repairHealAndCost(building *RisqBuilding, stamina int) (heal float64, cost defs.RisqResourceCost, ok bool) {
-	config := defs.BuildingConfigs[building.building_id]
+	config := building.config.Buildings[building.building_id]
 	if config.Build_stamina <= 0 {
 		return 0, defs.RisqResourceCost{}, false
 	}
@@ -397,7 +397,7 @@ func computeConstructionWinners(orderables []Orderable) map[*RisqZone]uint64 {
 func computeFoundationIds(risq *GameRisq, winners map[*RisqZone]uint64) map[*RisqZone]uint64 {
 	zones := make([]*RisqZone, 0, len(winners))
 	for zone, winner := range winners {
-		if zone.building == nil && zone.space.buildableBy(risq.units[winner].player_id) {
+		if zone.building == nil && zone.space.buildableBy(risq.units[winner].player_id, risq) {
 			zones = append(zones, zone)
 		}
 	}

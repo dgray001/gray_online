@@ -39,6 +39,7 @@ export function populationTooltipData(risq: DwgRisq): RisqTooltipData {
     const extra = queued.get(id);
     return `${capitalize(RisqUnitType[id].toLowerCase())}: ${current.get(id) ?? 0}${extra ? ` +${extra}` : ''}`;
   });
-  const total = `Total: ${player.units.size}${queued_total ? ` +${queued_total}` : ''} / ${player.population_limit}`;
+  const limit = player.unlimited_population ? '' : ` / ${player.population_limit}`;
+  const total = `Total: ${player.units.size}${queued_total ? ` +${queued_total}` : ''}${limit}`;
   return { title: 'Population', lines: [total, ...type_lines] };
 }

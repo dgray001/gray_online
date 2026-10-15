@@ -61,7 +61,7 @@ func (e tickEffect) toFrontend(player_id int) gin.H {
 
 func (a *TickAction) toFrontend(player_id int) gin.H {
 	if !a.visibility.inspect(player_id, a.player_id) {
-		return nil
+		return a.redactedToFrontend(player_id)
 	}
 	resolution := a.intent.resolution
 	intent := gin.H{
@@ -106,6 +106,40 @@ func (a *TickAction) toFrontend(player_id int) gin.H {
 		result["order"] = a.order.toFrontend()
 	}
 	return result
+}
+
+// Enemy actors the player can see: positions and outcomes only, no orders, costs, or production.
+func (a *TickAction) redactedToFrontend(player_id int) gin.H {
+	if !a.visibility.see(player_id, a.player_id) || a.intent.producible_kind != 0 {
+		return nil
+	}
+	intent := gin.H{
+		"kind": a.intent.kind, "location": a.intent.location.toFrontend(),
+		"available_stamina": 0, "min_cost": 0, "max_cost": 0,
+		"resolution": gin.H{"kind": "", "reason": "", "stamina_allocated": 0, "sunk_cost": 0},
+	}
+	if a.intent.destination != nil {
+		intent["destination"] = a.intent.destination.toFrontend()
+	}
+	execution := gin.H{
+		"kind": a.execute.kind, "outcome": a.execute.outcome, "reason": "", "stamina_spent": 0,
+		"progress": 0, "gathered": 0, "healing": 0,
+		"food_spent": 0, "wood_spent": 0, "stone_spent": 0, "gold_spent": 0,
+		"effects": []gin.H{},
+	}
+	if a.target_visibility.see(player_id, a.intent.target.player_id) {
+		intent["target"] = a.intent.target.toFrontend()
+		if a.intent.target_location != nil {
+			intent["target_location"] = a.intent.target_location.toFrontend()
+		}
+	}
+	if a.execute_target_visibility.see(player_id, a.execute.target.player_id) {
+		execution["target"] = a.execute.target.toFrontend()
+		if a.execute.target_location != nil {
+			execution["target_location"] = a.execute.target_location.toFrontend()
+		}
+	}
+	return gin.H{"tick": a.tick, "sequence": a.sequence, "intent": intent, "execute": execution}
 }
 
 func tickActionsToFrontend(actions []*TickAction, player_id int) []gin.H {

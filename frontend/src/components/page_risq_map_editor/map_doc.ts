@@ -5,10 +5,13 @@ export interface MapDocBuilding {
   player: number;
 }
 
+/** A number, or an expression over the setup settings that the editor keeps as written */
+export type MapDocValue = number | string;
+
 export interface MapDocUnit {
   id: number;
   player: number;
-  count: number;
+  count: MapDocValue;
 }
 
 export interface MapDocZone {
@@ -24,6 +27,8 @@ export interface MapDocSpace {
   x: number;
   y: number;
   terrain?: number;
+  /** Shown as the space's title in place of its terrain's name; at most 40 characters */
+  name?: string;
   zones?: MapDocZone[];
   player_slot?: number;
 }
@@ -48,7 +53,14 @@ export interface MapDocRegion {
 export interface MapDocConnection {
   from: [number, number];
   to: [number, number];
-  direction?: number;
+  /** 0 to 5: the edge of `from` this connection leaves through */
+  direction: number;
+  /** 0 to 5: the edge of `to` it arrives at; the edge opposite `direction` when absent */
+  to_direction?: number;
+}
+
+export function arrivalDirection(link: MapDocConnection): number {
+  return link.to_direction ?? (link.direction + 3) % 6;
 }
 
 export interface MapDocBackgroundImage {
@@ -58,16 +70,18 @@ export interface MapDocBackgroundImage {
 }
 
 export interface MapDocBank {
-  food: number;
-  wood: number;
-  stone: number;
-  gold: number;
+  food: MapDocValue;
+  wood: MapDocValue;
+  stone: MapDocValue;
+  gold: MapDocValue;
 }
 
 export interface MapDoc {
   board_size: number;
   players: number;
   starting_bank?: MapDocBank;
+  rotation?: number;
+  config_dir?: string;
   background_image?: MapDocBackgroundImage;
   player_start?: MapDocPlayerStart;
   spaces: MapDocSpace[];

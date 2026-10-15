@@ -32,6 +32,7 @@ export class RisqOrderPlanning {
   private local_foundations = new Map<number, LocalRisqFoundation>();
   private idle_units: RisqUnit[] = [];
   private idle_orderables_cache?: (RisqUnit | RisqBuilding)[];
+  private idle_ids_cache?: { units: Set<number>; buildings: Set<number> };
   private last_idle_selected?: number;
   private disabled_idle_categories = new Set<IdleCategory>();
 
@@ -201,6 +202,7 @@ export class RisqOrderPlanning {
 
   private recomputeIdleUnits(): void {
     this.idle_orderables_cache = undefined;
+    this.idle_ids_cache = undefined;
     const player = this.session.getPlayer();
     if (!player) {
       this.idle_units = [];
@@ -234,6 +236,7 @@ export class RisqOrderPlanning {
       this.disabled_idle_categories.add(category);
     }
     this.idle_orderables_cache = undefined;
+    this.idle_ids_cache = undefined;
   }
 
   private hasAvailableProduction(building: RisqBuilding, orders: RisqFrontendOrder[]): boolean {
@@ -288,6 +291,18 @@ export class RisqOrderPlanning {
     return this.idle_orderables_cache;
   }
 
+  /** Idle ids split by kind, since unit and building internal ids are separate namespaces */
+  idleIds(): { readonly units: ReadonlySet<number>; readonly buildings: ReadonlySet<number> } {
+    const ids = (is_unit: boolean): Set<number> =>
+      new Set(
+        this.idleOrderables()
+          .filter((entity: RisqUnit | RisqBuilding): boolean => 'unit_id' in entity === is_unit)
+          .map((entity: RisqUnit | RisqBuilding): number => entity.internal_id)
+      );
+    this.idle_ids_cache ??= { units: ids(true), buildings: ids(false) };
+    return this.idle_ids_cache;
+  }
+
   /** Units on the way by unit id: queued creates (submitted or pending) and mercenary hires, minus cancelled ones */
   queuedUnitCounts(): Map<number, number> {
     const counts = new Map<number, number>();
@@ -320,7 +335,7 @@ export class RisqOrderPlanning {
     if (!canAffordCost(player, mercenary.cost)) {
       return 'Not enough resources';
     }
-    if (player.units.size + this.pendingMercenaryCount() >= player.population_limit) {
+    if (!player.unlimited_population && player.units.size + this.pendingMercenaryCount() >= player.population_limit) {
       return 'Population capped';
     }
     return undefined;

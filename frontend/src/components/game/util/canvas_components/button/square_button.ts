@@ -12,6 +12,7 @@ export declare interface SquareButtonConfig {
   move_animation_speed?: number;
   rotate_animation_speed?: number;
   image_path?: string;
+  image_on_top?: boolean;
   rotation?: number;
 }
 

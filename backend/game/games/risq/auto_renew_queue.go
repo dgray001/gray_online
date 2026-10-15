@@ -14,7 +14,7 @@ type RisqRenewalQueue struct {
 }
 
 func (p *RisqPlayer) setAutoRenewCount(id uint32, count int) error {
-	config, ok := defs.BuildingConfigs[id]
+	config, ok := p.config.Buildings[id]
 	if !ok || !config.IsGatherable() {
 		return errors.New("building type is not gatherable")
 	}

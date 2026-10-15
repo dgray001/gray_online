@@ -285,7 +285,7 @@ func otherUnitIdentity(other Orderable) (uint32, defs.UnitType) {
 func (r *GameRisq) effectiveCombatStats(u *RisqUnit, other Orderable, attacking bool) RisqCombatStats {
 	cs := u.cs
 	other_unit_id, other_unit_type := otherUnitIdentity(other)
-	bonus := defs.SumTargetedBonus(u.unit_id, u.unitType(), r.players[u.player_id].researchedTechIds(), other_unit_id, other_unit_type, other.OrderableType())
+	bonus := u.config.SumTargetedBonus(u.unit_id, u.unitType(), r.players[u.player_id].researchedTechIds(), other_unit_id, other_unit_type, other.OrderableType())
 	if attacking {
 		cs.applyAttackBonus(bonus)
 	} else {

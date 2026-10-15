@@ -15,6 +15,15 @@ type Runner struct {
 	Model   ai.Model
 	Stop    <-chan struct{}
 	Actions chan game.PlayerAction
+	// the game's stat tables; nil means the default config
+	Config *defs.Config
+}
+
+func (a *Runner) config() *defs.Config {
+	if a.Config != nil {
+		return a.Config
+	}
+	return defs.DefaultConfig()
 }
 
 func (a *Runner) Run() {
@@ -52,7 +61,7 @@ func (a *Runner) decideAndSubmit(update *game.UpdateMessage) {
 	snapshot, err := parseAiSnapshot(payload)
 	var view *aiView
 	if err == nil {
-		view, _ = newAiView(snapshot, a.Player.Player_id)
+		view, _ = newAiView(a.config(), snapshot, a.Player.Player_id)
 	}
 	if view == nil {
 		fmt.Fprintln(os.Stderr, "AI player", a.Player.GetAiId(), "could not read start-turn payload:", err)

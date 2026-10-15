@@ -75,14 +75,14 @@ var terrainIdsByType map[TerrainType][]uint32
 var lowestIntraMoveCost uint = 1
 var LowestInterMoveCost uint = 1
 
-func loadTerrainConfig(data []byte) {
+func (c *Config) loadTerrains(data []byte) {
 	var types []terrainTypeJSON
 	if err := json.Unmarshal(data, &types); err != nil {
 		panic(fmt.Sprintf("failed to parse config/terrains.json: %v", err))
 	}
-	TerrainConfigs = make(map[uint32]TerrainConfig)
-	terrainMoveCosts = make(map[TerrainType]TerrainMoveCost, len(types))
-	terrainIdsByType = make(map[TerrainType][]uint32, len(types))
+	c.Terrains = make(map[uint32]TerrainConfig)
+	c.terrainMoveCosts = make(map[TerrainType]TerrainMoveCost, len(types))
+	c.terrainIdsByType = make(map[TerrainType][]uint32, len(types))
 	for _, t := range types {
 		terrain_type, err := ParseTerrainType(t.TerrainType)
 		if err != nil {
@@ -92,31 +92,31 @@ func loadTerrainConfig(data []byte) {
 			if t.IntraCost < 1 || t.InterCost < 1 {
 				panic(fmt.Sprintf("config/terrains.json terrain_type %q: move costs must be at least 1", t.TerrainType))
 			}
-			lowestIntraMoveCost = min(lowestIntraMoveCost, t.IntraCost)
-			LowestInterMoveCost = min(LowestInterMoveCost, t.InterCost)
+			c.lowestIntraMoveCost = min(c.lowestIntraMoveCost, t.IntraCost)
+			c.LowestInterMoveCost = min(c.LowestInterMoveCost, t.InterCost)
 		}
 		build_speed_modifier := t.BuildSpeedModifier
 		if build_speed_modifier <= 0 {
 			build_speed_modifier = 1
 		}
-		terrainMoveCosts[terrain_type] = TerrainMoveCost{
+		c.terrainMoveCosts[terrain_type] = TerrainMoveCost{
 			Intra_cost:           t.IntraCost,
 			Inter_cost:           t.InterCost,
 			Impassable:           t.Impassable,
 			Build_speed_modifier: build_speed_modifier,
 		}
 		for _, e := range t.Terrains {
-			TerrainConfigs[e.TerrainId] = TerrainConfig{
+			c.Terrains[e.TerrainId] = TerrainConfig{
 				Display_name: e.DisplayName,
 				Terrain_type: terrain_type,
 			}
-			terrainIdsByType[terrain_type] = append(terrainIdsByType[terrain_type], e.TerrainId)
+			c.terrainIdsByType[terrain_type] = append(c.terrainIdsByType[terrain_type], e.TerrainId)
 		}
 	}
 }
 
-func RandomTerrainId(terrain_type TerrainType, rng *rand.Rand) uint32 {
-	ids := terrainIdsByType[terrain_type]
+func (c *Config) RandomTerrainId(terrain_type TerrainType, rng *rand.Rand) uint32 {
+	ids := c.terrainIdsByType[terrain_type]
 	if len(ids) == 0 {
 		return DefaultTerrainId
 	}
@@ -127,7 +127,7 @@ func RandomTerrainId(terrain_type TerrainType, rng *rand.Rand) uint32 {
 const maxVariantId uint32 = 150
 
 // The version of terrain id with the given type (flat, hilly or mountainous), when it is defined
-func TerrainVariant(id uint32, kind TerrainType) (uint32, bool) {
+func (c *Config) TerrainVariant(id uint32, kind TerrainType) (uint32, bool) {
 	if id == 0 || id > maxVariantId {
 		return 0, false
 	}
@@ -135,15 +135,15 @@ func TerrainVariant(id uint32, kind TerrainType) (uint32, bool) {
 	offset := map[TerrainType]uint32{TerrainType_FLATLANDS: 0, TerrainType_HILLY: 50, TerrainType_MOUNTAINOUS: 100}
 	shift, known := offset[kind]
 	variant := root + shift
-	config, defined := TerrainConfigs[variant]
+	config, defined := c.Terrains[variant]
 	return variant, known && defined && config.Terrain_type == kind
 }
 
 // Every defined flat, hilly and mountainous version of terrain id, or just id for terrain without variants
-func TerrainFamily(id uint32) []uint32 {
+func (c *Config) TerrainFamily(id uint32) []uint32 {
 	family := []uint32{}
 	for _, kind := range []TerrainType{TerrainType_FLATLANDS, TerrainType_HILLY, TerrainType_MOUNTAINOUS} {
-		if variant, ok := TerrainVariant(id, kind); ok {
+		if variant, ok := c.TerrainVariant(id, kind); ok {
 			family = append(family, variant)
 		}
 	}
@@ -153,6 +153,11 @@ func TerrainFamily(id uint32) []uint32 {
 	return family
 }
 
+func (c *Config) MoveCost(t TerrainType) TerrainMoveCost {
+	return c.terrainMoveCosts[t]
+}
+
+// The default config's cost, for callers without a game config
 func (t TerrainType) MoveCost() TerrainMoveCost {
 	return terrainMoveCosts[t]
 }

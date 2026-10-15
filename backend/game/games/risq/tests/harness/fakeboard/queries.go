@@ -76,9 +76,6 @@ func (b *Board) PassableComponents() int {
 			for _, n := range current.borders {
 				visit(n)
 			}
-			for _, n := range current.links {
-				visit(n)
-			}
 		}
 	}
 	return groups
