@@ -68,6 +68,7 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.addTooltipToggle(this.dealer_wrapper);
     this.addTooltipToggle(this.winner_wrapper);
     if (this.client_player) {
+      this.bet_input.addEventListener('input', (): void => this.updateBetButton());
       this.bet_input.addEventListener('keyup', (e: KeyboardEvent): void => {
         e.stopImmediatePropagation();
         if (e.key === 'Enter') {
@@ -138,11 +139,15 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     this.client_player = true;
   }
 
+  private updateBetButton(): void {
+    this.bet_button.disabled = this.bet_input.disabled || this.bet_input.value.trim() === '';
+  }
+
   sendBetEvent(): void {
-    const bet_value = Number(this.bet_input.value);
+    const bet_value = this.bet_input.valueAsNumber;
     if (!Number.isInteger(bet_value) || bet_value < 0 || bet_value > this.player.cards.length) {
       messageDialog.call(this, {
-        message: `Invalid bet value ${bet_value}; bet must be in the range of [0, ${this.player.cards.length}]`,
+        message: `Enter a whole-number bet between 0 and ${this.player.cards.length}.`,
       });
       return;
     }
@@ -190,8 +195,8 @@ export class DwgFiddlesticksPlayer extends DwgElement {
     }
     Sounds.play('turn_notification');
     this.bet_input.disabled = false;
-    this.bet_button.disabled = false;
     this.bet_input.value = DEV ? '0' : '';
+    this.updateBetButton();
     this.bet_input.max = this.player.cards.length.toString();
     this.bet_input_wrapper.classList.add('show');
   }

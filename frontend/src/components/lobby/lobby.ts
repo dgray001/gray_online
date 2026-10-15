@@ -45,6 +45,7 @@ export class DwgLobby extends DwgElement {
   private entered_game = false;
   private exited_game = false;
   private ping_interval?: NodeJS.Timeout;
+  private room_request?: { kind: string; room_id: string };
 
   constructor() {
     super();
@@ -77,25 +78,17 @@ export class DwgLobby extends DwgElement {
   }
 
   protected override parsedCallback(): void {
+    this.addEventListener('connection_lost', (): void => this.finishRoomRequest());
     this.chatbox.setPlaceholder('Chat with entire lobby');
     clickButton(this.refresh_lobby_button, async () => {
       await this.refreshLobbyRooms(false, true);
     });
-    clickButton(
-      this.create_room_button,
-      async () => {
-        this.socket?.send(createMessage(`client-${this.connection_metadata.client_id}`, 'room-create'));
-      },
-      { loading_text: 'Creating Room ...', re_enable_button: false }
-    );
+    this.create_room_button.addEventListener('click', (): void => this.requestRoom('room-create'));
     this.lobby_rooms.addEventListener('join_room', async (e) => {
-      this.socket?.send(
-        createMessage(
-          `client-${this.connection_metadata.client_id}`,
-          e.detail.join_as_player ? 'room-join-player' : 'room-join-viewer',
-          '',
-          e.detail.room_id.toString()
-        )
+      this.requestRoom(
+        e.detail.join_as_player ? 'room-join-player' : 'room-join-viewer',
+        '',
+        e.detail.room_id.toString()
       );
     });
     this.chatbox.addEventListener('chat_sent', (e) => {
@@ -157,24 +150,10 @@ export class DwgLobby extends DwgElement {
       }
     });
     this.lobby_room.addEventListener('leave_room', async () => {
-      this.socket?.send(
-        createMessage(
-          `client-${this.connection_metadata.client_id}`,
-          'room-leave',
-          '',
-          this.connection_metadata.room_id?.toString()
-        )
-      );
+      this.requestRoom('room-leave', '', this.connection_metadata.room_id?.toString());
     });
     this.lobby_room.addEventListener('rename_room', (e) => {
-      this.socket?.send(
-        createMessage(
-          `client-${this.connection_metadata.client_id}`,
-          'room-rename',
-          e.detail,
-          this.connection_metadata.room_id?.toString()
-        )
-      );
+      this.requestRoom('room-rename', e.detail, this.connection_metadata.room_id?.toString());
     });
     this.lobby_room.addEventListener('kick_player', (e) => {
       this.socket?.send(
@@ -249,12 +228,51 @@ export class DwgLobby extends DwgElement {
     }, LOBBY_PING_TIME);
   }
 
+  override disconnectedCallback(): void {
+    if (this.create_room_button) {
+      this.finishRoomRequest();
+    }
+    super.disconnectedCallback();
+  }
+
   getChatbox(): DwgChatbox {
     return this.chatbox;
   }
 
-  getCreateRoomButton(): HTMLButtonElement {
-    return this.create_room_button;
+  private requestRoom(kind: string, content: string = '', room_id: string = ''): void {
+    if (this.room_request || !this.socketActive()) {
+      return;
+    }
+    this.room_request = { kind, room_id };
+    this.showRoomRequest(kind);
+    try {
+      this.socket?.send(createMessage(`client-${this.connection_metadata.client_id}`, kind, content, room_id));
+    } catch (error) {
+      this.finishRoomRequest();
+      console.error('Unable to send room request:', error);
+    }
+  }
+
+  private showRoomRequest(kind: string = ''): void {
+    const labels: Record<string, string> = {
+      create: 'Creating Room ...',
+      join: 'Joining Room ...',
+      leave: 'Leaving Room ...',
+      rename: 'Renaming Room ...',
+    };
+    this.dataset.roomRequest = labels[kind.split('-')[1]] ?? '';
+    this.create_room_button.disabled = !!kind || !!this.connection_metadata.room_id;
+    this.lobby_rooms.inert = !!kind;
+    this.lobby_room.setRequestPending(!!kind);
+  }
+
+  finishRoomRequest(kind?: string, room_id?: string): void {
+    const pending_kind = this.room_request?.kind.replace(/-(player|viewer)$/, '');
+    if (kind && (pending_kind !== kind || (room_id && this.room_request?.room_id !== room_id))) {
+      return;
+    }
+    this.room_request = undefined;
+    this.showRoomRequest();
   }
 
   getSocket(): WebSocket | undefined {
@@ -274,11 +292,17 @@ export class DwgLobby extends DwgElement {
   }
 
   setSocket(new_socket: WebSocket): void {
+    this.finishRoomRequest();
     if (!!this.socket) {
       this.socket.close(3000, 'opening new connection');
     }
     this.waiting_on_connection_times = DwgLobby.DEFAULT_CONNECTION_TIMES;
     this.socket = new_socket;
+    new_socket.addEventListener('close', (): void => {
+      if (this.socket === new_socket) {
+        this.finishRoomRequest();
+      }
+    });
     this.socket.addEventListener('message', (m) => {
       try {
         const message = JSON.parse(m.data) as ServerMessage;
@@ -305,6 +329,7 @@ export class DwgLobby extends DwgElement {
   }
 
   closeSocket(code: number, message: string): void {
+    this.finishRoomRequest();
     if (!!this.socket) {
       this.socket.close(code, message);
     }
@@ -330,9 +355,7 @@ export class DwgLobby extends DwgElement {
       const url_room_id = parseInt(getUrlParam(URL_PARAM_ROOM));
       const room = this.lobby_rooms.getRoom(url_room_id)?.data;
       if (!!room && current_room?.room_id !== room.room_id) {
-        this.socket?.send(
-          createMessage(`client-${this.connection_metadata.client_id}`, 'room-join', '', url_room_id.toString())
-        );
+        this.requestRoom('room-join', '', url_room_id.toString());
         return;
       } else {
         removeUrlParam(URL_PARAM_ROOM);
@@ -357,6 +380,7 @@ export class DwgLobby extends DwgElement {
       return;
     }
     this.connection_metadata.room_id = room.room_id;
+    this.showRoomRequest(this.room_request?.kind);
     this.lobby_room.setRoom(room, is_host, this.connection_metadata.client_id);
     this.lobby_room_wrapper.classList.add('show');
     setUrlParam(URL_PARAM_ROOM, room.room_id.toString());
@@ -370,8 +394,7 @@ export class DwgLobby extends DwgElement {
   leaveRoom(): void {
     this.connection_metadata.room_id = undefined;
     this.lobby_room_wrapper.classList.remove('show');
-    this.create_room_button.disabled = false;
-    this.create_room_button.innerText = 'Create Room';
+    this.showRoomRequest(this.room_request?.kind);
     if (this.lobby_room.inRoom()) {
       this.lobby_room.clearRoom();
       removeUrlParam(URL_PARAM_ROOM);

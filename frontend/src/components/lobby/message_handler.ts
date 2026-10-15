@@ -119,14 +119,13 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage): void {
         lobby.getLobbyRooms().addRoom(room);
         if (lobby.getConnectionMetadata().client_id === host_id) {
           lobby.enterRoom(room, true);
-          setTimeout(() => {
-            // quick fix in case server responds instantly (like in dev)
-            lobby.getCreateRoomButton().innerText = 'Room Created';
-          }, 1);
         }
       };
       try {
         const host_id = parseInt(message.sender.replace('client-', ''));
+        if (host_id === lobby.getConnectionMetadata().client_id) {
+          lobby.finishRoomRequest('room-create');
+        }
         const host = lobby.getLobbyUsers().getUser(host_id);
         if (!host) {
           // TODO: handle
@@ -149,6 +148,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage): void {
       if (closed_room_id) {
         if (lobby.getConnectionMetadata().room_id === closed_room_id) {
           lobby.leaveRoom();
+          lobby.finishRoomRequest();
         }
         const room = lobby.getLobbyRooms().getRoom(closed_room_id)?.data;
         lobby.getLobbyRooms().removeRoom(closed_room_id);
@@ -162,6 +162,9 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage): void {
     case 'room-left':
       const room_leave_id = parseInt(message.sender.replace('room-', ''));
       const client_leave_id = parseInt(message.data.replace('client-', ''));
+      if (client_leave_id === lobby.getConnectionMetadata().client_id) {
+        lobby.finishRoomRequest('room-leave', room_leave_id.toString());
+      }
       if (room_leave_id && client_leave_id) {
         lobby.userLeftRoom(room_leave_id, client_leave_id, 'left');
       }
@@ -169,6 +172,9 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage): void {
     case 'room-joined-player':
       const room_join_id = parseInt(message.sender.replace('room-', ''));
       const client_join_id = parseInt(message.data.replace('client-', ''));
+      if (client_join_id === lobby.getConnectionMetadata().client_id) {
+        lobby.finishRoomRequest('room-join', room_join_id.toString());
+      }
       const joinee = lobby.getLobbyUsers().getUser(client_join_id);
       const room = lobby.getLobbyRooms().getRoom(room_join_id);
       if (room_join_id && client_join_id && joinee && room) {
@@ -187,6 +193,9 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage): void {
     case 'room-joined-viewer':
       const viewer_room_join_id = parseInt(message.sender.replace('room-', ''));
       const viewer_client_join_id = parseInt(message.data.replace('client-', ''));
+      if (viewer_client_join_id === lobby.getConnectionMetadata().client_id) {
+        lobby.finishRoomRequest('room-join', viewer_room_join_id.toString());
+      }
       const viewer_joinee = lobby.getLobbyUsers().getUser(viewer_client_join_id);
       const viewer_room = lobby.getLobbyRooms().getRoom(viewer_room_join_id);
       if (viewer_room_join_id && viewer_client_join_id && viewer_joinee && viewer_room) {
@@ -227,7 +236,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage): void {
       const renamer_client_id = parseInt(message.data);
       if (!!room_renamed_id && !!renamer_client_id) {
         if (renamer_client_id === lobby.getConnectionMetadata().client_id) {
-          // TODO: loader for renaming room
+          lobby.finishRoomRequest('room-rename', room_renamed_id.toString());
         }
         if (lobby.getLobbyRoom().getRoom()?.room_id === room_renamed_id) {
           lobby.getLobbyRoom().renameRoom(message.content, renamer_client_id);
@@ -343,6 +352,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage): void {
     case 'room-refresh-failed':
     case 'room-leave-failed':
       lobby.leaveRoom();
+    case 'room-create-failed':
     case 'room-rename-failed':
     case 'room-kick-failed':
     case 'room-promote-failed':
@@ -350,6 +360,7 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage): void {
     case 'room-set-viewer-failed':
     case 'room-settings-updated-failed':
     case 'room-launch-failed':
+      lobby.finishRoomRequest(message.kind.replace('-failed', ''));
       const message_dialog = document.createElement('dwg-message-dialog');
       message_dialog.setData({ message: message.content });
       lobby.appendChild(message_dialog);

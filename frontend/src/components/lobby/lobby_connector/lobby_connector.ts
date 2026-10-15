@@ -94,6 +94,10 @@ export class DwgLobbyConnector extends DwgElement {
       this.status_message.innerHTML = 'Cannot connect to server at this time; you can try refreshing the page';
       return;
     }
+    this.validateInputName();
+    this.nickname.addEventListener('input', (): void => {
+      this.validateInputName();
+    });
     this.nickname.addEventListener('keyup', (e) => {
       const valid_name = this.validateInputName();
       if (valid_name && e.key === 'Enter') {

@@ -610,8 +610,18 @@ export class DwgLobbyRoom extends DwgElement {
   }
 
   private submitRename(): void {
+    if (this.querySelector<HTMLElement>('#room-header')?.inert) {
+      return;
+    }
     this.dispatchEvent(new CustomEvent('rename_room', { detail: this.rename_input.value }));
     this.cancelRename();
+  }
+
+  setRequestPending(pending: boolean): void {
+    const header = this.querySelector<HTMLElement>('#room-header');
+    if (header) {
+      header.inert = pending;
+    }
   }
 }
 

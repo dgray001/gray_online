@@ -63,7 +63,6 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     this.trick_number.innerText = '-';
     this.status_container.innerText = 'Starting game ...';
     this.players_cards.addEventListener('play_card', (e) => {
-      // TODO: check if card is playable
       const game_update = createMessage(
         `player-${this.player_id}`,
         'game-update',
@@ -291,6 +290,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
       this.player_els[player_id].playing(turn_start_time, turn_duration);
       this.status_container.innerText = `${nickname} Playing`;
       if (player_id === this.player_id) {
+        this.applyDisplaySettings();
         this.players_cards.can_play = true;
       }
     }

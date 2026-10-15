@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.9: Risq beta version
+v0.9a: Lobby loaders
 
 ## Dev Use
 
