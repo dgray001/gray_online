@@ -234,10 +234,10 @@ func TestUpdateDelivery(t *testing.T) {
 	if first.Kind != "submitted-orders" || last.Kind != "unsubmitted-orders" || first.Content["orders_submitted"] != true || last.Content["orders_submitted"] != false {
 		t.Fatalf("submission notices have wrong kind or flag: %+v %+v", first, last)
 	}
-	if first.Content["game"] != nil || first.Content["active_orders"] == nil || first.Content["turn_number"] != g.Risq.TurnNumber() || first.Content["giving_orders"] != true {
+	if first.Content["game"] != nil || first.Content["unreceived_orders"] == nil || first.Content["turn_number"] != g.Risq.TurnNumber() || first.Content["giving_orders"] != true {
 		t.Fatalf("owner notice is not a small notice with their orders: %+v", first)
 	}
-	if seen.Content["player_id"] != g.PlayerID(p) || seen.Content["orders_submitted"] != true || seen.Content["active_orders"] != nil || seen.Content["game"] != nil {
+	if seen.Content["player_id"] != g.PlayerID(p) || seen.Content["orders_submitted"] != true || seen.Content["unreceived_orders"] != nil || seen.Content["game"] != nil {
 		t.Fatalf("other players learned more than the submission: %+v", seen)
 	}
 	if len(player.Updates) != 0 || len(rival.Updates) != 0 || len(g.Base.ViewerUpdates) != 0 {

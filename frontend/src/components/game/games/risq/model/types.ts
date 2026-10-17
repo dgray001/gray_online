@@ -79,7 +79,6 @@ export declare interface RisqPlayer {
   unlimited_population: boolean;
   score: number;
   color: ColorRGB;
-  active_orders: RisqOrder[];
   orders_submitted: boolean;
   eliminated: boolean;
   researched_techs: Map<number, boolean>;
@@ -490,10 +489,10 @@ export declare interface RisqOrder {
   clear_previous_orders?: boolean;
 }
 
-/** Data describing a frontend order which may be previously submitted or may be unsubmitted */
-export type RisqFrontendOrder = Omit<RisqOrder, 'internal_id'> & {
-  internal_id?: number;
-  clear_previous_orders?: boolean;
-};
+/** A player-authored order the server's resolver has not received yet, so it has no id */
+export type RisqUnreceivedOrder = Omit<RisqOrder, 'internal_id'> & { internal_id?: never };
+
+/** Either kind of order; `internal_id !== undefined` narrows to the received one */
+export type RisqFrontendOrder = RisqOrder | RisqUnreceivedOrder;
 
 export { canHaveGatherPoint, canAffordCost, meetsTechRequirement, rangeDistance } from './unit_display';

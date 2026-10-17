@@ -1,7 +1,7 @@
 import type { ColorRGB } from '../../../../../../scripts/color_rgb';
 import { RISQ_MESSAGE_WARNING_COLOR } from '../../canvas_components/message_queue';
 import { cantorPair } from '../../model/coordinates';
-import type { RisqBuilding, RisqFrontendOrder, RisqGatherPoint, RisqSpace } from '../../model/types';
+import type { RisqBuilding, RisqGatherPoint, RisqSpace, RisqUnreceivedOrder } from '../../model/types';
 import { equalsPoint2D } from '../../../../util/objects2d';
 import {
   RisqGatherObjectType,
@@ -182,9 +182,9 @@ export class RisqOrderDispatch {
       const player = this.session.getPlayer();
       const cost = this.planning.unpaidRenewalCost(target_id);
       const reserved = this.orders_model
-        .pendingOrders()
+        .unreceivedOrders()
         .some(
-          (order: RisqFrontendOrder): boolean =>
+          (order: RisqUnreceivedOrder): boolean =>
             order.order_type === RisqOrderType.OrderType_UnitRenew && order.target_id === target_id
         );
       if (player && cost && !reserved && !canAffordCost(player, cost)) {
@@ -248,7 +248,12 @@ export class RisqOrderDispatch {
     });
   }
 
-  private buildOrder(building_id: number, subjects: number[], zone_key: number, ctrl_held: boolean): RisqFrontendOrder {
+  private buildOrder(
+    building_id: number,
+    subjects: number[],
+    zone_key: number,
+    ctrl_held: boolean
+  ): RisqUnreceivedOrder {
     return {
       player_id: this.session.getPlayerId(),
       order_type: RisqOrderType.OrderType_UnitBuild,
@@ -318,7 +323,7 @@ export class RisqOrderDispatch {
       } else if (hovered?.kind === 'building' && zone.building) {
         point.object_type = RisqGatherObjectType.BUILDING;
         point.object_id = zone.building.internal_id;
-      } else if (zone.hovered_data[0].hovered && this.planning.hasPlannedFoundation(zone)) {
+      } else if (zone.hovered_data[0]?.hovered && this.planning.hasPlannedFoundation(zone)) {
         point.object_type = RisqGatherObjectType.BUILDING;
       } else if (hovered?.kind === 'unit') {
         const unit_id = [...hovered.groups[0].units][0];

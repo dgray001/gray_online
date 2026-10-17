@@ -50,11 +50,11 @@ func TestOrderFlow(t *testing.T) {
 	soldiers := len(unitIDs(g, p, 101))
 	g.Submit(p, harness.OrderMoveZone([]uint64{spare}, 1, 0, 0, 0), harness.OrderProduce([]uint64{b[22]}, 101))
 	pending := g.Self(p)
-	if len(pending.ActiveOrders) != len(before.ActiveOrders)+2 || pending.Resources.Food != before.Resources.Food {
-		t.Fatalf("pending orders were not appended without charging: %+v", pending)
+	if len(pending.ActiveOrders) != len(before.ActiveOrders) || len(pending.UnreceivedOrders) != 2 || pending.Resources.Food != before.Resources.Food {
+		t.Fatalf("pending orders were not stored unreceived without charging: %+v", pending)
 	}
 	g.Action(p, "unsubmit-orders", nil)
-	if after := g.Self(p); after.OrdersSubmitted || len(after.ActiveOrders) != len(before.ActiveOrders) || len(unitByID(g, p, spare).ActiveOrders) != 1 {
+	if after := g.Self(p); after.OrdersSubmitted || len(after.ActiveOrders) != len(before.ActiveOrders) || len(after.UnreceivedOrders) != 0 || len(unitByID(g, p, spare).ActiveOrders) != 1 {
 		t.Fatalf("unsubmit lost received orders or kept new ones: %+v", after)
 	}
 

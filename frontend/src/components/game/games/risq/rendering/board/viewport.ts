@@ -27,6 +27,8 @@ const ZOOM_REFERENCE_BOARD_SIZE = 4;
 const MIN_ZOOM_HEXAGON_SCALE = 0.8;
 const ZONE_DETAIL_THRESHOLD = 1;
 const OWNERSHIP_DETAIL_THRESHOLD = 0.4;
+// min zoom always reaches this fraction of the ownership-detail scale, so tiny boards can still zoom past it
+const OWNERSHIP_ZOOM_MARGIN = 0.75;
 
 export declare interface CanvasBounds {
   min: Point2D;
@@ -160,23 +162,26 @@ export class RisqViewport {
   }
 
   zoomLimits(board_size: Point2D): { min: number; max: number } {
-    const min =
+    const fit =
       MIN_ZOOM_HEXAGON_SCALE * Math.min(this.canvas_size.width / board_size.x, this.canvas_size.height / board_size.y);
     const diameter = this.unit_circle_screen_diameter;
-    const max = centerUnitMaxZoom(this.hex_r, diameter, maxZoomRings(diameter));
-    return { min, max };
+    const max = Math.max(1, centerUnitMaxZoom(this.hex_r, diameter, maxZoomRings(diameter)));
+    return { min: Math.min(fit, OWNERSHIP_ZOOM_MARGIN * this.ownershipDetailScale(max)), max };
+  }
+
+  /** Scale below which ownership detail is drawn */
+  private ownershipDetailScale(max_scale: number): number {
+    const board_size = this.session.getGame()?.board_size ?? ZOOM_REFERENCE_BOARD_SIZE;
+    const reference_scale = (2 * ZOOM_REFERENCE_BOARD_SIZE + 1) / (2 * board_size + 1);
+    return 1 / ((OWNERSHIP_DETAIL_THRESHOLD * (max_scale * reference_scale - 1) + 1) * reference_scale);
   }
 
   updateDrawDetail(scale: number, max_scale: number): void {
-    const board_size = this.session.getGame()?.board_size ?? ZOOM_REFERENCE_BOARD_SIZE;
-    const reference_scale = (2 * ZOOM_REFERENCE_BOARD_SIZE + 1) / (2 * board_size + 1);
     const center_zone_gap = this.hex_r * (CENTER_ZONE_APOTHEM_MULTIPLIER - BUILDING_CIRCLE_RADIUS_MULTIPLIER);
     const zone_detail_scale = (this.unit_circle_screen_diameter / center_zone_gap) * ZONE_DETAIL_THRESHOLD;
-    scale *= reference_scale;
-    max_scale *= reference_scale;
-    if (scale >= zone_detail_scale * reference_scale) {
+    if (scale >= zone_detail_scale) {
       this.draw_detail = DrawRisqSpaceDetail.ZONE_DETAILS;
-    } else if (scale < 1 / (OWNERSHIP_DETAIL_THRESHOLD * (max_scale - 1) + 1)) {
+    } else if (scale < this.ownershipDetailScale(max_scale)) {
       this.draw_detail = DrawRisqSpaceDetail.OWNERSHIP;
     } else {
       this.draw_detail = DrawRisqSpaceDetail.SPACE_DETAILS;

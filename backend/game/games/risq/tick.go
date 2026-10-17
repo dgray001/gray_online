@@ -23,13 +23,17 @@ func (r *GameRisq) resolveActiveOrders() {
 	util.Debug(r.std, "Resolving active orders")
 	r.current_tick = 0
 	for _, player := range r.players {
+		unreceived := player.unreceived_orders
+		player.unreceived_orders = nil
 		if player.eliminated {
 			continue
 		}
-		for _, order := range receiptOrdered(player.active_orders) {
-			if order.received {
-				continue
-			}
+		orders := make([]*RisqOrder, 0, len(unreceived))
+		for _, o := range unreceived {
+			orders = append(orders, player.orderFromFrontend(o))
+		}
+		player.active_orders = append(player.active_orders, orders...)
+		for _, order := range receiptOrdered(orders) {
 			order.internal_id = r.nextOrderInternalId()
 			r.deliverOrder(order, player, false)
 		}
@@ -130,7 +134,7 @@ func (r *GameRisq) resolveActiveOrders() {
 			} else if order.cancelled {
 				player.report.orders.cancelled++
 			}
-			if order.received && !order.executed && !order.cancelled {
+			if !order.executed && !order.cancelled {
 				kept = append(kept, order)
 			}
 		}
@@ -161,7 +165,6 @@ func (r *GameRisq) updateRemains(advance bool) {
 
 func (r *GameRisq) deliverOrder(order *RisqOrder, player *RisqPlayer, prepend bool) {
 	player.report.orders.added++
-	order.received = true
 	order.turn_received = r.turn_number
 	if order.order_type.IsPlayerOrder() {
 		player.receivePlayerOrder(order, r)

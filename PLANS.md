@@ -1,10 +1,6 @@
 Small Risq Issues:
- - Unsubmit orders I lost my previous orders
  - Game keeps on disconnecting in risq while I play idk why (need automatic reconnect to socket)
- - Resources spent this turn don't show while orders submitted and waiting
  - Autoattacks need to rechoose target when higher priority target comes in range ?
- - After submitting orders I should be able to highlight say build buttons and see how much something costs
- - Sometimes when I zoom out there are some zoom levels that hide cursor and panels for some reason
 
 Bigger Risq Issues/Ideas:
  - Utilize events on map

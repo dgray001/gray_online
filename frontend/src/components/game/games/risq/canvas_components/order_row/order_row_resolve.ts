@@ -283,7 +283,7 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
       break;
     }
     case RisqOrderType.OrderType_CancelOrder: {
-      const cancelled = player?.active_orders.find((o) => o.internal_id === order.target_id);
+      const cancelled = config.game.orders_model.receivedOrders().find((o) => o.internal_id === order.target_id);
       base = {
         icon: 'icons/close_gray32',
         name: 'Cancel',

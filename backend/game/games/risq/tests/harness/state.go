@@ -86,6 +86,10 @@ type PlayerState struct {
 		OrderType  uint8  `json:"order_type"`
 		TargetID   int64  `json:"target_id"`
 	} `json:"active_orders"`
+	UnreceivedOrders []struct {
+		OrderType uint8 `json:"order_type"`
+		TargetID  int64 `json:"target_id"`
+	} `json:"unreceived_orders"`
 	PlannedFoundations []struct {
 		CoordinateKey uint   `json:"coordinate_key"`
 		BuildingID    uint32 `json:"building_id"`

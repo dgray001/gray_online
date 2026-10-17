@@ -10,6 +10,7 @@ import type {
   RisqMovePathStep,
   RisqProductionQueueItem,
   RisqSpaceLink,
+  RisqUnreceivedOrder,
 } from '../model/types';
 import type { RisqTickActionFromServer, RisqTurnJournalFromServer } from './turn_journal_types';
 import type { RisqTerrainType } from '../rendering/terrain';
@@ -74,6 +75,7 @@ export declare interface RisqPlayerFromServer {
   score: number;
   color: string;
   active_orders: RisqOrderFromServer[];
+  unreceived_orders: RisqUnreceivedOrder[];
   orders_submitted: boolean;
   eliminated: boolean;
   researched_techs: Record<string, boolean>;
@@ -246,7 +248,7 @@ export declare interface RisqResourceFromServer {
 
 /** Data describing an order as returned by the server */
 export declare interface RisqOrderFromServer {
-  internal_id?: number;
+  internal_id: number;
   player_id: number;
   order_type: number;
   target_id: number;
@@ -264,7 +266,7 @@ export declare interface SubmissionNoticeData {
   orders_submitted: boolean;
   giving_orders: boolean;
   turn_number: number;
-  active_orders?: RisqOrderFromServer[];
+  unreceived_orders?: RisqUnreceivedOrder[];
 }
 
 export declare interface UnitBehaviorSetData {

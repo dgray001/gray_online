@@ -41,14 +41,9 @@ export class RisqOrderSubmission {
     }
   }
 
-  submitted(): void {
+  /** The submitted batch stays in the orders model as unreceived, so acknowledging only ends the toggle */
+  acknowledged(): void {
     this.toggling = false;
-    this.orders_model.clearPending();
-  }
-
-  unsubmitted(): void {
-    this.toggling = false;
-    this.orders_model.revertSubmittedToPending();
   }
 
   /** Submits directly, or first confirms when units/buildings are idle or resources would go negative */
@@ -142,7 +137,7 @@ export class RisqOrderSubmission {
       this.right_panel.unsubmittingOrders();
       this.dispatch(createMessage(sender, 'game-update', '', 'unsubmit-orders'));
     } else {
-      const content = JSON.stringify({ orders: this.orders_model.pendingOrders() });
+      const content = JSON.stringify({ orders: this.orders_model.unreceivedOrders() });
       this.dispatch(createMessage(sender, 'game-update', content, 'submit-orders'));
       this.submitted_times++;
     }

@@ -1,6 +1,9 @@
 package risq
 
 import (
+	"maps"
+	"slices"
+
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/gin-gonic/gin"
 )
@@ -48,6 +51,7 @@ func (r *GameRisq) clearAllOrders() {
 			}
 		}
 		player.active_orders = nil
+		player.unreceived_orders = nil
 		if player.report != nil {
 			player.report.orders.active = 0
 		}
@@ -74,7 +78,6 @@ type RisqOrder struct {
 	// What the order is targeting (could be a space, a unit, or a technology)
 	target_id             int64
 	clear_previous_orders bool
-	received              bool
 	subject_completed     bool
 	executed              bool
 	cancelled             bool
@@ -94,6 +97,20 @@ func createRisqOrder(internal_id uint64, order_type defs.OrderType, player_id in
 	return &order
 }
 
+func (p *RisqPlayer) orderFromFrontend(o defs.OrderFromFrontend) *RisqOrder {
+	order_type := defs.OrderType(o.Order_type)
+	subjects := make(map[uint64]Orderable)
+	for _, subject_id := range o.Subjects {
+		unit, building := p.units[subject_id], p.buildings[subject_id]
+		if order_type.IsUnitOrder() || (order_type == defs.OrderType_CancelOrder && unit != nil) {
+			subjects[subject_id] = unit
+		} else if order_type.IsBuildingOrder() || (order_type == defs.OrderType_CancelOrder && building != nil) {
+			subjects[subject_id] = building
+		}
+	}
+	return createRisqOrder(0, order_type, p.player.Player_id, subjects, o.Target_id, o.Clear_previous_orders)
+}
+
 // Drops a resolved subject; the last one marks the order executed if any subject completed, else cancelled
 func (o *RisqOrder) resolveSubject(subject_id uint64, completed bool, turn uint16) {
 	o.subject_completed = o.subject_completed || completed
@@ -108,20 +125,16 @@ func (o *RisqOrder) resolveSubject(subject_id uint64, completed bool, turn uint1
 
 func (o *RisqOrder) toFrontend() gin.H {
 	order := gin.H{
+		"internal_id":           o.internal_id,
 		"player_id":             o.player_id,
 		"order_type":            o.order_type,
 		"target_id":             o.target_id,
-		"turn_received":         o.turn_received,
-		"turn_resolved":         o.turn_resolved,
 		"clear_previous_orders": o.clear_previous_orders,
 	}
-	if o.internal_id != 0 {
-		order["internal_id"] = o.internal_id
-	}
-	subjects := make([]uint64, 0)
-	for _, subject := range o.subjects {
-		if subject != nil && !subject.isDeleted() {
-			subjects = append(subjects, subject.internalId())
+	subjects := make([]uint64, 0, len(o.subjects))
+	for _, id := range slices.Sorted(maps.Keys(o.subjects)) {
+		if subject := o.subjects[id]; subject != nil && !subject.isDeleted() {
+			subjects = append(subjects, id)
 		}
 	}
 	order["subjects"] = subjects

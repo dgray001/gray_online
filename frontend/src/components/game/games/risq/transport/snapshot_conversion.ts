@@ -163,7 +163,6 @@ export function serverToRisqPlayer(server_player: RisqPlayerFromServer, registry
     unlimited_population: server_player.unlimited_population ?? false,
     score: server_player.score,
     color: new ColorRGB(color_split[0], color_split[1], color_split[2]),
-    active_orders: server_player.active_orders.map((o) => serverToRisqOrder(o)).filter((o) => !!o),
     orders_submitted: server_player.orders_submitted,
     eliminated: server_player.eliminated,
     researched_techs: new Map(
@@ -366,9 +365,6 @@ export function serverToRisqOrder(server_order?: RisqOrderFromServer): RisqOrder
   if (!server_order) {
     return undefined;
   }
-  const order: RisqOrder = {
-    ...server_order,
-    internal_id: server_order.internal_id ?? 0,
-  };
+  const order: RisqOrder = { ...server_order };
   return order;
 }

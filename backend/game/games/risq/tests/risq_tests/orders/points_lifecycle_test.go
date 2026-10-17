@@ -163,7 +163,7 @@ func TestGatherPointLifecycles(t *testing.T) {
 				pre: func() {
 					p := w.human(slot)
 					w.g.Submit(p, harness.OrderMoveZone([]uint64{unit}, home[0], home[1], -1, 1))
-					if len(w.g.Self(p).ActiveOrders) != 2 {
+					if self := w.g.Self(p); len(self.ActiveOrders) != 1 || len(self.UnreceivedOrders) != 1 {
 						t.Fatal("pending order did not coexist with generated order")
 					}
 					w.g.Action(p, "unsubmit-orders", nil)

@@ -114,10 +114,14 @@ export class RisqUpdates {
     if (new_game.game_base.game_ended) {
       this.risq.commands.auto_renew.reset();
       this.risq.armed.disarmAll();
-      this.risq.orders_model.clearPending();
+      this.risq.orders_model.clearUnreceived();
     }
     this.risq.hover.forget();
-    this.risq.orders_model.setSubmitted(this.risq.getPlayer()?.active_orders ?? []);
+    const raw_player = new_game.players[this.risq.getPlayerId()];
+    this.risq.orders_model.setReceived(raw_player?.active_orders ?? []);
+    if (raw_player?.orders_submitted) {
+      this.risq.orders_model.setUnreceived(raw_player.unreceived_orders);
+    }
     this.risq.session.setLastTurnReport(this.risq.getPlayer()?.turn_report ?? this.risq.session.getLastTurnReport());
     this.risq.refreshPanels();
     this.showGameOutcome();
@@ -154,6 +158,7 @@ export class RisqUpdates {
     }
     this.risq.submission.turnStarted();
     this.risq.armed.disarmAll();
+    this.risq.orders_model.setUnreceived([]); // last turn's batch is now in active_orders
     this.setNewGameData(data.game);
     const player = this.risq.getPlayer();
     if (
@@ -172,11 +177,9 @@ export class RisqUpdates {
     }
     if (data.player_id === this.risq.getPlayerId()) {
       if (data.orders_submitted) {
-        this.risq.submission.submitted();
-      } else {
-        this.risq.submission.unsubmitted();
+        this.risq.orders_model.setUnreceived(data.unreceived_orders ?? []);
       }
-      this.risq.orders_model.setSubmitted(this.risq.getPlayer()?.active_orders ?? []);
+      this.risq.submission.acknowledged();
       this.risq.hover.forget();
     }
     if (!this.risq.session.givingOrders() || this.risq.getPlayer()?.orders_submitted) {

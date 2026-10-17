@@ -2,6 +2,7 @@ import type { BoardTransformData } from '../../../../../util/canvas_board/canvas
 import { DwgSquareButton } from '../../../../../util/canvas_components/button/square_button';
 import { configDraw } from '../../../../../util/canvas_components/canvas_component';
 import { drawLine, drawRect } from '../../../../../util/canvas_util';
+import type { Point2D } from '../../../../../util/objects2d';
 import type { DwgRisq } from '../../../risq';
 import type { RisqTooltipData } from '../../risq_tooltip';
 import { RisqButtonTooltip } from '../../risq_tooltip';
@@ -21,6 +22,7 @@ export abstract class RisqActionButton extends DwgSquareButton {
   readonly col: number;
   readonly description: string;
   private tooltip = new RisqButtonTooltip(() => this.getTooltipData());
+  private pointer_over = false;
   protected dimmed = false;
   protected mixed = false;
   private hotkey_combo?: HotkeyCombo;
@@ -49,6 +51,17 @@ export abstract class RisqActionButton extends DwgSquareButton {
 
   override mousedown(e: MouseEvent): boolean {
     return (e.button === 0 || e.button === 2) && super.mousedown(e);
+  }
+
+  /** Disabled buttons never report hovering, but their tooltip should still show */
+  override mousemove(canvas: Point2D, screen: Point2D, transform: BoardTransformData): boolean {
+    this.pointer_over = this.mouseOver(canvas, screen);
+    return super.mousemove(canvas, screen, transform);
+  }
+
+  override setHovering(hovering: boolean): void {
+    super.setHovering(hovering);
+    this.pointer_over &&= hovering;
   }
 
   protected hovered(): void {}
@@ -121,6 +134,6 @@ export abstract class RisqActionButton extends DwgSquareButton {
   }
 
   drawTooltip(ctx: CanvasRenderingContext2D, transform: BoardTransformData, risq: DwgRisq, dt: number): void {
-    this.tooltip.draw(ctx, transform, risq, dt, this.isHovering(), this.isPressed());
+    this.tooltip.draw(ctx, transform, risq, dt, this.pointer_over, this.isPressed());
   }
 }

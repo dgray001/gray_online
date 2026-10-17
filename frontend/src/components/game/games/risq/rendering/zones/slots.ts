@@ -104,7 +104,7 @@ export function buildZoneUnitSlots(
       return slots;
     }
   }
-  return slots;
+  return [[...active_groups, ...other_flat]];
 }
 
 export function drawControlGroupLabel(

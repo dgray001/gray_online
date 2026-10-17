@@ -12,7 +12,7 @@ import type {
   RisqZone,
 } from '../model/types';
 import type { GameRisqFromServer, SubmissionNoticeData } from '../transport/snapshot_types';
-import { serverToGameRisq, serverToRisqOrder } from '../transport/snapshot_conversion';
+import { serverToGameRisq } from '../transport/snapshot_conversion';
 import type { RisqTurnReport } from '../transport/turn_report';
 import { replaySnapshot } from './replay/replay_snapshot';
 
@@ -101,20 +101,18 @@ export class RisqSession {
     if (!live || !raw || notice.turn_number !== live.turn_number || live.game_base.game_ended) {
       return false;
     }
-    const orders = notice.active_orders;
     for (const game of new Set([live, this.game])) {
       const player = game?.players[notice.player_id];
       if (game && player) {
         game.giving_orders = notice.giving_orders;
         player.orders_submitted = notice.orders_submitted;
-        player.active_orders = orders ? orders.map(serverToRisqOrder).filter((o) => !!o) : player.active_orders;
       }
     }
     raw.giving_orders = notice.giving_orders;
     const raw_player = raw.players[notice.player_id];
     if (raw_player) {
       raw_player.orders_submitted = notice.orders_submitted;
-      raw_player.active_orders = orders ?? raw_player.active_orders;
+      raw_player.unreceived_orders = notice.unreceived_orders ?? raw_player.unreceived_orders;
     }
     return true;
   }

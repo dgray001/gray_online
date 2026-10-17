@@ -62,7 +62,7 @@ export class RisqOrderPlanning {
     }
     const cancelled = new Set(
       this.orders_model
-        .pendingOrders()
+        .unreceivedOrders()
         .filter((o) => o.order_type === RisqOrderType.OrderType_CancelFoundation)
         .map((o) => o.target_id)
     );
@@ -92,7 +92,7 @@ export class RisqOrderPlanning {
     }
     const has_local = this.local_foundations.has(zone.coordinate_key);
     const is_cancelled = this.orders_model
-      .pendingOrders()
+      .unreceivedOrders()
       .some((o) => o.order_type === RisqOrderType.OrderType_CancelFoundation && o.target_id === zone.coordinate_key);
     const has_server = !is_cancelled && !!this.session.getPlayer()?.planned_foundations?.has(zone.coordinate_key);
     return has_local || has_server;
@@ -180,7 +180,7 @@ export class RisqOrderPlanning {
     const player = this.session.getPlayer();
     const is_cancelled = (key: number): boolean =>
       this.orders_model
-        .pendingOrders()
+        .unreceivedOrders()
         .some((o) => o.order_type === RisqOrderType.OrderType_CancelFoundation && o.target_id === key);
     for (const [key, f] of this.local_foundations.entries()) {
       const order = active.get(key);
@@ -388,7 +388,7 @@ export class RisqOrderPlanning {
     for (const pr of player.resources.values()) {
       pr.spending = 0;
     }
-    for (const order of this.orders_model.pendingOrders()) {
+    for (const order of this.orders_model.unreceivedOrders()) {
       let kind: RisqProducibleKind;
       if (order.order_type === RisqOrderType.OrderType_BuildingCreate) {
         kind = RisqProducibleKind.UNIT;
@@ -405,13 +405,13 @@ export class RisqOrderPlanning {
       }
     }
     const build_zones = new Set<number>();
-    for (const order of this.orders_model.pendingOrders()) {
+    for (const order of this.orders_model.unreceivedOrders()) {
       if (order.order_type !== RisqOrderType.OrderType_UnitBuild) {
         continue;
       }
       const zone_key = invertPair(order.target_id).y;
       const is_cancelled = this.orders_model
-        .pendingOrders()
+        .unreceivedOrders()
         .some((o) => o.order_type === RisqOrderType.OrderType_CancelFoundation && o.target_id === zone_key);
       if (build_zones.has(zone_key) || (!is_cancelled && player.planned_foundations?.has(zone_key))) {
         continue;
@@ -427,7 +427,7 @@ export class RisqOrderPlanning {
       }
       this.addSpending(player, this.findProducible(player, building_id, order.subjects)?.cost);
     }
-    for (const order of this.orders_model.pendingOrders()) {
+    for (const order of this.orders_model.unreceivedOrders()) {
       if (order.order_type === RisqOrderType.OrderType_BuyMercenary) {
         const unit_id = invertPair(order.target_id).x;
         this.addSpending(player, player.available_mercenaries.find((m) => m.id === unit_id)?.cost);
@@ -441,7 +441,7 @@ export class RisqOrderPlanning {
     }
     const renew_targets = new Set(
       this.orders_model
-        .pendingOrders()
+        .unreceivedOrders()
         .filter((o) => o.order_type === RisqOrderType.OrderType_UnitRenew)
         .map((o) => o.target_id)
     );

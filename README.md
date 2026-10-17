@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.9c: Goldrush and divide maps
+v0.9d: Fix resubmit bugs
 
 ## Dev Use
 

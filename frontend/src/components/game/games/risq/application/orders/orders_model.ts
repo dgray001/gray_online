@@ -3,6 +3,7 @@ import type {
   RisqBuilding,
   RisqFrontendOrder,
   RisqOrder,
+  RisqUnreceivedOrder,
   RisqPlayer,
   RisqProducible,
   RisqTickAction,
@@ -181,8 +182,8 @@ export function collapseBuildingCreateOrders(
 
 /** Owns this player's orders for the current turn: the server's already-active ones plus any queued locally */
 export class RisqOrdersModel {
-  private submitted: RisqFrontendOrder[] = [];
-  private pending: RisqFrontendOrder[] = [];
+  private received: RisqOrder[] = [];
+  private unreceived: RisqUnreceivedOrder[] = [];
   private on_change: () => void;
   private notify: () => void;
   private effective_cache = new Map<string, RisqFrontendOrder[]>();
@@ -222,35 +223,39 @@ export class RisqOrdersModel {
     this.on_change();
   }
 
-  setSubmitted(orders: RisqFrontendOrder[]): void {
-    this.submitted = [...orders];
+  setReceived(orders: RisqOrder[]): void {
+    this.received = [...orders];
     this.effective_cache.clear();
   }
 
-  revertSubmittedToPending(): void {
-    this.pending.push(...this.submitted.filter((order) => order.internal_id === undefined));
-    this.submitted = [];
-    this.on_change();
+  /** Replaces the local batch with the server's copy; only meaningful while it is submitted */
+  setUnreceived(orders: RisqUnreceivedOrder[]): void {
+    this.unreceived = [...orders];
+    this.effective_cache.clear();
+  }
+
+  receivedOrders(): readonly RisqOrder[] {
+    return this.received;
   }
 
   all(): RisqFrontendOrder[] {
-    return [...this.submitted, ...this.pending];
+    return [...this.received, ...this.unreceived];
   }
 
   uncancelledOrders(): RisqFrontendOrder[] {
     return this.all().filter((order: RisqFrontendOrder): boolean => !this.isCancelling(order));
   }
 
-  pendingOrders(): RisqFrontendOrder[] {
-    return [...this.pending];
+  unreceivedOrders(): RisqUnreceivedOrder[] {
+    return [...this.unreceived];
   }
 
-  private stripPendingSubject(order: RisqFrontendOrder, subject_internal_id: number): boolean {
+  private stripUnreceivedSubject(order: RisqUnreceivedOrder, subject_internal_id: number): boolean {
     order.subjects = order.subjects.filter((id) => id !== subject_internal_id);
     return order.subjects.length > 0;
   }
 
-  add(order: RisqFrontendOrder): void {
+  add(order: RisqUnreceivedOrder): void {
     if (!isClearImmune(order.order_type) && (isUnitOrder(order.order_type) || isBuildingOrder(order.order_type))) {
       const kind = isUnitOrder(order.order_type) ? 'unit' : 'building';
       const subject_count = order.subjects.length;
@@ -272,7 +277,7 @@ export class RisqOrdersModel {
       }
     }
     if (order.clear_previous_orders) {
-      this.pending = this.pending.filter((o) => {
+      this.unreceived = this.unreceived.filter((o) => {
         if (
           !(
             (isUnitOrder(order.order_type) && isUnitOrder(o.order_type)) ||
@@ -286,12 +291,12 @@ export class RisqOrdersModel {
         }
         let has_subjects = true;
         for (const new_id of order.subjects) {
-          has_subjects = this.stripPendingSubject(o, new_id);
+          has_subjects = this.stripUnreceivedSubject(o, new_id);
         }
         return has_subjects;
       });
     }
-    this.pending.push(order);
+    this.unreceived.push(order);
     this.on_change();
   }
 
@@ -299,7 +304,7 @@ export class RisqOrdersModel {
     if (order.internal_id === undefined) {
       return false;
     }
-    const explicit = this.pending.find(
+    const explicit = this.unreceived.find(
       (o) => o.order_type === RisqOrderType.OrderType_CancelOrder && o.target_id === order.internal_id
     );
     if (!explicit) {
@@ -323,7 +328,7 @@ export class RisqOrdersModel {
       if (subs.length > 0 || order.subjects.length === 0) {
         const zone_key = invertPair(order.target_id).y;
         if (
-          this.pending.some(
+          this.unreceived.some(
             (p) => p.order_type === RisqOrderType.OrderType_CancelFoundation && p.target_id === zone_key
           )
         ) {
@@ -340,7 +345,7 @@ export class RisqOrdersModel {
     return (
       subs.length > 0 &&
       subs.every((s) =>
-        this.pending.some(
+        this.unreceived.some(
           (p) =>
             p.clear_previous_orders &&
             ((is_unit && isUnitOrder(p.order_type)) || (is_bldg && isBuildingOrder(p.order_type))) &&
@@ -362,12 +367,12 @@ export class RisqOrdersModel {
         order.subjects = order.subjects.filter((id) => !selected.includes(id));
       }
       if (subject_internal_ids === undefined || order.subjects.length === 0) {
-        this.pending = this.pending.filter((o) => o !== order);
+        this.unreceived = this.unreceived.filter((o) => o !== order);
       }
       this.on_change();
       return;
     }
-    const existing = this.pending.find(
+    const existing = this.unreceived.find(
       (o) => o.order_type === RisqOrderType.OrderType_CancelOrder && o.target_id === order.internal_id
     );
     const restoring = behavior === 'toggle' && this.isExplicitlyCancelling(order, subject_internal_ids);
@@ -375,7 +380,7 @@ export class RisqOrdersModel {
       return;
     }
     if (restoring && order.order_type === RisqOrderType.OrderType_BuildingResearch) {
-      this.pending = this.pending.filter(
+      this.unreceived = this.unreceived.filter(
         (o) => o.order_type !== RisqOrderType.OrderType_BuildingResearch || o.target_id !== order.target_id
       );
     }
@@ -387,7 +392,7 @@ export class RisqOrdersModel {
         cancelled.add(id);
       }
     }
-    this.pending = this.pending.filter((o) => o !== existing);
+    this.unreceived = this.unreceived.filter((o) => o !== existing);
     if (cancelled.size === 0 && (restoring || subject_internal_ids !== undefined)) {
       this.on_change();
       return;
@@ -416,8 +421,8 @@ export class RisqOrdersModel {
     }
   }
 
-  clearPending(): void {
-    this.pending = [];
+  clearUnreceived(): void {
+    this.unreceived = [];
     this.on_change();
   }
 

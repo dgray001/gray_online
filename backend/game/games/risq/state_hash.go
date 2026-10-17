@@ -49,7 +49,7 @@ func hashBehavior(h io.Writer, o *orderableBase) {
 // Order internal ids are left out: they depend on submission arrival order, not on game state
 func hashOrders(h io.Writer, orders []*RisqOrder) {
 	for _, o := range orders {
-		fmt.Fprintf(h, "o%d:%d:%t:%t:%t:%t:%d:%d:%v;", o.order_type, o.target_id, o.executed, o.cancelled, o.clear_previous_orders, o.received, o.turn_received, o.turn_resolved, slices.Sorted(maps.Keys(o.subjects)))
+		fmt.Fprintf(h, "o%d:%d:%t:%t:%t:%d:%d:%v;", o.order_type, o.target_id, o.executed, o.cancelled, o.clear_previous_orders, o.turn_received, o.turn_resolved, slices.Sorted(maps.Keys(o.subjects)))
 	}
 }
 

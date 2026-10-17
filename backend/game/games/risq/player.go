@@ -24,6 +24,7 @@ type RisqPlayer struct {
 	unlimited_population           bool
 	color                          string
 	active_orders                  []*RisqOrder
+	unreceived_orders              []defs.OrderFromFrontend
 	past_orders                    []*RisqOrder
 	orders_submitted               bool
 	default_unit_stance            defs.UnitStance
@@ -301,6 +302,10 @@ func (p *RisqPlayer) activeOrdersToFrontend() []gin.H {
 	return orders
 }
 
+func (p *RisqPlayer) unreceivedOrdersToFrontend() []defs.OrderFromFrontend {
+	return append(make([]defs.OrderFromFrontend, 0, len(p.unreceived_orders)), p.unreceived_orders...)
+}
+
 func (p *RisqPlayer) toFrontend(viewer_player_id int) gin.H {
 	player := gin.H{
 		"population_limit":     p.populationLimit(),
@@ -359,10 +364,13 @@ func (p *RisqPlayer) toFrontend(viewer_player_id int) gin.H {
 	}
 	player["units"] = units
 	active_orders := make([]gin.H, 0)
+	unreceived_orders := make([]defs.OrderFromFrontend, 0)
 	if p.player != nil && p.player.Player_id == viewer_player_id {
 		active_orders = p.activeOrdersToFrontend()
+		unreceived_orders = p.unreceivedOrdersToFrontend()
 	}
 	player["active_orders"] = active_orders
+	player["unreceived_orders"] = unreceived_orders
 	player["researched_techs"] = maps.Clone(p.researched_techs)
 	return player
 }

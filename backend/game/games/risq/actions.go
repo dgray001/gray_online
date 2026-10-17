@@ -117,30 +117,7 @@ func (r *GameRisq) PlayerAction(action game.PlayerAction) {
 func (r *GameRisq) executeSubmitOrders(player_id int, orders []defs.OrderFromFrontend) {
 	util.Debug(r.std, "Executing submit orders for:", player_id, orders)
 	player := r.players[player_id]
-	new_orders := make([]*RisqOrder, 0, len(orders))
-	for _, o := range orders {
-		order_type := defs.OrderType(o.Order_type)
-		subjects := make(map[uint64]Orderable)
-		if order_type.IsUnitOrder() {
-			for _, subject_id := range o.Subjects {
-				subjects[subject_id] = r.players[o.Player_id].units[subject_id]
-			}
-		} else if order_type.IsBuildingOrder() {
-			for _, subject_id := range o.Subjects {
-				subjects[subject_id] = r.players[o.Player_id].buildings[subject_id]
-			}
-		} else if order_type == defs.OrderType_CancelOrder {
-			for _, subject_id := range o.Subjects {
-				if u := r.players[o.Player_id].units[subject_id]; u != nil {
-					subjects[subject_id] = u
-				} else if b := r.players[o.Player_id].buildings[subject_id]; b != nil {
-					subjects[subject_id] = b
-				}
-			}
-		}
-		new_orders = append(new_orders, createRisqOrder(0, order_type, player_id, subjects, o.Target_id, o.Clear_previous_orders))
-	}
-	player.active_orders = append(player.active_orders, new_orders...)
+	player.unreceived_orders = orders
 	player.orders_submitted = true
 	all_orders_submitted := true
 	for _, player := range r.players {
@@ -161,13 +138,7 @@ func (r *GameRisq) executeUnsubmitOrders(player_id int) {
 	util.Debug(r.std, "Executing unsubmit orders for:", player_id)
 	player := r.players[player_id]
 	player.orders_submitted = false
-	kept := player.active_orders[:0]
-	for _, order := range player.active_orders {
-		if order.received {
-			kept = append(kept, order)
-		}
-	}
-	player.active_orders = kept
+	player.unreceived_orders = nil
 	r.broadcastSubmission("unsubmitted-orders", player_id)
 }
 
@@ -361,7 +332,7 @@ func (r *GameRisq) broadcastSubmission(kind string, player_id int) {
 			"turn_number":      r.turn_number,
 		}
 		if other == submitter {
-			content["active_orders"] = submitter.activeOrdersToFrontend()
+			content["unreceived_orders"] = submitter.unreceivedOrdersToFrontend()
 			r.sendSetting(other.player, kind, content)
 		} else {
 			other.player.AddSettingUpdate(&game.UpdateMessage{Kind: kind, Content: content})
