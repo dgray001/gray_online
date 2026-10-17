@@ -116,6 +116,7 @@ export class DwgCardHand extends DwgElement {
     this.resize_observer.disconnect();
     document.body.removeEventListener('mouseup', this.on_mouse_up);
     document.body.removeEventListener('touchend', this.on_touch_end);
+    document.body.removeEventListener('touchcancel', this.on_touch_end);
     document.body.removeEventListener('mousemove', this.on_mouse_move);
     document.documentElement.removeEventListener('mouseenter', this.on_document_mouse_enter);
     document.body.removeEventListener('touchmove', this.on_touch_move);
@@ -132,6 +133,7 @@ export class DwgCardHand extends DwgElement {
   private setEventListeners(): void {
     document.body.addEventListener('mouseup', this.on_mouse_up);
     document.body.addEventListener('touchend', this.on_touch_end);
+    document.body.addEventListener('touchcancel', this.on_touch_end);
     document.body.addEventListener('mousemove', this.on_mouse_move);
     document.documentElement.addEventListener('mouseenter', this.on_document_mouse_enter);
     document.body.addEventListener('touchmove', this.on_touch_move);
@@ -164,12 +166,8 @@ export class DwgCardHand extends DwgElement {
       this.stopDragging();
       return;
     }
-    if (e.touches.length === 0) {
-      this.stopDraggingCard(card);
-      return;
-    }
-    const touch = e.touches[0];
-    if (touch.identifier !== this.dragging_data.touch_identifier) {
+    const touch = Array.from(e.changedTouches).find((t) => t.identifier === this.dragging_data.touch_identifier);
+    if (!touch) {
       return;
     }
     this.stopDraggingCard(card);
@@ -210,11 +208,8 @@ export class DwgCardHand extends DwgElement {
       this.stopDragging();
       return;
     }
-    if (e.touches.length === 0) {
-      return;
-    }
-    const touch = e.touches[0];
-    if (touch.identifier !== this.dragging_data.touch_identifier) {
+    const touch = Array.from(e.touches).find((t) => t.identifier === this.dragging_data.touch_identifier);
+    if (!touch) {
       return;
     }
     this.dragCard({ x: touch.clientX, y: touch.clientY }, card);
@@ -248,7 +243,7 @@ export class DwgCardHand extends DwgElement {
     const img = document.createElement('img');
     img.src = cardToImagePath(data.card);
     img.draggable = false;
-    img.alt = cardToIcon(data.card);
+    img.alt = cardToIcon(data.card, false);
     el.appendChild(img);
     el.classList.add('card');
     el.style.setProperty('--i', data.i_dom.toString());
@@ -264,6 +259,7 @@ export class DwgCardHand extends DwgElement {
 
         el.addEventListener('dblclick', () => {
           if (this.can_play && !el.classList.contains('unplayable')) {
+            this.can_play = false;
             this.dispatchEvent(new CustomEvent<number>('play_card', { detail: data.i }));
           }
         });
@@ -291,10 +287,10 @@ export class DwgCardHand extends DwgElement {
 
         el.addEventListener('touchstart', (e) => {
           e.stopImmediatePropagation();
-          if (e.touches.length === 0) {
+          if (e.changedTouches.length === 0) {
             return;
           }
-          const touch = e.touches[0];
+          const touch = e.changedTouches[0];
           this.startDraggingCard({ x: touch.clientX, y: touch.clientY }, data, touch.identifier);
         });
       },
@@ -347,7 +343,7 @@ export class DwgCardHand extends DwgElement {
       if (p.x < this.dragging_data.start.x && card.i_dom > 0) {
         const left_card = this.cards.get('i_dom', card.i_dom - 1);
         const left_rect = left_card?.el?.getBoundingClientRect();
-        if (!!left_card?.el && !!left_rect?.x && rect.x < left_rect.x) {
+        if (left_card?.el && left_rect && rect.x < left_rect.x) {
           const dif = this.dragging_data.start_rect.x - left_rect.x;
           this.dragging_data.start_rect.x -= dif;
           this.dragging_data.start.x -= dif;
@@ -361,7 +357,7 @@ export class DwgCardHand extends DwgElement {
       } else if (p.x > this.dragging_data.start.x && card.i_dom < this.cards.size() - 1) {
         const right_card = this.cards.get('i_dom', card.i_dom + 1);
         const right_rect = right_card?.el?.getBoundingClientRect();
-        if (!!right_card?.el && !!right_rect?.x && rect.x > right_rect?.x) {
+        if (right_card?.el && right_rect && rect.x > right_rect.x) {
           const dif = right_rect.x - this.dragging_data.start_rect.x;
           this.dragging_data.start_rect.x += dif;
           this.dragging_data.start.x += dif;
@@ -403,6 +399,7 @@ export class DwgCardHand extends DwgElement {
       card.el.classList.remove('dragging');
       if (!returning_to_screen && this.can_play && !card.el.classList.contains('unplayable')) {
         if (this.dragging_data.hovering_play_drop) {
+          this.can_play = false;
           this.dispatchEvent(new CustomEvent<number>('play_card', { detail: card.i }));
         }
       }

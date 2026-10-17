@@ -91,7 +91,7 @@ func stepResourceBlob(ctx *mapScriptContext, raw json.RawMessage) error {
 			continue
 		}
 		ids := pickScatterIds(entries, ctx.rng)
-		for _, z := range growBlob(start, pickBlobSize(ctx.rng, min_size, max_size), roundness, ctx.rng, zoneKey, zoneNeighbors, excluded) {
+		for _, z := range growBlob([]Zone{start}, pickBlobSize(ctx.rng, min_size, max_size), roundness, ctx.rng, zoneKey, zoneNeighbors, excluded) {
 			if z.Occupied() {
 				z.RemoveResource()
 			}

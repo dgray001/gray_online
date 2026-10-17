@@ -27,6 +27,7 @@ export class DwgEgyptianRatCrap extends DwgElement implements GameComponent {
   private player_container!: HTMLDivElement;
 
   private game!: GameEgyptianRatCrap;
+  private lifecycle = new AbortController();
   private player_els: DwgEgyptianRatCrapPlayer[] = [];
   private player_id: number = -1;
 
@@ -36,15 +37,29 @@ export class DwgEgyptianRatCrap extends DwgElement implements GameComponent {
     this.configureElements('chances_number', 'status_container', 'central_pile', 'player_container');
   }
 
+  override connectedCallback(): Promise<void> {
+    this.lifecycle = new AbortController();
+    return super.connectedCallback();
+  }
+
+  override disconnectedCallback(): void {
+    this.lifecycle.abort();
+    super.disconnectedCallback();
+  }
+
   protected override parsedCallback(): void {
     this.chances_number.innerText = '-';
     this.status_container.innerText = 'Starting game ...';
-    document.addEventListener('keydown', (e) => {
-      if (e.code === 'Space' || e.key === ' ') {
-        e.preventDefault();
-        this.sendSlapEvent();
-      }
-    });
+    document.addEventListener(
+      'keydown',
+      (e) => {
+        if (e.code === 'Space' || e.key === ' ') {
+          e.preventDefault();
+          this.sendSlapEvent();
+        }
+      },
+      { signal: this.lifecycle.signal }
+    );
     this.addEventListener('click', () => {
       this.sendSlapEvent();
     });

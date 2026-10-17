@@ -1,12 +1,10 @@
 package aibridge
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/dgray001/gray_online/game"
 	"github.com/dgray001/gray_online/game/games/risq/ai"
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
+	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
 )
 
@@ -24,6 +22,20 @@ func (a *Runner) config() *defs.Config {
 		return a.Config
 	}
 	return defs.DefaultConfig()
+}
+
+func (a *Runner) errLogger() *util.Logger {
+	if a.Player != nil && a.Player.GetBase() != nil && a.Player.GetBase().Err != nil {
+		return a.Player.GetBase().Err
+	}
+	return util.DefaultErr
+}
+
+func (a *Runner) stdLogger() *util.Logger {
+	if a.Player != nil && a.Player.GetBase() != nil && a.Player.GetBase().Std != nil {
+		return a.Player.GetBase().Std
+	}
+	return util.DefaultStd
 }
 
 func (a *Runner) Run() {
@@ -44,7 +56,7 @@ loop:
 			fallback_submitted = false
 			a.decideAndSubmit(update)
 		case update := <-a.Player.AiFailedUpdates:
-			fmt.Fprintln(os.Stderr, "AI player", a.Player.GetAiId(), "received failed update", update.Kind, update.Content["message"])
+			util.Errorf(a.errLogger(), "AI player %d received failed update %s %v", a.Player.GetAiId(), update.Kind, update.Content["message"])
 			// a rejected batch would otherwise leave the turn waiting on this AI forever
 			if update.Kind == "submit-orders-failed" && !fallback_submitted {
 				fallback_submitted = true
@@ -61,10 +73,10 @@ func (a *Runner) decideAndSubmit(update *game.UpdateMessage) {
 	snapshot, err := parseAiSnapshot(payload)
 	var view *aiView
 	if err == nil {
-		view, _ = newAiView(a.config(), snapshot, a.Player.Player_id)
+		view, _ = newAiView(a.config(), snapshot, a.Player.Player_id, a.stdLogger())
 	}
 	if view == nil {
-		fmt.Fprintln(os.Stderr, "AI player", a.Player.GetAiId(), "could not read start-turn payload:", err)
+		util.Errorf(a.errLogger(), "AI player %d could not read start-turn payload: %v", a.Player.GetAiId(), err)
 		a.send("submit-orders", gin.H{"orders": []defs.OrderFromFrontend{}})
 		return
 	}

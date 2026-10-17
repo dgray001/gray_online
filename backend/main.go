@@ -1,13 +1,13 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 	"strconv"
 
 	"github.com/dgray001/gray_online/game/games/risq"
 	"github.com/dgray001/gray_online/lobby"
+	"github.com/dgray001/gray_online/util"
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -23,7 +23,7 @@ var DEV = os.Getenv("GAE_SERVICE") == ""
 
 func main() {
 	if err := risq.LoadConfig("game/games/risq/config"); err != nil {
-		fmt.Fprintln(os.Stderr, "loading risq config:", err)
+		util.Errorf(util.DefaultErr, "loading risq config: %v", err)
 		os.Exit(1)
 	}
 	// Set environment variables
@@ -35,7 +35,7 @@ func main() {
 
 	// Run game lobby
 	lobby.DEV = DEV
-	lobby_object := lobby.CreateLobby()
+	lobby_object := lobby.CreateLobby(util.DefaultStd, util.DefaultErr)
 	go lobby_object.Run()
 
 	if DEV {
@@ -112,12 +112,12 @@ func main() {
 			api_lobby.GET("/connect/:nickname", func(c *gin.Context) {
 				nickname := c.Param("nickname")
 				if nickname == "" {
-					fmt.Println("Must specify nickname when connecting")
+					util.Error(util.DefaultErr, "Must specify nickname when connecting")
 					return
 				}
 				conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 				if err != nil {
-					fmt.Println(err)
+					util.Error(util.DefaultErr, err)
 					return
 				}
 				client := lobby.CreateClient(conn, nickname, lobby_object)
@@ -127,24 +127,24 @@ func main() {
 			api_lobby.GET("/reconnect/:nickname/:client_id", func(c *gin.Context) {
 				nickname := c.Param("nickname")
 				if nickname == "" {
-					fmt.Println("Must specify nickname when reconnecting")
+					util.Error(util.DefaultErr, "Must specify nickname when reconnecting")
 					return
 				}
 				client_id_string := c.Param("client_id")
 				client_id, err := strconv.Atoi(client_id_string)
 				if err != nil || client_id < 1 {
-					fmt.Println("Must specify proper client_id when reconnecting")
+					util.Error(util.DefaultErr, "Must specify proper client_id when reconnecting")
 					return
 				}
 				old_client := lobby_object.GetClient(uint64(client_id))
 				if old_client == nil {
-					fmt.Println("Cannot find old client to reconnect to")
+					util.Error(util.DefaultErr, "Cannot find old client to reconnect to")
 					return
 				}
 				nickname = old_client.GetNickname()
 				conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 				if err != nil {
-					fmt.Println(err)
+					util.Error(util.DefaultErr, err)
 					return
 				}
 				client := lobby.CreateClient(conn, nickname, lobby_object)
@@ -160,7 +160,7 @@ func main() {
 					id_param := c.Param("id")
 					room_id, err := strconv.Atoi(id_param)
 					if err != nil {
-						fmt.Println(err)
+						util.Error(util.DefaultErr, err)
 						c.JSON(200, failureResponse("Invalid room id"))
 						return
 					}
@@ -182,7 +182,7 @@ func main() {
 					id_param := c.Param("id")
 					client_id, err := strconv.Atoi(id_param)
 					if err != nil {
-						fmt.Println(err)
+						util.Error(util.DefaultErr, err)
 						c.JSON(200, failureResponse("Invalid client id"))
 						return
 					}
@@ -204,7 +204,7 @@ func main() {
 					id_param := c.Param("id")
 					game_id, err := strconv.Atoi(id_param)
 					if err != nil {
-						fmt.Println(err)
+						util.Error(util.DefaultErr, err)
 						c.JSON(200, failureResponse("Invalid game id"))
 						return
 					}
@@ -221,7 +221,7 @@ func main() {
 					var req GetGameReq
 					err = c.ShouldBindJSON(&req)
 					if err != nil {
-						fmt.Println(err)
+						util.Error(util.DefaultErr, err)
 						c.JSON(200, failureResponse("Binding error"))
 						return
 					}
@@ -234,7 +234,7 @@ func main() {
 					}
 					result, err := game.GetBase().RequestToFrontend(req.Client_id, req.Viewer == "true")
 					if err != nil {
-						fmt.Println(err)
+						util.Error(util.DefaultErr, err)
 						c.JSON(200, failureResponse(err.Error()))
 						return
 					}

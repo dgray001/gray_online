@@ -17,7 +17,7 @@ type TTKResult struct {
 
 // One space with two units/a building placed in its center zone, for isolated 1v1 combat sims.
 func newTTKGame(config *defs.Config) (*GameRisq, *RisqPlayer, *RisqPlayer) {
-	base := game.CreateBaseGame(0, game.GameType_RISQ, nil)
+	base := game.CreateBaseGame(0, game.GameType_RISQ, nil, nil, nil)
 	game.CreatePlayer(1, "attacker", base)
 	game.CreatePlayer(2, "target", base)
 	base.Players[1].Player_id = 0

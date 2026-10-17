@@ -1,0 +1,26 @@
+[
+  { "step": "shape", "params": { "kind": "hexagon", "size": { "radius": "map_size + 4" } } },
+  { "step": "include", "params": { "path": "common/biomes.json" } },
+  { "step": "terrain_fill", "params": { "terrain_id": "deep_water" } },
+  { "step": "terrain_blob", "params": { "terrain_id": "base", "roundness": 0.7, "placement": { "points": [{ "x": 0, "y": 0 }] }, "size": "round(0.40 * radius * radius)" } },
+  { "step": "terrain_blob", "params": { "terrain_id": "base", "seed_region": "line", "region": "leaf", "placement": { "points": [{ "x": 0, "y": 0 }, { "x": "radius", "y": 0 }] } } },
+  { "step": "terrain_blob", "params": { "terrain_id": "base", "seed_region": "line", "region": "leaf", "roundness": 0.7, "placement": { "points": [{ "x": 0, "y": 0 }, { "x": "radius", "y": 0 }] }, "size": "round(0.30 * radius * radius)" } },
+  { "step": "rotate", "params": { "count": 6, "region": "leaf" } },
+  { "step": "terrain_fill", "params": { "terrain_id": "water", "on": { "terrain_types": ["deep_water"], "distance_to": { "target": { "terrain_types": ["flatlands"] }, "distance": 1 } } } },
+  { "step": "include", "params": { "path": "common/land_details.json" } },
+  { "step": "include", "params": { "path": "common/forests.json" } },
+  {
+    "step": "player_starts",
+    "params": {
+      "pattern": "asterisk",
+      "on": { "terrain_types": ["flatlands", "hilly", "mountainous", "swamp", "shallows"] },
+      "area_size": 1,
+      "starting_distance": "radius - 1 - min(1, max(0, radius - 7))",
+      "tree_ids": ["tree_a", "tree_b"],
+      "terrain_id": "base"
+    }
+  },
+  { "step": "define", "params": { "name": "region_center_radius", "value": "2 + min(1, max(0, radius - 6)) + min(1, max(0, radius - 8))" } },
+  { "step": "define", "params": { "name": "region_outer_gold", "value": "5 * round(4 * (radius * (radius + 1) - region_center_radius * (region_center_radius + 1)) / 10)" } },
+  { "step": "regions_seven", "params": { "rotate_30": true, "outer_bonus": "region_outer_gold", "center_bonus": "2 * 5 * round(1.65 * region_outer_gold / 5)" } }
+]

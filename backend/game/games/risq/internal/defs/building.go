@@ -3,7 +3,8 @@ package defs
 import (
 	"encoding/json"
 	"fmt"
-	"os"
+
+	"github.com/dgray001/gray_online/util"
 )
 
 type BuildingConfig struct {
@@ -131,7 +132,7 @@ func (c BuildingConfig) CanResearch(tech_id uint32) bool {
 func (c *Config) BuildingProductionCost(building_id uint32) (RisqResourceCost, int) {
 	config, ok := c.Buildings[building_id]
 	if !ok || config.Build_stamina <= 0 {
-		fmt.Fprintln(os.Stderr, "Unknown or unbuildable building id: ", building_id)
+		util.Errorf(util.DefaultErr, "Unknown or unbuildable building id: %d", building_id)
 		return RisqResourceCost{}, 0
 	}
 	return config.Cost, config.Build_stamina

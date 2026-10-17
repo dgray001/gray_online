@@ -1,9 +1,7 @@
 package risq
 
 import (
-	"fmt"
 	"math/rand"
-	"os"
 	"sort"
 
 	"github.com/dgray001/gray_online/game/game_utils"
@@ -107,11 +105,11 @@ func (s *RisqSpace) setAdjacentSpace(adj *RisqSpace, v *game_utils.Coordinate2D,
 	zone := s.getZone(v)
 	adj_zone := adj.getZone(adj_v)
 	if zone == nil || adj_zone == nil {
-		fmt.Fprintln(os.Stderr, "Invalid zone coordinate: ", v.X, v.Y)
+		util.Errorf(util.DefaultErr, "Invalid zone coordinate: %d %d", v.X, v.Y)
 		return
 	}
 	if zone.adjacent_space != nil {
-		fmt.Fprintln(os.Stderr, "Already set adjacent space for this zone: ", v.X, v.Y)
+		util.Errorf(util.DefaultErr, "Already set adjacent space for this zone: %d %d", v.X, v.Y)
 		return
 	}
 	s.adjacent_spaces[util.Pair(v.X, v.Y)] = adj
@@ -169,15 +167,15 @@ func (s *RisqSpace) getCenterZone() *RisqZone {
 func (s *RisqSpace) setBuilding(c *game_utils.Coordinate2D, building *RisqBuilding) {
 	zone := s.getZone(c)
 	if zone == nil {
-		fmt.Fprintln(os.Stderr, "Invalid zone coordinate: ", c.X, c.Y)
+		util.Errorf(util.DefaultErr, "Invalid zone coordinate: %d %d", c.X, c.Y)
 		return
 	}
 	if zone.resource != nil && zone.resource.resources_left > 0 {
-		fmt.Fprintln(os.Stderr, "Can't set building when resource already there")
+		util.Errorf(util.DefaultErr, "Can't set building when resource already there")
 		return
 	}
 	if zone.building != nil && !zone.building.deleted {
-		fmt.Fprintln(os.Stderr, "Can't set building when building already there")
+		util.Errorf(util.DefaultErr, "Can't set building when building already there")
 		return
 	}
 	s.buildings[building.internal_id] = building
@@ -189,7 +187,7 @@ func (s *RisqSpace) setBuilding(c *game_utils.Coordinate2D, building *RisqBuildi
 func (s *RisqSpace) setUnit(c *game_utils.Coordinate2D, unit *RisqUnit) {
 	zone := s.getZone(c)
 	if zone == nil {
-		fmt.Fprintln(os.Stderr, "Invalid zone coordinate: ", c.X, c.Y)
+		util.Errorf(util.DefaultErr, "Invalid zone coordinate: %d %d", c.X, c.Y)
 		return
 	}
 	s.units[unit.internal_id] = unit
@@ -264,15 +262,15 @@ func (s *RisqSpace) addVision(v *defs.RisqVision, z *RisqZone, player_id int) {
 func (s *RisqSpace) setResource(c *game_utils.Coordinate2D, resource *RisqResource) {
 	zone := s.getZone(c)
 	if zone == nil {
-		fmt.Fprintln(os.Stderr, "Invalid zone coordinate: ", c.X, c.Y)
+		util.Errorf(util.DefaultErr, "Invalid zone coordinate: %d %d", c.X, c.Y)
 		return
 	}
 	if zone.resource != nil && zone.resource.resources_left > 0 {
-		fmt.Fprintln(os.Stderr, "Can't set resource when resource already there")
+		util.Errorf(util.DefaultErr, "Can't set resource when resource already there")
 		return
 	}
 	if zone.building != nil && !zone.building.deleted {
-		fmt.Fprintln(os.Stderr, "Can't set resource when building already there")
+		util.Errorf(util.DefaultErr, "Can't set resource when building already there")
 		return
 	}
 	s.resources[resource.internal_id] = resource

@@ -126,13 +126,13 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage): void {
         if (host_id === lobby.getConnectionMetadata().client_id) {
           lobby.finishRoomRequest('room-create');
         }
-        const host = lobby.getLobbyUsers().getUser(host_id);
-        if (!host) {
-          // TODO: handle
-          throw new Error('No host when trying to create room');
-        }
         const server_room = JSON.parse(message.content) as LobbyRoomFromServer;
         const room = serverResponseToRoom(server_room);
+        let host = lobby.getLobbyUsers().getUser(host_id);
+        if (!host) {
+          host = room.host;
+          lobby.getLobbyUsers().addUser(host);
+        }
         host.room_id = room.room_id;
         set_room(room, host_id);
       } catch (_e) {
@@ -188,6 +188,8 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage): void {
             lobby.enterRoom(room_to_enter, false);
           }
         }
+      } else if (room_join_id && client_join_id) {
+        lobby.resyncFromServer();
       }
       break;
     case 'room-joined-viewer':
@@ -209,6 +211,8 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage): void {
             lobby.enterRoom(room_to_enter, false);
           }
         }
+      } else if (viewer_room_join_id && viewer_client_join_id) {
+        lobby.resyncFromServer();
       }
       break;
     case 'room-chat':

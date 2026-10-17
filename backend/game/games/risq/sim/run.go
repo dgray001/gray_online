@@ -1,10 +1,12 @@
 package main
 
 import (
+	"time"
+
 	"github.com/dgray001/gray_online/game"
 	"github.com/dgray001/gray_online/game/games/risq"
 	"github.com/dgray001/gray_online/game/games/risq/internal/simoutcome"
-	"time"
+	"github.com/dgray001/gray_online/util"
 )
 
 type PlayerConfig struct {
@@ -29,7 +31,7 @@ type TurnStanding struct {
 	Outcomes []Outcome
 }
 
-func RunGame(seed int64, players []PlayerConfig, map_name string, custom_settings map[string]any, metrics []string, max_turns uint16, timeout time.Duration) Result {
+func RunGame(seed int64, players []PlayerConfig, map_name string, custom_settings map[string]any, metrics []string, max_turns uint16, timeout time.Duration, std, errLog *util.Logger) Result {
 	ai_players := make([]any, len(players))
 	for i, p := range players {
 		config := make(map[string]any, 2)
@@ -48,7 +50,7 @@ func RunGame(seed int64, players []PlayerConfig, map_name string, custom_setting
 	if map_name != "" {
 		settings["map"] = map_name
 	}
-	base := game.CreateBaseGame(uint64(seed), game.GameType_RISQ, settings)
+	base := game.CreateBaseGame(uint64(seed), game.GameType_RISQ, settings, std, errLog)
 	action_channel := make(chan game.PlayerAction, 16)
 	r, err := risq.CreateGame(base, action_channel)
 	if err != nil {

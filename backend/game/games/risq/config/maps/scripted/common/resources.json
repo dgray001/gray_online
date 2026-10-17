@@ -1,0 +1,55 @@
+[
+  {
+    "step": "resource_place",
+    "params": {
+      "resource_id": 1,
+      "count": "outside_resource_multiplier * scale * 3 / 2",
+      "clump_size": 2,
+      "preferred_spacing": 7,
+      "min_spacing": 3,
+      "evenness": 0.9,
+      "on": { "terrain_ids": ["accent1"] },
+      "outside_player_areas": true
+    }
+  },
+  {
+    "step": "resource_place",
+    "params": {
+      "resource_id": 2,
+      "count": "outside_resource_multiplier * scale * 3 / 2",
+      "clump_size": 2,
+      "preferred_spacing": 7,
+      "min_spacing": 3,
+      "evenness": 0.9,
+      "on": { "terrain_ids": ["base"] },
+      "outside_player_areas": true
+    }
+  },
+  {
+    "step": "resource_place",
+    "params": {
+      "resource_id": 41,
+      "count": "num_players * outside_resource_multiplier",
+      "on": { "terrain_types": ["hilly", "mountainous"] },
+      "outside_player_areas": true
+    }
+  },
+  {
+    "step": "resource_place",
+    "params": {
+      "resource_id": 42,
+      "count": "num_players * outside_resource_multiplier",
+      "on": { "terrain_types": ["hilly", "mountainous"] },
+      "outside_player_areas": true
+    }
+  },
+  {
+    "step": "resource_place",
+    "params": {
+      "resource_id": 43,
+      "count": "round(num_players / 2) * outside_resource_multiplier",
+      "on": { "terrain_types": ["hilly", "mountainous"] },
+      "outside_player_areas": true
+    }
+  }
+]

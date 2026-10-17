@@ -47,12 +47,18 @@ func stepRegionsSix(ctx *mapScriptContext, raw json.RawMessage) error {
 		groups[i] = map[uint]bool{}
 	}
 	for _, space := range spaces {
+		if isWaterSpace(ctx, space) {
+			continue
+		}
 		coordinate := space.Coordinate()
 		row := rectangleRegionRows * (coordinate.Y - rowMin) / rows
 		col := rectangleRegionCols * (coordinate.X + floorDiv2(coordinate.Y) - colMin) / cols
 		groups[row*rectangleRegionCols+col][space.Key()] = true
 	}
 	for i, keys := range groups {
+		if len(keys) == 0 {
+			continue
+		}
 		bonus := outerBonus
 		if i%rectangleRegionCols == rectangleRegionCols/2 {
 			bonus = centerBonus

@@ -1,8 +1,10 @@
 package unit
 
 import (
-	"github.com/dgray001/gray_online/game/games/risq/ai"
 	"slices"
+
+	"github.com/dgray001/gray_online/game/games/risq/ai"
+	"github.com/dgray001/gray_online/util"
 )
 
 type fakeView struct {
@@ -182,6 +184,7 @@ func (f *fakeView) currentOrder(call orderCall, kind ai.OrderKind) *ai.CurrentOr
 	return order
 }
 
+func (f *fakeView) Logger() *util.Logger       { return nil }
 func (f *fakeView) Nickname() string           { return f.nickname }
 func (f *fakeView) Units() []ai.UnitView       { f.query("Units"); return slices.Clone(f.units) }
 func (f *fakeView) ScopedUnits() []ai.UnitView { f.query("ScopedUnits"); return slices.Clone(f.units) }

@@ -15,13 +15,13 @@ import (
 
 // Logs a hash of all engine-truth state for determinism debugging; no-op unless DebugLog is enabled.
 func (r *GameRisq) logStateHash(tick_label string) {
-	if util.DebugLog.Writer() == io.Discard {
+	if !util.IsDebug(r.std) {
 		return
 	}
 	var dump strings.Builder
-	util.DebugLog.Printf("state_hash turn=%d tick=%s hash=%016x", r.turn_number, tick_label, r.stateHash(&dump))
+	util.Debugf(r.std, "state_hash turn=%d tick=%s hash=%016x", r.turn_number, tick_label, r.stateHash(&dump))
 	if os.Getenv("RISQ_STATE_DUMP") == "1" {
-		util.DebugLog.Printf("state_dump turn=%d tick=%s %s", r.turn_number, tick_label, dump.String())
+		util.Debugf(r.std, "state_dump turn=%d tick=%s %s", r.turn_number, tick_label, dump.String())
 	}
 }
 

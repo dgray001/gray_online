@@ -25,6 +25,8 @@ import (
 */
 
 type GameRisq struct {
+	std          *util.Logger
+	err          *util.Logger
 	tick_history *turnJournal
 
 	// fully resolved when the game is created and never changed after
@@ -109,6 +111,10 @@ func (r *GameRisq) GetBase() *game.GameBase {
 	return r.game
 }
 
+func (r *GameRisq) SetStd(std *util.Logger) {
+	r.std = std
+}
+
 // The config never changes after the game is created, so any goroutine may read it
 func (r *GameRisq) TechTreeToFrontend() []gin.H {
 	return AllBuildingConfigsToFrontend(r.config)
@@ -161,7 +167,7 @@ func (r *GameRisq) startNextTurn() {
 		}
 		before := base.current_stamina
 		o.refreshStamina()
-		util.DebugLog.Printf("stamina turn=%d actor=%d:%d player=%d before=%d grant=%d after=%d",
+		util.Debugf(r.std, "stamina turn=%d actor=%d:%d player=%d before=%d grant=%d after=%d",
 			r.turn_number, o.OrderableType(), o.internalId(), base.player_id, before, base.turn_stamina, base.current_stamina)
 	}
 	r.beginTurnReports()

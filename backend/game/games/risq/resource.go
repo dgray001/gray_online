@@ -1,11 +1,10 @@
 package risq
 
 import (
-	"fmt"
-	"os"
 	"sort"
 
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
+	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
 )
 
@@ -32,7 +31,7 @@ func createRisqResource(game_config *defs.Config, internal_id uint64, resource_i
 	}
 	config, ok := game_config.Resources[resource_id]
 	if !ok {
-		fmt.Fprintln(os.Stderr, "Invalid resource id: ", resource_id)
+		util.Errorf(util.DefaultErr, "Invalid resource id: %d", resource_id)
 		return &resource
 	}
 	resource.display_name = config.Display_name

@@ -100,9 +100,13 @@ func pickCandidateIndex[T any](candidates []T, distance func(T) int, touching fu
 	return pool[rng.Intn(len(pool))]
 }
 
-func bfsDistances[T any](start T, limit int, key func(T) uint, neighbors func(T) []T) map[uint]int {
-	dist := map[uint]int{key(start): 0}
-	queue := []T{start}
+func bfsDistances[T any](starts []T, limit int, key func(T) uint, neighbors func(T) []T) map[uint]int {
+	dist := make(map[uint]int, len(starts))
+	queue := make([]T, len(starts))
+	copy(queue, starts)
+	for _, s := range starts {
+		dist[key(s)] = 0
+	}
 	for len(queue) > 0 {
 		cur := queue[0]
 		queue = queue[1:]
@@ -119,16 +123,23 @@ func bfsDistances[T any](start T, limit int, key func(T) uint, neighbors func(T)
 	return dist
 }
 
-func growBlob[T any](start T, size int, roundness float64, rng *rand.Rand, key func(T) uint, neighbors func(T) []T, excluded func(T) bool) []T {
-	dist := bfsDistances(start, size, key, neighbors)
+func growBlob[T any](starts []T, size int, roundness float64, rng *rand.Rand, key func(T) uint, neighbors func(T) []T, excluded func(T) bool) []T {
+	if len(starts) == 0 {
+		return nil
+	}
+	dist := bfsDistances(starts, size, key, neighbors)
 	distance := func(c T) int {
 		if d, ok := dist[key(c)]; ok {
 			return d
 		}
 		return size + 1
 	}
-	seen := map[uint]bool{key(start): true}
-	members := map[uint]bool{key(start): true}
+	seen, members := make(map[uint]bool, len(starts)), make(map[uint]bool, len(starts))
+	result := make([]T, 0, max(size, len(starts)))
+	for _, s := range starts {
+		seen[key(s)], members[key(s)] = true, true
+		result = append(result, s)
+	}
 	touching := func(c T) int {
 		count := 0
 		for _, n := range neighbors(c) {
@@ -138,7 +149,6 @@ func growBlob[T any](start T, size int, roundness float64, rng *rand.Rand, key f
 		}
 		return count
 	}
-	result := []T{start}
 	candidates := []T{}
 	addCandidates := func(cell T) {
 		for _, n := range neighbors(cell) {
@@ -148,7 +158,9 @@ func growBlob[T any](start T, size int, roundness float64, rng *rand.Rand, key f
 			}
 		}
 	}
-	addCandidates(start)
+	for _, s := range starts {
+		addCandidates(s)
+	}
 	for len(result) < size && len(candidates) > 0 {
 		idx := pickCandidateIndex(candidates, distance, touching, roundness, rng)
 		cell := candidates[idx]
@@ -160,8 +172,8 @@ func growBlob[T any](start T, size int, roundness float64, rng *rand.Rand, key f
 	return result
 }
 
-func growSpaceBlob(start Space, size int, roundness float64, excluded func(Space) bool, rng *rand.Rand) []Space {
-	return growBlob(start, size, roundness, rng,
+func growSpaceBlob(starts []Space, size int, roundness float64, excluded func(Space) bool, rng *rand.Rand) []Space {
+	return growBlob(starts, size, roundness, rng,
 		func(s Space) uint { return s.Key() },
 		func(s Space) []Space { return s.SortedAdjacent() },
 		excluded,
@@ -169,7 +181,7 @@ func growSpaceBlob(start Space, size int, roundness float64, excluded func(Space
 }
 
 func growZoneBlob(start Zone, size int, rng *rand.Rand) []Zone {
-	return growBlob(start, size, defaultBlobRoundness, rng,
+	return growBlob([]Zone{start}, size, defaultBlobRoundness, rng,
 		func(z Zone) uint { return z.Key() },
 		func(z Zone) []Zone { return z.Adjacent() },
 		func(Zone) bool { return false },
@@ -192,10 +204,13 @@ func stepTerrainFill(ctx *mapScriptContext, raw json.RawMessage) error {
 	if err != nil {
 		return err
 	}
+	var matched []Space
 	for _, space := range ctx.allSpaces() {
-		if !matches(space) {
-			continue
+		if matches(space) {
+			matched = append(matched, space)
 		}
+	}
+	for _, space := range matched {
 		terrain_id, err := p.resolve(ctx)
 		if err != nil {
 			return err
@@ -216,9 +231,13 @@ type terrainBlobParams struct {
 	MinSpacing ScriptExpr        `json:"min_spacing"`
 	Roundness  ScriptExpr        `json:"roundness"`
 	// seeds first try this spacing, then relax down to min_spacing (the hard floor)
-	PreferredSpacing ScriptExpr        `json:"preferred_spacing"`
-	Placement        blobPlacementJSON `json:"placement"`
-	Region           string            `json:"region,omitempty"`
+	PreferredSpacing ScriptExpr         `json:"preferred_spacing"`
+	Placement        blobPlacementJSON  `json:"placement"`
+	Region           string             `json:"region,omitempty"`
+	SeedRegion       string             `json:"seed_region,omitempty"`
+	PathCosts        map[string]float64 `json:"path_costs,omitempty"`
+	FilterSeeds      bool               `json:"filter_seeds,omitempty"`
+	Between          json.RawMessage    `json:"between,omitempty"`
 	// "hilly" or "mountainous": converts each space to that version of its terrain, skipping terrain without one
 	Variant string `json:"variant,omitempty"`
 }
@@ -286,15 +305,33 @@ func stepTerrainBlob(ctx *mapScriptContext, raw json.RawMessage) error {
 			return convertible && filter(space)
 		}
 	}
-	seeds, err := blobSeeds(ctx, p.Placement, filterSpaces(candidates, matches), seed_count, min_spacing, preferred_spacing)
+	if p.SeedRegion != "" && p.Placement.SeedRegion == "" {
+		p.Placement.SeedRegion = p.SeedRegion
+	}
+	if len(p.Between) > 0 && len(p.Placement.Between) == 0 {
+		p.Placement.Between = p.Between
+	}
+	if p.PathCosts != nil && p.Placement.PathCosts == nil {
+		p.Placement.PathCosts = p.PathCosts
+	}
+	seedGroups, err := blobSeedGroups(ctx, p.Placement, filterSpaces(candidates, matches), seed_count, min_spacing, preferred_spacing)
 	if err != nil {
 		return err
+	}
+	if p.FilterSeeds || p.Placement.FilterSeeds {
+		var filtered [][]Space
+		for _, g := range seedGroups {
+			if f := filterSpaces(g, matches); len(f) > 0 {
+				filtered = append(filtered, f)
+			}
+		}
+		seedGroups = filtered
 	}
 	inside := blobGrowthLimit(candidates, p.Placement.KeepInside)
 	excluded := func(space Space) bool { return !matches(space) || inside(space) }
 	region := ctx.region(p.Region)
-	for _, seed := range seeds {
-		blob := growSpaceBlob(seed, pickBlobSize(ctx.rng, min_size, max_size), roundness, excluded, ctx.rng)
+	for _, seeds := range seedGroups {
+		blob := growSpaceBlob(seeds, pickBlobSize(ctx.rng, min_size, max_size), roundness, excluded, ctx.rng)
 		for _, space := range blob {
 			var terrain_id uint32
 			if variant != defs.TerrainType_NONE {
@@ -312,87 +349,6 @@ func stepTerrainBlob(ctx *mapScriptContext, raw json.RawMessage) error {
 }
 
 type axialParamJSON struct {
-	X int `json:"x"`
-	Y int `json:"y"`
-}
-
-func shortestPathToSet(from Space, target map[uint]bool) []Space {
-	prev := map[uint]Space{from.Key(): nil}
-	queue := []Space{from}
-	var end Space
-	for len(queue) > 0 {
-		cur := queue[0]
-		queue = queue[1:]
-		if target[cur.Key()] {
-			end = cur
-			break
-		}
-		for _, adj := range cur.SortedAdjacent() {
-			if _, seen := prev[adj.Key()]; seen {
-				continue
-			}
-			prev[adj.Key()] = cur
-			queue = append(queue, adj)
-		}
-	}
-	if end == nil {
-		return nil
-	}
-	path := make([]Space, 0)
-	for cell := prev[end.Key()]; cell != nil; cell = prev[cell.Key()] {
-		path = append(path, cell)
-	}
-	return path
-}
-
-type ensureConnectivityParams struct {
-	terrainPickJSON
-}
-
-func stepEnsureConnectivity(ctx *mapScriptContext, raw json.RawMessage) error {
-	p, err := decodeStepParams[ensureConnectivityParams](raw, "ensure_connectivity")
-	if err != nil {
-		return err
-	}
-	all := ctx.allSpaces()
-	var start Space
-	for _, s := range all {
-		if !s.Impassable() {
-			start = s
-			break
-		}
-	}
-	if start == nil {
-		return nil
-	}
-	reached := map[uint]bool{start.Key(): true}
-	queue := []Space{start}
-	for len(queue) > 0 {
-		cur := queue[0]
-		queue = queue[1:]
-		for _, adj := range cur.SortedAdjacent() {
-			if adj.Impassable() || reached[adj.Key()] {
-				continue
-			}
-			reached[adj.Key()] = true
-			queue = append(queue, adj)
-		}
-	}
-	for _, s := range all {
-		if s.Impassable() || reached[s.Key()] {
-			continue
-		}
-		for _, cell := range shortestPathToSet(s, reached) {
-			if reached[cell.Key()] {
-				continue
-			}
-			terrain_id, err := p.resolve(ctx)
-			if err != nil {
-				return err
-			}
-			cell.SetTerrain(terrain_id)
-			reached[cell.Key()] = true
-		}
-	}
-	return nil
+	X ScriptExpr `json:"x"`
+	Y ScriptExpr `json:"y"`
 }

@@ -635,10 +635,12 @@ export function generateName(): string {
   if (name_combo[3]) {
     nickname += `, ${getName(suffixes, suffixes_rare, gender)}`;
   }
+  const base_name = nickname.trim();
+  nickname = base_name;
   let i = 1;
   while (names_used.has(nickname)) {
     i++;
-    nickname += ` ${romanNumeral(i)}`;
+    nickname = `${base_name} ${romanNumeral(i)}`;
   }
   names_used.add(nickname);
   return nickname;

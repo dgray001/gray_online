@@ -2,8 +2,6 @@ package risq
 
 import (
 	"errors"
-	"fmt"
-	"os"
 
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/util"
@@ -68,7 +66,7 @@ func createRisqBuilding(game_config *defs.Config, internal_id uint64, building_i
 	}
 	config, ok := game_config.Buildings[building_id]
 	if !ok {
-		fmt.Fprintln(os.Stderr, "Creating unknown building id: ", building_id)
+		util.Errorf(util.DefaultErr, "Creating unknown building id: %d", building_id)
 		return &building
 	}
 	building.display_name = config.Display_name
@@ -116,7 +114,7 @@ func (b *RisqBuilding) resolveHealthDelta(r *GameRisq) {
 		return
 	}
 	was_alive := b.isAlive()
-	util.DebugLog.Printf("health turn=%d tick=%d: %d b%d before=%.4f delta=%.4f", r.turn_number, r.current_tick, b.internal_id, b.building_id, b.cs.health, b.cs.pending_health_delta)
+	util.Debugf(r.std, "health turn=%d tick=%d: %d b%d before=%.4f delta=%.4f", r.turn_number, r.current_tick, b.internal_id, b.building_id, b.cs.health, b.cs.pending_health_delta)
 	b.cs.addHealth(b.cs.pending_health_delta)
 	b.cs.pending_health_delta = 0
 	if was_alive && !b.isAlive() {
@@ -352,7 +350,7 @@ func (b *RisqBuilding) tickIntent(risq *GameRisq) bool {
 			b.setBuildingAttackIntent(risq, target)
 		}
 	default:
-		fmt.Fprintln(os.Stderr, "Order type not implemented:", order.order_type)
+		util.Errorf(risq.err, "Order type not implemented: %v", order.order_type)
 	}
 	risq.recordTickIntent(b, order)
 	b.intent.resolveCost(b.current_stamina)
@@ -390,7 +388,7 @@ func (b *RisqBuilding) tickExecute(risq *GameRisq) {
 			case defs.ProducibleKind_UNIT:
 				unit := createRisqUnit(risq.unit_creation_ids[b], item.item_id, risq.players[b.player_id])
 				unit.current_stamina = unit.turn_stamina / 2
-				util.DebugLog.Printf("Unit created: unit=%d unit_id=%d player=%d building=%d zone=%s space=%s tick=%d",
+				util.Debugf(risq.std, "Unit created: unit=%d unit_id=%d player=%d building=%d zone=%s space=%s tick=%d",
 					unit.internal_id, item.item_id, b.player_id, b.internal_id, b.zone.coordinate.ToString(), b.zone.space.coordinate.ToString(), risq.current_tick)
 				if risq.production_garrisons[b] {
 					b.garrisoned_units[unit.internal_id] = unit

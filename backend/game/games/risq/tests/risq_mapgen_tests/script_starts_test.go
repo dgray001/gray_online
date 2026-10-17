@@ -440,3 +440,54 @@ func TestStartTreeIdsReplaceTheDefaultSpecies(t *testing.T) {
 		t.Error("no start wood resources placed")
 	}
 }
+
+func TestAllPlayersFitEvenWhenLandExhausted(t *testing.T) {
+	rect12 := step("shape", `{"kind":"rectangle","size":{"rows":3,"cols":4}}`)
+	waterOne := step("terrain_blob", `{"terrain_id":251,"seed_count":1,"size":1,"placement":{"pattern":"points","points":[{"x":0,"y":0}]}}`)
+	starts := step("player_starts", `{"pattern":"ring","area_size":1,"starting_distance":1,"on":{"terrain_types":["flatlands"]},"terrain_id":1}`)
+	useScripts(t, map[string]string{"fit12": `[` + rect12 + `,` + grass + `,` + waterOne + `,` + starts + `]`})
+	board, err := fakeboard.Generate("script:fit12", 12, 1)
+	if err != nil {
+		t.Fatalf("failed to place 12 players on 12 spaces: %v", err)
+	}
+	homes := startHomes(t, board, 12)
+	if len(homes) != 12 {
+		t.Fatalf("got %d homes, want 12", len(homes))
+	}
+	for _, info := range board.Inspect() {
+		if info.Terrain == 251 {
+			for _, z := range info.Zones {
+				if z.Building.ID != 0 || len(z.Units) > 0 {
+					t.Fatalf("water space at %v has building or unit: %+v", info.Coord, z)
+				}
+			}
+		}
+	}
+}
+
+func TestPlayerStartsMaxShiftPreventsCenterDrift(t *testing.T) {
+	uncon := step("player_starts", `{"pattern":"ring","area_size":1,"starting_distance":3,"terrain_id":1}`)
+	con := step("player_starts", `{"pattern":"ring","area_size":1,"starting_distance":3,"max_shift":0,"terrain_id":1}`)
+	useScripts(t, map[string]string{
+		"uncon": `[` + hexagon3 + `,` + grass + `,` + uncon + `]`,
+		"con":   `[` + hexagon3 + `,` + grass + `,` + con + `]`,
+	})
+	boardUncon, err := fakeboard.Generate("script:uncon", 1, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	boardCon, err := fakeboard.Generate("script:con", 1, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	homeUncon := startHomes(t, boardUncon, 1)[0]
+	homeCon := startHomes(t, boardCon, 1)[0]
+	distUncon := int(game_utils.AxialDistance(game_utils.Coordinate2D{}, game_utils.Coordinate2D{X: homeUncon.x, Y: homeUncon.y}))
+	distCon := int(game_utils.AxialDistance(game_utils.Coordinate2D{}, game_utils.Coordinate2D{X: homeCon.x, Y: homeCon.y}))
+	if distUncon != 2 {
+		t.Errorf("unconstrained shifted to distance %d, want 2", distUncon)
+	}
+	if distCon != 3 {
+		t.Errorf("constrained shifted to distance %d, want 3", distCon)
+	}
+}

@@ -45,16 +45,20 @@ export class DwgLobbyUsers extends DwgElement {
   }
 
   private first_load = true;
+  private refresh_in_flight = false;
   async refreshUsers(force_load_message = false): Promise<void> {
-    if (this.classList.contains('loading')) {
+    if (this.refresh_in_flight) {
       return;
     }
+    this.refresh_in_flight = true;
     if (this.first_load || force_load_message) {
       this.classList.add('loading');
       this.loading_message.innerHTML = ' ... loading';
       this.first_load = false;
     }
-    const response = await apiGet<LobbyUserFromServer[]>('lobby/users/get');
+    const response = await apiGet<LobbyUserFromServer[]>('lobby/users/get').finally(() => {
+      this.refresh_in_flight = false;
+    });
     if (response.success) {
       for (const data of this.users.values()) {
         data.refreshed = false;

@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.9a: Lobby loaders
+v0.9b: Theory model 3
 
 ## Dev Use
 

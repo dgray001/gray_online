@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/dgray001/gray_online/game/game_utils"
+	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness/fakeboard"
 )
 
@@ -186,5 +187,173 @@ func TestTerrainFilterMatchesWholeFamilyAndAcceptsExpressions(t *testing.T) {
 	useScripts(t, map[string]string{"family": `[` + hexagon3 + `,` + step("define", `{"name":"flat_id","value":1}`) + `,` + grass + `,` + hills + `,` + fill + `]`})
 	if got := len(withTerrain(generateStartless(t, "family", 2), 21)); got != 37 {
 		t.Errorf("%d snow spaces, want all 37 because a flat id also matches its hill variant", got)
+	}
+}
+
+func TestTerrainBlobSeedRegionLine(t *testing.T) {
+	line := step("terrain_blob", `{"terrain_id":21,"seed_region":"line","placement":{"points":[{"x":-2,"y":0},{"x":2,"y":0}]}}`)
+	useScripts(t, map[string]string{"line": `[` + hexagon3 + `,` + grass + `,` + line + `]`})
+	painted := withTerrain(generateStartless(t, "line", 2), 21)
+	if len(painted) != 5 {
+		t.Fatalf("got %d painted spaces, want 5 for straight line from -2 to 2", len(painted))
+	}
+}
+
+func TestTerrainBlobSeedRegionRectangle(t *testing.T) {
+	rect := step("terrain_blob", `{"terrain_id":21,"seed_region":"rectangle","placement":{"points":[{"x":0,"y":-1},{"x":1,"y":1}]}}`)
+	useScripts(t, map[string]string{"rect": `[` + hexagon3 + `,` + grass + `,` + rect + `]`})
+	painted := withTerrain(generateStartless(t, "rect", 2), 21)
+	if len(painted) != 9 {
+		t.Fatalf("got %d painted spaces, want 9 for 3x3 rectangle", len(painted))
+	}
+}
+
+func TestTerrainBlobSeedRegionLineExpandsWithSize(t *testing.T) {
+	line := step("terrain_blob", `{"terrain_id":21,"seed_region":"line","placement":{"points":[{"x":-1,"y":0},{"x":1,"y":0}]},"size":7,"roundness":1.0}`)
+	useScripts(t, map[string]string{"exp": `[` + hexagon3 + `,` + grass + `,` + line + `]`})
+	painted := withTerrain(generateStartless(t, "exp", 2), 21)
+	if len(painted) != 7 {
+		t.Fatalf("got %d painted spaces, want 7 for line of 3 grown to 7", len(painted))
+	}
+}
+
+func TestRotateTerrainSixFold(t *testing.T) {
+	line := step("terrain_blob", `{"terrain_id":21,"seed_region":"line","placement":{"points":[{"x":1,"y":0},{"x":3,"y":0}]}}`)
+	rot := step("rotate", `{"count":6,"on":{"terrain_ids":[21]}}`)
+	useScripts(t, map[string]string{"rot": `[` + hexagon3 + `,` + grass + `,` + line + `,` + rot + `]`})
+	painted := withTerrain(generateStartless(t, "rot", 2), 21)
+	if len(painted) != 18 {
+		t.Fatalf("got %d painted spaces, want 18 for 3-tile line rotated 6 times", len(painted))
+	}
+}
+
+func TestRotateTerrainRegion(t *testing.T) {
+	line := step("terrain_blob", `{"terrain_id":21,"seed_region":"line","placement":{"points":[{"x":1,"y":0},{"x":3,"y":0}]},"region":"leaf"}`)
+	rot := step("rotate", `{"count":6,"region":"leaf"}`)
+	useScripts(t, map[string]string{"rot_reg": `[` + hexagon3 + `,` + grass + `,` + line + `,` + rot + `]`})
+	painted := withTerrain(generateStartless(t, "rot_reg", 2), 21)
+	if len(painted) != 18 {
+		t.Fatalf("got %d painted spaces, want 18 rotated from leaf region", len(painted))
+	}
+}
+
+func TestDistanceToFilter(t *testing.T) {
+	center := step("terrain_blob", `{"terrain_id":51,"seed_count":1,"size":1,"placement":{"pattern":"points","points":[{"x":0,"y":0}]}}`)
+	ring1 := step("terrain_fill", `{"terrain_id":21,"on":{"distance_to":{"target":{"terrain_types":["hilly"]},"distance":1}}}`)
+	useScripts(t, map[string]string{"dist": `[` + hexagon3 + `,` + grass + `,` + center + `,` + ring1 + `]`})
+	painted := withTerrain(generateStartless(t, "dist", 2), 21)
+	if len(painted) != 6 {
+		t.Fatalf("got %d painted spaces, want 6 at distance 1", len(painted))
+	}
+}
+
+func TestDistanceToMinBuffer(t *testing.T) {
+	center := step("terrain_blob", `{"terrain_id":51,"seed_count":1,"size":1,"placement":{"pattern":"points","points":[{"x":0,"y":0}]}}`)
+	deep := step("terrain_fill", `{"terrain_id":21,"on":{"distance_to":{"target":{"terrain_types":["hilly"]},"min":2}}}`)
+	useScripts(t, map[string]string{"buf": `[` + hexagon3 + `,` + grass + `,` + center + `,` + deep + `]`})
+	painted := withTerrain(generateStartless(t, "buf", 2), 21)
+	if len(painted) != 30 {
+		t.Fatalf("got %d painted spaces, want 30 at distance >= 2", len(painted))
+	}
+}
+
+func TestDistanceToCloverShoreline(t *testing.T) {
+	deepWater := step("terrain_fill", `{"terrain_id":301}`)
+	center := step("terrain_blob", `{"terrain_id":1,"seed_count":1,"size":1,"placement":{"pattern":"points","points":[{"x":0,"y":0}]}}`)
+	shore := step("terrain_fill", `{"terrain_id":251,"on":{"terrain_types":["deep_water"],"distance_to":{"target":{"terrain_types":["flatlands"]},"distance":1}}}`)
+	useScripts(t, map[string]string{"clover": `[` + hexagon3 + `,` + deepWater + `,` + center + `,` + shore + `]`})
+	board := generateStartless(t, "clover", 2)
+	if len(withTerrain(board, 251)) != 6 || len(withTerrain(board, 301)) != 30 {
+		t.Fatalf("shore=%d want 6, deep=%d want 30", len(withTerrain(board, 251)), len(withTerrain(board, 301)))
+	}
+}
+
+func TestIncludeStep(t *testing.T) {
+	helper := `[` + step("terrain_fill", `{"terrain_id":21}`) + `]`
+	main := `[` + hexagon3 + `,` + grass + `,` + step("include", `{"path":"sub/helper.json"}`) + `]`
+	useScripts(t, map[string]string{"sub/helper": helper, "main": main})
+	board := generateStartless(t, "main", 2)
+	if len(withTerrain(board, 21)) != 37 {
+		t.Fatalf("got %d painted spaces from include, want 37", len(withTerrain(board, 21)))
+	}
+}
+
+func TestAsteriskMapScript(t *testing.T) {
+	if err := defs.LoadConfig("../../config"); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = defs.LoadConfig(testConfig) }()
+	board, err := fakeboard.Generate("script:asterisk", 2, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	counts := make(map[uint32]int)
+	for _, s := range board.Inspect() {
+		counts[s.Terrain]++
+	}
+	t.Logf("Asterisk spaces=%d terrains: %+v", len(board.Inspect()), counts)
+}
+
+func TestPathDijkstraWindsAroundObstacle(t *testing.T) {
+	wall := step("terrain_blob", `{"terrain_id":301,"seed_region":"line","placement":{"points":[{"x":-1,"y":0},{"x":1,"y":0}]}}`)
+	path := step("terrain_blob", `{"terrain_id":21,"seed_region":"path","placement":{"points":[{"x":0,"y":-1},{"x":0,"y":1}]},"path_costs":{"flatlands":1,"deep_water":100}}`)
+	useScripts(t, map[string]string{"detour": `[` + hexagon3 + `,` + grass + `,` + wall + `,` + path + `]`})
+	board := generateStartless(t, "detour", 2)
+	painted := withTerrain(board, 21)
+	if len(painted) == 0 {
+		t.Fatal("expected detour path to paint spaces")
+	}
+	for _, c := range painted {
+		if c.Y == 0 && (c.X >= -1 && c.X <= 1) {
+			t.Fatalf("path stepped on wall at %v", c)
+		}
+	}
+}
+
+func TestPathBetweenPlayers(t *testing.T) {
+	starts := step("player_starts", `{"pattern":"ring","area_size":1,"starting_distance":2,"terrain_id":1}`)
+	road := step("terrain_blob", `{"terrain_id":21,"seed_region":"path","between":["player:1","player:2"]}`)
+	useScripts(t, map[string]string{"road": `[` + hexagon3 + `,` + grass + `,` + starts + `,` + road + `]`})
+	board, err := fakeboard.Generate("script:road", 2, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(withTerrain(board, 21)) == 0 {
+		t.Fatal("expected road between player 1 and 2")
+	}
+}
+
+func TestPathBetweenPlayersBeforeStartsErrors(t *testing.T) {
+	road := step("terrain_blob", `{"terrain_id":21,"seed_region":"path","between":{"players":{"nearest":1}}}`)
+	useScripts(t, map[string]string{"err_road": `[` + hexagon3 + `,` + grass + `,` + road + `]`})
+	_, err := fakeboard.Generate("script:err_road", 2, 1)
+	if err == nil || !strings.Contains(err.Error(), "requires an earlier player_starts step") {
+		t.Fatalf("got %v, want error requiring earlier player_starts step", err)
+	}
+}
+
+func TestPathBetweenAllPlayersNearest(t *testing.T) {
+	starts := step("player_starts", `{"pattern":"ring","area_size":1,"starting_distance":2,"terrain_id":1}`)
+	roads := step("terrain_blob", `{"terrain_id":21,"seed_region":"path","between":{"players":{"nearest":2}}}`)
+	useScripts(t, map[string]string{"mesh": `[` + hexagon3 + `,` + grass + `,` + starts + `,` + roads + `]`})
+	board, err := fakeboard.Generate("script:mesh", 3, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(withTerrain(board, 21)) < 6 {
+		t.Fatalf("expected ring of roads, got %d painted spaces", len(withTerrain(board, 21)))
+	}
+}
+
+func TestFilterSeeds(t *testing.T) {
+	wall := step("terrain_blob", `{"terrain_id":301,"seed_region":"line","placement":{"points":[{"x":0,"y":-1},{"x":0,"y":0}]}}`)
+	line := step("terrain_blob", `{"terrain_id":21,"seed_region":"line","filter_seeds":true,"on":{"terrain_types":["flatlands"]},"placement":{"points":[{"x":0,"y":-2},{"x":0,"y":1}]}}`)
+	useScripts(t, map[string]string{"spotty": `[` + hexagon3 + `,` + grass + `,` + wall + `,` + line + `]`})
+	board := generateStartless(t, "spotty", 2)
+	painted := withTerrain(board, 21)
+	for _, c := range painted {
+		if c.X == 0 && (c.Y == -1 || c.Y == 0) {
+			t.Fatalf("filter_seeds failed: painted on deep water wall at %v", c)
+		}
 	}
 }

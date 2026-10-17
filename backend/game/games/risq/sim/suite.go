@@ -26,7 +26,7 @@ type suiteJob struct {
 	index  int
 }
 
-func runSims(scenario Scenario, sims []SuiteBucket, n int, out_dir string, workers int, base_seed int64, debug_per_game bool, compact bool, sim_log *log.Logger, terminal *os.File) {
+func runSims(scenario Scenario, sims []SuiteBucket, n int, out_dir string, workers int, base_seed int64, debug bool, compact bool, sim_log *log.Logger, terminal *os.File, std, err *util.Logger) {
 	games := make([][]SuiteGame, len(sims))
 	for b := range games {
 		games[b] = make([]SuiteGame, n)
@@ -67,14 +67,19 @@ func runSims(scenario Scenario, sims []SuiteBucket, n int, out_dir string, worke
 				}
 				start := time.Now()
 				var debug_file *os.File
-				if debug_per_game {
+				gameStd := std
+				if debug {
 					var err error
-					if debug_file, err = os.Create(filepath.Join(out_dir, fmt.Sprintf("debug_%d.log", seed))); err != nil {
+					name := "debug.log"
+					if len(sims) > 1 || n > 1 {
+						name = fmt.Sprintf("debug_%d.log", seed)
+					}
+					if debug_file, err = os.Create(filepath.Join(out_dir, name)); err != nil {
 						log.Fatalf("creating debug log for seed %d: %v", seed, err)
 					}
-					util.DebugLog.SetOutput(debug_file)
+					gameStd = util.NewLogger(debug_file, util.LevelDebug)
 				}
-				result := RunGame(seed, players, bucket.Map, bucket.Settings, scenario.Metrics, uint16(max_turns), 15*time.Minute)
+				result := RunGame(seed, players, bucket.Map, bucket.Settings, scenario.Metrics, uint16(max_turns), 15*time.Minute, gameStd, err)
 				if debug_file != nil {
 					debug_file.Close()
 				}

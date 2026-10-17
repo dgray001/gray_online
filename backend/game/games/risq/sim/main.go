@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -54,23 +55,19 @@ func main() {
 	defer sim_log_file.Close()
 	sim_log := log.New(sim_log_file, "", log.LstdFlags)
 
-	// fmt.Println(...) everywhere in the process reads os.Stdout per call
 	var game_log_file *os.File
+	var simStd *util.Logger
 	if *quiet {
-		devnull, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0)
-		if err != nil {
-			log.Fatalf("opening devnull: %v", err)
-		}
-		defer devnull.Close()
-		os.Stdout = devnull
+		simStd = util.NewLogger(io.Discard, util.LevelInfo)
 	} else {
 		// game.log: the engine's own normal output, only when not -quiet.
+		var err error
 		game_log_file, err = os.Create(filepath.Join(out_dir, "game.log"))
 		if err != nil {
 			log.Fatalf("creating game.log: %v", err)
 		}
 		defer game_log_file.Close()
-		os.Stdout = game_log_file
+		simStd = util.NewLogger(game_log_file, util.LevelInfo)
 	}
 
 	// errors always go to sim.log, plus game.log too when it exists
@@ -79,16 +76,6 @@ func main() {
 		log.Fatalf("redirecting stderr: %v", err)
 	}
 	defer stderr_cleanup()
-
-	if *debug && iterations == 1 {
-		// debug.log: ai decision + combat tick logs, separate from game.log/sim.log.
-		debug_log_file, err := os.Create(filepath.Join(out_dir, "debug.log"))
-		if err != nil {
-			log.Fatalf("creating debug.log: %v", err)
-		}
-		defer debug_log_file.Close()
-		util.DebugLog.SetOutput(debug_log_file)
-	}
 
 	workers := max(1, *parallel)
 	if *debug {
@@ -103,5 +90,5 @@ func main() {
 	} else if *debug {
 		log.Fatalf("-debug does not accept suites; run one of the suite's maps as a plain scenario instead")
 	}
-	runSims(scenario, sims, max(1, games_per_sim), out_dir, workers, base_seed, *debug && iterations > 1, *quiet, sim_log, terminal)
+	runSims(scenario, sims, max(1, games_per_sim), out_dir, workers, base_seed, *debug, *quiet, sim_log, terminal, simStd, util.DefaultErr)
 }

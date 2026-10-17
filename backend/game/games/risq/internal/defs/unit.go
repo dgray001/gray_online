@@ -3,7 +3,8 @@ package defs
 import (
 	"encoding/json"
 	"fmt"
-	"os"
+
+	"github.com/dgray001/gray_online/util"
 )
 
 type UnitStance uint8
@@ -84,7 +85,7 @@ func (c *Config) AnyUnitCanBuild(building_id uint32) bool {
 func (c *Config) UnitProductionCost(unit_id uint32) (RisqResourceCost, int) {
 	config, ok := c.Units[unit_id]
 	if !ok {
-		fmt.Fprintln(os.Stderr, "Unknown unit id for production cost: ", unit_id)
+		util.Errorf(util.DefaultErr, "Unknown unit id for production cost: %d", unit_id)
 		return RisqResourceCost{}, 0
 	}
 	return config.Cost, config.Production_stamina

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	. "github.com/dgray001/gray_online/game/games/risq/ai"
+	"github.com/dgray001/gray_online/util"
 )
 
 // A game view with just what loops read; any other View method panics, which flags a loop reaching for something it should not
@@ -35,7 +36,8 @@ func (v loopTestView) PlayerID() int                                    { return
 func (v loopTestView) PlayerScore(player_id int) int                    { return 10 * player_id }
 func (v loopTestView) KnownResources(c ResourceCategory) []ResourceView { return v.resources[c] }
 
-func (v loopTestView) Nickname() string { return "loop-test" }
+func (v loopTestView) Logger() *util.Logger { return nil }
+func (v loopTestView) Nickname() string     { return "loop-test" }
 
 // The game counters every expression can read; none of these tests depend on them
 func (v loopTestView) Population() (int, int)            { return 0, 0 }

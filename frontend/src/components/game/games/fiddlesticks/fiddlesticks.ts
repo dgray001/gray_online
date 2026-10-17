@@ -438,7 +438,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     const card_el_img = document.createElement('img');
     card_el_img.src = cardToImagePath(data.card);
     card_el_img.draggable = false;
-    card_el_img.alt = cardToIcon(data.card);
+    card_el_img.alt = cardToIcon(data.card, false);
     card_el.appendChild(card_el_img);
     card_el.classList.add('card');
     card_el.style.setProperty('--i', this.game.players[data.player_id].order.toString());

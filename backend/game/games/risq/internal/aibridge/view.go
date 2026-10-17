@@ -5,10 +5,12 @@ import (
 
 	"github.com/dgray001/gray_online/game/games/risq/ai"
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
+	"github.com/dgray001/gray_online/util"
 )
 
 // Answers every ai query from the player's frontend snapshot only, so the ai knows exactly what a human would.
 type aiView struct {
+	std                   *util.Logger
 	config                *defs.Config
 	game                  *snapGame
 	me                    *snapPlayer
@@ -29,6 +31,8 @@ type aiView struct {
 	attackers map[attackTarget]map[uint64]bool
 	// built on first use, then kept current by assignUnit
 	gather_counts map[ai.ZoneRef]int
+	// shared by every caller, so callers must treat it as read-only; dropped when a unit's view inputs change
+	units_cache []ai.UnitView
 	// built on first use
 	enemy_spaces       []ai.Coordinate
 	enemy_spaces_known bool
@@ -48,9 +52,9 @@ type snapZoneEntry struct {
 	zone  *snapZone
 }
 
-func newAiView(config *defs.Config, game *snapGame, player_id int) (*aiView, bool) {
+func newAiView(config *defs.Config, game *snapGame, player_id int, std *util.Logger) (*aiView, bool) {
 	v := &aiView{
-		config: config, game: game, spaces: map[ai.Coordinate]*snapSpace{}, units: map[uint64]*snapUnit{}, buildings: map[uint64]*snapBuilding{},
+		std: std, config: config, game: game, spaces: map[ai.Coordinate]*snapSpace{}, units: map[uint64]*snapUnit{}, buildings: map[uint64]*snapBuilding{},
 		planned: map[ai.ZoneRef]bool{}, order_ids: map[uint64]bool{}, assigned_units: map[uint64]*ai.CurrentOrder{},
 		claimed_buildings: map[uint64]bool{}, ordered_foundations: map[ai.ZoneRef]uint32{}, cancelled_foundations: map[ai.ZoneRef]bool{},
 		cancelled_orders: map[uint64]bool{}, planned_techs: map[uint32]bool{}, planned_production: map[uint64]int{},
@@ -116,6 +120,10 @@ func (v *aiView) playerId() int {
 	return v.me.Player.PlayerId
 }
 
+func (v *aiView) Logger() *util.Logger {
+	return v.std
+}
+
 func (v *aiView) Nickname() string {
 	return v.me.Player.Nickname
 }
@@ -135,11 +143,14 @@ func (v *aiView) gatherTargetAt(ref ai.ZoneRef) (ai.ResourceView, bool) {
 }
 
 func (v *aiView) Units() []ai.UnitView {
-	units := make([]ai.UnitView, 0, len(v.me.Units))
-	for i := range v.me.Units {
-		units = append(units, v.unitView(&v.me.Units[i]))
+	if v.units_cache == nil {
+		units := make([]ai.UnitView, 0, len(v.me.Units))
+		for i := range v.me.Units {
+			units = append(units, v.unitView(&v.me.Units[i]))
+		}
+		v.units_cache = sortUnitViews(units)
 	}
-	return sortUnitViews(units)
+	return v.units_cache
 }
 
 func (v *aiView) IdleUnits() []ai.UnitView {
@@ -461,6 +472,7 @@ func (v *aiView) assignUnit(id uint64, order *ai.CurrentOrder) {
 		}
 	}
 	v.assigned_units[id] = order
+	v.units_cache = nil
 }
 
 func (v *aiView) claimBuilding(id uint64) {

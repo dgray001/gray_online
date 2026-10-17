@@ -48,7 +48,7 @@ func TestPopulationLimitSettingReachesPlayers(t *testing.T) {
 
 func TestPopulationLimitRejectsInvalidSettings(t *testing.T) {
 	for _, raw := range []any{float64(0), float64(24), float64(201), 25.5, "100", math.NaN(), math.Inf(1)} {
-		base := game.CreateBaseGame(1, game.GameType_RISQ, map[string]any{"population_limit": raw})
+		base := game.CreateBaseGame(1, game.GameType_RISQ, map[string]any{"population_limit": raw}, nil, nil)
 		if _, err := risq.CreateGame(base, make(chan game.PlayerAction, 1)); err == nil || err.Error() != "population_limit must be an integer between 25 and 200" {
 			t.Errorf("population_limit %v: got error %v", raw, err)
 		}

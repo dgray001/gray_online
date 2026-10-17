@@ -40,6 +40,23 @@ func LoadConfig(dir string) error {
 	return nil
 }
 
+// Replaces the default config's units with those parsed from an arbitrary units json file
+func LoadUnitsFile(path string) (err error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = fmt.Errorf("units file %q: %v", path, recovered)
+		}
+	}()
+	c := DefaultConfig()
+	c.loadUnits(data)
+	c.installAsDefault()
+	return nil
+}
+
 // A game's own Config: each file comes from the override folder under the config dir when it has one, else from the config dir itself
 func LoadConfigDir(override string) (config *Config, err error) {
 	if !overrideNamePattern.MatchString(override) {

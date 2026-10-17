@@ -1,0 +1,59 @@
+[
+  {
+    "step": "terrain_fill",
+    "params": {
+      "terrain_id": "base",
+      "on": { "terrain_types": ["flatlands"] }
+    }
+  },
+  {
+    "step": "terrain_blob",
+    "params": {
+      "terrain_id": "accent1",
+      "seed_count": "scale * 2 * accent_multiplier",
+      "size": 4,
+      "roundness": 0.92,
+      "placement": { "evenness": 0.75 },
+      "preferred_spacing": 6,
+      "min_spacing": 3,
+      "on": { "terrain_types": ["flatlands"] }
+    }
+  },
+  {
+    "step": "terrain_blob",
+    "params": {
+      "terrain_id": "accent2",
+      "seed_count": "(scale * 5 / 3) / 2",
+      "size": 3,
+      "roundness": 0.9,
+      "placement": { "evenness": 0.75 },
+      "min_spacing": 4,
+      "on": { "terrain_types": ["flatlands"] }
+    }
+  },
+  {
+    "step": "terrain_blob",
+    "params": {
+      "variant": "hilly",
+      "seed_count": "hill_seeds",
+      "size": [3, 4],
+      "roundness": 0.9,
+      "placement": { "evenness": 0.9 },
+      "preferred_spacing": 5,
+      "min_spacing": 3,
+      "on": { "terrain_types": ["flatlands"] }
+    }
+  },
+  {
+    "step": "terrain_blob",
+    "params": {
+      "variant": "mountainous",
+      "seed_count": "mountain_seeds",
+      "size": 1,
+      "placement": { "evenness": 0.95 },
+      "preferred_spacing": 7,
+      "min_spacing": 4,
+      "on": { "terrain_types": ["hilly"] }
+    }
+  }
+]

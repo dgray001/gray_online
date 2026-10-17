@@ -1,9 +1,7 @@
 package risq
 
 import (
-	"fmt"
 	"math"
-	"os"
 
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/util"
@@ -140,7 +138,7 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 		}
 		u.intent.setUngarrison(u.garrisoned_in)
 	default:
-		fmt.Fprintln(os.Stderr, "Order type not implemented:", order.order_type)
+		util.Errorf(risq.err, "Order type not implemented: %v", order.order_type)
 	}
 
 	// Automatic ungarrison if we have an intent that requires being on the map
@@ -182,7 +180,7 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 	}
 	switch detail := u.intent.detail.(type) {
 	case *MoveIntent:
-		util.DebugLog.Printf("Moving unit %d %s to zone%s in space %s tick=%d turn=%d stamina=%d from=%s",
+		util.Debugf(risq.std, "Moving unit %d %s to zone%s in space %s tick=%d turn=%d stamina=%d from=%s",
 			u.internal_id, u.display_name, detail.next_step.coordinate.ToString(), detail.next_step.space.coordinate.ToString(), risq.current_tick, risq.turn_number, u.intent.intent_cost, u.zone.space.coordinate.ToString())
 		old_zone := u.zone
 		new_zone := detail.next_step
@@ -239,7 +237,7 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 				}
 				_, stamina_required := u.config.BuildingProductionCost(detail.building_id)
 				building = createRisqBuilding(u.config, foundation_id, detail.building_id, u.player_id)
-				util.DebugLog.Printf("Foundation started: building=%d building_id=%d player=%d builder=%d zone=%s space=%s tick=%d",
+				util.Debugf(risq.std, "Foundation started: building=%d building_id=%d player=%d builder=%d zone=%s space=%s tick=%d",
 					building.internal_id, detail.building_id, u.player_id, u.internal_id, detail.zone.coordinate.ToString(), detail.zone.space.coordinate.ToString(), risq.current_tick)
 				building.stamina_remaining = stamina_required
 				building.construction_stamina_total = stamina_required
@@ -263,7 +261,7 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 			}
 			building.stamina_remaining = max(0, building.stamina_remaining-progress)
 			if !building.underConstruction() {
-				util.DebugLog.Printf("Construction complete: building=%d building_id=%d player=%d zone=%s space=%s tick=%d",
+				util.Debugf(risq.std, "Construction complete: building=%d building_id=%d player=%d zone=%s space=%s tick=%d",
 					building.internal_id, building.building_id, building.player_id, building.zone.coordinate.ToString(), building.zone.space.coordinate.ToString(), risq.current_tick)
 				risq.players[building.player_id].report.recordBuildingBuilt(building.building_id, building.zone.space.coordinate, building.zone.coordinate)
 				building.refreshTerrainOverride()

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/util"
-	"io"
 	"slices"
 )
 
@@ -73,13 +72,13 @@ func (m *gameMetrics) recordTurn(r *GameRisq) {
 
 // Debug log only: each player's finished turn, the metrics record and the turn report, so one run answers per-turn questions
 func (m *gameMetrics) logTurn(r *GameRisq, t *TurnMetrics) {
-	if util.DebugLog.Writer() == io.Discard {
+	if !util.IsDebug(r.std) {
 		return
 	}
 	for id, p := range r.players {
 		metrics, _ := json.Marshal(t.Players[id])
 		report, _ := json.Marshal(p.report.toFrontend())
-		util.DebugLog.Printf("turn report turn=%d player=%d metrics=%s report=%s", t.Turn, id, metrics, report)
+		util.Debugf(r.std, "turn report turn=%d player=%d metrics=%s report=%s", t.Turn, id, metrics, report)
 	}
 }
 

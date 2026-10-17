@@ -2,6 +2,7 @@ package aibridge
 
 import (
 	"sort"
+	"sync"
 
 	"github.com/dgray001/gray_online/game/game_utils"
 	"github.com/dgray001/gray_online/game/games/risq/ai"
@@ -119,16 +120,30 @@ func toAiTargetCategories(priority []int) []ai.TargetCategory {
 	return categories
 }
 
-func (v *aiView) unitBuilds(unit_id uint32) []ai.Producible {
-	builds := make([]ai.Producible, 0)
-	for _, p := range v.config.Units[unit_id].Builds {
-		if p.Kind != defs.ProducibleKind_BUILDING {
-			continue
+var unitBuildsByConfig sync.Map // *defs.Config -> map[uint32][]ai.Producible, shared read-only
+
+func buildUnitBuilds(config *defs.Config) map[uint32][]ai.Producible {
+	table := make(map[uint32][]ai.Producible, len(config.Units))
+	for unit_id, unit := range config.Units {
+		builds := make([]ai.Producible, 0)
+		for _, p := range unit.Builds {
+			if p.Kind != defs.ProducibleKind_BUILDING {
+				continue
+			}
+			cost, _ := config.BuildingProductionCost(p.Id)
+			builds = append(builds, ai.Producible{Kind: ai.ProducibleBuilding, ID: p.Id, Cost: toCost(cost)})
 		}
-		cost, _ := v.config.BuildingProductionCost(p.Id)
-		builds = append(builds, ai.Producible{Kind: ai.ProducibleBuilding, ID: p.Id, Cost: toCost(cost)})
+		table[unit_id] = builds
 	}
-	return builds
+	return table
+}
+
+func (v *aiView) unitBuilds(unit_id uint32) []ai.Producible {
+	table, ok := unitBuildsByConfig.Load(v.config)
+	if !ok {
+		table, _ = unitBuildsByConfig.LoadOrStore(v.config, buildUnitBuilds(v.config))
+	}
+	return table.(map[uint32][]ai.Producible)[unit_id]
 }
 
 func sortUnitViews(units []ai.UnitView) []ai.UnitView {

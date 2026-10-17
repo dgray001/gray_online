@@ -5,12 +5,14 @@ import (
 	"fmt"
 
 	"github.com/dgray001/gray_online/game/game_utils"
+	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 )
 
 type regionsSevenParams struct {
 	Names       []string    `json:"names,omitempty"`
 	CenterBonus *ScriptExpr `json:"center_bonus,omitempty"`
 	OuterBonus  *ScriptExpr `json:"outer_bonus,omitempty"`
+	Rotate30    bool        `json:"rotate_30,omitempty"`
 }
 
 func stepRegionsSeven(ctx *mapScriptContext, raw json.RawMessage) error {
@@ -52,7 +54,7 @@ func stepRegionsSeven(ctx *mapScriptContext, raw json.RawMessage) error {
 	}
 	center_keys := make(map[uint]bool)
 	for _, space := range ctx.allSpaces() {
-		if int(game_utils.AxialDistance(game_utils.Coordinate2D{}, space.Coordinate())) <= center_radius {
+		if int(game_utils.AxialDistance(game_utils.Coordinate2D{}, space.Coordinate())) <= center_radius && !isWaterSpace(ctx, space) {
 			center_keys[space.Key()] = true
 		}
 	}
@@ -67,9 +69,18 @@ func stepRegionsSeven(ctx *mapScriptContext, raw json.RawMessage) error {
 	}
 	for d := center_radius + 1; d <= n; d++ {
 		ring := hexRingSectors(game_utils.Coordinate2D{}, d)
-		for i, coords := range ring {
-			for _, c := range coords {
-				if space := ctx.board.Space(c); space != nil {
+		var ringCoords []game_utils.Coordinate2D
+		for i := 0; i < 6; i++ {
+			ringCoords = append(ringCoords, ring[i]...)
+		}
+		totalLen := len(ringCoords)
+		for i := 0; i < 6; i++ {
+			for j := 0; j < d; j++ {
+				idx := i*d + j
+				if p.Rotate30 {
+					idx = (i*d - d/2 + j + totalLen) % totalLen
+				}
+				if space := ctx.board.Space(ringCoords[idx]); space != nil && !isWaterSpace(ctx, space) {
 					sector_keys[i][space.Key()] = true
 				}
 			}
@@ -83,4 +94,14 @@ func stepRegionsSeven(ctx *mapScriptContext, raw json.RawMessage) error {
 		}
 	}
 	return nil
+}
+
+func isWaterSpace(ctx *mapScriptContext, space Space) bool {
+	if space == nil {
+		return false
+	}
+	if t, ok := ctx.config().Terrains[space.Terrain()]; ok {
+		return t.Terrain_type == defs.TerrainType_WATER || t.Terrain_type == defs.TerrainType_DEEP_WATER
+	}
+	return space.Impassable() || space.Terrain() >= 251
 }

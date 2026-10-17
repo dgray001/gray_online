@@ -159,7 +159,7 @@ type RulesModel struct {
 func (m *RulesModel) ApplyUpdate(View, string) {}
 
 func logTurnData(view View) {
-	if util.DebugLog.Writer() == io.Discard {
+	if !util.IsDebug(view.Logger()) {
 		return
 	}
 	current, limit := view.Population()
@@ -178,12 +178,12 @@ func logTurnData(view View) {
 		"enemy_buildings": view.VisibleEnemyBuildings(),
 		"spaces":          view.AllSpaces(),
 	})
-	util.DebugLog.Printf("ai %s: new turn data %s", view.Nickname(), data)
+	util.Debugf(view.Logger(), "ai %s: new turn data %s", view.Nickname(), data)
 }
 
 // Debug log only: every script variable's value at the end of the turn, so a replay shows why rules fired
 func logVars(view View, internals *Internals) {
-	if util.DebugLog.Writer() == io.Discard {
+	if !util.IsDebug(view.Logger()) {
 		return
 	}
 	vars := make(map[string]float64, len(internals.vars)+len(internals.turn_vars))
@@ -194,7 +194,7 @@ func logVars(view View, internals *Internals) {
 		vars[k] = v
 	}
 	data, _ := json.Marshal(vars)
-	util.DebugLog.Printf("ai %s: vars %s", view.Nickname(), data)
+	util.Debugf(view.Logger(), "ai %s: vars %s", view.Nickname(), data)
 }
 
 func (m *RulesModel) DecideOrders(view View) Decision {
@@ -215,7 +215,7 @@ func (m *RulesModel) DecideOrders(view View) Decision {
 			orders = append(orders, action.ToOrders(view, &m.internals)...)
 		}
 	}
-	util.DebugLog.Printf("ai %s: submitting orders %+v", view.Nickname(), orders)
+	util.Debugf(view.Logger(), "ai %s: submitting orders %+v", view.Nickname(), orders)
 	logVars(view, &m.internals)
 	return Decision{Orders: orders, Behaviors: m.internals.behaviors, BuildingBehaviors: m.internals.building_behaviors}
 }

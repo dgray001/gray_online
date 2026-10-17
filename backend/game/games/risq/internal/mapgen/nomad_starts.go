@@ -64,7 +64,7 @@ func (n *nomadPlacer) place(player int, building bool) (Zone, error) {
 func placeNomadStarts(ctx *mapScriptContext, p playerStartsParams) error {
 	zones := make([]Zone, 0)
 	for _, zone := range ctx.allZones() {
-		if !zone.Space().Impassable() {
+		if !zone.Space().Impassable() && ctx.startAllowed(zone.Space()) {
 			zones = append(zones, zone)
 		}
 	}

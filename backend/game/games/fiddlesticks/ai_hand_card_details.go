@@ -5,30 +5,34 @@ import "github.com/dgray001/gray_online/game/game_utils"
 type HandCardDetails struct {
 	// card
 	card *game_utils.StandardCard
-	// cards this card can beat in a trick
-	beatable_cards map[game_utils.StandardCardHash]bool
-	// cards this card can lose to in a trick
-	loseable_cards map[game_utils.StandardCardHash]bool
+	// cards this card can beat in a trick, indexed by cardSlot
+	beatable_cards [52]bool
+	// cards this card can lose to in a trick, indexed by cardSlot
+	loseable_cards [52]bool
+	// number of true entries in loseable_cards
+	loseable_count int
 }
 
 func createHandCardDetails(card *game_utils.StandardCard) *HandCardDetails {
-	details := &HandCardDetails{
-		card:           card,
-		beatable_cards: make(map[uint16]bool),
-		loseable_cards: make(map[uint16]bool),
-	}
+	details := &HandCardDetails{card: card}
 	return details
 }
 
-func (d *HandCardDetails) addWinCard(hash game_utils.StandardCardHash) {
-	d.beatable_cards[hash] = true
+func (d *HandCardDetails) addWinCard(slot int) {
+	d.beatable_cards[slot] = true
 }
 
-func (d *HandCardDetails) addLoseCard(hash game_utils.StandardCardHash) {
-	d.loseable_cards[hash] = true
+func (d *HandCardDetails) addLoseCard(slot int) {
+	if !d.loseable_cards[slot] {
+		d.loseable_cards[slot] = true
+		d.loseable_count++
+	}
 }
 
-func (d *HandCardDetails) cardPlayed(hash game_utils.StandardCardHash) {
-	delete(d.beatable_cards, hash)
-	delete(d.loseable_cards, hash)
+func (d *HandCardDetails) cardPlayed(slot int) {
+	d.beatable_cards[slot] = false
+	if d.loseable_cards[slot] {
+		d.loseable_cards[slot] = false
+		d.loseable_count--
+	}
 }

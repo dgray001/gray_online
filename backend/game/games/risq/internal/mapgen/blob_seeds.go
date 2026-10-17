@@ -13,8 +13,12 @@ type blobPlacementJSON struct {
 	Pattern  string        `json:"pattern"`
 	Distance [2]ScriptExpr `json:"distance"`
 	// ring only: "center" (default) measures hops from the shape's center, "edge" steps in from its boundary
-	From   string           `json:"from"`
-	Points []axialParamJSON `json:"points"`
+	From        string             `json:"from"`
+	Points      []axialParamJSON   `json:"points"`
+	SeedRegion  string             `json:"seed_region,omitempty"`
+	Between     json.RawMessage    `json:"between,omitempty"`
+	PathCosts   map[string]float64 `json:"path_costs,omitempty"`
+	FilterSeeds bool               `json:"filter_seeds,omitempty"`
 	// 0 places each seed uniformly at random; 1 always takes the candidate farthest from the earlier seeds
 	Evenness ScriptExpr `json:"evenness"`
 	// ring only: blobs may not grow outside the distance band
@@ -27,7 +31,7 @@ func blobSeedCandidates(ctx *mapScriptContext, p blobPlacementJSON) ([]Space, er
 		return nil, fmt.Errorf("blob placement keep_inside needs the ring pattern")
 	}
 	switch p.Pattern {
-	case "", "random", "points":
+	case "", "random", "points", "line", "rectangle":
 		return ctx.allSpaces(), nil
 	case "ring":
 		lo, err := p.Distance[0].resolveInt(ctx.vars)
@@ -124,13 +128,33 @@ func pickBlobSeeds(ctx *mapScriptContext, candidates []Space, seed_count int, mi
 	return seeds
 }
 
+func resolvePoints(ctx *mapScriptContext, raw []axialParamJSON) ([]game_utils.Coordinate2D, error) {
+	pts := make([]game_utils.Coordinate2D, len(raw))
+	for i, p := range raw {
+		x, err := p.X.resolveInt(ctx.vars)
+		if err != nil {
+			return nil, err
+		}
+		y, err := p.Y.resolveInt(ctx.vars)
+		if err != nil {
+			return nil, err
+		}
+		pts[i] = game_utils.Coordinate2D{X: x, Y: y}
+	}
+	return pts, nil
+}
+
 func blobSeeds(ctx *mapScriptContext, p blobPlacementJSON, candidates []Space, seed_count int, min_spacing int, preferred_spacing int) ([]Space, error) {
 	if p.Pattern == "points" {
-		seeds := make([]Space, 0, len(p.Points))
-		for _, point := range p.Points {
-			space := ctx.board.Space(game_utils.Coordinate2D{X: point.X, Y: point.Y})
+		pts, err := resolvePoints(ctx, p.Points)
+		if err != nil {
+			return nil, err
+		}
+		seeds := make([]Space, 0, len(pts))
+		for _, pt := range pts {
+			space := ctx.board.Space(pt)
 			if space == nil {
-				return nil, fmt.Errorf("blob point (%d, %d) is not on the board", point.X, point.Y)
+				return nil, fmt.Errorf("blob point (%d, %d) is not on the board", pt.X, pt.Y)
 			}
 			seeds = append(seeds, space)
 		}
@@ -144,6 +168,82 @@ func blobSeeds(ctx *mapScriptContext, p blobPlacementJSON, candidates []Space, s
 		return nil, fmt.Errorf("blob placement evenness must be in [0, 1], got %v", evenness)
 	}
 	return pickBlobSeeds(ctx, candidates, seed_count, min_spacing, preferred_spacing, evenness), nil
+}
+
+func lineSeedSpaces(ctx *mapScriptContext, pts []game_utils.Coordinate2D) ([][]Space, error) {
+	if len(pts) < 2 {
+		return nil, fmt.Errorf("seed_region line requires at least 2 points")
+	}
+	var groups [][]Space
+	for i := 0; i+1 < len(pts); i += 2 {
+		var group []Space
+		for _, c := range hexLine(pts[i], pts[i+1]) {
+			if s := ctx.board.Space(c); s != nil {
+				group = append(group, s)
+			}
+		}
+		if len(group) > 0 {
+			groups = append(groups, group)
+		}
+	}
+	return groups, nil
+}
+
+func rectSeedSpaces(ctx *mapScriptContext, pts []game_utils.Coordinate2D) ([][]Space, error) {
+	if len(pts) < 2 {
+		return nil, fmt.Errorf("seed_region rectangle requires at least 2 points")
+	}
+	var groups [][]Space
+	for i := 0; i+1 < len(pts); i += 2 {
+		a, b := pts[i], pts[i+1]
+		minR, maxR := min(a.Y, b.Y), max(a.Y, b.Y)
+		minC, maxC := min(a.X+floorDiv2(a.Y), b.X+floorDiv2(b.Y)), max(a.X+floorDiv2(a.Y), b.X+floorDiv2(b.Y))
+		var group []Space
+		for r := minR; r <= maxR; r++ {
+			for c := minC; c <= maxC; c++ {
+				if s := ctx.board.Space(game_utils.Coordinate2D{X: c - floorDiv2(r), Y: r}); s != nil {
+					group = append(group, s)
+				}
+			}
+		}
+		if len(group) > 0 {
+			groups = append(groups, group)
+		}
+	}
+	return groups, nil
+}
+
+func regionSeedSpaces(ctx *mapScriptContext, region string, points []axialParamJSON) ([][]Space, error) {
+	pts, err := resolvePoints(ctx, points)
+	if err != nil {
+		return nil, err
+	}
+	if region == "line" {
+		return lineSeedSpaces(ctx, pts)
+	}
+	return rectSeedSpaces(ctx, pts)
+}
+
+func blobSeedGroups(ctx *mapScriptContext, p blobPlacementJSON, candidates []Space, seed_count int, min_spacing int, preferred_spacing int) ([][]Space, error) {
+	region := p.SeedRegion
+	if region == "" && (p.Pattern == "line" || p.Pattern == "rectangle" || p.Pattern == "path") {
+		region = p.Pattern
+	}
+	if region == "path" {
+		return pathSeedSpaces(ctx, p.Between, p.Points, p.PathCosts)
+	}
+	if region == "line" || region == "rectangle" {
+		return regionSeedSpaces(ctx, region, p.Points)
+	}
+	seeds, err := blobSeeds(ctx, p, candidates, seed_count, min_spacing, preferred_spacing)
+	if err != nil {
+		return nil, err
+	}
+	groups := make([][]Space, len(seeds))
+	for i, s := range seeds {
+		groups[i] = []Space{s}
+	}
+	return groups, nil
 }
 
 // Reports which spaces a blob may not grow into: none, or everything outside the ring when keep_inside is set

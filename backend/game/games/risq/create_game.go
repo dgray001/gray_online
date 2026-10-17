@@ -101,7 +101,17 @@ func createGame(g *game.GameBase, action_channel chan game.PlayerAction, min_pla
 	if !ok {
 		seed = float64(time.Now().UnixNano())
 	}
+	std := g.Std
+	if std == nil {
+		std = util.DefaultStd
+	}
+	errLog := g.Err
+	if errLog == nil {
+		errLog = util.DefaultErr
+	}
 	risq := GameRisq{
+		std:                       std,
+		err:                       errLog,
 		game:                      g,
 		config:                    game_config,
 		players:                   []*RisqPlayer{},
@@ -191,17 +201,20 @@ func createGame(g *game.GameBase, action_channel chan game.PlayerAction, min_pla
 }
 
 func (r *GameRisq) logBoard() {
+	if !util.IsDebug(r.std) {
+		return
+	}
 	for _, space := range r.allSpaces() {
-		util.DebugLog.Printf("board: space (%d,%d) terrain_id=%d", space.coordinate.X, space.coordinate.Y, space.terrain_id)
+		util.Debugf(r.std, "board: space (%d,%d) terrain_id=%d", space.coordinate.X, space.coordinate.Y, space.terrain_id)
 		for _, zrow := range space.zones {
 			for _, zone := range zrow {
 				if zone.resource != nil {
-					util.DebugLog.Printf("board:   zone (%d,%d) key=%d resource_id=%d category=%d amount=%.0f",
+					util.Debugf(r.std, "board:   zone (%d,%d) key=%d resource_id=%d category=%d amount=%.0f",
 						zone.coordinate.X, zone.coordinate.Y, zone.coordinate_key,
 						zone.resource.resource_id, zone.resource.category(), zone.resource.resources_left)
 				}
 				if zone.building != nil {
-					util.DebugLog.Printf("board:   zone (%d,%d) key=%d building_id=%d player=%d",
+					util.Debugf(r.std, "board:   zone (%d,%d) key=%d building_id=%d player=%d",
 						zone.coordinate.X, zone.coordinate.Y, zone.coordinate_key,
 						zone.building.building_id, zone.building.player_id)
 				}
@@ -213,6 +226,11 @@ func (r *GameRisq) logBoard() {
 // Exposes defs.LoadConfig to binaries outside risq, which can't import internal packages
 func LoadConfig(dir string) error {
 	return defs.LoadConfig(dir)
+}
+
+// Exposes defs.LoadUnitsFile to binaries outside risq, which can't import internal packages
+func LoadUnitsFile(path string) error {
+	return defs.LoadUnitsFile(path)
 }
 
 func AllMapNamesToFrontend() []string {

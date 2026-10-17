@@ -49,10 +49,30 @@ func printTechComboTable(attacker_id uint32, target_id uint32) {
 func main() {
 	unitsOnly := flag.Bool("units", false, "Only show units in the target columns")
 	barracksTechs := flag.Bool("barracks-techs", false, "Show tech-combo TTK tables for villager and the two barracks units (1, 11, 12)")
+	unitsFile := flag.String("units-file", "", "Units json to use instead of ../config/units.json")
+	efficiency := flag.Bool("efficiency", false, "Show cost-efficiency multiples for -matchups instead of the TTK table")
+	techs := flag.String("techs", "2,3,5", "Comma-separated tech ids researched by both sides for -efficiency")
+	matchups := flag.String("matchups", "11:12,12:13,13:11", "Comma-separated a:b unit id pairs for -efficiency")
 	flag.Parse()
 	if err := risq.LoadConfig("../config"); err != nil {
 		fmt.Fprintln(os.Stderr, "loading risq config:", err)
 		os.Exit(1)
+	}
+	if *unitsFile != "" {
+		if err := risq.LoadUnitsFile(*unitsFile); err != nil {
+			fmt.Fprintln(os.Stderr, "loading units file:", err)
+			os.Exit(1)
+		}
+	}
+	if *efficiency {
+		tech_ids, err := parseIDs(*techs, ",")
+		pairs, pairs_err := parseMatchups(*matchups)
+		if err != nil || pairs_err != nil {
+			fmt.Fprintln(os.Stderr, "parsing -techs or -matchups:", err, pairs_err)
+			os.Exit(1)
+		}
+		printEfficiency(pairs, tech_ids)
+		return
 	}
 
 	if *barracksTechs {

@@ -11,7 +11,7 @@ import (
 )
 
 func engineStarts(mapName string, players int, seed int64) ([]risq.PlayerSnapshot, error) {
-	base := game.CreateBaseGame(1, game.GameType_RISQ, aiSettings(players, seed, mapName))
+	base := game.CreateBaseGame(1, game.GameType_RISQ, aiSettings(players, seed, mapName), nil, nil)
 	g, err := risq.CreateGame(base, make(chan game.PlayerAction, 4))
 	if err != nil {
 		return nil, err

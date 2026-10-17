@@ -356,6 +356,8 @@ type InputGeneticAlgorithm struct {
 	trick_points uint16
 	round_points uint16
 	output       string
+	seed         int64
+	seeded       bool
 	episodes     []*InputGeneticAlgorithmEpisode
 	players      []*InputGeneticAlgorithmPlayer
 }
@@ -385,6 +387,9 @@ func (i *InputGeneticAlgorithm) AddLine(q []InputObject, k string, v string) []I
 		i.round_points = uint16(InputStatic.parseInt(v))
 	case "output":
 		i.output = v
+	case "seed":
+		i.seed = int64(InputStatic.parseInt(v))
+		i.seeded = true
 	case "Episode":
 		episode := createInputGeneticAlgorithmEpisode()
 		i.episodes = append(i.episodes, episode)
@@ -401,6 +406,9 @@ func (i *InputGeneticAlgorithm) AddLine(q []InputObject, k string, v string) []I
 
 func (i *InputGeneticAlgorithm) print() {
 	fmt.Println("GeneticAlgorithm:")
+	if i.seeded {
+		fmt.Println("  Seed:", i.seed)
+	}
 	fmt.Println("  Iterations:", i.iterations)
 	fmt.Println("  Min Round:", i.min_round)
 	fmt.Println("  Max Round:", i.max_round)

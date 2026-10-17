@@ -4,11 +4,13 @@ package harness
 import (
 	"encoding/json"
 	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/dgray001/gray_online/game"
 	"github.com/dgray001/gray_online/game/games/risq"
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
+	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
 )
 
@@ -25,13 +27,33 @@ type Game struct {
 	clients    []uint64
 }
 
+var (
+	testStdMu sync.Mutex
+	testStd   *util.Logger
+)
+
+func SetTestLogger(t *testing.T, l *util.Logger) {
+	t.Helper()
+	testStdMu.Lock()
+	testStd = l
+	testStdMu.Unlock()
+	t.Cleanup(func() {
+		testStdMu.Lock()
+		testStd = nil
+		testStdMu.Unlock()
+	})
+}
+
 func NewUnstartedGame(t *testing.T, mapName string, seed int64, humans int) *Game {
 	return NewUnstartedGameWithSettings(t, mapName, seed, humans, nil)
 }
 
 func NewUnstartedGameWithSettings(t *testing.T, mapName string, seed int64, humans int, settings map[string]any) *Game {
 	t.Helper()
-	base := game.CreateBaseGame(1, game.GameType_RISQ, map[string]any{"map": mapName, "seed": float64(seed)})
+	testStdMu.Lock()
+	activeStd := testStd
+	testStdMu.Unlock()
+	base := game.CreateBaseGame(1, game.GameType_RISQ, map[string]any{"map": mapName, "seed": float64(seed)}, activeStd, nil)
 	for key, value := range settings {
 		base.GameSpecificSettings[key] = value
 	}
@@ -45,6 +67,13 @@ func NewUnstartedGameWithSettings(t *testing.T, mapName string, seed int64, huma
 		t.Fatal(err)
 	}
 	return g
+}
+
+func (g *Game) SetStd(std *util.Logger) {
+	g.Base.Std = std
+	if g.Risq != nil {
+		g.Risq.SetStd(std)
+	}
 }
 
 // Engine player id of the i-th human; the engine assigns ids in map order, so they are read back, never assumed

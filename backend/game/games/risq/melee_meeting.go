@@ -38,7 +38,6 @@ func (u *RisqUnit) meetAtBorder(target *RisqUnit, move *MoveIntent, tick uint16,
 	u.intent.detail = &UnitAttackIntent{target: target}
 	u.intent.sunk_cost, u.intent.intent_cost = sunk, sunk+attack
 	u.move_path = nil
-	util.DebugLog.Printf("Meeting at border: unit %d meets %d tick=%d turn=%d sunk=%d attack=%d", u.internal_id, target.internal_id, tick, turn, sunk, attack)
 }
 
 // Decides every meeting from the intents as they stand, then applies them, so no unit's change can affect another's decision
@@ -61,6 +60,8 @@ func (r *GameRisq) resolveMeleeMeetings(orderables []Orderable) int {
 		m.unit.meetAtBorder(m.target, m.move, r.current_tick+1, r.turn_number)
 		if !m.unit.intent.hasIntent() {
 			removed++
+		} else {
+			util.Debugf(r.std, "Meeting at border: unit %d meets %d tick=%d turn=%d sunk=%d attack=%d", m.unit.internal_id, m.target.internal_id, r.current_tick+1, r.turn_number, m.unit.intent.sunk_cost, m.unit.intent.intent_cost-m.unit.intent.sunk_cost)
 		}
 	}
 	return removed

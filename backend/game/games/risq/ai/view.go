@@ -1,5 +1,7 @@
 package ai
 
+import "github.com/dgray001/gray_online/util"
+
 // Axial hex coordinate; space- or zone-level depending on context.
 type Coordinate struct {
 	X, Y int
@@ -299,6 +301,7 @@ type Order struct {
 
 // Read-only per-player snapshot, gated by the same fog-of-war the frontend shows a human.
 type View interface {
+	Logger() *util.Logger
 	Nickname() string
 	Units() []UnitView
 	// Units within the current bucket scope; the same as Units() outside a bucket wrapper

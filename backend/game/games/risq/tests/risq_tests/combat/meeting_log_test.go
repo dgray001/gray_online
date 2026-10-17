@@ -2,11 +2,11 @@ package combat
 
 import (
 	"bytes"
-	"io"
 	"regexp"
 	"strconv"
 	"testing"
 
+	"github.com/dgray001/gray_online/game/games/risq/tests/harness"
 	"github.com/dgray001/gray_online/util"
 )
 
@@ -42,8 +42,7 @@ func atoi(t *testing.T, s string) int {
 func captureTicks(t *testing.T) *bytes.Buffer {
 	t.Helper()
 	var buf bytes.Buffer
-	util.DebugLog.SetOutput(&buf)
-	t.Cleanup(func() { util.DebugLog.SetOutput(io.Discard) })
+	harness.SetTestLogger(t, util.NewLogger(&buf, util.LevelDebug))
 	return &buf
 }
 

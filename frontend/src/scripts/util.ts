@@ -31,8 +31,19 @@ export function until(condition: () => boolean, poll_timer = 50, signal?: AbortS
 }
 
 /** Awaits a specific amount of time */
-export async function untilTimer(timer: number): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, timer));
+export function untilTimer(timer: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject): void => {
+    signal?.throwIfAborted();
+    const timeout = setTimeout((): void => {
+      signal?.removeEventListener('abort', aborted);
+      resolve();
+    }, timer);
+    function aborted(): void {
+      clearTimeout(timeout);
+      reject(signal?.reason);
+    }
+    signal?.addEventListener('abort', aborted, { once: true });
+  });
 }
 
 /** Capitalizes each word in string */

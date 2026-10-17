@@ -2,8 +2,6 @@ package lobby
 
 import (
 	"encoding/json"
-	"fmt"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -15,6 +13,8 @@ import (
 )
 
 type Lobby struct {
+	std                   *util.Logger
+	err                   *util.Logger
 	mu                    sync.Mutex
 	next_room_id          uint64
 	next_client_id        uint64
@@ -63,8 +63,16 @@ func MakeClientId(client *Client, client_id uint64) *ClientId {
 	}
 }
 
-func CreateLobby() *Lobby {
+func CreateLobby(std, err *util.Logger) *Lobby {
+	if std == nil {
+		std = util.DefaultStd
+	}
+	if err == nil {
+		err = util.DefaultErr
+	}
 	return &Lobby{
+		std:                   std,
+		err:                   err,
 		next_room_id:          1,
 		next_client_id:        1,
 		next_game_id:          1,
@@ -97,7 +105,7 @@ func (l *Lobby) Run() {
 func (l *Lobby) runOnce() {
 	defer func() {
 		if rec := recover(); rec != nil {
-			fmt.Fprintln(os.Stderr, "recovered from panic in lobby actor loop:", rec)
+			util.Errorf(l.err, "recovered from panic in lobby actor loop: %v", rec)
 		}
 	}()
 	select {
@@ -126,12 +134,16 @@ func (l *Lobby) runOnce() {
 	case data := <-l.LeaveRoom:
 		l.leaveRoom(data)
 	case room := <-l.LaunchGame:
-		game, err := room.launchGame(l.next_game_id)
+		game_id := l.next_game_id
+		game, err := room.launchGame(game_id)
 		if err == nil {
 			l.mu.Lock()
-			l.games[l.next_game_id] = game
+			l.games[game_id] = game
 			l.next_game_id++
 			l.mu.Unlock()
+			room_id_string := strconv.Itoa(int(room.room_id))
+			game_id_string := strconv.Itoa(int(game_id))
+			l.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-launched", Data: game_id_string})
 		} else if room.host != nil {
 			room.host.send(lobbyMessage{Sender: "server", Kind: "room-launch-failed", Content: err.Error()})
 		}
@@ -212,17 +224,17 @@ func (l *Lobby) reconnectClient(client *Client, client_id uint64) {
 	old_client := l.clients[client_id]
 	if old_client == nil {
 		l.mu.Unlock()
-		fmt.Println("Cannot find old client; starting new connection")
+		util.Info(l.std, "Cannot find old client; starting new connection")
 		l.addClient(client)
 		return
 	}
 	if old_client.validLocked() {
 		l.mu.Unlock()
-		fmt.Println("Old client is valid; starting new connection")
+		util.Info(l.std, "Old client is valid; starting new connection")
 		l.addClient(client)
 		return
 	}
-	fmt.Println("Reconnecting to old client:", old_client.client_id)
+	util.Infof(l.std, "Reconnecting to old client: %d", old_client.client_id)
 	if old_client.delete_timer != nil {
 		old_client.delete_timer.Stop()
 	}
@@ -235,10 +247,10 @@ func (l *Lobby) reconnectClient(client *Client, client_id uint64) {
 	l.mu.Unlock()
 	if old_lobby_room != nil {
 		if old_game == nil || old_game.GetBase() == nil {
-			fmt.Println("Removing client", client.client_id, "from old room", old_lobby_room.room_id)
+			util.Infof(l.std, "Removing client %d from old room %d", client.client_id, old_lobby_room.room_id)
 			old_lobby_room.LeaveRoom <- &ClientRoom{client: client, room: old_lobby_room, bool_flag: true}
 		} else {
-			fmt.Println("Reconnecting to game", old_game.GetBase().Game_id, "in room", old_lobby_room.room_id, "with old client", client.client_id)
+			util.Infof(l.std, "Reconnecting to game %d in room %d with old client %d", old_game.GetBase().Game_id, old_lobby_room.room_id, client.client_id)
 			client.lobby_room = old_lobby_room
 			client.game = old_game
 			room_id_string := strconv.Itoa(int(client.lobby_room.room_id))
@@ -247,15 +259,15 @@ func (l *Lobby) reconnectClient(client *Client, client_id uint64) {
 			if player == nil {
 				viewer := client.game.GetBase().Viewers[client_id]
 				if viewer == nil {
-					fmt.Fprintln(os.Stderr, "Room doesn't have reconnecting client")
+					util.Error(l.err, "Room doesn't have reconnecting client")
 					client.lobby_room = nil
 					client.game = nil
 				} else {
-					fmt.Println("Starting reconnect viewer game updates")
+					util.Info(l.std, "Starting reconnect viewer game updates")
 					go client.viewerGameUpdates(viewer, room_id_string)
 				}
 			} else {
-				fmt.Println("Starting reconnect player game updates for player", player.Player_id)
+				util.Infof(l.std, "Starting reconnect player game updates for player %d", player.Player_id)
 				player.FlushConnections <- false
 				go client.playerGameUpdates(player, room_id_string)
 			}
@@ -309,7 +321,7 @@ func (l *Lobby) createRoom(client *Client) {
 	client_id_string := strconv.Itoa(int(client.client_id))
 	room_stringified, err := json.Marshal(room.ToFrontend())
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
+		util.Error(l.err, err.Error())
 		room_stringified = []byte{}
 	}
 	l.broadcastMessage(lobbyMessage{
@@ -395,7 +407,7 @@ var (
 
 func (l *Lobby) broadcastMessage(message lobbyMessage) {
 	if message.Kind != "ping-update" {
-		fmt.Printf("Broadcasting message {%s, %s, %s, %s}\n", message.Sender, message.Content, message.Data, message.Kind)
+		util.Infof(l.std, "Broadcasting message {%s, %s, %s, %s}", message.Sender, message.Content, message.Data, message.Kind)
 	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -421,7 +433,7 @@ func (l *Lobby) broadcastMessage(message lobbyMessage) {
 	} else if util.Contains(client_to_room_messages, message.Kind) {
 		send_split := strings.Split(message.Sender, "-")
 		if len(send_split) < 3 {
-			fmt.Fprintln(os.Stderr, "Sender not properly formed for a client to room message")
+			util.Error(l.err, "Sender not properly formed for a client to room message")
 			return
 		}
 		room_id, err := strconv.ParseInt(send_split[1], 10, 0)
@@ -432,7 +444,7 @@ func (l *Lobby) broadcastMessage(message lobbyMessage) {
 		if err != nil {
 			client_id = -1
 		}
-		fmt.Println("Sending chat from client", client_id)
+		util.Infof(l.std, "Sending chat from client %d", client_id)
 		for _, client := range l.clients {
 			if client == nil || !client.validLocked() || client.lobby_room == nil ||
 				client.lobby_room.room_id != uint64(room_id) || client.client_id == uint64(client_id) {
@@ -453,13 +465,13 @@ func (l *Lobby) broadcastMessage(message lobbyMessage) {
 			client.send(message)
 		}
 	} else {
-		fmt.Fprintln(os.Stderr, "No logic for message kind")
+		util.Error(l.err, "No logic for message kind")
 	}
 }
 
 func (l *Lobby) setClientId(client *Client) {
 	if client.client_id > 0 {
-		fmt.Println("Client already has id:", client.client_id)
+		util.Infof(l.std, "Client already has id: %d", client.client_id)
 		return
 	}
 	client.client_id = l.next_client_id

@@ -1,10 +1,9 @@
 package game
 
 import (
-	"fmt"
-	"os"
 	"sync"
 
+	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
 )
 
@@ -45,12 +44,22 @@ type GameBase struct {
 	// both set by the owning room: run a task on its actor goroutine, and read game state there without a round trip
 	RunInRoom    func(task func())
 	CurrentState func(client_id uint64, is_viewer bool) gin.H
+	Std          *util.Logger
+	Err          *util.Logger
 }
 
-func CreateBaseGame(game_id uint64, game_type GameType, game_specific_settings map[string]interface{}) *GameBase {
+func CreateBaseGame(game_id uint64, game_type GameType, game_specific_settings map[string]interface{}, std, err *util.Logger) *GameBase {
+	if std == nil {
+		std = util.DefaultStd
+	}
+	if err == nil {
+		err = util.DefaultErr
+	}
 	return &GameBase{
 		Game_id:               game_id,
 		game_type:             game_type,
+		Std:                   std,
+		Err:                   err,
 		Players:               make(map[uint64]*Player),
 		Viewers:               make(map[uint64]*Viewer),
 		next_ai_id:            1,
@@ -120,7 +129,7 @@ func (g *GameBase) GameStarted() bool {
 
 func (g *GameBase) StartGame() {
 	if g.game_started {
-		fmt.Fprintln(os.Stderr, "Game already started")
+		util.Error(g.Err, "Game already started")
 		return
 	}
 	g.game_started = true
@@ -134,11 +143,11 @@ func (g *GameBase) AddAction(action PlayerAction) PlayerAction {
 
 func (g *GameBase) AddViewerUpdate(update *UpdateMessage) {
 	if !g.game_started {
-		fmt.Fprintln(os.Stderr, "Can't add update to game that isn't started")
+		util.Error(g.Err, "Can't add update to game that isn't started")
 		return
 	}
 	if g.game_ended {
-		fmt.Fprintln(os.Stderr, "Can't add update to game that is ended")
+		util.Error(g.Err, "Can't add update to game that is ended")
 		return
 	}
 	g.viewer_update_list_mu.Lock()
@@ -154,7 +163,7 @@ func (g *GameBase) AddViewerUpdate(update *UpdateMessage) {
 	select {
 	case g.ViewerUpdates <- &own_update:
 	default:
-		fmt.Fprintln(os.Stderr, "Dropped viewer update - ViewerUpdates buffer full:", own_update.Kind)
+		util.Errorf(g.Err, "Dropped viewer update - ViewerUpdates buffer full: %s", own_update.Kind)
 	}
 	for _, viewer := range g.Viewers {
 		if viewer == nil || !viewer.connected {
@@ -163,7 +172,7 @@ func (g *GameBase) AddViewerUpdate(update *UpdateMessage) {
 		select {
 		case viewer.Updates <- &own_update:
 		default:
-			fmt.Fprintln(os.Stderr, "Dropped update to viewer", viewer.client_id, "- update buffer full:", own_update.Kind)
+			util.Errorf(g.Err, "Dropped update to viewer %d - update buffer full: %s", viewer.client_id, own_update.Kind)
 		}
 	}
 }
@@ -197,7 +206,7 @@ func (g *GameBase) ResendPlayerUpdate(client_id uint64, update_id int) {
 	select {
 	case player.Updates <- update:
 	default:
-		fmt.Fprintln(os.Stderr, "Dropped resend update to player", player.Player_id, "- update buffer full")
+		util.Errorf(g.Err, "Dropped resend update to player %d - update buffer full", player.Player_id)
 	}
 }
 
@@ -220,7 +229,7 @@ func (g *GameBase) ResendViewerUpdate(client_id uint64, update_id int) {
 	select {
 	case viewer.Updates <- update:
 	default:
-		fmt.Fprintln(os.Stderr, "Dropped resend update to viewer", viewer.client_id, "- update buffer full")
+		util.Errorf(g.Err, "Dropped resend update to viewer %d - update buffer full", viewer.client_id)
 	}
 }
 
@@ -260,7 +269,7 @@ func (g *GameBase) regenerateThenReplay(player *Player, client_id uint64) bool {
 }
 
 func (g *GameBase) replayLastUpdate(client_id uint64) {
-	fmt.Println("Resending last update for client", client_id)
+	util.Infof(g.Std, "Resending last update for client %d", client_id)
 	if player := g.Players[client_id]; player != nil {
 		player.update_list_mu.RLock()
 		if len(player.update_list) > 0 {
@@ -269,7 +278,7 @@ func (g *GameBase) replayLastUpdate(client_id uint64) {
 			select {
 			case player.Updates <- update:
 			default:
-				fmt.Fprintln(os.Stderr, "Dropped resend update to player", player.Player_id, "- update buffer full")
+				util.Errorf(g.Err, "Dropped resend update to player %d - update buffer full", player.Player_id)
 			}
 			return
 		}
@@ -283,7 +292,7 @@ func (g *GameBase) replayLastUpdate(client_id uint64) {
 			select {
 			case viewer.Updates <- update:
 			default:
-				fmt.Fprintln(os.Stderr, "Dropped resend update to viewer", viewer.client_id, "- update buffer full")
+				util.Errorf(g.Err, "Dropped resend update to viewer %d - update buffer full", viewer.client_id)
 			}
 		} else {
 			g.viewer_update_list_mu.RUnlock()
@@ -297,7 +306,7 @@ func (g *GameBase) GameEnded() bool {
 
 func (g *GameBase) EndGame(message string) {
 	if g.game_ended {
-		fmt.Fprintln(os.Stderr, "Game already ended")
+		util.Error(g.Err, "Game already ended")
 		return
 	}
 	g.game_ended = true

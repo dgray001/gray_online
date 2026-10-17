@@ -104,7 +104,7 @@ def select_vars(data: dict, names: list[str]) -> list[str]:
 
 AI_LINE = re.compile(r"ai (ai-\d+): (submitting orders|vars|new turn data) (.*)$")
 ENGINE_LINE = re.compile(r"Executing submit orders for: (\d+) (.*)$")
-TIMESTAMP = re.compile(r"^\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2} ")
+TIMESTAMP = re.compile(r"^(?:\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}|\d{8}-\d{2}:\d{2}:\d{2}\.\d{3} \[[A-Z]+\]) ")
 
 
 def decode_line(line: str, var_names: list[str]) -> list[str]:

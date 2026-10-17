@@ -15,8 +15,8 @@ from collections import Counter
 
 STATE_HASH = re.compile(r"state_hash turn=(\d+) tick=(\w+) hash=(\w+)")
 STATE_DUMP = re.compile(r"state_dump turn=\d+ tick=\w+ (.*)")
-TICK_EVENT = re.compile(r"(combat tick=\d+:|Foundation started:|Construction complete:|Unit created:|Moving unit )")
-TIMESTAMP = re.compile(r"^\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2} ")
+TICK_EVENT = re.compile(r"(combat (?:turn=\d+ )?tick=\d+:|Foundation started:|Construction complete:|Unit created:|Moving unit )")
+TIMESTAMP = re.compile(r"^(?:\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}|\d{8}-\d{2}:\d{2}:\d{2}\.\d{3} \[[A-Z]+\]) ")
 
 # turn, tick, hash, events since previous checkpoint, state dump entries
 Checkpoint = tuple[str, str, str, list[str], list[str]]

@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
-	"os"
+
+	"github.com/dgray001/gray_online/util"
 )
 
 type Model interface {
@@ -27,7 +28,7 @@ func (NoopModel) DecideOrders(View) Decision { return Decision{} }
 
 // ParseModel parses an ai config blob into a Model, falling back to NoopModel on any error.
 func ParseModel(raw map[string]any, rng *rand.Rand) Model {
-	return ParseModelWithDiagnostics(raw, rng, os.Stderr)
+	return ParseModelWithDiagnostics(raw, rng, util.DefaultErr.Writer())
 }
 
 func ParseModelWithDiagnostics(raw map[string]any, rng *rand.Rand, diagnostics io.Writer) Model {

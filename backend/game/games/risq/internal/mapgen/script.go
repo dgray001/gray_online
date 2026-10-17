@@ -10,7 +10,6 @@ import (
 	"github.com/dgray001/gray_online/util"
 	"math"
 	"math/rand"
-	"os"
 	"strings"
 )
 
@@ -37,6 +36,7 @@ type mapScriptContext struct {
 	nomad_starts  bool
 	// radius (in spaces) of each player start area, set by the player_starts step
 	player_area_size int
+	start_eligible   map[uint]bool
 	regions          map[string]map[uint]bool
 	vars             map[string]float64
 	shape            string
@@ -73,7 +73,7 @@ func loadMapScript(name string) ([]mapScriptStepJSON, error) {
 
 // Prints a map problem to stderr so it is visible even when generation carries on or the caller drops the error
 func logMapProblem(err error) {
-	fmt.Fprintln(os.Stderr, "map generation:", err)
+	util.Errorf(util.DefaultErr, "map generation: %v", err)
 }
 
 // Rejects a player count no generator can place, instead of panicking inside one
@@ -185,23 +185,41 @@ func (c *mapScriptContext) allZones() []Zone {
 	return c.zones
 }
 
+func (c *mapScriptContext) startAllowed(s Space) bool {
+	return s != nil && (c.start_eligible == nil || c.start_eligible[s.Key()])
+}
+
+func (c *mapScriptContext) startAllowedZones() []Zone {
+	if c.start_eligible == nil {
+		return c.allZones()
+	}
+	zones := make([]Zone, 0)
+	for _, z := range c.allZones() {
+		if c.start_eligible[z.Space().Key()] {
+			zones = append(zones, z)
+		}
+	}
+	return zones
+}
+
 var mapStepRegistry map[string]mapStepFunc
 
 func init() {
 	mapStepRegistry = map[string]mapStepFunc{
-		"terrain_fill":        stepTerrainFill,
-		"terrain_blob":        stepTerrainBlob,
-		"ensure_connectivity": stepEnsureConnectivity,
-		"resource_blob":       stepResourceBlob,
-		"resource_place":      stepResourcePlace,
-		"player_starts":       stepPlayerStarts,
-		"define":              stepDefine,
-		"if":                  stepIf,
-		"rules":               stepRules,
-		"regions_seven":       stepRegionsSeven,
-		"regions_six":         stepRegionsSix,
-		"regions_four":        stepRegionsFour,
-		"shape":               stepShape,
+		"terrain_fill":   stepTerrainFill,
+		"terrain_blob":   stepTerrainBlob,
+		"resource_blob":  stepResourceBlob,
+		"resource_place": stepResourcePlace,
+		"player_starts":  stepPlayerStarts,
+		"define":         stepDefine,
+		"if":             stepIf,
+		"rules":          stepRules,
+		"regions_seven":  stepRegionsSeven,
+		"regions_six":    stepRegionsSix,
+		"regions_four":   stepRegionsFour,
+		"shape":          stepShape,
+		"rotate":         stepRotate,
+		"include":        stepInclude,
 	}
 }
 

@@ -29,7 +29,7 @@ func PreviewCustomMap(doc []byte) (gin.H, error) {
 	for i := range ai_players {
 		ai_players[i] = map[string]any{"nickname": "slot-" + string(rune('a'+i))}
 	}
-	base := game.CreateBaseGame(0, game.GameType_RISQ, map[string]any{"ai_players": ai_players, "seed": float64(1)})
+	base := game.CreateBaseGame(0, game.GameType_RISQ, map[string]any{"ai_players": ai_players, "seed": float64(1)}, nil, nil)
 	generate := func(board mapgen.Board, _ *rand.Rand, num_players int) error {
 		return mapgen.GenerateCustomDocument(board, num_players, doc)
 	}

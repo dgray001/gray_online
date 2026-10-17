@@ -1,8 +1,4 @@
-"""Generates config/ai/v0.6.json: a generalist driven only by game state.
-
-Each turn: read state -> remember the enemy -> decide wants -> turn wants into per-turn resource rates, minus the bank
--> size one gather bucket per resource -> spend -> fight. Blunts raid villagers away from defensive buildings;
-heavies and piercers form the assault army; nothing keys off the turn number."""
+"""Generates generalist v0.7 rules for economy, cohesive armies and civilian recovery."""
 import json, os, sys
 
 VIL, BLUNT, PIERCE, HEAVY = 1, 11, 12, 13
@@ -12,6 +8,12 @@ DEFENSIVE = "1_21_23"  # buildings that shoot at their whole space
 
 P = dict(
     vil_share=0.5,     # most of the population ceiling the economy may take
+    mature_vil_share=0.4,
+    vil_floor=8.0,
+    emergency_rax=1,
+    rax_bootstrap=1,
+    shelter=0,
+    evacuate=1,
     horizon=10,
     decay=0.3,
     # raiding
@@ -28,6 +30,8 @@ P = dict(
     assault_odds_noeco=1.1, power_odds_noeco=0.85, cap_odds_noeco=0.8,  # the same three while the army has no economy behind it (-1 = same)
     early_blunts=3,
     invest_share=0.3,
+    vc_cluster=0,
+    vil_unknown=0.25,
     vil_crush_odds=2,  # villagers fight only with this much more strength than the enemy soldiers in their space
     sustain=15,
     # Redoubt pressure from idle gold: while no Redoubt exists, smoothed idle gold covering merc_batch mercenary hires wants one (it opens Mercenary Contracts and heavies)
@@ -45,6 +49,20 @@ P = dict(
     overwhelm_global=0,  # 1: overwhelm compares against the larger of the local threat and the remembered total enemy army (ePowEst)
     entry=3,             # the final order: 0 move into the target space, 1 attack-space order on it, 2 attack-zone order on it
     focus=0,            # soldier targeting: 0 nearest, 1 wounded first, 2 low max health first, 3 high max health first, 4 healthy first
+    simple_army=1,
+    simple_rest=0,
+    simple_approach=0,
+    simple_charge_ratio=0,
+    simple_group=0.8,
+    simple_entry=0,
+    simple_civilians=1,
+    simple_defense=1,
+    balance_workers=0,
+    binary_launch=0,
+    rally=0,
+    local_combat=0,
+    claim_max=0,
+    group_share=1.0,
     rest_dist=1,        # spaces from the target where the army regroups and rests (1 = adjacent, 2 = hold a space further out)
     army_aggr=0,         # 1: the army marches and rests in the aggressive stance (attacks anything within 2 spaces)
     army_ab=1,           # attack back when hit (0 = ignore hits and keep following orders)
@@ -117,7 +135,8 @@ P = dict(
     est_insp_safe=1,   # inspector score drops 100 per visible enemy soldier within a space of the target
     est_insp_cool=2.0,  # turns the home inspector rests after it fires
 )
-OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config', 'ai', 'v0.6.json')
+CONFIG = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'config')
+OUT = os.path.join(CONFIG, 'ai', 'v0.7.json')
 for arg in sys.argv[1:]:
     k, v = arg.split('=')
     if k == 'out':
@@ -173,6 +192,7 @@ rule(ALWAYS,
      setv("vil_worth_now", "0.6 + 0.4 * var(farming)"),
      setv("pikes", "var(tech_researched_5)"),
      setv("rate", "6 + 1.5 * var(farming)"),  # what a villager brings in per turn, walking included
+     *([setv("had_city", "max(var(had_city), min(1, var(vcs)))", True)] if P['evacuate'] else []),
      )
 if int(P['est_bounds']):
     # our turn-1 state, read before any rule spends: the bounds assume the enemy mirrors it
@@ -251,12 +271,18 @@ def site_score(n):
             f" + {w('spread')} * (0 - var(target_own_buildings)) + {w('vision')} * (4 - var(target_vision))"
             f" + {w('region')} * var(target_region_progress)")
 SITE_SCORE = {n: site_score(n) for n in TRACKED}
+SHELTER_CAPACITY = {b['building_id']: b.get('garrison_capacity', 0) for b in json.load(open(os.path.join(CONFIG, 'buildings.json'))) if b.get('garrison_capacity', 0)}
+def shelter_capacity(anchor: str = '') -> str:
+    suffix = f'_within_0_of_{anchor}' if anchor else ''
+    return ' + '.join(f'{capacity} * var(building_count_{building}_complete{suffix})' for building, capacity in sorted(SHELTER_CAPACITY.items()))
+if P['shelter']:
+    SITE_SCORE['outpost'] += f" + 5 * min(5, max(0, var(population_1_within_0_of_target) - ({shelter_capacity('target')}))) * min(1, var(shelter_want))"
 # base weights as variables, so any later rule can override one with set_var before the build rules run
 rule(ALWAYS, *(setv(f"site_{w}_{n}", site_weight(n, w)) for n in TRACKED for w in SITE_WEIGHTS))
 
 def power_at_unit(side: str, within: int) -> str:
     c = (lambda uid: f"var(enemy_units_visible_{uid}_within_{within}_of_unit)") if side == 'enemy' else (lambda uid: f"var(population_{uid}_within_{within}_of_unit)")
-    unknown = f" + {unknown_power_near('unit', within)}" if side == 'enemy' else ""
+    unknown = f" + {P['vil_unknown']} * {unknown_power_near('unit', within)}" if side == 'enemy' else ""
     return f"({c(11)} + 2 * {c(12)} + 4 * {c(13)}{unknown})"
 threat_near = f"({power_at_unit('enemy', 1)} + var(enemy_units_visible_1_within_0_of_unit))"
 ours_here = f"(var(vil_worth_now) * var(population_1_within_0_of_unit) + {power_at_unit('mine', 0)})"
@@ -264,6 +290,10 @@ crush_margin = f"{ours_here} - {P['vil_crush_odds']} * {threat_near}"
 VIL_SOLDIERS_NEAR = ge(power_at_unit('enemy', 1), 1)
 VIL_SOLDIERS_HERE = ge(power_at_unit('enemy', 0), 1)
 ECO_DEFENDING = any_(all_(VIL_SOLDIERS_HERE, ge(crush_margin, 0)), all_(VIL_SOLDIERS_NEAR, le(crush_margin, -0.01)))
+SHELTER_WANT = setv("shelter_want", f"{one('var(enemy_units_visible_military_within_2)')} * {one(f'var(vils) - ({shelter_capacity()})')}")
+if P['shelter'] >= 2:
+    uncovered = ge(f"var(population_1_within_0_of_unit) - ({shelter_capacity('unit')})", 1)
+    SHELTER_WANT = dict(setv("shelter_want", "min(1, var(population_1))"), unit_when=all_(VIL_SOLDIERS_NEAR, le(crush_margin, -0.01), uncovered))
 
 # ================= wants =================
 # unit stats the script can't look up yet (production per building per turn at the current stamina numbers)
@@ -305,12 +335,19 @@ def workforce_projection() -> tuple[dict[str, object], ...]:
         setv("u_redoubt", "max(0, var(spare)) * var(shareH) / max(1, var(redoubt_spend))"),
     )
 BEHIND_SRC = "var(eRecent)" if int(P['est_behind_src']) else "var(ePowSeen)"
+RAX_BANK_FOOD = f"food - 3 * ({uc('food', VIL)} + {uc('food', BLUNT)}) + 1"
+RAX_BANK_WOOD = f"wood - {bc('wood', BARRACKS)} - 3 * {uc('wood', BLUNT)} - {bc('wood', HOUSE)} + 1"
+RAX_READY = f"max({one('var(n_barracks)')}, {one('var(vils) - 7')}, {one(RAX_BANK_FOOD)} * {one(RAX_BANK_WOOD)})"
+RAX_GATE = " * var(rax_ready)" if P['rax_bootstrap'] else ""
+VIL_SHARE = str(P['vil_share'])
+if P['mature_vil_share'] >= 0:
+    VIL_SHARE += f" - ({P['vil_share']} - {P['mature_vil_share']}) * {one('(var(mil) - 10) / 10')}"
 rule(ALWAYS,
      setv("est_close", f"{one('var(enemy_buildings_known)')} * max(0, 1 - var(enemy_distance) / {P['est_close_ref']})"),
      *([setv("eRecent", f"{1 - P['est_recent_w']} * var(eRecent) + {P['est_recent_w']} * var(ePow)", True)] if int(P['est_behind_src']) else []),
      setv("est_behind", f"min(1, max(0, ({BEHIND_SRC} - (var(B) + 2 * var(Pi) + 4 * var(Hv))) / max(4, {BEHIND_SRC})))"),
      setv("est_press", f"min(1, {P['est_prio_close']} * var(est_close) + {P['est_prio_behind']} * var(est_behind))"),
-     setv("vil_share_now", f"max(0.2, {P['vil_share']} - {P['est_close']} * var(est_close) - {P['est_behind']} * var(est_behind))"))
+     setv("vil_share_now", f"max(0.2, {VIL_SHARE} - {P['est_close']} * var(est_close) - {P['est_behind']} * var(est_behind))"))
 rule(ALWAYS,
      # how well each unit does against the remembered enemy mix (blunt > piercer > heavy > blunt; 1 = even)
      setv("es", "var(eB) + var(eP) + var(eH) + 1"),
@@ -322,6 +359,7 @@ rule(ALWAYS,
      setv("redoubt_spend", f"{gatherable(HEAVY)} * {PR[HEAVY]}"),
      # every producer we already have (built or being built) and what it eats per turn while busy
      setv("n_barracks", "var(building_count_22)"), setv("n_redoubts", "var(building_count_23)"),
+     *([setv("rax_ready", RAX_READY)] if P['rax_bootstrap'] else []),
      setv("shareH", "var(vH) / (var(vH) + max(var(vB), var(vP)))"),
      *workforce_projection(),
      # one more is worth it when keeping it that busy for the sustain window repays its cost
@@ -330,18 +368,21 @@ rule(ALWAYS,
      setv("gold_income", f"{SPACE_GOLD} * land"),
      # Redoubts also need the gold that keeps heavies coming and the stone to build them
      setv("redoubt_gold_ok", f"{one(f'(var(gold_income) + max(0, gold) / ' + str(P['sustain']) + ') / max(1, ' + uc('gold', HEAVY) + ' * ' + str(PR[HEAVY]) + ') - var(n_redoubts)')}"),
-     setv("barracks_want", f"{one('var(vils)')} * {one('(var(u_barracks) - var(bar_barracks)) * 100')}"),
+     setv("barracks_want", f"{one('var(vils)')} * {one('(var(u_barracks) - var(bar_barracks)) * 100')}{RAX_GATE}"),
+     *([setv("emergency_rax", f"{one('var(vils)')} * {one('1 - var(n_barracks)')} * {one('var(enemy_units_visible_military_within_2)')}"),
+        setv("barracks_want", "max(var(barracks_want), var(emergency_rax))")] if P['emergency_rax'] else []),
      setv("redoubt_want", f"{one('var(vils)')} * var(redoubt_gold_ok) * {one('max((var(u_redoubt) - var(bar_redoubt)) * 100, ' + MERC_DRIVE + ' * 100)')}"),
      setv("redoubt_urgency", redoubt_urgency()),
      setv("redoubt_age", "max(0, var(redoubt_age) + 2 * var(redoubt_want) - 1)", True),
      # start saving when most of the way there
-     setv("barracks_save", f"{one('var(vils)')} * {one('(var(u_barracks) / max(0.01, var(bar_barracks)) - 0.7) * 3.4')}"),
+     setv("barracks_save", f"{one('var(vils)')} * {one('(var(u_barracks) / max(0.01, var(bar_barracks)) - 0.7) * 3.4')}{RAX_GATE}"),
+     *([setv("barracks_save", "max(var(barracks_save), var(emergency_rax))")] if P['emergency_rax'] else []),
      setv("redoubt_save", f"{one('var(vils)')} * var(redoubt_gold_ok) * {one('max((var(u_redoubt) / max(0.01, var(bar_redoubt)) - 0.7) * 3.4, ' + MERC_DRIVE + ' * 100)')}"),
      # villagers: enough income to fill our army room within the sustain window, less what the bank covers, up to our share of the ceiling
      setv("army_target", "var(population_max) * (1 - var(vil_share_now))"),
      setv("unit_spend", f"max({gatherable(BLUNT)}, {gatherable(PIERCE)}, {gatherable(HEAVY)})"),
      setv("target_spend", f"var(army_target) / {P['sustain']} * var(unit_spend) + var(vcs) * {gatherable(VIL)} * {PR[VIL]}"),
-     setv("vil_goal", f"min(var(population_max) * var(vil_share_now), max(0, var(target_spend) - var(bank_rate)) / var(rate) + 2)"),
+     setv("vil_goal", f"min(var(population_max) * var(vil_share_now), max({P['vil_floor']}, max(0, var(target_spend) - var(bank_rate)) / var(rate) + 2))"),
      setv("vil_want", f"max(0, var(vil_goal) - var(vils)) * {one('var(vcs)')}"),
      setv("vil_want_last", "var(vil_want)", True),
      setv("vil_rate", f"{one('var(vil_want)')} * var(vcs)"),
@@ -398,7 +439,7 @@ _BUILD_FIRES = {
     # farms go up in parallel, as many as are wanted (a few per turn)
     **{f"farm{i}": (FARM, at_least_1(f"(var(farm_want) - {pending('farm', FARM)} - {i}) * 2"), "2") for i in range(MAX_NEW_FARMS)},
     # land pays gold: claim a space for every 2 gold/turn we are short, once we can defend it
-    "outpost":  (OUTPOST,  at_least_1("var(barracks)") + " * " + at_least_1(f"1 - {pending('outpost', OUTPOST)}") + " * " + at_least_1("var(outpost_want)"), "1"),
+    "outpost":  (OUTPOST,  at_least_1("var(barracks) + var(shelter_want)" if P['shelter'] else "var(barracks)") + " * " + at_least_1(f"1 - {pending('outpost', OUTPOST)}") + " * " + at_least_1("var(outpost_want)"), "1"),
 }
 
 # a build fires, and holds villagers back, only once it can be paid for; until then the plan gathers for it
@@ -415,6 +456,8 @@ rule(ALWAYS,
      *(setv(f"tech_{r}", f"(1 - var(farming)) * {tc(r, FARMING)} + {one('var(smiths) + var(smith_want)')} * ((1 - var(pikes)) * {tc(r, PIKES)}"
                          f" + (1 - var(tech_researched_2)) * {tc(r, ATTACK)} + (1 - var(tech_researched_3)) * {tc(r, ARMOR)})") for r in RES),
      setv("outpost_want", f"max(0, (var(gold_rate) + var(tech_gold) / {H} - var(gold_income)) / {SPACE_GOLD})"),
+     *([SHELTER_WANT,
+        setv("outpost_want", "max(var(outpost_want), var(shelter_want))")] if P['shelter'] else []),
      *(setv(f"lump_{r}", f"var(vc_want) * {bc(r, VC)} + var(barracks_save) * {bc(r, BARRACKS)}{redoubt_lump(r)}"
                          f" + var(smith_want) * {bc(r, SMITH)}{SMITH_WEIGHT} + var(farm_want) * {bc(r, FARM)} + min(1, var(outpost_want)) * {bc(r, OUTPOST)}"
                          f" + var(house_want) * {bc(r, HOUSE)} * (1 + ({H} - 1) * var(house_urgency))"
@@ -459,6 +502,9 @@ rule(ALWAYS,
      setv("food_over", "min(max(0, var(w_food) - var(food_slots)), var(farm_wood_short) / (var(rate) * 2))"),
      setv("w_food", "var(w_food) - var(food_over)"),
      setv("w_wood", "var(w_wood) + var(food_over)"),
+     setv("balance_workers", f"max(0, min({P['balance_workers']} * var(w_food), (food - 2 * var(food_rate)) / (3 * var(rate)), (2 * var(wood_rate) - wood) / (3 * var(rate))))"),
+     setv("w_food", "var(w_food) - var(balance_workers)"),
+     setv("w_wood", "var(w_wood) + var(balance_workers)"),
      *({"action": "empty_bucket", "bucket": c} for c in RES),
      # sizes round down (food rounds to nearest), so together they never eat into the builders
      *({"action": "set_bucket", "bucket": c, "size": f"max(0, var(w_{c}) - {0 if c == 'food' else 0.49})",
@@ -485,6 +531,8 @@ def build_rule(tracker, when, b, builders):
          dict(scored, reuse_unbuilt_foundation=False, direction="away",
               direction_from={"x": f"var({tracker}_bad_x)", "y": f"var({tracker}_bad_y)"}, **{"from": "home"}))
 VIL_WAIT = [ge(f"food - var(est_press) * min(2, var(barracks)) * {uc('food', BLUNT)}", 50)] if int(P['est_prio']) >= 2 else []
+if P['emergency_rax'] >= 2:
+    VIL_WAIT += [any_(le("var(enemy_units_visible_military_within_2)", 0), le("var(barracks)", 0), ge("var(mil)", 3), ge(f"food - {uc('food', BLUNT)}", uc('food', VIL)))]
 rule(all_(ge("var(vil_want)", 1), *VIL_WAIT), {"action": "create", "unit_id": VIL, "queue": f"1 + {one(str(uc('food', VIL)) + ' - var(w_food) * var(rate)')}"})
 if int(P['smith_push']):
     # wanted long enough (or Pikes wanted), the Blacksmith builds before the farms and anything else that would spend its wood
@@ -570,6 +618,19 @@ if int(P['scout_home']):
 else:
     rule(le("var(scout_phase)", 0), {"action": "empty_bucket", "bucket": "scout"})
 
+if P['emergency_rax'] >= 2:
+    rule(all_(ge("var(enemy_units_visible_military_within_2)", 1), le("var(mil)", 3)), {"action": "empty_bucket", "bucket": "scout"})
+MILITARY_START = len(rules)
+if P['claim_max'] > 0:
+    claim_where = {"owner": "unowned", "vision_at_least": 1}
+    claim_score = "0 - var(target_distance) - 100 * var(enemy_units_visible_military_within_2_of_target) - 100 * var(enemy_units_unidentified_within_1_of_target) - 100 * var(enemy_buildings_known_within_1_of_target)"
+    rule(ALWAYS,
+         {"action": "set_bucket", "bucket": "claim", "size": f"min({P['claim_max']}, max(0, (var(mil) - 8) / 8))", "task": {"action": "move", "targets": "closest_spaces", "from": "unit", "where": claim_where, "score": claim_score, "min_score": -20, "spread": {"group_by": "space", "capacity": 1, "overflow": "none"}, "unit_when": any_(ge("var(population_military_within_0_of_unit)", 2), ge("var(building_count_within_0_of_unit)", 1))}},
+         {"action": "fill_bucket", "bucket": "claim", "unit_ids": [BLUNT]},
+         {"action": "run_bucket", "bucket": "claim"})
+    rule({"not": {"count_spaces_at_least": {"where": claim_where, "amount": 1}}}, {"action": "empty_bucket", "bucket": "claim"})
+if not P['forward']:
+    rule(ALWAYS, setv("army_fwd", 0))
 # ================= raiding: a few blunts harass the economy and never fight soldiers =================
 vw, odds, rmin = P['vil_worth'], P['raid_odds'], P['raid_min']
 RAID_ORDERS = ["move", "attack_space", "attack_unit", "attack_zone", "attack_building"]
@@ -628,10 +689,10 @@ def hit_damage(attacker, target, attack_tech, pikes):
     defense = sum(target.get(f'defense_{k}', 0) * (1 - (attacker.get(f'penetration_{k}', 0) + (40 * pikes if boost and k == 'piercing' else 0)) / 100) for k in kinds)
     reference = attack - defense if defense / attack <= 0.5 else attack * 4 ** (-defense / attack)
     return 3 * max(0.1, reference / 10)
-def is_value(expr, value): return f"max(0, 1 - max({expr} - {value}, {value} - {expr}))"
+def is_value(expr: str, value: float) -> str: return f"max(0, 1 - max(({expr}) - {value}, {value} - ({expr})))"
 def hit_table():
     """Expression for the damage per hit of the unit being assigned (var(unit_id)) against the candidate (matched by its max health)"""
-    units = [u for u in json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config', 'units.json'))) if u['unit_id'] in (VIL, BLUNT, PIERCE, HEAVY)]
+    units = [u for u in json.load(open(os.path.join(CONFIG, 'units.json'))) if u['unit_id'] in (VIL, BLUNT, PIERCE, HEAVY)]
     assert len({u['max_health'] for u in units}) == len(units), "candidates are told apart by max health"
     terms = []
     for a in units:
@@ -703,6 +764,9 @@ if int(P['est_bounds']):
                    setv("est_cap_rs", f"var(est_bound_on) * (var(est_bound_rs) + {P['est_interp']} * (var(est_bound_th) - var(est_bound_rs)) * var(est_frac)) + (1 - var(est_bound_on)) * 100000")]
 CAP_MEM = [t for t, flag in (("th", 'est_capT_mem'), ("rs", 'est_capR_mem')) if int(P[flag])]
 CAP_EST = [t for t, flag in (("th", 'est_capT_est'), ("rs", 'est_capR_est')) if int(P[flag])]
+GO_READY = all_(ge("var(homePow) - var(ao) * var(ePowEst)", 0), ge("var(homePow)", P['assault_min']))
+if P['binary_launch'] == 2:
+    GO_READY = all_({"not": le("var(homePow) - var(ao) * var(ePowEst) + 1", 0)}, {"not": le(f"var(homePow) - {P['assault_min']} + 1", 0)})
 rule(ALWAYS,
      # the strongest enemy army we have seen: an army we haven't beaten is still out there, so it fades only slowly
      # the enemy army keeps growing after we last saw it (about 0.2 power a turn per known barracks or Redoubt, from
@@ -729,7 +793,9 @@ rule(ALWAYS,
      setv("cap_fill", f"min(1, max(0, (population - {P['cap_ramp']} * var(population_max)) / (max(0.01, 1 - {P['cap_ramp']}) * var(population_max))))"),
      setv("ao", f"min(var(ao), {eco_odds('assault_odds')} - ({eco_odds('assault_odds')} - {eco_odds('cap_odds')}) * var(cap_fill))"),
      # launch: the soldiers gathered at home beat what we have seen, and are a real army
-     setv("go", one(f"var(homePow) - {ao} * var(ePowEst) + 1") + " * " + one(f"var(homePow) - {P['assault_min']} + 1")),
+     ({"action": "if", "when": GO_READY,
+       "then": [setv("go", 1)], "else": [setv("go", 0)]} if P['binary_launch'] else
+      setv("go", one(f"var(homePow) - {ao} * var(ePowEst) + 1") + " * " + one(f"var(homePow) - {P['assault_min']} + 1"))),
      # the army's local fight: soldiers within a space of it, plus defensive buildings in its space
      setv("aPowLocal", f"{pow_near('mine', 'army', 1)} * var(myTech)"),
      setv("aThreat", f"{pow_near('enemy', 'army', 1)} * var(eTech) + 6 * var(enemy_buildings_known_{DEFENSIVE}_within_0_of_army) + {vw} * var(enemy_units_visible_1_within_0_of_army)"),
@@ -753,7 +819,7 @@ rule(ALWAYS,
      *([setv("army_retreat", f"max(var(a_outnumbered), var(army_retreat) * {one(pow_near('enemy', 'army', 2))} * (1 - {one('var(population_military_bucket_army_within_0) - var(bucket_size_army) + 1')} * {one('var(building_count)')}))", True), setv("a_outnumbered", "var(army_retreat)")] if P['retreat_hold'] else []),
      setv("assault", f"min(1, max(var(assault) * (1 - var(a_outnumbered)) *{one('var(bucket_size_army) - 3')}, var(go)))", True),
      {"action": "set_bucket", "bucket": "army", "size": ("max(var(assault), var(army_retreat), 1 - min(1, var(building_count))) * var(mil)" if P['retreat_hold'] else "max(var(assault), 1 - min(1, var(building_count))) * var(mil)"), "task": {"action": "move", "targets": "retreat"}},
-     {"action": "fill_bucket", "bucket": "army", "unit_types": ["military"], "eligible": ["move", "gather", "attack_unit", "attack_building", "attack_space", "attack_zone"]})
+     {"action": "fill_bucket", "bucket": "army", "unit_types": ["military"], "eligible": ["move", "gather", "attack_unit", "attack_building", "attack_space", "attack_zone"], **({"unit_when": any_(le("var(bucket_size_army)", 0), ge("var(population_military_bucket_army_within_0_of_unit)", 1))} if P['rally'] else {})})
 rule(all_(le("var(assault)", 0), le("var(a_outnumbered)", 0), {"building_count_at_least": {"amount": 1}}), {"action": "empty_bucket", "bucket": "army"})
 # the space the army launches from is its home when there are no buildings; recorded on the launch turn
 rule(all_(ge("var(assault)", 1), ge("var(bucket_size_army)", 1), le("var(launch_set)", 0)),
@@ -763,7 +829,7 @@ rule(le("var(assault)", 0), setv("launch_set", 0, True))
 # with no buildings a retreat is over once the whole army is back at the launch space
 rule(all_(ge("var(army_retreat)", 1), {"not": HAS_BUILDINGS}, {"population_at_least": {"unit_types": ["military"], "in_bucket": "army", "within": 0, "from": LAUNCH, "amount": "var(bucket_size_army)"}}),
      setv("army_retreat", 0, True))
-ARMY = dict(in_bucket="army", eligible=["move", "attack_unit", "attack_building", "attack_space", "attack_zone"], together=True)
+ARMY = dict(in_bucket="army", eligible=["move", "attack_unit", "attack_building", "attack_space", "attack_zone"], together=P['group_share'] >= 1)
 # soldiers are defensive by default; only those in a fight turn aggressive (see local fights below)
 def army_stance_rule(ab, extra=None):
     return dict({"action": "set_unit_behavior", "in_bucket": "army", "stance": "aggressive" if P['army_aggr'] else "defensive", "attack_back": ab, "interrupt_current": bool(P['army_int']), "unit_when": all_(NOT_IN_FIGHT, *([extra] if extra else []))})
@@ -782,12 +848,12 @@ ENEMY_SOLDIERS_2 = f"(var(enemy_units_visible_military_within_2_of_army) + var(e
 CR = int(P['contact_radius'])
 ENEMY_SOLDIERS_1 = f"(var(enemy_units_visible_military_within_{CR}_of_army) + var(enemy_units_unidentified_within_{CR}_of_army))"  # contact: enemy soldiers this close to the army
 SPREAD_ARMY = all_(ge("var(bucket_size_army)", 2), le("var(a_engaged)", 0),
-                    le(f"var(population_military{BKT}_within_0_of_army) - var(bucket_size_army)", -1))
+                    le(f"var(population_military{BKT}_within_0_of_army) - {P['group_share']} * var(bucket_size_army)", -0.01))
 # a clear surplus over the retreat odds skips the rest turn, a larger one also the staging; only once some of their soldiers have been identified, since counted-only units are valued low
 def skip_flag(margin): return one(f"(var(armyPow) - var(ePowEst) * ({ao} - {P['retreat_margin']} + {margin})) * 1000") + " * " + one("var(ePowEst)") + " * " + one("var(bucket_size_army)") + " * " + one("var(eMil)")
 rule(ALWAYS, setv("skip_rest", skip_flag(P['skip_rest_margin'])), setv("skip_stage", skip_flag(P['skip_stage_margin'])))
 SKIP_REST, SKIP_STAGE_FLAG = ge("var(skip_rest)", 1), ge("var(skip_stage)", 1)
-ARMY_GROUPED = all_(ge("var(bucket_size_army)", 1), ge(f"var(population_military{BKT}_within_0_of_army) - var(bucket_size_army)", 0))
+ARMY_GROUPED = all_(ge("var(bucket_size_army)", 1), ge(f"var(population_military{BKT}_within_0_of_army) - {P['group_share']} * var(bucket_size_army)", 0))
 TARGET_AT = {"x": "var(army_target_x)", "y": "var(army_target_y)"}
 SKIP_STAGE = SKIP_STAGE_FLAG
 NEVER = {"value_at_least": {"value": 0, "amount": 1}}
@@ -823,14 +889,14 @@ rule(all_(CONTACT, ARMY_GROUPED),
      dict({"action": "attack", "targets": "enemy_units", "target_unit_types": ["military"], "score": "40 - 5 * var(target_distance)", "min_score": 30, "order": "space"}, **ARMY))
 # 4. staging: once grouped near the target go on to the approach, else regroup two spaces out at the occupied army space nearest the target
 STAGING = all_(ARMY_LIVE, ge("var(army_stage)", 1), le("var(army_stage)", 1))
-rule(all_(STAGING, ARMY_GROUPED, army_near_target(int(P['stage_dist']), "var(bucket_size_army)")), setv("army_stage", 2, True))
+rule(all_(STAGING, ARMY_GROUPED, army_near_target(int(P['stage_dist']), f"{P['group_share']} * var(bucket_size_army)")), setv("army_stage", 2, True))
 rule(all_(STAGING, SPREAD_ARMY),
      dict({"action": "move", "targets": "closest_spaces", "from": TARGET_AT, "exclude_reference": True,
            "where": {"all": [{"unit_count_at_least": 1}, {"not": {"owner": "enemy"}}]}, **HELD}, **ARMY))
 # 5. approach: move together to a space one away from the target and regroup there
 APPROACHING = all_(ARMY_LIVE, ge("var(army_stage)", 2))
 REST_DIST = int(P['rest_dist'])
-AT_ONE_AWAY = all_(ARMY_GROUPED, army_near_target(REST_DIST, "var(bucket_size_army)"), {"not": army_near_target(REST_DIST - 1)})
+AT_ONE_AWAY = all_(ARMY_GROUPED, army_near_target(REST_DIST, f"{P['group_share']} * var(bucket_size_army)"), {"not": army_near_target(REST_DIST - 1)})
 if REST_DIST == 1:
     rule(all_(APPROACHING, {"not": AT_ONE_AWAY}),
          dict({"action": "move", "targets": "closest_spaces", "from": TARGET_AT, "exclude_reference": True, **({"face": TARGET_AT} if int(P['edge']) else {}), **({"score": "0 - var(target_distance)"} if int(P['approach_near']) else {})}, **ARMY))
@@ -958,6 +1024,9 @@ if int(P['est_inspect']):
          *([setv("insp_cool", P['est_insp_cool'], True)] if P['est_insp_cool'] > 0 else []))
 
 
+if P['rally']:
+    rule(all_(ge("var(bucket_size_army)", 1), le("var(a_outnumbered)", 0), le("var(threat_home)", 0)),
+         {"action": "move", "exclude_buckets": True, "unit_types": ["military"], "eligible": ["move", "attack_unit", "attack_building", "attack_space", "attack_zone"], "targets": "closest_spaces", "from": "army", "held_by_bucket": "army", "where": {"unit_count_at_least": 1}, "unit_when": NOT_IN_FIGHT})
 # ================= local fights: every soldier sharing a space with enemy soldiers works script-assigned targets =================
 # overrides earlier military orders; retreat rules follow
 # the enemy soldiers in spaces where we have soldiers are shared out among ours there
@@ -967,6 +1036,8 @@ rule(ALWAYS, {"action": "set_unit_behavior", "unit_types": ["military"], "stance
 FOCUS = {0: "", 1: " + 4 * (1 - var(target_health) / max(1, var(target_max_health)))", 2: " - var(target_max_health) / 10", 3: " + var(target_max_health) / 10",
          4: " - 4 * (1 - var(target_health) / max(1, var(target_max_health)))"}[int(P['focus'])]
 FIGHT_SCORE = "10 * min(1, var(population_military_within_0_of_target)) - var(target_distance) / 10" + FOCUS
+if P['local_combat']:
+    FIGHT_SCORE = "10 - 100 * var(target_distance) - var(unit_distance) / 10" + FOCUS
 SPILL = P['spill_vils'] or P['spill_bldgs'] or P['adj_hold']
 FIGHT = dict(unit_types=["military"], eligible=SPREAD_ELIGIBLE, spread=dict(SPREAD, overflow="none" if SPILL else "round_robin"), unit_when=IN_FIGHT)
 rule(ALWAYS, dict({"action": "attack", "targets": "enemy_units", "target_unit_types": ["military"], "score": FIGHT_SCORE, "min_score": 5}, **FIGHT))
@@ -1003,6 +1074,60 @@ rule(all_(ge("var(bucket_size_raid)", 1), ge("var(raid_danger)", 1)),
 rule(all_(ge("var(bucket_size_raid)", 1), ge("var(raid_danger)", 1)),
      {"action": "set_unit_behavior", "in_bucket": "raid", "stance": "defensive", "attack_back": True, "interrupt_current": False, "unit_when": all_(AT_BASE, NOT_IN_FIGHT)})
 
+if P['simple_army']:
+    del rules[MILITARY_START:]
+    simple_own = f"{pow_near('mine', 'army', 1)} * (1 + 0.25 * var(tech_researched_2) + 0.15 * var(tech_researched_3))"
+    simple_enemy = f"{pow_near('enemy', 'target', 1)} * 1.15 + 3 * var(enemy_buildings_known_{DEFENSIVE}_within_0_of_target) + 0.4 * var(enemy_units_visible_1_within_0_of_target)"
+    simple_eligible = ["move", "attack_unit", "attack_building", "attack_space", "attack_zone", "auto_attack_unit", "auto_attack_building"]
+    rule(ALWAYS, {"action": "set_bucket", "bucket": "army", "size": "var(mil)", "task": {"action": "move", "targets": "home"}},
+         {"action": "fill_bucket", "bucket": "army", "unit_types": ["military"], "eligible": simple_eligible}, setv("simple_power", simple_own))
+    rule(ALWAYS, {"action": "set_unit_behavior", "unit_types": ["military"], "stance": "defensive", "attack_back": True, "interrupt_current": False})
+    simple_targets = [("enemy_units", 40, {"target_unit_types": ["military"]}), ("enemy_buildings", 30, {}), ("unidentified_units", 20, {})]
+    if P['simple_civilians']:
+        simple_targets.append(("enemy_units", 25, {"target_unit_ids": [VIL]}))
+    simple_options = [{"targets": targets, "score": f"{priority} - var(target_distance) - 1000 * max(0, 1.2 * ({simple_enemy}) - var(simple_power))", "min_score": 1, **filters}
+                      for targets, priority, filters in simple_targets]
+    rule(ALWAYS, {"action": "select_space", "from": "army", "options": simple_options, "var_x": "simple_x", "var_y": "simple_y", "var_score": "simple_target"})
+    small_guard = le("var(simple_power)", 7.99)
+    if P['simple_defense'] == 3:
+        small_guard = all_(small_guard, ge(f"var(enemy_units_visible_military_within_{2 if P['emergency_rax'] >= 2 else 1})", 1))
+    rule(all_(ge("var(bucket_size_army)", 1), any_(le("var(simple_target)", 0), small_guard) if P['simple_defense'] else le("var(simple_target)", 0)),
+         {"action": "move", "in_bucket": "army", "eligible": simple_eligible, "targets": "home", "unit_when": NOT_IN_FIGHT})
+    simple_grouped = ge(f"var(population_military_bucket_army_within_0_of_army) - {P['simple_group']} * var(bucket_size_army)", 0)
+    if P['simple_group']:
+        rule({"not": simple_grouped}, {"action": "move", "in_bucket": "army", "eligible": simple_eligible, "targets": "closest_spaces", "from": "army", "held_by_bucket": "army", "where": {"unit_count_at_least": 1}, "unit_when": NOT_IN_FIGHT})
+    rule(all_(ge("var(simple_power)", 8), ge("var(simple_target)", 1), simple_grouped),
+         {"action": "attack" if P['simple_entry'] else "move", **({"order": "space"} if P['simple_entry'] else {}), "in_bucket": "army", "eligible": simple_eligible, "targets": "coordinate", "coordinate": {"x": "var(simple_x)", "y": "var(simple_y)"}, "together": True, "unit_when": NOT_IN_FIGHT})
+    simple_target_at = {"x": "var(simple_x)", "y": "var(simple_y)"}
+    simple_close = {"population_at_least": {"in_bucket": "army", "within": 1, "from": simple_target_at, "amount": "max(1, var(bucket_size_army) * 0.8)"}}
+    simple_in_target = {"population_at_least": {"in_bucket": "army", "within": 0, "from": simple_target_at, "amount": 1}}
+    charge_required = ALWAYS
+    if P['simple_approach'] and P['simple_charge_ratio']:
+        rule(ALWAYS, {"action": "select_space", "from": "army", "options": [{"targets": "closest_spaces", "from": simple_target_at, "score": simple_enemy}], "var_score": "simple_threat"})
+        charge_required = ge(f"var(simple_threat) - {P['simple_charge_ratio']} * var(simple_power)", 0)
+    if P['simple_approach']:
+        rule(all_(ge("var(simple_power)", 8), ge("var(simple_target)", 1), simple_grouped, charge_required, {"not": simple_close}),
+             {"action": "move", "in_bucket": "army", "eligible": simple_eligible, "targets": "closest_spaces", "from": simple_target_at, "exclude_reference": True, "face": simple_target_at, "score": "0 - var(target_distance)", "together": True, "unit_when": NOT_IN_FIGHT})
+    if P['simple_rest']:
+        normal_stamina = f"15 - 3 * {is_value('var(marcher.unit_id)', PIERCE)} - 7 * {is_value('var(marcher.unit_id)', HEAVY)}"
+        rule(ALWAYS, setv("simple_stamina", 0),
+             {"action": "for_each", "in_bucket": "army", "source": "units", "as": "marcher", "do": [setv("simple_stamina", f"var(simple_stamina) + var(marcher.stamina) / ({normal_stamina})")]})
+        rule(all_(ge("var(simple_target)", 1), charge_required, le("var(simple_stamina) - var(bucket_size_army) * " + str(P['simple_rest']), -0.01),
+                  {"population_at_least": {"in_bucket": "army", "within": 1 if P['simple_approach'] else 2, "from": simple_target_at, "amount": "max(1, var(bucket_size_army) * 0.8)" if P['simple_approach'] else "max(1, var(bucket_size_army) * 0.5)"}}, *([{"not": simple_in_target}] if P['simple_approach'] else [])),
+             {"action": "unit_stop", "in_bucket": "army", "interrupt_current": True, "unit_when": NOT_IN_FIGHT})
+    if P['simple_defense']:
+        guard_when = ALWAYS if P['simple_defense'] == 1 else small_guard
+        rule(guard_when, {"action": "attack", "in_bucket": "army", "eligible": simple_eligible, "targets": "enemy_units", "target_unit_types": ["military"], "order": "space", "score": "100 - var(target_distance) - 1000 * (1 - min(1, var(base_spaces_within_0_of_target) + var(population_1_within_0_of_target)))", "min_score": 0, "max": 6, "unit_when": all_(NOT_IN_FIGHT, ge("var(base_spaces_within_1_of_unit)", 1))})
+    rule(ALWAYS, {"action": "set_unit_behavior", "unit_types": ["military"], "stance": "aggressive", "attack_back": False, "interrupt_current": False, "unit_when": IN_FIGHT},
+         {"action": "attack", "unit_types": ["military"], "eligible": simple_eligible, "targets": "enemy_units", "target_unit_types": ["military"], "unit_when": IN_FIGHT, "score": "10 - 100 * var(target_distance) - var(unit_distance) / 10 + 4 * (1 - var(target_health) / max(1, var(target_max_health)))", "min_score": 5, "spread": SPREAD})
+    if P['simple_civilians']:
+        for targets, filters in (("enemy_units", {"target_unit_ids": [VIL]}), ("enemy_buildings", {})):
+            rule(ALWAYS, {"action": "attack", "in_bucket": "army", "eligible": SPREAD_ELIGIBLE, "targets": targets, **filters, "unit_when": NOT_IN_FIGHT, "score": "10 - 100 * var(target_distance) - var(unit_distance) / 10", "min_score": 5, "spread": SPREAD})
+    simple_local_enemy = f"{pow_near('enemy', 'army', 1)} * 1.15 + 3 * var(enemy_buildings_known_{DEFENSIVE}_within_0_of_army)"
+    retreat_place = le("var(base_spaces_within_0_of_army)", 0) if P['simple_defense'] == 1 else any_(le("var(base_spaces_within_0_of_army)", 0), {"not": small_guard})
+    rule(all_(ge("var(bucket_size_army)", 1), ge(f"{simple_local_enemy} - var(simple_power) * 1.1", 0.01), *([retreat_place] if P['simple_defense'] else [])),
+         {"action": "set_unit_behavior", "in_bucket": "army", "stance": "passive", "attack_back": False, "interrupt_current": False},
+         {"action": "move", "in_bucket": "army", "eligible": simple_eligible, "targets": "retreat", "together": True})
 # ================= villagers under attack: every villager sharing a space with enemy soldiers fights or runs =================
 # last, so it overrides whatever they were told this turn. They fight together only when they crush what is there:
 # villagers at their worth (hardcoded from unit stats: ~0.6 of a blunt, ~1 with Farming) plus our soldiers there,
@@ -1020,6 +1145,32 @@ rule(ALWAYS,
      # out again once no enemy soldier is within a space of them
      {"action": "ungarrison", "unit_ids": [VIL], "unit_when": {"value_at_most": {"value": "var(enemy_units_visible_military_within_1_of_unit)", "amount": 0}}})
 
+if P['evacuate']:
+    evac_threat = "(var(enemy_units_visible_11_within_1_of_unit) + 2 * var(enemy_units_visible_12_within_1_of_unit) + 4 * var(enemy_units_visible_13_within_1_of_unit))"
+    evac_support = f"var(vil_worth_now) * var(population_1_within_0_of_unit) + {power_at_unit('mine', 1)}"
+    evacuating = all_(ge(evac_threat, 8), ge(f"{evac_threat} - 1.5 * ({evac_support})", 0.01))
+    refuge_score = "25 - var(target_distance_home) - 100 * (var(enemy_units_visible_military_within_2_of_target) + var(enemy_units_unidentified_within_1_of_target) + var(enemy_buildings_known_within_1_of_target))"
+    refuge = {"x": "var(refuge_x)", "y": "var(refuge_y)"}
+    evac_orders = VIL_ORDERS + ["garrison", "ungarrison"]
+    evac_origin = {"x": "var(evacuee.x)", "y": "var(evacuee.y)"}
+    evac_enemy_power = ' + '.join(f"{w} * {is_value('var(evac_enemy.unit_id)', i)}" for i, w in ((BLUNT, 1), (PIERCE, 2), (HEAVY, 4)))
+    evac_ally_power = evac_enemy_power.replace('evac_enemy.', 'evac_ally.')
+    evac_ally_power += f" + var(vil_worth_now) * {is_value('var(evac_ally.unit_id)', VIL)} * {is_value('var(evac_ally.x) - var(evacuee.x)', 0)} * {is_value('var(evac_ally.y) - var(evacuee.y)', 0)}"
+    evac_detection = [setv("evac_workers", 0),
+                      {"action": "for_each", "source": "units", "as": "evacuee", "where": {"unit_ids": [VIL]}, "do": [
+                          setv("evac_counted_threat", 0), setv("evac_counted_support", 0),
+                          {"action": "for_each", "source": "units", "as": "evac_enemy", "where": {"owner": "enemy", "unit_types": ["military"], "within": 1, "from": evac_origin}, "do": [setv("evac_counted_threat", f"var(evac_counted_threat) + {evac_enemy_power}")]},
+                          {"action": "for_each", "source": "units", "as": "evac_ally", "where": {"within": 1, "from": evac_origin}, "do": [setv("evac_counted_support", f"var(evac_counted_support) + {evac_ally_power}")]},
+                          {"action": "if", "when": all_(ge("var(evac_counted_threat)", 8), ge("var(evac_counted_threat) - 1.5 * var(evac_counted_support)", 0.01)),
+                           "then": [setv("evac_workers", "var(evac_workers) + 1")]}]}]
+    rule(ALWAYS, *evac_detection,
+         {"action": "set_unit_behavior", "unit_ids": [VIL], "stance": "defensive", "attack_back": True, "interrupt_current": True, "unit_when": {"not": evacuating}})
+    rule(ge("var(evac_workers)", 1), {"action": "select_space", "from": "home", "options": [{"targets": "known_resources", "category": category, "score": refuge_score, "min_score": 1} for category in ("food", "wood")], "var_x": "refuge_x", "var_y": "refuge_y", "var_score": "refuge_score", "persist": True})
+    rule(all_(ge("var(evac_workers)", 1), ge("var(refuge_score)", 1)),
+         {"action": "set_unit_behavior", "unit_ids": [VIL], "stance": "passive", "attack_back": False, "interrupt_current": False, "unit_when": evacuating},
+         {"action": "move", "unit_ids": [VIL], "eligible": evac_orders, "targets": "coordinate", "coordinate": refuge, "unit_when": evacuating})
+    rule(all_(ge("var(refuge_score)", 1), any_(ge("var(evac_workers)", 1), all_(le("var(vcs)", 0), ge("var(had_city)", 1)))),
+         {"action": "move", "unit_types": ["military"], "eligible": SOLDIER_ORDERS, "max": 1, "targets": "coordinate", "coordinate": refuge, "unit_when": NOT_IN_FIGHT})
 # ================= failed build attempts: builders the flee rule pulled off count; at the limit, cancel and rebuild away from the site
 def failed_site(b, axis): return (f"({one(f'var(foundation_count_{b}_without_builders)')} * var(foundation_space_{axis}_{b}_without_builders)"
                                   f" + (1 - {one(f'var(foundation_count_{b}_without_builders)')}) * var(foundation_space_{axis}_{b}))")
@@ -1038,6 +1189,26 @@ for n, (b, _) in TRACKED.items():
     # a foundation ordered this very turn doesn't exist yet, and cancelling it would void the whole batch
     rule(all_(ge(f"var({n}_giveup)", 1), *(le(f"var(fire_{f})", 0) for f in fires)), {"action": "cancel_foundations", "building_ids": [b]})
 
+NOMAD_STATE = [setv('c_sum_x', '0'), setv('c_sum_y', '0'), setv('c_count', '0'),
+               {'action': 'for_each', 'source': 'units', 'as': 'u', 'where': {'unit_ids': [VIL]},
+                'do': [setv('c_sum_x', 'var(c_sum_x) + var(u.x)'), setv('c_sum_y', 'var(c_sum_y) + var(u.y)'), setv('c_count', 'var(c_count) + 1')]},
+               {'action': 'if', 'when': le('var(has_centroid)', 0),
+                'then': [setv('centroid_x', 'round(var(c_sum_x) / max(1, var(c_count)))', True), setv('centroid_y', 'round(var(c_sum_y) / max(1, var(c_count)))', True), setv('has_centroid', 1, True)]}]
+NOMAD_VC_SCORE = 'var(site_dist_vc) * (0 - var(target_distance)) + min(12, var(population_1_within_0_of_target) * min(1, var(resource_remaining_food_within_1_of_target)) * 12) + min(6, var(resource_remaining_food_within_1_of_target) / 50)'
+rules[0]['then'][:0] = NOMAD_STATE
+if P['evacuate']:
+    rules[0]['then'][4]['when'] = le("var(building_count_1)", 0)
+for generated_rule in rules:
+    for action in generated_rule['then']:
+        if action.get('name') == 'house_want':
+            action['value'] += ' * min(1, max(0, var(vcs) + var(foundation_count_1)))'
+        if action.get('action') == 'build' and action.get('building_id') == VC:
+            action['score'] = NOMAD_VC_SCORE
+            if P['evacuate']:
+                action['score'] += f" - 10 * var(had_city) * {site_threat()}"
+            if P['vc_cluster']:
+                action['score'] += f" + {P['vc_cluster']} * var(population_1_within_1_of_target)"
+            action['from'] = {'x': 'var(centroid_x)', 'y': 'var(centroid_y)'}
 with open(OUT, 'w') as f:
     f.write('{\n  "rules": [\n' + ',\n'.join('    ' + json.dumps(r) for r in rules) + '\n  ]\n}\n')
 print(len(rules), 'rules ->', OUT)

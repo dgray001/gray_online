@@ -1,6 +1,10 @@
 package mapgen
 
-import "github.com/dgray001/gray_online/game/game_utils"
+import (
+	"math"
+
+	"github.com/dgray001/gray_online/game/game_utils"
+)
 
 func floorDiv2(x int) int {
 	if x >= 0 || x%2 == 0 {
@@ -59,4 +63,22 @@ func hexRingSectors(center game_utils.Coordinate2D, radius int) [6][]game_utils.
 		}
 	}
 	return sectors
+}
+
+func hexLine(a, b game_utils.Coordinate2D) []game_utils.Coordinate2D {
+	d := int(game_utils.AxialDistance(a, b))
+	res := make([]game_utils.Coordinate2D, 0, d+1)
+	for i := 0; i <= d; i++ {
+		t := float64(i) / max(1.0, float64(d))
+		x, z := float64(a.X)+t*float64(b.X-a.X), float64(a.Y)+t*float64(b.Y-a.Y)
+		y := -x - z
+		rx, ry, rz := math.Round(x), math.Round(y), math.Round(z)
+		if dx, dy, dz := math.Abs(rx-x), math.Abs(ry-y), math.Abs(rz-z); dx > dy && dx > dz {
+			rx = -ry - rz
+		} else if dy > dz {
+			ry = -rx - rz
+		}
+		res = append(res, game_utils.Coordinate2D{X: int(rx), Y: int(rz)})
+	}
+	return res
 }

@@ -233,7 +233,7 @@ func startResourceZone(ctx *mapScriptContext, home game_utils.Coordinate2D, rota
 
 // The mirrored zone when it is free, else the free zone nearest it (in the player's area first)
 func mirroredResourceZone(ctx *mapScriptContext, mirrored game_utils.Coordinate2D, rotation int, slot startResourceSlot, area_zones []Zone, board_zones []Zone) Zone {
-	if s := ctx.board.Space(mirrored); s != nil {
+	if s := ctx.board.Space(mirrored); ctx.startAllowed(s) {
 		if z := s.Zone(rotateAxial(slot.zone, rotation)); z != nil && !z.Occupied() {
 			return z
 		}
@@ -246,7 +246,7 @@ func mirroredResourceZone(ctx *mapScriptContext, mirrored game_utils.Coordinate2
 
 // Places every start resource for every player, skipping any that find no free zone left
 func placeStartResources(ctx *mapScriptContext, starts []playerStartInfo, footprints [][]Space, slots []startResourceSlot) error {
-	board_zones := ctx.allZones()
+	board_zones := ctx.startAllowedZones()
 	for i, start := range starts {
 		in_area := make(map[uint]bool, len(footprints[i]))
 		area_zones := make([]Zone, 0)

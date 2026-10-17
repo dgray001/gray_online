@@ -1,8 +1,6 @@
 package risq
 
 import (
-	"fmt"
-	"os"
 	"slices"
 
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
@@ -43,7 +41,11 @@ func createRisqUnit(internal_id uint64, unit_id uint32, player *RisqPlayer) *Ris
 	}
 	config, ok := player.config.Units[unit_id]
 	if !ok {
-		fmt.Fprintln(os.Stderr, "Creating unknown unit id: ", unit_id)
+		errLog := util.DefaultErr
+		if player.player != nil && player.player.GetBase() != nil && player.player.GetBase().Err != nil {
+			errLog = player.player.GetBase().Err
+		}
+		util.Errorf(errLog, "Creating unknown unit id: %d", unit_id)
 		return &unit
 	}
 	if config.Unit_type != defs.UnitType_ECONOMIC {
@@ -125,7 +127,7 @@ func (u *RisqUnit) resolveHealthDelta(r *GameRisq) {
 		return
 	}
 	was_alive := u.isAlive()
-	util.DebugLog.Printf("health turn=%d tick=%d: %d u%d before=%.4f delta=%.4f", r.turn_number, r.current_tick, u.internal_id, u.unit_id, u.cs.health, u.cs.pending_health_delta)
+	util.Debugf(r.std, "health turn=%d tick=%d: %d u%d before=%.4f delta=%.4f", r.turn_number, r.current_tick, u.internal_id, u.unit_id, u.cs.health, u.cs.pending_health_delta)
 	u.cs.addHealth(u.cs.pending_health_delta)
 	u.cs.pending_health_delta = 0
 	if was_alive && !u.isAlive() {

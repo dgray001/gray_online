@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"strconv"
 	"strings"
+	"sync"
 	"unicode"
 )
 
@@ -256,8 +257,21 @@ func EvalExprWithRng(s string, vars map[string]float64, rng *rand.Rand) (float64
 	return evalExpr(s, &exprParser{vars: vars, rng: rng})
 }
 
-func evalExpr(s string, p *exprParser) (float64, error) {
+var exprTokenCache sync.Map // expression text -> read-only []exprToken
+
+func cachedTokens(s string) ([]exprToken, error) {
+	if toks, ok := exprTokenCache.Load(s); ok {
+		return toks.([]exprToken), nil
+	}
 	toks, err := tokenizeExpr(s)
+	if err == nil {
+		exprTokenCache.Store(s, toks)
+	}
+	return toks, err
+}
+
+func evalExpr(s string, p *exprParser) (float64, error) {
+	toks, err := cachedTokens(s)
 	if err != nil {
 		return 0, err
 	}

@@ -1,12 +1,10 @@
 package risq
 
 import (
-	"fmt"
 	"github.com/dgray001/gray_online/game"
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
-	"os"
 )
 
 func (r *GameRisq) requireGivingOrders(player *game.Player, kind string) bool {
@@ -26,13 +24,13 @@ func (r *GameRisq) requireOrdersNotSubmitted(player *game.Player, kind string) b
 }
 
 func (r *GameRisq) PlayerAction(action game.PlayerAction) {
-	util.DebugLog.Println("player action:", action.Kind, action.Client_id, action.Ai_id, action.Action)
+	util.Debug(r.std, "player action:", action.Kind, action.Client_id, action.Ai_id, action.Action)
 	player := r.game.AiPlayers[uint32(action.Ai_id)]
 	if player == nil {
 		player = r.game.Players[uint64(action.Client_id)]
 	}
 	if player == nil {
-		fmt.Fprintln(os.Stderr, "Invalid client or ai id", action.Client_id, action.Ai_id)
+		util.Errorf(r.err, "Invalid client or ai id %d %d", action.Client_id, action.Ai_id)
 		return
 	}
 	if r.game.GameEnded() {
@@ -112,12 +110,12 @@ func (r *GameRisq) PlayerAction(action game.PlayerAction) {
 		}
 		r.executeSetGatherPoint(player.Player_id, request)
 	default:
-		fmt.Fprintln(os.Stderr, "Unknown game update type", action.Kind)
+		util.Errorf(r.err, "Unknown game update type %s", action.Kind)
 	}
 }
 
 func (r *GameRisq) executeSubmitOrders(player_id int, orders []defs.OrderFromFrontend) {
-	util.DebugLog.Println("Executing submit orders for:", player_id, orders)
+	util.Debug(r.std, "Executing submit orders for:", player_id, orders)
 	player := r.players[player_id]
 	new_orders := make([]*RisqOrder, 0, len(orders))
 	for _, o := range orders {
@@ -160,7 +158,7 @@ func (r *GameRisq) executeSubmitOrders(player_id int, orders []defs.OrderFromFro
 }
 
 func (r *GameRisq) executeUnsubmitOrders(player_id int) {
-	util.DebugLog.Println("Executing unsubmit orders for:", player_id)
+	util.Debug(r.std, "Executing unsubmit orders for:", player_id)
 	player := r.players[player_id]
 	player.orders_submitted = false
 	kept := player.active_orders[:0]

@@ -74,6 +74,7 @@ type zoneTerrainOverrideJSON struct {
 
 type playerStartsParams struct {
 	terrainPickJSON
+	On terrainFilterJSON `json:"on,omitempty"`
 	// overrides the terrain of each start space itself; the rest of the area uses the pick above
 	HomeTerrainId ScriptExpr `json:"home_terrain_id"`
 	// limits the default starting trees, groves (+10) and forests (+20) to these species
@@ -83,6 +84,8 @@ type playerStartsParams struct {
 	Nomad                *bool                     `json:"nomad,omitempty"`
 	AreaSize             ScriptExpr                `json:"area_size"`
 	StartingDistance     ScriptExpr                `json:"starting_distance"`
+	InnerDistance        *ScriptExpr               `json:"inner_distance,omitempty"`
+	MaxShift             *ScriptExpr               `json:"max_shift,omitempty"`
 	RowInset             *ScriptExpr               `json:"row_inset,omitempty"`
 	Inset                ScriptExpr                `json:"inset,omitempty"`
 	ShortEdgeStarts      ScriptExpr                `json:"short_edge_starts,omitempty"`
@@ -174,7 +177,7 @@ const (
 func startAreaClipped(ctx *mapScriptContext, home game_utils.Coordinate2D, area_size int) bool {
 	for dq := -area_size; dq <= area_size; dq++ {
 		for dr := max(-area_size, -dq-area_size); dr <= min(area_size, -dq+area_size); dr++ {
-			if ctx.board.Space(game_utils.Coordinate2D{X: home.X + dq, Y: home.Y + dr}) == nil {
+			if !ctx.startAllowed(ctx.board.Space(game_utils.Coordinate2D{X: home.X + dq, Y: home.Y + dr})) {
 				return true
 			}
 		}
@@ -182,9 +185,14 @@ func startAreaClipped(ctx *mapScriptContext, home game_utils.Coordinate2D, area_
 	return false
 }
 
-func startFits(ctx *mapScriptContext, rule startAreaRule, home game_utils.Coordinate2D, assigned []playerStartInfo, area_size int) bool {
-	if rule <= startRuleNotInsideOthers && startAreaClipped(ctx, home, area_size) {
-		return false
+func startFits(ctx *mapScriptContext, rule startAreaRule, home game_utils.Coordinate2D, assigned []playerStartInfo, area_size int, max_shift int, orig game_utils.Coordinate2D) bool {
+	if rule <= startRuleNotInsideOthers {
+		if startAreaClipped(ctx, home, area_size) {
+			return false
+		}
+		if max_shift >= 0 && int(game_utils.AxialDistance(orig, home)) > max_shift {
+			return false
+		}
 	}
 	min_distance := 1
 	switch rule {
@@ -202,11 +210,11 @@ func startFits(ctx *mapScriptContext, rule startAreaRule, home game_utils.Coordi
 }
 
 // Every space tied for nearest to original among those satisfying rule, in key order
-func nearestFittingSpaces(ctx *mapScriptContext, rule startAreaRule, original Space, assigned []playerStartInfo, area_size int) []Space {
+func nearestFittingSpaces(ctx *mapScriptContext, rule startAreaRule, original Space, assigned []playerStartInfo, area_size int, max_shift int) []Space {
 	var nearest []Space
 	nearest_distance := -1
 	for _, s := range ctx.allSpaces() {
-		if !startFits(ctx, rule, s.Coordinate(), assigned, area_size) {
+		if !ctx.startAllowed(s) || !startFits(ctx, rule, s.Coordinate(), assigned, area_size, max_shift, original.Coordinate()) {
 			continue
 		}
 		d := int(game_utils.AxialDistance(original.Coordinate(), s.Coordinate()))
@@ -221,9 +229,9 @@ func nearestFittingSpaces(ctx *mapScriptContext, rule startAreaRule, original Sp
 	return nearest
 }
 
-func nearestStartSpace(ctx *mapScriptContext, original Space, assigned []playerStartInfo, area_size int) (Space, error) {
+func nearestStartSpace(ctx *mapScriptContext, original Space, assigned []playerStartInfo, area_size int, max_shift int) (Space, error) {
 	for rule := startRuleClearOfOthers; rule <= startRuleDistinct; rule++ {
-		nearest := nearestFittingSpaces(ctx, rule, original, assigned, area_size)
+		nearest := nearestFittingSpaces(ctx, rule, original, assigned, area_size, max_shift)
 		if len(nearest) == 1 {
 			return nearest[0], nil
 		}
@@ -231,17 +239,41 @@ func nearestStartSpace(ctx *mapScriptContext, original Space, assigned []playerS
 			return nearest[ctx.rng.Intn(len(nearest))], nil
 		}
 	}
+	used := make(map[uint]bool, len(assigned))
+	for _, a := range assigned {
+		used[a.space.Key()] = true
+	}
+	findBest := func(filterAllowed bool) Space {
+		var best Space
+		bestDist := -1
+		for _, s := range ctx.allSpaces() {
+			if used[s.Key()] || (filterAllowed && !ctx.startAllowed(s)) {
+				continue
+			}
+			d := int(game_utils.AxialDistance(original.Coordinate(), s.Coordinate()))
+			if bestDist == -1 || d < bestDist {
+				best, bestDist = s, d
+			}
+		}
+		return best
+	}
+	if s := findBest(true); s != nil {
+		return s, nil
+	}
+	if s := findBest(false); s != nil {
+		return s, nil
+	}
 	return nil, fmt.Errorf("no unused space left for player start near %v", original.Coordinate())
 }
 
 // Moves each pattern-chosen start to the nearest space passing the strictest rule any space passes
-func assignStartSpaces(ctx *mapScriptContext, originals []playerStartInfo, area_size int) ([]playerStartInfo, error) {
+func assignStartSpaces(ctx *mapScriptContext, originals []playerStartInfo, area_size int, max_shift int) ([]playerStartInfo, error) {
 	if len(ctx.allSpaces()) < len(originals) {
 		return nil, fmt.Errorf("board has %d spaces, cannot place %d player starts", len(ctx.allSpaces()), len(originals))
 	}
 	assigned := make([]playerStartInfo, 0, len(originals))
 	for _, original := range originals {
-		space, err := nearestStartSpace(ctx, original.space, assigned, area_size)
+		space, err := nearestStartSpace(ctx, original.space, assigned, area_size, max_shift)
 		if err != nil {
 			return nil, err
 		}
@@ -251,7 +283,7 @@ func assignStartSpaces(ctx *mapScriptContext, originals []playerStartInfo, area_
 }
 
 // Each player's start area, excluding other players' home spaces
-func startFootprints(starts []playerStartInfo, area_size int) [][]Space {
+func startFootprints(ctx *mapScriptContext, starts []playerStartInfo, area_size int) [][]Space {
 	home_keys := make(map[uint]bool, len(starts))
 	for _, start := range starts {
 		home_keys[start.space.Key()] = true
@@ -259,7 +291,7 @@ func startFootprints(starts []playerStartInfo, area_size int) [][]Space {
 	footprints := make([][]Space, len(starts))
 	for i, start := range starts {
 		for _, s := range hexRadiusSpaces(start.space, area_size) {
-			if s.Key() == start.space.Key() || !home_keys[s.Key()] {
+			if (s.Key() == start.space.Key() || !home_keys[s.Key()]) && ctx.startAllowed(s) {
 				footprints[i] = append(footprints[i], s)
 			}
 		}
@@ -286,13 +318,20 @@ func prepareStartTerrain(ctx *mapScriptContext, pick terrainPickJSON, home Scrip
 			s.ClearOccupants()
 		}
 	}
-	for _, start := range starts {
+	for i, start := range starts {
 		rotation := directionIndex(start.direction) - directionIndex(starts[0].direction)
-		for offset, terrain_id := range terrain {
-			rotated := rotateAxial(offset, rotation)
-			if s := ctx.board.Space(game_utils.Coordinate2D{X: start.space.Coordinate().X + rotated.X, Y: start.space.Coordinate().Y + rotated.Y}); s != nil {
-				s.SetTerrain(terrain_id)
+		for _, s := range footprints[i] {
+			rel := game_utils.Coordinate2D{X: s.Coordinate().X - start.space.Coordinate().X, Y: s.Coordinate().Y - start.space.Coordinate().Y}
+			offset := rotateAxial(rel, -rotation)
+			terrain_id, ok := terrain[offset]
+			if !ok {
+				var err error
+				if terrain_id, err = pick.resolve(ctx); err != nil {
+					return nil, err
+				}
+				terrain[offset] = terrain_id
 			}
+			s.SetTerrain(terrain_id)
 		}
 	}
 	return terrain, nil
@@ -304,7 +343,7 @@ func startBuildingZone(ctx *mapScriptContext, home Space, footprint []Space, tar
 		return nil, err
 	}
 	from := home.Coordinate()
-	if err == nil {
+	if err == nil && ctx.startAllowed(planned.Space()) {
 		if !planned.Occupied() {
 			return planned, nil
 		}
@@ -316,6 +355,9 @@ func startBuildingZone(ctx *mapScriptContext, home Space, footprint []Space, tar
 	if z := nearestFreeZone(board_zones, from, 0, math.MaxInt, ""); z != nil {
 		return z, nil
 	}
+	if z := nearestFreeZone(ctx.allZones(), from, 0, math.MaxInt, ""); z != nil {
+		return z, nil
+	}
 	return nil, fmt.Errorf("no free zone left for start building")
 }
 
@@ -323,7 +365,7 @@ func startPlacementZone(ctx *mapScriptContext, start playerStartInfo, placement 
 	rotation := directionIndex(start.direction) - directionIndex(ctx.player_starts[0].direction)
 	offset := rotateAxial(placement.offset, rotation)
 	space := ctx.board.Space(game_utils.Coordinate2D{X: start.space.Coordinate().X + offset.X, Y: start.space.Coordinate().Y + offset.Y})
-	if space == nil {
+	if !ctx.startAllowed(space) {
 		return nil
 	}
 	return space.Zone(rotateAxial(placement.zone, rotation))
@@ -344,11 +386,14 @@ func mirroredBuildingZone(ctx *mapScriptContext, start playerStartInfo, placemen
 	if z := nearestFreeZone(area_zones, from, 0, math.MaxInt, ""); z != nil {
 		return z
 	}
-	return nearestFreeZone(board_zones, from, 0, math.MaxInt, "")
+	if z := nearestFreeZone(board_zones, from, 0, math.MaxInt, ""); z != nil {
+		return z
+	}
+	return nearestFreeZone(ctx.allZones(), from, 0, math.MaxInt, "")
 }
 
 func placeStartContents(ctx *mapScriptContext, p playerStartsParams, starts []playerStartInfo, footprints [][]Space, first_player int) error {
-	board_zones := ctx.allZones()
+	board_zones := ctx.startAllowedZones()
 	layout := startLayout{}
 	area_zones := make([]Zone, 0)
 	for _, s := range footprints[0] {
@@ -399,10 +444,21 @@ func placeStartContents(ctx *mapScriptContext, p playerStartsParams, starts []pl
 			}
 		}
 		for _, placement := range layout.units {
-			ctx.board.PlaceUnit(startPlacementZone(ctx, starts[i], placement), placement.unit_id, first_player+i)
+			z := startPlacementZone(ctx, starts[i], placement)
+			if z == nil {
+				z = nearestFreeZone(board_zones, starts[i].space.Coordinate(), 0, math.MaxInt, "")
+			}
+			if z == nil {
+				z = nearestFreeZone(ctx.allZones(), starts[i].space.Coordinate(), 0, math.MaxInt, "")
+			}
+			if z != nil {
+				ctx.board.PlaceUnit(z, placement.unit_id, first_player+i)
+			}
 		}
 		for _, placement := range layout.overrides {
-			startPlacementZone(ctx, starts[i], placement).SetTerrainOverride(placement.terrain_id)
+			if z := startPlacementZone(ctx, starts[i], placement); z != nil {
+				z.SetTerrainOverride(placement.terrain_id)
+			}
 		}
 	}
 	return nil
@@ -414,6 +470,18 @@ func stepPlayerStarts(ctx *mapScriptContext, raw json.RawMessage) error {
 		return err
 	}
 	applyStartingDevelopmentDefaults(ctx, &p)
+	if !p.On.empty() {
+		matches, err := p.On.matcher(ctx)
+		if err != nil {
+			return err
+		}
+		ctx.start_eligible = make(map[uint]bool)
+		for _, s := range ctx.allSpaces() {
+			if matches(s) {
+				ctx.start_eligible[s.Key()] = true
+			}
+		}
+	}
 	if p.Resources == nil {
 		p.Resources = defaultStartingResources(defs.MapResourceLevel(ctx.vars["map_resources"]))
 		if len(p.TreeIds) > 0 {
@@ -461,6 +529,15 @@ func stepPlayerStarts(ctx *mapScriptContext, raw json.RawMessage) error {
 			return err
 		}
 		starts, err = resolveRowsPlayerStarts(ctx, starting_distance, inset, short_edge_starts, short_edge_bias)
+	case "asterisk":
+		inner_distance := 0
+		if p.InnerDistance != nil {
+			inner_distance, err = p.InnerDistance.resolveInt(ctx.vars)
+			if err != nil {
+				return err
+			}
+		}
+		starts, err = resolveAsteriskPlayerStarts(ctx, starting_distance, inner_distance)
 	default:
 		return fmt.Errorf("unsupported player_starts pattern %q", p.Pattern)
 	}
@@ -471,15 +548,27 @@ func stepPlayerStarts(ctx *mapScriptContext, raw json.RawMessage) error {
 	if err != nil {
 		return err
 	}
+	max_shift := -1
+	if p.MaxShift != nil {
+		if max_shift, err = p.MaxShift.resolveInt(ctx.vars); err != nil {
+			return err
+		}
+	}
 	if p.Pattern == "ring" || (p.Pattern == "rows" && ctx.shape != "rectangle") {
-		if starts, err = assignStartSpaces(ctx, starts, area_size); err != nil {
+		if starts, err = assignStartSpaces(ctx, starts, area_size, max_shift); err != nil {
 			return err
 		}
 	}
 	starts = util.ShuffleFrom(ctx.rng, starts)
+	for i := range starts {
+		if ctx.startAllowed(starts[i].space) {
+			starts[0], starts[i] = starts[i], starts[0]
+			break
+		}
+	}
 	ctx.player_starts = starts
 	ctx.player_area_size = area_size
-	footprints := startFootprints(starts, area_size)
+	footprints := startFootprints(ctx, starts, area_size)
 	if _, err := prepareStartTerrain(ctx, p.terrainPickJSON, p.HomeTerrainId, starts, footprints); err != nil {
 		return err
 	}

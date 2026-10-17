@@ -8,13 +8,14 @@ import (
 
 // Restricts a step to spaces whose current terrain is listed by id, display name or terrain type; empty matches everything
 type terrainFilterJSON struct {
-	TerrainIds   []ScriptExpr `json:"terrain_ids"`
-	TerrainNames []string     `json:"terrain_names"`
-	TerrainTypes []string     `json:"terrain_types"`
+	TerrainIds   []ScriptExpr    `json:"terrain_ids"`
+	TerrainNames []string        `json:"terrain_names"`
+	TerrainTypes []string        `json:"terrain_types"`
+	DistanceTo   *distanceToJSON `json:"distance_to,omitempty"`
 }
 
 func (f terrainFilterJSON) empty() bool {
-	return len(f.TerrainIds) == 0 && len(f.TerrainNames) == 0 && len(f.TerrainTypes) == 0
+	return len(f.TerrainIds) == 0 && len(f.TerrainNames) == 0 && len(f.TerrainTypes) == 0 && (f.DistanceTo == nil || f.DistanceTo.empty())
 }
 
 func (f terrainFilterJSON) allowedIds(ctx *mapScriptContext) (map[uint32]bool, error) {
@@ -68,12 +69,22 @@ func filterSpaces(spaces []Space, matches func(Space) bool) []Space {
 }
 
 func (f terrainFilterJSON) matcher(ctx *mapScriptContext) (func(Space) bool, error) {
-	if f.empty() {
-		return func(Space) bool { return true }, nil
+	matchBase := func(Space) bool { return true }
+	if len(f.TerrainIds) > 0 || len(f.TerrainNames) > 0 || len(f.TerrainTypes) > 0 {
+		allowed, err := f.allowedIds(ctx)
+		if err != nil {
+			return nil, err
+		}
+		matchBase = func(space Space) bool { return allowed[space.Terrain()] }
 	}
-	allowed, err := f.allowedIds(ctx)
+	if f.DistanceTo == nil || f.DistanceTo.empty() {
+		return matchBase, nil
+	}
+	distMatch, err := f.DistanceTo.matcher(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("distance_to: %w", err)
 	}
-	return func(space Space) bool { return allowed[space.Terrain()] }, nil
+	return func(space Space) bool {
+		return matchBase(space) && distMatch(space)
+	}, nil
 }

@@ -2,6 +2,8 @@ module fiddlesticks.live
 
 go 1.25.0
 
+godebug randseednop=0
+
 replace github.com/dgray001/gray_online => ../backend
 
 require github.com/dgray001/gray_online v0.0.0-00010101000000-000000000000

@@ -4,12 +4,11 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
-	"os"
 	"strconv"
 	"time"
 
 	"github.com/dgray001/gray_online/game"
+	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
@@ -23,6 +22,8 @@ const (
 )
 
 type Client struct {
+	std                    *util.Logger
+	err                    *util.Logger
 	client_id              uint64
 	nickname               string
 	token                  string
@@ -46,7 +47,19 @@ type lobbyMessage struct {
 }
 
 func CreateClient(connection *websocket.Conn, nickname string, lobby *Lobby) *Client {
+	std := util.DefaultStd
+	errLog := util.DefaultErr
+	if lobby != nil {
+		if lobby.std != nil {
+			std = lobby.std
+		}
+		if lobby.err != nil {
+			errLog = lobby.err
+		}
+	}
 	client := Client{
+		std:                    std,
+		err:                    errLog,
 		client_id:              0,
 		nickname:               nickname,
 		token:                  generateToken(),
@@ -95,7 +108,7 @@ func (c *Client) send(lm lobbyMessage) {
 	select {
 	case c.send_message <- lm:
 	default:
-		fmt.Fprintln(os.Stderr, "Dropped message to client", c.client_id, "- send buffer full:", lm.Kind)
+		util.Errorf(c.err, "Dropped message to client %d - send buffer full: %s", c.client_id, lm.Kind)
 	}
 }
 
@@ -149,10 +162,10 @@ func (c *Client) readMessages() {
 		var message lobbyMessage
 		err := connection.ReadJSON(&message)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "Error at message reader: "+err.Error())
+			util.Error(c.err, "Error at message reader: "+err.Error())
 			break
 		}
-		fmt.Printf("Receiving client message from %d: {%s, %s, %s, %s}\n",
+		util.Infof(c.std, "Receiving client message from %d: {%s, %s, %s, %s}",
 			c.client_id, message.Sender, message.Content, message.Data, message.Kind)
 		c.handleMessage(message)
 	}
@@ -161,7 +174,7 @@ func (c *Client) readMessages() {
 func (c *Client) handleMessage(message lobbyMessage) {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Fprintln(os.Stderr, "recovered from panic handling message from", c.client_id, ":", r)
+			util.Errorf(c.err, "recovered from panic handling message from %d: %v", c.client_id, r)
 		}
 	}()
 	switch message.Kind {
@@ -222,7 +235,7 @@ func (c *Client) handleMessage(message lobbyMessage) {
 		}
 		lobby_room := c.getLobbyRoom()
 		if lobby_room == nil || lobby_room.room_id != room.room_id {
-			fmt.Println(lobby_room, room)
+			util.Debugf(c.std, "mismatched room on leave: client room %v, target room %v", lobby_room, room)
 			c.send(lobbyMessage{Sender: "server", Kind: "room-leave-failed", Content: "Not in that room"})
 			break
 		}
@@ -485,7 +498,7 @@ func (c *Client) handleMessage(message lobbyMessage) {
 		}
 		expected_sender := "game-" + strconv.FormatUint(c.client_id, 10)
 		if message.Sender != expected_sender {
-			fmt.Fprintln(os.Stderr, "Client", c.client_id, "sent game-chat with mismatched sender, dropping:", message.Sender)
+			util.Errorf(c.err, "Client %d sent game-chat with mismatched sender, dropping: %s", c.client_id, message.Sender)
 			break
 		}
 		lobby_room.broadcast <- message
@@ -499,7 +512,7 @@ func (c *Client) handleMessage(message lobbyMessage) {
 		if message.Content != "" {
 			err := json.Unmarshal([]byte(message.Content), &action)
 			if err != nil {
-				fmt.Println(err)
+				util.Error(c.err, err.Error())
 				c.send(lobbyMessage{Sender: "server", Kind: "game-update-failed", Content: "Couldn't parse action"})
 				break
 			}
@@ -597,7 +610,7 @@ func (c *Client) handleMessage(message lobbyMessage) {
 		if message.Kind == "lobby-chat" {
 			expected_sender := "client-" + strconv.FormatUint(c.client_id, 10)
 			if message.Sender != expected_sender {
-				fmt.Fprintln(os.Stderr, "Client", c.client_id, "sent lobby-chat with mismatched sender, dropping:", message.Sender)
+				util.Errorf(c.err, "Client %d sent lobby-chat with mismatched sender, dropping: %s", c.client_id, message.Sender)
 				break
 			}
 		} else {
@@ -607,13 +620,13 @@ func (c *Client) handleMessage(message lobbyMessage) {
 			}
 			expected_sender := "room-" + strconv.Itoa(int(lobby_room.room_id)) + "-" + strconv.FormatUint(c.client_id, 10)
 			if message.Sender != expected_sender && message.Sender != expected_sender+"-!!server!!" {
-				fmt.Fprintln(os.Stderr, "Client", c.client_id, "sent room-chat with mismatched sender, dropping:", message.Sender)
+				util.Errorf(c.err, "Client %d sent room-chat with mismatched sender, dropping: %s", c.client_id, message.Sender)
 				break
 			}
 		}
 		c.lobby.broadcast <- message
 	default:
-		fmt.Fprintln(os.Stderr, "Message kind unknown: "+message.Kind)
+		util.Errorf(c.err, "Message kind unknown: %s", message.Kind)
 	}
 }
 
@@ -639,7 +652,7 @@ func (c *Client) writeMessages() {
 func (c *Client) writeMessagesOnce(connection *websocket.Conn, ticker *time.Ticker) {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Fprintln(os.Stderr, "recovered from panic in writeMessages for client", c.client_id, ":", r)
+			util.Errorf(c.err, "recovered from panic in writeMessages for client %d: %v", c.client_id, r)
 		}
 	}()
 	select {
@@ -647,7 +660,7 @@ func (c *Client) writeMessagesOnce(connection *websocket.Conn, ticker *time.Tick
 		connection.SetWriteDeadline(time.Now().Add(write_wait))
 		err := connection.WriteJSON(message)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "Error at client", c.client_id, "message writer: ", err.Error())
+			util.Errorf(c.err, "Error at client %d message writer: %s", c.client_id, err.Error())
 			c.lobby.mu.Lock()
 			c.deleted = true
 			c.lobby.mu.Unlock()
@@ -656,7 +669,7 @@ func (c *Client) writeMessagesOnce(connection *websocket.Conn, ticker *time.Tick
 		connection.SetWriteDeadline(time.Now().Add(write_wait))
 		err := connection.WriteMessage(websocket.PingMessage, nil)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "Error at client", c.client_id, "ping writer: ", err.Error())
+			util.Errorf(c.err, "Error at client %d ping writer: %s", c.client_id, err.Error())
 			c.lobby.mu.Lock()
 			c.deleted = true
 			c.lobby.mu.Unlock()
@@ -671,31 +684,31 @@ func (c *Client) writeMessagesOnce(connection *websocket.Conn, ticker *time.Tick
 func (c *Client) validDebugLocked(debug bool) bool {
 	if c == nil {
 		if debug {
-			fmt.Fprintln(os.Stderr, "Client invalid because null", c)
+			util.Debug(util.DefaultStd, "Client invalid because null")
 		}
 		return false
 	}
 	if c.client_id < 1 {
 		if debug {
-			fmt.Fprintln(os.Stderr, "Client invalid because id < 1:", c)
+			util.Debugf(c.std, "Client invalid because id < 1: %d", c.client_id)
 		}
 		return false
 	}
 	if c.connection == nil {
 		if debug {
-			fmt.Fprintln(os.Stderr, "Client invalid because connection nil", c)
+			util.Debug(c.std, "Client invalid because connection nil")
 		}
 		return false
 	}
 	if c.delete_timer != nil {
 		if debug {
-			fmt.Fprintln(os.Stderr, "Client invalid because delete timer not nil", c)
+			util.Debug(c.std, "Client invalid because delete timer not nil")
 		}
 		return false
 	}
 	if c.deleted {
 		if debug {
-			fmt.Fprintln(os.Stderr, "Client invalid because deleted", c)
+			util.Debug(c.std, "Client invalid because deleted")
 		}
 		return false
 	}

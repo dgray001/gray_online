@@ -78,9 +78,12 @@ export class DwgLobbyGameSettings extends DwgElement {
   private setGameChooserValue(value: string): void {
     this.game_chooser.value = value;
     const game_type = parseInt(value) || 0;
-    const max_players = game_type === GameType.RISQ ? 12 : 8;
+    const is_euchre = game_type === GameType.EUCHRE;
+    const max_players = game_type === GameType.RISQ ? 12 : is_euchre ? 4 : 8;
+    this.max_players_input.min = is_euchre ? '4' : '1';
     this.max_players_input.max = max_players.toString();
-    if (this.max_players_input.valueAsNumber > max_players) {
+    this.max_players_input.disabled = is_euchre;
+    if (is_euchre || this.max_players_input.valueAsNumber > max_players) {
       this.max_players_input.value = max_players.toString();
     }
     const settings = this.getGameSpecificHTML(game_type);
@@ -389,16 +392,19 @@ export class DwgLobbyGameSettings extends DwgElement {
   clearSettings(): void {
     this.game_chooser.value = '';
     this.max_players_input.value = '';
+    this.max_players_input.min = '1';
     this.max_players_input.max = '8';
+    this.max_players_input.disabled = false;
     this.max_viewers_input.value = '';
     this.game_specific_settings.replaceChildren();
     this.game_specific_settings_els.clear();
   }
 
   getSettings(): GameSettings {
+    const game_type = parseInt(this.game_chooser.value) || 0;
     const settings = {
-      game_type: parseInt(this.game_chooser.value) || 0,
-      max_players: this.max_players_input.valueAsNumber || 0,
+      game_type,
+      max_players: game_type === GameType.EUCHRE ? 4 : this.max_players_input.valueAsNumber || 0,
       max_viewers: this.max_viewers_input.valueAsNumber || 0,
     } as GameSettings;
     switch (settings.game_type) {

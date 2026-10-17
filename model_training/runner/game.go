@@ -37,7 +37,7 @@ func (i *InputGame) initialize() *fiddlesticks.GameFiddlesticks {
 
 func startGame(f *fiddlesticks.GameFiddlesticks, debug bool) {
 	f.GetBase().StartGame()
-	f.StartAiGame(false)
+	f.StartAiGame(true)
 	for {
 		if f.ExecuteAiTurn(debug) {
 			break

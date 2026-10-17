@@ -224,3 +224,88 @@ func resolveRowsPlayerStarts(ctx *mapScriptContext, starting_distance, inset, sh
 	}
 	return starts, nil
 }
+
+var polygonArms = [7][]int{
+	{},
+	{0},
+	{0, 3},
+	{0, 2, 4},
+	{0, 1, 3, 4},
+	{0, 1, 2, 3, 4},
+	{0, 1, 2, 3, 4, 5},
+}
+
+func findArmLandSpace(ctx *mapScriptContext, dir game_utils.Coordinate2D, targetDist int, used map[uint]bool) (Space, error) {
+	maxR := int(ctx.board_size)
+	for delta := 0; delta <= maxR; delta++ {
+		for _, sign := range []int{1, -1} {
+			if delta == 0 && sign == -1 {
+				continue
+			}
+			d := targetDist + delta*sign
+			if d < 1 || d > maxR {
+				continue
+			}
+			coord := game_utils.Coordinate2D{X: d * dir.X, Y: d * dir.Y}
+			if sp := ctx.board.Space(coord); sp != nil && ctx.startAllowed(sp) && !isWaterSpace(ctx, sp) && !used[sp.Key()] {
+				return sp, nil
+			}
+		}
+	}
+	for _, s := range ctx.allSpaces() {
+		if ctx.startAllowed(s) && !isWaterSpace(ctx, s) && !used[s.Key()] {
+			return s, nil
+		}
+	}
+	for d := 1; d <= maxR; d++ {
+		coord := game_utils.Coordinate2D{X: d * dir.X, Y: d * dir.Y}
+		if sp := ctx.board.Space(coord); sp != nil && !used[sp.Key()] {
+			return sp, nil
+		}
+	}
+	for _, s := range ctx.allSpaces() {
+		if !used[s.Key()] {
+			return s, nil
+		}
+	}
+	return nil, fmt.Errorf("no unused space on board for player start")
+}
+
+func resolveAsteriskPlayerStarts(ctx *mapScriptContext, outerDist, innerDist int) ([]playerStartInfo, error) {
+	if ctx.num_players < 1 || ctx.num_players > 12 {
+		return nil, fmt.Errorf("asterisk pattern supports 1 to 12 players, got %d", ctx.num_players)
+	}
+	if outerDist < 1 {
+		return nil, fmt.Errorf("asterisk player starts require positive outer distance")
+	}
+	if innerDist <= 0 {
+		innerDist = max(2, outerDist/2)
+	}
+	if innerDist >= outerDist {
+		innerDist = outerDist - 1
+	}
+	offset := ctx.rng.Intn(6)
+	type armSlot struct{ arm, dist int }
+	var slots []armSlot
+	for _, a := range polygonArms[min(ctx.num_players, 6)] {
+		slots = append(slots, armSlot{(a + offset) % 6, outerDist})
+	}
+	if ctx.num_players > 6 {
+		for _, a := range polygonArms[ctx.num_players-6] {
+			slots = append(slots, armSlot{(a + offset) % 6, innerDist})
+		}
+	}
+	dirs := game_utils.AxialDirectionVectors()
+	starts := make([]playerStartInfo, len(slots))
+	usedKeys := make(map[uint]bool)
+	for i, slot := range slots {
+		dir := dirs[slot.arm]
+		sp, err := findArmLandSpace(ctx, dir, slot.dist, usedKeys)
+		if err != nil {
+			return nil, err
+		}
+		usedKeys[sp.Key()] = true
+		starts[i] = playerStartInfo{space: sp, direction: dir}
+	}
+	return starts, nil
+}

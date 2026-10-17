@@ -43,6 +43,7 @@ export class DwgLobby extends DwgElement {
     ping: 0,
   };
   private entered_game = false;
+  private room_transition_count = 0;
   private exited_game = false;
   private ping_interval?: NodeJS.Timeout;
   private room_request?: { kind: string; room_id: string };
@@ -243,6 +244,7 @@ export class DwgLobby extends DwgElement {
     if (this.room_request || !this.socketActive()) {
       return;
     }
+    this.room_transition_count++;
     this.room_request = { kind, room_id };
     this.showRoomRequest(kind);
     try {
@@ -288,6 +290,7 @@ export class DwgLobby extends DwgElement {
     this.setNickname(nickname);
     this.setPing(0);
     this.setSocket(new_socket);
+    this.entered_game = false;
     this.classList.remove('hide');
   }
 
@@ -347,10 +350,14 @@ export class DwgLobby extends DwgElement {
   }
 
   async refreshLobbyRooms(check_url = false, show_load_message = false): Promise<void> {
+    const transition_count = this.room_transition_count;
     const current_room = await this.lobby_rooms.refreshRooms(
       this.connection_metadata.client_id ?? -1,
       show_load_message
     );
+    if (transition_count !== this.room_transition_count) {
+      return;
+    }
     if (check_url) {
       const url_room_id = parseInt(getUrlParam(URL_PARAM_ROOM));
       const room = this.lobby_rooms.getRoom(url_room_id)?.data;
@@ -379,6 +386,7 @@ export class DwgLobby extends DwgElement {
     if (!this.connection_metadata.client_id) {
       return;
     }
+    this.room_transition_count++;
     this.connection_metadata.room_id = room.room_id;
     this.showRoomRequest(this.room_request?.kind);
     this.lobby_room.setRoom(room, is_host, this.connection_metadata.client_id);
@@ -392,6 +400,7 @@ export class DwgLobby extends DwgElement {
   }
 
   leaveRoom(): void {
+    this.room_transition_count++;
     this.connection_metadata.room_id = undefined;
     this.lobby_room_wrapper.classList.remove('show');
     this.showRoomRequest(this.room_request?.kind);
@@ -466,6 +475,10 @@ export class DwgLobby extends DwgElement {
       this.dispatchEvent(new Event('connection_lost'));
       return;
     }
+    this.resyncFromServer();
+  }
+
+  resyncFromServer(): void {
     this.lobby_users.refreshUsers();
     this.refreshLobbyRooms();
     if (this.lobby_room_wrapper.classList.contains('show')) {

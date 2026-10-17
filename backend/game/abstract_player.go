@@ -1,11 +1,10 @@
 package game
 
 import (
-	"fmt"
 	"maps"
-	"os"
 	"sync"
 
+	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
 )
 
@@ -48,6 +47,20 @@ type Player struct {
 	update_list_mu   sync.RWMutex
 	snapshot_stale   bool
 	base_game        *GameBase
+}
+
+func (p *Player) errLogger() *util.Logger {
+	if p.base_game != nil && p.base_game.Err != nil {
+		return p.base_game.Err
+	}
+	return util.DefaultErr
+}
+
+func (p *Player) stdLogger() *util.Logger {
+	if p.base_game != nil && p.base_game.Std != nil {
+		return p.base_game.Std
+	}
+	return util.DefaultStd
 }
 
 const UPDATE_CHANNEL_SIZE = 8
@@ -152,11 +165,11 @@ func (p *Player) RunningAi() {
 
 func (p *Player) AddUpdate(update *UpdateMessage) {
 	if !p.base_game.game_started {
-		fmt.Fprintln(os.Stderr, "Can't add update to game that isn't started")
+		util.Error(p.errLogger(), "Can't add update to game that isn't started")
 		return
 	}
 	if p.base_game.game_ended {
-		fmt.Fprintln(os.Stderr, "Can't add update to game that is ended")
+		util.Error(p.errLogger(), "Can't add update to game that is ended")
 		return
 	}
 	p.update_list_mu.Lock()
@@ -174,7 +187,7 @@ func (p *Player) AddUpdate(update *UpdateMessage) {
 		select {
 		case p.Updates <- &own_update:
 		default:
-			fmt.Fprintln(os.Stderr, "Dropped update to player", p.Player_id, "- update buffer full:", own_update.Kind)
+			util.Errorf(p.errLogger(), "Dropped update to player %d - update buffer full: %s", p.Player_id, own_update.Kind)
 		}
 	}
 	if p.ai_running {
@@ -184,13 +197,13 @@ func (p *Player) AddUpdate(update *UpdateMessage) {
 			// evict the oldest wakeup so the newest (e.g. a new turn) is never the one lost
 			select {
 			case evicted := <-p.AiUpdates:
-				fmt.Fprintln(os.Stderr, "Evicted update for AI player", p.Player_id, "- buffer full:", evicted.Kind, evicted.Id, "for", own_update.Kind)
+				util.Errorf(p.errLogger(), "Evicted update for AI player %d - buffer full: %s %d for %s", p.Player_id, evicted.Kind, evicted.Id, own_update.Kind)
 			default:
 			}
 			select {
 			case p.AiUpdates <- &own_update:
 			default:
-				fmt.Fprintln(os.Stderr, "Dropped update to AI player", p.Player_id, "- update buffer full:", own_update.Kind)
+				util.Errorf(p.errLogger(), "Dropped update to AI player %d - update buffer full: %s", p.Player_id, own_update.Kind)
 			}
 		}
 	}
@@ -221,7 +234,7 @@ func (p *Player) AddSettingUpdate(update *UpdateMessage) {
 	select {
 	case p.SettingUpdates <- update:
 	default:
-		fmt.Fprintln(os.Stderr, "Dropped setting update to player", p.Player_id, "- buffer full:", update.Kind)
+		util.Errorf(p.errLogger(), "Dropped setting update to player %d - buffer full: %s", p.Player_id, update.Kind)
 	}
 }
 
@@ -230,20 +243,20 @@ func (p *Player) AddFailedUpdate(update *UpdateMessage) {
 		select {
 		case p.FailedUpdates <- update:
 		default:
-			fmt.Fprintln(os.Stderr, "Dropped failed update to player", p.Player_id, "- buffer full:", update.Kind)
+			util.Errorf(p.errLogger(), "Dropped failed update to player %d - buffer full: %s", p.Player_id, update.Kind)
 		}
 	}
 	if p.ai_running {
 		select {
 		case p.AiFailedUpdates <- update:
 		default:
-			fmt.Fprintln(os.Stderr, "Dropped failed update to AI player", p.Player_id, "- buffer full:", update.Kind)
+			util.Errorf(p.errLogger(), "Dropped failed update to AI player %d - buffer full: %s", p.Player_id, update.Kind)
 		}
 	}
 }
 
 func (p *Player) AddFailedUpdateShorthand(kind string, message string) {
-	fmt.Println(message)
+	util.Info(p.stdLogger(), message)
 	p.AddFailedUpdate(&UpdateMessage{Kind: kind, Content: gin.H{"message": message, "player_id": p.Player_id}})
 }
 

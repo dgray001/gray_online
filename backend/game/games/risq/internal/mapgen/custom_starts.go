@@ -205,5 +205,5 @@ func placeDevelopmentStarts(ctx *mapScriptContext, homes []Space, area_size int)
 		starts[i] = playerStartInfo{space: home}
 	}
 	ctx.player_starts, ctx.player_area_size = starts, area_size
-	return placeStartContents(ctx, p, starts, startFootprints(starts, area_size), 0)
+	return placeStartContents(ctx, p, starts, startFootprints(ctx, starts, area_size), 0)
 }

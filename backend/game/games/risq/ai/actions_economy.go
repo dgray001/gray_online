@@ -157,9 +157,7 @@ func createUnits(view View, internals *Internals, unit_id uint32, buildings buil
 		}
 		for queued := productionOrderCount(b); queued < max(1, queue); queued++ {
 			if current, limit := internals.population(view); current >= limit {
-				if util.DebugLog.Writer() != nil {
-					util.DebugLog.Printf("ai %s: REJECTED create unit_id %d: housing capped (%d / %d)", view.Nickname(), unit_id, current, limit)
-				}
+				util.Debugf(view.Logger(), "ai %s: REJECTED create unit_id %d: housing capped (%d / %d)", view.Nickname(), unit_id, current, limit)
 				return orders
 			}
 			p, ok := unitProducible(b, unit_id)
@@ -167,14 +165,10 @@ func createUnits(view View, internals *Internals, unit_id uint32, buildings buil
 				break
 			}
 			if !canAfford(view, internals, p.Cost) {
-				if util.DebugLog.Writer() != nil {
-					util.DebugLog.Printf("ai %s: REJECTED create unit_id %d: insufficient resources (cost: %+v)", view.Nickname(), unit_id, p.Cost)
-				}
+				util.Debugf(view.Logger(), "ai %s: REJECTED create unit_id %d: insufficient resources (cost: %+v)", view.Nickname(), unit_id, p.Cost)
 				break
 			}
-			if util.DebugLog.Writer() != nil {
-				util.DebugLog.Printf("ai %s: SUCCESS create unit_id %d (cost: %+v)", view.Nickname(), unit_id, p.Cost)
-			}
+			util.Debugf(view.Logger(), "ai %s: SUCCESS create unit_id %d (cost: %+v)", view.Nickname(), unit_id, p.Cost)
 			orders = append(orders, view.CreateUnitOrder(b, p.ID))
 			internals.spend(p.Cost)
 			internals.pending_population++
@@ -234,9 +228,7 @@ func buildWith(view View, internals *Internals, units []UnitView, building_id ui
 	if !ok {
 		cost := view.BuildCost(building_id)
 		if !canAfford(view, internals, cost) {
-			if util.DebugLog.Writer() != nil {
-				util.DebugLog.Printf("ai %s: REJECTED build building_id %d: insufficient resources (cost: %+v)", view.Nickname(), building_id, cost)
-			}
+			util.Debugf(view.Logger(), "ai %s: REJECTED build building_id %d: insufficient resources (cost: %+v)", view.Nickname(), building_id, cost)
 			return nil
 		}
 		from := units[0].Location

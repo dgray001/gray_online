@@ -166,3 +166,73 @@ dwg-euchre {
     z-index: 4;
   }
 }
+
+body.mobile {
+  dwg-euchre {
+    --height-players-cards: calc(min(120px, 18svh) * var(--card-size-scale, 1));
+    --width-messages: calc(0.5 * var(--game-width));
+    --height-messages: calc(4 * 1.7em + 0.6em);
+    --size-player: min(90px, 13svh);
+    --messages-gap: var(--font-size-smallest);
+    --table-diameter: min(
+      calc(var(--game-height) - var(--height-players-cards) - var(--size-player) - var(--height-messages) - var(--messages-gap)),
+      calc(var(--game-width) - var(--size-player))
+    );
+    --total-height: calc(var(--height-messages) + var(--messages-gap) + var(--table-diameter) + var(--size-player) + var(--height-players-cards));
+    --leftover-height: calc(var(--game-height) - var(--total-height));
+    --margin-top: max(0px, max(calc(var(--leftover-height) - 5em), calc(0.5 * var(--leftover-height))));
+
+    font-size: var(--font-size-smaller);
+
+    > #header-messages-container {
+      font-size: var(--font-size-smallest);
+      left: 1em;
+      top: calc(0.7 * var(--margin-top));
+    }
+
+    > #card-face-up-container {
+      --height: var(--height-messages);
+      font-size: var(--font-size-smallest);
+      left: calc(1em + var(--width-messages));
+      top: calc(0.7 * var(--margin-top));
+
+      > #card-face-up-text {
+        border-radius: 0.4em;
+        letter-spacing: 1.2px;
+      }
+
+      > #card-face-up {
+        --height-card: calc(var(--height-messages) - var(--line-height));
+        --width-card: calc(var(--height-card) / var(--card-image-scale));
+        height: var(--height-card);
+        left: calc(0.5 * (var(--width-messages) - 2em - var(--width-card)));
+        width: var(--width-card);
+
+        > #card-face-up-img {
+          height: 100%;
+          width: 100%;
+
+          &:not(.show) {
+            display: none;
+          }
+        }
+      }
+    }
+
+    > #table-container {
+      left: calc(0.5 * (var(--game-width) - var(--table-diameter)));
+      top: calc(var(--margin-top) + var(--height-messages) + var(--messages-gap) + 0.5 * var(--size-player));
+    }
+
+    > #player-container {
+      left: calc(0.5 * (var(--game-width) - var(--table-diameter)));
+      top: calc(var(--margin-top) + var(--height-messages) + var(--messages-gap) + 0.5 * var(--size-player));
+    }
+
+    > #players-cards {
+      --width: var(--game-width);
+      left: 0;
+      top: calc(var(--margin-top) + var(--height-messages) + var(--messages-gap) + var(--size-player) + var(--table-diameter));
+    }
+  }
+}

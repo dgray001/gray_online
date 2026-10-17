@@ -1,7 +1,7 @@
 package fiddlesticks
 
 type PlayerDetails struct {
-	missing_suits map[uint8]bool
+	missing_suits [5]bool
 }
 
 func createPlayerDetails() *PlayerDetails {
@@ -9,7 +9,7 @@ func createPlayerDetails() *PlayerDetails {
 }
 
 func (d *PlayerDetails) dealHand() {
-	d.missing_suits = make(map[uint8]bool, 3)
+	d.missing_suits = [5]bool{}
 }
 
 func (d *PlayerDetails) missingSuit(suit uint8) {

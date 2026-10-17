@@ -74,6 +74,7 @@ export class DwgGame extends DwgElement {
   running_updates = false;
   refreshing?: Promise<boolean>;
   update_queue: UpdateMessage[] = [];
+  private pending_start = false;
 
   private chatbox_lock = createLock();
 
@@ -499,12 +500,14 @@ export class DwgGame extends DwgElement {
           `${window.location.origin}/dist/${component.replace('dwg-', '').replace(/-/g, '_')}.bundle.js?v=${getUrlParam('v')}`
         );
         script.async = false;
-        let script_loaded = false;
-        script.addEventListener('load', () => {
-          script_loaded = true;
+        await new Promise<void>((resolve, reject) => {
+          script.addEventListener('load', () => resolve());
+          script.addEventListener('error', () => {
+            script.remove();
+            reject(new Error(`Failed to load game bundle ${component}`));
+          });
+          document.body.appendChild(script);
         });
-        document.body.appendChild(script);
-        await until(() => script_loaded);
         this.bundles_attached.add(component);
       }
       await customElements.whenDefined(component);
@@ -562,8 +565,12 @@ export class DwgGame extends DwgElement {
       default:
         throw new Error(`Unknown game type: ${new_game.game_base.game_type}`);
     }
+    if (this.game !== new_game || this.socket !== socket) {
+      return false;
+    }
     this.game_name.innerText = capitalize(GameType[new_game.game_base.game_type].toLowerCase().replace('_', ' '));
-    if (new_game.game_base.game_started) {
+    if (new_game.game_base.game_started || this.pending_start) {
+      this.pending_start = false;
       this.startGame();
     } else {
       this.waiting_room.classList.remove('hide');
@@ -633,8 +640,10 @@ export class DwgGame extends DwgElement {
 
   startGame(): void {
     if (!this.game) {
+      this.pending_start = true;
       return;
     }
+    this.pending_start = false;
     this.game.game_base.game_started = true;
     this.waiting_room.classList.add('hide');
     this.game_container.classList.add('show');
@@ -650,6 +659,7 @@ export class DwgGame extends DwgElement {
     this.lobby_room = undefined;
     this.game_id = 0;
     this.game = undefined;
+    this.pending_start = false;
     this.message_error_count = 0;
     this.running_updates = false;
     this.update_queue = [];

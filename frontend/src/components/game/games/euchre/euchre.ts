@@ -42,6 +42,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
   private player_els: DwgEuchrePlayer[] = [];
   private player_id: number = -1;
   private trick_card_els: HTMLDivElement[] = [];
+  private lifecycle = new AbortController();
 
   constructor() {
     super();
@@ -56,6 +57,19 @@ export class DwgEuchre extends DwgElement implements GameComponent {
       'player_container',
       'players_cards'
     );
+  }
+
+  override connectedCallback(): Promise<void> {
+    this.lifecycle = new AbortController();
+    return super.connectedCallback();
+  }
+
+  override disconnectedCallback(): void {
+    this.lifecycle.abort();
+    if (this.players_cards) {
+      this.players_cards.can_play = false;
+    }
+    super.disconnectedCallback();
   }
 
   protected override parsedCallback(): void {
@@ -85,9 +99,14 @@ export class DwgEuchre extends DwgElement implements GameComponent {
   }
 
   async initialize(abstract_game: DwgGame, game: GameEuchre): Promise<void> {
+    this.lifecycle.abort();
+    this.lifecycle = new AbortController();
     this.player_id = abstract_game.playerId();
     this.game = game;
     this.player_els = [];
+    this.player_container.replaceChildren();
+    this.trick_cards.replaceChildren();
+    this.trick_card_els = [];
     for (const [player_id, player] of game.players.entries()) {
       const player_el = document.createElement('dwg-euchre-player');
       player_el.initialize(player, getPlayersTeam(this.game, player_id));
@@ -106,7 +125,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     }
     this.trick_cards.style.setProperty('--num-players', this.player_els.length.toString());
     if (game.game_base.game_ended) {
-      // TODO: show ended game state
+      this.endGame(false);
     } else if (game.game_base.game_started) {
       this.round_number.innerText = game.round.toString();
       for (const [player_id, player_el] of this.player_els.entries()) {
@@ -129,16 +148,19 @@ export class DwgEuchre extends DwgElement implements GameComponent {
       if (game.makers_team >= 0) {
         this.restoreBidIcons();
       }
-      if (game.bidding || game.bidding_choose_trump || game.dealer_substituting_card) {
+      if (game.dealer_substituting_card) {
+        this.current_trick = 0;
+        this.trick_number.innerText = '-';
+        this.status_container.innerText = `${this.game.players[this.game.dealer].player.nickname} Substituting Card`;
+        this.setTrumpImage();
+      } else if (game.bidding || game.bidding_choose_trump) {
         this.current_trick = 0;
         this.trick_number.innerText = '-';
         this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Bidding`;
         if (game.bidding) {
           this.setCardFaceUpImage(game.card_face_up);
-        } else if (game.bidding_choose_trump) {
-          this.setBackOfCard();
         } else {
-          this.setTrumpImage();
+          this.setBackOfCard();
         }
       } else {
         this.current_trick = game.teams.reduce((a, b) => a + b.tricks, 1);
@@ -177,7 +199,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
       const card_el_img = document.createElement('img');
       card_el_img.src = cardToImagePath(card);
       card_el_img.draggable = false;
-      card_el_img.alt = cardToIcon(card);
+      card_el_img.alt = cardToIcon(card, false);
       card_el.appendChild(card_el_img);
       card_el.classList.add('card', 'played');
       card_el.style.setProperty('--i', this.game.players[player_id].order.toString());
@@ -252,6 +274,9 @@ export class DwgEuchre extends DwgElement implements GameComponent {
           break;
       }
     } catch (e) {
+      if (this.lifecycle.signal.aborted) {
+        return;
+      }
       console.log(`Error during game update ${JSON.stringify(update)}: ${e}`);
     }
   }
@@ -276,7 +301,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
         this.players_cards.setCards(data.cards, [], card_animation_time);
       }
     }
-    await untilTimer(animation_time);
+    await untilTimer(animation_time, this.lifecycle.signal);
     this.game.turn = (this.game.dealer + 1) % this.game.players.length;
     this.game.trick_leader = this.game.turn;
     for (const [player_id, player] of this.game.players.entries()) {
@@ -344,7 +369,8 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     this.game.bidding = false;
     this.setBidder(data.player_id, data.going_alone);
     this.game.trump_suit = this.game.card_face_up.suit;
-    if (data.going_alone) {
+    const dealer_sits_out = data.going_alone && (data.player_id + 2) % this.game.players.length === this.game.dealer;
+    if (dealer_sits_out) {
       this.setTrumpImage();
       this.setPlaying();
     } else {
@@ -390,18 +416,23 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     const card_el_img = document.createElement('img');
     card_el_img.src = cardToImagePath(data.card);
     card_el_img.draggable = false;
-    card_el_img.alt = cardToIcon(data.card);
+    card_el_img.alt = cardToIcon(data.card, false);
     card_el.appendChild(card_el_img);
     card_el.classList.add('card');
     card_el.style.setProperty('--i', this.game.players[data.player_id].order.toString());
     this.trick_cards.appendChild(card_el);
     this.trick_card_els.push(card_el);
     card_el.style.transitionDuration = '1s';
-    await until(() => {
-      return !!getComputedStyle(card_el).left;
-    }, 20);
+    await until(
+      () => {
+        return !!getComputedStyle(card_el).left;
+      },
+      20,
+      this.lifecycle.signal
+    );
+    this.lifecycle.signal.throwIfAborted();
     card_el.classList.add('played');
-    await untilTimer(1000);
+    await untilTimer(1000, this.lifecycle.signal);
     this.status_container.innerText = '';
     this.game.turn++;
     if (this.resolveTurn()) {
@@ -415,7 +446,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
   }
 
   private async resolveTrickWinner(): Promise<void> {
-    await untilTimer(500);
+    await untilTimer(500, this.lifecycle.signal);
     let winning_index = 0;
     let winning_card = this.game.trick[0];
     for (let i = 1; i < this.game.trick.length; i++) {
@@ -441,13 +472,13 @@ export class DwgEuchre extends DwgElement implements GameComponent {
       trick_card_el.classList.remove('played');
       trick_card_el.classList.add('center');
     }
-    await untilTimer(1000);
+    await untilTimer(1000, this.lifecycle.signal);
     this.trick_cards.style.setProperty('--winner', this.game.players[this.game.turn].order.toString());
     for (const trick_card_el of this.trick_card_els) {
       trick_card_el.classList.remove('center');
       trick_card_el.classList.add('winner');
     }
-    await untilTimer(1000);
+    await untilTimer(1000, this.lifecycle.signal);
     getPlayersTeam(this.game, this.game.turn).tricks++;
     for (const [i, player_el] of this.player_els.entries()) {
       player_el.endTrick(getPlayersTeam(this.game, i).tricks);
@@ -469,7 +500,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
   }
 
   private async scoreRound(): Promise<void> {
-    await untilTimer(500);
+    await untilTimer(500, this.lifecycle.signal);
     // TODO: score animations for a few seconds
     this.card_face_up_img.classList.remove('show');
     let winning_team = 0;
@@ -498,8 +529,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     }
     this.round_number.innerText = '-';
     if (game_over) {
-      this.game.game_base.game_ended = true;
-      this.status_container.innerText = 'game over';
+      this.endGame(true);
     } else {
       this.game.round++; // wait for deal-round update from server
     }
@@ -508,9 +538,7 @@ export class DwgEuchre extends DwgElement implements GameComponent {
   private setPlaying(): void {
     this.player_els[this.game.turn].playing();
     this.status_container.innerText = `${this.game.players[this.game.turn].player.nickname} Playing`;
-    if (this.game.turn === this.player_id) {
-      this.players_cards.can_play = true;
-    }
+    this.players_cards.can_play = this.game.turn === this.player_id;
   }
 
   private setCardFaceUpImage(card: StandardCard): void {
@@ -555,18 +583,28 @@ export class DwgEuchre extends DwgElement implements GameComponent {
     for (const winner of this.game.teams[team_id].player_ids) {
       this.player_els[winner].setScore(this.game.teams[team_id].score);
     }
-    if (this.game.teams[team_id].score >= 10) {
-      const winners: string[] = [];
-      for (const winner of this.game.teams[team_id].player_ids) {
-        this.player_els[winner].wonGame();
-        winners.push(this.game.players[winner].player.nickname);
-      }
-      let winner_text = 'The winners are: ' + winners.join(', ');
-      winner_text += `\nWith ${this.game.teams[team_id].score} points`;
-      messageDialog.call(this, { message: winner_text });
-      return true;
+    return this.game.teams[team_id].score >= 10;
+  }
+
+  private endGame(show_dialog = true): void {
+    this.game.game_base.game_ended = true;
+    this.status_container.innerText = 'game over';
+    this.round_number.innerText = '-';
+    this.trick_number.innerText = '-';
+    const winning_team_id = this.game.teams[0].score >= this.game.teams[1].score ? 0 : 1;
+    const winning_team = this.game.teams[winning_team_id];
+    const winners: string[] = [];
+    for (const winner of winning_team.player_ids) {
+      this.player_els[winner].wonGame();
+      winners.push(this.game.players[winner].player.nickname);
     }
-    return false;
+    for (const [i, player_el] of this.player_els.entries()) {
+      player_el.setScore(getPlayersTeam(this.game, i).score);
+    }
+    if (show_dialog) {
+      const winner_text = `The winners are: ${winners.join(', ')}\nWith ${winning_team.score} points`;
+      messageDialog.call(this, { message: winner_text });
+    }
   }
 
   updateDialogComponent(update: UpdateMessage): HTMLElement {

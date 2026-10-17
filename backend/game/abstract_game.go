@@ -1,9 +1,7 @@
 package game
 
 import (
-	"fmt"
-	"os"
-
+	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
 )
 
@@ -21,27 +19,26 @@ func Game_GetId(g Game) uint64 {
 	base := g.GetBase()
 	if base != nil {
 		return base.Game_id
-	} else {
-		fmt.Fprintln(os.Stderr, "Game base is nil")
 	}
+	util.Error(util.DefaultErr, "Game base is nil")
 	return 0
 }
 
 func Game_StartGame(g Game) {
 	base := g.GetBase()
 	if base != nil {
-		fmt.Println("Starting game id ", base.Game_id)
+		util.Infof(base.Std, "Starting game id %d", base.Game_id)
 		base.StartGame()
 		g.StartGame() // must be after base.StartGame() in case this sends game updates
 	} else {
-		fmt.Fprintln(os.Stderr, "Game base is nil")
+		util.Error(util.DefaultErr, "Game base is nil")
 	}
 }
 
 func Game_BroadcastUpdate(g Game, update *UpdateMessage) {
 	base := g.GetBase()
 	if base != nil {
-		fmt.Printf("Broadcasting game (%d) update {%s, %s}\n", base.Game_id, update.Kind, update.Content)
+		util.Debugf(base.Std, "Broadcasting game (%d) update {%s, %s}", base.Game_id, update.Kind, update.Content)
 		for _, player := range base.Players {
 			player.AddUpdate(update)
 		}
@@ -50,7 +47,7 @@ func Game_BroadcastUpdate(g Game, update *UpdateMessage) {
 		}
 		base.AddViewerUpdate(update)
 	} else {
-		fmt.Fprintln(os.Stderr, "Game base is nil")
+		util.Error(util.DefaultErr, "Game base is nil")
 	}
 }
 
@@ -61,7 +58,7 @@ func Game_PlayerDisconnected(g Game, client_id uint64) bool {
 	if base != nil {
 		return base.PlayerDisconnected(client_id)
 	} else {
-		fmt.Fprintln(os.Stderr, "Game base is nil")
+		util.Error(util.DefaultErr, "Game base is nil")
 	}
 	return false
 }
@@ -70,7 +67,7 @@ func Game_PlayerDisconnected(g Game, client_id uint64) bool {
 func Game_PlayerReconnected(g Game, client_id uint64) bool {
 	base := g.GetBase()
 	if base == nil {
-		fmt.Fprintln(os.Stderr, "Game base is nil")
+		util.Error(util.DefaultErr, "Game base is nil")
 		return false
 	}
 	g.PlayerReconnected(client_id)

@@ -30,6 +30,7 @@ export class DwgEuchrePlayer extends DwgElement {
   private client_player = false;
   private dealer = false;
   private icons = new Map<string, HTMLDivElement>();
+  private lifecycle = new AbortController();
 
   constructor() {
     super();
@@ -53,6 +54,16 @@ export class DwgEuchrePlayer extends DwgElement {
     );
   }
 
+  override connectedCallback(): Promise<void> {
+    this.lifecycle = new AbortController();
+    return super.connectedCallback();
+  }
+
+  override disconnectedCallback(): void {
+    this.lifecycle.abort();
+    super.disconnectedCallback();
+  }
+
   protected override parsedCallback(): void {
     if (!this.initialized) {
       throw new Error('Should initialize euchre player before attaching to dom');
@@ -70,7 +81,10 @@ export class DwgEuchrePlayer extends DwgElement {
   }
 
   async gameStarted(game: GameEuchre, current_turn: boolean, dealer: boolean): Promise<void> {
-    await until(() => this.fully_parsed);
+    await until(() => this.fully_parsed, 50, this.lifecycle.signal);
+    if (this.lifecycle.signal.aborted) {
+      return;
+    }
     this.setDealer(dealer);
     if (game.bidding || game.bidding_choose_trump || game.dealer_substituting_card) {
       this.tricks_container.innerText = '-';
@@ -93,7 +107,10 @@ export class DwgEuchrePlayer extends DwgElement {
     this.classList.add('client-player');
     this.client_player = true;
     // can be called before parsed
-    until(() => this.fully_parsed).then(() => {
+    until(() => this.fully_parsed, 50, this.lifecycle.signal).then(() => {
+      if (this.lifecycle.signal.aborted) {
+        return;
+      }
       this.bid_button.addEventListener('click', () => {
         this.disableButtons();
         const update = { going_alone: this.going_alone.checked };
@@ -290,9 +307,9 @@ export class DwgEuchrePlayer extends DwgElement {
     this.bid_animation.innerText = 'Pass';
     this.bid_animation.style.transitionDuration = `${animation_time}ms`;
     this.bid_animation.classList.add('transition');
-    await untilTimer(2 * animation_time);
+    await untilTimer(2 * animation_time, this.lifecycle.signal);
     this.bid_animation.classList.remove('transition');
-    await untilTimer(animation_time);
+    await untilTimer(animation_time, this.lifecycle.signal);
     this.setPass();
   }
 
@@ -314,9 +331,9 @@ export class DwgEuchrePlayer extends DwgElement {
     }
     this.bid_animation.style.transitionDuration = `${animation_time}ms`;
     this.bid_animation.classList.add('transition');
-    await untilTimer(2 * animation_time);
+    await untilTimer(2 * animation_time, this.lifecycle.signal);
     this.bid_animation.classList.remove('transition');
-    await untilTimer(animation_time);
+    await untilTimer(animation_time, this.lifecycle.signal);
   }
 
   setBid(makers: boolean, going_alone?: boolean, going_alone_ally?: boolean): void {

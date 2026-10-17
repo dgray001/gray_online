@@ -38,6 +38,9 @@ func stepRegionsFour(ctx *mapScriptContext, raw json.RawMessage) error {
 		groups[i] = map[uint]bool{}
 	}
 	for _, space := range ctx.allSpaces() {
+		if isWaterSpace(ctx, space) {
+			continue
+		}
 		coordinate := space.Coordinate()
 		x, y := coordinate.X+offset, coordinate.Y+offset
 		index := 0
@@ -52,6 +55,9 @@ func stepRegionsFour(ctx *mapScriptContext, raw json.RawMessage) error {
 		groups[index][space.Key()] = true
 	}
 	for i, keys := range groups {
+		if len(keys) == 0 {
+			continue
+		}
 		bonus := outerBonus
 		if i == 0 {
 			bonus = centerBonus

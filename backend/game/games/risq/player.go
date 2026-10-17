@@ -2,16 +2,16 @@ package risq
 
 import (
 	"encoding/json"
-	"fmt"
-	"github.com/dgray001/gray_online/game"
-	"github.com/dgray001/gray_online/game/games/risq/ai"
-	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
-	"github.com/gin-gonic/gin"
 	"iter"
 	"maps"
 	"math"
 	"math/rand"
-	"os"
+
+	"github.com/dgray001/gray_online/game"
+	"github.com/dgray001/gray_online/game/games/risq/ai"
+	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
+	"github.com/dgray001/gray_online/util"
+	"github.com/gin-gonic/gin"
 )
 
 type RisqPlayer struct {
@@ -62,24 +62,28 @@ func (p *RisqPlayer) stopAi() {
 }
 
 func (p *RisqPlayer) createAiModel(config_path string) {
+	errLog := util.DefaultErr
+	if p.player != nil && p.player.GetBase() != nil && p.player.GetBase().Err != nil {
+		errLog = p.player.GetBase().Err
+	}
 	data, read_err := defs.ReadConfigFile("ai", config_path+".json")
 	if read_err != nil {
-		fmt.Fprintln(os.Stderr, "ai config", config_path, "unreadable, using default:", read_err)
+		util.Errorf(errLog, "ai config %s unreadable, using default: %v", config_path, read_err)
 		data, read_err = defs.ReadConfigFile("ai", "default.json")
 	}
 	if read_err != nil {
-		fmt.Fprintln(os.Stderr, "default ai config unreadable:", read_err)
+		util.Errorf(errLog, "default ai config unreadable: %v", read_err)
 		p.ai_model = ai.NoopModel{}
 		return
 	}
 	var raw map[string]any
 	unmarshal_err := json.Unmarshal(data, &raw)
 	if unmarshal_err != nil {
-		fmt.Fprintln(os.Stderr, "ai config", config_path, "is not valid JSON:", unmarshal_err)
+		util.Errorf(errLog, "ai config %s is not valid JSON: %v", config_path, unmarshal_err)
 		p.ai_model = ai.NoopModel{}
 		return
 	}
-	p.ai_model = ai.ParseModel(raw, p.rng)
+	p.ai_model = ai.ParseModelWithDiagnostics(raw, p.rng, errLog.Writer())
 }
 
 // Private commitment to build at a zone before any stamina makes it a real, objective RisqBuilding

@@ -28,7 +28,7 @@ func New(t *testing.T, mapName string, documents ...string) *Game {
 		WriteModel(t, name, document)
 		players[slot] = map[string]any{"nickname": name, "config": name}
 	}
-	base := game.CreateBaseGame(1, game.GameType_RISQ, map[string]any{"map": mapName, "seed": float64(1), "ai_players": players})
+	base := game.CreateBaseGame(1, game.GameType_RISQ, map[string]any{"map": mapName, "seed": float64(1), "ai_players": players}, nil, nil)
 	g := &Game{Base: base, Actions: make(chan game.PlayerAction, 16)}
 	var err error
 	if g.Risq, err = risq.CreateGame(base, g.Actions); err != nil {

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"strconv"
 	"time"
 
@@ -25,6 +24,8 @@ type GameStateRequest struct {
 }
 
 type LobbyRoom struct {
+	std               *util.Logger
+	err               *util.Logger
 	room_id           uint64
 	room_name         string
 	room_description  string
@@ -52,7 +53,19 @@ type LobbyRoom struct {
 }
 
 func CreateLobbyRoom(host *Client, room_id uint64, lobby *Lobby) *LobbyRoom {
+	std := util.DefaultStd
+	errLog := util.DefaultErr
+	if lobby != nil {
+		if lobby.std != nil {
+			std = lobby.std
+		}
+		if lobby.err != nil {
+			errLog = lobby.err
+		}
+	}
 	room := LobbyRoom{
+		std:              std,
+		err:              errLog,
 		room_id:          room_id,
 		room_name:        fmt.Sprintf("%s's room", host.nickname),
 		room_description: "",
@@ -92,7 +105,7 @@ func (r *LobbyRoom) run() {
 func (r *LobbyRoom) runOnce() {
 	defer func() {
 		if rec := recover(); rec != nil {
-			fmt.Fprintln(os.Stderr, "recovered from panic in room", r.room_id, "actor loop:", rec)
+			util.Errorf(r.err, "recovered from panic in room %d actor loop: %v", r.room_id, rec)
 		}
 	}()
 	select {
@@ -128,7 +141,7 @@ func (r *LobbyRoom) runOnce() {
 			game.Game_StartGame(r.game)
 		}
 	case action := <-r.PlayerAction:
-		fmt.Println("Received player action: ", action)
+		util.Debugf(r.std, "Received player action: %+v", action)
 		if current_game := r.GetGame(); current_game != nil {
 			current_game.PlayerAction(current_game.GetBase().AddAction(action))
 		}
@@ -161,7 +174,7 @@ func (c *Client) playerGameUpdates(player *game.Player, room_id_string string) {
 	if player == nil {
 		return
 	}
-	fmt.Println("Begin player game updates for", c.client_id, player.Player_id)
+	util.Infof(c.std, "Begin player game updates for client %d player %d", c.client_id, player.Player_id)
 	select {
 	case <-player.FlushConnections:
 	default:
@@ -171,13 +184,13 @@ updates_loop:
 		if c.deleted {
 			break
 		}
-		fmt.Println("Iterate player game updates for", c.client_id, player.Player_id, c.valid())
+		util.Debugf(c.std, "Iterate player game updates for client %d player %d valid=%t", c.client_id, player.Player_id, c.valid())
 		select {
 		case message := <-player.Updates:
-			fmt.Println("Received player game update", message.Id, "for", c.client_id, player.Player_id)
+			util.Debugf(c.std, "Received player game update %d for client %d player %d", message.Id, c.client_id, player.Player_id)
 			encoded_message, err := json.Marshal(message.Content)
 			if err != nil {
-				fmt.Fprintln(os.Stderr, err.Error())
+				util.Error(c.err, err.Error())
 				break
 			}
 			message_id_string := strconv.Itoa(message.Id)
@@ -185,12 +198,12 @@ updates_loop:
 				c.send_message <- lobbyMessage{Sender: "room-" + room_id_string + "-" + message_id_string,
 					Kind: "game-update", Data: message.Kind, Content: string(encoded_message)}
 			} else {
-				fmt.Fprintln(os.Stderr, "Room failed to send update message to player", c.client_id)
+				util.Errorf(c.err, "Room failed to send update message to player %d", c.client_id)
 			}
 		case message := <-player.FailedUpdates:
 			encoded_message, err := json.Marshal(message.Content)
 			if err != nil {
-				fmt.Fprintln(os.Stderr, err.Error())
+				util.Error(c.err, err.Error())
 				break
 			}
 			message_id_string := strconv.Itoa(message.Id)
@@ -198,30 +211,30 @@ updates_loop:
 				c.send_message <- lobbyMessage{Sender: "room-" + room_id_string + "-" + message_id_string,
 					Kind: "game-failed-update", Data: message.Kind, Content: string(encoded_message)}
 			} else {
-				fmt.Fprintln(os.Stderr, "Room failed to send failed update message to player", c.client_id)
+				util.Errorf(c.err, "Room failed to send failed update message to player %d", c.client_id)
 			}
 		case message := <-player.SettingUpdates:
 			encoded_message, err := json.Marshal(message.Content)
 			if err != nil {
-				fmt.Fprintln(os.Stderr, err.Error())
+				util.Error(c.err, err.Error())
 				break
 			}
 			if c.validDebug(true) {
 				c.send_message <- lobbyMessage{Sender: "room-" + room_id_string, Kind: "game-setting",
 					Data: message.Kind, Content: string(encoded_message)}
 			} else {
-				fmt.Fprintln(os.Stderr, "Room failed to send setting message to player", c.client_id)
+				util.Errorf(c.err, "Room failed to send setting message to player %d", c.client_id)
 			}
 		case game_over := <-player.FlushConnections:
 			if game_over {
-				fmt.Println("Player game updates flushed because game is over")
+				util.Info(c.std, "Player game updates flushed because game is over")
 			} else {
-				fmt.Println("Player game updates flushed because player disconnected")
+				util.Info(c.std, "Player game updates flushed because player disconnected")
 			}
 			break updates_loop
 		}
 	}
-	fmt.Println("End player game updates for", c.client_id, player.Player_id)
+	util.Infof(c.std, "End player game updates for client %d player %d", c.client_id, player.Player_id)
 }
 
 func (c *Client) viewerGameUpdates(viewer *game.Viewer, room_id_string string) {
@@ -233,7 +246,7 @@ func (c *Client) viewerGameUpdates(viewer *game.Viewer, room_id_string string) {
 		case message := <-viewer.Updates:
 			encoded_message, err := json.Marshal(message.Content)
 			if err != nil {
-				fmt.Fprintln(os.Stderr, err.Error())
+				util.Error(c.err, err.Error())
 				break
 			}
 			message_id_string := strconv.Itoa(message.Id)
@@ -241,7 +254,7 @@ func (c *Client) viewerGameUpdates(viewer *game.Viewer, room_id_string string) {
 				c.send_message <- lobbyMessage{Sender: "room-" + room_id_string + "-" + message_id_string,
 					Kind: "game-update", Data: message.Kind, Content: string(encoded_message)}
 			} else {
-				fmt.Fprintln(os.Stderr, "Room failed to send update message to viewer", c.client_id)
+				util.Errorf(c.err, "Room failed to send update message to viewer %d", c.client_id)
 			}
 		}
 	}
@@ -286,20 +299,20 @@ func (r *LobbyRoom) replaceClient(client *Client) {
 
 func (r *LobbyRoom) broadcastMessage(message lobbyMessage) {
 	if message.Kind != "ping-update" {
-		fmt.Printf("Broadcasting lobby (%d) message {%s, %s, %s, %s}\n", r.room_id, message.Sender, message.Content, message.Data, message.Kind)
+		util.Infof(r.std, "Broadcasting lobby (%d) message {%s, %s, %s, %s}", r.room_id, message.Sender, message.Content, message.Data, message.Kind)
 	}
 	r.lobby.mu.Lock()
 	defer r.lobby.mu.Unlock()
 	for client_id, client := range r.players {
 		if client == nil || !client.validDebugLocked(true) {
-			fmt.Fprintln(os.Stderr, "Room failed to send message to player", client_id)
+			util.Errorf(r.err, "Room failed to send message to player %d", client_id)
 			continue
 		}
 		client.send(message)
 	}
 	for client_id, client := range r.viewers {
 		if client == nil || !client.validDebugLocked(true) {
-			fmt.Fprintln(os.Stderr, "Room failed to send message to viewer", client_id)
+			util.Errorf(r.err, "Room failed to send message to viewer %d", client_id)
 			continue
 		}
 		client.send(message)
@@ -419,7 +432,7 @@ func (r *LobbyRoom) removeClient(c *Client, client_leaves bool) {
 	r.lobby.mu.Unlock()
 	if is_host_leaving_unstarted {
 		// TODO: make someone else the room host if game not started
-		fmt.Println("Removing room since host left unstarted game")
+		util.Info(r.std, "Removing room since host left unstarted game")
 		r.lobby.removeRoom(r)
 		return
 	}
@@ -496,7 +509,7 @@ func (r *LobbyRoom) playerDisconnected(c *Client) {
 		r.lobby.mu.Unlock()
 		go func() {
 			<-delete_room.C
-			fmt.Println("Removing room since everyone left for 45 seconds")
+			util.Info(r.std, "Removing room since everyone left for 45 seconds")
 			r.lobby.removeRoom(r)
 		}()
 	}
@@ -570,7 +583,7 @@ func (r *LobbyRoom) setPlayer(c *Client) {
 func (r *LobbyRoom) updateSettings(s *GameSettings) {
 	settings_stringified, err := json.Marshal(s.ToFrontend())
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
+		util.Error(r.err, err.Error())
 		return
 	}
 	r.lobby.mu.Lock()
@@ -590,10 +603,10 @@ func (r *LobbyRoom) launchGame(game_id uint64) (game.Game, error) {
 	if !launchable {
 		r.lobby.mu.Unlock()
 		message := fmt.Sprintf("Cannot launch game of id %d: %s", game_id, launchable_error)
-		fmt.Fprintln(os.Stderr, message)
+		util.Error(r.err, message)
 		return nil, errors.New(message)
 	}
-	base_game := game.CreateBaseGame(game_id, r.game_settings.GameType, r.game_settings.GameSpecificSettings)
+	base_game := game.CreateBaseGame(game_id, r.game_settings.GameType, r.game_settings.GameSpecificSettings, r.std, r.err)
 	base_game.RequestToFrontend = r.RequestToFrontend
 	base_game.RunInRoom = r.runInRoom
 	base_game.CurrentState = r.currentGameState
@@ -623,15 +636,12 @@ func (r *LobbyRoom) launchGame(game_id uint64) (game.Game, error) {
 		err = fmt.Errorf("%s", fmt.Sprintf("GameType not recognized: %d", game_type))
 	}
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
+		util.Error(r.err, err.Error())
 		return nil, err
 	}
 	r.lobby.mu.Lock()
 	r.game = new_game
 	r.lobby.mu.Unlock()
-	room_id_string := strconv.Itoa(int(r.room_id))
-	game_id_string := strconv.Itoa(int(game_id))
-	r.lobby.broadcastMessage(lobbyMessage{Sender: "room-" + room_id_string, Kind: "room-launched", Data: game_id_string})
 	return new_game, nil
 }
 
@@ -644,7 +654,7 @@ func (r *LobbyRoom) runInRoom(task func()) {
 	select {
 	case r.GameTasks <- task:
 	default:
-		fmt.Fprintln(os.Stderr, "Dropped game task for room", r.room_id, "- task queue full")
+		util.Errorf(r.err, "Dropped game task for room %d - task queue full", r.room_id)
 	}
 }
 

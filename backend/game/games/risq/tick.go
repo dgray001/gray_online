@@ -20,7 +20,7 @@ func (r *GameRisq) resolveActiveOrders() {
 	}()
 	r.beginTickHistory()
 	r.updateRemains(true)
-	util.DebugLog.Println("Resolving active orders")
+	util.Debug(r.std, "Resolving active orders")
 	r.current_tick = 0
 	for _, player := range r.players {
 		if player.eliminated {

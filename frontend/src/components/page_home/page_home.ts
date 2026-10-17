@@ -39,7 +39,6 @@ export class DwgPageHome extends DwgElement {
         this.lobby_connector.classList.add('hide');
         this.lobby.connect(e.detail.nickname, socket);
         this.game.exitGame();
-        this.lobby.exitGame();
       });
     });
     this.lobby.addEventListener('connection_lost', () => {
@@ -71,7 +70,7 @@ export class DwgPageHome extends DwgElement {
 
   private tryConnectionAgain(message: string): void {
     this.game.exitGame();
-    this.lobby.exitGame();
+    this.lobby.classList.remove('hide');
     this.game.querySelectorAll('.dwg-dialog-box').forEach((el) => el.remove());
     this.lobby.querySelectorAll('.dwg-dialog-box').forEach((el) => el.remove());
     this.lobby.classList.remove('connected');
