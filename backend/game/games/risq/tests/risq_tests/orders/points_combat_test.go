@@ -45,7 +45,7 @@ func TestGatherPointCombat(t *testing.T) {
 		return fmt.Sprintf(`{"x":1,"y":0,%s}`, content)
 	}
 	housing := func(owner int) string { return fmt.Sprintf(`"building":{"id":2,"player":%d}`, owner) }
-	heavy := fmt.Sprintf(`{"id":13,"player":%d,"count":1}`, enemySlot)
+	heavy := fmt.Sprintf(`{"id":103,"player":%d,"count":1}`, enemySlot)
 	zones := map[int]string{
 		0: barracksAt(0) + "," + enemyAt(0, `"units":[`+heavy+`]`),
 		1: barracksAt(1) + "," + enemyAt(1, housing(enemySlot)+`,"units":[`+heavy+`]`),
@@ -56,7 +56,7 @@ func TestGatherPointCombat(t *testing.T) {
 	e := w.human(enemySlot)
 	var passive []uint64
 	for _, u := range w.g.Self(e).Units {
-		if u.UnitID == 13 {
+		if u.UnitID == 103 {
 			passive = append(passive, u.InternalID)
 		}
 	}
@@ -71,14 +71,14 @@ func TestGatherPointCombat(t *testing.T) {
 		var before float64
 		scenarios = append(scenarios, named{"attack " + kind, []step{{
 			pre: func() {
-				building, unit := w.enemyIn(slot, 2, 13)
+				building, unit := w.enemyIn(slot, 2, 103)
 				object := uint8(1)
 				target, before = unit, w.enemyUnitHealth(unit)
 				if kind == "building" {
 					object, target = 2, building
 					before = w.health(e, "buildings", building)
 				}
-				w.produce(slot, w.buildings(slot)[22], 11, gin.H{"location_kind": 2, "location_id": w.zoneKey(slot, 1, 0), "object_type": object, "object_id": target})
+				w.produce(slot, w.buildings(slot)[22], 101, gin.H{"location_kind": 2, "location_id": w.zoneKey(slot, 1, 0), "object_type": object, "object_id": target})
 			},
 			post: func() {
 				orderType := defs.OrderType_UnitAttackUnit
@@ -88,7 +88,7 @@ func TestGatherPointCombat(t *testing.T) {
 				} else {
 					after = w.enemyUnitHealth(target)
 				}
-				w.expectOrder(w.fresh(slot, 11), orderType)
+				w.expectOrder(w.fresh(slot, 101), orderType)
 				if after >= before {
 					t.Fatalf("gather-point attack caused no damage: before %v, after %v", before, after)
 				}

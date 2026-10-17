@@ -222,7 +222,7 @@ export class RisqOrdersModel {
     this.on_change();
   }
 
-  setSubmitted(orders: RisqOrder[]): void {
+  setSubmitted(orders: RisqFrontendOrder[]): void {
     this.submitted = [...orders];
     this.effective_cache.clear();
   }

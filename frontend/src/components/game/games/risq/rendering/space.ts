@@ -4,16 +4,19 @@ import { DEV } from '../../../../../scripts/util';
 import { drawHexagon, drawText } from '../../../util/canvas_util';
 import type { Point2D } from '../../../util/objects2d';
 import type { RisqDrawHost } from './board/board_renderer';
-import type { RisqSpace } from '../model/types';
+import type { RisqSpace, RisqZone } from '../model/types';
 import { RisqVisibilityLevel } from '../model/types';
 import { drawSpaceDetailsContent, drawSpaceOverviewDots } from './overview_dots';
-import { FOG_OVERLAY_IMAGE, RisqViewMode, spaceOwnerColor } from './terrain';
+import { FOG_OVERLAY_IMAGE, RisqViewMode, buildingVisibleInViewMode, spaceOwnerColor } from './terrain';
 import {
+  BUILDING_CIRCLE_RADIUS_MULTIPLIER,
   INNER_ZONE_MULTIPLIER,
   OUTER_ZONE_INDICES,
   zoneBuildingLocalOffset,
   zoneUnitSlotLocalOffsets,
 } from './zones/geometry';
+import { buildingImage } from './assets/buildings';
+import { scaledIcon, transformScale } from './assets/image_cache';
 import { drawForestTrees } from './assets/resources';
 import { drawRisqZone, getSpaceTerrainImage, getZoneFill, isEmptyPlot } from './zones/draw';
 import type { RisqEntityPass } from './zones/draw';
@@ -104,12 +107,18 @@ export function drawRisqSpaceBase(
       const tint = `rgba(${owner_color.getR()}, ${owner_color.getG()}, ${owner_color.getB()}, ${region_owned ? 0.45 : 0.25})`;
       fillHexOverlay(ctx, space.center, config.hex_r, tint);
     }
-    if (space.hovered) {
+    const region_hover =
+      config.view_mode === RisqViewMode.RESOURCE && !!region && region === game.hover.hoveredRegion();
+    const region_click =
+      config.view_mode === RisqViewMode.RESOURCE &&
+      !!region &&
+      (game.selection.isRegionSelected(region) || (region_hover && !!game.hover.space()?.clicked));
+    if (space.hovered || region_hover || region_click) {
       fillHexOverlay(
         ctx,
         space.center,
         config.hex_r,
-        space.clicked ? 'rgba(210, 210, 210, 0.4)' : 'rgba(190, 190, 190, 0.2)'
+        space.clicked || region_click ? 'rgba(210, 210, 210, 0.4)' : 'rgba(190, 190, 190, 0.2)'
       );
     }
   }
@@ -198,6 +207,59 @@ export function spaceBorderWidth(
   return widths[config.draw_detail] * (config.hex_r / SPACE_BORDER_REFERENCE_RADIUS) * borderScale(config);
 }
 
+function drawZoneBuildingSprite(
+  ctx: CanvasRenderingContext2D,
+  game: RisqDrawHost,
+  zone: RisqZone,
+  hex_r: number,
+  rot: number,
+  space_rot: number
+): void {
+  const b = zone.building;
+  if (!b) {
+    return;
+  }
+  const building_r = BUILDING_CIRCLE_RADIUS_MULTIPLIER * hex_r;
+  const scale = transformScale(ctx);
+  const local = zoneBuildingLocalOffset(zone.coordinate, hex_r);
+  ctx.save();
+  if (rot !== 0) {
+    ctx.rotate(rot);
+  }
+  ctx.translate(local.x, local.y);
+  ctx.rotate(-(rot + space_rot));
+  const icon = scaledIcon(
+    game,
+    buildingImage(b.building_id, b.under_construction, false, b.combat_stats),
+    game.getGame()?.players[b.player_id]?.color,
+    2 * building_r * scale
+  );
+  ctx.drawImage(icon, -building_r, -building_r, 2 * building_r, 2 * building_r);
+  ctx.restore();
+}
+
+function drawSpaceBuildings(
+  ctx: CanvasRenderingContext2D,
+  game: RisqDrawHost,
+  space: RisqSpace,
+  config: DrawRisqSpaceConfig
+): void {
+  if (config.view_mode === RisqViewMode.OWNERSHIP || !space.zones) {
+    return;
+  }
+  const a = Math.PI / 3;
+  ctx.save();
+  ctx.translate(space.center.x, space.center.y);
+  for (let i = -1; i < 6; i++) {
+    const zone = i === -1 ? space.zones[1][1] : space.zones[OUTER_ZONE_INDICES[i].x][OUTER_ZONE_INDICES[i].y];
+    const b = zone?.building;
+    if (b && buildingVisibleInViewMode(b, config.view_mode) && !game.selection.isBuildingSelected(b.internal_id)) {
+      drawZoneBuildingSprite(ctx, game, zone, config.hex_r, i === -1 ? 0 : a * (1 + i), config.rotation);
+    }
+  }
+  ctx.restore();
+}
+
 function drawSpaceContent(
   ctx: CanvasRenderingContext2D,
   game: RisqDrawHost,
@@ -216,6 +278,7 @@ function drawSpaceContent(
     if (space.visibility < RisqVisibilityLevel.FOG || config.entity_pass === 'terrain') {
       return;
     }
+    drawSpaceBuildings(ctx, game, space, config);
     ctx.save();
     ctx.translate(space.center.x, space.center.y);
     ctx.rotate(-config.rotation);

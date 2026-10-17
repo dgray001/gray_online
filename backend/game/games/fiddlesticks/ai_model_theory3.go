@@ -23,7 +23,9 @@ type FiddlesticksAiModelTheory3 struct {
 	min_win_weight_factor      float64
 	bet_scale                  float64
 	aggressive_factor          float64
+	aggressive_factor_slope    float64
 	late_seat_bonus            float64
+	late_seat_bonus_slope      float64
 	trump_hold_factor          float64
 	void_exploit               float64
 	// internal data for a given game
@@ -46,6 +48,10 @@ type FiddlesticksAiModelTheory3 struct {
 	locations_stale bool
 }
 
+func scaledByPlayers(base float64, slope float64, players int) float64 {
+	return base + slope*(6/float64(players)-1)
+}
+
 func cardSlot(card *game_utils.StandardCard) int {
 	return int(card.GetSuit()-1)*13 + int(card.GetNumber()-2)
 }
@@ -53,14 +59,16 @@ func cardSlot(card *game_utils.StandardCard) int {
 func createFiddlesticksAiModelTheory3(model_input map[string]string) *FiddlesticksAiModelTheory3 {
 	m := &FiddlesticksAiModelTheory3{
 		// configurable model parameters
-		win_vs_all_trump_factor:    1,
-		win_vs_all_nontrump_factor: 1,
-		min_win_weight_factor:      0.5,
-		bet_scale:                  1,
-		aggressive_factor:          0.8,
-		late_seat_bonus:            0.25,
-		trump_hold_factor:          0.25,
-		void_exploit:               0.25,
+		win_vs_all_trump_factor:    1.136,
+		win_vs_all_nontrump_factor: 0.203,
+		min_win_weight_factor:      0.8,
+		bet_scale:                  0.884,
+		aggressive_factor:          1.09,
+		aggressive_factor_slope:    0.8,
+		late_seat_bonus:            0.06,
+		late_seat_bonus_slope:      0.9,
+		trump_hold_factor:          0.396,
+		void_exploit:               0.194,
 		// internal data for a given game
 		created_opponents: false,
 		unknown_cards:     0,
@@ -92,8 +100,12 @@ func createFiddlesticksAiModelTheory3(model_input map[string]string) *Fiddlestic
 			m.bet_scale = util.ParseFloat(v)
 		case "aggressive_factor":
 			m.aggressive_factor = util.ParseFloat(v)
+		case "aggressive_factor_slope":
+			m.aggressive_factor_slope = util.ParseFloat(v)
 		case "late_seat_bonus":
 			m.late_seat_bonus = util.ParseFloat(v)
+		case "late_seat_bonus_slope":
+			m.late_seat_bonus_slope = util.ParseFloat(v)
 		case "trump_hold_factor":
 			m.trump_hold_factor = util.ParseFloat(v)
 		case "void_exploit":
@@ -180,19 +192,30 @@ func (m *FiddlesticksAiModelTheory3) ApplyUpdate(p *FiddlesticksPlayer, f *GameF
 }
 
 const LOCATION_FITTING_ROUNDS = 20
+const LOCATION_FITTING_TOLERANCE = 1e-6
 
 type LocationTarget struct {
 	column int
 	amount float64
 }
 
-func fitLocations(pool []*CardLocationProbability, targets []LocationTarget) {
+// counts[i] is how many cards pool[i] stands for
+func fitLocations(pool []*CardLocationProbability, counts []float64, targets []LocationTarget) {
+	previous := make([]float64, 0, len(pool)*(len(targets)+1))
 	for range LOCATION_FITTING_ROUNDS {
 		for _, location := range pool {
 			location.normalize()
 		}
+		if settled(pool, previous) {
+			break
+		}
+		previous = previous[:0]
+		for _, location := range pool {
+			previous = append(previous, location.kitty)
+			previous = append(previous, location.player...)
+		}
 		for _, target := range targets {
-			scaleToTarget(pool, target.column, target.amount)
+			scaleToTarget(pool, counts, target.column, target.amount)
 		}
 	}
 	for _, location := range pool {
@@ -200,16 +223,67 @@ func fitLocations(pool []*CardLocationProbability, targets []LocationTarget) {
 	}
 }
 
-func scaleToTarget(pool []*CardLocationProbability, id int, target float64) {
-	column := float64(0)
+// whether no probability moved more than the tolerance since the previous round
+func settled(pool []*CardLocationProbability, previous []float64) bool {
+	if len(previous) == 0 {
+		return false
+	}
+	i := 0
 	for _, location := range pool {
-		column += location.column(id)
+		if math.Abs(location.kitty-previous[i]) > LOCATION_FITTING_TOLERANCE {
+			return false
+		}
+		i++
+		for _, value := range location.player {
+			if math.Abs(value-previous[i]) > LOCATION_FITTING_TOLERANCE {
+				return false
+			}
+			i++
+		}
+	}
+	return true
+}
+
+func scaleToTarget(pool []*CardLocationProbability, counts []float64, id int, target float64) {
+	column := float64(0)
+	for i, location := range pool {
+		column += counts[i] * location.column(id)
 	}
 	if column == 0 {
 		return
 	}
 	for _, location := range pool {
 		location.scaleColumn(id, target/column)
+	}
+}
+
+// cards of one suit are interchangeable, so one fitted card per suit is copied to the rest
+func fitLocationsBySuit(pool []*CardLocationProbability, targets []LocationTarget) {
+	var suit_cards [5][]*CardLocationProbability
+	for _, location := range pool {
+		suit_cards[location.card.GetSuit()] = append(suit_cards[location.card.GetSuit()], location)
+	}
+	representatives := make([]*CardLocationProbability, 0, 4)
+	counts := make([]float64, 0, 4)
+	for _, cards := range suit_cards {
+		if len(cards) > 0 {
+			representatives = append(representatives, cards[0])
+			counts = append(counts, float64(len(cards)))
+		}
+	}
+	fitLocations(representatives, counts, targets)
+	for _, cards := range suit_cards {
+		for i := 1; i < len(cards); i++ {
+			cards[i].copyLocations(cards[0])
+		}
+	}
+}
+
+func setUniformLocations(pool []*CardLocationProbability, targets []LocationTarget) {
+	for _, location := range pool {
+		for _, target := range targets {
+			location.setColumn(target.column, target.amount/float64(len(pool)))
+		}
 	}
 }
 
@@ -222,6 +296,7 @@ func (m *FiddlesticksAiModelTheory3) updateLocations(f *GameFiddlesticks) {
 		}
 	}
 	targets := []LocationTarget{{KITTY_COLUMN, float64(len(pool))}}
+	voided := false
 	for id, opponent := range m.opponents {
 		if opponent == nil {
 			continue
@@ -232,10 +307,15 @@ func (m *FiddlesticksAiModelTheory3) updateLocations(f *GameFiddlesticks) {
 		for _, location := range pool {
 			if opponent.missing_suits[location.card.GetSuit()] {
 				location.player[id] = 0
+				voided = true
 			}
 		}
 	}
-	fitLocations(pool, targets)
+	if !voided {
+		setUniformLocations(pool, targets)
+		return
+	}
+	fitLocationsBySuit(pool, targets)
 }
 
 func (m *FiddlesticksAiModelTheory3) Bet(p *FiddlesticksPlayer, f *GameFiddlesticks) float64 {
@@ -286,7 +366,9 @@ func (m *FiddlesticksAiModelTheory3) CardWeights(p *FiddlesticksPlayer, f *GameF
 	tricks_left := len(p.cards) - len(p.cards_played)
 	tricks_needed_factor := float64(tricks_needed) / float64(tricks_left)
 	seat_fraction := float64(len(f.trick)) / float64(len(f.players)-1)
-	weighting := &FiddlesticksAiModelTheory1{aggressive_factor: m.aggressive_factor * (1 + m.late_seat_bonus*seat_fraction)}
+	aggressive_factor := util.Clamp(scaledByPlayers(m.aggressive_factor, m.aggressive_factor_slope, len(f.players)), 0.2, 5)
+	late_seat_bonus := util.Clamp(scaledByPlayers(m.late_seat_bonus, m.late_seat_bonus_slope, len(f.players)), 0, 2)
+	weighting := &FiddlesticksAiModelTheory1{aggressive_factor: aggressive_factor * (1 + late_seat_bonus*seat_fraction)}
 	current_winning_card, _ := f.winningTrickCard()
 	for i, card_index := range valid_cards {
 		card := p.cards[card_index]

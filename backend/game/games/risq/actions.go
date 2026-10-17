@@ -344,6 +344,11 @@ func (r *GameRisq) executeSetGatherPoint(player_id int, request GatherPointFromF
 		content["gather_point"] = building.gather_point.toFrontend()
 	}
 	r.sendSetting(player.player, "gather-point-set", content)
+	for _, other := range r.players {
+		if other.player.Player_id != player_id && showOrdersTo(player_id, building.zone, other.player.Player_id) {
+			r.sendSetting(other.player, "gather-point-set", content)
+		}
+	}
 }
 
 func (r *GameRisq) broadcastSubmission(kind string, player_id int) {

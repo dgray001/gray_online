@@ -3,7 +3,8 @@ import type { Point2D } from '../../../../util/objects2d';
 import { pointInRect } from '../../../../util/objects2d';
 import type { RisqLeftPanel } from '../../canvas_components/left_panel/left_panel';
 import { LeftPanelDataType } from '../../canvas_components/left_panel/left_panel_data';
-import type { RisqBuilding, RisqPlayer, RisqSpace, RisqZone, UnitByTypeData } from '../../model/types';
+import { RisqVisibilityLevel } from '../../model/types';
+import type { RisqBuilding, RisqPlayer, RisqResource, RisqSpace, RisqZone, UnitByTypeData } from '../../model/types';
 import { groupUnitsByType } from '../../model/unit_groups';
 import type { RisqViewport } from '../../rendering/board/viewport';
 import { unitVisibleInViewMode } from '../../rendering/terrain';
@@ -250,13 +251,56 @@ export class RisqBoardClicks {
             ...buildings.map((b: RisqBuilding): number => b.internal_id),
           ]),
         ]);
-      } else if (!additive) {
-        this.left_panel.close();
+      } else {
+        this.dragSelectResources(start, end, additive, zone_view);
       }
       return;
     }
     const selected_ids = additive ? new Set([...this.selection.selectedUnitIds(), ...found_ids]) : new Set(found_ids);
     this.selection.selectOwnUnits([...selected_ids]);
+  }
+
+  private dragSelectResources(start: Point2D, end: Point2D, additive: boolean, zone_view: boolean): void {
+    if (additive) {
+      return;
+    }
+    const center = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
+    const resources = this.resourcesInRect(start, end, zone_view, center);
+    if (resources.length > 0) {
+      resources.sort((a, b): number => a.dist - b.dist);
+      const target = resources[0];
+      this.left_panel.openPanel({ data_type: LeftPanelDataType.RESOURCE, data: target.resource }, target.visibility);
+    } else {
+      this.left_panel.close();
+    }
+  }
+
+  private resourcesInRect(
+    start: Point2D,
+    end: Point2D,
+    zone_view: boolean,
+    center: Point2D
+  ): { resource: RisqResource; visibility: RisqVisibilityLevel; dist: number }[] {
+    const bounds = this.viewport.visibleCanvasBounds();
+    return (this.session.getGame()?.spaces ?? []).flat().flatMap((s) => {
+      if (!s || s.visibility < RisqVisibilityLevel.FOG || !this.viewport.isSpaceOnScreen(s, bounds)) {
+        return [];
+      }
+      return [...(s.resources?.values() ?? [])].flatMap((r) => {
+        const a = this.resourceAnchor(r, zone_view);
+        return pointInRect(a, start, end)
+          ? [{ resource: r, visibility: s.visibility, dist: (a.x - center.x) ** 2 + (a.y - center.y) ** 2 }]
+          : [];
+      });
+    });
+  }
+
+  private resourceAnchor(resource: RisqResource, zone_view: boolean): Point2D {
+    const offset = zoneCenterOffset(resource.zone_coordinate, this.viewport.hexR());
+    return canvasToScreen(
+      this.viewport.orderPoint(resource.space_coordinate, offset, zone_view),
+      this.viewport.lastTransform()
+    );
   }
 
   // space-level bounding-box check first (cheap pre-filter), then whether the unit's own rendered circle overlaps the viewport

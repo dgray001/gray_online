@@ -24,6 +24,7 @@ export declare interface RisqDisplaySettings {
   selection_outline_thickness: number;
   idle_indicator_size: number;
   idle_indicator_pulse: boolean;
+  edge_pan: boolean;
 }
 
 export function defaultRisqDisplaySettings(): RisqDisplaySettings {
@@ -40,6 +41,7 @@ export function defaultRisqDisplaySettings(): RisqDisplaySettings {
     selection_outline_thickness: 2,
     idle_indicator_size: 0,
     idle_indicator_pulse: false,
+    edge_pan: true,
   };
 }
 

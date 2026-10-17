@@ -26,7 +26,7 @@ func TestTargetedBonusOnlyAffectsMatchingOpponent(t *testing.T) {
 
 func bonusDamage(t *testing.T, building, enabled bool) float64 {
 	t.Helper()
-	source := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":0,"count":1},{"id":12,"player":1,"count":1}]`
+	source := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":101,"player":0,"count":1},{"id":102,"player":1,"count":1}]`
 	if building {
 		source += `,"building":{"id":2,"player":1}`
 	}

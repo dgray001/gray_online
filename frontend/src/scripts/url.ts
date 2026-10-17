@@ -12,6 +12,12 @@ export function getUrlParam(key: string): string {
   return url.searchParams.get(key) ?? '';
 }
 
+function buildUrl(params: URLSearchParams): string {
+  const query = formatQuery(params);
+  const search = query ? `?${query}` : '';
+  return `${window.location.pathname}${search}${window.location.hash}`;
+}
+
 export function setUrlParam(key: string, value: string): void {
   const params = new URL(window.location.href).searchParams;
   if (!!value) {
@@ -19,13 +25,13 @@ export function setUrlParam(key: string, value: string): void {
   } else {
     params.delete(key);
   }
-  window.history.replaceState(null, '', `?${formatQuery(params)}${window.location.hash}`);
+  window.history.replaceState(null, '', buildUrl(params));
 }
 
 export function removeUrlParam(key: string): void {
   const params = new URL(window.location.href).searchParams;
   params.delete(key);
-  window.history.replaceState(null, '', `?${formatQuery(params)}${window.location.hash}`);
+  window.history.replaceState(null, '', buildUrl(params));
 }
 
 export function getPage(): string {

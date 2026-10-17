@@ -161,7 +161,7 @@ func TestEnumValidity(t *testing.T) {
 		if u.Attack_type != defs.AttackType_NONE && (u.Attack_type <= 0 || u.Attack_type >= defs.AttackType_BLUNT_PIERCING_MAGIC+1) {
 			t.Errorf("Invalid AttackType %v on %d", u.Attack_type, id)
 		}
-		if u.Unit_type <= 0 || u.Unit_type > defs.UnitType_CAVALRY {
+		if u.Unit_type <= 0 || u.Unit_type > defs.UnitType_SIEGE {
 			t.Errorf("Bad unit type on %d", id)
 		}
 	}

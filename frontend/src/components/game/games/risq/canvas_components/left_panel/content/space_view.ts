@@ -46,7 +46,7 @@ export class RisqSpaceView {
     yi += hexagon.draw(pc, space, separator_distance, yi);
     drawSeparator(pc, yi);
     yi += separator_distance;
-    if (pc.visibility < RisqVisibilityLevel.POOR) {
+    if (pc.visibility < RisqVisibilityLevel.FOG) {
       return;
     }
     const rows = 6;
@@ -115,7 +115,7 @@ export class RisqSpaceView {
       if (combo_icon) {
         draw_row(combo_icon, space.unit_count?.toString() ?? '??');
       }
-    } else {
+    } else if (pc.visibility >= RisqVisibilityLevel.GOOD) {
       const row_step = image_size + separator_distance;
       if (hasEconomy(risq.getGame())) {
         this.villager_row_button = this.layoutRowButton(

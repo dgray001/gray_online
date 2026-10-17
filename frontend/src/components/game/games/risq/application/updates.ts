@@ -46,6 +46,9 @@ export class RisqUpdates {
           this.risq.commands.gather_points.reset();
           this.applyStartTurn(update.content as StartTurnData);
           break;
+        case 'resync':
+          this.setNewGameData((update.content as StartTurnData).game);
+          break;
         case 'submitted-orders':
         case 'unsubmitted-orders':
           this.applySubmission(update.content as SubmissionNoticeData);

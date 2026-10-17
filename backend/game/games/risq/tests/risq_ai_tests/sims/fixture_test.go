@@ -128,7 +128,7 @@ func TestThreePlayersKeepDecisionsSeparate(t *testing.T) {
 	}
 }
 
-const duel = `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":13,"player":0,"count":1},{"id":1,"player":1,"count":1}]},{"x":1,"y":0,"building":{"id":2,"player":0}},{"x":-1,"y":0,"building":{"id":2,"player":1}}]}`
+const duel = `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":103,"player":0,"count":1},{"id":1,"player":1,"count":1}]},{"x":1,"y":0,"building":{"id":2,"player":0}},{"x":-1,"y":0,"building":{"id":2,"player":1}}]}`
 
 func TestGameEndStopsAllAIWorkers(t *testing.T) {
 	model := once(`{"action":"set_unit_behavior","stance":"passive","attack_back":false},{"action":"attack","target":"economic","max":1}`)

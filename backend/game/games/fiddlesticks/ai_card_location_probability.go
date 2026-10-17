@@ -71,6 +71,19 @@ func (p *CardLocationProbability) column(id int) float64 {
 	return p.player[id]
 }
 
+func (p *CardLocationProbability) copyLocations(other *CardLocationProbability) {
+	p.kitty = other.kitty
+	copy(p.player, other.player)
+}
+
+func (p *CardLocationProbability) setColumn(id int, value float64) {
+	if id == KITTY_COLUMN {
+		p.kitty = value
+		return
+	}
+	p.player[id] = value
+}
+
 func (p *CardLocationProbability) scaleColumn(id int, factor float64) {
 	if id == KITTY_COLUMN {
 		p.kitty *= factor

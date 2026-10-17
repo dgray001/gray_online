@@ -58,10 +58,10 @@ func TestCustomMapIgnoresAnUnknownTerrainOverride(t *testing.T) {
 }
 
 func TestCustomMapSkipsUnitsWithANegativeCount(t *testing.T) {
-	doc := customDoc(1, "", `{"x":0,"y":0,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":0,"count":-3},{"id":11,"player":0,"count":2}]}]}`)
+	doc := customDoc(1, "", `{"x":0,"y":0,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":0,"count":-3},{"id":101,"player":0,"count":2}]}]}`)
 	board := mustGenerate(t, doc, 1)
-	if units := zoneAt(t, board, 0, 0, 0, 0).Units; len(units) != 2 || units[0].ID != 11 {
-		t.Errorf("units = %v, want only the 2 of unit 11", units)
+	if units := zoneAt(t, board, 0, 0, 0, 0).Units; len(units) != 2 || units[0].ID != 101 {
+		t.Errorf("units = %v, want only the 2 of unit 101", units)
 	}
 	checkCustomDocMatches(t, doc)
 }

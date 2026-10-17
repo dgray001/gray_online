@@ -40,7 +40,7 @@ export function patchDefaultUnitBehavior(session: RisqSession, data: DefaultUnit
 }
 
 export function patchGatherPoint(session: RisqSession, data: GatherPointSetData): void {
-  const building = session.getPlayer()?.buildings.get(data.building_id);
+  const building = session.findBuildingById(data.building_id);
   if (building) {
     building.gather_point = data.gather_point;
   }

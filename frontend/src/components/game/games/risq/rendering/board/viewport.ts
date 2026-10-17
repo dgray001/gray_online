@@ -152,11 +152,11 @@ export class RisqViewport {
     return this.draw_detail !== DrawRisqSpaceDetail.OWNERSHIP;
   }
 
-  // Regions are hoverable/selectable in ownership mode below zone zoom, or fully zoomed out in any non-military view mode
+  // Regions are hoverable/selectable in ownership and resource modes at ownership draw detail
   regionInteractionEnabled(): boolean {
-    const fully_zoomed_out = this.draw_detail === DrawRisqSpaceDetail.OWNERSHIP;
-    const ownership_mode = this.viewMode() === RisqViewMode.OWNERSHIP;
-    return (ownership_mode && !this.zoneView()) || (fully_zoomed_out && this.viewMode() !== RisqViewMode.MILITARY);
+    const mode = this.viewMode();
+    const region_mode = mode === RisqViewMode.OWNERSHIP || mode === RisqViewMode.RESOURCE;
+    return region_mode && this.draw_detail === DrawRisqSpaceDetail.OWNERSHIP;
   }
 
   zoomLimits(board_size: Point2D): { min: number; max: number } {

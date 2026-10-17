@@ -563,8 +563,8 @@ func (c *Client) handleMessage(message lobbyMessage) {
 			}
 			break
 		}
-		if id, stale, ok := room_game.GetBase().LatestUpdate(c.client_id); ok {
-			c.send(lobbyMessage{Sender: "server", Kind: "game-last-update-id", Data: strconv.Itoa(id), Content: strconv.FormatBool(stale)})
+		if id, settings_rev, ok := room_game.GetBase().LatestUpdate(c.client_id); ok {
+			c.send(lobbyMessage{Sender: "server", Kind: "game-last-update-id", Data: strconv.Itoa(id), Content: strconv.Itoa(settings_rev)})
 		}
 	case "game-resend-last-update":
 		lobby_room := c.getLobbyRoom()

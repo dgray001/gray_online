@@ -5,6 +5,6 @@
     "description": "Allows hiring units for gold directly into owned territory.",
     "cost": { "gold": 0 },
     "research_stamina": 45,
-    "unlocks_mercenary_ids": [11]
+    "unlocks_mercenary_ids": [101]
   }
 ]

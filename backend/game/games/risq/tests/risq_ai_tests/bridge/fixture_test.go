@@ -55,8 +55,8 @@ func bridgeGame(t *testing.T, spaces string, configure ...func()) (*harness.Game
 		t.Fatal(err)
 	}
 	if len(configure) > 0 {
-		saved := defs.UnitConfigs[11]
-		t.Cleanup(func() { defs.UnitConfigs[11] = saved })
+		saved := defs.UnitConfigs[101]
+		t.Cleanup(func() { defs.UnitConfigs[101] = saved })
 		for _, apply := range configure {
 			apply()
 		}

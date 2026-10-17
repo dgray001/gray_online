@@ -1,4 +1,5 @@
 [
+  { "step": "define", "params": { "name": "tree_multiplier", "value": "1 + 0.5 * max(0, map_resources - 2)" } },
   {
     "step": "resource_blob",
     "params": {

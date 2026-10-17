@@ -22,25 +22,25 @@ func rangedGameWithRange(t *testing.T, distance int, nearbyVillager bool, attack
 	for x := 0; x <= distance; x++ {
 		zones := ""
 		if x == 0 {
-			units := `{"id":11,"player":0,"count":1}`
+			units := `{"id":101,"player":0,"count":1}`
 			if nearbyVillager {
 				units += `,{"id":1,"player":1,"count":1}`
 			}
 			zones = `{"x":0,"y":0,"units":[` + units + `]}`
 		} else if x == distance {
-			zones = unitZoneJSON(harness.Coord{}, 13, 1)
+			zones = unitZoneJSON(harness.Coord{}, 103, 1)
 		}
 		spaces = append(spaces, fmt.Sprintf(`{"x":%d,"y":0,"terrain":1,"zones":[%s]}`, x, zones))
 	}
 	doc := fmt.Sprintf(`{"board_size":3,"players":2,"spaces":[%s]}`, strings.Join(spaces, ","))
 	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"ranged": doc})
-	config := defs.UnitConfigs[11]
+	config := defs.UnitConfigs[101]
 	config.Attack_range = attack_range
 	config.Vision.Adjacent, config.Vision.Edge_opposite, config.Vision.Secondary = defs.VisibilityGood, defs.VisibilityGood, defs.VisibilityGood
-	defs.UnitConfigs[11] = config
+	defs.UnitConfigs[101] = config
 	g := harness.NewGame(t, "custom:ranged", 1, 2)
 	for _, unit := range g.Self(g.Human(1)).Units {
-		if unit.UnitID == 13 {
+		if unit.UnitID == 103 {
 			g.Action(g.Human(1), "set-unit-behavior", gin.H{"internal_ids": []uint64{unit.InternalID}, "stance": uint8(defs.UnitStance_PASSIVE), "attack_back": false})
 		}
 	}
@@ -100,7 +100,7 @@ func TestRangedPriorityPrecedesDistance(t *testing.T) {
 				t.Fatal("nearby villager killed first")
 			}
 			for _, unit := range state.Units {
-				if unit.UnitID == 13 && unit.CombatStats.Health >= float64(unit.CombatStats.MaxHealth) {
+				if unit.UnitID == 103 && unit.CombatStats.Health >= float64(unit.CombatStats.MaxHealth) {
 					t.Fatal("adjacent military target ignored")
 				}
 				if unit.UnitID == 1 && unit.CombatStats.Health != float64(unit.CombatStats.MaxHealth) {

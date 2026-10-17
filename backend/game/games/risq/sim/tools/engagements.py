@@ -3,7 +3,7 @@ damage), power (blunt 1, piercer 2, heavy 4), losses, and overkill % (damage tha
 usage: python3 tools/engagements.py outputs/<name>/debug.log <seat of the AI to report as "v0.6"> [max fights] [min soldiers per side]"""
 import re,json,sys,collections
 log, me = sys.argv[1], int(sys.argv[2])
-HP={1:8,11:11,12:16,13:50}; SOLD={11,12,13}; POW={11:1,12:2,13:4}
+HP={1:8,101:11,102:16,103:50}; SOLD={101,102,103}; POW={101:1,102:2,103:4}
 pos={}; hp={}; kind={}; turn=0
 E=collections.defaultdict(lambda: {'part':{'mine':set(),'theirs':set()},'lost':{'mine':collections.Counter(),'theirs':collections.Counter()},'eff':collections.Counter(),'waste':collections.Counter()})
 ticks=collections.defaultdict(list)

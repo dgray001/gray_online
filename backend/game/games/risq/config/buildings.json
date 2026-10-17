@@ -83,7 +83,7 @@
     "defense_blunt": 1,
     "defense_piercing": 3,
     "garrison_capacity": 5,
-    "cost": { "wood": 25 },
+    "cost": { "wood": 25, "stone": 5 },
     "build_stamina": 12,
     "vision": { "space": 3, "edge_adjacent": 3, "adjacent": 3, "edge_opposite": 3, "secondary": 2 }
   },
@@ -99,8 +99,8 @@
     "build_stamina": 30,
     "turn_stamina": 10,
     "produces": [
-      { "row": 1, "col": 0, "kind": "unit", "id": 11 },
-      { "row": 1, "col": 1, "kind": "unit", "id": 12 }
+      { "row": 1, "col": 0, "kind": "unit", "id": 101 },
+      { "row": 1, "col": 1, "kind": "unit", "id": 102 }
     ]
   },
   {
@@ -120,7 +120,8 @@
     "build_stamina": 50,
     "turn_stamina": 10,
     "produces": [
-      { "row": 1, "col": 0, "kind": "unit", "id": 13 },
+      { "row": 1, "col": 0, "kind": "unit", "id": 103 },
+      { "row": 1, "col": 1, "kind": "unit", "id": 401 },
       { "row": 2, "col": 0, "kind": "tech", "id": 4 }
     ],
     "vision": { "space": 3, "edge_adjacent": 3, "adjacent": 3, "edge_opposite": 3, "secondary": 2 }

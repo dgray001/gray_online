@@ -53,6 +53,7 @@ export const RISQ_DISPLAY_SPECS: { [K in keyof RisqDisplaySettings]: DisplaySpec
   selection_outline_thickness: slider('Selection outline thickness', px(1, 2, 3, 4)),
   idle_indicator_size: slider('Idle indicator size', [{ value: 0, label: 'Off' }, ...px(8, 12, 16, 20)]),
   idle_indicator_pulse: { label: 'Pulse idle indicators', control: 'checkbox', options: ENABLED_OPTIONS },
+  edge_pan: { label: 'Mouse edge panning', control: 'checkbox', options: ENABLED_OPTIONS },
 };
 
 export const RISQ_DISPLAY_KEYS = Object.keys(RISQ_DISPLAY_SPECS) as (keyof RisqDisplaySettings)[];

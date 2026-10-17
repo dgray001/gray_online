@@ -13,7 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const ownScout = `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":0,"count":1}]}]}`
+const ownScout = `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":101,"player":0,"count":1}]}]}`
 
 func TestRealPayloadVisibility(t *testing.T) {
 	for _, c := range []struct {
@@ -24,7 +24,7 @@ func TestRealPayloadVisibility(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			own := ""
 			if c.x == 0 {
-				own = `,{"id":11,"player":0,"count":1}`
+				own = `,{"id":101,"player":0,"count":1}`
 			}
 			spaces := fmt.Sprintf(`{"x":%d,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"resource":1,"units":[{"id":1,"player":1,"count":1}%s]},{"x":1,"y":0,"building":{"id":2,"player":1}}]}`, c.x, own)
 			if c.x != 0 {
@@ -32,9 +32,9 @@ func TestRealPayloadVisibility(t *testing.T) {
 			}
 			g, player := bridgeGame(t, spaces, func() {
 				if c.vision == 4 {
-					config := defs.UnitConfigs[11]
+					config := defs.UnitConfigs[101]
 					config.Vision.Space = defs.VisibilitySpy
-					defs.UnitConfigs[11] = config
+					defs.UnitConfigs[101] = config
 				}
 			})
 			g.Action(g.Human(0), "set-unit-behavior", gin.H{"internal_ids": []uint64{g.Self(g.Human(0)).Units[0].InternalID}, "stance": uint8(defs.UnitStance_PASSIVE), "attack_back": false})

@@ -14,7 +14,7 @@ const villageCenterId = 1
 // Player 0 holds space (0,0) with villagers and a military unit; extra_spaces are appended after player 1's lone villager
 func limitGame(t *testing.T, villagers int, extra_spaces string) *harness.Game {
 	t.Helper()
-	doc := fmt.Sprintf(`{"board_size":3,"players":2,"starting_bank":{"wood":1000,"stone":1000},"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":0,"count":%d},{"id":11,"player":0,"count":1}]}]},{"x":-3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":1,"count":1}]}]}%s]}`, villagers, extra_spaces)
+	doc := fmt.Sprintf(`{"board_size":3,"players":2,"starting_bank":{"wood":1000,"stone":1000},"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":0,"count":%d},{"id":101,"player":0,"count":1}]}]},{"x":-3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":1,"count":1}]}]}%s]}`, villagers, extra_spaces)
 	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"limit": doc})
 	return startGame(t, "custom:limit", 1, 2)
 }

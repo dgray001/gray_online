@@ -16,7 +16,7 @@ var (
 	pristine   *defs.ConfigSnapshot
 )
 
-const targetSpace = `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":1},"units":[{"id":1,"player":1,"count":1}]},{"x":1,"y":0,"terrain_override":24,"resource":41},{"x":-1,"y":0,"building":{"id":3,"player":1}},{"x":0,"y":-1,"units":[{"id":11,"player":1,"count":1}]}]}`
+const targetSpace = `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":1},"units":[{"id":1,"player":1,"count":1}]},{"x":1,"y":0,"terrain_override":24,"resource":41},{"x":-1,"y":0,"building":{"id":3,"player":1}},{"x":0,"y":-1,"units":[{"id":101,"player":1,"count":1}]}]}`
 const scoutSpaces = `,{"x":-1,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":15,"player":0,"count":1}]}]},{"x":-2,"y":0,"terrain":1},{"x":-3,"y":0,"terrain":1},{"x":-4,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":15,"player":0,"count":1}]}]}`
 const hiddenSpaces = `,{"x":1,"y":0,"terrain":1},{"x":2,"y":0,"terrain":1},{"x":3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":1},"units":[{"id":1,"player":1,"count":1}]},{"x":1,"y":0,"resource":11}]},{"x":4,"y":0,"terrain":1}`
 const regions = `,"regions":[{"name":"Border","gold_bonus":7,"spaces":[[0,0],[3,0]]},{"name":"Secret","gold_bonus":9,"spaces":[[4,0]]}]`
@@ -229,7 +229,7 @@ func TestGameAndPlayerWireShapes(t *testing.T) {
 	g := shapeGame(t, 3)
 	for human := range 2 {
 		state := checkShape(t, snapshot(g, human, false), gameShape)
-		base := checkShape(t, state["game_base"], "game_id:n game_type:n game_started:b game_ended:b persistant_history:b latest_update_id:n players:a viewers:a")
+		base := checkShape(t, state["game_base"], "game_id:n game_type:n game_started:b game_ended:b persistant_history:b latest_update_id:n settings_rev:n players:a viewers:a")
 		for _, value := range array(t, base["players"]) {
 			checkShape(t, value, identityShape)
 		}
@@ -261,7 +261,7 @@ func TestViewerDoesNotInheritClientPrivateData(t *testing.T) {
 	for human := range 2 {
 		state := checkShape(t, snapshot(g, human, true), gameShape)
 		equal(t, state["last_turn_replay"], nil)
-		checkShape(t, state["game_base"], "game_id:n game_type:n game_started:b game_ended:b persistant_history:b latest_update_id:n players:a viewers:a player_actions:a viewer_updates:a")
+		checkShape(t, state["game_base"], "game_id:n game_type:n game_started:b game_ended:b persistant_history:b latest_update_id:n settings_rev:n players:a viewers:a player_actions:a viewer_updates:a")
 		for _, value := range array(t, state["players"]) {
 			p := checkShape(t, value, playerShape)
 			for _, key := range []string{"units", "buildings", "active_orders"} {

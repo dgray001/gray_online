@@ -26,6 +26,7 @@ const (
 	UnitType_INFANTRY
 	UnitType_ARCHER
 	UnitType_CAVALRY
+	UnitType_SIEGE
 )
 
 func parseUnitType(s string) (UnitType, error) {
@@ -38,6 +39,8 @@ func parseUnitType(s string) (UnitType, error) {
 		return UnitType_ARCHER, nil
 	case "cavalry":
 		return UnitType_CAVALRY, nil
+	case "siege":
+		return UnitType_SIEGE, nil
 	default:
 		return UnitType_NONE, fmt.Errorf("unknown unit_type %q", s)
 	}

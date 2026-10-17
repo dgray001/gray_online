@@ -47,8 +47,8 @@ func TestOrderFlow(t *testing.T) {
 
 	// unsubmit discards only the new orders and never charges for pending production
 	before := g.Self(p)
-	soldiers := len(unitIDs(g, p, 11))
-	g.Submit(p, harness.OrderMoveZone([]uint64{spare}, 1, 0, 0, 0), harness.OrderProduce([]uint64{b[22]}, 11))
+	soldiers := len(unitIDs(g, p, 101))
+	g.Submit(p, harness.OrderMoveZone([]uint64{spare}, 1, 0, 0, 0), harness.OrderProduce([]uint64{b[22]}, 101))
 	pending := g.Self(p)
 	if len(pending.ActiveOrders) != len(before.ActiveOrders)+2 || pending.Resources.Food != before.Resources.Food {
 		t.Fatalf("pending orders were not appended without charging: %+v", pending)
@@ -116,7 +116,7 @@ func TestOrderFlow(t *testing.T) {
 		t.Fatalf("carried move did not finish and reset: %+v", u)
 	}
 	g.SubmitRejected(p, harness.Order(defs.OrderType_CancelOrder, nil, int64(queue[1].InternalID), false), fmt.Sprintf("No active order with id %d", queue[1].InternalID))
-	if len(unitIDs(g, p, 11)) != soldiers {
+	if len(unitIDs(g, p, 101)) != soldiers {
 		t.Fatal("discarded production executed")
 	}
 	if got := len(unitIDs(g, p, 1)); got != 9 {

@@ -9,7 +9,7 @@ import (
 )
 
 func TestHealthNetting(t *testing.T) {
-	g := combatGame(t, 13, 13)
+	g := combatGame(t, 103, 103)
 	p0, p1 := g.Human(0), g.Human(1)
 	u0 := g.Self(p0).Units[0]
 	u1 := g.Self(p1).Units[0]
@@ -25,16 +25,16 @@ func TestHealthNetting(t *testing.T) {
 }
 
 func TestTimeToKill(t *testing.T) {
-	if u := risq.ComputeUnitVsUnitTTK(11, 11); !u.Possible || u.Turns != 2 || u.Ticks != 7 {
+	if u := risq.ComputeUnitVsUnitTTK(101, 101); !u.Possible || u.Turns != 2 || u.Ticks != 7 {
 		t.Fatalf("unexpected unit TTK: %+v", u)
 	}
-	if b := risq.ComputeUnitVsBuildingTTK(11, 2); !b.Possible || b.Ticks <= 0 {
+	if b := risq.ComputeUnitVsBuildingTTK(101, 2); !b.Possible || b.Ticks <= 0 {
 		t.Fatalf("unexpected building TTK: %+v", b)
 	}
-	if ut := risq.ComputeUnitVsUnitTTKWithTechs(11, 11, []uint32{2}, []uint32{3}); !ut.Possible {
+	if ut := risq.ComputeUnitVsUnitTTKWithTechs(101, 101, []uint32{2}, []uint32{3}); !ut.Possible {
 		t.Fatalf("unexpected tech TTK: %+v", ut)
 	}
-	if bt := risq.ComputeUnitVsBuildingTTKWithTechs(11, 2, []uint32{2}); !bt.Possible {
+	if bt := risq.ComputeUnitVsBuildingTTKWithTechs(101, 2, []uint32{2}); !bt.Possible {
 		t.Fatalf("unexpected building tech TTK: %+v", bt)
 	}
 	if len(risq.AllUnitIDs()) == 0 || len(risq.AllBuildingIDs()) == 0 {
@@ -46,7 +46,7 @@ func TestTimeToKill(t *testing.T) {
 }
 
 func TestAttackTypesAndPenetration(t *testing.T) {
-	g := combatGame(t, 12, 13) // 12: 10 piercing att. 13: 3 piercing def, 50 hp
+	g := combatGame(t, 102, 103) // 12: 10 piercing att. 13: 3 piercing def, 50 hp
 	p0, p1 := g.Human(0), g.Human(1)
 	u0 := g.Self(p0).Units[0]
 	u1 := g.Self(p1).Units[0]
@@ -61,7 +61,7 @@ func TestAttackTypesAndPenetration(t *testing.T) {
 }
 
 func TestPenetrationReducesDefense(t *testing.T) {
-	g := combatGame(t, 13, 13) // 18 attack, 5% penetration vs 4 blunt + 3 piercing defense
+	g := combatGame(t, 103, 103) // 18 attack, 5% penetration vs 4 blunt + 3 piercing defense
 	p0, p1 := g.Human(0), g.Human(1)
 	u0 := g.Self(p0).Units[0]
 	u1 := g.Self(p1).Units[0]

@@ -73,6 +73,7 @@ export class DwgGame extends DwgElement {
   message_error_count = 0;
   running_updates = false;
   refreshing?: Promise<boolean>;
+  private resyncing?: Promise<void>;
   update_queue: UpdateMessage[] = [];
   private pending_start = false;
 
@@ -470,6 +471,34 @@ export class DwgGame extends DwgElement {
       messageDialog.call(this, { message: 'Unable to refresh game state. Refresh the page to reconnect.' });
     }
     return refreshed;
+  }
+
+  /** Repairs a missed setting update by applying the current state as a plain replacement, keeping the board mounted */
+  resyncState(): Promise<void> {
+    return (this.resyncing ??= this.applyFreshState().finally((): void => {
+      this.resyncing = undefined;
+    }));
+  }
+
+  private async applyFreshState(): Promise<void> {
+    const game_el = this.game_el;
+    const applied_id = this.game?.game_base.last_applied_update_id;
+    const response = await apiPost<GameFromServer>(`lobby/games/get/${this.game_id}`, {
+      client_id: this.clientId(),
+      token: this.connection_metadata?.token,
+      viewer: this.is_player ? 'false' : 'true',
+    });
+    const game_base = this.game?.game_base;
+    const fresh = response.success ? response.result : undefined;
+    // anything newer than the request means the heartbeat will compare again
+    if (!fresh || !game_base || this.game_el !== game_el || this.refreshing) {
+      return;
+    }
+    if (game_base.last_applied_update_id !== applied_id || fresh.game_base.latest_update_id !== applied_id) {
+      return;
+    }
+    game_base.settings_rev = fresh.game_base.settings_rev;
+    await game_el.gameUpdate({ update_id: 0, kind: 'resync', content: { game: fresh } });
   }
 
   private async refreshGameSnapshot(): Promise<boolean> {

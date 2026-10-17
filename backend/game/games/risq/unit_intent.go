@@ -15,6 +15,12 @@ const gatherRoundingPlaces = 4
 
 const gatherRateStaminaBase = 10.0
 
+// Gather rate multipliers by space ownership; vars so tests can neutralize them
+var (
+	GatherNeutralSpaceFactor = 0.1
+	GatherEnemySpaceFactor   = 0.3
+)
+
 const repairSpeedFactor = 0.6
 const repairCostFactor = 1.0
 

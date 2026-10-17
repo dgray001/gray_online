@@ -14,14 +14,17 @@ export function unitImage(unit_id: number, plain = false): string {
     case 1:
       filename = 'villager';
       break;
-    case 11:
+    case 101:
       filename = 'blunt_infantry';
       break;
-    case 12:
+    case 102:
       filename = 'piercing_infantry';
       break;
-    case 13:
+    case 103:
       filename = 'heavy_infantry';
+      break;
+    case 401:
+      filename = 'catapult';
       break;
     default:
       err('Trying to get unit image from unknown unit id', unit_id);

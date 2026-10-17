@@ -23,7 +23,7 @@ func zoneAt(t *testing.T, board *fakeboard.Board, x, y, zx, zy int) fakeboard.Zo
 
 func TestCustomMapPlacesZoneContents(t *testing.T) {
 	doc := customDoc(2, "", `{"x":0,"y":0,"zones":[
-		{"x":0,"y":0,"terrain_override":6,"building":{"id":1,"player":1},"units":[{"id":1,"player":1,"count":3},{"id":11,"player":0,"count":1}]},
+		{"x":0,"y":0,"terrain_override":6,"building":{"id":1,"player":1},"units":[{"id":1,"player":1,"count":3},{"id":101,"player":0,"count":1}]},
 		{"x":1,"y":0,"resource":41}]}`)
 	board := mustGenerate(t, doc, 2)
 	center, edge := zoneAt(t, board, 0, 0, 0, 0), zoneAt(t, board, 0, 0, 1, 0)

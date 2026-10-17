@@ -7,7 +7,7 @@ import re
 import sys
 from pathlib import Path
 
-POWER = {11: 1, 12: 2, 13: 4}
+POWER = {101: 1, 102: 2, 103: 4}
 AI_LINE = re.compile(r"ai (ai-\d): (new turn data|vars) (.*)$")
 
 

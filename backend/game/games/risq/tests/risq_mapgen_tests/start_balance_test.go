@@ -63,7 +63,7 @@ func TestRandomStartsKeepConfiguredAssets(t *testing.T) {
 			board := balancedBoard(t, name, float64(defs.StartBalance_RANDOM), players, 1)
 			for player := 0; player < players; player++ {
 				units, buildings, _ := board.Tally(player)
-				if units[1] != 3 || units[11] != 1 || buildings[1] != 1 {
+				if units[1] != 3 || units[101] != 1 || buildings[1] != 1 {
 					t.Errorf("%s %d players player %d: units %v buildings %v", name, players, player, units, buildings)
 				}
 			}

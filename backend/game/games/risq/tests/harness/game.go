@@ -327,3 +327,9 @@ func NewConnectedGame(t *testing.T, mapName string, seed int64, humans int, view
 	game.Game_StartGame(g.Risq)
 	return g
 }
+
+// Harness games neutralize the ownership gather penalty so economy fixtures can gather in unowned spaces
+func init() {
+	risq.GatherNeutralSpaceFactor = 1
+	risq.GatherEnemySpaceFactor = 1
+}

@@ -144,9 +144,9 @@ func TestGatherPointRouting(t *testing.T) {
 		},
 		{
 			pre: func() {
-				w.produce(1, barracks(1), 11, gin.H{"location_kind": 2, "location_id": w.zoneKey(1, -1, 1), "object_type": 2, "object_id": 0})
+				w.produce(1, barracks(1), 101, gin.H{"location_kind": 2, "location_id": w.zoneKey(1, -1, 1), "object_type": 2, "object_id": 0})
 			},
-			post: arrived(1, 11),
+			post: arrived(1, 101),
 		},
 	}})
 
@@ -157,9 +157,9 @@ func TestGatherPointRouting(t *testing.T) {
 		{
 			pre: func() {
 				treeBefore = w.g.State(w.human(2)).Space(w.home(2)[0], w.home(2)[1]).Resources[0].ResourcesLeft
-				w.produce(2, barracks(2), 11, gin.H{"location_kind": 2, "location_id": w.zoneKey(2, 1, -1), "object_type": 3})
+				w.produce(2, barracks(2), 101, gin.H{"location_kind": 2, "location_id": w.zoneKey(2, 1, -1), "object_type": 3})
 			},
-			post: func() { scout = w.fresh(2, 11).InternalID },
+			post: func() { scout = w.fresh(2, 101).InternalID },
 		},
 		{post: func() {
 			w.expectAt(unitByID(w.g, w.human(2), scout), 2, 1, -1)

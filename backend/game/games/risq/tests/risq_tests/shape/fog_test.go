@@ -32,7 +32,7 @@ func TestFogWireShapeUsesFrozenContents(t *testing.T) {
 			deletes = append(deletes, harness.Order(defs.OrderType_BuildingDelete, []uint64{building.InternalID}, 0, false))
 		}
 	}
-	deletes = append(deletes, harness.Order(defs.OrderType_UnitDelete, []uint64{unitID(g, 1, 0, 11)}, 0, false))
+	deletes = append(deletes, harness.Order(defs.OrderType_UnitDelete, []uint64{unitID(g, 1, 0, 101)}, 0, false))
 	g.Submit(owner, deletes...)
 	g.EndTurn()
 	g.EndTurn()

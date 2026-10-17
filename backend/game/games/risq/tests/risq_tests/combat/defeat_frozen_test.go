@@ -41,7 +41,7 @@ func TestDefeatedBuildingsStayFrozenAndAttackable(t *testing.T) {
 	}
 	var attacker uint64
 	for _, unit := range g.Self(g.Human(1)).Units {
-		if unit.UnitID == 13 {
+		if unit.UnitID == 103 {
 			attacker = unit.InternalID
 		}
 	}

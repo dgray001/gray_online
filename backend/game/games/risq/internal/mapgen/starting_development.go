@@ -22,7 +22,7 @@ func applyStartingDevelopmentDefaults(ctx *mapScriptContext, p *playerStartsPara
 	if p.Units == nil {
 		p.Units = []playerStartUnitJSON{{UnitId: 1, Count: ScriptExpr{raw: json.RawMessage("3")}, Target: zoneTargetJSON{Zone: "center"}}}
 		if !nomad {
-			p.Units = append(p.Units, playerStartUnitJSON{UnitId: 11, Count: ScriptExpr{raw: json.RawMessage("1")}, Target: zoneTargetJSON{Zone: "center"}})
+			p.Units = append(p.Units, playerStartUnitJSON{UnitId: 101, Count: ScriptExpr{raw: json.RawMessage("1")}, Target: zoneTargetJSON{Zone: "center"}})
 		}
 	}
 	if p.Buildings == nil && !nomad {
@@ -34,8 +34,8 @@ func applyEstablishedDefaults(p *playerStartsParams) {
 	if p.Units == nil {
 		p.Units = []playerStartUnitJSON{
 			{UnitId: 1, Count: ScriptExpr{raw: json.RawMessage("6")}, Target: zoneTargetJSON{Zone: "center"}},
-			{UnitId: 11, Count: ScriptExpr{raw: json.RawMessage("2")}, Target: zoneTargetJSON{Zone: "center"}},
-			{UnitId: 12, Count: ScriptExpr{raw: json.RawMessage("1")}, Target: zoneTargetJSON{Zone: "center"}},
+			{UnitId: 101, Count: ScriptExpr{raw: json.RawMessage("2")}, Target: zoneTargetJSON{Zone: "center"}},
+			{UnitId: 102, Count: ScriptExpr{raw: json.RawMessage("1")}, Target: zoneTargetJSON{Zone: "center"}},
 		}
 	}
 	if p.Buildings == nil {
@@ -53,9 +53,9 @@ func applyAdvancedDefaults(p *playerStartsParams) {
 	if p.Units == nil {
 		p.Units = []playerStartUnitJSON{
 			{UnitId: 1, Count: ScriptExpr{raw: json.RawMessage("10")}, Target: zoneTargetJSON{Zone: "center"}},
-			{UnitId: 11, Count: ScriptExpr{raw: json.RawMessage("4")}, Target: zoneTargetJSON{Zone: "center"}},
-			{UnitId: 12, Count: ScriptExpr{raw: json.RawMessage("2")}, Target: zoneTargetJSON{Zone: "center"}},
-			{UnitId: 13, Count: ScriptExpr{raw: json.RawMessage("1")}, Target: zoneTargetJSON{Zone: "center"}},
+			{UnitId: 101, Count: ScriptExpr{raw: json.RawMessage("4")}, Target: zoneTargetJSON{Zone: "center"}},
+			{UnitId: 102, Count: ScriptExpr{raw: json.RawMessage("2")}, Target: zoneTargetJSON{Zone: "center"}},
+			{UnitId: 103, Count: ScriptExpr{raw: json.RawMessage("1")}, Target: zoneTargetJSON{Zone: "center"}},
 		}
 	}
 	if p.Buildings == nil {

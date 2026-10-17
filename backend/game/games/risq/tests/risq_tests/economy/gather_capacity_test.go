@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/dgray001/gray_online/game"
+	"github.com/dgray001/gray_online/game/games/risq"
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness"
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness/fakeboard"
@@ -311,5 +312,22 @@ func TestContestedGatherSatisfiesSmallerDemandFirst(t *testing.T) {
 		if len(space.Resources) != 0 {
 			t.Error("fully gathered resource remains on the board")
 		}
+	}
+}
+
+func TestGatherPenaltyByOwnership(t *testing.T) {
+	gained := func(neutral, enemy float64) float64 {
+		risq.GatherNeutralSpaceFactor, risq.GatherEnemySpaceFactor = neutral, enemy
+		defer func() { risq.GatherNeutralSpaceFactor, risq.GatherEnemySpaceFactor = 1, 1 }()
+		g := gatherGame(t, 11, false, false)
+		p := g.Human(0)
+		submitGather(g, p)
+		before := g.Self(p).Resources.Wood
+		g.EndTurn()
+		return g.Self(p).Resources.Wood - before
+	}
+	full := gained(1, 1)
+	if got := gained(0.1, 0.3); math.Abs(got-0.1*full) > 0.001 {
+		t.Errorf("neutral space gathered %v, want 10%% of %v", got, full)
 	}
 }

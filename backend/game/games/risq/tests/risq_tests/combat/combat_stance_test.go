@@ -27,11 +27,11 @@ func unitZoneJSON(zone harness.Coord, unit_id int, player int) string {
 // A blunt infantry against an idle heavy infantry (50hp, so it never dies) at the placement
 func stanceGame(t *testing.T, enemy enemyPlacement) *harness.Game {
 	t.Helper()
-	attacker := unitZoneJSON(attackerZone, 11, 0)
-	defender := unitZoneJSON(enemy.zone, 13, 1)
+	attacker := unitZoneJSON(attackerZone, 101, 0)
+	defender := unitZoneJSON(enemy.zone, 103, 1)
 	zones := attacker + "," + defender
 	if enemy.zone == attackerZone && enemy.space == (harness.Coord{}) {
-		zones = `{"x":1,"y":0,"units":[{"id":11,"player":0,"count":1},{"id":13,"player":1,"count":1}]}`
+		zones = `{"x":1,"y":0,"units":[{"id":101,"player":0,"count":1},{"id":103,"player":1,"count":1}]}`
 	}
 	spaces := fmt.Sprintf(`{"x":0,"y":0,"terrain":1,"zones":[%s]}`, zones)
 	if enemy.space != (harness.Coord{}) {
@@ -80,7 +80,7 @@ func TestStanceEngagement(t *testing.T) {
 }
 
 func TestStanceAttackBack(t *testing.T) {
-	g := combatGame(t, 13, 13)
+	g := combatGame(t, 103, 103)
 	p0, p1 := g.Human(0), g.Human(1)
 	u0 := g.Self(p0).Units[0]
 	u1 := g.Self(p1).Units[0]
@@ -99,7 +99,7 @@ func TestStanceAttackBack(t *testing.T) {
 }
 
 func TestPassiveNoAttackBack(t *testing.T) {
-	g := combatGame(t, 13, 13)
+	g := combatGame(t, 103, 103)
 	p0, p1 := g.Human(0), g.Human(1)
 	u0, u1 := g.Self(p0).Units[0], g.Self(p1).Units[0]
 	stance := uint8(defs.UnitStance_PASSIVE)

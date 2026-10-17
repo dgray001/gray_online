@@ -33,7 +33,7 @@ func TestFarmCapacityLimitsHarvest(t *testing.T) {
 }
 
 func TestFarmCompletionAutoGatherEnroute(t *testing.T) {
-	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":0,"count":1},{"id":11,"player":0,"count":1}]}]},{"x":1,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":0,"count":1}]}]}`
+	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":0,"count":1},{"id":101,"player":0,"count":1}]}]},{"x":1,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":0,"count":1}]}]}`
 	g := economyGame(t, `{"wood":120}`, spaces+","+remoteVillager, `,"starting_techs":[1]`)
 	p := g.Human(0)
 	g.Submit(p, harness.OrderBuild(villagerIds(g, p), 3, 0, 0, 0, 0))
@@ -51,7 +51,7 @@ func TestFarmCompletionAutoGatherEnroute(t *testing.T) {
 }
 
 func TestFarmCompletionMultiOrderSkipped(t *testing.T) {
-	space := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":0,"count":1},{"id":11,"player":0,"count":1}]}]}`
+	space := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":0,"count":1},{"id":101,"player":0,"count":1}]}]}`
 	g := economyGame(t, `{"wood":120}`, space+","+remoteVillager, `,"starting_techs":[1]`)
 	p := g.Human(0)
 	v := villagerIds(g, p)[0]

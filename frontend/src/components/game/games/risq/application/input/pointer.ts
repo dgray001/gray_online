@@ -148,7 +148,8 @@ export class RisqPointer {
       return true;
     }
     const armed = this.armed.anythingArmed();
-    if (this.viewport.zoneView() && e.button === 0 && !e.shiftKey && !armed) {
+    const drag_select = this.viewport.zoneView() ? !e.shiftKey : e.shiftKey;
+    if (drag_select && e.button === 0 && !armed) {
       this.dragging_selection = true;
       this.drag_additive = e.ctrlKey;
       this.drag_start = { ...this.hover.mouseScreen() };

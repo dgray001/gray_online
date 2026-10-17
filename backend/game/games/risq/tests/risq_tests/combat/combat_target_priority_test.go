@@ -28,7 +28,7 @@ func TestStancesCreateAutoAttackBuilding(t *testing.T) {
 
 func TestTargetPriority(t *testing.T) {
 	// p0 has unit 13. p1 has 10 unit 1 (Villager, Economic) and unit 11 (Blunt Infantry, Infantry).
-	doc := `{"board_size":1,"players":2,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":13,"player":0,"count":1},{"id":1,"player":1,"count":10},{"id":11,"player":1,"count":1}]}]}]}`
+	doc := `{"board_size":1,"players":2,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":103,"player":0,"count":1},{"id":1,"player":1,"count":10},{"id":101,"player":1,"count":1}]}]}]}`
 	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"combat_priority": doc})
 	g := harness.NewGame(t, "custom:combat_priority", 1, 2)
 	p0, p1 := g.Human(0), g.Human(1)
@@ -47,7 +47,7 @@ func TestTargetPriority(t *testing.T) {
 	var infantry *harness.Unit
 	survivors := g.Self(p1).Units
 	for i := range survivors {
-		if survivors[i].UnitID == 11 {
+		if survivors[i].UnitID == 101 {
 			infantry = &survivors[i]
 		}
 	}

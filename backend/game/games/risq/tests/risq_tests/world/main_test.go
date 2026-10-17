@@ -65,7 +65,7 @@ func unit(id uint32, slot int) string {
 
 const (
 	villager = 1
-	infantry = 11
+	infantry = 101
 	grass    = 1
 	hills    = 51
 	water    = 152

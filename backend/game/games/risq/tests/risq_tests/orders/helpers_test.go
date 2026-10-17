@@ -47,7 +47,7 @@ type layout struct {
 
 func (l layout) doc() string {
 	home := fmt.Sprintf(`{"x":0,"y":0,"terrain":1,"zones":[`+
-		`{"x":0,"y":0,"building":{"id":1,"player":0},"units":[{"id":1,"player":0,"count":%d},{"id":11,"player":0,"count":%d}]},`+
+		`{"x":0,"y":0,"building":{"id":1,"player":0},"units":[{"id":1,"player":0,"count":%d},{"id":101,"player":0,"count":%d}]},`+
 		`{"x":1,"y":0,"building":{"id":11,"player":0}},{"x":-1,"y":0,"building":{"id":3,"player":0}},`+
 		`{"x":0,"y":1,"building":{"id":22,"player":0}},{"x":0,"y":-1,"building":{"id":23,"player":0}},{"x":1,"y":-1,"resource":11}]}`, l.villagers, l.infantry)
 	route := `,{"x":1,"y":0,"terrain":1},{"x":2,"y":0,"terrain":1},{"x":3,"y":0,"terrain":1}`

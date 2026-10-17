@@ -45,7 +45,7 @@ func validOrders(mine, foe roster, produceOrder uint64) validator {
 		case defs.OrderType_BuildingCreate, defs.OrderType_BuildingResearch:
 			target = 1
 		case defs.OrderType_BuyMercenary:
-			target = harness.BuildKey(11, 0, 0, 0, 0)
+			target = harness.BuildKey(101, 0, 0, 0, 0)
 		case defs.OrderType_CancelOrder:
 			target = int64(produceOrder)
 		case defs.OrderType_CancelFoundation:
@@ -69,16 +69,16 @@ func blockedActions(g *harness.Game, p int, mine roster) map[string]gin.H {
 // Validation, gating, behavior and gather point bookkeeping that never need more than a few turns
 func TestOrderRules(t *testing.T) {
 	g := newGame(t, layout{villagers: 4, infantry: 2, extra: `,"starting_techs":[4]`, tweak: func() {
-		unarmed := defs.UnitConfigs[11]
+		unarmed := defs.UnitConfigs[101]
 		unarmed.Attack_type = defs.AttackType_NONE
-		defs.UnitConfigs[11] = unarmed
+		defs.UnitConfigs[101] = unarmed
 	}})
 	p, e := g.Human(0), g.Human(1)
 	mine, foe := scan(g, p), scan(g, e)
 	v, inf, b := mine.villagers, mine.infantry, mine.buildings
 	research := harness.Order(defs.OrderType_BuildingResearch, []uint64{b[11]}, 2, false)
 
-	g.Submit(p, harness.OrderProduce([]uint64{b[22]}, 12), harness.OrderBuild(v[:1], 2, 3, 0, 0, 0), harness.OrderBuild(v[1:2], 2, 0, 0, -1, 1), research)
+	g.Submit(p, harness.OrderProduce([]uint64{b[22]}, 102), harness.OrderBuild(v[:1], 2, 3, 0, 0, 0), harness.OrderBuild(v[1:2], 2, 0, 0, -1, 1), research)
 	g.EndTurn()
 	var unfinished uint64
 	for _, building := range g.Self(p).Buildings {
@@ -175,9 +175,9 @@ func TestOrderRules(t *testing.T) {
 			{defs.OrderType_CancelOrder, 999999, "No active order with id"},
 			{defs.OrderType_CancelFoundation, harness.ZoneKey(9, 0, 0, 0), "Invalid zone target inverted from zone key"},
 			{defs.OrderType_CancelFoundation, harness.ZoneKey(1, 0, 0, 0), "No planned foundation at this zone"},
-			{defs.OrderType_BuyMercenary, harness.BuildKey(11, 9, 0, 0, 0), "Invalid space or zone target inverted from mercenary key"},
+			{defs.OrderType_BuyMercenary, harness.BuildKey(101, 9, 0, 0, 0), "Invalid space or zone target inverted from mercenary key"},
 			{defs.OrderType_BuyMercenary, harness.BuildKey(999, 0, 0, 0, 0), "Invalid or unsupported unit id:"},
-			{defs.OrderType_BuyMercenary, harness.BuildKey(13, 0, 0, 0, 0), "not an available mercenary"},
+			{defs.OrderType_BuyMercenary, harness.BuildKey(103, 0, 0, 0, 0), "not an available mercenary"},
 		}
 		for _, c := range cases {
 			order := valid(c.typ)
@@ -233,7 +233,7 @@ func TestOrderRules(t *testing.T) {
 		}
 	})
 
-	g.SubmitRejected(p, harness.OrderProduce([]uint64{b[1]}, 11), "Building id 1 cannot produce unit id 11")
+	g.SubmitRejected(p, harness.OrderProduce([]uint64{b[1]}, 101), "Building id 1 cannot produce unit id 101")
 	g.SubmitRejected(p, harness.Order(defs.OrderType_BuildingResearch, []uint64{b[1]}, 3, false), "Building id 1 cannot research tech id 3")
 	g.SubmitRejected(p, harness.Order(defs.OrderType_UnitRenew, v[:1], int64(b[1]), false), "Building id 1 is not gatherable")
 	g.SubmitRejected(p, harness.Order(defs.OrderType_BuildingAttackUnit, []uint64{b[11]}, int64(foe.villagers[0]), false), fmt.Sprintf("Building id %d cannot attack", b[11]))

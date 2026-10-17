@@ -14,12 +14,12 @@ const mercenaryRules = `,"starting_techs":[4],"space_gold_income":0`
 
 const configDirMapRules = `"board_size":2,"players":2,"space_gold_income":0,"starting_bank":{"gold":500}`
 
-const configDirSpaces = `"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":0,"count":1}]}]},{"x":-2,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":1,"count":1}]}]}]`
+const configDirSpaces = `"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":101,"player":0,"count":1}]}]},{"x":-2,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":101,"player":1,"count":1}]}]}]`
 
 var mercenaryOnlyConfig = map[string]string{
 	"buildings.json": `[]`,
-	"units.json":     `[{"unit_id":11,"display_name":"Unit","unit_type":"infantry","max_health":11,"attack_type":"blunt","attack_blunt":6,"cost":{"gold":2},"turn_stamina":15}]`,
-	"techs.json":     `[{"tech_id":4,"display_name":"Mercenary Contracts","research_stamina":45,"unlocks_mercenary_ids":[11,12]}]`,
+	"units.json":     `[{"unit_id":101,"display_name":"Unit","unit_type":"infantry","max_health":11,"attack_type":"blunt","attack_blunt":6,"cost":{"gold":2},"turn_stamina":15}]`,
+	"techs.json":     `[{"tech_id":4,"display_name":"Mercenary Contracts","research_stamina":45,"unlocks_mercenary_ids":[101,102]}]`,
 	"bonuses.json":   `[{"tech_id":1,"mercenary_cost_markup_delta":-0.3}]`,
 }
 
@@ -38,8 +38,8 @@ func TestMapConfigDirScopesTablesMercenariesAndPrice(t *testing.T) {
 	g := startGame(t, "custom:risk", 1, 2)
 	other := startGame(t, "custom:plain", 1, 2)
 	p := g.Human(0)
-	if hireable := g.Self(p).AvailableMercenaries; len(hireable) != 1 || hireable[0].ID != 11 {
-		t.Fatalf("mercenaries %v; want only unit 11 since unit 12 is missing from the config", hireable)
+	if hireable := g.Self(p).AvailableMercenaries; len(hireable) != 1 || hireable[0].ID != 101 {
+		t.Fatalf("mercenaries %v; want only unit 101 since unit 102 is missing from the config", hireable)
 	}
 	if len(g.Risq.TechTreeToFrontend()) != 0 || len(other.Risq.TechTreeToFrontend()) == 0 {
 		t.Error("tech tree did not follow each game's own config")
@@ -47,7 +47,7 @@ func TestMapConfigDirScopesTablesMercenariesAndPrice(t *testing.T) {
 	if len(other.Self(other.Human(0)).AvailableMercenaries) != 2 {
 		t.Error("a map without config_dir lost the default mercenaries")
 	}
-	g.Submit(p, harness.Order(defs.OrderType_BuyMercenary, nil, harness.BuildKey(11, 0, 0, 0, 0), false))
+	g.Submit(p, harness.Order(defs.OrderType_BuyMercenary, nil, harness.BuildKey(101, 0, 0, 0, 0), false))
 	g.EndTurn()
 	state := g.Self(p)
 	if len(state.Units) != 2 || state.Resources.Gold != 497 {
@@ -58,7 +58,7 @@ func TestMapConfigDirScopesTablesMercenariesAndPrice(t *testing.T) {
 func TestMercenaryHiringChargesGoldAndPlacesUnit(t *testing.T) {
 	g := productionGame(t, 1, 1, mercenaryRules)
 	p := g.Human(0)
-	g.Submit(p, harness.Order(defs.OrderType_BuyMercenary, nil, harness.BuildKey(11, 0, 0, 0, 0), false))
+	g.Submit(p, harness.Order(defs.OrderType_BuyMercenary, nil, harness.BuildKey(101, 0, 0, 0, 0), false))
 	g.EndTurn()
 	state := g.Self(p)
 	if len(state.Units) != 2 || state.Resources.Gold != 409 || state.Resources.Food != 300 || state.Resources.Wood != 300 {
@@ -66,7 +66,7 @@ func TestMercenaryHiringChargesGoldAndPlacesUnit(t *testing.T) {
 	}
 	hired := 0
 	for _, u := range state.Units {
-		if u.UnitID == 11 && u.Space == (harness.Coord{}) && u.Zone == (harness.Coord{}) {
+		if u.UnitID == 101 && u.Space == (harness.Coord{}) && u.Zone == (harness.Coord{}) {
 			hired++
 		}
 	}
@@ -89,7 +89,7 @@ func TestMercenaryBatchReservesGoldAndPopulation(t *testing.T) {
 			p := g.Human(0)
 			orders := make([]defs.OrderFromFrontend, 6)
 			for i := range orders {
-				orders[i] = harness.Order(defs.OrderType_BuyMercenary, nil, harness.BuildKey(11, 0, 0, 0, 0), false)
+				orders[i] = harness.Order(defs.OrderType_BuyMercenary, nil, harness.BuildKey(101, 0, 0, 0, 0), false)
 			}
 			g.Submit(p, orders...)
 			g.EndTurn()
@@ -124,7 +124,7 @@ func TestMercenaryPlacementFailureRefundsReservation(t *testing.T) {
 					target = b.InternalID
 				}
 			}
-			g.Submit(p, harness.Order(defs.OrderType_BuyMercenary, nil, harness.BuildKey(11, 0, 0, 0, 0), false), harness.Order(defs.OrderType_BuildingDelete, []uint64{target}, 0, false))
+			g.Submit(p, harness.Order(defs.OrderType_BuyMercenary, nil, harness.BuildKey(101, 0, 0, 0, 0), false), harness.Order(defs.OrderType_BuildingDelete, []uint64{target}, 0, false))
 			g.EndTurn()
 			state := g.Self(p)
 			if state.Resources.Gold != 500 || len(state.Units) != 1 || len(state.Refusals()) != 1 || state.Refusals()[0] != c.reason {
@@ -150,14 +150,14 @@ func TestMercenaryRestrictionsDoNotSpendGold(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			g := productionGame(t, c.workers, 1, mercenaryRules+c.extra)
 			if name == "enemy territory" {
-				g = economyGame(t, `{"gold":500}`, `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":0},"units":[{"id":1,"player":0,"count":1}]}]},{"x":-2,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":1,"count":1}]}]}`, mercenaryRules)
+				g = economyGame(t, `{"gold":500}`, `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":0},"units":[{"id":1,"player":0,"count":1}]}]},{"x":-2,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":101,"player":1,"count":1}]}]}`, mercenaryRules)
 				owner := g.State(g.Human(1)).Space(-2, 0).Ownership
 				if owner == nil || *owner != g.PlayerID(g.Human(1)) {
 					t.Fatal("destination is not enemy territory")
 				}
 			}
 			p := g.Human(0)
-			g.Submit(p, harness.Order(defs.OrderType_BuyMercenary, nil, harness.BuildKey(11, c.x, 0, 0, 0), false))
+			g.Submit(p, harness.Order(defs.OrderType_BuyMercenary, nil, harness.BuildKey(101, c.x, 0, 0, 0), false))
 			g.EndTurn()
 			state := g.Self(p)
 			if len(state.Units) != c.workers || state.Resources.Gold != 500 {
@@ -189,10 +189,10 @@ func TestResearchUnlocksMercenaryContracts(t *testing.T) {
 	if !state.ResearchedTechs[4] || state.Resources.Wood != 150 || len(state.AvailableMercenaries) != 2 {
 		t.Fatalf("contracts research did not unlock both infantry with one payment: %+v", state)
 	}
-	if state.AvailableMercenaries[0].ID != 11 || state.AvailableMercenaries[1].ID != 12 {
+	if state.AvailableMercenaries[0].ID != 101 || state.AvailableMercenaries[1].ID != 102 {
 		t.Fatalf("unlocked wrong mercenaries: %v", state.AvailableMercenaries)
 	}
-	g.Submit(p, harness.Order(defs.OrderType_BuyMercenary, nil, harness.BuildKey(12, 0, 0, 0, 0), false))
+	g.Submit(p, harness.Order(defs.OrderType_BuyMercenary, nil, harness.BuildKey(102, 0, 0, 0, 0), false))
 	g.EndTurn()
 	state = g.Self(p)
 	if len(state.Units) != 2 || state.Resources.Gold != 357 || state.Resources.Wood != 150 {

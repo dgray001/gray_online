@@ -292,7 +292,7 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
         board_size: this.viewport.boardSize(game.board_size),
         max_scale: 1,
         fill_space: true,
-        allow_side_move: true,
+        allow_edge_pan: getSettings().risq_display.edge_pan,
         draw: (ctx, transform) => {
           const draw_start = performance.now();
           this.prepareFrame();
@@ -350,6 +350,7 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
   }
 
   private settingsChanged(): void {
+    this.board.setAllowEdgePan(getSettings().risq_display.edge_pan);
     this.hud_scale = getSettings().risq_display.hud_size;
     let scale = this.viewport.lastTransform().scale;
     if (this.board.isInitialized() && this.last_board_size) {

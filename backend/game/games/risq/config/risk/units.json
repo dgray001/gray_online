@@ -1,6 +1,6 @@
 [
   {
-    "unit_id": 11,
+    "unit_id": 101,
     "display_name": "Unit",
     "description": "The only unit; hired as a mercenary.",
     "unit_type": "infantry",

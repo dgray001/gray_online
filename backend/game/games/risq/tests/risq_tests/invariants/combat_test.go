@@ -9,17 +9,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const fighters = `,{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":13,"player":0,"count":1},{"id":13,"player":1,"count":1}]}]}`
+const fighters = `,{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":103,"player":0,"count":1},{"id":103,"player":1,"count":1}]}]}`
 
 func combatScenario() scenario {
 	return scenario{players: 2, turns: 4, orders: combatOrders, verify: verifyCombat,
 		setup: func(t *testing.T) *harness.Game {
 			return invariantGame(t, 2, homeSpaces(2, 1)+fighters, testRegions, func() {
-				config := defs.UnitConfigs[13]
+				config := defs.UnitConfigs[103]
 				config.Max_health, config.Turn_stamina = 8, 3
 				config.Attack_type, config.Attack_blunt = defs.AttackType_BLUNT, 10
 				config.Defense_blunt, config.Penetration_blunt = 0, 0
-				defs.UnitConfigs[13] = config
+				defs.UnitConfigs[103] = config
 			})
 		},
 	}
@@ -29,13 +29,13 @@ func combatOrders(g *harness.Game, turn, slot int) []defs.OrderFromFrontend {
 	if turn != 0 {
 		return nil
 	}
-	return []defs.OrderFromFrontend{harness.OrderAttackUnit(unitIDs(g, slot, 13), unitIDs(g, 1-slot, 13)[0])}
+	return []defs.OrderFromFrontend{harness.OrderAttackUnit(unitIDs(g, slot, 103), unitIDs(g, 1-slot, 103)[0])}
 }
 
 func verifyCombat(g *harness.Game, turn int) {
 	g.T.Helper()
 	for slot := range 2 {
-		units := unitIDs(g, slot, 13)
+		units := unitIDs(g, slot, 103)
 		if turn == 0 && (len(units) != 1 || g.State(g.Human(slot)).Unit(units[0]).CombatStats.Health >= 8) {
 			g.T.Fatal("combat did not damage both fighters")
 		}
@@ -100,9 +100,9 @@ func verifyEviction(g *harness.Game, turn int) {
 func captureScenario() scenario {
 	return scenario{players: 2, turns: 4, capLossTurn: 3, orders: captureOrders, verify: verifyCapture,
 		setup: func(t *testing.T) *harness.Game {
-			spaces := strings.Replace(homeSpaces(2, 1), `"units":[{"id":1,`, `"units":[{"id":11,`, 1)
+			spaces := strings.Replace(homeSpaces(2, 1), `"units":[{"id":1,`, `"units":[{"id":101,`, 1)
 			g := invariantGame(t, 2, spaces+centralSpace, testRegions, noConfig)
-			g.Action(g.Human(0), "set-unit-behavior", gin.H{"internal_ids": unitIDs(g, 0, 11), "stance": 1, "attack_back": false})
+			g.Action(g.Human(0), "set-unit-behavior", gin.H{"internal_ids": unitIDs(g, 0, 101), "stance": 1, "attack_back": false})
 			return g
 		},
 	}
@@ -117,7 +117,7 @@ func captureOrders(g *harness.Game, turn, slot int) []defs.OrderFromFrontend {
 		if turn == 1 {
 			x = 1
 		}
-		return []defs.OrderFromFrontend{harness.OrderMove(unitIDs(g, 0, 11), x, 0)}
+		return []defs.OrderFromFrontend{harness.OrderMove(unitIDs(g, 0, 101), x, 0)}
 	}
 	return nil
 }
@@ -132,7 +132,7 @@ func verifyCapture(g *harness.Game, turn int) {
 	if owner == nil || *owner != want {
 		g.T.Fatalf("capture turn %d space (%d,0): owner %v, want %d", turn, x, owner, want)
 	}
-	if turn == 1 && g.State(g.Human(0)).Unit(unitIDs(g, 0, 11)[0]).Space.X != 1 {
+	if turn == 1 && g.State(g.Human(0)).Unit(unitIDs(g, 0, 101)[0]).Space.X != 1 {
 		g.T.Fatal("soldier did not enter enemy building's space")
 	}
 }

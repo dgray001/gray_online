@@ -1,8 +1,5 @@
 [
   { "step": "define", "params": { "name": "scale", "value": "max(1, min(1, max(0, total_spaces - 6)) + min(1, max(0, total_spaces - 18)) + min(1, max(0, total_spaces - 36)) + min(1, max(0, total_spaces - 60)) + min(1, max(0, total_spaces - 90)) + min(1, max(0, total_spaces - 126)) + min(1, max(0, total_spaces - 168)) + min(1, max(0, total_spaces - 216)) + min(1, max(0, total_spaces - 270)) + min(1, max(0, total_spaces - 330)) + min(1, max(0, total_spaces - 396)))" } },
-  { "step": "define", "params": { "name": "outside_resource_multiplier", "value": "0.5 * min(map_resources, 2) + max(0, map_resources - 2) + max(0, map_resources - 3)" } },
-  { "step": "define", "params": { "name": "accent_multiplier", "value": "1 + 0.15 * max(0, map_resources - 2)" } },
-  { "step": "define", "params": { "name": "tree_multiplier", "value": "1 + 0.5 * max(0, map_resources - 2)" } },
   { "step": "define", "params": { "name": "biome", "value": "randomInt(0, 7)" } },
   { "step": "define", "params": { "name": "forest_seeds_base", "value": 0 } },
   { "step": "if", "params": { "condition": "max(0, 1 - biome * biome)", "then": [

@@ -35,16 +35,16 @@ func spyTravelGame(t *testing.T) *harness.Game {
 func spyHiddenTargetGame(t *testing.T) *harness.Game {
 	t.Helper()
 	t.Cleanup(func() { pristine.Restore(baseDir) })
-	spaces := spaceWith(0, 0, grass, unit(15, 0)) + "," + spaceWith(1, 0, grass, unit(11, 1)) + "," + spaceWith(2, 0, grass, unit(13, 2))
+	spaces := spaceWith(0, 0, grass, unit(15, 0)) + "," + spaceWith(1, 0, grass, unit(101, 1)) + "," + spaceWith(2, 0, grass, unit(103, 2))
 	doc := `{"board_size":3,"players":3,"spaces":[` + spaces + `]}`
 	writeCustomMap("hidden-target", doc)
 	spy := defs.UnitConfigs[villager]
 	spy.Vision.Space, spy.Vision.Adjacent = defs.VisibilitySpy, defs.VisibilitySpy
 	defs.UnitConfigs[15] = spy
-	attacker := defs.UnitConfigs[11]
+	attacker := defs.UnitConfigs[101]
 	attacker.Attack_range = defs.RisqRange_ADJACENT
 	attacker.Vision.Adjacent = defs.VisibilityGood
-	defs.UnitConfigs[11] = attacker
+	defs.UnitConfigs[101] = attacker
 	return harness.NewGame(t, "custom:hidden-target", 1, 3)
 }
 

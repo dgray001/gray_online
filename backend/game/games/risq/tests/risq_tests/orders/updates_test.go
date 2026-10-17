@@ -14,7 +14,7 @@ import (
 // Player 0 holds a redoubt and a soldier at home plus an outpost and a soldier far away; player 1's villager watches home
 func notificationGame(t *testing.T, spy bool) *harness.Game {
 	t.Helper()
-	doc := `{"board_size":3,"players":2,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":23,"player":0},"units":[{"id":11,"player":0,"count":1},{"id":1,"player":1,"count":1}]}]},{"x":3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":21,"player":0},"units":[{"id":11,"player":0,"count":1}]}]}]}`
+	doc := `{"board_size":3,"players":2,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":23,"player":0},"units":[{"id":101,"player":0,"count":1},{"id":1,"player":1,"count":1}]}]},{"x":3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":21,"player":0},"units":[{"id":101,"player":0,"count":1}]}]}]}`
 	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"notifications": doc})
 	watcher := defs.UnitConfigs[1]
 	watcher.Vision.Space = defs.VisibilityGood
@@ -37,9 +37,9 @@ func checkBehaviorNotifications(t *testing.T, g *harness.Game, spy bool) {
 	g.Action(p, "unsubmit-orders", nil)
 	var visible, hidden uint64
 	for _, u := range g.Self(p).Units {
-		if u.UnitID == 11 && u.Space.X == 0 {
+		if u.UnitID == 101 && u.Space.X == 0 {
 			visible = u.InternalID
-		} else if u.UnitID == 11 {
+		} else if u.UnitID == 101 {
 			hidden = u.InternalID
 		}
 	}
@@ -75,7 +75,7 @@ func TestBehaviorNotificationsAndDefaults(t *testing.T) {
 	g := notificationGame(t, true)
 	checkBehaviorNotifications(t, g, true)
 	p, spy := g.Human(0), g.Human(1)
-	ids := unitIDs(g, p, 11)
+	ids := unitIDs(g, p, 101)
 
 	// an invalid stance changes nothing, and what each recipient is told matches the authoritative units
 	for _, stance := range []uint8{0, uint8(defs.UnitStance_END), 255} {
@@ -243,12 +243,18 @@ func TestUpdateDelivery(t *testing.T) {
 	if len(player.Updates) != 0 || len(rival.Updates) != 0 || len(g.Base.ViewerUpdates) != 0 {
 		t.Fatal("a submission built a snapshot")
 	}
-	if _, stale, _ := g.Base.LatestUpdate(uint64(p + 1)); !stale {
-		t.Fatal("the submitter's stored snapshot is not marked stale")
+	before := rebuilds
+	g.Base.ResendLastUpdate(uint64(p + 1))
+	if rebuilds == before {
+		t.Fatal("the submitter's stored snapshot was replayed without being regenerated")
 	}
-	if _, stale, _ := g.Base.LatestUpdate(uint64(other + 1)); stale {
+	before = rebuilds
+	g.Base.ResendLastUpdate(uint64(other + 1))
+	if rebuilds != before {
 		t.Fatal("another player's snapshot was invalidated by a submission")
 	}
+	drain(player.Updates)
+	drain(rival.Updates)
 	for _, requested := range []int{-9, 1, 99} {
 		g.Base.ResendPlayerUpdate(uint64(p+1), requested)
 		if got := nextUpdate(t, player.Updates); got.Kind != "start-turn" || snapshotJSON(t, playersOf(got)) != snapshotJSON(t, g.Risq.PlayersToFrontend(uint64(p+1))) {
@@ -298,29 +304,165 @@ func TestLatestUpdateLookup(t *testing.T) {
 	p := g.Human(0)
 	client := uint64(p + 1)
 	player := g.Base.Players[client]
-	start, stale, ok := g.Base.LatestUpdate(client)
-	if !ok || stale || start < 1 {
-		t.Fatalf("lookup gave id %d stale %v ok %v, want a fresh positive id", start, stale, ok)
+	start, rev, ok := g.Base.LatestUpdate(client)
+	if !ok || start < 1 {
+		t.Fatalf("lookup gave id %d rev %d ok %v, want a positive id", start, rev, ok)
 	}
 	rawAction(g, p, "set-unit-behavior", gin.H{"internal_ids": scan(g, p).infantry, "stance": 1})
-	if id, stale, _ := g.Base.LatestUpdate(client); id != start || !stale {
-		t.Fatalf("setting change gave id %d stale %v, want %d stale", id, stale, start)
+	if id, got, _ := g.Base.LatestUpdate(client); id != start || got != rev+1 {
+		t.Fatalf("setting change gave id %d rev %d, want id %d rev %d", id, got, start, rev+1)
 	}
 	drain(player.Updates)
 	drain(g.Base.ViewerUpdates)
 	rawAction(g, p, "submit-orders", nil)
-	if id, stale, _ := g.Base.LatestUpdate(client); id != start || !stale || len(player.Updates) != 0 {
-		t.Fatalf("a submission gave id %d stale %v, want the same id %d stale and no snapshot", id, stale, start)
+	if id, got, _ := g.Base.LatestUpdate(client); id != start || got != rev+2 || len(player.Updates) != 0 {
+		t.Fatalf("a submission gave id %d rev %d, want id %d rev %d and no snapshot", id, got, start, rev+2)
 	}
 	g.EndTurn()
-	if id, stale, _ := g.Base.LatestUpdate(client); id <= start || stale {
-		t.Fatalf("new turn gave id %d stale %v, want an id above %d and fresh", id, stale, start)
+	id, turn_rev, _ := g.Base.LatestUpdate(client)
+	if id <= start || turn_rev < rev+2 {
+		t.Fatalf("new turn gave id %d rev %d, want an id above %d and a revision that never decreases", id, turn_rev, start)
 	}
-	if id, stale, ok := g.Base.LatestUpdate(90); !ok || stale || id < 2 {
-		t.Fatalf("viewer lookup gave id %d stale %v ok %v, want a fresh id from the new turn", id, stale, ok)
+	if id, viewer_rev, ok := g.Base.LatestUpdate(90); !ok || viewer_rev != 0 || id < 2 {
+		t.Fatalf("viewer lookup gave id %d rev %d ok %v, want an id from the new turn and no revision", id, viewer_rev, ok)
 	}
 	if _, _, ok := g.Base.LatestUpdate(999999); ok {
 		t.Fatal("unknown client was found")
+	}
+}
+
+// Every setting update stamps the recipient's own next revision, whatever its kind, so a client can see a gap
+func TestSettingRevisionsAreContiguousPerRecipient(t *testing.T) {
+	g := newGame(t, layout{connected: true})
+	p := g.Human(0)
+	player := g.Base.Players[uint64(p+1)]
+	_, rev, _ := g.Base.LatestUpdate(player.GetClientId())
+	drain(player.SettingUpdates)
+	rawAction(g, p, "set-unit-behavior", gin.H{"internal_ids": scan(g, p).infantry, "stance": 1})
+	rawAction(g, p, "set-auto-renew", gin.H{"building_id": 3, "count": 1})
+	rawAction(g, p, "submit-orders", nil)
+	for i, kind := range []string{"unit-behavior-set", "auto-renew-set", "submitted-orders"} {
+		update := nextUpdate(t, player.SettingUpdates)
+		if update.Kind != kind || update.Content["rev"] != rev+i+1 {
+			t.Fatalf("update %d was %s rev %v, want %s rev %d", i, update.Kind, update.Content["rev"], kind, rev+i+1)
+		}
+	}
+}
+
+// A disconnected player is sent nothing, but the revision still advances so the missed change is detectable
+func TestDisconnectedPlayerMissesRevisions(t *testing.T) {
+	g := newGame(t, layout{connected: true})
+	p := g.Human(0)
+	client := uint64(p + 1)
+	player := g.Base.Players[client]
+	_, rev, _ := g.Base.LatestUpdate(client)
+	drain(player.SettingUpdates)
+	g.Base.PlayerDisconnected(client)
+	rawAction(g, p, "set-unit-behavior", gin.H{"internal_ids": scan(g, p).infantry, "stance": 1})
+	if _, got, _ := g.Base.LatestUpdate(client); len(player.SettingUpdates) != 0 || got != rev+1 {
+		t.Fatalf("disconnected player has rev %d with %d queued, want rev %d and none queued", got, len(player.SettingUpdates), rev+1)
+	}
+	g.Connect(p)
+	if snapshot := g.Risq.ToFrontend(client, false)["game_base"].(gin.H); snapshot["settings_rev"] != rev+1 {
+		t.Fatalf("reconnect snapshot carries rev %v, want %d", snapshot["settings_rev"], rev+1)
+	}
+}
+
+// Updates dropped on a full channel are never delivered, so the newest revision a client saw falls behind the server's
+func TestOverflowedSettingUpdatesLeaveARevisionGap(t *testing.T) {
+	g := newGame(t, layout{connected: true})
+	p := g.Human(0)
+	client := uint64(p + 1)
+	player := g.Base.Players[client]
+	_, rev, _ := g.Base.LatestUpdate(client)
+	drain(player.SettingUpdates)
+	capacity := cap(player.SettingUpdates)
+	for range capacity + 2 {
+		rawAction(g, p, "set-unit-behavior", gin.H{"internal_ids": scan(g, p).infantry, "stance": 1})
+	}
+	var newest any
+	for len(player.SettingUpdates) > 0 {
+		newest = (<-player.SettingUpdates).Content["rev"]
+	}
+	if _, got, _ := g.Base.LatestUpdate(client); newest != rev+capacity || got != rev+capacity+2 {
+		t.Fatalf("client saw rev %v and server is at %d, want %d and %d", newest, got, rev+capacity, rev+capacity+2)
+	}
+}
+
+// A regenerated replay and a fresh read both carry the revision, so the next patch a client gets is exactly one above it
+func TestSnapshotsCarryTheCurrentSettingsRevision(t *testing.T) {
+	g := newGame(t, layout{connected: true})
+	p := g.Human(0)
+	client := uint64(p + 1)
+	player := g.Base.Players[client]
+	g.Base.RunInRoom = func(task func()) { task() }
+	g.Base.CurrentState = g.Risq.ToFrontend
+	rawAction(g, p, "set-unit-behavior", gin.H{"internal_ids": scan(g, p).infantry, "stance": 1})
+	_, rev, _ := g.Base.LatestUpdate(client)
+	drain(player.Updates)
+	g.Base.ResendLastUpdate(client)
+	replayed := nextUpdate(t, player.Updates).Content["game"].(gin.H)["game_base"].(gin.H)["settings_rev"]
+	if replayed != rev {
+		t.Fatalf("replayed snapshot carries rev %v, want %d", replayed, rev)
+	}
+	drain(player.SettingUpdates)
+	rawAction(g, p, "set-unit-behavior", gin.H{"internal_ids": scan(g, p).infantry, "stance": 2})
+	if next := nextUpdate(t, player.SettingUpdates).Content["rev"]; next != rev+1 {
+		t.Fatalf("patch after the snapshot carries rev %v, want %d", next, rev+1)
+	}
+}
+
+func setGatherPoint(g *harness.Game, p int, building uint64, x, y int) {
+	rawAction(g, p, "set-gather-point", gin.H{"building_id": building, "location_kind": 1, "location_id": harness.SpaceKey(x, y)})
+}
+
+func TestGatherPointHiddenFromOrdinaryVision(t *testing.T) {
+	g := notificationGame(t, false)
+	p, other := g.Human(0), g.Human(1)
+	watcher := g.Base.Players[uint64(other+1)]
+	_, rev, _ := g.Base.LatestUpdate(watcher.GetClientId())
+	drain(watcher.SettingUpdates)
+	for _, kind := range []uint32{23, 21} {
+		setGatherPoint(g, p, buildingID(g, p, kind), 3, 0)
+	}
+	if _, got, _ := g.Base.LatestUpdate(watcher.GetClientId()); len(watcher.SettingUpdates) != 0 || got != rev {
+		t.Fatalf("ordinary vision was told of a gather point: %d queued, rev %d, want none and rev %d", len(watcher.SettingUpdates), got, rev)
+	}
+}
+
+func TestGatherPointNotifiesSpyOnlyForVisibleBuildings(t *testing.T) {
+	g := notificationGame(t, true)
+	p, spy := g.Human(0), g.Human(1)
+	owner, watcher := g.Base.Players[uint64(p+1)], g.Base.Players[uint64(spy+1)]
+	home, far := buildingID(g, p, 23), buildingID(g, p, 21)
+	_, rev, _ := g.Base.LatestUpdate(watcher.GetClientId())
+	drain(owner.SettingUpdates)
+	drain(watcher.SettingUpdates)
+	setGatherPoint(g, p, home, 3, 0)
+	setGatherPoint(g, p, far, 0, 0)
+	mine, seen := nextUpdate(t, owner.SettingUpdates), nextUpdate(t, watcher.SettingUpdates)
+	if len(watcher.SettingUpdates) != 0 {
+		t.Fatal("a building the spy cannot see leaked its gather point")
+	}
+	if seen.Kind != "gather-point-set" || seen.Content["building_id"] != home || seen.Content["game"] != nil || !reflect.DeepEqual(seen.Content["gather_point"], mine.Content["gather_point"]) {
+		t.Fatalf("spy notification differs from the owner's: %+v vs %+v", seen, mine)
+	}
+	if seen.Content["rev"] != rev+1 || mine.Content["rev"] == nil {
+		t.Fatalf("spy rev is %v, want its own %d", seen.Content["rev"], rev+1)
+	}
+}
+
+func TestClearedGatherPointReachesSpyWithoutAPoint(t *testing.T) {
+	g := notificationGame(t, true)
+	p, spy := g.Human(0), g.Human(1)
+	watcher := g.Base.Players[uint64(spy+1)]
+	home := buildingID(g, p, 23)
+	setGatherPoint(g, p, home, 3, 0)
+	drain(watcher.SettingUpdates)
+	rawAction(g, p, "set-gather-point", gin.H{"building_id": home, "clear": true})
+	cleared := nextUpdate(t, watcher.SettingUpdates)
+	if _, has := cleared.Content["gather_point"]; cleared.Kind != "gather-point-set" || cleared.Content["building_id"] != home || has {
+		t.Fatalf("clear notification kept a gather point: %+v", cleared)
 	}
 }
 

@@ -11,6 +11,9 @@ import (
 // Content key holding a full game-state snapshot in updates of games with non-persistent history
 const snapshotContentKey = "game"
 
+// Content key holding the recipient's setting revision in each setting update
+const settingsRevContentKey = "rev"
+
 type PlayerAction struct {
 	action_id int
 	Client_id int
@@ -46,6 +49,7 @@ type Player struct {
 	update_list      []*UpdateMessage
 	update_list_mu   sync.RWMutex
 	snapshot_stale   bool
+	settings_rev     int
 	base_game        *GameBase
 }
 
@@ -134,11 +138,18 @@ func (p *Player) snapshotIsStale() bool {
 	return p.snapshot_stale && len(p.update_list) > 0
 }
 
-// The id of the newest update sent to this player and whether its stored snapshot is stale
-func (p *Player) latestUpdate() (int, bool) {
+// The id of the newest update sent to this player and the revision of their newest setting update
+func (p *Player) latestUpdate() (int, int) {
 	p.update_list_mu.RLock()
 	defer p.update_list_mu.RUnlock()
-	return p.next_update_id - 1, p.snapshot_stale && len(p.update_list) > 0
+	return p.next_update_id - 1, p.settings_rev
+}
+
+// Counts every setting update made for this player, delivered or not, so a client can detect a missed one
+func (p *Player) SettingsRev() int {
+	p.update_list_mu.RLock()
+	defer p.update_list_mu.RUnlock()
+	return p.settings_rev
 }
 
 // Swaps in current state for a stale newest snapshot; a newer update that already replaced it needs nothing
@@ -228,11 +239,22 @@ func (p *Player) ReplayUpdates(last_applied_id int, apply func(*UpdateMessage)) 
 
 // Delivers a small per-player settings acknowledgement outside the sequenced, replayable update history
 func (p *Player) AddSettingUpdate(update *UpdateMessage) {
-	if !p.IsHumanPlayer() || !p.connected {
+	if !p.IsHumanPlayer() {
 		return
 	}
+	p.update_list_mu.Lock()
+	p.settings_rev++
+	rev := p.settings_rev
+	p.update_list_mu.Unlock()
+	if !p.connected {
+		return
+	}
+	own_update := *update
+	own_update.Content = make(gin.H, len(update.Content)+1)
+	maps.Copy(own_update.Content, update.Content)
+	own_update.Content[settingsRevContentKey] = rev
 	select {
-	case p.SettingUpdates <- update:
+	case p.SettingUpdates <- &own_update:
 	default:
 		util.Errorf(p.errLogger(), "Dropped setting update to player %d - buffer full: %s", p.Player_id, update.Kind)
 	}

@@ -406,8 +406,8 @@ export class DwgLobby extends DwgElement {
     this.showRoomRequest(this.room_request?.kind);
     if (this.lobby_room.inRoom()) {
       this.lobby_room.clearRoom();
-      removeUrlParam(URL_PARAM_ROOM);
     }
+    removeUrlParam(URL_PARAM_ROOM);
   }
 
   sendChatMessage(chatbox: DwgChatbox, message_kind: string, message: ChatMessage, display_sender: string): void {

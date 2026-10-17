@@ -1,0 +1,58 @@
+[
+  { "step": "shape", "params": { "kind": "hexagon" } },
+  { "step": "include", "params": { "path": "common/biomes.json" } },
+  { "step": "include", "params": { "path": "common/land_details.json" } },
+  {
+    "step": "terrain_fill",
+    "params": {
+      "terrain_id": "base",
+      "on": { "terrain_ids": ["accent1"] }
+    }
+  },
+  { "step": "define", "params": { "name": "region_center_radius", "value": "2 + min(1, max(0, radius - 6)) + min(1, max(0, radius - 8))" } },
+  { "step": "define", "params": { "name": "region_outer_gold", "value": "5 * round(4 * (radius * (radius + 1) - region_center_radius * (region_center_radius + 1)) / 10)" } },
+  { "step": "terrain_blob", "params": { "terrain_id": "accent1", "seed_count": 1, "size": 1, "placement": { "pattern": "points", "points": [{ "x": 0, "y": 0 }] }, "region": "origin" } },
+  {
+    "step": "terrain_blob",
+    "params": {
+      "terrain_id": "accent1",
+      "seed_count": 1,
+      "size": "scale * 3",
+      "roundness": 0.2,
+      "placement": {
+        "pattern": "points",
+        "points": [{ "x": 0, "y": 0 }]
+      },
+      "on": { "distance_to": { "region": "origin", "min": 0, "max": "region_center_radius" } },
+      "region": "central"
+    }
+  },
+  { "step": "include", "params": { "path": "common/forests.json" } },
+  {
+    "step": "player_starts",
+    "params": {
+      "pattern": "ring",
+      "area_size": 1,
+      "starting_distance": "radius - 1 - min(1, max(0, radius - 7))",
+      "tree_ids": ["tree_a", "tree_b"],
+      "terrain_id": "base"
+    }
+  },
+  { "step": "regions_seven", "params": { "outer_bonus": "region_outer_gold", "center_bonus": "5 * round(1.65 * region_outer_gold / 5)" } },
+  { "step": "include", "params": { "path": "common/resources.json" } },
+  {
+    "step": "resource_place",
+    "params": {
+      "resource_id": 51,
+      "count": "num_players * outside_resource_multiplier",
+      "on": {
+        "terrain_ids": ["accent1"],
+        "distance_to": {
+          "region": "central",
+          "distance": 0
+        }
+      },
+      "outside_player_areas": true
+    }
+  }
+]

@@ -1,4 +1,5 @@
 [
+  { "step": "define", "params": { "name": "accent_multiplier", "value": "1 + 0.15 * max(0, map_resources - 2)" } },
   {
     "step": "terrain_fill",
     "params": {

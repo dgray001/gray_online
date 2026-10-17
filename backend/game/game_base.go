@@ -240,18 +240,18 @@ func (g *GameBase) ResendLastUpdate(client_id uint64) {
 	g.replayLastUpdate(client_id)
 }
 
-// The newest update id sent to this client and whether its stored snapshot is stale; ok is false for unknown clients
-func (g *GameBase) LatestUpdate(client_id uint64) (id int, stale bool, ok bool) {
+// The newest update id and setting revision sent to this client; ok is false for unknown clients
+func (g *GameBase) LatestUpdate(client_id uint64) (id int, settings_rev int, ok bool) {
 	if player := g.Players[client_id]; player != nil {
-		id, stale = player.latestUpdate()
-		return id, stale, true
+		id, settings_rev = player.latestUpdate()
+		return id, settings_rev, true
 	}
 	if g.Viewers[client_id] != nil {
 		g.viewer_update_list_mu.RLock()
 		defer g.viewer_update_list_mu.RUnlock()
-		return g.next_viewer_update_id - 1, false, true
+		return g.next_viewer_update_id - 1, 0, true
 	}
-	return 0, false, false
+	return 0, 0, false
 }
 
 // Replays a stale snapshot only after regenerating it on the room goroutine; false means nothing was scheduled
@@ -314,11 +314,12 @@ func (g *GameBase) EndGame(message string) {
 }
 
 func (g *GameBase) ToFrontend(client_id uint64, is_viewer bool) gin.H {
-	latest_update_id := 0
+	latest_update_id, settings_rev := 0, 0
 	if is_viewer {
 		latest_update_id = g.next_viewer_update_id - 1
 	} else if player := g.Players[client_id]; player != nil {
 		latest_update_id = player.next_update_id - 1
+		settings_rev = player.SettingsRev()
 	}
 	if latest_update_id < 0 {
 		latest_update_id = 0
@@ -330,6 +331,7 @@ func (g *GameBase) ToFrontend(client_id uint64, is_viewer bool) gin.H {
 		"game_ended":         g.game_ended,
 		"persistant_history": g.PersistantHistory(),
 		"latest_update_id":   latest_update_id,
+		"settings_rev":       settings_rev,
 	}
 	players := []gin.H{}
 	for _, player := range g.Players {

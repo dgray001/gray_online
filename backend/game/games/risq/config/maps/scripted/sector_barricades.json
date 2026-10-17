@@ -1,0 +1,20 @@
+[
+  { "step": "shape", "params": { "kind": "ring" } },
+  { "step": "include", "params": { "path": "common/biomes.json" } },
+  { "step": "include", "params": { "path": "common/land_details.json" } },
+  { "step": "include", "params": { "path": "common/forests.json" } },
+  { "step": "terrain_blob", "params": { "variant": "hilly", "seed_region": "line", "region": "barricade", "size": "round((outer_radius - inner_radius) * 1.5)", "roundness": 0.3, "placement": { "points": [{ "x": "inner_radius + 1", "y": 0 }, { "x": "outer_radius", "y": 0 }] } } },
+  { "step": "terrain_blob", "params": { "variant": "mountainous", "seed_region": "line", "region": "barricade", "placement": { "points": [{ "x": "inner_radius + 1", "y": 0 }, { "x": "outer_radius - 1", "y": 0 }] } } },
+  { "step": "rotate", "params": { "count": 6, "region": "barricade" } },
+  {
+    "step": "player_starts",
+    "params": {
+      "pattern": "ring", "area_size": 1,
+      "starting_distance": "outer_radius - 1 - min(1, max(0, outer_radius - inner_radius - 4))",
+      "tree_ids": ["tree_a", "tree_b"], "terrain_id": "base"
+    }
+  },
+  { "step": "define", "params": { "name": "region_outer_gold", "value": "5 * round(4 * (outer_radius * (outer_radius + 1) - inner_radius * (inner_radius + 1)) / 10)" } },
+  { "step": "regions_seven", "params": { "outer_bonus": "region_outer_gold", "center_bonus": "5 * round(1.65 * region_outer_gold / 5)" } },
+  { "step": "include", "params": { "path": "common/resources.json" } }
+]

@@ -19,7 +19,7 @@ import type { RisqCorpseLayout } from '../zones/corpses';
 import { drawRisqRegionLabels } from '../region';
 import { RisqLinks } from '../links';
 import type { DrawRisqSpaceConfig } from '../space';
-import { drawRisqSpaceBase, drawRisqSpaceContent } from '../space';
+import { DrawRisqSpaceDetail, drawRisqSpaceBase, drawRisqSpaceContent } from '../space';
 import { drawRisqSpaceBorders } from '../space_borders';
 import { RisqViewMode } from '../terrain';
 import type { RisqOrderOverlays } from './order_overlays';
@@ -67,7 +67,8 @@ export class RisqBoardRenderer {
     private risq: RisqDrawHost,
     private session: RisqSession,
     private viewport: RisqViewport,
-    private order_overlays: Pick<RisqOrderOverlays, 'draw' | 'drawRanges'>,
+    private order_overlays: Pick<RisqOrderOverlays, 'draw' | 'drawRanges'> &
+      Partial<Pick<RisqOrderOverlays, 'drawFlags'>>,
     private drag_rect: () => { min: Point2D; max: Point2D } | undefined,
     private components: CanvasComponent[],
     private hud_scale: () => number = (): number => 1
@@ -160,8 +161,13 @@ export class RisqBoardRenderer {
       for (const [i, space] of on_screen_spaces.entries()) {
         drawRisqSpaceContent(ctx, this.risq, space, pass_config, space_text_colors[i]);
       }
+      this.order_overlays.drawFlags?.(ctx, selected);
     }
-    if (this.viewport.viewMode() === RisqViewMode.OWNERSHIP && !this.viewport.zoneView()) {
+    const show_region_labels =
+      (this.viewport.viewMode() === RisqViewMode.OWNERSHIP && !this.viewport.zoneView()) ||
+      (this.viewport.viewMode() === RisqViewMode.RESOURCE &&
+        this.viewport.drawDetail() === DrawRisqSpaceDetail.OWNERSHIP);
+    if (show_region_labels) {
       drawRisqRegionLabels(ctx, this.risq, draw_config);
     }
     this.drawDragRect(ctx, transform);

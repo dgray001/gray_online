@@ -82,7 +82,14 @@ export class RisqOrderOverlays {
     this.tinted_attack_areas.clear();
     this.drawUnitOrders(ctx, selected);
     this.drawBuildingOrders(ctx, selected);
-    this.drawGatherPointOrder(ctx, selected);
+    this.drawGatherPointLines(ctx, selected);
+  }
+
+  drawFlags(ctx: CanvasRenderingContext2D, selected: boolean): void {
+    if (this.session.isReplaying() || !orderLinesVisible(selected)) {
+      return;
+    }
+    this.drawGatherPointFlags(ctx, selected);
   }
 
   drawRanges(ctx: CanvasRenderingContext2D): void {
@@ -413,47 +420,58 @@ export class RisqOrderOverlays {
     return this.orderTargetPoint({ player_id, order_type, target_id, subjects: [] }, zone_view, from, projection);
   }
 
-  private drawGatherPointOrder(ctx: CanvasRenderingContext2D, selected_pass: boolean): void {
-    const visibility = getSettings().risq_display.order_visibility;
-    if (visibility === 'all') {
-      const player = this.session.getPlayer();
-      if (!player) {
-        return;
-      }
-      const selected = new Set(this.selection.selectedBuildings().map((b) => b.internal_id));
-      for (const building of player.buildings.values()) {
-        if (selected.has(building.internal_id) === selected_pass) {
-          this.drawBuildingGatherPoint(ctx, building);
-        }
-      }
-    } else if (selected_pass) {
-      for (const building of this.selection.selectedBuildings()) {
-        this.drawBuildingGatherPoint(ctx, building);
-      }
-    }
-  }
-
-  private drawBuildingGatherPoint(ctx: CanvasRenderingContext2D, building: RisqBuilding): void {
+  private gatherPointEndpoints(building: RisqBuilding): { from: Point2D; to: Point2D } | undefined {
     const gather_point = this.risq.commands.gather_points.point(building);
     if (!building || !gather_point) {
-      return;
+      return undefined;
     }
     const zone_view = this.viewport.drawDetail() !== DrawRisqSpaceDetail.OWNERSHIP;
     const building_offset = zoneCenterOffset(building.zone_coordinate, this.viewport.hexR());
     const from = this.viewport.orderPoint(building.space_coordinate, building_offset, true);
     const to = this.gatherPointTargetPoint(gather_point, zone_view, from);
-    if (!to || equalsPoint2D(from, to)) {
-      return;
+    return to ? { from, to } : undefined;
+  }
+
+  private gatherPointBuildings(selected_pass: boolean): RisqBuilding[] {
+    const visibility = getSettings().risq_display.order_visibility;
+    const player = this.session.getPlayer();
+    if (!player || (visibility !== 'all' && !selected_pass)) {
+      return [];
     }
-    ctx.lineWidth = this.cappedSize(2);
-    ctx.globalAlpha = 1;
+    const selected = new Set(this.selection.selectedBuildings().map((b) => b.internal_id));
+    const buildings = visibility === 'all' ? [...player.buildings.values()] : this.selection.selectedBuildings();
+    return buildings.filter((b) => visibility !== 'all' || selected.has(b.internal_id) === selected_pass);
+  }
+
+  private drawGatherPointLines(ctx: CanvasRenderingContext2D, selected_pass: boolean): void {
+    ctx.lineWidth = this.cappedSize(selected_pass ? 2 : 1);
+    ctx.globalAlpha = selected_pass ? 1 : 0.35;
     ctx.setLineDash([8, 5]);
     ctx.strokeStyle = 'white';
     ctx.fillStyle = 'white';
-    this.strokeSegment(ctx, from, to, this.cappedSize(10));
+    const arrow_size = this.cappedSize(selected_pass ? 10 : 6);
+    for (const building of this.gatherPointBuildings(selected_pass)) {
+      const endpoints = this.gatherPointEndpoints(building);
+      if (!endpoints || equalsPoint2D(endpoints.from, endpoints.to)) {
+        continue;
+      }
+      this.strokeSegment(ctx, endpoints.from, endpoints.to, arrow_size);
+    }
     ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+  }
+
+  private drawGatherPointFlags(ctx: CanvasRenderingContext2D, selected_pass: boolean): void {
+    ctx.globalAlpha = selected_pass ? 1 : 0.35;
     const flag_icon = this.risq.getPlayerColoredIcon('risq/icons/garrison_flag', new ColorRGB(255, 255, 255));
-    const flag_size = this.cappedSize(Math.max(16, 0.15 * this.viewport.hexR()), 48);
-    ctx.drawImage(flag_icon, to.x, to.y - flag_size, flag_size, flag_size);
+    const flag_scale = selected_pass ? 1 : 0.6;
+    const flag_size = this.cappedSize(Math.max(16, 0.15 * this.viewport.hexR()) * flag_scale, 48 * flag_scale);
+    for (const building of this.gatherPointBuildings(selected_pass)) {
+      const endpoints = this.gatherPointEndpoints(building);
+      if (endpoints) {
+        ctx.drawImage(flag_icon, endpoints.to.x, endpoints.to.y - flag_size, flag_size, flag_size);
+      }
+    }
+    ctx.globalAlpha = 1;
   }
 }

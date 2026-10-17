@@ -26,6 +26,11 @@ func (g *InputGeneticAlgorithm) run() error {
 		file_header_strings := append(header_strings, g.players[i].modelOutputHeaders()...)
 		file_strings[i] = strings.Join(file_header_strings, " ")
 	}
+	debug_lines := []string{strings.Join(append([]string{"Step", "Temperature", "Player", "Child", "Winner", "Score"}, g.players[0].modelOutputHeaders()...), " ")}
+	for k, player := range g.players {
+		start_row := append([]string{"0", "-", strconv.Itoa(k), "-", "-", "-"}, player.modelOutput()...)
+		debug_lines = append(debug_lines, strings.Join(start_row, " "))
+	}
 	step := 0
 	for _, e := range g.episodes {
 		t := float64(e.start_temp)
@@ -34,7 +39,7 @@ func (g *InputGeneticAlgorithm) run() error {
 			step++
 			input_players := make([]*InputPlayer, 0)
 			for _, player := range g.players {
-				input_players = append(input_players, player.mutate(t)...)
+				input_players = append(input_players, player.mutate(t, player.childrenAt(step))...)
 			}
 			input_game := &InputGame{
 				debug:        false,
@@ -51,12 +56,22 @@ func (g *InputGeneticAlgorithm) run() error {
 			max_score, scores := f.GetGameResults()
 			i := uint8(0)
 			for k, player := range g.players {
+				children := player.childrenAt(step)
 				best_score := scores[i]
 				best := i
-				for j := i + 1; j < i+player.children; j++ {
+				for j := i + 1; j < i+children; j++ {
 					if scores[j] > best_score {
 						best_score = scores[j]
 						best = j
+					}
+				}
+				if g.debug {
+					for j := i; j < i+children; j++ {
+						child := &InputGeneticAlgorithmPlayer{ai_model_id: player.ai_model_id, start: input_players[j].model_input}
+						child_score := float64(scores[j]) / float64(max_score)
+						child_row := []string{strconv.Itoa(step), strconv.FormatFloat(t, 'f', 3, 64), strconv.Itoa(k),
+							strconv.Itoa(int(j - i)), strconv.FormatBool(j == best), strconv.FormatFloat(child_score, 'f', 5, 64)}
+						debug_lines = append(debug_lines, strings.Join(append(child_row, child.modelOutput()...), " "))
 					}
 				}
 				player.start = input_players[best].model_input
@@ -67,9 +82,13 @@ func (g *InputGeneticAlgorithm) run() error {
 				row_strings[2] = strconv.FormatFloat(score, 'f', 3, 64)
 				row_strings = append(row_strings, player.modelOutput()...)
 				file_strings[k] += "\n" + strings.Join(row_strings, " ")
-				i += player.children
+				i += children
 			}
 			t += td
+			if g.debug {
+				err := os.WriteFile("outputs/genetic_algorithms/"+g.output+"_debug.log", []byte(strings.Join(debug_lines, "\n")+"\n"), 0644)
+				utils.ErrorCheck(err, "Error writing debug file")
+			}
 		}
 	}
 	for i, s := range file_strings {
@@ -83,8 +102,8 @@ func (g *InputGeneticAlgorithm) run() error {
 	return nil
 }
 
-func (p *InputGeneticAlgorithmPlayer) mutate(t float64) []*InputPlayer {
-	model_inputs := make([]map[string]string, p.children)
+func (p *InputGeneticAlgorithmPlayer) mutate(t float64, children uint8) []*InputPlayer {
+	model_inputs := make([]map[string]string, children)
 	switch p.ai_model_id {
 	case 0: // random
 		for i := range model_inputs {
@@ -119,21 +138,21 @@ func (p *InputGeneticAlgorithmPlayer) mutate(t float64) []*InputPlayer {
 		void_exploit := InputStatic.parseFloat(p.start["void_exploit"])
 		for i := range model_inputs {
 			mi := make(map[string]string)
-			mi["win_vs_all_trump_factor"] = mutateFloat(win_vs_all_trump_factor, 0.2, 2, t)
-			mi["win_vs_all_nontrump_factor"] = mutateFloat(win_vs_all_nontrump_factor, 0.2, 2, t)
-			mi["min_win_weight_factor"] = mutateFloat(min_win_weight_factor, 0, 1, t)
-			mi["bet_scale"] = mutateFloat(bet_scale, 0.5, 1.5, t)
-			mi["aggressive_factor"] = mutateFloat(aggressive_factor, 0.2, 5, t)
-			mi["late_seat_bonus"] = mutateFloat(late_seat_bonus, 0, 2, t)
-			mi["trump_hold_factor"] = mutateFloat(trump_hold_factor, 0, 1, t)
-			mi["void_exploit"] = mutateFloat(void_exploit, 0, 2, t)
+			mi["win_vs_all_trump_factor"] = mutateFloat(win_vs_all_trump_factor, 0.2, 2, p.tempFor("win_vs_all_trump_factor", t))
+			mi["win_vs_all_nontrump_factor"] = mutateFloat(win_vs_all_nontrump_factor, 0.2, 2, p.tempFor("win_vs_all_nontrump_factor", t))
+			mi["min_win_weight_factor"] = mutateFloat(min_win_weight_factor, 0, 1, p.tempFor("min_win_weight_factor", t))
+			mi["bet_scale"] = mutateFloat(bet_scale, 0.5, 1.5, p.tempFor("bet_scale", t))
+			mi["aggressive_factor"] = mutateFloat(aggressive_factor, 0.2, 5, p.tempFor("aggressive_factor", t))
+			mi["late_seat_bonus"] = mutateFloat(late_seat_bonus, 0, 2, p.tempFor("late_seat_bonus", t))
+			mi["trump_hold_factor"] = mutateFloat(trump_hold_factor, 0, 1, p.tempFor("trump_hold_factor", t))
+			mi["void_exploit"] = mutateFloat(void_exploit, 0, 2, p.tempFor("void_exploit", t))
 			model_inputs[i] = mi
 		}
 	default:
 		utils.PrintError("Unknown AI model id for genetic algorithm: %d", p.ai_model_id)
 	}
-	players := make([]*InputPlayer, p.children)
-	for i := range p.children {
+	players := make([]*InputPlayer, children)
+	for i := range children {
 		players[i] = &InputPlayer{
 			ai_model_id: p.ai_model_id,
 			model_input: model_inputs[i],

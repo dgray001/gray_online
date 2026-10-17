@@ -64,11 +64,11 @@ func TestReportRejectedOrderWireShape(t *testing.T) {
 
 func TestCombatReportWireShapeForBothPlayers(t *testing.T) {
 	g := configuredGame(t, 3, func() {
-		unit := defs.UnitConfigs[11]
+		unit := defs.UnitConfigs[101]
 		unit.Attack_range, unit.Attack_blunt = defs.RisqRange_ADJACENT, 200
-		defs.UnitConfigs[11] = unit
+		defs.UnitConfigs[101] = unit
 	})
-	attacker, victim := unitID(g, 1, 0, 11), unitID(g, 0, -1, 15)
+	attacker, victim := unitID(g, 1, 0, 101), unitID(g, 0, -1, 15)
 	g.Submit(g.Human(1), harness.OrderAttackUnit([]uint64{attacker}, victim))
 	g.EndTurn()
 	for slot := range 2 {
@@ -94,18 +94,18 @@ func TestCombatReportWireShapeForBothPlayers(t *testing.T) {
 func TestReportSeparatesTrainedAndHiredUnits(t *testing.T) {
 	g := configuredGame(t, 3, func() {
 		center := defs.BuildingConfigs[1]
-		center.Produces = []defs.Producible{{Kind: defs.ProducibleKind_UNIT, Id: 11}}
+		center.Produces = []defs.Producible{{Kind: defs.ProducibleKind_UNIT, Id: 101}}
 		defs.BuildingConfigs[1] = center
 	})
 	owner := g.Human(1)
-	g.Submit(owner, harness.OrderProduce([]uint64{centerID(g)}, 11), harness.Order(defs.OrderType_BuyMercenary, nil, harness.BuildKey(11, 0, 0, 0, 0), false))
+	g.Submit(owner, harness.OrderProduce([]uint64{centerID(g)}, 101), harness.Order(defs.OrderType_BuyMercenary, nil, harness.BuildKey(101, 0, 0, 0, 0), false))
 	g.EndTurn()
 	p := player(t, snapshot(g, owner, false), 1)
 	production := object(t, object(t, p["turn_report"])["production"])
 	for _, key := range []string{"units_created", "units_hired"} {
 		entries := array(t, production[key])
 		equal(t, len(entries), 1)
-		equal(t, checkShape(t, entries[0], "unit_id:n count:n"), map[string]any{"unit_id": float64(11), "count": float64(1)})
+		equal(t, checkShape(t, entries[0], "unit_id:n count:n"), map[string]any{"unit_id": float64(101), "count": float64(1)})
 	}
 }
 

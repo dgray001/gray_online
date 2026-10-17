@@ -52,7 +52,7 @@ func TestOrderAndProductionQueueWireShapes(t *testing.T) {
 
 func TestChangedBehaviorWireValues(t *testing.T) {
 	g := shapeGame(t, 4)
-	owner, unit, center := g.Human(1), unitID(g, 1, 0, 11), centerID(g)
+	owner, unit, center := g.Human(1), unitID(g, 1, 0, 101), centerID(g)
 	g.Action(owner, "set-unit-behavior", gin.H{"internal_ids": []uint64{unit}, "stance": 1, "interrupt_current": true, "attack_back": false, "target_priority": []uint8{3, 1, 2}})
 	g.Action(owner, "set-building-behavior", gin.H{"internal_ids": []uint64{center}, "auto_attack": false, "interrupt_current": true, "target_priority": []uint8{2, 3, 1}})
 	for human := range 2 {

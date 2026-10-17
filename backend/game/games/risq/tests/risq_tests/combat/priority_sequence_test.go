@@ -10,13 +10,13 @@ import (
 )
 
 func TestDefensiveClearsPriorityCategoriesInOrder(t *testing.T) {
-	doc := `{"board_size":1,"players":2,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":1,"y":0,"building":{"id":2,"player":1},"units":[{"id":13,"player":0,"count":1},{"id":11,"player":1,"count":1},{"id":1,"player":1,"count":1}]},{"x":-1,"y":0,"units":[{"id":11,"player":1,"count":1}]}]}]}`
+	doc := `{"board_size":1,"players":2,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":1,"y":0,"building":{"id":2,"player":1},"units":[{"id":103,"player":0,"count":1},{"id":101,"player":1,"count":1},{"id":1,"player":1,"count":1}]},{"x":-1,"y":0,"units":[{"id":101,"player":1,"count":1}]}]}]}`
 	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"priority-sequence": doc})
 	g := harness.NewGame(t, "custom:priority-sequence", 1, 2)
 	owner, enemy := g.Human(0), g.Human(1)
 	g.Action(owner, "set-unit-behavior", gin.H{"internal_ids": []uint64{g.Self(owner).Units[0].InternalID}, "stance": uint8(defs.UnitStance_DEFENSIVE), "attack_back": false, "target_priority": []uint8{uint8(defs.TargetCategory_MILITARY), uint8(defs.TargetCategory_ECONOMIC), uint8(defs.TargetCategory_BUILDING)}})
 	for _, unit := range g.Self(enemy).Units {
-		if unit.UnitID == 11 {
+		if unit.UnitID == 101 {
 			g.Action(enemy, "set-unit-behavior", gin.H{"internal_ids": []uint64{unit.InternalID}, "stance": uint8(defs.UnitStance_PASSIVE), "attack_back": false})
 		}
 	}
@@ -25,7 +25,7 @@ func TestDefensiveClearsPriorityCategoriesInOrder(t *testing.T) {
 		state := g.Self(enemy)
 		military, villagers := 0, 0
 		for _, unit := range state.Units {
-			if unit.UnitID == 11 {
+			if unit.UnitID == 101 {
 				military++
 			} else {
 				villagers++

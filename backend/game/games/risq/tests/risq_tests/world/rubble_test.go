@@ -9,7 +9,7 @@ import (
 
 func rubbleGame(t *testing.T, configure ...func()) *harness.Game {
 	t.Helper()
-	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":2,"player":1},"units":[{"id":13,"player":0,"count":10},{"id":1,"player":0,"count":1}]}]},{"x":-1,"y":0,"terrain":1},{"x":-2,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":0},"units":[{"id":1,"player":0,"count":1}]}]},{"x":2,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":1}}]}`
+	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":2,"player":1},"units":[{"id":103,"player":0,"count":10},{"id":1,"player":0,"count":1}]}]},{"x":-1,"y":0,"terrain":1},{"x":-2,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":0},"units":[{"id":1,"player":0,"count":1}]}]},{"x":2,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":1}}]}`
 	for _, apply := range configure {
 		apply()
 	}
@@ -17,7 +17,7 @@ func rubbleGame(t *testing.T, configure ...func()) *harness.Game {
 	owner := g.Human(0)
 	ids := make([]uint64, 0)
 	for _, unit := range g.Self(owner).Units {
-		if unit.UnitID == 13 {
+		if unit.UnitID == 103 {
 			ids = append(ids, unit.InternalID)
 		}
 	}
@@ -47,7 +47,7 @@ func TestRubbleClearsWhenOccupied(t *testing.T) {
 
 func TestRubbleCacheStaysFrozenUntilRefreshed(t *testing.T) {
 	g := rubbleGame(t, func() {
-		for _, id := range []uint32{villager, 13} {
+		for _, id := range []uint32{villager, 103} {
 			config := defs.UnitConfigs[id]
 			config.Turn_stamina = 100
 			config.Vision.Secondary = defs.VisibilityUnexplored

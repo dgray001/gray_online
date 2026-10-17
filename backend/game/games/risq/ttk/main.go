@@ -23,9 +23,9 @@ type techCombo struct {
 
 // per-unit applicable tech combos, keyed by unit_id
 var unitTechCombos = map[uint32][]techCombo{
-	1:  {{"none", nil}, {"loom", []uint32{1}}},
-	11: {{"none", nil}, {"atk", []uint32{2}}, {"arm", []uint32{3}}, {"both", []uint32{2, 3}}},
-	12: {{"none", nil}, {"atk", []uint32{2}}, {"arm", []uint32{3}}, {"both", []uint32{2, 3}}},
+	1:   {{"none", nil}, {"loom", []uint32{1}}},
+	101: {{"none", nil}, {"atk", []uint32{2}}, {"arm", []uint32{3}}, {"both", []uint32{2, 3}}},
+	102: {{"none", nil}, {"atk", []uint32{2}}, {"arm", []uint32{3}}, {"both", []uint32{2, 3}}},
 }
 
 func printTechComboTable(attacker_id uint32, target_id uint32) {
@@ -48,11 +48,11 @@ func printTechComboTable(attacker_id uint32, target_id uint32) {
 
 func main() {
 	unitsOnly := flag.Bool("units", false, "Only show units in the target columns")
-	barracksTechs := flag.Bool("barracks-techs", false, "Show tech-combo TTK tables for villager and the two barracks units (1, 11, 12)")
+	barracksTechs := flag.Bool("barracks-techs", false, "Show tech-combo TTK tables for villager and the two barracks units (1, 101, 102)")
 	unitsFile := flag.String("units-file", "", "Units json to use instead of ../config/units.json")
 	efficiency := flag.Bool("efficiency", false, "Show cost-efficiency multiples for -matchups instead of the TTK table")
 	techs := flag.String("techs", "2,3,5", "Comma-separated tech ids researched by both sides for -efficiency")
-	matchups := flag.String("matchups", "11:12,12:13,13:11", "Comma-separated a:b unit id pairs for -efficiency")
+	matchups := flag.String("matchups", "101:102,102:103,103:101", "Comma-separated a:b unit id pairs for -efficiency")
 	flag.Parse()
 	if err := risq.LoadConfig("../config"); err != nil {
 		fmt.Fprintln(os.Stderr, "loading risq config:", err)
@@ -76,7 +76,7 @@ func main() {
 	}
 
 	if *barracksTechs {
-		ids := []uint32{1, 11, 12}
+		ids := []uint32{1, 101, 102}
 		for _, attacker_id := range ids {
 			for _, target_id := range ids {
 				printTechComboTable(attacker_id, target_id)

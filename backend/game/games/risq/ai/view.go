@@ -50,6 +50,7 @@ const (
 	UnitTypeInfantry
 	UnitTypeArcher
 	UnitTypeCavalry
+	UnitTypeSiege
 )
 
 var unitTypeNames = map[string]UnitType{
@@ -57,12 +58,13 @@ var unitTypeNames = map[string]UnitType{
 	"infantry": UnitTypeInfantry,
 	"archer":   UnitTypeArcher,
 	"cavalry":  UnitTypeCavalry,
+	"siege":    UnitTypeSiege,
 }
 
 // "military" stands for every non-economic unit type
 func unitTypesNamed(name string) []UnitType {
 	if name == "military" {
-		return []UnitType{UnitTypeInfantry, UnitTypeArcher, UnitTypeCavalry}
+		return []UnitType{UnitTypeInfantry, UnitTypeArcher, UnitTypeCavalry, UnitTypeSiege}
 	}
 	if unit_type, ok := unitTypeNames[name]; ok {
 		return []UnitType{unit_type}

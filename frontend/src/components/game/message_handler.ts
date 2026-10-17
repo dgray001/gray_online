@@ -12,6 +12,14 @@ function isGameMessage(kind: string): boolean {
   return !lobby_prefixes.every((prefix) => !kind.startsWith(`${prefix}-`));
 }
 
+/** Advances the setting revision only for the next one in order, so a missed update stays visible to the heartbeat */
+function trackSettingsRev(game: DwgGame, rev: number | undefined): void {
+  const game_base = game.getGame()?.game_base;
+  if (game_base && rev === (game_base.settings_rev ?? 0) + 1) {
+    game_base.settings_rev = rev;
+  }
+}
+
 /** Handles messages for the frontend lobby */
 export function handleMessage(game: DwgGame, message: ServerMessage): void {
   if (!game.socketActive()) {
@@ -60,13 +68,13 @@ export function handleMessage(game: DwgGame, message: ServerMessage): void {
     case 'game-update':
       handleGameUpdate(game, message);
       break;
-    case 'game-setting': // small private acknowledgement outside the sequenced update history
-      void game.getGameEl()?.gameUpdate({
-        update_id: 0,
-        kind: message.data,
-        content: JSON.parse(message.content),
-      });
+    case 'game-setting': {
+      // small private acknowledgement outside the sequenced update history
+      const content = JSON.parse(message.content);
+      trackSettingsRev(game, content.rev);
+      void game.getGameEl()?.gameUpdate({ update_id: 0, kind: message.data, content });
       break;
+    }
     case 'game-failed-update': // player did something incorrect
       if (
         [
@@ -85,9 +93,13 @@ export function handleMessage(game: DwgGame, message: ServerMessage): void {
       }
       break;
     case 'game-last-update-id': {
-      const behind = parseInt(message.data) > (game.getGame()?.game_base.highest_received_update_id ?? 0);
-      if (behind || message.content === 'true') {
+      const game_base = game.getGame()?.game_base;
+      const behind = parseInt(message.data) > (game_base?.highest_received_update_id ?? 0);
+      const missed_setting = parseInt(message.content) > (game_base?.settings_rev ?? 0);
+      if (behind) {
         game.socketSend(createMessage(`client-${game.getConnectionMetadata()?.client_id}`, 'game-resend-last-update'));
+      } else if (missed_setting) {
+        void game.resyncState();
       }
       break;
     }
@@ -159,6 +171,7 @@ async function handleGameUpdate(game: DwgGame, message: ServerMessage): Promise<
             return;
           }
           game_base.last_applied_update_id = update.update_id;
+          game_base.settings_rev = update.content?.game?.game_base?.settings_rev ?? game_base.settings_rev;
           continue;
         }
         let last_update_id = game_base?.last_applied_update_id ?? -2;

@@ -37,7 +37,7 @@ func TestTickHistoryIncomingDamageOnIdleUnit(t *testing.T) {
 			}
 		}
 	})
-	g := combatGame(t, 11, 13)
+	g := combatGame(t, 101, 103)
 	p, enemy := g.Human(0), g.Human(1)
 	a, target := g.Self(p).Units[0], g.Self(enemy).Units[0]
 	passive(g, enemy, target.InternalID)
@@ -74,7 +74,7 @@ func TestTwoPhaseDeath(t *testing.T) {
 }
 
 func TestSameTickDamageSums(t *testing.T) {
-	single := combatGame(t, 11, 13)
+	single := combatGame(t, 101, 103)
 	s0, s1 := single.Human(0), single.Human(1)
 	su0, su1 := single.Self(s0).Units[0], single.Self(s1).Units[0]
 	passive(single, s1, su1.InternalID)

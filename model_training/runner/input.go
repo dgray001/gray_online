@@ -3,6 +3,7 @@ package runner
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"fiddlesticks.live/utils"
 )
@@ -358,6 +359,7 @@ type InputGeneticAlgorithm struct {
 	output       string
 	seed         int64
 	seeded       bool
+	debug        bool
 	episodes     []*InputGeneticAlgorithmEpisode
 	players      []*InputGeneticAlgorithmPlayer
 }
@@ -390,6 +392,8 @@ func (i *InputGeneticAlgorithm) AddLine(q []InputObject, k string, v string) []I
 	case "seed":
 		i.seed = int64(InputStatic.parseInt(v))
 		i.seeded = true
+	case "debug":
+		i.debug = InputStatic.parseBool(v)
 	case "Episode":
 		episode := createInputGeneticAlgorithmEpisode()
 		i.episodes = append(i.episodes, episode)
@@ -466,17 +470,34 @@ func (i *InputGeneticAlgorithmEpisode) validate() error {
 }
 
 type InputGeneticAlgorithmPlayer struct {
-	ai_model_id uint8
-	children    uint8
-	start       map[string]string
-	output      string
+	ai_model_id  uint8
+	children     uint8
+	max_children uint8
+	start        map[string]string
+	temp_scale   map[string]float64
+	output       string
 }
 
 func createInputGeneticAlgorithmPlayer(i int) *InputGeneticAlgorithmPlayer {
 	return &InputGeneticAlgorithmPlayer{
-		start:  make(map[string]string),
-		output: "player-" + strconv.Itoa(i),
+		start:      make(map[string]string),
+		temp_scale: make(map[string]float64),
+		output:     "player-" + strconv.Itoa(i),
 	}
+}
+
+func (i *InputGeneticAlgorithmPlayer) childrenAt(step int) uint8 {
+	if i.max_children <= i.children {
+		return i.children
+	}
+	return i.children + uint8((step-1)%int(i.max_children-i.children+1))
+}
+
+func (i *InputGeneticAlgorithmPlayer) tempFor(param string, t float64) float64 {
+	if scale, ok := i.temp_scale[param]; ok {
+		return t * scale
+	}
+	return t
 }
 
 func (i *InputGeneticAlgorithmPlayer) AddLine(q []InputObject, k string, v string) []InputObject {
@@ -485,10 +506,16 @@ func (i *InputGeneticAlgorithmPlayer) AddLine(q []InputObject, k string, v strin
 		i.ai_model_id = uint8(InputStatic.parseInt(v))
 	case "children":
 		i.children = uint8(InputStatic.parseInt(v))
+	case "max_children":
+		i.max_children = uint8(InputStatic.parseInt(v))
 	case "output":
 		i.output = v
 	default:
-		i.start[k] = v
+		if param, ok := strings.CutSuffix(k, "_temp_scale"); ok {
+			i.temp_scale[param] = InputStatic.parseFloat(v)
+		} else {
+			i.start[k] = v
+		}
 	}
 	return q
 }
@@ -497,6 +524,7 @@ func (i *InputGeneticAlgorithmPlayer) print(indent string) {
 	fmt.Println(indent + "Player:")
 	fmt.Println(indent+"  Model ID:", i.ai_model_id)
 	fmt.Println(indent+"  Children:", i.children)
+	fmt.Println(indent+"  Max Children:", i.max_children)
 	for k, v := range i.start {
 		fmt.Println(indent + "  " + k + ": " + v)
 	}

@@ -243,7 +243,7 @@ export class DwgPageRisqMapEditor extends DwgElement {
       board_size: this.board_pixels,
       max_scale: 1,
       fill_space: true,
-      allow_side_move: true,
+      allow_edge_pan: true,
       draw: (ctx, transform) => this.draw(ctx, transform),
       scroll: (dy, mode, dx) => this.components().some((c) => c.scroll?.(dy, mode, dx)),
       draggingCallback: () => {

@@ -554,7 +554,7 @@ func stepPlayerStarts(ctx *mapScriptContext, raw json.RawMessage) error {
 			return err
 		}
 	}
-	if p.Pattern == "ring" || (p.Pattern == "rows" && ctx.shape != "rectangle") {
+	if p.Pattern == "ring" || (p.Pattern == "rows" && (ctx.shape != "rectangle" || !p.On.empty())) {
 		if starts, err = assignStartSpaces(ctx, starts, area_size, max_shift); err != nil {
 			return err
 		}

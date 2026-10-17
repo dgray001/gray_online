@@ -66,7 +66,7 @@ func assertBehaviorPayload(t *testing.T, payload gin.H, slot int) {
 
 func TestExplicitAttackAndBehaviorReachEngine(t *testing.T) {
 	model := once(`{"action":"set_unit_behavior","stance":"passive","attack_back":false},{"action":"set_building_behavior","auto_attack":false},{"action":"attack","target":"economic","max":1}`)
-	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":0},"units":[{"id":11,"player":0,"count":1},{"id":1,"player":1,"count":1}]}]},` + remote
+	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":0},"units":[{"id":101,"player":0,"count":1},{"id":1,"player":1,"count":1}]}]},` + remote
 	g := fixture(t, `{}`, spaces, "", model, emptyModel)
 	g.Run(t, 1)
 	assertOrderCount(t, g, 0, defs.OrderType_UnitAttackUnit, 1)
@@ -98,7 +98,7 @@ func TestGatherRulesRespectFarmCapacity(t *testing.T) {
 func TestHireAndProductionSharePopulationReservation(t *testing.T) {
 	for _, hireFirst := range []bool{true, false} {
 		t.Run(map[bool]string{true: "hire-first", false: "create-first"}[hireFirst], func(t *testing.T) {
-			hire, create := `{"action":"hire","unit_id":11,"max":2}`, `{"action":"create","unit_id":1,"queue":2}`
+			hire, create := `{"action":"hire","unit_id":101,"max":2}`, `{"action":"create","unit_id":1,"queue":2}`
 			actions := create + "," + hire
 			if hireFirst {
 				actions = hire + "," + create
@@ -124,7 +124,7 @@ func TestHireAndProductionSharePopulationReservation(t *testing.T) {
 }
 
 func TestHireAndProductionChargeOnce(t *testing.T) {
-	model := once(`{"action":"hire","unit_id":11,"max":1},{"action":"create","unit_id":1,"queue":1}`)
+	model := once(`{"action":"hire","unit_id":101,"max":1},{"action":"create","unit_id":1,"queue":1}`)
 	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":0},"units":[{"id":1,"player":0,"count":1}]}]},` + remote
 	g := fixture(t, `{"food":100,"gold":500}`, spaces, `,"starting_techs":[4]`, model, emptyModel)
 	g.Run(t, 2)

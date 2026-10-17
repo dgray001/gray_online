@@ -41,7 +41,7 @@ func garrisonCombatGame(t *testing.T, race ...bool) *harness.Game {
 	if len(race) > 0 && race[0] {
 		count = 2
 	}
-	doc := fmt.Sprintf(`{"board_size":1,"players":2,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":21,"player":0},"units":[{"id":13,"player":0,"count":%d},{"id":13,"player":1,"count":1}]}]}]}`, count)
+	doc := fmt.Sprintf(`{"board_size":1,"players":2,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":21,"player":0},"units":[{"id":103,"player":0,"count":%d},{"id":103,"player":1,"count":1}]}]}]}`, count)
 	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"combat": doc})
 	if count == 2 {
 		config := defs.BuildingConfigs[21]
@@ -53,7 +53,7 @@ func garrisonCombatGame(t *testing.T, race ...bool) *harness.Game {
 
 func combatGameTwoAttackers(t *testing.T) *harness.Game {
 	t.Helper()
-	doc := `{"board_size":1,"players":2,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":0,"count":2},{"id":13,"player":1,"count":1}]}]}]}`
+	doc := `{"board_size":1,"players":2,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":101,"player":0,"count":2},{"id":103,"player":1,"count":1}]}]}]}`
 	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"combat": doc})
 	return harness.NewGame(t, "custom:combat", 1, 2)
 }

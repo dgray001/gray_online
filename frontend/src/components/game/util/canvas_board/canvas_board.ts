@@ -39,7 +39,7 @@ export declare interface CanvasBoardInitializationData {
   max_scale: number;
   min_scale?: number;
   fill_space?: boolean;
-  allow_side_move?: boolean;
+  allow_edge_pan?: boolean;
   draw: (ctx: CanvasRenderingContext2D, transform: BoardTransformData) => void;
   // returns whether something was scrolled
   scroll?: (dy: number, mode: number, dx?: number) => boolean;
@@ -191,7 +191,7 @@ export class DwgCanvasBoard extends DwgElement {
     this.initialization_controller.abort();
     this.initialization_controller = new AbortController();
     const signal = this.initialization_controller.signal;
-    data.allow_side_move = data.allow_side_move ?? true;
+    data.allow_edge_pan = data.allow_edge_pan ?? true;
     this.zoom_config = Object.assign({}, data.zoom_config);
     this.orig_size = {
       x: data.board_size.x,
@@ -378,7 +378,7 @@ export class DwgCanvasBoard extends DwgElement {
     });
     this.addEventListener('mouseleave', () => {
       this.hovered = false;
-      if (this.data.allow_side_move && !this.dragging) {
+      if (this.data.allow_edge_pan && !this.dragging) {
         this.sticky_pan = {
           up: this.mouse.y < this.edge_arm_threshold,
           down: this.mouse.y > this.bounding_rect.height - this.edge_arm_threshold,
@@ -539,7 +539,7 @@ export class DwgCanvasBoard extends DwgElement {
       d_view.x += arrow_key_speed;
       moved = true;
     }
-    if (!this.dragging && this.data.allow_side_move && this.hovered && document.hasFocus()) {
+    if (!this.dragging && this.data.allow_edge_pan && this.hovered && document.hasFocus()) {
       if (!this.pan_suppressed.y && this.mouse.y < this.cursor_move_threshold) {
         d_view.y -= arrow_key_speed;
         moved = true;
@@ -556,7 +556,7 @@ export class DwgCanvasBoard extends DwgElement {
         d_view.x += arrow_key_speed;
         moved = true;
       }
-    } else if (!this.dragging && this.data.allow_side_move && !this.hovered && document.hasFocus()) {
+    } else if (!this.dragging && this.data.allow_edge_pan && !this.hovered && document.hasFocus()) {
       if (this.sticky_pan.up) {
         d_view.y -= arrow_key_speed;
         moved = true;
@@ -633,6 +633,15 @@ export class DwgCanvasBoard extends DwgElement {
   /** Suppresses edge-of-screen panning along the given axes */
   setPanSuppressed(x: boolean, y: boolean): void {
     this.pan_suppressed = { x, y };
+  }
+
+  setAllowEdgePan(allow: boolean): void {
+    if (this.data) {
+      this.data.allow_edge_pan = allow;
+    }
+    if (!allow) {
+      this.sticky_pan = { up: false, down: false, left: false, right: false };
+    }
   }
 
   setRotation(rotation: number): void {

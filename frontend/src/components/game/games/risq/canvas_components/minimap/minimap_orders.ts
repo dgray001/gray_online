@@ -91,12 +91,14 @@ export class RisqMinimapOrders {
     const gather_point = this.risq.commands.gather_points.point(building);
     const to =
       from && gather_point && this.risq.order_overlays.gatherPointTargetPoint(gather_point, false, from, projection);
-    if (!from || !to || equalsPoint2D(from, to)) {
+    if (!from || !to) {
       return;
     }
-    ctx.strokeStyle = 'white';
-    ctx.fillStyle = 'white';
-    drawArrow(ctx, from, to, 3);
+    if (!equalsPoint2D(from, to)) {
+      ctx.strokeStyle = 'white';
+      ctx.fillStyle = 'white';
+      drawArrow(ctx, from, to, 3);
+    }
     ctx.save();
     ctx.translate(to.x, to.y);
     ctx.rotate(-this.view.rotation());

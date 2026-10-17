@@ -384,6 +384,7 @@ export enum RisqUnitType {
   INFANTRY = 2,
   ARCHER = 3,
   CAVALRY = 4,
+  SIEGE = 5,
 }
 
 /** All the unit stances */

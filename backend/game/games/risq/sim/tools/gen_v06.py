@@ -5,7 +5,7 @@ Each turn: read state -> remember the enemy -> decide wants -> turn wants into p
 heavies and piercers form the assault army; nothing keys off the turn number."""
 import json, os, sys
 
-VIL, BLUNT, PIERCE, HEAVY = 1, 11, 12, 13
+VIL, BLUNT, PIERCE, HEAVY = 1, 101, 102, 103
 VC, HOUSE, FARM, SMITH, OUTPOST, BARRACKS, REDOUBT = 1, 2, 3, 11, 21, 22, 23
 FARMING, ATTACK, ARMOR, MERCS, PIKES = 1, 2, 3, 4, 5
 DEFENSIVE = "1_21_23"  # buildings that shoot at their whole space
@@ -117,7 +117,7 @@ P = dict(
     est_insp_safe=1,   # inspector score drops 100 per visible enemy soldier within a space of the target
     est_insp_cool=2.0,  # turns the home inspector rests after it fires
 )
-OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config', 'ai', 'v0.6.json')
+OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'config', 'ai', 'v0.6.json')
 for arg in sys.argv[1:]:
     k, v = arg.split('=')
     if k == 'out':
@@ -162,7 +162,7 @@ def pending(n, b): return f"(var(foundation_count_{b}) - var({n}_abandoned))"
 rule(ALWAYS,
      setv("has_eco", "min(1, var(population_economic) + var(economic_producers))"),
      setv("vils", "var(population_1)"),
-     setv("B", "var(population_11)"), setv("Pi", "var(population_12)"), setv("Hv", "var(population_13)"),
+     setv("B", "var(population_101)"), setv("Pi", "var(population_102)"), setv("Hv", "var(population_103)"),
      setv("mil", "var(B) + var(Pi) + var(Hv)"),
      setv("headroom", "population_limit - population"),
      setv("vcs", "var(building_count_1_complete)"),
@@ -196,14 +196,14 @@ rule(ALWAYS, *(a for n, (b, _) in TRACKED.items() for a in (
      setv(f"{n}_ban", f"var({n}_ban) * {one(f'1 - {replacement_exists(n)}')} * {one(f'4 - var({n}_ban_wait)')}", True))))
 # remembered enemy: the most seen recently, fading slowly
 rule(ALWAYS, *(setv(n, f"max(var({n}) - {P['decay']}, var(enemy_units_visible_{src}))", True)
-               for n, src in (("eB", 11), ("eP", 12), ("eH", 13), ("eV", 1))),
+               for n, src in (("eB", BLUNT), ("eP", PIERCE), ("eH", HEAVY), ("eV", VIL))),
      setv("eMil", "var(eB) + var(eP) + var(eH)"),
      # fighting power in blunt-equivalents (a heavy ~4 blunts, a piercer ~2 against heavies)
      setv("ePow", "var(eB) + 2 * var(eP) + 4 * var(eH)"))
 if int(P['smith_push']):
     # each time more heavies are in view than last turn counts as new ones, so a stream of single heavies adds up
-    rule(ALWAYS, setv("heavies_seen", "var(heavies_seen) + max(0, var(enemy_units_visible_13) - var(heavy_vis_last))", True),
-         setv("heavy_vis_last", "var(enemy_units_visible_13)", True))
+    rule(ALWAYS, setv("heavies_seen", "var(heavies_seen) + max(0, var(enemy_units_visible_103) - var(heavy_vis_last))", True),
+         setv("heavy_vis_last", "var(enemy_units_visible_103)", True))
 ST_VILS, ST_VCS = "var(st_vils)", "max(1, var(st_vc))"
 def rs_made(y: str) -> str:
     """enemy villagers made in y village-center-turns on the reasonable plan: one a turn up to est_rs_n1 villagers, two every three turns up to est_rs_n2, then one every other turn up to est_rs_n3"""
@@ -232,7 +232,7 @@ rule(ALWAYS,
      setv("eUnknownPower", {0: "1", 1: "max(1, (var(eB) + 2 * var(eP) + 4 * var(eH)) / max(1, var(eB) + var(eP) + var(eH)))", 2: "(var(eB) + 2 * var(eP) + 4 * var(eH) + 7) / (var(eB) + var(eP) + var(eH) + 3)"}[int(P['unknown_mix'])]),
      setv("eUnidentified", "var(enemy_units_unidentified)"),
      *VIL2_RULES,
-     setv("ePow", f"max(var(ePow), var(enemy_units_visible_11) + 2 * var(enemy_units_visible_12) + 4 * var(enemy_units_visible_13) + {EUNID})"))
+     setv("ePow", f"max(var(ePow), var(enemy_units_visible_101) + 2 * var(enemy_units_visible_102) + 4 * var(enemy_units_visible_103) + {EUNID})"))
 
 def unknown_power_near(anchor: str, within: int) -> str:
     return f"var(enemy_units_unidentified_within_{within}_of_{anchor}) * var(eUnknownPower)"
@@ -243,7 +243,7 @@ def site_weight(n, w): return P.get(f"site_{n}_{w}", P[f"site_{w}"])
 def site_threat():
     """enemy soldier power (seen and unidentified) within a space of the site, plus shooting buildings at triple weight"""
     c = lambda uid: f"var(enemy_units_visible_{uid}_within_1_of_target)"
-    return f"({c(11)} + 2 * {c(12)} + 4 * {c(13)} + {unknown_power_near('target', 1)} + 3 * var(enemy_buildings_known_{DEFENSIVE}_within_1_of_target))"
+    return f"({c(BLUNT)} + 2 * {c(PIERCE)} + 4 * {c(HEAVY)} + {unknown_power_near('target', 1)} + 3 * var(enemy_buildings_known_{DEFENSIVE}_within_1_of_target))"
 def site_score(n):
     w = lambda name: f"var(site_{name}_{n})"
     return (f"{w('dist')} * (0 - var(target_distance)) + {w('expand')} * (1 - min(1, var(target_own_buildings)))"
@@ -257,7 +257,7 @@ rule(ALWAYS, *(setv(f"site_{w}_{n}", site_weight(n, w)) for n in TRACKED for w i
 def power_at_unit(side: str, within: int) -> str:
     c = (lambda uid: f"var(enemy_units_visible_{uid}_within_{within}_of_unit)") if side == 'enemy' else (lambda uid: f"var(population_{uid}_within_{within}_of_unit)")
     unknown = f" + {unknown_power_near('unit', within)}" if side == 'enemy' else ""
-    return f"({c(11)} + 2 * {c(12)} + 4 * {c(13)}{unknown})"
+    return f"({c(BLUNT)} + 2 * {c(PIERCE)} + 4 * {c(HEAVY)}{unknown})"
 threat_near = f"({power_at_unit('enemy', 1)} + var(enemy_units_visible_1_within_0_of_unit))"
 ours_here = f"(var(vil_worth_now) * var(population_1_within_0_of_unit) + {power_at_unit('mine', 0)})"
 crush_margin = f"{ours_here} - {P['vil_crush_odds']} * {threat_near}"
@@ -574,7 +574,7 @@ else:
 vw, odds, rmin = P['vil_worth'], P['raid_odds'], P['raid_min']
 RAID_ORDERS = ["move", "attack_space", "attack_unit", "attack_zone", "attack_building"]
 def soldiers_near(anchor: str, within: int) -> str:
-    return f"(var(enemy_units_visible_11_within_{within}_of_{anchor}) + 2 * var(enemy_units_visible_12_within_{within}_of_{anchor}) + 4 * var(enemy_units_visible_13_within_{within}_of_{anchor}) + {unknown_power_near(anchor, within)})"
+    return f"(var(enemy_units_visible_101_within_{within}_of_{anchor}) + 2 * var(enemy_units_visible_102_within_{within}_of_{anchor}) + 4 * var(enemy_units_visible_103_within_{within}_of_{anchor}) + {unknown_power_near(anchor, within)})"
 rule(ALWAYS,
      # a party that lost more than half its members since last turn was caught: raids pause, longer after each failure
      setv("raid_lost", "max(0, var(raid_prev) - var(bucket_size_raid))"),
@@ -631,7 +631,7 @@ def hit_damage(attacker, target, attack_tech, pikes):
 def is_value(expr, value): return f"max(0, 1 - max({expr} - {value}, {value} - {expr}))"
 def hit_table():
     """Expression for the damage per hit of the unit being assigned (var(unit_id)) against the candidate (matched by its max health)"""
-    units = [u for u in json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config', 'units.json'))) if u['unit_id'] in (VIL, BLUNT, PIERCE, HEAVY)]
+    units = [u for u in json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'config', 'units.json'))) if u['unit_id'] in (VIL, BLUNT, PIERCE, HEAVY)]
     assert len({u['max_health'] for u in units}) == len(units), "candidates are told apart by max health"
     terms = []
     for a in units:
@@ -658,7 +658,7 @@ def pow_near(side: str, anchor: str, within: int) -> str:
     else:
         c = lambda uid: f"var(population_{uid}{BKT if anchor == 'army' else ''}_within_{within}_of_{anchor})" if anchor != 'home' else f"var(population_{uid}_within_{within})"
     unknown = f" + {unknown_power_near(anchor, within)}" if side == 'enemy' else ""
-    return f"({c(11)} + 2 * {c(12)} + 4 * {c(13)}{unknown})"
+    return f"({c(BLUNT)} + 2 * {c(PIERCE)} + 4 * {c(HEAVY)}{unknown})"
 def relevant_pow(suffix):
     """power of the troops that are or would be in the army (its bucket and the unbucketed), not scouts or raiders"""
     return "(" + " + ".join(f"{w} * (var(population_{uid}_bucket_none{suffix}) + var(population_{uid}_bucket_army{suffix}))" for uid, w in ((BLUNT, 1), (PIERCE, 2), (HEAVY, 4))) + ")"
@@ -712,7 +712,7 @@ rule(ALWAYS,
      setv("eLocalNow", pow_near('enemy', 'army', 1)),
      # while in melee, enemy power that vanishes from around the army is dead, so the memory of the enemy army drops by it
      setv("eDrop", f"max(0, var(eLocalPrev) - var(eLocalNow)) * var(engaged_prev) * {one('var(bucket_size_army)')}" if P['memory_drop'] else "0"),
-     setv("eIdent", "var(enemy_units_visible_11) + 2 * var(enemy_units_visible_12) + 4 * var(enemy_units_visible_13)"),
+     setv("eIdent", "var(enemy_units_visible_101) + 2 * var(enemy_units_visible_102) + 4 * var(enemy_units_visible_103)"),
      setv("eSeenNew", f"min(2 * max(0, var(population_max) - var(eV)), max(var(ePowSeen) * {P['est_decay']} + var(eGrowth) - var(eDrop),"
                       f" var(eIdent) + {P['est_unid_w']} * {EUNID}))"),
      *(setv("eSeenNew", f"min(var(eSeenNew), var(est_cap_{t}))") for t in CAP_MEM),
@@ -879,7 +879,7 @@ if P['forward']:
     rule(all_(*NOTHING_LEFT, {"not": HAS_BUILDINGS}), dict({"action": "move", "targets": "coordinate", "coordinate": LAUNCH}, **ARMY), setv("army_fwd", 0, True))
     # with the forward base cleared, units take adjacent enemy spaces the whole army can beat, each space getting the power it needs
     NEED_T = f"{ao} * ({pow_near('enemy', 'target', 0)} * var(eTech) + 6 * var(enemy_buildings_known_{DEFENSIVE}_within_0_of_target))"
-    UNIT_POW = "(1 + min(1, max(0, var(unit_id) - 11)) + 2 * min(1, max(0, var(unit_id) - 12))) * var(myTech)"
+    UNIT_POW = "(1 + min(1, max(0, var(unit_id) - 101)) + 2 * min(1, max(0, var(unit_id) - 102))) * var(myTech)"
     if not int(P['stage_adj']):
         rule(all_(FWD, le("var(a_outnumbered)", 0), le("var(a_local)", 0), FB_CLEAR, ADJ_ENEMY),
              {"action": "attack", "in_bucket": "army", "eligible": ARMY["eligible"], "targets": "closest_spaces", "from": FB, "exclude_reference": True,
@@ -928,7 +928,7 @@ DEFENDING = all_(AT_BASE, IN_FIGHT)
 DEF = dict(exclude_buckets=True, eligible=["move", "attack_unit", "attack_building", "attack_space", "attack_zone", "auto_attack_unit", "auto_attack_building"], unit_types=["military"], unit_when={"not": DEFENDING})
 DEF_ENEMY = f"{pow_near('enemy', 'target', 0)} * var(eTech)"
 DEF_NEED = f"max(0, {DEF_ENEMY} - {pow_near('mine', 'target', 0)} * var(myTech))"
-DEF_WEIGHT = "(1 + min(1, max(0, var(unit_id) - 11)) + 2 * min(1, max(0, var(unit_id) - 12))) * var(myTech)"
+DEF_WEIGHT = "(1 + min(1, max(0, var(unit_id) - 101)) + 2 * min(1, max(0, var(unit_id) - 102))) * var(myTech)"
 DEF_UNIT_SCORE = f"max(0, {DEF_NEED} - var(target_assigned)) / max(1, {DEF_ENEMY}) - var(unit_distance) / (100 * (1 + var(unit_distance)))"
 if int(P['def_idle']):
     # extra soldiers still defend: the fuller a space already is beyond its need, the nearer a soldier must be (def_far zone steps at exactly enough)

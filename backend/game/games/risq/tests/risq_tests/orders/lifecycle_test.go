@@ -52,7 +52,7 @@ func TestDefeatMapStartsWithRedoubtAndEnemySoldier(t *testing.T) {
 	if len(mine.Units) != 0 || len(mine.Buildings) != 1 || mine.Buildings[0].BuildingID != 23 {
 		t.Fatal("human player should have only a redoubt")
 	}
-	if len(enemy.Buildings) != 0 || len(enemy.Units) != 1 || enemy.Units[0].UnitID != 13 || enemy.Units[0].Space != mine.Buildings[0].Space {
+	if len(enemy.Buildings) != 0 || len(enemy.Units) != 1 || enemy.Units[0].UnitID != 103 || enemy.Units[0].Space != mine.Buildings[0].Space {
 		t.Fatal("enemy should have one heavy infantry in the redoubt's space")
 	}
 }

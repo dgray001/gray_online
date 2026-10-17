@@ -146,10 +146,34 @@ function drawEntityDots(
   }
 }
 
+function drawResourceDots(
+  ctx: CanvasRenderingContext2D,
+  game: RisqDrawHost,
+  space: RisqSpace,
+  config: DrawRisqSpaceConfig
+): void {
+  const selected_pass = config.entity_pass === 'selected';
+  for (const zone of space.zones?.flat() ?? []) {
+    if (!zone.resource) {
+      continue;
+    }
+    if (selected_pass && game.selection.isResourceSelected(zone.resource.internal_id)) {
+      const image = resourceDot(game.getImageCache(), 'selected');
+      const point = addPoint2D(space.center, zoneCenterOffset(zone.coordinate, config.hex_r));
+      const radius = 0.25 * config.hex_r;
+      if (image) {
+        ctx.drawImage(image, point.x - radius, point.y - radius, radius * 2, radius * 2);
+      }
+    } else if (!selected_pass) {
+      drawZoneResourceDot(ctx, game.getImageCache(), zone, space.center, config.hex_r, 1);
+    }
+  }
+}
+
 const INSET_ROWS = 4;
 const OVERVIEW_DOT_VIEW_MODES = [RisqViewMode.ALL, RisqViewMode.RESOURCE, RisqViewMode.MILITARY];
 
-/** Zoomed-out replacement for zone detail: entity dots in the entity passes (resource dots are minimap only) */
+/** Zoomed-out replacement for zone detail: entity and resource dots in the entity passes */
 export function drawSpaceOverviewDots(
   ctx: CanvasRenderingContext2D,
   game: RisqDrawHost,
@@ -160,6 +184,9 @@ export function drawSpaceOverviewDots(
     return;
   }
   if (config.entity_pass !== 'terrain') {
+    if (config.view_mode === RisqViewMode.RESOURCE) {
+      drawResourceDots(ctx, game, space, config);
+    }
     drawEntityDots(ctx, game, space, config);
   }
 }

@@ -1,4 +1,5 @@
 [
+  { "step": "define", "params": { "name": "outside_resource_multiplier", "value": "0.5 * min(map_resources, 2) + max(0, map_resources - 2) + max(0, map_resources - 3)" } },
   {
     "step": "resource_place",
     "params": {

@@ -60,6 +60,7 @@ export function serverResponseToGame(game_from_server: GameFromServer, client_id
       game_ended: game_from_server.game_base.game_ended,
       persistant_history: game_from_server.game_base.persistant_history,
       latest_update_id: game_from_server.game_base.latest_update_id,
+      settings_rev: game_from_server.game_base.settings_rev,
       players,
       viewers,
       player_actions: game_from_server.game_base.player_actions
@@ -87,6 +88,7 @@ export declare interface GameBaseFromServer {
   game_ended: boolean;
   persistant_history: boolean;
   latest_update_id?: number;
+  settings_rev?: number;
   players: GamePlayer[];
   viewers: GameViewer[];
   // These fields should only return to viewers
@@ -102,6 +104,7 @@ export declare interface GameBase {
   game_ended: boolean;
   persistant_history: boolean;
   latest_update_id?: number;
+  settings_rev?: number; // newest setting revision applied with no gap before it
   players: Map<number, GamePlayer>;
   viewers: Map<number, GameViewer>;
   player_actions?: Map<number, PlayerAction>; // client -> server updates for viewers

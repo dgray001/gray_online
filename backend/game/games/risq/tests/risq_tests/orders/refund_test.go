@@ -15,7 +15,7 @@ func TestRefundsPrecedeSpending(t *testing.T) {
 		mine := scan(g, p)
 		v, b := mine.villagers, mine.buildings
 		g.Submit(p,
-			harness.OrderProduce([]uint64{b[22]}, 12),
+			harness.OrderProduce([]uint64{b[22]}, 102),
 			harness.Order(defs.OrderType_BuildingResearch, []uint64{b[11]}, 2, false),
 			harness.OrderBuild(v[:1], 2, 3, 0, 0, 0),
 			harness.OrderMove(v[1:2], 3, 0), harness.OrderMove(v[1:2], 0, 0),
@@ -29,7 +29,7 @@ func TestRefundsPrecedeSpending(t *testing.T) {
 		}
 		cancelProduction := harness.Order(defs.OrderType_CancelOrder, nil, int64(production[0]), false)
 		spend := []defs.OrderFromFrontend{
-			harness.OrderProduce([]uint64{b[22]}, 12),
+			harness.OrderProduce([]uint64{b[22]}, 102),
 			harness.Order(defs.OrderType_BuildingResearch, []uint64{b[11]}, 3, false),
 			harness.OrderBuild(v[:1], 2, 0, 0, -1, 1),
 		}
@@ -80,12 +80,12 @@ func TestRefundsPrecedeSpending(t *testing.T) {
 func TestCancelOneProducerRefundsOnlyItsReservation(t *testing.T) {
 	g := newGame(t, layout{bank: `{"food":140,"wood":80}`, tweak: func() {
 		center := defs.BuildingConfigs[1]
-		center.Produces = append(append([]defs.Producible(nil), center.Produces...), defs.Producible{Kind: defs.ProducibleKind_UNIT, Id: 12})
+		center.Produces = append(append([]defs.Producible(nil), center.Produces...), defs.Producible{Kind: defs.ProducibleKind_UNIT, Id: 102})
 		defs.BuildingConfigs[1] = center
 	}})
 	p := g.Human(0)
 	b := scan(g, p).buildings
-	g.Submit(p, harness.OrderProduce([]uint64{b[1], b[22]}, 12))
+	g.Submit(p, harness.OrderProduce([]uint64{b[1], b[22]}, 102))
 	g.EndTurn()
 	state := g.Self(p)
 	if len(state.ActiveOrders) != 1 || state.Resources.Food != 0 || state.Resources.Wood != 0 {
@@ -94,11 +94,11 @@ func TestCancelOneProducerRefundsOnlyItsReservation(t *testing.T) {
 	g.Submit(p, harness.Order(defs.OrderType_CancelOrder, []uint64{b[22]}, int64(state.ActiveOrders[0].InternalID), false))
 	g.EndTurn()
 	state = g.Self(p)
-	if state.Resources.Food != 70 || state.Resources.Wood != 40 || len(unitIDs(g, p, 12)) != 1 || len(state.ActiveOrders) != 0 {
+	if state.Resources.Food != 70 || state.Resources.Wood != 40 || len(unitIDs(g, p, 102)) != 1 || len(state.ActiveOrders) != 0 {
 		t.Fatalf("partial production cancellation affected other subject: %+v", state)
 	}
 	g.EndTurn()
-	if g.Self(p).Resources.Food != 70 || len(unitIDs(g, p, 12)) != 1 {
+	if g.Self(p).Resources.Food != 70 || len(unitIDs(g, p, 102)) != 1 {
 		t.Fatal("cancelled production restarted or refunded twice")
 	}
 }

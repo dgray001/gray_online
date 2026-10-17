@@ -85,7 +85,7 @@ func TestSameTickResearchAndProductionApplyBonusesOnce(t *testing.T) {
 }
 
 func TestResearchLeavesNonmatchingAndEnemyUnitsUnchanged(t *testing.T) {
-	g := economyGame(t, `{"food":100,"wood":100}`, `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":0},"units":[{"id":1,"player":0,"count":1},{"id":11,"player":0,"count":1}]}]},`+remoteVillager, "")
+	g := economyGame(t, `{"food":100,"wood":100}`, `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":0},"units":[{"id":1,"player":0,"count":1},{"id":101,"player":0,"count":1}]}]},`+remoteVillager, "")
 	p, enemy := g.Human(0), g.Human(1)
 	before := g.Self(p).Units
 	enemyBefore := g.Self(enemy).Units[0]
@@ -96,7 +96,7 @@ func TestResearchLeavesNonmatchingAndEnemyUnitsUnchanged(t *testing.T) {
 		t.Fatal("farming did not finish")
 	}
 	for _, u := range before {
-		if u.UnitID == 11 {
+		if u.UnitID == 101 {
 			after := g.State(p).Unit(u.InternalID)
 			if after == nil || after.CombatStats != u.CombatStats || after.TurnStamina != u.TurnStamina {
 				t.Error("farming affected nonmatching infantry")

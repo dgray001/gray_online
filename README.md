@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.9b: Theory model 3
+v0.9c: Goldrush and divide maps
 
 ## Dev Use
 

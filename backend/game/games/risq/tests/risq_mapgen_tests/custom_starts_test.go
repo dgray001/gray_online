@@ -95,12 +95,12 @@ func TestStartTemplateWithoutAssetsUsesDevelopmentDefaults(t *testing.T) {
 }
 
 func TestStartTemplateWithUnitsReplacesDevelopmentDefaults(t *testing.T) {
-	template := `"player_start":{"size":0,"terrain":1,"spaces":[{"x":0,"y":0,"zones":[{"x":0,"y":0,"units":[{"id":11,"count":"starting_development"}]}]}]}`
+	template := `"player_start":{"size":0,"terrain":1,"spaces":[{"x":0,"y":0,"zones":[{"x":0,"y":0,"units":[{"id":101,"count":"starting_development"}]}]}]}`
 	board := seededBoard(t, startsDoc(template, twoSlots), 2, 1, map[string]any{"starting_development": float64(3)})
 	for _, x := range []int{-2, 2} {
 		home := zoneAt(t, board, x, 0, 0, 0)
-		if home.Building.ID != 0 || len(home.Units) != 3 || home.Units[0].ID != 11 {
-			t.Errorf("home at x=%d: %+v, want only three of unit 11 with no default building", x, home)
+		if home.Building.ID != 0 || len(home.Units) != 3 || home.Units[0].ID != 101 {
+			t.Errorf("home at x=%d: %+v, want only three of unit 101 with no default building", x, home)
 		}
 	}
 }

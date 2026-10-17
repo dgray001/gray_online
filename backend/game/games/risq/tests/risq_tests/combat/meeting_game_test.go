@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	blunt, heavy             = 11, 13
+	blunt, heavy             = 101, 103
 	flat, mountains          = 1, 101
 	stationary, closingIn    = "stationary", "closing in"
 	meetingBoard             = `{"board_size":1,"players":2,"spaces":[%s]}`

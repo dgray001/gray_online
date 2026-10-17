@@ -11,7 +11,7 @@ import (
 
 func priorityDistanceGame(t *testing.T) *harness.Game {
 	t.Helper()
-	doc := `{"board_size":1,"players":2,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":1,"y":0,"building":{"id":2,"player":1},"units":[{"id":11,"player":0,"count":1},{"id":1,"player":1,"count":1}]},{"x":-1,"y":0,"units":[{"id":13,"player":1,"count":1}]}]}]}`
+	doc := `{"board_size":1,"players":2,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":1,"y":0,"building":{"id":2,"player":1},"units":[{"id":101,"player":0,"count":1},{"id":1,"player":1,"count":1}]},{"x":-1,"y":0,"units":[{"id":103,"player":1,"count":1}]}]}]}`
 	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"priority-distance": doc})
 	return harness.NewGame(t, "custom:priority-distance", 1, 2)
 }
@@ -32,7 +32,7 @@ func TestTargetPriorityPrecedesDistance(t *testing.T) {
 			attacker := g.Self(owner).Units[0]
 			g.Action(owner, "set-unit-behavior", gin.H{"internal_ids": []uint64{attacker.InternalID}, "stance": uint8(c.stance), "attack_back": false, "target_priority": []uint8{uint8(defs.TargetCategory_MILITARY), uint8(defs.TargetCategory_ECONOMIC), uint8(defs.TargetCategory_BUILDING)}})
 			for _, unit := range g.Self(enemy).Units {
-				if unit.UnitID == 13 {
+				if unit.UnitID == 103 {
 					g.Action(enemy, "set-unit-behavior", gin.H{"internal_ids": []uint64{unit.InternalID}, "stance": uint8(defs.UnitStance_PASSIVE), "attack_back": false})
 				}
 			}
@@ -47,7 +47,7 @@ func TestTargetPriorityPrecedesDistance(t *testing.T) {
 				t.Fatalf("lower-priority unit killed first: %+v", state.Units)
 			}
 			for _, unit := range state.Units {
-				if unit.UnitID == 13 && unit.CombatStats.Health >= float64(unit.CombatStats.MaxHealth) {
+				if unit.UnitID == 103 && unit.CombatStats.Health >= float64(unit.CombatStats.MaxHealth) {
 					t.Fatal("distant military target was ignored")
 				}
 				if unit.UnitID == 1 && unit.CombatStats.Health != float64(unit.CombatStats.MaxHealth) {

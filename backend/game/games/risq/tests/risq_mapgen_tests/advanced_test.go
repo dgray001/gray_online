@@ -21,7 +21,7 @@ func checkAdvancedPlayer(t *testing.T, player harness.PlayerState) {
 			home = building.Space
 		}
 	}
-	if !reflect.DeepEqual(units, map[uint32]int{1: 10, 11: 4, 12: 2, 13: 1}) || player.PopulationLimit != 25 {
+	if !reflect.DeepEqual(units, map[uint32]int{1: 10, 101: 4, 102: 2, 103: 1}) || player.PopulationLimit != 25 {
 		t.Errorf("Advanced units %v cap %d, want 10/4/2/1 units and cap 25", units, player.PopulationLimit)
 	}
 	home_buildings, outer_buildings := make(map[uint32]int), make(map[uint32]int)

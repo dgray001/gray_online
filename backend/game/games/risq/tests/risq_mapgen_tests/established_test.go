@@ -22,7 +22,7 @@ func checkEstablishedPlayer(t *testing.T, player harness.PlayerState) {
 			home = building.Space
 		}
 	}
-	if !reflect.DeepEqual(units, map[uint32]int{1: 6, 11: 2, 12: 1}) || !reflect.DeepEqual(buildings, map[uint32]int{1: 1, 2: 2, 3: 1, 21: 1}) {
+	if !reflect.DeepEqual(units, map[uint32]int{1: 6, 101: 2, 102: 1}) || !reflect.DeepEqual(buildings, map[uint32]int{1: 1, 2: 2, 3: 1, 21: 1}) {
 		t.Errorf("Established units %v buildings %v", units, buildings)
 	}
 	for _, building := range player.Buildings {

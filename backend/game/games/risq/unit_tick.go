@@ -203,6 +203,12 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 		if !ok {
 			amount = float64(u.intent.intent_cost) * (float64(detail.source.gatherSpeed()) / gatherRateStaminaBase)
 		}
+		switch owner := u.zone.space.ownership; {
+		case owner < 0:
+			amount *= GatherNeutralSpaceFactor
+		case owner != u.player_id:
+			amount *= GatherEnemySpaceFactor
+		}
 		amount = util.RoundTo(amount, 4)
 		if amount > detail.source.gatherResourcesLeft() {
 			amount = detail.source.gatherResourcesLeft()

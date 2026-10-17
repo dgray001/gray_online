@@ -1,22 +1,10 @@
 Small Risq Issues:
- - When I leave room in lobby then refresh page I rejoin room I lost due to url
  - Unsubmit orders I lost my previous orders
- - Drag select not working for resources
- - Space in fog left panel doesn't specify ownership
- - Left panel should say who owns something
  - Game keeps on disconnecting in risq while I play idk why (need automatic reconnect to socket)
  - Resources spent this turn don't show while orders submitted and waiting
- - debuff if gathering in a space you don't own
  - Autoattacks need to rechoose target when higher priority target comes in range ?
  - After submitting orders I should be able to highlight say build buttons and see how much something costs
- - Should be able to shift drag in ownership and space view
- - Setting to turn off pan from mouse on edge
- - Does the ai set gather points to build within a barracks? Why
- - Make outpost cost 5 stone
  - Sometimes when I zoom out there are some zoom levels that hide cursor and panels for some reason
- - Can't ctrl build building outside base unless I keep it armed
- - Gather point flag on building itself
- - Rebalance piercers slightly
 
 Bigger Risq Issues/Ideas:
  - Utilize events on map

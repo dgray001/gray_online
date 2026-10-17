@@ -56,7 +56,7 @@
     {"when": {"always": {}}, "then": [{"action": "build_foundations", "in_bucket": "inf_wood_1", "eligible": ["gather"], "max": 1}, {"action": "renew", "in_bucket": "inf_wood_1", "eligible": ["gather"], "max": 1}]},
 
     {"when": {"always": {}}, "then": [{"action": "research", "tech_id": 2}, {"action": "research", "tech_id": 3}]},
-    {"when": {"always": {}}, "then": [{"action": "create", "unit_id": 13, "queue": 2}, {"action": "create", "unit_id": 11, "queue": 2}]},
+    {"when": {"always": {}}, "then": [{"action": "create", "unit_id": 103, "queue": 2}, {"action": "create", "unit_id": 101, "queue": 2}]},
 
     {"when": {"always": {}}, "then": [
       {"action": "run_bucket", "bucket": "vil_production"}, {"action": "run_bucket", "bucket": "stone"},

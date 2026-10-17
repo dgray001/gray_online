@@ -21,7 +21,7 @@
     ]
   },
   {
-    "unit_id": 11,
+    "unit_id": 101,
     "display_name": "Blunt Infantry",
     "description": "A standard blunt infantry unit.",
     "unit_type": "infantry",
@@ -34,7 +34,7 @@
     "turn_stamina": 15
   },
   {
-    "unit_id": 12,
+    "unit_id": 102,
     "display_name": "Piercing Infantry",
     "description": "A standard piercing infantry unit.",
     "unit_type": "infantry",
@@ -48,20 +48,33 @@
     "turn_stamina": 12
   },
   {
-    "unit_id": 13,
+    "unit_id": 103,
     "display_name": "Heavy Infantry",
     "description": "A standard heavy infantry unit.",
     "unit_type": "infantry",
-    "max_health": 45,
+    "max_health": 35,
     "attack_type": "blunt_piercing",
     "attack_blunt": 8,
     "attack_piercing": 8,
-    "defense_blunt": 4,
-    "defense_piercing": 4,
+    "defense_blunt": 5,
+    "defense_piercing": 5,
     "penetration_blunt": 5,
     "penetration_piercing": 5,
-    "cost": { "food": 120, "gold": 60 },
+    "cost": { "food": 120, "gold": 70 },
     "production_stamina": 35,
+    "turn_stamina": 8
+  },
+  {
+    "unit_id": 401,
+    "display_name": "Catapult",
+    "description": "A siege weapon that hurls stones from across a space.",
+    "unit_type": "siege",
+    "max_health": 12,
+    "attack_type": "blunt",
+    "attack_blunt": 20,
+    "range": "space",
+    "cost": { "wood": 90, "stone": 40 },
+    "production_stamina": 30,
     "turn_stamina": 8
   }
 ]
