@@ -134,6 +134,13 @@ func drain(updates chan *game.UpdateMessage) {
 	}
 }
 
+// Stands in for the lobby forwarder, which marks each update only after queuing it on the socket
+func forward(player *game.Player) {
+	for len(player.Updates) > 0 {
+		player.MarkForwarded((<-player.Updates).Id)
+	}
+}
+
 // Acknowledgements are private to the owner, and a replay always restores the newest complete snapshot whatever was dropped
 func TestUpdateDelivery(t *testing.T) {
 	g := newGame(t, layout{connected: true, viewers: []uint64{90}})
@@ -304,6 +311,10 @@ func TestLatestUpdateLookup(t *testing.T) {
 	p := g.Human(0)
 	client := uint64(p + 1)
 	player := g.Base.Players[client]
+	if id, _, _ := g.Base.LatestUpdate(client); id != 0 || len(player.Updates) == 0 {
+		t.Fatalf("lookup gave id %d before its snapshot was forwarded, so the client would request a duplicate", id)
+	}
+	forward(player)
 	start, rev, ok := g.Base.LatestUpdate(client)
 	if !ok || start < 1 {
 		t.Fatalf("lookup gave id %d rev %d ok %v, want a positive id", start, rev, ok)

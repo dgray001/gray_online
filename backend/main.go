@@ -14,9 +14,10 @@ import (
 )
 
 var upgrader = websocket.Upgrader{
-	ReadBufferSize:  0,
-	WriteBufferSize: 0,
-	CheckOrigin:     func(r *http.Request) bool { return true },
+	ReadBufferSize:    0,
+	WriteBufferSize:   0,
+	EnableCompression: true,
+	CheckOrigin:       func(r *http.Request) bool { return true },
 }
 
 var DEV = os.Getenv("GAE_SERVICE") == ""

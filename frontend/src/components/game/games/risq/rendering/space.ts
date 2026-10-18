@@ -17,7 +17,7 @@ import {
 } from './zones/geometry';
 import { buildingImage } from './assets/buildings';
 import { scaledIcon, transformScale } from './assets/image_cache';
-import { drawForestTrees } from './assets/resources';
+import { drawForestTrees, isForestResource, mapResourceIcon } from './assets/resources';
 import { drawRisqZone, getSpaceTerrainImage, getZoneFill, isEmptyPlot } from './zones/draw';
 import type { RisqEntityPass } from './zones/draw';
 import { getZoneUnitSlots } from './zones/slots';
@@ -238,6 +238,30 @@ function drawZoneBuildingSprite(
   ctx.restore();
 }
 
+function drawZoneResourceSprite(
+  ctx: CanvasRenderingContext2D,
+  game: RisqDrawHost,
+  zone: RisqZone,
+  hex_r: number,
+  rot: number,
+  space_rot: number
+): void {
+  const resource = zone.resource;
+  if (!resource || isForestResource(resource)) {
+    return;
+  }
+  const radius = BUILDING_CIRCLE_RADIUS_MULTIPLIER * hex_r;
+  const scale = transformScale(ctx);
+  const local = zoneBuildingLocalOffset(zone.coordinate, hex_r);
+  ctx.save();
+  ctx.rotate(rot);
+  ctx.translate(local.x, local.y);
+  ctx.rotate(-(rot + space_rot));
+  const icon = game.getImageCache().getScaledSprite(mapResourceIcon(game, resource), 2 * radius * scale);
+  ctx.drawImage(icon, -radius, -radius, 2 * radius, 2 * radius);
+  ctx.restore();
+}
+
 function drawSpaceBuildings(
   ctx: CanvasRenderingContext2D,
   game: RisqDrawHost,
@@ -253,8 +277,11 @@ function drawSpaceBuildings(
   for (let i = -1; i < 6; i++) {
     const zone = i === -1 ? space.zones[1][1] : space.zones[OUTER_ZONE_INDICES[i].x][OUTER_ZONE_INDICES[i].y];
     const b = zone?.building;
+    const rot = i === -1 ? 0 : a * (1 + i);
     if (b && buildingVisibleInViewMode(b, config.view_mode) && !game.selection.isBuildingSelected(b.internal_id)) {
-      drawZoneBuildingSprite(ctx, game, zone, config.hex_r, i === -1 ? 0 : a * (1 + i), config.rotation);
+      drawZoneBuildingSprite(ctx, game, zone, config.hex_r, rot, config.rotation);
+    } else if (zone?.resource && (config.view_mode === RisqViewMode.ALL || config.view_mode === RisqViewMode.RESOURCE)) {
+      drawZoneResourceSprite(ctx, game, zone, config.hex_r, rot, config.rotation);
     }
   }
   ctx.restore();

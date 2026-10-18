@@ -135,14 +135,15 @@ func nearestZone(view View, from ZoneRef, candidates []ZoneRef) (ZoneRef, bool) 
 	return best, found
 }
 
-func nearestUnexploredOutside(view View, from ZoneRef, min_distance int) ([]ZoneRef, bool) {
-	if min_distance <= 0 {
+func nearestExplorationTargets(view View, internals *Internals, from ZoneRef, min_distance int, include_fog float64) ([]ZoneRef, bool) {
+	if min_distance <= 0 && include_fog < 0 {
 		return view.NearestUnexplored(from)
 	}
 	best_distance := -1
 	var candidates []ZoneRef
 	for _, space := range view.AllSpaces() {
-		if space.Vision != 0 {
+		fog_allowed := space.Vision == 1 && include_fog >= 0 && float64(view.TurnNumber()-internals.last_observed[space.Space]) >= include_fog
+		if space.Vision != 0 && !fog_allowed {
 			continue
 		}
 		distance := view.SpaceDistance(from.Space, space.Space)
@@ -159,7 +160,10 @@ func nearestUnexploredOutside(view View, from ZoneRef, min_distance int) ([]Zone
 	if len(candidates) > 0 {
 		return candidates, true
 	}
-	return view.NearestUnexplored(from)
+	if min_distance > 0 {
+		return nearestExplorationTargets(view, internals, from, 0, include_fog)
+	}
+	return nil, false
 }
 
 func randomNearestSpace(view View, internals *Internals, from Coordinate, candidates []ZoneRef) (ZoneRef, bool) {

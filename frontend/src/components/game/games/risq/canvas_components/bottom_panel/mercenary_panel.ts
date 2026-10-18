@@ -3,7 +3,6 @@ import { DwgRectButton } from '../../../../util/canvas_components/button/rect_bu
 import type { Point2D } from '../../../../util/objects2d';
 import type { DwgRisq } from '../../risq';
 import type { RisqMinimap } from '../minimap/risq_minimap';
-import { MINIMAP_BUTTON_OVERFLOW } from '../minimap/corner_button';
 import { RisqMercenaryGrid } from './mercenary_grid';
 import type { RisqDefaultBehaviorGrid } from './default_behavior_grid';
 
@@ -47,7 +46,7 @@ export class RisqMercenaryPanel extends DwgRectButton {
     const width = Math.min(available_width + 16, Math.max(160, this.grid.w() + 16));
     const height = (this.grid.h() || 32) + 16;
     const minimap = this.minimap();
-    const p = { x: minimap.xc() - width / 2, y: Math.max(8, minimap.yi() - MINIMAP_BUTTON_OVERFLOW - 8 - height) };
+    const p = { x: minimap.xc() - width / 2, y: Math.max(8, this.risq.bottom_panel.topEdge() - 8 - height) };
     this.setText(this.grid.h() ? '' : 'No mercenaries available');
     if (width === this.w() && height === this.h() && p.x === this.xi() && p.y === this.yi()) {
       return;

@@ -174,6 +174,8 @@ export function drawResourceRow(
   });
 }
 
+export const SCORE_ROW_H = 22;
+
 export function drawScoreRow(
   ctx: CanvasRenderingContext2D,
   geom: RightPanelGeometry,
@@ -182,18 +184,19 @@ export function drawScoreRow(
 ): void {
   ctx.beginPath();
   const text = `${score.nickname}: ${score.score}`;
+  const yc = yi + 0.5 * SCORE_ROW_H;
   drawText(ctx, text, {
-    p: { x: geom.xi + 0.9 * geom.w, y: yi + 15 },
+    p: { x: geom.xi + 0.9 * geom.w, y: yc },
     w: 0.8 * geom.w,
     fill_style: score.color.getString(),
     baseline: 'middle',
     align: 'right',
-    font: '18px serif',
+    font: '15px serif',
   });
   if (score.eliminated) {
     const text_w = Math.min(ctx.measureText(text).width, 0.8 * geom.w);
     ctx.strokeStyle = score.color.getString();
     ctx.lineWidth = 2;
-    drawLine(ctx, { x: geom.xi + 0.9 * geom.w - text_w, y: yi + 15 }, { x: geom.xi + 0.9 * geom.w, y: yi + 15 });
+    drawLine(ctx, { x: geom.xi + 0.9 * geom.w - text_w, y: yc }, { x: geom.xi + 0.9 * geom.w, y: yc });
   }
 }

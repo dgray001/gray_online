@@ -21,6 +21,7 @@ export declare interface RisqDisplaySettings {
   order_visibility: 'none' | 'selected_only' | 'all';
   order_size: number;
   territory_border_width: number;
+  resource_halos: 'off' | 'small' | 'medium' | 'large';
   selection_outline_thickness: number;
   idle_indicator_size: number;
   idle_indicator_pulse: boolean;
@@ -38,6 +39,7 @@ export function defaultRisqDisplaySettings(): RisqDisplaySettings {
     order_visibility: 'all',
     order_size: 1.0,
     territory_border_width: 1.0,
+    resource_halos: 'medium',
     selection_outline_thickness: 2,
     idle_indicator_size: 0,
     idle_indicator_pulse: false,

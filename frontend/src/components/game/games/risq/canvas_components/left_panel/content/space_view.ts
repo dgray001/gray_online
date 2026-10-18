@@ -2,9 +2,13 @@ import type { BoardTransformData } from '../../../../../util/canvas_board/canvas
 import { drawRect, drawText } from '../../../../../util/canvas_util';
 import type { Point2D } from '../../../../../util/objects2d';
 import { hasBuildings, hasEconomy } from '../../../application/session';
-import type { RectHoverData, RisqRegion, RisqSpace } from '../../../model/types';
+import { capitalize } from '../../../../../../../scripts/util';
+import type { RectHoverData, RisqBuilding, RisqRegion, RisqResource, RisqSpace } from '../../../model/types';
 import { RisqResourceType, RisqVisibilityLevel } from '../../../model/types';
-import { resourceTypeImage } from '../../../rendering/assets/resources';
+import { resourceType, resourceTypeImage } from '../../../rendering/assets/resources';
+import type { DwgRisq } from '../../../risq';
+import type { RisqTooltipData } from '../../risq_tooltip';
+import { RisqButtonTooltip } from '../../risq_tooltip';
 import { COMBO_UNIT_ICON_SIZE, comboUnitIconKey, drawComboUnitIcon } from '../../../rendering/assets/unit';
 import { spaceOwnerColor, terrainTypeLabel } from '../../../rendering/terrain';
 import { RisqSpaceUnitsRowButton } from '../controls/space_units_row_button';
@@ -12,6 +16,7 @@ import { invertPair } from '../../../model/coordinates';
 import type { PanelDrawContext } from './primitives';
 import { drawName, drawSeparator, drawSubtitle } from './primitives';
 import type { RisqSpaceHexagon } from './space_hexagon';
+import { militaryTooltipData, villagerTooltipData } from './space_unit_tooltips';
 
 /** Draws a combo villager+military icon (just the military icon without an economy), used where only a total unit count is visible */
 export function comboUnitIcon(pc: PanelDrawContext): CanvasImageSource | undefined {
@@ -27,10 +32,66 @@ export function comboUnitIcon(pc: PanelDrawContext): CanvasImageSource | undefin
     );
 }
 
+declare interface SpaceResourceRow {
+  type: RisqResourceType;
+  total: number;
+  count: number;
+  breakdown: string[];
+}
+
+function resourceBreakdown(resources: RisqResource[]): string[] {
+  const groups = new Map<string, { count: number; total: number }>();
+  for (const resource of resources) {
+    const group = groups.get(resource.display_name) ?? { count: 0, total: 0 };
+    groups.set(resource.display_name, { count: group.count + 1, total: group.total + resource.resources_left });
+  }
+  return [...groups].map(([name, group]) => `${group.count} ${name}: ${Math.round(group.total)}`);
+}
+
+function resourceRows(space: RisqSpace): SpaceResourceRow[] {
+  const by_type = new Map<RisqResourceType, RisqResource[]>();
+  for (const resource of [...(space.resources?.values() ?? [])].filter((r) => r.resources_left > 0)) {
+    by_type.set(resourceType(resource), [...(by_type.get(resourceType(resource)) ?? []), resource]);
+  }
+  return [...by_type]
+    .sort(([a], [b]) => a - b)
+    .map(([type, resources]) => ({
+      type,
+      total: Math.round(resources.reduce((sum, r) => sum + r.resources_left, 0)),
+      count: resources.length,
+      breakdown: resourceBreakdown(resources),
+    }));
+}
+
+declare interface SpaceBuildingInfo {
+  count: number;
+  breakdown: string[];
+}
+
+function buildingInfo(buildings: RisqBuilding[]): SpaceBuildingInfo {
+  const groups = new Map<string, number>();
+  for (const building of buildings) {
+    const status = building.under_construction ? ' (under construction)' : '';
+    const line = `${building.display_name}${status}`;
+    groups.set(line, (groups.get(line) ?? 0) + 1);
+  }
+  return { count: buildings.length, breakdown: [...groups].map(([line, count]) => `${count} ${line}`) };
+}
+
 /** Space content: hex preview, then buildings, gold, owner, unit counts (clickable rows), and resource types */
 export class RisqSpaceView {
   private villager_row_button?: RisqSpaceUnitsRowButton;
   private military_row_button?: RisqSpaceUnitsRowButton;
+  private shown?: { risq: DwgRisq; space: RisqSpace };
+  private unit_rows_visible = false;
+  private villager_tooltip = new RisqButtonTooltip(() => villagerTooltipData(this.shown!.risq, this.shown!.space));
+  private military_tooltip = new RisqButtonTooltip(() => militaryTooltipData(this.shown!.risq, this.shown!.space));
+  private building_hover: RectHoverData = { ps: { x: 0, y: 0 }, pe: { x: 0, y: 0 } };
+  private building_info?: SpaceBuildingInfo;
+  private building_tooltip = new RisqButtonTooltip(() => this.buildingTooltipData());
+  private resource_hovers = new Map<RisqResourceType, RectHoverData>();
+  private resource_info = new Map<RisqResourceType, SpaceResourceRow>();
+  private resource_tooltips = new Map<RisqResourceType, RisqButtonTooltip>();
 
   constructor(private open_units_row: (economic: boolean) => void) {}
 
@@ -40,6 +101,8 @@ export class RisqSpaceView {
 
   draw(pc: PanelDrawContext, space: RisqSpace, hexagon: RisqSpaceHexagon): void {
     const { ctx, frame, risq } = pc;
+    this.shown = { risq, space };
+    this.unit_rows_visible = false;
     let yi = frame.yi() + drawName(pc, space.display_name);
     yi += drawSubtitle(pc, `${terrainTypeLabel(space.terrain_type)} space`, yi);
     const separator_distance = 8;
@@ -49,7 +112,9 @@ export class RisqSpaceView {
     if (pc.visibility < RisqVisibilityLevel.FOG) {
       return;
     }
-    const rows = 6;
+    const resource_rows = resourceRows(space);
+    this.resource_info = new Map(resource_rows.map((row) => [row.type, row]));
+    const rows = 5 + resource_rows.length;
     const image_size = Math.min(
       36,
       (1 / rows) * (0.6 * frame.h() - separator_distance - (rows - 1) * separator_distance)
@@ -96,8 +161,11 @@ export class RisqSpaceView {
       }
       yi += image_size + separator_distance;
     };
+    this.building_info = space.buildings && buildingInfo([...space.buildings.values()]);
     if (hasBuildings(risq.getGame())) {
-      draw_row(risq.getIcon('icons/building64'), space.buildings?.size.toString() ?? '??');
+      draw_row(risq.getIcon('icons/building64'), space.buildings?.size.toString() ?? '??', this.building_hover);
+    } else {
+      this.building_info = undefined;
     }
     draw_row(risq.getIcon(resourceTypeImage(RisqResourceType.GOLD)), `${(space.gold_income ?? 0).toFixed(1)}/turn`);
     const owner_color = spaceOwnerColor(space.ownership, risq.getGame()?.players ?? []);
@@ -116,6 +184,7 @@ export class RisqSpaceView {
         draw_row(combo_icon, space.unit_count?.toString() ?? '??');
       }
     } else if (pc.visibility >= RisqVisibilityLevel.GOOD) {
+      this.unit_rows_visible = true;
       const row_step = image_size + separator_distance;
       if (hasEconomy(risq.getGame())) {
         this.villager_row_button = this.layoutRowButton(
@@ -140,34 +209,53 @@ export class RisqSpaceView {
       );
       yi += row_step;
     }
-    this.drawResourceTypes(pc, space, yi, image_size);
+    for (const row of resource_rows) {
+      draw_row(risq.getIcon(resourceTypeImage(row.type)), `${row.total} (${row.count})`, this.resourceHover(row.type));
+    }
   }
 
-  private drawResourceTypes(pc: PanelDrawContext, space: RisqSpace, yi: number, image_size: number): void {
-    const { ctx, frame, risq } = pc;
-    const resources = [...(space.total_resources?.entries() ?? [])]
-      .filter((r) => r[1] > 0)
-      .map((r) => r[0])
-      .sort((a, b) => a - b);
-    const num_resources = resources.length + 0.3 * (resources.length - 1); // account for slashes
-    const resource_image_size = Math.min(image_size, (1.0 / num_resources) * 0.8 * frame.w());
-    for (const [i, r] of resources.entries()) {
-      if (i > 0) {
-        drawText(ctx, '/', {
-          p: { x: frame.xi() + 0.1 * frame.w() + (i * 1.3 - 0.15) * resource_image_size, y: yi },
-          w: 0.3 * resource_image_size,
-          fill_style: 'black',
-          align: 'center',
-          font: `bold ${resource_image_size}px serif`,
-        });
+  private resourceHover(type: RisqResourceType): RectHoverData {
+    const hover = this.resource_hovers.get(type) ?? { ps: { x: 0, y: 0 }, pe: { x: 0, y: 0 } };
+    this.resource_hovers.set(type, hover);
+    return hover;
+  }
+
+  private resourceTooltip(type: RisqResourceType): RisqButtonTooltip {
+    const tooltip = this.resource_tooltips.get(type) ?? new RisqButtonTooltip(() => this.resourceTooltipData(type));
+    this.resource_tooltips.set(type, tooltip);
+    return tooltip;
+  }
+
+  private resourceTooltipData(type: RisqResourceType): RisqTooltipData {
+    const { total, count, breakdown } = this.resource_info.get(type)!;
+    const name = capitalize(RisqResourceType[type]);
+    const nodes = `${count} resource${count === 1 ? '' : 's'}`;
+    return { title: name, description: `${total} ${name.toLowerCase()} in ${nodes}`, lines: breakdown };
+  }
+
+  private buildingTooltipData(): RisqTooltipData {
+    const { count, breakdown } = this.building_info!;
+    return { title: `${count} Building${count === 1 ? '' : 's'}`, lines: breakdown };
+  }
+
+  drawTooltips(ctx: CanvasRenderingContext2D, transform: BoardTransformData, risq: DwgRisq, dt: number): void {
+    if (this.building_info) {
+      this.building_tooltip.draw(ctx, transform, risq, dt, !!this.building_hover.hovered, false);
+    }
+    const space = this.shown?.space;
+    const unit_rows = [
+      [this.villager_row_button, this.villager_tooltip, space?.num_villager_units],
+      [this.military_row_button, this.military_tooltip, space?.num_military_units],
+    ] as const;
+    for (const [button, tooltip, count] of unit_rows) {
+      if (this.unit_rows_visible && button && count) {
+        tooltip.draw(ctx, transform, risq, dt, button.isHovering(), button.isClicking());
       }
-      ctx.drawImage(
-        risq.getIcon(resourceTypeImage(r)),
-        frame.xi() + 0.1 * frame.w() + i * 1.3 * resource_image_size,
-        yi,
-        resource_image_size,
-        resource_image_size
-      );
+    }
+    for (const [type, hover] of this.resource_hovers) {
+      if (this.resource_info.has(type)) {
+        this.resourceTooltip(type).draw(ctx, transform, risq, dt, !!hover.hovered, false);
+      }
     }
   }
 
@@ -199,9 +287,15 @@ export class RisqSpaceView {
     for (const button of this.rowButtons()) {
       button.mousemove(canvas, screen, transform);
     }
+    for (const hover of [this.building_hover, ...this.resource_hovers.values()]) {
+      const { ps, pe } = hover;
+      hover.hovered = screen.x >= ps.x && screen.x <= pe.x && screen.y >= ps.y && screen.y <= pe.y;
+    }
   }
 
   cancelInput(): void {
+    this.building_hover.hovered = false;
+    this.resource_hovers.forEach((hover) => (hover.hovered = false));
     for (const button of this.rowButtons()) {
       button.setClicking(false);
       button.setHovering(false);

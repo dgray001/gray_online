@@ -183,6 +183,10 @@ export class DwgCanvasBoard extends DwgElement {
     return this.initialized_successfully;
   }
 
+  getTransform(): BoardTransformData {
+    return this.transform;
+  }
+
   getModifiers(): ModifierKeys {
     return { ...this.modifiers };
   }

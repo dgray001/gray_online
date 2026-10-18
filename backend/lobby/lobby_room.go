@@ -175,10 +175,6 @@ func (c *Client) playerGameUpdates(player *game.Player, room_id_string string) {
 		return
 	}
 	util.Infof(c.std, "Begin player game updates for client %d player %d", c.client_id, player.Player_id)
-	select {
-	case <-player.FlushConnections:
-	default:
-	}
 updates_loop:
 	for {
 		if c.deleted {
@@ -200,6 +196,7 @@ updates_loop:
 			} else {
 				util.Errorf(c.err, "Room failed to send update message to player %d", c.client_id)
 			}
+			player.MarkForwarded(message.Id)
 		case message := <-player.FailedUpdates:
 			encoded_message, err := json.Marshal(message.Content)
 			if err != nil {
@@ -225,12 +222,7 @@ updates_loop:
 			} else {
 				util.Errorf(c.err, "Room failed to send setting message to player %d", c.client_id)
 			}
-		case game_over := <-player.FlushConnections:
-			if game_over {
-				util.Info(c.std, "Player game updates flushed because game is over")
-			} else {
-				util.Info(c.std, "Player game updates flushed because player disconnected")
-			}
+		case <-c.quit:
 			break updates_loop
 		}
 	}
@@ -256,6 +248,8 @@ func (c *Client) viewerGameUpdates(viewer *game.Viewer, room_id_string string) {
 			} else {
 				util.Errorf(c.err, "Room failed to send update message to viewer %d", c.client_id)
 			}
+		case <-c.quit:
+			return
 		}
 	}
 }
@@ -707,7 +701,7 @@ func (r *LobbyRoom) validLocked() bool {
 	if !r.gameNilLocked() && !r.game.Valid() {
 		return false
 	}
-	if r.gameNilLocked() && (r.host == nil || !r.host.validDebugLocked(true)) {
+	if r.gameNilLocked() && (r.host == nil || r.lobby.clients[r.host.client_id] == nil) {
 		return false
 	}
 	if len(r.players) > int(r.game_settings.MaxPlayers) {

@@ -14,10 +14,10 @@ import (
 )
 
 func main() {
-	debug := flag.Bool("debug", false, "run a single replay (implies iterations=1)")
+	debug := flag.Bool("debug", false, "write per-game debug logs")
 	quiet := flag.Bool("quiet", false, "discard engine stdout and write results.json as one compact line per game (no timelines or per-turn metrics); keep only errors and the sim's own per-game log")
 	seed_override := flag.Int64("seed", 0, "override the scenario's base seed")
-	parallel := flag.Int("parallel", runtime.NumCPU(), "games to run concurrently (forced to 1 with -debug so its log stays in game order)")
+	parallel := flag.Int("parallel", runtime.NumCPU(), "games to run concurrently")
 	config_dir := flag.String("config", "../config", "risq config directory")
 	flag.Parse()
 	if flag.NArg() < 1 {
@@ -78,17 +78,12 @@ func main() {
 	defer stderr_cleanup()
 
 	workers := max(1, *parallel)
-	if *debug {
-		workers = 1
-	}
 	// a plain scenario is one sim on its map; a suite lists several, each on its own map
 	sims := scenario.Buckets
 	games_per_sim := scenario.GamesPerBucket
 	if len(sims) == 0 {
 		sims = []SuiteBucket{{Name: name, Map: scenario.Map}}
 		games_per_sim = iterations
-	} else if *debug {
-		log.Fatalf("-debug does not accept suites; run one of the suite's maps as a plain scenario instead")
 	}
 	runSims(scenario, sims, max(1, games_per_sim), out_dir, workers, base_seed, *debug, *quiet, sim_log, terminal, simStd, util.DefaultErr)
 }

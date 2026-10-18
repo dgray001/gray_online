@@ -14,12 +14,14 @@ type exploreAction struct {
 	filtered
 	max          amount
 	min_distance amount
+	include_fog  amount
 	anchor       exploreAnchor
 }
 
 func (a *exploreAction) ToOrders(view View, internals *Internals) []Order {
 	limit := a.max.int(view, internals)
 	min_distance := max(0, a.min_distance.int(view, internals))
+	include_fog := a.include_fog.float(view, internals)
 	orders := make([]Order, 0)
 	var anchor ZoneRef
 	fixed := a.anchor != exploreAnchorSelf
@@ -44,7 +46,7 @@ func (a *exploreAction) ToOrders(view View, internals *Internals) []Order {
 		if fixed {
 			from = anchor
 		}
-		candidates, ok := nearestUnexploredOutside(view, from, min_distance)
+		candidates, ok := nearestExplorationTargets(view, internals, from, min_distance, include_fog)
 		if !ok {
 			continue
 		}

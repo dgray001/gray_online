@@ -22,11 +22,10 @@ import { unitSlotWorldPosition } from '../zones/slots';
 import { getSettings } from '../../../../../../scripts/settings_store';
 
 const DEFAULT_HEXAGON_RADIUS = 60;
-const ZOOM_REFERENCE_BOARD_SIZE = 4;
 
 const MIN_ZOOM_HEXAGON_SCALE = 0.8;
 const ZONE_DETAIL_THRESHOLD = 1;
-const OWNERSHIP_DETAIL_THRESHOLD = 0.4;
+const OWNERSHIP_DETAIL_HEX_PX = 44;
 // min zoom always reaches this fraction of the ownership-detail scale, so tiny boards can still zoom past it
 const OWNERSHIP_ZOOM_MARGIN = 0.75;
 
@@ -166,22 +165,23 @@ export class RisqViewport {
       MIN_ZOOM_HEXAGON_SCALE * Math.min(this.canvas_size.width / board_size.x, this.canvas_size.height / board_size.y);
     const diameter = this.unit_circle_screen_diameter;
     const max = Math.max(1, centerUnitMaxZoom(this.hex_r, diameter, maxZoomRings(diameter)));
-    return { min: Math.min(fit, OWNERSHIP_ZOOM_MARGIN * this.ownershipDetailScale(max)), max };
+    return { min: Math.min(fit, OWNERSHIP_ZOOM_MARGIN * this.ownershipDetailScale()), max };
   }
 
-  /** Scale below which ownership detail is drawn */
-  private ownershipDetailScale(max_scale: number): number {
-    const board_size = this.session.getGame()?.board_size ?? ZOOM_REFERENCE_BOARD_SIZE;
-    const reference_scale = (2 * ZOOM_REFERENCE_BOARD_SIZE + 1) / (2 * board_size + 1);
-    return 1 / ((OWNERSHIP_DETAIL_THRESHOLD * (max_scale * reference_scale - 1) + 1) * reference_scale);
+  /** Scale below which ownership detail is drawn: the hex's on-screen radius drops under a fixed size */
+  private ownershipDetailScale(): number {
+    return OWNERSHIP_DETAIL_HEX_PX / this.hex_r;
   }
 
-  updateDrawDetail(scale: number, max_scale: number): void {
+  zoneDetailScale(): number {
     const center_zone_gap = this.hex_r * (CENTER_ZONE_APOTHEM_MULTIPLIER - BUILDING_CIRCLE_RADIUS_MULTIPLIER);
-    const zone_detail_scale = (this.unit_circle_screen_diameter / center_zone_gap) * ZONE_DETAIL_THRESHOLD;
-    if (scale >= zone_detail_scale) {
+    return (this.unit_circle_screen_diameter / center_zone_gap) * ZONE_DETAIL_THRESHOLD;
+  }
+
+  updateDrawDetail(scale: number, _max_scale: number): void {
+    if (scale >= this.zoneDetailScale()) {
       this.draw_detail = DrawRisqSpaceDetail.ZONE_DETAILS;
-    } else if (scale < this.ownershipDetailScale(max_scale)) {
+    } else if (scale < this.ownershipDetailScale()) {
       this.draw_detail = DrawRisqSpaceDetail.OWNERSHIP;
     } else {
       this.draw_detail = DrawRisqSpaceDetail.SPACE_DETAILS;

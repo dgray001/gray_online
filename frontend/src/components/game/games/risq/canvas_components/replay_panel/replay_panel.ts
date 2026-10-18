@@ -114,7 +114,7 @@ export class RisqReplayPanel implements CanvasComponent {
     const anchor = this.anchor();
     const canvas = this.risq.hudCanvasSize();
     const center_x = anchor.w() > 0 ? anchor.xi() + 0.5 * anchor.w() : 0.5 * canvas.width;
-    const bottom = anchor.h() > 0 ? anchor.yi() : canvas.height - MARGIN;
+    const bottom = anchor.h() > 0 ? this.risq.bottom_panel.topEdge() : canvas.height - MARGIN;
     this.p = { x: center_x - 0.5 * PANEL_W, y: bottom - GAP - PANEL_H };
     const row_y = this.p.y + 0.5 * (PANEL_H - REPLAY_CONTROL_SIZE);
     const close_x = this.p.x + PANEL_W - PADDING - REPLAY_CONTROL_SIZE;

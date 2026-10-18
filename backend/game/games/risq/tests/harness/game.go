@@ -119,10 +119,12 @@ func (g *Game) Action(i int, kind string, action gin.H) {
 // Empties the update channels nobody reads, so the engine does not log dropped updates
 func (g *Game) drain() {
 	for _, client := range g.clients {
-		for _, updates := range []chan *game.UpdateMessage{g.Base.Players[client].Updates, g.Base.Players[client].SettingUpdates} {
-			for len(updates) > 0 {
-				<-updates
-			}
+		player := g.Base.Players[client]
+		for len(player.Updates) > 0 {
+			player.MarkForwarded((<-player.Updates).Id)
+		}
+		for len(player.SettingUpdates) > 0 {
+			<-player.SettingUpdates
 		}
 	}
 	for len(g.Base.ViewerUpdates) > 0 {

@@ -3,6 +3,7 @@ usage: python3 tools/attack_trace.py outputs/<name>/debug.log <turn> [<turn> ...
 from __future__ import annotations
 
 import re
+import json
 import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass
@@ -26,6 +27,21 @@ class Hit:
 
 
 Health = dict[tuple[int, int], tuple[float, float]]
+
+
+def unit_summary(path: Path, unit: int, player: int) -> dict[str, float]:
+    totals = dict.fromkeys(('attacks', 'damage', 'building_attacks', 'building_damage'), 0.0)
+    with path.open() as source:
+        for line in source:
+            match = HIT.search(line)
+            if not match or int(match[4]) != unit or int(match[5]) != player:
+                continue
+            totals['attacks'] += 1
+            totals['damage'] += float(match[10])
+            if f'hits {match[7]} b' in line:
+                totals['building_attacks'] += 1
+                totals['building_damage'] += float(match[10])
+    return totals
 
 
 def parse_turn(lines: list[str], turn: int) -> tuple[list[Hit], Health]:
@@ -72,6 +88,9 @@ def side_line(turn: int, tick: int, player: int, hits: list[Hit], health: Health
 
 
 def main() -> None:
+    if sys.argv[2] == '--unit-summary':
+        print(json.dumps(unit_summary(Path(sys.argv[1]), int(sys.argv[3]), int(sys.argv[4]))))
+        return
     lines = Path(sys.argv[1]).read_text().splitlines()
     for turn in map(int, sys.argv[2:]):
         hits, health = parse_turn(lines, turn)

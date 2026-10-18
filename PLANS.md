@@ -1,6 +1,3 @@
-Small Risq Issues:
- - Game keeps on disconnecting in risq while I play idk why (need automatic reconnect to socket)
- - Autoattacks need to rechoose target when higher priority target comes in range ?
 
 Bigger Risq Issues/Ideas:
  - Utilize events on map

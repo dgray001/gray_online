@@ -15,7 +15,7 @@ import {
 } from '../assets/unit';
 import { ColorRGB } from '../../../../../../scripts/color_rgb';
 import { RisqOrderType, RisqResourceType, RisqVisibilityLevel } from '../../model/types';
-import { resourceIcon, resourceType } from '../assets/resources';
+import { mapResourceIcon, resourceType } from '../assets/resources';
 import { drawControlGroupLabel, getZoneUnitSlots } from './slots';
 import { buildingImage, rubbleImage } from '../assets/buildings';
 import { scaledIcon, transformScale } from '../assets/image_cache';
@@ -344,7 +344,7 @@ export function drawRisqZone(
       if (!!zone.resource && view_mode !== RisqViewMode.MILITARY && view_mode !== RisqViewMode.OWNERSHIP) {
         const resource_icon = game
           .getImageCache()
-          .getScaledSprite(resourceIcon(game, zone.resource), 2 * part.r.x * scale);
+          .getScaledSprite(mapResourceIcon(game, zone.resource), 2 * part.r.x * scale);
         ctx.drawImage(resource_icon, -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
         drawOverheadBars(ctx, part.r, undefined, resourceDepletion(zone.resource), selected, display);
       } else if (!zone.building || buildingVisibleInViewMode(zone.building, view_mode)) {

@@ -37,6 +37,7 @@ type Client struct {
 	game                   game.Game
 	delete_timer           *time.Timer
 	deleted                bool
+	quit                   chan struct{}
 }
 
 type lobbyMessage struct {
@@ -72,6 +73,7 @@ func CreateClient(connection *websocket.Conn, nickname string, lobby *Lobby) *Cl
 		lobby_room:             nil,
 		game:                   nil,
 		deleted:                false,
+		quit:                   make(chan struct{}),
 	}
 	go client.readMessages()
 	go client.writeMessages()
@@ -99,6 +101,18 @@ func (c *Client) close() {
 	if c.connection != nil {
 		c.connection.Close()
 	}
+}
+
+// Close code telling a page its client id was taken over, so it must not auto-reconnect
+const replaced_close_code = 4001
+
+func closeReplacedConnection(connection *websocket.Conn) {
+	if connection == nil {
+		return
+	}
+	message := websocket.FormatCloseMessage(replaced_close_code, "replaced by a newer connection")
+	connection.WriteControl(websocket.CloseMessage, message, time.Now().Add(write_wait))
+	connection.Close()
 }
 
 func (c *Client) send(lm lobbyMessage) {

@@ -150,15 +150,39 @@ def main() -> None:
     parser.add_argument("--vars", default="", help="script variables to show on 'vars' lines, comma separated")
     parser.add_argument("--show", default="", help="regex; only decoded lines matching it are printed (e.g. 'Build|Garrison')")
     parser.add_argument("--raw", action="store_true", help="print the original line instead of decoding it")
+    parser.add_argument("--compare", type=Path, help="show AI records differing from the same turn in another log")
+    parser.add_argument("--limit", type=int, default=0, help="maximum matching records to inspect; zero means all")
     args = parser.parse_args()
     lines = args.log_file.read_text().splitlines()
     labels = label_lines(lines)
     low, high = parse_turns(args.turns)
     var_names = [name for name in args.vars.split(",") if name]
+    reference: dict[tuple[int, str, str], str] = {}
+    if args.compare:
+        previous = args.compare.read_text().splitlines()
+        for line, (_, turn, ai) in zip(previous, label_lines(previous)):
+            if match := AI_LINE.search(line):
+                reference[(turn, ai, match[2])] = match[3]
+    matched = 0
     for i, line in enumerate(lines):
         _, turn, ai = labels[i]
         if args.query.lower() not in line.lower() or not low <= turn <= high or (args.ai and ai and ai != args.ai):
             continue
+        if args.compare:
+            match = AI_LINE.search(line)
+            if not match:
+                continue
+            before = reference.get((turn, ai, match[2]), "null")
+            current = match[3] if match[2] == "submitting orders" else json.loads(match[3])
+            original = before if match[2] == "submitting orders" else json.loads(before)
+            if match[2] == "vars" and var_names:
+                current = {key: current.get(key) for key in var_names}
+                original = {key: (original or {}).get(key) for key in var_names}
+            if current == original:
+                continue
+        matched += 1
+        if args.limit and matched > args.limit:
+            break
         for j in range(max(0, i - args.context), min(len(lines), i + args.context + 1)):
             texts = [lines[j].strip()] if args.raw else decode_line(lines[j], var_names)
             texts = [text for text in texts if re.search(args.show, text, re.IGNORECASE)]

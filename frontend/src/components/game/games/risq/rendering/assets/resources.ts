@@ -1,5 +1,7 @@
 import { err } from '../../../../../../scripts/log';
 import { clampNumber, seededRandom } from '../../../../../../scripts/math';
+import type { RisqDisplaySettings } from '../../../../../../scripts/settings_store';
+import { getSettings } from '../../../../../../scripts/settings_store';
 import type { Point2D } from '../../../../util/objects2d';
 import { rotatePoint } from '../../../../util/objects2d';
 import type { RisqDrawHost } from '../board/board_renderer';
@@ -198,8 +200,73 @@ function drawSingleDeer(ctx: CanvasRenderingContext2D, deer: HTMLImageElement, s
   ctx.drawImage(deer, offset, offset, PAIR_FRONT_SIZE * s, PAIR_FRONT_SIZE * s);
 }
 
-/** Returns the resource's icon; forests and groves get a cached cluster, and a full deer gets a cached pair */
-export function resourceIcon(game: RisqDrawHost, resource: RisqResource): HTMLImageElement | HTMLCanvasElement {
+const OUTLINE_OFFSETS: [number, number][] = [
+  [-1, -1],
+  [0, -1],
+  [1, -1],
+  [-1, 0],
+  [1, 0],
+  [-1, 1],
+  [0, 1],
+  [1, 1],
+];
+
+declare interface OutlineStyle {
+  spread: number;
+  outline_blur: number;
+  halo_blur: number;
+  halo_passes: number;
+}
+
+const OUTLINE_STYLES: Record<Exclude<RisqDisplaySettings['resource_halos'], 'off'>, OutlineStyle> = {
+  small: { spread: 1, outline_blur: 2.5, halo_blur: 6, halo_passes: 2 },
+  medium: { spread: 1.5, outline_blur: 3.5, halo_blur: 12, halo_passes: 3 },
+  large: { spread: 2, outline_blur: 4.5, halo_blur: 20, halo_passes: 4 },
+};
+
+export function drawWithOutline(
+  ctx: CanvasRenderingContext2D,
+  draw_base: (target: CanvasRenderingContext2D) => void,
+  size: number,
+  include_light_halo: boolean,
+  style: OutlineStyle = OUTLINE_STYLES.small
+): void {
+  const pad = include_light_halo ? Math.max(8, style.halo_blur) : 8;
+  const off_canvas = document.createElement('canvas');
+  off_canvas.width = size;
+  off_canvas.height = size;
+  const off_ctx = off_canvas.getContext('2d');
+  if (!off_ctx) {
+    draw_base(ctx);
+    return;
+  }
+  const scale = (size - 2 * pad) / size;
+  off_ctx.translate(pad, pad);
+  off_ctx.scale(scale, scale);
+  draw_base(off_ctx);
+
+  if (include_light_halo) {
+    ctx.save();
+    ctx.shadowColor = 'rgba(255, 246, 214, 0.85)';
+    ctx.shadowBlur = style.halo_blur;
+    for (let pass = 0; pass < style.halo_passes; pass++) {
+      ctx.drawImage(off_canvas, 0, 0);
+    }
+    ctx.restore();
+  }
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(13, 16, 13, 0.98)';
+  ctx.shadowBlur = style.outline_blur;
+  for (const [dx, dy] of OUTLINE_OFFSETS) {
+    ctx.drawImage(off_canvas, dx * style.spread, dy * style.spread);
+  }
+  ctx.restore();
+
+  ctx.drawImage(off_canvas, 0, 0);
+}
+
+function rawResourceIcon(game: RisqDrawHost, resource: RisqResource): HTMLImageElement | HTMLCanvasElement {
   const configs = game.session.getResourceConfigs();
   const image = resourceImage(resource, configs);
   const icon = game.getIcon(image);
@@ -235,6 +302,40 @@ export function resourceIcon(game: RisqDrawHost, resource: RisqResource): HTMLIm
     ctx.drawImage(icon, 0.5 * (s - front), s - front, front, front);
   });
   return cluster ?? icon;
+}
+
+/** Returns the clean resource icon (for UI panels) */
+export function resourceIcon(game: RisqDrawHost, resource: RisqResource): HTMLImageElement | HTMLCanvasElement {
+  return rawResourceIcon(game, resource);
+}
+
+function haloed(
+  game: RisqDrawHost,
+  base: HTMLImageElement | HTMLCanvasElement,
+  key: string
+): HTMLImageElement | HTMLCanvasElement {
+  const level = getSettings().risq_display.resource_halos;
+  if (level === 'off') {
+    return base;
+  }
+  const s = PLAYER_ICON_SIZE;
+  const base_imgs = base instanceof HTMLImageElement ? [base] : [];
+  const outlined = game.getImageCache().getImage(`${key}:${level}`, s, base_imgs, (ctx) => {
+    drawWithOutline(ctx, (target) => target.drawImage(base, 0, 0, s, s), s, true, OUTLINE_STYLES[level]);
+  });
+  return outlined ?? base;
+}
+
+/** Returns the resource icon with outline + halo for the board map */
+export function mapResourceIcon(game: RisqDrawHost, resource: RisqResource): HTMLImageElement | HTMLCanvasElement {
+  const image = resourceImage(resource, game.session.getResourceConfigs());
+  const key = `map_halo_res:${resource.resource_id}:${resource.resources_left}:${image}`;
+  return haloed(game, rawResourceIcon(game, resource), key);
+}
+
+/** Returns the resource type's icon with outline + halo for the board map */
+export function mapResourceTypeIcon(game: RisqDrawHost, type: RisqResourceType): HTMLImageElement | HTMLCanvasElement {
+  return haloed(game, game.getIcon(resourceTypeImage(type)), `map_halo_type:${type}`);
 }
 
 /** Returns the resource gathered from the resource type */
@@ -356,12 +457,18 @@ export function drawForestTrees(
   const direction = findOuterZoneIndex(zone.coordinate);
   const zone_rotation = direction === -1 ? 0 : (Math.PI / 3) * (direction + 1);
   const icon_r = FOREST_TREE_RADIUS_MULTIPLIER * hex_r;
-  const icon = game
-    .getImageCache()
-    .getScaledSprite(
-      game.getIcon(resourceImage(resource, game.session.getResourceConfigs())),
-      2 * icon_r * transformScale(ctx)
-    );
+  const raw_icon = game.getIcon(resourceImage(resource, game.session.getResourceConfigs()));
+  const level = getSettings().risq_display.resource_halos;
+  const tree_key = `outline_tree:${level}:${resourceImage(resource, game.session.getResourceConfigs())}`;
+  const outlined_tree =
+    level === 'off'
+      ? undefined
+      : game.getImageCache().getImage(tree_key, PLAYER_ICON_SIZE, [raw_icon], (tctx) => {
+          const draw_tree = (target: CanvasRenderingContext2D): void =>
+            target.drawImage(raw_icon, 0, 0, PLAYER_ICON_SIZE, PLAYER_ICON_SIZE);
+          drawWithOutline(tctx, draw_tree, PLAYER_ICON_SIZE, false, OUTLINE_STYLES[level]);
+        });
+  const icon = game.getImageCache().getScaledSprite(outlined_tree ?? raw_icon, 2 * icon_r * transformScale(ctx));
   ctx.save();
   clipToZone(ctx, { x: 0, y: 0 }, hex_r, zone.coordinate);
   const spots = forestTreeLocalOffsets(direction === -1, hex_r, zone.coordinate_key);

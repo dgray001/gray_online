@@ -26,7 +26,7 @@ var risqPlayerColors = []string{
 	"160, 70, 230",  // purple
 	"250, 150, 30",  // orange
 	"250, 120, 190", // pink
-	"170, 170, 170", // gray
+	"215, 215, 215", // gray
 	"150, 90, 40",   // brown
 	"50, 60, 160",   // navy
 	"170, 250, 80",  // lime

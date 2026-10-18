@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.9d: Fix resubmit bugs
+v0.9e: Automatic reconnects
 
 ## Dev Use
 

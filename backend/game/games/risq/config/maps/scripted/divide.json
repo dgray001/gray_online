@@ -3,9 +3,6 @@
   { "step": "include", "params": { "path": "common/biomes.json" } },
   { "step": "define", "params": { "name": "mountain_seeds", "value": 0 } },
   { "step": "include", "params": { "path": "common/land_details.json" } },
-  { "step": "define", "params": { "name": "forest_seeds", "value": "round(1.35 * forest_seeds)" } },
-  { "step": "define", "params": { "name": "forest_seeds_base", "value": "round(1.35 * forest_seeds_base)" } },
-  { "step": "include", "params": { "path": "common/forests.json" } },
   { "step": "define", "params": { "name": "spine_top_y", "value": "-round((rows - 1) / 2)" } },
   { "step": "define", "params": { "name": "spine_bot_y", "value": "rows - 1 + spine_top_y" } },
   { "step": "define", "params": { "name": "spine_top_x", "value": "round(-spine_top_y / 2)" } },
@@ -15,6 +12,15 @@
   { "step": "terrain_blob", "params": { "terrain_id": "spine_flat", "seed_region": "line", "region": "mountain_range", "placement": { "points": [{ "x": "spine_top_x", "y": "spine_top_y" }, { "x": "spine_bot_x", "y": "spine_bot_y" }] } } },
   { "step": "terrain_blob", "params": { "variant": "hilly", "seed_region": "line", "region": "mountain_range", "size": "round(rows * 1.5)", "roundness": 0.3, "placement": { "points": [{ "x": "spine_top_x", "y": "spine_top_y" }, { "x": "spine_bot_x", "y": "spine_bot_y" }] } } },
   { "step": "terrain_blob", "params": { "variant": "mountainous", "seed_region": "line", "region": "mountain_range", "placement": { "points": [{ "x": "spine_top_x", "y": "spine_top_y" }, { "x": "spine_bot_x", "y": "spine_bot_y" }] } } },
+  { "step": "define", "params": { "name": "tree_multiplier", "value": "1 + 0.5 * max(0, map_resources - 2)" } },
+  { "step": "define", "params": { "name": "forest_seeds", "value": "round(1.35 * forest_seeds)" } },
+  { "step": "define", "params": { "name": "forest_seeds_base", "value": "round(1.35 * forest_seeds_base)" } },
+  { "step": "resource_blob", "params": { "resource_weights": { "tree_a": 1, "tree_b": 1 }, "seed_count": "scale * 3 * tree_multiplier", "size": 7, "placement": { "evenness": 0.8 }, "on": { "terrain_ids": ["accent1"], "distance_to": { "target": { "terrain_types": ["mountainous"] }, "min": 1 } } } },
+  { "step": "resource_blob", "params": { "resource_weights": { "tree_a + 10": 1, "tree_b + 10": 1 }, "seed_count": "scale * 2 * tree_multiplier", "size": 5, "placement": { "evenness": 0.8 }, "preferred_spacing": 1, "overwrite": true, "on": { "terrain_ids": ["accent1"], "distance_to": { "target": { "terrain_types": ["mountainous"] }, "min": 1 } } } },
+  { "step": "resource_blob", "params": { "resource_weights": { "tree_a + 20": 1, "tree_b + 20": 1 }, "seed_count": "forest_seeds * tree_multiplier", "size": 3, "placement": { "evenness": 0.8 }, "preferred_spacing": 1, "overwrite": true, "on": { "terrain_ids": ["accent1"], "distance_to": { "target": { "terrain_types": ["mountainous"] }, "min": 1 } } } },
+  { "step": "resource_blob", "params": { "resource_weights": { "tree_a + 20": 1, "tree_b + 20": 1 }, "seed_count": "forest_seeds_base * tree_multiplier", "size": 3, "placement": { "evenness": 0.8 }, "preferred_spacing": 1, "overwrite": true, "on": { "terrain_ids": ["base"], "distance_to": { "target": { "terrain_types": ["mountainous"] }, "min": 1 } } } },
+  { "step": "resource_blob", "params": { "resource_weights": { "tree_a": 1, "tree_b": 1 }, "seed_count": "scatter_trees * tree_multiplier", "size": 2, "placement": { "evenness": 0.8 }, "preferred_spacing": 1, "on": { "terrain_ids": ["base"], "distance_to": { "target": { "terrain_types": ["mountainous"] }, "min": 1 } } } },
+  { "step": "resource_blob", "params": { "resource_weights": { "tree_a + 10": 1, "tree_b + 10": 1 }, "seed_count": "scatter_groves * tree_multiplier", "size": 1, "placement": { "evenness": 0.8 }, "preferred_spacing": 1, "on": { "terrain_ids": ["base"], "distance_to": { "target": { "terrain_types": ["mountainous"] }, "min": 1 } } } },
   {
     "step": "player_starts",
     "params": {
@@ -25,6 +31,9 @@
       },
       "area_size": 1,
       "starting_distance": "rows / 2",
+      "row_inset": 0,
+      "short_edge_starts": "2 * min(1, max(0, num_players - 5))",
+      "short_edge_bias": 0.5,
       "tree_ids": ["tree_a", "tree_b"],
       "terrain_id": "base"
     }
@@ -32,9 +41,13 @@
   { "step": "define", "params": { "name": "region_outer_gold", "value": "5 * round(4 * total_spaces / 6 / 5)" } },
   { "step": "regions_six", "params": { "outer_bonus": "region_outer_gold", "center_bonus": "5 * round(2.5 * region_outer_gold / 5)" } },
   { "step": "define", "params": { "name": "outside_resource_multiplier", "value": "0.5 * min(map_resources, 2) + max(0, map_resources - 2) + max(0, map_resources - 3)" } },
-  { "step": "resource_place", "params": { "resource_id": 1, "count": "outside_resource_multiplier * scale * 3 / 2", "clump_size": 2, "preferred_spacing": 7, "min_spacing": 3, "evenness": 0.9, "on": { "terrain_ids": ["accent1"] }, "outside_player_areas": true } },
-  { "step": "resource_place", "params": { "resource_id": 2, "count": "outside_resource_multiplier * scale * 3 / 2", "clump_size": 2, "preferred_spacing": 7, "min_spacing": 3, "evenness": 0.9, "on": { "terrain_ids": ["base"] }, "outside_player_areas": true } },
-  { "step": "resource_place", "params": { "resource_id": 41, "count": "round(1.3 * num_players * outside_resource_multiplier)", "on": { "terrain_types": ["mountainous"], "distance_to": { "region": "mountain_range", "distance": 0 } }, "outside_player_areas": true } },
-  { "step": "resource_place", "params": { "resource_id": 42, "count": "round(1.3 * num_players * outside_resource_multiplier)", "on": { "terrain_types": ["mountainous"], "distance_to": { "region": "mountain_range", "distance": 0 } }, "outside_player_areas": true } },
-  { "step": "resource_place", "params": { "resource_id": 43, "count": "round(1.3 * round(num_players / 2) * outside_resource_multiplier)", "on": { "terrain_types": ["mountainous"], "distance_to": { "region": "mountain_range", "distance": 0 } }, "outside_player_areas": true } }
+  { "step": "define", "params": { "name": "stone_multiplier", "value": "0.5 * min(map_resources, 2) + 0.5 * max(0, map_resources - 2)" } },
+  { "step": "resource_blob", "params": { "resource_weights": { "tree_a": 1, "tree_b": 1 }, "seed_count": "scale * 5", "size": 1, "min_spacing": 0, "preferred_spacing": 0, "overwrite": true, "on": { "terrain_types": ["hilly"] } } },
+  { "step": "resource_blob", "params": { "resource_weights": { "tree_a + 10": 1, "tree_b + 10": 1 }, "seed_count": "round(scale * 5 * 0.9)", "size": 1, "min_spacing": 0, "preferred_spacing": 0, "overwrite": true, "on": { "terrain_types": ["hilly"] } } },
+  { "step": "resource_blob", "params": { "resource_weights": { "tree_a + 20": 1, "tree_b + 20": 1 }, "seed_count": "round(scale * 5 * 0.9 * 0.8)", "size": 1, "min_spacing": 0, "preferred_spacing": 0, "overwrite": true, "on": { "terrain_types": ["hilly"] } } },
+  { "step": "resource_blob", "params": { "resource_id": 1, "seed_count": "round(outside_resource_multiplier * scale * 3 / 4)", "size": 2, "preferred_spacing": 7, "placement": { "evenness": 0.9 }, "on": { "terrain_ids": ["accent1"], "distance_to": { "target": { "terrain_types": ["mountainous"] }, "min": 1 } } } },
+  { "step": "resource_blob", "params": { "resource_id": 2, "seed_count": "round(outside_resource_multiplier * scale * 3 / 4)", "size": 2, "preferred_spacing": 7, "placement": { "evenness": 0.9 }, "on": { "terrain_ids": ["base"], "distance_to": { "target": { "terrain_types": ["mountainous"] }, "min": 1 } } } },
+  { "step": "resource_blob", "params": { "resource_id": 41, "seed_count": "round(1.3 * num_players * stone_multiplier)", "size": 1, "min_spacing": 0, "preferred_spacing": 0, "on": { "terrain_types": ["mountainous"], "distance_to": { "region": "mountain_range", "distance": 0 } } } },
+  { "step": "resource_blob", "params": { "resource_id": 42, "seed_count": "round(1.3 * num_players * stone_multiplier)", "size": 1, "min_spacing": 0, "preferred_spacing": 0, "on": { "terrain_types": ["mountainous"], "distance_to": { "region": "mountain_range", "distance": 0 } } } },
+  { "step": "resource_blob", "params": { "resource_id": 43, "seed_count": "round(1.3 * round(num_players / 2) * stone_multiplier)", "size": 1, "min_spacing": 0, "preferred_spacing": 0, "on": { "terrain_types": ["mountainous"], "distance_to": { "region": "mountain_range", "distance": 0 } } } }
 ]

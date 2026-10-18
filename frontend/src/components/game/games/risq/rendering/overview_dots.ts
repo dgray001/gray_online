@@ -6,7 +6,7 @@ import { hasBuildings, hasEconomy } from '../application/session';
 import type { RisqSpace, RisqZone } from '../model/types';
 import { RisqResourceType, RisqUnitType, RisqVisibilityLevel } from '../model/types';
 import type { RisqImageCache } from './assets/image_cache';
-import { isForestResource, resourceType, resourceTypeImage } from './assets/resources';
+import { isForestResource, mapResourceTypeIcon, resourceType, resourceTypeImage } from './assets/resources';
 import { COMBO_UNIT_ICON_SIZE, comboUnitIconKey, drawComboUnitIcon } from './assets/unit';
 import type { RisqDrawHost } from './board/board_renderer';
 import type { DrawRisqSpaceConfig } from './space';
@@ -152,20 +152,22 @@ function drawResourceDots(
   space: RisqSpace,
   config: DrawRisqSpaceConfig
 ): void {
-  const selected_pass = config.entity_pass === 'selected';
+  const selected_resources: RisqZone[] = [];
   for (const zone of space.zones?.flat() ?? []) {
     if (!zone.resource) {
       continue;
     }
-    if (selected_pass && game.selection.isResourceSelected(zone.resource.internal_id)) {
-      const image = resourceDot(game.getImageCache(), 'selected');
-      const point = addPoint2D(space.center, zoneCenterOffset(zone.coordinate, config.hex_r));
-      const radius = 0.25 * config.hex_r;
-      if (image) {
-        ctx.drawImage(image, point.x - radius, point.y - radius, radius * 2, radius * 2);
-      }
-    } else if (!selected_pass) {
-      drawZoneResourceDot(ctx, game.getImageCache(), zone, space.center, config.hex_r, 1);
+    drawZoneResourceDot(ctx, game.getImageCache(), zone, space.center, config.hex_r, 1);
+    if (game.selection.isResourceSelected(zone.resource.internal_id)) {
+      selected_resources.push(zone);
+    }
+  }
+  for (const zone of selected_resources) {
+    const image = resourceDot(game.getImageCache(), 'selected');
+    const point = addPoint2D(space.center, zoneCenterOffset(zone.coordinate, config.hex_r));
+    const radius = 0.25 * config.hex_r;
+    if (image) {
+      ctx.drawImage(image, point.x - radius, point.y - radius, radius * 2, radius * 2);
     }
   }
 }
@@ -183,10 +185,12 @@ export function drawSpaceOverviewDots(
   if (space.visibility < RisqVisibilityLevel.FOG || !OVERVIEW_DOT_VIEW_MODES.includes(config.view_mode)) {
     return;
   }
-  if (config.entity_pass !== 'terrain') {
-    if (config.view_mode === RisqViewMode.RESOURCE) {
+  const show_resource_dots = config.view_mode !== RisqViewMode.MILITARY && config.view_mode !== RisqViewMode.OWNERSHIP;
+  if (config.entity_pass === 'terrain') {
+    if (show_resource_dots) {
       drawResourceDots(ctx, game, space, config);
     }
+  } else {
     drawEntityDots(ctx, game, space, config);
   }
 }
@@ -246,7 +250,7 @@ function drawResourceAmountRows(
     const cell_w = Math.ceil((resources.length - row) / rows) > 1 ? half_w : config.inset_w;
     const x = xs + Math.floor(i / rows) * (half_w + config.inset_gap);
     const row_y = y + row * row_step;
-    ctx.drawImage(game.getIcon(resourceTypeImage(resource_type)), x, row_y, config.inset_row, config.inset_row);
+    ctx.drawImage(mapResourceTypeIcon(game, resource_type), x, row_y, config.inset_row, config.inset_row);
     const text_p = { x: x + config.inset_row + config.inset_gap, y: row_y };
     const text_w = cell_w - config.inset_row - config.inset_gap;
     drawInsetText(ctx, `: ${formatResourceAmount(amount)}`, text_p, text_w, config.inset_row, fill_style);
@@ -395,14 +399,14 @@ export function drawSpaceDetailsContent(
   if (config.view_mode === RisqViewMode.RESOURCE) {
     const rows_left = INSET_ROWS - rows_used - 1;
     y = drawResourceAmountRows(ctx, game, space, config, xs, y, rows_left, black_text ? 'black' : 'white');
-    draw_count_row(gold_img, `${space.gold_income ?? '??'}/turn`);
+    draw_count_row(mapResourceTypeIcon(game, RisqResourceType.GOLD), `${space.gold_income ?? '??'}/turn`);
     return;
   }
   if (config.view_mode !== RisqViewMode.MILITARY) {
     const resources = [...(space.total_resources?.entries() ?? [])].filter(([, amount]) => amount > 0);
     for (const [i, [resource_type]] of resources.entries()) {
       ctx.drawImage(
-        game.getIcon(resourceTypeImage(resource_type)),
+        mapResourceTypeIcon(game, resource_type),
         xs + i * (config.inset_row + config.inset_gap),
         y,
         config.inset_row,

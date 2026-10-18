@@ -397,26 +397,46 @@ export class DwgGame extends DwgElement {
     this.client_name_string.innerText = this.connection_metadata.nickname;
     this.client_ping.innerText = ` (${this.connection_metadata.ping})`;
     try {
-      this.abort_controller?.abort();
-      const abort_controller = new AbortController();
-      this.abort_controller = abort_controller;
-      this.socket.addEventListener(
-        'message',
-        (m) => {
-          try {
-            const message = JSON.parse(m.data) as ServerMessage;
-            handleMessage(this, message);
-          } catch (e) {
-            console.log('Error parsing message: ', m, e);
-          }
-        },
-        { signal: abort_controller.signal }
-      );
+      this.listenToSocket(socket);
       return await this.refreshGame();
     } catch (e) {
       console.log(e);
     }
     return false;
+  }
+
+  private listenToSocket(socket: WebSocket): void {
+    this.socket = socket;
+    this.abort_controller?.abort();
+    this.abort_controller = new AbortController();
+    socket.addEventListener(
+      'message',
+      (m) => {
+        try {
+          handleMessage(this, JSON.parse(m.data) as ServerMessage);
+        } catch (e) {
+          console.log('Error parsing message: ', m, e);
+        }
+      },
+      { signal: this.abort_controller.signal }
+    );
+  }
+
+  swapSocket(socket: WebSocket): void {
+    if (this.socket) {
+      this.listenToSocket(socket);
+    }
+  }
+
+  /** Brings a mounted game up to date after a reconnect under the same client id */
+  catchUp(): void {
+    if (!this.launched || !this.game) {
+      return;
+    }
+    if (this.game.game_base.game_started && !this.game.game_base.persistant_history) {
+      void this.resyncState();
+    }
+    this.pingServer();
   }
 
   socketActive(): boolean {

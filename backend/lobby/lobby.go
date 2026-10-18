@@ -12,6 +12,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// How long a disconnected client keeps its room spot (outside a running game seat) to allow a reconnect
+const room_rejoin_grace = 5 * time.Second
+
 type Lobby struct {
 	std                   *util.Logger
 	err                   *util.Logger
@@ -228,16 +231,12 @@ func (l *Lobby) reconnectClient(client *Client, client_id uint64) {
 		l.addClient(client)
 		return
 	}
-	if old_client.validLocked() {
-		l.mu.Unlock()
-		util.Info(l.std, "Old client is valid; starting new connection")
-		l.addClient(client)
-		return
-	}
-	util.Infof(l.std, "Reconnecting to old client: %d", old_client.client_id)
+	util.Infof(l.std, "Reconnecting to old client %d (old connection still valid: %t)", old_client.client_id, old_client.validLocked())
 	if old_client.delete_timer != nil {
 		old_client.delete_timer.Stop()
 	}
+	close(old_client.quit)
+	old_connection := old_client.connection
 	client.client_id = old_client.client_id
 	old_game := old_client.game
 	old_lobby_room := old_client.lobby_room
@@ -245,10 +244,12 @@ func (l *Lobby) reconnectClient(client *Client, client_id uint64) {
 		old_game = old_lobby_room.game
 	}
 	l.mu.Unlock()
+	go closeReplacedConnection(old_connection)
 	if old_lobby_room != nil {
 		if old_game == nil || old_game.GetBase() == nil {
-			util.Infof(l.std, "Removing client %d from old room %d", client.client_id, old_lobby_room.room_id)
-			old_lobby_room.LeaveRoom <- &ClientRoom{client: client, room: old_lobby_room, bool_flag: true}
+			util.Infof(l.std, "Reconnecting client %d to room %d", client.client_id, old_lobby_room.room_id)
+			client.lobby_room = old_lobby_room
+			old_lobby_room.PlayerReplaced <- client
 		} else {
 			util.Infof(l.std, "Reconnecting to game %d in room %d with old client %d", old_game.GetBase().Game_id, old_lobby_room.room_id, client.client_id)
 			client.lobby_room = old_lobby_room
@@ -268,7 +269,6 @@ func (l *Lobby) reconnectClient(client *Client, client_id uint64) {
 				}
 			} else {
 				util.Infof(l.std, "Starting reconnect player game updates for player %d", player.Player_id)
-				player.FlushConnections <- false
 				go client.playerGameUpdates(player, room_id_string)
 			}
 		}
@@ -292,6 +292,7 @@ func (l *Lobby) removeClient(client *Client) {
 	delete_client := time.NewTimer(1 * time.Hour)
 	client.delete_timer = delete_client
 	lobby_room := client.lobby_room
+	holds_game_seat := lobby_room != nil && lobby_room.gameStartedLocked() && lobby_room.players[client.client_id] == client
 	l.mu.Unlock()
 	go func() {
 		<-delete_client.C
@@ -301,8 +302,14 @@ func (l *Lobby) removeClient(client *Client) {
 		l.mu.Unlock()
 	}()
 	id_string := strconv.Itoa(int(client.client_id))
-	if lobby_room != nil {
+	if holds_game_seat {
 		lobby_room.LeaveRoom <- &ClientRoom{client: client, room: lobby_room}
+	} else if lobby_room != nil {
+		time.AfterFunc(room_rejoin_grace, func() {
+			if l.GetClient(client.client_id) == client {
+				lobby_room.LeaveRoom <- &ClientRoom{client: client, room: lobby_room}
+			}
+		})
 	}
 	l.broadcastMessage(lobbyMessage{Sender: "client-" + id_string, Kind: "lobby-left", Content: client.nickname, Data: id_string})
 }

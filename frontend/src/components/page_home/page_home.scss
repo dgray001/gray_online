@@ -25,6 +25,21 @@ dwg-page-home {
   #lobby-connector {
     z-index: 5;
   }
+
+  #reconnecting-mask {
+    align-items: center;
+    background-color: rgba(40, 40, 40, 0.7);
+    display: flex;
+    font-size: var(--font-size-larger);
+    inset: 0;
+    justify-content: center;
+    position: fixed;
+    z-index: 200;
+
+    &:not(.show) {
+      display: none;
+    }
+  }
 }
 
 body.mobile {

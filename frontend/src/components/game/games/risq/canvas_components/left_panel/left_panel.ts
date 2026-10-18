@@ -149,8 +149,8 @@ export class RisqLeftPanel implements CanvasComponent {
 
   resolveSize(): void {
     this.invalidateLayout();
-    const h = Math.min(4 * this.config.w, this.risq.hudCanvasSize().height);
-    this.size = { x: h / 3, y: h };
+    const h = this.risq.hudCanvasSize().height;
+    this.size = { x: Math.min(4 * this.config.w, this.risq.viewport.canvasSize().height) / 3, y: h };
     this.close_button.setPosition({ x: this.size.x, y: this.yi() + 0.5 * this.close_button.h() });
     const buildings = this.data?.data_type === LeftPanelDataType.BUILDINGS ? this.data.data.buildings : [];
     const mixed_buildings = buildings.some((b: RisqBuilding): boolean => b.building_id !== buildings[0].building_id);
@@ -324,13 +324,11 @@ export class RisqLeftPanel implements CanvasComponent {
       return;
     }
     const space = this.data.data;
-    this.openPanel(
-      {
-        data_type: LeftPanelDataType.UNITS,
-        data: { space, units_by_player: unitsByPlayerFiltered(space.units ?? new Map(), economic) },
-      },
-      this.visibility ?? 0
-    );
+    const units_by_player = unitsByPlayerFiltered(space.units ?? new Map(), economic);
+    if (units_by_player.size === 0) {
+      return;
+    }
+    this.openPanel({ data_type: LeftPanelDataType.UNITS, data: { space, units_by_player } }, this.visibility ?? 0);
   }
 
   invalidateLayout(): void {
@@ -389,6 +387,9 @@ export class RisqLeftPanel implements CanvasComponent {
     if (data?.data_type === LeftPanelDataType.SPACE || data?.data_type === LeftPanelDataType.ZONE) {
       const space = data.data_type === LeftPanelDataType.SPACE ? data.data : data.data.space;
       this.hexagon.drawTooltip(ctx, transform, this.risq, dt, space);
+    }
+    if (data?.data_type === LeftPanelDataType.SPACE) {
+      this.space_view.drawTooltips(ctx, transform, this.risq, dt);
     }
     ctx.beginPath();
     for (const button of this.buttons) {

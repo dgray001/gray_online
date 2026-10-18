@@ -4,6 +4,7 @@ import { configDraw } from '../../../../util/canvas_components/canvas_component'
 import { drawLine, drawRect } from '../../../../util/canvas_util';
 import type { Point2D } from '../../../../util/objects2d';
 import type { DwgRisq } from '../../risq';
+import { RisqBottomPanelButton } from './bottom_panel_buttons';
 
 /** A bottom-panel item must be independently positionable so the panel can lay it out in a column */
 export declare interface BottomPanelItem extends CanvasComponent {
@@ -31,6 +32,9 @@ export class RisqBottomPanel implements CanvasComponent {
 
   private risq: DwgRisq;
   private config: BottomPanelConfig;
+  private open_button: RisqBottomPanelButton;
+  private is_open = true;
+  private opening = false;
   private groups: BottomPanelGroup[];
   private items: BottomPanelItem[];
   private group_widths: number[] = [];
@@ -47,6 +51,7 @@ export class RisqBottomPanel implements CanvasComponent {
   constructor(risq: DwgRisq, config: BottomPanelConfig, groups: BottomPanelGroup[]) {
     this.risq = risq;
     this.config = config;
+    this.open_button = new RisqBottomPanelButton(risq);
     this.groups = groups;
     this.items = groups.flat();
   }
@@ -62,6 +67,8 @@ export class RisqBottomPanel implements CanvasComponent {
   }
   setClicking(clicking: boolean): void {
     if (!clicking) {
+      this.open_button.setClicking(false);
+      this.open_button.setHovering(false);
       for (const item of this.items) {
         item.setClicking(false);
         item.setHovering(false);
@@ -132,12 +139,15 @@ export class RisqBottomPanel implements CanvasComponent {
       x: panel_left,
       y: this.risq.hudCanvasSize().height - this.panel_h - RisqBottomPanel.MARGIN,
     };
+    if (!this.opening) {
+      this.open_button.setPosition(this.buttonTargetPosition(), undefined, true);
+    }
     this.separator_xs = [];
     let x = canvas_w / 2 - center_offset;
     for (const [i, group] of groups.entries()) {
       const group_w = this.group_widths[i];
       const group_h = this.groupHeight(group);
-      let y = this.yi() + RisqBottomPanel.PADDING + 0.5 * (this.content_h - group_h);
+      let y = this.p.y + RisqBottomPanel.PADDING + 0.5 * (this.content_h - group_h);
       for (const item of group) {
         item.setPosition({ x: x + 0.5 * (group_w - item.w()), y });
         y += item.h() + RisqBottomPanel.GAP;
@@ -149,6 +159,17 @@ export class RisqBottomPanel implements CanvasComponent {
     }
   }
 
+  private buttonTargetPosition(): Point2D {
+    const size = this.risq.hudCanvasSize();
+    return {
+      x:
+        this.panel_w > 0
+          ? this.p.x + 0.5 * (this.panel_w - this.open_button.w())
+          : 0.5 * (size.width - this.open_button.w()),
+      y: (this.is_open ? this.p.y : size.height) - this.open_button.h(),
+    };
+  }
+
   dataRefreshed(): void {
     for (const item of this.items) {
       item.dataRefreshed?.();
@@ -156,8 +177,43 @@ export class RisqBottomPanel implements CanvasComponent {
     this.recomputeLayout();
   }
 
+  toggle(open?: boolean, initial?: boolean): void {
+    this.setClicking(false);
+    this.is_open = open ?? !this.is_open;
+    if (!this.is_open) {
+      this.risq.closeBottomSubpanels();
+    }
+    this.opening = true;
+    this.open_button.setPosition(
+      this.buttonTargetPosition(),
+      () => {
+        this.opening = false;
+        this.open_button.setRotation(
+          { direction: this.is_open, angle: this.is_open ? Math.PI : 0 },
+          undefined,
+          initial
+        );
+      },
+      initial
+    );
+  }
+
+  prepareFrame(dt: number): boolean {
+    const opening = this.opening;
+    const moved = this.open_button.advanceAnimation(dt);
+    return moved || opening !== this.opening;
+  }
+
+  topEdge(): number {
+    return this.open_button.yi();
+  }
+
   draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
     if (this.panel_w <= 0 || this.panel_h <= 0) {
+      return;
+    }
+    this.open_button.draw(ctx, transform, dt);
+    if (!this.is_open && !this.opening) {
       return;
     }
     configDraw(
@@ -175,6 +231,9 @@ export class RisqBottomPanel implements CanvasComponent {
         drawRect(ctx, { x: this.xi(), y: this.yi() }, this.panel_w, this.panel_h, 0.5 * Math.min(this.panel_h, 32));
       }
     );
+    if (this.opening) {
+      return;
+    }
     const clip_rect = {
       x: this.xi() + RisqBottomPanel.PADDING,
       y: this.yi() + RisqBottomPanel.PADDING,
@@ -217,6 +276,9 @@ export class RisqBottomPanel implements CanvasComponent {
   }
 
   scroll(dy: number, mode: number): boolean {
+    if (!this.is_open || this.opening) {
+      return false;
+    }
     for (const item of this.items) {
       if (this.itemContains(item, this.mouse_screen) && item.scroll?.(dy, mode)) {
         return true;
@@ -249,11 +311,13 @@ export class RisqBottomPanel implements CanvasComponent {
   }
 
   mousemove(canvas: Point2D, screen: Point2D, transform: BoardTransformData): boolean {
+    const toggle_hovering = this.open_button.mousemove(canvas, screen, transform);
     this.mouse_screen = screen;
+    const active = this.is_open && !this.opening;
     const item_hovering = this.items
       .map((item) => {
-        const hovering = item.mousemove(canvas, screen, transform);
-        if (this.itemContains(item, screen)) {
+        const hovering = active && item.mousemove(canvas, screen, transform);
+        if (active && this.itemContains(item, screen)) {
           return hovering;
         }
         item.setHovering(false);
@@ -261,17 +325,31 @@ export class RisqBottomPanel implements CanvasComponent {
         return false;
       })
       .some(Boolean);
-    this.hovering =
-      item_hovering ||
-      (screen.x >= this.xi() && screen.y >= this.yi() && screen.x <= this.xf() && screen.y <= this.yf());
+    const inside =
+      (this.is_open || this.opening) &&
+      screen.x >= this.xi() &&
+      screen.y >= this.yi() &&
+      screen.x <= this.xf() &&
+      screen.y <= this.yf();
+    this.hovering = toggle_hovering || item_hovering || inside;
     return this.hovering;
   }
 
   mousedown(e: MouseEvent): boolean {
+    if (this.open_button.mousedown(e)) {
+      return true;
+    }
+    if (!this.is_open || this.opening) {
+      return this.hovering;
+    }
     return this.items.map((item) => this.itemContains(item, this.mouse_screen) && item.mousedown(e)).some(Boolean);
   }
 
   mouseup(e: MouseEvent): void {
+    this.open_button.mouseup(e);
+    if (!this.is_open || this.opening) {
+      return;
+    }
     for (const item of this.items) {
       item.mouseup(e);
     }
@@ -281,7 +359,7 @@ export class RisqBottomPanel implements CanvasComponent {
     return this.p.x;
   }
   yi(): number {
-    return this.p.y;
+    return this.open_button.yf();
   }
   xf(): number {
     return this.xi() + this.panel_w;

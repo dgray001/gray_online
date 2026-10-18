@@ -3,7 +3,7 @@ package ai
 import "fmt"
 
 // Inputs that take a number or an expression string
-var numericActionKeys = []string{"max", "queue", "weight", "move_penalty", "depth", "size", "reserve", "launch", "retreat", "defend_radius", "strike", "score", "min_score", "min_distance"}
+var numericActionKeys = []string{"max", "queue", "weight", "move_penalty", "depth", "size", "reserve", "launch", "retreat", "defend_radius", "strike", "score", "min_score", "min_distance", "include_fog"}
 
 func parseActionInner(raw map[string]any) (Action, error) {
 	for _, key := range []string{"bucket", "in_bucket", "held_by_bucket", "to", "target", "targets", "stance", "anchor", "order", "direction"} {
@@ -155,6 +155,9 @@ func parseActionInner(raw map[string]any) (Action, error) {
 		action := &exploreAction{max: parseMax(raw)}
 		var err error
 		if action.min_distance, err = parseNumber(raw, "min_distance", 0); err != nil {
+			return nil, err
+		}
+		if action.include_fog, err = parseNumber(raw, "include_fog", -1); err != nil {
 			return nil, err
 		}
 		if a, ok := raw["anchor"].(string); ok {

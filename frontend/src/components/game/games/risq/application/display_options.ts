@@ -41,7 +41,7 @@ export const RISQ_DISPLAY_SPECS: { [K in keyof RisqDisplaySettings]: DisplaySpec
     { value: 'always', label: 'Always' },
   ]),
   healthbar_size: slider('Healthbar size', px(2, 4, 6, 8)),
-  hud_size: slider('HUD size', percent(0.85, 1, 1.15)),
+  hud_size: slider('HUD size', percent(0.7, 0.85, 1, 1.15, 1.3)),
   auto_open_turn_report: slider('Auto-open turn report', ENABLED_OPTIONS),
   order_visibility: slider('Order lines & arrows', [
     { value: 'none', label: 'None' },
@@ -50,6 +50,12 @@ export const RISQ_DISPLAY_SPECS: { [K in keyof RisqDisplaySettings]: DisplaySpec
   ]),
   order_size: slider('Order & gather flag size', percent(0.75, 1, 1.25, 1.5)),
   territory_border_width: slider('Territory border width', percent(0.7, 1, 1.4)),
+  resource_halos: slider('Resource halos', [
+    { value: 'off', label: 'Off' },
+    { value: 'small', label: 'Small' },
+    { value: 'medium', label: 'Medium' },
+    { value: 'large', label: 'Large' },
+  ]),
   selection_outline_thickness: slider('Selection outline thickness', px(1, 2, 3, 4)),
   idle_indicator_size: slider('Idle indicator size', [{ value: 0, label: 'Off' }, ...px(8, 12, 16, 20)]),
   idle_indicator_pulse: { label: 'Pulse idle indicators', control: 'checkbox', options: ENABLED_OPTIONS },

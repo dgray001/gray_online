@@ -1,6 +1,7 @@
 import type { BoardTransformData } from '../../../../util/canvas_board/canvas_board';
 import { ClickSource } from '../../../../util/canvas_components/button/button_config';
 import { DwgRectButton } from '../../../../util/canvas_components/button/rect_button';
+import { DwgSquareButton } from '../../../../util/canvas_components/button/square_button';
 import { configDraw } from '../../../../util/canvas_components/canvas_component';
 import { drawLine, drawRect } from '../../../../util/canvas_util';
 import type { Point2D } from '../../../../util/objects2d';
@@ -12,6 +13,39 @@ import { RISQ_MESSAGE_WARNING_COLOR } from '../message_queue';
 import { getSettings } from '../../../../../../scripts/settings_store';
 import { RisqHotkeyAction } from '../../application/input/hotkeys';
 import { techImage } from '../../rendering/assets/buildings';
+
+export class RisqBottomPanelButton extends DwgSquareButton {
+  constructor(private risq: DwgRisq) {
+    super({
+      button_config: { allow_nonleft_clicks: false },
+      p: { x: 0, y: 0 },
+      s: 36,
+      draw_config: {
+        fill_style: 'transparent',
+        stroke_style: 'transparent',
+        stroke_width: 0,
+        hover_fill_style: 'rgb(180, 180, 180, 0.5)',
+        click_fill_style: 'rgb(210, 210, 210, 0.7)',
+        fixed_position: true,
+      },
+      move_animation_speed: 200,
+      rotate_animation_speed: 200,
+      image_path: 'icons/triangle_gray36',
+      rotation: Math.PI,
+    });
+  }
+
+  protected hovered(): void {}
+  protected unhovered(): void {}
+  protected clicked(): void {}
+  protected released(): void {
+    if (!this.isHovering()) {
+      return;
+    }
+    this.risq.bottom_panel.toggle();
+    this.setHovering(false);
+  }
+}
 
 export class RisqMercenaryPanelButton extends RisqMinimapCornerButton {
   constructor(private risq: DwgRisq) {

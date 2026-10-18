@@ -97,7 +97,7 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
   );
   private mercenary_panel = new RisqMercenaryPanel(this, () => this.minimap);
   private default_behavior_panel = new RisqMercenaryPanel(this, () => this.minimap, new RisqDefaultBehaviorGrid(this));
-  private bottom_panel = new RisqBottomPanel(this, { background: PANEL_BACKGROUND, center_item: this.minimap }, [
+  readonly bottom_panel = new RisqBottomPanel(this, { background: PANEL_BACKGROUND, center_item: this.minimap }, [
     [new RisqControlGroupGrid(this)],
     [this.minimap],
     [new RisqIdleGrid(this)],
@@ -253,6 +253,11 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
     this.default_behavior_panel.toggle();
   }
 
+  closeBottomSubpanels(): void {
+    this.mercenary_panel.toggle(false);
+    this.default_behavior_panel.toggle(false);
+  }
+
   getPlayerId(): number {
     return this.session.getPlayerId();
   }
@@ -326,6 +331,8 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
         if (signal.aborted) {
           return;
         }
+        this.board.setScale(this.viewport.zoneDetailScale());
+        this.viewport.setTransform(this.board.getTransform());
         this.navigation.goToVillageCenter(abstract_game.isPlayer() ? this.session.getPlayerId() : 0);
         this.hotkeys.attach();
         this.board.addEventListener('canvas_resize', (e) => this.boardResize(e.detail.board_size, e.detail.el_size), {
@@ -368,7 +375,9 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
     const dt = now - this.last_frame_time;
     this.last_frame_time = now;
     perfRecord('frame_gap', dt, 40);
-    if (this.right_panel.prepareFrame(dt)) {
+    const right_moved = this.right_panel.prepareFrame(dt);
+    const bottom_moved = this.bottom_panel.prepareFrame(dt);
+    if (right_moved || bottom_moved) {
       this.pointer.recalculate();
     }
   }

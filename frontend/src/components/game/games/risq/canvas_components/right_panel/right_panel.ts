@@ -8,12 +8,13 @@ import type { DwgRisq } from '../../risq';
 import type { RisqResourceType } from '../../model/types';
 import { RisqOrdersList } from './orders_list';
 import { RisqNextIdleButton } from './next_idle_button';
-import { RisqReplayButton, RisqRightPanelButton } from './right_panel_button';
+import { RisqOrdersExpandButton, RisqReplayButton, RisqRightPanelButton } from './right_panel_button';
 import { RisqSubmitIconButton, RisqSubmitOrdersButton } from './submit_button';
 import { RisqSummaryReportButton } from '../bottom_panel/bottom_panel_buttons';
 import { RisqButtonTooltip } from '../risq_tooltip';
 import type { RightPanelGeometry } from './resource_tooltip';
 import {
+  SCORE_ROW_H,
   drawPopulationRow,
   drawResourceRow,
   drawScoreRow,
@@ -36,6 +37,7 @@ export class RisqRightPanel implements CanvasComponent {
 
   private open_button: RisqRightPanelButton;
   private orders_list: RisqOrdersList;
+  private orders_expand_button: RisqOrdersExpandButton;
   private submit_button: RisqSubmitOrdersButton;
   private submit_icon_button: RisqSubmitIconButton;
   private next_idle_button: RisqNextIdleButton;
@@ -46,6 +48,7 @@ export class RisqRightPanel implements CanvasComponent {
   private risq: DwgRisq;
   private config: RightPanelConfig;
   private opening = false;
+  private orders_expanded = false;
   private has_idle = false;
   private hovering = false;
   private resource_row_ys = new Map<RisqResourceType, number>();
@@ -64,6 +67,7 @@ export class RisqRightPanel implements CanvasComponent {
       config.w - 2 * RisqRightPanel.PADDING,
       config.background.copy().addColor(255, 0, 0, 0.2)
     );
+    this.orders_expand_button = new RisqOrdersExpandButton(risq);
     this.submit_button = new RisqSubmitOrdersButton(risq, RisqRightPanel.SUBMIT_SIZE);
     this.submit_icon_button = new RisqSubmitIconButton(risq, RisqRightPanel.SUBMIT_SIZE);
     this.next_idle_button = new RisqNextIdleButton(risq, RisqRightPanel.SUBMIT_SIZE);
@@ -117,12 +121,13 @@ export class RisqRightPanel implements CanvasComponent {
     const player = this.risq.getPlayer();
     const game = this.risq.getGame();
     const padding = RisqRightPanel.PADDING;
-    const yi =
-      this.yi() +
-      40 +
-      4 * padding +
-      (player ? 30 * (1 + player.resources.size) + 2 * padding : 0) +
-      30 * (game?.scores.length ?? 0);
+    const yi = this.orders_expanded
+      ? this.yi() + padding
+      : this.yi() +
+        40 +
+        4 * padding +
+        (player ? 30 * (1 + player.resources.size) + 2 * padding : 0) +
+        SCORE_ROW_H * (game?.scores.length ?? 0);
     const submit_height = game?.game_base.game_ended ? 0 : RisqRightPanel.SUBMIT_SIZE + padding;
     const orders_height = this.yf() - yi - padding - submit_height;
     this.orders_list.setAllSizes(
@@ -131,6 +136,10 @@ export class RisqRightPanel implements CanvasComponent {
       this.w() - 2 * padding,
       orders_height
     );
+    this.orders_expand_button.setPosition({
+      x: this.orders_list.xf() - this.orders_expand_button.w() - 4,
+      y: yi + 4,
+    });
     this.submit_row_y = yi + orders_height + padding;
     this.report_button.setPosition({ x: this.xf() - padding - 30, y: this.yi() + padding });
     this.replay_button.setPosition({ x: this.report_button.xi() - padding - 30, y: this.yi() + padding });
@@ -173,6 +182,7 @@ export class RisqRightPanel implements CanvasComponent {
       for (const component of [
         this.open_button,
         this.orders_list,
+        this.orders_expand_button,
         this.submit_button,
         this.submit_icon_button,
         this.next_idle_button,
@@ -185,6 +195,14 @@ export class RisqRightPanel implements CanvasComponent {
     }
   }
 
+  toggleOrdersExpanded(expanded?: boolean): void {
+    this.orders_expanded = expanded ?? !this.orders_expanded;
+    this.orders_expand_button.setExpanded(this.orders_expanded);
+    this.hovered_resource = undefined;
+    this.hovered_population = false;
+    this.resolveSize();
+  }
+
   isOpen(): boolean {
     return this.config.is_open;
   }
@@ -194,6 +212,8 @@ export class RisqRightPanel implements CanvasComponent {
     this.report_button.setHovering(false);
     this.replay_button.setClicking(false);
     this.replay_button.setHovering(false);
+    this.orders_expand_button.setClicking(false);
+    this.orders_expand_button.setHovering(false);
     this.config.is_open = open ?? !this.config.is_open;
     const position: Point2D = {
       x: this.risq.hudCanvasSize().width - this.open_button.w(),
@@ -251,7 +271,7 @@ export class RisqRightPanel implements CanvasComponent {
         false,
         () => {
           drawRect(ctx, { x: this.xi(), y: this.yi() }, this.w(), this.h());
-          if (this.opening) {
+          if (this.opening || this.orders_expanded) {
             return;
           }
           let yi = this.yi() + RisqRightPanel.PADDING;
@@ -305,7 +325,7 @@ export class RisqRightPanel implements CanvasComponent {
           }
           for (const score of game?.scores ?? []) {
             drawScoreRow(ctx, this.geom(), yi, score);
-            yi += 30;
+            yi += SCORE_ROW_H;
           }
           ctx.restore();
           yi += RisqRightPanel.PADDING;
@@ -315,15 +335,19 @@ export class RisqRightPanel implements CanvasComponent {
       );
     }
     if (this.config.is_open && !this.opening) {
-      this.report_button.draw(ctx, transform, dt);
-      this.report_button.drawTooltip(ctx, transform, this.risq, dt);
-      this.replay_button.draw(ctx, transform, dt);
-      this.replay_button.drawTooltip(ctx, transform, this.risq, dt);
-      this.population_tooltip.draw(ctx, transform, this.risq, dt, this.hovered_population, false);
-      for (const rt of this.resource_row_ys.keys()) {
-        this.resourceTooltip(rt).draw(ctx, transform, this.risq, dt, this.hovered_resource === rt, false);
+      if (!this.orders_expanded) {
+        this.report_button.draw(ctx, transform, dt);
+        this.report_button.drawTooltip(ctx, transform, this.risq, dt);
+        this.replay_button.draw(ctx, transform, dt);
+        this.replay_button.drawTooltip(ctx, transform, this.risq, dt);
+        this.population_tooltip.draw(ctx, transform, this.risq, dt, this.hovered_population, false);
+        for (const rt of this.resource_row_ys.keys()) {
+          this.resourceTooltip(rt).draw(ctx, transform, this.risq, dt, this.hovered_resource === rt, false);
+        }
       }
       this.orders_list.draw(ctx, transform, dt);
+      this.orders_expand_button.draw(ctx, transform, dt);
+      this.orders_expand_button.drawTooltip(ctx, transform, this.risq, dt);
       if (this.hasIdleOrderables()) {
         this.next_idle_button.draw(ctx, transform, dt);
         this.next_idle_button.drawTooltip(ctx, transform, this.risq, dt);
@@ -354,8 +378,9 @@ export class RisqRightPanel implements CanvasComponent {
     const toggle_hovering = this.open_button.mousemove(canvas, screen, transform);
     const inside = screen.x > this.xi() && screen.x < this.xf() && screen.y > this.yi() && screen.y < this.yf();
     for (const [component, visible] of [
-      [this.report_button, true],
-      [this.replay_button, true],
+      [this.report_button, !this.orders_expanded],
+      [this.replay_button, !this.orders_expanded],
+      [this.orders_expand_button, true],
       [this.orders_list, true],
       [this.next_idle_button, this.has_idle],
       [this.submit_icon_button, this.has_idle],
@@ -366,7 +391,7 @@ export class RisqRightPanel implements CanvasComponent {
         component.setHovering(false);
       }
     }
-    const rows_hoverable = inside && this.config.is_open && !this.opening;
+    const rows_hoverable = inside && this.config.is_open && !this.opening && !this.orders_expanded;
     this.hovered_resource = rows_hoverable ? resourceRowAt(this.resource_row_ys, screen.y) : undefined;
     const population_y = this.population_row_y;
     this.hovered_population =
@@ -376,10 +401,13 @@ export class RisqRightPanel implements CanvasComponent {
   }
 
   mousedown(e: MouseEvent): boolean {
-    if (this.config.is_open && !this.opening && this.report_button.mousedown(e)) {
+    if (this.config.is_open && !this.opening && !this.orders_expanded && this.report_button.mousedown(e)) {
       return true;
     }
-    if (this.config.is_open && !this.opening && this.replay_button.mousedown(e)) {
+    if (this.config.is_open && !this.opening && !this.orders_expanded && this.replay_button.mousedown(e)) {
+      return true;
+    }
+    if (this.config.is_open && !this.opening && this.orders_expand_button.mousedown(e)) {
       return true;
     }
     if (this.open_button.mousedown(e)) {
@@ -400,8 +428,11 @@ export class RisqRightPanel implements CanvasComponent {
 
   mouseup(e: MouseEvent): void {
     if (this.config.is_open && !this.opening) {
-      this.report_button.mouseup(e);
-      this.replay_button.mouseup(e);
+      if (!this.orders_expanded) {
+        this.report_button.mouseup(e);
+        this.replay_button.mouseup(e);
+      }
+      this.orders_expand_button.mouseup(e);
     }
     this.open_button.mouseup(e);
     this.orders_list.mouseup(e);

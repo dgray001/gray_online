@@ -33,24 +33,24 @@ func (a *PlayerAction) toFrontend() gin.H {
 }
 
 type Player struct {
-	client_id        uint64
-	ai_player_id     uint32 // specific to the game
-	ai_running       bool   // can be true for human players
-	Player_id        int
-	nickname         string
-	connected        bool
-	Updates          chan *UpdateMessage
-	FailedUpdates    chan *UpdateMessage
-	SettingUpdates   chan *UpdateMessage
-	AiUpdates        chan *UpdateMessage
-	AiFailedUpdates  chan *UpdateMessage
-	FlushConnections chan bool
-	next_update_id   int
-	update_list      []*UpdateMessage
-	update_list_mu   sync.RWMutex
-	snapshot_stale   bool
-	settings_rev     int
-	base_game        *GameBase
+	client_id       uint64
+	ai_player_id    uint32 // specific to the game
+	ai_running      bool   // can be true for human players
+	Player_id       int
+	nickname        string
+	connected       bool
+	Updates         chan *UpdateMessage
+	FailedUpdates   chan *UpdateMessage
+	SettingUpdates  chan *UpdateMessage
+	AiUpdates       chan *UpdateMessage
+	AiFailedUpdates chan *UpdateMessage
+	next_update_id  int
+	forwarded_id    int
+	update_list     []*UpdateMessage
+	update_list_mu  sync.RWMutex
+	snapshot_stale  bool
+	settings_rev    int
+	base_game       *GameBase
 }
 
 func (p *Player) errLogger() *util.Logger {
@@ -71,21 +71,20 @@ const UPDATE_CHANNEL_SIZE = 8
 
 func CreatePlayer(client_id uint64, nickname string, base_game *GameBase) {
 	player := &Player{
-		client_id:        client_id,
-		ai_player_id:     0,
-		ai_running:       false,
-		Player_id:        -1,
-		nickname:         nickname,
-		connected:        false,
-		Updates:          make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
-		AiUpdates:        make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
-		FailedUpdates:    make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
-		SettingUpdates:   make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
-		AiFailedUpdates:  make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
-		FlushConnections: make(chan bool, 2),
-		next_update_id:   1,
-		update_list:      []*UpdateMessage{},
-		base_game:        base_game,
+		client_id:       client_id,
+		ai_player_id:    0,
+		ai_running:      false,
+		Player_id:       -1,
+		nickname:        nickname,
+		connected:       false,
+		Updates:         make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
+		AiUpdates:       make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
+		FailedUpdates:   make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
+		SettingUpdates:  make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
+		AiFailedUpdates: make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
+		next_update_id:  1,
+		update_list:     []*UpdateMessage{},
+		base_game:       base_game,
 	}
 	base_game.Players[client_id] = player
 }
@@ -93,21 +92,20 @@ func CreatePlayer(client_id uint64, nickname string, base_game *GameBase) {
 func CreateAiPlayer(nickname string, base_game *GameBase) *Player {
 	ai_id := base_game.NextAiId()
 	player := &Player{
-		client_id:        0,
-		ai_player_id:     ai_id,
-		ai_running:       true,
-		Player_id:        -1,
-		nickname:         nickname,
-		connected:        false,
-		Updates:          make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
-		AiUpdates:        make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
-		FailedUpdates:    make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
-		SettingUpdates:   make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
-		AiFailedUpdates:  make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
-		FlushConnections: make(chan bool, 2),
-		next_update_id:   1,
-		update_list:      []*UpdateMessage{},
-		base_game:        base_game,
+		client_id:       0,
+		ai_player_id:    ai_id,
+		ai_running:      true,
+		Player_id:       -1,
+		nickname:        nickname,
+		connected:       false,
+		Updates:         make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
+		AiUpdates:       make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
+		FailedUpdates:   make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
+		SettingUpdates:  make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
+		AiFailedUpdates: make(chan *UpdateMessage, UPDATE_CHANNEL_SIZE),
+		next_update_id:  1,
+		update_list:     []*UpdateMessage{},
+		base_game:       base_game,
 	}
 	base_game.AiPlayers[ai_id] = player
 	return player
@@ -138,11 +136,18 @@ func (p *Player) snapshotIsStale() bool {
 	return p.snapshot_stale && len(p.update_list) > 0
 }
 
-// The id of the newest update sent to this player and the revision of their newest setting update
+// The id of the newest update queued on this player's socket (or dropped) and the revision of their newest setting update
 func (p *Player) latestUpdate() (int, int) {
 	p.update_list_mu.RLock()
 	defer p.update_list_mu.RUnlock()
-	return p.next_update_id - 1, p.settings_rev
+	return p.forwarded_id, p.settings_rev
+}
+
+// Must be called only after the update is queued on the socket, so a lookup reply can never overtake it
+func (p *Player) MarkForwarded(update_id int) {
+	p.update_list_mu.Lock()
+	defer p.update_list_mu.Unlock()
+	p.forwarded_id = max(p.forwarded_id, update_id)
 }
 
 // Counts every setting update made for this player, delivered or not, so a client can detect a missed one
@@ -199,6 +204,7 @@ func (p *Player) AddUpdate(update *UpdateMessage) {
 		case p.Updates <- &own_update:
 		default:
 			util.Errorf(p.errLogger(), "Dropped update to player %d - update buffer full: %s", p.Player_id, own_update.Kind)
+			p.MarkForwarded(own_update.Id)
 		}
 	}
 	if p.ai_running {

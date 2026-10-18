@@ -251,6 +251,14 @@ export class RisqMinimap implements CanvasComponent {
           for (const space of all_spaces) {
             this.drawResourceDots(ctx, space, selected_resource_points);
           }
+          for (const point of selected_resource_points) {
+            const image = resourceDot(this.risq.getImageCache(), 'selected');
+            const scale = view_mode === RisqViewMode.RESOURCE ? 1.4 : 1;
+            const radius = scale * Math.max(1.5, 0.25 * this.hex_r);
+            if (image) {
+              ctx.drawImage(image, point.x - radius, point.y - radius, radius * 2, radius * 2);
+            }
+          }
         }
         this.orders.drawSelectedOrders(ctx);
         ctx.imageSmoothingEnabled = false;
@@ -295,15 +303,6 @@ export class RisqMinimap implements CanvasComponent {
           const radius = Math.max(1.5, 0.25 * this.hex_r);
           if (white_dot) {
             ctx.drawImage(white_dot, point.x - radius, point.y - radius, radius * 2, radius * 2);
-          }
-        }
-        ctx.imageSmoothingEnabled = true;
-        for (const point of selected_resource_points) {
-          const image = resourceDot(this.risq.getImageCache(), 'selected');
-          const scale = view_mode === RisqViewMode.RESOURCE ? 1.4 : 1;
-          const radius = scale * Math.max(1.5, 0.25 * this.hex_r);
-          if (image) {
-            ctx.drawImage(image, point.x - radius, point.y - radius, radius * 2, radius * 2);
           }
         }
         ctx.translate(content_center.x, content_center.y);

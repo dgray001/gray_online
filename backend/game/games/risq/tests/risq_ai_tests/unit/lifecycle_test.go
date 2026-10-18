@@ -9,6 +9,25 @@ import (
 	"testing"
 )
 
+func TestObservationHistory(t *testing.T) {
+	history := make(ai.ObservationHistory)
+	spaces := []ai.SpaceInfo{{Space: ai.Coordinate{X: 1}, Vision: 0}, {Space: ai.Coordinate{X: 2}, Vision: 1}, {Space: ai.Coordinate{X: 3}, Vision: 2}, {Space: ai.Coordinate{X: 4}, Vision: 3}, {Space: ai.Coordinate{X: 5}, Vision: 4}}
+	history.Observe(spaces, 7)
+	expected := ai.ObservationHistory{{X: 3}: 7, {X: 4}: 7, {X: 5}: 7}
+	for index := range spaces {
+		spaces[index].Vision = 1
+	}
+	history.Observe(spaces, 9)
+	if !reflect.DeepEqual(history, expected) {
+		t.Fatalf("fog refreshed observation history: got %v, want %v", history, expected)
+	}
+	spaces[0].Vision, expected[ai.Coordinate{X: 1}] = 2, 11
+	history.Observe(spaces, 11)
+	if !reflect.DeepEqual(history, expected) {
+		t.Fatalf("poor vision did not update observation history: got %v, want %v", history, expected)
+	}
+}
+
 func TestBucketScenario(t *testing.T) {
 	model := requireModel(t, bucketScenario)
 	for turn := 1; turn <= 3; turn++ {

@@ -62,8 +62,9 @@ type Internals struct {
 	unit  *ZoneRef
 	start *ZoneRef
 	// the item each enclosing for_each is visiting by its "as" name, and the loop bodies run so far this decision
-	loop_items map[string]loopItem
-	loop_steps int
+	loop_items    map[string]loopItem
+	loop_steps    int
+	last_observed ObservationHistory
 }
 
 const defaultMaxBucketDepth = 3
@@ -156,7 +157,14 @@ type RulesModel struct {
 	internals Internals
 }
 
-func (m *RulesModel) ApplyUpdate(View, string) {}
+func (m *RulesModel) ApplyUpdate(view View, kind string) {
+	if kind == "start-turn" {
+		if m.internals.last_observed == nil {
+			m.internals.last_observed = make(ObservationHistory)
+		}
+		m.internals.last_observed.Observe(view.AllSpaces(), view.TurnNumber())
+	}
+}
 
 func logTurnData(view View) {
 	if !util.IsDebug(view.Logger()) {
