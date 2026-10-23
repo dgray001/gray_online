@@ -16,9 +16,9 @@ var (
 	pristine   *defs.ConfigSnapshot
 )
 
-const targetSpace = `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":1},"units":[{"id":1,"player":1,"count":1}]},{"x":1,"y":0,"terrain_override":24,"resource":41},{"x":-1,"y":0,"building":{"id":3,"player":1}},{"x":0,"y":-1,"units":[{"id":101,"player":1,"count":1}]}]}`
+const targetSpace = `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":201,"player":1},"units":[{"id":11,"player":1,"count":1}]},{"x":1,"y":0,"terrain_override":24,"resource":41},{"x":-1,"y":0,"building":{"id":203,"player":1}},{"x":0,"y":-1,"units":[{"id":21,"player":1,"count":1}]}]}`
 const scoutSpaces = `,{"x":-1,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":15,"player":0,"count":1}]}]},{"x":-2,"y":0,"terrain":1},{"x":-3,"y":0,"terrain":1},{"x":-4,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":15,"player":0,"count":1}]}]}`
-const hiddenSpaces = `,{"x":1,"y":0,"terrain":1},{"x":2,"y":0,"terrain":1},{"x":3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":1},"units":[{"id":1,"player":1,"count":1}]},{"x":1,"y":0,"resource":11}]},{"x":4,"y":0,"terrain":1}`
+const hiddenSpaces = `,{"x":1,"y":0,"terrain":1},{"x":2,"y":0,"terrain":1},{"x":3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":201,"player":1},"units":[{"id":11,"player":1,"count":1}]},{"x":1,"y":0,"resource":11}]},{"x":4,"y":0,"terrain":1}`
 const regions = `,"regions":[{"name":"Border","gold_bonus":7,"spaces":[[0,0],[3,0]]},{"name":"Secret","gold_bonus":9,"spaces":[[4,0]]}]`
 
 func TestMain(m *testing.M) {
@@ -31,7 +31,7 @@ func setupConfigDir() func() {
 	dir, _ := os.MkdirTemp("", "shape-*")
 	mapDir := filepath.Join(dir, "maps", "custom")
 	_ = os.MkdirAll(mapDir, 0o755)
-	doc := `{"board_size":4,"players":2,"unlimited_population":true,"starting_techs":[4],"starting_bank":{"food":1000,"wood":1000,"stone":1000,"gold":1000},"spaces":[` + targetSpace + scoutSpaces + hiddenSpaces + `]` + regions + `}`
+	doc := `{"board_size":4,"players":2,"unlimited_population":true,"starting_techs":[302],"starting_bank":{"food":1000,"wood":1000,"stone":1000,"gold":1000},"spaces":[` + targetSpace + scoutSpaces + hiddenSpaces + `]` + regions + `}`
 	_ = os.WriteFile(filepath.Join(mapDir, "shape.json"), []byte(doc), 0o644)
 	metaDoc := `{"board_size":4,"players":2,"spaces":[` + targetSpace + scoutSpaces + hiddenSpaces + `],"background_image":{"name":"map.png","top_left":[-4,-2],"top_right":[4,2]},"connections":[{"from":[-4,0],"to":[4,0],"direction":3}]}`
 	_ = os.WriteFile(filepath.Join(mapDir, "metadata.json"), []byte(metaDoc), 0o644)
@@ -71,12 +71,12 @@ func shapeGame(t *testing.T, level uint8) *harness.Game {
 func configuredGame(t *testing.T, level uint8, configure func()) *harness.Game {
 	t.Helper()
 	t.Cleanup(snapshotConfigs())
-	scout := defs.UnitConfigs[1]
+	scout := defs.UnitConfigs[11]
 	scout.Vision = defs.RisqVision{Space: max(level, defs.VisibilityGood), Edge_adjacent: level, Adjacent: level, Edge_opposite: level}
 	defs.UnitConfigs[15] = scout
-	villager := defs.UnitConfigs[1]
-	villager.Turn_stamina = 1
-	defs.UnitConfigs[1] = villager
+	worker := defs.UnitConfigs[11]
+	worker.Turn_stamina = 1
+	defs.UnitConfigs[11] = worker
 	configure()
 	return harness.NewGame(t, "custom:shape", 1, 2)
 }
@@ -125,11 +125,11 @@ func unitID(g *harness.Game, slot, x int, kind uint32) uint64 {
 func centerID(g *harness.Game) uint64 {
 	g.T.Helper()
 	for _, building := range g.Self(g.Human(1)).Buildings {
-		if building.BuildingID == 1 && building.Space == (harness.Coord{}) {
+		if building.BuildingID == 201 && building.Space == (harness.Coord{}) {
 			return building.InternalID
 		}
 	}
-	g.T.Fatal("target village center missing")
+	g.T.Fatal("target town hall missing")
 	return 0
 }
 
@@ -195,15 +195,15 @@ func TestRegionsOnlyIncludeExploredKeys(t *testing.T) {
 	state := snapshot(g, g.Human(0), false)
 	regions := array(t, state["regions"])
 	equal(t, len(regions), 1)
-	region := checkShape(t, regions[0], "name:s gold_bonus:n spaces:a owner:n unexplored_spaces:n")
+	region := checkShape(t, regions[0], "name:s gold_bonus:n spaces:a owner:n has_unexplored_spaces:b")
 	equal(t, region["name"], "Border")
 	equal(t, region["gold_bonus"], float64(7))
 	equal(t, region["spaces"], []any{float64(harness.SpaceKey(0, 0))})
-	equal(t, region["unexplored_spaces"], float64(1))
+	equal(t, region["has_unexplored_spaces"], true)
 	ownerRegions := array(t, snapshot(g, g.Human(1), false)["regions"])
 	equal(t, len(ownerRegions), 2)
 	for _, value := range ownerRegions {
-		equal(t, object(t, value)["unexplored_spaces"], float64(0))
+		equal(t, object(t, value)["has_unexplored_spaces"], false)
 	}
 }
 
@@ -240,6 +240,7 @@ func TestGameAndPlayerWireShapes(t *testing.T) {
 			if object(t, p["player"])["player_id"] == float64(g.PlayerID(human)) {
 				contract += " " + privatePlayerShape + " default_unit_stance:n default_unit_attack_back:b default_unit_interrupt_current:b default_unit_target_priority:a"
 				checkShape(t, p["resources"], costShape)
+				equal(t, p["researched_techs"], map[string]any{"302": true})
 				mercenaries := array(t, p["available_mercenaries"])
 				equal(t, len(mercenaries), 2)
 				for _, value := range mercenaries {
@@ -247,7 +248,6 @@ func TestGameAndPlayerWireShapes(t *testing.T) {
 				}
 			}
 			checkShape(t, p, contract)
-			equal(t, p["researched_techs"], map[string]any{"4": true})
 		}
 		for _, key := range []string{"background_top_left", "background_top_right"} {
 			equal(t, state[key], []any{float64(0), float64(0)})

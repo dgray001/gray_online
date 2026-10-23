@@ -116,10 +116,21 @@ func TestOptionalObjectFields(t *testing.T) {
 }
 
 func TestNumericActionFieldTypes(t *testing.T) {
-	for _, key := range []string{"max", "queue", "weight", "move_penalty", "depth", "size", "reserve", "launch", "retreat", "defend_radius", "strike", "score", "min_score", "min_distance"} {
+	for key, action := range map[string]string{
+		"max":   `"action":"for_each","source":"units","as":"u","do":[]`,
+		"queue": `"action":"create","unit_id":1`, "depth": `"action":"produce"`,
+		"weight": `"action":"gather"`, "move_penalty": `"action":"gather"`,
+		"size":    `"action":"set_bucket","bucket":"x","task":{"action":"set_var","name":"x","value":1}`,
+		"reserve": `"action":"hire","unit_id":1`,
+		"launch":  `"action":"army"`, "retreat": `"action":"army"`,
+		"defend_radius": `"action":"army"`, "strike": `"action":"army"`,
+		"score":        `"action":"build","building_id":1,"targets":"build_sites"`,
+		"min_score":    `"action":"build","building_id":1,"targets":"build_sites","score":1`,
+		"min_distance": `"action":"explore"`,
+	} {
 		for _, value := range []string{`2`, `"1 + 1"`, `{"count_spaces":{}}`, `{"closest_spaces":{}}`, `null`, `true`, `[]`, `"1 +"`, `{"unknown":{}}`} {
 			t.Run(key+"/"+value, func(t *testing.T) {
-				config := fmt.Sprintf(`{"rules":[{"when":{"always":null},"then":[{"action":"set_var","name":"x","value":1,%q:%s}]}]}`, key, value)
+				config := fmt.Sprintf(`{"rules":[{"when":{"always":null},"then":[{%s,%q:%s}]}]}`, action, key, value)
 				if value == `2` || value == `"1 + 1"` || value == `{"count_spaces":{}}` || value == `{"closest_spaces":{}}` {
 					requireModel(t, config)
 				} else {

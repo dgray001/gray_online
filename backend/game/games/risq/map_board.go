@@ -96,7 +96,7 @@ func (b mapBoard) PlaceBuilding(z mapgen.Zone, building_id uint32, player_index 
 	if len(resources_left) > 0 {
 		building.resources_left = resources_left[0]
 	}
-	zone.space.setBuilding(&zone.coordinate, building)
+	zone.space.placeBuilding(&zone.coordinate, building)
 	if zone.building != building {
 		return false
 	}
@@ -109,7 +109,7 @@ func (b mapBoard) PlaceUnit(z mapgen.Zone, unit_id uint32, player_index int) {
 	zone := z.(mapZone).z
 	player := b.r.players[player_index]
 	unit := createRisqUnit(b.r.nextUnitInternalId(), unit_id, player)
-	zone.space.setUnit(&zone.coordinate, unit)
+	zone.space.placeUnit(&zone.coordinate, unit)
 	player.units[unit.internal_id] = unit
 	b.r.units[unit.internal_id] = unit
 }
@@ -161,6 +161,10 @@ func (s mapSpace) SetTerrain(terrain_id uint32) {
 
 func (s mapSpace) SetName(name string) {
 	s.s.name = name
+}
+
+func (s mapSpace) SetGoldIncome(gold float64) {
+	s.s.gold_income = gold
 }
 
 func (s mapSpace) Impassable() bool {

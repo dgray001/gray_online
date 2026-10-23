@@ -20,7 +20,13 @@ export function isOrderable(
   visibility: number | undefined,
   player_id: number
 ): boolean {
-  if (!data || !visibility || visibility < RisqVisibilityLevel.GOOD || player_id < 0) {
+  if (!data || player_id < 0) {
+    return false;
+  }
+  if (data.data_type === LeftPanelDataType.FOUNDATION) {
+    return data.data.player_id === player_id;
+  }
+  if (!visibility || visibility < RisqVisibilityLevel.GOOD) {
     return false;
   }
   switch (data.data_type) {
@@ -31,7 +37,6 @@ export function isOrderable(
       );
     case LeftPanelDataType.BUILDING:
     case LeftPanelDataType.UNIT:
-    case LeftPanelDataType.FOUNDATION:
       return data.data.player_id === player_id;
     case LeftPanelDataType.UNITS_BY_TYPE:
     case LeftPanelDataType.ECONOMIC_UNITS:

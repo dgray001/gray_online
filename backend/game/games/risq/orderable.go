@@ -66,3 +66,10 @@ func (o *orderableBase) inAttackRange(target *RisqZone) bool {
 func (o *orderableBase) currentZone() *RisqZone {
 	return o.zone
 }
+
+func (o *orderableBase) terrainType() defs.TerrainType {
+	if o.zone == nil {
+		return defs.TerrainType_FLATLANDS
+	}
+	return o.zone.space.terrainType()
+}

@@ -33,6 +33,7 @@ type BuildingConfig struct {
 	Max_garrison_attack_magic    *int
 	Terrain_override             map[TerrainType]uint32
 	Max_per_player               int
+	Is_wall                      bool
 }
 
 func (c BuildingConfig) IsGatherable() bool {
@@ -165,6 +166,7 @@ type buildingConfigJSON struct {
 	MaxGarrisonAttackMagic    *int                    `json:"max_garrison_attack_magic"`
 	TerrainOverride           map[string]uint32       `json:"terrain_override"`
 	MaxPerPlayer              int                     `json:"max_per_player"`
+	IsWall                    bool                    `json:"is_wall"`
 }
 
 var BuildingConfigs map[uint32]BuildingConfig
@@ -222,6 +224,7 @@ func (c *Config) loadBuildings(data []byte) {
 			Max_garrison_attack_magic:    e.MaxGarrisonAttackMagic,
 			Terrain_override:             terrain_override,
 			Max_per_player:               e.MaxPerPlayer,
+			Is_wall:                      e.IsWall,
 		}
 	}
 }

@@ -1,11 +1,11 @@
 {
-  "seed": 100000,
+  "seed": 847231,
   "max_turns": 100,
-  "games_per_bucket": 30,
+  "games_per_bucket": 20,
   "swap_seats": true,
   "players": [
     {
-      "ai_config": "v0.6"
+      "ai_config": "v0.7"
     },
     {
       "ai_config": "v0.6"
@@ -28,35 +28,45 @@
       "name": "triangle",
       "map": "script:triangle"
     },
+    {"name": "asterisk", "map": "script:asterisk"},
+    {"name": "divide", "map": "script:divide"},
+    {"name": "gold_rush", "map": "script:gold_rush"},
     {
       "name": "ring_tiny_rich",
       "map": "script:ring",
       "settings": {"map_size": 2, "map_resources": 3}
     },
     {
-      "name": "hexagon_medium_high",
-      "map": "script:hexagon",
-      "settings": {"map_size": 5, "starting_stockpile": 3}
-    },
-    {
-      "name": "rectangle_sparse_low",
+      "name": "rectangle_smaller_sparse",
       "map": "script:rectangle",
-      "settings": {"map_size": 3, "map_resources": 1, "starting_stockpile": 1}
+      "settings": {"map_size": 3, "map_resources": 1}
     },
     {
-      "name": "triangle_nomad_abundant",
-      "map": "script:triangle",
+      "name": "asterisk_small_low",
+      "map": "script:asterisk",
+      "settings": {"map_size": 4, "starting_stockpile": 1}
+    },
+    {
+      "name": "divide_small_random",
+      "map": "script:divide",
+      "settings": {"map_size": 4, "start_balance": 1}
+    },
+    {
+      "name": "hexagon_nomad",
+      "map": "script:hexagon",
+      "settings": {"starting_development": 1}
+    },
+    {
+      "name": "gold_rush_nomad_abundant",
+      "map": "script:gold_rush",
       "settings": {"starting_development": 1, "map_resources": 4}
     },
-    {
-      "name": "hexagon_large_advanced",
-      "map": "script:hexagon",
-      "settings": {"map_size": 6, "starting_development": 4}
-    },
-    {
-      "name": "ring_explored_deathmatch",
-      "map": "script:ring",
-      "settings": {"visibility": 2, "starting_stockpile": 4}
-    }
+    {"name": "risk_world", "map": "custom:risk_world"},
+    {"name": "army_only", "map": "script:sim/army_only"},
+    {"name": "rectangle_established", "map": "script:rectangle", "settings": {"starting_development": 3}},
+    {"name": "asterisk_established_high", "map": "script:asterisk", "settings": {"starting_development": 3, "starting_stockpile": 3}},
+    {"name": "triangle_advanced", "map": "script:triangle", "settings": {"starting_development": 4}},
+    {"name": "close_start_advanced_explored", "map": "script:sim/close_start", "settings": {"starting_development": 4, "visibility": 2}},
+    {"name": "close_start_deathmatch_visible", "map": "script:sim/close_start", "settings": {"starting_stockpile": 4, "visibility": 3}}
   ]
 }

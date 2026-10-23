@@ -1,3 +1,5 @@
 [
-  {"tech_id":1,"display_name":"Infantry vs Buildings","description":"Infantry deal bonus damage against buildings.","affects_unit_types":["infantry"],"target_types":["building"],"bonus_attack_blunt":4,"bonus_attack_piercing":4}
+  {"tech_id":401,"display_name":"Test Anti-Structure","affects_unit_types":["infantry","siege"],"target_types":["building"],"bonus_attack_blunt":8,"bonus_attack_piercing":8},
+  {"tech_id":402,"display_name":"Test Anti-Cavalry","affects_unit_types":["infantry"],"target_types":["cavalry"],"bonus_attack_piercing":10,"bonus_penetration_piercing":15},
+  {"tech_id":403,"display_name":"Test Raiding","affects_unit_types":["archer"],"target_types":["economic"],"bonus_attack_piercing":6}
 ]

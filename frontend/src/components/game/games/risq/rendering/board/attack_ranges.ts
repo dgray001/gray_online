@@ -28,7 +28,27 @@ import { drawUnitTypeCluster } from '../assets/unit';
 import { hexagonVertices, zoneCenterOffset, zoneMercenarySlotOffsets, zoneVertices } from '../zones/geometry';
 import type { RisqViewport } from './viewport';
 
-type RangeSubject = Pick<RisqUnit, 'space_coordinate' | 'attack_range'>;
+type RangeSubject = Pick<RisqUnit, 'space_coordinate' | 'zone_coordinate' | 'attack_range'>;
+
+type ZoneLocation = { space: Point2D; zone: Point2D };
+
+/** The zone across the border that an edge zone touches, following seams and links */
+function facingZone(session: RisqSession, space: RisqSpace, zone: Point2D): ZoneLocation | undefined {
+  const direction = AXIAL_DIRECTION_VECTORS.findIndex((vector: Point2D): boolean => equalsPoint2D(vector, zone));
+  if (direction === -1) {
+    return undefined;
+  }
+  for (const link of session.getGame()?.space_links ?? []) {
+    if (equalsPoint2D(link.from, space.coordinate) && link.direction === direction) {
+      return { space: link.to, zone: AXIAL_DIRECTION_VECTORS[link.to_direction] };
+    }
+    if (equalsPoint2D(link.to, space.coordinate) && link.to_direction === direction) {
+      return { space: link.from, zone: AXIAL_DIRECTION_VECTORS[link.direction] };
+    }
+  }
+  const neighbor = addPoint2D(space.coordinate, zone);
+  return session.spaceAt(neighbor) ? { space: neighbor, zone: { x: -zone.x, y: -zone.y } } : undefined;
+}
 
 function rangeSpaces(session: RisqSession, space: RisqSpace, radius: number): Map<number, Point2D> {
   const cached = space.range_spaces?.get(radius);
@@ -71,6 +91,51 @@ function rangePaths(spaces: Map<number, Point2D>, viewport: RisqViewport): { fil
   return { fill, outline };
 }
 
+type RangeOverlay = { key: string; game: unknown; ranges: { fill: Path2D; outline: Path2D }[]; areas: Path2D[] };
+
+let range_overlay: RangeOverlay | undefined;
+
+function buildRangeOverlay(
+  session: RisqSession,
+  viewport: RisqViewport,
+  subjects: RangeSubject[],
+  key: string
+): RangeOverlay {
+  const groups = new Map<RisqRange, Map<number, Point2D>>();
+  const seen = new Set<string>();
+  const facing = new Map<string, ZoneLocation>();
+  for (const subject of subjects) {
+    const distance = rangeDistance(subject.attack_range);
+    const space = session.spaceAt(subject.space_coordinate);
+    const across =
+      distance === 0 && space && viewport.zoneView() && facingZone(session, space, subject.zone_coordinate);
+    if (across) {
+      facing.set(`${across.space.x},${across.space.y}:${across.zone.x},${across.zone.y}`, across);
+    }
+    const subject_key = `${subject.attack_range}:${space?.coordinate_key}`;
+    if (distance === null || !space || seen.has(subject_key)) {
+      continue;
+    }
+    seen.add(subject_key);
+    const spaces = groups.get(subject.attack_range) ?? new Map<number, Point2D>();
+    for (const [space_key, coordinate] of rangeSpaces(session, space, distance)) {
+      spaces.set(space_key, coordinate);
+    }
+    groups.set(subject.attack_range, spaces);
+  }
+  const areas = [...facing.values()].map(({ space, zone }): Path2D => {
+    const center = viewport.coordinateToCanvas(space);
+    const area = new Path2D();
+    for (const point of zoneVertices(zone, viewport.hexR())) {
+      area.lineTo(center.x + point.x, center.y + point.y);
+    }
+    area.closePath();
+    return area;
+  });
+  const ranges = [...groups.values()].map((spaces) => rangePaths(spaces, viewport));
+  return { key, game: session.getGame(), ranges, areas };
+}
+
 export function drawSelectionAttackRanges(
   ctx: CanvasRenderingContext2D,
   session: RisqSession,
@@ -85,36 +150,43 @@ export function drawSelectionAttackRanges(
     ...selection.selectedBuildings(),
     ...units.flatMap((unit: RisqUnit): RangeSubject[] => {
       const location = session.unitLocation(unit);
-      return location ? [{ space_coordinate: location.space_coordinate, attack_range: unit.attack_range }] : [];
+      return location
+        ? [
+            {
+              space_coordinate: location.space_coordinate,
+              zone_coordinate: location.zone_coordinate,
+              attack_range: unit.attack_range,
+            },
+          ]
+        : [];
     }),
   ];
   const mixed = new Set(subjects.map((subject: RangeSubject): RisqRange => subject.attack_range)).size > 1;
-  const groups = new Map<RisqRange, Map<number, Point2D>>();
-  const seen = new Set<string>();
-  for (const subject of subjects) {
-    const distance = rangeDistance(subject.attack_range);
-    const space = session.spaceAt(subject.space_coordinate);
-    const subject_key = `${subject.attack_range}:${space?.coordinate_key}`;
-    if (distance === null || !space || seen.has(subject_key)) {
-      continue;
-    }
-    seen.add(subject_key);
-    const spaces = groups.get(subject.attack_range) ?? new Map<number, Point2D>();
-    for (const [key, coordinate] of rangeSpaces(session, space, distance)) {
-      spaces.set(key, coordinate);
-    }
-    groups.set(subject.attack_range, spaces);
+  const key = [
+    viewport.hexR(),
+    viewport.zoneView(),
+    ...subjects.map(
+      (s: RangeSubject): string =>
+        `${s.attack_range}:${s.space_coordinate.x},${s.space_coordinate.y}:${s.zone_coordinate.x},${s.zone_coordinate.y}`
+    ),
+  ].join('|');
+  if (range_overlay?.key !== key || range_overlay.game !== session.getGame()) {
+    range_overlay = buildRangeOverlay(session, viewport, subjects, key);
   }
+  const overlay = range_overlay;
   ctx.save();
   ctx.setLineDash([]);
   ctx.globalAlpha = mixed ? 0.35 : 1;
   ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
   ctx.strokeStyle = 'white';
   ctx.lineWidth = 2 / viewport.lastTransform().scale;
-  for (const spaces of groups.values()) {
-    const paths = rangePaths(spaces, viewport);
+  for (const paths of overlay.ranges) {
     ctx.fill(paths.fill);
     ctx.stroke(paths.outline);
+  }
+  for (const area of overlay.areas) {
+    ctx.fill(area);
+    ctx.stroke(area);
   }
   ctx.restore();
 }

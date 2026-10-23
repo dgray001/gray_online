@@ -6,7 +6,7 @@ import { equalsPoint2D } from '../../../../../util/objects2d';
 import type { RectHoverData, RisqSpace, RisqZone } from '../../../model/types';
 import { RisqVisibilityLevel } from '../../../model/types';
 import { buildingImage, rubbleImage } from '../../../rendering/assets/buildings';
-import { resourceIcon } from '../../../rendering/assets/resources';
+import { mapResourceIcon } from '../../../rendering/assets/resources';
 import { borderStrokeStyle, drawHexImage } from '../../../rendering/space';
 import { RisqViewMode, spaceOwnerColor, terrainImage } from '../../../rendering/terrain';
 import { getZoneFill } from '../../../rendering/zones/draw';
@@ -131,7 +131,7 @@ export class RisqSpaceHexagon {
   private drawZoneIcon(ctx: CanvasRenderingContext2D, risq: DwgRisq, zone: RisqZone, p: Point2D, icon_r: number): void {
     let icon: HTMLImageElement | HTMLCanvasElement | undefined;
     if (zone.resource) {
-      icon = resourceIcon(risq, zone.resource);
+      icon = mapResourceIcon(risq, zone.resource);
     } else if (zone.building) {
       const building_color = risq.getGame()?.players[zone.building.player_id]?.color;
       const building_image = buildingImage(

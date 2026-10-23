@@ -7,8 +7,8 @@ import (
 )
 
 func TestRegionsStayListedThroughFog(t *testing.T) {
-	spaces := spaceWith(0, 0, grass, unit(villager, 0)) + "," + spaceWith(1, 0, grass, "") + "," + spaceWith(1, -1, grass, "") + "," +
-		spaceWith(-1, 0, grass, "") + "," + spaceWith(-2, 0, grass, "") + "," + spaceWith(-3, 0, grass, "") + "," + spaceWith(-3, 3, grass, unit(villager, 1))
+	spaces := spaceWith(0, 0, flatTerrain, unit(worker, 0)) + "," + spaceWith(1, 0, flatTerrain, "") + "," + spaceWith(1, -1, flatTerrain, "") + "," +
+		spaceWith(-1, 0, flatTerrain, "") + "," + spaceWith(-2, 0, flatTerrain, "") + "," + spaceWith(-3, 0, flatTerrain, "") + "," + spaceWith(-3, 3, flatTerrain, unit(worker, 1))
 	g := startGame(t, mapDoc(`,"regions":[{"name":"Camp","gold_bonus":1,"spaces":[[1,0],[1,-1]]}]`, spaces))
 	explorer := g.Human(0)
 	if camp := regionNamed(g.State(explorer).Regions, "Camp"); camp == nil || len(camp.Spaces) != 2 {
@@ -28,8 +28,8 @@ func TestRegionsStayListedThroughFog(t *testing.T) {
 
 // What was last seen stays frozen: P1 takes (1,0) after P0 walks away, and P0's fogged view must not notice
 func TestFoggedSpacesStayFrozenWhileHidden(t *testing.T) {
-	spaces := spaceWith(0, 0, grass, unit(villager, 0)) + "," + spaceWith(1, 0, grass, "") + "," + spaceWith(2, 0, grass, "") + "," +
-		spaceWith(3, 0, grass, unit(infantry, 1)) + "," + spaceWith(-1, 0, grass, "") + "," + spaceWith(-2, 0, grass, "") + "," + spaceWith(-3, 0, grass, "")
+	spaces := spaceWith(0, 0, flatTerrain, unit(worker, 0)) + "," + spaceWith(1, 0, flatTerrain, "") + "," + spaceWith(2, 0, flatTerrain, "") + "," +
+		spaceWith(3, 0, flatTerrain, unit(grunt, 1)) + "," + spaceWith(-1, 0, flatTerrain, "") + "," + spaceWith(-2, 0, flatTerrain, "") + "," + spaceWith(-3, 0, flatTerrain, "")
 	g := startGame(t, mapDoc("", spaces))
 	p0, p1 := g.Human(0), g.Human(1)
 	if got := g.State(p0).Space(1, 0).Ownership; got == nil || *got != unowned {
@@ -62,12 +62,12 @@ func TestFoggedSpacesStayFrozenWhileHidden(t *testing.T) {
 	}
 }
 
-// P0's villager at (0,0) beside a stone mine at (1,0) and a P1 village center at (1,-1), with open ground west to (-3,0)
+// P0's worker at (0,0) beside a stone mine at (1,0) and a P1 town hall at (1,-1), with open ground west to (-3,0)
 func TestFoggedSpacesRememberWhatWasSeen(t *testing.T) {
 	mine := `{"x":1,"y":0,"terrain":1,"zones":[{"x":1,"y":0,"resource":41}]}`
-	camp := `{"x":1,"y":-1,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":1}}]}`
-	spaces := spaceWith(0, 0, grass, unit(villager, 0)) + "," + mine + "," + camp + "," + spaceWith(-1, 0, grass, "") + "," +
-		spaceWith(-2, 0, grass, "") + "," + spaceWith(-3, 0, grass, "") + "," + spaceWith(-3, 3, grass, unit(villager, 1))
+	camp := `{"x":1,"y":-1,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":201,"player":1}}]}`
+	spaces := spaceWith(0, 0, flatTerrain, unit(worker, 0)) + "," + mine + "," + camp + "," + spaceWith(-1, 0, flatTerrain, "") + "," +
+		spaceWith(-2, 0, flatTerrain, "") + "," + spaceWith(-3, 0, flatTerrain, "") + "," + spaceWith(-3, 3, flatTerrain, unit(worker, 1))
 	g := startGame(t, mapDoc("", spaces))
 	explorer := g.Human(0)
 	before := g.State(explorer).Space(1, 0)
@@ -86,7 +86,7 @@ func TestFoggedSpacesRememberWhatWasSeen(t *testing.T) {
 	if got := state.Space(1, 0).Resources; len(got) != 1 || got[0].ResourceID != 41 {
 		t.Errorf("fogged (1,0) resources %v, want the remembered stone mine", got)
 	}
-	if got := state.Space(1, -1).Buildings; len(got) != 1 || got[0].BuildingID != 1 {
-		t.Errorf("fogged (1,-1) buildings %v, want the remembered village center", got)
+	if got := state.Space(1, -1).Buildings; len(got) != 1 || got[0].BuildingID != 201 {
+		t.Errorf("fogged (1,-1) buildings %v, want the remembered town hall", got)
 	}
 }

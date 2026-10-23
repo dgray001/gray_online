@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"net/http"
 	"os"
 	"strconv"
@@ -23,6 +24,11 @@ var upgrader = websocket.Upgrader{
 var DEV = os.Getenv("GAE_SERVICE") == ""
 
 func main() {
+	debug := flag.Bool("debug", false, "log debug-level messages")
+	flag.Parse()
+	if *debug {
+		util.DefaultStd.SetLevel(util.LevelDebug)
+	}
 	if err := risq.LoadConfig("game/games/risq/config"); err != nil {
 		util.Errorf(util.DefaultErr, "loading risq config: %v", err)
 		os.Exit(1)
@@ -105,8 +111,10 @@ func main() {
 
 		if DEV {
 			registerRisqDevRoutes(api)
-			registerPerfRoutes(api)
+		} else {
+			util.EnablePerfToStdout()
 		}
+		registerPerfRoutes(api)
 
 		api_lobby := api.Group("/lobby")
 		{

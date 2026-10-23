@@ -51,3 +51,22 @@ func (r *GameRisq) computeHasEconomy() bool {
 	}
 	return false
 }
+
+func (r *GameRisq) computeHasProduction() bool {
+	if r.has_economy {
+		return true
+	}
+	for _, building := range r.buildings {
+		for _, producible := range r.config.Buildings[building.building_id].Produces {
+			if producible.Kind == defs.ProducibleKind_UNIT {
+				return true
+			}
+		}
+	}
+	for _, player := range r.players {
+		if len(player.available_mercenaries) > 0 {
+			return true
+		}
+	}
+	return false
+}

@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.9e: Automatic reconnects
+v0.9f: Generalize ai view
 
 ## Dev Use
 

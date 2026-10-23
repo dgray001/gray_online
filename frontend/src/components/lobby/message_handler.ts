@@ -1,5 +1,6 @@
 import { getUrlParam } from '../../scripts/url';
 import { updateSettings } from '../../scripts/settings_store';
+import { Sounds } from '../../sounds/Sounds';
 import { SERVER_CHAT_NAME } from '../chatbox/chatbox';
 import type { ServerMessage, LobbyRoom, LobbyRoomFromServer, GameSettingsFromServer } from './data_models';
 import { serverResponseToRoom, serverResponseToGameSettings } from './data_models';
@@ -233,6 +234,9 @@ export function handleMessage(lobby: DwgLobby, message: ServerMessage): void {
           sender = room_chat_sender_split[3];
         }
         lobby.getLobbyRoom().getChatbox().addChat({ message: message.content, sender, color: message.data });
+        if (room_chat_client_id !== lobby.getConnectionMetadata().client_id) {
+          Sounds.playTaunt(message.content);
+        }
       }
       break;
     case 'room-renamed':

@@ -12,14 +12,14 @@ func RandomInt(min int, max int) int {
 	if min > max {
 		return RandomInt(max, min)
 	}
-	return min + int(rand.Int63n(1+int64(max-min)))
+	return min + rand.Intn(1+max-min)
 }
 
 func RandomIntFrom(rng *rand.Rand, min int, max int) int {
 	if min > max {
 		return RandomIntFrom(rng, max, min)
 	}
-	return min + int(rng.Int63n(1+int64(max-min)))
+	return min + rng.Intn(1+max-min)
 }
 
 // Returns an float in the range [min, max], or [max, min] if min > max

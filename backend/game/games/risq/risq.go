@@ -71,6 +71,7 @@ type GameRisq struct {
 	unit_creation_ids map[*RisqBuilding]uint64
 	// Recomputed each tick: snapshots population-capped status before any of this tick's completions
 	population_capped map[int]bool
+	blocking_walls    map[*RisqBuilding]bool
 	// Zones whose cosmetic terrain_override should clear at the start of cleanupDeleted's NEXT call
 	pending_terrain_clears []*RisqZone
 	// Techs finishing production this tick; applied after this tick's health deltas
@@ -81,10 +82,11 @@ type GameRisq struct {
 	space_links              []spaceLink
 	mercenaries_need_region  bool
 	// fixed once the board is generated; false hides the economy from the interface
-	has_economy   bool
-	has_buildings bool
-	rng           *rand.Rand
-	ai_goroutines sync.WaitGroup
+	has_economy    bool
+	has_production bool
+	has_buildings  bool
+	rng            *rand.Rand
+	ai_goroutines  sync.WaitGroup
 }
 
 func (r *GameRisq) nextResourceInternalId() uint64 {
@@ -189,7 +191,7 @@ func (r *GameRisq) sendSnapshot(player *game.Player, kind string, content gin.H)
 	perf_fields := map[string]any{"turn": r.turn_number, "player": player.Player_id, "update_kind": kind}
 	stop_perf := util.PerfTimer("snapshot_build", perf_fields)
 	content["game"] = r.toFrontendFor(player.Player_id, player.GetClientId(), false)
-	if util.PerfEnabled() {
+	if util.PerfEnabled() && !util.PerfToStdout() {
 		encoded, _ := json.Marshal(content)
 		perf_fields["bytes"] = len(encoded)
 	}
@@ -335,6 +337,7 @@ func (r *GameRisq) toFrontendFor(player_id int, client_id uint64, is_viewer bool
 		"background_top_right":    r.background_top_right,
 		"rotation":                r.rotation,
 		"has_economy":             r.has_economy,
+		"has_production":          r.has_production,
 		"has_buildings":           r.has_buildings,
 		"mercenaries_need_region": r.mercenaries_need_region,
 		"turn_number":             r.turn_number,

@@ -13,13 +13,13 @@ const unowned = -1
 // P0 is present in every space, so its view lists every owner; slot numbers equal engine player ids
 func ownershipGame(t *testing.T) (*harness.Game, int) {
 	t.Helper()
-	camp := `{"x":0,"y":-1,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":0},"units":[` + unit(infantry, 1) + `]}]}`
+	camp := `{"x":0,"y":-1,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":201,"player":0},"units":[` + unit(grunt, 1) + `]}]}`
 	spaces := []string{
-		spaceWith(0, 0, grass, unit(infantry, 0)),
-		spaceWith(1, 0, grass, unit(villager, 0)),
-		spaceWith(-1, 0, grass, unit(infantry, 0)+","+unit(infantry, 1)),
+		spaceWith(0, 0, flatTerrain, unit(grunt, 0)),
+		spaceWith(1, 0, flatTerrain, unit(worker, 0)),
+		spaceWith(-1, 0, flatTerrain, unit(grunt, 0)+","+unit(grunt, 1)),
 		camp,
-		spaceWith(2, 0, grass, ""),
+		spaceWith(2, 0, flatTerrain, ""),
 	}
 	g := startGame(t, mapDoc("", strings.Join(spaces, ",")))
 	return g, g.Human(0)
@@ -33,7 +33,7 @@ func TestMilitaryUnitsClaimAndEconomicUnitsDoNot(t *testing.T) {
 		why         string
 	}{
 		{0, 0, 0, "a sole military unit claims its space"},
-		{1, 0, unowned, "villagers never conquer"},
+		{1, 0, unowned, "workers never conquer"},
 		{2, 0, unowned, "an empty space is nobody's"},
 	} {
 		if got := state.Space(c.x, c.y).Ownership; got == nil || *got != c.owner {
@@ -66,7 +66,7 @@ func TestZonesInheritTheirSpacesOwner(t *testing.T) {
 
 func TestOwnershipFollowsUnitsAsTheyMove(t *testing.T) {
 	g, p0 := ownershipGame(t)
-	soldier := unitAt(g, p0, infantry, 0, 0)
+	soldier := unitAt(g, p0, grunt, 0, 0)
 	g.Submit(p0, harness.OrderMove([]uint64{soldier}, 2, 0))
 	for turn := 0; turn < 8 && g.State(p0).Unit(soldier).Space != (harness.Coord{X: 2, Y: 0}); turn++ {
 		g.EndTurn()
@@ -81,8 +81,8 @@ func TestOwnershipFollowsUnitsAsTheyMove(t *testing.T) {
 }
 
 func TestBuildingsOfDifferentPlayersLeaveASpaceUnowned(t *testing.T) {
-	shared := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":2,"player":0}},{"x":1,"y":0,"building":{"id":2,"player":1}}]}`
-	spaces := shared + "," + spaceWith(1, 0, grass, unit(villager, 0)+","+unit(villager, 1))
+	shared := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":202,"player":0}},{"x":1,"y":0,"building":{"id":202,"player":1}}]}`
+	spaces := shared + "," + spaceWith(1, 0, flatTerrain, unit(worker, 0)+","+unit(worker, 1))
 	g := startGame(t, mapDoc("", spaces))
 	if got := g.State(g.Human(0)).Space(0, 0).Ownership; got == nil || *got != unowned {
 		t.Errorf("a space holding both players' buildings has owner %v, want none", got)

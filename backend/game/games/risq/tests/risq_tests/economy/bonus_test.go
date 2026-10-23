@@ -15,7 +15,7 @@ func TestTargetedBonusOnlyAffectsMatchingOpponent(t *testing.T) {
 			with := bonusDamage(t, building, true)
 			want := 0.0
 			if building {
-				want = 6
+				want = 12
 			}
 			if math.Abs((with-without)-want) > 0.00001 {
 				t.Errorf("bonus damage %v, want %v (with %v, without %v)", with-without, want, with, without)
@@ -26,9 +26,9 @@ func TestTargetedBonusOnlyAffectsMatchingOpponent(t *testing.T) {
 
 func bonusDamage(t *testing.T, building, enabled bool) float64 {
 	t.Helper()
-	source := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":101,"player":0,"count":1},{"id":102,"player":1,"count":1}]`
+	source := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":21,"player":0,"count":1},{"id":22,"player":1,"count":1}]`
 	if building {
-		source += `,"building":{"id":2,"player":1}`
+		source += `,"building":{"id":202,"player":1}`
 	}
 	g := scenarioGame(t, source+`}]}`)
 	original := defs.BonusConfigs
@@ -38,20 +38,20 @@ func bonusDamage(t *testing.T, building, enabled bool) float64 {
 	}
 	p, enemy := g.Human(0), g.Human(1)
 	u := g.Self(p).Units[0]
-	if u.CombatStats.AttackBlunt != 6 {
+	if u.CombatStats.AttackBlunt != 8 {
 		t.Fatalf("targeted bonus baked into base attack: %d", u.CombatStats.AttackBlunt)
 	}
 	target := g.Self(enemy).Units[0].InternalID
 	health := g.Self(enemy).Units[0].CombatStats.Health
 	typ := defs.OrderType_UnitAttackUnit
 	if building {
-		b := centerHousing(g, enemy)
+		b := centerShelter(g, enemy)
 		target, health, typ = b.InternalID, b.CombatStats.Health, defs.OrderType_UnitAttackBuilding
 	}
 	g.Submit(p, harness.Order(typ, []uint64{u.InternalID}, int64(target), false))
 	g.EndTurn()
 	if building {
-		return health - centerHousing(g, enemy).CombatStats.Health
+		return health - centerShelter(g, enemy).CombatStats.Health
 	}
 	survivor := g.State(enemy).Unit(target)
 	if survivor == nil {

@@ -257,7 +257,7 @@ func (v *unitWhenView) filter(units []UnitView) []UnitView {
 	for _, u := range units {
 		loc := u.Location
 		v.internals.unit = &loc
-		if v.when.Evaluate(v.View, v.internals) {
+		if matches, valid := evaluateCondition(v.when, v.View, v.internals); valid && matches {
 			out = append(out, u)
 		}
 	}

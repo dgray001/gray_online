@@ -11,8 +11,8 @@ func TestAssetBlockReplacesEntirePreset(t *testing.T) {
 		assets           string
 		units, buildings map[uint32]int
 	}{
-		{`{"units":[{"unit_id":1,"count":2,"target":{"zone":"center"}}]}`, map[uint32]int{1: 2}, map[uint32]int{}},
-		{`{"buildings":[{"building_id":1,"target":{"zone":"center"}}]}`, map[uint32]int{}, map[uint32]int{1: 1}},
+		{`{"units":[{"unit_id":11,"count":2,"target":{"zone":"center"}}]}`, map[uint32]int{11: 2}, map[uint32]int{}},
+		{`{"buildings":[{"building_id":201,"target":{"zone":"center"}}]}`, map[uint32]int{}, map[uint32]int{201: 1}},
 	} {
 		params := `{"pattern":"ring","area_size":0,"starting_distance":1,"terrain_id":1,"assets":` + c.assets + `,"resources":[]}`
 		useScripts(t, map[string]string{"assets": `[` + hexagon2 + `,` + step("player_starts", params) + `]`})

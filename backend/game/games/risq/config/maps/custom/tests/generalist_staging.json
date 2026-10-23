@@ -1,0 +1,16 @@
+{
+  "board_size": 2,
+  "players": 2,
+  "starting_bank": {"food": 0, "wood": 0, "stone": 0, "gold": 0},
+  "spaces": [
+    {"x": -2, "y": 0, "terrain": 1, "zones": [
+      {"x": 0, "y": 0, "building": {"id": 1, "player": 0}, "units": [
+        {"id": 1, "player": 0, "count": 8}, {"id": 101, "player": 0, "count": 12}
+      ]}
+    ]},
+    {"x": -1, "y": 0, "terrain": 1},
+    {"x": 0, "y": 0, "terrain": 1},
+    {"x": 1, "y": 0, "terrain": 1, "zones": [{"x": 0, "y": 0, "building": {"id": 2, "player": 1}}]},
+    {"x": 2, "y": 0, "terrain": 1, "zones": [{"x": 0, "y": 0, "building": {"id": 22, "player": 1}}]}
+  ]
+}

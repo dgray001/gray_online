@@ -4,16 +4,18 @@ import "sort"
 
 // The Internals fields a spread assignment overwrites while scoring, put back when it finishes
 type scoringContext struct {
+	target_candidate                                                                                      *candidate
 	unit_id                                                                                               float64
 	target, target_from, unit                                                                             *ZoneRef
 	target_health, target_max_health, unit_health, unit_stamina, target_assigned, assign_round, target_id float64
 }
 
 func saveScoringContext(i *Internals) scoringContext {
-	return scoringContext{i.unit_id, i.target, i.target_from, i.unit, i.target_health, i.target_max_health, i.unit_health, i.unit_stamina, i.target_assigned, i.assign_round, i.target_id}
+	return scoringContext{i.target_candidate, i.unit_id, i.target, i.target_from, i.unit, i.target_health, i.target_max_health, i.unit_health, i.unit_stamina, i.target_assigned, i.assign_round, i.target_id}
 }
 
 func (c scoringContext) restore(i *Internals) {
+	i.target_candidate = c.target_candidate
 	i.unit_id = c.unit_id
 	i.target, i.target_from, i.unit, i.target_health, i.target_max_health = c.target, c.target_from, c.unit, c.target_health, c.target_max_health
 	i.unit_health, i.unit_stamina, i.target_assigned, i.assign_round, i.target_id = c.unit_health, c.unit_stamina, c.target_assigned, c.assign_round, c.target_id
@@ -35,9 +37,9 @@ func (s *spreadSlot) full() bool {
 func (c candidate) idAndAssigned(view View, exclude map[uint64]bool) (float64, int) {
 	switch {
 	case c.unit != nil:
-		return float64(c.unit.InternalID), view.AssignedTo(false, c.unit.InternalID, exclude)
+		return float64(unitUID(c.unit.InternalID)), view.AssignedTo(false, c.unit.InternalID, exclude)
 	case c.building != nil:
-		return float64(c.building.InternalID), view.AssignedTo(true, c.building.InternalID, exclude)
+		return float64(buildingUID(c.building.InternalID)), view.AssignedTo(true, c.building.InternalID, exclude)
 	}
 	return 0, 0
 }
@@ -53,6 +55,7 @@ func (p *targetPicker) spreadUnitOrder(view View, internals *Internals, units []
 	ordered := append([]UnitView(nil), units...)
 	keys := make(map[uint64]float64, len(ordered))
 	internals.target = nil
+	internals.target_candidate = nil
 	for i := range ordered {
 		loc := ordered[i].Location
 		setSpreadUnit(internals, &ordered[i], &loc, 0)
@@ -83,6 +86,7 @@ func (p *targetPicker) spreadSlots(view View, internals *Internals, center ZoneR
 		loc := c.loc
 		internals.target, internals.target_from, internals.target_id, internals.target_assigned = &loc, &center, id, float64(assigned)
 		internals.target_health, internals.target_max_health = c.health()
+		internals.target_candidate = &c
 		slot := spreadSlot{c: c, assigned: float64(assigned)}
 		if p.spread.capacity != nil {
 			slot.capacity, slot.capped = p.spread.capacity.float(view, internals), true
@@ -107,6 +111,7 @@ func (p *targetPicker) spreadPick(view View, internals *Internals, u UnitView, s
 		at := slot.c.loc
 		internals.target, internals.target_from = &at, &loc
 		internals.target_health, internals.target_max_health = slot.c.health()
+		internals.target_candidate = &slot.c
 		internals.target_id, _ = slot.c.idAndAssigned(view, nil)
 		internals.target_assigned = float64(slot.assigned)
 		score := p.score.float(view, internals) + p.spread.unit_score.float(view, internals)
@@ -161,6 +166,7 @@ func (p *targetPicker) assign(view View, internals *Internals, units []UnitView,
 			}
 			taken[u.InternalID][i] = true
 			internals.target_health, internals.target_max_health = slots[i].c.health()
+			internals.target_candidate = &slots[i].c
 			slots[i].assigned += max(0, p.spread.weight.float(view, internals))
 			orders = append(orders, act(u, slots[i].c, first))
 		}

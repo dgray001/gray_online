@@ -2,9 +2,7 @@ package util
 
 import (
 	"fmt"
-	"math"
 	"math/rand"
-	"strconv"
 	"strings"
 	"sync"
 	"unicode"
@@ -19,6 +17,7 @@ const (
 	exprTokLParen
 	exprTokRParen
 	exprTokComma
+	exprTokCompare
 	exprTokEOF
 )
 
@@ -47,6 +46,17 @@ func tokenizeExpr(s string) ([]exprToken, error) {
 		case strings.ContainsRune("+-*/", c):
 			toks = append(toks, exprToken{exprTokOp, string(c)})
 			i++
+		case strings.ContainsRune("<>=!", c):
+			end := i + 1
+			if end < len(s) && s[end] == '=' {
+				end++
+			}
+			op := s[i:end]
+			if op == "=" || op == "!" {
+				return nil, fmt.Errorf("invalid comparison operator %q", op)
+			}
+			toks = append(toks, exprToken{exprTokCompare, op})
+			i = end
 		case unicode.IsDigit(c) || c == '.':
 			j := i
 			for j < len(s) && (unicode.IsDigit(rune(s[j])) || s[j] == '.') {
@@ -69,192 +79,27 @@ func tokenizeExpr(s string) ([]exprToken, error) {
 	return toks, nil
 }
 
-type exprParser struct {
-	toks []exprToken
-	pos  int
-	vars map[string]float64
-	// resolves var(name); nil disables var()
-	lookup func(name string) (float64, error)
-	// draws for random(n); nil disables random()
-	rng *rand.Rand
-}
-
-func (p *exprParser) peek() exprToken {
-	return p.toks[p.pos]
-}
-
-func (p *exprParser) next() exprToken {
-	t := p.toks[p.pos]
-	p.pos++
-	return t
-}
-
-func (p *exprParser) parseExpr() (float64, error) {
-	v, err := p.parseTerm()
-	if err != nil {
-		return 0, err
-	}
-	for p.peek().kind == exprTokOp && (p.peek().text == "+" || p.peek().text == "-") {
-		op := p.next().text
-		rhs, err := p.parseTerm()
-		if err != nil {
-			return 0, err
-		}
-		if op == "+" {
-			v += rhs
-		} else {
-			v -= rhs
-		}
-	}
-	return v, nil
-}
-
-func (p *exprParser) parseTerm() (float64, error) {
-	v, err := p.parseUnary()
-	if err != nil {
-		return 0, err
-	}
-	for p.peek().kind == exprTokOp && (p.peek().text == "*" || p.peek().text == "/") {
-		op := p.next().text
-		rhs, err := p.parseUnary()
-		if err != nil {
-			return 0, err
-		}
-		if op == "*" {
-			v *= rhs
-		} else {
-			if rhs == 0 {
-				return 0, fmt.Errorf("division by zero")
-			}
-			v /= rhs
-		}
-	}
-	return v, nil
-}
-
-func (p *exprParser) parseUnary() (float64, error) {
-	if p.peek().kind == exprTokOp && p.peek().text == "-" {
-		p.next()
-		v, err := p.parseUnary()
-		return -v, err
-	}
-	if p.peek().kind == exprTokOp && p.peek().text == "+" {
-		p.next()
-		return p.parseUnary()
-	}
-	return p.parsePrimary()
-}
-
-func (p *exprParser) parsePrimary() (float64, error) {
-	t := p.next()
-	switch t.kind {
-	case exprTokNum:
-		return strconv.ParseFloat(t.text, 64)
-	case exprTokIdent:
-		if p.peek().kind == exprTokLParen {
-			return p.parseCall(t.text)
-		}
-		v, ok := p.vars[t.text]
-		if !ok {
-			return 0, fmt.Errorf("unknown variable %q", t.text)
-		}
-		return v, nil
-	case exprTokLParen:
-		v, err := p.parseExpr()
-		if err != nil {
-			return 0, err
-		}
-		if p.next().kind != exprTokRParen {
-			return 0, fmt.Errorf("expected closing paren")
-		}
-		return v, nil
-	default:
-		return 0, fmt.Errorf("unexpected token %q", t.text)
-	}
-}
-
-// Supports min(a, b, ...) and max(a, b, ...); var(name) is left to EvalExprWithLookup
-func (p *exprParser) parseCall(name string) (float64, error) {
-	p.next() // (
-	if name == "var" {
-		arg := p.next()
-		if arg.kind != exprTokIdent {
-			return 0, fmt.Errorf("var() takes a bare name")
-		}
-		if p.next().kind != exprTokRParen {
-			return 0, fmt.Errorf("expected closing paren after var(%s", arg.text)
-		}
-		if p.lookup == nil {
-			return 0, fmt.Errorf("var() is not available here")
-		}
-		return p.lookup(arg.text)
-	}
-	args := make([]float64, 0, 2)
-	empty_call := p.peek().kind == exprTokRParen
-	if empty_call {
-		p.next()
-	}
-	for !empty_call {
-		v, err := p.parseExpr()
-		if err != nil {
-			return 0, err
-		}
-		args = append(args, v)
-		t := p.next()
-		if t.kind == exprTokRParen {
-			break
-		}
-		if t.kind != exprTokComma {
-			return 0, fmt.Errorf("expected ',' or ')' in %s()", name)
-		}
-	}
-	switch name {
-	case "round":
-		if len(args) != 1 {
-			return 0, fmt.Errorf("round() needs exactly one argument")
-		}
-		return math.Round(args[0]), nil
-	case "random", "randomInt":
-		if p.rng == nil {
-			return 0, fmt.Errorf("%s() is not available here", name)
-		}
-		if name == "random" {
-			if len(args) != 0 {
-				return 0, fmt.Errorf("random() takes no arguments")
-			}
-			return p.rng.Float64(), nil
-		}
-		if len(args) != 2 {
-			return 0, fmt.Errorf("randomInt() needs a min and a max")
-		}
-		return float64(RandomIntFrom(p.rng, int(math.Round(args[0])), int(math.Round(args[1])))), nil
-	case "min", "max":
-		if len(args) < 2 {
-			return 0, fmt.Errorf("%s() needs at least two arguments", name)
-		}
-		v := args[0]
-		for _, a := range args[1:] {
-			if (name == "min" && a < v) || (name == "max" && a > v) {
-				v = a
-			}
-		}
-		return v, nil
-	}
-	return 0, fmt.Errorf("unknown function %q", name)
-}
-
 func EvalExpr(s string, vars map[string]float64) (float64, error) {
 	return EvalExprWithLookup(s, vars, nil)
 }
 
 // Like EvalExpr, but var(name) is resolved through lookup
 func EvalExprWithLookup(s string, vars map[string]float64, lookup func(name string) (float64, error)) (float64, error) {
-	return evalExpr(s, &exprParser{vars: vars, lookup: lookup})
+	return evalExpr(s, &exprEnv{vars: vars, lookup: lookup})
 }
 
-// Like EvalExpr, but random(n) draws from rng
+func EvalExprWithLookupAndRng(s string, vars map[string]float64, lookup func(name string) (float64, error), rng *rand.Rand) (float64, error) {
+	return EvalExprWithDistance(s, vars, lookup, nil, rng)
+}
+
+// Like EvalExprWithLookupAndRng, but distance(a, b) is measured through distance
+func EvalExprWithDistance(s string, vars map[string]float64, lookup func(name string) (float64, error), distance DistanceFunc, rng *rand.Rand) (float64, error) {
+	return evalExpr(s, &exprEnv{vars: vars, lookup: lookup, distance: distance, rng: rng})
+}
+
+// Like EvalExpr, but random() and randomInt(a, b) draw from rng
 func EvalExprWithRng(s string, vars map[string]float64, rng *rand.Rand) (float64, error) {
-	return evalExpr(s, &exprParser{vars: vars, rng: rng})
+	return evalExpr(s, &exprEnv{vars: vars, rng: rng})
 }
 
 var exprTokenCache sync.Map // expression text -> read-only []exprToken
@@ -268,20 +113,4 @@ func cachedTokens(s string) ([]exprToken, error) {
 		exprTokenCache.Store(s, toks)
 	}
 	return toks, err
-}
-
-func evalExpr(s string, p *exprParser) (float64, error) {
-	toks, err := cachedTokens(s)
-	if err != nil {
-		return 0, err
-	}
-	p.toks = toks
-	v, err := p.parseExpr()
-	if err != nil {
-		return 0, err
-	}
-	if p.peek().kind != exprTokEOF {
-		return 0, fmt.Errorf("unexpected trailing input in expression %q", s)
-	}
-	return v, nil
 }

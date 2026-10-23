@@ -124,6 +124,7 @@ func (a *hireAction) ToOrders(view View, internals *Internals) []Order {
 	if !view.TechResearched(4) {
 		return nil
 	}
+
 	home, ok := homeLocation(view)
 	if !ok {
 		return nil

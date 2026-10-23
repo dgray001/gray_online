@@ -19,10 +19,30 @@ func (v *aiView) spaceNeighbors(space ai.Coordinate) []ai.Coordinate {
 	return append(neighbors, v.space_links[space]...)
 }
 
+func edgeZone(direction int) ai.Coordinate {
+	vector := game_utils.AxialDirectionVectors()[direction]
+	return ai.Coordinate{X: vector.X, Y: vector.Y}
+}
+
+// The zone across the border from an edge zone, when the board has a space there
+func (v *aiView) facingZone(from ai.ZoneRef) (ai.ZoneRef, bool) {
+	if linked, ok := v.linked_edges[from]; ok {
+		return linked, true
+	}
+	neighbor := ai.Coordinate{X: from.Space.X + from.Zone.X, Y: from.Space.Y + from.Zone.Y}
+	if game_utils.AxialDirectionIndex(game_utils.Coordinate2D{X: from.Zone.X, Y: from.Zone.Y}) < 0 || v.spaces[neighbor] == nil {
+		return ai.ZoneRef{}, false
+	}
+	return ai.ZoneRef{Space: neighbor, Zone: ai.Coordinate{X: -from.Zone.X, Y: -from.Zone.Y}}, true
+}
+
 func (v *aiView) indexSpaceLinks() {
 	v.space_links = map[ai.Coordinate][]ai.Coordinate{}
+	v.linked_edges = map[ai.ZoneRef]ai.ZoneRef{}
 	for _, link := range v.game.SpaceLinks {
 		from, to := toCoordinate(link.From), toCoordinate(link.To)
+		from_edge, to_edge := ai.ZoneRef{Space: from, Zone: edgeZone(link.Direction)}, ai.ZoneRef{Space: to, Zone: edgeZone(link.ToDirection)}
+		v.linked_edges[from_edge], v.linked_edges[to_edge] = to_edge, from_edge
 		v.space_links[from] = append(v.space_links[from], to)
 		v.space_links[to] = append(v.space_links[to], from)
 	}

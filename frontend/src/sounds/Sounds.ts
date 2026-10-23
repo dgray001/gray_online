@@ -44,9 +44,23 @@ export class Sounds {
   public static async play(s: string): Promise<void> {
     try {
       const sound = await Sounds.preload(s);
+      sound.currentTime = 0;
       await sound.play();
     } catch (e) {
       console.error(e);
     }
+  }
+
+  public static playTaunt(text: string): boolean {
+    const trimmed = text.trim();
+    if (!/^\d+$/.test(trimmed)) {
+      return false;
+    }
+    const num = parseInt(trimmed, 10);
+    if (num >= 1 && num <= 42) {
+      void Sounds.play(`taunts/${num}`);
+      return true;
+    }
+    return false;
   }
 }

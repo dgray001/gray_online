@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// Every space within radius 2 of the origin; P0's villager stands on the given zone of (0,0) and P1's is far in the corner
+// Every space within radius 2 of the origin; P0's worker stands on the given zone of (0,0) and P1's is far in the corner
 func zoneVisionLevels(t *testing.T, zx, zy int) map[[2]int]int {
 	t.Helper()
 	var spaces []string
@@ -14,11 +14,11 @@ func zoneVisionLevels(t *testing.T, zx, zy int) map[[2]int]int {
 		for q := max(-2, -2-r); q <= min(2, 2-r); q++ {
 			switch {
 			case q == 0 && r == 0:
-				spaces = append(spaces, fmt.Sprintf(`{"x":0,"y":0,"terrain":1,"zones":[{"x":%d,"y":%d,"units":[%s]}]}`, zx, zy, unit(villager, 0)))
+				spaces = append(spaces, fmt.Sprintf(`{"x":0,"y":0,"terrain":1,"zones":[{"x":%d,"y":%d,"units":[%s]}]}`, zx, zy, unit(worker, 0)))
 			case q == 2 && r == -2:
-				spaces = append(spaces, spaceWith(q, r, grass, unit(villager, 1)))
+				spaces = append(spaces, spaceWith(q, r, flatTerrain, unit(worker, 1)))
 			default:
-				spaces = append(spaces, spaceWith(q, r, grass, ""))
+				spaces = append(spaces, spaceWith(q, r, flatTerrain, ""))
 			}
 		}
 	}
@@ -61,9 +61,14 @@ func TestVisionFromAnEdgeZoneSeesItsFacingNeighborClearly(t *testing.T) {
 	if levels[[2]int{0, 0}] != good || levels[[2]int{1, 0}] != good {
 		t.Errorf("own space %d and the neighbor the edge faces %d, want both good", levels[[2]int{0, 0}], levels[[2]int{1, 0}])
 	}
-	for _, neighbor := range [][2]int{{1, -1}, {0, 1}, {0, -1}, {-1, 0}, {-1, 1}} {
+	for _, neighbor := range [][2]int{{1, -1}, {0, 1}} {
 		if levels[neighbor] != poor {
 			t.Errorf("neighbor %v visibility %d from an east edge zone, want poor", neighbor, levels[neighbor])
+		}
+	}
+	for _, neighbor := range [][2]int{{0, -1}, {-1, 0}, {-1, 1}} {
+		if levels[neighbor] != unexplored {
+			t.Errorf("neighbor %v visibility %d from an east edge zone, want unexplored", neighbor, levels[neighbor])
 		}
 	}
 	if levels[[2]int{-2, 0}] != unexplored {

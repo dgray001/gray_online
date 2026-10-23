@@ -9,10 +9,12 @@ import (
 
 // Typed mirror of the per-player frontend game payload; the ai sees exactly what a human client would.
 type snapGame struct {
-	TurnNumber int            `json:"turn_number"`
-	Players    []snapPlayer   `json:"players"`
-	Spaces     [][]*snapSpace `json:"spaces"`
-	Regions    []snapRegion   `json:"regions"`
+	TurnNumber    int            `json:"turn_number"`
+	HasEconomy    bool           `json:"has_economy"`
+	HasProduction bool           `json:"has_production"`
+	Players       []snapPlayer   `json:"players"`
+	Spaces        [][]*snapSpace `json:"spaces"`
+	Regions       []snapRegion   `json:"regions"`
 	// adjacencies other than the normal border between coordinate neighbors
 	SpaceLinks []snapSpaceLink `json:"space_links"`
 }
@@ -20,11 +22,18 @@ type snapGame struct {
 type snapSpaceLink struct {
 	From snapCoordinate `json:"from"`
 	To   snapCoordinate `json:"to"`
+
+	Direction   int `json:"direction"`
+	ToDirection int `json:"to_direction"`
 }
 
 // Only the explored spaces of a region are listed
 type snapRegion struct {
-	Spaces []uint `json:"spaces"`
+	Name          string  `json:"name"`
+	GoldBonus     float64 `json:"gold_bonus"`
+	Owner         int     `json:"owner"`
+	Spaces        []uint  `json:"spaces"`
+	HasUnexplored bool    `json:"has_unexplored_spaces"`
 }
 
 type snapCoordinate struct {
@@ -50,15 +59,24 @@ type snapPlayer struct {
 		PlayerId int    `json:"player_id"`
 		Nickname string `json:"nickname"`
 	} `json:"player"`
-	Score              uint             `json:"score"`
-	PopulationLimit    int              `json:"population_limit"`
-	MaxPopulationLimit int              `json:"max_population_limit"`
-	Resources          snapCost         `json:"resources"`
-	PlannedFoundations []snapFoundation `json:"planned_foundations"`
-	Buildings          []snapBuilding   `json:"buildings"`
-	Units              []snapUnit       `json:"units"`
-	ActiveOrders       []snapOrder      `json:"active_orders"`
-	ResearchedTechs    map[uint32]bool  `json:"researched_techs"`
+	Score                uint             `json:"score"`
+	PopulationLimit      int              `json:"population_limit"`
+	MaxPopulationLimit   int              `json:"max_population_limit"`
+	Resources            snapCost         `json:"resources"`
+	PlannedFoundations   []snapFoundation `json:"planned_foundations"`
+	Buildings            []snapBuilding   `json:"buildings"`
+	Units                []snapUnit       `json:"units"`
+	ActiveOrders         []snapOrder      `json:"active_orders"`
+	ResearchedTechs      map[uint32]bool  `json:"researched_techs"`
+	AvailableMercenaries []snapProducible `json:"available_mercenaries"`
+}
+
+type snapProducible struct {
+	ID       uint32        `json:"id"`
+	Kind     uint8         `json:"kind"`
+	UnitType defs.UnitType `json:"unit_type"`
+	Cost     snapCost      `json:"cost"`
+	Stamina  int           `json:"stamina_cost"`
 }
 
 type snapFoundation struct {
@@ -72,6 +90,7 @@ type snapUnit struct {
 	UnitId           uint32          `json:"unit_id"`
 	UnitType         defs.UnitType   `json:"unit_type"`
 	CurrentStamina   int             `json:"current_stamina"`
+	MaxStamina       int             `json:"max_stamina"`
 	GarrisonedIn     *uint64         `json:"garrisoned_in"`
 	Zone             snapCoordinate  `json:"zone_coordinate"`
 	Space            snapCoordinate  `json:"space_coordinate"`
@@ -94,6 +113,7 @@ type snapBuilding struct {
 	GarrisonCapacity  int            `json:"garrison_capacity"`
 	GarrisonedUnits   []uint64       `json:"garrisoned_units"`
 	AttackRange       defs.RisqRange `json:"attack_range"`
+	MaxStamina        int            `json:"max_stamina"`
 	ResourcesLeft     float64        `json:"resources_left"`
 	Renewing          bool           `json:"renewing"`
 	Zone              snapCoordinate `json:"zone_coordinate"`
@@ -123,12 +143,23 @@ type snapZone struct {
 	Building      *snapBuilding  `json:"building"`
 }
 
+type snapTerrainStats struct {
+	IntraCost          uint    `json:"intra_cost"`
+	InterCost          uint    `json:"inter_cost"`
+	BuildSpeedModifier float64 `json:"build_speed_modifier"`
+	Impassable         bool    `json:"impassable"`
+}
+
 type snapSpace struct {
+	TerrainType  uint8             `json:"terrain_type"`
+	TerrainStats *snapTerrainStats `json:"terrain_stats"`
+
 	UnitCount     *int           `json:"unit_count"`
 	Coordinate    snapCoordinate `json:"coordinate"`
 	CoordinateKey uint           `json:"coordinate_key"`
 	Visibility    uint8          `json:"visibility"`
 	Ownership     *int           `json:"ownership"`
+	GoldIncome    float64        `json:"gold_income"`
 	Zones         [][]snapZone   `json:"zones"`
 	// buildings in the space: live ones when visible, the last-seen ones when fogged
 	Buildings []snapBuilding `json:"buildings"`

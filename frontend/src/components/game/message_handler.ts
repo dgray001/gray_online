@@ -1,5 +1,6 @@
 import type { ServerMessage } from '../lobby/data_models';
 import { createMessage } from '../lobby/data_models';
+import { Sounds } from '../../sounds/Sounds';
 import { perfEvent } from '../../scripts/perf';
 import type { UpdateMessage } from './data_models';
 import type { DwgGame } from './game';
@@ -46,6 +47,9 @@ export function handleMessage(game: DwgGame, message: ServerMessage): void {
           message: message.content,
           sender: sender?.nickname ?? chat_client_id.toString(),
         });
+        if (chat_client_id !== game.getConnectionMetadata()?.client_id) {
+          Sounds.playTaunt(message.content);
+        }
       }
       break;
     case 'game-player-disconnected':

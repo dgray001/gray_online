@@ -49,8 +49,24 @@ func hashBehavior(h io.Writer, o *orderableBase) {
 // Order internal ids are left out: they depend on submission arrival order, not on game state
 func hashOrders(h io.Writer, orders []*RisqOrder) {
 	for _, o := range orders {
-		fmt.Fprintf(h, "o%d:%d:%t:%t:%t:%d:%d:%v;", o.order_type, o.target_id, o.executed, o.cancelled, o.clear_previous_orders, o.turn_received, o.turn_resolved, slices.Sorted(maps.Keys(o.subjects)))
+		fmt.Fprint(h, orderSignature(o))
 	}
+}
+
+// A player's order list has no meaningful order, so it hashes as a set
+func hashOrderSet(h io.Writer, orders []*RisqOrder) {
+	signatures := make([]string, len(orders))
+	for i, o := range orders {
+		signatures[i] = orderSignature(o)
+	}
+	slices.Sort(signatures)
+	for _, signature := range signatures {
+		fmt.Fprint(h, signature)
+	}
+}
+
+func orderSignature(o *RisqOrder) string {
+	return fmt.Sprintf("o%d:%d:%t:%t:%t:%d:%d:%v;", o.order_type, o.target_id, o.executed, o.cancelled, o.clear_previous_orders, o.turn_received, o.turn_resolved, slices.Sorted(maps.Keys(o.subjects)))
 }
 
 func hashGatherSlot(source Gatherable) string {
@@ -123,7 +139,7 @@ func (r *GameRisq) hashPlayersAndBoard(h io.Writer) {
 			}
 		}
 		fmt.Fprintf(h, " el%t am%v os%t;", p.eliminated, slices.Sorted(maps.Keys(p.available_mercenaries)), p.orders_submitted)
-		hashOrders(h, p.active_orders)
+		hashOrderSet(h, p.active_orders)
 	}
 	for _, space := range r.allSpaces() {
 		fmt.Fprintf(h, "s%d o%d t%d", space.coordinate_key, space.ownership, space.terrain_id)

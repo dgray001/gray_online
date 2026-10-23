@@ -75,6 +75,7 @@
     "range": "space",
     "cost": { "wood": 90, "stone": 40 },
     "production_stamina": 30,
-    "turn_stamina": 8
+    "turn_stamina": 8,
+    "vision": { "space": 3, "edge_adjacent": 2, "adjacent": 0, "edge_opposite": 0, "secondary": 0 }
   }
 ]

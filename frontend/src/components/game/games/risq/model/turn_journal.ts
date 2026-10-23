@@ -11,9 +11,9 @@ export declare interface RisqTickUnitState {
   space_coordinate: Point2D;
   zone_coordinate: Point2D;
   combat_stats: RisqCombatStats;
-  current_stamina: number;
-  turn_stamina: number;
-  max_stamina: number;
+  current_stamina?: number;
+  turn_stamina?: number;
+  max_stamina?: number;
   deleted: boolean;
   garrisoned_in?: number;
 }
@@ -26,8 +26,8 @@ export declare interface RisqTickBuildingState {
   space_coordinate: Point2D;
   zone_coordinate: Point2D;
   combat_stats: RisqCombatStats;
-  current_stamina: number;
-  turn_stamina: number;
+  current_stamina?: number;
+  turn_stamina?: number;
   under_construction: boolean;
   stamina_remaining: number;
   construction_stamina_total: number;

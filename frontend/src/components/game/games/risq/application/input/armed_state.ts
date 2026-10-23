@@ -6,6 +6,7 @@ export declare interface ArmedBuilding {
   display_name: string;
   stamina_cost: number;
   cost: RisqCost;
+  is_wall?: boolean;
 }
 
 /** Identity of the armed order at one moment, so a later check can tell whether something re-armed in between */

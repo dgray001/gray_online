@@ -15,6 +15,8 @@ export declare interface GameRisq {
   population_limit: number;
   turn_number: number;
   spaces: (RisqSpace | undefined)[][];
+  /** Every building the player knows of, including fogged ones */
+  buildings: ReadonlyMap<number, RisqBuilding>;
   /** Only the links the player has explored an end of */
   space_links: RisqSpaceLink[];
   giving_orders: boolean;
@@ -51,7 +53,7 @@ export declare interface RisqRegion {
   gold_bonus: number;
   spaces: number[];
   owner: number;
-  unexplored_spaces: number;
+  has_unexplored_spaces: boolean;
 }
 
 export declare interface GameRisqScoreEntry {
@@ -228,9 +230,9 @@ export declare interface RisqUnit {
   display_name: string;
   space_coordinate: Point2D;
   zone_coordinate: Point2D;
-  turn_stamina: number;
-  current_stamina: number;
-  max_stamina: number;
+  turn_stamina?: number;
+  current_stamina?: number;
+  max_stamina?: number;
   combat_stats: RisqCombatStats;
   attack_range: RisqRange;
   active_orders: RisqOrder[];
@@ -281,9 +283,9 @@ export declare interface RisqBuilding {
   garrison_capacity: number;
   has_garrisoned_units: boolean;
   garrisoned_units?: number[]; // only present to the owner or a viewer with spy-tier vision
-  turn_stamina: number;
-  current_stamina: number;
-  max_stamina: number;
+  turn_stamina?: number;
+  current_stamina?: number;
+  max_stamina?: number;
   under_construction: boolean;
   stamina_remaining: number;
   construction_stamina_total: number;
@@ -339,6 +341,7 @@ export declare interface RisqProducible {
   description: string;
   required_tech_id: number;
   max_per_player?: number; // buildings only; 0 or absent means unlimited
+  is_wall?: boolean;
 }
 
 export interface RisqUnitStatsEntry {

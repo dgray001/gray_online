@@ -26,4 +26,4 @@ if [ "$status" -ne 0 ]; then
     exit 1
 fi
 echo
-echo 'All Tests Pass'
+echo "All Tests Pass ($(awk -F'"Elapsed":' '!/"Test":"/{s+=$2} END {printf "%.3gs", s}' "$output"))"

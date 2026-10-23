@@ -11,8 +11,8 @@ import (
 
 func queueWork(g *harness.Game) (uint64, uint64) {
 	g.T.Helper()
-	unit, center := unitID(g, 1, 0, 1), centerID(g)
-	produce := harness.OrderProduce([]uint64{center}, 1)
+	unit, center := unitID(g, 1, 0, 11), centerID(g)
+	produce := harness.OrderProduce([]uint64{center}, 11)
 	g.Submit(g.Human(1), harness.OrderGather([]uint64{unit}, 0, 0, 1, 0), produce, produce)
 	g.EndTurn()
 	return unit, center
@@ -44,15 +44,19 @@ func TestOrderAndProductionQueueWireShapes(t *testing.T) {
 	equal(t, len(bOrders), 1)
 	order := checkShape(t, bOrders[0], orderShape)
 	equal(t, order["subjects"], []any{float64(center)})
-	equal(t, order["target_id"], float64(1))
+	equal(t, order["target_id"], float64(11))
 	equal(t, item["order_internal_id"], order["internal_id"])
 	equal(t, item["kind"], float64(1))
-	equal(t, item["item_id"], float64(1))
+	equal(t, item["item_id"], float64(11))
 }
 
 func TestChangedBehaviorWireValues(t *testing.T) {
-	g := shapeGame(t, 4)
-	owner, unit, center := g.Human(1), unitID(g, 1, 0, 101), centerID(g)
+	g := configuredGame(t, 4, func() {
+		center := defs.BuildingConfigs[201]
+		center.Attack_type = defs.AttackType_BLUNT
+		defs.BuildingConfigs[201] = center
+	})
+	owner, unit, center := g.Human(1), unitID(g, 1, 0, 21), centerID(g)
 	g.Action(owner, "set-unit-behavior", gin.H{"internal_ids": []uint64{unit}, "stance": 1, "interrupt_current": true, "attack_back": false, "target_priority": []uint8{3, 1, 2}})
 	g.Action(owner, "set-building-behavior", gin.H{"internal_ids": []uint64{center}, "auto_attack": false, "interrupt_current": true, "target_priority": []uint8{2, 3, 1}})
 	for human := range 2 {
@@ -92,21 +96,21 @@ func TestMovePathWireShape(t *testing.T) {
 
 func TestUnderConstructionBuildingWireShape(t *testing.T) {
 	g := configuredGame(t, 4, func() {
-		unit := defs.UnitConfigs[1]
+		unit := defs.UnitConfigs[11]
 		unit.Turn_stamina = 10
-		defs.UnitConfigs[1] = unit
-		housing := defs.BuildingConfigs[2]
-		housing.Build_stamina = 90
-		defs.BuildingConfigs[2] = housing
+		defs.UnitConfigs[11] = unit
+		shelter := defs.BuildingConfigs[202]
+		shelter.Build_stamina = 90
+		defs.BuildingConfigs[202] = shelter
 	})
-	g.Submit(g.Human(1), harness.OrderBuild([]uint64{unitID(g, 1, 0, 1)}, 2, 0, 0, 0, 1))
+	g.Submit(g.Human(1), harness.OrderBuild([]uint64{unitID(g, 1, 0, 11)}, 202, 0, 0, 0, 1))
 	g.EndTurn()
 	for human := range 2 {
 		owner := player(t, snapshot(g, human, false), 1)
 		found := false
 		for _, value := range array(t, owner["buildings"]) {
 			building := object(t, value)
-			if building["building_id"] == float64(2) {
+			if building["building_id"] == float64(202) {
 				found = true
 				checkShape(t, building, buildingShape+" "+privateBuildingShape)
 				equal(t, building["under_construction"], true)
@@ -117,7 +121,7 @@ func TestUnderConstructionBuildingWireShape(t *testing.T) {
 			}
 		}
 		if !found {
-			t.Fatal("under-construction housing missing")
+			t.Fatal("under-construction shelter missing")
 		}
 	}
 }
@@ -126,7 +130,7 @@ func TestFoundationWireShapeAndPrivacy(t *testing.T) {
 	g := shapeGame(t, 4)
 	unit, _ := queueWork(g)
 	owner := g.Human(1)
-	g.Submit(owner, harness.OrderBuild([]uint64{unit}, 2, 1, 0, 0, 0))
+	g.Submit(owner, harness.OrderBuild([]uint64{unit}, 202, 1, 0, 0, 0))
 	g.EndTurn()
 	p := player(t, snapshot(g, owner, false), 1)
 	foundations := array(t, p["planned_foundations"])
@@ -134,19 +138,19 @@ func TestFoundationWireShapeAndPrivacy(t *testing.T) {
 	foundation := checkShape(t, foundations[0], "coordinate_key:n building_id:n display_name:s stamina_cost:n cost:o")
 	checkShape(t, foundation["cost"], costShape)
 	equal(t, foundation["coordinate_key"], float64(harness.ZoneKey(1, 0, 0, 0)))
-	equal(t, foundation["building_id"], float64(2))
+	equal(t, foundation["building_id"], float64(202))
 	equal(t, object(t, foundation["cost"])["wood"], float64(30))
 	checkShape(t, player(t, snapshot(g, g.Human(0), false), 1), playerShape)
 }
 
 func garrisonSetup(g *harness.Game) (uint64, uint64) {
 	g.T.Helper()
-	unit, center, owner := unitID(g, 1, 0, 1), centerID(g), g.Human(1)
+	unit, center, owner := unitID(g, 1, 0, 11), centerID(g), g.Human(1)
 	g.Action(owner, "set-gather-point", gin.H{"building_id": center, "location_kind": 1, "location_id": harness.SpaceKey(1, 0), "object_type": 0, "object_id": 0})
 	g.Submit(owner, harness.OrderGarrison([]uint64{unit}, center))
 	g.EndTurn()
 	if g.State(owner).Unit(unit).GarrisonedIn == nil {
-		g.T.Fatal("villager did not garrison")
+		g.T.Fatal("worker did not garrison")
 	}
 	return unit, center
 }
@@ -182,32 +186,32 @@ func TestGarrisonAndGatherPointVisibility(t *testing.T) {
 	}
 }
 
-func TestRenewingFarmWireShape(t *testing.T) {
+func TestRenewingOrchardWireShape(t *testing.T) {
 	g := configuredGame(t, 4, func() {
-		farm := defs.BuildingConfigs[3]
-		farm.Gather.Starting_resources = 0
-		defs.BuildingConfigs[3] = farm
+		orchard := defs.BuildingConfigs[203]
+		orchard.Gather.Starting_resources = 0
+		defs.BuildingConfigs[203] = orchard
 	})
 	owner := player(t, snapshot(g, g.Human(1), false), 1)
-	var farmID uint64
+	var orchardID uint64
 	for _, value := range array(t, owner["buildings"]) {
-		farm := object(t, value)
-		if farm["building_id"] == float64(3) {
-			farmID = uint64(farm["internal_id"].(float64))
+		orchard := object(t, value)
+		if orchard["building_id"] == float64(203) {
+			orchardID = uint64(orchard["internal_id"].(float64))
 		}
 	}
-	if farmID == 0 {
-		t.Fatal("farm missing")
+	if orchardID == 0 {
+		t.Fatal("orchard missing")
 	}
-	g.Submit(g.Human(1), harness.Order(defs.OrderType_UnitRenew, []uint64{unitID(g, 1, 0, 1)}, int64(farmID), false))
+	g.Submit(g.Human(1), harness.Order(defs.OrderType_UnitRenew, []uint64{unitID(g, 1, 0, 11)}, int64(orchardID), false))
 	g.EndTurn()
 	for human := range 2 {
 		p := player(t, snapshot(g, human, false), 1)
-		farm := checkShape(t, entity(t, p, "buildings", farmID), buildingShape+" "+privateBuildingShape+" "+farmShape+" renew_stamina_remaining:n")
-		checkShape(t, farm["renew_cost"], costShape)
-		equal(t, farm["resources_left"], float64(0))
-		equal(t, farm["renewing"], true)
-		equal(t, farm["display_name"], "Farm (expired)")
+		orchard := checkShape(t, entity(t, p, "buildings", orchardID), buildingShape+" "+privateBuildingShape+" "+orchardShape+" renew_stamina_remaining:n")
+		checkShape(t, orchard["renew_cost"], costShape)
+		equal(t, orchard["resources_left"], float64(0))
+		equal(t, orchard["renewing"], true)
+		equal(t, orchard["display_name"], "Test Orchard (expired)")
 	}
 }
 
@@ -221,8 +225,8 @@ func TestOwnedEntityWireShapes(t *testing.T) {
 	for _, value := range array(t, owner["buildings"]) {
 		building := object(t, value)
 		contract := buildingShape + " " + privateBuildingShape
-		if building["building_id"] == float64(3) {
-			contract += " " + farmShape
+		if building["building_id"] == float64(203) {
+			contract += " " + orchardShape
 			checkShape(t, building["renew_cost"], costShape)
 		}
 		checkShape(t, building, contract)
@@ -240,7 +244,7 @@ func TestOwnedEntityWireShapes(t *testing.T) {
 func TestBackgroundAndSpaceLinksWireShapes(t *testing.T) {
 	saved15 := defs.UnitConfigs[15]
 	t.Cleanup(func() { defs.UnitConfigs[15] = saved15 })
-	defs.UnitConfigs[15] = defs.UnitConfigs[1]
+	defs.UnitConfigs[15] = defs.UnitConfigs[11]
 	g := harness.NewGame(t, "custom:metadata", 1, 2)
 	equal(t, len(array(t, snapshot(g, g.Human(0), true)["space_links"])), 0)
 	state := checkShape(t, snapshot(g, g.Human(0), false), gameShape)
@@ -283,7 +287,7 @@ func checkProducible(t *testing.T, value any) {
 			checkShape(t, unlocked, "id:n display_name:s")
 		}
 	case float64(3):
-		contract += " population_support:n garrison_capacity:n max_per_player:n"
+		contract += " population_support:n garrison_capacity:n max_per_player:n is_wall:b"
 	default:
 		t.Fatalf("unknown producible kind %v", item["kind"])
 	}

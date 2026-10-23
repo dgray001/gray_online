@@ -56,6 +56,9 @@ func (u *RisqUnit) orderReceivable(o *RisqOrder, risq *GameRisq) bool {
 		if owner := zone.space.ownership; owner >= 0 && owner != u.player_id {
 			return false
 		}
+		if !zone.allowsBuilding(u.config.Buildings[building_id]) {
+			return false
+		}
 		if risq.players[u.player_id].atBuildingLimit(building_id, zone) {
 			return false
 		}
@@ -145,18 +148,25 @@ func reachableStatus(reachable bool) OrderStatus {
 	return OrderStatus_InProgress
 }
 
+func moveStatus(can_get_closer bool) OrderStatus {
+	if !can_get_closer {
+		return OrderStatus_Executed
+	}
+	return OrderStatus_InProgress
+}
+
 func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 	switch o.order_type {
 	case defs.OrderType_UnitMoveSpace:
 		space := invertSpaceKey(uint(o.target_id), risq)
 		start, _ := u.pathStart()
 		if start == nil || start.space != space {
-			return reachableStatus(u.canReach(space.getCenterZone(), defs.RisqRange_ZONE))
+			return moveStatus(u.canReach(space.getCenterZone(), defs.RisqRange_ZONE))
 		}
 	case defs.OrderType_UnitMoveZone:
 		_, zone := invertZoneKey(uint(o.target_id), risq)
 		if u.zone != zone {
-			return reachableStatus(u.canReach(zone, defs.RisqRange_ZONE))
+			return moveStatus(u.canReach(zone, defs.RisqRange_ZONE))
 		}
 	case defs.OrderType_UnitGather:
 		_, zone := invertZoneKey(uint(o.target_id), risq)
@@ -255,7 +265,7 @@ func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 		if o.order_type == defs.OrderType_UnitAutoAttackBuilding && !u.stanceReachable(target.zone) {
 			return OrderStatus_Cancelled
 		}
-		return reachableStatus(u.inAttackRange(target.zone) || u.canReach(target.zone, u.attack_range))
+		return reachableStatus(u.inAttackRange(target.zone) || u.canReachToAttack(target.zone))
 	case defs.OrderType_UnitAttackUnit, defs.OrderType_UnitAutoAttackUnit:
 		target := risq.units[uint64(o.target_id)]
 		if target == nil || target.isDeleted() {
@@ -274,19 +284,17 @@ func (u *RisqUnit) orderStatus(o *RisqOrder, risq *GameRisq) OrderStatus {
 	case defs.OrderType_UnitAttackZone:
 		_, zone := invertZoneKey(uint(o.target_id), risq)
 		if !u.inAttackRange(zone) {
-			return reachableStatus(u.canReach(zone, u.attack_range))
+			return reachableStatus(u.canReachToAttack(zone))
 		}
 		if zoneHasEnemy(zone, u.player_id) {
 			return OrderStatus_InProgress
 		}
 	case defs.OrderType_UnitAttackSpace:
 		space := invertSpaceKey(uint(o.target_id), risq)
-		space_range, _ := u.attack_range.SpaceRadius()
-		start, _ := u.pathStart()
-		if start == nil || start.space.distanceTo(space) > space_range {
-			return reachableStatus(u.canReach(space.getCenterZone(), u.attack_range))
+		if !u.canAttackInSpace(space) {
+			return reachableStatus(u.canReach(space.getCenterZone(), defs.RisqRange_ZONE))
 		}
-		if spaceHasEnemy(space, u.player_id) {
+		if spaceAttackTarget(u, space, risq) != nil {
 			return OrderStatus_InProgress
 		}
 	}

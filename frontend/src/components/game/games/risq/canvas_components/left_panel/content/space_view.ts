@@ -353,10 +353,9 @@ export function drawRegion(pc: PanelDrawContext, region: RisqRegion): void {
     font: '20px serif',
   });
   yi += 40;
-  const space_count =
-    region.unexplored_spaces > 0
-      ? `${region.spaces.length}/? spaces explored`
-      : `${region.spaces.length} space${region.spaces.length === 1 ? '' : 's'}`;
+  const space_count = region.has_unexplored_spaces
+    ? `${region.spaces.length}/? spaces explored`
+    : `${region.spaces.length} space${region.spaces.length === 1 ? '' : 's'}`;
   drawText(ctx, space_count, {
     p: { x: frame.xi() + 0.1 * frame.w(), y: yi },
     w: 0.8 * frame.w(),
@@ -391,9 +390,6 @@ export function drawRegionOwnership(pc: PanelDrawContext, region: RisqRegion, yi
     if (count > 0) {
       draw_count(player.player.nickname, count, player.color.getString());
     }
-  }
-  if (region.unexplored_spaces > 0) {
-    draw_count('Unexplored', region.unexplored_spaces);
   }
   draw_count('Unowned', counts.get(-1) ?? 0);
 }

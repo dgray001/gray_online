@@ -131,7 +131,7 @@ func buildUnitBuilds(config *defs.Config) map[uint32][]ai.Producible {
 				continue
 			}
 			cost, _ := config.BuildingProductionCost(p.Id)
-			builds = append(builds, ai.Producible{Kind: ai.ProducibleBuilding, ID: p.Id, Cost: toCost(cost)})
+			builds = append(builds, ai.Producible{Kind: ai.ProducibleBuilding, ID: p.Id, Cost: toCost(cost), StaminaCost: config.Buildings[p.Id].Build_stamina})
 		}
 		table[unit_id] = builds
 	}
@@ -189,15 +189,15 @@ func (v *aiView) currentOrder(orders []snapOrder) *ai.CurrentOrder {
 		_, zone_key := util.InvertPair(uint(active.TargetId))
 		ref := zoneRefFromKey(uint(zone_key))
 		order.TargetZone = &ref
-	case defs.OrderType_UnitAttackSpace:
+	case defs.OrderType_UnitMoveSpace, defs.OrderType_UnitAttackSpace:
 		x, y := util.InvertPair(uint(active.TargetId))
 		order.TargetSpace = &ai.Coordinate{X: x, Y: y}
-	case defs.OrderType_UnitAttackUnit:
+	case defs.OrderType_UnitAttackUnit, defs.OrderType_UnitAutoAttackUnit:
 		if target, ok := v.units[uint64(active.TargetId)]; ok {
 			view := v.unitViewShallow(target)
 			order.TargetUnit = &view
 		}
-	case defs.OrderType_UnitAttackBuilding, defs.OrderType_UnitGarrison, defs.OrderType_UnitRepair, defs.OrderType_UnitRenew:
+	case defs.OrderType_UnitAttackBuilding, defs.OrderType_UnitAutoAttackBuilding, defs.OrderType_UnitGarrison, defs.OrderType_UnitRepair, defs.OrderType_UnitRenew:
 		if target, ok := v.buildings[uint64(active.TargetId)]; ok {
 			view := v.buildingView(target)
 			order.TargetBuilding = &view
@@ -229,6 +229,9 @@ func (v *aiView) unitViewShallow(u *snapUnit) ai.UnitView {
 		Kind:             kind,
 		Location:         v.unitLocation(u),
 		CurrentStamina:   u.CurrentStamina,
+		MaxStamina:       u.MaxStamina,
+		AttackRange:      ai.AttackRange(v.config.Units[u.UnitId].Attack_range),
+		CanAttack:        v.config.Units[u.UnitId].Attack_type != defs.AttackType_NONE,
 		Builds:           v.unitBuilds(u.UnitId),
 		GarrisonedIn:     u.GarrisonedIn,
 		Stance:           ai.UnitStance(u.Stance),
@@ -275,15 +278,27 @@ func (v *aiView) producibles(b *snapBuilding) []ai.Producible {
 				continue
 			}
 			cost, _ := v.config.UnitProductionCost(p.Id)
-			producibles = append(producibles, ai.Producible{Kind: ai.ProducibleUnit, ID: p.Id, Cost: toCost(cost), UnitType: ai.UnitType(v.config.Units[p.Id].Unit_type)})
+			producibles = append(producibles, ai.Producible{Kind: ai.ProducibleUnit, ID: p.Id, Cost: toCost(cost), UnitType: ai.UnitType(v.config.Units[p.Id].Unit_type), StaminaCost: v.config.Units[p.Id].Production_stamina})
 		case defs.ProducibleKind_TECH:
 			if _, researching_or_done := v.me.ResearchedTechs[p.Id]; researching_or_done || v.planned_techs[p.Id] || !v.techMet(v.config.Techs[p.Id].Required_tech_id) {
 				continue
 			}
-			producibles = append(producibles, ai.Producible{Kind: ai.ProducibleTech, ID: p.Id, Cost: toCost(v.config.Techs[p.Id].Cost)})
+			producibles = append(producibles, ai.Producible{Kind: ai.ProducibleTech, ID: p.Id, Cost: toCost(v.config.Techs[p.Id].Cost), StaminaCost: v.config.Techs[p.Id].Research_stamina})
 		}
 	}
 	return producibles
+}
+
+func (v *aiView) AvailableMercenaries() []ai.Producible {
+	mercenaries := make([]ai.Producible, 0, len(v.me.AvailableMercenaries))
+	for _, mercenary := range v.me.AvailableMercenaries {
+		mercenaries = append(mercenaries, ai.Producible{
+			Kind: ai.ProducibleKind(mercenary.Kind), ID: mercenary.ID,
+			UnitType: ai.UnitType(mercenary.UnitType), StaminaCost: mercenary.Stamina,
+			Cost: ai.Cost{Food: mercenary.Cost.Food, Wood: mercenary.Cost.Wood, Stone: mercenary.Cost.Stone, Gold: mercenary.Cost.Gold},
+		})
+	}
+	return mercenaries
 }
 
 func (v *aiView) buildingView(b *snapBuilding) ai.BuildingView {
@@ -293,13 +308,19 @@ func (v *aiView) buildingView(b *snapBuilding) ai.BuildingView {
 		PlayerID:          b.PlayerId,
 		BuildingID:        b.BuildingId,
 		Location:          zoneRefOf(b.Space, b.Zone),
+		AttackRange:       ai.AttackRange(config.Attack_range),
+		MaxStamina:        b.MaxStamina,
+		Visible:           true,
 		UnderConstruction: b.UnderConstruction,
 		Idle:              !b.UnderConstruction && len(b.ActiveOrders) == 0 && len(config.Produces) > 0,
 		Producibles:       v.producibles(b),
 		GarrisonCount:     len(b.GarrisonedUnits),
 		GarrisonCapacity:  b.GarrisonCapacity,
 		Gatherable:        config.IsGatherable(),
+		ResourceCategory:  toAiCategory(config.Gather.Resource_category),
 		ResourcesLeft:     b.ResourcesLeft,
+		GatherSpeed:       config.Gather.Base_gather_speed,
+		GatherCapacity:    config.Gather.Gather_capacity,
 		Renewing:          b.Renewing,
 		RenewCost:         toCost(config.Gather.Renew_cost),
 		Health:            b.CombatStats.Health,

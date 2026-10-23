@@ -69,6 +69,42 @@ func (z *RisqZone) isCenter() bool {
 	return z.direction < 0
 }
 
+func (z *RisqZone) allowsBuilding(config defs.BuildingConfig) bool {
+	return !config.Is_wall || !z.isCenter()
+}
+
+func (z *RisqZone) wallBlocksEntry(from *RisqZone, player_id int, walls map[*RisqBuilding]bool) bool {
+	return from.space != z.space && walls[z.building] && z.building.player_id != player_id
+}
+
+func (r *GameRisq) computeBlockingWalls() map[*RisqBuilding]bool {
+	walls := make(map[*RisqBuilding]bool)
+	for _, b := range r.buildings {
+		if !b.deleted && !b.underConstruction() && r.config.Buildings[b.building_id].Is_wall {
+			walls[b] = true
+		}
+	}
+	return walls
+}
+
+func (z *RisqZone) knownWallBlocksEntry(from *RisqZone, player_id int) bool {
+	cache, ok := z.buildingKnownTo(player_id)
+	if !ok && from == z.borderNeighbor() && z.building != nil && !z.building.deleted {
+		cache, ok = cacheRisqBuilding(z.building), true
+	}
+	return ok && from.space != z.space && !cache.under_construction && cache.player_id != player_id && cache.config.Buildings[cache.building_id].Is_wall
+}
+
+// The zone across the space border that this edge zone touches, nil for the center zone
+func (z *RisqZone) borderNeighbor() *RisqZone {
+	for _, adjacent := range z.adjacent_zones {
+		if adjacent.space != z.space {
+			return adjacent
+		}
+	}
+	return nil
+}
+
 func (z *RisqZone) updateRubble(r *GameRisq, advance bool) {
 	if z.destroyed_building == 0 {
 		return

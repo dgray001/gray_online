@@ -8,6 +8,14 @@ import (
 )
 
 // moveOrAct sets a move intent toward target unless arrived is true, in which case it runs act instead
+func (u *RisqUnit) moveOrAttack(arrived bool, target *RisqZone, act func()) {
+	if !arrived {
+		u.intent.setMove(u.findAttackPath(target))
+		return
+	}
+	act()
+}
+
 func (u *RisqUnit) moveOrAct(arrived bool, target *RisqZone, move_range defs.RisqRange, act func()) {
 	if !arrived {
 		u.intent.setMove(u.findPath(target, move_range))
@@ -64,7 +72,7 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 		u.intent.setDelete()
 	case defs.OrderType_UnitAttackBuilding, defs.OrderType_UnitAutoAttackBuilding:
 		target := risq.buildings[uint64(order.target_id)]
-		u.moveOrAct(u.inAttackRange(target.zone), target.zone, u.attack_range, func() {
+		u.moveOrAttack(u.inAttackRange(target.zone), target.zone, func() {
 			u.intent.setUnitAttack(target)
 		})
 		u.markChase(target)
@@ -76,7 +84,7 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 		u.markChase(target)
 	case defs.OrderType_UnitAttackZone:
 		_, zone := invertZoneKey(uint(order.target_id), risq)
-		u.moveOrAct(u.inAttackRange(zone), zone, u.attack_range, func() {
+		u.moveOrAttack(u.inAttackRange(zone), zone, func() {
 			if target := zoneAttackTarget(zone, u.player_id, u.target_priority); target != nil {
 				u.intent.setUnitAttack(target)
 			}
@@ -90,20 +98,16 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 			u.intent.setUngarrison(u.garrisoned_in)
 			break
 		}
-		space_range, _ := u.attack_range.SpaceRadius()
-		start, _ := u.pathStart()
-		in_space_range := start != nil && start.space.distanceTo(space) <= space_range
-		u.moveOrAct(in_space_range, space.getCenterZone(), u.attack_range, func() {
-			if target := spaceAttackTarget(u, space); target != nil {
-				target_zone := target.currentZone()
-				u.moveOrAct(u.inAttackRange(target_zone), target_zone, u.attack_range, func() {
-					u.intent.setUnitAttack(target)
-				})
-				u.markChase(target)
-			}
-		})
-		if move, ok := u.intent.detail.(*MoveIntent); ok && u.attack_range == defs.RisqRange_SPACE && move.next_step.space == space {
-			u.markChase(zoneAttackTarget(move.next_step, u.player_id, u.target_priority))
+		if !u.canAttackInSpace(space) {
+			u.intent.setMove(u.findPath(space.getCenterZone(), defs.RisqRange_ZONE))
+			break
+		}
+		if target := spaceAttackTarget(u, space, risq); target != nil {
+			target_zone := target.currentZone()
+			u.moveOrAttack(u.inAttackRange(target_zone), target_zone, func() {
+				u.intent.setUnitAttack(target)
+			})
+			u.markChase(target)
 		}
 	case defs.OrderType_UnitRepair:
 		target := risq.buildings[uint64(order.target_id)]
@@ -180,6 +184,10 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 	}
 	switch detail := u.intent.detail.(type) {
 	case *MoveIntent:
+		if detail.next_step.wallBlocksEntry(u.zone, u.player_id, risq.blocking_walls) {
+			u.blockTickAction("blocked_by_wall")
+			return
+		}
 		util.Debugf(risq.std, "Moving unit %d %s to zone%s in space %s tick=%d turn=%d stamina=%d from=%s",
 			u.internal_id, u.display_name, detail.next_step.coordinate.ToString(), detail.next_step.space.coordinate.ToString(), risq.current_tick, risq.turn_number, u.intent.intent_cost, u.zone.space.coordinate.ToString())
 		old_zone := u.zone
@@ -188,6 +196,7 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 			delete(old_zone.units, u.internal_id)
 			u.zone = new_zone
 			new_zone.units[u.internal_id] = u
+			new_zone.space.addVision(u.vision(), new_zone, u.player_id)
 		} else {
 			old_zone.space.removeUnit(u)
 			new_zone.space.setUnit(&new_zone.coordinate, u)

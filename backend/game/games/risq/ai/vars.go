@@ -3,6 +3,7 @@ package ai
 import (
 	"fmt"
 	"io"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -23,16 +24,28 @@ var (
 )
 
 type varNameLog struct {
-	read map[string]bool
-	set  map[string]bool
+	read   map[string]bool
+	set    map[string]bool
+	random bool
 	// the for_each loops enclosing the action being parsed, innermost last, and what is wrong with the item fields read so far
 	scopes []loopScope
 	errors []string
 }
 
 type loopScope struct {
-	name   string
-	source string
+	name    string
+	source  string
+	extra   []string
+	barrier string
+}
+
+func withScopeBarrier(label string, parse func() error) error {
+	if var_names_log == nil {
+		return parse()
+	}
+	var_names_log.scopes = append(var_names_log.scopes, loopScope{barrier: label})
+	defer func() { var_names_log.scopes = var_names_log.scopes[:len(var_names_log.scopes)-1] }()
+	return parse()
 }
 
 func noteVarRead(name string) {
@@ -50,10 +63,14 @@ func noteVarRead(name string) {
 func (l *varNameLog) noteItemRead(name string) {
 	prefix, field, _ := strings.Cut(name, ".")
 	for i := len(l.scopes) - 1; i >= 0; i-- {
+		if l.scopes[i].barrier != "" {
+			l.errors = append(l.errors, fmt.Sprintf("var(%s): %s is resolved once, before any item, so it cannot read %q; use a let with an aggregate for per-item values", name, l.scopes[i].barrier, prefix))
+			return
+		}
 		if l.scopes[i].name != prefix {
 			continue
 		}
-		if !hasItemField(l.scopes[i].source, field) {
+		if !hasItemField(l.scopes[i].source, field) && !slices.Contains(l.scopes[i].extra, field) {
 			l.errors = append(l.errors, fmt.Sprintf("var(%s): %s items have no field %q", name, l.scopes[i].source, field))
 		}
 		return
@@ -63,10 +80,14 @@ func (l *varNameLog) noteItemRead(name string) {
 
 // Parses a for_each body with its item name in scope; without a name log (a parse outside a model load) nothing is checked
 func withLoopScope(name string, source string, parse func() error) error {
+	return withLoopScopeExtra(name, source, nil, parse)
+}
+
+func withLoopScopeExtra(name string, source string, extra []string, parse func() error) error {
 	if var_names_log == nil {
 		return parse()
 	}
-	var_names_log.scopes = append(var_names_log.scopes, loopScope{name: name, source: source})
+	var_names_log.scopes = append(var_names_log.scopes, loopScope{name: name, source: source, extra: extra})
 	defer func() { var_names_log.scopes = var_names_log.scopes[:len(var_names_log.scopes)-1] }()
 	return parse()
 }
@@ -78,16 +99,17 @@ func noteVarSet(name string) {
 }
 
 // Runs parse with var() bookkeeping on, then reports names that are neither built-in nor ever set
-func withVarNameCheck(diagnostics io.Writer, parse func() error) error {
+// and returns whether any expression in the model draws random numbers
+func withVarNameCheck(diagnostics io.Writer, parse func() error) (bool, error) {
 	var_names_mu.Lock()
 	defer var_names_mu.Unlock()
 	var_names_log = &varNameLog{read: map[string]bool{}, set: map[string]bool{}}
 	defer func() { var_names_log = nil }()
 	if err := parse(); err != nil {
-		return err
+		return false, err
 	}
 	if len(var_names_log.errors) > 0 {
-		return fmt.Errorf("%s", strings.Join(var_names_log.errors, "; "))
+		return false, fmt.Errorf("%s", strings.Join(var_names_log.errors, "; "))
 	}
 	for name := range var_names_log.read {
 		if var_names_log.set[name] {
@@ -97,11 +119,21 @@ func withVarNameCheck(diagnostics io.Writer, parse func() error) error {
 			fmt.Fprintf(diagnostics, "ai config: var(%s) is not a built-in and no set_var sets it; it will read 0\n", name)
 		}
 	}
-	return nil
+	return var_names_log.random, nil
+}
+
+func noteRandomUse() {
+	if var_names_log != nil {
+		var_names_log.random = true
+	}
 }
 
 func (a *setVarAction) ToOrders(view View, internals *Internals) []Order {
+	previous := internals.eval_errors
 	v := a.value.float(view, internals)
+	if internals.eval_errors != previous {
+		return nil
+	}
 	if a.persist {
 		if internals.vars == nil {
 			internals.vars = make(map[string]float64)
@@ -117,6 +149,9 @@ func (a *setVarAction) ToOrders(view View, internals *Internals) []Order {
 }
 
 func parseSetVar(raw map[string]any) (Action, error) {
+	if err := checkActionKeys(raw, "name", "value", "persist"); err != nil {
+		return nil, fmt.Errorf("set_var: %w", err)
+	}
 	name, ok := raw["name"].(string)
 	if !ok || !validVarName(name) {
 		return nil, fmt.Errorf("set_var requires a \"name\" of letters, digits and underscores")
@@ -197,10 +232,8 @@ func builtinCounter(name string) (counter, error) {
 	if c, ok, err := costCounter(name); ok {
 		return c, err
 	}
-	for _, v := range expressionVarNames {
-		if name == v {
-			return func(view View, internals *Internals) float64 { return expressionVars(view, internals)[v] }, nil
-		}
+	if read, known := expressionCounters[name]; known {
+		return read, nil
 	}
 	base := ""
 	for candidate := range allCounterParsers() {

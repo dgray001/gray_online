@@ -36,7 +36,7 @@ func TestScriptCanSizeShapeFromMapSize(t *testing.T) {
 func TestRulesStepAppliesToEveryPlayer(t *testing.T) {
 	useScripts(t, map[string]string{"rules": `[` + hexagon2 + `,
 		{"step":"define","params":{"name":"x","value":"board_size * 3"}},
-		{"step":"rules","params":{"space_gold_income":"x + 1","starting_techs":[4,1],"unlimited_population":true,"mercenaries_need_region":false}}]`})
+		{"step":"rules","params":{"space_gold_income":"x + 1","starting_techs":[304,301],"unlimited_population":true,"mercenaries_need_region":false}}]`})
 	board := generateStartless(t, "rules", 3)
 	if board.GoldIncome == nil || *board.GoldIncome != 7 {
 		t.Errorf("gold income = %v, want 7 (defined x = 6, plus 1)", board.GoldIncome)
@@ -45,8 +45,8 @@ func TestRulesStepAppliesToEveryPlayer(t *testing.T) {
 		t.Errorf("unlimited = %t, need region = %v; want true and false", board.Unlimited, board.NeedRegion)
 	}
 	for player := 0; player < 3; player++ {
-		if got := board.Techs[player]; len(got) != 2 || got[0] != 4 || got[1] != 1 {
-			t.Errorf("player %d techs = %v, want [4 1]", player, got)
+		if got := board.Techs[player]; len(got) != 2 || got[0] != 304 || got[1] != 301 {
+			t.Errorf("player %d techs = %v, want [304 301]", player, got)
 		}
 	}
 }

@@ -46,6 +46,9 @@ func (b *Board) SetUnlimitedPopulation() {
 
 func (b *Board) SetSpaceGoldIncome(gold float64) {
 	b.GoldIncome = &gold
+	for _, space := range b.Spaces() {
+		space.SetGoldIncome(gold)
+	}
 }
 
 func (b *Board) SetMercenariesNeedRegion(need bool) {

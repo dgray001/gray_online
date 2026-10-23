@@ -5,7 +5,7 @@ import (
 )
 
 const startTemplate = `"player_start":{"size":0,"terrain":1,"spaces":[{"x":0,"y":0,"zones":[` +
-	`{"x":0,"y":0,"building":{"id":1,"player":0},"units":[{"id":1,"player":0,"count":3}]}]}]}`
+	`{"x":0,"y":0,"building":{"id":201,"player":0},"units":[{"id":11,"player":0,"count":3}]}]}]}`
 
 func startsDoc(player_start string, spaces string) string {
 	return `{"board_size":2,"players":2,` + player_start + `,"spaces":[` + spaces + `]}`
@@ -17,7 +17,7 @@ func TestPlayerStartStampsEachSlotForItsOwnPlayer(t *testing.T) {
 	board := mustGenerate(t, startsDoc(startTemplate, twoSlots), 2)
 	for player, x := range map[int]int{0: -2, 1: 2} {
 		center := zoneAt(t, board, x, 0, 0, 0)
-		if center.Building.ID != 1 || center.Building.Player != player || len(center.Units) != 3 || center.Units[0].Player != player {
+		if center.Building.ID != 201 || center.Building.Player != player || len(center.Units) != 3 || center.Units[0].Player != player {
 			t.Errorf("slot %d center = %+v, want its own building and 3 units", player, center)
 		}
 	}
@@ -50,7 +50,7 @@ func playerHomes(t *testing.T, doc string, seed int64) [2][2]int {
 	board := seededBoard(t, doc, 2, seed, nil)
 	var homes [2][2]int
 	for coordinate := range fourSlots {
-		if center := zoneAt(t, board, coordinate[0], coordinate[1], 0, 0); center.Building.ID == 1 {
+		if center := zoneAt(t, board, coordinate[0], coordinate[1], 0, 0); center.Building.ID == 201 {
 			homes[center.Building.Player] = coordinate
 		}
 	}
@@ -81,7 +81,7 @@ func TestStartTemplateWithoutAssetsUsesDevelopmentDefaults(t *testing.T) {
 		development float64
 		building    uint32
 		units       int
-	}{"standard": {2, 1, 4}, "nomad": {1, 0, 3}} {
+	}{"standard": {2, 201, 4}, "nomad": {1, 0, 3}} {
 		t.Run(name, func(t *testing.T) {
 			board := seededBoard(t, doc, 2, 1, map[string]any{"starting_development": tc.development})
 			for _, x := range []int{-2, 2} {
@@ -95,12 +95,12 @@ func TestStartTemplateWithoutAssetsUsesDevelopmentDefaults(t *testing.T) {
 }
 
 func TestStartTemplateWithUnitsReplacesDevelopmentDefaults(t *testing.T) {
-	template := `"player_start":{"size":0,"terrain":1,"spaces":[{"x":0,"y":0,"zones":[{"x":0,"y":0,"units":[{"id":101,"count":"starting_development"}]}]}]}`
+	template := `"player_start":{"size":0,"terrain":1,"spaces":[{"x":0,"y":0,"zones":[{"x":0,"y":0,"units":[{"id":21,"count":"starting_development"}]}]}]}`
 	board := seededBoard(t, startsDoc(template, twoSlots), 2, 1, map[string]any{"starting_development": float64(3)})
 	for _, x := range []int{-2, 2} {
 		home := zoneAt(t, board, x, 0, 0, 0)
-		if home.Building.ID != 0 || len(home.Units) != 3 || home.Units[0].ID != 101 {
-			t.Errorf("home at x=%d: %+v, want only three of unit 101 with no default building", x, home)
+		if home.Building.ID != 0 || len(home.Units) != 3 || home.Units[0].ID != 21 {
+			t.Errorf("home at x=%d: %+v, want only three of unit 21 with no default building", x, home)
 		}
 	}
 }

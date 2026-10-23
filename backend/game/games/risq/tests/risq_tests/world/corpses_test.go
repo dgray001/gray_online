@@ -12,22 +12,22 @@ import (
 
 func corpseGame(t *testing.T, visibility defs.VisibilityLevel) *harness.Game {
 	t.Helper()
-	spaces := spaceWith(0, 0, grass, unit(villager, 0)+","+unit(villager, 0)+","+unit(infantry, 1)) + "," +
-		spaceWith(-3, 0, grass, unit(villager, 0)) + "," + spaceWith(3, 0, grass, unit(villager, 1))
-	config := defs.UnitConfigs[infantry]
+	spaces := spaceWith(0, 0, flatTerrain, unit(worker, 0)+","+unit(worker, 0)+","+unit(grunt, 1)) + "," +
+		spaceWith(-3, 0, flatTerrain, unit(worker, 0)) + "," + spaceWith(3, 0, flatTerrain, unit(worker, 1))
+	config := defs.UnitConfigs[grunt]
 	config.Attack_blunt = 200
 	config.Vision.Space = visibility
 	config.Vision.Adjacent, config.Vision.Secondary = defs.VisibilityUnexplored, defs.VisibilityUnexplored
-	defs.UnitConfigs[infantry] = config
+	defs.UnitConfigs[grunt] = config
 	g := startGame(t, mapDoc("", spaces))
-	attacker := unitAt(g, g.Human(1), infantry, 0, 0)
+	attacker := unitAt(g, g.Human(1), grunt, 0, 0)
 	g.Action(g.Human(1), "set-unit-behavior", gin.H{"internal_ids": []uint64{attacker}, "stance": uint8(defs.UnitStance_PASSIVE), "attack_back": false})
 	return g
 }
 
 func killZoneUnits(g *harness.Game) {
 	g.T.Helper()
-	attacker := unitAt(g, g.Human(1), infantry, 0, 0)
+	attacker := unitAt(g, g.Human(1), grunt, 0, 0)
 	g.Submit(g.Human(1), harness.Order(defs.OrderType_UnitAttackZone, []uint64{attacker}, harness.ZoneKey(0, 0, 0, 0), false))
 	g.EndTurn()
 }
@@ -87,7 +87,7 @@ func TestCorpseAgesIndependently(t *testing.T) {
 	victims := expectedCorpses(g)
 	ids := slices.Sorted(maps.Keys(victims))
 	want := make(map[uint64]harness.CorpseState)
-	attacker := unitAt(g, g.Human(1), infantry, 0, 0)
+	attacker := unitAt(g, g.Human(1), grunt, 0, 0)
 	for _, id := range ids {
 		g.Submit(g.Human(1), harness.OrderAttackUnit([]uint64{attacker}, id))
 		g.EndTurn()

@@ -51,6 +51,9 @@ func (v *aiView) ClosestSpaces(reference ai.Coordinate, condition ai.SpaceCondit
 }
 
 func (v *aiView) spaceMatches(space *snapSpace, c ai.SpaceCondition) bool {
+	if !spaceTerrainMatches(space, c) {
+		return false
+	}
 	if c.UnitCountAtLeast != nil || c.UnitCountAtMost != nil {
 		count, known := v.spaceUnitCount(space)
 		if !known || c.UnitCountAtLeast != nil && count < *c.UnitCountAtLeast || c.UnitCountAtMost != nil && count > *c.UnitCountAtMost {
@@ -90,6 +93,28 @@ func (v *aiView) spaceMatches(space *snapSpace, c ai.SpaceCondition) bool {
 		return false
 	}
 	return true
+}
+
+func spaceTerrainMatches(space *snapSpace, c ai.SpaceCondition) bool {
+	t := space.TerrainStats
+	filtered := len(c.TerrainTypes) > 0 || c.Passable != nil || c.IntraCostAtLeast != nil || c.IntraCostAtMost != nil || c.InterCostAtLeast != nil || c.InterCostAtMost != nil || c.BuildSpeedModifierAtLeast != nil || c.BuildSpeedModifierAtMost != nil
+	if t == nil || space.Visibility == defs.VisibilityUnexplored {
+		return !filtered
+	}
+	if len(c.TerrainTypes) > 0 {
+		matched := false
+		for _, name := range c.TerrainTypes {
+			kind, err := defs.ParseTerrainType(name)
+			matched = matched || err == nil && uint8(kind) == space.TerrainType
+		}
+		if !matched {
+			return false
+		}
+	}
+	return !(c.Passable != nil && *c.Passable == t.Impassable ||
+		c.IntraCostAtLeast != nil && t.IntraCost < *c.IntraCostAtLeast || c.IntraCostAtMost != nil && t.IntraCost > *c.IntraCostAtMost ||
+		c.InterCostAtLeast != nil && t.InterCost < *c.InterCostAtLeast || c.InterCostAtMost != nil && t.InterCost > *c.InterCostAtMost ||
+		c.BuildSpeedModifierAtLeast != nil && t.BuildSpeedModifier < *c.BuildSpeedModifierAtLeast || c.BuildSpeedModifierAtMost != nil && t.BuildSpeedModifier > *c.BuildSpeedModifierAtMost)
 }
 
 func (v *aiView) ownerMatches(owner int, selector string, player_id *int) bool {
@@ -171,11 +196,33 @@ func (v *aiView) AllSpaces() []ai.SpaceInfo {
 		for _, space := range row {
 			if space != nil {
 				owner, _ := spaceOwner(space)
-				infos = append(infos, ai.SpaceInfo{Space: toCoordinate(space.Coordinate), Vision: space.Visibility, Owner: owner, UnitCount: space.UnitCount})
+				info := ai.SpaceInfo{Space: toCoordinate(space.Coordinate), Vision: space.Visibility, Owner: owner, UnitCount: space.UnitCount, GoldIncome: space.GoldIncome}
+				if terrain := space.TerrainStats; terrain != nil {
+					info.TerrainType, info.Passable = space.TerrainType, !terrain.Impassable
+					info.IntraCost, info.InterCost = terrain.IntraCost, terrain.InterCost
+					info.BuildSpeedModifier = terrain.BuildSpeedModifier
+				}
+				infos = append(infos, info)
 			}
 		}
 	}
 	return infos
+}
+
+func (v *aiView) AllRegions() []ai.RegionInfo {
+	byKey := make(map[uint]ai.Coordinate, len(v.spaces))
+	for coordinate := range v.spaces {
+		byKey[spaceKey(coordinate)] = coordinate
+	}
+	regions := make([]ai.RegionInfo, 0, len(v.game.Regions))
+	for _, region := range v.game.Regions {
+		info := ai.RegionInfo{Name: region.Name, GoldBonus: region.GoldBonus, Owner: region.Owner, HasUnexplored: region.HasUnexplored}
+		for _, key := range region.Spaces {
+			info.Spaces = append(info.Spaces, byKey[key])
+		}
+		regions = append(regions, info)
+	}
+	return regions
 }
 
 func (v *aiView) EnemyDistance(from ai.Coordinate) int {
@@ -285,8 +332,12 @@ func (v *aiView) BuildSites(building_id uint32, include func(ai.Coordinate) bool
 		claimed[location.Space] = true
 	}
 	sites := make([]ai.ZoneRef, 0)
+	wall := v.config.Buildings[building_id].Is_wall
 	for _, entry := range v.zones {
 		if include != nil && !include(entry.ref.Space) {
+			continue
+		}
+		if wall && entry.ref.Zone == (ai.Coordinate{}) {
 			continue
 		}
 		if entry.zone.Resource != nil || entry.zone.Building != nil || foundations[entry.ref] != nil || !v.buildable(entry.space) {

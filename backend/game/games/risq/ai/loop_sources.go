@@ -17,8 +17,45 @@ var loopSourceParsers map[string]func(where map[string]any) (loopSource, error)
 func init() {
 	loopSourceParsers = map[string]func(where map[string]any) (loopSource, error){
 		"players": parsePlayerSource, "spaces": parseSpaceSource, "units": parseUnitSource,
-		"buildings": parseBuildingSource, "resources": parseResourceSource, "zones": parseZoneSource,
+		"buildings": parseBuildingSource, "resources": parseResourceSource, "zones": parseZoneSource, "regions": parseRegionSource,
+		"mercenaries": parseMercenarySource, "foundations": parseFoundationSource,
+		"gatherables": parseGatherableSource, "attackables": parseAttackableSource,
 	}
+}
+
+type mercenarySource struct{}
+
+func parseMercenarySource(where map[string]any) (loopSource, error) {
+	if err := checkKeys(where); err != nil {
+		return nil, err
+	}
+	return &mercenarySource{}, nil
+}
+
+func (s *mercenarySource) items(view View, _ *Internals) []loopItem {
+	items := make([]loopItem, 0, len(view.AvailableMercenaries()))
+	for _, mercenary := range view.AvailableMercenaries() {
+		items = append(items, mercenaryItem{producible: mercenary})
+	}
+	return items
+}
+
+type regionSource struct{}
+
+func parseRegionSource(where map[string]any) (loopSource, error) {
+	if err := checkKeys(where); err != nil {
+		return nil, err
+	}
+	return &regionSource{}, nil
+}
+
+func (s *regionSource) items(view View, _ *Internals) []loopItem {
+	stats := newRegionMap(view, view.AllSpaces()).stats
+	items := make([]loopItem, 0, len(stats))
+	for _, stat := range stats {
+		items = append(items, regionItem{stat: stat})
+	}
+	return items
 }
 
 type playerSource struct {
@@ -76,15 +113,14 @@ func parseUnitSource(where map[string]any) (loopSource, error) {
 
 // The units an owner filter can match: ours, the visible enemy's, or both
 func unitsFor(view View, r relation) []UnitView {
-	switch r {
-	case relationOwn:
-		return view.Units()
-	case relationEnemy:
-		return view.VisibleEnemyUnits()
-	case relationUnowned:
+	if r == relationUnowned {
 		return nil
 	}
-	return slices.Concat(view.Units(), view.VisibleEnemyUnits())
+	if r == relationAny {
+		return view.AllUnits()
+	}
+	mine := r == relationOwn
+	return slices.DeleteFunc(slices.Clone(view.AllUnits()), func(u UnitView) bool { return (u.PlayerID == view.PlayerID()) != mine })
 }
 
 func compareCoordinates(a Coordinate, b Coordinate) int {
@@ -137,21 +173,18 @@ func (s *spaceSource) items(view View, internals *Internals) []loopItem {
 		id := s.building_player.int(view, internals)
 		condition.BuildingPlayerID = &id
 	}
-	infos := make(map[Coordinate]SpaceInfo)
-	for _, info := range view.AllSpaces() {
-		infos[info.Space] = info
-	}
+	infos := internals.worldFor(view).spaces
 	coordinates := view.MatchingSpaces(condition)
 	slices.SortFunc(coordinates, compareCoordinates)
-	home := newHomePoint(view)
 	items := make([]loopItem, 0, len(coordinates))
+	own := ownUnitsBySpace(view)
 	for _, coordinate := range coordinates {
 		loc := ZoneRef{Space: coordinate}
 		if !s.near.contains(view, internals, loc) {
 			continue
 		}
 		info := infos[coordinate]
-		item := spaceItem{place: home.placeOf(view, loc), vision: int(info.Vision), owner: info.Owner, unit_count: -1, unidentified_count: unidentifiedUnitCount(view, info)}
+		item := spaceItem{place: place{loc: loc}, info: info, vision: int(info.Vision), owner: info.Owner, unit_count: -1, unidentified_count: unidentifiedUnitCount(info, own)}
 		if info.UnitCount != nil {
 			item.unit_count = *info.UnitCount
 		}
@@ -170,6 +203,9 @@ func parseBuildingSource(where map[string]any) (loopSource, error) {
 	if err := checkKeys(where, "owner", "player_id", "within", "from", "building_ids", "state"); err != nil {
 		return nil, err
 	}
+	if err := checkOptionTypes[string](where, "state"); err != nil {
+		return nil, err
+	}
 	s, err := parseSelector(where, relationOwn)
 	if err != nil {
 		return nil, err
@@ -186,23 +222,21 @@ func parseBuildingSource(where map[string]any) (loopSource, error) {
 
 // The buildings an owner filter can match: ours, the known enemy's, or both
 func buildingsFor(view View, r relation) []BuildingView {
-	switch r {
-	case relationOwn:
-		return view.Buildings()
-	case relationEnemy:
-		return view.KnownEnemyBuildings()
-	case relationUnowned:
+	if r == relationUnowned {
 		return nil
 	}
-	return slices.Concat(view.Buildings(), view.KnownEnemyBuildings())
+	if r == relationAny {
+		return view.AllBuildings()
+	}
+	mine := r == relationOwn
+	return slices.DeleteFunc(slices.Clone(view.AllBuildings()), func(b BuildingView) bool { return (b.PlayerID == view.PlayerID()) != mine })
 }
 
 func (s *buildingSource) items(view View, internals *Internals) []loopItem {
-	home := newHomePoint(view)
 	items := make([]loopItem, 0)
 	for _, b := range buildingsFor(view, s.selector.relation) {
 		if s.ids.matches(b.BuildingID) && s.state(b) && s.selector.allows(view, internals, b.PlayerID, b.Location) {
-			items = append(items, buildingItem{place: home.placeOf(view, b.Location), building: b})
+			items = append(items, buildingItem{place: place{loc: b.Location}, building: b})
 		}
 	}
 	return items
@@ -214,6 +248,11 @@ type resourceSource struct {
 }
 
 func parseResourceSource(where map[string]any) (loopSource, error) {
+	source, err := newResourceSource(where)
+	return source, err
+}
+
+func newResourceSource(where map[string]any) (*resourceSource, error) {
 	if err := checkKeys(where, "category", "within", "from"); err != nil {
 		return nil, err
 	}
@@ -230,15 +269,26 @@ func parseResourceSource(where map[string]any) (loopSource, error) {
 	return s, err
 }
 
-func (s *resourceSource) items(view View, internals *Internals) []loopItem {
-	home := newHomePoint(view)
-	items := make([]loopItem, 0)
+func (s *resourceSource) takes(view View, internals *Internals, category ResourceCategory, loc ZoneRef) bool {
+	return slices.Contains(s.categories, category) && s.near.contains(view, internals, loc)
+}
+
+func (s *resourceSource) nodes(view View, internals *Internals) []ResourceView {
+	nodes := make([]ResourceView, 0)
 	for _, category := range s.categories {
 		for _, r := range view.KnownResources(category) {
 			if s.near.contains(view, internals, r.Location) {
-				items = append(items, resourceItem{place: home.placeOf(view, r.Location), resource: r})
+				nodes = append(nodes, r)
 			}
 		}
+	}
+	return nodes
+}
+
+func (s *resourceSource) items(view View, internals *Internals) []loopItem {
+	items := make([]loopItem, 0)
+	for _, r := range s.nodes(view, internals) {
+		items = append(items, resourceItem{place: place{loc: r.Location}, resource: r})
 	}
 	return items
 }
@@ -271,7 +321,6 @@ func parseZoneSource(where map[string]any) (loopSource, error) {
 }
 
 func (s *zoneSource) items(view View, internals *Internals) []loopItem {
-	home := newHomePoint(view)
 	items := make([]loopItem, 0)
 	for _, z := range view.AllZones() {
 		has_building := z.BuildingPlayer >= 0
@@ -279,18 +328,17 @@ func (s *zoneSource) items(view View, internals *Internals) []loopItem {
 			continue
 		}
 		if s.selector.allows(view, internals, z.BuildingPlayer, z.Location) {
-			items = append(items, zoneItem{place: home.placeOf(view, z.Location), has_resource: z.HasResource, building_player: z.BuildingPlayer})
+			items = append(items, zoneItem{place: place{loc: z.Location}, has_resource: z.HasResource, building_player: z.BuildingPlayer})
 		}
 	}
 	return items
 }
 
 func (s *unitSource) items(view View, internals *Internals) []loopItem {
-	home := newHomePoint(view)
 	items := make([]loopItem, 0)
 	for _, u := range unitsFor(view, s.selector.relation) {
 		if s.filter.matches(u) && s.selector.allows(view, internals, u.PlayerID, u.Location) {
-			items = append(items, unitItem{place: home.placeOf(view, u.Location), unit: u})
+			items = append(items, unitItem{place: place{loc: u.Location}, unit: u})
 		}
 	}
 	return items

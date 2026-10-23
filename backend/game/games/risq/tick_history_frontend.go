@@ -6,13 +6,15 @@ import (
 	"maps"
 )
 
-func (s tickUnitState) toFrontend() gin.H {
+func (s tickUnitState) toFrontend(player_id int) gin.H {
 	result := gin.H{
 		"internal_id": s.target.internal_id, "player_id": s.target.player_id,
 		"unit_id": s.unit_id, "unit_type": s.unit_type, "display_name": s.display_name,
 		"space_coordinate": s.location.space.ToFrontend(), "zone_coordinate": s.location.zone.ToFrontend(),
-		"combat_stats": s.cs.toFrontend(), "current_stamina": s.stamina,
-		"turn_stamina": s.turn_stamina, "max_stamina": maxStaminaFor(s.turn_stamina), "deleted": s.deleted,
+		"combat_stats": s.cs.toFrontend(), "deleted": s.deleted,
+	}
+	if s.visibility.inspect(player_id, s.target.player_id) {
+		result["current_stamina"], result["turn_stamina"], result["max_stamina"] = s.stamina, s.turn_stamina, maxStaminaFor(s.turn_stamina)
 	}
 	if s.location.garrisoned_in != 0 {
 		result["garrisoned_in"] = s.location.garrisoned_in
@@ -20,16 +22,20 @@ func (s tickUnitState) toFrontend() gin.H {
 	return result
 }
 
-func (s tickBuildingState) toFrontend() gin.H {
-	return gin.H{
+func (s tickBuildingState) toFrontend(player_id int) gin.H {
+	result := gin.H{
 		"internal_id": s.target.internal_id, "player_id": s.target.player_id,
 		"building_id": s.building_id, "display_name": s.display_name,
 		"space_coordinate": s.location.space.ToFrontend(), "zone_coordinate": s.location.zone.ToFrontend(),
-		"combat_stats": s.cs.toFrontend(), "current_stamina": s.stamina, "turn_stamina": s.turn_stamina,
+		"combat_stats":       s.cs.toFrontend(),
 		"under_construction": s.under_construction, "stamina_remaining": s.stamina_remaining,
 		"construction_stamina_total": s.construction_total, "resources_left": s.resources_left,
 		"renew_stamina_remaining": s.renew_stamina_remaining, "deleted": s.deleted,
 	}
+	if s.visibility.inspect(player_id, s.target.player_id) {
+		result["current_stamina"], result["turn_stamina"] = s.stamina, s.turn_stamina
+	}
+	return result
 }
 
 func (s tickResourceState) toFrontend() gin.H {
@@ -45,7 +51,7 @@ func (f tickFrame) toFrontend(player_id int, visible_units map[uint64]bool) gin.
 	hidden_units := []uint64{}
 	for _, state := range f.units {
 		if state.visibility.see(player_id, state.target.player_id) {
-			units = append(units, state.toFrontend())
+			units = append(units, state.toFrontend(player_id))
 			visible_units[state.target.internal_id] = true
 		} else if visible_units[state.target.internal_id] {
 			hidden_units = append(hidden_units, state.target.internal_id)
@@ -54,7 +60,7 @@ func (f tickFrame) toFrontend(player_id int, visible_units map[uint64]bool) gin.
 	}
 	for _, state := range f.buildings {
 		if state.visibility.see(player_id, state.target.player_id) {
-			buildings = append(buildings, state.toFrontend())
+			buildings = append(buildings, state.toFrontend(player_id))
 		}
 	}
 	for _, state := range f.resources {
@@ -112,12 +118,12 @@ func (j *turnJournal) toFrontend(player_id int) gin.H {
 	}
 	catalog, building_catalog := []gin.H{}, []gin.H{}
 	for id, state := range units {
-		value := state.toFrontend()
+		value := state.toFrontend(player_id)
 		value["tick_actions"] = tickActionsToFrontend(j.histories[tickActorKey{"unit", id}], player_id)
 		catalog = append(catalog, value)
 	}
 	for id, state := range buildings {
-		value := state.toFrontend()
+		value := state.toFrontend(player_id)
 		value["tick_actions"] = tickActionsToFrontend(j.histories[tickActorKey{"building", id}], player_id)
 		building_catalog = append(building_catalog, value)
 	}

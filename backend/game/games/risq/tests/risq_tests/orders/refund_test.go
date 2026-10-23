@@ -7,17 +7,25 @@ import (
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness"
 )
 
+func equalCostTechs() {
+	for _, id := range []uint32{303, 304} {
+		tech := defs.TechConfigs[id]
+		tech.Cost = defs.RisqResourceCost{Stone: 100, Gold: 100}
+		defs.TechConfigs[id] = tech
+	}
+}
+
 // A refund frees what its replacement spends, wherever each sits in the batch, and duplicate refunds pay once
 func TestRefundsPrecedeSpending(t *testing.T) {
 	for _, refundFirst := range []bool{false, true} {
-		g := newGame(t, layout{bank: `{"food":70,"wood":70,"stone":100,"gold":100}`, villagers: 3})
+		g := newGame(t, layout{bank: `{"food":40,"wood":40,"stone":100,"gold":100}`, workers: 3, tweak: equalCostTechs})
 		p := g.Human(0)
 		mine := scan(g, p)
-		v, b := mine.villagers, mine.buildings
+		v, b := mine.workers, mine.buildings
 		g.Submit(p,
-			harness.OrderProduce([]uint64{b[22]}, 102),
-			harness.Order(defs.OrderType_BuildingResearch, []uint64{b[11]}, 2, false),
-			harness.OrderBuild(v[:1], 2, 3, 0, 0, 0),
+			harness.OrderProduce([]uint64{b[205]}, 21),
+			harness.Order(defs.OrderType_BuildingResearch, []uint64{b[209]}, 303, false),
+			harness.OrderBuild(v[:1], 202, 3, 0, 0, 0),
 			harness.OrderMove(v[1:2], 3, 0), harness.OrderMove(v[1:2], 0, 0),
 		)
 		g.EndTurn()
@@ -29,9 +37,9 @@ func TestRefundsPrecedeSpending(t *testing.T) {
 		}
 		cancelProduction := harness.Order(defs.OrderType_CancelOrder, nil, int64(production[0]), false)
 		spend := []defs.OrderFromFrontend{
-			harness.OrderProduce([]uint64{b[22]}, 102),
-			harness.Order(defs.OrderType_BuildingResearch, []uint64{b[11]}, 3, false),
-			harness.OrderBuild(v[:1], 2, 0, 0, -1, 1),
+			harness.OrderProduce([]uint64{b[205]}, 21),
+			harness.Order(defs.OrderType_BuildingResearch, []uint64{b[209]}, 304, false),
+			harness.OrderBuild(v[:1], 202, 0, 0, -1, 1),
 		}
 		refund := []defs.OrderFromFrontend{
 			cancelProduction, cancelProduction,
@@ -62,7 +70,7 @@ func TestRefundsPrecedeSpending(t *testing.T) {
 
 		// an unaffordable replacement leaves the unit's previous orders alone
 		oldMove := unitByID(g, p, v[1]).ActiveOrders
-		rebuild := harness.OrderBuild(v[1:2], 2, 1, 0, 0, 0)
+		rebuild := harness.OrderBuild(v[1:2], 202, 1, 0, 0, 0)
 		rebuild.Clear_previous_orders = true
 		g.Submit(p, rebuild)
 		g.EndTurn()
@@ -78,27 +86,27 @@ func TestRefundsPrecedeSpending(t *testing.T) {
 
 // Cancelling one subject of a shared production refunds only that subject's reservation
 func TestCancelOneProducerRefundsOnlyItsReservation(t *testing.T) {
-	g := newGame(t, layout{bank: `{"food":140,"wood":80}`, tweak: func() {
-		center := defs.BuildingConfigs[1]
-		center.Produces = append(append([]defs.Producible(nil), center.Produces...), defs.Producible{Kind: defs.ProducibleKind_UNIT, Id: 102})
-		defs.BuildingConfigs[1] = center
+	g := newGame(t, layout{bank: `{"food":60,"wood":120}`, tweak: func() {
+		center := defs.BuildingConfigs[201]
+		center.Produces = append(append([]defs.Producible(nil), center.Produces...), defs.Producible{Kind: defs.ProducibleKind_UNIT, Id: 31})
+		defs.BuildingConfigs[201] = center
 	}})
 	p := g.Human(0)
 	b := scan(g, p).buildings
-	g.Submit(p, harness.OrderProduce([]uint64{b[1], b[22]}, 102))
+	g.Submit(p, harness.OrderProduce([]uint64{b[201], b[205]}, 31))
 	g.EndTurn()
 	state := g.Self(p)
 	if len(state.ActiveOrders) != 1 || state.Resources.Food != 0 || state.Resources.Wood != 0 {
 		t.Fatal("setup did not reserve both productions")
 	}
-	g.Submit(p, harness.Order(defs.OrderType_CancelOrder, []uint64{b[22]}, int64(state.ActiveOrders[0].InternalID), false))
+	g.Submit(p, harness.Order(defs.OrderType_CancelOrder, []uint64{b[205]}, int64(state.ActiveOrders[0].InternalID), false))
 	g.EndTurn()
 	state = g.Self(p)
-	if state.Resources.Food != 70 || state.Resources.Wood != 40 || len(unitIDs(g, p, 102)) != 1 || len(state.ActiveOrders) != 0 {
+	if state.Resources.Food != 30 || state.Resources.Wood != 60 || len(unitIDs(g, p, 31)) != 1 || len(state.ActiveOrders) != 0 {
 		t.Fatalf("partial production cancellation affected other subject: %+v", state)
 	}
 	g.EndTurn()
-	if g.Self(p).Resources.Food != 70 || len(unitIDs(g, p, 102)) != 1 {
+	if g.Self(p).Resources.Food != 30 || len(unitIDs(g, p, 31)) != 1 {
 		t.Fatal("cancelled production restarted or refunded twice")
 	}
 }

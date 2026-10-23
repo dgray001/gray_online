@@ -280,11 +280,32 @@ function drawSpaceBuildings(
     const rot = i === -1 ? 0 : a * (1 + i);
     if (b && buildingVisibleInViewMode(b, config.view_mode) && !game.selection.isBuildingSelected(b.internal_id)) {
       drawZoneBuildingSprite(ctx, game, zone, config.hex_r, rot, config.rotation);
-    } else if (zone?.resource && (config.view_mode === RisqViewMode.ALL || config.view_mode === RisqViewMode.RESOURCE)) {
+    } else if (
+      zone?.resource &&
+      (config.view_mode === RisqViewMode.ALL || config.view_mode === RisqViewMode.RESOURCE)
+    ) {
       drawZoneResourceSprite(ctx, game, zone, config.hex_r, rot, config.rotation);
     }
   }
   ctx.restore();
+}
+
+let wedge_cache_r = -1;
+let wedge_cache: Point2D[][] = [];
+
+function outerZoneWedges(r: number): Point2D[][] {
+  if (r !== wedge_cache_r) {
+    const a = Math.PI / 3;
+    const inner_r = INNER_ZONE_MULTIPLIER * r;
+    wedge_cache = Array.from({ length: 6 }, (_, i): Point2D[] => [
+      { x: inner_r * Math.cos(a * i + Math.PI / 6), y: inner_r * Math.sin(a * i + Math.PI / 6) },
+      { x: inner_r * Math.cos(a * i + Math.PI / 2), y: inner_r * Math.sin(a * i + Math.PI / 2) },
+      { x: r * Math.cos(a * i + Math.PI / 2), y: r * Math.sin(a * i + Math.PI / 2) },
+      { x: r * Math.cos(a * i + Math.PI / 6), y: r * Math.sin(a * i + Math.PI / 6) },
+    ]);
+    wedge_cache_r = r;
+  }
+  return wedge_cache;
 }
 
 function drawSpaceContent(
@@ -365,6 +386,7 @@ function drawSpaceContent(
       );
     }
     const a = Math.PI / 3;
+    const wedges = outerZoneWedges(r);
     for (let i = 0; i < 6; i++) {
       const direction_vector = OUTER_ZONE_INDICES[i];
       zone = space.zones[direction_vector.x][direction_vector.y];
@@ -377,13 +399,12 @@ function drawSpaceContent(
         1,
         isEmptyPlot(game.planning, zone)
       ).getString();
-      ctx.beginPath();
-      ctx.lineTo(inner_r * Math.cos(a * i + Math.PI / 6), inner_r * Math.sin(a * i + Math.PI / 6));
-      ctx.lineTo(inner_r * Math.cos(a * i + Math.PI / 2), inner_r * Math.sin(a * i + Math.PI / 2));
-      ctx.lineTo(r * Math.cos(a * i + Math.PI / 2), r * Math.sin(a * i + Math.PI / 2));
-      ctx.lineTo(r * Math.cos(a * i + Math.PI / 6), r * Math.sin(a * i + Math.PI / 6));
-      ctx.closePath();
       if (!config.entity_pass || (config.entity_pass === 'terrain' && config.zone_borders_only !== false)) {
+        ctx.beginPath();
+        for (const vertex of wedges[i]) {
+          ctx.lineTo(vertex.x, vertex.y);
+        }
+        ctx.closePath();
         ctx.stroke();
         ctx.fill();
       }

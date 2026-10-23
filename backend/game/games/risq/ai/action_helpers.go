@@ -23,17 +23,22 @@ func eligibleUnits(view View, eligible []OrderKind) []UnitView {
 	return view.EligibleUnits(eligible...)
 }
 
-func unidentifiedUnitCount(view View, space SpaceInfo) int {
+// How many of my units that are not garrisoned stand in each space
+func ownUnitsBySpace(view View) map[Coordinate]int {
+	counts := map[Coordinate]int{}
+	for _, unit := range view.Units() {
+		if unit.GarrisonedIn == nil {
+			counts[unit.Location.Space]++
+		}
+	}
+	return counts
+}
+
+func unidentifiedUnitCount(space SpaceInfo, own map[Coordinate]int) int {
 	if space.UnitCount == nil {
 		return 0
 	}
-	count := *space.UnitCount
-	for _, unit := range view.Units() {
-		if unit.GarrisonedIn == nil && unit.Location.Space == space.Space {
-			count--
-		}
-	}
-	return max(0, count)
+	return max(0, *space.UnitCount-own[space.Space])
 }
 
 func homeLocation(view View) (ZoneRef, bool) {

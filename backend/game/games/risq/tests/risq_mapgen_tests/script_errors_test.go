@@ -82,7 +82,7 @@ func TestMalformedCustomMapFails(t *testing.T) {
 	}
 }
 
-var sweptScripts = []string{"hexagon", "ring", "rectangle", "triangle"}
+var sweptScripts = []string{"fixture_hexagon", "fixture_ring", "fixture_rectangle", "fixture_triangle"}
 
 func sweptPlayerCounts(script string) []int {
 	hash := fnv.New64a()

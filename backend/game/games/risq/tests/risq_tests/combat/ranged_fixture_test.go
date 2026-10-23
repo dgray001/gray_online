@@ -11,36 +11,36 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func rangedGame(t *testing.T, distance int, nearbyVillager bool) *harness.Game {
+func rangedGame(t *testing.T, distance int, nearbyWorker bool) *harness.Game {
 	t.Helper()
-	return rangedGameWithRange(t, distance, nearbyVillager, defs.RisqRange_ADJACENT)
+	return rangedGameWithRange(t, distance, nearbyWorker, defs.RisqRange_ADJACENT)
 }
 
-func rangedGameWithRange(t *testing.T, distance int, nearbyVillager bool, attack_range defs.RisqRange) *harness.Game {
+func rangedGameWithRange(t *testing.T, distance int, nearbyWorker bool, attack_range defs.RisqRange) *harness.Game {
 	t.Helper()
 	var spaces []string
 	for x := 0; x <= distance; x++ {
 		zones := ""
 		if x == 0 {
-			units := `{"id":101,"player":0,"count":1}`
-			if nearbyVillager {
-				units += `,{"id":1,"player":1,"count":1}`
+			units := `{"id":21,"player":0,"count":1}`
+			if nearbyWorker {
+				units += `,{"id":11,"player":1,"count":1}`
 			}
 			zones = `{"x":0,"y":0,"units":[` + units + `]}`
 		} else if x == distance {
-			zones = unitZoneJSON(harness.Coord{}, 103, 1)
+			zones = unitZoneJSON(harness.Coord{}, 22, 1)
 		}
 		spaces = append(spaces, fmt.Sprintf(`{"x":%d,"y":0,"terrain":1,"zones":[%s]}`, x, zones))
 	}
 	doc := fmt.Sprintf(`{"board_size":3,"players":2,"spaces":[%s]}`, strings.Join(spaces, ","))
 	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"ranged": doc})
-	config := defs.UnitConfigs[101]
-	config.Attack_range = attack_range
+	config := defs.UnitConfigs[21]
+	config.Attack_range, config.Attack_blunt = attack_range, 16
 	config.Vision.Adjacent, config.Vision.Edge_opposite, config.Vision.Secondary = defs.VisibilityGood, defs.VisibilityGood, defs.VisibilityGood
-	defs.UnitConfigs[101] = config
+	defs.UnitConfigs[21] = config
 	g := harness.NewGame(t, "custom:ranged", 1, 2)
 	for _, unit := range g.Self(g.Human(1)).Units {
-		if unit.UnitID == 103 {
+		if unit.UnitID == 22 {
 			g.Action(g.Human(1), "set-unit-behavior", gin.H{"internal_ids": []uint64{unit.InternalID}, "stance": uint8(defs.UnitStance_PASSIVE), "attack_back": false})
 		}
 	}
@@ -97,14 +97,14 @@ func TestRangedPriorityPrecedesDistance(t *testing.T) {
 			g.EndTurn()
 			state := g.Self(enemy)
 			if len(state.Units) != 2 {
-				t.Fatal("nearby villager killed first")
+				t.Fatal("nearby worker killed first")
 			}
 			for _, unit := range state.Units {
-				if unit.UnitID == 103 && unit.CombatStats.Health >= float64(unit.CombatStats.MaxHealth) {
+				if unit.UnitID == 22 && unit.CombatStats.Health >= float64(unit.CombatStats.MaxHealth) {
 					t.Fatal("adjacent military target ignored")
 				}
-				if unit.UnitID == 1 && unit.CombatStats.Health != float64(unit.CombatStats.MaxHealth) {
-					t.Fatal("nearby villager damaged first")
+				if unit.UnitID == 11 && unit.CombatStats.Health != float64(unit.CombatStats.MaxHealth) {
+					t.Fatal("nearby worker damaged first")
 				}
 			}
 			unit := g.Self(owner).Units[0]

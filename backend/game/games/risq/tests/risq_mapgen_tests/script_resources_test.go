@@ -87,9 +87,9 @@ func TestResourcePlaceFallsBackUntilNoFreeZoneRemains(t *testing.T) {
 }
 
 func TestResourcePlaceTerrainFilterPrefersButDoesNotRequire(t *testing.T) {
-	hills := step("terrain_blob", `{"terrain_id":51,"seed_count":1,"size":3,"min_spacing":0,"placement":{"pattern":"ring","distance":[0,0]}}`)
+	hillyTerrain := step("terrain_blob", `{"terrain_id":51,"seed_count":1,"size":3,"min_spacing":0,"placement":{"pattern":"ring","distance":[0,0]}}`)
 	place := func(count int) string {
-		return `[` + hexagon3 + `,` + grass + `,` + hills + `,` + step("resource_place", `{"resource_id":41,"count":`+strconv.Itoa(count)+`,"on":{"terrain_types":["hilly"]}}`) + `]`
+		return `[` + hexagon3 + `,` + flatTerrain + `,` + hillyTerrain + `,` + step("resource_place", `{"resource_id":41,"count":`+strconv.Itoa(count)+`,"on":{"terrain_types":["hilly"]}}`) + `]`
 	}
 	useScripts(t, map[string]string{"few": place(10), "many": place(40)})
 	for name, count := range map[string]int{"few": 10, "many": 40} {
@@ -106,7 +106,7 @@ func TestResourcePlaceTerrainFilterPrefersButDoesNotRequire(t *testing.T) {
 			t.Errorf("%s: placed %d, want %d", name, got, count)
 		}
 		if want := min(count, 21); on_hills != want {
-			t.Errorf("%s: %d on hills, want %d (every hill zone before any other)", name, on_hills, want)
+			t.Errorf("%s: %d on hilly terrain, want %d (every hilly zone before any other)", name, on_hills, want)
 		}
 	}
 }
@@ -175,9 +175,9 @@ func TestResourcePlacePreferredSpacingRelaxesToTheHardFloor(t *testing.T) {
 }
 
 func TestResourcePlaceGivesUpTerrainBeforeZoneSelector(t *testing.T) {
-	hills := step("terrain_blob", `{"terrain_id":51,"seed_count":1,"size":3,"min_spacing":0,"placement":{"pattern":"ring","distance":[0,0]}}`)
+	hillyTerrain := step("terrain_blob", `{"terrain_id":51,"seed_count":1,"size":3,"min_spacing":0,"placement":{"pattern":"ring","distance":[0,0]}}`)
 	place := func(count int) string {
-		return `[` + hexagon3 + `,` + grass + `,` + hills + `,` + step("resource_place", `{"resource_id":41,"count":`+strconv.Itoa(count)+`,"zone":"center","on":{"terrain_types":["hilly"]}}`) + `]`
+		return `[` + hexagon3 + `,` + flatTerrain + `,` + hillyTerrain + `,` + step("resource_place", `{"resource_id":41,"count":`+strconv.Itoa(count)+`,"zone":"center","on":{"terrain_types":["hilly"]}}`) + `]`
 	}
 	useScripts(t, map[string]string{"centers": place(10), "overflow": place(38)})
 	for name, count := range map[string]int{"centers": 10, "overflow": 38} {
@@ -211,9 +211,9 @@ func TestResourceBlobResolvesWeightKeysAsExpressions(t *testing.T) {
 }
 
 func TestResourceBlobStaysOnMatchingTerrain(t *testing.T) {
-	hills := step("terrain_blob", `{"terrain_id":51,"seed_count":1,"size":3,"min_spacing":0,"placement":{"pattern":"ring","distance":[0,0]}}`)
+	hillyTerrain := step("terrain_blob", `{"terrain_id":51,"seed_count":1,"size":3,"min_spacing":0,"placement":{"pattern":"ring","distance":[0,0]}}`)
 	blob := step("resource_blob", `{"resource_id":11,"seed_count":1,"size":300,"on":{"terrain_types":["hilly"]}}`)
-	useScripts(t, map[string]string{"filtered": `[` + hexagon3 + `,` + grass + `,` + hills + `,` + blob + `]`})
+	useScripts(t, map[string]string{"filtered": `[` + hexagon3 + `,` + flatTerrain + `,` + hillyTerrain + `,` + blob + `]`})
 	board := generateStartless(t, "filtered", 2)
 	placed := 0
 	for _, info := range board.Inspect() {
@@ -221,13 +221,13 @@ func TestResourceBlobStaysOnMatchingTerrain(t *testing.T) {
 			if z.Resource == 11 {
 				placed++
 				if info.Terrain != 51 {
-					t.Errorf("resource on terrain %d, want only hills", info.Terrain)
+					t.Errorf("resource on terrain %d, want only hilly terrain", info.Terrain)
 				}
 			}
 		}
 	}
 	if placed == 0 || placed > 21 {
-		t.Errorf("placed %d resources, want between 1 and the 21 zones of the 3 hill spaces", placed)
+		t.Errorf("placed %d resources, want between 1 and the 21 zones of the 3 hilly spaces", placed)
 	}
 }
 

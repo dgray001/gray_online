@@ -33,6 +33,15 @@ func (b *RisqBuilding) underConstruction() bool {
 	return b.stamina_remaining > 0
 }
 
+func (b *RisqBuilding) refreshStamina() {
+	if b.underConstruction() {
+		b.current_stamina = 0
+		b.attacked_by = nil
+		return
+	}
+	b.orderableBase.refreshStamina()
+}
+
 const constructionMinHealthRatio = 0.1
 
 func constructionHealthRatio(stamina_remaining int, construction_stamina_total int) float64 {
@@ -87,7 +96,7 @@ func createRisqBuilding(game_config *defs.Config, internal_id uint64, building_i
 }
 
 func (b *RisqBuilding) vision() *defs.RisqVision {
-	v := b.config.Buildings[b.building_id].Vision
+	v := b.config.Buildings[b.building_id].Vision.WithTerrain(b.terrainType())
 	return &v
 }
 

@@ -1,5 +1,6 @@
 import { DwgElement } from '../dwg_element';
 import { clickButton } from '../../scripts/util';
+import { Sounds } from '../../sounds/Sounds';
 import type { ChatMessage, DwgChatbox } from '../chatbox/chatbox';
 import { SERVER_CHAT_NAME } from '../chatbox/chatbox';
 import { getUrlParam, removeUrlParam, setUrlParam } from '../../scripts/url';
@@ -148,6 +149,7 @@ export class DwgLobby extends DwgElement {
         const sender = `room-${this.connection_metadata.room_id}-${this.connection_metadata.client_id}`;
         message.sender = server_message ? `${sender}-${message.sender}` : sender;
         this.sendChatMessage(this.lobby_room.getChatbox(), 'room-chat', message, display_sender ?? '');
+        Sounds.playTaunt(message.message);
       }
     });
     this.lobby_room.addEventListener('leave_room', async () => {

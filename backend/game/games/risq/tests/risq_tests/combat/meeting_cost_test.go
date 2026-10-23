@@ -19,24 +19,25 @@ func TestMeetingCostFollowsStepCost(t *testing.T) {
 		moveTo          [4]int
 		sunk, attack    int
 		stepCostSummary string
+		settings        map[string]any
 	}{
 		"intra flat, step 1": {func() []string {
 			return []string{spaceOf(0, 0, flat, placed{blunt, 0, 0, 0}, placed{heavy, 1, 1, 0})}
-		}, [4]int{0, 0, 0, 0}, 1, 2, "half of 1 rounds up to 1"},
+		}, [4]int{0, 0, 0, 0}, 1, 2, "half of 1 rounds up to 1", nil},
 		"intra mountains, step 3": {func() []string {
 			return []string{spaceOf(0, 0, mountains, placed{blunt, 0, 0, 0}, placed{heavy, 1, 1, 0})}
-		}, [4]int{0, 0, 0, 0}, 2, 1, "half of 3 rounds up to 2"},
+		}, [4]int{0, 0, 0, 0}, 2, 1, "half of 3 rounds up to 2", nil},
 		"cross flat, step 6": {func() []string {
 			return []string{spaceOf(0, 0, flat, placed{blunt, 0, 1, 0}), spaceOf(1, 0, flat, placed{heavy, 1, -1, 0})}
-		}, [4]int{0, 0, 1, 0}, 3, 0, "half of 6 uses the whole tick"},
+		}, [4]int{0, 0, 1, 0}, 3, 0, "half of 6 uses the whole tick", nil},
 		"cross mountains, step 12": {func() []string {
 			return []string{spaceOf(0, 0, flat, placed{blunt, 0, 1, 0}), spaceOf(1, 0, mountains, placed{heavy, 1, -1, 0})}
-		}, [4]int{0, 0, 1, 0}, 6, 0, "half of 12 exceeds a tick and is still paid"},
+		}, [4]int{0, 0, 1, 0}, 6, 0, "half of 12 exceeds a tick and is still paid", map[string]any{"visibility": float64(defs.VisibilityMode_ALL_VISIBLE)}},
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
 			log := captureTicks(t)
-			g := meetingGame(t, c.spaces()...)
+			g := meetingGameWith(t, c.settings, c.spaces()...)
 			a, b := soleUnit(g, 0), soleUnit(g, 1)
 			makePassive(g, 1, b)
 			g.Submit(g.Human(0), attackOrder(a, b))

@@ -2,6 +2,7 @@ package ai
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 )
 
@@ -9,16 +10,29 @@ import (
 const maxLoopSteps = 10000
 
 type forEachAction struct {
-	name   string
-	source loopSource
-	max    amount
-	body   []Action
+	name          string
+	source        loopSource
+	select_source *selectorSpec
+	max           amount
+	body          []Action
 }
 
 func (a *forEachAction) ToOrders(view View, internals *Internals) []Order {
+	previous := internals.eval_errors
 	limit := a.max.int(view, internals)
+	if internals.eval_errors != previous {
+		return nil
+	}
+	var items []loopItem
+	if a.select_source != nil {
+		for _, item := range a.resolveWithSelectionCensus(view, internals) {
+			items = append(items, item)
+		}
+	} else {
+		items = a.source.items(view, internals)
+	}
 	orders := make([]Order, 0)
-	for n, item := range a.source.items(view, internals) {
+	for n, item := range items {
 		if (limit > 0 && n >= limit) || !internals.takeLoopStep() {
 			break
 		}
@@ -27,6 +41,13 @@ func (a *forEachAction) ToOrders(view View, internals *Internals) []Order {
 		restore()
 	}
 	return orders
+}
+
+func (a *forEachAction) resolveWithSelectionCensus(view View, internals *Internals) []selItem {
+	census, previous := newCensus(view, internals), internals.select_census
+	internals.select_census = census
+	defer func() { internals.select_census = previous }()
+	return a.select_source.resolve(view, internals, census)
 }
 
 // Makes the item visible to var(name.field) until the returned function puts back whatever name meant before
@@ -55,19 +76,40 @@ func (i *Internals) takeLoopStep() bool {
 }
 
 func parseForEach(raw map[string]any) (Action, error) {
-	source_name, _ := raw["source"].(string)
-	parse_source, known := loopSourceParsers[source_name]
-	if !known {
-		return nil, fmt.Errorf("for_each \"source\" must be players, spaces, units, buildings, resources or zones")
+	if err := checkActionKeys(raw, "source", "select", "as", "where", "max", "do"); err != nil {
+		return nil, fmt.Errorf("for_each: %w", err)
 	}
 	name, _ := raw["as"].(string)
 	if !validVarName(name) {
 		return nil, fmt.Errorf("for_each requires an \"as\" name of letters, digits and underscores")
 	}
+	select_source, err := parseForEachSelect(raw, name)
+	if err != nil {
+		return nil, err
+	}
+	if select_source != nil {
+		if slices.Contains([]string{"actor", "target", "item", "anchor", "place"}, name) {
+			return nil, fmt.Errorf("for_each select cannot name its item %q, which selectors reserve for their own roles", name)
+		}
+		action := &forEachAction{name: name, select_source: select_source, max: parseMax(raw)}
+		err = withLoopScopeExtra(name, "select_"+select_source.kind, select_source.letNames(), func() error {
+			action.body, err = parseNested("do", raw["do"])
+			return err
+		})
+		return action, err
+	}
+	source_name, _ := raw["source"].(string)
+	parse_source, known := loopSourceParsers[source_name]
+	if !known {
+		return nil, fmt.Errorf("for_each \"source\" must be players, spaces, regions, mercenaries, units, buildings, resources or zones")
+	}
 	where, _ := raw["where"].(map[string]any)
 	source, err := parse_source(where)
 	if err != nil {
 		return nil, fmt.Errorf("for_each %s: %v", source_name, err)
+	}
+	if slices.Contains([]string{"spaces", "units", "buildings", "resources", "zones"}, source_name) {
+		source = legacyHomeSource{source}
 	}
 	action := &forEachAction{name: name, source: source, max: parseMax(raw)}
 	err = withLoopScope(name, source_name, func() error {
@@ -76,6 +118,19 @@ func parseForEach(raw map[string]any) (Action, error) {
 		return body_err
 	})
 	return action, err
+}
+
+// distance(a, b) between the items bound under two names, in space steps or zone steps
+func (i *Internals) distance(view View, a string, b string, zone_steps bool) (float64, error) {
+	from, _, from_located := locOf(i.loop_items[a])
+	to, _, to_located := locOf(i.loop_items[b])
+	if !from_located || !to_located {
+		return 0, fmt.Errorf("distance(%s, %s): both names must be bound to located items", a, b)
+	}
+	if zone_steps {
+		return float64(view.LocationDistance(from, to)), nil
+	}
+	return float64(view.SpaceDistance(from.Space, to.Space)), nil
 }
 
 // var(name.field) while a loop named name is visiting an item; 0 (with one warning) when no loop or field matches

@@ -75,6 +75,7 @@ export function serverToGameRisq(server_game: GameRisqFromServer): GameRisq | un
     population_limit: server_game.population_limit,
     turn_number: server_game.turn_number,
     spaces,
+    buildings: registry.buildings,
     space_links: server_game.space_links ?? [],
     giving_orders: server_game.giving_orders,
     regions: server_game.regions,
@@ -159,14 +160,14 @@ export function serverToRisqPlayer(server_player: RisqPlayerFromServer, registry
         .filter((u) => !!u)
         .map((u) => [u.internal_id, u])
     ),
-    population_limit: server_player.population_limit,
+    population_limit: server_player.population_limit ?? 0,
     unlimited_population: server_player.unlimited_population ?? false,
     score: server_player.score,
     color: new ColorRGB(color_split[0], color_split[1], color_split[2]),
     orders_submitted: server_player.orders_submitted,
     eliminated: server_player.eliminated,
     researched_techs: new Map(
-      Object.entries(server_player.researched_techs).map(([tech_id, researched]) => [Number(tech_id), researched])
+      Object.entries(server_player.researched_techs ?? {}).map(([tech_id, researched]) => [Number(tech_id), researched])
     ),
     turn_report: server_player.turn_report ? serverToRisqTurnReport(server_player.turn_report) : undefined,
     planned_foundations: new Map((server_player.planned_foundations ?? []).map((f) => [f.coordinate_key, f])),

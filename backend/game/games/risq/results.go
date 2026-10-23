@@ -145,7 +145,7 @@ func (r *GameRisq) Snapshot() []PlayerSnapshot {
 			if !b.underConstruction() {
 				s.Buildings[b.building_id]++
 			}
-			if b.building_id == 1 && b.zone != nil {
+			if (b.building_id == 1 || b.building_id == 201) && b.zone != nil {
 				s.Home = fmt.Sprintf("%d,%d", b.zone.space.coordinate.X, b.zone.space.coordinate.Y)
 			}
 		}

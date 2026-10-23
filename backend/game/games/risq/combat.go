@@ -21,6 +21,9 @@ func rangeCovers(from *RisqZone, target *RisqZone, attack_range defs.RisqRange) 
 	if !ranged {
 		return from == target
 	}
+	if space_range == 0 && from.space != target.space {
+		return from.borderNeighbor() == target
+	}
 	return from.space.distanceTo(target.space) <= space_range
 }
 

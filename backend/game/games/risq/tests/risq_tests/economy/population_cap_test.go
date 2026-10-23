@@ -10,7 +10,7 @@ import (
 func TestPopulationCapPausesAndResumesProduction(t *testing.T) {
 	g := productionGame(t, 5, 1, "")
 	p := g.Human(0)
-	g.Submit(p, harness.OrderProduce([]uint64{centers(g, p)[0].InternalID}, 1))
+	g.Submit(p, harness.OrderProduce([]uint64{centers(g, p)[0].InternalID}, 11))
 	g.EndTurn()
 	queue := centers(g, p)[0].ProductionQueue
 	if state := g.Self(p); len(state.Units) != 5 || state.PopulationLimit != 5 || state.Resources.Food != 250 || len(queue) != 1 || queue[0].StaminaRemaining != 10 {
@@ -31,7 +31,11 @@ func TestPopulationCapPausesAndResumesProduction(t *testing.T) {
 }
 
 func TestPopulationSupportIsClampedToGameMaximum(t *testing.T) {
-	g := economyGame(t, `{}`, `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":23,"player":0},"units":[{"id":1,"player":0,"count":1}]}]},{"x":1,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":23,"player":0}}]},{"x":2,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":23,"player":0}}]},`+remoteVillager, "")
+	g := economyGameTweaked(t, `{}`, `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":208,"player":0},"units":[{"id":11,"player":0,"count":1}]}]},{"x":1,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":208,"player":0}}]},{"x":2,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":208,"player":0}}]},`+remoteWorker, "", func() {
+		fortress := defs.BuildingConfigs[208]
+		fortress.Population_support = 50
+		defs.BuildingConfigs[208] = fortress
+	})
 	p := g.Human(0)
 	if g.Self(p).PopulationLimit != 100 {
 		t.Fatal("150 support did not clamp to the 100-unit population limit")
@@ -48,10 +52,10 @@ func TestPopulationSupportIsClampedToGameMaximum(t *testing.T) {
 func TestMercenaryReservationBlocksProductionAtCap(t *testing.T) {
 	g := productionGame(t, 4, 1, mercenaryRules)
 	p := g.Human(0)
-	g.Submit(p, harness.OrderProduce([]uint64{centers(g, p)[0].InternalID}, 1), harness.Order(defs.OrderType_BuyMercenary, nil, harness.BuildKey(101, 0, 0, 0, 0), false))
+	g.Submit(p, harness.OrderProduce([]uint64{centers(g, p)[0].InternalID}, 11), harness.Order(defs.OrderType_BuyMercenary, nil, harness.BuildKey(21, 0, 0, 0, 0), false))
 	g.EndTurn()
 	state := g.Self(p)
-	if len(state.Units) != 5 || state.Resources.Food != 250 || state.Resources.Gold != 409 || len(centers(g, p)[0].ProductionQueue) != 1 || centers(g, p)[0].ProductionQueue[0].StaminaRemaining != 10 {
+	if len(state.Units) != 5 || state.Resources.Food != 250 || state.Resources.Gold != 500-gruntMercenaryGold || len(centers(g, p)[0].ProductionQueue) != 1 || centers(g, p)[0].ProductionQueue[0].StaminaRemaining != 10 {
 		t.Fatalf("production ignored reserved slot: %+v", state)
 	}
 }
@@ -64,7 +68,7 @@ func TestSimultaneousProductionRespectsLastPopulationSlot(t *testing.T) {
 	if buildings[1].InternalID < winner {
 		winner = buildings[1].InternalID
 	}
-	g.Submit(p, harness.OrderProduce([]uint64{buildings[0].InternalID}, 1), harness.OrderProduce([]uint64{buildings[1].InternalID}, 1))
+	g.Submit(p, harness.OrderProduce([]uint64{buildings[0].InternalID}, 11), harness.OrderProduce([]uint64{buildings[1].InternalID}, 11))
 	for turn := 0; turn < 2; turn++ {
 		g.EndTurn()
 		state := g.Self(p)
@@ -77,29 +81,29 @@ func TestSimultaneousProductionRespectsLastPopulationSlot(t *testing.T) {
 				t.Errorf("building %d won=%v, want winner %d", b.InternalID, len(b.ProductionQueue) == 0, winner)
 			}
 			for _, item := range b.ProductionQueue {
-				if item.ItemID != 1 || item.StaminaRemaining <= 0 {
-					t.Errorf("pending production %+v, want unfinished villager", item)
+				if item.ItemID != 11 || item.StaminaRemaining <= 0 {
+					t.Errorf("pending production %+v, want unfinished worker", item)
 				}
 			}
 		}
 	}
 }
 
-func TestHousingSupportsPopulationOnlyWhileCompletedAndAlive(t *testing.T) {
+func TestShelterSupportsPopulationOnlyWhileCompletedAndAlive(t *testing.T) {
 	g := buildGame(t, 1)
 	p := g.Human(0)
-	g.Submit(p, housingOrders(g, p, 0)...)
+	g.Submit(p, shelterOrders(g, p, 0)...)
 	g.EndTurn()
-	if g.Self(p).PopulationLimit != 0 || !centerHousing(g, p).UnderConstruction {
-		t.Fatal("unfinished housing provided population support")
+	if g.Self(p).PopulationLimit != 0 || !centerShelter(g, p).UnderConstruction {
+		t.Fatal("unfinished shelter provided population support")
 	}
 	g.EndTurn()
-	if g.Self(p).PopulationLimit != 5 || centerHousing(g, p).UnderConstruction {
-		t.Fatal("completed housing did not provide population support")
+	if g.Self(p).PopulationLimit != 5 || centerShelter(g, p).UnderConstruction {
+		t.Fatal("completed shelter did not provide population support")
 	}
-	g.Submit(p, harness.Order(defs.OrderType_BuildingDelete, []uint64{centerHousing(g, p).InternalID}, 0, false))
+	g.Submit(p, harness.Order(defs.OrderType_BuildingDelete, []uint64{centerShelter(g, p).InternalID}, 0, false))
 	g.EndTurn()
 	if g.Self(p).PopulationLimit != 0 || len(g.Self(p).Buildings) != 0 {
-		t.Error("deleted housing retained population support")
+		t.Error("deleted shelter retained population support")
 	}
 }

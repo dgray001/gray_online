@@ -319,6 +319,8 @@ func parseActionInner(raw map[string]any) (Action, error) {
 		return parseMove(raw)
 	case "select_space":
 		return parseSelectSpace(raw)
+	case "select":
+		return parseSelect(raw)
 	case "set_var":
 		return parseSetVar(raw)
 	case "for_each":

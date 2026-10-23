@@ -34,10 +34,10 @@ func TestStartingStockpilesOnScriptMaps(t *testing.T) {
 		stockpile defs.StartingStockpile
 		want      harness.Resources
 	}{
-		{"hexagon", defs.StartingStockpile_LOW, harness.Resources{Food: 100, Wood: 100, Stone: 50}},
-		{"ring", defs.StartingStockpile_STANDARD, harness.Resources{Food: 200, Wood: 200, Stone: 100}},
-		{"rectangle", defs.StartingStockpile_HIGH, harness.Resources{Food: 500, Wood: 500, Stone: 250, Gold: 100}},
-		{"triangle", defs.StartingStockpile_DEATHMATCH, harness.Resources{Food: 10000, Wood: 10000, Stone: 5000, Gold: 5000}},
+		{"fixture_hexagon", defs.StartingStockpile_LOW, harness.Resources{Food: 100, Wood: 100, Stone: 50}},
+		{"fixture_ring", defs.StartingStockpile_STANDARD, harness.Resources{Food: 200, Wood: 200, Stone: 100}},
+		{"fixture_rectangle", defs.StartingStockpile_HIGH, harness.Resources{Food: 500, Wood: 500, Stone: 250, Gold: 100}},
+		{"fixture_triangle", defs.StartingStockpile_DEATHMATCH, harness.Resources{Food: 10000, Wood: 10000, Stone: 5000, Gold: 5000}},
 	}
 	for _, c := range cases {
 		g := harness.NewUnstartedGameWithSettings(t, "script:"+c.name, 1, 2, map[string]any{"starting_stockpile": float64(c.stockpile)})

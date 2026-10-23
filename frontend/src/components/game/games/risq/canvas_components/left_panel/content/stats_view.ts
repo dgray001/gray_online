@@ -164,19 +164,22 @@ export class RisqStatsView {
     ctx.font = `${health_h}px serif`;
     const stamina_text_width = ctx.measureText(stamina_text).width;
     const stamina_icon_x = row_right - stamina_text_width - health_h - 4;
-    ctx.drawImage(pc.risq.getIcon('risq/icons/stamina'), stamina_icon_x, y, health_h, health_h);
-    if (pc.layout_pass) {
-      this.stamina_row.ps = { x: stamina_icon_x, y };
-      this.stamina_row.pe = { x: row_right, y: y + health_h };
+    if (subject.current_stamina !== undefined) {
+      ctx.drawImage(pc.risq.getIcon('risq/icons/stamina'), stamina_icon_x, y, health_h, health_h);
+      drawText(ctx, stamina_text, {
+        p: { x: row_right, y: text_y },
+        w: stamina_text_width,
+        fill_style: 'black',
+        align: 'right',
+        baseline: 'middle',
+        font: `${health_h}px serif`,
+      });
     }
-    drawText(ctx, stamina_text, {
-      p: { x: row_right, y: text_y },
-      w: stamina_text_width,
-      fill_style: 'black',
-      align: 'right',
-      baseline: 'middle',
-      font: `${health_h}px serif`,
-    });
+    if (pc.layout_pass) {
+      const hidden = subject.current_stamina === undefined;
+      this.stamina_row.ps = hidden ? { x: 0, y: 0 } : { x: stamina_icon_x, y };
+      this.stamina_row.pe = hidden ? { x: 0, y: 0 } : { x: row_right, y: y + health_h };
+    }
     y += health_h + gap;
 
     if (pc.layout_pass) {
@@ -252,7 +255,7 @@ export class RisqStatsView {
       );
     }
     if (
-      subject &&
+      subject?.turn_stamina !== undefined &&
       shouldShowTooltip(this.stamina_tooltip, !!this.stamina_row.hovered, !!this.stamina_row.clicked, dt)
     ) {
       drawTooltip(this.stamina_tooltip, ctx, transform, canvas_size, `Stamina: +${subject.turn_stamina} / turn`);

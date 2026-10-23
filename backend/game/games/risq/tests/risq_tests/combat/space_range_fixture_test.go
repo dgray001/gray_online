@@ -12,12 +12,19 @@ import (
 
 func spaceRangeGame(t *testing.T, attackRange defs.RisqRange, spaces ...string) *harness.Game {
 	t.Helper()
+	return spaceRangeGameTweaked(t, attackRange, func() {}, spaces...)
+}
+
+// Runs tweak after the range is set and before the units are created
+func spaceRangeGameTweaked(t *testing.T, attackRange defs.RisqRange, tweak func(), spaces ...string) *harness.Game {
+	t.Helper()
 	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"space-range": fmt.Sprintf(meetingBoard, strings.Join(spaces, ","))})
 	for _, id := range []uint32{blunt, heavy} {
 		config := defs.UnitConfigs[id]
 		config.Attack_range = attackRange
 		defs.UnitConfigs[id] = config
 	}
+	tweak()
 	return harness.NewGame(t, "custom:space-range", 1, 2)
 }
 
@@ -69,8 +76,8 @@ func TestSpaceRangeShootsWithinSpace(t *testing.T) {
 	}
 }
 
-func TestSpaceRangeCrossingAttacks(t *testing.T) {
-	for name, kind := range map[string]defs.OrderType{"unit": defs.OrderType_UnitAttackUnit, "zone": defs.OrderType_UnitAttackZone, "space": defs.OrderType_UnitAttackSpace} {
+func TestSpaceRangeFacingEdgesShootMutually(t *testing.T) {
+	for name, kind := range orderTypes() {
 		t.Run(name, func(t *testing.T) {
 			log := captureTicks(t)
 			g := spaceRangeGame(t, defs.RisqRange_SPACE, acrossSpaces(placed{heavy, 0, 1, 0}, placed{heavy, 1, -1, 0})...)
@@ -78,35 +85,11 @@ func TestSpaceRangeCrossingAttacks(t *testing.T) {
 			g.Submit(g.Human(0), spaceRangeAttackOrder(a, b, kind))
 			g.Submit(g.Human(1), spaceRangeAttackOrder(b, a, kind))
 			ticks := parseTicks(t, log)
-			if len(ticks.moves) != 0 {
-				t.Fatalf("units crossed instead of meeting: %+v", ticks.moves)
-			}
-			for slot, before := range []harness.Unit{a, b} {
-				after := soleUnit(g, slot)
-				if after.Space != before.Space || after.Zone != before.Zone || after.CombatStats.Health >= before.CombatStats.Health {
-					t.Errorf("slot %d did not hold position and exchange damage: %+v", slot, after)
+			for _, unit := range []harness.Unit{a, b} {
+				hits := ticks.hitsBy(int(unit.InternalID))
+				if len(ticks.moves) != 0 || len(ticks.meetings) != 0 || len(hits) == 0 || hits[0].tick != 1 {
+					t.Fatalf("facing edges did not shoot on tick 1 without moving: %+v", ticks)
 				}
-				first, found := ticks.meetingOf(int(before.InternalID))
-				if !found || first.tick != 1 || first.sunk != 3 || first.attack != 0 {
-					t.Errorf("slot %d first meeting %+v found=%v, want a 3-stamina half step", slot, first, found)
-				}
-			}
-		})
-	}
-}
-
-func TestSpaceRangeApproachesStationaryEnemy(t *testing.T) {
-	for name, kind := range map[string]defs.OrderType{"unit": defs.OrderType_UnitAttackUnit, "zone": defs.OrderType_UnitAttackZone, "space": defs.OrderType_UnitAttackSpace} {
-		t.Run(name, func(t *testing.T) {
-			log := captureTicks(t)
-			g := spaceRangeGame(t, defs.RisqRange_SPACE, acrossSpaces(placed{heavy, 0, 1, 0}, placed{heavy, 1, -1, 0})...)
-			a, b := soleUnit(g, 0), soleUnit(g, 1)
-			makePassive(g, 1, b)
-			g.Submit(g.Human(0), spaceRangeAttackOrder(a, b, kind))
-			g.Submit(g.Human(1))
-			ticks := parseTicks(t, log)
-			if len(ticks.meetings) != 0 || len(ticks.movesOf(int(a.InternalID))) != 1 || len(ticks.hitsBy(int(a.InternalID))) == 0 {
-				t.Fatalf("stationary enemy did not get approached and shot: %+v", ticks)
 			}
 		})
 	}
@@ -120,7 +103,12 @@ func TestSpaceRangeDoesNotMeetNonOpposingMove(t *testing.T) {
 	g.Submit(g.Human(0), attackOrder(a, b))
 	g.Submit(g.Human(1), harness.OrderMoveZone([]uint64{b.InternalID}, 1, 0, 0, 0))
 	ticks := parseTicks(t, log)
-	if len(ticks.meetings) != 0 || len(ticks.movesOf(int(a.InternalID))) != 1 || len(ticks.hitsBy(int(a.InternalID))) == 0 {
-		t.Fatalf("non-opposing movement incorrectly met or stopped shooting: %+v", ticks)
+	hits := ticks.hitsBy(int(a.InternalID))
+	if len(ticks.meetings) != 0 || len(ticks.movesOf(int(a.InternalID))) != 0 || len(hits) != 1 || hits[0].tick != 1 {
+		t.Fatalf("want a tick 1 shot from the facing edge and no step this turn, since 5 stamina cannot pay a border step: %+v", ticks)
+	}
+	g.EndTurn()
+	if soleUnit(g, 0).Space.X != 1 {
+		t.Fatalf("attacker did not follow the target into its space: %+v", soleUnit(g, 0))
 	}
 }

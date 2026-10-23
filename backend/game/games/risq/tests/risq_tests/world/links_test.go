@@ -6,10 +6,10 @@ import (
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness"
 )
 
-// Two spaces six steps apart, P0's villager on the west one, joined only by the given connections
+// Two spaces six steps apart, P0's worker on the west one, joined only by the given connections
 func farApartGame(t *testing.T, connections string) (*harness.Game, int) {
 	t.Helper()
-	spaces := spaceWith(-3, 0, grass, unit(villager, 0)) + "," + spaceWith(3, 0, grass, unit(villager, 1))
+	spaces := spaceWith(-3, 0, flatTerrain, unit(worker, 0)) + "," + spaceWith(3, 0, flatTerrain, unit(worker, 1))
 	g := startGame(t, mapDoc(connections, spaces))
 	return g, g.Human(0)
 }
@@ -44,11 +44,11 @@ func TestSpacesWithoutAConnectionStayUnreachable(t *testing.T) {
 }
 
 func TestGarrisonedUnitsLeaveTheBuildingToMove(t *testing.T) {
-	west := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":22,"player":0},"units":[` + unit(villager, 0) + `]}]}`
-	g := startGame(t, mapDoc("", west+","+spaceWith(1, 0, grass, unit(villager, 1))))
+	west := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":205,"player":0},"units":[` + unit(worker, 0) + `]}]}`
+	g := startGame(t, mapDoc("", west+","+spaceWith(1, 0, flatTerrain, unit(worker, 1))))
 	mover := g.Human(0)
-	barracks, villagerID := g.Self(mover).Buildings[0].InternalID, firstUnit(g, mover).InternalID
-	g.Submit(mover, harness.OrderGarrison([]uint64{villagerID}, barracks))
+	barracks, workerID := g.Self(mover).Buildings[0].InternalID, firstUnit(g, mover).InternalID
+	g.Submit(mover, harness.OrderGarrison([]uint64{workerID}, barracks))
 	g.EndTurn()
 	if firstUnit(g, mover).GarrisonedIn == nil {
 		t.Fatal("the unit did not garrison")

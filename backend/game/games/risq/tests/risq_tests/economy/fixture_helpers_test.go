@@ -12,20 +12,27 @@ import (
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness/fakeboard"
 )
 
-const remoteVillager = `{"x":-2,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":1,"count":1}]}]}`
+const remoteWorker = `{"x":-2,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":1,"count":1}]}]}`
 
 func economyGame(t *testing.T, bank, spaces, rules string) *harness.Game {
 	t.Helper()
+	return economyGameTweaked(t, bank, spaces, rules, func() {})
+}
+
+// Runs tweak after the config is loaded and before the units and buildings are created
+func economyGameTweaked(t *testing.T, bank, spaces, rules string, tweak func()) *harness.Game {
+	t.Helper()
 	doc := `{"board_size":3,"players":2,"space_gold_income":0,"starting_bank":` + bank + `,"spaces":[` + spaces + `]` + rules + `}`
 	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"economy": doc})
+	tweak()
 	return startGame(t, "custom:economy", 1, 2)
 }
 
-func farmGame(t *testing.T, wood, workers int) *harness.Game {
+func orchardGame(t *testing.T, wood, workers int) *harness.Game {
 	t.Helper()
 	bank := fmt.Sprintf(`{"wood":%d}`, wood)
-	space := fmt.Sprintf(`{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":3,"player":0},"units":[{"id":1,"player":0,"count":%d}]}]}`, workers)
-	return economyGame(t, bank, space+","+remoteVillager, "")
+	space := fmt.Sprintf(`{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":203,"player":0},"units":[{"id":11,"player":0,"count":%d}]}]}`, workers)
+	return economyGame(t, bank, space+","+remoteWorker, "")
 }
 
 // Economy games read plain state, so they skip per-tick histories and reuse reads within a turn
@@ -43,14 +50,14 @@ func scenarioGame(t *testing.T, spaces string) *harness.Game {
 	return startGame(t, "custom:scenario", 1, 2)
 }
 
-func centerHousing(g *harness.Game, human int) harness.Building {
+func centerShelter(g *harness.Game, human int) harness.Building {
 	g.T.Helper()
 	for _, b := range g.Self(human).Buildings {
-		if b.Space == (harness.Coord{}) && b.Zone == (harness.Coord{}) && b.BuildingID == 2 {
+		if b.Space == (harness.Coord{}) && b.Zone == (harness.Coord{}) && b.BuildingID == 202 {
 			return b
 		}
 	}
-	g.T.Fatal("housing missing from center zone")
+	g.T.Fatal("shelter missing from center zone")
 	return harness.Building{}
 }
 

@@ -46,6 +46,7 @@ func (r *GameRisq) resolveActiveOrders() {
 		for o := range r.allOrderables() {
 			orderables = append(orderables, o)
 		}
+		r.blocking_walls = r.computeBlockingWalls()
 		intent_count := 0
 		for _, o := range orderables {
 			if o.tickIntent(r) {

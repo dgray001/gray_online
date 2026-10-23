@@ -3,6 +3,7 @@ import { DialogSize } from '../dialog_box/dialog_box';
 import type { ServerMessage, LobbyRoom, ConnectionMetadata } from '../lobby/data_models';
 import { GameType, createMessage } from '../lobby/data_models';
 import { apiPost } from '../../scripts/api';
+import { Sounds } from '../../sounds/Sounds';
 import type { ChatMessage, DwgChatbox } from '../chatbox/chatbox';
 import { capitalize, createLock, until } from '../../scripts/util';
 import type { MessageDialogData } from '../dialog_box/message_dialog/message_dialog';
@@ -214,6 +215,7 @@ export class DwgGame extends DwgElement {
             message.color
           )
         );
+        Sounds.playTaunt(message.message);
       }
     });
     this.open_chatbox_button.addEventListener('click', () => {

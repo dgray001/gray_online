@@ -165,35 +165,48 @@ func (s *RisqSpace) getCenterZone() *RisqZone {
 }
 
 func (s *RisqSpace) setBuilding(c *game_utils.Coordinate2D, building *RisqBuilding) {
+	if zone := s.placeBuilding(c, building); zone != nil {
+		s.addVision(building.vision(), zone, building.player_id)
+	}
+}
+
+// Places without lighting vision
+func (s *RisqSpace) placeBuilding(c *game_utils.Coordinate2D, building *RisqBuilding) *RisqZone {
 	zone := s.getZone(c)
 	if zone == nil {
 		util.Errorf(util.DefaultErr, "Invalid zone coordinate: %d %d", c.X, c.Y)
-		return
+		return nil
 	}
 	if zone.resource != nil && zone.resource.resources_left > 0 {
 		util.Errorf(util.DefaultErr, "Can't set building when resource already there")
-		return
+		return nil
 	}
 	if zone.building != nil && !zone.building.deleted {
 		util.Errorf(util.DefaultErr, "Can't set building when building already there")
-		return
+		return nil
 	}
 	s.buildings[building.internal_id] = building
 	zone.building = building
 	building.zone = zone
-	s.addVision(building.vision(), zone, building.player_id)
+	return zone
 }
 
 func (s *RisqSpace) setUnit(c *game_utils.Coordinate2D, unit *RisqUnit) {
+	if zone := s.placeUnit(c, unit); zone != nil {
+		s.addVision(unit.vision(), zone, unit.player_id)
+	}
+}
+
+func (s *RisqSpace) placeUnit(c *game_utils.Coordinate2D, unit *RisqUnit) *RisqZone {
 	zone := s.getZone(c)
 	if zone == nil {
 		util.Errorf(util.DefaultErr, "Invalid zone coordinate: %d %d", c.X, c.Y)
-		return
+		return nil
 	}
 	s.units[unit.internal_id] = unit
 	zone.units[unit.internal_id] = unit
 	unit.zone = zone
-	s.addVision(unit.vision(), zone, unit.player_id)
+	return zone
 }
 
 func (s *RisqSpace) removeUnit(unit *RisqUnit) {
@@ -219,19 +232,20 @@ func (s *RisqSpace) removeResource(resource *RisqResource) {
 
 func (s *RisqSpace) addVision(v *defs.RisqVision, z *RisqZone, player_id int) {
 	checked := make(map[uint]bool)
-	elevate := func(space *RisqSpace, level uint8) {
+	elevate := func(space *RisqSpace, level uint8, floor uint8) {
 		if space == nil {
 			return
 		}
+		level = visionThroughHeight(level, space.height()-s.height(), floor)
 		if space.getVisibility(player_id) < level {
 			space.visibility[player_id] = level
 		}
 		checked[space.coordinate_key] = true
 	}
-	elevate(s, v.Space)
+	elevate(s, v.Space, defs.VisibilityPoor)
 	if z.isCenter() {
 		for _, adj := range s.adjacent_spaces {
-			elevate(adj, v.Adjacent)
+			elevate(adj, v.Adjacent, defs.VisibilityPoor)
 		}
 	} else {
 		dirs := game_utils.AxialDirectionVectors()
@@ -239,22 +253,22 @@ func (s *RisqSpace) addVision(v *defs.RisqVision, z *RisqZone, player_id int) {
 			d := dirs[(z.direction+offset)%6]
 			return s.adjacent_spaces[util.Pair(d.X, d.Y)]
 		}
-		elevate(spaceInDirection(0), v.Edge_adjacent)
-		elevate(spaceInDirection(1), v.Adjacent)
-		elevate(spaceInDirection(5), v.Adjacent)
-		elevate(spaceInDirection(2), v.Edge_opposite)
-		elevate(spaceInDirection(3), v.Edge_opposite)
-		elevate(spaceInDirection(4), v.Edge_opposite)
+		elevate(spaceInDirection(0), v.Edge_adjacent, defs.VisibilityGood)
+		elevate(spaceInDirection(1), v.Adjacent, defs.VisibilityPoor)
+		elevate(spaceInDirection(5), v.Adjacent, defs.VisibilityPoor)
+		elevate(spaceInDirection(2), v.Edge_opposite, defs.VisibilityPoor)
+		elevate(spaceInDirection(3), v.Edge_opposite, defs.VisibilityPoor)
+		elevate(spaceInDirection(4), v.Edge_opposite, defs.VisibilityPoor)
 	}
 	for _, adj := range s.adjacent_spaces {
+		if adj.height() > s.height() {
+			continue
+		}
 		for _, sec := range adj.adjacent_spaces {
 			if util.MapContains(checked, sec.coordinate_key) {
 				continue
 			}
-			if sec.getVisibility(player_id) < v.Secondary {
-				sec.visibility[player_id] = v.Secondary
-			}
-			checked[sec.coordinate_key] = true
+			elevate(sec, v.Secondary, defs.VisibilityPoor)
 		}
 	}
 }
@@ -401,6 +415,27 @@ func (s *RisqSpace) displayName() string {
 
 func (s *RisqSpace) terrainType() defs.TerrainType {
 	return s.config.Terrains[s.terrain_id].Terrain_type
+}
+
+func (s *RisqSpace) height() int {
+	return s.terrainType().Height()
+}
+
+// Leaving a soft floor for the tier below takes two drops
+func visionThroughHeight(level uint8, rise int, floor uint8) uint8 {
+	floor = min(floor, max(level, defs.VisibilityPoor))
+	switch {
+	case rise <= 0:
+		return level
+	case level > floor:
+		return max(level-uint8(rise), floor)
+	case level == floor && rise < 2:
+		return level
+	case level > defs.VisibilityPoor:
+		return level - 1
+	default:
+		return defs.VisibilityUnexplored
+	}
 }
 
 func (s *RisqSpace) moveCost() defs.TerrainMoveCost {

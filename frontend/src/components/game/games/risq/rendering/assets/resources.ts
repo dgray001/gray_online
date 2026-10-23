@@ -410,7 +410,7 @@ declare interface ForestTreeSpots {
 }
 
 /** Local-frame tree spots: a ring (center) or inward arc (edge), plus an inner square/right triangle at half that distance */
-function forestTreeLocalOffsets(is_center: boolean, hex_r: number, seed: number): ForestTreeSpots {
+function buildForestTreeLocalOffsets(is_center: boolean, hex_r: number, seed: number): ForestTreeSpots {
   const random = seededRandom(seed);
   const outer_step = is_center ? (2 * Math.PI) / CENTER_FOREST_TREES : Math.PI / (EDGE_FOREST_TREES - 1);
   const inner_step = Math.PI / 2;
@@ -438,6 +438,22 @@ function forestTreeLocalOffsets(is_center: boolean, hex_r: number, seed: number)
   const clamp_to_zone = is_center ? clampToCenterZone : clampToEdgeZone;
   const place = (p: Point2D): Point2D => clamp_to_zone({ x: p.x + perturbation(), y: p.y + perturbation() }, hex_r);
   return { inner: inner.map(place), outer: ring_angles.map(ring_at).map(place) };
+}
+
+let forest_spots_hex_r = 0;
+const forest_spots_cache = new Map<number, ForestTreeSpots>();
+
+function forestTreeLocalOffsets(is_center: boolean, hex_r: number, seed: number): ForestTreeSpots {
+  if (hex_r !== forest_spots_hex_r) {
+    forest_spots_cache.clear();
+    forest_spots_hex_r = hex_r;
+  }
+  let spots = forest_spots_cache.get(seed);
+  if (!spots) {
+    spots = buildForestTreeLocalOffsets(is_center, hex_r, seed);
+    forest_spots_cache.set(seed, spots);
+  }
+  return spots;
 }
 
 /** Draws a forest zone's trees upright around its space's center (the current origin), clipped to the zone */

@@ -21,7 +21,7 @@ func TestScriptsReceiveSetupSettings(t *testing.T) {
 		"start_balance":        {float64(defs.StartBalance_RANDOM), float64(defs.StartBalance_MIRRORED)},
 	} {
 		t.Run(key, func(t *testing.T) {
-			useScripts(t, map[string]string{"setting": `[` + hexagon2 + `,{"step":"rules","params":{"space_gold_income":"` + key + `"}},{"step":"player_starts","params":{"pattern":"ring","starting_distance":1,"area_size":1,"terrain_id":1,"assets":{"units":[{"unit_id":1,"count":1,"target":{"zone":"center"}}]},"resources":[]}}]`})
+			useScripts(t, map[string]string{"setting": `[` + hexagon2 + `,{"step":"rules","params":{"space_gold_income":"` + key + `"}},{"step":"player_starts","params":{"pattern":"ring","starting_distance":1,"area_size":1,"terrain_id":1,"assets":{"units":[{"unit_id":11,"count":1,"target":{"zone":"center"}}]},"resources":[]}}]`})
 			for _, value := range values {
 				g := harness.NewUnstartedGameWithSettings(t, "script:setting", 1, 2, map[string]any{key: value})
 				g.Risq.StartGame()
@@ -36,7 +36,7 @@ func TestScriptsReceiveSetupSettings(t *testing.T) {
 
 func TestPopulationLimitSettingReachesPlayers(t *testing.T) {
 	for raw, want := range map[any]int{nil: 100, float64(25): 25, float64(100): 100, float64(200): 200} {
-		g := harness.NewUnstartedGameWithSettings(t, "script:hexagon", 1, 2, map[string]any{"population_limit": raw})
+		g := harness.NewUnstartedGameWithSettings(t, "script:fixture_hexagon", 1, 2, map[string]any{"population_limit": raw})
 		g.Risq.StartGame()
 		for player := 0; player < 2; player++ {
 			if got := g.Self(player).MaxPopulationLimit; got != want {
@@ -56,7 +56,7 @@ func TestPopulationLimitRejectsInvalidSettings(t *testing.T) {
 }
 
 func createWithAis(count int) error {
-	_, err := engineStarts("script:ring", count, 1)
+	_, err := engineStarts("script:fixture_ring", count, 1)
 	return err
 }
 

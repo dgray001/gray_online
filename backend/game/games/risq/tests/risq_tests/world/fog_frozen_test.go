@@ -7,13 +7,13 @@ import (
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness"
 )
 
-// P0's villager at (0,0); P1's villager on a stone mine at (1,0) and P1's village center at (1,-1); open ground west of P0
+// P0's worker at (0,0); P1's worker on a stone mine at (1,0) and P1's town hall at (1,-1); open ground west of P0
 func frozenGame(t *testing.T) (*harness.Game, int, int) {
 	t.Helper()
-	mine := `{"x":1,"y":0,"terrain":1,"zones":[{"x":1,"y":0,"resource":41,"units":[` + unit(villager, 1) + `]}]}`
-	camp := `{"x":1,"y":-1,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":1}}]}`
-	spaces := spaceWith(0, 0, grass, unit(villager, 0)) + "," + mine + "," + camp + "," +
-		spaceWith(-1, 0, grass, "") + "," + spaceWith(-2, 0, grass, "") + "," + spaceWith(-3, 0, grass, "")
+	mine := `{"x":1,"y":0,"terrain":1,"zones":[{"x":1,"y":0,"resource":41,"units":[` + unit(worker, 1) + `]}]}`
+	camp := `{"x":1,"y":-1,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":201,"player":1}}]}`
+	spaces := spaceWith(0, 0, flatTerrain, unit(worker, 0)) + "," + mine + "," + camp + "," +
+		spaceWith(-1, 0, flatTerrain, "") + "," + spaceWith(-2, 0, flatTerrain, "") + "," + spaceWith(-3, 0, flatTerrain, "")
 	g := startGame(t, mapDoc("", spaces))
 	return g, g.Human(0), g.Human(1)
 }
@@ -61,10 +61,67 @@ func TestFoggedResourcesStayFrozenWhileHidden(t *testing.T) {
 	}
 }
 
+func rememberedDestroyedCamp(t *testing.T, own_unit string) (*harness.Game, int, uint64) {
+	t.Helper()
+	orchard := `{"x":1,"y":-1,"terrain":1,"zones":[{"x":1,"y":-1,"building":{"id":203,"player":1}}]}`
+	spaces := spaceWith(0, 0, flatTerrain, own_unit) + "," + orchard + "," +
+		spaceWith(-1, 0, flatTerrain, "") + "," + spaceWith(-2, 0, flatTerrain, "") + "," + spaceWith(-3, 0, flatTerrain, "") + "," + spaceWith(2, -1, flatTerrain, unit(worker, 1))
+	g := startGame(t, mapDoc("", spaces))
+	p0, p1 := g.Human(0), g.Human(1)
+	if moveUntilArrived(g, p0, -3, 0, 12) < 1 {
+		t.Fatal("P0 never walked away")
+	}
+	camp := g.Self(p1).Buildings[0].InternalID
+	g.Submit(p1, harness.Order(defs.OrderType_BuildingDelete, []uint64{camp}, 0, false))
+	g.EndTurn()
+	g.EndTurn()
+	if got := g.State(p0).Space(1, -1).Buildings; len(got) != 1 || got[0].InternalID != camp {
+		t.Fatalf("setup: P0 remembers %v, want the destroyed camp", got)
+	}
+	return g, p0, camp
+}
+
+func TestAttackOnARememberedDestroyedBuildingDoesNotRejectTheBatch(t *testing.T) {
+	orchard := `{"x":1,"y":-1,"terrain":1,"zones":[{"x":1,"y":-1,"building":{"id":203,"player":1}}]}`
+	spaces := spaceWith(0, 0, flatTerrain, unit(grunt, 0)) + "," + orchard + "," +
+		spaceWith(-1, 0, flatTerrain, "") + "," + spaceWith(-2, 0, flatTerrain, "") + "," + spaceWith(-3, 0, flatTerrain, "") + "," + spaceWith(2, -1, flatTerrain, unit(worker, 1))
+	g := startGame(t, mapDoc("", spaces))
+	p0, p1 := g.Human(0), g.Human(1)
+	if moveUntilArrived(g, p0, -3, 0, 12) < 1 {
+		t.Fatal("P0 never walked away")
+	}
+	camp := g.Self(p1).Buildings[0].InternalID
+	g.Submit(p1, harness.Order(defs.OrderType_BuildingDelete, []uint64{camp}, 0, false))
+	g.EndTurn()
+	g.EndTurn()
+	if len(g.Self(p1).Buildings) != 0 {
+		t.Fatal("setup: the camp still exists")
+	}
+	if got := g.State(p0).Space(1, -1).Buildings; len(got) != 1 || got[0].InternalID != camp {
+		t.Fatalf("setup: P0 remembers %v, want the destroyed camp", got)
+	}
+	soldier := firstUnit(g, p0).InternalID
+	g.Submit(p0, harness.Order(defs.OrderType_UnitAttackBuilding, []uint64{soldier}, int64(camp), true))
+	g.EndTurn()
+	g.SubmitRejected(p0, harness.Order(defs.OrderType_UnitAttackBuilding, []uint64{soldier}, 999999, true), "Invalid building target id 999999")
+}
+
+func TestBuildingOrdersOnARememberedDestroyedBuildingDoNotRejectTheBatch(t *testing.T) {
+	g, p0, camp := rememberedDestroyedCamp(t, unit(worker, 0))
+	worker_id := firstUnit(g, p0).InternalID
+	for _, order_type := range []defs.OrderType{defs.OrderType_UnitGarrison, defs.OrderType_UnitRepair, defs.OrderType_UnitRenew} {
+		g.Submit(p0, harness.Order(order_type, []uint64{worker_id}, int64(camp), true))
+		g.EndTurn()
+	}
+	for _, order_type := range []defs.OrderType{defs.OrderType_UnitGarrison, defs.OrderType_UnitRepair, defs.OrderType_UnitRenew} {
+		g.SubmitRejected(p0, harness.Order(order_type, []uint64{worker_id}, 999999, true), "Invalid building target id 999999")
+	}
+}
+
 func TestFoggedBuildingsStayFrozenUntilVisionReturns(t *testing.T) {
-	farm := `{"x":1,"y":-1,"terrain":1,"zones":[{"x":1,"y":-1,"terrain_override":24,"building":{"id":3,"player":1}}]}`
-	spaces := spaceWith(0, 0, grass, unit(villager, 0)) + "," + farm + "," +
-		spaceWith(-1, 0, grass, "") + "," + spaceWith(-2, 0, grass, "") + "," + spaceWith(-3, 0, grass, "") + "," + spaceWith(2, -1, grass, unit(villager, 1))
+	orchard := `{"x":1,"y":-1,"terrain":1,"zones":[{"x":1,"y":-1,"terrain_override":24,"building":{"id":203,"player":1}}]}`
+	spaces := spaceWith(0, 0, flatTerrain, unit(worker, 0)) + "," + orchard + "," +
+		spaceWith(-1, 0, flatTerrain, "") + "," + spaceWith(-2, 0, flatTerrain, "") + "," + spaceWith(-3, 0, flatTerrain, "") + "," + spaceWith(2, -1, flatTerrain, unit(worker, 1))
 	g := startGame(t, mapDoc("", spaces))
 	p0, p1 := g.Human(0), g.Human(1)
 	if moveUntilArrived(g, p0, -3, 0, 12) < 1 {
@@ -79,12 +136,12 @@ func TestFoggedBuildingsStayFrozenUntilVisionReturns(t *testing.T) {
 	}
 	live := g.State(p1).Space(1, -1)
 	if live.Visibility < poor {
-		t.Fatal("P1 lost vision of the deleted farm")
+		t.Fatal("P1 lost vision of the deleted orchard")
 	}
 	for _, row := range live.Zones {
 		for _, zone := range row {
 			if zone.Building != nil || zone.TerrainOverride != 0 {
-				t.Fatal("the deleted farm or its terrain override remains in the live zone")
+				t.Fatal("the deleted orchard or its terrain override remains in the live zone")
 			}
 		}
 	}
@@ -113,8 +170,10 @@ func TestFoggedBuildingsStayFrozenUntilVisionReturns(t *testing.T) {
 	}
 
 	if moveUntilArrived(g, p0, 0, 0, 12) < 1 {
-		t.Fatal("P0 never returned to reveal the deleted farm")
+		t.Fatal("P0 never returned to reveal the deleted orchard")
 	}
+	g.Submit(p0, harness.OrderMoveZone([]uint64{firstUnit(g, p0).InternalID}, 0, 0, 0, 0))
+	g.EndTurn()
 	p0Space = g.State(p0).Space(1, -1)
 	if got := p0Space.Buildings; len(got) != 0 {
 		t.Errorf("buildings %v after vision returned, want the stale camp gone", got)

@@ -39,8 +39,20 @@ func TestCustomMapExpressionsUseSetupSettings(t *testing.T) {
 	}
 }
 
+func TestCustomMapSpaceGoldIncomeOverridesGlobal(t *testing.T) {
+	doc := `{"board_size":1,"players":1,"space_gold_income":2,"spaces":[{"x":0,"y":0,"gold_income":5},{"x":1,"y":0}]}`
+	board := mustGenerate(t, doc, 1)
+	income := func(x int) float64 {
+		space := board.Space(game_utils.Coordinate2D{X: x})
+		return space.(interface{ GoldIncome() float64 }).GoldIncome()
+	}
+	if income(0) != 5 || income(1) != 2 {
+		t.Errorf("space incomes = %v, %v; want 5, 2", income(0), income(1))
+	}
+}
+
 func TestCustomMapUnitCountsUseSetupSettings(t *testing.T) {
-	space := `{"x":0,"y":0,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":0,"count":"starting_development * 2"}]}]}`
+	space := `{"x":0,"y":0,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":0,"count":"starting_development * 2"}]}]}`
 	board := seededBoard(t, customDoc(1, "", space), 1, 1, map[string]any{"starting_development": float64(3)})
 	if units := zoneAt(t, board, 0, 0, 0, 0).Units; len(units) != 6 {
 		t.Errorf("%d units, want starting_development 3 x 2", len(units))
@@ -53,14 +65,14 @@ func TestCustomMapRejectsBadExpressions(t *testing.T) {
 }
 
 func TestCustomMapAppliesRulesToPlayingSlotsOnly(t *testing.T) {
-	extra := `,"starting_bank":{"food":5,"wood":6,"stone":7,"gold":8},"starting_techs":[4],"unlimited_population":true,` +
+	extra := `,"starting_bank":{"food":5,"wood":6,"stone":7,"gold":8},"starting_techs":[304],"unlimited_population":true,` +
 		`"space_gold_income":30,"mercenaries_need_region":false`
 	board := mustGenerate(t, customDoc(4, extra, hex7), 2)
 	if len(board.Banks) != 2 || board.Banks[0].Gold != 8 || board.Banks[1].Food != 5 {
 		t.Errorf("banks = %v, want food 5 and gold 8 for players 0 and 1 only", board.Banks)
 	}
-	if len(board.Techs) != 2 || board.Techs[1][0] != 4 {
-		t.Errorf("techs = %v, want tech 4 for players 0 and 1 only", board.Techs)
+	if len(board.Techs) != 2 || board.Techs[1][0] != 304 {
+		t.Errorf("techs = %v, want tech 304 for players 0 and 1 only", board.Techs)
 	}
 	if !board.Unlimited || goldIncome(t, board) != 30 || board.NeedRegion == nil || *board.NeedRegion {
 		t.Errorf("unlimited %t, need region %v; want true and false", board.Unlimited, board.NeedRegion)

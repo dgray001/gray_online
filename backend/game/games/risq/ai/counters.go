@@ -26,11 +26,30 @@ type amount struct {
 	value float64
 	expr  string
 	query counter
+	// whether expr names built-in variables like food or turn, so they are only computed when read
+	reads_vars bool
 }
 
-var expressionVarNames = []string{
-	"num_players", "enemies_found", "turn", "map_size", "land", "score", "best_enemy_score",
-	"population", "population_limit", "food", "wood", "stone", "gold",
+var expressionCounters = map[string]counter{
+	"num_players":      func(v View, _ *Internals) float64 { return float64(v.NumPlayers()) },
+	"enemies_found":    func(v View, _ *Internals) float64 { return float64(v.EnemiesFound()) },
+	"turn":             func(v View, _ *Internals) float64 { return float64(v.TurnNumber()) },
+	"map_size":         func(v View, _ *Internals) float64 { return float64(v.MapSize()) },
+	"land":             func(v View, _ *Internals) float64 { return float64(v.OwnedSpaces()) },
+	"score":            func(v View, _ *Internals) float64 { return float64(v.Score()) },
+	"best_enemy_score": func(v View, _ *Internals) float64 { return float64(v.BestEnemyScore()) },
+	"population": func(v View, i *Internals) float64 {
+		current, _ := i.population(v)
+		return float64(current)
+	},
+	"population_limit": func(v View, i *Internals) float64 {
+		_, limit := i.population(v)
+		return float64(limit)
+	},
+	"food":  func(v View, i *Internals) float64 { return i.available(v, ResourceFood) },
+	"wood":  func(v View, i *Internals) float64 { return i.available(v, ResourceWood) },
+	"stone": func(v View, i *Internals) float64 { return i.available(v, ResourceStone) },
+	"gold":  func(v View, i *Internals) float64 { return i.available(v, ResourceGold) },
 }
 
 func parseAmount(raw any) (amount, error) {
@@ -42,22 +61,31 @@ func parseAmount(raw any) (amount, error) {
 				return amount{query: query}, err
 			}
 		}
-		return amount{}, fmt.Errorf("numeric query must be a count_spaces or closest_spaces object")
+		for _, name := range aggregateNames {
+			if obj, ok := v[name].(map[string]any); ok && len(v) == 1 {
+				query, err := parseAggregate(name, obj)
+				return amount{query: query}, err
+			}
+		}
+		return amount{}, fmt.Errorf("numeric query must be a count_spaces, closest_spaces, count, sum, min or max object")
 	case float64:
 		if math.IsNaN(v) || math.IsInf(v, 0) {
 			return amount{}, fmt.Errorf("must be finite")
 		}
 		return amount{value: v}, nil
 	case string:
-		vars := make(map[string]float64, len(expressionVarNames))
-		for _, name := range expressionVarNames {
-			vars[name] = 1
+		vars := make(map[string]float64, len(expressionCounters))
+		for name := range expressionCounters {
+			vars[name] = 0
 		}
-		// syntax check only: every var() resolves to 1, and a zero divisor from those stand-ins is not an error
-		if _, err := util.EvalExprWithLookup(v, vars, func(name string) (float64, error) { noteVarRead(name); return 1, nil }); err != nil && err.Error() != "division by zero" {
+		if err := util.ValidateExpr(v, vars, noteVarRead); err != nil {
 			return amount{}, err
 		}
-		return amount{expr: v}, nil
+		reads, _ := util.AnalyzeExpr(v)
+		if reads.Impure {
+			noteRandomUse()
+		}
+		return amount{expr: v, reads_vars: len(reads.Bare) > 0}, nil
 	}
 	return amount{}, fmt.Errorf("must be a number, expression string or space query object")
 }
@@ -75,16 +103,34 @@ func parseNumber(raw map[string]any, key string, def float64) (amount, error) {
 	return a, nil
 }
 
-func (a amount) resolve(view View, internals *Internals) (float64, error) {
+func (a amount) resolve(view View, internals *Internals) (value float64, err error) {
+	previous := internals.eval_errors
+	defer func() {
+		if err == nil && internals.eval_errors != previous {
+			err = fmt.Errorf("nested expression evaluation failed")
+		}
+		if err == nil && (math.IsNaN(value) || math.IsInf(value, 0)) {
+			err = fmt.Errorf("expression result must be finite")
+		}
+		if err != nil {
+			internals.eval_errors++
+		}
+	}()
 	if a.query != nil {
 		return a.query(view, internals), nil
 	}
 	if a.expr == "" {
 		return a.value, nil
 	}
-	return util.EvalExprWithLookup(a.expr, expressionVars(view, internals), func(name string) (float64, error) {
+	var vars map[string]float64
+	if a.reads_vars {
+		vars = expressionVars(view, internals)
+	}
+	return util.EvalExprWithDistance(a.expr, vars, func(name string) (float64, error) {
 		return internals.lookupVar(view, name), nil
-	})
+	}, func(a string, b string, zone_steps bool) (float64, error) {
+		return internals.distance(view, a, b, zone_steps)
+	}, internals.rng)
 }
 
 // Resolves to a number, or 0 (with a one-time warning) when the expression can't be evaluated
@@ -102,22 +148,11 @@ func (a amount) int(view View, internals *Internals) int {
 }
 
 func expressionVars(view View, internals *Internals) map[string]float64 {
-	current, limit := internals.population(view)
-	return map[string]float64{
-		"num_players":      float64(view.NumPlayers()),
-		"enemies_found":    float64(view.EnemiesFound()),
-		"turn":             float64(view.TurnNumber()),
-		"map_size":         float64(view.MapSize()),
-		"land":             float64(view.OwnedSpaces()),
-		"score":            float64(view.Score()),
-		"best_enemy_score": float64(view.BestEnemyScore()),
-		"population":       float64(current),
-		"population_limit": float64(limit),
-		"food":             internals.available(view, ResourceFood),
-		"wood":             internals.available(view, ResourceWood),
-		"stone":            internals.available(view, ResourceStone),
-		"gold":             internals.available(view, ResourceGold),
+	vars := make(map[string]float64, len(expressionCounters))
+	for name, read := range expressionCounters {
+		vars[name] = read(view, internals)
 	}
+	return vars
 }
 
 type countCondition struct {
@@ -181,6 +216,13 @@ func parseCountCondition(key string, value any) (Condition, error) {
 
 type counter func(view View, internals *Internals) float64
 
+func boolFloat(value bool) float64 {
+	if value {
+		return 1
+	}
+	return 0
+}
+
 func fixedCounter(c counter) func(map[string]any) (counter, error) {
 	return func(map[string]any) (counter, error) { return c, nil }
 }
@@ -195,6 +237,8 @@ func init() {
 		"num_players":         fixedCounter(func(v View, _ *Internals) float64 { return float64(v.NumPlayers()) }),
 		"enemies_found":       fixedCounter(func(v View, _ *Internals) float64 { return float64(v.EnemiesFound()) }),
 		"land":                fixedCounter(func(v View, _ *Internals) float64 { return float64(v.OwnedSpaces()) }),
+		"has_economy":         fixedCounter(func(v View, _ *Internals) float64 { return boolFloat(v.HasEconomy()) }),
+		"has_production":      fixedCounter(func(v View, _ *Internals) float64 { return boolFloat(v.HasProduction()) }),
 		"score_lead":          fixedCounter(func(v View, _ *Internals) float64 { return float64(v.Score() - v.BestEnemyScore()) }),
 		"population_headroom": fixedCounter(populationHeadroom),
 		"resource":            parseResourceCounter,
@@ -336,10 +380,10 @@ func parseUnidentifiedUnitsCounter(obj map[string]any) (counter, error) {
 		return nil, err
 	}
 	return func(v View, i *Internals) float64 {
-		count := 0
+		count, own := 0, ownUnitsBySpace(v)
 		for _, space := range v.AllSpaces() {
 			if near.contains(v, i, ZoneRef{Space: space.Space}) {
-				count += unidentifiedUnitCount(v, space)
+				count += unidentifiedUnitCount(space, own)
 			}
 		}
 		return float64(count)

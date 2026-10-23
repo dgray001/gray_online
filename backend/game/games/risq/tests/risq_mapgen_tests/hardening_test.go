@@ -9,7 +9,7 @@ import (
 
 func TestGenerateReturnsAnErrorForNonPositivePlayerCounts(t *testing.T) {
 	for _, players := range []int{0, -1} {
-		for _, name := range []string{"custom:tiny", "script:ring", "script:triangle"} {
+		for _, name := range []string{"custom:fixture_tiny", "script:fixture_ring", "script:fixture_triangle"} {
 			if _, err := fakeboard.Generate(name, players, 1); err == nil || !strings.Contains(err.Error(), "need at least 1 player") {
 				t.Errorf("%s with %d players: error %v, want a player count error", name, players, err)
 			}
@@ -58,10 +58,10 @@ func TestCustomMapIgnoresAnUnknownTerrainOverride(t *testing.T) {
 }
 
 func TestCustomMapSkipsUnitsWithANegativeCount(t *testing.T) {
-	doc := customDoc(1, "", `{"x":0,"y":0,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":0,"count":-3},{"id":101,"player":0,"count":2}]}]}`)
+	doc := customDoc(1, "", `{"x":0,"y":0,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":0,"count":-3},{"id":21,"player":0,"count":2}]}]}`)
 	board := mustGenerate(t, doc, 1)
-	if units := zoneAt(t, board, 0, 0, 0, 0).Units; len(units) != 2 || units[0].ID != 101 {
-		t.Errorf("units = %v, want only the 2 of unit 101", units)
+	if units := zoneAt(t, board, 0, 0, 0, 0).Units; len(units) != 2 || units[0].ID != 21 {
+		t.Errorf("units = %v, want only the 2 of unit 21", units)
 	}
 	checkCustomDocMatches(t, doc)
 }

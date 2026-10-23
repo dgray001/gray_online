@@ -52,7 +52,7 @@ export declare interface RisqRegionFromServer {
   gold_bonus: number;
   spaces: number[];
   owner: number;
-  unexplored_spaces: number;
+  has_unexplored_spaces: boolean;
 }
 
 /** Data describing risq player resources from server */
@@ -69,8 +69,8 @@ export declare interface RisqPlayerFromServer {
   buildings: RisqBuildingFromServer[];
   units: RisqUnitFromServer[];
   resources?: RisqPlayerResourcesFromServer;
-  population_limit: number;
-  max_population_limit: number;
+  population_limit?: number;
+  max_population_limit?: number;
   unlimited_population: boolean;
   score: number;
   color: string;
@@ -78,7 +78,7 @@ export declare interface RisqPlayerFromServer {
   unreceived_orders: RisqUnreceivedOrder[];
   orders_submitted: boolean;
   eliminated: boolean;
-  researched_techs: Record<string, boolean>;
+  researched_techs?: Record<string, boolean>;
   turn_report?: RisqTurnReportFromServer;
   planned_foundations?: RisqPlannedFoundation[];
   available_mercenaries?: RisqProducible[];
@@ -163,9 +163,9 @@ export declare interface RisqUnitFromServer {
   display_name: string;
   space_coordinate: Point2D;
   zone_coordinate: Point2D;
-  turn_stamina: number;
-  current_stamina: number;
-  max_stamina: number;
+  turn_stamina?: number;
+  current_stamina?: number;
+  max_stamina?: number;
   combat_stats: RisqCombatStatsFromServer;
   attack_range: RisqRange;
   active_orders: RisqOrderFromServer[];
@@ -191,9 +191,9 @@ export declare interface RisqBuildingFromServer {
   garrison_capacity: number;
   has_garrisoned_units: boolean;
   garrisoned_units?: number[]; // only present to the owner or a viewer with spy-tier vision
-  turn_stamina: number;
-  current_stamina: number;
-  max_stamina: number;
+  turn_stamina?: number;
+  current_stamina?: number;
+  max_stamina?: number;
   under_construction: boolean;
   stamina_remaining: number;
   construction_stamina_total: number;

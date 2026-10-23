@@ -10,12 +10,12 @@ import (
 // P0's soldiers hold (0,0) and (1,0); P1's holds (3,0), with extra P1 soldiers beside it; (2,0) is empty
 func incomeGame(t *testing.T, extra string, extraP1Soldiers int) (*harness.Game, int, int) {
 	t.Helper()
-	p1 := unit(infantry, 1)
+	p1 := unit(grunt, 1)
 	for i := 0; i < extraP1Soldiers; i++ {
-		p1 += "," + unit(infantry, 1)
+		p1 += "," + unit(grunt, 1)
 	}
-	spaces := spaceWith(0, 0, grass, unit(infantry, 0)) + "," + spaceWith(1, 0, grass, unit(infantry, 0)) + "," +
-		spaceWith(2, 0, grass, "") + "," + spaceWith(3, 0, grass, p1)
+	spaces := spaceWith(0, 0, flatTerrain, unit(grunt, 0)) + "," + spaceWith(1, 0, flatTerrain, unit(grunt, 0)) + "," +
+		spaceWith(2, 0, flatTerrain, "") + "," + spaceWith(3, 0, flatTerrain, p1)
 	g := startGame(t, mapDoc(extra, spaces))
 	return g, g.Human(0), g.Human(1)
 }

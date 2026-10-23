@@ -31,7 +31,8 @@
     "defense_piercing": 3,
     "population_support": 5,
     "cost": { "wood": 30 },
-    "build_stamina": 14
+    "build_stamina": 14,
+    "vision": { "space": 3, "edge_adjacent": 2, "adjacent": 0, "edge_opposite": 0, "secondary": 0 }
   },
   {
     "building_id": 3,
@@ -43,6 +44,7 @@
     "cost": { "wood": 80 },
     "build_stamina": 14,
     "required_tech_id": 1,
+    "vision": { "space": 3, "edge_adjacent": 2, "adjacent": 0, "edge_opposite": 0, "secondary": 0 },
     "terrain_override": { "flatlands": 25, "hilly": 75 },
     "gatherable": {
       "resource_category": "food",
@@ -62,6 +64,7 @@
     "defense_blunt": 1,
     "defense_piercing": 3,
     "cost": { "wood": 100, "stone": 100 },
+    "vision": { "space": 3, "edge_adjacent": 2, "adjacent": 0, "edge_opposite": 0, "secondary": 0 },
     "build_stamina": 30,
     "turn_stamina": 10,
     "produces": [

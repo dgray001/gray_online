@@ -285,8 +285,9 @@ func (p *targetPicker) candidates(view View, internals *Internals, from ZoneRef)
 			out = append(out, candidate{loc: loc})
 		}
 	case targetsUnidentifiedUnits:
+		own := ownUnitsBySpace(view)
 		for _, space := range view.AllSpaces() {
-			if unidentifiedUnitCount(view, space) > 0 {
+			if unidentifiedUnitCount(space, own) > 0 {
 				out = append(out, candidate{loc: ZoneRef{Space: space.Space}})
 			}
 		}
@@ -300,8 +301,10 @@ func (p *targetPicker) candidates(view View, internals *Internals, from ZoneRef)
 
 // best scores the candidates seen from `from`; target_distance and the "target" anchor refer to each in turn
 func (p *targetPicker) best(view View, internals *Internals, from ZoneRef) (candidate, float64, bool) {
+	saved_candidate := internals.target_candidate
 	saved_target, saved_from, saved_h, saved_mh := internals.target, internals.target_from, internals.target_health, internals.target_max_health
 	defer func() {
+		internals.target_candidate = saved_candidate
 		internals.target, internals.target_from, internals.target_health, internals.target_max_health = saved_target, saved_from, saved_h, saved_mh
 	}()
 	min_score := p.min_score.float(view, internals)
@@ -311,6 +314,7 @@ func (p *targetPicker) best(view View, internals *Internals, from ZoneRef) (cand
 		loc := c.loc
 		internals.target, internals.target_from = &loc, &from
 		internals.target_health, internals.target_max_health = c.health()
+		internals.target_candidate = &c
 		score := p.score.float(view, internals)
 		if p.has_min && score < min_score {
 			continue
@@ -430,8 +434,35 @@ func targetDistanceCounter(name string) (counter, bool) {
 		return func(_ View, i *Internals) float64 { return i.target_health }, true
 	case "target_max_health":
 		return func(_ View, i *Internals) float64 { return i.target_max_health }, true
+	case "target_unit_id":
+		return func(_ View, i *Internals) float64 {
+			if i.target_candidate != nil && i.target_candidate.unit != nil {
+				return float64(i.target_candidate.unit.UnitID)
+			}
+			return 0
+		}, true
+	case "target_building_id":
+		return func(_ View, i *Internals) float64 {
+			if i.target_candidate != nil && i.target_candidate.building != nil {
+				return float64(i.target_candidate.building.BuildingID)
+			}
+			return 0
+		}, true
 	case "target_own_buildings":
 		return func(v View, i *Internals) float64 { return float64(v.OwnBuildingsIn(i.targetSpace())) }, true
+	case "target_terrain_type", "target_intra_cost", "target_inter_cost", "target_build_speed_modifier", "target_passable":
+		field := strings.TrimPrefix(strings.TrimSpace(name), "target_")
+		return func(v View, i *Internals) float64 {
+			if i.target != nil {
+				for _, info := range v.AllSpaces() {
+					if info.Space == i.target.Space {
+						value, _ := (spaceItem{info: info}).field(field)
+						return value
+					}
+				}
+			}
+			return 0
+		}, true
 	case "target_enemy_distance":
 		return func(v View, i *Internals) float64 { return float64(max(0, v.EnemyDistance(i.targetSpace()))) }, true
 	case "target_vision":

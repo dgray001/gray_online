@@ -41,7 +41,14 @@ func copyFiles(dir string) {
 }
 
 const emptyModel = `{"rules":[]}`
-const remote = `{"x":-3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":1},"units":[{"id":1,"player":1,"count":1}]}]}`
+const remote = `{"x":-3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":201,"player":1},"units":[{"id":11,"player":1,"count":1}]}]}`
+
+// The hire rule checks for tech 4 by id, so these tests register a mercenary tech under that id that unlocks grunts
+func registerMercenaryTech(t *testing.T) {
+	t.Helper()
+	defs.TechConfigs[4] = defs.TechConfig{Display_name: "Test Mercenary Tech", Research_stamina: 45, Unlocks_mercenary_ids: []uint32{21}}
+	t.Cleanup(func() { delete(defs.TechConfigs, 4) })
+}
 
 func once(actions string) string {
 	return `{"rules":[{"when":{"turn_equals":{"amount":1}},"then":[` + actions + `]}]}`
@@ -57,7 +64,7 @@ func fixture(t *testing.T, bank, spaces, extra string, models ...string) *aisim.
 }
 
 func TestEmptyModelsResolveTurnsAndStop(t *testing.T) {
-	g := fixture(t, `{}`, `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":2,"player":0},"units":[{"id":1,"player":0,"count":1}]}]},`+remote, "", emptyModel, emptyModel)
+	g := fixture(t, `{}`, `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":202,"player":0},"units":[{"id":11,"player":0,"count":1}]}]},`+remote, "", emptyModel, emptyModel)
 	g.Run(t, 3)
 	if len(g.Trace) != 6 {
 		t.Fatalf("actions=%+v", g.Trace)
@@ -115,7 +122,7 @@ func assertSubmissions(t *testing.T, g *aisim.Game, slot, want int) {
 func TestThreePlayersKeepDecisionsSeparate(t *testing.T) {
 	food := once(`{"action":"gather","category":"food","max":1}`)
 	wood := once(`{"action":"gather","category":"wood","max":1}`)
-	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":0,"count":1}],"resource":1},{"x":1,"y":0,"building":{"id":2,"player":0}}]},` + remote + `,{"x":3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":2,"count":1}],"resource":11},{"x":1,"y":0,"building":{"id":2,"player":2}}]}`
+	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":0,"count":1}],"resource":1},{"x":1,"y":0,"building":{"id":202,"player":0}}]},` + remote + `,{"x":3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":2,"count":1}],"resource":11},{"x":1,"y":0,"building":{"id":202,"player":2}}]}`
 	g := fixture(t, `{}`, spaces, "", food, emptyModel, wood)
 	g.Run(t, 2)
 	assertOrderCount(t, g, 0, defs.OrderType_UnitGather, 1)
@@ -128,7 +135,7 @@ func TestThreePlayersKeepDecisionsSeparate(t *testing.T) {
 	}
 }
 
-const duel = `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":103,"player":0,"count":1},{"id":1,"player":1,"count":1}]},{"x":1,"y":0,"building":{"id":2,"player":0}},{"x":-1,"y":0,"building":{"id":2,"player":1}}]}`
+const duel = `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":22,"player":0,"count":1},{"id":11,"player":1,"count":1}]},{"x":1,"y":0,"building":{"id":202,"player":0}},{"x":-1,"y":0,"building":{"id":202,"player":1}}]}`
 
 func TestGameEndStopsAllAIWorkers(t *testing.T) {
 	model := once(`{"action":"set_unit_behavior","stance":"passive","attack_back":false},{"action":"attack","target":"economic","max":1}`)
@@ -148,7 +155,7 @@ func TestGameEndStopsAllAIWorkers(t *testing.T) {
 
 func TestEliminatedAIStopsWhileSurvivorsContinue(t *testing.T) {
 	model := once(`{"action":"set_unit_behavior","stance":"passive","attack_back":false},{"action":"attack","targets":"enemy_units","score":1,"max":1}`)
-	third := `{"x":3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":2},"units":[{"id":1,"player":2,"count":1}]}]}`
+	third := `{"x":3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":201,"player":2},"units":[{"id":11,"player":2,"count":1}]}]}`
 	g := fixture(t, `{}`, duel+","+third, "", model, emptyModel, emptyModel)
 	g.Run(t, 2)
 	if g.Base.GameEnded() || !g.Own(t, 1).Eliminated {
@@ -160,7 +167,7 @@ func TestEliminatedAIStopsWhileSurvivorsContinue(t *testing.T) {
 }
 
 func TestResultsMatchResolvedState(t *testing.T) {
-	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"resource":1,"units":[{"id":1,"player":0,"count":1}]},{"x":1,"y":0,"building":{"id":2,"player":0}}]},` + remote
+	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"resource":1,"units":[{"id":11,"player":0,"count":1}]},{"x":1,"y":0,"building":{"id":202,"player":0}}]},` + remote
 	g := fixture(t, `{}`, spaces, "", once(`{"action":"gather","category":"food"}`), emptyModel)
 	g.Run(t, 3)
 	result := g.Risq.Results()

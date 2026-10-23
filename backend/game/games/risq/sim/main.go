@@ -8,12 +8,16 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	rdebug "runtime/debug"
 
 	"github.com/dgray001/gray_online/game/games/risq"
 	"github.com/dgray001/gray_online/util"
 )
 
 func main() {
+	if os.Getenv("GOGC") == "" {
+		rdebug.SetGCPercent(400)
+	}
 	debug := flag.Bool("debug", false, "write per-game debug logs")
 	quiet := flag.Bool("quiet", false, "discard engine stdout and write results.json as one compact line per game (no timelines or per-turn metrics); keep only errors and the sim's own per-game log")
 	seed_override := flag.Int64("seed", 0, "override the scenario's base seed")

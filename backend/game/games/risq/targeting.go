@@ -86,38 +86,32 @@ func zoneAttackTarget(zone *RisqZone, player_id int, priority []defs.TargetCateg
 	return best.pick(priority)
 }
 
-func spaceAttackTarget(u *RisqUnit, space *RisqSpace) Attackable {
-	best := newCategoryBest()
-	for _, row := range space.zones {
-		for _, zone := range row {
-			dist := zoneDistanceWithinSpace(u.zone, zone)
-			for _, target := range zone.units {
-				if target.deleted || target.player_id == u.player_id {
-					continue
-				}
-				best.considerUnit(target, dist)
-			}
-			if target := zoneEnemyBuilding(zone, u.player_id); target != nil {
-				best.considerBuilding(target, dist)
-			}
-		}
+// Zone hops inside a space, 6 per space crossed
+func zoneApproachDistance(from *RisqZone, to *RisqZone) int {
+	if from.space == to.space {
+		return zoneDistanceWithinSpace(from, to)
 	}
-	return best.pick(u.target_priority)
+	return int(from.space.distanceTo(to.space)) * 6
 }
 
-func nearbyAttackTarget(own_zone *RisqZone, player_id int, target_priority []defs.TargetCategory, risq *GameRisq, space_radius uint) Attackable {
+// Best visible enemy in the zones reachable allows within space_radius of own_zone; targets in_range rank as distance 0
+func nearbyTarget(own_zone *RisqZone, player_id int, target_priority []defs.TargetCategory, reachable func(*RisqZone) bool, in_range func(*RisqZone) bool, can_walk func(*RisqZone) bool, risq *GameRisq, space_radius uint) Attackable {
 	best := newCategoryBest()
-	own_space := own_zone.space
 	for _, space := range risq.allSpaces() {
-		space_dist := own_space.distanceTo(space)
-		if space_dist > space_radius || space.getVisibility(player_id) < defs.VisibilityGood {
+		if own_zone.space.distanceTo(space) > space_radius || space.getVisibility(player_id) < defs.VisibilityGood {
 			continue
 		}
 		for _, zone_row := range space.zones {
 			for _, zone := range zone_row {
-				dist := int(space_dist) * 6
-				if space == own_space {
-					dist = zoneDistanceWithinSpace(own_zone, zone)
+				if !reachable(zone) || !zoneHasEnemy(zone, player_id) {
+					continue
+				}
+				dist := 0
+				if !in_range(zone) {
+					if !can_walk(zone) {
+						continue
+					}
+					dist = zoneApproachDistance(own_zone, zone)
 				}
 				for _, target := range zone.units {
 					if target.deleted || target.player_id == player_id {
@@ -134,38 +128,31 @@ func nearbyAttackTarget(own_zone *RisqZone, player_id int, target_priority []def
 	return best.pick(target_priority)
 }
 
-// Like nearbyAttackTarget, but never falls back to something out of range -- for stances that hold
-// position instead of chasing.
-func nearbyInRangeTarget(own_zone *RisqZone, player_id int, target_priority []defs.TargetCategory, in_range func(*RisqZone) bool, risq *GameRisq, space_radius uint) Attackable {
-	near := newCategoryBest()
-	own_space := own_zone.space
-	for _, space := range risq.allSpaces() {
-		space_dist := own_space.distanceTo(space)
-		if space_dist > space_radius || space.getVisibility(player_id) < defs.VisibilityGood {
-			continue
-		}
-		for _, zone_row := range space.zones {
-			for _, zone := range zone_row {
-				if !in_range(zone) {
-					continue
-				}
-				dist := int(space_dist) * 6
-				if space == own_space {
-					dist = zoneDistanceWithinSpace(own_zone, zone)
-				}
-				for _, target := range zone.units {
-					if target.deleted || target.player_id == player_id {
-						continue
-					}
-					near.considerUnit(target, dist)
-				}
-				if target := zoneEnemyBuilding(zone, player_id); target != nil {
-					near.considerBuilding(target, dist)
-				}
+// Whether the player sees the space well and some zone of it is in range of the unit
+func (u *RisqUnit) canAttackInSpace(space *RisqSpace) bool {
+	origin, _ := u.pathStart()
+	if origin == nil || space.getVisibility(u.player_id) < defs.VisibilityGood {
+		return false
+	}
+	for _, row := range space.zones {
+		for _, zone := range row {
+			if rangeCovers(origin, zone, u.attack_range) || zone.knownWallBlocksEntry(origin, u.player_id) {
+				return true
 			}
 		}
 	}
-	return near.pick(target_priority)
+	return false
+}
+
+// The best target the unit can see inside the space, wherever it has to stand to hit it
+func spaceAttackTarget(u *RisqUnit, space *RisqSpace, risq *GameRisq) Attackable {
+	origin, _ := u.pathStart()
+	if origin == nil {
+		return nil
+	}
+	in_space := func(zone *RisqZone) bool { return zone.space == space }
+	in_range := func(zone *RisqZone) bool { return rangeCovers(origin, zone, u.attack_range) }
+	return nearbyTarget(origin, u.player_id, u.target_priority, in_space, in_range, u.canReachNearby, risq, origin.space.distanceTo(space))
 }
 
 // Returns the lowest-internal_id enemy unit in the zone, or nil
@@ -191,17 +178,6 @@ func zoneEnemyBuilding(zone *RisqZone, player_id int) *RisqBuilding {
 
 func zoneHasEnemy(zone *RisqZone, player_id int) bool {
 	return zoneEnemyUnit(zone, player_id) != nil || zoneEnemyBuilding(zone, player_id) != nil
-}
-
-func spaceHasEnemy(space *RisqSpace, player_id int) bool {
-	for _, row := range space.zones {
-		for _, zone := range row {
-			if zoneHasEnemy(zone, player_id) {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 // Returns the zone-hop distance between two zones of the same space via BFS
@@ -265,4 +241,17 @@ func targetInPriority(target Attackable, priority []defs.TargetCategory) bool {
 		}
 	}
 	return false
+}
+
+func targetPriorityRank(target Attackable, priority []defs.TargetCategory) int {
+	if target == nil {
+		return len(priority)
+	}
+	cat := targetCategory(target)
+	for i, p := range priority {
+		if p == cat {
+			return i
+		}
+	}
+	return len(priority)
 }

@@ -38,6 +38,7 @@ type Internals struct {
 	pending            Cost
 	pending_population int
 	garrisons          map[uint64]int
+	renewals           map[uint64]bool
 	behaviors          []UnitBehavior
 	building_behaviors []BuildingBehavior
 	army               armyState
@@ -51,8 +52,9 @@ type Internals struct {
 	builtin_vars map[string]counter
 	warned       map[string]bool
 	// the candidate a target picker is scoring, and where it is scored from
-	target      *ZoneRef
-	target_from *ZoneRef
+	target           *ZoneRef
+	target_from      *ZoneRef
+	target_candidate *candidate
 	// health of the candidate a picker is scoring (units and buildings)
 	target_health, target_max_health float64
 	// set while a spread assigner scores one unit against one candidate
@@ -64,6 +66,15 @@ type Internals struct {
 	// the item each enclosing for_each is visiting by its "as" name, and the loop bodies run so far this decision
 	loop_items    map[string]loopItem
 	loop_steps    int
+	select_census *census
+	select_steps  int
+	eval_errors   uint64
+	turn_sets     map[string]*entitySet
+	joins         map[*selectorSpec]*joinIndex
+	world         *worldIndex
+	// whether any expression in the config draws random numbers, which keeps selectors from skipping evaluations
+	random_used   bool
+	sets          map[string]*entitySet
 	last_observed ObservationHistory
 }
 
@@ -81,10 +92,16 @@ func (i *Internals) Refresh() {
 	i.pending = Cost{}
 	i.pending_population = 0
 	i.garrisons = make(map[uint64]int)
+	i.renewals = make(map[uint64]bool)
 	i.behaviors = nil
 	i.building_behaviors = nil
 	i.turn_vars = nil
+	i.turn_sets = nil
+	i.joins = nil
+	i.world = nil
 	i.loop_steps = 0
+	i.select_steps = 0
+	i.eval_errors = 0
 }
 
 func (i *Internals) spend(cost Cost) {
@@ -216,7 +233,8 @@ func (m *RulesModel) DecideOrders(view View) Decision {
 	m.internals.pruneBuckets(view)
 	orders := make([]Order, 0)
 	for _, rule := range m.rules {
-		if !rule.when.Evaluate(view, &m.internals) {
+		matches, valid := evaluateCondition(rule.when, view, &m.internals)
+		if !valid || !matches {
 			continue
 		}
 		for _, action := range rule.then {

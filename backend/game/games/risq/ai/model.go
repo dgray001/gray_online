@@ -41,7 +41,7 @@ func ParseModelWithDiagnostics(raw map[string]any, rng *rand.Rand, diagnostics i
 		return NoopModel{}
 	}
 	var rules []Rule
-	err := withVarNameCheck(diagnostics, func() error {
+	random_used, err := withVarNameCheck(diagnostics, func() error {
 		var err error
 		rules, err = parseRules(rules_raw)
 		return err
@@ -55,7 +55,7 @@ func ParseModelWithDiagnostics(raw map[string]any, rng *rand.Rand, diagnostics i
 		fmt.Fprintln(diagnostics, "ai config:", err)
 		return NoopModel{}
 	}
-	return &RulesModel{rules: rules, internals: Internals{max_bucket_depth: depth, rng: rng, diagnostics: diagnostics}}
+	return &RulesModel{rules: rules, internals: Internals{max_bucket_depth: depth, rng: rng, diagnostics: diagnostics, random_used: random_used}}
 }
 
 func parseMaxBucketDepth(raw map[string]any) (int, error) {

@@ -31,13 +31,13 @@ func TestMain(m *testing.M) {
 
 const richBank = `{"food":1000,"wood":1000,"stone":1000,"gold":1000}`
 
-// Player 0 owns a village center, blacksmith, farm, barracks and redoubt around a cedar tree; player 1 sits three spaces west
+// Player 0 owns a town hall, academy, orchard, barracks and fortress around a tree tree; player 1 sits three spaces west
 type layout struct {
 	bank      string
 	extra     string
 	spaces    string
-	villagers int
-	infantry  int
+	workers   int
+	grunt     int
 	humans    int
 	connected bool
 	unstarted bool
@@ -47,11 +47,11 @@ type layout struct {
 
 func (l layout) doc() string {
 	home := fmt.Sprintf(`{"x":0,"y":0,"terrain":1,"zones":[`+
-		`{"x":0,"y":0,"building":{"id":1,"player":0},"units":[{"id":1,"player":0,"count":%d},{"id":101,"player":0,"count":%d}]},`+
-		`{"x":1,"y":0,"building":{"id":11,"player":0}},{"x":-1,"y":0,"building":{"id":3,"player":0}},`+
-		`{"x":0,"y":1,"building":{"id":22,"player":0}},{"x":0,"y":-1,"building":{"id":23,"player":0}},{"x":1,"y":-1,"resource":11}]}`, l.villagers, l.infantry)
+		`{"x":0,"y":0,"building":{"id":201,"player":0},"units":[{"id":11,"player":0,"count":%d},{"id":21,"player":0,"count":%d}]},`+
+		`{"x":1,"y":0,"building":{"id":209,"player":0}},{"x":-1,"y":0,"building":{"id":203,"player":0}},`+
+		`{"x":0,"y":1,"building":{"id":205,"player":0}},{"x":0,"y":-1,"building":{"id":208,"player":0}},{"x":1,"y":-1,"resource":11}]}`, l.workers, l.grunt)
 	route := `,{"x":1,"y":0,"terrain":1},{"x":2,"y":0,"terrain":1},{"x":3,"y":0,"terrain":1}`
-	enemy := `,{"x":-3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":1},"units":[{"id":1,"player":1,"count":1}]}]}`
+	enemy := `,{"x":-3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":201,"player":1},"units":[{"id":11,"player":1,"count":1}]}]}`
 	return fmt.Sprintf(`{"board_size":3,"players":%d,"space_gold_income":0,"unlimited_population":true,"starting_bank":%s,"spaces":[%s%s%s]%s}`,
 		l.humans, l.bank, home, route, enemy+l.spaces, l.extra)
 }
@@ -61,11 +61,11 @@ func newGame(t *testing.T, l layout) *harness.Game {
 	if l.bank == "" {
 		l.bank = richBank
 	}
-	if l.villagers == 0 {
-		l.villagers = 2
+	if l.workers == 0 {
+		l.workers = 2
 	}
-	if l.infantry == 0 {
-		l.infantry = 1
+	if l.grunt == 0 {
+		l.grunt = 1
 	}
 	if l.humans == 0 {
 		l.humans = 2
@@ -89,8 +89,8 @@ func newGame(t *testing.T, l layout) *harness.Game {
 
 // The ids of what each human starts with, so tests do not re-serialize state to find them
 type roster struct {
-	villagers []uint64
-	infantry  []uint64
+	workers   []uint64
+	grunt     []uint64
 	buildings map[uint32]uint64
 }
 
@@ -99,10 +99,10 @@ func scan(g *harness.Game, p int) roster {
 	r := roster{buildings: map[uint32]uint64{}}
 	state := g.Self(p)
 	for _, u := range state.Units {
-		if u.UnitID == 1 {
-			r.villagers = append(r.villagers, u.InternalID)
+		if u.UnitID == 11 {
+			r.workers = append(r.workers, u.InternalID)
 		} else {
-			r.infantry = append(r.infantry, u.InternalID)
+			r.grunt = append(r.grunt, u.InternalID)
 		}
 	}
 	for _, b := range state.Buildings {
@@ -110,8 +110,8 @@ func scan(g *harness.Game, p int) roster {
 			r.buildings[b.BuildingID] = b.InternalID
 		}
 	}
-	slices.Sort(r.villagers)
-	slices.Sort(r.infantry)
+	slices.Sort(r.workers)
+	slices.Sort(r.grunt)
 	return r
 }
 

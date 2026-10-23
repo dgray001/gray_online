@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/dgray001/gray_online/game"
@@ -13,7 +14,53 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const ownScout = `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":101,"player":0,"count":1}]}]}`
+const ownScout = `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":21,"player":0,"count":1}]}]}`
+
+func TestSpaceTerrainFilters(t *testing.T) {
+	for _, c := range []struct {
+		where string
+		count int
+	}{
+		{`{"terrain_types":["flatlands"]}`, 1},
+		{`{"terrain_types":["hilly","mountainous"]}`, 1},
+		{`{"passable":true}`, 2}, {`{"passable":false}`, 1},
+		{`{"intra_cost_at_least":2,"intra_cost_at_most":2}`, 1},
+		{`{"inter_cost_at_least":9,"inter_cost_at_most":9}`, 1},
+		{`{"build_speed_modifier_at_least":0.8,"build_speed_modifier_at_most":0.8}`, 1},
+		{`{"terrain_types":["hilly"],"inter_cost_at_most":6}`, 0},
+		{`{"any":[{"terrain_types":["flatlands"]},{"passable":false}]}`, 2},
+	} {
+		t.Run(c.where, func(t *testing.T) {
+			g, player := bridgeGame(t, ownScout+`,{"x":1,"y":0,"terrain":51},{"x":0,"y":1,"terrain":251},{"x":3,"y":0,"terrain":51,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":1,"count":1}]}]}`)
+			action := fmt.Sprintf(`{"action":"if","when":{"count_spaces_equals":{"where":%s,"amount":%d}},"then":[{"action":"move","targets":"coordinate","coordinate":{"x":0,"y":0}}]}`, c.where, c.count)
+			w := runWorker(t, player, parsedModel(t, action), make(chan game.PlayerAction, 1))
+			player.AiUpdates <- &game.UpdateMessage{Kind: "start-turn", Content: gin.H{"game": g.Risq.ToFrontend(uint64(g.Human(0)+1), false)}}
+			orders := receive(t, w.Actions).Action["orders"].([]defs.OrderFromFrontend)
+			if len(orders) != 1 {
+				t.Fatalf("terrain count did not equal %d: %+v", c.count, orders)
+			}
+		})
+	}
+}
+
+func TestSpaceTerrainFieldsInExpressions(t *testing.T) {
+	g, player := bridgeGame(t, ownScout+`,{"x":1,"y":0,"terrain":51},{"x":0,"y":1,"terrain":251},{"x":3,"y":0,"terrain":51,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":1,"count":1}]}]}`)
+	score := "var(s.terrain_type)+var(s.intra_cost)+var(s.inter_cost)+var(s.build_speed_modifier)+var(s.passable)"
+	action := fmt.Sprintf(`{"action":"for_each","source":"spaces","as":"s","where":{"terrain_types":["hilly"]},"do":[{"action":"if","when":{"value_at_least":{"value":%q,"amount":14.7}},"then":[{"action":"move","targets":"closest_spaces","from":{"x":0,"y":0},"exclude_reference":true,"where":{"terrain_types":["hilly"]},"score":%q,"min_score":14.7}]}]}`, score, strings.ReplaceAll(score, "s.", "target_"))
+	seen := &recordingModel{Model: parsedModel(t, action), Seen: make(chan observation, 1)}
+	w := runWorker(t, player, seen, make(chan game.PlayerAction, 1))
+	player.AiUpdates <- &game.UpdateMessage{Kind: "start-turn", Content: gin.H{"game": g.Risq.ToFrontend(uint64(g.Human(0)+1), false)}}
+	observed := receive(t, seen.Seen)
+	orders := receive(t, w.Actions).Action["orders"].([]defs.OrderFromFrontend)
+	if len(orders) != 1 {
+		t.Fatalf("terrain fields were unavailable in loop or target expressions: %+v", orders)
+	}
+	for _, info := range observed.Spaces {
+		if info.Space == (ai.Coordinate{X: 1}) && (info.TerrainType != uint8(defs.TerrainType_HILLY) || info.IntraCost != 2 || info.InterCost != 9 || info.BuildSpeedModifier != 0.8 || !info.Passable) {
+			t.Fatalf("incorrect terrain fields: %+v", info)
+		}
+	}
+}
 
 func TestRealPayloadVisibility(t *testing.T) {
 	for _, c := range []struct {
@@ -24,17 +71,17 @@ func TestRealPayloadVisibility(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			own := ""
 			if c.x == 0 {
-				own = `,{"id":101,"player":0,"count":1}`
+				own = `,{"id":21,"player":0,"count":1}`
 			}
-			spaces := fmt.Sprintf(`{"x":%d,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"resource":1,"units":[{"id":1,"player":1,"count":1}%s]},{"x":1,"y":0,"building":{"id":2,"player":1}}]}`, c.x, own)
+			spaces := fmt.Sprintf(`{"x":%d,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"resource":1,"units":[{"id":11,"player":1,"count":1}%s]},{"x":1,"y":0,"building":{"id":202,"player":1}}]}`, c.x, own)
 			if c.x != 0 {
 				spaces += "," + ownScout
 			}
 			g, player := bridgeGame(t, spaces, func() {
 				if c.vision == 4 {
-					config := defs.UnitConfigs[101]
+					config := defs.UnitConfigs[21]
 					config.Vision.Space = defs.VisibilitySpy
-					defs.UnitConfigs[101] = config
+					defs.UnitConfigs[21] = config
 				}
 			})
 			g.Action(g.Human(0), "set-unit-behavior", gin.H{"internal_ids": []uint64{g.Self(g.Human(0)).Units[0].InternalID}, "stance": uint8(defs.UnitStance_PASSIVE), "attack_back": false})
@@ -60,7 +107,7 @@ func TestRealPayloadVisibility(t *testing.T) {
 }
 
 func TestBridgeKeepsLastKnownBuildingsAfterCoverageIsLost(t *testing.T) {
-	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":0,"count":1}]},{"x":1,"y":0,"building":{"id":2,"player":1}}]},{"x":-3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":0,"count":1}]}]},{"x":3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":1,"count":1}]}]}`
+	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":0,"count":1}]},{"x":1,"y":0,"building":{"id":202,"player":1}}]},{"x":-3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":0,"count":1}]}]},{"x":3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":1,"count":1}]}]}`
 	g, player := bridgeGame(t, spaces)
 	seen := &recordingModel{Model: ai.NoopModel{}, Seen: make(chan observation, 1)}
 	w := runWorker(t, player, seen, make(chan game.PlayerAction, 4))
@@ -140,7 +187,7 @@ func TestUnseenChangesDoNotChangeViewOrDecision(t *testing.T) {
 	var observations []observation
 	for count := 1; count <= 2; count++ {
 		t.Run(fmt.Sprint(count), func(t *testing.T) {
-			spaces := ownScout + fmt.Sprintf(`,{"x":3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"resource":%d,"units":[{"id":1,"player":1,"count":%d}]},{"x":1,"y":0,"building":{"id":2,"player":1}}]}`, count, count)
+			spaces := ownScout + fmt.Sprintf(`,{"x":3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"resource":%d,"units":[{"id":11,"player":1,"count":%d}]},{"x":1,"y":0,"building":{"id":202,"player":1}}]}`, count, count)
 			g, player := bridgeGame(t, spaces)
 			seen := &recordingModel{Model: parsedModel(t, `{"action":"attack","targets":"enemy_units","score":1}`), Seen: make(chan observation, 1)}
 			w := runWorker(t, player, seen, make(chan game.PlayerAction, 4))

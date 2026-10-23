@@ -119,9 +119,9 @@ func TestTickHistorySpyVisibility(t *testing.T) {
 
 func visibilityGame(t *testing.T, setting any) *harness.Game {
 	t.Helper()
-	spaces := spaceWith(0, 0, grass, unit(villager, 0)) + `,{"x":4,"y":0,"terrain":1,"zones":[` +
-		`{"x":0,"y":0,"units":[` + unit(villager, 1) + `]},` +
-		`{"x":1,"y":0,"resource":21},{"x":0,"y":1,"building":{"id":2,"player":1}}]}`
+	spaces := spaceWith(0, 0, flatTerrain, unit(worker, 0)) + `,{"x":4,"y":0,"terrain":1,"zones":[` +
+		`{"x":0,"y":0,"units":[` + unit(worker, 1) + `]},` +
+		`{"x":1,"y":0,"resource":21},{"x":0,"y":1,"building":{"id":202,"player":1}}]}`
 	writeCustomMap("visibility", mapDoc("", spaces))
 	g := harness.NewUnstartedGameWithSettings(t, "custom:visibility", 1, 2, map[string]any{"visibility": setting})
 	game.Game_StartGame(g.Risq)
@@ -179,11 +179,11 @@ const (
 	good       = 3
 )
 
-// A row of five spaces; P0's villager at the west end, P1's at the east end
+// A row of five spaces; P0's worker at the west end, P1's at the east end
 func corridorGame(t *testing.T) (*harness.Game, int, int) {
 	t.Helper()
-	spaces := spaceWith(0, 0, grass, unit(villager, 0)) + "," + spaceWith(1, 0, grass, "") + "," + spaceWith(2, 0, grass, "") + "," +
-		spaceWith(3, 0, grass, "") + "," + spaceWith(4, 0, grass, unit(villager, 1))
+	spaces := spaceWith(0, 0, flatTerrain, unit(worker, 0)) + "," + spaceWith(1, 0, flatTerrain, "") + "," + spaceWith(2, 0, flatTerrain, "") + "," +
+		spaceWith(3, 0, flatTerrain, "") + "," + spaceWith(4, 0, flatTerrain, unit(worker, 1))
 	g := startGame(t, mapDoc("", spaces))
 	return g, g.Human(0), g.Human(1)
 }
@@ -209,7 +209,7 @@ func TestUnexploredSpacesHideTheirContents(t *testing.T) {
 	}
 }
 
-// Walks the enemy villager to a space, failing if it takes more than ten turns
+// Walks the enemy worker to a space, failing if it takes more than ten turns
 func walkEnemyTo(t *testing.T, g *harness.Game, east int, enemy uint64, x, y int) {
 	t.Helper()
 	g.Submit(east, harness.OrderMove([]uint64{enemy}, x, y))
@@ -271,6 +271,8 @@ func TestLeftBehindSpacesFallBackToFogButStayExplored(t *testing.T) {
 	if turns := moveUntilArrived(g, west, 2, 0, 6); turns < 1 {
 		t.Fatal("the unit never reached (2,0)")
 	}
+	g.Submit(west, harness.OrderMoveZone([]uint64{firstUnit(g, west).InternalID}, 2, 0, 0, 0))
+	g.EndTurn()
 	origin := g.State(west).Space(0, 0)
 	if origin.Visibility != fog || origin.TerrainID == nil {
 		t.Errorf("origin: visibility %d, terrain %v; want fog with its terrain remembered", origin.Visibility, origin.TerrainID)
@@ -285,11 +287,11 @@ func TestSpyTierVision(t *testing.T) {
 	g := spyGame(t)
 	p0, p1 := g.Human(0), g.Human(1)
 
-	villagerID := g.Self(p1).Units[0].InternalID
-	g.Submit(p1, harness.OrderGather([]uint64{villagerID}, 1, 0, 0, 0))
+	workerID := g.Self(p1).Units[0].InternalID
+	g.Submit(p1, harness.OrderGather([]uint64{workerID}, 1, 0, 0, 0))
 	g.EndTurn()
 
-	enemy := g.State(p0).Unit(villagerID)
+	enemy := g.State(p0).Unit(workerID)
 	if g.State(p0).Space(1, 0).Visibility != 4 || enemy == nil || len(enemy.ActiveOrders) != 1 || enemy.ActiveOrders[0].OrderType != uint8(defs.OrderType_UnitGather) {
 		t.Fatalf("spy vision did not reveal the enemy's gathering order: %+v", enemy)
 	}
@@ -299,11 +301,11 @@ func TestSpyTierVision(t *testing.T) {
 	g.Submit(p0, harness.Order(defs.OrderType_UnitDelete, []uint64{spyID}, 0, false))
 	g.EndTurn()
 
-	ownerView := g.State(p1).Unit(villagerID)
+	ownerView := g.State(p1).Unit(workerID)
 	if ownerView == nil || len(ownerView.ActiveOrders) != 1 || ownerView.ActiveOrders[0].InternalID != orderID {
 		t.Fatal("the enemy's gathering order did not remain active")
 	}
-	enemy = g.State(p0).Unit(villagerID)
+	enemy = g.State(p0).Unit(workerID)
 	if g.State(p0).Space(1, 0).Visibility != 3 || enemy == nil || len(enemy.ActiveOrders) != 0 {
 		t.Errorf("enemy orders were not hidden at good visibility: %+v", enemy)
 	}

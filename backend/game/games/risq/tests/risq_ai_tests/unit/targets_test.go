@@ -66,3 +66,34 @@ var targetCases = []struct {
 	{`"targets":"closest_spaces"`, ai.ZoneRef{Space: ai.Coordinate{X: 2}}, []string{"ClosestSpaces"}},
 	{`"targets":"coordinate","coordinate":{"x":"-1 - 1","y":1}`, ai.ZoneRef{Space: ai.Coordinate{X: -2, Y: 1}}, nil},
 }
+
+func TestTargetIdentityScores(t *testing.T) {
+	for _, spread := range []string{"", `,"spread":{"capacity":1,"weight":"var(target_unit_id)+var(target_building_id)"}`} {
+		for _, targets := range []string{"enemy_units", "enemy_buildings"} {
+			view := checkedView("IdleUnits", "EligibleUnits", "VisibleEnemyUnits", "KnownEnemyBuildings", "AssignedTo")
+			unit, building := view.visibleEnemyUnits[0], view.knownEnemyBuildings[0]
+			unit.InternalID, unit.UnitID = 202, 4
+			building.InternalID, building.BuildingID = 302, 3
+			view.visibleEnemyUnits = append(view.visibleEnemyUnits, unit)
+			view.knownEnemyBuildings = append(view.knownEnemyBuildings, building)
+			score, expected := "var(target_unit_id)-100*var(target_building_id)", orderCall{Kind: 6, Subject: 91, Target: 202, Place: unit.Location, Clear: true}
+			if targets == "enemy_buildings" {
+				score, expected = "var(target_building_id)-100*var(target_unit_id)", orderCall{Kind: 7, Subject: 91, Target: 302, Place: building.Location, Clear: true}
+			}
+			model := actionsModel(t, `{"action":"attack","targets":"`+targets+`","score":"`+score+`","min_score":3`+spread+`}`)
+			assertCalls(t, model.DecideOrders(view), view, expected)
+		}
+	}
+}
+
+func TestSpreadWeightsUseSelectedIdentity(t *testing.T) {
+	view := checkedView("IdleUnits", "EligibleUnits", "VisibleEnemyUnits", "AssignedTo")
+	unit, enemy := view.units[0], view.visibleEnemyUnits[0]
+	unit.InternalID, enemy.InternalID, enemy.UnitID = 92, 202, 4
+	view.units = append(view.units, unit)
+	view.visibleEnemyUnits = append(view.visibleEnemyUnits, enemy)
+	model := actionsModel(t, `{"action":"attack","targets":"enemy_units","score":"0-var(target_unit_id)","spread":{"capacity":2,"weight":"var(target_unit_id)-2"}}`)
+	assertCalls(t, model.DecideOrders(view), view,
+		orderCall{Kind: 6, Subject: 91, Target: 201, Place: enemy.Location, Clear: true},
+		orderCall{Kind: 6, Subject: 92, Target: 201, Place: enemy.Location, Clear: true})
+}

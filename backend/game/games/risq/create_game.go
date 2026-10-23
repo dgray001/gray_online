@@ -189,6 +189,7 @@ func createGame(g *game.GameBase, action_channel chan game.PlayerAction, min_pla
 		return nil, err
 	}
 	risq.has_economy = risq.computeHasEconomy()
+	risq.has_production = risq.computeHasProduction()
 	risq.has_buildings = risq.computeHasBuildings()
 	risq.initializeVisibility()
 	risq.ensureSpaceDistances()

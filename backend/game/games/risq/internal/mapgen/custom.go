@@ -62,6 +62,7 @@ type customSpace struct {
 	Y          int          `json:"y"`
 	Terrain    uint32       `json:"terrain,omitempty"`
 	Name       string       `json:"name,omitempty"`
+	GoldIncome *float64     `json:"gold_income,omitempty"`
 	Zones      []customZone `json:"zones,omitempty"`
 	PlayerSlot *int         `json:"player_slot,omitempty"`
 }
@@ -281,6 +282,11 @@ func buildCustomMap(ctx *mapScriptContext, m customMap, random_slots bool) error
 	}
 	if err := applyMapRules(board, num_players, rules); err != nil {
 		return err
+	}
+	for _, space := range m.Spaces {
+		if space.GoldIncome != nil {
+			board.Space(game_utils.Coordinate2D{X: space.X, Y: space.Y}).SetGoldIncome(*space.GoldIncome)
+		}
 	}
 	board.SetRotation(m.Rotation)
 	if m.BackgroundImage != nil {

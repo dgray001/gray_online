@@ -38,7 +38,11 @@ type ifAction struct {
 }
 
 func (a *ifAction) ToOrders(view View, internals *Internals) []Order {
-	if a.when.Evaluate(view, internals) {
+	matches, valid := evaluateCondition(a.when, view, internals)
+	if !valid {
+		return nil
+	}
+	if matches {
 		return runActions(a.then, view, internals)
 	}
 	return runActions(a.otherwise, view, internals)
@@ -62,7 +66,17 @@ func parseNested(label string, raw any) ([]Action, error) {
 	return actions, nil
 }
 
+func checkActionKeys(raw map[string]any, allowed ...string) error {
+	return checkKeys(raw, append(allowed, "action", "in_bucket", "exclude_buckets", "unit_when")...)
+}
+
 func parseIf(raw map[string]any) (Action, error) {
+	if err := checkActionKeys(raw, "when", "then", "else"); err != nil {
+		return nil, fmt.Errorf("if: %w", err)
+	}
+	if err := checkOptionTypes[[]any](raw, "then", "else"); err != nil {
+		return nil, fmt.Errorf("if: %w", err)
+	}
 	when_raw, ok := raw["when"].(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("if action requires a \"when\" condition object")

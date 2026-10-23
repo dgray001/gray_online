@@ -308,8 +308,6 @@ func (p *RisqPlayer) unreceivedOrdersToFrontend() []defs.OrderFromFrontend {
 
 func (p *RisqPlayer) toFrontend(viewer_player_id int) gin.H {
 	player := gin.H{
-		"population_limit":     p.populationLimit(),
-		"max_population_limit": p.max_population_limit,
 		"unlimited_population": p.unlimited_population,
 		"score":                p.score,
 		"color":                p.color,
@@ -321,6 +319,9 @@ func (p *RisqPlayer) toFrontend(viewer_player_id int) gin.H {
 	}
 	if p.resources != nil && p.player != nil && p.player.Player_id == viewer_player_id {
 		player["resources"] = p.resources.toFrontend()
+		player["population_limit"] = p.populationLimit()
+		player["max_population_limit"] = p.max_population_limit
+		player["researched_techs"] = maps.Clone(p.researched_techs)
 		player["default_unit_stance"] = p.default_unit_stance
 		player["default_unit_attack_back"] = p.default_unit_attack_back
 		player["default_unit_interrupt_current"] = p.default_unit_interrupt_current
@@ -371,7 +372,6 @@ func (p *RisqPlayer) toFrontend(viewer_player_id int) gin.H {
 	}
 	player["active_orders"] = active_orders
 	player["unreceived_orders"] = unreceived_orders
-	player["researched_techs"] = maps.Clone(p.researched_techs)
 	return player
 }
 

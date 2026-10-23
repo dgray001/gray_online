@@ -10,10 +10,10 @@ import (
 
 // Cancelling, clearing, replacing, deleting and unsubmitting orders on independent units over five turns
 func TestOrderFlow(t *testing.T) {
-	g := newGame(t, layout{villagers: 8})
+	g := newGame(t, layout{workers: 8})
 	p, e := g.Human(0), g.Human(1)
 	mine := scan(g, p)
-	v, b := mine.villagers, mine.buildings
+	v, b := mine.workers, mine.buildings
 	carried, shared, queued, cleared, deleted, spare := v[0], v[1:3], v[3], v[4:6], v[6], v[7]
 	far := func(ids ...uint64) defs.OrderFromFrontend { return harness.OrderMove(ids, 3, 0) }
 
@@ -22,8 +22,8 @@ func TestOrderFlow(t *testing.T) {
 		far(cleared...), harness.Order(defs.OrderType_UnitDelete, cleared[:1], 0, false),
 		far(deleted), harness.Order(defs.OrderType_UnitDelete, []uint64{deleted}, 0, true),
 		far(spare),
-		harness.Order(defs.OrderType_BuildingResearch, []uint64{b[1]}, 1, false), harness.OrderProduce([]uint64{b[1]}, 1),
-		harness.Order(defs.OrderType_BuildingDelete, []uint64{b[1]}, 0, false),
+		harness.Order(defs.OrderType_BuildingResearch, []uint64{b[201]}, 301, false), harness.OrderProduce([]uint64{b[201]}, 11),
+		harness.Order(defs.OrderType_BuildingDelete, []uint64{b[201]}, 0, false),
 	)
 	if len(unitByID(g, p, carried).ActiveOrders) != 0 {
 		t.Fatal("order delivered before all players submitted")
@@ -47,8 +47,8 @@ func TestOrderFlow(t *testing.T) {
 
 	// unsubmit discards only the new orders and never charges for pending production
 	before := g.Self(p)
-	soldiers := len(unitIDs(g, p, 101))
-	g.Submit(p, harness.OrderMoveZone([]uint64{spare}, 1, 0, 0, 0), harness.OrderProduce([]uint64{b[22]}, 101))
+	soldiers := len(unitIDs(g, p, 21))
+	g.Submit(p, harness.OrderMoveZone([]uint64{spare}, 1, 0, 0, 0), harness.OrderProduce([]uint64{b[205]}, 21))
 	pending := g.Self(p)
 	if len(pending.ActiveOrders) != len(before.ActiveOrders) || len(pending.UnreceivedOrders) != 2 || pending.Resources.Food != before.Resources.Food {
 		t.Fatalf("pending orders were not stored unreceived without charging: %+v", pending)
@@ -61,7 +61,7 @@ func TestOrderFlow(t *testing.T) {
 	// another player cannot cancel this player's order
 	g.SubmitRejected(e, harness.Order(defs.OrderType_CancelOrder, nil, int64(carriedOrder[0].InternalID), false), fmt.Sprintf("No active order with id %d", carriedOrder[0].InternalID))
 
-	clearProduce := harness.OrderProduce([]uint64{b[1]}, 1)
+	clearProduce := harness.OrderProduce([]uint64{b[201]}, 11)
 	clearProduce.Clear_previous_orders = true
 	g.Submit(p,
 		harness.Order(defs.OrderType_CancelOrder, shared[:1], int64(sharedOrder[0].InternalID), false),
@@ -87,7 +87,7 @@ func TestOrderFlow(t *testing.T) {
 	if u := unitByID(g, p, cleared[1]); len(u.ActiveOrders) != 1 {
 		t.Fatalf("unselected subject lost its order: %+v", u)
 	}
-	if res := g.Self(p).Resources; !g.Self(p).ResearchedTechs[1] || len(activeOrderIDs(g, p, uint8(defs.OrderType_BuildingDelete))) != 0 || res.Food != 850 || res.Wood != 950 {
+	if res := g.Self(p).Resources; !g.Self(p).ResearchedTechs[301] || len(activeOrderIDs(g, p, uint8(defs.OrderType_BuildingDelete))) != 0 || res.Food != 860 || res.Wood != 960 {
 		t.Fatalf("clear cancelled or refunded immune work, or preserved cancellable building work: %+v", res)
 	}
 	g.Submit(p, harness.Order(defs.OrderType_CancelOrder, nil, int64(sharedOrder[0].InternalID), false))
@@ -116,10 +116,10 @@ func TestOrderFlow(t *testing.T) {
 		t.Fatalf("carried move did not finish and reset: %+v", u)
 	}
 	g.SubmitRejected(p, harness.Order(defs.OrderType_CancelOrder, nil, int64(queue[1].InternalID), false), fmt.Sprintf("No active order with id %d", queue[1].InternalID))
-	if len(unitIDs(g, p, 101)) != soldiers {
+	if len(unitIDs(g, p, 21)) != soldiers {
 		t.Fatal("discarded production executed")
 	}
-	if got := len(unitIDs(g, p, 1)); got != 9 {
-		t.Fatalf("%d villagers, want 9: preserved production did not complete", got)
+	if got := len(unitIDs(g, p, 11)); got != 9 {
+		t.Fatalf("%d workers, want 9: preserved production did not complete", got)
 	}
 }

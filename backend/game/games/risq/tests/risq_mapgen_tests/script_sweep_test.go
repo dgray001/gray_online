@@ -29,7 +29,7 @@ func shapeScriptNamed(kind string) string {
 }
 
 func TestHexagonMapSizeRadii(t *testing.T) {
-	script, err := os.ReadFile(testConfig + "/maps/scripted/hexagon.json")
+	script, err := os.ReadFile(testConfig + "/maps/scripted/fixture_hexagon.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +63,7 @@ func TestHexagonMapSizeRadii(t *testing.T) {
 }
 
 func TestRingMapSizeRadii(t *testing.T) {
-	script, err := os.ReadFile(testConfig + "/maps/scripted/ring.json")
+	script, err := os.ReadFile(testConfig + "/maps/scripted/fixture_ring.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +98,7 @@ func TestRingMapSizeRadii(t *testing.T) {
 }
 
 func TestRectangleMapSizeDimensions(t *testing.T) {
-	script, err := os.ReadFile(testConfig + "/maps/scripted/rectangle.json")
+	script, err := os.ReadFile(testConfig + "/maps/scripted/fixture_rectangle.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +129,7 @@ func TestRectangleMapSizeDimensions(t *testing.T) {
 }
 
 func TestTriangleMapSizeDimensions(t *testing.T) {
-	script, err := os.ReadFile(testConfig + "/maps/scripted/triangle.json")
+	script, err := os.ReadFile(testConfig + "/maps/scripted/fixture_triangle.json")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	blunt, heavy             = 101, 103
+	blunt, heavy             = 21, 22
 	flat, mountains          = 1, 101
 	stationary, closingIn    = "stationary", "closing in"
 	meetingBoard             = `{"board_size":1,"players":2,"spaces":[%s]}`
@@ -43,9 +43,14 @@ func spaceOf(x, y, terrain int, units ...placed) string {
 
 func meetingGame(t *testing.T, spaces ...string) *harness.Game {
 	t.Helper()
+	return meetingGameWith(t, nil, spaces...)
+}
+
+func meetingGameWith(t *testing.T, settings map[string]any, spaces ...string) *harness.Game {
+	t.Helper()
 	doc := fmt.Sprintf(meetingBoard, strings.Join(spaces, ","))
 	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"meeting": doc})
-	return harness.NewGame(t, "custom:meeting", 1, 2)
+	return harness.NewGameWithSettings(t, "custom:meeting", 1, 2, settings)
 }
 
 // The unit of the player in the given slot, which holds one unit

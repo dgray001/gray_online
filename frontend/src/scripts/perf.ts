@@ -15,12 +15,12 @@ declare interface PerfAggregate {
 
 type PerfEntry = Record<string, unknown>;
 
-const enabled = DEV && getUrlParam('perf') === '1';
+const enabled = !DEV || getUrlParam('perf') === '1';
 const aggregates = new Map<string, PerfAggregate>();
 let events: PerfEntry[] = [];
 let started = false;
 
-/** Perf logging is opt-in: DEV build plus ?perf=1 in the url */
+/** Logs in production and in DEV with ?perf=1 */
 export function perfEnabled(): boolean {
   return enabled;
 }

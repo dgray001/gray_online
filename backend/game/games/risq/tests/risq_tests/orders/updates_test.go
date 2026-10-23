@@ -11,17 +11,17 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Player 0 holds a redoubt and a soldier at home plus an outpost and a soldier far away; player 1's villager watches home
+// Player 0 holds a fortress and a soldier at home plus an watchtower and a soldier far away; player 1's worker watches home
 func notificationGame(t *testing.T, spy bool) *harness.Game {
 	t.Helper()
-	doc := `{"board_size":3,"players":2,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":23,"player":0},"units":[{"id":101,"player":0,"count":1},{"id":1,"player":1,"count":1}]}]},{"x":3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":21,"player":0},"units":[{"id":101,"player":0,"count":1}]}]}]}`
+	doc := `{"board_size":3,"players":2,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":208,"player":0},"units":[{"id":21,"player":0,"count":1},{"id":11,"player":1,"count":1}]}]},{"x":3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":207,"player":0},"units":[{"id":21,"player":0,"count":1}]}]}]}`
 	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"notifications": doc})
-	watcher := defs.UnitConfigs[1]
+	watcher := defs.UnitConfigs[11]
 	watcher.Vision.Space = defs.VisibilityGood
 	if spy {
 		watcher.Vision.Space = defs.VisibilitySpy
 	}
-	defs.UnitConfigs[1] = watcher
+	defs.UnitConfigs[11] = watcher
 	return harness.NewConnectedGame(t, "custom:notifications", 1, 2)
 }
 
@@ -37,15 +37,15 @@ func checkBehaviorNotifications(t *testing.T, g *harness.Game, spy bool) {
 	g.Action(p, "unsubmit-orders", nil)
 	var visible, hidden uint64
 	for _, u := range g.Self(p).Units {
-		if u.UnitID == 101 && u.Space.X == 0 {
+		if u.UnitID == 21 && u.Space.X == 0 {
 			visible = u.InternalID
-		} else if u.UnitID == 101 {
+		} else if u.UnitID == 21 {
 			hidden = u.InternalID
 		}
 	}
 	for _, kind := range []string{"unit", "building"} {
 		if kind == "building" {
-			visible, hidden = buildingID(g, p, 23), buildingID(g, p, 21)
+			visible, hidden = buildingID(g, p, 208), buildingID(g, p, 207)
 		}
 		ids := []uint64{visible, hidden}
 		rawAction(g, p, "set-"+kind+"-behavior", gin.H{"internal_ids": append(append([]uint64(nil), ids...), 999999), "stance": 2, "auto_attack": false, "interrupt_current": true, "target_priority": []uint8{0, 3, 255, 2}})
@@ -75,7 +75,7 @@ func TestBehaviorNotificationsAndDefaults(t *testing.T) {
 	g := notificationGame(t, true)
 	checkBehaviorNotifications(t, g, true)
 	p, spy := g.Human(0), g.Human(1)
-	ids := unitIDs(g, p, 101)
+	ids := unitIDs(g, p, 21)
 
 	// an invalid stance changes nothing, and what each recipient is told matches the authoritative units
 	for _, stance := range []uint8{0, uint8(defs.UnitStance_END), 255} {
@@ -147,7 +147,7 @@ func TestUpdateDelivery(t *testing.T) {
 	p, other := g.Human(0), g.Human(1)
 	mine := scan(g, p)
 	player, rival := g.Base.Players[uint64(p+1)], g.Base.Players[uint64(other+1)]
-	center, redoubt := mine.buildings[1], mine.buildings[23]
+	center, fortress := mine.buildings[201], mine.buildings[208]
 	rebuilds := 0
 	g.Base.RunInRoom = func(task func()) { task() }
 	g.Base.CurrentState = func(client uint64, viewer bool) gin.H {
@@ -155,16 +155,16 @@ func TestUpdateDelivery(t *testing.T) {
 		return g.Risq.ToFrontend(client, viewer)
 	}
 
-	g.Action(p, "set-auto-renew", gin.H{"building_id": 3, "count": 0})
-	rawAction(g, p, "set-auto-renew", gin.H{"building_id": 3, "count": 2})
+	g.Action(p, "set-auto-renew", gin.H{"building_id": 203, "count": 0})
+	rawAction(g, p, "set-auto-renew", gin.H{"building_id": 203, "count": 2})
 	update := nextUpdate(t, player.SettingUpdates)
-	if update.Kind != "auto-renew-set" || update.Content["building_id"] != uint32(3) || update.Content["count"] != 2 || update.Content["resources"] == nil || update.Content["game"] != nil || len(g.Self(p).ActiveOrders) != 0 {
+	if update.Kind != "auto-renew-set" || update.Content["building_id"] != uint32(203) || update.Content["count"] != 2 || update.Content["resources"] == nil || update.Content["game"] != nil || len(g.Self(p).ActiveOrders) != 0 {
 		t.Fatalf("queue change did not acknowledge immediately: %+v", update)
 	}
 	if len(rival.Updates) != 0 || len(rival.SettingUpdates) != 0 || len(g.Base.ViewerUpdates) != 0 || len(g.Self(other).AutoRenewals) != 0 {
 		t.Fatal("private auto-renew queue was broadcast")
 	}
-	g.Action(p, "set-auto-renew", gin.H{"building_id": 3, "count": 0})
+	g.Action(p, "set-auto-renew", gin.H{"building_id": 203, "count": 0})
 
 	g.Action(p, "set-gather-point", gin.H{"building_id": center, "clear": true})
 	rawAction(g, p, "set-gather-point", gin.H{"building_id": center, "location_kind": 1, "location_id": harness.SpaceKey(3, 0)})
@@ -187,13 +187,13 @@ func TestUpdateDelivery(t *testing.T) {
 		rawAction(g, other, "submit-orders", nil)
 		drain(player.Updates)
 		for range cap(player.SettingUpdates) + 2 {
-			rawAction(g, p, "set-unit-behavior", gin.H{"internal_ids": mine.infantry, "stance": 1})
+			rawAction(g, p, "set-unit-behavior", gin.H{"internal_ids": mine.grunt, "stance": 1})
 		}
 		switch last {
 		case "unit":
-			rawAction(g, p, "set-unit-behavior", gin.H{"internal_ids": mine.infantry, "stance": uint8(defs.UnitStance_STAND_GROUND)})
+			rawAction(g, p, "set-unit-behavior", gin.H{"internal_ids": mine.grunt, "stance": uint8(defs.UnitStance_STAND_GROUND)})
 		case "building":
-			rawAction(g, p, "set-building-behavior", gin.H{"internal_ids": []uint64{redoubt}, "interrupt_current": true})
+			rawAction(g, p, "set-building-behavior", gin.H{"internal_ids": []uint64{fortress}, "interrupt_current": true})
 		case "gather-point":
 			rawAction(g, p, "set-gather-point", gin.H{"building_id": center, "clear": true})
 		}
@@ -319,7 +319,7 @@ func TestLatestUpdateLookup(t *testing.T) {
 	if !ok || start < 1 {
 		t.Fatalf("lookup gave id %d rev %d ok %v, want a positive id", start, rev, ok)
 	}
-	rawAction(g, p, "set-unit-behavior", gin.H{"internal_ids": scan(g, p).infantry, "stance": 1})
+	rawAction(g, p, "set-unit-behavior", gin.H{"internal_ids": scan(g, p).grunt, "stance": 1})
 	if id, got, _ := g.Base.LatestUpdate(client); id != start || got != rev+1 {
 		t.Fatalf("setting change gave id %d rev %d, want id %d rev %d", id, got, start, rev+1)
 	}
@@ -349,8 +349,8 @@ func TestSettingRevisionsAreContiguousPerRecipient(t *testing.T) {
 	player := g.Base.Players[uint64(p+1)]
 	_, rev, _ := g.Base.LatestUpdate(player.GetClientId())
 	drain(player.SettingUpdates)
-	rawAction(g, p, "set-unit-behavior", gin.H{"internal_ids": scan(g, p).infantry, "stance": 1})
-	rawAction(g, p, "set-auto-renew", gin.H{"building_id": 3, "count": 1})
+	rawAction(g, p, "set-unit-behavior", gin.H{"internal_ids": scan(g, p).grunt, "stance": 1})
+	rawAction(g, p, "set-auto-renew", gin.H{"building_id": 203, "count": 1})
 	rawAction(g, p, "submit-orders", nil)
 	for i, kind := range []string{"unit-behavior-set", "auto-renew-set", "submitted-orders"} {
 		update := nextUpdate(t, player.SettingUpdates)
@@ -369,7 +369,7 @@ func TestDisconnectedPlayerMissesRevisions(t *testing.T) {
 	_, rev, _ := g.Base.LatestUpdate(client)
 	drain(player.SettingUpdates)
 	g.Base.PlayerDisconnected(client)
-	rawAction(g, p, "set-unit-behavior", gin.H{"internal_ids": scan(g, p).infantry, "stance": 1})
+	rawAction(g, p, "set-unit-behavior", gin.H{"internal_ids": scan(g, p).grunt, "stance": 1})
 	if _, got, _ := g.Base.LatestUpdate(client); len(player.SettingUpdates) != 0 || got != rev+1 {
 		t.Fatalf("disconnected player has rev %d with %d queued, want rev %d and none queued", got, len(player.SettingUpdates), rev+1)
 	}
@@ -389,7 +389,7 @@ func TestOverflowedSettingUpdatesLeaveARevisionGap(t *testing.T) {
 	drain(player.SettingUpdates)
 	capacity := cap(player.SettingUpdates)
 	for range capacity + 2 {
-		rawAction(g, p, "set-unit-behavior", gin.H{"internal_ids": scan(g, p).infantry, "stance": 1})
+		rawAction(g, p, "set-unit-behavior", gin.H{"internal_ids": scan(g, p).grunt, "stance": 1})
 	}
 	var newest any
 	for len(player.SettingUpdates) > 0 {
@@ -408,7 +408,7 @@ func TestSnapshotsCarryTheCurrentSettingsRevision(t *testing.T) {
 	player := g.Base.Players[client]
 	g.Base.RunInRoom = func(task func()) { task() }
 	g.Base.CurrentState = g.Risq.ToFrontend
-	rawAction(g, p, "set-unit-behavior", gin.H{"internal_ids": scan(g, p).infantry, "stance": 1})
+	rawAction(g, p, "set-unit-behavior", gin.H{"internal_ids": scan(g, p).grunt, "stance": 1})
 	_, rev, _ := g.Base.LatestUpdate(client)
 	drain(player.Updates)
 	g.Base.ResendLastUpdate(client)
@@ -417,7 +417,7 @@ func TestSnapshotsCarryTheCurrentSettingsRevision(t *testing.T) {
 		t.Fatalf("replayed snapshot carries rev %v, want %d", replayed, rev)
 	}
 	drain(player.SettingUpdates)
-	rawAction(g, p, "set-unit-behavior", gin.H{"internal_ids": scan(g, p).infantry, "stance": 2})
+	rawAction(g, p, "set-unit-behavior", gin.H{"internal_ids": scan(g, p).grunt, "stance": 2})
 	if next := nextUpdate(t, player.SettingUpdates).Content["rev"]; next != rev+1 {
 		t.Fatalf("patch after the snapshot carries rev %v, want %d", next, rev+1)
 	}
@@ -433,7 +433,7 @@ func TestGatherPointHiddenFromOrdinaryVision(t *testing.T) {
 	watcher := g.Base.Players[uint64(other+1)]
 	_, rev, _ := g.Base.LatestUpdate(watcher.GetClientId())
 	drain(watcher.SettingUpdates)
-	for _, kind := range []uint32{23, 21} {
+	for _, kind := range []uint32{208, 207} {
 		setGatherPoint(g, p, buildingID(g, p, kind), 3, 0)
 	}
 	if _, got, _ := g.Base.LatestUpdate(watcher.GetClientId()); len(watcher.SettingUpdates) != 0 || got != rev {
@@ -445,7 +445,7 @@ func TestGatherPointNotifiesSpyOnlyForVisibleBuildings(t *testing.T) {
 	g := notificationGame(t, true)
 	p, spy := g.Human(0), g.Human(1)
 	owner, watcher := g.Base.Players[uint64(p+1)], g.Base.Players[uint64(spy+1)]
-	home, far := buildingID(g, p, 23), buildingID(g, p, 21)
+	home, far := buildingID(g, p, 208), buildingID(g, p, 207)
 	_, rev, _ := g.Base.LatestUpdate(watcher.GetClientId())
 	drain(owner.SettingUpdates)
 	drain(watcher.SettingUpdates)
@@ -467,7 +467,7 @@ func TestClearedGatherPointReachesSpyWithoutAPoint(t *testing.T) {
 	g := notificationGame(t, true)
 	p, spy := g.Human(0), g.Human(1)
 	watcher := g.Base.Players[uint64(spy+1)]
-	home := buildingID(g, p, 23)
+	home := buildingID(g, p, 208)
 	setGatherPoint(g, p, home, 3, 0)
 	drain(watcher.SettingUpdates)
 	rawAction(g, p, "set-gather-point", gin.H{"building_id": home, "clear": true})

@@ -325,7 +325,7 @@ func (e ScriptExpr) resolve(vars map[string]float64) (float64, error) {
 	return e.resolveWithRng(vars, nil)
 }
 
-// Like resolve, but random(n) in an expression string draws from rng
+// Like resolve, but random() and randomInt(a, b) in an expression string draw from rng
 func (e ScriptExpr) resolveWithRng(vars map[string]float64, rng *rand.Rand) (float64, error) {
 	if len(e.raw) == 0 {
 		return 0, nil

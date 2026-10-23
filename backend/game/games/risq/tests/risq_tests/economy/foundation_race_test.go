@@ -10,10 +10,10 @@ import (
 func TestFoundationRaceRefundsLoser(t *testing.T) {
 	winners := []int{}
 	for _, slots := range [][2]int{{0, 1}, {1, 0}} {
-		g := scenarioGame(t, `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":0,"count":1},{"id":1,"player":1,"count":1}]}]},{"x":-1,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":2,"player":0}}]},{"x":1,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":2,"player":1}}]}`)
+		g := scenarioGame(t, `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":0,"count":1},{"id":11,"player":1,"count":1}]}]},{"x":-1,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":202,"player":0}}]},{"x":1,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":202,"player":1}}]}`)
 		for _, slot := range slots {
 			p := g.Human(slot)
-			g.Submit(p, housingOrders(g, p, 0)...)
+			g.Submit(p, shelterOrders(g, p, 0)...)
 		}
 		winner, created := -1, 0
 		for slot := 0; slot < 2; slot++ {
@@ -54,7 +54,7 @@ func TestOnlyFoundationCancellationRefundsReservation(t *testing.T) {
 	g := buildGame(t, 1)
 	p := g.Human(0)
 	wood := g.Self(p).Resources.Wood
-	g.Submit(p, housingOrders(g, p, 2)...)
+	g.Submit(p, shelterOrders(g, p, 2)...)
 	g.EndTurn()
 	state := g.Self(p)
 	if len(state.Buildings) != 0 || len(state.PlannedFoundations) != 1 || len(state.ActiveOrders) != 1 || state.Resources.Wood != wood-30 {
@@ -62,8 +62,8 @@ func TestOnlyFoundationCancellationRefundsReservation(t *testing.T) {
 	}
 	order := state.ActiveOrders[0]
 	foundation := state.PlannedFoundations[0]
-	if order.OrderType != uint8(defs.OrderType_UnitBuild) || foundation.BuildingID != 2 || foundation.CoordinateKey != uint(harness.ZoneKey(2, 0, 0, 0)) {
-		t.Fatal("reservation or active order does not match the requested housing")
+	if order.OrderType != uint8(defs.OrderType_UnitBuild) || foundation.BuildingID != 202 || foundation.CoordinateKey != uint(harness.ZoneKey(2, 0, 0, 0)) {
+		t.Fatal("reservation or active order does not match the requested shelter")
 	}
 	g.Submit(p, harness.Order(defs.OrderType_CancelOrder, nil, int64(order.InternalID), false))
 	g.EndTurn()

@@ -59,16 +59,16 @@ func cardSlot(card *game_utils.StandardCard) int {
 func createFiddlesticksAiModelTheory3(model_input map[string]string) *FiddlesticksAiModelTheory3 {
 	m := &FiddlesticksAiModelTheory3{
 		// configurable model parameters
-		win_vs_all_trump_factor:    1.136,
-		win_vs_all_nontrump_factor: 0.203,
-		min_win_weight_factor:      0.8,
-		bet_scale:                  0.884,
-		aggressive_factor:          1.09,
+		win_vs_all_trump_factor:    1.046,
+		win_vs_all_nontrump_factor: 0.200,
+		min_win_weight_factor:      0.869,
+		bet_scale:                  0.965,
+		aggressive_factor:          1.462,
 		aggressive_factor_slope:    0.8,
-		late_seat_bonus:            0.06,
+		late_seat_bonus:            0.080,
 		late_seat_bonus_slope:      0.9,
-		trump_hold_factor:          0.396,
-		void_exploit:               0.194,
+		trump_hold_factor:          0.150,
+		void_exploit:               0.055,
 		// internal data for a given game
 		created_opponents: false,
 		unknown_cards:     0,

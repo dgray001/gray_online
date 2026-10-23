@@ -17,14 +17,14 @@ import (
 func TestTickHistoryGatherCapacity(t *testing.T) {
 	for _, required := range []int{1, 48} {
 		t.Run(fmt.Sprintf("renewal-%d", required), func(t *testing.T) {
-			g := farmGame(t, 120, 2)
+			g := orchardGame(t, 120, 2)
 			p := g.Human(0)
-			id := fastExhaustFarm(g, p)
+			id := fastExhaustOrchard(g, p)
 			g.Lite = false
 			g.Invalidate()
-			config := defs.BuildingConfigs[3]
+			config := defs.BuildingConfigs[203]
 			config.Gather.Renew_stamina = required
-			defs.BuildingConfigs[3] = config
+			defs.BuildingConfigs[203] = config
 			ids, available := []uint64{}, 0
 			for _, u := range g.Self(p).Units {
 				ids = append(ids, u.InternalID)
@@ -33,7 +33,7 @@ func TestTickHistoryGatherCapacity(t *testing.T) {
 			g.Submit(p, harness.Order(defs.OrderType_UnitRenew, ids, int64(id), false))
 			g.EndTurn()
 			want := min(required, available)
-			if farmZone(g, p).Building.RenewStaminaRemaining != required-want || g.Self(p).Resources.Wood != 60 {
+			if orchardZone(g, p).Building.RenewStaminaRemaining != required-want || g.Self(p).Resources.Wood != 80 {
 				t.Fatal("fixture did not allocate renewal and pay once")
 			}
 			spent, progress, proposals := 0, 0, 0
@@ -205,7 +205,7 @@ func TestGatherCapacityLimitsHarvest(t *testing.T) {
 	}
 	left := g.State(p).Space(0, 0).Resources[0].ResourcesLeft
 	if math.Abs(left-(config.Starting_resources-want)) > 0.00001 {
-		t.Errorf("cedar pool %v, want %v", left, config.Starting_resources-want)
+		t.Errorf("tree pool %v, want %v", left, config.Starting_resources-want)
 	}
 	idle := 0
 	for _, u := range g.Self(p).Units {
@@ -290,9 +290,9 @@ func TestDepletionConservesResources(t *testing.T) {
 
 func TestContestedGatherSatisfiesSmallerDemandFirst(t *testing.T) {
 	for _, slots := range [][2]int{{0, 1}, {1, 0}} {
-		doc := `{"board_size":1,"players":2,"starting_bank":{},"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"resource":11,"units":[{"id":1,"player":0,"count":1},{"id":2,"player":1,"count":1}]}]}]}`
+		doc := `{"board_size":1,"players":2,"starting_bank":{},"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"resource":11,"units":[{"id":11,"player":0,"count":1},{"id":2,"player":1,"count":1}]}]}]}`
 		fakeboard.UseConfig(t, testConfig, nil, map[string]string{"unequal": doc})
-		worker := defs.UnitConfigs[1]
+		worker := defs.UnitConfigs[11]
 		worker.Turn_stamina = 1
 		defs.UnitConfigs[2] = worker
 		resource := defs.ResourceConfigs[11]
@@ -316,18 +316,31 @@ func TestContestedGatherSatisfiesSmallerDemandFirst(t *testing.T) {
 }
 
 func TestGatherPenaltyByOwnership(t *testing.T) {
-	gained := func(neutral, enemy float64) float64 {
-		risq.GatherNeutralSpaceFactor, risq.GatherEnemySpaceFactor = neutral, enemy
-		defer func() { risq.GatherNeutralSpaceFactor, risq.GatherEnemySpaceFactor = 1, 1 }()
-		g := gatherGame(t, 11, false, false)
+	risq.GatherNeutralSpaceFactor, risq.GatherEnemySpaceFactor = 0.9, 0.7
+	defer func() { risq.GatherNeutralSpaceFactor, risq.GatherEnemySpaceFactor = 1, 1 }()
+	gained := func(owner int) float64 {
+		building := ""
+		if owner >= 0 {
+			building = fmt.Sprintf(`,{"x":1,"y":0,"building":{"id":202,"player":%d}}`, owner)
+		}
+		space := fmt.Sprintf(`{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"resource":11,"units":[{"id":11,"player":0,"count":1}]}%s]}`, building)
+		g := economyGame(t, `{}`, space+","+remoteWorker, "")
 		p := g.Human(0)
 		submitGather(g, p)
 		before := g.Self(p).Resources.Wood
 		g.EndTurn()
 		return g.Self(p).Resources.Wood - before
 	}
-	full := gained(1, 1)
-	if got := gained(0.1, 0.3); math.Abs(got-0.1*full) > 0.001 {
-		t.Errorf("neutral space gathered %v, want 10%% of %v", got, full)
+	full := gained(0)
+	if full <= 0 {
+		t.Fatal("owned-space fixture did not gather")
+	}
+	for _, tc := range []struct {
+		owner int
+		rate  float64
+	}{{-1, 0.9}, {1, 0.7}} {
+		if got := gained(tc.owner); math.Abs(got-tc.rate*full) > 0.001 {
+			t.Errorf("owner %d gathered %v, want %v%% of %v", tc.owner, got, tc.rate*100, full)
+		}
 	}
 }

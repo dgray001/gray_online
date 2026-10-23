@@ -8,10 +8,25 @@ type Coordinate struct {
 }
 
 type SpaceInfo struct {
-	UnitCount *int
-	Space     Coordinate
-	Vision    uint8
-	Owner     int
+	TerrainType        uint8
+	IntraCost          uint
+	InterCost          uint
+	BuildSpeedModifier float64
+	Passable           bool
+
+	UnitCount  *int
+	Space      Coordinate
+	Vision     uint8
+	Owner      int
+	GoldIncome float64
+}
+
+type RegionInfo struct {
+	Name          string
+	GoldBonus     float64
+	Owner         int
+	Spaces        []Coordinate
+	HasUnexplored bool
 }
 
 type ZoneRef struct {
@@ -104,7 +119,32 @@ var targetCategoryNames = map[string]TargetCategory{
 	"building": TargetCategoryBuilding,
 }
 
+type AttackRange uint8
+
+const (
+	AttackRangeNone AttackRange = iota
+	AttackRangeZone
+	AttackRangeSpace
+	AttackRangeAdjacent
+	AttackRangeSecondary
+)
+
+func (r AttackRange) SpaceReach() int {
+	switch r {
+	case AttackRangeSpace:
+		return 0
+	case AttackRangeAdjacent:
+		return 1
+	case AttackRangeSecondary:
+		return 2
+	}
+	return -1
+}
+
 type UnitView struct {
+	AttackRange      AttackRange
+	CanAttack        bool
+	MaxStamina       int
 	InternalID       uint64
 	PlayerID         int
 	UnitID           uint32
@@ -120,9 +160,8 @@ type UnitView struct {
 	AttackBack       bool
 	TargetPriority   []TargetCategory
 	ActiveOrders     []ActiveUnitOrder
-	// 0 for units seen without detail
-	Health    float64
-	MaxHealth float64
+	Health           float64
+	MaxHealth        float64
 }
 
 type UnitBehavior struct {
@@ -187,16 +226,20 @@ type CurrentOrder struct {
 }
 
 type ResourceView struct {
-	InternalID uint64
-	Category   ResourceCategory
-	Location   ZoneRef
-	AmountLeft float64
+	InternalID     uint64
+	Category       ResourceCategory
+	Location       ZoneRef
+	AmountLeft     float64
+	GatherSpeed    int
+	GatherCapacity int
+	IsBuilding     bool
 }
 
 type ProducibleKind uint8
 
 const (
-	ProducibleUnit ProducibleKind = iota
+	ProducibleNone ProducibleKind = iota
+	ProducibleUnit
 	ProducibleTech
 	ProducibleBuilding
 )
@@ -220,13 +263,17 @@ func (c Cost) of(category ResourceCategory) float64 {
 
 // Something a building can currently be ordered to make (already-researched techs excluded).
 type Producible struct {
-	UnitType UnitType
-	Kind     ProducibleKind
-	ID       uint32
-	Cost     Cost
+	UnitType    UnitType
+	Kind        ProducibleKind
+	ID          uint32
+	Cost        Cost
+	StaminaCost int
 }
 
 type BuildingView struct {
+	AttackRange       AttackRange
+	MaxStamina        int
+	Visible           bool
 	InternalID        uint64
 	PlayerID          int
 	BuildingID        uint32
@@ -238,7 +285,10 @@ type BuildingView struct {
 	GarrisonCount     int
 	GarrisonCapacity  int
 	Gatherable        bool
+	ResourceCategory  ResourceCategory
 	ResourcesLeft     float64
+	GatherSpeed       int
+	GatherCapacity    int
 	Renewing          bool
 	RenewCost         Cost
 	Health            float64
@@ -287,10 +337,11 @@ type ActiveUnitOrder struct {
 }
 
 type FoundationView struct {
-	BuildingID uint32
-	Location   ZoneRef
-	Planned    bool
-	Builders   int
+	BuildingID      uint32
+	Location        ZoneRef
+	Planned         bool
+	Builders        int
+	OrderedThisTurn bool
 }
 
 // Mirrors risq.OrderFromFrontend; Player_id is stamped on by risq.
@@ -304,8 +355,13 @@ type Order struct {
 // Read-only per-player snapshot, gated by the same fog-of-war the frontend shows a human.
 type View interface {
 	Logger() *util.Logger
+	// changes whenever an emitted order changes what the view reports
+	Revision() uint64
 	Nickname() string
 	Units() []UnitView
+	AllUnits() []UnitView
+	AllBuildings() []BuildingView
+	Issue(request IssueRequest) Order
 	// Units within the current bucket scope; the same as Units() outside a bucket wrapper
 	ScopedUnits() []UnitView
 	IdleUnits() []UnitView
@@ -313,6 +369,8 @@ type View interface {
 	Buildings() []BuildingView
 	IdleBuildings() []BuildingView
 	Resource(category ResourceCategory) float64
+	HasEconomy() bool
+	HasProduction() bool
 	Population() (current, limit int)
 	// the game's population ceiling, which no amount of housing can raise
 	MaxPopulation() int
@@ -344,6 +402,8 @@ type View interface {
 	EnemiesFound() int
 	OwnedSpaces() int
 	AllSpaces() []SpaceInfo
+	AllRegions() []RegionInfo
+	AvailableMercenaries() []Producible
 	AllZones() []ZoneInfo
 	// every player in the game in id order, and the player this view belongs to
 	PlayerIDs() []int
@@ -360,12 +420,14 @@ type View interface {
 	BestEnemyScore() int
 	TechResearched(tech_id uint32) bool
 	BuildingAvailable(building_id uint32) bool
+	ValidBuildZone(building_id uint32, target ZoneRef) bool
 	InAttackRange(b BuildingView, target ZoneRef) bool
 	BuildCost(building_id uint32) Cost
 	UnitCost(unit_id uint32) Cost
 	TechCost(tech_id uint32) Cost
 
 	MoveOrder(u UnitView, target ZoneRef, clear_previous bool) Order
+	MoveSpaceOrder(u UnitView, target Coordinate, clear_previous bool) Order
 	GatherOrder(u UnitView, target ResourceView, clear_previous bool) Order
 	BuildOrder(u UnitView, building_id uint32, target ZoneRef, clear_previous bool) Order
 	RepairOrder(u UnitView, target BuildingView, clear_previous bool) Order

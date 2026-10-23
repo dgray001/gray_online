@@ -31,9 +31,6 @@ func (b *RisqBuilding) toFrontend(viewer_player_id int) gin.H {
 		"under_construction":         b.underConstruction(),
 		"stamina_remaining":          b.stamina_remaining,
 		"construction_stamina_total": b.construction_stamina_total,
-		"turn_stamina":               b.turn_stamina,
-		"current_stamina":            b.current_stamina,
-		"max_stamina":                maxStaminaFor(b.turn_stamina),
 		"garrison_capacity":          b.garrison_capacity,
 		"attack_range":               b.attack_range,
 	}
@@ -47,6 +44,9 @@ func (b *RisqBuilding) toFrontend(viewer_player_id int) gin.H {
 		building["garrisoned_units"] = garrisoned_units
 	}
 	if showOrdersTo(b.player_id, b.zone, viewer_player_id) {
+		building["turn_stamina"] = b.turn_stamina
+		building["current_stamina"] = b.current_stamina
+		building["max_stamina"] = maxStaminaFor(b.turn_stamina)
 		building["renewing"] = b.renewing != nil
 		if b.renewing != nil {
 			building["renew_stamina_remaining"] = b.renew_stamina_remaining
@@ -122,6 +122,7 @@ func AllBuildingConfigsToFrontend(game_config *defs.Config) []gin.H {
 			"stamina_cost":       config.Build_stamina,
 			"population_support": config.Population_support,
 			"garrison_capacity":  config.Garrison_capacity,
+			"is_wall":            config.Is_wall,
 			"stats": gin.H{
 				"health":               config.Max_health,
 				"attack_type":          config.Attack_type,

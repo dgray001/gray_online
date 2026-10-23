@@ -33,6 +33,7 @@ type fakeView struct {
 	units                        []ai.UnitView
 	buildings                    []ai.BuildingView
 	resources                    map[ai.ResourceCategory]float64
+	hasEconomy, hasProduction    bool
 	popCurrent, popLimit, popMax int
 	foundations                  []ai.FoundationView
 
@@ -42,6 +43,8 @@ type fakeView struct {
 
 	turnNumber, mapSize, numPlayers, enemiesFound, ownedSpaces int
 	allSpaces                                                  []ai.SpaceInfo
+	allRegions                                                 []ai.RegionInfo
+	availableMercenaries                                       []ai.Producible
 	allZones                                                   []ai.ZoneInfo
 	playerIDs                                                  []int
 	playerID                                                   int
@@ -185,6 +188,7 @@ func (f *fakeView) currentOrder(call orderCall, kind ai.OrderKind) *ai.CurrentOr
 }
 
 func (f *fakeView) Logger() *util.Logger       { return nil }
+func (f *fakeView) Revision() uint64           { return 0 }
 func (f *fakeView) Nickname() string           { return f.nickname }
 func (f *fakeView) Units() []ai.UnitView       { f.query("Units"); return slices.Clone(f.units) }
 func (f *fakeView) ScopedUnits() []ai.UnitView { f.query("ScopedUnits"); return slices.Clone(f.units) }
@@ -207,6 +211,8 @@ func (f *fakeView) Resource(category ai.ResourceCategory) float64 {
 	f.query("Resource")
 	return f.resources[category]
 }
+func (f *fakeView) HasEconomy() bool    { return f.hasEconomy }
+func (f *fakeView) HasProduction() bool { return f.hasProduction }
 func (f *fakeView) Population() (current, limit int) {
 	f.query("Population")
 	return f.popCurrent, f.popLimit
@@ -304,12 +310,19 @@ func (f *fakeView) NearestUnexplored(from ai.ZoneRef) ([]ai.ZoneRef, bool) {
 	f.query("NearestUnexplored")
 	return slices.Clone(f.unexplored), len(f.unexplored) > 0
 }
-func (f *fakeView) TurnNumber() int               { return f.turnNumber }
-func (f *fakeView) MapSize() int                  { return f.mapSize }
-func (f *fakeView) NumPlayers() int               { return f.numPlayers }
-func (f *fakeView) EnemiesFound() int             { return f.enemiesFound }
-func (f *fakeView) OwnedSpaces() int              { return f.ownedSpaces }
-func (f *fakeView) AllSpaces() []ai.SpaceInfo     { f.query("AllSpaces"); return slices.Clone(f.allSpaces) }
+func (f *fakeView) TurnNumber() int           { return f.turnNumber }
+func (f *fakeView) MapSize() int              { return f.mapSize }
+func (f *fakeView) NumPlayers() int           { return f.numPlayers }
+func (f *fakeView) EnemiesFound() int         { return f.enemiesFound }
+func (f *fakeView) OwnedSpaces() int          { return f.ownedSpaces }
+func (f *fakeView) AllSpaces() []ai.SpaceInfo { f.query("AllSpaces"); return slices.Clone(f.allSpaces) }
+func (f *fakeView) AllRegions() []ai.RegionInfo {
+	f.query("AllRegions")
+	return slices.Clone(f.allRegions)
+}
+func (f *fakeView) AvailableMercenaries() []ai.Producible {
+	return slices.Clone(f.availableMercenaries)
+}
 func (f *fakeView) AllZones() []ai.ZoneInfo       { f.query("AllZones"); return slices.Clone(f.allZones) }
 func (f *fakeView) PlayerIDs() []int              { return f.playerIDs }
 func (f *fakeView) PlayerID() int                 { return f.playerID }
@@ -366,6 +379,7 @@ func (f *fakeView) TechResearched(tech_id uint32) bool {
 func (f *fakeView) BuildingAvailable(building_id uint32) bool {
 	return f.buildingAvailable[building_id]
 }
+func (f *fakeView) ValidBuildZone(uint32, ai.ZoneRef) bool { return true }
 func (f *fakeView) InAttackRange(b ai.BuildingView, target ai.ZoneRef) bool {
 	f.query("InAttackRange")
 	if f.attackRange != nil {
@@ -379,6 +393,16 @@ func (f *fakeView) TechCost(tech_id uint32) ai.Cost      { return f.techCost[tec
 
 func (f *fakeView) MoveOrder(u ai.UnitView, target ai.ZoneRef, clear_previous bool) ai.Order {
 	return f.record(orderCall{Kind: 1, Subject: u.InternalID, Place: target, Clear: clear_previous})
+}
+func (f *fakeView) AllUnits() []ai.UnitView {
+	return slices.Concat(f.Units(), f.VisibleEnemyUnits())
+}
+func (f *fakeView) AllBuildings() []ai.BuildingView {
+	return slices.Concat(f.Buildings(), f.KnownEnemyBuildings())
+}
+func (f *fakeView) Issue(r ai.IssueRequest) ai.Order { return ai.DispatchIssue(f, r) }
+func (f *fakeView) MoveSpaceOrder(u ai.UnitView, target ai.Coordinate, clear_previous bool) ai.Order {
+	return f.record(orderCall{Kind: 21, Subject: u.InternalID, Place: ai.ZoneRef{Space: target}, Clear: clear_previous})
 }
 func (f *fakeView) GatherOrder(u ai.UnitView, target ai.ResourceView, clear_previous bool) ai.Order {
 	return f.record(orderCall{Kind: 2, Subject: u.InternalID, Target: target.InternalID, Place: target.Location, Clear: clear_previous})

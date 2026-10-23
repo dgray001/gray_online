@@ -13,9 +13,19 @@ import (
 var perfEnabled atomic.Bool
 var perfMu sync.Mutex
 var perfFile *os.File
+var perfStdout atomic.Bool
 
 func PerfEnabled() bool {
 	return perfEnabled.Load()
+}
+
+func EnablePerfToStdout() {
+	perfStdout.Store(true)
+	perfEnabled.Store(true)
+}
+
+func PerfToStdout() bool {
+	return perfStdout.Load()
 }
 
 // Enabling opens a new logs/perf_<time>.jsonl; disabling closes it
@@ -52,7 +62,9 @@ func PerfWrite(entry map[string]any) {
 	}
 	perfMu.Lock()
 	defer perfMu.Unlock()
-	if perfFile != nil {
+	if perfStdout.Load() {
+		fmt.Fprintf(os.Stdout, "PERF %s\n", line)
+	} else if perfFile != nil {
 		perfFile.Write(append(line, '\n'))
 	}
 }

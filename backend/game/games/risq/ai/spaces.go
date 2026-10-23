@@ -8,6 +8,15 @@ import (
 )
 
 type SpaceCondition struct {
+	TerrainTypes              []string `json:"terrain_types,omitempty"`
+	Passable                  *bool    `json:"passable,omitempty"`
+	IntraCostAtLeast          *uint    `json:"intra_cost_at_least,omitempty"`
+	IntraCostAtMost           *uint    `json:"intra_cost_at_most,omitempty"`
+	InterCostAtLeast          *uint    `json:"inter_cost_at_least,omitempty"`
+	InterCostAtMost           *uint    `json:"inter_cost_at_most,omitempty"`
+	BuildSpeedModifierAtLeast *float64 `json:"build_speed_modifier_at_least,omitempty"`
+	BuildSpeedModifierAtMost  *float64 `json:"build_speed_modifier_at_most,omitempty"`
+
 	All              []SpaceCondition `json:"all,omitempty"`
 	Any              []SpaceCondition `json:"any,omitempty"`
 	Not              *SpaceCondition  `json:"not,omitempty"`
@@ -94,6 +103,13 @@ func parseSpaceCondition(raw any) (SpaceCondition, error) {
 }
 
 func (c SpaceCondition) validate() error {
+	for _, terrain := range c.TerrainTypes {
+		switch terrain {
+		case "flatlands", "hilly", "mountainous", "swamp", "shallows", "water", "deep_water":
+		default:
+			return fmt.Errorf("unknown terrain type %q", terrain)
+		}
+	}
 	for _, vision := range []*uint8{c.Vision, c.VisionAtLeast, c.VisionAtMost} {
 		if vision != nil && *vision > 4 {
 			return fmt.Errorf("vision must be between 0 and 4")

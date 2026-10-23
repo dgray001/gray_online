@@ -1,0 +1,8 @@
+[
+  {
+    "tech_id": 1,
+    "display_name": "No Mercenary Markup",
+    "description": "Mercenaries cost their listed price: the 1.3 markup becomes 1.0.",
+    "mercenary_cost_markup_delta": -0.3
+  }
+]

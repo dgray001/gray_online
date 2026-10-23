@@ -1,6 +1,6 @@
-
 Bigger Risq Issues/Ideas:
  - Utilize events on map
+ - For v0.8 ai I'd want it to be tech-tree agnostic at least to some extent maybe? Or at least stat-agnostic so it reads current stats ... it also needs to be support many different maps
  - Sim-only fast path: build the AI snapshot directly from engine state
  - Expanded level 2 tech tree
     => Magic and color damage
@@ -9,7 +9,6 @@ Bigger Risq Issues/Ideas:
     => Wood gathering seems slow we need a way to speed it up (more techs!)
 
 Fiddlesticks Plans:
- - Update turn timer UX
  - Host can pause game and if host leaves then someone else takes over as host
 
 Lobby Plans:
@@ -18,7 +17,6 @@ Lobby Plans:
 
 Testing Plans:
  - Formalize the ad-hoc concurrency/reconnect repro scripts (currently one-off Node scripts written per-investigation) into a real backend test suite instead of relying on agents to improvise and run them each time
- - Unify backend logging (stdout fmt.Println vs util.DebugLog vs stderr are used inconsistently across lobby/room/risq code with no clear rule for which tier a given log belongs in)
 
 v1.0: Database
  - Setup db in prod and dev

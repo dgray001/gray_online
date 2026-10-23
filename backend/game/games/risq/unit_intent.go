@@ -17,8 +17,8 @@ const gatherRateStaminaBase = 10.0
 
 // Gather rate multipliers by space ownership; vars so tests can neutralize them
 var (
-	GatherNeutralSpaceFactor = 0.1
-	GatherEnemySpaceFactor   = 0.3
+	GatherNeutralSpaceFactor = 0.9
+	GatherEnemySpaceFactor   = 0.7
 )
 
 const repairSpeedFactor = 0.6
@@ -46,7 +46,8 @@ type MoveIntent struct {
 	intra_step bool
 	cost       uint
 	// the unit an attack order is closing on with this move; nil for plain moves
-	chasing *RisqUnit
+	chasing   *RisqUnit
+	attacking bool
 }
 
 func (*MoveIntent) isIntentKind() {}

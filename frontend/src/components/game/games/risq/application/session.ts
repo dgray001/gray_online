@@ -196,13 +196,7 @@ export class RisqSession {
   }
 
   findBuildingById(internal_id: number): RisqBuilding | undefined {
-    for (const player of this.game?.players ?? []) {
-      const building = player.buildings.get(internal_id);
-      if (building) {
-        return building;
-      }
-    }
-    return undefined;
+    return this.game?.buildings.get(internal_id);
   }
 
   findUnitById(internal_id: number): RisqUnit | undefined {

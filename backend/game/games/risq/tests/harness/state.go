@@ -177,6 +177,7 @@ type State struct {
 	LastTurnReplay *TurnReplay `json:"last_turn_replay"`
 
 	HasEconomy            bool            `json:"has_economy"`
+	HasProduction         bool            `json:"has_production"`
 	HasBuildings          bool            `json:"has_buildings"`
 	MercenariesNeedRegion bool            `json:"mercenaries_need_region"`
 	TurnNumber            int             `json:"turn_number"`

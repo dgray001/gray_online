@@ -20,9 +20,6 @@ func TestFogWireShapeUsesFrozenContents(t *testing.T) {
 	for _, value := range array(t, remembered["buildings"]) {
 		building := checkShape(t, value, cachedBuildingShape)
 		checkEntityDetails(t, building, "produces")
-		for _, key := range []string{"turn_stamina", "current_stamina", "max_stamina"} {
-			equal(t, building[key], float64(0))
-		}
 		equal(t, len(array(t, building["active_orders"])), 0)
 		equal(t, len(array(t, building["production_queue"])), 0)
 	}
@@ -32,7 +29,7 @@ func TestFogWireShapeUsesFrozenContents(t *testing.T) {
 			deletes = append(deletes, harness.Order(defs.OrderType_BuildingDelete, []uint64{building.InternalID}, 0, false))
 		}
 	}
-	deletes = append(deletes, harness.Order(defs.OrderType_UnitDelete, []uint64{unitID(g, 1, 0, 101)}, 0, false))
+	deletes = append(deletes, harness.Order(defs.OrderType_UnitDelete, []uint64{unitID(g, 1, 0, 21)}, 0, false))
 	g.Submit(owner, deletes...)
 	g.EndTurn()
 	g.EndTurn()
@@ -84,7 +81,7 @@ func leaveTarget(g *harness.Game) {
 	g.T.Fatal("scout never left target vision")
 }
 
-const cachedBuildingShape = "internal_id:n player_id:n building_id:n display_name:s population_support:n combat_stats:o under_construction:b stamina_remaining:n construction_stamina_total:n turn_stamina:n current_stamina:n max_stamina:n produces:a active_orders:a production_queue:a zone_coordinate:o space_coordinate:o"
+const cachedBuildingShape = "internal_id:n player_id:n building_id:n display_name:s population_support:n combat_stats:o under_construction:b stamina_remaining:n construction_stamina_total:n produces:a active_orders:a production_queue:a zone_coordinate:o space_coordinate:o"
 
 func checkFogContents(t *testing.T, target map[string]any) {
 	t.Helper()
@@ -143,22 +140,22 @@ func TestVisibilityWireShapes(t *testing.T) {
 const coordinateShape = "x:n y:n"
 const costShape = "food:n wood:n stone:n gold:n"
 const identityShape = "client_id:n ai_player_id:n player_id:n nickname:s connected:b"
-const gameShape = "board_size:n population_limit:n turn_number:n giving_orders:b background_image:s background_top_left:a background_top_right:a rotation:n has_economy:b has_buildings:b mercenaries_need_region:b game_base:o players:a spaces:a space_links:a regions:a last_turn_replay:o?"
-const playerShape = "player:o population_limit:n max_population_limit:n unlimited_population:b score:n color:s orders_submitted:b eliminated:b buildings:a units:a active_orders:a unreceived_orders:a researched_techs:o"
-const privatePlayerShape = "resources:o turn_report:o? planned_foundations:a available_mercenaries:a auto_renewals:a"
+const gameShape = "board_size:n population_limit:n turn_number:n giving_orders:b background_image:s background_top_left:a background_top_right:a rotation:n has_economy:b has_production:b has_buildings:b mercenaries_need_region:b game_base:o players:a spaces:a space_links:a regions:a last_turn_replay:o?"
+const playerShape = "player:o unlimited_population:b score:n color:s orders_submitted:b eliminated:b buildings:a units:a active_orders:a unreceived_orders:a"
+const privatePlayerShape = "resources:o population_limit:n max_population_limit:n researched_techs:o turn_report:o? planned_foundations:a available_mercenaries:a auto_renewals:a"
 const unexploredShape = "coordinate:o coordinate_key:n visibility:n"
 const exploredShape = unexploredShape + " terrain_id:n terrain_type:n terrain_stats:o display_name:s gold_income:n ownership:n zones:a resources:a buildings:a"
 const zoneShape = "coordinate:o coordinate_key:n terrain_override:n ownership:n"
 const resourceShape = "internal_id:n resource_id:n display_name:s space_coordinate:o zone_coordinate:o resources_left:n max_resources:n base_gather_speed:n gather_capacity:n"
-const unitShape = "internal_id:n player_id:n unit_id:n unit_type:n display_name:s space_coordinate:o zone_coordinate:o turn_stamina:n current_stamina:n max_stamina:n combat_stats:o attack_range:n active_orders:a builds:a tick_actions:a"
-const privateUnitShape = "stance:n interrupt_current:b attack_back:b target_priority:a"
-const buildingShape = "internal_id:n player_id:n building_id:n display_name:s space_coordinate:o zone_coordinate:o population_support:n combat_stats:o under_construction:b stamina_remaining:n construction_stamina_total:n turn_stamina:n current_stamina:n max_stamina:n garrison_capacity:n attack_range:n has_garrisoned_units:b produces:a active_orders:a production_queue:a tick_actions:a"
-const privateBuildingShape = "garrisoned_units:a renewing:b auto_attack:b interrupt_current:b target_priority:a"
-const farmShape = "resources_left:n resource_capacity:n renew_stamina:n gather_capacity:n base_gather_speed:n renew_cost:o resource_category:n"
+const unitShape = "internal_id:n player_id:n unit_id:n unit_type:n display_name:s space_coordinate:o zone_coordinate:o combat_stats:o attack_range:n active_orders:a builds:a tick_actions:a"
+const privateUnitShape = "turn_stamina:n current_stamina:n max_stamina:n stance:n interrupt_current:b attack_back:b target_priority:a"
+const buildingShape = "internal_id:n player_id:n building_id:n display_name:s space_coordinate:o zone_coordinate:o population_support:n combat_stats:o under_construction:b stamina_remaining:n construction_stamina_total:n garrison_capacity:n attack_range:n has_garrisoned_units:b produces:a active_orders:a production_queue:a tick_actions:a"
+const privateBuildingShape = "turn_stamina:n current_stamina:n max_stamina:n garrisoned_units:a renewing:b auto_attack:b interrupt_current:b target_priority:a"
+const orchardShape = "resources_left:n resource_capacity:n renew_stamina:n gather_capacity:n base_gather_speed:n renew_cost:o resource_category:n"
 const combatShape = "health:n max_health:n attack_type:n attack_blunt:n attack_piercing:n attack_magic:n defense_blunt:n defense_piercing:n defense_magic:n penetration_blunt:n penetration_piercing:n penetration_magic:n"
 const orderShape = "internal_id:n player_id:n order_type:n target_id:n clear_previous_orders:b subjects:a"
 const producibleShape = "row:n col:n kind:n id:n cost:o stamina_cost:n display_name:s description:s required_tech_id:n"
-const garrisonUnitShape = "internal_id:n player_id:n unit_id:n unit_type:n display_name:s turn_stamina:n current_stamina:n max_stamina:n combat_stats:o attack_range:n active_orders:a builds:a garrisoned_in:n tick_actions:a"
+const garrisonUnitShape = "internal_id:n player_id:n unit_id:n unit_type:n display_name:s combat_stats:o attack_range:n active_orders:a builds:a garrisoned_in:n tick_actions:a"
 
 func TestEnemyPrivateDataVisibility(t *testing.T) {
 	for _, level := range []uint8{0, 2, 3, 4} {
@@ -203,14 +200,14 @@ func TestEnemyMovePathRequiresSpyVision(t *testing.T) {
 	for _, level := range []uint8{3, 4} {
 		t.Run(fmt.Sprint(level), func(t *testing.T) {
 			g := configuredGame(t, level, func() {
-				unit := defs.UnitConfigs[1]
+				unit := defs.UnitConfigs[11]
 				unit.Turn_stamina = 10
-				defs.UnitConfigs[1] = unit
+				defs.UnitConfigs[11] = unit
 				scout := defs.UnitConfigs[15]
 				scout.Vision.Secondary = level
 				defs.UnitConfigs[15] = scout
 			})
-			id := unitID(g, 1, 0, 1)
+			id := unitID(g, 1, 0, 11)
 			g.Submit(g.Human(1), harness.OrderMove([]uint64{id}, 3, 0))
 			g.EndTurn()
 			owner := player(t, snapshot(g, g.Human(1), false), 1)

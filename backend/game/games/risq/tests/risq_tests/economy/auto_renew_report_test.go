@@ -27,26 +27,26 @@ func woodTurnReport(g *harness.Game, p int) gin.H {
 func TestAutoRenewOrderingPaymentsAndRefundsAppearInReport(t *testing.T) {
 	g := sourceGame(t, true)
 	p := g.Human(0)
-	g.Action(p, "set-auto-renew", gin.H{"building_id": 3, "count": 2})
-	g.Action(p, "set-auto-renew", gin.H{"building_id": 3, "count": 1})
-	if g.Self(p).Resources.Wood != 60 {
+	g.Action(p, "set-auto-renew", gin.H{"building_id": 203, "count": 2})
+	g.Action(p, "set-auto-renew", gin.H{"building_id": 203, "count": 1})
+	if g.Self(p).Resources.Wood != 80 {
 		t.Fatal("ordering-phase payment/refund was not immediate")
 	}
 	g.EndTurn()
 	line := woodTurnReport(g, p)
-	if line["start"] != float64(120) || line["spent"] != float64(120) || line["gathered"] != float64(0) || line["income"] != float64(60) || line["final"] != float64(60) {
+	if line["start"] != float64(120) || line["spent"] != float64(80) || line["gathered"] != float64(0) || line["income"] != float64(40) || line["final"] != float64(80) {
 		t.Fatalf("ordering transactions missing from report: %+v", line)
 	}
 	if turn, _ := g.Risq.Standings(); turn != 1 {
 		t.Fatalf("standings advanced to unfinished turn %d", turn)
 	}
-	g.Action(p, "set-auto-renew", gin.H{"building_id": 3, "count": 2})
-	if report := woodTurnReport(g, p); report["spent"] != float64(120) || report["gathered"] != float64(0) || report["income"] != float64(60) {
+	g.Action(p, "set-auto-renew", gin.H{"building_id": 203, "count": 2})
+	if report := woodTurnReport(g, p); report["spent"] != float64(80) || report["gathered"] != float64(0) || report["income"] != float64(40) {
 		t.Fatalf("new ordering phase changed completed report: %+v", report)
 	}
 	g.EndTurn()
 	line = woodTurnReport(g, p)
-	if line["start"] != float64(60) || line["spent"] != float64(60) || line["gathered"] != float64(0) || line["income"] != float64(0) || line["final"] != float64(0) {
+	if line["start"] != float64(80) || line["spent"] != float64(40) || line["gathered"] != float64(0) || line["income"] != float64(0) || line["final"] != float64(40) {
 		t.Fatalf("next turn reused old counters: %+v", line)
 	}
 	g.EndTurn()

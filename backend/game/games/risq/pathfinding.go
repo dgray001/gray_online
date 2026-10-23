@@ -11,9 +11,26 @@ type PathNode struct {
 	cost_from_start uint
 	heuristic       uint
 	total           uint
+	depth           uint
 }
 
+// Zone moves auto-targeting will walk to reach a target before giving up on it
+const nearbyPathDepth = 10
+
 func (u *RisqUnit) findPath(target *RisqZone, attack_range defs.RisqRange) *MoveIntent {
+	return u.findPathWithin(target, attack_range, 0, false)
+}
+
+func (u *RisqUnit) findAttackPath(target *RisqZone) *MoveIntent {
+	move := u.findPathWithin(target, u.attack_range, 0, true)
+	if move != nil {
+		move.attacking = true
+	}
+	return move
+}
+
+// A max_depth of 0 searches without limit
+func (u *RisqUnit) findPathWithin(target *RisqZone, attack_range defs.RisqRange, max_depth uint, attacking bool) *MoveIntent {
 	start, is_garrisoned := u.pathStart()
 	if start == nil || target == nil {
 		return nil
@@ -25,12 +42,35 @@ func (u *RisqUnit) findPath(target *RisqZone, attack_range defs.RisqRange) *Move
 		}
 		return nil
 	}
-	return aStarPath(start, remaining, goal)
+	var facing func(*RisqZone) uint
+	if max_depth == 0 {
+		facing = func(z *RisqZone) uint { return facingDistance(z, target) }
+	}
+	blocked := func(from *RisqZone, to *RisqZone) bool {
+		return !(attacking && to == target) && to.knownWallBlocksEntry(from, u.player_id)
+	}
+	return aStarPath(start, remaining, goal, max_depth, facing, blocked)
+}
+
+func facingDistance(z *RisqZone, target *RisqZone) uint {
+	if z.adjacent_space != nil {
+		return z.adjacent_space.distanceTo(target.space)
+	}
+	return z.space.distanceTo(target.space)
 }
 
 func (u *RisqUnit) canReach(target *RisqZone, attack_range defs.RisqRange) bool {
 	start, _ := u.pathStart()
 	return start == target || u.findPath(target, attack_range) != nil
+}
+
+func (u *RisqUnit) canReachToAttack(target *RisqZone) bool {
+	start, _ := u.pathStart()
+	return start == target || u.findAttackPath(target) != nil
+}
+
+func (u *RisqUnit) canReachNearby(target *RisqZone) bool {
+	return u.inAttackRange(target) || u.findPathWithin(target, u.attack_range, nearbyPathDepth, true) != nil
 }
 
 func pathGoal(config *defs.Config, target *RisqZone, attack_range defs.RisqRange) (func(*RisqZone) bool, func(*RisqZone) uint) {
@@ -42,14 +82,15 @@ func pathGoal(config *defs.Config, target *RisqZone, attack_range defs.RisqRange
 			}
 	}
 	goal := func(z *RisqZone) bool {
-		return z.space.distanceTo(target.space) <= space_range
+		return rangeCovers(z, target, attack_range)
 	}
+	reach := max(space_range, 1)
 	remaining := func(z *RisqZone) uint {
 		dist := z.space.distanceTo(target.space)
-		if dist <= space_range {
+		if dist <= reach {
 			return 0
 		}
-		return (dist - space_range) * config.LowestInterMoveCost
+		return (dist - reach) * config.LowestInterMoveCost
 	}
 	return goal, remaining
 }
@@ -64,7 +105,8 @@ func (u *RisqUnit) pathStart() (*RisqZone, bool) {
 	return nil, false
 }
 
-func aStarPath(start *RisqZone, remaining func(*RisqZone) uint, goal func(*RisqZone) bool) *MoveIntent {
+func aStarPath(start *RisqZone, remaining func(*RisqZone) uint, goal func(*RisqZone) bool, max_depth uint, facing func(*RisqZone) uint, blocked func(from *RisqZone, to *RisqZone) bool) *MoveIntent {
+	var closest *PathNode
 	open_set := []*RisqZone{start}
 	tracker := make(map[*RisqZone]*PathNode)
 	h_score := remaining(start)
@@ -88,8 +130,14 @@ func aStarPath(start *RisqZone, remaining func(*RisqZone) uint, goal func(*RisqZ
 			return n.constructMoveIntent()
 		}
 		open_set = util.FastDelete(open_set, best_index)
+		if facing != nil && (closest == nil || closerNode(n, closest, facing)) {
+			closest = n
+		}
+		if max_depth > 0 && n.depth >= max_depth {
+			continue
+		}
 		for _, neighbor := range z.adjacent_zones {
-			if neighbor.space.impassable() {
+			if neighbor.space.impassable() || blocked(z, neighbor) {
 				continue
 			}
 			cost := neighbor.space.moveCost()
@@ -108,6 +156,7 @@ func aStarPath(start *RisqZone, remaining func(*RisqZone) uint, goal func(*RisqZ
 				open_set = append(open_set, neighbor)
 			}
 			neighbor_n.parent = n
+			neighbor_n.depth = n.depth + 1
 			neighbor_n.cost_from_start = neighbor_g
 			h_score := remaining(neighbor)
 			neighbor_n.heuristic = h_score
@@ -115,7 +164,20 @@ func aStarPath(start *RisqZone, remaining func(*RisqZone) uint, goal func(*RisqZ
 		}
 	}
 
+	if closest != nil {
+		return closest.constructMoveIntent()
+	}
 	return nil
+}
+
+func closerNode(a *PathNode, b *PathNode, facing func(*RisqZone) uint) bool {
+	if a.heuristic != b.heuristic {
+		return a.heuristic < b.heuristic
+	}
+	if fa, fb := facing(a.zone), facing(b.zone); fa != fb {
+		return fa < fb
+	}
+	return a.cost_from_start < b.cost_from_start
 }
 
 func (n *PathNode) constructMoveIntent() *MoveIntent {

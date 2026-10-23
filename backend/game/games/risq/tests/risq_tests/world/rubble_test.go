@@ -9,7 +9,7 @@ import (
 
 func rubbleGame(t *testing.T, configure ...func()) *harness.Game {
 	t.Helper()
-	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":2,"player":1},"units":[{"id":103,"player":0,"count":10},{"id":1,"player":0,"count":1}]}]},{"x":-1,"y":0,"terrain":1},{"x":-2,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":0},"units":[{"id":1,"player":0,"count":1}]}]},{"x":2,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":1}}]}`
+	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":202,"player":1},"units":[{"id":22,"player":0,"count":10},{"id":11,"player":0,"count":1}]}]},{"x":-1,"y":0,"terrain":1},{"x":-2,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":201,"player":0},"units":[{"id":11,"player":0,"count":1}]}]},{"x":2,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":201,"player":1}}]}`
 	for _, apply := range configure {
 		apply()
 	}
@@ -17,7 +17,7 @@ func rubbleGame(t *testing.T, configure ...func()) *harness.Game {
 	owner := g.Human(0)
 	ids := make([]uint64, 0)
 	for _, unit := range g.Self(owner).Units {
-		if unit.UnitID == 103 {
+		if unit.UnitID == 22 {
 			ids = append(ids, unit.InternalID)
 		}
 	}
@@ -32,7 +32,7 @@ func TestRubbleClearsWhenOccupied(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			g := rubbleGame(t)
 			owner := g.Human(0)
-			g.Submit(owner, harness.OrderBuild([]uint64{unitAt(g, owner, villager, builderX, 0)}, housing, 0, 0, 0, 0))
+			g.Submit(owner, harness.OrderBuild([]uint64{unitAt(g, owner, worker, builderX, 0)}, shelter, 0, 0, 0, 0))
 			g.EndTurn()
 			z := g.State(owner).Space(0, 0).Zones[1][1]
 			if z.DestroyedBuilding != nil || z.DestroyedBuildingTurns != nil {
@@ -47,7 +47,7 @@ func TestRubbleClearsWhenOccupied(t *testing.T) {
 
 func TestRubbleCacheStaysFrozenUntilRefreshed(t *testing.T) {
 	g := rubbleGame(t, func() {
-		for _, id := range []uint32{villager, 103} {
+		for _, id := range []uint32{worker, 22} {
 			config := defs.UnitConfigs[id]
 			config.Turn_stamina = 100
 			config.Vision.Secondary = defs.VisibilityUnexplored
@@ -63,12 +63,12 @@ func TestRubbleCacheStaysFrozenUntilRefreshed(t *testing.T) {
 	g.EndTurn()
 	space := g.State(owner).Space(0, 0)
 	remembered := space.Zones[1][1]
-	if space.Visibility != fog || remembered.DestroyedBuilding == nil || remembered.DestroyedBuildingTurns == nil || *remembered.DestroyedBuilding != 2 || *remembered.DestroyedBuildingTurns != 2 {
+	if space.Visibility != fog || remembered.DestroyedBuilding == nil || remembered.DestroyedBuildingTurns == nil || *remembered.DestroyedBuilding != shelter || *remembered.DestroyedBuildingTurns != 2 {
 		t.Fatalf("setup did not leave seen rubble in fog: %+v", remembered)
 	}
 	g.EndTurn()
 	cached := g.State(owner).Space(0, 0).Zones[1][1]
-	if cached.DestroyedBuilding == nil || cached.DestroyedBuildingTurns == nil || *cached.DestroyedBuilding != 2 || *cached.DestroyedBuildingTurns != 2 {
+	if cached.DestroyedBuilding == nil || cached.DestroyedBuildingTurns == nil || *cached.DestroyedBuilding != shelter || *cached.DestroyedBuildingTurns != 2 {
 		t.Fatalf("fog lost last-seen rubble: %+v", cached)
 	}
 	g.Submit(owner, harness.OrderMove(ids, 0, 0))
@@ -87,7 +87,7 @@ func TestRubbleLifetime(t *testing.T) {
 			t.Fatal("target building was not razed")
 		}
 		if age <= 2 {
-			if z.DestroyedBuilding == nil || *z.DestroyedBuilding != 2 || z.DestroyedBuildingTurns == nil || *z.DestroyedBuildingTurns != age {
+			if z.DestroyedBuilding == nil || *z.DestroyedBuilding != shelter || z.DestroyedBuildingTurns == nil || *z.DestroyedBuildingTurns != age {
 				t.Fatalf("age %d: incorrect rubble snapshot: %+v", age, z)
 			}
 		} else if z.DestroyedBuilding != nil || z.DestroyedBuildingTurns != nil {

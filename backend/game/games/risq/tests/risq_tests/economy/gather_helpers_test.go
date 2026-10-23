@@ -11,11 +11,11 @@ import (
 
 func gatherGame(t *testing.T, resource uint32, contested bool, fast bool) *harness.Game {
 	t.Helper()
-	enemy := `,{"id":1,"player":1,"count":1}`
+	enemy := `,{"id":11,"player":1,"count":1}`
 	if !contested {
 		enemy = ""
 	}
-	doc := fmt.Sprintf(`{"board_size":2,"players":2,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"resource":%d,"units":[{"id":1,"player":0,"count":1}%s]}]},{"x":2,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":1,"count":1}]}]}]}`, resource, enemy)
+	doc := fmt.Sprintf(`{"board_size":2,"players":2,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"resource":%d,"units":[{"id":11,"player":0,"count":1}%s]}]},{"x":2,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":1,"count":1}]}]}]}`, resource, enemy)
 	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"gather": doc})
 	if fast {
 		speedUpGathering(t)
@@ -54,5 +54,5 @@ func submitGather(g *harness.Game, human int) {
 			return
 		}
 	}
-	g.T.Fatal("no villager on the resource zone")
+	g.T.Fatal("no worker on the resource zone")
 }

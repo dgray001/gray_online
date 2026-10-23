@@ -37,8 +37,70 @@ var defaultRisqVision = RisqVision{
 	Space:         VisibilityGood,
 	Edge_adjacent: VisibilityGood,
 	Adjacent:      VisibilityPoor,
+	Edge_opposite: VisibilityUnexplored,
+	Secondary:     VisibilityUnexplored,
+}
+
+var defaultHillyVision = RisqVision{
+	Space:         VisibilityGood,
+	Edge_adjacent: VisibilityGood,
+	Adjacent:      VisibilityGood,
 	Edge_opposite: VisibilityPoor,
 	Secondary:     VisibilityUnexplored,
+}
+
+var defaultMountainousVision = RisqVision{
+	Space:         VisibilityGood,
+	Edge_adjacent: VisibilityGood,
+	Adjacent:      VisibilityGood,
+	Edge_opposite: VisibilityGood,
+	Secondary:     VisibilityPoor,
+}
+
+var allGoodVision = RisqVision{
+	Space:         VisibilityGood,
+	Edge_adjacent: VisibilityGood,
+	Adjacent:      VisibilityGood,
+	Edge_opposite: VisibilityGood,
+	Secondary:     VisibilityGood,
+}
+
+func boostVisionTier(base uint8, target uint8) uint8 {
+	if target <= base {
+		return base
+	}
+	if base == VisibilityUnexplored {
+		return min(target, VisibilityPoor)
+	}
+	return min(target, base+1)
+}
+
+func (v RisqVision) Boost(target RisqVision) RisqVision {
+	return RisqVision{
+		Space:         boostVisionTier(v.Space, target.Space),
+		Edge_adjacent: boostVisionTier(v.Edge_adjacent, target.Edge_adjacent),
+		Adjacent:      boostVisionTier(v.Adjacent, target.Adjacent),
+		Edge_opposite: boostVisionTier(v.Edge_opposite, target.Edge_opposite),
+		Secondary:     boostVisionTier(v.Secondary, target.Secondary),
+	}
+}
+
+func (v RisqVision) WithTerrain(terrain TerrainType) RisqVision {
+	has_custom := v != defaultRisqVision
+	switch terrain {
+	case TerrainType_HILLY:
+		if !has_custom {
+			return defaultHillyVision
+		}
+		return v.Boost(defaultHillyVision)
+	case TerrainType_MOUNTAINOUS:
+		if !has_custom {
+			return defaultMountainousVision
+		}
+		return v.Boost(allGoodVision)
+	default:
+		return v
+	}
 }
 
 type risqVisionJSON struct {

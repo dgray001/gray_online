@@ -10,7 +10,7 @@ import (
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness/fakeboard"
 )
 
-const nomadTestStarts = `{"pattern":"ring","area_size":0,"starting_distance":1,"terrain_id":1,"assets":{"units":[{"unit_id":1,"count":4,"target":{"zone":"center"}}],"buildings":[{"building_id":1,"target":{"zone":"center"}}]},"resources":[{"resource_id":1,"count":3,"zone":"edge"}]}`
+const nomadTestStarts = `{"pattern":"ring","area_size":0,"starting_distance":1,"terrain_id":1,"assets":{"units":[{"unit_id":11,"count":4,"target":{"zone":"center"}}],"buildings":[{"building_id":201,"target":{"zone":"center"}}]},"resources":[{"resource_id":1,"count":3,"zone":"edge"}]}`
 
 func checkNomadUnitStacks(t *testing.T, board *fakeboard.Board, stack int) {
 	t.Helper()
@@ -101,7 +101,7 @@ func TestNomadOnEveryScriptMap(t *testing.T) {
 		board := nomadBoard(t, name, defs.StartingDevelopment_NOMAD, 1)
 		for player := 0; player < 4; player++ {
 			units, buildings, _ := board.Tally(player)
-			if units[1] != 3 || len(units) != 1 || len(buildings) != 0 {
+			if units[11] != 3 || len(units) != 1 || len(buildings) != 0 {
 				t.Errorf("%s player %d: units %v buildings %v", name, player, units, buildings)
 			}
 		}

@@ -18,7 +18,7 @@ var homeSpaces = [][2]int{{0, 0}, {-2, 0}, {2, 0}, {0, 2}, {0, -2}, {2, -2}, {-2
 type world struct {
 	t *testing.T
 	g *harness.Game
-	// extra zone json per slot, beyond the center village and the cedar tree
+	// extra zone json per slot, beyond the center town hall and the tree tree
 	zones    map[int]string
 	slots    int
 	known    map[int]map[uint64]bool
@@ -32,7 +32,7 @@ type step struct {
 	post func()
 }
 
-func (w *world) doc(villagers map[int]int) string {
+func (w *world) doc(workers map[int]int) string {
 	home := map[[2]int]int{}
 	for slot := 0; slot < w.slots; slot++ {
 		home[homeSpaces[slot]] = slot
@@ -48,12 +48,12 @@ func (w *world) doc(villagers map[int]int) string {
 				spaces = append(spaces, fmt.Sprintf(`{"x":%d,"y":%d,"terrain":1}`, q, r))
 				continue
 			}
-			count := villagers[slot]
+			count := workers[slot]
 			if count == 0 {
 				count = 1
 			}
 			zones := []string{
-				fmt.Sprintf(`{"x":0,"y":0,"building":{"id":1,"player":%d},"units":[{"id":1,"player":%d,"count":%d}]}`, slot, slot, count),
+				fmt.Sprintf(`{"x":0,"y":0,"building":{"id":201,"player":%d},"units":[{"id":11,"player":%d,"count":%d}]}`, slot, slot, count),
 				`{"x":1,"y":-1,"resource":11}`,
 			}
 			if extra := w.zones[slot]; extra != "" {
@@ -72,11 +72,11 @@ func abs(n int) int {
 	return n
 }
 
-func newWorld(t *testing.T, slots int, zones map[int]string, villagers map[int]int, tweak func()) *world {
+func newWorld(t *testing.T, slots int, zones map[int]string, workers map[int]int, tweak func()) *world {
 	t.Helper()
 	// one extra player never submits during a turn, so EndTurn is what resolves it
 	w := &world{t: t, slots: slots + 1, zones: zones, known: map[int]map[uint64]bool{}, starting: map[int]map[uint32]uint64{}}
-	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"world": w.doc(villagers)})
+	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"world": w.doc(workers)})
 	if tweak != nil {
 		tweak()
 	}

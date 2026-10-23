@@ -14,7 +14,7 @@
     "description": "Siege units deal bonus damage against buildings.",
     "affects_unit_types": ["siege"],
     "target_types": ["building"],
-    "bonus_attack_blunt": 6,
-    "bonus_attack_piercing": 6
+    "bonus_attack_blunt": 20,
+    "bonus_attack_piercing": 20
   }
 ]

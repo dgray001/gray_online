@@ -258,7 +258,6 @@ export class RisqOrdersModel {
   add(order: RisqUnreceivedOrder): void {
     if (!isClearImmune(order.order_type) && (isUnitOrder(order.order_type) || isBuildingOrder(order.order_type))) {
       const kind = isUnitOrder(order.order_type) ? 'unit' : 'building';
-      const subject_count = order.subjects.length;
       order.subjects = order.subjects.filter((id: number): boolean => {
         const effective = this.effectiveForSubject(id, kind).filter(
           (existing: RisqFrontendOrder): boolean => !order.clear_previous_orders || !isClearImmune(existing.order_type)
@@ -269,10 +268,8 @@ export class RisqOrdersModel {
         const last = effective.at(-1);
         return last?.order_type !== order.order_type || last.target_id !== order.target_id;
       });
-      if (order.subjects.length < subject_count) {
-        this.on_duplicate();
-      }
       if (order.subjects.length === 0) {
+        this.on_duplicate();
         return;
       }
     }

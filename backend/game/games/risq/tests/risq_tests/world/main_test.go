@@ -64,11 +64,13 @@ func unit(id uint32, slot int) string {
 }
 
 const (
-	villager = 1
-	infantry = 101
-	grass    = 1
-	hills    = 51
-	water    = 152
+	worker             = 11
+	grunt              = 21
+	longbow            = 32
+	flatTerrain        = 1
+	hillyTerrain       = 51
+	mountainousTerrain = 101
+	waterTerrain       = 152
 )
 
 // Starts a two-human game on the given map document, which exists only for this test

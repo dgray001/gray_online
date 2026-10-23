@@ -12,7 +12,7 @@ import (
 
 func TestTickHistoryIncomingDamageOnIdleUnit(t *testing.T) {
 	t.Run("simultaneous-deaths-and-final-turn", func(t *testing.T) {
-		g := combatGame(t, 1, 1)
+		g := combatGameTweaked(t, 21, 21, strongGrunts)
 		p, enemy := g.Human(0), g.Human(1)
 		a, b := g.Self(p).Units[0], g.Self(enemy).Units[0]
 		g.Submit(p, harness.OrderAttackUnit([]uint64{a.InternalID}, b.InternalID))
@@ -37,7 +37,7 @@ func TestTickHistoryIncomingDamageOnIdleUnit(t *testing.T) {
 			}
 		}
 	})
-	g := combatGame(t, 101, 103)
+	g := combatGame(t, 21, 22)
 	p, enemy := g.Human(0), g.Human(1)
 	a, target := g.Self(p).Units[0], g.Self(enemy).Units[0]
 	passive(g, enemy, target.InternalID)
@@ -60,8 +60,14 @@ func TestTickHistoryIncomingDamageOnIdleUnit(t *testing.T) {
 	}
 }
 
+func strongGrunts() {
+	grunt := defs.UnitConfigs[21]
+	grunt.Attack_blunt = 50
+	defs.UnitConfigs[21] = grunt
+}
+
 func TestTwoPhaseDeath(t *testing.T) {
-	g := combatGame(t, 1, 1)
+	g := combatGameTweaked(t, 21, 21, strongGrunts)
 	p0, p1 := g.Human(0), g.Human(1)
 	u0 := g.Self(p0).Units[0].InternalID
 	u1 := g.Self(p1).Units[0].InternalID
@@ -74,7 +80,7 @@ func TestTwoPhaseDeath(t *testing.T) {
 }
 
 func TestSameTickDamageSums(t *testing.T) {
-	single := combatGame(t, 101, 103)
+	single := combatGame(t, 21, 22)
 	s0, s1 := single.Human(0), single.Human(1)
 	su0, su1 := single.Self(s0).Units[0], single.Self(s1).Units[0]
 	passive(single, s1, su1.InternalID)

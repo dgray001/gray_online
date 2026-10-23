@@ -29,14 +29,14 @@ func (b *Board) PlayerSpaces() map[int]map[game_utils.Coordinate2D]bool {
 	return spaces
 }
 
-// How many of each unit and building id a player was given, and the space of its village center (building id 1)
+// How many of each unit and building id a player was given, and the space of its town hall (building id 1)
 func (b *Board) Tally(player int) (units map[uint32]int, buildings map[uint32]int, home string) {
 	units, buildings = map[uint32]int{}, map[uint32]int{}
 	for _, s := range b.order {
 		for _, z := range s.zones {
 			if z.building != nil && z.building.Player == player {
 				buildings[z.building.ID]++
-				if z.building.ID == 1 {
+				if z.building.ID == 1 || z.building.ID == 201 {
 					home = fmt.Sprintf("%d,%d", s.coord.X, s.coord.Y)
 				}
 			}

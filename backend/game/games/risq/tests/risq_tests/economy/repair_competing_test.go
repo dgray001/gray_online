@@ -10,7 +10,7 @@ import (
 
 func TestRepairsShareStockpileAcrossBuildings(t *testing.T) {
 	for _, reverse := range []bool{false, true} {
-		g := economyGame(t, `{"wood":0.5}`, `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":2,"player":0},"units":[{"id":1,"player":0,"count":1},{"id":1,"player":1,"count":1}]},{"x":1,"y":0,"building":{"id":2,"player":0},"units":[{"id":1,"player":0,"count":1},{"id":1,"player":1,"count":1}]}]}`, "")
+		g := economyGame(t, `{"wood":0.6}`, `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":202,"player":0},"units":[{"id":11,"player":0,"count":1},{"id":12,"player":1,"count":1}]},{"x":1,"y":0,"building":{"id":202,"player":0},"units":[{"id":11,"player":0,"count":1},{"id":12,"player":1,"count":1}]}]}`, "")
 		p, enemy := g.Human(0), g.Human(1)
 		attacks := []defs.OrderFromFrontend{}
 		for _, b := range g.Self(p).Buildings {

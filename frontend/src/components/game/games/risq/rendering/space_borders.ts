@@ -1,6 +1,6 @@
 import { drawLine } from '../../../util/canvas_util';
 import type { Point2D } from '../../../util/objects2d';
-import { AXIAL_DIRECTION_VECTORS, addPoint2D, equalsPoint2D } from '../../../util/objects2d';
+import { AXIAL_DIRECTION_VECTORS, addPoint2D } from '../../../util/objects2d';
 import { coordinateToIndex, getSpace } from '../model/coordinates';
 import type { RisqRegion, RisqSpace } from '../model/types';
 import type { RisqDrawHost } from './board/board_renderer';
@@ -77,17 +77,20 @@ export function drawRisqSpaceBorders(
   const overview = isOverviewViewMode(config.view_mode);
   const space_at = (coordinate: Point2D): RisqSpace | undefined =>
     getSpace(game_data, coordinateToIndex(game_data.board_size, coordinate));
-  const linked_at = (space: RisqSpace, direction: number): RisqSpace | undefined => {
-    for (const link of game_data.space_links) {
-      if (equalsPoint2D(link.from, space.coordinate) && link.direction === direction) {
-        return space_at(link.to);
-      }
-      if (equalsPoint2D(link.to, space.coordinate) && link.to_direction === direction) {
-        return space_at(link.from);
-      }
+  const edge_key = (coordinate: Point2D, direction: number): string => `${coordinate.x},${coordinate.y}:${direction}`;
+  const links = new Map<string, RisqSpace | undefined>();
+  for (const link of game_data.space_links) {
+    const from_key = edge_key(link.from, link.direction);
+    const to_key = edge_key(link.to, link.to_direction);
+    if (!links.has(from_key)) {
+      links.set(from_key, space_at(link.to));
     }
-    return undefined;
-  };
+    if (!links.has(to_key)) {
+      links.set(to_key, space_at(link.from));
+    }
+  }
+  const linked_at = (space: RisqSpace, direction: number): RisqSpace | undefined =>
+    links.size === 0 ? undefined : links.get(edge_key(space.coordinate, direction));
   const neighbor_at = (space: RisqSpace, direction: number): RisqSpace | undefined =>
     linked_at(space, direction) ?? space_at(addPoint2D(space.coordinate, AXIAL_DIRECTION_VECTORS[direction]));
   ctx.save();

@@ -26,6 +26,9 @@ type selector struct {
 
 func parseSelector(where map[string]any, fallback relation) (selector, error) {
 	s := selector{relation: fallback}
+	if err := checkOptionTypes[string](where, "owner"); err != nil {
+		return s, err
+	}
 	if name, ok := where["owner"].(string); ok {
 		r, known := relationNames[name]
 		if !known {
@@ -66,6 +69,18 @@ func (s selector) allows(view View, internals *Internals, owner int, loc ZoneRef
 		return false
 	}
 	return s.near.contains(view, internals, loc)
+}
+
+func checkOptionTypes[T any](obj map[string]any, keys ...string) error {
+	var expected T
+	for _, key := range keys {
+		if value, present := obj[key]; present {
+			if _, ok := value.(T); !ok {
+				return fmt.Errorf("%q must be %T", key, expected)
+			}
+		}
+	}
+	return nil
 }
 
 // Rejects any key of a where clause its source does not take, so a typo is an error and not a silently ignored filter

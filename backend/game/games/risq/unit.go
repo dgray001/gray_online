@@ -102,7 +102,7 @@ func (u *RisqUnit) refreshStamina() {
 }
 
 func (u *RisqUnit) vision() *defs.RisqVision {
-	v := u.config.Units[u.unit_id].Vision
+	v := u.config.Units[u.unit_id].Vision.WithTerrain(u.terrainType())
 	return &v
 }
 
@@ -177,16 +177,13 @@ func (u *RisqUnit) cleanupDeleted(risq *GameRisq) {
 
 func (u *RisqUnit) toFrontend(viewer_player_id int) gin.H {
 	unit := gin.H{
-		"internal_id":     u.internal_id,
-		"player_id":       u.player_id,
-		"unit_id":         u.unit_id,
-		"unit_type":       u.unitType(),
-		"display_name":    u.display_name,
-		"turn_stamina":    u.turn_stamina,
-		"current_stamina": u.current_stamina,
-		"max_stamina":     maxStaminaFor(u.turn_stamina),
-		"combat_stats":    u.cs.toFrontend(),
-		"attack_range":    u.attack_range,
+		"internal_id":  u.internal_id,
+		"player_id":    u.player_id,
+		"unit_id":      u.unit_id,
+		"unit_type":    u.unitType(),
+		"display_name": u.display_name,
+		"combat_stats": u.cs.toFrontend(),
+		"attack_range": u.attack_range,
 	}
 	if u.garrisoned_in != nil {
 		unit["garrisoned_in"] = u.garrisoned_in.internal_id
@@ -213,6 +210,9 @@ func (u *RisqUnit) toFrontend(viewer_player_id int) gin.H {
 		for i, cat := range u.target_priority {
 			target_priority[i] = int(cat)
 		}
+		unit["turn_stamina"] = u.turn_stamina
+		unit["current_stamina"] = u.current_stamina
+		unit["max_stamina"] = maxStaminaFor(u.turn_stamina)
 		unit["stance"] = u.stance
 		unit["interrupt_current"] = u.interrupt_current
 		unit["attack_back"] = u.attack_back

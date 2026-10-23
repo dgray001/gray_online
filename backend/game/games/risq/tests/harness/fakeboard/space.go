@@ -17,6 +17,7 @@ type space struct {
 	distanceIndex int
 	terrain       uint32
 	name          string
+	goldIncome    float64
 	zones         []*zone
 	byLocal       [3][3]*zone
 	borders       [6]*space
@@ -46,6 +47,8 @@ func (s *space) Terrain() uint32                     { return s.terrain }
 func (s *space) SetTerrain(terrain_id uint32)        { s.terrain = terrain_id }
 func (s *space) SetName(name string)                 { s.name = name }
 func (s *space) Name() string                        { return s.name }
+func (s *space) SetGoldIncome(gold float64)          { s.goldIncome = gold }
+func (s *space) GoldIncome() float64                 { return s.goldIncome }
 
 func (s *space) Impassable() bool {
 	return defs.TerrainConfigs[s.terrain].Terrain_type.MoveCost().Impassable

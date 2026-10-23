@@ -23,7 +23,7 @@ func (u *RisqUnit) restoreHalfMove(paid *halfMove) {
 }
 
 // Replaces u's step with the half move (paid once per turn) and the attack of a meeting at the border; u stays in its zone
-func (u *RisqUnit) meetAtBorder(target *RisqUnit, move *MoveIntent, tick uint16, turn uint16) {
+func (u *RisqUnit) meetAtBorder(target Attackable, move *MoveIntent, tick uint16, turn uint16) {
 	sunk, attack := 0, min(unitTickStaminaCost, u.current_stamina)
 	if u.half_move == nil {
 		sunk = halfMoveStamina(move.cost)
@@ -44,13 +44,14 @@ func (u *RisqUnit) meetAtBorder(target *RisqUnit, move *MoveIntent, tick uint16,
 // Returns how many units were left with nothing to spend and so no intent
 func (r *GameRisq) resolveMeleeMeetings(orderables []Orderable) int {
 	type meeting struct {
-		unit, target *RisqUnit
-		move         *MoveIntent
+		unit   *RisqUnit
+		target Attackable
+		move   *MoveIntent
 	}
 	meetings := make([]meeting, 0)
 	for _, o := range orderables {
 		if u, ok := o.(*RisqUnit); ok {
-			if target, meets := u.meetingTarget(); meets {
+			if target, meets := u.meetingTarget(r.blocking_walls); meets {
 				meetings = append(meetings, meeting{u, target, u.intent.detail.(*MoveIntent)})
 			}
 		}
@@ -61,20 +62,23 @@ func (r *GameRisq) resolveMeleeMeetings(orderables []Orderable) int {
 		if !m.unit.intent.hasIntent() {
 			removed++
 		} else {
-			util.Debugf(r.std, "Meeting at border: unit %d meets %d tick=%d turn=%d sunk=%d attack=%d", m.unit.internal_id, m.target.internal_id, r.current_tick+1, r.turn_number, m.unit.intent.sunk_cost, m.unit.intent.intent_cost-m.unit.intent.sunk_cost)
+			util.Debugf(r.std, "Meeting at border: unit %d meets %d tick=%d turn=%d sunk=%d attack=%d", m.unit.internal_id, m.target.internalId(), r.current_tick+1, r.turn_number, m.unit.intent.sunk_cost, m.unit.intent.intent_cost-m.unit.intent.sunk_cost)
 		}
 	}
 	return removed
 }
 
 // A chased or interrupt-eligible enemy stepping across the same border in the opposite direction
-func (u *RisqUnit) meetingTarget() (*RisqUnit, bool) {
+func (u *RisqUnit) meetingTarget(walls map[*RisqBuilding]bool) (Attackable, bool) {
 	move, ok := u.intent.detail.(*MoveIntent)
 	if !ok || u.zone == nil {
 		return nil, false
 	}
 	if radius, ranged := u.attack_range.SpaceRadius(); ranged && (radius > 0 || move.intra_step) {
 		return nil, false
+	}
+	if wall := move.next_step.building; move.attacking && wall != nil && move.next_step.wallBlocksEntry(u.zone, u.player_id, walls) {
+		return wall, true
 	}
 	target := move.chasing
 	if target == nil {

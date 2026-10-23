@@ -10,7 +10,7 @@ import (
 )
 
 func barracksAt(slot int) string {
-	return fmt.Sprintf(`{"x":0,"y":1,"building":{"id":22,"player":%d}}`, slot)
+	return fmt.Sprintf(`{"x":0,"y":1,"building":{"id":205,"player":%d}}`, slot)
 }
 
 func (w *world) zoneKey(slot, zx, zy int) int64 {
@@ -28,7 +28,7 @@ func (w *world) neighborSpaceKey(slot int) int64 {
 	return harness.SpaceKey(n[0], n[1])
 }
 
-// A space far enough from the slot's home that a villager cannot arrive within two turns, and nobody owns
+// A space far enough from the slot's home that a worker cannot arrive within two turns, and nobody owns
 func (w *world) farSpace(slot int) [2]int {
 	home := w.home(slot)
 	for q := -3; q <= 3; q++ {
@@ -62,29 +62,36 @@ type named struct {
 	steps []step
 }
 
-// The center holds one garrisoned unit and housing never finishes, so foundations stay foundations
+// The center holds one garrisoned unit, shelter never finishes so foundations stay foundations, grunts finish in one turn,
+// and workers walk slowly enough that a far build site is not reached within the test
 func smallGarrison() {
-	center, housing := defs.BuildingConfigs[1], defs.BuildingConfigs[2]
-	center.Garrison_capacity, housing.Build_stamina = 1, 10000
-	defs.BuildingConfigs[1], defs.BuildingConfigs[2] = center, housing
+	worker := defs.UnitConfigs[11]
+	worker.Turn_stamina = 8
+	defs.UnitConfigs[11] = worker
+	center, shelter := defs.BuildingConfigs[201], defs.BuildingConfigs[202]
+	center.Garrison_capacity, shelter.Build_stamina = 1, 10000
+	defs.BuildingConfigs[201], defs.BuildingConfigs[202] = center, shelter
+	grunt := defs.UnitConfigs[21]
+	grunt.Production_stamina = 10
+	defs.UnitConfigs[21] = grunt
 }
 
-// Villagers finish production on the first tick, so a newborn and an entrant act on the same tick
+// Workers finish production on the first tick, so a newborn and an entrant act on the same tick
 func quickProduction() {
-	villager := defs.UnitConfigs[1]
-	villager.Production_stamina = 1
-	defs.UnitConfigs[1] = villager
+	worker := defs.UnitConfigs[11]
+	worker.Production_stamina = 1
+	defs.UnitConfigs[11] = worker
 }
 
 // New units follow their producer's gather point; every scenario owns a player slot and they all share five turns
 func TestGatherPointRouting(t *testing.T) {
 	w := newWorld(t, 10, map[int]string{1: barracksAt(1), 2: barracksAt(2)}, nil, smallGarrison)
-	center := func(slot int) uint64 { return w.buildings(slot)[1] }
-	barracks := func(slot int) uint64 { return w.buildings(slot)[22] }
+	center := func(slot int) uint64 { return w.buildings(slot)[201] }
+	barracks := func(slot int) uint64 { return w.buildings(slot)[205] }
 	moves := func(slot int, point func() gin.H, orderType defs.OrderType) step {
 		return step{
-			pre:  func() { w.produce(slot, center(slot), 1, point()) },
-			post: func() { w.expectOrder(w.fresh(slot, 1), orderType) },
+			pre:  func() { w.produce(slot, center(slot), 11, point()) },
+			post: func() { w.expectOrder(w.fresh(slot, 11), orderType) },
 		}
 	}
 	var wood float64
@@ -97,10 +104,10 @@ func TestGatherPointRouting(t *testing.T) {
 		{
 			pre: func() {
 				wood = float64(w.g.Self(w.human(0)).Resources.Wood)
-				w.produce(0, center(0), 1, gin.H{"location_kind": 2, "location_id": w.zoneKey(0, 1, -1), "object_type": 3})
+				w.produce(0, center(0), 11, gin.H{"location_kind": 2, "location_id": w.zoneKey(0, 1, -1), "object_type": 3})
 			},
 			post: func() {
-				w.expectOrder(w.fresh(0, 1), defs.OrderType_UnitGather)
+				w.expectOrder(w.fresh(0, 11), defs.OrderType_UnitGather)
 				if float64(w.g.Self(w.human(0)).Resources.Wood) <= wood {
 					t.Fatal("gather-point unit did not gather")
 				}
@@ -125,28 +132,28 @@ func TestGatherPointRouting(t *testing.T) {
 	scenarios = append(scenarios, named{"point shapes", []step{
 		{
 			pre: func() {
-				w.produce(1, center(1), 1, gin.H{"location_kind": 1, "location_id": w.neighborSpaceKey(1), "object_type": 3})
+				w.produce(1, center(1), 11, gin.H{"location_kind": 1, "location_id": w.neighborSpaceKey(1), "object_type": 3})
 			},
-			post: func() { w.expectOrder(w.fresh(1, 1), defs.OrderType_UnitMoveSpace) },
+			post: func() { w.expectOrder(w.fresh(1, 11), defs.OrderType_UnitMoveSpace) },
 		},
 		{
 			pre: func() {
 				w.point(1, center(1), gin.H{"location_kind": 1, "location_id": w.neighborSpaceKey(1)})
-				w.produce(1, center(1), 1, gin.H{"clear": true})
+				w.produce(1, center(1), 11, gin.H{"clear": true})
 			},
-			post: func() { w.expectAt(w.fresh(1, 1), 1, 0, 0) },
+			post: func() { w.expectAt(w.fresh(1, 11), 1, 0, 0) },
 		},
 		{
 			pre: func() {
-				w.produce(1, center(1), 1, gin.H{"location_kind": 2, "location_id": w.zoneKey(1, -1, 1), "object_type": 2, "object_id": 0})
+				w.produce(1, center(1), 11, gin.H{"location_kind": 2, "location_id": w.zoneKey(1, -1, 1), "object_type": 2, "object_id": 0})
 			},
-			post: arrived(1, 1),
+			post: arrived(1, 11),
 		},
 		{
 			pre: func() {
-				w.produce(1, barracks(1), 101, gin.H{"location_kind": 2, "location_id": w.zoneKey(1, -1, 1), "object_type": 2, "object_id": 0})
+				w.produce(1, barracks(1), 21, gin.H{"location_kind": 2, "location_id": w.zoneKey(1, -1, 1), "object_type": 2, "object_id": 0})
 			},
-			post: arrived(1, 101),
+			post: arrived(1, 21),
 		},
 	}})
 
@@ -157,9 +164,9 @@ func TestGatherPointRouting(t *testing.T) {
 		{
 			pre: func() {
 				treeBefore = w.g.State(w.human(2)).Space(w.home(2)[0], w.home(2)[1]).Resources[0].ResourcesLeft
-				w.produce(2, barracks(2), 101, gin.H{"location_kind": 2, "location_id": w.zoneKey(2, 1, -1), "object_type": 3})
+				w.produce(2, barracks(2), 21, gin.H{"location_kind": 2, "location_id": w.zoneKey(2, 1, -1), "object_type": 3})
 			},
-			post: func() { scout = w.fresh(2, 101).InternalID },
+			post: func() { scout = w.fresh(2, 21).InternalID },
 		},
 		{post: func() {
 			w.expectAt(unitByID(w.g, w.human(2), scout), 2, 1, -1)
@@ -186,10 +193,10 @@ func TestGatherPointRouting(t *testing.T) {
 		buildOrder := func() defs.OrderFromFrontend {
 			if planned {
 				far := w.farSpace(slot)
-				return harness.OrderBuild(scan(w.g, w.human(slot)).villagers[:1], 2, far[0], far[1], -1, 1)
+				return harness.OrderBuild(scan(w.g, w.human(slot)).workers[:1], 202, far[0], far[1], -1, 1)
 			}
 			home := w.home(slot)
-			return harness.OrderBuild(scan(w.g, w.human(slot)).villagers[:1], 2, home[0], home[1], -1, 1)
+			return harness.OrderBuild(scan(w.g, w.human(slot)).workers[:1], 202, home[0], home[1], -1, 1)
 		}
 		scenarios = append(scenarios, named{fmt.Sprintf("foundation %v/%s", planned, target), []step{
 			{pre: func() { w.g.Submit(w.human(slot), buildOrder()) }},
@@ -204,12 +211,12 @@ func TestGatherPointRouting(t *testing.T) {
 						point["object_type"], point["object_id"] = 2, 0
 					}
 					if target == "object-point" && !planned {
-						point["object_id"] = buildingIDFor(w, slot, 2)
+						point["object_id"] = buildingIDFor(w, slot, 202)
 					}
-					w.produce(slot, center(slot), 1, point)
+					w.produce(slot, center(slot), 11, point)
 				},
 				post: func() {
-					u := w.fresh(slot, 1)
+					u := w.fresh(slot, 11)
 					building := len(u.ActiveOrders) == 1 && u.ActiveOrders[0].OrderType == uint8(defs.OrderType_UnitBuild)
 					if building != explicit {
 						t.Fatalf("build order=%t, want %t: %+v", building, explicit, u.ActiveOrders)
@@ -227,16 +234,16 @@ func TestGatherPointRouting(t *testing.T) {
 				garrisonSite = w.zoneKey(9, -1, 1)
 				w.point(9, center(9), gin.H{"location_kind": 2, "location_id": garrisonSite, "object_type": 2, "object_id": 0})
 				home := w.home(9)
-				w.g.Submit(w.human(9), harness.OrderBuild(scan(w.g, w.human(9)).villagers[:1], 2, home[0], home[1], -1, 1), harness.OrderProduce([]uint64{center(9)}, 1))
+				w.g.Submit(w.human(9), harness.OrderBuild(scan(w.g, w.human(9)).workers[:1], 202, home[0], home[1], -1, 1), harness.OrderProduce([]uint64{center(9)}, 11))
 			},
-			post: func() { w.expectOrder(w.fresh(9, 1), defs.OrderType_UnitBuild) },
+			post: func() { w.expectOrder(w.fresh(9, 11), defs.OrderType_UnitBuild) },
 		},
 		{
 			pre: func() {
-				w.produce(9, center(9), 1, gin.H{"location_kind": 2, "location_id": w.zoneKey(9, 0, 0), "object_type": 2, "object_id": center(9)})
+				w.produce(9, center(9), 11, gin.H{"location_kind": 2, "location_id": w.zoneKey(9, 0, 0), "object_type": 2, "object_id": center(9)})
 			},
 			post: func() {
-				u := w.fresh(9, 1)
+				u := w.fresh(9, 11)
 				if u.GarrisonedIn == nil || *u.GarrisonedIn != center(9) {
 					t.Fatalf("new unit was not garrisoned: %+v", u)
 				}
@@ -247,10 +254,10 @@ func TestGatherPointRouting(t *testing.T) {
 		},
 		{
 			pre: func() {
-				w.produce(9, center(9), 1, gin.H{"location_kind": 2, "location_id": w.zoneKey(9, 0, 0), "object_type": 2, "object_id": center(9)})
+				w.produce(9, center(9), 11, gin.H{"location_kind": 2, "location_id": w.zoneKey(9, 0, 0), "object_type": 2, "object_id": center(9)})
 			},
 			post: func() {
-				if u := w.fresh(9, 1); u.GarrisonedIn != nil || u.Zone != (harness.Coord{}) {
+				if u := w.fresh(9, 11); u.GarrisonedIn != nil || u.Zone != (harness.Coord{}) {
 					t.Fatalf("full producer did not spawn outside: %+v", u)
 				}
 			},

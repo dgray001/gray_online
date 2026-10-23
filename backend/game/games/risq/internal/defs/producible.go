@@ -99,6 +99,7 @@ func (p Producible) ToFrontend(c *Config) gin.H {
 		entry["population_support"] = building.Population_support
 		entry["garrison_capacity"] = building.Garrison_capacity
 		entry["max_per_player"] = building.Max_per_player
+		entry["is_wall"] = building.Is_wall
 	case ProducibleKind_TECH:
 		tech := c.Techs[p.Id]
 		entry["cost"] = tech.Cost.ToFrontend()

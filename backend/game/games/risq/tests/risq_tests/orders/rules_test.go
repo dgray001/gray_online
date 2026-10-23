@@ -18,12 +18,17 @@ type validator func(typ defs.OrderType) defs.OrderFromFrontend
 // A well-formed order of every type, built from ids resolved once
 func validOrders(mine, foe roster, produceOrder uint64) validator {
 	return func(typ defs.OrderType) defs.OrderFromFrontend {
-		u, center, target := mine.villagers[0], mine.buildings[1], int64(0)
+		u, center, target := mine.workers[0], mine.buildings[201], int64(0)
 		subjects := []uint64{u}
 		if typ.IsBuildingOrder() {
 			subjects = []uint64{center}
 		} else if typ.IsPlayerOrder() {
 			subjects = nil
+		}
+		if typ.IsAttackOrder() && typ.IsBuildingOrder() {
+			subjects = []uint64{mine.buildings[208]}
+		} else if typ.IsAttackOrder() {
+			subjects = mine.grunt[:1]
 		}
 		switch typ {
 		case defs.OrderType_UnitMoveSpace, defs.OrderType_UnitAttackSpace:
@@ -33,19 +38,21 @@ func validOrders(mine, foe roster, produceOrder uint64) validator {
 		case defs.OrderType_UnitGather:
 			target = harness.ZoneKey(0, 0, 1, -1)
 		case defs.OrderType_UnitBuild:
-			target = harness.BuildKey(2, 1, 0, 0, 0)
+			target = harness.BuildKey(202, 1, 0, 0, 0)
 		case defs.OrderType_UnitRepair, defs.OrderType_UnitGarrison:
 			target = int64(center)
 		case defs.OrderType_UnitRenew:
-			target = int64(mine.buildings[3])
+			target = int64(mine.buildings[203])
 		case defs.OrderType_UnitAttackUnit, defs.OrderType_BuildingAttackUnit:
-			target = int64(foe.villagers[0])
+			target = int64(foe.workers[0])
 		case defs.OrderType_UnitAttackBuilding, defs.OrderType_BuildingAttackBuilding:
-			target = int64(foe.buildings[1])
-		case defs.OrderType_BuildingCreate, defs.OrderType_BuildingResearch:
-			target = 1
+			target = int64(foe.buildings[201])
+		case defs.OrderType_BuildingCreate:
+			target = 11
+		case defs.OrderType_BuildingResearch:
+			target = 301
 		case defs.OrderType_BuyMercenary:
-			target = harness.BuildKey(101, 0, 0, 0, 0)
+			target = harness.BuildKey(21, 0, 0, 0, 0)
 		case defs.OrderType_CancelOrder:
 			target = int64(produceOrder)
 		case defs.OrderType_CancelFoundation:
@@ -56,33 +63,29 @@ func validOrders(mine, foe roster, produceOrder uint64) validator {
 }
 
 func blockedActions(g *harness.Game, p int, mine roster) map[string]gin.H {
-	order := harness.OrderMove(mine.villagers[:1], 2, 0)
+	order := harness.OrderMove(mine.workers[:1], 2, 0)
 	order.Player_id = g.PlayerID(p)
 	return map[string]gin.H{
 		"submit-orders":         {"orders": []defs.OrderFromFrontend{order}},
-		"set-unit-behavior":     {"internal_ids": mine.infantry, "stance": 2, "attack_back": false, "interrupt_current": true},
-		"set-building-behavior": {"internal_ids": []uint64{mine.buildings[23]}, "auto_attack": false, "interrupt_current": true},
-		"set-gather-point":      {"building_id": mine.buildings[1], "location_kind": 1, "location_id": harness.SpaceKey(3, 0)},
+		"set-unit-behavior":     {"internal_ids": mine.grunt, "stance": 2, "attack_back": false, "interrupt_current": true},
+		"set-building-behavior": {"internal_ids": []uint64{mine.buildings[208]}, "auto_attack": false, "interrupt_current": true},
+		"set-gather-point":      {"building_id": mine.buildings[201], "location_kind": 1, "location_id": harness.SpaceKey(3, 0)},
 	}
 }
 
 // Validation, gating, behavior and gather point bookkeeping that never need more than a few turns
 func TestOrderRules(t *testing.T) {
-	g := newGame(t, layout{villagers: 4, infantry: 2, extra: `,"starting_techs":[4]`, tweak: func() {
-		unarmed := defs.UnitConfigs[101]
-		unarmed.Attack_type = defs.AttackType_NONE
-		defs.UnitConfigs[101] = unarmed
-	}})
+	g := newGame(t, layout{workers: 4, grunt: 2, extra: `,"starting_techs":[302]`})
 	p, e := g.Human(0), g.Human(1)
 	mine, foe := scan(g, p), scan(g, e)
-	v, inf, b := mine.villagers, mine.infantry, mine.buildings
-	research := harness.Order(defs.OrderType_BuildingResearch, []uint64{b[11]}, 2, false)
+	v, inf, b := mine.workers, mine.grunt, mine.buildings
+	research := harness.Order(defs.OrderType_BuildingResearch, []uint64{b[209]}, 303, false)
 
-	g.Submit(p, harness.OrderProduce([]uint64{b[22]}, 102), harness.OrderBuild(v[:1], 2, 3, 0, 0, 0), harness.OrderBuild(v[1:2], 2, 0, 0, -1, 1), research)
+	g.Submit(p, harness.OrderProduce([]uint64{b[205]}, 31), harness.OrderBuild(v[:1], 202, 3, 0, 0, 0), harness.OrderBuild(v[1:2], 202, 0, 0, -1, 1), research)
 	g.EndTurn()
 	var unfinished uint64
 	for _, building := range g.Self(p).Buildings {
-		if building.BuildingID == 2 && building.UnderConstruction {
+		if building.BuildingID == 202 && building.UnderConstruction {
 			unfinished = building.InternalID
 		}
 	}
@@ -127,9 +130,12 @@ func TestOrderRules(t *testing.T) {
 			order := valid(typ)
 			order.Subjects = nil
 			g.SubmitRejected(p, order, "Order must have at least one subject")
-			foreign, owned, message := foe.villagers[0], v[0], "Invalid unit subject id"
+			foreign, owned, message := foe.workers[0], v[0], "Invalid unit subject id"
 			if typ.IsBuildingOrder() {
-				foreign, owned, message = foe.buildings[1], b[1], "Invalid building subject id"
+				foreign, owned, message = foe.buildings[201], b[201], "Invalid building subject id"
+			}
+			if typ.IsAttackOrder() {
+				owned = valid(typ).Subjects[0]
 			}
 			order.Subjects = []uint64{foreign}
 			g.SubmitRejected(p, order, message)
@@ -152,14 +158,14 @@ func TestOrderRules(t *testing.T) {
 			{defs.OrderType_UnitMoveSpace, harness.SpaceKey(9, 0), "Invalid space target inverted from"},
 			{defs.OrderType_UnitMoveZone, harness.ZoneKey(9, 0, 0, 0), "Invalid space target inverted from zone key"},
 			{defs.OrderType_UnitMoveZone, harness.ZoneKey(0, 0, 9, 0), "Invalid zone target inverted from zone key"},
-			{defs.OrderType_UnitGather, harness.ZoneKey(0, 0, 1, 0), "No resource in target zone"},
+			{defs.OrderType_UnitGather, harness.ZoneKey(2, 0, 0, 0), "No resource in target zone"},
 			{defs.OrderType_UnitGather, harness.ZoneKey(9, 0, 0, 0), "Invalid space target inverted from zone key"},
 			{defs.OrderType_UnitGather, harness.ZoneKey(0, 0, 9, 0), "Invalid zone target inverted from zone key"},
 			{defs.OrderType_UnitBuild, harness.BuildKey(999, 1, 0, 0, 0), "Invalid or unbuildable building id:"},
-			{defs.OrderType_UnitBuild, harness.BuildKey(2, 9, 0, 0, 0), "Invalid space or zone target inverted from build key"},
-			{defs.OrderType_UnitBuild, harness.BuildKey(2, 0, 0, 1, -1), "Target zone is already occupied"},
-			{defs.OrderType_UnitBuild, harness.BuildKey(2, 0, 0, 0, 0), "Target zone is already occupied"},
-			{defs.OrderType_UnitBuild, harness.BuildKey(3, 1, 0, 0, 0), "Required tech id 1 not researched"},
+			{defs.OrderType_UnitBuild, harness.BuildKey(202, 9, 0, 0, 0), "Invalid space or zone target inverted from build key"},
+			{defs.OrderType_UnitBuild, harness.BuildKey(202, 0, 0, 1, -1), "Target zone is already occupied"},
+			{defs.OrderType_UnitBuild, harness.BuildKey(202, 0, 0, 0, 0), "Target zone is already occupied"},
+			{defs.OrderType_UnitBuild, harness.BuildKey(203, 1, 0, 0, 0), "Required tech id 301 not researched"},
 			{defs.OrderType_UnitRepair, 999999, "Invalid building target id"},
 			{defs.OrderType_UnitRenew, 999999, "Invalid building target id"},
 			{defs.OrderType_UnitAttackUnit, 999999, "Invalid unit target id"},
@@ -175,9 +181,9 @@ func TestOrderRules(t *testing.T) {
 			{defs.OrderType_CancelOrder, 999999, "No active order with id"},
 			{defs.OrderType_CancelFoundation, harness.ZoneKey(9, 0, 0, 0), "Invalid zone target inverted from zone key"},
 			{defs.OrderType_CancelFoundation, harness.ZoneKey(1, 0, 0, 0), "No planned foundation at this zone"},
-			{defs.OrderType_BuyMercenary, harness.BuildKey(101, 9, 0, 0, 0), "Invalid space or zone target inverted from mercenary key"},
+			{defs.OrderType_BuyMercenary, harness.BuildKey(21, 9, 0, 0, 0), "Invalid space or zone target inverted from mercenary key"},
 			{defs.OrderType_BuyMercenary, harness.BuildKey(999, 0, 0, 0, 0), "Invalid or unsupported unit id:"},
-			{defs.OrderType_BuyMercenary, harness.BuildKey(103, 0, 0, 0, 0), "not an available mercenary"},
+			{defs.OrderType_BuyMercenary, harness.BuildKey(22, 0, 0, 0, 0), "not an available mercenary"},
 		}
 		for _, c := range cases {
 			order := valid(c.typ)
@@ -196,8 +202,8 @@ func TestOrderRules(t *testing.T) {
 			{defs.OrderType_UnitBuild, "Only economic units can build"},
 			{defs.OrderType_UnitRepair, "Only economic units can repair"},
 			{defs.OrderType_UnitRenew, "Only economic units can renew"},
-			{defs.OrderType_BuildingCreate, "Building id 11 cannot produce unit id 1"},
-			{defs.OrderType_BuildingResearch, "Building id 11 cannot research tech id 1"},
+			{defs.OrderType_BuildingCreate, "Building id 205 cannot produce unit id 11"},
+			{defs.OrderType_BuildingResearch, "Building id 205 cannot research tech id 301"},
 			{defs.OrderType_UnitAttackSpace, "Unit id %d cannot attack"},
 			{defs.OrderType_UnitAttackZone, "Unit id %d cannot attack"},
 			{defs.OrderType_UnitAttackUnit, "Unit id %d cannot attack"},
@@ -208,7 +214,9 @@ func TestOrderRules(t *testing.T) {
 			order := valid(c.typ)
 			eligible, ineligible := order.Subjects[0], inf[0]
 			if c.typ.IsBuildingOrder() {
-				ineligible = b[11]
+				ineligible = b[205]
+			} else if c.typ.IsAttackOrder() {
+				ineligible = v[0]
 			}
 			message := c.message
 			if strings.Contains(message, "%d") {
@@ -233,10 +241,9 @@ func TestOrderRules(t *testing.T) {
 		}
 	})
 
-	g.SubmitRejected(p, harness.OrderProduce([]uint64{b[1]}, 101), "Building id 1 cannot produce unit id 101")
-	g.SubmitRejected(p, harness.Order(defs.OrderType_BuildingResearch, []uint64{b[1]}, 3, false), "Building id 1 cannot research tech id 3")
-	g.SubmitRejected(p, harness.Order(defs.OrderType_UnitRenew, v[:1], int64(b[1]), false), "Building id 1 is not gatherable")
-	g.SubmitRejected(p, harness.Order(defs.OrderType_BuildingAttackUnit, []uint64{b[11]}, int64(foe.villagers[0]), false), fmt.Sprintf("Building id %d cannot attack", b[11]))
+	g.SubmitRejected(p, harness.OrderProduce([]uint64{b[201]}, 21), "Building id 201 cannot produce unit id 21")
+	g.SubmitRejected(p, harness.Order(defs.OrderType_BuildingResearch, []uint64{b[201]}, 304, false), "Building id 201 cannot research tech id 304")
+	g.SubmitRejected(p, harness.Order(defs.OrderType_BuildingAttackUnit, []uint64{b[209]}, int64(foe.workers[0]), false), fmt.Sprintf("Building id %d cannot attack", b[209]))
 
 	unchanged(g, "malformed actions", func() {
 		for kind, payload := range map[string]gin.H{
@@ -249,11 +256,10 @@ func TestOrderRules(t *testing.T) {
 		}
 	})
 
-	for _, typ := range []defs.OrderType{defs.OrderType_BuildingCreate, defs.OrderType_BuildingResearch} {
-		g.SubmitRejected(p, harness.Order(typ, []uint64{unfinished}, 1, false), fmt.Sprintf("Building id %d is still under construction", unfinished))
+	for typ, target := range map[defs.OrderType]int64{defs.OrderType_BuildingCreate: 11, defs.OrderType_BuildingResearch: 301} {
+		g.SubmitRejected(p, harness.Order(typ, []uint64{unfinished}, target, false), fmt.Sprintf("Building id %d is still under construction", unfinished))
 	}
-	g.SubmitRejected(p, harness.Order(defs.OrderType_UnitRepair, v[:1], int64(unfinished), false), "Cannot repair a building under construction")
-	g.SubmitRejected(p, research, "Tech id 2 is already being researched")
+	g.SubmitRejected(p, research, "Tech id 303 is already being researched")
 
 	// ownership of the submission and atomic validation
 	move := harness.OrderMove(v[2:3], 1, 0)
@@ -304,29 +310,29 @@ func TestOrderRules(t *testing.T) {
 	if got := entity(g, p, "units", unit)["target_priority"]; !reflect.DeepEqual(got, []int{}) {
 		t.Fatalf("priority not cleared: %v", got)
 	}
-	redoubt := b[23]
-	g.Action(p, "set-building-behavior", gin.H{"internal_ids": []uint64{redoubt}, "auto_attack": false, "interrupt_current": true, "target_priority": []uint8{0, 3, 255, 2}})
-	if got := entity(g, p, "buildings", redoubt); got["auto_attack"] != false || got["interrupt_current"] != true || !reflect.DeepEqual(got["target_priority"], []int{3, 2}) {
+	fortress := b[208]
+	g.Action(p, "set-building-behavior", gin.H{"internal_ids": []uint64{fortress}, "auto_attack": false, "interrupt_current": true, "target_priority": []uint8{0, 3, 255, 2}})
+	if got := entity(g, p, "buildings", fortress); got["auto_attack"] != false || got["interrupt_current"] != true || !reflect.DeepEqual(got["target_priority"], []int{3, 2}) {
 		t.Fatalf("building behavior not applied: %v", got)
 	}
-	g.Action(p, "set-building-behavior", gin.H{"internal_ids": []uint64{redoubt}, "auto_attack": true})
-	if got := entity(g, p, "buildings", redoubt); got["auto_attack"] != true || got["interrupt_current"] != true || !reflect.DeepEqual(got["target_priority"], []int{3, 2}) {
+	g.Action(p, "set-building-behavior", gin.H{"internal_ids": []uint64{fortress}, "auto_attack": true})
+	if got := entity(g, p, "buildings", fortress); got["auto_attack"] != true || got["interrupt_current"] != true || !reflect.DeepEqual(got["target_priority"], []int{3, 2}) {
 		t.Fatal("partial building update reset omitted fields")
 	}
-	g.Action(p, "set-building-behavior", gin.H{"internal_ids": []uint64{redoubt}, "target_priority": []uint8{}})
-	if got := entity(g, p, "buildings", redoubt)["target_priority"]; !reflect.DeepEqual(got, []int{}) {
+	g.Action(p, "set-building-behavior", gin.H{"internal_ids": []uint64{fortress}, "target_priority": []uint8{}})
+	if got := entity(g, p, "buildings", fortress)["target_priority"]; !reflect.DeepEqual(got, []int{}) {
 		t.Fatalf("building priority not cleared: %v", got)
 	}
 	unchanged(g, "ineligible behavior subjects", func() {
-		g.Action(p, "set-unit-behavior", gin.H{"internal_ids": []uint64{v[0], foe.villagers[0], 999999}, "stance": 2, "interrupt_current": true, "attack_back": false})
-		g.Action(p, "set-building-behavior", gin.H{"internal_ids": []uint64{b[11], foe.buildings[1], 999999}, "auto_attack": false, "interrupt_current": true})
+		g.Action(p, "set-unit-behavior", gin.H{"internal_ids": []uint64{v[0], foe.workers[0], 999999}, "stance": 2, "interrupt_current": true, "attack_back": false})
+		g.Action(p, "set-building-behavior", gin.H{"internal_ids": []uint64{b[209], foe.buildings[201], 999999}, "auto_attack": false, "interrupt_current": true})
 	})
 	if g.Self(p).OrdersSubmitted {
 		t.Fatal("behavior actions entered the order pipeline")
 	}
 
 	// gather points: set, replace, clear, and refuse invalid ones without changing the existing point
-	center := b[1]
+	center := b[201]
 	g.Action(p, "set-gather-point", gin.H{"building_id": center, "location_kind": 1, "location_id": harness.SpaceKey(3, 0)})
 	if gp := entity(g, p, "buildings", center)["gather_point"].(gin.H); gp["location_kind"] != risq.RisqGatherPointLocationKind_SPACE || gp["location_id"] != uint64(harness.SpaceKey(3, 0)) {
 		t.Fatalf("space gather point: %v", gp)
@@ -342,7 +348,7 @@ func TestOrderRules(t *testing.T) {
 			payload["building_id"] = center
 			rejectAction(g, p, "set-gather-point", payload, "gather point")
 		}
-		for _, subject := range []uint64{999999, foe.buildings[1], b[11]} {
+		for _, subject := range []uint64{999999, foe.buildings[201], b[209]} {
 			rejectAction(g, p, "set-gather-point", gin.H{"building_id": subject, "location_kind": 1, "location_id": harness.SpaceKey(3, 0)}, "gather point")
 		}
 	})
@@ -357,7 +363,7 @@ func TestOrderRules(t *testing.T) {
 	}
 
 	unchanged(g, "auto-renew failures", func() {
-		for _, action := range []gin.H{{"building_id": 3}, {"building_id": 3, "count": -1}, {"building_id": 1, "count": 1}, {"building_id": 999, "count": 1}, {"building_id": 3, "count": 1000000}, {"building_id": 3, "count": "bad"}} {
+		for _, action := range []gin.H{{"building_id": 203}, {"building_id": 203, "count": -1}, {"building_id": 201, "count": 1}, {"building_id": 999, "count": 1}, {"building_id": 203, "count": 1000000}, {"building_id": 203, "count": "bad"}} {
 			rawAction(g, p, "set-auto-renew", action)
 			if update := nextUpdate(t, g.Base.Players[uint64(p+1)].FailedUpdates); update.Kind != "set-auto-renew-failed" {
 				t.Fatalf("invalid auto-renew did not report failure: %+v", update)
@@ -367,10 +373,10 @@ func TestOrderRules(t *testing.T) {
 
 	g.EndTurn()
 	g.EndTurn()
-	if !g.Self(p).ResearchedTechs[2] {
+	if !g.Self(p).ResearchedTechs[303] {
 		t.Fatal("setup research did not complete")
 	}
-	g.SubmitRejected(p, research, "Tech id 2 is already researched")
+	g.SubmitRejected(p, research, "Tech id 303 is already researched")
 
 	unchanged(g, "unknown or ended actions", func() {
 		g.Risq.PlayerAction(game.PlayerAction{Client_id: 999999, Kind: "submit-orders"})
@@ -388,36 +394,36 @@ func TestOrderRules(t *testing.T) {
 
 // Each config restriction gets its own game so none can mask another
 func TestOrderConfigRestrictions(t *testing.T) {
-	origUnit, origTech := defs.UnitConfigs[1], defs.TechConfigs[1]
-	t.Cleanup(func() { defs.UnitConfigs[1], defs.TechConfigs[1] = origUnit, origTech })
+	origUnit, origTech := defs.UnitConfigs[11], defs.TechConfigs[301]
+	t.Cleanup(func() { defs.UnitConfigs[11], defs.TechConfigs[301] = origUnit, origTech })
 	for _, kind := range []string{"unit tech", "research tech", "build list", "unarmed unit"} {
-		defs.UnitConfigs[1], defs.TechConfigs[1] = origUnit, origTech
+		defs.UnitConfigs[11], defs.TechConfigs[301] = origUnit, origTech
 		g := newGame(t, layout{tweak: func() {
-			unit, tech := defs.UnitConfigs[1], defs.TechConfigs[1]
+			unit, tech := defs.UnitConfigs[11], defs.TechConfigs[301]
 			switch kind {
 			case "unit tech":
-				unit.Required_tech_id = 3
+				unit.Required_tech_id = 304
 			case "research tech":
-				tech.Required_tech_id = 3
+				tech.Required_tech_id = 304
 			case "build list":
 				unit.Builds = nil
 			case "unarmed unit":
 				unit.Attack_type = defs.AttackType_NONE
 			}
-			defs.UnitConfigs[1], defs.TechConfigs[1] = unit, tech
+			defs.UnitConfigs[11], defs.TechConfigs[301] = unit, tech
 		}})
 		p := g.Human(0)
 		mine, foe := scan(g, p), scan(g, g.Human(1))
-		id := mine.villagers[0]
+		id := mine.workers[0]
 		switch kind {
 		case "unit tech":
-			g.SubmitRejected(p, harness.OrderProduce([]uint64{mine.buildings[1]}, 1), "Required tech id 3 not researched for unit id 1")
+			g.SubmitRejected(p, harness.OrderProduce([]uint64{mine.buildings[201]}, 11), "Required tech id 304 not researched for unit id 11")
 		case "research tech":
-			g.SubmitRejected(p, harness.Order(defs.OrderType_BuildingResearch, []uint64{mine.buildings[1]}, 1, false), "Required tech id 3 not researched for tech id 1")
+			g.SubmitRejected(p, harness.Order(defs.OrderType_BuildingResearch, []uint64{mine.buildings[201]}, 301, false), "Required tech id 304 not researched for tech id 301")
 		case "build list":
-			g.SubmitRejected(p, harness.OrderBuild([]uint64{id}, 2, 1, 0, 0, 0), "Unit id 1 cannot build building id 2")
+			g.SubmitRejected(p, harness.OrderBuild([]uint64{id}, 202, 1, 0, 0, 0), "Unit id 11 cannot build building id 202")
 		case "unarmed unit":
-			g.SubmitRejected(p, harness.OrderAttackUnit([]uint64{id}, foe.villagers[0]), fmt.Sprintf("Unit id %d cannot attack", id))
+			g.SubmitRejected(p, harness.OrderAttackUnit([]uint64{id}, foe.workers[0]), fmt.Sprintf("Unit id %d cannot attack", id))
 		}
 	}
 }

@@ -5,7 +5,8 @@ import { configDraw } from '../../../../util/canvas_components/canvas_component'
 import { drawCircle, drawHexagon } from '../../../../util/canvas_util';
 import type { Point2D } from '../../../../util/objects2d';
 import { addPoint2D, rotatePoint, roundAxialCoordinate } from '../../../../util/objects2d';
-import type { RisqSpace } from '../../model/types';
+import { isImageReady } from '../../../../../../scripts/image';
+import type { GameRisq, RisqSpace } from '../../model/types';
 import { RisqVisibilityLevel } from '../../model/types';
 import type { DwgRisq } from '../../risq';
 import { RisqMinimapOrders } from './minimap_orders';
@@ -38,6 +39,16 @@ export declare interface MinimapConfig {
 /** Link lines are sized for the main board, so the minimap scales them down to hairlines */
 const MINIMAP_LINK_SCALE = 3;
 
+const STATIC_LAYER_OVERSAMPLE = 2;
+
+declare interface MinimapStaticLayer {
+  canvas: HTMLCanvasElement;
+  game: GameRisq;
+  key: string;
+  complete: boolean;
+  spaces: RisqSpace[];
+}
+
 export class RisqMinimap implements CanvasComponent {
   readonly overflow = MINIMAP_BUTTON_OVERFLOW;
   private static PADDING = 4;
@@ -55,6 +66,7 @@ export class RisqMinimap implements CanvasComponent {
   private corner_buttons: RisqMinimapCornerButton[];
   private links: RisqLinks;
   private orders: RisqMinimapOrders;
+  private static_layer?: MinimapStaticLayer;
 
   constructor(
     risq: DwgRisq,
@@ -165,6 +177,92 @@ export class RisqMinimap implements CanvasComponent {
     }
   }
 
+  /** Returns whether every terrain image was loaded */
+  private drawSpaceFills(ctx: CanvasRenderingContext2D, game: GameRisq, view_mode: RisqViewMode): boolean {
+    let images_ready = true;
+    const draw_r = this.hex_r + 1; // Overlap hides antialiasing seams
+    for (const row of game.spaces) {
+      for (const space of row) {
+        if (!space) {
+          continue;
+        }
+        const minimap_canvas = this.coordinateToMinimapCanvas(space.coordinate);
+        const owner_color = spaceOwnerColor(space.ownership, game.players);
+        const region_owned = (this.risq.session.getRegionForSpace(space.coordinate_key)?.owner ?? -1) >= 0;
+        if (space.visibility === RisqVisibilityLevel.UNEXPLORED || view_mode === RisqViewMode.OWNERSHIP) {
+          const fill = getSpaceFill(space, RisqViewMode.OWNERSHIP, owner_color, false);
+          if (region_owned) {
+            fill.dBrightness(-0.22);
+          }
+          ctx.fillStyle = `rgb(${fill.getR()}, ${fill.getG()}, ${fill.getB()})`;
+          drawHexagon(ctx, minimap_canvas, draw_r);
+        } else {
+          const terrain = this.risq.getIcon(minimapTerrainImage(space.terrain_id));
+          images_ready = images_ready && isImageReady(terrain);
+          drawHexImage(ctx, terrain, minimap_canvas, draw_r);
+          if (view_mode !== RisqViewMode.RESOURCE && !!owner_color) {
+            const alpha = region_owned ? 0.45 : 0.25;
+            const rgb = `${owner_color.getR()}, ${owner_color.getG()}, ${owner_color.getB()}`;
+            fillHexOverlay(ctx, minimap_canvas, this.hex_r, `rgba(${rgb}, ${alpha})`);
+          }
+        }
+      }
+    }
+    return images_ready;
+  }
+
+  private renderStaticLayer(game: GameRisq, view_mode: RisqViewMode, bitmap_scale: number, key: string): void {
+    const canvas = this.static_layer?.canvas ?? document.createElement('canvas');
+    const pad = RisqMinimap.PADDING;
+    canvas.width = Math.ceil((this.content_size.x + 2 * pad) * bitmap_scale);
+    canvas.height = Math.ceil((this.content_size.y + 2 * pad) * bitmap_scale);
+    const layer_ctx = canvas.getContext('2d');
+    const spaces = game.spaces.flat().filter((s): s is RisqSpace => !!s);
+    if (!layer_ctx) {
+      this.static_layer = undefined;
+      return;
+    }
+    layer_ctx.setTransform(bitmap_scale, 0, 0, bitmap_scale, pad * bitmap_scale, pad * bitmap_scale);
+    layer_ctx.strokeStyle = 'transparent';
+    layer_ctx.lineWidth = 0;
+    const complete = this.drawSpaceFills(layer_ctx, game, view_mode);
+    this.drawStaticOverlays(layer_ctx, spaces, view_mode);
+    this.static_layer = { canvas, game, key, complete, spaces };
+  }
+
+  /** Hover and selection widen region borders */
+  private currentStaticLayer(
+    game: GameRisq,
+    view_mode: RisqViewMode,
+    px_scale: number
+  ): MinimapStaticLayer | undefined {
+    const bitmap_scale = Math.max(1, Math.ceil(px_scale * 2) / 2) * STATIC_LAYER_OVERSAMPLE;
+    const hovered = this.risq.hover.hoveredRegion();
+    const region_states = game.regions.map(
+      (r) => (hovered?.name === r.name ? 1 : 0) + (this.risq.selection.isRegionSelected(r) ? 2 : 0)
+    );
+    const key = [view_mode, bitmap_scale, this.hex_r, game.turn_number, ...region_states].join('|');
+    const cached = this.static_layer;
+    if (!cached || !cached.complete || cached.game !== game || cached.key !== key) {
+      this.renderStaticLayer(game, view_mode, bitmap_scale, key);
+    }
+    return this.static_layer;
+  }
+
+  private drawStaticOverlays(ctx: CanvasRenderingContext2D, spaces: RisqSpace[], view_mode: RisqViewMode): void {
+    const config = {
+      hex_r: this.hex_r,
+      draw_detail: DrawRisqSpaceDetail.OWNERSHIP,
+      view_mode,
+      regions_only: true,
+      black_regions: false,
+      min_width: 1,
+      border_scale: 1,
+    };
+    drawRisqSpaceBorders(ctx, this.risq, spaces, config, (s) => this.coordinateToMinimapCanvas(s.coordinate));
+    this.links.draw(ctx, MINIMAP_LINK_SCALE);
+  }
+
   draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
     const game = this.risq.getGame();
     if (!game || this.hex_r <= 0) {
@@ -194,54 +292,15 @@ export class RisqMinimap implements CanvasComponent {
         ctx.rotate(transform.rotation);
         ctx.translate(-content_center.x, -content_center.y);
         const view_mode = this.risq.viewport.viewMode();
-        const draw_r = this.hex_r + 1; // slight overlap so adjacent tiles' antialiasing doesn't leave seams
         ctx.strokeStyle = 'transparent';
         ctx.lineWidth = 0;
-        for (const row of game.spaces) {
-          for (const space of row) {
-            if (!space) {
-              continue;
-            }
-            const minimap_canvas = this.coordinateToMinimapCanvas(space.coordinate);
-            const owner_color = spaceOwnerColor(space.ownership, game.players);
-            const region_owned = (this.risq.session.getRegionForSpace(space.coordinate_key)?.owner ?? -1) >= 0;
-            if (space.visibility === RisqVisibilityLevel.UNEXPLORED || view_mode === RisqViewMode.OWNERSHIP) {
-              const fill = getSpaceFill(space, RisqViewMode.OWNERSHIP, owner_color, false);
-              if (region_owned) {
-                fill.dBrightness(-0.22);
-              }
-              ctx.fillStyle = `rgb(${fill.getR()}, ${fill.getG()}, ${fill.getB()})`;
-              drawHexagon(ctx, minimap_canvas, draw_r);
-            } else {
-              drawHexImage(ctx, this.risq.getIcon(minimapTerrainImage(space.terrain_id)), minimap_canvas, draw_r);
-              if (view_mode !== RisqViewMode.RESOURCE && !!owner_color) {
-                fillHexOverlay(
-                  ctx,
-                  minimap_canvas,
-                  this.hex_r,
-                  `rgba(${owner_color.getR()}, ${owner_color.getG()}, ${owner_color.getB()}, ${region_owned ? 0.45 : 0.25})`
-                );
-              }
-            }
-          }
+        const matrix = ctx.getTransform();
+        const layer = this.currentStaticLayer(game, view_mode, Math.hypot(matrix.a, matrix.b));
+        const pad = RisqMinimap.PADDING;
+        if (layer) {
+          ctx.drawImage(layer.canvas, -pad, -pad, this.content_size.x + 2 * pad, this.content_size.y + 2 * pad);
         }
-        const all_spaces = game.spaces.flat().filter((s): s is RisqSpace => !!s);
-        drawRisqSpaceBorders(
-          ctx,
-          this.risq,
-          all_spaces,
-          {
-            hex_r: this.hex_r,
-            draw_detail: DrawRisqSpaceDetail.OWNERSHIP,
-            view_mode,
-            regions_only: true,
-            black_regions: false,
-            min_width: 1,
-            border_scale: 1,
-          },
-          (s) => this.coordinateToMinimapCanvas(s.coordinate)
-        );
-        this.links.draw(ctx, MINIMAP_LINK_SCALE);
+        const all_spaces = layer?.spaces ?? [];
         const selected_points: Point2D[] = [];
         const selected_resource_points: Point2D[] = [];
         const selected_units = this.risq.selection.selectedUnitIds();

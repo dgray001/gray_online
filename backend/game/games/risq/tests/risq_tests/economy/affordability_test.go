@@ -9,7 +9,7 @@ import (
 
 // Refused orders leave the state untouched, so the three kinds run back to back in one game
 func TestUnaffordableOrdersLeaveNoReservations(t *testing.T) {
-	g := economyGame(t, `{"food":49,"wood":29}`, `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":0},"units":[{"id":1,"player":0,"count":1}]}]},`+remoteVillager, "")
+	g := economyGame(t, `{"food":49,"wood":29}`, `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":201,"player":0},"units":[{"id":11,"player":0,"count":1}]}]},`+remoteWorker, "")
 	p := g.Human(0)
 	for _, c := range []struct {
 		name   string
@@ -20,9 +20,11 @@ func TestUnaffordableOrdersLeaveNoReservations(t *testing.T) {
 		{"unit", defs.OrderType_BuildingCreate, "cannot afford unit"},
 		{"research", defs.OrderType_BuildingResearch, "cannot afford research"},
 	} {
-		subject, target := g.Self(p).Buildings[0].InternalID, int64(1)
+		subject, target := g.Self(p).Buildings[0].InternalID, int64(11)
 		if c.typ == defs.OrderType_UnitBuild {
-			subject, target = g.Self(p).Units[0].InternalID, harness.BuildKey(2, 0, 0, 1, 0)
+			subject, target = g.Self(p).Units[0].InternalID, harness.BuildKey(202, 0, 0, 1, 0)
+		} else if c.typ == defs.OrderType_BuildingResearch {
+			target = 301
 		}
 		g.Submit(p, harness.Order(c.typ, []uint64{subject}, target, false))
 		g.EndTurn()
@@ -39,18 +41,18 @@ func TestUnaffordableOrdersLeaveNoReservations(t *testing.T) {
 func TestOrderBatchesCannotOverspend(t *testing.T) {
 	for name, typ := range map[string]defs.OrderType{"building": defs.OrderType_UnitBuild, "unit": defs.OrderType_BuildingCreate, "research": defs.OrderType_BuildingResearch} {
 		t.Run(name, func(t *testing.T) {
-			bank, building := `{"food":80,"wood":50}`, "1"
+			bank, building := `{"food":80,"wood":50}`, "201"
 			if name == "research" {
-				bank, building = `{"stone":150,"gold":150}`, "11"
+				bank, building = `{"wood":150,"gold":150}`, "209"
 			}
-			g := economyGame(t, bank, `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":`+building+`,"player":0},"units":[{"id":1,"player":0,"count":1}]}]},`+remoteVillager, "")
+			g := economyGame(t, bank, `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":`+building+`,"player":0},"units":[{"id":11,"player":0,"count":1}]}]},`+remoteWorker, "")
 			p := g.Human(0)
-			subject, first, second := g.Self(p).Buildings[0].InternalID, int64(1), int64(1)
+			subject, first, second := g.Self(p).Buildings[0].InternalID, int64(11), int64(11)
 			if name == "building" {
 				subject = g.Self(p).Units[0].InternalID
-				first, second = harness.BuildKey(2, 0, 0, 1, 0), harness.BuildKey(2, 0, 0, -1, 0)
+				first, second = harness.BuildKey(202, 0, 0, 1, 0), harness.BuildKey(202, 0, 0, -1, 0)
 			} else if name == "research" {
-				first, second = 2, 3
+				first, second = 303, 305
 			}
 			g.Submit(p, harness.Order(typ, []uint64{subject}, first, false), harness.Order(typ, []uint64{subject}, second, false))
 			g.EndTurn()
@@ -69,7 +71,7 @@ func TestOrderBatchesCannotOverspend(t *testing.T) {
 					t.Errorf("unit batch overspent or queued unpaid work: %+v", state)
 				}
 			case "research":
-				if state.Resources.Stone != 50 || state.Resources.Gold != 50 || len(state.Buildings[0].ProductionQueue) != 1 || len(state.ResearchedTechs) != 1 {
+				if state.Resources.Wood != 50 || state.Resources.Gold != 70 || len(state.Buildings[0].ProductionQueue) != 1 || len(state.ResearchedTechs) != 1 {
 					t.Errorf("research batch overspent or reserved unpaid work: %+v", state)
 				}
 			}

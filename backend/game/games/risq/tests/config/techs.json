@@ -1,7 +1,7 @@
 [
-  {"tech_id":1,"display_name":"Farming","description":"Villagers become more resilient and can work longer without rest. Also a prerequisite to building farms.","cost":{"food":50,"wood":50},"research_stamina":15,"affects_unit_ids":[1],"bonus_max_health":6,"bonus_turn_stamina":2,"bonus_defense_blunt":1,"bonus_defense_piercing":1},
-  {"tech_id":2,"display_name":"Infantry Attack","description":"Increases the attack of all infantry.","cost":{"stone":100,"gold":100},"research_stamina":25,"affects_unit_types":["infantry"],"bonus_attack_blunt":2,"bonus_attack_piercing":2},
-  {"tech_id":3,"display_name":"Infantry Armor","description":"Increases the defense of all infantry.","cost":{"stone":100,"gold":100},"research_stamina":25,"affects_unit_types":["infantry"],"bonus_defense_blunt":1,"bonus_defense_piercing":1},
-  {"tech_id":4,"display_name":"Mercenary Contracts","description":"Allows hiring infantry for gold directly into owned territory.","cost":{"wood":150,"gold":0},"research_stamina":45,"unlocks_mercenary_ids":[101,102]},
-  {"tech_id":5,"display_name":"Pikes","description":"Infantry pierce through armor.","cost":{"wood":100,"gold":100},"research_stamina":25,"affects_unit_types":["infantry"],"bonus_penetration_piercing":40}
+  {"tech_id":301,"display_name":"Test Labor & Agriculture","cost":{"food":40,"wood":40},"research_stamina":15,"affects_unit_ids":[11,12],"bonus_max_health":10,"bonus_turn_stamina":4,"bonus_defense_blunt":2},
+  {"tech_id":302,"display_name":"Test Military Logistics","cost":{"wood":80,"stone":60},"research_stamina":25,"unlocks_mercenary_ids":[21,41],"mercenary_cost_markup_delta":0.2},
+  {"tech_id":303,"display_name":"Test Weapon Mastery","cost":{"wood":100,"gold":80},"research_stamina":25,"affects_unit_types":["infantry","cavalry"],"bonus_attack_blunt":4,"bonus_penetration_blunt":6},
+  {"tech_id":304,"display_name":"Test Reinforced Armor","cost":{"stone":100,"gold":80},"research_stamina":25,"affects_unit_types":["infantry","archer","cavalry"],"bonus_defense_blunt":2,"bonus_defense_piercing":3,"bonus_max_health":15},
+  {"tech_id":305,"display_name":"Test Ballistics & Siege","cost":{"wood":120,"gold":100},"research_stamina":30,"affects_unit_types":["archer","siege"],"bonus_attack_piercing":6,"bonus_penetration_piercing":10}
 ]

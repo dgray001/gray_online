@@ -11,7 +11,7 @@ import (
 )
 
 func TestEliminatedPlayersCannotSubmitAndDoNotBlockTurns(t *testing.T) {
-	g := newGame(t, layout{humans: 3, spaces: `,{"x":-2,"y":2,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":2,"count":1}]}]}`})
+	g := newGame(t, layout{humans: 3, spaces: `,{"x":-2,"y":2,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":2,"count":1}]}]}`})
 	p := g.Human(0)
 	var orders []defs.OrderFromFrontend
 	state := g.Self(p)
@@ -42,22 +42,25 @@ func defeatMap(t *testing.T) {
 		t.Fatal(err)
 	}
 	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"defeat_test": string(doc)})
+	fortress := defs.BuildingConfigs[208]
+	fortress.Produces = []defs.Producible{{Row: 1, Kind: defs.ProducibleKind_UNIT, Id: 21}}
+	defs.BuildingConfigs[208] = fortress
 }
 
-func TestDefeatMapStartsWithRedoubtAndEnemySoldier(t *testing.T) {
+func TestDefeatMapStartsWithFortressAndEnemySoldier(t *testing.T) {
 	defeatMap(t)
 	g := harness.NewGame(t, "custom:defeat_test", 1, 2)
 	p := g.Human(0)
 	mine, enemy := g.Self(p), g.Self(g.Human(1))
-	if len(mine.Units) != 0 || len(mine.Buildings) != 1 || mine.Buildings[0].BuildingID != 23 {
-		t.Fatal("human player should have only a redoubt")
+	if len(mine.Units) != 0 || len(mine.Buildings) != 1 || mine.Buildings[0].BuildingID != 208 {
+		t.Fatal("human player should have only a fortress")
 	}
-	if len(enemy.Buildings) != 0 || len(enemy.Units) != 1 || enemy.Units[0].UnitID != 103 || enemy.Units[0].Space != mine.Buildings[0].Space {
-		t.Fatal("enemy should have one heavy infantry in the redoubt's space")
+	if len(enemy.Buildings) != 0 || len(enemy.Units) != 1 || enemy.Units[0].UnitID != 22 || enemy.Units[0].Space != mine.Buildings[0].Space {
+		t.Fatal("enemy should have one phalanx in the fortress's space")
 	}
 }
 
-func TestTemporaryRetreatAILeavesRedoubtRange(t *testing.T) {
+func TestTemporaryRetreatAILeavesFortressRange(t *testing.T) {
 	defeatMap(t)
 	model, err := os.ReadFile(testConfig + "/ai/temp_retreat.json")
 	if err != nil {

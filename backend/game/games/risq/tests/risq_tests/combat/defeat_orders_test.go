@@ -10,23 +10,23 @@ import (
 )
 
 func TestGameEndClearsDefeatedAndWinnerOrders(t *testing.T) {
-	g := defeatBehaviorGame(t, 11)
+	g := defeatBehaviorGame(t, 209)
 	owner, winner, last := g.Human(0), g.Human(1), g.Human(2)
-	building, worker := defeatBuilding(g, 0, 11), g.Self(owner).Units[0]
-	g.Submit(owner, harness.Order(defs.OrderType_BuildingResearch, []uint64{building.InternalID}, 2, false), harness.Order(defs.OrderType_UnitDelete, []uint64{worker.InternalID}, 0, false))
+	building, worker := defeatBuilding(g, 0, 209), g.Self(owner).Units[0]
+	g.Submit(owner, harness.Order(defs.OrderType_BuildingResearch, []uint64{building.InternalID}, 302, false), harness.Order(defs.OrderType_UnitDelete, []uint64{worker.InternalID}, 0, false))
 	g.EndTurn()
 	if !g.Self(owner).Eliminated || len(g.Self(owner).ActiveOrders) != 1 {
 		t.Fatal("fixture did not preserve defeated research order")
 	}
-	config := defs.TechConfigs[1]
+	config := defs.TechConfigs[301]
 	config.Research_stamina = 30
-	defs.TechConfigs[1] = config
-	if defeatBuilding(g, 1, 1).CurrentStamina >= 30 {
+	defs.TechConfigs[301] = config
+	if defeatBuilding(g, 1, 201).CurrentStamina >= 30 {
 		t.Fatal("fixture could complete winner research")
 	}
-	orders := []defs.OrderFromFrontend{harness.Order(defs.OrderType_BuildingResearch, []uint64{defeatBuilding(g, 1, 1).InternalID}, 1, false)}
+	orders := []defs.OrderFromFrontend{harness.Order(defs.OrderType_BuildingResearch, []uint64{defeatBuilding(g, 1, 201).InternalID}, 301, false)}
 	for _, unit := range g.Self(winner).Units {
-		if unit.UnitID == 103 {
+		if unit.UnitID == 22 {
 			orders = append(orders, harness.OrderAttackUnit([]uint64{unit.InternalID}, g.Self(last).Units[0].InternalID))
 		} else {
 			orders = append(orders, harness.OrderMoveZone([]uint64{unit.InternalID}, 2, 0, 0, 0))
@@ -69,7 +69,7 @@ func TestGameEndClearsDefeatedAndWinnerOrders(t *testing.T) {
 
 func defeatBehaviorGame(t *testing.T, building uint32) *harness.Game {
 	t.Helper()
-	doc := fmt.Sprintf(`{"board_size":3,"players":3,"starting_bank":{"food":1000,"wood":1000,"stone":1000,"gold":1000},"space_gold_income":0,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":%d,"player":0},"units":[{"id":1,"player":0,"count":1},{"id":103,"player":1,"count":1},{"id":1,"player":2,"count":1}]}]},{"x":-1,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":1},"units":[{"id":102,"player":1,"count":1}]}]},{"x":1,"y":0,"terrain":1},{"x":2,"y":0,"terrain":1}]}`, building)
+	doc := fmt.Sprintf(`{"board_size":3,"players":3,"starting_bank":{"food":1000,"wood":1000,"stone":1000,"gold":1000},"space_gold_income":0,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":%d,"player":0},"units":[{"id":11,"player":0,"count":1},{"id":22,"player":1,"count":1},{"id":11,"player":2,"count":1}]}]},{"x":-1,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":201,"player":1},"units":[{"id":31,"player":1,"count":1}]}]},{"x":1,"y":0,"terrain":1},{"x":2,"y":0,"terrain":1}]}`, building)
 	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"defeat-behavior": doc})
 	g := harness.NewGame(t, "custom:defeat-behavior", 1, 3)
 	for _, unit := range g.Self(g.Human(1)).Units {
@@ -90,13 +90,13 @@ func defeatBuilding(g *harness.Game, slot int, id uint32) harness.Building {
 }
 
 func TestDefeatWithRemainingBuildings(t *testing.T) {
-	for _, id := range []uint32{1, 2, 3, 11, 21, 22} {
+	for _, id := range []uint32{201, 202, 203, 209, 207, 205} {
 		t.Run(fmt.Sprint(id), func(t *testing.T) {
-			doc := fmt.Sprintf(`{"board_size":1,"players":2,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":%d,"player":0},"units":[{"id":1,"player":1,"count":1}]}]}]}`, id)
+			doc := fmt.Sprintf(`{"board_size":1,"players":2,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":%d,"player":0},"units":[{"id":11,"player":1,"count":1}]}]}]}`, id)
 			fakeboard.UseConfig(t, testConfig, nil, map[string]string{"defeat": doc})
 			g := harness.NewGame(t, "custom:defeat", 1, 2)
 			p := g.Self(g.Human(0))
-			defeated := id != 1 && id != 22
+			defeated := id != 201 && id != 205
 			if p.Eliminated != defeated || g.Base.GameEnded() != defeated || len(p.Buildings) != 1 {
 				t.Fatalf("building %d: defeated=%v ended=%v buildings=%d", id, p.Eliminated, g.Base.GameEnded(), len(p.Buildings))
 			}
@@ -105,12 +105,12 @@ func TestDefeatWithRemainingBuildings(t *testing.T) {
 }
 
 func TestUnfinishedProducerDoesNotPreventDefeat(t *testing.T) {
-	g := defeatBehaviorGame(t, 2)
+	g := defeatBehaviorGame(t, 202)
 	owner := g.Human(0)
 	worker := g.Self(owner).Units[0]
-	g.Submit(owner, harness.OrderBuild([]uint64{worker.InternalID}, 22, 0, 0, -1, 0))
+	g.Submit(owner, harness.OrderBuild([]uint64{worker.InternalID}, 205, 0, 0, -1, 0))
 	g.EndTurn()
-	if !defeatBuilding(g, 0, 22).UnderConstruction {
+	if !defeatBuilding(g, 0, 205).UnderConstruction {
 		t.Fatal("fixture did not leave unfinished barracks")
 	}
 	g.Submit(owner, harness.Order(defs.OrderType_UnitDelete, []uint64{worker.InternalID}, 0, true))

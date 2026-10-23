@@ -26,6 +26,12 @@ type conditionResourceAvailable struct {
 	category ResourceCategory
 }
 
+func evaluateCondition(condition Condition, view View, internals *Internals) (bool, bool) {
+	previous := internals.eval_errors
+	result := condition.Evaluate(view, internals)
+	return result, internals.eval_errors == previous
+}
+
 func (c *conditionAll) Evaluate(view View, internals *Internals) bool {
 	for _, condition := range c.conditions {
 		if !condition.Evaluate(view, internals) {

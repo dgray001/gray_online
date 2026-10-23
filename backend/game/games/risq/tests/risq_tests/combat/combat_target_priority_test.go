@@ -27,14 +27,13 @@ func TestStancesCreateAutoAttackBuilding(t *testing.T) {
 }
 
 func TestTargetPriority(t *testing.T) {
-	// p0 has unit 13. p1 has 10 unit 1 (Villager, Economic) and unit 11 (Blunt Infantry, Infantry).
-	doc := `{"board_size":1,"players":2,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":103,"player":0,"count":1},{"id":1,"player":1,"count":10},{"id":101,"player":1,"count":1}]}]}]}`
+	doc := `{"board_size":1,"players":2,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":22,"player":0,"count":1},{"id":11,"player":1,"count":10},{"id":21,"player":1,"count":1}]}]}]}`
 	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"combat_priority": doc})
 	g := harness.NewGame(t, "custom:combat_priority", 1, 2)
 	p0, p1 := g.Human(0), g.Human(1)
 	u0 := g.Self(p0).Units[0]
 
-	// Set target priority to prefer ECONOMIC over INFANTRY
+	// Set target priority to prefer ECONOMIC over GRUNT
 	g.Action(p0, "set-unit-behavior", gin.H{
 		"internal_ids":    []uint64{u0.InternalID},
 		"target_priority": []uint8{uint8(defs.TargetCategory_ECONOMIC), uint8(defs.TargetCategory_MILITARY)},
@@ -44,17 +43,17 @@ func TestTargetPriority(t *testing.T) {
 	g.Submit(p0, harness.Order(defs.OrderType_UnitAttackSpace, []uint64{u0.InternalID}, harness.SpaceKey(0, 0), false))
 	g.Submit(p1)
 
-	var infantry *harness.Unit
+	var grunt *harness.Unit
 	survivors := g.Self(p1).Units
 	for i := range survivors {
-		if survivors[i].UnitID == 101 {
-			infantry = &survivors[i]
+		if survivors[i].UnitID == 21 {
+			grunt = &survivors[i]
 		}
 	}
-	if infantry == nil {
-		t.Errorf("infantry should have survived, but it was killed")
-	} else if infantry.CombatStats.Health < 11 {
-		t.Errorf("infantry incorrectly took damage, health %v", infantry.CombatStats.Health)
+	if grunt == nil {
+		t.Errorf("grunt should have survived, but it was killed")
+	} else if grunt.CombatStats.Health < 30 {
+		t.Errorf("grunt incorrectly took damage, health %v", grunt.CombatStats.Health)
 	}
 }
 
@@ -154,9 +153,9 @@ func TestInterruptCurrentTargetPriorityGate(t *testing.T) {
 				break
 			}
 		}
-		villager := g.Self(enemy).Units[0]
+		worker := g.Self(enemy).Units[0]
 		building := g.Self(enemy).Buildings[0]
-		damageDealt := villager.CombatStats.Health < float64(villager.CombatStats.MaxHealth) || building.CombatStats.Health < float64(building.CombatStats.MaxHealth)
+		damageDealt := worker.CombatStats.Health < float64(worker.CombatStats.MaxHealth) || building.CombatStats.Health < float64(building.CombatStats.MaxHealth)
 		if !hasAutoAttack && !damageDealt {
 			t.Fatalf("expected idle attacker to acquire unprioritized target via fallback, got orders: %+v", u.ActiveOrders)
 		}

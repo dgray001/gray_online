@@ -317,26 +317,31 @@ func parseRule(item any) (Rule, error) {
 }
 
 func parseSetUnitBehavior(raw map[string]any) (Action, error) {
-	action := &setUnitBehaviorAction{}
+	behavior, err := parseUnitBehavior(raw)
+	return &setUnitBehaviorAction{behavior: behavior}, err
+}
+
+func parseUnitBehavior(raw map[string]any) (UnitBehavior, error) {
+	var behavior UnitBehavior
 	if s, ok := raw["stance"].(string); ok {
 		stance, ok := unitStanceNames[s]
 		if !ok {
-			return nil, fmt.Errorf("unknown stance %q", s)
+			return behavior, fmt.Errorf("unknown stance %q", s)
 		}
-		action.behavior.Stance = &stance
+		behavior.Stance = &stance
 	}
 	if b, ok := raw["interrupt_current"].(bool); ok {
-		action.behavior.InterruptCurrent = &b
+		behavior.InterruptCurrent = &b
 	}
 	if b, ok := raw["attack_back"].(bool); ok {
-		action.behavior.AttackBack = &b
+		behavior.AttackBack = &b
 	}
 	priority, err := parseTargetPriority(raw)
 	if err != nil {
-		return nil, err
+		return behavior, err
 	}
-	action.behavior.TargetPriority = priority
-	return action, nil
+	behavior.TargetPriority = priority
+	return behavior, nil
 }
 
 func parseTargetPriority(raw map[string]any) ([]TargetCategory, error) {
@@ -387,17 +392,22 @@ func parseStop(action_type string, raw map[string]any) (Action, error) {
 }
 
 func parseSetBuildingBehavior(raw map[string]any) (Action, error) {
-	action := &setBuildingBehaviorAction{}
+	behavior, err := parseBuildingBehavior(raw)
+	return &setBuildingBehaviorAction{behavior: behavior}, err
+}
+
+func parseBuildingBehavior(raw map[string]any) (BuildingBehavior, error) {
+	var behavior BuildingBehavior
 	if b, ok := raw["auto_attack"].(bool); ok {
-		action.behavior.AutoAttack = &b
+		behavior.AutoAttack = &b
 	}
 	if b, ok := raw["interrupt_current"].(bool); ok {
-		action.behavior.InterruptCurrent = &b
+		behavior.InterruptCurrent = &b
 	}
 	priority, err := parseTargetPriority(raw)
 	if err != nil {
-		return nil, err
+		return behavior, err
 	}
-	action.behavior.TargetPriority = priority
-	return action, nil
+	behavior.TargetPriority = priority
+	return behavior, nil
 }

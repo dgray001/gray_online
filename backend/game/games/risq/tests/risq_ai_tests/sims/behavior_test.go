@@ -66,7 +66,7 @@ func assertBehaviorPayload(t *testing.T, payload gin.H, slot int) {
 
 func TestExplicitAttackAndBehaviorReachEngine(t *testing.T) {
 	model := once(`{"action":"set_unit_behavior","stance":"passive","attack_back":false},{"action":"set_building_behavior","auto_attack":false},{"action":"attack","target":"economic","max":1}`)
-	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":0},"units":[{"id":101,"player":0,"count":1},{"id":1,"player":1,"count":1}]}]},` + remote
+	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":208,"player":0},"units":[{"id":21,"player":0,"count":1},{"id":11,"player":1,"count":1}]}]},` + remote
 	g := fixture(t, `{}`, spaces, "", model, emptyModel)
 	g.Run(t, 1)
 	assertOrderCount(t, g, 0, defs.OrderType_UnitAttackUnit, 1)
@@ -79,18 +79,18 @@ func TestExplicitAttackAndBehaviorReachEngine(t *testing.T) {
 	assertBehaviorSequence(t, g, 0)
 }
 
-func TestGatherRulesRespectFarmCapacity(t *testing.T) {
-	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":3,"player":0},"units":[{"id":1,"player":0,"count":3}]},{"x":1,"y":0,"building":{"id":2,"player":0}}]},` + remote
-	g := fixture(t, `{}`, spaces, `,"starting_techs":[1]`, once(`{"action":"gather","category":"food"},{"action":"gather","category":"food"}`), emptyModel)
+func TestGatherRulesRespectOrchardCapacity(t *testing.T) {
+	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":203,"player":0},"units":[{"id":11,"player":0,"count":3}]},{"x":1,"y":0,"building":{"id":202,"player":0}}]},` + remote
+	g := fixture(t, `{}`, spaces, `,"starting_techs":[301]`, once(`{"action":"gather","category":"food"},{"action":"gather","category":"food"}`), emptyModel)
 	g.Run(t, 1)
 	assertOrderCount(t, g, 0, defs.OrderType_UnitGather, 2)
 	p := g.Own(t, 0)
-	if p.Resources.Food != 16 {
-		t.Fatalf("farm credits=%+v", p.Resources)
+	if p.Resources.Food != 16.8 {
+		t.Fatalf("orchard credits=%+v", p.Resources)
 	}
 	for _, building := range p.Buildings {
-		if building.BuildingID == 3 && building.ResourcesLeft != 184 {
-			t.Fatalf("farm=%+v", building)
+		if building.BuildingID == 203 && building.ResourcesLeft != 133.2 {
+			t.Fatalf("orchard=%+v", building)
 		}
 	}
 }
@@ -98,12 +98,13 @@ func TestGatherRulesRespectFarmCapacity(t *testing.T) {
 func TestHireAndProductionSharePopulationReservation(t *testing.T) {
 	for _, hireFirst := range []bool{true, false} {
 		t.Run(map[bool]string{true: "hire-first", false: "create-first"}[hireFirst], func(t *testing.T) {
-			hire, create := `{"action":"hire","unit_id":101,"max":2}`, `{"action":"create","unit_id":1,"queue":2}`
+			hire, create := `{"action":"hire","unit_id":21,"max":2}`, `{"action":"create","unit_id":11,"queue":2}`
 			actions := create + "," + hire
 			if hireFirst {
 				actions = hire + "," + create
 			}
-			spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":0},"units":[{"id":1,"player":0,"count":4}]}]},` + remote
+			spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":201,"player":0},"units":[{"id":11,"player":0,"count":4}]}]},` + remote
+			registerMercenaryTech(t)
 			g := fixture(t, `{"food":100,"gold":500}`, spaces, `,"starting_techs":[4]`, once(actions), emptyModel)
 			g.Run(t, 2)
 			p := g.Own(t, 0)
@@ -112,7 +113,7 @@ func TestHireAndProductionSharePopulationReservation(t *testing.T) {
 			}
 			creates, hires, food, gold := 1, 0, 50.0, 500.0
 			if hireFirst {
-				creates, hires, food, gold = 0, 1, 100, 409
+				creates, hires, food, gold = 0, 1, 100, 435
 			}
 			assertOrderCount(t, g, 0, defs.OrderType_BuildingCreate, creates)
 			assertOrderCount(t, g, 0, defs.OrderType_BuyMercenary, hires)
@@ -124,12 +125,13 @@ func TestHireAndProductionSharePopulationReservation(t *testing.T) {
 }
 
 func TestHireAndProductionChargeOnce(t *testing.T) {
-	model := once(`{"action":"hire","unit_id":101,"max":1},{"action":"create","unit_id":1,"queue":1}`)
-	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":0},"units":[{"id":1,"player":0,"count":1}]}]},` + remote
+	model := once(`{"action":"hire","unit_id":21,"max":1},{"action":"create","unit_id":11,"queue":1}`)
+	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":201,"player":0},"units":[{"id":11,"player":0,"count":1}]}]},` + remote
+	registerMercenaryTech(t)
 	g := fixture(t, `{"food":100,"gold":500}`, spaces, `,"starting_techs":[4]`, model, emptyModel)
 	g.Run(t, 2)
 	p := g.Own(t, 0)
-	if len(p.Units) != 3 || p.Resources.Food != 50 || p.Resources.Gold != 409 {
+	if len(p.Units) != 3 || p.Resources.Food != 50 || p.Resources.Gold != 435 {
 		t.Fatalf("units=%+v balance=%+v", p.Units, p.Resources)
 	}
 	if len(p.Buildings[0].ProductionQueue) != 0 {
@@ -140,8 +142,8 @@ func TestHireAndProductionChargeOnce(t *testing.T) {
 }
 
 func TestCancelledProductionRefundCanBeSpentOnce(t *testing.T) {
-	model := `{"rules":[{"when":{"turn_equals":{"amount":1}},"then":[{"action":"create","unit_id":1,"queue":2}]},{"when":{"turn_equals":{"amount":2}},"then":[{"action":"building_stop","orders":["create"]},{"action":"building_stop","orders":["create"]},{"action":"create","unit_id":1,"queue":2}]}]}`
-	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":0},"units":[{"id":1,"player":0,"count":1}]}]},` + remote
+	model := `{"rules":[{"when":{"turn_equals":{"amount":1}},"then":[{"action":"create","unit_id":11,"queue":2}]},{"when":{"turn_equals":{"amount":2}},"then":[{"action":"building_stop","orders":["create"]},{"action":"building_stop","orders":["create"]},{"action":"create","unit_id":11,"queue":2}]}]}`
+	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":201,"player":0},"units":[{"id":11,"player":0,"count":1}]}]},` + remote
 	g := fixture(t, `{"food":100}`, spaces, "", model, emptyModel)
 	g.Run(t, 2)
 	p := g.Own(t, 0)
@@ -153,12 +155,12 @@ func TestCancelledProductionRefundCanBeSpentOnce(t *testing.T) {
 }
 
 func TestCancelledResearchRefundCanFundProduction(t *testing.T) {
-	model := `{"rules":[{"when":{"turn_equals":{"amount":1}},"then":[{"action":"research","tech_id":1}]},{"when":{"turn_equals":{"amount":2}},"then":[{"action":"building_stop","orders":["research"]},{"action":"building_stop","orders":["research"]},{"action":"create","unit_id":1}]}]}`
-	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":0},"units":[{"id":1,"player":0,"count":1}]}]},` + remote
+	model := `{"rules":[{"when":{"turn_equals":{"amount":1}},"then":[{"action":"research","tech_id":301}]},{"when":{"turn_equals":{"amount":2}},"then":[{"action":"building_stop","orders":["research"]},{"action":"building_stop","orders":["research"]},{"action":"create","unit_id":11}]}]}`
+	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":201,"player":0},"units":[{"id":11,"player":0,"count":1}]}]},` + remote
 	g := fixture(t, `{"food":50,"wood":50}`, spaces, "", model, emptyModel)
 	g.Run(t, 2)
 	p := g.Own(t, 0)
-	if len(p.Units) != 2 || p.Resources.Food != 0 || p.Resources.Wood != 50 || p.ResearchedTechs[1] {
+	if len(p.Units) != 2 || p.Resources.Food != 0 || p.Resources.Wood != 50 || p.ResearchedTechs[301] {
 		t.Fatalf("research refund: player=%+v balance=%+v", p, p.Resources)
 	}
 	assertOrderCount(t, g, 0, defs.OrderType_CancelOrder, 1)
@@ -166,8 +168,8 @@ func TestCancelledResearchRefundCanFundProduction(t *testing.T) {
 }
 
 func TestGatherAndBuildCarryAcrossTurns(t *testing.T) {
-	model := once(`{"action":"gather","category":"food","max":1},{"action":"build","building_id":2,"max":1}`)
-	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":0},"units":[{"id":1,"player":0,"count":2}]},{"x":1,"y":0,"resource":1}]},` + remote
+	model := once(`{"action":"gather","category":"food","max":1},{"action":"build","building_id":202,"max":1}`)
+	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":201,"player":0},"units":[{"id":11,"player":0,"count":2}]},{"x":1,"y":0,"resource":1}]},` + remote
 	g := fixture(t, `{"wood":100}`, spaces, "", model, emptyModel)
 	g.Run(t, 3)
 	p := g.Own(t, 0)
@@ -186,8 +188,8 @@ func TestGatherAndBuildCarryAcrossTurns(t *testing.T) {
 		t.Fatalf("buildings=%+v", p.Buildings)
 	}
 	for _, building := range p.Buildings {
-		if building.BuildingID == 2 && building.UnderConstruction {
-			t.Fatal("housing never finished")
+		if building.BuildingID == 202 && building.UnderConstruction {
+			t.Fatal("shelter never finished")
 		}
 	}
 	assertOrderCount(t, g, 0, defs.OrderType_UnitGather, 1)
@@ -195,8 +197,8 @@ func TestGatherAndBuildCarryAcrossTurns(t *testing.T) {
 }
 
 func TestBuildRulesShareOneReservation(t *testing.T) {
-	model := once(`{"action":"build","building_id":2,"max":1},{"action":"build","building_id":2,"max":1}`)
-	g := fixture(t, `{"wood":30}`, `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":1,"player":0},"units":[{"id":1,"player":0,"count":2}]}]},`+remote, "", model, emptyModel)
+	model := once(`{"action":"build","building_id":202,"max":1},{"action":"build","building_id":202,"max":1}`)
+	g := fixture(t, `{"wood":30}`, `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":201,"player":0},"units":[{"id":11,"player":0,"count":2}]}]},`+remote, "", model, emptyModel)
 	g.Run(t, 2)
 	p := g.Own(t, 0)
 	if p.Resources.Wood != 0 || len(p.Buildings) != 2 || p.Buildings[0].UnderConstruction || p.Buildings[1].UnderConstruction {

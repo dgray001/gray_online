@@ -157,6 +157,9 @@ export class RisqOrderTargeting {
     if (!this.left_panel.hasVillager() || !this.isZoneValid() || !space) {
       return 'Select villagers and a visible zone to build';
     }
+    if (this.armed.getArmedBuilding()?.is_wall && zone?.coordinate.x === 0 && zone.coordinate.y === 0) {
+      return "Can't build walls in center zone";
+    }
     if (zone?.resource || zone?.building || this.planning.hasPlannedFoundation(zone)) {
       return 'Building plot is occupied';
     }

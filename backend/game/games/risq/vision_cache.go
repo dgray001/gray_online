@@ -60,9 +60,6 @@ func (c RisqBuildingCache) toFrontend() gin.H {
 		"under_construction":         c.under_construction,
 		"stamina_remaining":          c.stamina_remaining,
 		"construction_stamina_total": c.construction_stamina_total,
-		"turn_stamina":               0,
-		"current_stamina":            0,
-		"max_stamina":                0,
 		"produces":                   buildingProducesToFrontend(c.config, c.building_id),
 		"active_orders":              []gin.H{},
 		"production_queue":           []gin.H{},
@@ -133,6 +130,25 @@ func (z *RisqZone) buildingKnownTo(player_id int) (RisqBuildingCache, bool) {
 		}
 		return cacheRisqBuilding(z.building), true
 	}
+}
+
+func (r *GameRisq) buildingExistsOrRemembered(building_id uint64, player_id int) bool {
+	if r.buildings[building_id] != nil {
+		return true
+	}
+	for _, row := range r.spaces {
+		for _, space := range row {
+			if space == nil || space.getVisibility(player_id) != defs.VisibilityFog {
+				continue
+			}
+			for _, cache := range space.building_cache[player_id] {
+				if cache.internal_id == building_id {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 func (c RisqResourceCache) toFrontend() gin.H {

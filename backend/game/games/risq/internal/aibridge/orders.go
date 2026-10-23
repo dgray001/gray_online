@@ -14,9 +14,18 @@ func buildingOrder(b ai.BuildingView, order_type defs.OrderType, target_id int64
 	return ai.Order{Subjects: []uint64{b.InternalID}, OrderType: uint8(order_type), TargetID: target_id}
 }
 
+func (v *aiView) Issue(request ai.IssueRequest) ai.Order {
+	return ai.DispatchIssue(v, request)
+}
+
 func (v *aiView) MoveOrder(u ai.UnitView, target ai.ZoneRef, clear_previous bool) ai.Order {
 	v.assignUnit(u.InternalID, &ai.CurrentOrder{Kind: ai.OrderKindMove, TargetZone: &target})
 	return unitOrder(u, defs.OrderType_UnitMoveZone, int64(zoneKey(target)), clear_previous)
+}
+
+func (v *aiView) MoveSpaceOrder(u ai.UnitView, target ai.Coordinate, clear_previous bool) ai.Order {
+	v.assignUnit(u.InternalID, &ai.CurrentOrder{Kind: ai.OrderKindMove, TargetSpace: &target})
+	return unitOrder(u, defs.OrderType_UnitMoveSpace, int64(spaceKey(target)), clear_previous)
 }
 
 func (v *aiView) GatherOrder(u ai.UnitView, target ai.ResourceView, clear_previous bool) ai.Order {
@@ -110,6 +119,7 @@ func (v *aiView) BuildingAttackBuildingOrder(b ai.BuildingView, target ai.Buildi
 
 func (v *aiView) CancelOrder(order_id uint64) ai.Order {
 	v.cancelled_orders[order_id] = true
+	v.revision++
 	v.units_cache = nil
 	v.dropCancelledAttacker(order_id)
 	v.gather_counts = nil
@@ -118,6 +128,7 @@ func (v *aiView) CancelOrder(order_id uint64) ai.Order {
 
 func (v *aiView) CancelFoundationOrder(f ai.FoundationView) ai.Order {
 	v.cancelled_foundations[f.Location] = true
+	v.revision++
 	return ai.Order{OrderType: uint8(defs.OrderType_CancelFoundation), TargetID: int64(zoneKey(f.Location))}
 }
 

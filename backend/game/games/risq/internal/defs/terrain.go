@@ -42,6 +42,17 @@ func ParseTerrainType(s string) (TerrainType, error) {
 	}
 }
 
+func (t TerrainType) Height() int {
+	switch t {
+	case TerrainType_HILLY:
+		return 1
+	case TerrainType_MOUNTAINOUS:
+		return 2
+	default:
+		return 0
+	}
+}
+
 type TerrainConfig struct {
 	Display_name string
 	Terrain_type TerrainType

@@ -221,9 +221,8 @@ function buildingSecondaryBar(
     return { current: b.resources_left ?? 0, max: b.resource_capacity, color };
   }
   const stamina_hidden = display.secondary_bars === 'active_only';
-  return !stamina_hidden && (b.current_stamina ?? 0) < (b.max_stamina ?? 0)
-    ? { current: b.current_stamina, max: b.max_stamina, color: progress_color }
-    : undefined;
+  const stamina = { current: b.current_stamina ?? 0, max: b.max_stamina ?? 0 };
+  return !stamina_hidden && stamina.current < stamina.max ? { ...stamina, color: progress_color } : undefined;
 }
 
 function drawSlotOverheadBars(

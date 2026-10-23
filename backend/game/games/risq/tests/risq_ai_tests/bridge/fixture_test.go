@@ -25,6 +25,63 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+func TestProducibleKindsMatchTheEngine(t *testing.T) {
+	for name, pair := range map[string][2]uint8{
+		"none":     {uint8(ai.ProducibleNone), uint8(defs.ProducibleKind_NONE)},
+		"unit":     {uint8(ai.ProducibleUnit), uint8(defs.ProducibleKind_UNIT)},
+		"tech":     {uint8(ai.ProducibleTech), uint8(defs.ProducibleKind_TECH)},
+		"building": {uint8(ai.ProducibleBuilding), uint8(defs.ProducibleKind_BUILDING)},
+	} {
+		if pair[0] != pair[1] {
+			t.Errorf("producible kind %s: ai=%d engine=%d", name, pair[0], pair[1])
+		}
+	}
+}
+
+type enumRow struct {
+	name       string
+	ai, engine uint8
+}
+
+func assertEnumRows(t *testing.T, rows []enumRow) {
+	t.Helper()
+	for _, row := range rows {
+		if row.ai != row.engine {
+			t.Errorf("%s: ai=%d engine=%d", row.name, row.ai, row.engine)
+		}
+	}
+}
+
+func TestUnitTypeAndStanceCastsMatchTheEngine(t *testing.T) {
+	assertEnumRows(t, []enumRow{
+		{"type none", uint8(ai.UnitTypeNone), uint8(defs.UnitType_NONE)},
+		{"type economic", uint8(ai.UnitTypeEconomic), uint8(defs.UnitType_ECONOMIC)},
+		{"type infantry", uint8(ai.UnitTypeInfantry), uint8(defs.UnitType_INFANTRY)},
+		{"type archer", uint8(ai.UnitTypeArcher), uint8(defs.UnitType_ARCHER)},
+		{"type cavalry", uint8(ai.UnitTypeCavalry), uint8(defs.UnitType_CAVALRY)},
+		{"type siege", uint8(ai.UnitTypeSiege), uint8(defs.UnitType_SIEGE)},
+		{"stance none", uint8(ai.UnitStanceNone), uint8(defs.UnitStance_NONE)},
+		{"stance passive", uint8(ai.UnitStancePassive), uint8(defs.UnitStance_PASSIVE)},
+		{"stance aggressive", uint8(ai.UnitStanceAggressive), uint8(defs.UnitStance_AGGRESSIVE)},
+		{"stance defensive", uint8(ai.UnitStanceDefensive), uint8(defs.UnitStance_DEFENSIVE)},
+		{"stance stand ground", uint8(ai.UnitStanceStandGround), uint8(defs.UnitStance_STAND_GROUND)},
+	})
+}
+
+func TestTargetCategoryAndAttackRangeCastsMatchTheEngine(t *testing.T) {
+	assertEnumRows(t, []enumRow{
+		{"category none", uint8(ai.TargetCategoryNone), uint8(defs.TargetCategory_NONE)},
+		{"category economic", uint8(ai.TargetCategoryEconomic), uint8(defs.TargetCategory_ECONOMIC)},
+		{"category military", uint8(ai.TargetCategoryMilitary), uint8(defs.TargetCategory_MILITARY)},
+		{"category building", uint8(ai.TargetCategoryBuilding), uint8(defs.TargetCategory_BUILDING)},
+		{"range none", uint8(ai.AttackRangeNone), uint8(defs.RisqRange_NONE)},
+		{"range zone", uint8(ai.AttackRangeZone), uint8(defs.RisqRange_ZONE)},
+		{"range space", uint8(ai.AttackRangeSpace), uint8(defs.RisqRange_SPACE)},
+		{"range adjacent", uint8(ai.AttackRangeAdjacent), uint8(defs.RisqRange_ADJACENT)},
+		{"range secondary", uint8(ai.AttackRangeSecondary), uint8(defs.RisqRange_SECONDARY)},
+	})
+}
+
 func setupConfigDir() func() {
 	dir, err := os.MkdirTemp("", "bridge-*")
 	if err != nil {
@@ -55,8 +112,8 @@ func bridgeGame(t *testing.T, spaces string, configure ...func()) (*harness.Game
 		t.Fatal(err)
 	}
 	if len(configure) > 0 {
-		saved := defs.UnitConfigs[101]
-		t.Cleanup(func() { defs.UnitConfigs[101] = saved })
+		saved := defs.UnitConfigs[21]
+		t.Cleanup(func() { defs.UnitConfigs[21] = saved })
 		for _, apply := range configure {
 			apply()
 		}
@@ -147,7 +204,7 @@ func assertEmptySubmission(t *testing.T, action game.PlayerAction) {
 }
 
 func TestRunnerFallbackOncePerTurn(t *testing.T) {
-	g, player := bridgeGame(t, ownScout+`,{"x":3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":1,"count":1}]}]}`)
+	g, player := bridgeGame(t, ownScout+`,{"x":3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":1,"count":1}]}]}`)
 	player.AiFailedUpdates = make(chan *game.UpdateMessage)
 	w := runWorker(t, player, ai.NoopModel{}, make(chan game.PlayerAction, 8))
 	update := &game.UpdateMessage{Kind: "start-turn", Content: gin.H{"game": g.Risq.ToFrontend(uint64(g.Human(0)+1), false)}}
@@ -169,7 +226,7 @@ func TestRunnerFallbackOncePerTurn(t *testing.T) {
 }
 
 func TestRunnerIgnoresOtherUpdatesAndSubmitsMalformedSnapshot(t *testing.T) {
-	_, player := bridgeGame(t, ownScout+`,{"x":3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":1,"count":1}]}]}`)
+	_, player := bridgeGame(t, ownScout+`,{"x":3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":1,"count":1}]}]}`)
 	player.AiUpdates = make(chan *game.UpdateMessage)
 	seen := &recordingModel{Model: ai.NoopModel{}, Seen: make(chan observation, 2)}
 	w := runWorker(t, player, seen, make(chan game.PlayerAction, 8))
@@ -187,7 +244,7 @@ func TestRunnerIgnoresOtherUpdatesAndSubmitsMalformedSnapshot(t *testing.T) {
 func TestRunnerStopsWaitingAndSending(t *testing.T) {
 	for _, blocked := range []bool{false, true} {
 		t.Run(map[bool]string{false: "waiting", true: "sending"}[blocked], func(t *testing.T) {
-			g, player := bridgeGame(t, ownScout+`,{"x":3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":1,"player":1,"count":1}]}]}`)
+			g, player := bridgeGame(t, ownScout+`,{"x":3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":1,"count":1}]}]}`)
 			seen := &recordingModel{Model: ai.NoopModel{}, Seen: make(chan observation, 1)}
 			w := runWorker(t, player, seen, make(chan game.PlayerAction))
 			if blocked {

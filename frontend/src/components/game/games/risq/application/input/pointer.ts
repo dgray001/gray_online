@@ -99,10 +99,12 @@ export class RisqPointer {
       return;
     }
     const hud_screen = { x: screen.x / this.hud_scale(), y: screen.y / this.hud_scale() };
-    let hovered_other_component: boolean;
+    let hovered_other_component = false;
     this.dispatching_mousemove = true;
     try {
-      hovered_other_component = this.components.map((c) => c.mousemove(m, hud_screen, transform)).some(Boolean);
+      for (const component of this.components) {
+        hovered_other_component = component.mousemove(m, hud_screen, transform) || hovered_other_component;
+      }
     } finally {
       this.dispatching_mousemove = false;
     }
