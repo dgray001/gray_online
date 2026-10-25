@@ -3,6 +3,7 @@ package unit
 import (
 	"bytes"
 	"fmt"
+	"math/rand"
 	"strings"
 	"testing"
 
@@ -154,7 +155,7 @@ func TestSelectBucketModeConfigErrors(t *testing.T) {
 func TestSelectAssignmentSkipsInvalidBuildSitesWithoutSpending(t *testing.T) {
 	worker := villager(1, Coordinate{})
 	view := selectTestView{loopTestView: loopTestView{units: []UnitView{worker}, spaces: lineOfSpaces(0, 0), zones: []ZoneInfo{{Location: at(1)}, {Location: at(2)}}}, idle: []UnitView{worker}, blocked_zones: []ZoneRef{at(2)}}
-	action := `{"action":"select","pick":{"kind":"zones","rank":"var(target.x)"},"assign":{"capacity":1,"overflow":"none","queue":1},"issue":[{"build":{"building_id":2}}]}`
+	action := `{"action":"select","pick":{"kind":"zones","capacity":1,"rank":"var(target.x)"},"issue":[{"build":{"building_id":2}}]}`
 	orders := selectOrders(t, rule(action), view)
 	if len(orders) != 1 || orders[0].TargetID != spaceCode(at(1).Space) || !orders[0].ClearPreviousOrders {
 		t.Fatalf("got %+v, want one clearing build order for the valid site", orders)
@@ -316,17 +317,17 @@ func TestPrependRestoresTasksAfterAllAssignmentRounds(t *testing.T) {
 	for i := range view.units {
 		view.units[i].CurrentOrder = &CurrentOrder{Kind: OrderKindGather, TargetResource: &ResourceView{InternalID: uint64(5 + i)}}
 	}
-	config := rule(`{"action":"select","mode":"prepend","actors":{"kind":"units"},"pick":{"kind":"spaces","rank":"var(target.x)","limit":2},"assign":{"queue":1,"unit_order":"var(actor.uid)"},"issue":[{"move":{}}]}`)
+	config := rule(`{"action":"select","mode":"prepend","actors":{"kind":"units","rank":"var(actor.uid)"},"pick":{"kind":"spaces","rank":"var(target.x)","limit":1},"issue":[{"move":{}}]}`)
 	orders := selectOrders(t, config, view)
-	if len(orders) != 6 {
-		t.Fatalf("orders = %+v, want four moves then two restored tasks", orders)
+	if len(orders) != 4 {
+		t.Fatalf("orders = %+v, want two moves then two restored tasks", orders)
 	}
-	for i, target := range []int64{1200, 1200, 1100, 1100, 6, 5} {
+	for i, target := range []int64{1200, 1200, 6, 5} {
 		kind := kindMoveSpace
-		if i >= 4 {
+		if i >= 2 {
 			kind = kindGather
 		}
-		if orders[i].TargetID != target || orders[i].OrderType != kind || orders[i].Subjects[0] != uint64(2-i%2) || orders[i].ClearPreviousOrders != (i < 2) {
+		if orders[i].TargetID != target || orders[i].OrderType != kind || orders[i].Subjects[0] != uint64(2-i%2) {
 			t.Errorf("order %d = %+v, want target %d in per-actor prepend order", i, orders[i], target)
 		}
 	}
@@ -403,7 +404,8 @@ const workersPerNode = `{"action":"set_var","name":"total","value":0},
 
 func TestKeyedJoinGivesTheSameAnswerAsTestingEveryItem(t *testing.T) {
 	keyed := decide(t, rule(workersPerNode), gatheringJoinView(), "total")["total"]
-	scanned := decide(t, rule(workersPerNode+`,{"action":"set_var","name":"noise","value":"random()"}`), gatheringJoinView(), "total")["total"]
+	impure := strings.Replace(workersPerNode, `"if":"var(item.order_target_uid) == var(node.uid)"`, `"if":["var(item.order_target_uid) == var(node.uid)","random() >= 0"]`, 1)
+	scanned := decide(t, rule(impure), gatheringJoinView(), "total")["total"]
 	if keyed != 104 || scanned != keyed {
 		t.Errorf("workers weighted by node: keyed %v, scanned %v, want 104 for both", keyed, scanned)
 	}
@@ -418,8 +420,89 @@ func TestKeyedJoinStaysWithinTheStepBudgetOnLargeBoards(t *testing.T) {
 		view.units = append(view.units, UnitView{InternalID: uint64(1000 + i), Type: UnitTypeEconomic, CurrentOrder: &CurrentOrder{Kind: OrderKindGather, TargetResource: &node}})
 	}
 	view.idle = view.units[:1]
-	if got := decide(t, rule(workersPerNode), view, "total")["total"]; got != n {
-		t.Errorf("total workers = %v, want %d: a count per node must not rescan every unit", got, n)
+	for name, config := range map[string]string{"plain": workersPerNode, "random elsewhere": workersPerNode + `,{"action":"set_var","name":"noise","value":"random()"}`} {
+		if got := decide(t, rule(config), view, "total")["total"]; got != n {
+			t.Errorf("%s: total workers = %v, want %d: a count per node must not rescan every unit", name, got, n)
+		}
+	}
+}
+
+func TestImpureSelectorStillTestsEveryItem(t *testing.T) {
+	units := make([]UnitView, 10)
+	for n := range units {
+		units[n] = villager(uint64(n+1), Coordinate{})
+	}
+	view := selectTestView{loopTestView: loopTestView{units: units}, turn: 1}
+	config := rule(`{"action":"set_var","name":"hits","value":{"count":{"kind":"units","where":{"if":["random() >= 0","var(item.uid) == 3"]}}}},
+		{"action":"set_var","name":"next","value":"randomInt(0, 1000000)"}`)
+	got := decide(t, config, view, "hits", "next")
+	expected := rand.New(rand.NewSource(1))
+	for range units {
+		expected.Float64()
+	}
+	if got["hits"] != 1 || got["next"] != float64(expected.Intn(1000001)) {
+		t.Errorf("hits %v, next draw %v: an equality after a random() condition must not skip the draws for the other items", got["hits"], got["next"])
+	}
+}
+
+func TestLimitOneTakesTheTopRankedItemAndDrawsOnlyForTies(t *testing.T) {
+	units := make([]UnitView, 6)
+	for n := range units {
+		units[n] = villager(uint64(n+1), Coordinate{})
+	}
+	view := selectTestView{loopTestView: loopTestView{units: units}, turn: 1}
+	top := func(rank string) string {
+		return rule(`{"action":"for_each","select":{"kind":"units","rank":"` + rank + `","limit":1},"as":"u","do":[
+			{"action":"set_var","name":"picked","value":"var(u.uid)"}]},
+			{"action":"set_var","name":"next","value":"randomInt(0, 1000000)"}`)
+	}
+	unique := decide(t, top("var(u.uid)"), view, "picked", "next")
+	fresh := rand.New(rand.NewSource(1))
+	if unique["picked"] != 6 || unique["next"] != float64(fresh.Intn(1000001)) {
+		t.Errorf("unique max: %v, want unit 6 with no draw spent", unique)
+	}
+	tied := decide(t, top("0"), view, "picked", "next")
+	fresh = rand.New(rand.NewSource(1))
+	want := float64(fresh.Intn(6) + 1)
+	if tied["picked"] != want || tied["next"] != float64(fresh.Intn(1000001)) {
+		t.Errorf("six-way tie: %v, want unit %v after exactly one draw", tied, want)
+	}
+}
+
+type distanceCountingView struct {
+	selectTestView
+	distances int
+}
+
+func (v *distanceCountingView) SpaceDistance(a Coordinate, b Coordinate) int {
+	v.distances++
+	return v.selectTestView.SpaceDistance(a, b)
+}
+
+func TestNearMeasuresOncePerAnchorSpaceAndHoistsTheBound(t *testing.T) {
+	units := make([]UnitView, 8)
+	for n := range units {
+		units[n] = villager(uint64(n+1), Coordinate{X: 2 + n%2})
+	}
+	nearUnits := func(distance string) string {
+		return rule(`{"action":"set_var","name":"found","value":{"count":{"kind":"spaces","where":{"near":{"distance":` + distance + `,"of":{"kind":"units"}}}}}}`)
+	}
+	view := &distanceCountingView{selectTestView: selectTestView{loopTestView: loopTestView{units: units, spaces: lineOfSpaces(make([]float64, 10)...)}, turn: 1}}
+	if got := decide(t, nearUnits("1"), view, "found")["found"]; got != 4 {
+		t.Fatalf("spaces within 1 of units at 2 and 3: %v, want 4", got)
+	}
+	baseline := &distanceCountingView{selectTestView: view.selectTestView}
+	decide(t, rule(`{"action":"set_var","name":"found","value":0}`), baseline, "found")
+	if lookups := view.distances - baseline.distances; lookups > 20 {
+		t.Errorf("%d distance lookups, want at most one per space and anchor space (20)", lookups)
+	}
+	for name, distance := range map[string]string{"negative": `"0 - 1"`, "failing bound": `"1 / (turn - turn)"`} {
+		if got := decide(t, nearUnits(distance), view, "found")["found"]; got != 0 {
+			t.Errorf("%s bound selected %v spaces, want none", name, got)
+		}
+	}
+	if got := decide(t, nearUnits(`"var(item.x) - 1"`), view, "found")["found"]; got != 9 {
+		t.Errorf("bound reading the item: %v, want 9 (spaces 2 to 10 are within their own x - 1 of an anchor)", got)
 	}
 }
 

@@ -3,6 +3,13 @@ package ai
 import "fmt"
 
 func (s *selectorSpec) takeExtras(where map[string]any) (map[string]any, error) {
+	if s.kind == "orders" || s.kind == "assignments" {
+		for _, key := range []string{"near", "at", "in_set", "not_in_set", "region_in_set", "bucket"} {
+			if _, present := where[key]; present {
+				return nil, fmt.Errorf("%s do not support %q", s.kind, key)
+			}
+		}
+	}
 	if where == nil {
 		return map[string]any{}, nil
 	}
@@ -16,7 +23,7 @@ func (s *selectorSpec) takeExtras(where map[string]any) (map[string]any, error) 
 		return nil, err
 	}
 	if raw, present := where["in"]; present {
-		filters, err := parseInFilters(raw, s.kind, s.letNames())
+		filters, err := parseInFilters(raw, s.kind, s.scopeSource(), s.letNames())
 		if err != nil {
 			return nil, err
 		}
@@ -64,7 +71,7 @@ func parseNear(raw any) (*nearSpec, error) {
 	if !ok || obj["of"] == nil {
 		return nil, fmt.Errorf("near must be an object (or list of objects) with \"distance\" and \"of\"")
 	}
-	if err := checkKeys(obj, "distance", "unit", "of"); err != nil {
+	if err := checkKeys(obj, "distance", "unit", "of", "through"); err != nil {
 		return nil, fmt.Errorf("near: %w", err)
 	}
 	if err := checkOptionTypes[string](obj, "unit"); err != nil {
@@ -91,8 +98,27 @@ func parseNear(raw any) (*nearSpec, error) {
 		return nil, fmt.Errorf("near: %v", err)
 	}
 	unit, _ := obj["unit"].(string)
+	if near.of != nil && (near.of.kind == "orders" || near.of.kind == "assignments") {
+		return nil, fmt.Errorf("%s cannot be spatial anchors", near.of.kind)
+	}
 	if _, present := obj["unit"]; present && unit != "space" && unit != "zone" {
 		return nil, fmt.Errorf("near unit must be \"space\" or \"zone\"")
+	}
+	if obj["through"] != nil {
+		if unit == "zone" {
+			return nil, fmt.Errorf("near with \"through\" does not support unit \"zone\"")
+		}
+		raw_through, ok := obj["through"].(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("near \"through\" must be an object")
+		}
+		err = withScopeBarrier("near.through", func() (parsed error) {
+			near.through, parsed = parseSelectorSpec(map[string]any{"kind": "spaces", "where": raw_through}, "place")
+			return parsed
+		})
+		if err != nil {
+			return nil, fmt.Errorf("near through: %v", err)
+		}
 	}
 	near.zone_steps = unit == "zone"
 	return near, nil

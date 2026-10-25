@@ -1,5 +1,7 @@
 package ai
 
+import "slices"
+
 type itemFilter struct {
 	spec                               *selectorSpec
 	view                               View
@@ -10,12 +12,12 @@ type itemFilter struct {
 	has_in_set, has_bucket, has_places bool
 	region_keys                        map[itemKey]bool
 	has_region_set                     bool
-	anchors                            [][]ZoneRef
+	near_clauses                       []nearClause
 	scope                              func(selItem) bool
 }
 
-func (s *selectorSpec) newFilter(view View, internals *Internals, cen *census, anchors [][]ZoneRef) itemFilter {
-	f := itemFilter{spec: s, view: view, internals: internals, anchors: anchors}
+func (s *selectorSpec) newFilter(view View, internals *Internals, cen *census, clauses []nearClause) itemFilter {
+	f := itemFilter{spec: s, view: view, internals: internals, near_clauses: clauses}
 	if s.role == "actor" {
 		f.scope = actorScope(view, s.kind)
 	}
@@ -76,6 +78,9 @@ func setKeys(set *entitySet) map[itemKey]bool {
 }
 
 func (f itemFilter) allows(item selItem, key itemKey) bool {
+	if source, ok := f.spec.source.(*orderSource); ok && !source.allows(unwrapItem(item).(orderItem).entry.SubjectUID, f.internals) {
+		return false
+	}
 	loc, _, located := locOf(item)
 	switch {
 	case f.scope != nil && !f.scope(item):
@@ -113,13 +118,22 @@ func (f itemFilter) regionAllowed(item selItem, loc ZoneRef) bool {
 
 func (f itemFilter) nearAll(item selItem, loc ZoneRef) bool {
 	for i, near := range f.spec.near {
-		closest, found := 0.0, false
-		for _, anchor := range f.anchors[i] {
-			if d := item.measure(loc, anchor, near.zone_steps); !found || d < closest {
-				closest, found = d, true
-			}
+		clause := f.near_clauses[i]
+		max_d := float64(clause.bound)
+		if !clause.hoisted {
+			max_d = float64(near.distance.int(f.view, f.internals))
 		}
-		if !found || closest > float64(near.distance.int(f.view, f.internals)) {
+		if clause.reach != nil {
+			d, reached := clause.reach[loc.Space]
+			if !reached || float64(d) > max_d {
+				return false
+			}
+			continue
+		}
+		within := slices.ContainsFunc(clause.locations, func(anchor ZoneRef) bool {
+			return item.measure(loc, anchor, near.zone_steps) <= max_d
+		})
+		if !within {
 			return false
 		}
 	}

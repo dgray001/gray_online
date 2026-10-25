@@ -1,6 +1,7 @@
 package unit
 
 import (
+	"fmt"
 	"slices"
 
 	"github.com/dgray001/gray_online/game/games/risq/ai"
@@ -187,12 +188,13 @@ func (f *fakeView) currentOrder(call orderCall, kind ai.OrderKind) *ai.CurrentOr
 	return order
 }
 
-func (f *fakeView) Logger() *util.Logger       { return nil }
-func (f *fakeView) Revision() uint64           { return 0 }
-func (f *fakeView) Nickname() string           { return f.nickname }
-func (f *fakeView) Units() []ai.UnitView       { f.query("Units"); return slices.Clone(f.units) }
-func (f *fakeView) ScopedUnits() []ai.UnitView { f.query("ScopedUnits"); return slices.Clone(f.units) }
-func (f *fakeView) IdleUnits() []ai.UnitView   { f.query("IdleUnits"); return f.EligibleUnits() }
+func (f *fakeView) Logger() *util.Logger        { return nil }
+func (f *fakeView) Revision() uint64            { return 0 }
+func (f *fakeView) OrderQueue() []ai.OrderEntry { return nil }
+func (f *fakeView) Nickname() string            { return f.nickname }
+func (f *fakeView) Units() []ai.UnitView        { f.query("Units"); return slices.Clone(f.units) }
+func (f *fakeView) ScopedUnits() []ai.UnitView  { f.query("ScopedUnits"); return slices.Clone(f.units) }
+func (f *fakeView) IdleUnits() []ai.UnitView    { f.query("IdleUnits"); return f.EligibleUnits() }
 func (f *fakeView) EligibleUnits(kinds ...ai.OrderKind) []ai.UnitView {
 	f.query("EligibleUnits")
 	return slices.DeleteFunc(slices.Clone(f.units), func(unit ai.UnitView) bool {
@@ -323,10 +325,11 @@ func (f *fakeView) AllRegions() []ai.RegionInfo {
 func (f *fakeView) AvailableMercenaries() []ai.Producible {
 	return slices.Clone(f.availableMercenaries)
 }
-func (f *fakeView) AllZones() []ai.ZoneInfo       { f.query("AllZones"); return slices.Clone(f.allZones) }
-func (f *fakeView) PlayerIDs() []int              { return f.playerIDs }
-func (f *fakeView) PlayerID() int                 { return f.playerID }
-func (f *fakeView) PlayerScore(player_id int) int { return f.playerScores[player_id] }
+func (f *fakeView) AllZones() []ai.ZoneInfo             { f.query("AllZones"); return slices.Clone(f.allZones) }
+func (f *fakeView) PlayerIDs() []int                    { return f.playerIDs }
+func (f *fakeView) PlayerID() int                       { return f.playerID }
+func (f *fakeView) PlayerScore(player_id int) int       { return f.playerScores[player_id] }
+func (f *fakeView) PlayerEliminated(player_id int) bool { return false }
 func (f *fakeView) MatchingSpaces(condition ai.SpaceCondition) []ai.Coordinate {
 	f.query("MatchingSpaces")
 	if f.matchingSpaces != nil {
@@ -359,6 +362,10 @@ func (f *fakeView) SpaceDistance(a ai.Coordinate, b ai.Coordinate) int {
 	}
 	return distance
 }
+func (f *fakeView) SpaceNeighbors(space ai.Coordinate) []ai.Coordinate {
+	f.query("SpaceNeighbors")
+	return nil
+}
 func (f *fakeView) LocationDistance(a ai.ZoneRef, b ai.ZoneRef) int {
 	f.query("LocationDistance")
 	if f.locationDistances == nil {
@@ -390,6 +397,12 @@ func (f *fakeView) InAttackRange(b ai.BuildingView, target ai.ZoneRef) bool {
 func (f *fakeView) BuildCost(building_id uint32) ai.Cost { return f.buildCost[building_id] }
 func (f *fakeView) UnitCost(unit_id uint32) ai.Cost      { return f.unitCost[unit_id] }
 func (f *fakeView) TechCost(tech_id uint32) ai.Cost      { return f.techCost[tech_id] }
+
+var fakeConfig = map[string]float64{"unit.cost_food.2": 3, "unit.cost_wood.2": 4, "building.max_health.7": 90}
+
+func (f *fakeView) ConfigValue(table string, field string, id uint32) (float64, error) {
+	return fakeConfig[fmt.Sprintf("%s.%s.%d", table, field, id)], nil
+}
 
 func (f *fakeView) MoveOrder(u ai.UnitView, target ai.ZoneRef, clear_previous bool) ai.Order {
 	return f.record(orderCall{Kind: 1, Subject: u.InternalID, Place: target, Clear: clear_previous})

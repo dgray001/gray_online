@@ -1,12 +1,30 @@
 package ai
 
-import "cmp"
+import (
+	"maps"
+	"math"
+	"slices"
+)
 
 func (a *selectAction) ToOrders(view View, internals *Internals) []Order {
+	if a.carry != "" {
+		return a.carryRound(view, internals)
+	}
 	cen := newCensus(view, internals)
 	previous := internals.select_census
 	internals.select_census = cen
 	defer func() { internals.select_census = previous }()
+	internals.target_queue_index = nil
+	var job *assignJob
+	if a.assign != "" {
+		job = newAssignJob(a, cen)
+		internals.storeAssignment(a.assign, job)
+		defer func() {
+			if cen.invalid {
+				delete(internals.assignments, a.assign)
+			}
+		}()
+	}
 	var targets []selItem
 	if a.pick != nil {
 		targets = a.pick.resolve(view, internals, cen)
@@ -38,6 +56,9 @@ func (a *selectAction) ToOrders(view View, internals *Internals) []Order {
 		}
 		return orders
 	}
+	if job != nil {
+		return a.startAssignment(ctx, job, actors, targets)
+	}
 	return a.assignAndIssue(ctx, actors, targets)
 }
 
@@ -63,67 +84,124 @@ func (a *selectAction) issueVerbs(ctx *issueContext, actor loopItem, target *aim
 }
 
 type targetSlot struct {
-	item     selItem
-	aim      aim
-	assigned float64
+	item       selItem
+	aim        aim
+	capacity   *float64
+	remaining  *float64
+	assigned   float64
+	assign_key assignKey
 }
 
-func (a *selectAction) slotsFor(targets []selItem) []targetSlot {
-	slots := make([]targetSlot, 0, len(targets))
+func preEvalLets(item selItem, internals *Internals) bool {
+	if item.lets == nil {
+		return true
+	}
+	for _, name := range slices.Sorted(maps.Keys(item.lets.specs)) {
+		spec := item.lets.specs[name]
+		if spec.impure {
+			continue
+		}
+		previous := internals.eval_errors
+		item.letValue(name, spec)
+		if internals.eval_errors != previous || item.census.invalid {
+			return false
+		}
+	}
+	return true
+}
+
+func (a *selectAction) slotsFor(ctx *issueContext, targets []selItem) []*targetSlot {
+	slots := make([]*targetSlot, 0, len(targets))
 	for _, t := range targets {
 		if aimed, ok := aimAt(t); ok {
-			slots = append(slots, targetSlot{item: t, aim: aimed})
+			var capPtr, remPtr *float64
+			initial := 0.0
+			if t.initial != nil {
+				initial = *t.initial
+			}
+			if t.capacity != nil {
+				capPtr = t.capacity
+				rem := *t.capacity - initial
+				remPtr = &rem
+			}
+			slot := &targetSlot{item: t, aim: aimed, capacity: capPtr, remaining: remPtr, assigned: initial, assign_key: assignKeyOf(t)}
+			slot.item.slot = slot
+			if !preEvalLets(slot.item, ctx.internals) {
+				if slot.item.census.invalid {
+					return nil
+				}
+				continue
+			}
+			slots = append(slots, slot)
 		}
 	}
 	return slots
 }
 
 func (a *selectAction) assignAndIssue(ctx *issueContext, actors []selItem, targets []selItem) []Order {
-	slots := a.slotsFor(targets)
+	slots := a.slotsFor(ctx, targets)
 	if len(slots) == 0 || len(actors) == 0 {
 		return nil
 	}
-	defer saveScoringContext(ctx.internals).restore(ctx.internals)
-	rounds := 1
-	previous := ctx.internals.eval_errors
-	if a.assign != nil {
-		rounds += max(0, a.assign.queue.int(ctx.view, ctx.internals))
+	readyActors := make([]selItem, 0, len(actors))
+	for _, actor := range actors {
+		if !preEvalLets(actor, ctx.internals) {
+			if actor.census.invalid {
+				return nil
+			}
+			continue
+		}
+		readyActors = append(readyActors, actor)
 	}
-	if ctx.internals.eval_errors != previous {
+	actors = readyActors
+	if len(actors) == 0 {
 		return nil
 	}
-	ordered := a.orderActors(ctx, actors)
-	taken := make(map[uint64]map[int]bool, len(ordered))
-	orders := make([]Order, 0, len(ordered))
-	for round := 0; round < rounds; round++ {
-		for _, actor := range ordered {
-			key, _ := keyOf(actor)
-			i, ok := a.pickSlot(ctx, actor, slots, taken[key.id], round)
-			if !ok {
-				continue
-			}
-			first := len(taken[key.id]) == 0
-			previous := ctx.internals.eval_errors
-			weight := a.weightOf(ctx, actor, slots[i])
-			if ctx.internals.eval_errors != previous {
-				continue
-			}
-			issued := a.issueVerbs(ctx, actor, &slots[i].aim, first)
-			if len(issued) == 0 {
-				continue
-			}
-			if taken[key.id] == nil {
-				taken[key.id] = map[int]bool{}
-			}
-			taken[key.id][i] = true
-			slots[i].assigned += weight
-			orders = append(orders, issued...)
+	defer saveScoringContext(ctx.internals).restore(ctx.internals)
+	taken := make(map[uint64]bool, len(actors))
+	orders := make([]Order, 0, len(actors))
+	for _, actor := range actors {
+		key, _ := keyOf(actor)
+		i, ok := a.pickSlot(ctx, actor, slots)
+		if !ok {
+			continue
 		}
+		previous := ctx.internals.eval_errors
+		weight := a.weightOf(ctx, actor, slots[i])
+		if ctx.internals.eval_errors != previous || weight < 0 || math.IsNaN(weight) {
+			if weight < 0 || math.IsNaN(weight) {
+				ctx.internals.eval_errors++
+			}
+			continue
+		}
+		issued := a.issueVerbs(ctx, actor, &slots[i].aim, true)
+		if len(issued) == 0 {
+			continue
+		}
+		if a.prepend {
+			taken[key.id] = true
+		}
+		if ctx.internals.target_queue_index != nil {
+			if tk, ok := keyOf(slots[i].item); ok && tk.id != 0 {
+				if ctx.internals.target_queue_index[key.id] == nil {
+					ctx.internals.target_queue_index[key.id] = make(map[uint64]bool)
+				}
+				ctx.internals.target_queue_index[key.id][tk.id] = true
+			}
+		}
+		slots[i].assigned += weight
+		if slots[i].remaining != nil {
+			*slots[i].remaining -= weight
+			if *slots[i].remaining <= 0 {
+				slots = slices.Delete(slots, i, i+1)
+			}
+		}
+		orders = append(orders, issued...)
 	}
 	if a.prepend {
-		for _, actor := range ordered {
+		for _, actor := range actors {
 			key, _ := keyOf(actor)
-			if len(taken[key.id]) > 0 {
+			if taken[key.id] {
 				if order, ok := ctx.requeue(actor); ok {
 					orders = append(orders, order)
 				}
@@ -133,48 +211,18 @@ func (a *selectAction) assignAndIssue(ctx *issueContext, actors []selItem, targe
 	return orders
 }
 
-func (a *selectAction) orderActors(ctx *issueContext, actors []selItem) []selItem {
-	if a.assign == nil {
-		return actors
+func (a *selectAction) weightOf(ctx *issueContext, actor selItem, slot *targetSlot) float64 {
+	if a.match == nil || a.match.weight == nil {
+		return 1.0
 	}
-	keys := make(map[uint64]float64, len(actors))
-	for _, actor := range actors {
-		restore := ctx.internals.bindItem("actor", actor)
-		key, _ := keyOf(actor)
-		previous := ctx.internals.eval_errors
-		value := a.assign.unit_order.float(ctx.view, ctx.internals)
-		if ctx.internals.eval_errors == previous {
-			keys[key.id] = value
-		}
-		restore()
-	}
-	ordered := make([]selItem, 0, len(actors))
-	for _, actor := range actors {
-		key, _ := keyOf(actor)
-		if _, valid := keys[key.id]; valid {
-			ordered = append(ordered, actor)
-		}
-	}
-	unitOrder := func(actor selItem) float64 { key, _ := keyOf(actor); return keys[key.id] }
-	orderDrawingTies(ctx.internals, ordered, len(ordered),
-		func(a, b selItem) int { return cmp.Compare(unitOrder(a), unitOrder(b)) },
-		func(a, b selItem) bool { ka, _ := keyOf(a); kb, _ := keyOf(b); return ka.id < kb.id })
-	return ordered
-}
-
-func (a *selectAction) weightOf(ctx *issueContext, actor selItem, slot targetSlot) float64 {
-	if a.assign == nil {
-		return 0
-	}
-	restore := a.bind(ctx, actor, slot, 0)
+	restore := a.bind(ctx, actor, slot)
 	defer restore()
-	return max(0, a.assign.weight.float(ctx.view, ctx.internals))
+	return a.match.weight.float(ctx.view, ctx.internals)
 }
 
-func (a *selectAction) bind(ctx *issueContext, actor selItem, slot targetSlot, round int) func() {
+func (a *selectAction) bind(ctx *issueContext, actor selItem, slot *targetSlot) func() {
 	restore_actor := ctx.internals.bindItem("actor", actor)
 	restore_target := ctx.internals.bindItem("target", slot.item)
-	ctx.internals.target_assigned, ctx.internals.assign_round = slot.assigned, float64(round)
 	return func() {
 		restore_target()
 		restore_actor()

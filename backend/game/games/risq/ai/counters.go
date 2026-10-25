@@ -3,6 +3,7 @@ package ai
 import (
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 
 	"github.com/dgray001/gray_online/util"
@@ -28,6 +29,7 @@ type amount struct {
 	query counter
 	// whether expr names built-in variables like food or turn, so they are only computed when read
 	reads_vars bool
+	impure     bool
 }
 
 var expressionCounters = map[string]counter{
@@ -57,14 +59,14 @@ func parseAmount(raw any) (amount, error) {
 	case map[string]any:
 		for name, parse := range map[string]func(map[string]any) (counter, error){"count_spaces": parseSpaceCounter, "closest_spaces": parseClosestSpaceCounter} {
 			if obj, ok := v[name].(map[string]any); ok && len(v) == 1 {
-				query, err := parse(obj)
-				return amount{query: query}, err
+				query, impure, err := trackRandom(func() (counter, error) { return parse(obj) })
+				return amount{query: query, impure: impure}, err
 			}
 		}
 		for _, name := range aggregateNames {
 			if obj, ok := v[name].(map[string]any); ok && len(v) == 1 {
-				query, err := parseAggregate(name, obj)
-				return amount{query: query}, err
+				query, impure, err := trackRandom(func() (counter, error) { return parseAggregate(name, obj) })
+				return amount{query: query, impure: impure}, err
 			}
 		}
 		return amount{}, fmt.Errorf("numeric query must be a count_spaces, closest_spaces, count, sum, min or max object")
@@ -85,7 +87,7 @@ func parseAmount(raw any) (amount, error) {
 		if reads.Impure {
 			noteRandomUse()
 		}
-		return amount{expr: v, reads_vars: len(reads.Bare) > 0}, nil
+		return amount{expr: v, reads_vars: len(reads.Bare) > 0, impure: reads.Impure}, nil
 	}
 	return amount{}, fmt.Errorf("must be a number, expression string or space query object")
 }
@@ -101,6 +103,34 @@ func parseNumber(raw map[string]any, key string, def float64) (amount, error) {
 		return amount{}, fmt.Errorf("%q %v", key, err)
 	}
 	return a, nil
+}
+
+func evalGameVar(view View, internals *Internals, field string) (float64, error) {
+	switch field {
+	case "food":
+		return internals.available(view, ResourceFood), nil
+	case "wood":
+		return internals.available(view, ResourceWood), nil
+	case "stone":
+		return internals.available(view, ResourceStone), nil
+	case "gold":
+		return internals.available(view, ResourceGold), nil
+	case "population":
+		current, _ := internals.population(view)
+		return float64(current), nil
+	case "population_limit":
+		_, limit := internals.population(view)
+		return float64(limit), nil
+	case "population_max":
+		return float64(view.MaxPopulation()), nil
+	case "turn":
+		return float64(view.TurnNumber()), nil
+	case "map_size":
+		return float64(view.MapSize()), nil
+	case "num_players":
+		return float64(view.NumPlayers()), nil
+	}
+	return 0, fmt.Errorf("unknown gameVar field %q", field)
 }
 
 func (a amount) resolve(view View, internals *Internals) (value float64, err error) {
@@ -126,11 +156,23 @@ func (a amount) resolve(view View, internals *Internals) (value float64, err err
 	if a.reads_vars {
 		vars = expressionVars(view, internals)
 	}
-	return util.EvalExprWithDistance(a.expr, vars, func(name string) (float64, error) {
+	return util.EvalExprWithFunctions(a.expr, vars, func(name string) (float64, error) {
 		return internals.lookupVar(view, name), nil
 	}, func(a string, b string, zone_steps bool) (float64, error) {
 		return internals.distance(view, a, b, zone_steps)
+	}, view.ConfigValue, func(field string) (float64, error) {
+		return evalGameVar(view, internals, field)
+	}, func(tech_id uint32) (bool, error) {
+		return view.TechResearched(tech_id), nil
 	}, internals.rng)
+}
+
+func (a amount) independentOf(role string) bool {
+	if a.query != nil || a.impure || strings.Contains(a.expr, "distance(") {
+		return false
+	}
+	reads, _ := util.AnalyzeExpr(a.expr)
+	return !slices.ContainsFunc(reads.Vars, func(name string) bool { return strings.HasPrefix(name, role+".") })
 }
 
 // Resolves to a number, or 0 (with a one-time warning) when the expression can't be evaluated

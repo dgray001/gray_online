@@ -217,6 +217,7 @@ var orderKindNames = map[string]OrderKind{
 }
 
 type CurrentOrder struct {
+	TargetUID      uint64
 	Kind           OrderKind
 	TargetZone     *ZoneRef
 	TargetSpace    *Coordinate
@@ -354,6 +355,7 @@ type Order struct {
 
 // Read-only per-player snapshot, gated by the same fog-of-war the frontend shows a human.
 type View interface {
+	OrderQueue() []OrderEntry
 	Logger() *util.Logger
 	// changes whenever an emitted order changes what the view reports
 	Revision() uint64
@@ -409,11 +411,13 @@ type View interface {
 	PlayerIDs() []int
 	PlayerID() int
 	PlayerScore(player_id int) int
+	PlayerEliminated(player_id int) bool
 	MatchingSpaces(condition SpaceCondition) []Coordinate
 	CountSpaces(condition SpaceCondition, include func(Coordinate) bool) int
 	ClosestSpaces(reference Coordinate, condition SpaceCondition, exclude_reference bool) []Coordinate
 	// space-to-space steps over the board graph, so seams and links count as one step
 	SpaceDistance(a Coordinate, b Coordinate) int
+	SpaceNeighbors(space Coordinate) []Coordinate
 	// SpaceDistance scaled to zone steps across spaces; zone offset distance within one space
 	LocationDistance(a ZoneRef, b ZoneRef) int
 	Score() int
@@ -425,6 +429,7 @@ type View interface {
 	BuildCost(building_id uint32) Cost
 	UnitCost(unit_id uint32) Cost
 	TechCost(tech_id uint32) Cost
+	ConfigValue(table string, field string, id uint32) (float64, error)
 
 	MoveOrder(u UnitView, target ZoneRef, clear_previous bool) Order
 	MoveSpaceOrder(u UnitView, target Coordinate, clear_previous bool) Order

@@ -1,6 +1,9 @@
 package aibridge
 
 import (
+	"cmp"
+	"slices"
+
 	"github.com/dgray001/gray_online/game/game_utils"
 	"github.com/dgray001/gray_online/game/games/risq/ai"
 )
@@ -8,7 +11,7 @@ import (
 const unreachableSpaceDistance = 1 << 15
 
 // Normal borders between coordinate neighbors present on the board, plus the snapshot's seams and links
-func (v *aiView) spaceNeighbors(space ai.Coordinate) []ai.Coordinate {
+func (v *aiView) SpaceNeighbors(space ai.Coordinate) []ai.Coordinate {
 	neighbors := make([]ai.Coordinate, 0, 6)
 	for _, direction := range game_utils.AxialDirectionVectors() {
 		adjacent := ai.Coordinate{X: space.X + direction.X, Y: space.Y + direction.Y}
@@ -16,7 +19,14 @@ func (v *aiView) spaceNeighbors(space ai.Coordinate) []ai.Coordinate {
 			neighbors = append(neighbors, adjacent)
 		}
 	}
-	return append(neighbors, v.space_links[space]...)
+	neighbors = append(neighbors, v.space_links[space]...)
+	slices.SortFunc(neighbors, func(a, b ai.Coordinate) int {
+		if a.X != b.X {
+			return cmp.Compare(a.X, b.X)
+		}
+		return cmp.Compare(a.Y, b.Y)
+	})
+	return slices.Compact(neighbors)
 }
 
 func edgeZone(direction int) ai.Coordinate {
@@ -57,7 +67,7 @@ func (v *aiView) SpaceDistance(from ai.Coordinate, to ai.Coordinate) int {
 		for len(queue) > 0 {
 			current := queue[0]
 			queue = queue[1:]
-			for _, adjacent := range v.spaceNeighbors(current) {
+			for _, adjacent := range v.SpaceNeighbors(current) {
 				if _, seen := row[adjacent]; !seen {
 					row[adjacent] = row[current] + 1
 					queue = append(queue, adjacent)

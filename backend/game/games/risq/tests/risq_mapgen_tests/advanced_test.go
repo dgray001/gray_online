@@ -9,7 +9,9 @@ import (
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness"
 )
 
-func checkAdvancedPlayer(t *testing.T, player harness.PlayerState) {
+const largeStartAssets = `{"units":[{"unit_id":11,"count":10,"target":{"zone":"center"}},{"unit_id":21,"count":4,"target":{"zone":"center"}},{"unit_id":31,"count":2,"target":{"zone":"center"}},{"unit_id":22,"count":1,"target":{"zone":"center"}}],"buildings":[{"building_id":201,"terrain_override":7,"target":{"zone":"center"}},{"building_id":203,"terrain_override":25,"target":{"zone":"edge"}},{"building_id":203,"terrain_override":25,"target":{"zone":"edge"}},{"building_id":203,"terrain_override":25,"target":{"zone":"edge"}},{"building_id":203,"terrain_override":25,"target":{"zone":"edge"}},{"building_id":202,"target":{"zone":"edge"}},{"building_id":202,"target":{"zone":"edge"}},{"building_id":202,"target":{"space_distance":1,"zone":"center"}},{"building_id":202,"target":{"space_distance":1,"zone":"center"}},{"building_id":207,"target":{"space_distance":1,"zone":"center"}},{"building_id":209,"target":{"space_distance":1,"zone":"center"}},{"building_id":205,"target":{"space_distance":1,"zone":"center"}}]}`
+
+func checkLargeStartPlayer(t *testing.T, player harness.PlayerState) {
 	t.Helper()
 	units := make(map[uint32]int)
 	home := harness.Coord{}
@@ -22,7 +24,7 @@ func checkAdvancedPlayer(t *testing.T, player harness.PlayerState) {
 		}
 	}
 	if !reflect.DeepEqual(units, map[uint32]int{11: 10, 21: 4, 31: 2, 22: 1}) || player.PopulationLimit != 25 {
-		t.Errorf("Advanced units %v cap %d, want 10/4/2/1 units and cap 25", units, player.PopulationLimit)
+		t.Errorf("large start units %v cap %d, want 10/4/2/1 units and cap 25", units, player.PopulationLimit)
 	}
 	home_buildings, outer_buildings := make(map[uint32]int), make(map[uint32]int)
 	for _, building := range player.Buildings {
@@ -42,18 +44,18 @@ func checkAdvancedPlayer(t *testing.T, player harness.PlayerState) {
 		}
 	}
 	if !reflect.DeepEqual(home_buildings, map[uint32]int{201: 1, 203: 4, 202: 2}) || !reflect.DeepEqual(outer_buildings, map[uint32]int{202: 2, 207: 1, 209: 1, 205: 1}) {
-		t.Errorf("Advanced home buildings %v outer buildings %v", home_buildings, outer_buildings)
+		t.Errorf("large start home buildings %v outer buildings %v", home_buildings, outer_buildings)
 	}
 }
 
-func TestAdvancedStartsOnEveryScriptMap(t *testing.T) {
-	t.Parallel()
-	for i, name := range []string{"fixture_hexagon", "fixture_ring", "fixture_rectangle", "fixture_triangle"} {
+func TestLargeStartAssetsOnEveryScriptMap(t *testing.T) {
+	useFixtureScriptsWithAssets(t, largeStartAssets)
+	for i, name := range sweptScripts {
 		balance := defs.StartBalance(i%2 + 1)
-		g := harness.NewUnstartedGameWithSettings(t, "script:"+name, 1, 2, map[string]any{"starting_development": float64(defs.StartingDevelopment_ADVANCED), "start_balance": float64(balance)})
+		g := harness.NewUnstartedGameWithSettings(t, "script:"+name, 1, 2, map[string]any{"start_balance": float64(balance)})
 		g.Risq.StartGame()
 		for player := 0; player < 2; player++ {
-			checkAdvancedPlayer(t, g.Self(player))
+			checkLargeStartPlayer(t, g.Self(player))
 		}
 	}
 }

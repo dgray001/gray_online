@@ -8,6 +8,9 @@ type entitySet struct {
 }
 
 func (s *selectorSpec) validSets(internals *Internals, cen *census) bool {
+	if source, ok := s.source.(*orderSource); ok && !source.validSets(internals, cen) {
+		return false
+	}
 	for _, filter := range []struct{ name, kind string }{{s.in_set, s.kind}, {s.not_in_set, s.kind}, {s.region_in_set, "regions"}} {
 		if filter.name == "" {
 			continue
@@ -22,13 +25,18 @@ func (s *selectorSpec) validSets(internals *Internals, cen *census) bool {
 }
 
 type itemKey struct {
-	id   uint64
-	name string
-	loc  ZoneRef
+	position int
+	id       uint64
+	name     string
+	loc      ZoneRef
 }
 
 func keyOf(item loopItem) (itemKey, bool) {
 	switch it := unwrapItem(item).(type) {
+	case orderItem:
+		return itemKey{id: it.entry.SubjectUID, position: it.entry.QueuePosition}, true
+	case assignmentItem:
+		return itemKey{position: it.index}, true
 	case unitItem:
 		return itemKey{id: unitUID(it.unit.InternalID)}, true
 	case buildingItem:
@@ -42,7 +50,7 @@ func keyOf(item loopItem) (itemKey, bool) {
 	case regionItem:
 		return itemKey{name: it.stat.info.Name}, true
 	case foundationItem:
-		return itemKey{loc: it.loc}, true
+		return itemKey{id: it.uid, loc: it.loc}, true
 	case gatherableItem:
 		return itemKey{id: it.node.uid()}, true
 	case attackableItem:

@@ -57,7 +57,9 @@ func (i *Internals) bindItem(name string, item loopItem) func() {
 	}
 	previous, had := i.loop_items[name]
 	i.loop_items[name] = item
+	i.binding_depth++
 	return func() {
+		i.binding_depth--
 		if had {
 			i.loop_items[name] = previous
 		} else {
@@ -69,7 +71,7 @@ func (i *Internals) bindItem(name string, item loopItem) func() {
 func (i *Internals) takeLoopStep() bool {
 	i.loop_steps++
 	if i.loop_steps > maxLoopSteps {
-		i.warnOnce("loop_steps", fmt.Sprintf("ai: for_each stopped after %d steps in one decision", maxLoopSteps))
+		i.warnOnce(fmt.Sprintf("loop_steps:%d", i.rule_index), fmt.Sprintf("ai: rule %d: for_each stopped after %d steps", i.rule_index, maxLoopSteps))
 		return false
 	}
 	return true
@@ -99,6 +101,17 @@ func parseForEach(raw map[string]any) (Action, error) {
 		return action, err
 	}
 	source_name, _ := raw["source"].(string)
+	if source_name == "orders" || source_name == "assignments" {
+		selection := map[string]any{"kind": source_name}
+		if where, present := raw["where"]; present {
+			selection["where"] = where
+		}
+		converted := map[string]any{"action": "for_each", "as": raw["as"], "do": raw["do"], "select": selection}
+		if limit, present := raw["max"]; present {
+			converted["max"] = limit
+		}
+		return parseForEach(converted)
+	}
 	parse_source, known := loopSourceParsers[source_name]
 	if !known {
 		return nil, fmt.Errorf("for_each \"source\" must be players, spaces, regions, mercenaries, units, buildings, resources or zones")
@@ -137,8 +150,12 @@ func (i *Internals) distance(view View, a string, b string, zone_steps bool) (fl
 func (i *Internals) itemField(name string) float64 {
 	prefix, field, _ := strings.Cut(name, ".")
 	if item := i.loop_items[prefix]; item != nil {
+		previous := i.eval_errors
 		if value, ok := item.field(field); ok {
 			return value
+		}
+		if i.eval_errors != previous {
+			return 0
 		}
 	}
 	i.warnOnce("item:"+name, fmt.Sprintf("ai: var(%s) does not name a field of an item being visited", name))

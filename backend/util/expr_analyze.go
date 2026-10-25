@@ -9,9 +9,10 @@ type EqualityFactor struct {
 
 // What an expression reads: var(name) names, plain identifiers, and whether it draws random numbers
 type ExprReads struct {
-	Vars   []string
-	Bare   []string
-	Impure bool
+	Vars     []string
+	Bare     []string
+	Impure   bool
+	NeedsEnv bool
 }
 
 func tokenTexts(toks []exprToken) string {
@@ -121,6 +122,14 @@ func AnalyzeExpr(expr string) (ExprReads, bool) {
 			}
 		case "distance":
 			i += 4 // the two item names are not variables
+		case "config":
+			reads.NeedsEnv = true
+			i += 5
+		case "gameVar":
+			reads.NeedsEnv = true
+			i += 2
+		case "researched":
+			reads.NeedsEnv = true
 		case "random", "randomInt":
 			reads.Impure = true
 		}

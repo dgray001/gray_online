@@ -75,25 +75,6 @@ func TestSeededStartsPickSlotsReproducibly(t *testing.T) {
 	}
 }
 
-func TestStartTemplateWithoutAssetsUsesDevelopmentDefaults(t *testing.T) {
-	doc := startsDoc(`"player_start":{"size":0,"terrain":1,"spaces":[]}`, twoSlots)
-	for name, tc := range map[string]struct {
-		development float64
-		building    uint32
-		units       int
-	}{"standard": {2, 201, 4}, "nomad": {1, 0, 3}} {
-		t.Run(name, func(t *testing.T) {
-			board := seededBoard(t, doc, 2, 1, map[string]any{"starting_development": tc.development})
-			for _, x := range []int{-2, 2} {
-				home := zoneAt(t, board, x, 0, 0, 0)
-				if home.Building.ID != tc.building || len(home.Units) != tc.units {
-					t.Errorf("home at x=%d: building %d and %d units, want %d and %d", x, home.Building.ID, len(home.Units), tc.building, tc.units)
-				}
-			}
-		})
-	}
-}
-
 func TestStartTemplateWithUnitsReplacesDevelopmentDefaults(t *testing.T) {
 	template := `"player_start":{"size":0,"terrain":1,"spaces":[{"x":0,"y":0,"zones":[{"x":0,"y":0,"units":[{"id":21,"count":"starting_development"}]}]}]}`
 	board := seededBoard(t, startsDoc(template, twoSlots), 2, 1, map[string]any{"starting_development": float64(3)})

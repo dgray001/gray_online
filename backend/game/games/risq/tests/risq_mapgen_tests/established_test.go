@@ -9,7 +9,9 @@ import (
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness"
 )
 
-func checkEstablishedPlayer(t *testing.T, player harness.PlayerState) {
+const smallStartAssets = `{"units":[{"unit_id":11,"count":6,"target":{"zone":"center"}},{"unit_id":21,"count":2,"target":{"zone":"center"}},{"unit_id":31,"count":1,"target":{"zone":"center"}}],"buildings":[{"building_id":201,"terrain_override":7,"target":{"zone":"center"}},{"building_id":203,"terrain_override":25,"target":{"zone":"edge"}},{"building_id":207,"target":{"space_distance":1,"zone":"center"}},{"building_id":202,"target":{"space_distance":1,"zone":"center"}},{"building_id":202,"target":{"space_distance":1,"zone":"center"}}]}`
+
+func checkSmallStartPlayer(t *testing.T, player harness.PlayerState) {
 	t.Helper()
 	units, buildings := make(map[uint32]int), make(map[uint32]int)
 	home := harness.Coord{}
@@ -23,7 +25,7 @@ func checkEstablishedPlayer(t *testing.T, player harness.PlayerState) {
 		}
 	}
 	if !reflect.DeepEqual(units, map[uint32]int{11: 6, 21: 2, 31: 1}) || !reflect.DeepEqual(buildings, map[uint32]int{201: 1, 202: 2, 203: 1, 207: 1}) {
-		t.Errorf("Established units %v buildings %v", units, buildings)
+		t.Errorf("small start units %v buildings %v", units, buildings)
 	}
 	for _, building := range player.Buildings {
 		if building.UnderConstruction || building.CombatStats.Health != float64(building.CombatStats.MaxHealth) {
@@ -42,14 +44,14 @@ func checkEstablishedPlayer(t *testing.T, player harness.PlayerState) {
 	}
 }
 
-func TestEstablishedStartsOnEveryScriptMap(t *testing.T) {
-	t.Parallel()
-	for i, name := range []string{"fixture_hexagon", "fixture_ring", "fixture_rectangle", "fixture_triangle"} {
+func TestSmallStartAssetsOnEveryScriptMap(t *testing.T) {
+	useFixtureScriptsWithAssets(t, smallStartAssets)
+	for i, name := range sweptScripts {
 		balance := defs.StartBalance(i%2 + 1)
-		g := harness.NewUnstartedGameWithSettings(t, "script:"+name, 1, 2, map[string]any{"starting_development": float64(defs.StartingDevelopment_ESTABLISHED), "start_balance": float64(balance)})
+		g := harness.NewUnstartedGameWithSettings(t, "script:"+name, 1, 2, map[string]any{"start_balance": float64(balance)})
 		g.Risq.StartGame()
 		for player := 0; player < 2; player++ {
-			checkEstablishedPlayer(t, g.Self(player))
+			checkSmallStartPlayer(t, g.Self(player))
 		}
 	}
 }

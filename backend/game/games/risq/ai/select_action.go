@@ -5,22 +5,33 @@ import (
 	"slices"
 )
 
+type matchSpec struct {
+	where  Condition
+	weight *amount
+	score  []amount
+}
+
 type selectAction struct {
 	pick, actors *selectorSpec
 	verbs        []verb
-	assign       *spreadConfig
+	match        *matchSpec
 	into         *selectSink
 	queue        bool
 	prepend      bool
+	assign       string
+	carry        string
 }
 
-var selectKeys = []string{"action", "pick", "actors", "assign", "issue", "into", "mode"}
+var selectKeys = []string{"action", "pick", "actors", "assign", "match", "issue", "into", "mode"}
 
 func parseSelect(raw map[string]any) (Action, error) {
+	if raw["assign"] != nil {
+		return nil, fmt.Errorf("select: assign was replaced by pick.capacity and match")
+	}
 	if err := checkKeys(raw, selectKeys...); err != nil {
 		return nil, fmt.Errorf("select: %v", err)
 	}
-	if err := checkOptionTypes[map[string]any](raw, "pick", "actors", "assign", "into"); err != nil {
+	if err := checkOptionTypes[map[string]any](raw, "pick", "actors", "assign", "match", "into"); err != nil {
 		return nil, fmt.Errorf("select: %w", err)
 	}
 	if err := checkOptionTypes[[]any](raw, "issue"); err != nil {
@@ -29,10 +40,20 @@ func parseSelect(raw map[string]any) (Action, error) {
 	if err := checkOptionTypes[string](raw, "mode"); err != nil {
 		return nil, fmt.Errorf("select: %w", err)
 	}
+	if carry, isCarry, err := parseCarry(raw); isCarry {
+		if err != nil {
+			return nil, err
+		}
+		return &selectAction{carry: carry}, nil
+	}
 	a := &selectAction{}
 	var err error
+	var assigning bool
+	if a.assign, assigning, err = parseAssignInto(raw); err != nil {
+		return nil, err
+	}
 	if raw["pick"] != nil {
-		if a.pick, err = parseSelectorSpec(raw["pick"], "target"); err != nil {
+		if a.pick, err = parseSelectorSpecFor(raw["pick"], "target", assigning); err != nil {
 			return nil, fmt.Errorf("select pick: %v", err)
 		}
 	}
@@ -42,36 +63,46 @@ func parseSelect(raw map[string]any) (Action, error) {
 		}
 	}
 	if raw["issue"] != nil {
-		target_kind, actor_kind := "units", "buildings"
-		if a.pick != nil {
-			target_kind = a.pick.kind
-		}
+		actor_kind := "buildings"
 		if a.actors != nil {
 			actor_kind = a.actors.kind
 		}
-		err = withLoopScopeExtra("target", "select_"+target_kind, a.pick.letNames(), func() error {
-			return withLoopScopeExtra("actor", "select_"+actor_kind, a.actors.letNames(), func() (parsed error) {
+		parseIssue := func() error {
+			return withLoopScopeExtra("actor", "select_actor_"+actor_kind, a.actorScopeNames(), func() (parsed error) {
 				a.verbs, parsed = parseVerbs(raw["issue"], actor_kind)
 				return parsed
 			})
-		})
+		}
+		if a.pick != nil {
+			err = withLoopScopeExtra("target", "select_target_"+a.pick.kind, a.pick.letNames(), parseIssue)
+		} else {
+			err = parseIssue()
+		}
 		if err != nil {
 			return nil, fmt.Errorf("select: %v", err)
 		}
 	}
-	if raw["into"] != nil {
+	if raw["into"] != nil && !assigning {
 		if a.into, err = parseSink(raw["into"], a.pick); err != nil {
 			return nil, fmt.Errorf("select into: %v", err)
 		}
 	}
-	if a.pick != nil && a.pick.kind == "regions" && len(a.verbs) > 0 {
-		return nil, fmt.Errorf("select: regions cannot be the target of a verb")
+	if a.pick != nil && (a.pick.kind == "regions" || a.pick.kind == "assignments") && len(a.verbs) > 0 {
+		return nil, fmt.Errorf("select: %s cannot be the target of a verb", a.pick.kind)
 	}
 	if err = a.parseQueue(raw["mode"]); err != nil {
 		return nil, err
 	}
 	if err = a.parseActors(raw); err != nil {
 		return nil, err
+	}
+	if assigning {
+		if err = a.checkAssignShape(); err != nil {
+			return nil, err
+		}
+	}
+	if a.pick != nil && a.pick.capacity != nil && (!a.needsTarget() || a.into != nil || slices.ContainsFunc(a.verbs, verb.actorless)) {
+		return nil, fmt.Errorf("select: capacity is only valid on pick selectors with target-dependent verbs")
 	}
 	if a.pick == nil && (a.into != nil || a.needsTarget()) {
 		return nil, fmt.Errorf("select needs a \"pick\"")
@@ -114,14 +145,14 @@ func (a *selectAction) needsTarget() bool {
 
 func (a *selectAction) parseActors(raw map[string]any) error {
 	if len(a.verbs) == 0 {
-		if raw["actors"] != nil || raw["assign"] != nil || raw["mode"] != nil {
-			return fmt.Errorf("select: \"actors\", \"assign\" and \"mode\" need an \"issue\"")
+		if raw["actors"] != nil || raw["match"] != nil || raw["mode"] != nil {
+			return fmt.Errorf("select: \"actors\", \"match\" and \"mode\" need an \"issue\"")
 		}
 		return nil
 	}
 	if slices.ContainsFunc(a.verbs, verb.actorless) {
-		if len(a.verbs) > 1 || raw["actors"] != nil || raw["assign"] != nil || raw["mode"] != nil {
-			return fmt.Errorf("select: hire and cancel_foundation must be the only verb and take no \"actors\", \"assign\" or \"mode\"")
+		if len(a.verbs) > 1 || raw["actors"] != nil || raw["match"] != nil || raw["mode"] != nil {
+			return fmt.Errorf("select: hire and cancel_foundation must be the only verb and take no \"actors\", \"match\" or \"mode\"")
 		}
 		kind := "foundations"
 		if a.hiring() {
@@ -154,34 +185,139 @@ func (a *selectAction) parseActors(raw map[string]any) error {
 	if a.actors.kind == "buildings" && raw["mode"] != nil {
 		return fmt.Errorf("select: building orders take no \"mode\"")
 	}
-	return a.parseAssign(raw)
+	return a.parseMatchClause(raw)
 }
 
-func (a *selectAction) parseAssign(raw map[string]any) error {
-	if raw["assign"] == nil {
+func (a *selectAction) parseMatchClause(raw map[string]any) error {
+	if raw["match"] == nil {
 		return nil
 	}
 	if !a.needsTarget() {
-		return fmt.Errorf("select: \"assign\" needs a target-dependent verb")
+		return fmt.Errorf("select: \"match\" needs a target-dependent verb")
 	}
-	kind := "units"
-	if a.pick != nil {
-		kind = a.pick.kind
+	if a.pick == nil {
+		return fmt.Errorf("select: match requires both actors and pick")
 	}
-	parse := func() error {
-		var err error
-		a.assign, err = parseSpread(raw["assign"])
+	extra := append(a.pick.letNames(), "assigned", "remaining", "already_targeted")
+	err := withLoopScopeExtra("actor", "select_actor_"+a.actors.kind, a.actorScopeNames(), func() error {
+		return withLoopScopeExtra("target", "select_target_"+a.pick.kind, extra, func() error {
+			return a.parseMatchInner(raw["match"])
+		})
+	})
+	if err != nil {
+		return fmt.Errorf("select match: %v", err)
+	}
+	return nil
+}
+
+type matchWhere struct {
+	conditions []amount
+}
+
+func (m *matchWhere) Evaluate(view View, internals *Internals) bool {
+	for _, c := range m.conditions {
+		if c.float(view, internals) <= 0 {
+			return false
+		}
+	}
+	return true
+}
+
+var matchKeys = []string{"where", "weight", "score"}
+
+func (a *selectAction) parseMatchInner(raw any) error {
+	obj, ok := raw.(map[string]any)
+	if !ok {
+		return fmt.Errorf("must be an object")
+	}
+	if err := checkKeys(obj, matchKeys...); err != nil {
 		return err
 	}
-	extra := a.pick.letNames()
-	err := withLoopScopeExtra("actor", "select_"+a.actors.kind, a.actors.letNames(), func() error {
-		return withLoopScopeExtra("target", "select_"+kind, extra, parse)
-	})
-	if err == nil && a.assign.by_space {
-		err = fmt.Errorf("group_by is not supported")
+	m := &matchSpec{}
+	if err := m.parseWhere(obj["where"]); err != nil {
+		return err
 	}
+	if err := m.parseWeight(obj["weight"]); err != nil {
+		return err
+	}
+	if err := m.parseScore(obj["score"]); err != nil {
+		return err
+	}
+	a.match = m
+	return nil
+}
+
+func (m *matchSpec) parseWhere(raw any) error {
+	if raw == nil {
+		m.where = &conditionAlways{}
+		return nil
+	}
+	whereMap, ok := raw.(map[string]any)
+	if !ok {
+		return fmt.Errorf("where must be an object")
+	}
+	if err := checkKeys(whereMap, "if"); err != nil {
+		return fmt.Errorf("where: %w", err)
+	}
+	if ifRaw, hasIf := whereMap["if"]; hasIf {
+		return m.parseWhereIf(ifRaw)
+	}
+	m.where = &conditionAlways{}
+	return nil
+}
+
+func (m *matchSpec) parseWhereIf(raw any) error {
+	list, isList := raw.([]any)
+	if !isList {
+		list = []any{raw}
+	}
+	conds := make([]amount, 0, len(list))
+	for _, entry := range list {
+		c, err := parseAmount(entry)
+		if err != nil {
+			return fmt.Errorf("where if: %v", err)
+		}
+		if c.query != nil {
+			return fmt.Errorf("match where cannot contain aggregates")
+		}
+		conds = append(conds, c)
+	}
+	m.where = &matchWhere{conditions: conds}
+	return nil
+}
+
+func (m *matchSpec) parseWeight(raw any) error {
+	if raw == nil {
+		return nil
+	}
+	w, err := parseAmount(raw)
 	if err != nil {
-		return fmt.Errorf("select assign: %v", err)
+		return fmt.Errorf("weight: %v", err)
+	}
+	if w.query != nil {
+		return fmt.Errorf("match weight cannot contain aggregates")
+	}
+	m.weight = &w
+	return nil
+}
+
+func (m *matchSpec) parseScore(raw any) error {
+	if raw == nil {
+		return nil
+	}
+	list, isList := raw.([]any)
+	if !isList {
+		list = []any{raw}
+	}
+	for _, entry := range list {
+		s, err := parseAmount(entry)
+		if err != nil {
+			return fmt.Errorf("score: %v", err)
+		}
+		if s.query != nil {
+			return fmt.Errorf("match score cannot contain aggregates")
+		}
+		m.score = append(m.score, s)
 	}
 	return nil
 }

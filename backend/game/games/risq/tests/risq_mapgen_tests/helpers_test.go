@@ -3,6 +3,8 @@ package risq_mapgen_tests
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
@@ -25,6 +27,19 @@ const startsMissing = "map script did not place all player starts"
 func useScripts(t *testing.T, scripts map[string]string) {
 	t.Helper()
 	fakeboard.UseConfig(t, testConfig, scripts, nil)
+}
+
+func useFixtureScriptsWithAssets(t *testing.T, assets string) {
+	t.Helper()
+	scripts := make(map[string]string)
+	for _, name := range sweptScripts {
+		data, err := os.ReadFile(filepath.Join(testConfig, "maps", "scripted", name+".json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		scripts[name] = strings.Replace(string(data), `"player_starts","params":{`, `"player_starts","params":{"assets":`+assets+`,`, 1)
+	}
+	useScripts(t, scripts)
 }
 
 func useCustoms(t *testing.T, customs map[string]string) {

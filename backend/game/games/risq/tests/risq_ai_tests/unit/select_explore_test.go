@@ -100,8 +100,8 @@ func TestExploreRewrittenInJSON(t *testing.T) {
 		idle: []UnitView{near, far}, turn: 1,
 	}
 	explore := func(to string) string {
-		return rule(`{"action":"select","pick":{"kind":"spaces","where":{"if":"1 - var(target.vision)"}},
-			"assign":{"capacity":1,"overflow":"none","unit_score":"0 - var(target.distance_to_actor)"},
+		return rule(`{"action":"select","pick":{"kind":"spaces","capacity":1,"where":{"if":"1 - var(target.vision)"}},
+			"match":{"score":"0 - distance(actor, target)"},
 			"issue":[{"move":{"to":"` + to + `"}}]}`)
 	}
 	for _, c := range []struct {

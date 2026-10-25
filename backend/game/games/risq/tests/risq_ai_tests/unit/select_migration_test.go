@@ -108,11 +108,15 @@ func TestNearSupportsUnitTypesAndBuildingIDs(t *testing.T) {
 func TestSelectFailedAssignmentExpressionsEmitNothing(t *testing.T) {
 	worker := villager(1, Coordinate{})
 	view := selectTestView{loopTestView: loopTestView{units: []UnitView{worker}, spaces: lineOfSpaces(0, 0)}, idle: []UnitView{worker}}
-	for _, key := range []string{"queue", "unit_order", "unit_score", "capacity", "weight"} {
-		config := rule(fmt.Sprintf(`{"action":"select","pick":{"kind":"spaces"},"assign":{%q:"1 / 0"},"issue":[{"move":{}}]},
-			{"action":"select","pick":{"kind":"spaces","where":{"in":{"x":[2]}}},"issue":[{"move":{}}]}`, key))
+	for _, conf := range []string{
+		`{"action":"select","actors":{"kind":"units","rank":"1 / 0"},"pick":{"kind":"spaces"},"issue":[{"move":{}}]}`,
+		`{"action":"select","pick":{"kind":"spaces","capacity":"1 / 0"},"issue":[{"move":{}}]}`,
+		`{"action":"select","actors":{"kind":"units"},"pick":{"kind":"spaces"},"match":{"weight":"1 / 0"},"issue":[{"move":{}}]}`,
+		`{"action":"select","actors":{"kind":"units"},"pick":{"kind":"spaces"},"match":{"score":"1 / 0"},"issue":[{"move":{}}]}`,
+	} {
+		config := rule(conf + `,{"action":"select","pick":{"kind":"spaces","where":{"in":{"x":[2]}}},"issue":[{"move":{}}]}`)
 		if orders := selectOrders(t, config, view); len(orders) != 1 || orders[0].TargetID != spaceCode(at(2).Space) {
-			t.Errorf("failed %s: got %+v, want only the subsequent valid action", key, orders)
+			t.Errorf("failed expr in %s: got %+v, want only the subsequent valid action", conf, orders)
 		}
 	}
 }
@@ -159,8 +163,7 @@ func TestSelectAssignmentSkipsActorsBlockedByValidation(t *testing.T) {
 	workers := []UnitView{{InternalID: 1, Type: UnitTypeInfantry}, villager(2, Coordinate{})}
 	view := selectTestView{loopTestView: loopTestView{units: workers, buildings: []BuildingView{{InternalID: 1}}}, idle: workers}
 	for _, verb := range []string{"gather", "repair", "renew"} {
-		config := rule(fmt.Sprintf(`{"action":"select","pick":{"kind":"buildings","where":{"in":{"uid":[1000000001]}}},"actors":{"kind":"units"},
-			"assign":{"capacity":1,"overflow":"none","unit_order":"0 - var(actor.uid)"},"issue":[{%q:{}}]}`, verb))
+		config := rule(fmt.Sprintf(`{"action":"select","pick":{"kind":"buildings","capacity":1,"where":{"in":{"uid":[1000000001]}}},"actors":{"kind":"units","rank":"0 - var(actor.uid)"},"issue":[{%q:{}}]}`, verb))
 		orders := selectOrders(t, config, view)
 		if len(orders) != 1 || !slices.Equal(orders[0].Subjects, []uint64{2}) || !orders[0].ClearPreviousOrders {
 			t.Errorf("%s: got %+v, want one clearing order for villager 2", verb, orders)
@@ -198,8 +201,8 @@ func foundationView() selectTestView {
 }
 
 func TestSelectBuildersAssistFoundationsWithoutBuilders(t *testing.T) {
-	config := rule(`{"action":"select","pick":{"kind":"foundations","where":{"building_ids":[2],"if":"1 - var(target.builders)"}},
-		"actors":{"kind":"units","where":{"if":"var(actor.idle)"}},"assign":{"capacity":1,"overflow":"none","unit_order":"0 - var(actor.x)","unit_score":"0 - var(target.distance_to_actor)"},
+	config := rule(`{"action":"select","pick":{"kind":"foundations","capacity":1,"where":{"building_ids":[2],"if":"1 - var(target.builders)"}},
+		"actors":{"kind":"units","where":{"if":"var(actor.idle)"},"rank":"0 - var(actor.x)"},"match":{"score":"0 - distance(actor, target)"},
 		"issue":[{"build":{}}]}`)
 	orders := selectOrders(t, config, foundationView())
 	if len(orders) != 1 || orders[0].OrderType != kindBuild || orders[0].TargetID != 100 || orders[0].Subjects[0] != 1 {
@@ -266,8 +269,7 @@ func TestGarrisonCapacityIsPlainJSONOverBuildingFields(t *testing.T) {
 		},
 		idle: units, turn: 1,
 	}
-	config := rule(`{"action":"select","pick":{"kind":"buildings","where":{"owner":"own","if":"var(target.garrison_capacity) - var(target.garrison_count)"}},
-		"assign":{"capacity":"var(target.garrison_capacity) - var(target.garrison_count)","overflow":"none"},"issue":[{"garrison":{}}]}`)
+	config := rule(`{"action":"select","pick":{"kind":"buildings","where":{"owner":"own"},"capacity":"var(target.garrison_capacity) - var(target.garrison_count)"},"issue":[{"garrison":{}}]}`)
 	orders := selectOrders(t, config, view)
 	if len(orders) != 2 {
 		t.Fatalf("orders = %+v, want exactly the two free slots of building 10 filled", orders)

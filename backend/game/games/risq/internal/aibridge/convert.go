@@ -176,7 +176,7 @@ func (v *aiView) currentOrder(orders []snapOrder) *ai.CurrentOrder {
 	if !ok {
 		return nil
 	}
-	order := &ai.CurrentOrder{Kind: kind}
+	order := &ai.CurrentOrder{Kind: kind, TargetUID: v.queueEntry(0, 0, active).TargetUID}
 	switch active.OrderType {
 	case defs.OrderType_UnitMoveZone, defs.OrderType_UnitAttackZone:
 		ref := zoneRefFromKey(uint(active.TargetId))
@@ -243,24 +243,11 @@ func (v *aiView) unitViewShallow(u *snapUnit) ai.UnitView {
 	}
 }
 
-// Orders minus any this planning pass already emitted a cancel for
-func (v *aiView) liveOrders(orders []snapOrder) []snapOrder {
-	live := make([]snapOrder, 0, len(orders))
-	for _, o := range orders {
-		if !v.cancelled_orders[o.InternalId] {
-			live = append(live, o)
-		}
-	}
-	return live
-}
-
 func (v *aiView) unitView(u *snapUnit) ai.UnitView {
 	view := v.unitViewShallow(u)
-	live := v.liveOrders(u.ActiveOrders)
+	v.initQueues()
+	live := v.queues[u.InternalId]
 	view.CurrentOrder = v.currentOrder(live)
-	if override, touched := v.assigned_units[u.InternalId]; touched {
-		view.CurrentOrder = override
-	}
 	for _, o := range live {
 		if kind, ok := toOrderKind(o.OrderType); ok && v.order_ids[o.InternalId] {
 			view.ActiveOrders = append(view.ActiveOrders, ai.ActiveUnitOrder{ID: o.InternalId, Kind: kind})
@@ -334,7 +321,8 @@ func (v *aiView) ownBuildingView(b *snapBuilding) ai.BuildingView {
 	view.AutoAttack = b.AutoAttack
 	view.InterruptCurrent = b.InterruptCurrent
 	view.TargetPriority = toAiTargetCategories(b.TargetPriority)
-	live := v.liveOrders(b.ActiveOrders)
+	v.initQueues()
+	live := v.queues[1_000_000_000+b.InternalId]
 	for _, o := range live {
 		if kind, ok := toBuildingOrderKind(o.OrderType); ok && v.order_ids[o.InternalId] {
 			view.ActiveOrders = append(view.ActiveOrders, ai.ActiveBuildingOrder{ID: o.InternalId, Kind: kind, ItemID: uint32(o.TargetId)})

@@ -93,6 +93,31 @@ func TestValidateExprVisitsReferencesInOrderWithoutEvaluating(t *testing.T) {
 	}
 }
 
+func TestConfigCallReadsThroughTheConfigFunc(t *testing.T) {
+	read := func(table string, field string, id uint32) (float64, error) {
+		return float64(id) * float64(len(table)+len(field)), nil
+	}
+	cases := map[string]float64{"config(unit, cost, 3)": 24, "config(unit, cost, 1.6) + 1": 17, "2 * config(tech, a, 2 + var(x))": 50}
+	for expr, want := range cases {
+		got, err := EvalExprWithConfig(expr, nil, func(string) (float64, error) { return 3, nil }, nil, read, nil)
+		if err != nil || got != want {
+			t.Errorf("%q = %v, %v; want %v", expr, got, err, want)
+		}
+	}
+}
+
+func TestConfigCallErrors(t *testing.T) {
+	read := func(string, string, uint32) (float64, error) { return 1, nil }
+	for _, expr := range []string{"config(unit, cost, 0 - 1)", "config(unit, cost, 5000000000)", "config(unit, cost)", "config(1, cost, 2)", "config(unit, cost, 2"} {
+		if _, err := EvalExprWithConfig(expr, nil, nil, nil, read, nil); err == nil {
+			t.Errorf("%q evaluated without error", expr)
+		}
+	}
+	if _, err := EvalExpr("config(unit, cost, 2)", nil); err == nil {
+		t.Error("config evaluated with no config func")
+	}
+}
+
 func TestDistanceCallMeasuresNamedThingsInSpaceOrZoneSteps(t *testing.T) {
 	measure := func(a string, b string, zone_steps bool) (float64, error) {
 		if zone_steps {
@@ -117,5 +142,39 @@ func TestDistanceCallMeasuresNamedThingsInSpaceOrZoneSteps(t *testing.T) {
 	var visited []string
 	if err := ValidateExpr("distance(a, b) + var(c)", nil, func(name string) { visited = append(visited, name) }); err != nil || !reflect.DeepEqual(visited, []string{"a.x", "b.x", "c"}) {
 		t.Errorf("visited %v, %v", visited, err)
+	}
+}
+
+func TestGameVarCall(t *testing.T) {
+	lookup := func(field string) (float64, error) {
+		return float64(len(field)), nil
+	}
+	got, err := EvalExprWithFunctions("gameVar(food) * 2 + gameVar(turn)", nil, nil, nil, nil, lookup, nil, nil)
+	if err != nil || got != 12 {
+		t.Errorf("got %v, %v; want 12", got, err)
+	}
+	if err := ValidateExpr("gameVar(food) + 1", nil, nil); err != nil {
+		t.Errorf("ValidateExpr failed on gameVar(food): %v", err)
+	}
+	for _, bad := range []string{"gameVar(unknown)", "gameVar(1)", "gameVar()", "gameVar(food"} {
+		if _, err := EvalExprWithFunctions(bad, nil, nil, nil, nil, lookup, nil, nil); err == nil {
+			t.Errorf("%q evaluated without error", bad)
+		}
+	}
+}
+
+func TestResearchedCall(t *testing.T) {
+	researched := func(tech_id uint32) (bool, error) {
+		return tech_id == 4, nil
+	}
+	got, err := EvalExprWithFunctions("researched(4) * 10 + researched(2 + 1)", nil, nil, nil, nil, nil, researched, nil)
+	if err != nil || got != 10 {
+		t.Errorf("got %v, %v; want 10", got, err)
+	}
+	if _, err := EvalExprWithFunctions("researched(0 - 1)", nil, nil, nil, nil, nil, researched, nil); err == nil {
+		t.Errorf("negative tech id evaluated without error")
+	}
+	if _, err := EvalExpr("researched(4)", nil); err == nil {
+		t.Errorf("researched evaluated without callback")
 	}
 }

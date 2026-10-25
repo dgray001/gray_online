@@ -162,6 +162,7 @@ type issueContext struct {
 	view           View
 	internals      *Internals
 	gather_sources map[aim][]ResourceView
+	excluded       func(*targetSlot) bool
 }
 
 func (c *issueContext) issue(v verb, actor loopItem, target *aim, clear bool) (Order, bool) {

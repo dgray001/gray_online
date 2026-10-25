@@ -45,6 +45,7 @@ type Internals struct {
 	// how many run_bucket calls are currently nested, against the configured limit
 	bucket_depth      int
 	max_bucket_depth  int
+	rule_index        int
 	bucket_depth_warn bool
 	// set_var values: turn_vars are cleared every turn, vars persist for the whole game
 	turn_vars    map[string]float64
@@ -64,18 +65,19 @@ type Internals struct {
 	unit  *ZoneRef
 	start *ZoneRef
 	// the item each enclosing for_each is visiting by its "as" name, and the loop bodies run so far this decision
-	loop_items    map[string]loopItem
-	loop_steps    int
-	select_census *census
-	select_steps  int
-	eval_errors   uint64
-	turn_sets     map[string]*entitySet
-	joins         map[*selectorSpec]*joinIndex
-	world         *worldIndex
-	// whether any expression in the config draws random numbers, which keeps selectors from skipping evaluations
-	random_used   bool
-	sets          map[string]*entitySet
-	last_observed ObservationHistory
+	loop_items         map[string]loopItem
+	loop_steps         int
+	select_census      *census
+	select_steps       int
+	eval_errors        uint64
+	binding_depth      int
+	turn_sets          map[string]*entitySet
+	joins              map[*selectorSpec]*joinIndex
+	world              *worldIndex
+	sets               map[string]*entitySet
+	target_queue_index map[uint64]map[uint64]bool
+	last_observed      ObservationHistory
+	assignments        map[string]*assignJob
 }
 
 const defaultMaxBucketDepth = 3
@@ -97,6 +99,7 @@ func (i *Internals) Refresh() {
 	i.building_behaviors = nil
 	i.turn_vars = nil
 	i.turn_sets = nil
+	i.assignments = nil
 	i.joins = nil
 	i.world = nil
 	i.loop_steps = 0
@@ -232,7 +235,8 @@ func (m *RulesModel) DecideOrders(view View) Decision {
 	m.internals.Refresh()
 	m.internals.pruneBuckets(view)
 	orders := make([]Order, 0)
-	for _, rule := range m.rules {
+	for rule_index, rule := range m.rules {
+		m.internals.rule_index, m.internals.select_steps, m.internals.loop_steps = rule_index, 0, 0
 		matches, valid := evaluateCondition(rule.when, view, &m.internals)
 		if !valid || !matches {
 			continue

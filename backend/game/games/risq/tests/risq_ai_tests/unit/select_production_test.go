@@ -17,6 +17,96 @@ func productionView() *fakeView {
 	return view
 }
 
+type queueTestView struct {
+	*fakeView
+	entries  []ai.OrderEntry
+	revision uint64
+}
+
+func (v *queueTestView) OrderQueue() []ai.OrderEntry      { return v.entries }
+func (v *queueTestView) Issue(r ai.IssueRequest) ai.Order { return ai.DispatchIssue(v, r) }
+func (v *queueTestView) Revision() uint64                 { return v.revision }
+
+func TestOrdersCountDistinctSubjectsAndKinds(t *testing.T) {
+	v := &queueTestView{fakeView: productionView(), entries: []ai.OrderEntry{
+		{SubjectUID: 91, Kind: ai.QueueOrderNames["attack_unit"], TargetUID: 60},
+		{SubjectUID: 91, Kind: ai.QueueOrderNames["auto_attack_unit"], TargetUID: 60, QueuePosition: 1},
+		{SubjectUID: 92, Kind: ai.QueueOrderNames["attack_space"], TargetUID: 60},
+	}}
+	config := rule(`{"action":"set_var","name":"n","value":{"count":{"kind":"orders","where":{"in":{"order_kind":["attack_unit","auto_attack_unit"]},"if":"var(item.target_uid) == 60"},"distinct":"subject_uid"}}}`)
+	if got := decide(t, config, v, "n")["n"]; got != 1 {
+		t.Fatalf("count = %v, want 1", got)
+	}
+}
+
+func TestOrdersSubjectSets(t *testing.T) {
+	v := &queueTestView{fakeView: productionView(), entries: []ai.OrderEntry{{SubjectUID: 91}, {SubjectUID: 1_000_000_800, SubjectKind: 1}}}
+	for _, kind := range []string{"units", "buildings"} {
+		config := rule(`{"action":"select","pick":{"kind":"` + kind + `"},"into":{"set":"subjects"}},
+			{"action":"set_var","name":"included","value":{"count":{"kind":"orders","where":{"subject_in_set":"subjects"}}}},
+			{"action":"set_var","name":"excluded","value":{"count":{"kind":"orders","where":{"subject_not_in_set":"subjects"}}}}`)
+		got := decide(t, config, v, "included", "excluded")
+		if got["included"] != 1 || got["excluded"] != 1 {
+			t.Fatalf("%s: %v", kind, got)
+		}
+	}
+}
+
+func TestOrdersRejectSetsAndLocations(t *testing.T) {
+	for _, where := range []string{`{"near":{"of":{"x":0,"y":0}}}`, `{"at":{}}`, `{"in_set":"x"}`, `{"not_in_set":"x"}`, `{"if":"var(target.x)"}`, `{"in":{"order_kind":["move"]}}`} {
+		if loadError(rule(`{"action":"select","pick":{"kind":"orders","where":`+where+`}}`)) == nil {
+			t.Errorf("accepted %s", where)
+		}
+	}
+	if loadError(rule(`{"action":"select","pick":{"kind":"orders"},"into":{"set":"x"}}`)) == nil {
+		t.Fatal("accepted order sink")
+	}
+}
+
+func TestOrdersEqualityJoinStaysWithinBudget(t *testing.T) {
+	v := &queueTestView{fakeView: productionView()}
+	v.units = make([]ai.UnitView, 40)
+	for i := range v.units {
+		v.units[i].InternalID = uint64(i + 1)
+	}
+	for i := range 3000 {
+		v.entries = append(v.entries, ai.OrderEntry{SubjectUID: uint64(i%40 + 1), QueuePosition: i / 40})
+	}
+	config := rule(`{"action":"set_var","name":"total","value":0},
+		{"action":"for_each","source":"units","as":"u","do":[
+		{"action":"set_var","name":"n","value":{"count":{"kind":"orders","where":{"if":"var(item.subject_uid) == var(u.uid)"}}}},
+		{"action":"set_var","name":"total","value":"var(total) + var(n)"}]}`)
+	if got := decide(t, config, v, "total")["total"]; got != 3000 {
+		t.Fatalf("count = %v", got)
+	}
+}
+
+func (v *queueTestView) MoveSpaceOrder(u ai.UnitView, target ai.Coordinate, clear bool) ai.Order {
+	v.entries = append(v.entries, ai.OrderEntry{SubjectUID: u.InternalID, Kind: ai.QueueMoveSpace, Target: ai.ZoneRef{Space: target}})
+	v.revision++
+	return ai.Order{Subjects: []uint64{u.InternalID}}
+}
+
+func TestOrdersJoinRefreshesAfterEmission(t *testing.T) {
+	v := &queueTestView{fakeView: productionView()}
+	v.allowed = nil
+	v.matchingSpaces = func(ai.SpaceCondition) []ai.Coordinate { return []ai.Coordinate{{X: 1}, {X: 2}} }
+	config := rule(`{"action":"for_each","select":{"kind":"spaces","limit":2},"as":"s","do":[
+		{"action":"select","actors":{"kind":"units"},"pick":{"kind":"spaces","limit":1},"issue":[{"move":{"to":"space"}}]},
+		{"action":"set_var","name":"n","value":{"count":{"kind":"orders","where":{"if":"var(item.subject_uid) == 91"}}}}]}`)
+	if got := decide(t, config, v, "n")["n"]; got != 2 {
+		t.Fatalf("count = %v", got)
+	}
+}
+
+func TestDistinctRejectsInvalidFieldsAndOtherAggregates(t *testing.T) {
+	for _, query := range []string{`{"count":{"kind":"orders","distinct":"x"}}`, `{"count":{"kind":"orders","distinct":3}}`, `{"sum":{"kind":"units","of":1,"distinct":"uid"}}`} {
+		if loadError(rule(`{"action":"set_var","name":"n","value":`+query+`}`)) == nil {
+			t.Errorf("accepted %s", query)
+		}
+	}
+}
+
 func TestSelectStopRefundsSharedProductionAndRefreshesQueues(t *testing.T) {
 	view := productionView()
 	view.allowed = nil

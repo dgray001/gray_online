@@ -28,6 +28,7 @@ type loopTestView struct {
 }
 
 func (v loopTestView) Revision() uint64              { return 0 }
+func (v loopTestView) OrderQueue() []OrderEntry      { return nil }
 func (v loopTestView) Units() []UnitView             { return v.units }
 func (v loopTestView) VisibleEnemyUnits() []UnitView { return v.enemy_units }
 func (v loopTestView) AllUnits() []UnitView          { return slices.Concat(v.units, v.enemy_units) }
@@ -43,6 +44,7 @@ func (v loopTestView) AllZones() []ZoneInfo                             { return
 func (v loopTestView) PlayerIDs() []int                                 { return v.players }
 func (v loopTestView) PlayerID() int                                    { return v.me }
 func (v loopTestView) PlayerScore(player_id int) int                    { return 10 * player_id }
+func (v loopTestView) PlayerEliminated(player_id int) bool              { return false }
 func (v loopTestView) KnownResources(c ResourceCategory) []ResourceView { return v.resources[c] }
 
 func (v loopTestView) Logger() *util.Logger { return nil }
@@ -50,6 +52,7 @@ func (v loopTestView) Nickname() string     { return "loop-test" }
 
 // The game counters every expression can read; none of these tests depend on them
 func (v loopTestView) Population() (int, int)            { return 0, 0 }
+func (v loopTestView) MaxPopulation() int                { return 100 }
 func (v loopTestView) TurnNumber() int                   { return 1 }
 func (v loopTestView) MapSize() int                      { return 4 }
 func (v loopTestView) NumPlayers() int                   { return len(v.players) }
@@ -77,6 +80,10 @@ func (v loopTestView) MatchingSpaces(condition SpaceCondition) []Coordinate {
 func (v loopTestView) SpaceDistance(a Coordinate, b Coordinate) int {
 	dx, dy := b.X-a.X, b.Y-a.Y
 	return max(max(dx, -dx), max(dy, -dy), max(dx+dy, -dx-dy))
+}
+
+func (v loopTestView) SpaceNeighbors(space Coordinate) []Coordinate {
+	return nil
 }
 
 // The error a config fails to load with, or nil

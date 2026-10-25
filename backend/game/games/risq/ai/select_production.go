@@ -26,8 +26,8 @@ func (a *selectAction) parseProduction(raw map[string]any) error {
 			return fmt.Errorf("select: create and research cannot be mixed with other verbs")
 		}
 	}
-	if raw["actors"] == nil || raw["assign"] != nil || raw["mode"] != nil || raw["pick"] != nil {
-		return fmt.Errorf("select: create and research need explicit \"actors\" and take no \"pick\", \"assign\" or \"mode\"")
+	if raw["actors"] == nil || raw["match"] != nil || raw["mode"] != nil || raw["pick"] != nil {
+		return fmt.Errorf("select: create and research need explicit \"actors\" and take no \"pick\", \"match\" or \"mode\"")
 	}
 	if a.actors.kind != "buildings" {
 		return fmt.Errorf("select: create and research need \"buildings\" actors")

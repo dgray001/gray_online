@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/dgray001/gray_online/util"
 )
 
 // setVarAction stores a number for later rules to read with var(name): in the per-turn map (cleared
@@ -48,12 +50,55 @@ func withScopeBarrier(label string, parse func() error) error {
 	return parse()
 }
 
+var legacySelectVars = map[string]string{
+	"target_assigned":   "use var(target.assigned) in match",
+	"assign_round":      "use sequential select rules",
+	"unit_order":        "use actors.rank",
+	"unit_health":       "use var(actor.health)",
+	"unit_stamina":      "use var(actor.stamina)",
+	"unit_id":           "use var(actor.unit_id)",
+	"unit_distance":     "use distance(actor, target)",
+	"target_distance":   "use distance(actor, target)",
+	"target_health":     "use var(target.health)",
+	"target_max_health": "use var(target.max_health)",
+	"target_id":         "use var(target.uid)",
+}
+
+func (l *varNameLog) hasSelectScope() bool {
+	for _, s := range l.scopes {
+		if s.name == "target" || s.name == "actor" {
+			return true
+		}
+	}
+	return false
+}
+
+func (l *varNameLog) hasRoleInScope(role string) bool {
+	for i := len(l.scopes) - 1; i >= 0; i-- {
+		if l.scopes[i].barrier != "" {
+			return false
+		}
+		if l.scopes[i].name == role {
+			return true
+		}
+	}
+	return false
+}
+
 func noteVarRead(name string) {
 	if var_names_log == nil {
 		return
 	}
+	if ref, isConfig := strings.CutPrefix(name, util.ConfigRefPrefix); isConfig {
+		var_names_log.noteConfigRead(ref)
+		return
+	}
 	if strings.Contains(name, ".") {
 		var_names_log.noteItemRead(name)
+		return
+	}
+	if hint, bad := legacySelectVars[name]; bad && var_names_log.hasSelectScope() {
+		var_names_log.errors = append(var_names_log.errors, fmt.Sprintf("var(%s): legacy variable is not supported; %s", name, hint))
 		return
 	}
 	var_names_log.read[name] = true
@@ -69,6 +114,14 @@ func (l *varNameLog) noteItemRead(name string) {
 		}
 		if l.scopes[i].name != prefix {
 			continue
+		}
+		if (field == "distance_to_actor" || field == "zone_distance_to_actor") && !l.hasRoleInScope("actor") {
+			l.errors = append(l.errors, fmt.Sprintf("var(%s): %s items have no field %q", name, l.scopes[i].source, field))
+			return
+		}
+		if (field == "distance_to_target" || field == "zone_distance_to_target") && !l.hasRoleInScope("target") {
+			l.errors = append(l.errors, fmt.Sprintf("var(%s): %s items have no field %q", name, l.scopes[i].source, field))
+			return
 		}
 		if !hasItemField(l.scopes[i].source, field) && !slices.Contains(l.scopes[i].extra, field) {
 			l.errors = append(l.errors, fmt.Sprintf("var(%s): %s items have no field %q", name, l.scopes[i].source, field))
@@ -99,33 +152,48 @@ func noteVarSet(name string) {
 }
 
 // Runs parse with var() bookkeeping on, then reports names that are neither built-in nor ever set
-// and returns whether any expression in the model draws random numbers
-func withVarNameCheck(diagnostics io.Writer, parse func() error) (bool, error) {
+func withVarNameCheck(diagnostics io.Writer, parse func() error) error {
 	var_names_mu.Lock()
 	defer var_names_mu.Unlock()
 	var_names_log = &varNameLog{read: map[string]bool{}, set: map[string]bool{}}
 	defer func() { var_names_log = nil }()
 	if err := parse(); err != nil {
-		return false, err
+		return err
 	}
 	if len(var_names_log.errors) > 0 {
-		return false, fmt.Errorf("%s", strings.Join(var_names_log.errors, "; "))
+		return fmt.Errorf("%s", strings.Join(var_names_log.errors, "; "))
 	}
 	for name := range var_names_log.read {
 		if var_names_log.set[name] {
 			continue
 		}
+		if replacement, deprecated := deprecatedCostCall(name); deprecated {
+			fmt.Fprintf(diagnostics, "ai config: var(%s) is deprecated; use %s\n", name, replacement)
+		}
 		if _, err := builtinCounter(name); err != nil {
 			fmt.Fprintf(diagnostics, "ai config: var(%s) is not a built-in and no set_var sets it; it will read 0\n", name)
 		}
 	}
-	return var_names_log.random, nil
+	return nil
 }
 
 func noteRandomUse() {
 	if var_names_log != nil {
 		var_names_log.random = true
 	}
+}
+
+func trackRandom(parse func() (counter, error)) (counter, bool, error) {
+	if var_names_log == nil {
+		query, err := parse()
+		return query, false, err
+	}
+	outer := var_names_log.random
+	var_names_log.random = false
+	query, err := parse()
+	used := var_names_log.random
+	var_names_log.random = outer || used
+	return query, used, err
 }
 
 func (a *setVarAction) ToOrders(view View, internals *Internals) []Order {

@@ -1,6 +1,9 @@
 package unit
 
 import (
+	"encoding/json"
+	"io"
+	"math/rand"
 	"testing"
 
 	. "github.com/dgray001/gray_online/game/games/risq/ai"
@@ -90,6 +93,26 @@ func TestSelectorFindsNothingWhenItsStepBudgetRunsOut(t *testing.T) {
 		if got := decide(t, config, view, "picked")["picked"]; got != want {
 			t.Errorf("%d spaces ranked by a count over all of them picked %v, want %v", spaces, got, want)
 		}
+	}
+}
+
+func TestInSetSelectorReturnsExactlyTheMembers(t *testing.T) {
+	units := make([]UnitView, 20)
+	for n := range units {
+		units[n] = villager(uint64(n+1), Coordinate{})
+	}
+	view := selectTestView{loopTestView: loopTestView{units: units, spaces: lineOfSpaces(make([]float64, 9)...)}, turn: 1}
+	sums := func(kind string, set string, field string) string {
+		return `{"sum":{"kind":"` + kind + `","where":{"in_set":"` + set + `"},"of":"var(item.` + field + `)"}}`
+	}
+	config := rule(`{"action":"select","pick":{"kind":"units","limit":3,"rank":"0 - var(target.uid)"},"into":{"set":"units_kept"}},
+		{"action":"select","pick":{"kind":"spaces","where":{"if":"var(target.x) <= 2"}},"into":{"set":"spaces_kept"}},
+		{"action":"set_var","name":"unit_sum","value":` + sums("units", "units_kept", "uid") + `},
+		{"action":"set_var","name":"space_sum","value":` + sums("spaces", "spaces_kept", "x") + `},
+		{"action":"set_var","name":"unknown_set","value":{"count":{"kind":"units","where":{"in_set":"never_stored"}}}}`)
+	got := decide(t, config, view, "unit_sum", "space_sum", "unknown_set")
+	if got["unit_sum"] != 6 || got["space_sum"] != 3 || got["unknown_set"] != 0 {
+		t.Errorf("sums over stored sets = %v, want units 6, spaces 3 and nothing from a set never stored", got)
 	}
 }
 
@@ -349,7 +372,7 @@ func TestGatherablesMergeResourcesAndOwnFinishedBuildings(t *testing.T) {
 }
 
 func TestGatherVerbReachesABuildingOrAResourceByRank(t *testing.T) {
-	config := rule(`{"action":"select","actors":{"kind":"units"},"pick":{"kind":"gatherables"},"assign":{"unit_score":"0 - var(target.distance_to_actor)"},"issue":[{"gather":{}}]}`)
+	config := rule(`{"action":"select","actors":{"kind":"units"},"pick":{"kind":"gatherables"},"match":{"score":"0 - distance(actor, target)"},"issue":[{"gather":{}}]}`)
 	for farm_space, want := range map[int]int64{1: 30, 5: 7} {
 		view := gatherNodeView(100)
 		view.buildings[0].Location = ZoneRef{Space: Coordinate{X: farm_space}}
@@ -397,7 +420,7 @@ func TestAttackablesNeverIncludeYourOwnUnitsOrBuildings(t *testing.T) {
 }
 
 func TestAttackVerbPicksTheWeakestTargetAcrossKinds(t *testing.T) {
-	config := rule(`{"action":"select","actors":{"kind":"units","where":{"unit_types":["military"]}},"pick":{"kind":"attackables"},"assign":{"unit_score":"0 - var(target.health)"},"issue":[{"attack":{}}]}`)
+	config := rule(`{"action":"select","actors":{"kind":"units","where":{"unit_types":["military"]}},"pick":{"kind":"attackables"},"match":{"score":"0 - var(target.health)"},"issue":[{"attack":{}}]}`)
 	for building_health, want := range map[float64]uint8{50: kindAttackUnit, 10: kindAttackBuilding} {
 		if orders := selectOrders(t, config, attackTargetsView(building_health)); len(orders) != 1 || orders[0].OrderType != want || orders[0].TargetID != 5 {
 			t.Errorf("building health %v: orders %+v, want one order of kind %d on id 5", building_health, orders, want)
@@ -419,5 +442,20 @@ func TestSelectExpressionFailuresExcludeCandidates(t *testing.T) {
 		if orders := selectOrders(t, config, view); len(orders) != 1 || orders[0].TargetID != spaceCode(at(2).Space) {
 			t.Errorf("%s: got %+v, want only the space whose expression succeeds", fields, orders)
 		}
+	}
+}
+
+func TestSelectLetMemoizationCachesImpure(t *testing.T) {
+	worker := villager(1, Coordinate{})
+	view := selectTestView{loopTestView: loopTestView{units: []UnitView{worker}, spaces: lineOfSpaces(1)}, idle: []UnitView{worker}}
+	rng := rand.New(rand.NewSource(42))
+	config := rule(`{"action":"select","pick":{"kind":"spaces","let":{"r":"random()"},"where":{"if":"var(target.r)"},"rank":"var(target.r)"},"into":{"set":"chosen"}}`)
+	var raw map[string]any
+	_ = json.Unmarshal([]byte(config), &raw)
+	ParseModelWithDiagnostics(raw, rng, io.Discard).DecideOrders(view)
+	expectedRng := rand.New(rand.NewSource(42))
+	expectedRng.Float64()
+	if rng.Int63() != expectedRng.Int63() {
+		t.Fatalf("impure let was re-rolled; expected 1 random call, got state mismatch")
 	}
 }

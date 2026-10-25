@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.9f: Generalize ai view
+v0.9g: Parity with v6
 
 ## Dev Use
 

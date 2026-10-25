@@ -60,6 +60,7 @@ type snapPlayer struct {
 		Nickname string `json:"nickname"`
 	} `json:"player"`
 	Score                uint             `json:"score"`
+	Eliminated           bool             `json:"eliminated"`
 	PopulationLimit      int              `json:"population_limit"`
 	MaxPopulationLimit   int              `json:"max_population_limit"`
 	Resources            snapCost         `json:"resources"`

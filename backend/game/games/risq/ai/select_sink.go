@@ -11,6 +11,9 @@ type selectSink struct {
 }
 
 func parseSink(raw any, pick *selectorSpec) (*selectSink, error) {
+	if pick != nil && (pick.kind == "orders" || pick.kind == "assignments") {
+		return nil, fmt.Errorf("%s cannot be stored in sets or buckets", pick.kind)
+	}
 	obj, ok := raw.(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("must be an object")

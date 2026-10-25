@@ -8,14 +8,16 @@ import (
 type enumValues map[string][]float64
 
 var enumNames = map[string]enumValues{
-	"order_kind":      orderKindEnum(),
-	"unit_type":       unitTypeEnum(),
-	"stance":          singleEnum(unitStanceNames),
-	"attack_range":    {"none": {0}, "zone": {1}, "space": {2}, "adjacent": {3}, "secondary": {4}},
-	"category":        {"food": {0}, "wood": {1}, "stone": {2}, "gold": {3}},
-	"terrain_type":    {"none": {0}, "flatlands": {1}, "hilly": {2}, "mountainous": {3}, "swamp": {4}, "shallows": {5}, "water": {6}, "deep_water": {7}},
-	"vision":          {"unexplored": {0}, "fog": {1}, "poor": {2}, "good": {3}, "spy": {4}},
-	"target_category": singleEnum(targetCategoryNames),
+	"queue_order_kind": singleEnum(QueueOrderNames),
+	"subject_kind":     {"unit": {0}, "building": {1}},
+	"order_kind":       orderKindEnum(),
+	"unit_type":        unitTypeEnum(),
+	"stance":           singleEnum(unitStanceNames),
+	"attack_range":     {"none": {0}, "zone": {1}, "space": {2}, "adjacent": {3}, "secondary": {4}},
+	"category":         {"food": {0}, "wood": {1}, "stone": {2}, "gold": {3}},
+	"terrain_type":     {"none": {0}, "flatlands": {1}, "hilly": {2}, "mountainous": {3}, "swamp": {4}, "shallows": {5}, "water": {6}, "deep_water": {7}},
+	"vision":           {"unexplored": {0}, "fog": {1}, "poor": {2}, "good": {3}, "spy": {4}},
+	"target_category":  singleEnum(targetCategoryNames),
 }
 
 func init() {
@@ -54,14 +56,20 @@ func (f inFilter) allows(value float64) bool {
 	return slices.Contains(f.values, value)
 }
 
-func parseInFilters(raw any, kind string, let_names []string) ([]inFilter, error) {
+func parseInFilters(raw any, kind string, source string, let_names []string) ([]inFilter, error) {
 	obj, ok := raw.(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("\"in\" must map field names to lists of values")
 	}
 	filters := make([]inFilter, 0, len(obj))
 	for field, entry := range obj {
-		if !hasItemField("select_"+kind, field) && !slices.Contains(let_names, field) {
+		if (field == "distance_to_actor" || field == "zone_distance_to_actor") && var_names_log != nil && !var_names_log.hasRoleInScope("actor") {
+			return nil, fmt.Errorf("in: %s items have no field %q", kind, field)
+		}
+		if (field == "distance_to_target" || field == "zone_distance_to_target") && var_names_log != nil && !var_names_log.hasRoleInScope("target") {
+			return nil, fmt.Errorf("in: %s items have no field %q", kind, field)
+		}
+		if !hasItemField(source, field) && !slices.Contains(let_names, field) {
 			return nil, fmt.Errorf("in: %s items have no field %q", kind, field)
 		}
 		list, ok := entry.([]any)
@@ -70,7 +78,11 @@ func parseInFilters(raw any, kind string, let_names []string) ([]inFilter, error
 		}
 		filter := inFilter{field: field}
 		for _, item := range list {
-			values, err := enumValue(field, item)
+			lookup := field
+			if kind == "orders" && field == "order_kind" {
+				lookup = "queue_order_kind"
+			}
+			values, err := enumValue(lookup, item)
 			if err != nil {
 				return nil, err
 			}

@@ -182,3 +182,25 @@ func TestParseExpressionVariables(t *testing.T) {
 		t.Fatalf("expected RulesModel, got %T", model)
 	}
 }
+
+func TestGameVarAndResearchedInAI(t *testing.T) {
+	rng := rand.New(rand.NewSource(1))
+	raw := map[string]any{
+		"rules": []any{
+			map[string]any{
+				"when": map[string]any{"always": map[string]any{}},
+				"then": []any{
+					map[string]any{
+						"action": "set_var",
+						"name":   "val",
+						"value":  "gameVar(turn) * 10 + gameVar(food) + researched(4)",
+					},
+				},
+			},
+		},
+	}
+	model := ai.ParseModelWithDiagnostics(raw, rng, io.Discard)
+	if _, ok := model.(*ai.RulesModel); !ok {
+		t.Fatalf("expected RulesModel, got %T", model)
+	}
+}

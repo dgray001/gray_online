@@ -27,19 +27,31 @@ type census struct {
 	idle_units, idle_buildings map[uint64]bool
 }
 
-// The part of the census that does not depend on bucket or unit scoping, so it is shared while the view is unchanged
+// What the board holds. Orders cannot change it, so it is built once per decision and shared by every selector
 type worldIndex struct {
-	revision                                                          uint64
 	own_units, enemy_units, own_buildings, enemy_buildings, resources tally
 	regions                                                           *regionMap
 	spaces                                                            map[Coordinate]SpaceInfo
+	zones                                                             []ZoneInfo
+	zone_position                                                     map[ZoneRef]int
 }
 
 func (i *Internals) worldFor(view View) *worldIndex {
-	if i.world == nil || i.world.revision != view.Revision() {
+	if i.world == nil {
 		i.world = newWorldIndex(view)
 	}
 	return i.world
+}
+
+func (w *worldIndex) loadZones(view View) {
+	if w.zone_position != nil {
+		return
+	}
+	w.zones = view.AllZones()
+	w.zone_position = make(map[ZoneRef]int, len(w.zones))
+	for position, z := range w.zones {
+		w.zone_position[z.Location] = position
+	}
 }
 
 func newCensus(view View, internals *Internals) *census {
@@ -56,7 +68,6 @@ func newCensus(view View, internals *Internals) *census {
 func newWorldIndex(view View) *worldIndex {
 	spaces := view.AllSpaces()
 	c := &worldIndex{
-		revision:  view.Revision(),
 		own_units: newTally(), enemy_units: newTally(), own_buildings: newTally(),
 		enemy_buildings: newTally(), resources: newTally(),
 		regions: newRegionMap(view, spaces), spaces: map[Coordinate]SpaceInfo{},

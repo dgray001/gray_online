@@ -56,21 +56,6 @@ func TestStartBalanceOnEveryScriptMap(t *testing.T) {
 	}
 }
 
-func TestRandomStartsKeepConfiguredAssets(t *testing.T) {
-	t.Parallel()
-	for _, name := range scriptPair(2) {
-		for _, players := range []int{12} {
-			board := balancedBoard(t, name, float64(defs.StartBalance_RANDOM), players, 1)
-			for player := 0; player < players; player++ {
-				units, buildings, _ := board.Tally(player)
-				if units[11] != 3 || units[21] != 1 || buildings[201] != 1 {
-					t.Errorf("%s %d players player %d: units %v buildings %v", name, players, player, units, buildings)
-				}
-			}
-		}
-	}
-}
-
 func TestExplicitStartBalanceOverridesGameSetting(t *testing.T) {
 	params := strings.TrimSuffix(nomadTestStarts, "}") + fmt.Sprintf(`,"start_balance":%d}`, defs.StartBalance_MIRRORED)
 	useScripts(t, map[string]string{"override": `[` + hexagon2 + `,` + step("player_starts", params) + `]`})

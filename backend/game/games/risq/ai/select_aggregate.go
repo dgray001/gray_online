@@ -5,12 +5,12 @@ import (
 	"maps"
 )
 
-const maxSelectSteps = 500000
+const maxSelectSteps = 100000
 
 func (i *Internals) takeSelectStep() bool {
 	i.select_steps++
 	if i.select_steps > maxSelectSteps {
-		i.warnOnce("select_steps", fmt.Sprintf("ai: selectors stopped after %d items in one decision", maxSelectSteps))
+		i.warnOnce(fmt.Sprintf("select_steps:%d", i.rule_index), fmt.Sprintf("ai: rule %d: selectors stopped after %d items", i.rule_index, maxSelectSteps))
 		return false
 	}
 	return true
@@ -18,15 +18,36 @@ func (i *Internals) takeSelectStep() bool {
 
 var aggregateNames = []string{"count", "sum", "min", "max"}
 
+func distinctCount(items []selItem, field string, internals *Internals) float64 {
+	values := map[float64]bool{}
+	for _, item := range items {
+		restore := internals.bindItem("item", item)
+		previous := internals.eval_errors
+		value, valid := item.field(field)
+		restore()
+		if !valid || internals.eval_errors != previous {
+			return 0
+		}
+		values[value] = true
+	}
+	return float64(len(values))
+}
+
 func parseAggregate(name string, obj map[string]any) (counter, error) {
 	of_raw, has_of := obj["of"]
 	default_raw, has_default := obj["default"]
+	distinct_raw, has_distinct := obj["distinct"]
 	selector := maps.Clone(obj)
 	delete(selector, "of")
 	delete(selector, "default")
+	delete(selector, "distinct")
 	spec, err := parseSelectorSpec(selector, "item")
 	if err != nil {
 		return nil, fmt.Errorf("%s: %v", name, err)
+	}
+	distinct, valid := distinct_raw.(string)
+	if has_distinct && (name != "count" || !valid || !hasItemField("select_"+spec.kind, distinct)) {
+		return nil, fmt.Errorf("distinct needs a field of the counted selector kind")
 	}
 	var fallback *amount
 	if has_default {
@@ -56,17 +77,20 @@ func parseAggregate(name string, obj map[string]any) (counter, error) {
 		}
 	}
 	return func(view View, internals *Internals) float64 {
-		return evaluateAggregate(name, spec, of, fallback, view, internals)
+		return evaluateAggregate(name, spec, of, fallback, distinct, view, internals)
 	}, nil
 }
 
-func evaluateAggregate(name string, spec *selectorSpec, of amount, fallback *amount, view View, internals *Internals) float64 {
+func evaluateAggregate(name string, spec *selectorSpec, of amount, fallback *amount, distinct string, view View, internals *Internals) float64 {
 	cen := internals.select_census
 	if cen == nil {
 		cen = newCensus(view, internals)
 	}
 	items := spec.resolve(view, internals, cen)
 	if name == "count" {
+		if distinct != "" {
+			return distinctCount(items, distinct, internals)
+		}
 		return float64(len(items))
 	}
 	if len(items) == 0 && fallback != nil {

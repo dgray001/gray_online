@@ -11,21 +11,34 @@ import (
 // Measures the distance between the things bound under two names, in space steps or zone steps
 type DistanceFunc func(a string, b string, zone_steps bool) (float64, error)
 
+type ConfigFunc func(table string, field string, id uint32) (float64, error)
+
+type GameVarFunc func(field string) (float64, error)
+
+type ResearchedFunc func(tech_id uint32) (bool, error)
+
+const ConfigRefPrefix = "config:"
+
 // What an evaluation reads from outside the expression
 type exprEnv struct {
-	vars     map[string]float64
-	lookup   func(name string) (float64, error)
-	distance DistanceFunc
-	rng      *rand.Rand
+	vars       map[string]float64
+	lookup     func(name string) (float64, error)
+	distance   DistanceFunc
+	config     ConfigFunc
+	game_var   GameVarFunc
+	researched ResearchedFunc
+	rng        *rand.Rand
 }
 
 type exprNode func(env *exprEnv) (float64, error)
 
 // A name an expression reads, in the order it appears
 type exprRef struct {
-	name    string
-	is_var  bool
-	is_item bool // a thing named in distance(), which must have a location
+	name        string
+	is_var      bool
+	is_item     bool // a thing named in distance(), which must have a location
+	is_config   bool
+	is_game_var bool
 }
 
 // An expression parsed once; evaluating it never re-reads the text
@@ -262,6 +275,94 @@ func (c *exprCompiler) compileDistanceCall() (exprNode, error) {
 	}, nil
 }
 
+func (c *exprCompiler) compileConfigCall() (exprNode, error) {
+	names := [2]string{}
+	for i := range names {
+		arg := c.next()
+		if arg.kind != exprTokIdent || c.next().kind != exprTokComma {
+			return nil, fmt.Errorf("config() takes a table name, a field name and an id")
+		}
+		names[i] = arg.text
+	}
+	id, err := c.compileExpr()
+	if err != nil {
+		return nil, err
+	}
+	if c.next().kind != exprTokRParen {
+		return nil, fmt.Errorf("expected closing paren after config(%s, %s", names[0], names[1])
+	}
+	c.refs = append(c.refs, exprRef{name: names[0] + "." + names[1], is_config: true})
+	return func(env *exprEnv) (float64, error) {
+		if env.config == nil {
+			return 0, fmt.Errorf("config() is not available here")
+		}
+		value, err := id(env)
+		if err != nil {
+			return 0, err
+		}
+		rounded := math.Round(value)
+		if math.IsNaN(rounded) || rounded < 0 || rounded > math.MaxUint32 {
+			return 0, fmt.Errorf("config(%s, %s, %v): id out of range", names[0], names[1], value)
+		}
+		return env.config(names[0], names[1], uint32(rounded))
+	}, nil
+}
+
+var gameVarFields = map[string]bool{
+	"food": true, "wood": true, "stone": true, "gold": true,
+	"population": true, "population_limit": true, "population_max": true,
+	"turn": true, "map_size": true, "num_players": true,
+}
+
+func (c *exprCompiler) compileGameVarCall() (exprNode, error) {
+	arg := c.next()
+	if arg.kind != exprTokIdent {
+		return nil, fmt.Errorf("gameVar() takes a field name")
+	}
+	if !gameVarFields[arg.text] {
+		return nil, fmt.Errorf("unknown gameVar field %q", arg.text)
+	}
+	if c.next().kind != exprTokRParen {
+		return nil, fmt.Errorf("expected closing paren after gameVar(%s", arg.text)
+	}
+	c.refs = append(c.refs, exprRef{name: arg.text, is_game_var: true})
+	field := arg.text
+	return func(env *exprEnv) (float64, error) {
+		if env.game_var == nil {
+			return 0, fmt.Errorf("gameVar() is not available here")
+		}
+		return env.game_var(field)
+	}, nil
+}
+
+func (c *exprCompiler) compileResearchedCall() (exprNode, error) {
+	id, err := c.compileExpr()
+	if err != nil {
+		return nil, err
+	}
+	if c.next().kind != exprTokRParen {
+		return nil, fmt.Errorf("expected closing paren after researched(...)")
+	}
+	return func(env *exprEnv) (float64, error) {
+		if env.researched == nil {
+			return 0, fmt.Errorf("researched() is not available here")
+		}
+		value, err := id(env)
+		if err != nil {
+			return 0, err
+		}
+		rounded := math.Round(value)
+		if math.IsNaN(rounded) || rounded < 0 || rounded > math.MaxUint32 {
+			return 0, fmt.Errorf("researched(%v): id out of range", value)
+		}
+		researched, err := env.researched(uint32(rounded))
+		if err != nil || !researched {
+			return 0, err
+		}
+		return 1, nil
+	}, nil
+}
+
 // Supports round, random, randomInt, min and max; var(name) is resolved through the lookup
 func (c *exprCompiler) compileCall(name string) (exprNode, error) {
 	c.next() // (
@@ -270,6 +371,15 @@ func (c *exprCompiler) compileCall(name string) (exprNode, error) {
 	}
 	if name == "distance" {
 		return c.compileDistanceCall()
+	}
+	if name == "config" {
+		return c.compileConfigCall()
+	}
+	if name == "gameVar" {
+		return c.compileGameVarCall()
+	}
+	if name == "researched" {
+		return c.compileResearchedCall()
 	}
 	var args []exprNode
 	if c.peek().kind == exprTokRParen {
@@ -389,7 +499,11 @@ func ValidateExpr(s string, vars map[string]float64, visit func(name string)) er
 		return err
 	}
 	for _, ref := range program.refs {
-		if ref.is_item {
+		if ref.is_config {
+			if visit != nil {
+				visit(ConfigRefPrefix + ref.name)
+			}
+		} else if ref.is_item {
 			if visit != nil {
 				visit(ref.name + ".x")
 			}
@@ -397,6 +511,8 @@ func ValidateExpr(s string, vars map[string]float64, visit func(name string)) er
 			if visit != nil {
 				visit(ref.name)
 			}
+		} else if ref.is_game_var {
+			continue
 		} else if _, ok := vars[ref.name]; !ok {
 			return fmt.Errorf("unknown variable %q", ref.name)
 		}

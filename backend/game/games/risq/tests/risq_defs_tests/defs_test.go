@@ -5,11 +5,78 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/game/games/risq/tests/config"
 )
+
+var configFieldRenames = map[string]string{
+	"building.gather_base_gather_speed": "gather_speed",
+	"building.gather_gather_capacity":   "gather_capacity",
+	"resource.base_gather_speed":        "gather_speed",
+}
+
+func numericFieldNames(structType reflect.Type, prefix string) []string {
+	names := []string{}
+	for i := range structType.NumField() {
+		field := structType.Field(i)
+		name, fieldType := prefix+strings.ToLower(field.Name), field.Type
+		if fieldType.Kind() == reflect.Pointer {
+			fieldType = fieldType.Elem()
+		}
+		if fieldType.Kind() == reflect.Struct {
+			names = append(names, numericFieldNames(fieldType, name+"_")...)
+		} else if fieldType.Kind() >= reflect.Bool && fieldType.Kind() <= reflect.Float64 {
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
+func TestConfigFunctionExposesEveryNumericConfigField(t *testing.T) {
+	structs := map[string][]reflect.Type{
+		"unit":     {reflect.TypeFor[defs.UnitConfig]()},
+		"building": {reflect.TypeFor[defs.BuildingConfig]()},
+		"tech":     {reflect.TypeFor[defs.TechConfig]()},
+		"resource": {reflect.TypeFor[defs.ResourceConfig]()},
+		"terrain":  {reflect.TypeFor[defs.TerrainConfig](), reflect.TypeFor[defs.TerrainMoveCost]()},
+	}
+	for table, types := range structs {
+		for _, structType := range types {
+			for _, name := range numericFieldNames(structType, "") {
+				field := name
+				if renamed, ok := configFieldRenames[table+"."+name]; ok {
+					field = renamed
+				}
+				if !defs.HasConfigField(table, field) {
+					t.Errorf("config(%s, %s, ...) is not exposed; add it to the %s field table in internal/defs", table, field, table)
+				}
+			}
+		}
+	}
+}
+
+func TestConfigValueUnknownIdIsZeroAndUnknownFieldIsAnError(t *testing.T) {
+	if err := testconfig.Load(); err != nil {
+		t.Fatal(err)
+	}
+	config := defs.DefaultConfig()
+	if value, err := config.ConfigValue("unit", "cost_food", 12); err != nil || value != 60 {
+		t.Errorf("known unit: got %v, %v; want 60", value, err)
+	}
+	if value, err := config.ConfigValue("unit", "cost_food", 99999); err != nil || value != 0 {
+		t.Errorf("unknown id: got %v, %v; want 0 and no error", value, err)
+	}
+	if _, err := config.ConfigValue("unit", "cost_gems", 12); err == nil {
+		t.Error("unknown field returned no error")
+	}
+	if _, err := config.ConfigValue("castle", "cost_food", 12); err == nil {
+		t.Error("unknown table returned no error")
+	}
+}
 
 func TestSharedTestConfigLoads(t *testing.T) {
 	err := testconfig.Load()

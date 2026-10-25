@@ -43,6 +43,9 @@ func orderKind(o *CurrentOrder) float64 {
 }
 
 func orderTargetUID(o *CurrentOrder) float64 {
+	if o != nil && o.TargetUID != 0 {
+		return float64(o.TargetUID)
+	}
 	switch {
 	case o == nil:
 	case o.TargetUnit != nil:
@@ -88,6 +91,7 @@ var placeFields = func() fieldTable[place] {
 var playerFields = fieldTable[playerItem]{
 	"id":              func(p playerItem) float64 { return float64(p.id) },
 	"is_me":           func(p playerItem) float64 { return boolNumber(p.me) },
+	"is_eliminated":   func(p playerItem) float64 { return boolNumber(p.eliminated) },
 	"score":           func(p playerItem) float64 { return float64(p.score) },
 	"units_visible":   func(p playerItem) float64 { return float64(p.units_visible) },
 	"buildings_known": func(p playerItem) float64 { return float64(p.buildings_known) },
@@ -189,6 +193,7 @@ var resourceFields = withPlace(fieldTable[resourceItem]{
 }, func(r resourceItem) place { return r.place })
 
 var foundationFields = withLocation(fieldTable[foundationItem]{
+	"uid":               func(f foundationItem) float64 { return float64(f.uid) },
 	"building_id":       func(f foundationItem) float64 { return float64(f.foundation.BuildingID) },
 	"is_planned":        func(f foundationItem) float64 { return boolNumber(f.foundation.Planned) },
 	"builders":          func(f foundationItem) float64 { return float64(f.foundation.Builders) },

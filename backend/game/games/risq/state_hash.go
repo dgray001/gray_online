@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/util"
 )
 
@@ -66,7 +67,11 @@ func hashOrderSet(h io.Writer, orders []*RisqOrder) {
 }
 
 func orderSignature(o *RisqOrder) string {
-	return fmt.Sprintf("o%d:%d:%t:%t:%t:%d:%d:%v;", o.order_type, o.target_id, o.executed, o.cancelled, o.clear_previous_orders, o.turn_received, o.turn_resolved, slices.Sorted(maps.Keys(o.subjects)))
+	target_id := o.target_id
+	if o.order_type == defs.OrderType_CancelOrder {
+		target_id = 0
+	}
+	return fmt.Sprintf("o%d:%d:%t:%t:%t:%d:%d:%v;", o.order_type, target_id, o.executed, o.cancelled, o.clear_previous_orders, o.turn_received, o.turn_resolved, slices.Sorted(maps.Keys(o.subjects)))
 }
 
 func hashGatherSlot(source Gatherable) string {

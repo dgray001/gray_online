@@ -3,6 +3,7 @@ package ai
 type foundationItem struct {
 	place
 	foundation FoundationView
+	uid        uint64
 }
 
 func (f foundationItem) field(name string) (float64, bool) {
@@ -25,7 +26,7 @@ func (s *foundationSource) items(view View, _ *Internals) []loopItem {
 	items := make([]loopItem, 0)
 	for _, f := range view.Foundations() {
 		if s.ids.matches(f.BuildingID) {
-			items = append(items, foundationItem{place: place{loc: f.Location}, foundation: f})
+			items = append(items, foundationItem{place: place{loc: f.Location}, foundation: f, uid: FoundationUID(f.Location, view.PlayerID())})
 		}
 	}
 	return items

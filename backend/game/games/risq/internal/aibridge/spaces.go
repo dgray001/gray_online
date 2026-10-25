@@ -314,7 +314,7 @@ func (v *aiView) buildable(space *snapSpace) bool {
 	if v.ownSpaceCount() == 0 {
 		return true
 	}
-	for _, adjacent := range v.spaceNeighbors(toCoordinate(space.Coordinate)) {
+	for _, adjacent := range v.SpaceNeighbors(toCoordinate(space.Coordinate)) {
 		if adj_owner, adj_known := spaceOwner(v.spaces[adjacent]); adj_known && adj_owner == v.playerId() {
 			return true
 		}

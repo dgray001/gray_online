@@ -28,6 +28,17 @@ func TestEqualityFactors(t *testing.T) {
 	}
 }
 
+func TestAnalyzeConfigCallScansTheIdButNotTheNames(t *testing.T) {
+	reads, ok := AnalyzeExpr("config(unit, cost_food, var(item.unit_id) + turn) * 2")
+	if !ok || !reads.NeedsEnv || !reflect.DeepEqual(reads.Vars, []string{"item.unit_id"}) || !reflect.DeepEqual(reads.Bare, []string{"turn"}) {
+		t.Errorf("AnalyzeExpr = %+v, %v", reads, ok)
+	}
+	var visited []string
+	if err := ValidateExpr("config(unit, cost_food, 2) + var(a)", nil, func(name string) { visited = append(visited, name) }); err != nil || !reflect.DeepEqual(visited, []string{"config:unit.cost_food", "a"}) {
+		t.Errorf("visited %v, %v", visited, err)
+	}
+}
+
 func TestAnalyzeExpr(t *testing.T) {
 	reads, ok := AnalyzeExpr("var(item.a) + food * max(var(turn_flag), random())")
 	if !ok || !reflect.DeepEqual(reads.Vars, []string{"item.a", "turn_flag"}) || !reflect.DeepEqual(reads.Bare, []string{"food"}) || !reads.Impure {

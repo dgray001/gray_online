@@ -13,6 +13,8 @@ import (
 type aiView struct {
 	std                   *util.Logger
 	revision              uint64
+	queues                map[uint64][]snapOrder
+	queue_subjects        map[uint64][]uint64
 	config                *defs.Config
 	game                  *snapGame
 	me                    *snapPlayer
@@ -22,19 +24,18 @@ type aiView struct {
 	buildings             map[uint64]*snapBuilding
 	planned               map[ai.ZoneRef]bool
 	order_ids             map[uint64]bool
-	assigned_units        map[uint64]*ai.CurrentOrder
 	claimed_buildings     map[uint64]bool
 	ordered_foundations   map[ai.ZoneRef]uint32
 	cancelled_foundations map[ai.ZoneRef]bool
 	cancelled_orders      map[uint64]bool
 	planned_techs         map[uint32]bool
 	planned_production    map[uint64]int
-	// our units with an attack order on each target, from the snapshot and this turn's emitted orders
-	attackers map[attackTarget]map[uint64]bool
-	// built on first use, then kept current by assignUnit
+	// Cached from the current tasks in the queue mirror
 	gather_counts map[ai.ZoneRef]int
 	// shared by every caller, so callers must treat it as read-only; dropped when a unit's view inputs change
 	units_cache []ai.UnitView
+	// the enemy lists, read-only and shared; rebuilt when the revision they were built at has passed
+	enemy_cache enemyCache
 	// built on first use
 	enemy_spaces       []ai.Coordinate
 	enemy_spaces_known bool
@@ -58,11 +59,10 @@ type snapZoneEntry struct {
 func newAiView(config *defs.Config, game *snapGame, player_id int, std *util.Logger) (*aiView, bool) {
 	v := &aiView{
 		std: std, config: config, game: game, spaces: map[ai.Coordinate]*snapSpace{}, units: map[uint64]*snapUnit{}, buildings: map[uint64]*snapBuilding{},
-		planned: map[ai.ZoneRef]bool{}, order_ids: map[uint64]bool{}, assigned_units: map[uint64]*ai.CurrentOrder{},
+		planned: map[ai.ZoneRef]bool{}, order_ids: map[uint64]bool{},
 		claimed_buildings: map[uint64]bool{}, ordered_foundations: map[ai.ZoneRef]uint32{}, cancelled_foundations: map[ai.ZoneRef]bool{},
 		cancelled_orders: map[uint64]bool{}, planned_techs: map[uint32]bool{}, planned_production: map[uint64]int{},
 		space_distances: map[ai.Coordinate]map[ai.Coordinate]int{},
-		attackers:       map[attackTarget]map[uint64]bool{},
 	}
 	v.indexSpaceLinks()
 	for i := range game.Players {
@@ -100,7 +100,6 @@ func newAiView(config *defs.Config, game *snapGame, player_id int, std *util.Log
 	for _, o := range v.me.ActiveOrders {
 		v.order_ids[o.InternalId] = true
 	}
-	v.loadAttackers()
 	return v, true
 }
 
@@ -167,6 +166,20 @@ func (v *aiView) Units() []ai.UnitView {
 		v.units_cache = sortUnitViews(units)
 	}
 	return v.units_cache
+}
+
+func (v *aiView) refreshUnit(id uint64) {
+	if v.units_cache == nil {
+		return
+	}
+	at := sort.Search(len(v.units_cache), func(i int) bool { return v.units_cache[i].InternalID >= id })
+	if at == len(v.units_cache) || v.units_cache[at].InternalID != id {
+		return
+	}
+	// slices already handed out keep their snapshot
+	units := slices.Clone(v.units_cache)
+	units[at] = v.unitView(v.units[id])
+	v.units_cache = units
 }
 
 func (v *aiView) IdleUnits() []ai.UnitView {
@@ -356,7 +369,24 @@ func (v *aiView) InAttackRange(b ai.BuildingView, target ai.ZoneRef) bool {
 	return v.SpaceDistance(b.Location.Space, target.Space) <= int(radius)
 }
 
+type enemyCache struct {
+	units     []ai.UnitView
+	buildings []ai.BuildingView
+}
+
+// What we know of the enemy does not depend on the orders we emit, so it is built once per view
+func (v *aiView) enemyViews() *enemyCache {
+	if v.enemy_cache.units == nil {
+		v.enemy_cache = enemyCache{units: v.buildVisibleEnemyUnits(), buildings: v.buildKnownEnemyBuildings()}
+	}
+	return &v.enemy_cache
+}
+
 func (v *aiView) VisibleEnemyUnits() []ai.UnitView {
+	return v.enemyViews().units
+}
+
+func (v *aiView) buildVisibleEnemyUnits() []ai.UnitView {
 	units := make([]ai.UnitView, 0)
 	for i := range v.game.Players {
 		p := &v.game.Players[i]
@@ -396,6 +426,10 @@ func (v *aiView) VisibleEnemyBuildings() []ai.BuildingView {
 
 // Visible enemy buildings plus the ones last seen in spaces now under fog (they may since have been destroyed)
 func (v *aiView) KnownEnemyBuildings() []ai.BuildingView {
+	return v.enemyViews().buildings
+}
+
+func (v *aiView) buildKnownEnemyBuildings() []ai.BuildingView {
 	seen := make(map[uint64]bool)
 	buildings := make([]ai.BuildingView, 0)
 	for _, b := range v.VisibleEnemyBuildings() {
@@ -446,10 +480,8 @@ func (v *aiView) gathererCount(location ai.ZoneRef) int {
 }
 
 func (v *aiView) gatherTarget(unit_id uint64) (ai.ZoneRef, bool) {
-	order, assigned := v.assigned_units[unit_id]
-	if u, ok := v.units[unit_id]; ok && !assigned {
-		order = v.currentOrder(v.liveOrders(u.ActiveOrders))
-	}
+	v.initQueues()
+	order := v.currentOrder(v.queues[unit_id])
 	if order == nil || order.TargetResource == nil {
 		return ai.ZoneRef{}, false
 	}
@@ -518,18 +550,8 @@ func (v *aiView) TechCost(tech_id uint32) ai.Cost {
 	return toCost(config.Cost)
 }
 
-func (v *aiView) assignUnit(id uint64, order *ai.CurrentOrder) {
-	if v.gather_counts != nil {
-		if previous, ok := v.gatherTarget(id); ok {
-			v.gather_counts[previous]--
-		}
-		if order.TargetResource != nil {
-			v.gather_counts[order.TargetResource.Location]++
-		}
-	}
-	v.assigned_units[id] = order
-	v.units_cache = nil
-	v.revision++
+func (v *aiView) ConfigValue(table string, field string, id uint32) (float64, error) {
+	return v.config.ConfigValue(table, field, id)
 }
 
 func (v *aiView) claimBuilding(id uint64) {
@@ -557,4 +579,13 @@ func (v *aiView) PlayerScore(player_id int) int {
 		}
 	}
 	return 0
+}
+
+func (v *aiView) PlayerEliminated(player_id int) bool {
+	for _, p := range v.game.Players {
+		if p.Player.PlayerId == player_id {
+			return p.Eliminated
+		}
+	}
+	return false
 }

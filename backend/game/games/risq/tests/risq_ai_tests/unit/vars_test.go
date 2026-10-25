@@ -6,6 +6,7 @@ import (
 	"github.com/dgray001/gray_online/game/games/risq/ai"
 	"io"
 	"math/rand"
+	"strings"
 	"testing"
 )
 
@@ -37,7 +38,7 @@ func TestCoordinateRounding(t *testing.T) {
 }
 
 func TestBuiltinVariableValues(t *testing.T) {
-	for name, value := range map[string]int{"turn": 7, "map_size": 4, "num_players": 3, "enemies_found": 2, "land": 6, "score": 9, "best_enemy_score": 12, "population": 1, "population_limit": 4, "population_max": 10, "food": 20, "wood": 30, "stone": 40, "gold": 50, "resource_food": 20, "unit_cost_food_2": 3, "unit_cost_wood_2": 0, "building_cost_wood_2": 5, "tech_cost_gold_3": 7, "population_military": 1, "population_economic": 0, "idle_units_military": 1, "building_count_complete": 1, "building_count_damaged": 1, "building_count_depleted": 1, "foundation_count_2": 0, "foundation_space_x_2": 0, "bucket_size_missing_name": 0, "tech_researched_4": 1, "resource_remaining_wood": 20, "resource_available_wood": 1} {
+	for name, value := range map[string]int{"turn": 7, "map_size": 4, "num_players": 3, "enemies_found": 2, "land": 6, "score": 9, "best_enemy_score": 12, "population": 1, "population_limit": 4, "population_max": 10, "food": 20, "wood": 30, "stone": 40, "gold": 50, "resource_food": 20, "population_military": 1, "population_economic": 0, "idle_units_military": 1, "building_count_complete": 1, "building_count_damaged": 1, "building_count_depleted": 1, "foundation_count_2": 0, "foundation_space_x_2": 0, "bucket_size_missing_name": 0, "tech_researched_4": 1, "resource_remaining_wood": 20, "resource_available_wood": 1} {
 		var diagnostics bytes.Buffer
 		config := fmt.Sprintf(`{"rules":[{"when":{"always":null},"then":[{"action":"move","targets":"coordinate","coordinate":{"x":"var(%s)","y":0}}]}]}`, name)
 		model := jsonModel(t, config, &diagnostics)
@@ -46,6 +47,95 @@ func TestBuiltinVariableValues(t *testing.T) {
 		}
 		view := checkedView("Buildings", "IdleUnits", "EligibleUnits", "MaxPopulation", "UnitCost", "BuildCost", "TechCost", "KnownResources", "TechResearched", "NearestResource", "Foundations")
 		assertCalls(t, model.DecideOrders(view), view, orderCall{Kind: 1, Subject: 91, Place: ai.ZoneRef{Space: ai.Coordinate{X: value}}, Clear: true})
+	}
+}
+
+func moveToX(t *testing.T, expression string, diagnostics io.Writer) (ai.Model, *fakeView) {
+	t.Helper()
+	config := fmt.Sprintf(`{"rules":[{"when":{"always":null},"then":[{"action":"move","targets":"coordinate","coordinate":{"x":%q,"y":0}}]}]}`, expression)
+	return jsonModel(t, config, diagnostics), checkedView("Buildings", "IdleUnits", "EligibleUnits", "UnitCost", "BuildCost", "TechCost", "MaxPopulation", "TechResearched")
+}
+
+func expectX(t *testing.T, model ai.Model, view *fakeView, x int) {
+	t.Helper()
+	assertCalls(t, model.DecideOrders(view), view, orderCall{Kind: 1, Subject: 91, Place: ai.ZoneRef{Space: ai.Coordinate{X: x}}, Clear: true})
+}
+
+func TestGameVarAndResearchedEvaluation(t *testing.T) {
+	for expr, val := range map[string]int{
+		"gameVar(food)": 20, "gameVar(wood)": 30, "gameVar(stone)": 40, "gameVar(gold)": 50,
+		"gameVar(population)": 1, "gameVar(population_limit)": 4, "gameVar(population_max)": 10,
+		"gameVar(turn)": 7, "gameVar(map_size)": 4, "gameVar(num_players)": 3,
+		"researched(4)": 1, "researched(99)": 0,
+	} {
+		var diagnostics bytes.Buffer
+		model, view := moveToX(t, expr, &diagnostics)
+		expectX(t, model, view, val)
+	}
+}
+
+func TestFlatCostBuiltinsWarnAndStillResolve(t *testing.T) {
+	for name, c := range map[string]struct {
+		value       int
+		replacement string
+	}{
+		"unit_cost_food_2":     {3, "config(unit, cost_food, 2)"},
+		"unit_cost_wood_2":     {0, "config(unit, cost_wood, 2)"},
+		"building_cost_wood_2": {5, "config(building, cost_wood, 2)"},
+		"tech_cost_gold_3":     {7, "config(tech, cost_gold, 3)"},
+	} {
+		var diagnostics bytes.Buffer
+		model, view := moveToX(t, "var("+name+")", &diagnostics)
+		if !strings.Contains(diagnostics.String(), "use "+c.replacement) {
+			t.Errorf("%s: diagnostics %q lack %s", name, diagnostics.String(), c.replacement)
+		}
+		expectX(t, model, view, c.value)
+	}
+}
+
+func TestConfigFunctionReadsConfigValues(t *testing.T) {
+	for expression, want := range map[string]int{
+		"config(unit, cost_food, 2)":                                  3,
+		"config(unit, cost_food, 1 + 1) + config(unit, cost_wood, 2)": 7,
+		"config(building, max_health, var(food) - 13)":                90,
+		"config(unit, cost_food, 1.6)":                                3,
+	} {
+		var diagnostics bytes.Buffer
+		model, view := moveToX(t, expression, &diagnostics)
+		if diagnostics.Len() != 0 {
+			t.Fatalf("%s: %s", expression, diagnostics.String())
+		}
+		expectX(t, model, view, want)
+	}
+}
+
+func TestConfigFunctionRejectsUnknownNamesAtLoad(t *testing.T) {
+	for _, expression := range []string{"config(unit, cost_gems, 2)", "config(castle, max_health, 2)", "config(unit, cost_food)"} {
+		model, _ := moveToX(t, expression, io.Discard)
+		if _, ok := model.(ai.NoopModel); !ok {
+			t.Errorf("%s: expected NoopModel, got %T", expression, model)
+		}
+	}
+}
+
+func TestConfigFunctionUnknownIdEvaluatesToZeroWithoutWarning(t *testing.T) {
+	var diagnostics bytes.Buffer
+	model, view := moveToX(t, "config(unit, cost_food, 99)", &diagnostics)
+	expectX(t, model, view, 0)
+	if diagnostics.Len() != 0 {
+		t.Errorf("unexpected diagnostics %q", diagnostics.String())
+	}
+}
+
+func TestConfigFunctionOutOfRangeIdEvaluatesToZeroWithOneWarning(t *testing.T) {
+	for _, expression := range []string{"config(unit, cost_food, 0 - 1)", "config(unit, cost_food, 5000000000)"} {
+		var diagnostics bytes.Buffer
+		model, view := moveToX(t, expression, &diagnostics)
+		expectX(t, model, view, 0)
+		expectX(t, model, checkedView("Buildings", "IdleUnits", "EligibleUnits"), 0)
+		if strings.Count(diagnostics.String(), "ai expression") != 1 {
+			t.Errorf("%s: want one warning, got %q", expression, diagnostics.String())
+		}
 	}
 }
 

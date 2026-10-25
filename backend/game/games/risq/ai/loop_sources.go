@@ -20,6 +20,7 @@ func init() {
 		"buildings": parseBuildingSource, "resources": parseResourceSource, "zones": parseZoneSource, "regions": parseRegionSource,
 		"mercenaries": parseMercenarySource, "foundations": parseFoundationSource,
 		"gatherables": parseGatherableSource, "attackables": parseAttackableSource,
+		"orders": parseOrderSource, "assignments": parseAssignmentSource,
 	}
 }
 
@@ -49,8 +50,8 @@ func parseRegionSource(where map[string]any) (loopSource, error) {
 	return &regionSource{}, nil
 }
 
-func (s *regionSource) items(view View, _ *Internals) []loopItem {
-	stats := newRegionMap(view, view.AllSpaces()).stats
+func (s *regionSource) items(view View, internals *Internals) []loopItem {
+	stats := internals.worldFor(view).regions.stats
 	items := make([]loopItem, 0, len(stats))
 	for _, stat := range stats {
 		items = append(items, regionItem{stat: stat})
@@ -81,7 +82,7 @@ func (s *playerSource) items(view View, internals *Internals) []loopItem {
 	items := make([]loopItem, 0)
 	for _, id := range view.PlayerIDs() {
 		if s.selector.allows(view, internals, id, ZoneRef{}) {
-			items = append(items, playerItem{id: id, me: id == view.PlayerID(), score: view.PlayerScore(id), units_visible: units[id], buildings_known: buildings[id]})
+			items = append(items, playerItem{id: id, me: id == view.PlayerID(), eliminated: view.PlayerEliminated(id), score: view.PlayerScore(id), units_visible: units[id], buildings_known: buildings[id]})
 		}
 	}
 	return items
@@ -92,6 +93,7 @@ type spaceSource struct {
 	condition               SpaceCondition
 	near                    nearFilter
 	player, building_player *amount
+	matchesEverySpace       bool
 }
 
 type unitSource struct {
@@ -119,8 +121,10 @@ func unitsFor(view View, r relation) []UnitView {
 	if r == relationAny {
 		return view.AllUnits()
 	}
-	mine := r == relationOwn
-	return slices.DeleteFunc(slices.Clone(view.AllUnits()), func(u UnitView) bool { return (u.PlayerID == view.PlayerID()) != mine })
+	if r == relationOwn {
+		return view.Units()
+	}
+	return view.VisibleEnemyUnits()
 }
 
 func compareCoordinates(a Coordinate, b Coordinate) int {
@@ -159,6 +163,7 @@ func parseSpaceSource(where map[string]any) (loopSource, error) {
 	if s.building_player, err = takeExpression(rest, "building_player_id"); err != nil {
 		return nil, err
 	}
+	s.matchesEverySpace = len(rest) == 0 && s.player == nil && s.building_player == nil
 	s.condition, err = parseSpaceCondition(rest)
 	return s, err
 }
@@ -173,17 +178,20 @@ func (s *spaceSource) items(view View, internals *Internals) []loopItem {
 		id := s.building_player.int(view, internals)
 		condition.BuildingPlayerID = &id
 	}
-	infos := internals.worldFor(view).spaces
 	coordinates := view.MatchingSpaces(condition)
 	slices.SortFunc(coordinates, compareCoordinates)
+	return s.itemsAt(coordinates, view, internals)
+}
+
+func (s *spaceSource) itemsAt(coordinates []Coordinate, view View, internals *Internals) []loopItem {
+	infos, own := internals.worldFor(view).spaces, ownUnitsBySpace(view)
 	items := make([]loopItem, 0, len(coordinates))
-	own := ownUnitsBySpace(view)
 	for _, coordinate := range coordinates {
+		info := infos[coordinate]
 		loc := ZoneRef{Space: coordinate}
 		if !s.near.contains(view, internals, loc) {
 			continue
 		}
-		info := infos[coordinate]
 		item := spaceItem{place: place{loc: loc}, info: info, vision: int(info.Vision), owner: info.Owner, unit_count: -1, unidentified_count: unidentifiedUnitCount(info, own)}
 		if info.UnitCount != nil {
 			item.unit_count = *info.UnitCount
@@ -320,25 +328,41 @@ func parseZoneSource(where map[string]any) (loopSource, error) {
 	return source, nil
 }
 
+func (s *zoneSource) item(view View, internals *Internals, z ZoneInfo) (loopItem, bool) {
+	has_building := z.BuildingPlayer >= 0
+	if (s.resource != nil && *s.resource != z.HasResource) || (s.building != nil && *s.building != has_building) {
+		return nil, false
+	}
+	if !s.selector.allows(view, internals, z.BuildingPlayer, z.Location) {
+		return nil, false
+	}
+	return zoneItem{place: place{loc: z.Location}, has_resource: z.HasResource, building_player: z.BuildingPlayer}, true
+}
+
 func (s *zoneSource) items(view View, internals *Internals) []loopItem {
 	items := make([]loopItem, 0)
-	for _, z := range view.AllZones() {
-		has_building := z.BuildingPlayer >= 0
-		if (s.resource != nil && *s.resource != z.HasResource) || (s.building != nil && *s.building != has_building) {
-			continue
-		}
-		if s.selector.allows(view, internals, z.BuildingPlayer, z.Location) {
-			items = append(items, zoneItem{place: place{loc: z.Location}, has_resource: z.HasResource, building_player: z.BuildingPlayer})
+	world := internals.worldFor(view)
+	world.loadZones(view)
+	for _, z := range world.zones {
+		if item, ok := s.item(view, internals, z); ok {
+			items = append(items, item)
 		}
 	}
 	return items
 }
 
+func (s *unitSource) item(view View, internals *Internals, u UnitView) (loopItem, bool) {
+	if s.filter.matches(u) && s.selector.allows(view, internals, u.PlayerID, u.Location) {
+		return unitItem{place: place{loc: u.Location}, unit: u}, true
+	}
+	return nil, false
+}
+
 func (s *unitSource) items(view View, internals *Internals) []loopItem {
 	items := make([]loopItem, 0)
 	for _, u := range unitsFor(view, s.selector.relation) {
-		if s.filter.matches(u) && s.selector.allows(view, internals, u.PlayerID, u.Location) {
-			items = append(items, unitItem{place: place{loc: u.Location}, unit: u})
+		if item, ok := s.item(view, internals, u); ok {
+			items = append(items, item)
 		}
 	}
 	return items

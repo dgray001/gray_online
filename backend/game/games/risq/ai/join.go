@@ -24,6 +24,15 @@ func (s *resourceSource) static() bool   { return !s.near.has_within }
 func (s *gatherableSource) static() bool { return s.resources.static() }
 func (s *foundationSource) static() bool { return true }
 
+// A source whose item fields no emitted order can change, so its join index stays valid for the whole decision
+type orderIndependentSource interface {
+	orderIndependent() bool
+}
+
+func (s *attackableSource) orderIndependent() bool { return true }
+func (s *resourceSource) orderIndependent() bool   { return true }
+func (s *gatherableSource) orderIndependent() bool { return true }
+
 // The `==` factors of a selector's conditions that compare one of the item's own fields with something that
 // does not read the item, so matching items can be found by key instead of by testing every item
 type joinPlan struct {
@@ -31,17 +40,18 @@ type joinPlan struct {
 	outer []amount
 }
 
-// Items of one source keyed by the plan's inner expressions, valid for one view revision
+// Items of one source keyed by the plan's inner expressions, valid for one view revision unless no order can change its items
 type joinIndex struct {
-	revision uint64
-	items    []loopItem
-	buckets  map[joinKey][]loopItem
-	unusable bool
+	revision          uint64
+	order_independent bool
+	items             []loopItem
+	buckets           map[joinKey][]loopItem
+	unusable          bool
 }
 
 func (s *selectorSpec) itemSide(text string) bool {
 	reads, ok := util.AnalyzeExpr(text)
-	if !ok || reads.Impure || len(reads.Bare) > 0 || len(reads.Vars) == 0 {
+	if !ok || reads.Impure || reads.NeedsEnv || len(reads.Bare) > 0 || len(reads.Vars) == 0 {
 		return false
 	}
 	for _, name := range reads.Vars {
@@ -66,13 +76,13 @@ func (s *selectorSpec) otherSide(text string) (amount, bool) {
 	return amount{expr: text, reads_vars: len(reads.Bare) > 0}, true
 }
 
-func (s *selectorSpec) joinPlanFor(internals *Internals) *joinPlan {
+func (s *selectorSpec) joinPlanFor() *joinPlan {
 	if s.join_planned {
 		return s.join
 	}
 	s.join_planned = true
 	source, ok := s.source.(staticSource)
-	if internals.random_used || !ok || !source.static() {
+	if s.impure() || !ok || !source.static() {
 		return nil
 	}
 	plan := &joinPlan{}
@@ -125,7 +135,8 @@ func (p *joinPlan) outerKey(view View, internals *Internals) (joinKey, bool) {
 }
 
 func (s *selectorSpec) buildJoinIndex(plan *joinPlan, view View, internals *Internals) *joinIndex {
-	index := &joinIndex{revision: view.Revision(), buckets: map[joinKey][]loopItem{}}
+	_, order_independent := s.source.(orderIndependentSource)
+	index := &joinIndex{revision: view.Revision(), order_independent: order_independent, buckets: map[joinKey][]loopItem{}}
 	previous := internals.eval_errors
 	index.items = s.source.items(view, internals)
 	if internals.eval_errors != previous {
@@ -149,12 +160,12 @@ func (s *selectorSpec) buildJoinIndex(plan *joinPlan, view View, internals *Inte
 // The items worth testing against the filter: only those matching the join key when the selector has one.
 // Testing the rest could not succeed because the equality factors are part of the conditions.
 func (s *selectorSpec) candidates(view View, internals *Internals) ([]loopItem, bool) {
-	plan := s.joinPlanFor(internals)
+	plan := s.joinPlanFor()
 	if plan == nil {
 		return nil, false
 	}
 	index := internals.joins[s]
-	if index == nil || index.revision != view.Revision() {
+	if index == nil || (index.revision != view.Revision() && !index.order_independent) {
 		if index = s.buildJoinIndex(plan, view, internals); index == nil {
 			return nil, false
 		}

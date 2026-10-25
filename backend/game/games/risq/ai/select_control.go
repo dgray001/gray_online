@@ -6,8 +6,8 @@ func (a *selectAction) parseControl(raw map[string]any) error {
 	if a.actors == nil || (a.actors.kind != "units" && a.actors.kind != "buildings") {
 		return fmt.Errorf("select: controls need explicit unit or building actors")
 	}
-	if raw["pick"] != nil || raw["assign"] != nil || raw["mode"] != nil {
-		return fmt.Errorf("select: controls take no pick, assign or mode")
+	if raw["pick"] != nil || raw["match"] != nil || raw["mode"] != nil {
+		return fmt.Errorf("select: controls take no pick, match or mode")
 	}
 	for _, v := range a.verbs {
 		if !v.control() {

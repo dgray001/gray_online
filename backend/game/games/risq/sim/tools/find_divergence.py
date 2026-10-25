@@ -40,7 +40,7 @@ def parse_games(path: str) -> list[list[Checkpoint]]:
             if not m:
                 continue
             turn, tick, digest = m.groups()
-            if turn == "0" and tick == "end":
+            if not games or (turn == "0" and tick == "end"):
                 games.append([])
             games[-1].append((turn, tick, digest, events, []))
             events = []

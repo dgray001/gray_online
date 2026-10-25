@@ -30,7 +30,7 @@
         {"action":"set_var","name":"first_wins","value":"(var(key0) >= var(key1)) * (var(key0) >= var(key2))"},
         {"action":"set_var","name":"pick_cat","value":"(1 - var(first_wins)) * (var(key1) >= var(key2)) + 2 * (1 - var(first_wins)) * (var(key2) > var(key1))"},
         {"action":"if","when":{"value_at_least":{"value":"(var(avail0) > 0) + (var(avail1) > 0) + (var(avail2) > 0)","amount":1}},"then":[
-          {"action":"select","actors":{"kind":"units","where":{"if":"var(actor.uid) == var(u.uid)"}},"pick":{"kind":"gatherables","let":{"workers":{"count":{"kind":"units","where":{"in":{"order_kind":["gather"]},"if":"var(item.order_target_uid) == var(target.uid)"}}},"nx":"2 * max(var(target.x), 0 - var(target.x)) - (var(target.x) < 0)","ny":"2 * max(var(target.y), 0 - var(target.y)) - (var(target.y) < 0)","nzx":"2 * max(var(target.zone_x), 0 - var(target.zone_x)) - (var(target.zone_x) < 0)","nzy":"2 * max(var(target.zone_y), 0 - var(target.zone_y)) - (var(target.zone_y) < 0)","space_key":"(var(target.nx) + var(target.ny)) * (var(target.nx) + var(target.ny) + 1) / 2 + var(target.ny)","local_key":"(var(target.nzx) + var(target.nzy)) * (var(target.nzx) + var(target.nzy) + 1) / 2 + var(target.nzy)","zone_key":"(2 * var(target.space_key) + 2 * var(target.local_key)) * (2 * var(target.space_key) + 2 * var(target.local_key) + 1) / 2 + 2 * var(target.local_key)"},"where":{"if":["var(target.category) == var(pick_cat)","var(target.gather_capacity) - var(target.workers) > 0"]}},"assign":{"capacity":"var(target.gather_capacity) - var(target.workers)","overflow":"none","unit_score":"0 - 10000000000000 * (var(target.amount_left) <= (var(target.workers) + var(target_assigned)) * var(target.gather_speed)) - 1000000000 * var(target.zone_distance_to_actor) - var(target.zone_key)"},"issue":[{"gather":{}}]},
+          {"action":"select","actors":{"kind":"units","where":{"if":"var(actor.uid) == var(u.uid)"}},"pick":{"kind":"gatherables","let":{"workers":{"count":{"kind":"units","where":{"in":{"order_kind":["gather"]},"if":"var(item.order_target_uid) == var(target.uid)"}}},"nx":"2 * max(var(target.x), 0 - var(target.x)) - (var(target.x) < 0)","ny":"2 * max(var(target.y), 0 - var(target.y)) - (var(target.y) < 0)","nzx":"2 * max(var(target.zone_x), 0 - var(target.zone_x)) - (var(target.zone_x) < 0)","nzy":"2 * max(var(target.zone_y), 0 - var(target.zone_y)) - (var(target.zone_y) < 0)","space_key":"(var(target.nx) + var(target.ny)) * (var(target.nx) + var(target.ny) + 1) / 2 + var(target.ny)","local_key":"(var(target.nzx) + var(target.nzy)) * (var(target.nzx) + var(target.nzy) + 1) / 2 + var(target.nzy)","zone_key":"(2 * var(target.space_key) + 2 * var(target.local_key)) * (2 * var(target.space_key) + 2 * var(target.local_key) + 1) / 2 + 2 * var(target.local_key)"},"where":{"if":["var(target.category) == var(pick_cat)","var(target.gather_capacity) - var(target.workers) > 0"]}, "capacity": "var(target.gather_capacity) - var(target.workers)"},"match": {"score": ["0 - 10000000000000 * (var(target.amount_left) <= (var(target.workers) + var(target.assigned)) * var(target.gather_speed)) - 1000000000 * distance(actor, target, 1) - var(target.zone_key)"]},"issue":[{"gather":{}}]},
           {"action":"set_var","name":"gather_food","value":"var(gather_food) + (var(pick_cat) == 0)"},{"action":"set_var","name":"gather_wood","value":"var(gather_wood) + (var(pick_cat) == 1)"},{"action":"set_var","name":"gather_stone","value":"var(gather_stone) + (var(pick_cat) == 2)"},
           {"action":"set_var","name":"chosen_id","value":{"max":{"kind":"units","where":{"if":"var(item.uid) == var(u.uid)"},"of":"var(item.order_target_uid)","default":0}}},
           {"action":"for_each","select":{"kind":"gatherables","where":{"if":"var(node.uid) == var(chosen_id)"},"let":{"workers":{"count":{"kind":"units","where":{"in":{"order_kind":["gather"]},"if":"var(item.order_target_uid) == var(node.uid)"}}}}},"as":"node","do":[
@@ -46,7 +46,7 @@
         {"action":"set_var","name":"deficit_from","value":"(var(gather_from) == 0) * (var(target0) - var(gather_food)) + (var(gather_from) == 1) * (var(target1) - var(gather_wood)) + (var(gather_from) == 2) * (var(target2) - var(gather_stone))"},
         {"action":"set_var","name":"deficit_pick","value":"(var(pick_cat) == 0) * (var(target0) - var(gather_food)) + (var(pick_cat) == 1) * (var(target1) - var(gather_wood)) + (var(pick_cat) == 2) * (var(target2) - var(gather_stone))"},
         {"action":"if","when":{"value_at_least":{"value":"(var(ok0) + var(ok1) + var(ok2) >= 1) * (var(pick_cat) != var(gather_from)) * (var(deficit_pick) - var(deficit_from) > 3)","amount":1}},"then":[
-          {"action":"select","actors":{"kind":"units","where":{"if":"var(actor.uid) == var(worker.uid)"}},"pick":{"kind":"gatherables","let":{"workers":{"count":{"kind":"units","where":{"in":{"order_kind":["gather"]},"if":"var(item.order_target_uid) == var(target.uid)"}}},"nx":"2 * max(var(target.x), 0 - var(target.x)) - (var(target.x) < 0)","ny":"2 * max(var(target.y), 0 - var(target.y)) - (var(target.y) < 0)","nzx":"2 * max(var(target.zone_x), 0 - var(target.zone_x)) - (var(target.zone_x) < 0)","nzy":"2 * max(var(target.zone_y), 0 - var(target.zone_y)) - (var(target.zone_y) < 0)","space_key":"(var(target.nx) + var(target.ny)) * (var(target.nx) + var(target.ny) + 1) / 2 + var(target.ny)","local_key":"(var(target.nzx) + var(target.nzy)) * (var(target.nzx) + var(target.nzy) + 1) / 2 + var(target.nzy)","zone_key":"(2 * var(target.space_key) + 2 * var(target.local_key)) * (2 * var(target.space_key) + 2 * var(target.local_key)  + 1) / 2 + 2 * var(target.local_key)"},"where":{"if":["var(target.category) == var(pick_cat)","var(target.gather_capacity) - var(target.workers) > 0"]}},"assign":{"capacity":"var(target.gather_capacity) - var(target.workers)","overflow":"none","unit_score":"0 - 10000000000000 * (var(target.amount_left) <= (var(target.workers) + var(target_assigned)) * var(target.gather_speed)) - 1000000000 * var(target.zone_distance_to_actor) - var(target.zone_key)"},"issue":[{"gather":{}}]},
+          {"action":"select","actors":{"kind":"units","where":{"if":"var(actor.uid) == var(worker.uid)"}},"pick":{"kind":"gatherables","let":{"workers":{"count":{"kind":"units","where":{"in":{"order_kind":["gather"]},"if":"var(item.order_target_uid) == var(target.uid)"}}},"nx":"2 * max(var(target.x), 0 - var(target.x)) - (var(target.x) < 0)","ny":"2 * max(var(target.y), 0 - var(target.y)) - (var(target.y) < 0)","nzx":"2 * max(var(target.zone_x), 0 - var(target.zone_x)) - (var(target.zone_x) < 0)","nzy":"2 * max(var(target.zone_y), 0 - var(target.zone_y)) - (var(target.zone_y) < 0)","space_key":"(var(target.nx) + var(target.ny)) * (var(target.nx) + var(target.ny) + 1) / 2 + var(target.ny)","local_key":"(var(target.nzx) + var(target.nzy)) * (var(target.nzx) + var(target.nzy) + 1) / 2 + var(target.nzy)","zone_key":"(2 * var(target.space_key) + 2 * var(target.local_key)) * (2 * var(target.space_key) + 2 * var(target.local_key)  + 1) / 2 + 2 * var(target.local_key)"},"where":{"if":["var(target.category) == var(pick_cat)","var(target.gather_capacity) - var(target.workers) > 0"]}, "capacity": "var(target.gather_capacity) - var(target.workers)"},"match": {"score": ["0 - 10000000000000 * (var(target.amount_left) <= (var(target.workers) + var(target.assigned)) * var(target.gather_speed)) - 1000000000 * distance(actor, target, 1) - var(target.zone_key)"]},"issue":[{"gather":{}}]},
           {"action":"set_var","name":"gather_food","value":"var(gather_food) - (var(gather_from) == 0) + (var(pick_cat) == 0)"},{"action":"set_var","name":"gather_wood","value":"var(gather_wood) - (var(gather_from) == 1) + (var(pick_cat) == 1)"},{"action":"set_var","name":"gather_stone","value":"var(gather_stone) - (var(gather_from) == 2) + (var(pick_cat) == 2)"},
           {"action":"set_var","name":"chosen_id","value":{"max":{"kind":"units","where":{"if":"var(item.uid) == var(worker.uid)"},"of":"var(item.order_target_uid)","default":0}}},
           {"action":"for_each","select":{"kind":"gatherables","where":{"if":"(var(node.uid) == var(old_id)) + (var(node.uid) == var(chosen_id))"},"let":{"workers":{"count":{"kind":"units","where":{"in":{"order_kind":["gather"]},"if":"var(item.order_target_uid) == var(node.uid)"}}}}},"as":"node","do":[
@@ -88,8 +88,8 @@
         {"action": "set_var", "name": "unbuilt", "value": {"count": {"kind": "foundations", "where": {"building_ids": [2], "if": "1 - var(item.builders)"}}}},
         {"action": "select",
           "actors": {"kind": "units", "where": {"can_build": 2, "in": {"order_kind": ["gather", "none"]}}, "rank": "0 - var(actor.uid)", "limit": 1},
-          "pick": {"kind": "foundations", "where": {"building_ids": [2], "if": "1 - var(target.builders)"}},
-          "assign": {"capacity": 1, "overflow": "none", "unit_score": "0 - 1000000000 * var(target.zone_distance_to_actor) - ((var(target.x) + 200) * 100000 + (var(target.y) + 200) * 100 + (var(target.zone_x) + 2) * 10 + var(target.zone_y) + 2)"},
+          "pick": {"kind": "foundations", "where": {"building_ids": [2], "if": "1 - var(target.builders)"}, "capacity": 1},
+          "match": {"score": ["0 - 1000000000 * distance(actor, target, 1) - ((var(target.x) + 200) * 100000 + (var(target.y) + 200) * 100 + (var(target.zone_x) + 2) * 10 + var(target.zone_y) + 2)"]},
           "issue": [{"build": {}}]},
         {
           "action": "select",
@@ -97,9 +97,9 @@
           "pick": {
             "kind": "zones",
             "let": {"foundations":{"count":{"kind":"foundations","where":{"if":"1 - var(item.zone_distance_to_target)"}}},"owned_near":{"count":{"kind":"spaces","where":{"owner":"own","if":"2 - var(item.distance_to_target)"}}},"self_owned":{"count":{"kind":"spaces","where":{"owner":"own","if":"1 - var(item.distance_to_target)"}}},"nx":"2 * max(var(target.x), 0 - var(target.x)) - (var(target.x) < 0)","ny":"2 * max(var(target.y), 0 - var(target.y)) - (var(target.y) < 0)","nzx":"2 * max(var(target.zone_x), 0 - var(target.zone_x)) - (var(target.zone_x) < 0)","nzy":"2 * max(var(target.zone_y), 0 - var(target.zone_y)) - (var(target.zone_y) < 0)","space_key":"(var(target.nx) + var(target.ny)) * (var(target.nx) + var(target.ny) + 1) / 2 + var(target.ny)","local_key":"(var(target.nzx) + var(target.nzy)) * (var(target.nzx) + var(target.nzy) + 1) / 2 + var(target.nzy)","zone_key":"(2 * var(target.space_key) + 2 * var(target.local_key)) * (2 * var(target.space_key) + 2 * var(target.local_key) + 1) / 2 + 2 * var(target.local_key)"},
-            "where": {"resource": false, "building": false, "if": "(1 - var(target.foundations)) * (var(target.self_owned) + (var(target.space_owner) < 0) * (var(target.owned_near) + (var(own_spaces) == 0)))"}
+            "where": {"resource": false, "building": false, "if": "(1 - var(target.foundations)) * (var(target.self_owned) + (var(target.space_owner) < 0) * (var(target.owned_near) + (var(own_spaces) == 0)))"}, "capacity": 1
           },
-          "assign": {"capacity": 1, "overflow": "none", "unit_score": "0 - 1000000000000 * var(target.zone_distance_to_actor) - var(target.zone_key)"},
+          "match": {"score": ["0 - 1000000000000 * distance(actor, target, 1) - var(target.zone_key)"]},
           "issue": [{"build": {"building_id": 2}}]
         }
       ]
@@ -111,8 +111,8 @@
         {"action": "set_var", "name": "unbuilt", "value": {"count": {"kind": "foundations", "where": {"building_ids": [22], "if": "1 - var(item.builders)"}}}},
         {"action": "select",
           "actors": {"kind": "units", "where": {"can_build": 22, "in": {"order_kind": ["gather", "none"]}}, "rank": "0 - var(actor.uid)", "limit": 1},
-          "pick": {"kind": "foundations", "where": {"building_ids": [22], "if": "1 - var(target.builders)"}},
-          "assign": {"capacity": 1, "overflow": "none", "unit_score": "0 - 1000000000 * var(target.zone_distance_to_actor) - ((var(target.x) + 200) * 100000 + (var(target.y) + 200) * 100 + (var(target.zone_x) + 2) * 10 + var(target.zone_y) + 2)"},
+          "pick": {"kind": "foundations", "where": {"building_ids": [22], "if": "1 - var(target.builders)"}, "capacity": 1},
+          "match": {"score": ["0 - 1000000000 * distance(actor, target, 1) - ((var(target.x) + 200) * 100000 + (var(target.y) + 200) * 100 + (var(target.zone_x) + 2) * 10 + var(target.zone_y) + 2)"]},
           "issue": [{"build": {}}]},
         {
           "action": "select",
@@ -120,9 +120,9 @@
           "pick": {
             "kind": "zones",
             "let": {"foundations":{"count":{"kind":"foundations","where":{"if":"1 - var(item.zone_distance_to_target)"}}},"owned_near":{"count":{"kind":"spaces","where":{"owner":"own","if":"2 - var(item.distance_to_target)"}}},"self_owned":{"count":{"kind":"spaces","where":{"owner":"own","if":"1 - var(item.distance_to_target)"}}},"nx":"2 * max(var(target.x), 0 - var(target.x)) - (var(target.x) < 0)","ny":"2 * max(var(target.y), 0 - var(target.y)) - (var(target.y) < 0)","nzx":"2 * max(var(target.zone_x), 0 - var(target.zone_x)) - (var(target.zone_x) < 0)","nzy":"2 * max(var(target.zone_y), 0 - var(target.zone_y)) - (var(target.zone_y) < 0)","space_key":"(var(target.nx) + var(target.ny)) * (var(target.nx) + var(target.ny) + 1) / 2 + var(target.ny)","local_key":"(var(target.nzx) + var(target.nzy)) * (var(target.nzx) + var(target.nzy) + 1) / 2 + var(target.nzy)","zone_key":"(2 * var(target.space_key) + 2 * var(target.local_key)) * (2 * var(target.space_key) + 2 * var(target.local_key) + 1) / 2 + 2 * var(target.local_key)"},
-            "where": {"resource": false, "building": false, "if": "(1 - var(target.foundations)) * (var(target.self_owned) + (var(target.space_owner) < 0) * (var(target.owned_near) + (var(own_spaces) == 0)))"}
+            "where": {"resource": false, "building": false, "if": "(1 - var(target.foundations)) * (var(target.self_owned) + (var(target.space_owner) < 0) * (var(target.owned_near) + (var(own_spaces) == 0)))"}, "capacity": 1
           },
-          "assign": {"capacity": 1, "overflow": "none", "unit_score": "0 - 1000000000000 * var(target.zone_distance_to_actor) - var(target.zone_key)"},
+          "match": {"score": ["0 - 1000000000000 * distance(actor, target, 1) - var(target.zone_key)"]},
           "issue": [{"build": {"building_id": 22}}]
         }
       ]
@@ -132,9 +132,9 @@
       "then": [
         {
           "action": "select",
-          "actors": {"kind": "units", "where": {"unit_types": ["military"], "if": "var(actor.idle)"}},
-          "pick": {"kind": "attackables", "where": {"if": "var(target.is_visible)"}},
-          "assign": {"capacity": 100000, "unit_order": "0 - var(actor.uid)", "unit_score": "0 - 10000000000000 * ((var(target.target_category) == 1) + 2 * (var(target.target_category) == 3)) - 1000000 * var(target.zone_distance_to_actor) - var(target.uid)"},
+          "actors": {"kind": "units", "where": {"unit_types": ["military"], "if": "var(actor.idle)"}, "rank": "0 - var(actor.uid)"},
+          "pick": {"kind": "attackables", "where": {"if": "var(target.is_visible)"}, "capacity": 100000},
+          "match": {"score": ["0 - 10000000000000 * ((var(target.target_category) == 1) + 2 * (var(target.target_category) == 3)) - 1000000 * distance(actor, target, 1) - var(target.uid)"]},
           "issue": [{"attack": {}}]
         },
         {"action":"set_var","name":"unexplored","value":{"count":{"kind":"spaces","where":{"vision":0}}}},
@@ -150,7 +150,7 @@
             {"action":"select",
               "actors":{"kind":"units","where":{"if":"var(actor.uid) == var(u.uid)"}},
               "pick":{"kind":"spaces","where":{"vision":0,"near":{"distance":"var(dmin)","of":{"x":"var(ux)","y":"var(uy)"}}},"let":{"claimed":{"count":{"kind":"units","where":{"in":{"order_kind":["move"]},"if":"(var(item.order_space_x) == var(target.x)) * (var(item.order_space_y) == var(target.y)) * (var(item.order_zone_x) == 0) * (var(item.order_zone_y) == 0)"}}}},"rank":["0","0 - (var(target.y) * 100000 + var(target.x))"]},
-              "assign":{"unit_score":"0 - (var(target.claimed) > 0)"},
+              "match": {"score": ["0 - (var(target.claimed) > 0)"]},
               "issue":[{"move":{"to":"zone"}}]}]}]}
       ]
     }

@@ -1,6 +1,7 @@
 package ai
 
 import (
+	"fmt"
 	"maps"
 	"math"
 	"slices"
@@ -12,9 +13,13 @@ type selItem struct {
 	internals *Internals
 	census    *census
 	rank      float64
+	rank_keys []float64
 	role      string
 	lets      *letState
 	cache     map[string]float64
+	capacity  *float64
+	initial   *float64
+	slot      *targetSlot
 }
 
 func (s selItem) once(name string, compute func() float64) float64 {
@@ -28,22 +33,25 @@ func (s selItem) once(name string, compute func() float64) float64 {
 	return value
 }
 
-type letState struct {
-	specs map[string]amount
-	busy  map[string]bool
-}
-
 func (s selItem) letValue(name string, spec amount) float64 {
+	if val, ok := s.cachedLet(name); ok {
+		return val
+	}
 	if s.lets.busy[name] {
 		s.internals.warnOnce("let:"+name, "ai: let "+name+" depends on itself")
 		s.internals.eval_errors++
 		return 0
 	}
+	if s.lets.busy == nil {
+		s.lets.busy = map[string]bool{}
+	}
 	s.lets.busy[name] = true
 	restore := s.internals.bindItem(s.role, s)
+	errors_before := s.internals.eval_errors
 	value := spec.float(s.view, s.internals)
 	restore()
 	s.lets.busy[name] = false
+	s.cacheLet(name, value, errors_before)
 	return value
 }
 
@@ -78,6 +86,10 @@ func locOf(item loopItem) (ZoneRef, bool, bool) {
 
 func kindOfItem(item loopItem) string {
 	switch unwrapItem(item).(type) {
+	case orderItem:
+		return "orders"
+	case assignmentItem:
+		return "assignments"
 	case unitItem:
 		return "units"
 	case buildingItem:
@@ -108,13 +120,42 @@ func (s selItem) field(name string) (float64, bool) {
 			return s.letValue(name, spec), true
 		}
 	}
+	if s.role == "actor" && name == "assign_round" {
+		return s.internals.assign_round, true
+	}
+	if s.role == "target" {
+		switch name {
+		case "assigned":
+			if s.slot != nil {
+				return s.slot.assigned, true
+			}
+			if s.initial != nil {
+				return *s.initial, true
+			}
+			return 0, true
+		case "remaining":
+			if s.slot != nil && s.slot.remaining != nil {
+				return *s.slot.remaining, true
+			}
+			return float64(unboundedCount), true
+		case "already_targeted":
+			return s.alreadyTargeted(), true
+		}
+	}
 	if get, ok := selectFieldTables[kindOfItem(s.loopItem)][name]; ok {
 		return get(s), true
 	}
 	if name == "distance_home" {
 		return 0, false
 	}
-	return s.loopItem.field(name)
+	value, ok := s.loopItem.field(name)
+	if !ok {
+		if _, strict := unwrapItem(s.loopItem).(assignmentItem); strict {
+			s.internals.warnOnce("item:"+s.role+"."+name, fmt.Sprintf("ai: var(%s.%s) is not readable for this assignment", s.role, name))
+			s.internals.eval_errors++
+		}
+	}
+	return value, ok
 }
 
 func (s selItem) here(count func(*census) tally) float64 {
@@ -127,6 +168,39 @@ func (s selItem) measure(a ZoneRef, b ZoneRef, zone_steps bool) float64 {
 		return float64(s.view.LocationDistance(a, b))
 	}
 	return float64(s.view.SpaceDistance(a.Space, b.Space))
+}
+
+func (s selItem) alreadyTargeted() float64 {
+	actorItem := s.internals.loop_items["actor"]
+	tk, hasT := keyOf(s.loopItem)
+	ak, hasA := keyOf(actorItem)
+	if !hasT || !hasA || tk.id == 0 || ak.id == 0 {
+		return 0
+	}
+	if u, ok := unwrapItem(actorItem).(unitItem); ok && orderTargetUID(u.unit.CurrentOrder) == float64(tk.id) {
+		return 1
+	}
+	if s.internals.hasQueuedTarget(s.view, ak.id, tk.id) {
+		return 1
+	}
+	return 0
+}
+
+func (i *Internals) hasQueuedTarget(view View, subjectUID uint64, targetUID uint64) bool {
+	if i.target_queue_index == nil {
+		i.target_queue_index = make(map[uint64]map[uint64]bool)
+		if view != nil {
+			for _, entry := range view.OrderQueue() {
+				if entry.SubjectUID != 0 && entry.TargetUID != 0 {
+					if i.target_queue_index[entry.SubjectUID] == nil {
+						i.target_queue_index[entry.SubjectUID] = make(map[uint64]bool)
+					}
+					i.target_queue_index[entry.SubjectUID][entry.TargetUID] = true
+				}
+			}
+		}
+	}
+	return i.target_queue_index[subjectUID][targetUID]
 }
 
 func (s selItem) distanceToRole(role string, zone_steps bool) float64 {
@@ -255,12 +329,14 @@ func mergeFields(tables ...fieldTable[selItem]) fieldTable[selItem] {
 }
 
 var selectFieldTables = map[string]fieldTable[selItem]{
-	"units":     mergeFields(selectLocatedFields, selectRegionFields, selectUnitFields),
-	"buildings": mergeFields(selectLocatedFields, selectRegionFields, selectBuildingFields),
-	"resources": mergeFields(selectLocatedFields, selectRegionFields),
-	"spaces":    mergeFields(selectLocatedFields, selectRegionFields, selectEmptyField),
-	"zones":     mergeFields(selectLocatedFields, selectRegionFields, selectEmptyField),
-	"regions":   {},
+	"orders":      {},
+	"assignments": {},
+	"units":       mergeFields(selectLocatedFields, selectRegionFields, selectUnitFields),
+	"buildings":   mergeFields(selectLocatedFields, selectRegionFields, selectBuildingFields),
+	"resources":   mergeFields(selectLocatedFields, selectRegionFields),
+	"spaces":      mergeFields(selectLocatedFields, selectRegionFields, selectEmptyField),
+	"zones":       mergeFields(selectLocatedFields, selectRegionFields, selectEmptyField),
+	"regions":     {},
 
 	"foundations": mergeFields(selectLocatedFields, selectRegionFields),
 	"gatherables": mergeFields(selectLocatedFields, selectRegionFields),
@@ -271,6 +347,13 @@ var selectFieldTables = map[string]fieldTable[selItem]{
 func init() {
 	for kind, table := range selectFieldTables {
 		inherited := slices.DeleteFunc(slices.Clone(itemFields[kind]), func(name string) bool { return name == "distance_home" })
-		itemFields["select_"+kind] = append(inherited, table.names()...)
+		all := append(inherited, table.names()...)
+		itemFields["select_"+kind] = all
+		itemFields["select_target_"+kind] = slices.DeleteFunc(slices.Clone(all), func(n string) bool {
+			return n == "distance_to_actor" || n == "zone_distance_to_actor"
+		})
+		itemFields["select_actor_"+kind] = slices.DeleteFunc(slices.Clone(all), func(n string) bool {
+			return n == "distance_to_target" || n == "zone_distance_to_target"
+		})
 	}
 }

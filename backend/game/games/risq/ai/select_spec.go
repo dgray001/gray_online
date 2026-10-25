@@ -3,9 +3,10 @@ package ai
 import (
 	"fmt"
 	"maps"
+	"slices"
 )
 
-var selectKinds = []string{"units", "buildings", "resources", "spaces", "zones", "regions", "foundations", "gatherables", "attackables"}
+var selectKinds = []string{"units", "buildings", "resources", "spaces", "zones", "regions", "foundations", "gatherables", "attackables", "orders", "assignments"}
 
 type selectorSpec struct {
 	kind, role                 string
@@ -18,11 +19,26 @@ type selectorSpec struct {
 	in                         []inFilter
 	rank                       []amount
 	limit, skip                *amount
+	capacity                   *amount
+	initial                    *amount
 	lets                       map[string]amount
 	can_create, can_research   uint32
 	can_build                  uint32
 	join                       *joinPlan
 	join_planned               bool
+}
+
+func (s *selectorSpec) impure() bool {
+	amounts := slices.Concat(s.conditions, s.rank, slices.Collect(maps.Values(s.lets)))
+	for _, near := range s.near {
+		amounts = append(amounts, near.distance)
+	}
+	for _, bound := range []*amount{s.skip, s.limit, s.capacity, s.initial} {
+		if bound != nil {
+			amounts = append(amounts, *bound)
+		}
+	}
+	return slices.ContainsFunc(amounts, func(a amount) bool { return a.impure })
 }
 
 func (s *selectorSpec) letNames() []string {
@@ -58,11 +74,19 @@ func takeLetNames(obj map[string]any, kind string) ([]string, error) {
 type nearSpec struct {
 	distance   amount
 	of         *selectorSpec
+	through    *selectorSpec
 	coordinate *coordinateSpec
 	zone_steps bool
 }
 
-var selectorKeys = []string{"kind", "where", "rank", "limit", "skip", "let"}
+type nearClause struct {
+	locations []ZoneRef
+	reach     map[Coordinate]int
+	bound     int
+	hoisted   bool
+}
+
+var selectorKeys = []string{"kind", "where", "rank", "limit", "skip", "let", "capacity", "initial_assigned"}
 
 func parseForEachSelect(raw map[string]any, role string) (*selectorSpec, error) {
 	value, present := raw["select"]
@@ -76,9 +100,16 @@ func parseForEachSelect(raw map[string]any, role string) (*selectorSpec, error) 
 }
 
 func parseSelectorSpec(raw any, role string) (*selectorSpec, error) {
+	return parseSelectorSpecFor(raw, role, false)
+}
+
+func parseSelectorSpecFor(raw any, role string, assigning bool) (*selectorSpec, error) {
 	obj, ok := raw.(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("a selector must be an object")
+	}
+	if _, present := obj["initial_assigned"]; present && !(assigning && role == "target") {
+		return nil, fmt.Errorf("initial_assigned only applies to the pick of an assignment select")
 	}
 	if err := checkKeys(obj, selectorKeys...); err != nil {
 		return nil, err
@@ -102,7 +133,7 @@ func parseSelectorSpec(raw any, role string) (*selectorSpec, error) {
 		return nil, err
 	}
 	var rest map[string]any
-	err = withLoopScopeExtra(role, "select_"+kind, let_names, func() error {
+	err = withLoopScopeExtra(role, s.scopeSource(), let_names, func() error {
 		if err := s.parseLets(obj); err != nil {
 			return err
 		}
@@ -112,6 +143,15 @@ func parseSelectorSpec(raw any, role string) (*selectorSpec, error) {
 		}
 		if s.rank, err = parseRank(obj); err != nil {
 			return err
+		}
+		if s.initial, err = optionalAmount(obj, "initial_assigned"); err != nil {
+			return err
+		}
+		if s.capacity, err = s.parseCapacity(obj, let_names, assigning); err != nil {
+			return err
+		}
+		if s.capacity != nil && role != "target" {
+			return fmt.Errorf("selector: capacity is only valid on pick selectors")
 		}
 		return nil
 	})
@@ -129,6 +169,25 @@ func parseSelectorSpec(raw any, role string) (*selectorSpec, error) {
 	}
 	s.skip, err = optionalAmount(obj, "skip")
 	return s, err
+}
+
+func (s *selectorSpec) parseCapacity(obj map[string]any, let_names []string, assigning bool) (capacity *amount, err error) {
+	if !assigning {
+		return optionalAmount(obj, "capacity")
+	}
+	extra := append(slices.Clone(let_names), "assigned")
+	err = withLoopScopeExtra(s.role, s.scopeSource(), extra, func() (parsed error) {
+		capacity, parsed = optionalAmount(obj, "capacity")
+		return parsed
+	})
+	return capacity, err
+}
+
+func (s *selectorSpec) scopeSource() string {
+	if s.role == "target" || s.role == "actor" {
+		return "select_" + s.role + "_" + s.kind
+	}
+	return "select_" + s.kind
 }
 
 func (s *selectorSpec) parseLets(obj map[string]any) error {

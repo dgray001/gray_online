@@ -19,7 +19,7 @@ func (p place) field(name string) (float64, bool) {
 
 type playerItem struct {
 	id, score, units_visible, buildings_known int
-	me                                        bool
+	me, eliminated                            bool
 }
 
 func (p playerItem) field(name string) (float64, bool) {
@@ -89,6 +89,7 @@ func (z zoneItem) field(name string) (float64, bool) {
 
 // The fields each source's items have; checked when a config loads
 var itemFields = map[string][]string{
+	"orders":      orderFields.names(),
 	"players":     playerFields.names(),
 	"spaces":      spaceFields.names(),
 	"regions":     regionFields.names(),
@@ -100,6 +101,7 @@ var itemFields = map[string][]string{
 	"foundations": foundationFields.names(),
 	"gatherables": gatherableFields.names(),
 	"attackables": attackableFields.names(),
+	"assignments": assignmentFieldNames,
 }
 
 func hasItemField(source string, name string) bool {

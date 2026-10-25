@@ -81,6 +81,9 @@ func (v selectTestView) LocationDistance(a ZoneRef, b ZoneRef) int {
 	}
 	return 6 * v.SpaceDistance(a.Space, b.Space)
 }
+func (v selectTestView) SpaceNeighbors(space Coordinate) []Coordinate {
+	return nil
+}
 func (v selectTestView) BuildSites(_ uint32, include func(Coordinate) bool) []ZoneRef {
 	sites := make([]ZoneRef, 0)
 	for _, s := range v.sites {
@@ -265,9 +268,9 @@ func TestSelectAssignSpreadsActorsWithinCapacity(t *testing.T) {
 		}},
 		idle: units, turn: 1,
 	}
-	config := rule(`{"action":"select","pick":{"kind":"buildings","where":{"owner":"enemy"},"rank":"100 - var(target.from_base)",
+	config := rule(`{"action":"select","pick":{"kind":"buildings","where":{"owner":"enemy"},"capacity":2,"rank":"100 - var(target.from_base)",
 		"let":{"from_base":{"min":{"kind":"buildings","where":{"owner":"own","in":{"building_id":[1]}},"of":"var(item.distance_to_target)"}}}},
-		"actors":{"kind":"units"},"assign":{"capacity":2,"overflow":"none"},"issue":[{"attack":{}}]}`)
+		"actors":{"kind":"units"},"issue":[{"attack":{}}]}`)
 	counts := map[int64]int{}
 	for _, o := range selectOrders(t, config, view) {
 		counts[o.TargetID]++
@@ -413,25 +416,28 @@ func TestIssueDispatchesEveryVerb(t *testing.T) {
 
 func TestSelectConfigErrors(t *testing.T) {
 	cases := map[string]string{
-		"unknown kind":          `{"action":"select","pick":{"kind":"ships"},"into":{"set":"x"}}`,
-		"unknown verb":          `{"action":"select","pick":{"kind":"spaces"},"issue":[{"teleport":{}}]}`,
-		"missing pick":          `{"action":"select","issue":[{"attack":{}}]}`,
-		"unknown rank field":    `{"action":"select","pick":{"kind":"spaces","rank":"var(target.nope)"},"into":{"set":"x"}}`,
-		"unknown actor field":   `{"action":"select","pick":{"kind":"spaces"},"actors":{"kind":"units","where":{"if":"var(actor.nope)"}},"issue":[{"move":{}}]}`,
-		"bucket of buildings":   `{"action":"select","pick":{"kind":"buildings"},"into":{"bucket":"b"}}`,
-		"set and bucket":        `{"action":"select","pick":{"kind":"units"},"into":{"set":"s","bucket":"b"}}`,
-		"actors without issue":  `{"action":"select","pick":{"kind":"units"},"actors":{"kind":"units"}}`,
-		"build with zero id":    `{"action":"select","pick":{"kind":"spaces"},"issue":[{"build":{"building_id":0}}]}`,
-		"cancel with actors":    `{"action":"select","pick":{"kind":"foundations"},"actors":{"kind":"units"},"issue":[{"cancel_foundation":{}}]}`,
-		"cancel with assign":    `{"action":"select","pick":{"kind":"foundations"},"assign":{"capacity":1},"issue":[{"cancel_foundation":{}}]}`,
-		"unknown key":           `{"action":"select","pick":{"kind":"spaces"},"issue":[{"move":{}}],"orders":["move"]}`,
-		"hire with actors":      `{"action":"select","pick":{"kind":"zones"},"actors":{"kind":"units"},"issue":[{"hire":{"unit_id":101}}]}`,
-		"hire with assign":      `{"action":"select","pick":{"kind":"zones"},"assign":{"capacity":2},"issue":[{"hire":{"unit_id":101}}]}`,
-		"hire with space pick":  `{"action":"select","pick":{"kind":"spaces"},"issue":[{"hire":{"unit_id":101}}]}`,
-		"hire beside a verb":    `{"action":"select","pick":{"kind":"zones"},"issue":[{"hire":{"unit_id":101}},{"move":{}}]}`,
-		"hire without unit id":  `{"action":"select","pick":{"kind":"zones"},"issue":[{"hire":{}}]}`,
-		"bucket filter on zone": `{"action":"select","pick":{"kind":"zones","where":{"bucket":"b"}},"into":{"set":"x"}}`,
-		"delete without actors": `{"action":"select","pick":{"kind":"spaces"},"issue":[{"delete":{}}]}`,
+		"unknown kind":           `{"action":"select","pick":{"kind":"ships"},"into":{"set":"x"}}`,
+		"unknown verb":           `{"action":"select","pick":{"kind":"spaces"},"issue":[{"teleport":{}}]}`,
+		"missing pick":           `{"action":"select","issue":[{"attack":{}}]}`,
+		"unknown rank field":     `{"action":"select","pick":{"kind":"spaces","rank":"var(target.nope)"},"into":{"set":"x"}}`,
+		"unknown actor field":    `{"action":"select","pick":{"kind":"spaces"},"actors":{"kind":"units","where":{"if":"var(actor.nope)"}},"issue":[{"move":{}}]}`,
+		"bucket of buildings":    `{"action":"select","pick":{"kind":"buildings"},"into":{"bucket":"b"}}`,
+		"set and bucket":         `{"action":"select","pick":{"kind":"units"},"into":{"set":"s","bucket":"b"}}`,
+		"actors without issue":   `{"action":"select","pick":{"kind":"units"},"actors":{"kind":"units"}}`,
+		"build with zero id":     `{"action":"select","pick":{"kind":"spaces"},"issue":[{"build":{"building_id":0}}]}`,
+		"cancel with actors":     `{"action":"select","pick":{"kind":"foundations"},"actors":{"kind":"units"},"issue":[{"cancel_foundation":{}}]}`,
+		"cancel with assign":     `{"action":"select","pick":{"kind":"foundations"},"assign":{"capacity":1},"issue":[{"cancel_foundation":{}}]}`,
+		"unknown key":            `{"action":"select","pick":{"kind":"spaces"},"issue":[{"move":{}}],"orders":["move"]}`,
+		"hire with actors":       `{"action":"select","pick":{"kind":"zones"},"actors":{"kind":"units"},"issue":[{"hire":{"unit_id":101}}]}`,
+		"hire with assign":       `{"action":"select","pick":{"kind":"zones"},"assign":{"capacity":2},"issue":[{"hire":{"unit_id":101}}]}`,
+		"hire with space pick":   `{"action":"select","pick":{"kind":"spaces"},"issue":[{"hire":{"unit_id":101}}]}`,
+		"hire beside a verb":     `{"action":"select","pick":{"kind":"zones"},"issue":[{"hire":{"unit_id":101}},{"move":{}}]}`,
+		"hire without unit id":   `{"action":"select","pick":{"kind":"zones"},"issue":[{"hire":{}}]}`,
+		"bucket filter on zone":  `{"action":"select","pick":{"kind":"zones","where":{"bucket":"b"}},"into":{"set":"x"}}`,
+		"delete without actors":  `{"action":"select","pick":{"kind":"spaces"},"issue":[{"delete":{}}]}`,
+		"through with unit zone": `{"action":"select","pick":{"kind":"spaces","where":{"near":{"distance":2,"of":{"kind":"spaces"},"unit":"zone","through":{"if":"1"}}}},"into":{"set":"x"}}`,
+		"through not an object":  `{"action":"select","pick":{"kind":"spaces","where":{"near":{"distance":2,"of":{"kind":"spaces"},"through":"invalid"}}},"into":{"set":"x"}}`,
+		"through unknown field":  `{"action":"select","pick":{"kind":"spaces","where":{"near":{"distance":2,"of":{"kind":"spaces"},"through":{"if":"var(actor.idle)"}}}},"into":{"set":"x"}}`,
 	}
 	for name, action := range cases {
 		if loadError(rule(action)) == nil {
