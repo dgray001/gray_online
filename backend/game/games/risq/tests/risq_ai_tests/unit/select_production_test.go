@@ -9,12 +9,57 @@ import (
 )
 
 func productionView() *fakeView {
-	view := checkedView("Buildings", "AllBuildings", "AllUnits", "AllSpaces", "AllRegions", "KnownResources", "IdleUnits", "IdleBuildings", "ScopedUnits", "EligibleUnits", "VisibleEnemyUnits", "KnownEnemyBuildings")
+	view := checkedView("Buildings", "AllBuildings", "AllUnits", "AllSpaces", "AllRegions", "KnownResources", "IdleUnits", "IdleBuildings", "VisibleEnemyUnits", "KnownEnemyBuildings")
 	view.knownEnemyBuildings[0].PlayerID = 1
 	second := view.buildings[0]
 	second.InternalID, second.Location = 801, ai.ZoneRef{Zone: ai.Coordinate{X: 2}}
 	view.buildings = append(view.buildings, second)
 	return view
+}
+
+func TestUnbucketedLookupTracksEverySinkModeAndOverlap(t *testing.T) {
+	view := productionView()
+	view.units = []ai.UnitView{{InternalID: 1}, {InternalID: 2}, {InternalID: 3}}
+	steps := []struct {
+		ids, bucket, mode string
+		want              float64
+	}{
+		{"[99]", "a", "replace", 6}, {"[1,2]", "a", "replace", 3},
+		{"[2]", "b", "add", 3}, {"[2]", "a", "remove", 3},
+		{"[3]", "a", "replace", 1}, {"[2]", "all", "remove", 3},
+		{"[2]", "a", "add", 1}, {"[2]", "a", "add", 1}, {"[99]", "a", "replace", 6},
+	}
+	actions := ""
+	for i, step := range steps {
+		if i > 0 {
+			actions += ","
+		}
+		actions += fmt.Sprintf(`{"action":"select","pick":{"kind":"units","where":{"in":{"uid":%s}}},"into":{"bucket":%q,"mode":%q}}, {"action":"set_var","name":"none_%d","value":{"sum":{"kind":"units","where":{"bucket":"none"},"of":"var(item.uid)"}}}`, step.ids, step.bucket, step.mode, i)
+	}
+	model := parseSelectModel(t, rule(actions))
+	model.DecideOrders(view)
+	for i, step := range steps {
+		if got, _ := model.Var(fmt.Sprintf("none_%d", i)); got != step.want {
+			t.Errorf("step %d: unbucketed uid sum %v, want %v", i, got, step.want)
+		}
+	}
+}
+
+func TestUnbucketedLookupPrunesDisappearingMembers(t *testing.T) {
+	view := productionView()
+	config := `{"rules":[{"when":{"value_equals":{"value":"gameVar(turn)","amount":1}},"then":[{"action":"select","pick":{"kind":"units","where":{"in":{"uid":[1]}}},"into":{"bucket":"kept"}}]}, {"when":{"always":{}},"then":[{"action":"set_var","name":"free","value":{"sum":{"kind":"units","where":{"bucket":"none"},"of":"var(item.uid)"}}}]}]}`
+	model := parseSelectModel(t, config)
+	for phase, want := range []float64{5, 5, 6} {
+		view.turnNumber = phase + 1
+		view.units = []ai.UnitView{{InternalID: 2}, {InternalID: 3}}
+		if phase != 1 {
+			view.units = append([]ai.UnitView{{InternalID: 1}}, view.units...)
+		}
+		model.DecideOrders(view)
+		if got, _ := model.Var("free"); got != want {
+			t.Errorf("phase %d: free = %v, want %v", phase, got, want)
+		}
+	}
 }
 
 type queueTestView struct {
@@ -118,8 +163,11 @@ func TestSelectStopRefundsSharedProductionAndRefreshesQueues(t *testing.T) {
 	view.buildings[0].Idle, view.buildings[1].Idle = false, false
 	model := actionsModel(t, `{"action":"select","actors":{"kind":"buildings","where":{"in":{"uid":[1000000800]}}},"issue":[{"stop":{"orders":["create"],"item_ids":[2]}}]},
 		{"action":"select","actors":{"kind":"buildings","where":{"in":{"idle":[1]},"can_create":2}},"issue":[{"create":{"unit_id":2}}]},
-		{"action":"move","targets":"coordinate","coordinate":{"x":"food + 100 * population","y":0}}`)
-	assertCalls(t, model.DecideOrders(view), view, orderCall{Kind: 20, Target: 700}, orderCall{Kind: 13, Subject: 801, Item: 2}, orderCall{Kind: 1, Subject: 91, Place: ai.ZoneRef{Space: ai.Coordinate{X: 123}}, Clear: true})
+		{"action":"set_var","name":"left","value":"gameVar(food) + 100 * gameVar(population)"}`).(*ai.RulesModel)
+	assertCalls(t, model.DecideOrders(view), view, orderCall{Kind: 20, Target: 700}, orderCall{Kind: 13, Subject: 801, Item: 2})
+	if left, _ := model.Var("left"); left != 123 {
+		t.Errorf("food + 100 * population = %v, want 123", left)
+	}
 }
 
 func TestSelectProductionSkipsQueueEvaluationForIneligibleBuildings(t *testing.T) {
@@ -178,8 +226,8 @@ func TestSelectProductionChargesCostAndPopulation(t *testing.T) {
 	view.popCurrent, view.popLimit = 0, 10
 	create := `{"action":"select","actors":{"kind":"buildings","rank":"0 - var(actor.uid)","limit":1},"issue":[{"create":{"unit_id":2}}]}`
 	model := actionsModel(t, `{"action":"select","actors":{"kind":"buildings"},"issue":[{"create":{"unit_id":2}}]},
-		{"action":"if","when":{"resource_at_least":{"category":"food","amount":1}},"then":[`+create+`]},
-		{"action":"if","when":{"population_headroom_equals":{"amount":8}},"then":[`+create+`]}`)
+		{"action":"if","when":{"value_at_least":{"value":"gameVar(food)","amount":1}},"then":[`+create+`]},
+		{"action":"if","when":{"value_equals":{"value":"gameVar(population_limit) - gameVar(population)","amount":8}},"then":[`+create+`]}`)
 	calls := []orderCall{{Kind: 13, Subject: 800, Item: 2}, {Kind: 13, Subject: 801, Item: 2}, {Kind: 13, Subject: 800, Item: 2}}
 	assertCalls(t, model.DecideOrders(view), view, calls...)
 }

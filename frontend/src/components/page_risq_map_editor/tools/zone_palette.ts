@@ -10,28 +10,6 @@ export interface ZoneConfigItem {
   id: number;
   label: string;
 }
-const RESOURCE_ITEMS: ZoneConfigItem[] = [
-  { id: 1, label: 'Forage Bush' },
-  { id: 2, label: 'Deer' },
-  { id: 11, label: 'Cedar Tree' },
-  { id: 41, label: 'Stone Mine' },
-];
-
-const BUILDING_ITEMS: ZoneConfigItem[] = [
-  { id: 1, label: 'Village Center' },
-  { id: 2, label: 'Housing' },
-  { id: 3, label: 'Farm' },
-  { id: 11, label: 'Blacksmith' },
-  { id: 21, label: 'Outpost' },
-  { id: 22, label: 'Barracks' },
-  { id: 23, label: 'Redoubt' },
-];
-const UNIT_ITEMS: ZoneConfigItem[] = [
-  { id: 1, label: 'Villager' },
-  { id: 11, label: 'Blunt Infantry' },
-  { id: 12, label: 'Piercing Infantry' },
-  { id: 13, label: 'Heavy Infantry' },
-];
 
 const MODES: { mode: ZoneToolMode; label: string }[] = [
   { mode: 'resource', label: 'Res' },
@@ -176,13 +154,13 @@ export class ZonePalette implements EditorConfigPanel {
   }
   private currentItems(): ZoneConfigItem[] {
     if (this.active_mode === 'resource') {
-      return RESOURCE_ITEMS;
+      return this.context.entities().resources.map((r) => ({ id: r.id, label: r.display_name }));
     }
     if (this.active_mode === 'building') {
-      return BUILDING_ITEMS;
+      return this.context.entities().buildings.map((b) => ({ id: b.id, label: b.display_name }));
     }
     if (this.active_mode === 'unit') {
-      return UNIT_ITEMS;
+      return this.context.entities().units.map((u) => ({ id: u.id, label: u.display_name }));
     }
     if (this.active_mode === 'terrain') {
       return this.context.terrains().map((t) => ({ id: t.terrain_id, label: t.display_name }));

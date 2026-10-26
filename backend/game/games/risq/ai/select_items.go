@@ -27,6 +27,10 @@ type census struct {
 	idle_units, idle_buildings map[uint64]bool
 }
 
+type idleSnapshotView interface {
+	IdleSnapshot() (map[uint64]bool, map[uint64]bool)
+}
+
 // What the board holds. Orders cannot change it, so it is built once per decision and shared by every selector
 type worldIndex struct {
 	own_units, enemy_units, own_buildings, enemy_buildings, resources tally
@@ -55,7 +59,12 @@ func (w *worldIndex) loadZones(view View) {
 }
 
 func newCensus(view View, internals *Internals) *census {
-	c := &census{worldIndex: internals.worldFor(view), idle_units: map[uint64]bool{}, idle_buildings: map[uint64]bool{}}
+	c := &census{worldIndex: internals.worldFor(view)}
+	if snapshot, ok := view.(idleSnapshotView); ok {
+		c.idle_units, c.idle_buildings = snapshot.IdleSnapshot()
+		return c
+	}
+	c.idle_units, c.idle_buildings = map[uint64]bool{}, map[uint64]bool{}
 	for _, u := range view.IdleUnits() {
 		c.idle_units[u.InternalID] = true
 	}

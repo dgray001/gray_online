@@ -43,13 +43,13 @@ func parseGatherableSource(where map[string]any) (loopSource, error) {
 
 func (s *gatherableSource) items(view View, internals *Internals) []loopItem {
 	items := make([]loopItem, 0)
-	for _, node := range s.resources.nodes(view, internals) {
+	for _, node := range s.resources.nodes(view) {
 		if node.AmountLeft > 0 {
 			items = append(items, gatherableItem{place: place{loc: node.Location}, node: node})
 		}
 	}
 	for _, b := range view.Buildings() {
-		if b.Gatherable && !b.UnderConstruction && b.ResourcesLeft > 0 && s.resources.takes(view, internals, b.ResourceCategory, b.Location) {
+		if b.Gatherable && !b.UnderConstruction && b.ResourcesLeft > 0 && s.resources.takes(b.ResourceCategory) {
 			items = append(items, gatherableItem{place: place{loc: b.Location}, node: gatherableAsResource(b), building: &b})
 		}
 	}

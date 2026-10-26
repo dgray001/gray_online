@@ -1,5 +1,20 @@
 package ai
 
+// What is being built at a zone: a foundation, or one of our buildings still under construction
+func buildingAt(view View, zone ZoneRef) (uint32, bool) {
+	for _, f := range view.Foundations() {
+		if f.Location == zone {
+			return f.BuildingID, true
+		}
+	}
+	for _, b := range view.Buildings() {
+		if b.Location == zone && b.UnderConstruction {
+			return b.BuildingID, true
+		}
+	}
+	return 0, false
+}
+
 func (c *issueContext) requeue(actor loopItem) (Order, bool) {
 	unit, ok := unwrapItem(actor).(unitItem)
 	if !ok || unit.unit.CurrentOrder == nil {

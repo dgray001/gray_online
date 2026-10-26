@@ -81,17 +81,16 @@ func (s *playerSource) items(view View, internals *Internals) []loopItem {
 	}
 	items := make([]loopItem, 0)
 	for _, id := range view.PlayerIDs() {
-		if s.selector.allows(view, internals, id, ZoneRef{}) {
+		if s.selector.allows(view, internals, id) {
 			items = append(items, playerItem{id: id, me: id == view.PlayerID(), eliminated: view.PlayerEliminated(id), score: view.PlayerScore(id), units_visible: units[id], buildings_known: buildings[id]})
 		}
 	}
 	return items
 }
 
-// The existing space condition (so a loop and a count_spaces take the same keys), with "within"/"from" and expression-valued player ids added
+// The existing space condition, with expression-valued player ids added
 type spaceSource struct {
 	condition               SpaceCondition
-	near                    nearFilter
 	player, building_player *amount
 	matchesEverySpace       bool
 }
@@ -102,7 +101,7 @@ type unitSource struct {
 }
 
 func parseUnitSource(where map[string]any) (loopSource, error) {
-	if err := checkKeys(where, "owner", "player_id", "within", "from", "unit_ids", "unit_types"); err != nil {
+	if err := checkKeys(where, "owner", "player_id", "unit_ids", "unit_types"); err != nil {
 		return nil, err
 	}
 	s, err := parseSelector(where, relationOwn)
@@ -152,11 +151,6 @@ func parseSpaceSource(where map[string]any) (loopSource, error) {
 	s := &spaceSource{}
 	rest := maps.Clone(where)
 	var err error
-	if s.near, err = parseNearFilter(where); err != nil {
-		return nil, err
-	}
-	delete(rest, "within")
-	delete(rest, "from")
 	if s.player, err = takeExpression(rest, "player_id"); err != nil {
 		return nil, err
 	}
@@ -188,11 +182,7 @@ func (s *spaceSource) itemsAt(coordinates []Coordinate, view View, internals *In
 	items := make([]loopItem, 0, len(coordinates))
 	for _, coordinate := range coordinates {
 		info := infos[coordinate]
-		loc := ZoneRef{Space: coordinate}
-		if !s.near.contains(view, internals, loc) {
-			continue
-		}
-		item := spaceItem{place: place{loc: loc}, info: info, vision: int(info.Vision), owner: info.Owner, unit_count: -1, unidentified_count: unidentifiedUnitCount(info, own)}
+		item := spaceItem{place: place{loc: ZoneRef{Space: coordinate}}, info: info, vision: int(info.Vision), owner: info.Owner, unit_count: -1, unidentified_count: unidentifiedUnitCount(info, own)}
 		if info.UnitCount != nil {
 			item.unit_count = *info.UnitCount
 		}
@@ -208,7 +198,7 @@ type buildingSource struct {
 }
 
 func parseBuildingSource(where map[string]any) (loopSource, error) {
-	if err := checkKeys(where, "owner", "player_id", "within", "from", "building_ids", "state"); err != nil {
+	if err := checkKeys(where, "owner", "player_id", "building_ids", "state"); err != nil {
 		return nil, err
 	}
 	if err := checkOptionTypes[string](where, "state"); err != nil {
@@ -243,7 +233,7 @@ func buildingsFor(view View, r relation) []BuildingView {
 func (s *buildingSource) items(view View, internals *Internals) []loopItem {
 	items := make([]loopItem, 0)
 	for _, b := range buildingsFor(view, s.selector.relation) {
-		if s.ids.matches(b.BuildingID) && s.state(b) && s.selector.allows(view, internals, b.PlayerID, b.Location) {
+		if s.ids.matches(b.BuildingID) && s.state(b) && s.selector.allows(view, internals, b.PlayerID) {
 			items = append(items, buildingItem{place: place{loc: b.Location}, building: b})
 		}
 	}
@@ -252,7 +242,6 @@ func (s *buildingSource) items(view View, internals *Internals) []loopItem {
 
 type resourceSource struct {
 	categories []ResourceCategory
-	near       nearFilter
 }
 
 func parseResourceSource(where map[string]any) (loopSource, error) {
@@ -261,7 +250,7 @@ func parseResourceSource(where map[string]any) (loopSource, error) {
 }
 
 func newResourceSource(where map[string]any) (*resourceSource, error) {
-	if err := checkKeys(where, "category", "within", "from"); err != nil {
+	if err := checkKeys(where, "category"); err != nil {
 		return nil, err
 	}
 	s := &resourceSource{categories: []ResourceCategory{ResourceFood, ResourceWood, ResourceStone, ResourceGold}}
@@ -272,30 +261,24 @@ func newResourceSource(where map[string]any) (*resourceSource, error) {
 		}
 		s.categories = []ResourceCategory{category}
 	}
-	var err error
-	s.near, err = parseNearFilter(where)
-	return s, err
+	return s, nil
 }
 
-func (s *resourceSource) takes(view View, internals *Internals, category ResourceCategory, loc ZoneRef) bool {
-	return slices.Contains(s.categories, category) && s.near.contains(view, internals, loc)
+func (s *resourceSource) takes(category ResourceCategory) bool {
+	return slices.Contains(s.categories, category)
 }
 
-func (s *resourceSource) nodes(view View, internals *Internals) []ResourceView {
+func (s *resourceSource) nodes(view View) []ResourceView {
 	nodes := make([]ResourceView, 0)
 	for _, category := range s.categories {
-		for _, r := range view.KnownResources(category) {
-			if s.near.contains(view, internals, r.Location) {
-				nodes = append(nodes, r)
-			}
-		}
+		nodes = append(nodes, view.KnownResources(category)...)
 	}
 	return nodes
 }
 
 func (s *resourceSource) items(view View, internals *Internals) []loopItem {
 	items := make([]loopItem, 0)
-	for _, r := range s.nodes(view, internals) {
+	for _, r := range s.nodes(view) {
 		items = append(items, resourceItem{place: place{loc: r.Location}, resource: r})
 	}
 	return items
@@ -308,7 +291,7 @@ type zoneSource struct {
 }
 
 func parseZoneSource(where map[string]any) (loopSource, error) {
-	if err := checkKeys(where, "owner", "player_id", "within", "from", "resource", "building"); err != nil {
+	if err := checkKeys(where, "owner", "player_id", "resource", "building"); err != nil {
 		return nil, err
 	}
 	s, err := parseSelector(where, relationAny)
@@ -333,7 +316,7 @@ func (s *zoneSource) item(view View, internals *Internals, z ZoneInfo) (loopItem
 	if (s.resource != nil && *s.resource != z.HasResource) || (s.building != nil && *s.building != has_building) {
 		return nil, false
 	}
-	if !s.selector.allows(view, internals, z.BuildingPlayer, z.Location) {
+	if !s.selector.allows(view, internals, z.BuildingPlayer) {
 		return nil, false
 	}
 	return zoneItem{place: place{loc: z.Location}, has_resource: z.HasResource, building_player: z.BuildingPlayer}, true
@@ -352,7 +335,7 @@ func (s *zoneSource) items(view View, internals *Internals) []loopItem {
 }
 
 func (s *unitSource) item(view View, internals *Internals, u UnitView) (loopItem, bool) {
-	if s.filter.matches(u) && s.selector.allows(view, internals, u.PlayerID, u.Location) {
+	if s.filter.matches(u) && s.selector.allows(view, internals, u.PlayerID) {
 		return unitItem{place: place{loc: u.Location}, unit: u}, true
 	}
 	return nil, false

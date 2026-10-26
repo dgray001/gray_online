@@ -157,7 +157,6 @@ func (a *selectAction) assignAndIssue(ctx *issueContext, actors []selItem, targe
 	if len(actors) == 0 {
 		return nil
 	}
-	defer saveScoringContext(ctx.internals).restore(ctx.internals)
 	taken := make(map[uint64]bool, len(actors))
 	orders := make([]Order, 0, len(actors))
 	for _, actor := range actors {

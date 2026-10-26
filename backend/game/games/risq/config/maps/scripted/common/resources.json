@@ -29,7 +29,7 @@
   {
     "step": "resource_place",
     "params": {
-      "resource_id": 41,
+      "resource_id": 101,
       "count": "num_players * outside_resource_multiplier",
       "on": { "terrain_types": ["hilly", "mountainous"] },
       "outside_player_areas": true
@@ -38,7 +38,7 @@
   {
     "step": "resource_place",
     "params": {
-      "resource_id": 42,
+      "resource_id": 102,
       "count": "num_players * outside_resource_multiplier",
       "on": { "terrain_types": ["hilly", "mountainous"] },
       "outside_player_areas": true
@@ -47,7 +47,7 @@
   {
     "step": "resource_place",
     "params": {
-      "resource_id": 43,
+      "resource_id": 103,
       "count": "round(num_players / 2) * outside_resource_multiplier",
       "on": { "terrain_types": ["hilly", "mountainous"] },
       "outside_player_areas": true

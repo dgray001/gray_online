@@ -81,6 +81,14 @@ func parseForEach(raw map[string]any) (Action, error) {
 	if err := checkActionKeys(raw, "source", "select", "as", "where", "max", "do"); err != nil {
 		return nil, fmt.Errorf("for_each: %w", err)
 	}
+	if _, err := parseNumber(raw, "max", 0); err != nil {
+		return nil, fmt.Errorf("for_each: %v", err)
+	}
+	if value, present := raw["where"]; present {
+		if _, ok := value.(map[string]any); !ok {
+			return nil, fmt.Errorf("\"where\" must be an object")
+		}
+	}
 	name, _ := raw["as"].(string)
 	if !validVarName(name) {
 		return nil, fmt.Errorf("for_each requires an \"as\" name of letters, digits and underscores")
@@ -120,9 +128,6 @@ func parseForEach(raw map[string]any) (Action, error) {
 	source, err := parse_source(where)
 	if err != nil {
 		return nil, fmt.Errorf("for_each %s: %v", source_name, err)
-	}
-	if slices.Contains([]string{"spaces", "units", "buildings", "resources", "zones"}, source_name) {
-		source = legacyHomeSource{source}
 	}
 	action := &forEachAction{name: name, source: source, max: parseMax(raw)}
 	err = withLoopScope(name, source_name, func() error {

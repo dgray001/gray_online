@@ -237,6 +237,26 @@ func TestRotateTerrainRegion(t *testing.T) {
 	}
 }
 
+func TestRotateCopiesSpaceGold(t *testing.T) {
+	line := step("terrain_blob", `{"terrain_id":21,"seed_region":"line","space_gold":9,"placement":{"points":[{"x":1,"y":0},{"x":3,"y":0}]}}`)
+	rot := step("rotate", `{"count":6,"on":{"terrain_ids":[21]}}`)
+	useScripts(t, map[string]string{"rot_gold": `[` + hexagon3 + `,` + flatTerrain + `,` + line + `,` + rot + `]`})
+	board := generateStartless(t, "rot_gold", 2)
+	painted := map[game_utils.Coordinate2D]bool{}
+	for _, c := range withTerrain(board, 21) {
+		painted[c] = true
+	}
+	for _, space := range board.Spaces() {
+		want := 0.0
+		if painted[space.Coordinate()] {
+			want = 9
+		}
+		if got := space.GoldIncome(); got != want {
+			t.Errorf("space %v pays %v, want %v", space.Coordinate(), got, want)
+		}
+	}
+}
+
 func TestDistanceToFilter(t *testing.T) {
 	center := step("terrain_blob", `{"terrain_id":51,"seed_count":1,"size":1,"placement":{"pattern":"points","points":[{"x":0,"y":0}]}}`)
 	ring1 := step("terrain_fill", `{"terrain_id":21,"on":{"distance_to":{"target":{"terrain_types":["hilly"]},"distance":1}}}`)
@@ -354,6 +374,34 @@ func TestFilterSeeds(t *testing.T) {
 	for _, c := range painted {
 		if c.X == 0 && (c.Y == -1 || c.Y == 0) {
 			t.Fatalf("filter_seeds failed: painted on deep water wall at %v", c)
+		}
+	}
+}
+
+func TestTerrainStepsSetSpaceGold(t *testing.T) {
+	blob := step("terrain_blob", `{"terrain_id":21,"seed_count":1,"size":3,"min_spacing":0,"space_gold":"2 * 4","placement":{"pattern":"points","points":[{"x":0,"y":0}]}}`)
+	fill := step("terrain_fill", `{"terrain_id":1,"space_gold":3}`)
+	useScripts(t, map[string]string{"gold": `[` + hexagon3 + `,` + fill + `,` + blob + `]`, "plain": `[` + hexagon3 + `,` + flatTerrain + `]`})
+	board := generateStartless(t, "gold", 2)
+	painted := map[game_utils.Coordinate2D]bool{}
+	for _, c := range withTerrain(board, 21) {
+		painted[c] = true
+	}
+	if len(painted) != 3 {
+		t.Fatalf("blob painted %d spaces, want 3", len(painted))
+	}
+	for _, space := range board.Spaces() {
+		want := 3.0
+		if painted[space.Coordinate()] {
+			want = 8
+		}
+		if got := space.(interface{ GoldIncome() float64 }).GoldIncome(); got != want {
+			t.Errorf("space %v pays %v, want %v", space.Coordinate(), got, want)
+		}
+	}
+	for _, space := range generateStartless(t, "plain", 2).Spaces() {
+		if got := space.(interface{ GoldIncome() float64 }).GoldIncome(); got != 0 {
+			t.Errorf("without space_gold, space %v pays %v, want the default left alone", space.Coordinate(), got)
 		}
 	}
 }

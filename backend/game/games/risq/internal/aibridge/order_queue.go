@@ -35,7 +35,6 @@ func (v *aiView) recordOrder(subject uint64, order defs.OrderType, target int64,
 	}
 	v.queues[subject] = append(queue, snapOrder{OrderType: order, TargetId: target})
 	v.revision++
-	v.gather_counts = nil
 	v.refreshSubject(subject)
 }
 
@@ -43,6 +42,7 @@ func (v *aiView) refreshSubject(subject uint64) {
 	if subject < 1_000_000_000 {
 		v.refreshUnit(subject)
 	}
+	v.refreshIdle(subject)
 }
 
 func (v *aiView) cancelQueueOrder(id uint64) []uint64 {
@@ -133,7 +133,7 @@ func (v *aiView) queueZoneTarget(e *ai.OrderEntry, raw snapOrder) {
 	}
 }
 
-func (v *aiView) OrderQueue() []ai.OrderEntry {
+func (v *aiView) buildOrderQueue() []ai.OrderEntry {
 	v.initQueues()
 	entries := make([]ai.OrderEntry, 0)
 	for _, subject := range slices.Sorted(maps.Keys(v.queues)) {

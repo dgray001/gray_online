@@ -108,7 +108,6 @@ func (v *aiView) CancelOrder(order_id uint64) ai.Order {
 	subjects := v.cancelQueueOrder(order_id)
 	v.cancelled_orders[order_id] = true
 	v.revision++
-	v.gather_counts = nil
 	for _, subject := range subjects {
 		v.refreshSubject(subject)
 	}

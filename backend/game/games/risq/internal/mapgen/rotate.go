@@ -50,18 +50,20 @@ func stepRotate(ctx *mapScriptContext, raw json.RawMessage) error {
 	type change struct {
 		coord game_utils.Coordinate2D
 		tid   uint32
+		gold  float64
 	}
 	var changes []change
 	for _, space := range ctx.allSpaces() {
 		if (region == nil || region[space.Key()]) && matches(space) {
 			for _, step := range rotSteps {
-				changes = append(changes, change{rotateAxial(space.Coordinate(), step), space.Terrain()})
+				changes = append(changes, change{rotateAxial(space.Coordinate(), step), space.Terrain(), space.GoldIncome()})
 			}
 		}
 	}
 	for _, c := range changes {
 		if s := ctx.board.Space(c.coord); s != nil {
 			s.SetTerrain(c.tid)
+			s.SetGoldIncome(c.gold)
 			if region != nil {
 				region[s.Key()] = true
 			}

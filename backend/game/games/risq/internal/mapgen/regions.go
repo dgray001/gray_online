@@ -13,6 +13,25 @@ type regionsSevenParams struct {
 	CenterBonus *ScriptExpr `json:"center_bonus,omitempty"`
 	OuterBonus  *ScriptExpr `json:"outer_bonus,omitempty"`
 	Rotate30    bool        `json:"rotate_30,omitempty"`
+
+	CenterSpaceGold *ScriptExpr `json:"center_space_gold,omitempty"`
+	OuterSpaceGold  *ScriptExpr `json:"outer_space_gold,omitempty"`
+}
+
+func setRegionSpaceGold(ctx *mapScriptContext, keys map[uint]bool, gold *ScriptExpr) error {
+	if gold == nil {
+		return nil
+	}
+	value, err := gold.resolve(ctx.vars)
+	if err != nil {
+		return err
+	}
+	for _, space := range ctx.allSpaces() {
+		if keys[space.Key()] {
+			space.SetGoldIncome(value)
+		}
+	}
+	return nil
 }
 
 func stepRegionsSeven(ctx *mapScriptContext, raw json.RawMessage) error {
@@ -62,6 +81,9 @@ func stepRegionsSeven(ctx *mapScriptContext, raw json.RawMessage) error {
 		if err := ctx.board.AddRegion(names[0], centerBonus, center_keys); err != nil {
 			return err
 		}
+		if err := setRegionSpaceGold(ctx, center_keys, p.CenterSpaceGold); err != nil {
+			return err
+		}
 	}
 	sector_keys := [6]map[uint]bool{}
 	for i := range sector_keys {
@@ -89,6 +111,9 @@ func stepRegionsSeven(ctx *mapScriptContext, raw json.RawMessage) error {
 	for i := 0; i < 6; i++ {
 		if len(sector_keys[i]) > 0 {
 			if err := ctx.board.AddRegion(names[i+1], outerBonus, sector_keys[i]); err != nil {
+				return err
+			}
+			if err := setRegionSpaceGold(ctx, sector_keys[i], p.OuterSpaceGold); err != nil {
 				return err
 			}
 		}

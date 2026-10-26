@@ -12,6 +12,6 @@
     }
   },
   { "step": "define", "params": { "name": "region_corner_gold", "value": "5 * round(4 * total_spaces / 4 / 5)" } },
-  { "step": "regions_four", "params": { "outer_bonus": "region_corner_gold", "center_bonus": "2 * region_corner_gold" } },
+  { "step": "regions_four", "params": { "outer_bonus": "region_corner_gold", "center_bonus": "2 * region_corner_gold", "center_space_gold": 4 } },
   { "step": "include", "params": { "path": "common/resources.json" } }
 ]

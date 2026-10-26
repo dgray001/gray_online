@@ -116,22 +116,6 @@ func TestMatchLexicographicScore(t *testing.T) {
 	}
 }
 
-func TestSelectMatchUndottedLegacyVarsRejected(t *testing.T) {
-	for _, bad := range []string{
-		`{"action":"select","pick":{"kind":"spaces","capacity":"var(target_assigned)"},"issue":[{"move":{}}]}`,
-		`{"action":"select","actors":{"kind":"units"},"pick":{"kind":"spaces"},"match":{"score":"0 - var(target_assigned)"},"issue":[{"move":{}}]}`,
-		`{"action":"select","actors":{"kind":"units"},"pick":{"kind":"spaces"},"match":{"score":"0 - var(assign_round)"},"issue":[{"move":{}}]}`,
-		`{"action":"select","actors":{"kind":"units"},"pick":{"kind":"spaces"},"match":{"score":"0 - var(target_health)"},"issue":[{"move":{}}]}`,
-		`{"action":"select","actors":{"kind":"units"},"pick":{"kind":"spaces"},"match":{"score":"0 - var(unit_health)"},"issue":[{"move":{}}]}`,
-		`{"action":"select","actors":{"kind":"units"},"pick":{"kind":"spaces"},"match":{"score":"0 - var(unit_order)"},"issue":[{"move":{}}]}`,
-	} {
-		diag := parseDiagnostics(rule(bad))
-		if !strings.Contains(diag, "legacy variable is not supported") {
-			t.Fatalf("expected legacy variable rejection for %s, got: %s", bad, diag)
-		}
-	}
-}
-
 func TestSelectCapacityVerbValidation(t *testing.T) {
 	for _, bad := range []string{
 		`{"action":"select","pick":{"kind":"spaces","capacity":1},"into":{"set":"s"}}`,

@@ -236,3 +236,38 @@ func TestRegionsSevenPartitionsTheBoard(t *testing.T) {
 		t.Errorf("regions cover %d of %d spaces", len(covered), len(board.Inspect()))
 	}
 }
+
+func TestRegionStepsOverrideSpaceGold(t *testing.T) {
+	useScripts(t, map[string]string{
+		"seven": `[` + hexagon2 + `,{"step":"regions_seven","params":{"center_space_gold":4,"outer_space_gold":7}}]`,
+		"six":   `[{"step":"shape","params":{"kind":"rectangle","size":{"rows":4,"cols":6}}},{"step":"regions_six","params":{"center_space_gold":4,"outer_space_gold":7}}]`,
+		"four":  `[{"step":"shape","params":{"kind":"triangle","size":{"edge_length":6}}},{"step":"regions_four","params":{"center_space_gold":4}}]`,
+	})
+	cases := []struct {
+		script string
+		center func(region int) bool
+		outer  float64
+	}{
+		{"seven", func(i int) bool { return i == 0 }, 7},
+		{"six", func(i int) bool { return i%3 == 1 }, 7},
+		{"four", func(i int) bool { return i == 0 }, 0},
+	}
+	for _, c := range cases {
+		board := generateStartless(t, c.script, 2)
+		gold := map[uint]float64{}
+		for _, space := range board.Spaces() {
+			gold[space.Key()] = space.(interface{ GoldIncome() float64 }).GoldIncome()
+		}
+		for i, region := range board.Regions {
+			want := c.outer
+			if c.center(i) {
+				want = 4
+			}
+			for key := range region.Keys {
+				if gold[key] != want {
+					t.Errorf("%s region %d: space %d pays %v, want %v", c.script, i, key, gold[key], want)
+				}
+			}
+		}
+	}
+}

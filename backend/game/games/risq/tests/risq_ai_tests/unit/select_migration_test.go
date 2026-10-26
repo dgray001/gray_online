@@ -124,12 +124,13 @@ func TestSelectFailedAssignmentExpressionsEmitNothing(t *testing.T) {
 func TestSelectHireCountsUseEachZonesRemainingBalance(t *testing.T) {
 	config := rule(`{"action":"select","pick":{"kind":"zones","rank":"var(target.space_gold_income)","limit":3,
 		"let":{"requested":"var(target.space_gold_income)"}},"issue":[{"hire":{"unit_id":101,"count":"min(var(target.requested), var(item.can_afford))"}}]},
-		{"action":"move","targets":"coordinate","coordinate":{"x":"gold + 100 * population","y":0}}`)
-	orders := parseSelectModel(t, config).DecideOrders(decisionView{hireView()}).Orders
-	if len(orders) != 17 || orders[16].TargetID != 1604 {
-		t.Fatalf("orders = %+v, want 16 hires, 4 gold remaining and 16 pending population", orders)
+		{"action":"set_var","name":"left","value":"gameVar(gold) + 100 * gameVar(population)"}`)
+	model := parseSelectModel(t, config)
+	orders := model.DecideOrders(decisionView{hireView()}).Orders
+	if left, _ := model.Var("left"); len(orders) != 16 || left != 1604 {
+		t.Fatalf("orders = %+v and left = %v, want 16 hires, 4 gold remaining and 16 pending population", orders, left)
 	}
-	if counts := hireCounts(orders[:16]); counts[200] != 9 || counts[300] != 7 || len(counts) != 2 {
+	if counts := hireCounts(orders); counts[200] != 9 || counts[300] != 7 || len(counts) != 2 {
 		t.Errorf("hires per zone = %v, want 9 at the first zone and 7 at the next", counts)
 	}
 }
@@ -137,12 +138,13 @@ func TestSelectHireCountsUseEachZonesRemainingBalance(t *testing.T) {
 func TestSelectHireSkipsOnlyZonesWithFailedOrNonpositiveCounts(t *testing.T) {
 	config := rule(`{"action":"select","pick":{"kind":"zones","rank":"var(target.x)"},
 		"issue":[{"hire":{"unit_id":101,"count":"1 / (var(target.x) - 2)"}}]},
-		{"action":"move","targets":"coordinate","coordinate":{"x":"gold + 100 * population","y":0}}`)
-	orders := parseSelectModel(t, config).DecideOrders(decisionView{hireView()}).Orders
-	if len(orders) != 3 || orders[2].TargetID != 288 {
-		t.Fatalf("orders = %+v, want two hires, 88 gold remaining and two pending population", orders)
+		{"action":"set_var","name":"left","value":"gameVar(gold) + 100 * gameVar(population)"}`)
+	model := parseSelectModel(t, config)
+	orders := model.DecideOrders(decisionView{hireView()}).Orders
+	if left, _ := model.Var("left"); len(orders) != 2 || left != 288 {
+		t.Fatalf("orders = %+v and left = %v, want two hires, 88 gold remaining and two pending population", orders, left)
 	}
-	if counts := hireCounts(orders[:2]); counts[400] != 1 || counts[300] != 1 || len(counts) != 2 {
+	if counts := hireCounts(orders); counts[400] != 1 || counts[300] != 1 || len(counts) != 2 {
 		t.Errorf("hires per zone = %v, want only zones 4 and 3", counts)
 	}
 }
@@ -150,8 +152,8 @@ func TestSelectHireSkipsOnlyZonesWithFailedOrNonpositiveCounts(t *testing.T) {
 func TestSelectFailedHireCountEmitsNothingAndReservesNothing(t *testing.T) {
 	for _, count := range []string{`"1 / 0"`, `"var(item.can_afford) / 0"`} {
 		config := rule(`{"action":"select","pick":{"kind":"zones"},"issue":[{"hire":{"unit_id":101,"count":` + count + `}}]},
-			{"action":"set_var","name":"bank","value":"gold"},
-			{"action":"set_var","name":"planned_population","value":"population"}`)
+			{"action":"set_var","name":"bank","value":"gameVar(gold)"},
+			{"action":"set_var","name":"planned_population","value":"gameVar(population)"}`)
 		vars := decide(t, config, hireView(), "bank", "planned_population")
 		if vars["bank"] != 100 || vars["planned_population"] != 0 {
 			t.Errorf("count %s: failed hire count left reservations or orders: %v", count, vars)
@@ -248,9 +250,8 @@ func TestSelectActorsStayInsideTheBucketScope(t *testing.T) {
 		idle:         units, turn: 1,
 	}
 	config := `{"rules": [{"when": {"always": {}}, "then": [
-		{"action":"set_bucket","bucket":"squad","size":1,"task":{"action":"select","pick":{"kind":"spaces","limit":1},"issue":[{"move":{}}]}},
-		{"action":"fill_bucket","bucket":"squad"},
-		{"action":"run_bucket","bucket":"squad"}]}]}`
+		{"action":"select","pick":{"kind":"units","limit":1},"into":{"bucket":"squad"}},
+		{"action":"select","actors":{"kind":"units","where":{"bucket":"squad"}},"pick":{"kind":"spaces","limit":1},"issue":[{"move":{}}]}]}]}`
 	orders := selectOrders(t, config, view)
 	if len(orders) != 1 {
 		t.Fatalf("orders = %+v, want only the single bucket member to be ordered, not every idle unit", orders)
@@ -390,10 +391,11 @@ func TestRenewChargesItsCostOncePerBuildingUnlessAlreadyRenewing(t *testing.T) {
 	renew := func(id int) string {
 		return `{"action":"select","pick":{"kind":"buildings","where":{"owner":"own","in":{"uid":[` + fmt.Sprint(1_000_000_000+id) + `]}}},"issue":[{"renew":{}}]}`
 	}
-	probe := `{"action":"move","targets":"coordinate","coordinate":{"x":"var(wood)","y":0}}`
+	probe := `{"action":"set_var","name":"wood_left","value":"gameVar(wood)"}`
 	config := `{"rules":[{"when":{"always":{}},"then":[` + renew(80) + `,` + renew(81) + `,` + probe + `]}]}`
-	orders := selectOrders(t, config, view)
-	if got := orders[len(orders)-1].TargetID; got != spaceCode(Coordinate{X: 90}) {
+	model := parseSelectModel(t, config)
+	model.DecideOrders(decisionView{view})
+	if got, _ := model.Var("wood_left"); got != 90 {
 		t.Errorf("wood after renewing two buildings with two villagers = %v, want 90 (one charge for the building that was not renewing)", got)
 	}
 }
@@ -438,10 +440,9 @@ func TestActorLimitAppliesAfterTheBucketScope(t *testing.T) {
 	ordered := map[uint64]bool{}
 	for _, rank := range []string{"var(actor.uid)", "0 - var(actor.uid)"} {
 		config := `{"rules": [{"when": {"always": {}}, "then": [
-			{"action":"set_bucket","bucket":"squad","size":1,"task":{"action":"select","pick":{"kind":"spaces","limit":1},
-				"actors":{"kind":"units","rank":"` + rank + `","limit":1},"issue":[{"move":{}}]}},
-			{"action":"fill_bucket","bucket":"squad"},
-			{"action":"run_bucket","bucket":"squad"}]}]}`
+			{"action":"select","pick":{"kind":"units","limit":1},"into":{"bucket":"squad"}},
+			{"action":"select","pick":{"kind":"spaces","limit":1},
+				"actors":{"kind":"units","where":{"bucket":"squad"},"rank":"` + rank + `","limit":1},"issue":[{"move":{}}]}]}]}`
 		orders := selectOrders(t, config, view)
 		if len(orders) != 1 {
 			t.Errorf("rank %q: orders = %+v, want the one bucket member ordered, whichever unit ranks first", rank, orders)

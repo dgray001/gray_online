@@ -42,20 +42,6 @@ func parseCondition(raw map[string]any) (Condition, error) {
 			return nil, fmt.Errorf("tech_researched requires a numeric \"tech_id\"")
 		}
 		return &conditionTechResearched{tech_id: *tech_id}, nil
-	case "bucket_full":
-		obj, _ := value.(map[string]any)
-		bucket, ok := obj["bucket"].(string)
-		if !ok || bucket == "" {
-			return nil, fmt.Errorf("bucket_full requires a string \"bucket\"")
-		}
-		return &conditionBucketFull{bucket: bucket}, nil
-	case "resource_available":
-		obj, _ := value.(map[string]any)
-		category, err := parseResourceCategory(obj["category"])
-		if err != nil {
-			return nil, err
-		}
-		return &conditionResourceAvailable{category: category}, nil
 	default:
 		return parseCountCondition(key, value)
 	}
@@ -82,69 +68,7 @@ func parseConditionList(value any, build func([]Condition) Condition) (Condition
 }
 
 func parseAction(raw map[string]any) (Action, error) {
-	action, err := parseActionInner(raw)
-	if err != nil {
-		return nil, err
-	}
-	filter, err := parseUnitFilter(raw)
-	if err != nil {
-		return nil, err
-	}
-	if f, ok := action.(interface{ setFilter(unitFilter) }); ok {
-		f.setFilter(filter)
-	} else if len(filter.unit_ids) > 0 || len(filter.unit_types) > 0 {
-		return nil, fmt.Errorf("action %q does not take unit filters", raw["action"])
-	}
-	building_ids, err := parseIDSet(raw, "building_ids")
-	if err != nil {
-		return nil, err
-	}
-	if f, ok := action.(interface{ setBuildingFilter(buildingFilter) }); ok {
-		f.setBuildingFilter(buildingFilter{ids: building_ids})
-	} else if len(building_ids) > 0 {
-		return nil, fmt.Errorf("action %q does not take building filters", raw["action"])
-	}
-	if raw["unit_when"] != nil {
-		obj, ok := raw["unit_when"].(map[string]any)
-		if !ok {
-			return nil, fmt.Errorf("\"unit_when\" must be a condition object")
-		}
-		when, err := parseCondition(obj)
-		if err != nil {
-			return nil, fmt.Errorf("\"unit_when\": %v", err)
-		}
-		action = &unitWhenAction{when: when, inner: action}
-	}
-	if bucket, ok := raw["in_bucket"].(string); ok {
-		action = &inBucketAction{bucket: bucket, inner: action}
-	}
-	if exclude, _ := raw["exclude_buckets"].(bool); exclude {
-		action = &unbucketedAction{inner: action}
-	}
-	return action, nil
-}
-
-func parseQueueParams(raw map[string]any) (weight amount, prioritize bool, depth amount) {
-	weight, _ = parseNumber(raw, "weight", 0)
-	prioritize, _ = raw["prioritize"].(bool)
-	depth, _ = parseNumber(raw, "depth", 1)
-	return weight, prioritize, depth
-}
-
-func parseAttackTarget(raw map[string]any) (attackTarget, error) {
-	t, ok := raw["target"].(string)
-	if !ok {
-		return attackTargetMilitary, nil
-	}
-	switch t {
-	case "military":
-		return attackTargetMilitary, nil
-	case "economic":
-		return attackTargetEconomic, nil
-	case "any":
-		return attackTargetAny, nil
-	}
-	return 0, fmt.Errorf("unknown attack target %q", t)
+	return parseActionInner(raw)
 }
 
 func parseOptionalID(raw map[string]any, key string) *uint32 {
@@ -156,63 +80,10 @@ func parseOptionalID(raw map[string]any, key string) *uint32 {
 	return &id
 }
 
-// 0 means unlimited; validated by parseActionInner
+// 0 means unlimited; validated by parseForEach
 func parseMax(raw map[string]any) amount {
 	m, _ := parseNumber(raw, "max", 0)
 	return m
-}
-
-func parseCost(raw any) (Cost, error) {
-	obj, ok := raw.(map[string]any)
-	if !ok {
-		return Cost{}, fmt.Errorf("\"cost\" must be an object")
-	}
-	for key, value := range obj {
-		if key != "food" && key != "wood" && key != "stone" && key != "gold" {
-			return Cost{}, fmt.Errorf("unknown cost resource %q", key)
-		}
-		amount, ok := value.(float64)
-		if !ok || amount < 0 || math.IsNaN(amount) || math.IsInf(amount, 0) {
-			return Cost{}, fmt.Errorf("cost %q must be a finite nonnegative number", key)
-		}
-	}
-	cost := Cost{}
-	if v, ok := obj["food"].(float64); ok {
-		cost.Food = v
-	}
-	if v, ok := obj["wood"].(float64); ok {
-		cost.Wood = v
-	}
-	if v, ok := obj["stone"].(float64); ok {
-		cost.Stone = v
-	}
-	if v, ok := obj["gold"].(float64); ok {
-		cost.Gold = v
-	}
-	return cost, nil
-}
-
-func parseEligible(raw any) ([]OrderKind, error) {
-	if raw == nil {
-		return nil, nil
-	}
-	list, ok := raw.([]any)
-	if !ok {
-		return nil, fmt.Errorf("\"eligible\" must be a list of strings")
-	}
-	kinds := make([]OrderKind, 0, len(list))
-	for _, item := range list {
-		s, ok := item.(string)
-		if !ok {
-			return nil, fmt.Errorf("\"eligible\" entries must be strings")
-		}
-		kind, ok := orderKindNames[s]
-		if !ok {
-			return nil, fmt.Errorf("unknown order kind %q", s)
-		}
-		kinds = append(kinds, kind)
-	}
-	return kinds, nil
 }
 
 func parseIDSet(raw map[string]any, key string) (map[uint32]bool, error) {
@@ -316,11 +187,6 @@ func parseRule(item any) (Rule, error) {
 	return Rule{when: when, then: then}, nil
 }
 
-func parseSetUnitBehavior(raw map[string]any) (Action, error) {
-	behavior, err := parseUnitBehavior(raw)
-	return &setUnitBehaviorAction{behavior: behavior}, err
-}
-
 func parseUnitBehavior(raw map[string]any) (UnitBehavior, error) {
 	var behavior UnitBehavior
 	if s, ok := raw["stance"].(string); ok {
@@ -358,42 +224,6 @@ func parseTargetPriority(raw map[string]any) ([]TargetCategory, error) {
 		priority = append(priority, category)
 	}
 	return priority, nil
-}
-
-func parseStop(action_type string, raw map[string]any) (Action, error) {
-	if action_type == "unit_stop" {
-		kinds, err := parseEligible(raw["orders"])
-		if err != nil {
-			return nil, err
-		}
-		orders := make(map[OrderKind]bool, len(kinds))
-		for _, k := range kinds {
-			orders[k] = true
-		}
-		return &unitStopAction{orders: orders, max: parseMax(raw)}, nil
-	}
-	names, ok := raw["orders"].([]any)
-	if raw["orders"] != nil && !ok {
-		return nil, fmt.Errorf("\"orders\" must be a list of strings")
-	}
-	orders := make(map[BuildingOrderKind]bool, len(names))
-	for _, name := range names {
-		kind, ok := buildingOrderKindNames[fmt.Sprint(name)]
-		if !ok {
-			return nil, fmt.Errorf("unknown building order kind %v", name)
-		}
-		orders[kind] = true
-	}
-	item_ids, err := parseIDSet(raw, "item_ids")
-	if err != nil {
-		return nil, err
-	}
-	return &buildingStopAction{orders: orders, item_ids: item_ids, max: parseMax(raw)}, nil
-}
-
-func parseSetBuildingBehavior(raw map[string]any) (Action, error) {
-	behavior, err := parseBuildingBehavior(raw)
-	return &setBuildingBehaviorAction{behavior: behavior}, err
 }
 
 func parseBuildingBehavior(raw map[string]any) (BuildingBehavior, error) {

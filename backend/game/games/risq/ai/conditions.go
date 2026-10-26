@@ -18,14 +18,6 @@ type conditionTechResearched struct {
 	tech_id uint32
 }
 
-type conditionBucketFull struct {
-	bucket string
-}
-
-type conditionResourceAvailable struct {
-	category ResourceCategory
-}
-
 func evaluateCondition(condition Condition, view View, internals *Internals) (bool, bool) {
 	previous := internals.eval_errors
 	result := condition.Evaluate(view, internals)
@@ -60,18 +52,4 @@ func (c *conditionAlways) Evaluate(View, *Internals) bool {
 
 func (c *conditionTechResearched) Evaluate(view View, _ *Internals) bool {
 	return view.TechResearched(c.tech_id)
-}
-
-func (c *conditionBucketFull) Evaluate(_ View, internals *Internals) bool {
-	b := internals.Buckets[c.bucket]
-	return b != nil && b.Desired > 0 && len(b.Members) >= b.Desired
-}
-
-func (c *conditionResourceAvailable) Evaluate(view View, _ *Internals) bool {
-	home, ok := homeLocation(view)
-	if !ok {
-		return false
-	}
-	_, ok = view.NearestResource(home, c.category, 0)
-	return ok
 }

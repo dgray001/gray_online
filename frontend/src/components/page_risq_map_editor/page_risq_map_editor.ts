@@ -15,7 +15,8 @@ import { EditHistory } from './edit_history';
 import { describeTarget, EditorLeftPanel } from './editor_left_panel';
 import { EditorRightPanel } from './editor_right_panel';
 import type { EditorTarget, EditorToolContext } from './editor_tool';
-import { createEditorTools, type EditorTool } from './editor_tool';
+import type { EditorTool } from './editor_tool';
+import { createEditorTools } from './tools/editor_tools';
 import { EditorDrawHost, fitBoardView, patchTerrainSpaces } from './editor_host';
 import { MapEditorHeader } from './map_editor_header';
 import type { EntityCatalog, TerrainEntry } from './map_api';
@@ -472,6 +473,9 @@ export class DwgPageRisqMapEditor extends DwgElement {
     this.header.setStatus(this.revert_notice ?? `${doc.spaces.length} spaces`, !!this.revert_notice);
     this.revert_notice = undefined;
     this.fitBoard(this.board_pixels, this.board.getBoundingRect());
+    const over_ui = this.components().some((c) => c.isHovering?.());
+    this.host.hover.update(over_ui || !this.doc);
+    this.tool().mousemove(this.doc && !over_ui ? this.hoverTarget() : undefined);
   }
 
   private fitBoard(board_size: Point2D, canvas_size: DOMRect): void {

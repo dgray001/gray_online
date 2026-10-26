@@ -11,6 +11,16 @@ func findProducible(b BuildingView, kind ProducibleKind, id uint32) (Producible,
 	return Producible{}, false
 }
 
+func productionOrderCount(b BuildingView) int {
+	count := b.PlannedProduction
+	for _, o := range b.ActiveOrders {
+		if o.Kind == BuildingOrderCreate || o.Kind == BuildingOrderResearch {
+			count++
+		}
+	}
+	return count
+}
+
 func freshBuilding(view View, internal_id uint64) (BuildingView, bool) {
 	for _, b := range view.Buildings() {
 		if b.InternalID == internal_id {

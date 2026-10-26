@@ -56,10 +56,6 @@ func (v loopTestView) MaxPopulation() int                { return 100 }
 func (v loopTestView) TurnNumber() int                   { return 1 }
 func (v loopTestView) MapSize() int                      { return 4 }
 func (v loopTestView) NumPlayers() int                   { return len(v.players) }
-func (v loopTestView) EnemiesFound() int                 { return 0 }
-func (v loopTestView) OwnedSpaces() int                  { return 0 }
-func (v loopTestView) Score() int                        { return 0 }
-func (v loopTestView) BestEnemyScore() int               { return 0 }
 func (v loopTestView) Resource(ResourceCategory) float64 { return 0 }
 
 // Filters only by the space owner, which is all these tests ask of a space condition
@@ -114,7 +110,7 @@ func loopFixture() loopTestView {
 }
 
 func TestForEachLimitFailureAndSuccessfulLimits(t *testing.T) {
-	for limit, want := range map[string]float64{"": 3, `,"max":0`: 3, `,"max":2`: 2, `,"max":"1 / (turn - turn)"`: 0} {
+	for limit, want := range map[string]float64{"": 3, `,"max":0`: 3, `,"max":2`: 2, `,"max":"1 / (gameVar(turn) - gameVar(turn))"`: 0} {
 		config := rule(`{"action":"set_var","name":"visited","value":0},
 			{"action":"for_each","source":"units","as":"u"` + limit + `,"do":[
 			{"action":"set_var","name":"visited","value":"var(visited) + 1"}]}`)
@@ -194,11 +190,10 @@ func TestForEachSelectAggregatesSeeOrdersFromTheBody(t *testing.T) {
 		view.visibleEnemyUnits[0].PlayerID = 1
 		model := actionsModel(t, `{"action":"for_each",`+loop+`,"as":"u","do":[
 			{"action":"select","actors":{"kind":"buildings","where":{"in":{"idle":[1]},"can_create":2},"limit":1},"issue":[{"create":{"unit_id":2}}]},
-			{"action":"set_var","name":"idle","value":{"count":{"kind":"buildings","where":{"in":{"idle":[1]}}}}}]},
-			{"action":"move","targets":"coordinate","coordinate":{"x":"var(idle)","y":0}}`)
+			{"action":"set_var","name":"idle","value":{"count":{"kind":"buildings","where":{"in":{"idle":[1]}}}}}]}`).(*RulesModel)
 		model.DecideOrders(view)
-		if idle := view.calls[len(view.calls)-1].Place.Space.X; idle != 1 {
-			t.Errorf("%s loop: idle buildings after queuing = %d, want 1", name, idle)
+		if idle, _ := model.Var("idle"); idle != 1 {
+			t.Errorf("%s loop: idle buildings after queuing = %v, want 1", name, idle)
 		}
 	}
 }
@@ -218,24 +213,6 @@ func TestForEachPlayersFoundByBuildingOrUnit(t *testing.T) {
 	}
 }
 
-func TestForEachNearestEnemyBuilding(t *testing.T) {
-	view := loopFixture()
-	view.enemy_buildings = []BuildingView{
-		{InternalID: 31, PlayerID: 1, Location: ZoneRef{Space: Coordinate{X: 3}}},
-		{InternalID: 32, PlayerID: 1, Location: ZoneRef{Space: Coordinate{X: 1}}},
-		{InternalID: 33, PlayerID: 2, Location: ZoneRef{Space: Coordinate{X: 2}}},
-	}
-	config := rule(`{"action": "set_var", "name": "best_d", "value": 1000, "persist": true},
-		{"action": "for_each", "source": "buildings", "as": "b", "where": {"owner": "enemy"}, "do": [
-			{"action": "if", "when": {"value_at_most": {"value": "var(b.distance_home)", "amount": "var(best_d) - 1"}},
-			 "then": [{"action": "set_var", "name": "best_d", "value": "var(b.distance_home)", "persist": true},
-			          {"action": "set_var", "name": "best_x", "value": "var(b.x)", "persist": true}]}]}`)
-	vars := decide(t, config, view, "best_d", "best_x")
-	if vars["best_d"] != 1 || vars["best_x"] != 1 {
-		t.Errorf("nearest enemy building: distance %v at x %v, want 1 at 1", vars["best_d"], vars["best_x"])
-	}
-}
-
 func TestForEachNestedWithExpressionFilter(t *testing.T) {
 	view := loopFixture()
 	view.enemy_buildings = append(view.enemy_buildings, BuildingView{InternalID: 22, PlayerID: 2}, BuildingView{InternalID: 23, PlayerID: 2})
@@ -249,7 +226,7 @@ func TestForEachNestedWithExpressionFilter(t *testing.T) {
 	}
 }
 
-func TestForEachSpacesNearHomeAndInFixedOrder(t *testing.T) {
+func TestForEachEnemySpacesInFixedOrder(t *testing.T) {
 	view := loopFixture()
 	three, five := 3, 5
 	view.spaces = []SpaceInfo{
@@ -259,13 +236,13 @@ func TestForEachSpacesNearHomeAndInFixedOrder(t *testing.T) {
 		{Space: Coordinate{Y: 1}, Owner: 0},
 	}
 	config := rule(`{"action": "set_var", "name": "unidentified", "value": 0, "persist": true},
-		{"action": "for_each", "source": "spaces", "as": "s", "where": {"owner": "enemy", "within": 2}, "do": [
+		{"action": "for_each", "source": "spaces", "as": "s", "where": {"owner": "enemy"}, "do": [
 			{"action": "set_var", "name": "unidentified", "value": "var(unidentified) + var(s.unidentified_count)", "persist": true}]},
 		{"action": "for_each", "source": "spaces", "as": "s", "max": 1, "do": [
 			{"action": "set_var", "name": "first_x", "value": "var(s.x)", "persist": true}]}`)
 	vars := decide(t, config, view, "unidentified", "first_x")
-	if vars["unidentified"] != 8 {
-		t.Errorf("unidentified units within 2 of home = %v, want 8", vars["unidentified"])
+	if vars["unidentified"] != 13 {
+		t.Errorf("unidentified units in enemy spaces = %v, want 13", vars["unidentified"])
 	}
 	if vars["first_x"] != 0 {
 		t.Errorf("first space visited has x %v, want the lowest coordinate 0", vars["first_x"])
@@ -395,23 +372,14 @@ func decide(t *testing.T, config string, view View, names ...string) map[string]
 	if err := json.Unmarshal([]byte(config), &raw); err != nil {
 		t.Fatal(err)
 	}
-	var probes []any
-	for _, name := range names {
-		probes = append(probes, map[string]any{"action": "move", "targets": "coordinate", "coordinate": map[string]any{"x": "var(" + name + ")", "y": float64(0)}})
-	}
-	raw["rules"] = append(raw["rules"].([]any), map[string]any{"when": map[string]any{"always": map[string]any{}}, "then": probes})
 	model, ok := ParseModelWithDiagnostics(raw, rand.New(rand.NewSource(1)), io.Discard).(*RulesModel)
 	if !ok {
 		t.Fatalf("config did not load: %s", config)
 	}
-	decision := model.DecideOrders(decisionView{view})
-	if len(decision.Orders) < len(names) {
-		t.Fatalf("probe orders=%+v, want %d", decision, len(names))
-	}
-	probed := decision.Orders[len(decision.Orders)-len(names):]
+	model.DecideOrders(decisionView{view})
 	values := make(map[string]float64, len(names))
-	for i, name := range names {
-		values[name] = float64(probed[i].TargetID)
+	for _, name := range names {
+		values[name], _ = model.Var(name)
 	}
 	return values
 }
@@ -425,14 +393,14 @@ func TestLoopItemFields(t *testing.T) {
 		resources: map[ResourceCategory][]ResourceView{ResourceFood: {{InternalID: 5, AmountLeft: 12}}},
 		zones:     []ZoneInfo{{HasResource: true}},
 	}
-	place := "x y zone_x zone_y distance_home"
+	place := "x y zone_x zone_y"
 	for source, c := range map[string]struct {
 		fields string
 		want   float64
 	}{
 		"players":   {"id is_me score units_visible buildings_known", 3},
-		"spaces":    {"vision owner unit_count unidentified_count " + place, 8},
-		"units":     {"uid player unit_id unit_type is_military is_garrisoned health max_health stamina " + place, 38},
+		"spaces":    {"vision owner unit_count unidentified_count " + place, 7},
+		"units":     {"uid player unit_id unit_type is_military is_garrisoned health max_health stamina " + place, 37},
 		"buildings": {"uid player building_id is_under_construction health max_health " + place, 1000000091},
 		"resources": {"uid category amount_left " + place, 2000000017},
 		"zones":     {"has_resource building_player " + place, 1},
@@ -477,36 +445,5 @@ func TestLoopItemBehaviorAndGarrisonFields(t *testing.T) {
 	vars := decide(t, config, view, "unit_sum", "building_sum")
 	if vars["unit_sum"] != 3 || vars["building_sum"] != 16 {
 		t.Errorf("unit sum %v, building sum %v; want 3 and 16", vars["unit_sum"], vars["building_sum"])
-	}
-}
-
-type workforceTestView struct {
-	loopTestView
-	units []UnitView
-}
-
-func (v workforceTestView) EligibleUnits(kinds ...OrderKind) []UnitView {
-	units := make([]UnitView, 0)
-	for _, unit := range v.units {
-		if unit.CurrentOrder == nil || slices.Contains(kinds, unit.CurrentOrder.Kind) {
-			units = append(units, unit)
-		}
-	}
-	return units
-}
-
-func TestAvailableGatherers(t *testing.T) {
-	garrison := uint64(1)
-	view := workforceTestView{units: []UnitView{
-		{Kind: UnitEconomic},
-		{Kind: UnitEconomic, CurrentOrder: &CurrentOrder{Kind: OrderKindGather}},
-		{Kind: UnitEconomic, GarrisonedIn: &garrison},
-		{Kind: UnitMilitary},
-	}}
-	for _, kind := range []OrderKind{OrderKindBuild, OrderKindRepair, OrderKindRenew, OrderKindMove, OrderKindAttackSpace, OrderKindGarrison} {
-		view.units = append(view.units, UnitView{Kind: UnitEconomic, CurrentOrder: &CurrentOrder{Kind: kind}})
-	}
-	if got := decide(t, rule(`{"action":"set_var","name":"count","value":"var(available_gatherers)"}`), view, "count")["count"]; got != 2 {
-		t.Fatalf("available gatherers = %v, want idle worker and gatherer only", got)
 	}
 }

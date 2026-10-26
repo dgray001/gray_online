@@ -145,9 +145,6 @@ func (s selItem) field(name string) (float64, bool) {
 	if get, ok := selectFieldTables[kindOfItem(s.loopItem)][name]; ok {
 		return get(s), true
 	}
-	if name == "distance_home" {
-		return 0, false
-	}
 	value, ok := s.loopItem.field(name)
 	if !ok {
 		if _, strict := unwrapItem(s.loopItem).(assignmentItem); strict {
@@ -346,8 +343,7 @@ var selectFieldTables = map[string]fieldTable[selItem]{
 
 func init() {
 	for kind, table := range selectFieldTables {
-		inherited := slices.DeleteFunc(slices.Clone(itemFields[kind]), func(name string) bool { return name == "distance_home" })
-		all := append(inherited, table.names()...)
+		all := append(slices.Clone(itemFields[kind]), table.names()...)
 		itemFields["select_"+kind] = all
 		itemFields["select_target_"+kind] = slices.DeleteFunc(slices.Clone(all), func(n string) bool {
 			return n == "distance_to_actor" || n == "zone_distance_to_actor"

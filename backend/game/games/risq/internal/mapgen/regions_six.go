@@ -9,6 +9,9 @@ type regionsBonusParams struct {
 	Names       []string   `json:"names,omitempty"`
 	CenterBonus ScriptExpr `json:"center_bonus,omitempty"`
 	OuterBonus  ScriptExpr `json:"outer_bonus,omitempty"`
+
+	CenterSpaceGold *ScriptExpr `json:"center_space_gold,omitempty"`
+	OuterSpaceGold  *ScriptExpr `json:"outer_space_gold,omitempty"`
 }
 
 const rectangleRegionRows, rectangleRegionCols = 2, 3
@@ -59,11 +62,14 @@ func stepRegionsSix(ctx *mapScriptContext, raw json.RawMessage) error {
 		if len(keys) == 0 {
 			continue
 		}
-		bonus := outerBonus
+		bonus, space_gold := outerBonus, p.OuterSpaceGold
 		if i%rectangleRegionCols == rectangleRegionCols/2 {
-			bonus = centerBonus
+			bonus, space_gold = centerBonus, p.CenterSpaceGold
 		}
 		if err := ctx.board.AddRegion(names[i], bonus, keys); err != nil {
+			return err
+		}
+		if err := setRegionSpaceGold(ctx, keys, space_gold); err != nil {
 			return err
 		}
 	}

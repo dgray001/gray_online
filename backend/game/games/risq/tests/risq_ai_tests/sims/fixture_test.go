@@ -50,8 +50,49 @@ func registerMercenaryTech(t *testing.T) {
 	t.Cleanup(func() { delete(defs.TechConfigs, 4) })
 }
 
+func onTurn(turn int) string {
+	return fmt.Sprintf(`{"value_equals":{"value":"gameVar(turn)","amount":%d}}`, turn)
+}
+
 func once(actions string) string {
-	return `{"rules":[{"when":{"turn_equals":{"amount":1}},"then":[` + actions + `]}]}`
+	return `{"rules":[{"when":` + onTurn(1) + `,"then":[` + actions + `]}]}`
+}
+
+const (
+	passiveUnits   = `{"action":"select","actors":{"kind":"units"},"issue":[{"set_behavior":{"stance":"passive","attack_back":false}}]}`
+	quietBuildings = `{"action":"select","actors":{"kind":"buildings"},"issue":[{"set_behavior":{"auto_attack":false}}]}`
+	attackEconomic = `{"action":"select","actors":{"kind":"units","where":{"if":"var(actor.idle)"},"limit":1},"pick":{"kind":"units","where":{"owner":"enemy","unit_types":["economic"]}},"issue":[{"attack":{}}]}`
+	attackEnemy    = `{"action":"select","actors":{"kind":"units","where":{"if":"var(actor.idle)"},"limit":1},"pick":{"kind":"units","where":{"owner":"enemy"}},"issue":[{"attack":{}}]}`
+	homeZone       = `{"kind":"zones","where":{"if":"(var(target.x) == 0) * (var(target.y) == 0) * (var(target.zone_x) == 0) * (var(target.zone_y) == 0)"}}`
+)
+
+// Sends idle villagers to a node of the category, never past the node's gather capacity counting gatherers already ordered
+func gather(category string, limit int) string {
+	actors := `{"kind":"units","where":{"if":"var(actor.idle)"}`
+	if limit > 0 {
+		actors += fmt.Sprintf(`,"limit":%d`, limit)
+	}
+	return fmt.Sprintf(`{"action":"select","actors":%s},"pick":{"kind":"gatherables","where":{"category":%q},"let":{"gatherers":{"count":{"kind":"orders","where":{"in":{"order_kind":["gather"]},"if":"var(item.target_uid) == var(target.uid)"}}}},"capacity":"var(target.gather_capacity) - var(target.gatherers)"},"issue":[{"gather":{}}]}`, actors, category)
+}
+
+// The create and hire verbs do not stop at the population cap or an empty stockpile, so the count says how many fit
+func create(unit_id int, queue int) string {
+	fits := fmt.Sprintf(`min(%d, gameVar(population_limit) - gameVar(population), round(gameVar(food) / config(unit, cost_food, %d) - 0.5))`, queue, unit_id)
+	return fmt.Sprintf(`{"action":"select","actors":{"kind":"buildings","where":{"can_create":%d}},"issue":[{"create":{"unit_id":%d,"queue":%q}}]}`, unit_id, unit_id, fits)
+}
+
+func hire(unit_id int, count int) string {
+	fits := fmt.Sprintf(`min(%d, gameVar(population_limit) - gameVar(population))`, count)
+	return fmt.Sprintf(`{"action":"select","pick":%s,"issue":[{"hire":{"unit_id":%d,"count":%q}}]}`, homeZone, unit_id, fits)
+}
+
+func stop(order string) string {
+	return fmt.Sprintf(`{"action":"select","actors":{"kind":"buildings"},"issue":[{"stop":{"orders":[%q]}}]}`, order)
+}
+
+// Builds the building on the first free zone of the origin space if the wood is there, so a second rule cannot spend it again
+func build(building_id int) string {
+	return fmt.Sprintf(`{"action":"select","actors":{"kind":"units","where":{"if":["var(actor.idle)","gameVar(wood) >= config(building, cost_wood, %d)"]},"limit":1},"pick":{"kind":"zones","where":{"if":"var(target.x) == 0"},"limit":1},"issue":[{"build":{"building_id":%d}}]}`, building_id, building_id)
 }
 
 func fixture(t *testing.T, bank, spaces, extra string, models ...string) *aisim.Game {
@@ -120,8 +161,8 @@ func assertSubmissions(t *testing.T, g *aisim.Game, slot, want int) {
 }
 
 func TestThreePlayersKeepDecisionsSeparate(t *testing.T) {
-	food := once(`{"action":"gather","category":"food","max":1}`)
-	wood := once(`{"action":"gather","category":"wood","max":1}`)
+	food := once(gather("food", 1))
+	wood := once(gather("wood", 1))
 	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":0,"count":1}],"resource":1},{"x":1,"y":0,"building":{"id":202,"player":0}}]},` + remote + `,{"x":3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":2,"count":1}],"resource":11},{"x":1,"y":0,"building":{"id":202,"player":2}}]}`
 	g := fixture(t, `{}`, spaces, "", food, emptyModel, wood)
 	g.Run(t, 2)
@@ -138,7 +179,7 @@ func TestThreePlayersKeepDecisionsSeparate(t *testing.T) {
 const duel = `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":22,"player":0,"count":1},{"id":11,"player":1,"count":1}]},{"x":1,"y":0,"building":{"id":202,"player":0}},{"x":-1,"y":0,"building":{"id":202,"player":1}}]}`
 
 func TestGameEndStopsAllAIWorkers(t *testing.T) {
-	model := once(`{"action":"set_unit_behavior","stance":"passive","attack_back":false},{"action":"attack","target":"economic","max":1}`)
+	model := once(passiveUnits + `,` + attackEconomic)
 	g := fixture(t, `{}`, duel, "", model, emptyModel)
 	g.Run(t, 1)
 	if !g.Base.GameEnded() || !g.Own(t, 1).Eliminated || g.Own(t, 0).Eliminated {
@@ -154,7 +195,7 @@ func TestGameEndStopsAllAIWorkers(t *testing.T) {
 }
 
 func TestEliminatedAIStopsWhileSurvivorsContinue(t *testing.T) {
-	model := once(`{"action":"set_unit_behavior","stance":"passive","attack_back":false},{"action":"attack","targets":"enemy_units","score":1,"max":1}`)
+	model := once(passiveUnits + `,` + attackEnemy)
 	third := `{"x":3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":201,"player":2},"units":[{"id":11,"player":2,"count":1}]}]}`
 	g := fixture(t, `{}`, duel+","+third, "", model, emptyModel, emptyModel)
 	g.Run(t, 2)
@@ -168,7 +209,7 @@ func TestEliminatedAIStopsWhileSurvivorsContinue(t *testing.T) {
 
 func TestResultsMatchResolvedState(t *testing.T) {
 	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"resource":1,"units":[{"id":11,"player":0,"count":1}]},{"x":1,"y":0,"building":{"id":202,"player":0}}]},` + remote
-	g := fixture(t, `{}`, spaces, "", once(`{"action":"gather","category":"food"}`), emptyModel)
+	g := fixture(t, `{}`, spaces, "", once(gather("food", 0)), emptyModel)
 	g.Run(t, 3)
 	result := g.Risq.Results()
 	if result.TurnNumber != g.Risq.TurnNumber() || len(result.Players) != 2 {

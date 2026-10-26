@@ -11,7 +11,8 @@ import (
 
 // Answers every ai query from the player's frontend snapshot only, so the ai knows exactly what a human would.
 type aiView struct {
-	std                   *util.Logger
+	std *util.Logger
+	// Cache key bumped on mutation
 	revision              uint64
 	queues                map[uint64][]snapOrder
 	queue_subjects        map[uint64][]uint64
@@ -30,24 +31,17 @@ type aiView struct {
 	cancelled_orders      map[uint64]bool
 	planned_techs         map[uint32]bool
 	planned_production    map[uint64]int
-	// Cached from the current tasks in the queue mirror
-	gather_counts map[ai.ZoneRef]int
 	// shared by every caller, so callers must treat it as read-only; dropped when a unit's view inputs change
 	units_cache []ai.UnitView
 	// the enemy lists, read-only and shared; rebuilt when the revision they were built at has passed
-	enemy_cache enemyCache
-	// built on first use
-	enemy_spaces       []ai.Coordinate
-	enemy_spaces_known bool
-	space_by_key       map[uint]*snapSpace
-	space_links        map[ai.Coordinate][]ai.Coordinate
-	linked_edges       map[ai.ZoneRef]ai.ZoneRef
-	space_distances    map[ai.Coordinate]map[ai.Coordinate]int
-}
+	enemy_cache     enemyCache
+	space_links     map[ai.Coordinate][]ai.Coordinate
+	space_distances map[ai.Coordinate]map[ai.Coordinate]int
 
-type attackTarget struct {
-	building bool
-	id       uint64
+	space_unit_counts map[ai.Coordinate]int
+	space_neighbors   map[ai.Coordinate][]ai.Coordinate
+	collections       viewCollections
+	idle_snapshot     idleSnapshot
 }
 
 type snapZoneEntry struct {
@@ -183,17 +177,9 @@ func (v *aiView) refreshUnit(id uint64) {
 }
 
 func (v *aiView) IdleUnits() []ai.UnitView {
-	return v.EligibleUnits()
-}
-
-func (v *aiView) EligibleUnits(kinds ...ai.OrderKind) []ai.UnitView {
-	allowed := make(map[ai.OrderKind]bool, len(kinds))
-	for _, k := range kinds {
-		allowed[k] = true
-	}
 	units := make([]ai.UnitView, 0)
 	for _, u := range v.Units() {
-		if u.CurrentOrder == nil || allowed[u.CurrentOrder.Kind] {
+		if u.CurrentOrder == nil {
 			units = append(units, u)
 		}
 	}
@@ -201,6 +187,16 @@ func (v *aiView) EligibleUnits(kinds ...ai.OrderKind) []ai.UnitView {
 }
 
 func (v *aiView) Buildings() []ai.BuildingView {
+	buildings := v.collections.owned.load(v.revision, v.buildBuildings)
+	for i := range buildings {
+		buildings[i].Producibles = slices.Clone(buildings[i].Producibles)
+		buildings[i].ActiveOrders = slices.Clone(buildings[i].ActiveOrders)
+		buildings[i].TargetPriority = slices.Clone(buildings[i].TargetPriority)
+	}
+	return buildings
+}
+
+func (v *aiView) buildBuildings() []ai.BuildingView {
 	buildings := make([]ai.BuildingView, 0, len(v.me.Buildings))
 	for i := range v.me.Buildings {
 		buildings = append(buildings, v.ownBuildingView(&v.me.Buildings[i]))
@@ -233,14 +229,6 @@ func (v *aiView) Resource(category ai.ResourceCategory) float64 {
 
 func (v *aiView) MaxPopulation() int {
 	return v.me.MaxPopulationLimit
-}
-
-func (v *aiView) HasEconomy() bool {
-	return v.game.HasEconomy
-}
-
-func (v *aiView) HasProduction() bool {
-	return v.game.HasProduction
 }
 
 func (v *aiView) Population() (int, int) {
@@ -276,6 +264,10 @@ func (v *aiView) foundationsByLocation() map[ai.ZoneRef]*ai.FoundationView {
 }
 
 func (v *aiView) Foundations() []ai.FoundationView {
+	return v.collections.foundations.load(v.revision, v.buildFoundations)
+}
+
+func (v *aiView) buildFoundations() []ai.FoundationView {
 	by_location := v.foundationsByLocation()
 	for _, u := range v.Units() {
 		if u.CurrentOrder != nil && u.CurrentOrder.Kind == ai.OrderKindBuild && u.CurrentOrder.TargetZone != nil {
@@ -304,30 +296,6 @@ func (v *aiView) NumPlayers() int {
 	return len(v.game.Players)
 }
 
-func (v *aiView) EnemiesFound() int {
-	discovered := make(map[int]bool)
-	for _, entry := range v.zones {
-		if b := entry.zone.Building; b != nil && b.PlayerId != v.playerId() {
-			discovered[b.PlayerId] = true
-		}
-	}
-	return len(discovered)
-}
-
-func (v *aiView) Score() int {
-	return int(v.me.Score)
-}
-
-func (v *aiView) BestEnemyScore() int {
-	best := 0
-	for _, p := range v.game.Players {
-		if p.Player.PlayerId != v.playerId() && int(p.Score) > best {
-			best = int(p.Score)
-		}
-	}
-	return best
-}
-
 func (v *aiView) TechResearched(tech_id uint32) bool {
 	return v.me.ResearchedTechs[tech_id]
 }
@@ -347,26 +315,6 @@ func (v *aiView) ValidBuildZone(building_id uint32, target ai.ZoneRef) bool {
 	}
 	b := zone.Building
 	return b == nil || b.PlayerId == v.playerId() && b.UnderConstruction && b.BuildingId == building_id
-}
-
-func (v *aiView) ScopedUnits() []ai.UnitView {
-	return v.Units()
-}
-
-func (v *aiView) InAttackRange(b ai.BuildingView, target ai.ZoneRef) bool {
-	building, ok := v.buildings[b.InternalID]
-	if !ok {
-		return false
-	}
-	radius, ranged := building.AttackRange.SpaceRadius()
-	if !ranged {
-		return b.Location == target
-	}
-	if radius == 0 && b.Location.Space != target.Space {
-		facing, ok := v.facingZone(b.Location)
-		return ok && facing == target
-	}
-	return v.SpaceDistance(b.Location.Space, target.Space) <= int(radius)
 }
 
 type enemyCache struct {
@@ -406,7 +354,7 @@ func (v *aiView) AllUnits() []ai.UnitView {
 	return slices.Concat(v.Units(), v.VisibleEnemyUnits())
 }
 
-func (v *aiView) AllBuildings() []ai.BuildingView {
+func (v *aiView) buildAllBuildings() []ai.BuildingView {
 	return slices.Concat(v.Buildings(), v.KnownEnemyBuildings())
 }
 
@@ -449,81 +397,6 @@ func (v *aiView) buildKnownEnemyBuildings() []ai.BuildingView {
 		}
 	}
 	return sortBuildingViews(buildings)
-}
-
-func (v *aiView) gatherableAt(entry snapZoneEntry, category ai.ResourceCategory) (ai.ResourceView, bool) {
-	if r := entry.zone.Resource; r != nil {
-		view := v.resourceNode(r, entry.ref)
-		return view, r.ResourcesLeft > 0 && view.Category == category
-	}
-	b := entry.zone.Building
-	if b == nil || b.PlayerId != v.playerId() || b.UnderConstruction || b.ResourcesLeft <= 0 {
-		return ai.ResourceView{}, false
-	}
-	config := v.config.Buildings[b.BuildingId]
-	if !config.IsGatherable() || toAiCategory(config.Gather.Resource_category) != category {
-		return ai.ResourceView{}, false
-	}
-	return v.buildingNode(b, entry.ref), true
-}
-
-func (v *aiView) gathererCount(location ai.ZoneRef) int {
-	if v.gather_counts == nil {
-		v.gather_counts = make(map[ai.ZoneRef]int)
-		for _, u := range v.Units() {
-			if u.CurrentOrder != nil && u.CurrentOrder.TargetResource != nil {
-				v.gather_counts[u.CurrentOrder.TargetResource.Location]++
-			}
-		}
-	}
-	return v.gather_counts[location]
-}
-
-func (v *aiView) gatherTarget(unit_id uint64) (ai.ZoneRef, bool) {
-	v.initQueues()
-	order := v.currentOrder(v.queues[unit_id])
-	if order == nil || order.TargetResource == nil {
-		return ai.ZoneRef{}, false
-	}
-	return order.TargetResource.Location, true
-}
-
-// Prefers the nearest node its current gatherers won't already empty, so nearly empty nodes still get finished.
-func (v *aiView) NearestResource(from ai.ZoneRef, category ai.ResourceCategory, gatherer_id uint64) (ai.ResourceView, bool) {
-	own_target, has_own_target := v.gatherTarget(gatherer_id)
-	var best ai.ResourceView
-	found, best_distance, best_saturated := false, -1, false
-	for _, entry := range v.zones {
-		view, ok := v.gatherableAt(entry, category)
-		if !ok {
-			continue
-		}
-		count := v.gathererCount(entry.ref)
-		if has_own_target && own_target == entry.ref {
-			count--
-		}
-		if count >= view.GatherCapacity {
-			continue
-		}
-		// saturated only when the gatherers already on it will use up what is left, so a nearly empty node still gets finished
-		saturated := view.AmountLeft <= float64(count*view.GatherSpeed)
-		d := v.LocationDistance(from, entry.ref)
-		closer := d < best_distance || (d == best_distance && zoneKey(entry.ref) < zoneKey(best.Location))
-		if !found || (!saturated && best_saturated) || (saturated == best_saturated && closer) {
-			best, best_distance, best_saturated, found = view, d, saturated, true
-		}
-	}
-	return best, found
-}
-
-func (v *aiView) KnownResources(category ai.ResourceCategory) []ai.ResourceView {
-	resources := make([]ai.ResourceView, 0)
-	for _, entry := range v.zones {
-		if r := entry.zone.Resource; r != nil && r.ResourcesLeft > 0 && toAiCategory(v.config.Resources[r.ResourceId].Category) == category {
-			resources = append(resources, v.resourceNode(r, entry.ref))
-		}
-	}
-	return resources
 }
 
 func (v *aiView) BuildCost(building_id uint32) ai.Cost {

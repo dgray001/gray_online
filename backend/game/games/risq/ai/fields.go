@@ -82,11 +82,7 @@ var locationFields = fieldTable[place]{
 	"zone_y": func(p place) float64 { return float64(p.loc.Zone.Y) },
 }
 
-var placeFields = func() fieldTable[place] {
-	fields := maps.Clone(locationFields)
-	fields["distance_home"] = func(p place) float64 { return float64(p.distance_home) }
-	return fields
-}()
+var placeFields = maps.Clone(locationFields)
 
 var playerFields = fieldTable[playerItem]{
 	"id":              func(p playerItem) float64 { return float64(p.id) },

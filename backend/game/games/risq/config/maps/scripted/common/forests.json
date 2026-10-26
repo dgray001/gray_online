@@ -13,7 +13,7 @@
   {
     "step": "resource_blob",
     "params": {
-      "resource_weights": { "tree_a + 10": 1, "tree_b + 10": 1 },
+      "resource_weights": { "tree_a + 100": 1, "tree_b + 100": 1 },
       "seed_count": "scale * 2 * tree_multiplier",
       "size": 5,
       "placement": { "evenness": 0.8 },
@@ -25,7 +25,7 @@
   {
     "step": "resource_blob",
     "params": {
-      "resource_weights": { "tree_a + 20": 1, "tree_b + 20": 1 },
+      "resource_weights": { "tree_a + 200": 1, "tree_b + 200": 1 },
       "seed_count": "forest_seeds * tree_multiplier",
       "size": 3,
       "placement": { "evenness": 0.8 },
@@ -37,7 +37,7 @@
   {
     "step": "resource_blob",
     "params": {
-      "resource_weights": { "tree_a + 20": 1, "tree_b + 20": 1 },
+      "resource_weights": { "tree_a + 200": 1, "tree_b + 200": 1 },
       "seed_count": "forest_seeds_base * tree_multiplier",
       "size": 3,
       "placement": { "evenness": 0.8 },
@@ -60,7 +60,7 @@
   {
     "step": "resource_blob",
     "params": {
-      "resource_weights": { "tree_a + 10": 1, "tree_b + 10": 1 },
+      "resource_weights": { "tree_a + 100": 1, "tree_b + 100": 1 },
       "seed_count": "scatter_groves * tree_multiplier",
       "size": 1,
       "placement": { "evenness": 0.8 },

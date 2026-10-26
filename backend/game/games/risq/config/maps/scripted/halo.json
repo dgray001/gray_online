@@ -1,0 +1,30 @@
+[
+  { "step": "shape", "params": { "kind": "ring" } },
+  { "step": "include", "params": { "path": "common/biomes.json" } },
+  { "step": "terrain_fill", "params": { "terrain_id": "water" } },
+  { "step": "define", "params": { "name": "halo_crest", "value": "outer_radius - 1" } },
+  { "step": "define", "params": { "name": "halo_trough_x", "value": "round((inner_radius + 1) / 2)" } },
+  { "step": "define", "params": { "name": "halo_trough_y", "value": "inner_radius + 1 - halo_trough_x" } },
+  { "step": "terrain_blob", "params": { "terrain_id": "base", "seed_region": "line", "region": "halo_path", "placement": { "points": [{ "x": "halo_crest", "y": 0 }, { "x": "halo_trough_x", "y": "halo_trough_y" }, { "x": "halo_trough_x", "y": "halo_trough_y" }, { "x": 0, "y": "halo_crest" }] } } },
+  { "step": "if", "params": { "condition": "3 - map_size", "then": [
+    { "step": "terrain_blob", "params": { "terrain_id": "base", "seed_region": "line", "region": "halo_path", "placement": { "points": [{ "x": "halo_crest + 1", "y": 0 }, { "x": "halo_trough_x + 1", "y": "halo_trough_y" }, { "x": "halo_trough_x + 1", "y": "halo_trough_y" }, { "x": "halo_trough_x", "y": "halo_trough_y + 1" }, { "x": "halo_trough_x", "y": "halo_trough_y + 1" }, { "x": 0, "y": "halo_crest + 1" }] } } }
+  ] } },
+  { "step": "rotate", "params": { "count": 6, "region": "halo_path" } },
+  { "step": "terrain_fill", "params": { "terrain_id": "base", "on": { "distance_to": { "region": "halo_path", "min": 0, "max": "min(1, max(0, outer_radius - 6))" } } } },
+  { "step": "include", "params": { "path": "common/land_details.json" } },
+  { "step": "include", "params": { "path": "common/forests.json" } },
+  {
+    "step": "player_starts",
+    "params": {
+      "pattern": "ring",
+      "area_size": 1,
+      "starting_distance": "halo_crest",
+      "on": { "terrain_types": ["flatlands", "hilly", "mountainous", "swamp", "shallows"] },
+      "tree_ids": ["tree_a", "tree_b"],
+      "terrain_id": "base"
+    }
+  },
+  { "step": "define", "params": { "name": "region_outer_gold", "value": "5 * round(4 * (outer_radius * (outer_radius + 1) - inner_radius * (inner_radius + 1)) / 10)" } },
+  { "step": "regions_seven", "params": { "outer_bonus": "region_outer_gold", "center_bonus": "5 * round(1.65 * region_outer_gold / 5)" } },
+  { "step": "include", "params": { "path": "common/resources.json" } }
+]

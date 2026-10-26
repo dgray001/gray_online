@@ -8,62 +8,26 @@ import (
 	"github.com/dgray001/gray_online/util"
 )
 
-type QKind uint8
-
-const (
-	QUnit QKind = iota
-	QBuilding
-	QTech
-	QResource
-)
-
-type Q struct {
-	Cost   Cost
-	ID     *uint32
-	Type   QKind
-	Weight float64
-}
-
 type Bucket struct {
-	Desired int
 	Members map[uint64]bool
-	Task    Action
 }
 
 type Internals struct {
 	diagnostics        io.Writer
 	rng                *rand.Rand
-	q                  []Q
 	Buckets            map[string]*Bucket
+	bucket_members     map[uint64]bool
 	pending            Cost
 	pending_population int
-	garrisons          map[uint64]int
 	renewals           map[uint64]bool
 	behaviors          []UnitBehavior
 	building_behaviors []BuildingBehavior
-	army               armyState
-	// how many run_bucket calls are currently nested, against the configured limit
-	bucket_depth      int
-	max_bucket_depth  int
-	rule_index        int
-	bucket_depth_warn bool
+	rule_index         int
 	// set_var values: turn_vars are cleared every turn, vars persist for the whole game
 	turn_vars    map[string]float64
 	vars         map[string]float64
-	builtin_vars map[string]counter
 	warned       map[string]bool
-	// the candidate a target picker is scoring, and where it is scored from
-	target           *ZoneRef
-	target_from      *ZoneRef
-	target_candidate *candidate
-	// health of the candidate a picker is scoring (units and buildings)
-	target_health, target_max_health float64
-	// set while a spread assigner scores one unit against one candidate
-	unit_health, unit_stamina, target_assigned, assign_round, target_id float64
-	unit_id                                                             float64
-	// where the unit a "unit_when" condition is being checked for stands
-	unit  *ZoneRef
-	start *ZoneRef
+	assign_round float64
 	// the item each enclosing for_each is visiting by its "as" name, and the loop bodies run so far this decision
 	loop_items         map[string]loopItem
 	loop_steps         int
@@ -80,20 +44,9 @@ type Internals struct {
 	assignments        map[string]*assignJob
 }
 
-const defaultMaxBucketDepth = 3
-
-func (i *Internals) bucketDepthLimit() int {
-	if i.max_bucket_depth <= 0 {
-		return defaultMaxBucketDepth
-	}
-	return i.max_bucket_depth
-}
-
 func (i *Internals) Refresh() {
-	i.q = make([]Q, 0)
 	i.pending = Cost{}
 	i.pending_population = 0
-	i.garrisons = make(map[uint64]int)
 	i.renewals = make(map[uint64]bool)
 	i.behaviors = nil
 	i.building_behaviors = nil
@@ -132,25 +85,8 @@ func (i *Internals) bucket(name string) *Bucket {
 	return b
 }
 
-// "none" matches units that are in no bucket
-func (i *Internals) inBucket(name string, unit_id uint64) bool {
-	if name == "none" {
-		return !i.isBucketed(unit_id)
-	}
-	b := i.Buckets[name]
-	return b != nil && b.Members[unit_id]
-}
-
-func (i *Internals) isBucketed(unit_id uint64) bool {
-	for _, b := range i.Buckets {
-		if b.Members[unit_id] {
-			return true
-		}
-	}
-	return false
-}
-
 func (i *Internals) pruneBuckets(view View) {
+	i.bucket_members = nil
 	if len(i.Buckets) == 0 {
 		return
 	}
@@ -165,6 +101,18 @@ func (i *Internals) pruneBuckets(view View) {
 			}
 		}
 	}
+}
+
+func (i *Internals) bucketMembers() map[uint64]bool {
+	if i.bucket_members == nil {
+		i.bucket_members = make(map[uint64]bool)
+		for _, bucket := range i.Buckets {
+			for id := range bucket.Members {
+				i.bucket_members[id] = true
+			}
+		}
+	}
+	return i.bucket_members
 }
 
 type Rule struct {
@@ -225,13 +173,17 @@ func logVars(view View, internals *Internals) {
 	util.Debugf(view.Logger(), "ai %s: vars %s", view.Nickname(), data)
 }
 
+// Lets tests read what the last decision left in a script variable
+func (m *RulesModel) Var(name string) (float64, bool) {
+	if v, ok := m.internals.turn_vars[name]; ok {
+		return v, true
+	}
+	v, ok := m.internals.vars[name]
+	return v, ok
+}
+
 func (m *RulesModel) DecideOrders(view View) Decision {
 	logTurnData(view)
-	if m.internals.start == nil {
-		if start, ok := groupCenter(view, view.Units()); ok {
-			m.internals.start = &start
-		}
-	}
 	m.internals.Refresh()
 	m.internals.pruneBuckets(view)
 	orders := make([]Order, 0)

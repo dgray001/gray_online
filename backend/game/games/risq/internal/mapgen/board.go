@@ -70,6 +70,7 @@ type Space interface {
 	// a name shown in place of the terrain's
 	SetName(name string)
 	SetGoldIncome(gold float64)
+	GoldIncome() float64
 	Impassable() bool
 	SortedAdjacent() []Space
 	Zones() []Zone

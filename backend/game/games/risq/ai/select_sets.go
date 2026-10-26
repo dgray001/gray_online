@@ -3,8 +3,17 @@ package ai
 import "fmt"
 
 type entitySet struct {
-	kind string
-	keys []itemKey
+	kind   string
+	keys   []itemKey
+	lookup map[itemKey]bool
+}
+
+func newEntitySet(kind string, keys []itemKey) *entitySet {
+	lookup := make(map[itemKey]bool, len(keys))
+	for _, key := range keys {
+		lookup[key] = true
+	}
+	return &entitySet{kind: kind, keys: keys, lookup: lookup}
 }
 
 func (s *selectorSpec) validSets(internals *Internals, cen *census) bool {

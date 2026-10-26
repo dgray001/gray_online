@@ -30,7 +30,6 @@ const (
 type selectTestView struct {
 	loopTestView
 	idle          []UnitView
-	sites         []ZoneRef
 	blocked_zones []ZoneRef
 	turn          int
 	gold          float64
@@ -40,12 +39,48 @@ type selectTestView struct {
 
 func spaceCode(c Coordinate) int64 { return int64(c.X*100 + c.Y) }
 
+func TestUnitActorsAreAlwaysOwnUnits(t *testing.T) {
+	view := selectTestView{loopTestView: loopTestView{
+		units: []UnitView{{InternalID: 1}}, enemy_units: []UnitView{{InternalID: 2, PlayerID: 1}}, spaces: lineOfSpaces(1),
+	}}
+	action := `{"action":"select","actors":{"kind":"units","where":{"owner":"any"}},"pick":{"kind":"spaces"},"issue":[{"move":{"to":"space"}}]}`
+	orders := parseSelectModel(t, rule(action)).DecideOrders(view).Orders
+	if len(orders) != 1 || !slices.Equal(orders[0].Subjects, []uint64{1}) {
+		t.Errorf("orders = %+v, want one order for unit 1", orders)
+	}
+}
+
+type snapshotIdleView struct {
+	selectTestView
+	idle_units, idle_buildings map[uint64]bool
+}
+
+func (v snapshotIdleView) IdleSnapshot() (map[uint64]bool, map[uint64]bool) {
+	return v.idle_units, v.idle_buildings
+}
+
+func TestIdleFieldReadsTheViewSnapshotWhenOffered(t *testing.T) {
+	view := snapshotIdleView{
+		selectTestView: selectTestView{loopTestView: loopTestView{units: []UnitView{{InternalID: 1}, {InternalID: 2}}}, idle: []UnitView{{InternalID: 1}}},
+		idle_units:     map[uint64]bool{2: true},
+		idle_buildings: map[uint64]bool{20: true},
+	}
+	model := parseSelectModel(t, rule(`{"action":"set_var","name":"idle_unit","value":{"sum":{"kind":"units","where":{"if":"var(item.idle)"},"of":"var(item.uid)"}}},
+		{"action":"set_var","name":"idle_buildings","value":{"count":{"kind":"buildings","where":{"if":"var(item.idle)"}}}}`))
+	model.DecideOrders(view)
+	if unit, _ := model.Var("idle_unit"); unit != 2 {
+		t.Errorf("idle unit uid = %v, want the snapshot's unit 2 and not IdleUnits' unit 1", unit)
+	}
+	if buildings, _ := model.Var("idle_buildings"); buildings != 1 {
+		t.Errorf("idle buildings = %v, want the snapshot's one building", buildings)
+	}
+}
+
 func order(kind uint8, u UnitView, target int64, clear bool) Order {
 	return Order{Subjects: []uint64{u.InternalID}, OrderType: kind, TargetID: target, ClearPreviousOrders: clear}
 }
 
 func (v selectTestView) Issue(r IssueRequest) Order { return DispatchIssue(v, r) }
-func (v selectTestView) ScopedUnits() []UnitView    { return v.Units() }
 func (v selectTestView) Population() (int, int)     { return 0, 100 }
 func (v selectTestView) HireMercenaryOrder(unit_id uint32, t ZoneRef) Order {
 	return Order{OrderType: kindHire, TargetID: spaceCode(t.Space)}
@@ -83,15 +118,6 @@ func (v selectTestView) LocationDistance(a ZoneRef, b ZoneRef) int {
 }
 func (v selectTestView) SpaceNeighbors(space Coordinate) []Coordinate {
 	return nil
-}
-func (v selectTestView) BuildSites(_ uint32, include func(Coordinate) bool) []ZoneRef {
-	sites := make([]ZoneRef, 0)
-	for _, s := range v.sites {
-		if include == nil || include(s.Space) {
-			sites = append(sites, s)
-		}
-	}
-	return sites
 }
 
 func (v selectTestView) GarrisonOrder(u UnitView, t BuildingView, clear bool) Order {
@@ -216,7 +242,7 @@ func TestSelectPersistentSetOutlivesTheTurn(t *testing.T) {
 	units := []UnitView{{InternalID: 1, CanAttack: true}, {InternalID: 2, CanAttack: true}}
 	view := selectTestView{loopTestView: loopTestView{units: units, enemy_buildings: []BuildingView{{InternalID: 21, PlayerID: 1}}}, idle: units, turn: 1}
 	config := `{"rules": [
-		{"when": {"turn_equals": {"amount": 1}}, "then": [{"action":"select","pick":{"kind":"units","where":{"if":"var(target.uid) - 1"}},"into":{"set":"kept","persist":true}}]},
+		{"when": {"value_equals": {"value": "gameVar(turn)", "amount": 1}}, "then": [{"action":"select","pick":{"kind":"units","where":{"if":"var(target.uid) - 1"}},"into":{"set":"kept","persist":true}}]},
 		{"when": {"always": {}}, "then": [{"action":"select","pick":{"kind":"buildings","where":{"owner":"enemy"}},"actors":{"kind":"units","where":{"in_set":"kept"}},"issue":[{"attack":{}}]}]}]}`
 	model := parseSelectModel(t, config)
 	model.DecideOrders(view)
@@ -366,7 +392,7 @@ func TestSelectHireCountControlsSpending(t *testing.T) {
 	if got := hired("10"); got != 10 {
 		t.Fatalf("hired %d with 13 gold at 6 each, want all 10 since overspending is the rule's call", got)
 	}
-	if got := hired(`"min(10, round(gold / 6 - 0.5))"`); got != 2 {
+	if got := hired(`"min(10, round(gameVar(gold) / 6 - 0.5))"`); got != 2 {
 		t.Fatalf("hired %d with a count bounded by gold, want 2", got)
 	}
 	unknown := rule(`{"action":"select","pick":{"kind":"zones"},"issue":[{"hire":{"unit_id":999}}]}`)

@@ -33,11 +33,7 @@ func (s *selectorSpec) newFilter(view View, internals *Internals, cen *census, c
 	if s.bucket != "" {
 		f.has_bucket, f.members = true, map[uint64]bool{}
 		if s.bucket == "none" {
-			for _, b := range internals.Buckets {
-				for id := range b.Members {
-					f.members[id] = true
-				}
-			}
+			f.members = internals.bucketMembers()
 		} else if b := internals.Buckets[s.bucket]; b != nil {
 			f.members = b.Members
 		}
@@ -56,11 +52,7 @@ func (s *selectorSpec) newFilter(view View, internals *Internals, cen *census, c
 func actorScope(view View, kind string) func(selItem) bool {
 	switch kind {
 	case "units":
-		scoped := make(map[uint64]bool)
-		for _, u := range view.ScopedUnits() {
-			scoped[u.InternalID] = true
-		}
-		return func(item selItem) bool { return scoped[unwrapItem(item).(unitItem).unit.InternalID] }
+		return func(item selItem) bool { return unwrapItem(item).(unitItem).unit.PlayerID == view.PlayerID() }
 	case "buildings":
 		return func(item selItem) bool { return unwrapItem(item).(buildingItem).building.PlayerID == view.PlayerID() }
 	}
@@ -68,13 +60,10 @@ func actorScope(view View, kind string) func(selItem) bool {
 }
 
 func setKeys(set *entitySet) map[itemKey]bool {
-	keys := make(map[itemKey]bool)
-	if set != nil {
-		for _, key := range set.keys {
-			keys[key] = true
-		}
+	if set == nil {
+		return nil
 	}
-	return keys
+	return set.lookup
 }
 
 func (f itemFilter) allows(item selItem, key itemKey) bool {

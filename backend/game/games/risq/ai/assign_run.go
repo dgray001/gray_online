@@ -35,7 +35,7 @@ func (a *selectAction) carryRound(view View, internals *Internals) []Order {
 
 func (j *assignJob) runRound(ctx *issueContext) []Order {
 	a := j.action
-	defer saveScoringContext(ctx.internals).restore(ctx.internals)
+	defer func(previous float64) { ctx.internals.assign_round = previous }(ctx.internals.assign_round)
 	ctx.internals.assign_round = float64(j.round)
 	defer func() { ctx.excluded = nil }()
 	orders := make([]Order, 0, len(j.actors))

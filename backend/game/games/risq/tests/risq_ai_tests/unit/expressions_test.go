@@ -14,9 +14,9 @@ import (
 func TestSetVarPreservesStateOnFailureAndAcceptsZero(t *testing.T) {
 	for _, persist := range []bool{false, true} {
 		config := rule(fmt.Sprintf(`{"action":"set_var","name":"saved","value":7,"persist":%t},
-			{"action":"set_var","name":"saved","value":"1 / (turn - turn)","persist":%t},
+			{"action":"set_var","name":"saved","value":"1 / (gameVar(turn) - gameVar(turn))","persist":%t},
 			{"action":"set_var","name":"zero","value":7,"persist":%t},
-			{"action":"set_var","name":"zero","value":"turn - turn","persist":%t}`, persist, persist, persist, persist))
+			{"action":"set_var","name":"zero","value":"gameVar(turn) - gameVar(turn)","persist":%t}`, persist, persist, persist, persist))
 		got := decide(t, config, loopFixture(), "saved", "zero")
 		if got["saved"] != 7 || got["zero"] != 0 {
 			t.Errorf("persist %v: values %v, want saved=7 and zero=0", persist, got)
@@ -60,7 +60,7 @@ func TestComparisonsFilterSelectedActors(t *testing.T) {
 
 func TestExpressionResults(t *testing.T) {
 	for expression, want := range map[string]float64{"1 + 2 * 3": 7, "(1 + 2) * 3": 9, "-(-3) + +2": 5, "1 / 4": 0.25, "min(7, max(2, 4))": 4, "var(saved) * 2": 6} {
-		model := requireModel(t, fmt.Sprintf(`{"rules":[{"when":{"always":{}},"then":[{"action":"set_var","name":"saved","value":3}]},{"when":{"value_equals":{"value":%q,"amount":%v}},"then":[{"action":"delete_unit"}]}]}`, expression, want))
+		model := requireModel(t, fmt.Sprintf(`{"rules":[{"when":{"always":{}},"then":[{"action":"set_var","name":"saved","value":3}]},{"when":{"value_equals":{"value":%q,"amount":%v}},"then":[%s]}]}`, expression, want, deleteProbe))
 		view := &fakeView{units: []ai.UnitView{{InternalID: 73}}}
 		assertCalls(t, model.DecideOrders(view), view, orderCall{Kind: 12, Subject: 73, Clear: true})
 	}
@@ -115,7 +115,7 @@ func TestUnknownVariablesAfterZeroDivisorsAreReported(t *testing.T) {
 
 func TestRuntimeDiagnosticFrequency(t *testing.T) {
 	var diagnostics bytes.Buffer
-	model := jsonModel(t, `{"rules":[{"when":{"always":{}},"then":[{"action":"set_var","name":"failed","value":"1 / (turn - 2)"}]},{"when":{"turn_equals":{"amount":"1 / (turn - 2)"}},"then":[{"action":"delete_unit"}]}]}`, &diagnostics)
+	model := jsonModel(t, `{"rules":[{"when":{"always":{}},"then":[{"action":"set_var","name":"failed","value":"1 / (gameVar(turn) - 2)"}]},{"when":{"value_equals":{"value":"gameVar(turn)","amount":"1 / (gameVar(turn) - 2)"}},"then":[`+deleteProbe+`]}]}`, &diagnostics)
 	for turn := 0; turn < 2; turn++ {
 		decision := model.DecideOrders(&fakeView{turnNumber: 2})
 		if len(decision.Orders)+len(decision.Behaviors)+len(decision.BuildingBehaviors) != 0 {
@@ -147,30 +147,9 @@ func TestParseAmount(t *testing.T) {
 		"rules": []any{
 			map[string]any{
 				"when": map[string]any{
-					"resource_equals": map[string]any{
-						"category": "wood",
-						"amount":   "1 + 2 * 3",
-					},
-				},
-				"then": []any{},
-			},
-		},
-	}
-	model := ai.ParseModelWithDiagnostics(raw, rng, io.Discard)
-	if _, ok := model.(*ai.RulesModel); !ok {
-		t.Fatalf("expected RulesModel, got %T", model)
-	}
-}
-
-func TestParseExpressionVariables(t *testing.T) {
-	rng := rand.New(rand.NewSource(1))
-	raw := map[string]any{
-		"rules": []any{
-			map[string]any{
-				"when": map[string]any{
-					"resource_equals": map[string]any{
-						"category": "wood",
-						"amount":   "turn + population + var(my_var)",
+					"value_equals": map[string]any{
+						"value":  "gameVar(wood)",
+						"amount": "1 + 2 * 3",
 					},
 				},
 				"then": []any{},

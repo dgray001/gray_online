@@ -17,11 +17,10 @@ const (
 
 var relationNames = map[string]relation{"any": relationAny, "own": relationOwn, "enemy": relationEnemy, "unowned": relationUnowned}
 
-// The owner and place filters every loop source shares: "owner" (own, enemy, unowned or any), "player_id" (a number or expression), "within" and "from"
+// The owner filters every loop source shares: "owner" (own, enemy, unowned or any) and "player_id" (a number or expression)
 type selector struct {
 	relation relation
 	player   *amount
-	near     nearFilter
 }
 
 func parseSelector(where map[string]any, fallback relation) (selector, error) {
@@ -43,13 +42,11 @@ func parseSelector(where map[string]any, fallback relation) (selector, error) {
 		}
 		s.player = &a
 	}
-	var err error
-	s.near, err = parseNearFilter(where)
-	return s, err
+	return s, nil
 }
 
-// Whether something owned by owner (-1 for no one) at loc passes the owner, player and place filters
-func (s selector) allows(view View, internals *Internals, owner int, loc ZoneRef) bool {
+// Whether something owned by owner (-1 for no one) passes the owner and player filters
+func (s selector) allows(view View, internals *Internals, owner int) bool {
 	me := view.PlayerID()
 	switch s.relation {
 	case relationOwn:
@@ -65,10 +62,7 @@ func (s selector) allows(view View, internals *Internals, owner int, loc ZoneRef
 			return false
 		}
 	}
-	if s.player != nil && owner != s.player.int(view, internals) {
-		return false
-	}
-	return s.near.contains(view, internals, loc)
+	return s.player == nil || owner == s.player.int(view, internals)
 }
 
 func checkOptionTypes[T any](obj map[string]any, keys ...string) error {

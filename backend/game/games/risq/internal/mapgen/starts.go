@@ -76,12 +76,12 @@ type playerStartsParams struct {
 	terrainPickJSON
 	On terrainFilterJSON `json:"on,omitempty"`
 	// overrides the terrain of each start space itself; the rest of the area uses the pick above
-	HomeTerrainId ScriptExpr `json:"home_terrain_id"`
-	// limits the default starting trees, groves (+10) and forests (+20) to these species
+	HomeTerrainId        ScriptExpr                `json:"home_terrain_id"`
 	TreeIds              []ScriptExpr              `json:"tree_ids"`
 	Pattern              string                    `json:"pattern"`
 	StartBalance         *ScriptExpr               `json:"start_balance,omitempty"`
 	Nomad                *bool                     `json:"nomad,omitempty"`
+	Relocate             *bool                     `json:"relocate,omitempty"`
 	AreaSize             ScriptExpr                `json:"area_size"`
 	StartingDistance     ScriptExpr                `json:"starting_distance"`
 	InnerDistance        *ScriptExpr               `json:"inner_distance,omitempty"`
@@ -229,8 +229,8 @@ func nearestFittingSpaces(ctx *mapScriptContext, rule startAreaRule, original Sp
 	return nearest
 }
 
-func nearestStartSpace(ctx *mapScriptContext, original Space, assigned []playerStartInfo, area_size int, max_shift int) (Space, error) {
-	for rule := startRuleClearOfOthers; rule <= startRuleDistinct; rule++ {
+func nearestStartSpace(ctx *mapScriptContext, original Space, assigned []playerStartInfo, area_size int, max_shift int, strictest startAreaRule) (Space, error) {
+	for rule := strictest; rule <= startRuleDistinct; rule++ {
 		nearest := nearestFittingSpaces(ctx, rule, original, assigned, area_size, max_shift)
 		if len(nearest) == 1 {
 			return nearest[0], nil
@@ -267,13 +267,13 @@ func nearestStartSpace(ctx *mapScriptContext, original Space, assigned []playerS
 }
 
 // Moves each pattern-chosen start to the nearest space passing the strictest rule any space passes
-func assignStartSpaces(ctx *mapScriptContext, originals []playerStartInfo, area_size int, max_shift int) ([]playerStartInfo, error) {
+func assignStartSpaces(ctx *mapScriptContext, originals []playerStartInfo, area_size int, max_shift int, strictest startAreaRule) ([]playerStartInfo, error) {
 	if len(ctx.allSpaces()) < len(originals) {
 		return nil, fmt.Errorf("board has %d spaces, cannot place %d player starts", len(ctx.allSpaces()), len(originals))
 	}
 	assigned := make([]playerStartInfo, 0, len(originals))
 	for _, original := range originals {
-		space, err := nearestStartSpace(ctx, original.space, assigned, area_size, max_shift)
+		space, err := nearestStartSpace(ctx, original.space, assigned, area_size, max_shift, strictest)
 		if err != nil {
 			return nil, err
 		}
@@ -554,10 +554,12 @@ func stepPlayerStarts(ctx *mapScriptContext, raw json.RawMessage) error {
 			return err
 		}
 	}
-	if p.Pattern == "ring" || (p.Pattern == "rows" && (ctx.shape != "rectangle" || !p.On.empty())) {
-		if starts, err = assignStartSpaces(ctx, starts, area_size, max_shift); err != nil {
-			return err
-		}
+	strictest := startRuleClearOfOthers
+	if p.Relocate != nil && !*p.Relocate {
+		strictest = startRuleDistinct
+	}
+	if starts, err = assignStartSpaces(ctx, starts, area_size, max_shift, strictest); err != nil {
+		return err
 	}
 	starts = util.ShuffleFrom(ctx.rng, starts)
 	for i := range starts {

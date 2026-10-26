@@ -160,10 +160,11 @@ func TestSelectAssignmentSkipsInvalidBuildSitesWithoutSpending(t *testing.T) {
 	if len(orders) != 1 || orders[0].TargetID != spaceCode(at(1).Space) || !orders[0].ClearPreviousOrders {
 		t.Fatalf("got %+v, want one clearing build order for the valid site", orders)
 	}
-	config := rule(action + `,{"action":"move","targets":"coordinate","coordinate":{"x":"wood","y":0}}`)
-	decision := parseSelectModel(t, config).DecideOrders(decisionView{view})
-	if len(decision.Orders) != 2 || decision.Orders[1].TargetID != 90 {
-		t.Errorf("got %+v, want one foundation and a remaining-wood probe of 90", decision.Orders)
+	config := rule(action + `,{"action":"set_var","name":"wood_left","value":"gameVar(wood)"}`)
+	model := parseSelectModel(t, config)
+	decision := model.DecideOrders(decisionView{view})
+	if wood, _ := model.Var("wood_left"); len(decision.Orders) != 1 || wood != 90 {
+		t.Errorf("got %+v and %v wood left, want one foundation and 90 wood left", decision.Orders, wood)
 	}
 }
 
@@ -214,9 +215,9 @@ func TestSelectHasNoHomeBasedFields(t *testing.T) {
 			t.Errorf("select accepted the home-based field %s", field)
 		}
 	}
-	legacy := rule(`{"action":"for_each","source":"spaces","as":"s","do":[{"action":"set_var","name":"x","value":"var(s.distance_home)"}]}`)
-	if err := loadError(legacy); err != nil {
-		t.Errorf("legacy for_each lost distance_home: %v", err)
+	loop := rule(`{"action":"for_each","source":"spaces","as":"s","do":[{"action":"set_var","name":"x","value":"var(s.distance_home)"}]}`)
+	if loadError(loop) == nil {
+		t.Error("for_each accepted the home-based field distance_home")
 	}
 }
 
@@ -496,7 +497,7 @@ func TestNearMeasuresOncePerAnchorSpaceAndHoistsTheBound(t *testing.T) {
 	if lookups := view.distances - baseline.distances; lookups > 20 {
 		t.Errorf("%d distance lookups, want at most one per space and anchor space (20)", lookups)
 	}
-	for name, distance := range map[string]string{"negative": `"0 - 1"`, "failing bound": `"1 / (turn - turn)"`} {
+	for name, distance := range map[string]string{"negative": `"0 - 1"`, "failing bound": `"1 / (gameVar(turn) - gameVar(turn))"`} {
 		if got := decide(t, nearUnits(distance), view, "found")["found"]; got != 0 {
 			t.Errorf("%s bound selected %v spaces, want none", name, got)
 		}

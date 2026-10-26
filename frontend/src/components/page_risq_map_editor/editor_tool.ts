@@ -51,27 +51,3 @@ export abstract class EditorTool {
   abstract mouseup(target: EditorTarget | undefined, e: MouseEvent): void;
   abstract drawOverlay(ctx: CanvasRenderingContext2D, target: EditorTarget | undefined): void;
 }
-
-import { BackgroundTool } from './tools/background_tool';
-import { ConnectionsTool } from './tools/connections_tool';
-import { RegionTool } from './tools/region_tool';
-import { SelectTool } from './tools/select_tool';
-import { SlotsTool } from './tools/slots_tool';
-import { SpacesTool } from './tools/spaces_tool';
-import { TerrainTool } from './tools/terrain_tool';
-import { ValidationTool } from './tools/validation_tool';
-import { ZoneTool } from './tools/zone_tool';
-
-export function createEditorTools(context: EditorToolContext): EditorTool[] {
-  return [
-    new SelectTool(context),
-    new SpacesTool(context),
-    new TerrainTool(context),
-    new ZoneTool(context),
-    new SlotsTool(context),
-    new RegionTool(context),
-    new ConnectionsTool(context),
-    new BackgroundTool(context),
-    new ValidationTool(context),
-  ];
-}

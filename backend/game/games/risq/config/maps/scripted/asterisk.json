@@ -13,6 +13,7 @@
     "step": "player_starts",
     "params": {
       "pattern": "asterisk",
+      "relocate": false,
       "on": { "terrain_types": ["flatlands", "hilly", "mountainous", "swamp", "shallows"] },
       "area_size": 1,
       "starting_distance": "radius - 1 - min(1, max(0, radius - 7))",
@@ -22,5 +23,5 @@
   },
   { "step": "define", "params": { "name": "region_center_radius", "value": "2 + min(1, max(0, radius - 6)) + min(1, max(0, radius - 8))" } },
   { "step": "define", "params": { "name": "region_outer_gold", "value": "5 * round(4 * (radius * (radius + 1) - region_center_radius * (region_center_radius + 1)) / 10)" } },
-  { "step": "regions_seven", "params": { "rotate_30": true, "outer_bonus": "region_outer_gold", "center_bonus": "2 * 5 * round(1.65 * region_outer_gold / 5)" } }
+  { "step": "regions_seven", "params": { "rotate_30": true, "outer_bonus": "region_outer_gold", "center_bonus": "2 * 5 * round(1.65 * region_outer_gold / 5)", "center_space_gold": 5 } }
 ]

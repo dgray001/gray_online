@@ -20,9 +20,9 @@ import { PLAYER_ICON_SIZE, transformScale } from './image_cache';
 
 // ordered smallest first; a mine of resource_id N shows the stages with resource_id <= N as it depletes
 const STONE_MINE_STAGES: { resource_id: number; filename: string }[] = [
-  { resource_id: 41, filename: 'stonemine_small' },
-  { resource_id: 42, filename: 'stonemine_medium' },
-  { resource_id: 43, filename: 'stonemine_large' },
+  { resource_id: 101, filename: 'stonemine_small' },
+  { resource_id: 102, filename: 'stonemine_medium' },
+  { resource_id: 103, filename: 'stonemine_large' },
 ];
 
 function stoneMineStageImage(resource: RisqResource, configs: ReadonlyMap<number, RisqResourceConfig>): string {
@@ -44,79 +44,79 @@ export function resourceImage(resource: RisqResource, configs: ReadonlyMap<numbe
         filename = 'deer';
         break;
       // wood: single tree (1x), grove (2x), forest (3x) of the same species
-      case 11:
-      case 21:
-      case 31:
+      case 301:
+      case 401:
+      case 501:
         filename = 'tree_cedar';
         break;
-      case 12:
-      case 22:
-      case 32:
+      case 302:
+      case 402:
+      case 502:
         filename = 'tree_dead';
         break;
-      case 13:
-      case 23:
-      case 33:
+      case 303:
+      case 403:
+      case 503:
         filename = 'tree_maple';
         break;
-      case 14:
-      case 24:
-      case 34:
+      case 304:
+      case 404:
+      case 504:
         filename = 'tree_oak';
         break;
-      case 15:
-      case 25:
-      case 35:
+      case 305:
+      case 405:
+      case 505:
         filename = 'tree_pine';
         break;
-      case 16:
-      case 26:
-      case 36:
+      case 306:
+      case 406:
+      case 506:
         filename = 'tree_walnut';
         break;
-      case 111:
-      case 121:
-      case 131:
+      case 307:
+      case 407:
+      case 507:
         filename = 'tree_palm';
         break;
-      case 112:
-      case 122:
-      case 132:
+      case 308:
+      case 408:
+      case 508:
         filename = 'tree_acacia';
         break;
-      case 113:
-      case 123:
-      case 133:
+      case 309:
+      case 409:
+      case 509:
         filename = 'tree_baobab';
         break;
-      case 114:
-      case 124:
-      case 134:
+      case 310:
+      case 410:
+      case 510:
         filename = 'tree_birch';
         break;
-      case 115:
-      case 125:
-      case 135:
+      case 311:
+      case 411:
+      case 511:
         filename = 'tree_juniper';
         break;
-      case 116:
-      case 126:
-      case 136:
+      case 312:
+      case 412:
+      case 512:
         filename = 'tree_spruce';
         break;
-      case 117:
-      case 127:
-      case 137:
+      case 313:
+      case 413:
+      case 513:
         filename = 'tree_willow';
         break;
       // stone
-      case 41:
-      case 42:
-      case 43:
+      case 101:
+      case 102:
+      case 103:
         filename = stoneMineStageImage(resource, configs);
         break;
       // gold
-      case 51:
+      case 201:
         filename = 'goldmine';
         break;
       default:
@@ -129,10 +129,10 @@ export function resourceImage(resource: RisqResource, configs: ReadonlyMap<numbe
 
 // Forests get a scatter of tree icons drawn across their whole zone
 export function isForestResource(resource: RisqResource): boolean {
-  return [31, 32, 33, 34, 35, 36, 131, 132, 133, 134, 135, 136, 137].includes(resource.resource_id);
+  return [501, 502, 503, 504, 505, 506, 507, 508, 509, 510, 511, 512, 513].includes(resource.resource_id);
 }
 
-const GROVE_RESOURCE_IDS = new Set<number>([21, 22, 23, 24, 25, 26, 121, 122, 123, 124, 125, 126, 127]);
+const GROVE_RESOURCE_IDS = new Set<number>([401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413]);
 
 /** Sizes and back-tree centers as fractions of the icon box */
 interface TreeClusterLayout {
@@ -340,14 +340,14 @@ export function mapResourceTypeIcon(game: RisqDrawHost, type: RisqResourceType):
 
 /** Returns the resource gathered from the resource type */
 export function resourceType(resource: RisqResource): RisqResourceType {
-  if (resource.resource_id < 11) {
+  if (resource.resource_id === 1 || resource.resource_id === 2) {
     return RisqResourceType.FOOD;
-  } else if (resource.resource_id < 41 || (resource.resource_id > 110 && resource.resource_id < 140)) {
-    return RisqResourceType.WOOD;
-  } else if (resource.resource_id < 51) {
+  } else if (resource.resource_id >= 101 && resource.resource_id <= 103) {
     return RisqResourceType.STONE;
-  } else if (resource.resource_id < 61) {
+  } else if (resource.resource_id === 201) {
     return RisqResourceType.GOLD;
+  } else if (resource.resource_id >= 301 && resource.resource_id <= 513) {
+    return RisqResourceType.WOOD;
   }
   return RisqResourceType.ERROR;
 }

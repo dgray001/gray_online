@@ -167,6 +167,10 @@ func (s mapSpace) SetGoldIncome(gold float64) {
 	s.s.gold_income = gold
 }
 
+func (s mapSpace) GoldIncome() float64 {
+	return s.s.gold_income
+}
+
 func (s mapSpace) Impassable() bool {
 	return s.s.impassable()
 }

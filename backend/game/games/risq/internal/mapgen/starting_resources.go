@@ -12,7 +12,6 @@ import (
 	"github.com/dgray001/gray_online/util"
 )
 
-// Swaps the default tree, grove (+10) and forest (+20) pools for the given species ids
 func withTreeSpecies(ctx *mapScriptContext, resources []playerStartResourceJSON, species []ScriptExpr) ([]playerStartResourceJSON, error) {
 	trees := make([]uint32, len(species))
 	for i, expr := range species {
@@ -37,9 +36,9 @@ func withTreeSpecies(ctx *mapScriptContext, resources []playerStartResourceJSON,
 		case slices.Equal(r.ResourceIds, uniformTreeIds):
 			resources[i].ResourceIds = trees
 		case slices.Equal(r.ResourceIds, uniformGroveIds):
-			resources[i].ResourceIds = shifted(10)
+			resources[i].ResourceIds = shifted(100)
 		case slices.Equal(r.ResourceIds, uniformForestIds):
-			resources[i].ResourceIds = shifted(20)
+			resources[i].ResourceIds = shifted(200)
 		}
 	}
 	return resources, nil
@@ -51,11 +50,11 @@ func defaultStartingResources(level defs.MapResourceLevel) []playerStartResource
 	case defs.MapResourceLevel_SPARSE:
 		home = homeStartingResources(uniformTreeIds, uniformTreeIds, 0)
 	case defs.MapResourceLevel_RICH:
-		home = homeStartingResources(uniformGroveIds, uniformGroveIds, 42)
+		home = homeStartingResources(uniformGroveIds, uniformGroveIds, 102)
 	case defs.MapResourceLevel_ABUNDANT:
-		home = homeStartingResources(uniformForestIds, uniformGroveIds, 43)
+		home = homeStartingResources(uniformForestIds, uniformGroveIds, 103)
 	default:
-		home = homeStartingResources(uniformGroveIds, uniformTreeIds, 41)
+		home = homeStartingResources(uniformGroveIds, uniformTreeIds, 101)
 	}
 	return append(home, outerStartingResources(level)...)
 }
@@ -85,8 +84,8 @@ func outerStartingResources(level defs.MapResourceLevel) []playerStartResourceJS
 			{ResourceIds: uniformForestIds, Count: count(7), Distance: []int{1, 1}},
 			{ResourceId: 2, Count: count(4), Distance: []int{1, 1}},
 			{ResourceId: 1, Count: count(4), Distance: []int{1, 1}},
-			{ResourceId: 42, Count: count(2), Distance: []int{1, 1}},
-			{ResourceId: 43, Count: count(2), Distance: []int{1, 1}},
+			{ResourceId: 102, Count: count(2), Distance: []int{1, 1}},
+			{ResourceId: 103, Count: count(2), Distance: []int{1, 1}},
 		}
 	case defs.MapResourceLevel_RICH:
 		return []playerStartResourceJSON{
@@ -94,17 +93,17 @@ func outerStartingResources(level defs.MapResourceLevel) []playerStartResourceJS
 			{ResourceIds: uniformForestIds, Count: count(5), Distance: []int{1, 1}},
 			{ResourceId: 2, Count: count(3), Distance: []int{1, 1}},
 			{ResourceId: 1, Count: count(3), Distance: []int{1, 1}},
-			{ResourceId: 41, Count: count(2), Distance: []int{1, 1}},
-			{ResourceId: 42, Count: count(2), Distance: []int{1, 1}},
-			{ResourceId: 43, Count: count(1), Distance: []int{1, 1}},
+			{ResourceId: 101, Count: count(2), Distance: []int{1, 1}},
+			{ResourceId: 102, Count: count(2), Distance: []int{1, 1}},
+			{ResourceId: 103, Count: count(1), Distance: []int{1, 1}},
 		}
 	case defs.MapResourceLevel_SPARSE:
 		return []playerStartResourceJSON{
 			{ResourceIds: uniformForestIds, Count: count(2), Distance: []int{1, 1}},
 			{ResourceIds: uniformGroveIds, Count: count(2), Distance: []int{1, 1}},
 			{ResourceIds: uniformTreeIds, Count: count(2), Distance: []int{1, 1}},
-			{ResourceId: 41, Count: count(1), Distance: []int{1, 1}},
-			{ResourceId: 42, Count: count(1), Distance: []int{1, 1}},
+			{ResourceId: 101, Count: count(1), Distance: []int{1, 1}},
+			{ResourceId: 102, Count: count(1), Distance: []int{1, 1}},
 			{ResourceId: 2, Count: count(1), Distance: []int{1, 1}},
 			{ResourceId: 1, Count: count(1), Distance: []int{1, 1}},
 		}
@@ -114,8 +113,8 @@ func outerStartingResources(level defs.MapResourceLevel) []playerStartResourceJS
 		{ResourceIds: uniformForestIds, Count: count(3), Distance: []int{1, 1}},
 		{ResourceId: 2, Count: count(2), Distance: []int{1, 1}},
 		{ResourceId: 1, Count: count(2), Distance: []int{1, 1}},
-		{ResourceId: 42, Count: count(1), Distance: []int{1, 1}},
-		{ResourceId: 43, Count: count(1), Distance: []int{1, 1}},
+		{ResourceId: 102, Count: count(1), Distance: []int{1, 1}},
+		{ResourceId: 103, Count: count(1), Distance: []int{1, 1}},
 	}
 }
 

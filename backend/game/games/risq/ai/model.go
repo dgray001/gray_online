@@ -50,22 +50,5 @@ func ParseModelWithDiagnostics(raw map[string]any, rng *rand.Rand, diagnostics i
 		fmt.Fprintln(diagnostics, "ai config:", err)
 		return NoopModel{}
 	}
-	depth, err := parseMaxBucketDepth(raw)
-	if err != nil {
-		fmt.Fprintln(diagnostics, "ai config:", err)
-		return NoopModel{}
-	}
-	return &RulesModel{rules: rules, internals: Internals{max_bucket_depth: depth, rng: rng, diagnostics: diagnostics}}
-}
-
-func parseMaxBucketDepth(raw map[string]any) (int, error) {
-	value, present := raw["max_bucket_depth"]
-	if !present {
-		return defaultMaxBucketDepth, nil
-	}
-	depth, ok := value.(float64)
-	if !ok || depth < 1 || depth != float64(int(depth)) {
-		return 0, fmt.Errorf("\"max_bucket_depth\" must be a whole number of at least 1")
-	}
-	return int(depth), nil
+	return &RulesModel{rules: rules, internals: Internals{rng: rng, diagnostics: diagnostics}}
 }

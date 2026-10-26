@@ -17,6 +17,31 @@ func lineOfSpaces(gold ...float64) []SpaceInfo {
 	return spaces
 }
 
+func TestSetLookupReplacementAndDecisionLifetime(t *testing.T) {
+	view := selectTestView{loopTestView: loopTestView{units: []UnitView{{InternalID: 1}, {InternalID: 2}}}, turn: 1}
+	config := `{"rules":[
+		{"when":{"value_equals":{"value":"gameVar(turn)","amount":1}},"then":[{"action":"select","pick":{"kind":"units"},"into":{"set":"kept","persist":true}}]},
+		{"when":{"always":{}},"then":[{"action":"set_var","name":"before","value":{"count":{"kind":"units","where":{"in_set":"kept"}}}}]},
+		{"when":{"value_equals":{"value":"gameVar(turn)","amount":1}},"then":[{"action":"select","pick":{"kind":"units","where":{"in":{"uid":[2]}}},"into":{"set":"kept"}}]},
+		{"when":{"always":{}},"then":[{"action":"set_var","name":"after","value":{"sum":{"kind":"units","where":{"in_set":"kept"},"of":"var(item.uid)"}}},
+		{"action":"set_var","name":"excluded","value":{"sum":{"kind":"units","where":{"not_in_set":"kept"},"of":"var(item.uid)"}}}]}]}`
+	model := parseSelectModel(t, config)
+	model.DecideOrders(view)
+	assertLookupValues(t, model, 2, 2, 1)
+	view.turn = 2
+	model.DecideOrders(view)
+	assertLookupValues(t, model, 0, 0, 3)
+}
+
+func assertLookupValues(t *testing.T, model *RulesModel, before float64, after float64, excluded float64) {
+	t.Helper()
+	for name, want := range map[string]float64{"before": before, "after": after, "excluded": excluded} {
+		if got, _ := model.Var(name); got != want {
+			t.Errorf("%s = %v, want %v", name, got, want)
+		}
+	}
+}
+
 func TestSelectRejectsLegacySpatialFiltersAndMalformedCoordinates(t *testing.T) {
 	for _, where := range []string{`{"within":3}`, `{"from":"home"}`, `{"within":3,"from":"army"}`, `{"near":{"of":{"kind":"units","where":{"within":1}}}}`} {
 		if err := loadError(rule(`{"action":"select","pick":{"kind":"spaces","where":` + where + `},"into":{"set":"x"}}`)); err == nil {
@@ -36,8 +61,8 @@ func TestSelectEmptyBucketModesPreserveOtherMemberships(t *testing.T) {
 		config := rule(`{"action":"select","pick":{"kind":"units"},"into":{"bucket":"other"}},
 			{"action":"select","pick":{"kind":"units"},"into":{"bucket":"group"}},
 			{"action":"select","pick":{"kind":"units","where":{"in":{"uid":[99]}}},"into":{"bucket":"group"` + mode + `}},
-			{"action":"set_var","name":"group_n","value":"var(bucket_size_group)"},
-			{"action":"set_var","name":"other_n","value":"var(bucket_size_other)"}`)
+			{"action":"set_var","name":"group_n","value":{"count":{"kind":"units","where":{"bucket":"group"}}}},
+			{"action":"set_var","name":"other_n","value":{"count":{"kind":"units","where":{"bucket":"other"}}}}`)
 		vars := decide(t, config, view, "group_n", "other_n")
 		if vars["group_n"] != want || vars["other_n"] != 2 {
 			t.Errorf("mode %q: counts %v, want group %v and other 2", mode, vars, want)
@@ -187,7 +212,7 @@ func regionView() selectTestView {
 func TestPersistentRegionSetKeepsIdentityAfterDiscovery(t *testing.T) {
 	worker := villager(1, Coordinate{})
 	view := selectTestView{loopTestView: loopTestView{units: []UnitView{worker}, spaces: lineOfSpaces(0, 0), regions: []RegionInfo{{Name: "kept", Spaces: []Coordinate{{X: 2}}}}}, idle: []UnitView{worker}, turn: 1}
-	config := `{"rules":[{"when":{"turn_equals":{"amount":1}},"then":[{"action":"select","pick":{"kind":"regions"},"into":{"set":"kept","persist":true}}]},{"when":{"always":{}},"then":[{"action":"select","pick":{"kind":"spaces","where":{"region_in_set":"kept"}},"issue":[{"move":{}}]}]}]}`
+	config := `{"rules":[{"when":{"value_equals":{"value":"gameVar(turn)","amount":1}},"then":[{"action":"select","pick":{"kind":"regions"},"into":{"set":"kept","persist":true}}]},{"when":{"always":{}},"then":[{"action":"select","pick":{"kind":"spaces","where":{"region_in_set":"kept"}},"issue":[{"move":{}}]}]}]}`
 	model := parseSelectModel(t, config)
 	model.DecideOrders(view)
 	view.turn = 2

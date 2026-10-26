@@ -419,7 +419,7 @@ func TestStartBuildingsFallBackWhenTheMirroredZoneIsTaken(t *testing.T) {
 }
 
 func TestStartTreeIdsReplaceTheDefaultSpecies(t *testing.T) {
-	starts := step("player_starts", `{"pattern":"ring","area_size":1,"starting_distance":3,"terrain_id":1,"tree_ids":[14]}`)
+	starts := step("player_starts", `{"pattern":"ring","area_size":1,"starting_distance":3,"terrain_id":1,"tree_ids":[313]}`)
 	useScripts(t, map[string]string{"species": `[` + hexagon4 + `,` + flatTerrain + `,` + starts + `]`})
 	board, err := fakeboard.Generate("script:species", 2, 1)
 	if err != nil {
@@ -428,10 +428,10 @@ func TestStartTreeIdsReplaceTheDefaultSpecies(t *testing.T) {
 	trees := 0
 	for _, info := range board.Inspect() {
 		for _, z := range info.Zones {
-			if z.Resource >= 11 && z.Resource < 40 {
+			if z.Resource >= 301 && z.Resource <= 513 {
 				trees++
-				if z.Resource != 14 && z.Resource != 24 && z.Resource != 34 {
-					t.Errorf("start wood resource %d, want only species 14 as tree, grove or forest", z.Resource)
+				if z.Resource != 313 && z.Resource != 413 && z.Resource != 513 {
+					t.Errorf("start wood resource %d, want only species 313 as tree, grove or forest", z.Resource)
 				}
 			}
 		}

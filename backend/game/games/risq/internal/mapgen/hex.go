@@ -77,6 +77,8 @@ func hexLine(a, b game_utils.Coordinate2D) []game_utils.Coordinate2D {
 			rx = -ry - rz
 		} else if dy > dz {
 			ry = -rx - rz
+		} else {
+			rz = -rx - ry
 		}
 		res = append(res, game_utils.Coordinate2D{X: int(rx), Y: int(rz)})
 	}

@@ -63,7 +63,7 @@ func attackableAim(a attackableItem) aim {
 type attackableSource struct{ selector selector }
 
 func parseAttackableSource(where map[string]any) (loopSource, error) {
-	if err := checkKeys(where, "owner", "player_id", "within", "from"); err != nil {
+	if err := checkKeys(where, "owner", "player_id"); err != nil {
 		return nil, err
 	}
 	s, err := parseSelector(where, relationEnemy)
@@ -76,12 +76,12 @@ func parseAttackableSource(where map[string]any) (loopSource, error) {
 func (s *attackableSource) items(view View, internals *Internals) []loopItem {
 	items := make([]loopItem, 0)
 	for _, u := range unitsFor(view, s.selector.relation) {
-		if u.PlayerID != view.PlayerID() && s.selector.allows(view, internals, u.PlayerID, u.Location) {
+		if u.PlayerID != view.PlayerID() && s.selector.allows(view, internals, u.PlayerID) {
 			items = append(items, unitAttackable(u))
 		}
 	}
 	for _, b := range buildingsFor(view, s.selector.relation) {
-		if b.PlayerID != view.PlayerID() && s.selector.allows(view, internals, b.PlayerID, b.Location) {
+		if b.PlayerID != view.PlayerID() && s.selector.allows(view, internals, b.PlayerID) {
 			items = append(items, buildingAttackable(b))
 		}
 	}

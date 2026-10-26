@@ -11,12 +11,12 @@ import (
 )
 
 var uniformFoodIds = []uint32{1, 2}
-var uniformTreeIds = []uint32{11, 12, 13, 14, 15, 16}
-var uniformGroveIds = []uint32{21, 22, 23, 24, 25, 26}
-var uniformForestIds = []uint32{31, 32, 33, 34, 35, 36}
+var uniformTreeIds = []uint32{301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313}
+var uniformGroveIds = []uint32{401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413}
+var uniformForestIds = []uint32{501, 502, 503, 504, 505, 506, 507, 508, 509, 510, 511, 512, 513}
 var uniformWoodIds = append(append(append([]uint32{}, uniformTreeIds...), uniformGroveIds...), uniformForestIds...)
-var uniformStoneIds = []uint32{41, 42, 43}
-var uniformGoldIds = []uint32{51}
+var uniformStoneIds = []uint32{101, 102, 103}
+var uniformGoldIds = []uint32{201}
 
 func resourceZoneMatches(zone Zone, selector string) bool {
 	return selector == "" || selector == "all" || (selector == "center" && zone.IsCenter()) || (selector == "edge" && !zone.IsCenter())

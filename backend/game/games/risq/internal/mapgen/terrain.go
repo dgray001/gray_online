@@ -190,8 +190,17 @@ func growZoneBlob(start Zone, size int, rng *rand.Rand) []Zone {
 
 type terrainFillParams struct {
 	terrainPickJSON
-	On     terrainFilterJSON `json:"on"`
-	Region string            `json:"region,omitempty"`
+	On        terrainFilterJSON `json:"on"`
+	Region    string            `json:"region,omitempty"`
+	SpaceGold *ScriptExpr       `json:"space_gold,omitempty"`
+}
+
+func resolveSpaceGold(ctx *mapScriptContext, expr *ScriptExpr) (*float64, error) {
+	if expr == nil {
+		return nil, nil
+	}
+	gold, err := expr.resolve(ctx.vars)
+	return &gold, err
 }
 
 func stepTerrainFill(ctx *mapScriptContext, raw json.RawMessage) error {
@@ -201,6 +210,10 @@ func stepTerrainFill(ctx *mapScriptContext, raw json.RawMessage) error {
 	}
 	region := ctx.region(p.Region)
 	matches, err := p.On.matcher(ctx)
+	if err != nil {
+		return err
+	}
+	gold, err := resolveSpaceGold(ctx, p.SpaceGold)
 	if err != nil {
 		return err
 	}
@@ -216,6 +229,9 @@ func stepTerrainFill(ctx *mapScriptContext, raw json.RawMessage) error {
 			return err
 		}
 		space.SetTerrain(terrain_id)
+		if gold != nil {
+			space.SetGoldIncome(*gold)
+		}
 		if region != nil {
 			region[space.Key()] = true
 		}
@@ -239,7 +255,8 @@ type terrainBlobParams struct {
 	FilterSeeds      bool               `json:"filter_seeds,omitempty"`
 	Between          json.RawMessage    `json:"between,omitempty"`
 	// "hilly" or "mountainous": converts each space to that version of its terrain, skipping terrain without one
-	Variant string `json:"variant,omitempty"`
+	Variant   string      `json:"variant,omitempty"`
+	SpaceGold *ScriptExpr `json:"space_gold,omitempty"`
 }
 
 // The terrain type a variant blob converts spaces to, or NONE when the blob paints terrain_id or terrain_ids instead
@@ -330,6 +347,10 @@ func stepTerrainBlob(ctx *mapScriptContext, raw json.RawMessage) error {
 	inside := blobGrowthLimit(candidates, p.Placement.KeepInside)
 	excluded := func(space Space) bool { return !matches(space) || inside(space) }
 	region := ctx.region(p.Region)
+	gold, err := resolveSpaceGold(ctx, p.SpaceGold)
+	if err != nil {
+		return err
+	}
 	for _, seeds := range seedGroups {
 		blob := growSpaceBlob(seeds, pickBlobSize(ctx.rng, min_size, max_size), roundness, excluded, ctx.rng)
 		for _, space := range blob {
@@ -340,6 +361,9 @@ func stepTerrainBlob(ctx *mapScriptContext, raw json.RawMessage) error {
 				return err
 			}
 			space.SetTerrain(terrain_id)
+			if gold != nil {
+				space.SetGoldIncome(*gold)
+			}
 			if region != nil {
 				region[space.Key()] = true
 			}

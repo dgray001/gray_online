@@ -7,10 +7,9 @@ type loopItem interface {
 	field(name string) (float64, bool)
 }
 
-// Where a located item is, and how many space steps that is from home
+// Where a located item is
 type place struct {
-	loc           ZoneRef
-	distance_home int
+	loc ZoneRef
 }
 
 func (p place) field(name string) (float64, bool) {

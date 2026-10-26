@@ -149,7 +149,8 @@ export class ZoneTool extends EditorTool {
     const units = zone.units ?? [];
     const existing = units.find((unit) => unit.id === id && unit.player === player);
     if (existing) {
-      existing.count = count;
+      const current = typeof existing.count === 'number' ? existing.count : Number(existing.count);
+      existing.count = Number.isFinite(current) ? current + count : count;
     } else {
       units.push({ id, player, count });
     }

@@ -1,25 +1,39 @@
 [
   { "step": "shape", "params": { "kind": "triangle" } },
   { "step": "include", "params": { "path": "common/biomes.json" } },
-  { "step": "include", "params": { "path": "common/land_details.json" } },
-  { "step": "include", "params": { "path": "common/forests.json" } },
   { "step": "define", "params": { "name": "tri_offset", "value": "round(edge_length / 3)" } },
   { "step": "define", "params": { "name": "tri_mid", "value": "round((edge_length - 2 * tri_offset) / 2)" } },
-  { "step": "define", "params": { "name": "tri_start_o", "value": "round(tri_offset / 3)" } },
-  { "step": "define", "params": { "name": "tri_start_m", "value": "round(tri_mid / 3)" } },
-  { "step": "define", "params": { "name": "tri_ford_o", "value": "round(2 * tri_offset / 3)" } },
-  { "step": "define", "params": { "name": "tri_ford_m", "value": "round(2 * tri_mid / 3)" } },
-  { "step": "terrain_blob", "params": { "terrain_id": "water", "seed_region": "line", "placement": { "points": [{ "x": "tri_start_m", "y": "-tri_start_o" }, { "x": "tri_mid", "y": "-tri_offset" }, { "x": "-tri_start_o", "y": "tri_start_m" }, { "x": "-tri_offset", "y": "tri_mid" }, { "x": "tri_start_m", "y": "tri_start_m" }, { "x": "tri_mid", "y": "tri_mid" }] } } },
-  { "step": "terrain_blob", "params": { "terrain_type": "shallows", "size": 1, "placement": { "pattern": "points", "points": [{ "x": "tri_ford_m", "y": "-tri_ford_o" }, { "x": "-tri_ford_o", "y": "tri_ford_m" }, { "x": "tri_ford_m", "y": "tri_ford_m" }] } } },
+  { "step": "terrain_blob", "params": { "terrain_id": "shallows", "seed_count": 1, "size": 7, "roundness": 1, "placement": { "pattern": "points", "points": [{ "x": 0, "y": 0 }] } } },
+  {
+    "step": "if",
+    "params": {
+      "condition": "map_size - 3",
+      "then": [
+        { "step": "terrain_blob", "params": { "terrain_id": "water", "seed_region": "line", "filter_seeds": true, "on": { "terrain_types": ["flatlands"] }, "placement": { "points": [{ "x": 0, "y": -1 }, { "x": "tri_mid", "y": "-tri_offset" }, { "x": -1, "y": 1 }, { "x": "-tri_offset", "y": "tri_mid" }, { "x": 1, "y": 0 }, { "x": "tri_mid", "y": "tri_mid" }] } } }
+      ],
+      "else": [
+        { "step": "terrain_blob", "params": { "terrain_id": "water", "seed_region": "line", "placement": { "points": [{ "x": 0, "y": -1 }, { "x": "tri_mid", "y": "-tri_offset" }, { "x": -1, "y": 1 }, { "x": "-tri_offset", "y": "tri_mid" }, { "x": 1, "y": 0 }, { "x": "tri_mid", "y": "tri_mid" }] } } }
+      ]
+    }
+  },
+  { "step": "define", "params": { "name": "accent_multiplier", "value": "1 + 0.15 * max(0, map_resources - 2)" } },
+  { "step": "terrain_fill", "params": { "terrain_id": "base", "on": { "terrain_types": ["flatlands"] } } },
+  { "step": "terrain_blob", "params": { "terrain_id": "accent1", "seed_count": "scale * 2 * accent_multiplier", "size": 4, "roundness": 0.92, "placement": { "evenness": 0.75 }, "preferred_spacing": 6, "min_spacing": 3, "on": { "terrain_types": ["flatlands"] } } },
+  { "step": "terrain_blob", "params": { "variant": "hilly", "seed_count": "hill_seeds", "size": [3, 4], "roundness": 0.9, "placement": { "evenness": 0.9 }, "preferred_spacing": 5, "min_spacing": 3, "on": { "terrain_types": ["flatlands"] } } },
+  { "step": "terrain_blob", "params": { "variant": "mountainous", "seed_count": "mountain_seeds", "size": 1, "placement": { "evenness": 0.95 }, "preferred_spacing": 7, "min_spacing": 4, "on": { "terrain_types": ["hilly"] } } },
+  { "step": "include", "params": { "path": "common/forests.json" } },
+  { "step": "resource_blob", "params": { "resource_weights": { "tree_a": 1, "tree_b": 1 }, "seed_count": 1, "size": 2, "on": { "terrain_types": ["shallows"] } } },
   {
     "step": "player_starts",
     "params": {
       "pattern": "triangle", "area_size": 1,
+      "on": { "terrain_types": ["flatlands", "hilly", "mountainous", "swamp", "shallows"], "distance_to": { "target": { "terrain_types": ["water"] }, "min": 2 } },
       "inset": "1 + min(1, max(0, map_size - map_size_huge + 1))",
       "tree_ids": ["tree_a", "tree_b"], "terrain_id": "base"
     }
   },
   { "step": "define", "params": { "name": "region_corner_gold", "value": "5 * round(4 * total_spaces / 4 / 5)" } },
-  { "step": "regions_four", "params": { "outer_bonus": "region_corner_gold", "center_bonus": "2 * region_corner_gold" } },
+  { "step": "regions_four", "params": { "outer_bonus": "region_corner_gold", "center_bonus": "2 * region_corner_gold", "center_space_gold": 4 } },
+  { "step": "terrain_fill", "params": { "terrain_id": "shallows", "space_gold": 8, "on": { "terrain_types": ["shallows"] } } },
   { "step": "include", "params": { "path": "common/resources.json" } }
 ]

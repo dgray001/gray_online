@@ -8,6 +8,8 @@ import (
 	"testing"
 )
 
+const deleteProbe = `{"action":"select","actors":{"kind":"units","rank":"0 - var(actor.uid)","limit":1},"issue":[{"delete":{}}]}`
+
 func TestBooleanConditionShortCircuit(t *testing.T) {
 	for _, c := range []struct {
 		condition string
@@ -20,7 +22,7 @@ func TestBooleanConditionShortCircuit(t *testing.T) {
 		{`{"all":[{"always":null},{"tech_researched":{"tech_id":1}}]}`, true, 1},
 		{`{"any":[{"not":{"always":null}},{"tech_researched":{"tech_id":1}}]}`, true, 1},
 	} {
-		model := requireModel(t, fmt.Sprintf(`{"rules":[{"when":%s,"then":[{"action":"delete_unit"}]}]}`, c.condition))
+		model := requireModel(t, fmt.Sprintf(`{"rules":[{"when":%s,"then":[%s]}]}`, c.condition, deleteProbe))
 		view := &fakeView{units: []ai.UnitView{{InternalID: 73}}, techResearched: map[uint32]bool{1: true}}
 		var calls []orderCall
 		if c.runs {
@@ -40,7 +42,7 @@ func TestAlwaysPayloads(t *testing.T) {
 			if negated {
 				condition = `{"not":` + condition + `}`
 			}
-			model := requireModel(t, fmt.Sprintf(`{"rules":[{"when":%s,"then":[{"action":"delete_unit"}]}]}`, condition))
+			model := requireModel(t, fmt.Sprintf(`{"rules":[{"when":%s,"then":[%s]}]}`, condition, deleteProbe))
 			view := &fakeView{units: []ai.UnitView{{InternalID: 73}}}
 			if negated {
 				assertCalls(t, model.DecideOrders(view), view)
@@ -64,7 +66,9 @@ func runCondition(t *testing.T, condition map[string]any, view ai.View) []ai.Ord
 						"value":  1.0,
 					},
 					map[string]any{
-						"action": "delete_unit", // produces a dummy order to verify execution
+						"action": "select",
+						"actors": map[string]any{"kind": "units"},
+						"issue":  []any{map[string]any{"delete": map[string]any{}}}, // produces a dummy order to verify execution
 					},
 				},
 			},
@@ -108,31 +112,6 @@ func TestConditionTechResearched(t *testing.T) {
 	}
 
 	cond := map[string]any{"tech_researched": map[string]any{"tech_id": 42.0}}
-
-	orders := runCondition(t, cond, viewTrue)
-	if len(orders) == 0 {
-		t.Fatal("expected condition to be true")
-	}
-
-	orders = runCondition(t, cond, viewFalse)
-	if len(orders) != 0 {
-		t.Fatal("expected condition to be false")
-	}
-}
-
-func TestConditionResourceAvailable(t *testing.T) {
-	viewTrue := &fakeView{
-		units:          []ai.UnitView{{InternalID: 1}},
-		knownResources: []ai.ResourceView{{Category: ai.ResourceWood}},
-		buildings:      []ai.BuildingView{{BuildingID: 1, Location: ai.ZoneRef{}}}, // Needs home
-	}
-	viewFalse := &fakeView{
-		units:          []ai.UnitView{{InternalID: 1}},
-		knownResources: []ai.ResourceView{{Category: ai.ResourceGold}}, // Different category
-		buildings:      []ai.BuildingView{{BuildingID: 1, Location: ai.ZoneRef{}}},
-	}
-
-	cond := map[string]any{"resource_available": map[string]any{"category": "wood"}}
 
 	orders := runCondition(t, cond, viewTrue)
 	if len(orders) == 0 {

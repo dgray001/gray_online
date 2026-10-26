@@ -364,15 +364,10 @@ type View interface {
 	AllUnits() []UnitView
 	AllBuildings() []BuildingView
 	Issue(request IssueRequest) Order
-	// Units within the current bucket scope; the same as Units() outside a bucket wrapper
-	ScopedUnits() []UnitView
 	IdleUnits() []UnitView
-	EligibleUnits(kinds ...OrderKind) []UnitView
 	Buildings() []BuildingView
 	IdleBuildings() []BuildingView
 	Resource(category ResourceCategory) float64
-	HasEconomy() bool
-	HasProduction() bool
 	Population() (current, limit int)
 	// the game's population ceiling, which no amount of housing can raise
 	MaxPopulation() int
@@ -383,26 +378,10 @@ type View interface {
 	// visible enemy buildings plus the last-seen ones in fogged spaces
 	KnownEnemyBuildings() []BuildingView
 
-	// gatherer_id (0 for none) is excluded from the load counts used to skip nodes about to deplete
-	NearestResource(from ZoneRef, category ResourceCategory, gatherer_id uint64) (ResourceView, bool)
 	KnownResources(category ResourceCategory) []ResourceView
-	NearestBuildSite(from ZoneRef, building_id uint32, include func(Coordinate) bool) (ZoneRef, bool)
-	// every zone the building could be placed on, under the same rules as NearestBuildSite
-	BuildSites(building_id uint32, include func(Coordinate) bool) []ZoneRef
-	// own buildings (built, under construction or planned) in a space
-	OwnBuildingsIn(space Coordinate) int
-	// our units with an attack order (current, queued or emitted this turn) on the unit or building
-	AssignedTo(building bool, internal_id uint64, exclude map[uint64]bool) int
-	// space distance to the closest known enemy building, or -1 when none is known
-	EnemyDistance(from Coordinate) int
-	// share of the known spaces of the space's region we would own after claiming it; 0 if already ours or in no known region
-	RegionProgress(space Coordinate) float64
-	NearestUnexplored(from ZoneRef) ([]ZoneRef, bool)
 	TurnNumber() int
 	MapSize() int
 	NumPlayers() int
-	EnemiesFound() int
-	OwnedSpaces() int
 	AllSpaces() []SpaceInfo
 	AllRegions() []RegionInfo
 	AvailableMercenaries() []Producible
@@ -413,19 +392,14 @@ type View interface {
 	PlayerScore(player_id int) int
 	PlayerEliminated(player_id int) bool
 	MatchingSpaces(condition SpaceCondition) []Coordinate
-	CountSpaces(condition SpaceCondition, include func(Coordinate) bool) int
-	ClosestSpaces(reference Coordinate, condition SpaceCondition, exclude_reference bool) []Coordinate
 	// space-to-space steps over the board graph, so seams and links count as one step
 	SpaceDistance(a Coordinate, b Coordinate) int
 	SpaceNeighbors(space Coordinate) []Coordinate
 	// SpaceDistance scaled to zone steps across spaces; zone offset distance within one space
 	LocationDistance(a ZoneRef, b ZoneRef) int
-	Score() int
-	BestEnemyScore() int
 	TechResearched(tech_id uint32) bool
 	BuildingAvailable(building_id uint32) bool
 	ValidBuildZone(building_id uint32, target ZoneRef) bool
-	InAttackRange(b BuildingView, target ZoneRef) bool
 	BuildCost(building_id uint32) Cost
 	UnitCost(unit_id uint32) Cost
 	TechCost(tech_id uint32) Cost

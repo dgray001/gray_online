@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.9g: Parity with v6
+v0.9h: Remove deprecated AI view
 
 ## Dev Use
 

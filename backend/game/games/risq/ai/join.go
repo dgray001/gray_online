@@ -16,13 +16,15 @@ type staticSource interface {
 	static() bool
 }
 
-func (s selector) static() bool          { return s.player == nil && !s.near.has_within }
+func (s selector) static() bool          { return s.player == nil }
 func (s *unitSource) static() bool       { return s.selector.static() }
 func (s *buildingSource) static() bool   { return s.selector.static() }
 func (s *attackableSource) static() bool { return s.selector.static() }
-func (s *resourceSource) static() bool   { return !s.near.has_within }
+func (s *resourceSource) static() bool   { return true }
 func (s *gatherableSource) static() bool { return s.resources.static() }
 func (s *foundationSource) static() bool { return true }
+func (s *spaceSource) static() bool      { return s.player == nil && s.building_player == nil }
+func (s *zoneSource) static() bool       { return s.selector.static() }
 
 // A source whose item fields no emitted order can change, so its join index stays valid for the whole decision
 type orderIndependentSource interface {
@@ -32,6 +34,8 @@ type orderIndependentSource interface {
 func (s *attackableSource) orderIndependent() bool { return true }
 func (s *resourceSource) orderIndependent() bool   { return true }
 func (s *gatherableSource) orderIndependent() bool { return true }
+func (s *spaceSource) orderIndependent() bool      { return true }
+func (s *zoneSource) orderIndependent() bool       { return true }
 
 // The `==` factors of a selector's conditions that compare one of the item's own fields with something that
 // does not read the item, so matching items can be found by key instead of by testing every item
@@ -51,7 +55,7 @@ type joinIndex struct {
 
 func (s *selectorSpec) itemSide(text string) bool {
 	reads, ok := util.AnalyzeExpr(text)
-	if !ok || reads.Impure || reads.NeedsEnv || len(reads.Bare) > 0 || len(reads.Vars) == 0 {
+	if !ok || reads.Impure || reads.NeedsEnv || len(reads.Vars) == 0 {
 		return false
 	}
 	for _, name := range reads.Vars {
@@ -73,7 +77,7 @@ func (s *selectorSpec) otherSide(text string) (amount, bool) {
 			return amount{}, false
 		}
 	}
-	return amount{expr: text, reads_vars: len(reads.Bare) > 0}, true
+	return amount{expr: text}, true
 }
 
 func (s *selectorSpec) joinPlanFor() *joinPlan {

@@ -1,3 +1,15 @@
+Small Rsiq Issues:
+ - Something when people are done submitting orders in UX
+ - Bottom bar button above mercenary panel and whatnot
+ - Maybe allow left click when an order is armed
+ - Attack unit was pointing at resource not enemy unit ... it works for a fresh order but not when I was chasing across spaces from an order a couple turns ago (idk why)
+ - Can select buildings from space left panel
+ - Rebalance map sizes especially for >2 players (or move spawns closer)
+ - Remove "A planned foundation ..."
+ - Revisit prose throughout frontend
+ - Potential blocking
+ - Order filters not seen (something made them offset and off screen or something)
+
 Bigger Risq Issues/Ideas:
  - Utilize events on map
  - For v0.8 ai I'd want it to be tech-tree agnostic at least to some extent maybe? Or at least stat-agnostic so it reads current stats ... it also needs to be support many different maps

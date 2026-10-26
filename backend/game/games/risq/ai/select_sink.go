@@ -62,6 +62,9 @@ func parseSink(raw any, pick *selectorSpec) (*selectSink, error) {
 }
 
 func (s *selectSink) store(kind string, items []selItem, internals *Internals) {
+	if s.bucket != "" {
+		internals.bucket_members = nil
+	}
 	if s.size_var != "" {
 		if internals.turn_vars == nil {
 			internals.turn_vars = make(map[string]float64)
@@ -92,16 +95,13 @@ func (s *selectSink) store(kind string, items []selItem, internals *Internals) {
 				}
 			}
 		}
-		if s.mode == "replace" {
-			b.Desired = max(b.Desired, len(b.Members))
-		}
 		return
 	}
-	set := &entitySet{kind: kind, keys: make([]itemKey, 0, len(items))}
+	keys := make([]itemKey, 0, len(items))
 	for _, item := range items {
 		if key, ok := keyOf(item); ok {
-			set.keys = append(set.keys, key)
+			keys = append(keys, key)
 		}
 	}
-	internals.storeSet(s.set, set, s.persist)
+	internals.storeSet(s.set, newEntitySet(kind, keys), s.persist)
 }

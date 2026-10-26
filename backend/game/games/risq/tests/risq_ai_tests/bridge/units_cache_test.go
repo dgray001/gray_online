@@ -20,6 +20,24 @@ type unitsSample struct {
 	After  []ai.UnitView
 }
 
+type idleSnapshotReader interface {
+	IdleSnapshot() (map[uint64]bool, map[uint64]bool)
+}
+
+func TestIdleCensusRetainsLoopSnapshotAfterIssuingOrders(t *testing.T) {
+	g, player := bridgeGame(t, ownScout+`,{"x":1,"y":0,"terrain":1},{"x":3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":1,"count":1}]}]}`)
+	action := `{"action":"for_each","select":{"kind":"units"},"as":"worker","do":[{"action":"select","actors":{"kind":"units"},"pick":{"kind":"spaces","where":{"in":{"x":[1]}}},"issue":[{"move":{"to":"space"}}]},{"action":"set_var","name":"captured","value":"var(worker.idle)"},{"action":"set_var","name":"fresh","value":{"count":{"kind":"units","where":{"if":"var(item.idle)"}}}}]}`
+	model := parsedModel(t, action)
+	w := runWorker(t, player, model, make(chan game.PlayerAction, 4))
+	player.AiUpdates <- &game.UpdateMessage{Kind: "start-turn", Content: gin.H{"game": g.Risq.ToFrontend(uint64(g.Human(0)+1), false)}}
+	receive(t, w.Actions)
+	for name, want := range map[string]float64{"captured": 1, "fresh": 0} {
+		if got, _ := model.(*ai.RulesModel).Var(name); got != want {
+			t.Errorf("%s = %v, want %v", name, got, want)
+		}
+	}
+}
+
 type unitsProbe struct {
 	ai.Model
 	Out chan unitsSample
@@ -28,6 +46,21 @@ type unitsProbe struct {
 func marshalUnits(units []ai.UnitView) []byte {
 	data, _ := json.Marshal(units)
 	return data
+}
+
+func assertCollectionCopy[T any](t *testing.T, read func() []T, mutate func(*T)) {
+	t.Helper()
+	first := read()
+	if len(first) == 0 {
+		t.Error("collection fixture is empty")
+		return
+	}
+	want, _ := json.Marshal(first)
+	mutate(&first[0])
+	got, _ := json.Marshal(read())
+	if string(got) != string(want) {
+		t.Errorf("collection changed through returned slice: got %s, want %s", got, want)
+	}
 }
 
 func (m *unitsProbe) DecideOrders(view ai.View) ai.Decision {
@@ -67,8 +100,79 @@ type foundationProbe struct {
 
 func (m *foundationProbe) DecideOrders(view ai.View) ai.Decision {
 	view.BuildOrder(view.Units()[0], 2, ai.ZoneRef{Zone: ai.Coordinate{X: 1}}, false)
+	foundations := view.Foundations()
+	foundations[0].Builders = 999
 	m.Seen <- view.Foundations()
 	return m.Model.DecideOrders(view)
+}
+
+func TestCollectionCachesPreserveOwnershipAndRefreshAfterOrders(t *testing.T) {
+	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":201,"player":0},"units":[{"id":21,"player":0,"count":1}]},{"x":1,"y":0,"resource":1},{"x":0,"y":1,"resource":11},{"x":-1,"y":0,"resource":41},{"x":0,"y":-1,"resource":51}]},{"x":1,"y":0,"terrain":1},{"x":3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":1,"count":1}]}]}`
+	g, player := bridgeGame(t, spaces)
+	probe := &viewProbe{Model: ai.NoopModel{}, Run: func(view ai.View) {
+		assertStaticCollectionCopies(t, view)
+		assertLiveCollectionRefresh(t, view)
+	}}
+	w := runWorker(t, player, probe, make(chan game.PlayerAction, 4))
+	player.AiUpdates <- &game.UpdateMessage{Kind: "start-turn", Content: gin.H{"game": g.Risq.ToFrontend(uint64(g.Human(0)+1), false)}}
+	receive(t, w.Actions)
+}
+
+func assertStaticCollectionCopies(t *testing.T, view ai.View) {
+	t.Helper()
+	assertCollectionCopy(t, view.Buildings, func(building *ai.BuildingView) { building.Producibles[0].Cost.Food = -1 })
+	assertCollectionCopy(t, view.AllSpaces, func(space *ai.SpaceInfo) { space.Owner = 999 })
+	assertCollectionCopy(t, view.AllZones, func(zone *ai.ZoneInfo) { zone.BuildingPlayer = 999 })
+	for _, category := range []ai.ResourceCategory{ai.ResourceFood, ai.ResourceWood, ai.ResourceStone, ai.ResourceGold} {
+		read := func() []ai.ResourceView { return view.KnownResources(category) }
+		if resources := read(); len(resources) != 1 || resources[0].Category != category {
+			t.Errorf("category %d: resources = %+v, want one matching resource", category, resources)
+		}
+		assertCollectionCopy(t, read, func(resource *ai.ResourceView) { resource.AmountLeft = -1 })
+	}
+	if empty := view.KnownResources(ai.ResourceCategory(99)); empty == nil || len(empty) != 0 {
+		t.Errorf("unknown category = %+v, want non-nil empty resources", empty)
+	}
+}
+
+func assertLiveCollectionRefresh(t *testing.T, view ai.View) {
+	t.Helper()
+	reader := view.(idleSnapshotReader)
+	old_units, old_buildings := reader.IdleSnapshot()
+	assertCollectionCopy(t, view.AllUnits, func(unit *ai.UnitView) { unit.InternalID = 999 })
+	assertCollectionCopy(t, view.AllBuildings, func(building *ai.BuildingView) { building.Producibles[0].Cost.Food = -1 })
+	units, queue := view.AllUnits(), view.OrderQueue()
+	view.MoveSpaceOrder(units[0], ai.Coordinate{X: 1}, true)
+	new_units, _ := reader.IdleSnapshot()
+	if !old_units[units[0].InternalID] || new_units[units[0].InternalID] {
+		t.Error("idle unit snapshot changed or stayed stale")
+	}
+	if units[0].CurrentOrder != nil || view.AllUnits()[0].CurrentOrder == nil {
+		t.Error("unit collection did not preserve and refresh its snapshots")
+	}
+	if len(view.OrderQueue()) != len(queue)+1 {
+		t.Error("order collection did not refresh")
+	}
+	assertCollectionCopy(t, view.OrderQueue, func(order *ai.OrderEntry) { order.SubjectUID = 999 })
+	buildings := view.AllBuildings()
+	view.CreateUnitOrder(buildings[0], 11)
+	_, new_buildings := reader.IdleSnapshot()
+	if !old_buildings[buildings[0].InternalID] || new_buildings[buildings[0].InternalID] {
+		t.Error("idle building snapshot changed or stayed stale")
+	}
+	if buildings[0].PlannedProduction != 0 || view.AllBuildings()[0].PlannedProduction != 1 {
+		t.Error("building collection did not preserve and refresh its snapshots")
+	}
+	view.ResearchOrder(view.AllBuildings()[0], 301)
+	for _, item := range view.AllBuildings()[0].Producibles {
+		if item.Kind == ai.ProducibleTech && item.ID == 301 {
+			t.Error("planned research remained producible in cached buildings")
+		}
+	}
+	if !reflect.DeepEqual(view.AllUnits()[:len(view.Units())], view.Units()) {
+		t.Error("unit collection was stale after research")
+	}
+	assertStaticCollectionCopies(t, view)
 }
 
 func TestFoundationOrderedThisTurnIsFlagged(t *testing.T) {
@@ -83,7 +187,7 @@ func TestFoundationOrderedThisTurnIsFlagged(t *testing.T) {
 	}
 }
 
-func withUnitOrder(t *testing.T, payload gin.H, order_type defs.OrderType, target_id int64) gin.H {
+func cloneSnapshot(t *testing.T, payload gin.H) gin.H {
 	t.Helper()
 	data, err := json.Marshal(payload)
 	if err != nil {
@@ -93,6 +197,12 @@ func withUnitOrder(t *testing.T, payload gin.H, order_type defs.OrderType, targe
 	if err := json.Unmarshal(data, &snapshot); err != nil {
 		t.Fatal(err)
 	}
+	return snapshot
+}
+
+func withUnitOrder(t *testing.T, payload gin.H, order_type defs.OrderType, target_id int64) gin.H {
+	t.Helper()
+	snapshot := cloneSnapshot(t, payload)
 	for _, p := range snapshot["players"].([]any) {
 		player := p.(map[string]any)
 		if player["player"].(map[string]any)["player_id"].(float64) != 0 {
@@ -106,10 +216,26 @@ func withUnitOrder(t *testing.T, payload gin.H, order_type defs.OrderType, targe
 	return snapshot
 }
 
+func withBuildingOrder(t *testing.T, payload gin.H, order_type defs.OrderType, target_id int64) gin.H {
+	t.Helper()
+	snapshot := cloneSnapshot(t, payload)
+	for _, p := range snapshot["players"].([]any) {
+		player := p.(map[string]any)
+		if player["player"].(map[string]any)["player_id"].(float64) != 0 {
+			continue
+		}
+		for _, b := range player["buildings"].([]any) {
+			order := map[string]any{"internal_id": 9998, "order_type": order_type, "target_id": target_id}
+			b.(map[string]any)["active_orders"] = []any{order}
+		}
+	}
+	return snapshot
+}
+
 func TestUnitsCacheSurvivesDecisionAndInvalidatesOnAssign(t *testing.T) {
 	spaces := ownScout + `,{"x":1,"y":0,"terrain":1,"zones":[{"x":0,"y":0}]},{"x":3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":1,"count":1}]}]}`
 	g, player := bridgeGame(t, spaces)
-	model := parsedModel(t, `{"action":"move","targets":"coordinate","coordinate":{"x":1,"y":0}}`)
+	model := parsedModel(t, `{"action":"select","actors":{"kind":"units"},"pick":{"kind":"spaces","where":{"in":{"x":[1]}}},"issue":[{"move":{"to":"space"}}]}`)
 	probe := &unitsProbe{Model: model, Out: make(chan unitsSample, 1)}
 	w := runWorker(t, player, probe, make(chan game.PlayerAction, 4))
 	payload := g.Risq.ToFrontend(uint64(g.Human(0)+1), false)
@@ -145,6 +271,46 @@ func TestOrderingOneUnitLeavesOtherUnitViewsAlone(t *testing.T) {
 	if string(others_before) != string(others_after) {
 		t.Errorf("another unit's view changed:\nbefore=%s\nafter=%s", others_before, others_after)
 	}
+}
+
+const idleSpaces = `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":201,"player":0},"units":[{"id":21,"player":0,"count":2}]}]},{"x":3,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":1,"count":1}]}]}`
+
+func runIdleProbe(t *testing.T, run func(reader idleSnapshotReader, view ai.View)) {
+	t.Helper()
+	g, player := bridgeGame(t, idleSpaces)
+	payload := gin.H(g.Risq.ToFrontend(uint64(g.Human(0)+1), false))
+	payload = withUnitOrder(t, payload, defs.OrderType_UnitMoveSpace, int64(util.Pair(3, 0)))
+	payload = withBuildingOrder(t, payload, defs.OrderType_BuildingCreate, 11)
+	probe := &viewProbe{Model: ai.NoopModel{}, Run: func(view ai.View) { run(view.(idleSnapshotReader), view) }}
+	w := runWorker(t, player, probe, make(chan game.PlayerAction, 4))
+	player.AiUpdates <- &game.UpdateMessage{Kind: "start-turn", Content: gin.H{"game": payload}}
+	receive(t, w.Actions)
+}
+
+func TestIdleSnapshotsRefreshAfterCancellingServerOrders(t *testing.T) {
+	runIdleProbe(t, func(reader idleSnapshotReader, view ai.View) {
+		busy_units, busy_buildings := reader.IdleSnapshot()
+		view.CancelOrder(9999)
+		view.CancelOrder(9998)
+		idle_units, idle_buildings := reader.IdleSnapshot()
+		if len(busy_units) != 0 || len(busy_buildings) != 0 {
+			t.Errorf("snapshots taken before the cancels changed: units %v, buildings %v", busy_units, busy_buildings)
+		}
+		if len(idle_units) != 2 || len(idle_buildings) != 1 {
+			t.Errorf("after the cancels units %v and buildings %v, want both units and the building idle", idle_units, idle_buildings)
+		}
+	})
+}
+
+func TestCancellingAServerOrderDoesNotFreeAClaimedBuilding(t *testing.T) {
+	runIdleProbe(t, func(reader idleSnapshotReader, view ai.View) {
+		reader.IdleSnapshot()
+		view.CreateUnitOrder(view.Buildings()[0], 11)
+		view.CancelOrder(9998)
+		if _, idle_buildings := reader.IdleSnapshot(); len(idle_buildings) != 0 {
+			t.Errorf("idle buildings = %v, want none for a building already given production this turn", idle_buildings)
+		}
+	})
 }
 
 func TestCurrentOrderCarriesTheTargetOfTargetedOrders(t *testing.T) {
@@ -255,9 +421,6 @@ func TestQueueKeepsInvisibleTargetsAndCancelsSharedOrders(t *testing.T) {
 			if e.TargetUID != 987654 || e.HasTargetLocation {
 				t.Errorf("entry = %+v", e)
 			}
-		}
-		if got := v.AssignedTo(false, 987654, nil); got != 2 {
-			t.Errorf("assigned = %d", got)
 		}
 		v.CancelOrder(9999)
 		if got := v.OrderQueue(); len(got) != 0 {

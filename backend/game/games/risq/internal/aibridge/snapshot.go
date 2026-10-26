@@ -9,12 +9,10 @@ import (
 
 // Typed mirror of the per-player frontend game payload; the ai sees exactly what a human client would.
 type snapGame struct {
-	TurnNumber    int            `json:"turn_number"`
-	HasEconomy    bool           `json:"has_economy"`
-	HasProduction bool           `json:"has_production"`
-	Players       []snapPlayer   `json:"players"`
-	Spaces        [][]*snapSpace `json:"spaces"`
-	Regions       []snapRegion   `json:"regions"`
+	TurnNumber int            `json:"turn_number"`
+	Players    []snapPlayer   `json:"players"`
+	Spaces     [][]*snapSpace `json:"spaces"`
+	Regions    []snapRegion   `json:"regions"`
 	// adjacencies other than the normal border between coordinate neighbors
 	SpaceLinks []snapSpaceLink `json:"space_links"`
 }
