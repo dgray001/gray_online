@@ -183,16 +183,17 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
       );
       const qty = 1 + (config.collapsed_orders?.length ?? 0);
       const total = producible ? producible.stamina_cost * qty : undefined;
+
+      const production_queue = subject_building?.production_queue ?? [];
+      const queue_items_by_order_id = new Map(production_queue.map((i) => [i.order_internal_id, i]));
+
       const remaining = [order, ...(config.collapsed_orders ?? [])].reduce(
         (sum: number, queued: typeof order): number =>
-          sum +
-          (subject_building?.production_queue.find((i) => i.order_internal_id === queued.internal_id)
-            ?.stamina_remaining ??
-            producible?.stamina_cost ??
-            0),
+          sum + (queue_items_by_order_id.get(queued.internal_id!)?.stamina_remaining ?? producible?.stamina_cost ?? 0),
         0
       );
-      const queue_item = subject_building?.production_queue.find((i) => i.order_internal_id === order.internal_id);
+      const queue_item = queue_items_by_order_id.get(order.internal_id!);
+
       const progress =
         queue_item && producible && producible.stamina_cost > 0
           ? 1 - queue_item.stamina_remaining / producible.stamina_cost
