@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"io"
+	"path/filepath"
 
 	"github.com/dgray001/gray_online/game/games/risq"
 	"github.com/gin-gonic/gin"
@@ -19,7 +20,8 @@ func registerRisqDevRoutes(api *gin.RouterGroup) {
 		c.JSON(200, successResponse(names))
 	})
 	dev.GET("/maps/:name", func(c *gin.Context) {
-		doc, err := risq.ReadCustomMap(c.Param("name"))
+		name := filepath.Base(filepath.Clean(c.Param("name")))
+		doc, err := risq.ReadCustomMap(name)
 		if err != nil {
 			c.JSON(200, failureResponse(err.Error()))
 			return
@@ -27,15 +29,17 @@ func registerRisqDevRoutes(api *gin.RouterGroup) {
 		c.JSON(200, successResponse(json.RawMessage(doc)))
 	})
 	dev.POST("/maps/:name", func(c *gin.Context) {
+		name := filepath.Base(filepath.Clean(c.Param("name")))
 		doc, _ := io.ReadAll(c.Request.Body)
-		if err := risq.SaveCustomMap(c.Param("name"), doc); err != nil {
+		if err := risq.SaveCustomMap(name, doc); err != nil {
 			c.JSON(200, failureResponse(err.Error()))
 			return
 		}
 		c.JSON(200, successResponse(true))
 	})
 	dev.POST("/maps/:name/delete", func(c *gin.Context) {
-		if err := risq.DeleteCustomMap(c.Param("name")); err != nil {
+		name := filepath.Base(filepath.Clean(c.Param("name")))
+		if err := risq.DeleteCustomMap(name); err != nil {
 			c.JSON(200, failureResponse(err.Error()))
 			return
 		}
@@ -44,7 +48,11 @@ func registerRisqDevRoutes(api *gin.RouterGroup) {
 	// The optional config_dir segment picks a map's own config folder; without it the default tables are used
 	for _, config_dir_segment := range []string{"", "/:config_dir"} {
 		dev.GET("/terrains"+config_dir_segment, func(c *gin.Context) {
-			config, err := risq.ConfigFromDir(c.Param("config_dir"))
+			configDir := c.Param("config_dir")
+			if configDir != "" {
+				configDir = filepath.Base(filepath.Clean(configDir))
+			}
+			config, err := risq.ConfigFromDir(configDir)
 			if err != nil {
 				c.JSON(200, failureResponse(err.Error()))
 				return
@@ -52,7 +60,11 @@ func registerRisqDevRoutes(api *gin.RouterGroup) {
 			c.JSON(200, successResponse(risq.AllTerrainConfigsToFrontend(config)))
 		})
 		dev.GET("/entities"+config_dir_segment, func(c *gin.Context) {
-			config, err := risq.ConfigFromDir(c.Param("config_dir"))
+			configDir := c.Param("config_dir")
+			if configDir != "" {
+				configDir = filepath.Base(filepath.Clean(configDir))
+			}
+			config, err := risq.ConfigFromDir(configDir)
 			if err != nil {
 				c.JSON(200, failureResponse(err.Error()))
 				return
