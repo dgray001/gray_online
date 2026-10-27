@@ -87,20 +87,44 @@ func parseConfig(override string) (*Config, error) {
 	return c, nil
 }
 
+func secureJoin(parts ...string) (string, error) {
+	p := filepath.Join(parts...)
+	if p != "" && !filepath.IsLocal(p) {
+		return "", fmt.Errorf("insecure path: %q", p)
+	}
+	return filepath.Join(configDir, p), nil
+}
+
 func ReadConfigFile(parts ...string) ([]byte, error) {
-	return os.ReadFile(filepath.Join(append([]string{configDir}, parts...)...))
+	p, err := secureJoin(parts...)
+	if err != nil {
+		return nil, err
+	}
+	return os.ReadFile(p)
 }
 
 func WriteConfigFile(data []byte, parts ...string) error {
-	return os.WriteFile(filepath.Join(append([]string{configDir}, parts...)...), data, 0o644)
+	p, err := secureJoin(parts...)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(p, data, 0o644)
 }
 
 func RemoveConfigFile(parts ...string) error {
-	return os.Remove(filepath.Join(append([]string{configDir}, parts...)...))
+	p, err := secureJoin(parts...)
+	if err != nil {
+		return err
+	}
+	return os.Remove(p)
 }
 
 func ListConfigDir(parts ...string) ([]os.DirEntry, error) {
-	return os.ReadDir(filepath.Join(append([]string{configDir}, parts...)...))
+	p, err := secureJoin(parts...)
+	if err != nil {
+		return nil, err
+	}
+	return os.ReadDir(p)
 }
 
 var regionNames []string
