@@ -1,7 +1,14 @@
 import type { Point2D } from '../../../../util/objects2d';
 import { axialDistance, equalsPoint2D } from '../../../../util/objects2d';
 import { buildingImage, techImage } from '../../rendering/assets/buildings';
-import { coordinateToIndex, getSpace, invertBuildKey, invertPair, invertZoneKey } from '../../model/coordinates';
+import {
+  coordinateToIndex,
+  findZone,
+  getSpace,
+  invertBuildKey,
+  invertPair,
+  invertZoneKey,
+} from '../../model/coordinates';
 import { RisqOrderType, RisqProducibleKind, RisqResourceType } from '../../model/types';
 import { isBuildingOrder, isPlayerOrder, isUnitOrder } from '../../application/orders/orders_model';
 import { resourceTypeImage } from '../../rendering/assets/resources';
@@ -131,7 +138,7 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
       return 'a resource';
     }
     const found = getSpace(game, coordinateToIndex(board_size, space));
-    const zone_data = found?.zones?.flat().find((z) => equalsPoint2D(z.coordinate, zone));
+    const zone_data = findZone(found?.zones, zone);
     return zone_data?.resource?.display_name ?? zone_data?.building?.display_name ?? 'a resource';
   };
 
@@ -156,9 +163,7 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
       const { building_id, space, zone } = invertBuildKey(order.target_id);
       const producible = subject_unit?.builds.find((p) => p.id === building_id);
       const site = game
-        ? getSpace(game, coordinateToIndex(board_size, space))
-            ?.zones?.flat()
-            .find((z) => equalsPoint2D(z.coordinate, zone))?.building
+        ? findZone(getSpace(game, coordinateToIndex(board_size, space))?.zones, zone)?.building
         : undefined;
       const progress =
         site?.under_construction && site.construction_stamina_total > 0

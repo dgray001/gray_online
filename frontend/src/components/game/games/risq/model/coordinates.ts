@@ -1,5 +1,6 @@
 import type { Point2D } from '../../../util/objects2d';
-import type { GameRisq, RisqSpace } from './types';
+import { equalsPoint2D } from '../../../util/objects2d';
+import type { GameRisq, RisqSpace, RisqZone, SPACE_ZONES_TYPE } from './types';
 
 /** Returns the space from the input index, if the space exists */
 export function getSpace(game: GameRisq, index: Point2D): RisqSpace | undefined {
@@ -64,4 +65,21 @@ export function invertBuildKey(key: number): { building_id: number; space: Point
   const outer = invertPair(key);
   const { space, zone } = invertZoneKey(outer.y);
   return { building_id: outer.x, space, zone };
+}
+
+/** Returns the zone matching the given coordinate, avoiding expensive array flattening */
+export function findZone(zones: SPACE_ZONES_TYPE | undefined, coordinate: Point2D): RisqZone | undefined {
+  if (!zones) {
+    return undefined;
+  }
+  for (let r = 0; r < zones.length; r++) {
+    const row = zones[r];
+    for (let c = 0; c < row.length; c++) {
+      const z = row[c];
+      if (equalsPoint2D(z.coordinate, coordinate)) {
+        return z;
+      }
+    }
+  }
+  return undefined;
 }
