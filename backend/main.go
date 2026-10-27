@@ -18,7 +18,6 @@ var upgrader = websocket.Upgrader{
 	ReadBufferSize:    0,
 	WriteBufferSize:   0,
 	EnableCompression: true,
-	CheckOrigin:       func(r *http.Request) bool { return true },
 }
 
 var DEV = os.Getenv("GAE_SERVICE") == ""
@@ -35,6 +34,7 @@ func main() {
 	}
 	// Set environment variables
 	if DEV {
+		upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 		for _, envvar := range environment_variables {
 			os.Setenv(envvar.name, envvar.value)
 		}
