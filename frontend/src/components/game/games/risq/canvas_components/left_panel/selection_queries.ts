@@ -1,7 +1,7 @@
 import { equalsPoint2D } from '../../../../util/objects2d';
 import type { RisqSession } from '../../application/session';
 import { invertZoneKey } from '../../model/coordinates';
-import type { RisqBuilding, RisqUnit, UnitByTypeData } from '../../model/types';
+import type { RisqBuilding, RisqUnit, RisqZone, SPACE_ZONES_TYPE, UnitByTypeData } from '../../model/types';
 import { RisqUnitType, RisqVisibilityLevel } from '../../model/types';
 import { groupUnitsByType } from '../../model/unit_groups';
 import type { DwgRisq } from '../../risq';
@@ -213,6 +213,21 @@ function unitVisibility(session: RisqSession, unit: RisqUnit): number {
   return (location ? session.spaceAt(location.space_coordinate)?.visibility : undefined) ?? 0;
 }
 
+function findZone(zones: SPACE_ZONES_TYPE | undefined, predicate: (z: RisqZone) => boolean): RisqZone | undefined {
+  if (!zones) {
+    return undefined;
+  }
+  for (let i = 0; i < zones.length; i++) {
+    const arr = zones[i];
+    for (let j = 0; j < arr.length; j++) {
+      if (predicate(arr[j])) {
+        return arr[j];
+      }
+    }
+  }
+  return undefined;
+}
+
 export function resolveSelectionData(
   data: LeftPanelData,
   session: RisqSession
@@ -266,7 +281,7 @@ export function resolveSelectionData(
     }
     case LeftPanelDataType.ZONE: {
       const space = session.spaceAt(data.data.space.coordinate);
-      const zone = space?.zones?.flat().find((z) => equalsPoint2D(z.coordinate, data.data.zone.coordinate));
+      const zone = findZone(space?.zones, (z) => equalsPoint2D(z.coordinate, data.data.zone.coordinate));
       const vis = space?.visibility ?? 0;
       return space && zone && vis >= RisqVisibilityLevel.FOG
         ? { data: { data_type: LeftPanelDataType.ZONE, data: { space, zone } }, visibility: vis }
@@ -274,7 +289,7 @@ export function resolveSelectionData(
     }
     case LeftPanelDataType.RESOURCE: {
       const space = session.spaceAt(data.data.space_coordinate);
-      const zone = space?.zones?.flat().find((z) => equalsPoint2D(z.coordinate, data.data.zone_coordinate));
+      const zone = findZone(space?.zones, (z) => equalsPoint2D(z.coordinate, data.data.zone_coordinate));
       const vis = space?.visibility ?? 0;
       return zone?.resource && vis >= RisqVisibilityLevel.FOG
         ? { data: { data_type: LeftPanelDataType.RESOURCE, data: zone.resource }, visibility: vis }
@@ -292,7 +307,7 @@ export function resolveSelectionData(
       const planned = player?.planned_foundations.get(coord_key);
       const space_coord = invertZoneKey(coord_key).space;
       const space = session.spaceAt(space_coord);
-      const zone = space?.zones?.flat().find((z) => z.coordinate_key === coord_key);
+      const zone = findZone(space?.zones, (z) => z.coordinate_key === coord_key);
       if (planned && space && zone) {
         return {
           data: {
