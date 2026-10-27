@@ -82,7 +82,10 @@ func CreateClient(connection *websocket.Conn, nickname string, lobby *Lobby) *Cl
 
 func generateToken() string {
 	b := make([]byte, 16)
-	rand.Read(b)
+	_, err := rand.Read(b)
+	if err != nil {
+		panic(err)
+	}
 	return hex.EncodeToString(b)
 }
 
