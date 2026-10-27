@@ -32,6 +32,7 @@ export class RisqSession {
   private corpse_locations = new Map<number, { space_coordinate: Point2D; zone: RisqZone }>();
   private game?: GameRisq;
   private region_by_space = new Map<number, RisqRegion>();
+  private region_by_name = new Map<string, RisqRegion>();
   private player_id = -1;
   private last_turn_report?: RisqTurnReport;
   private resource_configs = new Map<number, RisqResourceConfig>();
@@ -145,6 +146,7 @@ export class RisqSession {
   private adoptGame(game: GameRisq | undefined): void {
     this.game = game;
     this.region_by_space = buildRegionLookup(this.game?.regions ?? []);
+    this.region_by_name = new Map((this.game?.regions ?? []).map((r) => [r.name, r]));
     this.corpse_locations.clear();
     for (const space of this.game?.spaces.flat() ?? []) {
       if (!space?.zones) {
@@ -193,6 +195,10 @@ export class RisqSession {
 
   getRegionLookup(): Map<number, RisqRegion> {
     return this.region_by_space;
+  }
+
+  getRegionByName(name: string): RisqRegion | undefined {
+    return this.region_by_name.get(name);
   }
 
   findBuildingById(internal_id: number): RisqBuilding | undefined {

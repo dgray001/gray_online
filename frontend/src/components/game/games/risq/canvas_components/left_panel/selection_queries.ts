@@ -281,7 +281,7 @@ export function resolveSelectionData(
         : undefined;
     }
     case LeftPanelDataType.REGION: {
-      const region = session.getGame()?.regions.find((r) => r.name === data.data.name);
+      const region = session.getRegionByName(data.data.name);
       return region
         ? { data: { data_type: LeftPanelDataType.REGION, data: region }, visibility: RisqVisibilityLevel.GOOD }
         : undefined;
