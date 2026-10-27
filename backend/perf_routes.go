@@ -34,8 +34,8 @@ func registerPerfRoutes(api *gin.RouterGroup) {
 		}
 		for _, entry := range entries {
 			entry["source"] = "frontend"
-			util.PerfWrite(entry)
 		}
+		util.PerfWriteBatch(entries)
 		c.JSON(200, successResponse(true))
 	})
 }

@@ -69,6 +69,39 @@ func PerfWrite(entry map[string]any) {
 	}
 }
 
+func PerfWriteBatch(entries []map[string]any) {
+	if len(entries) == 0 {
+		return
+	}
+	var buf []byte
+	for _, entry := range entries {
+		line, err := json.Marshal(entry)
+		if err != nil {
+			continue
+		}
+		buf = append(buf, line...)
+		buf = append(buf, '\n')
+	}
+	if len(buf) == 0 {
+		return
+	}
+	perfMu.Lock()
+	defer perfMu.Unlock()
+	if perfStdout.Load() {
+		// Outputting a batch to stdout with individual prefixes.
+		// Note: Since we want "PERF <line>" we can split by newline.
+		// A simple approach is just to print each one.
+		for _, entry := range entries {
+			line, err := json.Marshal(entry)
+			if err == nil {
+				fmt.Fprintf(os.Stdout, "PERF %s\n", line)
+			}
+		}
+	} else if perfFile != nil {
+		perfFile.Write(buf)
+	}
+}
+
 // Fields is read at stop time, so callers may add to it before stopping
 func PerfTimer(kind string, fields map[string]any) func() {
 	if !PerfEnabled() {
