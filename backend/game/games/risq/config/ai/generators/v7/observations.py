@@ -15,6 +15,13 @@ def observations(definitions: Definitions) -> list[Record]:
         ("military", "units", dict(owner="own", unit_types=["military"])),
     ):
         actions.append(store(name, selection(kind, where)))
+    actions.append(store("poor_vision", selection("spaces", dict(vision=2))))
+    enemy_military = selection("units", dict(owner="enemy", unit_types=["military"]))
+    actions.append(store("enemy_mil_spaces", selection("spaces", dict(near=dict(distance=0, of=enemy_military)))))
+    actions.append(store("enemy_mil_near_spaces", selection("spaces", dict(near=dict(distance=1, of=enemy_military)))))
+    actions.append(store("unidentified_spaces", selection("spaces", dict(in_set="poor_vision", **{"if": "var(target.unit_count) > 0"}))))
+    actions.append(store("unidentified_near_spaces", selection("spaces", dict(near=dict(distance=1, of=selection("spaces", dict(in_set="unidentified_spaces")))))))
+    actions.append(store("enemy_presence_near_spaces", selection("spaces", {"if": "(inSet(enemy_mil_near_spaces, target) + inSet(unidentified_near_spaces, target)) > 0"})))
     for unit in (1, *POWER_TYPES):
         for prefix, owner in (("own", "own"), ("visible", "enemy")):
             source = selection("units", dict(owner=owner, unit_ids=[unit]))
@@ -33,9 +40,10 @@ def observations(definitions: Definitions) -> list[Record]:
                     variable("headroom", "gameVar(population_limit) - gameVar(population)"),
                     variable("own_power", aggregate("sum", selection("units", dict(in_set="military")), power()))])
     actions.extend([
-        variable("board_spaces", aggregate("count", selection("spaces"))),
+        dict(action="if", when={"value_at_most": dict(value="gameVar(turn)", amount=1)},
+             then=[variable("board_spaces", aggregate("count", selection("spaces")), True)]),
         variable("explored_spaces", aggregate("count", selection("spaces", dict(vision_at_least=1)))),
-        variable("farming", "researched(1)"), variable("pikes", "researched(5)"),
+        variable("farming", "researched(1)"), variable("pikes", "researched(63)"),
         variable("worker_income", "var(tune_worker_income) + var(tune_worker_farming_income) * var(farming)"),
         variable("villager_power", "var(tune_power_villager) + var(tune_power_farming_bonus) * var(farming)"),
         variable("had_city", "max(var(had_city), min(1, var(complete_1)))", True),

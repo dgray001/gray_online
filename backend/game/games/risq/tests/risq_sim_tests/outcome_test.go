@@ -69,15 +69,34 @@ func TestClassifyIsExhaustiveAndMirrored(t *testing.T) {
 }
 
 func TestOutcomesAndFinalOutcomes(t *testing.T) {
-	if Outcomes([]risq.PlayerStanding{player(0, 5, 1, 1, false)}) != nil {
-		t.Error("expected nil outcomes for non-2-player standings")
+	if Outcomes([]risq.PlayerStanding{player(0, 5, 1, 1, false)}, []int{0}) != nil {
+		t.Error("expected nil outcomes for a single side")
 	}
 	standings := []risq.PlayerStanding{player(0, 20, 5, 5, false), player(1, 10, 4, 4, false)}
-	if got := Outcomes(standings); len(got) != 2 || got[0] != OutcomeWinning || got[1] != OutcomeLosing {
+	if got := Outcomes(standings, []int{0, 1}); len(got) != 2 || got[0] != OutcomeWinning || got[1] != OutcomeLosing {
 		t.Errorf("unexpected Outcomes result: %v", got)
 	}
 	results := []risq.PlayerResult{{PlayerId: 0, Units: 20, Score: 5, Land: 5}, {PlayerId: 1, Units: 10, Score: 4, Land: 4}}
-	if got := FinalOutcomes(results); len(got) != 2 || got[0] != OutcomeWinning || got[1] != OutcomeLosing {
+	if got := FinalOutcomes(results, []int{0, 1}); len(got) != 2 || got[0] != OutcomeWinning || got[1] != OutcomeLosing {
 		t.Errorf("unexpected FinalOutcomes result: %v", got)
+	}
+}
+
+// Seats of one side share an outcome, judged from each side's best player (alive, then score), so a weak teammate cannot drag a side down
+func TestOutcomesCompareEachSidesBestPlayer(t *testing.T) {
+	standings := []risq.PlayerStanding{
+		player(0, 3, 1, 1, false), player(1, 20, 5, 5, false), player(2, 40, 9, 9, false), player(3, 10, 4, 4, false),
+	}
+	got := Outcomes(standings, []int{0, 1, 0, 1})
+	want := Classify(standings[2], standings[1])
+	if len(got) != 4 || got[0] != want || got[2] != want || got[1] != mirror[want] || got[3] != mirror[want] {
+		t.Errorf("sides %v, want %s for seats 0 and 2 and %s for 1 and 3", got, want, mirror[want])
+	}
+	standings[2], standings[0] = player(2, 90, 9, 9, true), player(0, 3, 1, 1, false)
+	if got := Outcomes(standings, []int{0, 1, 0, 1}); got[0] != Classify(standings[0], standings[1]) {
+		t.Errorf("an eliminated player must not represent a side that still has one alive: %v", got)
+	}
+	if Outcomes(standings, []int{0, 1, 2, 2}) != nil {
+		t.Error("expected nil outcomes with three sides")
 	}
 }

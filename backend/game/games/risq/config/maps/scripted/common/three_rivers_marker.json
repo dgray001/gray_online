@@ -1,0 +1,5 @@
+[
+  { "step": "define", "params": { "name": "mq", "value": "max(0, 1 - mark_c * mark_c) * (mark_u - tri_offset) + max(0, 1 - (mark_c - 1) * (mark_c - 1)) * (edge_length - tri_offset - mark_u - mark_v) + max(0, 1 - (mark_c - 2) * (mark_c - 2)) * (mark_v - tri_offset)" } },
+  { "step": "define", "params": { "name": "mr", "value": "max(0, 1 - mark_c * mark_c) * (mark_v - tri_offset) + max(0, 1 - (mark_c - 1) * (mark_c - 1)) * (mark_u - tri_offset) + max(0, 1 - (mark_c - 2) * (mark_c - 2)) * (edge_length - tri_offset - mark_u - mark_v)" } },
+  { "step": "terrain_blob", "params": { "terrain_id": 26, "placement": { "pattern": "points", "points": [{ "x": "mq * sym_xq + mr * sym_xr - (mq + mr) * sym_xs", "y": "mr * sym_yr + mq * sym_yq - (mq + mr) * sym_ys" }] }, "filter_seeds": true, "on": { "terrain_types": ["flatlands", "hilly", "mountainous", "swamp", "shallows"] } } }
+]

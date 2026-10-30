@@ -22,6 +22,7 @@ import { drawRisqZone, getSpaceTerrainImage, getZoneFill, isEmptyPlot } from './
 import type { RisqEntityPass } from './zones/draw';
 import { getZoneUnitSlots } from './zones/slots';
 import { drawZoneCorpses } from './zones/corpses';
+import { isCompletedWall, isWalledZone } from './walls/wall_state';
 
 export enum DrawRisqSpaceDetail {
   OWNERSHIP,
@@ -278,6 +279,9 @@ function drawSpaceBuildings(
     const zone = i === -1 ? space.zones[1][1] : space.zones[OUTER_ZONE_INDICES[i].x][OUTER_ZONE_INDICES[i].y];
     const b = zone?.building;
     const rot = i === -1 ? 0 : a * (1 + i);
+    if (isCompletedWall(b)) {
+      continue;
+    }
     if (b && buildingVisibleInViewMode(b, config.view_mode) && !game.selection.isBuildingSelected(b.internal_id)) {
       drawZoneBuildingSprite(ctx, game, zone, config.hex_r, rot, config.rotation);
     } else if (
@@ -362,7 +366,7 @@ function drawSpaceContent(
       zone,
       active_player_id,
       game.viewport.centerMaxSlots(),
-      game.viewport.edgeMaxSlots(),
+      game.viewport.edgeMaxSlotsFor(zone),
       config.view_mode
     );
     const center_count = space.visibility === RisqVisibilityLevel.POOR ? 1 : center_slots.length;
@@ -380,7 +384,7 @@ function drawSpaceContent(
         r,
         config.rotation,
         zoneBuildingLocalOffset(zone.coordinate, r),
-        zoneUnitSlotLocalOffsets(zone.coordinate, r, center_count, game.viewport.unitRadius()),
+        zoneUnitSlotLocalOffsets(zone.coordinate, r, center_count, game.viewport.unitRadius(), isWalledZone(zone)),
         active_player_id,
         config.entity_pass
       );
@@ -414,7 +418,7 @@ function drawSpaceContent(
         zone,
         active_player_id,
         game.viewport.centerMaxSlots(),
-        game.viewport.edgeMaxSlots(),
+        game.viewport.edgeMaxSlotsFor(zone),
         config.view_mode
       );
       const edge_count = space.visibility === RisqVisibilityLevel.POOR ? 1 : edge_slots.length;
@@ -429,7 +433,7 @@ function drawSpaceContent(
           r,
           rotation + config.rotation,
           zoneBuildingLocalOffset(zone.coordinate, r),
-          zoneUnitSlotLocalOffsets(zone.coordinate, r, edge_count, game.viewport.unitRadius()),
+          zoneUnitSlotLocalOffsets(zone.coordinate, r, edge_count, game.viewport.unitRadius(), isWalledZone(zone)),
           active_player_id,
           config.entity_pass
         );

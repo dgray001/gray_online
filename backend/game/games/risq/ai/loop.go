@@ -151,6 +151,35 @@ func (i *Internals) distance(view View, a string, b string, zone_steps bool) (fl
 	return float64(view.SpaceDistance(from.Space, to.Space)), nil
 }
 
+func (i *Internals) membership(kind string, name string, role string) (bool, error) {
+	item := i.loop_items[role]
+	if item == nil {
+		return false, fmt.Errorf("%s membership of %q: %s is not bound to an item", kind, name, role)
+	}
+	key, keyed := keyOf(item)
+	if !keyed {
+		return false, fmt.Errorf("%s membership of %q: %s is bound to an item with no key", kind, name, role)
+	}
+	if kind == "set" {
+		set := i.setNamed(name)
+		if set == nil {
+			return false, nil
+		}
+		if set.kind != kindOfItem(item) {
+			return false, fmt.Errorf("set %q contains %s but %s is bound to %s", name, set.kind, role, kindOfItem(item))
+		}
+		return set.lookup[key], nil
+	}
+	if _, isUnit := unwrapItem(item).(unitItem); !isUnit {
+		return false, fmt.Errorf("bucket %q holds units but %s is bound to %s", name, role, kindOfItem(item))
+	}
+	if name == "none" {
+		return !i.bucketMembers()[key.id], nil
+	}
+	bucket := i.Buckets[name]
+	return bucket != nil && bucket.Members[key.id], nil
+}
+
 // var(name.field) while a loop named name is visiting an item; 0 (with one warning) when no loop or field matches
 func (i *Internals) itemField(name string) float64 {
 	prefix, field, _ := strings.Cut(name, ".")

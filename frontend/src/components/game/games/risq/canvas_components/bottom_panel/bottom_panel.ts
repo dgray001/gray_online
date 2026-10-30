@@ -47,6 +47,7 @@ export class RisqBottomPanel implements CanvasComponent {
   private content_w = 0;
   private content_h = 0;
   private layout_key = '';
+  private subpanel_height = 0;
 
   constructor(risq: DwgRisq, config: BottomPanelConfig, groups: BottomPanelGroup[]) {
     this.risq = risq;
@@ -166,7 +167,7 @@ export class RisqBottomPanel implements CanvasComponent {
         this.panel_w > 0
           ? this.p.x + 0.5 * (this.panel_w - this.open_button.w())
           : 0.5 * (size.width - this.open_button.w()),
-      y: (this.is_open ? this.p.y : size.height) - this.open_button.h(),
+      y: (this.is_open ? this.p.y - this.subpanel_height : size.height) - this.open_button.h(),
     };
   }
 
@@ -206,6 +207,13 @@ export class RisqBottomPanel implements CanvasComponent {
 
   topEdge(): number {
     return this.open_button.yi();
+  }
+
+  setSubpanelHeight(height: number): void {
+    this.subpanel_height = height;
+    if (this.is_open) {
+      this.open_button.setPosition(this.buttonTargetPosition(), undefined, true);
+    }
   }
 
   draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
@@ -359,7 +367,7 @@ export class RisqBottomPanel implements CanvasComponent {
     return this.p.x;
   }
   yi(): number {
-    return this.open_button.yf();
+    return this.open_button.yf() + (this.is_open ? this.subpanel_height : 0);
   }
   xf(): number {
     return this.xi() + this.panel_w;

@@ -18,6 +18,7 @@ export declare interface RisqDisplaySettings {
   healthbar_size: number;
   hud_size: number;
   auto_open_turn_report: boolean;
+  first_order_worker_capacity: boolean;
   order_visibility: 'none' | 'selected_only' | 'all';
   order_size: number;
   territory_border_width: number;
@@ -36,6 +37,7 @@ export function defaultRisqDisplaySettings(): RisqDisplaySettings {
     healthbar_size: 4,
     hud_size: 1.0,
     auto_open_turn_report: true,
+    first_order_worker_capacity: true,
     order_visibility: 'all',
     order_size: 1.0,
     territory_border_width: 1.0,
@@ -52,6 +54,7 @@ export interface FiddlesticksSettings {
   card_size: number;
   trick_result_pause: number;
   highlight_playable_cards: boolean;
+  show_ai_comparisons: boolean;
 }
 
 export const FIDDLESTICKS_ANIMATION_SPEEDS: readonly number[] = [0, 0.5, 1, 1.5];
@@ -59,7 +62,13 @@ export const FIDDLESTICKS_CARD_SIZES: readonly number[] = [0.8, 1, 1.2];
 export const FIDDLESTICKS_TRICK_PAUSES: readonly number[] = [0, 0.5, 1, 1.5, 2];
 
 export function defaultFiddlesticksSettings(): FiddlesticksSettings {
-  return { animation_speed: 1, card_size: 1, trick_result_pause: 0.5, highlight_playable_cards: true };
+  return {
+    animation_speed: 1,
+    card_size: 1,
+    trick_result_pause: 0.5,
+    highlight_playable_cards: true,
+    show_ai_comparisons: false,
+  };
 }
 
 export declare interface AppSettings {
@@ -137,6 +146,9 @@ function sanitizeFiddlesticksSettings(
   }
   if (typeof saved?.highlight_playable_cards === 'boolean') {
     settings.highlight_playable_cards = saved.highlight_playable_cards;
+  }
+  if (typeof saved?.show_ai_comparisons === 'boolean') {
+    settings.show_ai_comparisons = saved.show_ai_comparisons;
   }
   return settings;
 }

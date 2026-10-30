@@ -27,6 +27,7 @@ type RisqBuilding struct {
 	renewing                *defs.RisqResourceCost
 	renew_stamina_remaining int
 	pending_renew_stamina   int
+	tech_bonus              buildingTechBonus
 }
 
 func (b *RisqBuilding) underConstruction() bool {
@@ -52,7 +53,8 @@ func constructionHealthRatio(stamina_remaining int, construction_stamina_total i
 	return constructionMinHealthRatio + (1-constructionMinHealthRatio)*progress
 }
 
-func createRisqBuilding(game_config *defs.Config, internal_id uint64, building_id uint32, player_id int) *RisqBuilding {
+func createRisqBuilding(game_config *defs.Config, internal_id uint64, building_id uint32, player *RisqPlayer) *RisqBuilding {
+	player_id := player.player.Player_id
 	building := RisqBuilding{
 		orderableBase: orderableBase{
 			config:       game_config,
@@ -72,6 +74,7 @@ func createRisqBuilding(game_config *defs.Config, internal_id uint64, building_i
 		production_queue: make(map[uint64]*RisqBuildingProductionItem),
 		garrisoned_units: make(map[uint64]*RisqUnit),
 		auto_attack:      true,
+		tech_bonus:       buildingTechBonus{renew_cost_multiplier: 1},
 	}
 	config, ok := game_config.Buildings[building_id]
 	if !ok {
@@ -91,7 +94,7 @@ func createRisqBuilding(game_config *defs.Config, internal_id uint64, building_i
 	building.cs.penetration_blunt = config.Penetration_blunt
 	building.cs.penetration_piercing = config.Penetration_piercing
 	building.attack_range = config.Attack_range
-	building.resources_left = config.Gather.Starting_resources
+	building.applyPlayerTechs(player)
 	return &building
 }
 
@@ -135,17 +138,22 @@ func (b *RisqBuilding) resolveHealthDelta(r *GameRisq) {
 	}
 }
 
+// A nil attacker means the owner deleted the building, so no raze is credited
 func (b *RisqBuilding) recordDeath(r *GameRisq, attacker Attackable, damage float64) {
 	b.zone.destroyed_building = b.building_id
 	b.zone.destroyed_building_turns = 1
 	b.zone.space.death_vision[b.player_id] = true
 	space := b.zone.space.coordinate
 	zone := b.zone.coordinate
-	r.players[attacker.playerId()].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: RisqCombatEventKind_BUILDING_RAZED,
-		self_player: attacker.playerId(), other_player: b.player_id, target_id: uint64(b.building_id), space: space, zone: zone, damage: damage})
+	razer_id := b.player_id
+	if attacker != nil {
+		razer_id = attacker.playerId()
+		r.players[razer_id].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: RisqCombatEventKind_BUILDING_RAZED,
+			self_player: razer_id, other_player: b.player_id, target_id: uint64(b.building_id), space: space, zone: zone, damage: damage})
+		r.players[razer_id].razes++
+	}
 	r.players[b.player_id].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: RisqCombatEventKind_BUILDING_LOST,
-		self_player: b.player_id, other_player: attacker.playerId(), target_id: uint64(b.building_id), space: space, zone: zone, damage: damage})
-	r.players[attacker.playerId()].razes++
+		self_player: b.player_id, other_player: razer_id, target_id: uint64(b.building_id), space: space, zone: zone, damage: damage})
 	if !b.deleted {
 		r.players[b.player_id].buildings_lost++
 	}
@@ -415,9 +423,7 @@ func (b *RisqBuilding) tickExecute(risq *GameRisq) {
 		}
 	}
 	if _, ok := b.intent.detail.(*DeleteIntent); ok {
-		b.deleted = true
-		risq.players[b.player_id].buildings_lost++
-		// TODO: check for recent damage to assign raze
+		b.recordDeath(risq, nil, 0)
 	}
 	if detail, ok := b.intent.detail.(*BuildingAttackIntent); ok {
 		if b.cs.totalAttack() > 0 && b.intent.intent_cost > 0 {

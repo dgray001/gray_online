@@ -22,6 +22,11 @@ func (r *GameRisq) ensureSpaceDistances() {
 	distances := &spaceDistances{hops: make([][]uint16, len(spaces))}
 	for i, space := range spaces {
 		space.distances, space.distance_index = distances, i
+		for _, row := range space.zones {
+			for _, zone := range row {
+				zone.range_zones = [6]map[*RisqZone]bool{}
+			}
+		}
 	}
 	neighbors := make([][]int, len(spaces))
 	for i, space := range spaces {

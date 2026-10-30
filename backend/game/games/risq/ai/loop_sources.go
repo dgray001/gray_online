@@ -2,6 +2,7 @@ package ai
 
 import (
 	"fmt"
+	"iter"
 	"maps"
 	"slices"
 )
@@ -181,14 +182,17 @@ func (s *spaceSource) itemsAt(coordinates []Coordinate, view View, internals *In
 	infos, own := internals.worldFor(view).spaces, ownUnitsBySpace(view)
 	items := make([]loopItem, 0, len(coordinates))
 	for _, coordinate := range coordinates {
-		info := infos[coordinate]
-		item := spaceItem{place: place{loc: ZoneRef{Space: coordinate}}, info: info, vision: int(info.Vision), owner: info.Owner, unit_count: -1, unidentified_count: unidentifiedUnitCount(info, own)}
-		if info.UnitCount != nil {
-			item.unit_count = *info.UnitCount
-		}
-		items = append(items, item)
+		items = append(items, newSpaceItem(coordinate, infos[coordinate], own))
 	}
 	return items
+}
+
+func newSpaceItem(coordinate Coordinate, info SpaceInfo, own map[Coordinate]int) spaceItem {
+	item := spaceItem{place: place{loc: ZoneRef{Space: coordinate}}, info: info, vision: int(info.Vision), owner: info.Owner, unit_count: -1, unidentified_count: unidentifiedUnitCount(info, own)}
+	if info.UnitCount != nil {
+		item.unit_count = *info.UnitCount
+	}
+	return item
 }
 
 type buildingSource struct {
@@ -219,20 +223,23 @@ func parseBuildingSource(where map[string]any) (loopSource, error) {
 }
 
 // The buildings an owner filter can match: ours, the known enemy's, or both
-func buildingsFor(view View, r relation) []BuildingView {
-	if r == relationUnowned {
-		return nil
+func buildingsFor(view View, r relation) iter.Seq[BuildingView] {
+	return func(yield func(BuildingView) bool) {
+		if r == relationUnowned {
+			return
+		}
+		mine := r == relationOwn
+		for _, b := range view.AllBuildings() {
+			if (r == relationAny || (b.PlayerID == view.PlayerID()) == mine) && !yield(b) {
+				return
+			}
+		}
 	}
-	if r == relationAny {
-		return view.AllBuildings()
-	}
-	mine := r == relationOwn
-	return slices.DeleteFunc(slices.Clone(view.AllBuildings()), func(b BuildingView) bool { return (b.PlayerID == view.PlayerID()) != mine })
 }
 
 func (s *buildingSource) items(view View, internals *Internals) []loopItem {
 	items := make([]loopItem, 0)
-	for _, b := range buildingsFor(view, s.selector.relation) {
+	for b := range buildingsFor(view, s.selector.relation) {
 		if s.ids.matches(b.BuildingID) && s.state(b) && s.selector.allows(view, internals, b.PlayerID) {
 			items = append(items, buildingItem{place: place{loc: b.Location}, building: b})
 		}
@@ -319,7 +326,11 @@ func (s *zoneSource) item(view View, internals *Internals, z ZoneInfo) (loopItem
 	if !s.selector.allows(view, internals, z.BuildingPlayer) {
 		return nil, false
 	}
-	return zoneItem{place: place{loc: z.Location}, has_resource: z.HasResource, building_player: z.BuildingPlayer}, true
+	return newZoneItem(z), true
+}
+
+func newZoneItem(z ZoneInfo) zoneItem {
+	return zoneItem{place: place{loc: z.Location}, has_resource: z.HasResource, building_player: z.BuildingPlayer}
 }
 
 func (s *zoneSource) items(view View, internals *Internals) []loopItem {

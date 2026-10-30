@@ -133,10 +133,16 @@ func (r *GameRisq) attackOrderTarget(order *RisqOrder) Attackable {
 	if order == nil {
 		return nil
 	}
-	if order.order_type == defs.OrderType_UnitAutoAttackBuilding || order.order_type == defs.OrderType_UnitAttackBuilding {
-		return r.buildings[uint64(order.target_id)]
+	if order.order_type == defs.OrderType_UnitAutoAttackBuilding || order.order_type == defs.OrderType_UnitAttackBuilding || order.order_type == defs.OrderType_BuildingAutoAttackBuilding {
+		if target := r.buildings[uint64(order.target_id)]; target != nil {
+			return target
+		}
+		return nil
 	}
-	return r.units[uint64(order.target_id)]
+	if target := r.units[uint64(order.target_id)]; target != nil {
+		return target
+	}
+	return nil
 }
 
 func (u *RisqUnit) shouldOverrideAttackBack(old_target Attackable, new_target Attackable) bool {
@@ -161,6 +167,9 @@ func (u *RisqUnit) shouldOverrideAttackBack(old_target Attackable, new_target At
 func (u *RisqUnit) resolveStance(risq *GameRisq) {
 	if u.zone == nil || u.cs.attack_type == defs.AttackType_NONE {
 		return
+	}
+	if active := u.order_queue.active_orders; len(active) > 0 && active[0].tick_source == "stance" && !targetInPriority(risq.attackOrderTarget(active[0]), u.target_priority) {
+		u.cancelOrder(active[0], risq)
 	}
 	if target := u.reactiveAttackBackTarget(risq); target != nil {
 		idle_enough := u.interrupt_current
@@ -191,7 +200,7 @@ func (u *RisqUnit) resolveStance(risq *GameRisq) {
 	}
 	space_range, ranged := u.attack_range.SpaceRadius()
 	if ranged {
-		space_range = max(space_range, 1)
+		space_range = max(space_range, u.attack_range.ZoneRadius())
 	}
 	if u.stance == defs.UnitStance_AGGRESSIVE {
 		space_range = max(space_range, aggressivePursuitRadius)
@@ -200,9 +209,10 @@ func (u *RisqUnit) resolveStance(risq *GameRisq) {
 		space_range = max(space_range, 1)
 	}
 	target := nearbyTarget(u.zone, u.player_id, u.target_priority, u.stanceReachable, u.inAttackRange, u.canReachNearby, risq, space_range)
-	if target != nil && (len(u.order_queue.active_orders) == 0 || targetInPriority(target, u.target_priority)) {
+	if targetInPriority(target, u.target_priority) {
 		order_type := attackOrderType(target, defs.OrderType_UnitAutoAttackUnit, defs.OrderType_UnitAutoAttackBuilding)
 		u.replaceOrder(risq, order_type, int64(target.internalId()), "stance")
+		risq.projectDamage(u, target)
 	}
 }
 

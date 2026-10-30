@@ -2,7 +2,7 @@
   { "step": "define", "params": { "name": "scale", "value": "max(1, min(1, max(0, total_spaces - 6)) + min(1, max(0, total_spaces - 18)) + min(1, max(0, total_spaces - 36)) + min(1, max(0, total_spaces - 60)) + min(1, max(0, total_spaces - 90)) + min(1, max(0, total_spaces - 126)) + min(1, max(0, total_spaces - 168)) + min(1, max(0, total_spaces - 216)) + min(1, max(0, total_spaces - 270)) + min(1, max(0, total_spaces - 330)) + min(1, max(0, total_spaces - 396)))" } },
   { "step": "define", "params": { "name": "biome", "value": "randomInt(0, 7)" } },
   { "step": "define", "params": { "name": "forest_seeds_base", "value": 0 } },
-  { "step": "if", "params": { "condition": "max(0, 1 - biome * biome)", "then": [
+  { "step": "if", "name": "Grassland", "params": { "condition": "max(0, 1 - biome * biome)", "then": [
     { "step": "define", "params": { "name": "base", "value": 1 } },
     { "step": "define", "params": { "name": "accent1", "value": 11 } },
     { "step": "define", "params": { "name": "accent2", "value": 2 } },
@@ -17,7 +17,7 @@
     { "step": "define", "params": { "name": "deep_water", "value": 303 } },
     { "step": "define", "params": { "name": "shallows", "value": 205 } }
   ] } },
-  { "step": "if", "params": { "condition": "max(0, 1 - (biome - 1) * (biome - 1))", "then": [
+  { "step": "if", "name": "Savanna", "params": { "condition": "max(0, 1 - (biome - 1) * (biome - 1))", "then": [
     { "step": "define", "params": { "name": "base", "value": 4 } },
     { "step": "define", "params": { "name": "accent1", "value": 12 } },
     { "step": "define", "params": { "name": "accent2", "value": 5 } },
@@ -32,7 +32,7 @@
     { "step": "define", "params": { "name": "deep_water", "value": 306 } },
     { "step": "define", "params": { "name": "shallows", "value": 204 } }
   ] } },
-  { "step": "if", "params": { "condition": "max(0, 1 - (biome - 2) * (biome - 2))", "then": [
+  { "step": "if", "name": "Badlands", "params": { "condition": "max(0, 1 - (biome - 2) * (biome - 2))", "then": [
     { "step": "define", "params": { "name": "base", "value": 11 } },
     { "step": "define", "params": { "name": "accent1", "value": 24 } },
     { "step": "define", "params": { "name": "accent2", "value": 13 } },
@@ -47,7 +47,7 @@
     { "step": "define", "params": { "name": "deep_water", "value": 304 } },
     { "step": "define", "params": { "name": "shallows", "value": 202 } }
   ] } },
-  { "step": "if", "params": { "condition": "max(0, 1 - (biome - 3) * (biome - 3))", "then": [
+  { "step": "if", "name": "Tundra", "params": { "condition": "max(0, 1 - (biome - 3) * (biome - 3))", "then": [
     { "step": "define", "params": { "name": "base", "value": 22 } },
     { "step": "define", "params": { "name": "accent1", "value": 10 } },
     { "step": "define", "params": { "name": "accent2", "value": 21 } },
@@ -62,7 +62,7 @@
     { "step": "define", "params": { "name": "deep_water", "value": 302 } },
     { "step": "define", "params": { "name": "shallows", "value": 203 } }
   ] } },
-  { "step": "if", "params": { "condition": "max(0, 1 - (biome - 4) * (biome - 4))", "then": [
+  { "step": "if", "name": "Desert", "params": { "condition": "max(0, 1 - (biome - 4) * (biome - 4))", "then": [
     { "step": "define", "params": { "name": "base", "value": 18 } },
     { "step": "define", "params": { "name": "accent1", "value": 9 } },
     { "step": "define", "params": { "name": "accent2", "value": 17 } },
@@ -77,7 +77,7 @@
     { "step": "define", "params": { "name": "deep_water", "value": 305 } },
     { "step": "define", "params": { "name": "shallows", "value": 206 } }
   ] } },
-  { "step": "if", "params": { "condition": "max(0, 1 - (biome - 5) * (biome - 5))", "then": [
+  { "step": "if", "name": "Prairie", "params": { "condition": "max(0, 1 - (biome - 5) * (biome - 5))", "then": [
     { "step": "define", "params": { "name": "base", "value": 23 } },
     { "step": "define", "params": { "name": "accent1", "value": 9 } },
     { "step": "define", "params": { "name": "accent2", "value": 24 } },
@@ -92,7 +92,7 @@
     { "step": "define", "params": { "name": "deep_water", "value": 303 } },
     { "step": "define", "params": { "name": "shallows", "value": 206 } }
   ] } },
-  { "step": "if", "params": { "condition": "max(0, 1 - (biome - 6) * (biome - 6))", "then": [
+  { "step": "if", "name": "Taiga", "params": { "condition": "max(0, 1 - (biome - 6) * (biome - 6))", "then": [
     { "step": "define", "params": { "name": "base", "value": 6 } },
     { "step": "define", "params": { "name": "accent1", "value": 21 } },
     { "step": "define", "params": { "name": "accent2", "value": 2 } },
@@ -107,7 +107,7 @@
     { "step": "define", "params": { "name": "deep_water", "value": 304 } },
     { "step": "define", "params": { "name": "shallows", "value": 204 } }
   ] } },
-  { "step": "if", "params": { "condition": "max(0, 1 - (biome - 7) * (biome - 7))", "then": [
+  { "step": "if", "name": "Marsh", "params": { "condition": "max(0, 1 - (biome - 7) * (biome - 7))", "then": [
     { "step": "define", "params": { "name": "base", "value": 3 } },
     { "step": "define", "params": { "name": "accent1", "value": 151 } },
     { "step": "define", "params": { "name": "accent2", "value": 201 } },

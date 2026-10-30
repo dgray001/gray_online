@@ -228,7 +228,7 @@ func TestRegionFieldsOnSpacesAndRegionProgress(t *testing.T) {
 	view := regionView()
 	view.units, view.idle = []UnitView{worker}, []UnitView{worker}
 	config := rule(`{"action":"select","pick":{"kind":"spaces","limit":1,"where":{"if":"max(var(target.owner), 0 - var(target.owner))"},
-		"rank":"(var(target.region_owned) + 1) / var(target.region_known) + var(target.region_gold_bonus) / 100"},
+		"rank":"(var(target.region.owned_spaces) + 1) / var(target.region.known_spaces) + var(target.region.gold_bonus) / 100"},
 		"issue":[{"move":{}}]}`)
 	if got := moveTarget(t, config, view); got != 200 {
 		t.Errorf("best space by region progress = %d, want the unowned space of the half-owned region (x=2)", got)
@@ -294,7 +294,7 @@ func TestSpaceVisionAvailableOnZones(t *testing.T) {
 		},
 		idle: []UnitView{worker}, turn: 1,
 	}
-	config := rule(`{"action":"select","pick":{"kind":"zones","limit":1,"rank":"var(target.space_vision)"},"issue":[{"move":{}}]}`)
+	config := rule(`{"action":"select","pick":{"kind":"zones","limit":1,"rank":"var(target.space.vision)"},"issue":[{"move":{}}]}`)
 	orders := selectOrders(t, config, view)
 	if len(orders) != 1 || orders[0].OrderType != kindMoveZone || orders[0].TargetID != 200 {
 		t.Fatalf("orders = %+v, want a zone move to the better seen space (x=2)", orders)

@@ -14,7 +14,14 @@ import type { DwgGame } from '../../game';
 import { messageDialog } from '../../game';
 
 import html from './fiddlesticks.html';
-import type { GameFiddlesticks, DealRound, PlayerBet, PlayCard, PlayerDealRound } from './fiddlesticks_data';
+import type {
+  AiComparison,
+  GameFiddlesticks,
+  DealRound,
+  PlayerBet,
+  PlayCard,
+  PlayerDealRound,
+} from './fiddlesticks_data';
 
 import './fiddlesticks.scss';
 import './fiddlesticks_player/fiddlesticks_player';
@@ -26,6 +33,8 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
   private bets_number!: HTMLSpanElement;
   private trick_number!: HTMLSpanElement;
   private status_container!: HTMLSpanElement;
+  private ai_comparison_banner!: HTMLDivElement;
+  private banner_timeout?: number;
   private trump_card_img!: HTMLImageElement;
   private trick_cards!: HTMLDivElement;
   private table_container!: HTMLDivElement;
@@ -49,6 +58,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
       'bets_number',
       'trick_number',
       'status_container',
+      'ai_comparison_banner',
       'trump_card_img',
       'trick_cards',
       'table_container',
@@ -84,6 +94,7 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
   }
 
   override disconnectedCallback(): void {
+    window.clearTimeout(this.banner_timeout);
     this.unsubscribe_settings?.();
     this.lifecycle.abort();
     if (this.players_cards) {
@@ -189,6 +200,25 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
     this.bets_number.innerText = bets.toString();
   }
 
+  private showAiComparison(
+    verb: string,
+    human_choice: string,
+    comparison?: AiComparison<unknown>,
+    ai_choice?: string
+  ): void {
+    if (!comparison || !getSettings().fiddlesticks.show_ai_comparisons) {
+      return;
+    }
+    const model = `Model ${comparison.model_id}`;
+    this.ai_comparison_banner.textContent = comparison.matched
+      ? `You and ${model} ${verb} ${human_choice}`
+      : `You ${verb} ${human_choice} · ${model} chose ${ai_choice}`;
+    this.ai_comparison_banner.classList.toggle('matched', comparison.matched);
+    this.ai_comparison_banner.classList.add('show');
+    window.clearTimeout(this.banner_timeout);
+    this.banner_timeout = window.setTimeout((): void => this.ai_comparison_banner.classList.remove('show'), 4000);
+  }
+
   private setTrumpImage(trump: StandardCard): void {
     this.trump_card_img.src = cardToImagePath(trump);
     this.trump_card_img.classList.add('show');
@@ -211,6 +241,12 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           if (this.game.turn !== bet_data.player_id) {
             throw new Error('Player bet out of order');
           }
+          this.showAiComparison(
+            'bet',
+            bet_data.amount.toString(),
+            bet_data.ai_comparison,
+            bet_data.ai_comparison?.ai_choice.toString()
+          );
           await this.applyBet(bet_data);
           break;
         case 'play-card':
@@ -218,6 +254,13 @@ export class DwgFiddlesticks extends DwgElement implements GameComponent {
           if (this.game.turn !== play_card_data.player_id) {
             throw new Error('Player played out of order');
           }
+          const ai_card = play_card_data.ai_comparison?.ai_choice;
+          this.showAiComparison(
+            'played',
+            cardToIcon(play_card_data.card, false),
+            play_card_data.ai_comparison,
+            ai_card && cardToIcon(ai_card, false)
+          );
           await this.applyPlayCard(play_card_data);
           break;
         default:

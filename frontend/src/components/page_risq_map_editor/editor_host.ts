@@ -18,8 +18,11 @@ export class EditorDrawHost implements RisqDrawHost {
   readonly planning = {
     getLocalFoundation: () => undefined,
     hasPlannedFoundation: () => false,
+    hasFoundation: () => false,
+    isFoundationCancelled: () => false,
     idleIds: () => ({ units: new Set<number>(), buildings: new Set<number>() }),
   };
+  readonly orders_model = { isBeingDeleted: () => false };
   readonly selection = {
     isUnitSelected: () => false,
     isBuildingSelected: () => false,

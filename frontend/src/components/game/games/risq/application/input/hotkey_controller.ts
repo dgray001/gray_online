@@ -29,6 +29,8 @@ export declare interface HotkeyHost {
   goToCoordinate(coordinate: Point2D): void;
 }
 
+const DELETE_ACTIONS: RisqHotkeyAction[] = [RisqHotkeyAction.DELETE, RisqHotkeyAction.BUILDING_DELETE];
+
 const VIEW_MODE_ACTIONS: Partial<Record<RisqHotkeyAction, RisqViewMode>> = {
   [RisqHotkeyAction.VIEW_MODE_ALL]: RisqViewMode.ALL,
   [RisqHotkeyAction.VIEW_MODE_RESOURCE]: RisqViewMode.RESOURCE,
@@ -85,6 +87,11 @@ export class RisqHotkeyController {
       this.clearPressed();
       return;
     }
+    if (e.key === 'Escape' && this.commands.cancelArmedInput()) {
+      e.preventDefault();
+      this.clearPressed();
+      return;
+    }
     if (/^[0-9]$/.test(e.key)) {
       e.preventDefault();
       if (e.repeat) {
@@ -108,7 +115,8 @@ export class RisqHotkeyController {
     }
     this.last_group_press = undefined;
     const entry =
-      this.pressed_keys.get(e.code) ?? (!e.repeat ? this.resolveEntry(comboFromKeyboardEvent(e)) : undefined);
+      this.pressed_keys.get(e.code) ??
+      (!e.repeat ? (this.resolveEntry(comboFromKeyboardEvent(e)) ?? this.resolveCtrlDelete(e)) : undefined);
     if (entry) {
       e.preventDefault();
       this.pressBinding(e.code, entry);
@@ -123,7 +131,7 @@ export class RisqHotkeyController {
     }
     if (entry) {
       e.preventDefault();
-      this.released(entry);
+      this.released(entry, e.ctrlKey);
     }
   };
 
@@ -165,6 +173,12 @@ export class RisqHotkeyController {
     return entry;
   }
 
+  private resolveCtrlDelete(e: KeyboardEvent): RisqHotkeyLookupEntry | undefined {
+    const entry = e.ctrlKey ? this.resolveEntry({ ...comboFromKeyboardEvent(e), ctrl: false }) : undefined;
+    const is_delete = entry?.kind === 'action' && DELETE_ACTIONS.includes(entry.action);
+    return is_delete ? entry : undefined;
+  }
+
   private resolveEntry(combo: HotkeyCombo): RisqHotkeyLookupEntry | undefined {
     const entries = buildHotkeyLookup(getSettings().risq_hotkeys).get(comboToString(combo)) ?? [];
     if (entries.length <= 1) {
@@ -184,12 +198,12 @@ export class RisqHotkeyController {
     }
   }
 
-  private released(entry: RisqHotkeyLookupEntry | undefined): void {
+  private released(entry: RisqHotkeyLookupEntry | undefined, ctrl_held: boolean = false): void {
     if (!entry) {
       return;
     }
     if (entry.kind === 'action') {
-      this.action(entry.action);
+      this.action(entry.action, ctrl_held);
     } else if (entry.kind === 'create_unit' || entry.kind === 'research_tech' || entry.kind === 'build_building') {
       this.left_panel.triggerProducible(entry.kind, entry.id);
     } else if (entry.kind === 'hire_mercenary') {
@@ -200,7 +214,7 @@ export class RisqHotkeyController {
     }
   }
 
-  private action(action: RisqHotkeyAction): void {
+  private action(action: RisqHotkeyAction, ctrl_held: boolean): void {
     const view_mode = VIEW_MODE_ACTIONS[action];
     if (view_mode !== undefined) {
       this.viewport.setViewMode(view_mode);
@@ -233,7 +247,7 @@ export class RisqHotkeyController {
         this.selection.selectedBuildingIds().forEach((id: number): void => this.commands.clearGatherPoint(id));
         break;
       default:
-        this.left_panel.triggerAction(action);
+        this.left_panel.triggerAction(action, ctrl_held);
         break;
     }
   }

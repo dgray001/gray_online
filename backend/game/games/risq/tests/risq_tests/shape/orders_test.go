@@ -281,8 +281,8 @@ func checkProducible(t *testing.T, value any) {
 		contract += " unit_type:n stats:o"
 		checkShape(t, item["stats"], "health:n attack_type:n attack_blunt:n attack_piercing:n attack_range:n defense_blunt:n defense_piercing:n penetration_blunt:n penetration_piercing:n")
 	case float64(2):
-		contract += " affects_unit_ids:a affects_unit_types:a bonus:o unlocks_mercenaries:a"
-		checkShape(t, item["bonus"], "max_health:n turn_stamina:n attack_blunt:n attack_piercing:n attack_magic:n defense_blunt:n defense_piercing:n defense_magic:n penetration_blunt:n penetration_piercing:n penetration_magic:n")
+		contract += " affects_unit_ids:a affects_unit_types:a affects_buildings:a gather_bonus:o bonus:o unlocks_mercenaries:a additional_effects:a"
+		checkShape(t, item["bonus"], "max_health:n turn_stamina:n range:n splash_damage_percent:n splash_max_targets:n reduce_inter_move_cost:n reduce_intra_move_cost:n scale_walls:b attack_blunt:n attack_piercing:n attack_magic:n defense_blunt:n defense_piercing:n defense_magic:n penetration_blunt:n penetration_piercing:n penetration_magic:n gather_capacity:n gather_speed:n resource_capacity:n renew_cost_discount:n garrison_capacity:n garrison_attack_cap_blunt:n garrison_attack_cap_piercing:n garrison_attack_cap_magic:n population_support:n")
 		for _, unlocked := range array(t, item["unlocks_mercenaries"]) {
 			checkShape(t, unlocked, "id:n display_name:s")
 		}

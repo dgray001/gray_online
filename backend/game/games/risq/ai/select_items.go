@@ -38,6 +38,14 @@ type worldIndex struct {
 	spaces                                                            map[Coordinate]SpaceInfo
 	zones                                                             []ZoneInfo
 	zone_position                                                     map[ZoneRef]int
+	own_by_space                                                      map[Coordinate]int
+}
+
+func (w *worldIndex) ownUnitsBySpace(view View) map[Coordinate]int {
+	if w.own_by_space == nil {
+		w.own_by_space = ownUnitsBySpace(view)
+	}
+	return w.own_by_space
 }
 
 func (i *Internals) worldFor(view View) *worldIndex {

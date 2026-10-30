@@ -10,19 +10,25 @@ type orderableBase struct {
 	tick_actions                      []*TickAction
 	tick_action, garrison_tick_action *TickAction
 
-	deleted           bool
-	internal_id       uint64
-	player_id         int
-	zone              *RisqZone
-	turn_stamina      int
-	current_stamina   int
-	cs                RisqCombatStats
-	order_queue       RisqOrderQueue
-	intent            *RisqIntent
-	attacked_by       []RisqDamageEvent
-	interrupt_current bool
-	target_priority   []defs.TargetCategory
-	attack_range      defs.RisqRange
+	deleted               bool
+	internal_id           uint64
+	player_id             int
+	zone                  *RisqZone
+	turn_stamina          int
+	current_stamina       int
+	cs                    RisqCombatStats
+	order_queue           RisqOrderQueue
+	intent                *RisqIntent
+	attacked_by           []RisqDamageEvent
+	interrupt_current     bool
+	target_priority       []defs.TargetCategory
+	attack_range          defs.RisqRange
+	splash_damage_percent float64
+	splash_max_targets    int
+}
+
+func (o *orderableBase) splash() (float64, int) {
+	return o.splash_damage_percent, o.splash_max_targets
 }
 
 func (o *orderableBase) isDeleted() bool {

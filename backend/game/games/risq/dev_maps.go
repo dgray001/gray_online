@@ -49,7 +49,7 @@ func PreviewCustomMap(doc []byte) (gin.H, error) {
 	for _, space := range r.allSpaces() {
 		space.visibility[-1] = defs.VisibilitySpy
 	}
-	return r.toFrontendFor(-1, 0, true), nil
+	return r.toFrontendFor(-1, 0, true, true), nil
 }
 
 var customMapNamePattern = regexp.MustCompile(`^[a-z0-9_]{1,40}$`)

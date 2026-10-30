@@ -107,21 +107,55 @@ func (p Producible) ToFrontend(c *Config) gin.H {
 		entry["display_name"] = tech.Display_name
 		entry["description"] = tech.Description
 		entry["required_tech_id"] = tech.Required_tech_id
-		affects_unit_types := make([]int, len(tech.Affects_unit_types))
-		for i, unit_type := range tech.Affects_unit_types {
-			affects_unit_types[i] = int(unit_type)
+		for key, value := range tech.effectToFrontend(c) {
+			entry[key] = value
 		}
-		entry["affects_unit_ids"] = tech.Affects_unit_ids
-		entry["affects_unit_types"] = affects_unit_types
-		bonus := tech.Bonus.ToFrontend()
-		bonus["max_health"] = tech.Bonus_max_health
-		bonus["turn_stamina"] = tech.Bonus_turn_stamina
-		entry["bonus"] = bonus
-		unlocks_mercenaries := make([]gin.H, len(tech.Unlocks_mercenary_ids))
-		for i, unit_id := range tech.Unlocks_mercenary_ids {
-			unlocks_mercenaries[i] = gin.H{"id": unit_id, "display_name": c.Units[unit_id].Display_name}
+		effects := make([]gin.H, 0, len(tech.Additional_effects))
+		for _, effect := range tech.Additional_effects {
+			effects = append(effects, effect.effectToFrontend(c))
 		}
-		entry["unlocks_mercenaries"] = unlocks_mercenaries
+		entry["additional_effects"] = effects
 	}
+	return entry
+}
+
+func (tech TechConfig) effectToFrontend(c *Config) gin.H {
+	entry := gin.H{}
+	affects_unit_types := make([]int, len(tech.Affects_unit_types))
+	for i, unit_type := range tech.Affects_unit_types {
+		affects_unit_types[i] = int(unit_type)
+	}
+	entry["affects_unit_ids"] = tech.Affects_unit_ids
+	entry["affects_unit_types"] = affects_unit_types
+	bonus := tech.Bonus.ToFrontend()
+	bonus["max_health"] = tech.Bonus_max_health
+	bonus["turn_stamina"] = tech.Bonus_turn_stamina
+	bonus["range"] = tech.Bonus_range
+	bonus["splash_damage_percent"] = tech.Splash_damage_percent
+	bonus["splash_max_targets"] = tech.Splash_max_targets
+	bonus["reduce_inter_move_cost"] = tech.Reduce_inter_move_cost
+	bonus["reduce_intra_move_cost"] = tech.Reduce_intra_move_cost
+	bonus["scale_walls"] = tech.Scale_walls
+	bonus["gather_capacity"] = tech.Bonus_gather_capacity
+	bonus["gather_speed"] = tech.Bonus_gather_speed
+	bonus["resource_capacity"] = tech.Bonus_resource_capacity
+	bonus["renew_cost_discount"] = tech.Renew_cost_discount
+	bonus["garrison_capacity"] = tech.Bonus_garrison_capacity
+	bonus["garrison_attack_cap_blunt"] = tech.Bonus_garrison_attack_cap_blunt
+	bonus["garrison_attack_cap_piercing"] = tech.Bonus_garrison_attack_cap_piercing
+	bonus["garrison_attack_cap_magic"] = tech.Bonus_garrison_attack_cap_magic
+	bonus["population_support"] = tech.Bonus_population_support
+	entry["bonus"] = bonus
+	affects_buildings := make([]gin.H, len(tech.Affects_building_ids))
+	for i, building_id := range tech.Affects_building_ids {
+		affects_buildings[i] = gin.H{"id": building_id, "display_name": c.Buildings[building_id].Display_name}
+	}
+	entry["affects_buildings"] = affects_buildings
+	entry["gather_bonus"] = tech.Gather_bonus.ToFrontend(c)
+	unlocks_mercenaries := make([]gin.H, len(tech.Unlocks_mercenary_ids))
+	for i, unit_id := range tech.Unlocks_mercenary_ids {
+		unlocks_mercenaries[i] = gin.H{"id": unit_id, "display_name": c.Units[unit_id].Display_name}
+	}
+	entry["unlocks_mercenaries"] = unlocks_mercenaries
 	return entry
 }

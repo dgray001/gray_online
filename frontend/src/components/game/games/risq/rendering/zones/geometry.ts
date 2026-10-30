@@ -199,15 +199,22 @@ export function unitSlotOffsets(hex_r: number, unit_r?: number): UnitSlotOffsetC
   return unit_slot_offset_cache;
 }
 
-function unitSlotLocalOffsets(is_center: boolean, hex_r: number, count: number, unit_r: number): Point2D[] {
+function unitSlotLocalOffsets(
+  is_center: boolean,
+  hex_r: number,
+  count: number,
+  unit_r: number,
+  walled: boolean
+): Point2D[] {
   const cache = unitSlotOffsets(hex_r, unit_r);
   const offsets = is_center ? cache.center : cache.edge;
-  let positions = offsets.get(count);
+  const key = walled ? -(count + 1) : count;
+  let positions = offsets.get(key);
   if (!positions) {
     positions = is_center
       ? centerUnitSlotLocalOffsets(hex_r, count, unit_r)
-      : edgeOccupiedSlotOffsets(hex_r, count, unit_r);
-    offsets.set(count, positions);
+      : edgeOccupiedSlotOffsets(hex_r, count, unit_r, walled);
+    offsets.set(key, positions);
   }
   return positions;
 }
@@ -226,9 +233,10 @@ export function zoneUnitSlotLocalOffsets(
   zone_coordinate: Point2D,
   hex_r: number,
   center_count = 0,
-  unit_r = hex_r
+  unit_r = hex_r,
+  walled = false
 ): Point2D[] {
-  return unitSlotLocalOffsets(findOuterZoneIndex(zone_coordinate) === -1, hex_r, center_count, unit_r);
+  return unitSlotLocalOffsets(findOuterZoneIndex(zone_coordinate) === -1, hex_r, center_count, unit_r, walled);
 }
 
 export function zoneBuildingLocalOffset(zone_coordinate: Point2D, hex_r: number): Point2D {
@@ -239,20 +247,22 @@ export function zoneUnitSlotOffsets(
   zone_coordinate: Point2D,
   hex_r: number,
   center_count = 0,
-  unit_r = hex_r
+  unit_r = hex_r,
+  walled = false
 ): Point2D[] {
   const i = findOuterZoneIndex(zone_coordinate);
-  const positions = unitSlotLocalOffsets(i === -1, hex_r, center_count, unit_r);
+  const positions = unitSlotLocalOffsets(i === -1, hex_r, center_count, unit_r, walled);
   if (i === -1) {
     return positions;
   }
   const cache = unitSlotOffsets(hex_r, unit_r);
-  let rotated = cache.rotated_edge.get(center_count);
+  const key = walled ? -(center_count + 1) : center_count;
+  let rotated = cache.rotated_edge.get(key);
   if (!rotated) {
     rotated = OUTER_ZONE_INDICES.map((_, direction) =>
       positions.map((p) => rotatePoint(p, (Math.PI / 3) * (direction + 1)))
     );
-    cache.rotated_edge.set(center_count, rotated);
+    cache.rotated_edge.set(key, rotated);
   }
   return rotated[i];
 }

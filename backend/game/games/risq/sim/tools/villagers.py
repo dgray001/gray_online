@@ -4,6 +4,7 @@ import json, re, sys, collections
 from pathlib import Path
 from typing import Any
 from tool_search import AI_LINE, AI_ORDER, unpair
+from run_games import load_run
 ZoneKey = tuple[int, int, int, int]
 FrameKey = tuple[str, int]
 MOVE = re.compile(r"Moving unit (\d+) Villager to zone\((-?\d+), (-?\d+)\) in space \((-?\d+), (-?\d+)\) tick=\d+ turn=(\d+) stamina=(\d+)")
@@ -113,13 +114,14 @@ def churn_metrics(path: Path, limit: int) -> dict[str, collections.Counter[str]]
 
 
 def churn_report(folder: Path, limit: int) -> None:
-    results = json.loads((folder / "results.json").read_text())
+    results = load_run(folder)
     combined: dict[str, collections.Counter[str]] = collections.defaultdict(collections.Counter)
     games: list[dict[str, Any]] = []
     for sim in results["Sims"]:
         for game in sim["Games"]:
             seed = game["Result"]["Seed"]
-            totals = churn_metrics(folder / f"debug_{seed}.log", limit)
+            per_game = folder / f"debug_{seed}.log"
+            totals = churn_metrics(per_game if per_game.exists() else folder / "debug.log", limit)
             for seat, player in enumerate(game["Seats"]):
                 name = sim["Stats"]["Players"][player]["Name"]
                 counters = totals[f"ai-{seat}"]

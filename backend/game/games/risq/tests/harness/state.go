@@ -37,6 +37,7 @@ type Unit struct {
 
 type Building struct {
 	TickActions []TickAction `json:"tick_actions"`
+	AttackRange uint8        `json:"attack_range"`
 
 	CurrentStamina        int     `json:"current_stamina"`
 	InternalID            uint64  `json:"internal_id"`
@@ -53,8 +54,9 @@ type Building struct {
 		StaminaRemaining int    `json:"stamina_remaining"`
 	} `json:"production_queue"`
 	CombatStats struct {
-		Health    float64 `json:"health"`
-		MaxHealth int     `json:"max_health"`
+		Health         float64 `json:"health"`
+		MaxHealth      int     `json:"max_health"`
+		AttackPiercing int     `json:"attack_piercing"`
 	} `json:"combat_stats"`
 }
 

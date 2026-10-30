@@ -6,9 +6,12 @@ import (
 )
 
 type rankedItem struct {
-	item selItem
-	key  itemKey
-	rank []float64
+	source   int
+	lets     *letState
+	initial  *float64
+	capacity *float64
+	key      itemKey
+	rank     []float64
 }
 
 func (r rankedItem) primaryRank() float64 {
@@ -63,7 +66,7 @@ func (s *selectorSpec) resolve(view View, internals *Internals, cen *census) []s
 		cen.invalid = true
 		return nil
 	}
-	for _, base := range source {
+	for i, base := range source {
 		if !internals.takeSelectStep() {
 			return nil
 		}
@@ -98,7 +101,7 @@ func (s *selectorSpec) resolve(view View, internals *Internals, cen *census) []s
 			}
 			rank := s.rankOf(view, internals)
 			if internals.eval_errors == previous {
-				ranked = append(ranked, rankedItem{item: item, key: key, rank: rank})
+				ranked = append(ranked, rankedItem{source: i, lets: item.lets, initial: item.initial, capacity: item.capacity, key: key, rank: rank})
 			}
 		}
 		restore()
@@ -119,7 +122,7 @@ func (s *selectorSpec) resolve(view View, internals *Internals, cen *census) []s
 	}
 	items := make([]selItem, len(ranked))
 	for i, r := range ranked {
-		items[i] = r.item
+		items[i] = selItem{loopItem: source[r.source], view: view, internals: internals, census: cen, role: s.role, lets: r.lets, initial: r.initial, capacity: r.capacity}
 		items[i].rank = r.primaryRank()
 		items[i].rank_keys = r.rank
 		if len(s.lets) > 0 && s.role != "target" && s.role != "actor" {

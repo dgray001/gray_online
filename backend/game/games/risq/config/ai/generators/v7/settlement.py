@@ -74,7 +74,7 @@ def pick_vc_zone() -> Record:
     food_second["min"]["default"] = 25
 
     lets = dict(
-        build_speed=aggregate("max", selection("spaces", {"if": "distance(target, item) == 0"}), "var(item.build_speed_modifier)"),
+        build_speed="var(target.space.build_speed_modifier)",
         vc_walk_sum=aggregate("sum", selection("units", dict(owner="own", unit_ids=[1])), "distance(target, item)"),
         food_first=food_first,
         food_second=food_second,
@@ -105,7 +105,7 @@ def pick_vc_zone() -> Record:
 
     return selection(
         "zones",
-        dict(building=False, resource=False, **{"if": where_if}),
+        dict(in_set="buildable_zones", building=False, resource=False, **{"if": where_if}),
         let=lets,
         rank=ranking,
         limit=1,

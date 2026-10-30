@@ -252,15 +252,32 @@ export class RisqOrderOverlays {
         order.internal_id === unit.active_orders[0]?.internal_id &&
         unit.move_path?.length
       ) {
+        const attack_unit =
+          order.order_type === RisqOrderType.OrderType_UnitAttackUnit ||
+          order.order_type === RisqOrderType.OrderType_UnitAutoAttackUnit;
+        const path = this.remainingMovePath(unit);
+        const target = attack_unit ? this.session.findUnitById(order.target_id) : undefined;
+        const target_location = target ? this.session.unitLocation(target) : undefined;
+        const last_step = path.at(-1);
+        if (
+          last_step &&
+          target_location &&
+          equalsPoint2D(last_step.space, target_location.space_coordinate) &&
+          equalsPoint2D(last_step.zone, target_location.zone_coordinate)
+        ) {
+          path.pop();
+        }
         from = this.drawMovePath(
           ctx,
-          this.remainingMovePath(unit),
+          path,
           from,
           zone_view,
-          selected ? 10 : 6,
+          attack_unit ? undefined : selected ? 10 : 6,
           order.order_type
         );
-        continue;
+        if (!attack_unit) {
+          continue;
+        }
       }
       const to = attack ? this.lastAttackPoint(attack) : this.orderTargetPoint(order, zone_view, from);
       if (!to || equalsPoint2D(from, to)) {
@@ -281,7 +298,7 @@ export class RisqOrderOverlays {
     path: RisqMovePathStep[],
     from: Point2D,
     zone_view: boolean,
-    arrow_size: number,
+    arrow_size: number | undefined,
     order_type: RisqOrderType
   ): Point2D {
     const color = orderArrowColor(order_type);
@@ -304,7 +321,12 @@ export class RisqOrderOverlays {
       if (equalsPoint2D(current, to)) {
         continue;
       }
-      this.strokeSegment(ctx, current, to, i === path.length - 1 ? this.cappedSize(arrow_size) : undefined);
+      this.strokeSegment(
+        ctx,
+        current,
+        to,
+        i === path.length - 1 && arrow_size !== undefined ? this.cappedSize(arrow_size) : undefined
+      );
       current = to;
     }
     return current;

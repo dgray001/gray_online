@@ -54,6 +54,7 @@ func runAi(p *FiddlesticksPlayer, f *GameFiddlesticks, action_channel chan game.
 
 func checkTurn(p *FiddlesticksPlayer, f *GameFiddlesticks, action_channel chan game.PlayerAction) {
 	p.clearTurnTimer()
+	p.ai_choice = nil
 	if f.turn != p.player.Player_id {
 		return
 	}
@@ -65,6 +66,8 @@ func checkTurn(p *FiddlesticksPlayer, f *GameFiddlesticks, action_channel chan g
 		player_action := createPlayerAction(p.player, "bet", action)
 		if p.player.IsHumanPlayer() {
 			fmt.Println("Storing bet for human player", p.player.Player_id, ":", bid)
+			p.ai_choice = &aiChoice{model_id: p.ai_model_id, bet: bid}
+			player_action.Action[timeoutActionKey] = true
 			p.storeTurnAction(player_action, action_channel, 2*f.turn_duration, &f.mu)
 			return
 		}
@@ -78,6 +81,8 @@ func checkTurn(p *FiddlesticksPlayer, f *GameFiddlesticks, action_channel chan g
 		player_action := createPlayerAction(p.player, "play-card", action)
 		if p.player.IsHumanPlayer() {
 			fmt.Println("Storing play card for human player", p.player.Player_id, ":", p.cards[card_index].GetName())
+			p.ai_choice = &aiChoice{model_id: p.ai_model_id, card: p.cards[card_index]}
+			player_action.Action[timeoutActionKey] = true
 			p.storeTurnAction(player_action, action_channel, f.turn_duration, &f.mu)
 			return
 		}

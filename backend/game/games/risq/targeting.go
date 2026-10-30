@@ -114,12 +114,12 @@ func nearbyTarget(own_zone *RisqZone, player_id int, target_priority []defs.Targ
 					dist = zoneApproachDistance(own_zone, zone)
 				}
 				for _, target := range zone.units {
-					if target.deleted || target.player_id == player_id {
+					if target.deleted || target.player_id == player_id || risq.projectedDead(target) {
 						continue
 					}
 					best.considerUnit(target, dist)
 				}
-				if target := zoneEnemyBuilding(zone, player_id); target != nil {
+				if target := zoneEnemyBuilding(zone, player_id); target != nil && !risq.projectedDead(target) {
 					best.considerBuilding(target, dist)
 				}
 			}

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from typing import Any
 
 from bounds import bounds, initialize
 from common import Definitions, Record, rule, variable
@@ -11,16 +12,17 @@ from locations import army, base, home
 from observations import observations
 from parameters import PARAMETERS, parameters
 from budget import resource_budgets, spending_rates, worker_targets
+from gold import gold_expansion, mercenary_rates
 from economy import food_supply, infrastructure, production_capacity, workforce
 from gathering import allocate_workers, gathering, worker_groups
 from foundations import foundation_failures, foundation_observations
 from construction import (
-    expansion_buildings, first_barracks, housing_crew_sizing, isolate_builders,
+    buildable_spaces, buildable_zones, expansion_buildings, farms, first_barracks, housing_crew_sizing, isolate_builders,
     recover_abandoned_foundations, repairs, service_unbuilt_foundations,
     settlement_and_shelter, urgent_smith
 )
 from settlement import nomad_clustering, vc_urgency_rules
-from sites import site_weights
+from sites import configure as configure_sites, site_weights
 from mix import composition as military_composition, unit_targets
 from production import mercenaries, military, opening, renew_farms, upgrades
 from defense import base_defense, civilian_defense, civilian_evacuation, threat_home_rules
@@ -35,8 +37,26 @@ from combat import combat_micro_rules
 CONFIG = Path(__file__).resolve().parents[3]
 
 
+def narrow_unidentified_sums(model: Record) -> None:
+    def walk(o: Any) -> None:
+        if isinstance(o, dict):
+            inner = o.get("sum")
+            where = inner.get("where") if isinstance(inner, dict) else None
+            if isinstance(inner, dict) and inner.get("kind") == "spaces" and inner.get("of") == "var(item.unit_count)" and isinstance(where, dict) and where.get("in_set") == "poor_vision":
+                where["in_set"] = "unidentified_spaces"
+            for v in o.values():
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+
+    for rule in model["rules"]:
+        walk(rule["then"])
+
+
 def generate(directory: Path, overrides: dict[str, float]) -> Record:
     values = parameters(overrides)
+    configure_sites(values)
     definitions = Definitions(directory)
     actions = [variable(f"tune_{name}", value) for name, value in values.items()]
     phases = [actions, observations(definitions), foundation_observations(), site_weights(), home(), base(), threat_home_rules(),
@@ -45,9 +65,10 @@ def generate(directory: Path, overrides: dict[str, float]) -> Record:
               assault_odds_rules(), army_local_odds_rules(), army_target_selection()]
     phases.extend([production_capacity(definitions), military_composition(definitions, values), workforce(definitions),
                    unit_targets(values), infrastructure(definitions), food_supply(definitions), vc_urgency_rules(),
-                   spending_rates(definitions), resource_budgets(definitions),
+                   mercenary_rates(), spending_rates(definitions), gold_expansion(), resource_budgets(definitions),
                    housing_crew_sizing(definitions), isolate_builders(),
-                   opening(), urgent_smith(), settlement_and_shelter(int(values["max_new_farms"])), first_barracks(),
+                   opening(), buildable_spaces(), buildable_zones(),
+                   urgent_smith(), settlement_and_shelter(), first_barracks(), farms(int(values["max_new_farms"])),
                    military(), upgrades(), expansion_buildings(), mercenaries(),
                    civilian_evacuation(), foundation_failures(),
                    service_unbuilt_foundations(), recover_abandoned_foundations(), repairs(), isolate_builders(),
@@ -57,7 +78,9 @@ def generate(directory: Path, overrides: dict[str, float]) -> Record:
                    army_maneuver_rules(),
                    combat_micro_rules(),
                    base_defense(), home_inspector(), civilian_defense()])
-    return dict(rules=[rule(phase) for phase in phases])
+    model = dict(rules=[rule(phase) for phase in phases])
+    narrow_unidentified_sums(model)
+    return model
 
 
 def main() -> None:

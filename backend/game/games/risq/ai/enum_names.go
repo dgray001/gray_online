@@ -13,7 +13,7 @@ var enumNames = map[string]enumValues{
 	"order_kind":       orderKindEnum(),
 	"unit_type":        unitTypeEnum(),
 	"stance":           singleEnum(unitStanceNames),
-	"attack_range":     {"none": {0}, "zone": {1}, "space": {2}, "adjacent": {3}, "secondary": {4}},
+	"attack_range":     {"none": {0}, "zone": {1}, "wall": {2}, "space": {3}, "twozone": {4}, "threezone": {5}, "adjacent": {6}, "fivezone": {7}, "secondary": {8}},
 	"category":         {"food": {0}, "wood": {1}, "stone": {2}, "gold": {3}},
 	"terrain_type":     {"none": {0}, "flatlands": {1}, "hilly": {2}, "mountainous": {3}, "swamp": {4}, "shallows": {5}, "water": {6}, "deep_water": {7}},
 	"vision":           {"unexplored": {0}, "fog": {1}, "poor": {2}, "good": {3}, "spy": {4}},
@@ -21,7 +21,6 @@ var enumNames = map[string]enumValues{
 }
 
 func init() {
-	enumNames["space_vision"] = enumNames["vision"]
 	enumNames["resource_category"] = enumNames["category"]
 }
 

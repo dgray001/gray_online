@@ -2,9 +2,10 @@ package risq
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"math/rand"
-	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -66,6 +67,8 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameR
 	map_name, ok := g.GameSpecificSettings["map"].(string)
 	if !ok || map_name == "" {
 		map_name = "script:hexagon"
+	} else if !slices.Contains(launchableMapNames(), map_name) {
+		return nil, fmt.Errorf("unknown map %q", map_name)
 	}
 	config_dir, err := mapgen.MapConfigDir(map_name)
 	if err != nil {
@@ -167,6 +170,8 @@ func createGame(g *game.GameBase, action_channel chan game.PlayerAction, min_pla
 			config, config_ok := ai["config"].(string)
 			if !config_ok {
 				config = "default"
+			} else if !slices.Contains(AllAiNamesToFrontend(), config) {
+				return nil, fmt.Errorf("unknown ai config %q", config)
 			}
 			player := game.CreateAiPlayer(nickname, g)
 			player.Player_id = player_id
@@ -234,35 +239,37 @@ func LoadUnitsFile(path string) error {
 	return defs.LoadUnitsFile(path)
 }
 
+func configJsonNames(prefix string, dir ...string) []string {
+	var names []string
+	entries, _ := defs.ListConfigDir(dir...)
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") {
+			names = append(names, prefix+strings.TrimSuffix(e.Name(), ".json"))
+		}
+	}
+	return names
+}
+
 func AllMapNamesToFrontend() []string {
-	var maps []string
-	if entries, err := os.ReadDir("game/games/risq/config/maps/scripted"); err == nil {
+	return append(configJsonNames("script:", "maps", "scripted"), configJsonNames("custom:", "maps", "custom")...)
+}
+
+// Lobby maps plus maps in subfolders (e.g. sim/), which launch by name but stay out of the lobby list
+func launchableMapNames() []string {
+	names := AllMapNamesToFrontend()
+	for _, kind := range []struct{ prefix, folder string }{{"script:", "scripted"}, {"custom:", "custom"}} {
+		entries, _ := defs.ListConfigDir("maps", kind.folder)
 		for _, e := range entries {
-			if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") {
-				maps = append(maps, "script:"+strings.TrimSuffix(e.Name(), ".json"))
+			if e.IsDir() && e.Name() != "common" {
+				names = append(names, configJsonNames(kind.prefix+e.Name()+"/", "maps", kind.folder, e.Name())...)
 			}
 		}
 	}
-	if entries, err := os.ReadDir("game/games/risq/config/maps/custom"); err == nil {
-		for _, e := range entries {
-			if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") {
-				maps = append(maps, "custom:"+strings.TrimSuffix(e.Name(), ".json"))
-			}
-		}
-	}
-	return maps
+	return names
 }
 
 func AllAiNamesToFrontend() []string {
-	var configs []string
-	if entries, err := os.ReadDir("game/games/risq/config/ai"); err == nil {
-		for _, e := range entries {
-			if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") {
-				configs = append(configs, strings.TrimSuffix(e.Name(), ".json"))
-			}
-		}
-	}
-	return configs
+	return configJsonNames("", "ai")
 }
 
 func resolvePopulationLimit(raw any) (uint16, error) {

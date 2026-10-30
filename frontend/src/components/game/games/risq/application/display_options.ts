@@ -43,6 +43,11 @@ export const RISQ_DISPLAY_SPECS: { [K in keyof RisqDisplaySettings]: DisplaySpec
   healthbar_size: slider('Healthbar size', px(2, 4, 6, 8)),
   hud_size: slider('HUD size', percent(0.7, 0.85, 1, 1.15, 1.3)),
   auto_open_turn_report: slider('Auto-open turn report', ENABLED_OPTIONS),
+  first_order_worker_capacity: {
+    label: 'Ignore q for worker capacity',
+    control: 'checkbox',
+    options: ENABLED_OPTIONS,
+  },
   order_visibility: slider('Order lines & arrows', [
     { value: 'none', label: 'None' },
     { value: 'selected_only', label: 'Selected only' },

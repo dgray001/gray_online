@@ -5,6 +5,7 @@ import (
 	"math"
 	"math/rand"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -17,6 +18,8 @@ type GameVarFunc func(field string) (float64, error)
 
 type ResearchedFunc func(tech_id uint32) (bool, error)
 
+type MembershipFunc func(kind string, name string, role string) (bool, error)
+
 const ConfigRefPrefix = "config:"
 
 // What an evaluation reads from outside the expression
@@ -27,6 +30,7 @@ type exprEnv struct {
 	config     ConfigFunc
 	game_var   GameVarFunc
 	researched ResearchedFunc
+	membership MembershipFunc
 	rng        *rand.Rand
 }
 
@@ -39,6 +43,7 @@ type exprRef struct {
 	is_item     bool // a thing named in distance(), which must have a location
 	is_config   bool
 	is_game_var bool
+	is_role     bool
 }
 
 // An expression parsed once; evaluating it never re-reads the text
@@ -335,6 +340,31 @@ func (c *exprCompiler) compileGameVarCall() (exprNode, error) {
 	}, nil
 }
 
+func (c *exprCompiler) compileMembershipCall(function string, kind string) (exprNode, error) {
+	names := [2]string{}
+	for i := range names {
+		arg := c.next()
+		if arg.kind != exprTokIdent || (i == 0 && c.next().kind != exprTokComma) {
+			return nil, fmt.Errorf("%s() takes a %s name and a bound item name", function, kind)
+		}
+		names[i] = arg.text
+	}
+	if c.next().kind != exprTokRParen {
+		return nil, fmt.Errorf("expected closing paren after %s(%s, %s", function, names[0], names[1])
+	}
+	c.refs = append(c.refs, exprRef{name: names[1], is_role: true})
+	return func(env *exprEnv) (float64, error) {
+		if env.membership == nil {
+			return 0, fmt.Errorf("%s() is not available here", function)
+		}
+		member, err := env.membership(kind, names[0], names[1])
+		if err != nil || !member {
+			return 0, err
+		}
+		return 1, nil
+	}, nil
+}
+
 func (c *exprCompiler) compileResearchedCall() (exprNode, error) {
 	id, err := c.compileExpr()
 	if err != nil {
@@ -381,6 +411,9 @@ func (c *exprCompiler) compileCall(name string) (exprNode, error) {
 	if name == "researched" {
 		return c.compileResearchedCall()
 	}
+	if name == "inSet" || name == "inBucket" {
+		return c.compileMembershipCall(name, strings.ToLower(strings.TrimPrefix(name, "in")))
+	}
 	var args []exprNode
 	if c.peek().kind == exprTokRParen {
 		c.next()
@@ -424,6 +457,15 @@ func functionOf(name string, arity int) (func(env *exprEnv, args []float64) (flo
 			return nil, fmt.Errorf("round() needs exactly one argument")
 		}
 		return func(_ *exprEnv, args []float64) (float64, error) { return math.Round(args[0]), nil }, nil
+	case "floor", "ceil":
+		if arity != 1 {
+			return nil, fmt.Errorf("%s() needs exactly one argument", name)
+		}
+		round := math.Floor
+		if name == "ceil" {
+			round = math.Ceil
+		}
+		return func(_ *exprEnv, args []float64) (float64, error) { return round(args[0]), nil }, nil
 	case "random":
 		if arity != 0 {
 			return nil, fmt.Errorf("random() takes no arguments")
@@ -513,6 +555,10 @@ func ValidateExpr(s string, vars map[string]float64, visit func(name string)) er
 			}
 		} else if ref.is_game_var {
 			continue
+		} else if ref.is_role {
+			if visit != nil {
+				visit(ref.name + ".")
+			}
 		} else if _, ok := vars[ref.name]; !ok {
 			return fmt.Errorf("unknown variable %q", ref.name)
 		}

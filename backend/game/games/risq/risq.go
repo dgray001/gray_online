@@ -29,6 +29,8 @@ type GameRisq struct {
 	err          *util.Logger
 	tick_history *turnJournal
 
+	projected_damage map[Attackable]float64 // reset each tick
+
 	// fully resolved when the game is created and never changed after
 	config *defs.Config
 
@@ -72,6 +74,7 @@ type GameRisq struct {
 	// Recomputed each tick: snapshots population-capped status before any of this tick's completions
 	population_capped map[int]bool
 	blocking_walls    map[*RisqBuilding]bool
+	defended_walls    map[*RisqBuilding]bool
 	// Zones whose cosmetic terrain_override should clear at the start of cleanupDeleted's NEXT call
 	pending_terrain_clears []*RisqZone
 	// Techs finishing production this tick; applied after this tick's health deltas
@@ -190,7 +193,7 @@ func (r *GameRisq) sendSnapshot(player *game.Player, kind string, content gin.H)
 	}
 	perf_fields := map[string]any{"turn": r.turn_number, "player": player.Player_id, "update_kind": kind}
 	stop_perf := util.PerfTimer("snapshot_build", perf_fields)
-	content["game"] = r.toFrontendFor(player.Player_id, player.GetClientId(), false)
+	content["game"] = r.toFrontendFor(player.Player_id, player.GetClientId(), false, player.IsHumanPlayer())
 	if util.PerfEnabled() && !util.PerfToStdout() {
 		encoded, _ := json.Marshal(content)
 		perf_fields["bytes"] = len(encoded)
@@ -298,7 +301,7 @@ func (r *GameRisq) ToFrontend(client_id uint64, is_viewer bool) gin.H {
 			}
 		}
 	}
-	return r.toFrontendFor(player_id, client_id, is_viewer)
+	return r.toFrontendFor(player_id, client_id, is_viewer, true)
 }
 
 func (r *GameRisq) viewerPlayerId(client_id uint64) int {
@@ -316,7 +319,7 @@ func (r *GameRisq) PlayersToFrontend(client_id uint64) []gin.H {
 	players := []gin.H{}
 	for _, player := range r.players {
 		if player != nil {
-			players = append(players, player.toFrontend(viewer))
+			players = append(players, player.toFrontend(viewer, true))
 		}
 	}
 	return players
@@ -324,11 +327,11 @@ func (r *GameRisq) PlayersToFrontend(client_id uint64) []gin.H {
 
 // One player's entry of PlayersToFrontend as seen by client_id
 func (r *GameRisq) PlayerToFrontend(client_id uint64, player_id int) gin.H {
-	return r.players[player_id].toFrontend(r.viewerPlayerId(client_id))
+	return r.players[player_id].toFrontend(r.viewerPlayerId(client_id), true)
 }
 
-// Keyed by player id since every AI player shares client id 0
-func (r *GameRisq) toFrontendFor(player_id int, client_id uint64, is_viewer bool) gin.H {
+// Keyed by player id since every AI player shares client id 0; with_history false omits the replay data only a client displays
+func (r *GameRisq) toFrontendFor(player_id int, client_id uint64, is_viewer bool, with_history bool) gin.H {
 	game := gin.H{
 		"board_size":              r.board_size,
 		"population_limit":        r.population_limit,
@@ -353,7 +356,7 @@ func (r *GameRisq) toFrontendFor(player_id int, client_id uint64, is_viewer bool
 	players := []gin.H{}
 	for _, player := range r.players {
 		if player != nil {
-			players = append(players, player.toFrontend(player_id))
+			players = append(players, player.toFrontend(player_id, with_history))
 		}
 	}
 	game["players"] = players
@@ -365,7 +368,7 @@ func (r *GameRisq) toFrontendFor(player_id int, client_id uint64, is_viewer bool
 				spaces_row = append(spaces_row, nil)
 				continue
 			}
-			spaces_row = append(spaces_row, space.toFrontend(player_id, is_viewer))
+			spaces_row = append(spaces_row, space.toFrontend(player_id, with_history))
 		}
 		spaces = append(spaces, spaces_row)
 	}
@@ -379,7 +382,7 @@ func (r *GameRisq) toFrontendFor(player_id int, client_id uint64, is_viewer bool
 	}
 	game["regions"] = regions
 	game["last_turn_replay"] = nil
-	if r.tick_history != nil && player_id >= 0 {
+	if r.tick_history != nil && player_id >= 0 && with_history {
 		game["last_turn_replay"] = r.tick_history.toFrontend(player_id)
 	}
 	return game

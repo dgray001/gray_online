@@ -8,6 +8,22 @@ from locations import space_key
 
 SITE_WEIGHTS = ("dist", "expand", "aggr", "safe", "spread", "vision", "region")
 
+_WEIGHTS: dict[str, float] = {}
+
+
+def configure(weights: dict[str, float]) -> None:
+    """Records the tuned site weights so zero-weight terms are not generated."""
+    global _WEIGHTS
+    _WEIGHTS = weights
+
+
+def _weight_parameter(name: str, tracker: str) -> str:
+    return f"site_{name}_{tracker}" if name == "aggr" and tracker in ("barracks", "redoubt") else f"site_{name}"
+
+
+def _weight_enabled(name: str, tracker: str) -> bool:
+    return _WEIGHTS.get(_weight_parameter(name, tracker), 1) != 0
+
 URGENCY_BY_TRACKER = {
     "vc": "var(vc_urgency)",
     "house": "var(house_urgency)",
@@ -39,14 +55,14 @@ def site_threat_lets() -> dict[str, Any]:
         owner="enemy", unit_types=["military"],
         **{"if": "distance(target, item) <= 1"}
     ))
-    enemy_unidentified = selection("spaces", {"if": "distance(target, item) <= 1"})
+    enemy_unidentified = selection("spaces", dict(in_set="poor_vision", **{"if": "distance(target, item) <= 1"}))
     enemy_towers = selection("buildings", dict(
         owner="enemy", building_ids=[1, 21, 23],
         **{"if": "distance(target, item) <= 1"}
     ))
     return dict(
         threat_units=aggregate("sum", enemy_units, power()),
-        threat_unidentified=aggregate("sum", enemy_unidentified, "var(item.unidentified_count)"),
+        threat_unidentified=aggregate("sum", enemy_unidentified, "var(item.unit_count)"),
         threat_towers=aggregate("count", enemy_towers),
     )
 
@@ -61,13 +77,16 @@ def site_score(tracker: str, urgency: str | None = None) -> str:
     if urgency is None:
         urgency = URGENCY_BY_TRACKER.get(tracker, "0")
     w = lambda name: f"var(site_{name}_{tracker})"
-    score = (f"{w('dist')} * (0 - distance(home_space, target)) + "
-             f"{w('expand')} * (1 - min(1, var(target.own_buildings))) + "
-             f"{w('aggr')} * (var(enemy_distance) - var(target.enemy_dist)) + "
-             f"{w('safe')} * (0 - {site_threat_expression()}) + "
-             f"{w('spread')} * (0 - var(target.own_buildings)) + "
-             f"{w('vision')} * (4 - var(target.space_vision)) + "
-             f"{w('region')} * (var(target.region) >= 0) * (1 - min(1, var(target.own_buildings))) * (var(target.region_owned) + 1) / max(1, var(target.region_known))")
+    terms = [(name, term) for name, term in (
+        ("dist", f"{w('dist')} * (0 - distance(home_space, target))"),
+        ("expand", f"{w('expand')} * (1 - min(1, var(target.own_buildings)))"),
+        ("aggr", f"{w('aggr')} * (var(enemy_distance) - var(target.enemy_dist))"),
+        ("safe", f"{w('safe')} * (0 - {site_threat_expression()})"),
+        ("spread", f"{w('spread')} * (0 - var(target.own_buildings))"),
+        ("vision", f"{w('vision')} * (4 - var(target.space.vision))"),
+        ("region", f"{w('region')} * (var(target.region.index) >= 0) * (1 - min(1, var(target.own_buildings))) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces))"),
+    ) if _weight_enabled(name, tracker)]
+    score = " + ".join(term for _, term in terms)
     if tracker != "vc":
         terrain_penalty = (f"var(tune_site_terrain) * max(0, 1 / max(0.01, var(target.build_speed)) - 1) * "
                            f"(1 + var(tune_site_urgency) * ({urgency}))")
@@ -79,18 +98,19 @@ def pick_build_zone(tracker: str, building_id: int, urgency: str | None = None) 
     avoid_bad = f"(var({tracker}_abandoned) == 0) + (var(target.x) != var({tracker}_bad_x)) + (var(target.y) != var({tracker}_bad_y)) > 0"
     ban_check = f"(var({tracker}_ban) == 0) + ({away_from_bad(tracker)}) > 0"
     where_if = f"({avoid_bad}) * ({ban_check}) * (var(target.has_foundation) == 0)"
+    if tracker == "outpost":
+        where_if += " * (var(target.space.owner) == -1) * (var(target.space.gold_income) > 0)"
 
-    enemy_dist = aggregate("min", selection("buildings", dict(in_set="enemy_buildings")), "distance(target, item)")
+    enemy_dist = aggregate("min", selection("buildings", dict(owner="enemy", in_set="enemy_buildings")), "distance(target, item)")
     enemy_dist["min"]["default"] = -1
-    build_speed = aggregate("max", selection("spaces", {"if": "distance(target, item) == 0"}), "var(item.build_speed_modifier)")
+    build_speed = "var(target.space.build_speed_modifier)"
     has_foundation = aggregate("count", selection("foundations", {"if": "distance(target, item, 1) == 0"}))
 
-    lets = dict(
-        enemy_dist=enemy_dist,
-        build_speed=build_speed,
-        has_foundation=has_foundation,
-        **site_threat_lets(),
-    )
+    lets = dict(build_speed=build_speed, has_foundation=has_foundation)
+    if _weight_enabled("aggr", tracker):
+        lets["enemy_dist"] = enemy_dist
+    if _weight_enabled("safe", tracker):
+        lets.update(site_threat_lets())
 
     ranking = [
         site_score(tracker, urgency),
@@ -99,7 +119,7 @@ def pick_build_zone(tracker: str, building_id: int, urgency: str | None = None) 
         "0 - var(target.zone_y)",
     ]
 
-    return selection("zones", dict(building=False, resource=False, **{"if": where_if}),
+    return selection("zones", dict(in_set="buildable_zones", building=False, resource=False, **{"if": where_if}),
                      let=lets, rank=ranking, limit=1)
 
 

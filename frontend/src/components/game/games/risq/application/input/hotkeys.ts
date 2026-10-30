@@ -193,10 +193,10 @@ export function defaultRisqHotkeyBindings(): RisqHotkeyBindings {
     create_unit: { [1]: { key: 'q' }, [101]: { key: 'q' }, [102]: { key: 'w' }, [103]: { key: 'q' } },
     research_tech: {
       [1]: { key: 'a' },
-      [2]: { key: 'q' },
-      [3]: { key: 'a' },
-      [4]: { key: 'a' },
-      [5]: { key: 'w' },
+      [61]: { key: 'q' },
+      [62]: { key: 'a' },
+      [63]: { key: 'w' },
+      [101]: { key: 'a' },
     },
     build_building: {
       [2]: { key: 'a' },

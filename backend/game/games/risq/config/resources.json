@@ -3,7 +3,7 @@
     "resource_id": 1,
     "display_name": "Forage Bushes",
     "category": "food",
-    "starting_resources": 300,
+    "starting_resources": 350,
     "base_gather_speed": 8,
     "gather_capacity": 6
   },

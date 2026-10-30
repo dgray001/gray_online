@@ -87,6 +87,9 @@ func (l *varNameLog) noteItemRead(name string) {
 		if l.scopes[i].name != prefix {
 			continue
 		}
+		if field == "" {
+			return
+		}
 		if (field == "distance_to_actor" || field == "zone_distance_to_actor") && !l.hasRoleInScope("actor") {
 			l.errors = append(l.errors, fmt.Sprintf("var(%s): %s items have no field %q", name, l.scopes[i].source, field))
 			return

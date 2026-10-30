@@ -56,7 +56,7 @@ func TestShapesCarveExpectedSpaceCounts(t *testing.T) {
 
 func TestDefaultHexagonSizeFollowsResolvedMapSize(t *testing.T) {
 	useScripts(t, map[string]string{"hexagon": shapeScript(`{"kind":"hexagon"}`)})
-	for players, want := range map[int]int{2: 61, 3: 91, 4: 127, 5: 169, 6: 169, 12: 331} {
+	for players, want := range map[int]int{2: 61, 3: 91, 4: 91, 5: 127, 6: 169, 12: 331} {
 		if got := len(generateStartless(t, "hexagon", players).Inspect()); got != want {
 			t.Errorf("%d players: %d spaces, want %d", players, got, want)
 		}

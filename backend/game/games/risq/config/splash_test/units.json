@@ -1,0 +1,69 @@
+[
+  {
+    "unit_id": 1,
+    "display_name": "Durable Dummy",
+    "description": "Test target with lots of health that never attacks.",
+    "unit_type": "economic",
+    "max_health": 300,
+    "attack_type": "none",
+    "cost": { "food": 1 },
+    "production_stamina": 10,
+    "turn_stamina": 8
+  },
+  {
+    "unit_id": 101,
+    "display_name": "Splash 50% x5",
+    "description": "Test catapult: splash 50% to 5 targets.",
+    "unit_type": "siege",
+    "max_health": 12,
+    "attack_type": "blunt",
+    "attack_blunt": 25,
+    "range": "space",
+    "cost": { "wood": 90, "stone": 60 },
+    "production_stamina": 32,
+    "turn_stamina": 8,
+    "vision": { "space": 3, "edge_adjacent": 2, "adjacent": 0, "edge_opposite": 0, "secondary": 0 }
+  },
+  {
+    "unit_id": 102,
+    "display_name": "Splash 25% x10",
+    "description": "Test catapult: splash 25% to 10 targets.",
+    "unit_type": "siege",
+    "max_health": 12,
+    "attack_type": "blunt",
+    "attack_blunt": 25,
+    "range": "space",
+    "cost": { "wood": 90, "stone": 60 },
+    "production_stamina": 32,
+    "turn_stamina": 8,
+    "vision": { "space": 3, "edge_adjacent": 2, "adjacent": 0, "edge_opposite": 0, "secondary": 0 }
+  },
+  {
+    "unit_id": 103,
+    "display_name": "Splash 200% x2",
+    "description": "Test catapult: splash 200% to 2 targets.",
+    "unit_type": "siege",
+    "max_health": 12,
+    "attack_type": "blunt",
+    "attack_blunt": 25,
+    "range": "space",
+    "cost": { "wood": 90, "stone": 60 },
+    "production_stamina": 32,
+    "turn_stamina": 8,
+    "vision": { "space": 3, "edge_adjacent": 2, "adjacent": 0, "edge_opposite": 0, "secondary": 0 }
+  },
+  {
+    "unit_id": 401,
+    "display_name": "Splash 100% x3",
+    "description": "Test catapult: splash 100% to 3 targets.",
+    "unit_type": "siege",
+    "max_health": 12,
+    "attack_type": "blunt",
+    "attack_blunt": 25,
+    "range": "space",
+    "cost": { "wood": 90, "stone": 60 },
+    "production_stamina": 32,
+    "turn_stamina": 8,
+    "vision": { "space": 3, "edge_adjacent": 2, "adjacent": 0, "edge_opposite": 0, "secondary": 0 }
+  }
+]

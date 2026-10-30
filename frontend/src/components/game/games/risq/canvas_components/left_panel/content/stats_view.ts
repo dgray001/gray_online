@@ -2,8 +2,16 @@ import type { BoardTransformData } from '../../../../../util/canvas_board/canvas
 import { createTooltipState, drawTooltip, shouldShowTooltip } from '../../../../../util/canvas_components/tooltip';
 import { drawRect, drawText } from '../../../../../util/canvas_util';
 import type { Point2D } from '../../../../../util/objects2d';
-import type { RectHoverData, RisqBuilding, RisqCombatStats, RisqResource, RisqUnit } from '../../../model/types';
-import { RisqAttackType, RisqRange, RisqResourceType, rangeDistance } from '../../../model/types';
+import type {
+  RectHoverData,
+  RisqBuilding,
+  RisqCombatStats,
+  RisqResource,
+  RisqUnit,
+  RisqRange,
+} from '../../../model/types';
+import { RisqAttackType, RisqResourceType, rangeDistance } from '../../../model/types';
+import { rangeLabel } from '../../../model/unit_display';
 import { resourceTypeImage } from '../../../rendering/assets/resources';
 import { UNIT_HEALTHBAR_COLOR_BACKGROUND, UNIT_HEALTHBAR_COLOR_HEALTH } from '../../../rendering/assets/unit';
 import type { DwgRisq } from '../../../risq';
@@ -11,14 +19,6 @@ import { PANEL_PADDING } from '../layout';
 import type { PanelDrawContext } from './primitives';
 
 type StatCell = [icon: string, value: number | string, label: string, tooltip?: string];
-
-const RANGE_LABELS: Record<RisqRange, string> = {
-  [RisqRange.NONE]: 'none',
-  [RisqRange.ZONE]: 'zone (melee)',
-  [RisqRange.SPACE]: 'space',
-  [RisqRange.ADJACENT]: '1 space',
-  [RisqRange.SECONDARY]: '2 spaces',
-};
 
 const HEALTH_ROW_H = 14;
 const STAT_ROW_H = 20;
@@ -61,7 +61,7 @@ function combatStatsGroups(cs: RisqCombatStats, attack_range: RisqRange): (StatC
         includes(1) ? ['risq/icons/attack_piercing', cs.attack_piercing, 'Piercing attack'] : null,
         includes(2) ? ['risq/icons/attack_magic', cs.attack_magic, 'Magic attack'] : null,
         range !== null
-          ? ['risq/icons/attack_range', range, 'Attack range', `Attack range: ${RANGE_LABELS[attack_range]}`]
+          ? ['risq/icons/attack_range', attack_range, 'Attack range', `Attack range: ${rangeLabel(attack_range)}`]
           : null,
       ]
     : [null, null, null, null];

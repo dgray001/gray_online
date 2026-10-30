@@ -230,7 +230,7 @@ func (v *aiView) unitViewShallow(u *snapUnit) ai.UnitView {
 		Location:         v.unitLocation(u),
 		CurrentStamina:   u.CurrentStamina,
 		MaxStamina:       u.MaxStamina,
-		AttackRange:      ai.AttackRange(v.config.Units[u.UnitId].Attack_range),
+		AttackRange:      ai.AttackRange(u.AttackRange),
 		CanAttack:        v.config.Units[u.UnitId].Attack_type != defs.AttackType_NONE,
 		Builds:           v.unitBuilds(u.UnitId),
 		GarrisonedIn:     u.GarrisonedIn,
@@ -288,14 +288,30 @@ func (v *aiView) AvailableMercenaries() []ai.Producible {
 	return mercenaries
 }
 
+func (v *aiView) buildingGather(b *snapBuilding) (speed int, capacity int, renew_cost ai.Cost) {
+	gather := v.config.Buildings[b.BuildingId].Gather
+	speed, capacity, renew_cost = gather.Base_gather_speed, gather.Gather_capacity, toCost(gather.Renew_cost)
+	if b.BaseGatherSpeed > 0 {
+		speed = b.BaseGatherSpeed
+	}
+	if b.GatherCapacity > 0 {
+		capacity = b.GatherCapacity
+	}
+	if b.RenewCost != nil {
+		renew_cost = ai.Cost{Food: b.RenewCost.Food, Wood: b.RenewCost.Wood, Stone: b.RenewCost.Stone, Gold: b.RenewCost.Gold}
+	}
+	return speed, capacity, renew_cost
+}
+
 func (v *aiView) buildingView(b *snapBuilding) ai.BuildingView {
 	config := v.config.Buildings[b.BuildingId]
+	gather_speed, gather_capacity, renew_cost := v.buildingGather(b)
 	return ai.BuildingView{
 		InternalID:        b.InternalId,
 		PlayerID:          b.PlayerId,
 		BuildingID:        b.BuildingId,
 		Location:          zoneRefOf(b.Space, b.Zone),
-		AttackRange:       ai.AttackRange(config.Attack_range),
+		AttackRange:       ai.AttackRange(b.AttackRange),
 		MaxStamina:        b.MaxStamina,
 		Visible:           true,
 		UnderConstruction: b.UnderConstruction,
@@ -306,10 +322,10 @@ func (v *aiView) buildingView(b *snapBuilding) ai.BuildingView {
 		Gatherable:        config.IsGatherable(),
 		ResourceCategory:  toAiCategory(config.Gather.Resource_category),
 		ResourcesLeft:     b.ResourcesLeft,
-		GatherSpeed:       config.Gather.Base_gather_speed,
-		GatherCapacity:    config.Gather.Gather_capacity,
+		GatherSpeed:       gather_speed,
+		GatherCapacity:    gather_capacity,
 		Renewing:          b.Renewing,
-		RenewCost:         toCost(config.Gather.Renew_cost),
+		RenewCost:         renew_cost,
 		Health:            b.CombatStats.Health,
 		MaxHealth:         float64(b.CombatStats.MaxHealth),
 		CanAttack:         config.Attack_type != defs.AttackType_NONE,

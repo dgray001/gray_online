@@ -4,7 +4,7 @@ import type { Point2D } from '../../../../util/objects2d';
 import { addPoint2D } from '../../../../util/objects2d';
 import { type RisqSession, hasEconomy, isMilitaryOnly } from '../../application/session';
 import { invertPair } from '../../model/coordinates';
-import type { RisqRegion, RisqSpace, RisqUnit } from '../../model/types';
+import type { RisqRegion, RisqSpace, RisqUnit, RisqZone } from '../../model/types';
 import { DrawRisqSpaceDetail } from '../space';
 import { RisqViewMode, nextViewMode, viewModeAllowed } from '../terrain';
 import {
@@ -19,6 +19,7 @@ import {
   zoneCenterOffset,
 } from '../zones/geometry';
 import { unitSlotWorldPosition } from '../zones/slots';
+import { isWalledZone } from '../walls/wall_state';
 import { getSettings } from '../../../../../../scripts/settings_store';
 
 const DEFAULT_HEXAGON_RADIUS = 60;
@@ -42,8 +43,9 @@ export class RisqViewport {
   private last_unit_circle_diameter = this.unit_circle_screen_diameter;
   private center_max_slots = 1;
   private edge_max_slots = 1;
+  private walled_edge_max_slots = 1;
   private hex_r = DEFAULT_HEXAGON_RADIUS;
-  private hex_a = 0.5 * 1.732 * DEFAULT_HEXAGON_RADIUS;
+  private hex_a = 0.5 * Math.sqrt(3) * DEFAULT_HEXAGON_RADIUS;
   private canvas_center: Point2D = { x: 0, y: 0 };
   private canvas_size: DOMRect = DOMRect.fromRect();
   private transform: BoardTransformData = defaultTransform();
@@ -71,17 +73,19 @@ export class RisqViewport {
     return this.center_max_slots;
   }
 
-  edgeMaxSlots(): number {
-    return this.edge_max_slots;
+  edgeMaxSlotsFor(zone: RisqZone): number {
+    return isWalledZone(zone) ? this.walled_edge_max_slots : this.edge_max_slots;
   }
 
   updateCenterSlots(scale: number): void {
     const diameter = this.unit_circle_screen_diameter;
     const capacity = centerUnitSlotCapacity(this.hex_r, diameter / (2 * scale));
     const edge_capacity = edgeUnitSlotCapacity(this.hex_r, diameter / (2 * scale));
+    const walled_capacity = edgeUnitSlotCapacity(this.hex_r, diameter / (2 * scale), true);
     if (
       capacity === this.center_max_slots &&
       edge_capacity === this.edge_max_slots &&
+      walled_capacity === this.walled_edge_max_slots &&
       diameter === this.last_unit_circle_diameter
     ) {
       return;
@@ -89,6 +93,7 @@ export class RisqViewport {
     this.last_unit_circle_diameter = diameter;
     this.center_max_slots = capacity;
     this.edge_max_slots = edge_capacity;
+    this.walled_edge_max_slots = walled_capacity;
     this.clearUnitSlots();
   }
 
@@ -191,7 +196,7 @@ export class RisqViewport {
   /** Board size in canvas pixels at the current hex radius */
   boardSize(board_size: number): Point2D {
     return {
-      x: 1.732 * this.hex_r * (2 * board_size + 1),
+      x: Math.sqrt(3) * this.hex_r * (2 * board_size + 1),
       y: 1.5 * this.hex_r * (2 * board_size + 1) + 0.5 * this.hex_r,
     };
   }
@@ -204,8 +209,8 @@ export class RisqViewport {
       y: 0.5 * Math.min(board_size.y, canvas_size.height),
     };
     this.canvas_size = canvas_size;
-    this.hex_r = board_size.x / (1.732 * (2 * game_board_size + 1));
-    this.hex_a = 0.5 * 1.732 * this.hex_r;
+    this.hex_r = board_size.x / (Math.sqrt(3) * (2 * game_board_size + 1));
+    this.hex_a = 0.5 * Math.sqrt(3) * this.hex_r;
     this.updateCenterSlots(this.transform.scale);
     return { ratio, center: this.canvas_center };
   }
@@ -213,7 +218,7 @@ export class RisqViewport {
   canvasToCoordinate(canvas: Point2D, board_size: number): Point2D {
     const cy = (canvas.y - 0.25 * this.hex_r) / (1.5 * this.hex_r) - board_size - 0.5;
     return {
-      x: canvas.x / (1.732 * this.hex_r) - 0.5 * cy - board_size - 0.5,
+      x: canvas.x / (Math.sqrt(3) * this.hex_r) - 0.5 * cy - board_size - 0.5,
       y: cy,
     };
   }
@@ -224,7 +229,7 @@ export class RisqViewport {
       return { x: 0, y: 0 };
     }
     return {
-      x: 1.732 * (coordinate.x + 0.5 * coordinate.y + game.board_size + 0.5) * this.hex_r,
+      x: Math.sqrt(3) * (coordinate.x + 0.5 * coordinate.y + game.board_size + 0.5) * this.hex_r,
       y: 1.5 * (coordinate.y + game.board_size + 0.5) * this.hex_r + 0.25 * this.hex_r,
     };
   }
@@ -260,7 +265,7 @@ export class RisqViewport {
         unit.internal_id,
         this.center_max_slots,
         this.unitRadius(),
-        this.edge_max_slots,
+        this.edgeMaxSlotsFor(zone),
         this.viewMode()
       ) ?? zoneCenterOffset(unit.zone_coordinate, this.hex_r)
     );

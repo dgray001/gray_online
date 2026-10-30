@@ -74,7 +74,8 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
   readonly viewport = new RisqViewport(this.session, () => this.pointer.recalculate());
   readonly orders_model = new RisqOrdersModel(
     () => this.refreshPanels(),
-    () => this.showMessage('Duplicate order', RISQ_MESSAGE_WARNING_COLOR)
+    () => this.showMessage('Duplicate order', RISQ_MESSAGE_WARNING_COLOR),
+    (kind) => this.showMessage(`${kind === 'unit' ? 'Unit' : 'Building'} is being deleted`, RISQ_MESSAGE_WARNING_COLOR)
   );
   readonly planning = new RisqOrderPlanning(this.session, this.orders_model, (): RisqCost[] =>
     this.commands.auto_renew.reservations()
@@ -331,7 +332,7 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
         if (signal.aborted) {
           return;
         }
-        this.board.setScale(this.viewport.zoneDetailScale());
+        this.board.setScale(this.viewport.zoneDetailScale() * 1.01);
         this.viewport.setTransform(this.board.getTransform());
         this.navigation.goToVillageCenter(abstract_game.isPlayer() ? this.session.getPlayerId() : 0);
         this.hotkeys.attach();

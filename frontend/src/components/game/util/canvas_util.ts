@@ -119,6 +119,10 @@ export function getFittedFont(
   if (!font_size || font_size < 1) {
     return font;
   }
+  ctx.font = font;
+  if (ctx.measureText(text).width <= max_width) {
+    return font;
+  }
   ctx.font = `${prefix}1px${suffix}`;
   const one_px_width = ctx.measureText(text).width;
   const max_size = Math.floor(max_width / one_px_width);

@@ -295,6 +295,7 @@ export class RisqSpaceView {
 
   cancelInput(): void {
     this.building_hover.hovered = false;
+    this.building_hover.clicked = false;
     this.resource_hovers.forEach((hover) => (hover.hovered = false));
     for (const button of this.rowButtons()) {
       button.setClicking(false);
@@ -303,12 +304,25 @@ export class RisqSpaceView {
   }
 
   mousedown(e: MouseEvent): void {
+    this.building_hover.clicked = e.button === 0 && !!this.building_info && !!this.building_hover.hovered;
     for (const button of this.rowButtons()) {
       button.mousedown(e);
     }
   }
 
   mouseup(e: MouseEvent): void {
+    const select_buildings = e.button === 0 && this.building_hover.clicked && this.building_hover.hovered;
+    this.building_hover.clicked = false;
+    if (select_buildings && this.shown) {
+      const { risq, space } = this.shown;
+      const buildings = [...(space.buildings?.values() ?? [])].filter(
+        (building: RisqBuilding): boolean => building.player_id === risq.getPlayerId()
+      );
+      if (buildings.length > 0) {
+        risq.selection.selectOwnBuildings(buildings.map((building: RisqBuilding): number => building.internal_id));
+      }
+      return;
+    }
     for (const button of this.rowButtons()) {
       button.mouseup(e);
     }

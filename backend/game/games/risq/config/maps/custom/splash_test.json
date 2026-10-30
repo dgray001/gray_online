@@ -1,0 +1,57 @@
+{
+  "board_size": 1,
+  "players": 2,
+  "config_dir": "splash_test",
+  "starting_techs": [901, 902, 903, 905, 906],
+  "unlimited_population": true,
+  "spaces": [
+    {
+      "x": -1,
+      "y": 0,
+      "terrain": 1,
+      "name": "Siege Camp",
+      "zones": [
+        {
+          "x": 0,
+          "y": 0,
+          "units": [
+            { "id": 401, "player": 0, "count": 1 },
+            { "id": 101, "player": 0, "count": 1 },
+            { "id": 102, "player": 0, "count": 1 },
+            { "id": 103, "player": 0, "count": 1 }
+          ]
+        }
+      ]
+    },
+    {
+      "x": -1,
+      "y": 1,
+      "terrain": 1,
+      "name": "Redoubt Hill",
+      "zones": [{ "x": 0, "y": 0, "building": { "id": 23, "player": 0 } }]
+    },
+    {
+      "x": 0,
+      "y": 0,
+      "terrain": 1,
+      "name": "Enemy Field",
+      "zones": [
+        { "x": 0, "y": 0, "units": [{ "id": 1, "player": 1, "count": 8 }] },
+        {
+          "x": 1,
+          "y": 0,
+          "units": [
+            { "id": 1, "player": 1, "count": 2 },
+            { "id": 1, "player": 0, "count": 3 }
+          ]
+        },
+        {
+          "x": 0,
+          "y": -1,
+          "building": { "id": 21, "player": 1 },
+          "units": [{ "id": 1, "player": 1, "count": 4 }]
+        }
+      ]
+    }
+  ]
+}

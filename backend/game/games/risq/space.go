@@ -328,7 +328,7 @@ func (s *RisqSpace) refreshCache(player_id int) {
 	s.ownership_cache[player_id] = s.ownership
 }
 
-func (s *RisqSpace) toFrontend(player_id int, _is_viewer bool) gin.H {
+func (s *RisqSpace) toFrontend(player_id int, with_history bool) gin.H {
 	space := gin.H{
 		"coordinate":     s.coordinate.ToFrontend(),
 		"coordinate_key": s.coordinate_key,
@@ -360,7 +360,7 @@ func (s *RisqSpace) toFrontend(player_id int, _is_viewer bool) gin.H {
 	for _, row := range s.zones {
 		zones_row := []gin.H{}
 		for _, zone := range row {
-			zones_row = append(zones_row, zone.toFrontend(player_id, v, s))
+			zones_row = append(zones_row, zone.toFrontend(player_id, v, s, with_history))
 		}
 		zones = append(zones, zones_row)
 	}
@@ -388,7 +388,7 @@ func (s *RisqSpace) toFrontend(player_id int, _is_viewer bool) gin.H {
 	buildings := make([]gin.H, 0)
 	for _, building := range s.buildings {
 		if building != nil && !building.deleted {
-			buildings = append(buildings, building.toFrontend(player_id))
+			buildings = append(buildings, building.toFrontend(player_id, with_history))
 		}
 	}
 	space["buildings"] = buildings
@@ -396,7 +396,7 @@ func (s *RisqSpace) toFrontend(player_id int, _is_viewer bool) gin.H {
 		units := make([]gin.H, 0)
 		for _, unit := range s.units {
 			if unit != nil && !unit.deleted {
-				units = append(units, unit.toFrontend(player_id))
+				units = append(units, unit.toFrontend(player_id, with_history))
 			}
 		}
 		space["units"] = units

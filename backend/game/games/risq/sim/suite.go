@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -16,6 +17,7 @@ import (
 // One game of a suite: which bucket, and which scenario player sat in each seat
 type SuiteGame struct {
 	Bucket string
+	Map    string
 	Result Result
 	// Seats[s] is the index into the suite's players of whoever played seat s
 	Seats []int
@@ -26,20 +28,21 @@ type suiteJob struct {
 	index  int
 }
 
-func runSims(scenario Scenario, sims []SuiteBucket, n int, out_dir string, workers int, base_seed int64, debug bool, compact bool, sim_log *log.Logger, terminal *os.File, std, err *util.Logger) {
-	games := make([][]SuiteGame, len(sims))
-	for b := range games {
-		games[b] = make([]SuiteGame, n)
+func runSims(scenario Scenario, sims []SuiteBucket, n int, out_dir string, workers int, base_seed int64, debug bool, quiet bool, sim_log *log.Logger, terminal *os.File, std, err *util.Logger) {
+	results := Results{MaxTurns: scenario.MaxTurns, GamesPerSim: n, Overall: newSection("overall", scenario)}
+	for _, sim := range sims {
+		results.Sims = append(results.Sims, SimResults{Name: sim.Name, Map: sim.Map, Stats: newSection(sim.Name, scenario)})
 	}
+	var results_mu sync.Mutex
 	jobs := make(chan suiteJob)
 	var wg sync.WaitGroup
 	for range workers {
 		wg.Go(func() {
 			for job := range jobs {
 				bucket := sims[job.bucket]
-				seats := make([]int, len(scenario.Players))
+				seats := make([]int, bucket.seatCount(len(scenario.Players)))
 				for s := range seats {
-					seats[s] = s
+					seats[s] = s % len(scenario.Players)
 				}
 				swapped := scenario.SwapSeats && job.index%2 == 1
 				if bucket.Seed != 0 {
@@ -79,50 +82,56 @@ func runSims(scenario Scenario, sims []SuiteBucket, n int, out_dir string, worke
 					}
 					gameStd = util.NewLogger(debug_file, util.LevelDebug)
 				}
-				result := RunGame(seed, players, bucket.Map, bucket.Settings, scenario.Metrics, uint16(max_turns), 15*time.Minute, gameStd, err)
+				result := RunGame(seed, players, seats, bucket.Map, bucket.Settings, scenario.Metrics, uint16(max_turns), 15*time.Minute, gameStd, err)
 				if debug_file != nil {
 					debug_file.Close()
 				}
-				games[job.bucket][job.index] = SuiteGame{Bucket: bucket.Name, Result: result, Seats: seats}
-				sim_log.Printf("%s game %d seed=%d seats=%v turns=%d outcomes=%v duration=%s error=%q",
-					bucket.Name, job.index+1, seed, seats, result.Game.TurnNumber, result.Outcomes, time.Since(start), result.Error)
+				game := SuiteGame{Bucket: bucket.Name, Map: bucket.Map, Result: result, Seats: seats}
+				results_mu.Lock()
+				results.Sims[job.bucket].Stats.add(game)
+				results.Sims[job.bucket].Games++
+				results.Overall.add(game)
+				results_mu.Unlock()
+				if !quiet {
+					writeGameFile(out_dir, job.index, game)
+				}
+				sim_log.Printf("%s game %d seed=%d map=%s settings=%v seats=%v turns=%d outcomes=%v duration=%s error=%q",
+					bucket.Name, job.index+1, seed, bucket.Map, bucket.Settings, seats, result.Game.TurnNumber, result.Outcomes, time.Since(start), result.Error)
 			}
 		})
 	}
 	for b := range sims {
-		for i := range n {
+		for i := range sims[b].gameCount(n) {
 			jobs <- suiteJob{bucket: b, index: i}
 		}
 	}
 	close(jobs)
 	wg.Wait()
 
-	results := buildResults(scenario, sims, n, games)
-	if compact {
-		writeCompact(filepath.Join(out_dir, "results.json"), scenario, results)
-	} else {
-		writeJSON(filepath.Join(out_dir, "results.json"), results)
-	}
+	results.finish()
 	text := results.String()
-	if err := os.WriteFile(filepath.Join(out_dir, "report.txt"), []byte(text), 0644); err != nil {
-		log.Fatalf("writing report.txt: %v", err)
+	data, write_err := json.MarshalIndent(results, "", "  ")
+	if write_err == nil {
+		write_err = os.WriteFile(filepath.Join(out_dir, "results.json"), data, 0644)
+	}
+	if write_err != nil {
+		log.Fatalf("writing results.json: %v", write_err)
 	}
 	fmt.Fprint(terminal, text)
-	sim_log.Printf("ran %d game(s) over %d sim(s), results in %s", n*len(sims), len(sims), out_dir)
+	sim_log.Printf("ran %d game(s) over %d sim(s), results in %s", results.totalGames(), len(sims), out_dir)
 }
 
-func writeJSON(path string, v any) {
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		log.Fatalf("creating %s: %v", filepath.Dir(path), err)
+func writeGameFile(out_dir string, index int, game SuiteGame) {
+	dir := filepath.Join(out_dir, "games")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		log.Fatalf("creating %s: %v", dir, err)
 	}
-	f, err := os.Create(path)
+	path := filepath.Join(dir, fmt.Sprintf("%s_%d_%d.json", game.Bucket, index+1, game.Result.Seed))
+	data, err := json.MarshalIndent(game, "", "  ")
+	if err == nil {
+		err = os.WriteFile(path, data, 0644)
+	}
 	if err != nil {
-		log.Fatalf("creating %s: %v", path, err)
-	}
-	defer f.Close()
-	encoder := json.NewEncoder(f)
-	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(v); err != nil {
 		log.Fatalf("writing %s: %v", path, err)
 	}
 }
@@ -131,6 +140,8 @@ func writeJSON(path string, v any) {
 type PlayerStats struct {
 	Name  string
 	Games int
+	// seats of this player that finished without error; the divisor for the per-game means, since a side can hold several seats
+	seats_played int
 	// games ending each way from this player's own side
 	Outcomes map[Outcome]int
 	Errors   int
@@ -148,12 +159,12 @@ type SuiteSection struct {
 	Players []PlayerStats
 }
 
-// One sim of a run: its map, how each player did there, and every game
+// One sim of a run: its map, how many games it played, and how each player did there
 type SimResults struct {
 	Name  string
 	Map   string
 	Stats SuiteSection
-	Games []SuiteGame
+	Games int
 }
 
 // results.json: how each player did over every game, then each sim on its own
@@ -164,18 +175,14 @@ type Results struct {
 	Sims        []SimResults
 }
 
-func buildResults(scenario Scenario, sims []SuiteBucket, n int, games [][]SuiteGame) Results {
-	all := make([]SuiteGame, 0)
-	results := Results{MaxTurns: scenario.MaxTurns, GamesPerSim: n}
-	for b, sim := range sims {
-		results.Sims = append(results.Sims, SimResults{Name: sim.Name, Map: sim.Map, Stats: section(sim.Name, scenario, games[b]), Games: games[b]})
-		all = append(all, games[b]...)
+func (r *Results) finish() {
+	r.Overall.finish()
+	for i := range r.Sims {
+		r.Sims[i].Stats.finish()
 	}
-	results.Overall = section("overall", scenario, all)
-	return results
 }
 
-func section(name string, scenario Scenario, games []SuiteGame) SuiteSection {
+func newSection(name string, scenario Scenario) SuiteSection {
 	stats := make([]PlayerStats, len(scenario.Players))
 	for p := range stats {
 		stats[p].Outcomes = make(map[Outcome]int)
@@ -184,17 +191,30 @@ func section(name string, scenario Scenario, games []SuiteGame) SuiteSection {
 			stats[p].Name = fmt.Sprintf("%s#%d", stats[p].Name, p+1)
 		}
 	}
-	for _, g := range games {
+	return SuiteSection{Name: name, Players: stats}
+}
+
+func (section *SuiteSection) add(g SuiteGame) {
+	stats := section.Players
+	{
 		r := g.Result
 		for seat, p := range g.Seats {
 			s := &stats[p]
-			s.Games++
+			first_seat := seat == slices.Index(g.Seats, p)
+			if first_seat {
+				s.Games++
+			}
 			if r.Error != "" || seat >= len(r.Game.Players) || seat >= len(r.Outcomes) {
-				s.Errors++
+				if first_seat {
+					s.Errors++
+				}
 				continue
 			}
 			pr := r.Game.Players[seat]
-			s.Outcomes[r.Outcomes[seat]]++
+			s.seats_played++
+			if first_seat {
+				s.Outcomes[r.Outcomes[seat]]++
+			}
 			s.Kills += float64(pr.Kills)
 			s.Lost += float64(pr.UnitsLost)
 			s.Razes += float64(pr.Razes)
@@ -217,15 +237,18 @@ func section(name string, scenario Scenario, games []SuiteGame) SuiteSection {
 			s.Techs += float64(pr.TechsResearched)
 		}
 	}
+}
+
+func (section *SuiteSection) finish() {
+	stats := section.Players
 	for p := range stats {
 		s := &stats[p]
-		played := float64(max(1, s.Games-s.Errors))
+		played := float64(max(1, s.seats_played))
 		for _, v := range []*float64{&s.Kills, &s.Lost, &s.Razes, &s.BuildingsLost, &s.Villagers, &s.Military,
 			&s.VillagerIdlePct, &s.VillagerIdlePctEarly, &s.VillageCenterIdlePct, &s.VCIdlePctEarly, &s.Gathered, &s.Techs} {
 			*v /= played
 		}
 	}
-	return SuiteSection{Name: name, Players: stats}
 }
 
 func countNames(players []ScenarioPlayer) map[string]int {
@@ -236,9 +259,17 @@ func countNames(players []ScenarioPlayer) map[string]int {
 	return names
 }
 
+func (r Results) totalGames() int {
+	total := 0
+	for _, sim := range r.Sims {
+		total += sim.Games
+	}
+	return total
+}
+
 func (r Results) String() string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "%d sim(s), %d games each, up to %d turns\n\n", len(r.Sims), r.GamesPerSim, r.MaxTurns)
+	fmt.Fprintf(&b, "%d sim(s), %d games, up to %d turns\n\n", len(r.Sims), r.totalGames(), r.MaxTurns)
 	sections := []SuiteSection{r.Overall}
 	for _, sim := range r.Sims {
 		sections = append(sections, sim.Stats)

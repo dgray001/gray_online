@@ -220,8 +220,11 @@ export function resolveSelectionData(
   switch (data.data_type) {
     case LeftPanelDataType.BUILDINGS: {
       const buildings = data.data.buildings.flatMap((b: RisqBuilding): RisqBuilding[] => {
-        const current = session.getPlayer()?.buildings.get(b.internal_id);
-        return current ? [current] : [];
+        const current = session.findBuildingById(b.internal_id);
+        const visible = current && session.spaceAt(current.space_coordinate)?.visibility;
+        return current && (current.player_id === session.getPlayerId() || (visible ?? 0) >= RisqVisibilityLevel.GOOD)
+          ? [current]
+          : [];
       });
       if (buildings.length === 0) {
         return undefined;
@@ -359,7 +362,9 @@ export function resolveSelectionData(
           : data.data.units_by_player;
       for (const [pid, types] of raw_entries) {
         const ids = types.flatMap((t) => [...t.units.values()]);
-        const surviving = ids.map((id) => session.findUnitById(id)).filter((u): u is RisqUnit => !!u);
+        const surviving = ids
+          .map((id) => session.findUnitById(id))
+          .filter((u): u is RisqUnit => !!u && unitVisibility(session, u) >= RisqVisibilityLevel.GOOD);
         const owner = session.getGame()?.players.find((p) => p.player.player_id === pid);
         if (owner && surviving.length > 0) {
           surviving_map.set(

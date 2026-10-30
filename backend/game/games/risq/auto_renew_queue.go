@@ -25,7 +25,7 @@ func (p *RisqPlayer) setAutoRenewCount(id uint32, count int) error {
 	if queue == nil {
 		queue = &RisqRenewalQueue{}
 	}
-	cost := config.Gather.Renew_cost
+	cost := config.Gather.Renew_cost.Scale(p.config.RenewCostMultiplier(id, p.researchedTechIds()))
 	additional := count - len(queue.costs)
 	if additional > 0 && !p.resources.canAfford(cost.Scale(float64(additional))) {
 		return errors.New("cannot afford auto-renew")

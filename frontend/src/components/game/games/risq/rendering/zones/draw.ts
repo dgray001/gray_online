@@ -14,12 +14,15 @@ import {
   drawUnitTypeCluster,
 } from '../assets/unit';
 import { ColorRGB } from '../../../../../../scripts/color_rgb';
-import { RisqOrderType, RisqResourceType, RisqVisibilityLevel } from '../../model/types';
+import { RisqResourceType, RisqVisibilityLevel } from '../../model/types';
 import { mapResourceIcon, resourceType } from '../assets/resources';
 import { drawControlGroupLabel, getZoneUnitSlots } from './slots';
 import { buildingImage, rubbleImage } from '../assets/buildings';
 import { scaledIcon, transformScale } from '../assets/image_cache';
 import { drawEllipse } from '../../../../util/canvas_util';
+import { drawsWallModel, isWalledZone, isWallId, isWallRubble } from '../walls/wall_state';
+import { HEIGHT_SCALE } from '../walls/wall_metrics';
+import { BUILDING_GHOST_ALPHA, ghostBuildingId } from './ghost';
 /** Returns the space's terrain image, or (cached, at the base terrain's own native resolution) a composite with any zone terrain overrides painted on top */
 export function getSpaceTerrainImage(
   game: RisqDrawHost,
@@ -85,27 +88,31 @@ export function visibleZoneUnitSlot(zone: RisqZone, index: number, view_mode: Ri
   return (zone.unit_slots?.[index] ?? []).filter((group) => unitVisibleInViewMode(group.unit_type, view_mode));
 }
 
-const BUILDING_GHOST_ALPHA = 0.5;
+const CANCELLED_FOUNDATION_ALPHA = 0.4;
+const WALL_BAR_LIFT_RATIO = 0.5 * HEIGHT_SCALE;
 
-export function isEmptyPlot(planning: RisqDrawHost['planning'], zone: RisqZone): boolean {
-  return !zone.resource && !zone.building && !planning.hasPlannedFoundation(zone);
+function drawCancelMark(ctx: CanvasRenderingContext2D, r: Point2D, scale: number): void {
+  ctx.save();
+  ctx.strokeStyle = 'rgb(200, 30, 30)';
+  ctx.lineWidth = 3 / scale;
+  ctx.beginPath();
+  ctx.moveTo(-0.7 * r.x, -0.7 * r.y);
+  ctx.lineTo(0.7 * r.x, 0.7 * r.y);
+  ctx.moveTo(0.7 * r.x, -0.7 * r.y);
+  ctx.lineTo(-0.7 * r.x, 0.7 * r.y);
+  ctx.stroke();
+  ctx.restore();
 }
 
-/** Building to preview in a hovered zone: its foundation's building, else the armed build if the zone is empty */
-function ghostBuildingId(game: RisqDrawHost, zone: RisqZone): number | undefined {
-  if (!zone.hovered || zone.resource) {
-    return undefined;
-  }
-  const foundation =
-    game.planning.getLocalFoundation(zone.coordinate_key)?.building_id ??
-    game.getPlayer()?.planned_foundations?.get(zone.coordinate_key)?.building_id ??
-    (zone.building?.under_construction ? zone.building.building_id : undefined);
-  if (foundation !== undefined) {
-    return foundation;
-  }
-  const armed =
-    game.armed.getArmedOrder() === RisqOrderType.OrderType_UnitBuild ? game.armed.getArmedBuilding() : undefined;
-  return zone.building ? undefined : armed?.id;
+function slotBeingDeleted(game: RisqDrawHost, slot: UnitByTypeData[]): boolean {
+  return slot.every(
+    (t) =>
+      t.player_id === game.getPlayerId() && [...t.units].every((id) => game.orders_model.isBeingDeleted(id, 'unit'))
+  );
+}
+
+export function isEmptyPlot(planning: RisqDrawHost['planning'], zone: RisqZone): boolean {
+  return !zone.resource && !zone.building && !planning.hasFoundation(zone);
 }
 
 function drawIdleMarker(ctx: CanvasRenderingContext2D, r: Point2D, size_px: number, pulse: boolean): void {
@@ -142,14 +149,15 @@ function renderOverheadBars(
   sec: { current: number; max: number; color?: string } | undefined,
   show_hp: boolean,
   show_sec: boolean,
-  size: number
+  size: number,
+  lift: number
 ): void {
   ctx.save();
   const scale = Math.hypot(ctx.getTransform().a, ctx.getTransform().b);
   const h = size / scale;
   const inset = size <= 2 ? 0 : Math.min(1 / scale, h / 4);
   const w = 1.4 * r.x;
-  let y = -r.y - h - 2 / scale;
+  let y = -r.y - h - 2 / scale - lift;
   if (show_sec && sec) {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
     ctx.fillRect(-w / 2, y, w, h);
@@ -174,7 +182,8 @@ function drawOverheadBars(
   hp: { current: number; max: number } | undefined,
   sec: { current: number; max: number; color?: string } | undefined,
   selected: boolean,
-  display: RisqDisplaySettings = getSettings().risq_display
+  display: RisqDisplaySettings = getSettings().risq_display,
+  lift = 0
 ): void {
   const show_hp =
     !!hp &&
@@ -193,7 +202,7 @@ function drawOverheadBars(
   if (!show_hp && !show_sec) {
     return;
   }
-  renderOverheadBars(ctx, r, hp, sec, show_hp, show_sec, display.healthbar_size);
+  renderOverheadBars(ctx, r, hp, sec, show_hp, show_sec, display.healthbar_size, lift);
 }
 
 function resourceDepletion(resource: RisqResource): { current: number; max: number; color: string } {
@@ -287,7 +296,7 @@ export function drawRisqZone(
     zone,
     active_player_id,
     game.viewport.centerMaxSlots(),
-    game.viewport.edgeMaxSlots(),
+    game.viewport.edgeMaxSlotsFor(zone),
     view_mode
   );
   const filled_slots =
@@ -374,12 +383,23 @@ export function drawRisqZone(
 
         const building_icon = scaledIcon(game, building_image, building_color, 2 * part.r.x * scale);
         if (zone.building || zone.destroyed_building || local_foundation || server_foundation) {
-          ctx.drawImage(building_icon, -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
+          const cancelled = zone.building
+            ? zone.building.player_id === game.getPlayerId() &&
+              game.orders_model.isBeingDeleted(zone.building.internal_id, 'building')
+            : game.planning.isFoundationCancelled(zone.coordinate_key);
+          if (!isWalledZone(zone) && !isWallRubble(zone)) {
+            ctx.globalAlpha = cancelled ? CANCELLED_FOUNDATION_ALPHA : 1;
+            ctx.drawImage(building_icon, -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
+            ctx.globalAlpha = 1;
+          }
+          if (cancelled) {
+            drawCancelMark(ctx, part.r, scale);
+          }
         } else {
           ctx.strokeStyle = secondary_color;
         }
         const ghost_id = ghostBuildingId(game, zone);
-        if (ghost_id !== undefined) {
+        if (ghost_id !== undefined && !(isWallId(ghost_id) && drawsWallModel(game, zone))) {
           const ghost_image = buildingImage(ghost_id, false);
           const ghost_color = building_color ?? game.getPlayer()?.color;
           ctx.globalAlpha = BUILDING_GHOST_ALPHA;
@@ -389,7 +409,7 @@ export function drawRisqZone(
           ctx.drawImage(ghost_icon, -part.r.x, -part.r.y, 2 * part.r.x, 2 * part.r.y);
           ctx.globalAlpha = 1;
         }
-        if (!!zone.building && zone.building.has_garrisoned_units) {
+        if (!!zone.building && zone.building.has_garrisoned_units && !isWalledZone(zone)) {
           const flag_size = 0.9 * part.r.x;
           const flag_icon = scaledIcon(game, 'risq/icons/garrison_flag', building_color, flag_size * scale);
           ctx.drawImage(flag_icon, 0.5 * part.r.x, -1.4 * part.r.y, flag_size, flag_size);
@@ -402,7 +422,8 @@ export function drawRisqZone(
         if (zone.building) {
           const b = zone.building;
           const hp = b.combat_stats ? { current: b.combat_stats.health, max: b.combat_stats.max_health } : undefined;
-          drawOverheadBars(ctx, part.r, hp, buildingSecondaryBar(b, display), selected, display);
+          const lift = isWalledZone(zone) ? WALL_BAR_LIFT_RATIO * hex_r : 0;
+          drawOverheadBars(ctx, part.r, hp, buildingSecondaryBar(b, display), selected, display, lift);
         }
       }
     } else if (visibility === RisqVisibilityLevel.POOR) {
@@ -427,7 +448,13 @@ export function drawRisqZone(
         ctx.strokeStyle = secondary_color;
       } else {
         const slot_total = slot.reduce((sum, t) => sum + t.units.size, 0);
+        const deleting = slotBeingDeleted(game, slot);
+        ctx.globalAlpha = deleting ? CANCELLED_FOUNDATION_ALPHA : 1;
         drawUnitTypeCluster(ctx, game, slot, part.r, slot_total, primary_color, secondary_color, true);
+        ctx.globalAlpha = 1;
+        if (deleting) {
+          drawCancelMark(ctx, part.r, scale);
+        }
         if (
           idle_ids &&
           slot.some((t) => t.player_id === game.getPlayerId() && [...t.units].some((uid) => idle_ids.units.has(uid)))

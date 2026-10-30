@@ -1,6 +1,11 @@
 package simoutcome
 
-import "github.com/dgray001/gray_online/game/games/risq"
+import (
+	"maps"
+	"slices"
+
+	"github.com/dgray001/gray_online/game/games/risq"
+)
 
 // How a game ended from one player's side; every game is exactly one of these for each player
 type Outcome string
@@ -40,21 +45,44 @@ func ahead(a risq.PlayerStanding, b risq.PlayerStanding) bool {
 	return a.Score > b.Score || (a.Score == b.Score && a.PlayerId < b.PlayerId)
 }
 
-// Each seat's outcome against the other seat; only two-player games are judged
-func Outcomes(standings []risq.PlayerStanding) []Outcome {
-	if len(standings) != 2 {
+// Alive beats eliminated, then more score, then the lower id
+func represents(a risq.PlayerStanding, b risq.PlayerStanding) bool {
+	if a.Eliminated != b.Eliminated {
+		return !a.Eliminated
+	}
+	return ahead(a, b)
+}
+
+// Each seat's outcome for its side (sides[i] is standings[i]'s side), comparing the two sides' best players; judged only with exactly two sides
+func Outcomes(standings []risq.PlayerStanding, sides []int) []Outcome {
+	if len(sides) != len(standings) {
 		return nil
 	}
-	return []Outcome{Classify(standings[0], standings[1]), Classify(standings[1], standings[0])}
+	best := map[int]risq.PlayerStanding{}
+	for i, s := range standings {
+		if current, found := best[sides[i]]; !found || represents(s, current) {
+			best[sides[i]] = s
+		}
+	}
+	if len(best) != 2 {
+		return nil
+	}
+	ids := slices.Sorted(maps.Keys(best))
+	verdict := map[int]Outcome{ids[0]: Classify(best[ids[0]], best[ids[1]]), ids[1]: Classify(best[ids[1]], best[ids[0]])}
+	outcomes := make([]Outcome, len(sides))
+	for i, side := range sides {
+		outcomes[i] = verdict[side]
+	}
+	return outcomes
 }
 
 // The outcomes the engine's end-of-game results give
-func FinalOutcomes(players []risq.PlayerResult) []Outcome {
+func FinalOutcomes(players []risq.PlayerResult, sides []int) []Outcome {
 	standings := make([]risq.PlayerStanding, len(players))
 	for i, p := range players {
 		standings[i] = risq.PlayerStanding{PlayerId: p.PlayerId, Units: p.Units, Score: p.Score, Land: p.Land, Eliminated: p.Eliminated}
 	}
-	return Outcomes(standings)
+	return Outcomes(standings, sides)
 }
 
 // The first that holds, in order: the engine eliminated one side only, a 10x unit lead, the winning test, then score

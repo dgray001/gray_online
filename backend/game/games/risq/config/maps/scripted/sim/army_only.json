@@ -1,8 +1,6 @@
 [
   {"step": "shape", "params": {"kind": "hexagon"}},
   {"step": "terrain_fill", "params": {"terrain_id": 1}},
-  {"step": "terrain_blob", "params": {"terrain_id": 51, "seed_count": "max(1, total_spaces / 18)", "size": [2, 4], "on": {"terrain_types": ["flatlands"]}}},
-  {"step": "terrain_blob", "params": {"terrain_id": 101, "seed_count": "max(1, total_spaces / 40)", "size": [1, 3], "on": {"terrain_types": ["flatlands"]}}},
   {"step": "rules", "params": {"unlimited_population": true, "space_gold_income": 0}},
   {"step": "player_starts", "params": {
     "pattern": "ring", "nomad": false, "area_size": 1, "starting_distance": "radius - 1", "terrain_id": 1,

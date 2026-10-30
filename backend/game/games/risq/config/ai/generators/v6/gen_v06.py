@@ -144,6 +144,47 @@ def migrate_ungarrison(action: Record) -> Record:
 def expr(v: Any) -> str:
     return str(v).lower() if not isinstance(v, str) else v
 RESOURCES = ('food', 'wood', 'stone', 'gold')
+ZERO_VARS: set[str] = set()
+
+def literal_zero_vars(model: Record) -> set[str]:
+    """Vars the source sets to a literal zero; score terms weighted by them are dropped."""
+    zeros: set[str] = set()
+    def walk(o: Any) -> None:
+        if isinstance(o, dict):
+            v = o.get('value')
+            if o.get('action') == 'set_var' and isinstance(v, (int, float)) and not isinstance(v, bool) and v == 0:
+                zeros.add(str(o.get('name')))
+            for c in o.values():
+                walk(c)
+        elif isinstance(o, list):
+            for c in o:
+                walk(c)
+    walk(model['rules'])
+    return zeros
+
+def drop_zero_terms(text: str) -> str:
+    """Drops top-level `var(zero) * (...)` terms so their lets are never evaluated."""
+    (terms, depth, start, i) = ([], 0, 0, 0)
+    while i < len(text):
+        depth += text[i] == '('
+        depth -= text[i] == ')'
+        if depth == 0 and text.startswith(' + ', i):
+            terms.append(text[start:i])
+            (start, i) = (i + 3, i + 2)
+        i += 1
+    terms.append(text[start:])
+    kept = [t for t in terms if not (m := re.match(r'\s*var\((\w+)\)\s*\*', t)) or m.group(1) not in ZERO_VARS]
+    return ' + '.join(kept) if kept else '0'
+
+ENEMY_BUILDING_SPACES_USED = False
+
+def enemy_building_spaces() -> str:
+    global ENEMY_BUILDING_SPACES_USED
+    ENEMY_BUILDING_SPACES_USED = True
+    return 'enemy_building_spaces'
+
+def enemy_building_space_store() -> list[Record]:
+    return [{'action': 'select', 'pick': {'kind': 'spaces', 'where': {'building_owner': 'enemy'}}, 'into': {'set': 'enemy_building_spaces'}}]
 
 def room(kind: str, item_id: int) -> list[str]:
     """How many of an item the bank covers, per resource, from the game's own costs."""
@@ -170,19 +211,65 @@ def nat(v: Any) -> str:
 PAIR = '(%s + %s) * (%s + %s + 1) / 2 + %s' % (nat('x'), nat('y'), nat('x'), nat('y'), nat('y'))
 HOME_BUILDING = {'kind': 'buildings', 'where': {'owner': 'own'}, 'rank': '0 - ((1 - (var(item.building_id) == 1)) * 1000000000000 + var(item.uid))', 'limit': 1}
 HOME_AT = {'x': 'var(hx)', 'y': 'var(hy)', 'zone_x': 'var(hzx)', 'zone_y': 'var(hzy)'}
+HOME_USED = False
+CENTER_SEQ = 0
+ENEMY_DISTANCE_USED = False
+MIL_UNITS_USED = False
+MIL_BUILDINGS_USED = False
+MIL_SPACES_USED = False
+
+def home_space() -> Record:
+    """Saves the space at home once per turn, so home-distance reads need not scan every space."""
+    return {'action': 'select', 'pick': {'kind': 'spaces', 'where': {'near': {'distance': 0, 'of': HOME_AT}}}, 'into': {'set': 'home_space', 'var': 'n_home_space'}}
+
+def home_zone_store() -> Record:
+    """Saves the zone at home once per turn, so home-zone reads need not scan every zone."""
+    return {'action': 'select', 'pick': {'kind': 'zones', 'where': {'near': {'distance': 0, 'unit': 'zone', 'of': HOME_AT}}}, 'into': {'set': 'home_zone', 'var': 'n_home_zone'}}
+
+def enemy_distance_setup() -> list[Record]:
+    """Saves the distance from home to the nearest known enemy building once per turn."""
+    nearest = {'min': {'kind': 'buildings', 'where': {'owner': 'enemy'}, 'of': 'distance(item, hm)', 'default': 0}}
+    home = {'kind': 'spaces', 'where': {'near': {'distance': 0, 'of': {'x': 'var(hx)', 'y': 'var(hy)'}}}}
+    return [sv('enemy_dist_home', 0), {'action': 'for_each', 'select': home, 'as': 'hm', 'do': [sv('enemy_dist_home', nearest)]}]
+
+def mil_presence_sets() -> list[Record]:
+    """Saves the spaces holding own military once per turn and the items standing in them, for presence-only reads."""
+    spaces = {'kind': 'spaces', 'where': {'near': {'distance': 0, 'of': {'kind': 'units', 'where': {'owner': 'own', 'unit_types': ['military']}}}}}
+    out = [{'action': 'select', 'pick': spaces, 'into': {'set': 'mil_presence_spaces', 'var': 'n_mil_presence_spaces'}}]
+    if MIL_UNITS_USED:
+        out.append({'action': 'select', 'pick': {'kind': 'units', 'where': {'owner': 'any', 'at': {'in_set': 'mil_presence_spaces'}}}, 'into': {'set': 'mil_presence_units', 'var': 'n_mil_presence_units'}})
+    if MIL_BUILDINGS_USED:
+        out.append({'action': 'select', 'pick': {'kind': 'buildings', 'where': {'owner': 'any', 'at': {'in_set': 'mil_presence_spaces'}}}, 'into': {'set': 'mil_presence_buildings', 'var': 'n_mil_presence_buildings'}})
+    return out
+
+def presence_membership(name: str, targets: Record, text: str) -> Any:
+    """A kind-matched inSet test for the own-military-in-space counter when every use only tests presence."""
+    global MIL_UNITS_USED, MIL_BUILDINGS_USED, MIL_SPACES_USED
+    if name != 'population_military_within_0_of_target' or text.count('var(%s)' % name) != text.count('min(1, var(%s))' % name):
+        return None
+    kind = targets.get('kind')
+    set_name = {'units': 'mil_presence_units', 'buildings': 'mil_presence_buildings', 'spaces': 'mil_presence_spaces'}.get(kind)
+    if set_name is None:
+        return None
+    MIL_UNITS_USED = MIL_UNITS_USED or kind == 'units'
+    MIL_BUILDINGS_USED = MIL_BUILDINGS_USED or kind == 'buildings'
+    MIL_SPACES_USED = MIL_SPACES_USED or kind == 'spaces'
+    return 'min(1, inSet(%s, target))' % set_name
 
 def _units_space(owner: str) -> Record:
     return dict(kind='spaces', where={'owner': owner, 'if': 'var(item.own_units) >= 1'}, rank=['var(item.own_units)', '0 - (' + PAIR + ')'], limit=1)
 
+def home_each(sel: Record, fields: list[tuple[str, str]]) -> list[Record]:
+    """One scan reads every wanted field of the same top space or building."""
+    sel = json.loads(json.dumps(sel).replace('var(item.', 'var(hs.'))
+    return [sv(name, 0) for (_, name) in fields] + [{'action': 'for_each', 'select': dict(sel, limit=1), 'as': 'hs', 'do': [sv(name, 'var(hs.%s)' % f) for (f, name) in fields]}]
+
 def home_vars() -> list[Record]:
     """Sets hx, hy, hzx, hzy: the first village center, else the first building, else the space holding most of our units."""
-    agg = lambda sel, f: {'max': dict(sel, of='var(item.%s)' % f, default=0)}
     out = [sv('has_b', cnt('buildings', {'owner': 'own'})), sv('n_owned', cnt('spaces', {'owner': 'own', 'if': 'var(item.own_units) >= 1'}))]
-    for f in ('x', 'y', 'zone_x', 'zone_y'):
-        out.append(sv('hb_' + f, agg(HOME_BUILDING, f)))
-    for f in ('x', 'y'):
-        out.append(sv('ho_' + f, agg(_units_space('own'), f)))
-        out.append(sv('ha_' + f, agg(_units_space('any'), f)))
+    out += home_each(HOME_BUILDING, [('x', 'hb_x'), ('y', 'hb_y'), ('zone_x', 'hb_zone_x'), ('zone_y', 'hb_zone_y')])
+    out += home_each(_units_space('own'), [('x', 'ho_x'), ('y', 'ho_y')])
+    out += home_each(_units_space('any'), [('x', 'ha_x'), ('y', 'ha_y')])
     for f in ('x', 'y'):
         out.append(sv('h' + f, '(var(has_b) > 0) * var(hb_%s) + (var(has_b) < 1) * ((var(n_owned) > 0) * var(ho_%s) + (var(n_owned) < 1) * var(ha_%s))' % (f, f, f)))
     out.append(sv('hzx', '(var(has_b) > 0) * var(hb_zone_x)'))
@@ -191,12 +278,14 @@ def home_vars() -> list[Record]:
 
 def migrate_hire(action: Record) -> list[Record]:
     """The legacy rule prices a mercenary at 1.3x and books exactly that; hire_adj carries the gap to the engine's real price."""
+    global HOME_USED
+    HOME_USED = True
     unit_id = int(action['unit_id'])
     price = '((config(unit, cost_food, %d) + config(unit, cost_wood, %d) + config(unit, cost_stone, %d) + 1.5 * config(unit, cost_gold, %d)) * 1.3)' % ((unit_id,) * 4)
     (limit, reserve) = (expr(action.get('max', 0)), expr(action.get('reserve', 0)))
-    count = 'researched(4) * min((%s > 0) * (%s) + (%s <= 0) * 1000000, gameVar(population_limit) - gameVar(population), max(0, round((gameVar(gold) + var(hire_adj) - (%s)) / %s + 0.000000001 - 0.5)))' % (limit, limit, limit, reserve, price)
+    count = 'researched(101) * min((%s > 0) * (%s) + (%s <= 0) * 1000000, gameVar(population_limit) - gameVar(population), max(0, round((gameVar(gold) + var(hire_adj) - (%s)) / %s + 0.000000001 - 0.5)))' % (limit, limit, limit, reserve, price)
     pick = lambda f: '(var(mm.id) == %d) * var(mm.%s) + (var(mm.id) != %d) * var(%s)' % (unit_id, f, unit_id, 'hire_cost' if f == 'cost_gold' else 'hire_listed')
-    return home_vars() + [sv('hire_n', count), {'action': 'select', 'pick': {'kind': 'zones', 'where': {'near': {'distance': 0, 'of': HOME_AT, 'unit': 'zone'}}}, 'issue': [{'hire': {'unit_id': unit_id, 'count': 'var(hire_n)'}}]}, sv('hire_cost', 0), sv('hire_listed', 0), {'action': 'for_each', 'source': 'mercenaries', 'as': 'mm', 'do': [sv('hire_cost', pick('cost_gold')), sv('hire_listed', '(var(mm.id) == %d) + (var(mm.id) != %d) * var(hire_listed)' % (unit_id, unit_id))]}, sv('hire_adj', 'var(hire_adj) + var(hire_n) * var(hire_listed) * (%s - var(hire_cost))' % price)]
+    return [sv('hire_n', count), {'action': 'select', 'pick': {'kind': 'zones', 'where': {'in_set': 'home_zone'}}, 'issue': [{'hire': {'unit_id': unit_id, 'count': 'var(hire_n)'}}]}, sv('hire_cost', 0), sv('hire_listed', 0), {'action': 'for_each', 'source': 'mercenaries', 'as': 'mm', 'do': [sv('hire_cost', pick('cost_gold')), sv('hire_listed', '(var(mm.id) == %d) + (var(mm.id) != %d) * var(hire_listed)' % (unit_id, unit_id))]}, sv('hire_adj', 'var(hire_adj) + var(hire_n) * var(hire_listed) * (%s - var(hire_cost))' % price)]
 CATEGORY = {'food': 0, 'wood': 1, 'stone': 2, 'gold': 3}
 KEYS = {'nx': '2 * max(var(target.x), 0 - var(target.x)) - (var(target.x) < 0)', 'ny': '2 * max(var(target.y), 0 - var(target.y)) - (var(target.y) < 0)', 'nzx': '2 * max(var(target.zone_x), 0 - var(target.zone_x)) - (var(target.zone_x) < 0)', 'nzy': '2 * max(var(target.zone_y), 0 - var(target.zone_y)) - (var(target.zone_y) < 0)', 'space_key': '(var(target.nx) + var(target.ny)) * (var(target.nx) + var(target.ny) + 1) / 2 + var(target.ny)', 'local_key': '(var(target.nzx) + var(target.nzy)) * (var(target.nzx) + var(target.nzy) + 1) / 2 + var(target.nzy)', 'zone_key': '(2 * var(target.space_key) + 2 * var(target.local_key)) * (2 * var(target.space_key) + 2 * var(target.local_key) + 1) / 2 + 2 * var(target.local_key)'}
 BUCKET_TASKS = {}
@@ -265,7 +354,7 @@ def gather_loop(category: int, scope: Record, in_kinds: Record, limit: Any=None)
     """One unit at a time (so each sees the others' orders), each taking the nearest node with room, preferring nodes not about to run dry."""
     where = {'unit_types': ['economic'], 'in': in_kinds}
     where.update(scope)
-    lets = {'workers': {'count': {'kind': 'units', 'where': {'in': {'order_kind': ['gather']}, 'if': 'var(item.order_target_uid) == var(target.uid)'}}}, 'own': 'var(target.uid) == var(gu.order_target_uid)'}
+    lets = {'workers': {'count': {'kind': 'units', 'where': {'unit_types': ['economic'], 'in': {'order_kind': ['gather']}, 'if': 'var(item.order_target_uid) == var(target.uid)'}}}, 'own': 'var(target.uid) == var(gu.order_target_uid)'}
     lets.update(KEYS)
     loop = {'action': 'for_each', 'select': {'kind': 'units', 'where': where}, 'as': 'gu', 'do': [{'action': 'select', 'actors': {'kind': 'units', 'where': {'if': 'var(actor.uid) == var(gu.uid)'}}, 'pick': {'kind': 'gatherables', 'let': lets, 'where': {'if': ['var(target.category) == %s' % category, 'var(target.gather_capacity) - var(target.workers) + var(target.own) > 0']}, 'capacity': 'var(target.gather_capacity) - var(target.workers) + var(target.own)'}, 'match': {'score': ['0 - 10000000000000 * (var(target.amount_left) <= (var(target.workers) - var(target.own)) * var(target.gather_speed)) - 1000000000 * distance(actor, target, 1) - var(target.zone_key)']}, 'issue': [{'gather': {}}]}]}
     loop['do'][0]['pick']['where']['category'] = RESOURCES[category]
@@ -288,7 +377,7 @@ def migrate_balanced_gather(action: Record) -> list[Record]:
     base = {'unit_types': ['economic'], 'in': eligible_in(action)}
     base.update(unit_where(action, 'gu'))
     room = ['var(target.gather_capacity) - var(target.workers) + var(target.own) > 0']
-    lets = {'workers': {'count': {'kind': 'units', 'where': {'in': {'order_kind': ['gather']}, 'if': 'var(item.order_target_uid) == var(target.uid)'}}}, 'own': 'var(target.uid) == var(gu.order_target_uid)'}
+    lets = {'workers': {'count': {'kind': 'units', 'where': {'unit_types': ['economic'], 'in': {'order_kind': ['gather']}, 'if': 'var(item.order_target_uid) == var(target.uid)'}}}, 'own': 'var(target.uid) == var(gu.order_target_uid)'}
     lets.update(KEYS)
 
     def split(name: str, cond: Any) -> Record:
@@ -317,6 +406,7 @@ def migrate_balanced_gather(action: Record) -> list[Record]:
 def explore_loop(action: Record, scope: Record) -> list[Record]:
     """Each idle unit in scope goes to the unexplored space (or stale fog) nearest its anchor, preferring one no other unit is heading to,
     then nearest to itself. A tie is settled by one random draw over the tied spaces, indexed in the engine's row-by-row order."""
+    global HOME_USED
     anchor = action.get('anchor', 'self')
     qual = lambda v: '((var(%s.vision) == 0) + (var(%s.vision) == 1) * (var(xfog) >= 0) * (var(%s.turns_since_seen) >= var(xfog))) > 0' % (v, v, v)
     (from_x, from_y) = {'self': ('var(xux)', 'var(xuy)'), 'home': ('var(hx)', 'var(hy)'), 'center': ('0', '0')}[anchor]
@@ -337,15 +427,15 @@ def explore_loop(action: Record, scope: Record) -> list[Record]:
             out.append(sv('xf', count_at('var(%s) + %d' % (result, step - 1))))
             out.append(sv(result, 'var(%s) + %d * ((var(xf) - %s) == 0)' % (result, step, base)))
         return out
-    anchor_ladder = ladder(lambda d: count_spaces({'if': qual('item'), 'near': around('var(fx)', 'var(fy)', 'var(xmd) + ' + d)}), 'xe', 'var(xbase)')
-    anchor_ladder += [sv('xf', count_spaces({'if': qual('item'), 'near': around('var(fx)', 'var(fy)', 'var(xmd) + 63')})), sv('xn', '(var(xf) - var(xbase)) == 0'), sv('xhi', '(var(xn) == 0) * (var(xmd) + var(xe)) + var(xn) * 40000'), sv('xlo', '(var(xn) == 0) * (var(xmd) + var(xe) - 1) + var(xn) * (var(xmd) - 1)')]
+    anchor_ladder = ladder(lambda d: count_spaces({'if': qual('item'), 'vision_at_most': 1, 'near': around('var(fx)', 'var(fy)', 'var(xmd) + ' + d)}), 'xe', 'var(xbase)')
+    anchor_ladder += [sv('xf', count_spaces({'if': qual('item'), 'vision_at_most': 1, 'near': around('var(fx)', 'var(fy)', 'var(xmd) + 63')})), sv('xn', '(var(xf) - var(xbase)) == 0'), sv('xhi', '(var(xn) == 0) * (var(xmd) + var(xe)) + var(xn) * 40000'), sv('xlo', '(var(xn) == 0) * (var(xmd) + var(xe) - 1) + var(xn) * (var(xmd) - 1)')]
     unit_ladder = ladder(lambda d: count_spaces({'in_set': 'xt2', 'near': around('var(xux)', 'var(xuy)', d)}), 'xd', '0')
     unit_ladder += [sv('xf', count_spaces({'in_set': 'xt2', 'near': around('var(xux)', 'var(xuy)', '63')})), sv('xn2', 'var(xf) == 0'), sv('xhi2', '(var(xn2) == 0) * var(xd) + var(xn2) * 40000'), sv('xlo2', '(var(xn2) == 0) * (var(xd) - 1) + var(xn2) * (0 - 1)')]
-    body = [sv('xuid', 'var(u.uid)'), sv('xux', 'var(u.x)'), sv('xuy', 'var(u.y)'), sv('fx', from_x), sv('fy', from_y), sv('xinner', count_spaces({'if': qual('item'), 'near': around('var(fx)', 'var(fy)', 'var(xmin) - 1')})), sv('xmd', 'var(xmin) * ((var(xcover) - var(xinner)) > 0)'), sv('xbase', count_spaces({'if': qual('item'), 'near': around('var(fx)', 'var(fy)', 'var(xmd) - 1')}))] + anchor_ladder + [pick_into('xr1', {'kind': 'spaces', 'where': {'if': qual('target'), 'near': around('var(fx)', 'var(fy)', 'var(xhi)')}}), pick_into('xr0', {'kind': 'spaces', 'where': {'if': qual('target'), 'near': around('var(fx)', 'var(fy)', 'var(xlo)')}}), pick_into('xt1', {'kind': 'spaces', 'where': {'in_set': 'xr1', 'not_in_set': 'xr0'}}), pick_into('xt1u', {'kind': 'spaces', 'let': {'claimed': claimed}, 'where': {'in_set': 'xt1', 'if': 'var(target.claimed) == 0'}}), sv('xfree', {'count': {'kind': 'spaces', 'where': {'in_set': 'xt1u'}}}), pick_into('xt2', {'kind': 'spaces', 'let': {'claimed': claimed}, 'where': {'in_set': 'xt1', 'if': '(var(target.claimed) == 0) + (var(xfree) == 0)'}})] + unit_ladder + [pick_into('xta', {'kind': 'spaces', 'where': {'in_set': 'xt2', 'near': around('var(xux)', 'var(xuy)', 'var(xhi2)')}}), pick_into('xtb', {'kind': 'spaces', 'where': {'in_set': 'xt2', 'near': around('var(xux)', 'var(xuy)', 'var(xlo2)')}}), pick_into('xt3', {'kind': 'spaces', 'where': {'in_set': 'xta', 'not_in_set': 'xtb'}}), pick_into('xs', {'kind': 'spaces', 'where': {'in_set': 'xt3'}, 'limit': 1}), sv('xsx', {'max': {'kind': 'spaces', 'where': {'in_set': 'xs'}, 'of': 'var(item.x)', 'default': 0}}), sv('xsy', {'max': {'kind': 'spaces', 'where': {'in_set': 'xs'}, 'of': 'var(item.y)', 'default': 0}}), sv('xj', count_spaces({'in_set': 'xt3', 'if': '(var(item.x) < var(xsx)) + (var(item.x) == var(xsx)) * (var(item.y) < var(xsy))'})), pick_into('xf', {'kind': 'spaces', 'let': {'rowrank': count_spaces({'in_set': 'xt3', 'if': '(var(item.y) < var(target.y)) + (var(item.y) == var(target.y)) * (var(item.x) < var(target.x))'})}, 'where': {'in_set': 'xt3', 'if': 'var(target.rowrank) == var(xj)'}}), {'action': 'select', 'actors': {'kind': 'units', 'where': {'if': 'var(actor.uid) == var(xuid)'}}, 'pick': {'kind': 'spaces', 'where': {'in_set': 'xf'}}, 'issue': [{'move': {'to': 'zone'}}]}]
+    body = [sv('xuid', 'var(u.uid)'), sv('xux', 'var(u.x)'), sv('xuy', 'var(u.y)'), sv('fx', from_x), sv('fy', from_y), sv('xinner', count_spaces({'if': qual('item'), 'vision_at_most': 1, 'near': around('var(fx)', 'var(fy)', 'var(xmin) - 1')})), sv('xmd', 'var(xmin) * ((var(xcover) - var(xinner)) > 0)'), sv('xbase', count_spaces({'if': qual('item'), 'vision_at_most': 1, 'near': around('var(fx)', 'var(fy)', 'var(xmd) - 1')}))] + anchor_ladder + [pick_into('xr1', {'kind': 'spaces', 'where': {'if': qual('target'), 'vision_at_most': 1, 'near': around('var(fx)', 'var(fy)', 'var(xhi)')}}), pick_into('xr0', {'kind': 'spaces', 'where': {'if': qual('target'), 'vision_at_most': 1, 'near': around('var(fx)', 'var(fy)', 'var(xlo)')}}), pick_into('xt1', {'kind': 'spaces', 'where': {'in_set': 'xr1', 'not_in_set': 'xr0'}}), pick_into('xt1u', {'kind': 'spaces', 'let': {'claimed': claimed}, 'where': {'in_set': 'xt1', 'if': 'var(target.claimed) == 0'}}), sv('xfree', {'count': {'kind': 'spaces', 'where': {'in_set': 'xt1u'}}}), pick_into('xt2', {'kind': 'spaces', 'let': {'claimed': claimed}, 'where': {'in_set': 'xt1', 'if': '(var(target.claimed) == 0) + (var(xfree) == 0)'}})] + unit_ladder + [pick_into('xta', {'kind': 'spaces', 'where': {'in_set': 'xt2', 'near': around('var(xux)', 'var(xuy)', 'var(xhi2)')}}), pick_into('xtb', {'kind': 'spaces', 'where': {'in_set': 'xt2', 'near': around('var(xux)', 'var(xuy)', 'var(xlo2)')}}), pick_into('xt3', {'kind': 'spaces', 'where': {'in_set': 'xta', 'not_in_set': 'xtb'}}), pick_into('xs', {'kind': 'spaces', 'where': {'in_set': 'xt3'}, 'limit': 1}), sv('xsx', {'max': {'kind': 'spaces', 'where': {'in_set': 'xs'}, 'of': 'var(item.x)', 'default': 0}}), sv('xsy', {'max': {'kind': 'spaces', 'where': {'in_set': 'xs'}, 'of': 'var(item.y)', 'default': 0}}), sv('xj', count_spaces({'in_set': 'xt3', 'if': '(var(item.x) < var(xsx)) + (var(item.x) == var(xsx)) * (var(item.y) < var(xsy))'})), pick_into('xf', {'kind': 'spaces', 'where': {'in_set': 'xt3'}, 'rank': ['0 - var(target.y)', '0 - var(target.x)'], 'skip': 'var(xj)', 'limit': 1}), {'action': 'select', 'actors': {'kind': 'units', 'where': {'if': 'var(actor.uid) == var(xuid)'}}, 'pick': {'kind': 'spaces', 'where': {'in_set': 'xf'}}, 'issue': [{'move': {'to': 'zone'}}]}]
     pre = [sv('xfog', expr(action.get('include_fog', -1))), sv('xmin', 'max(0, round(%s))' % expr(action.get('min_distance', 0)))]
     if anchor == 'home':
-        pre = home_vars() + pre
-    pre.append(sv('xcover', count_spaces({'if': qual('item')})))
+        HOME_USED = True
+    pre.append(sv('xcover', count_spaces({'if': qual('item'), 'vision_at_most': 1})))
     for_each_u = {'action': 'for_each', 'select': {'kind': 'units', 'where': where}, 'as': 'u', 'do': body}
     if 'max' in action:
         for_each_u['max'] = action['max']
@@ -388,12 +478,13 @@ def bucket_supported(name: str) -> bool:
 def work_loop(action: Record, source: Record, order_kind: int, verb: str, same: Callable[[str], str], outer_if: str, extra: str='1') -> Record:
     """Each source item in turn takes the nearest eligible economic unit; max counts successful orders."""
     sel = actors_for(action, '(1 - var(actor.is_military)) * (var(w_n) < %s) * (%s)' % (expr(action['max']) if action.get('max') else '1000000', extra))
+    sel['where'].setdefault('unit_types', ['economic'])
     sel['where']['in'] = eligible_in(action)
     sel.setdefault('let', {})['d'] = {'min': {'kind': source['kind'], 'where': {'if': same('item')}, 'of': 'var(item.zone_distance_to_actor)', 'default': 0}}
     (sel['rank'], sel['limit']) = (['0 - var(actor.d)', '0 - var(actor.uid)'], 1)
     wh = dict(source.get('where', {}))
     wh['if'] = outer_if
-    count = cnt('units', {'owner': 'own', 'if': 'var(item.order_kind) == %d' % order_kind})
+    count = cnt('units', {'owner': 'own', 'unit_types': ['economic'], 'if': 'var(item.order_kind) == %d' % order_kind})
     inner = [sv('w_before', count), {'action': 'select', 'actors': sel, 'pick': {'kind': source['kind'], 'where': {'if': same('target')}, 'limit': 1}, 'issue': [{verb: {}}]}, sv('w_after', count), sv('w_n', 'var(w_n) + (var(w_after) > var(w_before))')]
     if action.get('max'):
         inner = [{'action': 'if', 'when': {'value_at_most': {'value': 'var(w_n)', 'amount': '(%s) - 1' % expr(action['max'])}}, 'then': inner}]
@@ -401,14 +492,14 @@ def work_loop(action: Record, source: Record, order_kind: int, verb: str, same: 
 
 def migrate_repair(action: Record) -> list[Record]:
     ids = {'building_ids': action['building_ids']} if 'building_ids' in action else {}
-    taken = cnt('units', {'owner': 'own', 'if': '(var(item.order_kind) == 3) * (var(item.order_target_uid) == var(w.uid))'})
+    taken = cnt('units', {'owner': 'own', 'unit_types': ['economic'], 'if': '(var(item.order_kind) == 3) * (var(item.order_target_uid) == var(w.uid))'})
     same = lambda role: 'var(%s.uid) == var(w.uid)' % role
     outer = '(var(w.is_under_construction) == 0) * (var(w.health) < var(w.max_health)) * (%s == 0)' % 'var(w.taken)'
     return work_loop(action, {'kind': 'buildings', 'where': dict(owner='own', **ids), 'rank': '0 - var(w.uid)', 'let': {'taken': taken}}, 3, 'repair', same, outer)
 
 def migrate_renew(action: Record) -> list[Record]:
     ids = {'building_ids': action['building_ids']} if 'building_ids' in action else {}
-    taken = cnt('units', {'owner': 'own', 'if': '(var(item.order_kind) == 11) * (var(item.order_target_uid) == var(w.uid))'})
+    taken = cnt('units', {'owner': 'own', 'unit_types': ['economic'], 'if': '(var(item.order_kind) == 11) * (var(item.order_target_uid) == var(w.uid))'})
     afford = 'var(w.is_renewing) + (1 - var(w.is_renewing)) * ' + ' * '.join(('(%s >= var(w.renew_cost_%s))' % (r, r) for r in RESOURCES))
     outer = 'var(w.is_gatherable) * (var(w.is_under_construction) == 0) * (var(w.resources_left) <= 0) * (var(w.taken) == 0)'
     same = lambda role: 'var(%s.uid) == var(w.uid)' % role
@@ -440,7 +531,7 @@ def counter_spec(name: str, anchor_items: dict[str, str]) -> Record:
     if within == 0:
         near = '(var(item.x) == var(%s.x)) * (var(item.y) == var(%s.y))' % ((anchor_items[anchor],) * 2)
     if base == 'enemy_units_unidentified':
-        return {'sum': {'kind': 'spaces', 'where': {'if': near}, 'of': 'var(item.unidentified_count)'}}
+        return {'sum': {'kind': 'spaces', 'where': {'in_set': 'poor_vision', 'if': near}, 'of': 'var(item.unit_count)'}}
     (where, toks, i) = ({}, (tokens or '').split('_') if tokens else [], 0)
     (ids, types) = ([], [])
     while i < len(toks):
@@ -506,6 +597,7 @@ def option_origin(opt: Record, fallback: str) -> tuple[str, Record | None]:
 
 def option_candidates(opt: Record, origin: str, tg: str) -> tuple[Record, list[Record]]:
     """(loop selector, setup actions) for the candidates of one select_space option."""
+    global HOME_USED
     (t, setup) = (opt['targets'], [])
     where = {}
     if t == 'own_buildings':
@@ -515,9 +607,10 @@ def option_candidates(opt: Record, origin: str, tg: str) -> tuple[Record, list[R
     elif t == 'known_resources':
         where = {'category': opt['category'], 'if': 'var(%s.amount_left) > 0' % tg}
     elif t == 'unidentified_units':
-        where = {'if': 'var(%s.unidentified_count) > 0' % tg}
+        where = {'in_set': 'poor_vision', 'if': 'var(%s.unit_count) > 0' % tg}
     elif t == 'home':
-        where = {'near': {'distance': 0, 'of': HOME_AT, 'unit': 'zone'}}
+        HOME_USED = True
+        where = {'in_set': 'home_zone'}
     elif t == 'coordinate':
         where = {'near': {'distance': 0, 'of': opt['coordinate']}}
     elif t == 'closest_spaces':
@@ -552,13 +645,16 @@ def item_ref(coord: Any) -> str | None:
 
 def migrate_select_space(a: Record) -> list[Record]:
     """The best-scoring candidate over every option, stored as x, y and score variables when one clears its minimum."""
+    global HOME_USED
     options = a.get('options') or [a]
     name = a.get('var')
     (vx, vy, vs) = (a.get('var_x') or (name and name + '_x'), a.get('var_y') or (name and name + '_y'), a.get('var_score'))
     persist = bool(a.get('persist'))
     frm = a.get('from', 'home')
     O = item_ref(frm) or 'orig'
-    out = [sv('ss_found', 0)] + (home_vars() if frm == 'home' or any((o['targets'] == 'home' for o in options)) else [])
+    if frm == 'home' or any((o['targets'] == 'home' for o in options)):
+        HOME_USED = True
+    out = [sv('ss_found', 0)]
     body = [sv('ss_found', 0), sv('ss_sc', 0), sv('ss_x', 0), sv('ss_y', 0)] + [sv('ss_b' + k, 0) for k in ('k1', 'k2', 'id')]
     for opt in options:
         alias = O if opt['targets'] == 'home' and frm == 'home' else item_ref(opt.get('coordinate')) if opt['targets'] == 'coordinate' else None
@@ -584,7 +680,7 @@ def migrate_select_space(a: Record) -> list[Record]:
     if frm == 'army':
         origin = {'kind': 'units', 'where': {'bucket': 'army'}, 'rank': ['0 - var(orig.sd)', '0 - var(orig.uid)'], 'limit': 1, 'let': {'sd': {'sum': {'kind': 'units', 'where': {'bucket': 'army'}, 'of': 'distance(item, orig)'}}}}
     elif frm == 'home':
-        origin = {'kind': 'zones', 'where': {'near': {'distance': 0, 'of': HOME_AT, 'unit': 'zone'}}}
+        origin = {'kind': 'zones', 'where': {'in_set': 'home_zone'}}
     elif isinstance(frm, dict):
         origin = {'kind': 'spaces', 'where': {'near': {'distance': 0, 'of': frm}}}
     else:
@@ -599,7 +695,7 @@ def target_lets(text: str, role: str='target') -> tuple[str, Record]:
         lets[key] = spec
         return 'var(%s.%s)' % (role, key)
     near0 = '(var(item.x) == var(%s.x)) * (var(item.y) == var(%s.y))' % (role, role)
-    builtins = {'target_distance': None, 'target_own_buildings': lambda : '(%s + %s)' % (put('ob', cnt('buildings', {'owner': 'own', 'if': near0})), put('pf', cnt('foundations', {'if': ['var(item.is_planned)', near0]}))), 'target_enemy_distance': lambda : 'max(0, %s)' % put('ed', {'min': {'kind': 'buildings', 'where': {'owner': 'enemy'}, 'of': 'distance(item, %s)' % role, 'default': '0 - 1'}}), 'target_vision': lambda : 'var(%s.space_vision)' % role, 'target_build_speed_modifier': lambda : put('bsm', {'max': {'kind': 'spaces', 'where': {'if': near0}, 'of': 'var(item.build_speed_modifier)', 'default': 1}}), 'target_region_progress': lambda : '((1 - %s) * (var(%s.region) >= 0) * (var(%s.region_owned) + 1) / max(1, var(%s.region_known)))' % (put('os', cnt('spaces', {'owner': 'own', 'if': near0})), role, role, role)}
+    builtins = {'target_distance': None, 'target_own_buildings': lambda : '(%s + %s)' % (put('ob', cnt('buildings', {'owner': 'own', 'if': near0})), put('pf', cnt('foundations', {'if': ['var(item.is_planned)', near0]}))), 'target_enemy_distance': lambda : 'max(0, %s)' % put('ed', {'min': {'kind': 'spaces', 'where': {'in_set': enemy_building_spaces()}, 'of': 'distance(item, %s)' % role, 'default': '0 - 1'}}), 'target_vision': lambda : 'var(%s.space.vision)' % role, 'target_build_speed_modifier': lambda : put('bsm', {'max': {'kind': 'spaces', 'where': {'if': near0}, 'of': 'var(item.build_speed_modifier)', 'default': 1}}), 'target_region_progress': lambda : '((1 - %s) * (var(%s.region.index) >= 0) * (var(%s.region.owned_spaces) + 1) / max(1, var(%s.region.known_spaces)))' % (put('os', cnt('spaces', {'owner': 'own', 'if': near0})), role, role, role)}
 
     def swap(m: Any) -> Record:
         name = m.group(1)
@@ -615,6 +711,7 @@ OUTPOST = 21
 BUILD_USED = []
 
 def migrate_build(a: Record) -> list[Record]:
+    global HOME_USED
     """One site (an unbuilt foundation, else the best-scoring buildable zone) for the first max builders able to build it."""
     BUILD_USED.append(1)
     (bid, builders) = (int(a['building_id']), 'max(1, %s)' % expr(a.get('max', 0)))
@@ -631,14 +728,14 @@ def migrate_build(a: Record) -> list[Record]:
     out.append(sv('b_reuse', cnt('foundations', {'building_ids': [bid], 'if': 'var(item.builders) == 0'}) if reuse else 0))
     first = {'kind': 'units', 'where': {'in_set': 'bu'}, 'rank': '0 - var(fu.uid)', 'limit': 1}
     zone_rank = ['0 - var(target.x)', '0 - var(target.y)', '0 - var(target.zone_x)', '0 - var(target.zone_y)']
-    (text, lets) = target_lets(expr(a['score']))
+    (text, lets) = target_lets(drop_zero_terms(expr(a['score'])))
     origin = 'fu'
     if anchor:
         text = text.replace('var(target_distance)', 'distance(fa, target)')
     else:
         text = text.replace('var(target_distance)', 'distance(fu, target)')
     lets.update({'nf': cnt('foundations', {'if': 'distance(item, target, 1) == 0'}), 'sf': cnt('foundations', {'if': 'distance(item, target) == 0'})})
-    conds = ['var(target.nf) == 0'] + (['(var(target.space_owner) < 0) * (var(target.sf) == 0)'] if bid == OUTPOST else [])
+    conds = ['var(target.nf) == 0'] + (['(var(target.space.owner) < 0) * (var(target.sf) == 0)'] if bid == OUTPOST else [])
     conds += ['(%s) >= %s' % (text, expr(a['min_score']))] if 'min_score' in a else []
     if 'direction_from' in a:
         sign = {'away': -1, 'toward': 1}[a['direction']]
@@ -655,8 +752,8 @@ def migrate_build(a: Record) -> list[Record]:
         ]}
     ]
     if anchor == 'home':
-        out = home_vars() + out
-        inner = [{'action': 'for_each', 'as': 'fa', 'select': {'kind': 'zones', 'where': {'near': {'distance': 0, 'unit': 'zone', 'of': HOME_AT}}}, 'do': inner}]
+        HOME_USED = True
+        inner = [{'action': 'for_each', 'as': 'fa', 'select': {'kind': 'zones', 'where': {'in_set': 'home_zone'}}, 'do': inner}]
     elif anchor:
         inner = [{'action': 'for_each', 'as': 'fa', 'select': {'kind': 'spaces', 'where': {'near': {'distance': 0, 'of': anchor}}}, 'do': inner}]
     return out + [{'action': 'for_each', 'as': 'fu', 'select': first, 'do': inner}]
@@ -678,23 +775,35 @@ def unit_set(action: Record, name: str, order_by_uid: bool=True) -> Record:
         pick['limit'] = expr(action['max'])
     return {'action': 'select', 'pick': pick, 'into': {'set': name, 'var': 'n_' + name}}
 
-def center_vars(set_name: str, out: str) -> Record:
+def center_vars(set_name: str, out: str, uid_name: str) -> Record:
     """The unit of a set nearest all others (by summed space distance, lowest id on ties) as variables out_x, out_y, out_zx, out_zy."""
     sel = {'kind': 'units', 'where': {'in_set': set_name}, 'rank': ['0 - var(gc.sd)', '0 - var(gc.uid)'], 'limit': 1, 'let': {'sd': {'sum': {'kind': 'units', 'where': {'in_set': set_name}, 'of': 'distance(item, gc)'}}}}
-    return {'action': 'for_each', 'select': sel, 'as': 'gc', 'do': [sv(out + '_x', 'var(gc.x)'), sv(out + '_y', 'var(gc.y)'), sv(out + '_zx', 'var(gc.zone_x)'), sv(out + '_zy', 'var(gc.zone_y)')]}
+    return {'action': 'for_each', 'select': sel, 'as': 'gc', 'do': [sv(uid_name, 'var(gc.uid)'), sv(out + '_x', 'var(gc.x)'), sv(out + '_y', 'var(gc.y)'), sv(out + '_zx', 'var(gc.zone_x)'), sv(out + '_zy', 'var(gc.zone_y)')]}
 
-def move_issue(set_name: str, guard: str, target: str, zone: bool) -> Record:
+def target_near(target: str, zone: bool) -> Record:
+    """The zero-distance filter matching the space or exact zone holding the target variables."""
+    of = {'x': 'var(%s_x)' % target, 'y': 'var(%s_y)' % target}
+    if zone:
+        of.update({'zone_x': 'var(%s_zx)' % target, 'zone_y': 'var(%s_zy)' % target})
+    return {'distance': 0, 'of': of, **({'unit': 'zone'} if zone else {})}
+
+def target_pick(target: str, zone: bool) -> Record:
+    """The pick of a target saved once into a set, instead of rescanning every space or zone per unit."""
+    return {'kind': 'zones' if zone else 'spaces', 'where': {'in_set': target + ('_zone' if zone else '_space')}}
+
+def target_store(target: str, zone: bool) -> Record:
+    name = target + ('_zone' if zone else '_space')
+    return {'action': 'select', 'pick': {'kind': 'zones' if zone else 'spaces', 'where': {'near': target_near(target, zone)}}, 'into': {'set': name, 'var': 'n_' + name}}
+
+def move_issue(set_name: str, guard: str, target: str, zone: bool, hoisted: bool = False) -> Record:
     """Moves the set's units passing guard to the target variables: a bare space (zone centre) or an exact zone."""
     actors = {'kind': 'units', 'where': {'in_set': set_name, 'if': guard}}
-    if zone:
-        pick = {'kind': 'zones', 'where': {'near': {'distance': 0, 'unit': 'zone', 'of': {'x': 'var(%s_x)' % target, 'y': 'var(%s_y)' % target, 'zone_x': 'var(%s_zx)' % target, 'zone_y': 'var(%s_zy)' % target}}}}
-    else:
-        pick = {'kind': 'spaces', 'where': {'near': {'distance': 0, 'of': {'x': 'var(%s_x)' % target, 'y': 'var(%s_y)' % target}}}}
+    pick = target_pick(target, zone) if hoisted else {'kind': 'zones' if zone else 'spaces', 'where': {'near': target_near(target, zone)}}
     return {'action': 'select', 'actors': actors, 'pick': pick, 'issue': [{'move': {'to': 'zone'}}]}
 
-def together_each(guard: str, near_selects: Any) -> Record:
+def together_each(guard: str, near_selects: Any, uid_name: str) -> Record:
     """Walks the group in unit id order: units over 2 spaces from the group centre regroup there, the others run near_selects(guard)."""
-    gc = {'kind': 'units', 'where': {'in_set': 'mv_a'}, 'rank': ['0 - var(gc.sd)', '0 - var(gc.uid)'], 'limit': 1, 'let': {'sd': {'sum': {'kind': 'units', 'where': {'in_set': 'mv_a'}, 'of': 'distance(item, gc)'}}}}
+    gc = {'kind': 'units', 'where': {'in_set': 'mv_a', 'if': '(var(gc.uid) == var(%s))' % uid_name}, 'limit': 1}
     each = {'kind': 'units', 'where': {'in_set': 'mv_a'}, 'rank': '0 - var(au.uid)'}
     me = '(var(actor.uid) == var(au.uid))'
     body = [move_issue_actor('%s * (distance(au, gc) > 2) * (%s)' % (me, guard), 'mv_ctr', True)] + near_selects(me + ' * (distance(au, gc) <= 2)')
@@ -702,16 +811,17 @@ def together_each(guard: str, near_selects: Any) -> Record:
 
 def move_issue_actor(guard: str, target: str, zone: bool) -> Record:
     actors = {'kind': 'units', 'where': {'in_set': 'mv_a', 'if': guard}}
-    pick = {'kind': 'zones', 'where': {'near': {'distance': 0, 'unit': 'zone', 'of': {'x': 'var(%s_x)' % target, 'y': 'var(%s_y)' % target, 'zone_x': 'var(%s_zx)' % target, 'zone_y': 'var(%s_zy)' % target}}}}
-    return {'action': 'select', 'actors': actors, 'pick': pick, 'issue': [{'move': {'to': 'zone'}}]}
+    return {'action': 'select', 'actors': actors, 'pick': target_pick(target, zone), 'issue': [{'move': {'to': 'zone'}}]}
 
 def migrate_retreat(a: Record) -> list[Record]:
+    global HOME_USED
+    HOME_USED = True
     lets = dict(KEYS)
-    lets['home_distance'] = {'min': {'kind': 'spaces', 'where': {'near': {'distance': 0, 'of': HOME_AT}}, 'of': 'distance(item, target)', 'default': 0}}
+    lets['home_distance'] = {'min': {'kind': 'spaces', 'where': {'in_set': 'home_space'}, 'of': 'distance(item, target)', 'default': 0}}
     pick = {'kind': 'spaces', 'where': {'in_set': 'legacy_bases'}, 'let': lets, 'rank': ['0 - distance(au, target)', '0 - var(target.home_distance)', '0 - var(target.space_key)'], 'limit': 1}
     actors = {'kind': 'units', 'where': {'if': '(var(actor.uid) == var(au.uid)) * (var(mv_at_base) == 0)'}}
     choose = {'action': 'select', 'actors': actors, 'pick': pick, 'issue': [{'move': {'to': 'zone'}}]}
-    fallback = {'action': 'select', 'actors': {'kind': 'units', 'where': {'if': '(var(actor.uid) == var(au.uid)) * (var(mv_base_count) == 0)'}}, 'pick': {'kind': 'zones', 'where': {'near': {'distance': 0, 'unit': 'zone', 'of': HOME_AT}}}, 'issue': [{'move': {}}]}
+    fallback = {'action': 'select', 'actors': {'kind': 'units', 'where': {'if': '(var(actor.uid) == var(au.uid)) * (var(mv_base_count) == 0)'}}, 'pick': {'kind': 'zones', 'where': {'in_set': 'home_zone'}}, 'issue': [{'move': {}}]}
     body = [sv('mv_at_base', cnt('spaces', {'in_set': 'legacy_bases', 'if': 'distance(item, au) == 0'})), choose, fallback]
     if a.get('together'):
         center = {'kind': 'units', 'where': {'in_set': 'mv_a'}, 'rank': ['0 - var(ac.total_distance)', '0 - var(ac.uid)'], 'limit': 1,
@@ -721,8 +831,8 @@ def migrate_retreat(a: Record) -> list[Record]:
         branch = {'action': 'if', 'when': {'value_at_least': {'value': 'distance(au, ac)', 'amount': 3}}, 'then': [regroup], 'else': [choose, fallback]}
         members = {'action': 'for_each', 'as': 'au', 'select': {'kind': 'units', 'where': {'in_set': 'mv_a'}}, 'do': [branch]}
         body = [sv('mv_at_base', cnt('spaces', {'in_set': 'legacy_bases', 'if': 'distance(item, ac) == 0'})), {'action': 'if', 'when': {'value_equals': {'value': 'var(mv_at_base)', 'amount': 0}}, 'then': [members]}]
-        return home_vars() + [unit_set(a, 'mv_a'), sv('mv_base_count', cnt('spaces', {'in_set': 'legacy_bases'})), {'action': 'for_each', 'as': 'ac', 'select': center, 'do': body}]
-    return home_vars() + [unit_set(a, 'mv_a'), sv('mv_base_count', cnt('spaces', {'in_set': 'legacy_bases'})), {'action': 'for_each', 'as': 'au', 'select': {'kind': 'units', 'where': {'in_set': 'mv_a'}}, 'do': body}]
+        return [unit_set(a, 'mv_a'), sv('mv_base_count', cnt('spaces', {'in_set': 'legacy_bases'})), {'action': 'for_each', 'as': 'ac', 'select': center, 'do': body}]
+    return [unit_set(a, 'mv_a'), sv('mv_base_count', cnt('spaces', {'in_set': 'legacy_bases'})), {'action': 'for_each', 'as': 'au', 'select': {'kind': 'units', 'where': {'in_set': 'mv_a'}}, 'do': body}]
 
 def closest_target(a: Record, tag: str, origin: str='orig', actor: str='gc') -> tuple[list[Record], list[Record]]:
     """The best candidate (closest spaces to the from-anchor, or known resources) by score, as variables tag_x, tag_y, tag_zx, tag_zy and mv_found."""
@@ -764,6 +874,7 @@ def closest_target(a: Record, tag: str, origin: str='orig', actor: str='gc') -> 
     return (setup, body)
 
 def migrate_move(a: Record) -> list[Record]:
+    global HOME_USED, CENTER_SEQ
     (tg, together) = (a['targets'], a.get('together'))
     if a.get('spread'):
         return migrate_spread_move(a)
@@ -775,12 +886,16 @@ def migrate_move(a: Record) -> list[Record]:
         tg = 'home'
     single = str(a.get('max')) == '1' and (not together)
     out = [unit_set(a, 'mv_a')]
+    uid_var = None
     if together:
-        out.append(center_vars('mv_a', 'mv_ctr'))
+        CENTER_SEQ += 1
+        uid_var = 'mv_ctr_uid_%d' % CENTER_SEQ
+        out.append(center_vars('mv_a', 'mv_ctr', uid_var))
     if tg == 'coordinate':
         out += [sv('mv_t_x', a['coordinate']['x']), sv('mv_t_y', a['coordinate']['y']), sv('mv_t_zx', 0), sv('mv_t_zy', 0), sv('mv_t_found', 1)]
     elif tg == 'home':
-        out += home_vars() + [sv('mv_t_x', 'var(hx)'), sv('mv_t_y', 'var(hy)'), sv('mv_t_zx', 'var(hzx)'), sv('mv_t_zy', 'var(hzy)'), sv('mv_t_found', 1)]
+        HOME_USED = True
+        out += [sv('mv_t_x', 'var(hx)'), sv('mv_t_y', 'var(hy)'), sv('mv_t_zx', 'var(hzx)'), sv('mv_t_zy', 'var(hzy)'), sv('mv_t_found', 1)]
     elif tg in ('closest_spaces', 'known_resources'):
         if not together and (not single) and ('target_distance' in str(a.get('score', ''))):
             raise NotImplementedError('per-unit move score')
@@ -792,8 +907,7 @@ def migrate_move(a: Record) -> list[Record]:
             return out + [{'action': 'for_each', 'as': 'au', 'select': each, 'do': setup + body + issue}]
         if 'from' not in a:
             setup, body = closest_target(a, 'mv_t', 'orig', 'orig')
-            center = {'kind': 'units', 'where': {'in_set': 'mv_a'}, 'rank': ['0 - var(orig.sd)', '0 - var(orig.uid)'], 'limit': 1,
-                      'let': {'sd': {'sum': {'kind': 'units', 'where': {'in_set': 'mv_a'}, 'of': 'distance(item, orig)'}}}}
+            center = {'kind': 'units', 'where': {'in_set': 'mv_a', 'if': '(var(orig.uid) == var(%s))' % uid_var}, 'limit': 1}
             scan = [{'action': 'for_each', 'as': 'orig', 'select': center, 'do': setup + body}]
             out += [sv('mv_t_found', 0)] + scan + [sv('mv_t_found', 'var(mv_found)')]
         else:
@@ -801,32 +915,44 @@ def migrate_move(a: Record) -> list[Record]:
             frm = a['from']
             orig_where = {'bucket': 'army'} if frm == 'army' else {'bucket': frm}
             origin = {'kind': 'units', 'where': orig_where, 'rank': ['0 - var(orig.sd)', '0 - var(orig.uid)'], 'limit': 1, 'let': {'sd': {'sum': {'kind': 'units', 'where': orig_where, 'of': 'distance(item, orig)'}}}} if frm == 'army' else {'kind': 'spaces', 'where': {'near': {'distance': 0, 'of': frm}}}
-            gc = {'action': 'for_each', 'as': 'gc', 'select': {'kind': 'units', 'where': {'in_set': 'mv_a'}, 'rank': ['0 - var(gc.sd)', '0 - var(gc.uid)'], 'limit': 1, 'let': {'sd': {'sum': {'kind': 'units', 'where': {'in_set': 'mv_a'}, 'of': 'distance(item, gc)'}}}}, 'do': body}
+            gc_where = {'in_set': 'mv_a', 'if': '(var(gc.uid) == var(%s))' % uid_var} if uid_var else {'in_set': 'mv_a'}
+            gc_sel = {'kind': 'units', 'where': gc_where, 'limit': 1}
+            if not uid_var:
+                gc_sel.update({'rank': ['0 - var(gc.sd)', '0 - var(gc.uid)'], 'let': {'sd': {'sum': {'kind': 'units', 'where': {'in_set': 'mv_a'}, 'of': 'distance(item, gc)'}}}})
+            gc = {'action': 'for_each', 'as': 'gc', 'select': gc_sel, 'do': body}
             scan = setup + [gc] if tg == 'known_resources' else [{'action': 'for_each', 'as': 'orig', 'select': origin, 'do': setup + [gc]}]
             out += [sv('mv_t_found', 0)] + scan + [sv('mv_t_found', 'var(mv_found)')]
     else:
         raise NotImplementedError('move targets ' + tg)
     guard = '(var(mv_t_found) > 0)'
     flat = '(var(mv_t_zx) == 0) * (var(mv_t_zy) == 0)'
+    if tg == 'home':
+        stores = [target_store('mv_t', True)]
+    elif tg == 'coordinate':
+        stores = [target_store('mv_t', False)]
+    else:
+        stores = [target_store('mv_t', False), target_store('mv_t', True)]
+    if together:
+        stores.append(target_store('mv_ctr', True))
 
     def issue(set_name: str, g: Any) -> Record:
         if tg == 'home':
-            return [move_issue(set_name, g, 'mv_t', True)]
+            return [move_issue(set_name, g, 'mv_t', True, True)]
         if tg == 'coordinate':
-            return [move_issue(set_name, g, 'mv_t', False)]
-        return [move_issue(set_name, '(%s) * %s' % (g, flat), 'mv_t', False), move_issue(set_name, '(%s) * (1 - %s)' % (g, flat), 'mv_t', True)]
+            return [move_issue(set_name, g, 'mv_t', False, True)]
+        return [move_issue(set_name, '(%s) * %s' % (g, flat), 'mv_t', False, True), move_issue(set_name, '(%s) * (1 - %s)' % (g, flat), 'mv_t', True, True)]
     if not together:
-        return out + issue('mv_a', guard)
-    return out + [together_each(guard, lambda g: issue_actors('mv_a', '(%s) * %s' % (g, guard), tg))]
+        return out + stores + issue('mv_a', guard)
+    return out + stores + [together_each(guard, lambda g: issue_actors('mv_a', '(%s) * %s' % (g, guard), tg, True), uid_var)]
 
-def issue_actors(set_name: str, g: Any, tg: str) -> Record:
+def issue_actors(set_name: str, g: Any, tg: str, hoisted: bool = False) -> Record:
     """The move selects of migrate_move for a guard that already names the acting unit."""
     flat = '(var(mv_t_zx) == 0) * (var(mv_t_zy) == 0)'
     if tg == 'home':
-        return [move_issue(set_name, g, 'mv_t', True)]
+        return [move_issue(set_name, g, 'mv_t', True, hoisted)]
     if tg == 'coordinate':
-        return [move_issue(set_name, g, 'mv_t', False)]
-    return [move_issue(set_name, '(%s) * %s' % (g, flat), 'mv_t', False), move_issue(set_name, '(%s) * (1 - %s)' % (g, flat), 'mv_t', True)]
+        return [move_issue(set_name, g, 'mv_t', False, hoisted)]
+    return [move_issue(set_name, '(%s) * %s' % (g, flat), 'mv_t', False, hoisted), move_issue(set_name, '(%s) * (1 - %s)' % (g, flat), 'mv_t', True, hoisted)]
 
 def migrate_for_each(action: Record) -> Record:
     """The source form becomes the select form; within/from turn into a near filter on a coordinate."""
@@ -848,16 +974,19 @@ def migrate_for_each(action: Record) -> Record:
 SIMPLE = {'set_unit_behavior': migrate_behavior, 'unit_stop': migrate_stop, 'garrison': migrate_garrison, 'ungarrison': migrate_ungarrison}
 
 def combat_expression(value: Any, unit: str, actors: Record, targets: Record) -> str:
+    global HOME_USED
     text = expr(value)
     if 'var(target_distance_home)' in text:
-        targets.setdefault('let', {})['combat_home_distance'] = {'min': {'kind': 'spaces', 'where': {'near': {'distance': 0, 'of': HOME_AT}}, 'of': 'distance(item, target)', 'default': 0}}
+        HOME_USED = True
+        targets.setdefault('let', {})['combat_home_distance'] = {'min': {'kind': 'spaces', 'where': {'in_set': 'home_space'}, 'of': 'distance(item, target)', 'default': 0}}
         text = text.replace('var(target_distance_home)', 'var(target.combat_home_distance)')
     names = set(re.findall(r'var\((\w+)\)', text))
     for name in sorted(names):
         if COUNTER.match(name) or name.startswith('base_spaces_within_'):
             owner, role = (actors, unit) if name.endswith('_of_unit') and unit == 'actor' else (targets, 'target')
             key = 'combat_' + name
-            owner.setdefault('let', {})[key] = counter_spec(name, {'unit': unit, 'target': 'target', 'army': 'ac'})
+            membership = presence_membership(name, targets, text)
+            owner.setdefault('let', {})[key] = membership if membership is not None else counter_spec(name, {'unit': unit, 'target': 'target', 'army': 'ac'})
             text = text.replace('var(%s)' % name, 'var(%s.%s)' % (role, key))
     replacements = {'unit_id': 'var(%s.unit_id)' % unit, 'unit_health': 'var(%s.health)' % unit,
                     'unit_stamina': 'var(%s.stamina)' % unit, 'unit_distance': 'distance(%s, target, 1)' % unit,
@@ -998,8 +1127,10 @@ def round_robin_fallback(action: Record) -> list[Record]:
     return [fallback]
 
 def migrate_attack(a: Record) -> list[Record]:
-    prefix = home_vars() if 'target_distance_home' in json.dumps(a) else []
-    return prefix + migrate_attack_orders(a)
+    global HOME_USED
+    if 'target_distance_home' in json.dumps(a):
+        HOME_USED = True
+    return migrate_attack_orders(a)
 
 def is_assignment_chain(a: Record) -> bool:
     spread = a.get('spread', {})
@@ -1037,7 +1168,15 @@ def migrate_attack_orders(a: Record) -> list[Record]:
         setup = []
         if queue:
             setup, followup = queued_attack_followup(a, action, actors)
-            actions.extend(copy.deepcopy(followup) for _ in range(queue))
+            if isinstance(action, dict) and action.get('action') == 'select' and a['spread'].get('overflow', 'round_robin') == 'round_robin':
+                actions.extend({'action': 'select', 'match': {'carry': PRIMARY_RELATION}} for _ in range(queue))
+            elif isinstance(followup, dict) and followup.get('action') == 'select':
+                followup['mode'] = 'append'
+                followup['into'] = {'assign': 'queued_attack'}
+                actions.append(followup)
+                actions.extend({'action': 'select', 'match': {'carry': 'queued_attack'}} for _ in range(queue - 1))
+            else:
+                actions.extend(copy.deepcopy(followup) for _ in range(queue))
         return [selected] + setup + actions
     if a.get('together'):
         return [selected] + attack_together(a, actors, pick)
@@ -1076,10 +1215,12 @@ def migrate_spread_move(a: Record) -> list[Record]:
         pick.setdefault('let', {})['face_exists'] = cnt('spaces', {'near': {'distance': 0, 'of': {'x': expr(face['x']), 'y': expr(face['y'])}}})
         faced = 'var(target.face_exists) * ' + faced
     pick['kind'] = 'zones'
-    pick['where'] = {'at': a.get('where', {}), 'if': ['distance(target, ac) == var(target.nearest)', 'var(target.zone_x) == (%s) * (%s)' % (faced, dx), 'var(target.zone_y) == (%s) * (%s)' % (faced, dy)]}
+    pick['where'] = {'at': a.get('where', {}), 'if': ['distance(target, ac) == var(spread_nearest)', 'var(target.zone_x) == (%s) * (%s)' % (faced, dx), 'var(target.zone_y) == (%s) * (%s)' % (faced, dy)]}
+    nearest = pick.get('let', {}).pop('nearest', None)
     action['issue'] = [{'move': {'to': 'zone'}}]
     anchor = {'kind': 'spaces', 'where': {'near': {'distance': 0, 'of': a['from']}}}
-    return [unit_set(a, 'move_units'), {'action': 'for_each', 'as': 'ac', 'select': anchor, 'do': [action]}]
+    body = ([sv('spread_nearest', nearest)] if nearest is not None else []) + [action]
+    return [unit_set(a, 'move_units'), {'action': 'for_each', 'as': 'ac', 'select': anchor, 'do': body}]
 
 def grouped_defense_load(a: Record, pick: Record) -> list[Record]:
     with open(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'units.json')) as source:
@@ -1099,14 +1240,15 @@ def grouped_defense_load(a: Record, pick: Record) -> list[Record]:
 def grouped_defense(a: Record) -> list[Record]:
     source = attack_targets(a)['where']
     source['if'] = '(var(item.x) == var(target.x)) * (var(item.y) == var(target.y))'
-    pick = {'kind': 'spaces', 'where': {'in_set': 'legacy_bases'}, 'let': {'enemy_here': cnt('units', source)}}
+    ready = {'action': 'select', 'pick': {'kind': 'spaces', 'where': {'in_set': 'legacy_bases', 'if': 'var(target.enemy_here) > 0'}, 'let': {'enemy_here': cnt('units', source)}}, 'into': {'set': 'defense_spaces'}}
+    pick = {'kind': 'spaces', 'where': {'in_set': 'defense_spaces'}, 'let': {}}
     setup = grouped_defense_load(a, pick)
     raw_score = '(%s) + (%s)' % (expr(a.get('score', 0)), expr(a['spread'].get('unit_score', 0)))
     raw_score = raw_score.replace('var(target_assigned)', 'var(target.defense_load)')
     score = combat_expression(raw_score, 'au', {}, pick)
     capacity = combat_expression(a['spread']['capacity'], 'au', {}, pick)
     opened = '(var(target.defense_load) < (%s))' % capacity
-    pick['where']['if'] = ['var(target.enemy_here) > 0', '(%s) >= (%s)' % (score, expr(a.get('min_score', 0)))]
+    pick['where']['if'] = '(%s) >= (%s)' % (score, expr(a.get('min_score', 0)))
     pick['rank'] = [opened, '(%s) * (%s) - (1 - %s) * var(target.defense_load)' % (opened, score, opened), '(1 - %s) * (%s)' % (opened, score), '0 - var(target.x)', '0 - var(target.y)']
     pick['limit'] = 1
     issue = {'action': 'select', 'actors': {'kind': 'units', 'where': {'if': 'var(actor.uid) == var(au.uid)'}}, 'pick': pick, 'into': {'set': 'defense_target', 'var': 'defense_assigned'}, 'issue': [{'attack': {'to': 'space'}}]}
@@ -1115,8 +1257,26 @@ def grouped_defense(a: Record) -> list[Record]:
         {'action': 'select', 'pick': {'kind': 'units', 'where': {'in_set': 'attack_units'}}, 'into': {'set': 'defense_pending'}},
         {'action': 'for_each', 'as': 'au', 'select': {'kind': 'units', 'where': {'in_set': 'attack_units'}, 'rank': '0 - var(au.uid)'}, 'do': [issue, release]}
     ]
-    guarded = {'action': 'if', 'when': {'value_at_least': {'value': cnt('spaces', {'in_set': 'legacy_bases', 'if': 'var(item.enemy_units) > 0'}), 'amount': 1}}, 'then': setup + loop}
+    guarded = {'action': 'if', 'when': {'value_at_least': {'value': cnt('spaces', {'in_set': 'legacy_bases', 'if': 'var(item.enemy_units) > 0'}), 'amount': 1}}, 'then': [ready] + setup + loop}
     return [guarded]
+
+def split_queued_rules(model: Record) -> None:
+    """Gives each select of an always-rule holding queued order loads its own rule, so the per-rule step cap cannot truncate one."""
+    rules = []
+    for rule in model['rules']:
+        then = rule['then']
+        if rule['when'] != {'always': {}} or 'queued_1' not in json.dumps(then):
+            rules.append(rule)
+            continue
+        chunk = []
+        for action in then:
+            if chunk and action.get('action') == 'select':
+                rules.append({**rule, 'then': chunk})
+                chunk = []
+            chunk.append(action)
+        if chunk:
+            rules.append({**rule, 'then': chunk})
+    model['rules'] = rules
 
 def validate_actions(value: Any) -> None:
     if isinstance(value, dict):
@@ -1183,11 +1343,19 @@ def _migrate_action(action: Record) -> list[Record]:
 
 def buildable_prelude() -> Record:
     """A first rule saving this turn's buildable spaces, then the empty zones in them, for every build rule to reuse."""
-    owned_here = cnt('spaces', {'owner': 'own', 'if': 'distance(item, target) == 0'})
-    owned_next = cnt('spaces', {'owner': 'own', 'if': 'distance(item, target) == 1'})
-    spaces = {'kind': 'spaces', 'let': {'here': owned_here, 'next': owned_next}, 'where': {'if': '(var(target.here) > 0) + (var(target.space_owner) < 0) * ((var(n_land) == 0) + (var(target.next) > 0) > 0) > 0'}}
+    anchor = {'kind': 'spaces', 'where': {'if': 'inSet(owned_spaces, anchor) + (var(n_land) == 0) > 0'}}
+    spaces = {'kind': 'spaces', 'where': {'near': {'distance': 1, 'of': anchor, 'through': {}}, 'if': 'inSet(owned_spaces, target) + (var(target.owner) < 0) > 0'}}
     zones = {'kind': 'zones', 'where': {'at': {'in_set': 'buildable_spaces'}, 'if': '(1 - var(target.has_resource)) * (var(target.building_player) < 0)'}}
-    return {'when': {'always': {}}, 'then': [sv('n_land', cnt('spaces', {'owner': 'own'})), {'action': 'select', 'pick': spaces, 'into': {'set': 'buildable_spaces'}}, {'action': 'select', 'pick': zones, 'into': {'set': 'buildable_zones'}}]}
+    owned = {'action': 'select', 'pick': {'kind': 'spaces', 'where': {'owner': 'own'}}, 'into': {'set': 'owned_spaces', 'var': 'n_land'}}
+    return {'when': {'always': {}}, 'then': [owned, {'action': 'select', 'pick': spaces, 'into': {'set': 'buildable_spaces'}}, {'action': 'select', 'pick': zones, 'into': {'set': 'buildable_zones'}}]}
+
+def poor_vision_prelude() -> Record:
+    """A first rule saving this turn's poor-vision spaces, so unidentified-unit reads never scan the whole map."""
+    pick = {'kind': 'spaces', 'where': {'vision': 2}}
+    actions = [{'action': 'select', 'pick': pick, 'into': {'set': 'poor_vision', 'var': 'n_poor_vision'}}]
+    if ENEMY_BUILDING_SPACES_USED:
+        actions += enemy_building_space_store()
+    return {'when': {'always': {}}, 'then': actions}
 
 def base_prelude() -> Record:
     has_vc = {'building_count_at_least': {'building_ids': [1], 'amount': 1}}
@@ -1261,7 +1429,10 @@ def legacy_aggregate(spec: Record, near: Record | None) -> Record:
     """The aggregate equal to one legacy counter, with near already resolved to a coordinate filter."""
     base = spec['base']
     if base == 'enemy_units_unidentified':
-        return {'sum': {'kind': 'spaces', 'where': {'near': near} if near else {}, 'of': 'var(item.unidentified_count)'}}
+        where = {'in_set': 'poor_vision'}
+        if near:
+            where['near'] = near
+        return {'sum': {'kind': 'spaces', 'where': where, 'of': 'var(item.unit_count)'}}
     if base in ('enemy_buildings_known', 'building_count'):
         where = legacy_where(dict(spec, ids=[]), 'enemy' if base == 'enemy_buildings_known' else 'own', near)
         where.update({'building_ids': spec['ids']} if spec['ids'] else {}, **({'state': spec['state']} if spec['state'] else {}))
@@ -1307,7 +1478,7 @@ class Modernizer:
     """Replaces each legacy counter read with a set_var of an equal aggregate placed right before the read."""
 
     def __init__(self, defined: set[str]) -> None:
-        (self.defined, self.count, self.uses_home, self.memo) = (defined, 0, False, {})
+        (self.defined, self.count, self.uses_home, self.memo, self.centers) = (defined, 0, False, {}, {})
         self.tech_terms: dict[str, str] = {}
 
     def hoist_tech_terms(self, value: str) -> str:
@@ -1329,19 +1500,22 @@ class Modernizer:
         if anchor is None or anchor == 'home':
             self.uses_home = True
             return ({'distance': within, 'of': {'x': 'var(hx)', 'y': 'var(hy)'}}, '1')
-        (name, steps) = bucket_center(self.tmp(), anchor)
-        setups.extend(steps)
+        name = self.centers.get(anchor)
+        if name is None:
+            (name, steps) = bucket_center(self.tmp(), anchor)
+            self.centers[anchor] = name
+            setups.extend(steps)
         return ({'distance': within, 'of': {'x': 'var(%s_x)' % name, 'y': 'var(%s_y)' % name}}, 'var(%s_ok)' % name)
 
     def distance_setup(self, name: str) -> list[Record]:
+        global ENEMY_DISTANCE_USED
+        ENEMY_DISTANCE_USED = True
         self.uses_home = True
-        home = {'kind': 'spaces', 'where': {'near': {'distance': 0, 'of': {'x': 'var(hx)', 'y': 'var(hy)'}}}}
-        nearest = {'min': {'kind': 'buildings', 'where': {'owner': 'enemy'}, 'of': 'distance(item, hm)', 'default': 0}}
-        return [sv(name, 0), {'action': 'for_each', 'select': home, 'as': 'hm', 'do': [sv(name, nearest)]}]
+        return [sv(name, 'var(enemy_dist_home)')]
 
     def availability_setup(self, name: str, category: str) -> list[Record]:
         """name = how many gatherables of the category have a free gather slot."""
-        taking = {'owner': 'own', 'in': {'order_kind': ['gather']}, 'if': 'var(item.order_target_uid) == var(rg.uid)'}
+        taking = {'owner': 'own', 'unit_types': ['economic'], 'in': {'order_kind': ['gather']}, 'if': 'var(item.order_target_uid) == var(rg.uid)'}
         body = [sv(name + '_n', cnt('units', taking)), sv(name, 'var(%s) + (var(%s_n) < var(rg.gather_capacity))' % (name, name))]
         return [sv(name, 0), {'action': 'for_each', 'select': {'kind': 'gatherables', 'where': {'category': category}}, 'as': 'rg', 'do': body}]
 
@@ -1442,25 +1616,179 @@ def modernize(model: Record) -> None:
     m = Modernizer(defined_names(model))
     rules = []
     for r in model['rules']:
-        (m.memo, setups) = ({}, [])
+        (m.memo, m.centers, setups) = ({}, {}, [])
         when = m.cond(r['when'], setups)
         then = m.actions(r['then'])
         rules += ([{'when': {'always': {}}, 'then': setups}] if setups else []) + [{**r, 'when': when, 'then': then}]
     tech_terms = [{'when': {'always': {}}, 'then': [sv(name, term) for term, name in m.tech_terms.items()]}] if m.tech_terms else []
-    model['rules'] = tech_terms + ([{'when': {'always': {}}, 'then': home_vars()}] if m.uses_home else []) + rules
+    home_actions = home_vars() + [home_space(), home_zone_store()] if (m.uses_home or HOME_USED) else []
+    if ENEMY_DISTANCE_USED:
+        home_actions += enemy_distance_setup()
+    mil_actions = mil_presence_sets() if (MIL_UNITS_USED or MIL_BUILDINGS_USED or MIL_SPACES_USED) else []
+    model['rules'] = tech_terms + ([{'when': {'always': {}}, 'then': home_actions}] if home_actions else []) + ([{'when': {'always': {}}, 'then': mil_actions}] if mil_actions else []) + rules
+
+def dedupe_repeats(model: Record) -> None:
+    """Reuses an earlier stored value for an identical pure aggregate when only untouched set_vars lie between."""
+    reads = lambda value: set(re.findall(r'var\(([A-Za-z_][A-Za-z0-9_]*)', json.dumps(value, sort_keys=True)))
+
+    def walk(actions: list[Record]) -> None:
+        for a in actions:
+            if a.get('action') == 'if':
+                walk(a.get('then', []))
+                walk(a.get('else', []))
+            elif a.get('action') == 'for_each':
+                walk(a.get('do', []))
+        seen: dict[str, tuple[int, str, set[str]]] = {}
+        for i, a in enumerate(actions):
+            if a.get('action') != 'set_var':
+                seen = {}
+                continue
+            if not isinstance(a.get('value'), dict):
+                continue
+            text = json.dumps(a['value'], sort_keys=True)
+            if 'random(' in text:
+                continue
+            if text in seen:
+                (j, first, used) = seen[text]
+                between = actions[j + 1:i]
+                if all(b.get('action') == 'set_var' and b.get('name') != first and b.get('name') not in used for b in between):
+                    a['value'] = 'var(%s)' % first
+                    continue
+            seen[text] = (i, a.get('name'), reads(a['value']))
+
+    for rule in model['rules']:
+        walk(rule.get('then', []))
+
+def dedupe_setups(model: Record) -> None:
+    """Rewrites a repeated always-rule setup whose inputs are unchanged as copies of the earlier setup's variables."""
+    ident = re.compile(r'\blg\d+[A-Za-z0-9_]*')
+    read_names = lambda text: set(re.findall(r'var\(([A-Za-z_][A-Za-z0-9_]*)', text))
+    read_sets = lambda text: set(re.findall(r'"(?:in_set|not_in_set|bucket)": "([^"]+)"', text))
+    risky = ('order_', 'stance', 'attack_back', 'interrupt', 'is_garrisoned', 'garrison', 'assignment', 'foundation', '"orders"', 'behavior', 'random(', 'gameVar(')
+
+    def canon(o: Any, mapping: dict[str, str]) -> Any:
+        if isinstance(o, str):
+            return ident.sub(lambda m: mapping.setdefault(m.group(0), 'V%d' % len(mapping)), o)
+        if isinstance(o, dict):
+            return {k: canon(v, mapping) for k, v in o.items()}
+        if isinstance(o, list):
+            return [canon(v, mapping) for v in o]
+        return o
+
+    def pure(then: list[Record]) -> bool:
+        return all(a.get('action') == 'set_var' or (a.get('action') == 'for_each' and all(b.get('action') == 'set_var' for b in a.get('do', []))) for a in then)
+
+    def writes(rule: Record) -> tuple[set[str], set[str], set[str], bool]:
+        vs: set[str] = set()
+        st: set[str] = set()
+        bk: set[str] = set()
+        issue = [False]
+
+        def walk(o: Any) -> None:
+            if isinstance(o, dict):
+                it = o.get('into')
+                if isinstance(it, dict):
+                    if 'set' in it:
+                        st.add(it['set'])
+                    if 'bucket' in it:
+                        bk.add(it['bucket'])
+                if o.get('action') == 'set_var' and isinstance(o.get('name'), str):
+                    vs.add(o['name'])
+                if 'issue' in o:
+                    issue[0] = True
+                for v in o.values():
+                    walk(v)
+            elif isinstance(o, list):
+                for v in o:
+                    walk(v)
+        walk(rule.get('then', []))
+        return vs, st, bk, issue[0]
+
+    def correspondence(a: list[Record], b: list[Record], mp: dict[str, str]) -> None:
+        for x, y in zip(a, b):
+            if x.get('action') == 'set_var' and y.get('action') == 'set_var':
+                mp[y.get('name')] = x.get('name')
+            elif x.get('action') == 'for_each' and y.get('action') == 'for_each':
+                correspondence(x.get('do', []), y.get('do', []), mp)
+
+    rules = model['rules']
+    original = [copy.deepcopy(r.get('then', [])) for r in rules]
+    groups: dict[str, list[int]] = {}
+    for i, rule in enumerate(rules):
+        if rule.get('when') == {'always': {}} and pure(original[i]):
+            groups.setdefault(json.dumps(canon(original[i], {}), sort_keys=True), []).append(i)
+    for idxs in groups.values():
+        for a, b in zip(idxs, idxs[1:]):
+            if b - a <= 1:
+                continue
+            a_text, b_text = json.dumps(original[a]), json.dumps(original[b])
+            av, aset, bv, bset = read_names(a_text), read_sets(a_text), read_names(b_text), read_sets(b_text)
+            ok, issued = True, False
+            for i in range(a + 1, b):
+                vs, st, bk, issue = writes(rules[i])
+                issued = issued or issue
+                if vs & (av | bv) or st & (aset | bset) or bk & (aset | bset):
+                    ok = False
+                    break
+            if not ok or (issued and any(t in a_text or t in b_text for t in risky)):
+                continue
+            mp: dict[str, str] = {}
+            correspondence(original[a], original[b], mp)
+            rules[b]['then'] = [sv(bn, 'var(%s)' % an) for bn, an in mp.items()]
+
+def split_long_rules(model: Record) -> None:
+    """Splits long rules into chunks of actions under the same condition, giving each chunk its own selector budget."""
+    out = []
+    for rule in model['rules']:
+        then = rule.get('then', [])
+        when_text = json.dumps(rule.get('when', {}), sort_keys=True)
+        live = any(k in when_text for k in ('"count"', '"sum"', '"min"', '"max"', 'distance(', 'gameVar(', 'config(', 'random(', 'in_set', 'bucket', 'near'))
+        if not live and len(then) >= 12:
+            written = set()
+            def collect(x: Any) -> None:
+                if isinstance(x, dict):
+                    if x.get('action') == 'set_var' and isinstance(x.get('name'), str):
+                        written.add(x['name'])
+                    for v in x.values():
+                        collect(v)
+                elif isinstance(x, list):
+                    for v in x:
+                        collect(v)
+            collect(then)
+            live = bool(set(re.findall(r'var\(([A-Za-z_][A-Za-z0-9_]*)', when_text)) & written)
+        if live or len(then) < 12:
+            out.append(rule)
+        else:
+            for i in range(0, len(then), 6):
+                out.append({**rule, 'then': then[i:i + 6]})
+    model['rules'] = out
 
 def migrate_model(src: str, dst: str) -> None:
+    global HOME_USED, CENTER_SEQ, ENEMY_DISTANCE_USED, MIL_UNITS_USED, MIL_BUILDINGS_USED, MIL_SPACES_USED, ZERO_VARS, ENEMY_BUILDING_SPACES_USED
+    HOME_USED = False
+    CENTER_SEQ = 0
+    ENEMY_DISTANCE_USED = False
+    MIL_UNITS_USED = False
+    MIL_BUILDINGS_USED = False
+    MIL_SPACES_USED = False
+    ENEMY_BUILDING_SPACES_USED = False
     BUCKET_TASKS.clear()
     RUN_BUCKETS.clear()
     BUILD_USED.clear()
     model = json.load(open(src))
+    ZERO_VARS = literal_zero_vars(model)
     scan_buckets(model['rules'])
     scan_runs(model['rules'])
     model['rules'] = [{**r, 'then': [b for a in r['then'] for b in migrate_action(a)]} for r in model['rules']]
     if BUILD_USED:
         model['rules'].insert(0, buildable_prelude())
     model['rules'].insert(0, base_prelude())
+    model['rules'].insert(0, poor_vision_prelude())
     modernize(model)
+    split_queued_rules(model)
+    dedupe_repeats(model)
+    dedupe_setups(model)
+    split_long_rules(model)
     validate_actions(model)
     with open(dst, 'w') as output:
         output.write(json.dumps(model, indent=2) + '\n')

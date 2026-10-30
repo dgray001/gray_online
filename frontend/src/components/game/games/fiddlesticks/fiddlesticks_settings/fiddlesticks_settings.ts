@@ -20,6 +20,7 @@ export class DwgFiddlesticksSettings extends DwgElement {
   private trick_result_pause!: HTMLInputElement;
   private trick_result_pause_value!: HTMLOutputElement;
   private highlight_playable_cards!: HTMLInputElement;
+  private show_ai_comparisons!: HTMLInputElement;
   private restore_defaults_button!: HTMLButtonElement;
   private cancel_changes_button!: HTMLButtonElement;
   private save_changes_button!: HTMLButtonElement;
@@ -35,6 +36,7 @@ export class DwgFiddlesticksSettings extends DwgElement {
       'trick_result_pause',
       'trick_result_pause_value',
       'highlight_playable_cards',
+      'show_ai_comparisons',
       'restore_defaults_button',
       'cancel_changes_button',
       'save_changes_button'
@@ -56,6 +58,9 @@ export class DwgFiddlesticksSettings extends DwgElement {
     });
     this.highlight_playable_cards.addEventListener('change', (): void => {
       this.settings.highlight_playable_cards = this.highlight_playable_cards.checked;
+    });
+    this.show_ai_comparisons.addEventListener('change', (): void => {
+      this.settings.show_ai_comparisons = this.show_ai_comparisons.checked;
     });
     this.restore_defaults_button.addEventListener('click', (): void => {
       this.settings = defaultFiddlesticksSettings();
@@ -79,6 +84,7 @@ export class DwgFiddlesticksSettings extends DwgElement {
     this.trick_result_pause.value = this.settings.trick_result_pause.toString();
     this.trick_result_pause_value.textContent = `${this.settings.trick_result_pause}s`;
     this.highlight_playable_cards.checked = this.settings.highlight_playable_cards;
+    this.show_ai_comparisons.checked = this.settings.show_ai_comparisons;
   }
 
   private closeDialog(): void {

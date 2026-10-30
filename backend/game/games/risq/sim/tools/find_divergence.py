@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Finds the first turn/tick where two games in a -debug run diverge, via state_hash lines.
 
-Usage: find_divergence.py <debug.log> [<game_index_a> <game_index_b>]
+Usage: find_divergence.py <log> [<log> ...] [<game_index_a> <game_index_b>]
 
-Games are 0-indexed in log order (matches results.json). Without indexes, every game is
+A multi-game run writes one debug_<seed>.log per game, so pass each game's log; a single log
+holding several games is split as before. Games are 0-indexed in argument order, then log
+order within a file. Without indexes, every game is
 compared against game 0 (for fixed_seed scenarios). Prints the tick-tagged events that
 differ at the first mismatched hash; unrelated same-tick events can interleave in either
 order, so events are compared as multisets. If the run had RISQ_STATE_DUMP=1, also prints
@@ -74,11 +76,14 @@ def compare(game_a: list[Checkpoint], game_b: list[Checkpoint]) -> None:
 
 
 def main() -> None:
-    if len(sys.argv) not in (2, 4):
+    args = sys.argv[1:]
+    indexes = [int(a) for a in args[-2:]] if len(args) >= 3 and all(a.isdigit() for a in args[-2:]) else []
+    paths = args[: len(args) - len(indexes)]
+    if not paths:
         print(__doc__)
         sys.exit(1)
-    games = parse_games(sys.argv[1])
-    pairs = [(int(sys.argv[2]), int(sys.argv[3]))] if len(sys.argv) == 4 else [(0, i) for i in range(1, len(games))]
+    games = [game for path in paths for game in parse_games(path)]
+    pairs = [(indexes[0], indexes[1])] if indexes else [(0, i) for i in range(1, len(games))]
     for index_a, index_b in pairs:
         if max(index_a, index_b) >= len(games):
             print(f"log only has {len(games)} games")

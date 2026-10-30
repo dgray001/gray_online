@@ -31,7 +31,7 @@ type TurnStanding struct {
 	Outcomes []Outcome
 }
 
-func RunGame(seed int64, players []PlayerConfig, map_name string, custom_settings map[string]any, metrics []string, max_turns uint16, timeout time.Duration, std, errLog *util.Logger) Result {
+func RunGame(seed int64, players []PlayerConfig, sides []int, map_name string, custom_settings map[string]any, metrics []string, max_turns uint16, timeout time.Duration, std, errLog *util.Logger) Result {
 	ai_players := make([]any, len(players))
 	for i, p := range players {
 		config := make(map[string]any, 2)
@@ -82,7 +82,7 @@ func RunGame(seed int64, players []PlayerConfig, map_name string, custom_setting
 		}
 		if turn, standings := r.Standings(); standings != nil && turn > last_turn {
 			last_turn = turn
-			trajectory = append(trajectory, TurnStanding{Turn: turn, Players: standings, Outcomes: outcomes(standings)})
+			trajectory = append(trajectory, TurnStanding{Turn: turn, Players: standings, Outcomes: outcomes(standings, sides)})
 		}
 	}
 	for r.TurnNumber() < max_turns {
@@ -92,13 +92,13 @@ func RunGame(seed int64, players []PlayerConfig, map_name string, custom_setting
 			snap()
 		case <-base.GameEndedChannel:
 			results := r.Results()
-			return Result{Seed: seed, Game: results, Timeline: timeline, Outcomes: finalOutcomes(results.Players), Trajectory: trajectory}
+			return Result{Seed: seed, Game: results, Timeline: timeline, Outcomes: finalOutcomes(results.Players, sides), Trajectory: trajectory}
 		case <-deadline:
 			return Result{Seed: seed, Error: "timed out", Game: r.Results()}
 		}
 	}
 	results := r.Results()
-	return Result{Seed: seed, Game: results, Timeline: timeline, Outcomes: finalOutcomes(results.Players), Trajectory: trajectory}
+	return Result{Seed: seed, Game: results, Timeline: timeline, Outcomes: finalOutcomes(results.Players, sides), Trajectory: trajectory}
 }
 
 type Outcome = simoutcome.Outcome

@@ -30,7 +30,7 @@ func checkCrossingMoves(t *testing.T, cross bool, stance defs.UnitStance, interr
 }
 
 func checkCrossingOutcome(t *testing.T, g *harness.Game, a, b harness.Unit, ticks tickLog, fight bool) {
-	ra, rb := harness.RequireReplay(t, g.State(g.Human(0))), harness.RequireReplay(t, g.State(g.Human(1)))
+	ra, rb := g.Replay(g.Human(0)), g.Replay(g.Human(1))
 	aa, bb := ra.UnitAt(a.InternalID, 1), rb.UnitAt(b.InternalID, 1)
 	if aa == nil || bb == nil {
 		t.Fatal("missing tick-one units")

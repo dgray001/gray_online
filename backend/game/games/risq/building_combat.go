@@ -4,7 +4,7 @@ import "github.com/dgray001/gray_online/game/games/risq/internal/defs"
 
 func (b *RisqBuilding) autoAttackTarget(risq *GameRisq) Attackable {
 	if space_radius, ranged := b.attack_range.SpaceRadius(); ranged {
-		return nearbyTarget(b.zone, b.player_id, b.target_priority, b.inAttackRange, b.inAttackRange, b.inAttackRange, risq, max(space_radius, 1))
+		return nearbyTarget(b.zone, b.player_id, b.target_priority, b.inAttackRange, b.inAttackRange, b.inAttackRange, risq, max(space_radius, b.attack_range.ZoneRadius()))
 	}
 	return zoneAttackTarget(b.zone, b.player_id, b.target_priority)
 }
@@ -25,6 +25,11 @@ func (b *RisqBuilding) resolveAutoAttack(risq *GameRisq) {
 	if !b.auto_attack || b.zone == nil || b.underConstruction() || b.cs.attack_type == defs.AttackType_NONE {
 		return
 	}
+	if active := b.order_queue.active_orders; len(active) > 0 && active[0].order_type.IsAutoSynthesized() {
+		if !targetInPriority(risq.attackOrderTarget(active[0]), b.target_priority) {
+			b.cancelOrder(active[0], risq)
+		}
+	}
 	target := b.autoAttackTarget(risq)
 	if target != nil && b.cs.totalAttack() <= 0 && len(b.buildGarrisonAttacks(risq, target)) == 0 {
 		if active := b.order_queue.active_orders; len(active) > 0 && active[0].order_type.IsAutoSynthesized() {
@@ -35,7 +40,7 @@ func (b *RisqBuilding) resolveAutoAttack(risq *GameRisq) {
 	if target == nil || (!b.interrupt_current && len(b.order_queue.active_orders) > 0) {
 		return
 	}
-	if len(b.order_queue.active_orders) > 0 && !targetInPriority(target, b.target_priority) {
+	if !targetInPriority(target, b.target_priority) {
 		return
 	}
 	order_type := attackOrderType(target, defs.OrderType_BuildingAutoAttackUnit, defs.OrderType_BuildingAutoAttackBuilding)
@@ -58,9 +63,9 @@ func (b *RisqBuilding) buildGarrisonAttacks(risq *GameRisq, target Attackable) [
 			continue
 		}
 		stats := risq.effectiveCombatStats(unit, target, true)
-		stats.attack_blunt = cappedGarrisonAttack(stats.attack_blunt, attackTypeHasBlunt(b.cs.attack_type), b.cs.attack_blunt, config.Max_garrison_attack_blunt)
-		stats.attack_piercing = cappedGarrisonAttack(stats.attack_piercing, attackTypeHasPiercing(b.cs.attack_type), b.cs.attack_piercing, config.Max_garrison_attack_piercing)
-		stats.attack_magic = cappedGarrisonAttack(stats.attack_magic, attackTypeHasMagic(b.cs.attack_type), 0, config.Max_garrison_attack_magic)
+		stats.attack_blunt = cappedGarrisonAttack(stats.attack_blunt, attackTypeHasBlunt(b.cs.attack_type), b.cs.attack_blunt, config.Max_garrison_attack_blunt, b.tech_bonus.garrison_attack_cap_blunt)
+		stats.attack_piercing = cappedGarrisonAttack(stats.attack_piercing, attackTypeHasPiercing(b.cs.attack_type), b.cs.attack_piercing, config.Max_garrison_attack_piercing, b.tech_bonus.garrison_attack_cap_piercing)
+		stats.attack_magic = cappedGarrisonAttack(stats.attack_magic, attackTypeHasMagic(b.cs.attack_type), 0, config.Max_garrison_attack_magic, b.tech_bonus.garrison_attack_cap_magic)
 		if stats.totalAttack() <= 0 {
 			continue
 		}
@@ -70,7 +75,7 @@ func (b *RisqBuilding) buildGarrisonAttacks(risq *GameRisq, target Attackable) [
 	return attacks
 }
 
-func cappedGarrisonAttack(unit_attack int, building_has_type bool, building_attack int, override *int) int {
+func cappedGarrisonAttack(unit_attack int, building_has_type bool, building_attack int, override *int, cap_bonus int) int {
 	if !building_has_type {
 		unit_attack /= 2
 	}
@@ -78,5 +83,5 @@ func cappedGarrisonAttack(unit_attack int, building_has_type bool, building_atta
 	if override != nil {
 		max_allowed = *override
 	}
-	return min(unit_attack, max_allowed)
+	return min(unit_attack, max_allowed+cap_bonus)
 }

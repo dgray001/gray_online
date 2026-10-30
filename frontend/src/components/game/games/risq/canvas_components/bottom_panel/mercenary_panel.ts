@@ -46,7 +46,10 @@ export class RisqMercenaryPanel extends DwgRectButton {
     const width = Math.min(available_width + 16, Math.max(160, this.grid.w() + 16));
     const height = (this.grid.h() || 32) + 16;
     const minimap = this.minimap();
-    const p = { x: minimap.xc() - width / 2, y: Math.max(8, this.risq.bottom_panel.topEdge() - 8 - height) };
+    const p = { x: minimap.xc() - width / 2, y: Math.max(8, this.risq.bottom_panel.yi() - 8 - height) };
+    if (this.open) {
+      this.risq.bottom_panel.setSubpanelHeight(this.risq.bottom_panel.yi() - p.y);
+    }
     this.setText(this.grid.h() ? '' : 'No mercenaries available');
     if (width === this.w() && height === this.h() && p.x === this.xi() && p.y === this.yi()) {
       return;
@@ -62,6 +65,8 @@ export class RisqMercenaryPanel extends DwgRectButton {
     this.setClicking(false);
     if (this.open) {
       this.dataRefreshed();
+    } else {
+      this.risq.bottom_panel.setSubpanelHeight(0);
     }
     this.risq.pointer.recalculate();
   }

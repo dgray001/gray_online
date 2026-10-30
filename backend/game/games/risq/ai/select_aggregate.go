@@ -5,7 +5,7 @@ import (
 	"maps"
 )
 
-const maxSelectSteps = 100000
+const maxSelectSteps = 250000
 
 func (i *Internals) takeSelectStep() bool {
 	i.select_steps++

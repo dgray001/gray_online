@@ -14,19 +14,19 @@ import type { RisqOrderPlanning } from '../../application/orders/planning';
 import type { DwgRisq } from '../../risq';
 import {
   rangeDistance,
+  RisqRange,
   RisqOrderType,
   RisqUnitType,
   type RisqFrontendOrder,
   type RisqMovePathStep,
-  type RisqRange,
   type RisqSpace,
   type RisqUnit,
   type UnitByTypeData,
 } from '../../model/types';
-import { hexEdgeForDirectionIndex } from '../space_borders';
 import { drawUnitTypeCluster } from '../assets/unit';
 import { hexagonVertices, zoneCenterOffset, zoneMercenarySlotOffsets, zoneVertices } from '../zones/geometry';
 import type { RisqViewport } from './viewport';
+import { zoneRangeDistance } from '../../model/unit_display';
 
 type RangeSubject = Pick<RisqUnit, 'space_coordinate' | 'zone_coordinate' | 'attack_range'>;
 
@@ -50,48 +50,100 @@ function facingZone(session: RisqSession, space: RisqSpace, zone: Point2D): Zone
   return session.spaceAt(neighbor) ? { space: neighbor, zone: { x: -zone.x, y: -zone.y } } : undefined;
 }
 
+function zoneNeighbors(session: RisqSession, location: ZoneLocation): ZoneLocation[] {
+  const space = session.spaceAt(location.space);
+  if (!space) {
+    return [];
+  }
+  const neighbors = [{ x: 0, y: 0 }, ...AXIAL_DIRECTION_VECTORS]
+    .filter((zone: Point2D): boolean => axialDistance(zone, location.zone) === 1)
+    .map((zone: Point2D): ZoneLocation => ({ space: location.space, zone }));
+  const across = facingZone(session, space, location.zone);
+  if (across) {
+    neighbors.push(across);
+  }
+  return neighbors;
+}
+
+function rangeZones(session: RisqSession, origin: ZoneLocation, radius: number): Map<string, ZoneLocation> {
+  const key = (z: ZoneLocation): string => `${z.space.x},${z.space.y}:${z.zone.x},${z.zone.y}`;
+  const zones = new Map<string, ZoneLocation>([[key(origin), origin]]);
+  let frontier = [origin];
+  for (let depth = 0; depth < radius; depth++) {
+    const next: ZoneLocation[] = [];
+    for (const zone of frontier) {
+      for (const neighbor of zoneNeighbors(session, zone)) {
+        if (!zones.has(key(neighbor))) {
+          zones.set(key(neighbor), neighbor);
+          next.push(neighbor);
+        }
+      }
+    }
+    frontier = next;
+  }
+  return zones;
+}
+
 function rangeSpaces(session: RisqSession, space: RisqSpace, radius: number): Map<number, Point2D> {
   const cached = space.range_spaces?.get(radius);
   if (cached) {
     return cached;
   }
-  const spaces = new Map<number, Point2D>();
-  for (let x = -radius; x <= radius; x++) {
-    for (let y = -radius; y <= radius; y++) {
-      const coordinate = addPoint2D(space.coordinate, { x, y });
-      if (axialDistance(space.coordinate, coordinate) <= radius && session.spaceAt(coordinate)) {
-        spaces.set(cantorPair(coordinate.x, coordinate.y), coordinate);
+  const spaces = new Map<number, Point2D>([[space.coordinate_key, space.coordinate]]);
+  let frontier = [space];
+  for (let depth = 0; depth < radius; depth++) {
+    const next: RisqSpace[] = [];
+    for (const current of frontier) {
+      for (const zone of AXIAL_DIRECTION_VECTORS) {
+        const across = facingZone(session, current, zone);
+        const neighbor = across && session.spaceAt(across.space);
+        if (neighbor && !spaces.has(neighbor.coordinate_key)) {
+          spaces.set(neighbor.coordinate_key, neighbor.coordinate);
+          next.push(neighbor);
+        }
       }
     }
+    frontier = next;
   }
   (space.range_spaces ??= new Map()).set(radius, spaces);
   return spaces;
 }
 
-function rangePaths(spaces: Map<number, Point2D>, viewport: RisqViewport): { fill: Path2D; outline: Path2D } {
+function addRangeEdges(edges: Map<string, [Point2D, Point2D]>, vertices: Point2D[]): void {
+  const point_key = (p: Point2D): string => `${Math.round(p.x * 1e6)},${Math.round(p.y * 1e6)}`;
+  for (const [i, start] of vertices.entries()) {
+    const end = vertices[(i + 1) % vertices.length];
+    const a = point_key(start);
+    const b = point_key(end);
+    const key = a < b ? `${a}:${b}` : `${b}:${a}`;
+    if (edges.has(key)) {
+      edges.delete(key);
+    } else {
+      edges.set(key, [start, end]);
+    }
+  }
+}
+
+function rangePaths(polygons: Point2D[][]): { fill: Path2D; outline: Path2D } {
   const fill = new Path2D();
   const outline = new Path2D();
-  for (const coordinate of spaces.values()) {
-    const center = viewport.coordinateToCanvas(coordinate);
-    const vertices = hexagonVertices(viewport.hexR()).map((point: Point2D): Point2D => addPoint2D(center, point));
+  const edges = new Map<string, [Point2D, Point2D]>();
+  for (const vertices of polygons) {
     fill.moveTo(vertices[0].x, vertices[0].y);
     for (const point of vertices.slice(1)) {
       fill.lineTo(point.x, point.y);
     }
     fill.closePath();
-    for (const [direction, offset] of AXIAL_DIRECTION_VECTORS.entries()) {
-      const neighbor = addPoint2D(coordinate, offset);
-      if (!spaces.has(cantorPair(neighbor.x, neighbor.y))) {
-        const [start, end] = hexEdgeForDirectionIndex(center, viewport.hexR(), direction);
-        outline.moveTo(start.x, start.y);
-        outline.lineTo(end.x, end.y);
-      }
-    }
+    addRangeEdges(edges, vertices);
+  }
+  for (const [start, end] of edges.values()) {
+    outline.moveTo(start.x, start.y);
+    outline.lineTo(end.x, end.y);
   }
   return { fill, outline };
 }
 
-type RangeOverlay = { key: string; game: unknown; ranges: { fill: Path2D; outline: Path2D }[]; areas: Path2D[] };
+type RangeOverlay = { key: string; game: unknown; fill: Path2D; outline: Path2D };
 
 let range_overlay: RangeOverlay | undefined;
 
@@ -103,17 +155,18 @@ function buildRangeOverlay(
 ): RangeOverlay {
   const groups = new Map<RisqRange, Map<number, Point2D>>();
   const seen = new Set<string>();
-  const facing = new Map<string, ZoneLocation>();
+  const zone_areas = new Map<string, ZoneLocation>();
   for (const subject of subjects) {
     const distance = rangeDistance(subject.attack_range);
     const space = session.spaceAt(subject.space_coordinate);
-    const across =
-      distance === 0 && space && viewport.zoneView() && facingZone(session, space, subject.zone_coordinate);
-    if (across) {
-      facing.set(`${across.space.x},${across.space.y}:${across.zone.x},${across.zone.y}`, across);
+    if (space && subject.attack_range >= RisqRange.WALL) {
+      const origin = { space: space.coordinate, zone: subject.zone_coordinate };
+      for (const [zone_key, location] of rangeZones(session, origin, zoneRangeDistance(subject.attack_range))) {
+        zone_areas.set(zone_key, location);
+      }
     }
     const subject_key = `${subject.attack_range}:${space?.coordinate_key}`;
-    if (distance === null || !space || seen.has(subject_key)) {
+    if (distance === null || subject.attack_range === RisqRange.WALL || !space || seen.has(subject_key)) {
       continue;
     }
     seen.add(subject_key);
@@ -123,17 +176,18 @@ function buildRangeOverlay(
     }
     groups.set(subject.attack_range, spaces);
   }
-  const areas = [...facing.values()].map(({ space, zone }): Path2D => {
-    const center = viewport.coordinateToCanvas(space);
-    const area = new Path2D();
-    for (const point of zoneVertices(zone, viewport.hexR())) {
-      area.lineTo(center.x + point.x, center.y + point.y);
-    }
-    area.closePath();
-    return area;
-  });
-  const ranges = [...groups.values()].map((spaces) => rangePaths(spaces, viewport));
-  return { key, game: session.getGame(), ranges, areas };
+  const covered_spaces = new Set([...groups.values()].flatMap((spaces): number[] => [...spaces.keys()]));
+  const polygons = [...zone_areas.values()]
+    .filter(({ space }): boolean => !covered_spaces.has(cantorPair(space.x, space.y)))
+    .map(({ space, zone }): Point2D[] => {
+      const center = viewport.coordinateToCanvas(space);
+      return zoneVertices(zone, viewport.hexR()).map((point: Point2D): Point2D => addPoint2D(center, point));
+    });
+  for (const space_key of covered_spaces) {
+    const center = viewport.coordinateToCanvas(invertPair(space_key));
+    polygons.push(hexagonVertices(viewport.hexR()).map((point: Point2D): Point2D => addPoint2D(center, point)));
+  }
+  return { key, game: session.getGame(), ...rangePaths(polygons) };
 }
 
 export function drawSelectionAttackRanges(
@@ -178,16 +232,10 @@ export function drawSelectionAttackRanges(
   ctx.setLineDash([]);
   ctx.globalAlpha = mixed ? 0.35 : 1;
   ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+  ctx.fill(overlay.fill);
   ctx.strokeStyle = 'white';
   ctx.lineWidth = 2 / viewport.lastTransform().scale;
-  for (const paths of overlay.ranges) {
-    ctx.fill(paths.fill);
-    ctx.stroke(paths.outline);
-  }
-  for (const area of overlay.areas) {
-    ctx.fill(area);
-    ctx.stroke(area);
-  }
+  ctx.stroke(overlay.outline);
   ctx.restore();
 }
 

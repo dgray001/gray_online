@@ -445,6 +445,10 @@ export class RisqMinimap implements CanvasComponent {
       return false;
     }
     if (e.button === 2) {
+      if (this.risq.armed.anythingArmed()) {
+        this.risq.armed.disarmAll();
+        return true;
+      }
       const coordinate = roundAxialCoordinate(this.coordinateAtScreen(this.last_screen_m));
       const space = this.risq.session.spaceAt(coordinate);
       if (space) {

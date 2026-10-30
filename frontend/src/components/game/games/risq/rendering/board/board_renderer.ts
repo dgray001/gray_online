@@ -5,13 +5,14 @@ import type { CanvasComponent } from '../../../../util/canvas_components/canvas_
 import { configDraw } from '../../../../util/canvas_components/canvas_component';
 import { drawCircle, drawRect } from '../../../../util/canvas_util';
 import type { Point2D } from '../../../../util/objects2d';
-import { multiplyPoint2D } from '../../../../util/objects2d';
+import { multiplyPoint2D, rotatePoint } from '../../../../util/objects2d';
 import type { RisqSession } from '../../application/session';
 import type { GameRisq, RisqPlayer, RisqSpace } from '../../model/types';
 import type { ColorRGB } from '../../../../../../scripts/color_rgb';
 import type { RisqArmedState } from '../../application/input/armed_state';
 import type { RisqHover } from '../../application/input/hover';
 import type { RisqOrderPlanning } from '../../application/orders/planning';
+import type { RisqOrdersModel } from '../../application/orders/orders_model';
 import type { RisqSelection } from '../../application/selection/selection';
 import type { RisqControlGroups } from '../../application/selection/control_groups';
 import type { RisqImageCache } from '../assets/image_cache';
@@ -22,6 +23,7 @@ import type { DrawRisqSpaceConfig } from '../space';
 import { DrawRisqSpaceDetail, drawRisqSpaceBase, drawRisqSpaceContent } from '../space';
 import { drawRisqSpaceBorders } from '../space_borders';
 import { RisqViewMode } from '../terrain';
+import { RisqWallPass } from '../walls/wall_pass';
 import type { RisqOrderOverlays } from './order_overlays';
 import type { RisqViewport } from './viewport';
 
@@ -33,7 +35,11 @@ const INSET_RATIO = 1.0392;
 export interface RisqDrawHost {
   readonly control_groups?: Pick<RisqControlGroups, 'memberships'>;
   readonly session: Pick<RisqSession, 'getRegionForSpace' | 'getRegionLookup' | 'getResourceConfigs' | 'isReplaying'>;
-  readonly planning: Pick<RisqOrderPlanning, 'getLocalFoundation' | 'hasPlannedFoundation' | 'idleIds'>;
+  readonly planning: Pick<
+    RisqOrderPlanning,
+    'getLocalFoundation' | 'hasPlannedFoundation' | 'hasFoundation' | 'isFoundationCancelled' | 'idleIds'
+  >;
+  readonly orders_model: Pick<RisqOrdersModel, 'isBeingDeleted'>;
   readonly selection: Pick<
     RisqSelection,
     'isUnitSelected' | 'isBuildingSelected' | 'isResourceSelected' | 'isRegionSelected'
@@ -48,7 +54,7 @@ export interface RisqDrawHost {
     | 'unitRadius'
     | 'corpseRadius'
     | 'centerMaxSlots'
-    | 'edgeMaxSlots'
+    | 'edgeMaxSlotsFor'
   >;
   readonly corpse_layout: RisqCorpseLayout;
   getIcon(name: string): HTMLImageElement;
@@ -59,9 +65,15 @@ export interface RisqDrawHost {
   getPlayerId(): number;
 }
 
+function depthOrder(spaces: RisqSpace[], rotation: number): number[] {
+  const depth = spaces.map((space) => rotatePoint(space.center, rotation).y);
+  return spaces.map((_, i) => i).sort((p, q) => depth[p] - depth[q]);
+}
+
 export class RisqBoardRenderer {
   private last_time = Date.now();
   private links: RisqLinks;
+  private walls = new RisqWallPass();
 
   constructor(
     private risq: RisqDrawHost,
@@ -154,12 +166,29 @@ export class RisqBoardRenderer {
     for (const [i, space] of on_screen_spaces.entries()) {
       drawRisqSpaceContent(ctx, this.risq, space, draw_config, space_text_colors[i]);
     }
+    if (this.viewport.contentDrawn()) {
+      this.walls.prepare(this.risq, on_screen_spaces, {
+        hex_r,
+        rotation: transform.rotation,
+        view_mode: draw_config.view_mode,
+      });
+    } else {
+      this.walls.reset();
+    }
     this.order_overlays.drawRanges(ctx);
     for (const selected of [false, true]) {
       this.order_overlays.draw(ctx, selected);
       const pass_config: DrawRisqSpaceConfig = { ...draw_config, entity_pass: selected ? 'selected' : 'unselected' };
-      for (const [i, space] of on_screen_spaces.entries()) {
+      const order = selected ? on_screen_spaces.map((_, i) => i) : depthOrder(on_screen_spaces, transform.rotation);
+      for (const i of order) {
+        const space = on_screen_spaces[i];
+        if (!selected) {
+          this.walls.draw(ctx, space, 'back');
+        }
         drawRisqSpaceContent(ctx, this.risq, space, pass_config, space_text_colors[i]);
+        if (!selected) {
+          this.walls.draw(ctx, space, 'front');
+        }
       }
       this.order_overlays.drawFlags?.(ctx, selected);
     }

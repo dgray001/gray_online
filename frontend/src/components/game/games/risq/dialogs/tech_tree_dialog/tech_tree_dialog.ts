@@ -21,6 +21,7 @@ import {
   STATUS_TEXT,
 } from './tree_nodes';
 import { RisqProducibleKind, RisqResourceType, RisqUnitType, rangeDistance } from '../../model/types';
+import { rangeLabel } from '../../model/unit_display';
 import { buildingImage } from '../../rendering/assets/buildings';
 import type { RisqCost } from '../../model/types';
 import { resourceTypeImage } from '../../rendering/assets/resources';
@@ -284,7 +285,7 @@ export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
     container.appendChild(line);
   }
 
-  private addStatChip(container: HTMLElement, icon_path: string, value: number): void {
+  private addStatChip(container: HTMLElement, icon_path: string, value: number | string): void {
     const chip = document.createElement('span');
     const img = createImage(`/images/${icon_path}.png`);
     img.alt = '';
@@ -325,7 +326,7 @@ export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
     }
     const range_distance = rangeDistance(stats.attack_range);
     if (range_distance !== null) {
-      this.addStatChip(combat_row, 'risq/icons/attack_range', range_distance);
+      this.addStatChip(combat_row, 'risq/icons/attack_range', rangeLabel(stats.attack_range));
     }
     if (stats.defense_blunt) {
       this.addStatChip(combat_row, 'risq/icons/defense_blunt', stats.defense_blunt);
@@ -391,43 +392,90 @@ export class DwgRisqTechTreeDialog extends DwgDialogBox<TechTreeDialogData> {
     if (entry.stats) {
       this.addStatsRows(fragment, entry.stats);
     }
-    if (entry.unlocks_mercenaries?.length) {
-      this.addLine(fragment, `Unlocks mercenaries: ${entry.unlocks_mercenaries.map((m) => m.display_name).join(', ')}`);
-    }
+    for (const entry of [node.entry, ...(node.entry.additional_effects ?? [])]) {
+      if (entry.unlocks_mercenaries?.length) {
+        this.addLine(
+          fragment,
+          `Unlocks mercenaries: ${entry.unlocks_mercenaries.map((m) => m.display_name).join(', ')}`
+        );
+      }
 
-    if (entry.bonus) {
-      const affected = (entry.affects_unit_types ?? []).map((t) => RisqUnitType[t]?.toLowerCase() ?? t.toString());
-      if (affected.length > 0) {
-        this.addLine(fragment, `Affects: ${affected.join(', ')}`);
-      } else if ((entry.affects_unit_ids ?? []).length > 0) {
-        this.addLine(fragment, `Affects: ${entry.affects_unit_ids!.length} unit(s)`);
-      }
-      if (entry.bonus.max_health) {
-        this.addLine(fragment, `Bonus health: +${entry.bonus.max_health}`);
-      }
-      if (entry.bonus.turn_stamina) {
-        this.addLine(fragment, `Bonus stamina/turn: +${entry.bonus.turn_stamina}`);
-      }
-      const bonus_row = document.createElement('div');
-      bonus_row.classList.add('tooltip-stats');
-      const bonus_chips: [string, number][] = [
-        ['risq/icons/attack_blunt', entry.bonus.attack_blunt],
-        ['risq/icons/attack_piercing', entry.bonus.attack_piercing],
-        ['risq/icons/attack_magic', entry.bonus.attack_magic],
-        ['risq/icons/defense_blunt', entry.bonus.defense_blunt],
-        ['risq/icons/defense_piercing', entry.bonus.defense_piercing],
-        ['risq/icons/defense_magic', entry.bonus.defense_magic],
-        ['risq/icons/penetration_blunt', entry.bonus.penetration_blunt],
-        ['risq/icons/penetration_piercing', entry.bonus.penetration_piercing],
-        ['risq/icons/penetration_magic', entry.bonus.penetration_magic],
-      ];
-      for (const [icon_path, value] of bonus_chips) {
-        if (value) {
-          this.addStatChip(bonus_row, icon_path, value);
+      if (entry.bonus) {
+        const affected = (entry.affects_unit_types ?? []).map((t) => RisqUnitType[t]?.toLowerCase() ?? t.toString());
+        if (affected.length > 0) {
+          this.addLine(fragment, `Affects: ${affected.join(', ')}`);
+        } else if ((entry.affects_unit_ids ?? []).length > 0) {
+          this.addLine(fragment, `Affects: ${entry.affects_unit_ids!.length} unit(s)`);
         }
-      }
-      if (bonus_row.children.length > 0) {
-        fragment.appendChild(bonus_row);
+        if (entry.affects_buildings?.length) {
+          this.addLine(fragment, `Affects: ${entry.affects_buildings.map((b) => b.display_name).join(', ')}`);
+        }
+        if (entry.bonus.max_health) {
+          this.addLine(fragment, `Bonus health: +${entry.bonus.max_health}`);
+        }
+        if (entry.bonus.turn_stamina) {
+          this.addLine(fragment, `Bonus stamina/turn: +${entry.bonus.turn_stamina}`);
+        }
+        const building_lines: [string, number][] = [
+          ['Bonus range levels', entry.bonus.range],
+          ['Movement cost between spaces', -entry.bonus.reduce_inter_move_cost],
+          ['Movement cost within a space', -entry.bonus.reduce_intra_move_cost],
+          ['Bonus gather slots', entry.bonus.gather_capacity],
+          ['Bonus gather speed', entry.bonus.gather_speed],
+          ['Bonus food/resources held', entry.bonus.resource_capacity],
+          ['Bonus garrison slots', entry.bonus.garrison_capacity],
+          ['Bonus garrison blunt attack cap', entry.bonus.garrison_attack_cap_blunt],
+          ['Bonus garrison piercing attack cap', entry.bonus.garrison_attack_cap_piercing],
+          ['Bonus garrison magic attack cap', entry.bonus.garrison_attack_cap_magic],
+          ['Bonus population slots', entry.bonus.population_support],
+        ];
+        for (const [label, value] of building_lines) {
+          if (value) {
+            this.addLine(fragment, `${label}: ${value > 0 ? '+' : ''}${value}`);
+          }
+        }
+        if (entry.bonus.splash_damage_percent) {
+          this.addLine(fragment, `Splash damage: ${entry.bonus.splash_damage_percent}%`);
+        }
+        if (entry.bonus.splash_max_targets) {
+          this.addLine(fragment, `Maximum additional splash targets: ${entry.bonus.splash_max_targets}`);
+        }
+        const gather = entry.gather_bonus;
+        if (gather && (gather.speed || gather.percentage)) {
+          const targets = [...gather.resource_types, ...gather.resource_names];
+          const parts = [
+            gather.speed && `${gather.speed > 0 ? '+' : ''}${gather.speed}`,
+            gather.percentage && `${gather.percentage > 0 ? '+' : ''}${gather.percentage}%`,
+          ];
+          this.addLine(
+            fragment,
+            `Gather speed (${targets.length ? targets.join(', ') : 'all'}): ${parts.filter(Boolean).join(', ')}`
+          );
+        }
+        if (entry.bonus.renew_cost_discount) {
+          this.addLine(fragment, `Renew cost: -${Math.round(100 * entry.bonus.renew_cost_discount)}%`);
+        }
+        const bonus_row = document.createElement('div');
+        bonus_row.classList.add('tooltip-stats');
+        const bonus_chips: [string, number][] = [
+          ['risq/icons/attack_blunt', entry.bonus.attack_blunt],
+          ['risq/icons/attack_piercing', entry.bonus.attack_piercing],
+          ['risq/icons/attack_magic', entry.bonus.attack_magic],
+          ['risq/icons/defense_blunt', entry.bonus.defense_blunt],
+          ['risq/icons/defense_piercing', entry.bonus.defense_piercing],
+          ['risq/icons/defense_magic', entry.bonus.defense_magic],
+          ['risq/icons/penetration_blunt', entry.bonus.penetration_blunt],
+          ['risq/icons/penetration_piercing', entry.bonus.penetration_piercing],
+          ['risq/icons/penetration_magic', entry.bonus.penetration_magic],
+        ];
+        for (const [icon_path, value] of bonus_chips) {
+          if (value) {
+            this.addStatChip(bonus_row, icon_path, value);
+          }
+        }
+        if (bonus_row.children.length > 0) {
+          fragment.appendChild(bonus_row);
+        }
       }
     }
     return fragment;

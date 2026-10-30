@@ -9,7 +9,7 @@ import (
 )
 
 type Orderable interface {
-	toFrontend(viewer_player_id int) gin.H
+	toFrontend(viewer_player_id int, with_history bool) gin.H
 	isDeleted() bool
 	internalId() uint64
 	OrderableType() defs.OrderableType
@@ -36,7 +36,6 @@ func resolveOrdersOnDeath(risq *GameRisq, queue *RisqOrderQueue, internal_id uin
 
 type RisqOrderQueue struct {
 	active_orders []*RisqOrder
-	past_orders   []*RisqOrder
 }
 
 func (r *GameRisq) clearAllOrders() {
@@ -157,12 +156,10 @@ func receiptOrdered(orders []*RisqOrder) []*RisqOrder {
 func createRisqOrderQueue() RisqOrderQueue {
 	return RisqOrderQueue{
 		active_orders: make([]*RisqOrder, 0),
-		past_orders:   make([]*RisqOrder, 0),
 	}
 }
 
 func (q *RisqOrderQueue) receiveOrder(o *RisqOrder, prepend bool) {
-	q.past_orders = append(q.past_orders, o)
 	if prepend {
 		q.active_orders = append([]*RisqOrder{o}, q.active_orders...)
 	} else {

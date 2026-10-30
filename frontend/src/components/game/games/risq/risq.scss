@@ -1,17 +1,4 @@
 dwg-risq {
-  dwg-message-dialog.risq-military-help {
-    #wrapper {
-      align-items: stretch;
-    }
-    #message-container {
-      min-height: 0;
-      overflow-y: auto;
-    }
-    #ok-button {
-      align-self: center;
-      flex-shrink: 0;
-    }
-  }
   #board {
     height: 100%;
     overflow: hidden;

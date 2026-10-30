@@ -54,8 +54,7 @@ func TestTickHistoryIncomingDamageOnIdleUnit(t *testing.T) {
 		t.Fatal("settled idle unit missing")
 	}
 	harness.AssertTickEffect(t, after.TickActions, "damage", harness.TickTarget{Kind: "unit", InternalID: target.InternalID}, target.CombatStats.Health-settled.CombatStats.Health)
-	healing := float64(max(0, settled.CurrentStamina+settled.TurnStamina-int(math.Ceil(float64(settled.TurnStamina)*1.5)))) * float64(settled.CombatStats.MaxHealth) * 0.002
-	if math.Abs(settled.CombatStats.Health+healing-after.CombatStats.Health) > 0.0001 {
+	if math.Abs(settled.CombatStats.Health-after.CombatStats.Health) > 0.0001 {
 		t.Errorf("settled idle unit health differs: %+v", settled)
 	}
 }

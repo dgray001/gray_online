@@ -402,16 +402,4 @@ export function drawSpaceDetailsContent(
     draw_count_row(mapResourceTypeIcon(game, RisqResourceType.GOLD), `${space.gold_income ?? '??'}/turn`);
     return;
   }
-  if (config.view_mode !== RisqViewMode.MILITARY) {
-    const resources = [...(space.total_resources?.entries() ?? [])].filter(([, amount]) => amount > 0);
-    for (const [i, [resource_type]] of resources.entries()) {
-      ctx.drawImage(
-        mapResourceTypeIcon(game, resource_type),
-        xs + i * (config.inset_row + config.inset_gap),
-        y,
-        config.inset_row,
-        config.inset_row
-      );
-    }
-  }
 }

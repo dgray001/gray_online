@@ -18,6 +18,8 @@ func TestExprPrecedenceAndAssociativity(t *testing.T) {
 		"(1 < 2) + (2 < 1) * 5":    1,
 		"min(3, max(1, 2), 9) * 2": 4,
 		"round(2.5) + round(-0.4)": 3,
+		"floor(2.9) + ceil(2.1)":   5,
+		"floor(-0.5) + ceil(-0.5)": -1,
 		"(2 + 3) * (4 - 1)":        15,
 	}
 	for expr, want := range cases {
@@ -149,7 +151,7 @@ func TestGameVarCall(t *testing.T) {
 	lookup := func(field string) (float64, error) {
 		return float64(len(field)), nil
 	}
-	got, err := EvalExprWithFunctions("gameVar(food) * 2 + gameVar(turn)", nil, nil, nil, nil, lookup, nil, nil)
+	got, err := EvalExprWithFunctions("gameVar(food) * 2 + gameVar(turn)", nil, nil, nil, nil, lookup, nil, nil, nil)
 	if err != nil || got != 12 {
 		t.Errorf("got %v, %v; want 12", got, err)
 	}
@@ -157,7 +159,7 @@ func TestGameVarCall(t *testing.T) {
 		t.Errorf("ValidateExpr failed on gameVar(food): %v", err)
 	}
 	for _, bad := range []string{"gameVar(unknown)", "gameVar(1)", "gameVar()", "gameVar(food"} {
-		if _, err := EvalExprWithFunctions(bad, nil, nil, nil, nil, lookup, nil, nil); err == nil {
+		if _, err := EvalExprWithFunctions(bad, nil, nil, nil, nil, lookup, nil, nil, nil); err == nil {
 			t.Errorf("%q evaluated without error", bad)
 		}
 	}
@@ -167,11 +169,11 @@ func TestResearchedCall(t *testing.T) {
 	researched := func(tech_id uint32) (bool, error) {
 		return tech_id == 4, nil
 	}
-	got, err := EvalExprWithFunctions("researched(4) * 10 + researched(2 + 1)", nil, nil, nil, nil, nil, researched, nil)
+	got, err := EvalExprWithFunctions("researched(4) * 10 + researched(2 + 1)", nil, nil, nil, nil, nil, researched, nil, nil)
 	if err != nil || got != 10 {
 		t.Errorf("got %v, %v; want 10", got, err)
 	}
-	if _, err := EvalExprWithFunctions("researched(0 - 1)", nil, nil, nil, nil, nil, researched, nil); err == nil {
+	if _, err := EvalExprWithFunctions("researched(0 - 1)", nil, nil, nil, nil, nil, researched, nil, nil); err == nil {
 		t.Errorf("negative tech id evaluated without error")
 	}
 	if _, err := EvalExpr("researched(4)", nil); err == nil {

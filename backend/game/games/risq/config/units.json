@@ -14,10 +14,11 @@
       { "row": 2, "col": 0, "id": 2 },
       { "row": 2, "col": 1, "id": 3 },
       { "row": 2, "col": 2, "id": 11 },
+      { "row": 2, "col": 3, "id": 1 },
       { "row": 3, "col": 0, "id": 21 },
       { "row": 3, "col": 1, "id": 22 },
       { "row": 3, "col": 2, "id": 23 },
-      { "row": 3, "col": 3, "id": 1 }
+      { "row": 3, "col": 3, "id": 24 }
     ]
   },
   {
@@ -61,7 +62,7 @@
     "penetration_blunt": 5,
     "penetration_piercing": 5,
     "cost": { "food": 120, "gold": 70 },
-    "production_stamina": 35,
+    "production_stamina": 28,
     "turn_stamina": 8
   },
   {
@@ -71,10 +72,10 @@
     "unit_type": "siege",
     "max_health": 12,
     "attack_type": "blunt",
-    "attack_blunt": 20,
+    "attack_blunt": 25,
     "range": "space",
-    "cost": { "wood": 90, "stone": 40 },
-    "production_stamina": 30,
+    "cost": { "wood": 90, "stone": 60 },
+    "production_stamina": 32,
     "turn_stamina": 8,
     "vision": { "space": 3, "edge_adjacent": 2, "adjacent": 0, "edge_opposite": 0, "secondary": 0 }
   }

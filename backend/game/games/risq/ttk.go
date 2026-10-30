@@ -108,7 +108,7 @@ func ComputeUnitVsBuildingTTKWithTechs(attacker_unit_id uint32, target_building_
 	r, attacker_player, target_player := newTTKGame(config)
 	markResearched(attacker_player, attacker_tech_ids)
 	attacker := createRisqUnit(1, attacker_unit_id, attacker_player)
-	target := createRisqBuilding(config, 1, target_building_id, target_player.player.Player_id)
+	target := createRisqBuilding(config, 1, target_building_id, target_player)
 	space := r.spaces[0][0]
 	space.setUnit(&game_utils.Coordinate2D{}, attacker)
 	space.setBuilding(&game_utils.Coordinate2D{}, target)

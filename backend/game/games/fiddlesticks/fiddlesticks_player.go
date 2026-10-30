@@ -23,6 +23,7 @@ type FiddlesticksPlayer struct {
 	instantiated_ai_model bool
 	turn_timer            *time.Timer
 	turn_start_time       time.Time
+	ai_choice             *aiChoice
 }
 
 func (p *FiddlesticksPlayer) createAiModel(model_input map[string]string) {

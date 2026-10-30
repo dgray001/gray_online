@@ -187,6 +187,9 @@ func TestRectangleFinalStartingSpaceDistances(t *testing.T) {
 			}
 			rows := map[int]bool{}
 			longHomes, shortHomes := []startHome{}, []startHome{}
+			// Short starts sit on the inset short edge only when the row span clears the long rows
+			// by the start-area separation; tighter boards relocate them inward.
+			shortEdgesFit := (maxRow-inset)-(minRow+inset) >= 6
 			cornerStarts := 0
 			for _, home := range homes {
 				col := startColumn(home)
@@ -197,7 +200,7 @@ func TestRectangleFinalStartingSpaceDistances(t *testing.T) {
 					cornerStarts++
 				}
 				if home.y != minRow+inset && home.y != maxRow-inset {
-					if home.y < minRow+inset || home.y > maxRow-inset || (col != minCol+inset && col != maxCol-inset) {
+					if home.y < minRow+inset || home.y > maxRow-inset || (shortEdgesFit && col != minCol+inset && col != maxCol-inset) {
 						t.Fatalf("size %d: invalid short-edge start %v", size, home)
 					}
 					shortHomes = append(shortHomes, home)
@@ -209,7 +212,13 @@ func TestRectangleFinalStartingSpaceDistances(t *testing.T) {
 			if len(rows) != min(players-expectedShort, 2) {
 				t.Fatalf("size %d, %d players seed %d: starts occupy %d rows", size, players, seed, len(rows))
 			}
-			if cornerStarts != min(players-expectedShort, 2)+expectedShort {
+			expectedCorners := min(players-expectedShort, 2)
+			for _, home := range shortHomes {
+				if col := startColumn(home); col == minCol+inset || col == maxCol-inset {
+					expectedCorners++
+				}
+			}
+			if cornerStarts != expectedCorners {
 				t.Fatalf("size %d, %d players seed %d: corner starts moved: %v", size, players, seed, homes)
 			}
 			if len(shortHomes) != expectedShort {
@@ -226,13 +235,15 @@ func TestRectangleFinalStartingSpaceDistances(t *testing.T) {
 					farCount++
 				}
 			}
-			for _, home := range shortHomes {
-				nearDistance, farDistance := home.y-(minRow+inset), maxRow-inset-home.y
-				if (nearCount < farCount && nearDistance >= farDistance) || (farCount < nearCount && farDistance >= nearDistance) {
-					t.Fatalf("short-edge start %v is not closer to the less-populated row (%d/%d players)", home, nearCount, farCount)
-				}
-				if nearCount == farCount && math.Abs(float64(nearDistance-farDistance)) > 1 {
-					t.Fatalf("balanced rows: short-edge start %v is not centered", home)
+			if shortEdgesFit {
+				for _, home := range shortHomes {
+					nearDistance, farDistance := home.y-(minRow+inset), maxRow-inset-home.y
+					if (nearCount < farCount && nearDistance >= farDistance) || (farCount < nearCount && farDistance >= nearDistance) {
+						t.Fatalf("short-edge start %v is not closer to the less-populated row (%d/%d players)", home, nearCount, farCount)
+					}
+					if nearCount == farCount && math.Abs(float64(nearDistance-farDistance)) > 1 {
+						t.Fatalf("balanced rows: short-edge start %v is not centered", home)
+					}
 				}
 			}
 			distances := rowStartDistances(longHomes)

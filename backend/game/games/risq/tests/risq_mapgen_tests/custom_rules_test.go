@@ -51,6 +51,16 @@ func TestCustomMapSpaceGoldIncomeOverridesGlobal(t *testing.T) {
 	}
 }
 
+func TestCustomMapRegionBonusUsesSetupSettings(t *testing.T) {
+	doc := `{"board_size":1,"players":1,"spaces":[{"x":0,"y":0},{"x":1,"y":0}],"regions":[{"name":"A","gold_bonus":"map_resources * 3","spaces":[[0,0],[1,0]]}]}`
+	for resources, want := range map[float64]float64{2: 6, 4: 12} {
+		board := seededBoard(t, doc, 1, 1, map[string]any{"map_resources": resources})
+		if len(board.Regions) != 1 || board.Regions[0].GoldBonus != want {
+			t.Errorf("map_resources %v: regions %v, want bonus %v", resources, board.Regions, want)
+		}
+	}
+}
+
 func TestCustomMapUnitCountsUseSetupSettings(t *testing.T) {
 	space := `{"x":0,"y":0,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":0,"count":"starting_development * 2"}]}]}`
 	board := seededBoard(t, customDoc(1, "", space), 1, 1, map[string]any{"starting_development": float64(3)})

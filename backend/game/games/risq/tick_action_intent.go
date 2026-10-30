@@ -36,11 +36,11 @@ func (r *GameRisq) recordTickIntent(actor Orderable, order *RisqOrder) {
 	base := tickBase(actor)
 	base.tick_action = action
 	action.intent.kind = tickOrderKind(order.order_type)
-	action.intent.min_cost, action.intent.max_cost = base.intent.min_cost, base.intent.max_cost
 	r.snapshotIntent(action, base.intent)
 }
 
 func (r *GameRisq) snapshotIntent(action *TickAction, intent *RisqIntent) {
+	action.intent.min_cost, action.intent.max_cost = intent.min_cost, intent.max_cost
 	switch detail := intent.detail.(type) {
 	case *MoveIntent:
 		action.intent.kind = "move"

@@ -56,7 +56,7 @@ def infrastructure(definitions: Definitions) -> list[Record]:
             variable("want_2", f"(var(own_1) > 0) * (gameVar(population_limit) < gameVar(population_max)) * max(0, (var(population_flow) * var(tune_housing_horizon) + 1 - var(headroom)) / {definitions.buildings[2]['population_support']})"),
             variable("army_investment", " + ".join(f"var(own_{unit}) * {total_cost('unit', unit)}" for unit in (101, 102, 103))),
             variable("projected_army_investment", "var(army_investment) + (var(producers_22) * var(barracks_running_cost) + var(producers_23) * var(redoubt_running_cost)) * var(tune_investment_horizon)"),
-            variable("want_11", f"(var(own_1) > 0) * (var(buildings_11) + var(foundations_11) == 0) * (var(projected_army_investment) * var(tune_tactical_attack_bonus) >= {total_cost('tech', 2)} + {total_cost('building', 11)})")]
+            variable("want_11", f"(var(own_1) > 0) * (var(buildings_11) + var(foundations_11) == 0) * (var(projected_army_investment) * var(tune_tactical_attack_bonus) >= {total_cost('tech', 61)} + {total_cost('building', 11)})")]
     idle_gold = f"(var(producers_23) == 0) * (var(own_1) > 0) * (var(gold_idle) >= var(tune_surplus_hire_batches) * var(tune_hire_price_estimate) * {total_cost('unit', 101)})"
     actions.append(variable("want_23", f"max(var(want_23), {idle_gold})"))
     return actions

@@ -1,18 +1,19 @@
-"""Compares two sim eval runs game by game (same seeds and seats) from their results.json files.
+"""Compares two sim eval runs game by game (same seeds and seats) from their per-game files; both runs need to be without -quiet.
 usage: python3 tools/compare.py outputs/eval outputs/eval_variant [--idle-until 40]
 The subject is scenario player 0 in both runs."""
 import argparse
-import json
 from collections import Counter
 from pathlib import Path
 from typing import Any
+
+from run_games import load_run
 
 OUTCOMES = ("defeat", "crush", "winning", "ahead", "behind", "losing", "crushed", "defeated", "error")
 RANK = {name: len(OUTCOMES) - 2 - index for index, name in enumerate(OUTCOMES)} | {"error": -1}
 
 
 def load(path: Path) -> dict[str, Any]:
-    return json.loads((path / "results.json" if path.is_dir() else path).read_text())
+    return load_run(path)
 
 
 def subject_seat(game: dict[str, Any]) -> int:

@@ -65,17 +65,21 @@ type RisqRange uint8
 const (
 	RisqRange_NONE RisqRange = iota
 	RisqRange_ZONE
+	RisqRange_WALL
 	RisqRange_SPACE
+	RisqRange_TWOZONE
+	RisqRange_THREEZONE
 	RisqRange_ADJACENT
+	RisqRange_FIVEZONE
 	RisqRange_SECONDARY
 	RisqRange_END
 )
 
 func (r RisqRange) SpaceRadius() (uint, bool) {
 	switch r {
-	case RisqRange_SPACE:
+	case RisqRange_WALL, RisqRange_SPACE, RisqRange_TWOZONE, RisqRange_THREEZONE:
 		return 0, true
-	case RisqRange_ADJACENT:
+	case RisqRange_ADJACENT, RisqRange_FIVEZONE:
 		return 1, true
 	case RisqRange_SECONDARY:
 		return 2, true
@@ -84,12 +88,42 @@ func (r RisqRange) SpaceRadius() (uint, bool) {
 	}
 }
 
+func (r RisqRange) ZoneRadius() uint {
+	switch {
+	case r >= RisqRange_FIVEZONE:
+		return 5
+	case r >= RisqRange_THREEZONE:
+		return 3
+	case r >= RisqRange_TWOZONE:
+		return 2
+	case r >= RisqRange_WALL:
+		return 1
+	default:
+		return 0
+	}
+}
+
+func (r RisqRange) WithBonus(bonus int) RisqRange {
+	if r == RisqRange_NONE {
+		return r
+	}
+	return RisqRange(min(int(RisqRange_SECONDARY), int(r)+bonus))
+}
+
 func parseRange(s string) (RisqRange, error) {
 	switch s {
 	case "", "zone":
 		return RisqRange_ZONE, nil
 	case "space":
 		return RisqRange_SPACE, nil
+	case "wall":
+		return RisqRange_WALL, nil
+	case "twozone":
+		return RisqRange_TWOZONE, nil
+	case "threezone":
+		return RisqRange_THREEZONE, nil
+	case "fivezone":
+		return RisqRange_FIVEZONE, nil
 	case "adjacent":
 		return RisqRange_ADJACENT, nil
 	case "secondary":

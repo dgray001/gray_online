@@ -25,7 +25,6 @@ type RisqPlayer struct {
 	color                          string
 	active_orders                  []*RisqOrder
 	unreceived_orders              []defs.OrderFromFrontend
-	past_orders                    []*RisqOrder
 	orders_submitted               bool
 	default_unit_stance            defs.UnitStance
 	default_unit_attack_back       bool
@@ -103,7 +102,6 @@ func createRisqPlayer(config *defs.Config, player *game.Player, max_population_l
 		max_population_limit:     max_population_limit,
 		color:                    color,
 		active_orders:            make([]*RisqOrder, 0),
-		past_orders:              make([]*RisqOrder, 0),
 		orders_submitted:         false,
 		default_unit_stance:      defs.UnitStance_DEFENSIVE,
 		default_unit_attack_back: true,
@@ -306,7 +304,7 @@ func (p *RisqPlayer) unreceivedOrdersToFrontend() []defs.OrderFromFrontend {
 	return append(make([]defs.OrderFromFrontend, 0, len(p.unreceived_orders)), p.unreceived_orders...)
 }
 
-func (p *RisqPlayer) toFrontend(viewer_player_id int) gin.H {
+func (p *RisqPlayer) toFrontend(viewer_player_id int, with_history bool) gin.H {
 	player := gin.H{
 		"unlimited_population": p.unlimited_population,
 		"score":                p.score,
@@ -326,7 +324,9 @@ func (p *RisqPlayer) toFrontend(viewer_player_id int) gin.H {
 		player["default_unit_attack_back"] = p.default_unit_attack_back
 		player["default_unit_interrupt_current"] = p.default_unit_interrupt_current
 		player["default_unit_target_priority"] = targetCategoriesToInts(p.default_unit_target_priority)
-		player["turn_report"] = p.completed_report.toFrontend()
+		if with_history {
+			player["turn_report"] = p.completed_report.toFrontend()
+		}
 		foundations := make([]gin.H, 0)
 		for coordinate_key, f := range p.planned_foundations {
 			foundations = append(foundations, gin.H{
@@ -350,7 +350,7 @@ func (p *RisqPlayer) toFrontend(viewer_player_id int) gin.H {
 		if !is_owner && (building.zone == nil || building.zone.space == nil || building.zone.space.getVisibility(viewer_player_id) < defs.VisibilityPoor) {
 			continue
 		}
-		buildings = append(buildings, building.toFrontend(viewer_player_id))
+		buildings = append(buildings, building.toFrontend(viewer_player_id, with_history))
 	}
 	player["buildings"] = buildings
 	units := make([]gin.H, 0)
@@ -361,7 +361,7 @@ func (p *RisqPlayer) toFrontend(viewer_player_id int) gin.H {
 		if !is_owner && (unit.zone == nil || unit.zone.space == nil || unit.zone.space.getVisibility(viewer_player_id) < defs.VisibilityGood) {
 			continue
 		}
-		units = append(units, unit.toFrontend(viewer_player_id))
+		units = append(units, unit.toFrontend(viewer_player_id, with_history))
 	}
 	player["units"] = units
 	active_orders := make([]gin.H, 0)
@@ -377,7 +377,16 @@ func (p *RisqPlayer) toFrontend(viewer_player_id int) gin.H {
 
 func applyTechBonus(u *RisqUnit, tech defs.TechConfig) {
 	u.turn_stamina += tech.Bonus_turn_stamina
+	u.attack_range = u.attack_range.WithBonus(tech.Bonus_range)
+	u.splash_damage_percent += tech.Splash_damage_percent
+	u.splash_max_targets += tech.Splash_max_targets
+	u.path_profile.inter_cost_reduction += tech.Reduce_inter_move_cost
+	u.path_profile.intra_cost_reduction += tech.Reduce_intra_move_cost
+	u.path_profile.can_scale_walls = u.path_profile.can_scale_walls || tech.Scale_walls
 	u.cs.setMaxHealth(u.cs.max_health + tech.Bonus_max_health)
+	if tech.Gather_bonus.IsSet() {
+		u.gather_bonuses = append(u.gather_bonuses, tech.Gather_bonus)
+	}
 	if tech.HasTargetFilter() {
 		return
 	}
@@ -400,12 +409,17 @@ func (r *GameRisq) completeResearch(player *RisqPlayer, tech_id uint32) {
 	if !ok {
 		return
 	}
-	for _, unit := range player.units {
-		if tech.AppliesTo(unit.unit_id, unit.unitType()) {
-			applyTechBonus(unit, tech)
+	for _, effect := range tech.Effects() {
+		for _, unit := range player.units {
+			if effect.AppliesTo(unit.unit_id, unit.unitType()) {
+				applyTechBonus(unit, effect)
+			}
+		}
+		for _, building := range player.buildings {
+			building.applyTechBonus(effect)
 		}
 	}
-	for _, unit_id := range tech.Unlocks_mercenary_ids {
+	for _, unit_id := range tech.UnlockedMercenaryIds() {
 		if _, exists := player.config.Units[unit_id]; exists {
 			player.available_mercenaries[unit_id] = true
 		}

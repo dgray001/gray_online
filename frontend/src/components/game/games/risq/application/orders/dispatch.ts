@@ -27,7 +27,7 @@ export declare interface OrderSubject {
   unit_type: RisqUnitType;
 }
 
-/** Turns a right-click on the hovered target into orders for the selected units or building */
+/** Turns the hovered target into orders for the selected units or building */
 export class RisqOrderDispatch {
   constructor(
     private session: RisqSession,
@@ -73,21 +73,21 @@ export class RisqOrderDispatch {
     const space = this.hover.space();
     const zone = this.hover.zone();
     if (!space) {
-      if (!ctrl_held) {
-        this.armed.disarmOrder();
-      }
+      this.show_message('Select a visible map location', RISQ_MESSAGE_WARNING_COLOR);
       return;
     }
     const ids = (filter: (u: OrderSubject) => boolean = () => true): number[] =>
       units.filter(filter).map((u) => u.internal_id);
     const economic = (u: OrderSubject): boolean => u.unit_type === RisqUnitType.ECONOMIC;
     const attackers = (): number[] => ids((u) => this.armed.getArmedOrder() !== RisqOrderType.NONE || !economic(u));
-    const add = (order_type: RisqOrderType, subjects: number[], target_id: number): void =>
-      this.addUnitOrder(order_type, subjects, target_id, ctrl_held);
+    let applied = false;
+    const add = (order_type: RisqOrderType, subjects: number[], target_id: number): void => {
+      applied = this.addUnitOrder(order_type, subjects, target_id, ctrl_held);
+    };
     const order_type = this.targeting.resolveActiveOrderType(ctrl_held);
     switch (order_type) {
       case RisqOrderType.OrderType_UnitMoveSpace:
-        this.moveSpaceOrder(ids(), space, ctrl_held);
+        applied = this.moveSpaceOrder(ids(), space, ctrl_held);
         break;
       case RisqOrderType.OrderType_UnitMoveZone:
         if (!zone) {
@@ -130,7 +130,7 @@ export class RisqOrderDispatch {
           return;
         }
         const target = zone.building ?? zone.resource;
-        const fitted = this.planning.fitGatherCapacity(target, ids(economic));
+        const fitted = this.planning.fitGatherCapacity(target, ids(economic), ctrl_held);
         if (fitted.at_capacity) {
           this.show_message(`${target!.display_name} is at worker capacity`, RISQ_MESSAGE_WARNING_COLOR);
         }
@@ -142,9 +142,9 @@ export class RisqOrderDispatch {
           return;
         }
         if (this.armed.getArmedBuilding()) {
-          this.newFoundation(ids(economic), zone.coordinate_key, ctrl_held);
+          applied = this.newFoundation(ids(economic), zone.coordinate_key, ctrl_held);
         } else {
-          this.assistBuildOrder(units, zone.coordinate_key, ctrl_held);
+          applied = this.assistBuildOrder(units, zone.coordinate_key, ctrl_held);
         }
         break;
       case RisqOrderType.OrderType_UnitRepair:
@@ -155,28 +155,29 @@ export class RisqOrderDispatch {
         add(order_type, ids(economic), zone.building.internal_id);
         break;
       default:
-        if (!ctrl_held) {
-          this.armed.disarmOrder();
+        if (this.armed.anythingArmed()) {
+          this.show_message('No valid target for this action', RISQ_MESSAGE_WARNING_COLOR);
         }
         return;
     }
-    if (!ctrl_held) {
+    if (applied && !ctrl_held) {
       this.armed.disarmOrder();
     }
   }
 
-  private moveSpaceOrder(internal_ids: number[], space: RisqSpace, ctrl_held: boolean): void {
+  private moveSpaceOrder(internal_ids: number[], space: RisqSpace, ctrl_held: boolean): boolean {
     const player = this.session.getPlayer();
     const subjects = internal_ids.filter((id: number): boolean => {
       const unit = player?.units.get(id);
       return !!unit && (ctrl_held || !equalsPoint2D(unit.space_coordinate, space.coordinate));
     });
-    this.addUnitOrder(RisqOrderType.OrderType_UnitMoveSpace, subjects, space.coordinate_key, ctrl_held);
+    return this.addUnitOrder(RisqOrderType.OrderType_UnitMoveSpace, subjects, space.coordinate_key, ctrl_held);
   }
 
-  private addUnitOrder(order_type: RisqOrderType, subjects: number[], target_id: number, ctrl_held: boolean): void {
+  private addUnitOrder(order_type: RisqOrderType, subjects: number[], target_id: number, ctrl_held: boolean): boolean {
     if (subjects.length === 0) {
-      return;
+      this.show_message('No eligible units for this target', RISQ_MESSAGE_WARNING_COLOR);
+      return false;
     }
     if (order_type === RisqOrderType.OrderType_UnitRenew) {
       const player = this.session.getPlayer();
@@ -189,10 +190,10 @@ export class RisqOrderDispatch {
         );
       if (player && cost && !reserved && !canAffordCost(player, cost)) {
         this.show_message('Not enough resources', RISQ_MESSAGE_WARNING_COLOR);
-        return;
+        return false;
       }
     }
-    this.orders_model.add({
+    return this.orders_model.add({
       player_id: this.session.getPlayerId(),
       order_type,
       subjects,
@@ -211,11 +212,11 @@ export class RisqOrderDispatch {
     );
   }
 
-  private assistBuildOrder(units: OrderSubject[], zone_key: number, ctrl_held: boolean): void {
+  private assistBuildOrder(units: OrderSubject[], zone_key: number, ctrl_held: boolean): boolean {
     const player = this.session.getPlayer();
     const building_id = this.existingBuildTarget(zone_key);
     if (!player || building_id === undefined) {
-      return;
+      return false;
     }
     const subjects = units
       .filter((subject: OrderSubject): boolean => {
@@ -223,22 +224,21 @@ export class RisqOrderDispatch {
         return !!unit && unitCanBuild(player, unit, building_id);
       })
       .map((subject: OrderSubject): number => subject.internal_id);
-    if (subjects.length > 0) {
-      this.orders_model.add(this.buildOrder(building_id, subjects, zone_key, ctrl_held));
-    }
+    return subjects.length > 0 && this.orders_model.add(this.buildOrder(building_id, subjects, zone_key, ctrl_held));
   }
 
   /** Queues a build order for the armed building and records it as a local foundation */
-  private newFoundation(subjects: number[], zone_key: number, ctrl_held: boolean): void {
+  private newFoundation(subjects: number[], zone_key: number, ctrl_held: boolean): boolean {
     const building = this.armed.getArmedBuilding()!;
     const player = this.session.getPlayer();
     if (player && !canAffordCost(player, building.cost)) {
       this.show_message('Not enough resources', RISQ_MESSAGE_WARNING_COLOR);
-      this.armed.disarmOrder();
-      return;
+      return false;
     }
     const order = this.buildOrder(building.id, subjects, zone_key, ctrl_held);
-    this.orders_model.add(order);
+    if (!this.orders_model.add(order)) {
+      return false;
+    }
     this.planning.setLocalFoundation({
       coordinate_key: zone_key,
       building_id: building.id,
@@ -246,6 +246,7 @@ export class RisqOrderDispatch {
       stamina_cost: building.stamina_cost,
       order,
     });
+    return true;
   }
 
   private buildOrder(
@@ -263,26 +264,32 @@ export class RisqOrderDispatch {
     };
   }
 
-  /** Right-click with an owned building selected: attack the hovered enemy, else set the gather point there */
+  /** Attacks the hovered enemy or sets a gather point for the selected buildings */
   buildingOrder(buildings: RisqBuilding[], ctrl_held: boolean): void {
+    let applied = false;
     for (const building of buildings) {
       const target = this.armed.isGatherPointArmed() ? undefined : this.targeting.buildingAttackTarget(building);
       if (target) {
-        this.orders_model.add({
-          player_id: this.session.getPlayerId(),
-          order_type:
-            target.kind === 'unit'
-              ? RisqOrderType.OrderType_BuildingAttackUnit
-              : RisqOrderType.OrderType_BuildingAttackBuilding,
-          subjects: [building.internal_id],
-          target_id: target.internal_id,
-          clear_previous_orders: !ctrl_held,
-        });
-      } else if (!this.armed.isBuildingAttackArmed()) {
+        applied =
+          this.orders_model.add({
+            player_id: this.session.getPlayerId(),
+            order_type:
+              target.kind === 'unit'
+                ? RisqOrderType.OrderType_BuildingAttackUnit
+                : RisqOrderType.OrderType_BuildingAttackBuilding,
+            subjects: [building.internal_id],
+            target_id: target.internal_id,
+            clear_previous_orders: !ctrl_held,
+          }) || applied;
+      } else if (!this.armed.isBuildingAttackArmed() && canHaveGatherPoint(building) && this.hover.space()) {
         this.gatherPointOrder(building);
+        applied = true;
       }
     }
-    if (!ctrl_held) {
+    if (!applied && this.armed.anythingArmed()) {
+      this.show_message('No valid target for this action', RISQ_MESSAGE_WARNING_COLOR);
+    }
+    if (applied && !ctrl_held) {
       this.armed.disarmGatherPoint();
       this.armed.disarmBuildingAttack();
     }

@@ -34,6 +34,34 @@ func TestResearchAppliesToExistingAndNewUnits(t *testing.T) {
 	}
 }
 
+func TestResearchAdditionalEffectsApplyIndependently(t *testing.T) {
+	g := productionGame(t, 1, 1, "")
+	p := g.Human(0)
+	b := centers(g, p)[0]
+	original := defs.TechConfigs[301]
+	t.Cleanup(func() { defs.TechConfigs[301] = original })
+	defs.TechConfigs[301] = defs.TechConfig{Research_stamina: 1, Additional_effects: []defs.TechConfig{
+		{Affects_unit_ids: []uint32{11}, Bonus_max_health: 10},
+		{Affects_building_ids: []uint32{201}, Bonus_range: 1, Bonus: defs.CombatBonus{Attack_piercing: 2}},
+	}}
+	g.Submit(p, harness.Order(defs.OrderType_BuildingResearch, []uint64{b.InternalID}, 301, false))
+	g.EndTurn()
+	after := centers(g, p)[0]
+	if after.AttackRange != uint8(defs.RisqRange_TWOZONE) || after.CombatStats.AttackPiercing != 2 || after.CombatStats.MaxHealth != b.CombatStats.MaxHealth {
+		t.Fatalf("building effects missing or mixed with unit effects: %+v", after)
+	}
+	g.Submit(p, harness.OrderProduce([]uint64{b.InternalID}, 11))
+	g.EndTurn()
+	if len(g.Self(p).Units) != 2 {
+		t.Fatal("post-research worker was not produced")
+	}
+	for _, unit := range g.Self(p).Units {
+		if unit.CombatStats.MaxHealth != 20 {
+			t.Fatalf("additional worker effect missing: %+v", unit)
+		}
+	}
+}
+
 func TestResearchCancellationRefundsAndAllowsRetry(t *testing.T) {
 	g := productionGame(t, 1, 1, "")
 	p := g.Human(0)

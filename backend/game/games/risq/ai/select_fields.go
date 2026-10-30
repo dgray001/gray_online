@@ -120,6 +120,9 @@ func (s selItem) field(name string) (float64, bool) {
 			return s.letValue(name, spec), true
 		}
 	}
+	if value, ok, nested := s.pathField(name); nested {
+		return value, ok
+	}
 	if s.role == "actor" && name == "assign_round" {
 		return s.internals.assign_round, true
 	}
@@ -213,37 +216,11 @@ func (s selItem) distanceToRole(role string, zone_steps bool) float64 {
 	return s.measure(loc, other_loc, zone_steps)
 }
 
-func (s selItem) region(read func(regionStat) float64) float64 {
-	loc, _, _ := locOf(s.loopItem)
-	stat, _ := s.census.regions.at(loc.Space)
-	return read(stat)
-}
-
-func (s selItem) spaceInfo(read func(SpaceInfo) float64) float64 {
-	loc, _, _ := locOf(s.loopItem)
-	return read(s.census.spaces[loc.Space])
-}
-
-var selectRegionFields = fieldTable[selItem]{
-	"region":            func(s selItem) float64 { return s.region(func(r regionStat) float64 { return float64(r.index) }) },
-	"region_owner":      func(s selItem) float64 { return s.region(func(r regionStat) float64 { return float64(r.info.Owner) }) },
-	"region_gold_bonus": func(s selItem) float64 { return s.region(func(r regionStat) float64 { return r.info.GoldBonus }) },
-	"region_known": func(s selItem) float64 {
-		return s.region(func(r regionStat) float64 { return float64(len(r.info.Spaces)) })
-	},
-	"region_owned":   func(s selItem) float64 { return s.region(func(r regionStat) float64 { return float64(r.owned) }) },
-	"region_enemy":   func(s selItem) float64 { return s.region(func(r regionStat) float64 { return float64(r.enemy) }) },
-	"region_unowned": func(s selItem) float64 { return s.region(func(r regionStat) float64 { return float64(r.unowned) }) },
-	"region_unexplored": func(s selItem) float64 {
-		return s.region(func(r regionStat) float64 { return boolNumber(r.info.HasUnexplored) })
-	},
+var selectSeenFields = fieldTable[selItem]{
 	"turns_since_seen": func(s selItem) float64 {
 		loc, _, _ := locOf(s.loopItem)
 		return float64(s.view.TurnNumber() - s.internals.last_observed[loc.Space])
 	},
-	"space_vision":      func(s selItem) float64 { return s.spaceInfo(func(i SpaceInfo) float64 { return float64(i.Vision) }) },
-	"space_owner":       func(s selItem) float64 { return s.spaceInfo(func(i SpaceInfo) float64 { return float64(i.Owner) }) },
-	"space_gold_income": func(s selItem) float64 { return s.spaceInfo(func(i SpaceInfo) float64 { return i.GoldIncome }) },
 }
 
 var selectLocatedFields = fieldTable[selItem]{
@@ -328,22 +305,22 @@ func mergeFields(tables ...fieldTable[selItem]) fieldTable[selItem] {
 var selectFieldTables = map[string]fieldTable[selItem]{
 	"orders":      {},
 	"assignments": {},
-	"units":       mergeFields(selectLocatedFields, selectRegionFields, selectUnitFields),
-	"buildings":   mergeFields(selectLocatedFields, selectRegionFields, selectBuildingFields),
-	"resources":   mergeFields(selectLocatedFields, selectRegionFields),
-	"spaces":      mergeFields(selectLocatedFields, selectRegionFields, selectEmptyField),
-	"zones":       mergeFields(selectLocatedFields, selectRegionFields, selectEmptyField),
+	"units":       mergeFields(selectLocatedFields, selectSeenFields, selectUnitFields),
+	"buildings":   mergeFields(selectLocatedFields, selectSeenFields, selectBuildingFields),
+	"resources":   mergeFields(selectLocatedFields, selectSeenFields),
+	"spaces":      mergeFields(selectLocatedFields, selectSeenFields, selectEmptyField),
+	"zones":       mergeFields(selectLocatedFields, selectSeenFields, selectEmptyField),
 	"regions":     {},
 
-	"foundations": mergeFields(selectLocatedFields, selectRegionFields),
-	"gatherables": mergeFields(selectLocatedFields, selectRegionFields),
-	"attackables": mergeFields(selectLocatedFields, selectRegionFields),
+	"foundations": mergeFields(selectLocatedFields, selectSeenFields),
+	"gatherables": mergeFields(selectLocatedFields, selectSeenFields),
+	"attackables": mergeFields(selectLocatedFields, selectSeenFields),
 	"mercenaries": selectMercenaryFields,
 }
 
 func init() {
 	for kind, table := range selectFieldTables {
-		all := append(slices.Clone(itemFields[kind]), table.names()...)
+		all := slices.Concat(itemFields[kind], table.names(), pathFieldNames(kind))
 		itemFields["select_"+kind] = all
 		itemFields["select_target_"+kind] = slices.DeleteFunc(slices.Clone(all), func(n string) bool {
 			return n == "distance_to_actor" || n == "zone_distance_to_actor"

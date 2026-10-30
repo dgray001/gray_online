@@ -5,6 +5,7 @@ import { configDraw } from '../../../../util/canvas_components/canvas_component'
 import { drawRect } from '../../../../util/canvas_util';
 import type { Point2D } from '../../../../util/objects2d';
 import { RisqVisibilityLevel } from '../../model/types';
+import { RISQ_MESSAGE_WARNING_COLOR } from '../message_queue';
 import type { RisqBuilding, UnitByTypeData } from '../../model/types';
 import { unitsByPlayerFiltered } from '../../model/unit_groups';
 import type { DwgRisq } from '../../risq';
@@ -119,6 +120,16 @@ export class RisqLeftPanel implements CanvasComponent {
       }
     }
     this.target_priority_control?.dataRefreshed();
+    if (this.beingDeletedKind()) {
+      this.buttons.forEach((button) => button.disable());
+      this.target_priority_control = undefined;
+    }
+  }
+
+  private beingDeletedKind(): 'unit' | 'building' | undefined {
+    const { ids, kind } = orderListSubjects(this.data, this.risq.getPlayer()?.player.player_id);
+    const deleted = ids.length > 0 && kind && ids.every((id) => this.risq.orders_model.isBeingDeleted(id, kind));
+    return deleted ? kind : undefined;
   }
 
   private showOrderRows(): boolean {
@@ -229,13 +240,13 @@ export class RisqLeftPanel implements CanvasComponent {
     this.refreshData();
   }
 
-  triggerAction(action: RisqHotkeyAction): boolean {
+  triggerAction(action: RisqHotkeyAction, ctrl_held: boolean = false): boolean {
     if (!this.isShowing() || !this.isOrderable() || !this.risq.session.canGiveOrders()) {
       return false;
     }
     const button = this.buttons.find((b) => b.matchesAction(action) && !b.isDisabled());
     if (button) {
-      button.execute();
+      button.execute(ctrl_held);
       return true;
     }
     return false;
@@ -443,6 +454,13 @@ export class RisqLeftPanel implements CanvasComponent {
       return true;
     }
     this.input.mousedown(this.data, e);
+    const deleted_kind = this.beingDeletedKind();
+    if (deleted_kind && (e.button === 0 || e.button === 2) && this.buttons.some((b) => b.isPointerOver())) {
+      this.risq.showMessage(
+        `${deleted_kind === 'unit' ? 'Unit' : 'Building'} is being deleted`,
+        RISQ_MESSAGE_WARNING_COLOR
+      );
+    }
     for (const button of this.buttons) {
       button.mousedown(e);
     }

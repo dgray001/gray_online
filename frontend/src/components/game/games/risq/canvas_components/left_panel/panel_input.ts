@@ -244,7 +244,16 @@ export class RisqLeftPanelInput {
         const remaining = e.ctrlKey
           ? selected.filter((b: RisqBuilding): boolean => !ids.has(b.internal_id))
           : buildings;
-        this.risq.selection.selectOwnBuildings(remaining.map((b: RisqBuilding): number => b.internal_id));
+        if (remaining.every((b: RisqBuilding): boolean => b.player_id === this.risq.getPlayerId())) {
+          this.risq.selection.selectOwnBuildings(remaining.map((b: RisqBuilding): number => b.internal_id));
+        } else {
+          this.panel.openPanel(
+            remaining.length === 1
+              ? { data_type: LeftPanelDataType.BUILDING, data: remaining[0] }
+              : { data_type: LeftPanelDataType.BUILDINGS, data: { buildings: remaining } },
+            visibility
+          );
+        }
       }
       return;
     }

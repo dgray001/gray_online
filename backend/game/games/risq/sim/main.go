@@ -11,6 +11,7 @@ import (
 	rdebug "runtime/debug"
 
 	"github.com/dgray001/gray_online/game/games/risq"
+	"github.com/dgray001/gray_online/game/games/risq/ai"
 	"github.com/dgray001/gray_online/util"
 )
 
@@ -19,15 +20,17 @@ func main() {
 		rdebug.SetGCPercent(400)
 	}
 	debug := flag.Bool("debug", false, "write per-game debug logs")
-	quiet := flag.Bool("quiet", false, "discard engine stdout and write results.json as one compact line per game (no timelines or per-turn metrics); keep only errors and the sim's own per-game log")
+	quiet := flag.Bool("quiet", false, "discard engine stdout and skip the per-game result files; keep only errors, the sim's own per-game log and results.json")
 	seed_override := flag.Int64("seed", 0, "override the scenario's base seed")
 	parallel := flag.Int("parallel", runtime.NumCPU(), "games to run concurrently")
 	config_dir := flag.String("config", "../config", "risq config directory")
+	log_steps := flag.Bool("log-steps", false, "with -debug, also log every AI rule's select and loop step counts each turn")
 	flag.Parse()
 	if flag.NArg() < 1 {
-		fmt.Fprintln(os.Stderr, "usage: sim [-config DIR] [-seed N] [-debug] [-quiet] [-parallel N] <scenario_name>")
+		fmt.Fprintln(os.Stderr, "usage: sim [-config DIR] [-seed N] [-debug] [-log-steps] [-quiet] [-parallel N] <scenario_name>")
 		os.Exit(1)
 	}
+	ai.LogRuleSteps = *log_steps
 	name := flag.Arg(0)
 	// the summary goes to the terminal even when engine output is redirected
 	terminal := os.Stdout

@@ -55,6 +55,30 @@ func TestPopulationLimitRejectsInvalidSettings(t *testing.T) {
 	}
 }
 
+func TestCreateGameRejectsUnlistedMapAndAiConfig(t *testing.T) {
+	for _, settings := range []map[string]any{
+		aiSettings(2, 1, "script:missing"),
+		aiSettings(2, 1, "custom:../../ai/default"),
+		withAiConfig(aiSettings(2, 1, "script:fixture_ring"), "../maps/scripted/fixture_ring"),
+	} {
+		base := game.CreateBaseGame(1, game.GameType_RISQ, settings, nil, nil)
+		if _, err := risq.CreateGame(base, make(chan game.PlayerAction, 1)); err == nil {
+			t.Errorf("settings %v should be rejected", settings)
+		}
+	}
+	base := game.CreateBaseGame(1, game.GameType_RISQ, withAiConfig(aiSettings(2, 1, "script:fixture_ring"), "temp_retreat"), nil, nil)
+	if _, err := risq.CreateGame(base, make(chan game.PlayerAction, 1)); err != nil {
+		t.Errorf("listed ai config rejected: %v", err)
+	}
+}
+
+func withAiConfig(settings map[string]any, config string) map[string]any {
+	for _, ai := range settings["ai_players"].([]any) {
+		ai.(map[string]any)["config"] = config
+	}
+	return settings
+}
+
 func createWithAis(count int) error {
 	_, err := engineStarts("script:fixture_ring", count, 1)
 	return err

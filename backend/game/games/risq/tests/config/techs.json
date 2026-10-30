@@ -3,5 +3,8 @@
   {"tech_id":302,"display_name":"Test Military Logistics","cost":{"wood":80,"stone":60},"research_stamina":25,"unlocks_mercenary_ids":[21,41],"mercenary_cost_markup_delta":0.2},
   {"tech_id":303,"display_name":"Test Weapon Mastery","cost":{"wood":100,"gold":80},"research_stamina":25,"affects_unit_types":["infantry","cavalry"],"bonus_attack_blunt":4,"bonus_penetration_blunt":6},
   {"tech_id":304,"display_name":"Test Reinforced Armor","cost":{"stone":100,"gold":80},"research_stamina":25,"affects_unit_types":["infantry","archer","cavalry"],"bonus_defense_blunt":2,"bonus_defense_piercing":3,"bonus_max_health":15},
-  {"tech_id":305,"display_name":"Test Ballistics & Siege","cost":{"wood":120,"gold":100},"research_stamina":30,"affects_unit_types":["archer","siege"],"bonus_attack_piercing":6,"bonus_penetration_piercing":10}
+  {"tech_id":305,"display_name":"Test Ballistics & Siege","cost":{"wood":120,"gold":100},"research_stamina":30,"affects_unit_types":["archer","siege"],"bonus_attack_piercing":6,"bonus_penetration_piercing":10},
+  {"tech_id":306,"display_name":"Test Splash","cost":{"wood":10},"research_stamina":10,"affects_unit_ids":[21],"splash_damage_percent":50,"splash_max_targets":2},
+  {"tech_id":307,"display_name":"Test Pathfinding","cost":{"wood":10},"research_stamina":10,"affects_unit_ids":[11],"reduce_inter_move_cost":3,"reduce_intra_move_cost":1},
+  {"tech_id":308,"display_name":"Test Escalade","cost":{"wood":10},"research_stamina":10,"affects_unit_ids":[11],"scale_walls":true}
 ]

@@ -379,9 +379,9 @@ func TestBuildableZonesDerivedInJSON(t *testing.T) {
 			"foundations_here":{"count":{"kind":"foundations","where":{"if":"1 - var(item.zone_distance_to_target)"}}},
 			"owned_within_one":{"count":{"kind":"spaces","where":{"owner":"own","if":"2 - var(item.distance_to_target)"}}}},
 		"where":{"if":["0 - var(target.building_player)","1 - var(target.has_resource)","1 - var(target.foundations_here)",
-			"var(target.owned_within_one)","1 - var(target.space_owner)"]}}},
-		{"action":"set_var","name":"in_owned","value":{"count":{"kind":"zones","where":{"in_set":"sites","in":{"space_owner":[0]}}}}},
-		{"action":"set_var","name":"in_unowned","value":{"count":{"kind":"zones","where":{"in_set":"sites","in":{"space_owner":[-1]}}}}}`)
+			"var(target.owned_within_one)","1 - var(target.space.owner)"]}}},
+		{"action":"set_var","name":"in_owned","value":{"count":{"kind":"zones","where":{"in_set":"sites","in":{"space.owner":[0]}}}}},
+		{"action":"set_var","name":"in_unowned","value":{"count":{"kind":"zones","where":{"in_set":"sites","in":{"space.owner":[-1]}}}}}`)
 	vars := decide(t, config, view, "site_n", "in_owned", "in_unowned")
 	if vars["site_n"] != 2 || vars["in_owned"] != 1 || vars["in_unowned"] != 1 {
 		t.Errorf("buildable zones %v (in my space %v, in an adjacent unowned space %v); want 2, 1, 1", vars["site_n"], vars["in_owned"], vars["in_unowned"])

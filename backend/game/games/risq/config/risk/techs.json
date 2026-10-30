@@ -1,6 +1,6 @@
 [
   {
-    "tech_id": 4,
+    "tech_id": 101,
     "display_name": "Mercenary Contracts",
     "description": "Allows hiring units for gold directly into owned territory.",
     "cost": { "gold": 0 },

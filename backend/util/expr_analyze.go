@@ -10,6 +10,7 @@ type EqualityFactor struct {
 // What an expression reads: var(name) names, plain identifiers, and whether it draws random numbers
 type ExprReads struct {
 	Vars     []string
+	Roles    []string
 	Bare     []string
 	Impure   bool
 	NeedsEnv bool
@@ -130,6 +131,12 @@ func AnalyzeExpr(expr string) (ExprReads, bool) {
 			i += 2
 		case "researched":
 			reads.NeedsEnv = true
+		case "inSet", "inBucket":
+			reads.NeedsEnv = true
+			if i+4 < len(toks) && toks[i+4].kind == exprTokIdent {
+				reads.Roles = append(reads.Roles, toks[i+4].text)
+			}
+			i += 4
 		case "random", "randomInt":
 			reads.Impure = true
 		}

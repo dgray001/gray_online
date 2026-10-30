@@ -16,7 +16,9 @@ type RisqUnit struct {
 	stance        defs.UnitStance
 	attack_back   bool
 	// the source this unit gathered from last tick; holders keep their gather slot over newcomers
-	gather_slot Gatherable
+	gather_slot    Gatherable
+	gather_bonuses []defs.GatherBonus
+	path_profile   pathProfile
 	// this tick's full planned route, for frontend display only; cleared whenever the unit isn't actively moving
 	move_path []*RisqZone
 	// the half move already paid toward an adjacent zone; kept only while each tick's intent keeps stepping there
@@ -65,17 +67,8 @@ func createRisqUnit(internal_id uint64, unit_id uint32, player *RisqPlayer) *Ris
 	unit.cs.penetration_piercing = config.Penetration_piercing
 	unit.attack_range = config.Attack_range
 	unit.turn_stamina = config.Turn_stamina
-	for _, bonus := range player.config.Bonuses() {
-		if bonus.AppliesTo(unit_id, config.Unit_type) {
-			applyTechBonus(&unit, bonus)
-		}
-	}
-	for tech_id, researched := range player.researched_techs {
-		if !researched {
-			continue
-		}
-		tech, ok := player.config.Techs[tech_id]
-		if !ok || !tech.AppliesTo(unit_id, config.Unit_type) {
+	for _, tech := range player.config.ActiveTechEffects(player.researchedTechIds()) {
+		if !tech.AppliesTo(unit_id, config.Unit_type) {
 			continue
 		}
 		applyTechBonus(&unit, tech)
@@ -97,8 +90,11 @@ func (u *RisqUnit) refreshStamina() {
 	} else if u.zone != nil && u.zone.space.ownership == u.player_id {
 		rate = unitHealingRateOwnedSpace
 	}
+	damaged := len(u.attacked_by) > 0
 	u.orderableBase.refreshStamina()
-	u.cs.addHealth(float64(excess) * float64(u.cs.max_health) * rate)
+	if !damaged {
+		u.cs.addHealth(float64(excess) * float64(u.cs.max_health) * rate)
+	}
 }
 
 func (u *RisqUnit) vision() *defs.RisqVision {
@@ -139,6 +135,7 @@ func (u *RisqUnit) resolveHealthDelta(r *GameRisq) {
 	}
 }
 
+// A nil attacker means the owner deleted the unit, so no kill is credited
 func (u *RisqUnit) recordDeath(r *GameRisq, attacker Attackable, damage float64) {
 	death_zone := u.zone
 	if death_zone == nil && u.garrisoned_in != nil {
@@ -148,11 +145,15 @@ func (u *RisqUnit) recordDeath(r *GameRisq, attacker Attackable, damage float64)
 	death_zone.corpses[u.internal_id] = RisqCorpse{unit_id: u.unit_id, player_id: u.player_id, turns: 1}
 	space := death_zone.space.coordinate
 	zone := death_zone.coordinate
-	r.players[attacker.playerId()].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: RisqCombatEventKind_UNIT_KILLED,
-		self_player: attacker.playerId(), other_player: u.player_id, target_id: uint64(u.unit_id), space: space, zone: zone, damage: damage})
+	killer_id := u.player_id
+	if attacker != nil {
+		killer_id = attacker.playerId()
+		r.players[killer_id].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: RisqCombatEventKind_UNIT_KILLED,
+			self_player: killer_id, other_player: u.player_id, target_id: uint64(u.unit_id), space: space, zone: zone, damage: damage})
+		r.players[killer_id].kills++
+	}
 	r.players[u.player_id].report.recordCombat(RisqCombatEvent{tick: r.current_tick, kind: RisqCombatEventKind_UNIT_LOST,
-		self_player: u.player_id, other_player: attacker.playerId(), target_id: uint64(u.unit_id), space: space, zone: zone, damage: damage})
-	r.players[attacker.playerId()].kills++
+		self_player: u.player_id, other_player: killer_id, target_id: uint64(u.unit_id), space: space, zone: zone, damage: damage})
 	if !u.deleted {
 		r.players[u.player_id].units_lost++
 	}
@@ -175,7 +176,7 @@ func (u *RisqUnit) cleanupDeleted(risq *GameRisq) {
 	delete(risq.units, u.internal_id)
 }
 
-func (u *RisqUnit) toFrontend(viewer_player_id int) gin.H {
+func (u *RisqUnit) toFrontend(viewer_player_id int, with_history bool) gin.H {
 	unit := gin.H{
 		"internal_id":  u.internal_id,
 		"player_id":    u.player_id,
@@ -226,6 +227,8 @@ func (u *RisqUnit) toFrontend(viewer_player_id int) gin.H {
 		}
 	}
 	unit["active_orders"] = active_orders
-	unit["tick_actions"] = tickActionsToFrontend(u.tick_actions, viewer_player_id)
+	if with_history {
+		unit["tick_actions"] = tickActionsToFrontend(u.tick_actions, viewer_player_id)
+	}
 	return unit
 }

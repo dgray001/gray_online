@@ -51,7 +51,7 @@ func main() {
 	barracksTechs := flag.Bool("barracks-techs", false, "Show tech-combo TTK tables for villager and the two barracks units (1, 101, 102)")
 	unitsFile := flag.String("units-file", "", "Units json to use instead of ../config/units.json")
 	efficiency := flag.Bool("efficiency", false, "Show cost-efficiency multiples for -matchups instead of the TTK table")
-	techs := flag.String("techs", "2,3,5", "Comma-separated tech ids researched by both sides for -efficiency")
+	techs := flag.String("techs", "61,62,63", "Comma-separated tech ids researched by both sides for -efficiency")
 	matchups := flag.String("matchups", "101:102,102:103,103:101", "Comma-separated a:b unit id pairs for -efficiency")
 	flag.Parse()
 	if err := risq.LoadConfig("../config"); err != nil {

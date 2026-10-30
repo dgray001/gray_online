@@ -1,0 +1,69 @@
+<div id="wrapper">
+  <div id="help-content">
+    <h1>Military Unit Behavior</h1>
+    <section>
+      <p>Stance controls where a unit searches and whether it moves for proactive auto-attacks.</p>
+      <div class="stance-grid">
+        <figure>
+          <img src="../../../../../../images/icons/swords128.png" alt="Aggressive" />
+          <figcaption>
+            <strong>Aggressive</strong
+            ><span>Attack anything in current or adjacent spaces. Will chase units across the map.</span>
+          </figcaption>
+        </figure>
+        <figure>
+          <img src="../../../../../../images/icons/shield128.png" alt="Defensive" />
+          <figcaption>
+            <strong>Defensive</strong><span>Attack anything in range without leaving its current space.</span>
+          </figcaption>
+        </figure>
+        <figure>
+          <img src="../../../../../../images/icons/stand_ground128.png" alt="Stand Ground" />
+          <figcaption>
+            <strong>Stand Ground</strong><span>Attacks anything in range without leaving its current zone.</span>
+          </figcaption>
+        </figure>
+        <figure>
+          <img src="../../../../../../images/icons/passive128.png" alt="Passive" />
+          <figcaption><strong>Passive</strong><span>Never proactively auto-attacks.</span></figcaption>
+        </figure>
+      </div>
+      <div class="behavior-grid">
+        <figure>
+          <img src="../../../../../../images/icons/interrupt_current128.png" alt="Interrupt Current" />
+          <figcaption>
+            <strong>Interrupt Current</strong>
+            <span
+              >Allows proactive auto-attacks to replace non-attack orders, and for reactive auto-attacks to replace any
+              order.</span
+            >
+          </figcaption>
+        </figure>
+        <figure>
+          <img src="../../../../../../images/icons/attack_back128.png" alt="Attack Back" />
+          <figcaption>
+            <strong>Attack Back</strong><span>Allows units to retaliate against attackers.</span>
+            <span>Stance limits the retaliation area, and Priority determines which attacker is targeted.</span>
+          </figcaption>
+        </figure>
+        <figure>
+          <div class="priority-example">
+            <div class="priority-excluded">
+              <img src="../../../../../../images/icons/building64.png" alt="Buildings excluded" />
+            </div>
+            <div class="priority-list">
+              <img src="../../../../../../images/icons/villager64.png" alt="Villagers first" />
+              <img src="../../../../../../images/icons/unit64.png" alt="Military units second" />
+            </div>
+          </div>
+          <figcaption>
+            <strong>Priority</strong>
+            <span>Priority ranks target categories for auto-attacks.</span>
+            <span>Here, economy units are targeted before military, and buildings aren't targeted at all.</span>
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+  </div>
+  <button id="close-button" type="button">Close</button>
+</div>

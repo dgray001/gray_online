@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.9h: Remove deprecated AI view
+v0.9i: Risq walls
 
 ## Dev Use
 

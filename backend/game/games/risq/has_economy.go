@@ -16,7 +16,7 @@ func (r *GameRisq) computeHasBuildings() bool {
 		}
 	}
 	for _, tech := range r.config.Techs {
-		for _, unit_id := range tech.Unlocks_mercenary_ids {
+		for _, unit_id := range tech.UnlockedMercenaryIds() {
 			if builder(unit_id) {
 				return true
 			}
@@ -43,7 +43,7 @@ func (r *GameRisq) computeHasEconomy() bool {
 		}
 	}
 	for _, tech := range r.config.Techs {
-		for _, unit_id := range tech.Unlocks_mercenary_ids {
+		for _, unit_id := range tech.UnlockedMercenaryIds() {
 			if economic(unit_id) {
 				return true
 			}

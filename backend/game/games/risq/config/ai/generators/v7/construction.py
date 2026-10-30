@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Union
 
-from common import RESOURCES, Definitions, Record, branch, cost, selection, store, variable
+from common import RESOURCES, Definitions, Record, aggregate, branch, cost, selection, store, variable
 from foundations import TRACKED, site_clear
 from settlement import vc_placement
 from sites import build_action
@@ -83,7 +83,7 @@ def urgent_smith() -> list[Record]:
     return build_action("smith", 11, builders=2, condition=cond)
 
 
-def settlement_and_shelter(max_farms: int = 3) -> list[Record]:
+def settlement_and_shelter() -> list[Record]:
     actions: list[Record] = []
     vc_cond = f"(var(want_1) > 0) * (var(complete_1) + var(foundations_1) == 0) * {building_affordable(1)}"
     actions.extend(vc_placement(condition=vc_cond, builders=4))
@@ -91,6 +91,11 @@ def settlement_and_shelter(max_farms: int = 3) -> list[Record]:
     house_cond = f"(var(want_2) > var(foundations_2)) * {building_affordable(2)}"
     actions.extend(build_action("house", 2, builders="var(house_builders)", condition=house_cond))
 
+    return actions
+
+
+def farms(max_farms: int = 3) -> list[Record]:
+    actions: list[Record] = []
     for i in range(max_farms):
         farm_cond = f"(var(want_3) > var(foundations_3) + {i}) * {building_affordable(3)}"
         actions.extend(build_action("farm", 3, builders=2, condition=farm_cond))
@@ -118,3 +123,21 @@ def expansion_buildings() -> list[Record]:
     actions.extend(build_action("outpost", 21, builders=1, condition=outpost_cond))
 
     return actions
+
+
+def buildable_spaces() -> list[Record]:
+    within = selection("spaces", dict(near=dict(distance=1, of=selection("spaces", dict(owner="own"))), **{
+        "if": "(var(target.owner) == var(player_id)) + (var(target.owner) < 0) > 0"}))
+    unclaimed = selection("spaces", dict(owner="unowned"))
+    return [variable("own_space_count", aggregate("count", selection("spaces", dict(owner="own")))),
+            branch("var(own_space_count) == 0",
+                   [store("buildable_spaces", unclaimed)],
+                   [store("buildable_spaces", within)])]
+
+
+def buildable_zones() -> list[Record]:
+    has_foundation = aggregate("count", selection("foundations", {"if": "distance(target, item, 1) == 0"}))
+    zones = selection("zones", dict(building=False, resource=False, at=dict(in_set="buildable_spaces"),
+                                    **{"if": "var(target.has_foundation) == 0"}),
+                      let=dict(has_foundation=has_foundation))
+    return [store("buildable_zones", zones)]

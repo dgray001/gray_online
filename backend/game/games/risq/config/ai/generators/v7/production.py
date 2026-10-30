@@ -38,31 +38,30 @@ def military() -> list[Record]:
 
 
 def upgrades() -> list[Record]:
-    return [research(5, "(var(heavies_seen) >= var(tune_pierce_heavies)) + (var(goal_102) - var(own_102) >= var(tune_pikes_unit_threshold)) > 0"),
-            research(2, f"var(projected_army_investment) * var(tune_tactical_attack_bonus) >= {total_cost('tech', 2)}"),
-            research(3, f"var(projected_army_investment) * var(tune_tactical_armor_bonus) >= {total_cost('tech', 3)}")]
+    return [research(63, "(var(heavies_seen) >= var(tune_pierce_heavies)) + (var(goal_102) - var(own_102) >= var(tune_pikes_unit_threshold)) > 0"),
+            research(61, f"var(projected_army_investment) * var(tune_tactical_attack_bonus) >= {total_cost('tech', 61)}"),
+            research(62, f"var(projected_army_investment) * var(tune_tactical_armor_bonus) >= {total_cost('tech', 62)}")]
 
 
 def mercenaries() -> list[Record]:
-    reserve = "var(rate_gold) * var(tune_planning_horizon) + var(research_budget_gold)"
+    reserve = "max(0, var(rate_gold) - var(mercenary_rate_gold)) * var(tune_planning_horizon) + var(research_budget_gold)"
     actions = [variable("gold_surplus", f"max(0, gameVar(gold) - ({reserve}))"),
                variable("gold_idle", "(1 - var(tune_gold_smoothing)) * var(gold_idle) + var(tune_gold_smoothing) * var(gold_surplus)", True),
-               research(4, "(var(complete_23) > 0) * (var(gold_surplus) > 0)")]
+               research(101, "(var(complete_23) > 0) * (var(gold_surplus) > 0)")]
     for unit, priority in ((102, "var(goal_102) - var(own_102) > var(goal_101) - var(own_101)"),
                            (101, "var(goal_101) - var(own_101) >= var(goal_102) - var(own_102)")):
         count = f"min(var(item.can_afford), {whole(f'(gameVar(gold) - ({reserve})) / max(0.001, var(offer.cost_gold))')}, gameVar(population_limit) - gameVar(population), {whole(f'var(goal_{unit}) - var(own_{unit})')})"
-        hire = dict(action="select", pick=selection("zones", dict(owner="own", near=dict(
-            distance=0, of=selection("spaces", dict(in_set="home")))), rank=["0 - var(target.zone_x)", "0 - var(target.zone_y)"], limit=1),
-            issue=[dict(hire=dict(unit_id=unit, count=count))])
+        hire = dict(action="select", pick=selection("zones", dict(owner="own", at=dict(in_set="home")),
+                                                    rank=["0 - var(target.zone_x)", "0 - var(target.zone_y)"], limit=1),
+                    issue=[dict(hire=dict(unit_id=unit, count=count))])
         actions.append(dict(action="for_each", source="mercenaries", **{"as": "offer"}, do=[
             branch(f"(var(offer.id) == {unit}) * ({priority})", [hire])]))
     return actions
 
 
 def renew_farms() -> list[Record]:
-    remaining = aggregate("max", selection("gatherables", {"if": "var(item.uid) == var(farm.uid)"}), "var(item.amount_left)")
     farms = selection("buildings", dict(owner="own", building_ids=[3], state="complete", **{
-        "if": "var(farm.remaining) <= 0"}), **{"let": dict(remaining=remaining)})
+        "if": "var(farm.resources_left) <= 0"}))
     funding = " * ".join(f"(gameVar({resource}) >= var(farm.renew_cost_{resource}))" for resource in RESOURCES)
     actors = selection("units", dict(bucket="gather_food", **{"in": dict(order_kind=["none", "gather"])}),
                        rank="0 - var(actor.uid)", limit="var(tune_renew_workers)")

@@ -14,24 +14,12 @@ function terrainRows(stats: RisqTerrainStats): TerrainStatRow[] {
   const movement: TerrainStatRow[] = stats.impassable
     ? [['Movement', 'impassable', 'Units cannot enter this terrain.']]
     : [
-        [
-          'Within space',
-          `${stats.intra_cost} stamina`,
-          'Stamina cost of moving one adjacent-zone step within this space.',
-        ],
-        [
-          'Enter space',
-          `${stats.inter_cost} stamina`,
-          'Stamina cost of crossing into this space. The destination terrain determines the cost.',
-        ],
+        ['Within space', `${stats.intra_cost} stamina`, 'Stamina cost of moving within a space'],
+        ['Enter space', `${stats.inter_cost} stamina`, 'Stamina cost of entering a space'],
       ];
   return [
     ...movement,
-    [
-      'Construction',
-      `${Math.round(stats.build_speed_modifier * 100)}%`,
-      'Terrain multiplier on construction progress per stamina spent, with progress rounded to a minimum of 1 per tick.',
-    ],
+    ['Construction', `${Math.round(stats.build_speed_modifier * 100)}%`, 'Construction speed on this terrain'],
   ];
 }
 

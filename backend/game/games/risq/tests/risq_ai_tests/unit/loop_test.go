@@ -430,8 +430,8 @@ func TestLoopItemRangeStaminaAndVisibilityFields(t *testing.T) {
 	config := rule(`{"action":"for_each","source":"units","as":"u","do":[{"action":"set_var","name":"unit_sum","value":"var(u.max_stamina) * 100 + var(u.attack_range) * 10 + var(u.attack_reach)"}]},
 		{"action":"for_each","source":"buildings","as":"b","do":[{"action":"set_var","name":"building_sum","value":"var(b.max_stamina) * 100 + var(b.attack_range) * 10 + var(b.attack_reach) + var(b.is_visible) * 1000"}]}`)
 	vars := decide(t, config, view, "unit_sum", "building_sum")
-	if vars["unit_sum"] != 631 || vars["building_sum"] != 1409 {
-		t.Errorf("unit sum %v, building sum %v; want 631 and 1409", vars["unit_sum"], vars["building_sum"])
+	if vars["unit_sum"] != 661 || vars["building_sum"] != 1409 {
+		t.Errorf("unit sum %v, building sum %v; want 661 and 1409", vars["unit_sum"], vars["building_sum"])
 	}
 }
 

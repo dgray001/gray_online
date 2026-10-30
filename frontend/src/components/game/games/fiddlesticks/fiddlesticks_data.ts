@@ -47,8 +47,16 @@ export interface ViewerDealRound extends BaseDealRound {
 }
 export type DealRound = PlayerDealRound | ViewerDealRound;
 
+/** Private comparison against the default AI, only present on the acting player's own update */
+export declare interface AiComparison<Choice> {
+  model_id: number;
+  ai_choice: Choice;
+  matched: boolean;
+}
+
 /** Data describing a bet game-update */
 export declare interface PlayerBet {
+  ai_comparison?: AiComparison<number>;
   amount: number;
   player_id: number;
   turn_duration: number;
@@ -57,6 +65,7 @@ export declare interface PlayerBet {
 
 /** Data describing a play-card game-update */
 export declare interface PlayCard {
+  ai_comparison?: AiComparison<StandardCard>;
   index: number;
   card: StandardCard;
   player_id: number;

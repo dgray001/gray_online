@@ -283,7 +283,13 @@ export class DwgMultiSelectDropdown implements CanvasComponent {
   draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
     this.drawButton(ctx, transform);
     if (this.open) {
-      queueTooltipDraw(() => this.drawPopover(ctx, transform, dt));
+      const matrix = ctx.getTransform();
+      queueTooltipDraw(() => {
+        ctx.save();
+        ctx.setTransform(matrix);
+        this.drawPopover(ctx, transform, dt);
+        ctx.restore();
+      });
     }
   }
 

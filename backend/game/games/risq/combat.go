@@ -2,7 +2,9 @@ package risq
 
 import (
 	"fmt"
+	"maps"
 	"math"
+	"slices"
 
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/util"
@@ -17,14 +19,11 @@ func rangeCovers(from *RisqZone, target *RisqZone, attack_range defs.RisqRange) 
 	if from == nil || target == nil {
 		return false
 	}
+	if from == target || from.zonesInRange(attack_range.ZoneRadius())[target] {
+		return true
+	}
 	space_range, ranged := attack_range.SpaceRadius()
-	if !ranged {
-		return from == target
-	}
-	if space_range == 0 && from.space != target.space {
-		return from.borderNeighbor() == target
-	}
-	return from.space.distanceTo(target.space) <= space_range
+	return ranged && attack_range >= defs.RisqRange_SPACE && from.space.distanceTo(target.space) <= space_range
 }
 
 type RisqDamageEvent struct {
@@ -212,6 +211,7 @@ type Attackable interface {
 	combatStats(r *GameRisq, other Orderable, attacking bool) RisqCombatStats
 	isAlive() bool
 	applyDamage(event RisqDamageEvent)
+	splash() (float64, int)
 	recordDeath(r *GameRisq, attacker Attackable, damage float64)
 	// Applies this tick's queued health changes (damage and healing) as one net
 	// amount, then records death if that net change was the cause.
@@ -223,14 +223,65 @@ type Attackable interface {
 // only queued here; resolveHealthDelta applies it (and any healing queued the same
 // tick) once resolution's execute phase finishes, so order within the tick can't matter.
 func (r *GameRisq) resolveAttack(attacker Attackable, target Attackable, stamina_cost int) {
+	r.dealAttackDamage(attacker, target, stamina_cost, 1)
+	r.resolveSplash(attacker, target, stamina_cost)
+}
+
+func (r *GameRisq) dealAttackDamage(attacker Attackable, target Attackable, stamina_cost int, damage_scale float64) {
 	attacker_cs := attacker.combatStats(r, target, true)
 	target_cs := target.combatStats(r, attacker, false)
-	damage := combatDamage(&attacker_cs, &target_cs, stamina_cost)
-	r.metrics.recordAttack(attacker, target, util.RoundTo(damage, gatherRoundingPlaces), stamina_cost)
+	damage := combatDamage(&attacker_cs, &target_cs, stamina_cost) * damage_scale
+	metrics_stamina := stamina_cost
+	if damage_scale != 1 {
+		metrics_stamina = 0
+	}
+	r.metrics.recordAttack(attacker, target, util.RoundTo(damage, gatherRoundingPlaces), metrics_stamina)
 	r.recordCombatTick(attacker, target, util.RoundTo(damage, gatherRoundingPlaces), attacker_cs.attack_type)
 	target.applyDamage(RisqDamageEvent{tick: r.current_tick, attacker_id: attacker.internalId(), attacker_type: attacker.OrderableType(), damage: damage, damage_type: attacker_cs.attack_type})
 	util.Debugf(r.std, "combat turn=%d tick=%d: %d %s (player %d, stamina %d) hits %d %s (player %d) for %.4f",
 		r.turn_number, r.current_tick, attacker.internalId(), attackableKind(attacker), attacker.playerId(), stamina_cost, target.internalId(), attackableKind(target), target.playerId(), damage)
+}
+
+func (r *GameRisq) resolveSplash(attacker Attackable, target Attackable, stamina_cost int) {
+	percent, max_targets := attacker.splash()
+	if percent <= 0 || max_targets < 1 {
+		return
+	}
+	for _, splash_target := range splashTargets(attacker, target, max_targets, int(r.turn_number)) {
+		r.dealAttackDamage(attacker, splash_target, stamina_cost, percent/100)
+	}
+}
+
+func splashTargets(attacker Attackable, target Attackable, max_targets int, turn int) []Attackable {
+	zone := target.currentZone()
+	if zone == nil {
+		return nil
+	}
+	var buildings, enemies, friendly []Attackable
+	if building := zone.building; building != nil && Attackable(building) != attacker && Attackable(building) != target && building.isAlive() {
+		buildings = append(buildings, building)
+	}
+	for _, id := range slices.Sorted(maps.Keys(zone.units)) {
+		unit := zone.units[id]
+		if Attackable(unit) == attacker || Attackable(unit) == target || !unit.isAlive() {
+			continue
+		}
+		if unit.playerId() == attacker.playerId() {
+			friendly = append(friendly, unit)
+		} else {
+			enemies = append(enemies, unit)
+		}
+	}
+	ordered := slices.Concat(buildings, rotatedByTurn(enemies, turn), rotatedByTurn(friendly, turn))
+	return ordered[:min(max_targets, len(ordered))]
+}
+
+func rotatedByTurn(targets []Attackable, turn int) []Attackable {
+	if len(targets) == 0 {
+		return targets
+	}
+	start := turn % len(targets)
+	return slices.Concat(targets[start:], targets[:start])
 }
 
 // Deterministically settles same-tick kill credit when several attackers hit one target: lowest internal_id wins.

@@ -111,37 +111,37 @@ export class RisqCommands {
     return true;
   }
 
-  confirmDeleteUnit(internal_ids: number[]): void {
+  confirmDeleteUnit(internal_ids: number[], ctrl_held: boolean = false): void {
     if (!this.canCommandUnits(internal_ids)) {
       return;
     }
     this.confirm(`Are you sure you want to delete ${internal_ids.length === 1 ? 'this unit' : 'these units'}?`, () =>
-      this.deleteUnit(internal_ids)
+      this.deleteUnit(internal_ids, ctrl_held)
     );
   }
 
-  private deleteUnit(internal_ids: number[]): void {
+  private deleteUnit(internal_ids: number[], ctrl_held: boolean): void {
     if (!this.canCommandUnits(internal_ids)) {
       return;
     }
-    this.addOrder(RisqOrderType.OrderType_UnitDelete, internal_ids, 0, true);
+    this.addOrder(RisqOrderType.OrderType_UnitDelete, internal_ids, 0, !ctrl_held);
   }
 
-  confirmDeleteBuilding(internal_ids: number[]): void {
+  confirmDeleteBuilding(internal_ids: number[], ctrl_held: boolean = false): void {
     if (internal_ids.length === 0 || !internal_ids.every((id: number): boolean => this.canCommandBuilding(id))) {
       return;
     }
     this.confirm(
       `Are you sure you want to delete ${internal_ids.length === 1 ? 'this building' : 'these buildings'}?`,
-      (): void => this.deleteBuilding(internal_ids)
+      (): void => this.deleteBuilding(internal_ids, ctrl_held)
     );
   }
 
-  private deleteBuilding(internal_ids: number[]): void {
+  private deleteBuilding(internal_ids: number[], ctrl_held: boolean): void {
     if (internal_ids.length === 0 || !internal_ids.every((id: number): boolean => this.canCommandBuilding(id))) {
       return;
     }
-    this.addOrder(RisqOrderType.OrderType_BuildingDelete, internal_ids, 0, true);
+    this.addOrder(RisqOrderType.OrderType_BuildingDelete, internal_ids, 0, !ctrl_held);
   }
 
   stopUnit(internal_ids: number[]): void {
@@ -176,6 +176,14 @@ export class RisqCommands {
     this.ungarrisonUnits(this.session.getPlayer()?.buildings.get(building_id)?.garrisoned_units ?? []);
   }
 
+  cancelArmedInput(): boolean {
+    if (!this.armed.anythingArmed()) {
+      return false;
+    }
+    this.armed.disarmAll();
+    return true;
+  }
+
   toggleBuildingAttack(): void {
     if (this.armed.isBuildingAttackArmed()) {
       this.armed.disarmBuildingAttack();
@@ -190,9 +198,6 @@ export class RisqCommands {
     }
     if (this.armed.isGatherPointArmed()) {
       this.armed.disarmGatherPoint();
-      for (const id of building_ids) {
-        this.clearGatherPoint(id);
-      }
     } else {
       this.armed.armGatherPoint();
     }

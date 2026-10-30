@@ -40,7 +40,7 @@
     "params": {
       "pattern": "ring",
       "area_size": 1,
-      "starting_distance": "radius - 1 - min(1, max(0, radius - 7))",
+      "starting_distance": "radius - 2",
       "tree_ids": ["tree_a", "tree_b"],
       "terrain_id": "base"
     }

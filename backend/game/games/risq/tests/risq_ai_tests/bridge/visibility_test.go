@@ -307,6 +307,7 @@ func TestBridgeKeepsLastKnownBuildingsAfterCoverageIsLost(t *testing.T) {
 	}
 	g.Submit(owner, harness.Order(defs.OrderType_UnitDelete, []uint64{scout}, 0, false))
 	g.EndTurn()
+	g.EndTurn()
 	g.Submit(enemy, harness.Order(defs.OrderType_BuildingDelete, []uint64{g.Self(enemy).Buildings[0].InternalID}, 0, false))
 	g.EndTurn()
 	g.EndTurn()

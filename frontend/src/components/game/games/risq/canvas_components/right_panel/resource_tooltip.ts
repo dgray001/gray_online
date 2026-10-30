@@ -180,11 +180,27 @@ export function drawScoreRow(
   ctx: CanvasRenderingContext2D,
   geom: RightPanelGeometry,
   yi: number,
-  score: GameRisqScoreEntry
+  score: GameRisqScoreEntry,
+  orders_submitted: boolean,
+  padding: number
 ): void {
   ctx.beginPath();
   const text = `${score.nickname}: ${score.score}`;
   const yc = yi + 0.5 * SCORE_ROW_H;
+  if (orders_submitted) {
+    const icon_x = geom.xi + padding;
+    ctx.save();
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(icon_x, yi + 10);
+    ctx.lineTo(icon_x + 5, yi + 15);
+    ctx.lineTo(icon_x + 16, yi + 4);
+    ctx.stroke();
+    ctx.restore();
+  }
   drawText(ctx, text, {
     p: { x: geom.xi + 0.9 * geom.w, y: yc },
     w: 0.8 * geom.w,

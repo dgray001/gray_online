@@ -20,6 +20,7 @@ const DRAG_SELECT_THRESHOLD = 3;
 
 /** Routes board mouse events between the overlay components, hover, order dispatch, and click/drag selection */
 export class RisqPointer {
+  private armed_click = false;
   private dispatching_mousemove = false;
   private dragging_selection = false;
   private drag_additive = false;
@@ -137,14 +138,25 @@ export class RisqPointer {
 
   // returns false if mousedown event should initiate dragging
   mousedown(e: MouseEvent): boolean {
+    this.armed_click = false;
     if (this.components.map((c) => c.mousedown(e)).some(Boolean)) {
+      return true;
+    }
+    if (this.armed.anythingArmed() && (e.button === 0 || e.button === 2)) {
+      this.armed_click = true;
+      if (e.button === 2) {
+        this.armed.disarmAll();
+      } else if (this.session.canGiveOrders()) {
+        if (this.armed.getArmedOrder() === RisqOrderType.OrderType_BuyMercenary) {
+          this.dispatch.placeMercenary(e.ctrlKey);
+        } else {
+          this.orderSelection(e.ctrlKey);
+        }
+      }
       return true;
     }
     if (e.button === 0) {
       this.pressBoard();
-    } else if (e.button === 2 && this.armed.getArmedOrder() === RisqOrderType.OrderType_BuyMercenary) {
-      this.dispatch.placeMercenary(e.ctrlKey);
-      return true;
     } else if (e.button === 2 && this.left_panel.isOrderable() && this.session.canGiveOrders()) {
       this.orderSelection(e.ctrlKey);
       return true;
@@ -210,9 +222,13 @@ export class RisqPointer {
   }
 
   mouseup(e: MouseEvent): void {
-    const armed_before = this.armed.snapshot();
+    const armed_before = this.armed.anythingArmed();
     for (const component of this.components) {
       component.mouseup(e);
+    }
+    if (this.armed_click) {
+      this.armed_click = false;
+      return;
     }
     if (this.dragging_selection) {
       this.dragging_selection = false;
@@ -223,13 +239,10 @@ export class RisqPointer {
     }
     const space = this.hover.space();
     const zone = this.hover.zone();
-    if (!!space && space.visibility > 0 && armed_before.order === RisqOrderType.NONE) {
+    if (e.button === 0 && !!space && space.visibility > 0 && !armed_before) {
       this.releaseBoard(space, zone, e);
-    } else if (e.button === 0 && armed_before.order === RisqOrderType.NONE && !this.panels_hovered()) {
+    } else if (e.button === 0 && !armed_before && !this.panels_hovered()) {
       this.left_panel.close();
-    }
-    if (armed_before.order !== RisqOrderType.NONE && this.armed.unchangedSince(armed_before) && !e.ctrlKey) {
-      this.armed.disarmOrder();
     }
   }
 

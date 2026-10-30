@@ -2,7 +2,7 @@
   {
     "building_id": 1,
     "display_name": "Village Center",
-    "range": "space",
+    "range": "wall",
     "description": "Used to create villagers and research some core technologies.",
     "max_health": 350,
     "attack_type": "blunt",
@@ -19,7 +19,9 @@
     "turn_stamina": 10,
     "produces": [
       { "row": 1, "col": 0, "kind": "unit", "id": 1 },
-      { "row": 2, "col": 0, "kind": "tech", "id": 1 }
+      { "row": 2, "col": 0, "kind": "tech", "id": 1 },
+      { "row": 2, "col": 1, "kind": "tech", "id": 2 },
+      { "row": 2, "col": 2, "kind": "tech", "id": 3 }
     ]
   },
   {
@@ -44,6 +46,10 @@
     "cost": { "wood": 80 },
     "build_stamina": 14,
     "required_tech_id": 1,
+    "turn_stamina": 8,
+    "produces": [
+      { "row": 2, "col": 0, "kind": "tech", "id": 11 }
+    ],
     "vision": { "space": 3, "edge_adjacent": 2, "adjacent": 0, "edge_opposite": 0, "secondary": 0 },
     "terrain_override": { "flatlands": 25, "hilly": 75 },
     "gatherable": {
@@ -68,9 +74,10 @@
     "build_stamina": 30,
     "turn_stamina": 10,
     "produces": [
-      { "row": 1, "col": 0, "kind": "tech", "id": 2 },
-      { "row": 2, "col": 0, "kind": "tech", "id": 3 },
-      { "row": 1, "col": 1, "kind": "tech", "id": 5 }
+      { "row": 1, "col": 0, "kind": "tech", "id": 61 },
+      { "row": 1, "col": 1, "kind": "tech", "id": 62 },
+      { "row": 2, "col": 0, "kind": "tech", "id": 63 },
+      { "row": 2, "col": 1, "kind": "tech", "id": 64 }
     ]
   },
   {
@@ -86,7 +93,7 @@
     "defense_blunt": 1,
     "defense_piercing": 3,
     "garrison_capacity": 5,
-    "cost": { "wood": 25, "stone": 5 },
+    "cost": { "wood": 20, "stone": 5 },
     "build_stamina": 12,
     "vision": { "space": 3, "edge_adjacent": 3, "adjacent": 3, "edge_opposite": 3, "secondary": 2 }
   },
@@ -103,7 +110,9 @@
     "turn_stamina": 10,
     "produces": [
       { "row": 1, "col": 0, "kind": "unit", "id": 101 },
-      { "row": 1, "col": 1, "kind": "unit", "id": 102 }
+      { "row": 1, "col": 1, "kind": "unit", "id": 102 },
+      { "row": 2, "col": 3, "kind": "tech", "id": 91 },
+      { "row": 2, "col": 4, "kind": "tech", "id": 92 }
     ]
   },
   {
@@ -125,8 +134,27 @@
     "produces": [
       { "row": 1, "col": 0, "kind": "unit", "id": 103 },
       { "row": 1, "col": 1, "kind": "unit", "id": 401 },
-      { "row": 2, "col": 0, "kind": "tech", "id": 4 }
+      { "row": 2, "col": 0, "kind": "tech", "id": 101 },
+      { "row": 2, "col": 1, "kind": "tech", "id": 102 }
     ],
     "vision": { "space": 3, "edge_adjacent": 3, "adjacent": 3, "edge_opposite": 3, "secondary": 2 }
+  },
+  {
+    "building_id": 24,
+    "display_name": "Wall",
+    "description": "Blocks enemy units from entering its zone from another space.",
+    "is_wall": true,
+    "range": "wall",
+    "attack_type": "blunt_piercing",
+    "attack_blunt": 0,
+    "attack_piercing": 0,
+    "max_garrison_attack_blunt": 8,
+    "max_garrison_attack_piercing": 8,
+    "garrison_capacity": 5,
+    "max_health": 100,
+    "defense_blunt": 3,
+    "defense_piercing": 5,
+    "cost": { "wood": 10, "stone": 25 },
+    "build_stamina": 12
   }
 ]

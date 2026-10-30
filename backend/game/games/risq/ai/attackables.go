@@ -80,7 +80,7 @@ func (s *attackableSource) items(view View, internals *Internals) []loopItem {
 			items = append(items, unitAttackable(u))
 		}
 	}
-	for _, b := range buildingsFor(view, s.selector.relation) {
+	for b := range buildingsFor(view, s.selector.relation) {
 		if b.PlayerID != view.PlayerID() && s.selector.allows(view, internals, b.PlayerID) {
 			items = append(items, buildingAttackable(b))
 		}

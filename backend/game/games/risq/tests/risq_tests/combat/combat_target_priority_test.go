@@ -26,6 +26,35 @@ func TestStancesCreateAutoAttackBuilding(t *testing.T) {
 	}
 }
 
+func TestIdleAutoAttackRequiresListedCategory(t *testing.T) {
+	for _, priority := range [][]uint8{{}, {uint8(defs.TargetCategory_BUILDING)}} {
+		g := stanceGame(t, sameZone)
+		owner, enemy := g.Human(0), g.Human(1)
+		attacker, target := g.Self(owner).Units[0], g.Self(enemy).Units[0]
+		g.Action(owner, "set-unit-behavior", gin.H{"internal_ids": []uint64{attacker.InternalID}, "stance": uint8(defs.UnitStance_AGGRESSIVE), "attack_back": false, "target_priority": priority})
+		passive(g, enemy, target.InternalID)
+		g.EndTurn()
+		if len(g.Self(owner).Units[0].ActiveOrders) != 0 || g.Self(enemy).Units[0].CombatStats.Health != target.CombatStats.Health {
+			t.Fatalf("idle unit attacked an unlisted category with priority %v", priority)
+		}
+	}
+}
+
+func TestBuildingAutoAttackRequiresListedCategory(t *testing.T) {
+	for _, priority := range [][]uint8{{}, {uint8(defs.TargetCategory_ECONOMIC)}} {
+		fakeboard.UseConfig(t, testConfig, nil, map[string]string{"priority-tower": fmt.Sprintf(meetingBoard, towerSpaces(center, sameWest))})
+		g := harness.NewGame(t, "custom:priority-tower", 1, 2)
+		owner, enemy := g.Human(0), g.Human(1)
+		tower, target := g.Self(owner).Buildings[0], g.Self(enemy).Units[0]
+		g.Action(owner, "set-building-behavior", gin.H{"internal_ids": []uint64{tower.InternalID}, "auto_attack": true, "target_priority": priority})
+		passive(g, enemy, target.InternalID)
+		g.EndTurn()
+		if len(g.Self(owner).ActiveOrders) != 0 || g.Self(enemy).Units[0].CombatStats.Health != target.CombatStats.Health {
+			t.Fatalf("building attacked an unlisted category with priority %v", priority)
+		}
+	}
+}
+
 func TestTargetPriority(t *testing.T) {
 	doc := `{"board_size":1,"players":2,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":22,"player":0,"count":1},{"id":11,"player":1,"count":10},{"id":21,"player":1,"count":1}]}]}]}`
 	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"combat_priority": doc})
@@ -124,8 +153,7 @@ func TestInterruptCurrentTargetPriorityGate(t *testing.T) {
 		}
 	})
 
-	// Idle unit (len(active_orders) == 0) CAN attack unprioritized target via proximity fallback
-	t.Run("idle unit attacks unprioritized target via fallback", func(t *testing.T) {
+	t.Run("idle unit does not attack with empty priority", func(t *testing.T) {
 		g := priorityDistanceGame(t)
 		owner, enemy := g.Human(0), g.Human(1)
 		attacker := g.Self(owner).Units[0]
@@ -139,7 +167,7 @@ func TestInterruptCurrentTargetPriorityGate(t *testing.T) {
 			"stance":            uint8(defs.UnitStance_AGGRESSIVE),
 			"attack_back":       false,
 			"interrupt_current": false,
-			"target_priority":   []uint8{uint8(defs.TargetCategory_MILITARY)},
+			"target_priority":   []uint8{},
 		})
 
 		g.Submit(owner)
@@ -156,8 +184,8 @@ func TestInterruptCurrentTargetPriorityGate(t *testing.T) {
 		worker := g.Self(enemy).Units[0]
 		building := g.Self(enemy).Buildings[0]
 		damageDealt := worker.CombatStats.Health < float64(worker.CombatStats.MaxHealth) || building.CombatStats.Health < float64(building.CombatStats.MaxHealth)
-		if !hasAutoAttack && !damageDealt {
-			t.Fatalf("expected idle attacker to acquire unprioritized target via fallback, got orders: %+v", u.ActiveOrders)
+		if hasAutoAttack || damageDealt {
+			t.Fatalf("idle attacker attacked an unprioritized target, got orders: %+v", u.ActiveOrders)
 		}
 	})
 }

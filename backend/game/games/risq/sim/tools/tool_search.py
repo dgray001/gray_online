@@ -135,6 +135,66 @@ def label_lines(lines: list[str]) -> list[tuple[str, int, str]]:
     return labels
 
 
+def first_build_turns(path: Path, building_id: int) -> dict[str, int]:
+    turns: Counter[str] = Counter()
+    first: dict[str, int] = {}
+    with path.open() as source:
+        for line in source:
+            if match := AI_LINE.search(line):
+                ai, kind, payload = match.groups()
+                turns[ai] += kind == "new turn data"
+                if kind == "submitting orders" and ai not in first:
+                    if any(int(order) == 4 and unpair(int(target))[0] == building_id
+                           for _, order, target, _ in AI_ORDER.findall(payload)):
+                        first[ai] = turns[ai]
+    return first
+
+
+def build_order_turns(path: Path, building_id: int) -> dict[str, list[int]]:
+    turns: Counter[str] = Counter()
+    targets: dict[str, dict[int, int]] = {}
+    with path.open() as source:
+        for line in source:
+            if match := AI_LINE.search(line):
+                ai, kind, payload = match.groups()
+                turns[ai] += kind == "new turn data"
+                if kind == "submitting orders":
+                    for _, order, target, _ in AI_ORDER.findall(payload):
+                        if int(order) == 4 and unpair(int(target))[0] == building_id:
+                            targets.setdefault(ai, {}).setdefault(int(target), turns[ai])
+    return {ai: list(locations.values()) for ai, locations in targets.items()}
+
+
+DecodedOrder = tuple[list[int], int, int, bool]
+
+
+def read_order_batches(path: Path) -> dict[tuple[str, int], list[DecodedOrder]]:
+    turns: Counter[str] = Counter()
+    batches: dict[tuple[str, int], list[DecodedOrder]] = {}
+    with path.open() as source:
+        for line in source:
+            if match := AI_LINE.search(line):
+                ai, kind, payload = match.groups()
+                turns[ai] += kind == "new turn data"
+                if kind == "submitting orders":
+                    batches[(ai, turns[ai])] = [(list(map(int, subjects.split())), int(order), int(target), clear == "true")
+                                               for subjects, order, target, clear in AI_ORDER.findall(payload)]
+    return batches
+
+
+def read_ai_records(path: Path, kind: str, at_turns: set[int] | None = None) -> dict[tuple[str, int], dict]:
+    turns: Counter[str] = Counter()
+    records: dict[tuple[str, int], dict] = {}
+    with path.open() as source:
+        for line in source:
+            if match := AI_LINE.search(line):
+                ai, record_kind, payload = match.groups()
+                turns[ai] += record_kind == "new turn data"
+                if record_kind == kind and (at_turns is None or turns[ai] in at_turns):
+                    records[(ai, turns[ai])] = json.loads(payload)
+    return records
+
+
 def parse_turns(spec: str) -> tuple[int, int]:
     low, _, high = spec.partition("-")
     return int(low or 0), int(high or low or 10**9)

@@ -25,7 +25,7 @@ func (u *RisqUnit) receiveOrder(o *RisqOrder, risq *GameRisq, prepend bool) erro
 	case defs.OrderType_UnitRenew:
 		target := risq.buildings[uint64(o.target_id)]
 		if target.renewing == nil {
-			cost := u.config.Buildings[target.building_id].Gather.Renew_cost
+			cost := target.renewCost()
 			player := risq.players[u.player_id]
 			if !player.resources.canAfford(cost) {
 				return errors.New("cannot afford renew")

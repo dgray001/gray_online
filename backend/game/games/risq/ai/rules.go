@@ -8,6 +8,9 @@ import (
 	"github.com/dgray001/gray_online/util"
 )
 
+// Set once at startup, before any game runs; per-rule step counts are only written to debug logs
+var LogRuleSteps bool
+
 type Bucket struct {
 	Members map[uint64]bool
 }
@@ -190,11 +193,13 @@ func (m *RulesModel) DecideOrders(view View) Decision {
 	for rule_index, rule := range m.rules {
 		m.internals.rule_index, m.internals.select_steps, m.internals.loop_steps = rule_index, 0, 0
 		matches, valid := evaluateCondition(rule.when, view, &m.internals)
-		if !valid || !matches {
-			continue
+		if valid && matches {
+			for _, action := range rule.then {
+				orders = append(orders, action.ToOrders(view, &m.internals)...)
+			}
 		}
-		for _, action := range rule.then {
-			orders = append(orders, action.ToOrders(view, &m.internals)...)
+		if LogRuleSteps {
+			util.Debugf(view.Logger(), "ai %s: rule %d steps select=%d loop=%d", view.Nickname(), rule_index, m.internals.select_steps, m.internals.loop_steps)
 		}
 	}
 	util.Debugf(view.Logger(), "ai %s: submitting orders %+v", view.Nickname(), orders)

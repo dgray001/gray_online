@@ -76,8 +76,12 @@ func TestTargetCategoryAndAttackRangeCastsMatchTheEngine(t *testing.T) {
 		{"category building", uint8(ai.TargetCategoryBuilding), uint8(defs.TargetCategory_BUILDING)},
 		{"range none", uint8(ai.AttackRangeNone), uint8(defs.RisqRange_NONE)},
 		{"range zone", uint8(ai.AttackRangeZone), uint8(defs.RisqRange_ZONE)},
+		{"range wall", uint8(ai.AttackRangeWall), uint8(defs.RisqRange_WALL)},
 		{"range space", uint8(ai.AttackRangeSpace), uint8(defs.RisqRange_SPACE)},
+		{"range twozone", uint8(ai.AttackRangeTwozone), uint8(defs.RisqRange_TWOZONE)},
+		{"range threezone", uint8(ai.AttackRangeThreezone), uint8(defs.RisqRange_THREEZONE)},
 		{"range adjacent", uint8(ai.AttackRangeAdjacent), uint8(defs.RisqRange_ADJACENT)},
+		{"range fivezone", uint8(ai.AttackRangeFivezone), uint8(defs.RisqRange_FIVEZONE)},
 		{"range secondary", uint8(ai.AttackRangeSecondary), uint8(defs.RisqRange_SECONDARY)},
 	})
 }

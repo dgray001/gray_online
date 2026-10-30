@@ -1,0 +1,6 @@
+[
+  {"building_id": 1, "turn_stamina": 10, "build_stamina": 90, "population_support": 5, "cost": {"wood": 200, "stone": 100}},
+  {"building_id": 2, "build_stamina": 14, "population_support": 5, "cost": {"wood": 30}},
+  {"building_id": 22, "turn_stamina": 10, "build_stamina": 30, "cost": {"wood": 150, "stone": 50}},
+  {"building_id": 23, "turn_stamina": 10, "build_stamina": 50, "population_support": 50, "cost": {"wood": 200, "stone": 100}}
+]

@@ -131,18 +131,19 @@ func rectangleRequiredBoardSize(rows int, cols int) uint16 {
 }
 
 func defaultShapeSize(kind string, map_size defs.MapSize) (map[string]int, error) {
-	radius := [...]int{4, 5, 6, 7, 7, 8, 8, 9, 10}[map_size-1]
+	radius := [...]int{4, 5, 5, 6, 7, 7, 8, 8, 10}[map_size-1]
 	switch kind {
 	case "hexagon":
 		return map[string]int{"radius": radius}, nil
 	case "ring":
 		outer := [...]int{4, 5, 5, 6, 7, 7, 8, 9, 10}[map_size-1]
-		return map[string]int{"outer_radius": outer, "inner_radius": outer / 2}, nil
+		inner := [...]int{2, 3, 2, 3, 4, 3, 4, 5, 5}[map_size-1]
+		return map[string]int{"outer_radius": outer, "inner_radius": inner}, nil
 	case "rectangle":
-		dimensions := [...][2]int{{6, 9}, {8, 12}, {9, 14}, {10, 15}, {11, 16}, {12, 18}, {13, 19}, {14, 21}, {15, 23}}[map_size-1]
+		dimensions := [...][2]int{{5, 9}, {7, 12}, {7, 14}, {9, 15}, {9, 17}, {9, 19}, {9, 21}, {11, 22}, {11, 26}}[map_size-1]
 		return map[string]int{"rows": dimensions[0], "cols": dimensions[1]}, nil
 	case "triangle":
-		edge_length := [...]int{9, 12, 14, 16, 17, 19, 20, 23, 25}[map_size-1]
+		edge_length := [...]int{9, 9, 12, 12, 15, 15, 18, 18, 21}[map_size-1]
 		return map[string]int{"edge_length": edge_length}, nil
 	default:
 		return nil, fmt.Errorf("shape: unknown kind %q", kind)

@@ -63,6 +63,8 @@ def assign_nodes(resource: str, search_pass: int) -> Record:
         limit="var(gather_node_limit)", skip=f"{search_pass} * var(gather_node_limit)",
         capacity=live_capacity)
     score = "0 - var(tune_gather_distance_weight) * distance(actor, target) - var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))"
+    if resource == "food":
+        score += " + var(tune_food_gather_speed_weight) * var(target.gather_speed)"
     return dict(action="select", actors=actors, pick=targets, match=dict(score=score), issue=[dict(gather={})])
 
 

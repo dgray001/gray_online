@@ -38,6 +38,24 @@ type SuiteBucket struct {
 	// plays exactly this seed (with swap choosing the seat order) instead of the seed and seats derived from the bucket and game index
 	Seed int64 `json:"seed,omitempty"`
 	Swap bool  `json:"swap,omitempty"`
+	// total seats, shared evenly by the suite's players, whose best performers are compared; defaults to one seat each
+	Players int `json:"players,omitempty"`
+	// overrides the suite's games_per_bucket for this bucket when set
+	Games int `json:"games,omitempty"`
+}
+
+func (b SuiteBucket) seatCount(sides int) int {
+	if b.Players > 0 {
+		return b.Players
+	}
+	return sides
+}
+
+func (b SuiteBucket) gameCount(default_games int) int {
+	if b.Games > 0 {
+		return b.Games
+	}
+	return default_games
 }
 
 func loadScenario(path string) (Scenario, error) {
@@ -59,6 +77,11 @@ func loadScenario(path string) (Scenario, error) {
 	}
 	if s.MaxTurns < 1 {
 		s.MaxTurns = 300
+	}
+	for _, b := range s.Buckets {
+		if b.Players > 0 && len(s.Players) > 0 && b.Players%len(s.Players) != 0 {
+			return Scenario{}, fmt.Errorf("bucket %q: players %d is not a multiple of the %d suite players", b.Name, b.Players, len(s.Players))
+		}
 	}
 	return s, nil
 }

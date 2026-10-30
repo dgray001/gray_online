@@ -422,9 +422,13 @@ export enum RisqAttackType {
 export enum RisqRange {
   NONE = 0,
   ZONE = 1,
-  SPACE = 2,
-  ADJACENT = 3,
-  SECONDARY = 4,
+  WALL = 2,
+  SPACE = 3,
+  TWOZONE = 4,
+  THREEZONE = 5,
+  ADJACENT = 6,
+  FIVEZONE = 7,
+  SECONDARY = 8,
 }
 
 /** Static per-resource-id config served by the backend */

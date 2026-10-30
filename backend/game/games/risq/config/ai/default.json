@@ -8,87 +8,87 @@
         {
           "action": "set_var",
           "name": "tech_term_0",
-          "value": "(1 - researched(2))"
+          "value": "(1 - researched(61))"
         },
         {
           "action": "set_var",
           "name": "tech_term_1",
-          "value": "(1 - researched(3))"
+          "value": "(1 - researched(62))"
         },
         {
           "action": "set_var",
           "name": "tech_term_2",
-          "value": "(researched(2) + researched(3))"
+          "value": "(researched(61) + researched(62))"
         },
         {
           "action": "set_var",
           "name": "tech_term_3",
-          "value": "(1.5000 + researched(2) * 0.0000 + researched(5) * 0.0000 + researched(2) * researched(5) * 0.0000)"
+          "value": "(1.5000 + researched(61) * 0.0000 + researched(63) * 0.0000 + researched(61) * researched(63) * 0.0000)"
         },
         {
           "action": "set_var",
           "name": "tech_term_4",
-          "value": "(1.2000 + researched(2) * 0.0000 + researched(5) * 0.0000 + researched(2) * researched(5) * 0.0000)"
+          "value": "(1.2000 + researched(61) * 0.0000 + researched(63) * 0.0000 + researched(61) * researched(63) * 0.0000)"
         },
         {
           "action": "set_var",
           "name": "tech_term_5",
-          "value": "(0.3750 + researched(2) * 0.0000 + researched(5) * 0.0000 + researched(2) * researched(5) * 0.0000)"
+          "value": "(0.3750 + researched(61) * 0.0000 + researched(63) * 0.0000 + researched(61) * researched(63) * 0.0000)"
         },
         {
           "action": "set_var",
           "name": "tech_term_6",
-          "value": "(1.8000 + researched(2) * 0.6000 + researched(5) * 0.0000 + researched(2) * researched(5) * 0.0000)"
+          "value": "(1.8000 + researched(61) * 0.6000 + researched(63) * 0.0000 + researched(61) * researched(63) * 0.0000)"
         },
         {
           "action": "set_var",
           "name": "tech_term_7",
-          "value": "(1.5000 + researched(2) * 0.6000 + researched(5) * 0.0000 + researched(2) * researched(5) * 0.0000)"
+          "value": "(1.5000 + researched(61) * 0.6000 + researched(63) * 0.0000 + researched(61) * researched(63) * 0.0000)"
         },
         {
           "action": "set_var",
           "name": "tech_term_8",
-          "value": "(0.5670 + researched(2) * 0.4421 + researched(5) * 0.0000 + researched(2) * researched(5) * 0.0000)"
+          "value": "(0.5670 + researched(61) * 0.4421 + researched(63) * 0.0000 + researched(61) * researched(63) * 0.0000)"
         },
         {
           "action": "set_var",
           "name": "tech_term_9",
-          "value": "(3.0000 + researched(2) * 0.6000 + researched(5) * 0.0000 + researched(2) * researched(5) * 0.0000)"
+          "value": "(3.0000 + researched(61) * 0.6000 + researched(63) * 0.0000 + researched(61) * researched(63) * 0.0000)"
         },
         {
           "action": "set_var",
           "name": "tech_term_10",
-          "value": "(2.7000 + researched(2) * 0.6000 + researched(5) * 0.1200 + researched(2) * researched(5) * 0.0000)"
+          "value": "(2.7000 + researched(61) * 0.6000 + researched(63) * 0.1200 + researched(61) * researched(63) * 0.0000)"
         },
         {
           "action": "set_var",
           "name": "tech_term_11",
-          "value": "(2.4000 + researched(2) * 0.6000 + researched(5) * 0.2400 + researched(2) * researched(5) * 0.0000)"
+          "value": "(2.4000 + researched(61) * 0.6000 + researched(63) * 0.2400 + researched(61) * researched(63) * 0.0000)"
         },
         {
           "action": "set_var",
           "name": "tech_term_12",
-          "value": "(1.5000 + researched(2) * 0.6000 + researched(5) * 0.6000 + researched(2) * researched(5) * 0.0000)"
+          "value": "(1.5000 + researched(61) * 0.6000 + researched(63) * 0.6000 + researched(61) * researched(63) * 0.0000)"
         },
         {
           "action": "set_var",
           "name": "tech_term_13",
-          "value": "(4.8000 + researched(2) * 1.2000 + researched(5) * 0.0000 + researched(2) * researched(5) * 0.0000)"
+          "value": "(4.8000 + researched(61) * 1.2000 + researched(63) * 0.0000 + researched(61) * researched(63) * 0.0000)"
         },
         {
           "action": "set_var",
           "name": "tech_term_14",
-          "value": "(4.5150 + researched(2) * 1.2000 + researched(5) * 0.1200 + researched(2) * researched(5) * 0.0000)"
+          "value": "(4.5150 + researched(61) * 1.2000 + researched(63) * 0.1200 + researched(61) * researched(63) * 0.0000)"
         },
         {
           "action": "set_var",
           "name": "tech_term_15",
-          "value": "(3.9450 + researched(2) * 1.2000 + researched(5) * 0.2400 + researched(2) * researched(5) * -0.0000)"
+          "value": "(3.9450 + researched(61) * 1.2000 + researched(63) * 0.2400 + researched(61) * researched(63) * -0.0000)"
         },
         {
           "action": "set_var",
           "name": "tech_term_16",
-          "value": "(2.1075 + researched(2) * 1.0425 + researched(5) * 0.4425 + researched(2) * researched(5) * 0.1575)"
+          "value": "(2.1075 + researched(61) * 1.0425 + researched(63) * 0.4425 + researched(61) * researched(63) * 0.1575)"
         }
       ]
     },
@@ -404,7 +404,7 @@
               }
             },
             "where": {
-              "if": "(var(target.here) > 0) + (var(target.space_owner) < 0) * ((var(n_land) == 0) + (var(target.next) > 0) > 0) > 0"
+              "if": "(var(target.here) > 0) + (var(target.owner) < 0) * ((var(n_land) == 0) + (var(target.next) > 0) > 0) > 0"
             }
           },
           "into": {
@@ -653,7 +653,7 @@
         {
           "action": "set_var",
           "name": "pikes",
-          "value": "researched(5)"
+          "value": "researched(63)"
         },
         {
           "action": "set_var",
@@ -2846,7 +2846,7 @@
         {
           "action": "set_var",
           "name": "smith_want",
-          "value": "min(1, max(0, 1 - var(lg72))) * min(1, max(0, var(vils))) * min(1, max(0, (var(proj_army) * 0.25 - (config(tech, cost_food, 2) + config(tech, cost_wood, 2) + config(tech, cost_stone, 2) + config(tech, cost_gold, 2)) - (config(building, cost_food, 11) + config(building, cost_wood, 11) + config(building, cost_stone, 11) + config(building, cost_gold, 11))) / 50 + 1))"
+          "value": "min(1, max(0, 1 - var(lg72))) * min(1, max(0, var(vils))) * min(1, max(0, (var(proj_army) * 0.25 - (config(tech, cost_food, 61) + config(tech, cost_wood, 61) + config(tech, cost_stone, 61) + config(tech, cost_gold, 61)) - (config(building, cost_food, 11) + config(building, cost_wood, 11) + config(building, cost_stone, 11) + config(building, cost_gold, 11))) / 50 + 1))"
         },
         {
           "action": "set_var",
@@ -3031,22 +3031,22 @@
         {
           "action": "set_var",
           "name": "tech_food",
-          "value": "(1 - var(farming)) * config(tech, cost_food, 1) + min(1, max(0, var(smiths) + var(smith_want))) * ((1 - var(pikes)) * config(tech, cost_food, 5) + var(tech_term_0) * config(tech, cost_food, 2) + var(tech_term_1) * config(tech, cost_food, 3))"
+          "value": "(1 - var(farming)) * config(tech, cost_food, 1) + min(1, max(0, var(smiths) + var(smith_want))) * ((1 - var(pikes)) * config(tech, cost_food, 63) + var(tech_term_0) * config(tech, cost_food, 61) + var(tech_term_1) * config(tech, cost_food, 62))"
         },
         {
           "action": "set_var",
           "name": "tech_wood",
-          "value": "(1 - var(farming)) * config(tech, cost_wood, 1) + min(1, max(0, var(smiths) + var(smith_want))) * ((1 - var(pikes)) * config(tech, cost_wood, 5) + var(tech_term_0) * config(tech, cost_wood, 2) + var(tech_term_1) * config(tech, cost_wood, 3))"
+          "value": "(1 - var(farming)) * config(tech, cost_wood, 1) + min(1, max(0, var(smiths) + var(smith_want))) * ((1 - var(pikes)) * config(tech, cost_wood, 63) + var(tech_term_0) * config(tech, cost_wood, 61) + var(tech_term_1) * config(tech, cost_wood, 62))"
         },
         {
           "action": "set_var",
           "name": "tech_stone",
-          "value": "(1 - var(farming)) * config(tech, cost_stone, 1) + min(1, max(0, var(smiths) + var(smith_want))) * ((1 - var(pikes)) * config(tech, cost_stone, 5) + var(tech_term_0) * config(tech, cost_stone, 2) + var(tech_term_1) * config(tech, cost_stone, 3))"
+          "value": "(1 - var(farming)) * config(tech, cost_stone, 1) + min(1, max(0, var(smiths) + var(smith_want))) * ((1 - var(pikes)) * config(tech, cost_stone, 63) + var(tech_term_0) * config(tech, cost_stone, 61) + var(tech_term_1) * config(tech, cost_stone, 62))"
         },
         {
           "action": "set_var",
           "name": "tech_gold",
-          "value": "(1 - var(farming)) * config(tech, cost_gold, 1) + min(1, max(0, var(smiths) + var(smith_want))) * ((1 - var(pikes)) * config(tech, cost_gold, 5) + var(tech_term_0) * config(tech, cost_gold, 2) + var(tech_term_1) * config(tech, cost_gold, 3))"
+          "value": "(1 - var(farming)) * config(tech, cost_gold, 1) + min(1, max(0, var(smiths) + var(smith_want))) * ((1 - var(pikes)) * config(tech, cost_gold, 63) + var(tech_term_0) * config(tech, cost_gold, 61) + var(tech_term_1) * config(tech, cost_gold, 62))"
         },
         {
           "action": "set_var",
@@ -4493,7 +4493,7 @@
                       }
                     },
                     "rank": [
-                      "var(site_dist_smith) * (0 - distance(fu, target)) + var(site_expand_smith) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_smith) * (var(lg103) - max(0, var(target.ed))) + var(site_safe_smith) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_smith) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_smith) * (4 - var(target.space_vision)) + var(site_region_smith) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                      "var(site_dist_smith) * (0 - distance(fu, target)) + var(site_expand_smith) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_smith) * (var(lg103) - max(0, var(target.ed))) + var(site_safe_smith) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_smith) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_smith) * (4 - var(target.space.vision)) + var(site_region_smith) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                       "0 - distance(fu, target, 1)",
                       "0 - var(target.x)",
                       "0 - var(target.y)",
@@ -4831,7 +4831,7 @@
                       }
                     },
                     "rank": [
-                      "var(site_dist_smith) * (0 - distance(fu, target)) + var(site_expand_smith) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_smith) * (var(lg104) - max(0, var(target.ed))) + var(site_safe_smith) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_smith) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_smith) * (4 - var(target.space_vision)) + var(site_region_smith) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                      "var(site_dist_smith) * (0 - distance(fu, target)) + var(site_expand_smith) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_smith) * (var(lg104) - max(0, var(target.ed))) + var(site_safe_smith) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_smith) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_smith) * (4 - var(target.space.vision)) + var(site_region_smith) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                       "0 - distance(fu, target, 1)",
                       "0 - var(target.x)",
                       "0 - var(target.y)",
@@ -5372,7 +5372,7 @@
                           }
                         },
                         "rank": [
-                          "var(site_dist_smith) * (0 - distance(fa, target)) + var(site_expand_smith) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_smith) * (var(lg105) - max(0, var(target.ed))) + var(site_safe_smith) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_smith) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_smith) * (4 - var(target.space_vision)) + var(site_region_smith) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                          "var(site_dist_smith) * (0 - distance(fa, target)) + var(site_expand_smith) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_smith) * (var(lg105) - max(0, var(target.ed))) + var(site_safe_smith) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_smith) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_smith) * (4 - var(target.space.vision)) + var(site_region_smith) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                           "0 - distance(fa, target, 1)",
                           "0 - var(target.x)",
                           "0 - var(target.y)",
@@ -5706,7 +5706,7 @@
                       }
                     },
                     "rank": [
-                      "var(site_dist_house) * (0 - distance(fu, target)) + var(site_expand_house) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_house) * (var(lg106) - max(0, var(target.ed))) + var(site_safe_house) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_house) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_house) * (4 - var(target.space_vision)) + var(site_region_house) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                      "var(site_dist_house) * (0 - distance(fu, target)) + var(site_expand_house) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_house) * (var(lg106) - max(0, var(target.ed))) + var(site_safe_house) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_house) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_house) * (4 - var(target.space.vision)) + var(site_region_house) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                       "0 - distance(fu, target, 1)",
                       "0 - var(target.x)",
                       "0 - var(target.y)",
@@ -6028,7 +6028,7 @@
                       }
                     },
                     "rank": [
-                      "var(site_dist_house) * (0 - distance(fu, target)) + var(site_expand_house) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_house) * (var(lg107) - max(0, var(target.ed))) + var(site_safe_house) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_house) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_house) * (4 - var(target.space_vision)) + var(site_region_house) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                      "var(site_dist_house) * (0 - distance(fu, target)) + var(site_expand_house) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_house) * (var(lg107) - max(0, var(target.ed))) + var(site_safe_house) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_house) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_house) * (4 - var(target.space.vision)) + var(site_region_house) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                       "0 - distance(fu, target, 1)",
                       "0 - var(target.x)",
                       "0 - var(target.y)",
@@ -6553,7 +6553,7 @@
                           }
                         },
                         "rank": [
-                          "var(site_dist_house) * (0 - distance(fa, target)) + var(site_expand_house) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_house) * (var(lg108) - max(0, var(target.ed))) + var(site_safe_house) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_house) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_house) * (4 - var(target.space_vision)) + var(site_region_house) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                          "var(site_dist_house) * (0 - distance(fa, target)) + var(site_expand_house) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_house) * (var(lg108) - max(0, var(target.ed))) + var(site_safe_house) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_house) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_house) * (4 - var(target.space.vision)) + var(site_region_house) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                           "0 - distance(fa, target, 1)",
                           "0 - var(target.x)",
                           "0 - var(target.y)",
@@ -6887,7 +6887,7 @@
                       }
                     },
                     "rank": [
-                      "var(site_dist_vc) * (0 - distance(fu, target)) + var(site_expand_vc) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_vc) * (var(lg109) - max(0, var(target.ed))) + var(site_safe_vc) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_vc) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_vc) * (4 - var(target.space_vision)) + var(site_region_vc) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                      "var(site_dist_vc) * (0 - distance(fu, target)) + var(site_expand_vc) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_vc) * (var(lg109) - max(0, var(target.ed))) + var(site_safe_vc) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_vc) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_vc) * (4 - var(target.space.vision)) + var(site_region_vc) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                       "0 - distance(fu, target, 1)",
                       "0 - var(target.x)",
                       "0 - var(target.y)",
@@ -7209,7 +7209,7 @@
                       }
                     },
                     "rank": [
-                      "var(site_dist_vc) * (0 - distance(fu, target)) + var(site_expand_vc) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_vc) * (var(lg110) - max(0, var(target.ed))) + var(site_safe_vc) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_vc) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_vc) * (4 - var(target.space_vision)) + var(site_region_vc) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                      "var(site_dist_vc) * (0 - distance(fu, target)) + var(site_expand_vc) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_vc) * (var(lg110) - max(0, var(target.ed))) + var(site_safe_vc) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_vc) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_vc) * (4 - var(target.space.vision)) + var(site_region_vc) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                       "0 - distance(fu, target, 1)",
                       "0 - var(target.x)",
                       "0 - var(target.y)",
@@ -7734,7 +7734,7 @@
                           }
                         },
                         "rank": [
-                          "var(site_dist_vc) * (0 - distance(fa, target)) + var(site_expand_vc) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_vc) * (var(lg111) - max(0, var(target.ed))) + var(site_safe_vc) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_vc) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_vc) * (4 - var(target.space_vision)) + var(site_region_vc) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                          "var(site_dist_vc) * (0 - distance(fa, target)) + var(site_expand_vc) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_vc) * (var(lg111) - max(0, var(target.ed))) + var(site_safe_vc) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_vc) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_vc) * (4 - var(target.space.vision)) + var(site_region_vc) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                           "0 - distance(fa, target, 1)",
                           "0 - var(target.x)",
                           "0 - var(target.y)",
@@ -8068,7 +8068,7 @@
                       }
                     },
                     "rank": [
-                      "var(site_dist_farm) * (0 - distance(fu, target)) + var(site_expand_farm) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_farm) * (var(lg112) - max(0, var(target.ed))) + var(site_safe_farm) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_farm) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_farm) * (4 - var(target.space_vision)) + var(site_region_farm) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                      "var(site_dist_farm) * (0 - distance(fu, target)) + var(site_expand_farm) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_farm) * (var(lg112) - max(0, var(target.ed))) + var(site_safe_farm) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_farm) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_farm) * (4 - var(target.space.vision)) + var(site_region_farm) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                       "0 - distance(fu, target, 1)",
                       "0 - var(target.x)",
                       "0 - var(target.y)",
@@ -8390,7 +8390,7 @@
                       }
                     },
                     "rank": [
-                      "var(site_dist_farm) * (0 - distance(fu, target)) + var(site_expand_farm) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_farm) * (var(lg113) - max(0, var(target.ed))) + var(site_safe_farm) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_farm) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_farm) * (4 - var(target.space_vision)) + var(site_region_farm) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                      "var(site_dist_farm) * (0 - distance(fu, target)) + var(site_expand_farm) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_farm) * (var(lg113) - max(0, var(target.ed))) + var(site_safe_farm) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_farm) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_farm) * (4 - var(target.space.vision)) + var(site_region_farm) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                       "0 - distance(fu, target, 1)",
                       "0 - var(target.x)",
                       "0 - var(target.y)",
@@ -8915,7 +8915,7 @@
                           }
                         },
                         "rank": [
-                          "var(site_dist_farm) * (0 - distance(fa, target)) + var(site_expand_farm) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_farm) * (var(lg114) - max(0, var(target.ed))) + var(site_safe_farm) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_farm) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_farm) * (4 - var(target.space_vision)) + var(site_region_farm) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                          "var(site_dist_farm) * (0 - distance(fa, target)) + var(site_expand_farm) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_farm) * (var(lg114) - max(0, var(target.ed))) + var(site_safe_farm) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_farm) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_farm) * (4 - var(target.space.vision)) + var(site_region_farm) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                           "0 - distance(fa, target, 1)",
                           "0 - var(target.x)",
                           "0 - var(target.y)",
@@ -9249,7 +9249,7 @@
                       }
                     },
                     "rank": [
-                      "var(site_dist_farm) * (0 - distance(fu, target)) + var(site_expand_farm) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_farm) * (var(lg115) - max(0, var(target.ed))) + var(site_safe_farm) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_farm) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_farm) * (4 - var(target.space_vision)) + var(site_region_farm) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                      "var(site_dist_farm) * (0 - distance(fu, target)) + var(site_expand_farm) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_farm) * (var(lg115) - max(0, var(target.ed))) + var(site_safe_farm) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_farm) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_farm) * (4 - var(target.space.vision)) + var(site_region_farm) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                       "0 - distance(fu, target, 1)",
                       "0 - var(target.x)",
                       "0 - var(target.y)",
@@ -9571,7 +9571,7 @@
                       }
                     },
                     "rank": [
-                      "var(site_dist_farm) * (0 - distance(fu, target)) + var(site_expand_farm) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_farm) * (var(lg116) - max(0, var(target.ed))) + var(site_safe_farm) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_farm) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_farm) * (4 - var(target.space_vision)) + var(site_region_farm) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                      "var(site_dist_farm) * (0 - distance(fu, target)) + var(site_expand_farm) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_farm) * (var(lg116) - max(0, var(target.ed))) + var(site_safe_farm) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_farm) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_farm) * (4 - var(target.space.vision)) + var(site_region_farm) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                       "0 - distance(fu, target, 1)",
                       "0 - var(target.x)",
                       "0 - var(target.y)",
@@ -10096,7 +10096,7 @@
                           }
                         },
                         "rank": [
-                          "var(site_dist_farm) * (0 - distance(fa, target)) + var(site_expand_farm) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_farm) * (var(lg117) - max(0, var(target.ed))) + var(site_safe_farm) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_farm) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_farm) * (4 - var(target.space_vision)) + var(site_region_farm) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                          "var(site_dist_farm) * (0 - distance(fa, target)) + var(site_expand_farm) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_farm) * (var(lg117) - max(0, var(target.ed))) + var(site_safe_farm) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_farm) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_farm) * (4 - var(target.space.vision)) + var(site_region_farm) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                           "0 - distance(fa, target, 1)",
                           "0 - var(target.x)",
                           "0 - var(target.y)",
@@ -10430,7 +10430,7 @@
                       }
                     },
                     "rank": [
-                      "var(site_dist_farm) * (0 - distance(fu, target)) + var(site_expand_farm) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_farm) * (var(lg118) - max(0, var(target.ed))) + var(site_safe_farm) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_farm) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_farm) * (4 - var(target.space_vision)) + var(site_region_farm) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                      "var(site_dist_farm) * (0 - distance(fu, target)) + var(site_expand_farm) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_farm) * (var(lg118) - max(0, var(target.ed))) + var(site_safe_farm) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_farm) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_farm) * (4 - var(target.space.vision)) + var(site_region_farm) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                       "0 - distance(fu, target, 1)",
                       "0 - var(target.x)",
                       "0 - var(target.y)",
@@ -10752,7 +10752,7 @@
                       }
                     },
                     "rank": [
-                      "var(site_dist_farm) * (0 - distance(fu, target)) + var(site_expand_farm) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_farm) * (var(lg119) - max(0, var(target.ed))) + var(site_safe_farm) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_farm) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_farm) * (4 - var(target.space_vision)) + var(site_region_farm) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                      "var(site_dist_farm) * (0 - distance(fu, target)) + var(site_expand_farm) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_farm) * (var(lg119) - max(0, var(target.ed))) + var(site_safe_farm) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_farm) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_farm) * (4 - var(target.space.vision)) + var(site_region_farm) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                       "0 - distance(fu, target, 1)",
                       "0 - var(target.x)",
                       "0 - var(target.y)",
@@ -11277,7 +11277,7 @@
                           }
                         },
                         "rank": [
-                          "var(site_dist_farm) * (0 - distance(fa, target)) + var(site_expand_farm) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_farm) * (var(lg120) - max(0, var(target.ed))) + var(site_safe_farm) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_farm) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_farm) * (4 - var(target.space_vision)) + var(site_region_farm) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                          "var(site_dist_farm) * (0 - distance(fa, target)) + var(site_expand_farm) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_farm) * (var(lg120) - max(0, var(target.ed))) + var(site_safe_farm) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_farm) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_farm) * (4 - var(target.space.vision)) + var(site_region_farm) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                           "0 - distance(fa, target, 1)",
                           "0 - var(target.x)",
                           "0 - var(target.y)",
@@ -11621,7 +11621,7 @@
                       }
                     },
                     "rank": [
-                      "var(site_dist_barracks) * (0 - distance(fu, target)) + var(site_expand_barracks) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_barracks) * (var(lg121) - max(0, var(target.ed))) + var(site_safe_barracks) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_barracks) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_barracks) * (4 - var(target.space_vision)) + var(site_region_barracks) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                      "var(site_dist_barracks) * (0 - distance(fu, target)) + var(site_expand_barracks) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_barracks) * (var(lg121) - max(0, var(target.ed))) + var(site_safe_barracks) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_barracks) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_barracks) * (4 - var(target.space.vision)) + var(site_region_barracks) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                       "0 - distance(fu, target, 1)",
                       "0 - var(target.x)",
                       "0 - var(target.y)",
@@ -11953,7 +11953,7 @@
                       }
                     },
                     "rank": [
-                      "var(site_dist_barracks) * (0 - distance(fu, target)) + var(site_expand_barracks) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_barracks) * (var(lg122) - max(0, var(target.ed))) + var(site_safe_barracks) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_barracks) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_barracks) * (4 - var(target.space_vision)) + var(site_region_barracks) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                      "var(site_dist_barracks) * (0 - distance(fu, target)) + var(site_expand_barracks) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_barracks) * (var(lg122) - max(0, var(target.ed))) + var(site_safe_barracks) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_barracks) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_barracks) * (4 - var(target.space.vision)) + var(site_region_barracks) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                       "0 - distance(fu, target, 1)",
                       "0 - var(target.x)",
                       "0 - var(target.y)",
@@ -12488,7 +12488,7 @@
                           }
                         },
                         "rank": [
-                          "var(site_dist_barracks) * (0 - distance(fa, target)) + var(site_expand_barracks) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_barracks) * (var(lg123) - max(0, var(target.ed))) + var(site_safe_barracks) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_barracks) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_barracks) * (4 - var(target.space_vision)) + var(site_region_barracks) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                          "var(site_dist_barracks) * (0 - distance(fa, target)) + var(site_expand_barracks) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_barracks) * (var(lg123) - max(0, var(target.ed))) + var(site_safe_barracks) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_barracks) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_barracks) * (4 - var(target.space.vision)) + var(site_region_barracks) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                           "0 - distance(fa, target, 1)",
                           "0 - var(target.x)",
                           "0 - var(target.y)",
@@ -12838,7 +12838,7 @@
                       }
                     },
                     "rank": [
-                      "var(site_dist_smith) * (0 - distance(fu, target)) + var(site_expand_smith) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_smith) * (var(lg124) - max(0, var(target.ed))) + var(site_safe_smith) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_smith) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_smith) * (4 - var(target.space_vision)) + var(site_region_smith) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                      "var(site_dist_smith) * (0 - distance(fu, target)) + var(site_expand_smith) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_smith) * (var(lg124) - max(0, var(target.ed))) + var(site_safe_smith) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_smith) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_smith) * (4 - var(target.space.vision)) + var(site_region_smith) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                       "0 - distance(fu, target, 1)",
                       "0 - var(target.x)",
                       "0 - var(target.y)",
@@ -13176,7 +13176,7 @@
                       }
                     },
                     "rank": [
-                      "var(site_dist_smith) * (0 - distance(fu, target)) + var(site_expand_smith) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_smith) * (var(lg125) - max(0, var(target.ed))) + var(site_safe_smith) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_smith) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_smith) * (4 - var(target.space_vision)) + var(site_region_smith) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                      "var(site_dist_smith) * (0 - distance(fu, target)) + var(site_expand_smith) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_smith) * (var(lg125) - max(0, var(target.ed))) + var(site_safe_smith) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_smith) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_smith) * (4 - var(target.space.vision)) + var(site_region_smith) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                       "0 - distance(fu, target, 1)",
                       "0 - var(target.x)",
                       "0 - var(target.y)",
@@ -13717,7 +13717,7 @@
                           }
                         },
                         "rank": [
-                          "var(site_dist_smith) * (0 - distance(fa, target)) + var(site_expand_smith) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_smith) * (var(lg126) - max(0, var(target.ed))) + var(site_safe_smith) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_smith) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_smith) * (4 - var(target.space_vision)) + var(site_region_smith) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                          "var(site_dist_smith) * (0 - distance(fa, target)) + var(site_expand_smith) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_smith) * (var(lg126) - max(0, var(target.ed))) + var(site_safe_smith) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_smith) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_smith) * (4 - var(target.space.vision)) + var(site_region_smith) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                           "0 - distance(fa, target, 1)",
                           "0 - var(target.x)",
                           "0 - var(target.y)",
@@ -14058,7 +14058,7 @@
                       "in_set": "buildable_zones",
                       "if": [
                         "var(target.nf) == 0",
-                        "(var(target.space_owner) < 0) * (var(target.sf) == 0)"
+                        "(var(target.space.owner) < 0) * (var(target.sf) == 0)"
                       ]
                     },
                     "let": {
@@ -14178,7 +14178,7 @@
                       }
                     },
                     "rank": [
-                      "var(site_dist_outpost) * (0 - distance(fu, target)) + var(site_expand_outpost) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_outpost) * (var(lg127) - max(0, var(target.ed))) + var(site_safe_outpost) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_outpost) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_outpost) * (4 - var(target.space_vision)) + var(site_region_outpost) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                      "var(site_dist_outpost) * (0 - distance(fu, target)) + var(site_expand_outpost) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_outpost) * (var(lg127) - max(0, var(target.ed))) + var(site_safe_outpost) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_outpost) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_outpost) * (4 - var(target.space.vision)) + var(site_region_outpost) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                       "0 - distance(fu, target, 1)",
                       "0 - var(target.x)",
                       "0 - var(target.y)",
@@ -14381,7 +14381,7 @@
                       "in_set": "buildable_zones",
                       "if": [
                         "var(target.nf) == 0",
-                        "(var(target.space_owner) < 0) * (var(target.sf) == 0)"
+                        "(var(target.space.owner) < 0) * (var(target.sf) == 0)"
                       ]
                     },
                     "let": {
@@ -14501,7 +14501,7 @@
                       }
                     },
                     "rank": [
-                      "var(site_dist_outpost) * (0 - distance(fu, target)) + var(site_expand_outpost) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_outpost) * (var(lg128) - max(0, var(target.ed))) + var(site_safe_outpost) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_outpost) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_outpost) * (4 - var(target.space_vision)) + var(site_region_outpost) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                      "var(site_dist_outpost) * (0 - distance(fu, target)) + var(site_expand_outpost) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_outpost) * (var(lg128) - max(0, var(target.ed))) + var(site_safe_outpost) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_outpost) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_outpost) * (4 - var(target.space.vision)) + var(site_region_outpost) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                       "0 - distance(fu, target, 1)",
                       "0 - var(target.x)",
                       "0 - var(target.y)",
@@ -14906,7 +14906,7 @@
                           "in_set": "buildable_zones",
                           "if": [
                             "var(target.nf) == 0",
-                            "(var(target.space_owner) < 0) * (var(target.sf) == 0)",
+                            "(var(target.space.owner) < 0) * (var(target.sf) == 0)",
                             "(-1 * ((var(target.x) - var(hx)) * (var(outpost_bad_x) - var(hx)) + (var(target.y) - var(hy)) * (var(outpost_bad_y) - var(hy)) + ((var(target.x) - var(hx)) + (var(target.y) - var(hy))) * ((var(outpost_bad_x) - var(hx)) + (var(outpost_bad_y) - var(hy))))) > 0"
                           ]
                         },
@@ -15027,7 +15027,7 @@
                           }
                         },
                         "rank": [
-                          "var(site_dist_outpost) * (0 - distance(fa, target)) + var(site_expand_outpost) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_outpost) * (var(lg129) - max(0, var(target.ed))) + var(site_safe_outpost) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_outpost) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_outpost) * (4 - var(target.space_vision)) + var(site_region_outpost) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                          "var(site_dist_outpost) * (0 - distance(fa, target)) + var(site_expand_outpost) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_outpost) * (var(lg129) - max(0, var(target.ed))) + var(site_safe_outpost) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_outpost) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_outpost) * (4 - var(target.space.vision)) + var(site_region_outpost) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                           "0 - distance(fa, target, 1)",
                           "0 - var(target.x)",
                           "0 - var(target.y)",
@@ -17659,8 +17659,8 @@
           "actors": {
             "kind": "buildings",
             "where": {
-              "can_research": 5,
-              "if": "(((1) > 1) * (var(actor.queue_length) < (1)) + ((1) <= 1) * var(actor.idle)) * ((gameVar(food) >= config(tech, cost_food, 5)) * (gameVar(wood) >= config(tech, cost_wood, 5)) * (gameVar(stone) >= config(tech, cost_stone, 5)) * (gameVar(gold) >= config(tech, cost_gold, 5)))"
+              "can_research": 63,
+              "if": "(((1) > 1) * (var(actor.queue_length) < (1)) + ((1) <= 1) * var(actor.idle)) * ((gameVar(food) >= config(tech, cost_food, 63)) * (gameVar(wood) >= config(tech, cost_wood, 63)) * (gameVar(stone) >= config(tech, cost_stone, 63)) * (gameVar(gold) >= config(tech, cost_gold, 63)))"
             },
             "rank": "0 - var(actor.uid)",
             "limit": 1
@@ -17668,7 +17668,7 @@
           "issue": [
             {
               "research": {
-                "tech_id": 5,
+                "tech_id": 63,
                 "queue": "1"
               }
             }
@@ -17687,7 +17687,7 @@
           },
           {
             "value_at_least": {
-              "value": "var(proj_army) * 0.25 - (config(tech, cost_food, 2) + config(tech, cost_wood, 2) + config(tech, cost_stone, 2) + config(tech, cost_gold, 2))",
+              "value": "var(proj_army) * 0.25 - (config(tech, cost_food, 61) + config(tech, cost_wood, 61) + config(tech, cost_stone, 61) + config(tech, cost_gold, 61))",
               "amount": 0
             }
           }
@@ -17699,8 +17699,8 @@
           "actors": {
             "kind": "buildings",
             "where": {
-              "can_research": 2,
-              "if": "(((1) > 1) * (var(actor.queue_length) < (1)) + ((1) <= 1) * var(actor.idle)) * ((gameVar(food) >= config(tech, cost_food, 2)) * (gameVar(wood) >= config(tech, cost_wood, 2)) * (gameVar(stone) >= config(tech, cost_stone, 2)) * (gameVar(gold) >= config(tech, cost_gold, 2)))"
+              "can_research": 61,
+              "if": "(((1) > 1) * (var(actor.queue_length) < (1)) + ((1) <= 1) * var(actor.idle)) * ((gameVar(food) >= config(tech, cost_food, 61)) * (gameVar(wood) >= config(tech, cost_wood, 61)) * (gameVar(stone) >= config(tech, cost_stone, 61)) * (gameVar(gold) >= config(tech, cost_gold, 61)))"
             },
             "rank": "0 - var(actor.uid)",
             "limit": 1
@@ -17708,7 +17708,7 @@
           "issue": [
             {
               "research": {
-                "tech_id": 2,
+                "tech_id": 61,
                 "queue": "1"
               }
             }
@@ -17727,7 +17727,7 @@
           },
           {
             "value_at_least": {
-              "value": "var(proj_army) * 0.15 - (config(tech, cost_food, 3) + config(tech, cost_wood, 3) + config(tech, cost_stone, 3) + config(tech, cost_gold, 3))",
+              "value": "var(proj_army) * 0.15 - (config(tech, cost_food, 62) + config(tech, cost_wood, 62) + config(tech, cost_stone, 62) + config(tech, cost_gold, 62))",
               "amount": 0
             }
           }
@@ -17739,8 +17739,8 @@
           "actors": {
             "kind": "buildings",
             "where": {
-              "can_research": 3,
-              "if": "(((1) > 1) * (var(actor.queue_length) < (1)) + ((1) <= 1) * var(actor.idle)) * ((gameVar(food) >= config(tech, cost_food, 3)) * (gameVar(wood) >= config(tech, cost_wood, 3)) * (gameVar(stone) >= config(tech, cost_stone, 3)) * (gameVar(gold) >= config(tech, cost_gold, 3)))"
+              "can_research": 62,
+              "if": "(((1) > 1) * (var(actor.queue_length) < (1)) + ((1) <= 1) * var(actor.idle)) * ((gameVar(food) >= config(tech, cost_food, 62)) * (gameVar(wood) >= config(tech, cost_wood, 62)) * (gameVar(stone) >= config(tech, cost_stone, 62)) * (gameVar(gold) >= config(tech, cost_gold, 62)))"
             },
             "rank": "0 - var(actor.uid)",
             "limit": 1
@@ -17748,7 +17748,7 @@
           "issue": [
             {
               "research": {
-                "tech_id": 3,
+                "tech_id": 62,
                 "queue": "1"
               }
             }
@@ -17797,8 +17797,8 @@
           "actors": {
             "kind": "buildings",
             "where": {
-              "can_research": 4,
-              "if": "(((2) > 1) * (var(actor.queue_length) < (2)) + ((2) <= 1) * var(actor.idle)) * ((gameVar(food) >= config(tech, cost_food, 4)) * (gameVar(wood) >= config(tech, cost_wood, 4)) * (gameVar(stone) >= config(tech, cost_stone, 4)) * (gameVar(gold) >= config(tech, cost_gold, 4)))"
+              "can_research": 101,
+              "if": "(((2) > 1) * (var(actor.queue_length) < (2)) + ((2) <= 1) * var(actor.idle)) * ((gameVar(food) >= config(tech, cost_food, 101)) * (gameVar(wood) >= config(tech, cost_wood, 101)) * (gameVar(stone) >= config(tech, cost_stone, 101)) * (gameVar(gold) >= config(tech, cost_gold, 101)))"
             },
             "rank": "0 - var(actor.uid)",
             "limit": 1
@@ -17806,7 +17806,7 @@
           "issue": [
             {
               "research": {
-                "tech_id": 4,
+                "tech_id": 101,
                 "queue": "2"
               }
             }
@@ -18407,7 +18407,7 @@
                       }
                     },
                     "rank": [
-                      "var(site_dist_barracks) * (0 - distance(fu, target)) + var(site_expand_barracks) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_barracks) * (var(lg154) - max(0, var(target.ed))) + var(site_safe_barracks) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_barracks) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_barracks) * (4 - var(target.space_vision)) + var(site_region_barracks) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                      "var(site_dist_barracks) * (0 - distance(fu, target)) + var(site_expand_barracks) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_barracks) * (var(lg154) - max(0, var(target.ed))) + var(site_safe_barracks) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_barracks) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_barracks) * (4 - var(target.space.vision)) + var(site_region_barracks) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                       "0 - distance(fu, target, 1)",
                       "0 - var(target.x)",
                       "0 - var(target.y)",
@@ -18745,7 +18745,7 @@
                       }
                     },
                     "rank": [
-                      "var(site_dist_barracks) * (0 - distance(fu, target)) + var(site_expand_barracks) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_barracks) * (var(lg155) - max(0, var(target.ed))) + var(site_safe_barracks) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_barracks) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_barracks) * (4 - var(target.space_vision)) + var(site_region_barracks) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                      "var(site_dist_barracks) * (0 - distance(fu, target)) + var(site_expand_barracks) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_barracks) * (var(lg155) - max(0, var(target.ed))) + var(site_safe_barracks) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_barracks) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_barracks) * (4 - var(target.space.vision)) + var(site_region_barracks) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                       "0 - distance(fu, target, 1)",
                       "0 - var(target.x)",
                       "0 - var(target.y)",
@@ -19286,7 +19286,7 @@
                           }
                         },
                         "rank": [
-                          "var(site_dist_barracks) * (0 - distance(fa, target)) + var(site_expand_barracks) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_barracks) * (var(lg156) - max(0, var(target.ed))) + var(site_safe_barracks) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_barracks) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_barracks) * (4 - var(target.space_vision)) + var(site_region_barracks) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                          "var(site_dist_barracks) * (0 - distance(fa, target)) + var(site_expand_barracks) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_barracks) * (var(lg156) - max(0, var(target.ed))) + var(site_safe_barracks) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_barracks) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_barracks) * (4 - var(target.space.vision)) + var(site_region_barracks) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                           "0 - distance(fa, target, 1)",
                           "0 - var(target.x)",
                           "0 - var(target.y)",
@@ -19903,7 +19903,7 @@
                       }
                     },
                     "rank": [
-                      "var(site_dist_redoubt) * (0 - distance(fu, target)) + var(site_expand_redoubt) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_redoubt) * (var(lg161) - max(0, var(target.ed))) + var(site_safe_redoubt) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_redoubt) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_redoubt) * (4 - var(target.space_vision)) + var(site_region_redoubt) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                      "var(site_dist_redoubt) * (0 - distance(fu, target)) + var(site_expand_redoubt) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_redoubt) * (var(lg161) - max(0, var(target.ed))) + var(site_safe_redoubt) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_redoubt) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_redoubt) * (4 - var(target.space.vision)) + var(site_region_redoubt) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                       "0 - distance(fu, target, 1)",
                       "0 - var(target.x)",
                       "0 - var(target.y)",
@@ -20257,7 +20257,7 @@
                       }
                     },
                     "rank": [
-                      "var(site_dist_redoubt) * (0 - distance(fu, target)) + var(site_expand_redoubt) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_redoubt) * (var(lg163) - max(0, var(target.ed))) + var(site_safe_redoubt) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_redoubt) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_redoubt) * (4 - var(target.space_vision)) + var(site_region_redoubt) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                      "var(site_dist_redoubt) * (0 - distance(fu, target)) + var(site_expand_redoubt) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_redoubt) * (var(lg163) - max(0, var(target.ed))) + var(site_safe_redoubt) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_redoubt) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_redoubt) * (4 - var(target.space.vision)) + var(site_region_redoubt) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                       "0 - distance(fu, target, 1)",
                       "0 - var(target.x)",
                       "0 - var(target.y)",
@@ -20814,7 +20814,7 @@
                           }
                         },
                         "rank": [
-                          "var(site_dist_redoubt) * (0 - distance(fa, target)) + var(site_expand_redoubt) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_redoubt) * (var(lg165) - max(0, var(target.ed))) + var(site_safe_redoubt) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_redoubt) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_redoubt) * (4 - var(target.space_vision)) + var(site_region_redoubt) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                          "var(site_dist_redoubt) * (0 - distance(fa, target)) + var(site_expand_redoubt) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_redoubt) * (var(lg165) - max(0, var(target.ed))) + var(site_safe_redoubt) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_redoubt) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_redoubt) * (4 - var(target.space.vision)) + var(site_region_redoubt) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                           "0 - distance(fa, target, 1)",
                           "0 - var(target.x)",
                           "0 - var(target.y)",
@@ -21158,7 +21158,7 @@
                       }
                     },
                     "rank": [
-                      "var(site_dist_smith) * (0 - distance(fu, target)) + var(site_expand_smith) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_smith) * (var(lg166) - max(0, var(target.ed))) + var(site_safe_smith) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_smith) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_smith) * (4 - var(target.space_vision)) + var(site_region_smith) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                      "var(site_dist_smith) * (0 - distance(fu, target)) + var(site_expand_smith) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_smith) * (var(lg166) - max(0, var(target.ed))) + var(site_safe_smith) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_smith) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_smith) * (4 - var(target.space.vision)) + var(site_region_smith) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                       "0 - distance(fu, target, 1)",
                       "0 - var(target.x)",
                       "0 - var(target.y)",
@@ -21490,7 +21490,7 @@
                       }
                     },
                     "rank": [
-                      "var(site_dist_smith) * (0 - distance(fu, target)) + var(site_expand_smith) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_smith) * (var(lg167) - max(0, var(target.ed))) + var(site_safe_smith) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_smith) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_smith) * (4 - var(target.space_vision)) + var(site_region_smith) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                      "var(site_dist_smith) * (0 - distance(fu, target)) + var(site_expand_smith) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_smith) * (var(lg167) - max(0, var(target.ed))) + var(site_safe_smith) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_smith) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_smith) * (4 - var(target.space.vision)) + var(site_region_smith) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                       "0 - distance(fu, target, 1)",
                       "0 - var(target.x)",
                       "0 - var(target.y)",
@@ -22025,7 +22025,7 @@
                           }
                         },
                         "rank": [
-                          "var(site_dist_smith) * (0 - distance(fa, target)) + var(site_expand_smith) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_smith) * (var(lg168) - max(0, var(target.ed))) + var(site_safe_smith) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_smith) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_smith) * (4 - var(target.space_vision)) + var(site_region_smith) * ((1 - var(target.os)) * (var(target.region) >= 0) * (var(target.region_owned) + 1) / max(1, var(target.region_known)))",
+                          "var(site_dist_smith) * (0 - distance(fa, target)) + var(site_expand_smith) * (1 - min(1, (var(target.ob) + var(target.pf)))) + var(site_aggr_smith) * (var(lg168) - max(0, var(target.ed))) + var(site_safe_smith) * (0 - (var(target.c0) + 2 * var(target.c1) + 4 * var(target.c2) + var(target.c3) * var(eUnknownPower) + 3 * var(target.c4))) + var(site_spread_smith) * (0 - (var(target.ob) + var(target.pf))) + var(site_vision_smith) * (4 - var(target.space.vision)) + var(site_region_smith) * ((1 - var(target.os)) * (var(target.region.index) >= 0) * (var(target.region.owned_spaces) + 1) / max(1, var(target.region.known_spaces)))",
                           "0 - distance(fa, target, 1)",
                           "0 - var(target.x)",
                           "0 - var(target.y)",
@@ -22260,7 +22260,7 @@
         {
           "action": "set_var",
           "name": "hire_n",
-          "value": "researched(4) * min((var(hire_P) > 0) * (var(hire_P)) + (var(hire_P) <= 0) * 1000000, gameVar(population_limit) - gameVar(population), max(0, round((gameVar(gold) + var(hire_adj) - (0)) / ((config(unit, cost_food, 102) + config(unit, cost_wood, 102) + config(unit, cost_stone, 102) + 1.5 * config(unit, cost_gold, 102)) * 1.3) + 0.000000001 - 0.5)))"
+          "value": "researched(101) * min((var(hire_P) > 0) * (var(hire_P)) + (var(hire_P) <= 0) * 1000000, gameVar(population_limit) - gameVar(population), max(0, round((gameVar(gold) + var(hire_adj) - (0)) / ((config(unit, cost_food, 102) + config(unit, cost_wood, 102) + config(unit, cost_stone, 102) + 1.5 * config(unit, cost_gold, 102)) * 1.3) + 0.000000001 - 0.5)))"
         },
         {
           "action": "select",
@@ -22532,7 +22532,7 @@
         {
           "action": "set_var",
           "name": "hire_n",
-          "value": "researched(4) * min((var(hire_B) > 0) * (var(hire_B)) + (var(hire_B) <= 0) * 1000000, gameVar(population_limit) - gameVar(population), max(0, round((gameVar(gold) + var(hire_adj) - (0)) / ((config(unit, cost_food, 101) + config(unit, cost_wood, 101) + config(unit, cost_stone, 101) + 1.5 * config(unit, cost_gold, 101)) * 1.3) + 0.000000001 - 0.5)))"
+          "value": "researched(101) * min((var(hire_B) > 0) * (var(hire_B)) + (var(hire_B) <= 0) * 1000000, gameVar(population_limit) - gameVar(population), max(0, round((gameVar(gold) + var(hire_adj) - (0)) / ((config(unit, cost_food, 101) + config(unit, cost_wood, 101) + config(unit, cost_stone, 101) + 1.5 * config(unit, cost_gold, 101)) * 1.3) + 0.000000001 - 0.5)))"
         },
         {
           "action": "select",

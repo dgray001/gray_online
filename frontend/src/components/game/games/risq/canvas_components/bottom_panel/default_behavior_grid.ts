@@ -7,6 +7,7 @@ import type { DwgRisq } from '../../risq';
 import { STANCES, TOGGLES } from '../left_panel/actions/action_factory';
 import type { RisqActionButton } from '../left_panel/actions/action_button';
 import { RisqStanceButton } from '../left_panel/actions/unit/stance_button';
+import { RisqMilitaryHelpButton } from '../left_panel/actions/unit/military_help_button';
 import { RisqUnitToggleButton } from '../left_panel/actions/unit/unit_toggle_button';
 import { RisqTargetPriorityControl } from '../left_panel/controls/target_priority_control';
 
@@ -17,8 +18,8 @@ export class RisqDefaultBehaviorGrid extends DwgRectButton {
     super({
       button_config: {},
       p: { x: 0, y: 0 },
-      w: 264,
-      h: 180,
+      w: 212,
+      h: 104,
       draw_config: { fill_style: 'transparent', stroke_width: 0, fixed_position: true },
     });
     this.buttons = STANCES.map(
@@ -30,6 +31,7 @@ export class RisqDefaultBehaviorGrid extends DwgRectButton {
         )
     );
     this.priority = new RisqTargetPriorityControl(risq, [], true);
+    this.buttons.push(new RisqMilitaryHelpButton(risq, STANCES.length, 0));
     this.buttons.push(
       ...TOGGLES.map(
         ([field, image_path, description], col): RisqActionButton =>
@@ -42,7 +44,9 @@ export class RisqDefaultBehaviorGrid extends DwgRectButton {
     );
   }
   setAvailableWidth(width: number): void {
-    this.setSize(Math.min(264, width), 180);
+    const w = Math.min(212, width);
+    const size = Math.max(0, Math.min(36, (w - 32) / 5));
+    this.setSize(w, 32 + 2 * size);
   }
   dataRefreshed(): void {
     for (const button of this.buttons) {
@@ -60,13 +64,13 @@ export class RisqDefaultBehaviorGrid extends DwgRectButton {
   }
   override setPosition(p: Point2D): void {
     super.setPosition(p);
-    const size = Math.max(0, Math.min(36, (this.w() - 32) / 4));
+    const size = Math.max(0, Math.min(36, (this.w() - 32) / 5));
     for (const button of this.buttons) {
       button.setSize(size, size);
-      button.setPosition({ x: p.x + button.col * (size + 8), y: p.y + 24 + button.row * 44 });
+      button.setPosition({ x: p.x + button.col * (size + 8), y: p.y + 24 + button.row * (size + 8) });
     }
-    this.priority.setPosition({ x: p.x, y: p.y + 132 });
-    this.priority.setSize(this.w(), size + 8);
+    this.priority.setPosition({ x: p.x + 2 * (size + 8), y: p.y + 32 + size });
+    this.priority.setSize(3 * size + 16, size);
   }
   override draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
     super.draw(ctx, transform, dt);
@@ -82,12 +86,6 @@ export class RisqDefaultBehaviorGrid extends DwgRectButton {
           w: this.w(),
           fill_style: 'black',
           font: 'bold 16px serif',
-        });
-        drawText(ctx, 'Target priority', {
-          p: { x: this.xi(), y: this.yi() + 112 },
-          w: this.w(),
-          fill_style: 'black',
-          font: '14px serif',
         });
       }
     );

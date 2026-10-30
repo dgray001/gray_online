@@ -43,6 +43,11 @@ func combatGameTweaked(t *testing.T, unit1, unit2 uint32, tweak func()) *harness
 
 func garrisonCombatGame(t *testing.T, race ...bool) *harness.Game {
 	t.Helper()
+	return garrisonCombatGameTweaked(t, func() {}, race...)
+}
+
+func garrisonCombatGameTweaked(t *testing.T, tweak func(), race ...bool) *harness.Game {
+	t.Helper()
 	// p0 gets an watchtower (id 21) and a phalanx (id 13). p1 gets a unit 13.
 	count := 1
 	if len(race) > 0 && race[0] {
@@ -55,6 +60,7 @@ func garrisonCombatGame(t *testing.T, race ...bool) *harness.Game {
 		config.Garrison_capacity = 1
 		defs.BuildingConfigs[207] = config
 	}
+	tweak()
 	return harness.NewGame(t, "custom:combat", 1, 2)
 }
 

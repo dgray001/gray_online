@@ -1,4 +1,5 @@
 import { equalsPoint2D } from '../../../../util/objects2d';
+import { getSettings } from '../../../../../../scripts/settings_store';
 import { cantorPair, invertBuildKey, invertPair, invertZoneKey } from '../../model/coordinates';
 import { resourceType } from '../../rendering/assets/resources';
 import type {
@@ -84,6 +85,19 @@ export class RisqOrderPlanning {
     }
     claimed.delete(zone_key);
     return claimed.size >= limit;
+  }
+
+  isFoundationCancelled(key: number): boolean {
+    return this.orders_model
+      .unreceivedOrders()
+      .some((o) => o.order_type === RisqOrderType.OrderType_CancelFoundation && o.target_id === key);
+  }
+
+  hasFoundation(zone: RisqZone): boolean {
+    return (
+      this.local_foundations.has(zone.coordinate_key) ||
+      !!this.session.getPlayer()?.planned_foundations?.has(zone.coordinate_key)
+    );
   }
 
   hasPlannedFoundation(zone: RisqZone | undefined): boolean {
@@ -351,7 +365,9 @@ export class RisqOrderPlanning {
       cantorPair(target.zone_coordinate.x, target.zone_coordinate.y)
     );
     const gathers = (orders: readonly RisqFrontendOrder[]): boolean =>
-      orders.some((o) => o.order_type === RisqOrderType.OrderType_UnitGather && o.target_id === zone_key);
+      (getSettings().risq_display.first_order_worker_capacity ? orders.slice(0, 1) : orders).some(
+        (o) => o.order_type === RisqOrderType.OrderType_UnitGather && o.target_id === zone_key
+      );
     let current = 0;
     const predicted = new Set<number>();
     for (const unit of this.session.getPlayer()?.units.values() ?? []) {
@@ -366,16 +382,23 @@ export class RisqOrderPlanning {
   /** Keeps already-assigned gatherers plus as many new ones as the target has room for */
   fitGatherCapacity(
     target: RisqBuilding | RisqResource | undefined,
-    subjects: number[]
+    subjects: number[],
+    append = false
   ): { subjects: number[]; at_capacity: boolean } {
     if (!target || target.gather_capacity === undefined) {
       return { subjects, at_capacity: false };
     }
     const { predicted } = this.gatherers(target);
+    const deferred = new Set(
+      append && getSettings().risq_display.first_order_worker_capacity
+        ? subjects.filter((id: number): boolean => this.orders_model.effectiveForSubject(id, 'unit').length > 0)
+        : []
+    );
+    subjects = subjects.filter((id: number): boolean => !deferred.has(id));
     const joining = subjects.filter((id) => !predicted.has(id));
     const free = Math.max(0, target.gather_capacity - predicted.size);
     return {
-      subjects: [...subjects.filter((id) => predicted.has(id)), ...joining.slice(0, free)],
+      subjects: [...deferred, ...subjects.filter((id) => predicted.has(id)), ...joining.slice(0, free)],
       at_capacity: joining.length > free,
     };
   }

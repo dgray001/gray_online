@@ -5,6 +5,13 @@ import (
 	"testing"
 )
 
+func (g *Game) Replay(i int) *TurnReplay {
+	g.T.Helper()
+	payload := g.Risq.ToFrontend(g.clients[i], false)
+	state := DecodeSnapshot(g.T, map[string]any{"last_turn_replay": payload["last_turn_replay"]})
+	return RequireReplay(g.T, state)
+}
+
 func DecodeSnapshot(t *testing.T, value any) State {
 	t.Helper()
 	data, err := json.Marshal(value)

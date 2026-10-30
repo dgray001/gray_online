@@ -87,6 +87,14 @@ export class RisqRightPanel implements CanvasComponent {
     this.replay_button.dataRefreshed();
     this.orders_list.refresh();
     this.resolveSize();
+    if (player) {
+      const submit_text = player.orders_submitted
+        ? 'Unsubmit Orders'
+        : this.risq.submission.submittedTimes() > 0
+          ? 'Resubmit Orders'
+          : 'Submit Orders';
+      this.submit_button.setText(submit_text);
+    }
     if (!player || !this.risq.session.givingOrders()) {
       this.orders_list.disable();
       this.submit_button.disable();
@@ -94,12 +102,10 @@ export class RisqRightPanel implements CanvasComponent {
       this.next_idle_button.disable();
       return;
     }
-    if (this.risq.session.givingOrders() && !player.orders_submitted) {
+    if (!player.orders_submitted) {
       this.orders_list.enable();
-      this.submit_button.setText(this.risq.submission.submittedTimes() > 0 ? 'Resubmit Orders' : 'Submit Orders');
     } else {
       this.orders_list.disable();
-      this.submit_button.setText('Unsubmit Orders');
     }
     this.next_idle_button.setText(`Next Idle (${this.risq.planning.idleOrderableCount()})`);
     if (this.hasIdleOrderables()) {
@@ -324,7 +330,14 @@ export class RisqRightPanel implements CanvasComponent {
             yi += RisqRightPanel.PADDING;
           }
           for (const score of game?.scores ?? []) {
-            drawScoreRow(ctx, this.geom(), yi, score);
+            drawScoreRow(
+              ctx,
+              this.geom(),
+              yi,
+              score,
+              game?.players[score.player_id]?.orders_submitted ?? false,
+              RisqRightPanel.PADDING
+            );
             yi += SCORE_ROW_H;
           }
           ctx.restore();

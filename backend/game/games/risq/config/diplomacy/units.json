@@ -1,0 +1,29 @@
+[
+  {
+    "unit_id": 101,
+    "display_name": "Infantry",
+    "description": "A standard infantry unit; hired as a mercenary.",
+    "unit_type": "infantry",
+    "max_health": 11,
+    "attack_type": "blunt",
+    "attack_blunt": 6,
+    "defense_piercing": 1,
+    "cost": { "food": 5 },
+    "production_stamina": 10,
+    "turn_stamina": 15
+  },
+  {
+    "unit_id": 401,
+    "display_name": "Catapult",
+    "description": "A siege weapon that hurls stones from across a space; hired as a mercenary.",
+    "unit_type": "siege",
+    "max_health": 12,
+    "attack_type": "blunt",
+    "attack_blunt": 25,
+    "range": "space",
+    "cost": { "wood": 12 },
+    "production_stamina": 32,
+    "turn_stamina": 8,
+    "vision": { "space": 3, "edge_adjacent": 2, "adjacent": 0, "edge_opposite": 0, "secondary": 0 }
+  }
+]

@@ -201,7 +201,7 @@ func TestSelectMovesVillagerToTopRankedEmptySpaceAndBuilds(t *testing.T) {
 	}
 	config := rule(`{"action":"select",
 		"pick":{"kind":"zones","where":{"near":{"distance":1,"of":{"kind":"resources"}}},
-		        "rank":"var(target.space_gold_income)","limit":1},
+		        "rank":"var(target.space.gold_income)","limit":1},
 		"actors":{"kind":"units","where":{"if":"var(actor.idle)"}},
 		"issue":[{"move":{}},{"build":{"building_id":2}}]}`)
 	got := selectOrders(t, config, view)
@@ -361,7 +361,7 @@ func hireCounts(orders []Order) map[int64]int {
 }
 
 func TestSelectHireCountAppliesToEachRankedZone(t *testing.T) {
-	config := rule(`{"action":"select","pick":{"kind":"zones","rank":"var(target.space_gold_income)","limit":2},
+	config := rule(`{"action":"select","pick":{"kind":"zones","rank":"var(target.space.gold_income)","limit":2},
 		"issue":[{"hire":{"unit_id":101,"count":3}}]}`)
 	counts := hireCounts(selectOrders(t, config, hireView()))
 	if counts[200] != 3 || counts[300] != 3 || len(counts) != 2 {
@@ -370,7 +370,7 @@ func TestSelectHireCountAppliesToEachRankedZone(t *testing.T) {
 }
 
 func TestSelectHireAtThirdRankedZone(t *testing.T) {
-	config := rule(`{"action":"select","pick":{"kind":"zones","rank":"var(target.space_gold_income)","skip":2,"limit":1},
+	config := rule(`{"action":"select","pick":{"kind":"zones","rank":"var(target.space.gold_income)","skip":2,"limit":1},
 		"issue":[{"hire":{"unit_id":101}}]}`)
 	counts := hireCounts(selectOrders(t, config, hireView()))
 	if len(counts) != 1 || counts[100] != 1 {

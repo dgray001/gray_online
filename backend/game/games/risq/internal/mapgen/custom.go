@@ -70,9 +70,9 @@ type customSpace struct {
 const maxCustomSpaceNameLength = 40
 
 type customRegion struct {
-	Name      string   `json:"name"`
-	GoldBonus float64  `json:"gold_bonus,omitempty"`
-	Spaces    [][2]int `json:"spaces"`
+	Name      string     `json:"name"`
+	GoldBonus ScriptExpr `json:"gold_bonus,omitempty"`
+	Spaces    [][2]int   `json:"spaces"`
 }
 
 type customConnection struct {
@@ -349,7 +349,11 @@ func fillCustomRegionsAndBank(ctx *mapScriptContext, m customMap) error {
 			}
 			keys[space.Key()] = true
 		}
-		if err := board.AddRegion(region.Name, region.GoldBonus, keys); err != nil {
+		gold_bonus, err := region.GoldBonus.resolve(ctx.vars)
+		if err != nil {
+			return err
+		}
+		if err := board.AddRegion(region.Name, gold_bonus, keys); err != nil {
 			return err
 		}
 	}

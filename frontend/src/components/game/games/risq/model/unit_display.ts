@@ -84,15 +84,47 @@ export function meetsTechRequirement(player: RisqPlayer, required_tech_id: numbe
   return required_tech_id === 0 || !!player.researched_techs.get(required_tech_id);
 }
 
+export function rangeLabel(range: RisqRange): string {
+  const labels: Record<RisqRange, string> = {
+    [RisqRange.NONE]: 'none',
+    [RisqRange.ZONE]: 'zone (melee)',
+    [RisqRange.WALL]: 'wall',
+    [RisqRange.SPACE]: 'space',
+    [RisqRange.TWOZONE]: '2 zones',
+    [RisqRange.THREEZONE]: '3 zones',
+    [RisqRange.ADJACENT]: '1 space',
+    [RisqRange.FIVEZONE]: '5 zones',
+    [RisqRange.SECONDARY]: '2 spaces',
+  };
+  return labels[range];
+}
+
 export function rangeDistance(range: RisqRange): number | null {
   switch (range) {
+    case RisqRange.WALL:
     case RisqRange.SPACE:
+    case RisqRange.TWOZONE:
+    case RisqRange.THREEZONE:
       return 0;
     case RisqRange.ADJACENT:
+    case RisqRange.FIVEZONE:
       return 1;
     case RisqRange.SECONDARY:
       return 2;
     default:
       return null;
   }
+}
+
+export function zoneRangeDistance(range: RisqRange): number {
+  if (range >= RisqRange.FIVEZONE) {
+    return 5;
+  }
+  if (range >= RisqRange.THREEZONE) {
+    return 3;
+  }
+  if (range >= RisqRange.TWOZONE) {
+    return 2;
+  }
+  return range >= RisqRange.WALL ? 1 : 0;
 }

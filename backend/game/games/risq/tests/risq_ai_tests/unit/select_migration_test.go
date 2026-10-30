@@ -122,8 +122,8 @@ func TestSelectFailedAssignmentExpressionsEmitNothing(t *testing.T) {
 }
 
 func TestSelectHireCountsUseEachZonesRemainingBalance(t *testing.T) {
-	config := rule(`{"action":"select","pick":{"kind":"zones","rank":"var(target.space_gold_income)","limit":3,
-		"let":{"requested":"var(target.space_gold_income)"}},"issue":[{"hire":{"unit_id":101,"count":"min(var(target.requested), var(item.can_afford))"}}]},
+	config := rule(`{"action":"select","pick":{"kind":"zones","rank":"var(target.space.gold_income)","limit":3,
+		"let":{"requested":"var(target.space.gold_income)"}},"issue":[{"hire":{"unit_id":101,"count":"min(var(target.requested), var(item.can_afford))"}}]},
 		{"action":"set_var","name":"left","value":"gameVar(gold) + 100 * gameVar(population)"}`)
 	model := parseSelectModel(t, config)
 	orders := model.DecideOrders(decisionView{hireView()}).Orders

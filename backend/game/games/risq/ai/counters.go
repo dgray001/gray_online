@@ -126,7 +126,7 @@ func (a amount) resolve(view View, internals *Internals) (value float64, err err
 		return evalGameVar(view, internals, field)
 	}, func(tech_id uint32) (bool, error) {
 		return view.TechResearched(tech_id), nil
-	}, internals.rng)
+	}, internals.membership, internals.rng)
 }
 
 func (a amount) independentOf(role string) bool {
@@ -134,7 +134,7 @@ func (a amount) independentOf(role string) bool {
 		return false
 	}
 	reads, _ := util.AnalyzeExpr(a.expr)
-	return !slices.ContainsFunc(reads.Vars, func(name string) bool { return strings.HasPrefix(name, role+".") })
+	return !slices.Contains(reads.Roles, role) && !slices.ContainsFunc(reads.Vars, func(name string) bool { return strings.HasPrefix(name, role+".") })
 }
 
 // Resolves to a number, or 0 (with a one-time warning) when the expression can't be evaluated

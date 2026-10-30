@@ -134,7 +134,8 @@ func (v *aiView) resourceNode(r *snapResource, ref ai.ZoneRef) ai.ResourceView {
 
 func (v *aiView) buildingNode(b *snapBuilding, ref ai.ZoneRef) ai.ResourceView {
 	gather := v.config.Buildings[b.BuildingId].Gather
-	return ai.ResourceView{InternalID: b.InternalId, Category: toAiCategory(gather.Resource_category), Location: ref, AmountLeft: b.ResourcesLeft, GatherSpeed: gather.Base_gather_speed, GatherCapacity: gather.Gather_capacity, IsBuilding: true}
+	speed, capacity, _ := v.buildingGather(b)
+	return ai.ResourceView{InternalID: b.InternalId, Category: toAiCategory(gather.Resource_category), Location: ref, AmountLeft: b.ResourcesLeft, GatherSpeed: speed, GatherCapacity: capacity, IsBuilding: true}
 }
 
 func (v *aiView) gatherTargetAt(ref ai.ZoneRef) (ai.ResourceView, bool) {

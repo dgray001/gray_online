@@ -5,23 +5,6 @@ import (
 	"github.com/dgray001/gray_online/util"
 )
 
-// The half move a unit already paid toward the adjacent zone it keeps stepping into
-type halfMove struct {
-	zone *RisqZone
-	paid int
-}
-
-// Keeps a paid half move while this tick's step goes into the same zone, charging only the rest of the step
-func (u *RisqUnit) restoreHalfMove(paid *halfMove) {
-	move, ok := u.intent.detail.(*MoveIntent)
-	if paid == nil || !ok || move.next_step != paid.zone {
-		return
-	}
-	move.cost -= min(move.cost, uint(paid.paid))
-	u.intent.min_cost, u.intent.max_cost = int(move.cost), int(move.cost)
-	u.half_move = paid
-}
-
 // Replaces u's step with the half move (paid once per turn) and the attack of a meeting at the border; u stays in its zone
 func (u *RisqUnit) meetAtBorder(target Attackable, move *MoveIntent, tick uint16, turn uint16) {
 	sunk, attack := 0, min(unitTickStaminaCost, u.current_stamina)
@@ -51,7 +34,7 @@ func (r *GameRisq) resolveMeleeMeetings(orderables []Orderable) int {
 	meetings := make([]meeting, 0)
 	for _, o := range orderables {
 		if u, ok := o.(*RisqUnit); ok {
-			if target, meets := u.meetingTarget(r.blocking_walls); meets {
+			if target, meets := u.meetingTarget(); meets {
 				meetings = append(meetings, meeting{u, target, u.intent.detail.(*MoveIntent)})
 			}
 		}
@@ -69,15 +52,15 @@ func (r *GameRisq) resolveMeleeMeetings(orderables []Orderable) int {
 }
 
 // A chased or interrupt-eligible enemy stepping across the same border in the opposite direction
-func (u *RisqUnit) meetingTarget(walls map[*RisqBuilding]bool) (Attackable, bool) {
+func (u *RisqUnit) meetingTarget() (Attackable, bool) {
 	move, ok := u.intent.detail.(*MoveIntent)
 	if !ok || u.zone == nil {
 		return nil, false
 	}
-	if radius, ranged := u.attack_range.SpaceRadius(); ranged && (radius > 0 || move.intra_step) {
+	if radius, ranged := u.attack_range.SpaceRadius(); ranged && (radius > 0 || u.attack_range.ZoneRadius() > 1 || move.intra_step) {
 		return nil, false
 	}
-	if wall := move.next_step.building; move.attacking && wall != nil && move.next_step.wallBlocksEntry(u.zone, u.player_id, walls) {
+	if wall := move.next_step.building; move.attacking && wall != nil && move.entry.stopsMove() {
 		return wall, true
 	}
 	target := move.chasing

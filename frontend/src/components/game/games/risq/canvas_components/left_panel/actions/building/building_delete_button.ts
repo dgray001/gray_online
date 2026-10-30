@@ -10,6 +10,7 @@ export declare interface BuildingDeleteButtonConfig extends RisqActionButtonConf
 
 export class RisqBuildingDeleteButton extends RisqActionButton {
   private risq: DwgRisq;
+  private ctrl_held = false;
 
   constructor(config: BuildingDeleteButtonConfig, risq: DwgRisq, s: number) {
     super(config, s);
@@ -24,8 +25,13 @@ export class RisqBuildingDeleteButton extends RisqActionButton {
     return action === RisqHotkeyAction.BUILDING_DELETE || action === RisqHotkeyAction.DELETE;
   }
 
-  override execute(): void {
-    this.risq.commands.confirmDeleteBuilding(this.risq.selection.selectedBuildingIds());
+  override mouseup(e: MouseEvent): void {
+    this.ctrl_held = e.ctrlKey;
+    super.mouseup(e);
+  }
+
+  override execute(ctrl_held: boolean = this.ctrl_held): void {
+    this.risq.commands.confirmDeleteBuilding(this.risq.selection.selectedBuildingIds(), ctrl_held);
   }
 }
 

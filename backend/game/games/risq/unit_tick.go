@@ -89,7 +89,7 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 				u.intent.setUnitAttack(target)
 			}
 		})
-		if u.attack_range == defs.RisqRange_SPACE {
+		if u.attack_range == defs.RisqRange_WALL || u.attack_range == defs.RisqRange_SPACE {
 			u.markChase(zoneAttackTarget(zone, u.player_id, u.target_priority))
 		}
 	case defs.OrderType_UnitAttackSpace:
@@ -157,15 +157,19 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 
 	if move, ok := u.intent.detail.(*MoveIntent); ok {
 		u.move_path = move.path
+		if paid_half_move != nil && move.next_step == paid_half_move.zone {
+			u.half_move = paid_half_move
+		}
 	} else {
 		u.move_path = nil
 	}
 
-	u.restoreHalfMove(paid_half_move)
 	if u.tick_action == nil {
 		risq.recordTickIntent(u, order)
 	}
-	u.intent.resolveCost(u.current_stamina)
+	if _, moving := u.intent.detail.(*MoveIntent); !moving {
+		u.intent.resolveCost(u.current_stamina)
+	}
 	if !u.intent.hasIntent() {
 		u.half_move = nil
 	}
@@ -184,7 +188,7 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 	}
 	switch detail := u.intent.detail.(type) {
 	case *MoveIntent:
-		if detail.next_step.wallBlocksEntry(u.zone, u.player_id, risq.blocking_walls) {
+		if detail.entry.stopsMove() {
 			u.blockTickAction("blocked_by_wall")
 			return
 		}
@@ -210,7 +214,7 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 		}
 		u.gather_slot = detail.source
 		if !ok {
-			amount = float64(u.intent.intent_cost) * (float64(detail.source.gatherSpeed()) / gatherRateStaminaBase)
+			amount = float64(u.intent.intent_cost) * (u.gatherSpeed(detail.source) / gatherRateStaminaBase)
 		}
 		switch owner := u.zone.space.ownership; {
 		case owner < 0:
@@ -251,7 +255,7 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 					return
 				}
 				_, stamina_required := u.config.BuildingProductionCost(detail.building_id)
-				building = createRisqBuilding(u.config, foundation_id, detail.building_id, u.player_id)
+				building = createRisqBuilding(u.config, foundation_id, detail.building_id, risq.players[u.player_id])
 				util.Debugf(risq.std, "Foundation started: building=%d building_id=%d player=%d builder=%d zone=%s space=%s tick=%d",
 					building.internal_id, detail.building_id, u.player_id, u.internal_id, detail.zone.coordinate.ToString(), detail.zone.space.coordinate.ToString(), risq.current_tick)
 				building.stamina_remaining = stamina_required
@@ -286,9 +290,7 @@ func (u *RisqUnit) tickExecute(risq *GameRisq) {
 			}
 		}
 	case *DeleteIntent:
-		u.deleted = true
-		risq.players[u.player_id].units_lost++
-		// TODO: check for recent damage to assign kill
+		u.recordDeath(risq, nil, 0)
 	case *UnitAttackIntent:
 		risq.unitAttack(u, detail.target)
 	case *RepairIntent:

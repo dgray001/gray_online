@@ -34,7 +34,7 @@ func TestHexagonMapSizeRadii(t *testing.T) {
 		t.Fatal(err)
 	}
 	useScripts(t, map[string]string{"hexagon": string(script), "hexagon_shape": shapeScriptNamed("hexagon")})
-	for i, radius := range []uint16{4, 5, 6, 7, 7, 8, 8, 9, 10} {
+	for i, radius := range []uint16{4, 5, 5, 6, 7, 7, 8, 8, 10} {
 		size := defs.MapSize(i + 1)
 		spaces := 1 + 3*int(radius)*(int(radius)+1)
 		if shape := shapeOnlyBoard(t, "hexagon_shape", size); shape.BoardSize() != radius || len(shape.Spaces()) != spaces {
@@ -68,7 +68,7 @@ func TestRingMapSizeRadii(t *testing.T) {
 		t.Fatal(err)
 	}
 	useScripts(t, map[string]string{"ring": string(script), "ring_shape": shapeScriptNamed("ring")})
-	radii := [][2]uint16{{4, 2}, {5, 2}, {5, 2}, {6, 3}, {7, 3}, {7, 3}, {8, 4}, {9, 4}, {10, 5}}
+	radii := [][2]uint16{{4, 2}, {5, 3}, {5, 2}, {6, 3}, {7, 4}, {7, 3}, {8, 4}, {9, 5}, {10, 5}}
 	for i, pair := range radii {
 		outer, inner := int(pair[0]), int(pair[1])
 		spaces := 3 * (outer*(outer+1) - inner*(inner+1))
@@ -103,7 +103,7 @@ func TestRectangleMapSizeDimensions(t *testing.T) {
 		t.Fatal(err)
 	}
 	useScripts(t, map[string]string{"rectangle": string(script), "rectangle_shape": shapeScriptNamed("rectangle")})
-	dimensions := [][2]int{{6, 9}, {8, 12}, {9, 14}, {10, 15}, {11, 16}, {12, 18}, {13, 19}, {14, 21}, {15, 23}}
+	dimensions := [][2]int{{5, 9}, {7, 12}, {7, 14}, {9, 15}, {9, 17}, {9, 19}, {9, 21}, {11, 22}, {11, 26}}
 	for i, want := range dimensions {
 		if fullyGenerated(defs.MapSize(i + 1)) {
 			board, err := fakeboard.GenerateWithSize("script:rectangle", 2, defs.MapSize(i+1), 1)
@@ -134,7 +134,7 @@ func TestTriangleMapSizeDimensions(t *testing.T) {
 		t.Fatal(err)
 	}
 	useScripts(t, map[string]string{"triangle": string(script), "triangle_shape": shapeScriptNamed("triangle")})
-	dimensions := [][2]int{{9, 55}, {12, 91}, {14, 120}, {16, 153}, {17, 171}, {19, 210}, {20, 231}, {23, 300}, {25, 351}}
+	dimensions := [][2]int{{9, 55}, {9, 55}, {12, 91}, {12, 91}, {15, 136}, {15, 136}, {18, 190}, {18, 190}, {21, 253}}
 	for i, want := range dimensions {
 		if fullyGenerated(defs.MapSize(i + 1)) {
 			board, err := fakeboard.GenerateWithSize("script:triangle", 2, defs.MapSize(i+1), 1)

@@ -21,6 +21,7 @@ type RisqBuildingCache struct {
 	population_support         uint16
 	cs                         RisqCombatStats
 	under_construction         bool
+	has_garrisoned_units       bool
 	stamina_remaining          int
 	construction_stamina_total int
 	zone_coordinate            game_utils.Coordinate2D
@@ -37,6 +38,7 @@ func cacheRisqBuilding(b *RisqBuilding) RisqBuildingCache {
 		population_support:         b.population_support,
 		cs:                         b.cs,
 		under_construction:         b.underConstruction(),
+		has_garrisoned_units:       len(b.garrisoned_units) > 0,
 		stamina_remaining:          b.stamina_remaining,
 		construction_stamina_total: b.construction_stamina_total,
 	}

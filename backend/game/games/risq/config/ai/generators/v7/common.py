@@ -86,3 +86,7 @@ def total_cost(kind: str, item: int, resources: tuple[str, ...] = RESOURCES) -> 
 
 def whole(expression: str) -> str:
     return f"max(0, round(({expression}) - 0.499999))"
+
+
+def army_order_available(role: str) -> str:
+    return f"(var(army_retreat) == 0) + (1 - inBucket(army, {role})) > 0"

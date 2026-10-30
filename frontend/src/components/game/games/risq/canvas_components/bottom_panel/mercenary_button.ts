@@ -3,6 +3,7 @@ import type { BoardTransformData } from '../../../../util/canvas_board/canvas_bo
 import { configDraw } from '../../../../util/canvas_components/canvas_component';
 import { drawText } from '../../../../util/canvas_util';
 import { RisqResourceType, rangeDistance } from '../../model/types';
+import { rangeLabel } from '../../model/unit_display';
 import { resourceTypeImage } from '../../rendering/assets/resources';
 import type { RisqProducible } from '../../model/types';
 import { unitImage } from '../../rendering/assets/unit';
@@ -57,12 +58,12 @@ export class RisqMercenaryButton extends RisqActionButton {
     });
   }
 
-  private tooltipStats(): [string, number][] {
+  private tooltipStats(): [string, number | string][] {
     const stats = this.mercenary.stats;
     if (!stats) {
       return [];
     }
-    const values: [string, number][] = [
+    const values: [string, number | string][] = [
       ['risq/icons/attack_blunt', stats.attack_blunt],
       ['risq/icons/attack_piercing', stats.attack_piercing],
       ['risq/icons/defense_blunt', stats.defense_blunt],
@@ -72,7 +73,7 @@ export class RisqMercenaryButton extends RisqActionButton {
     ];
     const range = rangeDistance(stats.attack_range);
     if (range !== null) {
-      values.push(['risq/icons/attack_range', range]);
+      values.push(['risq/icons/attack_range', rangeLabel(stats.attack_range)]);
     }
     return values.filter(([icon, value]) => value !== 0 || icon === 'risq/icons/attack_range');
   }

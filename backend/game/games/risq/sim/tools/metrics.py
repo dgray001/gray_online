@@ -9,6 +9,10 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+from run_games import load_run
+from tool_search import build_order_turns
+from trajectory import read_reports
+
 RESOURCES = ("food", "wood", "stone", "gold")
 MEMBERSHIPS = ("Units", "Attacking", "NotAttacking", "Moving", "Exhausted", "Garrisoned")
 LABELS = ("bad", "neutral", "good")
@@ -29,13 +33,17 @@ def arguments() -> argparse.Namespace:
     parser.add_argument("--to-turn", type=int, default=65535, help="Last recorded turn, inclusive")
     parser.add_argument("--seed", action="append", dest="seeds", type=int, help="Repeat to restrict --by-turn to these game seeds")
     parser.add_argument("--at-turn", type=lambda s: [int(n) for n in s.split(",")], help="Print cumulative economy at these turns, e.g. 5,10,15,20,25")
+    parser.add_argument("--checkpoints", type=lambda s: [int(n) for n in s.split(",")], help="Summarize cumulative economy and production from debug runs")
     parser.add_argument("--by-turn", type=int, help="Print a per-game table in blocks of this many turns (production columns need the scenario's \"metrics\": [\"production\"])")
     parser.add_argument("--strength-ratio", type=float, default=1.5, help="Good/bad strength threshold (default: 1.5)")
+    parser.add_argument("--fight-audit", action="store_true", help="Add fight casualties, damage and candidate missed opportunities from debug logs")
     args = parser.parse_args()
     if args.from_turn < 0 or args.to_turn < args.from_turn:
         parser.error("Turn range must be nonnegative and ordered")
     if not math.isfinite(args.strength_ratio) or args.strength_ratio <= 1:
         parser.error("Strength ratio must be finite and exceed 1")
+    if args.fight_audit and args.ais:
+        parser.error("--fight-audit requires both players; omit --ai")
     return args
 
 
@@ -347,13 +355,69 @@ def print_at_turns(sim: dict[str, Any], suite: dict[str, Any], checkpoints: list
                   f"{'/'.join(f'{c:.0f}' for c in gathered):30s} | {spent:.0f}")
 
 
+def checkpoint_rows(run: dict[str, Any], folder: Path, checkpoints: list[int], units: dict[str, Any]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for sim in run["Sims"]:
+        for game in sim["Games"]:
+            seed = game["Result"]["Seed"]
+            path = folder / f"debug_{seed}.log"
+            if not path.exists():
+                path = folder / "debug.log"
+            reports, ordered = read_reports(path), build_order_turns(path, 22)
+            for seat, index in enumerate(game["Seats"]):
+                for end in checkpoints:
+                    records = [{"Turn": t["Turn"], **t["Players"][seat]} for t in game["Result"]["Game"]["Metrics"]["Turns"] if 0 < t["Turn"] <= end]
+                    events = [(turn, players[seat]["production"]) for turn, players in sorted(reports.items()) if 0 < turn <= end]
+                    production = [entry for record in records for entry in record.get("Production", []) if entry["BuildingId"] == 22]
+                    built = [turn for turn, event in events for building in event["buildings_built"] if building["building_id"] == 22]
+                    orders = [turn for turn in ordered.get(f"ai-{seat}", []) if turn <= end]
+                    military = {kind: sum(entry["count"] for _, event in events for entry in event[kind]
+                                          if units[str(entry["unit_id"])]["unit_type"] != "economic")
+                                for kind in ("units_created", "units_hired")}
+                    rows.append({"name": sim["Stats"]["Players"][index]["Name"], "seed": seed, "map": sim["Map"], "turn": end,
+                                 "villagers": records[-1]["Villagers"], "resources": resources(records),
+                                 "villager_idle": economy(records, "VillagerStamina"),
+                                 "vc_idle": economy(records, "VillageCenterStamina"),
+                                 "rax_idle": economy(production, "Stamina"), "military": military,
+                                 "rax_ordered": orders, "rax_completed": built})
+    return rows
+
+
+def summarize_checkpoints(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    summary: list[dict[str, Any]] = []
+    for name, end in sorted({(row["name"], row["turn"]) for row in rows}):
+        group = [row for row in rows if row["name"] == name and row["turn"] == end]
+        count = len(group)
+        result = {"name": name, "turn": end, "games": count, "villagers": sum(row["villagers"] for row in group) / count}
+        for field in ("income", "spent"):
+            result[field] = [sum(row["resources"][field][resource] for row in group) / count for resource in RESOURCES]
+        for field in ("villager_idle", "vc_idle", "rax_idle"):
+            granted, wasted = (sum(row[field][key] for row in group) for key in ("granted", "wasted"))
+            result[field] = percentage(wasted, granted)
+        result["military"] = {kind: sum(row["military"][kind] for row in group) / count for kind in ("units_created", "units_hired")}
+        for field in ("rax_ordered", "rax_completed"):
+            result[field] = []
+            for index in range(2):
+                turns = [row[field][index] for row in group if len(row[field]) > index]
+                result[field].append({"games": len(turns), "mean_turn": sum(turns) / len(turns) if turns else None})
+        summary.append(result)
+    return summary
+
+
 def main() -> None:
     args = arguments()
     source = args.results / "results.json" if args.results.is_dir() else args.results
     destination = args.output or source.with_name("metrics_analysis.json")
     if source.resolve() == destination.resolve():
         raise ValueError("Analysis output must differ from input results")
-    run = json.loads(source.read_text())
+    run = load_run(source)
+    if args.checkpoints:
+        definitions = json.loads((Path(__file__).resolve().parents[2] / "config/units.json").read_text())
+        rows = checkpoint_rows(run, source.parent, args.checkpoints, {str(unit["unit_id"]): unit for unit in definitions})
+        output = {"source": str(source.resolve()), "summary": summarize_checkpoints(rows), "games": rows}
+        destination.write_text(json.dumps(output, indent=2, allow_nan=False) + "\n")
+        print(json.dumps(output["summary"], indent=2))
+        return
     if args.at_turn:
         for sim in run["Sims"]:
             for suite in sim["Games"]:
@@ -399,6 +463,9 @@ def main() -> None:
               "summary": summaries, "games": reports}
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(json.dumps(output, indent=2, allow_nan=False) + "\n")
+    if args.fight_audit:
+        from fight_ledger import audit_run
+        audit_run(run, output, source.parent, units, args.strength_ratio)
     print_summary(summaries)
     errors = sum(bool(report.get("error")) for report in reports)
     print(f"{len(reports)} games, {errors} errors; full analysis: {destination}")

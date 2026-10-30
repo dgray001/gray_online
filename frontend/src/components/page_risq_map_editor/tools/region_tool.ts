@@ -3,7 +3,7 @@ import type { Point2D } from '../../game/util/objects2d';
 import type { EditCommand } from '../edit_history';
 import type { EditorConfigPanel, EditorTarget, EditorToolContext } from '../editor_tool';
 import { EditorTool } from '../editor_tool';
-import type { MapDoc, MapDocRegion } from '../map_doc';
+import type { MapDoc, MapDocRegion, MapDocValue } from '../map_doc';
 import { RegionPanel } from './region_panel';
 
 const REGION_COLORS = [
@@ -41,8 +41,8 @@ class RegionListCommand implements EditCommand {
 class RegionBonusCommand implements EditCommand {
   constructor(
     private index: number,
-    private before: number | undefined,
-    private after: number | undefined
+    private before: MapDocValue | undefined,
+    private after: MapDocValue | undefined
   ) {}
 
   apply(doc: MapDoc): void {
@@ -53,7 +53,7 @@ class RegionBonusCommand implements EditCommand {
     this.set(doc, this.before);
   }
 
-  private set(doc: MapDoc, bonus: number | undefined): void {
+  private set(doc: MapDoc, bonus: MapDocValue | undefined): void {
     const region = doc.regions?.[this.index];
     if (region) {
       region.gold_bonus = bonus;
@@ -144,6 +144,9 @@ export class RegionTool extends EditorTool {
       return;
     }
     const before = doc.regions[index].gold_bonus;
+    if (typeof before === 'string') {
+      return;
+    }
     const after = Math.max(0, (before ?? 0) + delta);
     if (after !== before) {
       this.commit(new RegionBonusCommand(index, before, after));

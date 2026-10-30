@@ -87,20 +87,44 @@ func parseConfig(override string) (*Config, error) {
 	return c, nil
 }
 
+func configPath(parts ...string) (string, error) {
+	rel := filepath.Join(parts...)
+	if rel != "" && !filepath.IsLocal(rel) {
+		return "", fmt.Errorf("config path %q escapes the config dir", rel)
+	}
+	return filepath.Join(configDir, rel), nil
+}
+
 func ReadConfigFile(parts ...string) ([]byte, error) {
-	return os.ReadFile(filepath.Join(append([]string{configDir}, parts...)...))
+	path, err := configPath(parts...)
+	if err != nil {
+		return nil, err
+	}
+	return os.ReadFile(path)
 }
 
 func WriteConfigFile(data []byte, parts ...string) error {
-	return os.WriteFile(filepath.Join(append([]string{configDir}, parts...)...), data, 0o644)
+	path, err := configPath(parts...)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0o644)
 }
 
 func RemoveConfigFile(parts ...string) error {
-	return os.Remove(filepath.Join(append([]string{configDir}, parts...)...))
+	path, err := configPath(parts...)
+	if err != nil {
+		return err
+	}
+	return os.Remove(path)
 }
 
 func ListConfigDir(parts ...string) ([]os.DirEntry, error) {
-	return os.ReadDir(filepath.Join(append([]string{configDir}, parts...)...))
+	path, err := configPath(parts...)
+	if err != nil {
+		return nil, err
+	}
+	return os.ReadDir(path)
 }
 
 var regionNames []string

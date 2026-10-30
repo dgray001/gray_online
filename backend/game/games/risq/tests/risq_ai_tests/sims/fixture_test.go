@@ -10,6 +10,7 @@ import (
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 	"github.com/dgray001/gray_online/game/games/risq/tests/config"
 	"github.com/dgray001/gray_online/game/games/risq/tests/harness/aisim"
+	"github.com/gin-gonic/gin"
 )
 
 var mapFile string
@@ -112,6 +113,29 @@ func TestEmptyModelsResolveTurnsAndStop(t *testing.T) {
 	}
 	g.Stop(t)
 	g.Stop(t)
+}
+
+func TestAiSnapshotsOmitReplayData(t *testing.T) {
+	g := fixture(t, `{}`, `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":202,"player":0},"units":[{"id":11,"player":0,"count":1}]}]},`+remote, "", emptyModel, emptyModel)
+	g.Run(t, 2)
+	updates := g.Player(t, 0).ToFrontend(true)["updates"].([]gin.H)
+	state := updates[len(updates)-1]["content"].(gin.H)["game"].(gin.H)
+	if state["last_turn_replay"] != nil {
+		t.Error("ai snapshot carries last_turn_replay")
+	}
+	if g.Risq.ToFrontend(0, true)["last_turn_replay"] != nil {
+		t.Error("a game with no human or viewer recorded a journal")
+	}
+	for _, p := range state["players"].([]gin.H) {
+		if _, ok := p["turn_report"]; ok {
+			t.Error("ai snapshot carries a turn_report")
+		}
+		for _, unit := range p["units"].([]gin.H) {
+			if _, ok := unit["tick_actions"]; ok {
+				t.Error("ai snapshot carries unit tick_actions")
+			}
+		}
+	}
 }
 
 func assertOrderCount(t *testing.T, g *aisim.Game, slot int, kind defs.OrderType, want int) {

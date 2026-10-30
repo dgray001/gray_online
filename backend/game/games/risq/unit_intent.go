@@ -43,6 +43,8 @@ type MoveIntent struct {
 	target     Attackable
 	path       []*RisqZone
 	next_step  *RisqZone
+	goal       *RisqZone
+	entry      wallEntry
 	intra_step bool
 	cost       uint
 	// the unit an attack order is closing on with this move; nil for plain moves
@@ -76,7 +78,7 @@ func computeGatherAllotments(orderables []Orderable) map[*RisqUnit]float64 {
 		if !ok {
 			continue
 		}
-		amount := float64(u.intent.intent_cost) * (float64(gather.source.gatherSpeed()) / gatherRateStaminaBase)
+		amount := float64(u.intent.intent_cost) * (u.gatherSpeed(gather.source) / gatherRateStaminaBase)
 		by_source[gather.source] = append(by_source[gather.source], gatherDemand{unit: u, amount: amount})
 	}
 	allotments := make(map[*RisqUnit]float64)

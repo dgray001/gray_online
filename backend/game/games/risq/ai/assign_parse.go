@@ -38,8 +38,8 @@ func parseAssignInto(raw map[string]any) (string, bool, error) {
 			return "", true, fmt.Errorf("select into assign needs %q", key)
 		}
 	}
-	if mode, present := raw["mode"]; present && mode != "replace" {
-		return "", true, fmt.Errorf("select into assign takes no mode other than replace")
+	if mode, present := raw["mode"]; present && mode != "replace" && mode != "append" {
+		return "", true, fmt.Errorf("select into assign takes only replace or append mode")
 	}
 	return name, true, nil
 }

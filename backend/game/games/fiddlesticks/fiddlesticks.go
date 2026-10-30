@@ -244,13 +244,13 @@ func (f *GameFiddlesticks) ExecuteAiTurn(debug bool) bool {
 		if debug {
 			fmt.Println("AI player", f.turn, "betting", bid)
 		}
-		updates = append(updates, f.executeBet(player.player, bid, false))
+		updates = append(updates, f.executeBet(player.player, bid, false, nil))
 	} else {
 		card_index := GetAiPlayCard(player, f)
 		if debug {
 			fmt.Println("AI player", f.turn, "playing", player.cards[card_index].GetName())
 		}
-		updates = append(updates, f.executePlayCard(player.player, card_index, false)...)
+		updates = append(updates, f.executePlayCard(player.player, card_index, false, nil)...)
 	}
 	for _, update := range updates {
 		for _, p := range f.players {
@@ -321,7 +321,7 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 				fmt.Sprintf("Cannot bet more than the cards in the round (%d) but bet %d", f.round, bet_value))
 			return
 		}
-		f.executeBet(player, bet_value, true)
+		f.executeBet(player, bet_value, true, f.players[player_id].betComparison(action, bet_value))
 	case "play-card":
 		if f.betting {
 			player.AddFailedUpdateShorthand("play-card-failed", "Betting not playing cards")
@@ -357,7 +357,7 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 				fmt.Sprintf("Must follow suit of lead card %d but tried to play %s", lead_suit, card.GetName()))
 			return
 		}
-		f.executePlayCard(player, card_index, true)
+		f.executePlayCard(player, card_index, true, f.players[player_id].cardComparison(action, card))
 	default:
 		fmt.Fprintln(os.Stderr, "Unknown game update type", action.Kind)
 	}
@@ -418,7 +418,7 @@ func (f *GameFiddlesticks) cardBeatsCard(c1 *game_utils.StandardCard, c2 *game_u
 	return c1.GetNumber() > c2.GetNumber()
 }
 
-func (f *GameFiddlesticks) executeBet(player *game.Player, bet_value uint8, broadcast bool) *game.UpdateMessage {
+func (f *GameFiddlesticks) executeBet(player *game.Player, bet_value uint8, broadcast bool, comparison gin.H) *game.UpdateMessage {
 	f.players[f.turn].bet = bet_value
 	f.players[f.turn].has_bet = true
 	done_betting := f.turn == f.dealer
@@ -442,12 +442,12 @@ func (f *GameFiddlesticks) executeBet(player *game.Player, bet_value uint8, broa
 		update.Content["turn_duration"] = f.turn_duration.Milliseconds()
 	}
 	if broadcast {
-		game.Game_BroadcastUpdate(f, update)
+		f.broadcastAction(player, update, comparison)
 	}
 	return update
 }
 
-func (f *GameFiddlesticks) executePlayCard(player *game.Player, card_index int, broadcast bool) []*game.UpdateMessage {
+func (f *GameFiddlesticks) executePlayCard(player *game.Player, card_index int, broadcast bool, comparison gin.H) []*game.UpdateMessage {
 	card := f.players[f.turn].cards[card_index]
 	f.trick = append(f.trick, card)
 	lead_suit := f.trick[0].GetSuit()
@@ -494,7 +494,7 @@ func (f *GameFiddlesticks) executePlayCard(player *game.Player, card_index int, 
 	updates := make([]*game.UpdateMessage, 1, 2)
 	updates[0] = update
 	if broadcast {
-		game.Game_BroadcastUpdate(f, update)
+		f.broadcastAction(player, update, comparison)
 	}
 	if deal_next_round {
 		deal_update := f.dealNextRound(broadcast)

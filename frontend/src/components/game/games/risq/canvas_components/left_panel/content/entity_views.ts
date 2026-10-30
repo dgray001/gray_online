@@ -88,7 +88,7 @@ export function drawBuildings(pc: PanelDrawContext, buildings: RisqBuilding[]): 
 }
 
 export function drawBuilding(pc: PanelDrawContext, building: RisqBuilding): void {
-  const { ctx, frame, risq } = pc;
+  const { frame, risq } = pc;
   let yi = frame.yi() + drawName(pc, building?.display_name ?? 'Empty Plot');
   yi += drawHeaderImage(
     pc,
@@ -98,14 +98,6 @@ export function drawBuilding(pc: PanelDrawContext, building: RisqBuilding): void
   );
   drawSeparator(pc, yi);
   if (!building) {
-    yi += 12;
-    drawText(ctx, 'An empty lot that can be built on', {
-      p: { x: frame.xi() + 0.1 * frame.w(), y: yi },
-      w: 0.9 * frame.w(),
-      fill_style: 'black',
-      align: 'left',
-      font: `14px serif`,
-    });
     return;
   }
   pc.stats.draw(pc, frame.yi() + 0.25 * frame.h() + 6, building, building);
@@ -119,20 +111,21 @@ export function drawFoundation(pc: PanelDrawContext, foundation: FoundationDrawD
   let yi = frame.yi() + drawName(pc, foundation.display_name);
   yi += drawHeaderImage(pc, yi, 'risq/buildings/construction', risq.getGame()?.players[foundation.player_id]?.color);
   drawSeparator(pc, yi);
-  yi += 12;
-  drawText(ctx, 'A planned foundation awaiting construction units', {
-    p: { x: frame.xi() + 0.1 * frame.w(), y: yi },
-    w: 0.9 * frame.w(),
-    fill_style: 'black',
-    align: 'left',
-    font: `14px serif`,
-  });
   const stamina =
     risq.planning.getLocalFoundation(foundation.coordinate_key)?.stamina_cost ??
     risq.getPlayer()?.planned_foundations.get(foundation.coordinate_key)?.stamina_cost;
+  if (risq.planning.isFoundationCancelled(foundation.coordinate_key)) {
+    drawText(ctx, 'Cancelled (pending submit)', {
+      p: { x: frame.xi() + 0.1 * frame.w(), y: yi + 44 },
+      w: 0.9 * frame.w(),
+      fill_style: 'rgb(180, 30, 30)',
+      baseline: 'middle',
+      font: 'bold 18px serif',
+    });
+  }
   if (stamina !== undefined) {
     drawText(ctx, `Construction progress: 0 / ${stamina}`, {
-      p: { x: frame.xi() + 0.1 * frame.w(), y: yi + 36 },
+      p: { x: frame.xi() + 0.1 * frame.w(), y: yi + 12 },
       w: 0.9 * frame.w(),
       fill_style: 'black',
       baseline: 'middle',

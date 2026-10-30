@@ -2,6 +2,7 @@ package ai
 
 import (
 	"math"
+	"slices"
 	"strings"
 
 	"github.com/dgray001/gray_online/util"
@@ -69,7 +70,7 @@ func (s *selectorSpec) itemSide(text string) bool {
 
 func (s *selectorSpec) otherSide(text string) (amount, bool) {
 	reads, ok := util.AnalyzeExpr(text)
-	if !ok || reads.Impure {
+	if !ok || reads.Impure || slices.Contains(reads.Roles, s.role) {
 		return amount{}, false
 	}
 	for _, name := range reads.Vars {

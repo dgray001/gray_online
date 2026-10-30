@@ -92,7 +92,7 @@ func (b mapBoard) PlaceResource(z mapgen.Zone, resource_id uint32) {
 func (b mapBoard) PlaceBuilding(z mapgen.Zone, building_id uint32, player_index int, resources_left ...float64) bool {
 	zone := z.(mapZone).z
 	player := b.r.players[player_index]
-	building := createRisqBuilding(b.r.config, b.r.nextBuildingInternalId(), building_id, player.player.Player_id)
+	building := createRisqBuilding(b.r.config, b.r.nextBuildingInternalId(), building_id, player)
 	if len(resources_left) > 0 {
 		building.resources_left = resources_left[0]
 	}

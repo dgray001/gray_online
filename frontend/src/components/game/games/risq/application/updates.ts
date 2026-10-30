@@ -182,6 +182,15 @@ export class RisqUpdates {
       this.risq.submission.acknowledged();
       this.risq.hover.forget();
     }
+    const player = this.risq.getPlayer();
+    const unsubmitted = this.risq
+      .getGame()
+      ?.players.filter((candidate) => !candidate.eliminated && !candidate.orders_submitted);
+    if (!data.giving_orders) {
+      this.risq.showMessage('Resolving turn...', RISQ_MESSAGE_WARNING_COLOR);
+    } else if (player && !player.orders_submitted && unsubmitted?.length === 1) {
+      this.risq.showMessage('All other players submitted orders', RISQ_MESSAGE_WARNING_COLOR);
+    }
     if (!this.risq.session.givingOrders() || this.risq.getPlayer()?.orders_submitted) {
       this.risq.commands.gather_points.reset();
     }

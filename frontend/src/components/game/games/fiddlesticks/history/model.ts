@@ -1,5 +1,5 @@
 import type { UpdateMessage } from '../../../data_models';
-import type { DealRound, PlayCard, PlayerBet } from '../fiddlesticks_data';
+import type { AiComparison, DealRound, PlayCard, PlayerBet } from '../fiddlesticks_data';
 
 export interface HistoryTrick {
   plays: PlayCard[];
@@ -9,6 +9,7 @@ export interface HistoryTrick {
 export interface HistoryRound {
   deal: DealRound;
   bets: Map<number, number>;
+  bet_comparisons: Map<number, AiComparison<number>>;
   tricks: HistoryTrick[];
   scores: HistoryScore[];
 }
@@ -39,12 +40,21 @@ export function historyRounds(
   const ordered = [...updates].sort((a: UpdateMessage, b: UpdateMessage): number => a.update_id - b.update_id);
   for (const update of ordered) {
     if (update.kind === 'deal-round') {
-      rounds.push({ deal: update.content as DealRound, bets: new Map(), tricks: [], scores: [] });
+      rounds.push({
+        deal: update.content as DealRound,
+        bets: new Map(),
+        bet_comparisons: new Map(),
+        tricks: [],
+        scores: [],
+      });
     } else if (rounds.length > 0) {
       const round = rounds[rounds.length - 1];
       if (update.kind === 'bet') {
         const bet = update.content as PlayerBet;
         round.bets.set(bet.player_id, bet.amount);
+        if (bet.ai_comparison) {
+          round.bet_comparisons.set(bet.player_id, bet.ai_comparison);
+        }
       } else if (update.kind === 'play-card') {
         appendPlay(round, update.content as PlayCard, player_count);
       }
@@ -52,6 +62,28 @@ export function historyRounds(
   }
   scoreRounds(rounds, player_count, round_points, trick_points);
   return rounds;
+}
+
+export interface ComparisonSummary {
+  bets: { total: number; matched: number };
+  cards: { total: number; matched: number };
+}
+
+export function comparisonSummary(rounds: readonly HistoryRound[]): ComparisonSummary {
+  const summary: ComparisonSummary = { bets: { total: 0, matched: 0 }, cards: { total: 0, matched: 0 } };
+  const tally = (counts: { total: number; matched: number }, comparison?: { matched: boolean }): void => {
+    if (comparison) {
+      counts.total++;
+      counts.matched += comparison.matched ? 1 : 0;
+    }
+  };
+  for (const round of rounds) {
+    round.bet_comparisons.forEach((comparison): void => tally(summary.bets, comparison));
+    round.tricks.forEach((trick): void =>
+      trick.plays.forEach((play): void => tally(summary.cards, play.ai_comparison))
+    );
+  }
+  return summary;
 }
 
 function appendPlay(round: HistoryRound, play: PlayCard, player_count: number): void {

@@ -15,7 +15,7 @@ func buildingProducesToFrontend(config *defs.Config, building_id uint32) []gin.H
 	return produces
 }
 
-func (b *RisqBuilding) toFrontend(viewer_player_id int) gin.H {
+func (b *RisqBuilding) toFrontend(viewer_player_id int, with_history bool) gin.H {
 	config := b.config.Buildings[b.building_id]
 	display_name := b.display_name
 	if config.IsGatherable() && b.resources_left <= 0 {
@@ -35,7 +35,9 @@ func (b *RisqBuilding) toFrontend(viewer_player_id int) gin.H {
 		"attack_range":               b.attack_range,
 	}
 	building["has_garrisoned_units"] = len(b.garrisoned_units) > 0
-	building["tick_actions"] = tickActionsToFrontend(b.tick_actions, viewer_player_id)
+	if with_history {
+		building["tick_actions"] = tickActionsToFrontend(b.tick_actions, viewer_player_id)
+	}
 	if showOrdersTo(b.player_id, b.zone, viewer_player_id) {
 		garrisoned_units := make([]uint64, 0)
 		for id := range b.garrisoned_units {
@@ -65,11 +67,11 @@ func (b *RisqBuilding) toFrontend(viewer_player_id int) gin.H {
 	building["produces"] = buildingProducesToFrontend(b.config, b.building_id)
 	if config.IsGatherable() {
 		building["resources_left"] = b.resources_left
-		building["resource_capacity"] = config.Gather.Starting_resources
+		building["resource_capacity"] = b.resourceCapacity()
 		building["renew_stamina"] = config.Gather.Renew_stamina
-		building["gather_capacity"] = config.Gather.Gather_capacity
-		building["base_gather_speed"] = config.Gather.Base_gather_speed
-		building["renew_cost"] = config.Gather.Renew_cost.ToFrontend()
+		building["gather_capacity"] = b.gatherCapacity()
+		building["base_gather_speed"] = b.gatherSpeed()
+		building["renew_cost"] = b.renewCost().ToFrontend()
 		building["resource_category"] = config.Gather.Resource_category
 	}
 	if b.zone != nil {

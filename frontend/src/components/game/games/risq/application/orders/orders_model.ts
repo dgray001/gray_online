@@ -193,7 +193,8 @@ export class RisqOrdersModel {
 
   constructor(
     on_change: () => void,
-    private on_duplicate: () => void
+    private on_duplicate: () => void,
+    private on_deleting: (kind: 'unit' | 'building') => void
   ) {
     this.on_change = (): void => {
       this.effective_cache.clear();
@@ -255,7 +256,30 @@ export class RisqOrdersModel {
     return order.subjects.length > 0;
   }
 
-  add(order: RisqUnreceivedOrder): void {
+  isBeingDeleted(subject_internal_id: number, kind: 'unit' | 'building'): boolean {
+    const delete_type = kind === 'unit' ? RisqOrderType.OrderType_UnitDelete : RisqOrderType.OrderType_BuildingDelete;
+    return this.effectiveForSubject(subject_internal_id, kind).some((o) => o.order_type === delete_type);
+  }
+
+  add(order: RisqUnreceivedOrder): boolean {
+    const kind = isUnitOrder(order.order_type) ? 'unit' : isBuildingOrder(order.order_type) ? 'building' : undefined;
+    if (kind) {
+      const remaining = order.subjects.filter((id) => !this.isBeingDeleted(id, kind));
+      if (remaining.length < order.subjects.length) {
+        this.on_deleting(kind);
+        order.subjects = remaining;
+        if (remaining.length === 0) {
+          return false;
+        }
+      }
+    }
+    if (
+      order.order_type === RisqOrderType.OrderType_CancelFoundation &&
+      this.all().some((o) => o.order_type === order.order_type && o.target_id === order.target_id)
+    ) {
+      this.on_duplicate();
+      return false;
+    }
     if (!isClearImmune(order.order_type) && (isUnitOrder(order.order_type) || isBuildingOrder(order.order_type))) {
       const kind = isUnitOrder(order.order_type) ? 'unit' : 'building';
       order.subjects = order.subjects.filter((id: number): boolean => {
@@ -270,7 +294,7 @@ export class RisqOrdersModel {
       });
       if (order.subjects.length === 0) {
         this.on_duplicate();
-        return;
+        return false;
       }
     }
     if (order.clear_previous_orders) {
@@ -295,6 +319,7 @@ export class RisqOrdersModel {
     }
     this.unreceived.push(order);
     this.on_change();
+    return true;
   }
 
   isExplicitlyCancelling(order: RisqFrontendOrder, subject_internal_ids?: number[]): boolean {

@@ -7,6 +7,7 @@ import {
   createTooltipState,
   drawTooltip,
   shouldShowTooltip,
+  wrapText,
 } from '../../../util/canvas_components/tooltip';
 import type { CanvasSize, TooltipState } from '../../../util/canvas_components/tooltip';
 import type { DwgRisq } from '../risq';
@@ -21,19 +22,21 @@ export declare interface RisqTooltipData {
   cost?: RisqCost;
   stamina_cost?: number;
   // icon path, value; stats of the thing being made/researched (e.g. health, attack)
-  stats?: [string, number][];
+  stats?: [string, number | string][];
   hotkey?: string; // always rendered as the bottom-most row
 }
 
 type RisqTooltipDrawData = RisqTooltipData & { risq: DwgRisq };
 
+const MAX_DESCRIPTION_WIDTH = 300;
 const PADDING = 4;
 const ROW_HEIGHT = 16;
 const ICON_SIZE = ROW_HEIGHT - 2;
 const ICON_TEXT_GAP = 4;
 const STAT_GAP = 6;
-const TITLE_COST_GAP = 10;
+const TITLE_COST_GAP = 14;
 const FONT = '12px serif';
+const DESCRIPTION_FONT = '11px serif';
 const TITLE_FONT = 'bold 13px serif';
 const HOTKEY_FONT = 'italic 11px serif';
 const HOTKEY_COLOR = 'rgba(255, 255, 255, 0.6)';
@@ -103,7 +106,10 @@ function risqTooltipDraw(
     const title_w = ctx.measureText(data.title).width;
     ctx.font = FONT;
     const row1_w = title_w + (cost_stats.length ? TITLE_COST_GAP + measureStatsRow(ctx, cost_stats) : 0);
-    const desc_w = data.description ? ctx.measureText(data.description).width : 0;
+    ctx.font = DESCRIPTION_FONT;
+    const desc_lines = data.description ? wrapText(ctx, data.description, MAX_DESCRIPTION_WIDTH) : [];
+    const desc_w = Math.max(0, ...desc_lines.map((line) => ctx.measureText(line).width));
+    ctx.font = FONT;
     const lines = data.lines ?? [];
     const lines_w = Math.max(0, ...lines.map((line) => ctx.measureText(line).width));
     const stats_w = measureStatsRow(ctx, stats);
@@ -112,7 +118,7 @@ function risqTooltipDraw(
     const hotkey_w = hotkey_text ? ctx.measureText(hotkey_text).width : 0;
     ctx.font = FONT;
     const w = Math.max(row1_w, desc_w, lines_w, stats_w, hotkey_w) + 2 * PADDING;
-    const num_rows = 1 + (data.description ? 1 : 0) + lines.length + (stats.length ? 1 : 0) + (hotkey_text ? 1 : 0);
+    const num_rows = 1 + desc_lines.length + lines.length + (stats.length ? 1 : 0) + (hotkey_text ? 1 : 0);
     const h = num_rows * ROW_HEIGHT + 2 * PADDING;
     const box_p = anchorTooltipBox(p, w, h, canvas_size);
     ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
@@ -129,21 +135,14 @@ function risqTooltipDraw(
       font: TITLE_FONT,
     });
     if (cost_stats.length) {
+      ctx.font = FONT;
       const costs_w = measureStatsRow(ctx, cost_stats);
       drawStatsRow(ctx, data.risq, cost_stats, box_p.x + w - PADDING - costs_w, row_y - 0.5 * ICON_SIZE);
     }
-    if (data.description) {
-      row_y += ROW_HEIGHT;
-      drawText(ctx, data.description, {
-        p: { x: box_p.x + PADDING, y: row_y },
-        w: w - 2 * PADDING,
-        fill_style: 'white',
-        align: 'left',
-        baseline: 'middle',
-        font: FONT,
-      });
-    }
-    for (const line of lines) {
+    for (const [line, font] of [
+      ...desc_lines.map((line) => [line, DESCRIPTION_FONT] as const),
+      ...lines.map((line) => [line, FONT] as const),
+    ]) {
       row_y += ROW_HEIGHT;
       drawText(ctx, line, {
         p: { x: box_p.x + PADDING, y: row_y },
@@ -151,7 +150,7 @@ function risqTooltipDraw(
         fill_style: 'white',
         align: 'left',
         baseline: 'middle',
-        font: FONT,
+        font,
       });
     }
     if (stats.length) {

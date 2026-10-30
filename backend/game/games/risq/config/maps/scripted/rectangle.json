@@ -1,5 +1,10 @@
 [
-  { "step": "shape", "params": { "kind": "rectangle" } },
+  {
+    "step": "shape",
+    "params": {
+      "kind": "rectangle"
+    }
+  },
   { "step": "include", "params": { "path": "common/biomes.json" } },
   { "step": "include", "params": { "path": "common/land_details.json" } },
   { "step": "include", "params": { "path": "common/forests.json" } },
@@ -7,7 +12,7 @@
     "step": "player_starts",
     "params": {
       "pattern": "rows", "area_size": 1, "starting_distance": "rows / 2",
-      "row_inset": "1 + min(1, max(0, map_size - map_size_large + 1))",
+      "row_inset": 2,
       "short_edge_starts": "2 * min(1, max(0, map_size - map_size_huge + 1))",
       "short_edge_bias": 0.5, "tree_ids": ["tree_a", "tree_b"], "terrain_id": "base"
     }

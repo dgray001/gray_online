@@ -9,6 +9,8 @@ import {
   unitSlotOffsets,
   zoneUnitSlotOffsets,
 } from './geometry';
+import { WALL_DEPTH_RATIO } from '../walls/wall_metrics';
+import { isWalledZone } from '../walls/wall_state';
 import type { RisqViewMode } from '../terrain';
 import { unitVisibleInViewMode } from '../terrain';
 import type { RisqDrawHost } from '../board/board_renderer';
@@ -40,7 +42,7 @@ export function unitSlotWorldPosition(
   if (slot_index === -1) {
     return undefined;
   }
-  return zoneUnitSlotOffsets(zone_coordinate, hex_r, filled_slots.length, unit_r)[slot_index];
+  return zoneUnitSlotOffsets(zone_coordinate, hex_r, filled_slots.length, unit_r, isWalledZone(zone))[slot_index];
 }
 
 function bandGroupsByUnitId(groups: UnitByTypeData[], band_size: number): UnitByTypeData[][] {
@@ -240,11 +242,11 @@ function edgeUnitGap(hex_r: number): number {
   );
 }
 
-function edgeUnitPath(hex_r: number, unit_r: number, rings: number, ring: number): EdgeUnitPath {
+function edgeUnitPath(hex_r: number, unit_r: number, rings: number, ring: number, walled = false): EdgeUnitPath {
   const inset = unitRingRadius(0, edgeUnitGap(hex_r), unit_r, rings, rings - ring - 1);
   const slope_normal = Math.sqrt(3) / 2;
   const inner_x = CENTER_ZONE_APOTHEM_MULTIPLIER * hex_r + inset;
-  const outer_x = Math.max(inner_x, slope_normal * hex_r - unit_r);
+  const outer_x = Math.max(inner_x, slope_normal * hex_r - unit_r - (walled ? WALL_DEPTH_RATIO * hex_r : 0));
   const corner = { x: inner_x, y: (inner_x / 2 - inset) / slope_normal };
   const end = { x: outer_x, y: (outer_x / 2 - inset) / slope_normal };
   return { corner, end, length: corner.y + Math.hypot(end.x - corner.x, end.y - corner.y) };
@@ -316,12 +318,13 @@ export function buildEdgeUnitRows(
   hex_r: number,
   unit_r: number,
   rings: number,
-  spacing_multiplier = 1 - UNIT_OVERLAP_FRACTION
+  spacing_multiplier = 1 - UNIT_OVERLAP_FRACTION,
+  walled = false
 ): Point2D[][] {
   const rows: Point2D[][] = [];
   const spacing = 2 * unit_r * spacing_multiplier;
   for (let ring = 0; ring < rings; ring++) {
-    const path = edgeUnitPath(hex_r, unit_r, rings, ring);
+    const path = edgeUnitPath(hex_r, unit_r, rings, ring, walled);
     const phase = ring === 0 ? 0 : ((rows[0].length % 2 === 0 ? 0.5 : 0) + (ring % 2) * 0.5) % 1;
     let positions = packEdgeUnitPath(path, spacing, phase);
     if (ring === 0) {
@@ -336,14 +339,15 @@ export function buildEdgeUnitRows(
   return rows;
 }
 
-function edgeUnitRowLayout(hex_r: number, unit_r: number, count: number): Point2D[][] {
+function edgeUnitRowLayout(hex_r: number, unit_r: number, count: number, walled: boolean): Point2D[][] {
   const cache = unitSlotOffsets(hex_r, unit_r);
   const gap = edgeUnitGap(hex_r);
   let best: Point2D[][] = [];
   let best_capacity = 0;
   for (let rings = 1; rings <= unitRingLimit(gap, unit_r); rings++) {
-    const rows = cache.edge_rows.get(rings) ?? buildEdgeUnitRows(hex_r, unit_r, rings);
-    cache.edge_rows.set(rings, rows);
+    const key = walled ? -rings : rings;
+    const rows = cache.edge_rows.get(key) ?? buildEdgeUnitRows(hex_r, unit_r, rings, undefined, walled);
+    cache.edge_rows.set(key, rows);
     const capacity = rows.reduce((total, row) => total + row.length, 0);
     if (count <= capacity) {
       return rows;
@@ -356,17 +360,17 @@ function edgeUnitRowLayout(hex_r: number, unit_r: number, count: number): Point2
   return best;
 }
 
-export function edgeUnitSlotCapacity(hex_r: number, unit_r: number): number {
-  return edgeUnitRowLayout(hex_r, unit_r, Infinity).reduce((total, row) => total + row.length, 0);
+export function edgeUnitSlotCapacity(hex_r: number, unit_r: number, walled = false): number {
+  return edgeUnitRowLayout(hex_r, unit_r, Infinity, walled).reduce((total, row) => total + row.length, 0);
 }
 
-export function edgeOccupiedSlotOffsets(hex_r: number, count: number, unit_r: number): Point2D[] {
-  const rows = edgeUnitRowLayout(hex_r, unit_r, count);
+export function edgeOccupiedSlotOffsets(hex_r: number, count: number, unit_r: number, walled = false): Point2D[] {
+  const rows = edgeUnitRowLayout(hex_r, unit_r, count, walled);
   let remaining = count;
   return rows.flatMap((row, ring) => {
     const occupied = Math.min(row.length, remaining);
     remaining -= occupied;
-    return occupiedEdgeRowOffsets(edgeUnitPath(hex_r, unit_r, rows.length, ring), unit_r, occupied);
+    return occupiedEdgeRowOffsets(edgeUnitPath(hex_r, unit_r, rows.length, ring, walled), unit_r, occupied);
   });
 }
 

@@ -2,6 +2,7 @@ package risq
 
 import (
 	"reflect"
+	"slices"
 
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 )
@@ -90,24 +91,38 @@ type turnJournal struct {
 	effects                []tickEffect
 }
 
-func (r *GameRisq) beginTickHistory() {
-	r.tick_history = &turnJournal{
-		turn: r.turn_number, recording: true,
-		histories: map[tickActorKey][]*TickAction{}, units: map[uint64]tickUnitState{},
-		buildings: map[uint64]tickBuildingState{}, resources: map[uint64]tickResourceState{},
-		players: map[int]tickPlayerState{}, spaces: map[uint]tickSpaceState{},
+// Only a human player or a viewer is ever sent the journal, so a game without either records none
+func (r *GameRisq) hasJournalReader() bool {
+	if r.game != nil && r.game.HasViewers() {
+		return true
 	}
+	return slices.ContainsFunc(r.players, func(p *RisqPlayer) bool { return p.player.IsHumanPlayer() })
+}
+
+func (r *GameRisq) beginTickHistory() {
 	for _, unit := range r.units {
 		unit.tick_actions, unit.tick_action, unit.garrison_tick_action = nil, nil, nil
 	}
 	for _, building := range r.buildings {
 		building.tick_actions, building.tick_action, building.garrison_tick_action = nil, nil, nil
 	}
+	r.tick_history = nil
+	if !r.hasJournalReader() {
+		return
+	}
+	r.tick_history = &turnJournal{
+		turn: r.turn_number, recording: true,
+		histories: map[tickActorKey][]*TickAction{}, units: map[uint64]tickUnitState{},
+		buildings: map[uint64]tickBuildingState{}, resources: map[uint64]tickResourceState{},
+		players: map[int]tickPlayerState{}, spaces: map[uint]tickSpaceState{},
+	}
 }
 
 func (r *GameRisq) beginTickHistoryPass() {
-	r.tick_history.tick = r.current_tick + 1
-	r.tick_history.effects = nil
+	if r.tick_history != nil {
+		r.tick_history.tick = r.current_tick + 1
+		r.tick_history.effects = nil
+	}
 	for _, unit := range r.units {
 		unit.tick_action, unit.garrison_tick_action = nil, nil
 	}
@@ -205,10 +220,15 @@ func (r *GameRisq) captureTickFrame(tick uint16, terminal bool, phase string) ti
 }
 
 func (r *GameRisq) captureTickBaseline() {
-	r.tick_history.baseline = r.captureTickFrame(0, false, "baseline")
+	if r.tick_history != nil {
+		r.tick_history.baseline = r.captureTickFrame(0, false, "baseline")
+	}
 }
 
 func (r *GameRisq) captureTickEnd(terminal bool) {
+	if r.tick_history == nil {
+		return
+	}
 	tick := r.current_tick
 	if terminal {
 		tick = r.tick_history.tick

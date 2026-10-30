@@ -13,6 +13,32 @@ dwg-fiddlesticks {
   position: relative;
   width: 100%;
 
+  > #ai-comparison-banner {
+    background-color: var(--color-background);
+    border: 2px solid goldenrod;
+    border-radius: 0.4em;
+    font-size: var(--font-size-medium);
+    left: 50%;
+    max-width: calc(100% - 2em);
+    opacity: 0;
+    padding: 0.3em 0.8em;
+    pointer-events: none;
+    position: absolute;
+    text-align: center;
+    top: 0.5em;
+    transform: translateX(-50%);
+    transition: opacity 0.3s;
+    z-index: 5;
+
+    &.show {
+      opacity: 1;
+    }
+
+    &.matched {
+      border-color: seagreen;
+    }
+  }
+
   > #header-messages-container {
     --width: calc(var(--width-messages) - 2em);
     font-size: var(--font-size-medium);

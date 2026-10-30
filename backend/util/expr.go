@@ -98,11 +98,11 @@ func EvalExprWithDistance(s string, vars map[string]float64, lookup func(name st
 }
 
 func EvalExprWithConfig(s string, vars map[string]float64, lookup func(name string) (float64, error), distance DistanceFunc, config ConfigFunc, rng *rand.Rand) (float64, error) {
-	return EvalExprWithFunctions(s, vars, lookup, distance, config, nil, nil, rng)
+	return EvalExprWithFunctions(s, vars, lookup, distance, config, nil, nil, nil, rng)
 }
 
-func EvalExprWithFunctions(s string, vars map[string]float64, lookup func(name string) (float64, error), distance DistanceFunc, config ConfigFunc, game_var GameVarFunc, researched ResearchedFunc, rng *rand.Rand) (float64, error) {
-	return evalExpr(s, &exprEnv{vars: vars, lookup: lookup, distance: distance, config: config, game_var: game_var, researched: researched, rng: rng})
+func EvalExprWithFunctions(s string, vars map[string]float64, lookup func(name string) (float64, error), distance DistanceFunc, config ConfigFunc, game_var GameVarFunc, researched ResearchedFunc, membership MembershipFunc, rng *rand.Rand) (float64, error) {
+	return evalExpr(s, &exprEnv{vars: vars, lookup: lookup, distance: distance, config: config, game_var: game_var, researched: researched, membership: membership, rng: rng})
 }
 
 // Like EvalExpr, but random() and randomInt(a, b) draw from rng

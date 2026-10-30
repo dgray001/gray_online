@@ -124,16 +124,20 @@ type AttackRange uint8
 const (
 	AttackRangeNone AttackRange = iota
 	AttackRangeZone
+	AttackRangeWall
 	AttackRangeSpace
+	AttackRangeTwozone
+	AttackRangeThreezone
 	AttackRangeAdjacent
+	AttackRangeFivezone
 	AttackRangeSecondary
 )
 
 func (r AttackRange) SpaceReach() int {
 	switch r {
-	case AttackRangeSpace:
+	case AttackRangeWall, AttackRangeSpace, AttackRangeTwozone, AttackRangeThreezone:
 		return 0
-	case AttackRangeAdjacent:
+	case AttackRangeAdjacent, AttackRangeFivezone:
 		return 1
 	case AttackRangeSecondary:
 		return 2

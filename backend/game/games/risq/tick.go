@@ -41,6 +41,7 @@ func (r *GameRisq) resolveActiveOrders() {
 	r.captureTickBaseline()
 	for {
 		r.beginTickHistoryPass()
+		clear(r.projected_damage)
 		r.autoRenewBuildings()
 		orderables := make([]Orderable, 0)
 		for o := range r.allOrderables() {
@@ -53,7 +54,11 @@ func (r *GameRisq) resolveActiveOrders() {
 				intent_count++
 			}
 		}
+		r.garrison_allotments = computeGarrisonAllotments(orderables)
+		r.prepareWallDefenses()
+		intent_count -= r.resolveMoveIntents(orderables)
 		intent_count -= r.resolveMeleeMeetings(orderables)
+		intent_count -= r.rejectBlockedMoves(orderables)
 		if intent_count == 0 {
 			r.prepareTickActions(orderables)
 			r.captureTickEnd(true)
@@ -63,7 +68,6 @@ func (r *GameRisq) resolveActiveOrders() {
 		}
 		allocateRenewStamina(orderables)
 		r.gather_allotments = computeGatherAllotments(orderables)
-		r.garrison_allotments = computeGarrisonAllotments(orderables)
 		r.construction_winners = computeConstructionWinners(orderables)
 		r.foundation_ids = computeFoundationIds(r, r.construction_winners)
 		r.population_slot_winners = computePopulationSlotWinners(r, orderables)
@@ -144,7 +148,9 @@ func (r *GameRisq) resolveActiveOrders() {
 	}
 	r.endTurn()
 	r.captureTickBoundary("end-turn")
-	r.tick_history.recording = false
+	if r.tick_history != nil {
+		r.tick_history.recording = false
+	}
 	r.checkWinCondition()
 	if !r.game.GameEnded() {
 		r.startNextTurn()

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from common import Record, aggregate, branch, selection, store, variable
+from common import Record, aggregate, army_order_available, branch, selection, store, variable
 from locations import space_key
 
 
@@ -18,7 +18,7 @@ def scouting_state() -> list[Record]:
     p3 = f"(var(scout_p1) == 0) * (var(scout_p2) == 0) * (var(unexplored_total) >= 1) * (((var(has_economy) >= 1) * (var(capacity_stone) <= 0)) + ({n_mil} >= 21) > 0)"
     size = f"var(scout_p1) * 1 + (var(scout_p2) + var(scout_p3)) * (1 + ({n_mil} >= 40))"
     pick_scout = selection("units", dict(owner="own", unit_ids=[101, 102, 103]),
-                           let=dict(in_scout=aggregate("count", selection("units", dict(bucket="scout", **{"if": "var(item.uid) == var(target.uid)"})))),
+                           let=dict(in_scout="inBucket(scout, target)"),
                            rank=["var(target.in_scout)", "0 - var(target.uid)"], limit="var(scout_size)")
     scouts_near = aggregate("count", selection("units", dict(owner="own", bucket="scout", near=dict(distance=1, of=selection("spaces", dict(in_set="home"))))))
     release_cond = f"(var(scouts_near) >= var(n_scout_units)) + ((var(enemy_near_home) >= 1) * ({n_mil} <= 3)) > 0"
@@ -50,7 +50,7 @@ def scouting_tactics() -> list[Record]:
     ])
     hex_r = "max(max(var(target.x), 0 - var(target.x)), max(var(target.y), 0 - var(target.y)), max(var(target.x) + var(target.y), 0 - var(target.x) - var(target.y)))"
     qual_p2 = "(var(target.vision) == 0) + (var(target.vision) == 1) * (var(scout_fog_turns) >= 0) * (var(target.turns_since_seen) >= var(scout_fog_turns)) > 0"
-    p2_spaces = selection("spaces", {"if": qual_p2}, let=dict(r=hex_r),
+    p2_spaces = selection("spaces", dict(vision_at_most=1, **{"if": qual_p2}), let=dict(r=hex_r),
                           rank=["var(target.r) >= max(0, gameVar(map_size) - 2)", "0 - var(target.r)", f"0 - {space_key('target')}"] , limit=25, capacity="1")
     phase2 = dict(action="select", actors=idle_scouts, pick=p2_spaces,
                   match=dict(score=["var(target.r) >= max(0, gameVar(map_size) - 2)", "0 - var(target.r)", "0 - distance(actor, target)"]), issue=[dict(move={})])
@@ -66,12 +66,12 @@ def home_inspector() -> list[Record]:
     """Steps 1 unit to the facing edge zone to identify unknown units near home when safe."""
     insp_spaces = selection("spaces", dict(
         near=dict(distance="var(tune_est_inspect_reach)", of=selection("spaces", dict(in_set="home"))),
-        **{"if": "(var(target.unidentified_count) >= var(tune_est_inspect_min)) * (var(target.e_mil_near) * var(tune_est_insp_safe) == 0)"}
+        **{"if": "(max(0, var(target.unit_count)) >= var(tune_est_inspect_min)) * (var(target.e_mil_near) * var(tune_est_insp_safe) == 0)"}
     ), let=dict(e_mil_near=aggregate("count", selection("units", dict(owner="enemy", unit_types=["military"], **{"if": "distance(target, item) <= 1"})))),
-       rank=["var(target.unidentified_count)", f"0 - {space_key('target')}"] , limit=1)
+       rank=["max(0, var(target.unit_count))", f"0 - {space_key('target')}"] , limit=1)
     insp_zones = selection("zones", dict(
         near=dict(distance=1, of=selection("spaces", dict(in_set="insp_target"))),
-        **{"if": "(distance(unid_space, target) == 1) * (var(target.space_owner) == var(player_id))"}
+        **{"if": "(distance(unid_space, target) == 1) * (var(target.space.owner) == var(player_id))"}
     ), rank=["0 - distance(unid_space, target, 1)", f"0 - {space_key('target')}"] , limit=1)
     pick_insp = dict(action="for_each", select=selection("spaces", dict(in_set="home"), limit=1), **{"as": "home_origin"}, do=[
         store("insp_target", insp_spaces),
@@ -81,8 +81,8 @@ def home_inspector() -> list[Record]:
     ])
     mil_inspector = selection("units", dict(
         owner="own", unit_types=["military"], not_in_set="raiding_party",
-        **{"in": dict(order_kind=["none", "move"]), "if": "var(actor.is_scout) == 0"}
-    ), let=dict(is_scout=aggregate("count", selection("units", dict(in_set="scout_units", **{"if": "var(item.uid) == var(actor.uid)"})))),
+        **{"in": dict(order_kind=["none", "move"]), "if": ["var(actor.is_scout) == 0", army_order_available("actor")]}
+    ), let=dict(is_scout="inSet(scout_units, actor)"),
        rank=["var(actor.idle)", "0 - var(actor.uid)"], limit=1)
     zone_pick = selection("zones", dict(in_set="insp_zone"), limit=1)
     send_mil = dict(action="select", actors=mil_inspector, pick=zone_pick, issue=[dict(move=dict(to="zone"))])

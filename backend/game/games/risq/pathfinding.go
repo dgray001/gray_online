@@ -14,6 +14,34 @@ type PathNode struct {
 	depth           uint
 }
 
+const wallScaleCost uint = 3
+
+type pathProfile struct {
+	inter_cost_reduction int
+	intra_cost_reduction int
+	can_scale_walls      bool
+}
+
+func (p pathProfile) scalesWall(garrisoned bool) bool {
+	return p.can_scale_walls && !garrisoned
+}
+
+func (p pathProfile) passable(space *RisqSpace) bool {
+	return !space.impassable()
+}
+
+func (p pathProfile) stepCost(space *RisqSpace, entering_space bool) uint {
+	cost := space.moveCost()
+	if entering_space {
+		return uint(max(1, int(cost.Inter_cost)-p.inter_cost_reduction))
+	}
+	return uint(max(1, int(cost.Intra_cost)-p.intra_cost_reduction))
+}
+
+func (p pathProfile) lowestInterCost(config *defs.Config) uint {
+	return uint(max(1, int(config.LowestInterMoveCost)-p.inter_cost_reduction))
+}
+
 // Zone moves auto-targeting will walk to reach a target before giving up on it
 const nearbyPathDepth = 10
 
@@ -35,10 +63,10 @@ func (u *RisqUnit) findPathWithin(target *RisqZone, attack_range defs.RisqRange,
 	if start == nil || target == nil {
 		return nil
 	}
-	goal, remaining := pathGoal(u.config, target, attack_range)
+	goal, remaining := pathGoal(u.config, u.path_profile, target, attack_range)
 	if goal(start) {
 		if is_garrisoned {
-			return &MoveIntent{path: []*RisqZone{start}, next_step: start, intra_step: true, cost: start.space.moveCost().Intra_cost}
+			return &MoveIntent{path: []*RisqZone{start}, next_step: start, intra_step: true}
 		}
 		return nil
 	}
@@ -46,10 +74,14 @@ func (u *RisqUnit) findPathWithin(target *RisqZone, attack_range defs.RisqRange,
 	if max_depth == 0 {
 		facing = func(z *RisqZone) uint { return facingDistance(z, target) }
 	}
-	blocked := func(from *RisqZone, to *RisqZone) bool {
-		return !(attacking && to == target) && to.knownWallBlocksEntry(from, u.player_id)
+	entry := func(from *RisqZone, to *RisqZone) wallEntry {
+		return u.plannedWallEntry(from, to, attacking && to == target)
 	}
-	return aStarPath(start, remaining, goal, max_depth, facing, blocked)
+	move := aStarPath(start, u.path_profile, remaining, goal, max_depth, facing, entry)
+	if move != nil {
+		move.goal = target
+	}
+	return move
 }
 
 func facingDistance(z *RisqZone, target *RisqZone) uint {
@@ -73,24 +105,25 @@ func (u *RisqUnit) canReachNearby(target *RisqZone) bool {
 	return u.inAttackRange(target) || u.findPathWithin(target, u.attack_range, nearbyPathDepth, true) != nil
 }
 
-func pathGoal(config *defs.Config, target *RisqZone, attack_range defs.RisqRange) (func(*RisqZone) bool, func(*RisqZone) uint) {
+func pathGoal(config *defs.Config, profile pathProfile, target *RisqZone, attack_range defs.RisqRange) (func(*RisqZone) bool, func(*RisqZone) uint) {
+	lowest_inter_cost := profile.lowestInterCost(config)
 	space_range, ranged := attack_range.SpaceRadius()
 	if !ranged {
 		return func(z *RisqZone) bool { return z == target },
 			func(z *RisqZone) uint {
-				return z.space.distanceTo(target.space) * config.LowestInterMoveCost
+				return z.space.distanceTo(target.space) * lowest_inter_cost
 			}
 	}
 	goal := func(z *RisqZone) bool {
 		return rangeCovers(z, target, attack_range)
 	}
-	reach := max(space_range, 1)
+	reach := max(space_range, attack_range.ZoneRadius())
 	remaining := func(z *RisqZone) uint {
 		dist := z.space.distanceTo(target.space)
 		if dist <= reach {
 			return 0
 		}
-		return (dist - reach) * config.LowestInterMoveCost
+		return (dist - reach) * lowest_inter_cost
 	}
 	return goal, remaining
 }
@@ -105,7 +138,7 @@ func (u *RisqUnit) pathStart() (*RisqZone, bool) {
 	return nil, false
 }
 
-func aStarPath(start *RisqZone, remaining func(*RisqZone) uint, goal func(*RisqZone) bool, max_depth uint, facing func(*RisqZone) uint, blocked func(from *RisqZone, to *RisqZone) bool) *MoveIntent {
+func aStarPath(start *RisqZone, profile pathProfile, remaining func(*RisqZone) uint, goal func(*RisqZone) bool, max_depth uint, facing func(*RisqZone) uint, entry func(from *RisqZone, to *RisqZone) wallEntry) *MoveIntent {
 	var closest *PathNode
 	open_set := []*RisqZone{start}
 	tracker := make(map[*RisqZone]*PathNode)
@@ -137,14 +170,11 @@ func aStarPath(start *RisqZone, remaining func(*RisqZone) uint, goal func(*RisqZ
 			continue
 		}
 		for _, neighbor := range z.adjacent_zones {
-			if neighbor.space.impassable() || blocked(z, neighbor) {
+			wall_entry := entry(z, neighbor)
+			if !profile.passable(neighbor.space) || wall_entry.kind == wallEntryBlocked {
 				continue
 			}
-			cost := neighbor.space.moveCost()
-			move_cost := cost.Intra_cost
-			if neighbor.space != z.space {
-				move_cost = cost.Inter_cost
-			}
+			move_cost := profile.stepCost(neighbor.space, neighbor.space != z.space) + wall_entry.cost
 			neighbor_g := n.cost_from_start + move_cost
 			neighbor_n, visited := tracker[neighbor]
 			if visited && neighbor_g >= neighbor_n.cost_from_start {
@@ -182,25 +212,16 @@ func closerNode(a *PathNode, b *PathNode, facing func(*RisqZone) uint) bool {
 
 func (n *PathNode) constructMoveIntent() *MoveIntent {
 	path := make([]*RisqZone, 0)
-	curr := n
-	for curr != nil {
+	for curr := n; curr != nil; curr = curr.parent {
 		path = append([]*RisqZone{curr.zone}, path...)
-		curr = curr.parent
 	}
 	if len(path) < 2 {
 		return nil
 	}
 	next_step := path[1]
-	intra_step := path[0].space == next_step.space
-	cost := next_step.space.moveCost()
-	move_cost := cost.Inter_cost
-	if intra_step {
-		move_cost = cost.Intra_cost
-	}
 	return &MoveIntent{
 		path:       path,
 		next_step:  next_step,
-		intra_step: intra_step,
-		cost:       move_cost,
+		intra_step: path[0].space == next_step.space,
 	}
 }

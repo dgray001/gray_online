@@ -84,6 +84,7 @@ type snapFoundation struct {
 }
 
 type snapUnit struct {
+	AttackRange      defs.RisqRange  `json:"attack_range"`
 	InternalId       uint64          `json:"internal_id"`
 	PlayerId         int             `json:"player_id"`
 	UnitId           uint32          `json:"unit_id"`
@@ -115,6 +116,9 @@ type snapBuilding struct {
 	MaxStamina        int            `json:"max_stamina"`
 	ResourcesLeft     float64        `json:"resources_left"`
 	Renewing          bool           `json:"renewing"`
+	BaseGatherSpeed   int            `json:"base_gather_speed"`
+	GatherCapacity    int            `json:"gather_capacity"`
+	RenewCost         *snapCost      `json:"renew_cost"`
 	Zone              snapCoordinate `json:"zone_coordinate"`
 	Space             snapCoordinate `json:"space_coordinate"`
 	ActiveOrders      []snapOrder    `json:"active_orders"`

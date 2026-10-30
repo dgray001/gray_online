@@ -1,0 +1,7 @@
+[
+  {"unit_id": 1, "unit_type": "economic", "turn_stamina": 8, "production_stamina": 10, "cost": {"food": 50}},
+  {"unit_id": 101, "unit_type": "infantry", "turn_stamina": 10, "production_stamina": 10, "cost": {"food": 50, "wood": 20}},
+  {"unit_id": 102, "unit_type": "infantry", "turn_stamina": 10, "production_stamina": 14, "cost": {"food": 70, "wood": 40}},
+  {"unit_id": 103, "unit_type": "infantry", "turn_stamina": 10, "production_stamina": 40, "cost": {"food": 120, "gold": 70}},
+  {"unit_id": 401, "unit_type": "siege", "turn_stamina": 8, "production_stamina": 30, "cost": {"wood": 90, "stone": 40}}
+]

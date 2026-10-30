@@ -15,12 +15,27 @@ type Gatherable interface {
 	gatherCapacity() int
 }
 
+func (u *RisqUnit) gatherSpeed(source Gatherable) float64 {
+	resource_id := uint32(0)
+	if resource, ok := source.(*RisqResource); ok {
+		resource_id = resource.resource_id
+	}
+	flat, percentage := 0, 0.0
+	for _, bonus := range u.gather_bonuses {
+		if bonus.AppliesTo(source.gatherCategory(), resource_id) {
+			flat += bonus.Bonus_gather_speed
+			percentage += bonus.Bonus_gather_percentage
+		}
+	}
+	return float64(source.gatherSpeed()+flat) * (1 + percentage/100)
+}
+
 func (r *RisqResource) gatherCapacity() int {
 	return r.gather_capacity
 }
 
 func (b *RisqBuilding) gatherCapacity() int {
-	return b.config.Buildings[b.building_id].Gather.Gather_capacity
+	return b.config.Buildings[b.building_id].Gather.Gather_capacity + b.tech_bonus.gather_capacity
 }
 
 // The live source in a zone: its resource, or its gatherable building
@@ -91,7 +106,7 @@ func (b *RisqBuilding) gatherCategory() defs.RisqResourceCategory {
 }
 
 func (b *RisqBuilding) gatherSpeed() int {
-	return b.config.Buildings[b.building_id].Gather.Base_gather_speed
+	return b.config.Buildings[b.building_id].Gather.Base_gather_speed + b.tech_bonus.gather_speed
 }
 
 func (b *RisqBuilding) gatherResourcesLeft() float64 {
@@ -120,7 +135,7 @@ func (b *RisqBuilding) resolveRenew() {
 	b.renew_stamina_remaining = max(0, b.renew_stamina_remaining-b.pending_renew_stamina)
 	b.pending_renew_stamina = 0
 	if b.renew_stamina_remaining == 0 {
-		b.resources_left = b.config.Buildings[b.building_id].Gather.Starting_resources
+		b.resources_left = b.resourceCapacity()
 		b.renewing = nil
 	}
 	b.refreshTerrainOverride()

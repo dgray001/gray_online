@@ -1,0 +1,143 @@
+[
+  {
+    "tech_id": 1,
+    "display_name": "Farming",
+    "description": "Villagers become more resilient and can work longer without rest. Also a prerequisite to building farms.",
+    "cost": { "food": 50, "wood": 50 },
+    "research_stamina": 15,
+    "affects_unit_ids": [1],
+    "bonus_max_health": 6,
+    "bonus_turn_stamina": 2,
+    "bonus_defense_blunt": 1,
+    "bonus_defense_piercing": 1
+  },
+  {
+    "tech_id": 2,
+    "display_name": "Bow Saw",
+    "description": "Villagers are able to chop wood faster.",
+    "cost": { "wood": 75, "gold": 125 },
+    "research_stamina": 18,
+    "affects_unit_ids": [1],
+    "gather_bonus": { "affects_resource_types": ["wood"], "bonus_gather_speed": 2 }
+  },
+  {
+    "tech_id": 3,
+    "display_name": "Prospecting",
+    "description": "Villagers are able to mine faster.",
+    "cost": { "stone": 75, "gold": 125 },
+    "research_stamina": 18,
+    "affects_unit_ids": [1],
+    "gather_bonus": { "affects_resource_types": ["stone", "gold"], "bonus_gather_speed": 2 }
+  },
+  {
+    "tech_id": 11,
+    "display_name": "Fertilizer",
+    "description": "Farms hold 50% more food, both when built and when renewed.",
+    "cost": { "food": 100, "gold": 150 },
+    "research_stamina": 25,
+    "affects_building_ids": [3],
+    "bonus_resource_capacity": 100
+  },
+  {
+    "tech_id": 61,
+    "display_name": "Infantry Attack",
+    "description": "Increases the attack of all infantry.",
+    "cost": { "stone": 100, "gold": 100 },
+    "research_stamina": 25,
+    "affects_unit_types": ["infantry"],
+    "bonus_attack_blunt": 2,
+    "bonus_attack_piercing": 2
+  },
+  {
+    "tech_id": 62,
+    "display_name": "Infantry Armor",
+    "description": "Increases the defense of all infantry.",
+    "cost": { "stone": 100, "gold": 100 },
+    "research_stamina": 25,
+    "affects_unit_types": ["infantry"],
+    "bonus_defense_blunt": 1,
+    "bonus_defense_piercing": 1
+  },
+  {
+    "tech_id": 63,
+    "display_name": "Pikes",
+    "description": "Infantry pierce through armor.",
+    "cost": { "wood": 100, "gold": 100 },
+    "research_stamina": 25,
+    "affects_unit_types": ["infantry"],
+    "bonus_penetration_piercing": 40
+  },
+  {
+    "tech_id": 64,
+    "display_name": "Ballistics",
+    "description": "Upgrades buildings and ranged siege with precision torsion engines, extending their attack and range.",
+    "cost": { "stone": 125, "gold": 175 },
+    "research_stamina": 35,
+    "affects_building_ids": [1, 21, 23, 24],
+    "bonus_range": 1,
+    "bonus_garrison_attack_cap_blunt": 2,
+    "bonus_garrison_attack_cap_piercing": 2,
+    "additional_effects": [
+      { "affects_building_ids": [23], "bonus_attack_blunt": 2, "bonus_attack_piercing": 2 },
+      { "affects_unit_ids": [401], "bonus_range": 1 }
+    ]
+  },
+  {
+    "tech_id": 101,
+    "display_name": "Mercenary Contracts",
+    "description": "Allows hiring infantry for gold directly into owned territory.",
+    "cost": { "wood": 150, "gold": 150 },
+    "research_stamina": 45,
+    "unlocks_mercenary_ids": [101, 102]
+  },
+  {
+    "tech_id": 901,
+    "display_name": "Test Splash 100% x3",
+    "description": "Test.",
+    "cost": { "food": 0 },
+    "research_stamina": 1,
+    "affects_unit_ids": [401],
+    "splash_damage_percent": 100,
+    "splash_max_targets": 3
+  },
+  {
+    "tech_id": 902,
+    "display_name": "Test Splash 50% x5",
+    "description": "Test.",
+    "cost": { "food": 0 },
+    "research_stamina": 1,
+    "affects_unit_ids": [101],
+    "splash_damage_percent": 50,
+    "splash_max_targets": 5
+  },
+  {
+    "tech_id": 903,
+    "display_name": "Test Splash 25% x10",
+    "description": "Test.",
+    "cost": { "food": 0 },
+    "research_stamina": 1,
+    "affects_unit_ids": [102],
+    "splash_damage_percent": 25,
+    "splash_max_targets": 10
+  },
+  {
+    "tech_id": 905,
+    "display_name": "Test Splash 200% x2",
+    "description": "Test.",
+    "cost": { "food": 0 },
+    "research_stamina": 1,
+    "affects_unit_ids": [103],
+    "splash_damage_percent": 200,
+    "splash_max_targets": 2
+  },
+  {
+    "tech_id": 906,
+    "display_name": "Test Redoubt Splash 50% x3",
+    "description": "Test.",
+    "cost": { "food": 0 },
+    "research_stamina": 1,
+    "affects_building_ids": [23],
+    "splash_damage_percent": 50,
+    "splash_max_targets": 3
+  }
+]

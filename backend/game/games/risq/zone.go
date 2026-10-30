@@ -22,6 +22,7 @@ type RisqZone struct {
 	space                    *RisqSpace
 	adjacent_space           *RisqSpace
 	adjacent_zones           []*RisqZone
+	range_zones              [6]map[*RisqZone]bool
 	ownership                int
 	// index into game_utils.AxialDirectionVectors() this outer zone faces, or -1 for the center zone
 	direction int
@@ -87,15 +88,60 @@ func (r *GameRisq) computeBlockingWalls() map[*RisqBuilding]bool {
 	return walls
 }
 
-func (z *RisqZone) knownWallBlocksEntry(from *RisqZone, player_id int) bool {
+func (r *GameRisq) prepareWallDefenses() {
+	r.defended_walls = make(map[*RisqBuilding]bool)
+	for wall := range r.blocking_walls {
+		r.defended_walls[wall] = len(wall.garrisoned_units) > 0
+	}
+	for unit := range r.garrison_allotments {
+		target := unit.intent.detail.(*GarrisonIntent).target
+		if unit.garrisonTargetValid(r, target) && unit.zone == target.zone {
+			r.defended_walls[target] = true
+		}
+	}
+}
+
+func (z *RisqZone) knownBlockingWall(from *RisqZone, player_id int) (RisqBuildingCache, bool) {
 	cache, ok := z.buildingKnownTo(player_id)
 	if !ok && from == z.borderNeighbor() && z.building != nil && !z.building.deleted {
 		cache, ok = cacheRisqBuilding(z.building), true
 	}
-	return ok && from.space != z.space && !cache.under_construction && cache.player_id != player_id && cache.config.Buildings[cache.building_id].Is_wall
+	blocks := ok && from.space != z.space && !cache.under_construction && cache.player_id != player_id && cache.config.Buildings[cache.building_id].Is_wall
+	return cache, blocks
+}
+
+func (z *RisqZone) knownWallBlocksEntry(from *RisqZone, player_id int) bool {
+	_, blocks := z.knownBlockingWall(from, player_id)
+	return blocks
 }
 
 // The zone across the space border that this edge zone touches, nil for the center zone
+func expandZoneRange(frontier []*RisqZone, zones map[*RisqZone]bool) []*RisqZone {
+	next := make([]*RisqZone, 0)
+	for _, zone := range frontier {
+		for _, adjacent := range zone.adjacent_zones {
+			if !zones[adjacent] {
+				zones[adjacent] = true
+				next = append(next, adjacent)
+			}
+		}
+	}
+	return next
+}
+
+func (z *RisqZone) zonesInRange(radius uint) map[*RisqZone]bool {
+	if cached := z.range_zones[radius]; cached != nil {
+		return cached
+	}
+	zones := map[*RisqZone]bool{z: true}
+	frontier := []*RisqZone{z}
+	for depth := uint(0); depth < radius; depth++ {
+		frontier = expandZoneRange(frontier, zones)
+	}
+	z.range_zones[radius] = zones
+	return zones
+}
+
 func (z *RisqZone) borderNeighbor() *RisqZone {
 	for _, adjacent := range z.adjacent_zones {
 		if adjacent.space != z.space {
@@ -122,7 +168,7 @@ func (z *RisqZone) updateRubble(r *GameRisq, advance bool) {
 	}
 }
 
-func (z *RisqZone) toFrontend(player_id int, v defs.VisibilityLevel, space *RisqSpace) gin.H {
+func (z *RisqZone) toFrontend(player_id int, v defs.VisibilityLevel, space *RisqSpace, with_history bool) gin.H {
 	terrainOverride := uint32(0)
 	if v == defs.VisibilityFog {
 		terrainOverride = space.terrain_cache[player_id][z.coordinate_key]
@@ -163,7 +209,7 @@ func (z *RisqZone) toFrontend(player_id int, v defs.VisibilityLevel, space *Risq
 		zone["destroyed_building_turns"] = z.destroyed_building_turns
 	}
 	if z.building != nil && !z.building.deleted {
-		zone["building"] = z.building.toFrontend(player_id)
+		zone["building"] = z.building.toFrontend(player_id, with_history)
 	}
 	if v >= defs.VisibilityGood {
 		if len(z.corpses) > 0 {
@@ -172,7 +218,7 @@ func (z *RisqZone) toFrontend(player_id int, v defs.VisibilityLevel, space *Risq
 		units := make([]gin.H, 0)
 		for _, unit := range z.units {
 			if unit != nil && !unit.deleted {
-				units = append(units, unit.toFrontend(player_id))
+				units = append(units, unit.toFrontend(player_id, with_history))
 			}
 		}
 		zone["units"] = units

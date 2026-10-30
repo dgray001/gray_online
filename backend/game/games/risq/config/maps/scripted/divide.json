@@ -1,5 +1,10 @@
 [
-  { "step": "shape", "params": { "kind": "rectangle" } },
+  {
+    "step": "shape",
+    "params": {
+      "kind": "rectangle"
+    }
+  },
   { "step": "include", "params": { "path": "common/biomes.json" } },
   { "step": "define", "params": { "name": "mountain_seeds", "value": 0 } },
   { "step": "include", "params": { "path": "common/land_details.json" } },
@@ -31,7 +36,7 @@
       },
       "area_size": 1,
       "starting_distance": "rows / 2",
-      "row_inset": 0,
+      "row_inset": 2,
       "short_edge_starts": "2 * min(1, max(0, num_players - 5))",
       "short_edge_bias": 0.5,
       "tree_ids": ["tree_a", "tree_b"],

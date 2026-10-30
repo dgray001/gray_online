@@ -77,6 +77,38 @@ func TestSpaceRangeEdgeZoneMustMoveForOtherZones(t *testing.T) {
 	}
 }
 
+func TestZoneRangesMoveToFiringPosition(t *testing.T) {
+	cases := []struct {
+		name       string
+		range_type defs.RisqRange
+		moves      bool
+	}{
+		{"wall", defs.RisqRange_WALL, true},
+		{"twozone", defs.RisqRange_TWOZONE, true},
+		{"threezone", defs.RisqRange_THREEZONE, false},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			log := captureTicks(t)
+			g := spaceRangeGameTweaked(t, test.range_type, fullVision,
+				spaceOf(0, 0, flat, placed{blunt, 0, 0, 0}),
+				spaceOf(1, 0, flat, placed{heavy, 1, 0, 0}))
+			a, b := soleUnit(g, 0), soleUnit(g, 1)
+			makePassive(g, 1, b)
+			g.Submit(g.Human(0), attackOrder(a, b))
+			g.EndTurn()
+			ticks := parseTicks(t, log)
+			hits := ticks.hitsBy(int(a.InternalID))
+			if moved := len(ticks.movesOf(int(a.InternalID))) > 0; moved != test.moves || len(hits) == 0 {
+				t.Fatalf("moved=%v, want %v, hits=%v", moved, test.moves, hits)
+			}
+			if !test.moves && hits[0].tick != 1 {
+				t.Fatalf("in-range shot started on tick %d", hits[0].tick)
+			}
+		})
+	}
+}
+
 func TestSpaceRangeCenterZoneStepsToEdgeInsteadOfCrossing(t *testing.T) {
 	for name, kind := range orderTypes() {
 		t.Run(name, func(t *testing.T) {

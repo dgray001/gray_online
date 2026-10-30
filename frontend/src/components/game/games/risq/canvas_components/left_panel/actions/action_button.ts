@@ -64,6 +64,10 @@ export abstract class RisqActionButton extends DwgSquareButton {
     this.pointer_over &&= hovering;
   }
 
+  isPointerOver(): boolean {
+    return this.pointer_over;
+  }
+
   protected hovered(): void {}
   protected unhovered(): void {}
   protected clicked(): void {}

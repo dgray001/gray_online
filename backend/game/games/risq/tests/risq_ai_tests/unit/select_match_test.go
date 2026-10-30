@@ -318,7 +318,7 @@ func TestAssignParseRejections(t *testing.T) {
 		"assign plus carry":          `{"action":"select","match":{"carry":"a"},"into":{"assign":"a"}}`,
 		"assign with another sink":   `{"action":"select",` + actors + `,` + pick + `,"match":{},"issue":[{"attack":{}}],"into":{"assign":"a","set":"s"}}`,
 		"assign without match":       `{"action":"select",` + actors + `,` + pick + `,"issue":[{"attack":{}}],"into":{"assign":"a"}}`,
-		"assign with mode":           `{"action":"select",` + actors + `,` + pick + `,"match":{},"mode":"append","issue":[{"attack":{}}],"into":{"assign":"a"}}`,
+		"assign with mode":           `{"action":"select",` + actors + `,` + pick + `,"match":{},"mode":"prepend","issue":[{"attack":{}}],"into":{"assign":"a"}}`,
 		"bad relation name":          `{"action":"select",` + actors + `,` + pick + `,"match":{},"issue":[{"attack":{}}],"into":{"assign":"1a"}}`,
 		"initial outside assign":     `{"action":"select",` + actors + `,"pick":{"kind":"buildings","initial_assigned":1},"match":{},"issue":[{"attack":{}}]}`,
 		"round in actors":            `{"action":"select","actors":{"kind":"units","rank":"var(actor.assign_round)"},` + pick + `,"match":{},"issue":[{"attack":{}}],"into":{"assign":"a"}}`,
@@ -343,6 +343,20 @@ func TestAssignFirstSuccessInALaterRoundClears(t *testing.T) {
 	orders := selectOrders(t, config, view)
 	if len(orders) != 1 || !orders[0].ClearPreviousOrders {
 		t.Fatalf("expected the first success, in round 1, to clear the actor's old orders, got: %+v", orders)
+	}
+}
+
+func TestAssignQueueModeAcrossRounds(t *testing.T) {
+	for _, mode := range []string{"", `"mode":"replace",`, `"mode":"append",`} {
+		for _, first := range []string{"0", "1"} {
+			view := assignView(1, enemyBuilding(10, 5, 1), enemyBuilding(11, 5, 2))
+			head := strings.Replace(assignChainHead, `"match":{"score":"0 - var(target.uid)"}`, `"match":{"score":"0 - var(target.uid)","where":{"if":"var(actor.assign_round) >= `+first+`"}}`, 1)
+			carry := `,{"action":"select","match":{"carry":"a"}}`
+			orders := selectOrders(t, rule(head+mode+`"issue":[{"attack":{}}],"into":{"assign":"a"}}`+carry+carry), view)
+			if len(orders) != 2 || orders[0].TargetID != 10 || orders[1].TargetID != 11 || orders[0].ClearPreviousOrders != (mode != `"mode":"append",`) || orders[1].ClearPreviousOrders {
+				t.Fatalf("mode %q first round %s: unexpected orders: %+v", mode, first, orders)
+			}
+		}
 	}
 }
 
@@ -455,7 +469,7 @@ var assignRejectionFragments = map[string]string{
 	"assign plus carry":          `carry takes no "into"`,
 	"assign with another sink":   "takes only a valid assignment name",
 	"assign without match":       `needs "match"`,
-	"assign with mode":           "no mode other than replace",
+	"assign with mode":           "only replace or append mode",
 	"bad relation name":          "takes only a valid assignment name",
 	"initial outside assign":     "initial_assigned only applies",
 	"round in actors":            `no field "assign_round"`,

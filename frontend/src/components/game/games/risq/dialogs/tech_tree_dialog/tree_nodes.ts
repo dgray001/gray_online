@@ -9,6 +9,11 @@ export type { RisqUnitStatsEntry } from '../../model/types';
 interface RisqTechBonusEntry {
   max_health: number;
   turn_stamina: number;
+  range: number;
+  reduce_inter_move_cost: number;
+  reduce_intra_move_cost: number;
+  splash_damage_percent: number;
+  splash_max_targets: number;
   attack_blunt: number;
   attack_piercing: number;
   attack_magic: number;
@@ -18,9 +23,27 @@ interface RisqTechBonusEntry {
   penetration_blunt: number;
   penetration_piercing: number;
   penetration_magic: number;
+  gather_capacity: number;
+  gather_speed: number;
+  resource_capacity: number;
+  renew_cost_discount: number;
+  garrison_capacity: number;
+  garrison_attack_cap_blunt: number;
+  garrison_attack_cap_piercing: number;
+  garrison_attack_cap_magic: number;
+  population_support: number;
 }
 
-interface RisqProducibleEntry {
+interface RisqTechEffectEntry {
+  bonus?: RisqTechBonusEntry;
+  affects_unit_ids?: number[];
+  affects_unit_types?: RisqUnitType[];
+  affects_buildings?: { id: number; display_name: string }[];
+  gather_bonus?: { resource_types: string[]; resource_names: string[]; speed: number; percentage: number };
+  unlocks_mercenaries?: { id: number; display_name: string }[];
+}
+
+interface RisqProducibleEntry extends RisqTechEffectEntry {
   population_support?: number;
   garrison_capacity?: number;
   row: number;
@@ -33,10 +56,7 @@ interface RisqProducibleEntry {
   description: string;
   required_tech_id: number;
   stats?: RisqUnitStatsEntry;
-  bonus?: RisqTechBonusEntry;
-  affects_unit_ids?: number[];
-  affects_unit_types?: RisqUnitType[];
-  unlocks_mercenaries?: { id: number; display_name: string }[];
+  additional_effects?: RisqTechEffectEntry[];
 }
 
 export interface RisqBuildingTreeEntry {

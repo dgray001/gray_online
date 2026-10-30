@@ -43,13 +43,17 @@ def classify(me: Standing, other: Standing) -> str:
     return "ahead" if ahead(me, other) else "behind"
 
 
-def read(log: Path) -> dict[int, dict[int, Standing]]:
-    """turn -> player -> standing at the end of that turn"""
+def read_reports(log: Path) -> dict[int, dict[int, dict]]:
     reports: dict[int, dict[int, dict]] = {}
     for line in log.read_text().splitlines():
         match = TURN_REPORT.search(line)
         if match:
             reports.setdefault(int(match[1]), {})[int(match[2])] = json.loads(match[3])
+    return reports
+
+
+def read(log: Path) -> dict[int, dict[int, Standing]]:
+    reports = read_reports(log)
     turns: dict[int, dict[int, Standing]] = {}
     for turn, players in reports.items():
         scores = {line["player_id"]: line["now"] for line in next(iter(players.values()))["scores"]}

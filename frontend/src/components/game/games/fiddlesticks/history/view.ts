@@ -2,8 +2,9 @@ import type { UpdateMessage } from '../../../data_models';
 import type { StandardCard } from '../../../util/card_util';
 import { cardToIcon, cardToName } from '../../../util/card_util';
 import type { GameFiddlesticks, PlayCard, FiddlesticksPlayer, DealRound, PlayerBet } from '../fiddlesticks_data';
-import { historyRounds } from './model';
-import type { HistoryRound, HistoryTrick } from './model';
+import { getSettings } from '../../../../../scripts/settings_store';
+import { comparisonSummary, historyRounds } from './model';
+import type { ComparisonSummary, HistoryRound, HistoryTrick } from './model';
 import './history.scss';
 
 function text(tag: string, value: string, class_name: string = ''): HTMLElement {
@@ -58,6 +59,10 @@ export function renderFiddlesticksHistory(
     controls.append(button);
   }
   root.append(controls);
+  const summary = comparisonSummary(rounds);
+  if (showComparisons() && summary.bets.total + summary.cards.total > 0) {
+    root.append(summaryView(summary));
+  }
   rounds
     .reverse()
     .forEach((round: HistoryRound, index: number): void => root.append(roundView(round, game, viewer, index === 0)));
@@ -65,6 +70,23 @@ export function renderFiddlesticksHistory(
     root.append(text('p', 'No rounds have been dealt yet.'));
   }
   return root;
+}
+
+function showComparisons(): boolean {
+  return getSettings().fiddlesticks.show_ai_comparisons;
+}
+
+function summaryView(summary: ComparisonSummary): HTMLElement {
+  const agreed = (counts: { total: number; matched: number }): string => `${counts.matched}/${counts.total}`;
+  const total = {
+    total: summary.bets.total + summary.cards.total,
+    matched: summary.bets.matched + summary.cards.matched,
+  };
+  return text(
+    'p',
+    `Your AI comparison: ${agreed(total)} matched (bets ${agreed(summary.bets)}, cards ${agreed(summary.cards)})`,
+    'history-caption'
+  );
 }
 
 function roundView(round: HistoryRound, game: GameFiddlesticks, viewer: number, open: boolean): HTMLElement {
@@ -128,14 +150,23 @@ function resultsTable(round: HistoryRound, game: GameFiddlesticks, viewer: numbe
   return section;
 }
 
+function comparisonTag(matched: boolean, detail: string): HTMLElement {
+  return text('span', matched ? 'Match' : detail, matched ? 'history-tag history-winner' : 'history-tag');
+}
+
 function resultRow(round: HistoryRound, game: GameFiddlesticks, viewer: number, id: number): HTMLElement {
   const { bet, won, points, total } = round.scores[id];
   const row = text('tr', '', id === viewer ? 'history-you' : '');
   const name = text('th', playerName(game, id, viewer));
   name.setAttribute('scope', 'row');
+  const comparison = round.bet_comparisons.get(id);
+  const bet_cell = text('td', bet?.toString() ?? '-');
+  if (comparison && showComparisons()) {
+    bet_cell.append(comparisonTag(comparison.matched, `Model ${comparison.model_id}: ${comparison.ai_choice}`));
+  }
   row.append(
     name,
-    text('td', bet?.toString() ?? '-'),
+    bet_cell,
     text('td', won.toString()),
     text('td', points === undefined ? '-' : `+${points}`),
     text('td', total.toString())
@@ -167,6 +198,10 @@ function trickView(
     row.append(text('span', `${index + 1}. ${playerName(game, play.player_id, viewer)}`), cardIcon(play.card));
     if (index === 0) {
       row.append(text('span', 'Led', 'history-tag'));
+    }
+    if (play.ai_comparison && showComparisons()) {
+      const { matched, model_id, ai_choice } = play.ai_comparison;
+      row.append(comparisonTag(matched, `Model ${model_id}: ${cardToName(ai_choice)}`));
     }
     if (play === trick.winner) {
       row.append(text('span', 'Winner', 'history-tag history-winner'));

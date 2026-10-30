@@ -1,0 +1,20 @@
+[
+  {
+    "tech_id": 101,
+    "display_name": "Mercenary Contracts",
+    "description": "Allows hiring infantry and catapults for gold directly into owned territory.",
+    "cost": { "gold": 0 },
+    "research_stamina": 45,
+    "unlocks_mercenary_ids": [101, 401]
+  },
+  {
+    "tech_id": 102,
+    "display_name": "Shrapnel",
+    "description": "Catapult shots shatter on impact, causing nearby damage.",
+    "cost": { "gold": 0 },
+    "research_stamina": 45,
+    "affects_unit_ids": [401],
+    "splash_damage_percent": 50,
+    "splash_max_targets": 5
+  }
+]

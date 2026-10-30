@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Compares two game-state JSON files (e.g. per-turn dumps from a debug.log,
-or two results.json entries) and reports whether they're identical.
+or two per-game files from games/) and reports whether they're identical.
 
 Usage: compare_states.py <state1.json> <state2.json>
 

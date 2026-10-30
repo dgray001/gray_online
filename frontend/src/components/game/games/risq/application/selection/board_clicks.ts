@@ -4,8 +4,16 @@ import { pointInRect } from '../../../../util/objects2d';
 import type { RisqLeftPanel } from '../../canvas_components/left_panel/left_panel';
 import { LeftPanelDataType } from '../../canvas_components/left_panel/left_panel_data';
 import { RisqVisibilityLevel } from '../../model/types';
-import type { RisqBuilding, RisqPlayer, RisqResource, RisqSpace, RisqZone, UnitByTypeData } from '../../model/types';
-import { groupUnitsByType } from '../../model/unit_groups';
+import type {
+  RisqBuilding,
+  RisqPlayer,
+  RisqResource,
+  RisqSpace,
+  RisqUnit,
+  RisqZone,
+  UnitByTypeData,
+} from '../../model/types';
+import { groupUnitsByType, organizeZoneUnits } from '../../model/unit_groups';
 import type { RisqViewport } from '../../rendering/board/viewport';
 import { unitVisibleInViewMode } from '../../rendering/terrain';
 
@@ -270,6 +278,60 @@ export class RisqBoardClicks {
       resources.sort((a, b): number => a.dist - b.dist);
       const target = resources[0];
       this.left_panel.openPanel({ data_type: LeftPanelDataType.RESOURCE, data: target.resource }, target.visibility);
+    } else {
+      this.dragSelectEnemies(start, end, zone_view);
+    }
+  }
+
+  private dragSelectEnemies(start: Point2D, end: Point2D, zone_view: boolean): void {
+    const units = new Map<number, RisqUnit>();
+    const buildings: RisqBuilding[] = [];
+    const inside = (entity: RisqUnit | RisqBuilding, offset: Point2D | undefined): boolean =>
+      entity.player_id !== this.session.getPlayerId() &&
+      pointInRect(
+        canvasToScreen(
+          this.viewport.orderPoint(entity.space_coordinate, offset, zone_view),
+          this.viewport.lastTransform()
+        ),
+        start,
+        end
+      );
+    for (const space of this.session.getGame()?.spaces.flat() ?? []) {
+      if (!space || space.visibility < RisqVisibilityLevel.GOOD) {
+        continue;
+      }
+      for (const unit of space.units?.values() ?? []) {
+        if (
+          unit.garrisoned_in === undefined &&
+          unitVisibleInViewMode(unit.unit_type, this.viewport.viewMode()) &&
+          inside(unit, this.viewport.unitAnchorOffset(unit))
+        ) {
+          units.set(unit.internal_id, unit);
+        }
+      }
+      for (const building of space.buildings?.values() ?? []) {
+        if (inside(building, zoneCenterOffset(building.zone_coordinate, this.viewport.hexR()))) {
+          buildings.push(building);
+        }
+      }
+    }
+    if (units.size > 0) {
+      const first = units.values().next().value!;
+      const space = this.session.spaceAt(first.space_coordinate)!;
+      const units_by_player = new Map(
+        [...organizeZoneUnits(units)].map(([id, groups]): [number, UnitByTypeData[]] => [id, [...groups.values()]])
+      );
+      this.left_panel.openPanel(
+        { data_type: LeftPanelDataType.UNITS, data: { space, units_by_player } },
+        space.visibility
+      );
+    } else if (buildings.length > 0) {
+      this.left_panel.openPanel(
+        buildings.length === 1
+          ? { data_type: LeftPanelDataType.BUILDING, data: buildings[0] }
+          : { data_type: LeftPanelDataType.BUILDINGS, data: { buildings } },
+        RisqVisibilityLevel.GOOD
+      );
     } else {
       this.left_panel.close();
     }

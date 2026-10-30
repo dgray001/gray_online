@@ -121,6 +121,23 @@ func TestConfigDirRejectsBadNamesAndMalformedFiles(t *testing.T) {
 	}
 }
 
+func TestConfigFilesStayInsideTheConfigDir(t *testing.T) {
+	if err := testconfig.Load(); err != nil {
+		t.Fatal(err)
+	}
+	for _, parts := range [][]string{{"..", "config", "units.json"}, {"ai", "../../units.json"}, {"/etc/passwd"}} {
+		if _, err := defs.ReadConfigFile(parts...); err == nil || !strings.Contains(err.Error(), "escapes the config dir") {
+			t.Errorf("read %v: got error %v", parts, err)
+		}
+	}
+	if _, err := defs.ListConfigDir(".."); err == nil {
+		t.Error("listing outside the config dir was accepted")
+	}
+	if _, err := defs.ReadConfigFile("ai", "..", "units.json"); err != nil {
+		t.Errorf("in-tree path rejected: %v", err)
+	}
+}
+
 func TestMercenaryMarkupDeltasFromBonusesAndTechsStack(t *testing.T) {
 	if err := testconfig.Load(); err != nil {
 		t.Fatal(err)

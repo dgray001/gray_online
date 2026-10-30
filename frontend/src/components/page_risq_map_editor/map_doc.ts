@@ -46,7 +46,7 @@ export interface MapDocPlayerStart {
 
 export interface MapDocRegion {
   name: string;
-  gold_bonus?: number;
+  gold_bonus?: MapDocValue;
   spaces: [number, number][];
 }
 
