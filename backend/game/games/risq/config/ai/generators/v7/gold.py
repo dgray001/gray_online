@@ -8,7 +8,7 @@ def mercenary_rates() -> list[Record]:
     for unit in (101, 102):
         producers = selection("buildings", dict(owner="own", state="complete", can_create=unit))
         actions.append(variable(f"native_producers_{unit}", aggregate("count", producers)))
-        gap = f"max(0, min(var(goal_{unit}) - var(own_{unit}), gameVar(population_max) - gameVar(population)))"
+        gap = f"max(0, min(var(goal_{unit}) - var(own_{unit}), var(population_ceiling) - gameVar(population)))"
         condition = f"(var(offer.id) == {unit}) * (var(native_producers_{unit}) == 0)"
         spending = [variable(f"mercenary_rate_{resource}",
                              f"var(mercenary_rate_{resource}) + ({gap}) * var(offer.cost_{resource}) / var(tune_planning_horizon)")

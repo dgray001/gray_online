@@ -34,6 +34,7 @@ type fakeView struct {
 	knownEnemyBuildings   []ai.BuildingView
 
 	turnNumber, mapSize, numPlayers int
+	needRegion                      bool
 	allSpaces                       []ai.SpaceInfo
 	allRegions                      []ai.RegionInfo
 	availableMercenaries            []ai.Producible
@@ -227,10 +228,11 @@ func (f *fakeView) KnownResources(category ai.ResourceCategory) []ai.ResourceVie
 	}
 	return res
 }
-func (f *fakeView) TurnNumber() int           { return f.turnNumber }
-func (f *fakeView) MapSize() int              { return f.mapSize }
-func (f *fakeView) NumPlayers() int           { return f.numPlayers }
-func (f *fakeView) AllSpaces() []ai.SpaceInfo { f.query("AllSpaces"); return slices.Clone(f.allSpaces) }
+func (f *fakeView) TurnNumber() int             { return f.turnNumber }
+func (f *fakeView) MapSize() int                { return f.mapSize }
+func (f *fakeView) MercenariesNeedRegion() bool { return f.needRegion }
+func (f *fakeView) NumPlayers() int             { return f.numPlayers }
+func (f *fakeView) AllSpaces() []ai.SpaceInfo   { f.query("AllSpaces"); return slices.Clone(f.allSpaces) }
 func (f *fakeView) AllRegions() []ai.RegionInfo {
 	f.query("AllRegions")
 	return slices.Clone(f.allRegions)

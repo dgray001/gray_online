@@ -47,7 +47,7 @@ def unit_targets(parameters: dict[str, float]) -> list[Record]:
     pierce = " * ".join(["var(value_102)"] * int(parameters["mix_sharpness"]))
     return [variable("blunt_weight", blunt), variable("pierce_weight", pierce),
             variable("blunt_share", "var(blunt_weight) / max(0.001, var(blunt_weight) + var(pierce_weight))"),
-            variable("free_army", "max(0, gameVar(population_max) - max(var(worker_goal), var(own_1)) - var(n_military))"),
+            variable("free_army", "max(0, var(population_ceiling) - max(var(worker_goal), var(own_1)) - var(n_military))"),
             variable("goal_1", "var(worker_goal)"),
             variable("goal_101", "var(own_101) + var(free_army) * var(blunt_share)"),
             variable("goal_102", "var(own_102) + var(free_army) * (1 - var(blunt_share))"),

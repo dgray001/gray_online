@@ -216,6 +216,7 @@ export function serverToRisqSpace(server_space: RisqSpaceFromServer, registry: R
       zones.push(row);
     }
     space.zones = zones as SPACE_ZONES_TYPE;
+    space.zones_flat = zones.flat();
   }
   if (is_explored && server_space.resources) {
     space.resources = new Map(

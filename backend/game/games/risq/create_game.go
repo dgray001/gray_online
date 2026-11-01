@@ -170,8 +170,8 @@ func createGame(g *game.GameBase, action_channel chan game.PlayerAction, min_pla
 			config, config_ok := ai["config"].(string)
 			if !config_ok {
 				config = "default"
-			} else if !slices.Contains(AllAiNamesToFrontend(), config) {
-				return nil, fmt.Errorf("unknown ai config %q", config)
+			} else if err := validateAiConfig(config); err != nil {
+				return nil, err
 			}
 			player := game.CreateAiPlayer(nickname, g)
 			player.Player_id = player_id

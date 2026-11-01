@@ -84,6 +84,13 @@ export class RisqReplayPanel implements CanvasComponent {
     return this.slider?.value() ?? 0;
   }
 
+  seek(tick: number): void {
+    this.playing = false;
+    this.tick_elapsed = 0;
+    this.slider?.setValue(tick);
+    this.risq.showReplayTick(tick);
+  }
+
   private togglePlaying(): void {
     if (!this.slider) {
       return;

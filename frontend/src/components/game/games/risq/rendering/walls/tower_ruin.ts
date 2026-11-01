@@ -65,12 +65,12 @@ export function drawRuinProps(
     strokeBeam(ctx, from, to, 0.003 * r, 'rgba(150, 130, 108, 0.55)');
   }
   const stones = [
-    ...points.surface.map((at) => ({ at, size: 0.05 + 0.025 * random() })),
-    ...points.ground.map((at) => ({ at, size: 0.05 + 0.05 * random() })),
+    ...points.surface.map((at, i) => ({ at, rock: seededRandom(`ruin-surface-${i}`), spread: 0.025 })),
+    ...points.ground.map((at, i) => ({ at, rock: seededRandom(`ruin-ground-${i}`), spread: 0.05 })),
   ].sort((p, q) => p.at.y - q.at.y);
-  for (const { at, size } of stones) {
-    const stone = { u: 0, across: 0, cell: Math.floor(random() * 8), size: size * r, mirrored: random() < 0.5 };
-    drawRubbleStone(ctx, atlas, at, stone);
+  for (const { at, rock, spread } of stones) {
+    const size = (0.05 + spread * rock()) * r;
+    drawRubbleStone(ctx, atlas, at, { u: 0, across: 0, cell: Math.floor(rock() * 8), size, mirrored: rock() < 0.5 });
   }
   points.smoke.forEach((at, i) => drawSmoke(ctx, at, smoke_size * SMOKE_SCALES[i], seededRandom(`ruin-smoke-${i}`)));
 }

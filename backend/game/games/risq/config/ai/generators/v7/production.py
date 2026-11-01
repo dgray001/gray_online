@@ -50,12 +50,15 @@ def mercenaries() -> list[Record]:
                research(101, "(var(complete_23) > 0) * (var(gold_surplus) > 0)")]
     for unit, priority in ((102, "var(goal_102) - var(own_102) > var(goal_101) - var(own_101)"),
                            (101, "var(goal_101) - var(own_101) >= var(goal_102) - var(own_102)")):
-        count = f"min(var(item.can_afford), {whole(f'(gameVar(gold) - ({reserve})) / max(0.001, var(offer.cost_gold))')}, gameVar(population_limit) - gameVar(population), {whole(f'var(goal_{unit}) - var(own_{unit})')})"
-        hire = dict(action="select", pick=selection("zones", dict(owner="own", at=dict(in_set="home")),
-                                                    rank=["0 - var(target.zone_x)", "0 - var(target.zone_y)"], limit=1),
-                    issue=[dict(hire=dict(unit_id=unit, count=count))])
+        wanted = whole(f'var(goal_{unit}) - var(own_{unit})')
+        share = f"ceil(({wanted}) / max(1, var(n_hire_space)))"
+        count = f"min(var(item.can_afford), {whole(f'(gameVar(gold) - ({reserve})) / max(0.001, var(offer.cost_gold))')}, gameVar(population_limit) - gameVar(population), {share})"
+        in_space = selection("zones", dict(in_set="hire_zones", **{"if": "distance(dest, target) == 0"}),
+                             rank=["var(target.building_player) == var(player_id)", "0 - var(target.zone_x)", "0 - var(target.zone_y)"], limit=1)
+        hire = dict(action="select", pick=in_space, issue=[dict(hire=dict(unit_id=unit, count=count))])
+        per_space = dict(action="for_each", select=selection("spaces", dict(in_set="hire_space")), **{"as": "dest"}, do=[hire])
         actions.append(dict(action="for_each", source="mercenaries", **{"as": "offer"}, do=[
-            branch(f"(var(offer.id) == {unit}) * ({priority})", [hire])]))
+            branch(f"(var(offer.id) == {unit}) * ({priority})", [per_space])]))
     return actions
 
 

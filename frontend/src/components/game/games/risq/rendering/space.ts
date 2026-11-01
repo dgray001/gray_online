@@ -96,7 +96,7 @@ export function drawRisqSpaceBase(
     drawHexagon(ctx, space.center, config.hex_r);
     black_text = fill.getBrightness() > 0.5;
   } else {
-    const override_zones = config.draw_detail === DrawRisqSpaceDetail.OWNERSHIP ? [] : (space.zones?.flat() ?? []);
+    const override_zones = config.draw_detail === DrawRisqSpaceDetail.OWNERSHIP ? [] : (space.zones_flat ?? []);
 
     if (game.getGame()?.background_image) {
       ctx.globalAlpha = 0.5;
@@ -129,10 +129,10 @@ export function drawRisqSpaceBase(
     space.visibility >= RisqVisibilityLevel.FOG
   ) {
     ctx.translate(space.center.x, space.center.y);
-    for (const zone of space.zones?.flat() ?? []) {
+    for (const zone of space.zones_flat ?? []) {
       drawZoneCorpses(ctx, game, zone, space.visibility, config.hex_r, config.rotation);
     }
-    for (const zone of space.zones?.flat() ?? []) {
+    for (const zone of space.zones_flat ?? []) {
       drawForestTrees(ctx, game, zone, config.view_mode, config.hex_r, config.rotation);
     }
     ctx.translate(-space.center.x, -space.center.y);

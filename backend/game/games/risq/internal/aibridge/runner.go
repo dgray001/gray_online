@@ -123,6 +123,9 @@ func behaviorAction(b ai.UnitBehavior) gin.H {
 	if b.AttackBack != nil {
 		action["attack_back"] = *b.AttackBack
 	}
+	if b.AttackStack != nil {
+		action["attack_stack"] = *b.AttackStack
+	}
 	if b.TargetPriority != nil {
 		action["target_priority"] = targetPriorityPayload(b.TargetPriority)
 	}

@@ -14,6 +14,7 @@ type UnitBehaviorFromFrontend struct {
 	Stance            *uint8   `json:"stance"`
 	Interrupt_current *bool    `json:"interrupt_current"`
 	Attack_back       *bool    `json:"attack_back"`
+	Attack_stack      *uint8   `json:"attack_stack"`
 	Target_priority   *[]uint8 `json:"target_priority"`
 }
 

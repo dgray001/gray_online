@@ -19,21 +19,28 @@ class Parameter:
         return value
 
 
+POWER_TECHS = {101: (61, 62, 91), 102: (61, 62, 63, 91), 103: (61, 62, 63, 91), 401: (64, 102)}
+POWER_LEVELS = {
+    101: (1, 1.2, 1, 1.2, 1, 1.2, 1, 1.2),
+    102: (1.5, 1.6, 1.5, 1.9, 1.5, 1.8, 1.8, 2.2, 1.5, 1.6, 1.5, 2, 1.6, 2, 1.8, 2.2),
+    103: (3.3, 4.2, 3.9, 4.9, 3.5, 4.4, 4.1, 5.2, 3.4, 4.2, 3.9, 4.9, 3.5, 4.6, 4.2, 5.4),
+    401: (2.4, 2.5, 2.7, 3.2),
+}
+
 PARAMETERS = {
     "protected_villager_share": Parameter(1, 0, 1),
     "protected_military_producers": Parameter(1, 0, integer=True),
     "protected_military_count": Parameter(20, 0, integer=True),
-    "power_blunt": Parameter(1, 0.001), "power_pierce": Parameter(2),
-    "power_heavy": Parameter(4), "power_siege": Parameter(1.5),
-    "power_villager": Parameter(0.6), "power_farming_bonus": Parameter(0.4),
+    "power_blunt": Parameter(1, 0.001), "power_pierce": Parameter(1.5),
+    "power_heavy": Parameter(3.3), "power_siege": Parameter(2.4),
+    "power_villager": Parameter(0.58), "power_farming_bonus": Parameter(0.26),
     "memory_unit_decay": Parameter(0.3), "memory_retention": Parameter(0.98, 0, 1),
     "memory_producer_growth": Parameter(0.2), "memory_recent_weight": Parameter(0.3, 0, 1),
     "memory_loss_weight": Parameter(1, 0, 1), "memory_population_power": Parameter(2),
-    "unknown_min_power": Parameter(1, 0.001), "unknown_villager_power": Parameter(0.2),
+    "unknown_min_power": Parameter(1.4, 0.001), "unknown_floor": Parameter(1, 0.001),"unknown_villager_power": Parameter(0.2),
     "unknown_villager_share": Parameter(0.7, 0, 1), "unknown_weight": Parameter(1),
     "unknown_base_radius": Parameter(3, integer=True),
     "composition_prior": Parameter(1),
-    "enemy_smith_bonus": Parameter(0.25), "strategic_tech_bonus": Parameter(0.125),
     "tactical_attack_bonus": Parameter(0.25), "tactical_armor_bonus": Parameter(0.15),
     "worker_income": Parameter(6, 0.001), "worker_farming_income": Parameter(1.5),
     "bound_theoretical_income": Parameter(8, 0.001), "bound_reasonable_income": Parameter(7, 0.001),
@@ -73,8 +80,7 @@ PARAMETERS = {
     "utility_enemy_prior": Parameter(1), "utility_building_weight": Parameter(1),
     "utility_survival_exponent": Parameter(0.5, 0, 1), "utility_range_bonus": Parameter(1.25, 1),
     "mix_prior_101": Parameter(1), "mix_prior_102": Parameter(0.5), "mix_prior_103": Parameter(1),
-    "gather_distance_weight": Parameter(100, 0.01), "gather_depletion_penalty": Parameter(10000),
-    "food_gather_speed_weight": Parameter(0),
+    "gather_planning_turns": Parameter(1.25, 0.25, 20), "gather_depletion_penalty": Parameter(10000),
     "site_dist": Parameter(1, 0.01), "site_expand": Parameter(0), "site_aggr": Parameter(0),
     "site_barracks_aggr": Parameter(0.25), "site_redoubt_aggr": Parameter(0.25),
     "site_safe": Parameter(1, 0.01), "site_spread": Parameter(0.25), "site_vision": Parameter(0),
@@ -86,17 +92,18 @@ PARAMETERS = {
     "building_tries": Parameter(3, 1, integer=True), "house_tries": Parameter(1, 1, integer=True),
     "ban_wait": Parameter(4, 1, integer=True), "resend_every": Parameter(4, 1, integer=True),
     "max_new_farms": Parameter(3, 1, 10, integer=True),
-    "vil_crush_odds": Parameter(2.0, 0.1), "vil_unknown": Parameter(0.25, 0.0),
+    "vil_crush_odds": Parameter(1.4, 0.1), "vil_unknown": Parameter(0.25, 0.0),
     "raid_odds": Parameter(1.4, 0.1), "raid_min": Parameter(1, 1, integer=True),
     "raid_max": Parameter(2, 1, integer=True), "raid_frac": Parameter(0.1, 0.0, 1.0),
     "raid_pause": Parameter(20, 1, integer=True),
     "assault_min": Parameter(10, 1), "assault_odds": Parameter(1.3, 0.1),
     "assault_odds_noeco": Parameter(1.1, 0.1), "power_odds": Parameter(1.05, 0.1),
-    "power_odds_noeco": Parameter(0.85, 0.1), "cap_odds": Parameter(0.9, 0.1),
+    "power_odds_noeco": Parameter(0.85, 0.1), "cap_odds": Parameter(0.85, 0.1),
     "cap_odds_noeco": Parameter(0.8, 0.1), "cap_ramp": Parameter(0.8, 0.0, 1.0),
     "retreat_margin": Parameter(0.05, 0.0, 1.0), "engaged_odds": Parameter(1.0, 0.1),
     "engaged_odds_noeco": Parameter(0.8, 0.1), "stage_dist": Parameter(3, 1, integer=True),
-    "rest_dist": Parameter(1, 1, integer=True), "rest_turns": Parameter(2, 1, integer=True),
+    "rest_dist": Parameter(1, 1, integer=True), "rest_turns": Parameter(1, 1, integer=True),
+    "stage_passive": Parameter(1, 0, 1, integer=True), "rest_move": Parameter(1, 0, 1, integer=True),
     "retreat_timeout_turns": Parameter(3, 1, 30, True), "retreat_recovery_turns": Parameter(1, 0, 10, True),
     "skip_rest_margin": Parameter(0.3, 0.0), "skip_stage_margin": Parameter(0.6, 0.0),
     "est_close_ref": Parameter(6.0, 1.0), "est_prio_close": Parameter(0.5, 0.0, 1.0),
@@ -107,7 +114,16 @@ PARAMETERS = {
     "group_share": Parameter(1.0, 0.1, 1.0), "hit_damage": Parameter(1.5, 0.1),
     "kill_ticks": Parameter(1, 1, integer=True),
     "focus": Parameter(4.0, 0.0),
+    "attack_stack": Parameter(2, 0, 255, integer=True),
+    "hire_spaces": Parameter(1, 1, 10, integer=True),
+    "hold_sites": Parameter(3, 1, 99, integer=True),
+    "hold_near_first": Parameter(0, 0, 1, integer=True), "hold_min_army": Parameter(0, 0, 200, integer=True),
+    "hold_cap": Parameter(1, 0, 1),
 }
+
+PARAMETERS.update({f"power_{name}_state_{state}": Parameter(value, 0.001)
+                   for unit, name in ((101, "blunt"), (102, "pierce"), (103, "heavy"), (401, "siege"))
+                   for state, value in enumerate(POWER_LEVELS[unit]) if state})
 
 PARAMETERS.update({f"matchup_{unit}_{enemy}": Parameter(value)
                    for unit, values in ((101, (1, 1.3, 0.4)), (102, (0.75, 1, 0.8)), (103, (1.3, 0.8, 1)))

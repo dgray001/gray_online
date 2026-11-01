@@ -30,6 +30,7 @@ type RisqPlayer struct {
 	default_unit_attack_back       bool
 	default_unit_interrupt_current bool
 	default_unit_target_priority   []defs.TargetCategory
+	default_unit_attack_stack      uint8
 	planned_foundations            map[uint]*RisqPlannedFoundation
 	auto_renewals                  map[uint32]*RisqRenewalQueue
 	researched_techs               map[uint32]bool
@@ -323,6 +324,7 @@ func (p *RisqPlayer) toFrontend(viewer_player_id int, with_history bool) gin.H {
 		player["default_unit_stance"] = p.default_unit_stance
 		player["default_unit_attack_back"] = p.default_unit_attack_back
 		player["default_unit_interrupt_current"] = p.default_unit_interrupt_current
+		player["default_unit_attack_stack"] = p.default_unit_attack_stack
 		player["default_unit_target_priority"] = targetCategoriesToInts(p.default_unit_target_priority)
 		if with_history {
 			player["turn_report"] = p.completed_report.toFrontend()

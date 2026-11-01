@@ -136,6 +136,7 @@ export declare interface RisqSpace {
   coordinate_key: number;
   visibility: number; // See risq_vision.go for value meanings
   zones?: SPACE_ZONES_TYPE;
+  zones_flat?: RisqZone[];
   resources?: Map<number, RisqResource>;
   buildings?: Map<number, RisqBuilding>;
   units?: Map<number, RisqUnit>;

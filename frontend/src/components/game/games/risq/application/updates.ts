@@ -154,6 +154,7 @@ export class RisqUpdates {
     if (this.risq.session.isReplaying()) {
       this.risq.session.setReplaying(false);
       this.risq.replay_panel.close();
+      this.risq.replay_events?.reset();
       this.risq.showMessage('Replay mode exited: new turn started', RISQ_MESSAGE_WARNING_COLOR);
     }
     this.risq.submission.turnStarted();

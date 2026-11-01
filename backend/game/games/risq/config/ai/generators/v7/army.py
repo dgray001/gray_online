@@ -50,7 +50,7 @@ def army_formation_rules() -> list[Record]:
             owner="own", unit_types=["military"],
             not_in_set="raiding_party",
             **{"if": "var(target.is_scout) == 0"}
-        ), let=dict(is_scout="inSet(scout_units, target)"), rank=["0 - var(target.uid)"]),
+        ), let=dict(is_scout="inSet(reserved_units, target)"), rank=["0 - var(target.uid)"]),
         into=dict(bucket="army", mode="replace", var="army_size")
     )
     return [assign_army]
@@ -207,7 +207,7 @@ def army_local_odds_rules() -> list[Record]:
     ]
 
 
-def army_maneuver_rules() -> list[Record]:
+def army_maneuver_rules(stage_passive: bool, rest_move_enabled: bool) -> list[Record]:
     """Executes army movement, grouping, staging, resting, and assault advance."""
     home_space = selection("spaces", dict(in_set="home"), limit=1)
     escape_space = selection("spaces", dict(in_set="retreat_goal"), limit=1)
@@ -233,7 +233,7 @@ def army_maneuver_rules() -> list[Record]:
     target_space = selection("spaces", dict(in_set="army_target_space"), limit=1)
     stage_zones = selection("zones", dict(
         near=dict(distance=1, of=selection("spaces", dict(in_set="army_target_space"))),
-        **{"if": "distance(tgt_space, target) == 1"}
+        **{"if": "(distance(tgt_space, target) == 1) * (var(target.zone_x) == var(tgt_space.x) - var(target.x)) * (var(target.zone_y) == var(tgt_space.y) - var(target.y))"}
     ), rank=["0 - distance(aspace, target)", "0 - distance(tgt_space, target, 1)", f"0 - {space_key('target')}"], limit=1)
     measure_dist = dict(action="for_each", select=center_space, **{"as": "aspace"}, do=[
         dict(action="for_each", select=target_space, **{"as": "tgt_space"}, do=[
@@ -253,21 +253,27 @@ def army_maneuver_rules() -> list[Record]:
     update_stage = variable("army_stage", f"(var(army_stage) == 1) * 2 + (var(army_stage) != 1) * max(var(army_stage), {in_stage_band})", persist=True)
     at_rest = "(var(army_dist_to_target) <= var(tune_rest_dist)) * (var(army_dist_to_target) > 0)"
     update_rest = variable("army_rest", f"(var(army_rest) + 1) * ({at_rest})", persist=True)
-    preparing = f"((var(army_stage) == 1) + (({at_rest}) * (var(army_rest) <= var(tune_rest_turns)) * (1 - var(skip_rest))) > 0)"
+    preparing = f"((var(army_stage) == 1) + (({at_rest}) * (var(army_stage) == 2) * (var(army_rest) <= var(tune_rest_turns)) * (1 - var(skip_rest))) > 0)"
 
     regroup_actors = selection("units", dict(in_set="army_clear", **{"if": f"({active}) * (1 - ({in_center}))"}))
     regroup_move = dict(action="select", actors=regroup_actors, pick=center_space, issue=[dict(move={})])
     waiting_core = selection("units", dict(in_set="army_clear", **{"if": f"({active}) * (1 - ({is_grouped})) * ({in_center})"}))
     stop_core = dict(action="select", actors=waiting_core, issue=[dict(stop={})])
-    prep_actors = selection("units", dict(owner="own", bucket="army", **{"if": f"({active}) * ({is_grouped}) * ({preparing}) * ({in_center})"}))
-    prep_stop = dict(action="select", actors=prep_actors, issue=[dict(stop={}), dict(set_behavior=dict(stance="passive", attack_back=True, interrupt_current=False))])
+    prep_actors = selection("units", dict(owner="own", bucket="army", **{"if": f"({active}) * ({is_grouped}) * ({preparing}) * (1 - ({at_rest})) * ({in_center})"}))
+    passive = [dict(set_behavior=dict(stance="passive", attack_back=True, interrupt_current=False))] if stage_passive else []
+    prep_stop = dict(action="select", actors=prep_actors, issue=[dict(stop={}), *passive])
+    rest_actors = selection("units", dict(owner="own", bucket="army", **{"if": f"({active}) * ({is_grouped}) * ({preparing}) * ({at_rest}) * ({in_center})"}))
+    rest_behavior = dict(action="select", actors=rest_actors, issue=[dict(stop={}), *passive])
+    facing_here = "(var(target.zone_x) == var(army_target_x) - var(army_center_x)) * (var(target.zone_y) == var(army_target_y) - var(army_center_y))"
+    rest_move = dict(action="select", actors=rest_actors, pick=selection("zones", dict(at=dict(in_set="army_space"), **{"if": facing_here}), limit=1),
+                     match=dict(where={"if": "distance(actor, target) == 0"}), issue=[dict(move=dict(to="zone"))])
     stage_actors = selection("units", dict(in_set="army_clear", **{"if": f"({active}) * ({is_grouped}) * (var(army_stage) == 2) * (var(army_dist_to_target) > var(tune_rest_dist)) * ({in_center})"}))
     next_space = selection("spaces", dict(in_set="attack_step"), limit=1)
     stage_step = dict(action="select", actors=stage_actors, pick=next_space,
                       match=dict(where={"if": "distance(actor, target) <= 1"}), issue=[dict(move={})])
-    stage_move = dict(action="select", actors=stage_actors, pick=selection("zones", dict(in_set="stage_zone"), limit=1),
-                      match=dict(where={"if": "(distance(actor, target) <= 1) * (var(target.x) == var(attack_step_x)) * (var(target.y) == var(attack_step_y))"}),
-                      issue=[dict(move=dict(to="zone"))])
+    facing_step = "(var(target.zone_x) == var(army_target_x) - var(attack_step_x)) * (var(target.zone_y) == var(army_target_y) - var(attack_step_y))"
+    stage_move = dict(action="select", actors=stage_actors, pick=selection("zones", dict(at=dict(in_set="attack_step"), **{"if": facing_step}), limit=1),
+                      match=dict(where={"if": "distance(actor, target) <= 1"}), issue=[dict(move=dict(to="zone"))])
     can_advance = f"({active}) * ({is_grouped}) * (1 - {preparing}) * ((var(skip_stage) > 0) + (var(army_stage) == 0) + ({at_rest}) > 0)"
     advance_actors = selection("units", dict(in_set="army_clear", **{"if": f"({can_advance}) * ({in_center})"}))
     advance_behavior = dict(action="select", actors=advance_actors, issue=[dict(set_behavior=dict(stance="defensive", attack_back=True, interrupt_current=False))])
@@ -279,4 +285,4 @@ def army_maneuver_rules() -> list[Record]:
     return [store("army_at_enemy", army_at_enemy), army_clear, retreat_behavior, retreat_move, hold_behavior, hold_move,
             variable("army_dist_to_target", 999), variable("army_in_center", army_in_center), store("stage_zone", selection("zones", {"if": "0"})),
             variable("army_core_can_fight", core_ready), variable("army_local_plan", local_plan),
-            measure_dist, update_stage, update_rest, stop_core, regroup_move, prep_stop, stop_blocked, stage_step, stage_move, advance_behavior, advance_move]
+            measure_dist, update_stage, update_rest, stop_core, regroup_move, prep_stop, rest_behavior, *([rest_move] if rest_move_enabled else []), stop_blocked, stage_step, stage_move, advance_behavior, advance_move]

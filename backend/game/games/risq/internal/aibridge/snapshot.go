@@ -13,6 +13,8 @@ type snapGame struct {
 	Players    []snapPlayer   `json:"players"`
 	Spaces     [][]*snapSpace `json:"spaces"`
 	Regions    []snapRegion   `json:"regions"`
+
+	MercenariesNeedRegion bool `json:"mercenaries_need_region"`
 	// adjacencies other than the normal border between coordinate neighbors
 	SpaceLinks []snapSpaceLink `json:"space_links"`
 }
@@ -98,6 +100,7 @@ type snapUnit struct {
 	Stance           defs.UnitStance `json:"stance"`
 	InterruptCurrent bool            `json:"interrupt_current"`
 	AttackBack       bool            `json:"attack_back"`
+	AttackStack      uint8           `json:"attack_stack"`
 	TargetPriority   []int           `json:"target_priority"`
 	CombatStats      struct {
 		Health    float64 `json:"health"`

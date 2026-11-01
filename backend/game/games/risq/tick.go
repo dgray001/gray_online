@@ -41,13 +41,14 @@ func (r *GameRisq) resolveActiveOrders() {
 	r.captureTickBaseline()
 	for {
 		r.beginTickHistoryPass()
-		clear(r.projected_damage)
 		r.autoRenewBuildings()
 		orderables := make([]Orderable, 0)
 		for o := range r.allOrderables() {
 			orderables = append(orderables, o)
 		}
 		r.blocking_walls = r.computeBlockingWalls()
+		r.prepareStancePicks(orderables)
+		r.computeStanceAllotments(orderables)
 		intent_count := 0
 		for _, o := range orderables {
 			if o.tickIntent(r) {

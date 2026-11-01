@@ -202,6 +202,13 @@ func parseUnitBehavior(raw map[string]any) (UnitBehavior, error) {
 	if b, ok := raw["attack_back"].(bool); ok {
 		behavior.AttackBack = &b
 	}
+	if f, ok := raw["attack_stack"].(float64); ok {
+		if f < 0 || f > math.MaxUint8 || f != math.Trunc(f) {
+			return behavior, fmt.Errorf("attack_stack must be a whole number in 0..255")
+		}
+		stack := uint8(f)
+		behavior.AttackStack = &stack
+	}
 	priority, err := parseTargetPriority(raw)
 	if err != nil {
 		return behavior, err

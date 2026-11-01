@@ -15,6 +15,11 @@ import type { GameRisqFromServer, SubmissionNoticeData } from '../transport/snap
 import { serverToGameRisq } from '../transport/snapshot_conversion';
 import type { RisqTurnReport } from '../transport/turn_report';
 import { replaySnapshot } from './replay/replay_snapshot';
+import type { ReplayEvent } from '../model/replay_event';
+import { productionEvents } from './replay/production_events';
+import { battleEvents } from './replay/battle_events';
+import { eliminationEvents } from './replay/elimination_events';
+import { disruptionEvents } from './replay/disruption_events';
 
 /** Maps each explored space's coordinate key to the region it belongs to */
 function buildRegionLookup(regions: RisqRegion[]): Map<number, RisqRegion> {
@@ -41,6 +46,11 @@ export class RisqSession {
   private replay_stop = 0;
   private server_game?: GameRisqFromServer;
   private live_game?: GameRisq;
+  private replay_events: ReplayEvent[] = [];
+
+  getReplayEvents(): readonly ReplayEvent[] {
+    return this.replay_events;
+  }
 
   isReplaying(): boolean {
     return this.replaying;
@@ -88,6 +98,14 @@ export class RisqSession {
   replaceSnapshot(new_game: GameRisqFromServer): void {
     this.server_game = new_game;
     this.live_game = serverToGameRisq(new_game);
+    this.replay_events = this.live_game?.last_turn_journal
+      ? [
+          ...productionEvents(this.live_game.last_turn_journal, this.live_game),
+          ...battleEvents(this.live_game.last_turn_journal, this.player_id, this.live_game.space_links),
+          ...eliminationEvents(this.live_game.last_turn_journal, this.live_game, this.player_id),
+          ...disruptionEvents(this.live_game.last_turn_journal, this.live_game, this.player_id),
+        ].sort((a: ReplayEvent, b: ReplayEvent): number => a.tick - b.tick)
+      : [];
     this.adoptGame(this.live_game);
     if (this.replaying) {
       this.applyReplayTick(this.replay_tick);

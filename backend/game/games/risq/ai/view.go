@@ -162,6 +162,7 @@ type UnitView struct {
 	Stance           UnitStance
 	InterruptCurrent bool
 	AttackBack       bool
+	AttackStack      uint8
 	TargetPriority   []TargetCategory
 	ActiveOrders     []ActiveUnitOrder
 	Health           float64
@@ -173,6 +174,7 @@ type UnitBehavior struct {
 	Stance           *UnitStance
 	InterruptCurrent *bool
 	AttackBack       *bool
+	AttackStack      *uint8
 	TargetPriority   []TargetCategory
 }
 
@@ -385,6 +387,7 @@ type View interface {
 	KnownResources(category ResourceCategory) []ResourceView
 	TurnNumber() int
 	MapSize() int
+	MercenariesNeedRegion() bool
 	NumPlayers() int
 	AllSpaces() []SpaceInfo
 	AllRegions() []RegionInfo

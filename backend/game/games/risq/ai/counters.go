@@ -95,6 +95,8 @@ func evalGameVar(view View, internals *Internals, field string) (float64, error)
 		return float64(view.MapSize()), nil
 	case "num_players":
 		return float64(view.NumPlayers()), nil
+	case "mercenaries_need_region":
+		return boolNumber(view.MercenariesNeedRegion()), nil
 	}
 	return 0, fmt.Errorf("unknown gameVar field %q", field)
 }

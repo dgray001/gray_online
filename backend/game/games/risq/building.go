@@ -119,7 +119,8 @@ func (b *RisqBuilding) resolveHealthDelta(r *GameRisq) {
 	if b.health_synced_stamina != b.stamina_remaining {
 		old_ratio := constructionHealthRatio(b.health_synced_stamina, b.construction_stamina_total)
 		new_ratio := constructionHealthRatio(b.stamina_remaining, b.construction_stamina_total)
-		b.cs.queueHealth(float64(b.cs.max_health) * (new_ratio - old_ratio))
+		max_health := float64(b.cs.max_health)
+		b.cs.queueHealth(util.RoundTo(max_health*new_ratio, healthRoundingPlaces) - util.RoundTo(max_health*old_ratio, healthRoundingPlaces))
 		b.health_synced_stamina = b.stamina_remaining
 	}
 	if b.cs.pending_health_delta == 0 {

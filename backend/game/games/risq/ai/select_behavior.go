@@ -5,7 +5,7 @@ import "fmt"
 func checkBehaviorOptions(options map[string]any, actor_kind string) error {
 	allowed := []string{"interrupt_current", "target_priority"}
 	if actor_kind == "units" {
-		allowed = append(allowed, "stance", "attack_back")
+		allowed = append(allowed, "stance", "attack_back", "attack_stack")
 	} else {
 		allowed = append(allowed, "auto_attack")
 	}
@@ -19,7 +19,7 @@ func checkBehaviorOptions(options map[string]any, actor_kind string) error {
 }
 
 func checkBehaviorTypes(options map[string]any) error {
-	for _, key := range []string{"stance", "target_priority", "interrupt_current", "attack_back", "auto_attack"} {
+	for _, key := range []string{"stance", "target_priority", "interrupt_current", "attack_back", "auto_attack", "attack_stack"} {
 		if value, present := options[key]; present {
 			var valid bool
 			switch key {
@@ -27,6 +27,8 @@ func checkBehaviorTypes(options map[string]any) error {
 				_, valid = value.(string)
 			case "target_priority":
 				_, valid = value.([]any)
+			case "attack_stack":
+				_, valid = value.(float64)
 			default:
 				_, valid = value.(bool)
 			}

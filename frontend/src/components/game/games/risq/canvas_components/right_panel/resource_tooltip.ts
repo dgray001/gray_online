@@ -207,7 +207,7 @@ export function drawScoreRow(
     fill_style: score.color.getString(),
     baseline: 'middle',
     align: 'right',
-    font: '15px serif',
+    font: '18px serif',
   });
   if (score.eliminated) {
     const text_w = Math.min(ctx.measureText(text).width, 0.8 * geom.w);

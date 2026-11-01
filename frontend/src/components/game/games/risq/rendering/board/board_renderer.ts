@@ -74,6 +74,7 @@ export class RisqBoardRenderer {
   private last_time = Date.now();
   private links: RisqLinks;
   private walls = new RisqWallPass();
+  private centers_key?: { spaces: GameRisq['spaces']; hex_r: number };
 
   constructor(
     private risq: RisqDrawHost,
@@ -83,7 +84,8 @@ export class RisqBoardRenderer {
       Partial<Pick<RisqOrderOverlays, 'drawFlags'>>,
     private drag_rect: () => { min: Point2D; max: Point2D } | undefined,
     private components: CanvasComponent[],
-    private hud_scale: () => number = (): number => 1
+    private hud_scale: () => number = (): number => 1,
+    private events?: CanvasComponent & { drawZones?: (ctx: CanvasRenderingContext2D) => void }
   ) {
     this.links = new RisqLinks(session, viewport);
   }
@@ -144,12 +146,15 @@ export class RisqBoardRenderer {
     this.drawBackgroundImage(ctx, game);
     const on_screen_spaces: RisqSpace[] = [];
     const space_text_colors: boolean[] = [];
+    const centers_cached = this.centers_key?.spaces === game.spaces && this.centers_key.hex_r === hex_r;
     for (const row of game.spaces) {
       for (const space of row) {
         if (!space) {
           continue;
         }
-        space.center = this.viewport.coordinateToCanvas(space.coordinate);
+        if (!centers_cached) {
+          space.center = this.viewport.coordinateToCanvas(space.coordinate);
+        }
         if (!this.viewport.isSpaceOnScreen(space, bounds)) {
           continue;
         }
@@ -157,6 +162,7 @@ export class RisqBoardRenderer {
         space_text_colors.push(drawRisqSpaceBase(ctx, this.risq, space, draw_config));
       }
     }
+    this.centers_key = { spaces: game.spaces, hex_r };
     const zone_border_config: DrawRisqSpaceConfig = { ...draw_config, zone_borders_only: true };
     for (const [i, space] of on_screen_spaces.entries()) {
       drawRisqSpaceContent(ctx, this.risq, space, zone_border_config, space_text_colors[i]);
@@ -175,6 +181,7 @@ export class RisqBoardRenderer {
     } else {
       this.walls.reset();
     }
+    this.events?.drawZones?.(ctx);
     this.order_overlays.drawRanges(ctx);
     for (const selected of [false, true]) {
       this.order_overlays.draw(ctx, selected);
@@ -215,6 +222,7 @@ export class RisqBoardRenderer {
     ctx.save();
     ctx.setTransform(scale, 0, 0, scale, 0, 0);
     ctx.transform(board.a, board.b, board.c, board.d, board.e, board.f);
+    this.events?.draw(ctx, transform, dt);
     for (const component of this.components) {
       component.draw(ctx, transform, dt);
     }

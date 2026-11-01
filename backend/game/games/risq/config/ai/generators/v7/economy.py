@@ -26,7 +26,7 @@ def workforce(definitions: Definitions) -> list[Record]:
                variable("bank_rate", f"max(0, gameVar(food) + gameVar(wood) + gameVar(stone) - {cost('unit', 1, 'food')} - {cost('building', 2, 'wood')}) / var(tune_investment_horizon)"),
                variable("committed_rate", f"var(producers_22) * var(barracks_running_cost) + var(producers_23) * var(redoubt_running_cost) + var(complete_1) * min(1, max(0, var(worker_want_last))) * {total_cost('unit', 1, RESOURCES[:3])} * var(production_rate_1) * (1 - var(est_press))"),
                variable("sustainable_surplus", "var(available_gatherers) * var(worker_income) + max(0, var(bank_rate) - var(tune_bank_surplus_reserve)) - var(committed_rate)"),
-               variable("army_target", "gameVar(population_max) * (1 - var(tune_worker_share))"),
+               variable("army_target", "var(population_ceiling) * (1 - var(tune_worker_share))"),
                variable("forecast_barracks", "max(1, min(var(army_target) / var(tune_production_turnover), var(producers_22) + var(tune_production_lookahead) * max(1, var(barracks_want_last))))")]
     for resource in RESOURCES[:3]:
         flow = (f"var(forecast_barracks) * max({cost('unit', 101, resource)} * var(production_rate_101), {cost('unit', 102, resource)} * var(production_rate_102))"
@@ -41,7 +41,7 @@ def workforce(definitions: Definitions) -> list[Record]:
         actions.extend([variable(f"forecast_{resource}", flow),
                         variable(f"worker_demand_{resource}", f"max(0, var(forecast_{resource}) + (({reserve}) - gameVar({resource})) / var(tune_planning_horizon))")])
     funding = " + ".join(f"var(worker_demand_{resource})" for resource in RESOURCES[:3])
-    actions.append(variable("worker_goal", f"min(max(var(tune_worker_floor), gameVar(population_max) * var(tune_worker_share)), max(var(tune_worker_floor), ({funding}) / var(worker_income) + var(tune_worker_buffer)))"))
+    actions.append(variable("worker_goal", f"min(max(var(tune_worker_floor), var(population_ceiling) * var(tune_worker_share)), max(var(tune_worker_floor), ({funding}) / var(worker_income) + var(tune_worker_buffer)))"))
     actions.append(variable("worker_want_last", "max(0, var(worker_goal) - var(own_1)) * (var(complete_1) > 0)", True))
     return actions
 
@@ -53,7 +53,7 @@ def infrastructure(definitions: Definitions) -> list[Record]:
             variable("want_23", f"(var(own_1) > 0) * (var(sustainable_surplus) >= var(tune_additional_producer_margin) * var(redoubt_running_cost)) * ((var(gold_income) + gameVar(gold) / var(tune_investment_horizon) >= (var(producers_23) + 1) * {cost('unit', 103, 'gold')} * var(production_rate_103)) + (var(goal_401) > var(own_401)) > 0)"),
             variable("barracks_want_last", "min(1, var(want_22))", True),
             variable("want_1", "(var(own_1) > 0) * (var(producers_1) == 0)"),
-            variable("want_2", f"(var(own_1) > 0) * (gameVar(population_limit) < gameVar(population_max)) * max(0, (var(population_flow) * var(tune_housing_horizon) + 1 - var(headroom)) / {definitions.buildings[2]['population_support']})"),
+            variable("want_2", f"(var(own_1) > 0) * (gameVar(population_limit) < var(population_ceiling)) * max(0, (var(population_flow) * var(tune_housing_horizon) + 1 - var(headroom)) / {definitions.buildings[2]['population_support']})"),
             variable("army_investment", " + ".join(f"var(own_{unit}) * {total_cost('unit', unit)}" for unit in (101, 102, 103))),
             variable("projected_army_investment", "var(army_investment) + (var(producers_22) * var(barracks_running_cost) + var(producers_23) * var(redoubt_running_cost)) * var(tune_investment_horizon)"),
             variable("want_11", f"(var(own_1) > 0) * (var(buildings_11) + var(foundations_11) == 0) * (var(projected_army_investment) * var(tune_tactical_attack_bonus) >= {total_cost('tech', 61)} + {total_cost('building', 11)})")]

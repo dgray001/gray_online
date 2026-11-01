@@ -103,7 +103,7 @@ func (r *GameRisq) stateHash(dump io.Writer) uint64 {
 		if u.garrisoned_in != nil {
 			garrison = u.garrisoned_in.internal_id
 		}
-		fmt.Fprintf(h, "u%d p%d t%d z%s h%s s%d g%d d%t sn%d bk%t gs%s", id, u.player_id, u.unit_id, hashZone(u.zone), hashFloat(u.cs.health), u.current_stamina, garrison, u.deleted, u.stance, u.attack_back, hashGatherSlot(u.gather_slot))
+		fmt.Fprintf(h, "u%d p%d t%d z%s h%s s%d g%d d%t sn%d bk%t as%d gs%s", id, u.player_id, u.unit_id, hashZone(u.zone), hashFloat(u.cs.health), u.current_stamina, garrison, u.deleted, u.stance, u.attack_back, u.attack_stack, hashGatherSlot(u.gather_slot))
 		hashBehavior(h, &u.orderableBase)
 		fmt.Fprint(h, ";")
 		hashOrders(h, u.order_queue.active_orders)
@@ -129,7 +129,7 @@ func (r *GameRisq) stateHash(dump io.Writer) uint64 {
 func (r *GameRisq) hashPlayersAndBoard(h io.Writer) {
 	for _, p := range r.players {
 		res := p.resources
-		fmt.Fprintf(h, "db%d:%t:%t:%v", p.default_unit_stance, p.default_unit_attack_back, p.default_unit_interrupt_current, p.default_unit_target_priority)
+		fmt.Fprintf(h, "db%d:%t:%t:%d:%v", p.default_unit_stance, p.default_unit_attack_back, p.default_unit_interrupt_current, p.default_unit_attack_stack, p.default_unit_target_priority)
 		fmt.Fprintf(h, "p%d f%s w%s s%s g%s pop%d/%d", p.player.Player_id, hashFloat(res.food), hashFloat(res.wood), hashFloat(res.stone), hashFloat(res.gold), nonDeletedUnitCount(p.units), p.populationLimit())
 		for _, tech_id := range slices.Sorted(maps.Keys(p.researched_techs)) {
 			fmt.Fprintf(h, " t%d:%t", tech_id, p.researched_techs[tech_id])

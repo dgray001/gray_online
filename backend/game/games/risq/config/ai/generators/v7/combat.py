@@ -5,6 +5,11 @@ from common import Record, aggregate, power, selection, store, variable
 from common import army_order_available as micro_available
 
 
+def attack_stack_rules(stack: int) -> list[Record]:
+    mismatched = selection("units", dict(owner="own", unit_types=["military"], **{"if": f"var(actor.attack_stack) != {stack}"}))
+    return [dict(action="select", actors=mismatched, issue=[dict(set_behavior=dict(attack_stack=stack))])]
+
+
 def combat_micro_rules() -> list[Record]:
     """Tactical combat micro: dynamic stance management, target spreading, focus fire, and spillover."""
     enemy_mil_spaces = selection("spaces", dict(near=dict(distance=0, of=selection("units", dict(owner="enemy", unit_types=["military"])))))

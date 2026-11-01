@@ -1,5 +1,14 @@
 # V7 protection and funding tuning
 
+Current working v7 also includes rate-aware gathering with a 1.25-turn window and two search passes.
+Villager power is 0.58 before Farming and 0.84 after; civilian crush odds are 1.4.
+Base military powers: blunt 1; piercing 1.5; heavy 3.3; siege 2.4.
+Army calibration: 15,300 fights, 192 wall checks; held-out decisive accuracy 86%, versus previous estimates' 75%.
+Own research selects fitted tech-state powers once; enemy techs remain estimated from buildings and range.
+Catapults: base 2.4; Ballistics 2.5; Shrapnel 2.7; both 3.2. Escalades has no flat open-field power bonus.
+Recruitment, interrupted-work resumption, worker allocation and construction logic are unchanged.
+The 500-game results below are a pre-change baseline, not an evaluation of these additions.
+
 Scope: limit protected demand and tune existing parameters; retain production-first worker allocation.
 The only model structure added is villager, military-count and military-producer protection limits.
 Default protection: villagers through their current goal; oldest one military producer; military below 20 units.

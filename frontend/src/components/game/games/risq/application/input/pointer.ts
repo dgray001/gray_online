@@ -21,6 +21,7 @@ const DRAG_SELECT_THRESHOLD = 3;
 /** Routes board mouse events between the overlay components, hover, order dispatch, and click/drag selection */
 export class RisqPointer {
   private armed_click = false;
+  private pressed_component?: CanvasComponent;
   private dispatching_mousemove = false;
   private dragging_selection = false;
   private drag_additive = false;
@@ -40,7 +41,8 @@ export class RisqPointer {
     private planning: RisqOrderPlanning,
     private dispatch: RisqOrderDispatch,
     private board_clicks: RisqBoardClicks,
-    private hud_scale: () => number
+    private hud_scale: () => number,
+    private events?: CanvasComponent
   ) {}
 
   /** Screen-space rectangle of an in-progress drag selection */
@@ -82,7 +84,7 @@ export class RisqPointer {
         return true;
       }
     }
-    return false;
+    return this.events?.scroll?.(dy, mode) ?? false;
   }
 
   mousemove(m: Point2D, screen: Point2D, transform: BoardTransformData, modifiers: ModifierKeys): void {
@@ -109,7 +111,12 @@ export class RisqPointer {
     } finally {
       this.dispatching_mousemove = false;
     }
-    board.setPanSuppressed(false, this.panels_hovered());
+    if (hovered_other_component) {
+      this.events?.setHovering(false);
+    } else {
+      hovered_other_component = this.events?.mousemove(m, hud_screen, transform) ?? false;
+    }
+    board.setPanSuppressed(false, this.panels_hovered() || !!this.events?.isHovering());
     if (this.hover.update(hovered_other_component)) {
       this.cursor.update(modifiers.ctrl);
     } else {
@@ -122,6 +129,9 @@ export class RisqPointer {
   }
 
   cancelInput(): void {
+    this.pressed_component = undefined;
+    this.events?.setClicking(false);
+    this.events?.setHovering(false);
     this.dragging_selection = false;
     this.hover.clearClicks();
     this.hover.leave();
@@ -139,8 +149,13 @@ export class RisqPointer {
   // returns false if mousedown event should initiate dragging
   mousedown(e: MouseEvent): boolean {
     this.armed_click = false;
-    if (this.components.map((c) => c.mousedown(e)).some(Boolean)) {
-      return true;
+    this.recalculate();
+    for (const component of [...this.components, ...(this.events ? [this.events] : [])]) {
+      if (component.mousedown(e)) {
+        this.pressed_component = component;
+        this.hover.clearClicks();
+        return true;
+      }
     }
     if (this.armed.anythingArmed() && (e.button === 0 || e.button === 2)) {
       this.armed_click = true;
@@ -148,7 +163,7 @@ export class RisqPointer {
         this.armed.disarmAll();
       } else if (this.session.canGiveOrders()) {
         if (this.armed.getArmedOrder() === RisqOrderType.OrderType_BuyMercenary) {
-          this.dispatch.placeMercenary(e.ctrlKey);
+          this.dispatch.placeMercenary(e.ctrlKey, e.shiftKey ? 5 : 1);
         } else {
           this.orderSelection(e.ctrlKey);
         }
@@ -222,6 +237,13 @@ export class RisqPointer {
   }
 
   mouseup(e: MouseEvent): void {
+    if (this.pressed_component) {
+      const component = this.pressed_component;
+      this.pressed_component = undefined;
+      component.mouseup(e);
+      this.hover.clearClicks();
+      return;
+    }
     const armed_before = this.armed.anythingArmed();
     for (const component of this.components) {
       component.mouseup(e);

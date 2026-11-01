@@ -49,12 +49,14 @@ import { RisqControlGroupGrid } from './canvas_components/bottom_panel/control_g
 import { RisqIdleGrid } from './canvas_components/bottom_panel/idle_grid';
 import { RISQ_MESSAGE_WARNING_COLOR, RisqMessageQueue } from './canvas_components/message_queue';
 import { RisqReplayPanel } from './canvas_components/replay_panel/replay_panel';
+import { RisqReplayEvents } from './canvas_components/replay_panel/replay_events';
 
 import './risq.scss';
 import '../../util/canvas_board/canvas_board';
 import './dialogs/tech_tree_dialog/tech_tree_dialog';
 
 const PANEL_BACKGROUND = 'rgb(222, 184, 135)';
+const REPLAY_EVENTS_ENABLED = true;
 
 /** Composition root: owns the collaborators, wires them to the canvas board, and applies server updates */
 export class DwgRisq extends DwgElement implements HotkeyHost {
@@ -65,6 +67,8 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
   private last_board_size?: Point2D;
   private unsubscribe_settings?: () => void;
   private initialization_controller = new AbortController();
+  private pending_replay_tick = 0;
+  private replay_frame = 0;
   private image_cache = new RisqImageCache();
   readonly corpse_layout = new RisqCorpseLayout();
 
@@ -123,6 +127,13 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
     this.left_panel,
     this.planning
   );
+  readonly replay_events = this.createReplayEvents();
+
+  private createReplayEvents(): RisqReplayEvents | undefined {
+    if (REPLAY_EVENTS_ENABLED) {
+      return new RisqReplayEvents(this, (): CanvasComponent[] => this.canvas_components);
+    }
+  }
   private cursor = new RisqCursorController(this, () => this.board, this.armed, this.targeting, this.selection);
   readonly commands = new RisqCommands(this, this.session, this.orders_model, this.planning, this.armed, (t, c) =>
     this.showMessage(t, c)
@@ -166,7 +177,8 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
     this.planning,
     this.dispatch,
     new RisqBoardClicks(this.session, this.viewport, this.selection, this.left_panel, this.planning),
-    () => this.hud_scale
+    () => this.hud_scale,
+    this.replay_events
   );
   private hotkeys = new RisqHotkeyController(
     this,
@@ -193,7 +205,8 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
     this.order_overlays,
     () => this.pointer.dragRect(),
     this.canvas_components,
-    () => this.hud_scale
+    () => this.hud_scale,
+    this.replay_events
   );
 
   constructor() {
@@ -212,6 +225,7 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
   }
 
   override disconnectedCallback(): void {
+    this.replay_events?.reset();
     document.removeEventListener('dialog_opened', this.handleDialogOpened);
     this.commands.auto_renew.reset();
     this.commands.gather_points.reset();
@@ -268,6 +282,7 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
   }
 
   async initialize(abstract_game: DwgGame, game: GameRisqFromServer): Promise<void> {
+    this.replay_events?.reset();
     this.commands.auto_renew.reset();
     this.commands.gather_points.reset();
     this.abstract_game = abstract_game;
@@ -400,6 +415,7 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
   }
 
   toggleReplay(): void {
+    this.replay_events?.reset();
     const journal = this.getGame()?.last_turn_journal;
     const replaying = !this.session.isReplaying() && !!journal;
     this.session.setReplaying(replaying);
@@ -407,7 +423,8 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
     this.hover.forget();
     if (replaying) {
       this.replay_panel.open(journal.tick_count);
-      this.showReplayTick(0);
+      this.pending_replay_tick = 0;
+      this.applyReplayTick(0);
     } else {
       this.replay_panel.close();
       this.session.endReplay();
@@ -417,10 +434,22 @@ export class DwgRisq extends DwgElement implements HotkeyHost {
     this.showMessage(replaying ? 'Replay mode started' : 'Replay mode exited', RISQ_MESSAGE_WARNING_COLOR);
   }
 
-  showReplayTick(value: number): void {
+  private applyReplayTick(value: number): void {
     this.session.showReplayTick(value);
     this.hover.forget();
     this.refreshPanels();
+  }
+
+  showReplayTick(value: number): void {
+    this.pending_replay_tick = value;
+    if (this.replay_frame === 0) {
+      this.replay_frame = requestAnimationFrame((): void => {
+        this.replay_frame = 0;
+        if (this.session.isReplaying()) {
+          this.applyReplayTick(this.pending_replay_tick);
+        }
+      });
+    }
   }
 
   toggleIdleCategory(category: IdleCategory): void {

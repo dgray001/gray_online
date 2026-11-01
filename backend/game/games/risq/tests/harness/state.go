@@ -18,6 +18,7 @@ type Unit struct {
 	CurrentStamina int     `json:"current_stamina"`
 	TurnStamina    int     `json:"turn_stamina"`
 	GarrisonedIn   *uint64 `json:"garrisoned_in"`
+	AttackStack    uint8   `json:"attack_stack"`
 	ActiveOrders   []struct {
 		InternalID uint64 `json:"internal_id"`
 		OrderType  uint8  `json:"order_type"`

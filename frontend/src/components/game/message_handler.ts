@@ -252,9 +252,7 @@ async function handleGameUpdate(game: DwgGame, message: ServerMessage): Promise<
       bytes: message.content.length,
       parse_ms: performance.now() - parse_start,
     });
-    console.log(
-      `Received game update ${game_update_id}${game_base.persistant_history ? `: ${JSON.stringify(update_message)}` : ''}`
-    );
+    console.log(`Received game update ${game_update_id}`);
     if (game_base.persistant_history) {
       game_base.updates?.set(game_update_id, update_message);
     } else if (game_update_id > (game_base.highest_received_update_id ?? 0)) {

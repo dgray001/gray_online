@@ -4,188 +4,189 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"slices"
 
-	"github.com/dgray001/gray_online/game"
 	"github.com/dgray001/gray_online/game/game_utils"
 	"github.com/dgray001/gray_online/util"
 )
 
 /**
-Theory model 4 keeps track of all cards based on both definitively known information
-and inferences based on playstyle. For example, if another player bids high the
-model will increase the likelihood that the player has high cards
+Theory model 4b plays by a contract planner on beliefs that also use bid inference:
+other players' bids shift which cards they are likely to hold
 */
 
+const t4LogitLimit = 5.0
+
 type FiddlesticksAiModelTheory4 struct {
-	FiddlesticksAiModelTheory3
-	bet_optimism   float64
-	trick_chasing  float64
-	trump_hoarding float64
-	void_hunting   float64
-	vindictiveness float64
-	bid_trust      float64
-	bid_sigma      float64
-	levels         []float64
+	win_vs_all_trump_factor    float64
+	win_vs_all_nontrump_factor float64
+	min_win_weight_factor      float64
+	bet_scale                  float64
+	bet_optimism               float64
+	trump_hoarding             float64
+	void_hunting               float64
+	vindictiveness             float64
+	bid_trust                  float64
+	bid_sigma                  float64
+	temperature                float64
+	overtrick_aversion         float64
+	undertrick_aversion        float64
+	levels                     []float64
+	cards                      [52]*t4Location
+	hand                       [52]*t4HandCard
+	opponents                  []*t4Opponent // indexed by player id, nil for the model's own seat
+	unknown_cards              int
+	base_prob_kitty            float64
+	base_prob_hand             float64
+	locations_stale            bool
 }
 
 func createFiddlesticksAiModelTheory4(model_input map[string]string) *FiddlesticksAiModelTheory4 {
 	m := &FiddlesticksAiModelTheory4{
-		FiddlesticksAiModelTheory3: *createFiddlesticksAiModelTheory3(model_input),
+		win_vs_all_trump_factor:    1.121,
+		win_vs_all_nontrump_factor: 0.251,
+		min_win_weight_factor:      0.634,
+		bet_scale:                  1.125,
+		bet_optimism:               -0.188,
+		bid_trust:                  1.778,
 		bid_sigma:                  1,
+		temperature:                0.053,
+		overtrick_aversion:         1.653,
+		undertrick_aversion:        1.192,
+		trump_hoarding:             0.602,
+		void_hunting:               0.208,
+		vindictiveness:             1.196,
+	}
+	m.initCards()
+	targets := map[string]*float64{
+		"win_vs_all_trump_factor":    &m.win_vs_all_trump_factor,
+		"win_vs_all_nontrump_factor": &m.win_vs_all_nontrump_factor,
+		"min_win_weight_factor":      &m.min_win_weight_factor,
+		"bet_scale":                  &m.bet_scale,
+		"bet_optimism":               &m.bet_optimism,
+		"trump_hoarding":             &m.trump_hoarding,
+		"void_hunting":               &m.void_hunting,
+		"vindictiveness":             &m.vindictiveness,
+		"bid_trust":                  &m.bid_trust,
+		"bid_sigma":                  &m.bid_sigma,
+		"planner_temperature":        &m.temperature,
+		"overtrick_aversion":         &m.overtrick_aversion,
+		"undertrick_aversion":        &m.undertrick_aversion,
 	}
 	for k, v := range model_input {
-		switch k {
-		case "bid_sigma":
-			m.bid_sigma = util.ParseFloat(v)
-		case "bet_optimism":
-			m.bet_optimism = util.ParseFloat(v)
-		case "trick_chasing":
-			m.trick_chasing = util.ParseFloat(v)
-		case "trump_hoarding":
-			m.trump_hoarding = util.ParseFloat(v)
-		case "void_hunting":
-			m.void_hunting = util.ParseFloat(v)
-		case "vindictiveness":
-			m.vindictiveness = util.ParseFloat(v)
-		case "bid_trust":
-			m.bid_trust = util.ParseFloat(v)
-		default:
-			fmt.Fprintln(os.Stderr, "Unknown model input key for theory model 4:", k)
+		if target, ok := targets[k]; ok {
+			*target = util.ParseFloat(v)
+		} else {
+			fmt.Fprintln(os.Stderr, "Unknown model input key for theory model 4b:", k)
 		}
 	}
 	return m
 }
 
-func (m *FiddlesticksAiModelTheory4) ApplyUpdate(p *FiddlesticksPlayer, f *GameFiddlesticks, u *game.UpdateMessage) {
-	m.FiddlesticksAiModelTheory3.ApplyUpdate(p, f, u)
-	switch u.Kind {
-	case "deal-round":
-		if len(m.levels) != len(f.players) {
-			m.levels = make([]float64, len(f.players))
-			for i := range m.levels {
-				m.levels[i] = 1.0
-			}
-		}
-	}
-}
-
-func (m *FiddlesticksAiModelTheory4) updateLocationsWithBids(f *GameFiddlesticks) {
-	m.updateLocations(f)
-	pool := m.unknownPool()
-	if m.bid_trust == 0 || len(pool) == 0 {
-		return
-	}
-	m.weightByBids(pool, f)
-	counts := make([]float64, len(pool))
-	for i := range counts {
-		counts[i] = 1
-	}
-	fitLocations(pool, counts, m.locationTargets(pool, f))
-}
-
-func (m *FiddlesticksAiModelTheory4) unknownPool() []*CardLocationProbability {
-	pool := []*CardLocationProbability{}
-	for _, location := range m.cards {
-		if location.unknown {
-			pool = append(pool, location)
-		}
-	}
-	return pool
-}
-
-func (m *FiddlesticksAiModelTheory4) locationTargets(pool []*CardLocationProbability, f *GameFiddlesticks) []LocationTarget {
-	targets := []LocationTarget{{KITTY_COLUMN, float64(len(pool))}}
-	for id, opponent := range m.opponents {
-		if opponent == nil {
-			continue
-		}
-		hand_size := float64(len(f.players[id].cards) - len(f.players[id].cards_played))
-		targets = append(targets, LocationTarget{id, hand_size})
-		targets[0].amount -= hand_size
-	}
-	return targets
-}
-
-func (m *FiddlesticksAiModelTheory4) weightByBids(pool []*CardLocationProbability, f *GameFiddlesticks) {
-	average := m.averageStrength(pool, f)
-	for id, opponent := range m.opponents {
-		if opponent == nil || !f.players[id].has_bet {
-			continue
-		}
-		for _, location := range pool {
-			location.player[id] *= m.bidFactor(location.card, id, average, f)
-		}
-	}
-}
-
-func (m *FiddlesticksAiModelTheory4) averageStrength(pool []*CardLocationProbability, f *GameFiddlesticks) float64 {
-	total := 0.0
-	for _, location := range pool {
-		total += (&FiddlesticksAiModelTheory1{}).probabilityToWin(location.card, f.trump.GetSuit(), len(f.players)-1)
-	}
-	return total / float64(len(pool))
-}
-
-func (m *FiddlesticksAiModelTheory4) bidFactor(card *game_utils.StandardCard, id int, average float64, f *GameFiddlesticks) float64 {
-	hand_size := float64(len(f.players[id].cards) - len(f.players[id].cards_played))
-	card_strength := (&FiddlesticksAiModelTheory1{}).probabilityToWin(card, f.trump.GetSuit(), len(f.players)-1)
-	expected := hand_size*average + (card_strength - average)
-	gap := (float64(int(f.players[id].bet)-int(f.players[id].tricks)) - expected) / m.bid_sigma
-	return math.Exp(-0.5 * gap * gap * m.bid_trust)
-}
-
 func (m *FiddlesticksAiModelTheory4) Bet(p *FiddlesticksPlayer, f *GameFiddlesticks) float64 {
-	base_bet := m.FiddlesticksAiModelTheory3.Bet(p, f)
+	min_p_suits := make(map[uint8]float64)
+	card_max_ps := make(map[game_utils.StandardCardHash]float64)
+	for _, card := range p.cards {
+		lose_vs_one_p := float64(m.hand[t4Slot(card)].loseable_count) / float64(m.unknown_cards)
+		win_vs_all_p := math.Pow(1-lose_vs_one_p, float64(len(f.players)-1))
+		max_p := m.winVsAllP(win_vs_all_p, card.GetSuit() == f.trump.GetSuit())
+		card_max_ps[card.Hash()] = max_p
+		if min_p, ok := min_p_suits[card.GetSuit()]; !ok || min_p > max_p {
+			min_p_suits[card.GetSuit()] = max_p
+		}
+	}
+	bet := 0.0
+	for _, card := range p.cards {
+		bet += card_max_ps[card.Hash()]*m.min_win_weight_factor + min_p_suits[card.GetSuit()]*(1-m.min_win_weight_factor)
+	}
+	base_bet := util.Clamp(m.bet_scale*bet, 0, float64(f.round))
 	return util.Clamp(base_bet+m.bet_optimism, 0, float64(f.round))
 }
 
-func (m *FiddlesticksAiModelTheory4) behavioralFactor(card *game_utils.StandardCard, f *GameFiddlesticks, tricks_needed_factor float64, prob_to_win float64) float64 {
-	factor := 1.0
-	rank_frac := float64(card.GetNumber()-2) / 12.0
-	if m.trick_chasing != 0 {
-		factor *= 1.0 + m.trick_chasing*tricks_needed_factor*prob_to_win
+func (m *FiddlesticksAiModelTheory4) winVsAllP(base_p float64, trump bool) float64 {
+	if trump {
+		return util.Clamp(base_p*m.win_vs_all_trump_factor, 0, 1)
 	}
-	if m.trump_hoarding != 0 && f.trump != nil && card.GetSuit() == f.trump.GetSuit() {
-		factor *= math.Max(0.1, 1.0-m.trump_hoarding*rank_frac*(1.0-util.Clamp(tricks_needed_factor, 0, 1)))
-	}
-	if m.void_hunting != 0 && len(f.trick) == 0 {
-		for _, opp := range m.opponents {
-			if opp != nil && opp.missing_suits[card.GetSuit()] {
-				factor *= 1.0 + m.void_hunting
-				break
-			}
-		}
-	}
-	return math.Max(0.001, factor)
+	return util.Clamp(base_p*m.win_vs_all_nontrump_factor, 0, 1)
 }
+
 func (m *FiddlesticksAiModelTheory4) CardWeights(p *FiddlesticksPlayer, f *GameFiddlesticks, valid_cards []int) []float64 {
+	if len(valid_cards) <= 1 {
+		return []float64{1.0}
+	}
 	if m.locations_stale {
 		m.updateLocationsWithBids(f)
 		m.locations_stale = false
 	}
-	weights := m.FiddlesticksAiModelTheory3.CardWeights(p, f, valid_cards)
-	if len(valid_cards) <= 1 {
-		return weights
-	}
-	tricks_needed := int(p.bet) - int(p.tricks)
-	tricks_left := len(p.cards) - len(p.cards_played)
-	tricks_needed_factor := float64(tricks_needed) / float64(tricks_left)
-	current_winning_card, _ := f.winningTrickCard()
+	utilities := make([]float64, len(valid_cards))
+	shifts := make([]float64, len(valid_cards))
+	needed := int(p.bet) - int(p.tricks)
 	for i, card_index := range valid_cards {
 		card := p.cards[card_index]
-		prob_to_win := float64(0)
-		if f.cardBeatsCard(card, current_winning_card) {
-			prob_to_win = m.winProbability(card, p, f)
+		utilities[i] = m.evaluateCardQ(m.currentWinProbability(card, p, f), needed, m.otherWinProbs(p, t4Slot(card), f), int(p.bet), f)
+		shifts[i] = m.heuristicAdjustment(card, p, f)
+	}
+	return t4Softmax(utilities, shifts, m.temperature)
+}
+
+func (m *FiddlesticksAiModelTheory4) contractUtility(gap int, bet int, f *GameFiddlesticks) float64 {
+	payoff := float64(f.round_points + f.trick_points*uint16(bet))
+	if payoff <= 0 {
+		payoff = 1.0
+	}
+	switch {
+	case gap == 0:
+		return payoff / 10.0
+	case gap > 0:
+		return -m.undertrick_aversion * float64(gap) * (payoff / 10.0)
+	default:
+		return m.overtrick_aversion * float64(gap) * (payoff / 10.0)
+	}
+}
+
+func t4Pmf(probabilities []float64) []float64 {
+	dp := []float64{1.0}
+	for _, prob := range probabilities {
+		next := make([]float64, len(dp)+1)
+		for k, v := range dp {
+			next[k] += v * (1.0 - prob)
+			next[k+1] += v * prob
 		}
-		weights[i] *= m.behavioralFactor(card, f, tricks_needed_factor, prob_to_win)
-		if m.vindictiveness > 0 && len(m.levels) == len(f.players) {
-			weights[i] *= m.vindictivenessFactor(card, p, f)
-		}
+		dp = next
+	}
+	return dp
+}
+
+func (m *FiddlesticksAiModelTheory4) expectedFutureUtility(win_probs []float64, needed int, bet int, f *GameFiddlesticks) float64 {
+	expected := 0.0
+	for future_wins, prob := range t4Pmf(win_probs) {
+		expected += prob * m.contractUtility(needed-future_wins, bet, f)
+	}
+	return expected
+}
+
+func (m *FiddlesticksAiModelTheory4) evaluateCardQ(win_prob float64, needed int, other_probs []float64, bet int, f *GameFiddlesticks) float64 {
+	return win_prob*m.expectedFutureUtility(other_probs, needed-1, bet, f) + (1.0-win_prob)*m.expectedFutureUtility(other_probs, needed, bet, f)
+}
+
+func t4Softmax(utilities []float64, shifts []float64, temp float64) []float64 {
+	t := math.Max(0.01, temp)
+	logits := make([]float64, len(utilities))
+	for i, u := range utilities {
+		logits[i] = u/t + shifts[i]
+	}
+	max_logit := slices.Max(logits)
+	weights := make([]float64, len(logits))
+	for i, l := range logits {
+		weights[i] = math.Exp(util.Clamp(l-max_logit, -t4LogitLimit, 0.0))
 	}
 	return weights
 }
 
-func (m *FiddlesticksAiModelTheory4) vindictivenessFactor(card *game_utils.StandardCard, p *FiddlesticksPlayer, f *GameFiddlesticks) float64 {
-	effect := m.opponentTrickEffect(card, p, f, m.levels)
-	return math.Exp(util.Clamp(m.vindictiveness*effect, -LOGIT_SHIFT_LIMIT, LOGIT_SHIFT_LIMIT))
+func t4ProbabilityToWin(card *game_utils.StandardCard, trump_suit uint8, num_players int) float64 {
+	cards_that_can_beat_it := game_utils.StandardCardStatic.AceValue() - card.GetNumber()
+	if card.GetSuit() != trump_suit {
+		cards_that_can_beat_it += 12
+	}
+	return math.Pow(1-float64(cards_that_can_beat_it)/float64(50), float64(num_players))
 }

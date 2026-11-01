@@ -1,67 +1,97 @@
 package risq
 
 import (
+	"cmp"
+	"slices"
+
 	"github.com/dgray001/gray_online/game/games/risq/internal/defs"
 )
 
 type categoryBest struct {
-	units         map[defs.TargetCategory]*RisqUnit
+	units         map[defs.TargetCategory][]*RisqUnit
 	unit_dist     map[defs.TargetCategory]int
-	building      *RisqBuilding
+	buildings     []*RisqBuilding
 	building_dist int
 }
 
 func newCategoryBest() *categoryBest {
-	return &categoryBest{units: make(map[defs.TargetCategory]*RisqUnit), unit_dist: make(map[defs.TargetCategory]int)}
+	return &categoryBest{units: make(map[defs.TargetCategory][]*RisqUnit), unit_dist: make(map[defs.TargetCategory]int)}
 }
 
 func (c *categoryBest) considerUnit(target *RisqUnit, dist int) {
 	cat := targetCategoryOf(target)
-	if existing, ok := c.units[cat]; !ok || dist < c.unit_dist[cat] || (dist == c.unit_dist[cat] && target.internal_id < existing.internal_id) {
-		c.units[cat] = target
+	if len(c.units[cat]) == 0 || dist < c.unit_dist[cat] {
+		c.units[cat] = []*RisqUnit{target}
 		c.unit_dist[cat] = dist
+	} else if dist == c.unit_dist[cat] {
+		c.units[cat] = append(c.units[cat], target)
 	}
 }
 
 func (c *categoryBest) considerBuilding(target *RisqBuilding, dist int) {
-	if c.building == nil || dist < c.building_dist || (dist == c.building_dist && target.internal_id < c.building.internal_id) {
-		c.building = target
+	if len(c.buildings) == 0 || dist < c.building_dist {
+		c.buildings = []*RisqBuilding{target}
 		c.building_dist = dist
+	} else if dist == c.building_dist {
+		c.buildings = append(c.buildings, target)
 	}
 }
 
+func (c *categoryBest) unitSet(cat defs.TargetCategory) []Attackable {
+	units := slices.Clone(c.units[cat])
+	slices.SortFunc(units, func(a, b *RisqUnit) int { return cmp.Compare(a.internal_id, b.internal_id) })
+	set := make([]Attackable, len(units))
+	for i, unit := range units {
+		set[i] = unit
+	}
+	return set
+}
+
+func (c *categoryBest) buildingSet() []Attackable {
+	buildings := slices.Clone(c.buildings)
+	slices.SortFunc(buildings, func(a, b *RisqBuilding) int { return cmp.Compare(a.internal_id, b.internal_id) })
+	set := make([]Attackable, len(buildings))
+	for i, building := range buildings {
+		set[i] = building
+	}
+	return set
+}
+
 func (c *categoryBest) pick(priority []defs.TargetCategory) Attackable {
+	if set := c.pickSet(priority); len(set) > 0 {
+		return set[0]
+	}
+	return nil
+}
+
+func (c *categoryBest) pickSet(priority []defs.TargetCategory) []Attackable {
 	ranked := make(map[defs.TargetCategory]bool, len(priority))
 	for _, cat := range priority {
 		if cat == defs.TargetCategory_NONE || ranked[cat] {
 			continue
 		}
 		ranked[cat] = true
-		if cat == defs.TargetCategory_BUILDING {
-			if c.building != nil {
-				return c.building
-			}
-		} else if target, ok := c.units[cat]; ok {
-			return target
+		if cat == defs.TargetCategory_BUILDING && len(c.buildings) > 0 {
+			return c.buildingSet()
+		} else if cat != defs.TargetCategory_BUILDING && len(c.units[cat]) > 0 {
+			return c.unitSet(cat)
 		}
 	}
-	var best_unit *RisqUnit
+	var best_set []Attackable
 	best_dist := -1
-	for cat, target := range c.units {
-		if ranked[cat] {
+	for cat, units := range c.units {
+		if ranked[cat] || len(units) == 0 {
 			continue
 		}
-		if best_unit == nil || c.unit_dist[cat] < best_dist || (c.unit_dist[cat] == best_dist && target.internal_id < best_unit.internal_id) {
-			best_unit, best_dist = target, c.unit_dist[cat]
+		set := c.unitSet(cat)
+		if best_set == nil || c.unit_dist[cat] < best_dist || (c.unit_dist[cat] == best_dist && set[0].internalId() < best_set[0].internalId()) {
+			best_set, best_dist = set, c.unit_dist[cat]
 		}
 	}
-	if !ranked[defs.TargetCategory_BUILDING] && c.building != nil && (best_unit == nil || c.building_dist < best_dist) {
-		return c.building
+	if !ranked[defs.TargetCategory_BUILDING] && len(c.buildings) > 0 && (best_set == nil || c.building_dist < best_dist) {
+		return c.buildingSet()
 	}
-	if best_unit != nil {
-		return best_unit
-	}
-	return nil
+	return best_set
 }
 
 // attackOrderType picks the unit- or building-attack order type variant for target.
@@ -96,6 +126,14 @@ func zoneApproachDistance(from *RisqZone, to *RisqZone) int {
 
 // Best visible enemy in the zones reachable allows within space_radius of own_zone; targets in_range rank as distance 0
 func nearbyTarget(own_zone *RisqZone, player_id int, target_priority []defs.TargetCategory, reachable func(*RisqZone) bool, in_range func(*RisqZone) bool, can_walk func(*RisqZone) bool, risq *GameRisq, space_radius uint) Attackable {
+	if set := nearbyCandidates(own_zone, player_id, target_priority, reachable, in_range, can_walk, risq, space_radius); len(set) > 0 {
+		return set[0]
+	}
+	return nil
+}
+
+// Every target tied for best by priority category and distance, lowest internal id first
+func nearbyCandidates(own_zone *RisqZone, player_id int, target_priority []defs.TargetCategory, reachable func(*RisqZone) bool, in_range func(*RisqZone) bool, can_walk func(*RisqZone) bool, risq *GameRisq, space_radius uint) []Attackable {
 	best := newCategoryBest()
 	for _, space := range risq.allSpaces() {
 		if own_zone.space.distanceTo(space) > space_radius || space.getVisibility(player_id) < defs.VisibilityGood {
@@ -114,18 +152,18 @@ func nearbyTarget(own_zone *RisqZone, player_id int, target_priority []defs.Targ
 					dist = zoneApproachDistance(own_zone, zone)
 				}
 				for _, target := range zone.units {
-					if target.deleted || target.player_id == player_id || risq.projectedDead(target) {
+					if target.deleted || target.player_id == player_id {
 						continue
 					}
 					best.considerUnit(target, dist)
 				}
-				if target := zoneEnemyBuilding(zone, player_id); target != nil && !risq.projectedDead(target) {
+				if target := zoneEnemyBuilding(zone, player_id); target != nil {
 					best.considerBuilding(target, dist)
 				}
 			}
 		}
 	}
-	return best.pick(target_priority)
+	return best.pickSet(target_priority)
 }
 
 // Whether the player sees the space well and some zone of it is in range of the unit

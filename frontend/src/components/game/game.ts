@@ -46,7 +46,7 @@ export class DwgGame extends DwgElement {
   private players_waiting!: HTMLDivElement;
   private players_waiting_els = new Map<number, HTMLDivElement>();
   private game_container!: HTMLDivElement;
-  private game_el!: GameComponent & HTMLElement;
+  private game_el?: GameComponent & HTMLElement;
   private chatbox_container!: HTMLDivElement;
   private chatbox!: DwgChatbox;
   private open_chatbox_button!: HTMLButtonElement;
@@ -234,7 +234,7 @@ export class DwgGame extends DwgElement {
       this.appendChild(game_info);
     });
     this.button_game_history.addEventListener('click', () => {
-      if (!this.launched || !this.game) {
+      if (!this.launched || !this.game || !this.game_el) {
         return;
       }
       const game_history = document.createElement('dwg-game-history-dialog');
@@ -513,7 +513,7 @@ export class DwgGame extends DwgElement {
     const game_base = this.game?.game_base;
     const fresh = response.success ? response.result : undefined;
     // anything newer than the request means the heartbeat will compare again
-    if (!fresh || !game_base || this.game_el !== game_el || this.refreshing) {
+    if (!fresh || !game_base || !game_el || this.game_el !== game_el || this.refreshing) {
       return;
     }
     if (game_base.last_applied_update_id !== applied_id || fresh.game_base.latest_update_id !== applied_id) {
@@ -702,6 +702,8 @@ export class DwgGame extends DwgElement {
 
   exitGame(): void {
     this.launched = false;
+    this.game_el?.remove();
+    this.game_el = undefined;
     this.classList.remove('show');
     this.closeChatbox();
     this.socketSend(createMessage(`client-${this.clientId()}`, 'game-exit'));

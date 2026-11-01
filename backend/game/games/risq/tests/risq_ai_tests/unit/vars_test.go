@@ -30,7 +30,8 @@ func TestGameVarAndResearchedEvaluation(t *testing.T) {
 		"gameVar(food)": 20, "gameVar(wood)": 30, "gameVar(stone)": 40, "gameVar(gold)": 50,
 		"gameVar(population)": 1, "gameVar(population_limit)": 4, "gameVar(population_max)": 10,
 		"gameVar(turn)": 7, "gameVar(map_size)": 4, "gameVar(num_players)": 3,
-		"researched(4)": 1, "researched(99)": 0,
+		"gameVar(mercenaries_need_region)": 1,
+		"researched(4)":                    1, "researched(99)": 0,
 	} {
 		var diagnostics bytes.Buffer
 		model, view := moveToX(t, expr, &diagnostics)

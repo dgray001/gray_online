@@ -178,21 +178,24 @@ class TowerPainter {
       return;
     }
     const counts = isWeathered(this.damage) ? WEATHERED_COUNTS : RUIN_COUNTS;
-    const random = seededRandom('tower-ruin');
     const half = (STONE_SIDE * this.r) / 2;
-    const surface = (): Point2D => {
-      const [a, b] = [-0.8 + 1.6 * random(), -0.8 + 1.6 * random()];
-      return this.lift(this.corner(a, b, half), z1 * 0.45);
-    };
-    const ground = (): Point2D => {
+    const surface =
+      (kind: string) =>
+      (_: unknown, i: number): Point2D => {
+        const random = seededRandom(`tower-ruin|${kind}|${i}`);
+        const [a, b] = [-0.8 + 1.6 * random(), -0.8 + 1.6 * random()];
+        return this.lift(this.corner(a, b, half), z1 * 0.45);
+      };
+    const ground = (_: unknown, i: number): Point2D => {
+      const random = seededRandom(`tower-ruin|ground|${i}`);
       const sign = random() < 0.5 ? -1 : 1;
       return this.corner(sign * (1.0 + 1.0 * random()), -1.3 + 2.6 * random(), half);
     };
     const points = {
-      beams: Array.from({ length: counts.beams }, surface),
-      surface: Array.from({ length: counts.surface }, surface),
+      beams: Array.from({ length: counts.beams }, surface('beams')),
+      surface: Array.from({ length: counts.surface }, surface('surface')),
       ground: Array.from({ length: counts.ground }, ground),
-      smoke: Array.from({ length: counts.smoke }, surface),
+      smoke: Array.from({ length: counts.smoke }, surface('smoke')),
     };
     drawRuinProps(this.ctx, this.collapse.atlas, this.r, SMOKE_SIZE * this.r, points);
   }

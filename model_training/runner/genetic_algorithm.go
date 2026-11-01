@@ -102,6 +102,11 @@ func (g *InputGeneticAlgorithm) run() error {
 	return nil
 }
 
+func (p *InputGeneticAlgorithmPlayer) mutateParam(key string, min, max float64, t float64) string {
+	start := InputStatic.parseFloat(p.start[key])
+	return mutateFloat(start, min, max, p.tempFor(key, t))
+}
+
 func (p *InputGeneticAlgorithmPlayer) mutate(t float64, children uint8) []*InputPlayer {
 	model_inputs := make([]map[string]string, children)
 	switch p.ai_model_id {
@@ -128,24 +133,95 @@ func (p *InputGeneticAlgorithmPlayer) mutate(t float64, children uint8) []*Input
 			model_inputs[i] = mi
 		}
 	case 3: // theory model 3
-		win_vs_all_trump_factor := InputStatic.parseFloat(p.start["win_vs_all_trump_factor"])
-		win_vs_all_nontrump_factor := InputStatic.parseFloat(p.start["win_vs_all_nontrump_factor"])
-		min_win_weight_factor := InputStatic.parseFloat(p.start["min_win_weight_factor"])
-		bet_scale := InputStatic.parseFloat(p.start["bet_scale"])
-		aggressive_factor := InputStatic.parseFloat(p.start["aggressive_factor"])
-		late_seat_bonus := InputStatic.parseFloat(p.start["late_seat_bonus"])
-		trump_hold_factor := InputStatic.parseFloat(p.start["trump_hold_factor"])
-		void_exploit := InputStatic.parseFloat(p.start["void_exploit"])
 		for i := range model_inputs {
 			mi := make(map[string]string)
-			mi["win_vs_all_trump_factor"] = mutateFloat(win_vs_all_trump_factor, 0.2, 2, p.tempFor("win_vs_all_trump_factor", t))
-			mi["win_vs_all_nontrump_factor"] = mutateFloat(win_vs_all_nontrump_factor, 0.2, 2, p.tempFor("win_vs_all_nontrump_factor", t))
-			mi["min_win_weight_factor"] = mutateFloat(min_win_weight_factor, 0, 1, p.tempFor("min_win_weight_factor", t))
-			mi["bet_scale"] = mutateFloat(bet_scale, 0.5, 1.5, p.tempFor("bet_scale", t))
-			mi["aggressive_factor"] = mutateFloat(aggressive_factor, 0.2, 5, p.tempFor("aggressive_factor", t))
-			mi["late_seat_bonus"] = mutateFloat(late_seat_bonus, 0, 2, p.tempFor("late_seat_bonus", t))
-			mi["trump_hold_factor"] = mutateFloat(trump_hold_factor, 0, 1, p.tempFor("trump_hold_factor", t))
-			mi["void_exploit"] = mutateFloat(void_exploit, 0, 2, p.tempFor("void_exploit", t))
+			for k, v := range p.start {
+				mi[k] = v
+			}
+			mi["win_vs_all_trump_factor"] = p.mutateParam("win_vs_all_trump_factor", 0.2, 2, t)
+			mi["win_vs_all_nontrump_factor"] = p.mutateParam("win_vs_all_nontrump_factor", 0.2, 2, t)
+			mi["min_win_weight_factor"] = p.mutateParam("min_win_weight_factor", 0, 1, t)
+			mi["bet_scale"] = p.mutateParam("bet_scale", 0.5, 1.5, t)
+			mi["aggressive_factor"] = p.mutateParam("aggressive_factor", 0.2, 5, t)
+			mi["late_seat_bonus"] = p.mutateParam("late_seat_bonus", 0, 2, t)
+			mi["trump_hold_factor"] = p.mutateParam("trump_hold_factor", 0, 1, t)
+			mi["void_exploit"] = p.mutateParam("void_exploit", 0, 2, t)
+			model_inputs[i] = mi
+		}
+	case 4: // theory model 4 (Model 3 + dials + bid inference)
+		for i := range model_inputs {
+			mi := make(map[string]string)
+			for k, v := range p.start {
+				mi[k] = v
+			}
+			mi["win_vs_all_trump_factor"] = p.mutateParam("win_vs_all_trump_factor", 0.2, 2, t)
+			mi["win_vs_all_nontrump_factor"] = p.mutateParam("win_vs_all_nontrump_factor", 0.2, 2, t)
+			mi["min_win_weight_factor"] = p.mutateParam("min_win_weight_factor", 0, 1, t)
+			mi["bet_scale"] = p.mutateParam("bet_scale", 0.5, 1.5, t)
+			mi["aggressive_factor"] = p.mutateParam("aggressive_factor", 0.2, 5, t)
+			mi["late_seat_bonus"] = p.mutateParam("late_seat_bonus", 0, 2, t)
+			mi["trump_hold_factor"] = p.mutateParam("trump_hold_factor", 0, 1, t)
+			mi["void_exploit"] = p.mutateParam("void_exploit", 0, 2, t)
+			mi["bet_optimism"] = p.mutateParam("bet_optimism", -1.0, 1.0, t)
+			mi["trick_chasing"] = p.mutateParam("trick_chasing", 0.0, 2.0, t)
+			mi["trump_hoarding"] = p.mutateParam("trump_hoarding", 0.0, 2.0, t)
+			mi["void_hunting"] = p.mutateParam("void_hunting", 0.0, 2.0, t)
+			mi["vindictiveness"] = p.mutateParam("vindictiveness", 0.0, 3.0, t)
+			mi["bid_trust"] = p.mutateParam("bid_trust", 0.0, 2.0, t)
+			model_inputs[i] = mi
+		}
+	case 5: // theory model 4a (Contract planner + Model 3 beliefs)
+		for i := range model_inputs {
+			mi := make(map[string]string)
+			for k, v := range p.start {
+				mi[k] = v
+			}
+			mi["win_vs_all_trump_factor"] = p.mutateParam("win_vs_all_trump_factor", 0.2, 2, t)
+			mi["win_vs_all_nontrump_factor"] = p.mutateParam("win_vs_all_nontrump_factor", 0.2, 2, t)
+			mi["min_win_weight_factor"] = p.mutateParam("min_win_weight_factor", 0, 1, t)
+			mi["bet_scale"] = p.mutateParam("bet_scale", 0.5, 1.5, t)
+			mi["bet_optimism"] = p.mutateParam("bet_optimism", -1.0, 1.0, t)
+			mi["planner_temperature"] = p.mutateParam("planner_temperature", 0.05, 1.0, t)
+			mi["overtrick_aversion"] = p.mutateParam("overtrick_aversion", 0.1, 3.0, t)
+			mi["undertrick_aversion"] = p.mutateParam("undertrick_aversion", 0.1, 3.0, t)
+			mi["trump_hoarding"] = p.mutateParam("trump_hoarding", 0.0, 2.0, t)
+			mi["void_hunting"] = p.mutateParam("void_hunting", 0.0, 2.0, t)
+			mi["vindictiveness"] = p.mutateParam("vindictiveness", 0.0, 3.0, t)
+			model_inputs[i] = mi
+		}
+	case 6: // theory model 4b (Contract planner + bid-conditioned beliefs)
+		for i := range model_inputs {
+			mi := make(map[string]string)
+			for k, v := range p.start {
+				mi[k] = v
+			}
+			mi["win_vs_all_trump_factor"] = p.mutateParam("win_vs_all_trump_factor", 0.2, 2, t)
+			mi["win_vs_all_nontrump_factor"] = p.mutateParam("win_vs_all_nontrump_factor", 0.2, 2, t)
+			mi["min_win_weight_factor"] = p.mutateParam("min_win_weight_factor", 0, 1, t)
+			mi["bet_scale"] = p.mutateParam("bet_scale", 0.5, 1.5, t)
+			mi["bet_optimism"] = p.mutateParam("bet_optimism", -1.0, 1.0, t)
+			mi["planner_temperature"] = p.mutateParam("planner_temperature", 0.05, 1.0, t)
+			mi["overtrick_aversion"] = p.mutateParam("overtrick_aversion", 0.1, 3.0, t)
+			mi["undertrick_aversion"] = p.mutateParam("undertrick_aversion", 0.1, 3.0, t)
+			mi["trump_hoarding"] = p.mutateParam("trump_hoarding", 0.0, 2.0, t)
+			mi["void_hunting"] = p.mutateParam("void_hunting", 0.0, 2.0, t)
+			mi["vindictiveness"] = p.mutateParam("vindictiveness", 0.0, 3.0, t)
+			mi["bid_trust"] = p.mutateParam("bid_trust", 0.0, 2.0, t)
+			model_inputs[i] = mi
+		}
+	case 7: // theory model 4c (Monte Carlo particle filter + planner)
+		for i := range model_inputs {
+			mi := make(map[string]string)
+			for k, v := range p.start {
+				mi[k] = v
+			}
+			mi["bet_optimism"] = p.mutateParam("bet_optimism", -1.0, 1.0, t)
+			mi["planner_temperature"] = p.mutateParam("planner_temperature", 0.05, 1.0, t)
+			mi["overtrick_aversion"] = p.mutateParam("overtrick_aversion", 0.1, 3.0, t)
+			mi["undertrick_aversion"] = p.mutateParam("undertrick_aversion", 0.1, 3.0, t)
+			mi["paranoia"] = p.mutateParam("paranoia", 0.0, 1.0, t)
+			mi["bid_trust"] = p.mutateParam("bid_trust", 0.0, 2.0, t)
+			mi["vindictiveness"] = p.mutateParam("vindictiveness", 0.0, 3.0, t)
 			model_inputs[i] = mi
 		}
 	default:
@@ -197,6 +273,14 @@ func (p *InputGeneticAlgorithmPlayer) modelOutputHeaders() []string {
 		return []string{"Trump Base Value", "Non-Trump Min Value", "Non-Trump Ace Value"}
 	case 3: // theory model 3
 		return []string{"Win vs All Trump", "Win vs All Non-Trump", "Min Win Weight", "Bet Scale", "Aggressive Factor", "Late Seat Bonus", "Trump Hold", "Void Exploit"}
+	case 4: // theory model 4
+		return []string{"Win vs All Trump", "Win vs All Non-Trump", "Min Win Weight", "Bet Scale", "Aggressive Factor", "Late Seat Bonus", "Trump Hold", "Void Exploit", "Bet Optimism", "Trick Chasing", "Trump Hoarding", "Void Hunting", "Vindictiveness", "Bid Trust"}
+	case 5: // theory model 4a
+		return []string{"Win vs All Trump", "Win vs All Non-Trump", "Min Win Weight", "Bet Scale", "Bet Optimism", "Planner Temperature", "Overtrick Aversion", "Undertrick Aversion", "Trump Hoarding", "Void Hunting", "Vindictiveness"}
+	case 6: // theory model 4b
+		return []string{"Win vs All Trump", "Win vs All Non-Trump", "Min Win Weight", "Bet Scale", "Bet Optimism", "Planner Temperature", "Overtrick Aversion", "Undertrick Aversion", "Trump Hoarding", "Void Hunting", "Vindictiveness", "Bid Trust"}
+	case 7: // theory model 4c
+		return []string{"Bet Optimism", "Planner Temperature", "Overtrick Aversion", "Undertrick Aversion", "Paranoia", "Bid Trust", "Vindictiveness"}
 	default:
 		utils.PrintError("Unknown AI model id for genetic algorithm: %d", p.ai_model_id)
 	}
@@ -213,6 +297,14 @@ func (p *InputGeneticAlgorithmPlayer) modelOutput() []string {
 		return []string{p.start["trump_min"], p.start["non_trump_min"], p.start["non_trump_max"]}
 	case 3: // theory model 3
 		return []string{p.start["win_vs_all_trump_factor"], p.start["win_vs_all_nontrump_factor"], p.start["min_win_weight_factor"], p.start["bet_scale"], p.start["aggressive_factor"], p.start["late_seat_bonus"], p.start["trump_hold_factor"], p.start["void_exploit"]}
+	case 4: // theory model 4
+		return []string{p.start["win_vs_all_trump_factor"], p.start["win_vs_all_nontrump_factor"], p.start["min_win_weight_factor"], p.start["bet_scale"], p.start["aggressive_factor"], p.start["late_seat_bonus"], p.start["trump_hold_factor"], p.start["void_exploit"], p.start["bet_optimism"], p.start["trick_chasing"], p.start["trump_hoarding"], p.start["void_hunting"], p.start["vindictiveness"], p.start["bid_trust"]}
+	case 5: // theory model 4a
+		return []string{p.start["win_vs_all_trump_factor"], p.start["win_vs_all_nontrump_factor"], p.start["min_win_weight_factor"], p.start["bet_scale"], p.start["bet_optimism"], p.start["planner_temperature"], p.start["overtrick_aversion"], p.start["undertrick_aversion"], p.start["trump_hoarding"], p.start["void_hunting"], p.start["vindictiveness"]}
+	case 6: // theory model 4b
+		return []string{p.start["win_vs_all_trump_factor"], p.start["win_vs_all_nontrump_factor"], p.start["min_win_weight_factor"], p.start["bet_scale"], p.start["bet_optimism"], p.start["planner_temperature"], p.start["overtrick_aversion"], p.start["undertrick_aversion"], p.start["trump_hoarding"], p.start["void_hunting"], p.start["vindictiveness"], p.start["bid_trust"]}
+	case 7: // theory model 4c
+		return []string{p.start["bet_optimism"], p.start["planner_temperature"], p.start["overtrick_aversion"], p.start["undertrick_aversion"], p.start["paranoia"], p.start["bid_trust"], p.start["vindictiveness"]}
 	default:
 		utils.PrintError("Unknown AI model id for genetic algorithm: %d", p.ai_model_id)
 	}

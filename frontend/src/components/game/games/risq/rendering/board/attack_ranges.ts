@@ -124,7 +124,7 @@ function addRangeEdges(edges: Map<string, [Point2D, Point2D]>, vertices: Point2D
   }
 }
 
-function rangePaths(polygons: Point2D[][]): { fill: Path2D; outline: Path2D } {
+export function rangePaths(polygons: Point2D[][]): { fill: Path2D; outline: Path2D } {
   const fill = new Path2D();
   const outline = new Path2D();
   const edges = new Map<string, [Point2D, Point2D]>();

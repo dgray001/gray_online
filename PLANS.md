@@ -1,6 +1,6 @@
 Small Risq Issues:
  - Finish v7
- - Playtest new wall rendering in game  
+ - Stance mode frontend
 
 Bigger Risq Issues/Ideas:
  - Utilize events on map

@@ -12,6 +12,7 @@ const unitTickStaminaCost = 3
 const buildTickStaminaCost = 5
 
 const gatherRoundingPlaces = 4
+const healthRoundingPlaces = 9
 
 const gatherRateStaminaBase = 10.0
 

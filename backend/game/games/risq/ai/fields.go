@@ -152,6 +152,7 @@ var unitFields = withPlace(fieldTable[unitItem]{
 	"stance":            func(u unitItem) float64 { return float64(u.unit.Stance) },
 	"attack_back":       func(u unitItem) float64 { return boolNumber(u.unit.AttackBack) },
 	"interrupt_current": func(u unitItem) float64 { return boolNumber(u.unit.InterruptCurrent) },
+	"attack_stack":      func(u unitItem) float64 { return float64(u.unit.AttackStack) },
 }, func(u unitItem) place { return u.place })
 
 var buildingFields = withPlace(fieldTable[buildingItem]{

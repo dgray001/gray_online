@@ -2,7 +2,7 @@ import { drawArrow, drawCircle } from '../../../util/canvas_util';
 import type { Point2D } from '../../../util/objects2d';
 import { AXIAL_DIRECTION_VECTORS, addPoint2D, equalsPoint2D } from '../../../util/objects2d';
 import type { RisqSession } from '../application/session';
-import type { RisqSpace, RisqSpaceLink } from '../model/types';
+import type { GameRisq, RisqSpace, RisqSpaceLink } from '../model/types';
 import type { RisqViewport } from './board/viewport';
 import { hexEdgeForDirectionIndex } from './space_borders';
 
@@ -60,13 +60,21 @@ export class RisqLinks {
     return { edge, outward: { x: (edge.x - center.x) / length, y: (edge.y - center.y) / length } };
   }
 
+  private extent_cache?: { spaces: GameRisq['spaces']; hex_r: number; extent: { min: number; max: number } };
+
   private horizontalExtent(): { min: number; max: number } {
-    const xs = this.session
-      .getGame()!
-      .spaces.flat()
+    const game = this.session.getGame()!;
+    const hex_r = this.viewport.hexR();
+    if (this.extent_cache?.spaces === game.spaces && this.extent_cache.hex_r === hex_r) {
+      return this.extent_cache.extent;
+    }
+    const xs = game.spaces
+      .flat()
       .filter((space): space is RisqSpace => !!space)
       .map((space) => this.viewport.coordinateToCanvas(space.coordinate).x);
-    return { min: Math.min(...xs) - this.viewport.hexA(), max: Math.max(...xs) + this.viewport.hexA() };
+    const extent = { min: Math.min(...xs) - this.viewport.hexA(), max: Math.max(...xs) + this.viewport.hexA() };
+    this.extent_cache = { spaces: game.spaces, hex_r, extent };
+    return extent;
   }
 
   /** Whether leaving the board on one side and re-entering on the other beats the direct line */

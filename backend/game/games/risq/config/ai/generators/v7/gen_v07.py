@@ -32,7 +32,9 @@ from army import (
     army_formation_rules, army_local_odds_rules, army_maneuver_rules,
     army_target_selection, assault_odds_rules
 )
-from combat import combat_micro_rules
+from combat import attack_stack_rules, combat_micro_rules
+from hiring import hire_destinations
+from holders import holder_observations, holder_orders, release_holders
 
 CONFIG = Path(__file__).resolve().parents[3]
 
@@ -60,9 +62,9 @@ def generate(directory: Path, overrides: dict[str, float]) -> Record:
     definitions = Definitions(directory)
     actions = [variable(f"tune_{name}", value) for name, value in values.items()]
     phases = [actions, observations(definitions), foundation_observations(), site_weights(), home(), base(), threat_home_rules(),
-              scouting_state(), raiding_state(), army_formation_rules(), army(),
+              scouting_state(), raiding_state(), release_holders(), holder_observations(), holder_orders(), army_formation_rules(), army(),
               [initialize()], composition(), unidentified(), local_observations(), bounds(definitions), strategy(),
-              assault_odds_rules(), army_local_odds_rules(), army_target_selection()]
+              assault_odds_rules(), army_local_odds_rules(), army_target_selection(), hire_destinations()]
     phases.extend([production_capacity(definitions), military_composition(definitions, values), workforce(definitions),
                    unit_targets(values), infrastructure(definitions), food_supply(definitions), vc_urgency_rules(),
                    mercenary_rates(), spending_rates(definitions), gold_expansion(), resource_budgets(definitions),
@@ -75,7 +77,8 @@ def generate(directory: Path, overrides: dict[str, float]) -> Record:
                    nomad_clustering(), worker_targets(), worker_groups(), allocate_workers(),
                    renew_farms(), gathering(values),
                    scouting_tactics(), raiding_tactics(),
-                   army_maneuver_rules(),
+                   army_maneuver_rules(bool(values["stage_passive"]), bool(values["rest_move"])),
+                   attack_stack_rules(int(values["attack_stack"])),
                    combat_micro_rules(),
                    base_defense(), home_inspector(), civilian_defense()])
     model = dict(rules=[rule(phase) for phase in phases])

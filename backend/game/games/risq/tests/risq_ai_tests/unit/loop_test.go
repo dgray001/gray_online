@@ -55,6 +55,7 @@ func (v loopTestView) Population() (int, int)            { return 0, 0 }
 func (v loopTestView) MaxPopulation() int                { return 100 }
 func (v loopTestView) TurnNumber() int                   { return 1 }
 func (v loopTestView) MapSize() int                      { return 4 }
+func (v loopTestView) MercenariesNeedRegion() bool       { return false }
 func (v loopTestView) NumPlayers() int                   { return len(v.players) }
 func (v loopTestView) Resource(ResourceCategory) float64 { return 0 }
 
@@ -432,6 +433,14 @@ func TestLoopItemRangeStaminaAndVisibilityFields(t *testing.T) {
 	vars := decide(t, config, view, "unit_sum", "building_sum")
 	if vars["unit_sum"] != 661 || vars["building_sum"] != 1409 {
 		t.Errorf("unit sum %v, building sum %v; want 661 and 1409", vars["unit_sum"], vars["building_sum"])
+	}
+}
+
+func TestLoopUnitAttackStackField(t *testing.T) {
+	view := loopTestView{units: []UnitView{{InternalID: 7, AttackStack: 6}}}
+	config := rule(`{"action":"for_each","source":"units","as":"u","do":[{"action":"set_var","name":"stack","value":"var(u.attack_stack)"}]}`)
+	if got := decide(t, config, view, "stack")["stack"]; got != 6 {
+		t.Errorf("attack_stack read as %v, want 6", got)
 	}
 }
 

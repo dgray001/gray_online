@@ -316,8 +316,7 @@ func (c *exprCompiler) compileConfigCall() (exprNode, error) {
 var gameVarFields = map[string]bool{
 	"food": true, "wood": true, "stone": true, "gold": true,
 	"population": true, "population_limit": true, "population_max": true,
-	"turn": true, "map_size": true, "num_players": true,
-}
+	"turn": true, "map_size": true, "num_players": true, "mercenaries_need_region": true}
 
 func (c *exprCompiler) compileGameVarCall() (exprNode, error) {
 	arg := c.next()

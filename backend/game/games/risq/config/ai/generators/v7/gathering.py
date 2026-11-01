@@ -5,7 +5,7 @@ from common import RESOURCES, Record, aggregate, branch, selection, store, varia
 
 def worker_groups() -> list[Record]:
     workers = selection("units", dict(owner="own", unit_ids=[1], not_in_set="construction_workers", **{
-        "in": dict(order_kind=["none", "gather"]), "if": "1 - var(target.is_garrisoned)"}))
+        "in": dict(order_kind=["none", "gather"]), "if": "1 - var(target.is_garrisoned) * inSet(threatened_villagers, target)"}))
     actions = [store("economy_workers", workers)]
     category = aggregate("max", selection("gatherables", {"if": "var(item.uid) == var(target.order_target_uid)"}), "var(item.category)")
     category["max"]["default"] = -1
@@ -62,10 +62,12 @@ def assign_nodes(resource: str, search_pass: int) -> Record:
         rank=["0 - distance(group, target)", "0 - var(target.uid)"],
         limit="var(gather_node_limit)", skip=f"{search_pass} * var(gather_node_limit)",
         capacity=live_capacity)
-    score = "0 - var(tune_gather_distance_weight) * distance(actor, target) - var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))"
-    if resource == "food":
-        score += " + var(tune_food_gather_speed_weight) * var(target.gather_speed)"
-    return dict(action="select", actors=actors, pick=targets, match=dict(score=score), issue=[dict(gather={})])
+    stamina = "config(unit, turn_stamina, 1) + researched(1) * config(tech, bonus_turn_stamina, 1)"
+    work = f"max(0, var(tune_gather_planning_turns) * ({stamina}) - distance(actor, target, 1))"
+    score = f"var(target.gather_speed) * ({work}) / 10 - var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))"
+    return dict(action="select", actors=actors, pick=targets,
+                match=dict(score=[score, "0 - distance(actor, target, 1)", "0 - var(target.uid)"]),
+                issue=[dict(gather={})])
 
 
 def gathering(parameters: dict[str, float]) -> list[Record]:

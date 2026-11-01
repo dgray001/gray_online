@@ -32,31 +32,31 @@
         {
           "action": "set_var",
           "name": "tune_power_pierce",
-          "value": 2.0,
-          "persist": false
-        },
-        {
-          "action": "set_var",
-          "name": "tune_power_heavy",
-          "value": 4.0,
-          "persist": false
-        },
-        {
-          "action": "set_var",
-          "name": "tune_power_siege",
           "value": 1.5,
           "persist": false
         },
         {
           "action": "set_var",
+          "name": "tune_power_heavy",
+          "value": 3.3,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_siege",
+          "value": 2.4,
+          "persist": false
+        },
+        {
+          "action": "set_var",
           "name": "tune_power_villager",
-          "value": 0.6,
+          "value": 0.58,
           "persist": false
         },
         {
           "action": "set_var",
           "name": "tune_power_farming_bonus",
-          "value": 0.4,
+          "value": 0.26,
           "persist": false
         },
         {
@@ -98,6 +98,12 @@
         {
           "action": "set_var",
           "name": "tune_unknown_min_power",
+          "value": 1.4,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_unknown_floor",
           "value": 1.0,
           "persist": false
         },
@@ -129,18 +135,6 @@
           "action": "set_var",
           "name": "tune_composition_prior",
           "value": 1.0,
-          "persist": false
-        },
-        {
-          "action": "set_var",
-          "name": "tune_enemy_smith_bonus",
-          "value": 0.25,
-          "persist": false
-        },
-        {
-          "action": "set_var",
-          "name": "tune_strategic_tech_bonus",
-          "value": 0.125,
           "persist": false
         },
         {
@@ -559,20 +553,14 @@
         },
         {
           "action": "set_var",
-          "name": "tune_gather_distance_weight",
-          "value": 100.0,
+          "name": "tune_gather_planning_turns",
+          "value": 1.25,
           "persist": false
         },
         {
           "action": "set_var",
           "name": "tune_gather_depletion_penalty",
           "value": 10000.0,
-          "persist": false
-        },
-        {
-          "action": "set_var",
-          "name": "tune_food_gather_speed_weight",
-          "value": 0.0,
           "persist": false
         },
         {
@@ -722,7 +710,7 @@
         {
           "action": "set_var",
           "name": "tune_vil_crush_odds",
-          "value": 2.0,
+          "value": 1.4,
           "persist": false
         },
         {
@@ -794,7 +782,7 @@
         {
           "action": "set_var",
           "name": "tune_cap_odds",
-          "value": 0.9,
+          "value": 0.85,
           "persist": false
         },
         {
@@ -842,7 +830,19 @@
         {
           "action": "set_var",
           "name": "tune_rest_turns",
-          "value": 2.0,
+          "value": 1.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_stage_passive",
+          "value": 1.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_rest_move",
+          "value": 1.0,
           "persist": false
         },
         {
@@ -945,6 +945,282 @@
           "action": "set_var",
           "name": "tune_focus",
           "value": 4.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_attack_stack",
+          "value": 2.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_hire_spaces",
+          "value": 1.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_hold_sites",
+          "value": 3.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_hold_near_first",
+          "value": 0.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_hold_min_army",
+          "value": 0.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_hold_cap",
+          "value": 1.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_blunt_state_1",
+          "value": 1.2,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_blunt_state_2",
+          "value": 1.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_blunt_state_3",
+          "value": 1.2,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_blunt_state_4",
+          "value": 1.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_blunt_state_5",
+          "value": 1.2,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_blunt_state_6",
+          "value": 1.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_blunt_state_7",
+          "value": 1.2,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_pierce_state_1",
+          "value": 1.6,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_pierce_state_2",
+          "value": 1.5,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_pierce_state_3",
+          "value": 1.9,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_pierce_state_4",
+          "value": 1.5,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_pierce_state_5",
+          "value": 1.8,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_pierce_state_6",
+          "value": 1.8,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_pierce_state_7",
+          "value": 2.2,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_pierce_state_8",
+          "value": 1.5,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_pierce_state_9",
+          "value": 1.6,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_pierce_state_10",
+          "value": 1.5,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_pierce_state_11",
+          "value": 2.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_pierce_state_12",
+          "value": 1.6,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_pierce_state_13",
+          "value": 2.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_pierce_state_14",
+          "value": 1.8,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_pierce_state_15",
+          "value": 2.2,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_heavy_state_1",
+          "value": 4.2,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_heavy_state_2",
+          "value": 3.9,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_heavy_state_3",
+          "value": 4.9,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_heavy_state_4",
+          "value": 3.5,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_heavy_state_5",
+          "value": 4.4,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_heavy_state_6",
+          "value": 4.1,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_heavy_state_7",
+          "value": 5.2,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_heavy_state_8",
+          "value": 3.4,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_heavy_state_9",
+          "value": 4.2,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_heavy_state_10",
+          "value": 3.9,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_heavy_state_11",
+          "value": 4.9,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_heavy_state_12",
+          "value": 3.5,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_heavy_state_13",
+          "value": 4.6,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_heavy_state_14",
+          "value": 4.2,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_heavy_state_15",
+          "value": 5.4,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_siege_state_1",
+          "value": 2.5,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_siege_state_2",
+          "value": 2.7,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_power_siege_state_3",
+          "value": 3.2,
           "persist": false
         },
         {
@@ -1215,6 +1491,25 @@
           "into": {
             "set": "enemy_presence_near_spaces",
             "var": "n_enemy_presence_near_spaces"
+          }
+        },
+        {
+          "action": "select",
+          "pick": {
+            "kind": "units",
+            "where": {
+              "owner": "own",
+              "unit_ids": [
+                1
+              ],
+              "at": {
+                "in_set": "enemy_presence_near_spaces"
+              }
+            }
+          },
+          "into": {
+            "set": "threatened_villagers",
+            "var": "n_threatened_villagers"
           }
         },
         {
@@ -1752,22 +2047,39 @@
         },
         {
           "action": "set_var",
+          "name": "mercenaries_on_offer",
+          "value": 0,
+          "persist": false
+        },
+        {
+          "action": "for_each",
+          "source": "mercenaries",
+          "as": "offer",
+          "do": [
+            {
+              "action": "set_var",
+              "name": "mercenaries_on_offer",
+              "value": 1,
+              "persist": false
+            }
+          ]
+        },
+        {
+          "action": "set_var",
+          "name": "has_production",
+          "value": "var(has_economy) + var(complete_22) + var(complete_23) + var(mercenaries_on_offer) > 0",
+          "persist": false
+        },
+        {
+          "action": "set_var",
           "name": "headroom",
           "value": "gameVar(population_limit) - gameVar(population)",
           "persist": false
         },
         {
           "action": "set_var",
-          "name": "own_power",
-          "value": {
-            "sum": {
-              "kind": "units",
-              "where": {
-                "in_set": "military"
-              },
-              "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
-            }
-          },
+          "name": "population_ceiling",
+          "value": "max(gameVar(population_max), gameVar(population_limit))",
           "persist": false
         },
         {
@@ -2094,6 +2406,85 @@
                   24
                 ]
               }
+            }
+          },
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "enemy_siege_reach",
+          "value": {
+            "max": {
+              "kind": "units",
+              "where": {
+                "in_set": "enemy_units",
+                "unit_ids": [
+                  401
+                ]
+              },
+              "of": "var(item.attack_reach)"
+            }
+          },
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "own_power_blunt",
+          "value": "((1 * researched(61) + 2 * researched(62) + 4 * researched(91)) == 0) * var(tune_power_blunt) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(91)) == 1) * var(tune_power_blunt_state_1) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(91)) == 2) * var(tune_power_blunt_state_2) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(91)) == 3) * var(tune_power_blunt_state_3) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(91)) == 4) * var(tune_power_blunt_state_4) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(91)) == 5) * var(tune_power_blunt_state_5) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(91)) == 6) * var(tune_power_blunt_state_6) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(91)) == 7) * var(tune_power_blunt_state_7)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "enemy_power_blunt",
+          "value": "((3 * min(1, var(enemy_buildings_11))) == 0) * var(tune_power_blunt) + ((3 * min(1, var(enemy_buildings_11))) == 1) * var(tune_power_blunt_state_1) + ((3 * min(1, var(enemy_buildings_11))) == 2) * var(tune_power_blunt_state_2) + ((3 * min(1, var(enemy_buildings_11))) == 3) * var(tune_power_blunt_state_3) + ((3 * min(1, var(enemy_buildings_11))) == 4) * var(tune_power_blunt_state_4) + ((3 * min(1, var(enemy_buildings_11))) == 5) * var(tune_power_blunt_state_5) + ((3 * min(1, var(enemy_buildings_11))) == 6) * var(tune_power_blunt_state_6) + ((3 * min(1, var(enemy_buildings_11))) == 7) * var(tune_power_blunt_state_7)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "own_power_pierce",
+          "value": "((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 0) * var(tune_power_pierce) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 1) * var(tune_power_pierce_state_1) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 2) * var(tune_power_pierce_state_2) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 3) * var(tune_power_pierce_state_3) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 4) * var(tune_power_pierce_state_4) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 5) * var(tune_power_pierce_state_5) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 6) * var(tune_power_pierce_state_6) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 7) * var(tune_power_pierce_state_7) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 8) * var(tune_power_pierce_state_8) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 9) * var(tune_power_pierce_state_9) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 10) * var(tune_power_pierce_state_10) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 11) * var(tune_power_pierce_state_11) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 12) * var(tune_power_pierce_state_12) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 13) * var(tune_power_pierce_state_13) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 14) * var(tune_power_pierce_state_14) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 15) * var(tune_power_pierce_state_15)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "enemy_power_pierce",
+          "value": "((7 * min(1, var(enemy_buildings_11))) == 0) * var(tune_power_pierce) + ((7 * min(1, var(enemy_buildings_11))) == 1) * var(tune_power_pierce_state_1) + ((7 * min(1, var(enemy_buildings_11))) == 2) * var(tune_power_pierce_state_2) + ((7 * min(1, var(enemy_buildings_11))) == 3) * var(tune_power_pierce_state_3) + ((7 * min(1, var(enemy_buildings_11))) == 4) * var(tune_power_pierce_state_4) + ((7 * min(1, var(enemy_buildings_11))) == 5) * var(tune_power_pierce_state_5) + ((7 * min(1, var(enemy_buildings_11))) == 6) * var(tune_power_pierce_state_6) + ((7 * min(1, var(enemy_buildings_11))) == 7) * var(tune_power_pierce_state_7) + ((7 * min(1, var(enemy_buildings_11))) == 8) * var(tune_power_pierce_state_8) + ((7 * min(1, var(enemy_buildings_11))) == 9) * var(tune_power_pierce_state_9) + ((7 * min(1, var(enemy_buildings_11))) == 10) * var(tune_power_pierce_state_10) + ((7 * min(1, var(enemy_buildings_11))) == 11) * var(tune_power_pierce_state_11) + ((7 * min(1, var(enemy_buildings_11))) == 12) * var(tune_power_pierce_state_12) + ((7 * min(1, var(enemy_buildings_11))) == 13) * var(tune_power_pierce_state_13) + ((7 * min(1, var(enemy_buildings_11))) == 14) * var(tune_power_pierce_state_14) + ((7 * min(1, var(enemy_buildings_11))) == 15) * var(tune_power_pierce_state_15)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "own_power_heavy",
+          "value": "((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 0) * var(tune_power_heavy) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 1) * var(tune_power_heavy_state_1) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 2) * var(tune_power_heavy_state_2) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 3) * var(tune_power_heavy_state_3) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 4) * var(tune_power_heavy_state_4) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 5) * var(tune_power_heavy_state_5) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 6) * var(tune_power_heavy_state_6) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 7) * var(tune_power_heavy_state_7) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 8) * var(tune_power_heavy_state_8) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 9) * var(tune_power_heavy_state_9) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 10) * var(tune_power_heavy_state_10) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 11) * var(tune_power_heavy_state_11) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 12) * var(tune_power_heavy_state_12) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 13) * var(tune_power_heavy_state_13) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 14) * var(tune_power_heavy_state_14) + ((1 * researched(61) + 2 * researched(62) + 4 * researched(63) + 8 * researched(91)) == 15) * var(tune_power_heavy_state_15)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "enemy_power_heavy",
+          "value": "((7 * min(1, var(enemy_buildings_11))) == 0) * var(tune_power_heavy) + ((7 * min(1, var(enemy_buildings_11))) == 1) * var(tune_power_heavy_state_1) + ((7 * min(1, var(enemy_buildings_11))) == 2) * var(tune_power_heavy_state_2) + ((7 * min(1, var(enemy_buildings_11))) == 3) * var(tune_power_heavy_state_3) + ((7 * min(1, var(enemy_buildings_11))) == 4) * var(tune_power_heavy_state_4) + ((7 * min(1, var(enemy_buildings_11))) == 5) * var(tune_power_heavy_state_5) + ((7 * min(1, var(enemy_buildings_11))) == 6) * var(tune_power_heavy_state_6) + ((7 * min(1, var(enemy_buildings_11))) == 7) * var(tune_power_heavy_state_7) + ((7 * min(1, var(enemy_buildings_11))) == 8) * var(tune_power_heavy_state_8) + ((7 * min(1, var(enemy_buildings_11))) == 9) * var(tune_power_heavy_state_9) + ((7 * min(1, var(enemy_buildings_11))) == 10) * var(tune_power_heavy_state_10) + ((7 * min(1, var(enemy_buildings_11))) == 11) * var(tune_power_heavy_state_11) + ((7 * min(1, var(enemy_buildings_11))) == 12) * var(tune_power_heavy_state_12) + ((7 * min(1, var(enemy_buildings_11))) == 13) * var(tune_power_heavy_state_13) + ((7 * min(1, var(enemy_buildings_11))) == 14) * var(tune_power_heavy_state_14) + ((7 * min(1, var(enemy_buildings_11))) == 15) * var(tune_power_heavy_state_15)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "own_power_siege",
+          "value": "((1 * researched(64) + 2 * researched(102)) == 0) * var(tune_power_siege) + ((1 * researched(64) + 2 * researched(102)) == 1) * var(tune_power_siege_state_1) + ((1 * researched(64) + 2 * researched(102)) == 2) * var(tune_power_siege_state_2) + ((1 * researched(64) + 2 * researched(102)) == 3) * var(tune_power_siege_state_3)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "enemy_power_siege",
+          "value": "(((var(enemy_siege_reach) > 0) + 2 * min(1, var(enemy_buildings_23))) == 0) * var(tune_power_siege) + (((var(enemy_siege_reach) > 0) + 2 * min(1, var(enemy_buildings_23))) == 1) * var(tune_power_siege_state_1) + (((var(enemy_siege_reach) > 0) + 2 * min(1, var(enemy_buildings_23))) == 2) * var(tune_power_siege_state_2) + (((var(enemy_siege_reach) > 0) + 2 * min(1, var(enemy_buildings_23))) == 3) * var(tune_power_siege_state_3)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "own_power",
+          "value": {
+            "sum": {
+              "kind": "units",
+              "where": {
+                "in_set": "military"
+              },
+              "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
             }
           },
           "persist": false
@@ -3536,7 +3927,8 @@
                     101,
                     102,
                     103
-                  ]
+                  ],
+                  "if": "1 - inBucket(holder, target)"
                 },
                 "let": {
                   "in_scout": "inBucket(scout, target)"
@@ -3705,7 +4097,8 @@
               "unit_ids": [
                 101
               ],
-              "not_in_set": "scout_units"
+              "not_in_set": "scout_units",
+              "if": "1 - inBucket(holder, target)"
             },
             "limit": "max(0, round((var(raid_size)) - 0.499999))",
             "rank": [
@@ -3732,6 +4125,427 @@
       },
       "then": [
         {
+          "action": "if",
+          "when": {
+            "value_at_least": {
+              "value": "var(has_economy) > 0",
+              "amount": 1
+            }
+          },
+          "then": [
+            {
+              "action": "select",
+              "pick": {
+                "kind": "units",
+                "where": {
+                  "owner": "own",
+                  "bucket": "holder"
+                }
+              },
+              "into": {
+                "bucket": "holder",
+                "mode": "remove"
+              }
+            }
+          ],
+          "else": [
+            {
+              "action": "select",
+              "pick": {
+                "kind": "units",
+                "where": {
+                  "owner": "own",
+                  "bucket": "holder",
+                  "at": {
+                    "in_set": "enemy_mil_near_spaces"
+                  }
+                }
+              },
+              "into": {
+                "bucket": "holder",
+                "mode": "remove"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "when": {
+        "always": {}
+      },
+      "then": [
+        {
+          "action": "select",
+          "pick": {
+            "kind": "spaces",
+            "where": {
+              "owner": "own"
+            }
+          },
+          "into": {
+            "set": "owned_spaces",
+            "var": "n_owned_spaces"
+          }
+        },
+        {
+          "action": "if",
+          "when": {
+            "value_at_least": {
+              "value": "(var(has_economy) == 0) * (var(has_production) > 0)",
+              "amount": 1
+            }
+          },
+          "then": [
+            {
+              "action": "select",
+              "pick": {
+                "kind": "spaces",
+                "where": {
+                  "near": {
+                    "distance": 1,
+                    "of": {
+                      "kind": "spaces",
+                      "where": {
+                        "in_set": "owned_spaces"
+                      }
+                    }
+                  }
+                }
+              },
+              "into": {
+                "set": "hold_pool",
+                "var": "n_hold_pool"
+              }
+            },
+            {
+              "action": "select",
+              "pick": {
+                "kind": "spaces",
+                "where": {
+                  "in_set": "owned_spaces",
+                  "building_owner": "own"
+                }
+              },
+              "into": {
+                "set": "own_building_spaces",
+                "var": "n_own_building_spaces"
+              }
+            },
+            {
+              "action": "select",
+              "pick": {
+                "kind": "spaces",
+                "where": {
+                  "in_set": "owned_spaces",
+                  "not_in_set": "own_building_spaces",
+                  "if": "1 - inSet(enemy_mil_near_spaces, target)"
+                }
+              },
+              "into": {
+                "set": "hold_keep",
+                "var": "n_hold_keep"
+              }
+            },
+            {
+              "action": "select",
+              "pick": {
+                "kind": "spaces",
+                "where": {
+                  "in_set": "hold_pool",
+                  "owner": "unowned",
+                  "vision_at_least": 1,
+                  "if": [
+                    "var(target.passable) > 0",
+                    "var(target.gold_income) > 0",
+                    "1 - inSet(enemy_mil_near_spaces, target)"
+                  ]
+                },
+                "let": {
+                  "to_home": {
+                    "min": {
+                      "kind": "spaces",
+                      "where": {
+                        "in_set": "home"
+                      },
+                      "of": "distance(target, item)",
+                      "default": 999
+                    }
+                  }
+                },
+                "rank": [
+                  "var(tune_hold_near_first) * (0 - var(target.to_home)) + (1 - var(tune_hold_near_first)) * var(target.gold_income)",
+                  "0 - var(target.to_home)",
+                  "0 - (((2 * max(var(target.x), 0 - var(target.x)) - (var(target.x) < 0)) + (2 * max(var(target.y), 0 - var(target.y)) - (var(target.y) < 0))) * ((2 * max(var(target.x), 0 - var(target.x)) - (var(target.x) < 0)) + (2 * max(var(target.y), 0 - var(target.y)) - (var(target.y) < 0)) + 1) / 2 + (2 * max(var(target.y), 0 - var(target.y)) - (var(target.y) < 0)))"
+                ],
+                "limit": "var(tune_hold_sites)"
+              },
+              "into": {
+                "set": "hold_sites",
+                "var": "n_hold_sites"
+              }
+            },
+            {
+              "action": "select",
+              "pick": {
+                "kind": "spaces",
+                "where": {
+                  "in_set": "hold_pool",
+                  "if": "inSet(hold_keep, target) + inSet(hold_sites, target) > 0"
+                }
+              },
+              "into": {
+                "set": "hold_targets",
+                "var": "n_hold_targets"
+              }
+            },
+            {
+              "action": "select",
+              "pick": {
+                "kind": "spaces",
+                "where": {
+                  "in_set": "hold_targets",
+                  "if": "var(target.covered) == 0"
+                },
+                "let": {
+                  "covered": {
+                    "count": {
+                      "kind": "units",
+                      "where": {
+                        "owner": "own",
+                        "bucket": "holder",
+                        "if": "((var(item.x) == var(target.x)) * (var(item.y) == var(target.y))) + ((var(item.order_kind) == 0) * (var(item.order_space_x) == var(target.x)) * (var(item.order_space_y) == var(target.y))) > 0"
+                      }
+                    }
+                  }
+                }
+              },
+              "into": {
+                "set": "uncovered_targets",
+                "var": "n_uncovered_targets"
+              }
+            },
+            {
+              "action": "set_var",
+              "name": "hold_military",
+              "value": {
+                "count": {
+                  "kind": "units",
+                  "where": {
+                    "owner": "own",
+                    "unit_types": [
+                      "military"
+                    ]
+                  }
+                }
+              },
+              "persist": false
+            },
+            {
+              "action": "set_var",
+              "name": "hold_holders",
+              "value": {
+                "count": {
+                  "kind": "units",
+                  "where": {
+                    "owner": "own",
+                    "bucket": "holder"
+                  }
+                }
+              },
+              "persist": false
+            },
+            {
+              "action": "set_var",
+              "name": "hold_need",
+              "value": "min(var(n_uncovered_targets), max(0, floor(var(tune_hold_cap) * var(hold_military)) - var(hold_holders))) * (var(hold_military) >= var(tune_hold_min_army))",
+              "persist": false
+            },
+            {
+              "action": "select",
+              "pick": {
+                "kind": "spaces",
+                "where": {
+                  "in_set": "uncovered_targets"
+                },
+                "let": {
+                  "to_home": {
+                    "min": {
+                      "kind": "spaces",
+                      "where": {
+                        "in_set": "home"
+                      },
+                      "of": "distance(target, item)",
+                      "default": 999
+                    }
+                  }
+                },
+                "rank": [
+                  "inSet(hold_keep, target) * inSet(base, target)",
+                  "inSet(hold_keep, target)",
+                  "var(tune_hold_near_first) * (0 - var(target.to_home)) + (1 - var(tune_hold_near_first)) * var(target.gold_income)",
+                  "0 - var(target.to_home)",
+                  "0 - (((2 * max(var(target.x), 0 - var(target.x)) - (var(target.x) < 0)) + (2 * max(var(target.y), 0 - var(target.y)) - (var(target.y) < 0))) * ((2 * max(var(target.x), 0 - var(target.x)) - (var(target.x) < 0)) + (2 * max(var(target.y), 0 - var(target.y)) - (var(target.y) < 0)) + 1) / 2 + (2 * max(var(target.y), 0 - var(target.y)) - (var(target.y) < 0)))"
+                ],
+                "limit": "var(hold_need)"
+              },
+              "into": {
+                "set": "hold_wanted",
+                "var": "n_hold_wanted"
+              }
+            },
+            {
+              "action": "select",
+              "pick": {
+                "kind": "units",
+                "where": {
+                  "owner": "own",
+                  "unit_types": [
+                    "military"
+                  ],
+                  "not_in_set": "raiding_party",
+                  "if": [
+                    "1 - inBucket(holder, target)",
+                    "1 - inSet(scout_units, target)"
+                  ]
+                },
+                "let": {
+                  "nearest": {
+                    "min": {
+                      "kind": "spaces",
+                      "where": {
+                        "in_set": "hold_wanted"
+                      },
+                      "of": "distance(target, item)",
+                      "default": 999
+                    }
+                  }
+                },
+                "rank": [
+                  "0 - var(target.nearest)",
+                  "0 - var(target.uid)"
+                ],
+                "limit": "var(hold_need)"
+              },
+              "into": {
+                "set": "hold_recruits",
+                "var": "n_hold_recruits"
+              }
+            }
+          ]
+        },
+        {
+          "action": "select",
+          "pick": {
+            "kind": "units",
+            "where": {
+              "owner": "own",
+              "if": "inBucket(holder, target) + inSet(hold_recruits, target) > 0"
+            }
+          },
+          "into": {
+            "set": "claimed_units",
+            "var": "n_claimed_units"
+          }
+        },
+        {
+          "action": "select",
+          "pick": {
+            "kind": "spaces",
+            "where": {
+              "near": {
+                "distance": 0,
+                "of": {
+                  "kind": "units",
+                  "where": {
+                    "in_set": "claimed_units"
+                  }
+                }
+              }
+            }
+          },
+          "into": {
+            "set": "holder_spaces",
+            "var": "n_holder_spaces"
+          }
+        },
+        {
+          "action": "select",
+          "pick": {
+            "kind": "units",
+            "where": {
+              "owner": "own",
+              "if": "inBucket(scout, target) + inBucket(holder, target) + inSet(hold_recruits, target) > 0"
+            }
+          },
+          "into": {
+            "set": "reserved_units",
+            "var": "n_reserved_units"
+          }
+        }
+      ]
+    },
+    {
+      "when": {
+        "always": {}
+      },
+      "then": [
+        {
+          "action": "if",
+          "when": {
+            "value_at_least": {
+              "value": "(var(has_economy) == 0) * (var(has_production) > 0)",
+              "amount": 1
+            }
+          },
+          "then": [
+            {
+              "action": "select",
+              "pick": {
+                "kind": "units",
+                "where": {
+                  "in_set": "hold_recruits"
+                }
+              },
+              "into": {
+                "bucket": "holder",
+                "mode": "add"
+              }
+            },
+            {
+              "action": "select",
+              "actors": {
+                "kind": "units",
+                "where": {
+                  "in_set": "hold_recruits"
+                }
+              },
+              "pick": {
+                "kind": "spaces",
+                "where": {
+                  "in_set": "hold_wanted"
+                },
+                "capacity": "1"
+              },
+              "match": {
+                "score": "0 - distance(actor, target)"
+              },
+              "issue": [
+                {
+                  "move": {}
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "when": {
+        "always": {}
+      },
+      "then": [
+        {
           "action": "select",
           "pick": {
             "kind": "units",
@@ -3744,7 +4558,7 @@
               "if": "var(target.is_scout) == 0"
             },
             "let": {
-              "is_scout": "inSet(scout_units, target)"
+              "is_scout": "inSet(reserved_units, target)"
             },
             "rank": [
               "0 - var(target.uid)"
@@ -4050,7 +4864,7 @@
         {
           "action": "set_var",
           "name": "remembered_power",
-          "value": "var(memory_101) * var(tune_power_blunt) + var(memory_102) * var(tune_power_pierce) + var(memory_103) * var(tune_power_heavy) + var(memory_401) * var(tune_power_siege)",
+          "value": "var(memory_101) * var(enemy_power_blunt) + var(memory_102) * var(enemy_power_pierce) + var(memory_103) * var(enemy_power_heavy) + var(memory_401) * var(enemy_power_siege)",
           "persist": false
         },
         {
@@ -4062,7 +4876,7 @@
         {
           "action": "set_var",
           "name": "unknown_unit_power",
-          "value": "max(var(tune_unknown_min_power), var(remembered_power) / max(1, var(remembered_military)))",
+          "value": "(var(remembered_military) >= 1) * max(var(tune_unknown_floor), var(remembered_power) / max(1, var(remembered_military))) + (var(remembered_military) < 1) * var(tune_unknown_min_power)",
           "persist": false
         },
         {
@@ -4088,7 +4902,7 @@
               "where": {
                 "in_set": "enemy_units"
               },
-              "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+              "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
             }
           },
           "persist": false
@@ -4248,7 +5062,7 @@
                   }
                 }
               },
-              "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+              "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
             }
           },
           "persist": false
@@ -4274,7 +5088,7 @@
                   }
                 }
               },
-              "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+              "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
             }
           },
           "persist": false
@@ -4300,7 +5114,7 @@
                   }
                 }
               },
-              "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+              "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
             }
           },
           "persist": false
@@ -4326,7 +5140,7 @@
                   }
                 }
               },
-              "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+              "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
             }
           },
           "persist": false
@@ -4353,7 +5167,7 @@
                 },
                 "bucket": "army"
               },
-              "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+              "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
             }
           },
           "persist": false
@@ -4379,7 +5193,7 @@
                   }
                 }
               },
-              "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+              "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
             }
           },
           "persist": false
@@ -4492,7 +5306,7 @@
                   }
                 }
               },
-              "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+              "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
             }
           },
           "persist": false
@@ -4553,7 +5367,7 @@
                   }
                 }
               },
-              "of": "((var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)) + ((var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy)) * (var(tune_tactical_attack_bonus) * researched(61) + var(tune_tactical_armor_bonus) * researched(62))"
+              "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
             }
           },
           "persist": false
@@ -4588,7 +5402,7 @@
                   "in_set": "army_space"
                 }
               },
-              "of": "((var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)) + ((var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy)) * (var(tune_tactical_attack_bonus) * researched(61) + var(tune_tactical_armor_bonus) * researched(62))"
+              "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
             }
           },
           "persist": false
@@ -4754,7 +5568,7 @@
         {
           "action": "set_var",
           "name": "enemy_army_memory",
-          "value": "min(var(tune_memory_population_power) * max(0, gameVar(population_max) - var(memory_1)), max(var(enemy_army_memory) * var(tune_memory_retention) + var(enemy_growth), var(visible_power) + var(tune_unknown_weight) * var(unidentified_power)))",
+          "value": "min(var(tune_memory_population_power) * max(0, var(population_ceiling) - var(memory_1)), max(var(enemy_army_memory) * var(tune_memory_retention) + var(enemy_growth), var(visible_power) + var(tune_unknown_weight) * var(unidentified_power)))",
           "persist": true
         },
         {
@@ -4777,7 +5591,7 @@
         {
           "action": "set_var",
           "name": "enemy_tech_multiplier",
-          "value": "1 + var(tune_enemy_smith_bonus) * min(1, var(enemy_buildings_11))",
+          "value": 1,
           "persist": false
         },
         {
@@ -4806,7 +5620,7 @@
         {
           "action": "set_var",
           "name": "own_strategic_multiplier",
-          "value": "1 + var(tune_strategic_tech_bonus) * (researched(61) + researched(62))",
+          "value": 1,
           "persist": false
         },
         {
@@ -4879,7 +5693,7 @@
                   }
                 }
               },
-              "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+              "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
             }
           },
           "persist": false
@@ -5005,7 +5819,7 @@
                     ],
                     "if": "distance(center_unit, item) <= 1"
                   },
-                  "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+                  "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
                 }
               },
               "e_unid": {
@@ -5244,7 +6058,7 @@
                             ],
                             "if": "distance(target, item) <= 1"
                           },
-                          "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+                          "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
                         }
                       },
                       "d_unid": {
@@ -5436,7 +6250,7 @@
                         ],
                         "if": "distance(target, item) == 0"
                       },
-                      "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+                      "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
                     }
                   },
                   "enemy_vils_count": {
@@ -5485,7 +6299,7 @@
                         ],
                         "if": "distance(target, item) <= 1"
                       },
-                      "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+                      "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
                     }
                   },
                   "e_unid_near": {
@@ -5567,7 +6381,7 @@
                             ],
                             "if": "distance(target, item) == 0"
                           },
-                          "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+                          "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
                         }
                       },
                       "enemy_vils_count": {
@@ -5616,7 +6430,7 @@
                             ],
                             "if": "distance(target, item) <= 1"
                           },
-                          "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+                          "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
                         }
                       },
                       "e_unid_near": {
@@ -5807,7 +6621,7 @@
                   }
                 }
               },
-              "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+              "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
             }
           },
           "persist": false
@@ -5861,6 +6675,85 @@
           "name": "army_target_required",
           "value": "(var(tune_assault_odds) * (var(has_economy) > 0) + var(tune_assault_odds_noeco) * (var(has_economy) == 0)) * (var(target_known_power) * var(enemy_tech_multiplier) + var(target_unknown_units) * var(unknown_unit_power) + 3 * var(target_towers))",
           "persist": false
+        }
+      ]
+    },
+    {
+      "when": {
+        "always": {}
+      },
+      "then": [
+        {
+          "action": "select",
+          "pick": {
+            "kind": "spaces",
+            "where": {
+              "in_set": "owned_spaces",
+              "if": "((gameVar(mercenaries_need_region) == 0) + (var(target.region.owner) == var(player_id)) + (var(target.region.index) < 0) > 0) * ((var(has_economy) > 0) + inSet(holder_spaces, target) > 0)"
+            }
+          },
+          "into": {
+            "set": "hireable_spaces",
+            "var": "n_hireable_spaces"
+          }
+        },
+        {
+          "action": "select",
+          "pick": {
+            "kind": "spaces",
+            "where": {
+              "in_set": "hireable_spaces"
+            },
+            "let": {
+              "toward_target": {
+                "min": {
+                  "kind": "spaces",
+                  "where": {
+                    "in_set": "army_target_space"
+                  },
+                  "of": "distance(target, item)",
+                  "default": 999
+                }
+              },
+              "to_home": {
+                "min": {
+                  "kind": "spaces",
+                  "where": {
+                    "in_set": "home"
+                  },
+                  "of": "distance(target, item)",
+                  "default": 999
+                }
+              }
+            },
+            "rank": [
+              "inSet(enemy_mil_spaces, target)",
+              "inSet(enemy_mil_near_spaces, target)",
+              "0 - var(target.toward_target)",
+              "0 - var(target.to_home)",
+              "0 - (((2 * max(var(target.x), 0 - var(target.x)) - (var(target.x) < 0)) + (2 * max(var(target.y), 0 - var(target.y)) - (var(target.y) < 0))) * ((2 * max(var(target.x), 0 - var(target.x)) - (var(target.x) < 0)) + (2 * max(var(target.y), 0 - var(target.y)) - (var(target.y) < 0)) + 1) / 2 + (2 * max(var(target.y), 0 - var(target.y)) - (var(target.y) < 0)))"
+            ],
+            "limit": "var(tune_hire_spaces)"
+          },
+          "into": {
+            "set": "hire_space",
+            "var": "n_hire_space"
+          }
+        },
+        {
+          "action": "select",
+          "pick": {
+            "kind": "zones",
+            "where": {
+              "at": {
+                "in_set": "hire_space"
+              }
+            }
+          },
+          "into": {
+            "set": "hire_zones",
+            "var": "n_hire_zones"
+          }
         }
       ]
     },
@@ -6125,7 +7018,7 @@
         {
           "action": "set_var",
           "name": "army_target",
-          "value": "gameVar(population_max) * (1 - var(tune_worker_share))",
+          "value": "var(population_ceiling) * (1 - var(tune_worker_share))",
           "persist": false
         },
         {
@@ -6173,7 +7066,7 @@
         {
           "action": "set_var",
           "name": "worker_goal",
-          "value": "min(max(var(tune_worker_floor), gameVar(population_max) * var(tune_worker_share)), max(var(tune_worker_floor), (var(worker_demand_food) + var(worker_demand_wood) + var(worker_demand_stone)) / var(worker_income) + var(tune_worker_buffer)))",
+          "value": "min(max(var(tune_worker_floor), var(population_ceiling) * var(tune_worker_share)), max(var(tune_worker_floor), (var(worker_demand_food) + var(worker_demand_wood) + var(worker_demand_stone)) / var(worker_income) + var(tune_worker_buffer)))",
           "persist": false
         },
         {
@@ -6210,7 +7103,7 @@
         {
           "action": "set_var",
           "name": "free_army",
-          "value": "max(0, gameVar(population_max) - max(var(worker_goal), var(own_1)) - var(n_military))",
+          "value": "max(0, var(population_ceiling) - max(var(worker_goal), var(own_1)) - var(n_military))",
           "persist": false
         },
         {
@@ -6319,7 +7212,7 @@
         {
           "action": "set_var",
           "name": "want_2",
-          "value": "(var(own_1) > 0) * (gameVar(population_limit) < gameVar(population_max)) * max(0, (var(population_flow) * var(tune_housing_horizon) + 1 - var(headroom)) / 5)",
+          "value": "(var(own_1) > 0) * (gameVar(population_limit) < var(population_ceiling)) * max(0, (var(population_flow) * var(tune_housing_horizon) + 1 - var(headroom)) / 5)",
           "persist": false
         },
         {
@@ -6561,25 +7454,25 @@
                 {
                   "action": "set_var",
                   "name": "mercenary_rate_food",
-                  "value": "var(mercenary_rate_food) + (max(0, min(var(goal_101) - var(own_101), gameVar(population_max) - gameVar(population)))) * var(offer.cost_food) / var(tune_planning_horizon)",
+                  "value": "var(mercenary_rate_food) + (max(0, min(var(goal_101) - var(own_101), var(population_ceiling) - gameVar(population)))) * var(offer.cost_food) / var(tune_planning_horizon)",
                   "persist": false
                 },
                 {
                   "action": "set_var",
                   "name": "mercenary_rate_wood",
-                  "value": "var(mercenary_rate_wood) + (max(0, min(var(goal_101) - var(own_101), gameVar(population_max) - gameVar(population)))) * var(offer.cost_wood) / var(tune_planning_horizon)",
+                  "value": "var(mercenary_rate_wood) + (max(0, min(var(goal_101) - var(own_101), var(population_ceiling) - gameVar(population)))) * var(offer.cost_wood) / var(tune_planning_horizon)",
                   "persist": false
                 },
                 {
                   "action": "set_var",
                   "name": "mercenary_rate_stone",
-                  "value": "var(mercenary_rate_stone) + (max(0, min(var(goal_101) - var(own_101), gameVar(population_max) - gameVar(population)))) * var(offer.cost_stone) / var(tune_planning_horizon)",
+                  "value": "var(mercenary_rate_stone) + (max(0, min(var(goal_101) - var(own_101), var(population_ceiling) - gameVar(population)))) * var(offer.cost_stone) / var(tune_planning_horizon)",
                   "persist": false
                 },
                 {
                   "action": "set_var",
                   "name": "mercenary_rate_gold",
-                  "value": "var(mercenary_rate_gold) + (max(0, min(var(goal_101) - var(own_101), gameVar(population_max) - gameVar(population)))) * var(offer.cost_gold) / var(tune_planning_horizon)",
+                  "value": "var(mercenary_rate_gold) + (max(0, min(var(goal_101) - var(own_101), var(population_ceiling) - gameVar(population)))) * var(offer.cost_gold) / var(tune_planning_horizon)",
                   "persist": false
                 }
               ]
@@ -6618,25 +7511,25 @@
                 {
                   "action": "set_var",
                   "name": "mercenary_rate_food",
-                  "value": "var(mercenary_rate_food) + (max(0, min(var(goal_102) - var(own_102), gameVar(population_max) - gameVar(population)))) * var(offer.cost_food) / var(tune_planning_horizon)",
+                  "value": "var(mercenary_rate_food) + (max(0, min(var(goal_102) - var(own_102), var(population_ceiling) - gameVar(population)))) * var(offer.cost_food) / var(tune_planning_horizon)",
                   "persist": false
                 },
                 {
                   "action": "set_var",
                   "name": "mercenary_rate_wood",
-                  "value": "var(mercenary_rate_wood) + (max(0, min(var(goal_102) - var(own_102), gameVar(population_max) - gameVar(population)))) * var(offer.cost_wood) / var(tune_planning_horizon)",
+                  "value": "var(mercenary_rate_wood) + (max(0, min(var(goal_102) - var(own_102), var(population_ceiling) - gameVar(population)))) * var(offer.cost_wood) / var(tune_planning_horizon)",
                   "persist": false
                 },
                 {
                   "action": "set_var",
                   "name": "mercenary_rate_stone",
-                  "value": "var(mercenary_rate_stone) + (max(0, min(var(goal_102) - var(own_102), gameVar(population_max) - gameVar(population)))) * var(offer.cost_stone) / var(tune_planning_horizon)",
+                  "value": "var(mercenary_rate_stone) + (max(0, min(var(goal_102) - var(own_102), var(population_ceiling) - gameVar(population)))) * var(offer.cost_stone) / var(tune_planning_horizon)",
                   "persist": false
                 },
                 {
                   "action": "set_var",
                   "name": "mercenary_rate_gold",
-                  "value": "var(mercenary_rate_gold) + (max(0, min(var(goal_102) - var(own_102), gameVar(population_max) - gameVar(population)))) * var(offer.cost_gold) / var(tune_planning_horizon)",
+                  "value": "var(mercenary_rate_gold) + (max(0, min(var(goal_102) - var(own_102), var(population_ceiling) - gameVar(population)))) * var(offer.cost_gold) / var(tune_planning_horizon)",
                   "persist": false
                 }
               ]
@@ -7431,7 +8324,7 @@
                             ],
                             "if": "distance(target, item) <= 1"
                           },
-                          "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+                          "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
                         }
                       },
                       "threat_unidentified": {
@@ -7645,7 +8538,7 @@
                         ],
                         "if": "distance(target, item) <= 1"
                       },
-                      "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+                      "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
                     }
                   },
                   "threat_unidentified": {
@@ -7759,7 +8652,7 @@
                             ],
                             "if": "distance(target, item) <= 1"
                           },
-                          "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+                          "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
                         }
                       },
                       "threat_unidentified": {
@@ -7893,7 +8786,7 @@
                             ],
                             "if": "distance(target, item) <= 1"
                           },
-                          "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+                          "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
                         }
                       },
                       "threat_unidentified": {
@@ -8016,7 +8909,7 @@
                             ],
                             "if": "distance(target, item) <= 1"
                           },
-                          "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+                          "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
                         }
                       },
                       "threat_unidentified": {
@@ -8132,7 +9025,7 @@
                             ],
                             "if": "distance(target, item) <= 1"
                           },
-                          "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+                          "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
                         }
                       },
                       "threat_unidentified": {
@@ -8248,7 +9141,7 @@
                             ],
                             "if": "distance(target, item) <= 1"
                           },
-                          "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+                          "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
                         }
                       },
                       "threat_unidentified": {
@@ -8920,7 +9813,7 @@
                             ],
                             "if": "distance(target, item) <= 1"
                           },
-                          "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+                          "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
                         }
                       },
                       "threat_unidentified": {
@@ -9036,7 +9929,7 @@
                             ],
                             "if": "distance(target, item) <= 1"
                           },
-                          "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+                          "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
                         }
                       },
                       "threat_unidentified": {
@@ -9163,7 +10056,7 @@
                             ],
                             "if": "distance(target, item) <= 1"
                           },
-                          "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+                          "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
                         }
                       },
                       "threat_unidentified": {
@@ -9279,7 +10172,7 @@
                             ],
                             "if": "distance(target, item) <= 1"
                           },
-                          "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+                          "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
                         }
                       },
                       "threat_unidentified": {
@@ -9424,27 +10317,38 @@
               },
               "then": [
                 {
-                  "action": "select",
-                  "pick": {
-                    "kind": "zones",
+                  "action": "for_each",
+                  "select": {
+                    "kind": "spaces",
                     "where": {
-                      "owner": "own",
-                      "at": {
-                        "in_set": "home"
-                      }
-                    },
-                    "rank": [
-                      "0 - var(target.zone_x)",
-                      "0 - var(target.zone_y)"
-                    ],
-                    "limit": 1
+                      "in_set": "hire_space"
+                    }
                   },
-                  "issue": [
+                  "as": "dest",
+                  "do": [
                     {
-                      "hire": {
-                        "unit_id": 102,
-                        "count": "min(var(item.can_afford), max(0, round(((gameVar(gold) - (max(0, var(rate_gold) - var(mercenary_rate_gold)) * var(tune_planning_horizon) + var(research_budget_gold))) / max(0.001, var(offer.cost_gold))) - 0.499999)), gameVar(population_limit) - gameVar(population), max(0, round((var(goal_102) - var(own_102)) - 0.499999)))"
-                      }
+                      "action": "select",
+                      "pick": {
+                        "kind": "zones",
+                        "where": {
+                          "in_set": "hire_zones",
+                          "if": "distance(dest, target) == 0"
+                        },
+                        "rank": [
+                          "var(target.building_player) == var(player_id)",
+                          "0 - var(target.zone_x)",
+                          "0 - var(target.zone_y)"
+                        ],
+                        "limit": 1
+                      },
+                      "issue": [
+                        {
+                          "hire": {
+                            "unit_id": 102,
+                            "count": "min(var(item.can_afford), max(0, round(((gameVar(gold) - (max(0, var(rate_gold) - var(mercenary_rate_gold)) * var(tune_planning_horizon) + var(research_budget_gold))) / max(0.001, var(offer.cost_gold))) - 0.499999)), gameVar(population_limit) - gameVar(population), ceil((max(0, round((var(goal_102) - var(own_102)) - 0.499999))) / max(1, var(n_hire_space))))"
+                          }
+                        }
+                      ]
                     }
                   ]
                 }
@@ -9467,27 +10371,38 @@
               },
               "then": [
                 {
-                  "action": "select",
-                  "pick": {
-                    "kind": "zones",
+                  "action": "for_each",
+                  "select": {
+                    "kind": "spaces",
                     "where": {
-                      "owner": "own",
-                      "at": {
-                        "in_set": "home"
-                      }
-                    },
-                    "rank": [
-                      "0 - var(target.zone_x)",
-                      "0 - var(target.zone_y)"
-                    ],
-                    "limit": 1
+                      "in_set": "hire_space"
+                    }
                   },
-                  "issue": [
+                  "as": "dest",
+                  "do": [
                     {
-                      "hire": {
-                        "unit_id": 101,
-                        "count": "min(var(item.can_afford), max(0, round(((gameVar(gold) - (max(0, var(rate_gold) - var(mercenary_rate_gold)) * var(tune_planning_horizon) + var(research_budget_gold))) / max(0.001, var(offer.cost_gold))) - 0.499999)), gameVar(population_limit) - gameVar(population), max(0, round((var(goal_101) - var(own_101)) - 0.499999)))"
-                      }
+                      "action": "select",
+                      "pick": {
+                        "kind": "zones",
+                        "where": {
+                          "in_set": "hire_zones",
+                          "if": "distance(dest, target) == 0"
+                        },
+                        "rank": [
+                          "var(target.building_player) == var(player_id)",
+                          "0 - var(target.zone_x)",
+                          "0 - var(target.zone_y)"
+                        ],
+                        "limit": 1
+                      },
+                      "issue": [
+                        {
+                          "hire": {
+                            "unit_id": 101,
+                            "count": "min(var(item.can_afford), max(0, round(((gameVar(gold) - (max(0, var(rate_gold) - var(mercenary_rate_gold)) * var(tune_planning_horizon) + var(research_budget_gold))) / max(0.001, var(offer.cost_gold))) - 0.499999)), gameVar(population_limit) - gameVar(population), ceil((max(0, round((var(goal_101) - var(own_101)) - 0.499999))) / max(1, var(n_hire_space))))"
+                          }
+                        }
+                      ]
                     }
                   ]
                 }
@@ -9527,7 +10442,7 @@
                     ],
                     "if": "distance(target, item) <= 1"
                   },
-                  "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+                  "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
                 }
               },
               "a_mil": {
@@ -9540,7 +10455,7 @@
                     ],
                     "if": "distance(target, item) <= 1"
                   },
-                  "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+                  "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
                 }
               },
               "a_vils": {
@@ -11509,7 +12424,7 @@
                   "gather"
                 ]
               },
-              "if": "1 - var(target.is_garrisoned)"
+              "if": "1 - var(target.is_garrisoned) * inSet(threatened_villagers, target)"
             }
           },
           "into": {
@@ -12461,7 +13376,11 @@
                 "capacity": "var(target.gather_capacity) - var(target.workers)"
               },
               "match": {
-                "score": "0 - var(tune_gather_distance_weight) * distance(actor, target) - var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed)) + var(tune_food_gather_speed_weight) * var(target.gather_speed)"
+                "score": [
+                  "var(target.gather_speed) * (max(0, var(tune_gather_planning_turns) * (config(unit, turn_stamina, 1) + researched(1) * config(tech, bonus_turn_stamina, 1)) - distance(actor, target, 1))) / 10 - var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))",
+                  "0 - distance(actor, target, 1)",
+                  "0 - var(target.uid)"
+                ]
               },
               "issue": [
                 {
@@ -12528,7 +13447,11 @@
                 "capacity": "var(target.gather_capacity) - var(target.workers)"
               },
               "match": {
-                "score": "0 - var(tune_gather_distance_weight) * distance(actor, target) - var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed)) + var(tune_food_gather_speed_weight) * var(target.gather_speed)"
+                "score": [
+                  "var(target.gather_speed) * (max(0, var(tune_gather_planning_turns) * (config(unit, turn_stamina, 1) + researched(1) * config(tech, bonus_turn_stamina, 1)) - distance(actor, target, 1))) / 10 - var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))",
+                  "0 - distance(actor, target, 1)",
+                  "0 - var(target.uid)"
+                ]
               },
               "issue": [
                 {
@@ -12635,7 +13558,11 @@
                 "capacity": "var(target.gather_capacity) - var(target.workers)"
               },
               "match": {
-                "score": "0 - var(tune_gather_distance_weight) * distance(actor, target) - var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))"
+                "score": [
+                  "var(target.gather_speed) * (max(0, var(tune_gather_planning_turns) * (config(unit, turn_stamina, 1) + researched(1) * config(tech, bonus_turn_stamina, 1)) - distance(actor, target, 1))) / 10 - var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))",
+                  "0 - distance(actor, target, 1)",
+                  "0 - var(target.uid)"
+                ]
               },
               "issue": [
                 {
@@ -12702,7 +13629,11 @@
                 "capacity": "var(target.gather_capacity) - var(target.workers)"
               },
               "match": {
-                "score": "0 - var(tune_gather_distance_weight) * distance(actor, target) - var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))"
+                "score": [
+                  "var(target.gather_speed) * (max(0, var(tune_gather_planning_turns) * (config(unit, turn_stamina, 1) + researched(1) * config(tech, bonus_turn_stamina, 1)) - distance(actor, target, 1))) / 10 - var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))",
+                  "0 - distance(actor, target, 1)",
+                  "0 - var(target.uid)"
+                ]
               },
               "issue": [
                 {
@@ -12809,7 +13740,11 @@
                 "capacity": "var(target.gather_capacity) - var(target.workers)"
               },
               "match": {
-                "score": "0 - var(tune_gather_distance_weight) * distance(actor, target) - var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))"
+                "score": [
+                  "var(target.gather_speed) * (max(0, var(tune_gather_planning_turns) * (config(unit, turn_stamina, 1) + researched(1) * config(tech, bonus_turn_stamina, 1)) - distance(actor, target, 1))) / 10 - var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))",
+                  "0 - distance(actor, target, 1)",
+                  "0 - var(target.uid)"
+                ]
               },
               "issue": [
                 {
@@ -12876,7 +13811,11 @@
                 "capacity": "var(target.gather_capacity) - var(target.workers)"
               },
               "match": {
-                "score": "0 - var(tune_gather_distance_weight) * distance(actor, target) - var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))"
+                "score": [
+                  "var(target.gather_speed) * (max(0, var(tune_gather_planning_turns) * (config(unit, turn_stamina, 1) + researched(1) * config(tech, bonus_turn_stamina, 1)) - distance(actor, target, 1))) / 10 - var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))",
+                  "0 - distance(actor, target, 1)",
+                  "0 - var(target.uid)"
+                ]
               },
               "issue": [
                 {
@@ -12983,7 +13922,11 @@
                 "capacity": "var(target.gather_capacity) - var(target.workers)"
               },
               "match": {
-                "score": "0 - var(tune_gather_distance_weight) * distance(actor, target) - var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))"
+                "score": [
+                  "var(target.gather_speed) * (max(0, var(tune_gather_planning_turns) * (config(unit, turn_stamina, 1) + researched(1) * config(tech, bonus_turn_stamina, 1)) - distance(actor, target, 1))) / 10 - var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))",
+                  "0 - distance(actor, target, 1)",
+                  "0 - var(target.uid)"
+                ]
               },
               "issue": [
                 {
@@ -13050,7 +13993,11 @@
                 "capacity": "var(target.gather_capacity) - var(target.workers)"
               },
               "match": {
-                "score": "0 - var(tune_gather_distance_weight) * distance(actor, target) - var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))"
+                "score": [
+                  "var(target.gather_speed) * (max(0, var(tune_gather_planning_turns) * (config(unit, turn_stamina, 1) + researched(1) * config(tech, bonus_turn_stamina, 1)) - distance(actor, target, 1))) / 10 - var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))",
+                  "0 - distance(actor, target, 1)",
+                  "0 - var(target.uid)"
+                ]
               },
               "issue": [
                 {
@@ -13274,7 +14221,7 @@
                     ],
                     "if": "distance(target, item) <= 2"
                   },
-                  "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+                  "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
                 }
               },
               "danger_unid": {
@@ -13792,7 +14739,7 @@
                           }
                         }
                       },
-                      "if": "distance(tgt_space, target) == 1"
+                      "if": "(distance(tgt_space, target) == 1) * (var(target.zone_x) == var(tgt_space.x) - var(target.x)) * (var(target.zone_y) == var(tgt_space.y) - var(target.y))"
                     },
                     "rank": [
                       "0 - distance(aspace, target)",
@@ -13866,7 +14813,7 @@
             "where": {
               "owner": "own",
               "bucket": "army",
-              "if": "((var(army_retreat) == 0) * ((var(assault) > 0) + var(army_local_plan) > 0) * (var(n_army_target_space) > 0) * (var(army_engaged) == 0) * (gameVar(turn) > var(retreat_defend_until))) * (((var(army_in_center) >= var(tune_group_share) * var(army_size)) + var(army_core_can_fight) > 0) * (var(army_grouped_power) >= var(army_target_required))) * (((var(army_stage) == 1) + (((var(army_dist_to_target) <= var(tune_rest_dist)) * (var(army_dist_to_target) > 0)) * (var(army_rest) <= var(tune_rest_turns)) * (1 - var(skip_rest))) > 0)) * ((var(actor.x) == var(army_center_x)) * (var(actor.y) == var(army_center_y)))"
+              "if": "((var(army_retreat) == 0) * ((var(assault) > 0) + var(army_local_plan) > 0) * (var(n_army_target_space) > 0) * (var(army_engaged) == 0) * (gameVar(turn) > var(retreat_defend_until))) * (((var(army_in_center) >= var(tune_group_share) * var(army_size)) + var(army_core_can_fight) > 0) * (var(army_grouped_power) >= var(army_target_required))) * (((var(army_stage) == 1) + (((var(army_dist_to_target) <= var(tune_rest_dist)) * (var(army_dist_to_target) > 0)) * (var(army_stage) == 2) * (var(army_rest) <= var(tune_rest_turns)) * (1 - var(skip_rest))) > 0)) * (1 - ((var(army_dist_to_target) <= var(tune_rest_dist)) * (var(army_dist_to_target) > 0))) * ((var(actor.x) == var(army_center_x)) * (var(actor.y) == var(army_center_y)))"
             }
           },
           "issue": [
@@ -13887,8 +14834,64 @@
           "actors": {
             "kind": "units",
             "where": {
+              "owner": "own",
+              "bucket": "army",
+              "if": "((var(army_retreat) == 0) * ((var(assault) > 0) + var(army_local_plan) > 0) * (var(n_army_target_space) > 0) * (var(army_engaged) == 0) * (gameVar(turn) > var(retreat_defend_until))) * (((var(army_in_center) >= var(tune_group_share) * var(army_size)) + var(army_core_can_fight) > 0) * (var(army_grouped_power) >= var(army_target_required))) * (((var(army_stage) == 1) + (((var(army_dist_to_target) <= var(tune_rest_dist)) * (var(army_dist_to_target) > 0)) * (var(army_stage) == 2) * (var(army_rest) <= var(tune_rest_turns)) * (1 - var(skip_rest))) > 0)) * ((var(army_dist_to_target) <= var(tune_rest_dist)) * (var(army_dist_to_target) > 0)) * ((var(actor.x) == var(army_center_x)) * (var(actor.y) == var(army_center_y)))"
+            }
+          },
+          "issue": [
+            {
+              "stop": {}
+            },
+            {
+              "set_behavior": {
+                "stance": "passive",
+                "attack_back": true,
+                "interrupt_current": false
+              }
+            }
+          ]
+        },
+        {
+          "action": "select",
+          "actors": {
+            "kind": "units",
+            "where": {
+              "owner": "own",
+              "bucket": "army",
+              "if": "((var(army_retreat) == 0) * ((var(assault) > 0) + var(army_local_plan) > 0) * (var(n_army_target_space) > 0) * (var(army_engaged) == 0) * (gameVar(turn) > var(retreat_defend_until))) * (((var(army_in_center) >= var(tune_group_share) * var(army_size)) + var(army_core_can_fight) > 0) * (var(army_grouped_power) >= var(army_target_required))) * (((var(army_stage) == 1) + (((var(army_dist_to_target) <= var(tune_rest_dist)) * (var(army_dist_to_target) > 0)) * (var(army_stage) == 2) * (var(army_rest) <= var(tune_rest_turns)) * (1 - var(skip_rest))) > 0)) * ((var(army_dist_to_target) <= var(tune_rest_dist)) * (var(army_dist_to_target) > 0)) * ((var(actor.x) == var(army_center_x)) * (var(actor.y) == var(army_center_y)))"
+            }
+          },
+          "pick": {
+            "kind": "zones",
+            "where": {
+              "at": {
+                "in_set": "army_space"
+              },
+              "if": "(var(target.zone_x) == var(army_target_x) - var(army_center_x)) * (var(target.zone_y) == var(army_target_y) - var(army_center_y))"
+            },
+            "limit": 1
+          },
+          "match": {
+            "where": {
+              "if": "distance(actor, target) == 0"
+            }
+          },
+          "issue": [
+            {
+              "move": {
+                "to": "zone"
+              }
+            }
+          ]
+        },
+        {
+          "action": "select",
+          "actors": {
+            "kind": "units",
+            "where": {
               "in_set": "army_clear",
-              "if": "((((var(army_retreat) == 0) * ((var(assault) > 0) + var(army_local_plan) > 0) * (var(n_army_target_space) > 0) * (var(army_engaged) == 0) * (gameVar(turn) > var(retreat_defend_until))) * (((var(army_in_center) >= var(tune_group_share) * var(army_size)) + var(army_core_can_fight) > 0) * (var(army_grouped_power) >= var(army_target_required))) * (1 - ((var(army_stage) == 1) + (((var(army_dist_to_target) <= var(tune_rest_dist)) * (var(army_dist_to_target) > 0)) * (var(army_rest) <= var(tune_rest_turns)) * (1 - var(skip_rest))) > 0)) * ((var(skip_stage) > 0) + (var(army_stage) == 0) + ((var(army_dist_to_target) <= var(tune_rest_dist)) * (var(army_dist_to_target) > 0)) > 0)) + (((var(army_retreat) == 0) * ((var(assault) > 0) + var(army_local_plan) > 0) * (var(n_army_target_space) > 0) * (var(army_engaged) == 0) * (gameVar(turn) > var(retreat_defend_until))) * (((var(army_in_center) >= var(tune_group_share) * var(army_size)) + var(army_core_can_fight) > 0) * (var(army_grouped_power) >= var(army_target_required))) * (var(army_stage) == 2) * (var(army_dist_to_target) > var(tune_rest_dist)) * ((var(actor.x) == var(army_center_x)) * (var(actor.y) == var(army_center_y)))) > 0) * (var(n_attack_step) == 0)"
+              "if": "((((var(army_retreat) == 0) * ((var(assault) > 0) + var(army_local_plan) > 0) * (var(n_army_target_space) > 0) * (var(army_engaged) == 0) * (gameVar(turn) > var(retreat_defend_until))) * (((var(army_in_center) >= var(tune_group_share) * var(army_size)) + var(army_core_can_fight) > 0) * (var(army_grouped_power) >= var(army_target_required))) * (1 - ((var(army_stage) == 1) + (((var(army_dist_to_target) <= var(tune_rest_dist)) * (var(army_dist_to_target) > 0)) * (var(army_stage) == 2) * (var(army_rest) <= var(tune_rest_turns)) * (1 - var(skip_rest))) > 0)) * ((var(skip_stage) > 0) + (var(army_stage) == 0) + ((var(army_dist_to_target) <= var(tune_rest_dist)) * (var(army_dist_to_target) > 0)) > 0)) + (((var(army_retreat) == 0) * ((var(assault) > 0) + var(army_local_plan) > 0) * (var(n_army_target_space) > 0) * (var(army_engaged) == 0) * (gameVar(turn) > var(retreat_defend_until))) * (((var(army_in_center) >= var(tune_group_share) * var(army_size)) + var(army_core_can_fight) > 0) * (var(army_grouped_power) >= var(army_target_required))) * (var(army_stage) == 2) * (var(army_dist_to_target) > var(tune_rest_dist)) * ((var(actor.x) == var(army_center_x)) * (var(actor.y) == var(army_center_y)))) > 0) * (var(n_attack_step) == 0)"
             }
           },
           "issue": [
@@ -13936,13 +14939,16 @@
           "pick": {
             "kind": "zones",
             "where": {
-              "in_set": "stage_zone"
+              "at": {
+                "in_set": "attack_step"
+              },
+              "if": "(var(target.zone_x) == var(army_target_x) - var(attack_step_x)) * (var(target.zone_y) == var(army_target_y) - var(attack_step_y))"
             },
             "limit": 1
           },
           "match": {
             "where": {
-              "if": "(distance(actor, target) <= 1) * (var(target.x) == var(attack_step_x)) * (var(target.y) == var(attack_step_y))"
+              "if": "distance(actor, target) <= 1"
             }
           },
           "issue": [
@@ -13959,7 +14965,7 @@
             "kind": "units",
             "where": {
               "in_set": "army_clear",
-              "if": "(((var(army_retreat) == 0) * ((var(assault) > 0) + var(army_local_plan) > 0) * (var(n_army_target_space) > 0) * (var(army_engaged) == 0) * (gameVar(turn) > var(retreat_defend_until))) * (((var(army_in_center) >= var(tune_group_share) * var(army_size)) + var(army_core_can_fight) > 0) * (var(army_grouped_power) >= var(army_target_required))) * (1 - ((var(army_stage) == 1) + (((var(army_dist_to_target) <= var(tune_rest_dist)) * (var(army_dist_to_target) > 0)) * (var(army_rest) <= var(tune_rest_turns)) * (1 - var(skip_rest))) > 0)) * ((var(skip_stage) > 0) + (var(army_stage) == 0) + ((var(army_dist_to_target) <= var(tune_rest_dist)) * (var(army_dist_to_target) > 0)) > 0)) * ((var(actor.x) == var(army_center_x)) * (var(actor.y) == var(army_center_y)))"
+              "if": "(((var(army_retreat) == 0) * ((var(assault) > 0) + var(army_local_plan) > 0) * (var(n_army_target_space) > 0) * (var(army_engaged) == 0) * (gameVar(turn) > var(retreat_defend_until))) * (((var(army_in_center) >= var(tune_group_share) * var(army_size)) + var(army_core_can_fight) > 0) * (var(army_grouped_power) >= var(army_target_required))) * (1 - ((var(army_stage) == 1) + (((var(army_dist_to_target) <= var(tune_rest_dist)) * (var(army_dist_to_target) > 0)) * (var(army_stage) == 2) * (var(army_rest) <= var(tune_rest_turns)) * (1 - var(skip_rest))) > 0)) * ((var(skip_stage) > 0) + (var(army_stage) == 0) + ((var(army_dist_to_target) <= var(tune_rest_dist)) * (var(army_dist_to_target) > 0)) > 0)) * ((var(actor.x) == var(army_center_x)) * (var(actor.y) == var(army_center_y)))"
             }
           },
           "issue": [
@@ -13978,7 +14984,7 @@
             "kind": "units",
             "where": {
               "in_set": "army_clear",
-              "if": "(((var(army_retreat) == 0) * ((var(assault) > 0) + var(army_local_plan) > 0) * (var(n_army_target_space) > 0) * (var(army_engaged) == 0) * (gameVar(turn) > var(retreat_defend_until))) * (((var(army_in_center) >= var(tune_group_share) * var(army_size)) + var(army_core_can_fight) > 0) * (var(army_grouped_power) >= var(army_target_required))) * (1 - ((var(army_stage) == 1) + (((var(army_dist_to_target) <= var(tune_rest_dist)) * (var(army_dist_to_target) > 0)) * (var(army_rest) <= var(tune_rest_turns)) * (1 - var(skip_rest))) > 0)) * ((var(skip_stage) > 0) + (var(army_stage) == 0) + ((var(army_dist_to_target) <= var(tune_rest_dist)) * (var(army_dist_to_target) > 0)) > 0)) * ((var(actor.x) == var(army_center_x)) * (var(actor.y) == var(army_center_y)))"
+              "if": "(((var(army_retreat) == 0) * ((var(assault) > 0) + var(army_local_plan) > 0) * (var(n_army_target_space) > 0) * (var(army_engaged) == 0) * (gameVar(turn) > var(retreat_defend_until))) * (((var(army_in_center) >= var(tune_group_share) * var(army_size)) + var(army_core_can_fight) > 0) * (var(army_grouped_power) >= var(army_target_required))) * (1 - ((var(army_stage) == 1) + (((var(army_dist_to_target) <= var(tune_rest_dist)) * (var(army_dist_to_target) > 0)) * (var(army_stage) == 2) * (var(army_rest) <= var(tune_rest_turns)) * (1 - var(skip_rest))) > 0)) * ((var(skip_stage) > 0) + (var(army_stage) == 0) + ((var(army_dist_to_target) <= var(tune_rest_dist)) * (var(army_dist_to_target) > 0)) > 0)) * ((var(actor.x) == var(army_center_x)) * (var(actor.y) == var(army_center_y)))"
             }
           },
           "pick": {
@@ -13996,6 +15002,33 @@
           "issue": [
             {
               "move": {}
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "when": {
+        "always": {}
+      },
+      "then": [
+        {
+          "action": "select",
+          "actors": {
+            "kind": "units",
+            "where": {
+              "owner": "own",
+              "unit_types": [
+                "military"
+              ],
+              "if": "var(actor.attack_stack) != 2"
+            }
+          },
+          "issue": [
+            {
+              "set_behavior": {
+                "attack_stack": 2
+              }
             }
           ]
         }
@@ -14607,7 +15640,7 @@
               ]
             },
             "let": {
-              "is_scout": "inSet(scout_units, actor)"
+              "is_scout": "inSet(reserved_units, actor)"
             }
           },
           "pick": {
@@ -14739,7 +15772,7 @@
                           }
                         }
                       },
-                      "if": "(distance(unid_space, target) == 1) * (var(target.space.owner) == var(player_id))"
+                      "if": "(distance(unid_space, target) == 1) * (var(target.space.owner) == var(player_id)) * (var(target.zone_x) == var(unid_space.x) - var(target.x)) * (var(target.zone_y) == var(unid_space.y) - var(target.y))"
                     },
                     "rank": [
                       "0 - distance(unid_space, target, 1)",
@@ -14787,7 +15820,7 @@
                   ]
                 },
                 "let": {
-                  "is_scout": "inSet(scout_units, actor)"
+                  "is_scout": "inSet(reserved_units, actor)"
                 },
                 "rank": [
                   "var(actor.idle)",
@@ -14985,7 +16018,7 @@
                         ],
                         "if": "distance(actor, item) <= 1"
                       },
-                      "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+                      "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
                     }
                   },
                   "enemy_near_unid": {
@@ -15008,7 +16041,7 @@
                         ],
                         "if": "distance(actor, item) == 0"
                       },
-                      "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+                      "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
                     }
                   },
                   "allies_vils_count": {
@@ -15056,7 +16089,8 @@
                 {
                   "attack": {}
                 }
-              ]
+              ],
+              "mode": "prepend"
             },
             {
               "action": "select",
@@ -15084,7 +16118,7 @@
                         ],
                         "if": "distance(actor, item) <= 1"
                       },
-                      "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+                      "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
                     }
                   },
                   "enemy_near_unid": {
@@ -15107,7 +16141,7 @@
                         ],
                         "if": "distance(actor, item) == 0"
                       },
-                      "of": "(var(item.unit_id) == 101) * var(tune_power_blunt) + (var(item.unit_id) == 102) * var(tune_power_pierce) + (var(item.unit_id) == 103) * var(tune_power_heavy) + (var(item.unit_id) == 401) * var(tune_power_siege)"
+                      "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
                     }
                   },
                   "allies_vils_count": {
@@ -15155,44 +16189,6 @@
               "issue": [
                 {
                   "garrison": {}
-                }
-              ]
-            },
-            {
-              "action": "select",
-              "pick": {
-                "kind": "units",
-                "where": {
-                  "owner": "own",
-                  "unit_ids": [
-                    1
-                  ],
-                  "at": {
-                    "in_set": "enemy_presence_near_spaces"
-                  }
-                }
-              },
-              "into": {
-                "set": "near_enemy_vils",
-                "var": "n_near_enemy_vils"
-              }
-            },
-            {
-              "action": "select",
-              "actors": {
-                "kind": "units",
-                "where": {
-                  "owner": "own",
-                  "unit_ids": [
-                    1
-                  ],
-                  "not_in_set": "near_enemy_vils",
-                  "if": "var(actor.is_garrisoned)"
-                }
-              },
-              "issue": [
-                {
-                  "ungarrison": {}
                 }
               ]
             }

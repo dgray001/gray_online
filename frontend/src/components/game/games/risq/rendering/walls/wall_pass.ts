@@ -27,7 +27,7 @@ function segmentDamage(zone: RisqZone | undefined, building: RisqBuilding | unde
   return (zone.destroyed_building_turns ?? 1) >= 2 ? 4 : 3;
 }
 
-const SPRITE_BUDGET_BYTES = 48 * 1024 * 1024;
+const SPRITE_BUDGET_BYTES = 12 * 1024 * 1024;
 const ROTATION_SETTLE_MS = 150;
 const DEFAULT_COLOR = 'rgb(44, 88, 190)';
 const JOIN_CELL_RATIO = 0.1;
@@ -221,7 +221,6 @@ export class RisqWallPass {
     const now = performance.now();
     this.rotation = config.rotation;
     if (config.rotation !== this.last_rotation || config.hex_r !== this.last_hex_r) {
-      this.cache.clear();
       this.live_until = now + ROTATION_SETTLE_MS;
       this.last_rotation = config.rotation;
       this.last_hex_r = config.hex_r;

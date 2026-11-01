@@ -79,6 +79,16 @@ func TestExplicitAttackAndBehaviorReachEngine(t *testing.T) {
 	assertBehaviorSequence(t, g, 0)
 }
 
+func TestAttackStackReachesEngine(t *testing.T) {
+	model := once(`{"action":"select","actors":{"kind":"units"},"issue":[{"set_behavior":{"attack_stack":7}}]}`)
+	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":208,"player":0},"units":[{"id":21,"player":0,"count":1}]}]},` + remote
+	g := fixture(t, `{}`, spaces, "", model, emptyModel)
+	g.Run(t, 1)
+	if units := g.Own(t, 0).Units; len(units) != 1 || units[0].AttackStack != 7 {
+		t.Fatalf("attack stack did not reach the engine: %+v", units)
+	}
+}
+
 func TestGatherRulesRespectOrchardCapacity(t *testing.T) {
 	spaces := `{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"building":{"id":203,"player":0},"units":[{"id":11,"player":0,"count":3}]},{"x":1,"y":0,"building":{"id":202,"player":0}}]},` + remote
 	g := fixture(t, `{}`, spaces, `,"starting_techs":[301]`, once(gather("food", 0)+`,`+gather("food", 0)), emptyModel)

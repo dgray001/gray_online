@@ -69,8 +69,14 @@ POWER_TYPES = {101: "blunt", 102: "pierce", 103: "heavy", 401: "siege"}
 
 
 def power(role: str = "item", infantry_only: bool = False) -> str:
-    return " + ".join(f"(var({role}.unit_id) == {unit}) * var(tune_power_{name})"
-                      for unit, name in POWER_TYPES.items() if not infantry_only or unit != 401)
+    terms: list[str] = []
+    for unit, name in POWER_TYPES.items():
+        if infantry_only and unit == 401:
+            continue
+        own = f"(var({role}.player) == var(player_id))"
+        weight = f"{own} * var(own_power_{name}) + (1 - {own}) * var(enemy_power_{name})"
+        terms.append(f"(var({role}.unit_id) == {unit}) * ({weight})")
+    return " + ".join(terms)
 
 
 RESOURCES = ("food", "wood", "stone", "gold")

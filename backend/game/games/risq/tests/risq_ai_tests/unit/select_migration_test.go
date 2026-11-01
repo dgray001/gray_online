@@ -72,6 +72,23 @@ func TestSelectBehaviorKeepsLaterOverrides(t *testing.T) {
 	}
 }
 
+func TestSelectSetBehaviorAttackStack(t *testing.T) {
+	model := actionsModel(t, `{"action":"select","actors":{"kind":"units"},"issue":[{"set_behavior":{"attack_stack":5}}]}`)
+	decision := model.DecideOrders(productionView())
+	if len(decision.Behaviors) != 1 || decision.Behaviors[0].AttackStack == nil || *decision.Behaviors[0].AttackStack != 5 {
+		t.Fatalf("attack_stack not carried: %+v", decision.Behaviors)
+	}
+	for _, value := range []string{"256", "-1", "1.5", `"3"`} {
+		action := `{"action":"select","actors":{"kind":"units"},"issue":[{"set_behavior":{"attack_stack":` + value + `}}]}`
+		if err := loadError(rule(action)); err == nil {
+			t.Errorf("invalid attack_stack accepted: %s", value)
+		}
+	}
+	if err := loadError(rule(`{"action":"select","actors":{"kind":"buildings"},"issue":[{"set_behavior":{"attack_stack":2}}]}`)); err == nil {
+		t.Error("attack_stack accepted for buildings")
+	}
+}
+
 func TestSelectStopFiltersAndDeduplicatesSharedUnitOrders(t *testing.T) {
 	view := productionView()
 	view.allowed = nil

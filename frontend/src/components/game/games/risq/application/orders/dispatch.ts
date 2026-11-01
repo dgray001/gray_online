@@ -348,7 +348,7 @@ export class RisqOrderDispatch {
     this.commands.setGatherPoint(building.internal_id, point);
   }
 
-  placeMercenary(keep_armed: boolean): void {
+  placeMercenary(keep_armed: boolean, batch_size: number = 1): void {
     const zone = this.targeting.mercenaryTargetZone();
     const invalid_reason = this.targeting.mercenaryPlacementInvalidReason(zone);
     const mercenary = this.armed.getArmedMercenary();
@@ -356,13 +356,18 @@ export class RisqOrderDispatch {
       this.show_message(invalid_reason ?? 'No valid location', RISQ_MESSAGE_WARNING_COLOR);
       return;
     }
-    this.orders_model.add({
-      player_id: this.session.getPlayerId(),
-      order_type: RisqOrderType.OrderType_BuyMercenary,
-      subjects: [],
-      target_id: cantorPair(mercenary.id, zone.coordinate_key),
-      clear_previous_orders: false,
-    });
+    for (let i = 0; i < batch_size; i++) {
+      if (this.planning.mercenaryUnavailableReason(mercenary)) {
+        break;
+      }
+      this.orders_model.add({
+        player_id: this.session.getPlayerId(),
+        order_type: RisqOrderType.OrderType_BuyMercenary,
+        subjects: [],
+        target_id: cantorPair(mercenary.id, zone.coordinate_key),
+        clear_previous_orders: false,
+      });
+    }
     if (!keep_armed) {
       this.armed.disarmOrder();
     }

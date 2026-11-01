@@ -293,6 +293,10 @@ func (v *aiView) MapSize() int {
 	return (len(v.game.Spaces) - 1) / 2
 }
 
+func (v *aiView) MercenariesNeedRegion() bool {
+	return v.game.MercenariesNeedRegion
+}
+
 func (v *aiView) NumPlayers() int {
 	return len(v.game.Players)
 }

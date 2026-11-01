@@ -117,10 +117,10 @@ func TestBehaviorNotificationsAndDefaults(t *testing.T) {
 
 	// partial default updates keep the other defaults and never rewrite existing units
 	before := encoded(t, entity(g, p, "units", ids[0]))
-	g.Action(p, "set-default-unit-behavior", gin.H{"stance": 2, "attack_back": false, "interrupt_current": true, "target_priority": []uint8{1}})
+	g.Action(p, "set-default-unit-behavior", gin.H{"stance": 2, "attack_back": false, "interrupt_current": true, "attack_stack": 3, "target_priority": []uint8{1}})
 	rawAction(g, p, "set-default-unit-behavior", gin.H{"target_priority": []uint8{}})
 	update := latestUpdate(t, g.Base.Players[uint64(p+1)].SettingUpdates)
-	if update.Kind != "default-unit-behavior-set" || update.Content["stance"] != defs.UnitStance(2) || update.Content["attack_back"] != false || update.Content["interrupt_current"] != true || len(update.Content["target_priority"].([]int)) != 0 {
+	if update.Kind != "default-unit-behavior-set" || update.Content["stance"] != defs.UnitStance(2) || update.Content["attack_back"] != false || update.Content["interrupt_current"] != true || update.Content["attack_stack"] != uint8(3) || len(update.Content["target_priority"].([]int)) != 0 {
 		t.Fatalf("partial update lost defaults: %+v", update)
 	}
 	if encoded(t, entity(g, p, "units", ids[0])) != before {

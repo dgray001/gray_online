@@ -15,6 +15,7 @@ type RisqUnit struct {
 	garrisoned_in *RisqBuilding
 	stance        defs.UnitStance
 	attack_back   bool
+	attack_stack  uint8
 	// the source this unit gathered from last tick; holders keep their gather slot over newcomers
 	gather_slot    Gatherable
 	gather_bonuses []defs.GatherBonus
@@ -54,6 +55,7 @@ func createRisqUnit(internal_id uint64, unit_id uint32, player *RisqPlayer) *Ris
 		unit.stance = player.default_unit_stance
 		unit.attack_back = player.default_unit_attack_back
 		unit.interrupt_current = player.default_unit_interrupt_current
+		unit.attack_stack = player.default_unit_attack_stack
 		unit.target_priority = slices.Clone(player.default_unit_target_priority)
 	}
 	unit.display_name = config.Display_name
@@ -217,6 +219,7 @@ func (u *RisqUnit) toFrontend(viewer_player_id int, with_history bool) gin.H {
 		unit["stance"] = u.stance
 		unit["interrupt_current"] = u.interrupt_current
 		unit["attack_back"] = u.attack_back
+		unit["attack_stack"] = u.attack_stack
 		unit["target_priority"] = target_priority
 		if len(u.move_path) > 0 {
 			move_path := make([]gin.H, len(u.move_path))

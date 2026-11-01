@@ -48,7 +48,7 @@ func (f *fakeView) cancelLiveOrder(id uint64) {
 }
 
 func checkedView(queries ...string) *fakeView {
-	f := &fakeView{stateful: true, allowed: map[string]bool{}, popCurrent: 1, popLimit: 4, popMax: 10, turnNumber: 7, mapSize: 4, numPlayers: 3}
+	f := &fakeView{stateful: true, allowed: map[string]bool{}, popCurrent: 1, popLimit: 4, popMax: 10, turnNumber: 7, mapSize: 4, numPlayers: 3, needRegion: true}
 	for _, name := range append([]string{"Units", "SpaceDistance", "LocationDistance", "Resource", "Population"}, queries...) {
 		f.allowed[name] = true
 	}

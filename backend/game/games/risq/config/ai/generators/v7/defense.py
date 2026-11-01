@@ -71,7 +71,7 @@ def civilian_defense() -> list[Record]:
     ), rank=["0 - var(target.health) / max(0.1, var(target.max_health))"],
        capacity="max(1, var(target.health) / var(villager_power))")
     fight_match = dict(where={"if": "distance(actor, target) == 0"})
-    fight_action = dict(action="select", actors=fight_actors, pick=fight_pick, match=fight_match, issue=[dict(attack={})])
+    fight_action = dict(action="select", actors=fight_actors, pick=fight_pick, match=fight_match, issue=[dict(attack={})], mode="prepend")
 
     # 2. Garrison: If enemy soldiers are near and crush margin is unfavorable
     garrison_actors = selection("units", dict(
@@ -90,17 +90,6 @@ def civilian_defense() -> list[Record]:
        capacity="var(target.garrison_capacity) - var(target.garrison_count) - var(target.pending)")
     garrison_match = dict(score="0 - distance(actor, target)")
     garrison_action = dict(action="select", actors=garrison_actors, pick=garrison_pick, match=garrison_match, issue=[dict(garrison={})])
-
-    # 3. Ungarrison: When no hostile military units remain within 1 space
-    near_enemy_vils = selection("units", dict(
-        owner="own", unit_ids=[1],
-        at=dict(in_set="enemy_presence_near_spaces")
-    ))
-    ungarrison_actors = selection("units", dict(
-        owner="own", unit_ids=[1], not_in_set="near_enemy_vils",
-        **{"if": "var(actor.is_garrisoned)"}
-    ))
-    ungarrison_action = dict(action="select", actors=ungarrison_actors, issue=[dict(ungarrison={})])
 
     threat_base_enemy = aggregate("count", selection("units", dict(
         owner="enemy", unit_types=["military"],
@@ -130,7 +119,7 @@ def civilian_defense() -> list[Record]:
         variable("threat_civilians", "var(threat_base) + var(threat_vil_enemy) + var(threat_vil_unid)"),
         variable("garrisoned_vils", garrisoned_vils),
         branch("(var(threat_civilians) > 0) + (var(garrisoned_vils) > 0) > 0", [
-            fight_action, garrison_action, store("near_enemy_vils", near_enemy_vils), ungarrison_action
+            fight_action, garrison_action
         ]),
     ]
 
@@ -164,7 +153,7 @@ def base_defense() -> list[Record]:
     idle_guards = selection("units", dict(
         owner="own", unit_types=["military"], not_in_set="raiding_party",
         **{"if": ["var(actor.idle) * (var(actor.order_kind) == -1) * (var(actor.is_scout) == 0)", army_order_available("actor")]}
-    ), let=dict(is_scout="inSet(scout_units, actor)"))
+    ), let=dict(is_scout="inSet(reserved_units, actor)"))
     home_space = selection("spaces", dict(in_set="home"), limit=1)
     hold_base = dict(action="select", actors=idle_guards, pick=home_space, issue=[dict(move={})])
 

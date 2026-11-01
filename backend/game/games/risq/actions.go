@@ -173,6 +173,9 @@ func (r *GameRisq) executeSetUnitBehavior(player_id int, behavior UnitBehaviorFr
 		if behavior.Attack_back != nil {
 			unit.attack_back = *behavior.Attack_back
 		}
+		if behavior.Attack_stack != nil {
+			unit.attack_stack = *behavior.Attack_stack
+		}
 		if behavior.Target_priority != nil {
 			unit.target_priority = target_priority
 		}
@@ -188,6 +191,9 @@ func (r *GameRisq) executeSetUnitBehavior(player_id int, behavior UnitBehaviorFr
 		}
 		if behavior.Attack_back != nil {
 			content["attack_back"] = *behavior.Attack_back
+		}
+		if behavior.Attack_stack != nil {
+			content["attack_stack"] = *behavior.Attack_stack
 		}
 		if behavior.Target_priority != nil {
 			content["target_priority"] = targetCategoriesToInts(target_priority)

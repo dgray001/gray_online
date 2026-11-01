@@ -87,7 +87,7 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameF
 			cards:        []*game_utils.StandardCard{},
 			cards_played: []int{},
 			score:        0,
-			ai_model_id:  3,
+			ai_model_id:  4,
 		}
 		go runAi(fiddlesticks_player, fiddlesticks, action_channel)
 		fiddlesticks.players = append(fiddlesticks.players, fiddlesticks_player)
@@ -112,7 +112,7 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameF
 				cards:        []*game_utils.StandardCard{},
 				cards_played: []int{},
 				score:        0,
-				ai_model_id:  3,
+				ai_model_id:  4,
 			}
 			player.Player_id = player_id
 			go runAi(fiddlesticks_player, fiddlesticks, action_channel)
@@ -206,6 +206,17 @@ func (f *GameFiddlesticks) setTrickPoints(trick_points uint16) {
 
 func (f *GameFiddlesticks) GetBase() *game.GameBase {
 	return f.game
+}
+
+func (f *GameFiddlesticks) GetFiddlesticksPlayer(idx int) *FiddlesticksPlayer {
+	if idx < 0 || idx >= len(f.players) {
+		return nil
+	}
+	return f.players[idx]
+}
+
+func (f *GameFiddlesticks) IsBetting() bool {
+	return f.betting
 }
 
 func (f *GameFiddlesticks) StartGame() {

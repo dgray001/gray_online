@@ -208,11 +208,9 @@ func (u *RisqUnit) resolveStance(risq *GameRisq) {
 	if u.stance == defs.UnitStance_DEFENSIVE || u.stance == defs.UnitStance_STAND_GROUND {
 		space_range = max(space_range, 1)
 	}
-	target := nearbyTarget(u.zone, u.player_id, u.target_priority, u.stanceReachable, u.inAttackRange, u.canReachNearby, risq, space_range)
-	if targetInPriority(target, u.target_priority) {
-		order_type := attackOrderType(target, defs.OrderType_UnitAutoAttackUnit, defs.OrderType_UnitAutoAttackBuilding)
-		u.replaceOrder(risq, order_type, int64(target.internalId()), "stance")
-		risq.projectDamage(u, target)
+	candidates := nearbyCandidates(u.zone, u.player_id, u.target_priority, u.stanceReachable, u.inAttackRange, u.canReachNearby, risq, space_range)
+	if len(candidates) > 0 && targetInPriority(candidates[0], u.target_priority) {
+		risq.stance_picks = append(risq.stance_picks, stancePick{unit: u, candidates: candidates})
 	}
 }
 
@@ -227,6 +225,9 @@ func (r *GameRisq) executeSetDefaultUnitBehavior(player_id int, behavior UnitBeh
 	if behavior.Interrupt_current != nil {
 		player.default_unit_interrupt_current = *behavior.Interrupt_current
 	}
+	if behavior.Attack_stack != nil {
+		player.default_unit_attack_stack = *behavior.Attack_stack
+	}
 	if behavior.Target_priority != nil {
 		player.default_unit_target_priority = make([]defs.TargetCategory, 0, len(*behavior.Target_priority))
 		for _, raw := range *behavior.Target_priority {
@@ -240,6 +241,7 @@ func (r *GameRisq) executeSetDefaultUnitBehavior(player_id int, behavior UnitBeh
 		"stance":            player.default_unit_stance,
 		"attack_back":       player.default_unit_attack_back,
 		"interrupt_current": player.default_unit_interrupt_current,
+		"attack_stack":      player.default_unit_attack_stack,
 		"target_priority":   targetCategoriesToInts(player.default_unit_target_priority),
 	})
 }

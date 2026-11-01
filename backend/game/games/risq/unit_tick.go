@@ -36,13 +36,6 @@ func (u *RisqUnit) tickIntent(risq *GameRisq) bool {
 	u.intent.resetIntent()
 	paid_half_move := u.half_move
 	u.half_move = nil
-	if len(u.order_queue.active_orders) > 0 {
-		order_type := u.order_queue.active_orders[0].order_type
-		if order_type == defs.OrderType_UnitAutoAttackUnit || order_type == defs.OrderType_UnitAutoAttackBuilding {
-			u.order_queue.nextOrder(u, risq)
-		}
-	}
-	u.resolveStance(risq)
 	order := u.order_queue.nextOrder(u, risq)
 	if order == nil {
 		return false

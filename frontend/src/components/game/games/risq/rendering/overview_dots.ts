@@ -130,7 +130,7 @@ function drawEntityDots(
     const color = selected_pass ? 'white' : (players[player_id]?.color.getString() ?? 'white');
     fillUprightSquare(ctx, point, radius, config.rotation, color);
   };
-  for (const zone of space.zones?.flat() ?? []) {
+  for (const zone of space.zones_flat ?? []) {
     const offsets = unitDotOffsets(zone, game.getPlayerId(), config.view_mode);
     for (const unit of zone.units.values()) {
       const shown = unit.garrisoned_in === undefined && unitVisibleInViewMode(unit.unit_type, config.view_mode);
@@ -153,7 +153,7 @@ function drawResourceDots(
   config: DrawRisqSpaceConfig
 ): void {
   const selected_resources: RisqZone[] = [];
-  for (const zone of space.zones?.flat() ?? []) {
+  for (const zone of space.zones_flat ?? []) {
     if (!zone.resource) {
       continue;
     }

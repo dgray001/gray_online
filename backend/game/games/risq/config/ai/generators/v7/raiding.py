@@ -18,7 +18,7 @@ def raiding_state() -> list[Record]:
                  "(var(own_101) >= var(tune_raid_min)) * (var(has_economy) > 0) * "
                  "(var(threat_home) <= var(guard_home)) * (var(raid_pause) == 0)"),
         store("raiding_party", selection("units", dict(
-            owner="own", unit_ids=[101], not_in_set="scout_units"
+            owner="own", unit_ids=[101], not_in_set="scout_units", **{"if": "1 - inBucket(holder, target)"}
         ), limit=whole("var(raid_size)"), rank=["0 - var(target.uid)"]), persist=True),
         variable("raid_prev", "var(n_raiding_party)", persist=True),
     ]

@@ -106,12 +106,15 @@ export function configDraw(
     ctx.translate(-transform.offset.x, -transform.offset.y);
   }
   ctx.beginPath();
-  draw();
-  if (config.fixed_position) {
-    ctx.translate(transform.offset.x, transform.offset.y);
-    ctx.rotate(transform.rotation);
-    ctx.translate(-transform.view.x, -transform.view.y);
-    ctx.scale(transform.scale, transform.scale);
+  try {
+    draw();
+  } finally {
+    if (config.fixed_position) {
+      ctx.translate(transform.offset.x, transform.offset.y);
+      ctx.rotate(transform.rotation);
+      ctx.translate(-transform.view.x, -transform.view.y);
+      ctx.scale(transform.scale, transform.scale);
+    }
   }
 }
 

@@ -29,7 +29,7 @@ type GameRisq struct {
 	err          *util.Logger
 	tick_history *turnJournal
 
-	projected_damage map[Attackable]float64 // reset each tick
+	stance_picks []stancePick
 
 	// fully resolved when the game is created and never changed after
 	config *defs.Config
