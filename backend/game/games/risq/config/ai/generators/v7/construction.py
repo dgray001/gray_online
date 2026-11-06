@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Union
 
-from common import RESOURCES, Definitions, Record, aggregate, branch, cost, selection, store, variable
+from common import RESOURCES, Definitions, Record, aggregate, branch, cost, power, selection, store, variable
 from foundations import TRACKED, site_clear
 from settlement import vc_placement
 from sites import build_action
@@ -19,7 +19,20 @@ def housing_crew_sizing(definitions: Definitions) -> list[Record]:
 
 
 def building_affordable(building_id: int) -> str:
-    checks = [f"(gameVar({res}) >= {cost('building', building_id, res)})" for res in RESOURCES]
+    def held(res: str) -> str:
+        if building_id in (1, 3):
+            return ""
+        if building_id == 22:
+            return f" - max(var(reserve_smith_{res}), var(reserve_redoubt_{res}))"
+        if building_id == 11:
+            return f" - max(max(var(reserve_first_rax_{res}), var(reserve_exp_rax_{res})), var(reserve_redoubt_{res}))"
+        if building_id == 23:
+            return f" - max(max(var(reserve_first_rax_{res}), var(reserve_exp_rax_{res})), var(reserve_smith_{res}))"
+        if building_id == 2:
+            return f" - var(reserve_{res}) * (var(headroom) > 0)"
+        return f" - var(reserve_{res})"
+
+    checks = [f"(gameVar({res}){held(res)} >= {cost('building', building_id, res)})" for res in RESOURCES]
     return "(" + " * ".join(checks) + ")"
 
 
@@ -60,8 +73,13 @@ def repairs() -> list[Record]:
         **{"in": dict(order_kind=["none", "gather"])},
         **{"if": "1 - var(actor.is_garrisoned)"},
     ), limit=1)
-    pick = selection("buildings", dict(owner="own", state="complete", **{"if": "var(target.hp_pct) < 1"}),
-                     rank="0 - var(target.hp_pct)", limit=1)
+    forces = {f"{owner}_power": aggregate("sum", selection("units", dict(
+        owner=owner, unit_types=["military"], **{"if": "distance(target, item) == 0"})), power())
+        for owner in ("own", "enemy")}
+    safe = "var(target.own_power) >= var(tune_vil_crush_odds) * var(target.enemy_power)"
+    pick = selection("buildings", dict(owner="own", state="complete", **{
+        "if": ["var(target.hp_pct) < 1", safe]}), let=forces,
+        rank="0 - var(target.hp_pct)", limit=1)
     return [dict(action="select", actors=actors, pick=pick, issue=[dict(repair={})])]
 
 
@@ -88,7 +106,7 @@ def settlement_and_shelter() -> list[Record]:
     vc_cond = f"(var(want_1) > 0) * (var(complete_1) + var(foundations_1) == 0) * {building_affordable(1)}"
     actions.extend(vc_placement(condition=vc_cond, builders=4))
 
-    house_cond = f"(var(want_2) > var(foundations_2)) * {building_affordable(2)}"
+    house_cond = f"(var(want_2) > max(var(house_replacement), var(house_with_builders))) * {building_affordable(2)}"
     actions.extend(build_action("house", 2, builders="var(house_builders)", condition=house_cond))
 
     return actions
@@ -97,7 +115,7 @@ def settlement_and_shelter() -> list[Record]:
 def farms(max_farms: int = 3) -> list[Record]:
     actions: list[Record] = []
     for i in range(max_farms):
-        farm_cond = f"(var(want_3) > var(foundations_3) + {i}) * {building_affordable(3)}"
+        farm_cond = f"(var(want_3) > {i}) * (var(foundations_3) == 0) * {building_affordable(3)}"
         actions.extend(build_action("farm", 3, builders=2, condition=farm_cond))
 
     return actions
@@ -126,9 +144,10 @@ def expansion_buildings() -> list[Record]:
 
 
 def buildable_spaces() -> list[Record]:
-    within = selection("spaces", dict(near=dict(distance=1, of=selection("spaces", dict(owner="own"))), **{
+    land = ["flatlands", "hilly", "mountainous", "swamp", "shallows"]
+    within = selection("spaces", dict(terrain_types=land, near=dict(distance=1, of=selection("spaces", dict(owner="own"))), **{
         "if": "(var(target.owner) == var(player_id)) + (var(target.owner) < 0) > 0"}))
-    unclaimed = selection("spaces", dict(owner="unowned"))
+    unclaimed = selection("spaces", dict(owner="unowned", terrain_types=land))
     return [variable("own_space_count", aggregate("count", selection("spaces", dict(owner="own")))),
             branch("var(own_space_count) == 0",
                    [store("buildable_spaces", unclaimed)],

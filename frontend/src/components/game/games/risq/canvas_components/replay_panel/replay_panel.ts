@@ -32,6 +32,14 @@ export class RisqReplayPanel implements CanvasComponent {
   private slider?: DwgRectSlider;
   private stops: number[] = [];
   private p: Point2D = { x: 0, y: 0 };
+  private previous_event_button = new RisqReplayControlButton(
+    (): ReplayGlyph => 'previous-event',
+    (): void => this.risq.replay_events?.stepEvent(-1)
+  );
+  private next_event_button = new RisqReplayControlButton(
+    (): ReplayGlyph => 'next-event',
+    (): void => this.risq.replay_events?.stepEvent(1)
+  );
   private play_button = new RisqReplayControlButton(
     (): ReplayGlyph => (this.playing ? 'pause' : 'play'),
     (): void => this.togglePlaying()
@@ -74,9 +82,9 @@ export class RisqReplayPanel implements CanvasComponent {
     this.shown = false;
     this.playing = false;
     this.hovering = false;
-    for (const component of [this.play_button, this.close_button, this.slider]) {
-      component?.setClicking(false);
-      component?.setHovering(false);
+    for (const component of this.controls()) {
+      component.setClicking(false);
+      component.setHovering(false);
     }
   }
 
@@ -125,15 +133,33 @@ export class RisqReplayPanel implements CanvasComponent {
     this.p = { x: center_x - 0.5 * PANEL_W, y: bottom - GAP - PANEL_H };
     const row_y = this.p.y + 0.5 * (PANEL_H - REPLAY_CONTROL_SIZE);
     const close_x = this.p.x + PANEL_W - PADDING - REPLAY_CONTROL_SIZE;
-    const slider_x = this.p.x + PADDING + REPLAY_CONTROL_SIZE + GAP;
-    this.play_button.setPosition({ x: this.p.x + PADDING, y: row_y });
+    const slider_x = this.p.x + PADDING + 3 * (REPLAY_CONTROL_SIZE + GAP);
+    this.previous_event_button.setPosition({ x: this.p.x + PADDING, y: row_y });
+    this.play_button.setPosition({ x: this.p.x + PADDING + REPLAY_CONTROL_SIZE + GAP, y: row_y });
+    this.next_event_button.setPosition({ x: this.p.x + PADDING + 2 * (REPLAY_CONTROL_SIZE + GAP), y: row_y });
     this.close_button.setPosition({ x: close_x, y: row_y });
     this.slider?.setPosition({ x: slider_x, y: row_y });
     this.slider?.setSize(close_x - GAP - slider_x, REPLAY_CONTROL_SIZE);
+    for (const [button, direction] of [
+      [this.previous_event_button, -1],
+      [this.next_event_button, 1],
+    ] as const) {
+      if (this.risq.replay_events?.canStepEvent(direction)) {
+        button.enable();
+      } else {
+        button.disable();
+      }
+    }
   }
 
   private controls(): CanvasComponent[] {
-    return this.slider ? [this.play_button, this.slider, this.close_button] : [this.play_button, this.close_button];
+    return [
+      this.previous_event_button,
+      this.play_button,
+      this.next_event_button,
+      ...(this.slider ? [this.slider] : []),
+      this.close_button,
+    ];
   }
 
   isHovering(): boolean {

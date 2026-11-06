@@ -310,13 +310,13 @@ export function drawRisqZone(
   if (zone.hovered_data.length !== target_len || zone.reset_hovered_data) {
     zone.hovered_data = [
       { c: building_pos, r: { x: building_r, y: building_r } },
-      ...filled_slots.map((_, i) => ({ c: unit_slot_positions[i], r: { x: unit_r, y: unit_r } })),
+      ...filled_slots.map((_, i) => ({ c: unit_slot_positions[i] ?? building_pos, r: { x: unit_r, y: unit_r } })),
     ];
     zone.reset_hovered_data = false;
   } else {
     zone.hovered_data[0].c = building_pos;
     for (let i = 0; i < filled_slots.length; i++) {
-      zone.hovered_data[i + 1].c = unit_slot_positions[i];
+      zone.hovered_data[i + 1].c = unit_slot_positions[i] ?? building_pos;
       zone.hovered_data[i + 1].r = { x: unit_r, y: unit_r };
     }
   }
@@ -328,6 +328,9 @@ export function drawRisqZone(
   const idle_ids = show_idle ? game.planning.idleIds() : undefined;
   const scale = transformScale(ctx);
   for (const [i, part] of zone.hovered_data.entries()) {
+    if (!part || !part.c) {
+      continue;
+    }
     const selected =
       i === 0
         ? (!!zone.resource && game.selection.isResourceSelected(zone.resource.internal_id)) ||

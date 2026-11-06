@@ -5,6 +5,7 @@ import type { RisqJournalBuilding, RisqJournalUnit, RisqTickFrame, RisqTurnJourn
 import { buildingImage, techImage } from '../../rendering/assets/buildings';
 import { unitImage } from '../../rendering/assets/unit';
 import type { ReplayEvent } from '../../model/replay_event';
+import { productionReportEvents } from './production_report_events';
 
 export interface ProductionEvent extends ReplayEvent {
   kind: 'production';
@@ -44,7 +45,7 @@ function distinctLocations(locations: RisqTickLocation[]): RisqTickLocation[] {
   ];
 }
 
-export function productionEvents(journal: RisqTurnJournal, game: GameRisq): ProductionEvent[] {
+export function productionEvents(journal: RisqTurnJournal, game: GameRisq, player_id: number): ReplayEvent[] {
   const events: ProductionEvent[] = [];
   const units = new Map(journal.baseline.units);
   const buildings = new Map(journal.baseline.buildings);
@@ -70,6 +71,7 @@ export function productionEvents(journal: RisqTurnJournal, game: GameRisq): Prod
           tick: frame.tick,
           player_id: unit.player_id,
           title: `${unit.display_name} created`,
+          production: { kind: RisqProducibleKind.UNIT, item_id: unit.unit_id, source: 'trained' },
           icon: unitImage(unit.unit_id, true),
           locations: [producer.action.intent.location],
         });
@@ -91,6 +93,7 @@ export function productionEvents(journal: RisqTurnJournal, game: GameRisq): Prod
           tick: frame.tick,
           player_id: building.player_id,
           title: `${building.display_name} completed`,
+          production: { kind: RisqProducibleKind.BUILDING, item_id: building.building_id, source: 'built' },
           icon: buildingImage(building.building_id, false, true),
           locations: distinctLocations([
             { space: building.space_coordinate, zone: building.zone_coordinate },
@@ -117,6 +120,7 @@ export function productionEvents(journal: RisqTurnJournal, game: GameRisq): Prod
             tick: frame.tick,
             player_id: player.player_id,
             title: `${tech?.display_name ?? `Technology ${id}`} researched`,
+            production: { kind: RisqProducibleKind.TECH, item_id: id, source: 'researched' },
             icon: techImage(id),
             locations: distinctLocations(
               researchers.map(({ action }: ProductionAction): RisqTickLocation => action.intent.location)
@@ -127,5 +131,5 @@ export function productionEvents(journal: RisqTurnJournal, game: GameRisq): Prod
       players.set(player.player_id, player);
     }
   }
-  return events;
+  return productionReportEvents(events, journal, game, player_id);
 }

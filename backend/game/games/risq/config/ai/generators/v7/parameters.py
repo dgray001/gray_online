@@ -59,11 +59,17 @@ PARAMETERS = {
     "worker_floor": Parameter(8, 1), "worker_share": Parameter(0.5, 0.01, 1),
     "worker_buffer": Parameter(2), "planning_horizon": Parameter(6, 1),
     "production_lookahead": Parameter(1.5), "production_turnover": Parameter(18, 1),
-    "additional_producer_margin": Parameter(1.6), "investment_share": Parameter(0.6, 0, 1),
+    "additional_producer_margin": Parameter(0.6), "investment_share": Parameter(0.6, 0, 1),
     "investment_horizon": Parameter(20, 1), "construction_horizon": Parameter(6, 1),
     "bank_surplus_reserve": Parameter(100), "housing_horizon": Parameter(4, 1),
     "gold_expansion_weight": Parameter(0.8), "gold_expansion_payback_turns": Parameter(6, 1),
     "bootstrap_batches": Parameter(3, 1), "emergency_radius": Parameter(2, integer=True),
+    "rax_threat_enemies": Parameter(5, 1, integer=True), "rax_min_vils": Parameter(3, 0, integer=True),
+    "rax_vils_per_missing_enemy": Parameter(3, 0),
+    "rax_order": Parameter(0, 0, 3, True), "rax_reserve_share": Parameter(1, 0, 1), "rax_urgency_turns": Parameter(4, 0),
+    "rax_expansion_reserve_share": Parameter(0.05, 0, 1), "rax_expansion_urgency_turns": Parameter(4, 0),
+    "smith_reserve_share": Parameter(0, 0, 1),
+    "redoubt_reserve_share": Parameter(0, 0, 1),
     "early_blunt_bias": Parameter(3), "mix_sharpness": Parameter(4, 1, 8, True),
     "heavy_value_gate": Parameter(0.8), "pierce_heavies": Parameter(2),
     "farming_workers": Parameter(8), "wild_food_radius": Parameter(1, integer=True),
@@ -114,11 +120,15 @@ PARAMETERS = {
     "group_share": Parameter(1.0, 0.1, 1.0), "hit_damage": Parameter(1.5, 0.1),
     "kill_ticks": Parameter(1, 1, integer=True),
     "focus": Parameter(4.0, 0.0),
-    "attack_stack": Parameter(2, 0, 255, integer=True),
-    "hire_spaces": Parameter(1, 1, 10, integer=True),
+    "attack_stack": Parameter(2, 0, 255, integer=True),    "hire_spaces": Parameter(1, 1, 10, integer=True),
     "hold_sites": Parameter(3, 1, 99, integer=True),
     "hold_near_first": Parameter(0, 0, 1, integer=True), "hold_min_army": Parameter(0, 0, 200, integer=True),
     "hold_cap": Parameter(1, 0, 1),
+    "rich_bank": Parameter(0, 0), "rich_aggr": Parameter(0.9, 0, 0.9), "front_retreat": Parameter(1, 0, 1, integer=True),
+    "scout4_mil": Parameter(30, 1), "scout4_count": Parameter(1, 1, integer=True),
+    "tech_2": Parameter(0.8, 0, 1), "tech_3": Parameter(0.5, 0, 1), "tech_11": Parameter(0.8, 0, 1), "tech_64": Parameter(0.5, 0, 1),
+    "tech_91": Parameter(0.8, 0, 1), "tech_92": Parameter(0.5, 0, 1), "tech_102": Parameter(0.5, 0, 1),
+    "home_odds": Parameter(1.5, 0.1), "base_odds": Parameter(0.8, 0),
 }
 
 PARAMETERS.update({f"power_{name}_state_{state}": Parameter(value, 0.001)
@@ -128,6 +138,22 @@ PARAMETERS.update({f"power_{name}_state_{state}": Parameter(value, 0.001)
 PARAMETERS.update({f"matchup_{unit}_{enemy}": Parameter(value)
                    for unit, values in ((101, (1, 1.3, 0.4)), (102, (0.75, 1, 0.8)), (103, (1.3, 0.8, 1)))
                    for enemy, value in zip((101, 102, 103), values)})
+
+
+PARAMETERS.update({
+    "policy_group": Parameter(10, 10, 10, True), "policy_level": Parameter(1, 1, 1, True),
+    "policy_margin": Parameter(1.4, 1.4, 1.4), "policy_radius": Parameter(1, 0, 2, True),
+    "policy_fraction": Parameter(0.85, 0.85, 0.85), "policy_exposure": Parameter(1, 0, 30),
+    "policy_responders": Parameter(8, 1, 12, True), "policy_small_raid": Parameter(3, 1, 6, True),
+    "policy_batches": Parameter(1, 1, 1), "policy_recovery": Parameter(3, 3, 3, True),
+    "policy_exit_margin": Parameter(1.8, 1.8, 1.8), "policy_travel_weight": Parameter(1, 1, 1),
+    "refine_raid_mode": Parameter(2, 2, 2, True), "refine_reserve": Parameter(1, 1, 1, True),
+    "refine_raid_margin": Parameter(1.4, 0.1, 4), "refine_reserve_margin": Parameter(1.5, 0.1, 4),
+    "refine_reserve_batches": Parameter(2, 1, 4), "refine_response_scale": Parameter(2, 1, 4),
+    "refine_preserve_work": Parameter(1, 0, 1, True), "refine_defensive_only": Parameter(1, 0, 1, True),
+    "refine_worker_leash": Parameter(1, 0, 1, True), "refine_queued_credit": Parameter(1, 0, 1, True),
+    "refine_health_floor": Parameter(0.5, 0, 1), "refine_local_radius": Parameter(1, 0, 1, True),
+})
 
 
 def parameters(overrides: dict[str, float]) -> dict[str, float]:

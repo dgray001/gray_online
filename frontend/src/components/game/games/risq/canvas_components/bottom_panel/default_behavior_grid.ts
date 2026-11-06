@@ -10,16 +10,18 @@ import { RisqStanceButton } from '../left_panel/actions/unit/stance_button';
 import { RisqMilitaryHelpButton } from '../left_panel/actions/unit/military_help_button';
 import { RisqUnitToggleButton } from '../left_panel/actions/unit/unit_toggle_button';
 import { RisqTargetPriorityControl } from '../left_panel/controls/target_priority_control';
+import { RisqAttackStackControl } from '../left_panel/controls/attack_stack_control';
 
 export class RisqDefaultBehaviorGrid extends DwgRectButton {
   private buttons: RisqActionButton[];
   private priority: RisqTargetPriorityControl;
+  private attack_stack: RisqAttackStackControl;
   constructor(private risq: DwgRisq) {
     super({
       button_config: {},
       p: { x: 0, y: 0 },
       w: 212,
-      h: 104,
+      h: 152,
       draw_config: { fill_style: 'transparent', stroke_width: 0, fixed_position: true },
     });
     this.buttons = STANCES.map(
@@ -31,6 +33,7 @@ export class RisqDefaultBehaviorGrid extends DwgRectButton {
         )
     );
     this.priority = new RisqTargetPriorityControl(risq, [], true);
+    this.attack_stack = new RisqAttackStackControl(risq, [], true);
     this.buttons.push(new RisqMilitaryHelpButton(risq, STANCES.length, 0));
     this.buttons.push(
       ...TOGGLES.map(
@@ -46,7 +49,7 @@ export class RisqDefaultBehaviorGrid extends DwgRectButton {
   setAvailableWidth(width: number): void {
     const w = Math.min(212, width);
     const size = Math.max(0, Math.min(36, (w - 32) / 5));
-    this.setSize(w, 32 + 2 * size);
+    this.setSize(w, 36 + 3 * size + 8);
   }
   dataRefreshed(): void {
     for (const button of this.buttons) {
@@ -58,8 +61,10 @@ export class RisqDefaultBehaviorGrid extends DwgRectButton {
       }
     }
     this.priority.dataRefreshed();
+    this.attack_stack.dataRefreshed();
     if (!this.risq.session.canGiveOrders()) {
       this.priority.cancelInput();
+      this.attack_stack.cancelInput();
     }
   }
   override setPosition(p: Point2D): void {
@@ -71,6 +76,8 @@ export class RisqDefaultBehaviorGrid extends DwgRectButton {
     }
     this.priority.setPosition({ x: p.x + 2 * (size + 8), y: p.y + 32 + size });
     this.priority.setSize(3 * size + 16, size);
+    this.attack_stack.setPosition({ x: p.x, y: p.y + 24 + 2 * (size + 8) });
+    this.attack_stack.setSize(this.w(), size);
   }
   override draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
     super.draw(ctx, transform, dt);
@@ -93,6 +100,7 @@ export class RisqDefaultBehaviorGrid extends DwgRectButton {
       button.draw(ctx, transform, dt);
     }
     this.priority.draw(ctx, transform);
+    this.attack_stack.draw(ctx, transform, dt);
   }
   drawTooltip(ctx: CanvasRenderingContext2D, transform: BoardTransformData, risq: DwgRisq, dt: number): void {
     for (const button of this.buttons) {
@@ -105,6 +113,7 @@ export class RisqDefaultBehaviorGrid extends DwgRectButton {
       button.mousemove(canvas, screen, transform);
     }
     this.priority.mousemove(screen);
+    this.attack_stack.mousemove(canvas, screen, transform);
     return hovering;
   }
   override mousedown(e: MouseEvent): boolean {
@@ -112,7 +121,10 @@ export class RisqDefaultBehaviorGrid extends DwgRectButton {
       return this.isHovering();
     }
     const priority = this.priority.mousedown(e);
-    return this.buttons.map((button): boolean => button.mousedown(e)).some(Boolean) || priority || this.isHovering();
+    const stack = this.attack_stack.mousedown(e);
+    return (
+      this.buttons.map((button): boolean => button.mousedown(e)).some(Boolean) || priority || stack || this.isHovering()
+    );
   }
   override mouseup(e: MouseEvent): void {
     for (const button of this.buttons) {
@@ -120,6 +132,7 @@ export class RisqDefaultBehaviorGrid extends DwgRectButton {
     }
     if (this.risq.session.canGiveOrders() && e.button === 0) {
       this.priority.mouseup(e);
+      this.attack_stack.mouseup(e);
     }
   }
   override setClicking(clicking: boolean): void {
@@ -128,6 +141,7 @@ export class RisqDefaultBehaviorGrid extends DwgRectButton {
     }
     if (!clicking) {
       this.priority.cancelInput();
+      this.attack_stack.cancelInput();
     }
   }
   override setHovering(hovering: boolean): void {
@@ -137,7 +151,11 @@ export class RisqDefaultBehaviorGrid extends DwgRectButton {
     }
   }
   override isClicking(): boolean {
-    return this.priority.isClicking() || this.buttons.some((button): boolean => button.isPressed());
+    return (
+      this.priority.isClicking() ||
+      this.attack_stack.isClicking() ||
+      this.buttons.some((button): boolean => button.isPressed())
+    );
   }
   scroll(_dy: number, _mode: number): boolean {
     return false;

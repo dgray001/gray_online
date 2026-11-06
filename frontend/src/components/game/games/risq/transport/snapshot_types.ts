@@ -87,6 +87,7 @@ export declare interface RisqPlayerFromServer {
   default_unit_attack_back?: boolean;
   default_unit_interrupt_current?: boolean;
   default_unit_target_priority?: RisqTargetCategory[];
+  default_unit_attack_stack?: number;
 }
 
 export declare interface RisqSpaceBaseFromServer {
@@ -103,6 +104,7 @@ export declare interface RisqSpaceExploredBaseFromServer extends RisqSpaceBaseFr
   terrain_id: number;
   terrain_type: RisqTerrainType;
   display_name: string;
+  custom_name?: string;
   gold_income: number;
   ownership?: number;
   zones: RisqZoneFromServer[][];
@@ -175,6 +177,7 @@ export declare interface RisqUnitFromServer {
   interrupt_current?: boolean;
   attack_back?: boolean;
   target_priority?: RisqTargetCategory[];
+  attack_stack?: number;
   move_path?: RisqMovePathStep[];
 }
 
@@ -274,6 +277,7 @@ export declare interface UnitBehaviorSetData {
   stance?: RisqUnitStance;
   interrupt_current?: boolean;
   attack_back?: boolean;
+  attack_stack?: number;
   target_priority?: RisqTargetCategory[];
 }
 
@@ -293,6 +297,7 @@ export declare interface DefaultUnitBehaviorSetData {
   stance: RisqUnitStance;
   attack_back: boolean;
   interrupt_current: boolean;
+  attack_stack: number;
   target_priority: RisqTargetCategory[];
 }
 

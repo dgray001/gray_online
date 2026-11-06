@@ -1,6 +1,6 @@
 import type { Point2D } from '../../../util/objects2d';
 import { hexagonalBoardNeighbors, hexagonalBoardRows } from '../../../util/objects2d';
-import { coordinateToIndex, getSpace } from '../model/coordinates';
+import { cantorPair, coordinateToIndex, getSpace } from '../model/coordinates';
 import type {
   GameRisq,
   RisqBuilding,
@@ -20,6 +20,8 @@ import { productionEvents } from './replay/production_events';
 import { battleEvents } from './replay/battle_events';
 import { eliminationEvents } from './replay/elimination_events';
 import { disruptionEvents } from './replay/disruption_events';
+import { nameReplayEvents, regionPart } from './replay/event_names';
+import { continentEvents } from './replay/continent_events';
 
 /** Maps each explored space's coordinate key to the region it belongs to */
 function buildRegionLookup(regions: RisqRegion[]): Map<number, RisqRegion> {
@@ -37,6 +39,7 @@ export class RisqSession {
   private corpse_locations = new Map<number, { space_coordinate: Point2D; zone: RisqZone }>();
   private game?: GameRisq;
   private region_by_space = new Map<number, RisqRegion>();
+  private place_names = new Map<number, string | undefined>();
   private player_id = -1;
   private last_turn_report?: RisqTurnReport;
   private resource_configs = new Map<number, RisqResourceConfig>();
@@ -99,12 +102,16 @@ export class RisqSession {
     this.server_game = new_game;
     this.live_game = serverToGameRisq(new_game);
     this.replay_events = this.live_game?.last_turn_journal
-      ? [
-          ...productionEvents(this.live_game.last_turn_journal, this.live_game),
-          ...battleEvents(this.live_game.last_turn_journal, this.player_id, this.live_game.space_links),
-          ...eliminationEvents(this.live_game.last_turn_journal, this.live_game, this.player_id),
-          ...disruptionEvents(this.live_game.last_turn_journal, this.live_game, this.player_id),
-        ].sort((a: ReplayEvent, b: ReplayEvent): number => a.tick - b.tick)
+      ? nameReplayEvents(
+          [
+            ...productionEvents(this.live_game.last_turn_journal, this.live_game, this.player_id),
+            ...battleEvents(this.live_game.last_turn_journal, this.player_id, this.live_game.space_links),
+            ...eliminationEvents(this.live_game.last_turn_journal, this.live_game, this.player_id),
+            ...disruptionEvents(this.live_game.last_turn_journal, this.live_game, this.player_id),
+            ...continentEvents(this.live_game.last_turn_journal, this.live_game, this.player_id),
+          ],
+          this.live_game
+        ).sort((a: ReplayEvent, b: ReplayEvent): number => a.tick - b.tick)
       : [];
     this.adoptGame(this.live_game);
     if (this.replaying) {
@@ -161,6 +168,7 @@ export class RisqSession {
   }
 
   private adoptGame(game: GameRisq | undefined): void {
+    this.place_names.clear();
     this.game = game;
     this.region_by_space = buildRegionLookup(this.game?.regions ?? []);
     this.corpse_locations.clear();
@@ -207,6 +215,18 @@ export class RisqSession {
 
   getRegionForSpace(coordinate_key: number): RisqRegion | undefined {
     return this.region_by_space.get(coordinate_key);
+  }
+
+  getPlaceName(coordinate: Point2D): string | undefined {
+    const key = cantorPair(coordinate.x, coordinate.y);
+    if (!this.place_names.has(key)) {
+      const region = this.getRegionForSpace(key);
+      const name =
+        this.spaceAt(coordinate)?.custom_name?.trim() ||
+        (region?.name ? regionPart(region, [key], this.game?.rotation ?? 0) : undefined);
+      this.place_names.set(key, name);
+    }
+    return this.place_names.get(key);
   }
 
   getRegionLookup(): Map<number, RisqRegion> {

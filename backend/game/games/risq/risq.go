@@ -383,7 +383,16 @@ func (r *GameRisq) toFrontendFor(player_id int, client_id uint64, is_viewer bool
 	game["regions"] = regions
 	game["last_turn_replay"] = nil
 	if r.tick_history != nil && player_id >= 0 && with_history {
-		game["last_turn_replay"] = r.tick_history.toFrontend(player_id)
+		journal := r.tick_history.toFrontend(player_id)
+		owners := map[string]int{}
+		for _, region := range regions {
+			name := region["name"].(string)
+			if owner, ok := r.tick_history.region_owners[name]; ok {
+				owners[name] = owner
+			}
+		}
+		journal["region_owners"] = owners
+		game["last_turn_replay"] = journal
 	}
 	return game
 }

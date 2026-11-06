@@ -36,7 +36,17 @@ func checkCrossingOutcome(t *testing.T, g *harness.Game, a, b harness.Unit, tick
 		t.Fatal("missing tick-one units")
 	}
 	swapped := aa.Space == b.Space && aa.Zone == b.Zone && bb.Space == a.Space && bb.Zone == a.Zone
-	if swapped == fight || (len(ticks.hits) > 0) != fight || (len(ticks.meetings) > 0) != fight {
+	hit, meeting := false, false
+	for _, action := range ticks.hits {
+		hit = hit || action.tick == 1
+	}
+	for _, action := range ticks.meetings {
+		meeting = meeting || action.tick == 1
+	}
+	if fight {
+		hit = len(ticks.hits) > 0
+	}
+	if swapped == fight || hit != fight || meeting != fight {
 		t.Fatalf("fight=%t swapped=%t hits=%v meetings=%v", fight, swapped, ticks.hits, ticks.meetings)
 	}
 	if fight && (aa.Space != a.Space || aa.Zone != a.Zone || bb.Space != b.Space || bb.Zone != b.Zone) {

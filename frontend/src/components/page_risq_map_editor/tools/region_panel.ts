@@ -74,6 +74,8 @@ export class RegionPanel implements EditorConfigPanel {
     }
     if (contains({ x: x + 76, y, w: 70, h: ROW_H }, this.mouse)) {
       this.on_delete_region(this.active_index);
+      const count = this.context.doc()?.regions?.length ?? 0;
+      this.active_index = Math.max(0, Math.min(this.active_index, count - 1));
       return true;
     }
     y += ROW_H + GAP;

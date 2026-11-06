@@ -179,6 +179,7 @@ export function serverToRisqPlayer(server_player: RisqPlayerFromServer, registry
     default_unit_attack_back: server_player.default_unit_attack_back ?? true,
     default_unit_interrupt_current: server_player.default_unit_interrupt_current ?? false,
     default_unit_target_priority: server_player.default_unit_target_priority ?? [],
+    default_unit_attack_stack: server_player.default_unit_attack_stack ?? 0,
   };
   return player;
 }
@@ -191,6 +192,7 @@ export function serverToRisqSpace(server_space: RisqSpaceFromServer, registry: R
     terrain_type: is_explored ? server_space.terrain_type : RisqTerrainType.NONE,
     terrain_stats: is_explored ? server_space.terrain_stats : undefined,
     display_name: is_explored ? server_space.display_name : '',
+    custom_name: is_explored ? server_space.custom_name : undefined,
     coordinate: server_space.coordinate,
     coordinate_key: server_space.coordinate_key,
     visibility: server_space.visibility,
@@ -351,6 +353,7 @@ export function serverToRisqUnit(
   }
   const unit: RisqUnit = {
     ...server_unit,
+    attack_stack: server_unit.attack_stack ?? 0,
     tick_actions: server_unit.tick_actions?.map(serverToTickAction),
     active_orders: server_unit.active_orders.map((o) => serverToRisqOrder(o)).filter((o) => !!o),
     hover_data: {

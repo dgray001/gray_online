@@ -1,6 +1,13 @@
 import { DwgRectButton } from '../../../../util/canvas_components/button/rect_button';
+import type { BoardTransformData } from '../../../../util/canvas_board/canvas_board';
+import { configDraw } from '../../../../util/canvas_components/canvas_component';
 
 export class RisqEventButton extends DwgRectButton {
+  private selected = false;
+
+  setSelected(selected: boolean): void {
+    this.selected = selected;
+  }
   constructor(
     image: CanvasImageSource | undefined,
     text: string,
@@ -33,6 +40,19 @@ export class RisqEventButton extends DwgRectButton {
   }
 
   protected hovered(): void {}
+  protected override _draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
+    super._draw(ctx, transform, dt);
+    if (this.selected) {
+      configDraw(
+        ctx,
+        transform,
+        { fill_style: 'transparent', stroke_style: 'white', stroke_width: 3, fixed_position: true },
+        false,
+        false,
+        (): void => ctx.strokeRect(this.xi() + 2, this.yi() + 2, this.w() - 4, this.h() - 4)
+      );
+    }
+  }
   override setImage(image: CanvasImageSource): void {
     super.setImage(image);
   }

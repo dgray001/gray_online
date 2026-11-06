@@ -83,6 +83,7 @@ export declare interface RisqJournalBuilding extends RisqTickBuildingState {
 }
 
 export declare interface RisqTurnJournal {
+  region_owners?: Record<string, number>;
   schema_version: number;
   turn_number: number;
   tick_count: number;

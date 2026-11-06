@@ -247,12 +247,17 @@ export class RisqCommands {
       stance: RisqUnitStance;
       attack_back: boolean;
       interrupt_current: boolean;
+      attack_stack: number;
       target_priority: RisqTargetCategory[];
     }>
   ): void {
     if (this.session.canGiveOrders()) {
       this.sendGameUpdate(JSON.stringify(fields), 'set-default-unit-behavior');
     }
+  }
+
+  setUnitAttackStack(internal_ids: number[], attack_stack: number): void {
+    this.sendUnitBehavior(internal_ids, { attack_stack });
   }
 
   setUnitToggle(internal_ids: number[], field: UnitToggleField, value: boolean): void {

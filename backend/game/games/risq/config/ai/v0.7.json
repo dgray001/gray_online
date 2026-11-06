@@ -296,7 +296,7 @@
         {
           "action": "set_var",
           "name": "tune_additional_producer_margin",
-          "value": 1.6,
+          "value": 0.6,
           "persist": false
         },
         {
@@ -351,6 +351,66 @@
           "action": "set_var",
           "name": "tune_emergency_radius",
           "value": 2.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_rax_threat_enemies",
+          "value": 5.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_rax_min_vils",
+          "value": 3.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_rax_vils_per_missing_enemy",
+          "value": 3.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_rax_order",
+          "value": 0.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_rax_reserve_share",
+          "value": 1.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_rax_urgency_turns",
+          "value": 4.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_rax_expansion_reserve_share",
+          "value": 0.05,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_rax_expansion_urgency_turns",
+          "value": 4.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_smith_reserve_share",
+          "value": 0.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_redoubt_reserve_share",
+          "value": 0.0,
           "persist": false
         },
         {
@@ -985,6 +1045,90 @@
         },
         {
           "action": "set_var",
+          "name": "tune_rich_bank",
+          "value": 0.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_rich_aggr",
+          "value": 0.9,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_front_retreat",
+          "value": 1.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_scout4_mil",
+          "value": 30.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_scout4_count",
+          "value": 1.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_tech_2",
+          "value": 0.8,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_tech_3",
+          "value": 0.5,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_tech_11",
+          "value": 0.8,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_tech_64",
+          "value": 0.5,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_tech_91",
+          "value": 0.8,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_tech_92",
+          "value": 0.5,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_tech_102",
+          "value": 0.5,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_home_odds",
+          "value": 1.5,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_base_odds",
+          "value": 0.8,
+          "persist": false
+        },
+        {
+          "action": "set_var",
           "name": "tune_power_blunt_state_1",
           "value": 1.2,
           "persist": false
@@ -1276,6 +1420,150 @@
           "name": "tune_matchup_103_103",
           "value": 1.0,
           "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_policy_group",
+          "value": 10.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_policy_level",
+          "value": 1.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_policy_margin",
+          "value": 1.4,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_policy_radius",
+          "value": 1.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_policy_fraction",
+          "value": 0.85,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_policy_exposure",
+          "value": 1.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_policy_responders",
+          "value": 8.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_policy_small_raid",
+          "value": 3.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_policy_batches",
+          "value": 1.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_policy_recovery",
+          "value": 3.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_policy_exit_margin",
+          "value": 1.8,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_policy_travel_weight",
+          "value": 1.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_refine_raid_mode",
+          "value": 2.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_refine_reserve",
+          "value": 1.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_refine_raid_margin",
+          "value": 1.4,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_refine_reserve_margin",
+          "value": 1.5,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_refine_reserve_batches",
+          "value": 2.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_refine_response_scale",
+          "value": 2.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_refine_preserve_work",
+          "value": 1.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_refine_defensive_only",
+          "value": 1.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_refine_worker_leash",
+          "value": 1.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_refine_queued_credit",
+          "value": 1.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_refine_health_floor",
+          "value": 0.5,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_refine_local_radius",
+          "value": 1.0,
+          "persist": false
         }
       ]
     },
@@ -1504,6 +1792,33 @@
               ],
               "at": {
                 "in_set": "enemy_presence_near_spaces"
+              },
+              "if": [
+                "var(target.policy_exposed) + var(target.policy_unknown) > 0"
+              ]
+            },
+            "let": {
+              "policy_exposed": {
+                "count": {
+                  "kind": "units",
+                  "where": {
+                    "in_set": "enemy_units",
+                    "unit_types": [
+                      "military"
+                    ],
+                    "if": "distance(target, item, 1) <= var(item.attack_range) + var(tune_policy_exposure)"
+                  }
+                }
+              },
+              "policy_unknown": {
+                "sum": {
+                  "kind": "spaces",
+                  "where": {
+                    "in_set": "unidentified_spaces",
+                    "if": "distance(target, item) <= var(tune_policy_radius)"
+                  },
+                  "of": "var(item.unit_count)"
+                }
               }
             }
           },
@@ -2537,7 +2852,7 @@
         {
           "action": "set_var",
           "name": "house_abandoned",
-          "value": "min(var(house_abandoned), var(house_exist))",
+          "value": "min(var(house_abandoned), var(house_exist)) * (var(house_ban) > 0)",
           "persist": true
         },
         {
@@ -2640,7 +2955,7 @@
         {
           "action": "set_var",
           "name": "vc_abandoned",
-          "value": "min(var(vc_abandoned), var(vc_exist))",
+          "value": "min(var(vc_abandoned), var(vc_exist)) * (var(vc_ban) > 0)",
           "persist": true
         },
         {
@@ -2743,7 +3058,7 @@
         {
           "action": "set_var",
           "name": "farm_abandoned",
-          "value": "min(var(farm_abandoned), var(farm_exist))",
+          "value": "min(var(farm_abandoned), var(farm_exist)) * (var(farm_ban) > 0)",
           "persist": true
         },
         {
@@ -2846,7 +3161,7 @@
         {
           "action": "set_var",
           "name": "barracks_abandoned",
-          "value": "min(var(barracks_abandoned), var(barracks_exist))",
+          "value": "min(var(barracks_abandoned), var(barracks_exist)) * (var(barracks_ban) > 0)",
           "persist": true
         },
         {
@@ -2949,7 +3264,7 @@
         {
           "action": "set_var",
           "name": "smith_abandoned",
-          "value": "min(var(smith_abandoned), var(smith_exist))",
+          "value": "min(var(smith_abandoned), var(smith_exist)) * (var(smith_ban) > 0)",
           "persist": true
         },
         {
@@ -3052,7 +3367,7 @@
         {
           "action": "set_var",
           "name": "redoubt_abandoned",
-          "value": "min(var(redoubt_abandoned), var(redoubt_exist))",
+          "value": "min(var(redoubt_abandoned), var(redoubt_exist)) * (var(redoubt_ban) > 0)",
           "persist": true
         },
         {
@@ -3155,7 +3470,7 @@
         {
           "action": "set_var",
           "name": "outpost_abandoned",
-          "value": "min(var(outpost_abandoned), var(outpost_exist))",
+          "value": "min(var(outpost_abandoned), var(outpost_exist)) * (var(outpost_ban) > 0)",
           "persist": true
         },
         {
@@ -3881,7 +4196,7 @@
         {
           "action": "set_var",
           "name": "scout_p1",
-          "value": "((var(own_101) + var(own_102) + var(own_103)) >= 1) * (var(unexplored_local) >= 1)",
+          "value": "((var(own_101) + var(own_102) + var(own_103)) >= 1) * (var(unexplored_local) >= 1) * (1 - ((var(own_101) + var(own_102) + var(own_103) + var(own_401)) >= var(tune_scout4_mil)))",
           "persist": false
         },
         {
@@ -3898,14 +4213,20 @@
         },
         {
           "action": "set_var",
+          "name": "scout_p4",
+          "value": "(var(scout_p2) + var(scout_p3) == 0) * ((var(own_101) + var(own_102) + var(own_103) + var(own_401)) >= var(tune_scout4_mil))",
+          "persist": false
+        },
+        {
+          "action": "set_var",
           "name": "scout_phase",
-          "value": "var(scout_p1) * 1 + var(scout_p2) * 2 + var(scout_p3) * 3",
+          "value": "var(scout_p1) * 1 + var(scout_p2) * 2 + var(scout_p3) * 3 + var(scout_p4) * 4",
           "persist": false
         },
         {
           "action": "set_var",
           "name": "scout_size",
-          "value": "var(scout_p1) * 1 + (var(scout_p2) + var(scout_p3)) * (1 + ((var(own_101) + var(own_102) + var(own_103) + var(own_401)) >= 40))",
+          "value": "var(scout_p1) * 1 + (var(scout_p2) + var(scout_p3)) * (1 + ((var(own_101) + var(own_102) + var(own_103) + var(own_401)) >= 40)) + var(scout_p4) * var(tune_scout4_count)",
           "persist": false
         },
         {
@@ -5674,6 +5995,41 @@
       "then": [
         {
           "action": "set_var",
+          "name": "policy_starved",
+          "value": {
+            "count": {
+              "kind": "buildings",
+              "where": {
+                "owner": "own",
+                "building_ids": [
+                  22,
+                  23
+                ],
+                "state": "complete",
+                "if": [
+                  "var(item.queue_length) == 0",
+                  "((gameVar(food) < var(tune_refine_reserve_batches) * config(unit, cost_food, 101 + 2 * (var(item.building_id) == 23))) + (gameVar(wood) < var(tune_refine_reserve_batches) * config(unit, cost_wood, 101 + 2 * (var(item.building_id) == 23))) + (gameVar(stone) < var(tune_refine_reserve_batches) * config(unit, cost_stone, 101 + 2 * (var(item.building_id) == 23))) + (gameVar(gold) < var(tune_refine_reserve_batches) * config(unit, cost_gold, 101 + 2 * (var(item.building_id) == 23)))) > 0"
+                ]
+              }
+            }
+          },
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "policy_pressure",
+          "value": "(var(base_enemy_power) > 0) * (var(base_own_power) < var(tune_refine_reserve_margin) * var(base_enemy_power))",
+          "persist": false
+        }
+      ]
+    },
+    {
+      "when": {
+        "always": {}
+      },
+      "then": [
+        {
+          "action": "set_var",
           "name": "home_military_power",
           "value": {
             "sum": {
@@ -5706,8 +6062,14 @@
         },
         {
           "action": "set_var",
+          "name": "rich",
+          "value": "(gameVar(population) >= var(population_ceiling) - 2) * (min(gameVar(food), gameVar(wood)) >= var(tune_rich_bank))",
+          "persist": false
+        },
+        {
+          "action": "set_var",
           "name": "ao",
-          "value": "min(var(ao_base), (var(tune_assault_odds) * (var(has_economy) > 0) + var(tune_assault_odds_noeco) * (var(has_economy) == 0)) - ((var(tune_assault_odds) * (var(has_economy) > 0) + var(tune_assault_odds_noeco) * (var(has_economy) == 0)) - (var(tune_cap_odds) * (var(has_economy) > 0) + var(tune_cap_odds_noeco) * (var(has_economy) == 0))) * (min(1, max(0, (gameVar(population) - var(tune_cap_ramp) * gameVar(population_limit)) / max(0.01, (1 - var(tune_cap_ramp)) * gameVar(population_limit))))))",
+          "value": "min(var(ao_base), (var(tune_assault_odds) * (var(has_economy) > 0) + var(tune_assault_odds_noeco) * (var(has_economy) == 0)) - ((var(tune_assault_odds) * (var(has_economy) > 0) + var(tune_assault_odds_noeco) * (var(has_economy) == 0)) - (var(tune_cap_odds) * (var(has_economy) > 0) + var(tune_cap_odds_noeco) * (var(has_economy) == 0))) * (min(1, max(0, (gameVar(population) - var(tune_cap_ramp) * gameVar(population_limit)) / max(0.01, (1 - var(tune_cap_ramp)) * gameVar(population_limit)))))) * (1 - var(rich) * var(tune_rich_aggr))",
           "persist": false
         },
         {
@@ -5898,7 +6260,7 @@
             {
               "action": "set_var",
               "name": "a_outnumbered",
-              "value": "(var(e_threat_local) * ((var(center_unit.e_engaged) > 0) * (var(tune_engaged_odds) * (var(has_economy) > 0) + var(tune_engaged_odds_noeco) * (var(has_economy) == 0)) + (var(center_unit.e_engaged) == 0) * (var(tune_assault_odds) * (var(has_economy) > 0) + var(tune_assault_odds_noeco) * (var(has_economy) == 0))) > var(army_tactical_power)) * (var(army_size) > 0)",
+              "value": "(var(e_threat_local) * ((var(center_unit.e_engaged) > 0) * (var(tune_engaged_odds) * (var(has_economy) > 0) + var(tune_engaged_odds_noeco) * (var(has_economy) == 0)) + (var(center_unit.e_engaged) == 0) * (var(tune_assault_odds) * (var(has_economy) > 0) + var(tune_assault_odds_noeco) * (var(has_economy) == 0))) * (1 - var(rich) * var(tune_rich_aggr)) > var(army_tactical_power)) * (var(army_size) > 0)",
               "persist": false
             }
           ]
@@ -7188,7 +7550,7 @@
         {
           "action": "set_var",
           "name": "want_22",
-          "value": "(var(own_1) > 0) * (((var(producers_22) == 0) * ((var(barracks_bootstrap) > 0) + (var(enemy_near_base) > 0)) > 0) + ((var(producers_22) > 0) * (var(sustainable_surplus) >= var(tune_additional_producer_margin) * var(barracks_running_cost)) * (var(sustainable_surplus) * var(tune_investment_horizon) >= (config(building, cost_food, 22) + config(building, cost_wood, 22) + config(building, cost_stone, 22) + config(building, cost_gold, 22)))))",
+          "value": "(var(own_1) > 0) * (((var(producers_22) == 0) * ((var(barracks_bootstrap) > 0) + (var(enemy_near_base) > 0) * (var(own_1) >= var(tune_rax_min_vils) + var(tune_rax_vils_per_missing_enemy) * max(0, var(tune_rax_threat_enemies) - var(enemy_near_base)))) > 0) + ((var(producers_22) > 0) * (var(sustainable_surplus) >= var(tune_additional_producer_margin) * var(barracks_running_cost)) * (var(sustainable_surplus) * var(tune_investment_horizon) >= (config(building, cost_food, 22) + config(building, cost_wood, 22) + config(building, cost_stone, 22) + config(building, cost_gold, 22)))))",
           "persist": false
         },
         {
@@ -7248,7 +7610,7 @@
       "then": [
         {
           "action": "set_var",
-          "name": "wild_food_nearby",
+          "name": "wild_food_nearby_food",
           "value": {
             "sum": {
               "kind": "resources",
@@ -7271,7 +7633,36 @@
         },
         {
           "action": "set_var",
-          "name": "wild_food_worked",
+          "name": "wild_food_nearby_slots",
+          "value": {
+            "sum": {
+              "kind": "resources",
+              "where": {
+                "category": "food",
+                "near": {
+                  "distance": "var(tune_wild_food_radius)",
+                  "of": {
+                    "kind": "spaces",
+                    "where": {
+                      "in_set": "base"
+                    }
+                  }
+                }
+              },
+              "of": "var(item.gather_capacity)"
+            }
+          },
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "wild_food_nearby",
+          "value": "min(var(wild_food_nearby_slots), var(wild_food_nearby_food) / (var(worker_income) * var(tune_planning_horizon)))",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "wild_food_worked_food",
           "value": {
             "sum": {
               "kind": "resources",
@@ -7294,6 +7685,35 @@
         },
         {
           "action": "set_var",
+          "name": "wild_food_worked_slots",
+          "value": {
+            "sum": {
+              "kind": "resources",
+              "where": {
+                "category": "food",
+                "near": {
+                  "distance": 0,
+                  "of": {
+                    "kind": "units",
+                    "where": {
+                      "in_set": "villagers"
+                    }
+                  }
+                }
+              },
+              "of": "var(item.gather_capacity)"
+            }
+          },
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "wild_food_worked",
+          "value": "min(var(wild_food_worked_slots), var(wild_food_worked_food) / (var(worker_income) * var(tune_planning_horizon)))",
+          "persist": false
+        },
+        {
+          "action": "set_var",
           "name": "wild_food_confidence",
           "value": "min(1, max(0, (var(own_1) - var(tune_worker_floor)) / var(tune_wild_food_walk_scale)))",
           "persist": false
@@ -7301,7 +7721,7 @@
         {
           "action": "set_var",
           "name": "wild_food_workers",
-          "value": "(var(wild_food_worked) + max(0, var(wild_food_nearby) - var(wild_food_worked)) * var(wild_food_confidence)) / (var(worker_income) * var(tune_planning_horizon))",
+          "value": "var(wild_food_worked) + max(0, var(wild_food_nearby) - var(wild_food_worked)) * var(wild_food_confidence)",
           "persist": false
         },
         {
@@ -7676,6 +8096,243 @@
       "then": [
         {
           "action": "set_var",
+          "name": "queued_tech_2",
+          "value": {
+            "count": {
+              "kind": "orders",
+              "where": {
+                "in": {
+                  "order_kind": [
+                    "research"
+                  ],
+                  "item_tech_id": [
+                    2
+                  ]
+                }
+              }
+            }
+          },
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tech_pending_2",
+          "value": "(var(tune_tech_2) > 0) * (1 - researched(2)) * (var(complete_1) > 0) * (var(queued_tech_2) == 0) * (var(goal_1) - var(own_1) < 1)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "queued_tech_3",
+          "value": {
+            "count": {
+              "kind": "orders",
+              "where": {
+                "in": {
+                  "order_kind": [
+                    "research"
+                  ],
+                  "item_tech_id": [
+                    3
+                  ]
+                }
+              }
+            }
+          },
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tech_pending_3",
+          "value": "(var(tune_tech_3) > 0) * (1 - researched(3)) * (var(complete_1) > 0) * (var(queued_tech_3) == 0) * (var(goal_1) - var(own_1) < 1)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "queued_tech_11",
+          "value": {
+            "count": {
+              "kind": "orders",
+              "where": {
+                "in": {
+                  "order_kind": [
+                    "research"
+                  ],
+                  "item_tech_id": [
+                    11
+                  ]
+                }
+              }
+            }
+          },
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tech_pending_11",
+          "value": "(var(tune_tech_11) > 0) * (1 - researched(11)) * (var(complete_3) > 0) * (var(queued_tech_11) == 0) * ((var(complete_3) >= 1) * (var(own_1) >= 4))",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "queued_tech_64",
+          "value": {
+            "count": {
+              "kind": "orders",
+              "where": {
+                "in": {
+                  "order_kind": [
+                    "research"
+                  ],
+                  "item_tech_id": [
+                    64
+                  ]
+                }
+              }
+            }
+          },
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tech_pending_64",
+          "value": "(var(tune_tech_64) > 0) * (1 - researched(64)) * (var(complete_11) > 0) * (var(queued_tech_64) == 0) * (var(complete_23) >= 1)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "queued_tech_91",
+          "value": {
+            "count": {
+              "kind": "orders",
+              "where": {
+                "in": {
+                  "order_kind": [
+                    "research"
+                  ],
+                  "item_tech_id": [
+                    91
+                  ]
+                }
+              }
+            }
+          },
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tech_pending_91",
+          "value": "(var(tune_tech_91) > 0) * (1 - researched(91)) * (var(complete_22) > 0) * (var(queued_tech_91) == 0) * ((var(own_101) + var(own_102) + var(own_103)) >= 8)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "queued_tech_92",
+          "value": {
+            "count": {
+              "kind": "orders",
+              "where": {
+                "in": {
+                  "order_kind": [
+                    "research"
+                  ],
+                  "item_tech_id": [
+                    92
+                  ]
+                }
+              }
+            }
+          },
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tech_pending_92",
+          "value": "(var(tune_tech_92) > 0) * (1 - researched(92)) * (var(complete_22) > 0) * (var(queued_tech_92) == 0) * (((var(own_101) + var(own_102) + var(own_103)) >= 15) * (var(enemy_buildings_24) >= 1))",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "queued_tech_102",
+          "value": {
+            "count": {
+              "kind": "orders",
+              "where": {
+                "in": {
+                  "order_kind": [
+                    "research"
+                  ],
+                  "item_tech_id": [
+                    102
+                  ]
+                }
+              }
+            }
+          },
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tech_pending_102",
+          "value": "(var(tune_tech_102) > 0) * (1 - researched(102)) * (var(complete_23) > 0) * (var(queued_tech_102) == 0) * (var(own_401) >= 1)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tech_reserve_food",
+          "value": "0",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "research_budget_food",
+          "value": "var(research_budget_food) + var(tech_reserve_food)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tech_reserve_wood",
+          "value": "0",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "research_budget_wood",
+          "value": "var(research_budget_wood) + var(tech_reserve_wood)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tech_reserve_stone",
+          "value": "0",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "research_budget_stone",
+          "value": "var(research_budget_stone) + var(tech_reserve_stone)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tech_reserve_gold",
+          "value": "var(tech_pending_2) * var(tune_tech_2) * config(tech, cost_gold, 2) + var(tech_pending_3) * var(tune_tech_3) * config(tech, cost_gold, 3) + var(tech_pending_11) * var(tune_tech_11) * config(tech, cost_gold, 11) + var(tech_pending_64) * var(tune_tech_64) * config(tech, cost_gold, 64) + var(tech_pending_91) * var(tune_tech_91) * config(tech, cost_gold, 91) + var(tech_pending_92) * var(tune_tech_92) * config(tech, cost_gold, 92) + var(tech_pending_102) * var(tune_tech_102) * config(tech, cost_gold, 102)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "research_budget_gold",
+          "value": "var(research_budget_gold) + var(tech_reserve_gold)",
+          "persist": false
+        }
+      ]
+    },
+    {
+      "when": {
+        "always": {}
+      },
+      "then": [
+        {
+          "action": "set_var",
           "name": "map_space_gold",
           "value": {
             "sum": {
@@ -7943,6 +8600,578 @@
       "then": [
         {
           "action": "set_var",
+          "name": "rax_age",
+          "value": "max(0, var(rax_age) + 2 * (var(want_22) > 0) * (var(producers_22) == 0) * (var(foundations_22) == 0) - 1)",
+          "persist": true
+        },
+        {
+          "action": "set_var",
+          "name": "rax_urgency",
+          "value": "min(1, var(rax_age) / max(0.001, var(tune_rax_urgency_turns)))",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "rax_expansion_age",
+          "value": "max(0, var(rax_expansion_age) + 2 * (var(want_22) > 0) * (var(producers_22) > 0) * (var(foundations_22) == 0) - 1)",
+          "persist": true
+        },
+        {
+          "action": "set_var",
+          "name": "rax_expansion_urgency",
+          "value": "min(1, var(rax_expansion_age) / max(0.001, var(tune_rax_expansion_urgency_turns)))",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "smith_reserve_urgency",
+          "value": "min(1, var(smith_age) / max(0.001, var(tune_smith_urgency_turns)))",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "redoubt_reserve_urgency",
+          "value": "min(1, var(redoubt_age) / max(0.001, var(tune_redoubt_urgency_turns)))",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "reserve_first_rax_food",
+          "value": "((var(want_22) > 0) * (var(producers_22) == 0) * (var(foundations_22) == 0)) * var(tune_rax_reserve_share) * var(rax_urgency) * config(building, cost_food, 22)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "reserve_exp_rax_food",
+          "value": "((var(want_22) > 0) * (var(producers_22) > 0) * (var(foundations_22) == 0)) * var(tune_rax_expansion_reserve_share) * var(rax_expansion_urgency) * config(building, cost_food, 22)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "reserve_smith_food",
+          "value": "((var(want_11) > 0) * (var(complete_11) + var(foundations_11) == 0)) * var(tune_smith_reserve_share) * var(smith_reserve_urgency) * config(building, cost_food, 11)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "reserve_redoubt_food",
+          "value": "((var(want_23) > 0) * (var(foundations_23) == 0)) * var(tune_redoubt_reserve_share) * var(redoubt_reserve_urgency) * config(building, cost_food, 23)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "reserve_food",
+          "value": "max(var(reserve_first_rax_food), max(var(reserve_exp_rax_food), max(var(reserve_smith_food), var(reserve_redoubt_food))))",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "reserve_first_rax_wood",
+          "value": "((var(want_22) > 0) * (var(producers_22) == 0) * (var(foundations_22) == 0)) * var(tune_rax_reserve_share) * var(rax_urgency) * config(building, cost_wood, 22)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "reserve_exp_rax_wood",
+          "value": "((var(want_22) > 0) * (var(producers_22) > 0) * (var(foundations_22) == 0)) * var(tune_rax_expansion_reserve_share) * var(rax_expansion_urgency) * config(building, cost_wood, 22)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "reserve_smith_wood",
+          "value": "((var(want_11) > 0) * (var(complete_11) + var(foundations_11) == 0)) * var(tune_smith_reserve_share) * var(smith_reserve_urgency) * config(building, cost_wood, 11)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "reserve_redoubt_wood",
+          "value": "((var(want_23) > 0) * (var(foundations_23) == 0)) * var(tune_redoubt_reserve_share) * var(redoubt_reserve_urgency) * config(building, cost_wood, 23)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "reserve_wood",
+          "value": "max(var(reserve_first_rax_wood), max(var(reserve_exp_rax_wood), max(var(reserve_smith_wood), var(reserve_redoubt_wood))))",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "reserve_first_rax_stone",
+          "value": "((var(want_22) > 0) * (var(producers_22) == 0) * (var(foundations_22) == 0)) * var(tune_rax_reserve_share) * var(rax_urgency) * config(building, cost_stone, 22)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "reserve_exp_rax_stone",
+          "value": "((var(want_22) > 0) * (var(producers_22) > 0) * (var(foundations_22) == 0)) * var(tune_rax_expansion_reserve_share) * var(rax_expansion_urgency) * config(building, cost_stone, 22)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "reserve_smith_stone",
+          "value": "((var(want_11) > 0) * (var(complete_11) + var(foundations_11) == 0)) * var(tune_smith_reserve_share) * var(smith_reserve_urgency) * config(building, cost_stone, 11)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "reserve_redoubt_stone",
+          "value": "((var(want_23) > 0) * (var(foundations_23) == 0)) * var(tune_redoubt_reserve_share) * var(redoubt_reserve_urgency) * config(building, cost_stone, 23)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "reserve_stone",
+          "value": "max(var(reserve_first_rax_stone), max(var(reserve_exp_rax_stone), max(var(reserve_smith_stone), var(reserve_redoubt_stone))))",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "reserve_first_rax_gold",
+          "value": "((var(want_22) > 0) * (var(producers_22) == 0) * (var(foundations_22) == 0)) * var(tune_rax_reserve_share) * var(rax_urgency) * config(building, cost_gold, 22)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "reserve_exp_rax_gold",
+          "value": "((var(want_22) > 0) * (var(producers_22) > 0) * (var(foundations_22) == 0)) * var(tune_rax_expansion_reserve_share) * var(rax_expansion_urgency) * config(building, cost_gold, 22)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "reserve_smith_gold",
+          "value": "((var(want_11) > 0) * (var(complete_11) + var(foundations_11) == 0)) * var(tune_smith_reserve_share) * var(smith_reserve_urgency) * config(building, cost_gold, 11)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "reserve_redoubt_gold",
+          "value": "((var(want_23) > 0) * (var(foundations_23) == 0)) * var(tune_redoubt_reserve_share) * var(redoubt_reserve_urgency) * config(building, cost_gold, 23)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "reserve_gold",
+          "value": "max(var(reserve_first_rax_gold), max(var(reserve_exp_rax_gold), max(var(reserve_smith_gold), var(reserve_redoubt_gold))))",
+          "persist": false
+        }
+      ]
+    },
+    {
+      "when": {
+        "always": {}
+      },
+      "then": [
+        {
+          "action": "set_var",
+          "name": "reserve_food",
+          "value": "var(reserve_food) + var(tech_reserve_food)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "reserve_wood",
+          "value": "var(reserve_wood) + var(tech_reserve_wood)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "reserve_stone",
+          "value": "var(reserve_stone) + var(tech_reserve_stone)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "reserve_gold",
+          "value": "var(reserve_gold) + var(tech_reserve_gold)",
+          "persist": false
+        },
+        {
+          "action": "if",
+          "when": {
+            "value_at_least": {
+              "value": "var(tech_pending_2) * (gameVar(food) >= config(tech, cost_food, 2) / max(0.001, var(tune_tech_2))) * (gameVar(wood) >= config(tech, cost_wood, 2) / max(0.001, var(tune_tech_2))) * (gameVar(stone) >= config(tech, cost_stone, 2) / max(0.001, var(tune_tech_2))) * (gameVar(gold) >= config(tech, cost_gold, 2) / max(0.001, var(tune_tech_2)))",
+              "amount": 1
+            }
+          },
+          "then": [
+            {
+              "action": "select",
+              "actors": {
+                "kind": "buildings",
+                "where": {
+                  "owner": "own",
+                  "can_research": 2,
+                  "if": [
+                    "var(actor.queue_length) < var(tune_queue_depth)",
+                    "(0) + ((var(policy_pressure) == 0) + ((gameVar(food) - config(tech, cost_food, 2) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_food, 101)) * (gameVar(wood) - config(tech, cost_wood, 2) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_wood, 101)) * (gameVar(stone) - config(tech, cost_stone, 2) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_stone, 101)) * (gameVar(gold) - config(tech, cost_gold, 2) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_gold, 101))) > 0) > 0"
+                  ]
+                },
+                "rank": "0 - var(actor.uid)",
+                "limit": 1,
+                "let": {
+                  "refine_queued": {
+                    "count": {
+                      "kind": "orders",
+                      "where": {
+                        "in": {
+                          "order_kind": [
+                            "create"
+                          ],
+                          "item_unit_id": [
+                            101,
+                            102,
+                            103
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "issue": [
+                {
+                  "research": {
+                    "tech_id": 2,
+                    "queue": "var(actor.queue_length) + 1"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "action": "if",
+          "when": {
+            "value_at_least": {
+              "value": "var(tech_pending_3) * (gameVar(food) >= config(tech, cost_food, 3) / max(0.001, var(tune_tech_3))) * (gameVar(wood) >= config(tech, cost_wood, 3) / max(0.001, var(tune_tech_3))) * (gameVar(stone) >= config(tech, cost_stone, 3) / max(0.001, var(tune_tech_3))) * (gameVar(gold) >= config(tech, cost_gold, 3) / max(0.001, var(tune_tech_3)))",
+              "amount": 1
+            }
+          },
+          "then": [
+            {
+              "action": "select",
+              "actors": {
+                "kind": "buildings",
+                "where": {
+                  "owner": "own",
+                  "can_research": 3,
+                  "if": [
+                    "var(actor.queue_length) < var(tune_queue_depth)",
+                    "(0) + ((var(policy_pressure) == 0) + ((gameVar(food) - config(tech, cost_food, 3) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_food, 101)) * (gameVar(wood) - config(tech, cost_wood, 3) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_wood, 101)) * (gameVar(stone) - config(tech, cost_stone, 3) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_stone, 101)) * (gameVar(gold) - config(tech, cost_gold, 3) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_gold, 101))) > 0) > 0"
+                  ]
+                },
+                "rank": "0 - var(actor.uid)",
+                "limit": 1,
+                "let": {
+                  "refine_queued": {
+                    "count": {
+                      "kind": "orders",
+                      "where": {
+                        "in": {
+                          "order_kind": [
+                            "create"
+                          ],
+                          "item_unit_id": [
+                            101,
+                            102,
+                            103
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "issue": [
+                {
+                  "research": {
+                    "tech_id": 3,
+                    "queue": "var(actor.queue_length) + 1"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "action": "if",
+          "when": {
+            "value_at_least": {
+              "value": "var(tech_pending_11) * (gameVar(food) >= config(tech, cost_food, 11) / max(0.001, var(tune_tech_11))) * (gameVar(wood) >= config(tech, cost_wood, 11) / max(0.001, var(tune_tech_11))) * (gameVar(stone) >= config(tech, cost_stone, 11) / max(0.001, var(tune_tech_11))) * (gameVar(gold) >= config(tech, cost_gold, 11) / max(0.001, var(tune_tech_11)))",
+              "amount": 1
+            }
+          },
+          "then": [
+            {
+              "action": "select",
+              "actors": {
+                "kind": "buildings",
+                "where": {
+                  "owner": "own",
+                  "can_research": 11,
+                  "if": [
+                    "var(actor.queue_length) < var(tune_queue_depth)",
+                    "(0) + ((var(policy_pressure) == 0) + ((gameVar(food) - config(tech, cost_food, 11) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_food, 101)) * (gameVar(wood) - config(tech, cost_wood, 11) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_wood, 101)) * (gameVar(stone) - config(tech, cost_stone, 11) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_stone, 101)) * (gameVar(gold) - config(tech, cost_gold, 11) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_gold, 101))) > 0) > 0"
+                  ]
+                },
+                "rank": "0 - var(actor.uid)",
+                "limit": 1,
+                "let": {
+                  "refine_queued": {
+                    "count": {
+                      "kind": "orders",
+                      "where": {
+                        "in": {
+                          "order_kind": [
+                            "create"
+                          ],
+                          "item_unit_id": [
+                            101,
+                            102,
+                            103
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "issue": [
+                {
+                  "research": {
+                    "tech_id": 11,
+                    "queue": "var(actor.queue_length) + 1"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "action": "if",
+          "when": {
+            "value_at_least": {
+              "value": "var(tech_pending_64) * (gameVar(food) >= config(tech, cost_food, 64) / max(0.001, var(tune_tech_64))) * (gameVar(wood) >= config(tech, cost_wood, 64) / max(0.001, var(tune_tech_64))) * (gameVar(stone) >= config(tech, cost_stone, 64) / max(0.001, var(tune_tech_64))) * (gameVar(gold) >= config(tech, cost_gold, 64) / max(0.001, var(tune_tech_64)))",
+              "amount": 1
+            }
+          },
+          "then": [
+            {
+              "action": "select",
+              "actors": {
+                "kind": "buildings",
+                "where": {
+                  "owner": "own",
+                  "can_research": 64,
+                  "if": [
+                    "var(actor.queue_length) < var(tune_queue_depth)",
+                    "(0) + ((var(policy_pressure) == 0) + ((gameVar(food) - config(tech, cost_food, 64) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_food, 101)) * (gameVar(wood) - config(tech, cost_wood, 64) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_wood, 101)) * (gameVar(stone) - config(tech, cost_stone, 64) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_stone, 101)) * (gameVar(gold) - config(tech, cost_gold, 64) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_gold, 101))) > 0) > 0"
+                  ]
+                },
+                "rank": "0 - var(actor.uid)",
+                "limit": 1,
+                "let": {
+                  "refine_queued": {
+                    "count": {
+                      "kind": "orders",
+                      "where": {
+                        "in": {
+                          "order_kind": [
+                            "create"
+                          ],
+                          "item_unit_id": [
+                            101,
+                            102,
+                            103
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "issue": [
+                {
+                  "research": {
+                    "tech_id": 64,
+                    "queue": "var(actor.queue_length) + 1"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "action": "if",
+          "when": {
+            "value_at_least": {
+              "value": "var(tech_pending_91) * (gameVar(food) >= config(tech, cost_food, 91) / max(0.001, var(tune_tech_91))) * (gameVar(wood) >= config(tech, cost_wood, 91) / max(0.001, var(tune_tech_91))) * (gameVar(stone) >= config(tech, cost_stone, 91) / max(0.001, var(tune_tech_91))) * (gameVar(gold) >= config(tech, cost_gold, 91) / max(0.001, var(tune_tech_91)))",
+              "amount": 1
+            }
+          },
+          "then": [
+            {
+              "action": "select",
+              "actors": {
+                "kind": "buildings",
+                "where": {
+                  "owner": "own",
+                  "can_research": 91,
+                  "if": [
+                    "var(actor.queue_length) < var(tune_queue_depth)",
+                    "(0) + ((var(policy_pressure) == 0) + ((gameVar(food) - config(tech, cost_food, 91) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_food, 101)) * (gameVar(wood) - config(tech, cost_wood, 91) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_wood, 101)) * (gameVar(stone) - config(tech, cost_stone, 91) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_stone, 101)) * (gameVar(gold) - config(tech, cost_gold, 91) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_gold, 101))) > 0) > 0"
+                  ]
+                },
+                "rank": "0 - var(actor.uid)",
+                "limit": 1,
+                "let": {
+                  "refine_queued": {
+                    "count": {
+                      "kind": "orders",
+                      "where": {
+                        "in": {
+                          "order_kind": [
+                            "create"
+                          ],
+                          "item_unit_id": [
+                            101,
+                            102,
+                            103
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "issue": [
+                {
+                  "research": {
+                    "tech_id": 91,
+                    "queue": "var(actor.queue_length) + 1"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "action": "if",
+          "when": {
+            "value_at_least": {
+              "value": "var(tech_pending_92) * (gameVar(food) >= config(tech, cost_food, 92) / max(0.001, var(tune_tech_92))) * (gameVar(wood) >= config(tech, cost_wood, 92) / max(0.001, var(tune_tech_92))) * (gameVar(stone) >= config(tech, cost_stone, 92) / max(0.001, var(tune_tech_92))) * (gameVar(gold) >= config(tech, cost_gold, 92) / max(0.001, var(tune_tech_92)))",
+              "amount": 1
+            }
+          },
+          "then": [
+            {
+              "action": "select",
+              "actors": {
+                "kind": "buildings",
+                "where": {
+                  "owner": "own",
+                  "can_research": 92,
+                  "if": [
+                    "var(actor.queue_length) < var(tune_queue_depth)",
+                    "(0) + ((var(policy_pressure) == 0) + ((gameVar(food) - config(tech, cost_food, 92) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_food, 101)) * (gameVar(wood) - config(tech, cost_wood, 92) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_wood, 101)) * (gameVar(stone) - config(tech, cost_stone, 92) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_stone, 101)) * (gameVar(gold) - config(tech, cost_gold, 92) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_gold, 101))) > 0) > 0"
+                  ]
+                },
+                "rank": "0 - var(actor.uid)",
+                "limit": 1,
+                "let": {
+                  "refine_queued": {
+                    "count": {
+                      "kind": "orders",
+                      "where": {
+                        "in": {
+                          "order_kind": [
+                            "create"
+                          ],
+                          "item_unit_id": [
+                            101,
+                            102,
+                            103
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "issue": [
+                {
+                  "research": {
+                    "tech_id": 92,
+                    "queue": "var(actor.queue_length) + 1"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "action": "if",
+          "when": {
+            "value_at_least": {
+              "value": "var(tech_pending_102) * (gameVar(food) >= config(tech, cost_food, 102) / max(0.001, var(tune_tech_102))) * (gameVar(wood) >= config(tech, cost_wood, 102) / max(0.001, var(tune_tech_102))) * (gameVar(stone) >= config(tech, cost_stone, 102) / max(0.001, var(tune_tech_102))) * (gameVar(gold) >= config(tech, cost_gold, 102) / max(0.001, var(tune_tech_102)))",
+              "amount": 1
+            }
+          },
+          "then": [
+            {
+              "action": "select",
+              "actors": {
+                "kind": "buildings",
+                "where": {
+                  "owner": "own",
+                  "can_research": 102,
+                  "if": [
+                    "var(actor.queue_length) < var(tune_queue_depth)",
+                    "(0) + ((var(policy_pressure) == 0) + ((gameVar(food) - config(tech, cost_food, 102) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_food, 101)) * (gameVar(wood) - config(tech, cost_wood, 102) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_wood, 101)) * (gameVar(stone) - config(tech, cost_stone, 102) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_stone, 101)) * (gameVar(gold) - config(tech, cost_gold, 102) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_gold, 101))) > 0) > 0"
+                  ]
+                },
+                "rank": "0 - var(actor.uid)",
+                "limit": 1,
+                "let": {
+                  "refine_queued": {
+                    "count": {
+                      "kind": "orders",
+                      "where": {
+                        "in": {
+                          "order_kind": [
+                            "create"
+                          ],
+                          "item_unit_id": [
+                            101,
+                            102,
+                            103
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "issue": [
+                {
+                  "research": {
+                    "tech_id": 102,
+                    "queue": "var(actor.queue_length) + 1"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "when": {
+        "always": {}
+      },
+      "then": [
+        {
+          "action": "set_var",
           "name": "villager_build_stamina",
           "value": "8 + 2 * var(farming)",
           "persist": false
@@ -8180,7 +9409,14 @@
               "pick": {
                 "kind": "spaces",
                 "where": {
-                  "owner": "unowned"
+                  "owner": "unowned",
+                  "terrain_types": [
+                    "flatlands",
+                    "hilly",
+                    "mountainous",
+                    "swamp",
+                    "shallows"
+                  ]
                 }
               },
               "into": {
@@ -8195,6 +9431,13 @@
               "pick": {
                 "kind": "spaces",
                 "where": {
+                  "terrain_types": [
+                    "flatlands",
+                    "hilly",
+                    "mountainous",
+                    "swamp",
+                    "shallows"
+                  ],
                   "near": {
                     "distance": 1,
                     "of": {
@@ -8260,7 +9503,7 @@
           "action": "if",
           "when": {
             "value_at_least": {
-              "value": "(var(want_11) > 0) * (var(smith_urgency) >= 1) * (var(complete_11) + var(foundations_11) == 0) * ((gameVar(food) >= config(building, cost_food, 11)) * (gameVar(wood) >= config(building, cost_wood, 11)) * (gameVar(stone) >= config(building, cost_stone, 11)) * (gameVar(gold) >= config(building, cost_gold, 11)))",
+              "value": "(var(want_11) > 0) * (var(smith_urgency) >= 1) * (var(complete_11) + var(foundations_11) == 0) * ((gameVar(food) - max(max(var(reserve_first_rax_food), var(reserve_exp_rax_food)), var(reserve_redoubt_food)) >= config(building, cost_food, 11)) * (gameVar(wood) - max(max(var(reserve_first_rax_wood), var(reserve_exp_rax_wood)), var(reserve_redoubt_wood)) >= config(building, cost_wood, 11)) * (gameVar(stone) - max(max(var(reserve_first_rax_stone), var(reserve_exp_rax_stone)), var(reserve_redoubt_stone)) >= config(building, cost_stone, 11)) * (gameVar(gold) - max(max(var(reserve_first_rax_gold), var(reserve_exp_rax_gold)), var(reserve_redoubt_gold)) >= config(building, cost_gold, 11)))",
               "amount": 1
             }
           },
@@ -8288,13 +9531,35 @@
                           "gather"
                         ]
                       },
-                      "if": "1 - var(actor.is_garrisoned)"
+                      "if": [
+                        "1 - var(actor.is_garrisoned)",
+                        "(0) + ((var(policy_pressure) == 0) + ((gameVar(food) - config(building, cost_food, 11) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_food, 101)) * (gameVar(wood) - config(building, cost_wood, 11) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_wood, 101)) * (gameVar(stone) - config(building, cost_stone, 11) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_stone, 101)) * (gameVar(gold) - config(building, cost_gold, 11) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_gold, 101))) > 0) > 0"
+                      ]
                     },
                     "rank": [
                       "var(actor.order_kind) == -1",
                       "0 - var(actor.uid)"
                     ],
-                    "limit": 2
+                    "limit": 2,
+                    "let": {
+                      "refine_queued": {
+                        "count": {
+                          "kind": "orders",
+                          "where": {
+                            "in": {
+                              "order_kind": [
+                                "create"
+                              ],
+                              "item_unit_id": [
+                                101,
+                                102,
+                                103
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    }
                   },
                   "pick": {
                     "kind": "zones",
@@ -8588,7 +9853,7 @@
           "action": "if",
           "when": {
             "value_at_least": {
-              "value": "(var(want_2) > var(foundations_2)) * ((gameVar(food) >= config(building, cost_food, 2)) * (gameVar(wood) >= config(building, cost_wood, 2)) * (gameVar(stone) >= config(building, cost_stone, 2)) * (gameVar(gold) >= config(building, cost_gold, 2)))",
+              "value": "(var(want_2) > max(var(house_replacement), var(house_with_builders))) * ((gameVar(food) - var(reserve_food) * (var(headroom) > 0) >= config(building, cost_food, 2)) * (gameVar(wood) - var(reserve_wood) * (var(headroom) > 0) >= config(building, cost_wood, 2)) * (gameVar(stone) - var(reserve_stone) * (var(headroom) > 0) >= config(building, cost_stone, 2)) * (gameVar(gold) - var(reserve_gold) * (var(headroom) > 0) >= config(building, cost_gold, 2)))",
               "amount": 1
             }
           },
@@ -8616,13 +9881,35 @@
                           "gather"
                         ]
                       },
-                      "if": "1 - var(actor.is_garrisoned)"
+                      "if": [
+                        "1 - var(actor.is_garrisoned)",
+                        "(var(headroom) <= 0) + ((var(policy_pressure) == 0) + ((gameVar(food) - config(building, cost_food, 2) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_food, 101)) * (gameVar(wood) - config(building, cost_wood, 2) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_wood, 101)) * (gameVar(stone) - config(building, cost_stone, 2) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_stone, 101)) * (gameVar(gold) - config(building, cost_gold, 2) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_gold, 101))) > 0) > 0"
+                      ]
                     },
                     "rank": [
                       "var(actor.order_kind) == -1",
                       "0 - var(actor.uid)"
                     ],
-                    "limit": "var(house_builders)"
+                    "limit": "var(house_builders)",
+                    "let": {
+                      "refine_queued": {
+                        "count": {
+                          "kind": "orders",
+                          "where": {
+                            "in": {
+                              "order_kind": [
+                                "create"
+                              ],
+                              "item_unit_id": [
+                                101,
+                                102,
+                                103
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    }
                   },
                   "pick": {
                     "kind": "zones",
@@ -8711,7 +9998,7 @@
           "action": "if",
           "when": {
             "value_at_least": {
-              "value": "(var(producers_22) == 0) * (var(want_22) > 0) * (var(foundations_22) == 0) * ((gameVar(food) >= config(building, cost_food, 22)) * (gameVar(wood) >= config(building, cost_wood, 22)) * (gameVar(stone) >= config(building, cost_stone, 22)) * (gameVar(gold) >= config(building, cost_gold, 22)))",
+              "value": "(var(producers_22) == 0) * (var(want_22) > 0) * (var(foundations_22) == 0) * ((gameVar(food) - max(var(reserve_smith_food), var(reserve_redoubt_food)) >= config(building, cost_food, 22)) * (gameVar(wood) - max(var(reserve_smith_wood), var(reserve_redoubt_wood)) >= config(building, cost_wood, 22)) * (gameVar(stone) - max(var(reserve_smith_stone), var(reserve_redoubt_stone)) >= config(building, cost_stone, 22)) * (gameVar(gold) - max(var(reserve_smith_gold), var(reserve_redoubt_gold)) >= config(building, cost_gold, 22)))",
               "amount": 1
             }
           },
@@ -8739,13 +10026,35 @@
                           "gather"
                         ]
                       },
-                      "if": "1 - var(actor.is_garrisoned)"
+                      "if": [
+                        "1 - var(actor.is_garrisoned)",
+                        "(var(producers_22) == 0) + ((var(policy_pressure) == 0) + ((gameVar(food) - config(building, cost_food, 22) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_food, 101)) * (gameVar(wood) - config(building, cost_wood, 22) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_wood, 101)) * (gameVar(stone) - config(building, cost_stone, 22) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_stone, 101)) * (gameVar(gold) - config(building, cost_gold, 22) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_gold, 101))) > 0) > 0"
+                      ]
                     },
                     "rank": [
                       "var(actor.order_kind) == -1",
                       "0 - var(actor.uid)"
                     ],
-                    "limit": 3
+                    "limit": 3,
+                    "let": {
+                      "refine_queued": {
+                        "count": {
+                          "kind": "orders",
+                          "where": {
+                            "in": {
+                              "order_kind": [
+                                "create"
+                              ],
+                              "item_unit_id": [
+                                101,
+                                102,
+                                103
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    }
                   },
                   "pick": {
                     "kind": "zones",
@@ -8845,7 +10154,7 @@
           "action": "if",
           "when": {
             "value_at_least": {
-              "value": "(var(want_3) > var(foundations_3) + 0) * ((gameVar(food) >= config(building, cost_food, 3)) * (gameVar(wood) >= config(building, cost_wood, 3)) * (gameVar(stone) >= config(building, cost_stone, 3)) * (gameVar(gold) >= config(building, cost_gold, 3)))",
+              "value": "(var(want_3) > 0) * (var(foundations_3) == 0) * ((gameVar(food) >= config(building, cost_food, 3)) * (gameVar(wood) >= config(building, cost_wood, 3)) * (gameVar(stone) >= config(building, cost_stone, 3)) * (gameVar(gold) >= config(building, cost_gold, 3)))",
               "amount": 1
             }
           },
@@ -8961,7 +10270,7 @@
           "action": "if",
           "when": {
             "value_at_least": {
-              "value": "(var(want_3) > var(foundations_3) + 1) * ((gameVar(food) >= config(building, cost_food, 3)) * (gameVar(wood) >= config(building, cost_wood, 3)) * (gameVar(stone) >= config(building, cost_stone, 3)) * (gameVar(gold) >= config(building, cost_gold, 3)))",
+              "value": "(var(want_3) > 1) * (var(foundations_3) == 0) * ((gameVar(food) >= config(building, cost_food, 3)) * (gameVar(wood) >= config(building, cost_wood, 3)) * (gameVar(stone) >= config(building, cost_stone, 3)) * (gameVar(gold) >= config(building, cost_gold, 3)))",
               "amount": 1
             }
           },
@@ -9077,7 +10386,7 @@
           "action": "if",
           "when": {
             "value_at_least": {
-              "value": "(var(want_3) > var(foundations_3) + 2) * ((gameVar(food) >= config(building, cost_food, 3)) * (gameVar(wood) >= config(building, cost_wood, 3)) * (gameVar(stone) >= config(building, cost_stone, 3)) * (gameVar(gold) >= config(building, cost_gold, 3)))",
+              "value": "(var(want_3) > 2) * (var(foundations_3) == 0) * ((gameVar(food) >= config(building, cost_food, 3)) * (gameVar(wood) >= config(building, cost_wood, 3)) * (gameVar(stone) >= config(building, cost_stone, 3)) * (gameVar(gold) >= config(building, cost_gold, 3)))",
               "amount": 1
             }
           },
@@ -9583,10 +10892,32 @@
                     "where": {
                       "owner": "own",
                       "can_research": 63,
-                      "if": "var(actor.queue_length) < var(tune_queue_depth)"
+                      "if": [
+                        "var(actor.queue_length) < var(tune_queue_depth)",
+                        "(0) + ((var(policy_pressure) == 0) + ((gameVar(food) - config(tech, cost_food, 63) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_food, 101)) * (gameVar(wood) - config(tech, cost_wood, 63) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_wood, 101)) * (gameVar(stone) - config(tech, cost_stone, 63) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_stone, 101)) * (gameVar(gold) - config(tech, cost_gold, 63) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_gold, 101))) > 0) > 0"
+                      ]
                     },
                     "rank": "0 - var(actor.uid)",
-                    "limit": 1
+                    "limit": 1,
+                    "let": {
+                      "refine_queued": {
+                        "count": {
+                          "kind": "orders",
+                          "where": {
+                            "in": {
+                              "order_kind": [
+                                "create"
+                              ],
+                              "item_unit_id": [
+                                101,
+                                102,
+                                103
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    }
                   },
                   "issue": [
                     {
@@ -9646,10 +10977,32 @@
                     "where": {
                       "owner": "own",
                       "can_research": 61,
-                      "if": "var(actor.queue_length) < var(tune_queue_depth)"
+                      "if": [
+                        "var(actor.queue_length) < var(tune_queue_depth)",
+                        "(0) + ((var(policy_pressure) == 0) + ((gameVar(food) - config(tech, cost_food, 61) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_food, 101)) * (gameVar(wood) - config(tech, cost_wood, 61) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_wood, 101)) * (gameVar(stone) - config(tech, cost_stone, 61) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_stone, 101)) * (gameVar(gold) - config(tech, cost_gold, 61) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_gold, 101))) > 0) > 0"
+                      ]
                     },
                     "rank": "0 - var(actor.uid)",
-                    "limit": 1
+                    "limit": 1,
+                    "let": {
+                      "refine_queued": {
+                        "count": {
+                          "kind": "orders",
+                          "where": {
+                            "in": {
+                              "order_kind": [
+                                "create"
+                              ],
+                              "item_unit_id": [
+                                101,
+                                102,
+                                103
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    }
                   },
                   "issue": [
                     {
@@ -9709,10 +11062,32 @@
                     "where": {
                       "owner": "own",
                       "can_research": 62,
-                      "if": "var(actor.queue_length) < var(tune_queue_depth)"
+                      "if": [
+                        "var(actor.queue_length) < var(tune_queue_depth)",
+                        "(0) + ((var(policy_pressure) == 0) + ((gameVar(food) - config(tech, cost_food, 62) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_food, 101)) * (gameVar(wood) - config(tech, cost_wood, 62) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_wood, 101)) * (gameVar(stone) - config(tech, cost_stone, 62) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_stone, 101)) * (gameVar(gold) - config(tech, cost_gold, 62) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_gold, 101))) > 0) > 0"
+                      ]
                     },
                     "rank": "0 - var(actor.uid)",
-                    "limit": 1
+                    "limit": 1,
+                    "let": {
+                      "refine_queued": {
+                        "count": {
+                          "kind": "orders",
+                          "where": {
+                            "in": {
+                              "order_kind": [
+                                "create"
+                              ],
+                              "item_unit_id": [
+                                101,
+                                102,
+                                103
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    }
                   },
                   "issue": [
                     {
@@ -9738,7 +11113,7 @@
           "action": "if",
           "when": {
             "value_at_least": {
-              "value": "(var(producers_22) > 0) * (var(want_22) > 0) * (var(foundations_22) == 0) * ((gameVar(food) >= config(building, cost_food, 22)) * (gameVar(wood) >= config(building, cost_wood, 22)) * (gameVar(stone) >= config(building, cost_stone, 22)) * (gameVar(gold) >= config(building, cost_gold, 22)))",
+              "value": "(var(producers_22) > 0) * (var(want_22) > 0) * (var(foundations_22) == 0) * ((gameVar(food) - max(var(reserve_smith_food), var(reserve_redoubt_food)) >= config(building, cost_food, 22)) * (gameVar(wood) - max(var(reserve_smith_wood), var(reserve_redoubt_wood)) >= config(building, cost_wood, 22)) * (gameVar(stone) - max(var(reserve_smith_stone), var(reserve_redoubt_stone)) >= config(building, cost_stone, 22)) * (gameVar(gold) - max(var(reserve_smith_gold), var(reserve_redoubt_gold)) >= config(building, cost_gold, 22)))",
               "amount": 1
             }
           },
@@ -9766,13 +11141,35 @@
                           "gather"
                         ]
                       },
-                      "if": "1 - var(actor.is_garrisoned)"
+                      "if": [
+                        "1 - var(actor.is_garrisoned)",
+                        "(var(producers_22) == 0) + ((var(policy_pressure) == 0) + ((gameVar(food) - config(building, cost_food, 22) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_food, 101)) * (gameVar(wood) - config(building, cost_wood, 22) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_wood, 101)) * (gameVar(stone) - config(building, cost_stone, 22) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_stone, 101)) * (gameVar(gold) - config(building, cost_gold, 22) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_gold, 101))) > 0) > 0"
+                      ]
                     },
                     "rank": [
                       "var(actor.order_kind) == -1",
                       "0 - var(actor.uid)"
                     ],
-                    "limit": 3
+                    "limit": 3,
+                    "let": {
+                      "refine_queued": {
+                        "count": {
+                          "kind": "orders",
+                          "where": {
+                            "in": {
+                              "order_kind": [
+                                "create"
+                              ],
+                              "item_unit_id": [
+                                101,
+                                102,
+                                103
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    }
                   },
                   "pick": {
                     "kind": "zones",
@@ -9865,7 +11262,7 @@
           "action": "if",
           "when": {
             "value_at_least": {
-              "value": "(var(want_11) > 0) * (var(complete_11) + var(foundations_11) == 0) * ((gameVar(food) >= config(building, cost_food, 11)) * (gameVar(wood) >= config(building, cost_wood, 11)) * (gameVar(stone) >= config(building, cost_stone, 11)) * (gameVar(gold) >= config(building, cost_gold, 11)))",
+              "value": "(var(want_11) > 0) * (var(complete_11) + var(foundations_11) == 0) * ((gameVar(food) - max(max(var(reserve_first_rax_food), var(reserve_exp_rax_food)), var(reserve_redoubt_food)) >= config(building, cost_food, 11)) * (gameVar(wood) - max(max(var(reserve_first_rax_wood), var(reserve_exp_rax_wood)), var(reserve_redoubt_wood)) >= config(building, cost_wood, 11)) * (gameVar(stone) - max(max(var(reserve_first_rax_stone), var(reserve_exp_rax_stone)), var(reserve_redoubt_stone)) >= config(building, cost_stone, 11)) * (gameVar(gold) - max(max(var(reserve_first_rax_gold), var(reserve_exp_rax_gold)), var(reserve_redoubt_gold)) >= config(building, cost_gold, 11)))",
               "amount": 1
             }
           },
@@ -9893,13 +11290,35 @@
                           "gather"
                         ]
                       },
-                      "if": "1 - var(actor.is_garrisoned)"
+                      "if": [
+                        "1 - var(actor.is_garrisoned)",
+                        "(0) + ((var(policy_pressure) == 0) + ((gameVar(food) - config(building, cost_food, 11) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_food, 101)) * (gameVar(wood) - config(building, cost_wood, 11) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_wood, 101)) * (gameVar(stone) - config(building, cost_stone, 11) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_stone, 101)) * (gameVar(gold) - config(building, cost_gold, 11) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_gold, 101))) > 0) > 0"
+                      ]
                     },
                     "rank": [
                       "var(actor.order_kind) == -1",
                       "0 - var(actor.uid)"
                     ],
-                    "limit": 2
+                    "limit": 2,
+                    "let": {
+                      "refine_queued": {
+                        "count": {
+                          "kind": "orders",
+                          "where": {
+                            "in": {
+                              "order_kind": [
+                                "create"
+                              ],
+                              "item_unit_id": [
+                                101,
+                                102,
+                                103
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    }
                   },
                   "pick": {
                     "kind": "zones",
@@ -9981,7 +11400,7 @@
           "action": "if",
           "when": {
             "value_at_least": {
-              "value": "(var(want_23) > 0) * (var(foundations_23) == 0) * ((gameVar(food) >= config(building, cost_food, 23)) * (gameVar(wood) >= config(building, cost_wood, 23)) * (gameVar(stone) >= config(building, cost_stone, 23)) * (gameVar(gold) >= config(building, cost_gold, 23)))",
+              "value": "(var(want_23) > 0) * (var(foundations_23) == 0) * ((gameVar(food) - max(max(var(reserve_first_rax_food), var(reserve_exp_rax_food)), var(reserve_smith_food)) >= config(building, cost_food, 23)) * (gameVar(wood) - max(max(var(reserve_first_rax_wood), var(reserve_exp_rax_wood)), var(reserve_smith_wood)) >= config(building, cost_wood, 23)) * (gameVar(stone) - max(max(var(reserve_first_rax_stone), var(reserve_exp_rax_stone)), var(reserve_smith_stone)) >= config(building, cost_stone, 23)) * (gameVar(gold) - max(max(var(reserve_first_rax_gold), var(reserve_exp_rax_gold)), var(reserve_smith_gold)) >= config(building, cost_gold, 23)))",
               "amount": 1
             }
           },
@@ -10009,13 +11428,35 @@
                           "gather"
                         ]
                       },
-                      "if": "1 - var(actor.is_garrisoned)"
+                      "if": [
+                        "1 - var(actor.is_garrisoned)",
+                        "(0) + ((var(policy_pressure) == 0) + ((gameVar(food) - config(building, cost_food, 23) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_food, 101)) * (gameVar(wood) - config(building, cost_wood, 23) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_wood, 101)) * (gameVar(stone) - config(building, cost_stone, 23) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_stone, 101)) * (gameVar(gold) - config(building, cost_gold, 23) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_gold, 101))) > 0) > 0"
+                      ]
                     },
                     "rank": [
                       "var(actor.order_kind) == -1",
                       "0 - var(actor.uid)"
                     ],
-                    "limit": 4
+                    "limit": 4,
+                    "let": {
+                      "refine_queued": {
+                        "count": {
+                          "kind": "orders",
+                          "where": {
+                            "in": {
+                              "order_kind": [
+                                "create"
+                              ],
+                              "item_unit_id": [
+                                101,
+                                102,
+                                103
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    }
                   },
                   "pick": {
                     "kind": "zones",
@@ -10108,7 +11549,7 @@
           "action": "if",
           "when": {
             "value_at_least": {
-              "value": "(var(want_21) > 0) * (var(foundations_21) == 0) * ((gameVar(food) >= config(building, cost_food, 21)) * (gameVar(wood) >= config(building, cost_wood, 21)) * (gameVar(stone) >= config(building, cost_stone, 21)) * (gameVar(gold) >= config(building, cost_gold, 21)))",
+              "value": "(var(want_21) > 0) * (var(foundations_21) == 0) * ((gameVar(food) - var(reserve_food) >= config(building, cost_food, 21)) * (gameVar(wood) - var(reserve_wood) >= config(building, cost_wood, 21)) * (gameVar(stone) - var(reserve_stone) >= config(building, cost_stone, 21)) * (gameVar(gold) - var(reserve_gold) >= config(building, cost_gold, 21)))",
               "amount": 1
             }
           },
@@ -10136,13 +11577,35 @@
                           "gather"
                         ]
                       },
-                      "if": "1 - var(actor.is_garrisoned)"
+                      "if": [
+                        "1 - var(actor.is_garrisoned)",
+                        "(0) + ((var(policy_pressure) == 0) + ((gameVar(food) - config(building, cost_food, 21) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_food, 101)) * (gameVar(wood) - config(building, cost_wood, 21) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_wood, 101)) * (gameVar(stone) - config(building, cost_stone, 21) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_stone, 101)) * (gameVar(gold) - config(building, cost_gold, 21) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_gold, 101))) > 0) > 0"
+                      ]
                     },
                     "rank": [
                       "var(actor.order_kind) == -1",
                       "0 - var(actor.uid)"
                     ],
-                    "limit": 1
+                    "limit": 1,
+                    "let": {
+                      "refine_queued": {
+                        "count": {
+                          "kind": "orders",
+                          "where": {
+                            "in": {
+                              "order_kind": [
+                                "create"
+                              ],
+                              "item_unit_id": [
+                                101,
+                                102,
+                                103
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    }
                   },
                   "pick": {
                     "kind": "zones",
@@ -10284,10 +11747,32 @@
                     "where": {
                       "owner": "own",
                       "can_research": 101,
-                      "if": "var(actor.queue_length) < var(tune_queue_depth)"
+                      "if": [
+                        "var(actor.queue_length) < var(tune_queue_depth)",
+                        "(0) + ((var(policy_pressure) == 0) + ((gameVar(food) - config(tech, cost_food, 101) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_food, 101)) * (gameVar(wood) - config(tech, cost_wood, 101) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_wood, 101)) * (gameVar(stone) - config(tech, cost_stone, 101) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_stone, 101)) * (gameVar(gold) - config(tech, cost_gold, 101) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_gold, 101))) > 0) > 0"
+                      ]
                     },
                     "rank": "0 - var(actor.uid)",
-                    "limit": 1
+                    "limit": 1,
+                    "let": {
+                      "refine_queued": {
+                        "count": {
+                          "kind": "orders",
+                          "where": {
+                            "in": {
+                              "order_kind": [
+                                "create"
+                              ],
+                              "item_unit_id": [
+                                101,
+                                102,
+                                103
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    }
                   },
                   "issue": [
                     {
@@ -11378,9 +12863,31 @@
                       "gather"
                     ]
                   },
-                  "if": "1 - var(actor.is_garrisoned)"
+                  "if": [
+                    "1 - var(actor.is_garrisoned)",
+                    "(var(headroom) <= 0) + ((var(policy_pressure) == 0) + ((gameVar(food) - config(building, cost_food, 2) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_food, 101)) * (gameVar(wood) - config(building, cost_wood, 2) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_wood, 101)) * (gameVar(stone) - config(building, cost_stone, 2) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_stone, 101)) * (gameVar(gold) - config(building, cost_gold, 2) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_gold, 101))) > 0) > 0"
+                  ]
                 },
-                "limit": 1
+                "limit": 1,
+                "let": {
+                  "refine_queued": {
+                    "count": {
+                      "kind": "orders",
+                      "where": {
+                        "in": {
+                          "order_kind": [
+                            "create"
+                          ],
+                          "item_unit_id": [
+                            101,
+                            102,
+                            103
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
               },
               "pick": {
                 "kind": "foundations",
@@ -11522,9 +13029,31 @@
                       "gather"
                     ]
                   },
-                  "if": "1 - var(actor.is_garrisoned)"
+                  "if": [
+                    "1 - var(actor.is_garrisoned)",
+                    "(var(producers_22) == 0) + ((var(policy_pressure) == 0) + ((gameVar(food) - config(building, cost_food, 22) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_food, 101)) * (gameVar(wood) - config(building, cost_wood, 22) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_wood, 101)) * (gameVar(stone) - config(building, cost_stone, 22) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_stone, 101)) * (gameVar(gold) - config(building, cost_gold, 22) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_gold, 101))) > 0) > 0"
+                  ]
                 },
-                "limit": 1
+                "limit": 1,
+                "let": {
+                  "refine_queued": {
+                    "count": {
+                      "kind": "orders",
+                      "where": {
+                        "in": {
+                          "order_kind": [
+                            "create"
+                          ],
+                          "item_unit_id": [
+                            101,
+                            102,
+                            103
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
               },
               "pick": {
                 "kind": "foundations",
@@ -11570,9 +13099,31 @@
                       "gather"
                     ]
                   },
-                  "if": "1 - var(actor.is_garrisoned)"
+                  "if": [
+                    "1 - var(actor.is_garrisoned)",
+                    "(0) + ((var(policy_pressure) == 0) + ((gameVar(food) - config(building, cost_food, 11) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_food, 101)) * (gameVar(wood) - config(building, cost_wood, 11) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_wood, 101)) * (gameVar(stone) - config(building, cost_stone, 11) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_stone, 101)) * (gameVar(gold) - config(building, cost_gold, 11) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_gold, 101))) > 0) > 0"
+                  ]
                 },
-                "limit": 1
+                "limit": 1,
+                "let": {
+                  "refine_queued": {
+                    "count": {
+                      "kind": "orders",
+                      "where": {
+                        "in": {
+                          "order_kind": [
+                            "create"
+                          ],
+                          "item_unit_id": [
+                            101,
+                            102,
+                            103
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
               },
               "pick": {
                 "kind": "foundations",
@@ -11618,9 +13169,31 @@
                       "gather"
                     ]
                   },
-                  "if": "1 - var(actor.is_garrisoned)"
+                  "if": [
+                    "1 - var(actor.is_garrisoned)",
+                    "(0) + ((var(policy_pressure) == 0) + ((gameVar(food) - config(building, cost_food, 23) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_food, 101)) * (gameVar(wood) - config(building, cost_wood, 23) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_wood, 101)) * (gameVar(stone) - config(building, cost_stone, 23) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_stone, 101)) * (gameVar(gold) - config(building, cost_gold, 23) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_gold, 101))) > 0) > 0"
+                  ]
                 },
-                "limit": 1
+                "limit": 1,
+                "let": {
+                  "refine_queued": {
+                    "count": {
+                      "kind": "orders",
+                      "where": {
+                        "in": {
+                          "order_kind": [
+                            "create"
+                          ],
+                          "item_unit_id": [
+                            101,
+                            102,
+                            103
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
               },
               "pick": {
                 "kind": "foundations",
@@ -11666,9 +13239,31 @@
                       "gather"
                     ]
                   },
-                  "if": "1 - var(actor.is_garrisoned)"
+                  "if": [
+                    "1 - var(actor.is_garrisoned)",
+                    "(0) + ((var(policy_pressure) == 0) + ((gameVar(food) - config(building, cost_food, 21) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_food, 101)) * (gameVar(wood) - config(building, cost_wood, 21) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_wood, 101)) * (gameVar(stone) - config(building, cost_stone, 21) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_stone, 101)) * (gameVar(gold) - config(building, cost_gold, 21) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_gold, 101))) > 0) > 0"
+                  ]
                 },
-                "limit": 1
+                "limit": 1,
+                "let": {
+                  "refine_queued": {
+                    "count": {
+                      "kind": "orders",
+                      "where": {
+                        "in": {
+                          "order_kind": [
+                            "create"
+                          ],
+                          "item_unit_id": [
+                            101,
+                            102,
+                            103
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
               },
               "pick": {
                 "kind": "foundations",
@@ -11721,9 +13316,31 @@
                       "gather"
                     ]
                   },
-                  "if": "1 - var(actor.is_garrisoned)"
+                  "if": [
+                    "1 - var(actor.is_garrisoned)",
+                    "(var(headroom) <= 0) + ((var(policy_pressure) == 0) + ((gameVar(food) - config(building, cost_food, 2) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_food, 101)) * (gameVar(wood) - config(building, cost_wood, 2) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_wood, 101)) * (gameVar(stone) - config(building, cost_stone, 2) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_stone, 101)) * (gameVar(gold) - config(building, cost_gold, 2) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_gold, 101))) > 0) > 0"
+                  ]
                 },
-                "limit": 1
+                "limit": 1,
+                "let": {
+                  "refine_queued": {
+                    "count": {
+                      "kind": "orders",
+                      "where": {
+                        "in": {
+                          "order_kind": [
+                            "create"
+                          ],
+                          "item_unit_id": [
+                            101,
+                            102,
+                            103
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
               },
               "pick": {
                 "kind": "foundations",
@@ -11883,9 +13500,31 @@
                       "gather"
                     ]
                   },
-                  "if": "1 - var(actor.is_garrisoned)"
+                  "if": [
+                    "1 - var(actor.is_garrisoned)",
+                    "(var(producers_22) == 0) + ((var(policy_pressure) == 0) + ((gameVar(food) - config(building, cost_food, 22) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_food, 101)) * (gameVar(wood) - config(building, cost_wood, 22) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_wood, 101)) * (gameVar(stone) - config(building, cost_stone, 22) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_stone, 101)) * (gameVar(gold) - config(building, cost_gold, 22) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_gold, 101))) > 0) > 0"
+                  ]
                 },
-                "limit": 1
+                "limit": 1,
+                "let": {
+                  "refine_queued": {
+                    "count": {
+                      "kind": "orders",
+                      "where": {
+                        "in": {
+                          "order_kind": [
+                            "create"
+                          ],
+                          "item_unit_id": [
+                            101,
+                            102,
+                            103
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
               },
               "pick": {
                 "kind": "foundations",
@@ -11937,9 +13576,31 @@
                       "gather"
                     ]
                   },
-                  "if": "1 - var(actor.is_garrisoned)"
+                  "if": [
+                    "1 - var(actor.is_garrisoned)",
+                    "(0) + ((var(policy_pressure) == 0) + ((gameVar(food) - config(building, cost_food, 11) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_food, 101)) * (gameVar(wood) - config(building, cost_wood, 11) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_wood, 101)) * (gameVar(stone) - config(building, cost_stone, 11) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_stone, 101)) * (gameVar(gold) - config(building, cost_gold, 11) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_gold, 101))) > 0) > 0"
+                  ]
                 },
-                "limit": 1
+                "limit": 1,
+                "let": {
+                  "refine_queued": {
+                    "count": {
+                      "kind": "orders",
+                      "where": {
+                        "in": {
+                          "order_kind": [
+                            "create"
+                          ],
+                          "item_unit_id": [
+                            101,
+                            102,
+                            103
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
               },
               "pick": {
                 "kind": "foundations",
@@ -11991,9 +13652,31 @@
                       "gather"
                     ]
                   },
-                  "if": "1 - var(actor.is_garrisoned)"
+                  "if": [
+                    "1 - var(actor.is_garrisoned)",
+                    "(0) + ((var(policy_pressure) == 0) + ((gameVar(food) - config(building, cost_food, 23) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_food, 101)) * (gameVar(wood) - config(building, cost_wood, 23) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_wood, 101)) * (gameVar(stone) - config(building, cost_stone, 23) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_stone, 101)) * (gameVar(gold) - config(building, cost_gold, 23) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_gold, 101))) > 0) > 0"
+                  ]
                 },
-                "limit": 1
+                "limit": 1,
+                "let": {
+                  "refine_queued": {
+                    "count": {
+                      "kind": "orders",
+                      "where": {
+                        "in": {
+                          "order_kind": [
+                            "create"
+                          ],
+                          "item_unit_id": [
+                            101,
+                            102,
+                            103
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
               },
               "pick": {
                 "kind": "foundations",
@@ -12045,9 +13728,31 @@
                       "gather"
                     ]
                   },
-                  "if": "1 - var(actor.is_garrisoned)"
+                  "if": [
+                    "1 - var(actor.is_garrisoned)",
+                    "(0) + ((var(policy_pressure) == 0) + ((gameVar(food) - config(building, cost_food, 21) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_food, 101)) * (gameVar(wood) - config(building, cost_wood, 21) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_wood, 101)) * (gameVar(stone) - config(building, cost_stone, 21) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_stone, 101)) * (gameVar(gold) - config(building, cost_gold, 21) >= max(0, var(tune_refine_reserve_batches) - var(actor.refine_queued)) * config(unit, cost_gold, 101))) > 0) > 0"
+                  ]
                 },
-                "limit": 1
+                "limit": 1,
+                "let": {
+                  "refine_queued": {
+                    "count": {
+                      "kind": "orders",
+                      "where": {
+                        "in": {
+                          "order_kind": [
+                            "create"
+                          ],
+                          "item_unit_id": [
+                            101,
+                            102,
+                            103
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
               },
               "pick": {
                 "kind": "foundations",
@@ -12106,7 +13811,38 @@
             "where": {
               "owner": "own",
               "state": "complete",
-              "if": "var(target.hp_pct) < 1"
+              "if": [
+                "var(target.hp_pct) < 1",
+                "var(target.own_power) >= var(tune_vil_crush_odds) * var(target.enemy_power)"
+              ]
+            },
+            "let": {
+              "own_power": {
+                "sum": {
+                  "kind": "units",
+                  "where": {
+                    "owner": "own",
+                    "unit_types": [
+                      "military"
+                    ],
+                    "if": "distance(target, item) == 0"
+                  },
+                  "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
+                }
+              },
+              "enemy_power": {
+                "sum": {
+                  "kind": "units",
+                  "where": {
+                    "owner": "enemy",
+                    "unit_types": [
+                      "military"
+                    ],
+                    "if": "distance(target, item) == 0"
+                  },
+                  "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
+                }
+              }
             },
             "rank": "0 - var(target.hp_pct)",
             "limit": 1
@@ -12265,6 +14001,57 @@
                   }
                 }
               ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "when": {
+        "always": {}
+      },
+      "then": [
+        {
+          "action": "select",
+          "actors": {
+            "kind": "units",
+            "where": {
+              "in_set": "own_units",
+              "unit_ids": [
+                1,
+                101,
+                102,
+                103
+              ],
+              "if": [
+                "var(actor.refine_here) == 0",
+                "1 - inSet(raiding_party, actor)",
+                "1 - inSet(reserved_units, actor)",
+                "(var(actor.unit_id) == 1) + ((var(assault) == 0) * (var(army_retreat) == 0)) > 0"
+              ]
+            },
+            "let": {
+              "refine_here": {
+                "count": {
+                  "kind": "units",
+                  "where": {
+                    "in_set": "enemy_units",
+                    "unit_types": [
+                      "military"
+                    ],
+                    "if": "distance(actor, item) == 0"
+                  }
+                }
+              }
+            }
+          },
+          "issue": [
+            {
+              "stop": {
+                "orders": [
+                  "attack_unit"
+                ]
+              }
             }
           ]
         }
@@ -13377,7 +15164,7 @@
               },
               "match": {
                 "score": [
-                  "var(target.gather_speed) * (max(0, var(tune_gather_planning_turns) * (config(unit, turn_stamina, 1) + researched(1) * config(tech, bonus_turn_stamina, 1)) - distance(actor, target, 1))) / 10 - var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))",
+                  "var(target.gather_speed) *(max(0, var(tune_gather_planning_turns) * (config(unit, turn_stamina, 1) + researched(1) * config(tech, bonus_turn_stamina, 1)) - distance(actor, target, 1))) / 10 -var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))",
                   "0 - distance(actor, target, 1)",
                   "0 - var(target.uid)"
                 ]
@@ -13448,7 +15235,7 @@
               },
               "match": {
                 "score": [
-                  "var(target.gather_speed) * (max(0, var(tune_gather_planning_turns) * (config(unit, turn_stamina, 1) + researched(1) * config(tech, bonus_turn_stamina, 1)) - distance(actor, target, 1))) / 10 - var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))",
+                  "var(target.gather_speed) *(max(0, var(tune_gather_planning_turns) * (config(unit, turn_stamina, 1) + researched(1) * config(tech, bonus_turn_stamina, 1)) - distance(actor, target, 1))) / 10 -var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))",
                   "0 - distance(actor, target, 1)",
                   "0 - var(target.uid)"
                 ]
@@ -13559,7 +15346,7 @@
               },
               "match": {
                 "score": [
-                  "var(target.gather_speed) * (max(0, var(tune_gather_planning_turns) * (config(unit, turn_stamina, 1) + researched(1) * config(tech, bonus_turn_stamina, 1)) - distance(actor, target, 1))) / 10 - var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))",
+                  "var(target.gather_speed) *(max(0, var(tune_gather_planning_turns) * (config(unit, turn_stamina, 1) + researched(1) * config(tech, bonus_turn_stamina, 1)) - distance(actor, target, 1))) / 10 -var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))",
                   "0 - distance(actor, target, 1)",
                   "0 - var(target.uid)"
                 ]
@@ -13630,7 +15417,7 @@
               },
               "match": {
                 "score": [
-                  "var(target.gather_speed) * (max(0, var(tune_gather_planning_turns) * (config(unit, turn_stamina, 1) + researched(1) * config(tech, bonus_turn_stamina, 1)) - distance(actor, target, 1))) / 10 - var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))",
+                  "var(target.gather_speed) *(max(0, var(tune_gather_planning_turns) * (config(unit, turn_stamina, 1) + researched(1) * config(tech, bonus_turn_stamina, 1)) - distance(actor, target, 1))) / 10 -var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))",
                   "0 - distance(actor, target, 1)",
                   "0 - var(target.uid)"
                 ]
@@ -13741,7 +15528,7 @@
               },
               "match": {
                 "score": [
-                  "var(target.gather_speed) * (max(0, var(tune_gather_planning_turns) * (config(unit, turn_stamina, 1) + researched(1) * config(tech, bonus_turn_stamina, 1)) - distance(actor, target, 1))) / 10 - var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))",
+                  "var(target.gather_speed) *(max(0, var(tune_gather_planning_turns) * (config(unit, turn_stamina, 1) + researched(1) * config(tech, bonus_turn_stamina, 1)) - distance(actor, target, 1))) / 10 -var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))",
                   "0 - distance(actor, target, 1)",
                   "0 - var(target.uid)"
                 ]
@@ -13812,7 +15599,7 @@
               },
               "match": {
                 "score": [
-                  "var(target.gather_speed) * (max(0, var(tune_gather_planning_turns) * (config(unit, turn_stamina, 1) + researched(1) * config(tech, bonus_turn_stamina, 1)) - distance(actor, target, 1))) / 10 - var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))",
+                  "var(target.gather_speed) *(max(0, var(tune_gather_planning_turns) * (config(unit, turn_stamina, 1) + researched(1) * config(tech, bonus_turn_stamina, 1)) - distance(actor, target, 1))) / 10 -var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))",
                   "0 - distance(actor, target, 1)",
                   "0 - var(target.uid)"
                 ]
@@ -13923,7 +15710,7 @@
               },
               "match": {
                 "score": [
-                  "var(target.gather_speed) * (max(0, var(tune_gather_planning_turns) * (config(unit, turn_stamina, 1) + researched(1) * config(tech, bonus_turn_stamina, 1)) - distance(actor, target, 1))) / 10 - var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))",
+                  "var(target.gather_speed) *(max(0, var(tune_gather_planning_turns) * (config(unit, turn_stamina, 1) + researched(1) * config(tech, bonus_turn_stamina, 1)) - distance(actor, target, 1))) / 10 -var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))",
                   "0 - distance(actor, target, 1)",
                   "0 - var(target.uid)"
                 ]
@@ -13994,7 +15781,7 @@
               },
               "match": {
                 "score": [
-                  "var(target.gather_speed) * (max(0, var(tune_gather_planning_turns) * (config(unit, turn_stamina, 1) + researched(1) * config(tech, bonus_turn_stamina, 1)) - distance(actor, target, 1))) / 10 - var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))",
+                  "var(target.gather_speed) *(max(0, var(tune_gather_planning_turns) * (config(unit, turn_stamina, 1) + researched(1) * config(tech, bonus_turn_stamina, 1)) - distance(actor, target, 1))) / 10 -var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))",
                   "0 - distance(actor, target, 1)",
                   "0 - var(target.uid)"
                 ]
@@ -14186,6 +15973,56 @@
               },
               "match": {
                 "score": "0 - distance(actor, target)"
+              },
+              "issue": [
+                {
+                  "move": {}
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "action": "if",
+          "when": {
+            "value_at_least": {
+              "value": "var(scout_phase) == 4",
+              "amount": 1
+            }
+          },
+          "then": [
+            {
+              "action": "select",
+              "actors": {
+                "kind": "units",
+                "where": {
+                  "owner": "own",
+                  "bucket": "scout",
+                  "in": {
+                    "order_kind": [
+                      "none"
+                    ]
+                  }
+                }
+              },
+              "pick": {
+                "kind": "spaces",
+                "where": {
+                  "vision": 1,
+                  "passable": true
+                },
+                "rank": [
+                  "var(target.turns_since_seen)",
+                  "0 - (((2 * max(var(target.x), 0 - var(target.x)) - (var(target.x) < 0)) + (2 * max(var(target.y), 0 - var(target.y)) - (var(target.y) < 0))) * ((2 * max(var(target.x), 0 - var(target.x)) - (var(target.x) < 0)) + (2 * max(var(target.y), 0 - var(target.y)) - (var(target.y) < 0)) + 1) / 2 + (2 * max(var(target.y), 0 - var(target.y)) - (var(target.y) < 0)))"
+                ],
+                "limit": 25,
+                "capacity": "1"
+              },
+              "match": {
+                "score": [
+                  "var(target.turns_since_seen)",
+                  "0 - distance(actor, target)"
+                ]
               },
               "issue": [
                 {
@@ -14567,12 +16404,56 @@
         },
         {
           "action": "select",
+          "pick": {
+            "kind": "spaces",
+            "where": {
+              "near": {
+                "distance": 0,
+                "of": {
+                  "kind": "units",
+                  "where": {
+                    "in_set": "army_clear"
+                  }
+                }
+              },
+              "if": "1 - inSet(enemy_mil_near_spaces, target)"
+            },
+            "let": {
+              "rear_n": {
+                "count": {
+                  "kind": "units",
+                  "where": {
+                    "in_set": "army_clear",
+                    "if": "distance(target, item) == 0"
+                  }
+                }
+              }
+            },
+            "rank": [
+              "var(target.rear_n)",
+              "0 - (((2 * max(var(target.x), 0 - var(target.x)) - (var(target.x) < 0)) + (2 * max(var(target.y), 0 - var(target.y)) - (var(target.y) < 0))) * ((2 * max(var(target.x), 0 - var(target.x)) - (var(target.x) < 0)) + (2 * max(var(target.y), 0 - var(target.y)) - (var(target.y) < 0)) + 1) / 2 + (2 * max(var(target.y), 0 - var(target.y)) - (var(target.y) < 0)))"
+            ],
+            "limit": 1
+          },
+          "into": {
+            "set": "rear_space",
+            "var": "n_rear_space"
+          }
+        },
+        {
+          "action": "set_var",
+          "name": "front_use",
+          "value": "(var(tune_front_retreat) > 0) * (var(n_rear_space) > 0) * (var(own_strategic_power) >= var(e_threat_local) * var(tune_assault_odds))",
+          "persist": false
+        },
+        {
+          "action": "select",
           "actors": {
             "kind": "units",
             "where": {
               "owner": "own",
               "bucket": "army",
-              "if": "var(army_retreat) > 0"
+              "if": "(var(army_retreat) > 0) * (1 - var(front_use) + var(front_use) * inSet(army_at_enemy, actor))"
             }
           },
           "issue": [
@@ -14586,25 +16467,111 @@
           ]
         },
         {
-          "action": "select",
-          "actors": {
-            "kind": "units",
-            "where": {
-              "owner": "own",
-              "bucket": "army",
-              "if": "var(army_retreat) > 0"
+          "action": "if",
+          "when": {
+            "value_at_least": {
+              "value": "1 - var(front_use)",
+              "amount": 1
             }
           },
-          "pick": {
-            "kind": "spaces",
-            "where": {
-              "in_set": "retreat_goal"
-            },
-            "limit": 1
-          },
-          "issue": [
+          "then": [
             {
-              "move": {}
+              "action": "select",
+              "actors": {
+                "kind": "units",
+                "where": {
+                  "owner": "own",
+                  "bucket": "army",
+                  "if": "(var(army_retreat) > 0) * (1 - var(front_use) + var(front_use) * inSet(army_at_enemy, actor))"
+                }
+              },
+              "pick": {
+                "kind": "spaces",
+                "where": {
+                  "in_set": "retreat_goal"
+                },
+                "limit": 1
+              },
+              "issue": [
+                {
+                  "move": {}
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "action": "if",
+          "when": {
+            "value_at_least": {
+              "value": "var(front_use)",
+              "amount": 1
+            }
+          },
+          "then": [
+            {
+              "action": "select",
+              "actors": {
+                "kind": "units",
+                "where": {
+                  "owner": "own",
+                  "bucket": "army",
+                  "if": "(var(army_retreat) > 0) * (1 - var(front_use) + var(front_use) * inSet(army_at_enemy, actor))"
+                }
+              },
+              "pick": {
+                "kind": "spaces",
+                "where": {
+                  "in_set": "rear_space"
+                },
+                "limit": 1
+              },
+              "issue": [
+                {
+                  "move": {}
+                }
+              ]
+            },
+            {
+              "action": "select",
+              "actors": {
+                "kind": "units",
+                "where": {
+                  "in_set": "army_clear",
+                  "if": "(var(army_retreat) > 0) * var(front_use)"
+                }
+              },
+              "issue": [
+                {
+                  "set_behavior": {
+                    "stance": "defensive",
+                    "attack_back": true,
+                    "interrupt_current": false
+                  }
+                }
+              ]
+            },
+            {
+              "action": "select",
+              "actors": {
+                "kind": "units",
+                "where": {
+                  "in_set": "army_clear",
+                  "if": "(var(army_retreat) > 0) * var(front_use)"
+                }
+              },
+              "pick": {
+                "kind": "spaces",
+                "where": {
+                  "in_set": "rear_space"
+                },
+                "limit": 1
+              },
+              "issue": [
+                {
+                  "move": {}
+                }
+              ]
             }
           ]
         },
@@ -15561,6 +17528,131 @@
         },
         {
           "action": "select",
+          "pick": {
+            "kind": "units",
+            "where": {
+              "owner": "enemy",
+              "unit_types": [
+                "military"
+              ],
+              "at": {
+                "in_set": "base"
+              }
+            }
+          },
+          "into": {
+            "set": "base_threats",
+            "var": "n_base_threats"
+          }
+        },
+        {
+          "action": "set_var",
+          "name": "outside_power",
+          "value": {
+            "sum": {
+              "kind": "units",
+              "where": {
+                "owner": "enemy",
+                "unit_types": [
+                  "military"
+                ],
+                "near": {
+                  "distance": 1,
+                  "of": {
+                    "kind": "spaces",
+                    "where": {
+                      "in_set": "base"
+                    }
+                  }
+                },
+                "if": "1 - inSet(base_threats, item)"
+              },
+              "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
+            }
+          },
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "outside_unid",
+          "value": {
+            "sum": {
+              "kind": "spaces",
+              "where": {
+                "in_set": "unidentified_spaces",
+                "near": {
+                  "distance": 1,
+                  "of": {
+                    "kind": "spaces",
+                    "where": {
+                      "in_set": "base"
+                    }
+                  }
+                },
+                "if": "1 - inSet(base, item)"
+              },
+              "of": "var(item.unit_count)"
+            }
+          },
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "home_go",
+          "value": "var(home_military_power) >= var(tune_home_odds) * (var(outside_power) * var(enemy_tech_multiplier) + var(outside_unid) * var(unknown_unit_power))",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "base_power",
+          "value": {
+            "sum": {
+              "kind": "units",
+              "where": {
+                "owner": "enemy",
+                "unit_types": [
+                  "military"
+                ],
+                "at": {
+                  "in_set": "base"
+                }
+              },
+              "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
+            }
+          },
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "base_unid",
+          "value": {
+            "sum": {
+              "kind": "spaces",
+              "where": {
+                "in_set": "unidentified_spaces",
+                "near": {
+                  "distance": 0,
+                  "of": {
+                    "kind": "spaces",
+                    "where": {
+                      "in_set": "base"
+                    }
+                  }
+                }
+              },
+              "of": "var(item.unit_count)"
+            }
+          },
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "base_go",
+          "value": "var(home_military_power) >= var(tune_base_odds) * (var(base_power) * var(enemy_tech_multiplier) + var(base_unid) * var(unknown_unit_power))",
+          "persist": false
+        },
+        {
+          "action": "select",
           "actors": {
             "kind": "units",
             "where": {
@@ -15587,40 +17679,109 @@
           ]
         },
         {
-          "action": "select",
-          "actors": {
-            "kind": "units",
-            "where": {
-              "owner": "own",
-              "unit_types": [
-                "military"
-              ],
-              "not_in_set": "raiding_party",
-              "if": [
-                "1 - inSet(military_at_enemy, actor)",
-                "((var(assault) == 0) + (var(army_retreat) > 0) + (var(n_army_target_space) == 0) > 0)",
-                "(var(army_retreat) == 0) + (1 - inBucket(army, actor)) > 0"
+          "action": "if",
+          "when": {
+            "value_at_least": {
+              "value": "var(base_go) > 0",
+              "amount": 1
+            }
+          },
+          "then": [
+            {
+              "action": "select",
+              "actors": {
+                "kind": "units",
+                "where": {
+                  "owner": "own",
+                  "unit_types": [
+                    "military"
+                  ],
+                  "not_in_set": "raiding_party",
+                  "if": [
+                    "1 - inSet(military_at_enemy, actor)",
+                    "((var(assault) == 0) + (var(army_retreat) > 0) + (var(n_army_target_space) == 0) > 0)",
+                    "(var(army_retreat) == 0) + (1 - inBucket(army, actor)) > 0"
+                  ]
+                }
+              },
+              "pick": {
+                "kind": "units",
+                "where": {
+                  "owner": "enemy",
+                  "unit_types": [
+                    "military"
+                  ],
+                  "at": {
+                    "in_set": "base"
+                  }
+                },
+                "capacity": "max(1, var(target.health) / (var(effective_hit) * var(tune_kill_ticks)))"
+              },
+              "match": {
+                "score": "10 - distance(actor, target) + var(tune_focus) * (1 - var(target.health) / max(0.1, var(target.max_health)))"
+              },
+              "issue": [
+                {
+                  "attack": {}
+                }
               ]
             }
-          },
-          "pick": {
-            "kind": "units",
-            "where": {
-              "owner": "enemy",
-              "unit_types": [
-                "military"
-              ],
-              "at": {
-                "in_set": "base"
-              }
+          ]
+        },
+        {
+          "action": "if",
+          "when": {
+            "value_at_least": {
+              "value": "(var(n_base_threats) == 0) * (var(home_go) > 0)",
+              "amount": 1
             }
           },
-          "match": {
-            "score": "0 - distance(actor, target)"
-          },
-          "issue": [
+          "then": [
             {
-              "attack": {}
+              "action": "select",
+              "actors": {
+                "kind": "units",
+                "where": {
+                  "owner": "own",
+                  "unit_types": [
+                    "military"
+                  ],
+                  "not_in_set": "raiding_party",
+                  "if": [
+                    "1 - inSet(military_at_enemy, actor)",
+                    "((var(assault) == 0) + (var(army_retreat) > 0) + (var(n_army_target_space) == 0) > 0)",
+                    "(var(army_retreat) == 0) + (1 - inBucket(army, actor)) > 0"
+                  ]
+                }
+              },
+              "pick": {
+                "kind": "units",
+                "where": {
+                  "owner": "enemy",
+                  "unit_types": [
+                    "military"
+                  ],
+                  "near": {
+                    "distance": 1,
+                    "of": {
+                      "kind": "spaces",
+                      "where": {
+                        "in_set": "base"
+                      }
+                    }
+                  },
+                  "if": "1 - inSet(base_threats, target)"
+                },
+                "capacity": "max(1, var(target.health) / (var(effective_hit) * var(tune_kill_ticks)))"
+              },
+              "match": {
+                "score": "10 - distance(actor, target) + var(tune_focus) * (1 - var(target.health) / max(0.1, var(target.max_health)))"
+              },
+              "issue": [
+                {
+                  "attack": {}
+                }
+              ]
             }
           ]
         },
@@ -16055,6 +18216,28 @@
                         "if": "distance(actor, item) == 0"
                       }
                     }
+                  },
+                  "policy_exposed": {
+                    "count": {
+                      "kind": "units",
+                      "where": {
+                        "in_set": "enemy_units",
+                        "unit_types": [
+                          "military"
+                        ],
+                        "if": "distance(actor, item, 1) <= var(item.attack_range) + var(tune_policy_exposure)"
+                      }
+                    }
+                  },
+                  "policy_unknown": {
+                    "sum": {
+                      "kind": "spaces",
+                      "where": {
+                        "in_set": "unidentified_spaces",
+                        "if": "distance(actor, item) <= var(tune_policy_radius)"
+                      },
+                      "of": "var(item.unit_count)"
+                    }
                   }
                 }
               },
@@ -16105,7 +18288,10 @@
                   "at": {
                     "in_set": "enemy_presence_near_spaces"
                   },
-                  "if": "(1 - var(actor.is_garrisoned)) * (((var(actor.allies_military_power) + var(villager_power) * var(actor.allies_vils_count)) - var(tune_vil_crush_odds) * (var(actor.enemy_near_power) + var(tune_vil_unknown) * var(unknown_unit_power) * var(actor.enemy_near_unid))) < 0)"
+                  "if": [
+                    "(1 - var(actor.is_garrisoned)) * (((var(actor.allies_military_power) + var(villager_power) * var(actor.allies_vils_count)) - var(tune_vil_crush_odds) * (var(actor.enemy_near_power) + var(tune_vil_unknown) * var(unknown_unit_power) * var(actor.enemy_near_unid))) < 0)",
+                    "var(actor.policy_exposed) + var(actor.policy_unknown) > 0"
+                  ]
                 },
                 "let": {
                   "enemy_near_power": {
@@ -16155,6 +18341,28 @@
                         "if": "distance(actor, item) == 0"
                       }
                     }
+                  },
+                  "policy_exposed": {
+                    "count": {
+                      "kind": "units",
+                      "where": {
+                        "in_set": "enemy_units",
+                        "unit_types": [
+                          "military"
+                        ],
+                        "if": "distance(actor, item, 1) <= var(item.attack_range) + var(tune_policy_exposure)"
+                      }
+                    }
+                  },
+                  "policy_unknown": {
+                    "sum": {
+                      "kind": "spaces",
+                      "where": {
+                        "in_set": "unidentified_spaces",
+                        "if": "distance(actor, item) <= var(tune_policy_radius)"
+                      },
+                      "of": "var(item.unit_count)"
+                    }
                   }
                 }
               },
@@ -16189,6 +18397,299 @@
               "issue": [
                 {
                   "garrison": {}
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "when": {
+        "always": {}
+      },
+      "then": [
+        {
+          "action": "select",
+          "pick": {
+            "kind": "units",
+            "where": {
+              "in_set": "own_units",
+              "if": "0"
+            }
+          },
+          "into": {
+            "set": "refine_used",
+            "var": "n_refine_used"
+          }
+        },
+        {
+          "action": "select",
+          "pick": {
+            "kind": "spaces",
+            "where": {
+              "in_set": "enemy_mil_spaces",
+              "if": "(var(target.refine_count) > 0) * (var(target.refine_count) <= var(tune_policy_small_raid)) * (var(target.refine_unknown) == 0) * (var(target.refine_own) >= var(tune_refine_raid_margin) * var(target.refine_enemy))"
+            },
+            "let": {
+              "refine_count": {
+                "count": {
+                  "kind": "units",
+                  "where": {
+                    "in_set": "enemy_units",
+                    "unit_types": [
+                      "military"
+                    ],
+                    "if": "distance(target, item) == 0"
+                  }
+                }
+              },
+              "refine_enemy": {
+                "sum": {
+                  "kind": "units",
+                  "where": {
+                    "in_set": "enemy_units",
+                    "unit_types": [
+                      "military"
+                    ],
+                    "if": "distance(target, item) == 0"
+                  },
+                  "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
+                }
+              },
+              "refine_unknown": {
+                "sum": {
+                  "kind": "spaces",
+                  "where": {
+                    "in_set": "unidentified_spaces",
+                    "if": "distance(target, item) <= var(tune_policy_radius)"
+                  },
+                  "of": "var(item.unit_count)"
+                }
+              },
+              "refine_limit": "min(var(tune_policy_responders), max(1, ceil(var(target.refine_count) * var(tune_refine_response_scale))))",
+              "refine_own": {
+                "sum": {
+                  "kind": "units",
+                  "where": {
+                    "in_set": "own_units",
+                    "unit_ids": [
+                      1,
+                      101,
+                      102,
+                      103
+                    ],
+                    "if": [
+                      "1 - var(item.is_garrisoned)",
+                      "var(item.hp_pct) >= var(tune_refine_health_floor)",
+                      "(var(item.unit_id) != 1) + inSet(economy_workers, item) > 0",
+                      "(1 - var(tune_refine_defensive_only)) + (1 - inBucket(army, item)) + ((var(assault) == 0) * (var(army_retreat) == 0)) > 0",
+                      "1 - inSet(evacuees, item)",
+                      "1 - inSet(raiding_party, item)",
+                      "1 - inSet(reserved_units, item)",
+                      "1 - inSet(refine_used, item)",
+                      "distance(item, target) <= (var(item.unit_id) != 1) * var(tune_refine_local_radius)"
+                    ]
+                  },
+                  "rank": [
+                    "var(item.unit_id) != 1",
+                    "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))",
+                    "0 - distance(item, target)",
+                    "0 - var(item.uid)"
+                  ],
+                  "limit": "var(target.refine_limit)",
+                  "of": "(((var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))) + var(villager_power) * (var(item.unit_id) == 1)) * var(item.hp_pct)"
+                }
+              }
+            }
+          },
+          "into": {
+            "set": "refine_raids",
+            "var": "n_refine_raids"
+          }
+        }
+      ]
+    },
+    {
+      "when": {
+        "always": {}
+      },
+      "then": [
+        {
+          "action": "for_each",
+          "select": {
+            "kind": "spaces",
+            "where": {
+              "in_set": "refine_raids"
+            },
+            "let": {
+              "refine_count": {
+                "count": {
+                  "kind": "units",
+                  "where": {
+                    "in_set": "enemy_units",
+                    "unit_types": [
+                      "military"
+                    ],
+                    "if": "distance(refine_raid, item) == 0"
+                  }
+                }
+              },
+              "refine_enemy": {
+                "sum": {
+                  "kind": "units",
+                  "where": {
+                    "in_set": "enemy_units",
+                    "unit_types": [
+                      "military"
+                    ],
+                    "if": "distance(refine_raid, item) == 0"
+                  },
+                  "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
+                }
+              },
+              "refine_unknown": {
+                "sum": {
+                  "kind": "spaces",
+                  "where": {
+                    "in_set": "unidentified_spaces",
+                    "if": "distance(refine_raid, item) <= var(tune_policy_radius)"
+                  },
+                  "of": "var(item.unit_count)"
+                }
+              },
+              "refine_limit": "min(var(tune_policy_responders), max(1, ceil(var(refine_raid.refine_count) * var(tune_refine_response_scale))))",
+              "refine_own": {
+                "sum": {
+                  "kind": "units",
+                  "where": {
+                    "in_set": "own_units",
+                    "unit_ids": [
+                      1,
+                      101,
+                      102,
+                      103
+                    ],
+                    "if": [
+                      "1 - var(item.is_garrisoned)",
+                      "var(item.hp_pct) >= var(tune_refine_health_floor)",
+                      "(var(item.unit_id) != 1) + inSet(economy_workers, item) > 0",
+                      "(1 - var(tune_refine_defensive_only)) + (1 - inBucket(army, item)) + ((var(assault) == 0) * (var(army_retreat) == 0)) > 0",
+                      "1 - inSet(evacuees, item)",
+                      "1 - inSet(raiding_party, item)",
+                      "1 - inSet(reserved_units, item)",
+                      "1 - inSet(refine_used, item)",
+                      "distance(item, refine_raid) <= (var(item.unit_id) != 1) * var(tune_refine_local_radius)"
+                    ]
+                  },
+                  "rank": [
+                    "var(item.unit_id) != 1",
+                    "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))",
+                    "0 - distance(item, refine_raid)",
+                    "0 - var(item.uid)"
+                  ],
+                  "limit": "var(refine_raid.refine_limit)",
+                  "of": "(((var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))) + var(villager_power) * (var(item.unit_id) == 1)) * var(item.hp_pct)"
+                }
+              }
+            }
+          },
+          "as": "refine_raid",
+          "do": [
+            {
+              "action": "if",
+              "when": {
+                "value_at_least": {
+                  "value": "var(refine_raid.refine_own) >= var(tune_refine_raid_margin) * var(refine_raid.refine_enemy)",
+                  "amount": 1
+                }
+              },
+              "then": [
+                {
+                  "action": "select",
+                  "pick": {
+                    "kind": "units",
+                    "where": {
+                      "in_set": "own_units",
+                      "unit_ids": [
+                        1,
+                        101,
+                        102,
+                        103
+                      ],
+                      "if": [
+                        "1 - var(target.is_garrisoned)",
+                        "var(target.hp_pct) >= var(tune_refine_health_floor)",
+                        "(var(target.unit_id) != 1) + inSet(economy_workers, target) > 0",
+                        "(1 - var(tune_refine_defensive_only)) + (1 - inBucket(army, target)) + ((var(assault) == 0) * (var(army_retreat) == 0)) > 0",
+                        "1 - inSet(evacuees, target)",
+                        "1 - inSet(raiding_party, target)",
+                        "1 - inSet(reserved_units, target)",
+                        "1 - inSet(refine_used, target)",
+                        "distance(target, refine_raid) <= (var(target.unit_id) != 1) * var(tune_refine_local_radius)"
+                      ]
+                    },
+                    "rank": [
+                      "var(target.unit_id) != 1",
+                      "(var(target.unit_id) == 101) * ((var(target.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(target.player) == var(player_id))) * var(enemy_power_blunt)) + (var(target.unit_id) == 102) * ((var(target.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(target.player) == var(player_id))) * var(enemy_power_pierce)) + (var(target.unit_id) == 103) * ((var(target.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(target.player) == var(player_id))) * var(enemy_power_heavy)) + (var(target.unit_id) == 401) * ((var(target.player) == var(player_id)) * var(own_power_siege) + (1 - (var(target.player) == var(player_id))) * var(enemy_power_siege))",
+                      "0 - distance(target, refine_raid)",
+                      "0 - var(target.uid)"
+                    ],
+                    "limit": "var(refine_raid.refine_limit)"
+                  },
+                  "into": {
+                    "set": "refine_current",
+                    "var": "n_refine_current"
+                  }
+                },
+                {
+                  "action": "select",
+                  "actors": {
+                    "kind": "units",
+                    "where": {
+                      "in_set": "refine_current"
+                    }
+                  },
+                  "pick": {
+                    "kind": "units",
+                    "where": {
+                      "in_set": "enemy_units",
+                      "unit_types": [
+                        "military"
+                      ],
+                      "if": "distance(target, refine_raid) == 0"
+                    },
+                    "rank": [
+                      "0 - var(target.health)",
+                      "0 - var(target.uid)"
+                    ],
+                    "capacity": "max(1, var(target.health) / var(effective_hit))"
+                  },
+                  "match": {
+                    "where": {
+                      "if": "var(actor.order_target_uid) != var(target.uid)"
+                    }
+                  },
+                  "issue": [
+                    {
+                      "attack": {}
+                    }
+                  ],
+                  "mode": "prepend"
+                },
+                {
+                  "action": "select",
+                  "pick": {
+                    "kind": "units",
+                    "where": {
+                      "in_set": "own_units",
+                      "if": "inSet(refine_used, target) + inSet(refine_current, target) > 0"
+                    }
+                  },
+                  "into": {
+                    "set": "refine_used",
+                    "var": "n_refine_used"
+                  }
                 }
               ]
             }

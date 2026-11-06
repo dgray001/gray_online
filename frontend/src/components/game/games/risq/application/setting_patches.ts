@@ -14,6 +14,7 @@ export function patchUnitBehavior(session: RisqSession, data: UnitBehaviorSetDat
       unit.stance = data.stance ?? unit.stance;
       unit.interrupt_current = data.interrupt_current ?? unit.interrupt_current;
       unit.attack_back = data.attack_back ?? unit.attack_back;
+      unit.attack_stack = data.attack_stack ?? unit.attack_stack;
       unit.target_priority = data.target_priority ?? unit.target_priority;
     }
   }
@@ -35,6 +36,7 @@ export function patchDefaultUnitBehavior(session: RisqSession, data: DefaultUnit
     player.default_unit_stance = data.stance;
     player.default_unit_attack_back = data.attack_back;
     player.default_unit_interrupt_current = data.interrupt_current;
+    player.default_unit_attack_stack = data.attack_stack;
     player.default_unit_target_priority = data.target_priority;
   }
 }

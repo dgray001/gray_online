@@ -13,10 +13,11 @@ def scouting_state() -> list[Record]:
     fog_turns = "(var(explored_spaces) >= 0.9 * var(board_spaces)) * (110 - 100 * var(explored_spaces) / max(1, var(board_spaces))) - (var(explored_spaces) < 0.9 * var(board_spaces))"
     n_inf = "(var(own_101) + var(own_102) + var(own_103))"
     n_mil = "(var(own_101) + var(own_102) + var(own_103) + var(own_401))"
-    p1 = f"({n_inf} >= 1) * (var(unexplored_local) >= 1)"
+    p1 = f"({n_inf} >= 1) * (var(unexplored_local) >= 1) * (1 - ({n_mil} >= var(tune_scout4_mil)))"
     p2 = f"(var(scout_p1) == 0) * (var(enemies_found) <= gameVar(num_players) - 2)"
     p3 = f"(var(scout_p1) == 0) * (var(scout_p2) == 0) * (var(unexplored_total) >= 1) * (((var(has_economy) >= 1) * (var(capacity_stone) <= 0)) + ({n_mil} >= 21) > 0)"
-    size = f"var(scout_p1) * 1 + (var(scout_p2) + var(scout_p3)) * (1 + ({n_mil} >= 40))"
+    p4 = f"(var(scout_p2) + var(scout_p3) == 0) * ({n_mil} >= var(tune_scout4_mil))"
+    size = f"var(scout_p1) * 1 + (var(scout_p2) + var(scout_p3)) * (1 + ({n_mil} >= 40)) + var(scout_p4) * var(tune_scout4_count)"
     pick_scout = selection("units", dict(owner="own", unit_ids=[101, 102, 103], **{"if": "1 - inBucket(holder, target)"}),
                            let=dict(in_scout="inBucket(scout, target)"),
                            rank=["var(target.in_scout)", "0 - var(target.uid)"], limit="var(scout_size)")
@@ -31,8 +32,8 @@ def scouting_state() -> list[Record]:
     return [
         variable("unexplored_local", unexplored_local), variable("unexplored_total", "var(board_spaces) - var(explored_spaces)"),
         variable("enemies_found", 0), count_enemies, variable("scout_fog_turns", fog_turns),
-        variable("scout_p1", p1), variable("scout_p2", p2), variable("scout_p3", p3),
-        variable("scout_phase", "var(scout_p1) * 1 + var(scout_p2) * 2 + var(scout_p3) * 3"), variable("scout_size", size),
+        variable("scout_p1", p1), variable("scout_p2", p2), variable("scout_p3", p3), variable("scout_p4", p4),
+        variable("scout_phase", "var(scout_p1) * 1 + var(scout_p2) * 2 + var(scout_p3) * 3 + var(scout_p4) * 4"), variable("scout_size", size),
         branch("var(scout_phase) > 0", [dict(action="select", pick=pick_scout, into=dict(bucket="scout", mode="replace"))], otherwise=retire_scout),
         store("scout_units", selection("units", dict(owner="own", bucket="scout")), persist=True),
     ]
@@ -57,9 +58,13 @@ def scouting_tactics() -> list[Record]:
     p3_spaces = selection("spaces", dict(vision=0), rank=[f"0 - {space_key('target')}"] , limit=25, capacity="1")
     phase3 = dict(action="select", actors=idle_scouts, pick=p3_spaces,
                   match=dict(score="0 - distance(actor, target)"), issue=[dict(move={})])
+    p4_spaces = selection("spaces", dict(vision=1, passable=True), rank=["var(target.turns_since_seen)", f"0 - {space_key('target')}"], limit=25, capacity="1")
+    phase4 = dict(action="select", actors=idle_scouts, pick=p4_spaces,
+                  match=dict(score=["var(target.turns_since_seen)", "0 - distance(actor, target)"]), issue=[dict(move={})])
     return [behavior, branch("var(scout_phase) == 1", [phase1]),
             branch("var(scout_phase) == 2", [phase2]),
-            branch("var(scout_phase) == 3", [phase3])]
+            branch("var(scout_phase) == 3", [phase3]),
+            branch("var(scout_phase) == 4", [phase4])]
 
 
 def home_inspector() -> list[Record]:

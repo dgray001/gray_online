@@ -107,12 +107,24 @@ ENGINE_LINE = re.compile(r"Executing submit orders for: (\d+) (.*)$")
 TIMESTAMP = re.compile(r"^(?:\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}|\d{8}-\d{2}:\d{2}:\d{2}\.\d{3} \[[A-Z]+\]) ")
 
 
-def decode_line(line: str, var_names: list[str]) -> list[str]:
+def summarize_entities(data: dict) -> list[str]:
+    rows: list[str] = []
+    for group, kind in (("units", "unit"), ("enemy_units", "unit"), ("buildings", "building"), ("enemy_buildings", "building")):
+        for entity in data.get(group) or []:
+            rows.append(f"{group} id {entity['InternalID']} {name_of(kind, entity['UnitID' if kind == 'unit' else 'BuildingID'])} "
+                        f"at {at(entity['Location'])} hp {entity['Health']}/{entity['MaxHealth']} "
+                        f"garrison {entity.get('GarrisonedIn')} stance {entity.get('Stance')} orders {entity.get('ActiveOrders')}")
+    return rows
+
+
+def decode_line(line: str, var_names: list[str], entities: bool = False) -> list[str]:
     ai = AI_LINE.search(line)
     if ai and ai[2] == "submitting orders":
         return decode_orders(ai[3], engine=False)
     if ai:
         data = json.loads(ai[3])
+        if entities and ai[2] == "new turn data":
+            return summarize_entities(data)
         return summarize_turn(data) if ai[2] == "new turn data" else select_vars(data, var_names)
     engine = ENGINE_LINE.search(line)
     if engine:
@@ -210,6 +222,7 @@ def main() -> None:
     parser.add_argument("--vars", default="", help="script variables to show on 'vars' lines, comma separated")
     parser.add_argument("--show", default="", help="regex; only decoded lines matching it are printed (e.g. 'Build|Garrison')")
     parser.add_argument("--raw", action="store_true", help="print the original line instead of decoding it")
+    parser.add_argument("--entities", action="store_true", help="show individual units and buildings in turn snapshots")
     parser.add_argument("--compare", type=Path, help="show AI records differing from the same turn in another log")
     parser.add_argument("--limit", type=int, default=0, help="maximum matching records to inspect; zero means all")
     args = parser.parse_args()
@@ -244,7 +257,7 @@ def main() -> None:
         if args.limit and matched > args.limit:
             break
         for j in range(max(0, i - args.context), min(len(lines), i + args.context + 1)):
-            texts = [lines[j].strip()] if args.raw else decode_line(lines[j], var_names)
+            texts = [lines[j].strip()] if args.raw else decode_line(lines[j], var_names, args.entities)
             texts = [text for text in texts if re.search(args.show, text, re.IGNORECASE)]
             if texts:
                 print(f"{'>>' if j == i else '  '} [{labels[j][0]}]", *(f"\n      {text}" for text in texts), sep="")

@@ -46,7 +46,15 @@ func runAi(p *FiddlesticksPlayer, f *GameFiddlesticks, action_channel chan game.
 		case update := <-p.player.AiFailedUpdates:
 			fmt.Fprintln(os.Stderr, "AI player", p.player.GetAiId(), "received failed update", update)
 		case <-f.done:
-			break
+			f.mu.Lock()
+			p.clearTurnTimer()
+			f.mu.Unlock()
+			return
+		case <-p.player.GetBase().Quit:
+			f.mu.Lock()
+			p.clearTurnTimer()
+			f.mu.Unlock()
+			return
 		}
 	}
 	fmt.Println("Ending ai for AI player", p.player.GetAiId())

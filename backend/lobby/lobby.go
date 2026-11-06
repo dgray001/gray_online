@@ -181,13 +181,18 @@ func (l *Lobby) GetUsers() []gin.H {
 
 func (l *Lobby) GetGames() []gin.H {
 	l.mu.Lock()
-	defer l.mu.Unlock()
-	games := []gin.H{}
+	active_games := []game.Game{}
 	for _, room := range l.rooms {
-		if room.validLocked() {
-			game := room.game
-			if game != nil && game.Valid() {
-				games = append(games, game.ToFrontend(0, false))
+		if room.validLocked() && room.game != nil && room.game.Valid() {
+			active_games = append(active_games, room.game)
+		}
+	}
+	l.mu.Unlock()
+	games := []gin.H{}
+	for _, g := range active_games {
+		if base := g.GetBase(); base != nil && base.RequestToFrontend != nil {
+			if state, err := base.RequestToFrontend(0, false); err == nil {
+				games = append(games, state)
 			}
 		}
 	}
@@ -265,11 +270,11 @@ func (l *Lobby) reconnectClient(client *Client, client_id uint64) {
 					client.game = nil
 				} else {
 					util.Info(l.std, "Starting reconnect viewer game updates")
-					go client.viewerGameUpdates(viewer, room_id_string)
+					go client.viewerGameUpdates(viewer, room_id_string, client.game.GetBase().Quit)
 				}
 			} else {
 				util.Infof(l.std, "Starting reconnect player game updates for player %d", player.Player_id)
-				go client.playerGameUpdates(player, room_id_string)
+				go client.playerGameUpdates(player, room_id_string, client.game.GetBase().Quit)
 			}
 		}
 	}
@@ -289,18 +294,20 @@ func (l *Lobby) removeClient(client *Client) {
 		l.mu.Unlock()
 		return // this client_id was already taken over by a reconnect
 	}
-	delete_client := time.NewTimer(1 * time.Hour)
-	client.delete_timer = delete_client
 	lobby_room := client.lobby_room
 	holds_game_seat := lobby_room != nil && lobby_room.gameStartedLocked() && lobby_room.players[client.client_id] == client
-	l.mu.Unlock()
-	go func() {
-		<-delete_client.C
+	client.delete_timer = time.AfterFunc(1*time.Hour, func() {
 		l.mu.Lock()
-		client.deleted = true
-		delete(l.clients, client.client_id)
+		if l.clients[client.client_id] == client {
+			if !client.deleted {
+				close(client.quit)
+				client.deleted = true
+			}
+			delete(l.clients, client.client_id)
+		}
 		l.mu.Unlock()
-	}()
+	})
+	l.mu.Unlock()
 	id_string := strconv.Itoa(int(client.client_id))
 	if holds_game_seat {
 		lobby_room.LeaveRoom <- &ClientRoom{client: client, room: lobby_room}
@@ -377,7 +384,26 @@ func (l *Lobby) updateRoomDescription(room *LobbyRoom) {
 
 func (l *Lobby) removeRoom(room *LobbyRoom) {
 	l.mu.Lock()
+	if l.rooms[room.room_id] != room {
+		l.mu.Unlock()
+		return
+	}
 	delete(l.rooms, room.room_id)
+	if room.delete_timer != nil {
+		room.delete_timer.Stop()
+	}
+	if room.game_delete_timer != nil {
+		room.game_delete_timer.Stop()
+	}
+	if room.ended_game_id != 0 {
+		delete(l.games, room.ended_game_id)
+	}
+	if !room.gameNilLocked() {
+		delete(l.games, room.game.GetBase().Game_id)
+		room.game.GetBase().EndGame("")
+		room.game = nil
+	}
+	close(room.quit)
 	id_string := strconv.Itoa(int(room.room_id))
 	if room.host != nil {
 		room.host.lobby_room = nil

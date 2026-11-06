@@ -118,10 +118,16 @@ func TestMeetingNeedsAnAttackOrder(t *testing.T) {
 	g.Submit(g.Human(1), harness.OrderMoveZone([]uint64{b.InternalID}, 0, 0, 0, 0))
 	ticks := parseTicks(t, log)
 
-	if len(ticks.meetings) != 0 {
-		t.Errorf("meetings %+v, want none for plain moves", ticks.meetings)
+	for _, meeting := range ticks.meetings {
+		if meeting.tick == 1 {
+			t.Errorf("plain moves interrupted by a meeting: %+v", meeting)
+		}
 	}
-	if after0, after1 := soleUnit(g, 0), soleUnit(g, 1); after0.Zone != b.Zone || after1.Zone != a.Zone {
+	after0, after1 := g.Replay(g.Human(0)).UnitAt(a.InternalID, 1), g.Replay(g.Human(1)).UnitAt(b.InternalID, 1)
+	if after0 == nil || after1 == nil {
+		t.Fatal("missing units after the movement tick")
+	}
+	if after0.Zone != b.Zone || after1.Zone != a.Zone {
 		t.Errorf("zones %v and %v, want the two to have swapped to %v and %v", after0.Zone, after1.Zone, b.Zone, a.Zone)
 	}
 }

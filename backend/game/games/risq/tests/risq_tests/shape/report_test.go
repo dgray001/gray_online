@@ -43,6 +43,25 @@ func TestTurnReportWireShape(t *testing.T) {
 	equal(t, len(array(t, report["combat"])), 0)
 }
 
+func TestJournalRegionOwnersRespectExploration(t *testing.T) {
+	g := shapeGame(t, 3)
+	reader := g.Human(0)
+	before := object(t, array(t, snapshot(g, reader, false)["regions"])[0])
+	g.EndTurn()
+	after := snapshot(g, reader, false)
+	owners := object(t, object(t, after["last_turn_replay"])["region_owners"])
+	equal(t, owners[before["name"].(string)], before["owner"])
+	visible := map[string]bool{}
+	for _, region := range array(t, after["regions"]) {
+		visible[object(t, region)["name"].(string)] = true
+	}
+	for name := range owners {
+		if !visible[name] {
+			t.Fatalf("journal exposed unexplored region %q", name)
+		}
+	}
+}
+
 func TestReportRejectedOrderWireShape(t *testing.T) {
 	g := configuredGame(t, 3, func() {
 		unit := defs.UnitConfigs[11]

@@ -32,7 +32,8 @@ def assault_odds_rules() -> list[Record]:
     return [
         variable("home_military_power", home_mil),
         variable("ao_base", f"({eco_assault}) - (({eco_assault}) - ({eco_power})) * ({ramp})"),
-        variable("ao", f"min(var(ao_base), ({eco_assault}) - (({eco_assault}) - ({eco_cap})) * ({cap_fill}))"),
+        variable("rich", "(gameVar(population) >= var(population_ceiling) - 2) * (min(gameVar(food), gameVar(wood)) >= var(tune_rich_bank))"),
+        variable("ao", f"min(var(ao_base), ({eco_assault}) - (({eco_assault}) - ({eco_cap})) * ({cap_fill})) * (1 - var(rich) * var(tune_rich_aggr))"),
         variable("go", "(var(home_military_power) >= var(ao) * var(enemy_strength)) * (var(home_military_power) >= var(tune_assault_min))"),
         variable("army_enemies_within_2", enemy_within_2),
         variable("army_unid_within_2", unid_within_2),
@@ -178,7 +179,7 @@ def army_local_odds_rules() -> list[Record]:
         "(var(center_unit.e_engaged) > 0) * (var(tune_engaged_odds) * (var(has_economy) > 0) + var(tune_engaged_odds_noeco) * (var(has_economy) == 0)) + "
         "(var(center_unit.e_engaged) == 0) * (var(tune_assault_odds) * (var(has_economy) > 0) + var(tune_assault_odds_noeco) * (var(has_economy) == 0))"
     )
-    outnumbered = f"(var(e_threat_local) * ({retreat_odds}) > var(army_tactical_power)) * (var(army_size) > 0)"
+    outnumbered = f"(var(e_threat_local) * ({retreat_odds}) * (1 - var(rich) * var(tune_rich_aggr)) > var(army_tactical_power)) * (var(army_size) > 0)"
 
     escape_lets = dict(
         d_mil=aggregate("sum", selection("units", dict(owner="enemy", unit_types=["military"], **{"if": "distance(target, item) <= 1"})), power()),
@@ -215,12 +216,23 @@ def army_maneuver_rules(stage_passive: bool, rest_move_enabled: bool) -> list[Re
     army_clear = store("army_clear", selection("units", dict(owner="own", bucket="army", not_in_set="army_at_enemy")))
 
     # 1. Retreat: Move to escape_space in defensive stance without interrupting attacks
-    retreat_actors = selection("units", dict(owner="own", bucket="army", **{"if": "var(army_retreat) > 0"}))
+    retreat_actors = selection("units", dict(owner="own", bucket="army", **{"if": "(var(army_retreat) > 0) * (1 - var(front_use) + var(front_use) * inSet(army_at_enemy, actor))"}))
     retreat_behavior = dict(
         action="select", actors=retreat_actors,
         issue=[dict(set_behavior=dict(stance="defensive", attack_back=True, interrupt_current=False))]
     )
     retreat_move = dict(action="select", actors=retreat_actors, pick=escape_space, issue=[dict(move={})])
+
+    # 1a. Front-only retreat: the units in contact fall back onto the enemy-free rear body, which holds
+    rear_pick = selection("spaces", dict(in_set="rear_space"), limit=1)
+    rear_count = aggregate("count", selection("units", dict(in_set="army_clear", **{"if": "distance(target, item) == 0"})))
+    rear_store = store("rear_space", selection("spaces", dict(near=dict(distance=0, of=selection("units", dict(in_set="army_clear"))), **{"if": "1 - inSet(enemy_mil_near_spaces, target)"}),
+                       let=dict(rear_n=rear_count), rank=["var(target.rear_n)", f"0 - {space_key('target')}"], limit=1))
+    front_use = variable("front_use", "(var(tune_front_retreat) > 0) * (var(n_rear_space) > 0) * (var(own_strategic_power) >= var(e_threat_local) * var(tune_assault_odds))")
+    rear_actors = selection("units", dict(in_set="army_clear", **{"if": "(var(army_retreat) > 0) * var(front_use)"}))
+    rear_behavior = dict(action="select", actors=rear_actors, issue=[dict(set_behavior=dict(stance="defensive", attack_back=True, interrupt_current=False))])
+    rear_move = dict(action="select", actors=rear_actors, pick=rear_pick, issue=[dict(move={})])
+    front_to_rear = dict(action="select", actors=retreat_actors, pick=rear_pick, issue=[dict(move={})])
 
     # 1b. Hold Home when not launching or no target exists
     hold_cond = "(var(army_retreat) == 0) * ((var(assault) == 0) + (var(n_army_target_space) == 0) > 0)"
@@ -282,7 +294,8 @@ def army_maneuver_rules(stage_passive: bool, rest_move_enabled: bool) -> list[Re
     blocked = f"(({can_advance}) + ({stage_actors['where']['if']}) > 0) * (var(n_attack_step) == 0)"
     stop_blocked = dict(action="select", actors=selection("units", dict(in_set="army_clear", **{"if": blocked})), issue=[dict(stop={})])
 
-    return [store("army_at_enemy", army_at_enemy), army_clear, retreat_behavior, retreat_move, hold_behavior, hold_move,
+    return [store("army_at_enemy", army_at_enemy), army_clear, rear_store, front_use, retreat_behavior,
+            branch("1 - var(front_use)", [retreat_move]), branch("var(front_use)", [front_to_rear, rear_behavior, rear_move]), hold_behavior, hold_move,
             variable("army_dist_to_target", 999), variable("army_in_center", army_in_center), store("stage_zone", selection("zones", {"if": "0"})),
             variable("army_core_can_fight", core_ready), variable("army_local_plan", local_plan),
             measure_dist, update_stage, update_rest, stop_core, regroup_move, prep_stop, rest_behavior, *([rest_move] if rest_move_enabled else []), stop_blocked, stage_step, stage_move, advance_behavior, advance_move]

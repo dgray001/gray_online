@@ -89,7 +89,6 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameF
 			score:        0,
 			ai_model_id:  4,
 		}
-		go runAi(fiddlesticks_player, fiddlesticks, action_channel)
 		fiddlesticks.players = append(fiddlesticks.players, fiddlesticks_player)
 		player_id++
 	}
@@ -115,13 +114,15 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameF
 				ai_model_id:  4,
 			}
 			player.Player_id = player_id
-			go runAi(fiddlesticks_player, fiddlesticks, action_channel)
 			fiddlesticks.players = append(fiddlesticks.players, fiddlesticks_player)
 			player_id++
 		}
 	}
 	if len(fiddlesticks.players) < 2 {
 		return nil, errors.New("Need at least two players to play fiddlesticks")
+	}
+	for _, fiddlesticks_player := range fiddlesticks.players {
+		go runAi(fiddlesticks_player, fiddlesticks, action_channel)
 	}
 	fiddlesticks.setMaxRound(0)
 	max_round_float, max_round_ok := g.GameSpecificSettings["max_round"].(float64)

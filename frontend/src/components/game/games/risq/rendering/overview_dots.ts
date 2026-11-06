@@ -219,6 +219,10 @@ function formatResourceAmount(amount: number): string {
   return amount >= 1000 ? `${(amount / 1000).toFixed(1)}k` : Math.round(amount).toString();
 }
 
+function customNameStroke(black_text: boolean): string {
+  return black_text ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)';
+}
+
 function drawInsetText(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -229,6 +233,39 @@ function drawInsetText(
 ): void {
   const center = { x: p.x, y: p.y + 0.5 * row_h };
   drawText(ctx, text, { p: center, w, fill_style, baseline: 'middle', font: `bold ${row_h}px serif` });
+}
+
+export function drawSpaceCustomName(
+  ctx: CanvasRenderingContext2D,
+  space: RisqSpace,
+  config: DrawRisqSpaceConfig,
+  black_text: boolean,
+  y: number,
+  rotate?: boolean
+): void {
+  const name = space.custom_name?.trim();
+  if (!name) {
+    return;
+  }
+  if (rotate) {
+    ctx.save();
+    ctx.translate(space.center.x, space.center.y);
+    ctx.rotate(-config.rotation);
+    ctx.translate(-space.center.x, -space.center.y);
+  }
+  drawText(ctx, name, {
+    p: { x: space.center.x, y: y + 0.5 * config.inset_row },
+    w: config.inset_w,
+    fill_style: black_text ? 'black' : 'white',
+    stroke_style: customNameStroke(black_text),
+    stroke_width: Math.max(1, 0.1 * config.inset_row),
+    align: 'center',
+    baseline: 'middle',
+    font: `bold ${config.inset_row}px serif`,
+  });
+  if (rotate) {
+    ctx.restore();
+  }
 }
 
 function drawResourceAmountRows(
@@ -364,6 +401,10 @@ export function drawSpaceDetailsContent(
     rows_used++;
   }
   if (config.view_mode === RisqViewMode.OWNERSHIP) {
+    if (space.custom_name?.trim()) {
+      drawSpaceCustomName(ctx, space, config, black_text, y);
+      y += config.inset_row + config.inset_gap;
+    }
     draw_count_row(gold_img, space.gold_income?.toString() ?? '??');
     return;
   }

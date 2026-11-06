@@ -1,41 +1,12 @@
-import { AXIAL_DIRECTION_VECTORS } from '../../../../util/objects2d';
 import type { ReplayEvent } from '../../model/replay_event';
 import type { RisqTickLocation, RisqTickEffect, RisqTickTarget } from '../../model/tick_actions';
 import type { RisqTurnJournal } from '../../model/turn_journal';
 import type { RisqSpaceLink } from '../../model/types';
 import { battleStats } from './battle_stats';
 import type { BattleSample } from './battle_stats';
+import { acrossBorder, seamNeighbors, zoneKey } from './event_adjacency';
 
 type BattleAttack = BattleSample & { locations: RisqTickLocation[] };
-
-function seamNeighbors(links: RisqSpaceLink[]): Map<string, RisqTickLocation> {
-  const neighbors = new Map<string, RisqTickLocation>();
-  for (const link of links) {
-    const from = { space: link.from, zone: AXIAL_DIRECTION_VECTORS[link.direction] };
-    const to = { space: link.to, zone: AXIAL_DIRECTION_VECTORS[link.to_direction] };
-    neighbors.set(zoneKey(from), to);
-    neighbors.set(zoneKey(to), from);
-  }
-  return neighbors;
-}
-
-function acrossBorder(location: RisqTickLocation, seams: Map<string, RisqTickLocation>): RisqTickLocation | undefined {
-  if (seams.has(zoneKey(location))) {
-    return seams.get(zoneKey(location));
-  }
-  if (location.zone.x === 0 && location.zone.y === 0) {
-    return undefined;
-  }
-  const neighbor = {
-    space: { x: location.space.x + location.zone.x, y: location.space.y + location.zone.y },
-    zone: { x: -location.zone.x, y: -location.zone.y },
-  };
-  return seams.has(zoneKey(neighbor)) ? undefined : neighbor;
-}
-
-function zoneKey(location: RisqTickLocation): string {
-  return `zone:${location.space.x},${location.space.y},${location.zone.x},${location.zone.y}`;
-}
 
 function root(parents: number[], index: number): number {
   while (parents[index] !== index) {
@@ -91,6 +62,16 @@ export function battleEvents(journal: RisqTurnJournal, player_id: number, links:
       tick: group[0].tick,
       end_tick: group[group.length - 1].tick,
       battle_stats: battleStats(journal, group),
+      battle_participants: [
+        ...new Map(
+          group
+            .flatMap((attack: BattleAttack): RisqTickTarget[] => attack.participants)
+            .map((participant: RisqTickTarget): [string, RisqTickTarget] => [
+              `${participant.kind}:${participant.internal_id}`,
+              participant,
+            ])
+        ).values(),
+      ],
       player_id,
       title: 'Battle',
       icon: 'icons/swords128',

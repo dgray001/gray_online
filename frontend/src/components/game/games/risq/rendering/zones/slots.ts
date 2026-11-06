@@ -296,8 +296,15 @@ function occupiedEdgeRowOffsets(path: EdgeUnitPath, unit_r: number, count: numbe
   if (count === 0) {
     return [];
   }
-  const phase = count % 2 === 0 ? 0.5 : 0;
+  let phase = count % 2 === 0 ? 0.5 : 0;
   let low = 2 * unit_r * (1 - UNIT_OVERLAP_FRACTION);
+  const primary_fit = packEdgeUnitPath(path, low, phase).length;
+  if (primary_fit < count) {
+    const alt = phase === 0 ? 0.5 : 0;
+    if (packEdgeUnitPath(path, low, alt).length > primary_fit) {
+      phase = alt;
+    }
+  }
   let high = 2 * unit_r * (1 + UNIT_GAP_FRACTION);
   const roomy = packEdgeUnitPath(path, high, phase);
   if (roomy.length >= count) {

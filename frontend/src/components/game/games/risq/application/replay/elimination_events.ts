@@ -73,6 +73,7 @@ export function eliminationEvents(journal: RisqTurnJournal, game: GameRisq, play
     return {
       kind: 'eliminated',
       tick: journal.tick_count,
+      end_of_turn: true,
       player_id: id,
       title: 'Player eliminated',
       icon: 'icons/close64',

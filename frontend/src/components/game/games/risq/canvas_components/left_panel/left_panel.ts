@@ -22,6 +22,7 @@ import { RisqSpaceView } from './content/space_view';
 import { RisqStatsView } from './content/stats_view';
 import { RisqLeftPanelButton } from './controls/left_panel_close';
 import type { RisqTargetPriorityControl } from './controls/target_priority_control';
+import type { RisqAttackStackControl } from './controls/attack_stack_control';
 import type { LeftPanelLayout } from './layout';
 import {
   BUILDING_ACTION_GRID_ROWS,
@@ -71,6 +72,7 @@ export class RisqLeftPanel implements CanvasComponent {
   private data?: LeftPanelData;
   private buttons: RisqActionButton[] = [];
   private target_priority_control?: RisqTargetPriorityControl;
+  private attack_stack_control?: RisqAttackStackControl;
   private layout: LeftPanelLayout = emptyLayout();
   private stats = new RisqStatsView();
   private hexagon = new RisqSpaceHexagon();
@@ -102,8 +104,10 @@ export class RisqLeftPanel implements CanvasComponent {
   }
 
   private refreshActionButtons(): void {
+    const prev_stack = this.attack_stack_control?.isClicking() ? this.attack_stack_control : undefined;
     this.buttons = [];
     this.target_priority_control = undefined;
+    this.attack_stack_control = undefined;
     this.refreshOrderRows();
     if (!this.isOrderable()) {
       this.resolveSize();
@@ -112,6 +116,12 @@ export class RisqLeftPanel implements CanvasComponent {
     const actions = buildPanelActions(this.risq, this.data);
     this.buttons = actions.buttons;
     this.target_priority_control = this.risq.session.givingOrders() ? actions.target_priority_control : undefined;
+    if (prev_stack && actions.attack_stack_control) {
+      prev_stack.setUnitIds(actions.attack_stack_control.unitIds());
+      this.attack_stack_control = prev_stack;
+    } else {
+      this.attack_stack_control = this.risq.session.givingOrders() ? actions.attack_stack_control : undefined;
+    }
     this.resolveSize();
     for (const button of this.buttons) {
       button.dataRefreshed();
@@ -120,9 +130,11 @@ export class RisqLeftPanel implements CanvasComponent {
       }
     }
     this.target_priority_control?.dataRefreshed();
+    this.attack_stack_control?.dataRefreshed();
     if (this.beingDeletedKind()) {
       this.buttons.forEach((button) => button.disable());
       this.target_priority_control = undefined;
+      this.attack_stack_control = undefined;
     }
   }
 
@@ -179,6 +191,8 @@ export class RisqLeftPanel implements CanvasComponent {
     }
     this.target_priority_control?.setSize(3 * s + 2 * PANEL_PADDING, s);
     this.target_priority_control?.setPosition(gridCell(this.layout, 2, 2));
+    this.attack_stack_control?.setSize(5 * s + 4 * PANEL_PADDING, s);
+    this.attack_stack_control?.setPosition(gridCell(this.layout, 3, 0));
     const orders_y0 = this.layout.grid_bottom_separator + P;
     this.order_rows_list.setAllSizes(
       Math.min(0.1 * this.w(), 16),
@@ -207,6 +221,7 @@ export class RisqLeftPanel implements CanvasComponent {
         component.setHovering(false);
       }
       this.target_priority_control?.cancelInput();
+      this.attack_stack_control?.cancelInput();
       this.input.cancelInput();
     }
   }
@@ -408,6 +423,7 @@ export class RisqLeftPanel implements CanvasComponent {
       button.drawTooltip(ctx, transform, this.risq, dt);
     }
     this.target_priority_control?.draw(ctx, transform);
+    this.attack_stack_control?.draw(ctx, transform, dt);
     if (data?.data_type === LeftPanelDataType.SPACE && (this.visibility ?? 0) > RisqVisibilityLevel.POOR) {
       this.space_view.drawRowButtons(ctx, transform, dt);
     }
@@ -442,6 +458,7 @@ export class RisqLeftPanel implements CanvasComponent {
       button.mousemove(canvas, screen, transform);
     }
     this.target_priority_control?.mousemove(screen);
+    this.attack_stack_control?.mousemove(canvas, screen, transform);
     if (this.showOrderRows()) {
       this.order_rows_list.mousemove(canvas, screen, transform);
     }
@@ -465,6 +482,7 @@ export class RisqLeftPanel implements CanvasComponent {
       button.mousedown(e);
     }
     this.target_priority_control?.mousedown(e);
+    this.attack_stack_control?.mousedown(e);
     if (this.showOrderRows()) {
       this.order_rows_list.mousedown(e);
     }
@@ -481,6 +499,7 @@ export class RisqLeftPanel implements CanvasComponent {
       button.mouseup(e);
     }
     this.target_priority_control?.mouseup(e);
+    this.attack_stack_control?.mouseup(e);
   }
 
   xi(): number {

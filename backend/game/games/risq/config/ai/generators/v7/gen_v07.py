@@ -13,7 +13,7 @@ from observations import observations
 from parameters import PARAMETERS, parameters
 from budget import resource_budgets, spending_rates, worker_targets
 from gold import gold_expansion, mercenary_rates
-from economy import food_supply, infrastructure, production_capacity, workforce
+from economy import food_supply, infrastructure, production_capacity, rax_reserve, workforce
 from gathering import allocate_workers, gathering, worker_groups
 from foundations import foundation_failures, foundation_observations
 from construction import (
@@ -34,7 +34,9 @@ from army import (
 )
 from combat import attack_stack_rules, combat_micro_rules
 from hiring import hire_destinations
+from techs import tech_demand, tech_hold
 from holders import holder_observations, holder_orders, release_holders
+from policies import apply_policies
 
 CONFIG = Path(__file__).resolve().parents[3]
 
@@ -56,6 +58,15 @@ def narrow_unidentified_sums(model: Record) -> None:
         walk(rule["then"])
 
 
+def construction_phases(order: int) -> list[list[Record]]:
+    sites = [buildable_spaces(), buildable_zones()]
+    sequences = {0: [opening(), *sites, urgent_smith(), settlement_and_shelter(), first_barracks()],
+                 1: [opening(), *sites, urgent_smith(), first_barracks(), settlement_and_shelter()],
+                 2: [opening(), *sites, first_barracks(), urgent_smith(), settlement_and_shelter()],
+                 3: [*sites, first_barracks(), opening(), urgent_smith(), settlement_and_shelter()]}
+    return sequences[order]
+
+
 def generate(directory: Path, overrides: dict[str, float]) -> Record:
     values = parameters(overrides)
     configure_sites(values)
@@ -67,10 +78,9 @@ def generate(directory: Path, overrides: dict[str, float]) -> Record:
               assault_odds_rules(), army_local_odds_rules(), army_target_selection(), hire_destinations()]
     phases.extend([production_capacity(definitions), military_composition(definitions, values), workforce(definitions),
                    unit_targets(values), infrastructure(definitions), food_supply(definitions), vc_urgency_rules(),
-                   mercenary_rates(), spending_rates(definitions), gold_expansion(), resource_budgets(definitions),
+                   mercenary_rates(), spending_rates(definitions), tech_demand(), gold_expansion(), resource_budgets(definitions), rax_reserve(), tech_hold(),
                    housing_crew_sizing(definitions), isolate_builders(),
-                   opening(), buildable_spaces(), buildable_zones(),
-                   urgent_smith(), settlement_and_shelter(), first_barracks(), farms(int(values["max_new_farms"])),
+                   *construction_phases(int(values["rax_order"])), farms(int(values["max_new_farms"])),
                    military(), upgrades(), expansion_buildings(), mercenaries(),
                    civilian_evacuation(), foundation_failures(),
                    service_unbuilt_foundations(), recover_abandoned_foundations(), repairs(), isolate_builders(),
@@ -82,6 +92,7 @@ def generate(directory: Path, overrides: dict[str, float]) -> Record:
                    combat_micro_rules(),
                    base_defense(), home_inspector(), civilian_defense()])
     model = dict(rules=[rule(phase) for phase in phases])
+    apply_policies(model)
     narrow_unidentified_sums(model)
     return model
 

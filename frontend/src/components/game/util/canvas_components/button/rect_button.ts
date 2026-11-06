@@ -152,7 +152,7 @@ export abstract class DwgRectButton extends DwgButton {
           break;
         case 'right':
         case 'end':
-          this.text_align_p.y = 0.5 * this.w() - padding;
+          this.text_align_p.x = 0.5 * this.w() - padding;
           break;
       }
       switch (this.rect_config.text.config.baseline) {

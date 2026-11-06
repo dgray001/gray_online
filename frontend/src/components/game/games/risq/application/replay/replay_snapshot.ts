@@ -12,6 +12,7 @@ import type {
   RisqBuildingFromServer,
   RisqPlayerFromServer,
   RisqResourceFromServer,
+  RisqRegionFromServer,
   RisqSpaceFromServer,
   RisqUnitFromServer,
   RisqZoneFromServer,
@@ -169,7 +170,14 @@ function stateAt(journal: RisqTurnJournal, tick: number): RisqTickFrame {
     players: new Map(journal.baseline.players),
     spaces: new Map(journal.baseline.spaces),
   };
-  for (const frame of journal.frames.filter((f) => !f.terminal && f.tick <= tick)) {
+  const ending = tick >= journal.tick_count;
+  const frames = journal.frames.filter((frame: RisqTickFrame): boolean =>
+    frame.terminal ? ending : frame.tick <= tick
+  );
+  if (ending) {
+    frames.push(...journal.boundary_events.filter((frame: RisqTickFrame): boolean => frame.phase === 'end-turn'));
+  }
+  for (const frame of frames) {
     mergeInto(merged.units, frame.units);
     frame.hidden_units.forEach((id: number): void => void merged.units.delete(id));
     mergeInto(merged.buildings, frame.buildings);
@@ -186,6 +194,12 @@ export function replaySnapshot(base: GameRisqFromServer, journal: RisqTurnJourna
   const ctx = buildContext(base, journal, frame);
   return {
     ...base,
+    regions: base.regions.map(
+      (region: RisqRegionFromServer): RisqRegionFromServer => ({
+        ...region,
+        owner: tick >= journal.tick_count ? region.owner : (journal.region_owners?.[region.name] ?? region.owner),
+      })
+    ),
     spaces: base.spaces.map((row) => row.map((space) => (space ? replaySpace(space, ctx) : undefined))),
     players: base.players.map((player) => replayPlayer(player, ctx)),
   };

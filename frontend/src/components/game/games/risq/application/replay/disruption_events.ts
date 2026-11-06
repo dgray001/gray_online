@@ -33,10 +33,16 @@ function rejectionReceipts(journal: RisqTurnJournal, player_id: number): Receipt
   const receipts: Receipt[] = [];
   const subjects = new Map<string, Subject>();
   for (const frame of [journal.baseline, ...journal.frames, ...journal.boundary_events]) {
-    for (const unit of frame.units.values()) {subjects.set(`unit:${unit.internal_id}`, unit);}
-    for (const building of frame.buildings.values()) {subjects.set(`building:${building.internal_id}`, building);}
+    for (const unit of frame.units.values()) {
+      subjects.set(`unit:${unit.internal_id}`, unit);
+    }
+    for (const building of frame.buildings.values()) {
+      subjects.set(`building:${building.internal_id}`, building);
+    }
     for (const effect of frame.effects) {
-      if (effect.kind !== 'order_rejected' || !effect.order || effect.actor?.player_id !== player_id) {continue;}
+      if (effect.kind !== 'order_rejected' || !effect.order || effect.actor?.player_id !== player_id) {
+        continue;
+      }
       const subject = subjects.get(`${effect.actor.kind}:${effect.actor.internal_id}`);
       receipts.push({
         failure: { ...effect.order, reason: effect.reason ?? '' },
@@ -50,9 +56,11 @@ function rejectionReceipts(journal: RisqTurnJournal, player_id: number): Receipt
 
 export function disruptionEvents(journal: RisqTurnJournal, game: GameRisq, player_id: number): ReplayEvent[] {
   const report = game.players[player_id]?.turn_report;
-  if (report?.turn !== journal.turn_number) {return [];}
+  if (report?.turn !== journal.turn_number) {
+    return [];
+  }
   const receipts = rejectionReceipts(journal, player_id);
-  return report.orders.failures.map((failure: RisqReportOrderFailure): ReplayEvent => {
+  return report.orders.failures.map((failure: RisqReportOrderFailure, index: number): ReplayEvent => {
     const receipt = takeReceipt(receipts, failure);
     const location =
       failure.order_type === RisqOrderType.OrderType_BuyMercenary
@@ -63,6 +71,7 @@ export function disruptionEvents(journal: RisqTurnJournal, game: GameRisq, playe
       player_id,
       title: shortLabel(failure.order_type),
       reason: failure.reason,
+      failure_row: index,
       icon: 'icons/interrupt_current128',
       tick: Math.min(receipt?.tick ?? journal.tick_count, journal.tick_count),
       end_of_turn: !receipt || receipt.tick > journal.tick_count,

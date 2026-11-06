@@ -238,10 +238,7 @@ export class DwgLobbyRoom extends DwgElement {
     this.client_id = client_id;
     this.room = room;
     this.room_name.innerText = room.room_name;
-    if (!this.lobby_game_settings.classList.contains('show')) {
-      this.lobby_game_settings.setSettings(room.game_settings, room.room_description);
-      this.updateSettingsDependencies();
-    }
+    this.updateSettingsDependencies();
     this.num_players_current.innerText = room.players.size.toString();
     if (!refresh_room || game_launched) {
       this.settings_game_status.innerText = game_launched ? GameStatusEnum.IN_PROGRESS : GameStatusEnum.NOT_STARTED;
@@ -406,9 +403,12 @@ export class DwgLobbyRoom extends DwgElement {
     if (!this.room) {
       return;
     }
-    const player = this.room.players.get(client_id);
-    if (player) {
-      player.ping = ping;
+    if (this.room.host.client_id === client_id) {
+      this.room.host.ping = ping;
+    }
+    const user = this.room.players.get(client_id) ?? this.room.viewers.get(client_id);
+    if (user) {
+      user.ping = ping;
     }
   }
 

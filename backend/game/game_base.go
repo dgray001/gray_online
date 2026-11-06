@@ -39,6 +39,7 @@ type GameBase struct {
 	viewer_update_list_mu sync.RWMutex
 	GameSpecificSettings  map[string]interface{}
 	GameEndedChannel      chan string
+	Quit                  chan struct{}
 	// set by the owning room at launch; routes a state read onto its actor goroutine
 	RequestToFrontend func(client_id uint64, is_viewer bool) (gin.H, error)
 	// both set by the owning room: run a task on its actor goroutine, and read game state there without a round trip
@@ -72,6 +73,7 @@ func CreateBaseGame(game_id uint64, game_type GameType, game_specific_settings m
 		viewer_update_list:    make([]*UpdateMessage, 0),
 		GameSpecificSettings:  game_specific_settings,
 		GameEndedChannel:      make(chan string, 4),
+		Quit:                  make(chan struct{}),
 	}
 }
 
@@ -310,6 +312,7 @@ func (g *GameBase) EndGame(message string) {
 		return
 	}
 	g.game_ended = true
+	close(g.Quit)
 	g.GameEndedChannel <- message
 }
 

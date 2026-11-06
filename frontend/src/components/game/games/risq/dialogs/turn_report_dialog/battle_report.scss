@@ -1,0 +1,111 @@
+dwg-risq-turn-report-dialog.dwg-dialog-box {
+  #combat-lines {
+    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+    list-style: none;
+    margin: 0;
+    padding: 0;
+
+    &:not([hidden]) {
+      display: grid;
+    }
+  }
+
+  #combat-totals {
+    margin: 0 auto 20px;
+    max-width: 400px;
+  }
+
+  #wrapper .battle-summary,
+  #combat-totals {
+    background: rgb(222, 184, 135);
+    border: 2px solid rgb(70, 30, 5);
+    border-radius: 6px;
+    box-sizing: border-box;
+    color: black;
+    font: bold 16px sans-serif;
+    padding: 0;
+    text-align: left;
+    width: 100%;
+  }
+
+  #wrapper button.battle-summary {
+    cursor: pointer;
+    height: 100%;
+
+    &:hover,
+    &:focus-visible {
+      background: rgb(245, 215, 170);
+    }
+  }
+
+  .battle-content {
+    display: block;
+    padding: 12px;
+  }
+
+  .battle-title {
+    display: block;
+    margin-bottom: 12px;
+    text-align: center;
+  }
+
+  .battle-players {
+    display: grid;
+    gap: 24px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .battle-side,
+  .battle-names {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: center;
+  }
+
+  .battle-names {
+    flex: 1;
+    overflow-wrap: anywhere;
+  }
+
+  .battle-counts,
+  .battle-count {
+    align-items: center;
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+  }
+
+  .battle-counts {
+    gap: 12px;
+    margin-top: 4px;
+  }
+
+  .battle-metric {
+    display: block;
+    margin-top: 12px;
+  }
+
+  .battle-metric-label {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+
+    > :last-child {
+      text-align: right;
+    }
+  }
+
+  .battle-bar {
+    background: #000;
+    display: flex;
+    height: 16px;
+    margin-top: 6px;
+    overflow: hidden;
+
+    > span {
+      display: block;
+      flex-shrink: 0;
+    }
+  }
+}

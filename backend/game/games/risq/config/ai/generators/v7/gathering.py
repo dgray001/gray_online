@@ -64,7 +64,7 @@ def assign_nodes(resource: str, search_pass: int) -> Record:
         capacity=live_capacity)
     stamina = "config(unit, turn_stamina, 1) + researched(1) * config(tech, bonus_turn_stamina, 1)"
     work = f"max(0, var(tune_gather_planning_turns) * ({stamina}) - distance(actor, target, 1))"
-    score = f"var(target.gather_speed) * ({work}) / 10 - var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))"
+    score = f"var(target.gather_speed) *({work}) / 10 -var(tune_gather_depletion_penalty) * (var(target.amount_left) <= var(target.workers) * var(target.gather_speed))"
     return dict(action="select", actors=actors, pick=targets,
                 match=dict(score=[score, "0 - distance(actor, target, 1)", "0 - var(target.uid)"]),
                 issue=[dict(gather={})])

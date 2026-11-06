@@ -102,6 +102,16 @@ export class RisqPointer {
       return;
     }
     const hud_screen = { x: screen.x / this.hud_scale(), y: screen.y / this.hud_scale() };
+    if (this.pressed_component === this.events && this.events?.isClicking()) {
+      for (const component of this.components) {
+        component.setHovering(false);
+      }
+      this.events.mousemove(m, hud_screen, transform);
+      board.setPanSuppressed(true, true);
+      this.hover.update(true);
+      this.cursor.setDefault();
+      return;
+    }
     let hovered_other_component = false;
     this.dispatching_mousemove = true;
     try {
@@ -242,6 +252,7 @@ export class RisqPointer {
       this.pressed_component = undefined;
       component.mouseup(e);
       this.hover.clearClicks();
+      this.recalculate();
       return;
     }
     const armed_before = this.armed.anythingArmed();

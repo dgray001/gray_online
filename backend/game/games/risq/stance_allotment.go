@@ -26,12 +26,7 @@ func (r *GameRisq) prepareStancePicks(orderables []Orderable) {
 		if !ok {
 			continue
 		}
-		if len(unit.order_queue.active_orders) > 0 {
-			order_type := unit.order_queue.active_orders[0].order_type
-			if order_type == defs.OrderType_UnitAutoAttackUnit || order_type == defs.OrderType_UnitAutoAttackBuilding {
-				unit.order_queue.nextOrder(unit, r)
-			}
-		}
+		unit.order_queue.nextOrder(unit, r)
 		unit.resolveStance(r)
 	}
 }

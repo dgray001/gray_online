@@ -1,13 +1,10 @@
 import type { BattlePlayerStats, ReplayEvent } from '../../model/replay_event';
 import type { DwgRisq } from '../../risq';
+import { BATTLE_METRICS as METRICS, battleSides } from '../../model/battle_summary';
+import type { BattleMetric } from '../../model/battle_summary';
+import { drawText } from '../../../../util/canvas_util';
 
 type BattleSide = { stats: BattlePlayerStats[]; x: number; width: number };
-type BattleMetric = { label: string; value: (stats: BattlePlayerStats) => number };
-const METRICS: BattleMetric[] = [
-  { label: 'Kills', value: (stats: BattlePlayerStats): number => stats.kills },
-  { label: 'Razes', value: (stats: BattlePlayerStats): number => stats.razes },
-  { label: 'Damage', value: (stats: BattlePlayerStats): number => stats.unit_damage + stats.building_damage },
-];
 
 export function drawBattleDetails(
   ctx: CanvasRenderingContext2D,
@@ -17,16 +14,19 @@ export function drawBattleDetails(
   y: number,
   width: number
 ): void {
+  drawText(ctx, event.title, { p: { x, y }, w: width, font: '18px sans-serif', fill_style: 'black' });
+  y += 28;
   const stats = event.battle_stats ?? [];
   const player_id = risq.session.getPlayerId();
+  const groups = battleSides(stats, player_id);
   const sides: BattleSide[] = [
     {
-      stats: stats.filter((entry: BattlePlayerStats): boolean => entry.player_id === player_id),
+      stats: groups[0],
       x,
       width: (width - 24) / 2,
     },
     {
-      stats: stats.filter((entry: BattlePlayerStats): boolean => entry.player_id !== player_id),
+      stats: groups[1],
       x: x + width / 2 + 12,
       width: (width - 24) / 2,
     },
@@ -59,7 +59,7 @@ function drawMetric(
   ctx.fillText(metric.label, x + width / 2, y);
   ctx.fillText(String(Math.round(values[0])), x + 12, y);
   ctx.fillText(String(Math.round(values[1])), x + width - 12, y);
-  ctx.fillStyle = '#a59076';
+  ctx.fillStyle = '#000';
   ctx.fillRect(x, y + 8, width, 16);
   let offset = x;
   for (const stats of sides.flatMap((side: BattleSide): BattlePlayerStats[] => side.stats)) {

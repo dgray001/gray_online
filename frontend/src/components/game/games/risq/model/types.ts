@@ -92,6 +92,7 @@ export declare interface RisqPlayer {
   default_unit_attack_back: boolean;
   default_unit_interrupt_current: boolean;
   default_unit_target_priority: RisqTargetCategory[];
+  default_unit_attack_stack: number;
 }
 
 export declare interface RisqPlayerResource {
@@ -132,6 +133,7 @@ export declare interface RisqSpace {
   terrain_type: RisqTerrainType;
   terrain_stats?: RisqTerrainStats;
   display_name: string;
+  custom_name?: string;
   coordinate: Point2D;
   coordinate_key: number;
   visibility: number; // See risq_vision.go for value meanings
@@ -242,6 +244,7 @@ export declare interface RisqUnit {
   stance?: RisqUnitStance;
   interrupt_current?: boolean;
   attack_back?: boolean;
+  attack_stack: number;
   target_priority?: RisqTargetCategory[];
   move_path?: RisqMovePathStep[];
   // purely frontend fields

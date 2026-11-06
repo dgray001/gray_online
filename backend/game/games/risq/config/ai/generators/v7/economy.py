@@ -49,7 +49,7 @@ def workforce(definitions: Definitions) -> list[Record]:
 def infrastructure(definitions: Definitions) -> list[Record]:
     bootstrap = f"(var(own_1) >= var(tune_worker_floor)) + ((gameVar(food) >= var(tune_bootstrap_batches) * ({cost('unit', 1, 'food')} + {cost('unit', 101, 'food')})) * (gameVar(wood) >= {cost('building', 22, 'wood')} + var(tune_bootstrap_batches) * {cost('unit', 101, 'wood')} + {cost('building', 2, 'wood')}))"
     actions = [variable("barracks_bootstrap", bootstrap),
-            variable("want_22", f"(var(own_1) > 0) * (((var(producers_22) == 0) * ((var(barracks_bootstrap) > 0) + (var(enemy_near_base) > 0)) > 0) + ((var(producers_22) > 0) * (var(sustainable_surplus) >= var(tune_additional_producer_margin) * var(barracks_running_cost)) * (var(sustainable_surplus) * var(tune_investment_horizon) >= {total_cost('building', 22)})))"),
+            variable("want_22", f"(var(own_1) > 0) * (((var(producers_22) == 0) * ((var(barracks_bootstrap) > 0) + (var(enemy_near_base) > 0) * (var(own_1) >= var(tune_rax_min_vils) + var(tune_rax_vils_per_missing_enemy) * max(0, var(tune_rax_threat_enemies) - var(enemy_near_base)))) > 0) + ((var(producers_22) > 0) * (var(sustainable_surplus) >= var(tune_additional_producer_margin) * var(barracks_running_cost)) * (var(sustainable_surplus) * var(tune_investment_horizon) >= {total_cost('building', 22)})))"),
             variable("want_23", f"(var(own_1) > 0) * (var(sustainable_surplus) >= var(tune_additional_producer_margin) * var(redoubt_running_cost)) * ((var(gold_income) + gameVar(gold) / var(tune_investment_horizon) >= (var(producers_23) + 1) * {cost('unit', 103, 'gold')} * var(production_rate_103)) + (var(goal_401) > var(own_401)) > 0)"),
             variable("barracks_want_last", "min(1, var(want_22))", True),
             variable("want_1", "(var(own_1) > 0) * (var(producers_1) == 0)"),
@@ -66,10 +66,14 @@ def food_supply(definitions: Definitions) -> list[Record]:
     nearby = dict(distance="var(tune_wild_food_radius)", of=selection("spaces", dict(in_set="base")))
     occupied = dict(distance=0, of=selection("units", dict(in_set="villagers")))
     farm = definitions.buildings[3]["gatherable"]
-    return [variable("wild_food_nearby", aggregate("sum", selection("resources", dict(category="food", near=nearby)), "var(item.amount_left)")),
-            variable("wild_food_worked", aggregate("sum", selection("resources", dict(category="food", near=occupied)), "var(item.amount_left)")),
+    return [variable("wild_food_nearby_food", aggregate("sum", selection("resources", dict(category="food", near=nearby)), "var(item.amount_left)")),
+            variable("wild_food_nearby_slots", aggregate("sum", selection("resources", dict(category="food", near=nearby)), "var(item.gather_capacity)")),
+            variable("wild_food_nearby", "min(var(wild_food_nearby_slots), var(wild_food_nearby_food) / (var(worker_income) * var(tune_planning_horizon)))"),
+            variable("wild_food_worked_food", aggregate("sum", selection("resources", dict(category="food", near=occupied)), "var(item.amount_left)")),
+            variable("wild_food_worked_slots", aggregate("sum", selection("resources", dict(category="food", near=occupied)), "var(item.gather_capacity)")),
+            variable("wild_food_worked", "min(var(wild_food_worked_slots), var(wild_food_worked_food) / (var(worker_income) * var(tune_planning_horizon)))"),
             variable("wild_food_confidence", "min(1, max(0, (var(own_1) - var(tune_worker_floor)) / var(tune_wild_food_walk_scale)))"),
-            variable("wild_food_workers", "(var(wild_food_worked) + max(0, var(wild_food_nearby) - var(wild_food_worked)) * var(wild_food_confidence)) / (var(worker_income) * var(tune_planning_horizon))"),
+            variable("wild_food_workers", "var(wild_food_worked) + max(0, var(wild_food_nearby) - var(wild_food_worked)) * var(wild_food_confidence)"),
             variable("active_farms", aggregate("count", selection("gatherables", dict(category="food", **{"if": "var(item.is_building)"})))),
             variable("depleted_farms", "max(0, var(complete_3) - var(active_farms))"),
             variable("food_workers_required", "min(var(available_gatherers), max(var(food_workers_last), var(worker_demand_food) / var(worker_income)))"),
@@ -79,3 +83,37 @@ def food_supply(definitions: Definitions) -> list[Record]:
             variable("smith_urgency", "min(1, max(var(smith_age) / var(tune_smith_urgency_turns), (var(heavies_seen) >= var(tune_pierce_heavies)) * (1 - var(pikes))))"),
             variable("redoubt_urgency", "min(1, var(redoubt_age) / var(tune_redoubt_urgency_turns))"),
             variable("house_urgency", "min(1, max(0, 1 - var(headroom) / max(0.001, var(population_flow) * var(tune_housing_horizon))))")]
+
+
+def rax_reserve() -> list[Record]:
+    pending_first_rax = "(var(want_22) > 0) * (var(producers_22) == 0) * (var(foundations_22) == 0)"
+    pending_exp_rax = "(var(want_22) > 0) * (var(producers_22) > 0) * (var(foundations_22) == 0)"
+    pending_smith = "(var(want_11) > 0) * (var(complete_11) + var(foundations_11) == 0)"
+    pending_redoubt = "(var(want_23) > 0) * (var(foundations_23) == 0)"
+
+    rax_urgency = "min(1, var(rax_age) / max(0.001, var(tune_rax_urgency_turns)))"
+    rax_exp_urgency = "min(1, var(rax_expansion_age) / max(0.001, var(tune_rax_expansion_urgency_turns)))"
+    smith_urgency = "min(1, var(smith_age) / max(0.001, var(tune_smith_urgency_turns)))"
+    redoubt_urgency = "min(1, var(redoubt_age) / max(0.001, var(tune_redoubt_urgency_turns)))"
+
+    actions = [
+        variable("rax_age", f"max(0, var(rax_age) + 2 * {pending_first_rax} - 1)", True),
+        variable("rax_urgency", rax_urgency),
+        variable("rax_expansion_age", f"max(0, var(rax_expansion_age) + 2 * {pending_exp_rax} - 1)", True),
+        variable("rax_expansion_urgency", rax_exp_urgency),
+        variable("smith_reserve_urgency", smith_urgency),
+        variable("redoubt_reserve_urgency", redoubt_urgency),
+    ]
+    for resource in RESOURCES:
+        res_first_rax = f"({pending_first_rax}) * var(tune_rax_reserve_share) * var(rax_urgency) * {cost('building', 22, resource)}"
+        res_exp_rax = f"({pending_exp_rax}) * var(tune_rax_expansion_reserve_share) * var(rax_expansion_urgency) * {cost('building', 22, resource)}"
+        res_smith = f"({pending_smith}) * var(tune_smith_reserve_share) * var(smith_reserve_urgency) * {cost('building', 11, resource)}"
+        res_redoubt = f"({pending_redoubt}) * var(tune_redoubt_reserve_share) * var(redoubt_reserve_urgency) * {cost('building', 23, resource)}"
+        actions.extend([
+            variable(f"reserve_first_rax_{resource}", res_first_rax),
+            variable(f"reserve_exp_rax_{resource}", res_exp_rax),
+            variable(f"reserve_smith_{resource}", res_smith),
+            variable(f"reserve_redoubt_{resource}", res_redoubt),
+            variable(f"reserve_{resource}", f"max(var(reserve_first_rax_{resource}), max(var(reserve_exp_rax_{resource}), max(var(reserve_smith_{resource}), var(reserve_redoubt_{resource}))))"),
+        ])
+    return actions

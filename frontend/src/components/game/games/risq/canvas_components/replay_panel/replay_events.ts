@@ -10,12 +10,17 @@ import { eventPoint, overlaps, panelPosition } from './event_geometry';
 import { RisqEventButton } from './event_button';
 import { drawBattleDetails } from './battle_details';
 import { rangePaths } from '../../rendering/board/attack_ranges';
-import { zoneVertices } from '../../rendering/zones/geometry';
+import { hexagonVertices, zoneVertices } from '../../rendering/zones/geometry';
 import type { RisqTickLocation } from '../../model/tick_actions';
 import { ColorRGB } from '../../../../../../scripts/color_rgb';
+import { RisqViewMode } from '../../rendering/terrain';
+import { RisqReplayCamera } from './replay_camera';
+import { drawHiredDetails } from './hired_details';
+import { adjacentReplayEvent, replayEventStop } from '../../application/replay/event_navigation';
 
 type EventMarker = { event: ReplayEvent; button: RisqEventButton };
 const ELIMINATION_COLOR = new ColorRGB(210, 35, 35);
+const GAIN_COLOR = new ColorRGB(20, 140, 40);
 
 export class RisqReplayEvents extends DwgRectButton {
   private source?: readonly ReplayEvent[];
@@ -23,6 +28,10 @@ export class RisqReplayEvents extends DwgRectButton {
   private selected: EventMarker[] = [];
   private selected_index = 0;
   private panel_visible = false;
+  private panel_position?: Point2D;
+  private drag_offset?: Point2D;
+  private pointer_position: Point2D = { x: 0, y: 0 };
+  private camera = new RisqReplayCamera((): DwgRisq['board'] => this.risq.board);
   private zone_highlight?: { event: ReplayEvent; radius: number; fill: Path2D; outline: Path2D };
   private jump = new RisqEventButton(undefined, 'Jump to tick', (): void => this.jumpToSelected(), 120);
   private next = new RisqEventButton(
@@ -68,9 +77,73 @@ export class RisqReplayEvents extends DwgRectButton {
   protected clicked(): void {}
   protected released(): void {}
 
+  private adjacentEvent(direction: -1 | 1): ReplayEvent | undefined {
+    return adjacentReplayEvent(
+      this.risq.session.getReplayEvents(),
+      this.selected[this.selected_index]?.event,
+      this.risq.replay_panel.tick(),
+      direction
+    );
+  }
+
+  canStepEvent(direction: -1 | 1): boolean {
+    return !!this.adjacentEvent(direction);
+  }
+
+  stepEvent(direction: -1 | 1): void {
+    const event = this.adjacentEvent(direction);
+    if (event) {
+      this.open(event);
+    }
+  }
+
+  open(event: ReplayEvent): boolean {
+    if (!this.risq.session.getReplayEvents().includes(event)) {
+      return false;
+    }
+    if (!this.risq.session.isReplaying()) {
+      this.risq.toggleReplay();
+    }
+    this.layout(this.risq.viewport.lastTransform());
+    const marker = this.markers.find((item: EventMarker): boolean => item.event === event);
+    if (!marker) {
+      return false;
+    }
+    this.selected = [marker];
+    this.selected_index = 0;
+    this.layout(this.risq.viewport.lastTransform());
+    this.select(marker, true);
+    this.camera.focus(event, this.risq.viewport);
+    return true;
+  }
+
+  private isVisible(event: ReplayEvent): boolean {
+    if (this.selected[this.selected_index]?.event === event) {
+      return true;
+    }
+    const mode = this.risq.viewport.viewMode();
+    if (mode === RisqViewMode.RESOURCE) {
+      return event.kind !== 'battle' && event.kind !== 'eliminated';
+    }
+    if (mode === RisqViewMode.MILITARY) {
+      return event.kind !== 'production' || event.production?.source === 'hired';
+    }
+    if (mode === RisqViewMode.OWNERSHIP) {
+      return event.kind !== 'production';
+    }
+    return true;
+  }
+
+  private visibleMarkers(): EventMarker[] {
+    const selected = this.selected[this.selected_index];
+    return this.markers
+      .filter((marker: EventMarker): boolean => this.isVisible(marker.event))
+      .sort((a: EventMarker, b: EventMarker): number => Number(a === selected) - Number(b === selected));
+  }
+
   drawZones(ctx: CanvasRenderingContext2D): void {
     const event = this.selected[this.selected_index]?.event;
-    if (!this.risq.session.isReplaying() || !event) {
+    if (!this.risq.session.isReplaying() || !event || !this.isVisible(event)) {
       this.zone_highlight = undefined;
       return;
     }
@@ -78,9 +151,8 @@ export class RisqReplayEvents extends DwgRectButton {
     if (this.zone_highlight?.event !== event || this.zone_highlight.radius !== radius) {
       const polygons = event.locations.map((location: RisqTickLocation): Point2D[] => {
         const center = this.risq.viewport.coordinateToCanvas(location.space);
-        return zoneVertices(location.zone, radius).map(
-          (point: Point2D): Point2D => ({ x: center.x + point.x, y: center.y + point.y })
-        );
+        const vertices = event.kind === 'continent' ? hexagonVertices(radius) : zoneVertices(location.zone, radius);
+        return vertices.map((point: Point2D): Point2D => ({ x: center.x + point.x, y: center.y + point.y }));
       });
       this.zone_highlight = { event, radius, ...rangePaths(polygons) };
     }
@@ -95,6 +167,9 @@ export class RisqReplayEvents extends DwgRectButton {
   }
 
   reset(): void {
+    this.camera.cancel();
+    this.panel_position = undefined;
+    this.drag_offset = undefined;
     this.zone_highlight = undefined;
     this.setClicking(false);
     this.setHovering(false);
@@ -119,10 +194,22 @@ export class RisqReplayEvents extends DwgRectButton {
         return marker;
       });
     }
-    for (const { event, button } of this.markers) {
-      if (event.kind === 'eliminated') {
+    const active = this.selected[this.selected_index];
+    this.selected = this.selected.filter((marker: EventMarker): boolean => this.isVisible(marker.event));
+    this.selected_index = active ? Math.max(0, this.selected.indexOf(active)) : 0;
+    for (const marker of this.markers) {
+      if (!this.isVisible(marker.event)) {
+        marker.button.setHovering(false);
+        marker.button.setClicking(false);
+        marker.button.setSelected(false);
+      }
+    }
+    for (const { event, button } of this.visibleMarkers()) {
+      if (event.kind === 'eliminated' || event.kind === 'continent') {
         const icon = this.risq.getIcon(event.icon);
-        const tinted = this.risq.getImageCache().getTintedIcon(event.icon, icon, 64, ELIMINATION_COLOR);
+        const color =
+          event.kind === 'eliminated' || event.continent?.change === 'lost' ? ELIMINATION_COLOR : GAIN_COLOR;
+        const tinted = this.risq.getImageCache().getTintedIcon(event.icon, icon, 64, color);
         if (tinted) {
           button.setImage(tinted);
         }
@@ -132,13 +219,26 @@ export class RisqReplayEvents extends DwgRectButton {
     }
     const selected = this.selected[this.selected_index];
     this.setSize(
-      selected?.event.kind === 'battle' || selected?.event.kind === 'disruption' ? 320 : 280,
-      selected?.event.kind === 'battle' ? 232 + 20 * Math.max(1, (selected.event.battle_stats?.length ?? 1) - 1) : 174
+      selected?.event.kind === 'battle' || selected?.event.kind === 'disruption' || selected?.event.hired_units
+        ? 320
+        : 280,
+      selected?.event.kind === 'battle'
+        ? 260 + 20 * Math.max(1, (selected.event.battle_stats?.length ?? 1) - 1)
+        : selected?.event.hired_units
+          ? 140 + selected.event.hired_units.length * 32 + (selected.event.location_name ? 24 : 0)
+          : 174
     );
     const point =
       selected &&
       eventPoint(selected.event, this.risq.viewport, transform, this.risq.hudScale(), this.risq.hudCanvasSize());
-    const position = point && panelPosition(point, { x: this.w(), y: this.h() }, this.risq.hudCanvasSize(), this.hud());
+    const size = this.risq.hudCanvasSize();
+    const position =
+      selected && this.panel_position
+        ? {
+            x: Math.max(0, Math.min(this.panel_position.x, size.width - this.w())),
+            y: Math.max(0, Math.min(this.panel_position.y, size.height - this.h())),
+          }
+        : point && panelPosition(point, { x: this.w(), y: this.h() }, size, this.hud());
     this.panel_visible = !!position;
     if (position) {
       this.setPosition(position);
@@ -148,14 +248,21 @@ export class RisqReplayEvents extends DwgRectButton {
     }
   }
 
-  private select(marker: EventMarker): void {
+  private select(marker: EventMarker, opening: boolean = false): void {
+    if (!opening && this.selected[this.selected_index] === marker) {
+      this.selected = [];
+      this.panel_visible = false;
+      marker.button.setSelected(false);
+      return;
+    }
+    this.panel_position = undefined;
     const rect = (button: RisqEventButton): { x: number; y: number; w: number; h: number } => ({
       x: button.xi(),
       y: button.yi(),
       w: button.w(),
       h: button.h(),
     });
-    this.selected = this.markers.filter((other: EventMarker): boolean =>
+    this.selected = this.visibleMarkers().filter((other: EventMarker): boolean =>
       overlaps(rect(marker.button), rect(other.button))
     );
     this.selected_index = this.selected.indexOf(marker);
@@ -164,7 +271,7 @@ export class RisqReplayEvents extends DwgRectButton {
 
   private jumpToSelected(): void {
     const event = this.selected[this.selected_index].event;
-    this.risq.replay_panel.seek(event.kind === 'battle' ? event.tick - 0.5 : event.tick);
+    this.risq.replay_panel.seek(replayEventStop(event));
   }
 
   protected override _draw(ctx: CanvasRenderingContext2D, transform: BoardTransformData, dt: number): void {
@@ -172,7 +279,8 @@ export class RisqReplayEvents extends DwgRectButton {
       return;
     }
     this.layout(transform);
-    for (const marker of this.markers) {
+    for (const marker of this.visibleMarkers()) {
+      marker.button.setSelected(marker === this.selected[this.selected_index]);
       marker.button.draw(ctx, transform, dt);
     }
     if (!this.panel_visible) {
@@ -191,12 +299,24 @@ export class RisqReplayEvents extends DwgRectButton {
     const lines =
       event.kind === 'eliminated'
         ? [nickname, 'Eliminated', 'End of turn']
-        : [
-            event.kind === 'disruption' ? event.title : `Production ${this.selected_index + 1}/${this.selected.length}`,
-            event.kind === 'disruption' ? (event.reason ?? '') : event.title,
-            nickname,
-            event.end_of_turn ? 'End of turn' : `Tick ${event.tick}`,
-          ];
+        : event.continent
+          ? [
+              event.title,
+              nickname,
+              `${event.continent.change === 'gained' ? '+' : '-'}${Math.round(event.continent.gold_bonus)} gold/turn`,
+              'End of turn',
+            ]
+          : [
+              event.kind === 'disruption'
+                ? event.title
+                : `Production ${this.selected_index + 1}/${this.selected.length}`,
+              event.kind === 'disruption' ? (event.reason ?? '') : event.title,
+              nickname,
+              event.end_of_turn ? 'End of turn' : `Tick ${event.tick}`,
+            ];
+    if (event.location_name) {
+      lines.splice(event.kind === 'eliminated' ? 2 : 3, 0, event.location_name);
+    }
     configDraw(
       ctx,
       transform,
@@ -208,13 +328,17 @@ export class RisqReplayEvents extends DwgRectButton {
           drawBattleDetails(ctx, this.risq, event, this.xi() + 8, this.yi() + 8, this.w() - 16);
           return;
         }
+        if (event.hired_units) {
+          drawHiredDetails(ctx, this.risq, event, this.xi() + 8, this.yi() + 8, this.w() - 16);
+          return;
+        }
         lines.forEach((line: string, i: number): void =>
           drawText(ctx, line, {
             p: { x: this.xi() + 8, y: this.yi() + 8 + 24 * i },
             w: this.w() - 16,
             font: '18px sans-serif',
             fill_style:
-              event.kind === 'eliminated' && i === 0
+              (event.kind === 'eliminated' && i === 0) || (event.kind === 'continent' && i === 1)
                 ? (this.risq.getGame()?.players[event.player_id]?.color.getString() ?? 'black')
                 : 'black',
           })
@@ -230,7 +354,7 @@ export class RisqReplayEvents extends DwgRectButton {
   override isHovering(): boolean {
     return (
       this.risq.session.isReplaying() &&
-      (super.isHovering() || this.markers.some((marker: EventMarker): boolean => marker.button.isHovering()))
+      (super.isHovering() || this.visibleMarkers().some((marker: EventMarker): boolean => marker.button.isHovering()))
     );
   }
   override setHovering(hovering: boolean): void {
@@ -251,11 +375,18 @@ export class RisqReplayEvents extends DwgRectButton {
     return this.panel_visible && super.mouseOver(canvas, screen);
   }
   override mousemove(canvas: Point2D, screen: Point2D, transform: BoardTransformData): boolean {
+    this.pointer_position = screen;
     if (!this.risq.session.isReplaying()) {
       this.setHovering(false);
       return false;
     }
+    if (this.drag_offset) {
+      this.panel_position = { x: screen.x - this.drag_offset.x, y: screen.y - this.drag_offset.y };
+    }
     this.layout(transform);
+    if (this.drag_offset) {
+      return true;
+    }
     const panel_hit = super.mousemove(canvas, screen, transform);
     for (const button of [this.jump, this.next, this.close]) {
       if (this.panel_visible) {
@@ -265,7 +396,7 @@ export class RisqReplayEvents extends DwgRectButton {
       }
     }
     let claimed = panel_hit;
-    for (const { button } of [...this.markers].reverse()) {
+    for (const { button } of this.visibleMarkers().reverse()) {
       if (claimed) {
         button.setHovering(false);
       } else {
@@ -280,10 +411,17 @@ export class RisqReplayEvents extends DwgRectButton {
       return false;
     }
     if (super.isHovering()) {
-      [this.jump, this.next, this.close].some((button: RisqEventButton): boolean => button.mousedown(e));
+      const pressed = [this.jump, this.next, this.close].some((button: RisqEventButton): boolean =>
+        button.mousedown(e)
+      );
+      if (!pressed && e.button === 0) {
+        this.drag_offset = { x: this.pointer_position.x - this.xi(), y: this.pointer_position.y - this.yi() };
+      }
       return true;
     }
-    const marker = this.markers.find((marker: EventMarker): boolean => marker.button.isHovering());
+    const marker = this.visibleMarkers()
+      .reverse()
+      .find((marker: EventMarker): boolean => marker.button.isHovering());
     if (marker) {
       marker.button.mousedown(e);
       return true;
@@ -296,11 +434,15 @@ export class RisqReplayEvents extends DwgRectButton {
     return false;
   }
   override mouseup(e: MouseEvent): void {
+    if (this.drag_offset) {
+      this.drag_offset = undefined;
+      return;
+    }
     for (const button of [
       this.jump,
       this.next,
       this.close,
-      ...this.markers.map((marker: EventMarker): RisqEventButton => marker.button),
+      ...this.visibleMarkers().map((marker: EventMarker): RisqEventButton => marker.button),
     ]) {
       button.mouseup(e);
     }
@@ -308,6 +450,7 @@ export class RisqReplayEvents extends DwgRectButton {
   override setClicking(clicking: boolean): void {
     super.setClicking(clicking);
     if (!clicking) {
+      this.drag_offset = undefined;
       for (const button of [
         this.jump,
         this.next,
@@ -320,11 +463,14 @@ export class RisqReplayEvents extends DwgRectButton {
   }
 
   override isClicking(): boolean {
-    return [
-      this.jump,
-      this.next,
-      this.close,
-      ...this.markers.map((marker: EventMarker): RisqEventButton => marker.button),
-    ].some((button: RisqEventButton): boolean => button.isClicking());
+    return (
+      !!this.drag_offset ||
+      [
+        this.jump,
+        this.next,
+        this.close,
+        ...this.visibleMarkers().map((marker: EventMarker): RisqEventButton => marker.button),
+      ].some((button: RisqEventButton): boolean => button.isClicking())
+    );
   }
 }

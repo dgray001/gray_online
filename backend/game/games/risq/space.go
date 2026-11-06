@@ -341,6 +341,9 @@ func (s *RisqSpace) toFrontend(player_id int, with_history bool) gin.H {
 	space["terrain_id"] = s.terrain_id
 	space["terrain_type"] = s.config.Terrains[s.terrain_id].Terrain_type
 	space["display_name"] = s.displayName()
+	if s.name != "" {
+		space["custom_name"] = s.name
+	}
 	terrain_stats := s.config.MoveCost(s.terrainType())
 	space["terrain_stats"] = gin.H{
 		"intra_cost":           terrain_stats.Intra_cost,

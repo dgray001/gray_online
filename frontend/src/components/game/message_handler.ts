@@ -82,6 +82,8 @@ export function handleMessage(game: DwgGame, message: ServerMessage): void {
     case 'game-failed-update': // player did something incorrect
       if (
         [
+          'submit-orders-failed',
+          'unsubmit-orders-failed',
           'set-auto-renew-failed',
           'set-gather-point-failed',
           'set-default-unit-behavior-failed',

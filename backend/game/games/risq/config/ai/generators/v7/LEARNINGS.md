@@ -1,12 +1,21 @@
 # V7 protection and funding tuning
 
-Current working v7 also includes rate-aware gathering with a 1.25-turn window and two search passes.
+## Canonical combined policy
+
+Canonical v7 includes safe repair admission, selective sheltering, bounded local raid responses and queued-defender reserve credits.
+The promoted 500-game eval has 438 favorable outcomes, four severe losses and 223 elimination wins with no elimination losses; zero game errors.
+The generator output is byte-identical to the evaluated winner. Results and provenance are in `sim/outputs/eval/`; see the repository's `RISQ_AI_REFINEMENT.md`.
+One selector-budget warning remains unattributed after 20 targeted debug replays. Temporary policy experiments have been removed.
+
+## Historical protection experiments
+
+Earlier v7 also included rate-aware gathering with a 1.25-turn window and two search passes.
 Villager power is 0.58 before Farming and 0.84 after; civilian crush odds are 1.4.
 Base military powers: blunt 1; piercing 1.5; heavy 3.3; siege 2.4.
 Army calibration: 15,300 fights, 192 wall checks; held-out decisive accuracy 86%, versus previous estimates' 75%.
 Own research selects fitted tech-state powers once; enemy techs remain estimated from buildings and range.
 Catapults: base 2.4; Ballistics 2.5; Shrapnel 2.7; both 3.2. Escalades has no flat open-field power bonus.
-Recruitment, interrupted-work resumption, worker allocation and construction logic are unchanged.
+At that stage, recruitment, interrupted-work resumption, worker allocation and construction logic were unchanged.
 The 500-game results below are a pre-change baseline, not an evaluation of these additions.
 
 Scope: limit protected demand and tune existing parameters; retain production-first worker allocation.
@@ -24,7 +33,7 @@ Smaller raids retain more soldiers for main fights. Raw troop count and K/D do n
 
 Winning existing settings:
 - investment_share=0.6; planning_horizon=6; construction_horizon=6; investment_horizon=20.
-- additional_producer_margin=1.6; smith_saving_max=6; smith_urgency_turns=3.
+- additional_producer_margin=0.6; smith_saving_max=6; smith_urgency_turns=3.
 - transfer_deadband=0; shortage_turns=4; transfer_fraction=0.5.
 - raid_min=1; raid_max=2; raid_frac=0.1.
 
@@ -49,7 +58,7 @@ Repeated matched gates matter: identical-order debug runs showed variation in co
 Full 500-game eval: 270/500 favorable (54%); elimination wins/losses 143/37; zero errors.
 Standard maps: 88/160; ring 12/40, hexagon 28/40, rectangle 25/40, triangle 23/40.
 Weak buckets: risk_world variants 0/35; divide 5/20; divide_established 1/10.
-Full results: sim/outputs/v7_vs_v6/results.json.
+Those historical trial outputs were superseded by the canonical `sim/outputs/eval/`.
 
-Only v7_vs_v6 remains in sim/outputs; earlier trial outputs were deleted.
+Temporary policy trial outputs were removed when the evaluated combined policy became canonical v7.
 V8 owns the unified marginal-benefit funding model; see ../v8/DESIGN.md.

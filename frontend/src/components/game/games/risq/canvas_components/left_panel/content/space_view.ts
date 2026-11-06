@@ -104,7 +104,9 @@ export class RisqSpaceView {
     this.shown = { risq, space };
     this.unit_rows_visible = false;
     let yi = frame.yi() + drawName(pc, space.display_name);
-    yi += drawSubtitle(pc, `${terrainTypeLabel(space.terrain_type)} space`, yi);
+    const place = risq.session.getPlaceName(space.coordinate);
+    const location = place && place !== space.display_name ? ` · ${place}` : '';
+    yi += drawSubtitle(pc, `${terrainTypeLabel(space.terrain_type)} space${location}`, yi);
     const separator_distance = 8;
     yi += hexagon.draw(pc, space, separator_distance, yi);
     drawSeparator(pc, yi);

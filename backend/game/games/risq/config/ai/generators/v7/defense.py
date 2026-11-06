@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 from common import Record, aggregate, army_order_available, branch, power, selection, store, variable
+from combat import FOCUS_CAPACITY, focused_attack
 
 
 def threat_home_rules() -> list[Record]:
@@ -144,11 +145,19 @@ def base_defense() -> list[Record]:
         actors=defenders,
         issue=[dict(set_behavior=dict(stance="defensive", attack_back=True, interrupt_current=False))]
     )
-    defend_action = dict(
-        action="select", actors=defenders, pick=threats_at_base,
-        match=dict(score="0 - distance(actor, target)"),
-        issue=[dict(attack={})]
-    )
+    base_spaces = selection("spaces", dict(in_set="base"))
+    outside = dict(owner="enemy", unit_types=["military"], near=dict(distance=1, of=base_spaces))
+    outside_power = aggregate("sum", selection("units", dict(outside, **{"if": "1 - inSet(base_threats, item)"})), power())
+    outside_unid = aggregate("sum", selection("spaces", dict(
+        in_set="poor_vision", near=dict(distance=1, of=base_spaces), **{"if": "1 - inSet(base, item)"})), "var(item.unit_count)")
+    outside_strength = "var(outside_power) * var(enemy_tech_multiplier) + var(outside_unid) * var(unknown_unit_power)"
+    base_power = aggregate("sum", selection("units", dict(owner="enemy", unit_types=["military"], at=dict(in_set="base"))), power())
+    base_unid = aggregate("sum", selection("spaces", dict(in_set="poor_vision", near=dict(distance=0, of=base_spaces))), "var(item.unit_count)")
+    base_strength = "var(base_power) * var(enemy_tech_multiplier) + var(base_unid) * var(unknown_unit_power)"
+    defend_base = focused_attack(defenders, selection("units", dict(
+        owner="enemy", unit_types=["military"], at=dict(in_set="base")), capacity=FOCUS_CAPACITY), False)
+    go_out = focused_attack(defenders, selection("units", dict(
+        outside, **{"if": "1 - inSet(base_threats, target)"}), capacity=FOCUS_CAPACITY), False)
 
     idle_guards = selection("units", dict(
         owner="own", unit_types=["military"], not_in_set="raiding_party",
@@ -157,7 +166,13 @@ def base_defense() -> list[Record]:
     home_space = selection("spaces", dict(in_set="home"), limit=1)
     hold_base = dict(action="select", actors=idle_guards, pick=home_space, issue=[dict(move={})])
 
-    return [store("military_at_enemy", military_at_enemy), behavior, defend_action, hold_base]
+    return [store("military_at_enemy", military_at_enemy), store("base_threats", threats_at_base),
+            variable("outside_power", outside_power), variable("outside_unid", outside_unid),
+            variable("home_go", f"var(home_military_power) >= var(tune_home_odds) * ({outside_strength})"),
+            variable("base_power", base_power), variable("base_unid", base_unid),
+            variable("base_go", f"var(home_military_power) >= var(tune_base_odds) * ({base_strength})"),
+            behavior, branch("var(base_go) > 0", [defend_base]),
+            branch("(var(n_base_threats) == 0) * (var(home_go) > 0)", [go_out]), hold_base]
 
 
 def civilian_evacuation() -> list[Record]:

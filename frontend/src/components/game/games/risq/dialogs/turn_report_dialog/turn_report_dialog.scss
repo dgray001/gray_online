@@ -1,3 +1,5 @@
+@use './battle_report';
+
 dwg-risq-turn-report-dialog.dwg-dialog-box {
   --ink: black;
   --ink-soft: rgb(65, 55, 45);
@@ -5,6 +7,35 @@ dwg-risq-turn-report-dialog.dwg-dialog-box {
   --gain: rgb(20, 95, 30);
   --loss: rgb(160, 20, 20);
   --gold: rgb(100, 70, 0);
+  overflow: hidden;
+  transition: background-color 200ms ease-out;
+
+  &.replay-preview {
+    background: transparent;
+    pointer-events: none;
+
+    #wrapper {
+      cursor: pointer;
+      pointer-events: auto;
+      transform: translateY(calc(100dvh - 80px - var(--report-preview-top)));
+    }
+
+    footer {
+      padding: 0;
+      position: absolute;
+      right: 12px;
+      top: 16px;
+    }
+
+    #masthead {
+      padding-right: 150px;
+      text-align: left;
+    }
+
+    #title {
+      font-size: 1.1rem;
+    }
+  }
 
   #wrapper {
     background: rgb(222, 184, 135);
@@ -17,13 +48,30 @@ dwg-risq-turn-report-dialog.dwg-dialog-box {
     flex-flow: column nowrap;
     font-family: Georgia, Cambria, 'Times New Roman', serif;
     padding: 0;
+    transition: transform 200ms ease-out;
   }
 
   #masthead {
     border-bottom: 2px solid var(--rule);
     flex: none;
     padding: 16px 20px 12px;
+    position: relative;
     text-align: center;
+  }
+
+  #wrapper button.replay-link {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font: inherit;
+    padding: 0;
+    text-align: left;
+    text-decoration: underline;
+
+    &:disabled {
+      cursor: default;
+      text-decoration: none;
+    }
   }
 
   #title {

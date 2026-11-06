@@ -80,6 +80,24 @@ func TestStanceEngagement(t *testing.T) {
 	}
 }
 
+func TestCompletedMovesAllowStanceCombatInSameTurn(t *testing.T) {
+	g := meetingGameWith(t, map[string]any{"visibility": float64(3)},
+		spaceOf(-1, 0, flat, placed{heavy, 0, 1, 0}), spaceOf(0, 0, flat), spaceOf(1, 0, flat, placed{heavy, 1, -1, 0}))
+	a, b := soleUnit(g, 0), soleUnit(g, 1)
+	for _, unit := range []harness.Unit{a, b} {
+		g.Action(g.Human(unit.PlayerID), "set-unit-behavior", gin.H{"internal_ids": []uint64{unit.InternalID},
+			"stance": uint8(defs.UnitStance_DEFENSIVE), "interrupt_current": false, "attack_back": false})
+	}
+	g.Submit(g.Human(0), harness.OrderMove([]uint64{a.InternalID}, 0, 0))
+	g.Submit(g.Human(1), harness.OrderMove([]uint64{b.InternalID}, 0, 0))
+	if replay := harness.RequireReplay(t, g.State(g.Human(0))); replay.TickCount <= 1 {
+		t.Fatalf("turn stopped after %d tick; completed moves must allow stance combat", replay.TickCount)
+	}
+	if soleUnit(g, 0).CombatStats.Health == a.CombatStats.Health && soleUnit(g, 1).CombatStats.Health == b.CombatStats.Health {
+		t.Fatal("both units kept their remaining stamina without fighting")
+	}
+}
+
 // Passive workers in the grunt's zone, elsewhere in its space and along a line of spaces, then a phalanx too tough to finish
 func TestStanceRoamLimits(t *testing.T) {
 	line := func(x int) harness.Coord { return harness.Coord{X: x} }

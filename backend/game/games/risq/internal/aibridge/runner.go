@@ -49,6 +49,8 @@ loop:
 		select {
 		case <-a.Stop:
 			break loop
+		case <-a.Player.GetBase().Quit:
+			break loop
 		case update := <-a.Player.AiUpdates:
 			if !a.Player.GetBase().GameStarted() || a.Player.GetBase().GameEnded() || update.Kind != "start-turn" {
 				break

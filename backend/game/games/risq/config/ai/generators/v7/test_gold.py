@@ -78,7 +78,7 @@ class GoldInvestmentTests(unittest.TestCase):
     def test_mercenary_demand_without_local_production(self) -> None:
         action = next(action for action in mercenary_rates() if action["action"] == "for_each")["do"][0]
         initial = {"offer.id": 101, "offer.cost_gold": 90, "goal_101": 15, "own_101": 5,
-                   "game_population_max": 100, "game_population": 10, "tune_planning_horizon": 10}
+                   "population_ceiling": 100, "game_population": 10, "tune_planning_horizon": 10}
         condition = action["when"]["value_at_least"]["value"]
         self.assertEqual(evaluate([variable("eligible", condition)], initial)["eligible"], 1)
         self.assertEqual(evaluate(action["then"], initial)["mercenary_rate_gold"], 90)

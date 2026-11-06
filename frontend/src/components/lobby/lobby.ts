@@ -366,7 +366,7 @@ export class DwgLobby extends DwgElement {
       if (!!room && current_room?.room_id !== room.room_id) {
         this.requestRoom('room-join', '', url_room_id.toString());
         return;
-      } else {
+      } else if (!room) {
         removeUrlParam(URL_PARAM_ROOM);
       }
     }

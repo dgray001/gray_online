@@ -24,7 +24,7 @@ class RetreatRegressionTests(unittest.TestCase):
         actions = [a for a in strategy() if a.get("name") in ("enemy_losses", "enemy_growth", "enemy_army_memory")]
         initial = dict(enemy_army_memory=10, previous_enemy_local=15, army_center_enemy_power=0,
                        previous_engaged=1, n_army_units=10, tune_memory_loss_weight=1,
-                       tune_memory_retention=0.98, tune_memory_population_power=2, game_population_max=100)
+                       tune_memory_retention=0.98, tune_memory_population_power=2, population_ceiling=100)
         result = evaluate(actions, initial)
         self.assertEqual(result["enemy_losses"], 0)
         self.assertAlmostEqual(result["enemy_army_memory"], 9.8)

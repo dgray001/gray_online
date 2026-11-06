@@ -9,6 +9,7 @@ import {
 import { buildingCanProduce, producibleUnlocked } from '../../../application/orders/orders_model';
 import type { DwgRisq } from '../../../risq';
 import { RisqTargetPriorityControl } from '../controls/target_priority_control';
+import { RisqAttackStackControl } from '../controls/attack_stack_control';
 import { ACTION_GRID_COLS } from '../layout';
 import type { LeftPanelData } from '../left_panel_data';
 import { LeftPanelDataType } from '../left_panel_data';
@@ -33,6 +34,7 @@ import type { UnitToggleField } from './unit/unit_toggle_button';
 export declare interface PanelActions {
   buttons: RisqActionButton[];
   target_priority_control?: RisqTargetPriorityControl;
+  attack_stack_control?: RisqAttackStackControl;
 }
 
 const LAST_COL = ACTION_GRID_COLS - 1;
@@ -182,7 +184,11 @@ function unitActions(risq: DwgRisq, data: LeftPanelData, player: RisqPlayer | un
   for (const [col, [field, image_path, description]] of TOGGLES.entries()) {
     buttons.push(new RisqUnitToggleButton({ row: 2, col, unit_internal_ids, field, image_path, description }, risq, 0));
   }
-  return { buttons, target_priority_control: new RisqTargetPriorityControl(risq, unit_internal_ids) };
+  return {
+    buttons,
+    target_priority_control: new RisqTargetPriorityControl(risq, unit_internal_ids),
+    attack_stack_control: new RisqAttackStackControl(risq, unit_internal_ids),
+  };
 }
 
 function buildingActions(risq: DwgRisq, building: RisqBuilding, player: RisqPlayer | undefined): RisqActionButton[] {

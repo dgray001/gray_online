@@ -5,19 +5,17 @@ import type { CanvasComponent } from '../../../../util/canvas_components/canvas_
 import type { ReplayEvent } from '../../model/replay_event';
 import type { RisqTickLocation } from '../../model/tick_actions';
 import type { RisqViewport } from '../../rendering/board/viewport';
-import { zoneVertices } from '../../rendering/zones/geometry';
+import { hexagonVertices, zoneVertices } from '../../rendering/zones/geometry';
 
 export type EventRect = { x: number; y: number; w: number; h: number };
 
-function centerFacingPoint(points: Point2D[], canvas: { width: number; height: number }): Point2D {
+function centerFacingPoint(points: Point2D[], _canvas: { width: number; height: number }): Point2D {
   const center = {
     x: points.reduce((sum: number, point: Point2D): number => sum + point.x, 0) / points.length,
     y: points.reduce((sum: number, point: Point2D): number => sum + point.y, 0) / points.length,
   };
-  const dx = canvas.width / 2 - center.x;
-  const dy = canvas.height / 2 - center.y;
-  const distance = Math.hypot(dx, dy);
-  const direction = distance > 0.001 ? { x: dx / distance, y: dy / distance } : { x: 0, y: -1 };
+  const distance = Math.hypot(center.x, center.y);
+  const direction = distance > 0.001 ? { x: center.x / distance, y: center.y / distance } : { x: 0, y: -1 };
   const boundary = Math.max(
     ...points.map((point: Point2D): number => (point.x - center.x) * direction.x + (point.y - center.y) * direction.y)
   );
@@ -40,12 +38,13 @@ export function eventPoint(
   }
   const points = event.locations.flatMap((location: RisqTickLocation): Point2D[] => {
     const center = viewport.coordinateToCanvas(location.space);
-    return zoneVertices(location.zone, viewport.hexR()).map((vertex: Point2D): Point2D => {
-      const screen = canvasToScreen({ x: center.x + vertex.x, y: center.y + vertex.y }, transform);
-      return { x: screen.x / scale, y: screen.y / scale };
-    });
+    const vertices =
+      event.kind === 'continent' ? hexagonVertices(viewport.hexR()) : zoneVertices(location.zone, viewport.hexR());
+    return vertices.map((vertex: Point2D): Point2D => ({ x: center.x + vertex.x, y: center.y + vertex.y }));
   });
-  return centerFacingPoint(points, canvas);
+  const board_point = centerFacingPoint(points, canvas);
+  const screen = canvasToScreen(board_point, transform);
+  return { x: screen.x / scale, y: screen.y / scale };
 }
 
 export function panelPosition(

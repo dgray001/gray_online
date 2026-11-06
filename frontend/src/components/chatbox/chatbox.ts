@@ -107,9 +107,10 @@ export class DwgChatbox extends DwgElement {
     }
     const chat_input = this.getInput();
     if (this.convert_emoticons) {
-      for (const [emoticon, emoji] of emoticons) {
-        chat_input.message = chat_input.message.replace(emoticon, emoji);
-      }
+      chat_input.message = chat_input.message
+        .split(' ')
+        .map((w) => emoticons.get(w) ?? w)
+        .join(' ');
     }
     const chat_event = new CustomEvent('chat_sent', { detail: chat_input });
     this.dispatchEvent(chat_event);

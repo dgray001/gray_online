@@ -8,9 +8,11 @@ import type { RisqPlayer, RisqProducible, RisqOrderType } from '../../model/type
 import { RisqProducibleKind, RisqResourceType } from '../../model/types';
 import { resourceTypeImage } from '../../rendering/assets/resources';
 import { unitImage } from '../../rendering/assets/unit';
-import type { RisqReportCombatEvent, RisqTurnReport } from '../../transport/turn_report';
-import { RisqCombatEventKind } from '../../transport/turn_report';
+import type { RisqReportOrderFailure, RisqTurnReport } from '../../transport/turn_report';
+import { renderBattleReport } from './battle_report';
+import { renderRegionReport } from './region_report';
 import type { DwgRisq } from '../../risq';
+import type { ReplayEvent } from '../../model/replay_event';
 
 import html from './turn_report_dialog.html';
 
@@ -57,22 +59,6 @@ function producibleName(player: RisqPlayer, kind: RisqProducibleKind, id: number
   return fallback;
 }
 
-function combatEventText(e: RisqReportCombatEvent, viewer_player_id: number): string {
-  const mine = e.self_player === viewer_player_id;
-  switch (e.kind) {
-    case RisqCombatEventKind.UNIT_KILLED:
-      return mine ? 'Killed an enemy unit' : 'Lost a unit in combat';
-    case RisqCombatEventKind.UNIT_LOST:
-      return 'Lost a unit in combat';
-    case RisqCombatEventKind.BUILDING_RAZED:
-      return mine ? 'Razed an enemy building' : 'A building was razed';
-    case RisqCombatEventKind.BUILDING_LOST:
-      return 'Lost a building';
-    default:
-      return 'Combat occurred';
-  }
-}
-
 export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> {
   private title_heading!: HTMLHeadingElement;
   private scores_body!: HTMLTableSectionElement;
@@ -84,6 +70,7 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
   private production_lines!: HTMLUListElement;
   private production_empty!: HTMLParagraphElement;
   private combat_lines!: HTMLUListElement;
+  private combat_totals!: HTMLDivElement;
   private combat_empty!: HTMLParagraphElement;
   private order_summary!: HTMLDivElement;
   private order_failures!: HTMLUListElement;
@@ -93,6 +80,22 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
 
   constructor() {
     super();
+    this.addEventListener(
+      'click',
+      (event: MouseEvent): void => {
+        if (!this.classList.contains('replay-preview')) {
+          return;
+        }
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (event.target instanceof Element && event.target.closest('#close-button')) {
+          this.remove();
+        } else {
+          this.closeDialog();
+        }
+      },
+      true
+    );
     this.configureElement('title_heading', 'title');
     this.configureElements(
       'scores_body',
@@ -104,6 +107,7 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
       'production_lines',
       'production_empty',
       'combat_lines',
+      'combat_totals',
       'combat_empty',
       'order_summary',
       'order_failures',
@@ -115,8 +119,34 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
     return html;
   }
 
+  override closeDialog(): void {
+    if (this.classList.contains('replay-preview')) {
+      this.classList.remove('replay-preview');
+      this.dispatchEvent(new CustomEvent<void>('dialog_opened', { bubbles: true }));
+    } else {
+      super.closeDialog();
+    }
+  }
+
+  override disconnectedCallback(): void {
+    this.classList.remove('replay-preview');
+    super.disconnectedCallback();
+  }
+
   getData(): TurnReportDialogData {
     return this.data;
+  }
+
+  private previewEvent(event: ReplayEvent, control: HTMLElement): void {
+    const wrapper = this.querySelector<HTMLElement>('#wrapper')!;
+    const transform = getComputedStyle(wrapper).transform;
+    const translation = transform === 'none' ? 0 : new DOMMatrixReadOnly(transform).m42;
+    this.style.setProperty('--report-preview-top', `${wrapper.getBoundingClientRect().top - translation}px`);
+    this.classList.add('replay-preview');
+    if (!this.data.risq.replay_events?.open(event)) {
+      this.classList.remove('replay-preview');
+    }
+    control.blur();
   }
 
   setData(data: TurnReportDialogData, parsed?: boolean): void {
@@ -138,7 +168,7 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
     this.renderRegions(report);
     this.renderResources(report, hasEconomy(risq.getGame()));
     this.renderProduction(player, report, hasBuildings(risq.getGame()));
-    this.renderCombat(player, report);
+    this.renderCombat(report);
     this.renderOrders(report);
     for (const image of this.querySelectorAll('img')) {
       configureImageFallback(image);
@@ -182,9 +212,24 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
         name.innerText = nickname;
         row.firstElementChild?.appendChild(name);
         if (line.eliminated_this_turn) {
-          const status = document.createElement('span');
-          status.className = 'reason';
+          const replay_event =
+            risq.getGame()?.last_turn_journal?.turn_number === report.turn
+              ? risq.session
+                  .getReplayEvents()
+                  .find(
+                    (event: ReplayEvent): boolean => event.kind === 'eliminated' && event.player_id === line.player_id
+                  )
+              : undefined;
+          const status = document.createElement('button');
+          status.type = 'button';
+          status.className = 'reason replay-link';
+          status.disabled = !replay_event;
           status.innerText = ' (eliminated this turn)';
+          status.addEventListener('click', (): void => {
+            if (replay_event) {
+              this.previewEvent(replay_event, status);
+            }
+          });
           row.firstElementChild?.appendChild(status);
         }
         return row;
@@ -210,19 +255,13 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
   }
 
   private renderRegions(report: RisqTurnReport): void {
-    const lines = report.regions.map((r) => {
-      const li = document.createElement('li');
-      const verb = r.held_start ? 'held' : 'claimed';
-      const suffix = r.held_end ? ` ${verb} (+${Math.round(r.gold_bonus)} gold/turn)` : ' lost';
-      li.innerHTML = r.held_end
-        ? '<span class="tick make">+</span><span></span>'
-        : '<span class="tick bad">×</span><span></span>';
-      li.lastElementChild?.appendChild(document.createTextNode(`${r.name}${suffix}`));
-      return li;
-    });
-    this.region_lines.replaceChildren(...lines);
-    this.region_lines.hidden = lines.length === 0;
-    this.region_empty.hidden = lines.length > 0;
+    renderRegionReport(
+      this.data.risq,
+      report,
+      this.region_lines,
+      this.region_empty,
+      (event: ReplayEvent, control: HTMLElement): void => this.previewEvent(event, control)
+    );
   }
 
   /** Every resource is listed; without an economy nothing can be gathered, so that column is hidden */
@@ -251,44 +290,84 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
     const cap = `&nbsp;&middot;&nbsp; cap <b>${report.population.cap_start} &rarr; ${report.population.cap_end}</b>`;
     this.pop_line.innerHTML = player.unlimited_population ? population : population + cap;
     const lines: HTMLLIElement[] = [];
+    let row_index = 0;
     const line = (tick_cls: string, tick: string, icon: string, text: string): void => {
+      const index = row_index++;
+      const risq = this.data.risq;
+      const replay_event =
+        risq.getGame()?.last_turn_journal?.turn_number === report.turn
+          ? risq.session
+              .getReplayEvents()
+              .find(
+                (event: ReplayEvent): boolean =>
+                  event.kind === 'production' &&
+                  event.player_id === player.player.player_id &&
+                  event.production?.row === index
+              )
+          : undefined;
       const li = document.createElement('li');
       const img = icon ? `<img src="/images/${icon}.png" alt="" width="18" height="18" />` : '';
-      li.innerHTML = `<span class="tick ${tick_cls}">${tick}</span>${img}<span>${text}</span>`;
+      li.innerHTML = `<span class="tick ${tick_cls}">${tick}</span>${img}`;
+      const label = document.createElement('button');
+      label.type = 'button';
+      label.className = 'replay-link';
+      label.disabled = !replay_event;
+      label.textContent = replay_event?.location_name ? `${text} in ${replay_event.location_name}` : text;
+      label.addEventListener('click', (): void => {
+        if (replay_event) {
+          this.previewEvent(replay_event, label);
+        }
+      });
+      li.appendChild(label);
       lines.push(li);
     };
-    for (const [units, verb] of [
-      [report.production.units_created, 'trained'],
-      [report.production.units_hired, 'hired'],
-    ] as const) {
-      for (const u of units) {
-        const name = producibleName(player, RisqProducibleKind.UNIT, u.unit_id, 'Unit');
-        line('make', '+', unitImage(u.unit_id, true), `${u.count > 1 ? `${u.count}× ` : ''}${name} ${verb}`);
-      }
+    for (const u of report.production.units_created) {
+      const name = producibleName(player, RisqProducibleKind.UNIT, u.unit_id, 'Unit');
+      line('make', '+', unitImage(u.unit_id, true), `${u.count > 1 ? `${u.count}× ` : ''}${name} trained`);
     }
     for (const b of buildings ? report.production.buildings_built : []) {
       const name = producibleName(player, RisqProducibleKind.BUILDING, b.building_id, 'Building');
-      line('make', '+', buildingImage(b.building_id, false, true), `${name} built at (${b.space.x}, ${b.space.y})`);
+      line('make', '+', buildingImage(b.building_id, false, true), `${name} built`);
     }
     for (const tech_id of report.production.techs_researched) {
       const name = producibleName(player, RisqProducibleKind.TECH, tech_id, 'Technology');
       line('tech', '✦', techImage(tech_id), `${name} researched`);
+    }
+    const risq = this.data.risq;
+    const hires =
+      risq.getGame()?.last_turn_journal?.turn_number === report.turn
+        ? risq.session
+            .getReplayEvents()
+            .filter(
+              (event: ReplayEvent): boolean =>
+                event.player_id === player.player.player_id && event.production?.source === 'hired'
+            )
+            .sort((a: ReplayEvent, b: ReplayEvent): number => a.production!.row! - b.production!.row!)
+        : [];
+    if (hires.length > 0) {
+      for (const event of hires) {
+        line('make', '+', event.icon, event.title);
+      }
+    } else {
+      for (const unit of report.production.units_hired) {
+        const name = producibleName(player, RisqProducibleKind.UNIT, unit.unit_id, 'Unit');
+        line('make', '+', unitImage(unit.unit_id, true), `${unit.count}× ${name} hired`);
+      }
     }
     this.production_lines.replaceChildren(...lines);
     this.production_lines.hidden = lines.length === 0;
     this.production_empty.hidden = lines.length > 0;
   }
 
-  private renderCombat(player: RisqPlayer, report: RisqTurnReport): void {
-    const lines = report.combat.map((e) => {
-      const li = document.createElement('li');
-      const gain = e.kind === RisqCombatEventKind.UNIT_KILLED || e.kind === RisqCombatEventKind.BUILDING_RAZED;
-      li.innerHTML = `<span class="tick ${gain ? 'make' : 'bad'}">${gain ? '+' : '×'}</span><span>${combatEventText(e, player.player.player_id)} <span class="where">at (${e.space.x}, ${e.space.y})</span></span>`;
-      return li;
-    });
-    this.combat_lines.replaceChildren(...lines);
-    this.combat_lines.hidden = lines.length === 0;
-    this.combat_empty.hidden = lines.length > 0;
+  private renderCombat(report: RisqTurnReport): void {
+    renderBattleReport(
+      this.data.risq,
+      report,
+      this.combat_totals,
+      this.combat_lines,
+      this.combat_empty,
+      (event: ReplayEvent, control: HTMLElement): void => this.previewEvent(event, control)
+    );
   }
 
   private renderOrders(report: RisqTurnReport): void {
@@ -302,9 +381,33 @@ export class DwgRisqTurnReportDialog extends DwgDialogBox<TurnReportDialogData> 
       chip(orders.executed, 'executed'),
       chip(orders.cancelled, 'cancelled'),
     ].join('');
-    const failures = orders.failures.map((f) => {
+    const failures = orders.failures.map((f: RisqReportOrderFailure, index: number): HTMLLIElement => {
+      const risq = this.data.risq;
+      const replay_event =
+        risq.getGame()?.last_turn_journal?.turn_number === report.turn
+          ? risq.session
+              .getReplayEvents()
+              .find(
+                (event: ReplayEvent): boolean =>
+                  event.kind === 'disruption' &&
+                  event.player_id === this.data.player.player.player_id &&
+                  event.failure_row === index
+              )
+          : undefined;
       const li = document.createElement('li');
-      li.innerHTML = `<span class="tick bad">&times;</span><span>${shortLabel(f.order_type as RisqOrderType)} &mdash; <span class="reason">${f.reason}</span></span>`;
+      li.innerHTML = '<span class="tick bad">&times;</span>';
+      const label = document.createElement('button');
+      label.type = 'button';
+      label.className = 'replay-link';
+      const place = replay_event?.location_name ? ` in ${replay_event.location_name}` : '';
+      label.textContent = `${shortLabel(f.order_type as RisqOrderType)}: ${f.reason}${place}`;
+      label.disabled = !replay_event;
+      label.addEventListener('click', (): void => {
+        if (replay_event) {
+          this.previewEvent(replay_event, label);
+        }
+      });
+      li.appendChild(label);
       return li;
     });
     this.order_failures.replaceChildren(...failures);

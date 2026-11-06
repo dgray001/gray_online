@@ -53,6 +53,11 @@ export class RisqUpdates {
         case 'unsubmitted-orders':
           this.applySubmission(update.content as SubmissionNoticeData);
           break;
+        case 'submit-orders-failed':
+        case 'unsubmit-orders-failed':
+          this.risq.submission.acknowledged();
+          this.risq.showMessage((update.content as { message: string }).message, RISQ_MESSAGE_WARNING_COLOR);
+          break;
         case 'unit-behavior-set':
           this.applySetting(() => patchUnitBehavior(this.risq.session, update.content as UnitBehaviorSetData));
           break;

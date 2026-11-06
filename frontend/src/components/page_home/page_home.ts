@@ -39,9 +39,10 @@ export class DwgPageHome extends DwgElement {
 
   protected override parsedCallback(): void {
     this.lobby_connector.addEventListener('connect', (e) => {
+      const encoded_nickname = encodeURIComponent(e.detail.nickname);
       const socket = e.detail.try_reconnect
-        ? new WebSocket(`${websocketPath()}/reconnect/${e.detail.nickname}/${e.detail.client_id}`)
-        : new WebSocket(`${websocketPath()}/connect/${e.detail.nickname}`);
+        ? new WebSocket(`${websocketPath()}/reconnect/${encoded_nickname}/${e.detail.client_id}`)
+        : new WebSocket(`${websocketPath()}/connect/${encoded_nickname}`);
       let never_connected = true;
       socket.addEventListener('error', (e) => {
         console.error(e);

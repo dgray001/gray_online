@@ -112,9 +112,14 @@ export function clickButton(
     changeButtonText(options.loading_text);
     const result = fn();
     if (result instanceof Promise) {
-      result.then((completed_text) => {
-        changeButtonText(completed_text, options.re_enable_button);
-      });
+      result.then(
+        (completed_text) => {
+          changeButtonText(completed_text, options.re_enable_button);
+        },
+        () => {
+          changeButtonText(undefined, options.re_enable_button);
+        }
+      );
     } else {
       changeButtonText(result, options.re_enable_button);
     }
@@ -169,6 +174,8 @@ export function createLock(throwaway_extras = false) {
     if (running) {
       if (!throwaway_extras) {
         queue.push(runFn);
+      } else {
+        delayed_resolve!(undefined);
       }
     } else {
       running = true;
@@ -203,7 +210,7 @@ export function isTypingInInput(): boolean {
 }
 
 export function isDialogOpen(): boolean {
-  return !!document.querySelector('.dwg-dialog-box');
+  return !!document.querySelector('.dwg-dialog-box:not(.replay-preview)');
 }
 
 /** Copies input text to clipboard */

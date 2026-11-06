@@ -59,6 +59,7 @@ export declare interface RisqTickFrameFromServer {
 }
 
 export declare interface RisqTurnJournalFromServer {
+  region_owners?: Record<string, number>;
   schema_version: number;
   turn_number: number;
   tick_count: number;

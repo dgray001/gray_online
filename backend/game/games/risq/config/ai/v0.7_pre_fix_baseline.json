@@ -296,7 +296,7 @@
         {
           "action": "set_var",
           "name": "tune_additional_producer_margin",
-          "value": 1.6,
+          "value": 0.6,
           "persist": false
         },
         {
@@ -369,6 +369,24 @@
           "action": "set_var",
           "name": "tune_rax_vils_per_missing_enemy",
           "value": 3.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_rax_order",
+          "value": 0.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_rax_reserve_share",
+          "value": 1.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_rax_urgency_turns",
+          "value": 4.0,
           "persist": false
         },
         {
@@ -999,6 +1017,18 @@
           "action": "set_var",
           "name": "tune_hold_cap",
           "value": 1.0,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_home_odds",
+          "value": 1.5,
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "tune_base_odds",
+          "value": 0.8,
           "persist": false
         },
         {
@@ -2555,7 +2585,7 @@
         {
           "action": "set_var",
           "name": "house_abandoned",
-          "value": "min(var(house_abandoned), var(house_exist))",
+          "value": "min(var(house_abandoned), var(house_exist)) * (var(house_ban) > 0)",
           "persist": true
         },
         {
@@ -2658,7 +2688,7 @@
         {
           "action": "set_var",
           "name": "vc_abandoned",
-          "value": "min(var(vc_abandoned), var(vc_exist))",
+          "value": "min(var(vc_abandoned), var(vc_exist)) * (var(vc_ban) > 0)",
           "persist": true
         },
         {
@@ -2761,7 +2791,7 @@
         {
           "action": "set_var",
           "name": "farm_abandoned",
-          "value": "min(var(farm_abandoned), var(farm_exist))",
+          "value": "min(var(farm_abandoned), var(farm_exist)) * (var(farm_ban) > 0)",
           "persist": true
         },
         {
@@ -2864,7 +2894,7 @@
         {
           "action": "set_var",
           "name": "barracks_abandoned",
-          "value": "min(var(barracks_abandoned), var(barracks_exist))",
+          "value": "min(var(barracks_abandoned), var(barracks_exist)) * (var(barracks_ban) > 0)",
           "persist": true
         },
         {
@@ -2967,7 +2997,7 @@
         {
           "action": "set_var",
           "name": "smith_abandoned",
-          "value": "min(var(smith_abandoned), var(smith_exist))",
+          "value": "min(var(smith_abandoned), var(smith_exist)) * (var(smith_ban) > 0)",
           "persist": true
         },
         {
@@ -3070,7 +3100,7 @@
         {
           "action": "set_var",
           "name": "redoubt_abandoned",
-          "value": "min(var(redoubt_abandoned), var(redoubt_exist))",
+          "value": "min(var(redoubt_abandoned), var(redoubt_exist)) * (var(redoubt_ban) > 0)",
           "persist": true
         },
         {
@@ -3173,7 +3203,7 @@
         {
           "action": "set_var",
           "name": "outpost_abandoned",
-          "value": "min(var(outpost_abandoned), var(outpost_exist))",
+          "value": "min(var(outpost_abandoned), var(outpost_exist)) * (var(outpost_ban) > 0)",
           "persist": true
         },
         {
@@ -7961,6 +7991,49 @@
       "then": [
         {
           "action": "set_var",
+          "name": "rax_age",
+          "value": "max(0, var(rax_age) + 2 * (var(want_22) > 0) * (var(producers_22) == 0) * (var(foundations_22) == 0) - 1)",
+          "persist": true
+        },
+        {
+          "action": "set_var",
+          "name": "rax_urgency",
+          "value": "min(1, var(rax_age) / max(0.001, var(tune_rax_urgency_turns)))",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "reserve_food",
+          "value": "(var(want_22) > 0) * (var(producers_22) == 0) * (var(foundations_22) == 0) * var(tune_rax_reserve_share) * var(rax_urgency) * config(building, cost_food, 22)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "reserve_wood",
+          "value": "(var(want_22) > 0) * (var(producers_22) == 0) * (var(foundations_22) == 0) * var(tune_rax_reserve_share) * var(rax_urgency) * config(building, cost_wood, 22)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "reserve_stone",
+          "value": "(var(want_22) > 0) * (var(producers_22) == 0) * (var(foundations_22) == 0) * var(tune_rax_reserve_share) * var(rax_urgency) * config(building, cost_stone, 22)",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "reserve_gold",
+          "value": "(var(want_22) > 0) * (var(producers_22) == 0) * (var(foundations_22) == 0) * var(tune_rax_reserve_share) * var(rax_urgency) * config(building, cost_gold, 22)",
+          "persist": false
+        }
+      ]
+    },
+    {
+      "when": {
+        "always": {}
+      },
+      "then": [
+        {
+          "action": "set_var",
           "name": "villager_build_stamina",
           "value": "8 + 2 * var(farming)",
           "persist": false
@@ -8088,7 +8161,7 @@
                     {
                       "research": {
                         "tech_id": 1,
-                        "queue": "var(actor.queue_length) + min(1, min((config(tech, cost_food, 1) > 0) * (max(0, round(((gameVar(food) - var(operating_reserve_food)) / max(0.001, config(tech, cost_food, 1))) - 0.499999))) + (config(tech, cost_food, 1) == 0) * 1000000, (config(tech, cost_wood, 1) > 0) * (max(0, round(((gameVar(wood) - var(operating_reserve_wood)) / max(0.001, config(tech, cost_wood, 1))) - 0.499999))) + (config(tech, cost_wood, 1) == 0) * 1000000, (config(tech, cost_stone, 1) > 0) * (max(0, round(((gameVar(stone) - var(operating_reserve_stone)) / max(0.001, config(tech, cost_stone, 1))) - 0.499999))) + (config(tech, cost_stone, 1) == 0) * 1000000, (config(tech, cost_gold, 1) > 0) * (max(0, round(((gameVar(gold) - var(operating_reserve_gold)) / max(0.001, config(tech, cost_gold, 1))) - 0.499999))) + (config(tech, cost_gold, 1) == 0) * 1000000))"
+                        "queue": "var(actor.queue_length) + min(1, min((config(tech, cost_food, 1) > 0) * (max(0, round(((gameVar(food) - var(operating_reserve_food) - var(reserve_food)) / max(0.001, config(tech, cost_food, 1))) - 0.499999))) + (config(tech, cost_food, 1) == 0) * 1000000, (config(tech, cost_wood, 1) > 0) * (max(0, round(((gameVar(wood) - var(operating_reserve_wood) - var(reserve_wood)) / max(0.001, config(tech, cost_wood, 1))) - 0.499999))) + (config(tech, cost_wood, 1) == 0) * 1000000, (config(tech, cost_stone, 1) > 0) * (max(0, round(((gameVar(stone) - var(operating_reserve_stone) - var(reserve_stone)) / max(0.001, config(tech, cost_stone, 1))) - 0.499999))) + (config(tech, cost_stone, 1) == 0) * 1000000, (config(tech, cost_gold, 1) > 0) * (max(0, round(((gameVar(gold) - var(operating_reserve_gold) - var(reserve_gold)) / max(0.001, config(tech, cost_gold, 1))) - 0.499999))) + (config(tech, cost_gold, 1) == 0) * 1000000))"
                       }
                     }
                   ]
@@ -8157,7 +8230,7 @@
                 {
                   "create": {
                     "unit_id": 1,
-                    "queue": "var(actor.queue_length) + (max(0, min((var(tune_queue_depth)) - var(actor.queue_length), min((config(unit, cost_food, 1) > 0) * (max(0, round(((gameVar(food) - var(operating_reserve_food)) / max(0.001, config(unit, cost_food, 1))) - 0.499999))) + (config(unit, cost_food, 1) == 0) * 1000000, (config(unit, cost_wood, 1) > 0) * (max(0, round(((gameVar(wood) - var(operating_reserve_wood)) / max(0.001, config(unit, cost_wood, 1))) - 0.499999))) + (config(unit, cost_wood, 1) == 0) * 1000000, (config(unit, cost_stone, 1) > 0) * (max(0, round(((gameVar(stone) - var(operating_reserve_stone)) / max(0.001, config(unit, cost_stone, 1))) - 0.499999))) + (config(unit, cost_stone, 1) == 0) * 1000000, (config(unit, cost_gold, 1) > 0) * (max(0, round(((gameVar(gold) - var(operating_reserve_gold)) / max(0.001, config(unit, cost_gold, 1))) - 0.499999))) + (config(unit, cost_gold, 1) == 0) * 1000000), gameVar(population_limit) - gameVar(population), max(0, round((var(goal_1) - var(own_1) - var(actor.queued)) - 0.499999)))))"
+                    "queue": "var(actor.queue_length) + (max(0, min((var(tune_queue_depth)) - var(actor.queue_length), min((config(unit, cost_food, 1) > 0) * (max(0, round(((gameVar(food) - var(operating_reserve_food) - var(reserve_food)) / max(0.001, config(unit, cost_food, 1))) - 0.499999))) + (config(unit, cost_food, 1) == 0) * 1000000, (config(unit, cost_wood, 1) > 0) * (max(0, round(((gameVar(wood) - var(operating_reserve_wood) - var(reserve_wood)) / max(0.001, config(unit, cost_wood, 1))) - 0.499999))) + (config(unit, cost_wood, 1) == 0) * 1000000, (config(unit, cost_stone, 1) > 0) * (max(0, round(((gameVar(stone) - var(operating_reserve_stone) - var(reserve_stone)) / max(0.001, config(unit, cost_stone, 1))) - 0.499999))) + (config(unit, cost_stone, 1) == 0) * 1000000, (config(unit, cost_gold, 1) > 0) * (max(0, round(((gameVar(gold) - var(operating_reserve_gold) - var(reserve_gold)) / max(0.001, config(unit, cost_gold, 1))) - 0.499999))) + (config(unit, cost_gold, 1) == 0) * 1000000), gameVar(population_limit) - gameVar(population), max(0, round((var(goal_1) - var(own_1) - var(actor.queued)) - 0.499999)))))"
                   }
                 }
               ]
@@ -8198,7 +8271,14 @@
               "pick": {
                 "kind": "spaces",
                 "where": {
-                  "owner": "unowned"
+                  "owner": "unowned",
+                  "terrain_types": [
+                    "flatlands",
+                    "hilly",
+                    "mountainous",
+                    "swamp",
+                    "shallows"
+                  ]
                 }
               },
               "into": {
@@ -8213,6 +8293,13 @@
               "pick": {
                 "kind": "spaces",
                 "where": {
+                  "terrain_types": [
+                    "flatlands",
+                    "hilly",
+                    "mountainous",
+                    "swamp",
+                    "shallows"
+                  ],
                   "near": {
                     "distance": 1,
                     "of": {
@@ -8278,7 +8365,7 @@
           "action": "if",
           "when": {
             "value_at_least": {
-              "value": "(var(want_11) > 0) * (var(smith_urgency) >= 1) * (var(complete_11) + var(foundations_11) == 0) * ((gameVar(food) >= config(building, cost_food, 11)) * (gameVar(wood) >= config(building, cost_wood, 11)) * (gameVar(stone) >= config(building, cost_stone, 11)) * (gameVar(gold) >= config(building, cost_gold, 11)))",
+              "value": "(var(want_11) > 0) * (var(smith_urgency) >= 1) * (var(complete_11) + var(foundations_11) == 0) * ((gameVar(food) - var(reserve_food) >= config(building, cost_food, 11)) * (gameVar(wood) - var(reserve_wood) >= config(building, cost_wood, 11)) * (gameVar(stone) - var(reserve_stone) >= config(building, cost_stone, 11)) * (gameVar(gold) - var(reserve_gold) >= config(building, cost_gold, 11)))",
               "amount": 1
             }
           },
@@ -8606,7 +8693,7 @@
           "action": "if",
           "when": {
             "value_at_least": {
-              "value": "(var(want_2) > var(foundations_2)) * ((gameVar(food) >= config(building, cost_food, 2)) * (gameVar(wood) >= config(building, cost_wood, 2)) * (gameVar(stone) >= config(building, cost_stone, 2)) * (gameVar(gold) >= config(building, cost_gold, 2)))",
+              "value": "(var(want_2) > max(var(house_replacement), var(house_with_builders))) * ((gameVar(food) - var(reserve_food) * (var(headroom) > 0) >= config(building, cost_food, 2)) * (gameVar(wood) - var(reserve_wood) * (var(headroom) > 0) >= config(building, cost_wood, 2)) * (gameVar(stone) - var(reserve_stone) * (var(headroom) > 0) >= config(building, cost_stone, 2)) * (gameVar(gold) - var(reserve_gold) * (var(headroom) > 0) >= config(building, cost_gold, 2)))",
               "amount": 1
             }
           },
@@ -8863,7 +8950,7 @@
           "action": "if",
           "when": {
             "value_at_least": {
-              "value": "(var(want_3) > var(foundations_3) + 0) * ((gameVar(food) >= config(building, cost_food, 3)) * (gameVar(wood) >= config(building, cost_wood, 3)) * (gameVar(stone) >= config(building, cost_stone, 3)) * (gameVar(gold) >= config(building, cost_gold, 3)))",
+              "value": "(var(want_3) > var(foundations_3) + 0) * ((gameVar(food) - var(reserve_food) >= config(building, cost_food, 3)) * (gameVar(wood) - var(reserve_wood) >= config(building, cost_wood, 3)) * (gameVar(stone) - var(reserve_stone) >= config(building, cost_stone, 3)) * (gameVar(gold) - var(reserve_gold) >= config(building, cost_gold, 3)))",
               "amount": 1
             }
           },
@@ -8979,7 +9066,7 @@
           "action": "if",
           "when": {
             "value_at_least": {
-              "value": "(var(want_3) > var(foundations_3) + 1) * ((gameVar(food) >= config(building, cost_food, 3)) * (gameVar(wood) >= config(building, cost_wood, 3)) * (gameVar(stone) >= config(building, cost_stone, 3)) * (gameVar(gold) >= config(building, cost_gold, 3)))",
+              "value": "(var(want_3) > var(foundations_3) + 1) * ((gameVar(food) - var(reserve_food) >= config(building, cost_food, 3)) * (gameVar(wood) - var(reserve_wood) >= config(building, cost_wood, 3)) * (gameVar(stone) - var(reserve_stone) >= config(building, cost_stone, 3)) * (gameVar(gold) - var(reserve_gold) >= config(building, cost_gold, 3)))",
               "amount": 1
             }
           },
@@ -9095,7 +9182,7 @@
           "action": "if",
           "when": {
             "value_at_least": {
-              "value": "(var(want_3) > var(foundations_3) + 2) * ((gameVar(food) >= config(building, cost_food, 3)) * (gameVar(wood) >= config(building, cost_wood, 3)) * (gameVar(stone) >= config(building, cost_stone, 3)) * (gameVar(gold) >= config(building, cost_gold, 3)))",
+              "value": "(var(want_3) > var(foundations_3) + 2) * ((gameVar(food) - var(reserve_food) >= config(building, cost_food, 3)) * (gameVar(wood) - var(reserve_wood) >= config(building, cost_wood, 3)) * (gameVar(stone) - var(reserve_stone) >= config(building, cost_stone, 3)) * (gameVar(gold) - var(reserve_gold) >= config(building, cost_gold, 3)))",
               "amount": 1
             }
           },
@@ -9274,7 +9361,7 @@
                 {
                   "create": {
                     "unit_id": 103,
-                    "queue": "var(actor.queue_length) + (max(0, min((1) - var(actor.queue_length), min((config(unit, cost_food, 103) > 0) * (max(0, round(((gameVar(food) - var(operating_reserve_food)) / max(0.001, config(unit, cost_food, 103))) - 0.499999))) + (config(unit, cost_food, 103) == 0) * 1000000, (config(unit, cost_wood, 103) > 0) * (max(0, round(((gameVar(wood) - var(operating_reserve_wood)) / max(0.001, config(unit, cost_wood, 103))) - 0.499999))) + (config(unit, cost_wood, 103) == 0) * 1000000, (config(unit, cost_stone, 103) > 0) * (max(0, round(((gameVar(stone) - var(operating_reserve_stone)) / max(0.001, config(unit, cost_stone, 103))) - 0.499999))) + (config(unit, cost_stone, 103) == 0) * 1000000, (config(unit, cost_gold, 103) > 0) * (max(0, round(((gameVar(gold) - var(operating_reserve_gold)) / max(0.001, config(unit, cost_gold, 103))) - 0.499999))) + (config(unit, cost_gold, 103) == 0) * 1000000), gameVar(population_limit) - gameVar(population), max(0, round((var(goal_103) - var(own_103) - var(actor.queued)) - 0.499999)))))"
+                    "queue": "var(actor.queue_length) + (max(0, min((1) - var(actor.queue_length), min((config(unit, cost_food, 103) > 0) * (max(0, round(((gameVar(food) - var(operating_reserve_food) - var(reserve_food)) / max(0.001, config(unit, cost_food, 103))) - 0.499999))) + (config(unit, cost_food, 103) == 0) * 1000000, (config(unit, cost_wood, 103) > 0) * (max(0, round(((gameVar(wood) - var(operating_reserve_wood) - var(reserve_wood)) / max(0.001, config(unit, cost_wood, 103))) - 0.499999))) + (config(unit, cost_wood, 103) == 0) * 1000000, (config(unit, cost_stone, 103) > 0) * (max(0, round(((gameVar(stone) - var(operating_reserve_stone) - var(reserve_stone)) / max(0.001, config(unit, cost_stone, 103))) - 0.499999))) + (config(unit, cost_stone, 103) == 0) * 1000000, (config(unit, cost_gold, 103) > 0) * (max(0, round(((gameVar(gold) - var(operating_reserve_gold) - var(reserve_gold)) / max(0.001, config(unit, cost_gold, 103))) - 0.499999))) + (config(unit, cost_gold, 103) == 0) * 1000000), gameVar(population_limit) - gameVar(population), max(0, round((var(goal_103) - var(own_103) - var(actor.queued)) - 0.499999)))))"
                   }
                 }
               ]
@@ -9341,7 +9428,7 @@
                 {
                   "create": {
                     "unit_id": 401,
-                    "queue": "var(actor.queue_length) + (max(0, min((1) - var(actor.queue_length), min((config(unit, cost_food, 401) > 0) * (max(0, round(((gameVar(food) - var(operating_reserve_food)) / max(0.001, config(unit, cost_food, 401))) - 0.499999))) + (config(unit, cost_food, 401) == 0) * 1000000, (config(unit, cost_wood, 401) > 0) * (max(0, round(((gameVar(wood) - var(operating_reserve_wood)) / max(0.001, config(unit, cost_wood, 401))) - 0.499999))) + (config(unit, cost_wood, 401) == 0) * 1000000, (config(unit, cost_stone, 401) > 0) * (max(0, round(((gameVar(stone) - var(operating_reserve_stone)) / max(0.001, config(unit, cost_stone, 401))) - 0.499999))) + (config(unit, cost_stone, 401) == 0) * 1000000, (config(unit, cost_gold, 401) > 0) * (max(0, round(((gameVar(gold) - var(operating_reserve_gold)) / max(0.001, config(unit, cost_gold, 401))) - 0.499999))) + (config(unit, cost_gold, 401) == 0) * 1000000), gameVar(population_limit) - gameVar(population), max(0, round((var(goal_401) - var(own_401) - var(actor.queued)) - 0.499999)))))"
+                    "queue": "var(actor.queue_length) + (max(0, min((1) - var(actor.queue_length), min((config(unit, cost_food, 401) > 0) * (max(0, round(((gameVar(food) - var(operating_reserve_food) - var(reserve_food)) / max(0.001, config(unit, cost_food, 401))) - 0.499999))) + (config(unit, cost_food, 401) == 0) * 1000000, (config(unit, cost_wood, 401) > 0) * (max(0, round(((gameVar(wood) - var(operating_reserve_wood) - var(reserve_wood)) / max(0.001, config(unit, cost_wood, 401))) - 0.499999))) + (config(unit, cost_wood, 401) == 0) * 1000000, (config(unit, cost_stone, 401) > 0) * (max(0, round(((gameVar(stone) - var(operating_reserve_stone) - var(reserve_stone)) / max(0.001, config(unit, cost_stone, 401))) - 0.499999))) + (config(unit, cost_stone, 401) == 0) * 1000000, (config(unit, cost_gold, 401) > 0) * (max(0, round(((gameVar(gold) - var(operating_reserve_gold) - var(reserve_gold)) / max(0.001, config(unit, cost_gold, 401))) - 0.499999))) + (config(unit, cost_gold, 401) == 0) * 1000000), gameVar(population_limit) - gameVar(population), max(0, round((var(goal_401) - var(own_401) - var(actor.queued)) - 0.499999)))))"
                   }
                 }
               ]
@@ -9408,7 +9495,7 @@
                 {
                   "create": {
                     "unit_id": 103,
-                    "queue": "var(actor.queue_length) + (max(0, min((1) - var(actor.queue_length), min((config(unit, cost_food, 103) > 0) * (max(0, round(((gameVar(food) - var(operating_reserve_food)) / max(0.001, config(unit, cost_food, 103))) - 0.499999))) + (config(unit, cost_food, 103) == 0) * 1000000, (config(unit, cost_wood, 103) > 0) * (max(0, round(((gameVar(wood) - var(operating_reserve_wood)) / max(0.001, config(unit, cost_wood, 103))) - 0.499999))) + (config(unit, cost_wood, 103) == 0) * 1000000, (config(unit, cost_stone, 103) > 0) * (max(0, round(((gameVar(stone) - var(operating_reserve_stone)) / max(0.001, config(unit, cost_stone, 103))) - 0.499999))) + (config(unit, cost_stone, 103) == 0) * 1000000, (config(unit, cost_gold, 103) > 0) * (max(0, round(((gameVar(gold) - var(operating_reserve_gold)) / max(0.001, config(unit, cost_gold, 103))) - 0.499999))) + (config(unit, cost_gold, 103) == 0) * 1000000), gameVar(population_limit) - gameVar(population), max(0, round((var(goal_103) - var(own_103) - var(actor.queued)) - 0.499999)))))"
+                    "queue": "var(actor.queue_length) + (max(0, min((1) - var(actor.queue_length), min((config(unit, cost_food, 103) > 0) * (max(0, round(((gameVar(food) - var(operating_reserve_food) - var(reserve_food)) / max(0.001, config(unit, cost_food, 103))) - 0.499999))) + (config(unit, cost_food, 103) == 0) * 1000000, (config(unit, cost_wood, 103) > 0) * (max(0, round(((gameVar(wood) - var(operating_reserve_wood) - var(reserve_wood)) / max(0.001, config(unit, cost_wood, 103))) - 0.499999))) + (config(unit, cost_wood, 103) == 0) * 1000000, (config(unit, cost_stone, 103) > 0) * (max(0, round(((gameVar(stone) - var(operating_reserve_stone) - var(reserve_stone)) / max(0.001, config(unit, cost_stone, 103))) - 0.499999))) + (config(unit, cost_stone, 103) == 0) * 1000000, (config(unit, cost_gold, 103) > 0) * (max(0, round(((gameVar(gold) - var(operating_reserve_gold) - var(reserve_gold)) / max(0.001, config(unit, cost_gold, 103))) - 0.499999))) + (config(unit, cost_gold, 103) == 0) * 1000000), gameVar(population_limit) - gameVar(population), max(0, round((var(goal_103) - var(own_103) - var(actor.queued)) - 0.499999)))))"
                   }
                 }
               ]
@@ -9475,7 +9562,7 @@
                 {
                   "create": {
                     "unit_id": 102,
-                    "queue": "var(actor.queue_length) + (max(0, min((max(1, round(var(tune_queue_depth) * (1 - var(blunt_share))))) - var(actor.queue_length), min((config(unit, cost_food, 102) > 0) * (max(0, round(((gameVar(food) - var(operating_reserve_food)) / max(0.001, config(unit, cost_food, 102))) - 0.499999))) + (config(unit, cost_food, 102) == 0) * 1000000, (config(unit, cost_wood, 102) > 0) * (max(0, round(((gameVar(wood) - var(operating_reserve_wood)) / max(0.001, config(unit, cost_wood, 102))) - 0.499999))) + (config(unit, cost_wood, 102) == 0) * 1000000, (config(unit, cost_stone, 102) > 0) * (max(0, round(((gameVar(stone) - var(operating_reserve_stone)) / max(0.001, config(unit, cost_stone, 102))) - 0.499999))) + (config(unit, cost_stone, 102) == 0) * 1000000, (config(unit, cost_gold, 102) > 0) * (max(0, round(((gameVar(gold) - var(operating_reserve_gold)) / max(0.001, config(unit, cost_gold, 102))) - 0.499999))) + (config(unit, cost_gold, 102) == 0) * 1000000), gameVar(population_limit) - gameVar(population), max(0, round((var(goal_102) - var(own_102) - var(actor.queued)) - 0.499999)))))"
+                    "queue": "var(actor.queue_length) + (max(0, min((max(1, round(var(tune_queue_depth) * (1 - var(blunt_share))))) - var(actor.queue_length), min((config(unit, cost_food, 102) > 0) * (max(0, round(((gameVar(food) - var(operating_reserve_food) - var(reserve_food)) / max(0.001, config(unit, cost_food, 102))) - 0.499999))) + (config(unit, cost_food, 102) == 0) * 1000000, (config(unit, cost_wood, 102) > 0) * (max(0, round(((gameVar(wood) - var(operating_reserve_wood) - var(reserve_wood)) / max(0.001, config(unit, cost_wood, 102))) - 0.499999))) + (config(unit, cost_wood, 102) == 0) * 1000000, (config(unit, cost_stone, 102) > 0) * (max(0, round(((gameVar(stone) - var(operating_reserve_stone) - var(reserve_stone)) / max(0.001, config(unit, cost_stone, 102))) - 0.499999))) + (config(unit, cost_stone, 102) == 0) * 1000000, (config(unit, cost_gold, 102) > 0) * (max(0, round(((gameVar(gold) - var(operating_reserve_gold) - var(reserve_gold)) / max(0.001, config(unit, cost_gold, 102))) - 0.499999))) + (config(unit, cost_gold, 102) == 0) * 1000000), gameVar(population_limit) - gameVar(population), max(0, round((var(goal_102) - var(own_102) - var(actor.queued)) - 0.499999)))))"
                   }
                 }
               ]
@@ -9542,7 +9629,7 @@
                 {
                   "create": {
                     "unit_id": 101,
-                    "queue": "var(actor.queue_length) + (max(0, min((var(tune_queue_depth)) - var(actor.queue_length), min((config(unit, cost_food, 101) > 0) * (max(0, round(((gameVar(food) - var(operating_reserve_food)) / max(0.001, config(unit, cost_food, 101))) - 0.499999))) + (config(unit, cost_food, 101) == 0) * 1000000, (config(unit, cost_wood, 101) > 0) * (max(0, round(((gameVar(wood) - var(operating_reserve_wood)) / max(0.001, config(unit, cost_wood, 101))) - 0.499999))) + (config(unit, cost_wood, 101) == 0) * 1000000, (config(unit, cost_stone, 101) > 0) * (max(0, round(((gameVar(stone) - var(operating_reserve_stone)) / max(0.001, config(unit, cost_stone, 101))) - 0.499999))) + (config(unit, cost_stone, 101) == 0) * 1000000, (config(unit, cost_gold, 101) > 0) * (max(0, round(((gameVar(gold) - var(operating_reserve_gold)) / max(0.001, config(unit, cost_gold, 101))) - 0.499999))) + (config(unit, cost_gold, 101) == 0) * 1000000), gameVar(population_limit) - gameVar(population), max(0, round((var(goal_101) - var(own_101) - var(actor.queued)) - 0.499999)))))"
+                    "queue": "var(actor.queue_length) + (max(0, min((var(tune_queue_depth)) - var(actor.queue_length), min((config(unit, cost_food, 101) > 0) * (max(0, round(((gameVar(food) - var(operating_reserve_food) - var(reserve_food)) / max(0.001, config(unit, cost_food, 101))) - 0.499999))) + (config(unit, cost_food, 101) == 0) * 1000000, (config(unit, cost_wood, 101) > 0) * (max(0, round(((gameVar(wood) - var(operating_reserve_wood) - var(reserve_wood)) / max(0.001, config(unit, cost_wood, 101))) - 0.499999))) + (config(unit, cost_wood, 101) == 0) * 1000000, (config(unit, cost_stone, 101) > 0) * (max(0, round(((gameVar(stone) - var(operating_reserve_stone) - var(reserve_stone)) / max(0.001, config(unit, cost_stone, 101))) - 0.499999))) + (config(unit, cost_stone, 101) == 0) * 1000000, (config(unit, cost_gold, 101) > 0) * (max(0, round(((gameVar(gold) - var(operating_reserve_gold) - var(reserve_gold)) / max(0.001, config(unit, cost_gold, 101))) - 0.499999))) + (config(unit, cost_gold, 101) == 0) * 1000000), gameVar(population_limit) - gameVar(population), max(0, round((var(goal_101) - var(own_101) - var(actor.queued)) - 0.499999)))))"
                   }
                 }
               ]
@@ -9610,7 +9697,7 @@
                     {
                       "research": {
                         "tech_id": 63,
-                        "queue": "var(actor.queue_length) + min(1, min((config(tech, cost_food, 63) > 0) * (max(0, round(((gameVar(food) - var(operating_reserve_food)) / max(0.001, config(tech, cost_food, 63))) - 0.499999))) + (config(tech, cost_food, 63) == 0) * 1000000, (config(tech, cost_wood, 63) > 0) * (max(0, round(((gameVar(wood) - var(operating_reserve_wood)) / max(0.001, config(tech, cost_wood, 63))) - 0.499999))) + (config(tech, cost_wood, 63) == 0) * 1000000, (config(tech, cost_stone, 63) > 0) * (max(0, round(((gameVar(stone) - var(operating_reserve_stone)) / max(0.001, config(tech, cost_stone, 63))) - 0.499999))) + (config(tech, cost_stone, 63) == 0) * 1000000, (config(tech, cost_gold, 63) > 0) * (max(0, round(((gameVar(gold) - var(operating_reserve_gold)) / max(0.001, config(tech, cost_gold, 63))) - 0.499999))) + (config(tech, cost_gold, 63) == 0) * 1000000))"
+                        "queue": "var(actor.queue_length) + min(1, min((config(tech, cost_food, 63) > 0) * (max(0, round(((gameVar(food) - var(operating_reserve_food) - var(reserve_food)) / max(0.001, config(tech, cost_food, 63))) - 0.499999))) + (config(tech, cost_food, 63) == 0) * 1000000, (config(tech, cost_wood, 63) > 0) * (max(0, round(((gameVar(wood) - var(operating_reserve_wood) - var(reserve_wood)) / max(0.001, config(tech, cost_wood, 63))) - 0.499999))) + (config(tech, cost_wood, 63) == 0) * 1000000, (config(tech, cost_stone, 63) > 0) * (max(0, round(((gameVar(stone) - var(operating_reserve_stone) - var(reserve_stone)) / max(0.001, config(tech, cost_stone, 63))) - 0.499999))) + (config(tech, cost_stone, 63) == 0) * 1000000, (config(tech, cost_gold, 63) > 0) * (max(0, round(((gameVar(gold) - var(operating_reserve_gold) - var(reserve_gold)) / max(0.001, config(tech, cost_gold, 63))) - 0.499999))) + (config(tech, cost_gold, 63) == 0) * 1000000))"
                       }
                     }
                   ]
@@ -9673,7 +9760,7 @@
                     {
                       "research": {
                         "tech_id": 61,
-                        "queue": "var(actor.queue_length) + min(1, min((config(tech, cost_food, 61) > 0) * (max(0, round(((gameVar(food) - var(operating_reserve_food)) / max(0.001, config(tech, cost_food, 61))) - 0.499999))) + (config(tech, cost_food, 61) == 0) * 1000000, (config(tech, cost_wood, 61) > 0) * (max(0, round(((gameVar(wood) - var(operating_reserve_wood)) / max(0.001, config(tech, cost_wood, 61))) - 0.499999))) + (config(tech, cost_wood, 61) == 0) * 1000000, (config(tech, cost_stone, 61) > 0) * (max(0, round(((gameVar(stone) - var(operating_reserve_stone)) / max(0.001, config(tech, cost_stone, 61))) - 0.499999))) + (config(tech, cost_stone, 61) == 0) * 1000000, (config(tech, cost_gold, 61) > 0) * (max(0, round(((gameVar(gold) - var(operating_reserve_gold)) / max(0.001, config(tech, cost_gold, 61))) - 0.499999))) + (config(tech, cost_gold, 61) == 0) * 1000000))"
+                        "queue": "var(actor.queue_length) + min(1, min((config(tech, cost_food, 61) > 0) * (max(0, round(((gameVar(food) - var(operating_reserve_food) - var(reserve_food)) / max(0.001, config(tech, cost_food, 61))) - 0.499999))) + (config(tech, cost_food, 61) == 0) * 1000000, (config(tech, cost_wood, 61) > 0) * (max(0, round(((gameVar(wood) - var(operating_reserve_wood) - var(reserve_wood)) / max(0.001, config(tech, cost_wood, 61))) - 0.499999))) + (config(tech, cost_wood, 61) == 0) * 1000000, (config(tech, cost_stone, 61) > 0) * (max(0, round(((gameVar(stone) - var(operating_reserve_stone) - var(reserve_stone)) / max(0.001, config(tech, cost_stone, 61))) - 0.499999))) + (config(tech, cost_stone, 61) == 0) * 1000000, (config(tech, cost_gold, 61) > 0) * (max(0, round(((gameVar(gold) - var(operating_reserve_gold) - var(reserve_gold)) / max(0.001, config(tech, cost_gold, 61))) - 0.499999))) + (config(tech, cost_gold, 61) == 0) * 1000000))"
                       }
                     }
                   ]
@@ -9736,7 +9823,7 @@
                     {
                       "research": {
                         "tech_id": 62,
-                        "queue": "var(actor.queue_length) + min(1, min((config(tech, cost_food, 62) > 0) * (max(0, round(((gameVar(food) - var(operating_reserve_food)) / max(0.001, config(tech, cost_food, 62))) - 0.499999))) + (config(tech, cost_food, 62) == 0) * 1000000, (config(tech, cost_wood, 62) > 0) * (max(0, round(((gameVar(wood) - var(operating_reserve_wood)) / max(0.001, config(tech, cost_wood, 62))) - 0.499999))) + (config(tech, cost_wood, 62) == 0) * 1000000, (config(tech, cost_stone, 62) > 0) * (max(0, round(((gameVar(stone) - var(operating_reserve_stone)) / max(0.001, config(tech, cost_stone, 62))) - 0.499999))) + (config(tech, cost_stone, 62) == 0) * 1000000, (config(tech, cost_gold, 62) > 0) * (max(0, round(((gameVar(gold) - var(operating_reserve_gold)) / max(0.001, config(tech, cost_gold, 62))) - 0.499999))) + (config(tech, cost_gold, 62) == 0) * 1000000))"
+                        "queue": "var(actor.queue_length) + min(1, min((config(tech, cost_food, 62) > 0) * (max(0, round(((gameVar(food) - var(operating_reserve_food) - var(reserve_food)) / max(0.001, config(tech, cost_food, 62))) - 0.499999))) + (config(tech, cost_food, 62) == 0) * 1000000, (config(tech, cost_wood, 62) > 0) * (max(0, round(((gameVar(wood) - var(operating_reserve_wood) - var(reserve_wood)) / max(0.001, config(tech, cost_wood, 62))) - 0.499999))) + (config(tech, cost_wood, 62) == 0) * 1000000, (config(tech, cost_stone, 62) > 0) * (max(0, round(((gameVar(stone) - var(operating_reserve_stone) - var(reserve_stone)) / max(0.001, config(tech, cost_stone, 62))) - 0.499999))) + (config(tech, cost_stone, 62) == 0) * 1000000, (config(tech, cost_gold, 62) > 0) * (max(0, round(((gameVar(gold) - var(operating_reserve_gold) - var(reserve_gold)) / max(0.001, config(tech, cost_gold, 62))) - 0.499999))) + (config(tech, cost_gold, 62) == 0) * 1000000))"
                       }
                     }
                   ]
@@ -9883,7 +9970,7 @@
           "action": "if",
           "when": {
             "value_at_least": {
-              "value": "(var(want_11) > 0) * (var(complete_11) + var(foundations_11) == 0) * ((gameVar(food) >= config(building, cost_food, 11)) * (gameVar(wood) >= config(building, cost_wood, 11)) * (gameVar(stone) >= config(building, cost_stone, 11)) * (gameVar(gold) >= config(building, cost_gold, 11)))",
+              "value": "(var(want_11) > 0) * (var(complete_11) + var(foundations_11) == 0) * ((gameVar(food) - var(reserve_food) >= config(building, cost_food, 11)) * (gameVar(wood) - var(reserve_wood) >= config(building, cost_wood, 11)) * (gameVar(stone) - var(reserve_stone) >= config(building, cost_stone, 11)) * (gameVar(gold) - var(reserve_gold) >= config(building, cost_gold, 11)))",
               "amount": 1
             }
           },
@@ -9999,7 +10086,7 @@
           "action": "if",
           "when": {
             "value_at_least": {
-              "value": "(var(want_23) > 0) * (var(foundations_23) == 0) * ((gameVar(food) >= config(building, cost_food, 23)) * (gameVar(wood) >= config(building, cost_wood, 23)) * (gameVar(stone) >= config(building, cost_stone, 23)) * (gameVar(gold) >= config(building, cost_gold, 23)))",
+              "value": "(var(want_23) > 0) * (var(foundations_23) == 0) * ((gameVar(food) - var(reserve_food) >= config(building, cost_food, 23)) * (gameVar(wood) - var(reserve_wood) >= config(building, cost_wood, 23)) * (gameVar(stone) - var(reserve_stone) >= config(building, cost_stone, 23)) * (gameVar(gold) - var(reserve_gold) >= config(building, cost_gold, 23)))",
               "amount": 1
             }
           },
@@ -10126,7 +10213,7 @@
           "action": "if",
           "when": {
             "value_at_least": {
-              "value": "(var(want_21) > 0) * (var(foundations_21) == 0) * ((gameVar(food) >= config(building, cost_food, 21)) * (gameVar(wood) >= config(building, cost_wood, 21)) * (gameVar(stone) >= config(building, cost_stone, 21)) * (gameVar(gold) >= config(building, cost_gold, 21)))",
+              "value": "(var(want_21) > 0) * (var(foundations_21) == 0) * ((gameVar(food) - var(reserve_food) >= config(building, cost_food, 21)) * (gameVar(wood) - var(reserve_wood) >= config(building, cost_wood, 21)) * (gameVar(stone) - var(reserve_stone) >= config(building, cost_stone, 21)) * (gameVar(gold) - var(reserve_gold) >= config(building, cost_gold, 21)))",
               "amount": 1
             }
           },
@@ -10311,7 +10398,7 @@
                     {
                       "research": {
                         "tech_id": 101,
-                        "queue": "var(actor.queue_length) + min(1, min((config(tech, cost_food, 101) > 0) * (max(0, round(((gameVar(food) - var(operating_reserve_food)) / max(0.001, config(tech, cost_food, 101))) - 0.499999))) + (config(tech, cost_food, 101) == 0) * 1000000, (config(tech, cost_wood, 101) > 0) * (max(0, round(((gameVar(wood) - var(operating_reserve_wood)) / max(0.001, config(tech, cost_wood, 101))) - 0.499999))) + (config(tech, cost_wood, 101) == 0) * 1000000, (config(tech, cost_stone, 101) > 0) * (max(0, round(((gameVar(stone) - var(operating_reserve_stone)) / max(0.001, config(tech, cost_stone, 101))) - 0.499999))) + (config(tech, cost_stone, 101) == 0) * 1000000, (config(tech, cost_gold, 101) > 0) * (max(0, round(((gameVar(gold) - var(operating_reserve_gold)) / max(0.001, config(tech, cost_gold, 101))) - 0.499999))) + (config(tech, cost_gold, 101) == 0) * 1000000))"
+                        "queue": "var(actor.queue_length) + min(1, min((config(tech, cost_food, 101) > 0) * (max(0, round(((gameVar(food) - var(operating_reserve_food) - var(reserve_food)) / max(0.001, config(tech, cost_food, 101))) - 0.499999))) + (config(tech, cost_food, 101) == 0) * 1000000, (config(tech, cost_wood, 101) > 0) * (max(0, round(((gameVar(wood) - var(operating_reserve_wood) - var(reserve_wood)) / max(0.001, config(tech, cost_wood, 101))) - 0.499999))) + (config(tech, cost_wood, 101) == 0) * 1000000, (config(tech, cost_stone, 101) > 0) * (max(0, round(((gameVar(stone) - var(operating_reserve_stone) - var(reserve_stone)) / max(0.001, config(tech, cost_stone, 101))) - 0.499999))) + (config(tech, cost_stone, 101) == 0) * 1000000, (config(tech, cost_gold, 101) > 0) * (max(0, round(((gameVar(gold) - var(operating_reserve_gold) - var(reserve_gold)) / max(0.001, config(tech, cost_gold, 101))) - 0.499999))) + (config(tech, cost_gold, 101) == 0) * 1000000))"
                       }
                     }
                   ]
@@ -15579,6 +15666,131 @@
         },
         {
           "action": "select",
+          "pick": {
+            "kind": "units",
+            "where": {
+              "owner": "enemy",
+              "unit_types": [
+                "military"
+              ],
+              "at": {
+                "in_set": "base"
+              }
+            }
+          },
+          "into": {
+            "set": "base_threats",
+            "var": "n_base_threats"
+          }
+        },
+        {
+          "action": "set_var",
+          "name": "outside_power",
+          "value": {
+            "sum": {
+              "kind": "units",
+              "where": {
+                "owner": "enemy",
+                "unit_types": [
+                  "military"
+                ],
+                "near": {
+                  "distance": 1,
+                  "of": {
+                    "kind": "spaces",
+                    "where": {
+                      "in_set": "base"
+                    }
+                  }
+                },
+                "if": "1 - inSet(base_threats, item)"
+              },
+              "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
+            }
+          },
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "outside_unid",
+          "value": {
+            "sum": {
+              "kind": "spaces",
+              "where": {
+                "in_set": "unidentified_spaces",
+                "near": {
+                  "distance": 1,
+                  "of": {
+                    "kind": "spaces",
+                    "where": {
+                      "in_set": "base"
+                    }
+                  }
+                },
+                "if": "1 - inSet(base, item)"
+              },
+              "of": "var(item.unit_count)"
+            }
+          },
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "home_go",
+          "value": "var(home_military_power) >= var(tune_home_odds) * (var(outside_power) * var(enemy_tech_multiplier) + var(outside_unid) * var(unknown_unit_power))",
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "base_power",
+          "value": {
+            "sum": {
+              "kind": "units",
+              "where": {
+                "owner": "enemy",
+                "unit_types": [
+                  "military"
+                ],
+                "at": {
+                  "in_set": "base"
+                }
+              },
+              "of": "(var(item.unit_id) == 101) * ((var(item.player) == var(player_id)) * var(own_power_blunt) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_blunt)) + (var(item.unit_id) == 102) * ((var(item.player) == var(player_id)) * var(own_power_pierce) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_pierce)) + (var(item.unit_id) == 103) * ((var(item.player) == var(player_id)) * var(own_power_heavy) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_heavy)) + (var(item.unit_id) == 401) * ((var(item.player) == var(player_id)) * var(own_power_siege) + (1 - (var(item.player) == var(player_id))) * var(enemy_power_siege))"
+            }
+          },
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "base_unid",
+          "value": {
+            "sum": {
+              "kind": "spaces",
+              "where": {
+                "in_set": "unidentified_spaces",
+                "near": {
+                  "distance": 0,
+                  "of": {
+                    "kind": "spaces",
+                    "where": {
+                      "in_set": "base"
+                    }
+                  }
+                }
+              },
+              "of": "var(item.unit_count)"
+            }
+          },
+          "persist": false
+        },
+        {
+          "action": "set_var",
+          "name": "base_go",
+          "value": "var(home_military_power) >= var(tune_base_odds) * (var(base_power) * var(enemy_tech_multiplier) + var(base_unid) * var(unknown_unit_power))",
+          "persist": false
+        },
+        {
+          "action": "select",
           "actors": {
             "kind": "units",
             "where": {
@@ -15605,40 +15817,109 @@
           ]
         },
         {
-          "action": "select",
-          "actors": {
-            "kind": "units",
-            "where": {
-              "owner": "own",
-              "unit_types": [
-                "military"
-              ],
-              "not_in_set": "raiding_party",
-              "if": [
-                "1 - inSet(military_at_enemy, actor)",
-                "((var(assault) == 0) + (var(army_retreat) > 0) + (var(n_army_target_space) == 0) > 0)",
-                "(var(army_retreat) == 0) + (1 - inBucket(army, actor)) > 0"
+          "action": "if",
+          "when": {
+            "value_at_least": {
+              "value": "var(base_go) > 0",
+              "amount": 1
+            }
+          },
+          "then": [
+            {
+              "action": "select",
+              "actors": {
+                "kind": "units",
+                "where": {
+                  "owner": "own",
+                  "unit_types": [
+                    "military"
+                  ],
+                  "not_in_set": "raiding_party",
+                  "if": [
+                    "1 - inSet(military_at_enemy, actor)",
+                    "((var(assault) == 0) + (var(army_retreat) > 0) + (var(n_army_target_space) == 0) > 0)",
+                    "(var(army_retreat) == 0) + (1 - inBucket(army, actor)) > 0"
+                  ]
+                }
+              },
+              "pick": {
+                "kind": "units",
+                "where": {
+                  "owner": "enemy",
+                  "unit_types": [
+                    "military"
+                  ],
+                  "at": {
+                    "in_set": "base"
+                  }
+                },
+                "capacity": "max(1, var(target.health) / (var(effective_hit) * var(tune_kill_ticks)))"
+              },
+              "match": {
+                "score": "10 - distance(actor, target) + var(tune_focus) * (1 - var(target.health) / max(0.1, var(target.max_health)))"
+              },
+              "issue": [
+                {
+                  "attack": {}
+                }
               ]
             }
-          },
-          "pick": {
-            "kind": "units",
-            "where": {
-              "owner": "enemy",
-              "unit_types": [
-                "military"
-              ],
-              "at": {
-                "in_set": "base"
-              }
+          ]
+        },
+        {
+          "action": "if",
+          "when": {
+            "value_at_least": {
+              "value": "(var(n_base_threats) == 0) * (var(home_go) > 0)",
+              "amount": 1
             }
           },
-          "match": {
-            "score": "0 - distance(actor, target)"
-          },
-          "issue": [
+          "then": [
             {
-              "attack": {}
+              "action": "select",
+              "actors": {
+                "kind": "units",
+                "where": {
+                  "owner": "own",
+                  "unit_types": [
+                    "military"
+                  ],
+                  "not_in_set": "raiding_party",
+                  "if": [
+                    "1 - inSet(military_at_enemy, actor)",
+                    "((var(assault) == 0) + (var(army_retreat) > 0) + (var(n_army_target_space) == 0) > 0)",
+                    "(var(army_retreat) == 0) + (1 - inBucket(army, actor)) > 0"
+                  ]
+                }
+              },
+              "pick": {
+                "kind": "units",
+                "where": {
+                  "owner": "enemy",
+                  "unit_types": [
+                    "military"
+                  ],
+                  "near": {
+                    "distance": 1,
+                    "of": {
+                      "kind": "spaces",
+                      "where": {
+                        "in_set": "base"
+                      }
+                    }
+                  },
+                  "if": "1 - inSet(base_threats, target)"
+                },
+                "capacity": "max(1, var(target.health) / (var(effective_hit) * var(tune_kill_ticks)))"
+              },
+              "match": {
+                "score": "10 - distance(actor, target) + var(tune_focus) * (1 - var(target.health) / max(0.1, var(target.max_health)))"
+              },
+              "issue": [
+                {
+                  "attack": {}
+                }
+              ]
             }
           ]
         },

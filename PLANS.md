@@ -1,9 +1,7 @@
 Small Risq Issues:
  - Finish v7
- - Stance mode frontend
 
 Bigger Risq Issues/Ideas:
- - Utilize events on map
  - For v0.8 ai I'd want it to be tech-tree agnostic at least to some extent maybe? Or at least stat-agnostic so it reads current stats ... it also needs to be support many different maps
  - Expanded level 2 tech tree
     => Magic and color damage

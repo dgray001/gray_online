@@ -53,6 +53,9 @@ func Game_BroadcastUpdate(g Game, update *UpdateMessage) {
 
 // Returns whether this is the last player to disconnect
 func Game_PlayerDisconnected(g Game, client_id uint64) bool {
+	if g == nil {
+		return false
+	}
 	g.PlayerDisconnected(client_id)
 	base := g.GetBase()
 	if base != nil {
@@ -65,14 +68,17 @@ func Game_PlayerDisconnected(g Game, client_id uint64) bool {
 
 // Returns whether player really reconnected
 func Game_PlayerReconnected(g Game, client_id uint64) bool {
+	if g == nil {
+		return false
+	}
 	base := g.GetBase()
 	if base == nil {
 		util.Error(util.DefaultErr, "Game base is nil")
 		return false
 	}
-	g.PlayerReconnected(client_id)
 	player := base.Players[client_id]
 	if player != nil && !player.connected {
+		g.PlayerReconnected(client_id)
 		base.PlayerConnected(client_id)
 		return true
 	}

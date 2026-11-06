@@ -4,6 +4,14 @@ from typing import Any
 from common import Record, aggregate, power, selection, store, variable
 from common import army_order_available as micro_available
 
+FOCUS_CAPACITY = "max(1, var(target.health) / (var(effective_hit) * var(tune_kill_ticks)))"
+FOCUS_SCORE = "10 - distance(actor, target) + var(tune_focus) * (1 - var(target.health) / max(0.1, var(target.max_health)))"
+
+
+def focused_attack(actors: Record, targets: Record, same_space_only: bool) -> Record:
+    match = dict(where={"if": "distance(actor, target) == 0"}, score=FOCUS_SCORE) if same_space_only else dict(score=FOCUS_SCORE)
+    return dict(action="select", actors=actors, pick=targets, match=match, issue=[dict(attack={})])
+
 
 def attack_stack_rules(stack: int) -> list[Record]:
     mismatched = selection("units", dict(owner="own", unit_types=["military"], **{"if": f"var(actor.attack_stack) != {stack}"}))
@@ -37,7 +45,7 @@ def combat_micro_rules() -> list[Record]:
     enemy_mil = selection("units", dict(
         owner="enemy", unit_types=["military"],
         at=dict(in_set="combat_spaces")
-    ), capacity="max(1, var(target.health) / (var(effective_hit) * var(tune_kill_ticks)))")
+    ), capacity=FOCUS_CAPACITY)
     enemy_mil_uncapped = selection("units", dict(
         owner="enemy", unit_types=["military"],
         at=dict(in_set="combat_spaces")
@@ -45,15 +53,8 @@ def combat_micro_rules() -> list[Record]:
     assigned_combatants = selection("units", dict(in_set="combatants", **{"in": dict(order_kind=["attack_unit"])}))
     overflow_combatants = selection("units", dict(in_set="combatants", **{"if": "1 - inSet(assigned_combatants, actor)"}))
 
-    focus_score = (
-        "10 - distance(actor, target) + "
-        "var(tune_focus) * (1 - var(target.health) / max(0.1, var(target.max_health)))"
-    )
-    engage_mil = dict(
-        action="select", actors=mil_combatants, pick=enemy_mil,
-        match=dict(where={"if": "distance(actor, target) == 0"}, score=focus_score),
-        issue=[dict(attack={})]
-    )
+    focus_score = FOCUS_SCORE
+    engage_mil = focused_attack(mil_combatants, enemy_mil, True)
     engage_mil_overflow = dict(
         action="select", actors=overflow_combatants, pick=enemy_mil_uncapped,
         match=dict(where={"if": "distance(actor, target) == 0"}, score=focus_score),
@@ -73,7 +74,7 @@ def combat_micro_rules() -> list[Record]:
     enemy_vils = selection("units", dict(
         owner="enemy", unit_ids=[1],
         at=dict(in_set="vil_spaces")
-    ), capacity="max(1, var(target.health) / (var(effective_hit) * var(tune_kill_ticks)))")
+    ), capacity=FOCUS_CAPACITY)
 
     engage_vils = dict(
         action="select",

@@ -119,6 +119,9 @@ func (g *GameEgyptianRatCrap) Valid() bool {
 }
 
 func (g *GameEgyptianRatCrap) PlayerAction(action game.PlayerAction) {
+	if !g.game.GameStarted() || g.game.GameEnded() {
+		return
+	}
 	fmt.Println("player action:", action.Kind, action.Client_id, action.Action)
 	// Internally sent actions
 	if action.Client_id == 0 {
@@ -237,6 +240,14 @@ func (g *GameEgyptianRatCrap) resolveSlapWin(player_id int) {
 		g.challenge_timer.Stop()
 		g.challenge_timer = nil
 	}
+	if g.turn_timer != nil {
+		g.turn_timer.Stop()
+		g.turn_timer = nil
+	}
+	if g.turn_announce_timer != nil {
+		g.turn_announce_timer.Stop()
+		g.turn_announce_timer = nil
+	}
 	g.challenge_active = false
 	winner := g.players[player_id]
 	pile_size := g.awardCentralPileTo(winner)
@@ -283,18 +294,19 @@ func (g *GameEgyptianRatCrap) penalizeInvalidSlap(player_id int) {
 		"valid":     false,
 	}})
 	if winner_id := g.checkGameOver(); winner_id >= 0 {
+		if g.turn_timer != nil {
+			g.turn_timer.Stop()
+			g.turn_timer = nil
+		}
 		g.game.EndGame(fmt.Sprintf("%s won the game", g.players[winner_id].player.GetNickname()))
 	}
 }
 
 func (g *GameEgyptianRatCrap) startTurnAnnounce(winner_id int) {
 	g.pending_turn_winner = winner_id
-	timer := time.NewTimer(time.Second)
-	g.turn_announce_timer = timer
-	go func() {
-		<-timer.C
+	g.turn_announce_timer = time.AfterFunc(time.Second, func() {
 		g.action_channel <- game.PlayerAction{Kind: "resolve-turn"}
-	}()
+	})
 }
 
 func (g *GameEgyptianRatCrap) resolveTurnAnnounce() {
@@ -310,12 +322,9 @@ func (g *GameEgyptianRatCrap) resolveTurnAnnounce() {
 }
 
 func (g *GameEgyptianRatCrap) startTurnTimer() {
-	timer := time.NewTimer(2 * time.Second)
-	g.turn_timer = timer
-	go func() {
-		<-timer.C
+	g.turn_timer = time.AfterFunc(2*time.Second, func() {
 		g.action_channel <- game.PlayerAction{Kind: "timeout-flip"}
-	}()
+	})
 }
 
 func (g *GameEgyptianRatCrap) resolveTimeoutFlip() {
@@ -327,12 +336,9 @@ func (g *GameEgyptianRatCrap) resolveTimeoutFlip() {
 }
 
 func (g *GameEgyptianRatCrap) startChallengeGraceWindow() {
-	timer := time.NewTimer(time.Second)
-	g.challenge_timer = timer
-	go func() {
-		<-timer.C
+	g.challenge_timer = time.AfterFunc(time.Second, func() {
 		g.action_channel <- game.PlayerAction{Kind: "resolve-challenge-award"}
-	}()
+	})
 }
 
 func (g *GameEgyptianRatCrap) resolveChallengeAward() {

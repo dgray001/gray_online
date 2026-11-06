@@ -88,19 +88,24 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
   const board_size = game?.board_size ?? 0;
   const subject_position = subject_unit ? config.game.session.unitLocation(subject_unit) : undefined;
 
+  const place_text = (space: Point2D): string => {
+    const name = config.game.session.getPlaceName(space);
+    return name ? `in ${name}` : '';
+  };
+
   const distance_text = (target_space: Point2D, target_zone?: Point2D): string => {
     if (!subject_position) {
-      return '';
+      return place_text(target_space);
     }
     if (!equalsPoint2D(subject_position.space_coordinate, target_space)) {
       const d = axialDistance(subject_position.space_coordinate, target_space);
       return `${d} space${d === 1 ? '' : 's'} away`;
     }
     if (!target_zone) {
-      return '';
+      return place_text(target_space);
     }
     const d = axialDistance(subject_position.zone_coordinate, target_zone);
-    return d === 0 ? '' : `${d} zone${d === 1 ? '' : 's'} away`;
+    return d === 0 ? place_text(target_space) : `${d} zone${d === 1 ? '' : 's'} away`;
   };
 
   const resource_cost = (
@@ -203,7 +208,7 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
           qty > 1
             ? `Create ${producible?.display_name ?? 'Unit'} ×${qty}`
             : `Create ${producible?.display_name ?? 'Unit'}`,
-        target: '',
+        target: subject_building ? place_text(subject_building.space_coordinate) : '',
         cost: resource_cost(producible?.cost, qty),
         progress,
         progress_text: progressText(total, remaining),
@@ -222,7 +227,7 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
       base = {
         icon: techImage(order.target_id),
         name: `Research ${producible?.display_name ?? 'Tech'}`,
-        target: '',
+        target: subject_building ? place_text(subject_building.space_coordinate) : '',
         cost: resource_cost(producible?.cost),
         progress,
         progress_text: progressText(producible?.stamina_cost, queue_item?.stamina_remaining),
@@ -304,7 +309,7 @@ export function resolveOrderRow(config: RisqOrderRowConfig): ResolvedRow {
       base = {
         icon: unitImage(unit_id, true),
         name: `Hire ${mercenary?.display_name ?? 'Mercenary'}`,
-        target: `at (${space.x}, ${space.y})`,
+        target: place_text(space),
         cost: resource_cost(mercenary?.cost),
       };
       break;

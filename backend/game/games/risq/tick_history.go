@@ -76,6 +76,7 @@ type tickFrame struct {
 }
 
 type turnJournal struct {
+	region_owners  map[string]int
 	next_effect_id uint64
 
 	turn, tick, tick_count uint16
@@ -111,10 +112,14 @@ func (r *GameRisq) beginTickHistory() {
 		return
 	}
 	r.tick_history = &turnJournal{
-		turn: r.turn_number, recording: true,
+		region_owners: map[string]int{},
+		turn:          r.turn_number, recording: true,
 		histories: map[tickActorKey][]*TickAction{}, units: map[uint64]tickUnitState{},
 		buildings: map[uint64]tickBuildingState{}, resources: map[uint64]tickResourceState{},
 		players: map[int]tickPlayerState{}, spaces: map[uint]tickSpaceState{},
+	}
+	for _, region := range r.regions {
+		r.tick_history.region_owners[region.name] = region.owner
 	}
 }
 

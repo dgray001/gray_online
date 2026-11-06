@@ -25,7 +25,7 @@ def foundation_observations() -> list[Record]:
             variable(f"{name}_exist", f"var(foundations_{building})"),
             variable(f"{name}_with_builders", with_builders),
             variable(f"{name}_without_builders", without_builders),
-            variable(f"{name}_abandoned", f"min(var({name}_abandoned), var({name}_exist))", True),
+            variable(f"{name}_abandoned", f"min(var({name}_abandoned), var({name}_exist)) * (var({name}_ban) > 0)", True),
             variable(f"{name}_replacement", f"max(0, var({name}_exist) - var({name}_abandoned))"),
             variable(f"{name}_resend_wait",
                      f"(var({name}_resend_wait) + 1) * (var({name}_abandoned) > 0) * (var({name}_replacement) == 0)", True),

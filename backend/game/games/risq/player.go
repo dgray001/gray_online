@@ -106,6 +106,7 @@ func createRisqPlayer(config *defs.Config, player *game.Player, max_population_l
 		orders_submitted:         false,
 		default_unit_stance:      defs.UnitStance_DEFENSIVE,
 		default_unit_attack_back: true,
+		default_unit_attack_stack: 1,
 		default_unit_target_priority: []defs.TargetCategory{
 			defs.TargetCategory_MILITARY,
 			defs.TargetCategory_ECONOMIC,

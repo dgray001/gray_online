@@ -26,7 +26,9 @@ export function drawZone(
   const { space, zone } = data;
   let yi = frame.yi() + drawName(pc, space.display_name);
   const zone_label = zone.terrain_override_display_name ?? terrainTypeLabel(space.terrain_type);
-  yi += drawSubtitle(pc, `${zone_label} zone`, yi);
+  const place = risq.session.getPlaceName(space.coordinate);
+  const location = place && place !== space.display_name ? ` · ${place}` : '';
+  yi += drawSubtitle(pc, `${zone_label} zone${location}`, yi);
   const separator_distance = 8;
   yi += hexagon.draw(pc, space, separator_distance, yi, coordinateToIndex(1, zone.coordinate));
   drawSeparator(pc, yi);

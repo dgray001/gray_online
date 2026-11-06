@@ -6,7 +6,7 @@ import type { Point2D } from '../../../util/objects2d';
 import type { RisqDrawHost } from './board/board_renderer';
 import type { RisqSpace, RisqZone } from '../model/types';
 import { RisqVisibilityLevel } from '../model/types';
-import { drawSpaceDetailsContent, drawSpaceOverviewDots } from './overview_dots';
+import { drawSpaceCustomName, drawSpaceDetailsContent, drawSpaceOverviewDots } from './overview_dots';
 import { FOG_OVERLAY_IMAGE, RisqViewMode, buildingVisibleInViewMode, spaceOwnerColor } from './terrain';
 import {
   BUILDING_CIRCLE_RADIUS_MULTIPLIER,
@@ -168,6 +168,13 @@ export function drawRisqSpaceContent(
   drawSpaceContent(ctx, game, space, config, black_text, owner_color);
   if (config.zone_borders_only || config.entity_pass === 'terrain' || config.entity_pass === 'selected') {
     return;
+  }
+  if (
+    config.view_mode === RisqViewMode.OWNERSHIP &&
+    config.draw_detail === DrawRisqSpaceDetail.ZONE_DETAILS &&
+    space.visibility >= RisqVisibilityLevel.FOG
+  ) {
+    drawSpaceCustomName(ctx, space, config, black_text, space.center.y - 0.5 * config.inset_h, true);
   }
   if (config.draw_detail !== DrawRisqSpaceDetail.OWNERSHIP && space.visibility === RisqVisibilityLevel.SPY) {
     const badge_size = 0.35 * config.hex_r;
