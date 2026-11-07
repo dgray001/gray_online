@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
-from common import Record, aggregate, power, selection, store, variable, whole
+from common import Record, aggregate, branch, power, selection, store, variable, whole
 
 
 def raiding_state() -> list[Record]:
@@ -56,7 +56,7 @@ def raiding_tactics() -> list[Record]:
     safe_target = dict(at=dict(in_set="raid_safe_spaces"))
     vils_here = aggregate("count", selection("units", dict(
         owner="enemy", unit_ids=[1],
-        **{"if": "distance(target, item) == 0"}
+        **{"if": ["var(item.x) == var(target.x)", "var(item.y) == var(target.y)"]}
     )))
 
     # 1. Threat Retreat: Flee toward home if enemy soldiers close in
@@ -114,4 +114,6 @@ def raiding_tactics() -> list[Record]:
         issue=[dict(move={})]
     )
 
-    return [danger_store, *raid_sets, retreat_behavior, retreat_move, active_behavior, harass_vils, raze_bldgs, hunt_resources]
+    return [branch("var(n_raiding_party) > 0", [
+        danger_store, *raid_sets, retreat_behavior, retreat_move, active_behavior, harass_vils, raze_bldgs, hunt_resources
+    ])]

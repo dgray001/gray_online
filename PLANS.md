@@ -1,5 +1,4 @@
 Small Risq Issues:
- - Finish v7
 
 Bigger Risq Issues/Ideas:
  - For v0.8 ai I'd want it to be tech-tree agnostic at least to some extent maybe? Or at least stat-agnostic so it reads current stats ... it also needs to be support many different maps

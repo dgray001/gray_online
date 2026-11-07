@@ -2,7 +2,7 @@ Online Games
 
 ## Current Version
 
-v0.9k; Small frontend fixes
+v0.9l: Finished v7
 
 ## Dev Use
 

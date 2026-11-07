@@ -4,8 +4,9 @@ from typing import Union
 
 from common import RESOURCES, Definitions, Record, aggregate, branch, cost, power, selection, store, variable
 from foundations import TRACKED, site_clear
+from policy_common import condition, objects
 from settlement import vc_placement
-from sites import build_action
+from sites import build_action, site_threat_lets
 
 
 def housing_crew_sizing(definitions: Definitions) -> list[Record]:
@@ -155,8 +156,37 @@ def buildable_spaces() -> list[Record]:
 
 
 def buildable_zones() -> list[Record]:
-    has_foundation = aggregate("count", selection("foundations", {"if": "distance(target, item, 1) == 0"}))
+    has_foundation = aggregate("count", selection("foundations", {"if": [
+        "var(item.x) == var(target.x)", "var(item.y) == var(target.y)",
+        "var(item.zone_x) == var(target.zone_x)", "var(item.zone_y) == var(target.zone_y)"
+    ]}))
     zones = selection("zones", dict(building=False, resource=False, at=dict(in_set="buildable_spaces"),
                                     **{"if": "var(target.has_foundation) == 0"}),
                       let=dict(has_foundation=has_foundation))
     return [store("buildable_zones", zones)]
+
+
+def apply_outpost_safety(model: Record, values: dict[str, float]) -> None:
+    mode = int(values.get("issue_outpost_mode", 1))
+    if not mode:
+        return
+    for action in list(objects(model)):
+        if action.get("action") != "select" or not any(verb.get("build", {}).get("building_id") == 21 for verb in action.get("issue", [])):
+            continue
+        pick = action["pick"]
+        if pick.get("kind") != "zones":
+            continue
+        pick.setdefault("let", {}).update(site_threat_lets())
+        if mode == 1:
+          pick["let"]["issue_here"] = aggregate(
+              "count",
+              selection(
+                  "units",
+                  dict(
+                      owner="enemy",
+                      unit_types=["military"],
+                      **{"if": "distance(target, item) <= 1"},
+                  ),
+              ),
+          )
+          condition(pick, "var(target.issue_here) == 0")

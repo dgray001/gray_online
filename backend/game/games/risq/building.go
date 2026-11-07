@@ -437,7 +437,7 @@ func (b *RisqBuilding) tickExecute(risq *GameRisq) {
 				ga.unit.recordGarrisonExecution(0, true)
 				continue
 			}
-			risq.resolveAttack(garrisonAttacker{RisqUnit: ga.unit, stats: ga.stats}, detail.target, ga.cost)
+			risq.resolveAttack(garrisonAttacker{RisqUnit: ga.unit, stats: ga.stats}, ga.unit, detail.target, ga.cost)
 			ga.unit.recordGarrisonExecution(ga.cost, false)
 			ga.unit.current_stamina -= ga.cost
 		}

@@ -104,7 +104,10 @@ def pick_build_zone(tracker: str, building_id: int, urgency: str | None = None) 
     enemy_dist = aggregate("min", selection("buildings", dict(owner="enemy", in_set="enemy_buildings")), "distance(target, item)")
     enemy_dist["min"]["default"] = -1
     build_speed = "var(target.space.build_speed_modifier)"
-    has_foundation = aggregate("count", selection("foundations", {"if": "distance(target, item, 1) == 0"}))
+    has_foundation = aggregate("count", selection("foundations", {"if": [
+        "var(item.x) == var(target.x)", "var(item.y) == var(target.y)",
+        "var(item.zone_x) == var(target.zone_x)", "var(item.zone_y) == var(target.zone_y)"
+    ]}))
 
     lets = dict(build_speed=build_speed, has_foundation=has_foundation)
     if _weight_enabled("aggr", tracker):

@@ -27,9 +27,13 @@ def threat_home_rules() -> list[Record]:
     ]
 
 
-def civilian_defense_lets() -> dict[str, Any]:
+def civilian_defense_lets(values: dict[str, float] | None = None) -> dict[str, Any]:
     """Computes spatial combat metrics for an individual villager actor."""
-    return dict(
+    dist = int(values.get("issue_defense_dist", 0)) if values else 0
+    adj_w = values.get("issue_defense_adj_factor", 1.0) if values else 1.0
+    cond = "distance(actor, item) == 0" if dist == 0 else f"distance(actor, item) <= {dist}"
+    pwr = power() if (dist == 0 or adj_w == 1.0) else f"((distance(actor, item) == 0) + {adj_w:g} * (distance(actor, item) > 0)) * ({power()})"
+    lets = dict(
         enemy_near_power=aggregate("sum", selection("units", dict(
             owner="enemy", unit_types=["military"],
             **{"if": "distance(actor, item) <= 1"}
@@ -39,32 +43,41 @@ def civilian_defense_lets() -> dict[str, Any]:
         })), "var(item.unit_count)"),
         allies_military_power=aggregate("sum", selection("units", dict(
             owner="own", unit_types=["military"],
-            **{"if": "distance(actor, item) == 0"}
-        )), power()),
+            **{"if": cond}
+        )), pwr),
         allies_vils_count=aggregate("count", selection("units", dict(
             owner="own", unit_ids=[1],
-            **{"if": "distance(actor, item) == 0"}
+            **{"if": ["var(item.x) == var(actor.x)", "var(item.y) == var(actor.y)"]}
         ))),
     )
+    if dist > 0:
+        lets["allies_here_power"] = aggregate("sum", selection("units", dict(
+            owner="own", unit_types=["military"],
+            **{"if": ["var(item.x) == var(actor.x)", "var(item.y) == var(actor.y)"]}
+        )), power())
+    return lets
 
 
-def civilian_crush_margin() -> str:
+def civilian_crush_margin(here_only: bool = False) -> str:
     """Calculates villager fight-or-flight margin against hostile forces."""
-    allies = "(var(actor.allies_military_power) + var(villager_power) * var(actor.allies_vils_count))"
+    mil_power = "var(actor.allies_here_power)" if here_only else "var(actor.allies_military_power)"
+    allies = f"({mil_power} + var(villager_power) * var(actor.allies_vils_count))"
     threat = "(var(actor.enemy_near_power) + var(tune_vil_unknown) * var(unknown_unit_power) * var(actor.enemy_near_unid))"
     return f"({allies} - var(tune_vil_crush_odds) * {threat})"
 
 
-def civilian_defense() -> list[Record]:
+def civilian_defense(values: dict[str, float] | None = None) -> list[Record]:
     """Civilian fight-or-flight micro and garrison shelter management."""
-    lets = civilian_defense_lets()
-    crush = civilian_crush_margin()
+    dist = int(values.get("issue_defense_dist", 0)) if values else 0
+    lets = civilian_defense_lets(values)
+    fight_crush = civilian_crush_margin(here_only=True) if dist > 0 else civilian_crush_margin(here_only=False)
+    garrison_crush = civilian_crush_margin(here_only=False)
 
     # 1. Fight: If enemy soldiers share our space and local allies crush the hostile force
     fight_actors = selection("units", dict(
         owner="own", unit_ids=[1], not_in_set="evacuees",
         at=dict(in_set="enemy_mil_spaces"),
-        **{"if": f"(1 - var(actor.is_garrisoned)) * ({crush} >= 0)"}
+        **{"if": f"(1 - var(actor.is_garrisoned)) * ({fight_crush} >= 0)"}
     ), let=lets)
     fight_pick = selection("units", dict(
         owner="enemy", unit_types=["military"],
@@ -78,7 +91,7 @@ def civilian_defense() -> list[Record]:
     garrison_actors = selection("units", dict(
         owner="own", unit_ids=[1], not_in_set="evacuees",
         at=dict(in_set="enemy_presence_near_spaces"),
-        **{"if": f"(1 - var(actor.is_garrisoned)) * ({crush} < 0)"}
+        **{"if": f"(1 - var(actor.is_garrisoned)) * ({garrison_crush} < 0)"}
     ), let=lets)
     pending_garrison = aggregate("count", selection("units", dict(
         owner="own", **{"in": dict(order_kind=["garrison"])},
@@ -180,7 +193,7 @@ def civilian_evacuation() -> list[Record]:
     evac_lets = dict(
         e_pow=aggregate("sum", selection("units", dict(owner="enemy", unit_types=["military"], **{"if": "distance(target, item) <= 1"})), power()),
         a_mil=aggregate("sum", selection("units", dict(owner="own", unit_types=["military"], **{"if": "distance(target, item) <= 1"})), power()),
-        a_vils=aggregate("count", selection("units", dict(owner="own", unit_ids=[1], **{"if": "distance(target, item) == 0"}))),
+        a_vils=aggregate("count", selection("units", dict(owner="own", unit_ids=[1], **{"if": ["var(item.x) == var(target.x)", "var(item.y) == var(target.y)"]}))),
     )
     support = "(var(villager_power) * var(target.a_vils) + var(target.a_mil))"
     is_evac = f"(1 - var(target.is_garrisoned)) * (var(target.e_pow) >= var(tune_evac_threat_min)) * (var(target.e_pow) > var(tune_evac_threat_ratio) * {support})"
@@ -204,7 +217,7 @@ def civilian_evacuation() -> list[Record]:
     evac_move = dict(action="select", actors=evac_actors, pick=refuge_pick, issue=[dict(move=dict(to="space"))])
     escort_actors = selection("units", dict(
         owner="own", unit_types=["military"], **{"if": "var(actor.e_here) == 0"}
-    ), let=dict(e_here=aggregate("count", selection("units", dict(owner="enemy", unit_types=["military"], **{"if": "distance(actor, item) == 0"})))), rank=["0 - var(actor.uid)"], limit=1)
+    ), let=dict(e_here=aggregate("count", selection("units", dict(owner="enemy", unit_types=["military"], **{"if": ["var(item.x) == var(actor.x)", "var(item.y) == var(actor.y)"]})))) , rank=["0 - var(actor.uid)"], limit=1)
     escort_move = dict(action="select", actors=escort_actors, pick=refuge_pick, issue=[dict(move=dict(to="space"))])
     return [
         store("evacuees", evacuees),

@@ -18,6 +18,8 @@ def game_details(game: dict[str, Any], folder: Path) -> dict[str, Any]:
     result = game["Result"]
     seat = game["Seats"].index(0)
     path = folder / f"debug_{result['Seed']}.log"
+    if not path.exists():
+        path = folder / "debug.log"
     reports = read_reports(path) if path.exists() else {}
     variables = read_ai_records(path, "vars", {30, 40, 50, 60}) if path.exists() else {}
     players = result["Game"]["Players"]
@@ -108,6 +110,8 @@ def run_trial(trial: dict[str, Any], manifest: dict[str, Any], sim: Path) -> dic
         command = [manifest["binary"], "-config", str(config), "-parallel", str(trial.get("parallel", manifest.get("games_parallel", 1)))]
         if manifest.get("debug", False):
             command.append("-debug")
+        if manifest.get("log_steps", False):
+            command.append("-log-steps")
         subprocess.run(command + [trial["name"]], cwd=sim, check=True, capture_output=True, text=True)
     result = json.loads((folder / "results.json").read_text())
     errors = result["Overall"]["Players"][0]["Errors"]

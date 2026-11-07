@@ -61,6 +61,8 @@ type GameRisq struct {
 	// Recomputed each tick: settles which simultaneous garrison attempts get a building's remaining slots
 	garrison_allotments  map[*RisqUnit]bool
 	production_garrisons map[*RisqBuilding]bool
+	// Recomputed each tick before any movement: splash victims per attacking unit or building
+	splash_victims map[Orderable][]Attackable
 	// Recomputed each tick: settles which unit founds a new building when several race for the same empty zone
 	construction_winners map[*RisqZone]uint64
 	// Recomputed each tick: building id each winning zone's new foundation takes

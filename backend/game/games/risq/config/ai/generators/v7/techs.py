@@ -24,14 +24,27 @@ def tech_demand() -> list[Record]:
     return actions
 
 
-def buy(tech: int) -> Record:
-    funds = " * ".join(f"(gameVar({resource}) >= {cost('tech', tech, resource)} / max(0.001, var(tune_tech_{tech})))" for resource in RESOURCES)
+def buy(tech: int, values: dict[str, float] | None = None) -> Record:
+    reserve_mode = int(values.get("issue_tech_reserve", 0)) if values else 0
+    if reserve_mode == 1:
+        res_deduct = " - var(operating_reserve_{resource})"
+    elif reserve_mode == 2:
+        res_deduct = " - var(operating_reserve_{resource}) - var(reserve_{resource})"
+    else:
+        res_deduct = ""
+    funds = " * ".join(f"(gameVar({resource}){res_deduct.format(resource=resource)} >= {cost('tech', tech, resource)} / max(0.001, var(tune_tech_{tech})))" for resource in RESOURCES)
     producer = selection("buildings", dict(owner="own", can_research=tech, **{
         "if": "var(actor.queue_length) < var(tune_queue_depth)"}), rank="0 - var(actor.uid)", limit=1)
     action = dict(action="select", actors=producer, issue=[dict(research=dict(tech_id=tech, queue="var(actor.queue_length) + 1"))])
     return branch(f"var(tech_pending_{tech}) * {funds}", [action])
 
 
-def tech_hold() -> list[Record]:
+def tech_buy(values: dict[str, float] | None = None) -> list[Record]:
+    return [buy(tech, values) for tech in TECH_BUILDINGS]
+
+
+def tech_hold(values: dict[str, float] | None = None) -> list[Record]:
     holds = [variable(f"reserve_{resource}", f"var(reserve_{resource}) + var(tech_reserve_{resource})") for resource in RESOURCES]
-    return holds + [buy(tech) for tech in TECH_BUILDINGS]
+    if values and int(values.get("issue_tech_order", 0)) == 1:
+        return holds
+    return holds + tech_buy(values)

@@ -222,9 +222,9 @@ type Attackable interface {
 // Shared attack resolution for any unit/building attacker-target pair. Damage is
 // only queued here; resolveHealthDelta applies it (and any healing queued the same
 // tick) once resolution's execute phase finishes, so order within the tick can't matter.
-func (r *GameRisq) resolveAttack(attacker Attackable, target Attackable, stamina_cost int) {
+func (r *GameRisq) resolveAttack(attacker Attackable, source Orderable, target Attackable, stamina_cost int) {
 	r.dealAttackDamage(attacker, target, stamina_cost, 1)
-	r.resolveSplash(attacker, target, stamina_cost)
+	r.resolveSplash(attacker, source, stamina_cost)
 }
 
 func (r *GameRisq) dealAttackDamage(attacker Attackable, target Attackable, stamina_cost int, damage_scale float64) {
@@ -242,14 +242,36 @@ func (r *GameRisq) dealAttackDamage(attacker Attackable, target Attackable, stam
 		r.turn_number, r.current_tick, attacker.internalId(), attackableKind(attacker), attacker.playerId(), stamina_cost, target.internalId(), attackableKind(target), target.playerId(), damage)
 }
 
-func (r *GameRisq) resolveSplash(attacker Attackable, target Attackable, stamina_cost int) {
-	percent, max_targets := attacker.splash()
-	if percent <= 0 || max_targets < 1 {
-		return
-	}
-	for _, splash_target := range splashTargets(attacker, target, max_targets, int(r.turn_number)) {
+func (r *GameRisq) resolveSplash(attacker Attackable, source Orderable, stamina_cost int) {
+	percent, _ := attacker.splash()
+	for _, splash_target := range r.splash_victims[source] {
 		r.dealAttackDamage(attacker, splash_target, stamina_cost, percent/100)
 	}
+}
+
+func (r *GameRisq) computeSplashVictims(orderables []Orderable) map[Orderable][]Attackable {
+	victims := make(map[Orderable][]Attackable)
+	freeze := func(source Orderable, attacker Attackable, target Attackable) {
+		if percent, max_targets := attacker.splash(); percent > 0 && max_targets >= 1 {
+			victims[source] = splashTargets(attacker, target, max_targets, int(r.turn_number))
+		}
+	}
+	for _, o := range orderables {
+		switch attacker := o.(type) {
+		case *RisqUnit:
+			if intent, ok := attacker.intent.detail.(*UnitAttackIntent); ok {
+				freeze(attacker, attacker, intent.target)
+			}
+		case *RisqBuilding:
+			if intent, ok := attacker.intent.detail.(*BuildingAttackIntent); ok {
+				freeze(attacker, attacker, intent.target)
+				for _, ga := range intent.garrison_attacks {
+					freeze(ga.unit, ga.unit, intent.target)
+				}
+			}
+		}
+	}
+	return victims
 }
 
 func splashTargets(attacker Attackable, target Attackable, max_targets int, turn int) []Attackable {
@@ -318,12 +340,12 @@ func (r *GameRisq) resolveAttacker(event RisqDamageEvent) Attackable {
 
 func (r *GameRisq) unitAttack(attacker *RisqUnit, target Attackable) {
 	if stamina := attacker.intent.intent_cost - attacker.intent.sunk_cost; stamina > 0 {
-		r.resolveAttack(attacker, target, stamina)
+		r.resolveAttack(attacker, attacker, target, stamina)
 	}
 }
 
 func (r *GameRisq) buildingAttack(attacker *RisqBuilding, target Attackable) {
-	r.resolveAttack(attacker, target, attacker.intent.intent_cost)
+	r.resolveAttack(attacker, attacker, target, attacker.intent.intent_cost)
 }
 
 func otherUnitIdentity(other Orderable) (uint32, defs.UnitType) {

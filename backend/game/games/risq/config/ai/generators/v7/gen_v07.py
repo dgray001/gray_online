@@ -17,7 +17,7 @@ from economy import food_supply, infrastructure, production_capacity, rax_reserv
 from gathering import allocate_workers, gathering, worker_groups
 from foundations import foundation_failures, foundation_observations
 from construction import (
-    buildable_spaces, buildable_zones, expansion_buildings, farms, first_barracks, housing_crew_sizing, isolate_builders,
+    apply_outpost_safety, buildable_spaces, buildable_zones, expansion_buildings, farms, first_barracks, housing_crew_sizing, isolate_builders,
     recover_abandoned_foundations, repairs, service_unbuilt_foundations,
     settlement_and_shelter, urgent_smith
 )
@@ -34,7 +34,7 @@ from army import (
 )
 from combat import attack_stack_rules, combat_micro_rules
 from hiring import hire_destinations
-from techs import tech_demand, tech_hold
+from techs import tech_demand, tech_hold, tech_buy
 from holders import holder_observations, holder_orders, release_holders
 from policies import apply_policies
 
@@ -71,17 +71,17 @@ def generate(directory: Path, overrides: dict[str, float]) -> Record:
     values = parameters(overrides)
     configure_sites(values)
     definitions = Definitions(directory)
-    actions = [variable(f"tune_{name}", value) for name, value in values.items()]
+    actions = [variable(f"tune_{name}", value) for name, value in values.items() if not name.startswith("issue_")]
     phases = [actions, observations(definitions), foundation_observations(), site_weights(), home(), base(), threat_home_rules(),
               scouting_state(), raiding_state(), release_holders(), holder_observations(), holder_orders(), army_formation_rules(), army(),
               [initialize()], composition(), unidentified(), local_observations(), bounds(definitions), strategy(),
               assault_odds_rules(), army_local_odds_rules(), army_target_selection(), hire_destinations()]
     phases.extend([production_capacity(definitions), military_composition(definitions, values), workforce(definitions),
                    unit_targets(values), infrastructure(definitions), food_supply(definitions), vc_urgency_rules(),
-                   mercenary_rates(), spending_rates(definitions), tech_demand(), gold_expansion(), resource_budgets(definitions), rax_reserve(), tech_hold(),
+                   mercenary_rates(), spending_rates(definitions), tech_demand(), gold_expansion(), resource_budgets(definitions), rax_reserve(), tech_hold(values),
                    housing_crew_sizing(definitions), isolate_builders(),
                    *construction_phases(int(values["rax_order"])), farms(int(values["max_new_farms"])),
-                   military(), upgrades(), expansion_buildings(), mercenaries(),
+                   upgrades(), military(), *([tech_buy(values)] if int(values.get("issue_tech_order", 0)) == 1 else []), expansion_buildings(), mercenaries(),
                    civilian_evacuation(), foundation_failures(),
                    service_unbuilt_foundations(), recover_abandoned_foundations(), repairs(), isolate_builders(),
                    nomad_clustering(), worker_targets(), worker_groups(), allocate_workers(),
@@ -89,10 +89,11 @@ def generate(directory: Path, overrides: dict[str, float]) -> Record:
                    scouting_tactics(), raiding_tactics(),
                    army_maneuver_rules(bool(values["stage_passive"]), bool(values["rest_move"])),
                    attack_stack_rules(int(values["attack_stack"])),
-                   combat_micro_rules(),
-                   base_defense(), home_inspector(), civilian_defense()])
+                   combat_micro_rules(values),
+                   base_defense(), home_inspector(), civilian_defense(values)])
     model = dict(rules=[rule(phase) for phase in phases])
     apply_policies(model)
+    apply_outpost_safety(model, values)
     narrow_unidentified_sums(model)
     return model
 

@@ -34,12 +34,12 @@ def assault_odds_rules() -> list[Record]:
         variable("ao_base", f"({eco_assault}) - (({eco_assault}) - ({eco_power})) * ({ramp})"),
         variable("rich", "(gameVar(population) >= var(population_ceiling) - 2) * (min(gameVar(food), gameVar(wood)) >= var(tune_rich_bank))"),
         variable("ao", f"min(var(ao_base), ({eco_assault}) - (({eco_assault}) - ({eco_cap})) * ({cap_fill})) * (1 - var(rich) * var(tune_rich_aggr))"),
-        variable("go", "(var(home_military_power) >= var(ao) * var(enemy_strength)) * (var(home_military_power) >= var(tune_assault_min))"),
+        variable("go", "(var(own_strategic_power) >= var(ao) * var(enemy_strength)) * (var(own_strategic_power) >= var(tune_assault_min))"),
         variable("army_enemies_within_2", enemy_within_2),
         variable("army_unid_within_2", unid_within_2),
         variable("army_enemies_within_2", "var(army_enemies_within_2) + var(army_unid_within_2)"),
-        variable("skip_rest", f"(var(own_strategic_power) >= var(enemy_strength) * (var(ao) - var(tune_retreat_margin) + var(tune_skip_rest_margin))) * {skip_gate}"),
-        variable("skip_stage", f"(var(own_strategic_power) >= var(enemy_strength) * (var(ao) - var(tune_retreat_margin) + var(tune_skip_stage_margin))) * {skip_gate}"),
+        variable("skip_rest", f"((var(enemy_strength) == 0) + (var(remembered_military) == 0) + (var(own_strategic_power) >= var(enemy_strength) * (var(ao) - var(tune_retreat_margin) + var(tune_skip_rest_margin))) > 0) * (var(army_size) > 0)"),
+        variable("skip_stage", f"((var(enemy_strength) == 0) + (var(remembered_military) == 0) + (var(own_strategic_power) >= var(enemy_strength) * (var(ao) - var(tune_retreat_margin) + var(tune_skip_stage_margin))) > 0) * (var(army_size) > 0)"),
     ]
 
 
@@ -70,22 +70,23 @@ def selected_target_power() -> list[Record]:
 
 def army_target_selection() -> list[Record]:
     """Selects and prioritizes the strategic enemy target space."""
+    here = ["var(item.x) == var(target.x)", "var(item.y) == var(target.y)"]
     target_lets = dict(
         enemy_mil_power=aggregate("sum", selection("units", dict(
             owner="enemy", unit_types=["military"],
-            **{"if": "distance(target, item) == 0"}
+            **{"if": here}
         )), power()),
         enemy_vils_count=aggregate("count", selection("units", dict(
             owner="enemy", unit_ids=[1],
-            **{"if": "distance(target, item) == 0"}
+            **{"if": here}
         ))),
         strategic_bldgs=aggregate("count", selection("buildings", dict(
             owner="enemy", building_ids=[1, 21, 22, 23],
-            **{"if": "distance(target, item) == 0"}
+            **{"if": here}
         ))),
         enemy_bldgs=aggregate("count", selection("buildings", dict(
             owner="enemy",
-            **{"if": "distance(target, item) == 0"}
+            **{"if": here}
         ))),
         e_mil_near=aggregate("sum", selection("units", dict(
             owner="enemy", unit_types=["military"],
@@ -96,7 +97,7 @@ def army_target_selection() -> list[Record]:
         })), "var(item.unit_count)"),
         e_towers_here=aggregate("count", selection("buildings", dict(
             owner="enemy", building_ids=[1, 21, 23],
-            **{"if": "distance(target, item) == 0"}
+            **{"if": here}
         ))),
     )
     base_prio = (
@@ -215,12 +216,13 @@ def army_maneuver_rules(stage_passive: bool, rest_move_enabled: bool) -> list[Re
     army_at_enemy = selection("units", dict(owner="own", bucket="army", at=dict(in_set="enemy_mil_spaces")))
     army_clear = store("army_clear", selection("units", dict(owner="own", bucket="army", not_in_set="army_at_enemy")))
 
-    # 1. Retreat: Move to escape_space in defensive stance without interrupting attacks
+    # 1. Retreat: Move to escape_space (passive outside base, defensive inside base)
+    army_at_base = store("army_at_base", selection("units", dict(owner="own", bucket="army", at=dict(in_set="base"))))
     retreat_actors = selection("units", dict(owner="own", bucket="army", **{"if": "(var(army_retreat) > 0) * (1 - var(front_use) + var(front_use) * inSet(army_at_enemy, actor))"}))
-    retreat_behavior = dict(
-        action="select", actors=retreat_actors,
-        issue=[dict(set_behavior=dict(stance="defensive", attack_back=True, interrupt_current=False))]
-    )
+    retreat_outside = selection("units", dict(owner="own", bucket="army", not_in_set="army_at_base", **{"if": "(var(army_retreat) > 0) * (var(has_economy) > 0) * (1 - var(front_use) + var(front_use) * inSet(army_at_enemy, actor))"}))
+    retreat_inside = selection("units", dict(owner="own", bucket="army", **{"if": "(var(army_retreat) > 0) * ((var(has_economy) == 0) + inSet(army_at_base, actor) > 0) * (1 - var(front_use) + var(front_use) * inSet(army_at_enemy, actor))"}))
+    retreat_behavior_out = dict(action="select", actors=retreat_outside, issue=[dict(set_behavior=dict(stance="passive", attack_back=False, interrupt_current=False))])
+    retreat_behavior_in = dict(action="select", actors=retreat_inside, issue=[dict(set_behavior=dict(stance="defensive", attack_back=True, interrupt_current=False))])
     retreat_move = dict(action="select", actors=retreat_actors, pick=escape_space, issue=[dict(move={})])
 
     # 1a. Front-only retreat: the units in contact fall back onto the enemy-free rear body, which holds
@@ -294,7 +296,8 @@ def army_maneuver_rules(stage_passive: bool, rest_move_enabled: bool) -> list[Re
     blocked = f"(({can_advance}) + ({stage_actors['where']['if']}) > 0) * (var(n_attack_step) == 0)"
     stop_blocked = dict(action="select", actors=selection("units", dict(in_set="army_clear", **{"if": blocked})), issue=[dict(stop={})])
 
-    return [store("army_at_enemy", army_at_enemy), army_clear, rear_store, front_use, retreat_behavior,
+    return [store("army_at_enemy", army_at_enemy), army_clear, rear_store, front_use,
+            army_at_base, retreat_behavior_out, retreat_behavior_in,
             branch("1 - var(front_use)", [retreat_move]), branch("var(front_use)", [front_to_rear, rear_behavior, rear_move]), hold_behavior, hold_move,
             variable("army_dist_to_target", 999), variable("army_in_center", army_in_center), store("stage_zone", selection("zones", {"if": "0"})),
             variable("army_core_can_fight", core_ready), variable("army_local_plan", local_plan),

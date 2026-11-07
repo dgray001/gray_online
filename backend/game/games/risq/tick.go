@@ -75,6 +75,7 @@ func (r *GameRisq) resolveActiveOrders() {
 		r.repair_allotments = computeRepairAllotments(r, orderables)
 		r.unit_creation_ids = computeUnitCreationIds(r, orderables)
 		r.production_garrisons = r.computeProductionGarrisons()
+		r.splash_victims = r.computeSplashVictims(orderables)
 		r.population_capped = computePopulationCapped(r)
 		r.prepareTickActions(orderables)
 		r.current_tick++

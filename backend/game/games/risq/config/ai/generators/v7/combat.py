@@ -8,8 +8,22 @@ FOCUS_CAPACITY = "max(1, var(target.health) / (var(effective_hit) * var(tune_kil
 FOCUS_SCORE = "10 - distance(actor, target) + var(tune_focus) * (1 - var(target.health) / max(0.1, var(target.max_health)))"
 
 
-def focused_attack(actors: Record, targets: Record, same_space_only: bool) -> Record:
-    match = dict(where={"if": "distance(actor, target) == 0"}, score=FOCUS_SCORE) if same_space_only else dict(score=FOCUS_SCORE)
+def get_focus_score(values: dict[str, float] | None = None) -> str:
+    pen = values.get("issue_catapult_penalty", 0) if values else 0
+    if pen > 0:
+        return f"10 - distance(actor, target) - {pen:g} * (var(target.unit_id) == 401) + var(tune_focus) * (1 - var(target.health) / max(0.1, var(target.max_health)))"
+    return FOCUS_SCORE
+
+
+def get_focus_capacity(values: dict[str, float] | None = None) -> str:
+    cap = int(values.get("issue_catapult_cap", 0)) if values else 0
+    if cap > 0:
+        return f"(var(target.unit_id) == 401) * {cap} + (var(target.unit_id) != 401) * ({FOCUS_CAPACITY})"
+    return FOCUS_CAPACITY
+
+
+def focused_attack(actors: Record, targets: Record, same_space_only: bool, score: str = FOCUS_SCORE) -> Record:
+    match = dict(where={"if": "distance(actor, target) == 0"}, score=score) if same_space_only else dict(score=score)
     return dict(action="select", actors=actors, pick=targets, match=match, issue=[dict(attack={})])
 
 
@@ -18,7 +32,7 @@ def attack_stack_rules(stack: int) -> list[Record]:
     return [dict(action="select", actors=mismatched, issue=[dict(set_behavior=dict(attack_stack=stack))])]
 
 
-def combat_micro_rules() -> list[Record]:
+def combat_micro_rules(values: dict[str, float] | None = None) -> list[Record]:
     """Tactical combat micro: dynamic stance management, target spreading, focus fire, and spillover."""
     enemy_mil_spaces = selection("spaces", dict(near=dict(distance=0, of=selection("units", dict(owner="enemy", unit_types=["military"])))))
     enemy_vil_spaces = selection("spaces", dict(near=dict(distance=0, of=selection("units", dict(owner="enemy", unit_ids=[1])))))
@@ -42,10 +56,11 @@ def combat_micro_rules() -> list[Record]:
         issue=[dict(set_behavior=dict(stance="aggressive", attack_back=False, interrupt_current=False))]
     )
 
+    cap = get_focus_capacity(values)
     enemy_mil = selection("units", dict(
         owner="enemy", unit_types=["military"],
         at=dict(in_set="combat_spaces")
-    ), capacity=FOCUS_CAPACITY)
+    ), capacity=cap)
     enemy_mil_uncapped = selection("units", dict(
         owner="enemy", unit_types=["military"],
         at=dict(in_set="combat_spaces")
@@ -53,8 +68,8 @@ def combat_micro_rules() -> list[Record]:
     assigned_combatants = selection("units", dict(in_set="combatants", **{"in": dict(order_kind=["attack_unit"])}))
     overflow_combatants = selection("units", dict(in_set="combatants", **{"if": "1 - inSet(assigned_combatants, actor)"}))
 
-    focus_score = FOCUS_SCORE
-    engage_mil = focused_attack(mil_combatants, enemy_mil, True)
+    focus_score = get_focus_score(values)
+    engage_mil = focused_attack(mil_combatants, enemy_mil, True, focus_score)
     engage_mil_overflow = dict(
         action="select", actors=overflow_combatants, pick=enemy_mil_uncapped,
         match=dict(where={"if": "distance(actor, target) == 0"}, score=focus_score),
@@ -82,7 +97,7 @@ def combat_micro_rules() -> list[Record]:
         pick=enemy_vils,
         match=dict(
             where={"if": "distance(actor, target) == 0"},
-            score=focus_score
+            score=FOCUS_SCORE
         ),
         issue=[dict(attack={})]
     )
@@ -109,7 +124,7 @@ def combat_micro_rules() -> list[Record]:
         pick=enemy_bldgs,
         match=dict(
             where={"if": "distance(actor, target) == 0"},
-            score=f"3 * {strat_bldg} + {focus_score}"
+            score=f"3 * {strat_bldg} + {FOCUS_SCORE}"
         ),
         issue=[dict(attack={})]
     )
@@ -119,8 +134,8 @@ def combat_micro_rules() -> list[Record]:
         issue=[dict(set_behavior=dict(stance="stand_ground", attack_back=True, interrupt_current=False))]
     )
     catapult_lets = dict(
-        enemy_mil_here=aggregate("count", selection("units", dict(owner="enemy", unit_types=["military"], **{"if": "distance(actor, item) == 0"}))),
-        enemy_bldgs_here=aggregate("count", selection("buildings", dict(owner="enemy", **{"if": "distance(actor, item) == 0"}))),
+        enemy_mil_here=aggregate("count", selection("units", dict(owner="enemy", unit_types=["military"], **{"if": ["var(item.x) == var(actor.x)", "var(item.y) == var(actor.y)"]}))),
+        enemy_bldgs_here=aggregate("count", selection("buildings", dict(owner="enemy", **{"if": ["var(item.x) == var(actor.x)", "var(item.y) == var(actor.y)"]}))),
         escort_inf=aggregate("count", selection("units", dict(owner="own", unit_ids=[101, 102, 103], **{"if": "distance(actor, item) <= 1"}))),
     )
     ready_catapults = selection("units", dict(

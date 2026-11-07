@@ -24,7 +24,7 @@ def base() -> list[Record]:
     workers = selection("units", dict(in_set="villagers", **{"if": "1 - var(target.is_garrisoned)"},
                                       **{"in": dict(order_kind=["gather", "build", "repair", "renew"])}))
     working = aggregate("count", selection("units", dict(in_set="working_villagers", **{
-        "if": "(var(item.x) == var(target.x)) * (var(item.y) == var(target.y))"})))
+        "if": ["var(item.x) == var(target.x)", "var(item.y) == var(target.y)"]})))
     home_space = "(var(target.x) == var(home_x)) * (var(target.y) == var(home_y)) * var(n_home)"
     eligible = selection("spaces", {"if": f"(var(target.owner) == var(player_id)) + var(target.workers) + {home_space}"},
                          **{"let": dict(workers=working)})

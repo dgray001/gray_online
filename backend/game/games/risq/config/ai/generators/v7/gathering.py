@@ -55,7 +55,7 @@ def assign_nodes(resource: str, search_pass: int) -> Record:
     staying = aggregate("count", selection("gatherables", dict(in_set=f"nodes_{resource}",
         **{"if": "var(item.uid) == var(actor.order_target_uid)"})))
     actors = selection("units", dict(bucket=f"gather_{resource}", **{"in": dict(order_kind=["none", "gather"])},
-        **{"if": ["distance(actor, group) == 0", "var(actor.staying) == 0"]}),
+        **{"if": ["var(actor.x) == var(group.x)", "var(actor.y) == var(group.y)", "var(actor.staying) == 0"]}),
         **{"let": dict(staying=staying)})
     live_capacity = "var(target.gather_capacity) - var(target.workers)"
     targets = selection("gatherables", dict(in_set=f"nodes_{resource}"), **{"let": dict(workers=used)},

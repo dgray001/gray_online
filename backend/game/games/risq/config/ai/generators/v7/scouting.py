@@ -8,21 +8,21 @@ def scouting_state() -> list[Record]:
     """Computes 3-phase scouting state, fog-age threshold, and allocates the scout bucket."""
     unexplored_local = aggregate("count", selection("spaces", dict(vision=0, near=dict(distance=4, of=selection("spaces", dict(in_set="home"))))))
     count_enemies = dict(action="for_each", source="players", where=dict(owner="enemy"), **{"as": "p"}, do=[
-        variable("enemies_found", "var(enemies_found) + (var(p.buildings_known) > 0)"),
+        variable("enemies_found", "var(enemies_found) + (var(has_economy) > 0) * (var(p.buildings_known) > 0) + (var(has_economy) == 0) * var(seen_enemy_army)"),
     ])
     fog_turns = "(var(explored_spaces) >= 0.9 * var(board_spaces)) * (110 - 100 * var(explored_spaces) / max(1, var(board_spaces))) - (var(explored_spaces) < 0.9 * var(board_spaces))"
     n_inf = "(var(own_101) + var(own_102) + var(own_103))"
     n_mil = "(var(own_101) + var(own_102) + var(own_103) + var(own_401))"
     p1 = f"({n_inf} >= 1) * (var(unexplored_local) >= 1) * (1 - ({n_mil} >= var(tune_scout4_mil)))"
     p2 = f"(var(scout_p1) == 0) * (var(enemies_found) <= gameVar(num_players) - 2)"
-    p3 = f"(var(scout_p1) == 0) * (var(scout_p2) == 0) * (var(unexplored_total) >= 1) * (((var(has_economy) >= 1) * (var(capacity_stone) <= 0)) + ({n_mil} >= 21) > 0)"
-    p4 = f"(var(scout_p2) + var(scout_p3) == 0) * ({n_mil} >= var(tune_scout4_mil))"
+    p3 = f"(var(has_economy) > 0) * (var(scout_p1) == 0) * (var(scout_p2) == 0) * (var(unexplored_total) >= 1) * ((var(capacity_stone) <= 0) + ({n_mil} >= 21) > 0)"
+    p4 = f"(var(has_economy) > 0) * (var(scout_p2) + var(scout_p3) == 0) * ({n_mil} >= var(tune_scout4_mil))"
     size = f"var(scout_p1) * 1 + (var(scout_p2) + var(scout_p3)) * (1 + ({n_mil} >= 40)) + var(scout_p4) * var(tune_scout4_count)"
     pick_scout = selection("units", dict(owner="own", unit_ids=[101, 102, 103], **{"if": "1 - inBucket(holder, target)"}),
                            let=dict(in_scout="inBucket(scout, target)"),
                            rank=["var(target.in_scout)", "0 - var(target.uid)"], limit="var(scout_size)")
     scouts_near = aggregate("count", selection("units", dict(owner="own", bucket="scout", near=dict(distance=1, of=selection("spaces", dict(in_set="home"))))))
-    release_cond = f"(var(scouts_near) >= var(n_scout_units)) + ((var(enemy_near_home) >= 1) * ({n_mil} <= 3)) > 0"
+    release_cond = f"((var(has_economy) == 0) * var(seen_enemy_army)) + (var(scouts_near) >= var(n_scout_units)) + ((var(enemy_near_home) >= 1) * ({n_mil} <= 3)) > 0"
     retire_scout = [
         dict(action="select", actors=selection("units", dict(owner="own", bucket="scout", **{"in": dict(order_kind=["none"])})),
              pick=selection("spaces", dict(in_set="home"), limit=1), issue=[dict(move={})]),
@@ -31,6 +31,7 @@ def scouting_state() -> list[Record]:
     ]
     return [
         variable("unexplored_local", unexplored_local), variable("unexplored_total", "var(board_spaces) - var(explored_spaces)"),
+        variable("seen_enemy_army", "max(var(seen_enemy_army), var(visible_power) > 0)", persist=True),
         variable("enemies_found", 0), count_enemies, variable("scout_fog_turns", fog_turns),
         variable("scout_p1", p1), variable("scout_p2", p2), variable("scout_p3", p3), variable("scout_p4", p4),
         variable("scout_phase", "var(scout_p1) * 1 + var(scout_p2) * 2 + var(scout_p3) * 3 + var(scout_p4) * 4"), variable("scout_size", size),
@@ -95,6 +96,8 @@ def home_inspector() -> list[Record]:
         variable("insp_cool", "max(0, var(insp_cool) - 1)", persist=True),
         store("insp_target", selection("spaces", {"if": "0"})),
         store("insp_zone", selection("zones", {"if": "0"})),
-        pick_insp,
-        branch("(var(n_insp_zone) > 0) * (var(insp_cool) <= 0)", [send_mil, variable("insp_cool", "var(tune_est_insp_cool)", persist=True)]),
+        branch("var(insp_cool) <= 0", [
+            pick_insp,
+            branch("var(n_insp_zone) > 0", [send_mil, variable("insp_cool", "var(tune_est_insp_cool)", persist=True)]),
+        ]),
     ]

@@ -24,11 +24,12 @@ def raid_lets(role: str) -> Record:
 
 
 def leash(model: Record) -> None:
-    nearby = aggregate("count", selection("units", dict(in_set="enemy_units", unit_types=["military"],
-        **{"if": "distance(actor, item) == 0"})))
+    nearby = aggregate("count", selection("units", dict(owner="enemy", in_set="enemy_units", unit_types=["military"],
+        **{"if": ["var(item.x) == var(actor.x)", "var(item.y) == var(actor.y)"]})))
     actors = selection("units", dict(in_set="own_units", unit_ids=[1, 101, 102, 103], **{"if": [
-        "var(actor.refine_here) == 0", "1 - inSet(raiding_party, actor)", "1 - inSet(reserved_units, actor)",
-        "(var(actor.unit_id) == 1) + ((var(assault) == 0) * (var(army_retreat) == 0)) > 0"]}), let=dict(refine_here=nearby))
+        "1 - inSet(raiding_party, actor)", "1 - inSet(reserved_units, actor)",
+        "(var(actor.unit_id) == 1) + ((var(assault) == 0) * (var(army_retreat) == 0)) > 0",
+        "var(actor.refine_here) == 0"]}), let=dict(refine_here=nearby))
     stop = dict(action="select", actors=actors, issue=[dict(stop=dict(orders=["attack_unit"]))])
     insert_before(model, "economy_maturity", [stop])
 
