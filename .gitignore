@@ -13,4 +13,5 @@ backend/game/games/risq/sim/sim
 backend/game/games/risq/sim/sim_bin
 backend/game/games/risq/ttk/ttk
 backend/logs/**
+/model_training/neural/results/
 **/__pycache__/**

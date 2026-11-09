@@ -169,6 +169,7 @@ export function serverToRisqPlayer(server_player: RisqPlayerFromServer, registry
     researched_techs: new Map(
       Object.entries(server_player.researched_techs ?? {}).map(([tech_id, researched]) => [Number(tech_id), researched])
     ),
+    gather_bonuses: server_player.gather_bonuses ?? [],
     turn_report: server_player.turn_report ? serverToRisqTurnReport(server_player.turn_report) : undefined,
     planned_foundations: new Map((server_player.planned_foundations ?? []).map((f) => [f.coordinate_key, f])),
     available_mercenaries: server_player.available_mercenaries ?? [],

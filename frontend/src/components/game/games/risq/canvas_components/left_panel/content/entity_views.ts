@@ -2,6 +2,7 @@ import { err } from '../../../../../../../scripts/log';
 import { drawRect, drawText } from '../../../../../util/canvas_util';
 import { drawUnitCountBadge } from '../../../rendering/overview_dots';
 import type { RisqBuilding, RisqResource } from '../../../model/types';
+import { effectiveGatherSpeed } from '../../../model/types';
 import { buildingImage } from '../../../rendering/assets/buildings';
 import { resourceIcon, resourceTypeImage } from '../../../rendering/assets/resources';
 import type { FoundationDrawData, LeftPanelData } from '../left_panel_data';
@@ -31,7 +32,14 @@ export function drawResource(pc: PanelDrawContext, resource: RisqResource): void
     font: '36px serif',
   });
   yi += 50;
-  drawText(ctx, `Base gather speed: ${resource.base_gather_speed}`, {
+  const category = risq.session.getResourceConfigs().get(resource.resource_id)?.category;
+  const gather_speed = effectiveGatherSpeed(
+    risq.getPlayer(),
+    resource.base_gather_speed,
+    category,
+    resource.resource_id
+  );
+  drawText(ctx, `Gather speed: ${gather_speed}`, {
     p: { x: frame.xi() + 0.1 * frame.w(), y: yi + 12 },
     w: 0.9 * frame.w(),
     fill_style: 'black',

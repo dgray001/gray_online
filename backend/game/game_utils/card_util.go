@@ -257,9 +257,16 @@ func (d *StandardDeck) SizeDiscardPile() int {
 
 // Shuffles all cards into the draw pile
 func (d *StandardDeck) Reset() {
+	d.resetWithPermutation(rand.Perm(len(d.cards)))
+}
+
+func (d *StandardDeck) ResetWithRandom(random *rand.Rand) {
+	d.resetWithPermutation(random.Perm(len(d.cards)))
+}
+
+func (d *StandardDeck) resetWithPermutation(perm []int) {
 	d.draw_pile = make([]*StandardCard, len(d.cards))
 	d.discard_pile = []*StandardCard{}
-	perm := rand.Perm(len(d.cards))
 	for i, v := range perm {
 		d.draw_pile[v] = d.cards[i]
 	}

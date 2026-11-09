@@ -4,7 +4,7 @@ import "math/rand"
 
 // Returns a boolean indicating whether the random chance occurred
 func RandomChance(chance float64) bool {
-	return rand.Float64() <= chance
+	return rand.Float64() < chance
 }
 
 // Returns an int in the range [min, max], or [max, min] if min > max

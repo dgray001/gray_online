@@ -4,6 +4,7 @@ import type {
   RisqOutcome,
   RisqTerrainStats,
   RisqCost,
+  RisqGatherBonus,
   RisqGatherPoint,
   RisqPlannedFoundation,
   RisqProducible,
@@ -79,6 +80,7 @@ export declare interface RisqPlayerFromServer {
   orders_submitted: boolean;
   eliminated: boolean;
   researched_techs?: Record<string, boolean>;
+  gather_bonuses?: RisqGatherBonus[];
   turn_report?: RisqTurnReportFromServer;
   planned_foundations?: RisqPlannedFoundation[];
   available_mercenaries?: RisqProducible[];

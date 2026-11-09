@@ -3,17 +3,14 @@ package fiddlesticks
 import (
 	"fmt"
 	"math"
-	"math/rand"
 	"os"
 
 	"github.com/dgray001/gray_online/game"
-	"github.com/dgray001/gray_online/util"
 	"github.com/gin-gonic/gin"
 )
 
 func runAi(p *FiddlesticksPlayer, f *GameFiddlesticks, action_channel chan game.PlayerAction) {
 	fmt.Println("Starting ai for AI player", p.player.GetAiId())
-	last_applied_id := 0
 	for {
 		if p == nil || p.player == nil || p.player.GetBase() == nil || p.player.GetBase().GameEnded() {
 			break
@@ -36,7 +33,7 @@ func runAi(p *FiddlesticksPlayer, f *GameFiddlesticks, action_channel chan game.
 			f.mu.Lock()
 			// walk the player's own permanent update history instead of trusting this channel
 			// receive to mean exactly one new update happened (AddUpdate drops on a full buffer)
-			last_applied_id = p.player.ReplayUpdates(last_applied_id, func(update *game.UpdateMessage) {
+			p.ai_last_applied_id = p.player.ReplayUpdates(p.ai_last_applied_id, func(update *game.UpdateMessage) {
 				fmt.Println("AI player", p.player.GetAiId(), "applying update", update)
 				p.ai_model.ApplyUpdate(p, f, update)
 			})
@@ -112,9 +109,10 @@ func createPlayerAction(p *game.Player, kind string, action gin.H) game.PlayerAc
 func GetAiBid(p *FiddlesticksPlayer, f *GameFiddlesticks) uint8 {
 	raw_bid := p.ai_model.Bet(p, f)
 	bid := uint8(raw_bid)
-	if util.RandomChance(math.Mod(raw_bid, 1)) {
+	if f.randomFloat() < math.Mod(raw_bid, 1) {
 		bid += 1
 	}
+	f.recordEvent("prediction", gin.H{"seat": p.player.Player_id, "kind": "bet", "raw_bid": raw_bid, "choice": bid})
 	return bid
 }
 
@@ -130,14 +128,15 @@ func GetAiPlayCard(p *FiddlesticksPlayer, f *GameFiddlesticks) int {
 		total_weight += weight
 	}
 	card_index := 0
-	random_choice := total_weight * rand.Float64()
+	random_choice := total_weight * f.randomFloat()
 	for i, weight := range card_weights {
-		if random_choice <= float64(weight) {
+		if random_choice < float64(weight) {
 			card_index = i
 			break
 		}
 		random_choice -= float64(weight)
 	}
+	f.recordEvent("prediction", gin.H{"seat": p.player.Player_id, "kind": "play-card", "legal_indices": valid_cards, "weights": card_weights, "choice": valid_cards[card_index]})
 	return valid_cards[card_index]
 }
 

@@ -4,11 +4,9 @@
 logs/
 test.sh
 static/images/risq/wip/
-game/games/risq/sim/inputs/
-game/games/risq/sim/outputs/
-game/games/risq/sim/sim
-game/games/risq/sim/sim_bin
-game/games/risq/ttk/ttk
+game/games/risq/sim/
+game/games/risq/ttk/
+game/games/risq/tests/
 **/__pycache__/
 **/*_test.go
 **/*.xcf

@@ -33,6 +33,7 @@ func (a *PlayerAction) toFrontend() gin.H {
 }
 
 type Player struct {
+	Identity        map[string]string
 	client_id       uint64
 	ai_player_id    uint32 // specific to the game
 	ai_running      bool   // can be true for human players

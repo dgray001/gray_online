@@ -24,6 +24,7 @@ type FiddlesticksPlayer struct {
 	turn_timer            *time.Timer
 	turn_start_time       time.Time
 	ai_choice             *aiChoice
+	ai_last_applied_id    int
 }
 
 func (p *FiddlesticksPlayer) createAiModel(model_input map[string]string) {

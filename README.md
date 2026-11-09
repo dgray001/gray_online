@@ -2,25 +2,11 @@ Online Games
 
 ## Current Version
 
-v0.9l: Finished v7
+v0.9m: Christmas theme
 
 ## Dev Use
 
-Ensure DEV flags are true
-
-Backend: /backend/main.go::DEV
-
-```bash
-var DEV = true
-```
-
-Frontend: /frontend/src/scripts/util.ts::DEV
-
-```bash
-export const DEV = true;
-```
-
-Then start go server
+Start go server
 
 ```bash
 cd backend
@@ -44,8 +30,6 @@ npm run add
 ```
 
 ## Build Instructions
-
-Set the aforementioned frontend and backend flags to false
 
 Build the js bundle
 
@@ -77,8 +61,8 @@ export const version = '<version>';
 Build the model trainer using go build
 
 ```bash
-cd model_trainer
-go build
+cd model_training
+go build -o fiddlesticks.live main.go
 ```
 
 Then create an input yml file in an inputs folder
@@ -86,8 +70,8 @@ An example showing my standard benchmarking is given
 
 ```bash
 mkdir inputs
-cp standard_benchmarks.yml input/standard_benchmarks.yml
-fiddlesticks.live standard_benchmarks
+cp standard_benchmarks.yml inputs/standard_benchmarks.yml
+./fiddlesticks.live standard_benchmarks
 ```
 
 Outputs will be written to the outputs folder

@@ -10,7 +10,7 @@ import type {
   RisqUnit,
   RisqRange,
 } from '../../../model/types';
-import { RisqAttackType, RisqResourceType, rangeDistance } from '../../../model/types';
+import { RisqAttackType, RisqResourceType, effectiveGatherSpeed, rangeDistance } from '../../../model/types';
 import { rangeLabel } from '../../../model/unit_display';
 import { resourceTypeImage } from '../../../rendering/assets/resources';
 import { UNIT_HEALTHBAR_COLOR_BACKGROUND, UNIT_HEALTHBAR_COLOR_HEALTH } from '../../../rendering/assets/unit';
@@ -94,7 +94,11 @@ function gatherStatsRow(risq: DwgRisq, building: RisqBuilding): (StatCell | null
       Math.round(building.resources_left ?? 0),
       'Resources left',
     ],
-    ['icons/gather32', building.base_gather_speed ?? 0, 'Gather rate'],
+    [
+      'icons/gather32',
+      effectiveGatherSpeed(risq.getPlayer(), building.base_gather_speed ?? 0, building.resource_category, 0),
+      'Gather speed',
+    ],
     ['icons/villager64', workersText(risq, building, building.gather_capacity), 'Workers'],
     building.renewing && building.renew_stamina !== undefined
       ? [

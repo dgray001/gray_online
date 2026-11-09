@@ -1,0 +1,19 @@
+dwg-goldset {
+  .equivalence-toggle { display: flex; align-items: center; gap: 8px; }
+  display: block; min-height: 100vh; padding: 18px; color: #173126; background: #f3f6f4; font: 14px/1.45 system-ui, sans-serif;
+  * { box-sizing: border-box; }
+  header { display: flex; align-items: center; gap: 24px; margin-bottom: 10px; } h1 { margin: 0; font-size: 25px; } h2 { margin-top: 0; font-size: 19px; } h3 { font-size: 15px; } header p { margin: 4px 0; } header a { margin-left: auto; }
+  button, select, input, textarea { font: inherit; } button, select, input, textarea, header a { border: 1px solid #b7c8bd; border-radius: 6px; padding: 7px 9px; } button { background: white; cursor: pointer; } button:hover:not(:disabled) { border-color: #168153; } button:focus-visible, input:focus, select:focus, textarea:focus { outline: 2px solid #21835b; outline-offset: 2px; } button:disabled { cursor: default; opacity: 0.45; } header a { background: white; color: #155a3d; text-decoration: none; }
+  .workspace { display: grid; grid-template-columns: 230px minmax(440px, 1fr) minmax(340px, 0.8fr); gap: 16px; align-items: start; }
+  .queue-panel, .decision-panel, .analysis-panel { padding: 16px; border: 1px solid #d3ded7; border-radius: 10px; background: white; }
+  .queue-panel, .analysis-panel { position: sticky; top: 12px; max-height: calc(100vh - 115px); overflow: auto; }
+  #queue { display: grid; gap: 6px; max-height: 47vh; overflow: auto; margin: 12px 0; } #queue button { text-align: left; font-size: 12px; } #queue .active { background: #dceee3; border-color: #24855d; }
+  label { display: grid; gap: 4px; margin: 9px 0; } #generate-form { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; } #generate-form input, #generate-form select { width: 100%; min-width: 0; } #generate-form label { margin: 2px 0; font-size: 12px; } #generate { grid-column: 1 / -1; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 10px 0 16px; } th, td { text-align: left; vertical-align: top; padding: 5px; border-bottom: 1px solid #dce4df; } th { color: #496253; }
+  .playing-card { width: 70px; height: auto; display: block; } .trump { display: flex; align-items: center; gap: 12px; } .trump img { width: 48px; }
+  .trick { display: flex; gap: 10px; min-height: 90px; padding: 10px; background: #e8f1eb; border-radius: 8px; } .trick span { font-size: 11px; } .trick .playing-card { width: 54px; }
+  .choices { display: flex; flex-wrap: wrap; gap: 8px; } .choices button { min-width: 52px; } .choices .selected { border: 3px solid #147e4e; background: #e1f3e8; padding: 5px 7px; }
+  .actions { display: flex; gap: 10px; } #save { background: #176d48; color: white; } #notes { width: 100%; resize: vertical; } #confidence { max-width: 180px; } #selection { font-weight: 650; } #status { min-height: 20px; color: #546b5d; } details { margin-top: 16px; } summary { cursor: pointer; } #history details { max-height: 360px; overflow: auto; }
+  @media (max-width: 1150px) { .workspace { grid-template-columns: 210px minmax(0, 1fr); } .analysis-panel { grid-column: 1 / -1; position: static; max-height: none; } }
+  @media (max-width: 700px) { padding: 10px; header { flex-wrap: wrap; gap: 10px; } .workspace { display: block; } .queue-panel { position: static; max-height: 260px; } .decision-panel, .analysis-panel { margin-top: 12px; } }
+}

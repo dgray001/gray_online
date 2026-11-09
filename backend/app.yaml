@@ -20,3 +20,6 @@ network:
   session_affinity: true
 
 service_account: dwg-games@appspot.gserviceaccount.com
+
+env_variables:
+  FIDDLESTICKS_RECORDING_BUCKET: "fiddlesticks_ai"

@@ -64,6 +64,28 @@ export function canHaveGatherPoint(building: RisqBuilding): boolean {
   return building.garrison_capacity > 0 || building.produces.some((p) => p.kind === RisqProducibleKind.UNIT);
 }
 
+export function effectiveGatherSpeed(
+  player: RisqPlayer | undefined,
+  base_speed: number,
+  category: RisqResourceType | undefined,
+  resource_id: number
+): number {
+  let flat = 0;
+  let percentage = 0;
+  for (const bonus of player?.gather_bonuses ?? []) {
+    const unfiltered = bonus.resource_categories.length === 0 && bonus.resource_ids.length === 0;
+    if (
+      unfiltered ||
+      (category !== undefined && bonus.resource_categories.includes(category)) ||
+      (resource_id !== 0 && bonus.resource_ids.includes(resource_id))
+    ) {
+      flat += bonus.speed;
+      percentage += bonus.percentage;
+    }
+  }
+  return Number(((base_speed + flat) * (1 + percentage / 100)).toFixed(1));
+}
+
 export function canAffordCost(player: RisqPlayer, cost: RisqCost): boolean {
   const affords = (type: RisqResourceType, amount: number): boolean => {
     if (amount <= 0) {

@@ -1,0 +1,83 @@
+<header>
+  <div>
+    <h1>Fiddlesticks goldset</h1>
+    <p>Label the decision you would make to win the game.</p>
+  </div>
+  <a href="/api/export" download>Export goldset</a><strong id="counts"></strong>
+</header>
+<p id="status" role="status"></p>
+<main class="workspace">
+  <aside class="queue-panel">
+    <h2>Situations</h2>
+    <label
+      >Show
+      <select id="filter">
+        <option value="open">Open</option>
+        <option value="labelled">Labelled</option>
+        <option value="all">All</option>
+      </select></label
+    >
+    <div id="queue"></div>
+    <details>
+      <summary>Add situations</summary>
+      <form id="generate-form">
+        <label>Count <input name="count" type="number" min="1" max="100" value="20" required /></label>
+        <label
+          >Players
+          <select name="players">
+            <option value="0">Mixed 4–8</option>
+            <option>2</option>
+            <option>3</option>
+            <option>4</option>
+            <option>5</option>
+            <option>6</option>
+            <option>7</option>
+            <option>8</option>
+            <option>9</option>
+            <option>10</option>
+          </select></label
+        >
+        <label
+          >Decision
+          <select name="kind">
+            <option value="both">Bidding and cards</option>
+            <option value="bet">Bidding</option>
+            <option value="play-card">Card play</option>
+          </select></label
+        >
+        <label>Minimum hand <input name="min_hand" type="number" min="1" max="25" value="1" required /></label
+        ><label>Maximum hand <input name="max_hand" type="number" min="1" max="25" value="3" required /></label>
+        <label>Round points <input name="round_points" type="number" min="0" max="99" value="10" required /></label
+        ><label>Trick points <input name="trick_points" type="number" min="0" max="99" value="1" required /></label>
+        <label>Seed <input name="seed" type="number" value="20261110" required /></label
+        ><button id="generate" type="submit">Add situations</button>
+      </form>
+    </details>
+  </aside>
+  <section class="decision-panel">
+    <div id="state"></div>
+    <div id="choices"></div>
+    <label class="equivalence-toggle"
+      ><input id="equivalents" type="checkbox" />Multiple equally acceptable answers</label
+    >
+    <p id="selection"></p>
+    <form id="answer-form">
+      <label
+        >Confidence
+        <select id="confidence">
+          <option value="1">Confident</option>
+          <option value="0.8">Preference</option>
+          <option value="0.5">Uncertain</option>
+        </select></label
+      ><label
+        >Reason / notes <textarea id="notes" rows="3" placeholder="Optional reasoning for this label"></textarea>
+      </label>
+      <div class="actions">
+        <button id="save" type="submit" disabled>Save gold label and next</button
+        ><button id="skip" type="button">Skip for now</button>
+      </div>
+    </form>
+    <div id="history"></div>
+  </section>
+  <aside id="analysis" class="analysis-panel"></aside>
+</main>

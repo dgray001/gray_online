@@ -121,10 +121,14 @@ function unitGroupSubtitle(risq: DwgRisq, groups: [number, UnitByTypeData[]][]):
   if (player_ids.length > 1) {
     return `Units from ${player_ids.length} players`;
   }
-  if (player_ids[0] === undefined || player_ids[0] === risq.getPlayer()?.player.player_id) {
+  return player_ids[0] === undefined ? undefined : ownerSubtitle(risq, player_ids[0]);
+}
+
+function ownerSubtitle(risq: DwgRisq, player_id: number): string | undefined {
+  if (player_id === risq.getPlayer()?.player.player_id) {
     return undefined;
   }
-  return `Owned by ${risq.getGame()?.players[player_ids[0]]?.player.nickname ?? 'another player'}`;
+  return `Owned by ${risq.getGame()?.players[player_id]?.player.nickname ?? 'another player'}`;
 }
 
 interface UnitRef {
@@ -253,6 +257,10 @@ function drawPerPlayerUnitRows(
 
 export function drawUnit(pc: PanelDrawContext, unit: RisqUnit): void {
   let yi = pc.frame.yi() + drawName(pc, unit.display_name);
+  const subtitle = ownerSubtitle(pc.risq, unit.player_id);
+  if (subtitle) {
+    yi += drawSubtitle(pc, subtitle, yi);
+  }
   yi += drawHeaderImage(pc, yi, unitImage(unit.unit_id), pc.risq.getGame()?.players[unit.player_id]?.color);
   drawSeparator(pc, yi);
   pc.stats.draw(pc, pc.frame.yi() + 0.25 * pc.frame.h() + 6, unit);

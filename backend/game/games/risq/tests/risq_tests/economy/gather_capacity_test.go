@@ -344,3 +344,26 @@ func TestGatherPenaltyByOwnership(t *testing.T) {
 		}
 	}
 }
+
+func woodGainedInOneTurn(t *testing.T, techs string) float64 {
+	t.Helper()
+	doc := fmt.Sprintf(`{"board_size":2,"players":2,"starting_techs":%s,"spaces":[{"x":0,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"resource":11,"units":[{"id":11,"player":0,"count":1}]}]},{"x":2,"y":0,"terrain":1,"zones":[{"x":0,"y":0,"units":[{"id":11,"player":1,"count":1}]}]}]}`, techs)
+	fakeboard.UseConfig(t, testConfig, nil, map[string]string{"gather": doc})
+	g := startGame(t, "custom:gather", 1, 2)
+	p := g.Human(0)
+	submitGather(g, p)
+	before := g.Self(p).Resources.Wood
+	g.EndTurn()
+	return g.Self(p).Resources.Wood - before
+}
+
+func TestGatherBonusTechRaisesGatherAmount(t *testing.T) {
+	base := float64(defs.ResourceConfigs[11].Base_gather_speed)
+	without, with := woodGainedInOneTurn(t, "[]"), woodGainedInOneTurn(t, "[309]")
+	if without <= 0 {
+		t.Fatalf("baseline gathered %v wood", without)
+	}
+	if want := without * (base + 2) / base; math.Abs(with-want) > 0.01 {
+		t.Errorf("with bonus gathered %v wood, want %v (baseline %v)", with, want, without)
+	}
+}

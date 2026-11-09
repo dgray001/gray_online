@@ -1,0 +1,274 @@
+body[data-theme='christmas'] {
+  --xmas-pine-dark: rgb(10, 35, 20);
+  --xmas-pine-mid: rgb(18, 55, 32);
+  --xmas-pine-header: rgb(14, 45, 26);
+  --xmas-berry: rgb(160, 35, 35);
+  --xmas-berry-dark: rgb(120, 25, 25);
+  --xmas-gold: rgb(220, 180, 80);
+
+  dwg-page-home {
+    background-color: var(--xmas-pine-dark);
+  }
+
+  dwg-lobby {
+    background-color: var(--xmas-pine-mid);
+
+    > #page-header {
+      background-color: var(--xmas-pine-dark);
+    }
+  }
+}
+
+body[data-theme='christmas'] {
+  dwg-lobby > #buttons {
+    background-color: var(--xmas-pine-header);
+  }
+
+  dwg-lobby-room {
+    background-color: var(--xmas-berry);
+    box-shadow:
+      0px 0px 3px 4px rgba(160, 35, 35, 0.8),
+      0px 0px 6px 8px rgba(120, 25, 25, 0.8),
+      0px 0px 9px 12px rgba(80, 15, 15, 0.8);
+
+    #room-header {
+      background-color: var(--xmas-berry-dark);
+    }
+  }
+}
+
+body[data-theme='christmas'] {
+  button {
+    background-color: var(--xmas-berry);
+    border-color: var(--xmas-gold) var(--xmas-berry-dark) var(--xmas-berry-dark) var(--xmas-gold);
+    color: white;
+
+    &:hover {
+      background-color: rgb(185, 45, 45);
+    }
+
+    &:active {
+      background-color: var(--xmas-berry-dark);
+      border-color: var(--xmas-berry-dark) var(--xmas-gold) var(--xmas-gold) var(--xmas-berry-dark);
+    }
+  }
+}
+
+body[data-theme='christmas'] {
+  dwg-lobby {
+    > #buttons > button:hover:not(:disabled) {
+      background-color: rgba(220, 180, 80, 0.2);
+    }
+
+    > #buttons > button:active:not(:disabled) {
+      background-color: rgba(160, 35, 35, 0.4);
+    }
+
+    > #horizontal-container > #lobby-users {
+      background-color: var(--xmas-pine-dark);
+      border-left: 1px solid rgba(220, 180, 80, 0.3);
+    }
+
+    > #lobby-room-wrapper {
+      background-color: rgba(5, 20, 12, 0.7);
+    }
+  }
+}
+
+body[data-theme='christmas'] {
+  dwg-lobby-room > #room-body > #left-panel {
+    background-color: var(--xmas-pine-header);
+
+    > #user-list {
+      background-color: rgba(10, 35, 20, 0.6);
+
+      .container-label {
+        background-color: rgba(160, 35, 35, 0.5);
+      }
+    }
+
+    #settings-settings-button {
+      background: linear-gradient(0deg, rgb(160, 125, 40), rgb(220, 180, 80));
+    }
+  }
+}
+
+body[data-theme='christmas'] {
+  dwg-chatbox {
+    --gray-color: rgb(170, 195, 175);
+    color: rgb(240, 240, 235);
+
+    &:not(.transparent-fade) {
+      background-color: rgb(12, 38, 22);
+    }
+
+    &.transparent-fade.show #chat-container {
+      background-color: rgba(12, 38, 22, 0.6);
+    }
+
+    &.transparent-fade:not(.show) {
+      background-color: transparent;
+
+      #chat-container {
+        background-color: transparent;
+      }
+    }
+
+    #input-container #chat-input {
+      background-color: rgb(18, 52, 30);
+      border: 1px solid var(--xmas-gold);
+      color: white;
+    }
+
+    #new-messages-container #new-messages-button {
+      background-color: var(--xmas-berry);
+      color: white;
+    }
+  }
+}
+
+body[data-theme='christmas'] {
+  dwg-room-selector {
+    &:hover {
+      background-color: rgba(220, 180, 80, 0.15);
+    }
+
+    > #room-buttons > button {
+      background-color: var(--xmas-berry);
+      border: 1px solid var(--xmas-gold);
+      color: white;
+    }
+  }
+}
+
+body[data-theme='christmas'] {
+  dwg-lobby-game-settings {
+    background-color: rgba(5, 20, 12, 0.7);
+
+    > #game-settings-wrapper {
+      background-color: rgb(18, 55, 32);
+      border: 1px solid var(--xmas-gold);
+      box-shadow: 0 0 10px 4px rgba(0, 0, 0, 0.6);
+      color: white;
+    }
+  }
+
+  .dwg-dialog-box #wrapper {
+    background-color: rgb(18, 55, 32);
+    border: 1px solid var(--xmas-gold);
+    box-shadow: 0 0 10px 4px rgba(0, 0, 0, 0.6);
+  }
+}
+
+body[data-theme='christmas'] {
+  #christmas-bell-widget {
+    background: transparent;
+    border: none;
+    bottom: 16px;
+    cursor: pointer;
+    filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.7));
+    position: fixed;
+    right: 16px;
+    transform-origin: top center;
+    transition: transform 150ms ease;
+    z-index: 100;
+
+    &:hover {
+      transform: scale(1.15);
+    }
+
+    &.ringing {
+      animation: bell-swing 600ms ease-in-out;
+    }
+  }
+}
+
+@keyframes bell-swing {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  20% {
+    transform: rotate(25deg);
+  }
+  40% {
+    transform: rotate(-22deg);
+  }
+  60% {
+    transform: rotate(15deg);
+  }
+  80% {
+    transform: rotate(-10deg);
+  }
+}
+
+body[data-theme='christmas'] {
+  #large-lobby-bell {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    margin-left: clamp(20px, 8vw, 120px);
+    padding: 0 8px;
+    transform-origin: top center;
+    transition: transform 150ms ease;
+
+    &:hover {
+      transform: scale(1.15);
+    }
+
+    &.ringing {
+      animation: bell-swing 600ms ease-in-out;
+    }
+  }
+}
+
+body[data-theme='christmas'] {
+  #header-small-bell {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    margin-left: 12px;
+    vertical-align: middle;
+    transform-origin: top center;
+
+    &:hover {
+      transform: scale(1.2);
+    }
+
+    &.ringing {
+      animation: bell-swing 600ms ease-in-out;
+    }
+  }
+}
+
+body[data-theme='christmas'] {
+  #santa-sleigh {
+    cursor: pointer;
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.8));
+    left: -200px;
+    pointer-events: auto;
+    position: fixed;
+    top: 25px;
+    z-index: 95;
+
+    &.flying {
+      animation: santa-flight 12s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+  }
+}
+
+@keyframes santa-flight {
+  0% {
+    left: -180px;
+    top: 25px;
+    transform: rotate(4deg);
+  }
+  50% {
+    top: 65px;
+    transform: rotate(-3deg);
+  }
+  100% {
+    left: calc(100vw + 50px);
+    top: 30px;
+    transform: rotate(5deg);
+  }
+}

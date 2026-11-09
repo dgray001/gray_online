@@ -22,6 +22,7 @@ const (
 )
 
 type Client struct {
+	Identity               map[string]string
 	std                    *util.Logger
 	err                    *util.Logger
 	client_id              uint64

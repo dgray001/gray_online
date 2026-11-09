@@ -1,0 +1,142 @@
+[
+  {
+    "item_id": "c9fe9a876b7ca5669d20e3f3b929e70b",
+    "action": 0,
+    "notes": "Note the 4 of spades all but guarantees that the ace is \"safe\" here but even with an \"unprotected\" ace it is extremely unlikely you wouldn't be able to throw it off since SOMEONE probably has trump anyway even if dealer leads with spades",
+    "confidence": 1,
+    "saved_at": "2026-11-09T14:53:51.055793677Z"
+  },
+  {
+    "item_id": "56a2b50d08a2438261f6f7dabe8ffcdb",
+    "action": 0,
+    "notes": "again likelihood is almost 0% that you win this it is pure probability here no strategy",
+    "confidence": 1,
+    "saved_at": "2026-11-09T14:54:26.121800443Z"
+  },
+  {
+    "item_id": "393ac9d0c00c209a48856534dbd40a1b",
+    "action": 0,
+    "notes": "1. king is protected, 2. 7 players is a lot, 3. no trump",
+    "confidence": 1,
+    "saved_at": "2026-11-09T14:54:58.339292113Z"
+  },
+  {
+    "item_id": "83f0001be2eef48c055fa61eb621cb65",
+    "action": 0,
+    "notes": "0 is correct no matter waht even if you're leading but you aren't and 2 others arleady bid 1 lol",
+    "confidence": 1,
+    "saved_at": "2026-11-09T14:55:25.889144917Z"
+  },
+  {
+    "item_id": "82199ce876d19ad5641031f0653b5bcb",
+    "action": 1,
+    "notes": "To me as a player this is about 50/50. For the model4 it estimates it as 33% chance you win I think that might underestmate slightly tbh. Here there are some behavioral assumptions made but ssuming all 5 other 0 bids are no trump then only player 6 might beat me and there is \u003c1/4 of cards (11/45) that he could. That said, it IS possible that someone else had a low trump and decided to bid 0 anyway which is reasonable especitally if they are at beginning of bidding, so that 11/45 is definitely a FLOOR probability of losing the trick and I think aout 50/50 would be my heuristic. Worth noting that 5 is not 2 so there are 3 different low trumps that we still beat even if someone else has a low trump and bid 0",
+    "confidence": 0.5,
+    "saved_at": "2026-11-09T14:58:20.141891446Z"
+  },
+  {
+    "item_id": "7789965a63eb972d5893400d545d96e1",
+    "action": 0,
+    "notes": "2 unprotected cards that can both win tricks so it's definitely not guaranteed. model 4 gets it right with about 12% although in practice with 3 0 bids laready I think maybe it should be closer to 30%. If I was the last one bidding I woiuld probably bid 1 although I'd see ti as about 50/50",
+    "confidence": 0.8,
+    "saved_at": "2026-11-09T14:59:48.383454377Z"
+  },
+  {
+    "item_id": "ed3a0ca12310b1ffaaca84da6d527e66",
+    "action": 0,
+    "notes": "offtrump, model4 of 1.5% win is about right to me",
+    "confidence": 1,
+    "saved_at": "2026-11-09T15:00:17.834040516Z"
+  },
+  {
+    "item_id": "f4b380d77585c2a41ba13aeff136cb51",
+    "action": 0,
+    "notes": "no trump and no high cards. If the 5 or 7 wins that is EREMELY unlikely about 1% is correct",
+    "confidence": 1,
+    "saved_at": "2026-11-09T15:01:30.687365956Z"
+  },
+  {
+    "item_id": "aaad08a1ccfc6a2e0522aef099ed1bf3",
+    "action": 0,
+    "notes": "3 unprotected highish cards and last to bid and there is an orphan. Also, player 5 seems to be bidding aggressively this game. I think model4 is GREATLY underestimating the risk of bidding 0 here I think probability of losing is closer to 30%. However, with 7 players and 2 free suits I think bidding 0 is definitely correct",
+    "confidence": 1,
+    "saved_at": "2026-11-09T15:03:49.163647625Z"
+  },
+  {
+    "item_id": "db23ee08eb7465f2bb3bdb33253265b3",
+    "action": 1,
+    "notes": "player 1 bid 3 so obviously they have at least 1 high trump. It is actually impossible for them to win all 3 with your king because you have position on them and own't lose position on them unless you win one. The only risk is if you win 2 which is actually a very tangible risk due to player 1 likely having that power. Say they have an ace and 9 of trump then you trump first trick with king you have to throw off 10 and they already know they lose so hey will just throw off 9 to make you lose too. However, I STRONGLY disagree with model4 here the chance of that is not 90% it is very likely you will be able to mess them up with position on them so I'm about 90% confident I would win this in practice.",
+    "confidence": 1,
+    "saved_at": "2026-11-09T15:07:12.352041416Z"
+  },
+  {
+    "item_id": "09fd447ba8dec9a861f1e46f9645d95d",
+    "action": 27,
+    "notes": "There are 2 orphans out there so everyone is going to be throwing off and presumable has low cards. If you play jack or 8 it is likely you will lose. I think model4 is correct here although maybe win % for jack is closer to 25% and 8 15% imo",
+    "confidence": 1,
+    "saved_at": "2026-11-09T15:08:39.321329449Z"
+  },
+  {
+    "item_id": "5feee240ed28bebcc9b4d4767a2f117a",
+    "action": 74,
+    "notes": "no brainer if you want 0 more tricks and here is choice between 2 cards that are both guaranteed to lose trick then you pick thehigher one duh",
+    "confidence": 1,
+    "saved_at": "2026-11-09T15:09:42.36494897Z"
+  },
+  {
+    "item_id": "ecb42717442f3494e395a8db8ef4a96b",
+    "action": 36,
+    "notes": "Again throw off higher one when given the chance and you want 0 more tricks BBUUUUUUUUTT model4 is correct that it's 50/50 because you see the 10 so actually 9 and jack are EQUAL since you have both",
+    "confidence": 0.5,
+    "saved_at": "2026-11-09T15:10:59.823566331Z"
+  },
+  {
+    "item_id": "60d1e14082dbe24f334f7ae6b42e187e",
+    "action": 72,
+    "notes": "you already lost the round so it barely matters but try to throw off so osmeone else also loses. It is likely player 8 has a high trump and will wait until trick 3 to play it regardless",
+    "confidence": 1,
+    "saved_at": "2026-11-09T15:12:03.056770615Z"
+  },
+  {
+    "item_id": "85300f07c2df74fdb3e43978353a62b5",
+    "action": 70,
+    "notes": "Throw off the higher card when you don't want to win. I think model4 has a bug because it has this backwards in this case although we should test this with say 3 and king of spades to see if model4 gets it right in that case",
+    "confidence": 1,
+    "saved_at": "2026-11-09T15:13:13.919956037Z"
+  },
+  {
+    "item_id": "6fa4bb727fc43f8f9bd52587bdf83b9d",
+    "action": 40,
+    "notes": "there are 6 out there and only 3 tricks so the value of a trick is super high. This also means someone almost definitely will beat your 7 of diamonds so that is suicide to play. The 2 or 6 of clubs is essentially a 50/50 so model4 is correct here",
+    "confidence": 0.8,
+    "saved_at": "2026-11-09T15:14:30.016222046Z"
+  },
+  {
+    "item_id": "342609fa407810b39aee46f9db2450c6",
+    "action": 39,
+    "notes": "both options are equivalent anyway it makes no difference",
+    "confidence": 0.5,
+    "saved_at": "2026-11-09T15:14:48.303509562Z"
+  },
+  {
+    "item_id": "4066db6832b7975fa1163da5e11e8569",
+    "action": 47,
+    "notes": "1 overbid so here 2 other players are going to be fighting for it. Now player 1 already palyed their high trump (10) and you beat it so it's possible they can't beat you, but it's very likley that player 4 would.\nOn the other hand, player 3 if they have say a high trump and player 1 has no trump, will just not trump your 9 of clubs and wait until the last trick and win that, so you might be in a bind either way. However, I think it is ideal to play the 9 clubs ",
+    "confidence": 0.8,
+    "saved_at": "2026-11-09T15:31:22.446682947Z"
+  },
+  {
+    "item_id": "7a1c7db93ac218a36d2e9f5f513126ac",
+    "action": 65,
+    "notes": "Hope no one has a low trump that will beat your 2 (which is actually kinda likely lol but in that case it'd be an offtrump ace anyway)",
+    "confidence": 1,
+    "saved_at": "2026-11-09T15:40:08.902682079Z"
+  },
+  {
+    "item_id": "16a5ac09e05918b7d30b9cef251f353f",
+    "action": 73,
+    "notes": "Throw off the higher card",
+    "confidence": 1,
+    "saved_at": "2026-11-09T15:40:31.815101543Z"
+  }
+]

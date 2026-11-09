@@ -56,6 +56,19 @@ func (g GatherBonus) ToFrontend(c *Config) gin.H {
 	}
 }
 
+func (g GatherBonus) ToFrontendIds() gin.H {
+	categories := make([]int, len(g.Affects_resource_types))
+	for i, category := range g.Affects_resource_types {
+		categories[i] = int(category)
+	}
+	return gin.H{
+		"resource_categories": categories,
+		"resource_ids":        append([]uint32{}, g.Affects_resource_ids...),
+		"speed":               g.Bonus_gather_speed,
+		"percentage":          g.Bonus_gather_percentage,
+	}
+}
+
 func parseGatherBonus(e gatherBonusJSON) (GatherBonus, error) {
 	if e.BonusGatherPercentage <= -100 {
 		return GatherBonus{}, fmt.Errorf("bonus_gather_percentage must be above -100")

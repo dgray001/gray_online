@@ -1,0 +1,66 @@
+[
+  {
+    "item_id": "4753062f089ec8b9b6d10181a99b52e7",
+    "acceptable_actions": [
+      1
+    ],
+    "proof": "The card is an unbeatable trump. An exact bid of one scores above every zero bidder and guarantees the game win.",
+    "rule": "one-card"
+  },
+  {
+    "item_id": "90f5caf5bada02c794e5197c90d26163",
+    "acceptable_actions": [
+      0
+    ],
+    "proof": "The lowest off-trump card cannot win when not leading. Bid zero guarantees a winning share; bid one loses to the other exact zero bidders.",
+    "rule": "one-card"
+  },
+  {
+    "item_id": "710759a6c658d0c61a53a797dcdbe8eb",
+    "acceptable_actions": [
+      1
+    ],
+    "proof": "The card is an unbeatable trump. An exact bid of one scores above every zero bidder and guarantees the game win.",
+    "rule": "one-card"
+  },
+  {
+    "item_id": "126b5e590a99ebd2abcf886eeab6195d",
+    "acceptable_actions": [
+      51
+    ],
+    "proof": "The current trick already contains the trump ace. Discarding the king now leaves only lowest off-trumps and guarantees zero tricks. Keeping it forces a later overtrick; because players outnumber tricks, another zero bidder must score and beat that failed contract.",
+    "rule": "discard-top-trump"
+  },
+  {
+    "item_id": "9e7769ff47758b3a0bdf93e55fa34750",
+    "acceptable_actions": [
+      0
+    ],
+    "proof": "The lowest off-trump card cannot win when not leading. Bid zero guarantees a winning share; bid one loses to the other exact zero bidders.",
+    "rule": "one-card"
+  },
+  {
+    "item_id": "7bf854c268f3c1adda040c3518a9819f",
+    "acceptable_actions": [
+      1
+    ],
+    "proof": "The card is an unbeatable trump. An exact bid of one scores above every zero bidder and guarantees the game win.",
+    "rule": "one-card"
+  },
+  {
+    "item_id": "3c6547a04441d078060e652511d0b1d2",
+    "acceptable_actions": [
+      0
+    ],
+    "proof": "The lowest off-trump card cannot win when not leading. Bid zero guarantees a winning share; bid one loses to the other exact zero bidders.",
+    "rule": "one-card"
+  },
+  {
+    "item_id": "a9ea3b4b6ed2f5f854c80b519831474c",
+    "acceptable_actions": [
+      64
+    ],
+    "proof": "The current trick already contains the trump ace. Discarding the king now leaves only lowest off-trumps and guarantees zero tricks. Keeping it forces a later overtrick; because players outnumber tricks, another zero bidder must score and beat that failed contract.",
+    "rule": "discard-top-trump"
+  }
+]

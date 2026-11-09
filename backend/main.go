@@ -61,6 +61,7 @@ func main() {
 
 	// All api groupings
 	api := r.Group("/api")
+	api.Use(connectionIdentity)
 	{
 		api.GET("/ping", func(c *gin.Context) {
 			c.JSON(200, successResponse("pong"))
@@ -124,12 +125,13 @@ func main() {
 					util.Error(util.DefaultErr, "Must specify nickname when connecting")
 					return
 				}
-				conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+				conn, err := upgrader.Upgrade(c.Writer, c.Request, c.Writer.Header().Clone())
 				if err != nil {
 					util.Error(util.DefaultErr, err)
 					return
 				}
 				client := lobby.CreateClient(conn, nickname, lobby_object)
+				client.Identity = c.MustGet("identity").(map[string]string)
 				lobby_object.AddClient <- client
 			})
 
@@ -151,12 +153,13 @@ func main() {
 					return
 				}
 				nickname = old_client.GetNickname()
-				conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+				conn, err := upgrader.Upgrade(c.Writer, c.Request, c.Writer.Header().Clone())
 				if err != nil {
 					util.Error(util.DefaultErr, err)
 					return
 				}
 				client := lobby.CreateClient(conn, nickname, lobby_object)
+				client.Identity = c.MustGet("identity").(map[string]string)
 				lobby_object.ReconnectClient <- lobby.MakeClientId(client, uint64(client_id))
 			})
 

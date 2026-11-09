@@ -95,17 +95,17 @@ type RisqPlannedFoundation struct {
 
 func createRisqPlayer(config *defs.Config, player *game.Player, max_population_limit uint16, color string, rng *rand.Rand) *RisqPlayer {
 	return &RisqPlayer{
-		config:                   config,
-		player:                   player,
-		resources:                createRisqPlayerResources(),
-		buildings:                make(map[uint64]*RisqBuilding),
-		units:                    make(map[uint64]*RisqUnit, 0),
-		max_population_limit:     max_population_limit,
-		color:                    color,
-		active_orders:            make([]*RisqOrder, 0),
-		orders_submitted:         false,
-		default_unit_stance:      defs.UnitStance_DEFENSIVE,
-		default_unit_attack_back: true,
+		config:                    config,
+		player:                    player,
+		resources:                 createRisqPlayerResources(),
+		buildings:                 make(map[uint64]*RisqBuilding),
+		units:                     make(map[uint64]*RisqUnit, 0),
+		max_population_limit:      max_population_limit,
+		color:                     color,
+		active_orders:             make([]*RisqOrder, 0),
+		orders_submitted:          false,
+		default_unit_stance:       defs.UnitStance_DEFENSIVE,
+		default_unit_attack_back:  true,
 		default_unit_attack_stack: 1,
 		default_unit_target_priority: []defs.TargetCategory{
 			defs.TargetCategory_MILITARY,
@@ -164,6 +164,18 @@ func (p *RisqPlayer) researchedTechIds() []uint32 {
 		}
 	}
 	return ids
+}
+
+func (p *RisqPlayer) gatherBonusesToFrontend() []gin.H {
+	bonuses := make([]gin.H, 0)
+	for _, id := range p.researchedTechIds() {
+		for _, effect := range p.config.Techs[id].Effects() {
+			if effect.Gather_bonus.IsSet() {
+				bonuses = append(bonuses, effect.Gather_bonus.ToFrontendIds())
+			}
+		}
+	}
+	return bonuses
 }
 
 func (p *RisqPlayer) populationLimit() uint16 {
@@ -322,6 +334,7 @@ func (p *RisqPlayer) toFrontend(viewer_player_id int, with_history bool) gin.H {
 		player["population_limit"] = p.populationLimit()
 		player["max_population_limit"] = p.max_population_limit
 		player["researched_techs"] = maps.Clone(p.researched_techs)
+		player["gather_bonuses"] = p.gatherBonusesToFrontend()
 		player["default_unit_stance"] = p.default_unit_stance
 		player["default_unit_attack_back"] = p.default_unit_attack_back
 		player["default_unit_interrupt_current"] = p.default_unit_interrupt_current

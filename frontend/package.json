@@ -4,6 +4,7 @@
   "description": "Online Games",
   "main": "index.js",
   "scripts": {
+    "build:goldset": "webpack --config webpack.goldset.js",
     "build": "webpack --config webpack.prod.js",
     "dev": "webpack serve --config webpack.dev.js",
     "add": "python addComponent.py",

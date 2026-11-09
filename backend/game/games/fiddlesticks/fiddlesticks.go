@@ -3,6 +3,7 @@ package fiddlesticks
 import (
 	"errors"
 	"fmt"
+	"math/rand"
 	"os"
 	"strconv"
 	"sync"
@@ -29,6 +30,15 @@ import (
 */
 
 type GameFiddlesticks struct {
+	public_history    []PublicAction
+	round_history     []PublicAction
+	public_profiles   []PublicProfile
+	prior_profiles    []PublicProfile
+	known_voids       [][4]bool
+	round_observer    func([]RoundOutcome)
+	deal_random       *rand.Rand
+	action_random     *rand.Rand
+	recording         *gameRecording
 	game              *game.GameBase
 	players           []*FiddlesticksPlayer
 	deck              *game_utils.StandardDeck
@@ -122,6 +132,7 @@ func CreateGame(g *game.GameBase, action_channel chan game.PlayerAction) (*GameF
 		return nil, errors.New("Need at least two players to play fiddlesticks")
 	}
 	for _, fiddlesticks_player := range fiddlesticks.players {
+		fiddlesticks_player.createAiModel(nil)
 		go runAi(fiddlesticks_player, fiddlesticks, action_channel)
 	}
 	fiddlesticks.setMaxRound(0)
@@ -223,6 +234,15 @@ func (f *GameFiddlesticks) IsBetting() bool {
 func (f *GameFiddlesticks) StartGame() {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	f.startRecording()
+	go func() {
+		<-f.game.Quit
+		f.mu.Lock()
+		defer f.mu.Unlock()
+		_, scores := f.GetGameResults()
+		f.recordEvent("end", gin.H{"scores": scores, "completed": f.round == f.min_round && !f.rounds_increasing && f.iteration >= f.iterations})
+		f.checkpointRecording()
+	}()
 	f.round = f.min_round - 1
 	f.dealer = util.RandomInt(0, len(f.players)-1)
 	f.dealNextRound(true)
@@ -333,6 +353,7 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 				fmt.Sprintf("Cannot bet more than the cards in the round (%d) but bet %d", f.round, bet_value))
 			return
 		}
+		f.recordAction(player, action)
 		f.executeBet(player, bet_value, true, f.players[player_id].betComparison(action, bet_value))
 	case "play-card":
 		if f.betting {
@@ -369,6 +390,7 @@ func (f *GameFiddlesticks) PlayerAction(action game.PlayerAction) {
 				fmt.Sprintf("Must follow suit of lead card %d but tried to play %s", lead_suit, card.GetName()))
 			return
 		}
+		f.recordAction(player, action)
 		f.executePlayCard(player, card_index, true, f.players[player_id].cardComparison(action, card))
 	default:
 		fmt.Fprintln(os.Stderr, "Unknown game update type", action.Kind)
@@ -431,6 +453,7 @@ func (f *GameFiddlesticks) cardBeatsCard(c1 *game_utils.StandardCard, c2 *game_u
 }
 
 func (f *GameFiddlesticks) executeBet(player *game.Player, bet_value uint8, broadcast bool, comparison gin.H) *game.UpdateMessage {
+	f.observeBid(player.Player_id, bet_value)
 	f.players[f.turn].bet = bet_value
 	f.players[f.turn].has_bet = true
 	done_betting := f.turn == f.dealer
@@ -461,6 +484,7 @@ func (f *GameFiddlesticks) executeBet(player *game.Player, bet_value uint8, broa
 
 func (f *GameFiddlesticks) executePlayCard(player *game.Player, card_index int, broadcast bool, comparison gin.H) []*game.UpdateMessage {
 	card := f.players[f.turn].cards[card_index]
+	f.observeCard(player.Player_id, card)
 	f.trick = append(f.trick, card)
 	lead_suit := f.trick[0].GetSuit()
 	f.players[f.turn].cards_played = append(f.players[f.turn].cards_played, card_index)
@@ -476,6 +500,7 @@ func (f *GameFiddlesticks) executePlayCard(player *game.Player, card_index int, 
 			f.turn -= len(f.players)
 		}
 		f.players[f.turn].tricks++
+		f.recordEvent("trick", gin.H{"winner": f.turn})
 		f.trick_leader = f.turn
 		f.trick = make([]*game_utils.StandardCard, 0, len(f.players))
 		if broadcast {
@@ -490,6 +515,10 @@ func (f *GameFiddlesticks) executePlayCard(player *game.Player, card_index int, 
 				}
 			}
 			deal_next_round = true
+			f.notifyRoundOutcome()
+			for _, p := range f.players {
+				f.recordEvent("round-result", gin.H{"seat": p.player.Player_id, "bet": p.bet, "tricks": p.tricks, "score": p.score})
+			}
 		}
 	}
 	update := &game.UpdateMessage{Kind: "play-card", Content: gin.H{
@@ -518,9 +547,17 @@ func (f *GameFiddlesticks) executePlayCard(player *game.Player, card_index int, 
 }
 
 func (f *GameFiddlesticks) PlayerDisconnected(client_id uint64) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.recordEvent("disconnect", gin.H{"client_id": client_id})
 }
 
 func (f *GameFiddlesticks) PlayerReconnected(client_id uint64) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if p := f.game.Players[client_id]; p != nil {
+		f.recordEvent("reconnect", gin.H{"client_id": client_id, "identity": p.Identity})
+	}
 }
 
 func (f *GameFiddlesticks) dealNextRound(broadcast bool) *game.UpdateMessage {
@@ -570,7 +607,11 @@ func (f *GameFiddlesticks) dealNextRound(broadcast bool) *game.UpdateMessage {
 			f.round--
 		}
 	}
-	f.deck.Reset()
+	if f.deal_random == nil {
+		f.deck.Reset()
+	} else {
+		f.deck.ResetWithRandom(f.deal_random)
+	}
 	dealt_cards := f.deck.DealCards(uint8(len(f.players)), f.round)
 	for i := 0; i < len(f.players); i++ {
 		cards := dealt_cards[i]
@@ -584,6 +625,8 @@ func (f *GameFiddlesticks) dealNextRound(broadcast bool) *game.UpdateMessage {
 		f.players[j].has_bet = false
 	}
 	f.trump = f.deck.DrawCard()
+	f.round_history = nil
+	f.known_voids = make([][4]bool, len(f.players))
 	f.betting = true
 	f.turn = f.dealer + 1
 	if f.turn >= len(f.players) {
@@ -592,6 +635,7 @@ func (f *GameFiddlesticks) dealNextRound(broadcast bool) *game.UpdateMessage {
 	f.players[f.turn].turn_start_time = time.Now()
 	f.trick_leader = f.turn
 	if broadcast {
+		f.recordDeal()
 		for _, player := range f.players {
 			frontend_cards := []gin.H{}
 			for _, card := range player.cards {

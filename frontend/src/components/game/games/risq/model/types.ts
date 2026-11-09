@@ -84,6 +84,7 @@ export declare interface RisqPlayer {
   orders_submitted: boolean;
   eliminated: boolean;
   researched_techs: Map<number, boolean>;
+  gather_bonuses: RisqGatherBonus[];
   turn_report?: RisqTurnReport;
   planned_foundations: Map<number, RisqPlannedFoundation>;
   available_mercenaries: RisqProducible[];
@@ -93,6 +94,14 @@ export declare interface RisqPlayer {
   default_unit_interrupt_current: boolean;
   default_unit_target_priority: RisqTargetCategory[];
   default_unit_attack_stack: number;
+}
+
+/** A researched tech's gather bonus; empty category and id lists mean it applies to every resource */
+export declare interface RisqGatherBonus {
+  resource_categories: RisqResourceType[];
+  resource_ids: number[];
+  speed: number;
+  percentage: number;
 }
 
 export declare interface RisqPlayerResource {
@@ -506,4 +515,10 @@ export type RisqUnreceivedOrder = Omit<RisqOrder, 'internal_id'> & { internal_id
 /** Either kind of order; `internal_id !== undefined` narrows to the received one */
 export type RisqFrontendOrder = RisqOrder | RisqUnreceivedOrder;
 
-export { canHaveGatherPoint, canAffordCost, meetsTechRequirement, rangeDistance } from './unit_display';
+export {
+  canHaveGatherPoint,
+  canAffordCost,
+  effectiveGatherSpeed,
+  meetsTechRequirement,
+  rangeDistance,
+} from './unit_display';

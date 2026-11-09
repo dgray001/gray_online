@@ -302,6 +302,9 @@ func (r *LobbyRoom) replaceClient(client *Client) {
 	}
 	r.lobby.mu.Unlock()
 	if game_started {
+		if player := current_game.GetBase().Players[client.client_id]; player != nil {
+			player.Identity = client.Identity
+		}
 		game.Game_PlayerReconnected(current_game, client.client_id)
 	}
 }
@@ -366,6 +369,9 @@ func (r *LobbyRoom) addClient(c *Client, join_as_player bool) {
 	current_game := r.game
 	r.lobby.mu.Unlock()
 	if game_started {
+		if player := current_game.GetBase().Players[c.client_id]; player != nil {
+			player.Identity = c.Identity
+		}
 		if game.Game_PlayerReconnected(current_game, c.client_id) {
 			r.lobby.mu.Lock()
 			c.lobby_room = r
@@ -621,6 +627,7 @@ func (r *LobbyRoom) launchGame(game_id uint64) (game.Game, error) {
 	base_game.CurrentState = r.currentGameState
 	for _, player := range r.players {
 		game.CreatePlayer(player.client_id, player.nickname, base_game)
+		base_game.Players[player.client_id].Identity = player.Identity
 	}
 	for _, viewer := range r.viewers {
 		base_game.Viewers[viewer.client_id] = game.CreateViewer(viewer.client_id, viewer.nickname)
